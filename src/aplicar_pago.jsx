@@ -131,6 +131,9 @@ function AplicarPago() {
   const [confirmado, setConfirmado] = React.useState(null);
   const [cargando, setCargando]     = React.useState(false);
   const [totalAplicarPanel, setTotalAplicarPanel] = React.useState(0);
+  const [qMat,  setQMat]   = React.useState(0);
+  const [qCuota,setQCuota] = React.useState(0);
+  const [qCert, setQCert]  = React.useState(0);
 
   // Prefill desde admin_students (botón 💳)
   React.useEffect(() => {
@@ -165,6 +168,7 @@ function AplicarPago() {
     setPaso(1); setEstSel(null); setEstData(null); setNivelSel(null);
     setComprSel(null); setComprobantes([]); setError(''); setConfirmado(null);
     setCargando(false); setTotalAplicarPanel(0);
+    setQMat(0); setQCuota(0); setQCert(0);
   };
 
   const handlePrev = () => {
@@ -406,9 +410,6 @@ function AplicarPago() {
     const montoCert  = pend.certificado   || 0;
     const nCuotas    = 4;
 
-    const [qMat,  setQMat]   = React.useState(0);
-    const [qCuota,setQCuota] = React.useState(0);
-    const [qCert, setQCert]  = React.useState(0);
     const [cargandoApl, setCargandoApl] = React.useState(false);
     const [errLocal, setErrLocal] = React.useState('');
 

@@ -59,10 +59,11 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           fn: 'actualizarEstatus',
-          codigo: estudiante.codigo,
+          cod_estudiante: String(estudiante.codigo || estudiante.rec_m || ''),
           nivel,
           estatus: nuevoEstatus,
           nota: estudiante.nota || null,
+          grupo: String(estudiante.grupo || estudiante.GRUPO || ''),
         })
       });
       const data = await resp.json();
@@ -272,7 +273,7 @@ function rowBg(estatus, idx) {
   return idx%2===0 ? 'white' : 'var(--surface, #FAFAF7)';
 }
 
-function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel }) {
+function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
   if (!estudiantes.length) return null;
@@ -408,6 +409,16 @@ function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort,
                   </td>
                   <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
                     <button
+                      onClick={() => generarCertificadoFila && generarCertificadoFila(e, nivelKey)}
+                      title="Generar certificado de nivel"
+                      style={{ padding:'3px 8px', marginRight:4, borderRadius:4,
+                        border: e.estatus==='APR' ? '1px solid #4CAF50' : '1px solid var(--border, #ddd)',
+                        fontSize:11, cursor: e.estatus==='APR' ? 'pointer' : 'not-allowed',
+                        background: e.estatus==='APR' ? 'color-mix(in srgb,#4CAF50 10%,white)' : '#f5f5f5',
+                        opacity: e.estatus==='APR' ? 1 : 0.4 }}>
+                      🏅
+                    </button>
+                    <button
                       onClick={() => onAbrirPanel && onAbrirPanel(e)}
                       title="Ver ficha del estudiante"
                       style={{ padding:'3px 8px', marginRight:4, borderRadius:4, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white' }}>
@@ -456,6 +467,32 @@ function AdminEstudiantesView({ onNavigate }) {
   const [grupoSel, setGrupoSel] = React.useState(null);
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [estudiantePanelAbierto, setEstudiantePanelAbierto] = React.useState(null);
+  const [certEstado, setCertEstado] = React.useState(null);
+  // { loading: true } | { ok, registro, nombre, url, error }
+
+  const handleGenerarCertificado = async (est, nivel) => {
+    setCertEstado({ loading: true, codigo: est.codigo, nivel });
+    try {
+      const resp = await fetch(SCRIPT_URL_AS + '?fn=generarCertificado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          fn: 'generarCertificado',
+          codigo: String(est.codigo || ''),
+          nivel: nivel,
+          grupo: String(est.grupo || ''),
+        }),
+      });
+      const data = await resp.json();
+      setCertEstado({ ...data, codigo: est.codigo, nivel });
+      if (data.ok) {
+        // Recargar la radiografía para mostrar el nuevo REG_CERTIFICADOS
+        setTimeout(() => { setCertEstado(null); }, 4000);
+      }
+    } catch(e) {
+      setCertEstado({ ok: false, error: 'Error de conexión', codigo: est.codigo, nivel });
+    }
+  };
   const { data, loading: loadingRad } = useRadiografia(grupoSel, refreshKey);
   const grupoInfoDetalle = useGrupoInfo(grupoSel);
 
@@ -587,6 +624,7 @@ function AdminEstudiantesView({ onNavigate }) {
                 onRefresh={() => setRefreshKey(k => k + 1)}
                 onNavigate={onNavigate}
                 onAbrirPanel={(est) => setEstudiantePanelAbierto(est)}
+                generarCertificadoFila={(est, niv) => handleGenerarCertificado(est, niv)}
               />
             ))
           )}
@@ -599,6 +637,39 @@ function AdminEstudiantesView({ onNavigate }) {
           onClose={() => setEstudiantePanelAbierto(null)}
           onNavigate={onNavigate}
         />
+      )}
+
+      {certEstado && (
+        <div style={{
+          position:'fixed', bottom:24, right:24, zIndex:999,
+          background: certEstado.loading ? '#14213D'
+            : certEstado.ok ? '#2E7D32' : '#C62828',
+          color:'white', padding:'14px 20px', borderRadius:12,
+          boxShadow:'0 4px 20px rgba(0,0,0,0.25)', maxWidth:380,
+          fontSize:13, lineHeight:1.5,
+        }}>
+          {certEstado.loading ? (
+            <span>⏳ Generando certificado {certEstado.nivel}...</span>
+          ) : certEstado.ok ? (
+            <div>
+              <div style={{ fontWeight:700, marginBottom:4 }}>
+                🏅 Certificado generado — {certEstado.registro}
+              </div>
+              <div style={{ fontSize:11, opacity:0.85, marginBottom:8 }}>
+                {certEstado.nombre}
+              </div>
+              <a href={certEstado.url} target="_blank" rel="noreferrer"
+                style={{ color:'white', fontWeight:700, textDecoration:'underline' }}>
+                Abrir PDF →
+              </a>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontWeight:700, marginBottom:4 }}>❌ Error</div>
+              <div style={{ fontSize:12 }}>{certEstado.error}</div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
