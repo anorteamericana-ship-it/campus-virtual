@@ -293,7 +293,7 @@ function PanelDocumentos({ est, detalle }) {
     try {
       const resp = await fetch(SCRIPT_URL_B, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ fn:'generarDocumento', tipo, codigo: String(est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();

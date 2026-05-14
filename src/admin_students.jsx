@@ -56,7 +56,7 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
     try {
       const resp = await fetch(SCRIPT_URL_AS, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           fn: 'actualizarEstatus',
           codigo: estudiante.codigo,
@@ -1034,7 +1034,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     try {
       const resp = await fetch(SCRIPT_URL_PANEL, {
         method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        headers:{ 'Content-Type':'text/plain' },
         body: JSON.stringify({ fn:'generarDocumento', tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
