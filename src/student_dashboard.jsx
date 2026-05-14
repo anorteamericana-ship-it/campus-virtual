@@ -70,7 +70,7 @@ function useEstadoConape(cedula) {
 
 function StudentDashboard({ toast, onNavigate }) {
   const s = STUDENT;
-  const nextClass    = null;
+  const nextClass    = null; // dato real pendiente de conectar
   const nextExam     = null;
   const icanEnrolled = ICAN_SESSIONS.find(x => x.enrolled);
   const pendingHw    = HOMEWORK.filter(h => h.status==='pending');
@@ -223,23 +223,25 @@ function StudentDashboard({ toast, onNavigate }) {
       </div>
 
       {/* Next class — editorial card */}
-      <div className="next-class" style={{ marginBottom:16 }}>
-        <div className="nc-date-box">
-          <div className="nc-day">15</div>
-          <div className="nc-month">Jul</div>
+      {nextClass && (
+        <div className="next-class" style={{ marginBottom:16 }}>
+          <div className="nc-date-box">
+            <div className="nc-day">15</div>
+            <div className="nc-month">Jul</div>
+          </div>
+          <div style={{ position:'relative', zIndex:1 }}>
+            <div className="nc-kicker">Próxima clase · Hoy · 6:00–9:00 pm</div>
+            <div className="nc-title">Lección {nextClass.n} · {nextClass.title}</div>
+            <div className="nc-meta">{nextClass.unit} · Prof. {s.teacher} · Aula virtual A1</div>
+          </div>
+          <div style={{ display:'flex', gap:8, position:'relative', zIndex:1 }}>
+            <button className="btn btn-ghost" style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.25)', color:'white' }}>Ver detalles</button>
+            <button className="btn btn-primary" style={{ background:'var(--an-granate)' }} onClick={() => toast('Abriendo Zoom…')}>
+              Entrar a clase <Icon name="arrow" size={14} className="" />
+            </button>
+          </div>
         </div>
-        <div style={{ position:'relative', zIndex:1 }}>
-          <div className="nc-kicker">Próxima clase · Hoy · 6:00–9:00 pm</div>
-          <div className="nc-title">Lección {nextClass.n} · {nextClass.title}</div>
-          <div className="nc-meta">{nextClass.unit} · Prof. {s.teacher} · Aula virtual A1</div>
-        </div>
-        <div style={{ display:'flex', gap:8, position:'relative', zIndex:1 }}>
-          <button className="btn btn-ghost" style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.25)', color:'white' }}>Ver detalles</button>
-          <button className="btn btn-primary" style={{ background:'var(--an-granate)' }} onClick={() => toast('Abriendo Zoom…')}>
-            Entrar a clase <Icon name="arrow" size={14} className="" />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Two-col: timeline + side */}
       <div className="grid-2">
