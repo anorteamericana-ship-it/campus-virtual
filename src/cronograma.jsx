@@ -11,7 +11,7 @@ function useCronogramaData() {
     const usr      = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
     const codigo   = usr?.codigo;
     const codGrupo = usr?.grupo || usr?.grupos?.[0];
-    if (!codigo || !codGrupo) { setLoading(false); return; }
+    if (!codigo || !codGrupo) { setLoading(false); setError('sin_sesion'); return; }
     Promise.all([
       fetch(`${SCRIPT_URL_CR}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
       fetch(`${SCRIPT_URL_CR}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}`).then(r=>r.json()),
@@ -240,6 +240,17 @@ function CronogramaModulo() {
   const [leccionAbierta, setLeccionAbierta] = React.useState(null);
 
   if (loading) return <div style={{padding:40,textAlign:'center',color:'var(--ink-3)'}}>Cargando cronograma…</div>;
+  if (error === 'sin_sesion') return (
+    <div style={{ padding:40, textAlign:'center', color:'var(--ink-3)' }}>
+      <div style={{ fontSize:32, marginBottom:12 }}>📋</div>
+      <div style={{ fontFamily:'var(--f-serif)', fontSize:18, color:'var(--ink)' }}>
+        Seleccioná un estudiante para ver su cronograma
+      </div>
+      <div style={{ fontSize:13, marginTop:8 }}>
+        Usá el panel superior para cargar un código de expediente.
+      </div>
+    </div>
+  );
   if (error || !data) return <div style={{padding:40,textAlign:'center',color:'var(--ink-3)'}}>No se pudo cargar el cronograma.</div>;
 
   // Construir estudiante + grupo en la forma que espera el resto del componente

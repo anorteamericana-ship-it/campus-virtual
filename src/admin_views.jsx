@@ -239,13 +239,14 @@ const initState = () => ({
   modelo:'ina', niveles:['b1'], modalidad:'intensivo',
   dias:'Lun/Mié', horaInicio:'06:00', fechaInicio:null,
   docente:'', entrega:'virtual', linkZoom:'', salon:'', capacidad:12,
-  matricula:50000, matriculaObligatoria:true,
-  cuota:85000,
-  certificadosPorNivel:{ b1:18000, b2:18000, i1:18000, i2:18000 },
+  matricula:20000, matriculaObligatoria:true,
+  cuota:89000,
+  certificadosPorNivel:{ b1:15000, b2:15000, i1:15000, i2:15000 },
   certificadoPrograma:45000,
   toeic:false, toeicMonto:136730,
   rubrosExtra:[],
   beca:'none', becaCustomNombre:'', becaCustomPct:25,
+  disponibleInscripcion:false,
   cronograma:[],
   confirmado:false,
 });
@@ -321,25 +322,32 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
       const res = await fetch(`${SCRIPT_URL_AV}?fn=crearGrupo`, {
         method: 'POST',
         body: JSON.stringify({
-          codigo_grupo:   code,
-          docente:        docenteObj?.nombre || '—',
-          modalidad:      form.modalidad,
-          dias:           form.dias,
-          hora_inicio:    form.horaInicio,
-          fecha_inicio:   form.fechaInicio,
-          periodo_inicio: periodo,
-          programa:       form.modelo === 'ina' ? 'CON_INA' : 'SIN_INA',
-          activo:         true,
-          capacidad:      form.capacidad || 40,
-          // Campos adicionales requeridos por la hoja
-          nivel_inicio:   (form.niveles[0] || 'b1').toUpperCase(),
-          tipo_periodo:   form.modalidad === 'super_intensivo' ? 'B' : 'C',
-          año_inicio:     form.fechaInicio ? new Date(form.fechaInicio).getFullYear() : new Date().getFullYear(),
-          dias_sem:       form.modalidad === 'super_intensivo'
-                            ? 4
-                            : (form.dias.includes('Sáb') ? 1 : 2),
-          hora_fin:       form.horaInicio === '06:00' ? '21:00' : '16:00',
-          consecutivo:    parseInt(consec, 10),
+          codigo_grupo:            code,
+          docente:                 docenteObj?.nombre || '—',
+          modalidad:               form.modalidad,
+          dias:                    form.dias,
+          hora_ini:                form.horaInicio,
+          hora_fin:                form.horaInicio === '06:00' ? '21:00' : '16:00',
+          fecha_inicio:            form.fechaInicio,
+          periodo_inicio:          periodo,
+          programa:                form.modelo === 'ina' ? 'INA' : 'SIN_INA',
+          activo:                  true,
+          capacidad:               form.capacidad || 40,
+          nivel_inicio:            (form.niveles[0] || 'b1').toUpperCase(),
+          tipo_periodo:            form.modalidad === 'super_intensivo' ? 'B' : 'C',
+          año_inicio:              form.fechaInicio ? new Date(form.fechaInicio).getFullYear() : new Date().getFullYear(),
+          dias_sem:                form.modalidad === 'super_intensivo' ? 4 : (form.dias.includes('Sáb') ? 1 : 2),
+          consecutivo:             parseInt(consec, 10),
+          // v4.15 — campos nuevos
+          disponible_inscripcion:  form.disponibleInscripcion === true,
+          precio_cuota:            form.cuota,
+          precio_matricula:        form.matriculaObligatoria ? form.matricula : 0,
+          precio_certificado:      form.certificadosPorNivel[form.niveles[0]] || 0,
+          precio_titulo:           form.niveles.length === 4 ? form.certificadoPrograma : 0,
+          beca_grupo:              form.beca === 'none' ? '' : form.beca === 'impacta' ? 'IMPACTA' : form.beca === 'mujer' ? 'MUJER' : form.becaCustomNombre.toUpperCase(),
+          beca_pct:                form.beca === 'none' ? 0 : form.beca === 'impacta' ? 25 : form.beca === 'mujer' ? 50 : form.becaCustomPct,
+          toeic:                   form.toeic === true,
+          toeic_monto:             form.toeic ? form.toeicMonto : 0,
         }),
         signal: controller.signal,
       });
@@ -832,6 +840,15 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
 
   return (
     <div>
+      <SectionTitle>Disponibilidad</SectionTitle>
+      <label style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20, cursor:'pointer', padding:'12px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:`2px solid ${form.disponibleInscripcion ? nivel.color : 'var(--line)'}` }}>
+        <Toggle value={form.disponibleInscripcion} onChange={v => set('disponibleInscripcion', v)} color={nivel.color} />
+        <div>
+          <div style={{ fontWeight:700, fontSize:13 }}>Disponible para inscripción pública</div>
+          <div style={{ fontSize:11, color:'var(--ink-3)' }}>Aparece en el formulario de inscripción para nuevos estudiantes</div>
+        </div>
+      </label>
+
       <SectionTitle>Matrícula</SectionTitle>
       <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:12, marginBottom:16, alignItems:'center' }}>
         <MontoInput value={form.matricula} onChange={v => set('matricula', v)} label="Monto de matrícula" />
@@ -1267,6 +1284,9 @@ function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalP
           ['Capacidad', `${form.capacidad} estudiantes`],
           ['Entrega', form.entrega],
           ['Beca', becaLabel],
+          ['Precio cuota', fmtMoney(form.cuota)],
+          ['Precio matrícula', form.matriculaObligatoria ? fmtMoney(form.matricula) : 'Opcional'],
+          ['Disponible inscripción', form.disponibleInscripcion ? 'Sí — aparece en formulario' : 'No — solo admin'],
         ].map(([k,v],i) => (
           <div key={i} style={{ padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', borderLeft:`4px solid ${nivel.color}` }}>
             <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--ink-3)' }}>{k}</div>

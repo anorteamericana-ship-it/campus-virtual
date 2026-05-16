@@ -37,34 +37,43 @@ const TIPO_LABEL_LARGO = {
   EVAL_ESCRITO:    'Examen Escrito',
 };
 
+// Color base por nivel
+const NIVEL_BASE = {
+  B1: { dark:'#9A6A00', mid:'#E5A823', light:'#FFF8DC', lighter:'#FFFDF0' },
+  B2: { dark:'#8B1A10', mid:'#E8372A', light:'#FDECEA', lighter:'#FFF5F4' },
+  I1: { dark:'#0D47A1', mid:'#2B7FC1', light:'#E8F1FD', lighter:'#F0F7FF' },
+  I2: { dark:'#1B5E20', mid:'#4CAF50', light:'#EBF5EB', lighter:'#F5FBF5' },
+};
+
 // Paleta de celda — devuelve {bg, fg, accent}
-function paletaCelda(estado, tipo) {
+function paletaCelda(estado, tipo, nivel) {
+  const base = NIVEL_BASE[nivel] || NIVEL_BASE.B1;
+
   if (estado === 'FERIADO') return { bg:'#FDECEA', fg:'#B71C1C', accent:'#B71C1C' };
-  if (estado === 'HOY')     return { bg:'#FFF9C4', fg:'#795500', accent:'#F57F17' };
-  if (estado === 'CALCULADA') {
-    if (tipo === 'PROGRESS_CHECK') return { bg:'#EDE7F6', fg:'#4A148C', accent:'#7B1FA2' };
-    if (tipo === 'EVAL_ORAL')      return { bg:'#FFFDE7', fg:'#9B6A00', accent:'#F57F17' };
-    if (tipo === 'EVAL_ESCRITO')   return { bg:'#FFF3E8', fg:'#A1490A', accent:'#E65100' };
-    return { bg:'#EBF0FB', fg:'#1565C0', accent:'#1565C0' };
+  if (estado === 'HOY')     return { bg: base.mid, fg:'#FFFFFF', accent: base.dark };
+
+  if (estado === 'CERRADA') {
+    if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
+      return { bg:'#FFF8E1', fg:'#7B5600', accent:'#F57F17' };
+    }
+    return { bg: base.light, fg: base.dark, accent: base.mid };
   }
-  // CERRADA
-  if (tipo === 'PROGRESS_CHECK') return { bg:'#F3E5F5', fg:'#4A148C', accent:'#7B1FA2' };
-  if (tipo === 'EVAL_ORAL')      return { bg:'#FFF8E1', fg:'#7B5600', accent:'#F57F17' };
-  if (tipo === 'EVAL_ESCRITO')   return { bg:'#FFF3E0', fg:'#8A3A00', accent:'#E65100' };
-  return { bg:'#EBF5EB', fg:'#1B5E20', accent:'#2E7D32' };
+
+  // CALCULADA
+  if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
+    return { bg:'#FFFDE7', fg:'#9B6A00', accent:'#F9A825' };
+  }
+  return { bg: base.lighter, fg: base.mid, accent: base.mid + '60' };
 }
 
 // Color para segmento de progress bar
-function colorProgreso(estado, tipo) {
-  if (estado === 'HOY')       return '#F57F17';
-  if (estado === 'CERRADA')   return '#2E7D32';
-  if (estado === 'FERIADO')   return '#E5A823';
-  if (estado === 'CALCULADA') {
-    if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') return '#E65100';
-    if (tipo === 'PROGRESS_CHECK') return '#7B1FA2';
-    return '#2B7FC1';
-  }
-  return '#D4C9B6';
+function colorProgreso(estado, tipo, nivel) {
+  const base = NIVEL_BASE[nivel] || NIVEL_BASE.B1;
+  if (estado === 'HOY')       return base.mid;
+  if (estado === 'FERIADO')   return '#FFCA28';
+  if (estado === 'CERRADA')   return base.dark;
+  if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') return '#F9A825';
+  return base.light;
 }
 
 // Feriados CR — fallback para mostrar nombres en panel
@@ -443,7 +452,7 @@ function CronogramaGrupo({ rol = 'admin' }) {
 
       {/* ── PROGRESS BAR ───────────────────────────────────────────────── */}
       <ProgressBar32 lecciones={lecciones} stats={stats} loading={loading}
-                     onClickSeg={l => setSelLec(l)} selLec={selLec} />
+                     onClickSeg={l => setSelLec(l)} selLec={selLec} nivel={nivel} />
 
       {error && (
         <div style={errorBoxStyle}>
@@ -488,6 +497,7 @@ function CronogramaGrupo({ rol = 'admin' }) {
                      mes={mes}
                      mapaLecciones={mapaLecciones}
                      selLec={selLec}
+                     nivel={nivel}
                      onClickLec={l => setSelLec(l)} />
               ))}
             </div>
@@ -545,7 +555,7 @@ const errorBoxStyle = {
 // ─────────────────────────────────────────────────────────────────────────
 // Barra de 32 segmentos
 // ─────────────────────────────────────────────────────────────────────────
-function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec }) {
+function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel }) {
   // Para SA, lecciones.length puede ser >32; agrupamos por número de lección únicos
   const unicas = React.useMemo(() => {
     const seen = new Set();
@@ -600,7 +610,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec }) {
                  title={`Lec ${l.leccion} · ${fmtDDMMM(l.fecha)} · ${l.estado}`}
                  style={{
                    flex:1, height:'100%', borderRadius:2,
-                   background: colorProgreso(l.estado, l.tipo),
+                   background: colorProgreso(l.estado, l.tipo, nivel),
                    cursor:'pointer',
                    boxShadow: selLec && selLec.leccion === l.leccion
                      ? '0 0 0 2px var(--ink) inset' : 'none',
@@ -618,7 +628,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Mes (cuadrícula Lun-Dom)
 // ─────────────────────────────────────────────────────────────────────────
-function Mes({ mes, mapaLecciones, selLec, onClickLec }) {
+function Mes({ mes, mapaLecciones, selLec, nivel, onClickLec }) {
   const year  = mes.getFullYear();
   const month = mes.getMonth();
   const primeroDelMes = new Date(year, month, 1);
@@ -677,14 +687,14 @@ function Mes({ mes, mapaLecciones, selLec, onClickLec }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
                     gap:2, padding:3 }}>
         {celdas.map((c, i) => (
-          <CeldaDia key={i} celda={c} selLec={selLec} onClickLec={onClickLec} />
+          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
         ))}
       </div>
     </div>
   );
 }
 
-function CeldaDia({ celda, selLec, onClickLec }) {
+function CeldaDia({ celda, selLec, nivel, onClickLec }) {
   const { diaNum, dentro, lecs } = celda;
 
   if (!dentro) {
@@ -718,6 +728,7 @@ function CeldaDia({ celda, selLec, onClickLec }) {
     }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
+                       nivel={nivel}
                        selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion}
                        onClick={() => onClickLec(lec)} />
       ))}
@@ -725,8 +736,8 @@ function CeldaDia({ celda, selLec, onClickLec }) {
   );
 }
 
-function BloqueLeccion({ lec, diaNum, selected, onClick }) {
-  const pal = paletaCelda(lec.estado, lec.tipo);
+function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
+  const pal = paletaCelda(lec.estado, lec.tipo, nivel);
   const badge = TIPO_BADGE[lec.tipo];
   const isFeriado = lec.estado === 'FERIADO';
   const isHoy = lec.estado === 'HOY';
@@ -879,7 +890,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
 }
 
 function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, onCerrar }) {
-  const pal = paletaCelda(selLec.estado, selLec.tipo);
+  const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
   const dias = diasEntre(selLec.fecha);

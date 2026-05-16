@@ -1,4 +1,4 @@
-/* global React, ReactDOM, Toast, Sidebar, STUDENT,
+/* global React, ReactDOM, Toast, Sidebar,
    StudentDashboard, NotasView, TareasView, MaterialesView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
    ExamenOralView, TeacherDashboard, GruposView, CalificarView, AsistenciaView,
@@ -36,10 +36,13 @@ function App() {
   const toast = (m) => setToastMsg(m);
 
   // Route
+  // Audit #4 — `superadmin` (ej. Leonardo / director2026) cae al mismo
+  // bloque que admin. Hacemos la normalización explícita acá para que
+  // el router no dependa del fallback `else`.
+  const effectiveRole = role === 'superadmin' ? 'admin' : role;
   let content = null;
-  if (role === 'student') {
+  if (effectiveRole === 'student') {
     const map = {
-      cronograma:    <CronogramaModulo />,
       cronograma_grupo: <CronogramaGrupo rol="student" />,
       dashboard:    <StudentDashboard toast={toast} onNavigate={setActive} />,
       notas:        <NotasView toast={toast} />,
@@ -52,7 +55,7 @@ function App() {
       perfil:       <PerfilView onNavigate={navigateTo} />,
     };
     content = map[active] || map.dashboard;
-  } else if (role === 'teacher') {
+  } else if (effectiveRole === 'teacher') {
     const map = {
       dashboard:   <TeacherDashboard setActive={setActive} />,
       grupos:      <GruposView />,
@@ -87,7 +90,7 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar role={role} setRole={setRole} active={active} setActive={setActive} student={STUDENT} />
+      <Sidebar role={role} setRole={setRole} active={active} setActive={setActive} />
       <main className="main">{content}</main>
       <Toast msg={toastMsg} onClose={() => setToastMsg('')} />
       {showWelcome && role === 'student' && <WelcomeBanner onClose={closeWelcome} />}

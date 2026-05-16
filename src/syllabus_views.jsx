@@ -1,6 +1,6 @@
 /* global React, Icon, Chip, PageHeader, PRIORITY_BLOCK, SYLLABUS_BY_LEVEL, ICAN_SLOTS_AFTER,
    ICAN_CATALOG, ICAN_HISTORY,
-   buildGroupSchedule, fmtDate, fmtDateLong, MONTHS_ES, STUDENT */
+   buildGroupSchedule, fmtDate, fmtDateLong, MONTHS_ES */
 
 const SCRIPT_URL_SV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 

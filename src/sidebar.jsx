@@ -40,35 +40,40 @@ function DevSwitcher({ role, setRole, setActive }) {
       const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(codigo.trim())}`);
       const data = await res.json();
       if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
-      const est = data.estudiante || {};
-      // Normalizar niveles/estatus: aceptar varias formas que pueda devolver el backend
-      // Esperado: { B1: 'APR', B2: 'CA', I1: 'PE', I2: 'PE' }
-      const nivelesRaw = est.NIVELES || est.niveles || data.niveles || {};
-      const niveles_estatus = {};
-      Object.keys(nivelesRaw).forEach(k => {
-        const v = nivelesRaw[k];
-        niveles_estatus[k.toUpperCase()] =
-          typeof v === 'string' ? v.toUpperCase() :
-          (v && (v.estatus || v.ESTATUS)) ? String(v.estatus || v.ESTATUS).toUpperCase() : '';
-      });
-      // Calcular nivel_activo: el que tenga CA, o el último APR/CNV
-      const ORDEN = ['B1','B2','I1','I2','A1','A2'];
-      let nivel_activo =
-        ORDEN.find(n => niveles_estatus[n] === 'CA') ||
-        [...ORDEN].reverse().find(n => ['APR','CNV'].includes(niveles_estatus[n])) ||
-        (est.NIVEL_ACTIVO || data.nivel_activo || '');
-      const estatus_activo = nivel_activo ? (niveles_estatus[nivel_activo] || '') : '';
+      const est     = data.estudiante || {};
+      const niveles = data.niveles    || {};
+      const ORDEN   = ['B1','B2','I1','I2'];
+
+      // Acepta { B1: 'APR' } o { B1: { estatus:'APR', nota:88 } }
+      const getEstatus = n => {
+        const v = niveles[n];
+        if (!v) return '';
+        return typeof v === 'object'
+          ? String(v.estatus || v.ESTATUS || '').toUpperCase()
+          : String(v).toUpperCase();
+      };
+      const nivel_activo =
+        ORDEN.find(n => getEstatus(n) === 'CA') ||
+        [...ORDEN].reverse().find(n => ['APR','CNV'].includes(getEstatus(n))) ||
+        '';
+      const estatus_activo = nivel_activo ? getEstatus(nivel_activo) : '';
+      const niveles_estatus = Object.fromEntries(
+        ORDEN.map(n => [n, getEstatus(n)])
+      );
+
+      // Grupo: preferir el de DATOS o el del nivel activo
+      const grupo = data.grupo?.CODIGO_GRUPO || est.GRUPO || est['GRUPO'] || '';
 
       sessionStorage.setItem('an_usuario', JSON.stringify({
-        nombre:   est.NOMBRE  || est.nombre  || codigo,
-        rol:      'student',
-        codigo:   est.CODIGO  || est.rec_m   || codigo,
-        cedula:   est.CEDULA  || est.cedula  || '',
-        grupo:    est.GRUPO   || data.grupo?.CODIGO_GRUPO || '',
-        programa: data.grupo?.PROGRAMA || 'SIN_INA',
-        niveles_estatus,
+        nombre:          est.NOMBRE     || est.nombre  || codigo,
+        rol:             'student',
+        codigo:          est.CODIGO     || est.REC_M   || est.rec_m || codigo,
+        cedula:          est.NUM_CEDULA || est.CEDULA  || est.cedula || '',
+        grupo,
+        programa:        data.grupo?.PROGRAMA || est.PROGRAMA || 'SIN_INA',
         nivel_activo,
         estatus_activo,
+        niveles_estatus,
       }));
       setRole('student');
       setActive('dashboard');
@@ -181,22 +186,20 @@ function DevSwitcher({ role, setRole, setActive }) {
   );
 }
 
-function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout }) {
+function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
   // Datos del usuario logueado (sessionStorage > props)
   const usuarioSS = React.useMemo(() => {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
   const usr = usuario || usuarioSS;
   const studentNav = [
-    { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-    { id: 'cronograma', label: 'Cronograma', icon: 'calendar' },
     { id: 'cronograma_grupo', label: 'Mis lecciones', icon: 'calendar' },
     { id: 'notas', label: 'Mis Notas', icon: 'grades' },
-    { id: 'tareas', label: 'Tareas', icon: 'homework', badge: 3 },
+    { id: 'tareas', label: 'Tareas', icon: 'homework' },
     { id: 'materiales', label: 'Materiales', icon: 'materials' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
-    { id: 'mensajes', label: 'Mensajes', icon: 'messages', badge: 1 },
+    { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
     { id: 'pagos', label: 'Estado de cuenta', icon: 'payments' },
     { id: 'certificados', label: 'Certificados', icon: 'certificates' },
   ];
@@ -229,10 +232,10 @@ function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout 
     { id: 'config', label: 'Configuración', icon: 'settings' },
   ];
   const nav = role === 'student' ? studentNav : role === 'teacher' ? teacherNav : adminNav;
-  const userName = usr?.nombre || (role === 'student' ? student.short : role === 'teacher' ? 'Docente' : 'Administrador');
+  const userName = usr?.nombre || (role === 'student' ? '—' : role === 'teacher' ? 'Docente' : 'Administrador');
   const userRole = usr
     ? (usr.rol === 'admin' ? 'Administración' : usr.rol === 'teacher' ? `Docente${usr.grupo ? ' · ' + usr.grupo : ''}` : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
-    : (role === 'student' ? 'Estudiante · G0001' : role === 'teacher' ? 'Docente · 3 grupos' : 'Administración');
+    : (role === 'student' ? 'Sin sesión' : role === 'teacher' ? 'Docente' : 'Administración');
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
   return (

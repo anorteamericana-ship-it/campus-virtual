@@ -91,11 +91,14 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
         return;
       }
       // Caso normal
+      // BUG B fix → guardamos también la cédula tal como la escribió el usuario,
+      // para que StudentDashboard pueda hacer fallback si `codigo` viene vacío.
       const acc = {
         rol:      data.rol,
         nombre:   data.nombre,
         grupo:    data.grupo  || null,
         codigo:   data.codigo || null,
+        cedula:   (data.usuario || usuario || '').toString().trim().toLowerCase() || null,
         programa: data.programa || 'SIN_INA',
       };
       setDetected(acc);
@@ -111,7 +114,8 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
       rol:      pendingMulti.rol,
       nombre:   pendingMulti.nombre,
       grupo:    g.grupo,
-      codigo:   null,
+      codigo:   g.codigo || null,
+      cedula:   (pendingMulti.usuario || usuario || '').toString().trim().toLowerCase() || null,
       programa: g.programa || 'SIN_INA',
     };
     setPendingMulti(null);
@@ -459,7 +463,7 @@ function RedirectScreen({ account }) {
           Bienvenido al Campus
         </div>
         <div style={{ opacity:0.75, fontSize:14, marginTop:6 }}>
-          {ROLE_LABELS[account.role]} · {account.name}
+          {ROLE_LABELS[account.rol] || ROLE_LABELS[account.role] || '—'} · {account.nombre || account.name || ''}
         </div>
       </div>
     </div>
@@ -491,14 +495,21 @@ function App() {
     try {
       sessionStorage.setItem('an_just_logged_in', '1');
       sessionStorage.setItem('an_usuario', JSON.stringify({
-        rol:      acc.rol,
-        nombre:   acc.nombre,
-        grupo:    acc.grupo    || null,
-        codigo:   acc.codigo   || null,
-        programa: acc.programa || 'SIN_INA',
+        rol:             acc.rol,
+        nombre:          acc.nombre,
+        grupo:           acc.grupo    || acc.grupos?.[0] || null,
+        grupos:          acc.grupos   || (acc.grupo ? [acc.grupo] : []),
+        codigo:          acc.codigo   || null,
+        cedula:          acc.cedula   || null,
+        programa:        acc.programa || 'SIN_INA',
+        nivel_activo:    acc.nivel_activo    || null,
+        estatus_activo:  acc.estatus_activo  || null,
+        niveles_estatus: acc.niveles_estatus || {},
       }));
       // Mapear rol a formato que usa campus.html
-      const rolCampus = acc.rol === 'teacher' ? 'teacher' : acc.rol === 'student' ? 'student' : 'admin';
+      const rolCampus = acc.rol === 'teacher' ? 'teacher'
+                      : acc.rol === 'student' ? 'student'
+                      : 'admin';
       localStorage.setItem('an_role', rolCampus);
     } catch(e) {}
     setTimeout(() => { window.location.href = 'campus.html'; }, 900);

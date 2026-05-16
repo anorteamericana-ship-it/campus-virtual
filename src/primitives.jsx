@@ -112,4 +112,105 @@ function Chip({ tone = 'granate', children, dot }) {
   </span>;
 }
 
-Object.assign(window, { Icon, Ring, Toast, AnimatedBar, Stat, Chip, useState, useEffect, useRef });
+// ── useUsuario() ──────────────────────────────────────────────────────────
+// Lee la sesión activa de sessionStorage.an_usuario.
+// Retorna el objeto usuario o null si no hay sesión.
+function useUsuario() {
+  return React.useMemo(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
+    } catch { return null; }
+  }, []);
+}
+
+// ── useEstudiante(codigo) ─────────────────────────────────────────────────
+// Llama getEstudiante desde el Apps Script.
+// Retorna { data, loading, error, reload }.
+// data: { estudiante, niveles, pagos, otrosPagos, grupo, pendientes }
+const __ESTUDIANTE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+
+function useEstudiante(codigo) {
+  const [data, setData]       = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError]     = React.useState('');
+  const [tick, setTick]       = React.useState(0);
+
+  React.useEffect(() => {
+    if (!codigo) { setData(null); return; }
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    fetch(`${__ESTUDIANTE_SCRIPT_URL}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled) return;
+        if (!d || !d.ok) {
+          setError((d && d.error) || 'No se pudo cargar la información del estudiante');
+          setData(null);
+          return;
+        }
+        setData(d);
+      })
+      .catch(() => { if (!cancelled) setError('Error de conexión'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [codigo, tick]);
+
+  return { data, loading, error, reload: () => setTick(t => t + 1) };
+}
+
+// ── EmptyState — usado por módulos sin datos reales ──────────────────────
+function EmptyState({ icon = '—', title, subtitle, action }) {
+  return (
+    <div style={{
+      padding:'48px 24px', textAlign:'center',
+      background:'var(--surface)', border:'1px dashed var(--line-2)',
+      borderRadius:'var(--r-md)', color:'var(--ink-3)',
+    }}>
+      <div style={{
+        width:54, height:54, margin:'0 auto 12px',
+        borderRadius:'50%', background:'var(--bg-deep)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        fontSize:22, color:'var(--ink-3)',
+      }}>{icon}</div>
+      <div style={{
+        fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500,
+        color:'var(--ink)', letterSpacing:'-0.015em', marginBottom:6,
+      }}>{title}</div>
+      {subtitle && (
+        <div style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.5, maxWidth:360, margin:'0 auto' }}>
+          {subtitle}
+        </div>
+      )}
+      {action && <div style={{ marginTop:14 }}>{action}</div>}
+    </div>
+  );
+}
+
+// ── ErrorState — usado cuando un endpoint falla ──────────────────────────
+function ErrorState({ message, onRetry }) {
+  return (
+    <div style={{
+      padding:'24px', textAlign:'center',
+      background:'color-mix(in srgb, var(--danger) 6%, white)',
+      border:'1px solid color-mix(in srgb, var(--danger) 25%, white)',
+      borderRadius:'var(--r-md)', color:'var(--danger)',
+    }}>
+      <div style={{ fontWeight:700, marginBottom:4 }}>⚠ {message || 'No se pudo cargar la información.'}</div>
+      <div style={{ fontSize:12, color:'var(--ink-2)', marginBottom:10 }}>
+        Intentá de nuevo en un momento.
+      </div>
+      {onRetry && (
+        <button className="btn btn-ghost" onClick={onRetry}
+                style={{ fontSize:12, padding:'6px 14px' }}>Reintentar</button>
+      )}
+    </div>
+  );
+}
+
+Object.assign(window, {
+  Icon, Ring, Toast, AnimatedBar, Stat, Chip,
+  useState, useEffect, useRef,
+  useUsuario, useEstudiante,
+  EmptyState, ErrorState,
+});
