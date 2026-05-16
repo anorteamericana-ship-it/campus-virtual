@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Calendario · Academia Norteamericana</title>
+<style>
+/* ── Tokens de color por nivel (Interchange) ──────────────────────────────── */
+:root {
+  /* Básico I = Interchange Intro = amarillo/naranja */
+  --b1-main: #E8A020;
+  --b1-dark: #7A4800;
+  --b1-light: #FFF3D0;
+  --b1-txt: #7A4800;
+  /* Básico II = Interchange 1 = rojo/naranja */
+  --b2-main: #D03020;
+  --b2-dark: #6A1010;
+  --b2-light: #FFE8E0;
+  --b2-txt: #6A1010;
+  /* Intermedio I = Interchange 2 = azul */
+  --b3-main: #1060C0;
+  --b3-dark: #08306A;
+  --b3-light: #E0ECFF;
+  --b3-txt: #08306A;
+  /* Intermedio II = Interchange 3 = verde */
+  --b4-main: #208840;
+  --b4-dark: #0A4020;
+  --b4-light: #E0F5E8;
+  --b4-txt: #0A4020;
+  /* Exámenes = llamativos */
+  --oral-main: #9020C0;
+  --oral-light: #F0E0FF;
+  --oral-txt: #5A0880;
+  --esc-main: #C04080;
+  --esc-light: #FFE0EE;
+  --esc-txt: #700830;
+  /* I CAN = turquesa */
+  --ican-main: #008080;
+  --ican-light: #E0F5F5;
+  --ican-txt: #004040;
+  /* Feriado */
+  --fer-txt: #B06000;
+  --fer-bg: #FFF8E0;
+  /* Nota/recordatorio */
+  --nota-bg: #FFFBE0;
+  --nota-txt: #806000;
+  --nota-border: #E0C000;
+  /* UI general */
+  --bg: #f5f4ef;
+  --card: #ffffff;
+  --border: #e8e6de;
+  --text: #1a1a16;
+  --text2: #666660;
+  --text3: #b0ae a6;
+  --sep: #f9f8f4;
+  --today-ring: #0C447C;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --b1-light: #3A2800; --b1-txt: #FFD070;
+    --b2-light: #3A1000; --b2-txt: #FF9070;
+    --b3-light: #0A2040; --b3-txt: #70B0FF;
+    --b4-light: #0A2810; --b4-txt: #70D090;
+    --oral-light: #280840; --oral-txt: #D080FF;
+    --esc-light: #300818; --esc-txt: #FF80B0;
+    --ican-light: #002828; --ican-txt: #60D0D0;
+    --fer-bg: #2A2000; --fer-txt: #E0A030;
+    --nota-bg: #2A2600; --nota-txt: #E0C060; --nota-border: #806000;
+    --bg: #111110; --card: #1c1c1a; --border: #333330;
+    --text: #f0efe8; --text2: #999990; --text3: #555550; --sep: #181816;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.shell { max-width: 680px; margin: 0 auto; padding: 12px; }
+
+/* Header */
+.hdr { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.hdr-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.level-badge { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 99px; background: var(--b1-main); color: #fff; }
+.htitle { font-size: 13px; font-weight: 600; color: var(--text); }
+.hmeta { font-size: 10px; color: var(--text2); margin-top: 1px; }
+.stats { display: flex; gap: 14px; flex-wrap: wrap; }
+.stat-n { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-l { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Leyenda */
+.legend { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.leg { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); background: var(--card); border: 1px solid var(--border); border-radius: 99px; padding: 3px 8px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* Nav mes */
+.month-nav { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+.month-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.month-sub { font-size: 10px; color: var(--text2); margin-top: 2px; text-align: center; }
+.nav-btn { background: var(--sep); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 18px; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.nav-btn:active { background: var(--border); }
+
+/* Calendario */
+.cal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.dow-row { display: grid; grid-template-columns: repeat(7,1fr); background: var(--sep); border-bottom: 1px solid var(--border); }
+.dow { text-align: center; padding: 6px 2px; font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; }
+.dow.we { opacity: .5; }
+.weeks { display: flex; flex-direction: column; }
+.week { display: grid; grid-template-columns: repeat(7,1fr); border-bottom: 1px solid var(--border); }
+.week:last-child { border-bottom: none; }
+
+.day { border-right: 1px solid var(--border); padding: 3px; display: flex; flex-direction: column; gap: 2px; min-height: 76px; cursor: pointer; position: relative; }
+.day:last-child { border-right: none; }
+.day:active { background: var(--sep); }
+.day.om { opacity: .25; pointer-events: none; }
+.day.we { background: var(--sep); }
+.dn-wrap { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
+.day.today .dn-wrap { background: var(--today-ring); }
+.day-num { font-size: 11px; font-weight: 600; color: var(--text); }
+.day.today .day-num { color: #fff; font-weight: 800; }
+.day.om .day-num { color: var(--text2); }
+
+/* chips en el día */
+.chip { border-radius: 3px; padding: 1px 3px; font-size: 9px; font-weight: 700; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-lec  { background: var(--b1-light); color: var(--b1-txt); }
+.chip-oral { background: var(--oral-light); color: var(--oral-txt); border: 1px solid var(--oral-main); }
+.chip-esc  { background: var(--esc-light);  color: var(--esc-txt);  border: 1px solid var(--esc-main); }
+.chip-prg  { background: var(--b1-light); color: var(--b1-txt); border: 1px dashed var(--b1-main); }
+.chip-ican-ok   { background: var(--ican-light); color: var(--ican-txt); }
+.chip-ican-full { background: var(--ican-light); color: var(--ican-txt); opacity: .55; }
+.chip-ican-reg  { background: var(--ican-main); color: #fff; }
+.chip-sus  { background: #FFE0E0; color: #880000; text-decoration: line-through; }
+.chip-cerr { background: var(--b1-light); color: var(--b1-txt); opacity: .5; }
+.chip-nota { background: var(--nota-bg); color: var(--nota-txt); }
+.chip-fer  { background: var(--fer-bg); color: var(--fer-txt); }
+.more-chip { font-size: 8px; color: var(--text2); padding-left: 2px; }
+
+/* Drawer */
+.dov { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 50; display: none; }
+.drawer { position: fixed; bottom: 0; left: 0; right: 0; max-width: 680px; margin: 0 auto; background: var(--card); border-radius: 16px 16px 0 0; border-top: 1px solid var(--border); z-index: 51; transform: translateY(100%); transition: transform .22s ease; max-height: 80vh; display: flex; flex-direction: column; }
+.drawer.open { transform: translateY(0); }
+.d-handle { width: 36px; height: 4px; background: var(--border); border-radius: 99px; margin: 10px auto 0; flex-shrink: 0; }
+.d-head { padding: 8px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.d-date { font-size: 14px; font-weight: 700; color: var(--text); }
+.d-dow  { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.d-body { padding: 12px 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.d-empty { text-align: center; padding: 24px; font-size: 12px; color: var(--text2); }
+
+/* Tarjetas en drawer */
+.ecard { border-radius: 10px; padding: 11px 13px; }
+.ecard-lec  { background: var(--b1-light); }
+.ecard-prg  { background: var(--b1-light); border: 1.5px dashed var(--b1-main); }
+.ecard-oral { background: var(--oral-light); border: 1.5px solid var(--oral-main); }
+.ecard-esc  { background: var(--esc-light);  border: 1.5px solid var(--esc-main); }
+.ecard-ican { background: var(--ican-light); }
+.ecard-sus  { background: #FFE8E8; border: 1px solid #FFAAAA; }
+.ecard-cerr { background: var(--b1-light); opacity: .7; }
+.ecard-fer  { background: var(--fer-bg); }
+.ecard-nota { background: var(--nota-bg); border: 1px solid var(--nota-border); }
+
+.ec-tag   { font-size: 10px; font-weight: 800; opacity: .7; margin-bottom: 3px; letter-spacing: .03em; }
+.ec-title { font-size: 13px; font-weight: 700; line-height: 1.3; }
+.ec-sub   { font-size: 11px; opacity: .8; margin-top: 3px; line-height: 1.4; }
+.ecard-lec .ec-tag, .ecard-lec .ec-title, .ecard-lec .ec-sub,
+.ecard-prg .ec-tag, .ecard-prg .ec-title, .ecard-prg .ec-sub,
+.ecard-cerr .ec-tag, .ecard-cerr .ec-title { color: var(--b1-txt); }
+.ecard-oral .ec-tag, .ecard-oral .ec-title, .ecard-oral .ec-sub { color: var(--oral-txt); }
+.ecard-esc  .ec-tag, .ecard-esc  .ec-title, .ecard-esc  .ec-sub { color: var(--esc-txt); }
+.ecard-ican .ec-tag, .ecard-ican .ec-title, .ecard-ican .ec-sub { color: var(--ican-txt); }
+.ecard-sus  .ec-tag, .ecard-sus  .ec-title, .ecard-sus  .ec-sub { color: #880000; }
+.ecard-fer  .ec-tag, .ecard-fer  .ec-title { color: var(--fer-txt); }
+.ecard-nota .ec-tag, .ecard-nota .ec-title, .ecard-nota .ec-sub { color: var(--nota-txt); }
+
+/* cupos I CAN */
+.cupos-bar { margin-top: 8px; }
+.cupos-label { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; margin-bottom: 3px; }
+.cupos-track { height: 6px; background: rgba(0,0,0,.1); border-radius: 99px; overflow: hidden; }
+.cupos-fill  { height: 6px; border-radius: 99px; background: var(--ican-main); transition: width .3s; }
+.cupos-fill.lleno { background: #CC0000; }
+
+/* Botones en tarjeta */
+.ec-btns { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.ec-btn { font-size: 11px; padding: 6px 12px; border-radius: 8px; border: 1.5px solid rgba(0,0,0,.15); background: rgba(255,255,255,.5); cursor: pointer; font-family: inherit; color: inherit; font-weight: 600; }
+.ec-btn:active { background: rgba(0,0,0,.1); }
+.ec-btn.primary { background: var(--ican-main); color: #fff; border-color: var(--ican-main); }
+.ec-btn.danger  { background: #CC0000; color: #fff; border-color: #CC0000; }
+.ec-btn.ghost   { background: transparent; }
+.ec-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Nota textarea */
+.nota-input { width: 100%; font-size: 12px; font-family: inherit; border: 1px solid var(--nota-border); border-radius: 8px; padding: 8px 10px; background: var(--nota-bg); color: var(--nota-txt); resize: none; margin-top: 6px; }
+.nota-input:focus { outline: none; border-color: var(--b1-main); }
+
+/* Modal suspender */
+.mov { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.mov.open { display: flex; }
+.mbox { background: var(--card); border-radius: 12px; width: 100%; max-width: 340px; overflow: hidden; border: 1px solid var(--border); }
+.mh { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--sep); }
+.mh-t { font-size: 13px; font-weight: 700; color: var(--text); }
+.mx { background: none; border: none; font-size: 22px; color: var(--text2); cursor: pointer; line-height: 1; }
+.mb { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.fl { font-size: 11px; font-weight: 700; color: var(--text2); margin-bottom: 3px; }
+.fsel { width: 100%; font-size: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: inherit; color: var(--text); background: var(--card); }
+.minfo { background: var(--sep); border-radius: 8px; padding: 9px 11px; font-size: 11px; color: var(--text2); line-height: 1.5; }
+.mf { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--sep); display: flex; justify-content: flex-end; gap: 8px; }
+.btnm { font-size: 12px; padding: 7px 14px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); font-family: inherit; background: var(--card); color: var(--text); font-weight: 600; }
+.btnm.danger { background: #8B0000; color: #fff; border-color: #8B0000; }
+
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1a1a18; color: #f0efe9; font-size: 12px; padding: 10px 22px; border-radius: 99px; z-index: 200; opacity: 0; transition: opacity .3s; pointer-events: none; border: 1px solid #444; white-space: nowrap; font-weight: 500; }
+.toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="hdr">
+    <div class="hdr-top">
+      <span class="level-badge">Básico I</span>
+      <div>
+        <div class="htitle">G0001-2025 · Prof. Ricardo Arias</div>
+        <div class="hmeta">Lun/Mié 6–9 pm · I CAN: Vie 9–11am y 6–8pm · Sáb 9–11am</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="sC">8</div><div class="stat-l">Cerradas</div></div>
+      <div class="stat"><div class="stat-n" id="sP">24</div><div class="stat-l">Pendientes</div></div>
+      <div class="stat"><div class="stat-n" id="sS">0</div><div class="stat-l">Suspendidas</div></div>
+      <div class="stat"><div class="stat-n" id="sF">—</div><div class="stat-l">Fin estimado</div></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--b1-main)"></div>Clase</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--oral-main)"></div>Oral Test</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--esc-main)"></div>Written Test</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--b1-main);border:1px dashed var(--b1-dark)"></div>Progress</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--ican-main)"></div>I CAN</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--nota-border)"></div>Nota</div>
+  </div>
+
+  <div class="month-nav">
+    <button class="nav-btn" onclick="cambiarMes(-1)">‹</button>
+    <div style="text-align:center">
+      <div class="month-title" id="mtitle">—</div>
+      <div class="month-sub" id="msub">—</div>
+    </div>
+    <button class="nav-btn" onclick="cambiarMes(1)">›</button>
+  </div>
+
+  <div class="cal">
+    <div class="dow-row">
+      <div class="dow">Lun</div><div class="dow">Mar</div><div class="dow">Mié</div>
+      <div class="dow">Jue</div><div class="dow">Vie</div>
+      <div class="dow we">Sáb</div><div class="dow we">Dom</div>
+    </div>
+    <div class="weeks" id="weeks"></div>
+  </div>
+
+</div>
+
+<!-- Drawer -->
+<div class="dov" id="dov" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="d-handle"></div>
+  <div class="d-head">
+    <div class="d-date" id="d-date">—</div>
+    <div class="d-dow"  id="d-dow">—</div>
+  </div>
+  <div class="d-body" id="d-body"></div>
+</div>
+
+<!-- Modal suspender -->
+<div class="mov" id="modal">
+  <div class="mbox">
+    <div class="mh">
+      <div class="mh-t">Suspender lección <span id="mnum"></span></div>
+      <button class="mx" onclick="closeM()">×</button>
+    </div>
+    <div class="mb">
+      <div><div class="fl">Motivo</div>
+        <select class="fsel" id="mmotivo">
+          <option>Feriado no programado</option>
+          <option>Suspensión por el teacher</option>
+          <option>Suspensión por la academia</option>
+          <option>Emergencia</option>
+          <option>Problema técnico</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="minfo">⟳ El calendario se recalculará automáticamente en días <strong>lunes y miércoles</strong>, saltando feriados de Costa Rica.</div>
+    </div>
+    <div class="mf">
+      <button class="btnm" onclick="closeM()">Cancelar</button>
+      <button class="btnm danger" onclick="doSuspend()">Suspender y recalcular</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FER = {
+  '2025-05-01':'Día del Trabajo','2025-07-25':'Guanacaste',
+  '2025-08-02':'Virgen de los Ángeles','2025-08-15':'Día de la Madre',
+  '2025-09-15':'Independencia','2025-10-12':'Día de las Culturas',
+  '2025-12-25':'Navidad','2026-01-01':'Año Nuevo',
+  '2026-04-02':'Jueves Santo','2026-04-03':'Viernes Santo',
+  '2026-04-11':'Juan Santamaría','2026-05-01':'Día del Trabajo',
+};
+
+const CAT = [
+  {n:1, t:"What's your name?",          u:"Unit 01", tp:"lec"},
+  {n:2, t:"What's your name?",          u:"Unit 01", tp:"lec"},
+  {n:3, t:"Where are my keys?",         u:"Unit 02", tp:"lec"},
+  {n:4, t:"Where are my keys?",         u:"Unit 02", tp:"prg", x:"Progress Check U1–U2"},
+  {n:5, t:"Where are you from?",        u:"Unit 03", tp:"lec"},
+  {n:6, t:"Where are you from?",        u:"Unit 03", tp:"lec"},
+  {n:7, t:"Is this coat yours?",        u:"Unit 04", tp:"lec"},
+  {n:8, t:"Is this coat yours?",        u:"Unit 04", tp:"prg", x:"Progress Check U3–U4"},
+  {n:9, t:"Oral Test 1",                u:"Units 01–04", tp:"oral"},
+  {n:10,t:"What time is it?",           u:"Unit 05", tp:"lec"},
+  {n:11,t:"What time is it?",           u:"Unit 05", tp:"lec"},
+  {n:12,t:"I ride my bike to school.",  u:"Unit 06", tp:"lec"},
+  {n:13,t:"I ride my bike to school.",  u:"Unit 06", tp:"prg", x:"Progress Check U5–U6"},
+  {n:14,t:"Does it have a view?",       u:"Unit 07", tp:"lec"},
+  {n:15,t:"Does it have a view?",       u:"Unit 07", tp:"lec"},
+  {n:16,t:"Where do you work?",         u:"Unit 08", tp:"prg", x:"Progress Check U7–U8"},
+  {n:17,t:"Oral Test 2",                u:"Units 05–08", tp:"oral"},
+  {n:18,t:"Written Test 1",             u:"Units 01–08", tp:"esc"},
+  {n:19,t:"I always eat breakfast.",    u:"Unit 09", tp:"lec"},
+  {n:20,t:"What sports do you like?",   u:"Unit 10", tp:"lec"},
+  {n:21,t:"What sports do you like?",   u:"Unit 10", tp:"prg", x:"Progress Check U9–U10"},
+  {n:22,t:"I'm going to have a party.", u:"Unit 11", tp:"lec"},
+  {n:23,t:"How do you feel?",           u:"Unit 12", tp:"lec"},
+  {n:24,t:"How do you feel?",           u:"Unit 12", tp:"prg", x:"Progress Check U11–U12"},
+  {n:25,t:"Oral Test 3",                u:"Units 09–12", tp:"oral"},
+  {n:26,t:"How do I get there?",        u:"Unit 13", tp:"lec"},
+  {n:27,t:"I had a good time.",         u:"Unit 14", tp:"lec"},
+  {n:28,t:"I had a good time.",         u:"Unit 14", tp:"prg", x:"Progress Check U13–U14"},
+  {n:29,t:"Where were you born?",       u:"Unit 15", tp:"lec"},
+  {n:30,t:"Can I take a message?",      u:"Unit 16", tp:"prg", x:"Progress Check U15–U16"},
+  {n:31,t:"Oral Test 4",                u:"Units 13–16", tp:"oral"},
+  {n:32,t:"Written Test 2",             u:"Units 09–16", tp:"esc"},
+];
+
+// Sesiones I CAN: viernes mañana, viernes tarde, sábado mañana (cada semana desde mayo)
+// Máx 20 estudiantes por sesión
+function generarICANSesiones(fin) {
+  const sesiones = [];
+  const inicioVie = new Date(2025,4,9); // primer viernes
+  const inicioSab = new Date(2025,4,10); // primer sábado
+  const slots = [
+    {dow:5, hora:'9:00–11:00 am',  turno:'mañana'},
+    {dow:5, hora:'6:00–8:00 pm',   turno:'tarde'},
+    {dow:6, hora:'9:00–11:00 am',  turno:'mañana'},
+  ];
+  // generar para ~20 semanas
+  for(let w=0; w<22; w++) {
+    slots.forEach(sl => {
+      // fecha: inicio + w*7 days, ajustar al dow correcto
+      const base = sl.dow===5 ? new Date(inicioVie) : new Date(inicioSab);
+      base.setDate(base.getDate() + w*7);
+      if(base > addD(fin,30)) return;
+      if(FER[fStr(base)]) return;
+      // cupos demo: algunos llenos, algunos con espacio
+      const inscritos = Math.floor(Math.random()*18);
+      sesiones.push({
+        id: fStr(base)+'_'+sl.turno,
+        fecha: new Date(base),
+        hora: sl.hora,
+        turno: sl.turno,
+        dow: sl.dow,
+        cupoMax: 20,
+        inscritos,
+        tema: w<4 ? ['Presentaciones y saludos','Vocabulario cotidiano','Verbos irregulares','Describing people'][w%4] : 'Tema libre',
+        estado: 'programada',
+        miRegistro: w===2 && sl.turno==='tarde', // demo: registrado en una sesión
+      });
+    });
+  }
+  return sesiones;
+}
+
+const DIAS_CLASE=[1,3];
+const INICIO=new Date(2025,4,5);
+let lecs=[], icanS=[], mesActual=new Date(2025,4,1);
+let susTarget=null;
+// notas: {fecha_str: "texto"}
+let notas = {
+  '2025-05-26': 'Recordatorio: traer vocabulario de Units 1-3 repasado. Habrá actividad oral en parejas.',
+  '2025-06-02': 'Oral Test 1 — repasar Units 1–4 completas. Duración aprox. 10 min por estudiante.',
+};
+
+function fStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function addD(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function nextDia(desde,dias){
+  let d=addD(desde,1);
+  for(let i=0;i<400;i++){ if(dias.includes(d.getDay())&&!FER[fStr(d)]) return new Date(d); d=addD(d,1); }
+  return d;
+}
+function sameDay(a,b){ return fStr(a)===fStr(b); }
+const MF=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DF=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+function generar(){
+  lecs=[];
+  let cur=new Date(INICIO);
+  while(!DIAS_CLASE.includes(cur.getDay())||FER[fStr(cur)]) cur=addD(cur,1);
+  CAT.forEach(c=>{
+    lecs.push({...c, fecha:new Date(cur), estado:'pendiente', motivo:null});
+    cur=nextDia(cur,DIAS_CLASE);
+  });
+  lecs.slice(0,8).forEach(l=>l.estado='cerrada');
+  icanS=generarICANSesiones(lecs[31].fecha);
+}
+
+function recalc(desdeN){
+  let base=desdeN<=1?addD(INICIO,-1):new Date(lecs[desdeN-2].fecha);
+  for(let i=desdeN-1;i<lecs.length;i++){
+    const l=lecs[i];
+    if(l.estado==='cerrada'){base=new Date(l.fecha);continue;}
+    const sig=nextDia(base,DIAS_CLASE); l.fecha=sig; base=sig;
+  }
+}
+
+function eventosDelDia(fecha){
+  const ev=[];
+  lecs.forEach(l=>{ if(sameDay(l.fecha,fecha)) ev.push({tipo:'lec',data:l}); });
+  icanS.filter(s=>sameDay(s.fecha,fecha)).forEach(s=>ev.push({tipo:'ican',data:s}));
+  if(FER[fStr(fecha)]) ev.push({tipo:'fer',data:{nombre:FER[fStr(fecha)]}});
+  const nota=notas[fStr(fecha)];
+  if(nota) ev.push({tipo:'nota',data:{texto:nota}});
+  return ev;
+}
+
+function chipClass(ev){
+  if(ev.tipo==='fer')  return 'chip-fer';
+  if(ev.tipo==='nota') return 'chip-nota';
+  if(ev.tipo==='ican'){
+    const s=ev.data;
+    if(s.miRegistro) return 'chip-ican-reg';
+    if(s.inscritos>=s.cupoMax) return 'chip-ican-full';
+    return 'chip-ican-ok';
+  }
+  const l=ev.data;
+  if(l.estado==='suspendida') return 'chip-sus';
+  if(l.estado==='cerrada')    return 'chip-cerr';
+  if(l.tp==='oral') return 'chip-oral';
+  if(l.tp==='esc')  return 'chip-esc';
+  if(l.tp==='prg')  return 'chip-prg';
+  return 'chip-lec';
+}
+
+function chipLabel(ev){
+  if(ev.tipo==='fer')  return '⚑';
+  if(ev.tipo==='nota') return '📝';
+  if(ev.tipo==='ican'){
+    const s=ev.data;
+    const tag=s.turno==='tarde'?'🌙':'☀';
+    if(s.miRegistro) return tag+' I CAN ✓';
+    if(s.inscritos>=s.cupoMax) return tag+' I CAN 🔴';
+    return tag+' I CAN';
+  }
+  const l=ev.data;
+  if(l.tp==='oral') return '★ Oral '+l.n;
+  if(l.tp==='esc')  return '✎ Written';
+  if(l.tp==='prg')  return '◎ L'+l.n;
+  return 'L'+l.n;
+}
+
+function renderCal(){
+  const nC=lecs.filter(l=>l.estado==='cerrada').length;
+  const nS=lecs.filter(l=>l.estado==='suspendida').length;
+  const nP=lecs.filter(l=>l.estado==='pendiente').length;
+  document.getElementById('sC').textContent=nC;
+  document.getElementById('sP').textContent=nP;
+  document.getElementById('sS').textContent=nS;
+  const ult=[...lecs].reverse().find(l=>l.estado!=='suspendida');
+  const f=ult?ult.fecha:null;
+  document.getElementById('sF').textContent=f?f.getDate()+' '+MF[f.getMonth()].slice(0,3)+' '+f.getFullYear():'—';
+
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const año=mesActual.getFullYear(), mes=mesActual.getMonth();
+  document.getElementById('mtitle').textContent=MF[mes]+' '+año;
+
+  const lecsM=lecs.filter(l=>{const fd=new Date(l.fecha);return fd.getMonth()===mes&&fd.getFullYear()===año;}).length;
+  const icanM=icanS.filter(s=>{const fd=new Date(s.fecha);return fd.getMonth()===mes&&fd.getFullYear()===año;}).length;
+  document.getElementById('msub').textContent=(lecsM?lecsM+' clase'+(lecsM>1?'s':''):'Sin clases')+(icanM?' · '+icanM+' sesiones I CAN':'');
+
+  let startDow=new Date(año,mes,1).getDay();
+  startDow=(startDow+6)%7; // lunes=0
+  const diasEnMes=new Date(año,mes+1,0).getDate();
+  const totalCells=Math.ceil((startDow+diasEnMes)/7)*7;
+
+  const weeks=document.getElementById('weeks');
+  weeks.innerHTML='';
+
+  for(let w=0;w<totalCells/7;w++){
+    const wEl=document.createElement('div'); wEl.className='week';
+    for(let d=0;d<7;d++){
+      const idx=w*7+d, dn=idx-startDow+1;
+      const fecha=new Date(año,mes,dn);
+      const om=dn<1||dn>diasEnMes;
+      const esHoy=sameDay(fecha,hoy);
+      const esWe=d>=5;
+
+      const evs=eventosDelDia(fecha);
+      const dayEl=document.createElement('div');
+      let cls='day'; if(om)cls+=' om'; if(esWe)cls+=' we'; if(esHoy)cls+=' today';
+      dayEl.className=cls;
+      if(!om) dayEl.onclick=()=>openDrawer(fecha,evs);
+
+      const numWrap=`<div class="dn-wrap"><div class="day-num">${new Date(año,mes,dn).getDate()}</div></div>`;
+      let chips='';
+      const vis=evs.slice(0,3), extra=evs.length-3;
+      vis.forEach(ev=>{
+        chips+=`<div class="chip ${chipClass(ev)}">${chipLabel(ev)}</div>`;
+      });
+      if(extra>0) chips+=`<div class="more-chip">+${extra}</div>`;
+      dayEl.innerHTML=numWrap+chips;
+      wEl.appendChild(dayEl);
+    }
+    weeks.appendChild(wEl);
+  }
+}
+
+// ── Drawer ──────────────────────────────────────────────────────────────────
+function openDrawer(fecha, evs){
+  document.getElementById('d-date').textContent=
+    fecha.getDate()+' de '+MF[fecha.getMonth()]+' '+fecha.getFullYear();
+  document.getElementById('d-dow').textContent=
+    DF[fecha.getDay()]+(FER[fStr(fecha)]?' · ⚑ '+FER[fStr(fecha)]:'');
+
+  const body=document.getElementById('d-body');
+  body.innerHTML='';
+
+  if(!evs.length){
+    body.innerHTML='<div class="d-empty">Sin eventos este día</div>';
+  } else {
+    evs.forEach(ev=>{
+      const card=document.createElement('div');
+      if(ev.tipo==='fer'){
+        card.className='ecard ecard-fer';
+        card.innerHTML=`<div class="ec-tag">FERIADO NACIONAL</div><div class="ec-title">${ev.data.nombre}</div>`;
+      }
+      else if(ev.tipo==='nota'){
+        card.className='ecard ecard-nota';
+        card.innerHTML=`
+          <div class="ec-tag">📝 NOTA / RECORDATORIO</div>
+          <div class="ec-title" style="white-space:pre-wrap">${ev.data.texto}</div>
+          <div class="ec-btns">
+            <button class="ec-btn ghost" onclick="editarNota('${fStr(fecha)}')">Editar nota</button>
+          </div>`;
+      }
+      else if(ev.tipo==='ican'){
+        const s=ev.data;
+        const lleno=s.inscritos>=s.cupoMax;
+        const pct=Math.round(s.inscritos/s.cupoMax*100);
+        const turnoLabel=s.turno==='tarde'?'🌙 Tarde':'☀ Mañana';
+        card.className='ecard ecard-ican';
+        card.innerHTML=`
+          <div class="ec-tag">I CAN · ${turnoLabel} · ${s.hora}</div>
+          <div class="ec-title">${s.tema}</div>
+          <div class="ec-sub">Sesión virtual · Cualquier estudiante con INA puede asistir</div>
+          <div class="cupos-bar">
+            <div class="cupos-label">
+              <span>Cupos</span>
+              <span style="color:${lleno?'#CC0000':'var(--ican-main)'};font-weight:800">${s.inscritos} / ${s.cupoMax} ${lleno?'· AGOTADO':''}</span>
+            </div>
+            <div class="cupos-track"><div class="cupos-fill ${lleno?'lleno':''}" style="width:${pct}%"></div></div>
+          </div>
+          <div class="ec-btns">
+            ${s.miRegistro
+              ? `<button class="ec-btn primary" onclick="toast('Abriendo Zoom…')">Entrar a la sesión</button>
+                 <button class="ec-btn ghost" onclick="cancelarICAN('${s.id}')">Cancelar reserva</button>`
+              : lleno
+                ? `<button class="ec-btn" disabled>Sesión agotada</button>`
+                : `<button class="ec-btn primary" onclick="registrarICAN('${s.id}')">Reservar mi lugar</button>`
+            }
+          </div>`;
+      }
+      else {
+        const l=ev.data;
+        const proxima=lecs.filter(x=>x.estado==='pendiente')[0];
+        const esProxima=proxima&&l.n===proxima.n;
+        const tipo=l.tp==='oral'?'ORAL TEST':l.tp==='esc'?'WRITTEN TEST':l.tp==='prg'?'PROGRESS CHECK':'CLASE';
+        const estadoLabel=l.estado==='cerrada'?'✓ Cerrada':l.estado==='suspendida'?'✕ Suspendida':esProxima?'→ Próxima':'Pendiente';
+        const cls2=l.estado==='suspendida'?'ecard-sus':l.estado==='cerrada'?'ecard-cerr':
+          l.tp==='oral'?'ecard-oral':l.tp==='esc'?'ecard-esc':l.tp==='prg'?'ecard-prg':'ecard-lec';
+        let btns='';
+        if(l.estado==='pendiente'){
+          btns=`<button class="ec-btn ghost" onclick="openSus(${l.n})">⊘ Suspender</button>`;
+          if(esProxima) btns=`<button class="ec-btn primary" style="background:var(--b1-main);border-color:var(--b1-main)" onclick="closeDrawer();toast('Abriendo lección…')">Abrir lección →</button>`+btns;
+        } else if(l.estado==='suspendida'){
+          btns=`<button class="ec-btn ghost" onclick="restore(${l.n})">↩ Restaurar</button>`;
+        }
+        card.className=`ecard ${cls2}`;
+        card.innerHTML=`
+          <div class="ec-tag">LECCIÓN ${l.n} · ${tipo} · 6:00–9:00 pm · ${estadoLabel}</div>
+          <div class="ec-title">${l.t}</div>
+          <div class="ec-sub">${l.u}${l.x?' · '+l.x:''}</div>
+          ${l.motivo?`<div class="ec-sub" style="color:#880000">Motivo: ${l.motivo}</div>`:''}
+          ${btns?`<div class="ec-btns">${btns}</div>`:''}`;
+      }
+      body.appendChild(card);
+    });
+  }
+
+  // botón para agregar nota si no hay
+  const fechaStr=fStr(fecha);
+  if(!notas[fechaStr]){
+    const addBtn=document.createElement('button');
+    addBtn.style.cssText='font-size:11px;padding:7px 14px;border-radius:8px;border:1px dashed var(--nota-border);background:var(--nota-bg);color:var(--nota-txt);cursor:pointer;font-family:inherit;font-weight:600;width:100%;margin-top:4px';
+    addBtn.textContent='+ Agregar nota o recordatorio';
+    addBtn.onclick=()=>editarNota(fechaStr);
+    body.appendChild(addBtn);
+  }
+
+  document.getElementById('dov').style.display='block';
+  setTimeout(()=>document.getElementById('drawer').classList.add('open'),10);
+}
+
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('dov').style.display='none';
+}
+
+function editarNota(fechaStr){
+  const body=document.getElementById('d-body');
+  // reemplazar o agregar textarea
+  let ta=document.getElementById('nota-edit-ta');
+  if(!ta){
+    const wrap=document.createElement('div');
+    wrap.className='ecard ecard-nota';
+    wrap.innerHTML=`<div class="ec-tag">📝 NOTA / RECORDATORIO</div>
+      <textarea id="nota-edit-ta" class="nota-input" rows="3" placeholder="Escribe un recordatorio, tarea o nota para este día…">${notas[fechaStr]||''}</textarea>
+      <div class="ec-btns">
+        <button class="ec-btn primary" style="background:var(--nota-border);border-color:var(--nota-border)" onclick="guardarNota('${fechaStr}')">Guardar nota</button>
+        <button class="ec-btn ghost" onclick="borrarNota('${fechaStr}')">Borrar</button>
+      </div>`;
+    body.appendChild(wrap);
+  }
+}
+
+function guardarNota(fechaStr){
+  const ta=document.getElementById('nota-edit-ta');
+  if(ta&&ta.value.trim()){
+    notas[fechaStr]=ta.value.trim();
+    toast('Nota guardada');
+    closeDrawer();
+    renderCal();
+  }
+}
+
+function borrarNota(fechaStr){
+  delete notas[fechaStr];
+  toast('Nota eliminada');
+  closeDrawer();
+  renderCal();
+}
+
+function registrarICAN(id){
+  const s=icanS.find(x=>x.id===id);
+  if(!s||s.inscritos>=s.cupoMax) return;
+  s.miRegistro=true; s.inscritos++;
+  toast('✓ Reserva confirmada para '+s.hora);
+  closeDrawer(); renderCal();
+}
+
+function cancelarICAN(id){
+  const s=icanS.find(x=>x.id===id);
+  if(!s) return;
+  s.miRegistro=false; s.inscritos=Math.max(0,s.inscritos-1);
+  toast('Reserva cancelada');
+  closeDrawer(); renderCal();
+}
+
+function openSus(n){ susTarget=n; document.getElementById('mnum').textContent=n; document.getElementById('modal').classList.add('open'); }
+function closeM(){ document.getElementById('modal').classList.remove('open'); }
+function doSuspend(){
+  const l=lecs.find(x=>x.n===susTarget);
+  l.estado='suspendida'; l.motivo=document.getElementById('mmotivo').value;
+  recalc(susTarget+1); closeM(); closeDrawer(); renderCal();
+  toast('Lección '+susTarget+' suspendida · Calendario recalculado'); susTarget=null;
+}
+function restore(n){
+  const l=lecs.find(x=>x.n===n); l.estado='pendiente'; l.motivo=null;
+  recalc(n); closeDrawer(); renderCal();
+  toast('Lección '+n+' restaurada · Calendario recalculado');
+}
+function cambiarMes(dir){ mesActual=new Date(mesActual.getFullYear(),mesActual.getMonth()+dir,1); renderCal(); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2800); }
+
+generar(); renderCal();
+</script>
+</body>
+</html>

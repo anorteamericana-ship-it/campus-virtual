@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Examen Oral — Academia Norteamericana Internacional</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+:root {
+  --bg: #e8e8e8;
+  --white: #ffffff;
+  --border: #cccccc;
+  --border-dark: #888;
+  --text: #1a1a1a;
+  --text2: #555;
+  --text3: #999;
+  --red: #BE1E2D;
+  --red-soft: #BE1E2D;
+  /* Score colors 0→5, matching legend */
+  --c0: #9e9e9e; --c0bg: #f5f5f5; --c0txt: #444;
+  --c1: #e57373; --c1bg: #fce4ec; --c1txt: #b71c1c;
+  --c2: #ffb74d; --c2bg: #fff3e0; --c2txt: #e65100;
+  --c3: #fff176; --c3bg: #fffde7; --c3txt: #827717;
+  --c4: #64b5f6; --c4bg: #e3f2fd; --c4txt: #0d47a1;
+  --c5: #66bb6a; --c5bg: #e8f5e9; --c5txt: #1b5e20;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background: #1a1a1a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.tb-left { display: flex; align-items: center; gap: 8px; }
+.tb-logo {
+  background: var(--red-soft);
+  width: 24px; height: 24px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: white;
+}
+.tb-title { font-size: 12px; font-weight: 600; }
+.tb-sub { font-size: 11px; color: #aaa; }
+.tb-badge { background: #333; color: #ccc; padding: 2px 10px; border-radius: 10px; font-size: 10px; }
+
+/* ── HEADER BAR (selectors) ── */
+.header-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.hb-field { display: flex; flex-direction: column; gap: 2px; }
+.hb-label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); }
+.sel {
+  padding: 5px 26px 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text);
+  background: #fafafa;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3l3 4 3-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+}
+.sel:focus { outline: none; border-color: var(--red-soft); }
+.sel-leccion { min-width: 200px; }
+.sel-teacher { min-width: 180px; }
+
+.hb-sep { width: 1px; background: var(--border); height: 32px; flex-shrink: 0; }
+
+.status-chip {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f5f5f5;
+  color: var(--text3);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.status-chip.ready { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+
+/* ── MAIN 3-COLUMN LAYOUT ── */
+.main {
+  display: grid;
+  grid-template-columns: 176px 1fr 224px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── COLUMN 1: Student list ── */
+.col-students {
+  background: #f7f7f7;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.col-students-title {
+  padding: 8px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: #f0f0f0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.student-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e8e8e8;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.student-item:hover { background: #ececec; }
+.student-item.active {
+  background: #1a1a1a;
+  color: white;
+}
+.student-item .si-name { font-weight: 600; font-size: 11px; }
+.student-item .si-code {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'Courier New', monospace;
+  margin-top: 1px;
+}
+.student-item.active .si-code { color: #aaa; }
+
+/* ── COLUMN 2: Exam form ── */
+.col-form {
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Form card */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.card-header {
+  background: #1a1a1a;
+  color: white;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.card-subheader {
+  background: #f5f5f5;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 12px;
+  font-size: 10px;
+  color: var(--text2);
+  text-align: center;
+}
+.card-subheader b { color: var(--red-soft); }
+
+/* Info grid */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.info-cell {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  gap: 6px;
+  min-height: 28px;
+}
+.info-cell:nth-child(odd) { border-right: 1px solid var(--border); }
+.ic-label { font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; min-width: 100px; }
+.ic-value {
+  font-size: 11px;
+  color: var(--text2);
+  font-style: italic;
+  flex: 1;
+  border-bottom: 1px solid #ccc;
+  min-height: 18px;
+  padding: 0 2px;
+}
+.ic-value.filled { color: var(--text); font-style: normal; font-weight: 500; }
+
+/* RUBRIC TABLE */
+table.rubric {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.rubric thead th {
+  background: #2c2c2c;
+  color: white;
+  padding: 6px 4px;
+  text-align: center;
+  border: 1px solid #1a1a1a;
+  font-size: 11px;
+  font-weight: 600;
+}
+table.rubric thead th.th-crit {
+  text-align: left;
+  padding-left: 10px;
+  width: 38%;
+}
+
+/* Score cells — colors match legend 0→5 */
+table.rubric tbody td {
+  border: 1px solid var(--border);
+  vertical-align: middle;
+  padding: 0;
+}
+table.rubric tbody td.td-crit {
+  padding: 6px 10px;
+  background: #fafafa;
+  border-right: 2px solid #ddd;
+}
+table.rubric tbody td.td-crit em { font-weight: 600; font-style: normal; }
+table.rubric tbody td.td-crit .desc { font-size: 10px; color: var(--text3); margin-top: 1px; font-style: italic; }
+
+/* Score cells — individual color per column value */
+table.rubric tbody td.sc {
+  text-align: center;
+  cursor: pointer;
+  height: 34px;
+  width: 44px;
+  user-select: none;
+  transition: filter 0.1s;
+  position: relative;
+  font-size: 13px;
+  font-weight: 700;
+}
+/* Base colors per value — applied via class sc-0 ... sc-5 */
+td.sc-0 { background: var(--c0bg); color: var(--c0txt); }
+td.sc-1 { background: var(--c1bg); color: var(--c1txt); }
+td.sc-2 { background: var(--c2bg); color: var(--c2txt); }
+td.sc-3 { background: var(--c3bg); color: var(--c3txt); }
+td.sc-4 { background: var(--c4bg); color: var(--c4txt); }
+td.sc-5 { background: var(--c5bg); color: var(--c5txt); }
+
+td.sc:hover { filter: brightness(0.92); }
+
+/* SELECTED state — full color, bold X */
+td.sc-0.sel { background: var(--c0); color: white; }
+td.sc-1.sel { background: var(--c1); color: white; }
+td.sc-2.sel { background: var(--c2); color: #333; }
+td.sc-3.sel { background: var(--c3); color: #333; }
+td.sc-4.sel { background: var(--c4); color: white; }
+td.sc-5.sel { background: var(--c5); color: white; }
+
+/* Total row */
+tr.total-row td {
+  background: #f0f0f0;
+  font-weight: 700;
+  border-top: 2px solid #1a1a1a;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* Score summary bar — compact */
+.score-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 2px solid #1a1a1a;
+}
+.score-box {
+  padding: 5px 8px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.score-box:last-child { border-right: none; }
+.sb-label { font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin-bottom: 0px; }
+.sb-value { font-size: 19px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.sb-value.big { font-size: 24px; color: var(--red-soft); }
+.sb-sub { font-size: 9px; color: var(--text3); margin-top: 0px; }
+.sb-grade { font-size: 10px; font-weight: 600; color: var(--text2); }
+
+/* Equiv mini strip */
+.equiv-strip {
+  border-top: 1px solid var(--border);
+  padding: 4px 10px;
+  background: #fff;
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  align-items: center;
+}
+.eq-item { display: flex; gap: 4px; align-items: center; }
+.eq-lbl { color: var(--text3); }
+.eq-val { font-weight: 700; color: var(--text); font-family: 'Courier New', monospace; }
+.eq-val.accent { color: var(--red-soft); font-size: 13px; }
+
+/* Legend — bigger, with title bar */
+.legend-section { border-top: 2px solid var(--border); }
+.legend-title-bar {
+  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: #f0f0f0;
+  border-bottom: 1px solid var(--border);
+}
+.legend-row { display: flex; }
+.lc {
+  flex: 1;
+  text-align: center;
+  padding: 7px 4px;
+  border-right: 1px solid var(--border);
+}
+.lc:last-child { border-right: none; }
+.lc .lc-n { font-size: 18px; font-weight: 700; display: block; line-height: 1; }
+.lc .lc-t { font-size: 10px; font-weight: 500; display: block; margin-top: 3px; line-height: 1.25; }
+.lc.lc5 { background: var(--c5bg); color: var(--c5txt); }
+.lc.lc4 { background: var(--c4bg); color: var(--c4txt); }
+.lc.lc3 { background: var(--c3bg); color: var(--c3txt); }
+.lc.lc2 { background: var(--c2bg); color: var(--c2txt); }
+.lc.lc1 { background: var(--c1bg); color: var(--c1txt); }
+.lc.lc0 { background: var(--c0bg); color: var(--c0txt); }
+
+/* Comments — compact, always visible */
+.comments-grid {
+  padding: 6px 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: white;
+  border-top: 1px solid var(--border);
+}
+.cg-block { }
+.cg-label { font-size: 10px; font-weight: 700; color: var(--text2); margin-bottom: 3px; }
+textarea.cmt {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--text);
+  padding: 5px 7px;
+  resize: none;
+  height: 50px;
+  background: #fafafa;
+  line-height: 1.4;
+}
+textarea.cmt:focus { outline: none; border-color: var(--red-soft); background: #fff; }
+
+.btn {
+  padding: 7px 14px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: filter 0.12s;
+  letter-spacing: 0.01em;
+}
+.btn:hover { filter: brightness(0.9); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+.btn-red { background: var(--red-soft); color: white; }
+.btn-dark { background: #1a1a1a; color: white; }
+.btn-out { background: white; color: var(--text2); border: 1px solid var(--border); }
+
+/* ── COLUMN 3: Question bank ── */
+.col-questions {
+  background: #fafafa;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.col-q-header {
+  background: #1a1a1a;
+  color: white;
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.col-q-header span { color: #aaa; font-weight: 400; font-size: 9px; }
+.col-q-body { padding: 8px; flex: 1; overflow-y: auto; }
+
+.unit-block { margin-bottom: 10px; }
+.ub-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--red-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0c5bb;
+  margin-bottom: 4px;
+}
+.q-item {
+  display: flex;
+  gap: 6px;
+  padding: 4px 2px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+.q-item:hover { background: #f0f0f0; }
+.q-check {
+  width: 14px; height: 14px;
+  border: 1.5px solid #ccc;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px;
+  color: transparent;
+  transition: all 0.1s;
+}
+.q-item.checked .q-check {
+  background: var(--red-soft);
+  border-color: var(--red-soft);
+  color: white;
+}
+.q-text { font-size: 10px; color: var(--text); line-height: 1.4; }
+
+/* ── PRINT / PDF OVERLAY ── */
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 300;
+  overflow-y: auto;
+  padding: 24px 12px;
+}
+#overlay.open { display: flex; justify-content: center; }
+.ov-inner { max-width: 820px; width: 100%; }
+.ov-actions {
+  display: flex; gap: 8px; margin-bottom: 12px; justify-content: flex-end;
+}
+.ov-btn { padding: 8px 18px; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+.ov-btn-print { background: var(--red-soft); color: white; }
+.ov-btn-close { background: white; color: var(--text2); border: 1px solid #ccc; }
+
+/* PDF PAGES */
+.pdf-pg {
+  background: white;
+  padding: 36px 44px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  margin-bottom: 16px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  color: #000;
+  page-break-after: always;
+}
+.pdf-pg:last-child { page-break-after: auto; }
+
+.pdf-hdr {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 12px;
+}
+.pdf-hdr-left .pdf-title { font-size: 17px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.pdf-hdr-left .pdf-sub { font-size: 11px; color: #BE1E2D; font-weight: 600; margin-top: 2px; }
+.pdf-hdr-right { text-align: right; font-size: 11px; color: #555; }
+.pdf-hdr-right strong { font-size: 13px; color: #000; display: block; }
+
+.pdf-info { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.pdf-info td { border: 1px solid #999; padding: 5px 8px; }
+.pdf-info td.lbl { font-weight: 700; background: #f0f0f0; width: 22%; }
+
+/* PDF rubric */
+.pdf-rub { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.pdf-rub th { background: #1a1a1a; color: white; padding: 6px 8px; border: 1px solid #000; font-size: 11px; text-align: center; }
+.pdf-rub th.th-l { text-align: left; }
+.pdf-rub td { border: 1px solid #bbb; padding: 6px 8px; }
+.pdf-rub td.crit { font-style: italic; background: #fafafa; }
+.pdf-rub td.xc { text-align: center; font-size: 13px; font-weight: 700; width: 36px; }
+/* PDF score cell colors */
+.xc0 { background: #f5f5f5; }
+.xc1 { background: #fce4ec; }
+.xc2 { background: #fff3e0; }
+.xc3 { background: #fffde7; }
+.xc4 { background: #e3f2fd; }
+.xc5 { background: #e8f5e9; }
+.xc0.mk,.xc1.mk { background: #9e9e9e; color: white; }
+.xc1.mk { background: #e57373; }
+.xc2.mk { background: #ffb74d; color: #333; }
+.xc3.mk { background: #fff176; color: #333; }
+.xc4.mk { background: #64b5f6; color: white; }
+.xc5.mk { background: #66bb6a; color: white; }
+
+.pdf-score-row { display: flex; gap: 16px; padding: 8px; background: #f9f9f9; border: 1px solid #ccc; margin-bottom: 8px; border-radius: 3px; }
+.pdf-score-box { flex: 1; text-align: center; }
+.psb-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
+.psb-val { font-size: 22px; font-weight: 700; }
+.psb-val.accent { color: #BE1E2D; font-size: 28px; }
+
+.pdf-legend { margin-bottom: 10px; }
+.pdf-legend-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin-bottom: 4px; }
+.pdf-lrow { display: flex; }
+.pdf-lc { flex: 1; text-align: center; border: 1px solid #ccc; padding: 4px 2px; }
+.pdf-lc .ln { font-weight: 700; font-size: 13px; display: block; }
+.pdf-lc .lt { font-size: 9px; display: block; }
+.pdf-lc.l5 { background: #e8f5e9; } .pdf-lc.l4 { background: #e3f2fd; } .pdf-lc.l3 { background: #fffde7; }
+.pdf-lc.l2 { background: #fff3e0; } .pdf-lc.l1 { background: #fce4ec; } .pdf-lc.l0 { background: #f5f5f5; }
+
+.pdf-cmt { margin-bottom: 8px; }
+.pdf-cmt-lbl { font-size: 10px; font-weight: 700; color: #333; margin-bottom: 3px; }
+.pdf-cmt-box { border: 1px solid #bbb; padding: 8px; min-height: 50px; font-size: 11px; white-space: pre-wrap; border-radius: 2px; }
+
+.pdf-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #ccc; }
+.pdf-sig-line { border-bottom: 1px solid #000; height: 24px; margin-bottom: 3px; }
+.pdf-sig-lbl { font-size: 9px; color: #666; text-align: center; }
+.pdf-footer { text-align: center; font-size: 9px; color: #aaa; border-top: 1px solid #eee; padding-top: 6px; margin-top: 12px; }
+
+/* QB page */
+.pdf-qb-title { font-size: 14px; font-weight: 700; text-transform: uppercase; border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+.pdf-qb-title span { font-size: 11px; color: #BE1E2D; font-weight: 600; }
+.pdf-qb-note { padding: 6px 10px; background: #f9f9f9; border: 1px solid #ddd; font-size: 10px; color: #555; margin-bottom: 10px; line-height: 1.5; border-radius: 2px; }
+.pdf-qb-cols { columns: 2; column-gap: 20px; }
+.pdf-ub { break-inside: avoid; margin-bottom: 10px; }
+.pdf-ut { font-size: 10px; font-weight: 700; color: #BE1E2D; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f0c5bb; padding-bottom: 3px; margin-bottom: 4px; }
+.pdf-qi { font-size: 10px; padding: 2px 0 2px 12px; position: relative; line-height: 1.35; }
+.pdf-qi::before { content: '□'; position: absolute; left: 0; color: #888; }
+.pdf-qi.ck::before { content: '☒'; color: #BE1E2D; font-weight: 700; }
+
+@media print {
+  body > * { display: none !important; }
+  #overlay { display: block !important; position: static !important; background: none !important; padding: 0 !important; }
+  .ov-actions { display: none !important; }
+  .ov-inner { max-width: none; }
+  .pdf-pg { box-shadow: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-logo">AN</div>
+    <div class="tb-title">Academia Norteamericana Internacional</div>
+    <div class="tb-sub">— Sistema de Gestión Académica</div>
+  </div>
+  <div class="tb-badge">Examen Oral · Vista Docente</div>
+</div>
+
+<!-- HEADER BAR -->
+<div class="header-bar">
+  <div class="hb-field">
+    <div class="hb-label">Lección a evaluar</div>
+    <select class="sel sel-leccion" id="sel-leccion" onchange="onLeccionChange()">
+      <option value="">— Seleccionar lección —</option>
+      <option value="9" data-units="1,2,3,4" data-label="1er Oral">Lección 9 — 1er Examen Oral (Units 1–4)</option>
+      <option value="17" data-units="5,6,7,8" data-label="2do Oral">Lección 17 — 2do Examen Oral (Units 5–8)</option>
+      <option value="25" data-units="9,10,11,12" data-label="3er Oral">Lección 25 — 3er Examen Oral (Units 9–12)</option>
+      <option value="31" data-units="13,14,15,16" data-label="4to Oral">Lección 31 — 4to Examen Oral (Units 13–16)</option>
+    </select>
+  </div>
+  <div class="hb-sep"></div>
+  <div class="hb-field">
+    <div class="hb-label">Docente</div>
+    <select class="sel sel-teacher" id="sel-teacher" onchange="syncInfo()">
+      <option value="Ricardo Arias Arroyo">Ricardo Arias Arroyo</option>
+      <option value="Docente B">Docente B</option>
+    </select>
+  </div>
+  <div class="hb-sep"></div>
+  <div class="hb-field">
+    <div class="hb-label">Fecha</div>
+    <div id="hb-fecha" style="font-size:11px;color:var(--text2);padding-top:6px">—</div>
+  </div>
+  <div id="status-chip" class="status-chip">Seleccione lección y estudiante</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- COL 1: Students -->
+  <div class="col-students">
+    <div class="col-students-title">Estudiantes del grupo</div>
+    <div id="student-list">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- COL 2: Exam form -->
+  <div class="col-form">
+    <div class="card" id="exam-card">
+      <div class="card-header">HOJA DE EVALUACIÓN · EXAMEN ORAL</div>
+      <div class="card-subheader"><b>Nivel Básico I</b> &nbsp;|&nbsp; Lecciones 9 / 17 / 25 / 31 &nbsp;|&nbsp; Academia Norteamericana Internacional — INA Resolución 2519</div>
+
+      <!-- Info -->
+      <div class="info-grid">
+        <div class="info-cell">
+          <span class="ic-label">Estudiante:</span>
+          <span class="ic-value" id="fi-student">— seleccionar —</span>
+        </div>
+        <div class="info-cell">
+          <span class="ic-label">Cód. Estudiante:</span>
+          <span class="ic-value" id="fi-code">—</span>
+        </div>
+        <div class="info-cell">
+          <span class="ic-label">Docente:</span>
+          <span class="ic-value filled" id="fi-teacher">—</span>
+        </div>
+        <div class="info-cell">
+          <span class="ic-label">Cód. Grupo:</span>
+          <span class="ic-value filled" id="fi-group">—</span>
+        </div>
+        <div class="info-cell">
+          <span class="ic-label">Lección evaluada:</span>
+          <span class="ic-value" id="fi-leccion">—</span>
+        </div>
+        <div class="info-cell">
+          <span class="ic-label">Fecha:</span>
+          <span class="ic-value filled" id="fi-fecha">—</span>
+        </div>
+      </div>
+
+      <!-- Rubric -->
+      <table class="rubric" id="rubric-table">
+        <thead>
+          <tr>
+            <th class="th-crit">Criterio <em style="font-weight:300;font-size:9px">(hacer clic en el puntaje)</em></th>
+            <th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th>
+          </tr>
+        </thead>
+        <tbody id="rubric-body"></tbody>
+      </table>
+
+      <!-- Score bar -->
+      <div class="score-bar">
+        <div class="score-box">
+          <div class="sb-label">Puntaje (25 pts)</div>
+          <div class="sb-value" id="sb-pts">—</div>
+          <div class="sb-sub" id="sb-pts-sub">0 pts = 0.0%</div>
+        </div>
+        <div class="score-box" style="background:#fff8f7">
+          <div class="sb-label">Nota sobre 15%</div>
+          <div class="sb-value big" id="sb-15">—</div>
+          <div class="sb-sub">del total del curso</div>
+        </div>
+        <div class="score-box">
+          <div class="sb-label">Nota (0–100)</div>
+          <div class="sb-value" id="sb-100">—</div>
+          <div class="sb-grade" id="sb-grade">—</div>
+        </div>
+      </div>
+
+      <!-- Equiv strip -->
+      <div class="equiv-strip">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)">Equivalencia:</span>
+        <div class="eq-item"><span class="eq-lbl">Cada punto =</span><span class="eq-val">0.6%</span></div>
+        <div class="eq-item"><span class="eq-lbl">Máximo =</span><span class="eq-val">25 pts / 15%</span></div>
+        <div class="eq-item"><span class="eq-lbl">Aprobación ≥</span><span class="eq-val accent" id="eq-aprobacion">—</span></div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend-section">
+        <div class="legend-title-bar">Escala de calificación por criterio</div>
+        <div class="legend-row">
+          <div class="lc lc0"><span class="lc-n">0</span><span class="lc-t">No responde /<br>No se presentó</span></div>
+          <div class="lc lc1"><span class="lc-n">1</span><span class="lc-t">Deficiente</span></div>
+          <div class="lc lc2"><span class="lc-n">2</span><span class="lc-t">Regular</span></div>
+          <div class="lc lc3"><span class="lc-n">3</span><span class="lc-t">Bueno</span></div>
+          <div class="lc lc4"><span class="lc-n">4</span><span class="lc-t">Muy bueno</span></div>
+          <div class="lc lc5"><span class="lc-n">5</span><span class="lc-t">Excelente</span></div>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div class="comments-grid">
+        <div class="cg-block">
+          <div class="cg-label">Comentarios Generales:</div>
+          <textarea class="cmt" id="cmt-general" placeholder="Aspectos positivos del desempeño..."></textarea>
+        </div>
+        <div class="cg-block">
+          <div class="cg-label">Sugerencias de mejora:</div>
+          <textarea class="cmt" id="cmt-mejora" placeholder="Áreas que el estudiante debe reforzar..."></textarea>
+        </div>
+      </div>
+
+      <!-- Action bar inside card -->
+      <div style="padding:6px 10px;background:#f5f5f5;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;justify-content:flex-end;">
+        <button class="btn btn-out" onclick="resetAll()">↺ Limpiar</button>
+        <button class="btn btn-red" id="btn-pdf" onclick="openOverlay()" disabled>🖨 Generar PDF</button>
+      </div>
+
+    </div><!-- /card -->
+
+  </div><!-- /col-form -->
+
+  <!-- COL 3: Questions -->
+  <div class="col-questions">
+    <div class="col-q-header">
+      Banco de preguntas
+      <span id="qb-units-label">— seleccionar lección —</span>
+    </div>
+    <div class="col-q-body" id="qb-body">
+      <div style="color:var(--text3);font-size:11px;padding:16px 8px;text-align:center">Seleccione la lección para ver las preguntas correspondientes.</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- OVERLAY PDF -->
+<div id="overlay">
+  <div class="ov-inner">
+    <div class="ov-actions">
+      <button class="ov-btn ov-btn-close" onclick="closeOverlay()">✕ Cerrar</button>
+      <button class="ov-btn ov-btn-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </div>
+    <div class="pdf-pg" id="pdf-scoring"></div>
+    <div class="pdf-pg" id="pdf-qb"></div>
+  </div>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+const STUDENTS = [
+  { code:'0001', name:'SALAZAR CHACÓN SANTIAGO',         group:'G0001-2025' },
+  { code:'0002', name:'RODRÍGUEZ MORA ANA LUCÍA',         group:'G0001-2025' },
+  { code:'0003', name:'VARGAS JIMÉNEZ CARLOS MARIO',      group:'G0001-2025' },
+  { code:'0004', name:'MIRANDA SOLANO LUISA FERNANDA',    group:'G0001-2025' },
+  { code:'0005', name:'HERRERA QUESADA MARCO ANTONIO',    group:'G0001-2025' },
+  { code:'0006', name:'CAMPOS BRENES DIANA MARCELA',      group:'G0001-2025' },
+  { code:'0007', name:'VEGA SOTO ESTEBAN RODRIGO',        group:'G0001-2025' },
+  { code:'0008', name:'FONSECA LUNA PATRICIA ELENA',      group:'G0001-2025' },
+  { code:'0009', name:'MORA QUIRÓS ALEJANDRO DAVID',      group:'G0001-2025' },
+  { code:'0010', name:'JIMÉNEZ ROJAS VALERIA SOFÍA',      group:'G0001-2025' },
+];
+
+const CRITERIA = [
+  { id:'listening', label:'Listening', desc:'Comprensión auditiva y respuesta apropiada' },
+  { id:'writing',   label:'Writing',   desc:'Expresión escrita correcta y clara' },
+  { id:'reading',   label:'Reading',   desc:'Comprensión lectora de los temas vistos' },
+  { id:'speaking',  label:'Speaking',  desc:'Expresión oral, comunicación e interacción' },
+  { id:'fluency',   label:'Fluency',   desc:'Fluidez, ritmo natural y pausas adecuadas' },
+];
+
+const LECCIONES = {
+  "9":  { ord:'1er', units:[1,2,3,4],     label:'Lección 9 — 1er Oral (Units 1–4)'  },
+  "17": { ord:'2do', units:[5,6,7,8],     label:'Lección 17 — 2do Oral (Units 5–8)' },
+  "25": { ord:'3er', units:[9,10,11,12],  label:'Lección 25 — 3er Oral (Units 9–12)'},
+  "31": { ord:'4to', units:[13,14,15,16], label:'Lección 31 — 4to Oral (Units 13–16)'},
+};
+
+const QB = {
+  1:  { title:"Unit 1 — What's your name?", qs:[
+    "Hi. How are you?",
+    "Are you [nombre del compañero]? What's your name?",
+    "How do you spell your first / last name? Is that [deletrear mal]?",
+    "What's your phone number? Is that [decir número incorrecto]?",
+    "What's your email address? Can you repeat that?",
+    "Ask me for my contact information.",
+  ]},
+  2:  { title:"Unit 2 — Where are my keys?", qs:[
+    "(Objeto singular) What's this called in English? How do you spell that?",
+    "(Objeto plural) What are these called in English?",
+    "Where is the [objeto singular]? Where are the [objetos plurales]?",
+    "Is this your [objeto]? Where is your [mismo objeto]?",
+    "Ask me about my things.",
+  ]},
+  3:  { title:"Unit 3 — Where are you from?", qs:[
+    "Are you from [ciudad/país incorrecto]? Where are you from?",
+    "What's [país/ciudad] like?",
+    "What's your first language? How old are you?",
+    "Describe your personality. Are you shy / friendly / talkative / quiet / funny / serious?",
+    "(Foto de persona) Who's that? Where is he/she from? How old is he/she?",
+    "Ask me about my country / city.",
+  ]},
+  4:  { title:"Unit 4 — Is this coat yours?", qs:[
+    "What are your favorite colors?",
+    "What color is my [prenda]? / What color are my [prenda plural]?",
+    "Tell me about your clothes. Are you wearing a [color] [prenda]?",
+    "Is this [objeto] yours? Whose [objeto] is this?",
+    "What are the seasons in your country? What's the weather like in each season?",
+    "Ask me about my favorite season.",
+  ]},
+  5:  { title:"Unit 5 — What time is it?", qs:[
+    "(Reloj) What time is it? Ask me about the time.",
+    "(Persona en foto) Is he/she [-ing]? What is he/she doing? Where is he/she [-ing]?",
+    "(Personas) What are they wearing? What are they doing?",
+    "(Grupo de fotos) Who's [-ing]? Where's he/she [-ing]?",
+    "Ask me about these people.",
+  ]},
+  6:  { title:"Unit 6 — I walk to school.", qs:[
+    "Tell me about your family. Do you have brothers or sisters?",
+    "What time do you get up on weekdays / weekends?",
+    "Do you go to school / work by bus? Do your parents walk to work?",
+    "Tell me about your weekly routine. When do you get up / eat breakfast / go to bed?",
+    "Ask me about my family / weekly routine.",
+  ]},
+  7:  { title:"Unit 7 — Does it have a view?", qs:[
+    "Do you live in a house or apartment? What rooms does it have?",
+    "Tell me about your living room / kitchen / bedroom. What furniture do you have?",
+    "(Foto de cuarto) Tell me about this room.",
+    "Tell me about your dream home.",
+    "Ask me about my house / apartment.",
+  ]},
+  8:  { title:"Unit 8 — Where do you work?", qs:[
+    "Do you have a job? Where do you work? What do you do exactly?",
+    "Tell me about your job. Is it interesting / dangerous / stressful / boring?",
+    "What time do you start / finish work? What do you do after work?",
+    "Where does a/an [trabajo] work? What does he/she do?",
+    "Ask me about my job.",
+  ]},
+  9:  { title:"Unit 9 — I always eat breakfast.", qs:[
+    "What foods do you like? What is your favorite food?",
+    "What foods do you have at home? What foods do you need?",
+    "What foods do you eat every day? What foods do you never eat?",
+    "What do you usually have for breakfast / lunch / dinner?",
+    "Ask me about my mealtime habits.",
+  ]},
+  10: { title:"Unit 10 — What sports do you like?", qs:[
+    "What do you do in your free time?",
+    "What sports do you like? What's your favorite sport?",
+    "Can you sing / cook / play tennis / skateboard? What can you do very well?",
+    "Think of people you know. Who can ice-skate / play the piano / fix cars?",
+    "Ask me about my favorite sports / abilities and talents.",
+  ]},
+  11: { title:"Unit 11 — I'm going to have a party.", qs:[
+    "What's the date today?",
+    "What are you going to do after class / tomorrow / next week?",
+    "Are you going to do anything this weekend? Where are you going to go?",
+    "When's your birthday? How do you celebrate it?",
+    "Ask me about my weekend plans.",
+  ]},
+  12: { title:"Unit 12 — How do you feel?", qs:[
+    "How are you today? / How do you feel today?",
+    "(Foto) What's this / What are these? Point to his/her [parte del cuerpo].",
+    "Do you have aspirin / cold medicine / antacid at home?",
+    "What medication can you use for a cold / sore throat / earache?",
+    "Imagine I have a headache / stomachache. Give me advice.",
+  ]},
+  13: { title:"Unit 13 — How do I get there?", qs:[
+    "Where can you get cold medicine / gasoline / stamps?",
+    "What can you get at a drugstore / department store / supermarket?",
+    "Is there a [lugar] near the school? Where is it?",
+    "How can I get to the [lugar] from here?",
+    "Ask me about my neighborhood.",
+  ]},
+  14: { title:"Unit 14 — I had a busy weekend.", qs:[
+    "Did you have a good weekend? What did you do?",
+    "Did you work / study / watch TV / exercise yesterday?",
+    "Tell me three things you did last week.",
+    "Tell me three things you didn't do last week.",
+    "Ask me about last weekend / last summer.",
+  ]},
+  15: { title:"Unit 15 — Where were you born?", qs:[
+    "Were you born in [ciudad/país]? Where were you born?",
+    "Were your parents born in [ciudad/país]? When were they born?",
+    "When did you start / finish elementary / high school?",
+    "What classes did you take in high school? Who was your favorite teacher?",
+    "Ask me about my school days.",
+  ]},
+  16: { title:"Unit 16 — Can I take a message?", qs:[
+    "Where's your best friend right now?",
+    "Tell me something you like to do / have to do this week.",
+    "Would you like to go to a concert this weekend? If no, what is your excuse?",
+    "Imagine you are calling a friend but he/she isn't home. Leave a message.",
+    "Tell me something you want to do in your next English class.",
+  ]},
+};
+
+const EQUIV = {25:{p:"15.0%",n:100},24:{p:"14.4%",n:96},23:{p:"13.8%",n:92},22:{p:"13.2%",n:88},
+  21:{p:"12.6%",n:84},20:{p:"12.0%",n:80},19:{p:"11.4%",n:76},18:{p:"10.8%",n:72},
+  17:{p:"10.2%",n:68},16:{p:"9.6%",n:64},15:{p:"9.0%",n:60},14:{p:"8.4%",n:56},
+  13:{p:"7.8%",n:52},12:{p:"7.2%",n:48},11:{p:"6.6%",n:44},10:{p:"6.0%",n:40},
+  9:{p:"5.4%",n:36},8:{p:"4.8%",n:32},7:{p:"4.2%",n:28},6:{p:"3.6%",n:24},
+  5:{p:"3.0%",n:20},4:{p:"2.4%",n:16},3:{p:"1.8%",n:12},2:{p:"1.2%",n:8},
+  1:{p:"0.6%",n:4},0:{p:"0.0%",n:0}};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let activeStudent = null;
+let activeLeccion = null;
+let scores = {};
+let checkedQs = new Set();
+
+CRITERIA.forEach(c => scores[c.id] = null);
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  buildStudentList();
+  buildRubric();
+  syncInfo();
+  const d = new Date();
+  document.getElementById('hb-fecha').textContent = d.toLocaleDateString('es-CR',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+  checkReady();
+}
+
+function buildStudentList() {
+  const list = document.getElementById('student-list');
+  list.innerHTML = '';
+  STUDENTS.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'student-item';
+    div.dataset.code = s.code;
+    div.innerHTML = `<div class="si-name">${s.name.split(' ').slice(0,2).join(' ')}<br>${s.name.split(' ').slice(2).join(' ')}</div><div class="si-code">#${s.code}</div>`;
+    div.onclick = () => selectStudent(s);
+    list.appendChild(div);
+  });
+}
+
+function buildRubric() {
+  const tbody = document.getElementById('rubric-body');
+  tbody.innerHTML = '';
+  CRITERIA.forEach(c => {
+    const tr = document.createElement('tr');
+    let html = `<td class="td-crit"><em>${c.label}</em><div class="desc">${c.desc}</div></td>`;
+    for (let v = 0; v <= 5; v++) {
+      html += `<td class="sc sc-${v}" data-crit="${c.id}" data-val="${v}" onclick="setScore('${c.id}',${v},this)">${v}</td>`;
+    }
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── STUDENT ───────────────────────────────────────────────────────────────────
+function selectStudent(s) {
+  activeStudent = s;
+  document.querySelectorAll('.student-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.code === s.code);
+  });
+  document.getElementById('fi-student').textContent = s.name;
+  document.getElementById('fi-student').className = 'ic-value filled';
+  document.getElementById('fi-code').textContent = s.code;
+  document.getElementById('fi-code').className = 'ic-value filled';
+  document.getElementById('fi-group').textContent = s.group;
+  syncInfo();
+  checkReady();
+}
+
+// ── LECCION ───────────────────────────────────────────────────────────────────
+function onLeccionChange() {
+  const val = document.getElementById('sel-leccion').value;
+  activeLeccion = val || null;
+  if (activeLeccion) {
+    const m = LECCIONES[activeLeccion];
+    document.getElementById('fi-leccion').textContent = m.label;
+    document.getElementById('fi-leccion').className = 'ic-value filled';
+    document.getElementById('qb-units-label').textContent = `Units ${m.units.join(', ')}`;
+    buildQBank(m.units);
+    // Aprobación mínima: 70% de 25 pts = 17.5 → ceiling = 18
+    document.getElementById('eq-aprobacion').textContent = '70% → 18 pts → 10.8%';
+  } else {
+    document.getElementById('fi-leccion').textContent = '—';
+    document.getElementById('fi-leccion').className = 'ic-value';
+    document.getElementById('qb-units-label').textContent = '— seleccionar lección —';
+    document.getElementById('qb-body').innerHTML = '<div style="color:var(--text3);font-size:11px;padding:16px 8px;text-align:center">Seleccione la lección.</div>';
+  }
+  checkReady();
+}
+
+function buildQBank(units) {
+  const body = document.getElementById('qb-body');
+  body.innerHTML = '';
+  units.forEach(u => {
+    const block = document.createElement('div');
+    block.className = 'unit-block';
+    block.innerHTML = `<div class="ub-title">${QB[u].title}</div>`;
+    QB[u].qs.forEach((q, i) => {
+      const key = `${u}-${i}`;
+      const item = document.createElement('div');
+      item.className = 'q-item' + (checkedQs.has(key) ? ' checked' : '');
+      item.dataset.key = key;
+      item.innerHTML = `<div class="q-check">✓</div><div class="q-text">${q}</div>`;
+      item.onclick = () => {
+        item.classList.toggle('checked');
+        if (checkedQs.has(key)) checkedQs.delete(key); else checkedQs.add(key);
+      };
+      block.appendChild(item);
+    });
+    body.appendChild(block);
+  });
+}
+
+// ── SCORING ───────────────────────────────────────────────────────────────────
+function setScore(crit, val, cell) {
+  scores[crit] = val;
+  document.querySelectorAll(`td.sc[data-crit="${crit}"]`).forEach(td => td.classList.remove('sel'));
+  cell.classList.add('sel');
+  updateScore();
+  checkReady();
+}
+
+function updateScore() {
+  const vals = CRITERIA.map(c => scores[c.id]).filter(v => v !== null);
+  const total = vals.reduce((a, b) => a + b, 0);
+  const eq = EQUIV[total] || {};
+  let grade = '';
+  if (vals.length < 5) { grade = '—'; }
+  else if (total >= 23) grade = 'A — Excelente';
+  else if (total >= 20) grade = 'B — Muy Bueno';
+  else if (total >= 17) grade = 'C — Bueno';
+  else grade = 'D — Necesita Mejorar';
+
+  document.getElementById('sb-pts').textContent = vals.length ? total : '—';
+  document.getElementById('sb-pts-sub').textContent = vals.length ? `${total} pts = ${eq.p || '—'}` : '0 pts = 0.0%';
+  document.getElementById('sb-15').textContent = vals.length === 5 ? eq.p : '—';
+  document.getElementById('sb-100').textContent = vals.length === 5 ? eq.n.toFixed(1) : '—';
+  document.getElementById('sb-grade').textContent = grade;
+}
+
+function syncInfo() {
+  const t = document.getElementById('sel-teacher').value;
+  document.getElementById('fi-teacher').textContent = t;
+  const d = new Date();
+  document.getElementById('fi-fecha').textContent = d.toLocaleDateString('es-CR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+function checkReady() {
+  const allScored = CRITERIA.every(c => scores[c.id] !== null);
+  const ready = activeStudent && activeLeccion && allScored;
+  document.getElementById('btn-pdf').disabled = !ready;
+  const chip = document.getElementById('status-chip');
+  if (!activeLeccion) { chip.textContent = 'Seleccione la lección'; chip.className = 'status-chip'; }
+  else if (!activeStudent) { chip.textContent = 'Seleccione un estudiante'; chip.className = 'status-chip'; }
+  else if (!allScored) {
+    const missing = CRITERIA.filter(c => scores[c.id] === null).map(c => c.label);
+    chip.textContent = `Falta: ${missing.join(', ')}`;
+    chip.className = 'status-chip';
+  } else {
+    chip.textContent = '✓ Listo para generar PDF';
+    chip.className = 'status-chip ready';
+  }
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+function openOverlay() {
+  buildPDFScoring();
+  buildPDFQB();
+  document.getElementById('overlay').classList.add('open');
+}
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function buildPDFScoring() {
+  const total = CRITERIA.reduce((a,c) => a + (scores[c.id] || 0), 0);
+  const allScored = CRITERIA.every(c => scores[c.id] !== null);
+  const eq = allScored ? (EQUIV[total] || {}) : {};
+  const teacher = document.getElementById('sel-teacher').value;
+  const lecMeta = activeLeccion ? LECCIONES[activeLeccion] : {};
+  const dateStr = new Date().toLocaleDateString('es-CR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const commG = document.getElementById('cmt-general').value || '—';
+  const commM = document.getElementById('cmt-mejora').value || '—';
+
+  let grade = '—';
+  if (allScored) {
+    if (total >= 23) grade = 'A — Excelente';
+    else if (total >= 20) grade = 'B — Muy Bueno';
+    else if (total >= 17) grade = 'C — Bueno';
+    else grade = 'D — Necesita Mejorar';
+  }
+
+  const rubricRows = CRITERIA.map(c => {
+    let cells = '';
+    for (let v = 0; v <= 5; v++) {
+      const isMk = scores[c.id] === v;
+      cells += `<td class="xc xc${v}${isMk?' mk':''}">${isMk ? '✕' : ''}</td>`;
+    }
+    return `<tr><td class="crit"><em>${c.label}</em></td>${cells}</tr>`;
+  }).join('');
+
+  document.getElementById('pdf-scoring').innerHTML = `
+    <div class="pdf-hdr">
+      <div class="pdf-hdr-left">
+        <div class="pdf-title">Hoja de Evaluación · Examen Oral</div>
+        <div class="pdf-sub">Nivel Básico I &nbsp;|&nbsp; ${lecMeta.label || '—'}</div>
+      </div>
+      <div class="pdf-hdr-right">
+        <strong>Academia Norteamericana Internacional</strong>
+        ANORTEAMERICAN S.A. · INA Resolución 2519<br>
+        anorteamerican.com · (+506) 4070-8686
+      </div>
+    </div>
+
+    <table class="pdf-info">
+      <tr>
+        <td class="lbl">Estudiante:</td><td>${activeStudent ? activeStudent.name : '—'}</td>
+        <td class="lbl">Cód. Estudiante:</td><td>${activeStudent ? activeStudent.code : '—'}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Docente:</td><td>${teacher}</td>
+        <td class="lbl">Cód. Grupo:</td><td>${activeStudent ? activeStudent.group : '—'}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Lección Evaluada:</td><td>${lecMeta.label || '—'}</td>
+        <td class="lbl">Fecha:</td><td>${dateStr}</td>
+      </tr>
+    </table>
+
+    <table class="pdf-rub">
+      <thead>
+        <tr>
+          <th class="th-l" style="width:42%">Criterio <em style="font-weight:300;font-size:9px">(marcar X el puntaje en cada criterio)</em></th>
+          <th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rubricRows}
+        <tr style="background:#f5f5f5;font-weight:700;border-top:2px solid #000">
+          <td>Puntaje total (25 pts):</td>
+          <td colspan="4" style="text-align:right;font-size:11px;color:#555">Nota final (100 pts):</td>
+          <td colspan="2" style="text-align:center;font-size:16px">${allScored ? total : '—'}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="pdf-score-row">
+      <div class="pdf-score-box"><div class="psb-lbl">Puntaje (25 pts)</div><div class="psb-val">${allScored ? total : '—'}</div></div>
+      <div class="pdf-score-box"><div class="psb-lbl">Nota sobre 15%</div><div class="psb-val accent">${allScored ? eq.p : '—'}</div></div>
+      <div class="pdf-score-box"><div class="psb-lbl">Nota (0–100)</div><div class="psb-val">${allScored ? eq.n.toFixed(1) : '—'}</div></div>
+      <div class="pdf-score-box"><div class="psb-lbl">Calificación IC5</div><div class="psb-val" style="font-size:13px;padding-top:4px">${grade}</div></div>
+      <div class="pdf-score-box"><div class="psb-lbl">Cada punto =</div><div class="psb-val" style="font-size:16px">0.6%</div></div>
+    </div>
+
+    <div class="pdf-legend">
+      <div class="pdf-legend-title">Escala de calificación por criterio:</div>
+      <div class="pdf-lrow">
+        <div class="pdf-lc l0"><span class="ln">0</span><span class="lt">No responde / No se presentó</span></div>
+        <div class="pdf-lc l1"><span class="ln">1</span><span class="lt">Deficiente</span></div>
+        <div class="pdf-lc l2"><span class="ln">2</span><span class="lt">Regular</span></div>
+        <div class="pdf-lc l3"><span class="ln">3</span><span class="lt">Bueno</span></div>
+        <div class="pdf-lc l4"><span class="ln">4</span><span class="lt">Muy bueno</span></div>
+        <div class="pdf-lc l5"><span class="ln">5</span><span class="lt">Excelente</span></div>
+      </div>
+    </div>
+
+    <div class="pdf-cmt">
+      <div class="pdf-cmt-lbl">Comentarios Generales:</div>
+      <div class="pdf-cmt-box">${commG}</div>
+    </div>
+    <div class="pdf-cmt">
+      <div class="pdf-cmt-lbl">Sugerencias de mejora:</div>
+      <div class="pdf-cmt-box">${commM}</div>
+    </div>
+
+    <div class="pdf-sigs">
+      <div><div class="pdf-sig-line"></div><div class="pdf-sig-lbl">Firma del Docente</div></div>
+      <div><div class="pdf-sig-line"></div><div class="pdf-sig-lbl">Firma del Estudiante (Recibido conforme)</div></div>
+    </div>
+    <div class="pdf-footer">Academia Norteamericana Internacional · ANORTEAMERICAN S.A. · INA Resolución 2519 · Generado: ${new Date().toLocaleString('es-CR')} · Expediente académico</div>
+  `;
+}
+
+function buildPDFQB() {
+  const teacher = document.getElementById('sel-teacher').value;
+  const lecMeta = activeLeccion ? LECCIONES[activeLeccion] : { label:'—', units:[] };
+  const dateStr = new Date().toLocaleDateString('es-CR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const units = lecMeta.units || [];
+
+  const blocks = units.map(u => {
+    const qs = QB[u].qs.map((q, i) => {
+      const key = `${u}-${i}`;
+      return `<div class="pdf-qi${checkedQs.has(key)?' ck':''}">${q}</div>`;
+    }).join('');
+    return `<div class="pdf-ub"><div class="pdf-ut">${QB[u].title}</div>${qs}</div>`;
+  }).join('');
+
+  document.getElementById('pdf-qb').innerHTML = `
+    <div class="pdf-qb-title">
+      Banco de Preguntas — Interchange 5th Edition Intro
+      <span>${lecMeta.label}</span>
+    </div>
+    <div class="pdf-qb-note">
+      <strong>Instrucciones:</strong> No es necesario hacer todas las preguntas. Seleccione las más apropiadas. Puede añadir preguntas propias.
+      Para preguntas sí/no, prefiera respuestas negativas para generar seguimiento. Marque con ✕ las preguntas utilizadas.<br>
+      <strong>Estudiante:</strong> ${activeStudent ? activeStudent.name + ' — ' + activeStudent.code : '—'} &nbsp;|&nbsp;
+      <strong>Docente:</strong> ${teacher} &nbsp;|&nbsp; <strong>Fecha:</strong> ${dateStr}
+    </div>
+    <div class="pdf-qb-cols">${blocks}</div>
+    <div class="pdf-footer">Interchange Assessment Material Intro © Cambridge University Press 2017 · Adaptado por Academia Norteamericana Internacional para uso curricular · INA Resolución 2519</div>
+  `;
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function resetAll() {
+  activeStudent = null;
+  CRITERIA.forEach(c => scores[c.id] = null);
+  checkedQs.clear();
+  document.querySelectorAll('.student-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('td.sc').forEach(td => td.classList.remove('sel'));
+  ['fi-student','fi-code','fi-group','fi-leccion'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = '—';
+    el.className = 'ic-value';
+  });
+  document.getElementById('sel-leccion').value = '';
+  activeLeccion = null;
+  document.getElementById('cmt-general').value = '';
+  document.getElementById('cmt-mejora').value = '';
+  document.getElementById('sb-pts').textContent = '—';
+  document.getElementById('sb-pts-sub').textContent = '0 pts = 0.0%';
+  document.getElementById('sb-15').textContent = '—';
+  document.getElementById('sb-100').textContent = '—';
+  document.getElementById('sb-grade').textContent = '—';
+  document.getElementById('qb-body').innerHTML = '<div style="color:var(--text3);font-size:11px;padding:16px 8px;text-align:center">Seleccione la lección para ver las preguntas.</div>';
+  document.getElementById('qb-units-label').textContent = '— seleccionar lección —';
+  document.getElementById('eq-aprobacion').textContent = '—';
+  checkReady();
+  syncInfo();
+}
+
+init();
+</script>
+</body>
+</html>
