@@ -92,14 +92,43 @@ const NIVEL_META = {
   i2: { nombre:'Intermedio II', emoji:'🟢', color:'#4CAF50', css:'var(--lvl-inter2)', toneChip:'green'},
 };
 
-const DOCENTES_ACTIVOS = [
-  { id:'t1', nombre:'SALAZAR FUENTES ANA BELEN',     grupos:[] },
-  { id:'t2', nombre:'VEGA SALAS EMILY LUCIA',         grupos:[] },
-  { id:'t3', nombre:'CRUZ PEREZ RACHELLE MICHELLE',   grupos:[] },
-  { id:'t4', nombre:'MEDINA FONSECA SULIVANY',        grupos:[] },
-  { id:'t5', nombre:'JOHN ALVAREZ GONZALEZ',          grupos:[] },
-  { id:'t6', nombre:'YENDRY AGUILAR',                 grupos:[] },
-];
+// Construye lista de docentes desde grupos reales de APOLLO (getAdminDashboard)
+// grupos = data.grupos del dashboard — cada uno tiene: code, docente, schedule, nivelId
+// Retorna: [{ id, nombre, grupos:[{code, schedule, nivelId, horarioCod}] }]
+// horarioCod: extrae "LM69", "KJ69", "SA94", "LJ69" del código del grupo
+function buildDocentesActivos(grupos) {
+  const map = {};
+  (grupos || []).forEach(g => {
+    const nombre = (g.docente || '').trim();
+    if (!nombre || nombre === 'POR DEFINIR') return;
+    if (!map[nombre]) {
+      map[nombre] = {
+        id:     nombre,
+        nombre: nombre,
+        grupos: [],
+      };
+    }
+    // Extraer segmento horario del código: B1-LM69-C3-0126 → "LM69"
+    const partes = (g.code || '').split('-');
+    const horarioCod = partes.length >= 2 ? partes[1] : '';
+    map[nombre].grupos.push({
+      code:       g.code,
+      schedule:   g.schedule || '',
+      nivelId:    g.nivelId  || '',
+      horarioCod: horarioCod,       // ej: "LM69", "KJ69", "SA94", "LJ69"
+    });
+  });
+  // Ordenar alfabético por nombre
+  return Object.values(map).sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+// Detecta conflicto real de horario:
+// Un docente NO puede tener dos grupos con el mismo horarioCod activo
+// (mismo día y misma franja horaria = imposible estar en ambos)
+function detectarConflictoDocente(docente, nuevoHorarioCod) {
+  if (!docente || !nuevoHorarioCod) return false;
+  return docente.grupos.some(g => g.horarioCod === nuevoHorarioCod);
+}
 
 // Mapa de días → código de 2 letras
 const DIAS_CODIGO = {
@@ -262,6 +291,9 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const [avisoManual, setAvisoManual] = React.useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Docentes reales construidos desde APOLLO — se recalcula cuando cambian los grupos
+  const docentesActivos = React.useMemo(() => buildDocentesActivos(grupos), [grupos]);
+
   const nivel = NIVEL_META[form.niveles[0]] || NIVEL_META['b1'];
   const nCuotas = form.modalidad === 'super_intensivo' ? 2 : 4;
 
@@ -312,7 +344,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const confirmar = async () => {
     if (!form.confirmado || guardando) return;
     const { code, consec, periodo } = generarCodigoGrupo(form, grupos);
-    const docenteObj = DOCENTES_ACTIVOS.find(d => d.id === form.docente);
+    const docenteObj = docentesActivos.find(d => d.id === form.docente);
 
     // Intentar guardar en Apps Script con timeout de 5 s
     setGuardando(true);
@@ -450,7 +482,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
                   [form.modalidad==='super_intensivo'?'Súper Intensivo':'Intensivo', '⚡'],
                   [form.modelo==='ina'?'Con INA':'Sin INA', '📋'],
                   form.fechaInicio && [fmtMes(new Date(form.fechaInicio)), '📅'],
-                  form.docente && [DOCENTES_ACTIVOS.find(d=>d.id===form.docente)?.nombre?.split(' ')[0], '👤'],
+                  form.docente && [docentesActivos.find(d=>d.id===form.docente)?.nombre?.split(' ')[0], '👤'],
                 ].filter(Boolean).map(([v,e],i) => (
                   <div key={i} style={{ fontSize:11, color:'var(--ink-2)', padding:'3px 0', display:'flex', gap:6 }}>
                     <span>{e}</span><span>{v}</span>
@@ -464,13 +496,13 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           <div style={{ overflowY:'auto', padding:'28px 32px' }}>
             {step===1 && <Step1 form={form} set={set} errors={errors} nivel={nivel} />}
             {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} />}
-            {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} />}
+            {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[form.dias]||'XX')+(HORA_CODIGO[form.horaInicio]||''); return p; })()} />}
             {step===4 && <Step4 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal} descuento={descuento} />}
             {step===5 && <Step5 form={form} set={set} nivel={nivel} />}
             {step===6 && <Step6 form={form} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal} totalNivel={totalNivel} totalPrograma={totalPrograma}
-              descuento={descuento} grupos={grupos} onConfirm={() => set('confirmado', !form.confirmado)} />}
+              descuento={descuento} grupos={grupos} docentesActivos={docentesActivos} onConfirm={() => set('confirmado', !form.confirmado)} />}
           </div>
 
           {/* Paso 4: sidebar financiero en vivo */}
@@ -737,44 +769,83 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 3 — Docente y salón
 // ─────────────────────────────────────────────────────────────────────────
-function Step3({ form, set, errors, nivel }) {
-  const docenteSel = DOCENTES_ACTIVOS.find(d => d.id === form.docente);
-  const conflict = docenteSel && form.dias && docenteSel.grupos.some(g =>
-    g.toLowerCase().includes(form.dias.toLowerCase().split('/')[0])
-  );
+function Step3({ form, set, errors, nivel, docentesActivos, nuevoHorarioCod }) {
+  const docenteSel = docentesActivos.find(d => d.id === form.docente);
+  const conflict   = docenteSel && nuevoHorarioCod
+    ? detectarConflictoDocente(docenteSel, nuevoHorarioCod)
+    : false;
+
+  // Etiqueta de carga del docente basada en grupos activos reales
+  function cargaLabel(n) {
+    if (n === 0) return { label:'Disponible', color:'white', bg:'var(--ok)' };
+    if (n === 1) return { label:'1 grupo',    color:'var(--warn)', bg:'color-mix(in srgb, var(--warn) 15%, white)' };
+    if (n === 2) return { label:'2 grupos',   color:'#C05000', bg:'color-mix(in srgb, var(--warn) 25%, white)' };
+    return               { label:`${n} grupos — muy ocupado`, color:'var(--danger)', bg:'color-mix(in srgb, var(--danger) 12%, white)' };
+  }
 
   return (
     <div>
       <SectionTitle error={errors.docente}>Docente asignado</SectionTitle>
+
+      {docentesActivos.length === 0 && (
+        <div style={{ padding:'16px', background:'var(--surface-2)', borderRadius:'var(--r-md)', fontSize:13, color:'var(--ink-3)', marginBottom:16 }}>
+          No hay docentes registrados en APOLLO. Asignales grupos desde la hoja GRUPOS.
+        </div>
+      )}
+
       <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
-        {DOCENTES_ACTIVOS.map(d => (
-          <label key={d.id} style={{
-            display:'flex', alignItems:'flex-start', gap:12, padding:'12px 14px',
-            border:`2px solid ${form.docente===d.id ? nivel.color : 'var(--line)'}`,
-            borderRadius:'var(--r-md)', cursor:'pointer',
-            background: form.docente===d.id ? `color-mix(in srgb, ${nivel.color} 6%, white)` : 'var(--surface)',
-          }}>
-            <input type="radio" checked={form.docente===d.id} onChange={() => set('docente', d.id)} style={{ marginTop:3 }} />
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:700, fontSize:14 }}>{d.nombre}</div>
-              <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3 }}>
-                {d.grupos.length > 0 ? `${d.grupos.length} grupos activos: ${d.grupos.join(' · ')}` : 'Sin grupos activos'}
-              </div>
-            </div>
-            <div style={{
-              fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:'var(--r-pill)',
-              background: d.grupos.length < 2 ? 'var(--ok)' : d.grupos.length < 3 ? 'color-mix(in srgb, var(--warn) 15%, white)' : 'color-mix(in srgb, var(--danger) 12%, white)',
-              color: d.grupos.length < 2 ? 'white' : d.grupos.length < 3 ? 'var(--warn)' : 'var(--danger)',
+        {docentesActivos.map(d => {
+          const carga = cargaLabel(d.grupos.length);
+          const seleccionado = form.docente === d.id;
+          const tieneConflicto = nuevoHorarioCod ? detectarConflictoDocente(d, nuevoHorarioCod) : false;
+          return (
+            <label key={d.id} style={{
+              display:'flex', alignItems:'flex-start', gap:12, padding:'12px 14px',
+              border:`2px solid ${seleccionado ? nivel.color : tieneConflicto ? 'var(--danger)' : 'var(--line)'}`,
+              borderRadius:'var(--r-md)', cursor: tieneConflicto ? 'not-allowed' : 'pointer',
+              background: seleccionado
+                ? `color-mix(in srgb, ${nivel.color} 6%, white)`
+                : tieneConflicto
+                  ? 'color-mix(in srgb, var(--danger) 4%, white)'
+                  : 'var(--surface)',
+              opacity: tieneConflicto ? 0.6 : 1,
             }}>
-              {d.grupos.length < 2 ? 'Disponible' : d.grupos.length < 3 ? 'Cargado' : 'Muy ocupado'}
-            </div>
-          </label>
-        ))}
+              <input
+                type="radio"
+                checked={seleccionado}
+                disabled={tieneConflicto}
+                onChange={() => !tieneConflicto && set('docente', d.id)}
+                style={{ marginTop:3 }}
+              />
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:14 }}>{d.nombre}</div>
+                <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3 }}>
+                  {d.grupos.length === 0
+                    ? 'Sin grupos activos — totalmente disponible'
+                    : d.grupos.map(g => `${g.code} · ${g.schedule}`).join('  |  ')
+                  }
+                </div>
+                {tieneConflicto && (
+                  <div style={{ fontSize:11, color:'var(--danger)', fontWeight:600, marginTop:4 }}>
+                    ⛔ Conflicto de horario — ya tiene un grupo en {nuevoHorarioCod}
+                  </div>
+                )}
+              </div>
+              <div style={{
+                fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:'var(--r-pill)',
+                background: carga.bg, color: carga.color, whiteSpace:'nowrap',
+              }}>
+                {carga.label}
+              </div>
+            </label>
+          );
+        })}
       </div>
+
       {errors.docente && <ErrMsg>{errors.docente}</ErrMsg>}
       {conflict && (
-        <div style={{ padding:'10px 14px', background:'color-mix(in srgb, var(--warn) 10%, white)', border:'1px solid var(--warn)', borderRadius:'var(--r-md)', fontSize:12, color:'var(--warn)', marginBottom:16 }}>
-          ⚠️ Este docente ya tiene un grupo en horario similar ({form.dias}). Confirma que no hay conflicto.
+        <div style={{ padding:'10px 14px', background:'color-mix(in srgb, var(--danger) 8%, white)', border:'1px solid var(--danger)', borderRadius:'var(--r-md)', fontSize:12, color:'var(--danger)', marginBottom:16, fontWeight:600 }}>
+          ⛔ El docente seleccionado ya tiene un grupo en este horario ({nuevoHorarioCod}). Seleccioná otro docente o cambiá el horario.
         </div>
       )}
 
@@ -1251,8 +1322,8 @@ const SYLLABUS_BASICO_I_DATA = {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 6 — Resumen y confirmación
 // ─────────────────────────────────────────────────────────────────────────
-function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento, onConfirm, grupos }) {
-  const docente = DOCENTES_ACTIVOS.find(d => d.id === form.docente);
+function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento, onConfirm, grupos, docentesActivos }) {
+  const docente = (docentesActivos||[]).find(d => d.id === form.docente);
   const { code } = generarCodigoGrupo(form, grupos);
   const becaLabel = form.beca==='none' ? 'Sin beca' : form.beca==='impacta' ? 'Beca Impacta 25%' : form.beca==='mujer' ? 'Beca Mujer 50%' : `${form.becaCustomNombre} ${form.becaCustomPct}%`;
   const cr = form.cronograma;
