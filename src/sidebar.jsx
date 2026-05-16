@@ -1,6 +1,186 @@
 /* global React, Icon */
 const { useState: _u1 } = React;
 
+// ── DEV SWITCHER — datos hardcodeados ──────────────────────────────────
+const SCRIPT_URL_SB = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+
+const DEV_DOCENTES = [
+  { nombre: 'CRUZ PÉREZ RACHELLE MICHELLE', grupo: 'B1-LM69-C3-0125', programa: 'SIN_INA' },
+  { nombre: 'SALAZAR FUENTES ANA BELÉN',    grupo: 'B1-LM69-C3-0126', programa: 'SIN_INA' },
+  { nombre: 'VEGA SALAS EMILY LUCÍA',       grupo: 'B1-KJ69-C3-0225', programa: 'SIN_INA' },
+  { nombre: 'MEDINA FONSECA SULIVANY',      grupo: 'B1-L469-B1-0226', programa: 'SIN_INA' },
+  { nombre: 'JOHN ALVAREZ GONZÁLEZ',        grupo: 'B1-L469-B6-0325', programa: 'SIN_INA' },
+  { nombre: 'YENDRY AGUILAR',               grupo: 'B1-L469-B2-0426', programa: 'SIN_INA' },
+];
+
+const DEV_ADMIN = {
+  nombre: 'SALAZAR FUENTES LEONARDO',
+  rol: 'admin',
+  codigo: 'LEO-001',
+};
+
+function DevSwitcher({ role, setRole, setActive }) {
+  const [codEst, setCodEst]     = React.useState('17056');
+  const [docSel, setDocSel]     = React.useState(DEV_DOCENTES[0].grupo);
+  const [cargando, setCargando] = React.useState(false);
+  const [errMsg, setErrMsg]     = React.useState('');
+
+  // Auto-cargar el estudiante demo al montar (solo si no hay sesión)
+  React.useEffect(() => {
+    const sess = sessionStorage.getItem('an_usuario');
+    if (!sess) cargarEstudiante('17056');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cargarEstudiante = async (codigo) => {
+    if (!codigo.trim()) return;
+    setCargando(true);
+    setErrMsg('');
+    try {
+      const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(codigo.trim())}`);
+      const data = await res.json();
+      if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
+      const est = data.estudiante || {};
+      // Normalizar niveles/estatus: aceptar varias formas que pueda devolver el backend
+      // Esperado: { B1: 'APR', B2: 'CA', I1: 'PE', I2: 'PE' }
+      const nivelesRaw = est.NIVELES || est.niveles || data.niveles || {};
+      const niveles_estatus = {};
+      Object.keys(nivelesRaw).forEach(k => {
+        const v = nivelesRaw[k];
+        niveles_estatus[k.toUpperCase()] =
+          typeof v === 'string' ? v.toUpperCase() :
+          (v && (v.estatus || v.ESTATUS)) ? String(v.estatus || v.ESTATUS).toUpperCase() : '';
+      });
+      // Calcular nivel_activo: el que tenga CA, o el último APR/CNV
+      const ORDEN = ['B1','B2','I1','I2','A1','A2'];
+      let nivel_activo =
+        ORDEN.find(n => niveles_estatus[n] === 'CA') ||
+        [...ORDEN].reverse().find(n => ['APR','CNV'].includes(niveles_estatus[n])) ||
+        (est.NIVEL_ACTIVO || data.nivel_activo || '');
+      const estatus_activo = nivel_activo ? (niveles_estatus[nivel_activo] || '') : '';
+
+      sessionStorage.setItem('an_usuario', JSON.stringify({
+        nombre:   est.NOMBRE  || est.nombre  || codigo,
+        rol:      'student',
+        codigo:   est.CODIGO  || est.rec_m   || codigo,
+        cedula:   est.CEDULA  || est.cedula  || '',
+        grupo:    est.GRUPO   || data.grupo?.CODIGO_GRUPO || '',
+        programa: data.grupo?.PROGRAMA || 'SIN_INA',
+        niveles_estatus,
+        nivel_activo,
+        estatus_activo,
+      }));
+      setRole('student');
+      setActive('dashboard');
+    } catch(e) {
+      setErrMsg('Error de conexión');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const cargarDocente = (grupoCod) => {
+    const doc = DEV_DOCENTES.find(d => d.grupo === grupoCod) || DEV_DOCENTES[0];
+    sessionStorage.setItem('an_usuario', JSON.stringify({
+      nombre:   doc.nombre,
+      rol:      'teacher',
+      grupo:    doc.grupo,
+      programa: doc.programa,
+    }));
+    setRole('teacher');
+    setActive('dashboard');
+  };
+
+  const cargarAdmin = () => {
+    sessionStorage.setItem('an_usuario', JSON.stringify({
+      nombre: DEV_ADMIN.nombre,
+      rol:    'admin',
+      codigo: DEV_ADMIN.codigo,
+    }));
+    setRole('admin');
+    setActive('dashboard');
+  };
+
+  return (
+    <div style={{
+      padding: '10px 12px',
+      background: 'color-mix(in srgb, var(--an-granate) 6%, white)',
+      borderBottom: '1px solid color-mix(in srgb, var(--an-granate) 20%, white)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    }}>
+      <div className="sb-role-switch" role="tablist">
+        <button className={role === 'student' ? 'active' : ''}
+          onClick={() => cargarEstudiante(codEst)}>Estudiante</button>
+        <button className={role === 'teacher' ? 'active' : ''}
+          onClick={() => cargarDocente(docSel)}>Docente</button>
+        <button className={role === 'admin' ? 'active' : ''}
+          onClick={cargarAdmin}>Admin</button>
+      </div>
+
+      {role === 'student' && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            value={codEst}
+            onChange={e => setCodEst(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') cargarEstudiante(codEst); }}
+            placeholder="Código (ej: 17056)"
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              border: '1.5px solid var(--line)',
+              borderRadius: 'var(--r-md)',
+              fontFamily: 'var(--f-mono)',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={() => cargarEstudiante(codEst)}
+            disabled={cargando}
+            className="btn btn-primary"
+            style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0,
+                     background: 'var(--an-granate)', borderColor: 'var(--an-granate)',
+                     opacity: cargando ? 0.6 : 1 }}
+          >
+            {cargando ? '…' : 'Cargar'}
+          </button>
+        </div>
+      )}
+
+      {role === 'teacher' && (
+        <select
+          value={docSel}
+          onChange={e => { setDocSel(e.target.value); cargarDocente(e.target.value); }}
+          style={{
+            padding: '6px 10px',
+            border: '1.5px solid var(--line)',
+            borderRadius: 'var(--r-md)',
+            fontFamily: 'inherit',
+            fontSize: 12,
+            outline: 'none',
+            cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          {DEV_DOCENTES.map(d => (
+            <option key={d.grupo} value={d.grupo}>
+              {d.nombre.split(' ').slice(0,2).join(' ')} · {d.grupo}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {errMsg && (
+        <div style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>
+          ⚠ {errMsg}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout }) {
   // Datos del usuario logueado (sessionStorage > props)
   const usuarioSS = React.useMemo(() => {
@@ -11,6 +191,7 @@ function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout 
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'cronograma', label: 'Cronograma', icon: 'calendar' },
+    { id: 'cronograma_grupo', label: 'Mis lecciones', icon: 'calendar' },
     { id: 'notas', label: 'Mis Notas', icon: 'grades' },
     { id: 'tareas', label: 'Tareas', icon: 'homework', badge: 3 },
     { id: 'materiales', label: 'Materiales', icon: 'materials' },
@@ -23,9 +204,9 @@ function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout 
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
+    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
     { id: 'asistencia', label: 'Asistencia', icon: 'check' },
-    { id: 'calendario', label: 'Calendario', icon: 'calendar' },
     { id: 'materiales', label: 'Materiales', icon: 'materials' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
@@ -35,6 +216,7 @@ function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout 
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation', badge: 3 },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
+    { id: 'cronograma_grupo', label: 'Calendario lecciones', icon: 'calendar' },
     { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
     { id: 'buscador', label: 'Buscador', icon: 'search' },
     { id: 'banco', label: 'Importar Banco', icon: 'payments' },
@@ -63,11 +245,7 @@ function Sidebar({ role, setRole, active, setActive, student, usuario, onLogout 
         </div>
       </div>
 
-      <div className="sb-role-switch" role="tablist">
-        <button className={role==='student' ? 'active':''} onClick={() => { setRole('student'); setActive('dashboard'); }}>Estudiante</button>
-        <button className={role==='teacher' ? 'active':''} onClick={() => { setRole('teacher'); setActive('dashboard'); }}>Docente</button>
-        <button className={role==='admin'   ? 'active':''} onClick={() => { setRole('admin');   setActive('dashboard'); }}>Admin</button>
-      </div>
+      <DevSwitcher role={role} setRole={setRole} setActive={setActive} />
 
       <div className="sb-section">Menú</div>
       {nav.map(item => (
