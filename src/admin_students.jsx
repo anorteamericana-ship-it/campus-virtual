@@ -353,8 +353,12 @@ function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort,
               const nombre    = e.display || e.nombre || '—';
               const convenio  = e.convenio || '';
               const estatus   = e.estatus || e.status_actual || 'PE';
-              const mora      = typeof e.mora !== 'undefined' ? e.mora : (e.morosidad === 'SI' || e.morosidad === true);
-              const matricula = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
+              // v4.16: solo hay mora si hay lecciones dadas Y no hay pagos
+              // Si cuotas_pagadas === 0 pero el nivel acaba de empezar (sin lecciones), no es mora
+              const hayActividad = (e.cuotas_pagadas || 0) > 0 || (e.matricula_pagada === true);
+              const moraBruta    = typeof e.mora !== 'undefined' ? e.mora : (e.morosidad === 'SI' || e.morosidad === true);
+              const mora         = moraBruta && (hayActividad || e.estatus === 'APR' || e.estatus === 'REP');
+              const matricula    = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
               const cuotasPagadas = typeof e.cuotas_pagadas === 'number' ? e.cuotas_pagadas : null;
               const cuotasEsperadas = e.cuotas_esperadas || 4;
               const periodoTexto    = e.periodo_texto || '';

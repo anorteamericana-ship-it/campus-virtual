@@ -171,7 +171,7 @@ function DevSwitcher({ role, setRole, setActive }) {
         >
           {DEV_DOCENTES.map(d => (
             <option key={d.grupo} value={d.grupo}>
-              {d.nombre.split(' ').slice(0,2).join(' ')} · {d.grupo}
+              {d.nombre.split(' ').filter((_, i) => i >= 2).map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
             </option>
           ))}
         </select>
@@ -234,7 +234,7 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
   const nav = role === 'student' ? studentNav : role === 'teacher' ? teacherNav : adminNav;
   const userName = usr?.nombre || (role === 'student' ? '—' : role === 'teacher' ? 'Docente' : 'Administrador');
   const userRole = usr
-    ? (usr.rol === 'admin' ? 'Administración' : usr.rol === 'teacher' ? `Docente${usr.grupo ? ' · ' + usr.grupo : ''}` : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
+    ? (usr.rol === 'admin' ? 'Administración' : usr.rol === 'teacher' ? 'Docente' : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
     : (role === 'student' ? 'Sin sesión' : role === 'teacher' ? 'Docente' : 'Administración');
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 

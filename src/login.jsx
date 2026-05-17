@@ -190,15 +190,15 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
       <form onSubmit={submit} noValidate>
         <div className="field">
           <div className="field-label">
-            Usuario
-            <span className="fl-hint">Tu nombre de usuario asignado</span>
+            Usuario o Cédula
+            <span className="fl-hint">Docentes y admin: tu usuario asignado. Estudiantes: tu número de cédula.</span>
           </div>
           <div className="field-ctrl">
             <span className="fi-icon"><Ico d={ICO.id} /></span>
             <input
               type="text"
               autoComplete="username"
-              placeholder="Ej: admin, emily, demo…"
+              placeholder="Ej: emily · o tu cédula si sos estudiante"
               value={usuario}
               onChange={e => { setUsuario(e.target.value); setErr(''); }}
               autoFocus
@@ -209,7 +209,7 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
         <div className="field">
           <div className="field-label">
             Contraseña
-            <span className="fl-hint">Mínimo 8 caracteres</span>
+            <span className="fl-hint">Docentes y admin: contraseña asignada. Estudiantes: tu código de expediente (ej: 17065).</span>
           </div>
           <div className="field-ctrl">
             <span className="fi-icon"><Ico d={ICO.lock} /></span>
@@ -257,7 +257,7 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
 
       <div className="demo-hint">
         <div className="dh-title">🧪 Cuentas demo · Haz clic para autollenar</div>
-        <div className="demo-row"><b>Estudiante:</b> <code onClick={()=>fillDemo('demo','demo2026')}>demo</code></div>
+        <div className="demo-row"><b>Estudiante:</b> <code onClick={()=>fillDemo('114930546','17065')}>cédula + código</code></div>
         <div className="demo-row"><b>Docente:</b> <code onClick={()=>fillDemo('emily','profe2026')}>emily</code></div>
         <div className="demo-row"><b>Admin:</b> <code onClick={()=>fillDemo('admin','anorteam2026')}>admin</code></div>
         <div style={{ marginTop:6, fontSize:10, color:'var(--ink-3)' }}>Contraseñas se autocompletan al hacer clic</div>

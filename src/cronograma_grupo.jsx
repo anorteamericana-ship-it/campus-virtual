@@ -8,16 +8,16 @@
 const SCRIPT_URL_CG = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 
 const GRUPOS_DISPONIBLES = [
-  { cod:'B1-LM69-C3-0125', niveles:['B1','B2','I1'], docente:'Rachelle Cruz',    dias:'LM' },
-  { cod:'B1-KJ69-C3-0225', niveles:['B1','B2','I1'], docente:'Emily Vega',       dias:'KJ' },
-  { cod:'B1-L469-B6-0325', niveles:['B1','B2'],      docente:'John Álvarez',     dias:'LJ' },
-  { cod:'B1-KJ94-B6-0425', niveles:['B1','B2'],      docente:'John Álvarez',     dias:'KJ' },
-  { cod:'B1-LM69-C1-0126', niveles:['B1'],           docente:'Ana Salazar',      dias:'LM' },
-  { cod:'B1-L469-B1-0226', niveles:['B1','B2'],      docente:'Sulivany Medina',  dias:'LJ' },
-  { cod:'B1-SA94-C1-0326', niveles:['B1'],           docente:'John Álvarez',     dias:'SA' },
-  { cod:'B1-L469-B2-0426', niveles:['B1'],           docente:'Yendry Aguilar',   dias:'LJ' },
-  { cod:'B1-LM69-C2-0526', niveles:['B1'],           docente:'Por definir',      dias:'LM' },
-  { cod:'B1-LM94-B3-0626', niveles:['B1'],           docente:'Por definir',      dias:'LM' },
+  { cod:'B1-LM69-C3-0125', niveles:['B1','B2','I1'], docente:'Rachelle Cruz',    dias:'LM', programa:'SIN_INA' },
+  { cod:'B1-KJ69-C3-0225', niveles:['B1','B2','I1'], docente:'Emily Vega',       dias:'KJ', programa:'SIN_INA' },
+  { cod:'B1-L469-B6-0325', niveles:['B1','B2'],      docente:'John Álvarez',     dias:'LJ', programa:'SIN_INA' },
+  { cod:'B1-KJ94-B6-0425', niveles:['B1','B2'],      docente:'John Álvarez',     dias:'KJ', programa:'SIN_INA' },
+  { cod:'B1-LM69-C1-0126', niveles:['B1'],           docente:'Ana Salazar',      dias:'LM', programa:'SIN_INA' },
+  { cod:'B1-L469-B1-0226', niveles:['B1','B2'],      docente:'Sulivany Medina',  dias:'LJ', programa:'SIN_INA' },
+  { cod:'B1-SA94-C1-0326', niveles:['B1'],           docente:'John Álvarez',     dias:'SA', programa:'SIN_INA' },
+  { cod:'B1-L469-B2-0426', niveles:['B1'],           docente:'Yendry Aguilar',   dias:'LJ', programa:'SIN_INA' },
+  { cod:'B1-LM69-C2-0526', niveles:['B1'],           docente:'Por definir',      dias:'LM', programa:'INA', ican_dias:'VIE', ican_hora:'18:00-20:00' },
+  { cod:'B1-LM94-B3-0626', niveles:['B1'],           docente:'Por definir',      dias:'LM', programa:'INA', ican_dias:'SAB', ican_hora:'08:00-10:00' },
 ];
 
 const NIVEL_COLOR_CG  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -29,12 +29,14 @@ const TIPO_BADGE = {
   PROGRESS_CHECK:  'PC',
   EVAL_ORAL:       'Oral',
   EVAL_ESCRITO:    'Escrito',
+  ICAN:            'I CAN',
 };
 const TIPO_LABEL_LARGO = {
   CLASE:           'Clase regular',
   PROGRESS_CHECK:  'Progress Check',
   EVAL_ORAL:       'Examen Oral',
   EVAL_ESCRITO:    'Examen Escrito',
+  ICAN:            'Sesión I CAN',
 };
 
 // Color base por nivel
@@ -51,6 +53,12 @@ function paletaCelda(estado, tipo, nivel) {
 
   if (estado === 'FERIADO') return { bg:'#FDECEA', fg:'#B71C1C', accent:'#B71C1C' };
   if (estado === 'HOY')     return { bg: base.mid, fg:'#FFFFFF', accent: base.dark };
+
+  // v4.16: I CAN sessions — verde
+  if (tipo === 'ICAN') {
+    if (estado === 'CERRADA') return { bg:'#E8F5E9', fg:'#1B5E20', accent:'#4CAF50' };
+    return { bg:'#F1F8E9', fg:'#2E7D32', accent:'#4CAF50' };
+  }
 
   if (estado === 'CERRADA') {
     if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
@@ -139,9 +147,10 @@ function mockLecciones(codGrupo, nivel) {
     const iso = isoOf(cur);
     if (DOW.includes(cur.getDay())) {
       if (FER.has(iso)) {
-        out.push({ leccion: lec, fecha: iso, dia: DOWLBL[cur.getDay()],
+        // v4.15: feriado no consume número de lección — se inserta sin número
+        out.push({ leccion: null, fecha: iso, dia: DOWLBL[cur.getDay()],
                    turno:'', tipo:'CLASE', estado:'FERIADO' });
-        lec++;
+        // lec NO incrementa — la lección se corre al siguiente día hábil
       } else {
         let tipo = 'CLASE';
         if (PROG.has(lec)) tipo = 'PROGRESS_CHECK';
@@ -174,6 +183,36 @@ function mockLecciones(codGrupo, nivel) {
     cur.setDate(cur.getDate() + 1);
     if (out.length > 80) break; // safety
   }
+
+  // v4.16: generar sesiones I CAN para grupos INA
+  const grupoMeta = GRUPOS_DISPONIBLES.find(g => g.cod === codGrupo);
+  const esINA = grupoMeta?.programa === 'INA';
+  if (esINA && grupoMeta?.ican_dias) {
+    const DOW_ICAN = { 'VIE': 5, 'SAB': 6, 'LUN': 1, 'MAR': 2, 'MIE': 3, 'JUE': 4 };
+    const diaCAN = DOW_ICAN[grupoMeta.ican_dias] || 5;
+    const DOWLBL2 = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    // Generar 16 sesiones I CAN comenzando desde la fecha de inicio del grupo + 1 semana
+    let curCAN = new Date(start);
+    curCAN.setDate(curCAN.getDate() + 7);
+    // Avanzar al primer día I CAN
+    while (curCAN.getDay() !== diaCAN) curCAN.setDate(curCAN.getDate() + 1);
+    for (let ic = 1; ic <= 16; ic++) {
+      const isoCAN = isoOf(curCAN);
+      if (!FER.has(isoCAN)) {
+        out.push({
+          leccion:    ic,
+          fecha:      isoCAN,
+          dia:        DOWLBL2[curCAN.getDay()],
+          turno:      grupoMeta.ican_hora || '',
+          tipo:       'ICAN',
+          estado:     isoCAN < hoyISO ? 'CERRADA' : isoCAN === hoyISO ? 'HOY' : 'CALCULADA',
+          esICAN:     true,
+        });
+      }
+      curCAN.setDate(curCAN.getDate() + 7);
+    }
+  }
+
   return out;
 }
 
@@ -260,6 +299,19 @@ function CronogramaGrupo({ rol = 'admin' }) {
 
   const cargar = React.useCallback(() => {
     setLoading(true); setError(null);
+    if (nivel === 'ICAN') {
+      // Usar las sesiones I CAN del mock
+      const grupoMeta = GRUPOS_DISPONIBLES.find(g => g.cod === codGrupo);
+      if (grupoMeta?.programa === 'INA') {
+        const mock = mockLecciones(codGrupo, 'B1');
+        setLecciones(mock.filter(l => l.esICAN));
+      } else {
+        setLecciones([]);
+      }
+      setUsandoMock(true);
+      setLoading(false);
+      return;
+    }
     return fetch(`${SCRIPT_URL_CG}?fn=getFechasGrupo&cod_grupo=${encodeURIComponent(codGrupo)}&nivel=${encodeURIComponent(nivel)}`)
       .then(r => r.json())
       .then(d => {
@@ -447,6 +499,18 @@ function CronogramaGrupo({ rol = 'admin' }) {
               </button>
             );
           })}
+          {meta.programa === 'INA' && (
+            <button
+              onClick={() => setNivel('ICAN')}
+              style={{
+                padding:'6px 14px', borderRadius:'var(--r-sm)', fontWeight:700, fontSize:12,
+                border:'none', cursor:'pointer', transition:'all .15s',
+                background: nivel === 'ICAN' ? '#4CAF50' : 'transparent',
+                color:       nivel === 'ICAN' ? 'white'   : 'var(--ink-3)',
+              }}>
+              I CAN
+            </button>
+          )}
         </div>
       )}
 
@@ -911,7 +975,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, onCerrar 
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
           <div>
             <div style={{ ...labelStyle, marginBottom:4 }}>
-              {isFeriado ? 'Feriado' : `Lección ${String(selLec.leccion).padStart(2,'0')} · ${idLeccion(nivel, selLec.leccion)}`}
+              {isFeriado ? 'Feriado' : selLec.leccion ? `Lección ${String(selLec.leccion).padStart(2,'0')} · ${idLeccion(nivel, selLec.leccion)}` : 'Sin lección asignada'}
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500,

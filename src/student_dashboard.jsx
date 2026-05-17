@@ -29,6 +29,20 @@ function notaDeNivel(niveles, nivel) {
   return null;
 }
 
+function useRetroalimentacion(codigo) {
+  const [data, setData] = React.useState(null);
+  React.useEffect(() => {
+    if (!codigo) return;
+    let cancelled = false;
+    fetch(`${SCRIPT_URL_SD}?fn=getRetroalimentacionEstudiante&codigo=${encodeURIComponent(codigo)}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled && d?.ok) setData(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [codigo]);
+  return data;
+}
+
 // Asistencia: llamada directa al endpoint
 function useAsistencia(codigo) {
   const [data, setData] = React.useState(null);
@@ -123,6 +137,7 @@ function StudentDashboard({ toast, onNavigate }) {
 
   // Hooks que dependen de los datos derivados — siempre se ejecutan.
   const asistencia    = useAsistencia(codigo);
+  const retroData     = useRetroalimentacion(codigo);
   const lecciones     = useProximasLecciones(codGrupo, nivelActivo);
   const conapeEstado  = useEstadoConape(esConape ? cedula : null);
 
@@ -331,6 +346,25 @@ function StudentDashboard({ toast, onNavigate }) {
         </div>
       )}
 
+      {/* Sílabus obligatorio INA — solo si no se ha visto */}
+      {programa === 'INA' && (() => {
+        const visto = (() => { try { return localStorage.getItem('an_sil_visto_' + codigo) === '1'; } catch { return false; } })();
+        if (visto) return null;
+        return (
+          <div style={{ marginBottom:16, padding:'16px 20px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-granate) 8%, white), white)', border:'2px solid var(--an-granate)', borderRadius:'var(--r-lg)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--an-granate)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:20 }}>📋</div>
+            <div style={{ flex:1, minWidth:200 }}>
+              <div style={{ fontWeight:700, fontSize:14, color:'var(--an-granate-ink)' }}>Material obligatorio INA — antes de empezar</div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:2 }}>Reglamento estudiantil, netiqueta y video de bienvenida. Requerido por Resolución 2519.</div>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { try { localStorage.setItem('an_sil_visto_' + codigo, '1'); } catch {} window.location.reload(); }}>Ya lo revisé</button>
+              <button className="btn btn-primary" style={{ fontSize:12, background:'var(--an-granate)', borderColor:'var(--an-granate)' }} onClick={() => onNavigate('materiales')}>Revisar ahora →</button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPI stats — todos con datos reales o "—" */}
       <div className="grid-4" style={{ marginBottom: 20 }}>
         <Stat
@@ -379,6 +413,39 @@ function StudentDashboard({ toast, onNavigate }) {
           />
         )}
       </div>
+
+      {/* Insignias calculadas desde datos reales */}
+      {(() => {
+        const asistPct2 = asistencia?.asistencia?.length > 0
+          ? Math.round(asistencia.asistencia.filter(a => a.presente).length / asistencia.asistencia.length * 100)
+          : 0;
+        const leccCerr2 = lecciones?.filter(l => l.estado === 'CERRADA')?.length || 0;
+        const badges = [
+          { emoji:'🎓', label:'Primera clase',   ok: asistencia?.asistencia?.length > 0 },
+          { emoji:'⏰', label:'Siempre puntual',  ok: asistPct2 >= 85 && asistencia?.asistencia?.length > 0 },
+          { emoji:'📝', label:'Primer examen',    ok: Object.values(niveles).some(n => (typeof n==='object'?n.nota:0) > 0) },
+          { emoji:'🏃', label:'Mitad del camino', ok: leccCerr2 >= 16 },
+          { emoji:'🏆', label:'Nivel completo',   ok: Object.values(niveles).some(n => (typeof n==='object'?n.estatus:n)==='APR') },
+          { emoji:'💳', label:'Al día',           ok: (pendientes?.matricula||0)===0 && (pendientes?.cuotas_pendiente||0)===0 },
+        ];
+        const desbloqueadas = badges.filter(b => b.ok).length;
+        return (
+          <div className="card" style={{ marginBottom:16 }}>
+            <div className="card-h">
+              <div className="card-title">Insignias</div>
+              <span style={{ fontSize:12, color:'var(--ink-3)' }}>{desbloqueadas} desbloqueada{desbloqueadas!==1?'s':''}</span>
+            </div>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              {badges.map((b,i) => (
+                <div key={i} title={b.label} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, opacity: b.ok ? 1 : 0.3, filter: b.ok ? 'none' : 'grayscale(1)' }}>
+                  <div style={{ fontSize:28 }}>{b.emoji}</div>
+                  <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color: b.ok ? 'var(--ink)' : 'var(--ink-3)', textAlign:'center', maxWidth:56 }}>{b.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Próximas clases + próximo examen */}
       <div className="grid-2">
@@ -481,6 +548,37 @@ function StudentDashboard({ toast, onNavigate }) {
           <PendientesCard pendientes={pendientes} onNavigate={onNavigate} />
         </div>
       </div>
+
+      {/* Retroalimentación reciente del profe */}
+      {retroData?.retroalimentacion?.length > 0 && (() => {
+        const items = retroData.retroalimentacion.slice(-3).reverse();
+        return (
+          <div className="card" style={{ marginTop:16 }}>
+            <div className="card-h">
+              <div className="card-title">Retroalimentación de tu profe</div>
+              <span style={{ fontSize:11, color:'var(--ink-3)' }}>{retroData.total} comentario{retroData.total!==1?'s':''}</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+              {items.map((r, i) => (
+                <div key={i} style={{ padding:'12px 4px', borderBottom: i < items.length-1 ? '1px solid var(--line)' : 'none', display:'grid', gridTemplateColumns:'auto 1fr', gap:12, alignItems:'flex-start' }}>
+                  <div style={{ width:36, height:36, borderRadius:'50%', background: r.tipo==='progress_check' ? 'color-mix(in srgb, var(--an-gold) 15%, white)' : 'color-mix(in srgb, var(--an-navy) 8%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>
+                    {r.tipo === 'progress_check' ? '📊' : '💬'}
+                  </div>
+                  <div>
+                    <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4 }}>
+                      <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--ink-3)' }}>
+                        {r.tipo === 'progress_check' ? 'Progress Check' : 'Lección'} {r.leccion_num}
+                      </span>
+                      {r.fecha && <span style={{ fontSize:10, color:'var(--ink-3)' }}>{r.fecha}</span>}
+                    </div>
+                    <div style={{ fontSize:13, color:'var(--ink)', lineHeight:1.5 }}>{r.comentario}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -516,40 +614,32 @@ function NivelChip({ nivel, estatus, activo }) {
 }
 
 function PendientesCard({ pendientes, onNavigate }) {
-  const total = (pendientes?.matricula_pendiente ? 1 : 0)
-              + (pendientes?.cuotas_pendientes || 0)
-              + (pendientes?.certificado_pendiente ? 1 : 0);
+  // v4.15: leer campos reales del GS
+  const matPend  = (pendientes?.matricula   || 0) > 0;
+  const certPend = (pendientes?.certificado || 0) > 0;
+  const cuotaMonto = pendientes?.cuotas_pendiente || 0;
+  const cuotaMens  = pendientes?.cuota_mensual    || 0;
+  const nCuotas    = pendientes?.n_cuotas_periodo || 4;
+  const cuotasPend = cuotaMens > 0 ? Math.round(cuotaMonto / cuotaMens) : (cuotaMonto > 0 ? 1 : 0);
+  const total = (matPend ? 1 : 0) + cuotasPend + (certPend ? 1 : 0);
   const alDia = total === 0;
+  const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (
     <div className="card">
       <div className="card-h">
         <div className="card-title" style={{ fontSize:16 }}>Estado de cuenta</div>
-        {alDia
-          ? <Chip tone="green" dot>Al día</Chip>
-          : <Chip tone="gold">{total} pendiente{total>1?'s':''}</Chip>}
+        {alDia ? <Chip tone="green" dot>Al día</Chip> : <Chip tone="gold">{total} pendiente{total>1?'s':''}</Chip>}
       </div>
       {alDia ? (
-        <div style={{
-          padding:'14px 12px', textAlign:'center',
-          background:'color-mix(in srgb, var(--ok) 8%, white)',
-          borderRadius:'var(--r-md)', color:'var(--ok)',
-          fontSize:13, fontWeight:600,
-        }}>
-          ✓ Todo al día. Felicidades.
-        </div>
+        <div style={{ padding:'14px 12px', textAlign:'center', background:'color-mix(in srgb, var(--ok) 8%, white)', borderRadius:'var(--r-md)', color:'var(--ok)', fontSize:13, fontWeight:600 }}>✓ Todo al día.</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:6, fontSize:12, color:'var(--ink-2)' }}>
-          {pendientes?.matricula_pendiente && <div>• Matrícula pendiente</div>}
-          {pendientes?.cuotas_pendientes > 0 && (
-            <div>• {pendientes.cuotas_pendientes} cuota{pendientes.cuotas_pendientes>1?'s':''} pendiente{pendientes.cuotas_pendientes>1?'s':''}</div>
-          )}
-          {pendientes?.certificado_pendiente && <div>• Certificado pendiente</div>}
+          {matPend && <div>• Matrícula pendiente — {fmt(pendientes.matricula)}</div>}
+          {cuotasPend > 0 && <div>• {cuotasPend} cuota{cuotasPend>1?'s':''} — {fmt(cuotaMonto)}</div>}
+          {certPend && <div>• Certificado — {fmt(pendientes.certificado)}</div>}
         </div>
       )}
-      <button className="btn btn-ghost" style={{ width:'100%', marginTop:10 }}
-              onClick={() => onNavigate('pagos')}>
-        Ver detalle →
-      </button>
+      <button className="btn btn-ghost" style={{ width:'100%', marginTop:10 }} onClick={() => onNavigate('pagos')}>Ver detalle →</button>
     </div>
   );
 }

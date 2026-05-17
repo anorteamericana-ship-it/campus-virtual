@@ -55,7 +55,9 @@ function useTeacherSession() {
   const [state, setState] = React.useState(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
-    const codGrupo   = usuario?.grupo || '';
+    // v4.15: soportar docente con múltiples grupos
+    const grupos     = usuario?.grupos || (usuario?.grupo ? [usuario.grupo] : []);
+    const codGrupo   = grupos[0] || '';
     const programa   = usuario?.programa || 'SIN_INA';
     const nombre     = usuario?.nombre || '';
     // leccionNum NO viene de sesión: el docente la ingresa manualmente en cada vista
@@ -99,7 +101,17 @@ function useTeacherSession() {
     startDate: __startDateFromCodGrupo(state.codGrupo),
   }), [state.codGrupo]);
 
-  return { ...state, grupoInfo };
+  // v4.16: cargar asistencia % real del grupo
+  const [asistenciaGrupo, setAsistenciaGrupo] = React.useState({});
+  React.useEffect(() => {
+    if (!state.codGrupo || state.loading) return;
+    fetch(`${SCRIPT_URL_TV}?fn=getAsistenciaGrupoCompleta&cod_grupo=${encodeURIComponent(state.codGrupo)}`)
+      .then(r => r.json())
+      .then(d => { if (d?.ok) setAsistenciaGrupo(d.asistencia || {}); })
+      .catch(() => {});
+  }, [state.codGrupo, state.loading]);
+
+  return { ...state, grupoInfo, asistenciaGrupo };
 }
 
 // Pantalla de carga / error compartida
@@ -204,11 +216,22 @@ function TeacherDashboard({ setActive }) {
           <div>
             <div className="hero-kicker">Panel docente · {new Date().toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})}</div>
             <h1 className="hero-h1">Bienvenido,<br/><em>Prof. {displayName}</em></h1>
-            <div className="hero-sub">Tu grupo activo es <strong>{codGrupo}</strong> con <strong>{roster.length} {roster.length === 1 ? 'estudiante' : 'estudiantes'}</strong>.</div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              <Chip tone="granate" dot>1 grupo activo</Chip>
-              <Chip tone="navy">{roster.length} {roster.length === 1 ? 'estudiante' : 'estudiantes'}</Chip>
-            </div>
+            {(() => {
+              const usr = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
+              const grupos = usr?.grupos || (usr?.grupo ? [usr.grupo] : [codGrupo]);
+              return (
+                <>
+                  <div className="hero-sub">
+                    {grupos.length > 1 ? `${grupos.length} grupos asignados` : <>Grupo activo: <strong>{codGrupo}</strong></>}
+                    {' '}· <strong>{roster.length} {roster.length === 1 ? 'estudiante' : 'estudiantes'}</strong>
+                  </div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {grupos.map(g => <Chip key={g} tone="granate" dot>{g}</Chip>)}
+                    <Chip tone="navy">{roster.length} {roster.length === 1 ? 'estudiante' : 'estudiantes'}</Chip>
+                  </div>
+                </>
+              );
+            })()}
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12 }}>
             <QuickStat n={roster.length} l={`Estudiantes en ${codGrupo}`} />
@@ -277,7 +300,7 @@ function QuickStat({ n, l, color='var(--an-navy-ink)' }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 function GruposView() {
-  const { codGrupo, roster, loading, error } = useTeacherSession();
+  const { codGrupo, roster, loading, error, asistenciaGrupo } = useTeacherSession();
   if (loading || error) return <TeacherLoadingState loading={loading} error={error} />;
 
   // Derivar nivel humano del código del grupo: B1-LM69-C3-0225 → "Básico I"
@@ -288,8 +311,9 @@ function GruposView() {
   // Promedio y asistencia reales del roster cargado
   const valid    = roster.filter(r => typeof r.avg === 'number');
   const avgClass = valid.length ? (valid.reduce((a,r)=>a+r.avg,0)/valid.length).toFixed(1) : null;
-  const attValid = roster.filter(r => typeof r.att === 'number');
-  const attClass = attValid.length ? Math.round(attValid.reduce((a,r)=>a+r.att,0)/attValid.length) : null;
+  // v4.16: asistencia real desde CAMPUS_OPERATIVO
+  const attValues = roster.map(r => asistenciaGrupo[r.code]?.pct).filter(v => v != null);
+  const attClass = attValues.length ? Math.round(attValues.reduce((a,v)=>a+v,0)/attValues.length) : null;
 
   return (
     <div>
@@ -342,14 +366,18 @@ function GruposView() {
                 </td>
                 <td style={{ textAlign:'right', fontWeight:600, color: r.avg==null?'var(--ink-3)':r.avg>=85?'var(--ok)':r.avg>=75?'var(--ink)':'var(--danger)' }}>{r.avg ?? '—'}</td>
                 <td style={{ textAlign:'right', fontWeight:500 }}>
-                  {r.att==null ? <span style={{ color:'var(--ink-3)' }}>—</span> : (
-                    <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                      <div style={{ width:50, height:4, background:'var(--bg-deep)', borderRadius:2 }}>
-                        <div style={{ width:`${r.att}%`, height:'100%', background: r.att>=85?'var(--ok)':r.att>=70?'var(--warn)':'var(--danger)', borderRadius:2 }} />
+                  {(() => {
+                    const att = asistenciaGrupo[r.code]?.pct;
+                    if (att == null) return <span style={{ color:'var(--ink-3)' }}>—</span>;
+                    return (
+                      <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:50, height:4, background:'var(--bg-deep)', borderRadius:2 }}>
+                          <div style={{ width:`${att}%`, height:'100%', background: att>=85?'var(--ok)':att>=70?'var(--warn)':'var(--danger)', borderRadius:2 }} />
+                        </div>
+                        {att}%
                       </div>
-                      {r.att}%
-                    </div>
-                  )}
+                    );
+                  })()}
                 </td>
                 <td style={{ textAlign:'right', fontFamily:'var(--f-mono)' }}>{r.oral ?? '—'}</td>
                 <td style={{ fontSize:11, color:'var(--ink-3)' }}>{r.lastSeen ?? '—'}</td>
@@ -381,6 +409,12 @@ function CalificarView({ toast }) {
   // El docente ingresa la lección manualmente en cada vista.
 
   const [notas, setNotas] = React.useState({});
+  const [comentarios, setComentarios] = React.useState({});
+  React.useEffect(() => {
+    const o = {};
+    roster.forEach(r => { o[r.code] = ''; });
+    setComentarios(o);
+  }, [roster]);
   // Re-init notas cuando cambia el roster
   React.useEffect(() => {
     const o = {};
@@ -418,16 +452,17 @@ function CalificarView({ toast }) {
     try {
       const resultados = await Promise.allSettled(
         estudiantesConNota.map(r =>
-          fetch(`${SCRIPT_URL_TV}?fn=registrarEvaluacion`, {
+          fetch(`${SCRIPT_URL_TV}?fn=registrarNotaEstatus`, {
             method: 'POST',
             body: JSON.stringify({
-              cod_grupo:      codGrupo,
               cod_estudiante: r.code,
-              nivel:          'B1',
+              grupo:          codGrupo,
+              nivel:          (codGrupo.split('-')[0] || 'B1').toUpperCase(),
               programa:       programa,
               tipo_eval:      tipoEval,
               leccion_num:    lec,
-              nota_obtenida:  parseFloat(notas[r.code]),
+              nota:           parseFloat(notas[r.code]),
+              comentario:     comentarios[r.code] || '',
               registrado_por: 'DOCENTE',
             }),
           }).then(res => res.json())
@@ -530,8 +565,12 @@ function CalificarView({ toast }) {
                     )}
                   </td>
                   <td style={{ padding:'8px' }}>
-                    <input placeholder="Retroalimentación breve…"
-                      style={{ width:'100%', height:38, padding:'0 10px', border:'1px solid var(--line)', borderRadius:8, fontSize:12, outline:'none', fontFamily:'inherit' }} />
+                    <input
+                      placeholder="Retroalimentación breve…"
+                      value={comentarios[r.code] || ''}
+                      onChange={e => setComentarios(prev => ({ ...prev, [r.code]: e.target.value }))}
+                      style={{ width:'100%', height:38, padding:'0 10px', border:'1px solid var(--line)', borderRadius:8, fontSize:12, outline:'none', fontFamily:'inherit' }}
+                    />
                   </td>
                 </tr>
               );

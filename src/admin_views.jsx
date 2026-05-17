@@ -313,7 +313,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const validate = () => {
     const e = {};
     if (step === 1) {
-      if (!form.nivel) e.nivel = 'Selecciona un nivel';
+      if (!form.niveles || form.niveles.length === 0) e.nivel = 'Selecciona al menos un nivel';
       if (!form.modalidad) e.modalidad = 'Selecciona modalidad';
     }
     if (step === 2) {
@@ -355,7 +355,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
         method: 'POST',
         body: JSON.stringify({
           codigo_grupo:            code,
-          docente:                 docenteObj?.nombre || '—',
+          docente:                 docenteObj?.nombre || 'POR DEFINIR',
           modalidad:               form.modalidad,
           dias:                    form.dias,
           hora_ini:                form.horaInicio,
@@ -376,7 +376,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           precio_matricula:        form.matriculaObligatoria ? form.matricula : 0,
           precio_certificado:      form.certificadosPorNivel[form.niveles[0]] || 0,
           precio_titulo:           form.niveles.length === 4 ? form.certificadoPrograma : 0,
-          beca_grupo:              form.beca === 'none' ? '' : form.beca === 'impacta' ? 'IMPACTA' : form.beca === 'mujer' ? 'MUJER' : form.becaCustomNombre.toUpperCase(),
+          beca_grupo:              form.beca === 'none' ? '' : form.beca === 'impacta' ? 'IMPACTA' : form.beca === 'mujer' ? 'MUJER' : (form.becaCustomNombre||'').toUpperCase(),
           beca_pct:                form.beca === 'none' ? 0 : form.beca === 'impacta' ? 25 : form.beca === 'mujer' ? 50 : form.becaCustomPct,
           toeic:                   form.toeic === true,
           toeic_monto:             form.toeic ? form.toeicMonto : 0,
@@ -911,7 +911,7 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
 
   return (
     <div>
-      <SectionTitle>Disponibilidad</SectionTitle>
+      <SectionTitle>Disponibilidad pública</SectionTitle>
       <label style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20, cursor:'pointer', padding:'12px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:`2px solid ${form.disponibleInscripcion ? nivel.color : 'var(--line)'}` }}>
         <Toggle value={form.disponibleInscripcion} onChange={v => set('disponibleInscripcion', v)} color={nivel.color} />
         <div>

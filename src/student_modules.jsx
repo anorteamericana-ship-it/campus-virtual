@@ -432,10 +432,14 @@ function PagosContenido({ data }) {
   const nivelActivo = calcularNivelActivoSM(niveles);
   const nivelColor  = NIVEL_COLOR_SM[nivelActivo] || 'var(--an-granate)';
 
-  const totalPendientes =
-      (pendientes.matricula_pendiente ? 1 : 0)
-    + (pendientes.cuotas_pendientes || 0)
-    + (pendientes.certificado_pendiente ? 1 : 0);
+  // v4.15: campos reales del GS
+  const matPend    = (pendientes.matricula   || 0) > 0;
+  const certPend   = (pendientes.certificado || 0) > 0;
+  const cuotaMonto = pendientes.cuotas_pendiente || 0;
+  const cuotaMens  = pendientes.cuota_mensual    || 0;
+  const nCuotasPer = pendientes.n_cuotas_periodo || 4;
+  const cuotasPend = cuotaMens > 0 ? Math.round(cuotaMonto / cuotaMens) : (cuotaMonto > 0 ? 1 : 0);
+  const totalPendientes = (matPend ? 1 : 0) + cuotasPend + (certPend ? 1 : 0);
 
   const alDia = totalPendientes === 0;
 
@@ -494,31 +498,31 @@ function PagosContenido({ data }) {
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column' }}>
-            {pendientes.matricula_pendiente && (
+            {matPend && (
               <FilaConcepto
                 label="Matrícula"
                 sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
-                monto={fmt(pendientes.matricula_monto)}
+                monto={fmt(pendientes.matricula)}
                 fecha={pendientes.matricula_vence || ''}
                 color={nivelColor}
                 accent="warn"
               />
             )}
-            {pendientes.cuotas_pendientes > 0 && (
+            {cuotasPend > 0 && (
               <FilaConcepto
-                label={`${pendientes.cuotas_pendientes} cuota${pendientes.cuotas_pendientes>1?'s':''} mensual${pendientes.cuotas_pendientes>1?'es':''}`}
+                label={`${cuotasPend} cuota${cuotasPend>1?'s':''} mensual${cuotasPend>1?'es':''}`}
                 sub={nivelActivo ? `Mensualidades de ${NIVEL_NOMBRE_SM[nivelActivo]}` : 'Mensualidades'}
-                monto={fmt(pendientes.cuota_mensual != null ? pendientes.cuota_mensual * pendientes.cuotas_pendientes : null)}
+                monto={fmt(cuotaMens != null ? cuotaMens * cuotasPend : null)}
                 fecha={pendientes.cuota_vence || ''}
                 color={nivelColor}
                 accent="warn"
               />
             )}
-            {pendientes.certificado_pendiente && (
+            {certPend && (
               <FilaConcepto
                 label="Certificado del nivel"
                 sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
-                monto={fmt(pendientes.certificado_monto)}
+                monto={fmt(pendientes.certificado)}
                 fecha=""
                 color={nivelColor}
                 accent="neutral"
@@ -880,8 +884,33 @@ function PerfilContenido({ usr, data, onNavigate }) {
           <div className="card-h">
             <div className="card-title">Configuración</div>
           </div>
-          <div style={{ padding:'12px 0', fontSize:12, color:'var(--ink-3)' }}>
-            Las preferencias de notificaciones y datos de contacto se editan desde recepción por el momento.
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {[
+              { label:'Notificaciones por correo', sub:'Recordatorios y avisos académicos', key:'notif_email', disabled:true },
+              { label:'Recordatorios por WhatsApp', sub:'Avisos de clase y evaluaciones', key:'notif_wa', disabled:true },
+              { label:'Modo oscuro', sub:'Cambia la apariencia del campus', key:'dark_mode', disabled:false },
+            ].map((cfg, i, arr) => {
+              const [on, setOn] = React.useState(() => {
+                try { return localStorage.getItem('an_cfg_' + cfg.key) === '1'; } catch { return false; }
+              });
+              const toggle = () => {
+                if (cfg.disabled) return;
+                const next = !on;
+                setOn(next);
+                try { localStorage.setItem('an_cfg_' + cfg.key, next ? '1' : '0'); } catch {}
+              };
+              return (
+                <div key={cfg.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom: i < arr.length-1 ? '1px solid var(--line)' : 'none', opacity: cfg.disabled ? 0.5 : 1 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:600 }}>{cfg.label}</div>
+                    <div style={{ fontSize:11, color:'var(--ink-3)' }}>{cfg.disabled ? cfg.sub + ' — Próximamente' : cfg.sub}</div>
+                  </div>
+                  <div onClick={toggle} style={{ width:44, height:24, borderRadius:12, background: on ? 'var(--ok)' : 'var(--line-2)', cursor: cfg.disabled ? 'not-allowed' : 'pointer', position:'relative', transition:'background .2s', flexShrink:0 }}>
+                    <div style={{ position:'absolute', top:3, left: on ? 23 : 3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left .2s' }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -396,6 +396,10 @@ function Paso4AP({
       });
       const data = await res.json();
       if (!data.ok) { setErrLocal(data.error || 'Error al aplicar el pago'); return; }
+      // v4.15: mostrar si CONAPE se sincronizó
+      if (data.conape_sync === false) {
+        console.warn('CONAPE no sincronizado — tablas 4-7 requieren sync manual');
+      }
 
       // Actualizar saldo del comprobante localmente
       setComprobantes(prev => prev.map(c =>

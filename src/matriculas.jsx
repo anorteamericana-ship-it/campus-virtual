@@ -100,7 +100,36 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
   const [exitoRecibo, setExitoRecibo] = React.useState(null);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const grupoSel = [].find(g => g.code === form.grupoSelId);
+  // v4.16: cargar grupos disponibles desde Apps Script
+  const [grupos, setGrupos] = React.useState([]);
+  const [cargandoGrupos, setCargandoGrupos] = React.useState(true);
+  React.useEffect(() => {
+    const SCRIPT_URL_MAT = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+    fetch(`${SCRIPT_URL_MAT}?fn=getGruposDisponibles`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ok && Array.isArray(d.grupos)) {
+          // Mapear al formato que espera MStep2
+          setGrupos(d.grupos.map(g => ({
+            code:     g.code,
+            level:    g.nivel,
+            schedule: g.schedule,
+            docente:  g.docente,
+            students: g.inscritos,
+            cap:      g.capacidad,
+            programa: g.programa,
+            status:   g.cupoDisp > 0 ? 'activo' : 'lleno',
+            precio_cuota:       g.precio_cuota       || 0,
+            precio_matricula:   g.precio_matricula   || 0,
+            precio_certificado: g.precio_certificado || 0,
+          })));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCargandoGrupos(false));
+  }, []);
+
+  const grupoSel = grupos.find(g => g.code === form.grupoSelId);
   const nivelMeta = NIVEL_META_M[form.nivelId] || NIVEL_META_M.b1;
   const accentColor = nivelMeta.color;
 
@@ -251,7 +280,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
           {/* Main content */}
           <div style={{ overflowY:'auto', padding:'26px 32px' }}>
             {step===1 && <MStep1 form={form} set={set} errors={errors} accentColor={accentColor} />}
-            {step===2 && <MStep2 form={form} set={set} errors={errors} accentColor={accentColor} grupoPresel={grupoPresel} />}
+            {step===2 && <MStep2 form={form} set={set} errors={errors} accentColor={accentColor} grupoPresel={grupoPresel} grupos={grupos} cargandoGrupos={cargandoGrupos} />}
             {step===3 && <MStep3 form={form} set={set} errors={errors} accentColor={accentColor} nivelMeta={nivelMeta} />}
             {step===4 && <MStep4 form={form} set={set} errors={errors} accentColor={accentColor} />}
             {step===5 && <MStep5 form={form} set={set} errors={errors} accentColor={accentColor} nivelMeta={nivelMeta} />}
@@ -429,8 +458,8 @@ function MStep1({ form, set, errors, accentColor }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 2 — Grupo
 // ─────────────────────────────────────────────────────────────────────────
-function MStep2({ form, set, errors, accentColor, grupoPresel }) {
-  const grupos = [].filter(g => g.status==='activo' || g.status==='lleno' ? g.students < g.cap : true);
+function MStep2({ form, set, errors, accentColor, grupoPresel, grupos, cargandoGrupos }) {
+  const gruposFiltrados = (grupos || []).filter(g => g.status !== 'lleno' || g.students < g.cap);
 
   return (
     <div>
@@ -440,14 +469,31 @@ function MStep2({ form, set, errors, accentColor, grupoPresel }) {
           ✓ Grupo preseleccionado: <strong>{grupoPresel}</strong> — podés cambiarlo si es necesario.
         </div>
       )}
+      {cargandoGrupos && (
+        <div style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
+          Cargando grupos disponibles…
+        </div>
+      )}
+      {!cargandoGrupos && gruposFiltrados.length === 0 && (
+        <div style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
+          No hay grupos disponibles en este momento. Contactá a la academia.
+        </div>
+      )}
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {[].map(g => {
+        {gruposFiltrados.map(g => {
           const pct = (g.students/g.cap)*100;
           const lleno = g.students >= g.cap;
           const sel = form.grupoSelId === g.code;
           const levelColor = g.level.includes('Básico I')?'#E5A823':g.level.includes('Básico II')?'#E8372A':g.level.includes('Intermedio I')?'#2B7FC1':'#4CAF50';
           return (
-            <button key={g.code} onClick={() => !lleno && set('grupoSelId', g.code)} disabled={lleno} style={{
+            <button key={g.code} onClick={() => {
+              if (lleno) return;
+              set('grupoSelId', g.code);
+              // Autocompletar precios desde el grupo seleccionado
+              if (g.precio_cuota)       set('cuota',      g.precio_cuota);
+              if (g.precio_matricula)   set('matricula',  g.precio_matricula);
+              if (g.precio_certificado) set('certificado', g.precio_certificado);
+            }} disabled={lleno} style={{
               display:'grid', gridTemplateColumns:'auto 1fr auto', gap:16, alignItems:'center',
               padding:'14px 16px', borderRadius:'var(--r-md)', textAlign:'left', cursor: lleno?'not-allowed':'pointer',
               border:`2px solid ${sel ? accentColor : 'var(--line)'}`,
