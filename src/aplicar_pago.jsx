@@ -135,7 +135,14 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
       const data = await res.json();
       if (!data.ok) { setErrLocal(data.error || 'Estudiante no encontrado'); return; }
       setEstSel(data.estudiante);
-      setEstData({ niveles: data.niveles || {}, pagos: data.pagos || [], otrosPagos: data.otrosPagos || [], grupo: data.grupo || '', grupo_tipo: data.grupo_tipo || '', pendientes: data.pendientes || {} });
+      setEstData({
+        niveles:    data.niveles    || {},
+        pagos:      data.pagos      || [],
+        otrosPagos: data.otrosPagos || [],
+        grupo:      data.cod_grupo || String(data.grupo?.CODIGO_GRUPO || data.grupo || ''),
+        grupo_tipo: data.grupo_tipo || '',
+        pendientes: data.pendientes || {},
+      });
       setError('');
       setPaso(2);
     } catch(e) {
