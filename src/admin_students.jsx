@@ -528,9 +528,9 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const nombre    = e.display || e.nombre || '—';
               const convenio  = e.convenio || '';
               const estatus   = e.estatus || e.status_actual || 'PE';
-              // Mora: render estricto sobre el boolean del backend.
-              // Solo se muestra "SI" cuando e.mora === true (no truthy, no string "SI", no morosidad).
-              const mora = e.mora === true;
+              // Mora: viene del backend ya calculada. No filtrar por hayActividad/estatus.
+              // Fallback a `morosidad` solo si el backend no envía `mora`.
+              const mora = typeof e.mora !== 'undefined' ? !!e.mora : (e.morosidad === 'SI' || e.morosidad === true);
               const matricula    = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
               const cuotasPagadas = typeof e.cuotas_pagadas === 'number' ? e.cuotas_pagadas : null;
               const cuotasEsperadas = e.cuotas_esperadas || 4;
