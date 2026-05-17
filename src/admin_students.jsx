@@ -404,8 +404,10 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
   const lecDadas        = Number(periodo?.lecciones_dadas ?? 0);
   const lecTotal        = Number(periodo?.lecciones_total ?? 0);
   const examenes        = Array.isArray(periodo?.examenes) ? periodo.examenes : [];
-  const mostrarLec      = lecTotal > 0;
-  const mostrarExamenes = examenes.length > 0;
+  // Niveles proyectados no deben mostrar lecciones ni exámenes — aún no inició el calendario.
+  const esProyectado    = periodoEstado === 'Proyectado';
+  const mostrarLec      = !esProyectado && lecTotal > 0;
+  const mostrarExamenes = !esProyectado && examenes.length > 0;
   const aprobados = estudiantes.filter(e => e.estatus === 'APR' || e.estatus === 'CNV').length;
   const todosAprobados = estudiantes.every(e => e.estatus === 'APR');
   const [abierto, setAbierto] = React.useState(!todosAprobados);
@@ -769,12 +771,6 @@ function AdminEstudiantesView({ onNavigate }) {
               <div style={{ fontSize:10, opacity:0.7, letterSpacing:'0.1em', textTransform:'uppercase' }}>Estudiantes</div>
               <div style={{ fontWeight:700, fontSize:20, marginTop:1, fontFamily:'var(--f-serif, Fraunces, serif)', letterSpacing:'-0.02em' }}>
                 {grupoInfo.estudiantes ?? grupoInfo.students ?? 0}
-              </div>
-            </div>
-            <div style={{ textAlign:'center', minWidth:90 }}>
-              <div style={{ fontSize:10, opacity:0.7, letterSpacing:'0.1em', textTransform:'uppercase' }}>Lección</div>
-              <div style={{ fontWeight:700, fontSize:20, marginTop:1, fontFamily:'var(--f-serif, Fraunces, serif)', letterSpacing:'-0.02em' }}>
-                {leccionActual}<span style={{ fontSize:13, opacity:0.6 }}>/32</span>
               </div>
             </div>
           </div>
