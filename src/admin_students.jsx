@@ -285,8 +285,8 @@ function ExamenChip({ examen }) {
   };
   const baseEmpty = {
     background: 'transparent',
-    color: 'rgba(255,255,255,0.45)',
-    border: '1px solid rgba(255,255,255,0.30)',
+    color: 'rgba(255,255,255,0.40)',
+    border: '1px solid rgba(255,255,255,0.25)',
   };
   const sharedChip = {
     display: 'inline-flex',
