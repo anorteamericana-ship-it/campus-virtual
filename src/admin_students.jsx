@@ -528,11 +528,9 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const nombre    = e.display || e.nombre || '—';
               const convenio  = e.convenio || '';
               const estatus   = e.estatus || e.status_actual || 'PE';
-              // v4.16: solo hay mora si hay lecciones dadas Y no hay pagos
-              // Si cuotas_pagadas === 0 pero el nivel acaba de empezar (sin lecciones), no es mora
-              const hayActividad = (e.cuotas_pagadas || 0) > 0 || (e.matricula_pagada === true);
-              const moraBruta    = typeof e.mora !== 'undefined' ? e.mora : (e.morosidad === 'SI' || e.morosidad === true);
-              const mora         = moraBruta && (hayActividad || e.estatus === 'APR' || e.estatus === 'REP');
+              // Mora: render estricto sobre el boolean del backend.
+              // Solo se muestra "SI" cuando e.mora === true (no truthy, no string "SI", no morosidad).
+              const mora = e.mora === true;
               const matricula    = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
               const cuotasPagadas = typeof e.cuotas_pagadas === 'number' ? e.cuotas_pagadas : null;
               const cuotasEsperadas = e.cuotas_esperadas || 4;
@@ -568,7 +566,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                     {estatus === 'PE' ? (
                       <span style={{ color:'var(--ink-3, #BBB)', fontSize:13 }}>—</span>
                     ) : (
-                      <span style={{ color: mora ? 'var(--err, #C62828)' : 'var(--ok, #2E7D32)', fontWeight:800, fontSize:11, letterSpacing:'0.04em' }}>
+                      <span style={{ color: mora ? '#D32F2F' : '#2E7D32', fontWeight:700, fontSize:11, letterSpacing:'0.04em' }}>
                         {mora ? 'SI' : 'NO'}
                       </span>
                     )}
@@ -649,6 +647,47 @@ function AdminEstudiantesView({ onNavigate }) {
   const [certEstado, setCertEstado] = React.useState(null);
   // { loading: true } | { ok, registro, nombre, url, error }
 
+  // Rol del usuario activo — solo admin/superadmin ven el botón Sync CONAPE.
+  const rolUsuario = React.useMemo(() => {
+    try { return (JSON.parse(sessionStorage.getItem('an_usuario') || 'null') || {}).rol || null; }
+    catch { return null; }
+  }, []);
+  const esAdmin = rolUsuario === 'admin' || rolUsuario === 'superadmin';
+
+  // Sincronización CONAPE por grupo
+  const [syncConape, setSyncConape] = React.useState({ loading: false });
+  const [toast, setToast] = React.useState(null); // { tipo:'ok'|'err', msg }
+
+  React.useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleSyncConape = async () => {
+    if (!grupoSel || syncConape.loading) return;
+    setSyncConape({ loading: true });
+    setToast(null);
+    try {
+      const resp = await fetch(SCRIPT_URL_AS, {
+        method: 'POST',
+        body: new URLSearchParams({ fn: 'sincronizarCONAPE_grupo', cod_grupo: grupoSel }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        const n = data.actualizados ?? data.estudiantes ?? data.count ?? 0;
+        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'}` });
+        setRefreshKey(k => k + 1);
+      } else {
+        setToast({ tipo: 'err', msg: data.error || 'Error al sincronizar CONAPE' });
+      }
+    } catch (e) {
+      setToast({ tipo: 'err', msg: 'Error de conexión: ' + (e.message || e) });
+    } finally {
+      setSyncConape({ loading: false });
+    }
+  };
+
   const handleGenerarCertificado = async (est, nivel) => {
     setCertEstado({ loading: true, codigo: est.codigo, nivel });
     try {
@@ -722,6 +761,7 @@ function AdminEstudiantesView({ onNavigate }) {
 
   return (
     <div style={{ padding: 24 }}>
+      <style>{`@keyframes an-spin { to { transform: rotate(360deg); } }`}</style>
       <PageHeader
         kicker="Administración"
         title={<>Grupos <em>activos</em></>}
@@ -773,6 +813,32 @@ function AdminEstudiantesView({ onNavigate }) {
                 {grupoInfo.estudiantes ?? grupoInfo.students ?? 0}
               </div>
             </div>
+            {esAdmin && (
+              <button
+                onClick={handleSyncConape}
+                disabled={syncConape.loading}
+                title="Sincronizar estudiantes CONAPE de este grupo"
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  padding:'7px 12px', borderRadius:6,
+                  background: syncConape.loading ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
+                  border:'1px solid rgba(255,255,255,0.25)',
+                  color:'white', fontSize:11, fontWeight:700,
+                  letterSpacing:'0.04em', textTransform:'uppercase',
+                  cursor: syncConape.loading ? 'wait' : 'pointer',
+                  whiteSpace:'nowrap', flexShrink:0,
+                  transition:'background .15s',
+                }}
+              >
+                <span
+                  style={{
+                    display:'inline-block', fontSize:13, lineHeight:1,
+                    animation: syncConape.loading ? 'an-spin 0.9s linear infinite' : 'none',
+                  }}
+                >↻</span>
+                {syncConape.loading ? 'Sincronizando…' : 'Sync CONAPE'}
+              </button>
+            )}
           </div>
 
           {/* Secciones por nivel */}
@@ -812,6 +878,24 @@ function AdminEstudiantesView({ onNavigate }) {
           onClose={() => setEstudiantePanelAbierto(null)}
           onNavigate={onNavigate}
         />
+      )}
+
+      {toast && (
+        <div style={{
+          position:'fixed', bottom: certEstado ? 110 : 24, right:24, zIndex:1000,
+          background: toast.tipo === 'ok' ? '#2E7D32' : '#C62828',
+          color:'white', padding:'12px 18px', borderRadius:10,
+          boxShadow:'0 4px 20px rgba(0,0,0,0.25)', maxWidth:380,
+          fontSize:13, fontWeight:600, lineHeight:1.4,
+          display:'flex', alignItems:'center', gap:10,
+        }}>
+          <span style={{ fontSize:16 }}>{toast.tipo === 'ok' ? '✓' : '⚠'}</span>
+          <span style={{ flex:1 }}>{toast.msg}</span>
+          <button
+            onClick={() => setToast(null)}
+            style={{ background:'transparent', border:'none', color:'white', cursor:'pointer', fontSize:18, lineHeight:1, opacity:0.85, padding:0 }}
+          >×</button>
+        </div>
       )}
 
       {certEstado && (
