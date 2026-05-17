@@ -275,17 +275,18 @@ function ExamenChip({ examen }) {
   const hecho = !!examen.hecho;
 
   // Estilos base — el chip vive sobre el fondo de color del nivel.
-  // Hecho → pill blanco sólido con texto del color del nivel.
-  // Pendiente → outline blanco translúcido.
+  // Hecho      → pill blanco sólido, texto negro #111, ✓ verde antes del label.
+  // Pendiente  → transparente total, texto blanco 50%, borde blanco 30%.
+  // Buscamos un contraste claramente perceptible entre los dos estados.
   const baseFilled = {
-    background: 'rgba(255,255,255,0.96)',
-    color: 'inherit',          // hereda el color del nivel via prop CSS
-    border: '1px solid rgba(255,255,255,0.96)',
+    background: '#FFFFFF',
+    color: '#111111',
+    border: '1px solid #FFFFFF',
   };
   const baseEmpty = {
     background: 'transparent',
-    color: 'rgba(255,255,255,0.92)',
-    border: '1px solid rgba(255,255,255,0.45)',
+    color: 'rgba(255,255,255,0.50)',
+    border: '1px solid rgba(255,255,255,0.30)',
   };
   const sharedChip = {
     display: 'inline-flex',
@@ -300,15 +301,20 @@ function ExamenChip({ examen }) {
     lineHeight: '14px',
     whiteSpace: 'nowrap',
   };
+  const checkMark = (
+    <span style={{ fontSize: 10, lineHeight: 1, color: '#22C55E', fontWeight: 900 }}>✓</span>
+  );
 
-  // Variantes especiales INA
+  // Variantes especiales INA — mismo criterio binario: dadas > 0 cuenta como hecho.
   if (tipo === 'ICAN' || tipo === 'PROGRESS') {
     const label = tipo === 'ICAN' ? 'I CAN' : 'PC';
     const dadas = examen.dadas ?? 0;
     const total = examen.total ?? 0;
-    const style = hecho || dadas > 0 ? baseFilled : baseEmpty;
+    const esHecho = hecho || dadas > 0;
+    const style = esHecho ? baseFilled : baseEmpty;
     return (
       <span style={{ ...sharedChip, ...style }} title={`${label} ${dadas}/${total}`}>
+        {esHecho && checkMark}
         {label} {dadas}/{total}
       </span>
     );
@@ -318,7 +324,7 @@ function ExamenChip({ examen }) {
   const style = hecho ? baseFilled : baseEmpty;
   return (
     <span style={{ ...sharedChip, ...style }} title={hecho ? `${label} hecho` : `${label} pendiente`}>
-      {hecho && <span style={{ fontSize: 9, lineHeight: 1 }}>✓</span>}
+      {hecho && checkMark}
       {label}
     </span>
   );
@@ -326,29 +332,50 @@ function ExamenChip({ examen }) {
 
 function LeccionesChip({ dadas, total }) {
   if (!total) return null;
-  const completo = dadas >= total;
-  const pct = total > 0 ? dadas / total : 0;
-  // En verde si completo, amarillo claro si avanza, blanco-suave si recién empieza.
-  const color = completo
-    ? '#C6F6C8'
-    : pct >= 0.5
-      ? 'rgba(255,255,255,0.96)'
-      : 'rgba(255,255,255,0.78)';
+  const sinAvance = dadas === 0;
+  const completo  = dadas >= total;
+
+  // Tres estados claros: pendiente, en curso, completo.
+  let chipStyle;
+  let icono;
+  if (sinAvance) {
+    chipStyle = {
+      background: 'transparent',
+      color: 'rgba(255,255,255,0.50)',
+      border: '1px solid rgba(255,255,255,0.30)',
+    };
+    icono = <span style={{ fontSize: 10, lineHeight: 1 }}>📋</span>;
+  } else if (completo) {
+    chipStyle = {
+      background: '#FFFFFF',
+      color: '#111111',
+      border: '1px solid #FFFFFF',
+    };
+    icono = <span style={{ fontSize: 10, lineHeight: 1, color: '#22C55E', fontWeight: 900 }}>✓</span>;
+  } else {
+    chipStyle = {
+      background: 'rgba(255,255,255,0.90)',
+      color: '#333333',
+      border: '1px solid rgba(255,255,255,0.90)',
+    };
+    icono = <span style={{ fontSize: 10, lineHeight: 1 }}>📋</span>;
+  }
+
   return (
     <span
       title={`Lecciones dadas: ${dadas} de ${total}`}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
-        fontSize: 11, fontWeight: 700, color,
+        padding: '1px 8px', borderRadius: 4,
+        fontSize: 11, fontWeight: 700,
         fontFamily: 'var(--f-mono, monospace)',
         letterSpacing: '0.02em',
         whiteSpace: 'nowrap',
         lineHeight: '14px',
+        ...chipStyle,
       }}
     >
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-        <path d="M2.5 3.2c0-.4.3-.7.7-.7H7c.8 0 1.5.7 1.5 1.5v9.5c0-.6-.5-1-1-1H3.2c-.4 0-.7-.3-.7-.7V3.2zM13.5 3.2c0-.4-.3-.7-.7-.7H9c-.8 0-1.5.7-1.5 1.5v9.5c0-.6.5-1 1-1h4.3c.4 0 .7-.3.7-.7V3.2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      </svg>
+      {icono}
       {dadas}/{total} clases
     </span>
   );
