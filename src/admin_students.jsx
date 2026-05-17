@@ -263,6 +263,98 @@ function calcularSubtitulo(estudiantes) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// HEADER DE NIVEL — chips de exámenes y contador de lecciones
+// ─────────────────────────────────────────────────────────────────────────
+const EXAMEN_LABEL = {
+  ORAL_1: 'O1', ORAL_2: 'O2', ORAL_3: 'O3', ORAL_4: 'O4',
+  ESCRITO_1: 'E1', ESCRITO_2: 'E2',
+};
+
+function ExamenChip({ examen }) {
+  const tipo = examen.tipo;
+  const hecho = !!examen.hecho;
+
+  // Estilos base — el chip vive sobre el fondo de color del nivel.
+  // Hecho → pill blanco sólido con texto del color del nivel.
+  // Pendiente → outline blanco translúcido.
+  const baseFilled = {
+    background: 'rgba(255,255,255,0.96)',
+    color: 'inherit',          // hereda el color del nivel via prop CSS
+    border: '1px solid rgba(255,255,255,0.96)',
+  };
+  const baseEmpty = {
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.92)',
+    border: '1px solid rgba(255,255,255,0.45)',
+  };
+  const sharedChip = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 3,
+    padding: '1px 7px',
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: '0.04em',
+    fontFamily: 'var(--f-mono, monospace)',
+    lineHeight: '14px',
+    whiteSpace: 'nowrap',
+  };
+
+  // Variantes especiales INA
+  if (tipo === 'ICAN' || tipo === 'PROGRESS') {
+    const label = tipo === 'ICAN' ? 'I CAN' : 'PC';
+    const dadas = examen.dadas ?? 0;
+    const total = examen.total ?? 0;
+    const style = hecho || dadas > 0 ? baseFilled : baseEmpty;
+    return (
+      <span style={{ ...sharedChip, ...style }} title={`${label} ${dadas}/${total}`}>
+        {label} {dadas}/{total}
+      </span>
+    );
+  }
+
+  const label = EXAMEN_LABEL[tipo] || tipo;
+  const style = hecho ? baseFilled : baseEmpty;
+  return (
+    <span style={{ ...sharedChip, ...style }} title={hecho ? `${label} hecho` : `${label} pendiente`}>
+      {hecho && <span style={{ fontSize: 9, lineHeight: 1 }}>✓</span>}
+      {label}
+    </span>
+  );
+}
+
+function LeccionesChip({ dadas, total }) {
+  if (!total) return null;
+  const completo = dadas >= total;
+  const pct = total > 0 ? dadas / total : 0;
+  // En verde si completo, amarillo claro si avanza, blanco-suave si recién empieza.
+  const color = completo
+    ? '#C6F6C8'
+    : pct >= 0.5
+      ? 'rgba(255,255,255,0.96)'
+      : 'rgba(255,255,255,0.78)';
+  return (
+    <span
+      title={`Lecciones dadas: ${dadas} de ${total}`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: 11, fontWeight: 700, color,
+        fontFamily: 'var(--f-mono, monospace)',
+        letterSpacing: '0.02em',
+        whiteSpace: 'nowrap',
+        lineHeight: '14px',
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <path d="M2.5 3.2c0-.4.3-.7.7-.7H7c.8 0 1.5.7 1.5 1.5v9.5c0-.6-.5-1-1-1H3.2c-.4 0-.7-.3-.7-.7V3.2zM13.5 3.2c0-.4-.3-.7-.7-.7H9c-.8 0-1.5.7-1.5 1.5v9.5c0-.6.5-1 1-1h4.3c.4 0 .7-.3.7-.7V3.2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      </svg>
+      {dadas}/{total} clases
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // TABLA DE NIVEL
 // ─────────────────────────────────────────────────────────────────────────
 function rowBg(estatus, idx) {
@@ -273,11 +365,20 @@ function rowBg(estatus, idx) {
   return idx%2===0 ? 'white' : 'var(--surface, #FAFAF7)';
 }
 
-function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila }) {
+function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
   if (!estudiantes.length) return null;
   const subtitulo = calcularSubtitulo(estudiantes);
+
+  // Datos de calendario (período / lecciones / exámenes) — vienen del backend en data.grupo.periodos[niv]
+  const periodoTexto    = periodo?.texto || '';
+  const periodoEstado   = periodo?.estado || subtitulo || '';
+  const lecDadas        = Number(periodo?.lecciones_dadas ?? 0);
+  const lecTotal        = Number(periodo?.lecciones_total ?? 0);
+  const examenes        = Array.isArray(periodo?.examenes) ? periodo.examenes : [];
+  const mostrarLec      = lecTotal > 0;
+  const mostrarExamenes = examenes.length > 0;
   const aprobados = estudiantes.filter(e => e.estatus === 'APR' || e.estatus === 'CNV').length;
   const todosAprobados = estudiantes.every(e => e.estatus === 'APR');
   const [abierto, setAbierto] = React.useState(!todosAprobados);
@@ -296,6 +397,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort,
           cursor: 'pointer', userSelect: 'none',
         }}
       >
+        {/* Fila principal — info base del nivel */}
         <span style={{ fontWeight: 800, fontSize: 14, letterSpacing:'0.02em', textTransform:'uppercase' }}>{cfg.nombre}</span>
         <span style={{ fontSize: 12, opacity: 0.9 }}>
           {estudiantes.length} estudiante{estudiantes.length === 1 ? '' : 's'}
@@ -305,12 +407,56 @@ function TablaEstudiantes({ estudiantes, nivelKey, sortCol, sortDir, toggleSort,
             ✓ {aprobados} aprobados
           </span>
         )}
-        {subtitulo && (
-          <span style={{ marginLeft:'auto', fontSize:11, fontWeight:600, opacity:0.92, background:'rgba(255,255,255,0.18)', padding:'3px 10px', borderRadius:999, letterSpacing:'0.02em' }}>
-            {subtitulo}
-          </span>
-        )}
-        <span style={{ fontSize:11, marginLeft: subtitulo ? 4 : 'auto', opacity:0.85 }}>{abierto ? '▲' : '▼'}</span>
+
+        {/* Cluster derecho — período, estado, lecciones, exámenes. Wrap a 2da línea
+            si no caben; cada item se mantiene compacto (~22px de alto cada fila). */}
+        <div style={{
+          marginLeft: 'auto',
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+          gap: '6px 10px',
+          justifyContent: 'flex-end',
+          // El chevron va aparte; este cluster cubre todo lo demás.
+          minWidth: 0,
+          // color del nivel disponible para los chips "hecho" (que heredan currentColor cuando se rellenan)
+          color: cfg.color,
+        }}>
+          {periodoTexto && (
+            <span style={{
+              fontSize:11, fontWeight:700, color:'white',
+              background:'rgba(255,255,255,0.18)',
+              padding:'2px 10px', borderRadius:999,
+              letterSpacing:'0.02em', whiteSpace:'nowrap',
+              fontFamily:'var(--f-mono, monospace)',
+            }}>
+              {periodoTexto}
+            </span>
+          )}
+          {periodoEstado && (
+            <span style={{
+              fontSize:10, fontWeight:800, color:'white',
+              background:'rgba(0,0,0,0.18)',
+              padding:'2px 8px', borderRadius:4,
+              letterSpacing:'0.06em', textTransform:'uppercase', whiteSpace:'nowrap',
+            }}>
+              {periodoEstado}
+            </span>
+          )}
+          {mostrarLec && (
+            <LeccionesChip dadas={lecDadas} total={lecTotal} />
+          )}
+          {mostrarExamenes && (
+            <span style={{
+              display:'inline-flex', alignItems:'center', flexWrap:'wrap',
+              gap:4,
+            }}>
+              {examenes.map((ex, i) => (
+                <ExamenChip key={(ex.tipo || 'ex') + '-' + i} examen={ex} />
+              ))}
+            </span>
+          )}
+        </div>
+
+        <span style={{ fontSize:11, marginLeft: 4, opacity:0.85, flexShrink:0 }}>{abierto ? '▲' : '▼'}</span>
       </div>
       {/* Tabla */}
       {abierto && (
@@ -621,6 +767,8 @@ function AdminEstudiantesView({ onNavigate }) {
                 key={s.nivel}
                 estudiantes={s.estudiantes}
                 nivelKey={s.nivel}
+                periodo={data?.grupo?.periodos?.[s.nivel]}
+                programa={data?.grupo?.programa}
                 sortCol={sortCol}
                 sortDir={sortDir}
                 toggleSort={toggleSort}

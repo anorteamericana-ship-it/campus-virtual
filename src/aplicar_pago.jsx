@@ -174,7 +174,7 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 2 — Seleccionar nivel (componente independiente)
 // ─────────────────────────────────────────────────────────────────────────
-function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso }) {
+function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros }) {
   const niveles    = estData?.niveles  || {};
   const pendientes = estData?.pendientes || {};
   const grupo      = estData?.grupo    || '';
@@ -191,6 +191,9 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso }) {
     if (!desbloq[niv]) return;
     setNivelSel(niv);
     setError('');
+    // T-fix-stepper: al cambiar de nivel hay que limpiar los contadores del paso 4,
+    // si no, los valores del nivel anterior persisten en pantalla cuando se llega ahí.
+    if (resetRubros) resetRubros();
     setPaso(3);
   };
 
@@ -377,10 +380,14 @@ function Paso4AP({
     setCargandoApl(true);
     setErrLocal('');
     try {
+      // est.GRUPO viene de la hoja DATOS y corresponde al grupo ORIGINAL de matrícula
+      // (siempre B1). Para escribir el grupo correcto del nivel seleccionado en
+      // OTROS_PAGOS y PAGOS usamos estData.grupo que llega de getEstudiante.
+      const grupoActual = estData?.grupo || '';
       const rubros = [
-        { tipo:'MATRICULA',   nivel:niv, monto:qMat*montoMat,     grupo: est?.GRUPO || '' },
-        { tipo:'CUOTA',       nivel:niv, monto:qCuota*montoCuota, grupo: est?.GRUPO || '' },
-        { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: est?.GRUPO || '' },
+        { tipo:'MATRICULA',   nivel:niv, monto:qMat*montoMat,     grupo: grupoActual },
+        { tipo:'CUOTA',       nivel:niv, monto:qCuota*montoCuota, grupo: grupoActual },
+        { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: grupoActual },
       ].filter(r => r.monto > 0);
 
       const body = {
@@ -396,8 +403,10 @@ function Paso4AP({
       });
       const data = await res.json();
       if (!data.ok) { setErrLocal(data.error || 'Error al aplicar el pago'); return; }
-      // v4.15: mostrar si CONAPE se sincronizó
-      if (data.conape_sync === false) {
+      // v4.15: si CONAPE no se sincronizó lo dejamos en la consola — y además lo
+      // pasamos a la pantalla de confirmación para que el admin lo vea.
+      const conapeSyncFallo = data.conape_sync === false;
+      if (conapeSyncFallo) {
         console.warn('CONAPE no sincronizado — tablas 4-7 requieren sync manual');
       }
 
@@ -412,6 +421,7 @@ function Paso4AP({
         recibos:        data.recibos || [],
         monto:          total,
         saldoRestante:  data.saldo_restante ?? (saldo - total),
+        conapeSyncFallo,
       });
     } catch(e) {
       setErrLocal('Error de conexión: ' + e.message);
@@ -441,6 +451,22 @@ function Paso4AP({
             </div>
           )}
         </div>
+        {confirmado.conapeSyncFallo && (
+          <div style={{
+            padding:'12px 16px', marginBottom:16,
+            background:'color-mix(in srgb,#E59500 12%,white)',
+            border:'1px solid #E59500',
+            borderRadius:'var(--r-md)',
+            color:'#8A4B00', fontSize:13, fontWeight:600,
+            textAlign:'left', display:'flex', gap:10, alignItems:'flex-start',
+          }}>
+            <span style={{ fontSize:16, lineHeight:1 }}>⚠</span>
+            <span>
+              CONAPE no pudo sincronizarse automáticamente. El pago se aplicó correctamente,
+              pero deberás verificar el estado en la sección <strong>CONAPE</strong>.
+            </span>
+          </div>
+        )}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
           <button onClick={reiniciar} className="btn btn-ghost" style={{ padding:14 }}>Nuevo pago</button>
           <button onClick={()=>{ setConfirmado(null); setTotalAplicarPanel(0); setPaso(3); }} className="btn btn-primary" style={{ background:'var(--an-granate)', borderColor:'var(--an-granate)', padding:14 }}>
@@ -453,7 +479,19 @@ function Paso4AP({
 
   return (
     <div>
-      <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, marginBottom:6, color:'var(--an-navy-ink)' }}>Configurar pago</div>
+      <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:14 }}>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--an-navy-ink)' }}>Configurar pago</div>
+        {niv && (
+          <span style={{
+            padding:'4px 12px', borderRadius:999,
+            background: NIVEL_COLOR_A[niv] || 'var(--an-navy)',
+            color:'white', fontSize:12, fontWeight:700,
+            letterSpacing:'0.02em', whiteSpace:'nowrap',
+          }}>
+            {NIVEL_LABEL_A[niv] || niv}
+          </span>
+        )}
+      </div>
 
       {/* Comprobante seleccionado */}
       <div style={{ padding:'12px 16px', background:'color-mix(in srgb,#2E7D32 6%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md)', marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -571,11 +609,17 @@ function AplicarPago() {
     setQMat(0); setQCuota(0); setQCert(0);
   };
 
+  // T-fix-stepper: al volver del paso 4 al 3 los contadores deben quedar en 0
+  // para que cuando se vuelva a entrar al paso 4 no aparezcan los valores viejos.
+  const resetRubros = () => {
+    setQMat(0); setQCuota(0); setQCert(0); setTotalAplicarPanel(0);
+  };
+
   const handlePrev = () => {
     setError('');
     if (paso === 2) { setPaso(1); setNivelSel(null); }
     else if (paso === 3) { setPaso(2); setComprSel(null); }
-    else if (paso === 4) { setPaso(3); setConfirmado(null); }
+    else if (paso === 4) { setPaso(3); setConfirmado(null); resetRubros(); }
   };
 
 
@@ -617,6 +661,7 @@ function AplicarPago() {
               setNivelSel={setNivelSel}
               setError={setError}
               setPaso={setPaso}
+              resetRubros={resetRubros}
             />
           )}
           {paso===3 && (
