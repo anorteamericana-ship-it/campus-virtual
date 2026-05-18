@@ -10,6 +10,20 @@
 
 const SCRIPT_URL_AS = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 
+async function resincronizarEstudianteIndividual(codigo) {
+  // Llama sincronizarCONAPE_estudiante para un solo código.
+  // Devuelve { ok, mensaje, error }.
+  try {
+    const resp = await fetch(SCRIPT_URL_AS, {
+      method: 'POST',
+      body: new URLSearchParams({ fn: 'sincronizarCONAPE_estudiante', codigo: String(codigo) }),
+    });
+    return await resp.json();
+  } catch(e) {
+    return { ok: false, error: 'Error de conexión: ' + (e.message || e) };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // HOOKS
 // ─────────────────────────────────────────────────────────────────────────
@@ -47,19 +61,23 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
   const [nuevoEstatus, setNuevoEstatus] = React.useState(estudiante.estatus || 'CA');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [conapeFallo, setConapeFallo] = React.useState(false);
+  const [reintentando, setReintentando] = React.useState(false);
+  const [reintentoMsg, setReintentoMsg] = React.useState('');
 
   const estados = ['CA','APR','REP','CNV','RI','RJ','PE'];
+  const codigoEst = String(estudiante.codigo || estudiante.rec_m || '');
 
   async function handleGuardar() {
     if (!nuevoEstatus || nuevoEstatus === estudiante.estatus) { onClose(); return; }
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setConapeFallo(false); setReintentoMsg('');
     try {
       const resp = await fetch(SCRIPT_URL_AS, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           fn: 'actualizarEstatus',
-          cod_estudiante: String(estudiante.codigo || estudiante.rec_m || ''),
+          cod_estudiante: codigoEst,
           nivel,
           estatus: nuevoEstatus,
           nota: estudiante.nota || null,
@@ -67,15 +85,43 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
         })
       });
       const data = await resp.json();
-      if (data.ok) { onSuccess(); onClose(); }
-      else setError(data.error || 'Error al actualizar');
-    } catch(e) { setError('Error de conexión'); }
-    finally { setLoading(false); }
+      if (!data.ok) {
+        setError(data.error || 'Error al actualizar');
+        return;
+      }
+      if (data.conape_sync === false) {
+        setConapeFallo(true);
+      } else {
+        onSuccess();
+        onClose();
+      }
+    } catch(e) {
+      setError('Error de conexión');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleReintentarSync() {
+    setReintentando(true); setReintentoMsg('');
+    const r = await resincronizarEstudianteIndividual(codigoEst);
+    setReintentando(false);
+    if (r.ok) {
+      setReintentoMsg('✓ CONAPE sincronizado');
+      setTimeout(() => { onSuccess(); onClose(); }, 900);
+    } else {
+      setReintentoMsg('⚠ ' + (r.error || 'No se pudo sincronizar'));
+    }
+  }
+
+  function handleCerrarConFallo() {
+    onSuccess();
+    onClose();
   }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ background:'white', borderRadius:12, padding:24, minWidth:320, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+      <div style={{ background:'white', borderRadius:12, padding:24, minWidth:340, maxWidth:440, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
         <div style={{ fontWeight:700, fontSize:15, marginBottom:16 }}>
           Cambiar estatus — {nivel}
         </div>
@@ -84,21 +130,60 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
         </div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:16 }}>
           {estados.map(s => (
-            <button key={s} onClick={() => setNuevoEstatus(s)} style={{
+            <button key={s} onClick={() => setNuevoEstatus(s)} disabled={conapeFallo} style={{
               padding:'6px 14px', borderRadius:6, border:'2px solid',
               borderColor: nuevoEstatus===s ? 'var(--brand, #14213D)' : 'var(--border, #ddd)',
               background: nuevoEstatus===s ? 'var(--brand, #14213D)' : 'white',
               color: nuevoEstatus===s ? 'white' : 'var(--text, #222)',
-              fontWeight:700, fontSize:12, cursor:'pointer'
+              fontWeight:700, fontSize:12,
+              cursor: conapeFallo ? 'not-allowed' : 'pointer',
+              opacity: conapeFallo ? 0.5 : 1,
             }}>{s}</button>
           ))}
         </div>
+
         {error && <div style={{ color:'var(--err, #C62828)', fontSize:12, marginBottom:8 }}>{error}</div>}
+
+        {conapeFallo && (
+          <div style={{
+            padding:'12px 14px', marginBottom:14, borderRadius:8,
+            background:'#FFF8E1', border:'1px solid #E59500',
+            color:'#7A4900', fontSize:12, lineHeight:1.5,
+          }}>
+            <div style={{ fontWeight:700, marginBottom:4, display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:14 }}>⚠</span>
+              <span>Estatus guardado en APOLLO, pero CONAPE no se sincronizó</span>
+            </div>
+            <div style={{ marginBottom: reintentoMsg ? 8 : 0 }}>
+              Las hojas 4-7 de CONAPE quedaron sin actualizar. Podés reintentar ahora o sincronizar después.
+            </div>
+            {reintentoMsg && (
+              <div style={{
+                fontWeight:600, marginTop:6,
+                color: reintentoMsg.startsWith('✓') ? '#2E7D32' : '#C62828',
+              }}>{reintentoMsg}</div>
+            )}
+          </div>
+        )}
+
         <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-          <button onClick={onClose} style={{ padding:'7px 16px', borderRadius:6, border:'1px solid var(--border, #ddd)', background:'white', cursor:'pointer' }}>Cancelar</button>
-          <button onClick={handleGuardar} disabled={loading} style={{ padding:'7px 16px', borderRadius:6, background:'var(--brand, #14213D)', color:'white', border:'none', fontWeight:700, cursor:'pointer' }}>
-            {loading ? 'Guardando...' : 'Guardar'}
-          </button>
+          {conapeFallo ? (
+            <>
+              <button onClick={handleCerrarConFallo} style={{ padding:'7px 16px', borderRadius:6, border:'1px solid var(--border, #ddd)', background:'white', cursor:'pointer', fontSize:12 }}>
+                Cerrar y dejar pendiente
+              </button>
+              <button onClick={handleReintentarSync} disabled={reintentando} style={{ padding:'7px 16px', borderRadius:6, background:'#E59500', color:'white', border:'none', fontWeight:700, cursor: reintentando ? 'wait' : 'pointer', fontSize:12 }}>
+                {reintentando ? 'Sincronizando…' : '↻ Reintentar sync'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onClose} style={{ padding:'7px 16px', borderRadius:6, border:'1px solid var(--border, #ddd)', background:'white', cursor:'pointer' }}>Cancelar</button>
+              <button onClick={handleGuardar} disabled={loading} style={{ padding:'7px 16px', borderRadius:6, background:'var(--brand, #14213D)', color:'white', border:'none', fontWeight:700, cursor:'pointer' }}>
+                {loading ? 'Guardando...' : 'Guardar'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -395,6 +480,8 @@ function rowBg(estatus, idx) {
 function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
+  const [resyncEst, setResyncEst] = React.useState(null);
+  // { codigo, loading, ok?, error? }
   if (!estudiantes.length) return null;
   const subtitulo = calcularSubtitulo(estudiantes);
 
@@ -608,6 +695,44 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                       ✏️
                     </button>
                     <button
+                      onClick={async () => {
+                        if (resyncEst?.loading) return;
+                        setResyncEst({ codigo, loading: true });
+                        const r = await resincronizarEstudianteIndividual(codigo);
+                        setResyncEst({ codigo, loading: false, ok: r.ok, error: r.error });
+                        setTimeout(() => setResyncEst(null), 3000);
+                      }}
+                      disabled={resyncEst?.codigo === codigo && resyncEst?.loading}
+                      title={
+                        resyncEst?.codigo === codigo && resyncEst.loading ? 'Sincronizando CONAPE…'
+                        : resyncEst?.codigo === codigo && resyncEst.ok ? 'CONAPE sincronizado'
+                        : resyncEst?.codigo === codigo && resyncEst.error ? ('Error: ' + resyncEst.error)
+                        : 'Resincronizar CONAPE individual'
+                      }
+                      style={{
+                        padding:'3px 8px', marginRight:4, borderRadius:4,
+                        border:'1px solid ' + (
+                          resyncEst?.codigo === codigo && resyncEst?.ok ? '#2E7D32' :
+                          resyncEst?.codigo === codigo && resyncEst?.error ? '#C62828' :
+                          'var(--border, #ddd)'
+                        ),
+                        fontSize:11,
+                        cursor: resyncEst?.codigo === codigo && resyncEst?.loading ? 'wait' : 'pointer',
+                        background:
+                          resyncEst?.codigo === codigo && resyncEst?.ok ? '#E8F5E9' :
+                          resyncEst?.codigo === codigo && resyncEst?.error ? '#FFEBEE' :
+                          'white',
+                      }}>
+                      <span style={{
+                        display:'inline-block',
+                        animation: resyncEst?.codigo === codigo && resyncEst?.loading ? 'an-spin 0.9s linear infinite' : 'none',
+                      }}>
+                        {resyncEst?.codigo === codigo && resyncEst?.ok ? '✓'
+                         : resyncEst?.codigo === codigo && resyncEst?.error ? '⚠'
+                         : '↻'}
+                      </span>
+                    </button>
+                    <button
                       onClick={() => abrirPago(e, nivelKey, onNavigate)}
                       title="Aplicar pago"
                       style={{ padding:'3px 8px', borderRadius:4, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white' }}>
@@ -675,7 +800,7 @@ function AdminEstudiantesView({ onNavigate }) {
       });
       const data = await resp.json();
       if (data.ok) {
-        const n = data.actualizados ?? data.estudiantes ?? data.count ?? 0;
+        const n = data.total ?? data.actualizados ?? data.estudiantes ?? data.count ?? 0;
         setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'}` });
         setRefreshKey(k => k + 1);
       } else {
