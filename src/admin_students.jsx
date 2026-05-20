@@ -461,7 +461,7 @@ function LeccionesChip({ dadas, total }) {
       }}
     >
       {icono}
-      {dadas}/{total} clases
+      {dadas}/{total} lecciones
     </span>
   );
 }
