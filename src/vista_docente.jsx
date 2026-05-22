@@ -1,11 +1,12 @@
 /* global React, Icon, PageHeader, EmptyState, ErrorState,
-   fetchCalendarioDocente, fetchTareasPendientesDocente */
+   fetchCalendarioDocente, fetchTareasPendientesDocente,
+   fetchEstudiantesParaCierre, postCerrarLeccionCompleta */
 
 // ─────────────────────────────────────────────────────────────────────────
 // VISTA DOCENTE — Fase 2
 //   A1 ✅ esqueleto + integración (auth, fetch, tabs, contadores)
-//   A2 ✅ listas reales de lecciones (este prompt)
-//   A3 ⏳ modal de cierre de lección
+//   A2 ✅ listas reales de lecciones
+//   A3 ✅ modal de cierre de lección (este prompt)
 //   A4 ⏳ banner de pendientes funcional
 //
 // Hereda el lenguaje visual de `cronograma_grupo.jsx`:
@@ -603,20 +604,6 @@ function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
           )}
         </>
       )}
-
-      {/* Nota A3 sutil al pie */}
-      <div style={{
-        marginTop: 24, padding: '10px 14px',
-        background: 'var(--surface-2)',
-        border: '1px dashed var(--line-2)',
-        borderRadius: 'var(--r-sm)',
-        fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5,
-        fontFamily: 'var(--f-sans)',
-      }}>
-        <strong style={{ color: 'var(--ink-2)' }}>Nota:</strong>{' '}
-        El modal de cierre se habilita en <span style={{ fontFamily: 'var(--f-mono)' }}>A3</span>.
-        Por ahora, hacer click sobre una lección la registra en consola.
-      </div>
     </div>
   );
 }
@@ -717,6 +704,726 @@ function VDTabPre({ historico }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// MODAL CIERRE DE LECCIÓN — A3
+// ─────────────────────────────────────────────────────────────────────────
+// Una sola pantalla scrolleable.  Una tarjeta por estudiante.
+//   • Asistencia Presente/Ausente (default presente)
+//   • Retroalimentación (obligatoria u opcional según programa/asistencia)
+//   • Progress Check (sólo lecciones {4,8,13,16,21,24,28,30} + INA + riel curso)
+//   • Nota general opcional del docente al final
+// Validación cliente espejo del backend; resaltado por estudiante.
+// ─────────────────────────────────────────────────────────────────────────
+
+const PC_LECCIONES = new Set([4, 8, 13, 16, 21, 24, 28, 30]);
+const PC_UNIDADES_MAP = {
+  4:'U1-U2', 8:'U3-U4', 13:'U5-U6', 16:'U7-U8',
+  21:'U9-U10', 24:'U11-U12', 28:'U13-U14', 30:'U15-U16',
+};
+
+function ModalCierreLeccion({ lec, docenteNombre, onClose, onSuccess }) {
+  const pal = nivelPal(lec.nivel);
+  const riel = lec.riel || 'curso';
+  const leccionNum = Number(lec.leccion);
+  const esPCLec = PC_LECCIONES.has(leccionNum);
+
+  // --- Carga de estudiantes ---
+  const [students, setStudents]   = React.useState(null);
+  const [programa, setPrograma]   = React.useState('');
+  const [loading, setLoading]     = React.useState(true);
+  const [loadError, setLoadError] = React.useState('');
+
+  // --- Form state ---
+  // { [code]: { presente: bool, retro: string, pc: string } }
+  const [formData, setFormData]   = React.useState({});
+  const [notaDocente, setNotaDocente] = React.useState('');
+  const [errors, setErrors]       = React.useState({});
+  const [submitErr, setSubmitErr] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const cardRefs = React.useRef({});
+  const bodyRef  = React.useRef(null);
+
+  // --- Initial fetch ---
+  React.useEffect(() => {
+    let cancel = false;
+    setLoading(true); setLoadError('');
+    fetchEstudiantesParaCierre(lec.cod_grupo, lec.nivel).then(r => {
+      if (cancel) return;
+      if (!r?.ok) {
+        setLoadError(r?.error || 'No se pudo cargar la lista de estudiantes.');
+        setLoading(false);
+        return;
+      }
+      const list = r.estudiantes || [];
+      setStudents(list);
+      setPrograma(r.programa || 'SIN_INA');
+      const initial = {};
+      list.forEach(e => { initial[e.code] = { presente: true, retro: '', pc: '' }; });
+      setFormData(initial);
+      setLoading(false);
+    });
+    return () => { cancel = true; };
+  }, [lec.cod_grupo, lec.nivel]);
+
+  const esINA      = programa === 'INA' || programa === 'CON_INA';
+  const includesPC = esPCLec && esINA && riel === 'curso';
+
+  // ¿Hay cambios? — para confirmar al cancelar
+  const dirty = React.useMemo(() => {
+    if (notaDocente.trim()) return true;
+    return Object.values(formData).some(s =>
+      (s.retro && s.retro.trim()) ||
+      (s.pc && s.pc.trim()) ||
+      s.presente === false
+    );
+  }, [formData, notaDocente]);
+
+  const updateStudent = (code, field, value) => {
+    setFormData(prev => ({ ...prev, [code]: { ...prev[code], [field]: value } }));
+    if (errors[code]) {
+      setErrors(prev => { const next = { ...prev }; delete next[code]; return next; });
+    }
+  };
+
+  const validate = () => {
+    const errs = {};
+    for (const s of (students || [])) {
+      const f = formData[s.code];
+      if (!f) continue;
+      if (!f.presente && !f.retro.trim()) {
+        errs[s.code] = `Falta el mensaje para ${s.name} (ausente).`;
+        continue;
+      }
+      if (f.presente && esINA && !f.retro.trim()) {
+        errs[s.code] = `Falta retroalimentación para ${s.name}.`;
+        continue;
+      }
+      if (f.presente && includesPC && !f.pc.trim()) {
+        errs[s.code] = `Falta Progress Check para ${s.name}.`;
+        continue;
+      }
+    }
+    return errs;
+  };
+
+  const scrollToCard = (code) => {
+    const el  = cardRefs.current[code];
+    const box = bodyRef.current;
+    if (el && box) box.scrollTop = el.offsetTop - 12;
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitErr('');
+    const errs = validate();
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      const n = Object.keys(errs).length;
+      setSubmitErr(`Hay ${n} ${n === 1 ? 'campo' : 'campos'} por completar.`);
+      scrollToCard(Object.keys(errs)[0]);
+      return;
+    }
+    setErrors({});
+    setSubmitting(true);
+
+    const asistencias = {};
+    const retroalimentacion = {};
+    const progress_check = {};
+    for (const s of students) {
+      const f = formData[s.code];
+      if (!f) continue;
+      asistencias[s.code] = !!f.presente;
+      if (f.retro.trim()) retroalimentacion[s.code] = f.retro.trim();
+      if (includesPC && f.presente && f.pc.trim()) progress_check[s.code] = f.pc.trim();
+    }
+
+    const body = {
+      cod_grupo: lec.cod_grupo,
+      nivel: lec.nivel,
+      leccion: leccionNum,
+      riel,
+      docente_real: docenteNombre,
+      registrado_por: docenteNombre,
+      asistencias,
+      retroalimentacion,
+      progress_check,
+      ...(notaDocente.trim() ? { nota_docente: notaDocente.trim() } : {}),
+    };
+
+    const res = await postCerrarLeccionCompleta(body);
+    setSubmitting(false);
+
+    if (!res?.ok) {
+      setSubmitErr(res?.error || 'No se pudo cerrar la lección.');
+      if (Array.isArray(res?.estudiantes_faltantes) && res.estudiantes_faltantes.length) {
+        const errs2 = {};
+        res.estudiantes_faltantes.forEach(code => {
+          errs2[code] = res.error || 'Pendiente';
+        });
+        setErrors(errs2);
+        scrollToCard(res.estudiantes_faltantes[0]);
+      }
+      return;
+    }
+    onSuccess && onSuccess(res);
+  };
+
+  const handleCancel = () => {
+    if (submitting) return;
+    if (dirty && !window.confirm('¿Descartar lo que escribiste?')) return;
+    onClose();
+  };
+
+  // Bloquear scroll del body + ESC para cerrar
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') handleCancel(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitting, dirty]);
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) handleCancel(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(26, 22, 19, 0.55)',
+        backdropFilter: 'blur(2px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        fontFamily: 'var(--f-sans)',
+      }}
+    >
+      <div
+        role="dialog" aria-modal="true"
+        style={{
+          background: 'var(--surface)',
+          borderRadius: 'var(--r-lg)',
+          boxShadow: 'var(--sh-3)',
+          width: '100%', maxWidth: 760,
+          maxHeight: 'calc(100vh - 32px)',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <ModalCierreHeader
+          lec={lec} pal={pal} programa={programa} includesPC={includesPC}
+          onClose={handleCancel}
+        />
+
+        <div
+          ref={bodyRef}
+          id="vd-modal-body"
+          style={{
+            flex: 1, overflowY: 'auto',
+            padding: '16px 22px 8px',
+            background: 'var(--bg)',
+          }}
+        >
+          {loading ? (
+            <VDSpinner label="Cargando estudiantes…" />
+          ) : loadError ? (
+            <div style={{
+              padding: '24px 16px', textAlign: 'center',
+              background: 'color-mix(in srgb, var(--danger) 6%, white)',
+              border: '1px solid color-mix(in srgb, var(--danger) 25%, white)',
+              borderRadius: 'var(--r-md)', color: 'var(--danger)',
+              fontSize: 13, lineHeight: 1.5,
+            }}>{loadError}</div>
+          ) : (students?.length || 0) === 0 ? (
+            <SinEstudiantesCA onClose={handleCancel} />
+          ) : (
+            <>
+              {students.map((s, idx) => (
+                <EstudianteCard
+                  key={s.code}
+                  ref={el => { cardRefs.current[s.code] = el; }}
+                  estudiante={s}
+                  index={idx + 1}
+                  data={formData[s.code] || { presente: true, retro: '', pc: '' }}
+                  programa={programa}
+                  esINA={esINA}
+                  includesPC={includesPC}
+                  pcUnidades={includesPC ? PC_UNIDADES_MAP[leccionNum] : null}
+                  error={errors[s.code]}
+                  onChange={updateStudent}
+                />
+              ))}
+
+              {/* Nota general del docente */}
+              <NotaDocenteField value={notaDocente} onChange={setNotaDocente} />
+            </>
+          )}
+        </div>
+
+        <ModalCierreFooter
+          submitting={submitting}
+          submitErr={submitErr}
+          disabled={loading || loadError || !students?.length}
+          onCancel={handleCancel}
+          onSubmit={handleSubmit}
+          totalEstudiantes={students?.length || 0}
+          totalPresentes={students ? Object.values(formData).filter(f => f.presente).length : 0}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Header del modal ────────────────────────────────────────────────────
+function ModalCierreHeader({ lec, pal, programa, includesPC, onClose }) {
+  const programaLabel = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'SIN INA';
+  return (
+    <div style={{
+      padding: '16px 22px 14px',
+      background: 'var(--surface)',
+      borderBottom: '1px solid var(--line)',
+      borderTop: `4px solid ${pal.mid}`,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ ...vdLabelStyle, marginBottom: 6 }}>Cerrar lección</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{
+              margin: 0, fontFamily: 'var(--f-serif)', fontWeight: 500,
+              fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)',
+            }}>
+              Lección {String(lec.leccion).padStart(2, '0')}
+              {lec.tipo && lec.tipo !== 'TEORICA' && lec.tipo !== 'CLASE' && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  background: pal.mid, color: 'white',
+                  padding: '3px 8px', borderRadius: 4,
+                  marginLeft: 8, verticalAlign: 'middle',
+                  fontFamily: 'var(--f-sans)',
+                }}>{lec.tipo}</span>
+              )}
+            </h2>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '3px 8px', background: pal.light, color: pal.dark,
+              borderRadius: 'var(--r-sm)', fontSize: 11, fontWeight: 700,
+              fontFamily: 'var(--f-mono)', letterSpacing: '0.04em',
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: 2, background: pal.mid }} />
+              {lec.nivel}
+            </span>
+          </div>
+          <div style={{
+            fontSize: 12, color: 'var(--ink-3)',
+            marginTop: 6, fontFamily: 'var(--f-mono)',
+          }}>
+            {lec.cod_grupo}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6 }}>
+            {vdFmtLargo(lec.fecha)}
+            {lec.turno && <> · <span style={{ fontFamily: 'var(--f-mono)' }}>{lec.turno}</span></>}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+              padding: '3px 8px', borderRadius: 'var(--r-pill)',
+              background: programa === 'INA' || programa === 'CON_INA'
+                ? 'color-mix(in srgb, var(--an-navy) 12%, white)'
+                : 'var(--bg-deep)',
+              color: programa === 'INA' || programa === 'CON_INA'
+                ? 'var(--an-navy-ink)' : 'var(--ink-2)',
+              textTransform: 'uppercase',
+            }}>
+              {programa ? programaLabel : '— programa —'}
+            </span>
+            {includesPC && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                padding: '3px 8px', borderRadius: 'var(--r-pill)',
+                background: 'color-mix(in srgb, #4CAF50 14%, white)',
+                color: '#1B5E20', textTransform: 'uppercase',
+              }}>
+                Incluye Progress Check
+              </span>
+            )}
+            {lec.riel === 'ican' && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                padding: '3px 8px', borderRadius: 'var(--r-pill)',
+                background: '#4CAF50', color: 'white', textTransform: 'uppercase',
+              }}>I CAN</span>
+            )}
+          </div>
+        </div>
+        <button
+          type="button" onClick={onClose} aria-label="Cerrar"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 4, color: 'var(--ink-3)', flexShrink: 0, lineHeight: 0,
+            borderRadius: 'var(--r-sm)',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-deep)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Footer del modal ────────────────────────────────────────────────────
+function ModalCierreFooter({ submitting, submitErr, disabled, onCancel, onSubmit, totalEstudiantes, totalPresentes }) {
+  return (
+    <div style={{
+      borderTop: '1px solid var(--line)',
+      padding: '12px 22px',
+      background: 'var(--surface)',
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      {submitErr && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 'var(--r-sm)',
+          background: 'color-mix(in srgb, var(--danger) 8%, white)',
+          border: '1px solid color-mix(in srgb, var(--danger) 28%, white)',
+          color: 'var(--danger)', fontSize: 12, fontWeight: 600, lineHeight: 1.4,
+        }}>⚠ {submitErr}</div>
+      )}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        flexWrap: 'wrap', justifyContent: 'flex-end',
+      }}>
+        {totalEstudiantes > 0 && (
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginRight: 'auto', fontFamily: 'var(--f-mono)' }}>
+            {totalPresentes}/{totalEstudiantes} presentes · {totalEstudiantes - totalPresentes} ausentes
+          </div>
+        )}
+        <button
+          type="button" onClick={onCancel} disabled={submitting}
+          style={{
+            padding: '11px 18px', minHeight: 44,
+            border: '1.5px solid var(--line)',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--surface)', color: 'var(--ink-2)',
+            fontFamily: 'var(--f-sans)', fontSize: 13, fontWeight: 600,
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            opacity: submitting ? 0.5 : 1,
+          }}>
+          Cancelar
+        </button>
+        <button
+          type="button" onClick={onSubmit}
+          disabled={submitting || disabled}
+          style={{
+            padding: '11px 20px', minHeight: 44,
+            border: 'none', borderRadius: 'var(--r-md)',
+            background: 'var(--an-granate)', color: 'white',
+            fontFamily: 'var(--f-sans)', fontSize: 13, fontWeight: 700,
+            cursor: (submitting || disabled) ? 'not-allowed' : 'pointer',
+            opacity: (submitting || disabled) ? 0.6 : 1,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+          {submitting && (
+            <span style={{
+              width: 14, height: 14, borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.4)',
+              borderTopColor: 'white',
+              animation: 'vd-spin 0.7s linear infinite',
+              display: 'inline-block',
+            }} />
+          )}
+          {submitting ? 'Cerrando…' : 'Cerrar lección'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Tarjeta por estudiante ──────────────────────────────────────────────
+const EstudianteCard = React.forwardRef(function EstudianteCard(
+  { estudiante, index, data, programa, esINA, includesPC, pcUnidades, error, onChange },
+  ref
+) {
+  const presente = data.presente;
+  // Reglas de retro
+  const retroObligatoria = !presente || (presente && esINA);
+  const retroPlaceholder = !presente
+    ? 'Avisá al estudiante qué se vio, tareas, páginas, lo que debe ponerse al día (obligatorio).'
+    : esINA
+      ? 'Retroalimentación de la clase (obligatorio).'
+      : 'Nota opcional para el estudiante.';
+
+  const hasError = !!error;
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        background: 'var(--surface)',
+        border: hasError
+          ? '1.5px solid #E8372A'
+          : '1px solid var(--line)',
+        borderRadius: 'var(--r-md)',
+        padding: '14px 16px',
+        marginBottom: 12,
+        boxShadow: hasError ? '0 0 0 3px rgba(232,55,42,0.08)' : 'none',
+        transition: 'border-color .15s, box-shadow .15s',
+      }}>
+      {/* Cabecera */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: 12,
+        marginBottom: 10, flexWrap: 'wrap',
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: '50%',
+          background: 'var(--bg-deep)', color: 'var(--ink-2)',
+          display: 'grid', placeItems: 'center',
+          fontSize: 12, fontWeight: 700, fontFamily: 'var(--f-mono)',
+          flexShrink: 0,
+        }}>{index}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 15, fontWeight: 600, color: 'var(--ink)',
+            lineHeight: 1.3, letterSpacing: '-0.005em',
+          }}>{estudiante.name}</div>
+          <div style={{
+            fontSize: 11, color: 'var(--ink-3)',
+            fontFamily: 'var(--f-mono)', marginTop: 2,
+            display: 'flex', gap: 8, flexWrap: 'wrap',
+          }}>
+            <span>{estudiante.code}</span>
+            {estudiante.convenio && estudiante.convenio !== '—' && (
+              <span style={{
+                padding: '0 6px', background: 'var(--bg-deep)',
+                borderRadius: 4, color: 'var(--ink-2)', fontWeight: 600,
+                fontSize: 10,
+              }}>{estudiante.convenio}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Toggle Presente / Ausente */}
+        <div style={{
+          display: 'flex', gap: 0, flexShrink: 0,
+          border: '1px solid var(--line)',
+          borderRadius: 'var(--r-md)',
+          overflow: 'hidden', background: 'var(--bg-deep)',
+        }}>
+          <button
+            type="button"
+            onClick={() => onChange(estudiante.code, 'presente', true)}
+            style={{
+              padding: '10px 14px', minHeight: 44,
+              border: 'none', cursor: 'pointer',
+              background: presente ? '#2E7D32' : 'transparent',
+              color: presente ? 'white' : 'var(--ink-2)',
+              fontFamily: 'var(--f-sans)',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+              transition: 'background .12s',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+            {presente && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+            Presente
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange(estudiante.code, 'presente', false)}
+            style={{
+              padding: '10px 14px', minHeight: 44,
+              border: 'none', borderLeft: '1px solid var(--line)',
+              cursor: 'pointer',
+              background: !presente ? '#B3261E' : 'transparent',
+              color: !presente ? 'white' : 'var(--ink-2)',
+              fontFamily: 'var(--f-sans)',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+              transition: 'background .12s',
+            }}>
+            Ausente
+          </button>
+        </div>
+      </div>
+
+      {/* Retro */}
+      <div style={{ marginBottom: includesPC && presente ? 10 : 0 }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          marginBottom: 4,
+        }}>
+          <label style={vdLabelStyle}>
+            {!presente ? 'Mensaje para el ausente' : 'Retroalimentación'}
+          </label>
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            color: retroObligatoria ? '#B3261E' : 'var(--ink-3)',
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}>
+            {retroObligatoria ? '· obligatorio' : '· opcional'}
+          </span>
+        </div>
+        <textarea
+          value={data.retro}
+          onChange={e => onChange(estudiante.code, 'retro', e.target.value)}
+          placeholder={retroPlaceholder}
+          rows={3}
+          style={textareaStyle(hasError)}
+        />
+      </div>
+
+      {/* Progress Check */}
+      {includesPC && presente && (
+        <div>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            marginBottom: 4,
+          }}>
+            <label style={vdLabelStyle}>
+              Progress Check ({pcUnidades})
+            </label>
+            <span style={{
+              fontSize: 10, fontWeight: 600, color: '#B3261E',
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}>· obligatorio</span>
+          </div>
+          <textarea
+            value={data.pc}
+            onChange={e => onChange(estudiante.code, 'pc', e.target.value)}
+            placeholder={`Observación de Progress Check para las unidades ${pcUnidades}.`}
+            rows={2}
+            style={textareaStyle(hasError)}
+          />
+        </div>
+      )}
+
+      {/* Error inline */}
+      {hasError && (
+        <div style={{
+          marginTop: 8, padding: '6px 10px',
+          background: 'color-mix(in srgb, var(--danger) 8%, white)',
+          border: '1px solid color-mix(in srgb, var(--danger) 26%, white)',
+          borderRadius: 'var(--r-sm)',
+          fontSize: 11, fontWeight: 600, color: 'var(--danger)',
+          lineHeight: 1.4,
+        }}>⚠ {error}</div>
+      )}
+    </div>
+  );
+});
+
+function textareaStyle(hasError) {
+  return {
+    width: '100%', boxSizing: 'border-box',
+    padding: '9px 12px',
+    border: hasError ? '1.5px solid #E8372A' : '1.5px solid var(--line)',
+    borderRadius: 'var(--r-sm)',
+    background: 'var(--surface)',
+    fontFamily: 'var(--f-sans)', fontSize: 13, lineHeight: 1.5,
+    color: 'var(--ink)', outline: 'none', resize: 'vertical', minHeight: 60,
+  };
+}
+
+// ── Nota general del docente ────────────────────────────────────────────
+function NotaDocenteField({ value, onChange }) {
+  return (
+    <div style={{
+      background: 'var(--surface-2)',
+      border: '1px dashed var(--line-2)',
+      borderRadius: 'var(--r-md)',
+      padding: '14px 16px', marginBottom: 12,
+    }}>
+      <label style={{ ...vdLabelStyle, display: 'block', marginBottom: 4 }}>
+        Nota general del docente · opcional
+      </label>
+      <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 6 }}>
+        Observación general de la clase, no visible al estudiante.
+      </div>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Ej: hubo apagón los primeros 15 min, cubrimos hasta pág. 12…"
+        rows={2}
+        style={textareaStyle(false)}
+      />
+    </div>
+  );
+}
+
+// ── Caso "sin estudiantes CA" — mensaje claro, no error ─────────────────
+function SinEstudiantesCA({ onClose }) {
+  return (
+    <div style={{
+      padding: '40px 16px', textAlign: 'center',
+      background: 'var(--surface)',
+      border: '1px dashed var(--line-2)',
+      borderRadius: 'var(--r-md)',
+    }}>
+      <div style={{ fontSize: 38, marginBottom: 10, opacity: 0.4 }}>👥</div>
+      <div style={{
+        fontFamily: 'var(--f-serif)', fontSize: 18, fontWeight: 500,
+        color: 'var(--ink)', letterSpacing: '-0.015em', marginBottom: 6,
+      }}>
+        Sin estudiantes matriculados aún
+      </div>
+      <div style={{
+        fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55,
+        maxWidth: 420, margin: '0 auto 16px',
+      }}>
+        No hay estudiantes con estatus <strong>CA</strong> en este nivel del grupo todavía.
+        No se puede cerrar la lección hasta que haya matriculados.
+      </div>
+      <button
+        type="button" onClick={onClose}
+        style={{
+          padding: '10px 16px', minHeight: 44,
+          border: '1.5px solid var(--line)',
+          borderRadius: 'var(--r-md)',
+          background: 'var(--surface)', color: 'var(--ink-2)',
+          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          fontFamily: 'var(--f-sans)',
+        }}>
+        Entendido
+      </button>
+    </div>
+  );
+}
+
+// ── Toast simple para "Lección cerrada ✓" ──────────────────────────────
+function VDToast({ message, onDone }) {
+  React.useEffect(() => {
+    if (!message) return;
+    const id = setTimeout(onDone, 3200);
+    return () => clearTimeout(id);
+  }, [message, onDone]);
+  if (!message) return null;
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'var(--ink)', color: 'white',
+      padding: '12px 20px', borderRadius: 'var(--r-pill)',
+      fontFamily: 'var(--f-sans)', fontSize: 13, fontWeight: 600,
+      boxShadow: 'var(--sh-3)', zIndex: 1100,
+      display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+      {message}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Componente raíz
 // ─────────────────────────────────────────────────────────────────────────
 function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
@@ -732,6 +1439,8 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const [loading, setLoading]       = React.useState(false);
   const [error, setError]           = React.useState('');
   const [tab, setTab]               = React.useState('proximas');
+  const [modalLec, setModalLec]     = React.useState(null);   // lección en cierre
+  const [toastMsg, setToastMsg]     = React.useState('');
 
   const refetch = React.useCallback(() => {
     if (!idDocente) return;
@@ -833,6 +1542,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         <VDTabProximas
           programadas={calendario?.programadas || []}
           sinCerrar={pendientes?.sin_cerrar || []}
+          onAbrirCierre={(lec) => setModalLec(lec)}
         />
       )}
       {tab === 'historico' && (
@@ -841,6 +1551,27 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
       {tab === 'pre' && (
         <VDTabPre historico={calendario?.historico || []} />
       )}
+
+      {modalLec && (
+        <ModalCierreLeccion
+          lec={modalLec}
+          docenteNombre={nombre || cedula}
+          onClose={() => setModalLec(null)}
+          onSuccess={(res) => {
+            setModalLec(null);
+            const presentes = res?.asistencia?.presentes ?? 0;
+            const ausentes  = res?.asistencia?.ausentes ?? 0;
+            setToastMsg(
+              ausentes
+                ? `Lección cerrada ✓ · ${presentes} presentes, ${ausentes} ausentes`
+                : `Lección cerrada ✓ · ${presentes} presentes`
+            );
+            refetch();
+          }}
+        />
+      )}
+
+      <VDToast message={toastMsg} onDone={() => setToastMsg('')} />
     </div>
   );
 }

@@ -29,6 +29,38 @@ async function fetchTareasPendientesDocente(nombreOrCedula) {
   }
 }
 
+// ── Estudiantes para cerrar una lección (sólo CA del nivel) ──────────────
+// SIEMPRE usar este endpoint para el cierre (no getGrupoEstudiantes):
+// filtra los matriculados con ESTATUS=CA en ese nivel específico.
+async function fetchEstudiantesParaCierre(codGrupo, nivel) {
+  if (!codGrupo || !nivel) return { ok: false, error: 'cod_grupo / nivel vacío' };
+  try {
+    const url = `${APPS_SCRIPT_URL}?fn=getEstudiantesParaCierre`
+              + `&cod_grupo=${encodeURIComponent(codGrupo)}`
+              + `&nivel=${encodeURIComponent(nivel)}`;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+// ── POST cerrarLeccionCompleta ───────────────────────────────────────────
+// Enviamos como text/plain para evitar el preflight CORS que rompe Apps
+// Script (doPost recibe el JSON en e.postData.contents igual).
+async function postCerrarLeccionCompleta(body) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'cerrarLeccionCompleta', ...body }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── Data: estructura del programa (NO datos personales) ──────────────────
 // Regla absoluta: cero datos inventados de estudiantes en producción.
 // Aquí solo viven constantes ESTRUCTURALES (niveles del programa, colores).
@@ -56,4 +88,5 @@ Object.assign(window, {
   LEVELS, PRECIOS,
   APPS_SCRIPT_URL,
   fetchCalendarioDocente, fetchTareasPendientesDocente,
+  fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
 });
