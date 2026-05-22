@@ -192,6 +192,55 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
   const usr = usuario || usuarioSS;
+
+  // ── Badge de pendientes para "Mi Panel" (docente / superadmin testing) ──
+  // Polling optimizado (A1.1) para no quemar la cuota del Apps Script:
+  //   • Solo si hay rol relevante (teacher / admin / superadmin)
+  //   • Solo si hay nombre identificado
+  //   • Solo cuando la pestaña está VISIBLE (document.visibilityState)
+  //   • Intervalo: 5 minutos (no 60s)
+  //   • Al volver a la pestaña: refresco inmediato + reinicia el ciclo
+  //   • Cleanup completo: clearInterval + removeEventListener
+  const [pendientesDoc, setPendientesDoc] = React.useState(0);
+  React.useEffect(() => {
+    if (role !== 'teacher' && role !== 'admin' && role !== 'superadmin') return;
+    const nombre = sessionStorage.getItem('nombre') || usr?.nombre || '';
+    if (!nombre) return;
+
+    let cancel = false;
+    let intervalId = null;
+
+    const refrescar = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (typeof window.fetchTareasPendientesDocente !== 'function') return;
+      window.fetchTareasPendientesDocente(nombre).then(r => {
+        if (cancel) return;
+        if (r?.ok) setPendientesDoc(r.totales?.total_pendientes || 0);
+      }).catch(() => {});
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Refresco inmediato al volver a la pestaña
+        refrescar();
+      }
+    };
+
+    // Primera carga (solo si la pestaña está visible al montar)
+    refrescar();
+
+    // Polling cada 5 minutos
+    intervalId = setInterval(refrescar, 5 * 60 * 1000);
+
+    // Escuchar cambios de visibilidad
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      cancel = true;
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [role, usr?.nombre]);
   const studentNav = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'cronograma_grupo', label: 'Mis lecciones', icon: 'calendar' },
@@ -206,6 +255,7 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
   const teacherNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+    { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'homework', badge: pendientesDoc || null },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
@@ -217,6 +267,12 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
   const adminNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+    // Panel docente para superadmin (testing). Solo aparece si hay
+    // un nombre seteado en sessionStorage (modo docente simulado).
+    ...(sessionStorage.getItem('nombre') ? [{
+      id: 'mi_panel_docente', label: 'Panel Docente', icon: 'homework',
+      badge: pendientesDoc || null,
+    }] : []),
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation', badge: 3 },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario lecciones', icon: 'calendar' },

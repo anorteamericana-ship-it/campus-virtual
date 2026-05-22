@@ -1,4 +1,34 @@
 /* global window */
+
+// ── Apps Script URL (compartida) ─────────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+
+// ── Fetch helpers para VISTA DOCENTE ─────────────────────────────────────
+// Ambos endpoints aceptan tanto nombre como cédula en `cod_docente`.
+// El nombre es el ID funcional en CALENDARIO_LECCIONES (Apps Script v4.21.5+).
+
+async function fetchCalendarioDocente(nombreOrCedula) {
+  if (!nombreOrCedula) return { ok: false, error: 'cod_docente vacío' };
+  try {
+    const url = `${APPS_SCRIPT_URL}?fn=getCalendarioDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+async function fetchTareasPendientesDocente(nombreOrCedula) {
+  if (!nombreOrCedula) return { ok: false, error: 'cod_docente vacío' };
+  try {
+    const url = `${APPS_SCRIPT_URL}?fn=getTareasPendientesDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── Data: estructura del programa (NO datos personales) ──────────────────
 // Regla absoluta: cero datos inventados de estudiantes en producción.
 // Aquí solo viven constantes ESTRUCTURALES (niveles del programa, colores).
@@ -22,4 +52,8 @@ const LEVELS = [
 // un monto inventado al usuario.
 const PRECIOS = null;
 
-Object.assign(window, { LEVELS, PRECIOS });
+Object.assign(window, {
+  LEVELS, PRECIOS,
+  APPS_SCRIPT_URL,
+  fetchCalendarioDocente, fetchTareasPendientesDocente,
+});

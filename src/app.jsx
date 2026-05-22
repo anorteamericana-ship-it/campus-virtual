@@ -4,7 +4,8 @@
    ExamenOralView, TeacherDashboard, GruposView, CalificarView, AsistenciaView,
    AdminDashboard, AdminGruposView, FinanzasView, AdminPlaceholderView,
    AdminHorasDocentesView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
-   CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago */
+   CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
+   VistaDocente */
 
 const { useState, useEffect } = React;
 
@@ -58,6 +59,7 @@ function App() {
   } else if (effectiveRole === 'teacher') {
     const map = {
       dashboard:   <TeacherDashboard setActive={setActive} />,
+      mi_panel_docente: <VistaDocente />,
       grupos:      <GruposView />,
       calificar:   <CalificarView toast={toast} />,
       asistencia:  <AsistenciaView toast={toast} />,
@@ -84,6 +86,8 @@ function App() {
       reportes:     <AdminPlaceholderView title="Reportes" />,
       config:       <AdminPlaceholderView title="Configuración" />,
       aplicar_pago: <AplicarPago />,
+      // superadmin puede previsualizar el panel docente para testing.
+      mi_panel_docente: <VistaDocente />,
     };
     content = map[active] || map.dashboard;
   }
