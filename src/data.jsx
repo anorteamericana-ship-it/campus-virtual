@@ -74,6 +74,40 @@ async function fetchAsignarCobertura(payload) {
   }
 }
 
+// ── Material PDF de una lección (v4.22.4) ────────────────────────────────
+// El backend decide qué PDF servir y si hay acceso, según el rol y el
+// estado del estudiante. NUNCA devuelve `pdf_id` cuando `acceso: false`.
+//
+// Parámetros:
+//   nivel:    'B1' | 'B2' | 'I1' | 'I2'
+//   leccion:  1..32
+//   riel:     'curso' (TEORICA/PRACTICA, ORAL, ESCRITO, PC) | 'ican'
+//   rol:      'teacher' | 'student' | 'admin' | 'superadmin'
+//   codigo, cod_grupo:  SOLO para estudiante (verifica su estatus real)
+//
+// Respuesta acceso=true  → { ok, acceso:true,  pdf_id, pdf_url, titulo, unidad, tipo_pdf }
+// Respuesta acceso=false → { ok, acceso:false, motivo, estado, titulo }
+async function fetchMaterialLeccion({ nivel, leccion, riel, rol, codigo, cod_grupo } = {}) {
+  if (!nivel || !leccion || !riel || !rol) {
+    return { ok: false, error: 'parámetros incompletos' };
+  }
+  try {
+    let url = `${APPS_SCRIPT_URL}?fn=getMaterialLeccion`
+            + `&nivel=${encodeURIComponent(nivel)}`
+            + `&leccion=${encodeURIComponent(leccion)}`
+            + `&riel=${encodeURIComponent(riel)}`
+            + `&rol=${encodeURIComponent(rol)}`;
+    if (rol === 'student') {
+      if (codigo)    url += `&codigo=${encodeURIComponent(codigo)}`;
+      if (cod_grupo) url += `&cod_grupo=${encodeURIComponent(cod_grupo)}`;
+    }
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── POST cerrarLeccionCompleta ───────────────────────────────────────────
 // Enviamos como text/plain para evitar el preflight CORS que rompe Apps
 // Script (doPost recibe el JSON en e.postData.contents igual).
@@ -120,4 +154,5 @@ Object.assign(window, {
   fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
   fetchDocentesAtrasados,
   fetchAsignarCobertura,
+  fetchMaterialLeccion,
 });

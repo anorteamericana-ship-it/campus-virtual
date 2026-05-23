@@ -609,6 +609,9 @@ function CronogramaGrupo({ rol = 'admin' }) {
           docente={meta.docente}
           bloqueado={nivelBloqueado}
           esAdmin={esAdmin}
+          rol={rol}
+          codigoUsr={usr?.codigo || ''}
+          grupoUsr={usr?.grupo || codGrupo}
           cobertura={selLec ? coberturas[idLeccion(nivel, selLec.leccion)] : null}
           onPedirCobertura={() => setModalCobertura({ selLec })}
           onCerrar={() => setSelLec(null)}
@@ -942,7 +945,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, cobertura, onPedirCobertura, onCerrar }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, cobertura, onPedirCobertura, onCerrar }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -995,6 +998,9 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
           nivel={nivel}
           bloqueado={bloqueado}
           esAdmin={esAdmin}
+          rol={rol}
+          codigoUsr={codigoUsr}
+          grupoUsr={grupoUsr}
           cobertura={cobertura}
           docenteTitular={docente}
           onPedirCobertura={onPedirCobertura}
@@ -1023,7 +1029,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, cobertura, docenteTitular, onPedirCobertura, onCerrar }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, cobertura, docenteTitular, onPedirCobertura, onCerrar }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
@@ -1225,28 +1231,15 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, 
             {detalle.pronunciacion && <Bloque titulo="Pronunciación" texto={detalle.pronunciacion} compact />}
             {detalle.writing       && <Bloque titulo="Writing"       texto={detalle.writing} compact />}
 
-            {/* Botón PDF */}
-            {detalle.pdf_drive_id && (
-              <a
-                href={`https://drive.google.com/file/d/${detalle.pdf_drive_id}/view`}
-                target="_blank" rel="noopener noreferrer"
-                style={{
-                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                  padding:'10px 14px',
-                  background:'var(--an-granate)', color:'white',
-                  fontSize:13, fontWeight:700,
-                  borderRadius:'var(--r-md)',
-                  textDecoration:'none',
-                  letterSpacing:'0.02em',
-                  marginTop:2,
-                }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M9 13h6M9 17h4"/>
-                </svg>
-                Ver material PDF
-              </a>
-            )}
+            {/* Botón material PDF — backend decide acceso por rol/estado */}
+            <BotonMaterialPDF
+              selLec={selLec}
+              nivel={nivel}
+              rol={rol}
+              codigoUsr={codigoUsr}
+              grupoUsr={grupoUsr}
+              detalle={detalle}
+            />
 
             {/* Botón Asignar cobertura — solo admin + lección PROGRAMADA */}
             {esAdmin && selLec.estado === 'PROGRAMADA' && (
@@ -1296,6 +1289,366 @@ function Bloque({ titulo, texto, compact }) {
         fontSize: compact ? 12 : 13,
         color:'var(--ink-2)', lineHeight:1.5,
       }}>{texto}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Botón "Ver material PDF" + Modal embebido
+// Backend v4.22.4: getMaterialLeccion decide acceso por rol/estado.
+// ─────────────────────────────────────────────────────────────────
+function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) {
+  const [mat, setMat]           = React.useState(null);
+  const [cargando, setCargando] = React.useState(true);
+  const [errRed, setErrRed]     = React.useState(false);
+  const [abierto, setAbierto]   = React.useState(false);
+
+  const leccionNum = selLec.leccion;
+  const tipo       = selLec.tipo;
+  const riel       = tipo === 'ICAN' ? 'ican' : 'curso';
+
+  React.useEffect(() => {
+    let vivo = true;
+    setMat(null);
+    setErrRed(false);
+    setCargando(true);
+    setAbierto(false);
+
+    const helper = window.fetchMaterialLeccion;
+    if (typeof helper !== 'function') {
+      // Helper no cargado — degradar a fallback con pdf_drive_id si existe.
+      setCargando(false);
+      return () => { vivo = false; };
+    }
+
+    helper({
+      nivel,
+      leccion: leccionNum,
+      riel,
+      rol,
+      codigo:    rol === 'student' ? codigoUsr : undefined,
+      cod_grupo: rol === 'student' ? grupoUsr  : undefined,
+    })
+      .then(d => { if (vivo) setMat(d || { ok: false }); })
+      .catch(()=> { if (vivo) setErrRed(true); })
+      .finally(()=>{ if (vivo) setCargando(false); });
+
+    return () => { vivo = false; };
+  }, [leccionNum, tipo, nivel, rol, codigoUsr, grupoUsr, riel]);
+
+  // Skeleton mientras consulta permisos
+  if (cargando) {
+    return (
+      <div style={{
+        display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+        padding:'10px 14px',
+        background:'var(--bg-deep)',
+        border:'1px dashed var(--line)',
+        borderRadius:'var(--r-md)',
+        fontSize:12, color:'var(--ink-3)',
+        letterSpacing:'0.04em', marginTop:2,
+      }}>
+        <span style={{
+          width:12, height:12, borderRadius:'50%',
+          border:'2px solid var(--line)',
+          borderTopColor:'var(--ink-3)',
+          animation:'an-spin .8s linear infinite',
+          display:'inline-block',
+        }} />
+        Verificando material…
+      </div>
+    );
+  }
+
+  // Fallback de red: usar pdf_drive_id del detalle si está
+  if (errRed || !mat || mat.ok === false) {
+    if (detalle && detalle.pdf_drive_id) {
+      return (
+        <a
+          href={`https://drive.google.com/file/d/${detalle.pdf_drive_id}/view`}
+          target="_blank" rel="noopener noreferrer"
+          style={btnPDFActivo}>
+          <IconoPDF />
+          Ver material PDF
+        </a>
+      );
+    }
+    return (
+      <button type="button" disabled
+        title="No se pudo verificar el material. Reintentá más tarde."
+        style={btnPDFDisabled}>
+        <IconoPDF />
+        Material no disponible
+      </button>
+    );
+  }
+
+  // Sin acceso: botón deshabilitado, motivo en tooltip
+  if (!mat.acceso) {
+    const motivo = mat.motivo || 'Material disponible solo para estudiantes activos.';
+    return (
+      <button type="button" disabled
+        title={motivo}
+        style={btnPDFDisabled}>
+        <IconoCandado />
+        Material disponible al rematricularte
+      </button>
+    );
+  }
+
+  // Con acceso: botón activo → modal embebido
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        style={{ ...btnPDFActivo, border:'none', cursor:'pointer', fontFamily:'inherit' }}>
+        <IconoPDF />
+        Ver material PDF
+        {mat.tipo_pdf === 'estudiante' && (
+          <span style={{
+            marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
+            background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
+            letterSpacing:'0.08em', textTransform:'uppercase',
+          }}>Estudiante</span>
+        )}
+        {mat.tipo_pdf === 'profe' && (
+          <span style={{
+            marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
+            background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
+            letterSpacing:'0.08em', textTransform:'uppercase',
+          }}>Profe</span>
+        )}
+      </button>
+
+      {abierto && (
+        <ModalPDF
+          pdfId={mat.pdf_id}
+          pdfUrl={mat.pdf_url}
+          titulo={mat.titulo || detalle?.titulo || ''}
+          unidad={mat.unidad || detalle?.unidad || ''}
+          leccion={leccionNum}
+          nivel={nivel}
+          tipoPdf={mat.tipo_pdf}
+          onCerrar={() => setAbierto(false)}
+        />
+      )}
+    </>
+  );
+}
+
+const btnPDFActivo = {
+  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+  padding:'10px 14px',
+  background:'var(--an-granate)', color:'white',
+  fontSize:13, fontWeight:700,
+  borderRadius:'var(--r-md)',
+  textDecoration:'none',
+  letterSpacing:'0.02em',
+  marginTop:2,
+};
+const btnPDFDisabled = {
+  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+  padding:'10px 14px',
+  background:'var(--bg-deep)',
+  border:'1.5px solid var(--line)',
+  color:'var(--ink-3)',
+  fontSize:13, fontWeight:600,
+  borderRadius:'var(--r-md)',
+  cursor:'not-allowed',
+  letterSpacing:'0.02em',
+  marginTop:2,
+  fontFamily:'inherit',
+};
+function IconoPDF() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M9 13h6M9 17h4"/>
+    </svg>
+  );
+}
+function IconoCandado() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  );
+}
+
+function ModalPDF({ pdfId, pdfUrl, titulo, unidad, leccion, nivel, tipoPdf, onCerrar }) {
+  // ESC cierra
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCerrar(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onCerrar]);
+
+  const colorNivel = NIVEL_COLOR_CG[nivel] || 'var(--an-granate)';
+  const idLec = idLeccion(nivel, leccion);
+  const embedUrl = `https://drive.google.com/file/d/${pdfId}/preview`;
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
+      style={{
+        position:'fixed', inset:0, zIndex:1100,
+        background:'rgba(20, 16, 12, 0.65)',
+        backdropFilter:'blur(4px)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        padding:'min(3vh, 24px) min(3vw, 24px)',
+        animation:'an-fade-in .14s ease-out',
+      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Material PDF — ${titulo}`}
+        style={{
+          width:'100%', height:'100%',
+          maxWidth: 1080,
+          background:'var(--surface)',
+          borderRadius:'var(--r-lg, 12px)',
+          boxShadow:'0 24px 64px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.18)',
+          overflow:'hidden',
+          display:'flex', flexDirection:'column',
+        }}>
+        {/* Header — banda con color del nivel */}
+        <div style={{
+          padding:'12px 18px 12px 18px',
+          borderBottom:'1px solid var(--line)',
+          background:'var(--surface)',
+          display:'flex', alignItems:'center', gap:14,
+        }}>
+          {/* Pill nivel */}
+          <div style={{
+            display:'inline-flex', alignItems:'center', gap:8,
+            padding:'4px 10px',
+            background:`${colorNivel}18`,
+            border:`1px solid ${colorNivel}55`,
+            borderRadius:'var(--r-pill)',
+            flexShrink:0,
+          }}>
+            <span style={{ width:8, height:8, borderRadius:'50%', background:colorNivel }} />
+            <span style={{
+              fontSize:10, fontWeight:800, color:colorNivel,
+              letterSpacing:'0.12em', textTransform:'uppercase',
+            }}>{idLec}</span>
+          </div>
+
+          <div style={{ minWidth:0, flex:1 }}>
+            {unidad && (
+              <div style={{
+                fontSize:10, fontWeight:700, letterSpacing:'0.14em',
+                textTransform:'uppercase', color:'var(--ink-3)',
+              }}>{unidad}</div>
+            )}
+            <div style={{
+              fontFamily:'var(--f-serif)', fontSize:17, fontWeight:600,
+              color:'var(--ink)', letterSpacing:'-0.015em', lineHeight:1.2,
+              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            }}>
+              {titulo || 'Material de la lección'}
+            </div>
+          </div>
+
+          {/* Abrir en Drive */}
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                display:'inline-flex', alignItems:'center', gap:7,
+                padding:'8px 14px',
+                background:'var(--surface)',
+                border:'1.5px solid var(--ink)',
+                color:'var(--ink)',
+                fontSize:12, fontWeight:700,
+                borderRadius:'var(--r-md)',
+                textDecoration:'none',
+                letterSpacing:'0.02em',
+                whiteSpace:'nowrap',
+                flexShrink:0,
+              }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <path d="M15 3h6v6M10 14L21 3"/>
+              </svg>
+              Abrir en Drive
+            </a>
+          )}
+
+          <button
+            type="button"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+            style={{
+              background:'none', border:'none', cursor:'pointer',
+              padding:6, color:'var(--ink-2)', lineHeight:0,
+              borderRadius:'var(--r-sm, 6px)',
+              flexShrink:0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-deep)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Iframe Drive preview */}
+        <div style={{ flex:1, minHeight:0, background:'#222', position:'relative' }}>
+          {pdfId ? (
+            <iframe
+              src={embedUrl}
+              title={`Material PDF — ${titulo || idLec}`}
+              allow="autoplay"
+              allowFullScreen
+              style={{
+                width:'100%', height:'100%', border:'none', display:'block',
+                background:'#222',
+              }}
+            />
+          ) : (
+            <div style={{
+              position:'absolute', inset:0,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'#FFFFFFAA', fontSize:13,
+            }}>
+              No hay PDF disponible para esta lección.
+            </div>
+          )}
+        </div>
+
+        {/* Footer aclaración Drive permisos */}
+        <div style={{
+          padding:'8px 18px',
+          background:'var(--surface-2)',
+          borderTop:'1px solid var(--line)',
+          fontSize:10, color:'var(--ink-3)',
+          letterSpacing:'0.04em', lineHeight:1.5,
+          display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
+          flexWrap:'wrap',
+        }}>
+          <span>
+            {tipoPdf === 'estudiante'
+              ? 'Visualizando el material del estudiante. Disponible mientras estés matriculado.'
+              : tipoPdf === 'profe'
+                ? 'Material del docente — uso interno. No compartir con estudiantes.'
+                : 'Material de la lección.'}
+          </span>
+          <span style={{ fontFamily:'var(--f-mono)' }}>
+            Embebido vía Google Drive · ESC para cerrar
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
