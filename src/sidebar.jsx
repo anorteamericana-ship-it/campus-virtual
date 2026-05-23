@@ -273,6 +273,7 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
       id: 'mi_panel_docente', label: 'Panel Docente', icon: 'homework',
       badge: pendientesDoc || null,
     }] : []),
+    { id: 'supervision', label: 'Supervisión', icon: 'bell' },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation', badge: 3 },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario lecciones', icon: 'calendar' },

@@ -45,6 +45,18 @@ async function fetchEstudiantesParaCierre(codGrupo, nivel) {
   }
 }
 
+// ── Supervisión: docentes con lecciones atrasadas (panel admin B1) ───────
+// Endpoint pesado (~11 s).  El caller DEBE mostrar spinner.
+async function fetchDocentesAtrasados() {
+  try {
+    const url = `${APPS_SCRIPT_URL}?fn=getDocentesAtrasados`;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── POST cerrarLeccionCompleta ───────────────────────────────────────────
 // Enviamos como text/plain para evitar el preflight CORS que rompe Apps
 // Script (doPost recibe el JSON en e.postData.contents igual).
@@ -89,4 +101,5 @@ Object.assign(window, {
   APPS_SCRIPT_URL,
   fetchCalendarioDocente, fetchTareasPendientesDocente,
   fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
+  fetchDocentesAtrasados,
 });

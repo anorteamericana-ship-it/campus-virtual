@@ -5,7 +5,7 @@
    AdminDashboard, AdminGruposView, FinanzasView, AdminPlaceholderView,
    AdminHorasDocentesView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
-   VistaDocente */
+   VistaDocente, PanelAdminSupervision */
 
 const { useState, useEffect } = React;
 
@@ -74,6 +74,7 @@ function App() {
     const map = {
       matriculas:    <MatriculasView />,
       dashboard:    <AdminDashboard setActive={setActive} />,
+      supervision:  <PanelAdminSupervision />,
       grupos:       <AdminGruposView />,
       estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} />,
       cronograma_grupo: <CronogramaGrupo rol="admin" />,

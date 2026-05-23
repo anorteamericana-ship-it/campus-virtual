@@ -982,7 +982,11 @@ const PC_UNIDADES_MAP = {
   21:'U9-U10', 24:'U11-U12', 28:'U13-U14', 30:'U15-U16',
 };
 
-function ModalCierreLeccion({ lec, docenteNombre, onClose, onSuccess }) {
+function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess }) {
+  // ── B1: el panel admin reusa este modal para cerrar lecciones de otro
+  // docente.  docente_real = dueño de la lección; registrado_por = admin
+  // logueado.  Si no se pasa registradoPor, asumimos que el dueño se
+  // está cerrando su propia lección (flujo Fase 2 / docente).
   const pal = nivelPal(lec.nivel);
   const riel = lec.riel || 'curso';
   const leccionNum = Number(lec.leccion);
@@ -1105,7 +1109,7 @@ function ModalCierreLeccion({ lec, docenteNombre, onClose, onSuccess }) {
       leccion: leccionNum,
       riel,
       docente_real: docenteNombre,
-      registrado_por: docenteNombre,
+      registrado_por: registradoPor || docenteNombre,
       asistencias,
       retroalimentacion,
       progress_check,
@@ -1899,4 +1903,4 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   );
 }
 
-Object.assign(window, { VistaDocente });
+Object.assign(window, { VistaDocente, ModalCierreLeccion });
