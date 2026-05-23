@@ -48,6 +48,8 @@ const NIVEL_BASE = {
 };
 
 // Paleta de celda — devuelve {bg, fg, accent}
+// v4.22: las lecciones CERRADAS usan el MISMO color que los segmentos llenos
+// de la barra de progreso superior (base.dark) para unificar visualmente.
 function paletaCelda(estado, tipo, nivel) {
   const base = NIVEL_BASE[nivel] || NIVEL_BASE.B1;
 
@@ -56,18 +58,20 @@ function paletaCelda(estado, tipo, nivel) {
 
   // v4.16: I CAN sessions — verde
   if (tipo === 'ICAN') {
-    if (estado === 'CERRADA') return { bg:'#E8F5E9', fg:'#1B5E20', accent:'#4CAF50' };
+    if (estado === 'CERRADA') return { bg:'#1B5E20', fg:'#FFFFFF', accent:'#1B5E20' };
     return { bg:'#F1F8E9', fg:'#2E7D32', accent:'#4CAF50' };
   }
 
   if (estado === 'CERRADA') {
     if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
-      return { bg:'#FFF8E1', fg:'#7B5600', accent:'#F57F17' };
+      return { bg:'#7B5600', fg:'#FFFFFF', accent:'#7B5600' };
     }
-    return { bg: base.light, fg: base.dark, accent: base.mid };
+    // ★ FIX: antes era { bg: base.light, fg: base.dark } — ahora coincide con
+    //   la barra de progreso (base.dark) para consistencia visual.
+    return { bg: base.dark, fg:'#FFFFFF', accent: base.dark };
   }
 
-  // CALCULADA
+  // CALCULADA / PROGRAMADA / PRE_CAMPUS / LIBRE (todo lo no-dado)
   if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
     return { bg:'#FFFDE7', fg:'#9B6A00', accent:'#F9A825' };
   }
@@ -156,7 +160,7 @@ function mockLecciones(codGrupo, nivel) {
         if (PROG.has(lec)) tipo = 'PROGRESS_CHECK';
         else if (ORAL.has(lec)) tipo = 'EVAL_ORAL';
         else if (ESCR.has(lec)) tipo = 'EVAL_ESCRITO';
-        const estado = iso < hoyISO ? 'CERRADA' : iso === hoyISO ? 'HOY' : 'CALCULADA';
+        const estado = iso < hoyISO ? 'CERRADA' : iso === hoyISO ? 'HOY' : 'PROGRAMADA';
         if (esSabado) {
           // dos turnos mismo día
           out.push({ leccion:lec, fecha:iso, dia:DOWLBL[6],
@@ -205,7 +209,7 @@ function mockLecciones(codGrupo, nivel) {
           dia:        DOWLBL2[curCAN.getDay()],
           turno:      grupoMeta.ican_hora || '',
           tipo:       'ICAN',
-          estado:     isoCAN < hoyISO ? 'CERRADA' : isoCAN === hoyISO ? 'HOY' : 'CALCULADA',
+          estado:     isoCAN < hoyISO ? 'CERRADA' : isoCAN === hoyISO ? 'HOY' : 'PROGRAMADA',
           esICAN:     true,
         });
       }
@@ -334,10 +338,31 @@ function CronogramaGrupo({ rol = 'admin' }) {
   const [detalle, setDetalle]       = React.useState(null);
   const [cargandoDet, setCargandoDet] = React.useState(false);
 
-  // Auto-seleccionar HOY o primera CALCULADA al cargar
+  // v4.22: Cobertura puntual de lecciones (admin)
+  // Override local por id_leccion — sobrevive a re-fetches del detalle.
+  const [coberturas, setCoberturas]     = React.useState({});
+  const [modalCobertura, setModalCobertura] = React.useState(null); // { selLec } | null
+  const [toast, setToast]               = React.useState(null);     // { msg, kind } | null
+
+  const showToast = React.useCallback((msg, kind = 'ok') => {
+    setToast({ msg, kind, t: Date.now() });
+    setTimeout(() => setToast(t => (t && Date.now() - t.t >= 3800) ? null : t), 4000);
+  }, []);
+
+  const onCoberturaAsignada = React.useCallback((idLec, docente_cobertura, docente_anterior) => {
+    setCoberturas(prev => ({
+      ...prev,
+      [idLec]: { docente_cobertura, docente_anterior, ts: Date.now() },
+    }));
+    setModalCobertura(null);
+    showToast(`Cobertura asignada: la lección la dará ${docente_cobertura}`, 'ok');
+  }, [showToast]);
+
+  // Auto-seleccionar HOY o primera PROGRAMADA/CALCULADA al cargar
   React.useEffect(() => {
     if (!lecciones.length) return;
     const sel = lecciones.find(l => l.estado === 'HOY')
+             || lecciones.find(l => l.estado === 'PROGRAMADA')
              || lecciones.find(l => l.estado === 'CALCULADA')
              || lecciones[0];
     setSelLec(sel);
@@ -362,14 +387,15 @@ function CronogramaGrupo({ rol = 'admin' }) {
 
   // Stats
   const stats = React.useMemo(() => {
-    const cerradas   = lecciones.filter(l => l.estado === 'CERRADA').length;
-    const feriados   = lecciones.filter(l => l.estado === 'FERIADO').length;
-    const calculadas = lecciones.filter(l => l.estado === 'CALCULADA').length;
-    const hoy        = lecciones.filter(l => l.estado === 'HOY').length;
-    const proxima    = lecciones.find(l => l.estado === 'CALCULADA' || l.estado === 'HOY');
-    const primera    = lecciones[0];
-    const ultima     = [...lecciones].reverse()
-                        .find(l => l.estado === 'CERRADA' || l.estado === 'CALCULADA' || l.estado === 'HOY');
+    const esFutura     = l => l.estado === 'CALCULADA' || l.estado === 'PROGRAMADA';
+    const cerradas     = lecciones.filter(l => l.estado === 'CERRADA').length;
+    const feriados     = lecciones.filter(l => l.estado === 'FERIADO').length;
+    const calculadas   = lecciones.filter(esFutura).length;
+    const hoy          = lecciones.filter(l => l.estado === 'HOY').length;
+    const proxima      = lecciones.find(l => esFutura(l) || l.estado === 'HOY');
+    const primera      = lecciones[0];
+    const ultima       = [...lecciones].reverse()
+                          .find(l => l.estado === 'CERRADA' || esFutura(l) || l.estado === 'HOY');
     return { cerradas, feriados, calculadas, hoy, proxima, primera, ultima, total: lecciones.length };
   }, [lecciones]);
 
@@ -582,9 +608,49 @@ function CronogramaGrupo({ rol = 'admin' }) {
           codGrupo={codGrupo}
           docente={meta.docente}
           bloqueado={nivelBloqueado}
+          esAdmin={esAdmin}
+          cobertura={selLec ? coberturas[idLeccion(nivel, selLec.leccion)] : null}
+          onPedirCobertura={() => setModalCobertura({ selLec })}
           onCerrar={() => setSelLec(null)}
         />
       </div>
+
+      {modalCobertura && (
+        <ModalCobertura
+          selLec={modalCobertura.selLec}
+          codGrupo={codGrupo}
+          nivel={nivel}
+          docenteTitular={meta.docente}
+          adminNombre={usr?.nombre || 'admin'}
+          onCerrar={() => setModalCobertura(null)}
+          onAsignada={onCoberturaAsignada}
+        />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          style={{
+            position:'fixed', bottom:24, right:24, zIndex:1200,
+            background: toast.kind === 'err' ? '#7A1F15' : '#1E4D2B',
+            color:'#FFFFFF',
+            padding:'12px 16px',
+            borderRadius:'var(--r-md)',
+            boxShadow:'0 12px 32px rgba(0,0,0,0.25)',
+            display:'flex', alignItems:'center', gap:10,
+            maxWidth:380, fontSize:13, fontWeight:600,
+            letterSpacing:'0.01em',
+          }}>
+          <span style={{
+            width:22, height:22, borderRadius:'50%',
+            background:'rgba(255,255,255,0.18)',
+            display:'inline-flex', alignItems:'center', justifyContent:'center',
+          }}>
+            {toast.kind === 'err' ? '!' : '✓'}
+          </span>
+          <span>{toast.msg}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -876,7 +942,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, onCerrar }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, cobertura, onPedirCobertura, onCerrar }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -928,6 +994,10 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
           cargando={cargando}
           nivel={nivel}
           bloqueado={bloqueado}
+          esAdmin={esAdmin}
+          cobertura={cobertura}
+          docenteTitular={docente}
+          onPedirCobertura={onPedirCobertura}
           onCerrar={onCerrar}
         />
       ) : (
@@ -953,15 +1023,16 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, onCerrar }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, cobertura, docenteTitular, onPedirCobertura, onCerrar }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
   const dias = diasEntre(selLec.fecha);
   const estadoLabel =
-    selLec.estado === 'CERRADA'   ? '✓ Clase dada' :
-    selLec.estado === 'HOY'       ? '● Hoy' :
-    selLec.estado === 'CALCULADA' ? '○ Próxima' : '🚫 Feriado CR';
+    selLec.estado === 'CERRADA'    ? '✓ Clase dada' :
+    selLec.estado === 'HOY'        ? '● Hoy' :
+    selLec.estado === 'PROGRAMADA' ? '○ Programada' :
+    selLec.estado === 'CALCULADA'  ? '○ Proyectada' : '🚫 Feriado CR';
 
   // Color "apagado" para nivel bloqueado: ignoramos la paleta normal
   const palVis = bloqueado && !isFeriado
@@ -1087,6 +1158,43 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, onCerrar 
           </div>
         ) : (
           <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:12 }}>
+            {/* Cobertura aplicada — banner */}
+            {cobertura && (
+              <div style={{
+                padding:'10px 12px',
+                background:'#F1F8E9',
+                border:'1px solid #C5E1A5',
+                borderRadius:'var(--r-md)',
+                display:'flex', alignItems:'flex-start', gap:10,
+              }}>
+                <span style={{
+                  width:22, height:22, flexShrink:0, borderRadius:'50%',
+                  background:'#2E7D32', color:'#FFF',
+                  display:'inline-flex', alignItems:'center', justifyContent:'center',
+                  fontSize:13, fontWeight:800,
+                }}>✓</span>
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{
+                    fontSize:9, fontWeight:700, letterSpacing:'0.12em',
+                    textTransform:'uppercase', color:'#1B5E20', marginBottom:2,
+                  }}>
+                    Cobertura asignada
+                  </div>
+                  <div style={{ fontSize:13, color:'var(--ink)', fontWeight:600, lineHeight:1.35 }}>
+                    {cobertura.docente_cobertura}
+                  </div>
+                  {cobertura.docente_anterior && (
+                    <div style={{
+                      fontSize:11, color:'var(--ink-3)', marginTop:2,
+                      textDecoration:'line-through',
+                    }}>
+                      Titular: {cobertura.docente_anterior}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Unidad + título */}
             <div>
               {detalle.unidad && (
@@ -1138,6 +1246,37 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, onCerrar 
                 </svg>
                 Ver material PDF
               </a>
+            )}
+
+            {/* Botón Asignar cobertura — solo admin + lección PROGRAMADA */}
+            {esAdmin && selLec.estado === 'PROGRAMADA' && (
+              <button
+                type="button"
+                onClick={onPedirCobertura}
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  padding:'10px 14px',
+                  background:'var(--surface)',
+                  border:'1.5px solid var(--ink)',
+                  color:'var(--ink)',
+                  fontSize:13, fontWeight:700,
+                  borderRadius:'var(--r-md)',
+                  cursor:'pointer',
+                  letterSpacing:'0.02em',
+                  marginTop: detalle.pdf_drive_id ? 0 : 2,
+                  fontFamily:'inherit',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-deep)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 1l4 4-4 4"/>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                  <path d="M7 23l-4-4 4-4"/>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+                {cobertura ? 'Reasignar cobertura' : 'Asignar cobertura'}
+              </button>
             )}
           </div>
         )}
@@ -1248,13 +1387,316 @@ function SkeletonMeses() {
   );
 }
 
-// Animación shimmer (inyectada una vez)
+// Animación shimmer + fade + spin (inyectada una vez)
 (function injectShimmer() {
   if (typeof document === 'undefined' || document.getElementById('an-shimmer-css')) return;
   const s = document.createElement('style');
   s.id = 'an-shimmer-css';
-  s.textContent = `@keyframes an-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`;
+  s.textContent = `
+    @keyframes an-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    @keyframes an-fade-in { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes an-spin    { to { transform: rotate(360deg) } }
+  `;
   document.head.appendChild(s);
 })();
+
+// ────────────────────────────────────────────────────────────────────────
+// Modal de Asignar Cobertura
+// ────────────────────────────────────────────────────────────────────────
+function ModalCobertura({ selLec, codGrupo, nivel, docenteTitular, adminNombre, onCerrar, onAsignada }) {
+  const [docentes, setDocentes]   = React.useState([]);
+  const [cargandoDoc, setCargandoDoc] = React.useState(true);
+  const [docSel, setDocSel]       = React.useState('');
+  const [motivo, setMotivo]       = React.useState('');
+  const [enviando, setEnviando]   = React.useState(false);
+  const [err, setErr]             = React.useState(null);
+
+  // Cargar lista de docentes activos. getDocentesAtrasados devuelve docentes[].nombre
+  React.useEffect(() => {
+    let alive = true;
+    setCargandoDoc(true); setErr(null);
+    const fetcher = window.fetchDocentesAtrasados;
+    Promise.resolve(fetcher ? fetcher() : { ok:false }).then(r => {
+      if (!alive) return;
+      let lista = [];
+      if (r && r.ok && Array.isArray(r.docentes)) {
+        lista = r.docentes
+          .map(d => (d.nombre || '').trim())
+          .filter(n => !!n && n.toUpperCase() !== (docenteTitular || '').toUpperCase());
+      }
+      // Fallback: lista local de docentes conocidos (mock dev)
+      if (!lista.length) {
+        lista = [
+          'SULIVANY MEDINA FONSECA',
+          'EMILY VEGA RAMÍREZ',
+          'RACHELLE CRUZ MORA',
+          'ANA SALAZAR JIMÉNEZ',
+          'JOHN ÁLVAREZ GONZÁLEZ',
+          'YENDRY AGUILAR ROJAS',
+        ].filter(n => n.toUpperCase() !== (docenteTitular || '').toUpperCase().toUpperCase());
+      }
+      // Quitar duplicados
+      lista = Array.from(new Set(lista));
+      setDocentes(lista);
+      setCargandoDoc(false);
+    }).catch(() => {
+      if (alive) { setDocentes([]); setCargandoDoc(false); }
+    });
+    return () => { alive = false; };
+  }, [docenteTitular]);
+
+  // Cerrar con ESC
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !enviando) onCerrar(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCerrar, enviando]);
+
+  const handleAsignar = async () => {
+    if (!docSel) { setErr('Seleccioná un docente.'); return; }
+    setEnviando(true); setErr(null);
+    const riel = selLec.tipo === 'ICAN' ? 'ican' : 'curso';
+    const payload = {
+      cod_grupo: codGrupo,
+      nivel,
+      leccion: selLec.leccion,
+      riel,
+      docente_cobertura: docSel,
+      motivo: motivo.trim(),
+      registrado_por: adminNombre,
+    };
+    const fn = window.fetchAsignarCobertura;
+    let res;
+    try {
+      res = fn ? await fn(payload) : { ok: false, error: 'fetchAsignarCobertura no disponible' };
+    } catch (e) {
+      res = { ok: false, error: 'Error de red: ' + e.message };
+    }
+    if (res && res.ok) {
+      const idLec = idLeccion(nivel, selLec.leccion);
+      onAsignada(idLec, res.docente_cobertura || docSel, res.docente_anterior || docenteTitular);
+    } else {
+      setErr((res && res.error) || 'No se pudo asignar la cobertura.');
+      setEnviando(false);
+    }
+  };
+
+  const idLec = idLeccion(nivel, selLec.leccion);
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget && !enviando) onCerrar(); }}
+      style={{
+        position:'fixed', inset:0, zIndex:1100,
+        background:'rgba(20, 16, 12, 0.55)',
+        backdropFilter:'blur(3px)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        padding:18,
+        animation:'an-fade-in .14s ease-out',
+      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          width:'100%', maxWidth:460,
+          background:'var(--surface)',
+          borderRadius:'var(--r-lg, 12px)',
+          boxShadow:'0 24px 64px rgba(0,0,0,0.32), 0 4px 16px rgba(0,0,0,0.12)',
+          overflow:'hidden',
+          display:'flex', flexDirection:'column',
+          maxHeight:'calc(100vh - 36px)',
+        }}>
+        {/* Header */}
+        <div style={{
+          padding:'18px 22px 14px',
+          borderBottom:'1px solid var(--line)',
+          display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:14,
+        }}>
+          <div>
+            <div style={{
+              fontSize:10, fontWeight:700, letterSpacing:'0.18em',
+              textTransform:'uppercase', color:'var(--ink-3)',
+            }}>
+              Cobertura puntual
+            </div>
+            <div style={{
+              fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500,
+              color:'var(--ink)', letterSpacing:'-0.02em',
+              marginTop:4, lineHeight:1.15,
+            }}>
+              ¿Quién dará esta lección?
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => !enviando && onCerrar()}
+            aria-label="Cerrar"
+            style={{
+              background:'none', border:'none', cursor: enviando ? 'not-allowed' : 'pointer',
+              padding:4, color:'var(--ink-3)', lineHeight:0,
+              opacity: enviando ? 0.4 : 1,
+            }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Cuerpo */}
+        <div style={{ padding:'16px 22px 4px', overflowY:'auto' }}>
+          {/* Contexto de la lección */}
+          <div style={{
+            display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'10px 16px',
+            padding:'12px 14px',
+            background:'var(--surface-2)',
+            border:'1px solid var(--line)',
+            borderRadius:'var(--r-md)',
+            marginBottom:16,
+          }}>
+            <ContextField label="Grupo" value={codGrupo} mono />
+            <ContextField label="Nivel" value={`${nivel} · ${NIVEL_LABEL_CG[nivel] || ''}`} />
+            <ContextField
+              label="Lección"
+              value={`${idLec} · #${String(selLec.leccion).padStart(2,'0')}`}
+              mono
+            />
+            <ContextField label="Fecha" value={fmtLargo(selLec.fecha)} />
+            <div style={{ gridColumn:'1 / -1' }}>
+              <ContextField
+                label="Docente titular"
+                value={docenteTitular || '—'}
+              />
+            </div>
+          </div>
+
+          {/* Selector docente */}
+          <label style={{ display:'block', marginBottom:14 }}>
+            <div style={labelStyle}>Docente de cobertura *</div>
+            <select
+              value={docSel}
+              onChange={e => { setDocSel(e.target.value); setErr(null); }}
+              disabled={cargandoDoc || enviando}
+              style={{ ...selectStyle, minWidth:0, width:'100%' }}>
+              <option value="">
+                {cargandoDoc ? 'Cargando docentes…' : 'Seleccionar docente…'}
+              </option>
+              {docentes.map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+
+          {/* Motivo */}
+          <label style={{ display:'block', marginBottom:14 }}>
+            <div style={labelStyle}>Motivo <span style={{ color:'var(--ink-3)', fontWeight:500 }}>(opcional)</span></div>
+            <input
+              type="text"
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              disabled={enviando}
+              placeholder="ej. Titular incapacitado"
+              style={{
+                width:'100%',
+                padding:'10px 14px',
+                border:'1.5px solid var(--line)',
+                borderRadius:'var(--r-md)',
+                background:'var(--surface)',
+                fontSize:13, color:'var(--ink)',
+                fontFamily:'inherit',
+                outline:'none',
+                boxSizing:'border-box',
+              }}
+            />
+          </label>
+
+          {err && (
+            <div style={{
+              padding:'10px 12px',
+              background:'color-mix(in srgb, var(--danger, #B71C1C) 8%, white)',
+              border:'1px solid color-mix(in srgb, var(--danger, #B71C1C) 28%, white)',
+              borderRadius:'var(--r-sm)',
+              fontSize:12, color:'var(--danger, #B71C1C)',
+              marginBottom:12, fontWeight:600,
+            }}>
+              ⚠ {err}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding:'14px 22px 18px',
+          borderTop:'1px solid var(--line)',
+          display:'flex', justifyContent:'flex-end', gap:10,
+        }}>
+          <button
+            type="button"
+            onClick={() => !enviando && onCerrar()}
+            disabled={enviando}
+            style={{
+              padding:'10px 16px',
+              background:'transparent',
+              border:'1.5px solid var(--line-2, var(--line))',
+              color:'var(--ink-2)',
+              fontSize:13, fontWeight:600,
+              borderRadius:'var(--r-md)',
+              cursor: enviando ? 'not-allowed' : 'pointer',
+              fontFamily:'inherit',
+            }}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleAsignar}
+            disabled={enviando || !docSel || cargandoDoc}
+            style={{
+              padding:'10px 18px',
+              background: (enviando || !docSel) ? '#9F8F7D' : 'var(--ink)',
+              border:'none',
+              color:'#FFFFFF',
+              fontSize:13, fontWeight:700,
+              borderRadius:'var(--r-md)',
+              cursor: (enviando || !docSel) ? 'not-allowed' : 'pointer',
+              letterSpacing:'0.02em',
+              fontFamily:'inherit',
+              display:'inline-flex', alignItems:'center', gap:8,
+            }}>
+            {enviando ? (
+              <>
+                <span style={{
+                  width:12, height:12, borderRadius:'50%',
+                  border:'2px solid rgba(255,255,255,0.4)',
+                  borderTopColor:'#FFF',
+                  animation:'an-spin .8s linear infinite',
+                  display:'inline-block',
+                }} />
+                Asignando…
+              </>
+            ) : 'Asignar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContextField({ label, value, mono }) {
+  return (
+    <div style={{ minWidth:0 }}>
+      <div style={{
+        fontSize:9, fontWeight:700, letterSpacing:'0.12em',
+        textTransform:'uppercase', color:'var(--ink-3)', marginBottom:2,
+      }}>{label}</div>
+      <div style={{
+        fontSize:12, color:'var(--ink)', fontWeight:600,
+        fontFamily: mono ? 'var(--f-mono)' : 'inherit',
+        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 
 Object.assign(window, { CronogramaGrupo });

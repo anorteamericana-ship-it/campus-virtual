@@ -57,6 +57,23 @@ async function fetchDocentesAtrasados() {
   }
 }
 
+// ── POST asignarCoberturaLeccion ─────────────────────────────────────────
+// Reasigna UNA lección puntual a un docente de cobertura.
+// Igual que postCerrarLeccionCompleta: text/plain para esquivar el preflight
+// CORS — Apps Script lee el body en e.postData.contents.
+async function fetchAsignarCobertura(payload) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'asignarCoberturaLeccion', ...payload }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── POST cerrarLeccionCompleta ───────────────────────────────────────────
 // Enviamos como text/plain para evitar el preflight CORS que rompe Apps
 // Script (doPost recibe el JSON en e.postData.contents igual).
@@ -102,4 +119,5 @@ Object.assign(window, {
   fetchCalendarioDocente, fetchTareasPendientesDocente,
   fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
   fetchDocentesAtrasados,
+  fetchAsignarCobertura,
 });
