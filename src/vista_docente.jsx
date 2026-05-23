@@ -141,35 +141,297 @@ function VDSpinner({ label = 'Cargando panel del docente…' }) {
   );
 }
 
-function PendientesBanner({ total }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '14px 16px',
-      background: 'var(--surface-2)',
-      border: '1px solid var(--line)',
-      borderRadius: 'var(--r-md)',
-      marginBottom: 20,
-      fontFamily: 'var(--f-sans)',
-    }}>
-      <div style={{
-        width: 32, height: 32, borderRadius: '50%',
-        background: total > 0 ? 'var(--an-red)' : 'var(--bg-deep)',
-        color: total > 0 ? 'white' : 'var(--ink-3)',
-        display: 'grid', placeItems: 'center',
-        fontWeight: 700, fontSize: 14, flexShrink: 0,
-      }}>{total}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
-          {total === 0
-            ? 'No tenés pendientes administrativos.'
-            : `Tenés ${total} ${total === 1 ? 'pendiente' : 'pendientes'} por resolver.`}
+function PendientesBanner({
+  totales, sinCerrar, sinRetro, sinPC,
+  abierto, onToggle,
+  catAbierta, onToggleCat,
+  onClickSinCerrar, onClickSinRetro, onClickSinPC,
+}) {
+  const total = totales?.total_pendientes || 0;
+
+  // ── Total 0: banner verde efímero (auto-fade en 4 s) ──
+  const [fadeOut, setFadeOut] = React.useState(false);
+  const [hidden, setHidden]   = React.useState(false);
+  React.useEffect(() => {
+    if (total !== 0) { setFadeOut(false); setHidden(false); return; }
+    setFadeOut(false); setHidden(false);
+    const t1 = setTimeout(() => setFadeOut(true), 4000);
+    const t2 = setTimeout(() => setHidden(true), 4600); // 600 ms de transición
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [total]);
+
+  if (total === 0) {
+    if (hidden) {
+      // Indicador mínimo discreto, ya sin caja
+      return (
+        <div style={{
+          fontFamily: 'var(--f-sans)',
+          fontSize: 11, color: 'var(--ink-3)',
+          margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{
+            width: 7, height: 7, borderRadius: '50%', background: '#4CAF50',
+          }} />
+          Sin pendientes administrativos.
         </div>
-        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-          Acciones rápidas — disponibles en próxima fase (A4)
+      );
+    }
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px 16px', marginBottom: 20,
+        background: 'color-mix(in srgb, #4CAF50 8%, white)',
+        border: '1px solid color-mix(in srgb, #4CAF50 32%, white)',
+        borderRadius: 'var(--r-md)',
+        fontFamily: 'var(--f-sans)',
+        opacity: fadeOut ? 0 : 1,
+        transform: fadeOut ? 'translateY(-4px)' : 'translateY(0)',
+        transition: 'opacity 0.5s ease, transform 0.5s ease',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          background: '#4CAF50', color: 'white',
+          display: 'grid', placeItems: 'center', flexShrink: 0,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#1B5E20', letterSpacing: '-0.005em' }}>
+            ¡Estás al día! ✓
+          </div>
+          <div style={{ fontSize: 12, color: '#2E7D32', marginTop: 2 }}>
+            No hay lecciones sin cerrar, retros pendientes ni Progress Checks por escribir.
+          </div>
         </div>
       </div>
+    );
+  }
+
+  // ── Banner ROJO (con pendientes) ──
+  const sc = totales?.sin_cerrar || 0;
+  const sr = totales?.sin_retro  || 0;
+  const sp = totales?.sin_pc     || 0;
+
+  const cats = [];
+  if (sc > 0) cats.push({
+    id: 'sin_cerrar', label: 'Lecciones sin cerrar', count: sc,
+    color: '#B3261E', accion: 'Cerrar lección', list: sinCerrar || [],
+    onClickItem: onClickSinCerrar,
+    accionable: true,
+  });
+  if (sr > 0) cats.push({
+    id: 'sin_retro', label: 'Lecciones sin retroalimentación', count: sr,
+    color: '#C67100', accion: 'Ver en histórico', list: sinRetro || [],
+    onClickItem: onClickSinRetro,
+    accionable: false,
+  });
+  if (sp > 0) cats.push({
+    id: 'sin_pc', label: 'Lecciones sin Progress Check', count: sp,
+    color: '#7B1FA2', accion: 'Ver en histórico', list: sinPC || [],
+    onClickItem: onClickSinPC,
+    accionable: false,
+  });
+
+  return (
+    <div style={{
+      marginBottom: 20,
+      background: 'color-mix(in srgb, #E8372A 5%, white)',
+      border: '1px solid color-mix(in srgb, #E8372A 28%, white)',
+      borderRadius: 'var(--r-md)',
+      overflow: 'hidden',
+      fontFamily: 'var(--f-sans)',
+    }}>
+      {/* Cabecera click-able */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={abierto}
+        style={{
+          all: 'unset', boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 16px', width: '100%', cursor: 'pointer',
+          minHeight: 44,
+        }}
+      >
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          background: 'var(--an-red)', color: 'white',
+          display: 'grid', placeItems: 'center',
+          fontWeight: 700, fontSize: 14, flexShrink: 0,
+          fontFamily: 'var(--f-mono)',
+        }}>{total}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
+            Tenés {total} {total === 1 ? 'pendiente' : 'pendientes'} por resolver
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2 }}>
+            {[
+              sc > 0 && `${sc} sin cerrar`,
+              sr > 0 && `${sr} sin retro`,
+              sp > 0 && `${sp} sin PC`,
+            ].filter(Boolean).join(' · ')}
+          </div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+             style={{
+               color: 'var(--ink-3)', flexShrink: 0,
+               transform: abierto ? 'rotate(180deg)' : 'rotate(0)',
+               transition: 'transform 0.2s',
+             }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Desglose */}
+      {abierto && (
+        <div style={{
+          borderTop: '1px solid color-mix(in srgb, #E8372A 22%, white)',
+          padding: '4px 6px 6px',
+          background: 'color-mix(in srgb, #E8372A 3%, white)',
+        }}>
+          {cats.map(c => (
+            <CategoriaPendiente
+              key={c.id}
+              cat={c}
+              abierta={catAbierta === c.id}
+              onToggle={() => onToggleCat(catAbierta === c.id ? null : c.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+// ── Sub: categoría dentro del banner ─────────────────────────────────────
+function CategoriaPendiente({ cat, abierta, onToggle }) {
+  return (
+    <div style={{
+      background: 'var(--surface)',
+      border: `1px solid ${cat.color}26`,
+      borderLeft: `4px solid ${cat.color}`,
+      borderRadius: 'var(--r-sm)',
+      margin: 4, overflow: 'hidden',
+    }}>
+      <button
+        type="button" onClick={onToggle} aria-expanded={abierta}
+        style={{
+          all: 'unset', boxSizing: 'border-box',
+          width: '100%', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 12px', minHeight: 44,
+        }}>
+        <span style={{
+          width: 26, height: 26, borderRadius: 'var(--r-sm)',
+          background: `${cat.color}1A`, color: cat.color,
+          display: 'grid', placeItems: 'center',
+          fontFamily: 'var(--f-mono)', fontSize: 12, fontWeight: 700,
+          flexShrink: 0,
+        }}>{cat.count}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+            {cat.label}
+          </div>
+          {!cat.accionable && (
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>
+              La edición de lecciones cerradas estará disponible próximamente.
+            </div>
+          )}
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+             style={{
+               color: 'var(--ink-3)', flexShrink: 0,
+               transform: abierta ? 'rotate(180deg)' : 'rotate(0)',
+               transition: 'transform 0.2s',
+             }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {abierta && (
+        <div style={{
+          borderTop: `1px solid ${cat.color}1F`,
+          padding: 6, display: 'flex', flexDirection: 'column', gap: 4,
+          background: 'var(--surface-2)',
+        }}>
+          {cat.list.map((p, i) => (
+            <PendienteItem
+              key={`${p.cod_grupo}|${p.nivel}|${p.leccion}|${p.riel || 'curso'}|${i}`}
+              pendiente={p}
+              accion={cat.accion}
+              accionable={cat.accionable}
+              onClick={() => cat.onClickItem(p)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Sub: item de pendiente (fila compacta) ───────────────────────────────
+function PendienteItem({ pendiente, accion, accionable, onClick }) {
+  const pal = nivelPal(pendiente.nivel);
+  return (
+    <button
+      type="button" onClick={onClick}
+      style={{
+        all: 'unset', boxSizing: 'border-box', display: 'flex',
+        alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        padding: '8px 10px', minHeight: 44, cursor: 'pointer',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderLeft: `3px solid ${pal.mid}`,
+        borderRadius: 'var(--r-sm)',
+        transition: 'background .12s',
+        width: '100%',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-deep)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+    >
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '2px 6px', background: pal.light, color: pal.dark,
+        borderRadius: 4, fontSize: 10, fontWeight: 700,
+        fontFamily: 'var(--f-mono)', letterSpacing: '0.04em', flexShrink: 0,
+      }}>{pendiente.nivel}</span>
+      <span style={{
+        fontFamily: 'var(--f-mono)', fontSize: 12, fontWeight: 700,
+        color: 'var(--ink)', flexShrink: 0,
+      }}>Lec {String(pendiente.leccion).padStart(2, '0')}</span>
+      <span style={{
+        fontSize: 11, color: 'var(--ink-3)',
+        fontFamily: 'var(--f-mono)', flex: '1 1 auto', minWidth: 0,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{pendiente.cod_grupo}</span>
+      <span style={{
+        fontSize: 11, color: 'var(--ink-2)', flexShrink: 0,
+      }}>{vdFmtCorto(pendiente.fecha)}</span>
+      {pendiente.dias_atraso > 0 && (
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+          padding: '2px 7px', borderRadius: 'var(--r-pill)',
+          background: '#E8372A', color: 'white', textTransform: 'uppercase',
+          flexShrink: 0,
+        }}>{pendiente.dias_atraso}d</span>
+      )}
+      <span style={{
+        fontSize: 11, fontWeight: 700,
+        color: accionable ? 'var(--an-granate)' : 'var(--ink-3)',
+        display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
+      }}>
+        {accion}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 6 15 12 9 18" />
+        </svg>
+      </span>
+    </button>
   );
 }
 
@@ -1441,6 +1703,11 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const [tab, setTab]               = React.useState('proximas');
   const [modalLec, setModalLec]     = React.useState(null);   // lección en cierre
   const [toastMsg, setToastMsg]     = React.useState('');
+  const [bannerAbierto, setBannerAbierto] = React.useState(false);
+  const [catAbierta, setCatAbierta]       = React.useState(null);
+  // Para que la inicialización del banner (abierto + categoría) sólo
+  // suceda una vez después del primer fetch — no en cada refetch.
+  const bannerInicializado = React.useRef(false);
 
   const refetch = React.useCallback(() => {
     if (!idDocente) return;
@@ -1526,6 +1793,50 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   };
   const totalPendientes = pendientes?.totales?.total_pendientes ?? 0;
 
+  // ── Arranque inteligente del banner ──────────────────────────────────
+  // Si hay pendientes al PRIMER load, abrimos el banner y expandimos
+  // automáticamente la primera categoría que tenga items.  Esto pasa una
+  // sola vez por montaje; refetch() después de cerrar una lección NO
+  // re-expande el banner si el docente ya lo había cerrado.
+  if (pendientes && !bannerInicializado.current) {
+    bannerInicializado.current = true;
+    if (totalPendientes > 0) {
+      setBannerAbierto(true);
+      if      ((pendientes.totales?.sin_cerrar || 0) > 0) setCatAbierta('sin_cerrar');
+      else if ((pendientes.totales?.sin_retro  || 0) > 0) setCatAbierta('sin_retro');
+      else if ((pendientes.totales?.sin_pc     || 0) > 0) setCatAbierta('sin_pc');
+    }
+  }
+
+  // ── Click en pendiente sin_cerrar → abrir modal de A3 ────────────────
+  // El pendiente trae cod_grupo/nivel/leccion/riel/fecha/dias_atraso pero
+  // el modal espera el objeto completo (con tipo/turno/dia).  Buscamos
+  // la lección en programadas; si no aparece (raro) usamos el pendiente
+  // directo — el cierre necesita sólo las 4 keys que sí trae.
+  const abrirCierreDesdePendiente = (p) => {
+    const match = (calendario?.programadas || []).find(l =>
+      l.cod_grupo === p.cod_grupo &&
+      l.nivel     === p.nivel     &&
+      String(l.leccion) === String(p.leccion) &&
+      (l.riel || 'curso') === (p.riel || 'curso')
+    );
+    setModalLec(match || { ...p, estado: 'PROGRAMADA' });
+  };
+
+  // ── Click en pendiente sin_retro / sin_pc → tab Histórico + aviso ────
+  // La edición de retro/PC de lecciones ya cerradas es funcionalidad
+  // futura.  Llevamos al docente al histórico para que vea el contexto.
+  // TODO: editar retro de lección cerrada — fase futura
+  // TODO: editar Progress Check de lección cerrada — fase futura
+  const navegarAHistorico = (msgPrefix) => {
+    setTab('historico');
+    setToastMsg(`${msgPrefix}: la edición de lecciones cerradas estará disponible próximamente.`);
+    // Subir el scroll para que el docente vea el histórico desde arriba.
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div data-screen-label="Vista docente">
       <PageHeader
@@ -1534,7 +1845,19 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         sub={nombre || cedula}
       />
 
-      <PendientesBanner total={totalPendientes} />
+      <PendientesBanner
+        totales={pendientes?.totales}
+        sinCerrar={pendientes?.sin_cerrar}
+        sinRetro={pendientes?.sin_retro}
+        sinPC={pendientes?.sin_pc}
+        abierto={bannerAbierto}
+        onToggle={() => setBannerAbierto(v => !v)}
+        catAbierta={catAbierta}
+        onToggleCat={setCatAbierta}
+        onClickSinCerrar={abrirCierreDesdePendiente}
+        onClickSinRetro={() => navegarAHistorico('Sin retroalimentación')}
+        onClickSinPC={() => navegarAHistorico('Sin Progress Check')}
+      />
 
       <VDTabs value={tab} onChange={setTab} counts={counts} />
 
