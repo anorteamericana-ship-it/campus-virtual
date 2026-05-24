@@ -4,7 +4,8 @@
 // TEACHER VIEWS — conectado a Apps Script real
 // ─────────────────────────────────────────────────────────────────────────
 
-const SCRIPT_URL_TV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_TV = window.APPS_SCRIPT_URL;
 
 // ── Lección sugerida según fecha de inicio + días de clase ──────────────
 function calcularLeccionSugerida(startDate, diasCode) {
@@ -114,26 +115,12 @@ function useTeacherSession() {
   return { ...state, grupoInfo, asistenciaGrupo };
 }
 
-// Pantalla de carga / error compartida
-function TeacherLoadingState({ loading, error }) {
-  return (
-    <div style={{ padding:'80px 20px', textAlign:'center' }}>
-      {loading ? (
-        <>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, color:'var(--an-navy-ink)', marginBottom:8 }}>Cargando grupo…</div>
-          <div style={{ fontSize:13, color:'var(--ink-3)' }}>Consultando lista de estudiantes</div>
-        </>
-      ) : (
-        <>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, color:'var(--danger)', marginBottom:8 }}>No se pudo cargar el grupo</div>
-          <div style={{ fontSize:13, color:'var(--ink-3)' }}>{error}</div>
-        </>
-      )}
-    </div>
-  );
-}
+// (TeacherLoadingState eliminado — usa <LoadingState/> + <ErrorState/> de primitives.jsx.)
 
 // ── Tareas pendientes derivadas del cronograma real ─────────────────────
+// (Antes alimentaba el TeacherDashboard viejo — ya eliminado en bloque 2.
+// Se conserva por si una vista futura lo necesita; no hace fetch ni efectos
+// colaterales, es puro cálculo.)
 function calcularTareasPendientes(startDate, diasCode, leccionActual) {
   const lec = parseInt(leccionActual) || 1;
   const tareas = [];
@@ -191,117 +178,13 @@ const EVAL_TYPES_SIN_INA = [
   { key:'SOCIAL',    label:'Social',    max:10 },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────
-function TeacherDashboard({ setActive }) {
-  const { codGrupo, roster, nombre, grupoInfo, loading, error } = useTeacherSession();
-  if (loading || error) return <TeacherLoadingState loading={loading} error={error} />;
-
-  const diasCode = (codGrupo || '').split('-')[1] || 'LM';
-  const leccionSugerida = calcularLeccionSugerida(grupoInfo?.startDate, diasCode);
-  const tareas = calcularTareasPendientes(grupoInfo?.startDate, diasCode, leccionSugerida);
-
-  const ontime  = roster.filter(r => r.status==='al-dia').length;
-  const risk    = roster.filter(r => r.status==='riesgo').length;
-  const valid   = roster.filter(r => typeof r.avg === 'number');
-  const avgClass = valid.length ? (valid.reduce((a,r)=>a+r.avg,0)/valid.length).toFixed(1) : '—';
-  // Tomar el primer token del nombre como display ("EMILY VEGA SALAS" → "Emily")
-  const firstToken = (nombre || '').trim().split(/\s+/)[0] || 'Docente';
-  const displayName = firstToken.charAt(0).toUpperCase() + firstToken.slice(1).toLowerCase();
-
-  return (
-    <div>
-      <div className="hero">
-        <div className="watermark-a">A</div>
-        <div className="hero-grid">
-          <div>
-            <div className="hero-kicker">Panel docente · {new Date().toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})}</div>
-            <h1 className="hero-h1">Bienvenido,<br/><em>Prof. {displayName}</em></h1>
-            {(() => {
-              const usr = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
-              const grupos = usr?.grupos || (usr?.grupo ? [usr.grupo] : [codGrupo]);
-              return (
-                <>
-                  <div className="hero-sub">
-                    {grupos.length > 1 ? `${grupos.length} grupos asignados` : <>Grupo activo: <strong>{codGrupo}</strong></>}
-                    {' '}· <strong>{roster.length} {roster.length === 1 ? 'estudiante' : 'estudiantes'}</strong>
-                  </div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {grupos.map(g => <Chip key={g} tone="granate" dot>{g}</Chip>)}
-                    <Chip tone="navy">{roster.length} {roster.length === 1 ? 'estudiante' : 'estudiantes'}</Chip>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12 }}>
-            <QuickStat n={roster.length} l={`Estudiantes en ${codGrupo}`} />
-            <QuickStat n={`${avgClass}%`} l="Promedio del grupo" />
-            <QuickStat n={ontime} l="Al día" color="var(--ok)" />
-            <QuickStat n={risk}   l="En riesgo" color="var(--danger)" />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-h">
-            <div className="card-title">Pendientes por revisar</div>
-            <button className="btn btn-ghost" onClick={() => setActive('calificar')}>Ir a calificar →</button>
-          </div>
-          <div style={{ display:'grid', gap:10 }}>
-            {tareas.length === 0 && (
-              <div style={{ padding:'20px 0', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
-                Sin tareas próximas en el cronograma.
-              </div>
-            )}
-            {tareas.map((h, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom: i<tareas.length-1?'1px solid var(--line)':'none' }}>
-                <div style={{ width:6, height:32, borderRadius:3, background: h.pr==='alta'?'var(--danger)':h.pr==='media'?'var(--warn)':'var(--ink-3)' }} />
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:600, fontSize:13 }}>{h.t}</div>
-                  <div style={{ fontSize:11, color:'var(--ink-3)' }}>{h.g}</div>
-                </div>
-                {h.pr!=='programado' && <button className="btn btn-ghost">Abrir</button>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-h">
-            <div className="card-title">Estudiantes que requieren atención</div>
-          </div>
-          {roster.filter(r => r.status!=='al-dia').map((r, i, arr) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom: i<arr.length-1?'1px solid var(--line)':'none' }}>
-              <div style={{ width:36, height:36, borderRadius:'50%', background: r.status==='riesgo'?'var(--danger)':'var(--warn)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:12 }}>
-                {r.name.split(' ').slice(0,2).map(w=>w[0]).join('')}
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:600, fontSize:13 }}>{r.name}</div>
-                <div style={{ fontSize:11, color:'var(--ink-3)' }}>Asistencia {r.att ?? '—'}% · Promedio {r.avg ?? '—'}</div>
-              </div>
-              <Chip tone={r.status==='riesgo'?'red':'gold'}>{r.status==='riesgo'?'Riesgo':'Atención'}</Chip>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuickStat({ n, l, color='var(--an-navy-ink)' }) {
-  return (
-    <div style={{ background:'var(--surface-2)', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:14 }}>
-      <div style={{ fontFamily:'var(--f-serif)', fontSize:30, fontWeight:500, lineHeight:1, color, letterSpacing:'-0.03em' }}>{n}</div>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginTop:6 }}>{l}</div>
-    </div>
-  );
-}
-
+// (TeacherDashboard y QuickStat eliminados en bloque 2 — VistaDocente es
+// ahora la única pantalla principal del docente, conectada al backend.)
 // ─────────────────────────────────────────────────────────────────────────
 function GruposView() {
   const { codGrupo, roster, loading, error, asistenciaGrupo } = useTeacherSession();
-  if (loading || error) return <TeacherLoadingState loading={loading} error={error} />;
+  if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
+  if (loading) return <LoadingState title="Cargando grupo…" subtitle="Consultando lista de estudiantes" />;
 
   // Derivar nivel humano del código del grupo: B1-LM69-C3-0225 → "Básico I"
   const NIVEL_LABEL = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II', A1:'Avanzado I', A2:'Avanzado II' };
@@ -422,7 +305,8 @@ function CalificarView({ toast }) {
     setNotas(o);
   }, [roster]);
 
-  if (loading || error) return <TeacherLoadingState loading={loading} error={error} />;
+  if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
+  if (loading) return <LoadingState title="Cargando grupo…" subtitle="Consultando lista de estudiantes" />;
 
   const setNota = (code, v) => {
     if (v !== '' && (parseFloat(v) < 0 || parseFloat(v) > evalDef.max)) return;
@@ -614,7 +498,8 @@ function AsistenciaView({ toast }) {
     setAtt(o);
   }, [roster]);
 
-  if (loading || error) return <TeacherLoadingState loading={loading} error={error} />;
+  if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
+  if (loading) return <LoadingState title="Cargando grupo…" subtitle="Consultando lista de estudiantes" />;
 
   const counts = {
     present: Object.values(att).filter(v => v==='present').length,
@@ -778,4 +663,4 @@ function AsistenciaView({ toast }) {
   );
 }
 
-Object.assign(window, { TeacherDashboard, GruposView, CalificarView, AsistenciaView });
+Object.assign(window, { GruposView, CalificarView, AsistenciaView });

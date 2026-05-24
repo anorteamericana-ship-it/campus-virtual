@@ -94,11 +94,28 @@ function AnimatedBar({ pct, color = 'var(--an-granate)' }) {
   );
 }
 
-function Stat({ label, num, suffix, sub, subTone, pct, color }) {
+// ── Stat — primitiva única para tarjetas de número/estadística ─────────
+// Usada en TODOS los dashboards (estudiante, docente, admin, suspensiones).
+// Antes existían StatCard y QuickStat; ambas fueron absorbidas aquí.
+//
+// props:
+//   label   — texto chico arriba (uppercase, gris)
+//   num     — número grande (navy bold Poppins por defecto)
+//   suffix  — sufijo chico al lado del número (ej. "%", "M")
+//   sub     — texto auxiliar abajo
+//   subTone — 'ok' | 'warn' | 'bad' | 'muted'  → color del sub
+//   pct     — 0–100, dibuja barra animada bajo el número
+//   color   — color de la barra (no afecta al número)
+//   tone    — 'alert' pinta el número en rojo de marca (#DA291C).
+//             Usar SOLO cuando el stat indique atención
+//             (ej. contador de pendientes/alertas).
+function Stat({ label, num, suffix, sub, subTone, pct, color, tone }) {
   return (
     <div className="stat">
       <div className="stat-label">{label}</div>
-      <div className="stat-num">{num}{suffix && <em>{suffix}</em>}</div>
+      <div className={`stat-num${tone ? ` tone-${tone}` : ''}`}>
+        {num}{suffix && <em>{suffix}</em>}
+      </div>
       {sub && <div className={`stat-sub ${subTone || ''}`}>{sub}</div>}
       {pct != null && <AnimatedBar pct={pct} color={color} />}
     </div>
@@ -127,7 +144,8 @@ function useUsuario() {
 // Llama getEstudiante desde el Apps Script.
 // Retorna { data, loading, error, reload }.
 // data: { estudiante, niveles, pagos, otrosPagos, grupo, pendientes }
-const __ESTUDIANTE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const __ESTUDIANTE_SCRIPT_URL = window.APPS_SCRIPT_URL;
 
 function useEstudiante(codigo) {
   const [data, setData]       = React.useState(null);
@@ -158,6 +176,145 @@ function useEstudiante(codigo) {
 
   return { data, loading, error, reload: () => setTick(t => t + 1) };
 }
+
+// ── LoadingState — primitiva única para estados de carga ─────────────────
+// Reemplaza TeacherLoadingState, AdminLoadingState, SyllabusLoadingState,
+// PASSpinner, VDSpinner y ColaSkeleton. Spinner siempre navy (#002F6C).
+//
+// props:
+//   variant   — 'spinner' (default) | 'small' | 'verbose' | 'skeleton'
+//   title     — texto grande bajo el spinner (default según variant)
+//   subtitle  — texto chico de hint
+//   etapas    — solo en 'verbose': [{t: ms, label: '...'}]
+//   hint      — solo en 'verbose': pista en mono debajo
+//   skeletonRows — solo en 'skeleton': cuántas tarjetas dummy (default 3)
+function LoadingState({
+  variant = 'spinner',
+  title,
+  subtitle = 'Consultando Apps Script',
+  etapas,
+  hint,
+  skeletonRows = 3,
+}) {
+  // ── skeleton ──────────────────────────────────────────────────────────
+  if (variant === 'skeleton') {
+    const bar = (w) => ({
+      height:12, width:`${w}%`,
+      background:'linear-gradient(90deg, var(--bg-deep) 0%, var(--surface-2) 50%, var(--bg-deep) 100%)',
+      backgroundSize:'200% 100%',
+      animation:'an-shimmer 1.4s linear infinite',
+      borderRadius:4,
+    });
+    return (
+      <ul style={{ listStyle:'none', margin:0, padding:0, display:'flex', flexDirection:'column', gap:14 }}>
+        {Array.from({ length: skeletonRows }).map((_, i) => (
+          <li key={i} style={{
+            padding:18, background:'var(--surface)',
+            border:'1px solid var(--line)', borderRadius:'var(--r-md)',
+            display:'grid', gap:10,
+          }}>
+            <div style={bar(50)} />
+            <div style={bar(80)} />
+            <div style={bar(70)} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  // ── verbose (con etapas cíclicas) ─────────────────────────────────────
+  if (variant === 'verbose') {
+    const stages = etapas || [{ t: 0, label: subtitle }];
+    const [idx, setIdx] = React.useState(0);
+    React.useEffect(() => {
+      const timers = stages.map((e, i) =>
+        e.t > 0 ? setTimeout(() => setIdx(i), e.t) : null
+      );
+      return () => timers.forEach(t => t && clearTimeout(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return (
+      <div style={{
+        padding:'64px 24px 80px', textAlign:'center',
+        background:'var(--surface-2)',
+        border:'1px dashed var(--line-2)',
+        borderRadius:'var(--r-md)',
+        fontFamily:'var(--f-sans)',
+      }}>
+        <div style={{
+          width:44, height:44, margin:'0 auto 18px',
+          borderRadius:'50%',
+          border:'3px solid var(--line)', borderTopColor:'var(--an-navy)',
+          animation:'an-spin 0.9s linear infinite',
+        }} />
+        <div style={{
+          fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600,
+          color:'var(--an-navy-ink)', letterSpacing:'-0.015em', marginBottom:8,
+        }}>{title || 'Cargando…'}</div>
+        <div style={{
+          fontSize:13, color:'var(--ink-2)', minHeight:20,
+          transition:'opacity .25s',
+        }}>{stages[idx]?.label || subtitle}</div>
+        {hint && (
+          <div style={{
+            fontSize:11, color:'var(--ink-3)', marginTop:16,
+            fontFamily:'var(--f-mono)',
+          }}>{hint}</div>
+        )}
+      </div>
+    );
+  }
+
+  // ── small (spinner compacto centrado) ─────────────────────────────────
+  if (variant === 'small') {
+    return (
+      <div style={{
+        display:'flex', flexDirection:'column', alignItems:'center',
+        gap:12, padding:'80px 24px', color:'var(--ink-3)',
+        fontFamily:'var(--f-sans)',
+      }}>
+        <div style={{
+          width:28, height:28, borderRadius:'50%',
+          border:'3px solid var(--line)', borderTopColor:'var(--an-navy)',
+          animation:'an-spin 0.8s linear infinite',
+        }} />
+        <div style={{ fontSize:13 }}>{title || 'Cargando…'}</div>
+      </div>
+    );
+  }
+
+  // ── spinner (default) ─────────────────────────────────────────────────
+  return (
+    <div style={{ padding:'80px 20px', textAlign:'center' }}>
+      <div style={{
+        width:36, height:36, margin:'0 auto 18px',
+        borderRadius:'50%',
+        border:'3px solid var(--line)', borderTopColor:'var(--an-navy)',
+        animation:'an-spin 0.85s linear infinite',
+      }} />
+      <div style={{
+        fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600,
+        color:'var(--an-navy-ink)', marginBottom:8, letterSpacing:'-0.015em',
+      }}>{title || 'Cargando datos…'}</div>
+      <div style={{ fontSize:13, color:'var(--ink-3)' }}>{subtitle}</div>
+    </div>
+  );
+}
+
+// Inyección única de los keyframes globales que usan LoadingState/skeletons.
+// Idempotente — cronograma_grupo.jsx también inyecta los mismos; gana el
+// primero que se monte, el id evita duplicados.
+(function injectAnKeyframes() {
+  if (typeof document === 'undefined' || document.getElementById('an-keyframes')) return;
+  const s = document.createElement('style');
+  s.id = 'an-keyframes';
+  s.textContent = `
+    @keyframes an-spin    { to { transform: rotate(360deg) } }
+    @keyframes an-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    @keyframes an-fade-in { from { opacity: 0 } to { opacity: 1 } }
+  `;
+  document.head.appendChild(s);
+})();
 
 // ── EmptyState — usado por módulos sin datos reales ──────────────────────
 function EmptyState({ icon = '—', title, subtitle, action }) {
@@ -212,5 +369,5 @@ Object.assign(window, {
   Icon, Ring, Toast, AnimatedBar, Stat, Chip,
   useState, useEffect, useRef,
   useUsuario, useEstudiante,
-  EmptyState, ErrorState,
+  LoadingState, EmptyState, ErrorState,
 });

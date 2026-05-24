@@ -2,7 +2,8 @@
 // NOTE: ADMIN_GROUPS fue eliminado de data.jsx. Estos arrays están en [] como
 // fallback temporal hasta cablear el hook useAdminDashboard() de admin_views.jsx.
 
-const SCRIPT_URL_MAT = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_MAT = window.APPS_SCRIPT_URL;
 
 // ────────────────────────────────────────────────────────────────────────
 // HOOK — Prospectos desde Apps Script
@@ -104,7 +105,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
   const [grupos, setGrupos] = React.useState([]);
   const [cargandoGrupos, setCargandoGrupos] = React.useState(true);
   React.useEffect(() => {
-    const SCRIPT_URL_MAT = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+    // (SCRIPT_URL_MAT se hereda del scope del módulo — fuente única window.APPS_SCRIPT_URL)
     fetch(`${SCRIPT_URL_MAT}?fn=getGruposDisponibles`)
       .then(r => r.json())
       .then(d => {

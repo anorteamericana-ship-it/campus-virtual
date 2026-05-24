@@ -5,7 +5,8 @@
 // Cada módulo lee del Apps Script o muestra un estado vacío honesto.
 // ──────────────────────────────────────────────────────────────────────────
 
-const SCRIPT_URL_SM = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_SM = window.APPS_SCRIPT_URL;
 
 const NIVEL_NOMBRE_SM = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_LIBRO_SM  = { B1:'Interchange Intro', B2:'Interchange 1', I1:'Interchange 2', I2:'Interchange 3' };

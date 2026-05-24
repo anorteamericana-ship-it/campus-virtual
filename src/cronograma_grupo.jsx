@@ -5,7 +5,8 @@
 // • student / teacher → grupo fijo (sessionStorage.an_usuario.grupo)
 // • admin / superadmin → selector de grupo
 
-const SCRIPT_URL_CG = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
 
 const GRUPOS_DISPONIBLES = [
   { cod:'B1-LM69-C3-0125', niveles:['B1','B2','I1'], docente:'Rachelle Cruz',    dias:'LM', programa:'SIN_INA' },

@@ -69,57 +69,13 @@ const pasLabelStyle = {
 // ─────────────────────────────────────────────────────────────────────────
 // Sub: Spinner grande (la espera es larga, hay que tranquilizar al admin)
 // ─────────────────────────────────────────────────────────────────────────
-function PASSpinner({ etapa }) {
-  // Etapas visuales para que el admin sepa que no está colgado.
-  const etapas = [
-    { t: 0,    label: 'Conectando con el servidor…' },
-    { t: 1500, label: 'Recolectando lecciones programadas…' },
-    { t: 4000, label: 'Calculando atrasos de todos los docentes…' },
-    { t: 8000, label: 'Casi listo, ordenando por gravedad…' },
-  ];
-  const [idx, setIdx] = React.useState(0);
-  React.useEffect(() => {
-    const timers = etapas.map((e, i) =>
-      e.t > 0 ? setTimeout(() => setIdx(i), e.t) : null
-    );
-    return () => timers.forEach(t => t && clearTimeout(t));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <div style={{
-      padding: '64px 24px 80px', textAlign: 'center',
-      background: 'var(--surface-2)',
-      border: '1px dashed var(--line-2)',
-      borderRadius: 'var(--r-md)',
-      fontFamily: 'var(--f-sans)',
-    }}>
-      <div style={{
-        width: 44, height: 44, margin: '0 auto 18px',
-        borderRadius: '50%',
-        border: '3px solid var(--line)', borderTopColor: 'var(--an-granate)',
-        animation: 'pas-spin 0.9s linear infinite',
-      }} />
-      <div style={{
-        fontFamily: 'var(--f-serif)', fontSize: 19, fontWeight: 500,
-        color: 'var(--ink)', letterSpacing: '-0.015em', marginBottom: 8,
-      }}>
-        Calculando atrasos de todos los docentes
-      </div>
-      <div style={{
-        fontSize: 13, color: 'var(--ink-2)', minHeight: 20,
-        transition: 'opacity .25s',
-      }}>{etapas[idx].label}</div>
-      <div style={{
-        fontSize: 11, color: 'var(--ink-3)', marginTop: 16,
-        fontFamily: 'var(--f-mono)',
-      }}>
-        Esto toma ~11 segundos · no recargues la página
-      </div>
-      <style>{`@keyframes pas-spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
+// (PASSpinner eliminado — usa <LoadingState variant="verbose"/> de primitives.jsx.)
+const PAS_ETAPAS = [
+  { t: 0,    label: 'Conectando con el servidor…' },
+  { t: 1500, label: 'Recolectando lecciones programadas…' },
+  { t: 4000, label: 'Calculando atrasos de todos los docentes…' },
+  { t: 8000, label: 'Casi listo, ordenando por gravedad…' },
+];
 
 // ─────────────────────────────────────────────────────────────────────────
 // Sub: Resumen superior (X de Y con atrasos, fecha, botón Actualizar)
@@ -668,7 +624,12 @@ function PanelAdminSupervision() {
           title={<>Supervisión de <em>Docentes</em></>}
           sub="Atrasos administrativos por docente."
         />
-        <PASSpinner />
+        <LoadingState
+          variant="verbose"
+          title="Calculando atrasos de todos los docentes"
+          etapas={PAS_ETAPAS}
+          hint="Esto toma ~11 segundos · no recargues la página"
+        />
       </div>
     );
   }

@@ -86,23 +86,7 @@ function leerSesionDocente() {
   };
 }
 
-function VDSpinner({ label = 'Cargando panel del docente…' }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      gap: 12, padding: '80px 24px', color: 'var(--ink-3)',
-      fontFamily: 'var(--f-sans)',
-    }}>
-      <div style={{
-        width: 28, height: 28, borderRadius: '50%',
-        border: '3px solid var(--line)', borderTopColor: 'var(--an-granate)',
-        animation: 'vd-spin 0.8s linear infinite',
-      }} />
-      <div style={{ fontSize: 13 }}>{label}</div>
-      <style>{`@keyframes vd-spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
+// (VDSpinner eliminado — usa <LoadingState variant="small"/> de primitives.jsx.)
 
 function PendientesBanner({
   totales, sinCerrar, sinRetro, sinPC,
@@ -1161,7 +1145,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
           }}
         >
           {loading ? (
-            <VDSpinner label="Cargando estudiantes…" />
+            <LoadingState variant="small" title="Cargando estudiantes…" />
           ) : loadError ? (
             <div style={{
               padding: '24px 16px', textAlign: 'center',
@@ -1806,9 +1790,9 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         <PageHeader
           kicker="Panel del docente"
           title={<>Mi <em>Panel</em></>}
-          sub={nombre || cedula}
+          sub={nombreAmable(nombre) || cedula}
         />
-        <VDSpinner />
+        <LoadingState variant="small" title="Cargando panel del docente…" />
       </div>
     );
   }
@@ -1819,7 +1803,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         <PageHeader
           kicker="Panel del docente"
           title={<>Mi <em>Panel</em></>}
-          sub={nombre || cedula}
+          sub={nombreAmable(nombre) || cedula}
         />
         <ErrorState message={error} onRetry={refetch} />
       </div>
@@ -1882,7 +1866,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
       <PageHeader
         kicker="Panel del docente"
         title={<>Mi <em>Panel</em></>}
-        sub={nombre || cedula}
+        sub={nombreAmable(nombre) || cedula}
       />
 
       <PendientesBanner

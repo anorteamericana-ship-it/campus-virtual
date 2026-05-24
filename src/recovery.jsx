@@ -1,5 +1,6 @@
 /* global React, ReactDOM */
-const SCRIPT_URL_REC = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_REC = window.APPS_SCRIPT_URL;
 
 function RecoveryApp() {
   const [cedula, setCedula]       = React.useState('');
@@ -50,7 +51,7 @@ function RecoveryApp() {
           </div>
           <h2 style={{
             margin:'0 0 8px',
-            fontFamily:'var(--f-serif, Fraunces, serif)',
+            fontFamily:'var(--f-serif)',
             fontSize:26, fontWeight:500,
             letterSpacing:'-0.02em',
             color:'var(--an-navy-ink, #111827)',
@@ -117,7 +118,7 @@ function RecoveryApp() {
                 Cuenta encontrada para:
               </div>
               <div style={{
-                fontFamily:'var(--f-serif, Fraunces, serif)',
+                fontFamily:'var(--f-serif)',
                 fontWeight:500, fontSize:18,
                 color:'var(--an-navy-ink, #111827)',
                 marginBottom:18,

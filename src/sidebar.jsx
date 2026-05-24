@@ -1,7 +1,8 @@
 /* global React, Icon, getSesion, setSesion */
 const { useState: _u1 } = React;
 
-const SCRIPT_URL_SB = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_SB = window.APPS_SCRIPT_URL;
 
 // ─────────────────────────────────────────────────────────────────────────
 // MODO PRUEBA — superadmin only
@@ -327,7 +328,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
 
   const studentNav = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-    { id: 'cronograma_grupo', label: 'Mis lecciones', icon: 'calendar' },
+    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'notas', label: 'Mis Notas', icon: 'grades' },
     { id: 'tareas', label: 'Tareas', icon: 'homework' },
     { id: 'materiales', label: 'Materiales', icon: 'materials' },
@@ -338,14 +339,13 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   ];
   const teacherNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
-    { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-    { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'homework', badge: pendientesDoc || null },
+    { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'home', badge: pendientesDoc || null },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
     { id: 'asistencia', label: 'Asistencia', icon: 'check' },
     { id: 'materiales', label: 'Materiales', icon: 'materials' },
-    { id: 'ican', label: 'Club I CAN', icon: 'ican' },
+    { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
   ];
   const adminNav = [
@@ -355,17 +355,20 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation', badge: 3 },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
-    { id: 'cronograma_grupo', label: 'Calendario lecciones', icon: 'calendar' },
+    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
     { id: 'buscador', label: 'Buscador', icon: 'search' },
     { id: 'banco', label: 'Importar Banco', icon: 'payments' },
     { id: 'aplicar_pago', label: 'Aplicar Pago', icon: 'card' },
-    { id: 'docentes', label: 'Docentes', icon: 'graduation' },
-    { id: 'horas', label: 'Horas docentes', icon: 'chart' },
-    { id: 'ican', label: 'Club I CAN', icon: 'ican' },
-    { id: 'finanzas', label: 'Finanzas', icon: 'payments' },
-    { id: 'reportes', label: 'Reportes', icon: 'chart' },
-    { id: 'config', label: 'Configuración', icon: 'settings' },
+    // Ítems sin lógica real — marcados como "Próximamente" hasta que se
+    // conecten. No navegan; renderizarían datos vacíos o demo si lo
+    // hicieran (bloque 2).
+    { id: 'docentes', label: 'Docentes',         icon: 'graduation', proximamente: true },
+    { id: 'horas',    label: 'Horas docentes',   icon: 'chart',      proximamente: true },
+    { id: 'ican',     label: 'Club I CAN',       icon: 'ican',       proximamente: true },
+    { id: 'finanzas', label: 'Finanzas',         icon: 'payments',   proximamente: true },
+    { id: 'reportes', label: 'Reportes',         icon: 'chart',      proximamente: true },
+    { id: 'config',   label: 'Configuración',    icon: 'settings',   proximamente: true },
   ];
   const nav = role === 'student' ? studentNav : role === 'teacher' ? teacherNav : adminNav;
   const userName = usr?.nombre || '—';
@@ -390,13 +393,51 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       {esSuperadmin && <ModoPruebaPanel />}
 
       <div className="sb-section">Menú</div>
-      {nav.map(item => (
-        <button key={item.id} className={`sb-item ${active===item.id?'active':''}`} onClick={() => setActive(item.id)}>
-          <Icon name={item.icon} size={18} />
-          <span className="sb-label">{item.label}</span>
-          {item.badge && <span className="sb-badge">{item.badge}</span>}
-        </button>
-      ))}
+      {nav.map(item => {
+        if (item.proximamente) {
+          return (
+            <button
+              key={item.id}
+              type="button"
+              disabled
+              aria-disabled="true"
+              title="En construcción — lo conectamos pronto"
+              className="sb-item"
+              style={{
+                opacity: 0.42,
+                cursor: 'not-allowed',
+                pointerEvents: 'auto', // queremos el tooltip
+                background: 'transparent',
+              }}
+            >
+              <Icon name={item.icon} size={18} />
+              <span className="sb-label" style={{ textDecoration: 'none' }}>{item.label}</span>
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                padding: '2px 7px',
+                borderRadius: 999,
+                background: 'color-mix(in srgb, var(--ink-3) 18%, transparent)',
+                color: 'var(--ink-3)',
+                whiteSpace: 'nowrap',
+              }}>Pronto</span>
+            </button>
+          );
+        }
+        return (
+          <button
+            key={item.id}
+            className={`sb-item ${active===item.id?'active':''}`}
+            onClick={() => setActive(item.id)}>
+            <Icon name={item.icon} size={18} />
+            <span className="sb-label">{item.label}</span>
+            {item.badge && <span className="sb-badge">{item.badge}</span>}
+          </button>
+        );
+      })}
 
       <div className="sb-user">
         <div className="sb-avatar">{userInit}</div>

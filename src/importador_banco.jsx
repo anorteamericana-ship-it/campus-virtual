@@ -5,7 +5,8 @@
 // T-02: Parseo real del HTML del BCR + llamada al Apps Script
 // ─────────────────────────────────────────────────────────────────────────
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL = window.APPS_SCRIPT_URL;
 
 // ── Parseo real del HTML del BCR ──────────────────────────────────────────
 function parsearExtractoBCR(htmlContent) {

@@ -1,6 +1,7 @@
 /* global React, Icon, Chip, PageHeader */
 
-const SCRIPT_URL_CR = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_CR = window.APPS_SCRIPT_URL;
 
 // Hook: lee usuario de session, llama getEstudiante + getGrupoInfo en paralelo
 function useCronogramaData() {

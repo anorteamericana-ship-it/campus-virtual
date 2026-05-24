@@ -1,6 +1,7 @@
 /* global React, Icon, Chip, Stat, PageHeader */
 
-const SCRIPT_URL_AV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_AV = window.APPS_SCRIPT_URL;
 
 // ─────────────────────────────────────────────────────────────────
 // Hook: lee el dashboard administrativo desde Apps Script
@@ -56,24 +57,7 @@ function useAdminDashboard() {
   return { data, loading, error, refetch: () => setTick(t => t + 1) };
 }
 
-// Pantalla de carga / error compartida del módulo admin
-function AdminLoadingState({ loading, error }) {
-  return (
-    <div style={{ padding:'80px 20px', textAlign:'center' }}>
-      {loading ? (
-        <>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, color:'var(--an-navy-ink)', marginBottom:8 }}>Cargando datos…</div>
-          <div style={{ fontSize:13, color:'var(--ink-3)' }}>Consultando Apps Script</div>
-        </>
-      ) : (
-        <>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, color:'var(--danger)', marginBottom:8 }}>No se pudo cargar el panel</div>
-          <div style={{ fontSize:13, color:'var(--ink-3)' }}>{error}</div>
-        </>
-      )}
-    </div>
-  );
-}
+// (AdminLoadingState eliminado — usa <LoadingState/> + <ErrorState/> de primitives.jsx.)
 
 // ─────────────────────────────────────────────────────────────────────────
 // CONSTANTES DEL NEGOCIO
@@ -1497,7 +1481,8 @@ function AdminGruposView() {
 
   const handleCrear = (code) => { setNewGroupCode(code); refetch(); };
 
-  if (loading || error) return <AdminLoadingState loading={loading} error={error} />;
+  if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
+  if (loading) return <LoadingState title="Cargando datos…" />;
   const grupos = data?.grupos || [];
 
   return (
@@ -1595,6 +1580,8 @@ function AdminGruposView() {
 function AdminDashboard({ setActive }) {
   const { data, loading, error } = useAdminDashboard();
   const { novedades, ultimoSync, resumen: conapeResumen } = useNovedadesConape();
+  const usr = useUsuario();
+  const saludoAdmin = nombreAmable(usr?.nombre || '');
   const [syncing, setSyncing] = React.useState(false);
   const handleSyncConape = async () => {
     setSyncing(true);
@@ -1607,7 +1594,8 @@ function AdminDashboard({ setActive }) {
       setSyncing(false);
     }
   };
-  if (loading || error) return <AdminLoadingState loading={loading} error={error} />;
+  if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
+  if (loading) return <LoadingState title="Cargando datos…" />;
   const k       = data?.kpis    || {};
   const grupos  = data?.grupos  || [];
   const alertas = data?.alertas || [];
@@ -1624,7 +1612,7 @@ function AdminDashboard({ setActive }) {
         <div className="watermark-a">A</div>
         <div className="hero-grid">
           <div>
-            <div className="hero-kicker">Panel administrativo · {new Date().toLocaleDateString('es-CR',{month:'long',year:'numeric'})}</div>
+            <div className="hero-kicker">{saludoAdmin ? `Hola, ${saludoAdmin}` : 'Panel administrativo'} · {new Date().toLocaleDateString('es-CR',{month:'long',year:'numeric'})}</div>
             <h1 className="hero-h1">Academia <em>Norteamericana</em></h1>
             <div className="hero-sub">Vista ejecutiva · {k.grupos ?? grupos.length} grupos activos · {k.docentes ?? '—'} docentes · {k.activos ?? '—'} estudiantes matriculados</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>

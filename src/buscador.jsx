@@ -5,7 +5,8 @@
 // Lista: ESTUDIANTES_COMPLETOS (bundle) | Detalle: Apps Script en tiempo real
 // ─────────────────────────────────────────────────────────────────────────
 
-const SCRIPT_URL_B = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_B = window.APPS_SCRIPT_URL;
 
 const NIVEL_COLOR_B = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_B = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
@@ -17,7 +18,7 @@ const STATUS_META = {
   RI:  { label:'Ret. Injustificado', color:'#C00000', bg:'color-mix(in srgb, #C00000 10%, white)' },
   RJ:  { label:'Ret. Justificado',   color:'#C67100', bg:'color-mix(in srgb, #C67100 12%, white)' },
   PE:  { label:'Pendiente',          color:'#8B8178', bg:'color-mix(in srgb, #8B8178 10%, white)' },
-  REP: { label:'Reprobado',          color:'#8B1E3F', bg:'color-mix(in srgb, #8B1E3F 10%, white)' },
+  REP: { label:'Reprobado',          color:'#DA291C', bg:'color-mix(in srgb, #DA291C 10%, white)' },
 };
 
 function StatusChip({ code, small }) {
@@ -241,7 +242,7 @@ function FichaEstudiante({ est, onBack, detalle, cargandoDet, errDetalle }) {
 // PANEL DOCUMENTOS
 // ─────────────────────────────────────────────────────────────────────────
 function PanelDocumentos({ est, detalle }) {
-  const SCRIPT_URL_B = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+  // (SCRIPT_URL_B se hereda del scope del módulo — fuente única window.APPS_SCRIPT_URL)
   const nivelActivo = detalle?.grupo?.NIVEL_ACTUAL_ID || est.nivel_actual || 'B1';
   const niveles = detalle?.niveles || {};
   const NIVEL_LABEL = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };

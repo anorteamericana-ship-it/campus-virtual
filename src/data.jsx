@@ -275,8 +275,23 @@ const LEVELS = [
 // un monto inventado al usuario.
 const PRECIOS = null;
 
+// ── nombreAmable(nombreCompleto) ──────────────────────────────────────────
+// Regla ÚNICA para mostrar el nombre del usuario en los 3 paneles.
+// Los nombres vienen del backend en formato APELLIDO APELLIDO NOMBRE[ ...]
+// (ej. "ALVAREZ GONZALEZ JOHN PAUL"). Devolvemos el primer nombre de pila
+// capitalizado (ej. "John"). Para nombres de 1–2 tokens caemos al primero
+// (típico cuando alguien se registró como "Emily" o "John Doe").
+function nombreAmable(nombreCompleto) {
+  if (!nombreCompleto || typeof nombreCompleto !== 'string') return '';
+  const tokens = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return '';
+  const pick = tokens[2] || tokens[0];
+  return pick.charAt(0).toUpperCase() + pick.slice(1).toLowerCase();
+}
+
 Object.assign(window, {
   LEVELS, PRECIOS,
+  nombreAmable,
   APPS_SCRIPT_URL,
   getSesion, setSesion,
   fetchCalendarioDocente, fetchTareasPendientesDocente,

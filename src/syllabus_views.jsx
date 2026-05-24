@@ -2,7 +2,8 @@
    ICAN_CATALOG, ICAN_HISTORY,
    buildGroupSchedule, fmtDate, fmtDateLong, MONTHS_ES */
 
-const SCRIPT_URL_SV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_SV = window.APPS_SCRIPT_URL;
 
 const LEVEL_LABEL = {
   b1:'Básico I', b2:'Básico II',
@@ -45,15 +46,7 @@ function useGroupFromSession() {
   return { grupoInfo, grupo, codGrupo, loading };
 }
 
-// Spinner / estado vacío compartido del módulo sílabus
-function SyllabusLoadingState({ message = 'Cargando datos del grupo…' }) {
-  return (
-    <div style={{ padding:'80px 20px', textAlign:'center' }}>
-      <div style={{ fontFamily:'var(--f-serif)', fontSize:22, color:'var(--an-navy-ink)', marginBottom:8 }}>{message}</div>
-      <div style={{ fontSize:13, color:'var(--ink-3)' }}>Consultando Apps Script</div>
-    </div>
-  );
-}
+// (SyllabusLoadingState eliminado — usa <LoadingState/> de primitives.jsx.)
 
 // ─────────────────────────────────────────────────────────────────────────
 // SYLLABUS + SCHEDULE — shared by Materiales, Calendario, Docente, Admin
@@ -192,8 +185,8 @@ function PriorityBanner({ compact = false, onDismiss }) {
 function MaterialesView({ initialLesson = null } = {}) {
   const { grupoInfo, grupo, loading } = useGroupFromSession();
   const schedule = useScheduleState(grupoInfo, grupo);
-  if (loading) return <SyllabusLoadingState />;
-  if (!grupoInfo || !grupo) return <SyllabusLoadingState message="No se encontró el grupo del estudiante." />;
+  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
+  if (!grupoInfo || !grupo) return <LoadingState title="No se encontró el grupo del estudiante." />;
   const [tab, setTab] = React.useState('calendario'); // calendario | futuras | completadas | todas
   const [open, setOpen] = React.useState(initialLesson);
 
@@ -636,8 +629,8 @@ function LessonRowInner({ lesson, isOpen, onToggle }) {
 function CalendarioView() {
   const { grupoInfo, grupo, codGrupo, loading } = useGroupFromSession();
   const schedule = useScheduleState(grupoInfo, grupo);
-  if (loading) return <SyllabusLoadingState />;
-  if (!grupoInfo || !grupo) return <SyllabusLoadingState message="No se encontró el grupo del estudiante." />;
+  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
+  if (!grupoInfo || !grupo) return <LoadingState title="No se encontró el grupo del estudiante." />;
   const nivelLbl = LEVEL_LABEL[grupoInfo.levelId] || grupoInfo.levelId || '—';
   const [month, setMonth] = React.useState(TODAY.getMonth());
   const [year, setYear] = React.useState(TODAY.getFullYear());

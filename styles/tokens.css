@@ -2,25 +2,31 @@
    Academia Norteamericana — Design Tokens
    ======================================================================== */
 :root {
-  /* Brand — extracted from logos & ads */
-  --an-granate: #8B1E3F;          /* logo A dark red */
-  --an-granate-ink: #5C1229;       /* darker for text on light */
-  --an-red: #D32F2F;               /* bold accent red (ads) */
-  --an-red-bright: #E11D2E;
-  --an-navy: #0C2D5C;              /* Academia wordmark blue */
-  --an-navy-ink: #061735;
-  --an-gold: #E5A823;              /* CONAPE gold — secondary accent */
-  --an-gold-soft: #F4C860;
+  /* Brand — OFICIAL Academia Norteamericana (navy + rojo) */
+  /* Navy es el rey: estructura, texto, encabezados, botones primarios, sidebar */
+  --an-navy:        #002F6C;       /* navy oficial — color rey */
+  --an-navy-ink:    #001E47;       /* navy más oscuro para texto sobre claro */
+  /* Rojo es el acento, con moderación */
+  --an-red:         #DA291C;       /* rojo oficial — acción, destacados */
+  --an-red-bright:  #DA291C;       /* mantenido para compatibilidad */
 
-  /* Neutrals — warm cream, not black */
-  --bg:        #F7F3EC;            /* page background */
-  --bg-deep:   #EEE8DC;            /* sunken */
-  --surface:   #FFFFFF;            /* cards */
-  --surface-2: #FBF8F2;            /* soft cards */
+  /* Granate y dorado ELIMINADOS de la marca oficial.
+     Aliases re-apuntados al navy/rojo para que el campus se repinte solo
+     donde usa los tokens centrales. Lo que quede inline lo cazamos después. */
+  --an-granate:     var(--an-navy);
+  --an-granate-ink: var(--an-navy-ink);
+  --an-gold:        var(--an-red);
+  --an-gold-soft:   var(--an-red);
+
+  /* Neutrals — fondo crema cálido oficial */
+  --bg:        #F3EEE6;            /* fondo base crema cálido oficial */
+  --bg-deep:   #EAE3D5;            /* sunken cálido */
+  --surface:   #FFFFFF;            /* tarjetas/superficies blancas */
+  --surface-2: #FAF6EE;            /* tarjetas suaves */
   --ink:       #1A1613;            /* primary text */
   --ink-2:     #4A413A;            /* secondary text */
-  --ink-3:     #8B8178;            /* tertiary / labels */
-  --line:      #E8DFD2;            /* borders */
+  --ink-3:     #6B7280;            /* labels / metadatos */
+  --line:      #E5DECF;            /* bordes cálidos coherentes con crema */
   --line-2:    #D4C9B6;
 
   /* Interchange level tokens (consistent with calendar) */
@@ -48,8 +54,9 @@
   --sh-3: 0 8px 40px -12px rgba(26,22,19,0.18);
   --sh-press: inset 0 -3px 0 rgba(0,0,0,0.12);
 
-  /* Type */
-  --f-serif: 'Fraunces', 'DM Serif Display', Georgia, serif;
-  --f-sans:  'Plus Jakarta Sans', -apple-system, 'Inter', system-ui, sans-serif;
+  /* Type — Poppins oficial (sans pesada). Fraunces eliminada de la marca.
+     --f-serif se mantiene como alias por compatibilidad pero apunta a Poppins. */
+  --f-sans:  'Poppins', -apple-system, system-ui, sans-serif;
+  --f-serif: 'Poppins', -apple-system, system-ui, sans-serif;
   --f-mono:  'JetBrains Mono', 'Courier New', monospace;
 }

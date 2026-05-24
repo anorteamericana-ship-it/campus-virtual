@@ -4,7 +4,8 @@
 // APLICAR PAGO — conectado a Apps Script / APOLLO_G3
 // ─────────────────────────────────────────────────────────────────────────
 
-const SCRIPT_URL_AP = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_AP = window.APPS_SCRIPT_URL;
 
 const NIVEL_COLOR_A = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_A = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };

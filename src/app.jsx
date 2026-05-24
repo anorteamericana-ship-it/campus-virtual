@@ -1,11 +1,44 @@
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, NotasView, TareasView, MaterialesView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
-   ExamenOralView, TeacherDashboard, GruposView, CalificarView, AsistenciaView,
-   AdminDashboard, AdminGruposView, FinanzasView, AdminPlaceholderView,
-   AdminHorasDocentesView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
+   ExamenOralView, GruposView, CalificarView, AsistenciaView,
+   AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones */
+
+// ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
+// (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
+// están conectados. En el sidebar se ven atenuados y no navegan; este
+// componente es una red de seguridad por si alguien llega vía URL/state
+// antiguo. NO renderiza datos demo.)
+function ProximamenteView({ title }) {
+  return (
+    <div data-screen-label={'Admin · ' + title + ' (próximamente)'} style={{
+      maxWidth: 640, margin: '64px auto', padding: '28px 30px',
+      background: 'var(--surface-2)',
+      border: '1px dashed var(--line-2)',
+      borderRadius: 'var(--r-md)',
+      fontFamily: 'var(--f-sans)',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '3px 10px', borderRadius: 999,
+        background: 'color-mix(in srgb, var(--ink-3) 18%, transparent)',
+        color: 'var(--ink-2)', fontSize: 10.5, fontWeight: 800,
+        letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 14,
+      }}>Próximamente</div>
+      <div style={{ fontFamily: 'var(--f-serif)', fontSize: 26, fontWeight: 500,
+                    color: 'var(--an-navy-ink)', letterSpacing: '-0.02em', marginBottom: 8 }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.55 }}>
+        Este módulo aún no está conectado. Lo habilitamos en una próxima
+        iteración, con datos reales.
+      </div>
+    </div>
+  );
+}
 
 const { useState, useEffect } = React;
 
@@ -55,12 +88,12 @@ function ModoPruebaRibbon({ usuario, onVolver }) {
         alignItems: 'center',
         gap: 14,
         padding: '8px 18px',
-        background: 'repeating-linear-gradient(135deg, #2A1A1F 0 14px, #3A2026 14px 28px)',
+        background: 'repeating-linear-gradient(135deg, #001E47 0 14px, #002F6C 14px 28px)',
         color: 'white',
         fontFamily: 'var(--f-sans, system-ui)',
         fontSize: 12.5,
         letterSpacing: '0.01em',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: '1px solid rgba(255,255,255,0.10)',
       }}
     >
       <span style={{
@@ -71,7 +104,7 @@ function ModoPruebaRibbon({ usuario, onVolver }) {
       }}>
         <span style={{
           width: 8, height: 8, borderRadius: '50%',
-          background: '#FFC857', boxShadow: '0 0 0 3px rgba(255,200,87,0.22)',
+          background: '#DA291C', boxShadow: '0 0 0 3px rgba(218,41,28,0.30)',
         }} />
         Modo prueba
       </span>
@@ -89,7 +122,7 @@ function ModoPruebaRibbon({ usuario, onVolver }) {
         style={{
           padding: '6px 12px',
           background: 'white',
-          color: '#2A1A1F',
+          color: '#002F6C',
           border: 'none',
           borderRadius: 6,
           fontFamily: 'inherit',
@@ -189,20 +222,28 @@ function App() {
     };
     content = map[active] || map.dashboard;
   } else if (role === 'teacher') {
+    // VistaDocente es la pantalla principal del docente. El antiguo
+    // TeacherDashboard se eliminó (bloque 2). 'dashboard' queda como
+    // alias por compatibilidad con an_active viejo en localStorage.
     const map = {
-      dashboard:   <TeacherDashboard setActive={setActive} />,
+      dashboard:        <VistaDocente />,
       mi_panel_docente: <VistaDocente />,
       grupos:      <GruposView />,
       calificar:   <CalificarView toast={toast} />,
       asistencia:  <AsistenciaView toast={toast} />,
       cronograma_grupo: <CronogramaGrupo rol="teacher" />,
       materiales:  <MaterialesView />,
-      ican:        <ICANViewNew toast={toast} role="teacher" />,
+      ican:        <ProximamenteView title="Club I CAN" />,
       mensajes:    <MensajesView />,
       perfil:      <PerfilView />,
     };
-    content = map[active] || map.dashboard;
+    content = map[active] || map.mi_panel_docente;
   } else {
+    // Admin / superadmin. Los 6 ítems "Próximamente" (docentes, horas,
+    // ican, finanzas, reportes, config) van a ProximamenteView — no
+    // hay datos demo en producción. El sidebar además los presenta
+    // como no-clickeables; esto es la red de seguridad por si el id
+    // llega vía state antiguo.
     const map = {
       matriculas:    <MatriculasView />,
       dashboard:    <AdminDashboard setActive={setActive} />,
@@ -213,13 +254,14 @@ function App() {
       cronograma_grupo: <CronogramaGrupo rol="admin" />,
       buscador:     <BuscadorEstudiantes />,
       banco:        <ImportadorBancario />,
-      docentes:     <AdminPlaceholderView title="Docentes" />,
-      finanzas:     <FinanzasView />,
-      horas:        <AdminHorasDocentesView />,
-      ican:         <ICANViewNew toast={toast} role="admin" />,
-      reportes:     <AdminPlaceholderView title="Reportes" />,
-      config:       <AdminPlaceholderView title="Configuración" />,
       aplicar_pago: <AplicarPago />,
+      // — Próximamente (sin datos demo) ——————————————————————
+      docentes:  <ProximamenteView title="Docentes" />,
+      horas:     <ProximamenteView title="Horas docentes" />,
+      ican:      <ProximamenteView title="Club I CAN" />,
+      finanzas:  <ProximamenteView title="Finanzas" />,
+      reportes:  <ProximamenteView title="Reportes" />,
+      config:    <ProximamenteView title="Configuración" />,
     };
     content = map[active] || map.dashboard;
   }

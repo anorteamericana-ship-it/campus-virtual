@@ -1,7 +1,8 @@
 /* global React, Icon, Ring, Stat, Chip, AnimatedBar, LEVELS,
    useUsuario, useEstudiante, EmptyState, ErrorState */
 
-const SCRIPT_URL_SD = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_SD = window.APPS_SCRIPT_URL;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -145,7 +146,7 @@ function StudentDashboard({ toast, onNavigate }) {
   if (!usr) {
     return (
       <div>
-        <PageHeaderSD title="Dashboard" />
+        <PageHeader title="Dashboard" />
         <EmptyState
           icon="👤"
           title="No hay sesión activa"
@@ -159,7 +160,7 @@ function StudentDashboard({ toast, onNavigate }) {
   if (loading && !data) {
     return (
       <div>
-        <PageHeaderSD title="Cargando tu información…" />
+        <PageHeader title="Cargando tu información…" />
         <SkeletonDashboard />
       </div>
     );
@@ -169,7 +170,7 @@ function StudentDashboard({ toast, onNavigate }) {
   if (error && !data) {
     return (
       <div>
-        <PageHeaderSD title="Dashboard" />
+        <PageHeader title="Dashboard" />
         <ErrorState message={error} onRetry={reload} />
       </div>
     );
@@ -183,11 +184,9 @@ function StudentDashboard({ toast, onNavigate }) {
   const docente      = grupo.DOCENTE || '';
   const docenteCorto = docente ? docente.split(' ').slice(0,2).join(' ') : '—';
 
-  // Nombre (primer nombre, después del primer espacio si hay apellidos delante)
+  // Nombre amable (regla única en data.jsx: 1er nombre de pila, capitalizado)
   const nombreCompleto = est.NOMBRE || usr.nombre || '';
-  const nombreCorto = nombreCompleto.split(' ')[2]
-    || nombreCompleto.split(' ')[0]
-    || '';
+  const nombreCorto = nombreAmable(nombreCompleto);
 
   // Asistencia derivada
   let asistPresentes = null, asistTotal = null, asistPct = null;
@@ -669,18 +668,7 @@ function ICANStatCard({ codigo }) {
   );
 }
 
-function PageHeaderSD({ title, sub }) {
-  return (
-    <div style={{ marginBottom:24 }}>
-      <h1 style={{
-        fontFamily:'var(--f-serif)', fontSize:36, fontWeight:400,
-        letterSpacing:'-0.03em', lineHeight:1.05, margin:0,
-        color:'var(--an-navy-ink)',
-      }}>{title}</h1>
-      {sub && <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>{sub}</div>}
-    </div>
-  );
-}
+// (PageHeaderSD eliminado — usa <PageHeader/> de student_modules.jsx.)
 
 function SkeletonDashboard() {
   const ln = { background:'var(--bg-deep)', borderRadius:6, height:14 };

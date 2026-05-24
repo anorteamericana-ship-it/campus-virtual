@@ -8,7 +8,8 @@
 // proyectados (siguiente).
 // ─────────────────────────────────────────────────────────────────────────
 
-const SCRIPT_URL_AS = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_AS = window.APPS_SCRIPT_URL;
 
 async function resincronizarEstudianteIndividual(codigo) {
   // Llama sincronizarCONAPE_estudiante para un solo código.
@@ -934,7 +935,7 @@ function AdminEstudiantesView({ onNavigate }) {
             </div>
             <div style={{ textAlign:'center', minWidth:90 }}>
               <div style={{ fontSize:10, opacity:0.7, letterSpacing:'0.1em', textTransform:'uppercase' }}>Estudiantes</div>
-              <div style={{ fontWeight:700, fontSize:20, marginTop:1, fontFamily:'var(--f-serif, Fraunces, serif)', letterSpacing:'-0.02em' }}>
+              <div style={{ fontWeight:700, fontSize:20, marginTop:1, fontFamily:'var(--f-serif)', letterSpacing:'-0.02em' }}>
                 {grupoInfo.estudiantes ?? grupoInfo.students ?? 0}
               </div>
             </div>
@@ -1062,7 +1063,7 @@ function AdminEstudiantesView({ onNavigate }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PANEL ESTUDIANTE DRAWER — overlay lateral con ficha completa
 // ─────────────────────────────────────────────────────────────────────────
-const SCRIPT_URL_PANEL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// (URL del Apps Script ya disponible vía SCRIPT_URL_AS arriba — fuente única window.APPS_SCRIPT_URL)
 
 const NIVEL_COLOR_P  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_P  = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
@@ -1077,7 +1078,7 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate }) {
   React.useEffect(() => {
     if (!est) return;
     setCargando(true); setError(''); setDetalle(null);
-    fetch(`${SCRIPT_URL_PANEL}?fn=getEstudiante&codigo=${encodeURIComponent(est.codigo || est.rec_m || '')}`)
+    fetch(`${SCRIPT_URL_AS}?fn=getEstudiante&codigo=${encodeURIComponent(est.codigo || est.rec_m || '')}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setDetalle(d); else setError(d.error || 'Error al cargar'); })
       .catch(e => setError('Error de conexión: ' + e.message))
@@ -1127,7 +1128,7 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate }) {
           color:'white', padding:'20px 24px',
           flexShrink:0, position:'relative', overflow:'hidden',
         }}>
-          <div style={{ position:'absolute', right:-20, bottom:-20, width:140, height:140, borderRadius:'50%', background:'var(--an-granate, #8B1E3F)', opacity:0.15 }} />
+          <div style={{ position:'absolute', right:-20, bottom:-20, width:140, height:140, borderRadius:'50%', background:'var(--an-granate)', opacity:0.15 }} />
 
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
             <div>
@@ -1150,7 +1151,7 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate }) {
                   </span>
                 )}
                 {cuotaPactada && (
-                  <span>Cuota: <strong style={{ color:'var(--an-gold, #E5A823)' }}>₡{cuotaPactada.toLocaleString('es-CR')}</strong></span>
+                  <span>Cuota: <strong style={{ color:'var(--an-gold)' }}>₡{cuotaPactada.toLocaleString('es-CR')}</strong></span>
                 )}
                 {grupoReal?.DOCENTE && (
                   <span>Docente: <strong>{grupoReal.DOCENTE}</strong></span>
@@ -1349,7 +1350,7 @@ function TabAsistenciaPanel({ est, detalle }) {
   React.useEffect(() => {
     const codigo = est.codigo || est.rec_m;
     if (!codigo) return;
-    fetch(`${SCRIPT_URL_PANEL}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${SCRIPT_URL_AS}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setAsistencia(d.asistencia || []); })
       .catch(() => {})
@@ -1487,7 +1488,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     setGen(g => ({...g, [tipo]: true}));
     setRes(r => ({...r, [tipo]: null}));
     try {
-      const resp = await fetch(SCRIPT_URL_PANEL, {
+      const resp = await fetch(SCRIPT_URL_AS, {
         method:'POST',
         headers:{ 'Content-Type':'text/plain' },
         body: JSON.stringify({ fn:'generarDocumento', tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),

@@ -2,7 +2,8 @@
 const { useState, useEffect, useRef } = React;
 
 // ── Apps Script endpoint ─────────────────────────────────────────────────
-const SCRIPT_URL_LOGIN = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
+const SCRIPT_URL_LOGIN = window.APPS_SCRIPT_URL;
 
 // Mapa de errores que devuelve el Apps Script → mensajes amigables
 const ERR_MSG = {

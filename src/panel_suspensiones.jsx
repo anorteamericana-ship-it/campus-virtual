@@ -153,11 +153,10 @@ function PanelSuspensiones() {
         display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',
         gap:14, marginBottom:22,
       }}>
-        <StatCard
-          n={cargando ? '—' : total}
-          l={`${estado.charAt(0)}${estado.slice(1).toLowerCase()}${estado === 'TODAS' ? '' : 's'}`}
-          c={estado === 'PENDIENTE' ? '#B7791F' : estado === 'APROBADA' ? '#2E7D32'
-            : estado === 'RECHAZADA' ? '#7A1F15' : 'var(--ink)'}
+        <Stat
+          label={`${estado.charAt(0)}${estado.slice(1).toLowerCase()}${estado === 'TODAS' ? '' : 's'}`}
+          num={cargando ? '—' : total}
+          tone={estado === 'PENDIENTE' ? 'alert' : undefined}
         />
         <div style={{
           padding:'14px 16px', borderRadius:'var(--r-md)',
@@ -171,7 +170,7 @@ function PanelSuspensiones() {
 
       {/* Cola */}
       {cargando ? (
-        <ColaSkeleton />
+        <LoadingState variant="skeleton" />
       ) : err ? (
         <div style={{
           padding:'18px 16px', background:'#FDECEA',
@@ -267,53 +266,7 @@ function FiltroEstado({ value, onChange, cargando }) {
   );
 }
 
-function StatCard({ n, l, c }) {
-  return (
-    <div style={{
-      padding:'14px 16px',
-      background:'var(--surface)',
-      border:'1px solid var(--line)',
-      borderRadius:'var(--r-md)',
-    }}>
-      <div style={{
-        fontFamily:'var(--f-serif)', fontSize:36, fontWeight:600,
-        color:c, lineHeight:1, letterSpacing:'-0.02em',
-      }}>{n}</div>
-      <div style={{
-        fontSize:10, color:'var(--ink-3)', marginTop:6, fontWeight:700,
-        letterSpacing:'0.1em', textTransform:'uppercase',
-      }}>{l}</div>
-    </div>
-  );
-}
-
-function ColaSkeleton() {
-  return (
-    <ul style={{ listStyle:'none', margin:0, padding:0, display:'flex', flexDirection:'column', gap:14 }}>
-      {[0,1,2].map(i => (
-        <li key={i} style={{
-          padding:18, background:'var(--surface)',
-          border:'1px solid var(--line)', borderRadius:'var(--r-md)',
-          display:'grid', gap:10,
-        }}>
-          <div style={skLine(50)} />
-          <div style={skLine(80)} />
-          <div style={skLine(70)} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function skLine(w) {
-  return {
-    height:12, width:`${w}%`,
-    background:'linear-gradient(90deg, var(--bg-deep) 0%, var(--surface-2) 50%, var(--bg-deep) 100%)',
-    backgroundSize:'200% 100%',
-    animation:'an-shimmer 1.4s linear infinite',
-    borderRadius:4,
-  };
-}
+// (ColaSkeleton y skLine eliminados — usa <LoadingState variant="skeleton"/>.)
 
 function EmptyCola({ estado }) {
   return (
