@@ -16,18 +16,6 @@
 //   • accent stripe vertical sobre cada lección
 // ─────────────────────────────────────────────────────────────────────────
 
-// TODO: reemplazar por endpoint listDocentes() cuando exista
-const DOCENTES_TESTING = [
-  'ANA BELEN SALAZAR FUENTES',
-  'EMILY LUCIA VEGA SALAS',
-  'JOHN ALVAREZ GONZALEZ',
-  'JOSELYN RODRÍGUEZ UGALDE',
-  'KEYLOR LEIVA MIRANDA',
-  'RACHELLE MICHELLE CRUZ PEREZ',
-  'SULIVANY MEDINA FONSECA',
-  'YENDRY VANESSA AGUILAR ROJAS',
-];
-
 // ── Paleta por nivel (idéntica al módulo Calendario) ────────────────────
 const VD_NIVEL_BASE = {
   B1: { dark:'#9A6A00', mid:'#E5A823', light:'#FFF8DC', lighter:'#FFFDF0' },
@@ -83,44 +71,19 @@ const vdLabelStyle = {
 // ─────────────────────────────────────────────────────────────────────────
 // Auth + sesión
 // ─────────────────────────────────────────────────────────────────────────
+// Lee la sesión activa (única fuente: sessionStorage.an_usuario, vía
+// getSesion()). No tocamos claves sueltas: la coexistencia de
+// `sessionStorage.nombre` / `.cedula` / `.rol` fue un bug histórico.
 function leerSesionDocente() {
-  const cedula = sessionStorage.getItem('cedula') || '';
-  const nombre = sessionStorage.getItem('nombre') || '';
-  const rol    = sessionStorage.getItem('rol')    || '';
-  if (nombre || cedula) return { cedula, nombre, rol };
-  try {
-    const u = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
-    if (u) return { cedula: u.cedula || '', nombre: u.nombre || '', rol: u.rol || '' };
-  } catch (_) {}
-  return { cedula: '', nombre: '', rol: '' };
-}
-
-function TestingSelector({ value, onChange }) {
-  return (
-    <div style={{
-      maxWidth: 520, margin: '64px auto', padding: 24,
-      background: 'var(--surface-2)',
-      border: '1px dashed var(--line-2)',
-      borderRadius: 'var(--r-md)',
-      fontFamily: 'var(--f-sans)',
-    }}>
-      <div style={{ ...vdLabelStyle, marginBottom: 8 }}>Modo testing</div>
-      <div style={{ fontSize: 15, color: 'var(--ink-2)', marginBottom: 14, lineHeight: 1.5 }}>
-        No hay docente logueado. Simulá la vista escogiendo un nombre:
-      </div>
-      <select
-        value={value} onChange={e => onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '10px 12px',
-          border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)',
-          background: 'var(--surface)', fontFamily: 'var(--f-mono)',
-          fontSize: 13, color: 'var(--ink)', cursor: 'pointer', outline: 'none',
-        }}>
-        <option value="">— elegir docente —</option>
-        {DOCENTES_TESTING.map(d => <option key={d} value={d}>{d}</option>)}
-      </select>
-    </div>
-  );
+  const u = (typeof window.getSesion === 'function') ? window.getSesion() : null;
+  if (!u) return { cedula: '', nombre: '', rol: '', grupo: '', grupos: [] };
+  return {
+    cedula: u.cedula || '',
+    nombre: u.nombre || '',
+    rol:    u.rol    || '',
+    grupo:  u.grupo  || '',
+    grupos: u.grupos || (u.grupo ? [u.grupo] : []),
+  };
 }
 
 function VDSpinner({ label = 'Cargando panel del docente…' }) {
@@ -982,7 +945,7 @@ const PC_UNIDADES_MAP = {
   21:'U9-U10', 24:'U11-U12', 28:'U13-U14', 30:'U15-U16',
 };
 
-function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess }) {
+function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada }) {
   // ── B1: el panel admin reusa este modal para cerrar lecciones de otro
   // docente.  docente_real = dueño de la lección; registrado_por = admin
   // logueado.  Si no se pasa registradoPor, asumimos que el dueño se
@@ -1005,6 +968,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
   const [errors, setErrors]       = React.useState({});
   const [submitErr, setSubmitErr] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
+  const [suspOpen, setSuspOpen]   = React.useState(false);
 
   const cardRefs = React.useRef({});
   const bodyRef  = React.useRef(null);
@@ -1180,6 +1144,11 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
         <ModalCierreHeader
           lec={lec} pal={pal} programa={programa} includesPC={includesPC}
           onClose={handleCancel}
+          onSolicitarSuspension={
+            (lec.estado === 'PROGRAMADA' || !lec.estado) && !submitting
+              ? () => setSuspOpen(true)
+              : null
+          }
         />
 
         <div
@@ -1237,12 +1206,25 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
           totalPresentes={students ? Object.values(formData).filter(f => f.presente).length : 0}
         />
       </div>
+
+      {suspOpen && (
+        <ModalSolicitarSuspension
+          lec={lec}
+          solicitante={docenteNombre}
+          onCerrar={() => setSuspOpen(false)}
+          onEnviada={(mensaje) => {
+            setSuspOpen(false);
+            if (onSolicitudEnviada) onSolicitudEnviada(mensaje);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ── Header del modal ────────────────────────────────────────────────────
-function ModalCierreHeader({ lec, pal, programa, includesPC, onClose }) {
+function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicitarSuspension }) {
   const programaLabel = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'SIN INA';
   return (
     <div style={{
@@ -1323,21 +1305,52 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose }) {
             )}
           </div>
         </div>
-        <button
-          type="button" onClick={onClose} aria-label="Cerrar"
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            padding: 4, color: 'var(--ink-3)', flexShrink: 0, lineHeight: 0,
-            borderRadius: 'var(--r-sm)',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-deep)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8, flexShrink:0 }}>
+          <button
+            type="button" onClick={onClose} aria-label="Cerrar"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: 4, color: 'var(--ink-3)', lineHeight: 0,
+              borderRadius: 'var(--r-sm)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-deep)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+          {onSolicitarSuspension && (
+            <button
+              type="button"
+              onClick={onSolicitarSuspension}
+              style={{
+                display:'inline-flex', alignItems:'center', gap:6,
+                padding:'6px 10px',
+                background:'var(--surface)',
+                border:'1.5px dashed #B7791F',
+                color:'#7A4F00',
+                fontSize:11, fontWeight:700,
+                borderRadius:'var(--r-pill)',
+                cursor:'pointer',
+                letterSpacing:'0.04em', textTransform:'uppercase',
+                fontFamily:'inherit',
+                whiteSpace:'nowrap',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FFF8E1'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+              title="Solicitar al admin que suspenda esta lección.">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Solicitar suspensión
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1694,9 +1707,8 @@ function VDToast({ message, onDone }) {
 // ─────────────────────────────────────────────────────────────────────────
 function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const sesion = React.useMemo(() => leerSesionDocente(), []);
-  const [testingNombre, setTestingNombre] = React.useState('');
 
-  const nombre = nombreOverride || sesion.nombre || testingNombre || '';
+  const nombre = nombreOverride || sesion.nombre || '';
   const cedula = cedulaOverride || sesion.cedula || '';
   const idDocente = nombre || cedula;
 
@@ -1750,16 +1762,40 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
     return () => { cancel = true; };
   }, [idDocente]);
 
-  // Sin sesión → selector testing
+  // Sin sesión → mensaje neutro. El selector de prueba ahora vive en el
+  // sidebar (Modo prueba, exclusivo del superadmin); si llegaste acá sin
+  // identidad es porque la sesión expiró: redirigir a login.
   if (!idDocente) {
     return (
       <div data-screen-label="Vista docente · sin sesión">
         <PageHeader
           kicker="Panel del docente"
           title={<>Mi <em>Panel</em></>}
-          sub="Sin sesión activa — escogé un docente para previsualizar la vista."
+          sub="No hay docente identificado en la sesión. Iniciá sesión nuevamente."
         />
-        <TestingSelector value={testingNombre} onChange={setTestingNombre} />
+        <div style={{
+          maxWidth: 520, margin: '32px auto', padding: 24,
+          background: 'var(--surface-2)',
+          border: '1px dashed var(--line-2)',
+          borderRadius: 'var(--r-md)',
+          fontFamily: 'var(--f-sans)',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 14, lineHeight: 1.5 }}>
+            Tu sesión no incluye nombre ni cédula de docente. Esto suele
+            pasar cuando la sesión se ensució con datos viejos. Salí y
+            volvé a iniciar sesión desde <code>login.html</code>.
+          </div>
+          <button
+            onClick={() => {
+              try { sessionStorage.removeItem('an_usuario'); } catch(_) {}
+              window.location.href = 'login.html';
+            }}
+            className="btn btn-primary"
+            style={{ background:'var(--an-granate)', borderColor:'var(--an-granate)' }}>
+            Ir a inicio de sesión
+          </button>
+        </div>
       </div>
     );
   }
@@ -1895,10 +1931,267 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
             );
             refetch();
           }}
+          onSolicitudEnviada={(mensaje) => {
+            setToastMsg(mensaje || 'Solicitud enviada, pendiente de aprobación.');
+            refetch();
+          }}
         />
       )}
 
       <VDToast message={toastMsg} onDone={() => setToastMsg('')} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Modal — Solicitar suspensión (docente)
+// El docente PIDE suspender una lección PROGRAMADA; el admin aprueba.
+// Solo al aprobar se empuja el calendario.
+// ─────────────────────────────────────────────────────────────────
+function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
+  const [motivo, setMotivo]     = React.useState('');
+  const [enviando, setEnviando] = React.useState(false);
+  const [err, setErr]           = React.useState('');
+
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !enviando) onCerrar(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [enviando, onCerrar]);
+
+  const handleEnviar = async () => {
+    const m = motivo.trim();
+    if (!m) { setErr('Indicá un motivo para la suspensión.'); return; }
+    if (m.length < 8) { setErr('El motivo es muy corto. Describí qué pasó.'); return; }
+    setEnviando(true); setErr('');
+
+    const payload = {
+      cod_grupo: lec.cod_grupo,
+      nivel:     lec.nivel,
+      leccion:   lec.leccion,
+      riel:      lec.riel || 'curso',
+      motivo:    m,
+      solicitante: solicitante || '',
+    };
+    const res = await window.fetchSolicitarSuspension(payload);
+    setEnviando(false);
+    if (!res?.ok) {
+      setErr(res?.error || 'No se pudo enviar la solicitud.');
+      return;
+    }
+    onEnviada(`Solicitud enviada · pendiente de aprobación (${res.id || ''}).`);
+  };
+
+  const pal = VD_NIVEL_COLORES && VD_NIVEL_COLORES[lec.nivel];
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget && !enviando) onCerrar(); }}
+      style={{
+        position:'fixed', inset:0, zIndex:1200,
+        background:'rgba(20,16,12,0.55)',
+        backdropFilter:'blur(3px)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        padding:18,
+      }}>
+      <div role="dialog" aria-modal="true"
+        style={{
+          width:'100%', maxWidth:480,
+          background:'var(--surface)',
+          borderRadius:'var(--r-lg, 12px)',
+          boxShadow:'0 24px 64px rgba(0,0,0,0.36)',
+          overflow:'hidden',
+          display:'flex', flexDirection:'column',
+          maxHeight:'calc(100vh - 36px)',
+        }}>
+        {/* Header ámbar — "acción excepcional" */}
+        <div style={{
+          padding:'16px 22px 12px',
+          background:'#FFF8E1',
+          borderBottom:'1px solid #F0E1A8',
+          display:'flex', alignItems:'flex-start', gap:14,
+        }}>
+          <div style={{
+            width:34, height:34, borderRadius:8,
+            background:'#B7791F', color:'#FFF',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            flexShrink:0,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div style={{ minWidth:0, flex:1 }}>
+            <div style={{
+              fontSize:10, fontWeight:800, letterSpacing:'0.16em',
+              textTransform:'uppercase', color:'#7A4F00',
+            }}>Solicitud de suspensión</div>
+            <div style={{
+              fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600,
+              color:'var(--ink)', letterSpacing:'-0.015em',
+              marginTop:2, lineHeight:1.2,
+            }}>
+              ¿Por qué hay que suspender esta lección?
+            </div>
+          </div>
+          <button type="button" onClick={() => !enviando && onCerrar()} aria-label="Cerrar"
+            style={{
+              background:'none', border:'none',
+              cursor: enviando ? 'not-allowed' : 'pointer',
+              padding:4, color:'#7A4F00', lineHeight:0,
+              opacity: enviando ? 0.4 : 1,
+            }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Cuerpo */}
+        <div style={{ padding:'16px 22px 4px', overflowY:'auto' }}>
+          <div style={{
+            display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'10px 16px',
+            padding:'12px 14px',
+            background:'var(--surface-2)',
+            border:'1px solid var(--line)',
+            borderRadius:'var(--r-md)',
+            marginBottom:16,
+          }}>
+            <SuspField label="Grupo" value={lec.cod_grupo} mono />
+            <SuspField label="Nivel" value={lec.nivel} pal={pal} />
+            <SuspField label="Lección" value={`#${String(lec.leccion).padStart(2,'0')}`} mono />
+            <SuspField label="Fecha" value={vdFmtLargo(lec.fecha)} />
+            <div style={{ gridColumn:'1 / -1' }}>
+              <SuspField label="Riel"
+                value={(lec.riel || 'curso') === 'ican' ? 'I CAN' : 'Curso (Teórica/Práctica)'} />
+            </div>
+          </div>
+
+          <div style={{
+            padding:'10px 12px',
+            background:'#FFF3CD',
+            border:'1px solid #FFE082',
+            borderRadius:'var(--r-md)',
+            fontSize:12, color:'#7A4F00', lineHeight:1.5,
+            marginBottom:14,
+          }}>
+            <b>Importante:</b> suspender <u>no elimina</u> la lección.
+            Al aprobar, el admin la corre a la siguiente fecha del patrón;
+            todas las lecciones siguientes se desplazan un día hábil.
+            Las 32 lecciones se dan siempre.
+          </div>
+
+          <label style={{ display:'block', marginBottom:14 }}>
+            <div style={vdLabelStyle}>Motivo *</div>
+            <textarea
+              value={motivo}
+              onChange={e => { setMotivo(e.target.value); setErr(''); }}
+              disabled={enviando}
+              rows={4}
+              placeholder="Ej.: docente incapacitado, corte de luz en la sede, etc."
+              style={{
+                width:'100%', marginTop:6,
+                padding:'10px 12px',
+                border:'1.5px solid var(--line)',
+                background:'var(--surface)',
+                borderRadius:'var(--r-md)',
+                fontSize:13, color:'var(--ink)',
+                fontFamily:'inherit',
+                outline:'none', resize:'vertical',
+                boxSizing:'border-box', lineHeight:1.5,
+              }}
+            />
+          </label>
+
+          <div style={{
+            fontSize:11, color:'var(--ink-3)', marginBottom:12,
+          }}>
+            Solicitante: <b style={{ color:'var(--ink-2)' }}>{solicitante || '—'}</b>
+          </div>
+
+          {err && (
+            <div style={{
+              padding:'10px 12px',
+              background:'color-mix(in srgb, var(--danger, #B71C1C) 8%, white)',
+              border:'1px solid color-mix(in srgb, var(--danger, #B71C1C) 28%, white)',
+              borderRadius:'var(--r-sm)',
+              fontSize:12, color:'var(--danger, #B71C1C)',
+              marginBottom:12, fontWeight:600,
+            }}>⚠ {err}</div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding:'14px 22px 18px',
+          borderTop:'1px solid var(--line)',
+          display:'flex', justifyContent:'flex-end', gap:10,
+        }}>
+          <button type="button"
+            onClick={() => !enviando && onCerrar()}
+            disabled={enviando}
+            style={{
+              padding:'10px 16px', background:'transparent',
+              border:'1.5px solid var(--line-2, var(--line))',
+              color:'var(--ink-2)',
+              fontSize:13, fontWeight:600,
+              borderRadius:'var(--r-md)',
+              cursor: enviando ? 'not-allowed' : 'pointer',
+              fontFamily:'inherit',
+            }}>Cancelar</button>
+          <button type="button"
+            onClick={handleEnviar}
+            disabled={enviando || !motivo.trim()}
+            style={{
+              padding:'10px 18px',
+              background: (enviando || !motivo.trim()) ? '#C9BFB1' : '#B7791F',
+              border:'none', color:'#FFF',
+              fontSize:13, fontWeight:700,
+              borderRadius:'var(--r-md)',
+              cursor: (enviando || !motivo.trim()) ? 'not-allowed' : 'pointer',
+              letterSpacing:'0.02em',
+              fontFamily:'inherit',
+              display:'inline-flex', alignItems:'center', gap:8,
+            }}>
+            {enviando ? (
+              <>
+                <span style={{
+                  width:11, height:11, borderRadius:'50%',
+                  border:'2px solid rgba(255,255,255,0.4)',
+                  borderTopColor:'#FFF',
+                  animation:'an-spin .8s linear infinite',
+                  display:'inline-block',
+                }} />
+                Enviando…
+              </>
+            ) : 'Enviar solicitud'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const VD_NIVEL_COLORES = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
+
+function SuspField({ label, value, mono, pal }) {
+  return (
+    <div style={{ minWidth:0 }}>
+      <div style={{
+        fontSize:9, fontWeight:700, letterSpacing:'0.12em',
+        textTransform:'uppercase', color:'var(--ink-3)', marginBottom:2,
+      }}>{label}</div>
+      <div style={{
+        fontSize:12, color: pal || 'var(--ink)', fontWeight:600,
+        fontFamily: mono ? 'var(--f-mono)' : 'inherit',
+        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+      }}>
+        {value}
+      </div>
     </div>
   );
 }

@@ -260,6 +260,7 @@ function CronogramaGrupo({ rol = 'admin' }) {
   }, []);
 
   const esAdmin    = rol === 'admin' || rol === 'superadmin';
+  const esSuperadmin = rol === 'superadmin';
   const esStudent  = rol === 'student';
   const grupoInicial = esAdmin
     ? GRUPOS_DISPONIBLES[0].cod
@@ -342,6 +343,7 @@ function CronogramaGrupo({ rol = 'admin' }) {
   // Override local por id_leccion — sobrevive a re-fetches del detalle.
   const [coberturas, setCoberturas]     = React.useState({});
   const [modalCobertura, setModalCobertura] = React.useState(null); // { selLec } | null
+  const [modalEditarCerrada, setModalEditarCerrada] = React.useState(null); // { selLec } | null
   const [toast, setToast]               = React.useState(null);     // { msg, kind } | null
 
   const showToast = React.useCallback((msg, kind = 'ok') => {
@@ -612,8 +614,11 @@ function CronogramaGrupo({ rol = 'admin' }) {
           rol={rol}
           codigoUsr={usr?.codigo || ''}
           grupoUsr={usr?.grupo || codGrupo}
+          esSuperadmin={esSuperadmin}
+          adminNombre={usr?.nombre || ''}
           cobertura={selLec ? coberturas[idLeccion(nivel, selLec.leccion)] : null}
           onPedirCobertura={() => setModalCobertura({ selLec })}
+          onPedirEditarCerrada={() => setModalEditarCerrada({ selLec })}
           onCerrar={() => setSelLec(null)}
         />
       </div>
@@ -627,6 +632,22 @@ function CronogramaGrupo({ rol = 'admin' }) {
           adminNombre={usr?.nombre || 'admin'}
           onCerrar={() => setModalCobertura(null)}
           onAsignada={onCoberturaAsignada}
+        />
+      )}
+
+      {modalEditarCerrada && (
+        <ModalEditarCerrada
+          selLec={modalEditarCerrada.selLec}
+          codGrupo={codGrupo}
+          nivel={nivel}
+          superadminNombre={usr?.nombre || 'superadmin'}
+          onCerrar={() => setModalEditarCerrada(null)}
+          onGuardado={(mensaje) => {
+            setModalEditarCerrada(null);
+            showToast(mensaje || 'Lección actualizada', 'ok');
+            // Forzar refetch del detalle re-tocando selLec
+            setSelLec(s => (s ? { ...s } : s));
+          }}
         />
       )}
 
@@ -945,7 +966,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, cobertura, onPedirCobertura, onCerrar }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -1001,9 +1022,11 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
           rol={rol}
           codigoUsr={codigoUsr}
           grupoUsr={grupoUsr}
+          esSuperadmin={esSuperadmin}
           cobertura={cobertura}
           docenteTitular={docente}
           onPedirCobertura={onPedirCobertura}
+          onPedirEditarCerrada={onPedirEditarCerrada}
           onCerrar={onCerrar}
         />
       ) : (
@@ -1029,7 +1052,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, cobertura, docenteTitular, onPedirCobertura, onCerrar }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
@@ -1269,6 +1292,44 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, 
                   <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
                 {cobertura ? 'Reasignar cobertura' : 'Asignar cobertura'}
+              </button>
+            )}
+
+            {/* Botón Editar (SUPERADMIN) — solo lecciones CERRADA/CALCULADA */}
+            {esSuperadmin && (selLec.estado === 'CERRADA' || selLec.estado === 'CALCULADA') && (
+              <button
+                type="button"
+                onClick={onPedirEditarCerrada}
+                title="Acción reservada para superadmin: edita datos de una lección ya cerrada."
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  padding:'10px 14px',
+                  background:'#FFF8E1',
+                  border:'1.5px dashed #9A6A00',
+                  color:'#9A6A00',
+                  fontSize:12, fontWeight:700,
+                  borderRadius:'var(--r-md)',
+                  cursor:'pointer',
+                  letterSpacing:'0.04em',
+                  textTransform:'uppercase',
+                  marginTop:2,
+                  fontFamily:'inherit',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FFECB3'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FFF8E1'; }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  <path d="M11 15.5l1.5 1.5L16 13"/>
+                </svg>
+                Editar lección cerrada
+                <span style={{
+                  marginLeft:4, padding:'2px 6px',
+                  background:'#9A6A00', color:'#FFF',
+                  borderRadius:'var(--r-pill)',
+                  fontSize:9, letterSpacing:'0.1em',
+                }}>SUPERADMIN</span>
               </button>
             )}
           </div>
@@ -2031,6 +2092,680 @@ function ModalCobertura({ selLec, codGrupo, nivel, docenteTitular, adminNombre, 
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Modal SUPERADMIN — Editar lección CERRADA
+// Edita retro / PC / asistencia / notas. La lección permanece CERRADA.
+// ─────────────────────────────────────────────────────────────────
+const LECCIONES_CON_PC = [4, 8, 13, 16, 21, 24, 28, 30];
+
+function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerrar, onGuardado }) {
+  const leccionNum = selLec.leccion;
+  const tipo       = selLec.tipo;
+  const riel       = tipo === 'ICAN' ? 'ican' : 'curso';
+
+  const tieneNotas = tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO';
+  const tienePC    = LECCIONES_CON_PC.includes(leccionNum) && riel === 'curso';
+
+  const TABS = React.useMemo(() => {
+    const t = [{ id: 'retro', label: 'Retroalimentación' }];
+    if (tienePC)    t.push({ id: 'pc',    label: 'Progress Check' });
+    t.push({ id: 'asist', label: 'Asistencia' });
+    if (tieneNotas) t.push({ id: 'notas', label: 'Notas' });
+    return t;
+  }, [tienePC, tieneNotas]);
+
+  const [tab, setTab]               = React.useState(TABS[0].id);
+  const [cargando, setCargando]     = React.useState(true);
+  const [errCarga, setErrCarga]     = React.useState('');
+  const [estudiantes, setEst]       = React.useState([]); // [{cod, nombre}]
+  const [form, setForm]             = React.useState({}); // { [cod]: {presente, retro, pc, nota} }
+  const [initial, setInitial]       = React.useState({}); // snapshot para detectar dirty
+  const [confirmar, setConfirmar]   = React.useState(false);
+  const [enviando, setEnviando]     = React.useState(false);
+  const [errEnvio, setErrEnvio]     = React.useState('');
+
+  // Cargar estudiantes + intentar precargar valores actuales
+  React.useEffect(() => {
+    let vivo = true;
+    setCargando(true); setErrCarga('');
+
+    const cargar = async () => {
+      // Paso 1: lista de estudiantes del nivel (cerrar)
+      let lista = [];
+      try {
+        const r = await window.fetchEstudiantesParaCierre(codGrupo, nivel);
+        if (!r?.ok) {
+          if (vivo) { setErrCarga(r?.error || 'No se pudieron cargar los estudiantes.'); setCargando(false); }
+          return;
+        }
+        lista = r.estudiantes || [];
+      } catch (e) {
+        if (vivo) { setErrCarga('Error de red: ' + e.message); setCargando(false); }
+        return;
+      }
+
+      // Paso 2: precargar valores actuales (si el endpoint existe)
+      let actual = {};
+      try {
+        const r = await window.fetchLeccionCerradaDetalle({
+          cod_grupo: codGrupo, nivel, leccion: leccionNum, riel,
+        });
+        if (r?.ok && Array.isArray(r.estudiantes)) {
+          for (const e of r.estudiantes) {
+            const cod = e.cod_estudiante || e.cod || e.codigo;
+            if (cod) actual[String(cod)] = e;
+          }
+        }
+      } catch { /* opcional: si no existe, arrancamos en blanco */ }
+
+      if (!vivo) return;
+      const init = {};
+      for (const e of lista) {
+        const cod = String(e.code || e.cod || e.codigo);
+        const a = actual[cod] || {};
+        init[cod] = {
+          presente: a.presente !== undefined ? !!a.presente : true,
+          retro:    a.retro || a.retroalimentacion || '',
+          pc:       a.pc || a.progress_check || '',
+          nota:     a.nota !== undefined && a.nota !== null ? String(a.nota) : '',
+        };
+      }
+      setEst(lista.map(e => ({
+        cod: String(e.code || e.cod || e.codigo),
+        nombre: e.name || e.nombre || '—',
+      })));
+      setForm(init);
+      setInitial(JSON.parse(JSON.stringify(init)));
+      setCargando(false);
+    };
+
+    cargar();
+    return () => { vivo = false; };
+  }, [codGrupo, nivel, leccionNum, riel]);
+
+  // ESC + bloquear scroll
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !enviando) handleCerrar(); };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enviando]);
+
+  const dirty = React.useMemo(() => {
+    return JSON.stringify(form) !== JSON.stringify(initial);
+  }, [form, initial]);
+
+  const updateField = (cod, field, value) => {
+    setForm(prev => ({ ...prev, [cod]: { ...prev[cod], [field]: value } }));
+    setErrEnvio('');
+  };
+
+  const handleCerrar = () => {
+    if (enviando) return;
+    if (dirty && !window.confirm('Tenés cambios sin guardar. ¿Cerrar igual?')) return;
+    onCerrar();
+  };
+
+  // Detectar qué grupos cambiaron
+  const cambios = React.useMemo(() => {
+    const cambioRetro = [];
+    const cambioPC    = [];
+    const cambioAsist = [];
+    const cambioNota  = [];
+    for (const e of estudiantes) {
+      const a = form[e.cod] || {};
+      const b = initial[e.cod] || {};
+      if ((a.retro || '') !== (b.retro || '')) cambioRetro.push({ cod_estudiante: e.cod, comentario: a.retro || '' });
+      if (tienePC && (a.pc || '') !== (b.pc || '')) cambioPC.push({ cod_estudiante: e.cod, comentario: a.pc || '' });
+      if (!!a.presente !== !!b.presente) cambioAsist.push({ cod_estudiante: e.cod, presente: !!a.presente });
+      if (tieneNotas && (a.nota || '') !== (b.nota || '')) cambioNota.push({ cod_estudiante: e.cod, nota: a.nota });
+    }
+    return { cambioRetro, cambioPC, cambioAsist, cambioNota };
+  }, [form, initial, estudiantes, tienePC, tieneNotas]);
+
+  const totalCambios =
+    cambios.cambioRetro.length + cambios.cambioPC.length +
+    cambios.cambioAsist.length + cambios.cambioNota.length;
+
+  const handleGuardar = async () => {
+    if (enviando || !totalCambios) return;
+    setEnviando(true); setErrEnvio('');
+
+    const calls = [];
+    const resumen = [];
+
+    if (cambios.cambioRetro.length) {
+      calls.push(
+        window.fetchEditarRetroPCCerrada({
+          tipo: 'retro',
+          cod_grupo: codGrupo,
+          leccion_num: leccionNum,
+          lista: cambios.cambioRetro,
+          editado_por: superadminNombre,
+        }).then(r => {
+          if (!r?.ok) throw new Error(r?.error || 'Error guardando retro.');
+          resumen.push(r.mensaje || `Retro: ${r.actualizados || 0}↻ ${r.agregados || 0}+`);
+        })
+      );
+    }
+    if (cambios.cambioPC.length) {
+      calls.push(
+        window.fetchEditarRetroPCCerrada({
+          tipo: 'pc',
+          cod_grupo: codGrupo,
+          leccion_num: leccionNum,
+          lista: cambios.cambioPC,
+          editado_por: superadminNombre,
+        }).then(r => {
+          if (!r?.ok) throw new Error(r?.error || 'Error guardando PC.');
+          resumen.push(r.mensaje || `PC: ${r.actualizados || 0}↻ ${r.agregados || 0}+`);
+        })
+      );
+    }
+    if (cambios.cambioAsist.length || cambios.cambioNota.length) {
+      calls.push(
+        window.fetchEditarAsistenciaNotaCerrada({
+          cod_grupo: codGrupo,
+          nivel,
+          leccion: leccionNum,
+          asistencias: cambios.cambioAsist,
+          notas:       cambios.cambioNota,
+          editado_por: superadminNombre,
+        }).then(r => {
+          if (!r?.ok) throw new Error(r?.error || 'Error guardando asistencia/notas.');
+          resumen.push(r.mensaje ||
+            `Asistencia: ${r.asistencia_editada || 0} · Notas: ${r.notas_editadas || 0}`);
+        })
+      );
+    }
+
+    try {
+      await Promise.all(calls);
+      onGuardado(`Lección actualizada · ${resumen.join(' · ')}`);
+    } catch (e) {
+      setErrEnvio(e.message || 'Error guardando cambios.');
+      setEnviando(false);
+      setConfirmar(false);
+    }
+  };
+
+  const colorNivel = NIVEL_COLOR_CG[nivel] || 'var(--an-granate)';
+  const idLec = idLeccion(nivel, leccionNum);
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget && !enviando) handleCerrar(); }}
+      style={{
+        position:'fixed', inset:0, zIndex:1100,
+        background:'rgba(20, 16, 12, 0.6)',
+        backdropFilter:'blur(3px)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        padding:'min(3vh, 24px) min(3vw, 18px)',
+        animation:'an-fade-in .14s ease-out',
+      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Editar lección cerrada ${idLec}`}
+        style={{
+          width:'100%', maxWidth:760, maxHeight:'calc(100vh - 36px)',
+          background:'var(--surface)',
+          borderRadius:'var(--r-lg, 12px)',
+          boxShadow:'0 24px 64px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.18)',
+          overflow:'hidden',
+          display:'flex', flexDirection:'column',
+        }}>
+
+        {/* Header */}
+        <div style={{
+          padding:'16px 22px 12px',
+          borderBottom:'1px solid var(--line)',
+          background:'#FFF8E1',
+          display:'flex', alignItems:'flex-start', gap:14,
+        }}>
+          <div style={{
+            width:36, height:36, borderRadius:8,
+            background:'#9A6A00', color:'#FFF',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            flexShrink:0,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              <path d="M11 15.5l1.5 1.5L16 13"/>
+            </svg>
+          </div>
+          <div style={{ minWidth:0, flex:1 }}>
+            <div style={{
+              fontSize:10, fontWeight:800, letterSpacing:'0.18em',
+              textTransform:'uppercase', color:'#9A6A00',
+            }}>
+              Poder superadmin · Lección cerrada
+            </div>
+            <div style={{
+              fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600,
+              color:'var(--ink)', letterSpacing:'-0.015em',
+              marginTop:2, lineHeight:1.2,
+            }}>
+              Editar {idLec}
+              <span style={{
+                marginLeft:8, padding:'2px 8px', borderRadius:'var(--r-pill)',
+                background:colorNivel, color:'#FFF',
+                fontSize:10, fontWeight:800, letterSpacing:'0.12em',
+                textTransform:'uppercase', verticalAlign:'middle',
+                fontFamily:'var(--f-sans, inherit)',
+              }}>{nivel}</span>
+            </div>
+            <div style={{
+              fontSize:11, color:'var(--ink-2)', marginTop:4,
+              fontFamily:'var(--f-mono)', letterSpacing:'0.02em',
+            }}>
+              {codGrupo} · {fmtLargo(selLec.fecha)} · {TIPO_LABEL_LARGO[tipo] || tipo}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => !enviando && handleCerrar()}
+            aria-label="Cerrar"
+            style={{
+              background:'none', border:'none', cursor: enviando ? 'not-allowed' : 'pointer',
+              padding:4, color:'#9A6A00', lineHeight:0, opacity: enviando ? 0.4 : 1,
+              flexShrink:0,
+            }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display:'flex', gap:0,
+          borderBottom:'1px solid var(--line)',
+          padding:'0 22px',
+          background:'var(--surface)',
+        }}>
+          {TABS.map(t => {
+            const activo = t.id === tab;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                disabled={enviando}
+                style={{
+                  padding:'12px 14px',
+                  background:'transparent',
+                  border:'none',
+                  borderBottom: activo ? `2.5px solid ${colorNivel}` : '2.5px solid transparent',
+                  color: activo ? 'var(--ink)' : 'var(--ink-3)',
+                  fontSize:12, fontWeight: activo ? 700 : 600,
+                  cursor: enviando ? 'not-allowed' : 'pointer',
+                  fontFamily:'inherit',
+                  letterSpacing:'0.02em',
+                  marginBottom:-1,
+                }}>
+                {t.label}
+              </button>
+            );
+          })}
+          <div style={{ flex:1 }} />
+          {totalCambios > 0 && (
+            <div style={{
+              alignSelf:'center',
+              fontSize:10, fontWeight:700, letterSpacing:'0.12em',
+              textTransform:'uppercase', color:'#9A6A00',
+              padding:'4px 10px', background:'#FFF3CD',
+              border:'1px solid #FFE082',
+              borderRadius:'var(--r-pill)',
+            }}>
+              {totalCambios} cambio{totalCambios !== 1 ? 's' : ''} sin guardar
+            </div>
+          )}
+        </div>
+
+        {/* Cuerpo */}
+        <div style={{
+          flex:1, overflowY:'auto',
+          padding:'16px 22px',
+          background:'var(--bg, var(--surface))',
+        }}>
+          {cargando ? (
+            <div style={{
+              padding:'40px 16px', textAlign:'center',
+              color:'var(--ink-3)', fontSize:13,
+            }}>
+              <div style={{
+                width:24, height:24, margin:'0 auto 10px',
+                borderRadius:'50%',
+                border:'2.5px solid var(--line)', borderTopColor:'var(--ink)',
+                animation:'an-spin .8s linear infinite',
+              }} />
+              Cargando estudiantes y datos de la lección…
+            </div>
+          ) : errCarga ? (
+            <div style={{
+              padding:'14px 16px',
+              background:'color-mix(in srgb, var(--danger, #B71C1C) 8%, white)',
+              border:'1px solid color-mix(in srgb, var(--danger, #B71C1C) 28%, white)',
+              borderRadius:'var(--r-md)',
+              fontSize:12, color:'var(--danger, #B71C1C)',
+            }}>⚠ {errCarga}</div>
+          ) : estudiantes.length === 0 ? (
+            <div style={{
+              padding:'30px 16px', textAlign:'center',
+              color:'var(--ink-3)', fontSize:13, fontStyle:'italic',
+            }}>
+              No hay estudiantes activos (CA) en este nivel.
+            </div>
+          ) : (
+            <ul style={{ listStyle:'none', margin:0, padding:0, display:'flex', flexDirection:'column', gap:10 }}>
+              {estudiantes.map((e, i) => (
+                <FilaEditar
+                  key={e.cod}
+                  est={e}
+                  idx={i}
+                  tab={tab}
+                  valores={form[e.cod] || {}}
+                  initial={initial[e.cod] || {}}
+                  onChange={(field, value) => updateField(e.cod, field, value)}
+                  disabled={enviando}
+                  colorNivel={colorNivel}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding:'12px 22px 14px',
+          borderTop:'1px solid var(--line)',
+          background:'var(--surface)',
+          display:'flex', alignItems:'center', gap:10,
+          flexWrap:'wrap',
+        }}>
+          <div style={{
+            fontSize:10, color:'var(--ink-3)',
+            letterSpacing:'0.04em', flex:1, minWidth:160,
+          }}>
+            Editado por <b style={{ color:'var(--ink-2)' }}>{superadminNombre || 'superadmin'}</b>.
+            La lección permanece <b>CERRADA</b>.
+          </div>
+
+          {errEnvio && (
+            <div style={{
+              fontSize:11, color:'var(--danger, #B71C1C)', fontWeight:700,
+              padding:'6px 10px',
+              background:'color-mix(in srgb, var(--danger, #B71C1C) 8%, white)',
+              border:'1px solid color-mix(in srgb, var(--danger, #B71C1C) 24%, white)',
+              borderRadius:'var(--r-sm)',
+            }}>⚠ {errEnvio}</div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => !enviando && handleCerrar()}
+            disabled={enviando}
+            style={{
+              padding:'10px 16px',
+              background:'transparent',
+              border:'1.5px solid var(--line-2, var(--line))',
+              color:'var(--ink-2)',
+              fontSize:13, fontWeight:600,
+              borderRadius:'var(--r-md)',
+              cursor: enviando ? 'not-allowed' : 'pointer',
+              fontFamily:'inherit',
+            }}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmar(true)}
+            disabled={enviando || !totalCambios}
+            style={{
+              padding:'10px 18px',
+              background: (!totalCambios || enviando) ? '#C9BFB1' : '#9A6A00',
+              border:'none',
+              color:'#FFFFFF',
+              fontSize:13, fontWeight:700,
+              borderRadius:'var(--r-md)',
+              cursor: (!totalCambios || enviando) ? 'not-allowed' : 'pointer',
+              letterSpacing:'0.02em',
+              fontFamily:'inherit',
+              display:'inline-flex', alignItems:'center', gap:8,
+            }}>
+            {enviando ? 'Guardando…' : `Guardar (${totalCambios})`}
+          </button>
+        </div>
+
+        {/* Sub-modal de confirmación */}
+        {confirmar && (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget && !enviando) setConfirmar(false); }}
+            style={{
+              position:'absolute', inset:0,
+              background:'rgba(20, 16, 12, 0.55)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              padding:20, animation:'an-fade-in .14s ease-out',
+            }}>
+            <div style={{
+              width:'100%', maxWidth:420,
+              background:'var(--surface)',
+              borderRadius:'var(--r-lg, 12px)',
+              boxShadow:'0 24px 64px rgba(0,0,0,0.32)',
+              overflow:'hidden',
+            }}>
+              <div style={{
+                padding:'18px 22px 12px',
+                borderBottom:'1px solid var(--line)',
+              }}>
+                <div style={{
+                  fontSize:10, fontWeight:800, letterSpacing:'0.18em',
+                  textTransform:'uppercase', color:'#9A6A00', marginBottom:4,
+                }}>Confirmá el cambio</div>
+                <div style={{
+                  fontFamily:'var(--f-serif)', fontSize:18, fontWeight:600,
+                  color:'var(--ink)', letterSpacing:'-0.015em', lineHeight:1.25,
+                }}>
+                  Vas a modificar datos de una lección <span style={{ color:'#9A6A00' }}>CERRADA</span>.
+                </div>
+              </div>
+              <div style={{ padding:'14px 22px', fontSize:13, color:'var(--ink-2)', lineHeight:1.5 }}>
+                Esta acción queda registrada con tu nombre y la fecha.
+                La lección permanece cerrada y los estudiantes verán los nuevos valores.
+                <ul style={{
+                  margin:'10px 0 0', paddingLeft:18,
+                  fontSize:12, color:'var(--ink-2)',
+                }}>
+                  {cambios.cambioRetro.length > 0 && <li><b>{cambios.cambioRetro.length}</b> retroalimentación{cambios.cambioRetro.length !== 1 ? 'es' : ''}</li>}
+                  {cambios.cambioPC.length    > 0 && <li><b>{cambios.cambioPC.length}</b> Progress Check</li>}
+                  {cambios.cambioAsist.length > 0 && <li><b>{cambios.cambioAsist.length}</b> asistencia{cambios.cambioAsist.length !== 1 ? 's' : ''}</li>}
+                  {cambios.cambioNota.length  > 0 && <li><b>{cambios.cambioNota.length}</b> nota{cambios.cambioNota.length !== 1 ? 's' : ''}</li>}
+                </ul>
+              </div>
+              <div style={{
+                padding:'12px 22px 18px',
+                display:'flex', justifyContent:'flex-end', gap:10,
+              }}>
+                <button type="button"
+                  onClick={() => !enviando && setConfirmar(false)}
+                  disabled={enviando}
+                  style={{
+                    padding:'9px 14px', background:'transparent',
+                    border:'1.5px solid var(--line)', color:'var(--ink-2)',
+                    fontSize:13, fontWeight:600, borderRadius:'var(--r-md)',
+                    cursor: enviando ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+                  }}>
+                  Cancelar
+                </button>
+                <button type="button"
+                  onClick={handleGuardar}
+                  disabled={enviando}
+                  style={{
+                    padding:'9px 16px', background:'#9A6A00', border:'none',
+                    color:'#FFF', fontSize:13, fontWeight:700, borderRadius:'var(--r-md)',
+                    cursor: enviando ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+                    display:'inline-flex', alignItems:'center', gap:8,
+                  }}>
+                  {enviando ? (
+                    <>
+                      <span style={{
+                        width:11, height:11, borderRadius:'50%',
+                        border:'2px solid rgba(255,255,255,0.4)',
+                        borderTopColor:'#FFF',
+                        animation:'an-spin .8s linear infinite',
+                        display:'inline-block',
+                      }} />
+                      Guardando…
+                    </>
+                  ) : 'Sí, modificar lección cerrada'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FilaEditar({ est, idx, tab, valores, initial, onChange, disabled, colorNivel }) {
+  const cambiado = (campo) => (valores[campo] || '') !== (initial[campo] || '');
+  const cambiadoBool = (campo) => !!valores[campo] !== !!initial[campo];
+
+  return (
+    <li style={{
+      padding:'12px 14px',
+      background:'var(--surface)',
+      border:'1px solid var(--line)',
+      borderRadius:'var(--r-md)',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+        <span style={{
+          width:24, height:24, borderRadius:'50%',
+          background:'var(--bg-deep)',
+          display:'inline-flex', alignItems:'center', justifyContent:'center',
+          fontSize:11, fontWeight:700, color:'var(--ink-2)',
+          flexShrink:0,
+        }}>{idx + 1}</span>
+        <div style={{ minWidth:0, flex:1 }}>
+          <div style={{
+            fontSize:13, fontWeight:600, color:'var(--ink)',
+            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          }}>{est.nombre}</div>
+          <div style={{
+            fontSize:10, fontFamily:'var(--f-mono)', color:'var(--ink-3)',
+            letterSpacing:'0.04em',
+          }}>{est.cod}</div>
+        </div>
+      </div>
+
+      {tab === 'retro' && (
+        <textarea
+          value={valores.retro || ''}
+          onChange={(e) => onChange('retro', e.target.value)}
+          disabled={disabled}
+          placeholder="Retroalimentación para el estudiante…"
+          rows={2}
+          style={textAreaStyle(cambiado('retro'), colorNivel)}
+        />
+      )}
+
+      {tab === 'pc' && (
+        <textarea
+          value={valores.pc || ''}
+          onChange={(e) => onChange('pc', e.target.value)}
+          disabled={disabled}
+          placeholder="Comentario de Progress Check…"
+          rows={2}
+          style={textAreaStyle(cambiado('pc'), colorNivel)}
+        />
+      )}
+
+      {tab === 'asist' && (
+        <div style={{ display:'flex', gap:8 }}>
+          <ToggleAsist
+            label="Presente"
+            activo={!!valores.presente}
+            cambiado={cambiadoBool('presente') && !!valores.presente}
+            onClick={() => !disabled && onChange('presente', true)}
+            disabled={disabled}
+            color="#1E4D2B"
+          />
+          <ToggleAsist
+            label="Ausente"
+            activo={!valores.presente}
+            cambiado={cambiadoBool('presente') && !valores.presente}
+            onClick={() => !disabled && onChange('presente', false)}
+            disabled={disabled}
+            color="#7A1F15"
+          />
+        </div>
+      )}
+
+      {tab === 'notas' && (
+        <input
+          type="text"
+          inputMode="decimal"
+          value={valores.nota || ''}
+          onChange={(e) => onChange('nota', e.target.value)}
+          disabled={disabled}
+          placeholder="Nota (ej. 85)"
+          style={{
+            ...textAreaStyle(cambiado('nota'), colorNivel),
+            fontFamily:'var(--f-mono)', fontSize:14, padding:'8px 12px',
+          }}
+        />
+      )}
+    </li>
+  );
+}
+
+function textAreaStyle(cambiado, colorNivel) {
+  return {
+    width:'100%',
+    padding:'8px 12px',
+    border: cambiado ? `1.5px solid ${colorNivel}` : '1.5px solid var(--line)',
+    background: cambiado ? `color-mix(in srgb, ${colorNivel} 6%, var(--surface))` : 'var(--surface)',
+    borderRadius:'var(--r-sm, 8px)',
+    fontSize:13, color:'var(--ink)',
+    fontFamily:'inherit',
+    outline:'none', resize:'vertical',
+    boxSizing:'border-box',
+    lineHeight:1.4,
+  };
+}
+
+function ToggleAsist({ label, activo, cambiado, onClick, disabled, color }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding:'8px 14px',
+        background: activo ? color : 'var(--surface)',
+        border: cambiado ? `1.5px dashed ${color}` : `1.5px solid ${activo ? color : 'var(--line)'}`,
+        color:    activo ? '#FFF'  : 'var(--ink-2)',
+        fontSize:12, fontWeight:700,
+        borderRadius:'var(--r-md)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        letterSpacing:'0.04em', textTransform:'uppercase',
+        fontFamily:'inherit',
+        flex:1,
+      }}>
+      {label}
+    </button>
   );
 }
 

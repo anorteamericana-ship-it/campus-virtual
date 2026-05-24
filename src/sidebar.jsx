@@ -1,50 +1,67 @@
-/* global React, Icon */
+/* global React, Icon, getSesion, setSesion */
 const { useState: _u1 } = React;
 
-// ── DEV SWITCHER — datos hardcodeados ──────────────────────────────────
 const SCRIPT_URL_SB = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 
-const DEV_DOCENTES = [
-  { nombre: 'CRUZ PÉREZ RACHELLE MICHELLE', grupo: 'B1-LM69-C3-0125', programa: 'SIN_INA' },
-  { nombre: 'SALAZAR FUENTES ANA BELÉN',    grupo: 'B1-LM69-C3-0126', programa: 'SIN_INA' },
-  { nombre: 'VEGA SALAS EMILY LUCÍA',       grupo: 'B1-KJ69-C3-0225', programa: 'SIN_INA' },
-  { nombre: 'MEDINA FONSECA SULIVANY',      grupo: 'B1-L469-B1-0226', programa: 'SIN_INA' },
-  { nombre: 'JOHN ALVAREZ GONZÁLEZ',        grupo: 'B1-L469-B6-0325', programa: 'SIN_INA' },
-  { nombre: 'YENDRY AGUILAR',               grupo: 'B1-L469-B2-0426', programa: 'SIN_INA' },
-];
+// ─────────────────────────────────────────────────────────────────────────
+// MODO PRUEBA — superadmin only
+// ─────────────────────────────────────────────────────────────────────────
+// Reemplazo del antiguo DevSwitcher. Reglas:
+//   1) SOLO se monta si usuario.rol === 'superadmin' (lo decide Sidebar).
+//   2) NO autoejecuta nada al montar — el campus arranca con la sesión
+//      real del superadmin.
+//   3) Al usarse, REESCRIBE `an_usuario` con una identidad REAL
+//      (estudiante por código, o docente por nombre+grupo+cédula) y
+//      guarda la sesión original en `an_modo_prueba` para poder volver.
+//   4) Tras transformarse, despacha 'an:session-changed' para que App
+//      recalcule rol + router.
+// ─────────────────────────────────────────────────────────────────────────
 
-const DEV_ADMIN = {
-  nombre: 'SALAZAR FUENTES LEONARDO',
-  rol: 'admin',
-  codigo: 'LEO-001',
-};
+function entrarModoPrueba(nuevaIdentidad) {
+  // Solo guardamos el "original" la primera vez (anidar modos prueba no
+  // tiene sentido — siempre volvés al superadmin real).
+  const actual = getSesion();
+  if (!actual) return;
+  let modo = null;
+  try {
+    const raw = sessionStorage.getItem('an_modo_prueba');
+    modo = raw ? JSON.parse(raw) : null;
+  } catch { modo = null; }
+  if (!modo || !modo.original) {
+    modo = { original: actual };
+    sessionStorage.setItem('an_modo_prueba', JSON.stringify(modo));
+  }
+  setSesion(nuevaIdentidad);
+  window.dispatchEvent(new Event('an:session-changed'));
+}
 
-function DevSwitcher({ role, setRole, setActive }) {
-  const [codEst, setCodEst]     = React.useState('17056');
-  const [docSel, setDocSel]     = React.useState(DEV_DOCENTES[0].grupo);
+function ModoPruebaPanel() {
+  // Tabs: 'student' | 'teacher'
+  const [tab, setTab]         = React.useState('student');
+  const [open, setOpen]       = React.useState(false);
+  // Estudiante
+  const [codEst, setCodEst]   = React.useState('');
+  // Docente
+  const [docNombre, setDocNombre] = React.useState('');
+  const [docGrupo,  setDocGrupo]  = React.useState('');
+  const [docCedula, setDocCedula] = React.useState('');
+  // UI
   const [cargando, setCargando] = React.useState(false);
-  const [errMsg, setErrMsg]     = React.useState('');
+  const [errMsg,   setErrMsg]   = React.useState('');
 
-  // Auto-cargar el estudiante demo al montar (solo si no hay sesión)
-  React.useEffect(() => {
-    const sess = sessionStorage.getItem('an_usuario');
-    if (!sess) cargarEstudiante('17056');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const cargarEstudiante = async (codigo) => {
-    if (!codigo.trim()) return;
+  const cargarEstudianteReal = async (codigo) => {
+    const c = (codigo || '').trim();
+    if (!c) { setErrMsg('Ingresá un código de estudiante.'); return; }
     setCargando(true);
     setErrMsg('');
     try {
-      const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(codigo.trim())}`);
+      const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(c)}`);
       const data = await res.json();
       if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
+
       const est     = data.estudiante || {};
       const niveles = data.niveles    || {};
       const ORDEN   = ['B1','B2','I1','I2'];
-
-      // Acepta { B1: 'APR' } o { B1: { estatus:'APR', nota:88 } }
       const getEstatus = n => {
         const v = niveles[n];
         if (!v) return '';
@@ -56,54 +73,43 @@ function DevSwitcher({ role, setRole, setActive }) {
         ORDEN.find(n => getEstatus(n) === 'CA') ||
         [...ORDEN].reverse().find(n => ['APR','CNV'].includes(getEstatus(n))) ||
         '';
-      const estatus_activo = nivel_activo ? getEstatus(nivel_activo) : '';
-      const niveles_estatus = Object.fromEntries(
-        ORDEN.map(n => [n, getEstatus(n)])
-      );
-
-      // Grupo: preferir el de DATOS o el del nivel activo
+      const estatus_activo  = nivel_activo ? getEstatus(nivel_activo) : '';
+      const niveles_estatus = Object.fromEntries(ORDEN.map(n => [n, getEstatus(n)]));
       const grupo = data.grupo?.CODIGO_GRUPO || est.GRUPO || est['GRUPO'] || '';
 
-      sessionStorage.setItem('an_usuario', JSON.stringify({
-        nombre:          est.NOMBRE     || est.nombre  || codigo,
+      entrarModoPrueba({
         rol:             'student',
-        codigo:          est.CODIGO     || est.REC_M   || est.rec_m || codigo,
+        nombre:          est.NOMBRE     || est.nombre  || c,
+        codigo:          est.CODIGO     || est.REC_M   || est.rec_m || c,
         cedula:          est.NUM_CEDULA || est.CEDULA  || est.cedula || '',
         grupo,
+        grupos:          grupo ? [grupo] : [],
         programa:        data.grupo?.PROGRAMA || est.PROGRAMA || 'SIN_INA',
         nivel_activo,
         estatus_activo,
         niveles_estatus,
-      }));
-      setRole('student');
-      setActive('dashboard');
-    } catch(e) {
+      });
+    } catch (_) {
       setErrMsg('Error de conexión');
     } finally {
       setCargando(false);
     }
   };
 
-  const cargarDocente = (grupoCod) => {
-    const doc = DEV_DOCENTES.find(d => d.grupo === grupoCod) || DEV_DOCENTES[0];
-    sessionStorage.setItem('an_usuario', JSON.stringify({
-      nombre:   doc.nombre,
+  const cargarDocenteReal = () => {
+    const n = (docNombre || '').trim();
+    const g = (docGrupo  || '').trim();
+    const c = (docCedula || '').trim();
+    if (!n) { setErrMsg('Escribí el nombre del docente (igual a USUARIOS).'); return; }
+    if (!g) { setErrMsg('Escribí el código de grupo.'); return; }
+    entrarModoPrueba({
       rol:      'teacher',
-      grupo:    doc.grupo,
-      programa: doc.programa,
-    }));
-    setRole('teacher');
-    setActive('dashboard');
-  };
-
-  const cargarAdmin = () => {
-    sessionStorage.setItem('an_usuario', JSON.stringify({
-      nombre: DEV_ADMIN.nombre,
-      rol:    'admin',
-      codigo: DEV_ADMIN.codigo,
-    }));
-    setRole('admin');
-    setActive('dashboard');
+      nombre:   n,
+      cedula:   c,
+      grupo:    g,
+      grupos:   [g],
+      programa: 'SIN_INA',
+    });
   };
 
   return (
@@ -115,96 +121,152 @@ function DevSwitcher({ role, setRole, setActive }) {
       flexDirection: 'column',
       gap: 8,
     }}>
-      <div className="sb-role-switch" role="tablist">
-        <button className={role === 'student' ? 'active' : ''}
-          onClick={() => cargarEstudiante(codEst)}>Estudiante</button>
-        <button className={role === 'teacher' ? 'active' : ''}
-          onClick={() => cargarDocente(docSel)}>Docente</button>
-        <button className={role === 'admin' ? 'active' : ''}
-          onClick={cargarAdmin}>Admin</button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          padding: '2px 0', fontFamily: 'inherit',
+          fontSize: 11, fontWeight: 800, letterSpacing: '0.14em',
+          textTransform: 'uppercase', color: 'var(--an-granate)',
+        }}>
+        <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+          <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--an-granate)' }} />
+          Modo prueba · superadmin
+        </span>
+        <span style={{ fontSize: 14 }}>{open ? '−' : '+'}</span>
+      </button>
 
-      {role === 'student' && (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <input
-            value={codEst}
-            onChange={e => setCodEst(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') cargarEstudiante(codEst); }}
-            placeholder="Código (ej: 17056)"
-            style={{
-              flex: 1,
-              padding: '6px 10px',
-              border: '1.5px solid var(--line)',
-              borderRadius: 'var(--r-md)',
-              fontFamily: 'var(--f-mono)',
-              fontSize: 13,
-              outline: 'none',
-            }}
-          />
-          <button
-            onClick={() => cargarEstudiante(codEst)}
-            disabled={cargando}
-            className="btn btn-primary"
-            style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0,
-                     background: 'var(--an-granate)', borderColor: 'var(--an-granate)',
-                     opacity: cargando ? 0.6 : 1 }}
-          >
-            {cargando ? '…' : 'Cargar'}
-          </button>
-        </div>
-      )}
+      {open && (
+        <>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.45 }}>
+            Cambia tu identidad por la de un estudiante o docente real para
+            ver el campus como lo ven ellos. Una cinta te recordará el modo,
+            y podés volver a tu sesión de superadmin en cualquier momento.
+          </div>
 
-      {role === 'teacher' && (
-        <select
-          value={docSel}
-          onChange={e => { setDocSel(e.target.value); cargarDocente(e.target.value); }}
-          style={{
-            padding: '6px 10px',
-            border: '1.5px solid var(--line)',
-            borderRadius: 'var(--r-md)',
-            fontFamily: 'inherit',
-            fontSize: 12,
-            outline: 'none',
-            cursor: 'pointer',
-            width: '100%',
-          }}
-        >
-          {DEV_DOCENTES.map(d => (
-            <option key={d.grupo} value={d.grupo}>
-              {d.nombre.split(' ').filter((_, i) => i >= 2).map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
-            </option>
-          ))}
-        </select>
-      )}
+          <div style={{ display:'flex', gap:4, background:'var(--surface)', padding:3, borderRadius:6, border:'1px solid var(--line)' }}>
+            <button
+              onClick={() => { setTab('student'); setErrMsg(''); }}
+              style={{
+                flex:1, padding:'5px 8px', fontSize:11, fontWeight:700,
+                background: tab === 'student' ? 'var(--an-granate)' : 'transparent',
+                color:      tab === 'student' ? 'white' : 'var(--ink-2)',
+                border:'none', borderRadius:4, cursor:'pointer', fontFamily:'inherit',
+              }}>
+              Estudiante
+            </button>
+            <button
+              onClick={() => { setTab('teacher'); setErrMsg(''); }}
+              style={{
+                flex:1, padding:'5px 8px', fontSize:11, fontWeight:700,
+                background: tab === 'teacher' ? 'var(--an-granate)' : 'transparent',
+                color:      tab === 'teacher' ? 'white' : 'var(--ink-2)',
+                border:'none', borderRadius:4, cursor:'pointer', fontFamily:'inherit',
+              }}>
+              Docente
+            </button>
+          </div>
 
-      {errMsg && (
-        <div style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>
-          ⚠ {errMsg}
-        </div>
+          {tab === 'student' && (
+            <div style={{ display:'flex', gap:6 }}>
+              <input
+                value={codEst}
+                onChange={e => { setCodEst(e.target.value); setErrMsg(''); }}
+                onKeyDown={e => { if (e.key === 'Enter') cargarEstudianteReal(codEst); }}
+                placeholder="Código (ej: 17056)"
+                style={{
+                  flex: 1, padding: '6px 10px',
+                  border: '1.5px solid var(--line)', borderRadius: 'var(--r-md)',
+                  fontFamily: 'var(--f-mono)', fontSize: 13, outline: 'none',
+                }}
+              />
+              <button
+                onClick={() => cargarEstudianteReal(codEst)}
+                disabled={cargando}
+                className="btn btn-primary"
+                style={{
+                  padding: '6px 12px', fontSize: 12, flexShrink: 0,
+                  background: 'var(--an-granate)', borderColor: 'var(--an-granate)',
+                  opacity: cargando ? 0.6 : 1,
+                }}>
+                {cargando ? '…' : 'Entrar'}
+              </button>
+            </div>
+          )}
+
+          {tab === 'teacher' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <input
+                value={docNombre}
+                onChange={e => { setDocNombre(e.target.value); setErrMsg(''); }}
+                placeholder="Nombre del docente (USUARIOS.nombre)"
+                style={{
+                  padding: '6px 10px',
+                  border: '1.5px solid var(--line)', borderRadius: 'var(--r-md)',
+                  fontFamily: 'inherit', fontSize: 12, outline: 'none',
+                }}
+              />
+              <div style={{ display:'flex', gap:6 }}>
+                <input
+                  value={docGrupo}
+                  onChange={e => { setDocGrupo(e.target.value); setErrMsg(''); }}
+                  placeholder="Código de grupo"
+                  style={{
+                    flex: 1, padding: '6px 10px',
+                    border: '1.5px solid var(--line)', borderRadius: 'var(--r-md)',
+                    fontFamily: 'var(--f-mono)', fontSize: 12, outline: 'none',
+                  }}
+                />
+                <input
+                  value={docCedula}
+                  onChange={e => { setDocCedula(e.target.value); setErrMsg(''); }}
+                  placeholder="Cédula (opcional)"
+                  style={{
+                    width: 110, padding: '6px 10px',
+                    border: '1.5px solid var(--line)', borderRadius: 'var(--r-md)',
+                    fontFamily: 'var(--f-mono)', fontSize: 12, outline: 'none',
+                  }}
+                />
+              </div>
+              <button
+                onClick={cargarDocenteReal}
+                disabled={cargando}
+                className="btn btn-primary"
+                style={{
+                  padding: '6px 12px', fontSize: 12,
+                  background: 'var(--an-granate)', borderColor: 'var(--an-granate)',
+                  opacity: cargando ? 0.6 : 1,
+                }}>
+                Entrar como docente
+              </button>
+            </div>
+          )}
+
+          {errMsg && (
+            <div style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>
+              ⚠ {errMsg}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
-  // Datos del usuario logueado (sessionStorage > props)
-  const usuarioSS = React.useMemo(() => {
-    try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
-  }, []);
-  const usr = usuario || usuarioSS;
+function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
+  // Sesión única — sin fallbacks a claves sueltas.
+  const usr = usuario || (typeof getSesion === 'function' ? getSesion() : null);
+  const rolEfectivo = rolReal || usr?.rol || role;
+  const esSuperadmin = rolEfectivo === 'superadmin';
 
-  // ── Badge de pendientes para "Mi Panel" (docente / superadmin testing) ──
-  // Polling optimizado (A1.1) para no quemar la cuota del Apps Script:
-  //   • Solo si hay rol relevante (teacher / admin / superadmin)
-  //   • Solo si hay nombre identificado
-  //   • Solo cuando la pestaña está VISIBLE (document.visibilityState)
-  //   • Intervalo: 5 minutos (no 60s)
-  //   • Al volver a la pestaña: refresco inmediato + reinicia el ciclo
-  //   • Cleanup completo: clearInterval + removeEventListener
+  // ── Badge de pendientes para "Mi Panel" (solo docente real) ─────────────
   const [pendientesDoc, setPendientesDoc] = React.useState(0);
   React.useEffect(() => {
-    if (role !== 'teacher' && role !== 'admin' && role !== 'superadmin') return;
-    const nombre = sessionStorage.getItem('nombre') || usr?.nombre || '';
+    // Solo polleamos pendientes si el rol EFECTIVO es teacher.
+    if (role !== 'teacher') return;
+    const nombre = usr?.nombre || '';
     if (!nombre) return;
 
     let cancel = false;
@@ -220,19 +282,11 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
     };
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Refresco inmediato al volver a la pestaña
-        refrescar();
-      }
+      if (document.visibilityState === 'visible') refrescar();
     };
 
-    // Primera carga (solo si la pestaña está visible al montar)
     refrescar();
-
-    // Polling cada 5 minutos
     intervalId = setInterval(refrescar, 5 * 60 * 1000);
-
-    // Escuchar cambios de visibilidad
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
@@ -241,6 +295,36 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [role, usr?.nombre]);
+
+  // ── Badge "Suspensiones" — admin / superadmin ───────────────────────────
+  const [pendientesSusp, setPendientesSusp] = React.useState(0);
+  React.useEffect(() => {
+    if (rolEfectivo !== 'admin' && rolEfectivo !== 'superadmin') return;
+
+    let cancel = false;
+    let intervalId = null;
+
+    const refrescar = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (typeof window.fetchGetSolicitudesSuspension !== 'function') return;
+      window.fetchGetSolicitudesSuspension('PENDIENTE').then(r => {
+        if (cancel) return;
+        if (r?.ok) setPendientesSusp(r.total ?? (r.solicitudes?.length || 0));
+      }).catch(() => {});
+    };
+    const onVis = () => { if (document.visibilityState === 'visible') refrescar(); };
+
+    refrescar();
+    intervalId = setInterval(refrescar, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      cancel = true;
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [rolEfectivo]);
+
   const studentNav = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'cronograma_grupo', label: 'Mis lecciones', icon: 'calendar' },
@@ -267,13 +351,8 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
   const adminNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-    // Panel docente para superadmin (testing). Solo aparece si hay
-    // un nombre seteado en sessionStorage (modo docente simulado).
-    ...(sessionStorage.getItem('nombre') ? [{
-      id: 'mi_panel_docente', label: 'Panel Docente', icon: 'homework',
-      badge: pendientesDoc || null,
-    }] : []),
     { id: 'supervision', label: 'Supervisión', icon: 'bell' },
+    { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation', badge: 3 },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario lecciones', icon: 'calendar' },
@@ -289,10 +368,13 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
     { id: 'config', label: 'Configuración', icon: 'settings' },
   ];
   const nav = role === 'student' ? studentNav : role === 'teacher' ? teacherNav : adminNav;
-  const userName = usr?.nombre || (role === 'student' ? '—' : role === 'teacher' ? 'Docente' : 'Administrador');
+  const userName = usr?.nombre || '—';
   const userRole = usr
-    ? (usr.rol === 'admin' ? 'Administración' : usr.rol === 'teacher' ? 'Docente' : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
-    : (role === 'student' ? 'Sin sesión' : role === 'teacher' ? 'Docente' : 'Administración');
+    ? (usr.rol === 'superadmin' ? 'Superadmin'
+      : usr.rol === 'admin'    ? 'Administración'
+      : usr.rol === 'teacher'  ? `Docente${usr.grupo ? ' · ' + usr.grupo : ''}`
+      : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
+    : 'Sin sesión';
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
   return (
@@ -305,7 +387,7 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
         </div>
       </div>
 
-      <DevSwitcher role={role} setRole={setRole} setActive={setActive} />
+      {esSuperadmin && <ModoPruebaPanel />}
 
       <div className="sb-section">Menú</div>
       {nav.map(item => (
@@ -324,7 +406,12 @@ function Sidebar({ role, setRole, active, setActive, usuario, onLogout }) {
         </div>
         <button
           onClick={() => {
-            try { sessionStorage.removeItem('an_usuario'); sessionStorage.removeItem('an_just_logged_in'); localStorage.removeItem('an_role'); } catch{}
+            try {
+              sessionStorage.removeItem('an_usuario');
+              sessionStorage.removeItem('an_just_logged_in');
+              sessionStorage.removeItem('an_modo_prueba');
+              localStorage.removeItem('an_role');
+            } catch{}
             if (onLogout) onLogout();
             else window.location.href = 'login.html';
           }}

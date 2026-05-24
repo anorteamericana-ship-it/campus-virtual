@@ -108,6 +108,107 @@ async function fetchMaterialLeccion({ nivel, leccion, riel, rol, codigo, cod_gru
   }
 }
 
+// ── Edición SUPERADMIN de lección CERRADA (v4.22.5) ──────────────────────
+// Poder restringido. Backend exige confirmacion_superadmin === 'LEONARDO_SI'.
+// La lección permanece CERRADA tras editar (no se reabre, no se recalcula).
+
+// (Lectura) Detalle de lección cerrada para precargar el modal de edición:
+// devuelve { ok, estudiantes:[{cod, nombre, presente, retro, pc, nota}] }.
+// Si el backend aún no expone esta función, el modal degradará a
+// fetchEstudiantesParaCierre y arrancará con campos en blanco.
+async function fetchLeccionCerradaDetalle({ cod_grupo, nivel, leccion, riel } = {}) {
+  if (!cod_grupo || !nivel || !leccion) {
+    return { ok: false, error: 'parámetros incompletos' };
+  }
+  try {
+    const url = `${APPS_SCRIPT_URL}?fn=getLeccionCerradaDetalle`
+              + `&cod_grupo=${encodeURIComponent(cod_grupo)}`
+              + `&nivel=${encodeURIComponent(nivel)}`
+              + `&leccion=${encodeURIComponent(leccion)}`
+              + `&riel=${encodeURIComponent(riel || 'curso')}`;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+async function fetchEditarRetroPCCerrada(payload) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        fn: 'editarRetroPCCerrada',
+        confirmacion_superadmin: 'LEONARDO_SI',
+        ...payload,
+      }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+async function fetchEditarAsistenciaNotaCerrada(payload) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        fn: 'editarAsistenciaNotaCerrada',
+        confirmacion_superadmin: 'LEONARDO_SI',
+        ...payload,
+      }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+// ── Suspensiones de lecciones (v4.23.x) ──────────────────────────────────
+// Flujo de 2 pasos: docente solicita → admin/superadmin aprueba o rechaza.
+// Suspender NO elimina lecciones: empuja el calendario una fecha hábil.
+// Las 32 lecciones SE DAN siempre.
+
+async function fetchSolicitarSuspension(payload) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'solicitarSuspension', ...payload }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+async function fetchGetSolicitudesSuspension(estado = 'PENDIENTE') {
+  try {
+    const url = `${APPS_SCRIPT_URL}?fn=getSolicitudesSuspension`
+              + `&estado=${encodeURIComponent(estado)}`;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+async function fetchResolverSolicitudSuspension(payload) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'resolverSolicitudSuspension', ...payload }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── POST cerrarLeccionCompleta ───────────────────────────────────────────
 // Enviamos como text/plain para evitar el preflight CORS que rompe Apps
 // Script (doPost recibe el JSON en e.postData.contents igual).
@@ -122,6 +223,33 @@ async function postCerrarLeccionCompleta(body) {
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }
+}
+
+// ── Sesión: fuente única de verdad ──────────────────────────────────────
+// TODO el frontend lee la sesión únicamente con getSesion(). No hay
+// claves sueltas (sessionStorage.nombre, sessionStorage.cedula, etc.).
+// Devuelve el objeto parseado de sessionStorage.an_usuario o null si no
+// hay sesión / el JSON está corrupto / falta rol.
+function getSesion() {
+  try {
+    const raw = sessionStorage.getItem('an_usuario');
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    if (!u || typeof u !== 'object' || !u.rol) return null;
+    return u;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Reemplaza la sesión activa (la usa el "Modo prueba" del superadmin
+// para transformarse en otra identidad, y también para restaurar la
+// sesión original al salir de modo prueba).
+function setSesion(u) {
+  try {
+    if (!u) sessionStorage.removeItem('an_usuario');
+    else    sessionStorage.setItem('an_usuario', JSON.stringify(u));
+  } catch (_) {}
 }
 
 // ── Data: estructura del programa (NO datos personales) ──────────────────
@@ -150,9 +278,16 @@ const PRECIOS = null;
 Object.assign(window, {
   LEVELS, PRECIOS,
   APPS_SCRIPT_URL,
+  getSesion, setSesion,
   fetchCalendarioDocente, fetchTareasPendientesDocente,
   fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
   fetchDocentesAtrasados,
   fetchAsignarCobertura,
   fetchMaterialLeccion,
+  fetchLeccionCerradaDetalle,
+  fetchEditarRetroPCCerrada,
+  fetchEditarAsistenciaNotaCerrada,
+  fetchSolicitarSuspension,
+  fetchGetSolicitudesSuspension,
+  fetchResolverSolicitudSuspension,
 });
