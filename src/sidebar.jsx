@@ -332,6 +332,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'notas', label: 'Mis Notas', icon: 'grades' },
     { id: 'tareas', label: 'Tareas', icon: 'homework' },
     { id: 'materiales', label: 'Materiales', icon: 'materials' },
+    { id: 'info_programa', label: 'Información del Programa', icon: 'doc' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
     { id: 'pagos', label: 'Estado de cuenta', icon: 'payments' },

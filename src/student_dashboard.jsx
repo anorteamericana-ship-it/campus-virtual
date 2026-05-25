@@ -358,7 +358,7 @@ function StudentDashboard({ toast, onNavigate }) {
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => { try { localStorage.setItem('an_sil_visto_' + codigo, '1'); } catch {} window.location.reload(); }}>Ya lo revisé</button>
-              <button className="btn btn-primary" style={{ fontSize:12, background:'var(--an-granate)', borderColor:'var(--an-granate)' }} onClick={() => onNavigate('materiales')}>Revisar ahora →</button>
+              <button className="btn btn-primary" style={{ fontSize:12, background:'var(--an-granate)', borderColor:'var(--an-granate)' }} onClick={() => onNavigate('info_programa')}>Revisar ahora →</button>
             </div>
           </div>
         );

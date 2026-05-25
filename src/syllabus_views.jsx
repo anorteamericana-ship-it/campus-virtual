@@ -1325,4 +1325,164 @@ function WelcomeBanner({ onClose }) {
   );
 }
 
-Object.assign(window, { MaterialesView, CalendarioView, ICANViewNew, AdminHorasDocentesView, WelcomeBanner, PriorityBanner });
+// ─────────────────────────────────────────────────────────────────────────
+// INFO PROGRAMA — Documentos institucionales (Info General 1.1–1.4)
+// Reglamento estudiantil, netiqueta, video de bienvenida y guías.
+// Endpoint: getInfoGeneral (sin parámetros). La sección la ven TODOS los
+// estudiantes (INA y SIN_INA por igual): el reglamento aplica a todos.
+//
+// REGLA DE HOOKS: useState/useEffect SIEMPRE antes de cualquier return
+// condicional. (Bug "Rendered more hooks" ya hizo crashear MaterialesView
+// antes — no repetir el patrón.)
+// ─────────────────────────────────────────────────────────────────────────
+function InfoProgramaView() {
+  const [docs, setDocs]       = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError]     = React.useState('');
+
+  const cargar = React.useCallback(() => {
+    setLoading(true);
+    setError('');
+    fetch(`${window.APPS_SCRIPT_URL}?fn=getInfoGeneral`)
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.ok) {
+          const lista = Array.isArray(d.docs) ? d.docs.slice() : [];
+          lista.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+          setDocs(lista);
+        } else {
+          setError((d && d.error) || 'No se pudo cargar la información del programa.');
+        }
+      })
+      .catch(e => setError('Error de conexión: ' + (e?.message || e)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  // ── render ─────────────────────────────────────────────────────────────
+  const header = (
+    <PageHeader
+      kicker="Documentos institucionales"
+      title="Información del Programa"
+      sub="Reglamentos, guías y video de bienvenida — material institucional para todos los estudiantes"
+      right={<Chip tone="navy">Info general</Chip>}
+    />
+  );
+
+  if (loading) {
+    return (
+      <div>
+        {header}
+        <LoadingState title="Cargando documentos del programa…" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        {header}
+        <ErrorState message={error} onRetry={cargar} />
+      </div>
+    );
+  }
+
+  if (!docs.length) {
+    return (
+      <div>
+        {header}
+        <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--ink-2)', background:'white', border:'1px solid var(--line)', borderRadius:'var(--r-lg)' }}>
+          No hay documentos disponibles en este momento.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {header}
+      <div style={{ display:'grid', gap:16 }}>
+        {docs.map((doc) => (
+          <InfoProgramaCard key={doc.codigo || doc.seccion} doc={doc} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Tarjeta individual — un doc del programa (PDF o video).
+// Hooks arriba, returns abajo.
+function InfoProgramaCard({ doc }) {
+  const esVideo = doc.tipo === 'video';
+  const url_view    = doc.url_view    || doc.url_preview || '';
+  const url_preview = doc.url_preview || doc.url_view    || '';
+
+  return (
+    <div style={{
+      background:'white',
+      border:'1px solid var(--line)',
+      borderRadius:'var(--r-lg)',
+      padding:'18px 20px',
+      boxShadow:'0 1px 2px rgba(15,30,60,0.04)',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+        <div style={{
+          width:44, height:44, borderRadius:'var(--r-md)',
+          background: esVideo ? 'color-mix(in srgb, var(--an-granate) 12%, white)' : 'color-mix(in srgb, var(--an-navy) 10%, white)',
+          color: esVideo ? 'var(--an-granate)' : 'var(--an-navy)',
+          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+        }}>
+          <Icon name={esVideo ? 'play' : 'doc'} size={22} />
+        </div>
+        <div style={{ flex:1, minWidth:200 }}>
+          <div style={{ fontSize:11, fontFamily:'var(--font-mono, monospace)', color:'var(--ink-2)', letterSpacing:'0.04em' }}>
+            {doc.codigo ? `${doc.codigo} · ` : ''}{esVideo ? 'Video institucional' : 'Documento PDF'}
+          </div>
+          <div style={{ fontWeight:700, fontSize:16, color:'var(--an-navy)', marginTop:2 }}>
+            {doc.seccion}
+          </div>
+          {doc.nombre && doc.nombre !== doc.seccion && (
+            <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:2 }}>{doc.nombre}</div>
+          )}
+        </div>
+        {!esVideo && url_view && (
+          <a
+            href={url_view}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+            style={{ fontSize:13, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}
+          >
+            Abrir <Icon name="arrow" size={14} />
+          </a>
+        )}
+      </div>
+
+      {esVideo && url_preview && (
+        <div style={{
+          marginTop:14,
+          position:'relative',
+          width:'100%',
+          paddingTop:'56.25%', // 16:9
+          background:'#000',
+          borderRadius:'var(--r-md)',
+          overflow:'hidden',
+        }}>
+          <iframe
+            src={url_preview}
+            title={doc.seccion}
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            style={{
+              position:'absolute', top:0, left:0, width:'100%', height:'100%',
+              border:'0',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+Object.assign(window, { MaterialesView, InfoProgramaView, CalendarioView, ICANViewNew, AdminHorasDocentesView, WelcomeBanner, PriorityBanner });
