@@ -173,7 +173,7 @@ function generarCodigoGrupo(form, grupos) {
   const periodo  = periodoFromFecha(form.fechaInicio, form.modalidad) || 'C1';
   const consec   = siguienteConsecutivo(grupos);
   const año      = form.fechaInicio
-    ? String(new Date(form.fechaInicio).getFullYear()).slice(-2)
+    ? String(parseDateLocal(form.fechaInicio).getFullYear()).slice(-2)
     : String(new Date().getFullYear()).slice(-2);
   return { code: `${nivel}-${diasCod}${horaCod}-${periodo}-${consec}${año}`, consec, periodo, año };
 }
@@ -220,6 +220,17 @@ function parseDias(str) {
   return Object.keys(m).filter(k => lower.includes(k)).map(k => m[k]);
 }
 
+// Parsea un string "YYYY-MM-DD" como medianoche LOCAL (no UTC).
+// El input <input type="date"> devuelve siempre en formato ISO date, y
+// new Date(str) lo interpreta como UTC → causa desfase de 1 día en CR (UTC-6).
+function parseDateLocal(str) {
+  if (!str) return null;
+  if (str instanceof Date) return str;
+  const [y, m, d] = String(str).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);  // medianoche local, no UTC
+}
+
 const fmtCR = (d) => {
   if (!d) return '—';
   return d.toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
@@ -250,14 +261,19 @@ const DIAS_OPTIONS = {
 // Estado inicial del wizard
 const initState = () => ({
   modelo:'ina', niveles:['b1'], modalidad:'intensivo',
-  dias:'Lun/Mié', horaInicio:'06:00', fechaInicio:null,
+  dias:'Lun/Mié', horaInicio:'18:00', fechaInicio:null,
   docente:'', entrega:'virtual', linkZoom:'', salon:'', capacidad:12,
   matricula:20000, matriculaObligatoria:true,
   cuota:89000,
-  certificadosPorNivel:{ b1:15000, b2:15000, i1:15000, i2:15000 },
+  certificadosPorNivel:{
+    b1:{ monto:15000, obligatorio:false },
+    b2:{ monto:15000, obligatorio:false },
+    i1:{ monto:15000, obligatorio:false },
+    i2:{ monto:25000, obligatorio:false },
+  },
   certificadoPrograma:45000,
   toeic:false, toeicMonto:136730,
-  rubrosExtra:[],
+  rubrosExtra:[],  // {id, nombre, monto, obligatorio, tipo_aplicacion: 'por_nivel'|'una_vez_inicio'|'una_vez_final'}
   beca:'none', becaCustomNombre:'', becaCustomPct:25,
   disponibleInscripcion:false,
   cronograma:[],
@@ -281,17 +297,62 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const nivel = NIVEL_META[form.niveles[0]] || NIVEL_META['b1'];
   const nCuotas = form.modalidad === 'super_intensivo' ? 2 : 4;
 
-  // Resumen financiero
-  const descuento = form.beca === 'impacta' ? 0.25 : form.beca === 'mujer' ? 0.50 : form.beca === 'custom' ? (form.becaCustomPct/100) : 0;
-  const matBase = form.matriculaObligatoria ? form.matricula : 0;
-  const cuotasBase = form.cuota * nCuotas;
-  const matFinal = Math.round(matBase * (1 - descuento));
-  const cuotasFinal = Math.round(cuotasBase * (1 - descuento));
-  const totalNivel = matFinal + cuotasFinal;
+  // ─── Cálculos financieros ─────────────────────────────────────────
   const nNiveles = form.niveles.length;
-  const certTotal = form.niveles.reduce((s,k) => s + (form.certificadosPorNivel[k]||0), 0)
-    + (nNiveles === 4 ? form.certificadoPrograma : 0);
-  const totalPrograma = totalNivel * nNiveles + certTotal;
+
+  // Beca = simulador visual. NO se guarda al grupo. Cada estudiante elige la suya.
+  const descuento = form.beca === 'impacta' ? 0.25 : form.beca === 'mujer' ? 0.50 : form.beca === 'custom' ? (form.becaCustomPct/100) : 0;
+
+  // Matrícula + cuotas (base por nivel)
+  const matrPorNivel   = form.matriculaObligatoria ? form.matricula : 0;
+  const cuotasPorNivel = form.cuota * nCuotas;
+  const matFinal       = Math.round(matrPorNivel * (1 - descuento));
+  const cuotasFinal    = Math.round(cuotasPorNivel * (1 - descuento));
+  const totalNivel     = matFinal + cuotasFinal;
+
+  // Rubros por nivel (obligatorios vs opcionales)
+  const rubrosObligPorNivel = form.rubrosExtra
+    .filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const rubrosOpcPorNivel = form.rubrosExtra
+    .filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const subtotalOblPorNivel = matrPorNivel + cuotasPorNivel + rubrosObligPorNivel;
+
+  // Certificados por nivel (cada uno tiene su monto y su flag obligatorio)
+  const certObligPorNivel = (niv) => form.certificadosPorNivel[niv]?.obligatorio
+    ? (form.certificadosPorNivel[niv].monto || 0) : 0;
+  const certOpcPorNivel = (niv) => form.certificadosPorNivel[niv]?.obligatorio
+    ? 0 : (form.certificadosPorNivel[niv]?.monto || 0);
+  const subtotalCertObl = form.niveles.reduce((s, n) => s + certObligPorNivel(n), 0);
+  const subtotalCertOpc = form.niveles.reduce((s, n) => s + certOpcPorNivel(n), 0);
+
+  // Rubros "una vez en el programa" (inicio o final)
+  const rubrosObligUnaVez = form.rubrosExtra
+    .filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const rubrosOpcUnaVez = form.rubrosExtra
+    .filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const totalUnaVezOblig    = rubrosObligUnaVez;
+  const totalUnaVezOpcional = rubrosOpcUnaVez + (form.toeic ? form.toeicMonto : 0);
+
+  // PROGRAMA: piso (solo obligatorios) y techo (con todos los opcionales)
+  const pisoPrograma  = subtotalOblPorNivel * nNiveles + subtotalCertObl + totalUnaVezOblig;
+  const techoPrograma = (subtotalOblPorNivel + rubrosOpcPorNivel) * nNiveles
+                      + subtotalCertObl + subtotalCertOpc
+                      + totalUnaVezOblig + totalUnaVezOpcional;
+
+  // Simulador con beca (beca solo afecta matrícula + cuotas)
+  const baseConBeca   = (matrPorNivel + cuotasPorNivel) * (1 - descuento);
+  const pisoConBeca   = (baseConBeca + rubrosObligPorNivel) * nNiveles
+                      + subtotalCertObl + totalUnaVezOblig;
+  const techoConBeca  = (baseConBeca + rubrosObligPorNivel + rubrosOpcPorNivel) * nNiveles
+                      + subtotalCertObl + subtotalCertOpc
+                      + totalUnaVezOblig + totalUnaVezOpcional;
+
+  // Step6 sigue mostrando "totalPrograma" — exponemos el techo como referencia.
+  const totalPrograma = techoPrograma;
 
   // Validación por paso
   const validate = () => {
@@ -317,7 +378,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
       // Generate cronograma
       if (form.fechaInicio) {
         const dias = parseDias(form.dias);
-        const cr = generarCronograma(new Date(form.fechaInicio), dias.length ? dias : [1,3]);
+        const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias.length ? dias : [1,3]);
         set('cronograma', cr);
       }
     }
@@ -343,7 +404,10 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           modalidad:               form.modalidad,
           dias:                    form.dias,
           hora_ini:                form.horaInicio,
-          hora_fin:                form.horaInicio === '06:00' ? '21:00' : '16:00',
+          hora_fin:                (() => {
+            const [h, m] = form.horaInicio.split(':').map(Number);
+            return `${String(h + 3).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          })(),
           fecha_inicio:            form.fechaInicio,
           periodo_inicio:          periodo,
           programa:                form.modelo === 'ina' ? 'INA' : 'SIN_INA',
@@ -351,19 +415,28 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           capacidad:               form.capacidad || 40,
           nivel_inicio:            (form.niveles[0] || 'b1').toUpperCase(),
           tipo_periodo:            form.modalidad === 'super_intensivo' ? 'B' : 'C',
-          año_inicio:              form.fechaInicio ? new Date(form.fechaInicio).getFullYear() : new Date().getFullYear(),
+          año_inicio:              form.fechaInicio ? parseDateLocal(form.fechaInicio).getFullYear() : new Date().getFullYear(),
           dias_sem:                form.modalidad === 'super_intensivo' ? 4 : (form.dias.includes('Sáb') ? 1 : 2),
           consecutivo:             parseInt(consec, 10),
           // v4.15 — campos nuevos
           disponible_inscripcion:  form.disponibleInscripcion === true,
           precio_cuota:            form.cuota,
           precio_matricula:        form.matriculaObligatoria ? form.matricula : 0,
-          precio_certificado:      form.certificadosPorNivel[form.niveles[0]] || 0,
+          precio_certificado:      form.certificadosPorNivel[form.niveles[0]]?.monto || 0,
           precio_titulo:           form.niveles.length === 4 ? form.certificadoPrograma : 0,
-          beca_grupo:              form.beca === 'none' ? '' : form.beca === 'impacta' ? 'IMPACTA' : form.beca === 'mujer' ? 'MUJER' : (form.becaCustomNombre||'').toUpperCase(),
-          beca_pct:                form.beca === 'none' ? 0 : form.beca === 'impacta' ? 25 : form.beca === 'mujer' ? 50 : form.becaCustomPct,
+          // Becas NO se guardan al grupo (las elige cada estudiante al inscribirse).
+          // El selector del wizard es un simulador visual.
           toeic:                   form.toeic === true,
           toeic_monto:             form.toeic ? form.toeicMonto : 0,
+          // v4.23 — estructura completa de certificados por nivel
+          certificados_por_nivel:  form.certificadosPorNivel,
+          // v4.23 — rubros adicionales con tipo_aplicacion
+          rubros_extra:            form.rubrosExtra.map(r => ({
+            nombre:          r.nombre,
+            monto:           r.monto,
+            obligatorio:     r.obligatorio,
+            tipo_aplicacion: r.tipo_aplicacion || 'por_nivel',
+          })),
         }),
         signal: controller.signal,
       });
@@ -465,7 +538,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
                   [nivel.nombre, nivel.emoji],
                   [form.modalidad==='super_intensivo'?'Súper Intensivo':'Intensivo', '⚡'],
                   [form.modelo==='ina'?'Con INA':'Sin INA', '📋'],
-                  form.fechaInicio && [fmtMes(new Date(form.fechaInicio)), '📅'],
+                  form.fechaInicio && [fmtMes(parseDateLocal(form.fechaInicio)), '📅'],
                   form.docente && [docentesActivos.find(d=>d.id===form.docente)?.nombre?.split(' ')[0], '👤'],
                 ].filter(Boolean).map(([v,e],i) => (
                   <div key={i} style={{ fontSize:11, color:'var(--ink-2)', padding:'3px 0', display:'flex', gap:6 }}>
@@ -637,8 +710,25 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
     if (!form.fechaInicio) return null;
     const dias = parseDias(form.dias);
     if (!dias.length) return null;
-    const cr = generarCronograma(new Date(form.fechaInicio), dias);
+    const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias);
     return cr[cr.length - 1]?.fecha;
+  }, [form.fechaInicio, form.dias]);
+
+  // Fecha real de la primera lección (primer día válido desde fechaInicio).
+  // Si el usuario tipea una fecha que no es día de clase, el cronograma
+  // arranca el siguiente día válido — esto refleja eso en la Vista previa.
+  const inicioReal = React.useMemo(() => {
+    if (!form.fechaInicio) return null;
+    const fecha = parseDateLocal(form.fechaInicio);
+    const dias = parseDias(form.dias);
+    if (!dias.length) return fecha;
+    const cur = new Date(fecha);
+    for (let i = 0; i < 60; i++) {
+      const iso = cur.toISOString().slice(0,10);
+      if (dias.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso)) return cur;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return fecha;
   }, [form.fechaInicio, form.dias]);
 
   return (
@@ -717,7 +807,7 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
         {form.fechaInicio && (() => {
           const dias = parseDias(form.dias);
           if (!dias.length) return null;
-          const cr = generarCronograma(new Date(form.fechaInicio), dias);
+          const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias);
           const fin = cr[cr.length-1]?.fecha;
           if (!fin) return null;
           const mes = fin.getMonth();
@@ -740,10 +830,15 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
           Este grupo tendrá <strong>32 lecciones de 3h</strong>
           {form.modelo==='ina' && <> + <strong>16 sesiones I CAN de 2h</strong></>}.
           <br/>
-          Inicio: <strong>{fmtCR(new Date(form.fechaInicio))}</strong>
+          Inicio: <strong>{fmtCR(inicioReal)}</strong>
           {finEstimado && <> &nbsp;→&nbsp; Fin estimado: <strong>{fmtCR(finEstimado)}</strong></>}
           <br/>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>Feriados de Costa Rica 2026 excluidos automáticamente.</span>
+          {inicioReal && form.fechaInicio && fmtCR(parseDateLocal(form.fechaInicio)) !== fmtCR(inicioReal) && (
+            <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:6, fontStyle:'italic' }}>
+              Tipeaste {fmtCR(parseDateLocal(form.fechaInicio))}, pero la primera clase válida según los días elegidos ({form.dias}) es {fmtCR(inicioReal)}.
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -883,12 +978,12 @@ function Step3({ form, set, errors, nivel, docentesActivos, nuevoHorarioCod }) {
 // PASO 4 — Precios y rubros
 // ─────────────────────────────────────────────────────────────────────────
 function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descuento }) {
-  const [nuevoRubro, setNuevoRubro] = React.useState({ nombre:'', monto:0, obligatorio:false });
+  const [nuevoRubro, setNuevoRubro] = React.useState({ nombre:'', monto:0, obligatorio:false, tipo_aplicacion:'por_nivel' });
 
   const addRubro = () => {
     if (!nuevoRubro.nombre) return;
     set('rubrosExtra', [...form.rubrosExtra, { ...nuevoRubro, id: Date.now() }]);
-    setNuevoRubro({ nombre:'', monto:0, obligatorio:false });
+    setNuevoRubro({ nombre:'', monto:0, obligatorio:false, tipo_aplicacion:'por_nivel' });
   };
 
   const removeRubro = (id) => set('rubrosExtra', form.rubrosExtra.filter(r => r.id !== id));
@@ -921,24 +1016,42 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
 
       <SectionTitle>Certificados por nivel</SectionTitle>
       <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:12 }}>
-        Monto del certificado por cada nivel seleccionado. Nunca reciben descuento de becas.
+        Cada certificado tiene su monto y se puede marcar como obligatorio independientemente. Nunca reciben descuento de becas.
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
-        {form.niveles.map(k => {
-          const m = NIVEL_META[k];
+        {form.niveles.map(niv => {
+          const m = NIVEL_META[niv];
+          const c = form.certificadosPorNivel[niv] || { monto:0, obligatorio:false };
+          const obligatorio = !!c.obligatorio;
           return (
-            <div key={k} style={{ display:'grid', gridTemplateColumns:'1fr 160px', alignItems:'center', gap:12, padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', borderLeft:`4px solid ${m.color}` }}>
+            <div key={niv} style={{
+              display:'grid', gridTemplateColumns:'1fr 160px auto', alignItems:'center', gap:12,
+              padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)',
+              borderLeft:`4px solid ${m.color}`,
+            }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ fontSize:16 }}>{m.emoji}</span>
-                <span style={{ fontWeight:600, fontSize:13 }}>{m.nombre}</span>
-                <span style={{ fontSize:11, color:'var(--ink-3)' }}>· Certificado de nivel</span>
+                <span style={{ fontWeight:600, fontSize:13 }}>{niv.toUpperCase()} Certificado</span>
+                <span style={{ fontSize:11, color:'var(--ink-3)' }}>· {m.nombre}</span>
               </div>
               <div style={{ display:'flex', alignItems:'center', background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-md)', overflow:'hidden' }}>
                 <span style={{ padding:'8px 10px', background:'var(--bg-deep)', color:'var(--ink-3)', fontSize:12, fontWeight:700, borderRight:'1px solid var(--line)' }}>₡</span>
-                <input type="number" value={form.certificadosPorNivel[k]||0}
-                  onChange={e => set('certificadosPorNivel', {...form.certificadosPorNivel, [k]: Number(e.target.value)})}
+                <input type="number" value={c.monto || 0}
+                  onChange={e => set('certificadosPorNivel', {
+                    ...form.certificadosPorNivel,
+                    [niv]: { ...c, monto: Number(e.target.value) },
+                  })}
                   style={{ flex:1, border:'none', outline:'none', padding:'8px 10px', fontFamily:'var(--f-mono)', fontSize:13, background:'transparent', width:80 }} />
               </div>
+              <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', color: obligatorio ? 'var(--an-granate)' : 'var(--ink-2)', fontWeight: obligatorio ? 700 : 500 }}>
+                <Toggle value={obligatorio}
+                  onChange={v => set('certificadosPorNivel', {
+                    ...form.certificadosPorNivel,
+                    [niv]: { ...c, obligatorio: v },
+                  })}
+                  color={m.color} />
+                Obligatorio
+              </label>
             </div>
           );
         })}
@@ -961,7 +1074,7 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
       <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:20 }}>Los certificados no reciben descuento de becas.</div>
 
       <SectionTitle>Rubros adicionales</SectionTitle>
-      <label style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10, cursor:'pointer' }}>
+      <label style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, cursor:'pointer' }}>
         <Toggle value={form.toeic} onChange={v => set('toeic',v)} color={nivel.color} />
         <div>
           <div style={{ fontWeight:600, fontSize:13 }}>Incluir Prueba TOEIC</div>
@@ -974,31 +1087,58 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
           </div>
         )}
       </label>
+      <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:14, paddingLeft:42 }}>
+        Una sola vez al final del programa, al terminar el último nivel.
+      </div>
 
-      {form.rubrosExtra.map(r => (
-        <div key={r.id} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 12px', background:'var(--surface-2)', borderRadius:8, marginBottom:6 }}>
-          <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{r.nombre}</div>
-          <div style={{ fontFamily:'var(--f-mono)', fontSize:13 }}>{fmtMoney(r.monto)}</div>
-          {r.obligatorio && <span style={{ fontSize:10, fontWeight:700, color:'var(--an-granate)', background:'color-mix(in srgb, var(--an-granate) 10%, white)', padding:'2px 6px', borderRadius:4 }}>OBLIGATORIO</span>}
-          <button onClick={() => removeRubro(r.id)} style={{ background:'none', border:'none', color:'var(--ink-3)', cursor:'pointer', fontSize:16 }}>×</button>
-        </div>
-      ))}
+      {form.rubrosExtra.map(r => {
+        const tipoLabel = r.tipo_aplicacion === 'una_vez_inicio' ? 'Una vez · Inicio'
+                        : r.tipo_aplicacion === 'una_vez_final'  ? 'Una vez · Final'
+                        : 'Por nivel';
+        return (
+          <div key={r.id} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 12px', background:'var(--surface-2)', borderRadius:8, marginBottom:6 }}>
+            <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{r.nombre}</div>
+            <div style={{ fontFamily:'var(--f-mono)', fontSize:13 }}>{fmtMoney(r.monto)}</div>
+            <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:'var(--r-pill)', background:'var(--surface)', color:'var(--ink-2)', border:'1px solid var(--line)' }}>
+              {tipoLabel}
+            </span>
+            {r.obligatorio && <span style={{ fontSize:10, fontWeight:700, color:'var(--an-granate)', background:'color-mix(in srgb, var(--an-granate) 10%, white)', padding:'2px 6px', borderRadius:4 }}>OBLIGATORIO</span>}
+            <button onClick={() => removeRubro(r.id)} style={{ background:'none', border:'none', color:'var(--ink-3)', cursor:'pointer', fontSize:16 }}>×</button>
+          </div>
+        );
+      })}
 
-      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr auto auto', gap:8, alignItems:'center', padding:'10px 12px', background:'var(--surface-2)', borderRadius:8, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1.2fr auto auto', gap:8, alignItems:'center', padding:'10px 12px', background:'var(--surface-2)', borderRadius:8, marginBottom:20 }}>
         <input placeholder="Nombre del rubro" value={nuevoRubro.nombre} onChange={e => setNuevoRubro(r => ({...r, nombre:e.target.value}))}
           style={{ padding:'7px 10px', border:'1px solid var(--line)', borderRadius:6, fontFamily:'inherit' }} />
         <input type="number" placeholder="Monto" value={nuevoRubro.monto||''} onChange={e => setNuevoRubro(r => ({...r, monto:Number(e.target.value)}))}
           style={{ padding:'7px 10px', border:'1px solid var(--line)', borderRadius:6, fontFamily:'var(--f-mono)' }} />
+        <select value={nuevoRubro.tipo_aplicacion || 'por_nivel'}
+          onChange={e => setNuevoRubro(r => ({...r, tipo_aplicacion:e.target.value}))}
+          style={{ padding:'7px 10px', border:'1px solid var(--line)', borderRadius:6, fontFamily:'inherit', fontSize:12, background:'var(--surface)' }}>
+          <option value="por_nivel">Por nivel</option>
+          <option value="una_vez_inicio">Una vez · Inicio</option>
+          <option value="una_vez_final">Una vez · Final</option>
+        </select>
         <label style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, cursor:'pointer', whiteSpace:'nowrap' }}>
           <input type="checkbox" checked={nuevoRubro.obligatorio} onChange={e => setNuevoRubro(r => ({...r, obligatorio:e.target.checked}))} />
-          Obligatorio
+          Oblig.
         </label>
         <button onClick={addRubro} className="btn btn-ghost" style={{ fontSize:12 }}>+ Agregar</button>
       </div>
 
       <SectionTitle>Becas disponibles</SectionTitle>
+      <div style={{
+        padding:'10px 14px',
+        background:'color-mix(in srgb, var(--warn) 8%, white)',
+        border:'1px solid color-mix(in srgb, var(--warn) 35%, transparent)',
+        borderRadius:'var(--r-md)',
+        fontSize:12, color:'var(--ink-2)', marginBottom:12, lineHeight:1.5,
+      }}>
+        <strong>Las becas las elige cada estudiante al inscribirse</strong>, no son del grupo. Este selector es solo un <strong>simulador visual</strong> para ver cómo cambia el costo si un estudiante tomara la beca elegida.
+      </div>
       <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:10 }}>
-        Solo una beca activa por grupo. Aplica a matrícula y cuotas, nunca al certificado.
+        La beca aplica a matrícula y cuotas. Nunca a certificados, opcionales ni cargos una-vez.
       </div>
       {[
         ['none', 'Sin beca', '0%', ''],
@@ -1042,42 +1182,137 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
 }
 
 function FinanceSidebar({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento }) {
-  const becaLabel = form.beca==='none' ? null : form.beca==='impacta' ? 'Beca Impacta' : form.beca==='mujer' ? 'Beca Mujer' : form.becaCustomNombre || 'Beca personalizada';
-  const extras = form.rubrosExtra.filter(r => r.obligatorio);
+  // Recomputamos piso/techo localmente para mantener el componente autónomo.
+  const nNiveles = form.niveles.length;
+  const matrPorNivel    = form.matriculaObligatoria ? form.matricula : 0;
+  const cuotasPorNivel  = form.cuota * nCuotas;
+
+  const rubrosObligPorNivel = form.rubrosExtra
+    .filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const rubrosOpcPorNivel = form.rubrosExtra
+    .filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const subtotalOblPorNivel = matrPorNivel + cuotasPorNivel + rubrosObligPorNivel;
+
+  const certObligPorNivel = (niv) => form.certificadosPorNivel[niv]?.obligatorio
+    ? (form.certificadosPorNivel[niv].monto || 0) : 0;
+  const certOpcPorNivel = (niv) => form.certificadosPorNivel[niv]?.obligatorio
+    ? 0 : (form.certificadosPorNivel[niv]?.monto || 0);
+  const subtotalCertObl = form.niveles.reduce((s, n) => s + certObligPorNivel(n), 0);
+  const subtotalCertOpc = form.niveles.reduce((s, n) => s + certOpcPorNivel(n), 0);
+
+  const rubrosObligUnaVez = form.rubrosExtra
+    .filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const rubrosOpcUnaVez = form.rubrosExtra
+    .filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel')
+    .reduce((s, r) => s + (r.monto || 0), 0);
+  const totalUnaVezOblig    = rubrosObligUnaVez;
+  const totalUnaVezOpcional = rubrosOpcUnaVez + (form.toeic ? form.toeicMonto : 0);
+
+  const pisoPrograma  = subtotalOblPorNivel * nNiveles + subtotalCertObl + totalUnaVezOblig;
+  const techoPrograma = (subtotalOblPorNivel + rubrosOpcPorNivel) * nNiveles
+                      + subtotalCertObl + subtotalCertOpc
+                      + totalUnaVezOblig + totalUnaVezOpcional;
+  const baseConBeca   = (matrPorNivel + cuotasPorNivel) * (1 - descuento);
+  const pisoConBeca   = (baseConBeca + rubrosObligPorNivel) * nNiveles
+                      + subtotalCertObl + totalUnaVezOblig;
+  const techoConBeca  = (baseConBeca + rubrosObligPorNivel + rubrosOpcPorNivel) * nNiveles
+                      + subtotalCertObl + subtotalCertOpc
+                      + totalUnaVezOblig + totalUnaVezOpcional;
+
+  const becaLabel = form.beca==='none' ? null
+                  : form.beca==='impacta' ? 'Beca Impacta (-25%)'
+                  : form.beca==='mujer'   ? 'Beca Mujer (-50%)'
+                  : `${form.becaCustomNombre || 'Beca personalizada'} (-${form.becaCustomPct}%)`;
+
+  const rubrosOblPorNivelArr = form.rubrosExtra.filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel');
+  const rubrosOpcPorNivelArr = form.rubrosExtra.filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel');
+  const rubrosUnaVezArr      = form.rubrosExtra.filter(r => (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel');
+
+  const hayOpcPorNivel = rubrosOpcPorNivel > 0 || subtotalCertOpc > 0;
+  const hayUnaVez      = totalUnaVezOblig > 0 || totalUnaVezOpcional > 0;
+
+  const SubHeader = ({ children, color }) => (
+    <div style={{
+      fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase',
+      color: color || 'var(--ink-3)', marginTop:14, marginBottom:6,
+    }}>{children}</div>
+  );
 
   return (
-    <div style={{ borderLeft:'1px solid var(--line)', padding:'28px 20px', background:'var(--surface-2)', overflowY:'auto' }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:14 }}>
+    <div style={{ borderLeft:'1px solid var(--line)', padding:'24px 18px', background:'var(--surface-2)', overflowY:'auto' }}>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>
         Resumen financiero
       </div>
-      <FinRow label="Matrícula" val={fmtMoney(form.matriculaObligatoria ? form.matricula : 0)} muted={!form.matriculaObligatoria} />
-      <FinRow label={`Cuotas (×${nCuotas})`} val={fmtMoney(form.cuota * nCuotas)} />
-      {extras.map(r => <FinRow key={r.id} label={r.nombre} val={fmtMoney(r.monto)} />)}
-      {form.toeic && <FinRow label="TOEIC" val={fmtMoney(form.toeicMonto)} />}
-      <div style={{ borderTop:'1px solid var(--line)', margin:'10px 0' }} />
-      <FinRow label="Total nivel (sin cert.)" val={fmtMoney((form.matriculaObligatoria?form.matricula:0) + form.cuota*nCuotas)} bold />
-      <FinRow label="Certificado (opcional)" val={fmtMoney(form.certificado)} muted />
-      <FinRow label="Total programa (4 lvls)" val={fmtMoney(((form.matriculaObligatoria?form.matricula:0)+form.cuota*nCuotas)*4 + form.certificado*4)} bold muted />
+
+      <SubHeader>Obligatorio por nivel</SubHeader>
+      <FinRow label="Matrícula" val={fmtMoney(matrPorNivel)} muted={!form.matriculaObligatoria} />
+      <FinRow label={`Cuotas (×${nCuotas})`} val={fmtMoney(cuotasPorNivel)} />
+      {rubrosOblPorNivelArr.map(r => <FinRow key={r.id} label={r.nombre} val={fmtMoney(r.monto)} />)}
+      {form.niveles.map(niv => {
+        const c = form.certificadosPorNivel[niv];
+        if (!c?.obligatorio || !c.monto) return null;
+        return <FinRow key={`co-${niv}`} label={`Cert ${niv.toUpperCase()}`} val={fmtMoney(c.monto)} />;
+      })}
+      <div style={{ borderTop:'1px solid var(--line)', margin:'8px 0' }} />
+      <FinRow label="Subtotal obligatorio / nivel" val={fmtMoney(subtotalOblPorNivel)} bold />
+
+      {hayOpcPorNivel && (
+        <>
+          <SubHeader>Opcional por nivel</SubHeader>
+          {form.niveles.map(niv => {
+            const c = form.certificadosPorNivel[niv];
+            if (!c || c.obligatorio || !c.monto) return null;
+            return <FinRow key={`copt-${niv}`} label={`Cert ${niv.toUpperCase()}`} val={fmtMoney(c.monto)} muted />;
+          })}
+          {rubrosOpcPorNivelArr.map(r => <FinRow key={r.id} label={r.nombre} val={fmtMoney(r.monto)} muted />)}
+        </>
+      )}
+
+      {hayUnaVez && (
+        <>
+          <SubHeader>Una vez en el programa</SubHeader>
+          {rubrosUnaVezArr.map(r => (
+            <FinRow key={r.id}
+              label={`${r.nombre} ${r.tipo_aplicacion === 'una_vez_inicio' ? '(inicio)' : '(final)'}`}
+              val={fmtMoney(r.monto)}
+              muted={!r.obligatorio} />
+          ))}
+          {form.toeic && <FinRow label="TOEIC (final)" val={fmtMoney(form.toeicMonto)} muted />}
+        </>
+      )}
+
+      <div style={{ borderTop:'2px solid var(--line)', margin:'16px 0 8px' }} />
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color: nivel.color, marginBottom:6 }}>
+        Programa ({nNiveles} {nNiveles === 1 ? 'nivel' : 'niveles'})
+      </div>
+      <FinRow label="Piso (solo obligatorios)" val={fmtMoney(pisoPrograma)} bold />
+      <FinRow label="Techo (con opcionales)" val={fmtMoney(techoPrograma)} bold muted />
 
       {becaLabel && descuento > 0 && (
         <>
-          <div style={{ borderTop:'2px solid var(--ok)', margin:'14px 0 10px' }} />
-          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ok)', marginBottom:10 }}>
-            {becaLabel} (−{Math.round(descuento*100)}%)
+          <div style={{ borderTop:'2px solid var(--ok)', margin:'16px 0 8px' }} />
+          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ok)', marginBottom:6 }}>
+            Simulador · {becaLabel}
           </div>
-          <FinRow label="Matrícula con beca" val={fmtMoney(matFinal)} green />
-          <FinRow label={`Cuotas con beca (×${nCuotas})`} val={fmtMoney(cuotasFinal)} green />
-          <div style={{ borderTop:'1px solid var(--ok)', margin:'10px 0' }} />
-          <FinRow label="Total nivel con beca" val={fmtMoney(totalNivel)} bold green />
+          <FinRow label="Piso con beca"  val={fmtMoney(pisoConBeca)}  bold green />
+          <FinRow label="Techo con beca" val={fmtMoney(techoConBeca)} bold green muted />
+          <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:8, fontStyle:'italic', lineHeight:1.4 }}>
+            La beca aplica a matrícula y cuotas. No aplica a opcionales, certificados ni cargos una-vez.
+          </div>
         </>
       )}
 
       <div style={{ marginTop:18, padding:'10px 12px', background:'var(--surface)', borderRadius:'var(--r-md)', border:'1px solid var(--line)' }}>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:24, fontWeight:500, color: nivel.color, letterSpacing:'-0.02em' }}>
-          {fmtMoney(totalNivel)}
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color: nivel.color, letterSpacing:'-0.02em', lineHeight:1.1 }}>
+          {fmtMoney(pisoPrograma)}
+          <span style={{ fontSize:14, color:'var(--ink-3)', fontWeight:400 }}> — </span>
+          {fmtMoney(techoPrograma)}
         </div>
-        <div style={{ fontSize:10, color:'var(--ink-3)', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase' }}>
-          Total a cobrar por nivel
+        <div style={{ fontSize:10, color:'var(--ink-3)', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2 }}>
+          Rango total del programa
         </div>
       </div>
     </div>
@@ -1224,7 +1459,7 @@ function Step5({ form, set, nivel }) {
       </div>
 
       <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center' }}>
-        {[['completo',`Curso completo (${meses.length} meses)`],['mes','Mes específico']].map(([v,l]) => (
+        {[['completo',`Curso completo (${form.modalidad === 'super_intensivo' ? 2 : 4} meses)`],['mes','Mes específico']].map(([v,l]) => (
           <button key={v} onClick={() => setVista(v)} style={{
             padding:'5px 12px', borderRadius:'var(--r-pill)',
             border:`2px solid ${vista===v?nivel.color:'var(--line)'}`,
@@ -1334,7 +1569,7 @@ function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalP
           ['Modalidad', form.modalidad==='super_intensivo' ? 'Súper Intensivo (2 cuotas)' : 'Intensivo (4 cuotas)'],
           ['Docente', docente?.nombre || '—'],
           ['Horario', `${form.dias} · ${form.horaInicio}`],
-          ['Fecha inicio', form.fechaInicio ? fmtCR(new Date(form.fechaInicio)) : '—'],
+          ['Fecha inicio', form.fechaInicio ? fmtCR(parseDateLocal(form.fechaInicio)) : '—'],
           ['Fin estimado', cr.length ? fmtCR(cr[cr.length-1].fecha) : '—'],
           ['Capacidad', `${form.capacidad} estudiantes`],
           ['Entrega', form.entrega],

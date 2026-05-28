@@ -354,7 +354,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'supervision', label: 'Supervisión', icon: 'bell' },
     { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
-    { id: 'matriculas', label: 'Matrículas', icon: 'graduation', badge: 3 },
+    { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },

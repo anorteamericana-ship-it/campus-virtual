@@ -613,40 +613,6 @@ body {
 }
 .form-foot a { color: var(--ink-2); font-weight: 600; margin: 0 8px; }
 
-/* Demo credentials hint */
-.demo-hint {
-  margin-top: 20px;
-  padding: 14px;
-  background: color-mix(in srgb, var(--an-gold) 8%, white);
-  border: 1px dashed var(--an-gold);
-  border-radius: var(--r-md);
-  font-size: 11px;
-  color: var(--ink-2);
-  line-height: 1.6;
-}
-.demo-hint .dh-title {
-  font-weight: 700;
-  color: #6B4A00;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 10px;
-  margin-bottom: 6px;
-}
-.demo-hint code {
-  font-family: var(--f-mono);
-  background: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--line);
-  color: var(--an-granate);
-  font-size: 11px;
-  margin: 0 2px;
-  cursor: pointer;
-}
-.demo-hint code:hover { background: var(--an-gold-soft); color: #6B4A00; }
-.demo-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 3px; }
-.demo-row b { color: var(--ink); min-width: 70px; display: inline-block; }
-
 /* Mobile */
 @media (max-width: 900px) {
   body { overflow: auto; }

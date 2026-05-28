@@ -37,6 +37,26 @@ function notaDeNivelSM(niveles, nivel) {
   return typeof v === 'object' ? (v?.nota ?? v?.NOTA ?? null) : null;
 }
 
+// Parte el concepto crudo del backend en (concepto limpio | comprobante).
+// Formato típico: "TIPO_NIVEL-BANCO-NUMERO-FECHA"
+//   TIPO  = CUOTA | MATRICULA | CERTIFICADO
+//   NIVEL = B1 | B2 | I1 | I2  (puede faltar en casos rotos: "CERTIFICADO_-BCR-...")
+// Solo presentación visual; el dato crudo no se modifica.
+function partirConcepto(conceptoRaw) {
+  const c = String(conceptoRaw || '').trim();
+  if (!c) return { concepto: '—', comprobante: '' };
+  const m = c.match(/^(CUOTA|MATRICULA|CERTIFICADO)_(B1|B2|I1|I2)?/i);
+  if (m) {
+    const tipo  = m[1].toUpperCase();
+    const nivel = m[2] ? m[2].toUpperCase() : '';
+    const conceptoLimpio = nivel ? `${tipo}_${nivel}` : tipo;
+    let resto = c.slice(m[0].length);
+    resto = resto.replace(/^[-_\s]+/, '');
+    return { concepto: conceptoLimpio, comprobante: resto || '' };
+  }
+  return { concepto: c, comprobante: '' };
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Shared PageHeader (re-exported para otros módulos)
 // ──────────────────────────────────────────────────────────────────────────
@@ -554,17 +574,21 @@ function PagosContenido({ data }) {
               </tr>
             </thead>
             <tbody>
-              {todosPagos.map((p, i) => (
+              {todosPagos.map((p, i) => {
+                const crudo = p.concepto || p.CONCEPTO || p.descripcion || p.DESCRIPCION || '';
+                const { concepto, comprobante } = partirConcepto(crudo);
+                return (
                 <tr key={i}>
                   <td style={{ fontSize:12, color:'var(--ink-2)' }}>{p.fecha || p.FECHA || '—'}</td>
                   <td>
-                    <div style={{ fontWeight:600 }}>{p.concepto || p.CONCEPTO || p.descripcion || '—'}</div>
+                    <div style={{ fontWeight:600 }}>{concepto || '—'}</div>
                     {(p.grupo || p.GRUPO) && <div style={{ fontSize:11, color:'var(--ink-3)' }}>{p.grupo || p.GRUPO}</div>}
                   </td>
-                  <td style={{ fontSize:12, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{p.comprobante || p.COMPROBANTE || p.id || '—'}</td>
+                  <td style={{ fontSize:12, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{comprobante || '—'}</td>
                   <td style={{ textAlign:'right', fontFamily:'var(--f-mono)', fontWeight:600 }}>{fmt(p.monto ?? p.MONTO)}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

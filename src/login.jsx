@@ -124,12 +124,6 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
     setTimeout(() => { onLoginSuccess(acc); }, 900);
   };
 
-  const fillDemo = (u, p = 'demo2026') => {
-    setUsuario(u);
-    setPass(p);
-    setErr('');
-  };
-
   return (
     <div className="form-card">
       <div className="form-head">
@@ -256,13 +250,6 @@ function LoginView({ onSwitchScreen, onLoginSuccess }) {
         ¿Aún no te matriculas? <a href="#" onClick={(e)=>e.preventDefault()}>Solicitar matrícula</a>
       </div>
 
-      <div className="demo-hint">
-        <div className="dh-title">🧪 Cuentas demo · Haz clic para autollenar</div>
-        <div className="demo-row"><b>Estudiante:</b> <code onClick={()=>fillDemo('114930546','17065')}>cédula + código</code></div>
-        <div className="demo-row"><b>Docente:</b> <code onClick={()=>fillDemo('emily','profe2026')}>emily</code></div>
-        <div className="demo-row"><b>Admin:</b> <code onClick={()=>fillDemo('admin','anorteam2026')}>admin</code></div>
-        <div style={{ marginTop:6, fontSize:10, color:'var(--ink-3)' }}>Contraseñas se autocompletan al hacer clic</div>
-      </div>
     </div>
   );
 }

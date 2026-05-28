@@ -765,9 +765,16 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function AdminEstudiantesView({ onNavigate }) {
+function AdminEstudiantesView({ onNavigate, grupoInicial }) {
   const { grupos, loading: loadingGrupos } = useAdminGrupos();
-  const [grupoSel, setGrupoSel] = React.useState(null);
+  const [grupoSel, setGrupoSel] = React.useState(grupoInicial || null);
+  // Si el caller cambia `grupoInicial` (ej. nueva navegación con otro grupo),
+  // adoptarlo. No pisa la selección manual del admin: solo dispara cuando el
+  // valor entrante existe y difiere del seleccionado.
+  React.useEffect(() => {
+    if (grupoInicial && grupoInicial !== grupoSel) setGrupoSel(grupoInicial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grupoInicial]);
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [estudiantePanelAbierto, setEstudiantePanelAbierto] = React.useState(null);
   const [certEstado, setCertEstado] = React.useState(null);

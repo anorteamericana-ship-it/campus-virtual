@@ -156,11 +156,16 @@ function App() {
   const [active, setActive] = useState(() => localStorage.getItem('an_active') || 'dashboard');
   const [toastMsg, setToastMsg] = useState('');
   const [pendingLesson, setPendingLesson] = useState(null);
+  // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
+  // cuando se navega desde el detalle de una lección en el Cronograma.
+  const [pendingGrupo, setPendingGrupo] = useState(null);
   const [modoPrueba, setModoPrueba] = useState(() => getModoPrueba());
 
   const navigateTo = (target, opts = {}) => {
     if (opts.lesson) setPendingLesson(opts.lesson);
     else setPendingLesson(null);
+    if (opts.grupo) setPendingGrupo(opts.grupo);
+    else setPendingGrupo(null);
     setActive(target);
   };
 
@@ -251,8 +256,8 @@ function App() {
       supervision:  <PanelAdminSupervision />,
       suspensiones: <PanelSuspensiones />,
       grupos:       <AdminGruposView />,
-      estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} />,
-      cronograma_grupo: <CronogramaGrupo rol="admin" />,
+      estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
+      cronograma_grupo: <CronogramaGrupo rol="admin" onNavigate={navigateTo} />,
       buscador:     <BuscadorEstudiantes />,
       banco:        <ImportadorBancario />,
       aplicar_pago: <AplicarPago />,

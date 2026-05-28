@@ -8,18 +8,10 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
 
-const GRUPOS_DISPONIBLES = [
-  { cod:'B1-LM69-C3-0125', niveles:['B1','B2','I1'], docente:'Rachelle Cruz',    dias:'LM', programa:'SIN_INA' },
-  { cod:'B1-KJ69-C3-0225', niveles:['B1','B2','I1'], docente:'Emily Vega',       dias:'KJ', programa:'SIN_INA' },
-  { cod:'B1-L469-B6-0325', niveles:['B1','B2'],      docente:'John Álvarez',     dias:'LJ', programa:'SIN_INA' },
-  { cod:'B1-KJ94-B6-0425', niveles:['B1','B2'],      docente:'John Álvarez',     dias:'KJ', programa:'SIN_INA' },
-  { cod:'B1-LM69-C1-0126', niveles:['B1'],           docente:'Ana Salazar',      dias:'LM', programa:'SIN_INA' },
-  { cod:'B1-L469-B1-0226', niveles:['B1','B2'],      docente:'Sulivany Medina',  dias:'LJ', programa:'SIN_INA' },
-  { cod:'B1-SA94-C1-0326', niveles:['B1'],           docente:'John Álvarez',     dias:'SA', programa:'SIN_INA' },
-  { cod:'B1-L469-B2-0426', niveles:['B1'],           docente:'Yendry Aguilar',   dias:'LJ', programa:'SIN_INA' },
-  { cod:'B1-LM69-C2-0526', niveles:['B1'],           docente:'Por definir',      dias:'LM', programa:'INA', ican_dias:'VIE', ican_hora:'18:00-20:00' },
-  { cod:'B1-LM94-B3-0626', niveles:['B1'],           docente:'Por definir',      dias:'LM', programa:'INA', ican_dias:'SAB', ican_hora:'08:00-10:00' },
-];
+// Sentinel para la vista "Todos los grupos" (solo admin/superadmin).
+const TODOS_GRUPOS = '__TODOS__';
+
+// La lista de grupos AHORA viene del backend (getGruposActivos). Ver CronogramaGrupo.
 
 const NIVEL_COLOR_CG  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_CG  = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
@@ -127,135 +119,9 @@ function idLeccion(nivel, num) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// MOCK — para preview sin backend
-// ─────────────────────────────────────────────────────────────────────────
-function mockLecciones(codGrupo, nivel) {
-  const offsetNivel = NIVEL_OFFSET[nivel] || 0;
-  const parts = codGrupo.split('-');
-  const diasCode = (parts[1] || 'LM').replace(/\d/g, '');
-  const esSabado = diasCode === 'SA';
-
-  const PROG = new Set([4,8,13,16,21,24,28,30]);
-  const ORAL = new Set([9,17,25,31]);
-  const ESCR = new Set([18,32]);
-  const FER  = new Set(Object.keys(FERIADOS_CR_NAMES));
-  const DOW  = { LM:[1,3], KJ:[2,4], LJ:[1,2,3,4], SA:[6] }[diasCode] || [1,3];
-  const DOWLBL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-
-  const start = new Date('2026-01-12T00:00:00');
-  start.setDate(start.getDate() + offsetNivel * (DOW.length >= 4 ? 1 : 3));
-  const out = [];
-  let cur = new Date(start);
-  let lec = 1;
-  const hoyISO = '2026-05-15';
-  while (lec <= 32) {
-    const iso = isoOf(cur);
-    if (DOW.includes(cur.getDay())) {
-      if (FER.has(iso)) {
-        // v4.15: feriado no consume número de lección — se inserta sin número
-        out.push({ leccion: null, fecha: iso, dia: DOWLBL[cur.getDay()],
-                   turno:'', tipo:'CLASE', estado:'FERIADO' });
-        // lec NO incrementa — la lección se corre al siguiente día hábil
-      } else {
-        let tipo = 'CLASE';
-        if (PROG.has(lec)) tipo = 'PROGRESS_CHECK';
-        else if (ORAL.has(lec)) tipo = 'EVAL_ORAL';
-        else if (ESCR.has(lec)) tipo = 'EVAL_ESCRITO';
-        const estado = iso < hoyISO ? 'CERRADA' : iso === hoyISO ? 'HOY' : 'PROGRAMADA';
-        if (esSabado) {
-          // dos turnos mismo día
-          out.push({ leccion:lec, fecha:iso, dia:DOWLBL[6],
-                     turno:'Mañana (9am-12md)', tipo, estado });
-          lec++;
-          if (lec <= 32) {
-            let t2 = 'CLASE';
-            if (PROG.has(lec)) t2 = 'PROGRESS_CHECK';
-            else if (ORAL.has(lec)) t2 = 'EVAL_ORAL';
-            else if (ESCR.has(lec)) t2 = 'EVAL_ESCRITO';
-            out.push({ leccion:lec, fecha:iso, dia:DOWLBL[6],
-                       turno:'Tarde (1pm-4pm)', tipo:t2, estado });
-            lec++;
-          }
-        } else {
-          out.push({ leccion:lec, fecha:iso, dia:DOWLBL[cur.getDay()],
-                     turno:'', tipo, estado });
-          lec++;
-        }
-      }
-    } else if (FER.has(iso)) {
-      // feriado en día que normalmente sería de clase: solo si DOW lo cubre
-    }
-    cur.setDate(cur.getDate() + 1);
-    if (out.length > 80) break; // safety
-  }
-
-  // v4.16: generar sesiones I CAN para grupos INA
-  const grupoMeta = GRUPOS_DISPONIBLES.find(g => g.cod === codGrupo);
-  const esINA = grupoMeta?.programa === 'INA';
-  if (esINA && grupoMeta?.ican_dias) {
-    const DOW_ICAN = { 'VIE': 5, 'SAB': 6, 'LUN': 1, 'MAR': 2, 'MIE': 3, 'JUE': 4 };
-    const diaCAN = DOW_ICAN[grupoMeta.ican_dias] || 5;
-    const DOWLBL2 = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    // Generar 16 sesiones I CAN comenzando desde la fecha de inicio del grupo + 1 semana
-    let curCAN = new Date(start);
-    curCAN.setDate(curCAN.getDate() + 7);
-    // Avanzar al primer día I CAN
-    while (curCAN.getDay() !== diaCAN) curCAN.setDate(curCAN.getDate() + 1);
-    for (let ic = 1; ic <= 16; ic++) {
-      const isoCAN = isoOf(curCAN);
-      if (!FER.has(isoCAN)) {
-        out.push({
-          leccion:    ic,
-          fecha:      isoCAN,
-          dia:        DOWLBL2[curCAN.getDay()],
-          turno:      grupoMeta.ican_hora || '',
-          tipo:       'ICAN',
-          estado:     isoCAN < hoyISO ? 'CERRADA' : isoCAN === hoyISO ? 'HOY' : 'PROGRAMADA',
-          esICAN:     true,
-        });
-      }
-      curCAN.setDate(curCAN.getDate() + 7);
-    }
-  }
-
-  return out;
-}
-
-function mockDetalle(nivel, num, tipo) {
-  const titulos = {
-    CLASE: ['Greetings & Introductions', 'Personal Information', 'Daily Routines', 'Hobbies & Interests',
-            'Family & Friends', 'Food & Drinks', 'Travel Plans', 'Past Experiences'],
-    PROGRESS_CHECK: 'Progress Check — repaso de unidades',
-    EVAL_ORAL: 'Oral Test ' + Math.ceil(num/8),
-    EVAL_ESCRITO: 'Written Test ' + Math.ceil(num/16),
-  };
-  const titulo = tipo === 'CLASE' ? titulos.CLASE[num % titulos.CLASE.length] : titulos[tipo];
-  return {
-    ok: true,
-    leccion: {
-      id: idLeccion(nivel, num),
-      nivel: NIVEL_LABEL_CG[nivel].toUpperCase(),
-      unidad: `UNIT ${Math.ceil(num/2)}`,
-      titulo,
-      tipo: tipo === 'CLASE' ? 'PRACTICA' : tipo === 'PROGRESS_CHECK' ? 'EVALUACION_FORMATIVA' : 'PRACTICA+EVALUACION',
-      objetivo: tipo === 'EVAL_ORAL'
-        ? 'Evaluar la producción ORAL en inglés basada en las unidades cubiertas. El estudiante demostrará fluidez, precisión gramatical y vocabulario apropiado.'
-        : tipo === 'PROGRESS_CHECK'
-        ? 'Revisar el progreso de los estudiantes en las unidades anteriores mediante actividades formativas en pares.'
-        : 'Desarrollar las cuatro habilidades del idioma (escuchar, hablar, leer y escribir) según los contenidos de la unidad.',
-      speaking: 'Pair work, role play, free conversation',
-      grammar: 'Present simple, articles, possessive adjectives',
-      pronunciacion: 'Word stress, sentence rhythm',
-      writing: 'Sentence-level writing, simple paragraphs',
-      pdf_drive_id: num % 3 === 0 ? '194St9CmIBLDbsTex39MnuGjOhe74MJWE' : '',
-    },
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function CronogramaGrupo({ rol = 'admin' }) {
+function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const usr = React.useMemo(() => {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
@@ -263,14 +129,53 @@ function CronogramaGrupo({ rol = 'admin' }) {
   const esAdmin    = rol === 'admin' || rol === 'superadmin';
   const esSuperadmin = rol === 'superadmin';
   const esStudent  = rol === 'student';
-  const grupoInicial = esAdmin
-    ? GRUPOS_DISPONIBLES[0].cod
-    : (usr?.grupo || GRUPOS_DISPONIBLES[0].cod);
 
-  const [codGrupo, setCodGrupo] = React.useState(grupoInicial);
-  const meta = GRUPOS_DISPONIBLES.find(g => g.cod === codGrupo)
-    || { cod: codGrupo, niveles:['B1'], docente:'—', dias:'LM' };
-  const niveles = meta.niveles;
+  // ── PASO A: lista de grupos REALES del backend (getGruposActivos) ─────
+  // Reemplaza la antigua constante hardcodeada GRUPOS_DISPONIBLES.
+  // Si la red falla, mostramos ErrorState (NO datos inventados).
+  const [gruposReales,  setGruposReales]  = React.useState([]);
+  const [loadingGrupos, setLoadingGrupos] = React.useState(true);
+  const [errorGrupos,   setErrorGrupos]   = React.useState(null);
+
+  const cargarGrupos = React.useCallback(() => {
+    setLoadingGrupos(true); setErrorGrupos(null);
+    return fetch(`${SCRIPT_URL_CG}?fn=getGruposActivos`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ok && Array.isArray(d.grupos)) {
+          setGruposReales(d.grupos);
+        } else {
+          setErrorGrupos(d?.error || 'No se pudieron cargar los grupos activos.');
+        }
+      })
+      .catch(e => setErrorGrupos('Error de red: ' + (e?.message || e)))
+      .finally(() => setLoadingGrupos(false));
+  }, []);
+
+  React.useEffect(() => { cargarGrupos(); }, [cargarGrupos]);
+
+  // codGrupo arranca vacío; se decide cuando llegan los grupos del backend.
+  // ADMIN/SUPERADMIN arrancan en "Todos los grupos"; student/teacher en su grupo.
+  const [codGrupo, setCodGrupo] = React.useState('');
+  React.useEffect(() => {
+    if (codGrupo || !gruposReales.length) return;
+    if (esAdmin) { setCodGrupo(TODOS_GRUPOS); return; }
+    const usrGrupoOk = usr?.grupo && gruposReales.some(g => g.code === usr.grupo);
+    setCodGrupo(usrGrupoOk ? usr.grupo : gruposReales[0].code);
+  }, [gruposReales, codGrupo, esAdmin, usr]);
+
+  const esTodosGrupos = codGrupo === TODOS_GRUPOS;
+
+  // Meta del grupo activo — todo lo derivado sale de aquí.
+  // En "Todos los grupos", meta es un placeholder neutro (no se usa para datos).
+  const meta = (esTodosGrupos
+    ? null
+    : gruposReales.find(g => g.code === codGrupo))
+    || { code: codGrupo, nivelId: 'B1', nivel: 'Básico I', docente: '—',
+         dias: 'LM', programa: 'SIN_INA', lecciones: [] };
+  // Backend devuelve UN nivel activo por grupo (nivelId). El selector de
+  // niveles múltiples del componente viejo se reduce a ese nivel activo.
+  const niveles = [meta.nivelId];
 
   // ── CONTROL DE ACCESO POR NIVEL (solo student) ─────────────────────
   // Reglas:
@@ -304,34 +209,45 @@ function CronogramaGrupo({ rol = 'admin' }) {
   const [usandoMock, setUsandoMock] = React.useState(false);
 
   const cargar = React.useCallback(() => {
-    setLoading(true); setError(null);
+    if (!codGrupo || codGrupo === TODOS_GRUPOS) {
+      // No hay grupo activo (todavía o porque está en "Todos los grupos"):
+      // no se fetchean lecciones; la vista Todos consume gruposReales directo.
+      setLecciones([]); setLoading(false); setError(null);
+      return;
+    }
+    setLoading(true); setError(null); setUsandoMock(false);
+
     if (nivel === 'ICAN') {
-      // Usar las sesiones I CAN del mock
-      const grupoMeta = GRUPOS_DISPONIBLES.find(g => g.cod === codGrupo);
-      if (grupoMeta?.programa === 'INA') {
-        const mock = mockLecciones(codGrupo, 'B1');
-        setLecciones(mock.filter(l => l.esICAN));
+      // I CAN: usamos las lecciones que ya vinieron embebidas en el grupo del
+      // backend (filtradas por tipo). Sin mock; si el backend no las trajo,
+      // queda vacío (estado válido para un grupo sin sesiones I CAN).
+      const grupoMeta = gruposReales.find(g => g.code === codGrupo);
+      if (grupoMeta?.programa === 'INA' && Array.isArray(grupoMeta.lecciones)) {
+        setLecciones(grupoMeta.lecciones.filter(l => l.tipo === 'ICAN'));
       } else {
         setLecciones([]);
       }
-      setUsandoMock(true);
       setLoading(false);
       return;
     }
+
     return fetch(`${SCRIPT_URL_CG}?fn=getFechasGrupo&cod_grupo=${encodeURIComponent(codGrupo)}&nivel=${encodeURIComponent(nivel)}`)
       .then(r => r.json())
       .then(d => {
-        if (d?.ok && Array.isArray(d.lecciones) && d.lecciones.length) {
-          setLecciones(d.lecciones); setUsandoMock(false);
+        if (d?.ok && Array.isArray(d.lecciones)) {
+          setLecciones(d.lecciones);
         } else {
-          setLecciones(mockLecciones(codGrupo, nivel)); setUsandoMock(true);
+          // Sin mock fallback: ErrorState con el motivo del backend.
+          setLecciones([]);
+          setError(d?.error || 'No se pudieron cargar las lecciones.');
         }
       })
-      .catch(() => {
-        setLecciones(mockLecciones(codGrupo, nivel)); setUsandoMock(true);
+      .catch(e => {
+        setLecciones([]);
+        setError('No se pudieron cargar las lecciones. ' + (e?.message || ''));
       })
       .finally(() => setLoading(false));
-  }, [codGrupo, nivel]);
+  }, [codGrupo, nivel, gruposReales]);
 
   React.useEffect(() => { cargar(); }, [cargar]);
 
@@ -371,7 +287,9 @@ function CronogramaGrupo({ rol = 'admin' }) {
     setSelLec(sel);
   }, [lecciones]);
 
-  React.useEffect(() => {
+  // Carga el detalle de la lección seleccionada. Extraído a un callback
+  // para que el botón "Reintentar" del panel pueda volver a dispararlo.
+  const cargarDetalle = React.useCallback(() => {
     if (!selLec) { setDetalle(null); return; }
     if (selLec.estado === 'FERIADO') { setDetalle(null); return; }
     // ✱ Si el nivel está bloqueado para el estudiante: NO llamar getLeccionDetalle
@@ -382,11 +300,13 @@ function CronogramaGrupo({ rol = 'admin' }) {
       .then(r => r.json())
       .then(d => {
         if (d?.ok && d.leccion) setDetalle(d.leccion);
-        else setDetalle(mockDetalle(nivel, selLec.leccion, selLec.tipo).leccion);
+        else setDetalle(null);
       })
-      .catch(() => setDetalle(mockDetalle(nivel, selLec.leccion, selLec.tipo).leccion))
+      .catch(() => setDetalle(null))
       .finally(() => setCargandoDet(false));
   }, [selLec, nivel, nivelBloqueado]);
+
+  React.useEffect(() => { cargarDetalle(); }, [cargarDetalle]);
 
   // Stats
   const stats = React.useMemo(() => {
@@ -431,6 +351,34 @@ function CronogramaGrupo({ rol = 'admin' }) {
     return m;
   }, [lecciones]);
 
+  // ── Early states: grupos cargando o caídos ───────────────────────────
+  // Todos los hooks arriba ya corrieron; estos returns son seguros.
+  if (loadingGrupos) {
+    return (
+      <div data-screen-label="Cronograma de grupo" style={{ padding:40, textAlign:'center', color:'var(--ink-3)' }}>
+        <div style={{
+          width:24, height:24, margin:'0 auto 12px',
+          borderRadius:'50%',
+          border:'2.5px solid var(--line)', borderTopColor:'var(--ink)',
+          animation:'an-spin .8s linear infinite',
+        }} />
+        Cargando grupos activos…
+      </div>
+    );
+  }
+
+  if (errorGrupos || !gruposReales.length) {
+    return (
+      <div data-screen-label="Cronograma de grupo" style={{ padding:24 }}>
+        <div style={errorBoxStyle}>
+          <span>⚠ {errorGrupos || 'No hay grupos activos para mostrar.'}</span>
+          <button onClick={cargarGrupos} className="btn btn-ghost"
+                  style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div data-screen-label="Cronograma de grupo" style={{ position:'relative' }}>
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
@@ -471,8 +419,11 @@ function CronogramaGrupo({ rol = 'admin' }) {
             <div>
               <div style={labelStyle}>Grupo</div>
               <select value={codGrupo} onChange={e => setCodGrupo(e.target.value)} style={selectStyle}>
-                {GRUPOS_DISPONIBLES.map(g => (
-                  <option key={g.cod} value={g.cod}>{g.cod} · {g.docente}</option>
+                {esAdmin && (
+                  <option value={TODOS_GRUPOS}>★ Todos los grupos ({gruposReales.length})</option>
+                )}
+                {gruposReales.map(g => (
+                  <option key={g.code} value={g.code}>{g.code} · {g.docente}</option>
                 ))}
               </select>
             </div>
@@ -492,8 +443,12 @@ function CronogramaGrupo({ rol = 'admin' }) {
         </div>
       </div>
 
-      {/* ── NIVEL TABS ─────────────────────────────────────────────────── */}
-      {niveles.length > 1 && (
+      {esTodosGrupos ? (
+        <TodosLosGruposView gruposReales={gruposReales} onNavigate={onNavigate} />
+      ) : (
+      <React.Fragment>
+      {/* ── NIVEL TABS ──────────────────────────────────────────────────── */}
+      {(niveles.length > 1 || meta.programa === 'INA') && (
         <div style={{
           display:'flex', gap:6, marginBottom:14, padding:5,
           background:'var(--bg-deep)', borderRadius:'var(--r-md)', width:'fit-content',
@@ -564,7 +519,7 @@ function CronogramaGrupo({ rol = 'admin' }) {
         <div className="card" style={{ padding:18 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14, flexWrap:'wrap', gap:10 }}>
             <div style={{
-              fontFamily:'var(--f-serif)', fontWeight:500, fontSize:18,
+              fontFamily:'var(--f-sans)', fontWeight:600, fontSize:18,
               letterSpacing:'-0.01em', color:'var(--ink)',
             }}>
               Calendario · {NIVEL_LABEL_CG[nivel]}
@@ -621,8 +576,11 @@ function CronogramaGrupo({ rol = 'admin' }) {
           onPedirCobertura={() => setModalCobertura({ selLec })}
           onPedirEditarCerrada={() => setModalEditarCerrada({ selLec })}
           onCerrar={() => setSelLec(null)}
+          onRecargar={cargarDetalle}
         />
       </div>
+      </React.Fragment>
+      )}
 
       {modalCobertura && (
         <ModalCobertura
@@ -967,7 +925,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -1029,6 +987,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
           onPedirCobertura={onPedirCobertura}
           onPedirEditarCerrada={onPedirEditarCerrada}
           onCerrar={onCerrar}
+          onRecargar={onRecargar}
         />
       ) : (
         <div className="card" style={{ padding:'24px 18px', textAlign:'center' }}>
@@ -1053,7 +1012,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
@@ -1183,8 +1142,58 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, 
             <div style={skeletonLine(85)} />
           </div>
         ) : !detalle ? (
-          <div style={{ marginTop:14, fontSize:12, color:'var(--ink-3)', fontStyle:'italic' }}>
-            No se pudo cargar el detalle de la lección.
+          <div style={{
+            marginTop:14, padding:'16px 14px',
+            background:'#FBF6EE',
+            border:'1px dashed var(--line-2)',
+            borderRadius:'var(--r-md)',
+            textAlign:'center',
+          }}>
+            <div style={{
+              width:38, height:38, margin:'0 auto 8px',
+              borderRadius:'50%', background:'#F1E8D6',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'var(--an-granate, #8E1B2C)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 9v4M12 17h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"/>
+              </svg>
+            </div>
+            <div style={{
+              fontFamily:'var(--f-serif)', fontSize:14, fontWeight:600,
+              color:'var(--ink)', letterSpacing:'-0.01em', marginBottom:4,
+            }}>
+              No se pudo cargar el detalle
+            </div>
+            <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5, maxWidth:240, margin:'0 auto 12px' }}>
+              No recibimos los datos de esta lección. Probá de nuevo en unos segundos.
+            </div>
+            {onRecargar && (
+              <button
+                type="button"
+                onClick={onRecargar}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  padding:'7px 14px',
+                  background:'var(--an-navy, #0B1F3A)',
+                  color:'#FFF',
+                  border:'none',
+                  borderRadius:'var(--r-sm, 6px)',
+                  fontSize:11, fontWeight:600,
+                  letterSpacing:'0.04em',
+                  cursor:'pointer',
+                  fontFamily:'inherit',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 4v6h-6"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                Reintentar
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:12 }}>
@@ -1552,7 +1561,7 @@ function ModalPDF({ pdfId, pdfUrl, titulo, unidad, leccion, nivel, tipoPdf, onCe
     };
   }, [onCerrar]);
 
-  const colorNivel = NIVEL_COLOR_CG[nivel] || 'var(--an-granate)';
+  const colorNivel = NIVEL_COLOR_CG[nivel] || 'var(--an-navy)';
   const idLec = idLeccion(nivel, leccion);
   const embedUrl = `https://drive.google.com/file/d/${pdfId}/preview`;
 
@@ -2297,7 +2306,7 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
     }
   };
 
-  const colorNivel = NIVEL_COLOR_CG[nivel] || 'var(--an-granate)';
+  const colorNivel = NIVEL_COLOR_CG[nivel] || 'var(--an-navy)';
   const idLec = idLeccion(nivel, leccionNum);
 
   return (
