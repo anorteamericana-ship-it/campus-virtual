@@ -1,5 +1,5 @@
 /* global React, ReactDOM */
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 // ── Apps Script endpoint (única fuente: data.jsx → window.APPS_SCRIPT_URL) ──
 const SCRIPT_URL_LOGIN = window.APPS_SCRIPT_URL;
@@ -17,8 +17,14 @@ const ROLE_LABEL = {
 };
 
 // ── Brand assets (locales) ─────────────────────────────────────────────────
-const LOGO = 'assets/logo_horizontal.png';
-const SEAL = 'assets/logo_circular.jpg';
+// Nota: los archivos vienen con el nombre invertido — logo_circular.jpg es en
+// realidad el logo HORIZONTAL a color, y logo_horizontal.png es el SELLO redondo.
+const LOGO = 'assets/logo_circular.jpg';   // horizontal full-color (nav + A roja)
+const SEAL = 'assets/logo_horizontal.png'; // sello circular
+
+// Tarjetas de programa (decorativas · Google Drive con fallback a degradado)
+const CARD_INA   = 'https://lh3.googleusercontent.com/d/1MFNnwetDSIxTmCJALDO30-QqMMToCEgH';
+const CARD_LIBRE = 'https://lh3.googleusercontent.com/d/1ZoRy2blF7yP__GRdl6W_FVtgNytUtYhF';
 
 // Logos de respaldo institucional (externos · con fallback a texto)
 const BACKERS = [
@@ -65,18 +71,71 @@ function ImgFallback({ src, text, imgClass, textClass }) {
   return <img src={src} alt={text} className={imgClass} onError={() => setFailed(true)} />;
 }
 
-// ── Timeline de frases ──────────────────────────────────────────────────────
+// ── Capas de onda (SVG, abajo) ──────────────────────────────────────────────
+function Waves() {
+  return (
+    <div className="waves" aria-hidden="true">
+      <svg className="wave-back" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <path d="M0,224 C360,170 1080,290 1440,224 L1440,320 L0,320 Z" />
+      </svg>
+      <svg className="wave-mid" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <path d="M0,256 C320,200 640,302 960,250 C1200,212 1330,272 1440,240 L1440,320 L0,320 Z" />
+      </svg>
+      <svg className="wave-front" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <path d="M0,212 C240,130 480,292 720,208 C960,126 1200,292 1440,206 L1440,320 L0,320 Z" />
+      </svg>
+    </div>
+  );
+}
+
+// ── Tarjeta de imagen con fallback a degradado a rayas ──────────────────────
+function ProgImg({ src, alt }) {
+  const [failed, setFailed] = useState(false);
+  if (failed || !src) return <div className="pc-img-ph" aria-hidden="true" />;
+  return <img src={src} alt={alt} className="pc-img" onError={() => setFailed(true)} />;
+}
+
+// ── Timeline de frases (GSAP si está disponible · fallback a CSS) ────────────
+const ENTER_MS = 600, HOLD_MS = 2800, EXIT_MS = 450;
 function PhraseTimeline() {
   const [i, setI] = useState(0);
+  const ref = useRef(null);
   useEffect(() => {
-    const t = setInterval(() => setI(n => (n + 1) % PHRASES.length), 3900);
-    return () => clearInterval(t);
-  }, []);
+    const el = ref.current;
+    if (!el) return;
+    const g = (typeof window !== 'undefined') ? window.gsap : null;
+    let exitT, advT;
+    if (g) {
+      g.killTweensOf(el);
+      g.fromTo(el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: ENTER_MS / 1000, ease: 'power2.out' });
+      exitT = setTimeout(() => {
+        g.to(el, {
+          opacity: 0, y: -14, duration: EXIT_MS / 1000, ease: 'power1.in',
+          onComplete: () => setI(n => (n + 1) % PHRASES.length),
+        });
+      }, ENTER_MS + HOLD_MS);
+    } else {
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      void el.offsetWidth; // reflow
+      el.style.transition = `opacity ${ENTER_MS}ms ease, transform ${ENTER_MS}ms cubic-bezier(0.22,1,0.36,1)`;
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+      exitT = setTimeout(() => {
+        el.style.transition = `opacity ${EXIT_MS}ms ease, transform ${EXIT_MS}ms ease`;
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-14px)';
+        advT = setTimeout(() => setI(n => (n + 1) % PHRASES.length), EXIT_MS);
+      }, ENTER_MS + HOLD_MS);
+    }
+    return () => { clearTimeout(exitT); clearTimeout(advT); };
+  }, [i]);
   const p = PHRASES[i];
   return (
     <>
       <div className="phrases">
-        <div className="phrase" key={i}>
+        <div className="phrase" ref={ref} key={i}>
           <div className="p-main">{p.main}</div>
           <div className="p-sub">{p.sub}</div>
         </div>
@@ -92,11 +151,24 @@ function PhraseTimeline() {
 function Stage() {
   return (
     <div className="stage">
+      <Waves />
+
       <div className="stage-logo">
         <ImgFallback src={LOGO} text="Academia Norteamericana" textClass="logo-fallback" />
       </div>
 
       <PhraseTimeline />
+
+      <div className="prog-cards">
+        <div className="prog-card">
+          <ProgImg src={CARD_INA} alt="Programa avalado por INA" />
+          <div className="pc-foot">INA Acreditado</div>
+        </div>
+        <div className="prog-card alt">
+          <ProgImg src={CARD_LIBRE} alt="Programa libre" />
+          <div className="pc-foot">Programa Libre</div>
+        </div>
+      </div>
 
       <div className="backers">
         {BACKERS.map((b, n) => (
@@ -160,6 +232,15 @@ function App() {
   const [err, setErr]           = useState('');
   const [pendingMulti, setPendingMulti] = useState(null);
   const [account, setAccount]   = useState(null);
+  const [shaking, setShaking]   = useState(false);
+
+  // Sacude el formulario cuando aparece un error
+  useEffect(() => {
+    if (!err) return;
+    setShaking(true);
+    const t = setTimeout(() => setShaking(false), 460);
+    return () => clearTimeout(t);
+  }, [err]);
 
   const finishLogin = (acc) => {
     setAccount(acc);
@@ -245,7 +326,7 @@ function App() {
         <Stage />
 
         <div className="panel">
-          <div className="panel-inner">
+          <div className={'panel-inner' + (shaking ? ' shake' : '')}>
             {/* logo móvil (visible cuando el stage se oculta) */}
             <div className="mobile-logo">
               <ImgFallback src={LOGO} text="Academia Norteamericana" textClass="pl-fallback" />
@@ -257,7 +338,7 @@ function App() {
             </div>
             <div className="panel-rule" />
 
-            <h1>Bienvenido</h1>
+            <h1>Bienvenido de nuevo</h1>
             <div className="sub">Ingresá con tu número de cédula</div>
 
             <form onSubmit={submit} noValidate>
@@ -314,7 +395,7 @@ function App() {
                 </button>
                 <button type="button" className="btn btn-secondary"
                   onClick={() => { window.location.href = 'inscripcion.html'; }}>
-                  ¡Matriculate Aquí!
+                  ¡Matriculate Aquí! 🎓
                 </button>
               </div>
             </form>

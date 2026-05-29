@@ -1,62 +1,179 @@
-/* global React, ReactDOM, window */
+/* global React, ReactDOM */
 /* ============================================================================
    Inscripción pública — Academia Norteamericana · Campus Virtual
    Flujo de 2 páginas. Sin login. Accesible desde "Registrarse" en login.html.
-   Componentes presentacionales y helpers: src/inscripcion_parts.jsx
    ============================================================================ */
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useRef, useCallback } = React;
 
+// URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL = window.APPS_SCRIPT_URL;
 
-// Partes compartidas (cargadas desde inscripcion_parts.jsx)
-const {
-  WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
-  PROVINCIAS, ASESORES, COMO_OPTS, ID_TIPOS,
-  G, fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor,
-  I, Ico, IcoFill,
-  Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard,
-} = window;
+// Imágenes de programa (Google Drive · formato lh3 directo). Si fallan → degradado.
+const IMG_INA   = 'https://lh3.googleusercontent.com/d/1MFNnwetDSIxTmCJALDO30-QqMMToCEgH';
+const IMG_LIBRE = 'https://lh3.googleusercontent.com/d/1ZoRy2blF7yP__GRdl6W_FVtgNytUtYhF';
+
+const WA_NUMBER = '50688881234';
+
+const PROVINCIAS = ['San José','Alajuela','Cartago','Heredia','Guanacaste','Puntarenas','Limón'];
+const ASESORES   = ['Fiorela Salazar','Roger Cruz','Gustavo Valladares','Leonardo Salazar','Kimberly Guzmán'];
+const COMO_OPTS  = ['Google / Internet','Facebook o Instagram','Recomendación de un amigo o familiar','Otro'];
+
+const ID_TIPOS = [
+  { id:'nac',     label:'Cédula nacional',      campo:'Número de cédula' },
+  { id:'dimex',   label:'DIMEX',                campo:'Número de DIMEX' },
+  { id:'resid',   label:'Carnet de residencia', campo:'Número de carnet de residencia' },
+  { id:'refug',   label:'Carnet de refugiado',  campo:'Número de carnet de refugiado' },
+];
+
+// ── ICONOS ──────────────────────────────────────────────────────────────────
+const I = {
+  cloud:  'M16 16l-4-4-4 4M12 12v9M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3',
+  close:  'M18 6L6 18M6 6l12 12',
+  check:  'M20 6L9 17l-5-5',
+  back:   'M19 12H5M12 19l-7-7 7-7',
+  arrow:  'M5 12h14M13 5l7 7-7 7',
+  eye:    'M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  eyeOff: 'M17.94 17.94A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.06-5.94M9.9 4.24A10 10 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22M14.12 14.12a3 3 0 1 1-4.24-4.24',
+  warn:   'M12 9v4M12 17h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z',
+  alert:  'M12 8v4M12 16h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  help:   'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
+  wa:     'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+};
+const Ico = ({ d, size=20, className }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {d.split('|').map((p,i) => <path key={i} d={p} />)}
+  </svg>
+);
+const IcoFill = ({ d, size=20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d={d} /></svg>
+);
+
+// ── VALIDADORES / FORMATO ─────────────────────────────────────────────────────
+const fmtCedula = v => {
+  const d = v.replace(/\D/g,'').slice(0,9);
+  if (d.length <= 1) return d;
+  if (d.length <= 5) return `${d[0]}-${d.slice(1)}`;
+  return `${d[0]}-${d.slice(1,5)}-${d.slice(5)}`;
+};
+const fmtTel = v => { const d = v.replace(/\D/g,'').slice(0,8); return d.length > 4 ? `${d.slice(0,4)}-${d.slice(4)}` : d; };
+const validEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v||'').trim());
+const validTel   = v => /^\d{4}-\d{4}$/.test(v||'');
+const esMayor = fn => {
+  if (!fn) return true;
+  const hoy = new Date(), nac = new Date(fn);
+  let e = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m===0 && hoy.getDate() < nac.getDate())) e--;
+  return e >= 18;
+};
+const fmtBytes = b => b < 1024*1024 ? `${(b/1024).toFixed(0)} KB` : `${(b/(1024*1024)).toFixed(1)} MB`;
+const MAX_FILE = 5 * 1024 * 1024;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: campo con label + error + nota
+// ─────────────────────────────────────────────────────────────────────────────
+function Field({ fieldKey, label, optional, children, note, noteType, error }) {
+  return (
+    <div className="field" id={fieldKey ? `fld-${fieldKey}` : undefined}>
+      {label && <div className="field-label">{label}{optional && <span className="opt">Opcional</span>}</div>}
+      {children}
+      {error && <div className="field-error"><Ico d={I.alert} size={13} /> {error}</div>}
+      {note && !error && <div className={`field-note ${noteType||''}`}>{note}</div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UPLOAD ZONE
+// ─────────────────────────────────────────────────────────────────────────────
+function UploadZone({ docLabel, file, onFile, onClear, error }) {
+  const [drag, setDrag] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleFiles = (files) => {
+    const f = files && files[0];
+    if (!f) return;
+    if (f.size > MAX_FILE) { onFile(null, 'El archivo supera los 5 MB.'); return; }
+    const ok = f.type.startsWith('image/') || f.type === 'application/pdf';
+    if (!ok) { onFile(null, 'Formato no válido. Usá JPG, PNG o PDF.'); return; }
+    const isImg = f.type.startsWith('image/');
+    onFile({ file: f, name: f.name, size: f.size, isImg, url: isImg ? URL.createObjectURL(f) : null }, null);
+  };
+
+  if (file) {
+    return (
+      <div>
+        <div className="fp-doclabel">{docLabel}</div>
+        <div className="file-preview">
+          {file.isImg
+            ? <img className="fp-thumb" src={file.url} alt="" />
+            : <div className="fp-pdf">PDF</div>}
+          <div className="fp-info">
+            <div className="fp-name">{file.name}</div>
+            <div className="fp-size">{fmtBytes(file.size)}</div>
+          </div>
+          <button type="button" className="fp-remove" onClick={onClear} aria-label="Quitar archivo">
+            <Ico d={I.close} size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`upload-zone${drag?' drag':''}${error?' err':''}`}
+      onClick={() => inputRef.current && inputRef.current.click()}
+      onDragOver={e => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={e => { e.preventDefault(); setDrag(false); handleFiles(e.dataTransfer.files); }}
+    >
+      <div className="uz-doclabel">{docLabel}</div>
+      <div className="uz-icon"><Ico d={I.cloud} size={30} /></div>
+      <div className="uz-main">Hacer clic o arrastrar archivo aquí</div>
+      <div className="uz-hint">JPG, PNG o PDF — máx. 5 MB</div>
+      <input ref={inputRef} type="file" accept="image/*,application/pdf"
+        onChange={e => handleFiles(e.target.files)} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROGRESS
+// ─────────────────────────────────────────────────────────────────────────────
+function Progress({ paso }) {
+  return (
+    <div className="prog-wrap">
+      <div className="prog-inner">
+        <div className="prog-top">
+          <span className="prog-label">Paso {paso} de 2</span>
+          <span className="prog-sub">{paso===1 ? 'Datos personales' : 'Programa y matrícula'}</span>
+        </div>
+        <div className="prog-track"><div className="prog-fill" style={{ width: paso===1 ? '50%' : '100%' }} /></div>
+      </div>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 1 — DATOS PERSONALES
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue }) {
+function Pagina1({ form, set, files, setFile, errors, onContinue }) {
   const [verif, setVerif] = useState('idle'); // idle | loading | exists | free
   const tipo = ID_TIPOS.find(t => t.id === form.idTipo) || ID_TIPOS[0];
   const esNacional = form.idTipo === 'nac';
-  const edad = calcEdad(form.fechaNac);
-  const menor = edad != null && edad < 18;
 
   const blurCedula = () => { if (esNacional) set('cedula', fmtCedula(form.cedula)); };
   const blurNombre = () => set('nombre', (form.nombre||'').toUpperCase());
 
-  // Verificar: 1) ¿ya existe la cuenta?  2) si no, buscar en padrón TSE y prellenar
   const verificar = async () => {
     if (!form.cedula.trim()) return;
     setVerif('loading');
     try {
-      const r1 = await fetch(`${SCRIPT_URL}?fn=verificarCedulaExiste&cedula=${encodeURIComponent(form.cedula.trim())}`);
-      const d1 = await r1.json();
-      if (d1 && d1.existe) { setVerif('exists'); return; }
-
-      // No existe → buscar en padrón y prellenar (solo cédula nacional)
-      if (esNacional) {
-        try {
-          const r2 = await fetch(`${SCRIPT_URL}?fn=buscarEnPadron&cedula=${encodeURIComponent(form.cedula.trim())}`);
-          const d2 = await r2.json();
-          if (d2 && (d2.nombre || d2.provincia)) {
-            const upd = {};
-            const lock = {};
-            if (d2.nombre)    { upd.nombre = String(d2.nombre).toUpperCase(); lock.nombre = true; }
-            if (d2.fecha_nac) { upd.fechaNac = d2.fecha_nac; lock.fechaNac = true; }
-            if (d2.provincia) { upd.provincia = d2.provincia; lock.provincia = true; }
-            if (d2.canton)    { upd.canton = d2.canton; lock.canton = true; }
-            if (d2.sexo)      { upd.sexo = /^f/i.test(d2.sexo) ? 'F' : 'M'; lock.sexo = true; }
-            if (Object.keys(upd).length) { setMany(upd); setPrellenado(p => ({ ...p, ...lock })); }
-          }
-        } catch (_) { /* sin padrón → continuar manual */ }
-      }
-      setVerif('free');
+      const res = await fetch(`${SCRIPT_URL}?fn=verificarCedulaExiste&cedula=${encodeURIComponent(form.cedula.trim())}`);
+      const data = await res.json();
+      setVerif(data && data.existe ? 'exists' : 'free');
     } catch (e) {
       setVerif('free'); // ante error → continuar normalmente
     }
@@ -76,10 +193,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
             {ID_TIPOS.map(t => (
               <label key={t.id} className={`idtype-card${form.idTipo===t.id?' sel':''}`}>
                 <input type="radio" name="idTipo" checked={form.idTipo===t.id}
-                  onChange={() => {
-                    set('idTipo', t.id); set('cedula',''); setVerif('idle');
-                    setPrellenado({}); // limpiar candados al cambiar tipo
-                  }} />
+                  onChange={() => { set('idTipo', t.id); set('cedula',''); setVerif('idle'); }} />
                 {t.label}
               </label>
             ))}
@@ -87,7 +201,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           {!esNacional && (
             <div className="inline-alert warn">
               <Ico d={I.warn} size={18} />
-              <span>Con este tipo de identificación solo podés inscribirte en el <strong>Programa Libre</strong>. No aplica financiamiento CONAPE (requisito gubernamental, no académico).</span>
+              <span>Con este tipo de identificación solo podés inscribirte en el <strong>Programa Libre</strong>.</span>
             </div>
           )}
         </Field>
@@ -99,7 +213,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
               className={errors.cedula ? 'err' : ''}
               onChange={e => { set('cedula', esNacional ? fmtCedula(e.target.value) : e.target.value); setVerif('idle'); }}
               onBlur={blurCedula}
-              placeholder={esNacional ? 'X-XXXX-XXXX' : 'Número de documento'}
+              placeholder={esNacional ? '1-2345-6789' : 'Número de documento'}
               style={{ fontFamily:'ui-monospace, monospace', letterSpacing:'.03em' }} />
             <button type="button" className="verify-btn" onClick={verificar}
               disabled={verif==='loading' || !form.cedula.trim()}>
@@ -109,7 +223,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           {verif==='exists' && (
             <div className="inline-alert err">
               <Ico d={I.alert} size={18} />
-              <span>Ya tenés una cuenta con este número. <a href="recovery.html">Recuperá tu contraseña aquí.</a></span>
+              <span>Ya tenés una cuenta con este número. <a href="recovery.html">¿Olvidaste tu contraseña?</a></span>
             </div>
           )}
           {verif==='free' && form.cedula.trim() && (
@@ -127,7 +241,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           <div className="sec-eyebrow">Tu nombre</div>
           <div className="sec-title">Nombre completo</div>
         </div>
-        <Field fieldKey="nombre" locked={prellenado.nombre}
+        <Field fieldKey="nombre"
           label="Nombre completo (como aparece en tu identificación)"
           error={errors.nombre}
           note="Usá el nombre exacto de tu documento de identidad.">
@@ -168,12 +282,11 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
         </div>
 
         <div className="grid-2">
-          <Field fieldKey="fechaNac" label="Fecha de nacimiento" locked={prellenado.fechaNac} error={errors.fechaNac}
-            note={edad != null ? `Edad: ${edad} años` : null} noteType="info">
+          <Field fieldKey="fechaNac" label="Fecha de nacimiento" error={errors.fechaNac}>
             <input type="date" value={form.fechaNac} className={errors.fechaNac?'err':''}
               onChange={e => set('fechaNac', e.target.value)} />
           </Field>
-          <Field fieldKey="sexo" label="Sexo" locked={prellenado.sexo} error={errors.sexo}>
+          <Field fieldKey="sexo" label="Sexo" error={errors.sexo}>
             <div className="choice-row">
               {[['F','Femenino'],['M','Masculino']].map(([v,l]) => (
                 <label key={v} className={`choice-card${form.sexo===v?' sel':''}`} style={{padding:'10px 13px'}}>
@@ -185,47 +298,15 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           </Field>
         </div>
 
-        {/* Bloque tutor — solo si es menor de edad */}
-        {menor && (
-          <div className="tutor-box reveal">
-            <div className="tutor-head">
-              <Ico d={I.shield} size={17} />
-              <span>Sos menor de edad. Necesitamos los datos de tu tutor o encargado legal.</span>
-            </div>
-            <Field fieldKey="tutorNombre" label="Nombre completo del encargado" error={errors.tutorNombre}>
-              <input type="text" value={form.tutorNombre} className={errors.tutorNombre?'err':''}
-                onChange={e => set('tutorNombre', e.target.value)} onBlur={() => set('tutorNombre',(form.tutorNombre||'').toUpperCase())}
-                placeholder="APELLIDO APELLIDO NOMBRE" />
-            </Field>
-            <div className="grid-2">
-              <Field fieldKey="tutorCedula" label="Cédula del encargado" error={errors.tutorCedula}>
-                <input type="text" value={form.tutorCedula} className={errors.tutorCedula?'err':''}
-                  onChange={e => set('tutorCedula', fmtCedula(e.target.value))} placeholder="X-XXXX-XXXX"
-                  style={{ fontFamily:'ui-monospace, monospace', letterSpacing:'.03em' }} />
-              </Field>
-              <Field fieldKey="tutorTel" label="Teléfono del encargado" error={errors.tutorTel}>
-                <div className={`prefix-grp${errors.tutorTel?' err':''}`}>
-                  <span className="pfx">+506</span>
-                  <input type="tel" value={form.tutorTel} onChange={e => set('tutorTel', fmtTel(e.target.value))} placeholder="8888-8888" />
-                </div>
-              </Field>
-            </div>
-            <Field fieldKey="tutorCorreo" label="Correo del encargado" error={errors.tutorCorreo}>
-              <input type="email" value={form.tutorCorreo} className={errors.tutorCorreo?'err':''}
-                onChange={e => set('tutorCorreo', e.target.value)} placeholder="correo@ejemplo.com" />
-            </Field>
-          </div>
-        )}
-
         <div className="grid-2">
-          <Field fieldKey="provincia" label="Provincia" locked={prellenado.provincia} error={errors.provincia}>
+          <Field fieldKey="provincia" label="Provincia" error={errors.provincia}>
             <select value={form.provincia} className={errors.provincia?'err':''}
               onChange={e => set('provincia', e.target.value)}>
               <option value="">Seleccioná tu provincia…</option>
               {PROVINCIAS.map(p => <option key={p}>{p}</option>)}
             </select>
           </Field>
-          <Field fieldKey="canton" label="Cantón" locked={prellenado.canton} error={errors.canton}>
+          <Field fieldKey="canton" label="Cantón" error={errors.canton}>
             <input type="text" value={form.canton} className={errors.canton?'err':''}
               onChange={e => set('canton', e.target.value)} placeholder="Ej: Central, Escazú…" />
           </Field>
@@ -308,7 +389,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           <div className="sec-eyebrow">Nivel de inglés</div>
           <div className="sec-title">¿Tenés conocimientos previos de inglés?</div>
         </div>
-        <Field fieldKey="conocimientos" error={errors.conocimientos}>
+        <Field>
           <div className="choice-row col">
             {[
               ['cero',  '🔰', 'No, empiezo desde cero'],
@@ -336,7 +417,39 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PÁGINA 2 — PROGRAMA Y FINANCIAMIENTO
+// TARJETA DE PROGRAMA
+// ─────────────────────────────────────────────────────────────────────────────
+function ProgramCard({ tipo, selected, locked, onSelect, img, fallbackBg, fallbackText, badge, badgeColor, name, bullets }) {
+  const [imgErr, setImgErr] = useState(false);
+  return (
+    <div className={`pcard${selected?' sel':''}${locked?' locked':''}`}
+      onClick={() => { if (!locked) onSelect(tipo); }}>
+      <div className="pcard-imgwrap">
+        <div className={`pcard-badge ${badgeColor}`}>{badge}</div>
+        {!imgErr
+          ? <img className="pcard-img" src={img} alt={name} onError={() => setImgErr(true)} />
+          : <div className="pcard-imgfallback" style={{ background: fallbackBg }}>{fallbackText}</div>}
+        {selected && !locked && <div className="pcard-check"><Ico d={I.check} size={18} /></div>}
+      </div>
+      <div className="pcard-body">
+        <div className="pcard-name">{name}</div>
+        <div className="pcard-bullets">
+          {bullets.map((b,i) => (
+            <div key={i} className="pcard-bullet"><Ico d={I.check} size={15} /><span>{b}</span></div>
+          ))}
+        </div>
+      </div>
+      {locked && (
+        <div className="pcard-overlay">
+          <div className="pcard-lockmsg">Solo disponible para cédula costarricense 🇨🇷</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PÁGINA 2 — PROGRAMA
 // ─────────────────────────────────────────────────────────────────────────────
 function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
   const esNacional = form.idTipo === 'nac';
@@ -366,6 +479,13 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
     return () => { cancel = true; };
   }, [form.programa]);
 
+  const grupoLabel = g => {
+    const cod = g.codigo || g.cod || g.id || '';
+    const parts = [g.nivel, g.dias || g.dia, g.hora || g.horario, g.docente || g.profesor].filter(Boolean);
+    return `[${cod}]${parts.length ? ' – ' + parts.join(' · ') : ''}`;
+  };
+  const grupoVal = g => g.codigo || g.cod || g.id || '';
+
   return (
     <div className="ins-body">
       <div className="p2-head">
@@ -379,7 +499,7 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
           <ProgramCard
             tipo="ina" selected={form.programa==='ina'} locked={!esNacional}
             onSelect={t => set('programa', t)}
-            img={IMG_INA} fallbackBg="linear-gradient(135deg, #1a2547, #2B7FC1)" fallbackText="Programa INA Acreditado"
+            img={IMG_INA} fallbackBg="linear-gradient(135deg, #1a2547, #2B7FC1)" fallbackText="INA Acreditado"
             badge="Financiable con CONAPE" badgeColor="green"
             name="Programa INA Acreditado"
             bullets={['Certificado avalado por INA','Financiable con CONAPE','4 niveles · 128h por nivel']} />
@@ -394,112 +514,91 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
         {errors.programa && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.programa}</div>}
       </div>
 
+      {/* SELECTOR DE GRUPO + CONAPE + CONTRASEÑA */}
       {form.programa && (
         <div className="reveal">
-          {/* HORARIO / GRUPOS */}
+          {/* GRUPO */}
           <div className="card" style={{ marginTop:16 }}>
             <div className="sec-head">
               <div className="sec-eyebrow">Horario</div>
-              <div className="sec-title">Seleccioná tu horario</div>
+              <div className="sec-title">Elegí tu grupo</div>
             </div>
             <div id="fld-grupo">
-              {loadingGrupos ? (
-                <div className="grupo-grid">
-                  <GrupoSkeleton /><GrupoSkeleton /><GrupoSkeleton />
-                </div>
-              ) : grupos && grupos.length > 0 ? (
-                <>
-                  <div className="grupo-grid">
-                    {grupos.map((g, i) => (
-                      <GrupoCard key={G.cod(g) || i} g={g} selected={form.grupo === G.cod(g)} onSelect={v => set('grupo', v)} />
-                    ))}
+              <Field error={errors.grupo}>
+                {loadingGrupos ? (
+                  <div className="grupo-loading"><span className="spinner" /> Buscando grupos disponibles…</div>
+                ) : grupos && grupos.length > 0 ? (
+                  <select value={form.grupo} className={errors.grupo?'err':''} onChange={e => set('grupo', e.target.value)}>
+                    <option value="">Seleccioná un grupo…</option>
+                    {grupos.map((g,i) => <option key={i} value={grupoVal(g)}>{grupoLabel(g)}</option>)}
+                  </select>
+                ) : (
+                  <div className="grupo-empty">
+                    <Ico d={I.warn} size={18} />
+                    <span>No hay grupos disponibles en este momento. <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">Escribinos por WhatsApp.</a></span>
                   </div>
-                  {errors.grupo && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.grupo}</div>}
-                </>
-              ) : (
-                <div className="grupo-empty">
-                  <Ico d={I.warn} size={18} />
-                  <span>No hay grupos disponibles. <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">Escribinos por WhatsApp.</a></span>
-                </div>
-              )}
+                )}
+              </Field>
             </div>
           </div>
 
-          {/* FINANCIAMIENTO */}
-          <div className="card">
-            <div className="sec-head">
-              <div className="sec-eyebrow">Financiamiento</div>
-              <div className="sec-title">¿Cómo vas a financiar tu curso?</div>
-            </div>
-            <div id="fld-financiamiento">
-              <div className="fin-stack">
-                <FinCard value="CONAPE" selected={form.financiamiento==='CONAPE'} locked={!esNacional}
-                  onSelect={v => set('financiamiento', v)} icon="🏦"
-                  title="Financiamiento CONAPE" badge={esNacional ? 'Disponible para vos' : null}
-                  subtitle="Financiá el 100% sin fiador, sin intereses." />
-                <FinCard value="BECA" selected={form.financiamiento==='BECA'}
-                  onSelect={v => set('financiamiento', v)} icon="🎓"
-                  title="Beca 25% Academia Norteamericana"
-                  subtitle="Descuento del 25% en matrícula y cuotas." />
-                <FinCard value="PROPIO" selected={form.financiamiento==='PROPIO'}
-                  onSelect={v => set('financiamiento', v)} icon="💳"
-                  title="Pago propio"
-                  subtitle="Pagás directamente a la academia." />
-              </div>
-              {errors.financiamiento && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.financiamiento}</div>}
-            </div>
-
-            {/* SUB-SECCIÓN CONAPE */}
-            {form.financiamiento==='CONAPE' && esNacional && (
-              <div className="conape-box reveal">
-                {/* Equipo de cómputo */}
-                <div className="conape-block">
-                  <div className="cb-title">¿Necesitás financiar un equipo de cómputo?</div>
-                  <div id="fld-conapeEquipo">
-                    <div className="equipo-grid">
-                      <EquipoCard value="NINGUNO" selected={form.conapeEquipo==='NINGUNO'} simple
-                        onSelect={v => set('conapeEquipo', v)} title="No necesito equipo" />
-                      <EquipoCard value="BASICO" selected={form.conapeEquipo==='BASICO'}
-                        onSelect={v => set('conapeEquipo', v)}
-                        img={IMG_BASICO} fallbackBg="#1a2547" fallbackText="Plan Básico"
-                        title="Plan Básico · ₡319,000"
-                        bullets={['Laptop HP 15"','Core i3 N305 · 8GB RAM · 256GB SSD']} />
-                      <EquipoCard value="PREMIUM" selected={form.conapeEquipo==='PREMIUM'}
-                        onSelect={v => set('conapeEquipo', v)}
-                        img={IMG_PREMIUM} fallbackBg="#2B7FC1" fallbackText="Plan Premium"
-                        title="Plan Premium · ₡360,000"
-                        bullets={['Laptop HP 15"','+ Headset · Mouse · Licencias']} />
-                    </div>
-                    {errors.conapeEquipo && <div className="field-error" style={{marginTop:8}}><Ico d={I.alert} size={13} /> {errors.conapeEquipo}</div>}
-                  </div>
+          {/* CONAPE (solo INA) */}
+          {form.programa === 'ina' && (
+            <div className="card">
+              <div className="conape-box">
+                <div className="conape-title"><Ico d={I.shield} size={18} /> Financiamiento CONAPE</div>
+                <div className="conape-q">¿Aplicás a financiamiento CONAPE?</div>
+                <div className="choice-row">
+                  {[['si','Sí'],['no','No']].map(([v,l]) => (
+                    <label key={v} className={`choice-card${form.conape===v?' sel':''}`} style={{flex:'0 0 auto', minWidth:90, justifyContent:'center'}}>
+                      <input type="radio" name="conape" checked={form.conape===v} onChange={() => set('conape', v)} />
+                      <span className="choice-txt">{l}</span>
+                    </label>
+                  ))}
                 </div>
 
-                {/* TOEIC */}
-                <div className="conape-block">
-                  <div className="cb-title">¿Deseás incluir la prueba internacional TOEIC al finalizar el programa?</div>
-                  <div className="cb-note">Certificación reconocida a nivel mundial que evalúa tu nivel de inglés para fines académicos y laborales. Su aplicación es opcional y se realiza al finalizar el programa.</div>
-                  <div className="choice-row" style={{ marginTop:10 }}>
-                    {[[true,'Sí, deseo financiar la prueba (₡136,730)'],[false,'No']].map(([v,l]) => (
-                      <label key={String(v)} className={`choice-card${form.conapeToeic===v?' sel':''}`}>
-                        <input type="radio" name="toeic" checked={form.conapeToeic===v} onChange={() => set('conapeToeic', v)} />
-                        <span className="choice-txt">{l}</span>
+                {form.conape === 'si' && (
+                  <div className="reveal" style={{ marginTop:14 }}>
+                    <div className="conape-checks">
+                      <label className="check-row">
+                        <input type="checkbox" checked={form.conapeToeic} onChange={e => set('conapeToeic', e.target.checked)} />
+                        <span>
+                          <span className="cr-main">Incluir examen TOEIC</span>
+                          <span className="cr-note">Incluido en el financiamiento.</span>
+                        </span>
                       </label>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Sostenimiento */}
-                <div className="conape-block">
-                  <div className="cb-title">Gastos de sostenimiento <span className="cb-opt">Opcional</span></div>
-                  <div className="cb-note">Este rubro es OPCIONAL y está pensado para ayudarte con gastos básicos durante el curso, como el pago del internet. Podés pedir hasta ₡60,000 por mes (₡240,000 por cuatrimestre / ₡120,000 por bimestre).</div>
-                  <input type="text" value={form.conapeSost} style={{ marginTop:10 }}
-                    onChange={e => set('conapeSost', e.target.value)}
-                    placeholder="Ej: ₡60,000 por mes" />
-                  <div className="cb-hint">Escribí el monto que deseás solicitar. Si no lo necesitás, escribí: No.</div>
-                </div>
+                      <div>
+                        <label className="check-row">
+                          <input type="checkbox" checked={form.conapeLaptop} onChange={e => { set('conapeLaptop', e.target.checked); if(!e.target.checked) set('conapeLaptopMonto',''); }} />
+                          <span><span className="cr-main">Incluir laptop</span></span>
+                        </label>
+                        {form.conapeLaptop && (
+                          <div className="conape-monto reveal">
+                            <input type="number" min="0" value={form.conapeLaptopMonto}
+                              onChange={e => set('conapeLaptopMonto', e.target.value)} placeholder="₡ 0" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="check-row">
+                          <input type="checkbox" checked={form.conapeSost} onChange={e => { set('conapeSost', e.target.checked); if(!e.target.checked) set('conapeSostMonto',''); }} />
+                          <span><span className="cr-main">Incluir sostenimiento mensual</span></span>
+                        </label>
+                        {form.conapeSost && (
+                          <div className="conape-monto reveal">
+                            <input type="number" min="0" value={form.conapeSostMonto}
+                              onChange={e => set('conapeSostMonto', e.target.value)} placeholder="₡ 0 / mes" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* CONTRASEÑA */}
           <div className="card">
@@ -508,7 +607,8 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
               <div className="sec-title">Creá tu contraseña</div>
             </div>
             <div className="grid-2">
-              <Field fieldKey="clave" label="Contraseña" error={errors.clave}>
+              <Field fieldKey="clave" label="Contraseña" error={errors.clave}
+                note={`Tu usuario será: ${form.cedula || '—'}`}>
                 <div className="pwd-grp">
                   <input type={showPwd?'text':'password'} value={form.clave} className={errors.clave?'err':''}
                     onChange={e => set('clave', e.target.value)} placeholder="Mínimo 6 caracteres" />
@@ -527,7 +627,6 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
                 </div>
               </Field>
             </div>
-            <div className="user-note">Tu usuario será: <strong>{form.cedula || '—'}</strong></div>
           </div>
 
           {/* REGISTRARME */}
@@ -545,20 +644,18 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // PANTALLA DE ÉXITO
 // ─────────────────────────────────────────────────────────────────────────────
-const EXITO_TXT = {
-  CONAPE: 'Tu solicitud está siendo procesada. Un asesor se va a comunicar con vos para los siguientes pasos del financiamiento.',
-  BECA:   'Tu solicitud de beca está siendo revisada. Pronto te contactamos para coordinar el pago.',
-  PROPIO: 'Para activar tu cuenta completá el pago de matrícula. Escribinos por WhatsApp para coordinar.',
-};
-function Exito({ financiamiento }) {
-  const propio = financiamiento === 'PROPIO';
+function Exito({ conape }) {
   return (
     <div className="success-wrap">
       <div className="success-card">
         <div className="success-ico"><Ico d={I.check} size={56} /></div>
         <div className="success-h1">¡Te registraste correctamente!</div>
-        <div className="success-p">{EXITO_TXT[financiamiento] || EXITO_TXT.PROPIO}</div>
-        {propio && (
+        <div className="success-p">
+          {conape
+            ? 'Tu solicitud está siendo procesada. Pronto te contactaremos para los siguientes pasos.'
+            : 'Para activar tu cuenta completá el pago de matrícula. Escribinos por WhatsApp para coordinar.'}
+        </div>
+        {!conape && (
           <a className="success-wa" href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, acabo de registrarme y quiero coordinar el pago de matrícula.')}`} target="_blank" rel="noopener">
             <IcoFill d={I.wa} size={18} /> Coordinar pago por WhatsApp
           </a>
@@ -577,12 +674,10 @@ function Exito({ financiamiento }) {
 const FORM_INIT = {
   idTipo:'nac', cedula:'', nombre:'',
   fechaNac:'', sexo:'', provincia:'', canton:'', direccion:'',
-  tutorNombre:'', tutorCedula:'', tutorCorreo:'', tutorTel:'',
   telefono:'', waMismo:true, whatsapp:'', correo:'', correoConf:'',
   como:'', asesor:'', conocimientos:'',
   programa:'', grupo:'',
-  financiamiento:'',
-  conapeEquipo:'NINGUNO', conapeToeic:false, conapeSost:'',
+  conape:'no', conapeToeic:false, conapeLaptop:false, conapeLaptopMonto:'', conapeSost:false, conapeSostMonto:'',
   clave:'', claveConf:'',
 };
 
@@ -596,7 +691,6 @@ function scrollToField(key) {
 function App() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState(FORM_INIT);
-  const [prellenado, setPrellenado] = useState({}); // campos verificados del padrón TSE
   const [files, setFiles] = useState({ frente:null, reverso:null, titulo:null });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -606,14 +700,6 @@ function App() {
   const set = useCallback((k, v) => {
     setForm(f => ({ ...f, [k]: v }));
     setErrors(e => e[k] ? { ...e, [k]: undefined } : e);
-  }, []);
-  const setMany = useCallback((obj) => {
-    setForm(f => ({ ...f, ...obj }));
-    setErrors(e => {
-      const keys = Object.keys(obj).filter(k => e[k]);
-      if (!keys.length) return e;
-      const ne = { ...e }; keys.forEach(k => { ne[k] = undefined; }); return ne;
-    });
   }, []);
 
   const setFile = useCallback((key, fileObj, err) => {
@@ -641,28 +727,16 @@ function App() {
     if (!form.provincia) e.provincia = 'Seleccioná tu provincia.';
     if (!form.canton.trim()) e.canton = 'Ingresá tu cantón.';
     if (!form.direccion.trim()) e.direccion = 'Ingresá tu dirección.';
-
-    const menor = (calcEdad(form.fechaNac) ?? 99) < 18;
-    if (menor) {
-      if (!form.tutorNombre.trim()) e.tutorNombre = 'Ingresá el nombre del encargado.';
-      if (!form.tutorCedula.trim()) e.tutorCedula = 'Ingresá la cédula del encargado.';
-      if (!validEmail(form.tutorCorreo)) e.tutorCorreo = 'Ingresá un correo válido.';
-      if (!validTel(form.tutorTel)) e.tutorTel = 'Ingresá un teléfono válido.';
-    }
-
     if (!validTel(form.telefono)) e.telefono = 'Ingresá un teléfono válido (8 dígitos).';
     if (!form.waMismo && !validTel(form.whatsapp)) e.whatsapp = 'Ingresá un WhatsApp válido.';
     if (!validEmail(form.correo)) e.correo = 'Ingresá un correo válido.';
     if (!form.correoConf.trim()) e.correoConf = 'Confirmá tu correo.';
     else if (form.correo.trim().toLowerCase() !== form.correoConf.trim().toLowerCase()) e.correoConf = 'Los correos no coinciden.';
     if (!form.como) e.como = 'Seleccioná una opción.';
-    if (!form.conocimientos) e.conocimientos = 'Seleccioná una opción.';
 
     setErrors(e);
     if (Object.keys(e).length) {
-      const order = ['cedula','nombre','doc_frente','doc_reverso','doc_titulo','fechaNac','sexo',
-        'tutorNombre','tutorCedula','tutorCorreo','tutorTel',
-        'provincia','canton','direccion','telefono','whatsapp','correo','correoConf','como','conocimientos'];
+      const order = ['cedula','nombre','doc_frente','doc_reverso','doc_titulo','fechaNac','sexo','provincia','canton','direccion','telefono','whatsapp','correo','correoConf','como'];
       const first = order.find(k => e[k]);
       if (first) setTimeout(() => scrollToField(first), 50);
       return false;
@@ -672,11 +746,8 @@ function App() {
 
   const irPaso2 = () => {
     if (!validarPaso1()) return;
-    if (form.idTipo !== 'nac') {
-      // ID no nacional → forzar Programa Libre + Pago/Beca (no CONAPE)
-      if (form.programa === 'ina') set('programa','');
-      if (form.financiamiento === 'CONAPE') set('financiamiento','');
-    }
+    // Si la ID no es nacional, el único programa posible es Libre
+    if (form.idTipo !== 'nac' && form.programa === 'ina') set('programa','');
     setPaso(2);
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
@@ -688,49 +759,43 @@ function App() {
     const e = {};
     if (!form.programa) e.programa = 'Seleccioná un programa.';
     if (!form.grupo) e.grupo = 'Seleccioná un grupo.';
-    if (!form.financiamiento) e.financiamiento = 'Seleccioná una opción de financiamiento.';
-    if (form.financiamiento === 'CONAPE' && !form.conapeEquipo) e.conapeEquipo = 'Seleccioná una opción de equipo.';
     if (!form.clave || form.clave.length < 6) e.clave = 'Mínimo 6 caracteres.';
     if (!form.claveConf) e.claveConf = 'Confirmá tu contraseña.';
     else if (form.clave !== form.claveConf) e.claveConf = 'Las contraseñas no coinciden.';
     setErrors(e);
     if (Object.keys(e).length) {
-      const order = ['programa','grupo','financiamiento','conapeEquipo','clave','claveConf'];
+      const order = ['programa','grupo','clave','claveConf'];
       const first = order.find(k => e[k]);
       if (first) setTimeout(() => scrollToField(first), 50);
       return;
     }
 
-    const esConape = form.financiamiento === 'CONAPE';
-    const menor = (calcEdad(form.fechaNac) ?? 99) < 18;
+    const esConape = form.programa === 'ina' && form.conape === 'si';
     const payload = {
       fn: 'crearUsuarioEstudiante',
       cedula: form.cedula.trim(),
       nombre: form.nombre.trim(),
-      tipo_id: form.idTipo,
       correo: form.correo.trim(),
       whatsapp: form.waMismo ? form.telefono : form.whatsapp,
-      telefono: form.telefono,
+      clave: form.clave,
       provincia: form.provincia,
       canton: form.canton.trim(),
       direccion: form.direccion.trim(),
       fecha_nac: form.fechaNac,
-      sexo: form.sexo,
-      es_menor: menor,
-      tutor_nombre: menor ? form.tutorNombre.trim() : '',
-      tutor_cedula: menor ? form.tutorCedula.trim() : '',
-      tutor_correo: menor ? form.tutorCorreo.trim() : '',
-      tutor_tel:    menor ? form.tutorTel : '',
+      mayor_edad: esMayor(form.fechaNac),
+      rep_nombre: '', rep_cedula: '', rep_correo: '', rep_tel: '',
       programa: form.programa === 'ina' ? 'INA' : 'SIN_INA',
+      financiamiento: esConape ? 'CONAPE' : 'PROPIO',
+      beca: '',
+      modalidad: 'CUATRIMESTRE',
       grupo_tentativo: form.grupo,
-      financiamiento: form.financiamiento,
-      conape_equipo: esConape ? form.conapeEquipo : 'NINGUNO',
       conape_toeic: esConape ? form.conapeToeic : false,
-      conape_sostenimiento: esConape ? form.conapeSost.trim() : '',
+      conape_laptop: esConape && form.conapeLaptop ? (form.conapeLaptopMonto || '') : '',
+      conape_sostenimiento: esConape ? form.conapeSost : false,
+      conape_monto_sos: esConape && form.conapeSost ? (form.conapeSostMonto || '') : '',
       como_entero: form.como,
       asesor_ref: form.asesor,
       conocimientos_previos: form.conocimientos,
-      clave: form.clave,
     };
 
     setSubmitting(true);
@@ -764,7 +829,7 @@ function App() {
     return (
       <>
         <Header />
-        <Exito financiamiento={form.financiamiento} />
+        <Exito conape={form.programa==='ina' && form.conape==='si'} />
       </>
     );
   }
@@ -774,8 +839,7 @@ function App() {
       <Header />
       <Progress paso={paso} />
       {paso === 1
-        ? <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
-            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} />
+        ? <Pagina1 form={form} set={set} files={files} setFile={setFile} errors={errors} onContinue={irPaso2} />
         : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} />}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 
