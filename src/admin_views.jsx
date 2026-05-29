@@ -299,12 +299,19 @@ const initState = () => ({
     i2:{ monto:25000, obligatorio:false },
   },
   certificadoPrograma:45000,
+  certificadoProgramaObligatorio:false,
   toeic:false, toeicMonto:136730,
   rubrosExtra:[],  // {id, nombre, monto, obligatorio, tipo_aplicacion: 'por_nivel'|'una_vez_inicio'|'una_vez_final'}
   beca:'none', becaCustomNombre:'', becaCustomPct:25,
   disponibleInscripcion:false,
   cronograma:[],
   fechasPorNivel:{},  // { b1:'2026-09-02', b2:'2027-01-11', i1:'2027-05-10', i2:'2027-09-13' }
+  // I CAN — solo aplica a grupos INA
+  icanDias:[],             // números de día: [5]=Vie, [2,4]=Mar+Jue
+  icanFechaPrimero:null,   // fecha del primer I CAN
+  icanHoraInicio:'18:00',
+  icanHoraFin:'20:00',
+  icanDocente:'',          // guarda el id del docente (se convierte a nombre al enviar)
   confirmado:false,
 });
 
@@ -416,8 +423,13 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
 
   const confirmar = async () => {
     if (!form.confirmado || guardando) return;
-    const { code, consec, periodo } = generarCodigoGrupo(form, grupos);
+    const { code, consec, periodo, año } = generarCodigoGrupo(form, grupos);
     const docenteObj = docentesActivos.find(d => d.id === form.docente);
+
+    // I CAN — código de días con la convención del sistema (Mar=K, Mié=M).
+    const ICAN_LETRA = { 0:'D', 1:'L', 2:'K', 3:'M', 4:'J', 5:'V', 6:'S' };
+    const icanDiasCod = (form.icanDias || []).map(n => ICAN_LETRA[n]).join('');  // ej "V" o "KJ"
+    const icanDocenteObj = docentesActivos.find(d => d.id === form.icanDocente);
 
     // Intentar guardar en Apps Script con timeout de 5 s
     setGuardando(true);
@@ -445,7 +457,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           tipo_periodo:            form.modalidad === 'super_intensivo' ? 'B' : 'C',
           año_inicio:              form.fechaInicio ? parseDateLocal(form.fechaInicio).getFullYear() : new Date().getFullYear(),
           dias_sem:                form.modalidad === 'super_intensivo' ? 4 : (form.dias.includes('Sáb') ? 1 : 2),
-          consecutivo:             parseInt(consec, 10),
+          consecutivo:             `${consec}${año}`,   // ej. "0726" — string, preserva ceros y año
           // v4.15 — campos nuevos
           disponible_inscripcion:  form.disponibleInscripcion === true,
           precio_cuota:            form.cuota,
@@ -479,12 +491,12 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
               tipo_periodo:   form.modalidad === 'super_intensivo' ? 'B' : 'C',
             };
           }),
-          // I CAN — campos compartidos del programa. Si el wizard aún no los pide
-          // explícitamente, se envían vacíos y se completan en una etapa futura.
-          dias_ican:      form.modelo === 'ina' ? (form.diasICan      || '') : '',
-          hora_ini_ican:  form.modelo === 'ina' ? (form.horaIniICan   || '') : '',
-          hora_fin_ican:  form.modelo === 'ina' ? (form.horaFinICan   || '') : '',
-          docente_ican:   form.modelo === 'ina' ? (form.docenteICan   || docenteObj?.nombre || '') : '',
+          // I CAN — solo grupos INA. dias_ican usa la convención del sistema (Mar=K, Mié=M).
+          // Para grupos Sin INA se envía "NO" (valor que el sistema usa para "no aplica").
+          dias_ican:      form.modelo === 'ina' ? icanDiasCod : 'NO',
+          hora_ini_ican:  form.modelo === 'ina' ? form.icanHoraInicio : '',
+          hora_fin_ican:  form.modelo === 'ina' ? form.icanHoraFin : '',
+          docente_ican:   form.modelo === 'ina' ? (icanDocenteObj ? icanDocenteObj.nombre : 'POR DEFINIR') : '',
         }),
         signal: controller.signal,
       });
@@ -600,7 +612,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           {/* Main content */}
           <div style={{ overflowY:'auto', padding:'28px 32px' }}>
             {step===1 && <Step1 form={form} set={set} errors={errors} nivel={nivel} />}
-            {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} />}
+            {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} docentesActivos={docentesActivos} />}
             {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[form.dias]||'XX')+(HORA_CODIGO[form.horaInicio]||''); return p; })()} />}
             {step===4 && <Step4 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal} descuento={descuento} />}
@@ -749,7 +761,7 @@ function Step1({ form, set, errors, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 2 — Horario y fecha
 // ─────────────────────────────────────────────────────────────────────────
-function Step2({ form, set, errors, nivel, nCuotas }) {
+function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
   const diasOpts = DIAS_OPTIONS[form.modalidad] || [];
   const fechasOpts = fechasValidas(form.modalidad);
 
@@ -787,7 +799,7 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
     if (!fechaN1 || !form.niveles.length) return out;
     const dias = parseDias(form.dias);
     const diasUsar = dias.length ? dias : [1,3];
-    out[form.niveles[0]] = isoLocal(fechaN1);
+    out[form.niveles[0]] = isoLocal(inicioReal || fechaN1);
     let cuatriMes = fechaN1.getMonth() < 4 ? 0 : fechaN1.getMonth() < 8 ? 4 : 8;
     let cuatriYear = fechaN1.getFullYear();
     for (let i = 1; i < form.niveles.length; i++) {
@@ -799,15 +811,23 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
       } catch(_) {}
     }
     return out;
-  }, [form.fechaInicio, form.dias, form.niveles]);
+  }, [form.fechaInicio, form.dias, form.niveles, inicioReal]);
 
   // Inicializa form.fechasPorNivel con las sugeridas cuando falte alguna.
-  // Solo escribe niveles que aún no tienen valor: no sobrescribe ediciones manuales.
+  // El nivel 1 SIEMPRE se sincroniza con la primera clase real (la fecha de arriba);
+  // los niveles 2-4 respetan ediciones manuales y solo se rellenan si están vacíos.
   React.useEffect(() => {
     if (!form.niveles.length) return;
-    let dirty = false;
+    const n1 = form.niveles[0];
     const next = { ...form.fechasPorNivel };
-    form.niveles.forEach(niv => {
+    let dirty = false;
+    // Nivel 1 SIEMPRE = primera clase real
+    if (form.fechaInicio && fechasSugeridas[n1] && next[n1] !== fechasSugeridas[n1]) {
+      next[n1] = fechasSugeridas[n1];
+      dirty = true;
+    }
+    // Niveles 2-4: solo rellenar si están vacíos (no sobrescribe ediciones)
+    form.niveles.slice(1).forEach(niv => {
       if (!next[niv] && fechasSugeridas[niv]) {
         next[niv] = fechasSugeridas[niv];
         dirty = true;
@@ -818,7 +838,15 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
       if (!form.niveles.includes(k)) { delete next[k]; dirty = true; }
     });
     if (dirty) set('fechasPorNivel', next);
-  }, [form.niveles, fechasSugeridas]);
+  }, [form.fechaInicio, form.dias, form.niveles, fechasSugeridas]);
+
+  // I CAN — sugerir cantidad de días según modalidad (no sobreescribe la elección).
+  // Intensivo → 1 día (Vie [5]); súper intensivo → 2 días (Mar+Jue [2,4]).
+  React.useEffect(() => {
+    if (form.modelo !== 'ina') return;
+    if (form.icanDias && form.icanDias.length > 0) return;
+    set('icanDias', form.modalidad === 'super_intensivo' ? [2,4] : [5]);
+  }, [form.modelo, form.modalidad]);
 
   return (
     <div>
@@ -937,9 +965,10 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
           <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:10 }}>
             Sugeridas según cuatrimestre (C1 ene · C2 may · C3 sep). Ajustá si hace falta.
           </div>
-          {form.niveles.map(niv => {
+          {form.niveles.map((niv, idx) => {
             const meta = NIVEL_META[niv];
             const fecha = form.fechasPorNivel[niv] || fechasSugeridas[niv] || '';
+            const esN1 = idx === 0;
             return (
               <div key={niv} style={{
                 display:'flex', alignItems:'center', gap:12,
@@ -949,19 +978,95 @@ function Step2({ form, set, errors, nivel, nCuotas }) {
               }}>
                 <span style={{ fontSize:20 }}>{meta.emoji}</span>
                 <div style={{ flex:'0 0 110px', fontWeight:600, fontSize:13 }}>{meta.nombre}</div>
-                <input type="date" value={fecha}
+                <input type="date" value={fecha} disabled={esN1}
                   onChange={e => set('fechasPorNivel', { ...form.fechasPorNivel, [niv]: e.target.value })}
                   style={{
                     flex:'0 0 170px', padding:'8px 10px',
                     borderRadius:'var(--r-sm)', border:'1px solid var(--line)',
                     fontFamily:'inherit', fontSize:13,
+                    background: esN1 ? 'var(--surface-2)' : 'var(--surface)',
+                    color: esN1 ? 'var(--ink-3)' : 'var(--ink)', cursor: esN1 ? 'not-allowed' : 'auto',
                   }} />
                 <span style={{ fontSize:11, color:'var(--ink-3)', flex:1 }}>
-                  {fecha ? fmtCR(parseDateLocal(fecha)) : 'sin fecha'}
+                  {esN1
+                    ? '= fecha de inicio del grupo'
+                    : (fecha ? fmtCR(parseDateLocal(fecha)) : 'sin fecha')}
                 </span>
               </div>
             );
           })}
+        </div>
+      )}
+      {form.modelo === 'ina' && (
+        <div style={{ marginTop:24, padding:16, borderRadius:'var(--r-md)', border:'1px solid var(--line)', background:'color-mix(in srgb, #6B4FA0 5%, white)' }}>
+          <SectionTitle>Club I CAN <span style={{ fontWeight:400, fontSize:11, color:'var(--ink-3)' }}>· solo programas INA</span></SectionTitle>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:12 }}>
+            {form.modalidad === 'super_intensivo'
+              ? 'Súper intensivo: el I CAN va 2 días/semana (un I CAN cada 2 lecciones).'
+              : 'Intensivo: el I CAN va 1 día/semana (un I CAN cada 2 lecciones).'}
+          </div>
+
+          <label style={{ fontSize:11, fontWeight:600, color:'var(--ink-2)' }}>Días del I CAN</label>
+          <div style={{ display:'flex', gap:6, marginBottom:14, marginTop:4 }}>
+            {[['L',1],['K',2],['M',3],['J',4],['V',5],['S',6]].map(([label, num]) => {
+              const sel = form.icanDias.includes(num);
+              return (
+                <button key={num} onClick={() => {
+                  const next = sel
+                    ? form.icanDias.filter(d => d !== num)
+                    : [...form.icanDias, num].sort((a,b) => a - b);
+                  set('icanDias', next);
+                }} style={{
+                  width:40, height:40, borderRadius:'var(--r-sm)', cursor:'pointer',
+                  border:`2px solid ${sel ? '#6B4FA0' : 'var(--line)'}`,
+                  background: sel ? '#6B4FA0' : 'white',
+                  color: sel ? 'white' : 'var(--ink-2)', fontWeight:700, fontFamily:'inherit',
+                }}>{label}</button>
+              );
+            })}
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:12 }}>
+            <div>
+              <label style={{ fontSize:11, fontWeight:600, color:'var(--ink-2)' }}>Fecha primer I CAN</label>
+              <input type="date" value={form.icanFechaPrimero || ''}
+                onChange={e => set('icanFechaPrimero', e.target.value)}
+                style={{ width:'100%', padding:8, borderRadius:'var(--r-sm)', border:'1px solid var(--line)', fontFamily:'inherit' }} />
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:600, color:'var(--ink-2)' }}>Hora inicio</label>
+              <input type="time" value={form.icanHoraInicio}
+                onChange={e => set('icanHoraInicio', e.target.value)}
+                style={{ width:'100%', padding:8, borderRadius:'var(--r-sm)', border:'1px solid var(--line)', fontFamily:'inherit' }} />
+            </div>
+            <div>
+              <label style={{ fontSize:11, fontWeight:600, color:'var(--ink-2)' }}>Hora fin</label>
+              <input type="time" value={form.icanHoraFin}
+                onChange={e => set('icanHoraFin', e.target.value)}
+                style={{ width:'100%', padding:8, borderRadius:'var(--r-sm)', border:'1px solid var(--line)', fontFamily:'inherit' }} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:600, color:'var(--ink-2)' }}>Docente del I CAN</label>
+            <select value={form.icanDocente}
+              onChange={e => set('icanDocente', e.target.value)}
+              style={{ width:'100%', padding:8, borderRadius:'var(--r-sm)', border:'1px solid var(--line)', background:'white', fontFamily:'inherit' }}>
+              <option value="">Por definir</option>
+              {docentesActivos.map(d => (
+                <option key={d.id} value={d.id}>{d.nombre}</option>
+              ))}
+            </select>
+          </div>
+          {form.icanDias.length > 0 && (
+            <div style={{ fontSize:11, color:'#6B4FA0', marginTop:10, fontWeight:600 }}>
+              I CAN los {form.icanDias.map(n => ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][n]).join(' y ')} de {form.icanHoraInicio} a {form.icanHoraFin}.
+            </div>
+          )}
+          {form.icanDias.length === 0 && (
+            <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:10, fontStyle:'italic' }}>
+              Elegí al menos un día para el I CAN.
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1180,7 +1285,7 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
         })}
       </div>
       {form.niveles.length === 4 && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 160px', alignItems:'center', gap:12, padding:'10px 14px', background:'color-mix(in srgb, var(--an-navy) 6%, white)', borderRadius:'var(--r-md)', borderLeft:'4px solid var(--an-navy)', marginBottom:8 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 160px auto', alignItems:'center', gap:12, padding:'10px 14px', background:'color-mix(in srgb, var(--an-navy) 6%, white)', borderRadius:'var(--r-md)', borderLeft:'4px solid var(--an-navy)', marginBottom:8 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:16 }}>🎓</span>
             <span style={{ fontWeight:600, fontSize:13, color:'var(--an-navy-ink)' }}>Título del Programa Completo</span>
@@ -1192,6 +1297,12 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
               onChange={e => set('certificadoPrograma', Number(e.target.value))}
               style={{ flex:1, border:'none', outline:'none', padding:'8px 10px', fontFamily:'var(--f-mono)', fontSize:13, background:'transparent', width:80 }} />
           </div>
+          <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', color: form.certificadoProgramaObligatorio ? 'var(--an-granate)' : 'var(--ink-2)', fontWeight: form.certificadoProgramaObligatorio ? 700 : 500 }}>
+            <Toggle value={form.certificadoProgramaObligatorio}
+              onChange={v => set('certificadoProgramaObligatorio', v)}
+              color="var(--an-navy)" />
+            Obligatorio
+          </label>
         </div>
       )}
       <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:20 }}>Los certificados no reciben descuento de becas.</div>
