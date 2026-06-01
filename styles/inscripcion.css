@@ -263,8 +263,8 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
   box-shadow: 0 0 0 4px rgba(43,127,193,.18);
 }
 .pcard.locked { cursor: not-allowed; pointer-events: none; }
-.pcard-imgwrap { position: relative; height: 300px; }
-.pcard-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+.pcard-imgwrap { position: relative; height: 300px; padding: 20px; background: #f3f6fa; border-bottom: 1px solid var(--ins-line); }
+.pcard-img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
 .pcard-imgfallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -.01em; text-align: center; padding: 16px; }
 .pcard-badge {
   position: absolute; top: 12px; left: 12px; z-index: 2;
@@ -354,6 +354,17 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
 .btn-loader { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
 
 .continue-card { padding: 18px 22px 22px; }
+.upload-status {
+  margin-top: 12px; font-size: 12.5px; line-height: 1.5; text-align: center;
+  color: var(--ins-ink-2); display: flex; align-items: center; justify-content: center;
+  gap: 8px; animation: revealIn .3s ease;
+}
+.upload-status::before {
+  content: ''; width: 13px; height: 13px; flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, var(--ins-success) 30%, white);
+  border-top-color: var(--ins-success); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
 
 /* ── TOAST ──────────────────────────────────────────────────────────────── */
 .toast {
@@ -422,6 +433,20 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
 /* ── TARJETAS DE GRUPO ──────────────────────────────────────────────────── */
 .grupo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .grupo-grid { grid-template-columns: 1fr; } }
+
+/* ── HORARIO: bloques Intensivo / Super Intensivo ──────────────────────── */
+.horario-split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 640px) { .horario-split { grid-template-columns: 1fr; } }
+.horario-col {
+  border: 1.5px solid var(--ins-line); border-radius: var(--ins-r);
+  background: var(--ins-bg); padding: 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.horario-col-head { display: flex; align-items: center; gap: 11px; padding-bottom: 11px; border-bottom: 1px solid var(--ins-line); }
+.horario-col-head .hc-ico { font-size: 22px; line-height: 1; }
+.horario-col-head b { display: block; font-size: 15px; font-weight: 700; color: #1a2547; letter-spacing: -.01em; }
+.horario-col-head i { display: block; font-size: 12px; font-style: normal; color: var(--ins-ink-3); margin-top: 1px; }
+.grupo-stack { display: flex; flex-direction: column; gap: 12px; }
+.grupo-empty-sm { font-size: 13px; color: var(--ins-ink-3); padding: 14px 6px; text-align: center; }
 
 .gcard {
   position: relative; border: 2.5px solid var(--ins-line); border-radius: var(--ins-r);

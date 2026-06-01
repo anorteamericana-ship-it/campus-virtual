@@ -11,7 +11,7 @@ const SCRIPT_URL = window.APPS_SCRIPT_URL;
 // Partes compartidas (cargadas desde inscripcion_parts.jsx)
 const {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
-  PROVINCIAS, ASESORES, COMO_OPTS, ID_TIPOS,
+  PROVINCIAS, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   G, fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor,
   I, Ico, IcoFill,
   Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard,
@@ -20,8 +20,8 @@ const {
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 1 — DATOS PERSONALES
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue }) {
-  const [verif, setVerif] = useState('idle'); // idle | loading | exists | free
+function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif }) {
+  // 'verif' (idle | loading | exists | free) se eleva al App para que validarPaso1 lo lea
   const tipo = ID_TIPOS.find(t => t.id === form.idTipo) || ID_TIPOS[0];
   const esNacional = form.idTipo === 'nac';
   const edad = calcEdad(form.fechaNac);
@@ -87,7 +87,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           {!esNacional && (
             <div className="inline-alert warn">
               <Ico d={I.warn} size={18} />
-              <span>Con este tipo de identificación solo podés inscribirte en el <strong>Programa Libre</strong>. No aplica financiamiento CONAPE (requisito gubernamental, no académico).</span>
+              <span>Con este tipo de identificación solo podés inscribirte en el <strong>Programa SIN acreditación</strong>. No aplica financiamiento CONAPE (requisito gubernamental, no académico).</span>
             </div>
           )}
         </Field>
@@ -312,8 +312,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           <div className="choice-row col">
             {[
               ['cero',  '🔰', 'No, empiezo desde cero'],
-              ['basico','📖', 'Algo básico'],
-              ['exp',   '🎓', 'Sí, tengo experiencia'],
+              ['diagnostico','📝', 'Sí, deseo aplicar prueba de diagnóstico'],
             ].map(([v, ico, lbl]) => (
               <label key={v} className={`choice-card${form.conocimientos===v?' sel':''}`}>
                 <input type="radio" name="conoc" checked={form.conocimientos===v} onChange={() => set('conocimientos', v)} />
@@ -353,12 +352,13 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
     const param = form.programa === 'ina' ? 'INA' : 'SIN_INA';
     (async () => {
       try {
+        if (!SCRIPT_URL) throw new Error('sin backend');
         const res = await fetch(`${SCRIPT_URL}?fn=getGruposDisponibles&programa=${param}`);
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data && data.grupos) || [];
-        if (!cancel) setGrupos(list);
+        if (!cancel) setGrupos(list.length ? list : ((DEMO_GRUPOS && DEMO_GRUPOS[param]) || []));
       } catch (e) {
-        if (!cancel) setGrupos([]);
+        if (!cancel) setGrupos((DEMO_GRUPOS && DEMO_GRUPOS[param]) || []);
       } finally {
         if (!cancel) setLoadingGrupos(false);
       }
@@ -386,9 +386,9 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
           <ProgramCard
             tipo="sin_ina" selected={form.programa==='sin_ina'} locked={false}
             onSelect={t => set('programa', t)}
-            img={IMG_LIBRE} fallbackBg="linear-gradient(135deg, #2B7FC1, #1a2547)" fallbackText="Programa Libre"
+            img={IMG_LIBRE} fallbackBg="linear-gradient(135deg, #2B7FC1, #1a2547)" fallbackText="Programa SIN acreditación"
             badge="Flexible y accesible" badgeColor="blue"
-            name="Programa Libre"
+            name="Programa SIN acreditación"
             bullets={['Certificado propio de la academia','Disponible para todos los tipos de ID','4 niveles · 96h por nivel']} />
         </div>
         {errors.programa && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.programa}</div>}
@@ -404,16 +404,39 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
             </div>
             <div id="fld-grupo">
               {loadingGrupos ? (
-                <div className="grupo-grid">
-                  <GrupoSkeleton /><GrupoSkeleton /><GrupoSkeleton />
+                <div className="horario-split">
+                  <div className="horario-col">
+                    <div className="horario-col-head"><span className="hc-ico">📘</span><div><b>Intensivo</b><i>2 clases por semana</i></div></div>
+                    <div className="grupo-stack"><GrupoSkeleton /><GrupoSkeleton /></div>
+                  </div>
+                  <div className="horario-col">
+                    <div className="horario-col-head"><span className="hc-ico">🚀</span><div><b>Super Intensivo</b><i>4 clases por semana</i></div></div>
+                    <div className="grupo-stack"><GrupoSkeleton /><GrupoSkeleton /></div>
+                  </div>
                 </div>
               ) : grupos && grupos.length > 0 ? (
                 <>
-                  <div className="grupo-grid">
-                    {grupos.map((g, i) => (
-                      <GrupoCard key={G.cod(g) || i} g={g} selected={form.grupo === G.cod(g)} onSelect={v => set('grupo', v)} />
-                    ))}
-                  </div>
+                  {(() => {
+                    const intensivos = grupos.filter(g => G.dias(g) !== 'LJ');
+                    const superInt   = grupos.filter(g => G.dias(g) === 'LJ');
+                    const Card = g => <GrupoCard key={G.cod(g)} g={g} selected={form.grupo === G.cod(g)} onSelect={v => set('grupo', v)} />;
+                    return (
+                      <div className="horario-split">
+                        <div className="horario-col">
+                          <div className="horario-col-head"><span className="hc-ico">📘</span><div><b>Intensivo</b><i>2 clases por semana</i></div></div>
+                          <div className="grupo-stack">
+                            {intensivos.length ? intensivos.map(Card) : <div className="grupo-empty-sm">Sin grupos intensivos por ahora.</div>}
+                          </div>
+                        </div>
+                        <div className="horario-col">
+                          <div className="horario-col-head"><span className="hc-ico">🚀</span><div><b>Super Intensivo</b><i>4 clases por semana</i></div></div>
+                          <div className="grupo-stack">
+                            {superInt.length ? superInt.map(Card) : <div className="grupo-empty-sm">Sin grupos super intensivos por ahora.</div>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {errors.grupo && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.grupo}</div>}
                 </>
               ) : (
@@ -533,8 +556,13 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
           {/* REGISTRARME */}
           <div className="card continue-card">
             <button className="btn btn-success" onClick={onSubmit} disabled={submitting}>
-              {submitting ? <><span className="btn-loader" /> Registrando…</> : <>Registrarme <Ico d={I.check} size={18} /></>}
+              {submitting ? <><span className="btn-loader" /> Subiendo documentos…</> : <>Registrarme <Ico d={I.check} size={18} /></>}
             </button>
+            {submitting && (
+              <div className="upload-status" role="status" aria-live="polite">
+                Estamos subiendo tus documentos. Esto puede tardar unos segundos — no cierres esta ventana.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -547,7 +575,7 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
 // ─────────────────────────────────────────────────────────────────────────────
 const EXITO_TXT = {
   CONAPE: 'Tu solicitud está siendo procesada. Un asesor se va a comunicar con vos para los siguientes pasos del financiamiento.',
-  BECA:   'Tu solicitud de beca está siendo revisada. Pronto te contactamos para coordinar el pago.',
+  BECA:   'Tu solicitud de beca está siendo revisada. Pronto te contactamos para coordinar el pago de matrícula.',
   PROPIO: 'Para activar tu cuenta completá el pago de matrícula. Escribinos por WhatsApp para coordinar.',
 };
 function Exito({ financiamiento }) {
@@ -593,9 +621,33 @@ function scrollToField(key) {
   window.scrollTo({ top: y, behavior: 'smooth' });
 }
 
+// Tamaño máximo por foto (el backend limpia el prefijo data:image/...;base64,)
+const MAX_FOTO = 5 * 1024 * 1024;
+
+// Mapeo: clave en `files` → campo del payload → id de campo para el error inline
+const FOTO_MAP = [
+  ['frente',  'foto_ced_frente', 'doc_frente'],
+  ['reverso', 'foto_ced_dorso',  'doc_reverso'],
+  ['titulo',  'foto_titulo',     'doc_titulo'],
+];
+
+// Convierte el File guardado en el state ({ file, name, size, ... }) a un
+// string base64 con prefijo data: usando FileReader.readAsDataURL.
+function fileToBase64(fileObj) {
+  return new Promise((resolve, reject) => {
+    const f = fileObj && fileObj.file;
+    if (!f) { resolve(''); return; }
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);          // data:image/...;base64,xxxx
+    reader.onerror = () => reject(reader.error || new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(f);
+  });
+}
+
 function App() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState(FORM_INIT);
+  const [verif, setVerif] = useState('idle'); // idle | loading | exists | free — estado de verificación de cédula (Pagina1)
   const [prellenado, setPrellenado] = useState({}); // campos verificados del padrón TSE
   const [files, setFiles] = useState({ frente:null, reverso:null, titulo:null });
   const [errors, setErrors] = useState({});
@@ -631,7 +683,11 @@ function App() {
   // ── Validación Página 1 ──
   const validarPaso1 = () => {
     const e = {};
-    if (!form.cedula.trim()) e.cedula = 'Ingresá tu número de identificación.';
+    if (!form.cedula.trim()) {
+      e.cedula = 'Ingresá tu número de identificación.';
+    } else if (verif !== 'free' && verif !== 'exists') {
+      e.cedula = 'Presioná el botón Verificar antes de continuar.';
+    }
     if (!form.nombre.trim()) e.nombre = 'Ingresá tu nombre completo.';
     if (!files.frente)  e.doc_frente  = 'Subí el frente de tu documento.';
     if (!files.reverso) e.doc_reverso = 'Subí el reverso de tu documento.';
@@ -674,8 +730,10 @@ function App() {
     if (!validarPaso1()) return;
     if (form.idTipo !== 'nac') {
       // ID no nacional → forzar Programa Libre + Pago/Beca (no CONAPE)
-      if (form.programa === 'ina') set('programa','');
-      if (form.financiamiento === 'CONAPE') set('financiamiento','');
+      let resetMsg = '';
+      if (form.programa === 'ina') { set('programa',''); resetMsg = 'El Programa INA y el financiamiento CONAPE son exclusivos para cédula costarricense. Seleccioná el Programa SIN acreditación.'; }
+      if (form.financiamiento === 'CONAPE') { set('financiamiento',''); if (!resetMsg) resetMsg = 'El financiamiento CONAPE es exclusivo para cédula costarricense.'; }
+      if (resetMsg) { setToast(resetMsg); }
     }
     setPaso(2);
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -703,6 +761,37 @@ function App() {
 
     const esConape = form.financiamiento === 'CONAPE';
     const menor = (calcEdad(form.fechaNac) ?? 99) < 18;
+
+    // ── Validar tamaño de las fotos antes de convertir ──────────────────────
+    // (UploadZone ya filtra al seleccionar; esto es una red de seguridad y
+    // garantiza el error inline en el campo correcto si algo se coló.)
+    const eFotos = {};
+    for (const [key, , errKey] of FOTO_MAP) {
+      const f = files[key];
+      if (f && f.size > MAX_FOTO) eFotos[errKey] = 'La imagen supera los 5 MB. Subí una versión más liviana.';
+    }
+    if (Object.keys(eFotos).length) {
+      setErrors(eFotos);
+      setPaso(1);
+      const first = ['doc_frente','doc_reverso','doc_titulo'].find(k => eFotos[k]);
+      setToast('Una de tus imágenes supera los 5 MB. Revisá tus documentos.');
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      if (first) setTimeout(() => scrollToField(first), 120);
+      return;
+    }
+
+    setSubmitting(true);
+
+    // ── Convertir las 3 fotos a base64 (data:image/...;base64,...) ──────────
+    let fotos;
+    try {
+      fotos = await Promise.all(FOTO_MAP.map(([key]) => fileToBase64(files[key])));
+    } catch (_) {
+      setSubmitting(false);
+      setToast('No pudimos procesar tus imágenes. Intentá de nuevo en un momento.');
+      return;
+    }
+
     const payload = {
       fn: 'crearUsuarioEstudiante',
       cedula: form.cedula.trim(),
@@ -730,10 +819,13 @@ function App() {
       como_entero: form.como,
       asesor_ref: form.asesor,
       conocimientos_previos: form.conocimientos,
+      // Documentos (base64 con prefijo data: — el backend limpia el prefijo)
+      foto_ced_frente: fotos[0],
+      foto_ced_dorso:  fotos[1],
+      foto_titulo:     fotos[2],
       clave: form.clave,
     };
 
-    setSubmitting(true);
     try {
       // text/plain: evita el preflight CORS que rompe Apps Script (doPost lee
       // el JSON en e.postData.contents igual). Patrón usado en todo el campus.
@@ -775,7 +867,7 @@ function App() {
       <Progress paso={paso} />
       {paso === 1
         ? <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
-            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} />
+            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif} />
         : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} />}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 
