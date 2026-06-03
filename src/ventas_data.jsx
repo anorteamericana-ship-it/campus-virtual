@@ -107,6 +107,18 @@ const marcarEtapaProspecto    = (cedula, etapa, asesor)               => postVen
 const cobrarMatriculaProspecto= (cedula, grupo, monto, comprobante, asesor) => postVentas({ fn:'cobrarMatriculaProspecto', cedula, grupo, monto, comprobante, asesor });
 const activarEstudiante       = (cedula, grupo, asesor)               => postVentas({ fn:'activarEstudiante', cedula, grupo, asesor });
 
+// ── ENDPOINTS v4.27.1 (becas + proformas CONAPE) ───────────────────────────
+async function getBecasDisponiblesV() {
+  const res = await fetch(`${SCRIPT_URL_V}?fn=getBecasDisponibles`);
+  return await res.json();
+}
+async function generarProformaProspecto(cedula) {
+  const res = await fetch(`${SCRIPT_URL_V}?fn=generarProformaProspecto&cedula=${encodeURIComponent(cedula)}`);
+  return await res.json();
+}
+const aprobarBecaProspecto = (cedula, decision, admin) =>
+  postVentas({ fn:'aprobarBecaProspecto', cedula, decision, admin });
+
 // Convierte un File a base64 con prefijo data: (para subirDocumentoExtra)
 function fileToBase64V(file) {
   return new Promise((resolve, reject) => {
@@ -335,5 +347,6 @@ Object.assign(window, {
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
+  getBecasDisponiblesV, generarProformaProspecto, aprobarBecaProspecto,
   docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, calcResumen, HOY,
 });

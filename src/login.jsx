@@ -147,36 +147,75 @@ function PhraseTimeline() {
   );
 }
 
-// ── Stage izquierdo ─────────────────────────────────────────────────────────
-function Stage() {
-  return (
-    <div className="stage">
-      <Waves />
+// ── Stage izquierdo — hero animado (timeline GSAP) ──────────────────────────
+const HEADLINE_LINES = [
+  <>Te garantizamos</>,
+  <>que <em>eliminás tu</em></>,
+  <>bloqueo con el inglés</>,
+];
 
-      <div className="stage-logo">
+function Stage() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const root = ref.current;
+    const g = (typeof window !== 'undefined') ? window.gsap : null;
+    if (!root || !g) return;
+    const q = g.utils.selector(root);
+    const ctx = g.context(() => {
+      const tl = g.timeline({ defaults: { ease: 'power3.out' } });
+      tl.from('.hg-texture',   { opacity: 0, duration: 0.9 })
+        .from('.hg-brandchip', { y: -24, opacity: 0, duration: 0.6 }, 0.1)
+        .from('.hg-eyebrow',   { x: -20, opacity: 0, duration: 0.5 }, 0.25)
+        .from('.hl-line',      { yPercent: 115, opacity: 0, duration: 0.7, stagger: 0.12 }, 0.35)
+        .from('.hg-wave',      { xPercent: -118, opacity: 0, duration: 1.0, ease: 'power4.out' }, 0.45)
+        .from('.hg-ground',    { yPercent: 105, duration: 0.85, ease: 'power3.out' }, 0.6)
+        .from('.hg-ground-seal', { scale: 0.4, rotate: -16, opacity: 0, duration: 0.7, ease: 'back.out(1.6)' }, 0.9)
+        .from('.hg-student, .hg-student-more', { y: 56, opacity: 0, scale: 0.78, duration: 0.6, stagger: 0.1, ease: 'back.out(1.5)' }, 1.0)
+        .from('.hg-ground-cap', { y: 16, opacity: 0, duration: 0.5 }, 1.25)
+        .from('.hg-phrases-wrap', { opacity: 0, y: 16, duration: 0.6 }, 1.3);
+      // ambiente: estudiantes flotando suavemente
+      g.to('.hg-student, .hg-student-more', {
+        y: '-=7', duration: 2.6, ease: 'sine.inOut', yoyo: true, repeat: -1, stagger: 0.35,
+      });
+    }, root);
+    return () => ctx.revert();
+  }, []);
+
+  return (
+    <div className="stage" ref={ref}>
+      <div className="hg-texture" />
+      <div className="hg-watermark" style={{ backgroundImage: `url(${SEAL})` }} />
+
+      <div className="hg-brandchip">
         <ImgFallback src={LOGO} text="Academia Norteamericana" textClass="logo-fallback" />
       </div>
 
-      <PhraseTimeline />
-
-      <div className="prog-cards">
-        <div className="prog-card">
-          <ProgImg src={CARD_INA} alt="Programa avalado por INA" />
-          <div className="pc-foot">INA Acreditado</div>
-        </div>
-        <div className="prog-card alt">
-          <ProgImg src={CARD_LIBRE} alt="Programa libre" />
-          <div className="pc-foot">Programa Libre</div>
-        </div>
+      <div className="hg-content">
+        <div className="hg-eyebrow">Academia Norteamericana</div>
+        <h2 className="hg-headline">
+          {HEADLINE_LINES.map((l, n) => <span className="hl-line" key={n}>{l}</span>)}
+        </h2>
+        <div className="hg-phrases-wrap"><PhraseTimeline /></div>
       </div>
 
-      <div className="backers">
-        {BACKERS.map((b, n) => (
-          <React.Fragment key={n}>
-            {n > 0 && <span className="b-sep" />}
-            <ImgFallback src={b.src} text={b.text} imgClass="" textClass="b-text" />
-          </React.Fragment>
-        ))}
+      <div className="hg-wave">
+        <svg viewBox="0 0 1440 150" preserveAspectRatio="none">
+          <path className="w-burgundy" d="M0,96 C300,18 560,150 860,92 C1100,46 1300,118 1440,70 L1440,150 L0,150 Z" />
+          <path className="w-red"      d="M0,116 C300,44 560,162 860,108 C1100,66 1300,132 1440,90 L1440,150 L0,150 Z" />
+        </svg>
+      </div>
+
+      <div className="hg-ground">
+        <div className="hg-students">
+          <image-slot id="login_stu1" shape="circle" placeholder="Foto" class="hg-student"></image-slot>
+          <image-slot id="login_stu2" shape="circle" placeholder="Foto" class="hg-student"></image-slot>
+          <image-slot id="login_stu3" shape="circle" placeholder="Foto" class="hg-student"></image-slot>
+          <div className="hg-student-more">+900</div>
+        </div>
+        <div className="hg-ground-cap">
+          <b>Estudiantes</b> que ya eliminaron su bloqueo con el inglés.
+        </div>
+        <div className="hg-ground-seal" style={{ backgroundImage: `url(${SEAL})` }} />
       </div>
     </div>
   );

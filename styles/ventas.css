@@ -280,6 +280,13 @@ button { font-family: inherit; }
 .vx-btn-ghost:hover:not(:disabled) { border-color: var(--v-ink-3); color: var(--v-ink); }
 .vx-btn-danger-ghost { background: #fff; border-color: #F0C8C4; color: var(--v-red); }
 .vx-btn-danger-ghost:hover:not(:disabled) { background: #FCEDEB; }
+.vx-btn-success { background: #117A4A; color: #fff; }
+.vx-btn-success:hover:not(:disabled) { background: #0D6038; }
+.vx-doclink { text-decoration: none; color: var(--v-ink); cursor: pointer; }
+.vx-doclink:hover { background: var(--v-soft); }
+.vx-beca-green { background: #E4F6EC; color: #117A4A; }
+.vx-beca-amber { background: #FCEFD8; color: #9A6406; }
+.vx-beca-red   { background: #FCEDEB; color: var(--v-red); }
 .vx-btn-block { width: 100%; }
 .vx-btn-lg { padding: 13px 20px; font-size: 14px; }
 .vx-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: vxspin .7s linear infinite; }

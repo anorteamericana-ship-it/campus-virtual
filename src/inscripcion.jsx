@@ -11,7 +11,7 @@ const SCRIPT_URL = window.APPS_SCRIPT_URL;
 // Partes compartidas (cargadas desde inscripcion_parts.jsx)
 const {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
-  PROVINCIAS, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
+  PROVINCIAS, CR_GEO, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   G, fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor,
   I, Ico, IcoFill,
   Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard,
@@ -22,6 +22,8 @@ const {
 // ─────────────────────────────────────────────────────────────────────────────
 function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif }) {
   // 'verif' (idle | loading | exists | free) se eleva al App para que validarPaso1 lo lea
+  const [showPwd, setShowPwd] = useState(false);
+  const [showPwd2, setShowPwd2] = useState(false);
   const tipo = ID_TIPOS.find(t => t.id === form.idTipo) || ID_TIPOS[0];
   const esNacional = form.idTipo === 'nac';
   const edad = calcEdad(form.fechaNac);
@@ -29,6 +31,17 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
 
   const blurCedula = () => { if (esNacional) set('cedula', fmtCedula(form.cedula)); };
   const blurNombre = () => set('nombre', (form.nombre||'').toUpperCase());
+
+  // Cascada geográfica (CR_GEO). Si el padrón TSE prellenó un cantón/distrito que
+  // no está en el catálogo, lo anteponemos para que el select igual lo muestre.
+  const cantonesDe = (prov) => {
+    const c = (CR_GEO && CR_GEO[prov]) ? Object.keys(CR_GEO[prov]) : [];
+    return (prov && form.canton && c.indexOf(form.canton) === -1) ? [form.canton, ...c] : c;
+  };
+  const distritosDe = (prov, cant) => {
+    const d = (CR_GEO && CR_GEO[prov] && CR_GEO[prov][cant]) ? CR_GEO[prov][cant] : [];
+    return (cant && form.distrito && d.indexOf(form.distrito) === -1) ? [form.distrito, ...d] : d;
+  };
 
   // Verificar: 1) ¿ya existe la cuenta?  2) si no, buscar en padrón TSE y prellenar
   const verificar = async () => {
@@ -68,7 +81,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
       <div className="card">
         <div className="sec-head">
           <div className="sec-eyebrow">Identificación</div>
-          <div className="sec-title">¿Con qué documento te identificás?</div>
+          <div className="sec-title">Ingresá tu número de identificación</div>
         </div>
 
         <Field fieldKey="idTipo">
@@ -164,7 +177,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
       <div className="card">
         <div className="sec-head">
           <div className="sec-eyebrow">Datos personales</div>
-          <div className="sec-title">Contanos sobre vos</div>
+          <div className="sec-title">Ingresá tu información</div>
         </div>
 
         <div className="grid-2">
@@ -220,16 +233,27 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
         <div className="grid-2">
           <Field fieldKey="provincia" label="Provincia" locked={prellenado.provincia} error={errors.provincia}>
             <select value={form.provincia} className={errors.provincia?'err':''}
-              onChange={e => set('provincia', e.target.value)}>
+              onChange={e => setMany({ provincia: e.target.value, canton: '', distrito: '' })}>
               <option value="">Seleccioná tu provincia…</option>
               {PROVINCIAS.map(p => <option key={p}>{p}</option>)}
             </select>
           </Field>
           <Field fieldKey="canton" label="Cantón" locked={prellenado.canton} error={errors.canton}>
-            <input type="text" value={form.canton} className={errors.canton?'err':''}
-              onChange={e => set('canton', e.target.value)} placeholder="Ej: Central, Escazú…" />
+            <select value={form.canton} className={errors.canton?'err':''} disabled={!form.provincia}
+              onChange={e => setMany({ canton: e.target.value, distrito: '' })}>
+              <option value="">{form.provincia ? 'Seleccioná tu cantón…' : 'Elegí provincia primero'}</option>
+              {cantonesDe(form.provincia).map(c => <option key={c}>{c}</option>)}
+            </select>
           </Field>
         </div>
+
+        <Field fieldKey="distrito" label="Distrito" error={errors.distrito}>
+          <select value={form.distrito} className={errors.distrito?'err':''} disabled={!form.canton}
+            onChange={e => set('distrito', e.target.value)}>
+            <option value="">{form.canton ? 'Seleccioná tu distrito…' : 'Elegí cantón primero'}</option>
+            {distritosDe(form.provincia, form.canton).map(d => <option key={d}>{d}</option>)}
+          </select>
+        </Field>
 
         <Field fieldKey="direccion" label="Dirección detallada" error={errors.direccion}>
           <textarea rows="2" value={form.direccion} className={errors.direccion?'err':''}
@@ -278,6 +302,35 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
               onChange={e => set('correoConf', e.target.value)} placeholder="Repetí tu correo" />
           </Field>
         </div>
+      </div>
+
+      {/* CONTRASEÑA */}
+      <div className="card">
+        <div className="sec-head">
+          <div className="sec-eyebrow">Acceso al Campus</div>
+          <div className="sec-title">Creá tu contraseña</div>
+        </div>
+        <div className="grid-2">
+          <Field fieldKey="clave" label="Contraseña" error={errors.clave}>
+            <div className="pwd-grp">
+              <input type={showPwd?'text':'password'} value={form.clave} className={errors.clave?'err':''}
+                onChange={e => set('clave', e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(s=>!s)} aria-label="Mostrar contraseña">
+                <Ico d={showPwd?I.eyeOff:I.eye} size={19} />
+              </button>
+            </div>
+          </Field>
+          <Field fieldKey="claveConf" label="Confirmar contraseña" error={errors.claveConf}>
+            <div className="pwd-grp">
+              <input type={showPwd2?'text':'password'} value={form.claveConf} className={errors.claveConf?'err':''}
+                onChange={e => set('claveConf', e.target.value)} placeholder="Repetí tu contraseña" />
+              <button type="button" className="pwd-toggle" onClick={() => setShowPwd2(s=>!s)} aria-label="Mostrar contraseña">
+                <Ico d={showPwd2?I.eyeOff:I.eye} size={19} />
+              </button>
+            </div>
+          </Field>
+        </div>
+        <div className="user-note">Tu usuario será: <strong>{form.cedula || '—'}</strong></div>
       </div>
 
       {/* CÓMO NOS CONOCISTE */}
@@ -337,34 +390,39 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 2 — PROGRAMA Y FINANCIAMIENTO
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
+function Pagina2({ form, set, errors, onBack, onSubmit, submitting, grupos, setGrupos }) {
   const esNacional = form.idTipo === 'nac';
-  const [grupos, setGrupos] = useState(null);  // null=no cargado, []=vacío, [..]=lista
   const [loadingGrupos, setLoadingGrupos] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [showPwd2, setShowPwd2] = useState(false);
+  const [becasDisp, setBecasDisp] = useState([]);
 
-  // Cargar grupos al elegir programa
+  // Grupos reales desde el backend (cupos, fechas legibles y modalidad).
   useEffect(() => {
     if (!form.programa) { setGrupos(null); return; }
     let cancel = false;
     setLoadingGrupos(true); setGrupos(null); set('grupo','');
-    const param = form.programa === 'ina' ? 'INA' : 'SIN_INA';
-    (async () => {
-      try {
-        if (!SCRIPT_URL) throw new Error('sin backend');
-        const res = await fetch(`${SCRIPT_URL}?fn=getGruposDisponibles&programa=${param}`);
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data && data.grupos) || [];
-        if (!cancel) setGrupos(list.length ? list : ((DEMO_GRUPOS && DEMO_GRUPOS[param]) || []));
-      } catch (e) {
-        if (!cancel) setGrupos((DEMO_GRUPOS && DEMO_GRUPOS[param]) || []);
-      } finally {
-        if (!cancel) setLoadingGrupos(false);
-      }
-    })();
+    const programa = form.programa === 'ina' ? 'INA' : 'SIN_INA';
+    fetch(`${SCRIPT_URL}?fn=getGruposDisponibles&programa=${programa}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancel) return;
+        setGrupos((d && d.ok && d.grupos) ? d.grupos : []);
+        setLoadingGrupos(false);
+      })
+      .catch(() => {
+        if (cancel) return;
+        setGrupos([]);
+        setLoadingGrupos(false);
+      });
     return () => { cancel = true; };
   }, [form.programa]);
+
+  // Becas disponibles (los % y cupos los define el backend, no se hardcodean).
+  useEffect(() => {
+    fetch(`${SCRIPT_URL}?fn=getBecasDisponibles`)
+      .then(r => r.json())
+      .then(d => setBecasDisp((d && d.becas) || []))
+      .catch(() => setBecasDisp([]));
+  }, []);
 
   return (
     <div className="ins-body">
@@ -417,8 +475,8 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
               ) : grupos && grupos.length > 0 ? (
                 <>
                   {(() => {
-                    const intensivos = grupos.filter(g => G.dias(g) !== 'LJ');
-                    const superInt   = grupos.filter(g => G.dias(g) === 'LJ');
+                    const intensivos = grupos.filter(g => (g.modalidad || '').toUpperCase().indexOf('SUPER') === -1);
+                    const superInt   = grupos.filter(g => (g.modalidad || '').toUpperCase().indexOf('SUPER') >= 0);
                     const Card = g => <GrupoCard key={G.cod(g)} g={g} selected={form.grupo === G.cod(g)} onSelect={v => set('grupo', v)} />;
                     return (
                       <div className="horario-split">
@@ -460,10 +518,6 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
                   onSelect={v => set('financiamiento', v)} icon="🏦"
                   title="Financiamiento CONAPE" badge={esNacional ? 'Disponible para vos' : null}
                   subtitle="Financiá el 100% sin fiador, sin intereses." />
-                <FinCard value="BECA" selected={form.financiamiento==='BECA'}
-                  onSelect={v => set('financiamiento', v)} icon="🎓"
-                  title="Beca 25% Academia Norteamericana"
-                  subtitle="Descuento del 25% en matrícula y cuotas." />
                 <FinCard value="PROPIO" selected={form.financiamiento==='PROPIO'}
                   onSelect={v => set('financiamiento', v)} icon="💳"
                   title="Pago propio"
@@ -515,42 +569,52 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting }) {
                 <div className="conape-block">
                   <div className="cb-title">Gastos de sostenimiento <span className="cb-opt">Opcional</span></div>
                   <div className="cb-note">Este rubro es OPCIONAL y está pensado para ayudarte con gastos básicos durante el curso, como el pago del internet. Podés pedir hasta ₡60,000 por mes (₡240,000 por cuatrimestre / ₡120,000 por bimestre).</div>
-                  <input type="text" value={form.conapeSost} style={{ marginTop:10 }}
-                    onChange={e => set('conapeSost', e.target.value)}
-                    placeholder="Ej: ₡60,000 por mes" />
-                  <div className="cb-hint">Escribí el monto que deseás solicitar. Si no lo necesitás, escribí: No.</div>
+                  <select value={form.conapeSost} style={{ marginTop:10 }}
+                    onChange={e => set('conapeSost', e.target.value)}>
+                    <option value="">No lo necesito</option>
+                    {[10000,20000,30000,40000,50000,60000].map(m => (
+                      <option key={m} value={`₡${m.toLocaleString('es-CR')} por mes`}>
+                        ₡{m.toLocaleString('es-CR')} por mes
+                      </option>
+                    ))}
+                  </select>
+                  <div className="cb-hint">Elegí el monto mensual que deseás solicitar (entre ₡10,000 y ₡60,000 por mes). Si no lo necesitás, dejá "No lo necesito".</div>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* CONTRASEÑA */}
-          <div className="card">
-            <div className="sec-head">
-              <div className="sec-eyebrow">Acceso al Campus</div>
-              <div className="sec-title">Creá tu contraseña</div>
-            </div>
-            <div className="grid-2">
-              <Field fieldKey="clave" label="Contraseña" error={errors.clave}>
-                <div className="pwd-grp">
-                  <input type={showPwd?'text':'password'} value={form.clave} className={errors.clave?'err':''}
-                    onChange={e => set('clave', e.target.value)} placeholder="Mínimo 6 caracteres" />
-                  <button type="button" className="pwd-toggle" onClick={() => setShowPwd(s=>!s)} aria-label="Mostrar contraseña">
-                    <Ico d={showPwd?I.eyeOff:I.eye} size={19} />
-                  </button>
+            {/* SUB-SECCIÓN PAGO PROPIO */}
+            {form.financiamiento==='PROPIO' && (
+              <div className="propio-box reveal">
+                <div className="conape-block">
+                  <div className="cb-title">Becas disponibles <span className="cb-opt">Opcional</span></div>
+                  <div className="cb-note">Si pagás por cuenta propia podés solicitar una de las siguientes becas. Su otorgamiento queda sujeto a aprobación de la Dirección.</div>
+                  <div className="beca-grid" style={{ marginTop:12 }}>
+                    {becasDisp
+                      .filter(b => b.disponible)
+                      .map(b => (
+                        <label key={b.id} className={`beca-card${form.becaPropio===b.id?' sel':''}`}>
+                          <input type="radio" name="becaPropio" checked={form.becaPropio===b.id}
+                            onChange={() => set('becaPropio', form.becaPropio===b.id ? '' : b.id)}
+                            onClick={() => { if (form.becaPropio===b.id) set('becaPropio',''); }} />
+                          <span className="beca-ico">{b.id === 'MUJER' ? '🌷' : b.id === 'IMPACTA' ? '🎯' : '🎓'}</span>
+                          <span className="beca-body">
+                            <b>{b.nombre.toUpperCase()} {Math.round(b.porcentaje * 100)}%</b>
+                            <i>{b.cupo_disponible} cupos disponibles · Sujeto a aprobación de Dirección</i>
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                  {becasDisp.filter(b => b.disponible).length === 0 && (
+                    <div className="grupo-empty">
+                      <Ico d={I.warn} size={18} />
+                      <span>No hay becas disponibles en este momento.</span>
+                    </div>
+                  )}
+                  <div className="cb-hint">Seleccioná una beca si deseás aplicar, o dejá esta sección en blanco.</div>
                 </div>
-              </Field>
-              <Field fieldKey="claveConf" label="Confirmar contraseña" error={errors.claveConf}>
-                <div className="pwd-grp">
-                  <input type={showPwd2?'text':'password'} value={form.claveConf} className={errors.claveConf?'err':''}
-                    onChange={e => set('claveConf', e.target.value)} placeholder="Repetí tu contraseña" />
-                  <button type="button" className="pwd-toggle" onClick={() => setShowPwd2(s=>!s)} aria-label="Mostrar contraseña">
-                    <Ico d={showPwd2?I.eyeOff:I.eye} size={19} />
-                  </button>
-                </div>
-              </Field>
-            </div>
-            <div className="user-note">Tu usuario será: <strong>{form.cedula || '—'}</strong></div>
+              </div>
+            )}
           </div>
 
           {/* REGISTRARME */}
@@ -604,13 +668,13 @@ function Exito({ financiamiento }) {
 // ─────────────────────────────────────────────────────────────────────────────
 const FORM_INIT = {
   idTipo:'nac', cedula:'', nombre:'',
-  fechaNac:'', sexo:'', provincia:'', canton:'', direccion:'',
+  fechaNac:'', sexo:'', provincia:'', canton:'', distrito:'', direccion:'',
   tutorNombre:'', tutorCedula:'', tutorCorreo:'', tutorTel:'',
   telefono:'', waMismo:true, whatsapp:'', correo:'', correoConf:'',
   como:'', asesor:'', conocimientos:'',
   programa:'', grupo:'',
   financiamiento:'',
-  conapeEquipo:'NINGUNO', conapeToeic:false, conapeSost:'',
+  conapeEquipo:'NINGUNO', conapeToeic:false, conapeSost:'', becaPropio:'',
   clave:'', claveConf:'',
 };
 
@@ -647,6 +711,7 @@ function fileToBase64(fileObj) {
 function App() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState(FORM_INIT);
+  const [grupos, setGrupos] = useState(null); // lista de grupos cargada en Pagina2 (se eleva para derivar la modalidad en el submit)
   const [verif, setVerif] = useState('idle'); // idle | loading | exists | free — estado de verificación de cédula (Pagina1)
   const [prellenado, setPrellenado] = useState({}); // campos verificados del padrón TSE
   const [files, setFiles] = useState({ frente:null, reverso:null, titulo:null });
@@ -695,7 +760,8 @@ function App() {
     if (!form.fechaNac) e.fechaNac = 'Indicá tu fecha de nacimiento.';
     if (!form.sexo)     e.sexo = 'Seleccioná una opción.';
     if (!form.provincia) e.provincia = 'Seleccioná tu provincia.';
-    if (!form.canton.trim()) e.canton = 'Ingresá tu cantón.';
+    if (!form.canton.trim()) e.canton = 'Seleccioná tu cantón.';
+    if (!form.distrito) e.distrito = 'Seleccioná tu distrito.';
     if (!form.direccion.trim()) e.direccion = 'Ingresá tu dirección.';
 
     const menor = (calcEdad(form.fechaNac) ?? 99) < 18;
@@ -713,12 +779,15 @@ function App() {
     else if (form.correo.trim().toLowerCase() !== form.correoConf.trim().toLowerCase()) e.correoConf = 'Los correos no coinciden.';
     if (!form.como) e.como = 'Seleccioná una opción.';
     if (!form.conocimientos) e.conocimientos = 'Seleccioná una opción.';
+    if (!form.clave || form.clave.length < 6) e.clave = 'Mínimo 6 caracteres.';
+    if (!form.claveConf) e.claveConf = 'Confirmá tu contraseña.';
+    else if (form.clave !== form.claveConf) e.claveConf = 'Las contraseñas no coinciden.';
 
     setErrors(e);
     if (Object.keys(e).length) {
       const order = ['cedula','nombre','doc_frente','doc_reverso','doc_titulo','fechaNac','sexo',
         'tutorNombre','tutorCedula','tutorCorreo','tutorTel',
-        'provincia','canton','direccion','telefono','whatsapp','correo','correoConf','como','conocimientos'];
+        'provincia','canton','distrito','direccion','telefono','whatsapp','correo','correoConf','como','conocimientos','clave','claveConf'];
       const first = order.find(k => e[k]);
       if (first) setTimeout(() => scrollToField(first), 50);
       return false;
@@ -748,12 +817,9 @@ function App() {
     if (!form.grupo) e.grupo = 'Seleccioná un grupo.';
     if (!form.financiamiento) e.financiamiento = 'Seleccioná una opción de financiamiento.';
     if (form.financiamiento === 'CONAPE' && !form.conapeEquipo) e.conapeEquipo = 'Seleccioná una opción de equipo.';
-    if (!form.clave || form.clave.length < 6) e.clave = 'Mínimo 6 caracteres.';
-    if (!form.claveConf) e.claveConf = 'Confirmá tu contraseña.';
-    else if (form.clave !== form.claveConf) e.claveConf = 'Las contraseñas no coinciden.';
     setErrors(e);
     if (Object.keys(e).length) {
-      const order = ['programa','grupo','financiamiento','conapeEquipo','clave','claveConf'];
+      const order = ['programa','grupo','financiamiento','conapeEquipo'];
       const first = order.find(k => e[k]);
       if (first) setTimeout(() => scrollToField(first), 50);
       return;
@@ -761,6 +827,9 @@ function App() {
 
     const esConape = form.financiamiento === 'CONAPE';
     const menor = (calcEdad(form.fechaNac) ?? 99) < 18;
+    // Modalidad derivada del grupo elegido (la lista viene del backend).
+    const grupoObj = (grupos || []).find(g => (g.codigo || g.code) === form.grupo);
+    const modalidad = grupoObj ? (grupoObj.modalidad || '').toUpperCase() : '';
 
     // ── Validar tamaño de las fotos antes de convertir ──────────────────────
     // (UploadZone ya filtra al seleccionar; esto es una red de seguridad y
@@ -802,6 +871,7 @@ function App() {
       telefono: form.telefono,
       provincia: form.provincia,
       canton: form.canton.trim(),
+      distrito: form.distrito,
       direccion: form.direccion.trim(),
       fecha_nac: form.fechaNac,
       sexo: form.sexo,
@@ -811,11 +881,13 @@ function App() {
       tutor_correo: menor ? form.tutorCorreo.trim() : '',
       tutor_tel:    menor ? form.tutorTel : '',
       programa: form.programa === 'ina' ? 'INA' : 'SIN_INA',
+      modalidad: modalidad,
       grupo_tentativo: form.grupo,
       financiamiento: form.financiamiento,
       conape_equipo: esConape ? form.conapeEquipo : 'NINGUNO',
       conape_toeic: esConape ? form.conapeToeic : false,
       conape_sostenimiento: esConape ? form.conapeSost.trim() : '',
+      beca: form.financiamiento === 'PROPIO' ? form.becaPropio : '',
       como_entero: form.como,
       asesor_ref: form.asesor,
       conocimientos_previos: form.conocimientos,
@@ -829,12 +901,29 @@ function App() {
     try {
       // text/plain: evita el preflight CORS que rompe Apps Script (doPost lee
       // el JSON en e.postData.contents igual). Patrón usado en todo el campus.
-      const res = await fetch(`${SCRIPT_URL}?fn=crearUsuarioEstudiante`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const enviarPayload = async (extra) => {
+        const res = await fetch(`${SCRIPT_URL}?fn=crearUsuarioEstudiante`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(extra ? { ...payload, ...extra } : payload),
+        });
+        return await res.json();
+      };
+
+      let data = await enviarPayload();
+
+      // Grupo en lista de espera (≥1.5× cupo): confirmar y reintentar.
+      if (data && !data.ok && data.estado_cupo === 'LISTA_ESPERA') {
+        const seguir = window.confirm('Este grupo está en lista de espera. ¿Continuar igual? Te llamamos si se abre cupo o si se libera espacio en otro grupo.');
+        if (!seguir) {
+          setPaso(2);
+          window.scrollTo({ top: 0, behavior: 'auto' });
+          setTimeout(() => scrollToField('grupo'), 80);
+          return;
+        }
+        data = await enviarPayload({ aceptar_lista_espera: true });
+      }
+
       if (data && data.ok) {
         setDone(true);
         window.scrollTo({ top: 0, behavior: 'auto' });
@@ -868,7 +957,7 @@ function App() {
       {paso === 1
         ? <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
             files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif} />
-        : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} />}
+        : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} grupos={grupos} setGrupos={setGrupos} />}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 
       {toast && (

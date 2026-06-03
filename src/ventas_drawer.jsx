@@ -201,7 +201,7 @@ function SuccessModal({ result, onClose, onExpediente }) {
 }
 
 // ── DRAWER PRINCIPAL ─────────────────────────────────────────────────────────
-function ProspectoDrawer({ cedula, asesor, demo, onClose, onToast, onView, onChanged }) {
+function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast, onView, onChanged }) {
   const [detalle, setDetalle] = vUseState(null);
   const [loading, setLoading] = vUseState(true);
   const [error, setError] = vUseState('');
@@ -209,6 +209,7 @@ function ProspectoDrawer({ cedula, asesor, demo, onClose, onToast, onView, onCha
   const [savingNota, setSavingNota] = vUseState(false);
   const [modal, setModal] = vUseState(null);   // 'cobrar' | 'activar' | 'cancelar' | { tipo:'success', result }
   const [actLoading, setActLoading] = vUseState('');
+  const [loadingProforma, setLoadingProforma] = vUseState(false);
   const fileRef = React.useRef(null);
   const pendingDocKey = React.useRef(null);
 
@@ -294,6 +295,43 @@ function ProspectoDrawer({ cedula, asesor, demo, onClose, onToast, onView, onCha
       } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo actualizar la etapa' });
     } catch (_) { onToast({ tipo: 'err', msg: 'Error de conexión' }); }
     finally { setActLoading(''); }
+  };
+
+  // ── Generar proforma CONAPE ──
+  const generarProforma = async () => {
+    setLoadingProforma(true);
+    try {
+      const r = demo
+        ? (await sleep(1200), { ok: true, url_programa: '#demo', url_equipo: '#demo', consecutivo_programa: 'DEMO-' + Math.floor(1000 + Math.random()*9000) })
+        : await window.generarProformaProspecto(detalle.cedula);
+      setLoadingProforma(false);
+      if (r && r.ok) {
+        onToast({ tipo: 'ok', msg: `Proforma Nº${r.consecutivo_programa} generada.` });
+        // Actualizar localmente las URLs en el drawer sin recargar
+        setDetalle(d => ({ ...d, proforma_url: r.url_programa, proforma_equipo_url: r.url_equipo }));
+        onChanged && onChanged({ cedula: detalle.cedula, proforma_url: r.url_programa, proforma_equipo_url: r.url_equipo });
+      } else {
+        onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo generar la proforma.' });
+      }
+    } catch (_) {
+      setLoadingProforma(false);
+      onToast({ tipo: 'err', msg: 'Error de conexión.' });
+    }
+  };
+
+  // ── Aprobar / rechazar beca (superadmin). Rechazar libera el cupo en backend;
+  //    el financiamiento se mantiene en PROPIO (beca rechazada = paga 100%). ──
+  const decidirBeca = async (decision) => {
+    if (!window.confirm(`¿Confirmás ${decision === 'APROBADA' ? 'APROBAR' : 'RECHAZAR'} la beca?`)) return;
+    try {
+      const r = demo ? { ok: true }
+        : await window.aprobarBecaProspecto(detalle.cedula, decision, asesor);
+      if (r && r.ok) {
+        setDetalle(d => ({ ...d, beca_estado: decision }));
+        onChanged && onChanged({ cedula: detalle.cedula, beca_estado: decision });
+        onToast({ tipo: 'ok', msg: `Beca ${decision.toLowerCase()}.` });
+      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo actualizar la beca.' });
+    } catch (_) { onToast({ tipo: 'err', msg: 'Error de conexión.' }); }
   };
 
   // ── Éxito tras cobrar/activar ──
@@ -397,6 +435,47 @@ function ProspectoDrawer({ cedula, asesor, demo, onClose, onToast, onView, onCha
                 <window.DocsBlock detalle={d} onView={onView} onSubirManual={(key) => triggerUpload(key)} />
               </section>
 
+              {/* 4b · PROFORMAS CONAPE */}
+              {(d.proforma_url || d.proforma_equipo_url) ? (
+                <section className="vx-block">
+                  <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Proformas CONAPE</div>
+                  {d.proforma_url ? (
+                    <a href={d.proforma_url} target="_blank" rel="noopener" className="vx-docrow vx-doclink">
+                      <span className="vx-docrow-ic">PDF</span>
+                      <div style={{ flex: 1, fontWeight: 600 }}>Proforma de programa</div>
+                      <span className="vx-copy">abrir</span>
+                    </a>
+                  ) : null}
+                  {d.proforma_equipo_url ? (
+                    <a href={d.proforma_equipo_url} target="_blank" rel="noopener" className="vx-docrow vx-doclink">
+                      <span className="vx-docrow-ic">IMG</span>
+                      <div style={{ flex: 1, fontWeight: 600 }}>Proforma de equipo</div>
+                      <span className="vx-copy">abrir</span>
+                    </a>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {/* 4c · BECA SOLICITADA (solo PROPIO + beca con valor) */}
+              {d.financiamiento === 'PROPIO' && d.beca ? (
+                <section className="vx-block">
+                  <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Beca solicitada</div>
+                  <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong>{d.beca}</strong>
+                    <span style={{ color: 'var(--v-ink-3)' }}>Estado:</span>
+                    <span className={`vx-badge vx-beca-${d.beca_estado === 'APROBADA' ? 'green' : d.beca_estado === 'RECHAZADA' ? 'red' : 'amber'}`}>
+                      {d.beca_estado || 'SOLICITADA'}
+                    </span>
+                  </div>
+                  {esSuperadmin && (!d.beca_estado || d.beca_estado === 'SOLICITADA') ? (
+                    <div className="vx-btn-row" style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                      <button className="vx-btn vx-btn-success" onClick={() => decidirBeca('APROBADA')}>Aprobar</button>
+                      <button className="vx-btn vx-btn-danger-ghost" onClick={() => decidirBeca('RECHAZADA')}>Rechazar (libera cupo)</button>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               {/* 5 · NOTAS */}
               <section className="vx-block">
                 <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Notas</div>
@@ -443,6 +522,13 @@ function ProspectoDrawer({ cedula, asesor, demo, onClose, onToast, onView, onCha
 
             {/* 8 · FOOTER ACCIONES */}
             <div className="vx-dr-foot">
+              {d.financiamiento === 'CONAPE' && d.etapa !== 'CANCELADO' ? (
+                <button className="vx-btn vx-btn-ghost vx-btn-block" onClick={generarProforma} disabled={loadingProforma}>
+                  {loadingProforma
+                    ? <><span className="vx-spin dark" /> Generando proforma…</>
+                    : (d.proforma_url ? '↻ Regenerar proforma CONAPE' : '📄 Generar proforma CONAPE')}
+                </button>
+              ) : null}
               {d.etapa === 'ACTIVO' ? (
                 <React.Fragment>
                   <button className="vx-btn vx-btn-navy vx-btn-block vx-btn-lg" onClick={irExpediente}>

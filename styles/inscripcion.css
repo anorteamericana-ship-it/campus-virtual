@@ -475,6 +475,9 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
 .gcard-meta .gm-row { font-size: 13px; color: var(--ins-ink-3); }
 
 .gcard-foot { margin-top: 2px; }
+.gh-periodo { font-size: 11.5px; font-weight: 600; color: var(--ins-ink-3); margin-bottom: 1px; letter-spacing: .005em; }
+.gcard.espera { border-style: dashed; }
+.gcard.espera:not(.sel) { background: color-mix(in srgb, var(--ins-warn) 5%, white); border-color: color-mix(in srgb, var(--ins-warn) 35%, var(--ins-line)); }
 .cupo-badge { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
 .cupo-badge.red    { background: color-mix(in srgb, var(--ins-error) 12%, white); color: #b3261e; }
 .cupo-badge.orange { background: color-mix(in srgb, var(--ins-warn) 16%, white); color: #8a6400; }
@@ -511,13 +514,36 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
 .fc-sub { font-size: 12.5px; color: var(--ins-ink-2); }
 .fc-locktip { position: absolute; top: 12px; right: 14px; color: var(--ins-ink-3); }
 
-/* ── CONAPE BLOCKS ──────────────────────────────────────────────────────── */
-.conape-box .conape-block { padding-top: 16px; margin-top: 16px; border-top: 1px solid color-mix(in srgb, var(--ins-primary) 20%, white); }
-.conape-box .conape-block:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+/* ── CONAPE BLOCKS (recuadros separados) ────────────────────────────────── */
+.conape-box .conape-block {
+  background: #fff; border: 1px solid color-mix(in srgb, var(--ins-primary) 22%, white);
+  border-radius: var(--ins-r-sm); padding: 14px 15px; margin-top: 12px;
+}
+.conape-box .conape-block:first-child { margin-top: 0; }
 .cb-title { font-size: 14px; font-weight: 700; color: var(--ins-primary-d); margin-bottom: 4px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .cb-opt { font-size: 10px; font-weight: 700; color: var(--ins-ink-3); background: #fff; border: 1px solid var(--ins-line); border-radius: 999px; padding: 1px 8px; }
 .cb-note { font-size: 12px; color: var(--ins-ink-2); line-height: 1.5; }
 .cb-hint { font-size: 11.5px; color: var(--ins-ink-3); margin-top: 6px; line-height: 1.45; }
+
+/* ── PAGO PROPIO: becas ─────────────────────────────────────────────────── */
+.propio-box {
+  background: #f4f8fc; border-left: 4px solid var(--ins-primary); border-radius: var(--ins-r-sm);
+  padding: 16px; margin-top: 16px;
+}
+.beca-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .beca-grid { grid-template-columns: 1fr; } }
+.beca-card {
+  position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 14px 15px;
+  border: 1.5px solid var(--ins-line); border-radius: var(--ins-r-sm); cursor: pointer;
+  background: #fff; transition: all .15s;
+}
+.beca-card:hover { border-color: var(--ins-line-2); }
+.beca-card.sel { border-color: var(--ins-primary); background: color-mix(in srgb, var(--ins-primary) 6%, white); box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ins-primary) 15%, transparent); }
+.beca-card input { accent-color: var(--ins-primary); width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.beca-ico { font-size: 22px; line-height: 1; flex-shrink: 0; }
+.beca-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.beca-body b { font-size: 14px; font-weight: 700; color: #1a2547; letter-spacing: -.01em; }
+.beca-body i { font-size: 11.5px; font-style: normal; color: var(--ins-ink-3); line-height: 1.4; }
 
 /* equipo de cómputo */
 .equipo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }

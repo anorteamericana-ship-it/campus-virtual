@@ -63,11 +63,17 @@ function VentasApp() {
     return () => { cancel = true; };
   }, [scopeAsesor, demo]);
 
-  // Optimistic update cuando el drawer cambia una etapa
-  const onChanged = useCallback(({ cedula, etapa }) => {
+  // Optimistic update cuando el drawer cambia algo del prospecto (etapa, beca,
+  // proformas, …). Merge genérico: respeta cualquier campo que envíe el drawer.
+  const onChanged = useCallback(({ cedula, ...campos }) => {
     setProspectos(prev => {
       if (!prev) return prev;
-      const next = prev.map(p => p.cedula === cedula ? { ...p, etapa, fecha_activacion: etapa === 'ACTIVO' ? window.HOY : p.fecha_activacion } : p);
+      const next = prev.map(p => {
+        if (p.cedula !== cedula) return p;
+        const merged = { ...p, ...campos };
+        if (campos.etapa === 'ACTIVO') merged.fecha_activacion = window.HOY;
+        return merged;
+      });
       setResumen(window.calcResumen(next));
       return next;
     });
@@ -182,6 +188,7 @@ function VentasApp() {
           cedula={drawerCed}
           asesor={usuario.nombre}
           demo={demo}
+          esSuperadmin={esSuper}
           onClose={() => setDrawerCed(null)}
           onToast={setToast}
           onView={(src, caption) => setLightbox({ src, caption })}
