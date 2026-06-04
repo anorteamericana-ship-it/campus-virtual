@@ -20,7 +20,7 @@ const {
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 1 — DATOS PERSONALES
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif }) {
+function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif, asesores }) {
   // 'verif' (idle | loading | exists | free) se eleva al App para que validarPaso1 lo lea
   const [showPwd, setShowPwd] = useState(false);
   const [showPwd2, setShowPwd2] = useState(false);
@@ -350,7 +350,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
         <Field label="Asesor de referencia" optional>
           <select value={form.asesor} onChange={e => set('asesor', e.target.value)}>
             <option value="">— Ninguno —</option>
-            {ASESORES.map(a => <option key={a}>{a}</option>)}
+            {asesores.map(a => <option key={a.nombre} value={a.nombre}>{a.nombre}</option>)}
           </select>
         </Field>
       </div>
@@ -642,8 +642,9 @@ const EXITO_TXT = {
   BECA:   'Tu solicitud de beca está siendo revisada. Pronto te contactamos para coordinar el pago de matrícula.',
   PROPIO: 'Para activar tu cuenta completá el pago de matrícula. Escribinos por WhatsApp para coordinar.',
 };
-function Exito({ financiamiento }) {
+function Exito({ financiamiento, waLink }) {
   const propio = financiamiento === 'PROPIO';
+  const wa = waLink || WA_NUMBER; // wa_link del asesor seleccionado · fallback al número genérico
   return (
     <div className="success-wrap">
       <div className="success-card">
@@ -651,7 +652,7 @@ function Exito({ financiamiento }) {
         <div className="success-h1">¡Te registraste correctamente!</div>
         <div className="success-p">{EXITO_TXT[financiamiento] || EXITO_TXT.PROPIO}</div>
         {propio && (
-          <a className="success-wa" href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, acabo de registrarme y quiero coordinar el pago de matrícula.')}`} target="_blank" rel="noopener">
+          <a className="success-wa" href={`https://wa.me/${wa}?text=${encodeURIComponent('Hola, acabo de registrarme y quiero coordinar el pago de matrícula.')}`} target="_blank" rel="noopener">
             <IcoFill d={I.wa} size={18} /> Coordinar pago por WhatsApp
           </a>
         )}
@@ -719,6 +720,7 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [toast, setToast] = useState('');
+  const [asesores, setAsesores] = useState([]); // asesores activos (rol=ventas) cargados del backend
 
   const set = useCallback((k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -744,6 +746,18 @@ function App() {
     const t = setTimeout(() => setToast(''), 5000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Asesores activos (rol=ventas) desde el backend — alimentan el dropdown
+  // "Asesor de referencia" y el link de WhatsApp final. Si la lista viene
+  // vacía, el dropdown queda con "— Ninguno —" y el flujo no se bloquea.
+  useEffect(() => {
+    fetch(`${SCRIPT_URL}?fn=getAsesoresActivos`)
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.ok && Array.isArray(d.asesores)) setAsesores(d.asesores);
+      })
+      .catch(err => console.error('Error cargando asesores:', err));
+  }, []);
 
   // ── Validación Página 1 ──
   const validarPaso1 = () => {
@@ -942,10 +956,12 @@ function App() {
   };
 
   if (done) {
+    const asesorSel = asesores.find(a => a.nombre === form.asesor);
+    const waLink = asesorSel ? asesorSel.wa_link : WA_NUMBER; // fallback al número genérico
     return (
       <>
         <Header />
-        <Exito financiamiento={form.financiamiento} />
+        <Exito financiamiento={form.financiamiento} waLink={waLink} />
       </>
     );
   }
@@ -956,7 +972,7 @@ function App() {
       <Progress paso={paso} />
       {paso === 1
         ? <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
-            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif} />
+            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif} asesores={asesores} />
         : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} grupos={grupos} setGrupos={setGrupos} />}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 

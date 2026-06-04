@@ -299,10 +299,13 @@ function App() {
       }));
       const rolCampus = acc.rol === 'teacher' ? 'teacher'
                       : acc.rol === 'student' ? 'student'
+                      : acc.rol === 'ventas'  ? 'ventas'
                       : 'admin';
       localStorage.setItem('an_role', rolCampus);
     } catch (e) {}
-    setTimeout(() => { window.location.href = 'campus.html'; }, 1100);
+    // El panel de ventas vive en ventas.html; el resto de roles entra al campus.
+    const destino = acc.rol === 'ventas' ? 'ventas.html' : 'campus.html';
+    setTimeout(() => { window.location.href = destino; }, 1100);
   };
 
   const submit = async (e) => {
