@@ -269,6 +269,18 @@ function calcularLeccionActual(startDate, diasCode, estatus) {
 // ─────────────────────────────────────────────────────────────────────────
 function ChipGrupo({ grupo, seleccionado, onClick }) {
   const cfg = NIVEL_CONFIG[nivelToId(grupo.nivel)] || NIVEL_CONFIG.B1;
+  const bajoMinimo = (grupo.estudiantes ?? grupo.students ?? 0) < 5;
+
+  // Fecha legible corta (ej "14 set 2026")
+  let fechaCorta = '';
+  if (grupo.fecha_inicio) {
+    const d = new Date(grupo.fecha_inicio + 'T00:00:00');
+    if (!isNaN(d.getTime())) {
+      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','set','oct','nov','dic'];
+      fechaCorta = d.getDate() + ' ' + meses[d.getMonth()] + ' ' + d.getFullYear();
+    }
+  }
+
   return (
     <div onClick={onClick} style={{
       background: seleccionado ? cfg.color : cfg.bg,
@@ -279,10 +291,26 @@ function ChipGrupo({ grupo, seleccionado, onClick }) {
       transition: 'all 0.15s',
       color: seleccionado ? 'white' : cfg.color,
       boxShadow: seleccionado ? `0 4px 14px ${cfg.bg}` : 'none',
+      position: 'relative',
     }}>
       <div style={{ fontWeight: 800, fontSize: 13, fontFamily:'var(--f-mono, monospace)', letterSpacing:'-0.01em' }}>{grupo.code}</div>
       <div style={{ fontSize: 11, opacity: 0.8, marginTop:2 }}>{cfg.nombre}</div>
-      <div style={{ fontSize: 11, marginTop: 4, fontWeight:600 }}>{grupo.estudiantes ?? grupo.students ?? 0} est.</div>
+      {fechaCorta && (
+        <div style={{ fontSize: 10, opacity: 0.7, marginTop: 3, fontStyle: 'italic' }}>
+          Inicia: {fechaCorta}
+        </div>
+      )}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:4 }}>
+        <span style={{ fontSize: 11, fontWeight:600 }}>{grupo.estudiantes ?? grupo.students ?? 0} est.</span>
+        {bajoMinimo && (
+          <span style={{
+            fontSize: 9, fontWeight:700, letterSpacing:'0.04em',
+            padding:'2px 5px', borderRadius:3,
+            background: seleccionado ? 'rgba(255,255,255,0.25)' : 'rgba(220,80,30,0.15)',
+            color: seleccionado ? 'white' : '#C0392B',
+          }}>⚠ BAJO MÍN.</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -905,15 +933,80 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
       ) : grupos.length === 0 ? (
         <div style={{ color:'var(--ink-3, #888)', padding:20 }}>No hay grupos activos.</div>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(5, minmax(0,1fr))', gap:12, marginBottom:32 }}>
-          {grupos.map(g => (
-            <ChipGrupo
-              key={g.code}
-              grupo={g}
-              seleccionado={grupoSel === g.code}
-              onClick={() => setGrupoSel(g.code)}
-            />
-          ))}
+        <div style={{ marginBottom: 32 }}>
+          {(() => {
+            // Agrupar por (anio, tipo_periodo, num_periodo). Si falta info → "Sin fecha"
+            const grupos_por_periodo = {};
+            grupos.forEach(g => {
+              const key = (g.anio && g.tipo_periodo && g.num_periodo)
+                ? `${g.anio}|${g.tipo_periodo}|${g.num_periodo}`
+                : 'SIN_FECHA';
+              if (!grupos_por_periodo[key]) {
+                grupos_por_periodo[key] = {
+                  anio:          g.anio,
+                  tipo_periodo:  g.tipo_periodo,
+                  num_periodo:   g.num_periodo,
+                  periodo_label: g.periodo_label || 'Sin fecha definida',
+                  grupos:        [],
+                };
+              }
+              grupos_por_periodo[key].grupos.push(g);
+            });
+
+            // Orden cronológico: año asc → fecha de inicio asc
+            const keys = Object.keys(grupos_por_periodo).sort((a, b) => {
+              if (a === 'SIN_FECHA') return 1;
+              if (b === 'SIN_FECHA') return -1;
+              const A = grupos_por_periodo[a];
+              const B = grupos_por_periodo[b];
+              if (A.anio !== B.anio) return A.anio - B.anio;
+              const fa = A.grupos[0]?.fecha_inicio || '';
+              const fb = B.grupos[0]?.fecha_inicio || '';
+              return fa.localeCompare(fb);
+            });
+
+            return keys.map(k => {
+              const bloque = grupos_por_periodo[k];
+              const colorBloque = bloque.tipo_periodo === 'B' ? '#E67E22' : '#1565C0';
+              return (
+                <div key={k} style={{ marginBottom: 22 }}>
+                  <div style={{
+                    display:'flex', alignItems:'center', gap:10,
+                    padding:'6px 0', marginBottom:10,
+                    borderBottom:`2px solid ${colorBloque}22`,
+                  }}>
+                    <span style={{
+                      background: colorBloque,
+                      color: 'white',
+                      fontSize: 10, fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                    }}>{bloque.tipo_periodo === 'B' ? 'BIMESTRAL' : 'CUATRIMESTRAL'}</span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700,
+                      color: 'var(--an-navy, #14213D)',
+                    }}>{bloque.periodo_label}</span>
+                    <span style={{
+                      fontSize: 11, color: 'var(--ink-3, #888)',
+                      marginLeft: 'auto',
+                    }}>{bloque.grupos.length} grupo{bloque.grupos.length === 1 ? '' : 's'}</span>
+                  </div>
+
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(5, minmax(0,1fr))', gap:12 }}>
+                    {bloque.grupos.map(g => (
+                      <ChipGrupo
+                        key={g.code}
+                        grupo={g}
+                        seleccionado={grupoSel === g.code}
+                        onClick={() => setGrupoSel(g.code)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
 
