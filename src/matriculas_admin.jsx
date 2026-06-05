@@ -14,6 +14,25 @@
     const r = await fetch(`${API}?${qs}`);
     return await r.json();
   }
+  // POST en text/plain para esquivar el preflight CORS (mismo patrón que ventas_data.jsx).
+  async function apiPost(payload) {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    return await r.json();
+  }
+  // Endpoints de prospecto: self-contained. NO dependemos de window.getProspectoDetalle
+  // ni window.agregarNotaProspecto — esas viven en ventas_data.jsx, que NO se carga en
+  // campus.html (sí en la app de ventas). Llamarlas acá daba undefined() → pantalla en
+  // blanco. Acá las invocamos directo contra el Apps Script.
+  async function getDetalle(cedula) {
+    return await apiGet(`fn=getProspectoDetalle&cedula=${enc(cedula)}`);
+  }
+  async function postNota(cedula, asesor, texto) {
+    return await apiPost({ fn: 'agregarNotaProspecto', cedula, asesor, texto });
+  }
 
   // Getter case-insensitive: tolera columnas MAYÚSCULAS de la hoja y llaves
   // minúsculas normalizadas. Aplana tutor.* y conape.* a tutor_x / conape_x.
@@ -78,43 +97,132 @@
     );
   }
 
-  // ── Cambio 6 · Resumen de activos por nivel + comparativa ───────────────────
-  function MatResumenActivos({ resumen }) {
-    if (!resumen) return null;
-    const apn = resumen.activos_por_nivel || {};
-    const niveles = [
-      ['B1', 'Básico I', '#E5A823'],
-      ['B2', 'Básico II', '#E8372A'],
-      ['I1', 'Intermedio I', '#2B7FC1'],
-      ['I2', 'Intermedio II', '#4CAF50'],
-    ];
-    const tasa = resumen.tasa_conversion;
+  // ── Helpers de resumen ──────────────────────────────────────────────────────
+  // Decodificador de días self-contained. Los códigos de grupos_abiertos llegan
+  // limpios del backend (v4.30.2): "LM", "KJ", "S", "LJ".
+  const DIAS_C = { L: 'Lun', K: 'Mar', M: 'Mié', J: 'Jue', V: 'Vie', S: 'Sáb' };
+  function decodeDiasLocal(cod) {
+    const c = String(cod || '').toUpperCase().trim();
+    if (!c) return '';
+    if (c === 'LJ') return 'Lun a Jue';
+    const parts = c.split('').map(ch => DIAS_C[ch]).filter(Boolean);
+    return parts.length ? parts.join('/') : c;
+  }
+  const MESES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+  function fmtFechaCorta(f) {
+    const [y, m, d] = String(f || '').split('-').map(Number);
+    if (!y || !m || !d) return String(f || '—');
+    return `${d} ${MESES_C[m - 1]} ${y}`;
+  }
+  // Agrupa un array de prospectos por una llave (tolerante a MAY/min y vacío).
+  function agrupar(prospectos, keys, vacioLabel) {
+    const acc = {};
+    (prospectos || []).forEach(p => {
+      let v = '';
+      for (const k of keys) { if (p[k] != null && String(p[k]).trim() !== '') { v = String(p[k]).trim(); break; } }
+      const label = v || vacioLabel;
+      acc[label] = (acc[label] || 0) + 1;
+    });
+    return Object.entries(acc).sort((a, b) => b[1] - a[1]);
+  }
+
+  // ── Cambio 6 (revisado) · Resumen de Matrículas ─────────────────────────────
+  // 3 bloques nuevos (grupos abiertos · distribución por grupo · resumen por
+  // asesor) + Comparativa. Se quitó "Estudiantes activos por nivel" (no aplica).
+  function MatResumenActivos({ resumen, prospectos }) {
+    if (!resumen && !(prospectos && prospectos.length)) return null;
+    const r = resumen || {};
+    const grupos = Array.isArray(r.grupos_abiertos) ? r.grupos_abiertos : [];
+    const distrib = agrupar(prospectos, ['GRUPO_TENTATIVO', 'grupo_tentativo', 'grupo'], '(Sin grupo)');
+    const porAsesor = agrupar(prospectos, ['ASESOR_REF', 'asesor_ref', 'asesor'], '(Sin asesor)');
+    const tasa = r.tasa_conversion;
+
+    const cupoBadge = (g) => {
+      const disp = Number(g.cupo_disponible);
+      if (disp === 0) return ['Cerrado', 'mat-gb-red'];
+      if (disp <= 3) return ['Pocos cupos', 'mat-gb-yellow'];
+      return ['Disponible', 'mat-gb-green'];
+    };
+    const totalProsp = (prospectos || []).length;
+
     return (
-      <div className="mat-resumen">
-        <div className="card">
-          <div className="mat-res-h">Estudiantes activos por nivel</div>
-          <div className="mat-niveles">
-            {niveles.map(([k, label, color]) => (
-              <div key={k} className="mat-niv" style={{ '--mn-color': color }}>
-                <div className="mat-niv-bar" />
-                <div className="mat-niv-txt">
-                  <span className="mat-niv-n">{apn[k] != null ? apn[k] : '—'}</span>
-                  <span className="mat-niv-l">{k} · {label}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="mat-resumen2">
+        {/* ── 3a · Grupos abiertos para inscripción ── */}
+        <div className="card mat-r2-grupos">
+          <div className="mat-res-h">Grupos abiertos para inscripción</div>
+          {grupos.length === 0 ? (
+            <div className="mat-r2-empty">No hay grupos con inicio próximo.</div>
+          ) : (
+            <div className="mat-gb-grid">
+              {grupos.map((g, i) => {
+                const [badgeTxt, badgeCls] = cupoBadge(g);
+                const dias = decodeDiasLocal(g.dias);
+                const hora = [g.hora_ini, g.hora_fin].filter(Boolean).join('–');
+                const disp = g.cupo_disponible != null ? g.cupo_disponible : '—';
+                const cap = g.capacidad != null ? g.capacidad : '—';
+                return (
+                  <div key={g.codigo || i} className="mat-gb-card">
+                    <div className="mat-gb-top">
+                      <span className="mat-gb-cod">{g.codigo || '—'}</span>
+                      <span className={`mat-gb-badge ${badgeCls}`}>{badgeTxt}</span>
+                    </div>
+                    <div className="mat-gb-sched">{[dias, hora].filter(Boolean).join(' · ') || '—'}</div>
+                    <div className="mat-gb-meta">
+                      <span>Inicia {fmtFechaCorta(g.fecha_inicio)}</span>
+                      <span className="mat-gb-cupo">{disp} / {cap}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-        <div className="card">
+
+        {/* ── 3b · Distribución de prospectos por grupo ── */}
+        <div className="card mat-r2-list">
+          <div className="mat-res-h">Distribución de prospectos por grupo</div>
+          {distrib.length === 0 ? (
+            <div className="mat-r2-empty">Sin prospectos en pre matrícula.</div>
+          ) : (
+            <div className="mat-kv-list">
+              {distrib.map(([g, n]) => (
+                <div key={g} className="mat-kv">
+                  <span className="mat-kv-k mono">{g}</span>
+                  <span className="mat-kv-n">{n} <i>{n === 1 ? 'prospecto' : 'prospectos'}</i></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── 3c · Resumen por asesor ── */}
+        <div className="card mat-r2-list">
+          <div className="mat-res-h">Resumen por asesor</div>
+          {porAsesor.length === 0 ? (
+            <div className="mat-r2-empty">Sin prospectos asignados.</div>
+          ) : (
+            <div className="mat-kv-list">
+              {porAsesor.map(([a, n]) => (
+                <div key={a} className="mat-kv">
+                  <span className="mat-kv-k">{a}</span>
+                  <span className="mat-kv-n">{n} <i>{n === 1 ? 'prospecto' : 'prospectos'}</i></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Comparativa (se mantiene) ── */}
+        <div className="card mat-r2-comp">
           <div className="mat-res-h">Comparativa</div>
           <div className="mat-comp">
             <div className="mat-comp-row">
               <span className="mat-comp-l">Activos</span>
-              <span className="mat-comp-v">{resumen.total_activos != null ? resumen.total_activos : '—'}</span>
+              <span className="mat-comp-v">{r.total_activos != null ? r.total_activos : '—'}</span>
             </div>
             <div className="mat-comp-row">
               <span className="mat-comp-l">PRE MATRÍCULA</span>
-              <span className="mat-comp-v">{resumen.total_prospectos_no_activos != null ? resumen.total_prospectos_no_activos : '—'}</span>
+              <span className="mat-comp-v">{r.total_prospectos_no_activos != null ? r.total_prospectos_no_activos : totalProsp}</span>
             </div>
             <div className="mat-comp-row mat-comp-tasa">
               <span className="mat-comp-l">Tasa de conversión</span>
@@ -156,7 +264,7 @@
 
     useEffect(() => {
       let cancel = false;
-      window.getProspectoDetalle(cedula)
+      getDetalle(cedula)
         .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar el prospecto.'); })
         .catch(e => { if (!cancel) setError(e.message); })
         .finally(() => { if (!cancel) setLoading(false); });
@@ -195,7 +303,7 @@
       setSaving(true);
       try {
         const asesor = (window.getSesion && window.getSesion() || {}).nombre || 'Asesor';
-        const r = await window.agregarNotaProspecto(cedula, asesor, notaNueva.trim());
+        const r = await postNota(cedula, asesor, notaNueva.trim());
         if (r && r.ok) { onToast('Nota guardada.', 'ok'); setNotaNueva(''); }
         else onToast((r && r.error) || 'No se pudo guardar la nota.', 'err');
       } catch (e) { onToast('Error de conexión: ' + e.message, 'err'); }
@@ -396,7 +504,7 @@
 
     useEffect(() => {
       let cancel = false;
-      window.getProspectoDetalle(cedula)
+      getDetalle(cedula)
         .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar el prospecto.'); })
         .catch(e => { if (!cancel) setError(e.message); })
         .finally(() => { if (!cancel) setLoading(false); });

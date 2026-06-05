@@ -193,8 +193,30 @@ function decodeDias(cod) {
   const c = String(cod || '').toUpperCase().trim();
   if (!c) return '';
   if (c === 'LJ') return 'Lun a Jue';                       // Super Intensivo · 4 días
-  const parts = c.split('').map((ch) => DIAS_CORTO[ch]).filter(Boolean);
+  // Defensivo: deduplicar letras repetidas preservando el orden semanal
+  // (por si llega un código contaminado tipo "LMLM").
+  const orden = 'LKMJVS';
+  const limpio = c.replace(/[^LKMJVS]/g, '');
+  const uniq = limpio
+    ? [...new Set(limpio.split(''))].sort((a, b) => orden.indexOf(a) - orden.indexOf(b)).join('')
+    : c;
+  if (uniq === 'LJ') return 'Lun a Jue';
+  const parts = uniq.split('').map((ch) => DIAS_CORTO[ch]).filter(Boolean);
   return parts.length ? parts.join('/') : c;               // ej. "LM" → "Lun/Mié"
+}
+
+// Código de días CONFIABLE de un grupo. La columna DIAS de la hoja GRUPOS tiene
+// 1 fila por NIVEL y puede llegar concatenada (ej. "LSMLS") cuando el backend
+// junta todas las filas del grupo. El CÓDIGO del grupo siempre codifica los días
+// en su 2º segmento — "B1-LM18-C3-0726" → "LM", "I1-S08-A1-0526" → "S" — así que
+// preferimos esa fuente. Si no se puede, deduplicamos el campo DIAS.
+function diasDeGrupo(g) {
+  if (!g) return '';
+  const code = String(G.cod(g) || '').toUpperCase();
+  const seg = code.split('-')[1] || '';
+  const fromCode = (seg.match(/^[LKMJVS]+/) || [''])[0];
+  if (fromCode) return fromCode;
+  return String(G.dias(g) || '').toUpperCase().replace(/[^LKMJVS]/g, '');
 }
 
 // Hora 12h compacta → "6:00pm". Rango → "6:00pm–9:00pm".
@@ -495,7 +517,7 @@ function GrupoCard({ g, selected, onSelect }) {
   const { ini, fin } = G.horas(g);
   // Cambio 1 — los 3 bloques de info siempre visibles (sin toggle):
   const periodoTxt = buildPeriodo(g);                                  // "Cuatrimestre 2 · May–Ago 2026"
-  const diasTxt = decodeDias(G.dias(g));                               // "Lun/Mié"
+  const diasTxt = decodeDias(diasDeGrupo(g));                          // "Lun/Mié" (días tomados del código del grupo)
   const horaTxt = formatRango12(ini, fin);                             // "6:00pm–9:00pm"
   const fechaTxt = G.fecha(g) ? formatFechaInicio(G.fecha(g)) : '';    // "12-may-2026"
 
@@ -587,7 +609,7 @@ Object.assign(window, {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
   PROVINCIAS, CR_GEO, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   NIVEL_LABEL, DIAS_LABEL, MODALIDAD_LABEL, formatHora, formatHoraMil, formatFecha, formatFechaCorta, G,
-  MESES_CORTO, DIAS_CORTO, decodeDias, formatHora12, formatRango12, formatFechaInicio, buildPeriodo, getCupoFake,
+  MESES_CORTO, DIAS_CORTO, decodeDias, diasDeGrupo, formatHora12, formatRango12, formatFechaInicio, buildPeriodo, getCupoFake,
   fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor, fmtBytes, MAX_FILE,
   I, Ico, IcoFill, LockBadge,
   Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard

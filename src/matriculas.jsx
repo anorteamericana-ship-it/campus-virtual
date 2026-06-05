@@ -1001,8 +1001,8 @@ function MatriculasView() {
         ))}
       </div>
 
-      {/* Resumen activos por nivel + comparativa (Cambio 6) */}
-      <window.MatResumenActivos resumen={resumen} />
+      {/* Resumen de Matrículas: grupos abiertos · distribución · asesores · comparativa (Cambio 6 revisado) */}
+      <window.MatResumenActivos resumen={resumen} prospectos={prospectos} />
 
       {/* Tabla */}
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
