@@ -475,7 +475,12 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
 .gcard-meta .gm-row { font-size: 13px; color: var(--ins-ink-3); }
 
 .gcard-foot { margin-top: 2px; }
-.gh-periodo { font-size: 11.5px; font-weight: 600; color: var(--ins-ink-3); margin-bottom: 1px; letter-spacing: .005em; }
+.gh-periodo {
+  display: inline-flex; align-self: flex-start; font-size: 11.5px; font-weight: 700;
+  color: var(--ins-primary-d); background: color-mix(in srgb, var(--ins-primary) 9%, white);
+  border: 1px solid color-mix(in srgb, var(--ins-primary) 20%, white);
+  padding: 3px 10px; border-radius: 999px; letter-spacing: .005em; margin-bottom: 1px;
+}
 .gcard.espera { border-style: dashed; }
 .gcard.espera:not(.sel) { background: color-mix(in srgb, var(--ins-warn) 5%, white); border-color: color-mix(in srgb, var(--ins-warn) 35%, var(--ins-line)); }
 .cupo-badge { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
@@ -570,3 +575,19 @@ input:disabled, select:disabled { background: #f3f5f8; color: var(--ins-ink-3); 
 /* nota usuario (contraseña) */
 .user-note { font-size: 13px; color: var(--ins-ink-2); margin-top: 14px; }
 .user-note strong { color: var(--ins-primary); font-weight: 700; }
+
+/* input prellenado por el TSE (solo lectura) */
+input[readonly] { background: var(--ins-bg); color: var(--ins-ink-2); cursor: default; }
+
+/* ── CUENTA YA EXISTENTE — bloqueo del formulario (Cambio 3) ─────────────── */
+.cuenta-existe { text-align: center; border: 2px solid color-mix(in srgb, var(--ins-error) 30%, white); background: color-mix(in srgb, var(--ins-error) 5%, white); }
+.cuenta-existe .ce-ico {
+  width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--ins-error) 12%, white); color: #b3261e;
+}
+.cuenta-existe .ce-title { font-size: 17px; font-weight: 800; color: #1a2547; letter-spacing: -.01em; }
+.cuenta-existe .ce-msg { font-size: 13.5px; color: var(--ins-ink-2); line-height: 1.55; margin: 8px auto 16px; max-width: 380px; }
+.cuenta-existe .ce-actions { display: flex; justify-content: center; }
+.cuenta-existe .ce-actions .btn { width: auto; min-width: 200px; text-decoration: none; }
+.cuenta-existe .ce-hint { font-size: 11.5px; color: var(--ins-ink-3); margin-top: 14px; }

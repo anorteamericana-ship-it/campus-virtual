@@ -14,6 +14,7 @@ const ROLE_LABEL = {
   teacher: 'Docente',
   student: 'Estudiante',
   family:  'Familiar / Encargado',
+  ventas:  'Asesor',
 };
 
 // ── Brand assets (locales) ─────────────────────────────────────────────────

@@ -182,6 +182,96 @@ function formatHoraMil(h) {
   return `${String(Number(hh)).padStart(2, '0')}:${(mm || '00').padStart(2, '0')}`;
 }
 
+// ── DECODIFICADORES PARA CARDS DE GRUPO EXPANDIDAS (Cambio 1) ────────────────
+const MESES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+// La columna DIAS en GRUPOS usa códigos de un carácter: L=lunes, K=martes,
+// M=miércoles, J=jueves, V=viernes, S=sábado. "LJ" es el caso especial del
+// Super Intensivo (lunes a jueves, 4 días/semana).
+const DIAS_CORTO = { L: 'Lun', K: 'Mar', M: 'Mié', J: 'Jue', V: 'Vie', S: 'Sáb' };
+function decodeDias(cod) {
+  const c = String(cod || '').toUpperCase().trim();
+  if (!c) return '';
+  if (c === 'LJ') return 'Lun a Jue';                       // Super Intensivo · 4 días
+  const parts = c.split('').map((ch) => DIAS_CORTO[ch]).filter(Boolean);
+  return parts.length ? parts.join('/') : c;               // ej. "LM" → "Lun/Mié"
+}
+
+// Hora 12h compacta → "6:00pm". Rango → "6:00pm–9:00pm".
+function formatHora12(h) {
+  if (!h) return '';
+  const [hh, mm] = String(h).split(':').map(Number);
+  if (Number.isNaN(hh)) return String(h);
+  const ampm = hh >= 12 ? 'pm' : 'am';
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm || 0).padStart(2, '0')}${ampm}`;
+}
+function formatRango12(ini, fin) {
+  return [formatHora12(ini), formatHora12(fin)].filter(Boolean).join('–');
+}
+
+// Fecha de inicio corta en español → "12-may-2026"
+function formatFechaInicio(f) {
+  if (!f) return '';
+  const [y, m, d] = String(f).split('-').map(Number);
+  if (!y || !m || !d) return String(f);
+  return `${String(d).padStart(2, '0')}-${MESES_CORTO[m - 1].toLowerCase()}-${y}`;
+}
+
+// ¿El grupo es de modalidad bimestral (Super Intensivo)? Cuatrimestral si no.
+function esBimestral(g) {
+  if (String(g.tipo_periodo || '').toUpperCase() === 'B') return true;
+  if (/super/i.test(g.modalidad || '')) return true;
+  if (String(G.dias(g) || '').toUpperCase() === 'LJ') return true;
+  return false;
+}
+
+// Construye el string de período: "Cuatrimestre 2 · May–Ago 2026".
+// Tipo ← tipo_periodo/modalidad · número ← periodo_inicio · meses+año ← fecha_inicio.
+// Todo deriva de columnas reales de getGruposDisponibles; no se inventa nada.
+function buildPeriodo(g) {
+  if (g.periodo_label) return g.periodo_label;             // si el backend ya lo arma, respetarlo
+  const bim = esBimestral(g);
+  const tipoNom = bim ? 'Bimestre' : 'Cuatrimestre';
+  const num = String(g.periodo_inicio || g.periodo || '').match(/(\d+)/);
+  const izq = num ? `${tipoNom} ${num[1]}` : tipoNom;
+
+  let rango = '';
+  const fecha = G.fecha(g);
+  if (fecha) {
+    const [y, m] = String(fecha).split('-').map(Number);
+    if (y && m) {
+      const dur = bim ? 2 : 4;
+      const endIdx = (m - 1 + dur - 1) % 12;
+      rango = `${MESES_CORTO[m - 1]}–${MESES_CORTO[endIdx]} ${y}`;
+    }
+  }
+  return rango ? `${izq} · ${rango}` : izq;
+}
+
+// ── CUPO FAKE (Cambio 2) ─────────────────────────────────────────────────────
+// Cada grupo muestra un cupo "disponible" aleatorio 5–8, consistente por código
+// durante toda la sesión (sobrevive navegación entre pasos y recarga de página
+// dentro de la misma pestaña). Respaldado en sessionStorage.
+const CUPO_FAKE_KEY = 'ins_cupo_fake_v1';
+let _cupoFakeCache = null;
+function _loadCupoFake() {
+  if (_cupoFakeCache) return _cupoFakeCache;
+  try { _cupoFakeCache = JSON.parse(sessionStorage.getItem(CUPO_FAKE_KEY)) || {}; }
+  catch (_) { _cupoFakeCache = {}; }
+  return _cupoFakeCache;
+}
+function getCupoFake(codigo) {
+  const key = String(codigo || '').trim();
+  if (!key) return 5;
+  const map = _loadCupoFake();
+  if (map[key] == null) {
+    map[key] = 5 + Math.floor(Math.random() * 4);          // 5, 6, 7 u 8
+    try { sessionStorage.setItem(CUPO_FAKE_KEY, JSON.stringify(map)); } catch (_) {}
+  }
+  return map[key];
+}
+
 // Grupos reales de demostración (cuando no hay backend conectado)
 const DEMO_GRUPOS = {
   INA: [
@@ -394,54 +484,45 @@ function ProgramCard({ tipo, selected, locked, onSelect, img, fallbackBg, fallba
 
 // ── TARJETA DE GRUPO (radio card visual) ─────────────────────────────────────────
 function CupoBadge({ g }) {
-  if (g.estado_cupo === 'LISTA_ESPERA') {
-    return <span className="cupo-badge orange">🕓 Lista de espera</span>;
-  }
-  const disp = g.cupo_disponible != null ? g.cupo_disponible : G.cupo(g);
-  if (disp == null || disp === 0) return null;
-  if (disp <= 3) return <span className="cupo-badge red">⚠️ Últimos {disp} {disp === 1 ? 'lugar' : 'lugares'}</span>;
-  if (disp <= 8) return <span className="cupo-badge orange">{disp} lugares disponibles</span>;
-  return <span className="cupo-badge green">Cupo disponible</span>;
+  // Cupo simulado 5–8 (Cambio 2): siempre se muestra disponibilidad, nunca "lleno"
+  // ni "lista de espera". Consistente por código de grupo durante la sesión.
+  const disp = getCupoFake(G.cod(g));
+  return <span className="cupo-badge green">{disp} {disp === 1 ? 'cupo disponible' : 'cupos disponibles'}</span>;
 }
 
 function GrupoCard({ g, selected, onSelect }) {
   const nivel = NIVEL_LABEL[G.nivel(g)] || { nombre: G.nivel(g) || 'Nivel', color: '#2B7FC1', emoji: '📘' };
-  const diasTxt = DIAS_LABEL[G.dias(g)] || G.dias(g) || '';
   const { ini, fin } = G.horas(g);
-  const espera = g.estado_cupo === 'LISTA_ESPERA';
-  const disp = g.cupo_disponible != null ? g.cupo_disponible : G.cupo(g);
-  // Lista de espera NO bloquea la selección (solo se indica). Un grupo sin cupo
-  // y sin lista de espera sí queda bloqueado.
-  const lleno = !espera && disp === 0;
-  const horario = [formatHoraMil(ini), formatHoraMil(fin)].filter(Boolean).join(' – ');
-  const fechaTxt = g.fecha_inicio_label || (G.fecha(g) ? formatFechaCorta(G.fecha(g)) : '');
+  // Cambio 1 — los 3 bloques de info siempre visibles (sin toggle):
+  const periodoTxt = buildPeriodo(g);                                  // "Cuatrimestre 2 · May–Ago 2026"
+  const diasTxt = decodeDias(G.dias(g));                               // "Lun/Mié"
+  const horaTxt = formatRango12(ini, fin);                             // "6:00pm–9:00pm"
+  const fechaTxt = G.fecha(g) ? formatFechaInicio(G.fecha(g)) : '';    // "12-may-2026"
 
   return (
     <div
-      className={`gcard${selected ? ' sel' : ''}${lleno ? ' lleno' : ''}${espera ? ' espera' : ''}`}
-      style={selected && !lleno ? { borderColor: nivel.color, boxShadow: `0 0 0 3px ${nivel.color}22` } : undefined}
-      onClick={() => {if (!lleno) onSelect(G.cod(g));}}>
-      
+      className={`gcard${selected ? ' sel' : ''}`}
+      style={selected ? { borderColor: nivel.color, boxShadow: `0 0 0 3px ${nivel.color}22` } : undefined}
+      onClick={() => onSelect(G.cod(g))}>
+
       <div className="gcard-top">
         <span className="gcard-nivel" style={{ background: `${nivel.color}1a`, color: nivel.color }}>
           {nivel.emoji} {nivel.nombre}
         </span>
       </div>
 
-      {g.periodo_label && <div className="gh-periodo">{g.periodo_label}</div>}
+      {periodoTxt && <div className="gh-periodo">{periodoTxt}</div>}
 
       <div className="gcard-horario">
         {diasTxt && <div className="gh-dias">{diasTxt}</div>}
-        {horario && <div className="gh-hora">{horario}</div>}
+        {horaTxt && <div className="gh-hora">{horaTxt}</div>}
       </div>
 
       <div className="gcard-meta">
-        {fechaTxt && <div className="gm-row">🗓 Inicia el {fechaTxt}</div>}
+        {fechaTxt && <div className="gm-row">🗓 Inicia {fechaTxt}</div>}
       </div>
 
       <div className="gcard-foot"><CupoBadge g={g} /></div>
-
-      {lleno && <div className="gcard-overlay">Grupo lleno</div>}
     </div>);
 
 }
@@ -506,6 +587,7 @@ Object.assign(window, {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
   PROVINCIAS, CR_GEO, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   NIVEL_LABEL, DIAS_LABEL, MODALIDAD_LABEL, formatHora, formatHoraMil, formatFecha, formatFechaCorta, G,
+  MESES_CORTO, DIAS_CORTO, decodeDias, formatHora12, formatRango12, formatFechaInicio, buildPeriodo, getCupoFake,
   fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor, fmtBytes, MAX_FILE,
   I, Ico, IcoFill, LockBadge,
   Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard

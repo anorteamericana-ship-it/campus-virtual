@@ -20,7 +20,7 @@ const {
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 1 — DATOS PERSONALES
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif, asesores }) {
+function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif, esProspecto, setProspecto, asesores }) {
   // 'verif' (idle | loading | exists | free) se eleva al App para que validarPaso1 lo lea
   const [showPwd, setShowPwd] = useState(false);
   const [showPwd2, setShowPwd2] = useState(false);
@@ -28,6 +28,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
   const esNacional = form.idTipo === 'nac';
   const edad = calcEdad(form.fechaNac);
   const menor = edad != null && edad < 18;
+  const bloqueado = verif === 'exists'; // cédula ya registrada → se bloquea el resto del formulario
 
   const blurCedula = () => { if (esNacional) set('cedula', fmtCedula(form.cedula)); };
   const blurNombre = () => set('nombre', (form.nombre||'').toUpperCase());
@@ -43,35 +44,60 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
     return (cant && form.distrito && d.indexOf(form.distrito) === -1) ? [form.distrito, ...d] : d;
   };
 
-  // Verificar: 1) ¿ya existe la cuenta?  2) si no, buscar en padrón TSE y prellenar
+  // Verificar: 1) ¿ya existe la cuenta? → bloquear + redirigir al login.
+  //            2) si no, buscar en padrón TSE y SIEMPRE refrescar el nombre.
   const verificar = async () => {
     if (!form.cedula.trim()) return;
     setVerif('loading');
     try {
       const r1 = await fetch(`${SCRIPT_URL}?fn=verificarCedulaExiste&cedula=${encodeURIComponent(form.cedula.trim())}`);
       const d1 = await r1.json();
-      if (d1 && d1.existe) { setVerif('exists'); return; }
+      // Cambio 3 — respuesta v4.29.0+: { ok, existe, es_prospecto, estado }
+      if (d1 && d1.existe) {
+        setProspecto(Boolean(d1.es_prospecto));
+        setVerif('exists');
+        return;
+      }
+      setProspecto(false);
 
-      // No existe → buscar en padrón y prellenar (solo cédula nacional)
+      // No existe → si es cédula nacional, buscar en padrón y SIEMPRE refrescar el
+      // nombre (Cambio 4a): con el dato del TSE si lo hay, vacío y editable si no.
       if (esNacional) {
+        let nombreTSE = '';
         try {
           const r2 = await fetch(`${SCRIPT_URL}?fn=buscarEnPadron&cedula=${encodeURIComponent(form.cedula.trim())}`);
           const d2 = await r2.json();
-          if (d2 && (d2.nombre || d2.provincia)) {
-            const upd = {};
-            const lock = {};
-            if (d2.nombre)    { upd.nombre = String(d2.nombre).toUpperCase(); lock.nombre = true; }
+          if (d2 && (d2.nombre || d2.apellido1 || d2.provincia)) {
+            // Nombre normalizado APELLIDO1 APELLIDO2 NOMBRE
+            nombreTSE = (d2.apellido1 || d2.apellido2)
+              ? [d2.apellido1, d2.apellido2, d2.nombre].filter(Boolean).join(' ')
+              : (d2.nombre_completo || d2.nombre || '');
+            nombreTSE = String(nombreTSE).toUpperCase().trim();
+          }
+          if (nombreTSE) {
+            const upd = { nombre: nombreTSE };
+            const lock = { nombre: true };
             if (d2.fecha_nac) { upd.fechaNac = d2.fecha_nac; lock.fechaNac = true; }
             if (d2.provincia) { upd.provincia = d2.provincia; lock.provincia = true; }
             if (d2.canton)    { upd.canton = d2.canton; lock.canton = true; }
             if (d2.sexo)      { upd.sexo = /^f/i.test(d2.sexo) ? 'F' : 'M'; lock.sexo = true; }
-            if (Object.keys(upd).length) { setMany(upd); setPrellenado(p => ({ ...p, ...lock })); }
+            setMany(upd);
+            setPrellenado(p => ({ ...p, ...lock }));
           }
-        } catch (_) { /* sin padrón → continuar manual */ }
+        } catch (_) { /* sin padrón / error TSE → input manual */ }
+
+        // TSE no encontró (o falló): vaciar nombre y dejarlo editable a mano (Cambio 4a/4b).
+        if (!nombreTSE) {
+          set('nombre', '');
+          setPrellenado(p => ({ ...p, nombre: false }));
+        }
       }
       setVerif('free');
     } catch (e) {
-      setVerif('free'); // ante error → continuar normalmente
+      // Error en verificarCedulaExiste → continuar manual, nombre editable.
+      setProspecto(false);
+      if (esNacional) { set('nombre', ''); setPrellenado(p => ({ ...p, nombre: false })); }
+      setVerif('free');
     }
   };
 
@@ -90,7 +116,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
               <label key={t.id} className={`idtype-card${form.idTipo===t.id?' sel':''}`}>
                 <input type="radio" name="idTipo" checked={form.idTipo===t.id}
                   onChange={() => {
-                    set('idTipo', t.id); set('cedula',''); setVerif('idle');
+                    set('idTipo', t.id); set('cedula',''); set('nombre',''); setVerif('idle'); setProspecto(false);
                     setPrellenado({}); // limpiar candados al cambiar tipo
                   }} />
                 {t.label}
@@ -110,7 +136,13 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           <div className="inline-grp">
             <input type="text" value={form.cedula}
               className={errors.cedula ? 'err' : ''}
-              onChange={e => { set('cedula', esNacional ? fmtCedula(e.target.value) : e.target.value); setVerif('idle'); }}
+              onChange={e => {
+                set('cedula', esNacional ? fmtCedula(e.target.value) : e.target.value);
+                setVerif('idle');
+                // Al cambiar la cédula, soltar el nombre prellenado por el TSE para no
+                // arrastrar el dato viejo (Cambio 4): vacío y editable hasta re-verificar.
+                if (prellenado.nombre) { set('nombre', ''); setPrellenado(p => ({ ...p, nombre: false })); }
+              }}
               onBlur={blurCedula}
               placeholder={esNacional ? 'X-XXXX-XXXX' : 'Número de documento'}
               style={{ fontFamily:'ui-monospace, monospace', letterSpacing:'.03em' }} />
@@ -119,12 +151,6 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
               {verif==='loading' ? <span className="spinner" style={{width:14,height:14}} /> : 'Verificar'}
             </button>
           </div>
-          {verif==='exists' && (
-            <div className="inline-alert err">
-              <Ico d={I.alert} size={18} />
-              <span>Ya tenés una cuenta con este número. <a href="recovery.html">Recuperá tu contraseña aquí.</a></span>
-            </div>
-          )}
           {verif==='free' && form.cedula.trim() && (
             <div className="inline-alert info">
               <Ico d={I.check} size={18} />
@@ -133,6 +159,34 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           )}
         </Field>
       </div>
+
+      {/* CUENTA YA EXISTENTE — bloquea el resto del formulario (Cambio 3) */}
+      {bloqueado ? (
+        <div className="card cuenta-existe">
+          <div className="ce-ico"><Ico d={I.lock} size={26} /></div>
+          <div className="ce-title">
+            {esProspecto ? 'Ya tenés una inscripción en proceso' : 'Ya tenés una cuenta en la academia'}
+          </div>
+          <div className="ce-msg">
+            {esProspecto
+              ? 'Esta cédula ya tiene una inscripción en proceso. Comunicate con tu asesor para continuar.'
+              : 'Esta cédula ya tiene una cuenta en la academia. Iniciá sesión con tu usuario y contraseña.'}
+          </div>
+          <div className="ce-actions">
+            {esProspecto ? (
+              <a className="btn btn-primary" href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">
+                <IcoFill d={I.wa} size={18} /> Contactar a mi asesor
+              </a>
+            ) : (
+              <button className="btn btn-primary" onClick={() => { window.location.href = 'login.html'; }}>
+                Ir al login <Ico d={I.arrow} size={18} />
+              </button>
+            )}
+          </div>
+          <div className="ce-hint">¿Es un error? Cambiá el número de identificación arriba y volvé a verificar.</div>
+        </div>
+      ) : (
+      <React.Fragment>
 
       {/* NOMBRE */}
       <div className="card">
@@ -143,10 +197,11 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
         <Field fieldKey="nombre" locked={prellenado.nombre}
           label="Nombre completo (como aparece en tu identificación)"
           error={errors.nombre}
-          note="Usá el nombre exacto de tu documento de identidad.">
+          note={prellenado.nombre ? 'Usá el nombre exacto de tu documento de identidad.' : 'Si no se autocompletó, escribí tu nombre tal cual aparece en tu documento.'}>
           <input type="text" value={form.nombre} className={errors.nombre?'err':''}
+            readOnly={Boolean(prellenado.nombre)}
             onChange={e => set('nombre', e.target.value)} onBlur={blurNombre}
-            placeholder="APELLIDO APELLIDO NOMBRE" />
+            placeholder={prellenado.nombre ? 'APELLIDO APELLIDO NOMBRE' : 'Escribilo a mano'} />
         </Field>
       </div>
 
@@ -383,6 +438,8 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           Continuar <Ico d={I.arrow} size={18} />
         </button>
       </div>
+      </React.Fragment>
+      )}
     </div>
   );
 }
@@ -644,6 +701,11 @@ const EXITO_TXT = {
 };
 function Exito({ financiamiento, waLink }) {
   const propio = financiamiento === 'PROPIO';
+  const mensajeWa = (
+    financiamiento === 'CONAPE'
+      ? 'Hola, acabo de registrarme, necesito ayuda para el siguiente paso.'
+      : 'Hola, acabo de registrarme y apliqué a la beca. ¿Cuándo me confirman si quedé y cuáles son los siguientes pasos?'
+  );
   const wa = waLink || WA_NUMBER; // wa_link del asesor seleccionado · fallback al número genérico
   return (
     <div className="success-wrap">
@@ -651,11 +713,9 @@ function Exito({ financiamiento, waLink }) {
         <div className="success-ico"><Ico d={I.check} size={56} /></div>
         <div className="success-h1">¡Te registraste correctamente!</div>
         <div className="success-p">{EXITO_TXT[financiamiento] || EXITO_TXT.PROPIO}</div>
-        {propio && (
-          <a className="success-wa" href={`https://wa.me/${wa}?text=${encodeURIComponent('Hola, acabo de registrarme y quiero coordinar el pago de matrícula.')}`} target="_blank" rel="noopener">
-            <IcoFill d={I.wa} size={18} /> Coordinar pago por WhatsApp
-          </a>
-        )}
+        <a className="success-wa" href={`https://wa.me/${wa}?text=${encodeURIComponent(mensajeWa)}`} target="_blank" rel="noopener">
+          <IcoFill d={I.wa} size={18} /> Coordinar pago por WhatsApp
+        </a>
         <button className="btn btn-primary" onClick={() => { window.location.href = 'login.html'; }}>
           Ir al login
         </button>
@@ -714,6 +774,7 @@ function App() {
   const [form, setForm] = useState(FORM_INIT);
   const [grupos, setGrupos] = useState(null); // lista de grupos cargada en Pagina2 (se eleva para derivar la modalidad en el submit)
   const [verif, setVerif] = useState('idle'); // idle | loading | exists | free — estado de verificación de cédula (Pagina1)
+  const [esProspecto, setEsProspecto] = useState(false); // si la cédula existente es un prospecto (inscripción en proceso)
   const [prellenado, setPrellenado] = useState({}); // campos verificados del padrón TSE
   const [files, setFiles] = useState({ frente:null, reverso:null, titulo:null });
   const [errors, setErrors] = useState({});
@@ -764,7 +825,9 @@ function App() {
     const e = {};
     if (!form.cedula.trim()) {
       e.cedula = 'Ingresá tu número de identificación.';
-    } else if (verif !== 'free' && verif !== 'exists') {
+    } else if (verif === 'exists') {
+      e.cedula = 'Esta cédula ya tiene una cuenta. Iniciá sesión o cambiá el número.';
+    } else if (verif !== 'free') {
       e.cedula = 'Presioná el botón Verificar antes de continuar.';
     }
     if (!form.nombre.trim()) e.nombre = 'Ingresá tu nombre completo.';
@@ -972,7 +1035,8 @@ function App() {
       <Progress paso={paso} />
       {paso === 1
         ? <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
-            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif} asesores={asesores} />
+            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif}
+            esProspecto={esProspecto} setProspecto={setEsProspecto} asesores={asesores} />
         : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} grupos={grupos} setGrupos={setGrupos} />}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 

@@ -10,6 +10,7 @@ const SCRIPT_URL_MAT = window.APPS_SCRIPT_URL;
 // ────────────────────────────────────────────────────────────────────────
 function useProspectos() {
   const [prospectos, setProspectos] = React.useState([]);
+  const [resumen, setResumen] = React.useState(null); // v4.30.1: desglose activos por nivel + comparativa
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [tick, setTick] = React.useState(0);
@@ -17,11 +18,11 @@ function useProspectos() {
     setLoading(true);
     fetch(`${SCRIPT_URL_MAT}?fn=getProspectos`)
       .then(r => r.json())
-      .then(d => { if (d.ok) setProspectos(d.prospectos || []); else setError(d.error || d.mensaje || 'Error al cargar prospectos'); })
+      .then(d => { if (d.ok) { setProspectos(d.prospectos || []); setResumen(d.resumen || null); } else setError(d.error || d.mensaje || 'Error al cargar prospectos'); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [tick]);
-  return { prospectos, loading, error, reload: () => setTick(t => t + 1) };
+  return { prospectos, resumen, loading, error, reload: () => setTick(t => t + 1) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -929,7 +930,19 @@ function MRadioCard({ value, current, onChange, accent, children }) {
 function MatriculasView() {
   const [showWizard, setShowWizard] = React.useState(false);
   const [grupoPresel, setGrupoPresel] = React.useState(null);
-  const { prospectos, loading, error, reload } = useProspectos();
+  const { prospectos, resumen, loading, error, reload } = useProspectos();
+
+  // Modales admin (Cambios 8/9/10) + toast + memoria de novedad CONAPE por cédula
+  const [verProsp, setVerProsp] = React.useState(null);      // {cedula, nombre}
+  const [proformaProsp, setProformaProsp] = React.useState(null);
+  const [conapeProsp, setConapeProsp] = React.useState(null);
+  const [toast, setToast] = React.useState(null);            // {tipo, msg}
+  const [conapeNov, setConapeNov] = React.useState({});      // {cedula: novedad}
+  const showToast = React.useCallback((msg, tipo = 'info') => setToast({ msg, tipo }), []);
+
+  const finProspecto = p => String(p.FINANCIAMIENTO || p.financiamiento || '').toUpperCase();
+  const esCONAPE = p => finProspecto(p) === 'CONAPE';
+  const novClass = nov => nov === 'con_desembolso' ? 'nov-green' : nov === 'aprobado_sin_desembolso' ? 'nov-yellow' : nov === 'no_encontrado' ? 'nov-red' : '';
 
   const handleAbrir = (grupo = null) => { setGrupoPresel(grupo); setShowWizard(true); };
   const handleCrear = () => { reload(); };
@@ -970,11 +983,6 @@ function MatriculasView() {
         kicker="Gestión académica"
         title={<>Matrículas</>}
         sub="Registro de nuevos estudiantes y seguimiento del proceso de matrícula"
-        right={
-          <button className="btn btn-primary" onClick={() => handleAbrir()}>
-            <Icon name="plus" size={14} className="" /> Nueva matrícula
-          </button>
-        }
       />
 
       {/* KPIs */}
@@ -993,10 +1001,13 @@ function MatriculasView() {
         ))}
       </div>
 
+      {/* Resumen activos por nivel + comparativa (Cambio 6) */}
+      <window.MatResumenActivos resumen={resumen} />
+
       {/* Tabla */}
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div className="card-title">Matrículas recientes</div>
+          <div className="card-title">PRE MATRÍCULA</div>
           <div style={{ display:'flex', gap:8 }}>
             <button className="btn btn-ghost" style={{ fontSize:12 }}>
               <Icon name="download" size={14} className="" /> Exportar
@@ -1049,11 +1060,19 @@ function MatriculasView() {
                     </span>
                   </td>
                   <td style={{ textAlign:'right' }}>
-                    {p.ESTADO === 'PENDIENTE_PAGO' ? (
-                      <button className="btn btn-primary" style={{ fontSize:12 }} onClick={() => activar(p)}>Activar</button>
-                    ) : (
-                      <button className="btn btn-ghost" style={{ fontSize:12 }}>Ver</button>
-                    )}
+                    <div className="mat-row-actions">
+                      <button className="mat-act-btn" onClick={() => setVerProsp({ cedula: p.CEDULA, nombre })}>Ver formulario</button>
+                      <button className="mat-act-btn" onClick={() => setProformaProsp({ cedula: p.CEDULA, nombre })}>Crear proformas</button>
+                      {esCONAPE(p) && (
+                        <button className={`mat-act-btn conape ${novClass(conapeNov[p.CEDULA])}`}
+                          onClick={() => setConapeProsp({ cedula: p.CEDULA, nombre })}>
+                          Actualizar estado CONAPE
+                        </button>
+                      )}
+                      {p.ESTADO === 'PENDIENTE_PAGO' && (
+                        <button className="btn btn-primary" style={{ fontSize:11.5, padding:'6px 11px' }} onClick={() => activar(p)}>Activar</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -1089,6 +1108,22 @@ function MatriculasView() {
           grupoPresel={grupoPresel}
         />
       )}
+
+      {/* Modales admin (Cambios 8/9/10) */}
+      {verProsp && (
+        <window.MatProspectoModal cedula={verProsp.cedula} nombre={verProsp.nombre}
+          onClose={() => setVerProsp(null)} onToast={showToast} />
+      )}
+      {proformaProsp && (
+        <window.MatProformasModal cedula={proformaProsp.cedula} nombre={proformaProsp.nombre}
+          onClose={() => setProformaProsp(null)} onToast={showToast} />
+      )}
+      {conapeProsp && (
+        <window.MatConapeModal cedula={conapeProsp.cedula} nombre={conapeProsp.nombre}
+          onClose={() => setConapeProsp(null)} onToast={showToast}
+          onResult={(nov) => setConapeNov(m => ({ ...m, [conapeProsp.cedula]: nov }))} />
+      )}
+      <window.MatToast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

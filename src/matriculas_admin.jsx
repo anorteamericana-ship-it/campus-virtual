@@ -1,0 +1,511 @@
+/* global React */
+/* ============================================================================
+   Matrículas · Admin — componentes nuevos (Cambios 6, 8, 9, 10)
+   Se exportan a window para que src/matriculas.jsx los consuma.
+   Envuelto en IIFE: en campus.html conviven ~20 scripts Babel en el mismo
+   scope global, así que NO declaramos consts a nivel de módulo.
+   ============================================================================ */
+(function () {
+  const { useState, useEffect } = React;
+  const API = window.APPS_SCRIPT_URL;
+
+  const enc = encodeURIComponent;
+  async function apiGet(qs) {
+    const r = await fetch(`${API}?${qs}`);
+    return await r.json();
+  }
+
+  // Getter case-insensitive: tolera columnas MAYÚSCULAS de la hoja y llaves
+  // minúsculas normalizadas. Aplana tutor.* y conape.* a tutor_x / conape_x.
+  function flatten(d) {
+    const o = { ...(d || {}) };
+    if (d && d.tutor && typeof d.tutor === 'object') {
+      o.tutor_nombre = d.tutor.nombre; o.tutor_cedula = d.tutor.cedula;
+      o.tutor_correo = d.tutor.correo; o.tutor_tel = d.tutor.tel;
+    }
+    if (d && d.conape && typeof d.conape === 'object') {
+      o.conape_equipo = d.conape.equipo; o.conape_toeic = d.conape.toeic;
+      o.conape_sostenimiento = d.conape.sostenimiento;
+    }
+    return o;
+  }
+  function makeGet(obj) {
+    const low = {};
+    Object.keys(obj || {}).forEach(k => { low[k.toLowerCase()] = obj[k]; });
+    return (...keys) => {
+      for (const k of keys) {
+        const v = low[String(k).toLowerCase()];
+        if (v != null && v !== '') return v;
+      }
+      return '';
+    };
+  }
+  function rolActual() {
+    try { return (window.getSesion && window.getSesion() || {}).rol || ''; }
+    catch (_) { return ''; }
+  }
+  function waNumber(raw) {
+    let d = String(raw || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.length === 8) d = '506' + d;          // CR sin prefijo → anteponer 506
+    return d;
+  }
+  const PLAN_LABEL = { BASICO: 'Plan Básico', PREMIUM: 'Plan Premium', NINGUNO: 'Sin equipo' };
+  const boolTxt = (v) => (v === true || /^(true|s[ií]|1)$/i.test(String(v))) ? 'Sí'
+    : (v === false || /^(false|no|0)$/i.test(String(v))) ? 'No' : (v || '');
+
+  // ── Shell de modal ─────────────────────────────────────────────────────────
+  function Modal({ size = 'md', kicker, title, onClose, children, footer }) {
+    useEffect(() => {
+      const h = (e) => { if (e.key === 'Escape') onClose(); };
+      window.addEventListener('keydown', h);
+      return () => window.removeEventListener('keydown', h);
+    }, [onClose]);
+    return (
+      <div className="mat-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className={`mat-modal ${size}`}>
+          <div className="mat-modal-head">
+            <div>
+              {kicker && <div className="mat-modal-kicker">{kicker}</div>}
+              <div className="mat-modal-title">{title}</div>
+            </div>
+            <button className="mat-x" onClick={onClose} aria-label="Cerrar">×</button>
+          </div>
+          <div className="mat-modal-body">{children}</div>
+          {footer && <div className="mat-modal-foot">{footer}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Cambio 6 · Resumen de activos por nivel + comparativa ───────────────────
+  function MatResumenActivos({ resumen }) {
+    if (!resumen) return null;
+    const apn = resumen.activos_por_nivel || {};
+    const niveles = [
+      ['B1', 'Básico I', '#E5A823'],
+      ['B2', 'Básico II', '#E8372A'],
+      ['I1', 'Intermedio I', '#2B7FC1'],
+      ['I2', 'Intermedio II', '#4CAF50'],
+    ];
+    const tasa = resumen.tasa_conversion;
+    return (
+      <div className="mat-resumen">
+        <div className="card">
+          <div className="mat-res-h">Estudiantes activos por nivel</div>
+          <div className="mat-niveles">
+            {niveles.map(([k, label, color]) => (
+              <div key={k} className="mat-niv" style={{ '--mn-color': color }}>
+                <div className="mat-niv-bar" />
+                <div className="mat-niv-txt">
+                  <span className="mat-niv-n">{apn[k] != null ? apn[k] : '—'}</span>
+                  <span className="mat-niv-l">{k} · {label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div className="mat-res-h">Comparativa</div>
+          <div className="mat-comp">
+            <div className="mat-comp-row">
+              <span className="mat-comp-l">Activos</span>
+              <span className="mat-comp-v">{resumen.total_activos != null ? resumen.total_activos : '—'}</span>
+            </div>
+            <div className="mat-comp-row">
+              <span className="mat-comp-l">PRE MATRÍCULA</span>
+              <span className="mat-comp-v">{resumen.total_prospectos_no_activos != null ? resumen.total_prospectos_no_activos : '—'}</span>
+            </div>
+            <div className="mat-comp-row mat-comp-tasa">
+              <span className="mat-comp-l">Tasa de conversión</span>
+              <span className="mat-comp-v">{tasa != null ? `${tasa}%` : '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Cambio 8 · Modal "Ver formulario" ───────────────────────────────────────
+  function FRow({ label, value, editable, onChange, full, mono, textarea, tag }) {
+    const v = value == null ? '' : value;
+    return (
+      <div className={'mat-frow' + (full ? ' full' : '')}>
+        <div className="mat-flabel">{label}{tag && <span className="mat-readonly-tag" style={{ marginLeft: 6 }}>{tag}</span>}</div>
+        {editable
+          ? (textarea
+            ? <textarea className="mat-ftext" value={v} onChange={e => onChange(e.target.value)} />
+            : <input className="mat-finput" value={v} onChange={e => onChange(e.target.value)} />)
+          : <div className={'mat-fval' + (mono ? ' mono' : '')}>{v !== '' ? String(v) : '—'}</div>}
+      </div>
+    );
+  }
+
+  function MatProspectoModal({ cedula, nombre, onClose, onToast }) {
+    const rol = rolActual();
+    const canEditAll = rol === 'admin' || rol === 'superadmin';
+    const isVentas = rol === 'ventas';
+
+    const [detalle, setDetalle] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [edited, setEdited] = useState({});
+    const [notaNueva, setNotaNueva] = useState('');
+    const [lightbox, setLightbox] = useState(null);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      let cancel = false;
+      window.getProspectoDetalle(cedula)
+        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar el prospecto.'); })
+        .catch(e => { if (!cancel) setError(e.message); })
+        .finally(() => { if (!cancel) setLoading(false); });
+      return () => { cancel = true; };
+    }, [cedula]);
+
+    const get = makeGet(detalle || {});
+    const val = (f) => {
+      if (edited[f.k] !== undefined) return edited[f.k];
+      let v = get(...(f.al || [f.k]));
+      if (f.bool) v = boolTxt(v);
+      return v == null ? '' : v;
+    };
+    const onCh = (f) => (nv) => setEdited(e => ({ ...e, [f.k]: nv }));
+    const editableOf = (f) => canEditAll && !f.ro && !f.bool;
+
+    const Section = ({ title, fields }) => (
+      <div className="mat-sec">
+        <div className="mat-sec-h">{title}</div>
+        <div className="mat-grid">
+          {fields.map(f => (
+            <FRow key={f.k} label={f.label} value={val(f)} editable={editableOf(f)}
+              onChange={onCh(f)} full={f.full} mono={f.mono} textarea={f.textarea}
+              tag={f.ro ? 'solo lectura' : null} />
+          ))}
+        </div>
+      </div>
+    );
+
+    const fin = get('financiamiento', 'FINANCIAMIENTO');
+    const esConape = /conape/i.test(fin);
+    const esMenor = boolTxt(get('es_menor', 'ES_MENOR')) === 'Sí' || get('tutor_nombre', 'TUTOR_NOMBRE');
+
+    const guardarNota = async () => {
+      if (!notaNueva.trim()) return;
+      setSaving(true);
+      try {
+        const asesor = (window.getSesion && window.getSesion() || {}).nombre || 'Asesor';
+        const r = await window.agregarNotaProspecto(cedula, asesor, notaNueva.trim());
+        if (r && r.ok) { onToast('Nota guardada.', 'ok'); setNotaNueva(''); }
+        else onToast((r && r.error) || 'No se pudo guardar la nota.', 'err');
+      } catch (e) { onToast('Error de conexión: ' + e.message, 'err'); }
+      finally { setSaving(false); }
+    };
+    const guardarCambios = () => onToast('Próximamente: guardado completo de campos.', 'info');
+
+    const footer = loading || error ? (
+      <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
+    ) : isVentas ? (
+      <>
+        <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
+        <button className="btn btn-primary" onClick={guardarNota} disabled={saving || !notaNueva.trim()}>
+          {saving ? 'Guardando…' : 'Guardar nota'}
+        </button>
+      </>
+    ) : canEditAll ? (
+      <>
+        <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
+        <button className="btn btn-primary" onClick={guardarCambios}>Guardar cambios</button>
+      </>
+    ) : (
+      <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
+    );
+
+    return (
+      <Modal size="lg" kicker={`Prospecto · ${cedula}`} title={nombre || get('nombre', 'NOMBRE') || 'Formulario'} onClose={onClose} footer={footer}>
+        {loading && <div className="mat-center"><div className="mat-spin" />Cargando formulario…</div>}
+        {!loading && error && <div className="mat-center" style={{ color: 'var(--danger)' }}>⚠️ {error}</div>}
+        {!loading && !error && detalle && (
+          <>
+            {isVentas && (
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)' }}>
+                Como asesor de ventas solo podés editar el bloque de <b>notas</b>. El resto es de solo lectura.
+              </div>
+            )}
+
+            <Section title="Datos personales" fields={[
+              { k: 'nombre', label: 'Nombre completo', full: true },
+              { k: 'cedula', label: 'Cédula', mono: true },
+              { k: 'tipo_id', label: 'Tipo de identificación' },
+              { k: 'correo', label: 'Correo' },
+              { k: 'whatsapp', label: 'WhatsApp', mono: true },
+              { k: 'telefono', label: 'Teléfono', mono: true },
+              { k: 'sexo', label: 'Sexo' },
+              { k: 'fecha_nac', label: 'Fecha de nacimiento' },
+              { k: 'provincia', label: 'Provincia' },
+              { k: 'canton', label: 'Cantón' },
+              { k: 'distrito', label: 'Distrito' },
+              { k: 'direccion', label: 'Dirección', full: true, textarea: true },
+            ]} />
+
+            {esMenor && (
+              <Section title="Encargado / Tutor" fields={[
+                { k: 'tutor_nombre', label: 'Nombre del encargado', full: true },
+                { k: 'tutor_cedula', label: 'Cédula', mono: true },
+                { k: 'tutor_tel', label: 'Teléfono', mono: true },
+                { k: 'tutor_correo', label: 'Correo', full: true },
+              ]} />
+            )}
+
+            <Section title="Programa y financiamiento" fields={[
+              { k: 'programa', label: 'Programa' },
+              { k: 'modalidad', label: 'Modalidad' },
+              { k: 'grupo_tentativo', label: 'Grupo tentativo', mono: true, al: ['grupo_tentativo', 'GRUPO_TENTATIVO', 'grupo'] },
+              { k: 'financiamiento', label: 'Financiamiento' },
+              { k: 'beca', label: 'Beca' },
+              { k: 'beca_estado', label: 'Estado de beca', al: ['beca_estado', 'BECA_ESTADO'] },
+            ]} />
+
+            {esConape && (
+              <Section title="CONAPE" fields={[
+                { k: 'conape_equipo', label: 'Equipo' },
+                { k: 'conape_toeic', label: 'TOEIC', bool: true },
+                { k: 'conape_sostenimiento', label: 'Sostenimiento', full: true },
+                { k: 'conape_ws_ultimo_desembolso', label: 'WS · Último desembolso', ro: true, al: ['conape_ws_ultimo_desembolso', 'CONAPE_WS_ULTIMO_DESEMBOLSO'] },
+                { k: 'conape_ws_ultima_consulta', label: 'WS · Última consulta', ro: true, al: ['conape_ws_ultima_consulta', 'CONAPE_WS_ULTIMA_CONSULTA'] },
+              ]} />
+            )}
+
+            <Section title="Seguimiento" fields={[
+              { k: 'como_entero', label: '¿Cómo se enteró?', al: ['como_entero', 'COMO_ENTERO'] },
+              { k: 'asesor_ref', label: 'Asesor de referencia', al: ['asesor_ref', 'ASESOR_REF', 'asesor'] },
+              { k: 'conocimientos_previos', label: 'Conocimientos previos', al: ['conocimientos_previos', 'CONOCIMIENTOS_PREVIOS'] },
+              { k: 'etapa', label: 'Etapa', al: ['etapa', 'ETAPA'] },
+              { k: 'notas', label: 'Notas', full: true, textarea: true, al: ['notas', 'NOTAS'] },
+            ]} />
+
+            {isVentas && (
+              <div className="mat-sec">
+                <div className="mat-sec-h">Agregar nota</div>
+                <textarea className="mat-ftext" value={notaNueva} placeholder="Escribí una nota de seguimiento…"
+                  onChange={e => setNotaNueva(e.target.value)} />
+              </div>
+            )}
+
+            <Section title="Fechas del proceso" fields={[
+              { k: 'f_lead', label: 'F. Lead', ro: true, al: ['f_lead', 'F_LEAD'] },
+              { k: 'f_solicitud', label: 'F. Solicitud', ro: true, al: ['f_solicitud', 'F_SOLICITUD'] },
+              { k: 'f_documentos', label: 'F. Documentos', ro: true, al: ['f_documentos', 'F_DOCUMENTOS'] },
+              { k: 'f_aprobado', label: 'F. Aprobado', ro: true, al: ['f_aprobado', 'F_APROBADO'] },
+              { k: 'f_desembolso', label: 'F. Desembolso', ro: true, al: ['f_desembolso', 'F_DESEMBOLSO'] },
+              { k: 'f_pago_academia', label: 'F. Pago academia', ro: true, al: ['f_pago_academia', 'F_PAGO_ACADEMIA'] },
+              { k: 'f_activo', label: 'F. Activo', ro: true, al: ['f_activo', 'F_ACTIVO'] },
+            ]} />
+
+            <div className="mat-sec">
+              <div className="mat-sec-h">Documentos adjuntos</div>
+              <div className="mat-photos">
+                {[
+                  ['Cédula · frente', get('foto_ced_frente', 'FOTO_CED_FRENTE')],
+                  ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO')],
+                  ['Título', get('foto_titulo', 'FOTO_TITULO')],
+                ].map(([cap, src]) => src ? (
+                  <div key={cap} className="mat-photo" onClick={() => setLightbox({ src, cap })}>
+                    <img src={src} alt={cap} />
+                    <div className="mat-photo-cap">{cap}</div>
+                  </div>
+                ) : (
+                  <div key={cap} className="mat-photo-empty">
+                    <span>Sin archivo</span>
+                    <span className="mat-photo-cap">{cap}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+        {lightbox && (
+          <div className="mat-lightbox" onClick={() => setLightbox(null)}>
+            <img src={lightbox.src} alt={lightbox.cap} />
+          </div>
+        )}
+      </Modal>
+    );
+  }
+
+  // ── Cambio 9 · Modal "Crear proformas" ──────────────────────────────────────
+  function PFCard({ icon, title, subtitle, disabled, disabledMsg, tipo, cedula, whatsapp, planLabel, existingUrl, onToast }) {
+    const [loading, setLoading] = useState(false);
+    const [url, setUrl] = useState(existingUrl || '');
+    const [regen, setRegen] = useState(false); // forzar mostrar botón generar aunque exista url previa
+
+    const generar = async () => {
+      setLoading(true);
+      try {
+        const r = await apiGet(`fn=generarProformaProspecto&cedula=${enc(cedula)}&tipo=${tipo}`);
+        if (r && r.ok) {
+          const u = tipo === 'curso' ? r.url_programa : r.url_equipo;
+          if (u) { setUrl(u); setRegen(false); onToast(`Proforma ${tipo === 'curso' ? 'del curso' : 'del equipo'} generada.`, 'ok'); }
+          else onToast('El backend no devolvió la URL de la proforma.', 'err');
+        } else onToast((r && r.error) || 'No se pudo generar la proforma.', 'err');
+      } catch (e) { onToast('Error de conexión: ' + e.message, 'err'); }
+      finally { setLoading(false); }
+    };
+
+    const msg = tipo === 'curso'
+      ? `Hola! Te envío la proforma del curso de inglés. Podés verla aquí: ${url}`
+      : `Hola! Te envío la proforma del equipo (${planLabel}). Podés verla aquí: ${url}`;
+    const waHref = whatsapp ? `https://wa.me/${waNumber(whatsapp)}?text=${enc(msg)}` : null;
+
+    return (
+      <div className={'mat-pcard' + (disabled ? ' disabled' : '')}>
+        <div className="mat-pcard-ic">{icon}</div>
+        <div>
+          <div className="mat-pcard-t">{title}</div>
+          <div className="mat-pcard-sub">{subtitle}</div>
+        </div>
+        <div className="mat-pcard-spacer" />
+        {disabled ? (
+          <div className="mat-pcard-note">{disabledMsg}</div>
+        ) : loading ? (
+          <div className="mat-pcard-gen"><div className="mat-spin" />Generando proforma… (puede tardar 10–15s)</div>
+        ) : url && !regen ? (
+          <>
+            <a className="btn btn-primary" href={url} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>Descargar</a>
+            {waHref && <a className="btn btn-ghost" href={waHref} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>Enviar por WhatsApp</a>}
+            <button className="btn btn-ghost" style={{ justifyContent: 'center', fontSize: 12 }} onClick={() => setRegen(true)}>Regenerar</button>
+          </>
+        ) : (
+          <>
+            {existingUrl && (
+              <a className="mat-pcard-note" href={existingUrl} target="_blank" rel="noopener" style={{ textAlign: 'center', fontWeight: 600 }}>Ver proforma actual</a>
+            )}
+            <button className="btn btn-primary" style={{ justifyContent: 'center' }} onClick={generar}>
+              {existingUrl ? 'Regenerar' : 'GENERAR'}
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function MatProformasModal({ cedula, nombre, onClose, onToast }) {
+    const [detalle, setDetalle] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      let cancel = false;
+      window.getProspectoDetalle(cedula)
+        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar el prospecto.'); })
+        .catch(e => { if (!cancel) setError(e.message); })
+        .finally(() => { if (!cancel) setLoading(false); });
+      return () => { cancel = true; };
+    }, [cedula]);
+
+    const get = makeGet(detalle || {});
+    const programa = get('programa', 'PROGRAMA');
+    const modalidad = get('modalidad', 'MODALIDAD');
+    const equipoRaw = String(get('conape_equipo', 'CONAPE_EQUIPO') || '').toUpperCase();
+    const whatsapp = get('whatsapp', 'WHATSAPP', 'telefono', 'TELEFONO');
+    const sinEquipo = !equipoRaw || equipoRaw === 'NINGUNO';
+    const planLabel = PLAN_LABEL[equipoRaw] || equipoRaw || 'Equipo';
+    const urlCurso = get('proforma_url', 'PROFORMA_URL', 'url_programa', 'proforma_programa_url');
+    const urlEquipo = get('proforma_equipo_url', 'PROFORMA_EQUIPO_URL', 'url_equipo');
+
+    return (
+      <Modal size="lg" kicker={`Proformas · ${cedula}`} title={nombre || get('nombre', 'NOMBRE') || 'Crear proformas'} onClose={onClose}
+        footer={<button className="btn btn-ghost" onClick={onClose}>Cerrar</button>}>
+        {loading && <div className="mat-center"><div className="mat-spin" />Cargando datos del prospecto…</div>}
+        {!loading && error && <div className="mat-center" style={{ color: 'var(--danger)' }}>⚠️ {error}</div>}
+        {!loading && !error && detalle && (
+          <div className="mat-pf-cards">
+            <PFCard icon="📄" title="Proforma del Curso"
+              subtitle={`Programa de inglés (${programa || '—'} · ${modalidad || '—'})`}
+              tipo="curso" cedula={cedula} whatsapp={whatsapp} planLabel={planLabel}
+              existingUrl={urlCurso} onToast={onToast} />
+            <PFCard icon="💻" title="Proforma del Equipo"
+              subtitle={sinEquipo ? 'Sin equipo CONAPE' : planLabel}
+              disabled={sinEquipo} disabledMsg="Este prospecto no eligió equipo CONAPE."
+              tipo="equipo" cedula={cedula} whatsapp={whatsapp} planLabel={planLabel}
+              existingUrl={urlEquipo} onToast={onToast} />
+          </div>
+        )}
+      </Modal>
+    );
+  }
+
+  // ── Cambio 10 · Modal "Actualizar estado CONAPE" ────────────────────────────
+  const NOVEDAD_META = {
+    no_encontrado: { cls: 'mat-cs-red', badge: 'No encontrado', bg: '#E8372A', msg: 'CONAPE aún NO le ha dado visto bueno. Aún no aparece en la planilla.' },
+    aprobado_sin_desembolso: { cls: 'mat-cs-yellow', badge: 'Aprobado', bg: '#E5A823', msg: 'CONAPE le dio visto bueno pero aún no formaliza el primer desembolso.' },
+    con_desembolso: { cls: 'mat-cs-green', badge: 'Con desembolso', bg: '#4CAF50', msg: '' },
+  };
+  function MatConapeModal({ cedula, nombre, onClose, onToast, onResult }) {
+    const [loading, setLoading] = useState(true);
+    const [res, setRes] = useState(null);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      let cancel = false;
+      apiGet(`fn=actualizarEstadoConapeProspecto&cedula=${enc(cedula)}`)
+        .then(r => {
+          if (cancel) return;
+          if (r && r.ok) { setRes(r); onResult && onResult(r.novedad); }
+          else { setError((r && r.error) || 'No se pudo consultar el estado CONAPE.'); onToast && onToast((r && r.error) || 'No se pudo consultar el estado CONAPE.', 'err'); }
+        })
+        .catch(e => { if (!cancel) { setError(e.message); onToast && onToast('Error de conexión: ' + e.message, 'err'); } })
+        .finally(() => { if (!cancel) setLoading(false); });
+      return () => { cancel = true; };
+    }, [cedula]);
+
+    const meta = res ? (NOVEDAD_META[res.novedad] || NOVEDAD_META.no_encontrado) : null;
+    const desembMsg = res && res.novedad === 'con_desembolso'
+      ? `Desembolso #${res.num_desembolso || '—'} del período ${res.periodo_mes || '—'}/${res.periodo_anio || '—'}${res.fecha ? ` (${res.fecha})` : ''}`
+      : '';
+
+    return (
+      <Modal size="sm" kicker="Estado CONAPE" title={nombre || cedula} onClose={onClose}
+        footer={<button className="btn btn-ghost" onClick={onClose}>Cerrar</button>}>
+        {loading && <div className="mat-center"><div className="mat-spin" />Consultando el WS de CONAPE…</div>}
+        {!loading && error && <div className="mat-center" style={{ color: 'var(--danger)' }}>⚠️ {error}</div>}
+        {!loading && !error && res && (
+          <>
+            <div className="mat-conape-kv">
+              <div className="kv"><b>Última consulta</b><span className="mono">{res.ultima_consulta || '—'}</span></div>
+              <div className="kv"><b>Cédula consultada</b><span className="mono">{cedula}</span></div>
+              <div className="kv"><b>Nombre en padrón CONAPE</b><span>{res.nombre_ws || '—'}</span></div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <span className="mat-conape-badge" style={{ background: `color-mix(in srgb, ${meta.bg} 14%, white)`, color: meta.bg }}>{meta.badge}</span>
+            </div>
+            <div className={`mat-conape-state ${meta.cls}`}>
+              <div className="dot" />
+              <div className="msg">{res.novedad === 'con_desembolso' ? desembMsg : meta.msg}</div>
+            </div>
+          </>
+        )}
+      </Modal>
+    );
+  }
+
+  // ── Toast compartido ────────────────────────────────────────────────────────
+  function MatToast({ toast, onClose }) {
+    useEffect(() => {
+      if (!toast) return;
+      const t = setTimeout(onClose, 4200);
+      return () => clearTimeout(t);
+    }, [toast]);
+    if (!toast) return null;
+    return (
+      <div className={`mat-toast ${toast.tipo || 'info'}`} onClick={onClose} role="status">
+        <span>{toast.tipo === 'ok' ? '✓' : toast.tipo === 'err' ? '⚠️' : 'ℹ️'}</span>
+        <span>{toast.msg}</span>
+      </div>
+    );
+  }
+
+  Object.assign(window, {
+    MatResumenActivos, MatProspectoModal, MatProformasModal, MatConapeModal, MatToast,
+  });
+})();
