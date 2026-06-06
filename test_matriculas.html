@@ -46,15 +46,30 @@ window.fetch = async (url, opts) => {
     return json({ ok: true,
       prospectos: [
         { CEDULA: '1-1801-0123', NOMBRE: 'SALAZAR CHACON SANTIAGO', GRUPO_TENTATIVO: 'B1-LM18-C3-0726', PROGRAMA: 'INA', ESTADO: 'PENDIENTE_CONAPE', FINANCIAMIENTO: 'CONAPE', ASESOR_REF: 'Fiorella Salazar', TIMESTAMP: '2026-05-30' },
-        { CEDULA: '1-0720-0456', NOMBRE: 'RODRIGUEZ MORA ANA', GRUPO_TENTATIVO: 'B1-LM94-B3-0626', PROGRAMA: 'REGULAR', ESTADO: 'PENDIENTE_PAGO', FINANCIAMIENTO: 'PROPIO', ASESOR_REF: 'Roger Cruz', TIMESTAMP: '2026-05-31' },
+        { CEDULA: '1-0720-0456', NOMBRE: 'RODRIGUEZ MORA ANA', GRUPO_TENTATIVO: 'B1-LM94-B6-0426', PROGRAMA: 'REGULAR', ESTADO: 'PENDIENTE_PAGO', FINANCIAMIENTO: 'PROPIO', ASESOR_REF: 'Roger Cruz', TIMESTAMP: '2026-05-31' },
+        { CEDULA: '2-0540-1234', NOMBRE: 'CHEN VILLALOBOS MING', GRUPO_TENTATIVO: 'B1-LM18-C3-0726', PROGRAMA: 'INA', ESTADO: 'PENDIENTE_PAGO', FINANCIAMIENTO: 'PROPIO', ASESOR_REF: 'Fiorella Salazar', TIMESTAMP: '2026-06-01' },
+        { CEDULA: '1-1122-3344', NOMBRE: 'JIMENEZ ARTAVIA LUIS', GRUPO_TENTATIVO: 'B1-KJ69-C3-0226', PROGRAMA: 'REGULAR', ESTADO: 'PENDIENTE_PAGO', FINANCIAMIENTO: 'PROPIO', ASESOR_REF: 'Fiorella Salazar', TIMESTAMP: '2026-06-02' },
+        { CEDULA: '3-0456-7788', NOMBRE: 'MENA SOTO DEBORAH', GRUPO_TENTATIVO: 'B1-LM18-C3-0726', PROGRAMA: 'INA', ESTADO: 'PENDIENTE_PAGO', FINANCIAMIENTO: 'PROPIO', ASESOR_REF: 'Roger Cruz', TIMESTAMP: '2026-06-03' },
       ],
       resumen: {
         activos_por_nivel: { B1: 12, B2: 8, I1: 5, I2: 3 }, total_activos: 28,
-        total_prospectos_no_activos: 9, tasa_conversion: 75,
+        total_prospectos_no_activos: 5, tasa_conversion: 75,
         grupos_abiertos: [
-          { codigo: 'B1-LM18-C3-0726', fecha_inicio: '2026-09-14', capacidad: 20, dias: 'LM', hora_ini: '6pm', hora_fin: '9pm', programa: 'INA', modalidad: 'INTENSIVO', docente: 'RACHELLE', activos: 0, reservas: 5, cupo_disponible: 15 },
-          { codigo: 'B1-LM94-B3-0626', fecha_inicio: '2026-06-20', capacidad: 20, dias: 'KJ', hora_ini: '6pm', hora_fin: '9pm', programa: 'REGULAR', modalidad: 'REGULAR', docente: 'JOHN', activos: 0, reservas: 17, cupo_disponible: 3 },
-          { codigo: 'I1-S08-A1-0526', fecha_inicio: '2026-05-10', capacidad: 15, dias: 'S', hora_ini: '8am', hora_fin: '12pm', programa: 'REGULAR', modalidad: 'SABATINO', docente: 'MARIA', activos: 0, reservas: 15, cupo_disponible: 0 },
+          { codigo: 'B1-LM18-C3-0726', fecha_inicio: '2026-09-14', capacidad: 20, dias: 'LM', hora_ini: '18:00', hora_fin: '21:00', programa: 'INA', modalidad: 'INTENSIVO', docente: 'RACHELLE', precio_cuota: 85000, precio_matricula: 50000, precio_certificado: 18000, cupo_disponible: 5 },
+          { codigo: 'B1-KJ69-C3-0226', fecha_inicio: '2026-02-17', capacidad: 20, dias: 'KJ', hora_ini: '09:00', hora_fin: '12:00', programa: 'REGULAR', modalidad: 'REGULAR', docente: 'JOHN', precio_cuota: 80000, precio_matricula: 50000, precio_certificado: 18000, cupo_disponible: 2 },
+          { codigo: 'B1-LM94-B6-0426', fecha_inicio: '2026-05-04', capacidad: 20, dias: 'LM', hora_ini: '18:00', hora_fin: '21:00', programa: 'REGULAR', modalidad: 'REGULAR', docente: 'MARIA', precio_cuota: 80000, precio_matricula: 50000, precio_certificado: 18000, cupo_disponible: 0 },
+          { codigo: 'I1-LJ08-B2-0526', fecha_inicio: '2026-05-12', capacidad: 16, dias: 'LJ', hora_ini: '17:00', hora_fin: '20:00', programa: 'REGULAR', modalidad: 'SUPER_INTENSIVO', docente: 'PETER', precio_cuota: 90000, precio_matricula: 50000, precio_certificado: 18000, cupo_disponible: 11 },
+        ],
+        grupos_con_matriculados: [
+          { codigo: 'B1-LM18-C3-0726', capacidad: 20, matriculados: 15, cupo_disponible: 5 },
+          { codigo: 'B1-LM94-B5-0226', capacidad: 20, matriculados: 12, cupo_disponible: 8 },
+          { codigo: 'B1-KJ69-C3-0226', capacidad: 20, matriculados: 18, cupo_disponible: 2 },
+          { codigo: 'I1-S08-A1-0526', capacidad: 15, matriculados: 15, cupo_disponible: 0 },
+        ],
+        asesores_resumen: [
+          { nombre: 'Fiorella Salazar', cedula: '402110915', prospectos: 3, mat_semana: 2, mat_mes: 5, rendimiento: 62.5 },
+          { nombre: 'Roger Cruz', cedula: '113450987', prospectos: 2, mat_semana: 0, mat_mes: 1, rendimiento: 33.3 },
+          { nombre: 'Daniela Vargas', cedula: '206780123', prospectos: 0, mat_semana: 0, mat_mes: 0, rendimiento: 0.0 },
         ],
       },
     });

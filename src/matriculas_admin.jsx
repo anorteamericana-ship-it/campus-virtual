@@ -126,16 +126,93 @@
     return Object.entries(acc).sort((a, b) => b[1] - a[1]);
   }
 
-  // ── Cambio 6 (revisado) · Resumen de Matrículas ─────────────────────────────
-  // 3 bloques nuevos (grupos abiertos · distribución por grupo · resumen por
-  // asesor) + Comparativa. Se quitó "Estudiantes activos por nivel" (no aplica).
-  function MatResumenActivos({ resumen, prospectos }) {
+  // ── Helpers de formato para las cards de grupo (Fase 2 · Cambio 1) ──────────
+  // Self-contained dentro del IIFE (no dependemos de inscripcion_parts.jsx, que
+  // NO se carga en campus.html). El admin trabaja en 24h; el formulario público
+  // —que sí usa am/pm— tiene su propio formato y no se toca.
+  const DIAS_LARGO_L = { L: 'Lunes', K: 'Martes', M: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado' };
+  const MESES_LARGO_L = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const MESES_AB_L = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  // Código de días confiable de un grupo: 2º segmento del código (ej.
+  // "B1-LM18-C3-0726" → "LM"); si no, deduce del campo dias.
+  function diasCodeDe(g) {
+    const code = String(g.codigo || '').toUpperCase();
+    const seg = code.split('-')[1] || '';
+    const fromCode = (seg.match(/^[LKMJVS]+/) || [''])[0];
+    if (fromCode) return fromCode;
+    return String(g.dias || '').toUpperCase().replace(/[^LKMJVS]/g, '');
+  }
+  // Línea 2 · nombre completo de días unidos por " y ". "LJ" → "Lunes a Jueves".
+  function diasLargoY(g) {
+    const c = diasCodeDe(g);
+    if (!c) return '—';
+    if (c === 'LJ') return 'Lunes a Jueves';                 // Super Intensivo · 4 días seguidos
+    const orden = 'LKMJVS';
+    const uniq = [...new Set(c.replace(/[^LKMJVS]/g, '').split(''))]
+      .sort((a, b) => orden.indexOf(a) - orden.indexOf(b));
+    const parts = uniq.map(ch => DIAS_LARGO_L[ch]).filter(Boolean);
+    return parts.length ? parts.join(' y ') : '—';
+  }
+  // Convierte una hora a 24h "HH:mm". Acepta "HH:mm" (passthrough) o "6pm"/"6:30pm".
+  function to24(h) {
+    if (h == null || h === '') return '';
+    const s = String(h).trim().toLowerCase();
+    let m = s.match(/^(\d{1,2}):(\d{2})$/);                  // ya viene 24h
+    if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+    m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);        // 12h → 24h
+    if (m) { let hh = Number(m[1]) % 12; if (m[3] === 'pm') hh += 12; return `${String(hh).padStart(2, '0')}:${m[2] || '00'}`; }
+    return s;
+  }
+  // Línea 3 · "HH:mm a HH:mm".
+  function hora24Rango(g) {
+    const a = to24(g.hora_ini), b = to24(g.hora_fin);
+    return [a, b].filter(Boolean).join(' a ');
+  }
+  // Línea 4 · "Cuatrimestre 3 (Septiembre a Diciembre 2026)".
+  // Tipo+nº del código (-C{N}- cuatrimestre/4 meses · -B{N}- bimestre/2 meses);
+  // meses+año de fecha_inicio.
+  function periodoParen(g) {
+    const code = String(g.codigo || '').toUpperCase();
+    const segs = code.split('-');
+    let tipo = null, dur = 4, num = '';
+    for (let i = 1; i < segs.length; i++) {                  // i=1: saltar el nivel (B1/I1…)
+      const m = segs[i].match(/^([CB])(\d+)$/);
+      if (m) { tipo = m[1] === 'B' ? 'Bimestre' : 'Cuatrimestre'; dur = m[1] === 'B' ? 2 : 4; num = m[2]; break; }
+    }
+    if (!tipo) return '—';
+    const [y, mo] = String(g.fecha_inicio || '').split('-').map(Number);
+    let rango = '';
+    if (y && mo) { const endIdx = (mo - 1 + dur - 1) % 12; rango = `${MESES_LARGO_L[mo - 1]} a ${MESES_LARGO_L[endIdx]} ${y}`; }
+    const izq = num ? `${tipo} ${num}` : tipo;
+    return rango ? `${izq} (${rango})` : izq;
+  }
+  // Línea 5 · "14-sep-2026" (mes abreviado en minúscula).
+  function fechaInicia(f) {
+    const [y, m, d] = String(f || '').split('-').map(Number);
+    if (!y || !m || !d) return '—';
+    return `${String(d).padStart(2, '0')}-${MESES_AB_L[m - 1]}-${y}`;
+  }
+
+  // ── Cambio 6 (revisado) + Fase 2 · Resumen de Matrículas ────────────────────
+  // Bloques: grupos abiertos (6 líneas exactas) · distribución de prospectos
+  // (interactivo) · distribución de matriculados (informativo) · resumen por
+  // asesor (4 métricas, interactivo) · comparativa. Los bloques interactivos
+  // filtran la lista PRE MATRÍCULA (props filtroGrupo/filtroAsesor + toggles).
+  function MatResumenActivos({ resumen, prospectos, filtroGrupo, filtroAsesor, onToggleGrupo, onToggleAsesor }) {
     if (!resumen && !(prospectos && prospectos.length)) return null;
     const r = resumen || {};
     const grupos = Array.isArray(r.grupos_abiertos) ? r.grupos_abiertos : [];
     const distrib = agrupar(prospectos, ['GRUPO_TENTATIVO', 'grupo_tentativo', 'grupo'], '(Sin grupo)');
-    const porAsesor = agrupar(prospectos, ['ASESOR_REF', 'asesor_ref', 'asesor'], '(Sin asesor)');
+    const matriculados = (Array.isArray(r.grupos_con_matriculados) ? r.grupos_con_matriculados : [])
+      .filter(m => Number(m.matriculados) > 0);
+    // Cambio 4: preferir asesores_resumen (v4.33.0). Fallback: conteo simple desde prospectos.
+    const porAsesorFallback = agrupar(prospectos, ['ASESOR_REF', 'asesor_ref', 'asesor'], '(Sin asesor)');
+    const asesores = (Array.isArray(r.asesores_resumen) && r.asesores_resumen.length)
+      ? r.asesores_resumen
+      : porAsesorFallback.map(([nombre, n]) => ({ nombre, prospectos: n, mat_semana: null, mat_mes: null, rendimiento: null }));
     const tasa = r.tasa_conversion;
+    const totalProsp = (prospectos || []).length;
 
     const cupoBadge = (g) => {
       const disp = Number(g.cupo_disponible);
@@ -143,11 +220,18 @@
       if (disp <= 3) return ['Pocos cupos', 'mat-gb-yellow'];
       return ['Disponible', 'mat-gb-green'];
     };
-    const totalProsp = (prospectos || []).length;
+    const dispCls = (disp) => Number(disp) === 0 ? 'mat-disp-red' : Number(disp) <= 3 ? 'mat-disp-yellow' : 'mat-disp-green';
+
+    const HINT = {
+      prospectos: 'Leads + matrículas generadas pero con matrícula B1 sin pagar todavía.',
+      mat_semana: 'Matrículas con pago de B1 confirmado en los últimos 7 días.',
+      mat_mes: 'Matrículas con pago de B1 confirmado en los últimos 30 días.',
+      rendimiento: 'Conversión = mat_mes / (mat_mes + prospectos) × 100.',
+    };
 
     return (
       <div className="mat-resumen2">
-        {/* ── 3a · Grupos abiertos para inscripción ── */}
+        {/* ── Grupos abiertos para inscripción (Cambio 1) ── */}
         <div className="card mat-r2-grupos">
           <div className="mat-res-h">Grupos abiertos para inscripción</div>
           {grupos.length === 0 ? (
@@ -156,21 +240,18 @@
             <div className="mat-gb-grid">
               {grupos.map((g, i) => {
                 const [badgeTxt, badgeCls] = cupoBadge(g);
-                const dias = decodeDiasLocal(g.dias);
-                const hora = [g.hora_ini, g.hora_fin].filter(Boolean).join('–');
-                const disp = g.cupo_disponible != null ? g.cupo_disponible : '—';
-                const cap = g.capacidad != null ? g.capacidad : '—';
+                const disp = Number(g.cupo_disponible) || 0;
                 return (
                   <div key={g.codigo || i} className="mat-gb-card">
                     <div className="mat-gb-top">
                       <span className="mat-gb-cod">{g.codigo || '—'}</span>
                       <span className={`mat-gb-badge ${badgeCls}`}>{badgeTxt}</span>
                     </div>
-                    <div className="mat-gb-sched">{[dias, hora].filter(Boolean).join(' · ') || '—'}</div>
-                    <div className="mat-gb-meta">
-                      <span>Inicia {fmtFechaCorta(g.fecha_inicio)}</span>
-                      <span className="mat-gb-cupo">{disp} / {cap}</span>
-                    </div>
+                    <div className="mat-gb-dias">{diasLargoY(g)}</div>
+                    <div className="mat-gb-hora">{hora24Rango(g) || '—'}</div>
+                    <div className="mat-gb-periodo">{periodoParen(g)}</div>
+                    <div className="mat-gb-inicia">Inicia {fechaInicia(g.fecha_inicio)}</div>
+                    <div className={`mat-gb-cupos ${badgeCls}`}>{disp} {disp === 1 ? 'cupo disponible' : 'cupos disponibles'}</div>
                   </div>
                 );
               })}
@@ -178,15 +259,18 @@
           )}
         </div>
 
-        {/* ── 3b · Distribución de prospectos por grupo ── */}
-        <div className="card mat-r2-list">
+        {/* ── Distribución de prospectos por grupo (Cambio 2 · interactivo) ── */}
+        <div className="card mat-r2-distrib">
           <div className="mat-res-h">Distribución de prospectos por grupo</div>
           {distrib.length === 0 ? (
             <div className="mat-r2-empty">Sin prospectos en pre matrícula.</div>
           ) : (
             <div className="mat-kv-list">
               {distrib.map(([g, n]) => (
-                <div key={g} className="mat-kv">
+                <div key={g} role="button" tabIndex={0}
+                  className={'mat-kv mat-kv-click' + (filtroGrupo === g ? ' active' : '')}
+                  onClick={() => onToggleGrupo && onToggleGrupo(g)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleGrupo && onToggleGrupo(g); } }}>
                   <span className="mat-kv-k mono">{g}</span>
                   <span className="mat-kv-n">{n} <i>{n === 1 ? 'prospecto' : 'prospectos'}</i></span>
                 </div>
@@ -195,20 +279,66 @@
           )}
         </div>
 
-        {/* ── 3c · Resumen por asesor ── */}
-        <div className="card mat-r2-list">
+        {/* ── Distribución de matriculados por grupo (Cambio 3 · informativo) ── */}
+        <div className="card mat-r2-matric">
+          <div className="mat-res-h">Distribución de matriculados por grupo</div>
+          {matriculados.length === 0 ? (
+            <div className="mat-r2-empty">Aún no hay grupos con estudiantes matriculados.</div>
+          ) : (
+            <table className="mat-mtable">
+              <thead>
+                <tr><th>Grupo</th><th className="num">Matriculados / disponible</th></tr>
+              </thead>
+              <tbody>
+                {matriculados.map((m, i) => (
+                  <tr key={m.codigo || i}>
+                    <td className="mono">{m.codigo || '—'}</td>
+                    <td className="num">
+                      <b>{m.matriculados != null ? m.matriculados : '—'}</b>
+                      {' / '}
+                      <span className={dispCls(m.cupo_disponible)}>disponible: {m.cupo_disponible != null ? m.cupo_disponible : '—'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ── Resumen por asesor (Cambio 4 · 4 métricas · interactivo) ── */}
+        <div className="card mat-r2-asesor">
           <div className="mat-res-h">Resumen por asesor</div>
-          {porAsesor.length === 0 ? (
+          {asesores.length === 0 ? (
             <div className="mat-r2-empty">Sin prospectos asignados.</div>
           ) : (
-            <div className="mat-kv-list">
-              {porAsesor.map(([a, n]) => (
-                <div key={a} className="mat-kv">
-                  <span className="mat-kv-k">{a}</span>
-                  <span className="mat-kv-n">{n} <i>{n === 1 ? 'prospecto' : 'prospectos'}</i></span>
-                </div>
-              ))}
-            </div>
+            <table className="mat-atable">
+              <thead>
+                <tr>
+                  <th>Asesor</th>
+                  <th className="num">Prospectos <span className="mat-hint" title={HINT.prospectos}>?</span></th>
+                  <th className="num">Mat. semana <span className="mat-hint" title={HINT.mat_semana}>?</span></th>
+                  <th className="num">Mat. mes <span className="mat-hint" title={HINT.mat_mes}>?</span></th>
+                  <th className="num">Rendimiento <span className="mat-hint" title={HINT.rendimiento}>?</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {asesores.map((a, i) => {
+                  const inactivo = Number(a.prospectos || 0) === 0 && Number(a.mat_mes || 0) === 0;
+                  const active = filtroAsesor && filtroAsesor === a.nombre;
+                  return (
+                    <tr key={a.nombre || a.cedula || i}
+                      className={'mat-arow' + (inactivo ? ' inactivo' : '') + (active ? ' active' : '')}
+                      onClick={() => onToggleAsesor && onToggleAsesor(a.nombre)}>
+                      <td className="mat-arow-name">{a.nombre || '—'}</td>
+                      <td className="num">{a.prospectos != null ? a.prospectos : '—'}</td>
+                      <td className="num">{a.mat_semana != null ? a.mat_semana : '—'}</td>
+                      <td className="num">{a.mat_mes != null ? a.mat_mes : '—'}</td>
+                      <td className="num">{a.rendimiento != null ? `${Number(a.rendimiento).toFixed(1)}%` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
 

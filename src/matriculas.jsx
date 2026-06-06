@@ -941,6 +941,27 @@ function MatriculasView({ onNavigate }) {
   const [conapeNov, setConapeNov] = React.useState({});      // {cedula: novedad}
   const showToast = React.useCallback((msg, tipo = 'info') => setToast({ msg, tipo }), []);
 
+  // Fase 2 · Cambio 2 — filtros interactivos del resumen → lista PRE MATRÍCULA.
+  // null = sin filtro. Grupo y asesor se combinan con AND.
+  const [filtroGrupo, setFiltroGrupo] = React.useState(null);
+  const [filtroAsesor, setFiltroAsesor] = React.useState(null);
+  // Extractores tolerantes a MAY/min, alineados con agrupar() de matriculas_admin.jsx.
+  const grupoDe = p => String(p.GRUPO_TENTATIVO || p.grupo_tentativo || p.grupo || '').trim() || '(Sin grupo)';
+  const asesorDe = p => String(p.ASESOR_REF || p.asesor_ref || p.asesor || '').trim() || '(Sin asesor)';
+  const toggleGrupo = g => setFiltroGrupo(cur => cur === g ? null : g);
+  const toggleAsesor = a => setFiltroAsesor(cur => cur === a ? null : a);
+  // Si tras un reload el grupo/asesor filtrado ya no existe entre los prospectos,
+  // limpiar ese filtro automáticamente (los demás se mantienen).
+  React.useEffect(() => {
+    if (filtroGrupo && !prospectos.some(p => grupoDe(p) === filtroGrupo)) setFiltroGrupo(null);
+    if (filtroAsesor && !prospectos.some(p => asesorDe(p) === filtroAsesor)) setFiltroAsesor(null);
+  }, [prospectos]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Lista visible: aplica ambos filtros (AND).
+  const prospectosFiltrados = prospectos.filter(p =>
+    (!filtroGrupo || grupoDe(p) === filtroGrupo) &&
+    (!filtroAsesor || asesorDe(p) === filtroAsesor)
+  );
+
   // Fase 2.5 — "Generar matrícula": solo admin/superadmin y solo si el prospecto
   // aún NO tiene CODIGO_ESTUDIANTE (si lo tiene, ya fue matriculado).
   const rolSesion = (() => {
@@ -1022,13 +1043,33 @@ function MatriculasView({ onNavigate }) {
         ))}
       </div>
 
-      {/* Resumen de Matrículas: grupos abiertos · distribución · asesores · comparativa (Cambio 6 revisado) */}
-      <window.MatResumenActivos resumen={resumen} prospectos={prospectos} />
+      {/* Resumen de Matrículas: grupos abiertos · distribución prospectos/matriculados · asesores · comparativa (Cambio 6 + Fase 2) */}
+      <window.MatResumenActivos resumen={resumen} prospectos={prospectos}
+        filtroGrupo={filtroGrupo} filtroAsesor={filtroAsesor}
+        onToggleGrupo={toggleGrupo} onToggleAsesor={toggleAsesor} />
 
       {/* Tabla */}
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
-        <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div className="card-title">PRE MATRÍCULA</div>
+        <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+            <div className="card-title">PRE MATRÍCULA</div>
+            {(filtroGrupo || filtroAsesor) && (
+              <div className="mat-filtros">
+                <span className="mat-filtros-lbl">Mostrando:</span>
+                {filtroGrupo && (
+                  <span className="mat-chip">Grupo <b>{filtroGrupo}</b>
+                    <button onClick={() => setFiltroGrupo(null)} aria-label="Quitar filtro de grupo">×</button>
+                  </span>
+                )}
+                {filtroAsesor && (
+                  <span className="mat-chip">Asesor <b>{filtroAsesor}</b>
+                    <button onClick={() => setFiltroAsesor(null)} aria-label="Quitar filtro de asesor">×</button>
+                  </span>
+                )}
+                <span className="mat-filtros-count">{prospectosFiltrados.length} de {prospectos.length}</span>
+              </div>
+            )}
+          </div>
           <div style={{ display:'flex', gap:8 }}>
             <button className="btn btn-ghost" style={{ fontSize:12 }}>
               <Icon name="download" size={14} className="" /> Exportar
@@ -1056,7 +1097,10 @@ function MatriculasView({ onNavigate }) {
             {!loading && !error && prospectos.length === 0 && (
               <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
             )}
-            {!loading && !error && prospectos.map((p,i) => {
+            {!loading && !error && prospectos.length > 0 && prospectosFiltrados.length === 0 && (
+              <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
+            )}
+            {!loading && !error && prospectosFiltrados.map((p,i) => {
               const em = estadoMeta[p.ESTADO] || { label:p.ESTADO||'—', color:'var(--ink-3)', bg:'var(--surface-2)' };
               const nombre = p.NOMBRE || '—';
               const grupo = p.GRUPO_TENTATIVO || '—';
