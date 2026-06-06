@@ -184,6 +184,10 @@ function formatHoraMil(h) {
 
 // ── DECODIFICADORES PARA CARDS DE GRUPO EXPANDIDAS (Cambio 1) ────────────────
 const MESES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+// Meses en formato largo capitalizado para el período de la card de horario.
+const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+// Días con nombre completo (formato pedido por dirección para la card de horario).
+const DIAS_LARGO = { L: 'Lunes', K: 'Martes', M: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado' };
 
 // La columna DIAS en GRUPOS usa códigos de un carácter: L=lunes, K=martes,
 // M=miércoles, J=jueves, V=viernes, S=sábado. "LJ" es el caso especial del
@@ -230,6 +234,62 @@ function formatHora12(h) {
 }
 function formatRango12(ini, fin) {
   return [formatHora12(ini), formatHora12(fin)].filter(Boolean).join('–');
+}
+
+// Días con nombre COMPLETO separados por " / " → "Lunes / Miércoles", "Martes / Jueves".
+// Caso especial: "LJ" (Super Intensivo, lunes a jueves seguidos) → "Lunes a Jueves".
+// Recibe el código limpio de días (lo que devuelve diasDeGrupo).
+function decodeDiasLargo(cod) {
+  const c = String(cod || '').toUpperCase().trim();
+  if (!c) return '';
+  if (c === 'LJ') return 'Lunes a Jueves';                  // Super Intensivo · 4 días seguidos
+  const orden = 'LKMJVS';
+  const limpio = c.replace(/[^LKMJVS]/g, '');
+  const uniq = limpio
+    ? [...new Set(limpio.split(''))].sort((a, b) => orden.indexOf(a) - orden.indexOf(b))
+    : [];
+  const parts = uniq.map((ch) => DIAS_LARGO[ch]).filter(Boolean);
+  return parts.length ? parts.join(' / ') : c;             // ej. "LM" → "Lunes / Miércoles"
+}
+
+// Período en formato largo pedido por dirección:
+//   "{Tipo} {N} — {MesInicio} a {MesFin} {año}"  →  "Cuatrimestre 3 — Septiembre a Diciembre 2026".
+// El TIPO y el NÚMERO se deducen del CÓDIGO del grupo: un segmento "C{n}" (Cuatrimestre,
+// 4 meses) o "B{n}" (Bimestre, 2 meses), p.ej. "B1-LM18-C3-0726" → "Cuatrimestre 3".
+// Se ignora el 1er segmento (el nivel, p.ej. "B1") para no confundir su "B" con Bimestre.
+// Los meses+año salen de FECHA_INICIO. Si el código no trae el segmento, se cae al
+// helper esBimestral() + periodo_inicio como respaldo.
+function buildPeriodoLargo(g) {
+  const code = String(G.cod(g) || '').toUpperCase();
+  const segs = code.split('-');
+  let tipo = null, dur = 4, num = '';
+  for (let i = 1; i < segs.length; i++) {
+    const m = segs[i].match(/^([CB])(\d+)$/);
+    if (m) {
+      tipo = m[1] === 'B' ? 'Bimestre' : 'Cuatrimestre';
+      dur = m[1] === 'B' ? 2 : 4;
+      num = m[2];
+      break;
+    }
+  }
+  if (!tipo) {                                              // respaldo: código sin segmento de período
+    const bim = esBimestral(g);
+    tipo = bim ? 'Bimestre' : 'Cuatrimestre';
+    dur = bim ? 2 : 4;
+    const nm = String(g.periodo_inicio || g.periodo || '').match(/(\d+)/);
+    num = nm ? nm[1] : '';
+  }
+  let rango = '';
+  const fecha = G.fecha(g);
+  if (fecha) {
+    const [y, mo] = String(fecha).split('-').map(Number);
+    if (y && mo) {
+      const endIdx = (mo - 1 + dur - 1) % 12;               // mes final = inicio + duración − 1
+      rango = `${MESES_LARGO[mo - 1]} a ${MESES_LARGO[endIdx]} ${y}`;
+    }
+  }
+  const izq = num ? `${tipo} ${num}` : tipo;
+  return rango ? `${izq} — ${rango}` : izq;
 }
 
 // Fecha de inicio corta en español → "12-may-2026"
@@ -326,7 +386,9 @@ const G = {
     return v == null ? null : Number(v);
   },
   horas: (g) => {
-    if (g.hora_inicio) return { ini: g.hora_inicio, fin: g.hora_fin || '' };
+    const ini = g.hora_inicio || g.hora_ini || g.horaInicio || '';
+    const fin = g.hora_fin || g.horaFin || '';
+    if (ini || fin) return { ini, fin };
     const raw = g.hora || g.horario || '';
     const parts = String(raw).split(/[-–]/).map((s) => s.trim());
     return { ini: parts[0] || '', fin: parts[1] || '' };
@@ -515,11 +577,19 @@ function CupoBadge({ g }) {
 function GrupoCard({ g, selected, onSelect }) {
   const nivel = NIVEL_LABEL[G.nivel(g)] || { nombre: G.nivel(g) || 'Nivel', color: '#2B7FC1', emoji: '📘' };
   const { ini, fin } = G.horas(g);
-  // Cambio 1 — los 3 bloques de info siempre visibles (sin toggle):
-  const periodoTxt = buildPeriodo(g);                                  // "Cuatrimestre 2 · May–Ago 2026"
-  const diasTxt = decodeDias(diasDeGrupo(g));                          // "Lun/Mié" (días tomados del código del grupo)
-  const horaTxt = formatRango12(ini, fin);                             // "6:00pm–9:00pm"
-  const fechaTxt = G.fecha(g) ? formatFechaInicio(G.fecha(g)) : '';    // "12-may-2026"
+  // Formato EXACTO pedido por dirección (6 líneas, en este orden):
+  //   1) Nivel largo            → "Básico I"
+  //   2) Período largo          → "Cuatrimestre 3 — Septiembre a Diciembre 2026"
+  //   3) Días con nombre largo  → "Lunes / Miércoles"
+  //   4) Hora                   → "6:00pm a 9:00pm"
+  //   5) 🗓 Inicia + fecha      → "🗓 Inicia 14-sep-2026"
+  //   6) Cupo                   → "5 cupos disponibles"
+  const periodoTxt = buildPeriodoLargo(g);                             // "Cuatrimestre 3 — Septiembre a Diciembre 2026"
+  const diasTxt = decodeDiasLargo(diasDeGrupo(g));                     // "Lunes / Miércoles" (días tomados del código)
+  const horaTxt = (ini || fin)                                        // "6:00pm a 9:00pm" (am/pm minúsculas, separador " a ")
+    ? [formatHora12(ini), formatHora12(fin)].filter(Boolean).join(' a ')
+    : '';
+  const fechaTxt = G.fecha(g) ? formatFechaInicio(G.fecha(g)) : '';    // "14-sep-2026"
 
   return (
     <div
@@ -529,16 +599,15 @@ function GrupoCard({ g, selected, onSelect }) {
 
       <div className="gcard-top">
         <span className="gcard-nivel" style={{ background: `${nivel.color}1a`, color: nivel.color }}>
-          {nivel.emoji} {nivel.nombre}
+          {nivel.nombre}
         </span>
       </div>
 
       {periodoTxt && <div className="gh-periodo">{periodoTxt}</div>}
 
-      <div className="gcard-horario">
-        {diasTxt && <div className="gh-dias">{diasTxt}</div>}
-        {horaTxt && <div className="gh-hora">{horaTxt}</div>}
-      </div>
+      {diasTxt && <div className="gh-dias">{diasTxt}</div>}
+
+      {horaTxt && <div className="gh-hora">{horaTxt}</div>}
 
       <div className="gcard-meta">
         {fechaTxt && <div className="gm-row">🗓 Inicia {fechaTxt}</div>}
@@ -609,7 +678,7 @@ Object.assign(window, {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
   PROVINCIAS, CR_GEO, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   NIVEL_LABEL, DIAS_LABEL, MODALIDAD_LABEL, formatHora, formatHoraMil, formatFecha, formatFechaCorta, G,
-  MESES_CORTO, DIAS_CORTO, decodeDias, diasDeGrupo, formatHora12, formatRango12, formatFechaInicio, buildPeriodo, getCupoFake,
+  MESES_CORTO, MESES_LARGO, DIAS_CORTO, DIAS_LARGO, decodeDias, decodeDiasLargo, diasDeGrupo, formatHora12, formatRango12, formatFechaInicio, buildPeriodo, buildPeriodoLargo, getCupoFake,
   fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor, fmtBytes, MAX_FILE,
   I, Ico, IcoFill, LockBadge,
   Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard

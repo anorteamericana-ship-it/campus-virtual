@@ -70,16 +70,113 @@ const nombrePila = nombre => {
   return pick.charAt(0) + pick.slice(1).toLowerCase();
 };
 
+// ── NORMALIZACIÓN DE FORMA (Bug A) ─────────────────────────────────────
+// El backend (APOLLO/PROSPECTOS) devuelve las columnas en MAYÚSCULAS: CEDULA,
+// NOMBRE, ETAPA, FINANCIAMIENTO, GRUPO_TENTATIVO, ASESOR_REF, COMISION_PAGADA,
+// TIMESTAMP… pero TODO el frontend de ventas (tabla, tarjetas, embudo, calcResumen
+// y el drawer) lee minúsculas: p.cedula, p.etapa, p.financiamiento, p.fecha_registro…
+// Por eso el panel de Fiorella salía en CERO aunque la respuesta traía 5 prospectos:
+// las filas quedaban en blanco, el embudo agrupaba todo bajo `undefined` y calcResumen
+// contaba 0. Este normalizador traduce la forma del backend a la que espera la UI.
+const siNoV = v => v === true || /^(s[ií]|true|1)$/i.test(String(v == null ? '' : v).trim());
+function fmtCedulaV2(raw) {
+  const d = String(raw == null ? '' : raw).replace(/\D/g, '');
+  if (d.length === 9) return `${d[0]}-${d.slice(1, 5)}-${d.slice(5)}`;   // 120180140 → 1-2018-0140
+  return String(raw == null ? '' : raw);
+}
+function normalizarProspecto(P) {
+  if (!P || typeof P !== 'object') return P;
+  // Si ya viene en minúsculas (datos demo o ya normalizado) → no tocar.
+  if (P.cedula !== undefined || P.nombre !== undefined) return P;
+  const g = (...ks) => { for (const k of ks) { if (P[k] != null && P[k] !== '') return P[k]; } return ''; };
+  const esMenor = siNoV(g('ES_MENOR'));
+  const tutorNombre = g('TUTOR_NOMBRE');
+  const equipo = g('CONAPE_EQUIPO');
+  const fin = g('FINANCIAMIENTO');
+  const etapa = g('ETAPA');
+  return {
+    cedula: fmtCedulaV2(g('CEDULA')),
+    nombre: g('NOMBRE'),
+    correo: g('CORREO'),
+    telefono: g('TELEFONO'),
+    whatsapp: g('WHATSAPP', 'TELEFONO'),
+    tipo_id: g('TIPO_ID'),
+    sexo: g('SEXO'),
+    provincia: g('PROVINCIA'),
+    canton: g('CANTON'),
+    distrito: g('DISTRITO'),
+    direccion: g('DIRECCION'),
+    fecha_nac: g('FECHA_NAC'),
+    es_menor: esMenor,
+    tutor: (esMenor || tutorNombre)
+      ? { nombre: tutorNombre, cedula: g('TUTOR_CEDULA'), correo: g('TUTOR_CORREO'), tel: g('TUTOR_TEL') }
+      : null,
+    programa: g('PROGRAMA'),
+    modalidad: g('MODALIDAD'),
+    financiamiento: fin,
+    beca: g('BECA'),
+    beca_estado: g('BECA_ESTADO'),
+    grupo_tentativo: g('GRUPO_TENTATIVO'),
+    conape: (/conape/i.test(fin) || (equipo && equipo !== 'NINGUNO'))
+      ? { equipo: equipo || 'NINGUNO', toeic: siNoV(g('CONAPE_TOEIC')), sostenimiento: g('CONAPE_SOSTENIMIENTO') }
+      : null,
+    como_entero: g('COMO_ENTERO'),
+    asesor_ref: g('ASESOR_REF'),
+    conocimientos_previos: g('CONOCIMIENTOS_PREVIOS'),
+    estado_cuenta: g('ESTADO_CUENTA'),
+    notas: Array.isArray(P.NOTAS) ? P.NOTAS : (Array.isArray(P.notas) ? P.notas : []),
+    etapa: etapa,
+    fecha_registro: g('TIMESTAMP', 'F_LEAD'),
+    fecha_activacion: g('F_ACTIVO'),
+    foto_ced_frente: g('FOTO_CED_FRENTE'),
+    foto_ced_dorso: g('FOTO_CED_DORSO'),
+    foto_titulo: g('FOTO_TITULO'),
+    // Comisión pendiente solo aplica a estudiantes ya ACTIVOS sin comisión pagada.
+    comision_pendiente: etapa === 'ACTIVO' && !siNoV(g('COMISION_PAGADA')),
+    codigo: g('CODIGO_ESTUDIANTE'),
+    proforma_url: g('PROFORMA_URL'),
+    proforma_equipo_url: g('PROFORMA_EQUIPO_URL'),
+    conape_eventos: Array.isArray(P.conape_eventos) ? P.conape_eventos : [],
+    docs_extra: Array.isArray(P.docs_extra) ? P.docs_extra : [],
+  };
+}
+// Mapea el resumen del backend ({ total_prospectos, por_etapa, activados_mes,
+// comisiones_pendientes… }) a la forma que consume KPIRow. pago_propio_pendiente
+// no lo da el backend → se deriva de la lista ya normalizada.
+function mapResumenVentas(rs, lista) {
+  if (!rs || rs.ok === false || typeof rs.total_prospectos !== 'number') return null;
+  const pe = rs.por_etapa || {};
+  const esperando = ETAPAS_CONAPE.reduce((s, k) => s + (pe[k] || 0), 0);
+  const base = calcResumen(lista || []);
+  return {
+    total: rs.total_prospectos,
+    activados_mes: rs.activados_mes || 0,
+    esperando_conape: esperando,
+    pago_propio_pendiente: base.pago_propio_pendiente,
+    comisiones_pendientes: rs.comisiones_pendientes || 0,
+  };
+}
+
 // ── ENDPOINTS GET ─────────────────────────────────────────────────────────
 async function getProspectosAsesor(asesor) {
   let url = `${SCRIPT_URL_V}?fn=getProspectosAsesor`;
   if (asesor) url += `&asesor=${encodeURIComponent(asesor)}`;
   const res = await fetch(url);
-  return await res.json();
+  const d = await res.json();
+  // Normalizar la forma MAYÚSCULAS del backend → minúsculas que espera la UI.
+  if (d && Array.isArray(d.prospectos)) d.prospectos = d.prospectos.map(normalizarProspecto);
+  return d;
 }
 async function getProspectoDetalle(cedula) {
   const res = await fetch(`${SCRIPT_URL_V}?fn=getProspectoDetalle&cedula=${encodeURIComponent(cedula)}`);
-  return await res.json();
+  const d = await res.json();
+  const p = d && (d.prospecto || (d.ok !== false ? d : null));
+  if (p && typeof p === 'object') {
+    const norm = normalizarProspecto(p);
+    if (d.prospecto) { d.prospecto = norm; return d; }
+    return { ...d, ok: d.ok !== false, prospecto: norm };
+  }
+  return d;
 }
 async function getResumenVentas(asesor) {
   let url = `${SCRIPT_URL_V}?fn=getResumenVentas`;
@@ -344,6 +441,7 @@ Object.assign(window, {
   SCRIPT_URL_V, WA_NUMBER_V,
   ETAPAS, ETAPA_MAP, ETAPAS_CONAPE, ASESORES_V, FIN_MAP, PROG_MAP,
   fmtTelV, waLink, diasDesde, fmtFechaCorta, fmtColones, nombrePila,
+  normalizarProspecto, mapResumenVentas,
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,

@@ -10,6 +10,24 @@
 const { useState, useEffect, useMemo, useCallback } = React;
 const sleepV = ms => new Promise(r => setTimeout(r, ms));
 
+// Normaliza para comparar nombres de asesor sin tropezar con may/min ni tildes.
+const normAsesor = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+// Filtro demo TOLERANTE: la sesión real puede traer "Fiorella Salazar" mientras el
+// dato demo dice "Fiorela Salazar". Compara por nombre completo o por primer nombre
+// con prefijo, para que el modo demostración nunca quede vacío por un detalle de tipeo.
+function filtrarDemoPorAsesor(lista, asesor) {
+  const a = normAsesor(asesor);
+  if (!a) return lista;
+  const aFirst = a.split(/\s+/)[0];
+  const hit = lista.filter(p => {
+    const r = normAsesor(p.asesor_ref);
+    if (!r) return false;
+    const rFirst = r.split(/\s+/)[0];
+    return r === a || r.startsWith(a) || a.startsWith(r) || rFirst.startsWith(aFirst) || aFirst.startsWith(rFirst);
+  });
+  return hit;
+}
+
 function VentasApp() {
   const sesion = useMemo(() => (window.getSesion ? window.getSesion() : null), []);
   const [demo, setDemo] = useState(!sesion);
@@ -24,6 +42,8 @@ function VentasApp() {
   const [drawerCed, setDrawerCed] = useState(null);
   const [lightbox, setLightbox] = useState(null);          // { src, caption }
   const [toast, setToast] = useState(null);
+  const [errorCarga, setErrorCarga] = useState(null);      // error de carga con sesión real (no enmascarar con demo)
+  const [reloadTick, setReloadTick] = useState(0);         // reintento manual
 
   const scopeAsesor = esSuper ? asesorView : usuario.nombre;
 
@@ -35,33 +55,56 @@ function VentasApp() {
   }, [toast]);
 
   // ── Carga de datos ──
+  // Bug A (panel de Fiorella en CERO): antes ambas llamadas iban en un solo
+  // Promise.all y CUALQUIER rechazo (p.ej. getResumenVentas con respuesta no-JSON
+  // o un hipo de red en una de las dos) tumbaba TODO al fallback demo. El demo
+  // filtra por nombre y, como la sesión real trae "Fiorella Salazar" pero el demo
+  // dice "Fiorela Salazar", quedaba en 0 → panel entero en cero, enmascarando los
+  // 5 prospectos reales. Fix: (1) los PROSPECTOS son la fuente de verdad y se piden
+  // solos; (2) el RESUMEN va aparte y, si falla, se calcula localmente con los
+  // prospectos ya cargados; (3) con sesión real NUNCA caemos a demo en silencio:
+  // mostramos un error con "Reintentar" en vez de ceros engañosos.
   useEffect(() => {
     let cancel = false;
-    setProspectos(null); setResumen(null);
+    setProspectos(null); setResumen(null); setErrorCarga(null);
     (async () => {
       if (demo) {
         await sleepV(420);
-        const lista = scopeAsesor ? window.DEMO_PROSPECTOS.filter(p => p.asesor_ref === scopeAsesor) : window.DEMO_PROSPECTOS;
+        const lista = scopeAsesor ? filtrarDemoPorAsesor(window.DEMO_PROSPECTOS, scopeAsesor) : window.DEMO_PROSPECTOS;
         if (!cancel) { setProspectos(lista); setResumen(window.calcResumen(lista)); }
         return;
       }
+      // 1) PROSPECTOS — fuente de verdad del panel.
+      let lista = null;
       try {
-        const [pl, rs] = await Promise.all([
-          window.getProspectosAsesor(scopeAsesor || undefined),
-          window.getResumenVentas(scopeAsesor || undefined),
-        ]);
-        const lista = Array.isArray(pl) ? pl : (pl && (pl.prospectos || (pl.ok && pl.data))) || null;
-        if (!lista) throw new Error('respuesta inválida');
-        if (!cancel) {
-          setProspectos(lista);
-          setResumen((rs && rs.ok !== false) ? (rs.resumen || rs) : window.calcResumen(lista));
+        const pl = await window.getProspectosAsesor(scopeAsesor || undefined);
+        lista = Array.isArray(pl) ? pl
+              : (pl && (pl.prospectos || (pl.data && pl.data.prospectos) || (pl.ok && pl.data))) || null;
+        if (!lista) throw new Error('Respuesta sin lista de prospectos');
+      } catch (e) {
+        if (cancel) return;
+        if (sesion) {
+          // Sesión real: no enmascarar con demo. Mostrar error real + permitir reintento.
+          setErrorCarga('No pudimos cargar tus prospectos desde el servidor. Revisá la conexión e intentá de nuevo.');
+          setProspectos([]); setResumen(window.calcResumen([]));
+        } else {
+          setDemo(true);   // sin sesión (revisión de la herramienta) → datos demo
         }
+        return;
+      }
+      if (cancel) return;
+      setProspectos(lista);
+      // 2) RESUMEN — independiente. Si falla o no trae KPIs, se calcula con los prospectos.
+      try {
+        const rs = await window.getResumenVentas(scopeAsesor || undefined);
+        const mapped = window.mapResumenVentas ? window.mapResumenVentas(rs, lista) : null;
+        if (!cancel) setResumen(mapped || window.calcResumen(lista));
       } catch (_) {
-        if (!cancel) setDemo(true);   // dispara recarga en modo demo
+        if (!cancel) setResumen(window.calcResumen(lista));
       }
     })();
     return () => { cancel = true; };
-  }, [scopeAsesor, demo]);
+  }, [scopeAsesor, demo, reloadTick]);
 
   // Optimistic update cuando el drawer cambia algo del prospecto (etapa, beca,
   // proformas, …). Merge genérico: respeta cualquier campo que envíe el drawer.
@@ -165,10 +208,18 @@ function VentasApp() {
               {filtered.length === 0 ? (
                 <div className="vx-tablecard">
                   <div className="vx-empty">
-                    <div className="vx-empty-icon">🔍</div>
+                    <div className="vx-empty-icon">{errorCarga ? '⚠️' : '🔍'}</div>
                     <div style={{ fontWeight: 600, color: 'var(--v-ink-2)' }}>
-                      {(prospectos || []).length === 0 ? 'No hay prospectos en esta vista todavía.' : 'Ningún prospecto coincide con los filtros.'}
+                      {errorCarga
+                        ? errorCarga
+                        : (prospectos || []).length === 0 ? 'No hay prospectos en esta vista todavía.' : 'Ningún prospecto coincide con los filtros.'}
                     </div>
+                    {errorCarga && (
+                      <button className="vx-clear" style={{ marginTop: 12 }}
+                        onClick={() => { setErrorCarga(null); setReloadTick(t => t + 1); }}>
+                        Reintentar
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (

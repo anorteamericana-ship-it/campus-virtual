@@ -249,6 +249,72 @@
     );
   }
 
+  // ── Bug A · Section a nivel de MÓDULO (no inline) ───────────────────────────
+  // Antes esto estaba definido DENTRO de MatProspectoModal. Cada onChange/keystroke
+  // re-renderiza el modal y, al ser un componente declarado inline, React veía un
+  // TIPO de componente nuevo en cada render → desmontaba y remontaba TODO el subárbol
+  // (incluidos los <input>) → el cursor perdía el foco y la UI parpadeaba en cada letra.
+  // Como componente estable de módulo, los <FRow> conservan su identidad y el texto se
+  // escribe fluido. val/editableOf/onCh llegan por props (cierres sobre el estado local).
+  function Section({ title, fields, val, editableOf, onCh }) {
+    return (
+      <div className="mat-sec">
+        <div className="mat-sec-h">{title}</div>
+        <div className="mat-grid">
+          {fields.map(f => (
+            <FRow key={f.k} label={f.label} value={val(f)} editable={editableOf(f)}
+              onChange={onCh(f)} full={f.full} mono={f.mono} textarea={f.textarea}
+              tag={f.ro ? 'solo lectura' : null} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Bug B · carga robusta de documentos adjuntos (fotos de Drive) ───────────
+  // Las URLs lh3.googleusercontent.com/d/{ID} solo cargan si el archivo es público
+  // ("cualquiera con el link"). Si una foto se subió con permisos privados, o la URL
+  // viene mal armada, la imagen no carga. Defensa del lado cliente: ante un error,
+  // probamos patrones alternativos de Drive con el mismo ID antes de mostrar
+  // "Foto no disponible". (El fix de fondo —setSharing público al subir— es backend.)
+  function extractDriveId(url) {
+    const s = String(url || '');
+    let m = s.match(/[?&]id=([\w-]+)/);          // uc?export=view&id= · thumbnail?id=
+    if (m) return m[1];
+    m = s.match(/\/d\/([\w-]+)/);                 // lh3 .../d/{id} · file/d/{id}
+    if (m) return m[1];
+    return '';
+  }
+  function driveCandidates(url) {
+    const id = extractDriveId(url);
+    const list = [url];
+    if (id) {
+      list.push(`https://drive.google.com/thumbnail?id=${id}&sz=w1000`);
+      list.push(`https://drive.google.com/uc?export=view&id=${id}`);
+      list.push(`https://lh3.googleusercontent.com/d/${id}=w1000`);
+    }
+    return [...new Set(list.filter(Boolean))];
+  }
+  function MatDocPhoto({ cap, src, onOpen }) {
+    const [idx, setIdx] = useState(0);
+    const cands = driveCandidates(src);
+    if (idx >= cands.length) {
+      return (
+        <div className="mat-photo-empty">
+          <span>Foto no disponible</span>
+          <span className="mat-photo-cap">{cap}</span>
+        </div>
+      );
+    }
+    const cur = cands[idx];
+    return (
+      <div className="mat-photo" onClick={() => onOpen(cur)}>
+        <img src={cur} alt={cap} onError={() => setIdx(i => i + 1)} />
+        <div className="mat-photo-cap">{cap}</div>
+      </div>
+    );
+  }
+
   function MatProspectoModal({ cedula, nombre, onClose, onToast }) {
     const rol = rolActual();
     const canEditAll = rol === 'admin' || rol === 'superadmin';
@@ -280,19 +346,6 @@
     };
     const onCh = (f) => (nv) => setEdited(e => ({ ...e, [f.k]: nv }));
     const editableOf = (f) => canEditAll && !f.ro && !f.bool;
-
-    const Section = ({ title, fields }) => (
-      <div className="mat-sec">
-        <div className="mat-sec-h">{title}</div>
-        <div className="mat-grid">
-          {fields.map(f => (
-            <FRow key={f.k} label={f.label} value={val(f)} editable={editableOf(f)}
-              onChange={onCh(f)} full={f.full} mono={f.mono} textarea={f.textarea}
-              tag={f.ro ? 'solo lectura' : null} />
-          ))}
-        </div>
-      </div>
-    );
 
     const fin = get('financiamiento', 'FINANCIAMIENTO');
     const esConape = /conape/i.test(fin);
@@ -341,7 +394,7 @@
               </div>
             )}
 
-            <Section title="Datos personales" fields={[
+            <Section title="Datos personales" val={val} editableOf={editableOf} onCh={onCh} fields={[
               { k: 'nombre', label: 'Nombre completo', full: true },
               { k: 'cedula', label: 'Cédula', mono: true },
               { k: 'tipo_id', label: 'Tipo de identificación' },
@@ -357,7 +410,7 @@
             ]} />
 
             {esMenor && (
-              <Section title="Encargado / Tutor" fields={[
+              <Section title="Encargado / Tutor" val={val} editableOf={editableOf} onCh={onCh} fields={[
                 { k: 'tutor_nombre', label: 'Nombre del encargado', full: true },
                 { k: 'tutor_cedula', label: 'Cédula', mono: true },
                 { k: 'tutor_tel', label: 'Teléfono', mono: true },
@@ -365,7 +418,7 @@
               ]} />
             )}
 
-            <Section title="Programa y financiamiento" fields={[
+            <Section title="Programa y financiamiento" val={val} editableOf={editableOf} onCh={onCh} fields={[
               { k: 'programa', label: 'Programa' },
               { k: 'modalidad', label: 'Modalidad' },
               { k: 'grupo_tentativo', label: 'Grupo tentativo', mono: true, al: ['grupo_tentativo', 'GRUPO_TENTATIVO', 'grupo'] },
@@ -375,7 +428,7 @@
             ]} />
 
             {esConape && (
-              <Section title="CONAPE" fields={[
+              <Section title="CONAPE" val={val} editableOf={editableOf} onCh={onCh} fields={[
                 { k: 'conape_equipo', label: 'Equipo' },
                 { k: 'conape_toeic', label: 'TOEIC', bool: true },
                 { k: 'conape_sostenimiento', label: 'Sostenimiento', full: true },
@@ -384,7 +437,7 @@
               ]} />
             )}
 
-            <Section title="Seguimiento" fields={[
+            <Section title="Seguimiento" val={val} editableOf={editableOf} onCh={onCh} fields={[
               { k: 'como_entero', label: '¿Cómo se enteró?', al: ['como_entero', 'COMO_ENTERO'] },
               { k: 'asesor_ref', label: 'Asesor de referencia', al: ['asesor_ref', 'ASESOR_REF', 'asesor'] },
               { k: 'conocimientos_previos', label: 'Conocimientos previos', al: ['conocimientos_previos', 'CONOCIMIENTOS_PREVIOS'] },
@@ -400,7 +453,7 @@
               </div>
             )}
 
-            <Section title="Fechas del proceso" fields={[
+            <Section title="Fechas del proceso" val={val} editableOf={editableOf} onCh={onCh} fields={[
               { k: 'f_lead', label: 'F. Lead', ro: true, al: ['f_lead', 'F_LEAD'] },
               { k: 'f_solicitud', label: 'F. Solicitud', ro: true, al: ['f_solicitud', 'F_SOLICITUD'] },
               { k: 'f_documentos', label: 'F. Documentos', ro: true, al: ['f_documentos', 'F_DOCUMENTOS'] },
@@ -418,10 +471,7 @@
                   ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO')],
                   ['Título', get('foto_titulo', 'FOTO_TITULO')],
                 ].map(([cap, src]) => src ? (
-                  <div key={cap} className="mat-photo" onClick={() => setLightbox({ src, cap })}>
-                    <img src={src} alt={cap} />
-                    <div className="mat-photo-cap">{cap}</div>
-                  </div>
+                  <MatDocPhoto key={cap} cap={cap} src={src} onOpen={(s) => setLightbox({ src: s, cap })} />
                 ) : (
                   <div key={cap} className="mat-photo-empty">
                     <span>Sin archivo</span>

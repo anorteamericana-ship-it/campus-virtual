@@ -162,10 +162,10 @@ function ProspectoTable({ lista, onOpen }) {
           </tr>
         </thead>
         <tbody>
-          {lista.map(p => {
+          {lista.map((p, i) => {
             const dias = diasDesde(p.fecha_registro);
             return (
-              <tr key={p.cedula} onClick={() => onOpen(p)}>
+              <tr key={p.cedula || p.id || i} onClick={() => onOpen(p)}>
                 <td className="vx-td-ced">{p.cedula}</td>
                 <td className="vx-td-name">{p.nombre}</td>
                 <td>
@@ -200,11 +200,11 @@ function ProspectoTable({ lista, onOpen }) {
 function ProspectoCards({ lista, onOpen }) {
   return (
     <div className="vx-cards">
-      {lista.map(p => {
+      {lista.map((p, i) => {
         const dias = diasDesde(p.fecha_registro);
         const color = (ETAPA_MAP[p.etapa] || {}).color || '#002F6C';
         return (
-          <div key={p.cedula} className="vx-card" style={{ borderLeftColor: color }} onClick={() => onOpen(p)}>
+          <div key={p.cedula || p.id || i} className="vx-card" style={{ borderLeftColor: color }} onClick={() => onOpen(p)}>
             <div className="vx-card-top">
               <div>
                 <div className="vx-card-name">{p.nombre}</div>
@@ -256,6 +256,51 @@ function Lightbox({ src, caption, onClose }) {
 }
 
 // ── BLOQUE DE DOCUMENTOS (3 fotos) ──────────────────────────────────────────
+// ── Bug B · carga robusta de fotos de Drive en el drawer ───────────────────
+// Mismo patrón que el modal del admin: si la URL lh3 falla (foto con permisos
+// privados o URL mal armada), reintenta con patrones alternativos de Drive antes
+// de mostrar "Foto no disponible". (El fix de fondo —permisos públicos al subir—
+// es de backend.)
+function vxExtractDriveId(url) {
+  const s = String(url || '');
+  let m = s.match(/[?&]id=([\w-]+)/);          // uc?export=view&id= · thumbnail?id=
+  if (m) return m[1];
+  m = s.match(/\/d\/([\w-]+)/);                 // lh3 .../d/{id} · file/d/{id}
+  if (m) return m[1];
+  return '';
+}
+function vxDriveCandidates(url) {
+  const id = vxExtractDriveId(url);
+  const list = [url];
+  if (id) {
+    list.push(`https://drive.google.com/thumbnail?id=${id}&sz=w1000`);
+    list.push(`https://drive.google.com/uc?export=view&id=${id}`);
+    list.push(`https://lh3.googleusercontent.com/d/${id}=w1000`);
+  }
+  return [...new Set(list.filter(Boolean))];
+}
+function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
+  const [idx, setIdx] = React.useState(0);
+  React.useEffect(() => { setIdx(0); }, [src]);   // reset al cambiar de prospecto
+  const cands = vxDriveCandidates(src);
+  if (idx >= cands.length) {
+    return (
+      <div className="vx-doc-empty">
+        <div className="vx-doc-ph">Foto no disponible</div>
+        <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
+        <button className="vx-mini-btn" onClick={() => onSubirManual(docKey, cap)}>Subir manualmente</button>
+      </div>
+    );
+  }
+  const cur = cands[idx];
+  return (
+    <div className="vx-doc" onClick={() => onView(cur, cap)}>
+      <img src={cur} alt={cap} onError={() => setIdx(i => i + 1)} />
+      <div className="vx-doc-cap">{cap}</div>
+    </div>
+  );
+}
+
 function DocsBlock({ detalle, onView, onSubirManual }) {
   const docs = [
     ['foto_ced_frente', 'Cédula · frente'],
@@ -267,12 +312,7 @@ function DocsBlock({ detalle, onView, onSubirManual }) {
       {docs.map(([key, cap]) => {
         const src = detalle[key];
         if (src) {
-          return (
-            <div key={key} className="vx-doc" onClick={() => onView(src, cap)}>
-              <img src={src} alt={cap} />
-              <div className="vx-doc-cap">{cap}</div>
-            </div>
-          );
+          return <VxDocPhoto key={key} src={src} cap={cap} docKey={key} onView={onView} onSubirManual={onSubirManual} />;
         }
         return (
           <div key={key} className="vx-doc-empty">
