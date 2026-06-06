@@ -647,6 +647,265 @@
     );
   }
 
+  // ── Fase 2.5 · Modal "Generar matrícula" ────────────────────────────────────
+  // Convierte un prospecto en estudiante matriculado vía el endpoint backend
+  // generarMatricula (v4.32.1). NO paga: tras generar, el flujo sigue en
+  // "Aplicar Pago" (pantalla existente del campus). Reemplaza al viejo
+  // activarEstudiante (deprecated).
+  const fmtCRC_M = (n) => '₡' + (Number(n) || 0).toLocaleString('es-CR');
+
+  // Etiqueta una opción de grupo: "B1-LM18-C3-0726 · Lun/Mié · 6pm a 9pm · Inicia 14 sep 2026"
+  function labelGrupo(g) {
+    const dias = decodeDiasLocal(g.dias);
+    const horario = [g.hora_ini, g.hora_fin].filter(Boolean).join(' a ');
+    const inicia = g.fecha_inicio ? `Inicia ${fmtFechaCorta(g.fecha_inicio)}` : '';
+    return [g.codigo, dias, horario, inicia].filter(Boolean).join(' · ');
+  }
+
+  function GMField({ label, value, mono }) {
+    return (
+      <div className="mat-frow">
+        <div className="mat-flabel">{label}</div>
+        <div className={'mat-fval' + (mono ? ' mono' : '')}>{value != null && value !== '' ? String(value) : '—'}</div>
+      </div>
+    );
+  }
+
+  function MatGenerarMatriculaModal({ cedula, nombre, gruposAbiertos, onClose, onToast, onSuccess }) {
+    const [detalle, setDetalle] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [grupoCod, setGrupoCod] = useState('');
+    const [becaEstadoLocal, setBecaEstadoLocal] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    // Carga del prospecto (self-contained, igual que los otros modales admin).
+    useEffect(() => {
+      let cancel = false;
+      getDetalle(cedula)
+        .then(d => {
+          if (cancel) return;
+          const p = (d && (d.prospecto || (d.ok !== false ? d : null)));
+          if (p) setDetalle(flatten(p));
+          else setError((d && d.error) || 'No se pudo cargar el prospecto.');
+        })
+        .catch(e => { if (!cancel) setError(e.message); })
+        .finally(() => { if (!cancel) setLoading(false); });
+      return () => { cancel = true; };
+    }, [cedula]);
+
+    const get = makeGet(detalle || {});
+    const programa = String(get('programa', 'PROGRAMA') || '').toUpperCase();
+    const modalidad = String(get('modalidad', 'MODALIDAD') || '').toUpperCase();
+    const beca = String(get('beca', 'BECA') || '').toUpperCase();
+    const becaEstadoOrig = String(get('beca_estado', 'BECA_ESTADO') || '').toUpperCase();
+    const grupoTentativo = String(get('grupo_tentativo', 'GRUPO_TENTATIVO', 'grupo') || '');
+    const financiamiento = String(get('financiamiento', 'FINANCIAMIENTO') || '').toUpperCase();
+
+    // Grupos compatibles: mismo programa (INA/SIN_INA) y misma modalidad que el prospecto.
+    const compat = (gruposAbiertos || []).filter(g =>
+      String(g.programa || '').toUpperCase() === programa &&
+      String(g.modalidad || '').toUpperCase() === modalidad
+    );
+
+    // Defaults una vez cargado el detalle: grupo = GRUPO_TENTATIVO (si es compatible),
+    // si no el primero compatible; estado de beca = el original del prospecto.
+    useEffect(() => {
+      if (!detalle) return;
+      setBecaEstadoLocal(becaEstadoOrig);
+      const def = compat.find(g => g.codigo === grupoTentativo) || compat[0];
+      setGrupoCod(def ? def.codigo : '');
+    }, [detalle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const grupoSel = compat.find(g => g.codigo === grupoCod) || null;
+
+    // ── Preview de precios (frontend) ──
+    const descuento = becaEstadoLocal === 'APROBADA' ? (beca === 'MUJER' ? 0.5 : 0.25) : 0;
+    const precioCuota = Number(grupoSel?.precio_cuota) || 0;
+    const precioMatricula = Number(grupoSel?.precio_matricula) || 0;
+    const precioCertificado = Number(grupoSel?.precio_certificado) || 0;
+    const totalCuotas = modalidad === 'SUPER_INTENSIVO' ? 8 : 16;
+    const cuotaFinal = Math.round(precioCuota * (1 - descuento));
+    const matriculaFinal = Math.round(precioMatricula * (1 - descuento));
+    const certificadoFinal = precioCertificado; // SIN descuento
+    const costoCurso = cuotaFinal * totalCuotas;
+    const descPct = beca === 'MUJER' ? 50 : 25;
+
+    const tieneCompat = compat.length > 0;
+    const tienePrecios = !!grupoSel && (precioCuota > 0 || precioMatricula > 0);
+
+    const generar = async () => {
+      if (!grupoSel || submitting) return;
+      setSubmitting(true);
+      try {
+        // POST text/plain para esquivar el preflight CORS (mismo patrón que apiPost).
+        const r = await fetch(`${API}?fn=generarMatricula`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            cedula,
+            grupo: grupoSel.codigo,
+            beca: beca || '',
+            beca_estado: becaEstadoLocal || '',
+          }),
+        });
+        const data = await r.json();
+        if (data && data.ok) {
+          onSuccess(data); // el padre cierra el modal, muestra toast y redirige a Aplicar Pago
+        } else {
+          onToast((data && data.error) || 'No se pudo generar la matrícula.', 'err');
+          setSubmitting(false);
+        }
+      } catch (e) {
+        onToast('Error de conexión: ' + e.message, 'err');
+        setSubmitting(false);
+      }
+    };
+
+    const footer = (loading || error) ? (
+      <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
+    ) : (
+      <>
+        <button className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancelar</button>
+        <button className="btn btn-primary" onClick={generar}
+          disabled={submitting || !grupoSel}
+          style={{ background: 'var(--an-navy)', borderColor: 'var(--an-navy)' }}>
+          {submitting ? 'Generando…' : 'Generar matrícula'}
+        </button>
+      </>
+    );
+
+    return (
+      <Modal size="lg" kicker={`Generar matrícula · ${cedula}`}
+        title={nombre || get('nombre', 'NOMBRE') || 'Generar matrícula'}
+        onClose={submitting ? () => {} : onClose} footer={footer}>
+        {loading && <div className="mat-center"><div className="mat-spin" />Cargando datos del prospecto…</div>}
+        {!loading && error && <div className="mat-center" style={{ color: 'var(--danger)' }}>⚠️ {error}</div>}
+        {!loading && !error && detalle && (
+          <>
+            {/* ── Sección A · Datos del prospecto (read-only) ── */}
+            <div className="mat-sec">
+              <div className="mat-sec-h">Datos del prospecto <span className="mat-readonly-tag">solo lectura</span></div>
+              <div className="mat-grid">
+                <GMField label="Cédula" value={get('cedula', 'CEDULA') || cedula} mono />
+                <GMField label="Nombre completo" value={get('nombre', 'NOMBRE') || nombre} />
+                <GMField label="Teléfono" value={get('telefono', 'TELEFONO', 'whatsapp', 'WHATSAPP')} mono />
+                <GMField label="Email" value={get('correo', 'CORREO', 'email', 'EMAIL')} />
+                <GMField label="Financiamiento" value={financiamiento} />
+                <GMField label="Modalidad" value={modalidad} />
+                <GMField label="Programa" value={programa} />
+              </div>
+            </div>
+
+            {/* ── Sección B · Grupo (editable) ── */}
+            <div className="mat-sec">
+              <div className="mat-sec-h">Grupo de inscripción</div>
+              {!tieneCompat ? (
+                <div className="gm-warn">
+                  No hay grupos abiertos compatibles con <b>{programa || '—'}</b> · <b>{modalidad || '—'}</b>.
+                  Cerrá el modal y avisá al director para crear uno.
+                </div>
+              ) : (
+                <>
+                  <select className="gm-select" value={grupoCod} onChange={e => setGrupoCod(e.target.value)}>
+                    {compat.map(g => (
+                      <option key={g.codigo} value={g.codigo}>{labelGrupo(g)}</option>
+                    ))}
+                  </select>
+                  {!tienePrecios && (
+                    <div className="gm-note">
+                      ⚠️ El grupo seleccionado no trae precios desde el backend. El preview mostrará ₡0;
+                      verificá los precios del grupo en APOLLO antes de generar.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* ── Sección C · Beca (condicional) ── */}
+            {beca && (
+              <div className="mat-sec">
+                <div className="mat-sec-h">Beca solicitada</div>
+                {becaEstadoLocal === 'SOLICITADA' ? (
+                  <div className="gm-beca">
+                    <div className="gm-beca-info">
+                      <span className="gm-beca-tipo">Beca {beca}</span>
+                      <span className="gm-beca-desc">Descuento de {descPct}% sobre cuota y matrícula (no aplica al certificado).</span>
+                    </div>
+                    <div className="gm-beca-actions">
+                      <button className="btn btn-ghost gm-reject" onClick={() => setBecaEstadoLocal('RECHAZADA')}>Rechazar beca</button>
+                      <button className="btn btn-primary gm-approve" onClick={() => setBecaEstadoLocal('APROBADA')}>Aprobar beca</button>
+                    </div>
+                  </div>
+                ) : becaEstadoLocal === 'APROBADA' ? (
+                  <div className="gm-beca-state gm-beca-ok">
+                    <div><b>Beca {beca} aprobada</b> · −{descPct}% en cuota y matrícula</div>
+                    {becaEstadoOrig === 'SOLICITADA' && (
+                      <button className="gm-link" onClick={() => setBecaEstadoLocal('SOLICITADA')}>Cambiar</button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="gm-beca-state gm-beca-no">
+                    <div><b>Beca {beca} rechazada</b> · no se aplica descuento</div>
+                    {becaEstadoOrig === 'SOLICITADA' && (
+                      <button className="gm-link" onClick={() => setBecaEstadoLocal('SOLICITADA')}>Cambiar</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Sección D · Preview de precios ── */}
+            <div className="mat-sec">
+              <div className="mat-sec-h">Preview de precios</div>
+              <div className="gm-preview">
+                <div className="gm-pcol">
+                  <div className="gm-prow">
+                    <span>Cuota mensual</span>
+                    <span className="gm-amt">
+                      {descuento > 0 && <i className="gm-strike">{fmtCRC_M(precioCuota)}</i>}
+                      <b className={descuento > 0 ? 'gm-disc' : ''}>{fmtCRC_M(cuotaFinal)}</b>
+                    </span>
+                  </div>
+                  <div className="gm-prow">
+                    <span>Total cuotas</span>
+                    <span className="gm-amt"><b>{totalCuotas}</b></span>
+                  </div>
+                  <div className="gm-prow gm-ptotal">
+                    <span>Costo del curso</span>
+                    <span className="gm-amt"><b>{fmtCRC_M(costoCurso)}</b></span>
+                  </div>
+                  <div className="gm-pformula">cuota × cuotas</div>
+                </div>
+                <div className="gm-pcol">
+                  <div className="gm-prow">
+                    <span>Matrícula</span>
+                    <span className="gm-amt">
+                      {descuento > 0 && <i className="gm-strike">{fmtCRC_M(precioMatricula)}</i>}
+                      <b className={descuento > 0 ? 'gm-disc' : ''}>{fmtCRC_M(matriculaFinal)}</b>
+                    </span>
+                  </div>
+                  <div className="gm-prow">
+                    <span>Certificado B1</span>
+                    <span className="gm-amt"><b>{fmtCRC_M(certificadoFinal)}</b></span>
+                  </div>
+                  <div className="gm-prow">
+                    <span>Convenio</span>
+                    <span className="gm-amt"><b>{financiamiento || '—'}</b></span>
+                  </div>
+                </div>
+              </div>
+              <div className="gm-next">
+                Al generar la matrícula se registra al estudiante en APOLLO. <b>Todavía no se cobra:</b> el
+                siguiente paso es aplicar el pago de matrícula B1 desde la pantalla <b>Aplicar Pago</b>.
+              </div>
+            </div>
+          </>
+        )}
+      </Modal>
+    );
+  }
+
   // ── Toast compartido ────────────────────────────────────────────────────────
   function MatToast({ toast, onClose }) {
     useEffect(() => {
@@ -664,6 +923,7 @@
   }
 
   Object.assign(window, {
-    MatResumenActivos, MatProspectoModal, MatProformasModal, MatConapeModal, MatToast,
+    MatResumenActivos, MatProspectoModal, MatProformasModal, MatConapeModal,
+    MatGenerarMatriculaModal, MatToast,
   });
 })();

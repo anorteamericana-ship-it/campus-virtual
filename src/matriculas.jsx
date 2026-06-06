@@ -927,7 +927,7 @@ function MRadioCard({ value, current, onChange, accent, children }) {
 // ─────────────────────────────────────────────────────────────────────────
 // VISTA PRINCIPAL: MatriculasView
 // ─────────────────────────────────────────────────────────────────────────
-function MatriculasView() {
+function MatriculasView({ onNavigate }) {
   const [showWizard, setShowWizard] = React.useState(false);
   const [grupoPresel, setGrupoPresel] = React.useState(null);
   const { prospectos, resumen, loading, error, reload } = useProspectos();
@@ -936,9 +936,37 @@ function MatriculasView() {
   const [verProsp, setVerProsp] = React.useState(null);      // {cedula, nombre}
   const [proformaProsp, setProformaProsp] = React.useState(null);
   const [conapeProsp, setConapeProsp] = React.useState(null);
+  const [genProsp, setGenProsp] = React.useState(null);      // Fase 2.5: {cedula, nombre}
   const [toast, setToast] = React.useState(null);            // {tipo, msg}
   const [conapeNov, setConapeNov] = React.useState({});      // {cedula: novedad}
   const showToast = React.useCallback((msg, tipo = 'info') => setToast({ msg, tipo }), []);
+
+  // Fase 2.5 — "Generar matrícula": solo admin/superadmin y solo si el prospecto
+  // aún NO tiene CODIGO_ESTUDIANTE (si lo tiene, ya fue matriculado).
+  const rolSesion = (() => {
+    try { return (window.getSesion && window.getSesion() || {}).rol || ''; } catch (_) { return ''; }
+  })();
+  const puedeGenerar = rolSesion === 'admin' || rolSesion === 'superadmin';
+  const yaMatriculado = p => String(p.CODIGO_ESTUDIANTE || p.codigo_estudiante || '').trim() !== '';
+
+  // Tras generar la matrícula: toast con el código + redirección a "Aplicar Pago"
+  // con datos pre-cargados (mecanismo existente an_pago_prefill que ya lee
+  // AplicarPago en su useEffect inicial). NO modificamos la pantalla de pago.
+  const handleGenSuccess = (resp) => {
+    setGenProsp(null);
+    const cod = resp && resp.codigo_estudiante;
+    showToast(`✅ Matrícula generada. Código de estudiante: ${cod || '—'}. Aplicando pago de matrícula…`, 'ok');
+    reload();
+    try {
+      sessionStorage.setItem('an_pago_prefill', JSON.stringify({ codigo: cod, nivel: 'B1' }));
+    } catch (_) { /* sessionStorage no disponible */ }
+    if (onNavigate) {
+      // Pequeña pausa para que el admin alcance a ver el toast con el código.
+      setTimeout(() => onNavigate('aplicar_pago'), 1100);
+    }
+    // Si no hay onNavigate, el toast con el código queda visible y el admin
+    // navega manualmente a "Aplicar Pago".
+  };
 
   const finProspecto = p => String(p.FINANCIAMIENTO || p.financiamiento || '').toUpperCase();
   const esCONAPE = p => finProspecto(p) === 'CONAPE';
@@ -962,19 +990,12 @@ function MatriculasView() {
   };
 
   const activar = async (p) => {
-    const codigo = prompt('Asignar código de estudiante:');
-    if (!codigo) return;
-    try {
-      const res = await fetch(`${SCRIPT_URL_MAT}?fn=activarEstudiante`, {
-        method: 'POST',
-        body: JSON.stringify({ cedula: p.CEDULA, grupo: p.GRUPO_TENTATIVO, codigo_est: codigo }),
-      });
-      const data = await res.json();
-      if (data.ok) window.location.reload();
-      else alert(data.mensaje || 'Error al activar');
-    } catch (e) {
-      alert('Error de conexión: ' + e.message);
-    }
+    // ── DEPRECADO (Fase 2.5) ──────────────────────────────────────────────────
+    // El flujo "activar estudiante" (endpoint activarEstudiante) quedó obsoleto:
+    // integraba mal a APOLLO. Lo reemplaza "Generar matrícula" (MatGenerarMatriculaModal
+    // → endpoint generarMatricula). Se conserva la función sin uso por compatibilidad,
+    // pero ya no hay botón que la invoque. NO reutilizar.
+    console.warn('activar() está deprecado; usar Generar matrícula (generarMatricula).');
   };
 
   return (
@@ -1069,8 +1090,10 @@ function MatriculasView() {
                           Actualizar estado CONAPE
                         </button>
                       )}
-                      {p.ESTADO === 'PENDIENTE_PAGO' && (
-                        <button className="btn btn-primary" style={{ fontSize:11.5, padding:'6px 11px' }} onClick={() => activar(p)}>Activar</button>
+                      {puedeGenerar && !yaMatriculado(p) && (
+                        <button className="mat-act-btn" onClick={() => setGenProsp({ cedula: p.CEDULA, nombre })}>
+                          Generar matrícula
+                        </button>
                       )}
                     </div>
                   </td>
@@ -1122,6 +1145,11 @@ function MatriculasView() {
         <window.MatConapeModal cedula={conapeProsp.cedula} nombre={conapeProsp.nombre}
           onClose={() => setConapeProsp(null)} onToast={showToast}
           onResult={(nov) => setConapeNov(m => ({ ...m, [conapeProsp.cedula]: nov }))} />
+      )}
+      {genProsp && (
+        <window.MatGenerarMatriculaModal cedula={genProsp.cedula} nombre={genProsp.nombre}
+          gruposAbiertos={(resumen && resumen.grupos_abiertos) || []}
+          onClose={() => setGenProsp(null)} onToast={showToast} onSuccess={handleGenSuccess} />
       )}
       <window.MatToast toast={toast} onClose={() => setToast(null)} />
     </div>

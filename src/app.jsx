@@ -251,7 +251,7 @@ function App() {
     // como no-clickeables; esto es la red de seguridad por si el id
     // llega vía state antiguo.
     const map = {
-      matriculas:    <MatriculasView />,
+      matriculas:    <MatriculasView onNavigate={navigateTo} />,
       dashboard:    <AdminDashboard setActive={setActive} />,
       supervision:  <PanelAdminSupervision />,
       suspensiones: <PanelSuspensiones />,

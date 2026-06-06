@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>TEST · Generar matrícula (Fase 2.5)</title>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/campus.css">
+<link rel="stylesheet" href="styles/matriculas_admin.css">
+</head>
+<body>
+<div id="root" style="padding:24px; background:var(--bg-deep, #f4f1ea); min-height:100vh;"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Setup: stubs + fetch mock (runs before the real modules) -->
+<script type="text/babel" data-presets="react">
+window.APPS_SCRIPT_URL = 'https://example.invalid/exec';
+window.getSesion = () => ({ rol: 'admin', nombre: 'Leonardo' });
+
+window.Icon = ({ name, size = 16 }) => <span style={{ fontSize: size }}>•</span>;
+window.PageHeader = ({ kicker, title, sub }) => (
+  <div style={{ marginBottom: 20 }}>
+    <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase' }}>{kicker}</div>
+    <h1 style={{ margin: '4px 0' }}>{title}</h1>
+    <div style={{ color: '#666' }}>{sub}</div>
+  </div>
+);
+
+// Prospecto de prueba sugerido por el spec: Deborah (cédula 120180140),
+// LEAD limpio, SIN código de estudiante todavía → debe mostrar "Generar matrícula".
+const DEBORAH = {
+  CEDULA: '120180140', NOMBRE: 'JIMÉNEZ ROJAS DEBORAH', TIPO_ID: 'Cédula Nacional',
+  CORREO: 'deborah@example.com', WHATSAPP: '87654321', TELEFONO: '87654321',
+  PROGRAMA: 'INA', MODALIDAD: 'INTENSIVO', GRUPO_TENTATIVO: 'B1-LM18-C3-0726',
+  FINANCIAMIENTO: 'PROPIO', BECA: 'MUJER', BECA_ESTADO: 'SOLICITADA',
+  ASESOR_REF: 'Fiorella Salazar', CODIGO_ESTUDIANTE: '', ETAPA: 'LEAD',
+};
+
+// Grupos abiertos CON precios (en producción los entrega el backend en
+// getProspectos.resumen.grupos_abiertos[]).
+const GRUPOS_ABIERTOS = [
+  { codigo: 'B1-LM18-C3-0726', fecha_inicio: '2026-09-14', capacidad: 20, dias: 'LM', hora_ini: '6:00pm', hora_fin: '9:00pm', programa: 'INA', modalidad: 'INTENSIVO', docente: 'RACHELLE', cupo_disponible: 15, precio_cuota: 111800, precio_matricula: 20000, precio_certificado: 15000 },
+  { codigo: 'B1-MV22-C3-0826', fecha_inicio: '2026-08-04', capacidad: 20, dias: 'MV', hora_ini: '6:00pm', hora_fin: '9:00pm', programa: 'INA', modalidad: 'INTENSIVO', docente: 'JOHN', cupo_disponible: 8, precio_cuota: 111800, precio_matricula: 20000, precio_certificado: 15000 },
+  { codigo: 'B1-S08-A1-0526', fecha_inicio: '2026-05-10', capacidad: 15, dias: 'S', hora_ini: '8:00am', hora_fin: '12:00pm', programa: 'SIN_INA', modalidad: 'SUPER_INTENSIVO', docente: 'MARIA', cupo_disponible: 5, precio_cuota: 158000, precio_matricula: 20000, precio_certificado: 15000 },
+];
+
+const realFetch = window.fetch.bind(window);
+window.fetch = async (url, opts) => {
+  const u = String(url);
+  const json = (obj) => ({ ok: true, json: async () => obj });
+  if (u.includes('fn=getProspectos')) {
+    return json({ ok: true,
+      prospectos: [
+        DEBORAH,
+        { CEDULA: '1-0720-0456', NOMBRE: 'RODRÍGUEZ MORA ANA', GRUPO_TENTATIVO: 'B1-LM94-B3-0626', PROGRAMA: 'SIN_INA', MODALIDAD: 'INTENSIVO', ESTADO: 'PENDIENTE_PAGO', FINANCIAMIENTO: 'PROPIO', ASESOR_REF: 'Roger Cruz', TIMESTAMP: '2026-05-31', CODIGO_ESTUDIANTE: '17050' },
+      ],
+      resumen: {
+        activos_por_nivel: { B1: 12, B2: 8, I1: 5, I2: 3 }, total_activos: 28,
+        total_prospectos_no_activos: 9, tasa_conversion: 75,
+        grupos_abiertos: GRUPOS_ABIERTOS,
+      },
+    });
+  }
+  if (u.includes('fn=getProspectoDetalle')) {
+    return json({ ok: true, prospecto: DEBORAH });
+  }
+  if (u.includes('fn=generarMatricula')) {
+    const body = JSON.parse(opts.body);
+    console.log('[TEST] POST generarMatricula body =', body);
+    return json({
+      ok: true, codigo_estudiante: '17193', cedula: body.cedula, grupo: body.grupo,
+      etapa: 'PAGO_ACADEMIA', financiamiento: 'PROPIO',
+      costo: { total: 1788800, cuota: 111800, matricula: 20000, certificado: 15000, beca_pct: 0, total_cuotas: 16 },
+      conape_sync: true,
+      mensaje: 'Matrícula generada. Próximo paso: aplicar pago de matrícula B1 desde el campus.',
+    });
+  }
+  if (u.includes('fn=getGruposDisponibles')) return json({ ok: true, grupos: [] });
+  return realFetch(url, opts);
+};
+console.log('[TEST] generar-matricula stubs + fetch mock ready');
+</script>
+
+<script type="text/babel" src="src/matriculas_admin.jsx"></script>
+<script type="text/babel" src="src/matriculas.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+console.log('[TEST] MatGenerarMatriculaModal typeof =', typeof window.MatGenerarMatriculaModal);
+console.log('[TEST] MatriculasView typeof =', typeof window.MatriculasView);
+// onNavigate stub: en el harness no hay router, así que solo registramos la llamada.
+window.__navCalls = [];
+const onNav = (target) => { window.__navCalls.push({ target, prefill: sessionStorage.getItem('an_pago_prefill') }); console.log('[TEST] onNavigate →', target, sessionStorage.getItem('an_pago_prefill')); };
+ReactDOM.createRoot(document.getElementById('root')).render(<window.MatriculasView onNavigate={onNav} />);
+</script>
+</body>
+</html>
