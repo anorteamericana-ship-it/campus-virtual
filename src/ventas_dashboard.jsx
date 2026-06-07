@@ -1,132 +1,87 @@
 /* global React, ReactDOM, window */
 /* ============================================================================
-   VENTAS — Dashboard principal (ventas_dashboard.jsx)
-   Pantalla de prospectos para asesores (rol `ventas`) y `superadmin`.
-   - Asesor: ve solo sus prospectos (ASESOR_REF === nombre del usuario).
-   - Superadmin: ve todo, con selector "Ver como asesor".
-   Carga real desde Apps Script; si no hay sesión/backend, cae a datos demo
-   claramente etiquetados para poder revisar la herramienta.
+   VENTAS — Dashboard principal (ventas_dashboard.jsx) · Fase 3
+   Panel del vendedor reorganizado para responder en 3 segundos
+   "¿qué tengo que hacer hoy?". Tres bloques nuevos arriba:
+     1. Mi semana  · 2. Mi embudo (clickeable)  · 3. Mis grupos disponibles
+   Tabla + drawer existentes intactos. UNA sola llamada: getDashboardVentas.
+   Sin fallback demo: con sesión real, si falla → error + Reintentar (no ceros).
+   Vista previa de diseño solo con ?preview=fiorella | ?preview=roger.
    ============================================================================ */
 const { useState, useEffect, useMemo, useCallback } = React;
 const sleepV = ms => new Promise(r => setTimeout(r, ms));
 
-// Normaliza para comparar nombres de asesor sin tropezar con may/min ni tildes.
-const normAsesor = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-// Filtro demo TOLERANTE: la sesión real puede traer "Fiorella Salazar" mientras el
-// dato demo dice "Fiorela Salazar". Compara por nombre completo o por primer nombre
-// con prefijo, para que el modo demostración nunca quede vacío por un detalle de tipeo.
-function filtrarDemoPorAsesor(lista, asesor) {
-  const a = normAsesor(asesor);
-  if (!a) return lista;
-  const aFirst = a.split(/\s+/)[0];
-  const hit = lista.filter(p => {
-    const r = normAsesor(p.asesor_ref);
-    if (!r) return false;
-    const rFirst = r.split(/\s+/)[0];
-    return r === a || r.startsWith(a) || a.startsWith(r) || rFirst.startsWith(aFirst) || aFirst.startsWith(rFirst);
-  });
-  return hit;
-}
-
 function VentasApp() {
   const sesion = useMemo(() => (window.getSesion ? window.getSesion() : null), []);
-  const [demo, setDemo] = useState(!sesion);
-  const usuario = sesion || { nombre: 'Leonardo Salazar', rol: 'superadmin' };
+  const previewKey = useMemo(() => {
+    const k = new URLSearchParams(window.location.search).get('preview');
+    return (k && window.DEMO_DASHBOARD[k.toLowerCase()]) ? k.toLowerCase() : '';
+  }, []);
+  const usuario = sesion || (previewKey
+    ? { nombre: window.DEMO_DASHBOARD[previewKey].asesor, rol: 'ventas' }
+    : { nombre: 'Leonardo Salazar', rol: 'superadmin' });
   const rolReal = usuario.rol || 'ventas';
   const esSuper = rolReal === 'superadmin';
 
-  const [asesorView, setAsesorView] = useState('');       // superadmin: filtro opcional
-  const [prospectos, setProspectos] = useState(null);     // null = cargando
-  const [resumen, setResumen] = useState(null);
+  const [asesorView, setAsesorView] = useState('');       // superadmin: ver como asesor
+  const [dash, setDash] = useState(null);                 // null = cargando
   const [filtro, setFiltro] = useState({ etapa: '', fin: '', q: '' });
   const [drawerCed, setDrawerCed] = useState(null);
-  const [lightbox, setLightbox] = useState(null);          // { src, caption }
+  const [lightbox, setLightbox] = useState(null);
   const [toast, setToast] = useState(null);
-  const [errorCarga, setErrorCarga] = useState(null);      // error de carga con sesión real (no enmascarar con demo)
-  const [reloadTick, setReloadTick] = useState(0);         // reintento manual
+  const [errorCarga, setErrorCarga] = useState(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
-  const scopeAsesor = esSuper ? asesorView : usuario.nombre;
+  // El endpoint necesita SIEMPRE un asesor concreto. Superadmin: el seleccionado
+  // o, por defecto, su propio nombre.
+  const scopeAsesor = esSuper ? (asesorView || usuario.nombre) : usuario.nombre;
 
-  // Toast auto-dismiss
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3200);
     return () => clearTimeout(t);
   }, [toast]);
 
-  // ── Carga de datos ──
-  // Bug A (panel de Fiorella en CERO): antes ambas llamadas iban en un solo
-  // Promise.all y CUALQUIER rechazo (p.ej. getResumenVentas con respuesta no-JSON
-  // o un hipo de red en una de las dos) tumbaba TODO al fallback demo. El demo
-  // filtra por nombre y, como la sesión real trae "Fiorella Salazar" pero el demo
-  // dice "Fiorela Salazar", quedaba en 0 → panel entero en cero, enmascarando los
-  // 5 prospectos reales. Fix: (1) los PROSPECTOS son la fuente de verdad y se piden
-  // solos; (2) el RESUMEN va aparte y, si falla, se calcula localmente con los
-  // prospectos ya cargados; (3) con sesión real NUNCA caemos a demo en silencio:
-  // mostramos un error con "Reintentar" en vez de ceros engañosos.
+  // ── Carga: UNA sola llamada a getDashboardVentas ──
   useEffect(() => {
     let cancel = false;
-    setProspectos(null); setResumen(null); setErrorCarga(null);
+    setDash(null); setErrorCarga(null);
     (async () => {
-      if (demo) {
-        await sleepV(420);
-        const lista = scopeAsesor ? filtrarDemoPorAsesor(window.DEMO_PROSPECTOS, scopeAsesor) : window.DEMO_PROSPECTOS;
-        if (!cancel) { setProspectos(lista); setResumen(window.calcResumen(lista)); }
+      // Vista previa de diseño (gated). NO es fallback de la sesión real.
+      if (previewKey) {
+        await sleepV(360);
+        const d = window.DEMO_DASHBOARD[previewKey];
+        if (!cancel) setDash({ ...d, prospectos: (d.prospectos || []).map(window.adaptProspectoDash) });
         return;
       }
-      // 1) PROSPECTOS — fuente de verdad del panel.
-      let lista = null;
       try {
-        const pl = await window.getProspectosAsesor(scopeAsesor || undefined);
-        lista = Array.isArray(pl) ? pl
-              : (pl && (pl.prospectos || (pl.data && pl.data.prospectos) || (pl.ok && pl.data))) || null;
-        if (!lista) throw new Error('Respuesta sin lista de prospectos');
-      } catch (e) {
+        const data = await window.getDashboardVentas(scopeAsesor);
         if (cancel) return;
-        if (sesion) {
-          // Sesión real: no enmascarar con demo. Mostrar error real + permitir reintento.
-          setErrorCarga('No pudimos cargar tus prospectos desde el servidor. Revisá la conexión e intentá de nuevo.');
-          setProspectos([]); setResumen(window.calcResumen([]));
-        } else {
-          setDemo(true);   // sin sesión (revisión de la herramienta) → datos demo
-        }
-        return;
-      }
-      if (cancel) return;
-      setProspectos(lista);
-      // 2) RESUMEN — independiente. Si falla o no trae KPIs, se calcula con los prospectos.
-      try {
-        const rs = await window.getResumenVentas(scopeAsesor || undefined);
-        const mapped = window.mapResumenVentas ? window.mapResumenVentas(rs, lista) : null;
-        if (!cancel) setResumen(mapped || window.calcResumen(lista));
-      } catch (_) {
-        if (!cancel) setResumen(window.calcResumen(lista));
+        if (!data || !data.ok) throw new Error((data && data.error) || 'No se pudo cargar el panel.');
+        setDash({
+          asesor: data.asesor,
+          semana_actual: data.semana_actual || { matriculas: 0, promedio_4s: 0 },
+          embudo: Array.isArray(data.embudo) ? data.embudo : [],
+          prospectos: (data.prospectos || []).map(window.adaptProspectoDash),
+          grupos_disponibles: data.grupos_disponibles || [],
+          total_prospectos: data.total_prospectos,
+        });
+      } catch (e) {
+        if (!cancel) setErrorCarga(e.message || 'No pudimos cargar tu panel desde el servidor.');
       }
     })();
     return () => { cancel = true; };
-  }, [scopeAsesor, demo, reloadTick]);
+  }, [scopeAsesor, reloadTick, previewKey]);
 
-  // Optimistic update cuando el drawer cambia algo del prospecto (etapa, beca,
-  // proformas, …). Merge genérico: respeta cualquier campo que envíe el drawer.
+  // Update optimista cuando el drawer cambia algo del prospecto.
   const onChanged = useCallback(({ cedula, ...campos }) => {
-    setProspectos(prev => {
+    setDash(prev => {
       if (!prev) return prev;
-      const next = prev.map(p => {
-        if (p.cedula !== cedula) return p;
-        const merged = { ...p, ...campos };
-        if (campos.etapa === 'ACTIVO') merged.fecha_activacion = window.HOY;
-        return merged;
-      });
-      setResumen(window.calcResumen(next));
-      return next;
+      return { ...prev, prospectos: prev.prospectos.map(p => p.cedula === cedula ? { ...p, ...campos } : p) };
     });
   }, []);
 
-  const funnelCounts = useMemo(() => {
-    const c = {};
-    (prospectos || []).forEach(p => { c[p.etapa] = (c[p.etapa] || 0) + 1; });
-    return c;
-  }, [prospectos]);
+  const prospectos = dash ? dash.prospectos : null;
 
   const filtered = useMemo(() => {
     if (!prospectos) return [];
@@ -139,18 +94,23 @@ function VentasApp() {
     });
   }, [prospectos, filtro]);
 
-  const cargando = prospectos === null || resumen === null;
+  // Click en una etapa del embudo → filtra la tabla (toggle).
+  const pickEtapa = useCallback((key) => {
+    setFiltro(f => ({ ...f, etapa: f.etapa === key ? '' : key }));
+  }, []);
+
+  const cargando = dash === null && !errorCarga;
   const inicial = (window.nombrePila(usuario.nombre) || 'U').charAt(0).toUpperCase();
 
   return (
     <React.Fragment>
-      {demo && (
-        <div className="vx-demo">
-          Modo demostración · datos de ejemplo (sin conexión al servidor). Las acciones se simulan localmente.
+      {previewKey && (
+        <div className="vx-preview-ribbon">
+          Vista previa de diseño · datos de ejemplo ({dash ? dash.asesor : '…'}). No conectado al servidor.
         </div>
       )}
 
-      {/* HEADER */}
+      {/* HEADER — sin cambios */}
       <header className="vx-header">
         <div className="vx-header-in">
           <div className="vx-logo" />
@@ -163,7 +123,6 @@ function VentasApp() {
             <div className="vx-asesor-pick">
               <label htmlFor="vx-asesor">Ver como asesor:</label>
               <select id="vx-asesor" value={asesorView} onChange={e => setAsesorView(e.target.value)}>
-                <option value="">Todos</option>
                 {window.ASESORES_V.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
@@ -179,47 +138,55 @@ function VentasApp() {
       </header>
 
       <div className="vx-wrap">
-        {/* KPIs */}
-        <div className="vx-sec">
-          {cargando ? <window.KPISkeleton /> : <window.KPIRow resumen={resumen} />}
-        </div>
+        {errorCarga ? (
+          <div className="vx-error-card">
+            <div className="vx-error-icon"><window.Vico d={window.VI.alert} size={26} /></div>
+            <div className="vx-error-title">No pudimos cargar tu panel</div>
+            <div className="vx-error-msg">{errorCarga}</div>
+            <button className="vx-btn vx-btn-navy" onClick={() => setReloadTick(t => t + 1)}>Reintentar</button>
+          </div>
+        ) : cargando ? (
+          <window.ResumenSkeleton />
+        ) : (
+          <React.Fragment>
+            {/* 1 · MI SEMANA */}
+            <div className="vx-sec vx-sec-week">
+              <window.MiSemana semana={dash.semana_actual} />
+            </div>
 
-        {/* EMBUDO */}
-        <div className="vx-sec">
-          <div className="vx-sec-h">Embudo de conversión{scopeAsesor ? ` · ${scopeAsesor}` : ''}</div>
-          {cargando
-            ? <div className="vx-sk" style={{ height: 280, borderRadius: 16 }} />
-            : <window.Funnel counts={funnelCounts} total={(prospectos || []).length} />}
-        </div>
+            {/* 1b · MIS MATRÍCULAS POR DÍA (Fase 3.7) */}
+            <div className="vx-sec">
+              <window.MiCalendarioSemanal asesor={usuario.nombre} />
+            </div>
 
-        {/* FILTROS + TABLA */}
-        <div className="vx-sec">
-          <div className="vx-sec-h">Prospectos</div>
-          {cargando ? (
-            <React.Fragment>
-              <div className="vx-sk" style={{ height: 56, borderRadius: 12, marginBottom: 14 }} />
-              <window.TableSkeleton />
-            </React.Fragment>
-          ) : (
-            <React.Fragment>
+            {/* 2 · MI EMBUDO */}
+            <div className="vx-sec">
+              <div className="vx-sec-h">Mi embudo</div>
+              <window.MiEmbudo embudo={dash.embudo} etapaActiva={filtro.etapa} onPick={pickEtapa} />
+            </div>
+
+            {/* 3 · MIS GRUPOS DISPONIBLES */}
+            <div className="vx-sec">
+              <div className="vx-sec-h">Mis grupos disponibles</div>
+              <window.MisGrupos grupos={dash.grupos_disponibles} />
+            </div>
+
+            {/* 4 · PROSPECTOS (tabla intacta) */}
+            <div className="vx-sec">
+              <div className="vx-sec-h">Prospectos</div>
+              <window.FiltroChip etapa={filtro.etapa} onClear={() => setFiltro(f => ({ ...f, etapa: '' }))} />
               <div style={{ marginBottom: 14 }}>
                 <window.FilterBar filtro={filtro} setFiltro={setFiltro} resultCount={filtered.length} />
               </div>
               {filtered.length === 0 ? (
                 <div className="vx-tablecard">
                   <div className="vx-empty">
-                    <div className="vx-empty-icon">{errorCarga ? '⚠️' : '🔍'}</div>
+                    <div className="vx-empty-icon">🔍</div>
                     <div style={{ fontWeight: 600, color: 'var(--v-ink-2)' }}>
-                      {errorCarga
-                        ? errorCarga
-                        : (prospectos || []).length === 0 ? 'No hay prospectos en esta vista todavía.' : 'Ningún prospecto coincide con los filtros.'}
+                      {prospectos.length === 0
+                        ? 'No tenés prospectos en esta vista todavía.'
+                        : 'Ningún prospecto coincide con los filtros.'}
                     </div>
-                    {errorCarga && (
-                      <button className="vx-clear" style={{ marginTop: 12 }}
-                        onClick={() => { setErrorCarga(null); setReloadTick(t => t + 1); }}>
-                        Reintentar
-                      </button>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -228,17 +195,19 @@ function VentasApp() {
                   <window.ProspectoCards lista={filtered} onOpen={p => setDrawerCed(p.cedula)} />
                 </React.Fragment>
               )}
-            </React.Fragment>
-          )}
-        </div>
+            </div>
+          </React.Fragment>
+        )}
       </div>
 
-      {/* DRAWER */}
+      {/* DRAWER — intacto, + acción sugerida por etapa */}
       {drawerCed && (
         <window.ProspectoDrawer
           cedula={drawerCed}
+          seed={prospectos ? prospectos.find(p => p.cedula === drawerCed) : null}
           asesor={usuario.nombre}
-          demo={demo}
+          usuario={usuario}
+          demo={!!previewKey}
           esSuperadmin={esSuper}
           onClose={() => setDrawerCed(null)}
           onToast={setToast}

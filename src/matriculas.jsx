@@ -5,6 +5,35 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_MAT = window.APPS_SCRIPT_URL;
 
+// Modo demo (preview sin backend): ?demo=1 o ?preview=… → lista de prospectos
+// de ejemplo para poder demostrar el indicador 💵 de pagos reportados (Fase 3.5).
+// En producción (sin flag) NO se usa: la lista viene del Apps Script.
+const MAT_DEMO = (() => {
+  try { const q = new URLSearchParams(location.search); return q.get('demo') === '1' || !!q.get('preview'); }
+  catch (_) { return false; }
+})();
+const DEMO_PROSPECTOS_MAT = [
+  // Activada (código presente) → Ver formulario + Ver ficha. Tiene pago pendiente (badge 💵).
+  { CEDULA: '120180140', NOMBRE: 'RODRIGUEZ PALACIOS DEBORA', GRUPO_TENTATIVO: 'B1-LM18-C3-0726', PROGRAMA: 'INA', ESTADO: 'PENDIENTE_PAGO', ETAPA: 'PAGO_ACADEMIA', TIMESTAMP: '2026-06-04', ASESOR_REF: 'Fiorella Salazar', CODIGO_ESTUDIANTE: '17193', FINANCIAMIENTO: 'PROPIO',
+    CORREO: 'debora.rp@gmail.com', WHATSAPP: '8888-8888', TELEFONO: '8888-8888', SEXO: 'F', FECHA_NAC: '2003-02-11', PROVINCIA: 'San José', CANTON: 'Desamparados', MODALIDAD: 'INTENSIVO', BECA: '', ES_MENOR: false },
+  // CONAPE en LEAD → Ver formulario + Crear proforma + Actualizar CONAPE + Generar matrícula.
+  { CEDULA: '116880490', NOMBRE: 'CAMPOS UREÑA JOSUÉ', GRUPO_TENTATIVO: 'B1-LM18-C3-0726', PROGRAMA: 'INA', ESTADO: 'PENDIENTE_CONAPE', ETAPA: 'CONAPE_SOLICITUD', TIMESTAMP: '2026-05-21', ASESOR_REF: 'Fiorella Salazar', CODIGO_ESTUDIANTE: '', FINANCIAMIENTO: 'CONAPE',
+    CORREO: 'josue.campos@outlook.com', WHATSAPP: '6045-1120', MODALIDAD: 'INTENSIVO', CONAPE_EQUIPO: 'BASICO' },
+  // CONAPE más avanzado (documentos) → ya NO muestra Crear proforma. Sí Actualizar CONAPE + Generar matrícula.
+  { CEDULA: '118420567', NOMBRE: 'JIMÉNEZ ROJAS MARÍA FERNANDA', GRUPO_TENTATIVO: 'B1-KJ18-C3-0826', PROGRAMA: 'INA', ESTADO: 'PENDIENTE_CONAPE', ETAPA: 'CONAPE_DOCUMENTOS', TIMESTAMP: '2026-05-02', ASESOR_REF: 'Fiorella Salazar', CODIGO_ESTUDIANTE: '', FINANCIAMIENTO: 'CONAPE',
+    CORREO: 'mafer.jimenez@gmail.com', WHATSAPP: '8845-2210', MODALIDAD: 'SUPER_INTENSIVO', CONAPE_EQUIPO: 'PREMIUM' },
+  // LEAD propio → Ver formulario + Generar matrícula (nada de CONAPE ni proforma).
+  { CEDULA: '118100588', NOMBRE: 'GUTIÉRREZ LEÓN SOFÍA', GRUPO_TENTATIVO: '', PROGRAMA: 'SIN_INA', ESTADO: 'PENDIENTE_PAGO', ETAPA: 'LEAD', TIMESTAMP: '2026-06-03', ASESOR_REF: 'Roger Cruz', CODIGO_ESTUDIANTE: '', FINANCIAMIENTO: 'PROPIO',
+    CORREO: 'sofia.gl@gmail.com', WHATSAPP: '8455-2098', MODALIDAD: 'INTENSIVO' },
+  // BECA en LEAD → Ver formulario + Generar matrícula (beca no muestra proforma).
+  { CEDULA: '120030099', NOMBRE: 'BRENES VEGA ALLISON', GRUPO_TENTATIVO: '', PROGRAMA: 'SIN_INA', ESTADO: 'PENDIENTE_PAGO', ETAPA: 'LEAD', TIMESTAMP: '2026-05-28', ASESOR_REF: 'Kimberly Guzmán', CODIGO_ESTUDIANTE: '', FINANCIAMIENTO: 'BECA',
+    CORREO: 'allison.bv@gmail.com', WHATSAPP: '8677-1290', MODALIDAD: 'INTENSIVO', BECA: 'Beca 25%' },
+  // CANCELADO (con auditoría) → solo Ver formulario, acciones deshabilitadas, badge rojo + detalle.
+  { CEDULA: '118990156', NOMBRE: 'HERRERA BRENES PAOLA', GRUPO_TENTATIVO: '', PROGRAMA: 'SIN_INA', ESTADO: 'CANCELADO', ETAPA: 'CANCELADO', TIMESTAMP: '2026-04-30', ASESOR_REF: 'Fiorella Salazar', CODIGO_ESTUDIANTE: '', FINANCIAMIENTO: 'PROPIO',
+    CORREO: 'paola.hb@gmail.com', WHATSAPP: '8290-1145', MODALIDAD: 'INTENSIVO',
+    CANCELADO_POR: 'Fiorella Salazar', CANCELADO_FECHA: '2026-05-12', CANCELADO_MOTIVO: 'Desistió por motivos laborales. Reintentar el próximo cuatrimestre.' },
+];
+
 // ────────────────────────────────────────────────────────────────────────
 // HOOK — Prospectos desde Apps Script
 // ────────────────────────────────────────────────────────────────────────
@@ -15,8 +44,17 @@ function useProspectos() {
   const [error, setError] = React.useState(null);
   const [tick, setTick] = React.useState(0);
   React.useEffect(() => {
+    if (MAT_DEMO) { setProspectos(DEMO_PROSPECTOS_MAT); setResumen(null); setLoading(false); return; }
+    if (MAT_DEMO) { setProspectos(DEMO_PROSPECTOS_MAT); setResumen(null); setLoading(false); return; }
     setLoading(true);
-    fetch(`${SCRIPT_URL_MAT}?fn=getProspectos`)
+    // Fase 3.6 · Cambio 2 — decay del panel PRE MATRÍCULA: el backend filtra los
+    // prospectos con matrícula B1 pagada antes del lunes de esta semana. Los
+    // CANCELADOS siguen viniendo. El filtrado es 100% backend.
+    fetch(`${SCRIPT_URL_MAT}?fn=getProspectos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'getProspectos', decay_pre_matricula: true }),
+    })
       .then(r => r.json())
       .then(d => { if (d.ok) { setProspectos(d.prospectos || []); setResumen(d.resumen || null); } else setError(d.error || d.mensaje || 'Error al cargar prospectos'); })
       .catch(e => setError(e.message))
@@ -932,11 +970,55 @@ function MatriculasView({ onNavigate }) {
   const [grupoPresel, setGrupoPresel] = React.useState(null);
   const { prospectos, resumen, loading, error, reload } = useProspectos();
 
+  // Fase 3.5 — cruce con solicitudes de pago PENDIENTES. Set de cédulas (solo
+  // dígitos) con comprobantes esperando atención + contador por cédula.
+  const [pagosPend, setPagosPend] = React.useState({});   // { cedulaDigits: count }
+  React.useEffect(() => {
+    let cancel = false;
+    const cargar = () => {
+      if (typeof window.getSolicitudesPago !== 'function') return;
+      window.getSolicitudesPago({ estado: 'PENDIENTE' }).then(r => {
+        if (cancel || !r || !r.ok) return;
+        const m = {};
+        (r.solicitudes || []).forEach(s => {
+          const k = String(s.estudiante_cedula || '').replace(/\D/g, '');
+          if (k) m[k] = (m[k] || 0) + 1;
+        });
+        setPagosPend(m);
+      }).catch(() => {});
+    };
+    cargar();
+    window.addEventListener('an:solicitudes-pago-changed', cargar);
+    return () => { cancel = true; window.removeEventListener('an:solicitudes-pago-changed', cargar); };
+  }, []);
+  const cedDigits = v => String(v == null ? '' : v).replace(/\D/g, '');
+  const pagosDe = p => pagosPend[cedDigits(p.CEDULA || p.cedula)] || 0;
+
+  // Fase 3.6 — cortes de cancelación (demo): el vendedor cancela y el admin lo
+  // refleja con badge rojo. En producción estos datos vienen en getProspectos
+  // (CANCELADO_POR / CANCELADO_FECHA / CANCELADO_MOTIVO).
+  const [cancelStore, setCancelStore] = React.useState({});
+  React.useEffect(() => {
+    if (!MAT_DEMO) return;
+    const cargar = () => { try { setCancelStore(window.getCanceladosDemo ? window.getCanceladosDemo() : {}); } catch (_) {} };
+    cargar();
+    window.addEventListener('an:prospecto-cancelado', cargar);
+    window.addEventListener('focus', cargar);
+    return () => { window.removeEventListener('an:prospecto-cancelado', cargar); window.removeEventListener('focus', cargar); };
+  }, []);
+
+  // Fase 3.5 — "Ir al prospecto" desde Solicitudes deja la cédula en sessionStorage.
+  const [focusCed, setFocusCed] = React.useState(() => {
+    try { const c = sessionStorage.getItem('an_mat_focus_ced'); if (c) { sessionStorage.removeItem('an_mat_focus_ced'); return c; } } catch (_) {}
+    return null;
+  });
+
   // Modales admin (Cambios 8/9/10) + toast + memoria de novedad CONAPE por cédula
   const [verProsp, setVerProsp] = React.useState(null);      // {cedula, nombre}
   const [proformaProsp, setProformaProsp] = React.useState(null);
   const [conapeProsp, setConapeProsp] = React.useState(null);
   const [genProsp, setGenProsp] = React.useState(null);      // Fase 2.5: {cedula, nombre}
+  const [fichaProsp, setFichaProsp] = React.useState(null);  // Fase 3.6: {cedula, nombre}
   const [toast, setToast] = React.useState(null);            // {tipo, msg}
   const [conapeNov, setConapeNov] = React.useState({});      // {cedula: novedad}
   const showToast = React.useCallback((msg, tipo = 'info') => setToast({ msg, tipo }), []);
@@ -959,7 +1041,8 @@ function MatriculasView({ onNavigate }) {
   // Lista visible: aplica ambos filtros (AND).
   const prospectosFiltrados = prospectos.filter(p =>
     (!filtroGrupo || grupoDe(p) === filtroGrupo) &&
-    (!filtroAsesor || asesorDe(p) === filtroAsesor)
+    (!filtroAsesor || asesorDe(p) === filtroAsesor) &&
+    (!focusCed || cedDigits(p.CEDULA || p.cedula) === cedDigits(focusCed))
   );
 
   // Fase 2.5 — "Generar matrícula": solo admin/superadmin y solo si el prospecto
@@ -969,6 +1052,27 @@ function MatriculasView({ onNavigate }) {
   })();
   const puedeGenerar = rolSesion === 'admin' || rolSesion === 'superadmin';
   const yaMatriculado = p => String(p.CODIGO_ESTUDIANTE || p.codigo_estudiante || '').trim() !== '';
+
+  // ── Fase 3.6 · Cambio 1 — visibilidad de botones por contexto ──────────────
+  const etapaDe = p => String(p.ETAPA || p.etapa || '').trim().toUpperCase();
+  const finDe = p => String(p.FINANCIAMIENTO || p.financiamiento || '').trim().toUpperCase();
+  // Datos de cancelación: producción (columnas) o store demo.
+  const cancelDe = p => {
+    const por = p.CANCELADO_POR || p.cancelado_por;
+    if (por) return { por, fecha: p.CANCELADO_FECHA || p.cancelado_fecha || '', motivo: p.CANCELADO_MOTIVO || p.cancelado_motivo || '' };
+    const c = cancelStore[cedDigits(p.CEDULA || p.cedula)];
+    if (c) return { por: c.cancelado_por, fecha: c.cancelado_fecha, motivo: c.cancelado_motivo };
+    return null;
+  };
+  const esCancelado = p => !!cancelDe(p) || etapaDe(p) === 'CANCELADO' || String(p.ESTADO || '').toUpperCase() === 'CANCELADO';
+  // Crear proforma: solo CONAPE y solo mientras la etapa es LEAD o CONAPE_SOLICITUD.
+  const verCrearProforma = p => !esCancelado(p) && finDe(p) === 'CONAPE' && ['LEAD', 'CONAPE_SOLICITUD'].includes(etapaDe(p));
+  // Actualizar CONAPE: CONAPE y aún sin código (luego lo cubre el sync).
+  const verActualizarConape = p => !esCancelado(p) && finDe(p) === 'CONAPE' && !yaMatriculado(p);
+  // Generar matrícula: admin y sin código todavía.
+  const verGenerar = p => !esCancelado(p) && puedeGenerar && !yaMatriculado(p);
+  // Ver ficha de estudiante: ya tiene código (activado).
+  const verFicha = p => !esCancelado(p) && yaMatriculado(p);
 
   // Tras generar la matrícula: toast con el código + redirección a "Aplicar Pago"
   // con datos pre-cargados (mecanismo existente an_pago_prefill que ya lee
@@ -1005,8 +1109,11 @@ function MatriculasView({ onNavigate }) {
   const nivelDe = p => p.PROGRAMA === 'INA' ? 'Básico I con INA' : 'Básico I';
   const fechaDe = ts => {
     if (!ts) return '—';
-    const d = new Date(ts);
-    if (isNaN(d)) return String(ts).split(' ')[0] || String(ts).split('T')[0] || '—';
+    // Fechas "YYYY-MM-DD" se parsean como LOCAL (no UTC) para no correr un día.
+    const s = String(ts);
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);
+    if (isNaN(d)) return s.split(' ')[0] || s.split('T')[0] || '—';
     return d.toLocaleDateString('es-CR', { day:'numeric', month:'short', year:'numeric' });
   };
 
@@ -1048,14 +1155,22 @@ function MatriculasView({ onNavigate }) {
         filtroGrupo={filtroGrupo} filtroAsesor={filtroAsesor}
         onToggleGrupo={toggleGrupo} onToggleAsesor={toggleAsesor} />
 
+      {/* Calendario de matrículas por día/vendedor (Fase 3.7) */}
+      <window.CalendarioMatriculasAdmin />
+
       {/* Tabla */}
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
             <div className="card-title">PRE MATRÍCULA</div>
-            {(filtroGrupo || filtroAsesor) && (
+            {(filtroGrupo || filtroAsesor || focusCed) && (
               <div className="mat-filtros">
                 <span className="mat-filtros-lbl">Mostrando:</span>
+                {focusCed && (
+                  <span className="mat-chip">💵 Pago reportado · <b>{focusCed}</b>
+                    <button onClick={() => setFocusCed(null)} aria-label="Quitar foco de cédula">×</button>
+                  </span>
+                )}
                 {filtroGrupo && (
                   <span className="mat-chip">Grupo <b>{filtroGrupo}</b>
                     <button onClick={() => setFiltroGrupo(null)} aria-label="Quitar filtro de grupo">×</button>
@@ -1105,14 +1220,43 @@ function MatriculasView({ onNavigate }) {
               const nombre = p.NOMBRE || '—';
               const grupo = p.GRUPO_TENTATIVO || '—';
               const initials = nombre.split(' ').slice(0,2).map(w=>w[0]||'').join('') || '?';
+              const cancel = cancelDe(p);
+              const cancelado = esCancelado(p);
               return (
-                <tr key={p.CEDULA || i}>
+                <tr key={p.CEDULA || i} style={cancelado ? { background:'color-mix(in srgb, var(--an-red) 4%, transparent)' } : null}>
                   <td>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:32, height:32, borderRadius:'50%', background:'var(--an-navy)', color:'white', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <div style={{ width:32, height:32, borderRadius:'50%', background: cancelado ? 'var(--ink-3)' : 'var(--an-navy)', color:'white', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                         {initials}
                       </div>
-                      <span style={{ fontWeight:600, fontSize:13 }}>{nombre}</span>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                          <span style={{ fontWeight:600, fontSize:13, color: cancelado ? 'var(--ink-2)' : 'var(--ink)' }}>{nombre}</span>
+                          {cancelado && (
+                            <span title={cancel ? `Motivo: ${cancel.motivo}` : ''}
+                              style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px',
+                                background:'#FBE4E1', color:'#8B1A10', border:'1px solid #F0BDB6',
+                                borderRadius:'var(--r-pill)', fontSize:10, fontWeight:800, letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+                              CANCELADO
+                            </span>
+                          )}
+                          {!cancelado && pagosDe(p) > 0 && (
+                            <span title={`${pagosDe(p)} comprobante(s) de pago reportado(s) — revisar en Solicitudes`}
+                              style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px',
+                                background:'#FFF4D6', color:'#8A5A00', border:'1px solid #F2D584',
+                                borderRadius:'var(--r-pill)', fontSize:10.5, fontWeight:800, whiteSpace:'nowrap' }}>
+                              💵 {pagosDe(p)} pago{pagosDe(p) === 1 ? '' : 's'}
+                            </span>
+                          )}
+                        </div>
+                        {cancelado && cancel && (
+                          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3, lineHeight:1.45 }}>
+                            Cancelado por <b style={{ color:'var(--ink-2)' }}>{cancel.por || '—'}</b>
+                            {cancel.fecha ? <> · {fechaDe(cancel.fecha)}</> : null}
+                            {cancel.motivo ? <div style={{ fontStyle:'italic' }}>Motivo: {cancel.motivo}</div> : null}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td style={{ fontFamily:'var(--f-mono)', fontWeight:600 }}>{grupo}</td>
@@ -1127,14 +1271,21 @@ function MatriculasView({ onNavigate }) {
                   <td style={{ textAlign:'right' }}>
                     <div className="mat-row-actions">
                       <button className="mat-act-btn" onClick={() => setVerProsp({ cedula: p.CEDULA, nombre })}>Ver formulario</button>
-                      <button className="mat-act-btn" onClick={() => setProformaProsp({ cedula: p.CEDULA, nombre })}>Crear proformas</button>
-                      {esCONAPE(p) && (
-                        <button className={`mat-act-btn conape ${novClass(conapeNov[p.CEDULA])}`}
-                          onClick={() => setConapeProsp({ cedula: p.CEDULA, nombre })}>
-                          Actualizar estado CONAPE
+                      {verFicha(p) && (
+                        <button className="mat-act-btn" onClick={() => setFichaProsp({ cedula: p.CEDULA, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
+                          Ver ficha de estudiante
                         </button>
                       )}
-                      {puedeGenerar && !yaMatriculado(p) && (
+                      {verCrearProforma(p) && (
+                        <button className="mat-act-btn" onClick={() => setProformaProsp({ cedula: p.CEDULA, nombre })}>Crear proforma</button>
+                      )}
+                      {verActualizarConape(p) && (
+                        <button className={`mat-act-btn conape ${novClass(conapeNov[p.CEDULA])}`}
+                          onClick={() => setConapeProsp({ cedula: p.CEDULA, nombre })}>
+                          Actualizar CONAPE
+                        </button>
+                      )}
+                      {verGenerar(p) && (
                         <button className="mat-act-btn" onClick={() => setGenProsp({ cedula: p.CEDULA, nombre })}>
                           Generar matrícula
                         </button>
@@ -1177,6 +1328,10 @@ function MatriculasView({ onNavigate }) {
       )}
 
       {/* Modales admin (Cambios 8/9/10) */}
+      {fichaProsp && (
+        <window.MatFichaEstudianteModal cedula={fichaProsp.cedula} nombre={fichaProsp.nombre} codigo={fichaProsp.codigo}
+          onClose={() => setFichaProsp(null)} onToast={showToast} />
+      )}
       {verProsp && (
         <window.MatProspectoModal cedula={verProsp.cedula} nombre={verProsp.nombre}
           onClose={() => setVerProsp(null)} onToast={showToast} />

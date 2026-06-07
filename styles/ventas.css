@@ -329,7 +329,132 @@ button { font-family: inherit; }
 @keyframes vxtoast { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 .vx-toast.ok  { background: #117A4A; }
 .vx-toast.err { background: var(--v-red-d); }
+.vx-toast.warn { background: #B7791F; }
 
 /* scrollbar */
 .vx-dr-body::-webkit-scrollbar { width: 10px; }
 .vx-dr-body::-webkit-scrollbar-thumb { background: var(--v-line-2); border-radius: 10px; border: 2px solid #fff; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   FASE 3 — Rediseño del encabezado del panel del vendedor
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ribbon de vista previa ─────────────────────────────────────────────── */
+.vx-preview-ribbon {
+  background: repeating-linear-gradient(135deg,#EAF1FB 0 16px,#E0EBF8 16px 32px);
+  border-bottom: 1px solid #C5D8F0; color: var(--v-navy);
+  font-size: 12px; font-weight: 600; text-align: center; padding: 7px 16px; letter-spacing: .01em;
+}
+
+/* ── Estado de error (sin fallback demo) ────────────────────────────────── */
+.vx-error-card {
+  background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-r-lg);
+  box-shadow: var(--v-sh-1); margin-top: 40px; padding: 44px 28px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.vx-error-icon {
+  width: 56px; height: 56px; border-radius: 50%; background: #FCEDEB; color: var(--v-red);
+  display: flex; align-items: center; justify-content: center;
+}
+.vx-error-title { font-size: 17px; font-weight: 700; color: var(--v-ink); }
+.vx-error-msg { font-size: 13.5px; color: var(--v-ink-2); max-width: 460px; line-height: 1.5; }
+.vx-error-card .vx-btn { margin-top: 6px; }
+
+/* ── Sección 1 · MI SEMANA ──────────────────────────────────────────────── */
+.vx-sec-week { margin-top: 28px; }
+.vx-week {
+  background: var(--v-surface); border: 1px solid var(--v-line); border-left: 5px solid var(--v-navy);
+  border-radius: var(--v-r-lg); box-shadow: var(--v-sh-1); padding: 26px 30px 28px; max-width: 560px;
+}
+.vx-week-verde { border-left-color: var(--v-ok); }
+.vx-week-ambar { border-left-color: var(--v-warn); }
+.vx-week-rojo  { border-left-color: var(--v-red); }
+.vx-week-label { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--v-ink-3); }
+.vx-week-num { font-size: 64px; font-weight: 800; color: var(--v-navy); line-height: .95; letter-spacing: -.03em; margin: 6px 0 14px; }
+.vx-week-sub { font-size: 13px; color: var(--v-ink-2); margin-bottom: 10px; }
+.vx-week-sub b { color: var(--v-ink); font-weight: 700; }
+.vx-week-track { height: 12px; background: var(--v-soft); border: 1px solid var(--v-line); border-radius: var(--v-r-pill); overflow: hidden; }
+.vx-week-bar { height: 100%; border-radius: var(--v-r-pill); background: var(--v-navy); min-width: 0; transition: width .9s cubic-bezier(.22,1,.36,1); }
+.vx-week-verde .vx-week-bar { background: var(--v-ok); }
+.vx-week-ambar .vx-week-bar { background: var(--v-warn); }
+.vx-week-rojo  .vx-week-bar { background: var(--v-red); }
+.vx-week-hint { font-size: 12px; color: var(--v-ink-3); margin-top: 10px; }
+.vx-week-empty { font-size: 14px; font-weight: 600; color: var(--v-ink-2); margin-top: 2px; }
+
+/* ── Sección 2 · MI EMBUDO (etapas clickeables) ─────────────────────────── */
+.vx-emb {
+  background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-r-lg);
+  box-shadow: var(--v-sh-1); padding: 8px;
+}
+.vx-emb-row {
+  width: 100%; display: grid; grid-template-columns: 18px minmax(150px, 1.4fr) 1fr 30px 18px;
+  align-items: center; gap: 14px; padding: 13px 14px; border: 1px solid transparent;
+  border-radius: var(--v-r-md); background: none; cursor: pointer; text-align: left;
+  font-family: inherit; transition: background .14s, border-color .14s, box-shadow .14s, transform .14s;
+}
+.vx-emb-row + .vx-emb-row { margin-top: 2px; }
+.vx-emb-row:not(:disabled):hover { background: var(--v-soft); box-shadow: var(--v-sh-1); transform: translateY(-1px); }
+.vx-emb-row.active { background: rgba(0,47,108,.06); border-color: rgba(0,47,108,.35); }
+.vx-emb-row.ph { cursor: default; opacity: .72; }
+.vx-emb-bullet { width: 13px; height: 13px; border-radius: 50%; border: 2px solid; box-sizing: border-box; }
+.vx-emb-bullet.hollow { background: transparent !important; }
+.vx-emb-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vx-emb-label { font-size: 13.5px; font-weight: 600; color: var(--v-ink); line-height: 1.2; }
+.vx-emb-row.ph .vx-emb-label { color: var(--v-ink-3); font-weight: 500; }
+.vx-emb-tag { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--v-ink-3); }
+.vx-emb-tag.decay { color: var(--v-warn); }
+.vx-emb-track { display: block; height: 10px; background: var(--v-soft); border: 1px solid var(--v-line); border-radius: var(--v-r-pill); overflow: hidden; }
+.vx-emb-bar { display: block; height: 100%; border-radius: var(--v-r-pill); min-width: 0; transition: width .8s cubic-bezier(.22,1,.36,1); }
+.vx-emb-count { font-size: 17px; font-weight: 800; color: var(--v-ink); text-align: right; letter-spacing: -.02em; }
+.vx-emb-row.ph .vx-emb-count { color: var(--v-ink-3); }
+.vx-emb-chev { font-size: 16px; font-weight: 700; color: var(--v-ink-3); text-align: center; line-height: 1; }
+.vx-emb-row.active .vx-emb-chev { color: var(--v-navy); }
+@media (max-width: 560px){
+  .vx-emb-row { grid-template-columns: 16px 1fr 26px 16px; gap: 10px; padding: 12px 10px; }
+  .vx-emb-track { display: none; }
+}
+
+/* ── Sección 3 · MIS GRUPOS DISPONIBLES ─────────────────────────────────── */
+.vx-grp {
+  background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-r-lg);
+  box-shadow: var(--v-sh-1); padding: 8px 4px;
+}
+.vx-grp-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 11px 18px; font-size: 13px;
+}
+.vx-grp-row + .vx-grp-row { border-top: 1px solid var(--v-line); }
+.vx-grp-code { font-family: var(--f-mono, monospace); font-size: 13px; font-weight: 600; color: var(--v-navy); }
+.vx-grp-sep { color: var(--v-line-2); }
+.vx-grp-date { color: var(--v-ink-2); }
+.vx-grp-mod { color: var(--v-ink-3); font-weight: 600; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.vx-grp-empty {
+  background: var(--v-surface); border: 1px dashed var(--v-line-2); border-radius: var(--v-r-lg);
+  padding: 24px; text-align: center; font-size: 13px; color: var(--v-ink-3);
+}
+
+/* ── Chip de filtro activo (arriba de la tabla) ─────────────────────────── */
+.vx-chip-row { margin-bottom: 12px; }
+.vx-chip {
+  display: inline-flex; align-items: center; gap: 8px; background: rgba(0,47,108,.06);
+  border: 1px solid rgba(0,47,108,.22); color: var(--v-navy); border-radius: var(--v-r-pill);
+  padding: 6px 8px 6px 14px; font-size: 12.5px; font-weight: 600;
+}
+.vx-chip b { font-weight: 700; }
+.vx-chip-dot { width: 8px; height: 8px; border-radius: 50%; }
+.vx-chip-x {
+  width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,47,108,.12);
+  color: var(--v-navy); font-size: 15px; line-height: 1; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; padding: 0;
+}
+.vx-chip-x:hover { background: var(--v-navy); color: #fff; }
+
+/* ── Drawer · Acción sugerida por etapa ─────────────────────────────────── */
+.vx-accion {
+  background: var(--v-soft); border: 1px solid var(--v-line); border-radius: var(--v-r-md);
+  padding: 12px 14px; margin: 16px 0 4px;
+}
+.vx-accion-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.vx-accion-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--v-ink-3); }
+.vx-accion-sug { display: flex; gap: 8px; align-items: baseline; margin-top: 9px; font-size: 13px; color: var(--v-ink); line-height: 1.45; }
+.vx-accion-sug b { color: var(--v-navy); }
+.vx-accion-arrow { color: var(--v-navy); font-weight: 800; font-size: 15px; line-height: 1; }

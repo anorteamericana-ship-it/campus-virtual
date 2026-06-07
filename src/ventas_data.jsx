@@ -9,19 +9,32 @@
 const SCRIPT_URL_V = window.APPS_SCRIPT_URL;
 const WA_NUMBER_V = '50689528787';
 
-// ── ETAPAS DEL PROSPECTO (orden = embudo) ────────────────────────────────
-const ETAPAS = [
-  { key: 'LEAD',              label: 'Lead',              color: '#94a3b8' },
-  { key: 'CONAPE_SOLICITUD',  label: 'CONAPE Solicitud',  color: '#3b82f6' },
-  { key: 'CONAPE_DOCUMENTOS', label: 'CONAPE Documentos', color: '#6366f1' },
-  { key: 'CONAPE_APROBADO',   label: 'CONAPE Aprobado',   color: '#8b5cf6' },
-  { key: 'CONAPE_DESEMBOLSO', label: 'CONAPE Desembolso', color: '#ec4899' },
-  { key: 'PAGO_ACADEMIA',     label: 'Pago Academia',     color: '#f59e0b' },
-  { key: 'ACTIVO',            label: 'Activo',            color: '#10b981' },
-  { key: 'CANCELADO',         label: 'Cancelado',         color: '#ef4444' },
+// ── EMBUDO DEL VENDEDOR — 7 etapas, orden fijo (Fase 3) ───────────────────
+// El backend (getDashboardVentas) ya calcula `etapa` con esta lógica + decay
+// de semana calendario. CONAPE_DOCUMENTOS es un placeholder permanente en 0.
+// `accion` = sugerencia que se muestra en el panel lateral del prospecto.
+const EMBUDO_ETAPAS = [
+  { key: 'LEAD',                  label: 'Lead',                          color: '#94A3B8', accion: 'Llamada de seguimiento inicial' },
+  { key: 'CONAPE_SOLICITUD',      label: 'CONAPE Solicitud',              color: '#2B7FC1', accion: 'Verificar envío de documentos a CONAPE' },
+  { key: 'CONAPE_DOCUMENTOS',     label: 'CONAPE Documentos pendientes',  color: '#B6BDC9', placeholder: true, accion: '' },
+  { key: 'CONAPE_APROBADO_FIRMA', label: 'CONAPE Aprobado para firma',    color: '#6366F1', accion: 'Avisar al cliente para firma de contrato' },
+  { key: 'CONAPE_DESEMBOLSO',     label: 'CONAPE Desembolso',             color: '#8B5CF6', accion: 'Coordinar matrícula y horario' },
+  { key: 'CONAPE_MATRICULA',      label: 'CONAPE Matrícula',              color: '#10B981', decay: true, accion: 'Ya pagó CONAPE — confirmar inicio de clases' },
+  { key: 'PAGO_ACADEMIA',         label: 'Pago Academia',                 color: '#E5A823', decay: true, accion: 'Ya pagó propio — confirmar inicio de clases' },
 ];
-const ETAPA_MAP = Object.fromEntries(ETAPAS.map(e => [e.key, e]));
-const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_APROBADO','CONAPE_DESEMBOLSO'];
+// ETAPAS = alias para el código que aún itera window.ETAPAS (FilterBar).
+const ETAPAS = EMBUDO_ETAPAS;
+// Mapa de TODAS las etapas para badges. Incluye ACTIVO/CANCELADO y el alias
+// legacy CONAPE_APROBADO por si una fila vieja todavía los trae.
+const ETAPA_MAP = Object.fromEntries([
+  ...EMBUDO_ETAPAS,
+  { key: 'CONAPE_APROBADO', label: 'CONAPE Aprobado', color: '#6366F1' },
+  { key: 'ACTIVO',          label: 'Activo',          color: '#10B981' },
+  { key: 'CANCELADO',       label: 'Cancelado',       color: '#EF4444' },
+].map(e => [e.key, e]));
+// Acción sugerida por etapa (para el drawer).
+const ACCION_ETAPA = Object.fromEntries(EMBUDO_ETAPAS.map(e => [e.key, e.accion]));
+const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_APROBADO_FIRMA','CONAPE_DESEMBOLSO','CONAPE_MATRICULA'];
 
 const ASESORES_V = ['Fiorela Salazar','Roger Cruz','Gustavo Valladares','Kimberly Guzmán','Leonardo Salazar'];
 
@@ -57,6 +70,14 @@ const fmtFechaCorta = f => {
   const [y,m,d] = String(f).split(/[-T]/).map(Number);
   if (!y || !m || !d) return String(f);
   return `${d} ${meses[m-1]} ${y}`;
+};
+// Formato DD-mmm-YYYY (ej. 14-sep-2026) para la lista de grupos disponibles.
+const fmtFechaDDMon = f => {
+  if (!f) return '—';
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const [y,m,d] = String(f).split(/[-T]/).map(Number);
+  if (!y || !m || !d) return String(f);
+  return `${String(d).padStart(2,'0')}-${meses[m-1]}-${y}`;
 };
 const fmtColones = n => {
   const num = Number(String(n).replace(/[^\d.]/g,''));
@@ -158,6 +179,28 @@ function mapResumenVentas(rs, lista) {
 }
 
 // ── ENDPOINTS GET ─────────────────────────────────────────────────────────
+// Fase 3: UNA sola llamada trae todo el panel del vendedor (semana, embudo,
+// prospectos ya filtrados+en una etapa, grupos con cupo). Reemplaza el viejo
+// par getProspectosAsesor + getResumenVentas. POST sin body (query params) →
+// no dispara preflight CORS. Los prospectos vienen en MINÚSCULAS, sin normalizar.
+async function getDashboardVentas(asesor) {
+  const url = `${SCRIPT_URL_V}?fn=getDashboardVentas&asesor=${encodeURIComponent(asesor || '')}`;
+  const res = await fetch(url, { method: 'POST' });
+  return await res.json();
+}
+// Adaptador LIGERO (no normalizador): los campos ya vienen en minúsculas; solo
+// rellenamos los alias que la tabla/drawer existentes esperan con otro nombre
+// (telefono ← whatsapp, fecha_registro ← f_lead, codigo ← codigo_estudiante).
+function adaptProspectoDash(p) {
+  if (!p || typeof p !== 'object') return p;
+  return {
+    ...p,
+    telefono: p.telefono || p.whatsapp || '',
+    fecha_registro: p.fecha_registro || p.f_lead || '',
+    codigo: p.codigo || p.codigo_estudiante || '',
+  };
+}
+
 async function getProspectosAsesor(asesor) {
   let url = `${SCRIPT_URL_V}?fn=getProspectosAsesor`;
   if (asesor) url += `&asesor=${encodeURIComponent(asesor)}`;
@@ -423,6 +466,59 @@ const DEMO_GRUPOS = [
   { codigo:'B1-LJ18-1426', etiqueta:'Básico I · Lun a Jue · 6:00 p.m. · inicia 14 jul' },
 ];
 
+// ── VISTA PREVIA DE DISEÑO (Fase 3) ────────────────────────────────────────
+// NO es un fallback. Solo se activa con ?preview=fiorella | ?preview=roger en
+// la URL, para revisar el rediseño sin sesión/backend. La sesión real NUNCA cae
+// aquí: si getDashboardVentas falla, se muestra error + Reintentar (sin enmascarar).
+// La forma replica EXACTAMENTE el contrato de getDashboardVentas.
+const DEMO_DASHBOARD = {
+  fiorella: {
+    ok: true,
+    asesor: 'FIORELLA SALAZAR',
+    semana_actual: { matriculas: 1, promedio_4s: 0.0 },
+    embudo: [
+      { etapa:'LEAD', count:0 }, { etapa:'CONAPE_SOLICITUD', count:4 },
+      { etapa:'CONAPE_DOCUMENTOS', count:0 }, { etapa:'CONAPE_APROBADO_FIRMA', count:0 },
+      { etapa:'CONAPE_DESEMBOLSO', count:0 }, { etapa:'CONAPE_MATRICULA', count:0 },
+      { etapa:'PAGO_ACADEMIA', count:1 },
+    ],
+    prospectos: [
+      { cedula:'120180140', nombre:'RODRIGUEZ PALACIOS DEBORA', whatsapp:'8888-8888', correo:'debora.rp@gmail.com', programa:'INA', modalidad:'INTENSIVO', financiamiento:'PROPIO', grupo_tentativo:'B1-LM18-C3-0726', codigo_estudiante:'17193', etapa:'PAGO_ACADEMIA', fecha_etapa:'2026-06-05', f_lead:'2026-06-04', notas:'' },
+      { cedula:'116880490', nombre:'CAMPOS UREÑA JOSUÉ', whatsapp:'6045-1120', correo:'josue.campos@outlook.com', programa:'INA', modalidad:'INTENSIVO', financiamiento:'CONAPE', grupo_tentativo:'B1-LM18-C3-0726', codigo_estudiante:'', etapa:'CONAPE_SOLICITUD', fecha_etapa:'2026-05-22', f_lead:'2026-05-21', notas:'' },
+      { cedula:'118420567', nombre:'JIMÉNEZ ROJAS MARÍA FERNANDA', whatsapp:'8845-2210', correo:'mafer.jimenez@gmail.com', programa:'INA', modalidad:'SUPER_INTENSIVO', financiamiento:'CONAPE', grupo_tentativo:'B1-KJ18-C3-0826', codigo_estudiante:'', etapa:'CONAPE_SOLICITUD', fecha_etapa:'2026-05-16', f_lead:'2026-05-02', notas:'' },
+      { cedula:'117210934', nombre:'ARAYA MONGE KEVIN', whatsapp:'7188-6620', correo:'kevin.araya@gmail.com', programa:'INA', modalidad:'INTENSIVO', financiamiento:'CONAPE', grupo_tentativo:'B1-KJ18-C3-0826', codigo_estudiante:'', etapa:'CONAPE_SOLICITUD', fecha_etapa:'2026-05-15', f_lead:'2026-04-18', notas:'' },
+      { cedula:'116660277', nombre:'ROJAS PICADO MELISSA', whatsapp:'8901-3344', correo:'melissa.rp@gmail.com', programa:'INA', modalidad:'SUPER_INTENSIVO', financiamiento:'CONAPE', grupo_tentativo:'B1-LM94-B3-0626', codigo_estudiante:'', etapa:'CONAPE_SOLICITUD', fecha_etapa:'2026-05-19', f_lead:'2026-05-19', notas:'' },
+    ],
+    grupos_disponibles: [
+      { codigo:'B1-LM18-C3-0726', fecha_inicio:'2026-09-14', modalidad:'INTENSIVO', programa:'INA', capacidad:20 },
+      { codigo:'B1-KJ18-C3-0826', fecha_inicio:'2026-09-17', modalidad:'INTENSIVO', programa:'INA', capacidad:20 },
+      { codigo:'B1-LM94-B3-0626', fecha_inicio:'2026-05-18', modalidad:'SUPER_INTENSIVO', programa:'INA', capacidad:18 },
+    ],
+    total_prospectos: 5,
+  },
+  roger: {
+    ok: true,
+    asesor: 'ROGER CRUZ',
+    semana_actual: { matriculas: 0, promedio_4s: 0.5 },
+    embudo: [
+      { etapa:'LEAD', count:2 }, { etapa:'CONAPE_SOLICITUD', count:1 },
+      { etapa:'CONAPE_DOCUMENTOS', count:0 }, { etapa:'CONAPE_APROBADO_FIRMA', count:0 },
+      { etapa:'CONAPE_DESEMBOLSO', count:0 }, { etapa:'CONAPE_MATRICULA', count:0 },
+      { etapa:'PAGO_ACADEMIA', count:0 },
+    ],
+    prospectos: [
+      { cedula:'118100588', nombre:'GUTIÉRREZ LEÓN SOFÍA', whatsapp:'8455-2098', correo:'sofia.gl@gmail.com', programa:'SIN_INA', modalidad:'INTENSIVO', financiamiento:'PROPIO', grupo_tentativo:'', codigo_estudiante:'', etapa:'LEAD', fecha_etapa:'2026-06-03', f_lead:'2026-06-03', notas:'' },
+      { cedula:'120030099', nombre:'BRENES VEGA ALLISON', whatsapp:'8677-1290', correo:'allison.bv@gmail.com', programa:'SIN_INA', modalidad:'INTENSIVO', financiamiento:'PROPIO', grupo_tentativo:'', codigo_estudiante:'', etapa:'LEAD', fecha_etapa:'2026-06-02', f_lead:'2026-06-02', notas:'' },
+      { cedula:'117330810', nombre:'CHAVES SEGURA DANIEL', whatsapp:'7066-5521', correo:'daniel.cs@gmail.com', programa:'INA', modalidad:'SUPER_INTENSIVO', financiamiento:'CONAPE', grupo_tentativo:'B1-KJ18-C3-0826', codigo_estudiante:'', etapa:'CONAPE_SOLICITUD', fecha_etapa:'2026-05-28', f_lead:'2026-05-23', notas:'' },
+    ],
+    grupos_disponibles: [
+      { codigo:'B1-LM18-C3-0726', fecha_inicio:'2026-09-14', modalidad:'INTENSIVO', programa:'INA', capacidad:20 },
+      { codigo:'B1-KJ18-C3-0826', fecha_inicio:'2026-09-17', modalidad:'INTENSIVO', programa:'INA', capacidad:20 },
+    ],
+    total_prospectos: 3,
+  },
+};
+
 // Calcula el resumen de KPIs a partir de la lista (usado en demo y como fallback)
 function calcResumen(lista) {
   const esteMes = (HOY || '').slice(0,7);
@@ -439,12 +535,13 @@ function calcResumen(lista) {
 
 Object.assign(window, {
   SCRIPT_URL_V, WA_NUMBER_V,
-  ETAPAS, ETAPA_MAP, ETAPAS_CONAPE, ASESORES_V, FIN_MAP, PROG_MAP,
-  fmtTelV, waLink, diasDesde, fmtFechaCorta, fmtColones, nombrePila,
+  ETAPAS, EMBUDO_ETAPAS, ETAPA_MAP, ACCION_ETAPA, ETAPAS_CONAPE, ASESORES_V, FIN_MAP, PROG_MAP,
+  fmtTelV, waLink, diasDesde, fmtFechaCorta, fmtFechaDDMon, fmtColones, nombrePila,
   normalizarProspecto, mapResumenVentas,
+  getDashboardVentas, adaptProspectoDash,
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
   getBecasDisponiblesV, generarProformaProspecto, aprobarBecaProspecto,
-  docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, calcResumen, HOY,
+  docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, DEMO_DASHBOARD, calcResumen, HOY,
 });

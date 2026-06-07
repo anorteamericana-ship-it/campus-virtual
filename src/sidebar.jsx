@@ -326,6 +326,33 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     };
   }, [rolEfectivo]);
 
+  // ── Badge "Solicitudes" de pago — admin / superadmin (Fase 3.5) ────────
+  const [pendientesPago, setPendientesPago] = React.useState(0);
+  React.useEffect(() => {
+    if (rolEfectivo !== 'admin' && rolEfectivo !== 'superadmin') return;
+    let cancel = false;
+    let intervalId = null;
+    const fetchCount = () => {
+      if (typeof window.getSolicitudesPago !== 'function') return;
+      window.getSolicitudesPago({ estado: 'PENDIENTE' }).then(r => {
+        if (cancel) return;
+        if (r && r.ok) setPendientesPago(r.pendientes ?? (r.solicitudes?.length || 0));
+      }).catch(() => {});
+    };
+    const refrescar = () => { if (document.visibilityState === 'visible') fetchCount(); };
+    const onVis = () => { if (document.visibilityState === 'visible') fetchCount(); };
+    fetchCount();   // inicial, sin gate de visibilidad para poblar el badge en el primer render
+    intervalId = setInterval(refrescar, 2 * 60 * 1000);
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('an:solicitudes-pago-changed', fetchCount);
+    return () => {
+      cancel = true;
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('an:solicitudes-pago-changed', fetchCount);
+    };
+  }, [rolEfectivo, active]);
+
   const studentNav = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
@@ -355,6 +382,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'supervision', label: 'Supervisión', icon: 'bell' },
     { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
+    { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
     { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },

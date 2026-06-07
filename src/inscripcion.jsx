@@ -473,13 +473,30 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting, grupos, setG
     return () => { cancel = true; };
   }, [form.programa]);
 
-  // Becas disponibles (los % y cupos los define el backend, no se hardcodean).
+  // Becas disponibles (Fase 3.8) — dinámicas desde CONFIG_BECAS. Solo las
+  // visibles + activas + vigentes, filtradas por el programa elegido. Si el
+  // admin desactiva u oculta una beca, deja de aparecer acá automáticamente.
   useEffect(() => {
-    fetch(`${SCRIPT_URL}?fn=getBecasDisponibles`)
-      .then(r => r.json())
-      .then(d => setBecasDisp((d && d.becas) || []))
-      .catch(() => setBecasDisp([]));
-  }, []);
+    if (!form.programa) { setBecasDisp([]); return; }
+    let cancel = false;
+    const programa = form.programa === 'ina' ? 'INA' : 'SIN_INA';
+    const req = window.getBecas
+      ? window.getBecas({ solo_visibles: true, programa })
+      : fetch(`${SCRIPT_URL}?fn=getBecas`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: 'getBecas', solo_visibles: true, programa }) }).then(r => r.json());
+    Promise.resolve(req)
+      .then(d => {
+        if (cancel) return;
+        const becas = ((d && d.becas) || []).map(b => ({
+          id: b.id, nombre: b.nombre,
+          porcentaje: Math.max(b.pct_matricula || 0, b.pct_cuota || 0, b.pct_certificado || 0, b.pct_titulo || 0) / 100,
+          cupo_disponible: b.cupo_total ? b.cupo_disponible : null,
+          disponible: true,
+        }));
+        setBecasDisp(becas);
+      })
+      .catch(() => { if (!cancel) setBecasDisp([]); });
+    return () => { cancel = true; };
+  }, [form.programa]);
 
   return (
     <div className="ins-body">
@@ -657,7 +674,7 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting, grupos, setG
                           <span className="beca-ico">{b.id === 'MUJER' ? '🌷' : b.id === 'IMPACTA' ? '🎯' : '🎓'}</span>
                           <span className="beca-body">
                             <b>{b.nombre.toUpperCase()} {Math.round(b.porcentaje * 100)}%</b>
-                            <i>{b.cupo_disponible} cupos disponibles · Sujeto a aprobación de Dirección</i>
+                            <i>{b.cupo_disponible != null ? `${b.cupo_disponible} cupos disponibles · ` : ''}Sujeto a aprobación de Dirección</i>
                           </span>
                         </label>
                       ))}

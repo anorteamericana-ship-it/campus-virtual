@@ -4,7 +4,7 @@
    ExamenOralView, GruposView, CalificarView, AsistenciaView,
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
-   VistaDocente, PanelAdminSupervision, PanelSuspensiones */
+   VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -137,6 +137,30 @@ function ModoPruebaRibbon({ usuario, onVolver }) {
   );
 }
 
+// ── Banner de MODO DEMO (preview) ────────────────────────────────────────
+function DemoBanner() {
+  return (
+    <div role="status" style={{
+      position: 'sticky', top: 0, zIndex: 95,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      padding: '7px 16px',
+      background: 'repeating-linear-gradient(135deg, #8A5A00 0 16px, #A06A00 16px 32px)',
+      color: '#fff', fontFamily: 'var(--f-sans, system-ui)', fontSize: 12.5, fontWeight: 600,
+      letterSpacing: '0.01em', borderBottom: '1px solid rgba(0,0,0,0.15)',
+    }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 9px',
+        borderRadius: 999, background: 'rgba(255,255,255,0.18)',
+        fontWeight: 800, letterSpacing: '0.14em', fontSize: 10, textTransform: 'uppercase',
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FFE08A' }} />
+        Modo demo
+      </span>
+      Datos de ejemplo — los cambios <b style={{ margin: '0 4px' }}>no se guardan</b> en la hoja real.
+    </div>
+  );
+}
+
 function App() {
   // Sesión obligatoria. Si no hay, ya nos redirigió ensureSesion().
   const sesionInicial = React.useMemo(() => getSesion(), []);
@@ -207,6 +231,13 @@ function App() {
 
   const toast = (m) => setToastMsg(m);
 
+  // Modo demo (preview): banner visible para que sea evidente que NO se escribe
+  // en la hoja real. Se activa con ?demo=… o ?preview=… en la URL.
+  const esDemo = React.useMemo(() => {
+    try { const q = new URLSearchParams(window.location.search); return !!(q.get('demo') || q.get('preview')); }
+    catch (_) { return false; }
+  }, []);
+
   // Sin sesión válida tras el primer render → no montar nada.
   if (!usuario) return null;
 
@@ -255,6 +286,7 @@ function App() {
       dashboard:    <AdminDashboard setActive={setActive} />,
       supervision:  <PanelAdminSupervision />,
       suspensiones: <PanelSuspensiones />,
+      solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,
       estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
       cronograma_grupo: <CronogramaGrupo rol="admin" onNavigate={navigateTo} />,
@@ -287,6 +319,7 @@ function App() {
         setActive={setActive}
       />
       <main className="main">
+        {esDemo && <DemoBanner />}
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
         )}
@@ -298,7 +331,23 @@ function App() {
   );
 }
 
+// ── Bootstrap de sesión demo (solo preview) ──────────────────────────────
+// Con ?demo=1 (o ?demo=admin / ?demo=super) y sin sesión real, inyectamos una
+// identidad de administrador para poder revisar el campus sin login. En
+// producción (sin el flag) NO corre: el guard de sesión real se mantiene.
+function bootstrapDemoSesion() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const demo = q.get('demo');
+    if (!demo) return;
+    if (getSesion()) return;
+    const rol = demo === 'super' ? 'superadmin' : 'admin';
+    setSesion({ rol, nombre: 'Leonardo Salazar', cedula: '108990001' });
+  } catch (_) {}
+}
+
 // Guard de sesión ANTES de render. Si falta, no montamos el árbol.
+bootstrapDemoSesion();
 if (ensureSesion()) {
   const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(<App />);

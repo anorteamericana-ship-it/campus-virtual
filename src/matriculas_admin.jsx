@@ -10,12 +10,38 @@
   const API = window.APPS_SCRIPT_URL;
 
   const enc = encodeURIComponent;
+  // Fase 3.6 — modo demo (preview): NO tocar el backend real. getProspectoDetalle,
+  // notas, proformas y CONAPE devuelven datos de ejemplo. Se activa con
+  // ?demo=1 / ?preview=… en la URL.
+  const MAT_ADMIN_DEMO = (() => {
+    try { const q = new URLSearchParams(location.search); return q.get('demo') === '1' || !!q.get('preview'); }
+    catch (_) { return false; }
+  })();
+  const DEMO_DETALLE = {
+    '120180140': { nombre: 'RODRIGUEZ PALACIOS DEBORA', cedula: '1-2018-0140', tipo_id: 'Cédula nacional', correo: 'debora.rp@gmail.com', whatsapp: '8888-8888', telefono: '8888-8888', sexo: 'F', fecha_nac: '2003-02-11', provincia: 'San José', canton: 'Desamparados', distrito: 'San Antonio', direccion: 'Barrio San Antonio, 200m sur de la iglesia, casa verde.', programa: 'INA', modalidad: 'INTENSIVO', grupo_tentativo: 'B1-LM18-C3-0726', financiamiento: 'PROPIO', beca: '', beca_estado: '', etapa: 'ACTIVO', como_entero: 'Recomendación', asesor_ref: 'Fiorella Salazar', conocimientos_previos: 'Básico', notas: 'Matriculada el 5-jun. Pago de matrícula reportado por la asesora.', codigo_estudiante: '17193', es_menor: false, f_lead: '2026-06-04', f_activo: '2026-06-05' },
+    '116880490': { nombre: 'CAMPOS UREÑA JOSUÉ', cedula: '1-1688-0490', tipo_id: 'Cédula nacional', correo: 'josue.campos@outlook.com', whatsapp: '6045-1120', sexo: 'M', fecha_nac: '2002-01-30', provincia: 'Heredia', canton: 'San Rafael', programa: 'INA', modalidad: 'INTENSIVO', grupo_tentativo: 'B1-LM18-C3-0726', financiamiento: 'CONAPE', etapa: 'CONAPE_SOLICITUD', asesor_ref: 'Fiorella Salazar', conape: { equipo: 'BASICO', toeic: true, sostenimiento: '₡40,000 por mes' }, notas: 'Inició la solicitud CONAPE.', es_menor: false, f_lead: '2026-05-21' },
+  };
+  function demoDetalle(cedula) {
+    const k = String(cedula || '').replace(/\D/g, '');
+    return DEMO_DETALLE[k] || { nombre: 'Prospecto (demo)', cedula, correo: '—', whatsapp: '—', programa: '—', financiamiento: '—', etapa: '—', notas: '(datos de ejemplo — modo demo)' };
+  }
+
   async function apiGet(qs) {
+    if (MAT_ADMIN_DEMO) {
+      if (qs.includes('fn=getProspectoDetalle')) {
+        const m = qs.match(/cedula=([^&]+)/);
+        return { ok: true, prospecto: demoDetalle(m ? decodeURIComponent(m[1]) : '') };
+      }
+      if (qs.includes('fn=generarProformaProspecto')) return { ok: true, url_programa: '#demo', url_equipo: '#demo' };
+      if (qs.includes('fn=actualizarEstadoConapeProspecto')) return { ok: true, novedad: 'aprobado_sin_desembolso', ultima_consulta: '2026-06-04 10:00', nombre_ws: 'SALAZAR CHACON (demo)' };
+      return { ok: true };
+    }
     const r = await fetch(`${API}?${qs}`);
     return await r.json();
   }
   // POST en text/plain para esquivar el preflight CORS (mismo patrón que ventas_data.jsx).
   async function apiPost(payload) {
+    if (MAT_ADMIN_DEMO) return { ok: true };
     const r = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -807,6 +833,7 @@
     const [error, setError] = useState(null);
     const [grupoCod, setGrupoCod] = useState('');
     const [becaEstadoLocal, setBecaEstadoLocal] = useState('');
+    const [becasActivas, setBecasActivas] = useState([]); // Fase 3.8: % dinámicos
     const [submitting, setSubmitting] = useState(false);
 
     // Carga del prospecto (self-contained, igual que los otros modales admin).
@@ -823,6 +850,18 @@
         .finally(() => { if (!cancel) setLoading(false); });
       return () => { cancel = true; };
     }, [cedula]);
+
+    // Fase 3.8 — becas activas (cualquiera, incluso internas) para % dinámicos.
+    // El admin puede asignar/aprobar cualquier beca activa, no solo Impacta/Mujer.
+    useEffect(() => {
+      let cancel = false;
+      if (window.getBecas) {
+        window.getBecas({ solo_activas: true })
+          .then(r => { if (!cancel && r && r.ok) setBecasActivas(r.becas || []); })
+          .catch(() => {});
+      }
+      return () => { cancel = true; };
+    }, []);
 
     const get = makeGet(detalle || {});
     const programa = String(get('programa', 'PROGRAMA') || '').toUpperCase();
@@ -850,16 +889,25 @@
     const grupoSel = compat.find(g => g.codigo === grupoCod) || null;
 
     // ── Preview de precios (frontend) ──
-    const descuento = becaEstadoLocal === 'APROBADA' ? (beca === 'MUJER' ? 0.5 : 0.25) : 0;
+    // Fase 3.8 — % por rubro dinámicos: buscamos la beca del prospecto en
+    // CONFIG_BECAS. Si no se encuentra (beca vieja), fallback histórico
+    // (MUJER 50% / otras 25%). Matrícula y cuota pueden tener % distintos.
+    const becaDef = becasActivas.find(b => String(b.id || '').toUpperCase() === beca
+      || String(b.nombre || '').toUpperCase().replace(/^BECA\s+/, '') === beca);
+    const aprobada = becaEstadoLocal === 'APROBADA';
+    const fbPct = beca === 'MUJER' ? 50 : 25;
+    const pctMatricula = aprobada ? (becaDef ? becaDef.pct_matricula : fbPct) : 0;
+    const pctCuota = aprobada ? (becaDef ? becaDef.pct_cuota : fbPct) : 0;
     const precioCuota = Number(grupoSel?.precio_cuota) || 0;
     const precioMatricula = Number(grupoSel?.precio_matricula) || 0;
     const precioCertificado = Number(grupoSel?.precio_certificado) || 0;
     const totalCuotas = modalidad === 'SUPER_INTENSIVO' ? 8 : 16;
-    const cuotaFinal = Math.round(precioCuota * (1 - descuento));
-    const matriculaFinal = Math.round(precioMatricula * (1 - descuento));
+    const cuotaFinal = Math.round(precioCuota * (1 - pctCuota / 100));
+    const matriculaFinal = Math.round(precioMatricula * (1 - pctMatricula / 100));
     const certificadoFinal = precioCertificado; // SIN descuento
     const costoCurso = cuotaFinal * totalCuotas;
-    const descPct = beca === 'MUJER' ? 50 : 25;
+    // % a mostrar en los textos (representativo): el de cuota, o matrícula si cuota=0.
+    const descPct = becaDef ? (becaDef.pct_cuota || becaDef.pct_matricula) : fbPct;
 
     const tieneCompat = compat.length > 0;
     const tienePrecios = !!grupoSel && (precioCuota > 0 || precioMatricula > 0);
@@ -1052,8 +1100,120 @@
     );
   }
 
+  // ── Fase 3.6 · "Ver ficha de estudiante" (read-only) ────────────────────────
+  // Para prospectos ya activados (con CODIGO_ESTUDIANTE). Muestra el expediente
+  // como el drawer del vendedor pero de solo lectura: si el admin quiere editar,
+  // va por el flujo normal.
+  function MatFichaEstudianteModal({ cedula, nombre, codigo, onClose, onToast }) {
+    const [detalle, setDetalle] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [lightbox, setLightbox] = useState(null);
+
+    useEffect(() => {
+      let cancel = false;
+      getDetalle(cedula)
+        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar la ficha.'); })
+        .catch(e => { if (!cancel) setError(e.message); })
+        .finally(() => { if (!cancel) setLoading(false); });
+      return () => { cancel = true; };
+    }, [cedula]);
+
+    const get = makeGet(detalle || {});
+    const val = (f) => { let v = get(...(f.al || [f.k])); if (f.bool) v = boolTxt(v); return v == null ? '' : v; };
+    const ro = () => false;       // todo solo lectura
+    const noop = () => () => {};
+    const fin = get('financiamiento', 'FINANCIAMIENTO');
+    const esConape = /conape/i.test(fin);
+    const esMenor = boolTxt(get('es_menor', 'ES_MENOR')) === 'Sí' || !!get('tutor_nombre', 'TUTOR_NOMBRE');
+    const cod = codigo || get('codigo_estudiante', 'CODIGO_ESTUDIANTE');
+
+    const footer = <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>;
+
+    return (
+      <Modal size="lg" kicker={`Ficha de estudiante${cod ? ' · ' + cod : ''}`} title={nombre || get('nombre', 'NOMBRE') || 'Estudiante'} onClose={onClose} footer={footer}>
+        {loading && <div className="mat-center"><div className="mat-spin" />Cargando ficha…</div>}
+        {!loading && error && <div className="mat-center" style={{ color: 'var(--danger)' }}>⚠️ {error}</div>}
+        {!loading && !error && detalle && (
+          <>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)' }}>
+              Solo lectura. Para editar datos del estudiante, usá el flujo normal de estudiantes.
+            </div>
+
+            <Section title="Datos personales" val={val} editableOf={ro} onCh={noop} fields={[
+              { k: 'nombre', label: 'Nombre completo', full: true },
+              { k: 'cedula', label: 'Cédula', mono: true },
+              { k: 'correo', label: 'Correo' },
+              { k: 'whatsapp', label: 'WhatsApp', mono: true },
+              { k: 'telefono', label: 'Teléfono', mono: true },
+              { k: 'sexo', label: 'Sexo' },
+              { k: 'fecha_nac', label: 'Fecha de nacimiento' },
+              { k: 'provincia', label: 'Provincia' },
+              { k: 'canton', label: 'Cantón' },
+              { k: 'direccion', label: 'Dirección', full: true, textarea: true },
+            ]} />
+
+            {esMenor && (
+              <Section title="Encargado / Tutor" val={val} editableOf={ro} onCh={noop} fields={[
+                { k: 'tutor_nombre', label: 'Nombre del encargado', full: true },
+                { k: 'tutor_cedula', label: 'Cédula', mono: true },
+                { k: 'tutor_tel', label: 'Teléfono', mono: true },
+                { k: 'tutor_correo', label: 'Correo', full: true },
+              ]} />
+            )}
+
+            <Section title="Programa y financiamiento" val={val} editableOf={ro} onCh={noop} fields={[
+              { k: 'codigo_estudiante', label: 'Código de estudiante', mono: true, al: ['codigo_estudiante', 'CODIGO_ESTUDIANTE'] },
+              { k: 'programa', label: 'Programa' },
+              { k: 'modalidad', label: 'Modalidad' },
+              { k: 'grupo_tentativo', label: 'Grupo', mono: true, al: ['grupo_tentativo', 'GRUPO_TENTATIVO', 'grupo'] },
+              { k: 'financiamiento', label: 'Financiamiento' },
+              { k: 'beca', label: 'Beca' },
+            ]} />
+
+            {esConape && (
+              <Section title="CONAPE" val={val} editableOf={ro} onCh={noop} fields={[
+                { k: 'conape_equipo', label: 'Equipo' },
+                { k: 'conape_toeic', label: 'TOEIC', bool: true },
+                { k: 'conape_sostenimiento', label: 'Sostenimiento', full: true },
+              ]} />
+            )}
+
+            <Section title="Seguimiento" val={val} editableOf={ro} onCh={noop} fields={[
+              { k: 'asesor_ref', label: 'Asesor de referencia', al: ['asesor_ref', 'ASESOR_REF', 'asesor'] },
+              { k: 'notas', label: 'Notas', full: true, textarea: true, al: ['notas', 'NOTAS'] },
+            ]} />
+
+            <div className="mat-sec">
+              <div className="mat-sec-h">Documentos adjuntos</div>
+              <div className="mat-photos">
+                {[
+                  ['Cédula · frente', get('foto_ced_frente', 'FOTO_CED_FRENTE')],
+                  ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO')],
+                  ['Título', get('foto_titulo', 'FOTO_TITULO')],
+                ].map(([cap, src]) => src ? (
+                  <MatDocPhoto key={cap} cap={cap} src={src} onOpen={(s) => setLightbox({ src: s, cap })} />
+                ) : (
+                  <div key={cap} className="mat-photo-empty">
+                    <span>Sin archivo</span>
+                    <span className="mat-photo-cap">{cap}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+        {lightbox && (
+          <div className="mat-lightbox" onClick={() => setLightbox(null)}>
+            <img src={lightbox.src} alt={lightbox.cap} />
+          </div>
+        )}
+      </Modal>
+    );
+  }
+
   Object.assign(window, {
     MatResumenActivos, MatProspectoModal, MatProformasModal, MatConapeModal,
-    MatGenerarMatriculaModal, MatToast,
+    MatGenerarMatriculaModal, MatFichaEstudianteModal, MatToast,
   });
 })();

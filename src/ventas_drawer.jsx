@@ -8,11 +8,29 @@
 const { useState: vUseState, useEffect: vUseEffect } = React;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const NEXT_CONAPE = {
-  CONAPE_SOLICITUD: 'CONAPE_DOCUMENTOS',
-  CONAPE_DOCUMENTOS: 'CONAPE_APROBADO',
-  CONAPE_APROBADO: 'CONAPE_DESEMBOLSO',
-};
+
+// Tipos de pago reportables (Fase 3.5).
+const TIPOS_PAGO = ['MATRICULA', 'CUOTA', 'CERTIFICADO', 'TITULO', 'OTRO'];
+const NIVELES_PAGO = ['B1', 'B2', 'I1', 'I2'];
+
+// Limpia el WhatsApp a solo dígitos con código de país para wa.me.
+function waDigits(raw) {
+  let d = String(raw || '').replace(/[^\d]/g, '');
+  if (!d) return '';
+  if (d.length === 8) d = '506' + d;            // CR local → +506
+  return d;
+}
+
+// Lee un File como base64 con prefijo data: (para el comprobante).
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) { resolve(''); return; }
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
 
 // ── HOOK: grupos disponibles para el programa ──────────────────────────────
 function useGruposVx(programa, demo) {
@@ -200,8 +218,230 @@ function SuccessModal({ result, onClose, onExpediente }) {
   );
 }
 
+// ── MODAL: AGREGAR NOTA (Fase 3.5) ──────────────────────────────────────
+function NotaModal({ detalle, asesor, demo, onClose, onSaved, onToast }) {
+  const [texto, setTexto] = vUseState('');
+  const [loading, setLoading] = vUseState(false);
+  const submit = async () => {
+    if (!texto.trim() || loading) return;
+    setLoading(true);
+    try {
+      const r = demo ? (await sleep(500), { ok: true })
+        : await window.agregarNotaProspecto(detalle.cedula, asesor, texto.trim());
+      setLoading(false);
+      if (r && r.ok) {
+        onSaved({ fecha: window.HOY, autor: asesor, texto: texto.trim() });
+        onToast({ tipo: 'ok', msg: 'Nota agregada' });
+        onClose();
+      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo agregar la nota' });
+    } catch (_) { setLoading(false); onToast({ tipo: 'err', msg: 'Error de conexión' }); }
+  };
+  return (
+    <div className="vx-modal-scrim" onClick={onClose}>
+      <div className="vx-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <div className="vx-modal-head">
+          <div className="vx-modal-title">Agregar nota</div>
+          <div className="vx-modal-sub">{detalle.nombre}</div>
+        </div>
+        <div className="vx-modal-body">
+          <div>
+            <label className="vx-flabel">Nota</label>
+            <textarea className="vx-input" style={{ minHeight: 110, resize: 'vertical', fontFamily: 'inherit' }} autoFocus
+              placeholder="Ej: Cliente confirmó que enviará documentos mañana"
+              value={texto} onChange={e => setTexto(e.target.value)} />
+          </div>
+        </div>
+        <div className="vx-modal-foot">
+          <button className="vx-btn vx-btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
+          <button className="vx-btn vx-btn-navy" onClick={submit} disabled={loading || !texto.trim()}>
+            {loading ? <><span className="vx-spin" /> Guardando…</> : 'Guardar nota'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MODAL: REPORTAR PAGO (Fase 3.5) ─────────────────────────────────────
+// El vendedor sube el comprobante como EVIDENCIA. El admin lo verá en la cola
+// "Solicitudes", cruzará el número con BDBANCARIO y aplicará el pago a mano.
+function ReportarPagoModal({ detalle, usuario, demo, onClose, onToast }) {
+  const [tipo, setTipo] = vUseState('MATRICULA');
+  const [nivel, setNivel] = vUseState('B1');
+  const [numComp, setNumComp] = vUseState('');
+  const [monto, setMonto] = vUseState('');
+  const [foto, setFoto] = vUseState(null);
+  const [notas, setNotas] = vUseState('');
+  const [loading, setLoading] = vUseState(false);
+  const [err, setErr] = vUseState('');
+  const fileRef = React.useRef(null);
+
+  const pickFoto = e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (!/^(image\/jpeg|image\/png|application\/pdf)$/.test(f.type)) {
+      setErr('Formato no permitido. Subí JPG, PNG o PDF.'); return;
+    }
+    if (f.size > 8 * 1024 * 1024) { setErr('El archivo supera los 8 MB.'); return; }
+    setErr(''); setFoto(f);
+  };
+
+  const submit = async () => {
+    if (!numComp.trim()) return setErr('El número de comprobante es obligatorio (clave para cruzar con BDBANCARIO).');
+    if (!(parseFloat(monto) > 0)) return setErr('Ingresá un monto válido mayor a 0.');
+    if (!foto) return setErr('Adjuntá la foto o PDF del comprobante.');
+    setErr(''); setLoading(true);
+    try {
+      const fileBase64 = await readFileAsBase64(foto);
+      const body = {
+        usuario_reporta: usuario.cedula || '',
+        nombre_reporta: usuario.nombre || '',
+        origen: 'VENDEDOR',
+        estudiante_cedula: detalle.cedula,
+        estudiante_codigo: detalle.codigo || detalle.codigo_estudiante || '',
+        estudiante_nombre: detalle.nombre,
+        tipo_pago: tipo,
+        nivel: tipo === 'OTRO' ? '' : nivel,
+        numero_comprobante: numComp.trim(),
+        monto_reportado: parseFloat(monto),
+        foto_base64: (fileBase64 || '').split(',')[1] || '',
+        foto_mime: foto.type,
+        notas_reporta: notas.trim(),
+      };
+      const res = await window.reportarPago(body);
+      setLoading(false);
+      if (res && res.ok && res.estado === 'PENDIENTE') {
+        onClose();
+        onToast({ tipo: 'ok', msg: '✅ Reportado al admin. Te avisará cuando aplique el pago.' });
+      } else if (res && res.ok && res.estado === 'DUPLICADO') {
+        onClose();
+        onToast({ tipo: 'warn', msg: '⚠️ Este comprobante ya fue aplicado antes. La solicitud quedó como duplicada.' });
+      } else {
+        setErr((res && res.error) || 'No se pudo reportar el pago. Intentá de nuevo.');
+      }
+    } catch (_) { setLoading(false); setErr('Error de conexión. Intentá de nuevo.'); }
+  };
+
+  return (
+    <div className="vx-modal-scrim" onClick={onClose}>
+      <div className="vx-modal" onClick={e => e.stopPropagation()}>
+        <div className="vx-modal-head red">
+          <div className="vx-modal-title">Reportar pago</div>
+          <div className="vx-modal-sub">{detalle.nombre} · {detalle.cedula}</div>
+        </div>
+        <div className="vx-modal-body">
+          {err ? <div className="vx-inline-err"><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 150px' }}>
+              <label className="vx-flabel">Tipo de pago</label>
+              <select className="vx-select" style={{ width: '100%' }} value={tipo} onChange={e => setTipo(e.target.value)}>
+                {TIPOS_PAGO.map(t => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>)}
+              </select>
+            </div>
+            {tipo !== 'OTRO' ? (
+              <div style={{ flex: '1 1 110px' }}>
+                <label className="vx-flabel">Nivel</label>
+                <select className="vx-select" style={{ width: '100%' }} value={nivel} onChange={e => setNivel(e.target.value)}>
+                  {NIVELES_PAGO.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="vx-flabel">Número de comprobante <span style={{ color: 'var(--v-red)' }}>*</span></label>
+            <input className="vx-input" inputMode="numeric" placeholder="Ej. 74974001" value={numComp} onChange={e => setNumComp(e.target.value)} />
+            <div style={{ fontSize: 11, color: 'var(--v-ink-3)', marginTop: 4 }}>El admin cruza este número con BDBANCARIO para confirmar el dinero.</div>
+          </div>
+
+          <div>
+            <label className="vx-flabel">Monto reportado <span style={{ color: 'var(--v-red)' }}>*</span></label>
+            <input className="vx-input" inputMode="numeric" placeholder="20000" value={monto} onChange={e => setMonto(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="vx-flabel">Foto del comprobante <span style={{ color: 'var(--v-red)' }}>*</span></label>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,application/pdf" style={{ display: 'none' }} onChange={pickFoto} />
+            <button type="button" className="vx-mini-btn" style={{ width: '100%', justifyContent: foto ? 'space-between' : 'center', padding: '11px 14px' }} onClick={() => fileRef.current?.click()}>
+              {foto
+                ? <><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}><window.Vico d={window.VI.doc} size={14} /><span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{foto.name}</span></span><span className="vx-copy">cambiar</span></>
+                : <><window.Vico d={window.VI.upload} size={14} /> Subir JPG, PNG o PDF</>}
+            </button>
+          </div>
+
+          <div>
+            <label className="vx-flabel">Notas (opcional)</label>
+            <textarea className="vx-input" style={{ minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="Algo que el admin deba saber…" value={notas} onChange={e => setNotas(e.target.value)} />
+          </div>
+        </div>
+        <div className="vx-modal-foot">
+          <button className="vx-btn vx-btn-ghost" onClick={onClose} disabled={loading}>Cancelar</button>
+          <button className="vx-btn vx-btn-red" onClick={submit} disabled={loading}>
+            {loading ? <><span className="vx-spin" /> Enviando…</> : 'Enviar al admin'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MODAL: CANCELAR PROSPECTO con motivo (Fase 3.6) ─────────────────────
+// Soft-delete con auditoría: no elimina, registra motivo + quién + cuándo.
+function CancelarProspectoModal({ detalle, usuario, onClose, onCancelado, onToast }) {
+  const [motivo, setMotivo] = vUseState('');
+  const [loading, setLoading] = vUseState(false);
+  const [err, setErr] = vUseState('');
+  const submit = async () => {
+    if (!motivo.trim()) { setErr('El motivo de cancelación es obligatorio.'); return; }
+    setErr(''); setLoading(true);
+    try {
+      const res = await window.cancelarProspecto({
+        cedula: detalle.cedula,
+        cancelado_por: (usuario && usuario.nombre) || '',
+        motivo: motivo.trim(),
+      });
+      setLoading(false);
+      if (res && res.ok) {
+        onToast({ tipo: 'ok', msg: 'Prospecto cancelado. Queda en el sistema con el motivo.' });
+        onCancelado();
+      } else setErr((res && res.error) || 'No se pudo cancelar el prospecto.');
+    } catch (_) { setLoading(false); setErr('Error de conexión. Intentá de nuevo.'); }
+  };
+  return (
+    <div className="vx-modal-scrim" onClick={onClose}>
+      <div className="vx-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <div className="vx-modal-head">
+          <div className="vx-modal-title">Cancelar prospecto</div>
+          <div className="vx-modal-sub">{detalle.nombre}</div>
+        </div>
+        <div className="vx-modal-body">
+          {err ? <div className="vx-inline-err"><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
+          <div style={{ fontSize: 13, color: 'var(--v-ink-2)', lineHeight: 1.55 }}>
+            Cancelar un prospecto <b>NO lo elimina</b>. Queda en el sistema con el motivo. ¿Continuar?
+          </div>
+          <div>
+            <label className="vx-flabel">Motivo de cancelación <span style={{ color: 'var(--v-red)' }}>*</span></label>
+            <textarea className="vx-input" style={{ minHeight: 96, resize: 'vertical', fontFamily: 'inherit' }} autoFocus
+              placeholder="Ej: Desistió por motivos laborales. Reintentar el próximo cuatrimestre."
+              value={motivo} onChange={e => setMotivo(e.target.value)} />
+          </div>
+        </div>
+        <div className="vx-modal-foot">
+          <button className="vx-btn vx-btn-ghost" onClick={onClose} disabled={loading}>No, volver</button>
+          <button className="vx-btn vx-btn-red" onClick={submit} disabled={loading || !motivo.trim()}>
+            {loading ? <><span className="vx-spin" /> Cancelando…</> : 'Sí, cancelar prospecto'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── DRAWER PRINCIPAL ─────────────────────────────────────────────────────────
-function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast, onView, onChanged }) {
+function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, onClose, onToast, onView, onChanged }) {
   const [detalle, setDetalle] = vUseState(null);
   const [loading, setLoading] = vUseState(true);
   const [error, setError] = vUseState('');
@@ -218,8 +458,17 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
     try {
       if (demo) {
         await sleep(450);
-        const d = window.DEMO_PROSPECTOS.find(p => p.cedula === cedula);
-        setDetalle(d ? { ...d } : null);
+        // Fase 3: en vista previa el prospecto puede venir del dashboard (seed),
+        // que trae menos campos que getProspectoDetalle. Coercionamos los arrays
+        // que el render espera para no romper la maqueta.
+        let d = seed ? { ...seed } : window.DEMO_PROSPECTOS.find(p => p.cedula === cedula);
+        if (d) d = {
+          ...d,
+          notas: Array.isArray(d.notas) ? d.notas : [],
+          conape_eventos: Array.isArray(d.conape_eventos) ? d.conape_eventos : [],
+          docs_extra: Array.isArray(d.docs_extra) ? d.docs_extra : [],
+        };
+        setDetalle(d || null);
         if (!d) setError('Prospecto no encontrado.');
       } else {
         const d = await window.getProspectoDetalle(cedula);
@@ -228,7 +477,7 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
       }
     } catch (_) { setError('Error de conexión.'); }
     finally { setLoading(false); }
-  }, [cedula, demo]);
+  }, [cedula, demo, seed]);
 
   vUseEffect(() => { cargar(); }, [cargar]);
   vUseEffect(() => {
@@ -342,18 +591,9 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
   };
   const irExpediente = () => { onToast({ tipo: 'ok', msg: `Abriendo expediente ${detalle.codigo || ''}…` }); setModal(null); };
 
-  // ── Acciones del footer según etapa ──
-  const footerBtns = () => {
-    if (!detalle) return [];
-    const e = detalle.etapa, fin = detalle.financiamiento;
-    const btns = [];
-    if (e === 'LEAD' && fin === 'PROPIO')      btns.push({ k: 'cobrar', label: 'Cobrar matrícula y activar', cls: 'vx-btn-red', onClick: () => setModal('cobrar') });
-    else if (e === 'LEAD' && fin === 'CONAPE') btns.push({ k: 'sol', label: 'Marcar solicitud enviada', cls: 'vx-btn-navy', loadingKey: 'CONAPE_SOLICITUD', onClick: () => marcar('CONAPE_SOLICITUD', 'Solicitud CONAPE marcada como enviada') });
-    if (NEXT_CONAPE[e])                         btns.push({ k: 'next', label: `Marcar ${window.ETAPA_MAP[NEXT_CONAPE[e]].label}`, cls: 'vx-btn-navy', loadingKey: NEXT_CONAPE[e], onClick: () => marcar(NEXT_CONAPE[e], 'Etapa actualizada') });
-    if (e === 'CONAPE_DESEMBOLSO')              btns.push({ k: 'act', label: 'Activar como estudiante', cls: 'vx-btn-red', onClick: () => setModal('activar') });
-    if (e === 'PAGO_ACADEMIA')                  btns.push({ k: 'cobrar2', label: 'Registrar pago y activar', cls: 'vx-btn-red', onClick: () => setModal('cobrar') });
-    return btns;
-  };
+  // WhatsApp del prospecto, limpio para wa.me (Fase 3.5).
+  const waNum = waDigits(detalle && (detalle.whatsapp || detalle.telefono));
+  const llamarWhatsApp = () => { if (waNum) window.open(`https://wa.me/${waNum}`, '_blank', 'noopener'); };
 
   const d = detalle;
 
@@ -384,6 +624,20 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
             </div>
 
             <div className="vx-dr-body">
+              {/* Acción sugerida según la etapa actual (Fase 3) */}
+              {window.ACCION_ETAPA[d.etapa] ? (
+                <div className="vx-accion">
+                  <div className="vx-accion-top">
+                    <span className="vx-accion-lbl">Etapa actual</span>
+                    <window.EtapaBadge etapa={d.etapa} />
+                  </div>
+                  <div className="vx-accion-sug">
+                    <span className="vx-accion-arrow">›</span>
+                    <span><b>Acción sugerida:</b> {window.ACCION_ETAPA[d.etapa]}</span>
+                  </div>
+                </div>
+              ) : null}
+
               {/* 2 · INFO PERSONAL */}
               <section className="vx-block">
                 <div className="vx-block-h"><window.Vico d={window.VI.phone} size={13} /> Información personal</div>
@@ -520,8 +774,22 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
               ) : null}
             </div>
 
-            {/* 8 · FOOTER ACCIONES */}
+            {/* 8 · FOOTER ACCIONES (Fase 3.5) ── Llamar · Nota · Reportar pago */}
             <div className="vx-dr-foot">
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="vx-btn vx-btn-ghost" style={{ flex: 1 }}
+                  onClick={llamarWhatsApp} disabled={!waNum}
+                  title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
+                  <window.Vico d={window.VI.wa} size={15} fill="currentColor" /> Llamar
+                </button>
+                <button className="vx-btn vx-btn-ghost" style={{ flex: 1 }} onClick={() => setModal('nota')}>
+                  <window.Vico d={window.VI.doc} size={14} /> Agregar nota
+                </button>
+              </div>
+              <button className="vx-btn vx-btn-red vx-btn-block vx-btn-lg" onClick={() => setModal('reportar')}>
+                <window.Vico d={window.VI.upload} size={15} /> Reportar pago
+              </button>
+
               {d.financiamiento === 'CONAPE' && d.etapa !== 'CANCELADO' ? (
                 <button className="vx-btn vx-btn-ghost vx-btn-block" onClick={generarProforma} disabled={loadingProforma}>
                   {loadingProforma
@@ -530,23 +798,11 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
                 </button>
               ) : null}
               {d.etapa === 'ACTIVO' ? (
-                <React.Fragment>
-                  <button className="vx-btn vx-btn-navy vx-btn-block vx-btn-lg" onClick={irExpediente}>
-                    <window.Vico d={window.VI.arrow} size={15} /> Ir al expediente
-                  </button>
-                  <div className="vx-activo-note">Estudiante activo{d.codigo ? <> — código <b>{d.codigo}</b></> : ''}.</div>
-                </React.Fragment>
+                <div className="vx-activo-note">Estudiante activo{d.codigo ? <> — código <b>{d.codigo}</b></> : ''}.</div>
               ) : d.etapa === 'CANCELADO' ? (
                 <div className="vx-activo-note">Este prospecto fue cancelado.</div>
               ) : (
-                <React.Fragment>
-                  {footerBtns().map(b => (
-                    <button key={b.k} className={`vx-btn ${b.cls} vx-btn-block vx-btn-lg`} onClick={b.onClick} disabled={actLoading === b.loadingKey}>
-                      {actLoading === b.loadingKey ? <><span className="vx-spin" /> …</> : b.label}
-                    </button>
-                  ))}
-                  <button className="vx-btn vx-btn-danger-ghost vx-btn-block" onClick={() => setModal('cancelar')}>Cancelar prospecto</button>
-                </React.Fragment>
+                <button className="vx-btn vx-btn-danger-ghost vx-btn-block" onClick={() => setModal('cancelar')}>Cancelar prospecto</button>
               )}
             </div>
           </React.Fragment>
@@ -555,12 +811,21 @@ function ProspectoDrawer({ cedula, asesor, demo, esSuperadmin, onClose, onToast,
 
       <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={onFilePicked} />
 
+      {modal === 'nota' && <NotaModal detalle={d} asesor={asesor} demo={demo}
+        onClose={() => setModal(null)} onToast={onToast}
+        onSaved={(nueva) => setDetalle(prev => ({ ...prev, notas: [nueva, ...(prev.notas || [])] }))} />}
+      {modal === 'reportar' && <ReportarPagoModal detalle={d} usuario={usuario || { nombre: asesor }} demo={demo}
+        onClose={() => setModal(null)} onToast={onToast} />}
       {modal === 'cobrar' && <CobrarModal detalle={d} asesor={asesor} demo={demo} onClose={() => setModal(null)} onSuccess={onActivado} onError={m => onToast({ tipo: 'err', msg: m })} />}
       {modal === 'activar' && <ActivarModal detalle={d} asesor={asesor} demo={demo} onClose={() => setModal(null)} onSuccess={onActivado} />}
       {modal === 'cancelar' && (
-        <ConfirmModal title="¿Cancelar este prospecto?" danger confirmLabel="Sí, cancelar"
-          body={`Vas a marcar a ${d.nombre} como CANCELADO. Esta acción se puede revertir contactando a coordinación.`}
-          onClose={() => setModal(null)} onConfirm={() => marcar('CANCELADO', 'Prospecto cancelado')} />
+        <CancelarProspectoModal detalle={d} usuario={usuario || { nombre: asesor }}
+          onClose={() => setModal(null)} onToast={onToast}
+          onCancelado={() => {
+            setDetalle(prev => ({ ...prev, etapa: 'CANCELADO' }));
+            onChanged && onChanged({ cedula: d.cedula, etapa: 'CANCELADO' });
+            setModal(null); onClose();
+          }} />
       )}
       {modal && modal.tipo === 'success' && <SuccessModal result={modal.result} onClose={() => { setModal(null); }} onExpediente={irExpediente} />}
     </React.Fragment>

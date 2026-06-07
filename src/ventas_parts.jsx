@@ -110,13 +110,6 @@ function FilterBar({ filtro, setFiltro, resultCount }) {
   return (
     <div className="vx-filters">
       <div className="vx-field">
-        <span className="vx-field-lbl">Etapa</span>
-        <select className="vx-select" value={filtro.etapa} onChange={e => upd('etapa', e.target.value)}>
-          <option value="">Todas</option>
-          {window.ETAPAS.map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
-        </select>
-      </div>
-      <div className="vx-field">
         <span className="vx-field-lbl">Financiamiento</span>
         <select className="vx-select" value={filtro.fin} onChange={e => upd('fin', e.target.value)}>
           <option value="">Todos</option>

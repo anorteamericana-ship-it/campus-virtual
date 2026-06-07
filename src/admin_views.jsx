@@ -42,6 +42,11 @@ function useAdminDashboard() {
     let cancel = false;
     setLoading(true);
     setError(null);
+    // Modo demo (preview): no bloquear la página esperando al backend real.
+    // Devolvemos un dashboard vacío (la página Grupos ya no depende de esta data
+    // para la gestión de becas).
+    const esDemo = (() => { try { const q = new URLSearchParams(location.search); return q.get('demo') === '1' || !!q.get('preview'); } catch (_) { return false; } })();
+    if (esDemo) { setData({ ok: true, grupos: [] }); setLoading(false); return () => { cancel = true; }; }
     fetch(`${SCRIPT_URL_AV}?fn=getAdminDashboard`)
       .then(r => r.json())
       .then(d => {
@@ -2015,9 +2020,18 @@ function Toggle({ value, onChange, color }) {
 function AdminGruposView() {
   const { data, loading, error, refetch } = useAdminDashboard();
   const [showWizard, setShowWizard] = React.useState(false);
+  const [showBecaWizard, setShowBecaWizard] = React.useState(false);
   const [newGroupCode, setNewGroupCode] = React.useState(null);
+  const [becaDestacada, setBecaDestacada] = React.useState(null);
+  const [toast, setToast] = React.useState(null);
 
   const handleCrear = (code) => { setNewGroupCode(code); refetch(); };
+  const showToast = (t) => {
+    const msg = typeof t === 'string' ? t : t.msg;
+    const tipo = typeof t === 'string' ? 'ok' : (t.tipo || 'ok');
+    setToast({ msg, tipo, ts: Date.now() });
+    setTimeout(() => setToast(cur => (cur && cur.ts ? null : cur)), 3600);
+  };
 
   if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
   if (loading) return <LoadingState title="Cargando datos…" />;
@@ -2027,12 +2041,17 @@ function AdminGruposView() {
     <div>
       <PageHeader
         kicker="Operación"
-        title={<>Gestión de <em>Grupos</em></>}
-        sub="Todos los grupos activos · Período 2026"
+        title={<>Grupos y <em>becas</em></>}
+        sub="Apertura de grupos y gestión de becas"
         right={
-          <button className="btn btn-primary" onClick={() => setShowWizard(true)}>
-            <Icon name="plus" size={14} className="" /> Abrir nuevo grupo
-          </button>
+          <div className="bk-actions-row">
+            <button className="btn btn-ghost" onClick={() => setShowWizard(true)}>
+              <Icon name="plus" size={14} className="" /> Abrir nuevo grupo
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowBecaWizard(true)}>
+              <Icon name="plus" size={14} className="" /> Crear beca
+            </button>
+          </div>
         }
       />
 
@@ -2054,51 +2073,13 @@ function AdminGruposView() {
         </div>
       )}
 
-      <div className="card" style={{ padding:0, overflow:'hidden' }}>
-        <table className="table-soft">
-          <thead>
-            <tr>
-              <th>Grupo</th>
-              <th>Nivel</th>
-              <th>Docente</th>
-              <th style={{ textAlign:'center' }}>Ocupación</th>
-              <th>Horario</th>
-              <th>Programa</th>
-            </tr>
-          </thead>
-          <tbody>
-            {grupos.map((g,i) => {
-              const cap = g.cap || g.capacidad || 12;
-              const studs = g.estudiantes ?? g.students ?? 0;
-              const pct  = cap > 0 ? (studs/cap)*100 : 0;
-              const nivel = g.nivel || g.level || '—';
-              const teacher = g.docente || g.teacher || '—';
-              const sch = g.schedule || g.horario || '—';
-              return (
-                <tr key={i}>
-                  <td style={{ fontFamily:'var(--f-mono)', fontWeight:600 }}>{g.code}</td>
-                  <td>
-                    <Chip tone={String(nivel).includes('Básico I')?'gold':String(nivel).includes('Básico II')?'red':String(nivel).includes('Intermedio I')?'navy':'green'}>
-                      {nivel}
-                    </Chip>
-                  </td>
-                  <td style={{ fontSize:13 }}>{teacher}</td>
-                  <td style={{ textAlign:'center' }}>
-                    <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                      <div style={{ width:60, height:6, background:'var(--bg-deep)', borderRadius:3, overflow:'hidden' }}>
-                        <div style={{ width:`${pct}%`, height:'100%', background: pct>=100?'var(--an-granate)':'var(--ok)' }} />
-                      </div>
-                      <span style={{ fontFamily:'var(--f-mono)', fontWeight:600 }}>{studs}/{cap}</span>
-                    </div>
-                  </td>
-                  <td style={{ fontSize:12 }}>{sch}</td>
-                  <td style={{ fontSize:11, color:'var(--ink-3)' }}>{g.programa || '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* Gestión de becas (Fase 3.8) */}
+      <window.BecasTabla destacada={becaDestacada} onToast={showToast} />
+
+      <p className="bk-redirect-note">
+        Para ver grupos activos usá <em>Calendario</em>. Para ver estudiantes por grupo usá <em>Estudiantes</em>.
+      </p>
+      <p className="bk-soon">Funcionalidades avanzadas de grupos próximamente.</p>
 
       {showWizard && (
         <WizardCrearGrupo
@@ -2106,6 +2087,22 @@ function AdminGruposView() {
           onClose={() => setShowWizard(false)}
           onCrear={handleCrear}
         />
+      )}
+      {showBecaWizard && (
+        <window.WizardCrearBeca
+          onClose={() => setShowBecaWizard(false)}
+          onToast={showToast}
+          onCreada={(id) => { setShowBecaWizard(false); setBecaDestacada(id); setTimeout(() => setBecaDestacada(null), 4000); }}
+        />
+      )}
+
+      {toast && (
+        <div style={{
+          position:'fixed', bottom:24, right:24, zIndex:1400,
+          background: toast.tipo === 'err' ? '#7A1F15' : '#1E4D2B', color:'#fff',
+          padding:'12px 16px', borderRadius:10, boxShadow:'0 12px 32px rgba(0,0,0,0.3)',
+          fontSize:13, fontWeight:600, maxWidth:380,
+        }}>{toast.msg}</div>
       )}
     </div>
   );
