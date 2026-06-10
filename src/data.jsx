@@ -305,7 +305,7 @@ function _solpSeed() {
   const seed = [{
     id: _solpUid(),
     timestamp: new Date(Date.now() - 1000 * 60 * 38).toISOString(),
-    usuario_reporta: '120180999', nombre_reporta: 'Fiorella Salazar', origen: 'VENDEDOR',
+    usuario_reporta: '120180999', nombre_reporta: 'Asesora Demo 1', origen: 'VENDEDOR',
     estudiante_cedula: '120180140', estudiante_codigo: '17193', estudiante_nombre: 'RODRIGUEZ PALACIOS DEBORA',
     tipo_pago: 'MATRICULA', nivel: 'B1',
     numero_comprobante: '74974001', monto_reportado: 20000,
@@ -509,12 +509,12 @@ function _becasSeed() {
       activa: true, visible_inscripcion: false, cupo_total: 50, cupo_usado: 3,
       pct_matricula: 20, pct_cuota: 20, pct_certificado: 0, pct_titulo: 0,
       compatible_ina: true, compatible_sin_ina: false, fecha_inicio: '2026-06-01', fecha_fin: '2026-12-31',
-      creado_por: 'Leonardo Salazar', notas: 'Acordado con CEO el 5-jun. Asignación manual.', f_creada: '2026-06-01 11:20:00' },
+      creado_por: 'Administrador Demo', notas: 'Acordado internamente. Asignación manual.', f_creada: '2026-06-01 11:20:00' },
     { id: 'VERANO_2025', nombre: 'Promo Verano 2025', descripcion: 'Promoción de temporada — matrícula gratis.',
       activa: false, visible_inscripcion: false, cupo_total: 30, cupo_usado: 30,
       pct_matricula: 100, pct_cuota: 0, pct_certificado: 0, pct_titulo: 0,
       compatible_ina: true, compatible_sin_ina: true, fecha_inicio: '2025-12-01', fecha_fin: '2026-02-28',
-      creado_por: 'Leonardo Salazar', notas: 'Campaña cerrada. Cupo agotado.', f_creada: '2025-11-20 10:00:00' },
+      creado_por: 'Administrador Demo', notas: 'Campaña cerrada. Cupo agotado.', f_creada: '2025-11-20 10:00:00' },
   ];
 }
 function _becasRead() {
@@ -594,7 +594,7 @@ async function cambiarBecaVisibilidad({ id, visible }) {
 // En demo (?demo/?preview) usamos mock determinista; en producción pegamos al
 // endpoint real y, si falla, propagamos el error (sin fallback silencioso).
 const CAL_DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-const CAL_ASESORES = ['FIORELLA SALAZAR', 'ROGER CRUZ'];
+const CAL_ASESORES = ['ASESORA DEMO 1', 'ASESOR DEMO 2'];
 const CAL_LUNES_ACTUAL = '2026-06-01';   // lunes de la "semana actual" en demo
 function _calFmt(dt) { return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`; }
 function _calParse(iso) { const [y, m, d] = String(iso).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); }
@@ -612,7 +612,7 @@ function _calHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31
 function _calPorDia(lunes, asesor) {
   const wi = _calWeekIdx(lunes);
   // Semana actual: coherente con el caso de Deborah (pagó viernes 5-jun).
-  if (wi === 0 && /FIORELLA/i.test(asesor)) return { L: 0, M: 0, X: 0, J: 0, V: 1, S: 0, D: 0 };
+  if (wi === 0 && /ASESORA DEMO 1/i.test(asesor)) return { L: 0, M: 0, X: 0, J: 0, V: 1, S: 0, D: 0 };
   const out = {};
   CAL_DIAS.forEach(d => {
     const h = _calHash(`${lunes}|${asesor}|${d}`);

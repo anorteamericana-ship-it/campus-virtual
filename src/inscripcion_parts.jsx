@@ -122,7 +122,7 @@ const CR_GEO = {
 };
 // Compatible con el código existente (las 7 provincias)
 const PROVINCIAS = Object.keys(CR_GEO);
-const ASESORES = ['Fiorela Salazar', 'Roger Cruz', 'Gustavo Valladares', 'Roberto Mora', 'Kimberly Guzmán'];
+const ASESORES = ['Asesora Demo 1', 'Asesor Demo 2', 'Asesor Demo 3', 'Asesor Demo 5', 'Asesora Demo 4'];
 const COMO_OPTS = ['Facebook', 'Instagram', 'Google', 'Referencia de alguien más', 'Otro'];
 
 const ID_TIPOS = [

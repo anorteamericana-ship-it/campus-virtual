@@ -36,7 +36,7 @@ const ETAPA_MAP = Object.fromEntries([
 const ACCION_ETAPA = Object.fromEntries(EMBUDO_ETAPAS.map(e => [e.key, e.accion]));
 const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_APROBADO_FIRMA','CONAPE_DESEMBOLSO','CONAPE_MATRICULA'];
 
-const ASESORES_V = ['Fiorela Salazar','Roger Cruz','Gustavo Valladares','Kimberly Guzmán','Leonardo Salazar'];
+const ASESORES_V = ['Asesora Demo 1','Asesor Demo 2','Asesor Demo 3','Asesora Demo 4','Administrador Demo'];
 
 const FIN_MAP = {
   CONAPE: { label: 'CONAPE', tone: 'blue' },
@@ -96,7 +96,7 @@ const nombrePila = nombre => {
 // NOMBRE, ETAPA, FINANCIAMIENTO, GRUPO_TENTATIVO, ASESOR_REF, COMISION_PAGADA,
 // TIMESTAMP… pero TODO el frontend de ventas (tabla, tarjetas, embudo, calcResumen
 // y el drawer) lee minúsculas: p.cedula, p.etapa, p.financiamiento, p.fecha_registro…
-// Por eso el panel de Fiorella salía en CERO aunque la respuesta traía 5 prospectos:
+// Por eso el panel de la Asesora Demo 1 salía en CERO aunque la respuesta traía 5 prospectos:
 // las filas quedaban en blanco, el embudo agrupaba todo bajo `undefined` y calcResumen
 // contaba 0. Este normalizador traduce la forma del backend a la que espera la UI.
 const siNoV = v => v === true || /^(s[ií]|true|1)$/i.test(String(v == null ? '' : v).trim());
@@ -307,14 +307,14 @@ const DEMO_PROSPECTOS = [
   {
     cedula:'1-1842-0567', nombre:'JIMÉNEZ ROJAS MARÍA FERNANDA', telefono:'8845-2210', whatsapp:'8845-2210',
     correo:'mafer.jimenez@gmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'CONAPE_DOCUMENTOS',
-    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-05-02', comision_pendiente:false,
+    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-05-02', comision_pendiente:false,
     provincia:'San José', canton:'Desamparados', direccion:'Barrio San Antonio, 200m sur de la iglesia, casa verde.',
     fecha_nac:'2001-03-14', sexo:'F', es_menor:false, tutor:null,
     conape:{ equipo:'BASICO', toeic:true, sostenimiento:'₡60,000 por mes' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
     notas:[
-      { fecha:'2026-05-18', autor:'Fiorela Salazar', texto:'Subió los documentos de CONAPE. Le falta el comprobante de ingresos del tutor solidario.' },
-      { fecha:'2026-05-04', autor:'Fiorela Salazar', texto:'Primer contacto por WhatsApp. Muy interesada en el programa INA, quiere el plan básico de equipo.' },
+      { fecha:'2026-05-18', autor:'Asesora Demo 1', texto:'Subió los documentos de CONAPE. Le falta el comprobante de ingresos del tutor solidario.' },
+      { fecha:'2026-05-04', autor:'Asesora Demo 1', texto:'Primer contacto por WhatsApp. Muy interesada en el programa INA, quiere el plan básico de equipo.' },
     ],
     docs_extra:[ { nombre_archivo:'orden_patronal.pdf', mime_type:'application/pdf', url:'#', fecha:'2026-05-18' } ],
     conape_eventos:[
@@ -325,13 +325,13 @@ const DEMO_PROSPECTOS = [
   {
     cedula:'1-1790-0233', nombre:'VARGAS CASTRO LUIS DIEGO', telefono:'7012-9988', whatsapp:'7012-9988',
     correo:'ldvargas@hotmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'CONAPE_DESEMBOLSO',
-    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-04-12', comision_pendiente:true,
+    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-04-12', comision_pendiente:true,
     provincia:'Cartago', canton:'La Unión', direccion:'Tres Ríos, Urbanización Florencia, casa 12B.',
     fecha_nac:'1999-11-02', sexo:'M', es_menor:false, tutor:null,
     conape:{ equipo:'PREMIUM', toeic:false, sostenimiento:'No' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
     notas:[
-      { fecha:'2026-05-20', autor:'Fiorela Salazar', texto:'CONAPE confirmó el desembolso. Listo para activar — coordinar grupo de inicio.' },
+      { fecha:'2026-05-20', autor:'Asesora Demo 1', texto:'CONAPE confirmó el desembolso. Listo para activar — coordinar grupo de inicio.' },
     ],
     docs_extra:[],
     conape_eventos:[
@@ -343,72 +343,72 @@ const DEMO_PROSPECTOS = [
   {
     cedula:'1-1955-0871', nombre:'MORA SOLÍS ANDREA', telefono:'8390-4471', whatsapp:'8390-4471',
     correo:'andrea.mora@gmail.com', programa:'SIN_INA', financiamiento:'PROPIO', etapa:'LEAD',
-    grupo_tentativo:'B1-SA8-1426', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-05-26', comision_pendiente:false,
+    grupo_tentativo:'B1-SA8-1426', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-05-26', comision_pendiente:false,
     provincia:'San José', canton:'Curridabat', direccion:'Granadilla Norte, condominio Vistas del Este, apto 3.',
     fecha_nac:'2003-07-19', sexo:'F', es_menor:false, tutor:null,
     conape:null, foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:'',
-    notas:[ { fecha:'2026-05-26', autor:'Fiorela Salazar', texto:'Quiere pagar matrícula esta semana. Prefiere sábados.' } ],
+    notas:[ { fecha:'2026-05-26', autor:'Asesora Demo 1', texto:'Quiere pagar matrícula esta semana. Prefiere sábados.' } ],
     docs_extra:[], conape_eventos:[],
   },
   {
     cedula:'1-1688-0490', nombre:'CAMPOS UREÑA JOSUÉ', telefono:'6045-1120', whatsapp:'6045-1120',
     correo:'josue.campos@outlook.com', programa:'INA', financiamiento:'CONAPE', etapa:'CONAPE_SOLICITUD',
-    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-05-21', comision_pendiente:false,
+    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-05-21', comision_pendiente:false,
     provincia:'Heredia', canton:'San Rafael', direccion:'Los Ángeles, de la escuela 300m este.',
     fecha_nac:'2002-01-30', sexo:'M', es_menor:false, tutor:null,
     conape:{ equipo:'NINGUNO', toeic:true, sostenimiento:'₡40,000 por mes' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:'', foto_titulo:'',
-    notas:[ { fecha:'2026-05-22', autor:'Fiorela Salazar', texto:'Inició la solicitud. Falta cargar dorso de cédula y título.' } ],
+    notas:[ { fecha:'2026-05-22', autor:'Asesora Demo 1', texto:'Inició la solicitud. Falta cargar dorso de cédula y título.' } ],
     docs_extra:[], conape_eventos:[ { fecha:'2026-05-22', titulo:'Solicitud iniciada', detalle:'Registro creado desde inscripción pública.' } ],
   },
   {
     cedula:'1-2011-0345', nombre:'NÚÑEZ FALLAS VALERIA', telefono:'8722-3390', whatsapp:'8722-3390',
     correo:'vale.nunez@gmail.com', programa:'SIN_INA', financiamiento:'BECA', etapa:'PAGO_ACADEMIA',
-    grupo_tentativo:'B1-SA8-1426', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-05-08', comision_pendiente:false,
+    grupo_tentativo:'B1-SA8-1426', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-05-08', comision_pendiente:false,
     provincia:'San José', canton:'Goicoechea', direccion:'Guadalupe, Barrio La Floresta, casa esquinera.',
     fecha_nac:'2008-09-12', sexo:'F', es_menor:true,
     tutor:{ nombre:'NÚÑEZ ARIAS CARLOS', cedula:'1-0890-0234', correo:'carlos.nunez@gmail.com', tel:'8811-2233' },
     conape:null, foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
-    notas:[ { fecha:'2026-05-24', autor:'Fiorela Salazar', texto:'Beca 25% aprobada. Pendiente el pago de matrícula con descuento.' } ],
+    notas:[ { fecha:'2026-05-24', autor:'Asesora Demo 1', texto:'Beca 25% aprobada. Pendiente el pago de matrícula con descuento.' } ],
     docs_extra:[], conape_eventos:[],
   },
   {
     cedula:'1-1543-0712', nombre:'SALAS QUESADA RODRIGO', telefono:'8533-7781', whatsapp:'8533-7781',
     correo:'rodrigo.sq@gmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'ACTIVO',
-    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-03-02', comision_pendiente:true,
+    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-03-02', comision_pendiente:true,
     provincia:'Alajuela', canton:'Central', direccion:'Barrio San José, 100m norte del parque.',
     fecha_nac:'2000-05-22', sexo:'M', es_menor:false, tutor:null,
     conape:{ equipo:'BASICO', toeic:true, sostenimiento:'₡60,000 por mes' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
     codigo:'C17402',
-    notas:[ { fecha:'2026-04-28', autor:'Fiorela Salazar', texto:'Activado como estudiante. Código C17402 generado.' } ],
+    notas:[ { fecha:'2026-04-28', autor:'Asesora Demo 1', texto:'Activado como estudiante. Código C17402 generado.' } ],
     docs_extra:[], conape_eventos:[ { fecha:'2026-04-28', titulo:'Estudiante activado', detalle:'Matriculado en B1-LM18-1426.' } ],
   },
   {
     cedula:'1-1899-0156', nombre:'HERRERA BRENES PAOLA', telefono:'8290-1145', whatsapp:'8290-1145',
     correo:'paola.hb@gmail.com', programa:'SIN_INA', financiamiento:'PROPIO', etapa:'CANCELADO',
-    grupo_tentativo:'', asesor_ref:'Fiorela Salazar', fecha_registro:'2026-04-30', comision_pendiente:false,
+    grupo_tentativo:'', asesor_ref:'Asesora Demo 1', fecha_registro:'2026-04-30', comision_pendiente:false,
     provincia:'San José', canton:'Tibás', direccion:'Cinco Esquinas, de la plaza 50m sur.',
     fecha_nac:'1998-02-08', sexo:'F', es_menor:false, tutor:null,
     conape:null, foto_ced_frente:'', foto_ced_dorso:'', foto_titulo:'',
-    notas:[ { fecha:'2026-05-12', autor:'Fiorela Salazar', texto:'Desistió por motivos laborales. Reintentar en el próximo cuatrimestre.' } ],
+    notas:[ { fecha:'2026-05-12', autor:'Asesora Demo 1', texto:'Desistió por motivos laborales. Reintentar en el próximo cuatrimestre.' } ],
     docs_extra:[], conape_eventos:[],
   },
   {
     cedula:'1-1721-0934', nombre:'ARAYA MONGE KEVIN', telefono:'7188-6620', whatsapp:'7188-6620',
     correo:'kevin.araya@gmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'CONAPE_APROBADO',
-    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Roger Cruz', fecha_registro:'2026-04-18', comision_pendiente:true,
+    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Asesor Demo 2', fecha_registro:'2026-04-18', comision_pendiente:true,
     provincia:'Limón', canton:'Central', direccion:'Limón centro, Barrio Roosevelt.',
     fecha_nac:'2001-12-01', sexo:'M', es_menor:false, tutor:null,
     conape:{ equipo:'PREMIUM', toeic:true, sostenimiento:'₡60,000 por mes' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
-    notas:[ { fecha:'2026-05-15', autor:'Roger Cruz', texto:'CONAPE aprobó. Esperando fecha de desembolso.' } ],
+    notas:[ { fecha:'2026-05-15', autor:'Asesor Demo 2', texto:'CONAPE aprobó. Esperando fecha de desembolso.' } ],
     docs_extra:[], conape_eventos:[ { fecha:'2026-05-15', titulo:'Crédito aprobado', detalle:'Pendiente desembolso.' } ],
   },
   {
     cedula:'1-1810-0588', nombre:'GUTIÉRREZ LEÓN SOFÍA', telefono:'8455-2098', whatsapp:'8455-2098',
     correo:'sofia.gl@gmail.com', programa:'SIN_INA', financiamiento:'PROPIO', etapa:'LEAD',
-    grupo_tentativo:'', asesor_ref:'Roger Cruz', fecha_registro:'2026-05-27', comision_pendiente:false,
+    grupo_tentativo:'', asesor_ref:'Asesor Demo 2', fecha_registro:'2026-05-27', comision_pendiente:false,
     provincia:'Puntarenas', canton:'Central', direccion:'El Roble, frente al super La Económica.',
     fecha_nac:'2004-04-04', sexo:'F', es_menor:false, tutor:null,
     conape:null, foto_ced_frente:D_FRENTE, foto_ced_dorso:'', foto_titulo:'',
@@ -417,7 +417,7 @@ const DEMO_PROSPECTOS = [
   {
     cedula:'1-1666-0277', nombre:'ROJAS PICADO MELISSA', telefono:'8901-3344', whatsapp:'8901-3344',
     correo:'melissa.rp@gmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'CONAPE_SOLICITUD',
-    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Gustavo Valladares', fecha_registro:'2026-05-19', comision_pendiente:false,
+    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Asesor Demo 3', fecha_registro:'2026-05-19', comision_pendiente:false,
     provincia:'Guanacaste', canton:'Liberia', direccion:'Barrio Los Ángeles, casa 8.',
     fecha_nac:'2002-08-25', sexo:'F', es_menor:false, tutor:null,
     conape:{ equipo:'BASICO', toeic:false, sostenimiento:'No' },
@@ -427,17 +427,17 @@ const DEMO_PROSPECTOS = [
   {
     cedula:'1-1733-0810', nombre:'CHAVES SEGURA DANIEL', telefono:'7066-5521', whatsapp:'7066-5521',
     correo:'daniel.cs@gmail.com', programa:'SIN_INA', financiamiento:'PROPIO', etapa:'PAGO_ACADEMIA',
-    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Gustavo Valladares', fecha_registro:'2026-05-11', comision_pendiente:false,
+    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Asesor Demo 3', fecha_registro:'2026-05-11', comision_pendiente:false,
     provincia:'Heredia', canton:'Central', direccion:'Mercedes Norte, de la iglesia 200m oeste.',
     fecha_nac:'1997-06-15', sexo:'M', es_menor:false, tutor:null,
     conape:null, foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
-    notas:[ { fecha:'2026-05-23', autor:'Gustavo Valladares', texto:'Acordó pagar matrícula el viernes. Quiere horario martes y jueves.' } ],
+    notas:[ { fecha:'2026-05-23', autor:'Asesor Demo 3', texto:'Acordó pagar matrícula el viernes. Quiere horario martes y jueves.' } ],
     docs_extra:[], conape_eventos:[],
   },
   {
     cedula:'1-2003-0099', nombre:'BRENES VEGA ALLISON', telefono:'8677-1290', whatsapp:'8677-1290',
     correo:'allison.bv@gmail.com', programa:'SIN_INA', financiamiento:'BECA', etapa:'LEAD',
-    grupo_tentativo:'', asesor_ref:'Kimberly Guzmán', fecha_registro:'2026-05-28', comision_pendiente:false,
+    grupo_tentativo:'', asesor_ref:'Asesora Demo 4', fecha_registro:'2026-05-28', comision_pendiente:false,
     provincia:'San José', canton:'Montes de Oca', direccion:'San Pedro, Barrio Dent, casa 22.',
     fecha_nac:'2009-01-18', sexo:'F', es_menor:true,
     tutor:{ nombre:'VEGA ARTAVIA LAURA', cedula:'1-0921-0455', correo:'laura.vega@gmail.com', tel:'8344-9981' },
@@ -447,23 +447,23 @@ const DEMO_PROSPECTOS = [
   {
     cedula:'1-1577-0643', nombre:'MÉNDEZ ARCE FABIÁN', telefono:'8233-7754', whatsapp:'8233-7754',
     correo:'fabian.ma@gmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'CONAPE_DESEMBOLSO',
-    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Kimberly Guzmán', fecha_registro:'2026-04-08', comision_pendiente:true,
+    grupo_tentativo:'B1-LM18-1426', asesor_ref:'Asesora Demo 4', fecha_registro:'2026-04-08', comision_pendiente:true,
     provincia:'Cartago', canton:'Central', direccion:'Barrio El Molino, de la escuela 100m norte.',
     fecha_nac:'2000-10-09', sexo:'M', es_menor:false, tutor:null,
     conape:{ equipo:'BASICO', toeic:true, sostenimiento:'₡60,000 por mes' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO,
-    notas:[ { fecha:'2026-05-21', autor:'Kimberly Guzmán', texto:'Desembolso confirmado. Listo para activar.' } ],
+    notas:[ { fecha:'2026-05-21', autor:'Asesora Demo 4', texto:'Desembolso confirmado. Listo para activar.' } ],
     docs_extra:[], conape_eventos:[ { fecha:'2026-05-21', titulo:'Desembolso aprobado', detalle:'Monto girado a la academia.' } ],
   },
   {
     cedula:'1-1844-0501', nombre:'ESPINOZA RAMÍREZ NATALIA', telefono:'8512-0076', whatsapp:'8512-0076',
     correo:'natalia.er@gmail.com', programa:'INA', financiamiento:'CONAPE', etapa:'ACTIVO',
-    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Leonardo Salazar', fecha_registro:'2026-02-20', comision_pendiente:false,
+    grupo_tentativo:'B1-KJ18-1426', asesor_ref:'Administrador Demo', fecha_registro:'2026-02-20', comision_pendiente:false,
     provincia:'San José', canton:'Escazú', direccion:'San Rafael de Escazú, condominio Avalon.',
     fecha_nac:'1999-03-03', sexo:'F', es_menor:false, tutor:null,
     conape:{ equipo:'PREMIUM', toeic:true, sostenimiento:'₡60,000 por mes' },
     foto_ced_frente:D_FRENTE, foto_ced_dorso:D_DORSO, foto_titulo:D_TITULO, codigo:'C17188',
-    notas:[ { fecha:'2026-04-02', autor:'Leonardo Salazar', texto:'Activada. Código C17188.' } ],
+    notas:[ { fecha:'2026-04-02', autor:'Administrador Demo', texto:'Activada. Código C17188.' } ],
     docs_extra:[], conape_eventos:[ { fecha:'2026-04-02', titulo:'Estudiante activada', detalle:'Matriculada en B1-KJ18-1426.' } ],
   },
 ];
@@ -483,7 +483,7 @@ const DEMO_GRUPOS = [
 const DEMO_DASHBOARD = {
   fiorella: {
     ok: true,
-    asesor: 'FIORELLA SALAZAR',
+    asesor: 'ASESORA DEMO 1',
     semana_actual: { matriculas: 1, promedio_4s: 0.0 },
     embudo: [
       { etapa:'LEAD', count:0 }, { etapa:'CONAPE_SOLICITUD', count:4 },
@@ -507,7 +507,7 @@ const DEMO_DASHBOARD = {
   },
   roger: {
     ok: true,
-    asesor: 'ROGER CRUZ',
+    asesor: 'ASESOR DEMO 2',
     semana_actual: { matriculas: 0, promedio_4s: 0.5 },
     embudo: [
       { etapa:'LEAD', count:2 }, { etapa:'CONAPE_SOLICITUD', count:1 },

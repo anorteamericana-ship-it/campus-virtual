@@ -32,7 +32,7 @@ function caShortLabel(iso) {
   const [, m, d] = String(iso).split('-').map(Number);
   return `${d} ${CA_MES_AB[m - 1]}`;
 }
-// Nombre amable: "FIORELLA SALAZAR" → "Fiorella Salazar"
+// Nombre amable: "ASESORA DEMO 1" → "Asesora Demo 1"
 function caNombre(s) {
   return String(s || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }

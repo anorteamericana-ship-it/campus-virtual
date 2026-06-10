@@ -7,21 +7,41 @@
    Tabla + drawer existentes intactos. UNA sola llamada: getDashboardVentas.
    Sin fallback demo: con sesión real, si falla → error + Reintentar (no ceros).
    Vista previa de diseño solo con ?preview=fiorella | ?preview=roger.
+
+   SEC-005-B1 · Guard de sesión real (ver <VentasGate/> al final del archivo):
+   - NO existe ningún fallback que cree sesión: ni superadmin, ni nombre
+     hardcodeado, ni sesión demo/fake. La identidad SIEMPRE proviene de la
+     sesión validada (window.getSesion) y se pasa a <VentasApp/> como prop.
+   - Sin sesión / sin token → redirección a login.html.
+   - Rol permitido: superadmin | admin | ventas. Otro rol → "No autorizado".
    ============================================================================ */
 const { useState, useEffect, useMemo, useCallback } = React;
 const sleepV = ms => new Promise(r => setTimeout(r, ms));
 
-function VentasApp() {
-  const sesion = useMemo(() => (window.getSesion ? window.getSesion() : null), []);
+// Roles con acceso al panel de ventas.
+const VX_ROLES_PERMITIDOS = ['superadmin', 'admin', 'ventas'];
+
+// Redirección dura al login. No crea ni toca ninguna sesión.
+function vxIrALogin() {
+  try { window.location.replace('login.html'); }
+  catch (_) { window.location.href = 'login.html'; }
+}
+
+function VentasApp({ sesion }) {
+  // SEC-005-B1: la identidad viene SIEMPRE del gate (sesión real validada).
+  // No hay fallback superadmin/demo aquí.
+  const usuario = sesion;
   const previewKey = useMemo(() => {
     const k = new URLSearchParams(window.location.search).get('preview');
-    return (k && window.DEMO_DASHBOARD[k.toLowerCase()]) ? k.toLowerCase() : '';
+    const t = k ? k.toLowerCase() : '';
+    return (t && window.DEMO_DASHBOARD && window.DEMO_DASHBOARD[t]) ? t : '';
   }, []);
-  const usuario = sesion || (previewKey
-    ? { nombre: window.DEMO_DASHBOARD[previewKey].asesor, rol: 'ventas' }
-    : { nombre: 'Leonardo Salazar', rol: 'superadmin' });
   const rolReal = usuario.rol || 'ventas';
-  const esSuper = rolReal === 'superadmin';
+  // Supervisor (superadmin/admin): puede ver el panel "como" otro asesor.
+  const esSupervisor = rolReal === 'superadmin' || rolReal === 'admin';
+  const rolLabel = rolReal === 'superadmin' ? 'Superadmin'
+                 : rolReal === 'admin'      ? 'Administración'
+                 : 'Asesor';
 
   const [asesorView, setAsesorView] = useState('');       // superadmin: ver como asesor
   const [dash, setDash] = useState(null);                 // null = cargando
@@ -34,7 +54,7 @@ function VentasApp() {
 
   // El endpoint necesita SIEMPRE un asesor concreto. Superadmin: el seleccionado
   // o, por defecto, su propio nombre.
-  const scopeAsesor = esSuper ? (asesorView || usuario.nombre) : usuario.nombre;
+  const scopeAsesor = esSupervisor ? (asesorView || usuario.nombre) : usuario.nombre;
 
   useEffect(() => {
     if (!toast) return;
@@ -138,7 +158,7 @@ function VentasApp() {
             <div className="vx-brand-t2">Ventas · Prospectos</div>
           </div>
           <div className="vx-header-spacer" />
-          {esSuper && (
+          {esSupervisor && (
             <div className="vx-asesor-pick">
               <label htmlFor="vx-asesor">Ver como asesor:</label>
               <select id="vx-asesor" value={asesorView} onChange={e => setAsesorView(e.target.value)}>
@@ -150,7 +170,7 @@ function VentasApp() {
             <div className="vx-user-av">{inicial}</div>
             <div className="vx-user-meta">
               <div className="vx-user-name">{usuario.nombre}</div>
-              <div className="vx-user-role">{esSuper ? 'Superadmin' : 'Asesor'}</div>
+              <div className="vx-user-role">{rolLabel}</div>
             </div>
           </div>
           <button
@@ -234,7 +254,7 @@ function VentasApp() {
           asesor={usuario.nombre}
           usuario={usuario}
           demo={!!previewKey}
-          esSuperadmin={esSuper}
+          esSuperadmin={rolReal === 'superadmin'}
           onClose={() => setDrawerCed(null)}
           onToast={setToast}
           onView={(src, caption) => setLightbox({ src, caption })}
@@ -248,4 +268,77 @@ function VentasApp() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<VentasApp />);
+// ── Pantalla "No autorizado" (rol fuera de la lista permitida) ──────────────
+function NoAutorizado({ rol }) {
+  return (
+    <div className="vx-wrap">
+      <div className="vx-error-card">
+        <div className="vx-error-title">No autorizado</div>
+        <div className="vx-error-msg">
+          Tu cuenta{rol ? <> (rol <strong>{rol}</strong>)</> : null} no tiene acceso
+          al panel de ventas.
+        </div>
+        <button className="vx-btn vx-btn-navy" onClick={vxIrALogin}>Volver al login</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Guard de sesión (SEC-005-B1) ───────────────────────────────────────────
+// Resuelve la identidad ANTES de montar el panel. No fabrica sesiones.
+//   1) getSesion() + token; si falta cualquiera → login.html.
+//   2) validarSesionServidor() (si existe); si no es ok → cierra sesión y login.
+//   3) rol ∈ {superadmin, admin, ventas}; si no → "No autorizado".
+function VentasGate() {
+  const [estado, setEstado] = useState('check');   // 'check' | 'ok' | 'denegado'
+  const [sesion, setSesion] = useState(null);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const ses = (typeof window.getSesion === 'function') ? window.getSesion() : null;
+      const token = (typeof window.getSessionToken === 'function')
+        ? window.getSessionToken()
+        : (ses && ses.token) || '';
+
+      // 1) Sin sesión o sin token → al login. No se crea ninguna sesión.
+      if (!ses || !token) { vxIrALogin(); return; }
+
+      // 2) Validación contra el servidor (si la función está disponible).
+      if (typeof window.validarSesionServidor === 'function') {
+        let r = null;
+        try { r = await window.validarSesionServidor(); } catch (_) { r = null; }
+        if (cancel) return;
+        if (!r || !r.ok) {
+          // Sesión inválida/expirada o sin conexión: limpiamos y al login.
+          try {
+            if (typeof window.cerrarSesionServidor === 'function') {
+              await window.cerrarSesionServidor();
+            } else {
+              sessionStorage.removeItem('an_usuario');
+            }
+          } catch (_) {}
+          if (!cancel) vxIrALogin();
+          return;
+        }
+      }
+
+      // 3) Rol permitido.
+      if (cancel) return;
+      if (!VX_ROLES_PERMITIDOS.includes(ses.rol)) {
+        setSesion(ses);
+        setEstado('denegado');
+        return;
+      }
+      setSesion(ses);
+      setEstado('ok');
+    })();
+    return () => { cancel = true; };
+  }, []);
+
+  if (estado === 'check') return null;                         // sin flash de UI
+  if (estado === 'denegado') return <NoAutorizado rol={sesion ? sesion.rol : ''} />;
+  return <VentasApp sesion={sesion} />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<VentasGate />);

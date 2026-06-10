@@ -333,14 +333,6 @@ function App() {
   );
 }
 
-// ── (SEC-001) Bypass de sesión por URL ELIMINADO ─────────────────────────
-// Se removió por completo la función bootstrapDemoSesion() y su llamada.
-// Esa función leía ?demo=… (incl. ?demo=super / ?demo=admin / ?demo=1) y,
-// sin sesión real, fabricaba una identidad administrativa vía setSesion().
-// Ya NO existe ningún camino que cree una sesión, usuario, cédula o rol
-// admin/superadmin a partir de parámetros de URL. Un visitante sin sesión
-// válida cae en el guard normal (ensureSesion → redirección a login.html).
-
 // Guard de sesión ANTES de render. Si falta, no montamos el árbol.
 if (ensureSesion()) {
   const root = ReactDOM.createRoot(document.getElementById('root'));
