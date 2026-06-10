@@ -72,11 +72,13 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
     if (!nuevoEstatus || nuevoEstatus === estudiante.estatus) { onClose(); return; }
     setLoading(true); setError(''); setConapeFallo(false); setReintentoMsg('');
     try {
+      const token = window.getSessionToken ? window.getSessionToken() : '';
       const resp = await fetch(SCRIPT_URL_AS, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           fn: 'actualizarEstatus',
+          token,
           cod_estudiante: codigoEst,
           nivel,
           estatus: nuevoEstatus,
@@ -850,11 +852,13 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
   const handleGenerarCertificado = async (est, nivel) => {
     setCertEstado({ loading: true, codigo: est.codigo, nivel });
     try {
+      const token = window.getSessionToken ? window.getSessionToken() : '';
       const resp = await fetch(SCRIPT_URL_AS + '?fn=generarCertificado', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           fn: 'generarCertificado',
+          token,
           codigo: String(est.codigo || ''),
           nivel: nivel,
           grupo: String(est.grupo || ''),
@@ -1586,10 +1590,11 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     setGen(g => ({...g, [tipo]: true}));
     setRes(r => ({...r, [tipo]: null}));
     try {
+      const token = window.getSessionToken ? window.getSessionToken() : '';
       const resp = await fetch(SCRIPT_URL_AS, {
         method:'POST',
         headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({ fn:'generarDocumento', tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
+        body: JSON.stringify({ fn:'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
       setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error }}));

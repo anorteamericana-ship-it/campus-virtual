@@ -921,6 +921,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
+            token: window.getSessionToken ? window.getSessionToken() : '',
             cedula,
             grupo: grupoSel.codigo,
             beca: beca || '',

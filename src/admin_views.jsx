@@ -444,6 +444,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
       const res = await fetch(`${SCRIPT_URL_AV}?fn=crearGrupo`, {
         method: 'POST',
         body: JSON.stringify({
+          token:                   window.getSessionToken ? window.getSessionToken() : '',
           codigo_grupo:            code,
           docente:                 docenteObj?.nombre || 'POR DEFINIR',
           modalidad:               form.modalidad,

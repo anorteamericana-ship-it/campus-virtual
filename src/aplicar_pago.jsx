@@ -399,6 +399,7 @@ function Paso4AP({
       ].filter(r => r.monto > 0);
 
       const body = {
+        token:         window.getSessionToken ? window.getSessionToken() : '',
         doc:           compr.doc,
         monto_total:   total,
         cod_estudiante: est?.CODIGO || est?.rec_m,

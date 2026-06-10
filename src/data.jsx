@@ -66,7 +66,7 @@ async function fetchAsignarCobertura(payload) {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn: 'asignarCoberturaLeccion', ...payload }),
+      body: JSON.stringify({ fn: 'asignarCoberturaLeccion', token: getSessionToken(), ...payload }),
     });
     return await res.json();
   } catch (e) {
@@ -229,7 +229,7 @@ async function fetchResolverSolicitudSuspension(payload) {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn: 'resolverSolicitudSuspension', ...payload }),
+      body: JSON.stringify({ fn: 'resolverSolicitudSuspension', token: getSessionToken(), ...payload }),
     });
     return await res.json();
   } catch (e) {
@@ -406,7 +406,7 @@ async function _solpPost(fn, payload, ms = 3500) {
     const res = await fetch(`${APPS_SCRIPT_URL}?fn=${fn}`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn, ...payload }),
+      body: JSON.stringify({ fn, token: getSessionToken(), ...payload }),
       signal: ctrl.signal,
     });
     return await res.json();

@@ -213,6 +213,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
       const res = await fetch(`${SCRIPT_URL_MAT}?fn=actualizarEstatus`, {
         method: 'POST',
         body: JSON.stringify({
+          token:   window.getSessionToken ? window.getSessionToken() : '',
           cod_estudiante: codEstudiante,
           nivel:   nivelMap[form.nivelId] || 'B1',
           estatus: 'CA',
