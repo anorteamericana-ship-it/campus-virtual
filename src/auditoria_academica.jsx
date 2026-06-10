@@ -104,7 +104,7 @@ function AAResumenCard({ label, valor, sub, tone }) {
 }
 
 // ── Drawer de detalle de lección (solo lectura) ────────────────────────────
-function AADetalleLeccion({ leccion, estudiantes, matriz, nivelColor, onClose }) {
+function AADetalleLeccion({ leccion, estudiantes, matriz, nivelColor, esSuperadmin, onEditar, onClose }) {
   // Mapa estudiante → datos de la matriz para esta lección.
   const fila = (matriz && matriz[String(leccion.leccion)]) || {};
   const tipoLabel = AA_TIPO_LABEL[leccion.tipo] || leccion.tipo || 'Clase';
@@ -245,13 +245,23 @@ function AADetalleLeccion({ leccion, estudiantes, matriz, nivelColor, onClose })
           )}
         </div>
 
-        {/* Pie: recordatorio solo lectura */}
+        {/* Pie: recordatorio solo lectura (+ edición superadmin) */}
         <div style={{
           padding: '10px 22px', borderTop: '1px solid var(--line)',
           background: 'var(--surface-2)', fontSize: 11, color: 'var(--ink-3)',
           letterSpacing: '0.03em',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
-          Vista de solo lectura · los datos no se pueden editar desde aquí.
+          <span>Vista de solo lectura · los datos no se pueden editar desde aquí.</span>
+          {esSuperadmin && (
+            <button
+              className="btn btn-navy"
+              style={{ padding: '8px 14px', fontSize: 12, flexShrink: 0 }}
+              onClick={() => onEditar && onEditar(leccion)}
+              title="Edición restringida a superadmin">
+              Editar datos cerrados
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -858,6 +868,320 @@ function aaDescargarCSV(contenido, nombre) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// ── Modal de edición controlada (SOLO superadmin) ──────────────────────────
+// Reutiliza window.fetchEditarRetroPCCerrada / fetchEditarAsistenciaNotaCerrada
+// de data.jsx con su forma de payload exacta. No edición optimista: la vista
+// local sólo se refresca si el backend acepta.
+function AAEditarLeccion({ leccion, estudiantes, matriz, codGrupo, nivel, superadminNombre, onClose, onGuardado }) {
+  const fila = (matriz && matriz[String(leccion.leccion)]) || {};
+  const leccionNum = leccion.leccion;
+
+  // ¿La lección permite nota? Solo tipos evaluables (Oral/Escrito) o si ya hay
+  // alguna nota/evaluación registrada en la matriz. PROGRESS_CHECK NO habilita
+  // nota numérica por sí solo.
+  const permiteNota = React.useMemo(() => {
+    if (['EVAL_ORAL', 'EVAL_ESCRITO'].includes(leccion.tipo)) return true;
+    return (estudiantes || []).some(e => {
+      const d = fila[e.code] || {};
+      return aaNum(d.nota_total) != null || (Array.isArray(d.evaluaciones) && d.evaluaciones.length);
+    });
+  }, [leccion.tipo, estudiantes, fila]);
+
+  // Estado inicial inmutable (para detectar cambios reales).
+  const initial = React.useMemo(() => {
+    const m = {};
+    (estudiantes || []).forEach(e => {
+      const d = fila[e.code] || {};
+      const notaInit = aaNum(d.nota_total) != null
+        ? String(aaNum(d.nota_total))
+        : (Array.isArray(d.evaluaciones) && d.evaluaciones.length && (d.evaluaciones[0].nota ?? d.evaluaciones[0].valor) != null
+            ? String(d.evaluaciones[0].nota ?? d.evaluaciones[0].valor) : '');
+      m[e.code] = {
+        // asistencia: 'P' | 'A' | '' (sin registro)
+        asis: d.presente === true ? 'P' : d.presente === false ? 'A' : '',
+        retro: (d.retro && String(d.retro)) || '',
+        pc: (d.progress_check && typeof d.progress_check === 'string') ? d.progress_check : '',
+        nota: notaInit,
+      };
+    });
+    return m;
+  }, [estudiantes, fila]);
+
+  const [form, setForm] = React.useState(() => JSON.parse(JSON.stringify(initial)));
+  const [confirmar, setConfirmar] = React.useState(false);
+  const [estado, setEstado] = React.useState('idle'); // idle | guardando | error
+  const [errMsg, setErrMsg] = React.useState('');
+
+  const setCampo = (code, campo, valor) => {
+    setForm(prev => ({ ...prev, [code]: { ...(prev[code] || {}), [campo]: valor } }));
+  };
+
+  // Solo dígitos, 0–100, vacío permitido.
+  const onNotaChange = (code, raw) => {
+    const limpio = String(raw).replace(/[^\d]/g, '');
+    if (limpio === '') { setCampo(code, 'nota', ''); return; }
+    let n = parseInt(limpio, 10);
+    if (isNaN(n)) return;
+    if (n > 100) n = 100;
+    setCampo(code, 'nota', String(n));
+  };
+
+  // Construcción de listas de cambios reales.
+  const cambios = React.useMemo(() => {
+    const cambioRetro = [], cambioPC = [], cambioAsist = [], cambioNota = [];
+    (estudiantes || []).forEach(e => {
+      const a = form[e.code] || {};
+      const b = initial[e.code] || {};
+      if ((a.retro || '') !== (b.retro || '')) cambioRetro.push({ cod_estudiante: e.code, comentario: a.retro || '' });
+      if ((a.pc || '') !== (b.pc || '')) cambioPC.push({ cod_estudiante: e.code, comentario: a.pc || '' });
+      // Asistencia: sólo enviamos cambios a Presente/Ausente (booleano). "Sin
+      // registro" no tiene representación en el payload existente → no se envía.
+      if ((a.asis || '') !== (b.asis || '') && (a.asis === 'P' || a.asis === 'A')) {
+        cambioAsist.push({ cod_estudiante: e.code, presente: a.asis === 'P' });
+      }
+      if (permiteNota && (a.nota || '') !== (b.nota || '')) cambioNota.push({ cod_estudiante: e.code, nota: a.nota });
+    });
+    return { cambioRetro, cambioPC, cambioAsist, cambioNota };
+  }, [form, initial, estudiantes, permiteNota]);
+
+  const totalCambios = cambios.cambioRetro.length + cambios.cambioPC.length + cambios.cambioAsist.length + cambios.cambioNota.length;
+
+  const handleGuardar = async () => {
+    // Seguridad: re-verificamos rol antes de cualquier llamada.
+    const ses = window.getSesion ? window.getSesion() : null;
+    if (!ses || ses.rol !== 'superadmin') {
+      setEstado('error'); setErrMsg('Acción restringida a superadmin.'); setConfirmar(false);
+      return;
+    }
+    setEstado('guardando'); setErrMsg(''); setConfirmar(false);
+    const calls = [];
+    if (cambios.cambioRetro.length) {
+      calls.push(window.fetchEditarRetroPCCerrada({
+        tipo: 'retro', cod_grupo: codGrupo, leccion_num: leccionNum,
+        lista: cambios.cambioRetro, editado_por: superadminNombre,
+      }));
+    }
+    if (cambios.cambioPC.length) {
+      calls.push(window.fetchEditarRetroPCCerrada({
+        tipo: 'pc', cod_grupo: codGrupo, leccion_num: leccionNum,
+        lista: cambios.cambioPC, editado_por: superadminNombre,
+      }));
+    }
+    if (cambios.cambioAsist.length || cambios.cambioNota.length) {
+      calls.push(window.fetchEditarAsistenciaNotaCerrada({
+        cod_grupo: codGrupo, nivel, leccion: leccionNum,
+        asistencias: cambios.cambioAsist, notas: cambios.cambioNota,
+        editado_por: superadminNombre,
+      }));
+    }
+    try {
+      const resultados = await Promise.all(calls);
+      const fallo = resultados.find(r => !r || !r.ok);
+      if (fallo) {
+        const e = fallo && fallo.error;
+        setEstado('error');
+        setErrMsg(
+          e === 'sesion_requerida' ? 'Sesión requerida. Iniciá sesión nuevamente.'
+          : e === 'no_autorizado' ? 'No autorizado: se requiere sesión de superadmin.'
+          : (e || 'Error al guardar. No se modificó nada.'));
+        return; // NO refrescamos la vista local si el backend rechazó.
+      }
+      // Éxito: cerrar y recargar la auditoría (sin edición optimista).
+      onGuardado();
+    } catch (_) {
+      setEstado('error'); setErrMsg('Error de conexión. No se modificó nada.');
+    }
+  };
+
+  const guardando = estado === 'guardando';
+  // "Sin registro" es solo estado inicial/visual; no es seleccionable. El
+  // selector editable ofrece únicamente Presente / Ausente.
+  const asisOpts = [['P', 'Presente'], ['A', 'Ausente']];
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget && !guardando) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1140,
+        background: 'rgba(20, 16, 12, 0.55)',
+        display: 'flex', justifyContent: 'flex-end',
+        animation: 'an-fade-in .14s ease-out',
+      }}>
+      <div style={{
+        width: 'min(640px, 100%)', height: '100%',
+        background: 'var(--surface)', boxShadow: '-20px 0 60px rgba(0,0,0,0.3)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        <div style={{ height: 5, background: '#9A6A00' }} />
+        <div style={{
+          padding: '16px 22px 12px', borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div>
+            <div style={{ ...aaLabelStyle, marginBottom: 4, color: '#9A6A00' }}>Editar datos cerrados</div>
+            <div style={{ fontFamily: 'var(--f-serif)', fontSize: 19, fontWeight: 500, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
+              Lección {String(leccionNum).padStart(2, '0')} · {aaFmtFecha(leccion.fecha)}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 3 }}>
+              {codGrupo} · {nivel} · {AA_TIPO_LABEL[leccion.tipo] || leccion.tipo || 'Clase'}
+            </div>
+          </div>
+          <button onClick={() => !guardando && onClose()} title="Cerrar"
+            style={{ background: 'none', border: 'none', cursor: guardando ? 'not-allowed' : 'pointer', padding: 4, color: 'var(--ink-3)', lineHeight: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Advertencia */}
+        <div style={{
+          margin: '12px 22px 0', padding: '10px 12px',
+          background: '#FFF7E6', border: '1px solid color-mix(in srgb, var(--an-gold) 40%, white)',
+          borderRadius: 'var(--r-sm, 6px)', fontSize: 12, color: '#6B4A00', lineHeight: 1.4,
+        }}>
+          ⚠ Edición restringida a superadmin. Solo debe usarse para correcciones justificadas.
+          La lección permanece cerrada y el cambio queda registrado.
+        </div>
+
+        {/* Lista editable */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 22px 20px' }}>
+          {!estudiantes || !estudiantes.length ? (
+            <div style={{ padding: 30, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+              No hay estudiantes para editar en esta lección.
+            </div>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {estudiantes.map((e, i) => {
+                const v = form[e.code] || {};
+                return (
+                  <li key={e.code} style={{ padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg-deep)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', flexShrink: 0 }}>{i + 1}</span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{e.name}</div>
+                        <div style={{ fontSize: 10, fontFamily: 'var(--f-mono)', color: 'var(--ink-3)' }}>{e.code}</div>
+                      </div>
+                    </div>
+
+                    {/* Asistencia */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={aaEditLabel}>Asistencia</div>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        {asisOpts.map(([k, lbl]) => (
+                          <button key={k} type="button" disabled={guardando}
+                            onClick={() => setCampo(e.code, 'asis', k)}
+                            style={{
+                              flex: 1, padding: '6px 8px', fontSize: 12, fontWeight: 600, cursor: guardando ? 'not-allowed' : 'pointer',
+                              border: '1.5px solid', borderRadius: 'var(--r-sm, 6px)', fontFamily: 'inherit',
+                              background: v.asis === k ? (k === 'P' ? '#E2F1E5' : '#FCE6E4') : 'var(--surface)',
+                              borderColor: v.asis === k ? (k === 'P' ? '#1B5E20' : 'var(--danger)') : 'var(--line)',
+                              color: v.asis === k ? (k === 'P' ? '#1B5E20' : 'var(--danger)') : 'var(--ink-3)',
+                            }}>{lbl}</button>
+                        ))}
+                        {/* "Sin registro" solo informativo cuando no hay dato aún (no seleccionable). */}
+                        {v.asis === '' && (
+                          <span style={{
+                            flexShrink: 0, padding: '6px 10px', fontSize: 11, fontWeight: 600,
+                            color: 'var(--ink-3)', background: 'var(--bg-deep)',
+                            border: '1px dashed var(--line-2, var(--line))', borderRadius: 'var(--r-sm, 6px)',
+                          }}>Sin registro</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Nota (si la lección permite) */}
+                    {permiteNota && (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={aaEditLabel}>Nota (0–100)</div>
+                        <input
+                          type="text" inputMode="numeric" value={v.nota} disabled={guardando}
+                          onChange={ev => onNotaChange(e.code, ev.target.value)}
+                          placeholder="—"
+                          style={{ width: 120, padding: '7px 10px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm, 6px)', fontFamily: 'var(--f-mono)', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Retroalimentación */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={aaEditLabel}>Retroalimentación</div>
+                      <textarea
+                        value={v.retro} disabled={guardando} rows={2}
+                        onChange={ev => setCampo(e.code, 'retro', ev.target.value)}
+                        placeholder="Sin retroalimentación"
+                        style={{ width: '100%', padding: '7px 10px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm, 6px)', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    {/* Progress Check */}
+                    <div>
+                      <div style={aaEditLabel}>Progress Check</div>
+                      <textarea
+                        value={v.pc} disabled={guardando} rows={2}
+                        onChange={ev => setCampo(e.code, 'pc', ev.target.value)}
+                        placeholder="Sin comentario de Progress Check"
+                        style={{ width: '100%', padding: '7px 10px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm, 6px)', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '12px 22px 14px', borderTop: '1px solid var(--line)', background: 'var(--surface)',
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        }}>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', flex: 1, minWidth: 150 }}>
+            {estado === 'guardando' ? 'Guardando…'
+              : estado === 'error' ? <span style={{ color: 'var(--danger)', fontWeight: 700 }}>⚠ {errMsg}</span>
+              : `${totalCambios} cambio${totalCambios !== 1 ? 's' : ''} pendiente${totalCambios !== 1 ? 's' : ''}`}
+          </div>
+          <button type="button" onClick={() => !guardando && onClose()} disabled={guardando}
+            className="btn btn-ghost" style={{ padding: '9px 14px', fontSize: 13 }}>
+            Cancelar
+          </button>
+          <button type="button" onClick={() => setConfirmar(true)} disabled={guardando || !totalCambios}
+            className="btn btn-primary" style={{ padding: '9px 16px', fontSize: 13, opacity: (!totalCambios || guardando) ? 0.55 : 1 }}>
+            Guardar cambios
+          </button>
+        </div>
+
+        {/* Confirmación previa */}
+        {confirmar && (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget && !guardando) setConfirmar(false); }}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ width: '100%', maxWidth: 420, background: 'var(--surface)', borderRadius: 'var(--r-lg, 12px)', boxShadow: '0 24px 64px rgba(0,0,0,0.32)', overflow: 'hidden' }}>
+              <div style={{ padding: '18px 22px 12px', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ fontFamily: 'var(--f-serif)', fontSize: 18, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>
+                  Modificar lección cerrada
+                </div>
+              </div>
+              <div style={{ padding: '14px 22px', fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                Vas a modificar datos de una lección cerrada. Esta acción queda registrada. ¿Deseás continuar?
+              </div>
+              <div style={{ padding: '12px 22px 18px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" onClick={() => setConfirmar(false)} className="btn btn-ghost" style={{ padding: '9px 14px', fontSize: 13 }}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleGuardar} className="btn btn-primary" style={{ padding: '9px 16px', fontSize: 13 }}>
+                  Sí, continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+const aaEditLabel = { fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 4 };
+
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
@@ -877,6 +1201,7 @@ function AuditoriaAcademicaView() {
 
   const [selLec, setSelLec] = React.useState(null);
   const [selEst, setSelEst] = React.useState(null);
+  const [editLec, setEditLec] = React.useState(null);
   const [filtroEstado, setFiltroEstado] = React.useState('todas');
   const [busqueda, setBusqueda] = React.useState('');
 
@@ -923,6 +1248,11 @@ function AuditoriaAcademicaView() {
       setLoading(false);
     }
   }, [codGrupo, nivel]);
+
+  // Rol actual desde la sesión real (sin localStorage). Sólo superadmin edita.
+  const sesion = React.useMemo(() => (window.getSesion ? window.getSesion() : null), []);
+  const esSuperadmin = !!sesion && sesion.rol === 'superadmin';
+  const superadminNombre = (sesion && sesion.nombre) || 'superadmin';
 
   const resumen = data && data.resumen ? data.resumen : null;
   const grupoMeta = data && data.grupo ? data.grupo : null;
@@ -1159,6 +1489,8 @@ function AuditoriaAcademicaView() {
           estudiantes={estudiantesDrawer}
           matriz={data.matriz || {}}
           nivelColor={nivelColor}
+          esSuperadmin={esSuperadmin}
+          onEditar={(l) => setEditLec(l)}
           onClose={() => setSelLec(null)}
         />
       )}
@@ -1173,6 +1505,20 @@ function AuditoriaAcademicaView() {
           nivel={nivel}
           nivelColor={nivelColor}
           onClose={() => setSelEst(null)}
+        />
+      )}
+
+      {/* Modal edición controlada (sólo superadmin) */}
+      {editLec && data && esSuperadmin && (
+        <AAEditarLeccion
+          leccion={editLec}
+          estudiantes={data.estudiantes || []}
+          matriz={data.matriz || {}}
+          codGrupo={(grupoMeta && grupoMeta.cod_grupo) || codGrupo}
+          nivel={(grupoMeta && grupoMeta.nivel) || nivel}
+          superadminNombre={superadminNombre}
+          onClose={() => setEditLec(null)}
+          onGuardado={() => { setEditLec(null); setSelLec(null); cargarAuditoria(); }}
         />
       )}
     </div>
