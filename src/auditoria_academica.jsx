@@ -17,6 +17,7 @@ const SCRIPT_URL_AA = window.APPS_SCRIPT_URL;
 // Paleta por nivel (consistente con el resto del campus).
 const AA_NIVEL_COLOR = { B1: '#9A6A00', B2: '#8B1A10', I1: '#0D47A1', I2: '#1B5E20' };
 const AA_NIVELES = ['B1', 'B2', 'I1', 'I2'];
+const AA_ESTADOS = [['todas', 'Todas'], ['cerradas', 'Cerradas'], ['pendientes', 'Pendientes'], ['alertas', 'Con alertas']];
 const AA_NIVEL_LABEL = { B1: 'Básico I', B2: 'Básico II', I1: 'Intermedio I', I2: 'Intermedio II' };
 
 const AA_TIPO_LABEL = {
@@ -266,6 +267,133 @@ const aaDetCellLabel = {
   color: 'var(--ink-3)', marginBottom: 4,
 };
 const aaDetCellValue = { fontSize: 13, color: 'var(--ink)', fontWeight: 600 };
+const aaH2Style = {
+  fontFamily: 'var(--f-serif)', fontWeight: 500, fontSize: 20,
+  letterSpacing: '-0.02em', color: 'var(--ink)', margin: 0,
+};
+
+// ── Riesgo académico: cálculo por estudiante (sin endpoints nuevos) ─────────
+// Usa data.estudiantes + data.lecciones + data.matriz ya recibidos.
+function aaNum(v) {
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+// Notas numéricas de una celda de la matriz (evaluaciones[] o nota_total).
+function aaNotasDeCelda(d) {
+  const out = [];
+  if (Array.isArray(d.evaluaciones)) {
+    d.evaluaciones.forEach(ev => { const n = aaNum(ev && (ev.nota ?? ev.valor)); if (n != null) out.push(n); });
+  }
+  const nt = aaNum(d.nota_total);
+  if (nt != null && !out.length) out.push(nt);
+  return out;
+}
+function aaNivelRiesgo(pct, promedio) {
+  // Alto: asistencia < 70% o promedio < 70
+  if ((pct != null && pct < 70) || (promedio != null && promedio < 70)) return 'alto';
+  // Bajo: asistencia >= 85% y sin notas bajas
+  if (pct != null && pct >= 85 && !(promedio != null && promedio < 70)) return 'bajo';
+  // Medio: 70%–85%, o con ausencias / notas insuficientes
+  return 'medio';
+}
+function aaComputeRiesgo(estudiantes, lecciones, matriz) {
+  return (estudiantes || []).map(e => {
+    let conReg = 0, presentes = 0, ausentes = 0, retro = 0, pc = 0;
+    const notas = [];
+    (lecciones || []).forEach(l => {
+      const fila = matriz && matriz[String(l.leccion)];
+      const d = fila && fila[e.code];
+      if (!d) return;
+      if (d.presente === true) { presentes++; conReg++; }
+      else if (d.presente === false) { ausentes++; conReg++; }
+      if (d.retro) retro++;
+      if (d.progress_check) pc++;
+      aaNotasDeCelda(d).forEach(n => notas.push(n));
+    });
+    const totalAsis = presentes + ausentes;
+    const pct = totalAsis ? (presentes / totalAsis * 100) : null;
+    const promedio = notas.length ? (notas.reduce((a, b) => a + b, 0) / notas.length) : null;
+    return {
+      code: e.code, name: e.name, conReg, presentes, ausentes, pct,
+      promedio, notas: notas.length, retro, pc, riesgo: aaNivelRiesgo(pct, promedio),
+    };
+  });
+}
+const AA_RIESGO_CHIP = {
+  alto:  { label: 'Alto',  bg: '#FCE6E4', fg: 'var(--danger)' },
+  medio: { label: 'Medio', bg: 'color-mix(in srgb, var(--an-gold) 22%, white)', fg: '#6B4A00' },
+  bajo:  { label: 'Bajo',  bg: '#E2F1E5', fg: '#1B5E20' },
+};
+
+// ── Tabla de Riesgo académico (solo lectura) ───────────────────────────────
+function AARiesgoTabla({ filas, onVerFicha }) {
+  const th = {
+    textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+    textTransform: 'uppercase', color: 'var(--ink-3)', padding: '10px 12px',
+    borderBottom: '1.5px solid var(--line)', whiteSpace: 'nowrap',
+  };
+  const td = {
+    padding: '11px 12px', fontSize: 13, color: 'var(--ink)',
+    borderBottom: '1px solid var(--line)', verticalAlign: 'middle',
+  };
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <thead>
+            <tr>
+              <th style={th}>Estudiante</th>
+              <th style={th}>Asistencia</th>
+              <th style={th}>Ausencias</th>
+              <th style={th}>Promedio</th>
+              <th style={th}>Retro</th>
+              <th style={th}>PC</th>
+              <th style={th}>Riesgo</th>
+              <th style={{ ...th, textAlign: 'right' }}>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map(r => {
+              const chip = AA_RIESGO_CHIP[r.riesgo] || AA_RIESGO_CHIP.medio;
+              return (
+                <tr key={r.code}>
+                  <td style={td}>
+                    <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{r.name}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'var(--f-mono)', color: 'var(--ink-3)' }}>{r.code}</div>
+                  </td>
+                  <td style={td}>
+                    {r.pct != null
+                      ? <span><b>{Math.round(r.pct)}%</b> <span style={{ color: 'var(--ink-3)' }}>· {r.presentes}/{r.presentes + r.ausentes}</span></span>
+                      : <span style={{ color: 'var(--ink-3)' }}>—</span>}
+                  </td>
+                  <td style={{ ...td, color: r.ausentes > 0 ? 'var(--danger)' : 'var(--ink-2)', fontWeight: r.ausentes > 0 ? 700 : 400 }}>
+                    {r.ausentes}
+                  </td>
+                  <td style={td}>
+                    {r.promedio != null
+                      ? <b style={{ color: r.promedio < 70 ? 'var(--danger)' : 'var(--ink)' }}>{Math.round(r.promedio * 10) / 10}</b>
+                      : <span style={{ color: 'var(--ink-3)' }}>—</span>}
+                    {r.notas > 0 && <span style={{ color: 'var(--ink-3)', fontSize: 11 }}> · {r.notas} nota{r.notas !== 1 ? 's' : ''}</span>}
+                  </td>
+                  <td style={td}>{r.retro || <span style={{ color: 'var(--ink-3)' }}>0</span>}</td>
+                  <td style={td}>{r.pc || <span style={{ color: 'var(--ink-3)' }}>0</span>}</td>
+                  <td style={td}>
+                    <AAChip bg={chip.bg} fg={chip.fg}>{chip.label}</AAChip>
+                  </td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    <button className="btn btn-ghost" style={{ padding: '6px 14px', fontSize: 12 }} onClick={() => onVerFicha && onVerFicha(r)}>
+                      Ver ficha
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 // ── Tabla de lecciones ─────────────────────────────────────────────────────
 function AALeccionesTabla({ lecciones, onVer }) {
@@ -341,6 +469,395 @@ function AALeccionesTabla({ lecciones, onVer }) {
   );
 }
 
+// ── Ficha académica: construcción por estudiante (sin endpoints nuevos) ────
+// Usa data.lecciones + data.matriz ya en memoria.
+function aaBuildFicha(est, lecciones, matriz) {
+  const timeline = [];
+  const evaluaciones = [];
+  const notasList = [];
+  let presentes = 0, ausentes = 0, retroCount = 0, pcCount = 0;
+  (lecciones || []).forEach(l => {
+    const fila = matriz && matriz[String(l.leccion)];
+    const d = fila && fila[est.code];
+    if (!d) return;
+    const retroTxt = (d.retro && String(d.retro).trim()) ? d.retro : '';
+    const tieneEvals = Array.isArray(d.evaluaciones) && d.evaluaciones.length;
+    const tieneNota = d.nota_total !== undefined && d.nota_total !== null && d.nota_total !== '';
+    const tieneDato = (d.presente === true || d.presente === false)
+      || !!retroTxt || !!d.progress_check || tieneEvals || tieneNota;
+    if (!tieneDato) return;
+
+    if (d.presente === true) presentes++;
+    else if (d.presente === false) ausentes++;
+    if (retroTxt) retroCount++;
+    if (d.progress_check) pcCount++;
+
+    const notas = aaNotasDeCelda(d);
+    notas.forEach(n => notasList.push(n));
+
+    if (tieneEvals) {
+      d.evaluaciones.forEach(ev => evaluaciones.push({
+        leccion: l.leccion,
+        tipo: (ev && (ev.tipo || ev.label)) || AA_TIPO_LABEL[l.tipo] || 'Evaluación',
+        nota: ev ? (ev.nota ?? ev.valor ?? null) : null,
+        nota_total: aaNum(d.nota_total),
+      }));
+    } else if (aaNum(d.nota_total) != null) {
+      evaluaciones.push({
+        leccion: l.leccion,
+        tipo: AA_TIPO_LABEL[l.tipo] || l.tipo || 'Nota',
+        nota: aaNum(d.nota_total),
+        nota_total: aaNum(d.nota_total),
+      });
+    }
+
+    timeline.push({
+      leccion: l.leccion, fecha: l.fecha, tipo: l.tipo, estado: l.estado,
+      dia: l.dia, turno: l.turno, presente: d.presente,
+      notas, evaluaciones: d.evaluaciones, nota_total: d.nota_total,
+      retro: retroTxt, progress_check: d.progress_check, alertas: l.alertas || [],
+    });
+  });
+
+  const totalAsis = presentes + ausentes;
+  const pct = totalAsis ? (presentes / totalAsis * 100) : null;
+  const promedio = notasList.length ? (notasList.reduce((a, b) => a + b, 0) / notasList.length) : null;
+  const observaciones = timeline
+    .filter(t => t.retro && String(t.retro).trim())
+    .sort((a, b) => a.leccion - b.leccion);
+
+  return {
+    timeline, evaluaciones, notasList, observaciones,
+    presentes, ausentes, pct, promedio, retroCount, pcCount,
+    notas: notasList.length, riesgo: aaNivelRiesgo(pct, promedio),
+  };
+}
+
+// Alertas derivadas del estudiante (solo lectura).
+function aaAlertasEstudiante(f) {
+  const out = [];
+  if (f.pct != null && f.pct < 85) out.push({ label: 'Asistencia baja', detail: `${Math.round(f.pct)}% de asistencia` });
+  if (f.promedio != null && f.promedio < 70) out.push({ label: 'Promedio bajo', detail: `Promedio ${Math.round(f.promedio * 10) / 10}` });
+  if (f.ausentes >= 2) out.push({ label: 'Ausencias acumuladas', detail: `${f.ausentes} ausencias` });
+  if ((f.presentes + f.ausentes) === 0 && f.notas === 0) out.push({ label: 'Sin datos suficientes', detail: 'No hay registros de asistencia ni notas' });
+  const bajas = (f.notasList || []).filter(n => n < 70);
+  if (bajas.length) out.push({ label: 'Notas menores a 70', detail: `${bajas.length} nota${bajas.length !== 1 ? 's' : ''} < 70` });
+  return out;
+}
+
+// Mini-stat para el resumen de la ficha.
+function AAMini({ label, valor, tone }) {
+  const color = tone === 'alert' ? 'var(--danger)' : 'var(--an-navy)';
+  return (
+    <div style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm, 6px)', padding: '8px 10px' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--f-serif)', fontWeight: 700, fontSize: 20, lineHeight: 1, color }}>{valor}</div>
+    </div>
+  );
+}
+
+// ── Drawer Ficha académica (solo lectura) ──────────────────────────────────
+function AAFichaEstudiante({ estudiante, lecciones, matriz, grupoMeta, nivel, nivelColor, onClose }) {
+  const f = aaBuildFicha(estudiante, lecciones, matriz);
+  const alertas = aaAlertasEstudiante(f);
+  const chip = AA_RIESGO_CHIP[f.riesgo] || AA_RIESGO_CHIP.medio;
+  const sinDatos = f.timeline.length === 0;
+
+  const asisCelda = (presente) => {
+    if (presente === true)  return { label: 'Presente',     bg: '#E2F1E5', fg: '#1B5E20' };
+    if (presente === false) return { label: 'Ausente',      bg: '#FCE6E4', fg: 'var(--danger)' };
+    return { label: 'Sin registro', bg: 'var(--bg-deep)', fg: 'var(--ink-3)' };
+  };
+
+  const grupoLbl = (grupoMeta && grupoMeta.cod_grupo) || '';
+  const nivelLbl = (grupoMeta && grupoMeta.nivel) || nivel || '';
+  const sub = [estudiante.name, estudiante.code, grupoLbl, nivelLbl].filter(Boolean).join(' · ');
+
+  const secTitle = {
+    fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase',
+    color: 'var(--ink-3)', margin: '18px 0 8px',
+  };
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1120,
+        background: 'rgba(20, 16, 12, 0.5)',
+        display: 'flex', justifyContent: 'flex-end',
+        animation: 'an-fade-in .14s ease-out',
+      }}>
+      <div style={{
+        width: 'min(600px, 100%)', height: '100%',
+        background: 'var(--surface)', boxShadow: '-20px 0 60px rgba(0,0,0,0.28)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        <div style={{ height: 5, background: nivelColor }} />
+        <div style={{
+          padding: '18px 22px 14px', borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div>
+            <div style={{ ...aaLabelStyle, marginBottom: 4 }}>Ficha académica</div>
+            <div style={{
+              fontFamily: 'var(--f-serif)', fontSize: 21, fontWeight: 500,
+              color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.15,
+            }}>{estudiante.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>{sub}</div>
+            <div style={{ marginTop: 8 }}>
+              <AAChip bg={chip.bg} fg={chip.fg}>Riesgo {chip.label}</AAChip>
+            </div>
+          </div>
+          <button onClick={onClose} title="Cerrar"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--ink-3)', lineHeight: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 22px 26px' }}>
+          {sinDatos ? (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-3)' }}>
+              <div style={{ fontSize: 30, marginBottom: 6 }}>—</div>
+              <div style={{ fontWeight: 600, color: 'var(--ink-2)' }}>Sin datos del estudiante</div>
+              <div style={{ fontSize: 13 }}>No hay registros académicos para {estudiante.name} en este grupo/nivel.</div>
+            </div>
+          ) : (
+            <React.Fragment>
+              {/* 1 · Resumen superior */}
+              <div style={secTitle}>Resumen</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
+                <AAMini label="Asistencia" valor={f.pct != null ? `${Math.round(f.pct)}%` : '—'} />
+                <AAMini label="Presentes" valor={f.presentes} />
+                <AAMini label="Ausentes" valor={f.ausentes} tone={f.ausentes > 0 ? 'alert' : null} />
+                <AAMini label="Promedio" valor={f.promedio != null ? Math.round(f.promedio * 10) / 10 : '—'} tone={f.promedio != null && f.promedio < 70 ? 'alert' : null} />
+                <AAMini label="Notas" valor={f.notas} />
+                <AAMini label="Retro" valor={f.retroCount} />
+                <AAMini label="Progress Check" valor={f.pcCount} />
+              </div>
+
+              {/* 5 · Alertas del estudiante */}
+              <div style={secTitle}>Alertas del estudiante</div>
+              {alertas.length ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {alertas.map((a, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                      background: '#FFF7E6', border: '1px solid color-mix(in srgb, var(--an-gold) 35%, white)',
+                      borderRadius: 'var(--r-sm, 6px)',
+                    }}>
+                      <span style={{ fontSize: 13 }}>⚠</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{a.label}</span>
+                      <span style={{ fontSize: 12, color: 'var(--ink-3)', marginLeft: 'auto' }}>{a.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>Sin alertas para este estudiante.</div>
+              )}
+
+              {/* 2 · Timeline de lecciones */}
+              <div style={secTitle}>Timeline de lecciones</div>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {f.timeline.map(t => {
+                  const est = aaEstadoChip(t.estado);
+                  const asis = asisCelda(t.presente);
+                  const notaTxt = (t.evaluaciones && t.evaluaciones.length)
+                    ? t.evaluaciones.map(ev => `${ev.tipo || 'Eval'}: ${ev.nota ?? ev.valor ?? '—'}`).join(' · ')
+                    : (aaNum(t.nota_total) != null ? `Nota: ${aaNum(t.nota_total)}` : null);
+                  return (
+                    <li key={t.leccion} style={{
+                      padding: '12px 14px', background: 'var(--surface)',
+                      border: '1px solid var(--line)', borderRadius: 'var(--r-md)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: 'var(--f-mono)', fontWeight: 700, color: 'var(--ink)' }}>
+                          Lec {String(t.leccion).padStart(2, '0')}
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{aaFmtFecha(t.fecha)}</span>
+                        <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{AA_TIPO_LABEL[t.tipo] || t.tipo || 'Clase'}</span>
+                        <AAChip bg={est.bg} fg={est.fg}>{est.label}</AAChip>
+                        <span style={{ marginLeft: 'auto' }}><AAChip bg={asis.bg} fg={asis.fg}>{asis.label}</AAChip></span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: 'var(--ink-2)' }}>
+                        {notaTxt && <span><b style={{ color: 'var(--ink)' }}>{notaTxt}</b></span>}
+                        {t.progress_check && <span>PC: <b style={{ color: 'var(--ink)' }}>{typeof t.progress_check === 'string' ? t.progress_check : 'Registrado'}</b></span>}
+                        {(t.alertas || []).map(a => { const c = aaAlertaChip(a); return <AAChip key={a} bg={c.bg} fg={c.fg}>⚠ {c.label}</AAChip>; })}
+                      </div>
+                      {t.retro && (
+                        <div style={{
+                          marginTop: 8, padding: '8px 10px', background: 'var(--surface-2)',
+                          borderLeft: '3px solid var(--an-granate)', borderRadius: '0 var(--r-sm, 6px) var(--r-sm, 6px) 0',
+                          fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.45,
+                        }}>{t.retro}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {/* 3 · Observaciones docentes */}
+              <div style={secTitle}>Observaciones docentes</div>
+              {f.observaciones.length ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {f.observaciones.map(o => (
+                    <div key={o.leccion} style={{
+                      padding: '10px 12px', background: 'var(--surface-2)',
+                      borderLeft: '3px solid var(--an-granate)', borderRadius: '0 var(--r-sm, 6px) var(--r-sm, 6px) 0',
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--an-granate)', textTransform: 'uppercase', marginBottom: 3 }}>
+                        Lec {String(o.leccion).padStart(2, '0')} · {aaFmtFecha(o.fecha)}
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.45 }}>{o.retro}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>Sin retroalimentaciones registradas.</div>
+              )}
+
+              {/* 4 · Evaluaciones */}
+              <div style={secTitle}>Evaluaciones</div>
+              {f.evaluaciones.length ? (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Lección', 'Tipo', 'Nota', 'Nota total'].map((h, i) => (
+                          <th key={h} style={{
+                            textAlign: i >= 2 ? 'right' : 'left', fontSize: 10, fontWeight: 700,
+                            letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-3)',
+                            padding: '9px 12px', borderBottom: '1.5px solid var(--line)',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {f.evaluaciones.map((ev, i) => (
+                        <tr key={i}>
+                          <td style={{ padding: '9px 12px', fontFamily: 'var(--f-mono)', fontWeight: 700, fontSize: 12, borderBottom: '1px solid var(--line)' }}>
+                            {String(ev.leccion).padStart(2, '0')}
+                          </td>
+                          <td style={{ padding: '9px 12px', fontSize: 13, color: 'var(--ink-2)', borderBottom: '1px solid var(--line)' }}>{ev.tipo}</td>
+                          <td style={{ padding: '9px 12px', fontSize: 13, textAlign: 'right', fontWeight: 700, color: (ev.nota != null && ev.nota < 70) ? 'var(--danger)' : 'var(--ink)', borderBottom: '1px solid var(--line)' }}>
+                            {ev.nota != null ? ev.nota : '—'}
+                          </td>
+                          <td style={{ padding: '9px 12px', fontSize: 13, textAlign: 'right', color: 'var(--ink-2)', borderBottom: '1px solid var(--line)' }}>
+                            {ev.nota_total != null ? ev.nota_total : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>Sin evaluaciones registradas.</div>
+              )}
+            </React.Fragment>
+          )}
+        </div>
+
+        <div style={{
+          padding: '10px 22px', borderTop: '1px solid var(--line)',
+          background: 'var(--surface-2)', fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.03em',
+        }}>
+          Vista de solo lectura · los datos no se pueden editar desde aquí.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Exportación CSV (local, sin backend ni librerías) ──────────────────────
+// Escapa un valor para CSV: envuelve en comillas si contiene separador,
+// comillas o saltos de línea; duplica las comillas internas.
+function aaCsvCell(v) {
+  if (v === null || v === undefined) v = '';
+  let s = String(v);
+  if (/[";\n\r,]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function aaCsvRow(arr) { return arr.map(aaCsvCell).join(';'); }
+
+// Construye el CSV completo (3 secciones) desde los datos ya en memoria.
+function aaGenerarCSV(data) {
+  const g = (data && data.grupo) || {};
+  const grupo = g.cod_grupo || '';
+  const nivel = g.nivel || '';
+  const lecciones = (data && Array.isArray(data.lecciones)) ? data.lecciones : [];
+  const estudiantes = (data && Array.isArray(data.estudiantes)) ? data.estudiantes : [];
+  const matriz = (data && data.matriz) || {};
+  const RLAB = { alto: 'Alto', medio: 'Medio', bajo: 'Bajo' };
+  const pctTxt = v => (v != null && !isNaN(v)) ? Math.round(v) : '';
+  const lines = [];
+
+  // SECCIÓN 1 · Resumen de lecciones
+  lines.push('RESUMEN DE LECCIONES');
+  lines.push(aaCsvRow(['Grupo', 'Nivel', 'Lección', 'Fecha', 'Tipo', 'Estado', 'Asistencia %',
+    'Presentes', 'Ausentes', 'Total', 'Notas registradas', 'Retroalimentaciones', 'Progress Checks', 'Alertas']));
+  lecciones.forEach(l => {
+    const a = l.asistencia || {};
+    lines.push(aaCsvRow([
+      grupo, nivel, l.leccion, l.fecha || '', AA_TIPO_LABEL[l.tipo] || l.tipo || '', l.estado || '',
+      pctTxt(a.pct), a.presentes ?? '', a.ausentes ?? '', a.total ?? '',
+      (l.notas && l.notas.total) || 0, (l.retro && l.retro.total) || 0, (l.progress_check && l.progress_check.total) || 0,
+      (l.alertas || []).join(' | '),
+    ]));
+  });
+
+  lines.push('');
+
+  // SECCIÓN 2 · Riesgo académico
+  lines.push('RIESGO ACADÉMICO');
+  lines.push(aaCsvRow(['Grupo', 'Nivel', 'Código', 'Estudiante', 'Asistencia %', 'Presentes', 'Ausentes',
+    'Promedio', 'Notas registradas', 'Retroalimentaciones', 'Progress Checks', 'Riesgo']));
+  aaComputeRiesgo(estudiantes, lecciones, matriz).forEach(r => {
+    lines.push(aaCsvRow([
+      grupo, nivel, r.code, r.name, pctTxt(r.pct), r.presentes, r.ausentes,
+      r.promedio != null ? Math.round(r.promedio * 10) / 10 : '', r.notas, r.retro, r.pc, RLAB[r.riesgo] || r.riesgo,
+    ]));
+  });
+
+  lines.push('');
+
+  // SECCIÓN 3 · Detalle estudiante-lección
+  lines.push('DETALLE ESTUDIANTE-LECCIÓN');
+  lines.push(aaCsvRow(['Grupo', 'Nivel', 'Código', 'Estudiante', 'Lección', 'Fecha', 'Tipo', 'Estado',
+    'Asistencia', 'Nota total', 'Evaluaciones', 'Retroalimentación', 'Progress Check', 'Alertas']));
+  estudiantes.forEach(e => {
+    const f = aaBuildFicha(e, lecciones, matriz);
+    f.timeline.forEach(t => {
+      const asis = t.presente === true ? 'Presente' : t.presente === false ? 'Ausente' : 'Sin registro';
+      const evalsTxt = (t.evaluaciones && t.evaluaciones.length)
+        ? t.evaluaciones.map(ev => `${(ev && (ev.tipo || ev.label)) || 'Eval'}: ${ev ? (ev.nota ?? ev.valor ?? '') : ''}`).join(' | ')
+        : '';
+      lines.push(aaCsvRow([
+        grupo, nivel, e.code, e.name, t.leccion, t.fecha || '', AA_TIPO_LABEL[t.tipo] || t.tipo || '', t.estado || '',
+        asis, aaNum(t.nota_total) != null ? aaNum(t.nota_total) : '', evalsTxt,
+        t.retro || '', t.progress_check ? (typeof t.progress_check === 'string' ? t.progress_check : 'Registrado') : '',
+        (t.alertas || []).join(' | '),
+      ]));
+    });
+  });
+
+  return lines.join('\r\n');
+}
+
+// Dispara la descarga del CSV con BOM UTF-8 (para que Excel lea tildes/eñes).
+function aaDescargarCSV(contenido, nombre) {
+  const blob = new Blob(['\uFEFF' + contenido], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
@@ -359,6 +876,9 @@ function AuditoriaAcademicaView() {
   const [error, setError] = React.useState(null);
 
   const [selLec, setSelLec] = React.useState(null);
+  const [selEst, setSelEst] = React.useState(null);
+  const [filtroEstado, setFiltroEstado] = React.useState('todas');
+  const [busqueda, setBusqueda] = React.useState('');
 
   const cargarGrupos = React.useCallback(() => {
     setLoadingGrupos(true); setErrorGrupos(null);
@@ -408,6 +928,31 @@ function AuditoriaAcademicaView() {
   const grupoMeta = data && data.grupo ? data.grupo : null;
   const nivelColor = AA_NIVEL_COLOR[(grupoMeta && grupoMeta.nivel) || nivel] || AA_NIVEL_COLOR.B1;
 
+  // ── Derivados de filtros / búsqueda (defensivos ante respuestas incompletas) ──
+  const q = busqueda.trim().toLowerCase();
+  const matchEst = (e) => !q || (`${(e && e.name) || ''} ${(e && e.code) || ''}`.toLowerCase().includes(q));
+  const leccionesAll = (data && Array.isArray(data.lecciones)) ? data.lecciones : [];
+  const leccionesVisibles = leccionesAll.filter(l => {
+    const est = (l.estado || '').toUpperCase();
+    if (filtroEstado === 'cerradas')   return est === 'CERRADA';
+    if (filtroEstado === 'pendientes') return est !== 'CERRADA';
+    if (filtroEstado === 'alertas')    return (l.alertas || []).length > 0;
+    return true;
+  });
+  const riesgo = data ? aaComputeRiesgo(data.estudiantes || [], leccionesAll, data.matriz || {}) : [];
+  const riesgoVisible = riesgo.filter(matchEst);
+  const estudiantesDrawer = (data && Array.isArray(data.estudiantes)) ? data.estudiantes.filter(matchEst) : [];
+
+  // Exportación CSV local (solo cuando hay auditoría cargada). No toca backend.
+  const exportarCSV = React.useCallback(() => {
+    if (!data) return;
+    const g = (data.grupo && data.grupo.cod_grupo) || codGrupo || 'grupo';
+    const n = (data.grupo && data.grupo.nivel) || nivel || '';
+    const hoy = new Date().toISOString().slice(0, 10);
+    const nombre = `auditoria_academica_${g}_${n}_${hoy}.csv`;
+    aaDescargarCSV(aaGenerarCSV(data), nombre);
+  }, [data, codGrupo, nivel]);
+
   return (
     <div data-screen-label="Auditoría Académica">
       <PageHeader
@@ -453,6 +998,15 @@ function AuditoriaAcademicaView() {
               onClick={cargarAuditoria}>
               {loading ? 'Cargando…' : 'Cargar auditoría'}
             </button>
+            {data && (
+              <button
+                className="btn btn-navy"
+                style={{ padding: '10px 18px', marginLeft: 'auto' }}
+                onClick={exportarCSV}
+                title="Descargar la auditoría cargada como CSV">
+                Exportar CSV
+              </button>
+            )}
           </>
         )}
       </div>
@@ -518,21 +1072,82 @@ function AuditoriaAcademicaView() {
             </div>
           )}
 
-          {/* Tabla de lecciones */}
+          {/* Toolbar: filtro de estado + buscador de estudiante */}
+          <div className="card" style={{
+            padding: '14px 16px', marginBottom: 16,
+            display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap',
+          }}>
+            <div>
+              <div style={aaLabelStyle}>Estado de lección</div>
+              <div style={{ display: 'flex', gap: 4, background: 'var(--bg-deep)', padding: 4, borderRadius: 'var(--r-md)', flexWrap: 'wrap' }}>
+                {AA_ESTADOS.map(([k, lbl]) => (
+                  <button key={k} onClick={() => setFiltroEstado(k)} style={{
+                    padding: '7px 14px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                    borderRadius: 'var(--r-sm, 6px)', fontFamily: 'inherit',
+                    background: filtroEstado === k ? 'var(--surface)' : 'transparent',
+                    color: filtroEstado === k ? 'var(--an-navy-ink)' : 'var(--ink-3)',
+                    boxShadow: filtroEstado === k ? 'var(--sh-1)' : 'none',
+                  }}>{lbl}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={aaLabelStyle}>Buscar estudiante</div>
+              <input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Nombre o código…"
+                style={{
+                  width: '100%', padding: '9px 12px', border: '1.5px solid var(--line)',
+                  borderRadius: 'var(--r-md)', fontFamily: 'inherit', fontSize: 13,
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            {busqueda && (
+              <button className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12 }} onClick={() => setBusqueda('')}>
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Riesgo académico (respeta el buscador) */}
           <div style={{ marginBottom: 10, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-            <h2 style={{
-              fontFamily: 'var(--f-serif)', fontWeight: 500, fontSize: 20,
-              letterSpacing: '-0.02em', color: 'var(--ink)', margin: 0,
-            }}>Lecciones</h2>
+            <h2 style={aaH2Style}>Riesgo académico</h2>
             <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-              {(data.lecciones || []).length} lecciones · click en “Ver” para el detalle
+              {riesgoVisible.length} de {riesgo.length} estudiantes{busqueda ? ' (filtrado)' : ''}
+            </span>
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            {riesgoVisible.length ? (
+              <AARiesgoTabla filas={riesgoVisible} onVerFicha={setSelEst} />
+            ) : (
+              <EmptyState
+                icon="—"
+                title={busqueda ? 'Sin coincidencias' : 'Sin estudiantes'}
+                subtitle={busqueda ? 'Ningún estudiante coincide con la búsqueda.' : 'Este grupo no tiene estudiantes activos.'}
+              />
+            )}
+          </div>
+
+          {/* Tabla de lecciones (respeta el filtro de estado) */}
+          <div style={{ marginBottom: 10, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+            <h2 style={aaH2Style}>Lecciones</h2>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              {leccionesVisibles.length} de {leccionesAll.length} lecciones · click en “Ver” para el detalle
             </span>
           </div>
 
-          {(data.lecciones || []).length ? (
-            <AALeccionesTabla lecciones={data.lecciones} onVer={setSelLec} />
+          {leccionesVisibles.length ? (
+            <AALeccionesTabla lecciones={leccionesVisibles} onVer={setSelLec} />
           ) : (
-            <EmptyState icon="—" title="Sin lecciones" subtitle="Este grupo/nivel no tiene lecciones registradas." />
+            <EmptyState
+              icon="—"
+              title="Sin lecciones"
+              subtitle={filtroEstado === 'todas'
+                ? 'Este grupo/nivel no tiene lecciones registradas.'
+                : 'Ninguna lección coincide con el filtro seleccionado.'}
+            />
           )}
         </React.Fragment>
       )}
@@ -541,10 +1156,23 @@ function AuditoriaAcademicaView() {
       {selLec && data && (
         <AADetalleLeccion
           leccion={selLec}
-          estudiantes={data.estudiantes || []}
+          estudiantes={estudiantesDrawer}
           matriz={data.matriz || {}}
           nivelColor={nivelColor}
           onClose={() => setSelLec(null)}
+        />
+      )}
+
+      {/* Drawer ficha académica del estudiante */}
+      {selEst && data && (
+        <AAFichaEstudiante
+          estudiante={selEst}
+          lecciones={leccionesAll}
+          matriz={data.matriz || {}}
+          grupoMeta={grupoMeta}
+          nivel={nivel}
+          nivelColor={nivelColor}
+          onClose={() => setSelEst(null)}
         />
       )}
     </div>
