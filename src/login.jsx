@@ -1,4 +1,4 @@
-/* global React, ReactDOM */
+/* global React, ReactDOM, setSesion */
 const { useState, useEffect, useRef } = React;
 
 // ── Apps Script endpoint (única fuente: data.jsx → window.APPS_SCRIPT_URL) ──
@@ -286,7 +286,9 @@ function App() {
     setAccount(acc);
     try {
       sessionStorage.setItem('an_just_logged_in', '1');
-      sessionStorage.setItem('an_usuario', JSON.stringify({
+      // SEC-003A: persistimos la sesión con la función compartida de data.jsx
+      // (setSesion → sessionStorage.an_usuario). Incluye token y expira.
+      setSesion({
         rol:             acc.rol,
         nombre:          acc.nombre,
         grupo:           acc.grupo  || acc.grupos?.[0] || null,
@@ -294,10 +296,12 @@ function App() {
         codigo:          acc.codigo || null,
         cedula:          acc.cedula || null,
         programa:        acc.programa || 'SIN_INA',
+        token:           acc.token  || null,
+        expira:          acc.expira || null,
         nivel_activo:    acc.nivel_activo   || null,
         estatus_activo:  acc.estatus_activo || null,
         niveles_estatus: acc.niveles_estatus || {},
-      }));
+      });
       const rolCampus = acc.rol === 'teacher' ? 'teacher'
                       : acc.rol === 'student' ? 'student'
                       : acc.rol === 'ventas'  ? 'ventas'
@@ -315,10 +319,18 @@ function App() {
     if (!usuario || !pass) { setErr('Completá ambos campos para continuar.'); return; }
     setLoading(true);
     try {
-      const url = `${SCRIPT_URL_LOGIN}?fn=getUsuario`
-                + `&usuario=${encodeURIComponent(usuario.trim().toLowerCase())}`
-                + `&clave=${encodeURIComponent(pass)}`;
-      const res  = await fetch(url);
+      // SEC-003A: iniciarSesion por POST. El usuario y la contraseña viajan en
+      // el body, NUNCA en la URL. text/plain;charset=utf-8 evita el preflight
+      // CORS de Apps Script (lee el body en e.postData.contents).
+      const res  = await fetch(SCRIPT_URL_LOGIN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          fn: 'iniciarSesion',
+          usuario: usuario.trim().toLowerCase(),
+          clave: pass,
+        }),
+      });
       const data = await res.json();
 
       if (!data.ok) {
@@ -327,10 +339,17 @@ function App() {
         return;
       }
 
-      // Multi-grupo → mostrar selector
+      // Multi-grupo → mostrar selector (conservando token/expira para el cierre).
       if (data.multiGrupo && Array.isArray(data.grupos) && data.grupos.length > 0) {
         setLoading(false);
-        setPendingMulti({ nombre: data.nombre, rol: data.rol, usuario: data.usuario, grupos: data.grupos });
+        setPendingMulti({
+          nombre: data.nombre,
+          rol:    data.rol,
+          cedula: (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
+          grupos: data.grupos,
+          token:  data.token  || null,
+          expira: data.expira || null,
+        });
         return;
       }
 
@@ -339,8 +358,10 @@ function App() {
         nombre:   data.nombre,
         grupo:    data.grupo  || null,
         codigo:   data.codigo || null,
-        cedula:   (data.usuario || usuario || '').toString().trim().toLowerCase() || null,
+        cedula:   (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
         programa: data.programa || 'SIN_INA',
+        token:    data.token  || null,
+        expira:   data.expira || null,
       });
     } catch (e) {
       setLoading(false);
@@ -356,8 +377,10 @@ function App() {
       nombre:   m.nombre,
       grupo:    g.grupo,
       codigo:   g.codigo || null,
-      cedula:   (m.usuario || usuario || '').toString().trim().toLowerCase() || null,
+      cedula:   m.cedula || (usuario || '').toString().trim().toLowerCase() || null,
       programa: g.programa || 'SIN_INA',
+      token:    m.token  || null,
+      expira:   m.expira || null,
     });
   };
 

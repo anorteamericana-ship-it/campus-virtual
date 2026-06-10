@@ -331,23 +331,15 @@ function App() {
   );
 }
 
-// ── Bootstrap de sesión demo (solo preview) ──────────────────────────────
-// Con ?demo=1 (o ?demo=admin / ?demo=super) y sin sesión real, inyectamos una
-// identidad de administrador para poder revisar el campus sin login. En
-// producción (sin el flag) NO corre: el guard de sesión real se mantiene.
-function bootstrapDemoSesion() {
-  try {
-    const q = new URLSearchParams(window.location.search);
-    const demo = q.get('demo');
-    if (!demo) return;
-    if (getSesion()) return;
-    const rol = demo === 'super' ? 'superadmin' : 'admin';
-    setSesion({ rol, nombre: 'Leonardo Salazar', cedula: '108990001' });
-  } catch (_) {}
-}
+// ── (SEC-001) Bypass de sesión por URL ELIMINADO ─────────────────────────
+// Se removió por completo la función bootstrapDemoSesion() y su llamada.
+// Esa función leía ?demo=… (incl. ?demo=super / ?demo=admin / ?demo=1) y,
+// sin sesión real, fabricaba una identidad administrativa vía setSesion().
+// Ya NO existe ningún camino que cree una sesión, usuario, cédula o rol
+// admin/superadmin a partir de parámetros de URL. Un visitante sin sesión
+// válida cae en el guard normal (ensureSesion → redirección a login.html).
 
 // Guard de sesión ANTES de render. Si falta, no montamos el árbol.
-bootstrapDemoSesion();
 if (ensureSesion()) {
   const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(<App />);

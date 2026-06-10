@@ -658,11 +658,64 @@ function getSesion() {
 // Reemplaza la sesión activa (la usa el "Modo prueba" del superadmin
 // para transformarse en otra identidad, y también para restaurar la
 // sesión original al salir de modo prueba).
+//
+// SEC-003A: el objeto de sesión ahora puede incluir `token` y `expira`
+// (devueltos por iniciarSesion). No hay tratamiento especial: se guardan
+// como cualquier otro campo dentro de an_usuario en sessionStorage. NUNCA
+// en localStorage ni en cookies.
 function setSesion(u) {
   try {
     if (!u) sessionStorage.removeItem('an_usuario');
     else    sessionStorage.setItem('an_usuario', JSON.stringify(u));
   } catch (_) {}
+}
+
+// ── SEC-003A: token de sesión ────────────────────────────────────────────
+// Devuelve el token de la sesión actual (string) o '' si no hay sesión /
+// token. El token vive dentro de an_usuario (sessionStorage), nunca suelto
+// ni en localStorage.
+function getSessionToken() {
+  const u = getSesion();
+  return (u && typeof u.token === 'string') ? u.token : '';
+}
+
+// Valida la sesión contra el backend (Apps Script v4.38.0, fn=validarSesion).
+// NO redirige automáticamente todavía: solo devuelve la respuesta del backend
+// para que el caller decida. Sin token → { ok:false, error:'sesion_requerida' }.
+async function validarSesionServidor() {
+  const token = getSessionToken();
+  if (!token) return { ok: false, error: 'sesion_requerida' };
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'validarSesion', token }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
+// Cierra la sesión en el backend (fn=cerrarSesion) y SIEMPRE limpia la
+// sesión local al final, aunque la red falle. No lanza errores que puedan
+// bloquear el logout.
+async function cerrarSesionServidor() {
+  const token = getSessionToken();
+  try {
+    if (token) {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fn: 'cerrarSesion', token }),
+      });
+    }
+  } catch (_) {
+    // Ignoramos cualquier fallo de red: el logout local debe completarse.
+  } finally {
+    setSesion(null);
+  }
+  return { ok: true };
 }
 
 // ── Data: estructura del programa (NO datos personales) ──────────────────
@@ -707,6 +760,7 @@ Object.assign(window, {
   nombreAmable,
   APPS_SCRIPT_URL,
   getSesion, setSesion,
+  getSessionToken, validarSesionServidor, cerrarSesionServidor,
   fetchCalendarioDocente, fetchTareasPendientesDocente,
   fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
   fetchDocentesAtrasados,
