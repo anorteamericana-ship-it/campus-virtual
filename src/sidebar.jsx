@@ -380,6 +380,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'supervision', label: 'Supervisión', icon: 'bell' },
+    { id: 'auditoria_academica', label: 'Auditoría Académica', icon: 'grades' },
     { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
     { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },

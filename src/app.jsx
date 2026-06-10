@@ -4,7 +4,8 @@
    ExamenOralView, GruposView, CalificarView, AsistenciaView,
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
-   VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView */
+   VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
+   AuditoriaAcademicaView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -285,6 +286,7 @@ function App() {
       matriculas:    <MatriculasView onNavigate={navigateTo} />,
       dashboard:    <AdminDashboard setActive={setActive} />,
       supervision:  <PanelAdminSupervision />,
+      auditoria_academica: <AuditoriaAcademicaView />,
       suspensiones: <PanelSuspensiones />,
       solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,

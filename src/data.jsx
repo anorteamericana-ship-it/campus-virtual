@@ -172,6 +172,29 @@ async function fetchEditarAsistenciaNotaCerrada(payload) {
   }
 }
 
+// ── Auditoría Académica (solo lectura) ────────────────────────────────
+// Supervisión admin/superadmin por grupo + nivel. Requiere token de sesión
+// (el backend valida autorización). NO modifica datos: es de pura lectura.
+async function fetchAuditoriaAcademicaGrupo({ cod_grupo, nivel } = {}) {
+  const token = getSessionToken();
+  if (!token) return { ok: false, error: 'sesion_requerida' };
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        fn: 'getAuditoriaAcademicaGrupo',
+        token,
+        cod_grupo,
+        nivel,
+      }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── Suspensiones de lecciones (v4.23.x) ──────────────────────────────────
 // Flujo de 2 pasos: docente solicita → admin/superadmin aprueba o rechaza.
 // Suspender NO elimina lecciones: empuja el calendario una fecha hábil.
@@ -774,6 +797,7 @@ Object.assign(window, {
   fetchLeccionCerradaDetalle,
   fetchEditarRetroPCCerrada,
   fetchEditarAsistenciaNotaCerrada,
+  fetchAuditoriaAcademicaGrupo,
   fetchSolicitarSuspension,
   fetchGetSolicitudesSuspension,
   fetchResolverSolicitudSuspension,
