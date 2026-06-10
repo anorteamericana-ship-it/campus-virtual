@@ -475,9 +475,20 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
           <div className="sb-user-t2">{userRole}</div>
         </div>
         <button
-          onClick={() => {
+          onClick={async () => {
+            // SEC-003C: cerrar la sesión en el servidor antes de redirigir.
+            // cerrarSesionServidor() ya limpia an_usuario (setSesion(null))
+            // en su finally, aunque la red falle — no lo duplicamos aquí.
             try {
-              sessionStorage.removeItem('an_usuario');
+              if (typeof window.cerrarSesionServidor === 'function') {
+                await window.cerrarSesionServidor();
+              } else {
+                // Fallback local si la función no estuviera disponible.
+                sessionStorage.removeItem('an_usuario');
+              }
+            } catch {}
+            // Claves auxiliares que cerrarSesionServidor() no toca.
+            try {
               sessionStorage.removeItem('an_just_logged_in');
               sessionStorage.removeItem('an_modo_prueba');
               localStorage.removeItem('an_role');

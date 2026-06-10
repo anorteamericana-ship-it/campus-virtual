@@ -1771,8 +1771,17 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
             volvé a iniciar sesión desde <code>login.html</code>.
           </div>
           <button
-            onClick={() => {
-              try { sessionStorage.removeItem('an_usuario'); } catch(_) {}
+            onClick={async () => {
+              // SEC-003C: cerrar la sesión en el servidor antes de redirigir.
+              // cerrarSesionServidor() limpia an_usuario en su finally,
+              // aunque la red falle.
+              try {
+                if (typeof window.cerrarSesionServidor === 'function') {
+                  await window.cerrarSesionServidor();
+                } else {
+                  sessionStorage.removeItem('an_usuario');
+                }
+              } catch(_) {}
               window.location.href = 'login.html';
             }}
             className="btn btn-primary"
