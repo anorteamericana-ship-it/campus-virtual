@@ -181,11 +181,20 @@ function mapResumenVentas(rs, lista) {
 // ── ENDPOINTS GET ─────────────────────────────────────────────────────────
 // Fase 3: UNA sola llamada trae todo el panel del vendedor (semana, embudo,
 // prospectos ya filtrados+en una etapa, grupos con cupo). Reemplaza el viejo
-// par getProspectosAsesor + getResumenVentas. POST sin body (query params) →
-// no dispara preflight CORS. Los prospectos vienen en MINÚSCULAS, sin normalizar.
+// par getProspectosAsesor + getResumenVentas. FIX-VENTAS-001: ahora el fn y el
+// asesor viajan en el body JSON (text/plain) — antes era POST sin body, lo que
+// dejaba e.postData undefined en Apps Script ("Cannot read ... 'contents'").
+// text/plain;charset=utf-8 sigue esquivando el preflight CORS. Los prospectos
+// vienen en MINÚSCULAS, sin normalizar.
 async function getDashboardVentas(asesor) {
-  const url = `${SCRIPT_URL_V}?fn=getDashboardVentas&asesor=${encodeURIComponent(asesor || '')}`;
-  const res = await fetch(url, { method: 'POST' });
+  const res = await fetch(SCRIPT_URL_V, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn: 'getDashboardVentas',
+      asesor: asesor || '',
+    }),
+  });
   return await res.json();
 }
 // Adaptador LIGERO (no normalizador): los campos ya vienen en minúsculas; solo
