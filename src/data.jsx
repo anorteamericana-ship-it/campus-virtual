@@ -108,8 +108,9 @@ async function fetchMaterialLeccion({ nivel, leccion, riel, rol, codigo, cod_gru
   }
 }
 
-// ── Edición SUPERADMIN de lección CERRADA (v4.22.5) ──────────────────────
-// Poder restringido. Backend exige confirmacion_superadmin === 'LEONARDO_SI'.
+// ── Edición SUPERADMIN de lección CERRADA (v4.38.2) ──────────────────────
+// Poder restringido. Backend exige un token de sesión válido de superadmin
+// (enviado en el body como `token`). Sin token, no se llama al backend.
 // La lección permanece CERRADA tras editar (no se reabre, no se recalcula).
 
 // (Lectura) Detalle de lección cerrada para precargar el modal de edición:
@@ -134,13 +135,15 @@ async function fetchLeccionCerradaDetalle({ cod_grupo, nivel, leccion, riel } = 
 }
 
 async function fetchEditarRetroPCCerrada(payload) {
+  const token = getSessionToken();
+  if (!token) return { ok: false, error: 'sesion_requerida' };
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         fn: 'editarRetroPCCerrada',
-        confirmacion_superadmin: 'LEONARDO_SI',
+        token,
         ...payload,
       }),
     });
@@ -151,13 +154,15 @@ async function fetchEditarRetroPCCerrada(payload) {
 }
 
 async function fetchEditarAsistenciaNotaCerrada(payload) {
+  const token = getSessionToken();
+  if (!token) return { ok: false, error: 'sesion_requerida' };
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         fn: 'editarAsistenciaNotaCerrada',
-        confirmacion_superadmin: 'LEONARDO_SI',
+        token,
         ...payload,
       }),
     });

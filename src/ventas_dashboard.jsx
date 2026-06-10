@@ -99,6 +99,25 @@ function VentasApp() {
     setFiltro(f => ({ ...f, etapa: f.etapa === key ? '' : key }));
   }, []);
 
+  // SEC-003C-VENTAS: cerrar sesión real. Revoca la sesión en el servidor
+  // (fn=cerrarSesion vía cerrarSesionServidor → ACTIVA=FALSE, CIERRE_MOTIVO=LOGOUT)
+  // y luego redirige al login. cerrarSesionServidor() limpia an_usuario en su
+  // finally aunque la red falle; el fallback local sólo aplica si no existiera.
+  const cerrarSesion = useCallback(async () => {
+    try {
+      if (typeof window.cerrarSesionServidor === 'function') {
+        await window.cerrarSesionServidor();
+      } else {
+        sessionStorage.removeItem('an_usuario');
+      }
+    } catch (_) {}
+    try {
+      sessionStorage.removeItem('an_just_logged_in');
+      localStorage.removeItem('an_role');
+    } catch (_) {}
+    window.location.href = 'login.html';
+  }, []);
+
   const cargando = dash === null && !errorCarga;
   const inicial = (window.nombrePila(usuario.nombre) || 'U').charAt(0).toUpperCase();
 
@@ -134,6 +153,13 @@ function VentasApp() {
               <div className="vx-user-role">{esSuper ? 'Superadmin' : 'Asesor'}</div>
             </div>
           </div>
+          <button
+            className="vx-btn vx-btn-ghost"
+            style={{ marginLeft: 12, flexShrink: 0 }}
+            title="Cerrar sesión"
+            onClick={cerrarSesion}>
+            Cerrar sesión
+          </button>
         </div>
       </header>
 
