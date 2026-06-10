@@ -334,11 +334,13 @@ function CalificarView({ toast }) {
     }
 
     try {
+      const token = window.getSessionToken ? window.getSessionToken() : '';
       const resultados = await Promise.allSettled(
         estudiantesConNota.map(r =>
           fetch(`${SCRIPT_URL_TV}?fn=registrarNotaEstatus`, {
             method: 'POST',
             body: JSON.stringify({
+              token,
               cod_estudiante: r.code,
               grupo:          codGrupo,
               nivel:          (codGrupo.split('-')[0] || 'B1').toUpperCase(),
@@ -522,6 +524,7 @@ function AsistenciaView({ toast }) {
     const hoy = new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g,'/');
 
     const body = {
+      token:          window.getSessionToken ? window.getSessionToken() : '',
       cod_grupo:      codGrupo,
       leccion_num:    lec,
       fecha_leccion:  hoy,

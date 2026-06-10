@@ -205,7 +205,7 @@ async function fetchSolicitarSuspension(payload) {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn: 'solicitarSuspension', ...payload }),
+      body: JSON.stringify({ fn: 'solicitarSuspension', token: getSessionToken(), ...payload }),
     });
     return await res.json();
   } catch (e) {
@@ -245,7 +245,7 @@ async function postCerrarLeccionCompleta(body) {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn: 'cerrarLeccionCompleta', ...body }),
+      body: JSON.stringify({ fn: 'cerrarLeccionCompleta', token: getSessionToken(), ...body }),
     });
     return await res.json();
   } catch (e) {
