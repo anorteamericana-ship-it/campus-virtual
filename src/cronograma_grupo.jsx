@@ -150,6 +150,41 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
   const cargarGrupos = React.useCallback(() => {
     setLoadingGrupos(true); setErrorGrupos(null);
+
+    // FIX STUDENT-PANEL-001 (R1/R2): el ESTUDIANTE nunca pide getGruposActivos
+    // (endpoint administrativo → no_autorizado). Usa únicamente su propio grupo
+    // de la sesión y lo describe con getGrupoInfo (endpoint permitido al
+    // estudiante). Así no se consultan todos los grupos ni datos de otros.
+    if (esStudent) {
+      const miGrupo = usr?.grupo || usr?.grupoActivo
+        || (Array.isArray(usr?.grupos) ? usr.grupos[0] : '') || '';
+      if (!miGrupo) {
+        setErrorGrupos('No se pudo cargar el calendario del grupo. Contactá a la administración.');
+        setLoadingGrupos(false);
+        return Promise.resolve();
+      }
+      return postCronoGrupo('getGrupoInfo', { cod_grupo: miGrupo })
+        .then(d => {
+          if (d?.ok) {
+            const nivelId = String(d.nivelId || d.levelId || usr?.nivel_activo || 'B1').toUpperCase();
+            setGruposReales([{
+              code: miGrupo,
+              nivelId,
+              nivel: NIVEL_LABEL_CG[nivelId] || nivelId,
+              docente: d.docente || d.teacherName || '—',
+              dias: d.dias || '',
+              programa: d.programa || usr?.programa || 'SIN_INA',
+              lecciones: Array.isArray(d.lecciones) ? d.lecciones : [],
+            }]);
+          } else {
+            // Nunca exponemos "no_autorizado" crudo al estudiante.
+            setErrorGrupos('No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.');
+          }
+        })
+        .catch(() => setErrorGrupos('No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.'))
+        .finally(() => setLoadingGrupos(false));
+    }
+
     return postCronoGrupo('getGruposActivos')
       .then(d => {
         if (d?.ok && Array.isArray(d.grupos)) {
@@ -160,7 +195,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       })
       .catch(e => setErrorGrupos('Error de red: ' + (e?.message || e)))
       .finally(() => setLoadingGrupos(false));
-  }, []);
+  }, [esStudent, usr]);
 
   React.useEffect(() => { cargarGrupos(); }, [cargarGrupos]);
 
@@ -246,14 +281,19 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         if (d?.ok && Array.isArray(d.lecciones)) {
           setLecciones(d.lecciones);
         } else {
-          // Sin mock fallback: ErrorState con el motivo del backend.
+          // Sin mock fallback. Para estudiante NUNCA mostramos el error crudo
+          // del backend (p. ej. no_autorizado): mensaje amigable + Reintentar.
           setLecciones([]);
-          setError(d?.error || 'No se pudieron cargar las lecciones.');
+          setError(esStudent
+            ? 'No pudimos cargar las lecciones de tu grupo. Intentá de nuevo o contactá a la administración.'
+            : (d?.error || 'No se pudieron cargar las lecciones.'));
         }
       })
       .catch(e => {
         setLecciones([]);
-        setError('No se pudieron cargar las lecciones. ' + (e?.message || ''));
+        setError(esStudent
+          ? 'No pudimos cargar las lecciones de tu grupo. Intentá de nuevo o contactá a la administración.'
+          : ('No se pudieron cargar las lecciones. ' + (e?.message || '')));
       })
       .finally(() => setLoading(false));
   }, [codGrupo, nivel, gruposReales]);

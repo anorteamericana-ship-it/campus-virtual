@@ -188,23 +188,6 @@ const DEMO_SUSPENSIONS = [
   { lessonN: 12, action:'suspended',   reason:'Feriado oficial',          by:'system', byName:'Sistema', detail:'11 Abril — Día de Juan Santamaría. Cascada aplicada.' },
 ];
 
-// ── I CAN sessions for the week — student-facing catalog ──────────────────
-const ICAN_CATALOG = [
-  { id:'ic-401', topic:'Apertura · Introducing Yourself', level:'Básico I · A1', teacher:'Sofía Méndez',  date:'vie 24 abr', time:'6:00–8:00 pm', cap:20, enrolled:13, status:'open',    language:'Español · Inglés' },
-  { id:'ic-402', topic:'Apertura · Introducing Yourself', level:'Básico I · A1', teacher:'Kevin Brown',   date:'sáb 25 abr', time:'9:00–11:00 am',cap:20, enrolled:17, status:'filling', language:'Inglés' },
-  { id:'ic-403', topic:'Family & Friends',                level:'Básico I · A1', teacher:'Laura Vargas',  date:'vie 24 abr', time:'8:30–10:30 pm',cap:20, enrolled:7,  status:'open',    language:'Español · Inglés' },
-  { id:'ic-404', topic:'Shopping Situations',             level:'Básico II · A2',teacher:'Daniel Castro', date:'mié 22 abr', time:'6:00–8:00 pm', cap:20, enrolled:11, status:'open',    language:'Inglés' },
-  { id:'ic-405', topic:'Giving Directions',               level:'Intermedio I',  teacher:'Ana Castro',    date:'jue 23 abr', time:'7:00–9:00 pm', cap:20, enrolled:9,  status:'open',    language:'Inglés' },
-];
-
-// I CAN sessions history — for admin/teacher tracking
-const ICAN_HISTORY = [
-  { id:'ic-380', topic:'Apertura · Introducing Yourself', teacher:'Sofía Méndez',  date:'2026-04-17', attended:14, cap:20, status:'given',     duration:2 },
-  { id:'ic-381', topic:'Apertura · Introducing Yourself', teacher:'Kevin Brown',   date:'2026-04-18', attended:18, cap:20, status:'given',     duration:2 },
-  { id:'ic-382', topic:'Family & Friends',                teacher:'Laura Vargas',  date:'2026-04-17', attended:6,  cap:20, status:'given',     duration:2 },
-  { id:'ic-383', topic:'At the Restaurant',               teacher:'Ricardo Arias', date:'2026-04-15', attended:0,  cap:20, status:'cancelled', duration:0, cancelledBy:'Ricardo Arias', cancelReason:'Enfermedad', detail:'Estudiantes redirigidos a sesión de Laura Vargas ese día.' },
-  { id:'ic-384', topic:'Shopping Situations',             teacher:'Daniel Castro', date:'2026-04-16', attended:11, cap:20, status:'given',     duration:2 },
-];
 
 // ── Format helpers ───────────────────────────────────────────────────────
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -228,7 +211,6 @@ Object.assign(window, {
   SYLLABUS_BY_LEVEL, SYLLABUS_BASICO_I,
   ICAN_SLOTS_AFTER,
   DEMO_GROUP, DEMO_SUSPENSIONS,
-  ICAN_CATALOG, ICAN_HISTORY,
   buildGroupSchedule, parseScheduleDays,
   fmtDate, fmtDateLong, MONTHS_ES, DAYS_ES_SHORT, DAYS_ES_LONG,
 });

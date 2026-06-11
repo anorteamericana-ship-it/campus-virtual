@@ -1,5 +1,5 @@
 /* global React, Icon, Chip, PageHeader, PRIORITY_BLOCK, SYLLABUS_BY_LEVEL, ICAN_SLOTS_AFTER,
-   ICAN_CATALOG, ICAN_HISTORY,
+   useUsuario, EmptyState, ErrorState, LoadingState,
    buildGroupSchedule, fmtDate, fmtDateLong, MONTHS_ES */
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
@@ -23,10 +23,23 @@ const LEVEL_LABEL = {
 };
 const DIAS_LABEL = { LM:'Lun/Mié', KJ:'Mar/Jue', LJ:'Lun/Jue', SA:'Sáb' };
 
+// FIX STUDENT-PANEL-001-B: inferir el nivel (levelId) desde el código del grupo
+// (B1/B2/I1/I2) cuando el backend no devuelve levelId. Evita caer siempre en
+// Básico I y mostrar libro/datos equivocados para B2/I1/I2.
+function inferirLevelIdDesdeGrupo(codigo = '') {
+  const s = String(codigo || '').toUpperCase();
+  if (s.includes('B1')) return 'b1';
+  if (s.includes('B2')) return 'b2';
+  if (s.includes('I1')) return 'i1';
+  if (s.includes('I2')) return 'i2';
+  return '';
+}
+
 // Hook: lee usuario de session, llama getGrupoInfo, devuelve { grupoInfo, codGrupo, grupo, loading }
 function useGroupFromSession() {
   const [grupoInfo, setGrupoInfo] = React.useState(null);
   const [loading, setLoading]     = React.useState(true);
+  const [error, setError]         = React.useState(''); // '' | 'autoriz' | 'fallo' | 'sin_grupo'
   const codGrupo = React.useMemo(() => {
     // DOCENTE-002-A: para docente, el grupo activo manda. Para estudiante no
     // existe grupoActivo, así que cae a su grupo (mismo comportamiento previo).
@@ -38,12 +51,24 @@ function useGroupFromSession() {
     return usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0] || '';
   }, []);
 
-  React.useEffect(() => {
-    if (!codGrupo) { setLoading(false); return; }
+  // FIX STUDENT-PANEL-001 (R4): getGrupoInfo es el endpoint permitido al
+  // estudiante (POST seguro, token en el body via postSyllabus). Capturamos el
+  // error para mostrar un mensaje amigable + Reintentar en vez de quedarnos
+  // colgados o exponer "no_autorizado" crudo.
+  const cargar = React.useCallback(() => {
+    if (!codGrupo) { setLoading(false); setError('sin_grupo'); return; }
+    setLoading(true); setError('');
     postSyllabus('getGrupoInfo', { cod_grupo: codGrupo })
-      .then(d => { if (d.ok) setGrupoInfo(d); })
+      .then(d => {
+        if (d && d.ok) { setGrupoInfo(d); return; }
+        const raw = String((d && d.error) || '').toLowerCase();
+        setError(raw.includes('autoriz') ? 'autoriz' : 'fallo');
+      })
+      .catch(() => setError('fallo'))
       .finally(() => setLoading(false));
   }, [codGrupo]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
 
   // Construye el objeto que espera buildGroupSchedule
   const grupo = React.useMemo(() => {
@@ -52,14 +77,14 @@ function useGroupFromSession() {
     const diasCode = (partes[1] || 'LM').replace(/\d/g, '').toUpperCase();
     return {
       code:         codGrupo,
-      levelId:      grupoInfo.levelId || 'b1',
+      levelId:      grupoInfo.levelId || inferirLevelIdDesdeGrupo(codGrupo) || 'b1',
       scheduleDays: DIAS_LABEL[diasCode] || 'Lun/Mié',
       startDate:    grupoInfo.startDate,
       teacher:      grupoInfo.teacherName || '',
     };
   }, [grupoInfo, codGrupo]);
 
-  return { grupoInfo, grupo, codGrupo, loading };
+  return { grupoInfo, grupo, codGrupo, loading, error, reload: cargar };
 }
 
 // (SyllabusLoadingState eliminado — usa <LoadingState/> de primitives.jsx.)
@@ -75,7 +100,7 @@ function useScheduleState(grupoInfo, grupo) {
   // Generamos schedule a partir del grupo real (suspensiones aún no implementadas → [])
   const schedule = React.useMemo(() => {
     if (!grupoInfo || !grupo?.startDate) return [];
-    return buildGroupSchedule(grupoInfo.levelId || 'b1', grupo, []);
+    return buildGroupSchedule(grupo?.levelId || grupoInfo.levelId || 'b1', grupo, []);
   }, [grupoInfo, grupo]);
   // Marcar done/next/future basándonos en HOY
   return React.useMemo(() => schedule.map(s => {
@@ -199,24 +224,61 @@ function PriorityBanner({ compact = false, onDismiss }) {
 // MATERIALES — sílabus completo, pestañas Actuales/Futuras/Completadas
 // ─────────────────────────────────────────────────────────────────────────
 function MaterialesView({ initialLesson = null } = {}) {
-  const { grupoInfo, grupo, loading } = useGroupFromSession();
+  const { grupoInfo, grupo, loading, error, reload } = useGroupFromSession();
   const schedule = useScheduleState(grupoInfo, grupo);
-  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
-  if (!grupoInfo || !grupo) return <LoadingState title="No se encontró el grupo del estudiante." />;
+
+  // FIX STUDENT-PANEL-001-B (R2): TODOS los hooks van ANTES de cualquier return
+  // condicional (Rules of Hooks). Antes [tab]/[open]/useEffect vivían debajo de
+  // los returns de loading/error, rompiendo el conteo de hooks entre renders.
   const [tab, setTab] = React.useState('calendario'); // calendario | futuras | completadas | todas
   const [open, setOpen] = React.useState(initialLesson);
-
-  // If opened with a lesson, jump to "todas" tab so the row is in view
   React.useEffect(() => {
     if (initialLesson) {
       setTab('todas');
-      // scroll the detail into view after next paint
       setTimeout(() => {
         const el = document.getElementById(`lesson-row-${initialLesson}`);
         if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       }, 50);
     }
   }, [initialLesson]);
+
+  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
+  if (error || !grupoInfo || !grupo) {
+    const msg = error === 'autoriz'
+      ? 'No pudimos cargar tus materiales. Verificá tu sesión o contactá a la administración.'
+      : 'No pudimos cargar los materiales de tu grupo. Intentá de nuevo o contactá a la administración.';
+    return (
+      <div>
+        <PageHeader
+          kicker="Material del curso"
+          title={<>Materiales</>}
+          sub="Todo el material de tu nivel en un solo lugar"
+        />
+        <ErrorState message={msg} onRetry={reload} />
+      </div>
+    );
+  }
+
+  // FIX STUDENT-PANEL-001-B (R4): nivel/material DINÁMICOS desde el grupo real
+  // del estudiante. Inferimos el nivel del código del grupo cuando el backend no
+  // manda levelId; NUNCA caemos por defecto a Básico I.
+  const levelId      = String(
+    grupoInfo.levelId ||
+    grupo.levelId ||
+    inferirLevelIdDesdeGrupo(grupoInfo.codigo || grupoInfo.cod_grupo || grupo.code || grupo.grupo || '')
+  ).toLowerCase();
+  const syl          = SYLLABUS_BY_LEVEL[levelId] || {};
+  const nivelNombre  = grupoInfo.nivel || syl.levelName || 'Nivel actual';
+  const libro        = grupoInfo.libro || syl.book || 'Libro del curso';
+  const cefr         = syl.cefr || '';
+  const programa     = grupoInfo.programa || grupo.programa || '';
+  const esINA        = programa === 'INA' || programa === 'CON_INA';
+  const totalLecc    = syl.totalLessons || 32;
+  const totalHoras   = syl.totalHours || null;
+  const moduleHoras  = syl.moduleHours || null;
+  const icanHoras    = syl.icanHours || null;
+  const plataforma   = syl.platform || 'Zoom';
+  const objetivo     = syl.objective || '';
 
   const filter = (s) => {
     if (tab === 'todas') return true;
@@ -230,19 +292,19 @@ function MaterialesView({ initialLesson = null } = {}) {
   return (
     <div>
       <PageHeader
-        kicker="Sílabus oficial del nivel"
-        title={<>Materiales · <em>Básico I</em></>}
-        sub="Interchange Intro (5ª ed.) · 32 lecciones · A1 — todo el material del nivel en un solo lugar"
+        kicker="Material del curso"
+        title={<>Materiales · <em>{nivelNombre}</em></>}
+        sub={`${libro} · ${totalLecc} lecciones${cefr ? ' · ' + cefr : ''} — todo el material de tu nivel en un solo lugar`}
         right={
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-            <Chip tone="navy">INA 2519</Chip>
-            <Chip tone="gold">A1 · MCER</Chip>
+            {esINA && <Chip tone="navy">INA 2519</Chip>}
+            {cefr && <Chip tone="gold">{cefr} · MCER</Chip>}
           </div>
         }
       />
 
-      {/* Banner prioridad INA */}
-      <PriorityBanner />
+      {/* Banner prioridad INA — solo para programa INA */}
+      {esINA && <PriorityBanner />}
 
       {/* Resumen del nivel */}
       <div className="card" style={{ padding:'20px 24px', marginBottom:18 }}>
@@ -252,29 +314,32 @@ function MaterialesView({ initialLesson = null } = {}) {
               Objetivo general
             </div>
             <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4, lineHeight:1.5 }}>
-              {SYLLABUS_BY_LEVEL.b1.objective}
+              {objetivo || 'Objetivo del nivel disponible en el planeamiento del curso.'}
             </div>
           </div>
           <div>
             <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Libro</div>
             <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:3, lineHeight:1.2 }}>
-              Interchange Intro
+              {libro}
             </div>
-            <div style={{ fontSize:11, color:'var(--ink-3)' }}>Cambridge · 5ª ed.</div>
+            {cefr && <div style={{ fontSize:11, color:'var(--ink-3)' }}>Nivel {cefr} · MCER</div>}
           </div>
           <div>
             <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Duración</div>
             <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:3 }}>
-              128 h
+              {totalHoras ? `${totalHoras} h` : '—'}
             </div>
-            <div style={{ fontSize:11, color:'var(--ink-3)' }}>96 módulo + 32 I CAN</div>
+            {(moduleHoras || icanHoras) && (
+              <div style={{ fontSize:11, color:'var(--ink-3)' }}>
+                {moduleHoras ? `${moduleHoras} módulo` : ''}{moduleHoras && icanHoras ? ' + ' : ''}{icanHoras ? `${icanHoras} I CAN` : ''}
+              </div>
+            )}
           </div>
           <div>
             <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Plataforma</div>
             <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:3 }}>
-              Zoom
+              {plataforma}
             </div>
-            <div style={{ fontSize:11, color:'var(--ink-3)' }}>Contingencia: Meet</div>
           </div>
         </div>
       </div>
@@ -285,7 +350,7 @@ function MaterialesView({ initialLesson = null } = {}) {
           ['calendario', 'Calendario', schedule.length],
           ['futuras', 'Futuras', schedule.filter(s => s.computedStatus==='upcoming').length],
           ['completadas', 'Completadas', schedule.filter(s => s.computedStatus==='done' || s.computedStatus==='done-rescheduled').length],
-          ['todas', 'Todas las 32', 32],
+          ['todas', `Todas las ${totalLecc}`, totalLecc],
         ].map(([k,l,n]) => (
           <button key={k} className={`tab ${tab===k?'active':''}`} onClick={() => setTab(k)}>
             {l} <span style={{ opacity:0.5, marginLeft:6, fontSize:11, fontFamily:'var(--f-mono)' }}>{n}</span>
@@ -297,7 +362,7 @@ function MaterialesView({ initialLesson = null } = {}) {
         <InlineCalendar schedule={schedule} onOpenLesson={(n) => { setOpen(n); setTab('todas'); setTimeout(() => { const el = document.getElementById(`lesson-row-${n}`); if (el) el.scrollIntoView({ block:'center', behavior:'smooth' }); }, 60); }} />
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {filtered.map(s => <LessonRow key={s.n} lesson={s} isOpen={open===s.n} onToggle={() => setOpen(v => v===s.n ? null : s.n)} />)}
+          {filtered.map(s => <LessonRow key={s.n} lesson={s} libro={libro} esINA={esINA} isOpen={open===s.n} onToggle={() => setOpen(v => v===s.n ? null : s.n)} />)}
           {filtered.length === 0 && (
             <div className="card" style={{ padding:40, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
               No hay lecciones en esta categoría.
@@ -466,11 +531,11 @@ function InlineCalendar({ schedule, onOpenLesson }) {
   );
 }
 
-function LessonRow({ lesson, isOpen, onToggle }) {
-  return <LessonRowInner lesson={lesson} isOpen={isOpen} onToggle={onToggle} />;
+function LessonRow({ lesson, isOpen, onToggle, libro, esINA }) {
+  return <LessonRowInner lesson={lesson} isOpen={isOpen} onToggle={onToggle} libro={libro} esINA={esINA} />;
 }
 
-function LessonRowInner({ lesson, isOpen, onToggle }) {
+function LessonRowInner({ lesson, isOpen, onToggle, libro, esINA }) {
   const s = lesson;
   const statusMeta = {
     'done':              { label:'Completada',  color:'var(--ok)',         dot:'var(--ok)' },
@@ -592,9 +657,9 @@ function LessonRowInner({ lesson, isOpen, onToggle }) {
             {[
               { t:'Planeamiento — Estudiante', tone:'red',  type:'PDF', sub:'~3 pp' },
               { t:'Planeamiento — Docente',    tone:'granate', type:'PDF', sub:'uso interno' },
-              s.kind === 'lesson' && { t:`Libro · ${s.unit} (páginas asignadas)`, tone:'navy', type:'PDF', sub:'Interchange Intro' },
+              s.kind === 'lesson' && { t:`Libro · ${s.unit} (páginas asignadas)`, tone:'navy', type:'PDF', sub: libro || 'Libro del curso' },
               s.kind === 'lesson' && { t:'Audio Self-Study', tone:'navy', type:'MP3', sub:'~8 min' },
-              s.kind === 'exam-oral' && { t:'Rúbrica oficial', tone:'granate', type:'PDF', sub:'INA 2519' },
+              s.kind === 'exam-oral' && { t:'Rúbrica oficial', tone:'granate', type:'PDF', sub: esINA ? 'INA 2519' : 'Evaluación oral' },
               s.kind === 'exam-written' && { t:'Formulario FORMS / Drive', tone:'granate', type:'Link', sub:'evaluación' },
             ].filter(Boolean).map((m, i) => (
               <div key={i} style={{
@@ -643,15 +708,28 @@ function LessonRowInner({ lesson, isOpen, onToggle }) {
 // CALENDARIO — cronograma del grupo con suspender/recuperar
 // ─────────────────────────────────────────────────────────────────────────
 function CalendarioView() {
-  const { grupoInfo, grupo, codGrupo, loading } = useGroupFromSession();
+  const { grupoInfo, grupo, codGrupo, loading, error, reload } = useGroupFromSession();
   const schedule = useScheduleState(grupoInfo, grupo);
-  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
-  if (!grupoInfo || !grupo) return <LoadingState title="No se encontró el grupo del estudiante." />;
-  const nivelLbl = LEVEL_LABEL[grupoInfo.levelId] || grupoInfo.levelId || '—';
+  // FIX STUDENT-PANEL-001-B (R2): TODOS los hooks antes de cualquier return
+  // condicional (Rules of Hooks). Antes vivían debajo de los returns de loading
+  // y error, rompiendo el conteo de hooks entre renders.
   const [month, setMonth] = React.useState(TODAY.getMonth());
   const [year, setYear] = React.useState(TODAY.getFullYear());
   const [selectedLesson, setSelectedLesson] = React.useState(null);
   const [showSuspendModal, setShowSuspendModal] = React.useState(null);
+  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
+  if (error || !grupoInfo || !grupo) {
+    const msg = error === 'autoriz'
+      ? 'No pudimos cargar el calendario de tu grupo. Verificá tu sesión o contactá a la administración.'
+      : 'No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.';
+    return (
+      <div>
+        <PageHeader kicker="Cronograma del grupo" title={<>Mi <em>Calendario</em></>} />
+        <ErrorState message={msg} onRetry={reload} />
+      </div>
+    );
+  }
+  const nivelLbl = LEVEL_LABEL[grupoInfo.levelId] || grupoInfo.levelId || '—';
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -958,146 +1036,186 @@ function SuspendModal({ lesson, onClose }) {
 // I CAN VIEW — catálogo + historial + alertas de cupo
 // ─────────────────────────────────────────────────────────────────────────
 function ICANViewNew({ toast, role = 'student' }) {
-  const [tab, setTab] = React.useState('proximas'); // proximas | historial
+  // FIX STUDENT-PANEL-001 (R5): Club I CAN SIN datos quemados.
+  // Antes esta vista se alimentaba de ICAN_CATALOG / ICAN_HISTORY (días, cupos,
+  // horarios y temas inventados). Ahora consulta ÚNICAMENTE el estado real del
+  // estudiante logueado vía getICANEstudiante (POST seguro, token en el body).
+  // El Club I CAN es de asistencia flexible: no inventamos agenda.
+  const usr = (typeof useUsuario === 'function') ? useUsuario() : null;
+  const codigo = usr?.codigo || usr?.cedula || '';
 
-  const alerts = ICAN_CATALOG.filter(s => s.enrolled >= 15);
+  const [data, setData]   = React.useState(null); // null = cargando
+  const [error, setError] = React.useState('');   // '' = sin error
+
+  const cargar = React.useCallback(() => {
+    if (!codigo) { setData({}); setError(''); return; }
+    setData(null); setError('');
+    postSyllabus('getICANEstudiante', { codigo })
+      .then(d => {
+        if (d && d.ok) { setData(d); return; }
+        const raw = String((d && d.error) || '').toLowerCase();
+        if (raw.includes('autoriz')) {
+          setError('No tenés autorización para ver esta información. Si creés que es un error, contactá a la administración.');
+        } else if (raw) {
+          setError('No pudimos cargar tu Club I CAN. Intentá de nuevo.');
+        }
+        setData({});
+      })
+      .catch(() => { setError('No pudimos cargar tu Club I CAN. Intentá de nuevo.'); setData({}); });
+  }, [codigo]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const header = (
+    <PageHeader
+      kicker="Club de conversación"
+      title={<>Club <em>I CAN</em></>}
+      sub="Asistencia flexible · sesiones de conversación sin costo para estudiantes matriculados"
+      right={<Chip tone="gold">Asistencia flexible</Chip>}
+    />
+  );
+
+  // Sin sesión activa
+  if (!usr) {
+    return (
+      <div>
+        {header}
+        <EmptyState
+          icon="👤"
+          title="No hay sesión activa"
+          subtitle="Ingresá con tu código de estudiante para ver tu Club I CAN."
+        />
+      </div>
+    );
+  }
+
+  // Cargando
+  if (data === null) {
+    return (
+      <div>
+        {header}
+        <LoadingState title="Cargando tu Club I CAN…" />
+      </div>
+    );
+  }
+
+  // Error controlado (nunca texto técnico crudo)
+  if (error) {
+    return (
+      <div>
+        {header}
+        <ErrorState message={error} onRetry={cargar} />
+      </div>
+    );
+  }
+
+  // Solo mostramos lo que el backend devuelve. NO inventamos días, cupos,
+  // horarios ni temas.
+  const asistidas  = (typeof data.asistidas  === 'number') ? data.asistidas  : null;
+  const requeridas = (typeof data.requeridas === 'number') ? data.requeridas : null;
+  const sesiones   = Array.isArray(data.sesiones)  ? data.sesiones
+                   : Array.isArray(data.historial) ? data.historial
+                   : Array.isArray(data.registros) ? data.registros
+                   : [];
+
+  const sinDatos = asistidas == null && requeridas == null && sesiones.length === 0;
+  if (sinDatos) {
+    return (
+      <div>
+        {header}
+        <EmptyState
+          icon="🗣️"
+          title="Aún no hay registros de Club I CAN para tu usuario"
+          subtitle="El Club I CAN es de asistencia flexible. Cuando participes en una sesión, tu registro aparecerá acá."
+        />
+      </div>
+    );
+  }
+
+  const pct = (asistidas != null && requeridas)
+    ? Math.min(100, Math.round((asistidas / requeridas) * 100))
+    : null;
 
   return (
     <div>
-      <PageHeader
-        kicker="Club de conversación"
-        title={<>Club <em>I CAN</em></>}
-        sub="Sesiones semanales de conversación · sin costo para matriculados · cupo máx. 20 por sesión"
-        right={<Chip tone="gold">16 sesiones · abr 2026</Chip>}
-      />
+      {header}
 
-      {/* KPI strip */}
-      <div style={{
-        display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:18,
-      }}>
-        {[
-          ['Esta semana', ICAN_CATALOG.length, 'sesiones abiertas'],
-          ['Ocupación promedio', Math.round(ICAN_CATALOG.reduce((a,s)=>a+s.enrolled,0) / ICAN_CATALOG.length / 20 * 100) + '%', 'del cupo'],
-          ['Sesiones cerca del límite', alerts.length, '15+ inscritos'],
-          ['Dadas (mes)', ICAN_HISTORY.filter(h => h.status==='given').length, `de ${ICAN_HISTORY.length} programadas`],
-        ].map(([l,n,s], i) => (
-          <div key={i} className="card" style={{ padding:14 }}>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--ink-3)' }}>{l}</div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:28, fontWeight:500, color:'var(--an-navy-ink)', letterSpacing:'-0.025em', marginTop:3 }}>{n}</div>
-            <div style={{ fontSize:11, color:'var(--ink-3)' }}>{s}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Alertas de cupo */}
-      {alerts.length > 0 && (role === 'teacher' || role === 'admin') && (
-        <div style={{
-          padding:'14px 16px', marginBottom:16,
-          background:'color-mix(in srgb, var(--warn) 8%, white)',
-          border:'1px solid var(--warn)', borderRadius:'var(--r-md)',
-          display:'flex', gap:12, alignItems:'center',
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <div style={{ flex:1 }}>
-            <strong style={{ fontSize:13 }}>Atención — {alerts.length} sesión{alerts.length>1?'es':''} cerca del cupo máximo</strong>
-            <div style={{ fontSize:11, color:'var(--ink-2)', marginTop:2 }}>
-              Es momento de considerar abrir una sesión adicional con otro docente.
+      {/* Resumen real del estudiante */}
+      {(asistidas != null || requeridas != null) && (
+        <div className="card" style={{ padding:'20px 24px', marginBottom:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:20, alignItems:'center' }}>
+            <div style={{
+              width:64, height:64, borderRadius:'50%',
+              background:'color-mix(in srgb, var(--an-gold) 16%, white)',
+              color:'#6B4A00', display:'flex', flexDirection:'column',
+              alignItems:'center', justifyContent:'center', flexShrink:0,
+            }}>
+              <span style={{ fontFamily:'var(--f-serif)', fontSize:24, fontWeight:600, lineHeight:1 }}>
+                {asistidas != null ? asistidas : '—'}
+              </span>
+              {requeridas != null && (
+                <span style={{ fontSize:11, opacity:0.75, marginTop:2 }}>de {requeridas}</span>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>
+                Tus sesiones I CAN
+              </div>
+              <div style={{ fontFamily:'var(--f-serif)', fontSize:24, fontWeight:500, color:'var(--an-navy-ink)', marginTop:2 }}>
+                {asistidas != null
+                  ? `${asistidas} sesión${asistidas === 1 ? '' : 'es'} asistida${asistidas === 1 ? '' : 's'}`
+                  : 'Asistencia registrada'}
+              </div>
+              {requeridas != null && (
+                <div style={{ marginTop:10, height:6, background:'var(--bg-deep)', borderRadius:3, overflow:'hidden', maxWidth:360 }}>
+                  <div style={{ width:`${pct || 0}%`, height:'100%', background:'var(--an-gold)' }} />
+                </div>
+              )}
             </div>
           </div>
-          <button className="btn btn-primary" style={{ fontSize:12 }}>Abrir sesión adicional</button>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="tabs" style={{ marginBottom:14 }}>
-        <button className={`tab ${tab==='proximas'?'active':''}`} onClick={() => setTab('proximas')}>Próximas sesiones</button>
-        <button className={`tab ${tab==='historial'?'active':''}`} onClick={() => setTab('historial')}>Historial</button>
-      </div>
-
-      {tab === 'proximas' && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:12 }}>
-          {ICAN_CATALOG.map(s => {
-            const pct = (s.enrolled / s.cap) * 100;
-            const nearFull = s.enrolled >= 15;
-            return (
-              <div key={s.id} className="card" style={{
-                padding:16, cursor:'pointer',
-                borderLeft: nearFull ? '4px solid var(--warn)' : '4px solid var(--an-gold)',
-              }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-                  <Chip tone={s.level.includes('Básico I')?'gold':s.level.includes('Básico II')?'red':'navy'}>
-                    {s.level}
-                  </Chip>
-                  {nearFull && <Chip tone="red" dot>Casi lleno</Chip>}
-                </div>
-                <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, letterSpacing:'-0.015em', color:'var(--ink)' }}>
-                  {s.topic}
-                </div>
-                <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:3 }}>
-                  {s.date} · {s.time}
-                </div>
-                <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
-                  {s.teacher} · {s.language}
-                </div>
-
-                <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid var(--line)' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
-                    <span style={{ color:'var(--ink-3)' }}>Inscritos</span>
-                    <span style={{ fontWeight:700, color: nearFull ? 'var(--warn)' : 'var(--ink)' }}>
-                      {s.enrolled}/{s.cap}
-                    </span>
-                  </div>
-                  <div style={{ height:5, background:'var(--bg-deep)', borderRadius:3, overflow:'hidden' }}>
-                    <div style={{ width:`${pct}%`, height:'100%', background: nearFull ? 'var(--warn)' : 'var(--ok)' }} />
-                  </div>
-                </div>
-
-                <button className="btn" style={{ width:'100%', marginTop:10, background:'var(--an-gold)', color:'#6B4A00', border:'none', fontSize:12 }}>
-                  Reservar cupo
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {tab === 'historial' && (
+      {/* Historial real (solo si el backend lo provee) */}
+      {sesiones.length > 0 ? (
         <div className="card" style={{ padding:0, overflow:'hidden' }}>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)' }}>
+            <div className="card-title">Tus sesiones registradas</div>
+          </div>
           <table className="table-soft">
             <thead>
               <tr>
                 <th>Fecha</th>
                 <th>Tema</th>
                 <th>Docente</th>
-                <th style={{ textAlign:'center' }}>Asistencia</th>
-                <th>Estado</th>
-                <th>Detalle</th>
+                <th style={{ textAlign:'center' }}>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {ICAN_HISTORY.map(h => (
-                <tr key={h.id}>
-                  <td style={{ fontSize:12 }}>{fmtDate(new Date(h.date))}</td>
-                  <td style={{ fontSize:13, fontWeight:500 }}>{h.topic}</td>
-                  <td style={{ fontSize:12 }}>{h.teacher}</td>
-                  <td style={{ textAlign:'center', fontFamily:'var(--f-mono)', fontWeight:600 }}>
-                    {h.status === 'cancelled' ? '—' : `${h.attended}/${h.cap}`}
-                  </td>
-                  <td>
-                    {h.status === 'given' && <Chip tone="green" dot>Dada</Chip>}
-                    {h.status === 'cancelled' && <Chip tone="red">Cancelada</Chip>}
-                  </td>
-                  <td style={{ fontSize:11, color:'var(--ink-3)' }}>
-                    {h.status === 'cancelled' ? (
-                      <>Por {h.cancelledBy} · {h.cancelReason}</>
-                    ) : (
-                      <>{h.duration}h dadas</>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {sesiones.map((s, i) => {
+                const estado = String(s.estado || s.status || '').toLowerCase();
+                const cancelada = estado === 'cancelled' || estado === 'cancelada';
+                return (
+                  <tr key={s.id || i}>
+                    <td style={{ fontSize:12, color:'var(--ink-2)' }}>{s.fecha || s.date || '—'}</td>
+                    <td style={{ fontSize:13, fontWeight:500 }}>{s.tema || s.topic || '—'}</td>
+                    <td style={{ fontSize:12 }}>{s.docente || s.teacher || '—'}</td>
+                    <td style={{ textAlign:'center' }}>
+                      {cancelada ? <Chip tone="red">Cancelada</Chip> : <Chip tone="green" dot>Asistida</Chip>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div style={{
+          padding:'16px 20px', background:'var(--surface-2)',
+          border:'1px solid var(--line)', borderRadius:'var(--r-md)',
+          fontSize:13, color:'var(--ink-2)',
+        }}>
+          Tu asistencia al Club I CAN se contabiliza arriba. El detalle por sesión aparecerá acá cuando esté disponible.
         </div>
       )}
     </div>
@@ -1359,18 +1477,28 @@ function InfoProgramaView() {
   const cargar = React.useCallback(() => {
     setLoading(true);
     setError('');
-    fetch(`${window.APPS_SCRIPT_URL}?fn=getInfoGeneral`)
-      .then(r => r.json())
+    // FIX STUDENT-PANEL-001 (R3): getInfoGeneral por POST seguro (token en el
+    // body via postSyllabus), NUNCA GET con token en la URL. Si el backend aún
+    // no expone la función (p. ej. "Función GET/POST no reconocida"), mostramos
+    // un mensaje controlado en vez del texto técnico crudo.
+    postSyllabus('getInfoGeneral')
       .then(d => {
         if (d && d.ok) {
           const lista = Array.isArray(d.docs) ? d.docs.slice() : [];
           lista.sort((a, b) => (a.orden || 0) - (b.orden || 0));
           setDocs(lista);
+          return;
+        }
+        const raw = String((d && d.error) || '').toLowerCase();
+        if (raw.includes('no reconocida') || raw.includes('getinfogeneral') || raw.includes('not found')) {
+          setError('La información general del programa aún no está disponible.');
+        } else if (raw.includes('autoriz')) {
+          setError('No tenés autorización para ver esta información. Si creés que es un error, contactá a la administración.');
         } else {
-          setError((d && d.error) || 'No se pudo cargar la información del programa.');
+          setError('No pudimos cargar la información del programa. Intentá de nuevo.');
         }
       })
-      .catch(e => setError('Error de conexión: ' + (e?.message || e)))
+      .catch(() => setError('No pudimos cargar la información del programa. Intentá de nuevo.'))
       .finally(() => setLoading(false));
   }, []);
 
