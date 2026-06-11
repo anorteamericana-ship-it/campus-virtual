@@ -273,11 +273,10 @@ function adaptProspectoDash(p) {
 }
 
 async function getProspectosAsesor(asesor) {
-  let url = `${SCRIPT_URL_V}?fn=getProspectosAsesor`;
-  if (asesor) url += `&asesor=${encodeURIComponent(asesor)}`;
-  url += `&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`;
-  const res = await fetch(url);
-  const d = await res.json();
+  // FIX-VENTAS-DATA-POST-001: POST text/plain (postVentasData), sin token ni
+  // datos en la URL. El ?fn= se conserva solo como enrutador; token + asesor
+  // viajan en el body JSON. Mismo shape de respuesta que antes.
+  const d = await postVentasData('getProspectosAsesor', { asesor: asesor || '' });
   // Normalizar la forma MAYÚSCULAS del backend → minúsculas que espera la UI.
   if (d && Array.isArray(d.prospectos)) d.prospectos = d.prospectos.map(normalizarProspecto);
   return d;
@@ -301,11 +300,9 @@ async function getProspectoDetalle(cedula) {
   return d;
 }
 async function getResumenVentas(asesor) {
-  let url = `${SCRIPT_URL_V}?fn=getResumenVentas`;
-  if (asesor) url += `&asesor=${encodeURIComponent(asesor)}`;
-  url += `&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`;
-  const res = await fetch(url);
-  return await res.json();
+  // FIX-VENTAS-DATA-POST-001: POST text/plain (postVentasData), sin token ni
+  // datos en la URL. token + asesor viajan en el body JSON; ?fn= solo enruta.
+  return await postVentasData('getResumenVentas', { asesor: asesor || '' });
 }
 async function getGruposVentas(programa) {
   const res = await fetch(`${SCRIPT_URL_V}?fn=getGruposDisponibles&programa=${encodeURIComponent(programa)}`);
@@ -318,6 +315,19 @@ async function postVentas(payload) {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload),
+  });
+  return await res.json();
+}
+// FIX-VENTAS-DATA-POST-001: helper SEGURO para lecturas de ventas que antes iban
+// por GET con token/datos en la URL. El ?fn= se conserva como enrutador (el Apps
+// Script enruta por e.parameter.fn); el token se inyecta SIEMPRE en el body JSON
+// y NUNCA en la URL. text/plain;charset=utf-8 esquiva el preflight CORS.
+async function postVentasData(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_V}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
   });
   return await res.json();
 }
@@ -350,8 +360,10 @@ async function getBecasDisponiblesV() {
   return await res.json();
 }
 async function generarProformaProspecto(cedula) {
-  const res = await fetch(`${SCRIPT_URL_V}?fn=generarProformaProspecto&cedula=${encodeURIComponent(cedula)}`);
-  return await res.json();
+  // FIX-VENTAS-DATA-POST-001: la cédula es dato sensible (PII) — ya no viaja en
+  // la URL. POST text/plain (postVentasData): token + cédula en el body JSON,
+  // ?fn= solo enruta. El backend ya soporta este fn por POST (ver admin).
+  return await postVentasData('generarProformaProspecto', { cedula: cedula || '' });
 }
 const aprobarBecaProspecto = (cedula, decision, admin) =>
   postVentas({ fn:'aprobarBecaProspecto', cedula, decision, admin });
