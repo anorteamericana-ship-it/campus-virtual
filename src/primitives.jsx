@@ -147,6 +147,17 @@ function useUsuario() {
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const __ESTUDIANTE_SCRIPT_URL = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
+async function postPrimitives(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${__ESTUDIANTE_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 function useEstudiante(codigo) {
   const [data, setData]       = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -158,8 +169,7 @@ function useEstudiante(codigo) {
     let cancelled = false;
     setLoading(true);
     setError('');
-    fetch(`${__ESTUDIANTE_SCRIPT_URL}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postPrimitives('getEstudiante', { codigo })
       .then(d => {
         if (cancelled) return;
         if (!d || !d.ok) {

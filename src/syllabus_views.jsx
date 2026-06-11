@@ -5,6 +5,17 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_SV = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
+async function postSyllabus(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_SV}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 const LEVEL_LABEL = {
   b1:'Básico I', b2:'Básico II',
   i1:'Intermedio I', i2:'Intermedio II',
@@ -29,8 +40,7 @@ function useGroupFromSession() {
 
   React.useEffect(() => {
     if (!codGrupo) { setLoading(false); return; }
-    fetch(`${SCRIPT_URL_SV}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postSyllabus('getGrupoInfo', { cod_grupo: codGrupo })
       .then(d => { if (d.ok) setGrupoInfo(d); })
       .finally(() => setLoading(false));
   }, [codGrupo]);

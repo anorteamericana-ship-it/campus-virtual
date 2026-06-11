@@ -3,6 +3,23 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_CR = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lecturas internas vía POST text/plain. Conserva
+// `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía el token en
+// el BODY, nunca en la URL.
+async function postCronograma(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_CR}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn,
+      token,
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
 // Hook: lee usuario de session, llama getEstudiante + getGrupoInfo en paralelo
 function useCronogramaData() {
   const [data, setData]       = React.useState(null);
@@ -14,10 +31,10 @@ function useCronogramaData() {
     const codGrupo = usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0];
     if (!codigo || !codGrupo) { setLoading(false); setError('sin_sesion'); return; }
     Promise.all([
-      fetch(`${SCRIPT_URL_CR}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL_CR}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL_CR}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL_CR}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
+      postCronograma('getEstudiante', { codigo }),
+      postCronograma('getGrupoInfo', { cod_grupo: codGrupo }),
+      postCronograma('getAsistenciaEstudiante', { codigo }),
+      postCronograma('getEvaluacionesEstudiante', { codigo }),
     ])
     .then(([est, grp, asist, eval_]) => {
       if (est.ok && grp.ok) setData({

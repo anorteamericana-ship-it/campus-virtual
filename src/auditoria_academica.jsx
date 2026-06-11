@@ -14,6 +14,23 @@
 
 const SCRIPT_URL_AA = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lecturas internas vía POST text/plain. Conserva
+// `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía el token en
+// el BODY, nunca en la URL.
+async function postAuditoria(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_AA}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn,
+      token,
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
 // Paleta por nivel (consistente con el resto del campus).
 const AA_NIVEL_COLOR = { B1: '#9A6A00', B2: '#8B1A10', I1: '#0D47A1', I2: '#1B5E20' };
 const AA_NIVELES = ['B1', 'B2', 'I1', 'I2'];
@@ -1207,8 +1224,7 @@ function AuditoriaAcademicaView() {
 
   const cargarGrupos = React.useCallback(() => {
     setLoadingGrupos(true); setErrorGrupos(null);
-    return fetch(`${SCRIPT_URL_AA}?fn=getGruposActivos`)
-      .then(r => r.json())
+    return postAuditoria('getGruposActivos')
       .then(d => {
         if (d && d.ok && Array.isArray(d.grupos)) {
           setGrupos(d.grupos);

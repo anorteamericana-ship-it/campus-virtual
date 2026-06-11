@@ -8,6 +8,17 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_SM = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
+async function postStudentModules(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_SM}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 const NIVEL_NOMBRE_SM = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_LIBRO_SM  = { B1:'Interchange Intro', B2:'Interchange 1', I1:'Interchange 2', I2:'Interchange 3' };
 const NIVEL_COLOR_SM  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -133,8 +144,7 @@ function NotasView() {
     if (!codigo) return;
     let cancelled = false;
     setEvalErr('');
-    fetch(`${SCRIPT_URL_SM}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postStudentModules('getEvaluacionesEstudiante', { codigo })
       .then(d => {
         if (cancelled) return;
         if (d?.ok && Array.isArray(d.evaluaciones)) setEvaluaciones(d.evaluaciones);

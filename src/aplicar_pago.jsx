@@ -612,7 +612,7 @@ function AplicarPago() {
     if (!raw) return;
     sessionStorage.removeItem('an_pago_prefill');
     try {
-      const { codigo, nivel } = JSON.parse(raw);
+      const { codigo } = JSON.parse(raw);
       if (!codigo) return;
       setCargando(true);
       // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
@@ -627,8 +627,10 @@ function AplicarPago() {
             grupo:      data.grupo      || '',
             pendientes: data.pendientes || {},
           });
-          if (nivel) setNivelSel(nivel);
-          setPaso(nivel ? 3 : 2); // si viene nivel saltar directo al comprobante
+          // FIX-ADMIN-CORE-POST-001: desde Admin → Estudiantes (botón 💳) el
+          // comportamiento esperado es avanzar al paso 2 "Seleccionar nivel",
+          // con el estudiante ya cargado. NO saltar al paso 3.
+          setPaso(2);
         })
         .catch(() => {})
         .finally(() => setCargando(false));

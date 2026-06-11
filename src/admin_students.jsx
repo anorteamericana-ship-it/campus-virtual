@@ -34,10 +34,8 @@ async function resincronizarEstudianteIndividual(codigo) {
   // Llama sincronizarCONAPE con param 'codigo' (dispatcher GET).
   // Devuelve { ok, mensaje, error }.
   try {
-    const resp = await fetch(
-      `${SCRIPT_URL_AS}?fn=sincronizarCONAPE&codigo=${encodeURIComponent(String(codigo))}`
-    );
-    return await resp.json();
+    const resp = await postAdminStudents('sincronizarCONAPE', { codigo: String(codigo) });
+    return resp;
   } catch(e) {
     return { ok: false, error: 'Error de conexión: ' + (e.message || e) };
   }
@@ -859,10 +857,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
     setSyncConape({ loading: true });
     setToast(null);
     try {
-      const resp = await fetch(
-        `${SCRIPT_URL_AS}?fn=sincronizarCONAPE&cod_grupo=${encodeURIComponent(grupoSel)}`
-      );
-      const data = await resp.json();
+      const data = await postAdminStudents('sincronizarCONAPE', { cod_grupo: grupoSel });
       if (data.ok) {
         const n = data.total ?? data.actualizados ?? data.estudiantes ?? data.count ?? 0;
         setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'}` });
@@ -1216,8 +1211,7 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate }) {
   React.useEffect(() => {
     if (!est) return;
     setCargando(true); setError(''); setDetalle(null);
-    fetch(`${SCRIPT_URL_AS}?fn=getEstudiante&codigo=${encodeURIComponent(est.codigo || est.rec_m || '')}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postAdminStudents('getEstudiante', { codigo: est.codigo || est.rec_m || '' })
       .then(d => { if (d.ok) setDetalle(d); else setError(d.error || 'Error al cargar'); })
       .catch(e => setError('Error de conexión: ' + e.message))
       .finally(() => setCargando(false));
@@ -1488,8 +1482,7 @@ function TabAsistenciaPanel({ est, detalle }) {
   React.useEffect(() => {
     const codigo = est.codigo || est.rec_m;
     if (!codigo) return;
-    fetch(`${SCRIPT_URL_AS}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postAdminStudents('getAsistenciaEstudiante', { codigo })
       .then(d => { if (d.ok) setAsistencia(d.asistencia || []); })
       .catch(() => {})
       .finally(() => setCargando(false));

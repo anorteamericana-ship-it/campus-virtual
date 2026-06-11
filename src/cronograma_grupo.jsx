@@ -8,6 +8,17 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
+async function postCronoGrupo(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_CG}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 // Sentinel para la vista "Todos los grupos" (solo admin/superadmin).
 const TODOS_GRUPOS = '__TODOS__';
 
@@ -139,8 +150,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
   const cargarGrupos = React.useCallback(() => {
     setLoadingGrupos(true); setErrorGrupos(null);
-    return fetch(`${SCRIPT_URL_CG}?fn=getGruposActivos`)
-      .then(r => r.json())
+    return postCronoGrupo('getGruposActivos')
       .then(d => {
         if (d?.ok && Array.isArray(d.grupos)) {
           setGruposReales(d.grupos);
@@ -231,8 +241,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       return;
     }
 
-    return fetch(`${SCRIPT_URL_CG}?fn=getFechasGrupo&cod_grupo=${encodeURIComponent(codGrupo)}&nivel=${encodeURIComponent(nivel)}`)
-      .then(r => r.json())
+    return postCronoGrupo('getFechasGrupo', { cod_grupo: codGrupo, nivel })
       .then(d => {
         if (d?.ok && Array.isArray(d.lecciones)) {
           setLecciones(d.lecciones);
@@ -296,8 +305,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     if (nivelBloqueado) { setDetalle(null); return; }
     setCargandoDet(true);
     const id = idLeccion(nivel, selLec.leccion);
-    fetch(`${SCRIPT_URL_CG}?fn=getLeccionDetalle&id_leccion=${id}`)
-      .then(r => r.json())
+    postCronoGrupo('getLeccionDetalle', { id_leccion: id })
       .then(d => {
         if (d?.ok && d.leccion) setDetalle(d.leccion);
         else setDetalle(null);

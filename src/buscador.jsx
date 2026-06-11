@@ -8,6 +8,17 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_B = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
+async function postBuscador(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_B}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 const NIVEL_COLOR_B = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_B = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_ORDER   = ['B1','B2','I1','I2'];
@@ -385,8 +396,7 @@ function BuscadorEstudiantes() {
     setErrDetalle('');
     setCargandoDet(true);
     try {
-      const res  = await fetch(`${SCRIPT_URL_B}?fn=getEstudiante&codigo=${encodeURIComponent(est.rec_m)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
-      const data = await res.json();
+      const data = await postBuscador('getEstudiante', { codigo: est.rec_m });
       if (data.ok) setDetalle(data);
       else setErrDetalle(data.error || 'No se encontró el estudiante en el servidor');
     } catch(e) {

@@ -7,6 +7,17 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_TV = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lecturas sensibles vía POST text/plain (token en body).
+async function postTeacher(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_TV}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 // ── Lección sugerida según fecha de inicio + días de clase ──────────────
 function calcularLeccionSugerida(startDate, diasCode) {
   if (!startDate) return '';
@@ -119,9 +130,7 @@ function useTeacherSession() {
     let cancel = false;
     (async () => {
       try {
-        const url = `${SCRIPT_URL_TV}?fn=getGrupoEstudiantes&cod_grupo=${encodeURIComponent(state.codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`;
-        const res  = await fetch(url);
-        const data = await res.json();
+        const data = await postTeacher('getGrupoEstudiantes', { cod_grupo: state.codGrupo });
         if (cancel) return;
         if (!data.ok) {
           setState(s => ({ ...s, loading:false, error: data.error || 'No se pudo cargar el grupo.' }));
@@ -152,8 +161,7 @@ function useTeacherSession() {
   const [asistenciaGrupo, setAsistenciaGrupo] = React.useState({});
   React.useEffect(() => {
     if (!state.codGrupo || state.loading) return;
-    fetch(`${SCRIPT_URL_TV}?fn=getAsistenciaGrupoCompleta&cod_grupo=${encodeURIComponent(state.codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postTeacher('getAsistenciaGrupoCompleta', { cod_grupo: state.codGrupo })
       .then(d => { if (d?.ok) setAsistenciaGrupo(d.asistencia || {}); })
       .catch(() => {});
   }, [state.codGrupo, state.loading]);

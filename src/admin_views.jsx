@@ -4,6 +4,25 @@
 const SCRIPT_URL_AV = window.APPS_SCRIPT_URL;
 
 // ─────────────────────────────────────────────────────────────────
+// FIX-ADMIN-CORE-POST-001: lecturas/acciones internas vía POST text/plain.
+// Conserva `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía
+// el token en el BODY, nunca en la URL.
+// ─────────────────────────────────────────────────────────────────
+async function postCampus(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_AV}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn,
+      token,
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Hook: lee el dashboard administrativo desde Apps Script
 // Devuelve { data, loading, error, refetch } — data trae { kpis, grupos, alertas }
 // ─────────────────────────────────────────────────────────────────
@@ -13,8 +32,7 @@ function useNovedadesConape() {
   const [ultimoSync, setUltimoSync] = React.useState(null);
   const [resumen, setResumen] = React.useState({ total: null, sinVincular: 0, sinDesembolso: 0 });
   React.useEffect(() => {
-    fetch(`${SCRIPT_URL_AV}?fn=getNovedadesConape&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postCampus('getNovedadesConape')
       .then(d => {
         if (d.ok) {
           setNovedades(d.novedades || []);
@@ -47,8 +65,7 @@ function useAdminDashboard() {
     // para la gestión de becas).
     const esDemo = (() => { try { const q = new URLSearchParams(location.search); return q.get('demo') === '1' || !!q.get('preview'); } catch (_) { return false; } })();
     if (esDemo) { setData({ ok: true, grupos: [] }); setLoading(false); return () => { cancel = true; }; }
-    fetch(`${SCRIPT_URL_AV}?fn=getAdminDashboard&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postCampus('getAdminDashboard')
       .then(d => {
         if (cancel) return;
         if (d.ok) setData(d);
@@ -2122,7 +2139,7 @@ function AdminDashboard({ setActive }) {
   const handleSyncConape = async () => {
     setSyncing(true);
     try {
-      const r = await fetch(`${SCRIPT_URL_AV}?fn=sincronizarCONAPE`).then(r => r.json());
+      const r = await postCampus('sincronizarCONAPE');
       if (r.ok) window.location.reload();
       else { alert('Error: ' + (r.error || 'sin detalle')); setSyncing(false); }
     } catch (e) {

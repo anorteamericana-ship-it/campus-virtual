@@ -7,13 +7,26 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLd
 // Ambos endpoints aceptan tanto nombre como cédula en `cod_docente`.
 // El nombre es el ID funcional en CALENDARIO_LECCIONES (Apps Script v4.21.5+).
 
+// FIX-ADMIN-CORE-POST-001: lecturas internas (admin/docente) vía POST text/plain.
+// Conserva `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía el
+// token en el BODY, nunca en la URL.
+async function postCampusData(fn, payload = {}) {
+  const res = await fetch(`${APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn,
+      token: getSessionToken(),
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
 async function fetchCalendarioDocente(nombreOrCedula) {
   if (!nombreOrCedula) return { ok: false, error: 'cod_docente vacío' };
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getCalendarioDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`
-              + `&token=${encodeURIComponent(getSessionToken())}`;
-    const res = await fetch(url);
-    return await res.json();
+    return await postCampusData('getCalendarioDocente', { cod_docente: nombreOrCedula });
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }
@@ -22,10 +35,7 @@ async function fetchCalendarioDocente(nombreOrCedula) {
 async function fetchTareasPendientesDocente(nombreOrCedula) {
   if (!nombreOrCedula) return { ok: false, error: 'cod_docente vacío' };
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getTareasPendientesDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`
-              + `&token=${encodeURIComponent(getSessionToken())}`;
-    const res = await fetch(url);
-    return await res.json();
+    return await postCampusData('getTareasPendientesDocente', { cod_docente: nombreOrCedula });
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }
@@ -37,12 +47,7 @@ async function fetchTareasPendientesDocente(nombreOrCedula) {
 async function fetchEstudiantesParaCierre(codGrupo, nivel) {
   if (!codGrupo || !nivel) return { ok: false, error: 'cod_grupo / nivel vacío' };
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getEstudiantesParaCierre`
-              + `&cod_grupo=${encodeURIComponent(codGrupo)}`
-              + `&nivel=${encodeURIComponent(nivel)}`
-              + `&token=${encodeURIComponent(getSessionToken())}`;
-    const res = await fetch(url);
-    return await res.json();
+    return await postCampusData('getEstudiantesParaCierre', { cod_grupo: codGrupo, nivel });
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }
@@ -52,10 +57,7 @@ async function fetchEstudiantesParaCierre(codGrupo, nivel) {
 // Endpoint pesado (~11 s).  El caller DEBE mostrar spinner.
 async function fetchDocentesAtrasados() {
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getDocentesAtrasados`
-              + `&token=${encodeURIComponent(getSessionToken())}`;
-    const res = await fetch(url);
-    return await res.json();
+    return await postCampusData('getDocentesAtrasados');
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }
@@ -96,17 +98,12 @@ async function fetchMaterialLeccion({ nivel, leccion, riel, rol, codigo, cod_gru
     return { ok: false, error: 'parámetros incompletos' };
   }
   try {
-    let url = `${APPS_SCRIPT_URL}?fn=getMaterialLeccion`
-            + `&nivel=${encodeURIComponent(nivel)}`
-            + `&leccion=${encodeURIComponent(leccion)}`
-            + `&riel=${encodeURIComponent(riel)}`
-            + `&rol=${encodeURIComponent(rol)}`;
+    const payload = { nivel, leccion, riel, rol };
     if (rol === 'student') {
-      if (codigo)    url += `&codigo=${encodeURIComponent(codigo)}`;
-      if (cod_grupo) url += `&cod_grupo=${encodeURIComponent(cod_grupo)}`;
+      if (codigo)    payload.codigo = codigo;
+      if (cod_grupo) payload.cod_grupo = cod_grupo;
     }
-    const res = await fetch(url);
-    return await res.json();
+    return await postCampusData('getMaterialLeccion', payload);
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }
@@ -126,14 +123,9 @@ async function fetchLeccionCerradaDetalle({ cod_grupo, nivel, leccion, riel } = 
     return { ok: false, error: 'parámetros incompletos' };
   }
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getLeccionCerradaDetalle`
-              + `&cod_grupo=${encodeURIComponent(cod_grupo)}`
-              + `&nivel=${encodeURIComponent(nivel)}`
-              + `&leccion=${encodeURIComponent(leccion)}`
-              + `&riel=${encodeURIComponent(riel || 'curso')}`
-              + `&token=${encodeURIComponent(getSessionToken())}`;
-    const res = await fetch(url);
-    return await res.json();
+    return await postCampusData('getLeccionCerradaDetalle', {
+      cod_grupo, nivel, leccion, riel: riel || 'curso',
+    });
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };
   }

@@ -4,6 +4,17 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_SD = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
+async function postStudentDash(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_SD}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────
@@ -35,8 +46,7 @@ function useRetroalimentacion(codigo) {
   React.useEffect(() => {
     if (!codigo) return;
     let cancelled = false;
-    fetch(`${SCRIPT_URL_SD}?fn=getRetroalimentacionEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postStudentDash('getRetroalimentacionEstudiante', { codigo })
       .then(d => { if (!cancelled && d?.ok) setData(d); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -50,8 +60,7 @@ function useAsistencia(codigo) {
   React.useEffect(() => {
     if (!codigo) return;
     let cancelled = false;
-    fetch(`${SCRIPT_URL_SD}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postStudentDash('getAsistenciaEstudiante', { codigo })
       .then(d => { if (!cancelled && d?.ok) setData(d); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -65,8 +74,7 @@ function useProximasLecciones(codGrupo, nivel) {
   React.useEffect(() => {
     if (!codGrupo || !nivel) return;
     let cancelled = false;
-    fetch(`${SCRIPT_URL_SD}?fn=getFechasGrupo&cod_grupo=${encodeURIComponent(codGrupo)}&nivel=${encodeURIComponent(nivel)}`)
-      .then(r => r.json())
+    postStudentDash('getFechasGrupo', { cod_grupo: codGrupo, nivel })
       .then(d => {
         if (cancelled) return;
         if (d?.ok && Array.isArray(d.lecciones)) setLecciones(d.lecciones);
@@ -104,8 +112,7 @@ function useEstadoConape(cedula) {
   const [estado, setEstado] = React.useState(null);
   React.useEffect(() => {
     if (!cedula) return;
-    fetch(`${SCRIPT_URL_SD}?fn=getEstadoConape&cedula=${encodeURIComponent(cedula)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postStudentDash('getEstadoConape', { cedula })
       .then(d => { if (d?.ok) setEstado(d); })
       .catch(() => {});
   }, [cedula]);
@@ -648,8 +655,7 @@ function ICANStatCard({ codigo }) {
   const [data, setData] = React.useState(null);
   React.useEffect(() => {
     if (!codigo) return;
-    fetch(`${SCRIPT_URL_SD}?fn=getICANEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    postStudentDash('getICANEstudiante', { codigo })
       .then(d => { if (d?.ok) setData(d); })
       .catch(() => {});
   }, [codigo]);

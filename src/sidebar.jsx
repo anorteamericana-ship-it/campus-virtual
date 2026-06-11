@@ -4,6 +4,23 @@ const { useState: _u1 } = React;
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_SB = window.APPS_SCRIPT_URL;
 
+// FIX-ADMIN-CORE-POST-001: lectura de perfil vía POST text/plain. Conserva
+// `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía el token en
+// el BODY, nunca en la URL.
+async function postSidebar(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${SCRIPT_URL_SB}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn,
+      token,
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // MODO PRUEBA — superadmin only
 // ─────────────────────────────────────────────────────────────────────────
@@ -56,8 +73,7 @@ function ModoPruebaPanel() {
     setCargando(true);
     setErrMsg('');
     try {
-      const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(c)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
-      const data = await res.json();
+      const data = await postSidebar('getEstudiante', { codigo: c });
       if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
 
       const est     = data.estudiante || {};
