@@ -222,8 +222,15 @@ async function getProspectosAsesor(asesor) {
   return d;
 }
 async function getProspectoDetalle(cedula) {
-  const res = await fetch(`${SCRIPT_URL_V}?fn=getProspectoDetalle&cedula=${encodeURIComponent(cedula)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
-  const d = await res.json();
+  // FIX-VENTAS-DOC-001: ahora va por POST text/plain (mismo patrón que postVentas),
+  // NO por GET con query string. El backend v4.39.6 soporta getProspectoDetalle por
+  // POST; esto elimina el Error CORS al abrir "Documentos del estudiante". El fn,
+  // token y cédula viajan en el body JSON — el token ya no va en la URL.
+  const d = await postVentas({
+    fn:     'getProspectoDetalle',
+    token:  window.getSessionToken ? window.getSessionToken() : '',
+    cedula: cedula,
+  });
   const p = d && (d.prospecto || (d.ok !== false ? d : null));
   if (p && typeof p === 'object') {
     const norm = normalizarProspecto(p);
