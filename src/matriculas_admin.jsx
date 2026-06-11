@@ -51,10 +51,14 @@
       if (fn === 'actualizarEstadoConapeProspecto') return { ok: true, novedad: 'aprobado_sin_desembolso', ultima_consulta: '2026-06-04 10:00', nombre_ws: 'SALAZAR CHACON (demo)' };
       return { ok: true };
     }
+    const token = window.getSessionToken ? window.getSessionToken() : '';
     const r = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload),
+      // FIX-MATRICULAS-ADMIN-003: apiPost SIEMPRE envía el token en el body JSON.
+      // Sin esto el backend respondía 'sesion_requerida'. Si el payload ya trae
+      // token explícito, ese gana (token: payload.token || token).
+      body: JSON.stringify({ ...payload, token: payload.token || token }),
     });
     return await r.json();
   }
