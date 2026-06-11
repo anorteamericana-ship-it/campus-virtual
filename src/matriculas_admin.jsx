@@ -52,7 +52,11 @@
       return { ok: true };
     }
     const token = window.getSessionToken ? window.getSessionToken() : '';
-    const r = await fetch(API, {
+    // FIX-ROUTING-POST-APPS-SCRIPT-001: el Apps Script enruta por e.parameter.fn,
+    // así que el ?fn= DEBE conservarse en la URL (sin él → "Función POST no
+    // reconocida"). Sigue siendo POST text/plain; el token NO va en la URL.
+    const fn = (payload && payload.fn) || '';
+    const r = await fetch(`${API}?fn=${encodeURIComponent(fn)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       // FIX-MATRICULAS-ADMIN-003: apiPost SIEMPRE envía el token en el body JSON.

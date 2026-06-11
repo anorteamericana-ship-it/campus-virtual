@@ -220,10 +220,10 @@ async function fetchSolicitarSuspension(payload) {
 
 async function fetchGetSolicitudesSuspension(estado = 'PENDIENTE') {
   try {
-    // FIX-ADMIN-STABILITY-004: POST text/plain, NO GET con fn/token en la URL
-    // (ese GET disparaba el Error CORS al cargar admin). Mismos parámetros
-    // (estado) y mismo shape de respuesta; el token viaja en el body.
-    const res = await fetch(APPS_SCRIPT_URL, {
+    // FIX-ROUTING-POST-APPS-SCRIPT-001: POST text/plain conservando ?fn= en la URL
+    // (el backend enruta por e.parameter.fn). NO es GET y el token NO va en la URL:
+    // token y `estado` viajan en el body. Mismo shape de respuesta.
+    const res = await fetch(`${APPS_SCRIPT_URL}?fn=getSolicitudesSuspension`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ fn: 'getSolicitudesSuspension', token: getSessionToken(), estado }),
@@ -413,7 +413,10 @@ async function _solpPost(fn, payload, ms = 3500) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
+    // FIX-ROUTING-POST-APPS-SCRIPT-001: el Apps Script enruta por e.parameter.fn,
+    // así que el ?fn= DEBE conservarse en la URL (sin él → "Función POST no
+    // reconocida"). Sigue siendo POST text/plain; token y datos viajan en el body.
+    const res = await fetch(`${APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ fn, token: getSessionToken(), ...payload }),
@@ -668,10 +671,10 @@ async function getCalendarioMatriculas(body = {}) {
   if (_solpDemoForced) return _calMock(body);
   // Producción: pegamos al endpoint real. Si falla, el error sube al caller
   // (que muestra "reintentar"); NO caemos a mock en silencio.
-  // FIX-ADMIN-STABILITY-005: POST text/plain SIN ?fn= en la URL (el fn ya viaja
-  // en el body). Antes el ?fn= en query string aparecía como GET/CORS legacy en
-  // Network. Mismo body, mismo shape de respuesta.
-  const res = await fetch(APPS_SCRIPT_URL, {
+  // FIX-ROUTING-POST-APPS-SCRIPT-001: POST text/plain conservando ?fn= en la URL
+  // (el backend enruta por e.parameter.fn). Sigue siendo POST (no GET) y el token
+  // NO va en la URL: token y datos viajan en el body. Mismo shape de respuesta.
+  const res = await fetch(`${APPS_SCRIPT_URL}?fn=getCalendarioMatriculas`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ fn: 'getCalendarioMatriculas', token: getSessionToken(), ...body }),

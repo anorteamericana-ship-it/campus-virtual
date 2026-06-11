@@ -17,7 +17,12 @@ const SCRIPT_URL_AP = window.APPS_SCRIPT_URL;
 //   • Content-Type text/plain;charset=utf-8 esquiva el preflight CORS; Apps
 //     Script lee el JSON en e.postData.contents igual.
 async function postAP(payload) {
-  const res = await fetch(SCRIPT_URL_AP, {
+  // FIX-ROUTING-POST-APPS-SCRIPT-001: el Apps Script enruta por e.parameter.fn,
+  // así que el ?fn= DEBE conservarse en la URL (sin él → "Función POST no
+  // reconocida: getEstudiante"). Sigue siendo POST text/plain; el token NO va en
+  // la URL: token y datos viajan en el body.
+  const fn = (payload && payload.fn) || '';
+  const res = await fetch(`${SCRIPT_URL_AP}?fn=${encodeURIComponent(fn)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({

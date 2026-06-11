@@ -50,9 +50,10 @@ function useProspectos() {
     // Fase 3.6 · Cambio 2 — decay del panel PRE MATRÍCULA: el backend filtra los
     // prospectos con matrícula B1 pagada antes del lunes de esta semana. Los
     // CANCELADOS siguen viniendo. El filtrado es 100% backend.
-    // FIX-ADMIN-STABILITY-005: POST text/plain SIN ?fn= en la URL (el fn ya va
-    // en el body). Mismos filtros (decay_pre_matricula) y mismo shape de respuesta.
-    fetch(SCRIPT_URL_MAT, {
+    // FIX-ROUTING-POST-APPS-SCRIPT-001: POST text/plain conservando ?fn= en la URL
+    // (el backend enruta por e.parameter.fn). NO es GET y el token NO va en la URL:
+    // token y filtros viajan en el body. Mismo shape de respuesta.
+    fetch(`${SCRIPT_URL_MAT}?fn=getProspectos`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ fn: 'getProspectos', token: window.getSessionToken ? window.getSessionToken() : '', decay_pre_matricula: true }),
@@ -147,7 +148,13 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
   const [cargandoGrupos, setCargandoGrupos] = React.useState(true);
   React.useEffect(() => {
     // (SCRIPT_URL_MAT se hereda del scope del módulo — fuente única window.APPS_SCRIPT_URL)
-    fetch(`${SCRIPT_URL_MAT}?fn=getGruposDisponibles`)
+    // FIX-ROUTING-POST-APPS-SCRIPT-001: POST text/plain conservando ?fn= en la URL
+    // (enrutado por e.parameter.fn); antes era un GET viejo. token va en el body.
+    fetch(`${SCRIPT_URL_MAT}?fn=getGruposDisponibles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'getGruposDisponibles', token: window.getSessionToken ? window.getSessionToken() : '' }),
+    })
       .then(r => r.json())
       .then(d => {
         if (d?.ok && Array.isArray(d.grupos)) {
@@ -214,6 +221,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
       }
       const res = await fetch(`${SCRIPT_URL_MAT}?fn=actualizarEstatus`, {
         method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           token:   window.getSessionToken ? window.getSessionToken() : '',
           cod_estudiante: codEstudiante,
