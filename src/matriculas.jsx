@@ -50,7 +50,9 @@ function useProspectos() {
     // Fase 3.6 · Cambio 2 — decay del panel PRE MATRÍCULA: el backend filtra los
     // prospectos con matrícula B1 pagada antes del lunes de esta semana. Los
     // CANCELADOS siguen viniendo. El filtrado es 100% backend.
-    fetch(`${SCRIPT_URL_MAT}?fn=getProspectos`, {
+    // FIX-ADMIN-STABILITY-005: POST text/plain SIN ?fn= en la URL (el fn ya va
+    // en el body). Mismos filtros (decay_pre_matricula) y mismo shape de respuesta.
+    fetch(SCRIPT_URL_MAT, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ fn: 'getProspectos', token: window.getSessionToken ? window.getSessionToken() : '', decay_pre_matricula: true }),

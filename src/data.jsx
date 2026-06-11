@@ -413,7 +413,7 @@ async function _solpPost(fn, payload, ms = 3500) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?fn=${fn}`, {
+    const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ fn, token: getSessionToken(), ...payload }),
@@ -668,7 +668,10 @@ async function getCalendarioMatriculas(body = {}) {
   if (_solpDemoForced) return _calMock(body);
   // Producción: pegamos al endpoint real. Si falla, el error sube al caller
   // (que muestra "reintentar"); NO caemos a mock en silencio.
-  const res = await fetch(`${APPS_SCRIPT_URL}?fn=getCalendarioMatriculas`, {
+  // FIX-ADMIN-STABILITY-005: POST text/plain SIN ?fn= en la URL (el fn ya viaja
+  // en el body). Antes el ?fn= en query string aparecía como GET/CORS legacy en
+  // Network. Mismo body, mismo shape de respuesta.
+  const res = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ fn: 'getCalendarioMatriculas', token: getSessionToken(), ...body }),

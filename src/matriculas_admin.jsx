@@ -935,9 +935,8 @@
       if (!grupoSel || submitting) return;
       setSubmitting(true);
       try {
-        // FIX-ADMIN-STABILITY-004: usar el helper local apiPost (POST text/plain,
-        // sin ?fn= en la URL; apiPost ya inyecta el token). Mismo payload y mismo
-        // manejo de respuesta que antes.
+        // FIX-ADMIN-STABILITY-004/005: helper local apiPost (POST text/plain, sin
+        // ?fn= en la URL; apiPost ya inyecta el token). Mismo payload.
         const data = await apiPost({
           fn: 'generarMatricula',
           cedula,
@@ -945,14 +944,20 @@
           beca: beca || '',
           beca_estado: becaEstadoLocal || '',
         });
-        if (data && data.ok) {
-          onSuccess(data); // el padre cierra el modal, muestra toast y redirige a Aplicar Pago
+        // Respuesta válida y exitosa → seguimos el flujo (padre redirige a Aplicar Pago).
+        if (data && typeof data === 'object' && data.ok === true) {
+          onSuccess(data);
+        } else if (data && typeof data === 'object' && 'ok' in data) {
+          // Error tipado del backend { ok:false, error:'...' } → toast controlado.
+          onToast(data.error || 'No se pudo generar la matrícula.', 'err');
+          setSubmitting(false);
         } else {
-          onToast((data && data.error) || 'No se pudo generar la matrícula.', 'err');
+          // Respuesta inesperada (null, texto, HTML, sin ok) → NUNCA pantalla blanca.
+          onToast('No se pudo generar la matrícula. Respuesta inválida del servidor.', 'err');
           setSubmitting(false);
         }
       } catch (e) {
-        onToast('Error de conexión: ' + e.message, 'err');
+        onToast('Error de conexión: ' + (e && e.message ? e.message : 'desconocido'), 'err');
         setSubmitting(false);
       }
     };
