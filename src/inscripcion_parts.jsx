@@ -395,6 +395,115 @@ const G = {
   }
 };
 
+// ── VERIFICACIÓN DE CÉDULA (INSCRIPCION-001) ──────────────────────────────────
+// Normaliza la respuesta del backend (sea el shape actual o el enriquecido
+// propuesto) a una forma única que el formulario sabe interpretar.
+
+// Estados que un asesor puede marcar para CANCELAR/cerrar un prospecto. Si el
+// prospecto está en cualquiera de estos, SÍ se permite iniciar una inscripción nueva.
+const CANCEL_TOKENS = ['CANCELAD', 'CANCELAR', 'DESCARTAD', 'CERRAD', 'RECHAZAD', 'ANULAD', 'PROSPECTO_CANCELADO'];
+function esEstadoCancelado(estado) {
+  const s = String(estado || '').toUpperCase().trim();
+  if (!s) return false;
+  return CANCEL_TOKENS.some((t) => s.indexOf(t) !== -1);
+}
+
+// Estados de prospecto que cuentan como "activo / en proceso" → bloquean re-inscripción.
+// (Defensivo: si NO es cancelado y existe como prospecto, se trata como activo.)
+function interpretarVerif(d) {
+  const pick = (...keys) => {
+    for (const k of keys) if (d && d[k] !== undefined && d[k] !== null) return d[k];
+    return undefined;
+  };
+  const base = {
+    puedeContinuar: true, motivo: 'LIBRE',
+    existeEnDatos: false, existeEnProspectos: false,
+    estadoProspecto: '', asesorNombre: '', asesorWhatsapp: '',
+  };
+  if (!d || typeof d !== 'object') return base;
+
+  const asesorNombre   = String(pick('asesorNombre', 'asesor_nombre', 'asesor') || '');
+  const asesorWhatsapp = String(pick('asesorWhatsapp', 'asesor_whatsapp', 'asesor_wa', 'whatsapp_asesor') || '');
+
+  // ── Shape ENRIQUECIDO (verificarCedulaInscripcion propuesto) ───────────────
+  // { ok, puedeContinuar, motivo, existeEnDatos, existeEnProspectos, estadoProspecto, asesorNombre, asesorWhatsapp }
+  const motivoRaw = pick('motivo');
+  const puedeRaw  = pick('puedeContinuar', 'puede_continuar');
+  if (motivoRaw !== undefined || puedeRaw !== undefined ||
+      pick('existeEnDatos', 'existe_en_datos') !== undefined ||
+      pick('existeEnProspectos', 'existe_en_prospectos') !== undefined) {
+    const motivo = String(motivoRaw || 'LIBRE').toUpperCase();
+    const puede = puedeRaw !== undefined
+      ? Boolean(puedeRaw)
+      : (motivo === 'LIBRE' || motivo === 'PROSPECTO_CANCELADO');
+    return {
+      puedeContinuar: puede,
+      motivo,
+      existeEnDatos: Boolean(pick('existeEnDatos', 'existe_en_datos')),
+      existeEnProspectos: Boolean(pick('existeEnProspectos', 'existe_en_prospectos')),
+      estadoProspecto: String(pick('estadoProspecto', 'estado_prospecto', 'estado') || ''),
+      asesorNombre, asesorWhatsapp,
+    };
+  }
+
+  // ── Shape ACTUAL (verificarCedulaExiste) ──────────────────────────────────
+  // { ok, existe, es_prospecto, estado }
+  const existe = Boolean(pick('existe'));
+  const esProspecto = Boolean(pick('es_prospecto', 'esProspecto', 'prospecto'));
+  const estado = String(pick('estado', 'estado_prospecto') || '');
+  if (!existe) return { ...base };
+  if (!esProspecto) {
+    // Existe en DATOS como estudiante → bloquear.
+    return { puedeContinuar: false, motivo: 'ESTUDIANTE_EXISTE', existeEnDatos: true, existeEnProspectos: false, estadoProspecto: '', asesorNombre, asesorWhatsapp };
+  }
+  // Existe como prospecto: ¿cancelado por el asesor? → dejar continuar.
+  if (esEstadoCancelado(estado)) {
+    return { puedeContinuar: true, motivo: 'PROSPECTO_CANCELADO', existeEnDatos: false, existeEnProspectos: true, estadoProspecto: estado, asesorNombre, asesorWhatsapp };
+  }
+  // Prospecto activo / en proceso → bloquear y mandar al asesor.
+  return { puedeContinuar: false, motivo: 'PROSPECTO_ACTIVO', existeEnDatos: false, existeEnProspectos: true, estadoProspecto: estado, asesorNombre, asesorWhatsapp };
+}
+
+// Llama al backend de verificación. Prefiere el endpoint enriquecido propuesto
+// (verificarCedulaInscripcion); si no existe/no responde útil, cae al actual
+// (verificarCedulaExiste). Devuelve el JSON crudo para que interpretarVerif lo normalice.
+async function fetchVerificacionCedula(scriptUrl, cedula) {
+  const enc = encodeURIComponent(cedula);
+  try {
+    const r = await fetch(`${scriptUrl}?fn=verificarCedulaInscripcion&cedula=${enc}`);
+    const d = await r.json();
+    if (d && (d.existe !== undefined || d.motivo !== undefined ||
+              d.puedeContinuar !== undefined || d.puede_continuar !== undefined ||
+              d.existeEnDatos !== undefined || d.existe_en_datos !== undefined)) {
+      return d; // respuesta utilizable del endpoint enriquecido
+    }
+  } catch (_) { /* sin endpoint enriquecido → fallback */ }
+  const r2 = await fetch(`${scriptUrl}?fn=verificarCedulaExiste&cedula=${enc}`);
+  return await r2.json();
+}
+
+// wa.me espera el número con código de país y sin símbolos. Los WhatsApp de CR
+// suelen venir con 8 dígitos → se les antepone 506. Si ya trae país, se respeta.
+function waHref(num) {
+  const d = String(num || '').replace(/\D/g, '');
+  if (!d) return WA_NUMBER;
+  return d.length === 8 ? `506${d}` : d;
+}
+
+// Parser tolerante de la respuesta de getGruposDisponibles. Acepta varios shapes
+// y devuelve un array de grupos, o `null` si la respuesta es un error/no reconocida
+// (para distinguir "sin grupos" de "falló la carga").
+function parseGrupos(d) {
+  if (Array.isArray(d)) return d;
+  if (!d || typeof d !== 'object') return null;
+  if (d.ok === false) return null;
+  if (Array.isArray(d.grupos)) return d.grupos;
+  if (Array.isArray(d.data)) return d.data;
+  if (Array.isArray(d.result)) return d.result;
+  if (Array.isArray(d.items)) return d.items;
+  return null;
+}
+
 // ── VALIDADORES / FORMATO ─────────────────────────────────────────────────────
 const fmtCedula = (v) => {
   const d = v.replace(/\D/g, '').slice(0, 9);
@@ -523,14 +632,16 @@ function UploadZone({ docLabel, file, onFile, onClear, error }) {
 
 // ── PROGRESS ──────────────────────────────────────────────────────────────────
 function Progress({ paso }) {
+  const sub = paso === 1 ? 'Datos personales' : paso === 2 ? 'Programa y horario' : 'Financiamiento y adicionales';
+  const fill = paso === 1 ? '33.33%' : paso === 2 ? '66.66%' : '100%';
   return (
     <div className="prog-wrap">
       <div className="prog-inner">
         <div className="prog-top">
-          <span className="prog-label">Paso {paso} de 2</span>
-          <span className="prog-sub">{paso === 1 ? 'Datos personales' : 'Programa y financiamiento'}</span>
+          <span className="prog-label">Paso {paso} de 3</span>
+          <span className="prog-sub">{sub}</span>
         </div>
-        <div className="prog-track"><div className="prog-fill" style={{ width: paso === 1 ? '50%' : '100%' }} /></div>
+        <div className="prog-track"><div className="prog-fill" style={{ width: fill }} /></div>
       </div>
     </div>);
 
@@ -678,6 +789,7 @@ Object.assign(window, {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
   PROVINCIAS, CR_GEO, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   NIVEL_LABEL, DIAS_LABEL, MODALIDAD_LABEL, formatHora, formatHoraMil, formatFecha, formatFechaCorta, G,
+  esEstadoCancelado, interpretarVerif, fetchVerificacionCedula, waHref, parseGrupos,
   MESES_CORTO, MESES_LARGO, DIAS_CORTO, DIAS_LARGO, decodeDias, decodeDiasLargo, diasDeGrupo, formatHora12, formatRango12, formatFechaInicio, buildPeriodo, buildPeriodoLargo, getCupoFake,
   fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor, fmtBytes, MAX_FILE,
   I, Ico, IcoFill, LockBadge,

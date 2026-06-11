@@ -591,3 +591,41 @@ input[readonly] { background: var(--ins-bg); color: var(--ins-ink-2); cursor: de
 .cuenta-existe .ce-actions { display: flex; justify-content: center; }
 .cuenta-existe .ce-actions .btn { width: auto; min-width: 200px; text-decoration: none; }
 .cuenta-existe .ce-hint { font-size: 11.5px; color: var(--ins-ink-3); margin-top: 14px; }
+.cuenta-existe .ce-hint a { color: var(--ins-primary); font-weight: 700; text-decoration: underline; }
+
+/* ── STEP NAV (Atrás / Continuar / Enviar) — INSCRIPCION-001 ────────────── */
+.step-nav { display: flex; gap: 12px; align-items: stretch; }
+.step-nav .btn { width: auto; }
+.step-nav .btn-back { flex: 0 0 auto; min-width: 120px; }
+.step-nav .btn-next { flex: 1; }
+@media (max-width: 460px) {
+  .step-nav { flex-direction: column-reverse; }
+  .step-nav .btn-back, .step-nav .btn-next { width: 100%; }
+}
+.step-nav-hint { font-size: 12px; color: var(--ins-ink-3); text-align: center; margin-top: 12px; line-height: 1.45; }
+
+/* ── RESUMEN DE HORARIO (Paso 3) ───────────────────────────────────────── */
+.horario-resumen { display: flex; align-items: center; gap: 13px; padding: 16px 20px; }
+.horario-resumen .hr-ico {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  background: color-mix(in srgb, var(--ins-success) 14%, white); color: var(--ins-success);
+  display: flex; align-items: center; justify-content: center;
+}
+.horario-resumen .hr-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ins-ink-3); }
+.horario-resumen .hr-val { font-size: 15px; font-weight: 700; color: var(--ins-ink); font-family: ui-monospace, monospace; letter-spacing: .02em; margin-top: 2px; }
+.horario-resumen .hr-edit {
+  margin-left: auto; flex-shrink: 0; background: none; border: 1.5px solid var(--ins-line);
+  border-radius: var(--ins-r-sm); padding: 8px 14px; font-family: inherit; font-size: 12.5px;
+  font-weight: 700; color: var(--ins-ink-2); cursor: pointer; transition: all .15s;
+}
+.horario-resumen .hr-edit:hover { border-color: var(--ins-primary); color: var(--ins-primary); }
+
+/* ── GRUPO EMPTY: variante de error (carga fallida) ────────────────────── */
+.grupo-empty.err {
+  background: color-mix(in srgb, var(--ins-error) 7%, white);
+  border-color: color-mix(in srgb, var(--ins-error) 35%, white); color: #a31f15;
+}
+.link-btn {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: inherit; font-weight: 700; text-decoration: underline;
+}

@@ -13,6 +13,7 @@ const {
   WA_NUMBER, IMG_INA, IMG_LIBRE, IMG_BASICO, IMG_PREMIUM,
   PROVINCIAS, CR_GEO, ASESORES, COMO_OPTS, ID_TIPOS, DEMO_GRUPOS,
   G, fmtCedula, fmtTel, validEmail, validTel, calcEdad, esMayor,
+  esEstadoCancelado, interpretarVerif, fetchVerificacionCedula, waHref, parseGrupos,
   I, Ico, IcoFill,
   Field, UploadZone, Progress, ProgramCard, GrupoCard, GrupoSkeleton, FinCard, EquipoCard,
 } = window;
@@ -20,15 +21,15 @@ const {
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 1 — DATOS PERSONALES
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif, esProspecto, setProspecto, asesores }) {
-  // 'verif' (idle | loading | exists | free) se eleva al App para que validarPaso1 lo lea
+function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile, errors, onContinue, verif, setVerif, verifInfo, setVerifInfo, asesores, asesoresEstado }) {
+  // 'verif' (idle | loading | blocked | free) se eleva al App para que validarPaso1 lo lea
   const [showPwd, setShowPwd] = useState(false);
   const [showPwd2, setShowPwd2] = useState(false);
   const tipo = ID_TIPOS.find(t => t.id === form.idTipo) || ID_TIPOS[0];
   const esNacional = form.idTipo === 'nac';
   const edad = calcEdad(form.fechaNac);
   const menor = edad != null && edad < 18;
-  const bloqueado = verif === 'exists'; // cédula ya registrada → se bloquea el resto del formulario
+  const bloqueado = verif === 'blocked'; // cédula ya registrada (estudiante o prospecto activo) → se bloquea el resto del formulario
 
   const blurCedula = () => { if (esNacional) set('cedula', fmtCedula(form.cedula)); };
   const blurNombre = () => set('nombre', (form.nombre||'').toUpperCase());
@@ -44,61 +45,84 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
     return (cant && form.distrito && d.indexOf(form.distrito) === -1) ? [form.distrito, ...d] : d;
   };
 
-  // Verificar: 1) ¿ya existe la cuenta? → bloquear + redirigir al login.
-  //            2) si no, buscar en padrón TSE y SIEMPRE refrescar el nombre.
+  // Verificar (INSCRIPCION-001): pasa la cédula por el filtro DATOS → PROSPECTOS.
+  //   1) Si existe como estudiante en DATOS → bloquear.
+  //   2) Si existe como prospecto activo/en proceso → bloquear y mandar al asesor.
+  //   3) Excepción: prospecto CANCELADO por el asesor → dejar iniciar nueva inscripción.
+  //   4) Si puede continuar y es cédula nacional → buscar en padrón TSE y refrescar nombre.
   const verificar = async () => {
     if (!form.cedula.trim()) return;
     setVerif('loading');
+    setVerifInfo(null);
+
+    // Si la verificación contra backend/red falla o devuelve algo no utilizable,
+    // NO se permite continuar (no se hace fallback a LIBRE). Se bloquea con un
+    // mensaje claro para que el usuario vuelva a presionar "Verificar".
+    const errInfo = {
+      puedeContinuar: false,
+      motivo: 'ERROR_VERIFICACION',
+      mensaje: 'No pudimos verificar la cédula. Intentá de nuevo.',
+      existeEnDatos: false,
+      existeEnProspectos: false,
+      estadoProspecto: '',
+      asesorNombre: '',
+      asesorWhatsapp: '',
+    };
+
+    let raw = null;
     try {
-      const r1 = await fetch(`${SCRIPT_URL}?fn=verificarCedulaExiste&cedula=${encodeURIComponent(form.cedula.trim())}`);
-      const d1 = await r1.json();
-      // Cambio 3 — respuesta v4.29.0+: { ok, existe, es_prospecto, estado }
-      if (d1 && d1.existe) {
-        setProspecto(Boolean(d1.es_prospecto));
-        setVerif('exists');
-        return;
-      }
-      setProspecto(false);
-
-      // No existe → si es cédula nacional, buscar en padrón y SIEMPRE refrescar el
-      // nombre (Cambio 4a): con el dato del TSE si lo hay, vacío y editable si no.
-      if (esNacional) {
-        let nombreTSE = '';
-        try {
-          const r2 = await fetch(`${SCRIPT_URL}?fn=buscarEnPadron&cedula=${encodeURIComponent(form.cedula.trim())}`);
-          const d2 = await r2.json();
-          if (d2 && (d2.nombre || d2.apellido1 || d2.provincia)) {
-            // Nombre normalizado APELLIDO1 APELLIDO2 NOMBRE
-            nombreTSE = (d2.apellido1 || d2.apellido2)
-              ? [d2.apellido1, d2.apellido2, d2.nombre].filter(Boolean).join(' ')
-              : (d2.nombre_completo || d2.nombre || '');
-            nombreTSE = String(nombreTSE).toUpperCase().trim();
-          }
-          if (nombreTSE) {
-            const upd = { nombre: nombreTSE };
-            const lock = { nombre: true };
-            if (d2.fecha_nac) { upd.fechaNac = d2.fecha_nac; lock.fechaNac = true; }
-            if (d2.provincia) { upd.provincia = d2.provincia; lock.provincia = true; }
-            if (d2.canton)    { upd.canton = d2.canton; lock.canton = true; }
-            if (d2.sexo)      { upd.sexo = /^f/i.test(d2.sexo) ? 'F' : 'M'; lock.sexo = true; }
-            setMany(upd);
-            setPrellenado(p => ({ ...p, ...lock }));
-          }
-        } catch (_) { /* sin padrón / error TSE → input manual */ }
-
-        // TSE no encontró (o falló): vaciar nombre y dejarlo editable a mano (Cambio 4a/4b).
-        if (!nombreTSE) {
-          set('nombre', '');
-          setPrellenado(p => ({ ...p, nombre: false }));
-        }
-      }
-      setVerif('free');
-    } catch (e) {
-      // Error en verificarCedulaExiste → continuar manual, nombre editable.
-      setProspecto(false);
-      if (esNacional) { set('nombre', ''); setPrellenado(p => ({ ...p, nombre: false })); }
-      setVerif('free');
+      raw = await fetchVerificacionCedula(SCRIPT_URL, form.cedula.trim());
+    } catch (err) {
+      setVerifInfo(errInfo);
+      setVerif('blocked');
+      return;
     }
+
+    // Respuesta vacía / no utilizable → también bloquear.
+    if (!raw || typeof raw !== 'object') {
+      setVerifInfo(errInfo);
+      setVerif('blocked');
+      return;
+    }
+
+    const info = interpretarVerif(raw);
+    setVerifInfo(info);
+
+    if (!info.puedeContinuar) {
+      setVerif('blocked');
+      return;
+    }
+
+    // Puede continuar → si es cédula nacional, buscar en padrón y SIEMPRE refrescar el nombre.
+    if (esNacional) {
+      let nombreTSE = '';
+      try {
+        const r2 = await fetch(`${SCRIPT_URL}?fn=buscarEnPadron&cedula=${encodeURIComponent(form.cedula.trim())}`);
+        const d2 = await r2.json();
+        if (d2 && (d2.nombre || d2.apellido1 || d2.provincia)) {
+          nombreTSE = (d2.apellido1 || d2.apellido2)
+            ? [d2.apellido1, d2.apellido2, d2.nombre].filter(Boolean).join(' ')
+            : (d2.nombre_completo || d2.nombre || '');
+          nombreTSE = String(nombreTSE).toUpperCase().trim();
+        }
+        if (nombreTSE) {
+          const upd = { nombre: nombreTSE };
+          const lock = { nombre: true };
+          if (d2.fecha_nac) { upd.fechaNac = d2.fecha_nac; lock.fechaNac = true; }
+          if (d2.provincia) { upd.provincia = d2.provincia; lock.provincia = true; }
+          if (d2.canton)    { upd.canton = d2.canton; lock.canton = true; }
+          if (d2.sexo)      { upd.sexo = /^f/i.test(d2.sexo) ? 'F' : 'M'; lock.sexo = true; }
+          setMany(upd);
+          setPrellenado(p => ({ ...p, ...lock }));
+        }
+      } catch (_) { /* sin padrón / error TSE → input manual */ }
+
+      if (!nombreTSE) {
+        set('nombre', '');
+        setPrellenado(p => ({ ...p, nombre: false }));
+      }
+    }
+    setVerif('free');
   };
 
   return (
@@ -116,7 +140,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
               <label key={t.id} className={`idtype-card${form.idTipo===t.id?' sel':''}`}>
                 <input type="radio" name="idTipo" checked={form.idTipo===t.id}
                   onChange={() => {
-                    set('idTipo', t.id); set('cedula',''); set('nombre',''); setVerif('idle'); setProspecto(false);
+                    set('idTipo', t.id); set('cedula',''); set('nombre',''); setVerif('idle'); setVerifInfo(null);
                     setPrellenado({}); // limpiar candados al cambiar tipo
                   }} />
                 {t.label}
@@ -132,13 +156,13 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
         </Field>
 
         <Field fieldKey="cedula" label={tipo.campo} error={errors.cedula}
-          note={esNacional && verif!=='exists' ? 'Este número será tu usuario en el Campus Virtual.' : null}>
+          note={esNacional && verif!=='blocked' ? 'Este número será tu usuario en el Campus Virtual.' : null}>
           <div className="inline-grp">
             <input type="text" value={form.cedula}
               className={errors.cedula ? 'err' : ''}
               onChange={e => {
                 set('cedula', esNacional ? fmtCedula(e.target.value) : e.target.value);
-                setVerif('idle');
+                setVerif('idle'); setVerifInfo(null);
                 // Al cambiar la cédula, soltar el nombre prellenado por el TSE para no
                 // arrastrar el dato viejo (Cambio 4): vacío y editable hasta re-verificar.
                 if (prellenado.nombre) { set('nombre', ''); setPrellenado(p => ({ ...p, nombre: false })); }
@@ -160,32 +184,59 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
         </Field>
       </div>
 
-      {/* CUENTA YA EXISTENTE — bloquea el resto del formulario (Cambio 3) */}
-      {bloqueado ? (
-        <div className="card cuenta-existe">
-          <div className="ce-ico"><Ico d={I.lock} size={26} /></div>
-          <div className="ce-title">
-            {esProspecto ? 'Ya tenés una inscripción en proceso' : 'Ya tenés una cuenta en la academia'}
-          </div>
-          <div className="ce-msg">
-            {esProspecto
-              ? 'Esta cédula ya tiene una inscripción en proceso. Comunicate con tu asesor para continuar.'
-              : 'Esta cédula ya tiene una cuenta en la academia. Iniciá sesión con tu usuario y contraseña.'}
-          </div>
-          <div className="ce-actions">
-            {esProspecto ? (
-              <a className="btn btn-primary" href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">
-                <IcoFill d={I.wa} size={18} /> Contactar a mi asesor
+      {/* CUENTA / PROSPECTO YA EXISTENTE — bloquea el resto del formulario (INSCRIPCION-001) */}
+      {bloqueado ? (() => {
+        const info = verifInfo || {};
+
+        // Verificación fallida (red caída o respuesta no utilizable): no se permite
+        // continuar; se muestra mensaje claro y se invita a reintentar.
+        if (info.motivo === 'ERROR_VERIFICACION' || info.mensaje) {
+          return (
+            <div className="card cuenta-existe">
+              <div className="ce-ico"><Ico d={I.warn} size={26} /></div>
+              <div className="ce-title">No pudimos verificar la cédula</div>
+              <div className="ce-msg">{info.mensaje || 'No pudimos verificar la cédula. Intentá de nuevo.'}</div>
+              <div className="ce-actions">
+                <button className="btn btn-primary" onClick={verificar}>
+                  <Ico d={I.check} size={18} /> Verificar de nuevo
+                </button>
+              </div>
+              <div className="ce-hint">Si el problema continúa, revisá tu conexión a internet y volvé a presionar “Verificar”.</div>
+            </div>
+          );
+        }
+
+        const esEst = info.motivo === 'ESTUDIANTE_EXISTE';
+        const waNum = info.asesorWhatsapp ? waHref(info.asesorWhatsapp) : WA_NUMBER;
+        const waMsg = esEst
+          ? 'Hola, intenté inscribirme pero mi cédula ya tiene un registro activo en la academia. ¿Me pueden ayudar?'
+          : 'Hola, ya tengo una inscripción en proceso y quiero continuarla.';
+        const primerNombre = info.asesorNombre ? info.asesorNombre.trim().split(/\s+/)[0] : '';
+        return (
+          <div className="card cuenta-existe">
+            <div className="ce-ico"><Ico d={I.lock} size={26} /></div>
+            <div className="ce-title">
+              {esEst ? 'Ya tenés un registro activo' : 'Ya tenés una inscripción en proceso'}
+            </div>
+            <div className="ce-msg">
+              {esEst
+                ? 'Ya tenés un registro activo en Academia Norteamericana. Por favor contactá a la academia o a tu asesor.'
+                : (info.asesorNombre
+                    ? `Esta cédula ya tiene un proceso de inscripción abierto. Tu asesor asignado es ${info.asesorNombre}. Continuá tu proceso con él por WhatsApp.`
+                    : 'Esta cédula ya tiene un proceso de inscripción abierto. Comunicate con tu asesor para continuarlo.')}
+            </div>
+            <div className="ce-actions">
+              <a className="btn btn-primary" href={`https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`} target="_blank" rel="noopener">
+                <IcoFill d={I.wa} size={18} /> {esEst ? 'Contactar a la academia' : (primerNombre ? `Hablar con ${primerNombre}` : 'Hablar con mi asesor')}
               </a>
-            ) : (
-              <button className="btn btn-primary" onClick={() => { window.location.href = 'login.html'; }}>
-                Ir al login <Ico d={I.arrow} size={18} />
-              </button>
-            )}
+            </div>
+            <div className="ce-hint">
+              {esEst ? <>¿Ya tenés cuenta? <a href="login.html">Iniciá sesión</a>. </> : null}
+              ¿Es un error? Cambiá el número de identificación arriba y volvé a verificar.
+            </div>
           </div>
-          <div className="ce-hint">¿Es un error? Cambiá el número de identificación arriba y volvé a verificar.</div>
-        </div>
-      ) : (
+        );
+      })() : (
       <React.Fragment>
 
       {/* NOMBRE */}
@@ -402,11 +453,19 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           </select>
         </Field>
 
-        <Field label="Asesor de referencia" optional>
-          <select value={form.asesor} onChange={e => set('asesor', e.target.value)}>
+        <Field label="Asesor de referencia" optional
+          note={asesoresEstado === 'loading' ? 'Cargando asesores disponibles…' : null}>
+          <select value={form.asesor} onChange={e => set('asesor', e.target.value)}
+            disabled={asesoresEstado === 'loading'}>
             <option value="">— Ninguno —</option>
             {asesores.map(a => <option key={a.nombre} value={a.nombre}>{a.nombre}</option>)}
           </select>
+          {asesoresEstado === 'error' && (
+            <div className="inline-alert warn" style={{ marginTop: 8 }}>
+              <Ico d={I.warn} size={18} />
+              <span>No se pudieron cargar asesores disponibles. Podés continuar sin seleccionar uno.</span>
+            </div>
+          )}
         </Field>
       </div>
 
@@ -447,63 +506,44 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 2 — PROGRAMA Y FINANCIAMIENTO
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina2({ form, set, errors, onBack, onSubmit, submitting, grupos, setGrupos }) {
-  const esNacional = form.idTipo === 'nac';
+function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos }) {
+  const esNacional = form.idTipo === 'nac'; // requerido por ProgramCard locked={!esNacional}
   const [loadingGrupos, setLoadingGrupos] = useState(false);
-  const [becasDisp, setBecasDisp] = useState([]);
+  const [gruposError, setGruposError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Grupos reales desde el backend (cupos, fechas legibles y modalidad).
+  // Grupos/horarios reales desde el backend (cupos, fechas legibles y modalidad).
+  // parseGrupos tolera varios shapes de respuesta; devuelve null cuando la respuesta
+  // es un error / no reconocida, para distinguir "sin grupos" de "falló la carga".
   useEffect(() => {
-    if (!form.programa) { setGrupos(null); return; }
+    if (!form.programa) { setGrupos(null); setGruposError(false); return; }
     let cancel = false;
-    setLoadingGrupos(true); setGrupos(null); set('grupo','');
+    setLoadingGrupos(true); setGruposError(false); setGrupos(null); set('grupo','');
     const programa = form.programa === 'ina' ? 'INA' : 'SIN_INA';
-    fetch(`${SCRIPT_URL}?fn=getGruposDisponibles&programa=${programa}`)
+    fetch(`${SCRIPT_URL}?fn=getGruposDisponibles&programa=${encodeURIComponent(programa)}`)
       .then(r => r.json())
       .then(d => {
         if (cancel) return;
-        setGrupos((d && d.ok && d.grupos) ? d.grupos : []);
+        const lista = parseGrupos(d);
+        setGrupos(Array.isArray(lista) ? lista : []);
+        setGruposError(lista === null);
         setLoadingGrupos(false);
       })
       .catch(() => {
         if (cancel) return;
         setGrupos([]);
+        setGruposError(true);
         setLoadingGrupos(false);
       });
     return () => { cancel = true; };
-  }, [form.programa]);
-
-  // Becas disponibles (Fase 3.8) — dinámicas desde CONFIG_BECAS. Solo las
-  // visibles + activas + vigentes, filtradas por el programa elegido. Si el
-  // admin desactiva u oculta una beca, deja de aparecer acá automáticamente.
-  useEffect(() => {
-    if (!form.programa) { setBecasDisp([]); return; }
-    let cancel = false;
-    const programa = form.programa === 'ina' ? 'INA' : 'SIN_INA';
-    const req = window.getBecas
-      ? window.getBecas({ solo_visibles: true, programa })
-      : fetch(`${SCRIPT_URL}?fn=getBecas`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: 'getBecas', solo_visibles: true, programa }) }).then(r => r.json());
-    Promise.resolve(req)
-      .then(d => {
-        if (cancel) return;
-        const becas = ((d && d.becas) || []).map(b => ({
-          id: b.id, nombre: b.nombre,
-          porcentaje: Math.max(b.pct_matricula || 0, b.pct_cuota || 0, b.pct_certificado || 0, b.pct_titulo || 0) / 100,
-          cupo_disponible: b.cupo_total ? b.cupo_disponible : null,
-          disponible: true,
-        }));
-        setBecasDisp(becas);
-      })
-      .catch(() => { if (!cancel) setBecasDisp([]); });
-    return () => { cancel = true; };
-  }, [form.programa]);
+  }, [form.programa, reloadKey]);
 
   return (
     <div className="ins-body">
       <div className="p2-head">
-        <button className="back-btn" onClick={onBack}><Ico d={I.back} size={16} /> Volver</button>
-        <div className="p2-title">Seleccioná tu programa</div>
-        <div className="p2-sub">Elegí el programa que mejor se adapte a tus metas.</div>
+        <button className="back-btn" onClick={onBack}><Ico d={I.back} size={16} /> Atrás · Datos personales</button>
+        <div className="p2-title">Programa y horario</div>
+        <div className="p2-sub">Elegí tu programa y el horario que mejor se adapte a tus metas.</div>
       </div>
 
       <div id="fld-programa">
@@ -571,139 +611,217 @@ function Pagina2({ form, set, errors, onBack, onSubmit, submitting, grupos, setG
                   })()}
                   {errors.grupo && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.grupo}</div>}
                 </>
+              ) : gruposError ? (
+                <div className="grupo-empty err">
+                  <Ico d={I.alert} size={18} />
+                  <span>No pudimos cargar los horarios disponibles. <button type="button" className="link-btn" onClick={() => setReloadKey(k => k + 1)}>Reintentar</button> o <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">escribinos por WhatsApp.</a></span>
+                </div>
               ) : (
                 <div className="grupo-empty">
                   <Ico d={I.warn} size={18} />
-                  <span>No hay grupos disponibles. <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">Escribinos por WhatsApp.</a></span>
+                  <span>No hay grupos disponibles para este programa por ahora. <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">Escribinos por WhatsApp.</a></span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* FINANCIAMIENTO */}
-          <div className="card">
-            <div className="sec-head">
-              <div className="sec-eyebrow">Financiamiento</div>
-              <div className="sec-title">¿Cómo vas a financiar tu curso?</div>
-            </div>
-            <div id="fld-financiamiento">
-              <div className="fin-stack">
-                <FinCard value="CONAPE" selected={form.financiamiento==='CONAPE'} locked={!esNacional}
-                  onSelect={v => set('financiamiento', v)} icon="🏦"
-                  title="Financiamiento CONAPE" badge={esNacional ? 'Disponible para vos' : null}
-                  subtitle="Financiá el 100% sin fiador, sin intereses." />
-                <FinCard value="PROPIO" selected={form.financiamiento==='PROPIO'}
-                  onSelect={v => set('financiamiento', v)} icon="💳"
-                  title="Pago propio"
-                  subtitle="Pagás directamente a la academia." />
-              </div>
-              {errors.financiamiento && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.financiamiento}</div>}
-            </div>
-
-            {/* SUB-SECCIÓN CONAPE */}
-            {form.financiamiento==='CONAPE' && esNacional && (
-              <div className="conape-box reveal">
-                {/* Equipo de cómputo */}
-                <div className="conape-block">
-                  <div className="cb-title">¿Necesitás financiar un equipo de cómputo?</div>
-                  <div id="fld-conapeEquipo">
-                    <div className="equipo-grid">
-                      <EquipoCard value="NINGUNO" selected={form.conapeEquipo==='NINGUNO'} simple
-                        onSelect={v => set('conapeEquipo', v)} title="No necesito equipo" />
-                      <EquipoCard value="BASICO" selected={form.conapeEquipo==='BASICO'}
-                        onSelect={v => set('conapeEquipo', v)}
-                        img={IMG_BASICO} fallbackBg="#1a2547" fallbackText="Plan Básico"
-                        title="Plan Básico · ₡319,000"
-                        bullets={['Laptop HP 15"','Core i3 N305 · 8GB RAM · 256GB SSD']} />
-                      <EquipoCard value="PREMIUM" selected={form.conapeEquipo==='PREMIUM'}
-                        onSelect={v => set('conapeEquipo', v)}
-                        img={IMG_PREMIUM} fallbackBg="#2B7FC1" fallbackText="Plan Premium"
-                        title="Plan Premium · ₡360,000"
-                        bullets={['Laptop HP 15"','+ Headset · Mouse · Licencias']} />
-                    </div>
-                    {errors.conapeEquipo && <div className="field-error" style={{marginTop:8}}><Ico d={I.alert} size={13} /> {errors.conapeEquipo}</div>}
-                  </div>
-                </div>
-
-                {/* TOEIC */}
-                <div className="conape-block">
-                  <div className="cb-title">¿Deseás incluir la prueba internacional TOEIC al finalizar el programa?</div>
-                  <div className="cb-note">Certificación reconocida a nivel mundial que evalúa tu nivel de inglés para fines académicos y laborales. Su aplicación es opcional y se realiza al finalizar el programa.</div>
-                  <div className="choice-row" style={{ marginTop:10 }}>
-                    {[[true,'Sí, deseo financiar la prueba (₡136,730)'],[false,'No']].map(([v,l]) => (
-                      <label key={String(v)} className={`choice-card${form.conapeToeic===v?' sel':''}`}>
-                        <input type="radio" name="toeic" checked={form.conapeToeic===v} onChange={() => set('conapeToeic', v)} />
-                        <span className="choice-txt">{l}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sostenimiento */}
-                <div className="conape-block">
-                  <div className="cb-title">Gastos de sostenimiento <span className="cb-opt">Opcional</span></div>
-                  <div className="cb-note">Este rubro es OPCIONAL y está pensado para ayudarte con gastos básicos durante el curso, como el pago del internet. Podés pedir hasta ₡60,000 por mes (₡240,000 por cuatrimestre / ₡120,000 por bimestre).</div>
-                  <select value={form.conapeSost} style={{ marginTop:10 }}
-                    onChange={e => set('conapeSost', e.target.value)}>
-                    <option value="">No lo necesito</option>
-                    {[10000,20000,30000,40000,50000,60000].map(m => (
-                      <option key={m} value={`₡${m.toLocaleString('es-CR')} por mes`}>
-                        ₡{m.toLocaleString('es-CR')} por mes
-                      </option>
-                    ))}
-                  </select>
-                  <div className="cb-hint">Elegí el monto mensual que deseás solicitar (entre ₡10,000 y ₡60,000 por mes). Si no lo necesitás, dejá "No lo necesito".</div>
-                </div>
-              </div>
-            )}
-
-            {/* SUB-SECCIÓN PAGO PROPIO */}
-            {form.financiamiento==='PROPIO' && (
-              <div className="propio-box reveal">
-                <div className="conape-block">
-                  <div className="cb-title">Becas disponibles <span className="cb-opt">Opcional</span></div>
-                  <div className="cb-note">Si pagás por cuenta propia podés solicitar una de las siguientes becas. Su otorgamiento queda sujeto a aprobación de la Dirección.</div>
-                  <div className="beca-grid" style={{ marginTop:12 }}>
-                    {becasDisp
-                      .filter(b => b.disponible)
-                      .map(b => (
-                        <label key={b.id} className={`beca-card${form.becaPropio===b.id?' sel':''}`}>
-                          <input type="radio" name="becaPropio" checked={form.becaPropio===b.id}
-                            onChange={() => set('becaPropio', form.becaPropio===b.id ? '' : b.id)}
-                            onClick={() => { if (form.becaPropio===b.id) set('becaPropio',''); }} />
-                          <span className="beca-ico">{b.id === 'MUJER' ? '🌷' : b.id === 'IMPACTA' ? '🎯' : '🎓'}</span>
-                          <span className="beca-body">
-                            <b>{b.nombre.toUpperCase()} {Math.round(b.porcentaje * 100)}%</b>
-                            <i>{b.cupo_disponible != null ? `${b.cupo_disponible} cupos disponibles · ` : ''}Sujeto a aprobación de Dirección</i>
-                          </span>
-                        </label>
-                      ))}
-                  </div>
-                  {becasDisp.filter(b => b.disponible).length === 0 && (
-                    <div className="grupo-empty">
-                      <Ico d={I.warn} size={18} />
-                      <span>No hay becas disponibles en este momento.</span>
-                    </div>
-                  )}
-                  <div className="cb-hint">Seleccioná una beca si deseás aplicar, o dejá esta sección en blanco.</div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* REGISTRARME */}
+          {/* NAVEGACIÓN PASO 2 → PASO 3 (gateada por horario) */}
           <div className="card continue-card">
-            <button className="btn btn-success" onClick={onSubmit} disabled={submitting}>
-              {submitting ? <><span className="btn-loader" /> Subiendo documentos…</> : <>Registrarme <Ico d={I.check} size={18} /></>}
-            </button>
-            {submitting && (
-              <div className="upload-status" role="status" aria-live="polite">
-                Estamos subiendo tus documentos. Esto puede tardar unos segundos — no cierres esta ventana.
-              </div>
+            <div className="step-nav">
+              <button className="btn btn-ghost btn-back" onClick={onBack}>
+                <Ico d={I.back} size={18} /> Atrás
+              </button>
+              <button className="btn btn-primary btn-next" onClick={onContinue} disabled={!form.grupo}>
+                Continuar <Ico d={I.arrow} size={18} />
+              </button>
+            </div>
+            {!form.grupo && (
+              <div className="step-nav-hint">Seleccioná un horario para continuar al paso de financiamiento.</div>
             )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PÁGINA 3 — FINANCIAMIENTO Y ADICIONALES
+// ─────────────────────────────────────────────────────────────────────────────
+function Pagina3({ form, set, errors, onBack, onSubmit, submitting }) {
+  const esNacional = form.idTipo === 'nac';
+  const [becasDisp, setBecasDisp] = useState([]);
+
+  // Becas disponibles — dinámicas desde CONFIG_BECAS. Solo las visibles + activas
+  // + vigentes, filtradas por el programa elegido en el Paso 2. Si el admin
+  // desactiva u oculta una beca, deja de aparecer acá automáticamente.
+  useEffect(() => {
+    if (!form.programa) { setBecasDisp([]); return; }
+    let cancel = false;
+    const programa = form.programa === 'ina' ? 'INA' : 'SIN_INA';
+    const req = window.getBecas
+      ? window.getBecas({ solo_visibles: true, programa })
+      : fetch(`${SCRIPT_URL}?fn=getBecas`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: 'getBecas', solo_visibles: true, programa }) }).then(r => r.json());
+    Promise.resolve(req)
+      .then(d => {
+        if (cancel) return;
+        const becas = ((d && d.becas) || []).map(b => ({
+          id: b.id, nombre: b.nombre,
+          porcentaje: Math.max(b.pct_matricula || 0, b.pct_cuota || 0, b.pct_certificado || 0, b.pct_titulo || 0) / 100,
+          cupo_disponible: b.cupo_total ? b.cupo_disponible : null,
+          disponible: true,
+        }));
+        setBecasDisp(becas);
+      })
+      .catch(() => { if (!cancel) setBecasDisp([]); });
+    return () => { cancel = true; };
+  }, [form.programa]);
+
+  return (
+    <div className="ins-body">
+      <div className="p2-head">
+        <button className="back-btn" onClick={onBack}><Ico d={I.back} size={16} /> Atrás · Programa y horario</button>
+        <div className="p2-title">Financiamiento y adicionales</div>
+        <div className="p2-sub">Elegí cómo vas a financiar tu curso y agregá las opciones que necesités.</div>
+      </div>
+
+      {/* RESUMEN DE HORARIO SELECCIONADO */}
+      <div className="card horario-resumen">
+        <div className="hr-ico"><Ico d={I.check} size={18} /></div>
+        <div>
+          <div className="hr-label">Horario seleccionado</div>
+          <div className="hr-val">{form.grupo || '—'}</div>
+        </div>
+        <button type="button" className="hr-edit" onClick={onBack}>Cambiar</button>
+      </div>
+
+      {/* FINANCIAMIENTO */}
+      <div className="card">
+        <div className="sec-head">
+          <div className="sec-eyebrow">Financiamiento</div>
+          <div className="sec-title">¿Cómo vas a financiar tu curso?</div>
+        </div>
+        <div id="fld-financiamiento">
+          <div className="fin-stack">
+            <FinCard value="CONAPE" selected={form.financiamiento==='CONAPE'} locked={!esNacional}
+              onSelect={v => set('financiamiento', v)} icon="🏦"
+              title="Financiamiento CONAPE" badge={esNacional ? 'Disponible para vos' : null}
+              subtitle="Financiá el 100% sin fiador, sin intereses." />
+            <FinCard value="PROPIO" selected={form.financiamiento==='PROPIO'}
+              onSelect={v => set('financiamiento', v)} icon="💳"
+              title="Pago propio"
+              subtitle="Pagás directamente a la academia." />
+          </div>
+          {errors.financiamiento && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.financiamiento}</div>}
+        </div>
+
+        {/* SUB-SECCIÓN CONAPE */}
+        {form.financiamiento==='CONAPE' && esNacional && (
+          <div className="conape-box reveal">
+            {/* Equipo de cómputo */}
+            <div className="conape-block">
+              <div className="cb-title">¿Necesitás financiar un equipo de cómputo?</div>
+              <div id="fld-conapeEquipo">
+                <div className="equipo-grid">
+                  <EquipoCard value="NINGUNO" selected={form.conapeEquipo==='NINGUNO'} simple
+                    onSelect={v => set('conapeEquipo', v)} title="No necesito equipo" />
+                  <EquipoCard value="BASICO" selected={form.conapeEquipo==='BASICO'}
+                    onSelect={v => set('conapeEquipo', v)}
+                    img={IMG_BASICO} fallbackBg="#1a2547" fallbackText="Plan Básico"
+                    title="Plan Básico · ₡319,000"
+                    bullets={['Laptop HP 15"','Core i3 N305 · 8GB RAM · 256GB SSD']} />
+                  <EquipoCard value="PREMIUM" selected={form.conapeEquipo==='PREMIUM'}
+                    onSelect={v => set('conapeEquipo', v)}
+                    img={IMG_PREMIUM} fallbackBg="#2B7FC1" fallbackText="Plan Premium"
+                    title="Plan Premium · ₡360,000"
+                    bullets={['Laptop HP 15"','+ Headset · Mouse · Licencias']} />
+                </div>
+                {errors.conapeEquipo && <div className="field-error" style={{marginTop:8}}><Ico d={I.alert} size={13} /> {errors.conapeEquipo}</div>}
+              </div>
+            </div>
+
+            {/* TOEIC */}
+            <div className="conape-block">
+              <div className="cb-title">¿Deseás incluir la prueba internacional TOEIC al finalizar el programa?</div>
+              <div className="cb-note">Certificación reconocida a nivel mundial que evalúa tu nivel de inglés para fines académicos y laborales. Su aplicación es opcional y se realiza al finalizar el programa.</div>
+              <div className="choice-row" style={{ marginTop:10 }}>
+                {[[true,'Sí, deseo financiar la prueba (₡136,730)'],[false,'No']].map(([v,l]) => (
+                  <label key={String(v)} className={`choice-card${form.conapeToeic===v?' sel':''}`}>
+                    <input type="radio" name="toeic" checked={form.conapeToeic===v} onChange={() => set('conapeToeic', v)} />
+                    <span className="choice-txt">{l}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Sostenimiento */}
+            <div className="conape-block">
+              <div className="cb-title">Gastos de sostenimiento <span className="cb-opt">Opcional</span></div>
+              <div className="cb-note">Este rubro es OPCIONAL y está pensado para ayudarte con gastos básicos durante el curso, como el pago del internet. Podés pedir hasta ₡60,000 por mes (₡240,000 por cuatrimestre / ₡120,000 por bimestre).</div>
+              <select value={form.conapeSost} style={{ marginTop:10 }}
+                onChange={e => set('conapeSost', e.target.value)}>
+                <option value="">No lo necesito</option>
+                {[10000,20000,30000,40000,50000,60000].map(m => (
+                  <option key={m} value={`₡${m.toLocaleString('es-CR')} por mes`}>
+                    ₡{m.toLocaleString('es-CR')} por mes
+                  </option>
+                ))}
+              </select>
+              <div className="cb-hint">Elegí el monto mensual que deseás solicitar (entre ₡10,000 y ₡60,000 por mes). Si no lo necesitás, dejá "No lo necesito".</div>
+            </div>
+          </div>
+        )}
+
+        {/* SUB-SECCIÓN PAGO PROPIO */}
+        {form.financiamiento==='PROPIO' && (
+          <div className="propio-box reveal">
+            <div className="conape-block">
+              <div className="cb-title">Becas disponibles <span className="cb-opt">Opcional</span></div>
+              <div className="cb-note">Si pagás por cuenta propia podés solicitar una de las siguientes becas. Su otorgamiento queda sujeto a aprobación de la Dirección.</div>
+              <div className="beca-grid" style={{ marginTop:12 }}>
+                {becasDisp
+                  .filter(b => b.disponible)
+                  .map(b => (
+                    <label key={b.id} className={`beca-card${form.becaPropio===b.id?' sel':''}`}>
+                      <input type="radio" name="becaPropio" checked={form.becaPropio===b.id}
+                        onChange={() => set('becaPropio', form.becaPropio===b.id ? '' : b.id)}
+                        onClick={() => { if (form.becaPropio===b.id) set('becaPropio',''); }} />
+                      <span className="beca-ico">{b.id === 'MUJER' ? '🌷' : b.id === 'IMPACTA' ? '🎯' : '🎓'}</span>
+                      <span className="beca-body">
+                        <b>{b.nombre.toUpperCase()} {Math.round(b.porcentaje * 100)}%</b>
+                        <i>{b.cupo_disponible != null ? `${b.cupo_disponible} cupos disponibles · ` : ''}Sujeto a aprobación de Dirección</i>
+                      </span>
+                    </label>
+                  ))}
+              </div>
+              {becasDisp.filter(b => b.disponible).length === 0 && (
+                <div className="grupo-empty">
+                  <Ico d={I.warn} size={18} />
+                  <span>No hay becas disponibles en este momento.</span>
+                </div>
+              )}
+              <div className="cb-hint">Seleccioná una beca si deseás aplicar, o dejá esta sección en blanco.</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ENVIAR INSCRIPCIÓN */}
+      <div className="card continue-card">
+        <div className="step-nav">
+          <button className="btn btn-ghost btn-back" onClick={onBack} disabled={submitting}>
+            <Ico d={I.back} size={18} /> Atrás
+          </button>
+          <button className="btn btn-success btn-next" onClick={onSubmit} disabled={submitting}>
+            {submitting ? <><span className="btn-loader" /> Subiendo documentos…</> : <>Enviar inscripción <Ico d={I.check} size={18} /></>}
+          </button>
+        </div>
+        {submitting && (
+          <div className="upload-status" role="status" aria-live="polite">
+            Estamos subiendo tus documentos. Esto puede tardar unos segundos — no cierres esta ventana.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -790,8 +908,8 @@ function App() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState(FORM_INIT);
   const [grupos, setGrupos] = useState(null); // lista de grupos cargada en Pagina2 (se eleva para derivar la modalidad en el submit)
-  const [verif, setVerif] = useState('idle'); // idle | loading | exists | free — estado de verificación de cédula (Pagina1)
-  const [esProspecto, setEsProspecto] = useState(false); // si la cédula existente es un prospecto (inscripción en proceso)
+  const [verif, setVerif] = useState('idle'); // idle | loading | blocked | free — estado de verificación de cédula (Pagina1)
+  const [verifInfo, setVerifInfo] = useState(null); // resultado normalizado de la verificación (motivo, asesor, etc.)
   const [prellenado, setPrellenado] = useState({}); // campos verificados del padrón TSE
   const [files, setFiles] = useState({ frente:null, reverso:null, titulo:null });
   const [errors, setErrors] = useState({});
@@ -799,6 +917,7 @@ function App() {
   const [done, setDone] = useState(false);
   const [toast, setToast] = useState('');
   const [asesores, setAsesores] = useState([]); // asesores activos (rol=ventas) cargados del backend
+  const [asesoresEstado, setAsesoresEstado] = useState('loading'); // loading | ok | error
 
   const set = useCallback((k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -828,13 +947,33 @@ function App() {
   // Asesores activos (rol=ventas) desde el backend — alimentan el dropdown
   // "Asesor de referencia" y el link de WhatsApp final. Si la lista viene
   // vacía, el dropdown queda con "— Ninguno —" y el flujo no se bloquea.
+  // Asesores activos (rol=ventas, activo=TRUE) desde el backend — alimentan el
+  // dropdown "Asesor de referencia" y el link de WhatsApp final. Se trackea el
+  // estado para mostrar "No se pudieron cargar asesores disponibles." si falla o
+  // viene vacío (en vez de un dropdown silenciosamente vacío).
   useEffect(() => {
+    setAsesoresEstado('loading');
     fetch(`${SCRIPT_URL}?fn=getAsesoresActivos`)
       .then(r => r.json())
       .then(d => {
-        if (d && d.ok && Array.isArray(d.asesores)) setAsesores(d.asesores);
+        // Tolerante a shapes: { ok, asesores:[] } | { asesores:[] } | [] directo.
+        const lista = Array.isArray(d) ? d
+          : (d && Array.isArray(d.asesores)) ? d.asesores
+          : (d && Array.isArray(d.data)) ? d.data
+          : null;
+        if (lista && lista.length) {
+          setAsesores(lista);
+          setAsesoresEstado('ok');
+        } else {
+          setAsesores([]);
+          setAsesoresEstado('error'); // sin asesores o shape no reconocido → avisar
+        }
       })
-      .catch(err => console.error('Error cargando asesores:', err));
+      .catch(err => {
+        console.error('Error cargando asesores:', err);
+        setAsesores([]);
+        setAsesoresEstado('error');
+      });
   }, []);
 
   // ── Validación Página 1 ──
@@ -842,8 +981,8 @@ function App() {
     const e = {};
     if (!form.cedula.trim()) {
       e.cedula = 'Ingresá tu número de identificación.';
-    } else if (verif === 'exists') {
-      e.cedula = 'Esta cédula ya tiene una cuenta. Iniciá sesión o cambiá el número.';
+    } else if (verif === 'blocked') {
+      e.cedula = 'Esta cédula no puede continuar. Revisá el mensaje de arriba.';
     } else if (verif !== 'free') {
       e.cedula = 'Presioná el botón Verificar antes de continuar.';
     }
@@ -902,18 +1041,48 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
-  const volverPaso1 = () => { setPaso(1); window.scrollTo({ top: 0, behavior: 'auto' }); };
+  // ── Validación Página 2 (Horario) ── No se llega al Paso 3 sin elegir horario.
+  const validarPaso2 = () => {
+    const e = {};
+    if (!form.programa) e.programa = 'Seleccioná un programa.';
+    if (!form.grupo) e.grupo = 'Seleccioná un horario para continuar.';
+    setErrors(e);
+    if (Object.keys(e).length) {
+      const first = ['programa','grupo'].find(k => e[k]);
+      if (first) setTimeout(() => scrollToField(first), 50);
+      return false;
+    }
+    return true;
+  };
 
-  // ── Validación + envío Página 2 ──
+  const irPaso3 = () => {
+    if (!validarPaso2()) return;
+    setPaso(3);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+
+  const volverPaso1 = () => { setPaso(1); window.scrollTo({ top: 0, behavior: 'auto' }); };
+  const volverPaso2 = () => { setPaso(2); window.scrollTo({ top: 0, behavior: 'auto' }); };
+
+  // ── Validación + envío Página 3 (Financiamiento) ──
   const registrar = async () => {
     const e = {};
     if (!form.programa) e.programa = 'Seleccioná un programa.';
-    if (!form.grupo) e.grupo = 'Seleccioná un grupo.';
+    if (!form.grupo) e.grupo = 'Seleccioná un horario.';
     if (!form.financiamiento) e.financiamiento = 'Seleccioná una opción de financiamiento.';
     if (form.financiamiento === 'CONAPE' && !form.conapeEquipo) e.conapeEquipo = 'Seleccioná una opción de equipo.';
+    // Si falta programa u horario, el problema está en el Paso 2 → regresar allá.
+    if (e.programa || e.grupo) {
+      setErrors(e);
+      setPaso(2);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      const first = ['programa','grupo'].find(k => e[k]);
+      if (first) setTimeout(() => scrollToField(first), 80);
+      return;
+    }
     setErrors(e);
     if (Object.keys(e).length) {
-      const order = ['programa','grupo','financiamiento','conapeEquipo'];
+      const order = ['financiamiento','conapeEquipo'];
       const first = order.find(k => e[k]);
       if (first) setTimeout(() => scrollToField(first), 50);
       return;
@@ -1050,11 +1219,16 @@ function App() {
     <>
       <Header />
       <Progress paso={paso} />
-      {paso === 1
-        ? <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
-            files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif}
-            esProspecto={esProspecto} setProspecto={setEsProspecto} asesores={asesores} />
-        : <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onSubmit={registrar} submitting={submitting} grupos={grupos} setGrupos={setGrupos} />}
+      {paso === 1 ? (
+        <Pagina1 form={form} set={set} setMany={setMany} prellenado={prellenado} setPrellenado={setPrellenado}
+          files={files} setFile={setFile} errors={errors} onContinue={irPaso2} verif={verif} setVerif={setVerif}
+          verifInfo={verifInfo} setVerifInfo={setVerifInfo} asesores={asesores} asesoresEstado={asesoresEstado} />
+      ) : paso === 2 ? (
+        <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onContinue={irPaso3}
+          grupos={grupos} setGrupos={setGrupos} />
+      ) : (
+        <Pagina3 form={form} set={set} errors={errors} onBack={volverPaso2} onSubmit={registrar} submitting={submitting} />
+      )}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 
       {toast && (
