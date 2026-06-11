@@ -99,20 +99,29 @@ function MiEmbudo({ embudo, etapaActiva, onPick }) {
 // Solo código, fecha y modalidad. NUNCA matriculados/cupo de otros vendedores.
 function MisGrupos({ grupos }) {
   if (!grupos || !grupos.length) {
-    return <div className="vx-grp-empty">No tenés grupos con cupo abierto por ahora.</div>;
+    return <div className="vx-grp-empty">No hay grupos con cupo abierto por ahora.</div>;
   }
-  const modTxt = m => String(m || '').replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+  // Horario completo SIN abreviaciones + fecha de inicio completa + cuenta regresiva
+  // (recalculada contra la fecha real de hoy). Todo derivado, nunca texto quemado.
   return (
     <div className="vx-grp">
-      {grupos.map((g, i) => (
-        <div key={g.codigo || i} className="vx-grp-row">
-          <span className="vx-grp-code">{g.codigo}</span>
-          <span className="vx-grp-sep">·</span>
-          <span className="vx-grp-date">Inicia {window.fmtFechaDDMon(g.fecha_inicio)}</span>
-          <span className="vx-grp-sep">·</span>
-          <span className="vx-grp-mod">{modTxt(g.modalidad)}</span>
-        </div>
-      ))}
+      {grupos.map((g, i) => {
+        const horario = window.formatHorarioGrupo(g);
+        const countdown = window.diasParaIniciar(g.fecha_inicio);
+        const iniciado = countdown === 'Curso iniciado';
+        const hoy = countdown === 'Inicia hoy';
+        const tone = iniciado ? 'done' : hoy ? 'today' : 'soon';
+        return (
+          <div key={g.codigo || i} className="vx-grpc">
+            <div className="vx-grpc-main">
+              <div className="vx-grpc-horario">{horario || g.codigo}</div>
+              <div className="vx-grpc-inicio">INICIO: {window.fmtFechaLarga(g.fecha_inicio) || '—'}</div>
+              <div className="vx-grpc-code">{g.codigo}</div>
+            </div>
+            {countdown ? <span className={`vx-grpc-count vx-grpc-count-${tone}`}>{countdown}</span> : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -136,13 +145,16 @@ function FiltroChip({ etapa, onClear }) {
 function ResumenSkeleton() {
   return (
     <React.Fragment>
-      <div className="vx-sec"><div className="vx-sk" style={{ height: 168, borderRadius: 16 }} /></div>
+      <div className="vx-sec">
+        <div className="vx-sec-h">Mis matrículas</div>
+        <div className="vx-sk" style={{ height: 200, borderRadius: 16 }} />
+      </div>
       <div className="vx-sec">
         <div className="vx-sec-h">Mi embudo</div>
         <div className="vx-sk" style={{ height: 360, borderRadius: 16 }} />
       </div>
       <div className="vx-sec">
-        <div className="vx-sec-h">Mis grupos disponibles</div>
+        <div className="vx-sec-h">Grupos Disponibles</div>
         <div className="vx-sk" style={{ height: 120, borderRadius: 16 }} />
       </div>
     </React.Fragment>

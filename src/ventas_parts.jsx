@@ -60,6 +60,17 @@ function PrioridadBadge({ prio }) {
     </span>
   );
 }
+// ── ESTADO DEL ESTUDIANTE (VENTAS-DASHBOARD-002) ─────────────────────────
+// Franja/badge ancho que DOMINA visualmente la columna "Estado": color fuerte +
+// palabra clara (no depende solo del color). Reemplaza a "Prioridad" en la lista.
+function EstadoBadge({ est, block }) {
+  const e = est || { estado: 'SEGUIMIENTO', color: 'rojo', razon: '' };
+  return (
+    <span className={`vx-estado vx-estado-${e.color}${block ? ' vx-estado-block' : ''}`} title={e.razon || e.estado}>
+      <span className="vx-estado-dot" /> {e.estado}
+    </span>
+  );
+}
 const progLabel = p => (PROG_MAP[p] || { label: p }).label;
 
 // ── KPI CARDS ──────────────────────────────────────────────────────────────
@@ -161,7 +172,7 @@ function ProspectoTable({ lista, onOpen }) {
       <table className="vx-table">
         <thead>
           <tr>
-            <th>Prioridad</th><th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Programa</th>
+            <th>Estado</th><th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Programa</th>
             <th>Financiam.</th><th>Etapa</th><th>Grupo</th><th>Días</th><th>Acción</th>
           </tr>
         </thead>
@@ -169,9 +180,10 @@ function ProspectoTable({ lista, onOpen }) {
           {lista.map((p, i) => {
             const dias = diasDesde(p.fecha_registro);
             const prio = window.calcularPrioridadProspecto(p);
+            const est = window.calcularEstadoEstudianteVentas(p);
             return (
               <tr key={p.cedula || p.id || i} className={prio.nivel === 'rojo' ? 'vx-row-rojo' : ''} onClick={() => onOpen(p)}>
-                <td><PrioridadBadge prio={prio} /></td>
+                <td><EstadoBadge est={est} /></td>
                 <td className="vx-td-ced">{p.cedula}</td>
                 <td className="vx-td-name">{p.nombre}</td>
                 <td>
@@ -207,15 +219,16 @@ function ProspectoCards({ lista, onOpen }) {
       {lista.map((p, i) => {
         const dias = diasDesde(p.fecha_registro);
         const prio = window.calcularPrioridadProspecto(p);
-        const PRIO_BORDE = { rojo: '#DA291C', amarillo: '#C67100', verde: '#10b981', gris: '#CFD6E2' };
+        const est = window.calcularEstadoEstudianteVentas(p);
+        const ESTADO_BORDE = { rojo: '#DA291C', amarillo: '#C67100', verde: '#10b981' };
         return (
-          <div key={p.cedula || p.id || i} className="vx-card" style={{ borderLeftColor: PRIO_BORDE[prio.nivel] || '#002F6C' }} onClick={() => onOpen(p)}>
+          <div key={p.cedula || p.id || i} className="vx-card" style={{ borderLeftColor: ESTADO_BORDE[est.color] || '#002F6C' }} onClick={() => onOpen(p)}>
             <div className="vx-card-top">
               <div>
                 <div className="vx-card-name">{p.nombre}</div>
                 <div className="vx-card-ced">{p.cedula}</div>
               </div>
-              <PrioridadBadge prio={prio} />
+              <EstadoBadge est={est} />
             </div>
             <div className="vx-card-meta">
               <EtapaBadge etapa={p.etapa} />
@@ -352,7 +365,7 @@ function ConapeTimeline({ eventos }) {
 
 Object.assign(window, {
   VI, Vico, hexA,
-  EtapaBadge, FinBadge, progLabel, PrioridadBadge,
+  EtapaBadge, FinBadge, progLabel, PrioridadBadge, EstadoBadge,
   KPIRow, KPISkeleton, Funnel, FilterBar,
   WaLink, ProspectoTable, ProspectoCards, TableSkeleton,
   VToast, Lightbox, DocsBlock, ConapeTimeline,

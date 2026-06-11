@@ -152,6 +152,135 @@ function calcularPrioridadProspecto(p) {
   return { ...VERDE, texto: 'Al día' };
 }
 
+// ── VENTAS-DASHBOARD-002 · ESTADO DEL ESTUDIANTE (reemplaza la "Prioridad" visual) ──
+// Helper CENTRAL que clasifica al estudiante en una de las 3 etapas del proceso
+// comercial, usando SOLO campos reales que ya trae el prospecto:
+//   · codigo / codigo_estudiante / CODIGO_ESTUDIANTE / rec_m  (→ admin matriculó)
+//   · etapa / ETAPA  (LEAD, CONAPE_*, PAGO_ACADEMIA, ACTIVO, MATRICULADO…)
+//   · estado_cuenta / ESTADO  (ACTIVO…)
+// Devuelve { estado, color, razon }:
+//   SEGUIMIENTO   (rojo)     → trámite CONAPE / faltan documentos / en proceso, sin pago aún.
+//   PRE MATRICULA (amarillo) → pago reportado, esperando que admin confirme/aplique.
+//   MATRICULADO   (verde)    → admin aplicó la matrícula (hay código / ACTIVO / MATRICULADO).
+const MATRICULADO_TOKENS = ['ACTIVO', 'MATRICULADO'];
+function calcularEstadoEstudianteVentas(p) {
+  const SEGUIMIENTO = { estado: 'SEGUIMIENTO',   color: 'rojo',     razon: 'En trámite · faltan documentos' };
+  const PRE         = { estado: 'PRE MATRICULA', color: 'amarillo', razon: 'Pago reportado · esperando admin' };
+  const MATRIC      = { estado: 'MATRICULADO',   color: 'verde',    razon: 'Matrícula aplicada' };
+  if (!p || typeof p !== 'object') return SEGUIMIENTO;
+
+  // 1) ¿YA matriculado? Código real de estudiante, o etapa/estado ACTIVO/MATRICULADO.
+  const codigo = String(
+    p.codigo || p.codigo_estudiante || p.CODIGO_ESTUDIANTE || p.rec_m || p.REC_M || ''
+  ).trim();
+  const etapa  = String(p.etapa || p.ETAPA || '').toUpperCase().trim();
+  const estadoCuenta = String(p.estado_cuenta || p.ESTADO || p.estado || '').toUpperCase().trim();
+  if (codigo || MATRICULADO_TOKENS.includes(etapa) || MATRICULADO_TOKENS.includes(estadoCuenta)) {
+    return MATRIC;
+  }
+
+  // 2) ¿Pago reportado / esperando aplicar? → PRE MATRÍCULA.
+  //    PAGO_ACADEMIA = pagó propio reportado; CONAPE_MATRICULA = CONAPE desembolsado/pagado.
+  //    También cualquier marca de pago pendiente de aplicar que el backend pueda enviar.
+  const pagoReportado = siNoV(p.pago_reportado || p.PAGO_REPORTADO)
+    || siNoV(p.solicitud_pendiente || p.SOLICITUD_PENDIENTE)
+    || String(p.pago_estado || p.PAGO_ESTADO || '').toUpperCase().indexOf('PENDIENTE') !== -1;
+  if (etapa === 'PAGO_ACADEMIA' || etapa === 'CONAPE_MATRICULA' || pagoReportado) {
+    return PRE;
+  }
+
+  // 3) Todo lo demás (LEAD, CONAPE solicitud/documentos/firma/desembolso, CANCELADO) → SEGUIMIENTO.
+  if (etapa === 'CANCELADO') return { estado: 'SEGUIMIENTO', color: 'rojo', razon: 'Prospecto cancelado' };
+  return SEGUIMIENTO;
+}
+
+// ── VENTAS-DASHBOARD-002 · HORARIO COMPLETO DE GRUPO (sin abreviaciones) ────
+// Deriva "LUNES Y MIÉRCOLES DE 18:00 A 21:00" a partir de los datos del grupo.
+// Prefiere SIEMPRE campos reales del backend si existen (g.dias/g.horario/g.hora_*);
+// si no, decodifica desde el código (ej. B1-LM18-C3-0726 → LM=Lun/Mié, 18=18:00).
+// NUNCA texto quemado por grupo: todo se calcula.
+const DIA_LETRA = { L:'LUNES', K:'MARTES', M:'MIÉRCOLES', J:'JUEVES', V:'VIERNES', S:'SÁBADO', D:'DOMINGO' };
+// Tokens de días conocidos (incluye rangos y plurales) → etiqueta completa.
+const DIA_TOKEN = {
+  LM:'LUNES Y MIÉRCOLES', KJ:'MARTES Y JUEVES', MJ:'MIÉRCOLES Y JUEVES', MV:'MIÉRCOLES Y VIERNES',
+  LV:'LUNES A VIERNES', LJ:'LUNES A JUEVES', LMV:'LUNES, MIÉRCOLES Y VIERNES', KJV:'MARTES, JUEVES Y VIERNES',
+  SA:'SÁBADOS', SD:'SÁBADOS Y DOMINGOS', S:'SÁBADOS', D:'DOMINGOS',
+};
+function diasCompletos(token) {
+  const t = String(token || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (!t) return '';
+  if (DIA_TOKEN[t]) return DIA_TOKEN[t];
+  // Fallback: letra por letra (solo las reconocidas), unidas con " Y ".
+  const dias = t.split('').map(c => DIA_LETRA[c]).filter(Boolean);
+  if (!dias.length) return '';
+  if (dias.length === 1) return dias[0] + 'S';                 // un solo día → plural (SÁBADOS)
+  return dias.slice(0, -1).join(', ') + ' Y ' + dias[dias.length - 1];
+}
+const pad2 = n => String(n).padStart(2, '0');
+// Extrae hora de inicio del token de horas del código (18 / 8 / 94→9). Devuelve 0–23 o null.
+function horaDesdeToken(htok) {
+  const dig = String(htok || '').replace(/\D/g, '');
+  if (!dig) return null;
+  const dos = parseInt(dig.slice(0, 2), 10);
+  if (dig.length >= 2 && dos >= 0 && dos <= 23) return dos;   // "18" → 18
+  const uno = parseInt(dig.slice(0, 1), 10);
+  return (uno >= 0 && uno <= 23) ? uno : null;                // "94" → 9
+}
+// Duración estimada de la sesión por modalidad (cuando el backend no da hora_fin).
+function duracionPorModalidad(mod) {
+  const m = String(mod || '').toUpperCase();
+  if (m.indexOf('SUPER') !== -1) return 7;   // super intensivo (jornada larga)
+  return 3;                                   // intensivo (sesión de tarde/noche)
+}
+function formatHorarioGrupo(g) {
+  if (!g || typeof g !== 'object') return '';
+  // 1) String de horario ya armado por el backend.
+  if (g.horario && /[a-z]/i.test(String(g.horario))) return String(g.horario).toUpperCase();
+
+  // 2) Días: g.dias (texto o token) → si no, decodificar del código.
+  let dias = '';
+  if (g.dias) dias = /[a-z]{3,}/i.test(String(g.dias)) ? String(g.dias).toUpperCase() : diasCompletos(g.dias);
+  let htok = '';
+  if (!dias || !g.hora_inicio) {
+    // Segmento 2 del código: <nivel>-<DIAS><HORA>-...  (ej. B1-LM18-C3-0726 → "LM18")
+    const seg = String(g.codigo || '').split('-')[1] || '';
+    const mDias = seg.match(/^[A-Za-z]+/);
+    const mHora = seg.match(/\d+/);
+    if (!dias && mDias) dias = diasCompletos(mDias[0]);
+    if (mHora) htok = mHora[0];
+  }
+
+  // 3) Horas: prefiere hora_inicio/hora_fin del backend; si no, deriva del token.
+  let ini = (g.hora_inicio != null && g.hora_inicio !== '') ? horaDesdeToken(g.hora_inicio) : horaDesdeToken(htok);
+  let fin = (g.hora_fin != null && g.hora_fin !== '') ? horaDesdeToken(g.hora_fin) : null;
+  if (ini != null && fin == null) fin = Math.min(ini + duracionPorModalidad(g.modalidad), 22);
+
+  const horas = (ini != null && fin != null) ? `DE ${pad2(ini)}:00 A ${pad2(fin)}:00` : '';
+  return [dias, horas].filter(Boolean).join(' ').trim();
+}
+
+// Fecha larga en mayúsculas: "18 DE MAYO 2026".
+const MESES_LARGO = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+function fmtFechaLarga(f) {
+  if (!f) return '';
+  const [y, m, d] = String(f).split(/[-T]/).map(Number);
+  if (!y || !m || !d) return String(f).toUpperCase();
+  return `${d} DE ${MESES_LARGO[m - 1]} ${y}`;
+}
+// Cuenta regresiva al inicio del grupo, recalculada contra la fecha REAL de hoy.
+function diasParaIniciar(fecha) {
+  if (!fecha) return '';
+  const [y, m, d] = String(fecha).split(/[-T]/).map(Number);
+  if (!y || !m || !d) return '';
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const ini = new Date(y, m - 1, d); ini.setHours(0, 0, 0, 0);
+  const n = Math.round((ini - hoy) / 86400000);
+  if (n < 0)  return 'Curso iniciado';
+  if (n === 0) return 'Inicia hoy';
+  if (n === 1) return '1 día para iniciar';
+  return `${n} días para iniciar`;
+}
+
 // ── NORMALIZACIÓN DE FORMA (Bug A) ─────────────────────────────────────
 // El backend (APOLLO/PROSPECTOS) devuelve las columnas en MAYÚSCULAS: CEDULA,
 // NOMBRE, ETAPA, FINANCIAMIENTO, GRUPO_TENTATIVO, ASESOR_REF, COMISION_PAGADA,
@@ -647,6 +776,8 @@ Object.assign(window, {
   ETAPAS, EMBUDO_ETAPAS, ETAPA_MAP, ACCION_ETAPA, ETAPAS_CONAPE, ASESORES_V, FIN_MAP, PROG_MAP,
   fmtTelV, waLink, diasDesde, fmtFechaCorta, fmtFechaDDMon, fmtColones, nombrePila,
   calcularPrioridadProspecto,
+  calcularEstadoEstudianteVentas,
+  formatHorarioGrupo, fmtFechaLarga, diasParaIniciar, diasCompletos,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,

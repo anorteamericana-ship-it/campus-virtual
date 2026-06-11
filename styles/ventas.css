@@ -474,3 +474,87 @@ button { font-family: inherit; }
 .vx-accion-sug { display: flex; gap: 8px; align-items: baseline; margin-top: 9px; font-size: 13px; color: var(--v-ink); line-height: 1.45; }
 .vx-accion-sug b { color: var(--v-navy); }
 .vx-accion-arrow { color: var(--v-navy); font-weight: 800; font-size: 15px; line-height: 1; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   VENTAS-DASHBOARD-002
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── ESTADO DEL ESTUDIANTE (reemplaza "Prioridad" en la lista) ───────────── */
+.vx-estado {
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: var(--v-r-pill);
+  font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.vx-estado-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.vx-estado-rojo     { background: #FCEDEB; color: #B11F14; border-color: #F3C9C4; }
+.vx-estado-rojo     .vx-estado-dot { background: #DA291C; box-shadow: 0 0 0 3px rgba(218,41,28,.16); }
+.vx-estado-amarillo { background: #FCEFD8; color: #8A5800; border-color: #EFD9A6; }
+.vx-estado-amarillo .vx-estado-dot { background: #C67100; box-shadow: 0 0 0 3px rgba(198,113,0,.15); }
+.vx-estado-verde    { background: #E4F6EC; color: #0F7142; border-color: #BCE6CD; }
+.vx-estado-verde    .vx-estado-dot { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.16); }
+/* Variante ancha (tabla): ocupa la celda para que el Estado "domine". */
+.vx-table td .vx-estado { width: 100%; justify-content: flex-start; }
+
+/* ── GRUPOS DISPONIBLES (horario completo + cuenta regresiva) ────────────── */
+.vx-grpc {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 18px;
+}
+.vx-grpc + .vx-grpc { border-top: 1px solid var(--v-line); }
+.vx-grpc-main { flex: 1; min-width: 0; }
+.vx-grpc-horario { font-size: 14px; font-weight: 800; color: var(--v-ink); letter-spacing: .01em; line-height: 1.3; }
+.vx-grpc-inicio { font-size: 12px; font-weight: 700; color: var(--v-ink-2); letter-spacing: .03em; margin-top: 3px; }
+.vx-grpc-code { font-family: var(--f-mono, monospace); font-size: 11px; color: var(--v-ink-3); margin-top: 3px; }
+.vx-grpc-count {
+  flex-shrink: 0; font-size: 11.5px; font-weight: 800; letter-spacing: .02em;
+  padding: 6px 12px; border-radius: var(--v-r-pill); white-space: nowrap;
+}
+.vx-grpc-count-soon  { background: #E7F0FB; color: var(--v-navy); }
+.vx-grpc-count-today { background: #FCEFD8; color: #8A5800; }
+.vx-grpc-count-done  { background: var(--v-soft); color: var(--v-ink-3); }
+
+/* ── "MIS MATRÍCULAS" · grilla mensual por semanas ───────────────────────── */
+.vx-mm-grid { display: flex; flex-direction: column; gap: 6px; }
+.vx-mm-row {
+  display: grid; grid-template-columns: 96px repeat(7, 1fr) 1.05fr; gap: 6px; align-items: stretch;
+}
+.vx-mm-head .vx-mm-colh {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: var(--v-ink-3);
+  text-align: center; text-transform: uppercase; padding-bottom: 2px;
+}
+.vx-mm-wk { display: flex; align-items: center; font-size: 11.5px; font-weight: 700; color: var(--v-ink-2); }
+.vx-mm-head .vx-mm-wk { color: transparent; }
+.vx-mm-cell {
+  position: relative; min-height: 46px; border-radius: 9px; background: var(--v-soft);
+  border: 1px solid var(--v-line); display: flex; align-items: center; justify-content: center;
+}
+.vx-mm-cell.vx-mm-out { background: transparent; border-color: transparent; }
+.vx-mm-dnum { position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 700; color: var(--v-ink-3); }
+.vx-mm-cell.vx-mm-has { background: rgba(16,33,64,.78); border-color: rgba(16,33,64,.78); }
+.vx-mm-cell.vx-mm-has .vx-mm-dnum { color: rgba(255,255,255,.7); }
+.vx-mm-cnt { font-size: 18px; font-weight: 800; color: #fff; }
+.vx-mm-tot { font-weight: 800; color: var(--v-ink-3); font-size: 15px; background: var(--v-soft); }
+.vx-mm-head .vx-mm-tot { background: transparent; border-color: transparent; }
+.vx-mm-tot.vx-mm-tot-has { background: var(--v-navy); color: #fff; border-color: var(--v-navy); }
+.vx-mm-note {
+  margin-top: 12px; font-size: 11.5px; color: var(--v-ink-2); line-height: 1.5;
+  background: #FCF6E8; border: 1px solid #EFD9A6; border-radius: var(--v-r-md); padding: 9px 12px;
+}
+.vx-mm-note code { font-family: var(--f-mono, monospace); font-size: 11px; }
+@media (max-width: 560px) {
+  .vx-mm-row { grid-template-columns: 64px repeat(7, 1fr) 0.9fr; gap: 3px; }
+  .vx-mm-cell { min-height: 38px; }
+  .vx-mm-cnt { font-size: 14px; }
+  .vx-mm-wk { font-size: 10px; }
+}
+
+/* ── DOCUMENTOS DEL ESTUDIANTE (dentro del drawer) ───────────────────────── */
+.vx-docest-lock {
+  display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--v-ink-2); line-height: 1.5;
+  background: var(--v-soft); border: 1px dashed var(--v-line-2); border-radius: var(--v-r-md); padding: 12px 14px;
+}
+.vx-docest-lock svg { color: var(--v-ink-3); flex-shrink: 0; }
+.vx-docest-sub { font-size: 12px; color: var(--v-ink-3); line-height: 1.5; margin-bottom: 12px; }
+.vx-docest-btns { display: flex; flex-direction: column; gap: 9px; }
+.vx-docest-btns .vx-btn { justify-content: center; }
+.vx-docest-note { font-size: 11.5px; color: #8A5800; margin-top: 10px; font-style: italic; }

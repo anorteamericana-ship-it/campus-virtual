@@ -9,6 +9,89 @@ const { useState: vUseState, useEffect: vUseEffect } = React;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// VENTAS-DASHBOARD-002 · Reglamento estudiantil (archivo estático del proyecto).
+// Si el PDF NO está adjunto, dejá esta constante VACÍA: el botón queda
+// deshabilitado con el mensaje "Falta adjuntar el Reglamento Estudiantil al
+// proyecto.". Cuando se suba el archivo (p. ej. assets/docs/reglamento_estudiantil.pdf),
+// poné su ruta acá y el botón se habilita automáticamente. NO se inventa archivo.
+const REGLAMENTO_URL = '';
+
+// VENTAS-DASHBOARD-002 · Sección "Documentos del estudiante" DENTRO del drawer.
+// Bloqueada hasta que el estudiante esté MATRICULADO (admin aplicó la matrícula).
+// 3 botones: Hoja de matrícula (CERTIFICADO) · Carta de no deuda CONAPE (MATRICULA_2)
+// · Reglamento estudiantil (archivo estático). Reutiliza el endpoint SEGURO
+// generarDocumentoVentasSeguro; NUNCA llama generarDocumento directo.
+function DocsEstudianteVentas({ detalle, demo, onToast }) {
+  const [busy, setBusy] = vUseState('');     // '' | 'CERTIFICADO' | 'CARTA'
+  const [err, setErr] = vUseState('');
+  const d = detalle || {};
+  const est = window.calcularEstadoEstudianteVentas(d);
+  const matriculado = est.estado === 'MATRICULADO';
+  const codigo = String(d.codigo || d.codigo_estudiante || d.CODIGO_ESTUDIANTE || d.rec_m || '').trim();
+  const nivel = d.nivel || d.NIVEL || 'B1';
+
+  const generar = async (btn, tipo, msgFalla) => {
+    if (busy) return;
+    setBusy(btn); setErr('');
+    try {
+      if (demo) {
+        await sleep(700);
+        onToast && onToast({ tipo: 'ok', msg: 'Vista previa: documento de ejemplo (no se genera en modo demo).' });
+        return;
+      }
+      const r = await window.generarDocumentoVentasSeguro({ cedula: d.cedula, codigo, nivel, tipo });
+      if (r && r.ok && r.url) {
+        window.open(r.url, '_blank', 'noopener');
+        onToast && onToast({ tipo: 'ok', msg: 'Documento generado correctamente.' });
+      } else {
+        const m = (r && r.error) || msgFalla;
+        setErr(m); onToast && onToast({ tipo: 'err', msg: m });
+      }
+    } catch (_) {
+      setErr(msgFalla); onToast && onToast({ tipo: 'err', msg: msgFalla });
+    } finally { setBusy(''); }
+  };
+
+  return (
+    <section className="vx-block vx-docest">
+      <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Documentos del estudiante</div>
+      {!matriculado ? (
+        <div className="vx-docest-lock">
+          <window.Vico d={window.VI.shield} size={15} />
+          <span>Los documentos estarán disponibles cuando el estudiante esté matriculado.</span>
+        </div>
+      ) : (
+        <React.Fragment>
+          <div className="vx-docest-sub">
+            Estudiante matriculado{codigo ? <> · código <b style={{ fontFamily: 'var(--f-mono, monospace)' }}>{codigo}</b></> : ''}. Generá y compartí sus documentos.
+          </div>
+          <div className="vx-docest-btns">
+            <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('CERTIFICADO', 'CERTIFICADO', 'No se pudo generar la hoja de matrícula.')}>
+              {busy === 'CERTIFICADO' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Hoja de matrícula</>}
+            </button>
+            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('CARTA', 'MATRICULA_2', 'Este documento requiere soporte backend.')}>
+              {busy === 'CARTA' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Carta de no deuda (CONAPE)</>}
+            </button>
+            {REGLAMENTO_URL ? (
+              <a className="vx-btn vx-btn-ghost" href={REGLAMENTO_URL} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>
+                <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
+              </a>
+            ) : (
+              <button className="vx-btn vx-btn-ghost" disabled title="Falta adjuntar el archivo">
+                <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
+              </button>
+            )}
+          </div>
+          {!REGLAMENTO_URL ? (
+            <div className="vx-docest-note">Falta adjuntar el Reglamento Estudiantil al proyecto.</div>
+          ) : null}
+          {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
+        </React.Fragment>
+      )}
+    </section>
+  );
+}
+
 // Tipos de pago reportables (Fase 3.5).
 const TIPOS_PAGO = ['MATRICULA', 'CUOTA', 'CERTIFICADO', 'TITULO', 'OTRO'];
 const NIVELES_PAGO = ['B1', 'B2', 'I1', 'I2'];
@@ -699,6 +782,10 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                 </div>
               ) : null}
 
+              {/* DOCUMENTOS DEL ESTUDIANTE (VENTAS-DASHBOARD-002 O6–O8) — dentro del
+                  detalle, alto y visible; bloqueado hasta MATRICULADO. */}
+              <DocsEstudianteVentas detalle={d} demo={demo} onToast={onToast} />
+
               {/* 2 · INFO PERSONAL */}
               <section className="vx-block">
                 <div className="vx-block-h"><window.Vico d={window.VI.phone} size={13} /> Información personal</div>
@@ -935,4 +1022,4 @@ function DrawerSkeleton({ onClose }) {
   );
 }
 
-Object.assign(window, { ProspectoDrawer });
+Object.assign(window, { ProspectoDrawer, DocsEstudianteVentas });

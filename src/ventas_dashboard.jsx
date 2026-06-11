@@ -2,8 +2,8 @@
 /* ============================================================================
    VENTAS — Dashboard principal (ventas_dashboard.jsx) · Fase 3
    Panel del vendedor reorganizado para responder en 3 segundos
-   "¿qué tengo que hacer hoy?". Tres bloques nuevos arriba:
-     1. Mi semana  · 2. Mi embudo (clickeable)  · 3. Mis grupos disponibles
+   "¿qué tengo que hacer hoy?". Bloques arriba:
+     1. Mis matrículas (mes) · 2. Mi embudo (clickeable) · 3. Grupos Disponibles
    Tabla + drawer existentes intactos. UNA sola llamada: getDashboardVentas.
    Sin fallback demo: con sesión real, si falla → error + Reintentar (no ceros).
    Vista previa de diseño solo con ?preview=fiorella | ?preview=roger.
@@ -27,112 +27,10 @@ function vxIrALogin() {
   catch (_) { window.location.href = 'login.html'; }
 }
 
-// ── VENTAS-DOC-002-B · Documentos del estudiante (hoja matrícula / CONAPE) ─────
-// Modal que reutiliza el endpoint SEGURO de ventas (generarDocumentoVentas).
-// Solo ofrece los botones cuando el estudiante ya tiene CÓDIGO real (admin
-// finalizó la matrícula). El backend es la barrera real (propiedad + estado);
-// el frontend solo mejora la UX. NUNCA llama generarDocumento directo.
-function DocumentosModalVentas({ prospecto, demo, onClose, onToast }) {
-  const [det, setDet] = useState(prospecto || {});
-  const [cargando, setCargando] = useState(!demo);
-  const [busy, setBusy] = useState('');     // '' | 'CERTIFICADO' | 'MATRICULA_2'
-  const [err, setErr] = useState('');
+// VENTAS-DASHBOARD-002 · La sección "Documentos del estudiante" se trasladó al
+// drawer (ProspectoDrawer en ventas_drawer.jsx): aparece dentro del detalle del
+// estudiante y se habilita solo cuando está MATRICULADO. Ya no es modal flotante.
 
-  // Enriquecer con el detalle real (código/etapa/nivel) si no es preview.
-  useEffect(() => {
-    if (demo) return;
-    let cancel = false;
-    (async () => {
-      try {
-        const d = await window.getProspectoDetalle(prospecto.cedula);
-        if (cancel) return;
-        const p = d && (d.prospecto || (d.ok !== false ? d : null));
-        if (p && typeof p === 'object') setDet(prev => ({ ...prev, ...p }));
-      } catch (_) { /* usa el seed */ }
-      finally { if (!cancel) setCargando(false); }
-    })();
-    return () => { cancel = true; };
-  }, [prospecto.cedula, demo]);
-
-  // Campo real del código de estudiante (tolerante a mayúsculas / alias).
-  const codigo = String(
-    det.codigo || det.codigo_estudiante || det.CODIGO_ESTUDIANTE || det.rec_m || ''
-  ).trim();
-  const tieneCodigo = !!codigo;
-  const nivel = det.nivel || det.NIVEL || 'B1';
-
-  const generar = async (tipo) => {
-    if (busy) return;
-    setBusy(tipo); setErr('');
-    try {
-      const r = await window.generarDocumentoVentasSeguro({
-        cedula: det.cedula || prospecto.cedula, codigo, nivel, tipo,
-      });
-      if (r && r.ok && r.url) {
-        window.open(r.url, '_blank', 'noopener');
-        onToast && onToast({ tipo: 'ok', msg: 'Documento generado correctamente.' });
-      } else {
-        const fallback = tipo === 'MATRICULA_2'
-          ? 'Documento CONAPE no disponible todavía. Puede requerir nivel anterior aprobado.'
-          : 'No se pudo generar el documento.';
-        const msg = (r && r.error) || fallback;
-        setErr(msg);
-        onToast && onToast({ tipo: 'err', msg });
-      }
-    } catch (_) {
-      const msg = 'No se pudo generar el documento.';
-      setErr(msg);
-      onToast && onToast({ tipo: 'err', msg });
-    } finally {
-      setBusy('');
-    }
-  };
-
-  return (
-    <div className="vx-modal-scrim" onClick={busy ? undefined : onClose}>
-      <div className="vx-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
-        <div className="vx-modal-head">
-          <div className="vx-modal-title">Documentos del estudiante</div>
-          <div className="vx-modal-sub">{det.nombre || prospecto.nombre || prospecto.cedula}</div>
-        </div>
-        <div className="vx-modal-body">
-          {cargando ? (
-            <div style={{ fontSize: 13, color: 'var(--v-ink-3)', padding: '8px 0' }}>Cargando…</div>
-          ) : !tieneCodigo ? (
-            <div style={{ fontSize: 13, color: 'var(--v-ink-3)', lineHeight: 1.5, padding: '6px 0' }}>
-              Los documentos estarán disponibles cuando administración finalice la matrícula.
-            </div>
-          ) : (
-            <React.Fragment>
-              <div style={{ fontSize: 12, color: 'var(--v-ink-3)', marginBottom: 12, lineHeight: 1.5 }}>
-                Generá y enviá al estudiante los documentos de su matrícula. Código:{' '}
-                <strong style={{ fontFamily: 'monospace', color: 'var(--v-ink-2)' }}>{codigo}</strong>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button className="vx-btn vx-btn-navy" style={{ justifyContent: 'center' }}
-                  disabled={!!busy} onClick={() => generar('CERTIFICADO')}>
-                  {busy === 'CERTIFICADO' ? 'Generando…' : '📄 Hoja de matrícula'}
-                </button>
-                <button className="vx-btn vx-btn-ghost" style={{ justifyContent: 'center' }}
-                  disabled={!!busy} onClick={() => generar('MATRICULA_2')}>
-                  {busy === 'MATRICULA_2' ? 'Generando…' : '📄 Documento CONAPE'}
-                </button>
-              </div>
-              {err && (
-                <div className="vx-inline-err" style={{ marginTop: 12 }}>
-                  <span>{err}</span>
-                </div>
-              )}
-            </React.Fragment>
-          )}
-        </div>
-        <div className="vx-modal-foot">
-          <button className="vx-btn vx-btn-ghost" onClick={onClose} disabled={!!busy}>Cerrar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function VentasApp({ sesion }) {
   // SEC-005-B1: la identidad viene SIEMPRE del gate (sesión real validada).
@@ -154,7 +52,6 @@ function VentasApp({ sesion }) {
   const [dash, setDash] = useState(null);                 // null = cargando
   const [filtro, setFiltro] = useState({ etapa: '', fin: '', q: '' });
   const [drawerCed, setDrawerCed] = useState(null);
-  const [docsProsp, setDocsProsp] = useState(null);   // VENTAS-DOC-002-B: modal documentos
   const [lightbox, setLightbox] = useState(null);
   const [toast, setToast] = useState(null);
   const [errorCarga, setErrorCarga] = useState(null);
@@ -276,7 +173,7 @@ function VentasApp({ sesion }) {
           <div className="vx-logo" />
           <div>
             <div className="vx-brand-t1">Academia Norteamericana</div>
-            <div className="vx-brand-t2">Ventas · Prospectos</div>
+            <div className="vx-brand-t2">Ventas · Estudiantes</div>
           </div>
           <div className="vx-header-spacer" />
           {esSupervisor && (
@@ -316,14 +213,9 @@ function VentasApp({ sesion }) {
           <window.ResumenSkeleton />
         ) : (
           <React.Fragment>
-            {/* 1 · MI SEMANA */}
+            {/* 1 · MIS MATRÍCULAS (mes actual, por semanas — VENTAS-DASHBOARD-002) */}
             <div className="vx-sec vx-sec-week">
-              <window.MiSemana semana={dash.semana_actual} />
-            </div>
-
-            {/* 1b · MIS MATRÍCULAS POR DÍA (Fase 3.7) */}
-            <div className="vx-sec">
-              <window.MiCalendarioSemanal asesor={usuario.nombre} />
+              <window.MiMatriculasMes asesor={usuario.nombre} />
             </div>
 
             {/* 2 · MI EMBUDO */}
@@ -332,15 +224,15 @@ function VentasApp({ sesion }) {
               <window.MiEmbudo embudo={dash.embudo} etapaActiva={filtro.etapa} onPick={pickEtapa} />
             </div>
 
-            {/* 3 · MIS GRUPOS DISPONIBLES */}
+            {/* 3 · GRUPOS DISPONIBLES */}
             <div className="vx-sec">
-              <div className="vx-sec-h">Mis grupos disponibles</div>
+              <div className="vx-sec-h">Grupos Disponibles</div>
               <window.MisGrupos grupos={dash.grupos_disponibles} />
             </div>
 
-            {/* 4 · PROSPECTOS (tabla intacta) */}
+            {/* 4 · ESTUDIANTES (tabla intacta) */}
             <div className="vx-sec">
-              <div className="vx-sec-h">Prospectos</div>
+              <div className="vx-sec-h">Estudiantes</div>
               <window.FiltroChip etapa={filtro.etapa} onClear={() => setFiltro(f => ({ ...f, etapa: '' }))} />
               <div style={{ marginBottom: 14 }}>
                 <window.FilterBar filtro={filtro} setFiltro={setFiltro} resultCount={filtered.length} />
@@ -367,7 +259,8 @@ function VentasApp({ sesion }) {
         )}
       </div>
 
-      {/* DRAWER — intacto, + acción sugerida por etapa */}
+      {/* DRAWER — intacto. La sección "Documentos del estudiante" vive AHORA dentro
+          del propio drawer (VENTAS-DASHBOARD-002 O6–O8), no como botón flotante. */}
       {drawerCed && (
         <window.ProspectoDrawer
           cedula={drawerCed}
@@ -376,32 +269,10 @@ function VentasApp({ sesion }) {
           usuario={usuario}
           demo={!!previewKey}
           esSuperadmin={rolReal === 'superadmin'}
-          onClose={() => { setDrawerCed(null); setDocsProsp(null); }}
+          onClose={() => setDrawerCed(null)}
           onToast={setToast}
           onView={(src, caption) => setLightbox({ src, caption })}
           onChanged={onChanged}
-        />
-      )}
-
-      {/* VENTAS-DOC-002-B · acceso a Documentos del estudiante desde el detalle abierto */}
-      {drawerCed && (
-        <button
-          className="vx-btn vx-btn-navy"
-          style={{ position: 'fixed', left: 24, bottom: 24, zIndex: 1100,
-                   boxShadow: '0 8px 24px rgba(0,0,0,.22)', flexShrink: 0 }}
-          title="Documentos del estudiante"
-          onClick={() => setDocsProsp(
-            (prospectos ? prospectos.find(p => p.cedula === drawerCed) : null) || { cedula: drawerCed }
-          )}>
-          📄 Documentos del estudiante
-        </button>
-      )}
-      {docsProsp && (
-        <DocumentosModalVentas
-          prospecto={docsProsp}
-          demo={!!previewKey}
-          onClose={() => setDocsProsp(null)}
-          onToast={setToast}
         />
       )}
 
