@@ -927,6 +927,11 @@
     const costoCurso = cuotaFinal * totalCuotas;
     // % a mostrar en los textos (representativo): el de cuota, o matrícula si cuota=0.
     const descPct = becaDef ? (becaDef.pct_cuota || becaDef.pct_matricula) : fbPct;
+    // FIX-GENERAR-MATRICULA-CONSOLIDADO: `descuento` se usaba en el Preview de
+    // precios (gm-strike / gm-disc) pero NUNCA estaba declarado → ReferenceError
+    // al renderizar el modal "Generar matrícula" → PANTALLA EN BLANCO. Es el
+    // descuento efectivo (>0 si la beca aprobada aplica % a cuota o matrícula).
+    const descuento = Math.max(pctMatricula || 0, pctCuota || 0);
 
     const tieneCompat = compat.length > 0;
     const tienePrecios = !!grupoSel && (precioCuota > 0 || precioMatricula > 0);
