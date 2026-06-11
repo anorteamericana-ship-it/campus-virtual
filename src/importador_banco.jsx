@@ -8,6 +8,22 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL = window.APPS_SCRIPT_URL;
 
+// ── FIX-PAGOS-ADMIN-001 ───────────────────────────────────────────────────
+// Lecturas sensibles (comprobantes BCR) van por POST text/plain: fn + token +
+// datos en el BODY JSON, NUNCA en la URL. Esto elimina el Error CORS de las
+// llamadas GET con token en query string y deja de exponer el token.
+async function postImportador(payload) {
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: window.getSessionToken ? window.getSessionToken() : '',
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
 // ── Parseo real del HTML del BCR ──────────────────────────────────────────
 function parsearExtractoBCR(htmlContent) {
   // El BCR exporta HTML disfrazado de XLS
@@ -128,8 +144,10 @@ function ImportadorBancario() {
 
   // Cargar docs existentes del Sheet al montar
   React.useEffect(() => {
-    fetch(`${SCRIPT_URL}?fn=getComprobantes&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    // FIX-PAGOS-ADMIN-001: lectura sensible (comprobantes BCR). Antes iba por
+    // GET con el token en la URL (mismo bug de CORS que se corrigió en ventas).
+    // Ahora POST text/plain con fn y token en el body. El shape NO cambia.
+    postImportador({ fn: 'getComprobantes' })
       .then(data => {
         if (data.ok) {
           const docs = new Set(data.comprobantes.map(c => String(c.doc).trim()));

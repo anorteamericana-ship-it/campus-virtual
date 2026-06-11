@@ -7,6 +7,27 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_AP = window.APPS_SCRIPT_URL;
 
+// ── FIX-PAGOS-ADMIN-001 ──────────────────────────────────────────────────
+// Lecturas y acciones SENSIBLES de pago van por POST text/plain (mismo patrón
+// que postVentas): el `fn`, el `token` y los datos viajan en el BODY JSON,
+// NUNCA en la URL.
+//   • token (y fn) fuera de la URL → elimina el Error CORS de las llamadas GET
+//     con token en query string (mismo bug que se corrigió en ventas con
+//     getProspectoDetalle → postVentas) y deja de exponer el token.
+//   • Content-Type text/plain;charset=utf-8 esquiva el preflight CORS; Apps
+//     Script lee el JSON en e.postData.contents igual.
+async function postAP(payload) {
+  const res = await fetch(SCRIPT_URL_AP, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: window.getSessionToken ? window.getSessionToken() : '',
+      ...payload,
+    }),
+  });
+  return await res.json();
+}
+
 const NIVEL_COLOR_A = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_A = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_ORDER_A = ['B1','B2','I1','I2'];
@@ -132,8 +153,8 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
     setBuscando(true);
     setErrLocal('');
     try {
-      const res = await fetch(`${SCRIPT_URL_AP}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
-      const data = await res.json();
+      // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
+      const data = await postAP({ fn: 'getEstudiante', codigo });
       if (!data.ok) { setErrLocal(data.error || 'Estudiante no encontrado'); return; }
       setEstSel(data.estudiante);
       setEstData({
@@ -278,8 +299,8 @@ function Paso3AP({ comprobantes, setComprobantes, setComprSel, setPaso, setError
   React.useEffect(() => {
     if (comprobantes.length > 0) return; // ya cargados
     setCargandoCompr(true);
-    fetch(`${SCRIPT_URL_AP}?fn=getComprobantes&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
+    // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
+    postAP({ fn: 'getComprobantes' })
       .then(data => {
         if (!data.ok) { setErrLocal(data.error || 'Error al cargar comprobantes'); return; }
         setComprobantes(data.comprobantes || []);
@@ -398,19 +419,17 @@ function Paso4AP({
         { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: grupoActual },
       ].filter(r => r.monto > 0);
 
-      const body = {
-        token:         window.getSessionToken ? window.getSessionToken() : '',
-        doc:           compr.doc,
-        monto_total:   total,
+      // FIX-PAGOS-ADMIN-001: ya era POST; ahora con Content-Type text/plain
+      // explícito (vía postAP) para garantizar que no se dispare un preflight
+      // CORS. El shape del body NO cambia (doc, monto_total, cod_estudiante,
+      // rubros); el token sigue viajando en el body.
+      const data = await postAP({
+        fn:             'aplicarPago',
+        doc:            compr.doc,
+        monto_total:    total,
         cod_estudiante: est?.CODIGO || est?.rec_m,
         rubros,
-      };
-
-      const res = await fetch(`${SCRIPT_URL_AP}?fn=aplicarPago`, {
-        method: 'POST',
-        body: JSON.stringify(body),
       });
-      const data = await res.json();
       if (!data.ok) { setErrLocal(data.error || 'Error al aplicar el pago'); return; }
       // v4.15: si CONAPE no se sincronizó lo dejamos en la consola — y además lo
       // pasamos a la pantalla de confirmación para que el admin lo vea.
@@ -591,8 +610,8 @@ function AplicarPago() {
       const { codigo, nivel } = JSON.parse(raw);
       if (!codigo) return;
       setCargando(true);
-      fetch(`${SCRIPT_URL_AP}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-        .then(r => r.json())
+      // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
+      postAP({ fn: 'getEstudiante', codigo })
         .then(data => {
           if (!data.ok) return;
           setEstSel(data.estudiante);
