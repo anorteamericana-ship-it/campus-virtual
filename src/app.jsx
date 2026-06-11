@@ -43,17 +43,21 @@ function ProximamenteView({ title }) {
 
 const { useState, useEffect } = React;
 
-// ── Guard: si no hay sesión → mandar a login.html ────────────────────────
-// Lo hacemos FUERA del render para evitar que React monte el árbol con
-// estado basura (rol demo, dashboards vacíos, etc). Si vuelve true,
-// abortamos el render del campus.
-function ensureSesion() {
-  const u = getSesion();
-  if (!u) {
-    window.location.replace('login.html');
-    return null;
-  }
-  return u;
+// SEC-006-B: roles autorizados para el campus general (campus.html). El
+// panel de ventas vive en ventas.html con su propio guard; aqui 'ventas'
+// NO entra (se redirige). El guard real es <CampusGate/> al final del
+// archivo: valida sesion + token, valida contra el servidor y aplica esta
+// allowlist ANTES de montar <App/>. No hay fallback a admin.
+const CAMPUS_ROLES_PERMITIDOS = ['superadmin', 'admin', 'teacher', 'student'];
+
+// Redirecciones duras. No crean ni tocan ninguna sesion.
+function campusIrALogin() {
+  try { window.location.replace('login.html'); }
+  catch (_) { window.location.href = 'login.html'; }
+}
+function campusIrAVentas() {
+  try { window.location.replace('ventas.html'); }
+  catch (_) { window.location.href = 'ventas.html'; }
 }
 
 // ── Lee el flag de modo prueba (superadmin viendo como otro) ─────────────
@@ -163,20 +167,26 @@ function DemoBanner() {
 }
 
 function App() {
-  // Sesión obligatoria. Si no hay, ya nos redirigió ensureSesion().
+  // Sesión obligatoria. El guard <CampusGate/> ya validó sesión + token +
+  // rol antes de montar este árbol; aquí solo leemos la identidad.
   const sesionInicial = React.useMemo(() => getSesion(), []);
   const [usuario, setUsuario] = useState(sesionInicial);
 
   // Rol REAL — viene tal cual del backend (incluye 'superadmin').
   const rolReal = usuario?.rol || 'student';
 
-  // Para navegación, superadmin usa las vistas de admin. El rol real se
-  // conserva en `usuario.rol` para cualquier permiso especial.
+  // SEC-006-B: mapeo EXPLÍCITO de rol → vista, sin fallback a admin. Para
+  // navegación, superadmin y admin usan las vistas de admin; el rol real se
+  // conserva en `usuario.rol` para permisos especiales (p. ej. edición
+  // superadmin). Un rol fuera de la allowlist deja `role = null` y el router
+  // muestra "No autorizado" (no carga datos). 'ventas' nunca llega aquí: el
+  // guard lo redirige a ventas.html antes de montar <App/>.
   const role =
     rolReal === 'superadmin' ? 'admin'
+    : rolReal === 'admin'     ? 'admin'
     : rolReal === 'teacher'   ? 'teacher'
     : rolReal === 'student'   ? 'student'
-    : 'admin';
+    : null;
 
   const [active, setActive] = useState(() => localStorage.getItem('an_active') || 'dashboard');
   const [toastMsg, setToastMsg] = useState('');
@@ -276,7 +286,7 @@ function App() {
       perfil:      <PerfilView />,
     };
     content = map[active] || map.mi_panel_docente;
-  } else {
+  } else if (role === 'admin') {
     // Admin / superadmin. Los 6 ítems "Próximamente" (docentes, horas,
     // ican, finanzas, reportes, config) van a ProximamenteView — no
     // hay datos demo en producción. El sidebar además los presenta
@@ -304,6 +314,11 @@ function App() {
       config:    <ProximamenteView title="Configuración" />,
     };
     content = map[active] || map.dashboard;
+  } else {
+    // SEC-006-B: sin fallback a admin. Un rol fuera de la allowlist no
+    // renderiza panel ni carga datos. (El guard ya filtra antes de montar;
+    // esto es la red de seguridad si algo cambia la sesión en caliente.)
+    content = <NoAutorizadoCampus rol={rolReal} />;
   }
 
   // setRole es no-op para la UI: el rol viene de an_usuario. Lo dejamos
@@ -333,8 +348,108 @@ function App() {
   );
 }
 
-// Guard de sesión ANTES de render. Si falta, no montamos el árbol.
-if (ensureSesion()) {
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<App />);
+// ── Pantalla "No autorizado" (rol fuera de la allowlist del campus) ────────
+function NoAutorizadoCampus({ rol }) {
+  return (
+    <div data-screen-label="Campus · No autorizado" style={{
+      maxWidth: 520, margin: '96px auto', padding: '34px 32px',
+      background: 'var(--surface, #fff)',
+      border: '1px solid var(--line, #e5e0d8)',
+      borderRadius: 'var(--r-lg, 14px)',
+      fontFamily: 'var(--f-sans, system-ui)',
+      textAlign: 'center',
+      boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
+    }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '3px 11px', borderRadius: 999,
+        background: 'color-mix(in srgb, var(--danger, #C0392B) 12%, transparent)',
+        color: 'var(--danger, #C0392B)', fontSize: 10.5, fontWeight: 800,
+        letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16,
+      }}>Acceso restringido</div>
+      <div style={{
+        fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 26, fontWeight: 500,
+        color: 'var(--an-navy-ink, #1a2b4a)', letterSpacing: '-0.02em', marginBottom: 10,
+      }}>No autorizado</div>
+      <div style={{ fontSize: 14, color: 'var(--ink-3, #6b6258)', lineHeight: 1.55, marginBottom: 22 }}>
+        Tu cuenta{rol ? <> (rol <strong>{rol}</strong>)</> : null} no tiene acceso al
+        Campus Virtual. Si crees que es un error, contactá a la academia.
+      </div>
+      <button
+        type="button"
+        onClick={campusIrALogin}
+        className="btn btn-primary"
+        style={{ padding: '10px 20px', fontSize: 14 }}
+      >
+        Volver al inicio de sesión
+      </button>
+    </div>
+  );
 }
+
+// ── Guard de sesión del campus (SEC-006-B) ────────────────────────────────
+// Equivalente a <VentasGate/> de ventas.html. Resuelve la identidad ANTES de
+// montar <App/> y NO fabrica sesiones:
+//   1) getSesion() + getSessionToken(); si falta cualquiera → login.html.
+//   2) validarSesionServidor() (si existe); si !ok → cerrarSesionServidor()
+//      (si existe) y → login.html.
+//   3) rol === 'ventas' → ventas.html (su panel propio).
+//   4) rol ∈ {superadmin, admin, teacher, student} → monta <App/>.
+//      Cualquier otro rol → "No autorizado" (no monta App, no carga datos).
+// Sin localStorage para permisos. Sin fallback a admin. No imprime el token.
+function CampusGate() {
+  const [estado, setEstado] = useState('check');   // 'check' | 'ok' | 'denegado'
+  const [sesion, setSesionState] = useState(null);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const ses = (typeof window.getSesion === 'function') ? window.getSesion() : null;
+      const token = (typeof window.getSessionToken === 'function')
+        ? window.getSessionToken()
+        : (ses && ses.token) || '';
+
+      // 1) Sin sesión o sin token → al login. No se crea ninguna sesión.
+      if (!ses || !token) { campusIrALogin(); return; }
+
+      // 2) Validación contra el servidor (si la función está disponible).
+      if (typeof window.validarSesionServidor === 'function') {
+        let r = null;
+        try { r = await window.validarSesionServidor(); } catch (_) { r = null; }
+        if (cancel) return;
+        if (!r || !r.ok) {
+          // Sesión inválida/expirada o sin conexión: limpiamos y al login.
+          try {
+            if (typeof window.cerrarSesionServidor === 'function') {
+              await window.cerrarSesionServidor();
+            }
+          } catch (_) {}
+          if (!cancel) campusIrALogin();
+          return;
+        }
+      }
+
+      if (cancel) return;
+
+      // 3) Ventas tiene su propio panel: redirigir, no montar el campus.
+      if (ses.rol === 'ventas') { campusIrAVentas(); return; }
+
+      // 4) Allowlist del campus. Rol desconocido → "No autorizado".
+      if (!CAMPUS_ROLES_PERMITIDOS.includes(ses.rol)) {
+        setSesionState(ses);
+        setEstado('denegado');
+        return;
+      }
+
+      setSesionState(ses);
+      setEstado('ok');
+    })();
+    return () => { cancel = true; };
+  }, []);
+
+  if (estado === 'check') return null;                       // sin flash de UI
+  if (estado === 'denegado') return <NoAutorizadoCampus rol={sesion ? sesion.rol : ''} />;
+  return <App />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<CampusGate />);
