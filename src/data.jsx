@@ -220,10 +220,14 @@ async function fetchSolicitarSuspension(payload) {
 
 async function fetchGetSolicitudesSuspension(estado = 'PENDIENTE') {
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getSolicitudesSuspension`
-              + `&estado=${encodeURIComponent(estado)}`
-              + `&token=${encodeURIComponent(getSessionToken())}`;
-    const res = await fetch(url);
+    // FIX-ADMIN-STABILITY-004: POST text/plain, NO GET con fn/token en la URL
+    // (ese GET disparaba el Error CORS al cargar admin). Mismos parámetros
+    // (estado) y mismo shape de respuesta; el token viaja en el body.
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn: 'getSolicitudesSuspension', token: getSessionToken(), estado }),
+    });
     return await res.json();
   } catch (e) {
     return { ok: false, error: 'Error de conexión: ' + e.message };

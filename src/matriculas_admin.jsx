@@ -935,19 +935,16 @@
       if (!grupoSel || submitting) return;
       setSubmitting(true);
       try {
-        // POST text/plain para esquivar el preflight CORS (mismo patrón que apiPost).
-        const r = await fetch(`${API}?fn=generarMatricula`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            token: window.getSessionToken ? window.getSessionToken() : '',
-            cedula,
-            grupo: grupoSel.codigo,
-            beca: beca || '',
-            beca_estado: becaEstadoLocal || '',
-          }),
+        // FIX-ADMIN-STABILITY-004: usar el helper local apiPost (POST text/plain,
+        // sin ?fn= en la URL; apiPost ya inyecta el token). Mismo payload y mismo
+        // manejo de respuesta que antes.
+        const data = await apiPost({
+          fn: 'generarMatricula',
+          cedula,
+          grupo: grupoSel.codigo,
+          beca: beca || '',
+          beca_estado: becaEstadoLocal || '',
         });
-        const data = await r.json();
         if (data && data.ok) {
           onSuccess(data); // el padre cierra el modal, muestra toast y redirige a Aplicar Pago
         } else {
