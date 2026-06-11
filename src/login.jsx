@@ -10,11 +10,12 @@ const ERR_MSG = {
 };
 
 const ROLE_LABEL = {
-  admin:   'Administración',
+  superadmin: 'Superadmin',
+  admin:   'Administrador',
   teacher: 'Docente',
   student: 'Estudiante',
   family:  'Familiar / Encargado',
-  ventas:  'Asesor',
+  ventas:  'Asesor/a',
 };
 
 // ── Brand assets (locales) ─────────────────────────────────────────────────
@@ -255,7 +256,7 @@ function RedirectOverlay({ account }) {
         <div className="seal" style={{ backgroundImage: `url(${SEAL})` }} />
         <div className="r-title">¡Hola, {(account.nombre || '').split(' ')[0] || 'de nuevo'}!</div>
         <div className="r-sub">
-          {ROLE_LABEL[account.rol] || 'Estudiante'} · Entrando al Campus…
+          {ROLE_LABEL[account.rol] || 'Usuario'} · Entrando al Campus…
         </div>
       </div>
     </div>
