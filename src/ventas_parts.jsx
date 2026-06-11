@@ -49,6 +49,17 @@ function FinBadge({ financiamiento }) {
   const f = FIN_MAP[financiamiento] || { label: financiamiento, tone: 'amber' };
   return <span className={`vx-fin ${f.tone}`}>{f.label}</span>;
 }
+// ── SEMÁFORO DE PRIORIDAD (VENTAS-UX-001-A) ──────────────────────────────
+// No depende solo del color: el dot da el color y el texto corto da el motivo,
+// para que el vendedor decida a quién atender primero de un vistazo.
+function PrioridadBadge({ prio }) {
+  const pr = prio || { nivel: 'verde', texto: 'Al día' };
+  return (
+    <span className={`vx-prio vx-prio-${pr.nivel}`} title={pr.texto}>
+      <span className="vx-prio-dot" /> {pr.texto}
+    </span>
+  );
+}
 const progLabel = p => (PROG_MAP[p] || { label: p }).label;
 
 // ── KPI CARDS ──────────────────────────────────────────────────────────────
@@ -150,15 +161,17 @@ function ProspectoTable({ lista, onOpen }) {
       <table className="vx-table">
         <thead>
           <tr>
-            <th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Programa</th>
-            <th>Financiam.</th><th>Etapa</th><th>Grupo</th><th>Días</th><th>Acciones</th>
+            <th>Prioridad</th><th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Programa</th>
+            <th>Financiam.</th><th>Etapa</th><th>Grupo</th><th>Días</th><th>Acción</th>
           </tr>
         </thead>
         <tbody>
           {lista.map((p, i) => {
             const dias = diasDesde(p.fecha_registro);
+            const prio = window.calcularPrioridadProspecto(p);
             return (
-              <tr key={p.cedula || p.id || i} onClick={() => onOpen(p)}>
+              <tr key={p.cedula || p.id || i} className={prio.nivel === 'rojo' ? 'vx-row-rojo' : ''} onClick={() => onOpen(p)}>
+                <td><PrioridadBadge prio={prio} /></td>
                 <td className="vx-td-ced">{p.cedula}</td>
                 <td className="vx-td-name">{p.nombre}</td>
                 <td>
@@ -175,8 +188,6 @@ function ProspectoTable({ lista, onOpen }) {
                 <td onClick={e => e.stopPropagation()}>
                   <div className="vx-rowacts">
                     <button className="vx-iconbtn ver" onClick={() => onOpen(p)}><Vico d={VI.eye} size={13} /> Ver</button>
-                    <WaLink tel={p.whatsapp || p.telefono} className="vx-iconbtn"><Vico d={VI.wa} size={14} fill="currentColor" /></WaLink>
-                    <button className="vx-iconbtn" onClick={() => onOpen(p)} title="Más"><Vico d={VI.dots} size={15} /></button>
                   </div>
                 </td>
               </tr>
@@ -195,17 +206,19 @@ function ProspectoCards({ lista, onOpen }) {
     <div className="vx-cards">
       {lista.map((p, i) => {
         const dias = diasDesde(p.fecha_registro);
-        const color = (ETAPA_MAP[p.etapa] || {}).color || '#002F6C';
+        const prio = window.calcularPrioridadProspecto(p);
+        const PRIO_BORDE = { rojo: '#DA291C', amarillo: '#C67100', verde: '#10b981', gris: '#CFD6E2' };
         return (
-          <div key={p.cedula || p.id || i} className="vx-card" style={{ borderLeftColor: color }} onClick={() => onOpen(p)}>
+          <div key={p.cedula || p.id || i} className="vx-card" style={{ borderLeftColor: PRIO_BORDE[prio.nivel] || '#002F6C' }} onClick={() => onOpen(p)}>
             <div className="vx-card-top">
               <div>
                 <div className="vx-card-name">{p.nombre}</div>
                 <div className="vx-card-ced">{p.cedula}</div>
               </div>
-              <EtapaBadge etapa={p.etapa} />
+              <PrioridadBadge prio={prio} />
             </div>
             <div className="vx-card-meta">
+              <EtapaBadge etapa={p.etapa} />
               <FinBadge financiamiento={p.financiamiento} />
               <span className="vx-td-prog">{progLabel(p.programa)}</span>
               {p.grupo_tentativo ? <span className="vx-td-grupo">{p.grupo_tentativo}</span> : null}
@@ -339,7 +352,7 @@ function ConapeTimeline({ eventos }) {
 
 Object.assign(window, {
   VI, Vico, hexA,
-  EtapaBadge, FinBadge, progLabel,
+  EtapaBadge, FinBadge, progLabel, PrioridadBadge,
   KPIRow, KPISkeleton, Funnel, FilterBar,
   WaLink, ProspectoTable, ProspectoCards, TableSkeleton,
   VToast, Lightbox, DocsBlock, ConapeTimeline,

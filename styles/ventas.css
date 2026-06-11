@@ -156,6 +156,22 @@ button { font-family: inherit; }
 .vx-fin.green { background: #E4F6EC; color: #117A4A; }
 .vx-fin.amber { background: #FCEFD8; color: #9A6406; }
 
+/* ── SEMÁFORO DE PRIORIDAD (VENTAS-UX-001-A) ──────────────────────────────
+   Color (dot) + texto corto en cada fila/card. El rojo además tiñe la fila. */
+.vx-prio { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; border-radius: var(--v-r-pill); font-size: 11px; font-weight: 700; letter-spacing: .01em; white-space: nowrap; }
+.vx-prio-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.vx-prio-rojo     { background: #FCEDEB; color: #B11F14; }
+.vx-prio-rojo     .vx-prio-dot { background: #DA291C; box-shadow: 0 0 0 3px rgba(218,41,28,.16); }
+.vx-prio-amarillo { background: #FCEFD8; color: #9A6406; }
+.vx-prio-amarillo .vx-prio-dot { background: #C67100; }
+.vx-prio-verde    { background: #E4F6EC; color: #117A4A; }
+.vx-prio-verde    .vx-prio-dot { background: #10b981; }
+.vx-prio-gris     { background: #EEF1F6; color: #6B7587; }
+.vx-prio-gris     .vx-prio-dot { background: #8893A7; }
+/* Fila urgente: acento rojo a la izquierda para que "llame la atención". */
+.vx-table tbody tr.vx-row-rojo { box-shadow: inset 3px 0 0 0 var(--v-red); }
+.vx-table tbody tr.vx-row-rojo:hover { background: #FEF4F2; }
+
 /* ── TABLE ─────────────────────────────────────────────────────────────── */
 .vx-tablecard { background: var(--v-surface); border: 1px solid var(--v-line); border-radius: var(--v-r-lg); box-shadow: var(--v-sh-1); overflow: hidden; }
 .vx-tablecard .vx-table-scroll { overflow-x: auto; }

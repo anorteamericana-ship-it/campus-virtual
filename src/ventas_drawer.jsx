@@ -21,6 +21,67 @@ function waDigits(raw) {
   return d;
 }
 
+// PROFORMAS-VENDEDOR-001: ícono "laptop/equipo" (no existe en VI; se define local
+// para no tocar ventas_parts.jsx).
+const ICON_LAPTOP = 'M4 5h16v10H4z|M2 19h20l-2-3H4z';
+
+// PROFORMAS-VENDEDOR-001 · Tarjeta de proforma con el MISMO formato visual que
+// admin (PFCard en matriculas_admin.jsx): ícono superior, título fuerte, subtítulo
+// gris, botón principal azul (Descargar), secundario (WhatsApp) y terciario
+// (Regenerar). Adaptada a los estilos del módulo ventas (vx-*) y a su flujo real:
+// la generación la hace `window.generarProformaProspecto(cedula)` (regenera ambas
+// proformas a la vez) — NO se inventa ningún endpoint nuevo.
+function ProformaCardVx({ iconPath, title, subtitle, url, waNum, waMsg, regenerating, canGenerate, onRegen, disabled, disabledMsg, onToast }) {
+  const cardStyle = {
+    border: '1.5px solid var(--v-line)', borderRadius: 'var(--v-r-md, 10px)', padding: 15,
+    display: 'flex', flexDirection: 'column', gap: 11, minWidth: 0,
+    background: disabled ? 'var(--v-soft)' : 'var(--v-surface)',
+    opacity: disabled ? 0.62 : 1,
+  };
+  // Enviar por WhatsApp: si falta teléfono → error amigable, nunca rompe la UI.
+  const enviarWa = () => {
+    if (!waNum) { onToast && onToast({ tipo: 'err', msg: 'Este prospecto no tiene WhatsApp/teléfono registrado.' }); return; }
+    window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(waMsg || '')}`, '_blank', 'noopener');
+  };
+  return (
+    <div style={cardStyle}>
+      <div style={{ width: 38, height: 38, borderRadius: 'var(--v-r-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#E7F0FB', color: 'var(--v-navy)', flexShrink: 0 }}>
+        <window.Vico d={iconPath} size={19} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--v-ink)' }}>{title}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--v-ink-3)', marginTop: 2, lineHeight: 1.4 }}>{subtitle}</div>
+      </div>
+      <div style={{ flex: 1 }} />
+      {disabled ? (
+        <div style={{ fontSize: 11.5, color: 'var(--v-ink-3)', lineHeight: 1.5 }}>{disabledMsg}</div>
+      ) : regenerating ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--v-ink-2)', fontSize: 12 }}>
+          <span className="vx-spin dark" /> Generando proforma…
+        </div>
+      ) : url ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <a className="vx-btn vx-btn-navy" href={url} target="_blank" rel="noopener" style={{ justifyContent: 'center', textDecoration: 'none' }}>Descargar</a>
+          <button className="vx-btn vx-btn-ghost" style={{ justifyContent: 'center' }} onClick={enviarWa}>
+            <window.Vico d={window.VI.wa} size={14} fill="currentColor" /> Enviar por WhatsApp
+          </button>
+          {canGenerate ? (
+            <button className="vx-btn vx-btn-ghost" style={{ justifyContent: 'center', fontSize: 12 }} onClick={onRegen}>↻ Regenerar</button>
+          ) : null}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {canGenerate ? (
+            <button className="vx-btn vx-btn-navy" style={{ justifyContent: 'center' }} onClick={onRegen}>Generar</button>
+          ) : (
+            <div style={{ fontSize: 11.5, color: 'var(--v-ink-3)', fontStyle: 'italic' }}>Proforma aún no generada.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Lee un File como base64 con prefijo data: (para el comprobante).
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
@@ -689,26 +750,50 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                 <window.DocsBlock detalle={d} onView={onView} onSubirManual={(key) => triggerUpload(key)} />
               </section>
 
-              {/* 4b · PROFORMAS CONAPE */}
-              {(d.proforma_url || d.proforma_equipo_url) ? (
-                <section className="vx-block">
-                  <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Proformas CONAPE</div>
-                  {d.proforma_url ? (
-                    <a href={d.proforma_url} target="_blank" rel="noopener" className="vx-docrow vx-doclink">
-                      <span className="vx-docrow-ic">PDF</span>
-                      <div style={{ flex: 1, fontWeight: 600 }}>Proforma de programa</div>
-                      <span className="vx-copy">abrir</span>
-                    </a>
-                  ) : null}
-                  {d.proforma_equipo_url ? (
-                    <a href={d.proforma_equipo_url} target="_blank" rel="noopener" className="vx-docrow vx-doclink">
-                      <span className="vx-docrow-ic">IMG</span>
-                      <div style={{ flex: 1, fontWeight: 600 }}>Proforma de equipo</div>
-                      <span className="vx-copy">abrir</span>
-                    </a>
-                  ) : null}
-                </section>
-              ) : null}
+              {/* 4b · PROFORMAS DEL PROSPECTO — formato tarjetas (PROFORMAS-VENDEDOR-001),
+                  réplica visual de las tarjetas del admin (PFCard). */}
+              {(() => {
+                const esConape = d.financiamiento === 'CONAPE';
+                const hayUrls = !!(d.proforma_url || d.proforma_equipo_url);
+                const equipoRaw = String((d.conape && d.conape.equipo) || '').toUpperCase();
+                const sinEquipo = !equipoRaw || equipoRaw === 'NINGUNO';
+                const equipoLabel = sinEquipo ? 'Sin equipo CONAPE' : (d.conape.equipo);
+                const canGenerate = esConape && d.etapa !== 'CANCELADO';
+                const waMsgCurso = `Hola! Te envío la proforma del curso de inglés. Podés verla aquí: ${d.proforma_url || ''}`;
+                const waMsgEquipo = `Hola! Te envío la proforma del equipo (${equipoLabel}). Podés verla aquí: ${d.proforma_equipo_url || ''}`;
+
+                // Si el prospecto no es CONAPE y no tiene proformas, no aplica: mensaje discreto.
+                if (!esConape && !hayUrls) {
+                  return (
+                    <section className="vx-block">
+                      <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Proformas del prospecto</div>
+                      <div style={{ fontSize: 12, color: 'var(--v-ink-3)', fontStyle: 'italic', lineHeight: 1.5 }}>
+                        Las proformas estarán disponibles cuando existan los datos necesarios del prospecto.
+                      </div>
+                    </section>
+                  );
+                }
+                return (
+                  <section className="vx-block">
+                    <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Proformas del prospecto</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+                      <ProformaCardVx
+                        iconPath={window.VI.doc} title="Proforma del Curso"
+                        subtitle={`Programa de inglés (${window.progLabel(d.programa)})`}
+                        url={d.proforma_url} waNum={waNum} waMsg={waMsgCurso}
+                        regenerating={loadingProforma} canGenerate={canGenerate}
+                        onRegen={generarProforma} onToast={onToast} />
+                      <ProformaCardVx
+                        iconPath={ICON_LAPTOP} title="Proforma del Equipo"
+                        subtitle={equipoLabel}
+                        disabled={sinEquipo} disabledMsg="Este prospecto no eligió equipo CONAPE."
+                        url={d.proforma_equipo_url} waNum={waNum} waMsg={waMsgEquipo}
+                        regenerating={loadingProforma} canGenerate={canGenerate}
+                        onRegen={generarProforma} onToast={onToast} />
+                    </div>
+                  </section>
+                );
+              })()}
 
               {/* 4c · BECA SOLICITADA (solo PROPIO + beca con valor) */}
               {d.financiamiento === 'PROPIO' && d.beca ? (
@@ -790,13 +875,8 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                 <window.Vico d={window.VI.upload} size={15} /> Reportar pago
               </button>
 
-              {d.financiamiento === 'CONAPE' && d.etapa !== 'CANCELADO' ? (
-                <button className="vx-btn vx-btn-ghost vx-btn-block" onClick={generarProforma} disabled={loadingProforma}>
-                  {loadingProforma
-                    ? <><span className="vx-spin dark" /> Generando proforma…</>
-                    : (d.proforma_url ? '↻ Regenerar proforma CONAPE' : '📄 Generar proforma CONAPE')}
-                </button>
-              ) : null}
+              {/* PROFORMAS-VENDEDOR-001: el botón de generar proforma se movió a las
+                  tarjetas "Proformas del prospecto" (Descargar / WhatsApp / Regenerar). */}
               {d.etapa === 'ACTIVO' ? (
                 <div className="vx-activo-note">Estudiante activo{d.codigo ? <> — código <b>{d.codigo}</b></> : ''}.</div>
               ) : d.etapa === 'CANCELADO' ? (

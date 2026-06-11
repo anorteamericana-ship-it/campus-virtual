@@ -91,6 +91,67 @@ const nombrePila = nombre => {
   return pick.charAt(0) + pick.slice(1).toLowerCase();
 };
 
+// ── VENTAS-UX-001-A · SEMÁFORO DE PRIORIDAD ────────────────────────────────
+// Helper CENTRAL que clasifica cada prospecto en un nivel de prioridad visual
+// usando SOLO campos reales que ya trae el prospecto del dashboard:
+//   · etapa            (LEAD, CONAPE_*, PAGO_ACADEMIA, ACTIVO, CANCELADO…)
+//   · fecha_etapa      (último cambio de etapa; fallback a fecha_registro/f_lead)
+//   · codigo / codigo_estudiante (si existe → ya matriculado por admin)
+// No inventa campos: si alguno falta, cae a un fallback seguro y NO rompe la UI.
+//
+// Niveles (peso = orden, 1 sube primero):
+//   rojo (1)     → atender hoy: pagó (propio/CONAPE) y falta revisar/activar,
+//                  CONAPE desembolsado listo para matricular, seguimiento vencido
+//                  o lead frío sin contacto.
+//   amarillo (2) → seguimiento pendiente: trámite CONAPE en proceso sin atraso
+//                  fuerte, o lead por confirmar.
+//   verde (3)    → al día: contacto/avance reciente, proceso normal.
+//   gris (4)     → sin acción inmediata: ya matriculado/activo o cerrado.
+//
+// Devuelve { nivel:'rojo'|'amarillo'|'verde'|'gris', peso:1|2|3|4, texto:'…' }.
+const PRIO_LEAD_FRIO_DIAS      = 14;  // lead sin avance largo → llamar hoy (rojo)
+const PRIO_LEAD_TIBIO_DIAS     = 4;   // lead que ya pide seguimiento (amarillo)
+const PRIO_CONAPE_ESTANCADO_DIAS = 30; // trámite CONAPE sin movimiento → sin avance (rojo)
+
+function calcularPrioridadProspecto(p) {
+  const ROJO     = { nivel: 'rojo',     peso: 1 };
+  const AMARILLO = { nivel: 'amarillo', peso: 2 };
+  const VERDE    = { nivel: 'verde',    peso: 3 };
+  const GRIS     = { nivel: 'gris',     peso: 4 };
+  if (!p || typeof p !== 'object') return { ...VERDE, texto: 'Al día' };
+
+  const etapa  = String(p.etapa || p.ETAPA || '').toUpperCase();
+  const codigo = String(p.codigo || p.codigo_estudiante || p.CODIGO_ESTUDIANTE || '').trim();
+  // Días desde el último cambio de etapa; fallback a la fecha de lead/registro.
+  const ref  = p.fecha_etapa || p.fecha_registro || p.f_lead || '';
+  const dias = diasDesde(ref);
+  const d    = dias == null ? 0 : dias;
+
+  // ── GRIS · sin acción inmediata ──
+  if (etapa === 'CANCELADO') return { ...GRIS, texto: 'Cerrado' };
+  if (etapa === 'ACTIVO' || codigo) return { ...GRIS, texto: 'Matriculado' };
+
+  // ── ROJO · atender hoy ──
+  // Ya pagó (propio o CONAPE) → falta revisar/activar: lo más urgente.
+  if (etapa === 'PAGO_ACADEMIA')    return { ...ROJO, texto: 'Pago reportado' };
+  if (etapa === 'CONAPE_MATRICULA') return { ...ROJO, texto: 'Pago CONAPE' };
+  // CONAPE desembolsó → listo para matricular y coordinar horario.
+  if (etapa === 'CONAPE_DESEMBOLSO') return { ...ROJO, texto: 'Matricular ya' };
+  // Lead frío (sin avance largo, aún no matriculado).
+  if (etapa === 'LEAD' && d >= PRIO_LEAD_FRIO_DIAS) return { ...ROJO, texto: 'Llamar hoy' };
+
+  const enProcesoConape = etapa.indexOf('CONAPE') === 0; // solicitud/docs/firma/aprobado/desembolso/matrícula
+  // Trámite CONAPE estancado mucho tiempo → sin avance.
+  if (enProcesoConape && d >= PRIO_CONAPE_ESTANCADO_DIAS) return { ...ROJO, texto: 'Sin avance' };
+
+  // ── AMARILLO · seguimiento pendiente ──
+  if (enProcesoConape) return { ...AMARILLO, texto: 'Seguimiento' };
+  if (etapa === 'LEAD' && d >= PRIO_LEAD_TIBIO_DIAS) return { ...AMARILLO, texto: 'Contactar' };
+
+  // ── VERDE · al día ──
+  return { ...VERDE, texto: 'Al día' };
+}
+
 // ── NORMALIZACIÓN DE FORMA (Bug A) ─────────────────────────────────────
 // El backend (APOLLO/PROSPECTOS) devuelve las columnas en MAYÚSCULAS: CEDULA,
 // NOMBRE, ETAPA, FINANCIAMIENTO, GRUPO_TENTATIVO, ASESOR_REF, COMISION_PAGADA,
@@ -573,6 +634,7 @@ Object.assign(window, {
   SCRIPT_URL_V, WA_NUMBER_V,
   ETAPAS, EMBUDO_ETAPAS, ETAPA_MAP, ACCION_ETAPA, ETAPAS_CONAPE, ASESORES_V, FIN_MAP, PROG_MAP,
   fmtTelV, waLink, diasDesde, fmtFechaCorta, fmtFechaDDMon, fmtColones, nombrePila,
+  calcularPrioridadProspecto,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,

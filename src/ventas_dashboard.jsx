@@ -214,12 +214,25 @@ function VentasApp({ sesion }) {
   const filtered = useMemo(() => {
     if (!prospectos) return [];
     const q = filtro.q.trim().toLowerCase();
-    return prospectos.filter(p => {
+    const base = prospectos.filter(p => {
       if (filtro.etapa && p.etapa !== filtro.etapa) return false;
       if (filtro.fin && p.financiamiento !== filtro.fin) return false;
       if (q && !(`${p.nombre} ${p.cedula}`.toLowerCase().includes(q))) return false;
       return true;
     });
+    // VENTAS-UX-001-A: ordenar por prioridad (rojo→amarillo→verde→gris) y, dentro
+    // de cada grupo, por fecha más reciente primero. Orden estable (índice) como
+    // desempate cuando no hay fecha confiable. NO altera el filtrado de arriba.
+    return base
+      .map((p, i) => ({ p, i, pr: window.calcularPrioridadProspecto(p) }))
+      .sort((a, b) => {
+        if (a.pr.peso !== b.pr.peso) return a.pr.peso - b.pr.peso;
+        const fa = a.p.fecha_registro || a.p.f_lead || '';
+        const fb = b.p.fecha_registro || b.p.f_lead || '';
+        if (fa && fb && fa !== fb) return fb < fa ? -1 : 1;   // más reciente primero
+        return a.i - b.i;                                      // estable
+      })
+      .map(x => x.p);
   }, [prospectos, filtro]);
 
   // Click en una etapa del embudo → filtra la tabla (toggle).
