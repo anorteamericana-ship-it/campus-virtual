@@ -289,11 +289,20 @@ function App() {
       sessionStorage.setItem('an_just_logged_in', '1');
       // SEC-003A: persistimos la sesión con la función compartida de data.jsx
       // (setSesion → sessionStorage.an_usuario). Incluye token y expira.
+      // DOCENTE-002-A: separar "grupos asignados" de "grupo activo".
+      //   • grupos      → SIEMPRE la lista completa de grupos asignados.
+      //   • grupoActivo → el grupo elegido para trabajar esta sesión.
+      //   • grupo       → se mantiene = grupoActivo por compatibilidad con
+      //     pantallas que aún leen `an_usuario.grupo` directo (cronograma_grupo).
+      // En login mono-grupo, grupoActivo = ese único grupo.
+      const __gruposAsignados = acc.grupos || (acc.grupo ? [acc.grupo] : []);
+      const __grupoActivo     = acc.grupoActivo || acc.grupo || __gruposAsignados[0] || null;
       setSesion({
         rol:             acc.rol,
         nombre:          acc.nombre,
-        grupo:           acc.grupo  || acc.grupos?.[0] || null,
-        grupos:          acc.grupos || (acc.grupo ? [acc.grupo] : []),
+        grupo:           __grupoActivo,
+        grupos:          __gruposAsignados,
+        grupoActivo:     __grupoActivo,
         codigo:          acc.codigo || null,
         cedula:          acc.cedula || null,
         programa:        acc.programa || 'SIN_INA',
@@ -373,15 +382,21 @@ function App() {
   const pickGroup = (g) => {
     const m = pendingMulti;
     setPendingMulti(null);
+    // DOCENTE-002-A: NO perder la lista completa. Conservamos los grupos
+    // asignados originales (m.grupos) y marcamos el elegido como activo.
+    const gruposAsignados = (Array.isArray(m.grupos) ? m.grupos : [])
+      .map(x => (typeof x === 'string' ? x : x.grupo))
+      .filter(Boolean);
     finishLogin({
-      rol:      m.rol,
-      nombre:   m.nombre,
-      grupo:    g.grupo,
-      codigo:   g.codigo || null,
-      cedula:   m.cedula || (usuario || '').toString().trim().toLowerCase() || null,
-      programa: g.programa || 'SIN_INA',
-      token:    m.token  || null,
-      expira:   m.expira || null,
+      rol:        m.rol,
+      nombre:     m.nombre,
+      grupos:     gruposAsignados.length ? gruposAsignados : [g.grupo],
+      grupoActivo: g.grupo,
+      codigo:     g.codigo || null,
+      cedula:     m.cedula || (usuario || '').toString().trim().toLowerCase() || null,
+      programa:   g.programa || 'SIN_INA',
+      token:      m.token  || null,
+      expira:     m.expira || null,
     });
   };
 

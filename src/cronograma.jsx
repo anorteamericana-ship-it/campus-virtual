@@ -11,7 +11,7 @@ function useCronogramaData() {
   React.useEffect(() => {
     const usr      = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
     const codigo   = usr?.codigo;
-    const codGrupo = usr?.grupo || usr?.grupos?.[0];
+    const codGrupo = usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0];
     if (!codigo || !codGrupo) { setLoading(false); setError('sin_sesion'); return; }
     Promise.all([
       fetch(`${SCRIPT_URL_CR}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),

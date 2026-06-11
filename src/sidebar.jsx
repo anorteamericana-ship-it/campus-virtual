@@ -104,12 +104,13 @@ function ModoPruebaPanel() {
     if (!n) { setErrMsg('Escribí el nombre del docente (igual a USUARIOS).'); return; }
     if (!g) { setErrMsg('Escribí el código de grupo.'); return; }
     entrarModoPrueba({
-      rol:      'teacher',
-      nombre:   n,
-      cedula:   c,
-      grupo:    g,
-      grupos:   [g],
-      programa: 'SIN_INA',
+      rol:        'teacher',
+      nombre:     n,
+      cedula:     c,
+      grupo:      g,
+      grupos:     [g],
+      grupoActivo: g,
+      programa:   'SIN_INA',
     });
   };
 

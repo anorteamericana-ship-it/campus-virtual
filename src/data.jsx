@@ -713,6 +713,34 @@ function getSessionToken() {
   return (u && typeof u.token === 'string') ? u.token : '';
 }
 
+// ── DOCENTE-002-A: grupo activo del docente ──────────────────────────────
+// Separa "grupos asignados" (an_usuario.grupos, lista completa) del "grupo
+// activo" elegido para trabajar (an_usuario.grupoActivo). Las pantallas
+// operativas docentes (Asistencia, Calificar, Materiales, Calendario) deben
+// usar ESTE helper en vez de grupos[0].
+//   1) si existe sesion.grupoActivo → lo devuelve.
+//   2) si no → primer grupo asignado (fallback seguro, compat sesiones viejas).
+//   3) si no hay grupos → ''.
+function getGrupoActivoDocente() {
+  const u = getSesion();
+  if (!u) return '';
+  if (u.grupoActivo) return u.grupoActivo;
+  if (Array.isArray(u.grupos) && u.grupos.length) return u.grupos[0];
+  if (u.grupo) return u.grupo;
+  return '';
+}
+
+// Cambia el grupo activo conservando TODOS los demás datos de la sesión
+// (grupos asignados incluidos). Sincroniza `grupo` con el activo por
+// compatibilidad y avisa a la app con 'an:session-changed' para que las
+// vistas que dependen de la sesión se refresquen. NO toca el backend.
+function setGrupoActivoDocente(codGrupo) {
+  const u = getSesion();
+  if (!u || !codGrupo) return;
+  setSesion({ ...u, grupoActivo: codGrupo, grupo: codGrupo });
+  try { window.dispatchEvent(new Event('an:session-changed')); } catch (_) {}
+}
+
 // Valida la sesión contra el backend (Apps Script v4.38.0, fn=validarSesion).
 // NO redirige automáticamente todavía: solo devuelve la respuesta del backend
 // para que el caller decida. Sin token → { ok:false, error:'sesion_requerida' }.
@@ -795,6 +823,7 @@ Object.assign(window, {
   APPS_SCRIPT_URL,
   getSesion, setSesion,
   getSessionToken, validarSesionServidor, cerrarSesionServidor,
+  getGrupoActivoDocente, setGrupoActivoDocente,
   fetchCalendarioDocente, fetchTareasPendientesDocente,
   fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
   fetchDocentesAtrasados,

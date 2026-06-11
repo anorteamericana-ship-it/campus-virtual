@@ -58,7 +58,11 @@ function useTeacherSession() {
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
     // v4.15: soportar docente con múltiples grupos
     const grupos     = usuario?.grupos || (usuario?.grupo ? [usuario.grupo] : []);
-    const codGrupo   = grupos[0] || '';
+    // DOCENTE-002-A: operar sobre el GRUPO ACTIVO elegido, no grupos[0].
+    // Fallback seguro al primer grupo si aún no hay activo (sesión vieja).
+    const codGrupo   = (typeof window.getGrupoActivoDocente === 'function')
+      ? window.getGrupoActivoDocente()
+      : (usuario?.grupoActivo || grupos[0] || '');
     const programa   = usuario?.programa || 'SIN_INA';
     const nombre     = usuario?.nombre || '';
     // leccionNum NO viene de sesión: el docente la ingresa manualmente en cada vista
@@ -67,6 +71,18 @@ function useTeacherSession() {
     }
     return { codGrupo, programa, nombre, roster: [], loading: !!codGrupo, error: codGrupo ? null : 'No hay sesión de docente activa.' };
   });
+
+  // DOCENTE-002-A: auto-curación de sesiones viejas / mono-grupo. Si hay un
+  // grupo en juego pero la sesión aún no tiene `grupoActivo`, lo fijamos al
+  // grupo en uso para que quede explícito (no cambia de grupo, solo lo marca).
+  React.useEffect(() => {
+    if (!state.codGrupo) return;
+    const u = (typeof window.getSesion === 'function') ? window.getSesion() : null;
+    if (u && u.rol === 'teacher' && !u.grupoActivo &&
+        typeof window.setGrupoActivoDocente === 'function') {
+      window.setGrupoActivoDocente(state.codGrupo);
+    }
+  }, [state.codGrupo]);
 
   React.useEffect(() => {
     if (!state.codGrupo || !state.loading) return;
