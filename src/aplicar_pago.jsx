@@ -606,35 +606,61 @@ function AplicarPago() {
   const [qCuota,setQCuota] = React.useState(0);
   const [qCert, setQCert]  = React.useState(0);
 
-  // Prefill desde admin_students (botón 💳)
+  // FIX-NAVEGACION-APLICAR-PAGO-001: acceso rápido desde Estudiantes / Solicitudes.
+  const [prefillError, setPrefillError] = React.useState('');
+  const [prefillNota, setPrefillNota]   = React.useState(null); // { numero, monto }
+
+  // Prefill desde admin_students (💳) o solicitudes_pago ("Aplicar pago")
   React.useEffect(() => {
     const raw = sessionStorage.getItem('an_pago_prefill');
     if (!raw) return;
     sessionStorage.removeItem('an_pago_prefill');
-    try {
-      const { codigo } = JSON.parse(raw);
-      if (!codigo) return;
-      setCargando(true);
-      // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
-      postAP({ fn: 'getEstudiante', codigo })
-        .then(data => {
-          if (!data.ok) return;
-          setEstSel(data.estudiante);
-          setEstData({
-            niveles:    data.niveles    || {},
-            pagos:      data.pagos      || [],
-            otrosPagos: data.otrosPagos || [],
-            grupo:      data.grupo      || '',
-            pendientes: data.pendientes || {},
-          });
-          // FIX-ADMIN-CORE-POST-001: desde Admin → Estudiantes (botón 💳) el
-          // comportamiento esperado es avanzar al paso 2 "Seleccionar nivel",
-          // con el estudiante ya cargado. NO saltar al paso 3.
-          setPaso(2);
-        })
-        .catch(() => {})
-        .finally(() => setCargando(false));
-    } catch(e) {}
+
+    let prefill;
+    try { prefill = JSON.parse(raw); } catch (e) { return; }
+    if (!prefill) return;
+
+    // Si viene codigo, usar codigo; si no, caer a cedula como fallback.
+    const codigo = String(prefill.codigo || '').trim();
+    const cedula = String(prefill.cedula || '').trim();
+    const idBusqueda = codigo || cedula;
+    if (!idBusqueda) return;
+
+    // PARTE 4 — nota discreta cuando la solicitud trae comprobante reportado.
+    if (prefill.origen === 'solicitudes_pago' && prefill.numero_comprobante) {
+      setPrefillNota({
+        numero: prefill.numero_comprobante,
+        monto:  prefill.monto_reportado || '',
+      });
+    }
+
+    setCargando(true);
+    setPrefillError('');
+    // Siempre llamamos getEstudiante con codigo || cedula.
+    postAP({ fn: 'getEstudiante', codigo: idBusqueda })
+      .then(data => {
+        if (!data.ok) {
+          setPrefillError('No se pudo cargar el estudiante desde el acceso rápido: ' + (data.error || 'estudiante no encontrado'));
+          return;
+        }
+        setEstSel(data.estudiante);
+        setEstData({
+          niveles:    data.niveles    || {},
+          pagos:      data.pagos      || [],
+          otrosPagos: data.otrosPagos || [],
+          grupo:      data.cod_grupo || String(data.grupo?.CODIGO_GRUPO || data.grupo || ''),
+          grupo_tipo: data.grupo_tipo || '',
+          pendientes: data.pendientes || {},
+        });
+        setError('');
+        // forcePaso siempre 2: caemos en "Seleccionar nivel" con el estudiante
+        // cargado. NO saltamos al paso 3 aunque el prefill traiga nivel.
+        setPaso(2);
+      })
+      .catch(e => {
+        setPrefillError('No se pudo cargar el estudiante desde el acceso rápido: ' + (e.message || e));
+      })
+      .finally(() => setCargando(false));
   }, []);
 
   const reiniciar = () => {
@@ -677,6 +703,27 @@ function AplicarPago() {
       />
 
       <StepperA paso={paso} />
+
+      {/* Acceso rápido — error de carga del estudiante (no fallar en silencio) */}
+      {prefillError && (
+        <div style={{ padding:'12px 16px', marginBottom:16, background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md)', color:'#C00000', fontSize:13, fontWeight:600, display:'flex', alignItems:'flex-start', gap:10 }}>
+          <span style={{ fontSize:16, lineHeight:1 }}>⚠</span>
+          <span style={{ flex:1 }}>{prefillError}</span>
+          <button onClick={()=>setPrefillError('')} style={{ background:'none', border:'none', color:'#C00000', cursor:'pointer', fontSize:18, lineHeight:1 }}>×</button>
+        </div>
+      )}
+
+      {/* Acceso rápido desde Solicitudes — nota discreta del comprobante reportado */}
+      {prefillNota && paso > 1 && !confirmado && (
+        <div style={{ padding:'10px 14px', marginBottom:16, background:'#FFF4D6', border:'1px solid #F2D584', borderRadius:'var(--r-md)', color:'#8A5A00', fontSize:12.5, fontWeight:600, display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:14, lineHeight:1 }}>📎</span>
+          <span style={{ flex:1 }}>
+            Solicitud pendiente: comprobante <b style={{ fontFamily:'var(--f-mono)' }}>#{prefillNota.numero}</b>
+            {prefillNota.monto ? <> por <b style={{ fontFamily:'var(--f-mono)' }}>{fmtCRC_A(Number(prefillNota.monto) || 0)}</b></> : null}.
+          </span>
+          <button onClick={()=>setPrefillNota(null)} style={{ background:'none', border:'none', color:'#8A5A00', cursor:'pointer', fontSize:16, lineHeight:1 }}>×</button>
+        </div>
+      )}
 
       <div style={{ display:'grid', gridTemplateColumns: paso>1?'1fr 280px':'1fr', gap:20, alignItems:'flex-start' }}>
         {/* Contenido principal */}

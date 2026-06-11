@@ -220,9 +220,30 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
 }
 
 function abrirPago(est, niv, onNavigate) {
+  // FIX-NAVEGACION-APLICAR-PAGO-001 — obtener el código de forma robusta.
+  // est.codigo puede venir vacío en algunas filas; caemos a los alias conocidos
+  // antes de rendirnos. Sin código NO navegamos (evita prefill con "undefined").
+  const codigo = String(
+    est.codigo ||
+    est.rec_m ||
+    est.REC_M ||
+    est.CODIGO ||
+    est.CODIGO_ESTUDIANTE ||
+    est.cod_estudiante ||
+    ''
+  ).trim();
+
+  if (!codigo) {
+    console.warn('abrirPago: estudiante sin código, no se navega a Aplicar Pago', est);
+    alert('No se pudo abrir Aplicar Pago: el estudiante no tiene código.');
+    return;
+  }
+
   sessionStorage.setItem('an_pago_prefill', JSON.stringify({
-    codigo: String(est.codigo),
-    nivel: niv,
+    origen: 'admin_estudiantes',
+    codigo,
+    nivel: niv || '',
+    forcePaso: 2,
   }));
   if (onNavigate) onNavigate('aplicar_pago');
 }

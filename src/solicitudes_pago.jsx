@@ -132,9 +132,39 @@ function SolicitudesPagoView({ onNavigate }) {
     refrescar();
   };
 
-  const irAlProspecto = (sol) => {
-    try { sessionStorage.setItem('an_mat_focus_ced', sol.estudiante_cedula || ''); } catch (_) {}
-    if (onNavigate) onNavigate('matriculas');
+  // FIX-NAVEGACION-APLICAR-PAGO-001 — antes mandaba al prospecto en Matrículas.
+  // Ahora lleva directo a "Aplicar Pago" con el estudiante de la solicitud ya
+  // cargado (paso 2). NO aplica el pago ni marca la solicitud automáticamente.
+  const irAAplicarPago = (sol) => {
+    const codigo = String(
+      sol.estudiante_codigo ||
+      sol.codigo ||
+      sol.rec_m ||
+      sol.REC_M ||
+      sol.CODIGO_ESTUDIANTE ||
+      ''
+    ).trim();
+    const cedula = String(sol.estudiante_cedula || sol.cedula || '').trim();
+
+    if (!codigo && !cedula) {
+      showToast('La solicitud no tiene código ni cédula del estudiante.', 'err');
+      return;
+    }
+
+    try {
+      sessionStorage.setItem('an_pago_prefill', JSON.stringify({
+        origen: 'solicitudes_pago',
+        codigo,
+        cedula,
+        nivel: sol.nivel || '',
+        tipo_pago: sol.tipo_pago || '',
+        numero_comprobante: sol.numero_comprobante || '',
+        monto_reportado: sol.monto_reportado || '',
+        solicitud_id: sol.id || '',
+        forcePaso: 2,
+      }));
+    } catch (_) {}
+    if (onNavigate) onNavigate('aplicar_pago');
   };
 
   const verComp = (sol) => {
@@ -248,7 +278,7 @@ function SolicitudesPagoView({ onNavigate }) {
                 {lista.map(sol => (
                   <SpFila key={sol.id} sol={sol} accionando={accionando}
                     onVerComprobante={() => verComp(sol)}
-                    onIrProspecto={() => irAlProspecto(sol)}
+                    onAplicarPago={() => irAAplicarPago(sol)}
                     onAplicar={() => setConfirmAplicar(sol)}
                     onRechazar={() => setModalRechazar(sol)}
                     onVerDetalle={() => setVerDetalle(sol)} />
@@ -317,7 +347,7 @@ function SpEmpty({ estado }) {
 }
 
 // ── Fila de tabla ────────────────────────────────────────────────────────
-function SpFila({ sol, accionando, onVerComprobante, onIrProspecto, onAplicar, onRechazar, onVerDetalle }) {
+function SpFila({ sol, accionando, onVerComprobante, onAplicarPago, onAplicar, onRechazar, onVerDetalle }) {
   const pendiente = sol.estado === 'PENDIENTE';
   const bloqueado = accionando === sol.id;
   const td = { padding: '12px 14px', borderBottom: '1px solid var(--line)', verticalAlign: 'top' };
@@ -349,7 +379,7 @@ function SpFila({ sol, accionando, onVerComprobante, onIrProspecto, onAplicar, o
       <td style={{ ...td, minWidth: 200 }}>
         {pendiente ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <button type="button" onClick={onIrProspecto} style={spActBtn('ghost')} disabled={bloqueado}>Ir al prospecto</button>
+            <button type="button" onClick={onAplicarPago} style={spActBtn('ghost')} disabled={bloqueado}>Aplicar pago</button>
             <button type="button" onClick={onAplicar} style={spActBtn('green')} disabled={bloqueado}>Marcar aplicada</button>
             <button type="button" onClick={onRechazar} style={spActBtn('red')} disabled={bloqueado}>Rechazar</button>
           </div>
