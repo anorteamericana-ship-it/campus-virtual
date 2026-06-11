@@ -128,7 +128,7 @@ function ImportadorBancario() {
 
   // Cargar docs existentes del Sheet al montar
   React.useEffect(() => {
-    fetch(`${SCRIPT_URL}?fn=getComprobantes`)
+    fetch(`${SCRIPT_URL}?fn=getComprobantes&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(data => {
         if (data.ok) {

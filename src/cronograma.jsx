@@ -14,10 +14,10 @@ function useCronogramaData() {
     const codGrupo = usr?.grupo || usr?.grupos?.[0];
     if (!codigo || !codGrupo) { setLoading(false); setError('sin_sesion'); return; }
     Promise.all([
-      fetch(`${SCRIPT_URL_CR}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL_CR}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL_CR}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL_CR}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
+      fetch(`${SCRIPT_URL_CR}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
+      fetch(`${SCRIPT_URL_CR}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
+      fetch(`${SCRIPT_URL_CR}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
+      fetch(`${SCRIPT_URL_CR}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`).then(r=>r.json()),
     ])
     .then(([est, grp, asist, eval_]) => {
       if (est.ok && grp.ok) setData({

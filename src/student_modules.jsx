@@ -133,7 +133,7 @@ function NotasView() {
     if (!codigo) return;
     let cancelled = false;
     setEvalErr('');
-    fetch(`${SCRIPT_URL_SM}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${SCRIPT_URL_SM}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => {
         if (cancelled) return;

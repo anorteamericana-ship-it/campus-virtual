@@ -54,7 +54,7 @@
   // campus.html (sí en la app de ventas). Llamarlas acá daba undefined() → pantalla en
   // blanco. Acá las invocamos directo contra el Apps Script.
   async function getDetalle(cedula) {
-    return await apiGet(`fn=getProspectoDetalle&cedula=${enc(cedula)}`);
+    return await apiGet(`fn=getProspectoDetalle&cedula=${enc(cedula)}&token=${enc(window.getSessionToken ? window.getSessionToken() : '')}`);
   }
   async function postNota(cedula, asesor, texto) {
     return await apiPost({ fn: 'agregarNotaProspecto', cedula, asesor, texto });

@@ -10,7 +10,8 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLd
 async function fetchCalendarioDocente(nombreOrCedula) {
   if (!nombreOrCedula) return { ok: false, error: 'cod_docente vacío' };
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getCalendarioDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`;
+    const url = `${APPS_SCRIPT_URL}?fn=getCalendarioDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`
+              + `&token=${encodeURIComponent(getSessionToken())}`;
     const res = await fetch(url);
     return await res.json();
   } catch (e) {
@@ -21,7 +22,8 @@ async function fetchCalendarioDocente(nombreOrCedula) {
 async function fetchTareasPendientesDocente(nombreOrCedula) {
   if (!nombreOrCedula) return { ok: false, error: 'cod_docente vacío' };
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getTareasPendientesDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`;
+    const url = `${APPS_SCRIPT_URL}?fn=getTareasPendientesDocente&cod_docente=${encodeURIComponent(nombreOrCedula)}`
+              + `&token=${encodeURIComponent(getSessionToken())}`;
     const res = await fetch(url);
     return await res.json();
   } catch (e) {
@@ -37,7 +39,8 @@ async function fetchEstudiantesParaCierre(codGrupo, nivel) {
   try {
     const url = `${APPS_SCRIPT_URL}?fn=getEstudiantesParaCierre`
               + `&cod_grupo=${encodeURIComponent(codGrupo)}`
-              + `&nivel=${encodeURIComponent(nivel)}`;
+              + `&nivel=${encodeURIComponent(nivel)}`
+              + `&token=${encodeURIComponent(getSessionToken())}`;
     const res = await fetch(url);
     return await res.json();
   } catch (e) {
@@ -49,7 +52,8 @@ async function fetchEstudiantesParaCierre(codGrupo, nivel) {
 // Endpoint pesado (~11 s).  El caller DEBE mostrar spinner.
 async function fetchDocentesAtrasados() {
   try {
-    const url = `${APPS_SCRIPT_URL}?fn=getDocentesAtrasados`;
+    const url = `${APPS_SCRIPT_URL}?fn=getDocentesAtrasados`
+              + `&token=${encodeURIComponent(getSessionToken())}`;
     const res = await fetch(url);
     return await res.json();
   } catch (e) {
@@ -126,7 +130,8 @@ async function fetchLeccionCerradaDetalle({ cod_grupo, nivel, leccion, riel } = 
               + `&cod_grupo=${encodeURIComponent(cod_grupo)}`
               + `&nivel=${encodeURIComponent(nivel)}`
               + `&leccion=${encodeURIComponent(leccion)}`
-              + `&riel=${encodeURIComponent(riel || 'curso')}`;
+              + `&riel=${encodeURIComponent(riel || 'curso')}`
+              + `&token=${encodeURIComponent(getSessionToken())}`;
     const res = await fetch(url);
     return await res.json();
   } catch (e) {
@@ -216,7 +221,8 @@ async function fetchSolicitarSuspension(payload) {
 async function fetchGetSolicitudesSuspension(estado = 'PENDIENTE') {
   try {
     const url = `${APPS_SCRIPT_URL}?fn=getSolicitudesSuspension`
-              + `&estado=${encodeURIComponent(estado)}`;
+              + `&estado=${encodeURIComponent(estado)}`
+              + `&token=${encodeURIComponent(getSessionToken())}`;
     const res = await fetch(url);
     return await res.json();
   } catch (e) {
@@ -661,7 +667,7 @@ async function getCalendarioMatriculas(body = {}) {
   const res = await fetch(`${APPS_SCRIPT_URL}?fn=getCalendarioMatriculas`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ fn: 'getCalendarioMatriculas', ...body }),
+    body: JSON.stringify({ fn: 'getCalendarioMatriculas', token: getSessionToken(), ...body }),
   });
   return await res.json();
 }

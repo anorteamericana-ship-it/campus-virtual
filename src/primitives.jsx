@@ -158,7 +158,7 @@ function useEstudiante(codigo) {
     let cancelled = false;
     setLoading(true);
     setError('');
-    fetch(`${__ESTUDIANTE_SCRIPT_URL}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${__ESTUDIANTE_SCRIPT_URL}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => {
         if (cancelled) return;

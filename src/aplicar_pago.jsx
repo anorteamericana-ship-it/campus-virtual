@@ -132,7 +132,7 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
     setBuscando(true);
     setErrLocal('');
     try {
-      const res = await fetch(`${SCRIPT_URL_AP}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`);
+      const res = await fetch(`${SCRIPT_URL_AP}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
       const data = await res.json();
       if (!data.ok) { setErrLocal(data.error || 'Estudiante no encontrado'); return; }
       setEstSel(data.estudiante);
@@ -278,7 +278,7 @@ function Paso3AP({ comprobantes, setComprobantes, setComprSel, setPaso, setError
   React.useEffect(() => {
     if (comprobantes.length > 0) return; // ya cargados
     setCargandoCompr(true);
-    fetch(`${SCRIPT_URL_AP}?fn=getComprobantes`)
+    fetch(`${SCRIPT_URL_AP}?fn=getComprobantes&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(data => {
         if (!data.ok) { setErrLocal(data.error || 'Error al cargar comprobantes'); return; }
@@ -591,7 +591,7 @@ function AplicarPago() {
       const { codigo, nivel } = JSON.parse(raw);
       if (!codigo) return;
       setCargando(true);
-      fetch(`${SCRIPT_URL_AP}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`)
+      fetch(`${SCRIPT_URL_AP}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
         .then(r => r.json())
         .then(data => {
           if (!data.ok) return;

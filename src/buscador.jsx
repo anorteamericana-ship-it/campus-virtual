@@ -385,7 +385,7 @@ function BuscadorEstudiantes() {
     setErrDetalle('');
     setCargandoDet(true);
     try {
-      const res  = await fetch(`${SCRIPT_URL_B}?fn=getEstudiante&codigo=${encodeURIComponent(est.rec_m)}`);
+      const res  = await fetch(`${SCRIPT_URL_B}?fn=getEstudiante&codigo=${encodeURIComponent(est.rec_m)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
       const data = await res.json();
       if (data.ok) setDetalle(data);
       else setErrDetalle(data.error || 'No se encontró el estudiante en el servidor');

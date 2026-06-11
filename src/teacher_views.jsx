@@ -73,7 +73,7 @@ function useTeacherSession() {
     let cancel = false;
     (async () => {
       try {
-        const url = `${SCRIPT_URL_TV}?fn=getGrupoEstudiantes&cod_grupo=${encodeURIComponent(state.codGrupo)}`;
+        const url = `${SCRIPT_URL_TV}?fn=getGrupoEstudiantes&cod_grupo=${encodeURIComponent(state.codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`;
         const res  = await fetch(url);
         const data = await res.json();
         if (cancel) return;
@@ -106,7 +106,7 @@ function useTeacherSession() {
   const [asistenciaGrupo, setAsistenciaGrupo] = React.useState({});
   React.useEffect(() => {
     if (!state.codGrupo || state.loading) return;
-    fetch(`${SCRIPT_URL_TV}?fn=getAsistenciaGrupoCompleta&cod_grupo=${encodeURIComponent(state.codGrupo)}`)
+    fetch(`${SCRIPT_URL_TV}?fn=getAsistenciaGrupoCompleta&cod_grupo=${encodeURIComponent(state.codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d?.ok) setAsistenciaGrupo(d.asistencia || {}); })
       .catch(() => {});

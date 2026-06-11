@@ -192,6 +192,7 @@ async function getDashboardVentas(asesor) {
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       fn: 'getDashboardVentas',
+      token: window.getSessionToken ? window.getSessionToken() : '',
       asesor: asesor || '',
     }),
   });
@@ -213,6 +214,7 @@ function adaptProspectoDash(p) {
 async function getProspectosAsesor(asesor) {
   let url = `${SCRIPT_URL_V}?fn=getProspectosAsesor`;
   if (asesor) url += `&asesor=${encodeURIComponent(asesor)}`;
+  url += `&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`;
   const res = await fetch(url);
   const d = await res.json();
   // Normalizar la forma MAYÚSCULAS del backend → minúsculas que espera la UI.
@@ -220,7 +222,7 @@ async function getProspectosAsesor(asesor) {
   return d;
 }
 async function getProspectoDetalle(cedula) {
-  const res = await fetch(`${SCRIPT_URL_V}?fn=getProspectoDetalle&cedula=${encodeURIComponent(cedula)}`);
+  const res = await fetch(`${SCRIPT_URL_V}?fn=getProspectoDetalle&cedula=${encodeURIComponent(cedula)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
   const d = await res.json();
   const p = d && (d.prospecto || (d.ok !== false ? d : null));
   if (p && typeof p === 'object') {
@@ -233,6 +235,7 @@ async function getProspectoDetalle(cedula) {
 async function getResumenVentas(asesor) {
   let url = `${SCRIPT_URL_V}?fn=getResumenVentas`;
   if (asesor) url += `&asesor=${encodeURIComponent(asesor)}`;
+  url += `&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`;
   const res = await fetch(url);
   return await res.json();
 }

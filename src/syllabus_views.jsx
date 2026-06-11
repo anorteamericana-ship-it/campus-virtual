@@ -23,7 +23,7 @@ function useGroupFromSession() {
 
   React.useEffect(() => {
     if (!codGrupo) { setLoading(false); return; }
-    fetch(`${SCRIPT_URL_SV}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}`)
+    fetch(`${SCRIPT_URL_SV}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setGrupoInfo(d); })
       .finally(() => setLoading(false));

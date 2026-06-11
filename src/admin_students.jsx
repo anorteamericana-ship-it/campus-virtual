@@ -31,7 +31,7 @@ function useAdminGrupos() {
   const [grupos, setGrupos]   = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   React.useEffect(() => {
-    fetch(`${SCRIPT_URL_AS}?fn=getAdminDashboard`)
+    fetch(`${SCRIPT_URL_AS}?fn=getAdminDashboard&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setGrupos(d.grupos || []); })
       .finally(() => setLoading(false));
@@ -232,7 +232,7 @@ function useGrupoInfo(codGrupo) {
   const [info, setInfo] = React.useState(null);
   React.useEffect(() => {
     if (!codGrupo) return;
-    fetch(`${SCRIPT_URL_AS}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}`)
+    fetch(`${SCRIPT_URL_AS}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setInfo(d); })
       .catch(() => {});
@@ -1180,7 +1180,7 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate }) {
   React.useEffect(() => {
     if (!est) return;
     setCargando(true); setError(''); setDetalle(null);
-    fetch(`${SCRIPT_URL_AS}?fn=getEstudiante&codigo=${encodeURIComponent(est.codigo || est.rec_m || '')}`)
+    fetch(`${SCRIPT_URL_AS}?fn=getEstudiante&codigo=${encodeURIComponent(est.codigo || est.rec_m || '')}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setDetalle(d); else setError(d.error || 'Error al cargar'); })
       .catch(e => setError('Error de conexión: ' + e.message))
@@ -1452,7 +1452,7 @@ function TabAsistenciaPanel({ est, detalle }) {
   React.useEffect(() => {
     const codigo = est.codigo || est.rec_m;
     if (!codigo) return;
-    fetch(`${SCRIPT_URL_AS}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${SCRIPT_URL_AS}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d.ok) setAsistencia(d.asistencia || []); })
       .catch(() => {})

@@ -56,7 +56,7 @@ function ModoPruebaPanel() {
     setCargando(true);
     setErrMsg('');
     try {
-      const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(c)}`);
+      const res  = await fetch(`${SCRIPT_URL_SB}?fn=getEstudiante&codigo=${encodeURIComponent(c)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`);
       const data = await res.json();
       if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
 

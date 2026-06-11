@@ -53,7 +53,7 @@ function useProspectos() {
     fetch(`${SCRIPT_URL_MAT}?fn=getProspectos`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn: 'getProspectos', decay_pre_matricula: true }),
+      body: JSON.stringify({ fn: 'getProspectos', token: window.getSessionToken ? window.getSessionToken() : '', decay_pre_matricula: true }),
     })
       .then(r => r.json())
       .then(d => { if (d.ok) { setProspectos(d.prospectos || []); setResumen(d.resumen || null); } else setError(d.error || d.mensaje || 'Error al cargar prospectos'); })

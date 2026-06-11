@@ -35,7 +35,7 @@ function useRetroalimentacion(codigo) {
   React.useEffect(() => {
     if (!codigo) return;
     let cancelled = false;
-    fetch(`${SCRIPT_URL_SD}?fn=getRetroalimentacionEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${SCRIPT_URL_SD}?fn=getRetroalimentacionEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (!cancelled && d?.ok) setData(d); })
       .catch(() => {});
@@ -50,7 +50,7 @@ function useAsistencia(codigo) {
   React.useEffect(() => {
     if (!codigo) return;
     let cancelled = false;
-    fetch(`${SCRIPT_URL_SD}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${SCRIPT_URL_SD}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (!cancelled && d?.ok) setData(d); })
       .catch(() => {});
@@ -104,7 +104,7 @@ function useEstadoConape(cedula) {
   const [estado, setEstado] = React.useState(null);
   React.useEffect(() => {
     if (!cedula) return;
-    fetch(`${SCRIPT_URL_SD}?fn=getEstadoConape&cedula=${encodeURIComponent(cedula)}`)
+    fetch(`${SCRIPT_URL_SD}?fn=getEstadoConape&cedula=${encodeURIComponent(cedula)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d?.ok) setEstado(d); })
       .catch(() => {});
@@ -648,7 +648,7 @@ function ICANStatCard({ codigo }) {
   const [data, setData] = React.useState(null);
   React.useEffect(() => {
     if (!codigo) return;
-    fetch(`${SCRIPT_URL_SD}?fn=getICANEstudiante&codigo=${encodeURIComponent(codigo)}`)
+    fetch(`${SCRIPT_URL_SD}?fn=getICANEstudiante&codigo=${encodeURIComponent(codigo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => { if (d?.ok) setData(d); })
       .catch(() => {});

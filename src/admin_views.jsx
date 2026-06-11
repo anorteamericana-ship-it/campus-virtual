@@ -13,7 +13,7 @@ function useNovedadesConape() {
   const [ultimoSync, setUltimoSync] = React.useState(null);
   const [resumen, setResumen] = React.useState({ total: null, sinVincular: 0, sinDesembolso: 0 });
   React.useEffect(() => {
-    fetch(`${SCRIPT_URL_AV}?fn=getNovedadesConape`)
+    fetch(`${SCRIPT_URL_AV}?fn=getNovedadesConape&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => {
         if (d.ok) {
@@ -47,7 +47,7 @@ function useAdminDashboard() {
     // para la gestión de becas).
     const esDemo = (() => { try { const q = new URLSearchParams(location.search); return q.get('demo') === '1' || !!q.get('preview'); } catch (_) { return false; } })();
     if (esDemo) { setData({ ok: true, grupos: [] }); setLoading(false); return () => { cancel = true; }; }
-    fetch(`${SCRIPT_URL_AV}?fn=getAdminDashboard`)
+    fetch(`${SCRIPT_URL_AV}?fn=getAdminDashboard&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
       .then(r => r.json())
       .then(d => {
         if (cancel) return;
