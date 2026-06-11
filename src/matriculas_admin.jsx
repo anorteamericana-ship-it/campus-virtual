@@ -41,7 +41,16 @@
   }
   // POST en text/plain para esquivar el preflight CORS (mismo patrón que ventas_data.jsx).
   async function apiPost(payload) {
-    if (MAT_ADMIN_DEMO) return { ok: true };
+    if (MAT_ADMIN_DEMO) {
+      // En demo NO tocamos el backend real: getProspectoDetalle/getBecas
+      // devuelven datos de ejemplo (mismo comportamiento que tenía apiGet).
+      const fn = payload && payload.fn;
+      if (fn === 'getProspectoDetalle') return { ok: true, prospecto: demoDetalle(payload.cedula || '') };
+      if (fn === 'getBecas' && window.getBecas) return await window.getBecas(payload);
+      if (fn === 'generarProformaProspecto') return { ok: true, url_programa: '#demo', url_equipo: '#demo' };
+      if (fn === 'actualizarEstadoConapeProspecto') return { ok: true, novedad: 'aprobado_sin_desembolso', ultima_consulta: '2026-06-04 10:00', nombre_ws: 'SALAZAR CHACON (demo)' };
+      return { ok: true };
+    }
     const r = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -54,7 +63,10 @@
   // campus.html (sí en la app de ventas). Llamarlas acá daba undefined() → pantalla en
   // blanco. Acá las invocamos directo contra el Apps Script.
   async function getDetalle(cedula) {
-    return await apiGet(`fn=getProspectoDetalle&cedula=${enc(cedula)}&token=${enc(window.getSessionToken ? window.getSessionToken() : '')}`);
+    // FIX-MATRICULAS-ADMIN-001: POST text/plain (apiPost), NO GET con fn/token en
+    // la URL — ese GET provocaba el Error CORS ("Failed to fetch") al abrir el
+    // modal "Generar matrícula". apiPost ya inyecta el token en el body.
+    return await apiPost({ fn: 'getProspectoDetalle', cedula });
   }
   async function postNota(cedula, asesor, texto) {
     return await apiPost({ fn: 'agregarNotaProspecto', cedula, asesor, texto });
@@ -656,7 +668,9 @@
     const generar = async () => {
       setLoading(true);
       try {
-        const r = await apiGet(`fn=generarProformaProspecto&cedula=${enc(cedula)}&tipo=${tipo}`);
+        // FIX-MATRICULAS-ADMIN-002: POST text/plain (apiPost), NO GET con fn en
+        // la URL. Mismos datos que antes (cedula, tipo); apiPost agrega el token.
+        const r = await apiPost({ fn: 'generarProformaProspecto', cedula, tipo });
         if (r && r.ok) {
           const u = tipo === 'curso' ? r.url_programa : r.url_equipo;
           if (u) { setUrl(u); setRegen(false); onToast(`Proforma ${tipo === 'curso' ? 'del curso' : 'del equipo'} generada.`, 'ok'); }
@@ -762,7 +776,8 @@
 
     useEffect(() => {
       let cancel = false;
-      apiGet(`fn=actualizarEstadoConapeProspecto&cedula=${enc(cedula)}`)
+      // FIX-MATRICULAS-ADMIN-002: POST text/plain (apiPost), NO GET con fn en la URL.
+      apiPost({ fn: 'actualizarEstadoConapeProspecto', cedula })
         .then(r => {
           if (cancel) return;
           if (r && r.ok) { setRes(r); onResult && onResult(r.novedad); }
@@ -855,11 +870,11 @@
     // El admin puede asignar/aprobar cualquier beca activa, no solo Impacta/Mujer.
     useEffect(() => {
       let cancel = false;
-      if (window.getBecas) {
-        window.getBecas({ solo_activas: true })
-          .then(r => { if (!cancel && r && r.ok) setBecasActivas(r.becas || []); })
-          .catch(() => {});
-      }
+      // FIX-MATRICULAS-ADMIN-001: getBecas por POST text/plain (apiPost), no por
+      // GET — así no se dispara el Error CORS al abrir el modal de matrícula.
+      apiPost({ fn: 'getBecas', solo_activas: true })
+        .then(r => { if (!cancel && r && r.ok) setBecasActivas(r.becas || []); })
+        .catch(() => {});
       return () => { cancel = true; };
     }, []);
 
