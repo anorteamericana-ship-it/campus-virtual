@@ -11,6 +11,25 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_AS = window.APPS_SCRIPT_URL;
 
+// ─────────────────────────────────────────────────────────────────────────
+// HELPER POST — lecturas sensibles vía POST text/plain con token en el body.
+// Conserva `?fn=...` en la URL porque el Apps Script enruta con
+// e.parameter.fn. El token NUNCA va en la URL: viaja en el body JSON.
+// ─────────────────────────────────────────────────────────────────────────
+async function postAdminStudents(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const r = await fetch(`${SCRIPT_URL_AS}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      fn,
+      token,
+      ...payload,
+    }),
+  });
+  return await r.json();
+}
+
 async function resincronizarEstudianteIndividual(codigo) {
   // Llama sincronizarCONAPE con param 'codigo' (dispatcher GET).
   // Devuelve { ok, mensaje, error }.
@@ -30,13 +49,24 @@ async function resincronizarEstudianteIndividual(codigo) {
 function useAdminGrupos() {
   const [grupos, setGrupos]   = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError]     = React.useState('');
   React.useEffect(() => {
-    fetch(`${SCRIPT_URL_AS}?fn=getAdminDashboard&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
-      .then(d => { if (d.ok) setGrupos(d.grupos || []); })
-      .finally(() => setLoading(false));
+    let activo = true;
+    setError('');
+    postAdminStudents('getAdminDashboard')
+      .then(d => {
+        if (!activo) return;
+        if (d && d.ok) {
+          setGrupos(d.grupos || []);
+        } else {
+          setError((d && d.error) || 'Respuesta no válida del servidor');
+        }
+      })
+      .catch(e => { if (activo) setError('Error de conexión: ' + (e.message || e)); })
+      .finally(() => { if (activo) setLoading(false); });
+    return () => { activo = false; };
   }, []);
-  return { grupos, loading };
+  return { grupos, loading, error };
 }
 
 function useRadiografia(codGrupo, refreshKey) {
@@ -45,9 +75,8 @@ function useRadiografia(codGrupo, refreshKey) {
   React.useEffect(() => {
     if (!codGrupo) return;
     setLoading(true); setData(null);
-    fetch(`${SCRIPT_URL_AS}?fn=getRadiografiaGrupo&cod_grupo=${encodeURIComponent(codGrupo)}`)
-      .then(r => r.json())
-      .then(d => { if (d.ok) setData(d); })
+    postAdminStudents('getRadiografiaGrupo', { cod_grupo: codGrupo })
+      .then(d => { if (d && d.ok) setData(d); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [codGrupo, refreshKey]);
@@ -232,9 +261,8 @@ function useGrupoInfo(codGrupo) {
   const [info, setInfo] = React.useState(null);
   React.useEffect(() => {
     if (!codGrupo) return;
-    fetch(`${SCRIPT_URL_AS}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}&token=${encodeURIComponent(window.getSessionToken ? window.getSessionToken() : '')}`)
-      .then(r => r.json())
-      .then(d => { if (d.ok) setInfo(d); })
+    postAdminStudents('getGrupoInfo', { cod_grupo: codGrupo })
+      .then(d => { if (d && d.ok) setInfo(d); })
       .catch(() => {});
   }, [codGrupo]);
   return info;
@@ -795,7 +823,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
 function AdminEstudiantesView({ onNavigate, grupoInicial }) {
-  const { grupos, loading: loadingGrupos } = useAdminGrupos();
+  const { grupos, loading: loadingGrupos, error: errorGrupos } = useAdminGrupos();
   const [grupoSel, setGrupoSel] = React.useState(grupoInicial || null);
   // Si el caller cambia `grupoInicial` (ej. nueva navegación con otro grupo),
   // adoptarlo. No pisa la selección manual del admin: solo dispara cuando el
@@ -934,6 +962,14 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
       {/* Grid de chips */}
       {loadingGrupos ? (
         <div style={{ color:'var(--ink-3, #888)', padding:20 }}>Cargando grupos…</div>
+      ) : errorGrupos ? (
+        <div style={{
+          padding:'14px 18px', margin:'4px 0 8px', borderRadius:8,
+          background:'#FFEBEE', border:'1px solid #E57373', color:'#C62828',
+          fontSize:13, fontWeight:600, lineHeight:1.5,
+        }}>
+          No se pudieron cargar los grupos: {errorGrupos}
+        </div>
       ) : grupos.length === 0 ? (
         <div style={{ color:'var(--ink-3, #888)', padding:20 }}>No hay grupos activos.</div>
       ) : (
