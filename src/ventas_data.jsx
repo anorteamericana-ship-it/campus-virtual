@@ -259,6 +259,23 @@ const marcarEtapaProspecto    = (cedula, etapa, asesor)               => postVen
 const cobrarMatriculaProspecto= (cedula, grupo, monto, comprobante, asesor) => postVentas({ fn:'cobrarMatriculaProspecto', cedula, grupo, monto, comprobante, asesor });
 const activarEstudiante       = (cedula, grupo, asesor)               => postVentas({ fn:'activarEstudiante', cedula, grupo, asesor });
 
+// ── VENTAS-DOC-002-B: documentos PDF del estudiante (hoja de matrícula / CONAPE) ──
+// Llama al endpoint SEGURO de ventas (generarDocumentoVentas, VENTAS-DOC-002-A).
+// El backend deriva el asesor del token y valida que el prospecto sea PROPIO y
+// esté finalizado/activo antes de devolver la URL del PDF. NUNCA se llama
+// generarDocumento directo desde ventas (eso es admin-only, sin chequeo de
+// propiedad). tipo: 'CERTIFICADO' (hoja de matrícula) | 'MATRICULA_2' (CONAPE).
+async function generarDocumentoVentasSeguro({ cedula, codigo, nivel, tipo }) {
+  return postVentas({
+    fn:     'generarDocumentoVentas',
+    token:  window.getSessionToken ? window.getSessionToken() : '',
+    cedula: cedula || '',
+    codigo: codigo || '',
+    nivel:  nivel  || 'B1',
+    tipo,
+  });
+}
+
 // ── ENDPOINTS v4.27.1 (becas + proformas CONAPE) ───────────────────────────
 async function getBecasDisponiblesV() {
   const res = await fetch(`${SCRIPT_URL_V}?fn=getBecasDisponibles`);
@@ -554,6 +571,7 @@ Object.assign(window, {
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
+  generarDocumentoVentasSeguro,
   getBecasDisponiblesV, generarProformaProspecto, aprobarBecaProspecto,
   docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, DEMO_DASHBOARD, calcResumen, HOY,
 });

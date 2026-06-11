@@ -17,8 +17,14 @@ function useGroupFromSession() {
   const [grupoInfo, setGrupoInfo] = React.useState(null);
   const [loading, setLoading]     = React.useState(true);
   const codGrupo = React.useMemo(() => {
+    // DOCENTE-002-A: para docente, el grupo activo manda. Para estudiante no
+    // existe grupoActivo, así que cae a su grupo (mismo comportamiento previo).
+    if (typeof window.getGrupoActivoDocente === 'function') {
+      const u = (typeof window.getSesion === 'function') ? window.getSesion() : null;
+      if (u && u.rol === 'teacher') return window.getGrupoActivoDocente();
+    }
     const usr = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
-    return usr?.grupo || usr?.grupos?.[0] || '';
+    return usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0] || '';
   }, []);
 
   React.useEffect(() => {

@@ -53,7 +53,8 @@ function __startDateFromCodGrupo(codGrupo) {
 let __TV_ROSTER_CACHE = null; // { codGrupo, roster }
 
 function useTeacherSession() {
-  const [state, setState] = React.useState(() => {
+  // Lee la sesión actual y deriva grupos asignados + grupo activo.
+  const readSession = React.useCallback(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
     // v4.15: soportar docente con múltiples grupos
@@ -65,12 +66,41 @@ function useTeacherSession() {
       : (usuario?.grupoActivo || grupos[0] || '');
     const programa   = usuario?.programa || 'SIN_INA';
     const nombre     = usuario?.nombre || '';
+    return { grupos, codGrupo, programa, nombre };
+  }, []);
+
+  const [state, setState] = React.useState(() => {
+    const { grupos, codGrupo, programa, nombre } = readSession();
     // leccionNum NO viene de sesión: el docente la ingresa manualmente en cada vista
     if (__TV_ROSTER_CACHE && __TV_ROSTER_CACHE.codGrupo === codGrupo) {
-      return { codGrupo, programa, nombre, roster: __TV_ROSTER_CACHE.roster, loading:false, error:null };
+      return { codGrupo, grupos, programa, nombre, roster: __TV_ROSTER_CACHE.roster, loading:false, error:null };
     }
-    return { codGrupo, programa, nombre, roster: [], loading: !!codGrupo, error: codGrupo ? null : 'No hay sesión de docente activa.' };
+    return { codGrupo, grupos, programa, nombre, roster: [], loading: !!codGrupo, error: codGrupo ? null : 'No hay sesión de docente activa.' };
   });
+
+  // DOCENTE-002-B: refrescar en vivo cuando cambia el grupo activo (evento
+  // 'an:session-changed', emitido por setGrupoActivoDocente). Si el grupo
+  // cambió, recargamos el roster del nuevo grupo activo sin recargar la
+  // página; si es el mismo, solo refrescamos la lista de grupos/labels.
+  React.useEffect(() => {
+    const onChange = () => {
+      const { grupos, codGrupo, programa, nombre } = readSession();
+      setState(prev => {
+        if (codGrupo === prev.codGrupo) {
+          return { ...prev, grupos, programa, nombre };
+        }
+        const cached = !!(__TV_ROSTER_CACHE && __TV_ROSTER_CACHE.codGrupo === codGrupo);
+        return {
+          codGrupo, grupos, programa, nombre,
+          roster: cached ? __TV_ROSTER_CACHE.roster : [],
+          loading: cached ? false : !!codGrupo,
+          error: codGrupo ? null : 'No hay sesión de docente activa.',
+        };
+      });
+    };
+    window.addEventListener('an:session-changed', onChange);
+    return () => window.removeEventListener('an:session-changed', onChange);
+  }, [readSession]);
 
   // DOCENTE-002-A: auto-curación de sesiones viejas / mono-grupo. Si hay un
   // grupo en juego pero la sesión aún no tiene `grupoActivo`, lo fijamos al
@@ -197,15 +227,106 @@ const EVAL_TYPES_SIN_INA = [
 // (TeacherDashboard y QuickStat eliminados en bloque 2 — VistaDocente es
 // ahora la única pantalla principal del docente, conectada al backend.)
 // ─────────────────────────────────────────────────────────────────────────
-function GruposView() {
-  const { codGrupo, roster, loading, error, asistenciaGrupo } = useTeacherSession();
-  if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
-  if (loading) return <LoadingState title="Cargando grupo…" subtitle="Consultando lista de estudiantes" />;
+// ── DOCENTE-002-B: selector de grupo activo del docente ──────────────────
+const NIVEL_LABEL_GRUPO = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II', A1:'Avanzado I', A2:'Avanzado II' };
+function nivelLabelDe(code) {
+  const ini = ((code || '').split('-')[0] || '').toUpperCase();
+  return NIVEL_LABEL_GRUPO[ini] || ini || '—';
+}
 
-  // Derivar nivel humano del código del grupo: B1-LM69-C3-0225 → "Básico I"
-  const NIVEL_LABEL = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II', A1:'Avanzado I', A2:'Avanzado II' };
-  const nivelInicio = (codGrupo.split('-')[0] || '').toUpperCase();
-  const nivelLabel  = NIVEL_LABEL[nivelInicio] || nivelInicio || '—';
+// Tarjetas: una por grupo asignado. Marca el activo y permite cambiarlo.
+function MisGruposSwitcher({ grupos, activo, programa, onSelect }) {
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:12 }}>
+        {grupos.map(code => {
+          const esActivo = code === activo;
+          return (
+            <div key={code} className="card" style={{
+              padding:'16px 18px',
+              border: esActivo ? '2px solid var(--an-granate)' : '1px solid var(--line)',
+              background: esActivo ? 'color-mix(in srgb, var(--an-granate) 5%, white)' : 'var(--surface)',
+              display:'flex', flexDirection:'column', gap:14,
+            }}>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--f-mono)', fontWeight:700, fontSize:14, color:'var(--ink)', letterSpacing:'-0.01em', wordBreak:'break-all' }}>{code}</div>
+                  <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>
+                    {nivelLabelDe(code)}{esActivo && programa ? ` · ${programa}` : ''}
+                  </div>
+                </div>
+                {esActivo && (
+                  <span style={{
+                    flexShrink:0, fontSize:10, fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase',
+                    padding:'4px 9px', borderRadius:999, background:'var(--an-granate)', color:'white',
+                    display:'inline-flex', alignItems:'center', gap:5,
+                  }}>
+                    <span style={{ width:6, height:6, borderRadius:'50%', background:'white' }} />Activo
+                  </span>
+                )}
+              </div>
+              {esActivo ? (
+                <button className="btn btn-ghost" disabled
+                  style={{ opacity:0.55, cursor:'default', justifyContent:'center' }}>
+                  Grupo en uso
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={() => onSelect(code)}
+                  style={{ justifyContent:'center' }}>
+                  Usar este grupo
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop:12, fontSize:12, color:'var(--ink-2)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:8 }}>
+        <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--an-granate)', marginTop:5, flexShrink:0 }} />
+        <span>El grupo activo se usará en <b>Asistencia</b>, <b>Calificar</b>, <b>Calendario</b> y <b>Materiales</b>. Cambiarlo no elimina tus otros grupos.</span>
+      </div>
+    </div>
+  );
+}
+
+function GruposView() {
+  const { codGrupo, grupos, programa, roster, loading, error, asistenciaGrupo } = useTeacherSession();
+
+  // Aviso efímero al cambiar de grupo activo.
+  const [aviso, setAviso] = React.useState('');
+  const avisoTimer = React.useRef(null);
+  React.useEffect(() => () => clearTimeout(avisoTimer.current), []);
+
+  const lista = (grupos && grupos.length) ? grupos : (codGrupo ? [codGrupo] : []);
+
+  const cambiarGrupo = (code) => {
+    if (!code || code === codGrupo) return;
+    // Actualiza sessionStorage (grupoActivo + grupo) y emite 'an:session-changed';
+    // useTeacherSession lo escucha y recarga el roster del nuevo grupo activo.
+    if (typeof window.setGrupoActivoDocente === 'function') {
+      window.setGrupoActivoDocente(code);
+    }
+    setAviso('Grupo activo actualizado');
+    clearTimeout(avisoTimer.current);
+    avisoTimer.current = setTimeout(() => setAviso(''), 2600);
+  };
+
+  // Estado vacío: docente sin grupos asignados.
+  if (!lista.length) {
+    return (
+      <div>
+        <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados" />
+        <div style={{
+          padding:'48px 24px', textAlign:'center', background:'var(--surface-2)',
+          border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)',
+          color:'var(--ink-2)', fontSize:15, fontWeight:600,
+        }}>
+          No hay grupos asignados.
+        </div>
+      </div>
+    );
+  }
+
+  const nivelLabel = nivelLabelDe(codGrupo);
 
   // Promedio y asistencia reales del roster cargado
   const valid    = roster.filter(r => typeof r.avg === 'number');
@@ -218,13 +339,29 @@ function GruposView() {
     <div>
       <PageHeader
         kicker="Gestión académica"
-        title={<>Mi <em>Grupo</em></>}
-        sub={`Lista de matriculados de ${codGrupo}`}
+        title={<>Mis <em>Grupos</em></>}
+        sub={lista.length > 1 ? `Tenés ${lista.length} grupos asignados` : `Grupo ${codGrupo}`}
       />
-      <div className="tabs">
-        <button className="tab active">{codGrupo} · {nivelLabel}</button>
-      </div>
 
+      {aviso && (
+        <div style={{
+          display:'flex', alignItems:'center', gap:10, padding:'10px 14px', marginBottom:16,
+          background:'color-mix(in srgb, var(--ok) 10%, white)', border:'1px solid var(--ok)',
+          borderRadius:'var(--r-md)', fontSize:13, fontWeight:600, color:'#166534',
+        }}>
+          <span style={{ width:18, height:18, borderRadius:'50%', background:'var(--ok)', color:'white', display:'grid', placeItems:'center', fontSize:12 }}>✓</span>
+          {aviso}
+        </div>
+      )}
+
+      <MisGruposSwitcher grupos={lista} activo={codGrupo} programa={programa} onSelect={cambiarGrupo} />
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => location.reload()} />
+      ) : loading ? (
+        <LoadingState title="Cargando grupo…" subtitle="Consultando lista de estudiantes" />
+      ) : (
+        <>
       <div className="grid-4" style={{ marginBottom:20 }}>
         <Stat label="Matriculados"   num={roster.length}                 sub="Máximo: 12" pct={roster.length/12*100} color="var(--an-navy)" />
         <Stat label="Nivel actual"   num={nivelLabel}                    sub={codGrupo}   pct={0}                    color="var(--an-granate)" />
@@ -288,6 +425,8 @@ function GruposView() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 }
