@@ -223,36 +223,33 @@ function PriorityBanner({ compact = false, onDismiss }) {
 // ─────────────────────────────────────────────────────────────────────────
 // MATERIALES — sílabus completo, pestañas Actuales/Futuras/Completadas
 // ─────────────────────────────────────────────────────────────────────────
-function MaterialesView({ initialLesson = null } = {}) {
-  const { grupoInfo, grupo, loading, error, reload } = useGroupFromSession();
-  const schedule = useScheduleState(grupoInfo, grupo);
+function MaterialesView({ initialLesson = null, onNavigate } = {}) {
+  // STUDENT-LEARNING-EXPERIENCE-001: "Materiales" se reinventa como
+  // "Biblioteca del curso". El calendario oficial vive SOLO en el Cronograma
+  // académico (cronograma_grupo.jsx). Acá ya NO se genera ni muestra un
+  // calendario mensual: solo libro, audios, PDFs y recursos por lección.
+  const { grupoInfo, grupo, codGrupo, loading, error, reload } = useGroupFromSession();
 
-  // FIX STUDENT-PANEL-001-B (R2): TODOS los hooks van ANTES de cualquier return
-  // condicional (Rules of Hooks). Antes [tab]/[open]/useEffect vivían debajo de
-  // los returns de loading/error, rompiendo el conteo de hooks entre renders.
-  const [tab, setTab] = React.useState('calendario'); // calendario | futuras | completadas | todas
-  const [open, setOpen] = React.useState(initialLesson);
-  React.useEffect(() => {
-    if (initialLesson) {
-      setTab('todas');
-      setTimeout(() => {
-        const el = document.getElementById(`lesson-row-${initialLesson}`);
-        if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }, 50);
-    }
-  }, [initialLesson]);
+  // Estado mínimo: filtro por unidad/tipo + lección expandida. `initialLesson`
+  // (llega desde el Cronograma) abre directamente los recursos de esa lección.
+  const [filtro, setFiltro]   = React.useState('todas'); // todas | <Unit n> | examenes
+  const [openLec, setOpenLec] = React.useState(initialLesson);
+  React.useEffect(() => { if (initialLesson) setOpenLec(initialLesson); }, [initialLesson]);
+  const sesion = React.useMemo(() => {
+    try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
+  }, []);
 
-  if (loading) return <LoadingState title="Cargando datos del grupo…" />;
+  if (loading) return <LoadingState title="Cargando la biblioteca de tu curso…" />;
   if (error || !grupoInfo || !grupo) {
     const msg = error === 'autoriz'
-      ? 'No pudimos cargar tus materiales. Verificá tu sesión o contactá a la administración.'
-      : 'No pudimos cargar los materiales de tu grupo. Intentá de nuevo o contactá a la administración.';
+      ? 'No pudimos cargar tu biblioteca. Verificá tu sesión o contactá a la administración.'
+      : 'No pudimos cargar la biblioteca de tu curso. Intentá de nuevo o contactá a la administración.';
     return (
       <div>
         <PageHeader
-          kicker="Material del curso"
-          title={<>Materiales</>}
-          sub="Todo el material de tu nivel en un solo lugar"
+          kicker="Biblioteca del curso"
+          title={<>Biblioteca del curso</>}
+          sub="Libro, audios, PDFs y recursos de tu nivel"
         />
         <ErrorState message={msg} onRetry={reload} />
       </div>
@@ -280,25 +277,30 @@ function MaterialesView({ initialLesson = null } = {}) {
   const plataforma   = syl.platform || 'Zoom';
   const objetivo     = syl.objective || '';
 
-  const filter = (s) => {
-    if (tab === 'todas') return true;
-    if (tab === 'futuras') return s.computedStatus === 'upcoming';
-    if (tab === 'completadas') return s.computedStatus === 'done' || s.computedStatus === 'done-rescheduled';
-    return true;
-  };
-
-  const filtered = schedule.filter(filter);
+  const rol       = sesion?.rol || 'student';
+  const codigoUsr = sesion?.codigo || sesion?.cedula || '';
+  const nivelCode = levelId.toUpperCase(); // B1/B2/I1/I2 para fetchMaterialLeccion
+  const lessons   = Array.isArray(syl.lessons) ? syl.lessons : [];
+  const esExamen  = (l) => l.kind === 'exam-oral' || l.kind === 'exam-written';
+  const unidades  = [...new Set(lessons.filter(l => l.kind === 'lesson').map(l => l.unit))];
+  const lessonsFiltradas = lessons.filter(l => {
+    if (filtro === 'todas') return true;
+    if (filtro === 'examenes') return esExamen(l);
+    return l.unit === filtro;
+  });
+  const irCronograma = () => { if (onNavigate) onNavigate('cronograma_grupo'); };
 
   return (
     <div>
       <PageHeader
-        kicker="Material del curso"
-        title={<>Materiales · <em>{nivelNombre}</em></>}
-        sub={`${libro} · ${totalLecc} lecciones${cefr ? ' · ' + cefr : ''} — todo el material de tu nivel en un solo lugar`}
+        kicker="Biblioteca del curso"
+        title={<>Biblioteca del curso · <em>{nivelNombre}</em></>}
+        sub={`${libro}${cefr ? ' · ' + cefr + ' · MCER' : ''} — libro, audios, PDFs y recursos por lección`}
         right={
-          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {esINA && <Chip tone="navy">INA 2519</Chip>}
             {cefr && <Chip tone="gold">{cefr} · MCER</Chip>}
+            <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={irCronograma}>← Cronograma académico</button>
           </div>
         }
       />
@@ -306,398 +308,215 @@ function MaterialesView({ initialLesson = null } = {}) {
       {/* Banner prioridad INA — solo para programa INA */}
       {esINA && <PriorityBanner />}
 
-      {/* Resumen del nivel */}
-      <div className="card" style={{ padding:'20px 24px', marginBottom:18 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:20, alignItems:'center' }}>
-          <div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-              Objetivo general
-            </div>
-            <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4, lineHeight:1.5 }}>
-              {objetivo || 'Objetivo del nivel disponible en el planeamiento del curso.'}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Libro</div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:3, lineHeight:1.2 }}>
-              {libro}
-            </div>
-            {cefr && <div style={{ fontSize:11, color:'var(--ink-3)' }}>Nivel {cefr} · MCER</div>}
-          </div>
-          <div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Duración</div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:3 }}>
-              {totalHoras ? `${totalHoras} h` : '—'}
-            </div>
-            {(moduleHoras || icanHoras) && (
-              <div style={{ fontSize:11, color:'var(--ink-3)' }}>
-                {moduleHoras ? `${moduleHoras} módulo` : ''}{moduleHoras && icanHoras ? ' + ' : ''}{icanHoras ? `${icanHoras} I CAN` : ''}
-              </div>
-            )}
-          </div>
-          <div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Plataforma</div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:3 }}>
-              {plataforma}
-            </div>
-          </div>
+      {/* 1 · Recomendado para hoy / Materiales para la lección X */}
+      <RecomendadoLeccion
+        leccion={openLec}
+        lessons={lessons}
+        nivelCode={nivelCode}
+        rol={rol}
+        codigoUsr={codigoUsr}
+        codGrupo={codGrupo}
+        onIrCronograma={irCronograma}
+      />
+
+      {/* 2 · Libro del nivel · Audios · PDFs */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:14, margin:'0 0 18px' }}>
+        <div className="card" style={{ padding:'16px 18px' }}>
+          <BiblioKicker icon="book">Libro del nivel</BiblioKicker>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:17, fontWeight:500, color:'var(--an-navy-ink)', lineHeight:1.2, marginTop:4 }}>{libro}</div>
+          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>{nivelNombre}{cefr ? ` · ${cefr} MCER` : ''}</div>
+          <div style={{ fontSize:11.5, color:'var(--ink-2)', marginTop:10, lineHeight:1.5 }}>Las páginas asignadas de cada clase aparecen en el detalle de su lección.</div>
+        </div>
+        <div className="card" style={{ padding:'16px 18px' }}>
+          <BiblioKicker icon="materials">Audios</BiblioKicker>
+          <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6, lineHeight:1.5 }}>No hay audios publicados todavía.</div>
+          <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.5 }}>Cuando tu docente habilite el audio Self-Study de una lección, lo vas a ver en sus recursos.</div>
+        </div>
+        <div className="card" style={{ padding:'16px 18px' }}>
+          <BiblioKicker icon="doc">PDFs y documentos</BiblioKicker>
+          <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6, lineHeight:1.5 }}>Planeamientos y rúbricas se abren desde cada lección, con el botón <strong>Ver material</strong>.</div>
+          <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.5 }}>Los documentos institucionales (reglamento, netiqueta, guías) están en <strong>Información del Programa</strong>.</div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="tabs" style={{ marginBottom:14 }}>
-        {[
-          ['calendario', 'Calendario', schedule.length],
-          ['futuras', 'Futuras', schedule.filter(s => s.computedStatus==='upcoming').length],
-          ['completadas', 'Completadas', schedule.filter(s => s.computedStatus==='done' || s.computedStatus==='done-rescheduled').length],
-          ['todas', `Todas las ${totalLecc}`, totalLecc],
-        ].map(([k,l,n]) => (
-          <button key={k} className={`tab ${tab===k?'active':''}`} onClick={() => setTab(k)}>
-            {l} <span style={{ opacity:0.5, marginLeft:6, fontSize:11, fontFamily:'var(--f-mono)' }}>{n}</span>
-          </button>
-        ))}
+      {/* 3 · Material por unidad o lección */}
+      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, margin:'4px 2px 10px' }}>
+        <h2 style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500, letterSpacing:'-0.02em', margin:0, color:'var(--an-navy-ink)' }}>Material por unidad o lección</h2>
+        <span style={{ fontSize:11, color:'var(--ink-3)' }}>{lessons.length} lecciones del sílabus</span>
       </div>
 
-      {tab === 'calendario' ? (
-        <InlineCalendar schedule={schedule} onOpenLesson={(n) => { setOpen(n); setTab('todas'); setTimeout(() => { const el = document.getElementById(`lesson-row-${n}`); if (el) el.scrollIntoView({ block:'center', behavior:'smooth' }); }, 60); }} />
+      <div className="tabs" style={{ marginBottom:14, flexWrap:'wrap' }}>
+        <button className={`tab ${filtro==='todas'?'active':''}`} onClick={() => setFiltro('todas')}>Todas</button>
+        {unidades.map(u => (
+          <button key={u} className={`tab ${filtro===u?'active':''}`} onClick={() => setFiltro(u)}>{String(u).replace('Unit ','Unidad ')}</button>
+        ))}
+        <button className={`tab ${filtro==='examenes'?'active':''}`} onClick={() => setFiltro('examenes')}>Exámenes</button>
+      </div>
+
+      {lessons.length === 0 ? (
+        <div className="card" style={{ padding:36, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
+          El material de este nivel aún no está disponible.
+        </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {filtered.map(s => <LessonRow key={s.n} lesson={s} libro={libro} esINA={esINA} isOpen={open===s.n} onToggle={() => setOpen(v => v===s.n ? null : s.n)} />)}
-          {filtered.length === 0 && (
-            <div className="card" style={{ padding:40, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
+          {lessonsFiltradas.map(l => (
+            <BiblioLeccionRow
+              key={l.n}
+              lec={l}
+              nivelCode={nivelCode}
+              rol={rol}
+              codigoUsr={codigoUsr}
+              codGrupo={codGrupo}
+              isOpen={openLec === l.n}
+              onToggle={() => setOpenLec(v => v === l.n ? null : l.n)}
+            />
+          ))}
+          {lessonsFiltradas.length === 0 && (
+            <div className="card" style={{ padding:36, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
               No hay lecciones en esta categoría.
             </div>
           )}
         </div>
       )}
+
+      {/* Volver al Cronograma académico */}
+      <div style={{ marginTop:18, display:'flex', justifyContent:'center' }}>
+        <button className="btn btn-ghost" onClick={irCronograma}>← Volver al Cronograma académico</button>
+      </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// INLINE CALENDAR — shown as the "Calendario" tab inside Materiales
+// BIBLIOTECA DEL CURSO — subcomponentes (sin calendario, sin datos falsos)
 // ─────────────────────────────────────────────────────────────────────────
-function InlineCalendar({ schedule, onOpenLesson }) {
-  const [month, setMonth] = React.useState(TODAY.getMonth());
-  const [year, setYear] = React.useState(TODAY.getFullYear());
-  const [selected, setSelected] = React.useState(null);
-  const [showSuspendModal, setShowSuspendModal] = React.useState(null);
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startWeekDay = firstDay.getDay();
-  const daysInMonth = lastDay.getDate();
-
-  const cells = [];
-  for (let i = 0; i < startWeekDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
-
-  const lessonsByDate = {};
-  schedule.forEach(s => {
-    const k = s.date.toDateString();
-    if (!lessonsByDate[k]) lessonsByDate[k] = [];
-    lessonsByDate[k].push(s);
-  });
-
-  const navMonth = (delta) => {
-    let m = month + delta, y = year;
-    if (m < 0) { m = 11; y--; }
-    if (m > 11) { m = 0; y++; }
-    setMonth(m); setYear(y);
-  };
-
+function BiblioKicker({ icon, children }) {
   return (
-    <>
-      {/* Legend */}
-      <div style={{
-        display:'flex', gap:14, flexWrap:'wrap', padding:'10px 14px',
-        background:'var(--surface-2)', border:'1px solid var(--line)',
-        borderRadius:'var(--r-md)', marginBottom:14, fontSize:11,
-      }}>
-        {[
-          ['Completada', 'var(--ok)'],
-          ['Hoy / Próxima', 'var(--an-granate)'],
-          ['Programada', 'var(--an-navy)'],
-          ['Reprogramada', 'var(--an-gold)'],
-          ['Suspendida (cascada)', 'var(--warn)'],
-        ].map(([l,c]) => (
-          <div key={l} style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <span style={{ width:10, height:10, borderRadius:3, background:c }} />
-            <span style={{ color:'var(--ink-2)' }}>{l}</span>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:16 }}>
-        {/* Calendar grid */}
-        <div className="card" style={{ padding:16 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-            <button className="btn btn-ghost" onClick={() => navMonth(-1)}>← Mes anterior</button>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--an-navy-ink)', textTransform:'capitalize' }}>
-              {new Date(year, month, 1).toLocaleDateString('es-CR', { month:'long', year:'numeric' })}
-            </div>
-            <button className="btn btn-ghost" onClick={() => navMonth(1)}>Mes siguiente →</button>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4, marginBottom:4 }}>
-            {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => (
-              <div key={d} style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--ink-3)', textAlign:'center', padding:'4px 0' }}>{d}</div>
-            ))}
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4 }}>
-            {cells.map((d, i) => {
-              if (!d) return <div key={i} />;
-              const lessons = lessonsByDate[d.toDateString()] || [];
-              const isToday = d.toDateString() === TODAY.toDateString();
-              return (
-                <div key={i} style={{
-                  minHeight: 70, padding: 6,
-                  background: isToday ? 'color-mix(in srgb, var(--an-granate) 8%, white)' : 'var(--surface)',
-                  border: isToday ? '2px solid var(--an-granate)' : '1px solid var(--line)',
-                  borderRadius: 6,
-                  cursor: lessons.length ? 'pointer' : 'default',
-                  opacity: d < TODAY && lessons.length === 0 ? 0.5 : 1,
-                }}
-                onClick={() => lessons[0] && setSelected(lessons[0])}>
-                  <div style={{ fontSize: 11, fontWeight: isToday ? 700 : 500, color: isToday ? 'var(--an-granate)' : 'var(--ink-2)', marginBottom: 3 }}>{d.getDate()}</div>
-                  {lessons.map(l => (
-                    <div key={l.n} style={{
-                      fontSize: 9, padding:'2px 4px', marginBottom:2, borderRadius:3,
-                      background: l.computedStatus==='done' || l.computedStatus==='done-rescheduled' ? 'var(--ok)'
-                        : l.computedStatus==='today' ? 'var(--an-granate)'
-                        : l.computedStatus==='rescheduled' ? 'var(--an-gold)'
-                        : l.computedStatus==='suspended' ? 'var(--warn)'
-                        : 'var(--an-navy)',
-                      color:'white', fontWeight:600,
-                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                    }}>
-                      L{l.n} · {l.kind==='exam-oral' ? 'Oral' : l.kind==='exam-written' ? 'Escrito' : l.unit.replace('Unit ','U')}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Detail panel */}
-        <div className="card" style={{ padding:18, height:'fit-content' }}>
-          {!selected ? (
-            <>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>
-                Próximas lecciones
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {schedule.filter(s => s.computedStatus === 'today' || s.computedStatus === 'upcoming' || s.computedStatus === 'rescheduled').slice(0,5).map(s => (
-                  <div key={s.n} onClick={() => setSelected(s)} style={{
-                    padding:'10px 12px', borderRadius:8,
-                    background:'var(--surface-2)', border:'1px solid var(--line)',
-                    cursor:'pointer',
-                  }}>
-                    <div style={{ display:'flex', gap:8, alignItems:'baseline' }}>
-                      <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-3)', fontWeight:600 }}>L{String(s.n).padStart(2,'0')}</span>
-                      <span style={{ fontSize:13, fontWeight:600, color:'var(--ink)' }}>{s.title}</span>
-                    </div>
-                    <div style={{ fontSize:11, color:'var(--ink-2)', marginTop:2 }}>{fmtDateLong(s.date)}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop:16, paddingTop:14, borderTop:'1px dashed var(--line)', fontSize:11, color:'var(--ink-3)', lineHeight:1.5 }}>
-                <div style={{ fontWeight:700, color:'var(--ink-2)', marginBottom:4 }}>Suspensiones registradas</div>
-                {[].map((s,i) => (
-                  <div key={i} style={{ marginBottom:6 }}>
-                    <strong style={{ color: s.action==='rescheduled'?'var(--an-gold)':'var(--warn)' }}>L{s.lessonN}</strong>
-                    {' · '}{s.reason}
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <LessonDetailPanel
-              lesson={selected}
-              onClose={() => setSelected(null)}
-              onSuspendRequest={() => setShowSuspendModal(selected)}
-              onOpenMaterials={() => onOpenLesson(selected.n)} />
-          )}
-        </div>
-      </div>
-
-      {showSuspendModal && (
-        <SuspendModal lesson={showSuspendModal} onClose={() => setShowSuspendModal(null)} />
-      )}
-    </>
+    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+      <span style={{ width:26, height:26, borderRadius:7, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <Icon name={icon} size={14} className="" />
+      </span>
+      <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{children}</span>
+    </div>
   );
 }
 
-function LessonRow({ lesson, isOpen, onToggle, libro, esINA }) {
-  return <LessonRowInner lesson={lesson} isOpen={isOpen} onToggle={onToggle} libro={libro} esINA={esINA} />;
+// Botón de material real por lección. Usa window.fetchMaterialLeccion (el mismo
+// endpoint que el Cronograma). NUNCA inventa enlaces: si el backend no da
+// acceso/PDF, muestra "Material pendiente de publicar."
+function LessonMaterialBtn({ nivelCode, leccion, rol, codigoUsr, codGrupo }) {
+  const [estado, setEstado] = React.useState('load'); // load | ok | none
+  const [data, setData]     = React.useState(null);
+  React.useEffect(() => {
+    let vivo = true;
+    const helper = window.fetchMaterialLeccion;
+    if (typeof helper !== 'function') { setEstado('none'); return () => { vivo = false; }; }
+    helper({
+      nivel: nivelCode, leccion, riel: 'curso', rol,
+      codigo:    rol === 'student' ? codigoUsr : undefined,
+      cod_grupo: rol === 'student' ? codGrupo  : undefined,
+    })
+      .then(d => {
+        if (!vivo) return;
+        if (d && d.ok && d.acceso) { setData(d); setEstado('ok'); }
+        else { setEstado('none'); }
+      })
+      .catch(() => { if (vivo) setEstado('none'); });
+    return () => { vivo = false; };
+  }, [nivelCode, leccion, rol, codigoUsr, codGrupo]);
+
+  if (estado === 'load') {
+    return <span style={{ fontSize:11.5, color:'var(--ink-3)' }}>Verificando material…</span>;
+  }
+  if (estado === 'ok') {
+    const href = data.pdf_url || (data.pdf_id ? `https://drive.google.com/file/d/${data.pdf_id}/view` : '');
+    if (href) {
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer"
+           style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'8px 14px', background:'var(--an-navy, #0B1F3A)', color:'#fff', borderRadius:'var(--r-sm, 6px)', fontSize:12, fontWeight:600, textDecoration:'none' }}>
+          <Icon name="download" size={13} className="" /> Ver material {data.tipo_pdf ? `· ${data.tipo_pdf}` : '(PDF)'}
+        </a>
+      );
+    }
+  }
+  return <span style={{ fontSize:11.5, color:'var(--ink-3)' }}>Material pendiente de publicar.</span>;
 }
 
-function LessonRowInner({ lesson, isOpen, onToggle, libro, esINA }) {
-  const s = lesson;
-  const statusMeta = {
-    'done':              { label:'Completada',  color:'var(--ok)',         dot:'var(--ok)' },
-    'done-rescheduled':  { label:'Dada (recuperada)', color:'var(--ok)',   dot:'var(--ok)' },
-    'today':             { label:'Hoy',         color:'var(--an-granate)', dot:'var(--an-granate)' },
-    'upcoming':          { label:'Próxima',     color:'var(--an-navy)',    dot:'var(--an-navy)' },
-    'suspended':         { label:'Suspendida (cascada)', color:'var(--warn)', dot:'var(--warn)' },
-    'rescheduled':       { label:'Reprogramada', color:'var(--an-gold)',   dot:'var(--an-gold)' },
-  }[s.computedStatus] || { label:'Planificada', color:'var(--ink-3)', dot:'var(--ink-3)' };
-
-  const kindMeta = {
-    'lesson':       { label:'Lección',        bg:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy)' },
-    'exam-oral':    { label:'Examen Oral',    bg:'color-mix(in srgb, var(--an-granate) 12%, white)', color:'var(--an-granate-ink)' },
-    'exam-written': { label:'Examen Escrito', bg:'color-mix(in srgb, var(--an-granate) 12%, white)', color:'var(--an-granate-ink)' },
-  }[s.kind];
-
+function RecomendadoLeccion({ leccion, lessons, nivelCode, rol, codigoUsr, codGrupo, onIrCronograma }) {
+  if (!leccion) {
+    return (
+      <div className="card" style={{ padding:'18px 20px', marginBottom:18, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', borderStyle:'dashed' }}>
+        <span style={{ width:40, height:40, borderRadius:10, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <Icon name="calendar" size={18} className="" />
+        </span>
+        <div style={{ flex:1, minWidth:200 }}>
+          <div style={{ fontWeight:600, fontSize:14, color:'var(--ink)' }}>Recursos por clase</div>
+          <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:2, lineHeight:1.5 }}>Seleccioná una lección desde el <strong>Cronograma académico</strong> para ver los recursos específicos de esa clase.</div>
+        </div>
+        <button className="btn btn-primary" onClick={onIrCronograma}>Ir al Cronograma académico</button>
+      </div>
+    );
+  }
+  const lec = lessons.find(l => l.n === leccion) || null;
   return (
-    <div id={`lesson-row-${lesson.n}`} className="card" style={{
-      padding: 0,
-      borderLeft: `4px solid ${statusMeta.dot}`,
-      overflow:'hidden',
-    }}>
-      <div
-        onClick={onToggle}
-        style={{
-          padding:'14px 18px',
-          display:'grid',
-          gridTemplateColumns:'auto auto 1fr auto auto',
-          gap:16,
-          alignItems:'center',
-          cursor:'pointer',
-        }}>
-        {/* Número */}
-        <div style={{
-          width:44, height:44, borderRadius:10,
-          background: s.computedStatus==='done' || s.computedStatus==='done-rescheduled' ? 'var(--ok)'
-            : s.computedStatus==='today' ? 'var(--an-granate)'
-            : s.computedStatus==='suspended' ? 'var(--warn)'
-            : s.computedStatus==='rescheduled' ? 'var(--an-gold)'
-            : 'var(--bg-deep)',
-          color: s.computedStatus==='upcoming' ? 'var(--ink-2)' : 'white',
-          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-          flexShrink:0,
-        }}>
-          <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.08em', opacity:0.85 }}>LEC</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:600, lineHeight:1 }}>{String(s.n).padStart(2,'0')}</div>
-        </div>
+    <div className="card" style={{ padding:'18px 20px', marginBottom:18, borderLeft:'4px solid var(--an-granate)' }}>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)' }}>
+        Materiales para la lección {String(leccion).padStart(2,'0')}
+      </div>
+      <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, color:'var(--an-navy-ink)', lineHeight:1.2, marginTop:3 }}>
+        {lec?.title || `Lección ${leccion}`}
+      </div>
+      {lec?.unit && <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:2 }}>{String(lec.unit).replace('Unit ','Unidad ')}</div>}
+      {lec?.objective && <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:8, lineHeight:1.5 }}>{lec.objective}</div>}
+      <div style={{ marginTop:12 }}>
+        <LessonMaterialBtn nivelCode={nivelCode} leccion={leccion} rol={rol} codigoUsr={codigoUsr} codGrupo={codGrupo} />
+      </div>
+    </div>
+  );
+}
 
-        {/* Kind badge */}
-        <div style={{
-          padding:'4px 10px', borderRadius:'var(--r-pill)',
-          background: kindMeta.bg, color: kindMeta.color,
-          fontSize:10, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase',
-          whiteSpace:'nowrap',
-        }}>
-          {kindMeta.label}
+function BiblioLeccionRow({ lec, nivelCode, rol, codigoUsr, codGrupo, isOpen, onToggle }) {
+  const esExamen = lec.kind === 'exam-oral' || lec.kind === 'exam-written';
+  const kindMeta = esExamen
+    ? { label: lec.kind === 'exam-oral' ? 'Examen Oral' : 'Examen Escrito', bg:'color-mix(in srgb, var(--an-granate) 12%, white)', color:'var(--an-granate)', rail:'var(--an-granate)' }
+    : { label:'Lección', bg:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy)', rail:'var(--an-navy)' };
+  return (
+    <div className="card" style={{ padding:0, borderLeft:`4px solid ${kindMeta.rail}`, overflow:'hidden' }}>
+      <div onClick={onToggle} role="button" tabIndex={0}
+           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+           style={{ padding:'12px 16px', display:'grid', gridTemplateColumns:'auto auto 1fr auto', gap:14, alignItems:'center', cursor:'pointer' }}>
+        <div style={{ width:40, height:40, borderRadius:9, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <div style={{ fontSize:8, fontWeight:700, letterSpacing:'0.08em', opacity:0.8 }}>LEC</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600, lineHeight:1 }}>{String(lec.n).padStart(2,'0')}</div>
         </div>
-
-        {/* Title */}
+        <span style={{ padding:'3px 9px', borderRadius:'var(--r-pill)', background:kindMeta.bg, color:kindMeta.color, fontSize:9.5, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', whiteSpace:'nowrap' }}>{kindMeta.label}</span>
         <div style={{ minWidth:0 }}>
-          <div style={{ display:'flex', gap:8, alignItems:'baseline', flexWrap:'wrap' }}>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.01em' }}>
-              {s.title}
-            </div>
-            {s.progress && <Chip tone="gold">Progress Check</Chip>}
-          </div>
-          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
-            {s.unit} · {fmtDateLong(s.date)}
-            {s.computedStatus === 'rescheduled' && s.suspension && (
-              <span style={{ color:'var(--warn)', fontWeight:600, marginLeft:8 }}>
-                · reprogramada desde {fmtDate(s.baseDate)}
-              </span>
-            )}
-          </div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:15, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.01em' }}>{lec.title}</div>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:1 }}>{String(lec.unit).replace('Unit ','Unidad ')}{lec.progress ? ' · Progress Check' : ''}</div>
         </div>
-
-        {/* Status */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, minWidth:90 }}>
-          <div style={{
-            padding:'3px 8px', borderRadius:'var(--r-pill)',
-            background: `color-mix(in srgb, ${statusMeta.color} 14%, white)`,
-            color: statusMeta.color,
-            fontSize:10, fontWeight:700, letterSpacing:'0.05em',
-            whiteSpace:'nowrap',
-          }}>
-            {statusMeta.label}
-          </div>
-          <div style={{ fontSize:11, color:'var(--ink-3)', fontFamily:'var(--f-mono)' }}>{s.hours}h</div>
-        </div>
-
-        {/* Chevron */}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)"
-          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+             style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}>
           <path d="M6 9l6 6 6-6"/>
         </svg>
       </div>
-
       {isOpen && (
-        <div style={{ padding:'0 18px 16px', display:'grid', gridTemplateColumns:'2fr 1fr', gap:18 }}>
+        <div style={{ padding:'0 16px 16px', display:'grid', gridTemplateColumns:'1fr', gap:12 }}>
+          {lec.objective && (
+            <div>
+              <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:4 }}>Objetivo</div>
+              <div style={{ fontSize:13, color:'var(--ink)', lineHeight:1.5 }}>{lec.objective}</div>
+            </div>
+          )}
+          {lec.activity && (
+            <div>
+              <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4 }}>Situación de aprendizaje</div>
+              <div style={{ fontSize:12.5, color:'var(--ink-2)', lineHeight:1.5 }}>{lec.activity}</div>
+            </div>
+          )}
           <div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:6 }}>
-              Objetivo específico
-            </div>
-            <div style={{ fontSize:13, color:'var(--ink)', marginBottom:14, lineHeight:1.45 }}>
-              {s.objective}
-            </div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:6 }}>
-              Situación de aprendizaje
-            </div>
-            <div style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.45 }}>
-              {s.activity}
-            </div>
+            <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>Material de la lección</div>
+            <LessonMaterialBtn nivelCode={nivelCode} leccion={lec.n} rol={rol} codigoUsr={codigoUsr} codGrupo={codGrupo} />
           </div>
-          <div>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>
-              Materiales de la lección
-            </div>
-            {[
-              { t:'Planeamiento — Estudiante', tone:'red',  type:'PDF', sub:'~3 pp' },
-              { t:'Planeamiento — Docente',    tone:'granate', type:'PDF', sub:'uso interno' },
-              s.kind === 'lesson' && { t:`Libro · ${s.unit} (páginas asignadas)`, tone:'navy', type:'PDF', sub: libro || 'Libro del curso' },
-              s.kind === 'lesson' && { t:'Audio Self-Study', tone:'navy', type:'MP3', sub:'~8 min' },
-              s.kind === 'exam-oral' && { t:'Rúbrica oficial', tone:'granate', type:'PDF', sub: esINA ? 'INA 2519' : 'Evaluación oral' },
-              s.kind === 'exam-written' && { t:'Formulario FORMS / Drive', tone:'granate', type:'Link', sub:'evaluación' },
-            ].filter(Boolean).map((m, i) => (
-              <div key={i} style={{
-                padding:'8px 10px', background:'var(--surface-2)', borderRadius:8,
-                display:'flex', alignItems:'center', gap:10, marginBottom:6,
-              }}>
-                <span style={{
-                  padding:'2px 6px', borderRadius:4,
-                  background: m.tone==='red' ? 'color-mix(in srgb, var(--danger) 14%, white)'
-                    : m.tone==='granate' ? 'color-mix(in srgb, var(--an-granate) 14%, white)'
-                    : 'color-mix(in srgb, var(--an-navy) 14%, white)',
-                  color: m.tone==='red' ? 'var(--danger)' : m.tone==='granate' ? 'var(--an-granate)' : 'var(--an-navy)',
-                  fontSize:9, fontWeight:700, letterSpacing:'0.06em',
-                }}>{m.type}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:500, color:'var(--ink)' }}>{m.t}</div>
-                  <div style={{ fontSize:10, color:'var(--ink-3)' }}>{m.sub}</div>
-                </div>
-                <button className="btn btn-icon btn-ghost" title="Descargar">
-                  <Icon name="download" size={13} className="" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Detalle de suspensión si aplica */}
-      {(s.computedStatus === 'suspended' || s.computedStatus === 'rescheduled') && s.suspension && !isOpen && (
-        <div style={{
-          padding:'8px 18px 12px',
-          background: 'color-mix(in srgb, var(--warn) 4%, white)',
-          borderTop:'1px dashed var(--warn)',
-          fontSize:11, color:'var(--ink-2)',
-        }}>
-          <strong style={{ color:'var(--warn)' }}>{s.suspension.reason}</strong>
-          {' · '}reportada por <strong>{s.suspension.byName}</strong>
-          {s.suspension.detail && <> — {s.suspension.detail}</>}
         </div>
       )}
     </div>
@@ -1405,6 +1224,15 @@ function TeacherCalendarRow({ teacher }) {
 // WELCOME MODAL — aparece post-login primera vez
 // ─────────────────────────────────────────────────────────────────────────
 function WelcomeBanner({ onClose }) {
+  // STUDENT-LEARNING-EXPERIENCE-001 / no datos falsos: saludo con el nombre REAL
+  // de la sesión (antes había un nombre quemado). Si no hay nombre, sin nombre.
+  const primerNombre = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
+      const n = String(u?.nombre || '').trim().split(/\s+/).filter(Boolean)[0] || '';
+      return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
+    } catch { return ''; }
+  })();
   return (
     <div style={{
       position:'fixed', inset:0, background:'rgba(20,18,30,0.65)',
@@ -1425,10 +1253,10 @@ function WelcomeBanner({ onClose }) {
             Academia Norteamericana · Campus Virtual
           </div>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:34, fontWeight:400, letterSpacing:'-0.03em', marginTop:4 }}>
-            ¡Bienvenido, Santiago!
+            ¡Bienvenido{primerNombre ? `, ${primerNombre}` : ''}!
           </div>
           <div style={{ fontSize:13, opacity:0.9, marginTop:6, lineHeight:1.5 }}>
-            Nos alegra tenerte en el programa. Antes de tu primera lección, revisa el material obligatorio del INA. Puedes volver a esto desde tu <strong>Perfil</strong> o desde <strong>Materiales</strong> en cualquier momento.
+            Nos alegra tenerte en el programa. Antes de tu primera lección, revisa el material obligatorio del INA. Puedes volver a esto desde <strong>Información del Programa</strong> en cualquier momento.
           </div>
         </div>
         <div style={{ padding:'20px 30px 26px' }}>
@@ -1551,6 +1379,43 @@ function InfoProgramaView() {
           <InfoProgramaCard key={doc.codigo || doc.seccion} doc={doc} />
         ))}
       </div>
+      <RevisadoSesionBtn />
+      {/* STUDENT-CONTACT-ADMIN-002: dudas de reglamento/netiqueta/proceso →
+          contacto ACADÉMICO dinámico. Solo aparece si hay número real. */}
+      {typeof window.ContactoAdmin === 'function' && (
+        <div className="card" style={{ marginTop:14, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div style={{ flex:1, minWidth:220, fontSize:13, color:'var(--ink-2)' }}>
+            <strong style={{ color:'var(--ink)' }}>¿Dudas sobre el reglamento o el proceso académico?</strong>
+          </div>
+          <window.ContactoAdmin tipo="academico" hideWhenPending />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// STUDENT-LEARNING-EXPERIENCE-001 (PARTE D): confirmación de lectura HONESTA.
+// No hay endpoint de persistencia, así que solo recordamos el clic en ESTA
+// sesión y lo decimos explícitamente. No sustituye ningún registro oficial.
+function RevisadoSesionBtn() {
+  const KEY = 'an_info_revisado_sesion';
+  const [ok, setOk] = React.useState(() => {
+    try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; }
+  });
+  const marcar = () => { try { sessionStorage.setItem(KEY, '1'); } catch {} setOk(true); };
+  return (
+    <div className="card" style={{ marginTop:18, padding:'16px 18px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', borderStyle:'dashed' }}>
+      <div style={{ flex:1, minWidth:220 }}>
+        <div style={{ fontWeight:600, fontSize:14, color:'var(--ink)' }}>Confirmación de lectura</div>
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2, lineHeight:1.5 }}>
+          Esta acción no sustituye el registro oficial; queda guardada solo en esta sesión.
+        </div>
+      </div>
+      {ok ? (
+        <span style={{ display:'inline-flex', alignItems:'center', gap:6, color:'var(--ok)', fontWeight:600, fontSize:13 }}>✓ Revisado en esta sesión</span>
+      ) : (
+        <button className="btn btn-primary" onClick={marcar}>Ya lo revisé en esta sesión</button>
+      )}
     </div>
   );
 }

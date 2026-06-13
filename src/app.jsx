@@ -256,11 +256,11 @@ function App() {
   let content = null;
   if (role === 'student') {
     const map = {
-      cronograma_grupo: <CronogramaGrupo rol="student" />,
-      dashboard:    <StudentDashboard toast={toast} onNavigate={setActive} />,
+      cronograma_grupo: <CronogramaGrupo rol="student" onNavigate={navigateTo} />,
+      dashboard:    <StudentDashboard toast={toast} onNavigate={navigateTo} />,
       notas:        <NotasView toast={toast} />,
       tareas:       <TareasView toast={toast} />,
-      materiales:   <MaterialesView initialLesson={pendingLesson} />,
+      materiales:   <MaterialesView initialLesson={pendingLesson} onNavigate={navigateTo} />,
       info_programa: <InfoProgramaView />,
       ican:         <ICANViewNew toast={toast} role="student" />,
       mensajes:     <MensajesView />,
@@ -280,7 +280,7 @@ function App() {
       calificar:   <CalificarView toast={toast} />,
       asistencia:  <AsistenciaView toast={toast} />,
       cronograma_grupo: <CronogramaGrupo rol="teacher" />,
-      materiales:  <MaterialesView />,
+      materiales:  <MaterialesView onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,
       mensajes:    <MensajesView />,
       perfil:      <PerfilView />,

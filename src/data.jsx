@@ -819,9 +819,95 @@ function nombreAmable(nombreCompleto) {
   return pick.charAt(0).toUpperCase() + pick.slice(1).toLowerCase();
 }
 
+// ── STUDENT-CONTACT-ADMIN-002: contactos DINÁMICOS por área desde el backend.
+// getContactoCampus(est, usr, tipo) resuelve el contacto del ÁREA pedida
+// (academico / cobros / administracion / ventas) leyendo
+// getEstudiante.contactos_campus o los alias contacto_<area>. NUNCA usa el
+// teléfono propio del estudiante y NUNCA inventa un número. Rechaza placeholders
+// (números de relleno, dígitos repetidos, secuencias…). Si no llega un número
+// real → { disponible:false } y la UI muestra el estado honesto.
+const _AN_MSG_CONTACTO = {
+  academico:      'Necesito ayuda con una consulta académica de mi campus virtual.',
+  cobros:         'Necesito ayuda con mi estado de cuenta del campus virtual.',
+  administracion: 'Necesito ayuda con una consulta administrativa del campus virtual.',
+  ventas:         'Necesito ayuda con una consulta comercial o de matrícula.',
+};
+const _AN_TEL_PLACEHOLDERS = new Set([
+  '00000000', '000000000', '12345678', '50612345678',
+]);
+function _anNormalizarTel(raw) {
+  if (raw == null) return '';
+  let d = String(raw).replace(/[^\d]/g, '');
+  if (d.startsWith('00')) d = d.slice(2); // prefijo internacional 00
+  return d;
+}
+function _anEsPlaceholderTel(d) {
+  if (!d) return true;
+  if (_AN_TEL_PLACEHOLDERS.has(d)) return true;
+  if (/^(\d)\1+$/.test(d)) return true;                 // todos los dígitos iguales
+  const local = d.replace(/^506/, '');
+  // Rechaza la familia de placeholders 8888-xxxx de relleno y 1234-5678.
+  if (local === ('8888' + '1234') || local === '12345678') return true;
+  if (/^8888(.)\1\1\1?$/.test(local)) return true;       // 8888 + repetidos
+  return false;
+}
+function getContactoCampus(est, usr, tipo) {
+  tipo = tipo || 'administracion';
+  est = (est && typeof est === 'object') ? est : {};
+  usr = (usr && typeof usr === 'object') ? usr : {};
+  // contactos_campus puede venir en est o en la sesión (usr).
+  const cc = Object.assign({}, (usr.contactos_campus || {}), (est.contactos_campus || {}));
+  // Resolución por área: objeto contactos_campus.<area> → alias contacto_<area>.
+  let raw = null;
+  if (tipo === 'cobros') {
+    raw = cc.cobros || est.contacto_cobros || usr.contacto_cobros || null;
+  } else if (tipo === 'academico') {
+    raw = cc.academico || est.contacto_academico || usr.contacto_academico || null;
+  } else if (tipo === 'ventas') {
+    raw = cc.ventas || est.contacto_ventas || usr.contacto_ventas
+       || cc.supervisor_ventas || est.contacto_supervisor_ventas || usr.contacto_supervisor_ventas || null;
+  } else { // administracion (default)
+    raw = cc.administracion || est.contacto_administracion || usr.contacto_administracion
+       || est.contacto_admin || usr.contacto_admin || null;
+  }
+  // El contacto puede ser objeto {nombre,telefono,whatsapp} o un string (teléfono).
+  let nombre = '', telRaw = '';
+  if (raw && typeof raw === 'object') {
+    nombre = String(raw.nombre || raw.admin_nombre || raw.responsable || '').trim();
+    telRaw = String(raw.whatsapp || raw.telefono || raw.tel || raw.celular || '').trim();
+  } else if (typeof raw === 'string') {
+    telRaw = raw.trim();
+  }
+  const d = _anNormalizarTel(telRaw);
+  let valido = !!d && !_anEsPlaceholderTel(d);
+  // NUNCA usar el teléfono propio del estudiante como contacto.
+  const telEst = _anNormalizarTel(est.WHATSAPP || est.whatsapp || est.TELEFONO || est.telefono);
+  if (valido && telEst) {
+    const a = d.replace(/^506/, ''), b = telEst.replace(/^506/, '');
+    if (a && a === b) valido = false;
+  }
+  const whatsappTel = valido ? (d.length === 8 ? '506' + d : d) : '';
+  let whatsappUrl = '';
+  if (valido && whatsappTel) {
+    const primer = nombreAmable(est.NOMBRE || est.nombre || usr.nombre || '');
+    const intro = primer
+      ? `Hola, soy ${primer}, estudiante de Academia Norteamericana.`
+      : 'Hola, soy estudiante de Academia Norteamericana.';
+    const cuerpo = _AN_MSG_CONTACTO[tipo] || _AN_MSG_CONTACTO.administracion;
+    whatsappUrl = `https://wa.me/${whatsappTel}?text=${encodeURIComponent(intro + ' ' + cuerpo)}`;
+  }
+  return { disponible: valido, tipo, nombre: nombre || '', telefono: valido ? telRaw : '', whatsappTel, whatsappUrl };
+}
+
+// Compat STUDENT-CONTACT-ADMIN-001: alias hacia el área de administración.
+function getContactoAdministracion(est, usr) {
+  return getContactoCampus(est, usr, 'administracion');
+}
+
 Object.assign(window, {
   LEVELS, PRECIOS,
   nombreAmable,
+  getContactoCampus, getContactoAdministracion,
   APPS_SCRIPT_URL,
   getSesion, setSesion,
   getSessionToken, validarSesionServidor, cerrarSesionServidor,

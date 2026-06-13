@@ -614,9 +614,10 @@ function PagosContenido({ data }) {
           <strong style={{ color:'var(--ink)' }}>¿Alguna dificultad este mes?</strong>{' '}
           Podemos acomodar fechas — escribinos a administración.
         </div>
-        <a className="btn btn-ghost" href="https://wa.me/50688881234" target="_blank" rel="noopener" style={{ fontSize:12 }}>
-          Hablar con Administración
-        </a>
+        {/* STUDENT-CONTACT-ADMIN-002: Estado de cuenta → contacto de COBROS
+            dinámico (getContactoCampus tipo='cobros'). Abre WhatsApp solo si hay
+            número real; si no, estado honesto. Sin números quemados. */}
+        <ContactoAdmin est={data?.estudiante || data} tipo="cobros" />
       </div>
     </>
   );
@@ -735,10 +736,23 @@ function CertificadosContenido({ data }) {
                 </div>
               </div>
             </div>
-            <div style={{ display:'flex', gap:8, marginTop:20, position:'relative' }}>
-              <button className="btn btn-primary">
-                <Icon name="download" size={14} className="" /> Descargar PDF
+            <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:20, position:'relative' }}>
+              {/* PRE-GITHUB-LOCK-001: la descarga directa NO tiene endpoint en el
+                  panel del estudiante. El certificado oficial lo emite la
+                  administración (generarCertificado/generarDocumento). Botón
+                  honesto: deshabilitado + indicación de a quién solicitarlo.
+                  No se inventa una descarga que no existe. */}
+              <button className="btn btn-ghost" disabled
+                      style={{ opacity:0.65, cursor:'not-allowed', justifyContent:'center' }}
+                      title="La descarga directa estará disponible próximamente">
+                <Icon name="download" size={14} className="" /> Descarga próximamente
               </button>
+              <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5 }}>
+                Solicitá tu certificado oficial a la administración de la Academia.
+              </div>
+              {/* STUDENT-CONTACT-ADMIN-002: certificación académica → contacto
+                  ACADÉMICO, solo si hay número real (si no, texto honesto arriba). */}
+              <ContactoAdmin est={data?.estudiante || data} tipo="academico" hideWhenPending size={11} />
             </div>
           </div>
         ))}
@@ -1000,6 +1014,41 @@ function SkeletonTable() {
   );
 }
 
+// STUDENT-CONTACT-ADMIN-002: acción de contacto DINÁMICA por ÁREA y reutilizable.
+// Abre WhatsApp SOLO si window.getContactoCampus devuelve un número real para el
+// área pedida (academico / cobros / administracion / ventas); si no, muestra
+// texto honesto (sin botón falso) o nada (hideWhenPending). NUNCA números quemados.
+const _AN_CONTACTO_LABEL = {
+  cobros:         'Contactar cobros',
+  academico:      'Contactar área académica',
+  administracion: 'Contactar administración',
+  ventas:         'Contactar asesor',
+};
+const _AN_CONTACTO_PENDING = {
+  cobros:         'Contacto de cobros pendiente de configurar.',
+  academico:      'Contacto académico pendiente de configurar.',
+  administracion: 'Contacto administrativo pendiente de configurar.',
+  ventas:         'Contacto de ventas pendiente de configurar.',
+};
+function ContactoAdmin({ est, usr, tipo = 'administracion', label, pendingText, hideWhenPending = false, size = 12 }) {
+  const fn = window.getContactoCampus || window.getContactoAdministracion;
+  const sesion = usr || (window.getSesion ? window.getSesion() : null);
+  const c = (typeof fn === 'function') ? fn(est, sesion, tipo) : { disponible: false };
+  const lbl  = label || _AN_CONTACTO_LABEL[tipo] || _AN_CONTACTO_LABEL.administracion;
+  const pend = pendingText != null ? pendingText
+    : (_AN_CONTACTO_PENDING[tipo] || _AN_CONTACTO_PENDING.administracion);
+  if (c.disponible && c.whatsappUrl) {
+    return (
+      <a className="btn btn-ghost" href={c.whatsappUrl} target="_blank" rel="noopener"
+         style={{ fontSize:size }}>
+        {lbl}{c.nombre ? ` · ${c.nombre}` : ''}
+      </a>
+    );
+  }
+  if (hideWhenPending) return null;
+  return <span style={{ fontSize:size, color:'var(--ink-3)', fontWeight:600 }}>{pend}</span>;
+}
+
 function SkeletonGrid() {
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:12 }}>
@@ -1014,7 +1063,7 @@ function SkeletonGrid() {
 }
 
 Object.assign(window, {
-  PageHeader,
+  PageHeader, ContactoAdmin,
   NotasView, TareasView, MensajesView, PagosView,
   CertificadosView, PerfilView, ExamenOralView,
   estaDesbloqueada, LeccionLocked,

@@ -371,25 +371,26 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   }, [rolEfectivo, active]);
 
   const studentNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
-    { id: 'notas', label: 'Mis Notas', icon: 'grades' },
-    { id: 'tareas', label: 'Tareas', icon: 'homework' },
-    { id: 'materiales', label: 'Materiales', icon: 'materials' },
+    { id: 'dashboard', label: 'Inicio', icon: 'home' },
+    { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
+    { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
     { id: 'info_programa', label: 'Información del Programa', icon: 'doc' },
+    { id: 'notas', label: 'Mis Notas', icon: 'grades' },
+    { id: 'examenes', label: 'Exámenes', icon: 'check', proximamente: true },
+    { id: 'tareas', label: 'Tareas', icon: 'homework' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
     { id: 'pagos', label: 'Estado de cuenta', icon: 'payments' },
-    { id: 'certificados', label: 'Certificados', icon: 'certificates' },
+    { id: 'certificados', label: 'Certificaciones', icon: 'certificates' },
   ];
   const teacherNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'home', badge: pendientesDoc || null },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
-    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
+    { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
     { id: 'asistencia', label: 'Asistencia', icon: 'check' },
-    { id: 'materiales', label: 'Materiales', icon: 'materials' },
+    { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
   ];

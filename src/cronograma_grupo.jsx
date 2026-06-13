@@ -605,6 +605,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
         {/* Panel detalle sticky */}
         <PanelDetalle
+          onNavigate={onNavigate}
           selLec={selLec}
           detalle={detalle}
           cargando={cargandoDet}
@@ -973,7 +974,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -1020,6 +1021,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
       {/* Detalle de la lección seleccionada */}
       {selLec ? (
         <DetalleLeccion
+          onNavigate={onNavigate}
           selLec={selLec}
           detalle={detalle}
           cargando={cargando}
@@ -1060,7 +1062,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
@@ -1322,6 +1324,12 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, 
               detalle={detalle}
             />
 
+            {/* STUDENT-LEARNING-EXPERIENCE-001: acciones de clase del estudiante
+                — Abrir Zoom (solo si hay link real) + Ver materiales de esta clase */}
+            {rol === 'student' && (
+              <AccionesClaseEstudiante selLec={selLec} detalle={detalle} onNavigate={onNavigate} />
+            )}
+
             {/* Botón Asignar cobertura — solo admin + lección PROGRAMADA */}
             {esAdmin && selLec.estado === 'PROGRAMADA' && (
               <button
@@ -1416,6 +1424,59 @@ function Bloque({ titulo, texto, compact }) {
 // Botón "Ver material PDF" + Modal embebido
 // Backend v4.22.4: getMaterialLeccion decide acceso por rol/estado.
 // ─────────────────────────────────────────────────────────────────
+// STUDENT-LEARNING-EXPERIENCE-001 — Acciones de clase para el estudiante.
+// getZoomLinkClase: devuelve un link REAL de Zoom/Meet de la lección o su
+// detalle si existe; si ningún campo es una URL http(s) válida → '' (no se
+// inventa nada). AccionesClaseEstudiante: "Abrir Zoom" solo si hay link (si no,
+// mensaje honesto) + "Ver materiales de esta clase" → Biblioteca filtrada.
+function getZoomLinkClase(selLec, detalle) {
+  const fuentes = [selLec, detalle].filter(Boolean);
+  const campos = ['zoom','zoom_link','zoomLink','meet','meet_link','meetLink',
+    'enlace_zoom','enlace_meet','link_clase','url_clase','clase_url','enlace_clase','link_zoom','link_meet'];
+  for (const f of fuentes) {
+    for (const c of campos) {
+      const v = f[c];
+      if (typeof v === 'string' && /^https?:\/\//i.test(v.trim())) return v.trim();
+    }
+  }
+  return '';
+}
+
+function AccionesClaseEstudiante({ selLec, detalle, onNavigate }) {
+  const zoom = getZoomLinkClase(selLec, detalle);
+  const esActivable = selLec.estado === 'HOY' || selLec.estado === 'CALCULADA' || selLec.estado === 'PROGRAMADA';
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:2 }}>
+      {zoom ? (
+        <a href={zoom} target="_blank" rel="noopener noreferrer"
+           style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#1565C0', color:'#fff', borderRadius:'var(--r-md)', fontSize:13, fontWeight:700, textDecoration:'none', letterSpacing:'0.02em' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Abrir Zoom
+        </a>
+      ) : esActivable ? (
+        <div style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:12, color:'var(--ink-3)', textAlign:'center' }}>
+          Link de clase pendiente de publicar.
+          {/* STUDENT-CONTACT-ADMIN-002: dudas de clase → contacto ACADÉMICO.
+              Solo abre WhatsApp si existe un número académico real. */}
+          <div style={{ marginTop:2, fontSize:11 }}>Consultá con administración si necesitás ayuda.</div>
+          {typeof window.ContactoAdmin === 'function' && (
+            <div style={{ marginTop:8 }}>
+              <window.ContactoAdmin tipo="academico" hideWhenPending size={11} />
+            </div>
+          )}
+        </div>
+      ) : null}
+      {onNavigate && selLec.leccion && (
+        <button type="button" onClick={() => onNavigate('materiales', { lesson: selLec.leccion })}
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'var(--surface)', border:'1.5px solid var(--ink)', color:'var(--ink)', fontSize:13, fontWeight:700, borderRadius:'var(--r-md)', cursor:'pointer', letterSpacing:'0.02em', fontFamily:'inherit' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Ver materiales de esta clase
+        </button>
+      )}
+    </div>
+  );
+}
+
 function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) {
   const [mat, setMat]           = React.useState(null);
   const [cargando, setCargando] = React.useState(true);
