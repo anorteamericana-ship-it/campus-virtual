@@ -100,6 +100,7 @@ function tFmtMoraActualizado(s) {
 }
 
 function TodosLosGruposView({ gruposReales, onNavigate }) {
+  const safeGruposReales = Array.isArray(gruposReales) ? gruposReales : [];
   // ── HOOKS ARRIBA (sin returns condicionales antes) ────────────
   const [sub, setSub] = React.useState('semana'); // 'semana' | 'mes'
   const [weekStart, setWeekStart] = React.useState(() => tMondayOf(new Date()));
@@ -163,7 +164,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
   // Aplanado: { grupo, leccion } por cada lección
   const items = React.useMemo(() => {
     const out = [];
-    for (const g of (gruposReales || [])) {
+    for (const g of safeGruposReales) {
       if (!Array.isArray(g.lecciones)) continue;
       for (const l of g.lecciones) {
         if (!l || !l.fecha) continue;
@@ -171,13 +172,13 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
       }
     }
     return out;
-  }, [gruposReales]);
+  }, [safeGruposReales]);
 
   // ── DATOS PARA VISTA GANTT ──────────────────────────────────────
   // gruposOrdenados: filas, en el orden de presentación (vert.).
   // byGrupoDate: code → (iso → leccion[]) con lecciones ASC dentro del día.
   const gruposOrdenados = React.useMemo(() => {
-    const arr = [...(gruposReales || [])];
+    const arr = [...safeGruposReales];
     arr.sort((a, b) => {
       // 1. turnoOrden ASC (9am arriba, 6pm abajo)
       const ta = a.turnoOrden ?? 99;
@@ -203,12 +204,12 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
       return (a.code || '').localeCompare(b.code || '');
     });
     return arr;
-  }, [gruposReales]);
+  }, [safeGruposReales]);
 
   const byGrupoDate = React.useMemo(() => {
     // code → Map<iso, leccion[]>
     const out = new Map();
-    for (const g of (gruposReales || [])) {
+    for (const g of safeGruposReales) {
       const m = new Map();
       if (Array.isArray(g.lecciones)) {
         for (const l of g.lecciones) {
@@ -224,7 +225,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
       out.set(g.code, m);
     }
     return out;
-  }, [gruposReales]);
+  }, [safeGruposReales]);
 
   // ── DATOS PARA VISTA MES (apilado por día) ──────────────────────
   // Mantiene la lógica de bloques: cada grupo aporta sus lecciones del día
@@ -271,11 +272,11 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
 
   // Stats para header
   const stats = React.useMemo(() => {
-    const totalGrupos = (gruposReales || []).length;
-    const aperturas = (gruposReales || []).filter(g => g.esApertura).length;
-    const estudiantes = (gruposReales || []).reduce((s,g) => s + (g.estudiantes||0), 0);
+    const totalGrupos = safeGruposReales.length;
+    const aperturas = safeGruposReales.filter(g => g.esApertura).length;
+    const estudiantes = safeGruposReales.reduce((s,g) => s + (g.estudiantes||0), 0);
     return { totalGrupos, aperturas, estudiantes };
-  }, [gruposReales]);
+  }, [safeGruposReales]);
 
   return (
     <div style={{ marginTop:14 }}>
@@ -1250,3 +1251,7 @@ function Campo({ label, value, mono }) {
 })();
 
 Object.assign(window, { TodosLosGruposView });
+
+
+// Exponer para cronograma_grupo.jsx cuando los scripts se cargan con Babel en navegador.
+window.TodosLosGruposView = TodosLosGruposView;

@@ -43,6 +43,63 @@ function ProximamenteView({ title }) {
 
 const { useState, useEffect } = React;
 
+// ── Límite de error por vista ───────────────────────────────────────
+// Antes, si UNA vista lanzaba (p. ej. el cronograma "Todos los grupos" con un
+// dato inesperado), React desmontaba TODO el árbol → campus en BLANCO, sin
+// sidebar ni forma de salir. Este boundary aísla el fallo a la zona de
+// contenido: el menü sigue vivo y el usuario puede navegar a otra sección.
+// NO cambia datos, permisos ni la lógica de ninguna vista; solo evita que un
+// error puntual tumbe el campus entero. (React recomienda explícitamente un
+// error boundary en estos casos.)
+class VistaErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch() { /* sin log de datos sensibles */ }
+  render() {
+    if (this.state.error) {
+      return (
+        <div data-screen-label="Campus · Sección con error" style={{
+          maxWidth: 560, margin: '72px auto', padding: '32px 30px',
+          background: 'var(--surface, #fff)',
+          border: '1px solid var(--line, #e5e0d8)',
+          borderRadius: 'var(--r-lg, 14px)',
+          fontFamily: 'var(--f-sans, system-ui)', textAlign: 'center',
+          boxShadow: 'var(--sh-2, 0 8px 30px rgba(0,0,0,0.08))',
+        }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '3px 11px', borderRadius: 999,
+            background: 'color-mix(in srgb, var(--warn, #C67100) 14%, transparent)',
+            color: 'var(--warn, #C67100)', fontSize: 10.5, fontWeight: 800,
+            letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 16,
+          }}>Sección no disponible</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--an-navy-ink, #001E47)', marginBottom: 10 }}>
+            No pudimos mostrar esta sección
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--ink-3, #6B7280)', lineHeight: 1.55, marginBottom: 22 }}>
+            Ocurrió un problema al cargar esta vista. El resto del campus sigue
+            disponible — podés volver al panel o reintentar.
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary"
+              onClick={() => this.props.onReset && this.props.onReset()}
+              style={{ padding: '9px 18px', fontSize: 13 }}>
+              Ir al panel
+            </button>
+            <button type="button"
+              onClick={() => window.location.reload()}
+              style={{ padding: '9px 18px', fontSize: 13, background: 'transparent', border: '1px solid var(--line-2, #D4C9B6)', color: 'var(--ink-2, #4A413A)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+              Reintentar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 // SEC-006-B: roles autorizados para el campus general (campus.html). El
 // panel de ventas vive en ventas.html con su propio guard; aqui 'ventas'
 // NO entra (se redirige). El guard real es <CampusGate/> al final del
@@ -301,7 +358,7 @@ function App() {
       solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,
       estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
-      cronograma_grupo: <CronogramaGrupo rol="admin" onNavigate={navigateTo} />,
+      cronograma_grupo: <CronogramaGrupo rol={rolReal} onNavigate={navigateTo} />,
       buscador:     <BuscadorEstudiantes />,
       banco:        <ImportadorBancario />,
       aplicar_pago: <AplicarPago />,
@@ -340,7 +397,9 @@ function App() {
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
         )}
-        {content}
+        <VistaErrorBoundary key={active} onReset={() => setActive('dashboard')}>
+          {content}
+        </VistaErrorBoundary>
       </main>
       <Toast msg={toastMsg} onClose={() => setToastMsg('')} />
       {showWelcome && role === 'student' && <WelcomeBanner onClose={closeWelcome} />}
@@ -387,6 +446,54 @@ function NoAutorizadoCampus({ rol }) {
   );
 }
 
+// ── Pantalla de validación de sesión (UX) ─────────────────────────────────
+// Antes, mientras CampusGate esperaba la respuesta del backend, se renderizaba
+// `null` → pantalla en BLANCO sin feedback. Si el Apps Script tarda (cold start
+// ~4 s o más) el usuario se queda mirando crema vacía. Esto es SOLO UX: no
+// cambia la decisión de seguridad (sin sesión/validación válida no se monta el
+// campus). `lento` aparece si la validación tarda demasiado, con reintento
+// (recarga = vuelve a validar; fail-closed, no hay bypass).
+function CampusValidando({ lento }) {
+  return (
+    <div data-screen-label="Campus · Validando sesión" style={{
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 18,
+      background: 'var(--bg, #F3EEE6)', fontFamily: 'var(--f-sans, system-ui)',
+      padding: '24px', textAlign: 'center',
+    }}>
+      <style>{`@keyframes an-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{
+        width: 38, height: 38, borderRadius: '50%',
+        border: '3px solid color-mix(in srgb, var(--an-navy, #002F6C) 18%, transparent)',
+        borderTopColor: 'var(--an-navy, #002F6C)',
+        animation: 'an-spin 0.8s linear infinite',
+      }} />
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--an-navy-ink, #001E47)', letterSpacing: '0.01em' }}>
+        Validando tu sesión…
+      </div>
+      {lento && (
+        <div style={{ maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-3, #6B7280)', lineHeight: 1.5 }}>
+            Está tardando más de lo normal. Puede ser la conexión con el servidor.
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <button type="button" className="btn btn-primary"
+              onClick={() => window.location.reload()}
+              style={{ padding: '8px 16px', fontSize: 13 }}>
+              Reintentar
+            </button>
+            <button type="button" className="btn"
+              onClick={campusIrALogin}
+              style={{ padding: '8px 16px', fontSize: 13, background: 'transparent', border: '1px solid var(--line-2, #D4C9B6)', color: 'var(--ink-2, #4A413A)', borderRadius: 8, cursor: 'pointer' }}>
+              Ir al inicio de sesión
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Guard de sesión del campus (SEC-006-B) ────────────────────────────────
 // Equivalente a <VentasGate/> de ventas.html. Resuelve la identidad ANTES de
 // montar <App/> y NO fabrica sesiones:
@@ -400,9 +507,12 @@ function NoAutorizadoCampus({ rol }) {
 function CampusGate() {
   const [estado, setEstado] = useState('check');   // 'check' | 'ok' | 'denegado'
   const [sesion, setSesionState] = useState(null);
+  const [lento, setLento] = useState(false);       // UX: validación lenta
 
   useEffect(() => {
     let cancel = false;
+    // Solo UX: si la validación tarda demasiado, mostramos aviso + reintento.
+    const slowTimer = setTimeout(() => { if (!cancel) setLento(true); }, 9000);
     (async () => {
       const ses = (typeof window.getSesion === 'function') ? window.getSesion() : null;
       const token = (typeof window.getSessionToken === 'function')
@@ -444,10 +554,10 @@ function CampusGate() {
       setSesionState(ses);
       setEstado('ok');
     })();
-    return () => { cancel = true; };
+    return () => { cancel = true; clearTimeout(slowTimer); };
   }, []);
 
-  if (estado === 'check') return null;                       // sin flash de UI
+  if (estado === 'check') return <CampusValidando lento={lento} />;
   if (estado === 'denegado') return <NoAutorizadoCampus rol={sesion ? sesion.rol : ''} />;
   return <App />;
 }

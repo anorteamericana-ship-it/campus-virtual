@@ -22,31 +22,6 @@ async function postCronoGrupo(fn, payload = {}) {
 // Sentinel para la vista "Todos los grupos" (solo admin/superadmin).
 const TODOS_GRUPOS = '__TODOS__';
 
-// FIX-CAL-SUPERADMIN-001:
-// cronograma_todos.jsx expone la vista global como window.TodosLosGruposView.
-// En algunos entornos Babel no deja esa función como identificador léxico entre
-// archivos, y al entrar como admin/superadmin a Calendario (vista "Todos")
-// CronogramaGrupo intentaba renderizar <TodosLosGruposView /> y producía
-// pantalla blanca por ReferenceError. Usamos una resolución segura desde window.
-const TodosLosGruposViewSafe = (typeof window !== 'undefined' && window.TodosLosGruposView)
-  ? window.TodosLosGruposView
-  : function TodosLosGruposViewFallback({ gruposReales }) {
-      return (
-        <div data-screen-label="Cronograma · Todos los grupos" style={{ padding:24 }}>
-          <div style={{
-            padding:'14px 16px', border:'1px solid var(--line)', borderRadius:'var(--r-md)',
-            background:'var(--surface)', color:'var(--ink-2)', fontSize:13, lineHeight:1.5,
-          }}>
-            No se pudo cargar la vista consolidada de todos los grupos.
-            Seleccioná un grupo específico en el selector superior para ver su calendario.
-            <div style={{ marginTop:8, fontSize:12, color:'var(--ink-3)' }}>
-              Grupos disponibles: {Array.isArray(gruposReales) ? gruposReales.length : 0}
-            </div>
-          </div>
-        </div>
-      );
-    };
-
 // La lista de grupos AHORA viene del backend (getGruposActivos). Ver CronogramaGrupo.
 
 const NIVEL_COLOR_CG  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -535,7 +510,11 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       </div>
 
       {esTodosGrupos ? (
-        <TodosLosGruposViewSafe gruposReales={gruposReales} onNavigate={onNavigate} />
+        (typeof window.TodosLosGruposView === 'function' || typeof TodosLosGruposView === 'function') ? (
+          React.createElement(window.TodosLosGruposView || TodosLosGruposView, { gruposReales, onNavigate })
+        ) : (
+          <div className="card" style={{ padding:24, color:'var(--ink-3)' }}>No se pudo cargar la vista de todos los grupos.</div>
+        )
       ) : studentAccountOnly ? (
         <CronoAccesoBloqueo
           badge="Acceso limitado · mora" badgeColor="#B71C1C"
@@ -824,8 +803,9 @@ function ordenTurno(l) {
 }
 // Devuelve [lecciones] de una fecha, ordenadas Mañana→Tarde→Noche y por número.
 function lecsDeFecha(mapaLecciones, fecha, fallback) {
-  const arr = (mapaLecciones && mapaLecciones[fecha]) || (fallback ? [fallback] : []);
-  return arr.slice().sort((a, b) => (ordenTurno(a) - ordenTurno(b)) || (a.leccion - b.leccion));
+  const raw = mapaLecciones && mapaLecciones[fecha];
+  const arr = Array.isArray(raw) ? raw : (fallback ? [fallback] : []);
+  return arr.slice().sort((a, b) => (ordenTurno(a) - ordenTurno(b)) || ((a?.leccion || 0) - (b?.leccion || 0)));
 }
 
 // Color/etiqueta por estado para chips de las tarjetas.
@@ -933,9 +913,12 @@ function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
 
 // ── VISTA: Próxima clase ────────────────────────────────────────────────────
 function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, onSelect }) {
-  const prox = stats.proxima;
+  const safeLecciones = Array.isArray(lecciones) ? lecciones : [];
+  const safeMapaLecciones = (mapaLecciones && typeof mapaLecciones === 'object') ? mapaLecciones : {};
+  const safeStats = stats || {};
+  const prox = safeStats.proxima;
   const accent = NIVEL_COLOR_CG[nivel] || '#1565C0';
-  const proxExamen = lecciones.find(l =>
+  const proxExamen = safeLecciones.find(l =>
     (l.estado === 'CALCULADA' || l.estado === 'PROGRAMADA' || l.estado === 'HOY') &&
     (l.tipo === 'EVAL_ORAL' || l.tipo === 'EVAL_ESCRITO'));
 
@@ -949,7 +932,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
     );
   }
 
-  const lecsDia = lecsDeFecha(mapaLecciones, prox.fecha, prox);
+  const lecsDia = lecsDeFecha(safeMapaLecciones, prox.fecha, prox);
   const doble   = lecsDia.length >= 2;
   const dias    = diasEntre(prox.fecha);
   const cuando  = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : dias > 1 ? `En ${dias} días` : '—';
@@ -1049,14 +1032,16 @@ function ProxMeta({ label, value, mono }) {
 
 // ── VISTA: Semana ────────────────────────────────────────────────────────────
 function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
+  const safeLecciones = Array.isArray(lecciones) ? lecciones : [];
+  const safeMapaLecciones = (mapaLecciones && typeof mapaLecciones === 'object') ? mapaLecciones : {};
   const baseLunes = React.useMemo(() => mondayOfCG(new Date()), []);
   const initOff = React.useMemo(() => {
-    const prox = lecciones.find(l => l.estado === 'HOY')
-      || lecciones.find(l => l.estado === 'PROGRAMADA' || l.estado === 'CALCULADA');
+    const prox = safeLecciones.find(l => l.estado === 'HOY')
+      || safeLecciones.find(l => l.estado === 'PROGRAMADA' || l.estado === 'CALCULADA');
     if (!prox) return 0;
     const dt = parseISO(prox.fecha);
     return dt ? weeksBetweenCG(baseLunes, mondayOfCG(dt)) : 0;
-  }, [lecciones, baseLunes]);
+  }, [safeLecciones, baseLunes]);
   const [off, setOff] = React.useState(initOff);
   React.useEffect(() => { setOff(initOff); }, [initOff]);
 
@@ -1068,7 +1053,7 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
   for (let i = 0; i < 7; i++) {
     const dd = addDaysCG(lunes, i);
     const iso = isoOf(dd);
-    const lecs = lecsDeFecha(mapaLecciones, iso);
+    const lecs = lecsDeFecha(safeMapaLecciones, iso);
     if (lecs.length) dias.push({ dd, iso, nom: DIAS_NOM[i], lecs });
   }
 
