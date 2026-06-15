@@ -22,6 +22,31 @@ async function postCronoGrupo(fn, payload = {}) {
 // Sentinel para la vista "Todos los grupos" (solo admin/superadmin).
 const TODOS_GRUPOS = '__TODOS__';
 
+// FIX-CAL-SUPERADMIN-001:
+// cronograma_todos.jsx expone la vista global como window.TodosLosGruposView.
+// En algunos entornos Babel no deja esa función como identificador léxico entre
+// archivos, y al entrar como admin/superadmin a Calendario (vista "Todos")
+// CronogramaGrupo intentaba renderizar <TodosLosGruposView /> y producía
+// pantalla blanca por ReferenceError. Usamos una resolución segura desde window.
+const TodosLosGruposViewSafe = (typeof window !== 'undefined' && window.TodosLosGruposView)
+  ? window.TodosLosGruposView
+  : function TodosLosGruposViewFallback({ gruposReales }) {
+      return (
+        <div data-screen-label="Cronograma · Todos los grupos" style={{ padding:24 }}>
+          <div style={{
+            padding:'14px 16px', border:'1px solid var(--line)', borderRadius:'var(--r-md)',
+            background:'var(--surface)', color:'var(--ink-2)', fontSize:13, lineHeight:1.5,
+          }}>
+            No se pudo cargar la vista consolidada de todos los grupos.
+            Seleccioná un grupo específico en el selector superior para ver su calendario.
+            <div style={{ marginTop:8, fontSize:12, color:'var(--ink-3)' }}>
+              Grupos disponibles: {Array.isArray(gruposReales) ? gruposReales.length : 0}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
 // La lista de grupos AHORA viene del backend (getGruposActivos). Ver CronogramaGrupo.
 
 const NIVEL_COLOR_CG  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -510,7 +535,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       </div>
 
       {esTodosGrupos ? (
-        <TodosLosGruposView gruposReales={gruposReales} onNavigate={onNavigate} />
+        <TodosLosGruposViewSafe gruposReales={gruposReales} onNavigate={onNavigate} />
       ) : studentAccountOnly ? (
         <CronoAccesoBloqueo
           badge="Acceso limitado · mora" badgeColor="#B71C1C"
