@@ -291,8 +291,42 @@ function StudentDashboard({ toast, onNavigate }) {
     .map(n => ({ nivel: n, estatus: typeof niveles[n] === 'object' ? niveles[n]?.estatus : niveles[n] }))
     .filter(x => x.estatus);
 
+  // STUDENT-ACCESS-CALENDAR-001: el Dashboard se adapta al estado de acceso.
+  // Derivado de los datos de getEstudiante (sin fetch extra). Solo cambia la
+  // experiencia cuando el estado es DETERMINADO; si no, muestra el dashboard
+  // completo de siempre (sin sobre-bloquear).
+  const acc = (typeof window.deriveStudentAccess === 'function')
+    ? window.deriveStudentAccess(data, { nivel: nivelReal }) : null;
+  const accDet = !!(acc && acc.determinado);
+  if (accDet && acc.flags.accountOnly) {
+    return <DashboardBloqueoMora est={est} nombreCompleto={nombreCompleto} acc={acc}
+                                 codGrupo={codGrupo} pendientes={pendientes} onNavigate={go} />;
+  }
+  if (accDet && !acc.flags.canCalendar && !acc.flags.accountOnly) {
+    return <DashboardPreinscrito est={est} nombreCompleto={nombreCompleto} acc={acc}
+                                 esConape={esConape} conapeEstado={conapeEstado}
+                                 pendientes={pendientes} codGrupo={codGrupo} onNavigate={go} />;
+  }
+  const matriculaPagadaBanner = accDet && acc.flags.canCalendar && !acc.flags.canMateriales;
+
   return (
     <div data-screen-label="Estudiante · Dashboard">
+      {/* ── MATRICULA_PAGADA: aviso de material bloqueado hasta primera cuota ─ */}
+      {matriculaPagadaBanner && (
+        <div style={{
+          marginBottom:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
+          background:'color-mix(in srgb, var(--an-gold) 12%, white)',
+          border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)',
+          borderRadius:'var(--r-lg)', color:'#6B4A00',
+        }}>
+          <span style={{ fontSize:22 }}>🗓️</span>
+          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}>
+            <strong style={{ color:'var(--an-navy-ink)' }}>Tu cronograma ya está disponible.</strong>{' '}
+            El material del curso (PDFs, audios, biblioteca y Zoom) se habilitará cuando se registre la primera cuota del nivel.
+          </div>
+          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
+        </div>
+      )}
       {/* ── BLOQUE OBLIGATORIO · ANTES DE EMPEZAR (primer bloque — INA/CONAPE) ─ */}
       <AntesDeEmpezar codigo={codigo} onNavigate={go} />
 
@@ -521,6 +555,147 @@ function StudentDashboard({ toast, onNavigate }) {
           <window.ContactoAdmin est={est} tipo="administracion" hideWhenPending />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// STUDENT-ACCESS-CALENDAR-001 — Dashboards por estado de acceso
+// ─────────────────────────────────────────────────────────────────────────
+function AccInfoRow({ label, value }) {
+  if (!value) return null;
+  return (
+    <div style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'8px 0', borderBottom:'1px solid var(--line)' }}>
+      <span style={{ fontSize:12, color:'var(--ink-3)' }}>{label}</span>
+      <span style={{ fontSize:13, fontWeight:600, color:'var(--ink)', textAlign:'right' }}>{value}</span>
+    </div>
+  );
+}
+function AccDatosPersonales({ est, nombreCompleto, codGrupo }) {
+  const cedula  = est.CEDULA || est.NUM_CEDULA || est.cedula || '';
+  const codigo  = est.CODIGO || est.REC_M || est.rec_m || '';
+  const correo  = est.CORREO || est.EMAIL || est.correo || est.email || '';
+  const programa = est.PROGRAMA || '';
+  return (
+    <div className="card" style={{ padding:'16px 18px' }}>
+      <Kicker>Datos personales</Kicker>
+      <div style={{ marginTop:8 }}>
+        <AccInfoRow label="Nombre" value={nombreCompleto !== '—' ? nombreCompleto : ''} />
+        <AccInfoRow label="Cédula" value={cedula} />
+        <AccInfoRow label="Código" value={codigo} />
+        <AccInfoRow label="Grupo" value={codGrupo} />
+        <AccInfoRow label="Correo" value={correo} />
+        <AccInfoRow label="Programa" value={programa === 'INA' || programa === 'CON_INA' ? 'INA · Resolución 2519' : programa ? 'Programa propio' : ''} />
+      </div>
+      {!cedula && !codigo && !codGrupo && (
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:6 }}>Tus datos aparecerán cuando administración complete tu registro.</div>
+      )}
+    </div>
+  );
+}
+
+function DashboardPreinscrito({ est, nombreCompleto, acc, esConape, conapeEstado, pendientes, codGrupo, onNavigate }) {
+  return (
+    <div data-screen-label="Estudiante · Dashboard (preinscrito)">
+      <DashHeader title={<>Hola,&nbsp;<em style={{ fontStyle:'italic' }}>{nombreCompleto}</em></>} />
+
+      <div style={{
+        marginBottom:18, borderRadius:'var(--r-lg)', overflow:'hidden',
+        border:'2px solid var(--an-granate)',
+        background:'linear-gradient(135deg, color-mix(in srgb, var(--an-granate) 6%, white) 0%, #FBF8F2 100%)',
+        padding:'18px 22px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap',
+      }}>
+        <div style={{ width:46, height:46, borderRadius:'50%', background:'var(--an-granate)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:22 }}>⏳</div>
+        <div style={{ flex:1, minWidth:240 }}>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--an-granate)' }}>{acc.label}</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:21, fontWeight:500, color:'var(--an-navy-ink)', letterSpacing:'-0.02em', lineHeight:1.2, marginTop:2 }}>
+            Tu acceso académico está en preparación
+          </div>
+          <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:4, lineHeight:1.5 }}>{acc.mensaje}</div>
+        </div>
+      </div>
+
+      <DashSection title="Tu inscripción" hint="Mientras se registra tu matrícula del nivel" />
+      <div className="grid-mods" style={{ marginBottom:18 }}>
+        <AccDatosPersonales est={est} nombreCompleto={nombreCompleto} codGrupo={codGrupo} />
+
+        <div className="card" style={{ padding:'16px 18px' }}>
+          <Kicker>Estado de inscripción</Kicker>
+          <div style={{ marginTop:10, display:'inline-flex', alignItems:'center', gap:8, padding:'5px 12px', borderRadius:'var(--r-pill)', background:'color-mix(in srgb, var(--an-granate) 10%, white)', color:'var(--an-granate)', fontSize:12, fontWeight:700 }}>
+            <span style={{ width:8, height:8, borderRadius:'50%', background:'var(--an-granate)' }} />
+            {acc.label}
+          </div>
+          <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:10, lineHeight:1.5 }}>
+            El cronograma académico, la biblioteca y el material se habilitan cuando se registra la matrícula del nivel.
+          </div>
+        </div>
+
+        <ModEstadoCuenta pendientes={pendientes} esConape={esConape} conapeEstado={conapeEstado} onNavigate={onNavigate} />
+
+        {esConape && conapeEstado && (
+          <div className="card" style={{ padding:'16px 18px', background:'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)', color:'white' }}>
+            <div style={{ fontSize:10, opacity:0.8, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase' }}>Financiamiento CONAPE</div>
+            <div style={{ fontSize:16, fontWeight:700, marginTop:4 }}>{conapeEstado.estadoTexto || '—'}</div>
+            {conapeEstado.desembolsoTexto && <div style={{ fontSize:12, opacity:0.85, marginTop:4 }}>{conapeEstado.desembolsoTexto}</div>}
+          </div>
+        )}
+      </div>
+
+      {typeof window.ContactoAdmin === 'function' && (
+        <div className="card" style={{ padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div style={{ flex:1, minWidth:220, fontSize:13, color:'var(--ink-2)' }}>
+            <strong style={{ color:'var(--ink)' }}>¿Dudas con tu matrícula?</strong> Contactá a administración.
+          </div>
+          <window.ContactoAdmin est={est} tipo="administracion" hideWhenPending />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, onNavigate }) {
+  return (
+    <div data-screen-label="Estudiante · Dashboard (acceso limitado)">
+      <DashHeader title={<>Hola,&nbsp;<em style={{ fontStyle:'italic' }}>{nombreCompleto}</em></>} />
+
+      <div style={{
+        marginBottom:18, borderRadius:'var(--r-lg)', overflow:'hidden',
+        border:'2px solid #B71C1C',
+        background:'linear-gradient(135deg, #FDECEA 0%, #FBF6F4 100%)',
+        padding:'20px 24px',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+          <div style={{ width:48, height:48, borderRadius:'50%', background:'#B71C1C', color:'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <div style={{ flex:1, minWidth:240 }}>
+            <div style={{ fontSize:11, fontWeight:800, letterSpacing:'0.1em', textTransform:'uppercase', color:'#B71C1C' }}>{acc.label}</div>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--an-navy-ink)', letterSpacing:'-0.02em', lineHeight:1.2, marginTop:2 }}>
+              Tu acceso académico está temporalmente limitado
+            </div>
+            <div style={{ fontSize:13.5, color:'var(--ink-2)', marginTop:6, lineHeight:1.55 }}>{acc.mensaje}</div>
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:10, marginTop:16, flexWrap:'wrap' }}>
+          <button className="btn btn-primary" style={{ background:'#B71C1C', borderColor:'#B71C1C' }} onClick={() => onNavigate('pagos')}>
+            Ver estado de cuenta
+          </button>
+          {typeof window.ContactoAdmin === 'function' && (
+            <window.ContactoAdmin est={est} tipo="cobros" hideWhenPending />
+          )}
+        </div>
+      </div>
+
+      <div className="grid-mods" style={{ marginBottom:18 }}>
+        <ModEstadoCuenta pendientes={pendientes} esConape={false} conapeEstado={null} onNavigate={onNavigate} />
+        <AccDatosPersonales est={est} nombreCompleto={nombreCompleto} codGrupo={codGrupo} />
+      </div>
+
+      <div className="card" style={{ padding:'14px 18px', fontSize:12.5, color:'var(--ink-3)', lineHeight:1.55, borderStyle:'dashed' }}>
+        El cronograma, la biblioteca, el material, las notas y los exámenes se reactivan automáticamente cuando cancelás al menos una cuota o regularizás tu estado con cobros.
+      </div>
     </div>
   );
 }

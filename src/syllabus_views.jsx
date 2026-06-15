@@ -221,6 +221,48 @@ function PriorityBanner({ compact = false, onDismiss }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// STUDENT-ACCESS-CALENDAR-001 — Biblioteca bloqueada (mora / sin primera cuota)
+// ─────────────────────────────────────────────────────────────────────────
+function BibliotecaBloqueo({ variante, mensaje, nivelNombre, onNavigate }) {
+  const esMora = variante === 'mora';
+  const color  = esMora ? '#B71C1C' : '#9A6A00';
+  return (
+    <div>
+      <PageHeader
+        kicker="Biblioteca del curso"
+        title={<>Biblioteca del curso{nivelNombre ? <> · <em>{nivelNombre}</em></> : null}</>}
+        sub="Libro, audios, PDFs y recursos de tu nivel"
+      />
+      <div className="card" style={{ padding:'44px 30px', textAlign:'center', maxWidth:560, margin:'18px auto 0' }}>
+        <div style={{
+          width:54, height:54, margin:'0 auto 16px', borderRadius:'50%',
+          background:`color-mix(in srgb, ${color} 14%, white)`, color,
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <div style={{
+          display:'inline-block', padding:'3px 11px', borderRadius:'var(--r-pill)', marginBottom:14,
+          background:`color-mix(in srgb, ${color} 12%, white)`, color,
+          fontSize:10.5, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase',
+        }}>{esMora ? 'Acceso limitado · mora' : 'Biblioteca bloqueada'}</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:24, fontWeight:500, letterSpacing:'-0.02em', color:'var(--an-navy-ink)', marginBottom:10 }}>
+          {esMora ? 'Biblioteca temporalmente limitada' : 'La biblioteca aún no está habilitada'}
+        </div>
+        <div style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.6, maxWidth:420, margin:'0 auto 22px' }}>{mensaje}</div>
+        <button type="button" onClick={() => onNavigate && onNavigate(esMora ? 'pagos' : 'dashboard')}
+                className="btn btn-primary" style={{ padding:'10px 20px', fontSize:14 }}>
+          {esMora ? 'Ir a Estado de cuenta' : 'Volver al inicio'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // MATERIALES — sílabus completo, pestañas Actuales/Futuras/Completadas
 // ─────────────────────────────────────────────────────────────────────────
 function MaterialesView({ initialLesson = null, onNavigate } = {}) {
@@ -239,6 +281,13 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
 
+  // STUDENT-ACCESS-CALENDAR-001: la Biblioteca respeta el acceso del estudiante.
+  // (Docente/admin no se gatean: codigoBiblio queda vacío → sin fetch.)
+  const esStudentBiblio = (sesion?.rol || 'student') === 'student';
+  const codigoBiblio = esStudentBiblio ? (sesion?.codigo || sesion?.cedula || '') : '';
+  const accBiblioState = window.useStudentAccess(codigoBiblio, '');
+  const accBiblio = accBiblioState.access;
+
   if (loading) return <LoadingState title="Cargando la biblioteca de tu curso…" />;
   if (error || !grupoInfo || !grupo) {
     const msg = error === 'autoriz'
@@ -254,6 +303,21 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
         <ErrorState message={msg} onRetry={reload} />
       </div>
     );
+  }
+
+  // STUDENT-ACCESS-CALENDAR-001: bloqueo honesto de la biblioteca por acceso.
+  // Solo bloquea cuando el estado es DETERMINADO (no sobre-bloquea sin datos).
+  if (esStudentBiblio && accBiblio && accBiblio.determinado) {
+    if (accBiblio.flags.accountOnly) {
+      return <BibliotecaBloqueo variante="mora" mensaje={accBiblio.mensaje} onNavigate={onNavigate} />;
+    }
+    if (!accBiblio.flags.canBiblioteca) {
+      return <BibliotecaBloqueo
+        variante="cuota"
+        mensaje="La biblioteca se habilitará con la primera cuota del nivel."
+        nivelNombre={grupoInfo.nivel || ''}
+        onNavigate={onNavigate} />;
+    }
   }
 
   // FIX STUDENT-PANEL-001-B (R4): nivel/material DINÁMICOS desde el grupo real

@@ -305,6 +305,24 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const [detalle, setDetalle]       = React.useState(null);
   const [cargandoDet, setCargandoDet] = React.useState(false);
 
+  // STUDENT-ACCESS-CALENDAR-001: vista activa (persistida) + acceso del estudiante.
+  const [vista, setVista] = React.useState(() => {
+    try { return localStorage.getItem('an_crono_vista') || 'proxima'; } catch (_) { return 'proxima'; }
+  });
+  React.useEffect(() => { try { localStorage.setItem('an_crono_vista', vista); } catch (_) {} }, [vista]);
+
+  // Acceso del estudiante (matrícula / cuota / mora). Para teacher/admin no se
+  // consulta (codigoAcceso vacío → hook no hace fetch). El hook está siempre
+  // cargado (campus.html lo importa antes que este archivo).
+  const codigoAcceso = esStudent ? (usr?.codigo || usr?.cedula || '') : '';
+  const accessState = window.useStudentAccess(codigoAcceso, nivel);
+  const acc    = accessState.access;
+  const accDet = !!(acc && acc.determinado);
+  // Solo bloqueamos en duro cuando el dato es DETERMINADO (no sobre-bloquear).
+  const studentAccountOnly   = esStudent && accDet && acc.flags.accountOnly;
+  const studentSinCalendario = esStudent && accDet && !acc.flags.canCalendar && !acc.flags.accountOnly;
+  const studentSoloFechas    = esStudent && accDet && acc.flags.canCalendar && !acc.flags.canMateriales;
+
   // v4.22: Cobertura puntual de lecciones (admin)
   // Override local por id_leccion — sobrevive a re-fetches del detalle.
   const [coberturas, setCoberturas]     = React.useState({});
@@ -493,6 +511,22 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {esTodosGrupos ? (
         <TodosLosGruposView gruposReales={gruposReales} onNavigate={onNavigate} />
+      ) : studentAccountOnly ? (
+        <CronoAccesoBloqueo
+          badge="Acceso limitado · mora" badgeColor="#B71C1C"
+          icon={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}
+          titulo="Cronograma temporalmente limitado"
+          mensaje={acc.mensaje}
+          accionLabel="Ir a Estado de cuenta"
+          onAccion={() => onNavigate && onNavigate('pagos')} />
+      ) : studentSinCalendario ? (
+        <CronoAccesoBloqueo
+          badge={acc.label} badgeColor="#9A6A00"
+          icon={<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>}
+          titulo="Tu cronograma todavía no está disponible"
+          mensaje={acc.mensaje}
+          accionLabel="Ver estado de inscripción"
+          onAccion={() => onNavigate && onNavigate('dashboard')} />
       ) : (
       <React.Fragment>
       {/* ── NIVEL TABS ──────────────────────────────────────────────────── */}
@@ -558,49 +592,50 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         </div>
       )}
 
-      {/* ── CALENDARIO + PANEL ─────────────────────────────────────────── */}
+      {/* ── CALENDAR_ONLY: aviso de matrícula pagada sin primera cuota ──── */}
+      {studentSoloFechas && (
+        <div style={{
+          marginTop:14, padding:'12px 16px', display:'flex', alignItems:'center', gap:12,
+          background:'color-mix(in srgb, var(--an-gold) 12%, white)',
+          border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)',
+          borderRadius:'var(--r-md)', fontSize:13, color:'#6B4A00', lineHeight:1.5,
+        }}>
+          <span style={{ fontSize:18 }}>🗓️</span>
+          <span>{acc.mensaje}</span>
+        </div>
+      )}
+
+      {/* ── VISTA TABS ─────────────────────────────────────────────────── */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginTop:14, marginBottom:6, flexWrap:'wrap' }}>
+        <VistaTabsCrono vista={vista} setVista={setVista} />
+        <div style={{ fontSize:11, color:'var(--ink-3)' }}>Click en una lección para ver el detalle</div>
+      </div>
+
+      {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div style={{
         display:'grid', gridTemplateColumns:'minmax(0, 1fr) 360px',
-        gap:18, marginTop:14, alignItems:'start',
+        gap:18, marginTop:6, alignItems:'start',
       }}>
-        {/* Calendario */}
-        <div className="card" style={{ padding:18 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14, flexWrap:'wrap', gap:10 }}>
-            <div style={{
-              fontFamily:'var(--f-sans)', fontWeight:600, fontSize:18,
-              letterSpacing:'-0.01em', color:'var(--ink)',
-            }}>
-              Calendario · {NIVEL_LABEL_CG[nivel]}
-            </div>
-            <div style={{ fontSize:11, color:'var(--ink-3)' }}>
-              Click sobre una lección para ver el detalle
-            </div>
-          </div>
-
+        <div style={{ minWidth:0 }}>
           {loading ? (
-            <SkeletonMeses />
+            <div className="card" style={{ padding:18 }}><SkeletonMeses /></div>
           ) : !lecciones.length ? (
-            <div style={{ padding:60, textAlign:'center', color:'var(--ink-3)' }}>
+            <div className="card" style={{ padding:60, textAlign:'center', color:'var(--ink-3)' }}>
               No hay lecciones registradas para este nivel.
             </div>
+          ) : vista === 'proxima' ? (
+            <VistaProxima lecciones={lecciones} mapaLecciones={mapaLecciones} stats={stats}
+                          nivel={nivel} meta={meta} codGrupo={codGrupo} onSelect={l => setSelLec(l)} />
+          ) : vista === 'semana' ? (
+            <VistaSemana lecciones={lecciones} mapaLecciones={mapaLecciones} nivel={nivel}
+                         selLec={selLec} onSelect={l => setSelLec(l)} />
+          ) : vista === 'lista' ? (
+            <VistaLista lecciones={lecciones} mapaLecciones={mapaLecciones} nivel={nivel}
+                        selLec={selLec} onSelect={l => setSelLec(l)} />
           ) : (
-            <div style={{
-              display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',
-              gap:18,
-            }}>
-              {meses.map(mes => (
-                <Mes key={`${mes.getFullYear()}-${mes.getMonth()}`}
-                     mes={mes}
-                     mapaLecciones={mapaLecciones}
-                     selLec={selLec}
-                     nivel={nivel}
-                     onClickLec={l => setSelLec(l)} />
-              ))}
-            </div>
+            <VistaMes meses={meses} mapaLecciones={mapaLecciones} selLec={selLec}
+                      nivel={nivel} onClickLec={l => setSelLec(l)} />
           )}
-
-          {/* Leyenda */}
-          <Leyenda />
         </div>
 
         {/* Panel detalle sticky */}
@@ -615,6 +650,8 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           codGrupo={codGrupo}
           docente={meta.docente}
           bloqueado={nivelBloqueado}
+          soloFechas={studentSoloFechas}
+          soloFechasMsg={acc ? acc.mensaje : ''}
           esAdmin={esAdmin}
           rol={rol}
           codigoUsr={usr?.codigo || ''}
@@ -713,6 +750,467 @@ const errorBoxStyle = {
   border:'1px solid color-mix(in srgb, var(--danger) 25%, white)',
   borderRadius:'var(--r-sm)', fontSize:12, color:'var(--danger)',
 };
+
+// ═════════════════════════════════════════════════════════════════════════
+// STUDENT-ACCESS-CALENDAR-001 — Vistas del cronograma
+//   Tabs: Próxima clase · Semana · Mes · Lista
+//   Doble lección por día = dos tarjetas legibles (no texto apretado).
+//   NUNCA se inventan horas: solo se muestran si el backend las provee.
+// ═════════════════════════════════════════════════════════════════════════
+
+// ── Helpers de fecha/semana ────────────────────────────────────────────────
+function mondayOfCG(d) {
+  const x = new Date(d); x.setHours(0, 0, 0, 0);
+  const dow = (x.getDay() + 6) % 7;            // 0 = lunes
+  x.setDate(x.getDate() - dow);
+  return x;
+}
+function addDaysCG(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function weeksBetweenCG(a, b) { return Math.round((b - a) / (7 * 86400000)); }
+function fmtRangoSemana(lunes) {
+  const dom = addDaysCG(lunes, 6);
+  const f = d => `${String(d.getDate()).padStart(2,'0')} ${MES_CORTO[d.getMonth()]}`;
+  return `${f(lunes)} – ${f(dom)}`;
+}
+
+// Horas REALES de la lección — '' si el backend no las trae (no inventamos).
+function horarioDe(l) {
+  if (!l) return '';
+  const ini = l.hora_inicio || l.horaInicio || l.inicio || '';
+  const fin = l.hora_fin    || l.horaFin    || l.fin    || '';
+  if (ini && fin) return `${String(ini).trim()}–${String(fin).trim()}`;
+  const h = l.hora || l.horario || l.hora_text || l.horaText || '';
+  if (h && typeof h === 'string' && /\d/.test(h)) return h.trim();
+  return '';
+}
+function turnoLabel(l) {
+  const t = (l && l.turno) ? String(l.turno) : '';
+  if (/ma(ñ|n)ana/i.test(t)) return 'Mañana';
+  if (/tarde/i.test(t)) return 'Tarde';
+  if (/noche/i.test(t)) return 'Noche';
+  return t.trim();
+}
+function ordenTurno(l) {
+  const t = (l && l.turno) ? String(l.turno) : '';
+  if (/ma(ñ|n)ana/i.test(t)) return 0;
+  if (/tarde/i.test(t)) return 1;
+  if (/noche/i.test(t)) return 2;
+  return 0.5;
+}
+// Devuelve [lecciones] de una fecha, ordenadas Mañana→Tarde→Noche y por número.
+function lecsDeFecha(mapaLecciones, fecha, fallback) {
+  const arr = (mapaLecciones && mapaLecciones[fecha]) || (fallback ? [fallback] : []);
+  return arr.slice().sort((a, b) => (ordenTurno(a) - ordenTurno(b)) || (a.leccion - b.leccion));
+}
+
+// Color/etiqueta por estado para chips de las tarjetas.
+function estadoMetaCG(l) {
+  const e = l.estado;
+  if (e === 'FERIADO') return { label:'Feriado',  color:'#B71C1C', bg:'#FDECEA' };
+  if (e === 'HOY')     return { label:'Hoy',       color:'#9A6A00', bg:'#FFF8E1' };
+  if (e === 'CERRADA') return { label:'Cerrada',   color:'#2E7D32', bg:'#EBF5EB' };
+  if (l.tipo === 'EVAL_ORAL' || l.tipo === 'EVAL_ESCRITO')
+    return { label: TIPO_LABEL_LARGO[l.tipo], color:'#E65100', bg:'#FFF3E0' };
+  if (l.tipo === 'PROGRESS_CHECK') return { label:'Progress Check', color:'#7B1FA2', bg:'#F3E5F5' };
+  if (e === 'PROGRAMADA') return { label:'Programada', color:'#1565C0', bg:'#EBF0FB' };
+  if (e === 'CALCULADA')  return { label:'Proyectada', color:'#1565C0', bg:'#EBF0FB' };
+  return { label: e || '—', color:'var(--ink-2)', bg:'var(--surface-2)' };
+}
+
+// ── Selector de vista (tabs) ───────────────────────────────────────────────
+function VistaTabsCrono({ vista, setVista }) {
+  const tabs = [
+    { id:'proxima', label:'Próxima clase' },
+    { id:'semana',  label:'Semana' },
+    { id:'mes',     label:'Mes' },
+    { id:'lista',   label:'Lista' },
+  ];
+  return (
+    <div style={{ display:'inline-flex', gap:4, padding:4, background:'var(--bg-deep)', borderRadius:'var(--r-md)' }}>
+      {tabs.map(t => {
+        const active = vista === t.id;
+        return (
+          <button key={t.id} onClick={() => setVista(t.id)} style={{
+            padding:'7px 15px', borderRadius:'var(--r-sm)', border:'none',
+            background: active ? 'var(--surface)' : 'transparent',
+            boxShadow: active ? 'var(--sh-1)' : 'none',
+            color: active ? 'var(--ink)' : 'var(--ink-3)',
+            fontWeight: active ? 700 : 600, fontSize:13, cursor:'pointer',
+            fontFamily:'inherit', transition:'background .15s',
+          }}>{t.label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Tarjeta de una lección (bloque) — usada en Semana/Lista/Próxima ─────────
+function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
+  const meta = estadoMetaCG(lec);
+  const hor   = horarioDe(lec);
+  const turno = turnoLabel(lec);
+  const isFeriado = lec.estado === 'FERIADO';
+  const accent = NIVEL_COLOR_CG[nivel] || '#1565C0';
+
+  if (isFeriado) {
+    return (
+      <div style={{
+        padding: dense ? '10px 12px' : '12px 14px', borderRadius:'var(--r-md)',
+        background:'#FDECEA', border:'1px solid #F3C9C4', display:'flex', alignItems:'center', gap:10,
+      }}>
+        <span style={{ fontSize:16 }}>🚫</span>
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#B71C1C' }}>Feriado</div>
+          <div style={{ fontSize:11, color:'#B71C1C', opacity:0.8 }}>No hay clase este día.</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => onSelect && onSelect(lec)} style={{
+      textAlign:'left', width:'100%', cursor:'pointer', fontFamily:'inherit',
+      padding: dense ? '10px 12px' : '13px 15px', borderRadius:'var(--r-md)',
+      background:'var(--surface)',
+      border:`1.5px solid ${selected ? accent : 'var(--line)'}`,
+      borderLeft:`4px solid ${meta.color}`,
+      boxShadow: selected ? `0 0 0 2px ${accent}33` : 'none',
+      display:'flex', flexDirection:'column', gap:6, transition:'border-color .12s, box-shadow .12s',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+        <span style={{
+          display:'inline-flex', alignItems:'center', gap:6,
+          fontSize:11, fontWeight:700, color:'var(--ink-2)', fontFamily:'var(--f-mono)',
+        }}>
+          {(turno || hor) ? (
+            <>
+              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {turno}</span>}
+              {hor && <span style={{ color:'var(--ink-3)' }}>· {hor}</span>}
+            </>
+          ) : <span style={{ color:'var(--ink-3)' }}>Horario por confirmar</span>}
+        </span>
+        <span style={{
+          padding:'2px 8px', borderRadius:'var(--r-pill)', background:meta.bg, color:meta.color,
+          fontSize:10, fontWeight:800, letterSpacing:'0.04em', whiteSpace:'nowrap',
+        }}>{meta.label}</span>
+      </div>
+      <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+        <span style={{ fontFamily:'var(--f-mono)', fontSize:14, fontWeight:700, color:'var(--ink)' }}>
+          Lección {String(lec.leccion).padStart(2,'0')}
+        </span>
+        {lec.tipo && lec.tipo !== 'CLASE' && (
+          <span style={{ fontSize:11, color:meta.color, fontWeight:600 }}>{TIPO_LABEL_LARGO[lec.tipo]}</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ── VISTA: Próxima clase ────────────────────────────────────────────────────
+function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, onSelect }) {
+  const prox = stats.proxima;
+  const accent = NIVEL_COLOR_CG[nivel] || '#1565C0';
+  const proxExamen = lecciones.find(l =>
+    (l.estado === 'CALCULADA' || l.estado === 'PROGRAMADA' || l.estado === 'HOY') &&
+    (l.tipo === 'EVAL_ORAL' || l.tipo === 'EVAL_ESCRITO'));
+
+  if (!prox) {
+    return (
+      <div className="card" style={{ padding:'44px 24px', textAlign:'center' }}>
+        <div style={{ fontSize:30, opacity:0.4, marginBottom:8 }}>🎓</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)' }}>Curso finalizado</div>
+        <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>No hay próximas clases programadas en este nivel.</div>
+      </div>
+    );
+  }
+
+  const lecsDia = lecsDeFecha(mapaLecciones, prox.fecha, prox);
+  const doble   = lecsDia.length >= 2;
+  const dias    = diasEntre(prox.fecha);
+  const cuando  = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : dias > 1 ? `En ${dias} días` : '—';
+  const d       = parseISO(prox.fecha);
+  const diaSem  = d ? ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()] : '';
+  const programaLbl = meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'INA · Resolución 2519' : 'Programa propio';
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div className="card" style={{ padding:0, overflow:'hidden' }}>
+        <div style={{ height:5, background:accent }} />
+        <div style={{ padding:'20px 24px' }}>
+          {/* Kicker + cuando */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div style={{ fontSize:11, fontWeight:800, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--ink-3)' }}>
+              Próxima clase
+            </div>
+            <span style={{
+              padding:'4px 12px', borderRadius:'var(--r-pill)',
+              background: dias === 0 ? '#FFF8E1' : 'color-mix(in srgb, '+accent+' 12%, white)',
+              color: dias === 0 ? '#9A6A00' : accent,
+              fontSize:12, fontWeight:800, letterSpacing:'0.02em',
+            }}>{cuando}</span>
+          </div>
+
+          {/* Fecha grande */}
+          <div style={{ marginTop:6, display:'flex', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:34, fontWeight:500, letterSpacing:'-0.025em', color:'var(--ink)', lineHeight:1.05 }}>
+              {fmtLargo(prox.fecha)}
+            </div>
+            <div style={{ fontSize:14, color:'var(--ink-3)' }}>{diaSem}</div>
+          </div>
+
+          {/* Bloque(s) de lección */}
+          {doble && (
+            <div style={{ fontSize:11, fontWeight:700, color:accent, letterSpacing:'0.04em', marginTop:14, marginBottom:6 }}>
+              Este día tiene 2 lecciones
+            </div>
+          )}
+          <div style={{ display:'grid', gridTemplateColumns: doble ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr', gap:10, marginTop: doble ? 0 : 14 }}>
+            {lecsDia.map((lec, i) => (
+              <LeccionBloque key={i} lec={lec} nivel={nivel} onSelect={onSelect} />
+            ))}
+          </div>
+
+          {/* Meta del grupo */}
+          <div style={{
+            display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'12px 18px',
+            marginTop:18, paddingTop:16, borderTop:'1px solid var(--line)',
+          }}>
+            <ProxMeta label="Grupo" value={codGrupo} mono />
+            <ProxMeta label="Docente" value={meta.docente || '—'} />
+            <ProxMeta label="Días" value={meta.dias || '—'} />
+            <ProxMeta label="Modalidad" value={programaLbl} />
+          </div>
+
+          <div style={{ marginTop:16 }}>
+            <button type="button" onClick={() => onSelect(lecsDia[0])} style={{
+              display:'inline-flex', alignItems:'center', gap:8, padding:'10px 18px',
+              background:'var(--an-navy, #0B1F3A)', color:'#fff', border:'none',
+              borderRadius:'var(--r-md)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+            }}>
+              Ver detalle de la clase →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Próximo examen */}
+      {proxExamen && (
+        <button type="button" onClick={() => onSelect(proxExamen)} className="card" style={{
+          padding:'14px 18px', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+          display:'flex', alignItems:'center', gap:14, background:'linear-gradient(135deg, #FCF6E5, #FBEEC9)',
+          border:'1px solid var(--an-gold-soft, #F0DDA8)',
+        }}>
+          <span style={{ width:38, height:38, borderRadius:10, background:'#E65100', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:18 }}>⚡</span>
+          <div>
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6B4A00' }}>Próximo examen</div>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:1 }}>
+              {proxExamen.tipo === 'EVAL_ORAL' ? 'Examen Oral' : 'Examen Escrito'} · Lec {String(proxExamen.leccion).padStart(2,'0')}
+            </div>
+            <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:1 }}>{fmtLargo(proxExamen.fecha)}</div>
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
+function ProxMeta({ label, value, mono }) {
+  return (
+    <div style={{ minWidth:0 }}>
+      <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:3 }}>{label}</div>
+      <div style={{ fontSize:13, fontWeight:600, color:'var(--ink)', fontFamily: mono ? 'var(--f-mono)' : 'inherit', overflow:'hidden', textOverflow:'ellipsis' }}>{value}</div>
+    </div>
+  );
+}
+
+// ── VISTA: Semana ────────────────────────────────────────────────────────────
+function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
+  const baseLunes = React.useMemo(() => mondayOfCG(new Date()), []);
+  const initOff = React.useMemo(() => {
+    const prox = lecciones.find(l => l.estado === 'HOY')
+      || lecciones.find(l => l.estado === 'PROGRAMADA' || l.estado === 'CALCULADA');
+    if (!prox) return 0;
+    const dt = parseISO(prox.fecha);
+    return dt ? weeksBetweenCG(baseLunes, mondayOfCG(dt)) : 0;
+  }, [lecciones, baseLunes]);
+  const [off, setOff] = React.useState(initOff);
+  React.useEffect(() => { setOff(initOff); }, [initOff]);
+
+  const lunes = addDaysCG(baseLunes, off * 7);
+  const esActual = off === 0;
+  const DIAS_NOM = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+  const dias = [];
+  for (let i = 0; i < 7; i++) {
+    const dd = addDaysCG(lunes, i);
+    const iso = isoOf(dd);
+    const lecs = lecsDeFecha(mapaLecciones, iso);
+    if (lecs.length) dias.push({ dd, iso, nom: DIAS_NOM[i], lecs });
+  }
+
+  return (
+    <div className="card" style={{ padding:18 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:14, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ fontFamily:'var(--f-sans)', fontWeight:600, fontSize:17, color:'var(--ink)' }}>
+              Semana del {fmtRangoSemana(lunes)}
+            </div>
+            {esActual && (
+              <span style={{ padding:'2px 9px', borderRadius:'var(--r-pill)', background:'#FFF8E1', color:'#9A6A00', fontSize:10, fontWeight:800, letterSpacing:'0.06em' }}>ACTUAL</span>
+            )}
+          </div>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{lunes.getFullYear()}</div>
+        </div>
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={() => setOff(o => o - 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>← Anterior</button>
+          {!esActual && <button onClick={() => setOff(0)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>Hoy</button>}
+          <button onClick={() => setOff(o => o + 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>Siguiente →</button>
+        </div>
+      </div>
+
+      {dias.length === 0 ? (
+        <div style={{ padding:'40px 16px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
+          <div style={{ fontSize:26, opacity:0.4, marginBottom:6 }}>🗓️</div>
+          No hay clases programadas esta semana.
+        </div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {dias.map(({ dd, nom, lecs }) => {
+            const hoy = isoOf(dd) === isoOf(new Date());
+            return (
+              <div key={isoOf(dd)} style={{ display:'grid', gridTemplateColumns:'92px 1fr', gap:14, alignItems:'start' }}>
+                <div style={{ paddingTop:4 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color: hoy ? '#9A6A00' : 'var(--ink-2)' }}>{nom}</div>
+                  <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color: hoy ? '#9A6A00' : 'var(--ink)', lineHeight:1 }}>
+                    {String(dd.getDate()).padStart(2,'0')}
+                  </div>
+                  <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{MES_CORTO[dd.getMonth()]}</div>
+                  {lecs.length >= 2 && (
+                    <div style={{ marginTop:4, fontSize:9.5, fontWeight:700, color:'var(--an-granate)' }}>2 lecciones</div>
+                  )}
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns: lecs.length >= 2 ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap:10 }}>
+                  {lecs.map((lec, i) => (
+                    <LeccionBloque key={i} lec={lec} nivel={nivel} onSelect={onSelect}
+                      selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <Leyenda />
+    </div>
+  );
+}
+
+// ── VISTA: Lista ───────────────────────────────────────────────────────────
+function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
+  // Agrupar por fecha en orden cronológico.
+  const fechas = React.useMemo(() => {
+    const set = [];
+    const seen = new Set();
+    lecciones.slice()
+      .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || (ordenTurno(a) - ordenTurno(b)))
+      .forEach(l => { if (!seen.has(l.fecha)) { seen.add(l.fecha); set.push(l.fecha); } });
+    return set;
+  }, [lecciones]);
+
+  const hoyIso = isoOf(new Date());
+
+  return (
+    <div className="card" style={{ padding:18 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        {fechas.map(fecha => {
+          const lecs = lecsDeFecha(mapaLecciones, fecha);
+          const d = parseISO(fecha);
+          const diaSem = d ? ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()] : '';
+          const esHoy = fecha === hoyIso;
+          const doble = lecs.length >= 2;
+          return (
+            <div key={fecha} style={{
+              display:'grid', gridTemplateColumns:'76px 1fr', gap:14, alignItems:'start',
+              padding:'10px', borderRadius:'var(--r-md)',
+              background: esHoy ? '#FFFBF0' : 'transparent',
+              border: esHoy ? '1px solid #F0DDA8' : '1px solid transparent',
+            }}>
+              <div style={{ textAlign:'center', paddingTop:2 }}>
+                <div style={{ fontSize:10, fontWeight:700, color: esHoy ? '#9A6A00' : 'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{diaSem}</div>
+                <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color: esHoy ? '#9A6A00' : 'var(--ink)', lineHeight:1.05 }}>
+                  {d ? String(d.getDate()).padStart(2,'0') : '—'}
+                </div>
+                <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase' }}>{d ? MES_CORTO[d.getMonth()] : ''}</div>
+                {doble && <div style={{ marginTop:3, fontSize:9, fontWeight:700, color:'var(--an-granate)' }}>2 lec.</div>}
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns: doble ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap:8 }}>
+                {lecs.map((lec, i) => (
+                  <LeccionBloque key={i} lec={lec} nivel={nivel} onSelect={onSelect} dense
+                    selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <Leyenda />
+    </div>
+  );
+}
+
+// ── VISTA: Mes (compacta, scroll horizontal — ya no se estira) ──────────────
+function VistaMes({ meses, mapaLecciones, selLec, nivel, onClickLec }) {
+  const multiple = meses.length > 1;
+  return (
+    <div className="card" style={{ padding:18 }}>
+      <div style={{
+        display: multiple ? 'flex' : 'grid',
+        gridTemplateColumns: multiple ? undefined : 'minmax(0, 420px)',
+        gap:16, overflowX: multiple ? 'auto' : 'visible', paddingBottom: multiple ? 6 : 0,
+        justifyContent: multiple ? 'flex-start' : 'center',
+      }}>
+        {meses.map(mes => (
+          <div key={`${mes.getFullYear()}-${mes.getMonth()}`}
+               style={{ flex: multiple ? '0 0 300px' : undefined, minWidth: multiple ? 300 : undefined, maxWidth: multiple ? 320 : undefined }}>
+            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
+          </div>
+        ))}
+      </div>
+      <Leyenda />
+    </div>
+  );
+}
+
+// ── Pantallas de bloqueo de acceso (estudiante) ─────────────────────────────
+function CronoAccesoBloqueo({ icon, badge, badgeColor, titulo, mensaje, accionLabel, onAccion }) {
+  return (
+    <div className="card" style={{ padding:'44px 30px', textAlign:'center', maxWidth:560, margin:'0 auto' }}>
+      <div style={{
+        width:54, height:54, margin:'0 auto 16px', borderRadius:'50%',
+        background:'color-mix(in srgb, '+badgeColor+' 14%, white)', color:badgeColor,
+        display:'flex', alignItems:'center', justifyContent:'center',
+      }}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          {icon}
+        </svg>
+      </div>
+      {badge && (
+        <div style={{
+          display:'inline-block', padding:'3px 11px', borderRadius:'var(--r-pill)', marginBottom:14,
+          background:'color-mix(in srgb, '+badgeColor+' 12%, white)', color:badgeColor,
+          fontSize:10.5, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase',
+        }}>{badge}</div>
+      )}
+      <div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:500, letterSpacing:'-0.02em', color:'var(--an-navy-ink)', marginBottom:10 }}>{titulo}</div>
+      <div style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.6, maxWidth:420, margin:'0 auto 22px' }}>{mensaje}</div>
+      {accionLabel && (
+        <button type="button" onClick={onAccion} className="btn btn-primary" style={{ padding:'10px 20px', fontSize:14 }}>
+          {accionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Barra de 32 segmentos
@@ -974,7 +1472,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -1027,6 +1525,8 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
           cargando={cargando}
           nivel={nivel}
           bloqueado={bloqueado}
+          soloFechas={soloFechas}
+          soloFechasMsg={soloFechasMsg}
           esAdmin={esAdmin}
           rol={rol}
           codigoUsr={codigoUsr}
@@ -1062,7 +1562,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
@@ -1314,20 +1814,37 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, esAdmin, 
             {detalle.pronunciacion && <Bloque titulo="Pronunciación" texto={detalle.pronunciacion} compact />}
             {detalle.writing       && <Bloque titulo="Writing"       texto={detalle.writing} compact />}
 
-            {/* Botón material PDF — backend decide acceso por rol/estado */}
-            <BotonMaterialPDF
-              selLec={selLec}
-              nivel={nivel}
-              rol={rol}
-              codigoUsr={codigoUsr}
-              grupoUsr={grupoUsr}
-              detalle={detalle}
-            />
+            {/* STUDENT-ACCESS-CALENDAR-001: en CALENDAR_ONLY (matrícula pagada
+                sin primera cuota) el estudiante ve fecha/horario/tema básico
+                pero NO material ni Zoom. */}
+            {soloFechas ? (
+              <div style={{
+                marginTop:2, padding:'12px 14px', display:'flex', gap:10, alignItems:'flex-start',
+                background:'color-mix(in srgb, var(--an-gold) 10%, white)',
+                border:'1px dashed color-mix(in srgb, var(--an-gold) 40%, white)',
+                borderRadius:'var(--r-md)', fontSize:12, color:'#6B4A00', lineHeight:1.5,
+              }}>
+                <span style={{ color:'#9A6A00', flexShrink:0, marginTop:1 }}><IconoCandado /></span>
+                <span>Material disponible al cancelar la primera cuota.</span>
+              </div>
+            ) : (
+              <>
+                {/* Botón material PDF — backend decide acceso por rol/estado */}
+                <BotonMaterialPDF
+                  selLec={selLec}
+                  nivel={nivel}
+                  rol={rol}
+                  codigoUsr={codigoUsr}
+                  grupoUsr={grupoUsr}
+                  detalle={detalle}
+                />
 
-            {/* STUDENT-LEARNING-EXPERIENCE-001: acciones de clase del estudiante
-                — Abrir Zoom (solo si hay link real) + Ver materiales de esta clase */}
-            {rol === 'student' && (
-              <AccionesClaseEstudiante selLec={selLec} detalle={detalle} onNavigate={onNavigate} />
+                {/* STUDENT-LEARNING-EXPERIENCE-001: acciones de clase del estudiante
+                    — Abrir Zoom (solo si hay link real) + Ver materiales de esta clase */}
+                {rol === 'student' && (
+                  <AccionesClaseEstudiante selLec={selLec} detalle={detalle} onNavigate={onNavigate} />
+                )}
+              </>
             )}
 
             {/* Botón Asignar cobertura — solo admin + lección PROGRAMADA */}
