@@ -199,12 +199,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
   React.useEffect(() => { cargarGrupos(); }, [cargarGrupos]);
 
-  // codGrupo arranca vacío; se decide cuando llegan los grupos del backend.
-  // ADMIN/SUPERADMIN arrancan en "Todos los grupos"; student/teacher en su grupo.
-  const [codGrupo, setCodGrupo] = React.useState('');
+  // ADMIN/SUPERADMIN deben entrar SIEMPRE al panel global por defecto.
+  // La vista individual queda disponible desde el selector, pero no debe
+  // reemplazar el tablero de todos los grupos.
+  const [codGrupo, setCodGrupo] = React.useState(() => esAdmin ? TODOS_GRUPOS : '');
   React.useEffect(() => {
+    if (esAdmin) {
+      if (!codGrupo) setCodGrupo(TODOS_GRUPOS);
+      return;
+    }
     if (codGrupo || !gruposReales.length) return;
-    if (esAdmin) { setCodGrupo(TODOS_GRUPOS); return; }
     const usrGrupoOk = usr?.grupo && gruposReales.some(g => g.code === usr.grupo);
     setCodGrupo(usrGrupoOk ? usr.grupo : gruposReales[0].code);
   }, [gruposReales, codGrupo, esAdmin, usr]);
@@ -510,10 +514,10 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       </div>
 
       {esTodosGrupos ? (
-        (typeof window.TodosLosGruposView === 'function' || typeof TodosLosGruposView === 'function') ? (
-          React.createElement(window.TodosLosGruposView || TodosLosGruposView, { gruposReales, onNavigate })
+        typeof window.TodosLosGruposView === 'function' ? (
+          React.createElement(window.TodosLosGruposView, { gruposReales, onNavigate })
         ) : (
-          <div className="card" style={{ padding:24, color:'var(--ink-3)' }}>No se pudo cargar la vista de todos los grupos.</div>
+          <div className="card" style={{ padding:24, color:'var(--ink-3)' }}>No se pudo cargar la vista global de todos los grupos. Verificá que src/cronograma_todos.jsx esté cargado antes de cronograma_grupo.jsx.</div>
         )
       ) : studentAccountOnly ? (
         <CronoAccesoBloqueo

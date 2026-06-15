@@ -86,6 +86,70 @@ const TODOS_TIPO_LBL = {
 // ─────────────────────────────────────────────────────────────────
 const TODOS_SCRIPT_URL = window.APPS_SCRIPT_URL;
 
+// CAL-RESTORE-GLOBAL-001:
+// La vista global NO debe depender ciegamente del resumen de getGruposActivos,
+// porque ese resumen puede llegar incompleto o pisarse luego con cachés auxiliares.
+// Para el panel "Todos los grupos" usamos el resumen solo como primera pintura y,
+// después, refrescamos cada grupo con getFechasGrupo (misma fuente fina que la
+// vista individual) para preservar estados CERRADA/HOY/PROGRAMADA reales.
+function todosNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function todosText(v, fallback = '') {
+  return (v === null || v === undefined) ? fallback : String(v).trim();
+}
+function todosPickCa(grupo, moraInfo) {
+  const caGrupo = todosNum(grupo && grupo.estudiantes);
+  const caMora  = todosNum(moraInfo && moraInfo.ca);
+  // Si el grupo trae estudiantes reales (>0), no permitimos que un caché viejo
+  // de mora lo pinte como 0st un segundo después.
+  if (caGrupo !== null && caGrupo > 0) return caGrupo;
+  if (caMora !== null) return caMora;
+  return caGrupo;
+}
+function todosPickMora(moraInfo) {
+  const mr = todosNum(moraInfo && moraInfo.mora);
+  return mr === null ? null : mr;
+}
+function todosNormalizarLeccion(l) {
+  if (!l || !l.fecha) return null;
+  const estado = todosText(l.estado, 'CALCULADA').toUpperCase() || 'CALCULADA';
+  return {
+    ...l,
+    leccion: todosNum(l.leccion) || 0,
+    fecha: todosText(l.fecha),
+    tipo: todosText(l.tipo || l.tipo_leccion || l.tipoLeccion, 'CLASE'),
+    estado,
+  };
+}
+function todosNormalizarGrupo(g) {
+  if (!g || !g.code) return null;
+  const nivelId = todosText(g.nivelId || g.nivel || 'B1').toUpperCase();
+  const lecciones = Array.isArray(g.lecciones)
+    ? g.lecciones.map(todosNormalizarLeccion).filter(Boolean)
+    : [];
+  lecciones.sort((a,b) => (a.leccion || 0) - (b.leccion || 0));
+  return {
+    ...g,
+    code: todosText(g.code),
+    nivelId,
+    nivel: g.nivel || TODOS_NIVEL_LABEL[nivelId] || nivelId,
+    lecciones,
+    estudiantes: todosNum(g.estudiantes) ?? 0,
+    turnoOrden: todosNum(g.turnoOrden) ?? 99,
+  };
+}
+async function todosPost(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${TODOS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, token, ...payload }),
+  });
+  return await res.json();
+}
+
 // Formatea el campo `actualizado` del caché de mora (yyyy-mm-dd hh:mm) en
 // la etiqueta corta "26-may 17:26" que usa el header.
 function tFmtMoraActualizado(s) {
@@ -100,7 +164,55 @@ function tFmtMoraActualizado(s) {
 }
 
 function TodosLosGruposView({ gruposReales, onNavigate }) {
-  const safeGruposReales = Array.isArray(gruposReales) ? gruposReales : [];
+  // Primera pintura con getGruposActivos; luego se enriquece con getFechasGrupo
+  // por grupo para que la vista global coincida con la vista individual.
+  const [gruposDetalle, setGruposDetalle] = React.useState(null);
+  const safeGruposReales = React.useMemo(() => {
+    const base = Array.isArray(gruposDetalle) ? gruposDetalle : (Array.isArray(gruposReales) ? gruposReales : []);
+    return base.map(todosNormalizarGrupo).filter(Boolean);
+  }, [gruposReales, gruposDetalle]);
+
+  React.useEffect(() => {
+    let cancelado = false;
+    const base = (Array.isArray(gruposReales) ? gruposReales : [])
+      .map(todosNormalizarGrupo)
+      .filter(Boolean);
+    setGruposDetalle(base);
+
+    // Refuerzo fino: traer lecciones reales con getFechasGrupo, por lotes para
+    // no saturar Apps Script. Si un grupo falla, conserva el resumen inicial.
+    const targets = base.filter(g => !g.esApertura && g.code && g.nivelId);
+    if (!targets.length) return () => { cancelado = true; };
+
+    (async () => {
+      const out = base.map(g => ({ ...g, lecciones: [...(g.lecciones || [])] }));
+      const idxByCode = new Map(out.map((g, i) => [g.code, i]));
+      const BATCH = 4;
+      for (let i = 0; i < targets.length; i += BATCH) {
+        const batch = targets.slice(i, i + BATCH);
+        const results = await Promise.allSettled(batch.map(g =>
+          todosPost('getFechasGrupo', { cod_grupo: g.code, nivel: g.nivelId })
+        ));
+        if (cancelado) return;
+        results.forEach((r, j) => {
+          if (r.status !== 'fulfilled') return;
+          const d = r.value;
+          if (!d || !d.ok || !Array.isArray(d.lecciones)) return;
+          const g = batch[j];
+          const idx = idxByCode.get(g.code);
+          if (idx === undefined) return;
+          out[idx] = {
+            ...out[idx],
+            lecciones: d.lecciones.map(todosNormalizarLeccion).filter(Boolean),
+          };
+        });
+        setGruposDetalle(out.map(g => ({ ...g, lecciones: [...(g.lecciones || [])] })));
+      }
+    })();
+
+    return () => { cancelado = true; };
+  }, [gruposReales]);
+
   // ── HOOKS ARRIBA (sin returns condicionales antes) ────────────
   const [sub, setSub] = React.useState('semana'); // 'semana' | 'mes'
   const [weekStart, setWeekStart] = React.useState(() => tMondayOf(new Date()));
@@ -796,10 +908,8 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
   //   - moraMap con el grupo: se muestra Nst · Nmr (ca puede ser 0; intencional)
   //   - moraMap sin el grupo: solo Nst desde grupo.estudiantes
   const moraInfo = moraMap && moraMap.get ? moraMap.get(grupo.code) : null;
-  const ca = moraInfo
-    ? moraInfo.ca
-    : (grupo.estudiantes ?? null);
-  const mr = moraInfo ? moraInfo.mora : null;
+  const ca = todosPickCa(grupo, moraInfo);
+  const mr = todosPickMora(moraInfo);
   const mostrarMora = !esApertura;
 
   return (
@@ -995,8 +1105,8 @@ function DetalleModal({ item, moraMap, onNavigate, onCerrar }) {
 
   // Mora del grupo (puede ser undefined si no está en el caché)
   const moraInfo = moraMap && moraMap.get ? moraMap.get(grupo.code) : null;
-  const moraCa   = moraInfo ? moraInfo.ca   : (grupo.estudiantes ?? null);
-  const moraMr   = moraInfo ? moraInfo.mora : null;
+  const moraCa   = todosPickCa(grupo, moraInfo);
+  const moraMr   = todosPickMora(moraInfo);
 
   const verEstudiantes = () => {
     if (!onNavigate) return;
