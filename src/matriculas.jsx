@@ -1128,7 +1128,8 @@ function MatriculasView({ onNavigate }) {
     return d.toLocaleDateString('es-CR', { day:'numeric', month:'short', year:'numeric' });
   };
 
-  // PRE MATRÍCULA · tabla estilo Ventas: mismo orden visual y chips compactos.
+  // PREMAT_GRID_V4_20260616_ACCIONES_CUADRICULA_FIJA
+  // PRE MATRÍCULA · tabla estilo Ventas: columnas de acciones en cuadrícula fija, sin botones apuñados.
   const labelProgramaMat = p => {
     const raw = String(p.PROGRAMA || p.programa || '').trim().toUpperCase();
     if (raw === 'INA') return 'INA Acreditado';
@@ -1171,7 +1172,43 @@ function MatriculasView({ onNavigate }) {
     return Math.max(0, Math.floor((a - b) / 86400000));
   };
   const fmtTelMat = p => String(p.WHATSAPP || p.whatsapp || p.TELEFONO || p.telefono || '—').trim() || '—';
-  const tdHeadMat = { whiteSpace:'nowrap' };
+  const tdHeadMat = { whiteSpace:'nowrap', verticalAlign:'middle', paddingTop:12, paddingBottom:12 };
+  const actionHeadMat = {
+    ...tdHeadMat,
+    textAlign:'center',
+    paddingLeft:8,
+    paddingRight:8,
+    borderLeft:'1px solid var(--line)',
+  };
+  const actionCellMat = {
+    textAlign:'center',
+    verticalAlign:'middle',
+    padding:'9px 8px',
+    borderLeft:'1px solid var(--line)',
+    background:'color-mix(in srgb, var(--surface) 92%, var(--surface-2))',
+  };
+  const actionSlotMat = {
+    width:'100%',
+    minHeight:46,
+    display:'flex',
+    alignItems:'center',
+    justifyContent:'center',
+  };
+  const actionBtnMat = {
+    width:'100%',
+    minHeight:38,
+    boxSizing:'border-box',
+    display:'inline-flex',
+    alignItems:'center',
+    justifyContent:'center',
+    gap:5,
+    padding:'7px 12px',
+    lineHeight:1.15,
+    textAlign:'center',
+    whiteSpace:'nowrap',
+    minWidth:96,
+  };
+  const actionEmptyMat = <span style={{ color:'var(--ink-3)', fontSize:12, display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', minHeight:34 }}>—</span>;
   const chipMat = (txt, cfg) => (
     <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:'var(--r-pill)',
       fontSize:11, fontWeight:800, whiteSpace:'nowrap', background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border || 'transparent'}` }}>
@@ -1255,19 +1292,22 @@ function MatriculasView({ onNavigate }) {
           </div>
         </div>
         <div style={{ width:'100%', overflowX:'auto' }}>
-          <table className="table-soft" style={{ minWidth:1580, tableLayout:'fixed' }}>
-            {/* PRE MATRÍCULA: orden visual solicitado — 1 Cédula · 2 Nombre · 3 Teléfono · 4 Grupo · 5 Programa · 6 Financiam. · 7 Etapa · 8 Estado · 9 Días · 10 Acción */}
+          <table className="table-soft" style={{ minWidth:1980, tableLayout:'fixed', borderCollapse:'separate', borderSpacing:0 }}>
+            {/* PRE MATRÍCULA: información tipo ventas + acciones separadas por columna para que cada botón quede lineal bajo su título. */}
             <colgroup>
-              <col style={{ width:'8%' }} />
-              <col style={{ width:'16%' }} />
-              <col style={{ width:'9%' }} />
-              <col style={{ width:'12%' }} />
-              <col style={{ width:'10%' }} />
-              <col style={{ width:'8%' }} />
-              <col style={{ width:'12%' }} />
-              <col style={{ width:'11%' }} />
-              <col style={{ width:'5%' }} />
-              <col style={{ width:'25%' }} />
+              <col style={{ width:105 }} />
+              <col style={{ width:220 }} />
+              <col style={{ width:120 }} />
+              <col style={{ width:150 }} />
+              <col style={{ width:135 }} />
+              <col style={{ width:110 }} />
+              <col style={{ width:150 }} />
+              <col style={{ width:150 }} />
+              <col style={{ width:60 }} />
+              <col style={{ width:115 }} />
+              <col style={{ width:170 }} />
+              <col style={{ width:180 }} />
+              <col style={{ width:190 }} />
             </colgroup>
             <thead>
               <tr>
@@ -1280,21 +1320,24 @@ function MatriculasView({ onNavigate }) {
                 <th style={tdHeadMat}>Etapa</th>
                 <th style={tdHeadMat}>Estado</th>
                 <th style={tdHeadMat}>Días</th>
-                <th style={{ ...tdHeadMat, textAlign:'right' }}>Acción</th>
+                <th style={actionHeadMat}>Ver</th>
+                <th style={actionHeadMat}>Crear<br/>proforma</th>
+                <th style={actionHeadMat}>Actualizar<br/>CONAPE</th>
+                <th style={actionHeadMat}>Matrícula</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>⏳ Cargando prospectos…</td></tr>
+                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>⏳ Cargando prospectos…</td></tr>
               )}
               {!loading && error && (
-                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--an-granate)', fontSize:13, fontWeight:600 }}>⚠️ {error}</td></tr>
+                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--an-granate)', fontSize:13, fontWeight:600 }}>⚠️ {error}</td></tr>
               )}
               {!loading && !error && prospectos.length === 0 && (
-                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
+                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
               )}
               {!loading && !error && prospectos.length > 0 && prospectosFiltrados.length === 0 && (
-                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
+                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
               )}
               {!loading && !error && prospectosFiltrados.map((p,i) => {
                 const nombre = p.NOMBRE || p.nombre || '—';
@@ -1350,30 +1393,41 @@ function MatriculasView({ onNavigate }) {
                     <td>{chipMat(labelEtapaMat(p), { bg:'#E7F2FC', color:'#2176B8', border:'#D4E8F8', dot:'#2B7FC1' })}</td>
                     <td>{chipMat(est.label, est)}</td>
                     <td style={{ fontFamily:'var(--f-mono)', fontSize:13, fontWeight:800, whiteSpace:'nowrap' }}>{dias != null ? <><b>{dias}</b> d</> : '—'}</td>
-                    <td style={{ textAlign:'right' }}>
-                      <div className="mat-row-actions" style={{ justifyContent:'flex-end', flexWrap:'wrap', gap:8 }}>
-                        <button className="mat-act-btn" onClick={() => setVerProsp({ cedula, nombre })}>
+                    <td style={actionCellMat}>
+                      <div style={actionSlotMat}>
+                        <button className="mat-act-btn" style={actionBtnMat} onClick={() => setVerProsp({ cedula, nombre })}>
                           <Icon name="eye" size={13} className="" /> Ver
                         </button>
-                        {verFicha(p) && (
-                          <button className="mat-act-btn" onClick={() => setFichaProsp({ cedula, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
+                      </div>
+                    </td>
+                    <td style={actionCellMat}>
+                      <div style={actionSlotMat}>
+                        {verCrearProforma(p) ? (
+                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => setProformaProsp({ cedula, nombre })}>Crear proforma</button>
+                        ) : actionEmptyMat}
+                      </div>
+                    </td>
+                    <td style={actionCellMat}>
+                      <div style={actionSlotMat}>
+                        {verActualizarConape(p) ? (
+                          <button className={`mat-act-btn conape ${novClass(conapeNov[cedula])}`} style={actionBtnMat}
+                            onClick={() => setConapeProsp({ cedula, nombre })}>
+                            Actualizar CONAPE
+                          </button>
+                        ) : actionEmptyMat}
+                      </div>
+                    </td>
+                    <td style={actionCellMat}>
+                      <div style={actionSlotMat}>
+                        {verFicha(p) ? (
+                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => setFichaProsp({ cedula, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
                             Ver ficha
                           </button>
-                        )}
-                        {verCrearProforma(p) && (
-                          <button className="mat-act-btn" onClick={() => setProformaProsp({ cedula, nombre })}>Crear proforma</button>
-                        )}
-                        {verActualizarConape(p) && (
-                          <button className={`mat-act-btn conape ${novClass(conapeNov[p.CEDULA])}`}
-                            onClick={() => setConapeProsp({ cedula, nombre })}>
-                            Actualizar
-                          </button>
-                        )}
-                        {verGenerar(p) && (
-                          <button className="mat-act-btn" onClick={() => setGenProsp({ cedula, nombre })}>
+                        ) : verGenerar(p) ? (
+                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => setGenProsp({ cedula, nombre })}>
                             Generar matrícula
                           </button>
-                        )}
+                        ) : actionEmptyMat}
                       </div>
                     </td>
                   </tr>
