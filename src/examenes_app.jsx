@@ -322,7 +322,7 @@ function ControlBar({ view, setView, allowedViews, nivel, setNivel, test, setTes
     <div className="cbar">
       <div className="cbar-banner">
         <span className="cbar-eye">👁</span>
-        Panel de auditoría · <b>solo administración</b> · sin backend, sin notas, sin entregas reales
+        Panel de auditoría · <b>solo administración</b> · backend parcial conectado, sin estudiante real ni Mis Notas
       </div>
       <div className="cbar-row">
       <div className="cbar-brand">
