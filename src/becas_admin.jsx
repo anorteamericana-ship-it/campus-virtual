@@ -13,6 +13,14 @@ const { useState: bkUseState, useEffect: bkUseEffect, useMemo: bkUseMemo } = Rea
 const BK_REF = { matricula: 20000, cuota: 89000, certificado: 35000, titulo: 60000 };
 const bkColones = n => '₡' + (Number(n) || 0).toLocaleString('es-CR');
 function bkNombreBonito(s) { return String(s || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+// BECAS_DETALLE_NOTAS_V1_20260616
+// En el panel "Grupos y becas", el detalle corto debajo del nombre se toma
+// primero de NOTAS internas. Si no hay notas, conserva la descripción histórica.
+function bkDetalleCorto(b) {
+  const notas = String((b && b.notas) || '').trim();
+  const desc = String((b && b.descripcion) || '').trim();
+  return notas || desc;
+}
 function bkExpirada(b) {
   if (!b.fecha_fin) return false;
   return new Date().toISOString().slice(0, 10) > b.fecha_fin;
@@ -388,7 +396,7 @@ function BecasTabla({ destacada, onToast }) {
                         {expirada && <span className="bk-badge-exp">EXPIRADA</span>}
                         {destacada === b.id && <span className="bk-badge-new">NUEVA</span>}
                       </div>
-                      {b.descripcion && <div className="bk-bdesc">{b.descripcion}</div>}
+                      {bkDetalleCorto(b) && <div className="bk-bdesc">{bkDetalleCorto(b)}</div>}
                     </td>
                     <td className="bk-pct-cell">{b.pct_matricula}%</td>
                     <td className="bk-pct-cell">{b.pct_cuota}%</td>
@@ -492,6 +500,9 @@ function EditarBecaModal({ beca, onClose, onGuardada, onToast }) {
             <label className="bk-label">Notas internas</label>
             <textarea className="bk-input" style={{ minHeight: 60, resize: 'vertical' }}
               value={f.notas} onChange={e => set('notas', e.target.value)} />
+            <div className="bk-help" style={{ marginTop: 6 }}>
+              Este texto actualiza el detalle corto que se ve debajo del nombre de la beca en la tabla.
+            </div>
           </div>
         </div>
         <div className="bk-modal-foot">

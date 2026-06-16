@@ -506,11 +506,25 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 2 — PROGRAMA Y FINANCIAMIENTO
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos }) {
+function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, asesores }) {
   const esNacional = form.idTipo === 'nac'; // requerido por ProgramCard locked={!esNacional}
   const [loadingGrupos, setLoadingGrupos] = useState(false);
   const [gruposError, setGruposError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // NO_GRUPOS_WA_ASESOR_V1_20260616
+  // Si no hay horarios disponibles, el WhatsApp se dirige al asesor seleccionado
+  // en el paso anterior. Si no hay asesor, cae al número supervisor/genérico.
+  const asesorSeleccionado = (asesores || []).find(a => String(a.nombre || '').trim() === String(form.asesor || '').trim());
+  const asesorNumero = asesorSeleccionado
+    ? (asesorSeleccionado.wa_link || asesorSeleccionado.whatsapp || asesorSeleccionado.telefono || asesorSeleccionado.tel || '')
+    : '';
+  const waNoGruposNumero = asesorNumero ? waHref(asesorNumero) : WA_NUMBER;
+  const programaTxt = form.programa === 'ina' ? 'Programa INA Acreditado'
+    : form.programa === 'sin_ina' ? 'Programa SIN acreditación'
+    : 'el programa seleccionado';
+  const msgNoGrupos = `Hola, estoy completando la inscripción en Academia Norteamericana. No encontré grupos disponibles para ${programaTxt}. ¿Me pueden ayudar con opciones de horario?`;
+  const waNoGruposUrl = `https://wa.me/${waNoGruposNumero}?text=${encodeURIComponent(msgNoGrupos)}`;
 
   // Grupos/horarios reales desde el backend (cupos, fechas legibles y modalidad).
   // parseGrupos tolera varios shapes de respuesta; devuelve null cuando la respuesta
@@ -614,12 +628,12 @@ function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos }) {
               ) : gruposError ? (
                 <div className="grupo-empty err">
                   <Ico d={I.alert} size={18} />
-                  <span>No pudimos cargar los horarios disponibles. <button type="button" className="link-btn" onClick={() => setReloadKey(k => k + 1)}>Reintentar</button> o <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">escribinos por WhatsApp.</a></span>
+                  <span>No pudimos cargar los horarios disponibles. <button type="button" className="link-btn" onClick={() => setReloadKey(k => k + 1)}>Reintentar</button> o <a href={waNoGruposUrl} target="_blank" rel="noopener">escribinos por WhatsApp.</a></span>
                 </div>
               ) : (
                 <div className="grupo-empty">
                   <Ico d={I.warn} size={18} />
-                  <span>No hay grupos disponibles para este programa por ahora. <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">Escribinos por WhatsApp.</a></span>
+                  <span>No hay grupos disponibles para este programa por ahora. <a href={waNoGruposUrl} target="_blank" rel="noopener">Escribinos por WhatsApp.</a></span>
                 </div>
               )}
             </div>
@@ -1225,7 +1239,7 @@ function App() {
           verifInfo={verifInfo} setVerifInfo={setVerifInfo} asesores={asesores} asesoresEstado={asesoresEstado} />
       ) : paso === 2 ? (
         <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onContinue={irPaso3}
-          grupos={grupos} setGrupos={setGrupos} />
+          grupos={grupos} setGrupos={setGrupos} asesores={asesores} />
       ) : (
         <Pagina3 form={form} set={set} errors={errors} onBack={volverPaso2} onSubmit={registrar} submitting={submitting} />
       )}
