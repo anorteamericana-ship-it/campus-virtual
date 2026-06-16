@@ -9,20 +9,38 @@ const VIEWS = [
   { k:'preview', t:'Preview' },
 ];
 
+function readInitialViewConfig() {
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const raw = String(params.get('view') || '').trim().toLowerCase();
+    const allowed = VIEWS.some(v => v.k === raw);
+    return {
+      view: allowed ? raw : 'student',
+      explicit: !!raw && allowed,
+      studentLocked: allowed && raw === 'student',
+    };
+  } catch (_) {
+    return { view: 'student', explicit: false, studentLocked: false };
+  }
+}
+
+const INITIAL_VIEW_CONFIG = readInitialViewConfig();
+
 // ── auditMode ───────────────────────────────────────────────────────────
 // true  → panel de auditoría montado (admin/docente/preview): se puede
 //         cambiar vista, opción, plan, nivel visual, clave/preview.
 // false → estudiante entra DIRECTO a su examen asignado. NO se monta el
 //         panel; no puede cambiar opción/plan/nivel, ni ver clave, ni entrar
 //         a profesor/admin/preview.
-// Para esta maqueta queda true por defecto, pero el código soporta false.
-const AUDIT_MODE = true;
+// En campus principal admin/superadmin carga ?view=admin. Si alguien carga
+// explícitamente ?view=student, se bloquea en modo estudiante asignado.
+const AUDIT_MODE = !INITIAL_VIEW_CONFIG.studentLocked;
 
 // Asignación oficial del estudiante (vendría del cronograma/backend).
 const ASIGNACION = { nivel: 'I2', test: 'TEST1', opcion: 'A', plan: 'con_ina' };
 
 function App() {
-  const [view, setView] = useState('student');
+  const [view, setView] = useState(INITIAL_VIEW_CONFIG.view);
   const [nivel, setNivel] = useState('I2');
   const [test, setTest] = useState('TEST1'); // TEST1 (L18) | TEST2 (L32)
   const [opcion, setOpcion] = useState('A');

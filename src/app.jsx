@@ -41,6 +41,68 @@ function ProximamenteView({ title }) {
   );
 }
 
+
+// ── Exámenes escritos — integración admin/superadmin sin backend ──────────
+// El módulo ya existe y monta su propio React sobre modulos/examenes.html.
+// Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
+// del campus principal y no toca Apps Script ni endpoints.
+function ExamenesAdminPanel() {
+  const src = 'modulos/examenes.html?view=admin';
+  return (
+    <section data-screen-label="Admin · Exámenes" style={{
+      display: 'flex', flexDirection: 'column', gap: 14,
+      minHeight: 'calc(100vh - 28px)', padding: 18,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        padding: '14px 16px', background: 'var(--surface, #fff)',
+        border: '1px solid var(--line, #e5e0d8)', borderRadius: 'var(--r-lg, 14px)',
+        boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
+      }}>
+        <div>
+          <div style={{
+            fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em',
+            textTransform: 'uppercase', color: 'var(--an-granate, #7A1E2C)',
+            marginBottom: 4,
+          }}>Panel administrativo</div>
+          <div style={{
+            fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 25,
+            fontWeight: 500, color: 'var(--an-navy-ink, #001E47)',
+            letterSpacing: '-0.02em',
+          }}>Exámenes escritos</div>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-3, #6B7280)', marginTop: 3 }}>
+            Catálogo maestro integrado en modo administrador. Sin conexión a notas, activaciones ni guardado de entregas.
+          </div>
+        </div>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '7px 11px', borderRadius: 999,
+          background: 'color-mix(in srgb, var(--an-gold, #D6A94A) 16%, transparent)',
+          color: 'var(--ink-2, #4A413A)', fontSize: 11.5, fontWeight: 800,
+          whiteSpace: 'nowrap',
+        }}>
+          16 oficiales · iframe interno
+        </div>
+      </div>
+
+      <div style={{
+        flex: 1, minHeight: 640,
+        background: 'var(--surface, #fff)',
+        border: '1px solid var(--line, #e5e0d8)',
+        borderRadius: 'var(--r-lg, 14px)', overflow: 'hidden',
+        boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
+      }}>
+        <iframe
+          title="Panel administrativo de exámenes"
+          src={src}
+          style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
+          loading="eager"
+        />
+      </div>
+    </section>
+  );
+}
+
 const { useState, useEffect } = React;
 
 // ── Límite de error por vista ───────────────────────────────────────
@@ -354,6 +416,7 @@ function App() {
       dashboard:    <AdminDashboard setActive={setActive} />,
       supervision:  <PanelAdminSupervision />,
       auditoria_academica: <AuditoriaAcademicaView />,
+      examenes:    <ExamenesAdminPanel />,
       suspensiones: <PanelSuspensiones />,
       solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,
