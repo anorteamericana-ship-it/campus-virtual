@@ -170,10 +170,23 @@ function ProspectoTable({ lista, onOpen }) {
     <div className="vx-tablecard">
       <div className="vx-table-scroll">
       <table className="vx-table">
+        {/* Orden visual solicitado en ventas.html: 1 Cédula · 2 Nombre · 3 Teléfono · 4 Grupo · 5 Programa · 6 Financiam. · 7 Etapa · 8 Estado · 9 Días · 10 Acción */}
+        <colgroup>
+          <col style={{ width: '8.5%' }} />
+          <col style={{ width: '19%' }} />
+          <col style={{ width: '10.5%' }} />
+          <col style={{ width: '12.5%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '13%' }} />
+          <col style={{ width: '10.5%' }} />
+          <col style={{ width: '4%' }} />
+          <col style={{ width: '7%' }} />
+        </colgroup>
         <thead>
           <tr>
-            <th>Estado</th><th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Programa</th>
-            <th>Financiam.</th><th>Etapa</th><th>Grupo</th><th>Días</th><th>Acción</th>
+            <th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Grupo</th><th>Programa</th>
+            <th>Financiam.</th><th>Etapa</th><th>Estado</th><th>Días</th><th>Acción</th>
           </tr>
         </thead>
         <tbody>
@@ -183,7 +196,6 @@ function ProspectoTable({ lista, onOpen }) {
             const est = window.calcularEstadoEstudianteVentas(p);
             return (
               <tr key={p.cedula || p.id || i} className={prio.nivel === 'rojo' ? 'vx-row-rojo' : ''} onClick={() => onOpen(p)}>
-                <td><EstadoBadge est={est} /></td>
                 <td className="vx-td-ced">{p.cedula}</td>
                 <td className="vx-td-name">{p.nombre}</td>
                 <td>
@@ -192,10 +204,11 @@ function ProspectoTable({ lista, onOpen }) {
                     {fmtTelV(p.telefono)}
                   </span>
                 </td>
+                <td className="vx-td-grupo">{p.grupo_tentativo || '—'}</td>
                 <td className="vx-td-prog">{progLabel(p.programa)}</td>
                 <td><FinBadge financiamiento={p.financiamiento} /></td>
                 <td><EtapaBadge etapa={p.etapa} /></td>
-                <td className="vx-td-grupo">{p.grupo_tentativo || '—'}</td>
+                <td><EstadoBadge est={est} /></td>
                 <td className="vx-td-dias">{dias != null ? <><b>{dias}</b> d</> : '—'}</td>
                 <td onClick={e => e.stopPropagation()}>
                   <div className="vx-rowacts">
