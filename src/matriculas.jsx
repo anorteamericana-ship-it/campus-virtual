@@ -1128,6 +1128,58 @@ function MatriculasView({ onNavigate }) {
     return d.toLocaleDateString('es-CR', { day:'numeric', month:'short', year:'numeric' });
   };
 
+  // PRE MATRÍCULA · tabla estilo Ventas: mismo orden visual y chips compactos.
+  const labelProgramaMat = p => {
+    const raw = String(p.PROGRAMA || p.programa || '').trim().toUpperCase();
+    if (raw === 'INA') return 'INA Acreditado';
+    if (raw === 'SIN_INA') return 'Sin INA';
+    return raw ? raw.replace(/_/g, ' ') : '—';
+  };
+  const labelFinMat = p => {
+    const raw = String(p.FINANCIAMIENTO || p.financiamiento || '').trim().toUpperCase();
+    if (raw === 'CONAPE') return 'CONAPE';
+    if (raw === 'PROPIO') return 'Propio';
+    if (raw === 'BECA') return 'Beca';
+    return raw ? raw.replace(/_/g, ' ') : '—';
+  };
+  const labelEtapaMat = p => {
+    const raw = etapaDe(p);
+    const map = {
+      LEAD: 'Lead',
+      CONAPE_SOLICITUD: 'CONAPE Solicitud',
+      CONAPE_DOCUMENTOS: 'CONAPE Docs',
+      CONAPE_APROBADO: 'CONAPE Aprobado',
+      PAGO_ACADEMIA: 'Pago Academia',
+      CANCELADO: 'Cancelado',
+    };
+    return map[raw] || (raw ? raw.replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase()) : '—');
+  };
+  const estadoVisualMat = p => {
+    if (esCancelado(p)) return { label:'CANCELADO', bg:'#FBE4E1', color:'#8B1A10', border:'#F0BDB6', dot:'#E8372A' };
+    if (yaMatriculado(p)) return { label:'MATRICULADO', bg:'#DFF7EC', color:'#0F7A45', border:'#B5E8CE', dot:'#10B981' };
+    return { label:'SEGUIMIENTO', bg:'#FBE4E1', color:'#B42318', border:'#F0BDB6', dot:'#E8372A' };
+  };
+  const diasDesdeMat = ts => {
+    if (!ts) return null;
+    const s = String(ts);
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);
+    if (isNaN(d)) return null;
+    const today = new Date();
+    const a = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const b = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    return Math.max(0, Math.floor((a - b) / 86400000));
+  };
+  const fmtTelMat = p => String(p.WHATSAPP || p.whatsapp || p.TELEFONO || p.telefono || '—').trim() || '—';
+  const tdHeadMat = { whiteSpace:'nowrap' };
+  const chipMat = (txt, cfg) => (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:'var(--r-pill)',
+      fontSize:11, fontWeight:800, whiteSpace:'nowrap', background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border || 'transparent'}` }}>
+      {cfg.dot ? <span style={{ width:8, height:8, borderRadius:'50%', background:cfg.dot, display:'inline-block' }} /> : null}
+      {txt}
+    </span>
+  );
+
   const activar = async (p) => {
     // ── DEPRECADO (Fase 2.5) ──────────────────────────────────────────────────
     // El flujo "activar estudiante" (endpoint activarEstudiante) quedó obsoleto:
@@ -1202,55 +1254,70 @@ function MatriculasView({ onNavigate }) {
             </button>
           </div>
         </div>
-        <table className="table-soft">
-          <thead>
-            <tr>
-              <th>Estudiante</th>
-              <th>Grupo</th>
-              <th>Nivel</th>
-              <th>Fecha</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>⏳ Cargando prospectos…</td></tr>
-            )}
-            {!loading && error && (
-              <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:'var(--an-granate)', fontSize:13, fontWeight:600 }}>⚠️ {error}</td></tr>
-            )}
-            {!loading && !error && prospectos.length === 0 && (
-              <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
-            )}
-            {!loading && !error && prospectos.length > 0 && prospectosFiltrados.length === 0 && (
-              <tr><td colSpan={6} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
-            )}
-            {!loading && !error && prospectosFiltrados.map((p,i) => {
-              const em = estadoMeta[p.ESTADO] || { label:p.ESTADO||'—', color:'var(--ink-3)', bg:'var(--surface-2)' };
-              const nombre = p.NOMBRE || '—';
-              const grupo = p.GRUPO_TENTATIVO || '—';
-              const initials = nombre.split(' ').slice(0,2).map(w=>w[0]||'').join('') || '?';
-              const cancel = cancelDe(p);
-              const cancelado = esCancelado(p);
-              return (
-                <tr key={p.CEDULA || i} style={cancelado ? { background:'color-mix(in srgb, var(--an-red) 4%, transparent)' } : null}>
-                  <td>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:32, height:32, borderRadius:'50%', background: cancelado ? 'var(--ink-3)' : 'var(--an-navy)', color:'white', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        {initials}
-                      </div>
+        <div style={{ width:'100%', overflowX:'auto' }}>
+          <table className="table-soft" style={{ minWidth:1580, tableLayout:'fixed' }}>
+            {/* PRE MATRÍCULA: orden visual solicitado — 1 Cédula · 2 Nombre · 3 Teléfono · 4 Grupo · 5 Programa · 6 Financiam. · 7 Etapa · 8 Estado · 9 Días · 10 Acción */}
+            <colgroup>
+              <col style={{ width:'8%' }} />
+              <col style={{ width:'16%' }} />
+              <col style={{ width:'9%' }} />
+              <col style={{ width:'12%' }} />
+              <col style={{ width:'10%' }} />
+              <col style={{ width:'8%' }} />
+              <col style={{ width:'12%' }} />
+              <col style={{ width:'11%' }} />
+              <col style={{ width:'5%' }} />
+              <col style={{ width:'25%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th style={tdHeadMat}>Cédula</th>
+                <th style={tdHeadMat}>Nombre</th>
+                <th style={tdHeadMat}>Teléfono</th>
+                <th style={tdHeadMat}>Grupo</th>
+                <th style={tdHeadMat}>Programa</th>
+                <th style={tdHeadMat}>Financiam.</th>
+                <th style={tdHeadMat}>Etapa</th>
+                <th style={tdHeadMat}>Estado</th>
+                <th style={tdHeadMat}>Días</th>
+                <th style={{ ...tdHeadMat, textAlign:'right' }}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>⏳ Cargando prospectos…</td></tr>
+              )}
+              {!loading && error && (
+                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--an-granate)', fontSize:13, fontWeight:600 }}>⚠️ {error}</td></tr>
+              )}
+              {!loading && !error && prospectos.length === 0 && (
+                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
+              )}
+              {!loading && !error && prospectos.length > 0 && prospectosFiltrados.length === 0 && (
+                <tr><td colSpan={10} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
+              )}
+              {!loading && !error && prospectosFiltrados.map((p,i) => {
+                const nombre = p.NOMBRE || p.nombre || '—';
+                const cedula = p.CEDULA || p.cedula || '—';
+                const grupo = p.GRUPO_TENTATIVO || p.grupo_tentativo || p.grupo || '—';
+                const telefono = fmtTelMat(p);
+                const cancel = cancelDe(p);
+                const cancelado = esCancelado(p);
+                const est = estadoVisualMat(p);
+                const dias = diasDesdeMat(p.TIMESTAMP || p.timestamp || p.fecha_registro);
+                const fin = labelFinMat(p);
+                const finTone = fin.toUpperCase() === 'CONAPE'
+                  ? { bg:'#E7F0FF', color:'#075DBE', border:'#D7E6FA' }
+                  : fin.toUpperCase() === 'BECA'
+                    ? { bg:'#F6EAFE', color:'#7A2CB8', border:'#E7D0F7' }
+                    : { bg:'#F7F1E7', color:'#7B5B24', border:'#E6D7BD' };
+                return (
+                  <tr key={cedula || i} style={cancelado ? { background:'color-mix(in srgb, var(--an-red) 4%, transparent)' } : null}>
+                    <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)', fontWeight:600, whiteSpace:'nowrap' }}>{cedula}</td>
+                    <td>
                       <div style={{ minWidth:0 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                          <span style={{ fontWeight:600, fontSize:13, color: cancelado ? 'var(--ink-2)' : 'var(--ink)' }}>{nombre}</span>
-                          {cancelado && (
-                            <span title={cancel ? `Motivo: ${cancel.motivo}` : ''}
-                              style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px',
-                                background:'#FBE4E1', color:'#8B1A10', border:'1px solid #F0BDB6',
-                                borderRadius:'var(--r-pill)', fontSize:10, fontWeight:800, letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
-                              CANCELADO
-                            </span>
-                          )}
+                          <span style={{ fontWeight:800, fontSize:13, color: cancelado ? 'var(--ink-2)' : 'var(--ink)', lineHeight:1.25 }}>{nombre}</span>
                           {!cancelado && pagosDe(p) > 0 && (
                             <span title={`${pagosDe(p)} comprobante(s) de pago reportado(s) — revisar en Solicitudes`}
                               style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px',
@@ -1261,53 +1328,60 @@ function MatriculasView({ onNavigate }) {
                           )}
                         </div>
                         {cancelado && cancel && (
-                          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3, lineHeight:1.45 }}>
+                          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3, lineHeight:1.35 }}>
                             Cancelado por <b style={{ color:'var(--ink-2)' }}>{cancel.por || '—'}</b>
                             {cancel.fecha ? <> · {fechaDe(cancel.fecha)}</> : null}
                             {cancel.motivo ? <div style={{ fontStyle:'italic' }}>Motivo: {cancel.motivo}</div> : null}
                           </div>
                         )}
                       </div>
-                    </div>
-                  </td>
-                  <td style={{ fontFamily:'var(--f-mono)', fontWeight:600 }}>{grupo}</td>
-                  <td style={{ fontSize:12 }}>{nivelDe(p)}</td>
-                  <td style={{ fontSize:12, color:'var(--ink-2)' }}>{fechaDe(p.TIMESTAMP)}</td>
-                  <td>
-                    <span style={{ padding:'4px 10px', borderRadius:'var(--r-pill)', fontSize:11, fontWeight:700,
-                      background:em.bg, color:em.color }}>
-                      {em.label}
-                    </span>
-                  </td>
-                  <td style={{ textAlign:'right' }}>
-                    <div className="mat-row-actions">
-                      <button className="mat-act-btn" onClick={() => setVerProsp({ cedula: p.CEDULA, nombre })}>Ver formulario</button>
-                      {verFicha(p) && (
-                        <button className="mat-act-btn" onClick={() => setFichaProsp({ cedula: p.CEDULA, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
-                          Ver ficha de estudiante
+                    </td>
+                    <td>
+                      <div style={{ display:'inline-flex', alignItems:'center', gap:8, whiteSpace:'nowrap' }}>
+                        <span style={{ width:24, height:24, borderRadius:'50%', background:'#22C55E', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <span style={{ width:10, height:10, borderRadius:'50%', background:'#fff', opacity:.9 }} />
+                        </span>
+                        <span style={{ fontFamily:'var(--f-mono)', fontSize:12.5, lineHeight:1.2 }}>{telefono}</span>
+                      </div>
+                    </td>
+                    <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)', fontWeight:600, whiteSpace:'nowrap' }}>{grupo}</td>
+                    <td style={{ fontSize:12.5, color:'var(--ink-2)', whiteSpace:'nowrap' }}>{labelProgramaMat(p)}</td>
+                    <td>{chipMat(fin, finTone)}</td>
+                    <td>{chipMat(labelEtapaMat(p), { bg:'#E7F2FC', color:'#2176B8', border:'#D4E8F8', dot:'#2B7FC1' })}</td>
+                    <td>{chipMat(est.label, est)}</td>
+                    <td style={{ fontFamily:'var(--f-mono)', fontSize:13, fontWeight:800, whiteSpace:'nowrap' }}>{dias != null ? <><b>{dias}</b> d</> : '—'}</td>
+                    <td style={{ textAlign:'right' }}>
+                      <div className="mat-row-actions" style={{ justifyContent:'flex-end', flexWrap:'wrap', gap:8 }}>
+                        <button className="mat-act-btn" onClick={() => setVerProsp({ cedula, nombre })}>
+                          <Icon name="eye" size={13} className="" /> Ver
                         </button>
-                      )}
-                      {verCrearProforma(p) && (
-                        <button className="mat-act-btn" onClick={() => setProformaProsp({ cedula: p.CEDULA, nombre })}>Crear proforma</button>
-                      )}
-                      {verActualizarConape(p) && (
-                        <button className={`mat-act-btn conape ${novClass(conapeNov[p.CEDULA])}`}
-                          onClick={() => setConapeProsp({ cedula: p.CEDULA, nombre })}>
-                          Actualizar CONAPE
-                        </button>
-                      )}
-                      {verGenerar(p) && (
-                        <button className="mat-act-btn" onClick={() => setGenProsp({ cedula: p.CEDULA, nombre })}>
-                          Generar matrícula
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                        {verFicha(p) && (
+                          <button className="mat-act-btn" onClick={() => setFichaProsp({ cedula, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
+                            Ver ficha
+                          </button>
+                        )}
+                        {verCrearProforma(p) && (
+                          <button className="mat-act-btn" onClick={() => setProformaProsp({ cedula, nombre })}>Crear proforma</button>
+                        )}
+                        {verActualizarConape(p) && (
+                          <button className={`mat-act-btn conape ${novClass(conapeNov[p.CEDULA])}`}
+                            onClick={() => setConapeProsp({ cedula, nombre })}>
+                            Actualizar
+                          </button>
+                        )}
+                        {verGenerar(p) && (
+                          <button className="mat-act-btn" onClick={() => setGenProsp({ cedula, nombre })}>
+                            Generar matrícula
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Botón rápido por grupo */}
