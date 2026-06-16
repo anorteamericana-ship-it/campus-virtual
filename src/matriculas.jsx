@@ -1128,8 +1128,8 @@ function MatriculasView({ onNavigate }) {
     return d.toLocaleDateString('es-CR', { day:'numeric', month:'short', year:'numeric' });
   };
 
-  // PREMAT_GRID_V4_20260616_ACCIONES_CUADRICULA_FIJA
-  // PRE MATRÍCULA · tabla estilo Ventas: columnas de acciones en cuadrícula fija, sin botones apuñados.
+  // PREMAT_GRID_V5_20260616_SIN_SCROLL_SIN_PROGRAMA_ACCIONES_EN_CUADRICULA
+  // PRE MATRÍCULA · tabla compacta sin columna Programa y sin barra horizontal; acciones en cuadrícula fija.
   const labelProgramaMat = p => {
     const raw = String(p.PROGRAMA || p.programa || '').trim().toUpperCase();
     if (raw === 'INA') return 'INA Acreditado';
@@ -1172,46 +1172,53 @@ function MatriculasView({ onNavigate }) {
     return Math.max(0, Math.floor((a - b) / 86400000));
   };
   const fmtTelMat = p => String(p.WHATSAPP || p.whatsapp || p.TELEFONO || p.telefono || '—').trim() || '—';
-  const tdHeadMat = { whiteSpace:'nowrap', verticalAlign:'middle', paddingTop:12, paddingBottom:12 };
+  const compactGrupoMat = g => {
+    const raw = String(g || '').trim();
+    // Acorta solo la visual: B1-LM18-C3-0726 → B1-LM18-0726. El código completo queda en title.
+    const m = raw.match(/^([A-Z0-9]+-[A-Z0-9]+)-C\d+-(\d{4})$/i);
+    return m ? `${m[1]}-${m[2]}` : (raw || '—');
+  };
+  const tdHeadMat = { whiteSpace:'nowrap', verticalAlign:'middle', paddingTop:11, paddingBottom:11, paddingLeft:8, paddingRight:8, fontSize:10 };
   const actionHeadMat = {
     ...tdHeadMat,
     textAlign:'center',
-    paddingLeft:8,
-    paddingRight:8,
+    paddingLeft:6,
+    paddingRight:6,
     borderLeft:'1px solid var(--line)',
   };
   const actionCellMat = {
     textAlign:'center',
     verticalAlign:'middle',
-    padding:'9px 8px',
+    padding:'8px 6px',
     borderLeft:'1px solid var(--line)',
     background:'color-mix(in srgb, var(--surface) 92%, var(--surface-2))',
   };
   const actionSlotMat = {
     width:'100%',
-    minHeight:46,
+    minHeight:42,
     display:'flex',
     alignItems:'center',
     justifyContent:'center',
   };
   const actionBtnMat = {
     width:'100%',
-    minHeight:38,
+    minHeight:36,
     boxSizing:'border-box',
     display:'inline-flex',
     alignItems:'center',
     justifyContent:'center',
-    gap:5,
-    padding:'7px 12px',
-    lineHeight:1.15,
+    gap:4,
+    padding:'7px 8px',
+    lineHeight:1.1,
     textAlign:'center',
     whiteSpace:'nowrap',
-    minWidth:96,
+    minWidth:0,
+    fontSize:11.5,
   };
   const actionEmptyMat = <span style={{ color:'var(--ink-3)', fontSize:12, display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', minHeight:34 }}>—</span>;
   const chipMat = (txt, cfg) => (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:'var(--r-pill)',
-      fontSize:11, fontWeight:800, whiteSpace:'nowrap', background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border || 'transparent'}` }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 8px', borderRadius:'var(--r-pill)',
+      fontSize:10.5, fontWeight:800, whiteSpace:'nowrap', background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border || 'transparent'}` }}>
       {cfg.dot ? <span style={{ width:8, height:8, borderRadius:'50%', background:cfg.dot, display:'inline-block' }} /> : null}
       {txt}
     </span>
@@ -1291,23 +1298,22 @@ function MatriculasView({ onNavigate }) {
             </button>
           </div>
         </div>
-        <div style={{ width:'100%', overflowX:'auto' }}>
-          <table className="table-soft" style={{ minWidth:1980, tableLayout:'fixed', borderCollapse:'separate', borderSpacing:0 }}>
-            {/* PRE MATRÍCULA: información tipo ventas + acciones separadas por columna para que cada botón quede lineal bajo su título. */}
+        <div style={{ width:'100%', overflowX:'hidden' }}>
+          <table className="table-soft" style={{ width:'100%', minWidth:0, tableLayout:'fixed', borderCollapse:'separate', borderSpacing:0 }}>
+            {/* PRE MATRÍCULA: sin columna Programa, sin barra horizontal; acciones en columnas fijas. */}
             <colgroup>
-              <col style={{ width:105 }} />
-              <col style={{ width:220 }} />
-              <col style={{ width:120 }} />
-              <col style={{ width:150 }} />
-              <col style={{ width:135 }} />
-              <col style={{ width:110 }} />
-              <col style={{ width:150 }} />
-              <col style={{ width:150 }} />
-              <col style={{ width:60 }} />
-              <col style={{ width:115 }} />
-              <col style={{ width:170 }} />
-              <col style={{ width:180 }} />
-              <col style={{ width:190 }} />
+              <col style={{ width:'6.5%' }} />
+              <col style={{ width:'13%' }} />
+              <col style={{ width:'7%' }} />
+              <col style={{ width:'9%' }} />
+              <col style={{ width:'6.5%' }} />
+              <col style={{ width:'10%' }} />
+              <col style={{ width:'10%' }} />
+              <col style={{ width:'3.5%' }} />
+              <col style={{ width:'5.5%' }} />
+              <col style={{ width:'9%' }} />
+              <col style={{ width:'10.5%' }} />
+              <col style={{ width:'9.5%' }} />
             </colgroup>
             <thead>
               <tr>
@@ -1315,7 +1321,6 @@ function MatriculasView({ onNavigate }) {
                 <th style={tdHeadMat}>Nombre</th>
                 <th style={tdHeadMat}>Teléfono</th>
                 <th style={tdHeadMat}>Grupo</th>
-                <th style={tdHeadMat}>Programa</th>
                 <th style={tdHeadMat}>Financiam.</th>
                 <th style={tdHeadMat}>Etapa</th>
                 <th style={tdHeadMat}>Estado</th>
@@ -1328,16 +1333,16 @@ function MatriculasView({ onNavigate }) {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>⏳ Cargando prospectos…</td></tr>
+                <tr><td colSpan={12} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>⏳ Cargando prospectos…</td></tr>
               )}
               {!loading && error && (
-                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--an-granate)', fontSize:13, fontWeight:600 }}>⚠️ {error}</td></tr>
+                <tr><td colSpan={12} style={{ padding:'24px', textAlign:'center', color:'var(--an-granate)', fontSize:13, fontWeight:600 }}>⚠️ {error}</td></tr>
               )}
               {!loading && !error && prospectos.length === 0 && (
-                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
+                <tr><td colSpan={12} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Aún no hay prospectos registrados.</td></tr>
               )}
               {!loading && !error && prospectos.length > 0 && prospectosFiltrados.length === 0 && (
-                <tr><td colSpan={13} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
+                <tr><td colSpan={12} style={{ padding:'24px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Ningún prospecto coincide con el filtro activo.</td></tr>
               )}
               {!loading && !error && prospectosFiltrados.map((p,i) => {
                 const nombre = p.NOMBRE || p.nombre || '—';
@@ -1356,11 +1361,11 @@ function MatriculasView({ onNavigate }) {
                     : { bg:'#F7F1E7', color:'#7B5B24', border:'#E6D7BD' };
                 return (
                   <tr key={cedula || i} style={cancelado ? { background:'color-mix(in srgb, var(--an-red) 4%, transparent)' } : null}>
-                    <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)', fontWeight:600, whiteSpace:'nowrap' }}>{cedula}</td>
+                    <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)', fontWeight:600, whiteSpace:'nowrap', fontSize:11.5 }}>{cedula}</td>
                     <td>
                       <div style={{ minWidth:0 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                          <span style={{ fontWeight:800, fontSize:13, color: cancelado ? 'var(--ink-2)' : 'var(--ink)', lineHeight:1.25 }}>{nombre}</span>
+                          <span style={{ fontWeight:800, fontSize:12.2, color: cancelado ? 'var(--ink-2)' : 'var(--ink)', lineHeight:1.18 }}>{nombre}</span>
                           {!cancelado && pagosDe(p) > 0 && (
                             <span title={`${pagosDe(p)} comprobante(s) de pago reportado(s) — revisar en Solicitudes`}
                               style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px',
@@ -1384,11 +1389,10 @@ function MatriculasView({ onNavigate }) {
                         <span style={{ width:24, height:24, borderRadius:'50%', background:'#22C55E', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                           <span style={{ width:10, height:10, borderRadius:'50%', background:'#fff', opacity:.9 }} />
                         </span>
-                        <span style={{ fontFamily:'var(--f-mono)', fontSize:12.5, lineHeight:1.2 }}>{telefono}</span>
+                        <span style={{ fontFamily:'var(--f-mono)', fontSize:11.2, lineHeight:1.1 }}>{telefono}</span>
                       </div>
                     </td>
-                    <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)', fontWeight:600, whiteSpace:'nowrap' }}>{grupo}</td>
-                    <td style={{ fontSize:12.5, color:'var(--ink-2)', whiteSpace:'nowrap' }}>{labelProgramaMat(p)}</td>
+                    <td title={grupo} style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)', fontWeight:700, whiteSpace:'nowrap', fontSize:11.2 }}>{compactGrupoMat(grupo)}</td>
                     <td>{chipMat(fin, finTone)}</td>
                     <td>{chipMat(labelEtapaMat(p), { bg:'#E7F2FC', color:'#2176B8', border:'#D4E8F8', dot:'#2B7FC1' })}</td>
                     <td>{chipMat(est.label, est)}</td>
@@ -1396,7 +1400,7 @@ function MatriculasView({ onNavigate }) {
                     <td style={actionCellMat}>
                       <div style={actionSlotMat}>
                         <button className="mat-act-btn" style={actionBtnMat} onClick={() => setVerProsp({ cedula, nombre })}>
-                          <Icon name="eye" size={13} className="" /> Ver
+                          Ver
                         </button>
                       </div>
                     </td>
