@@ -99,6 +99,23 @@ function todosNum(v) {
 function todosText(v, fallback = '') {
   return (v === null || v === undefined) ? fallback : String(v).trim();
 }
+
+// CAL-GLOBAL-FIX-002:
+// Normaliza cualquier etiqueta de nivel que venga del backend. Algunos endpoints
+// devuelven B1/B2/I1/I2 y otros devuelven texto visible como "Básico II".
+// Si se manda "BÁSICO II" a getFechasGrupo, el backend puede responder vacío;
+// por eso convertimos siempre a la clave corta antes de ordenar o pedir fechas.
+function todosNivelId(v) {
+  const raw = todosText(v, 'B1');
+  const up = raw
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().trim();
+  if (['B1','BASICO I','BASICO 1','BASIC I','BASIC 1'].includes(up)) return 'B1';
+  if (['B2','BASICO II','BASICO 2','BASIC II','BASIC 2'].includes(up)) return 'B2';
+  if (['I1','INTERMEDIO I','INTERMEDIO 1','INTERMEDIATE I','INTERMEDIATE 1'].includes(up)) return 'I1';
+  if (['I2','INTERMEDIO II','INTERMEDIO 2','INTERMEDIATE II','INTERMEDIATE 2'].includes(up)) return 'I2';
+  return up || 'B1';
+}
 function todosPickCa(grupo, moraInfo) {
   const caGrupo = todosNum(grupo && grupo.estudiantes);
   const caMora  = todosNum(moraInfo && moraInfo.ca);
@@ -125,7 +142,7 @@ function todosNormalizarLeccion(l) {
 }
 function todosNormalizarGrupo(g) {
   if (!g || !g.code) return null;
-  const nivelId = todosText(g.nivelId || g.nivel || 'B1').toUpperCase();
+  const nivelId = todosNivelId(g.nivelId || g.nivel || 'B1');
   const lecciones = Array.isArray(g.lecciones)
     ? g.lecciones.map(todosNormalizarLeccion).filter(Boolean)
     : [];
@@ -201,9 +218,14 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           const g = batch[j];
           const idx = idxByCode.get(g.code);
           if (idx === undefined) return;
+          const normalizadas = d.lecciones.map(todosNormalizarLeccion).filter(Boolean);
+          // No pisar el resumen global con un array vacío. Si getFechasGrupo falla
+          // por nivel/permiso/datos incompletos, se conserva lo que ya venía en
+          // getGruposActivos, que era la fuente del panel global original.
+          if (!normalizadas.length && (out[idx].lecciones || []).length) return;
           out[idx] = {
             ...out[idx],
-            lecciones: d.lecciones.map(todosNormalizarLeccion).filter(Boolean),
+            lecciones: normalizadas,
           };
         });
         setGruposDetalle(out.map(g => ({ ...g, lecciones: [...(g.lecciones || [])] })));
@@ -230,9 +252,10 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
   const [moraLoading, setMoraLoading] = React.useState(false);
   const [moraUpdating, setMoraUpdating] = React.useState(false);
   const [moraError,   setMoraError]   = React.useState(null);
+  const [moraUnsupported, setMoraUnsupported] = React.useState(false);
 
   const cargarMora = React.useCallback(() => {
-    setMoraLoading(true); setMoraError(null);
+    setMoraLoading(true); setMoraError(null); setMoraUnsupported(false);
     return fetch(`${TODOS_SCRIPT_URL}?fn=getMoraGrupos`)
       .then(r => r.json())
       .then(d => {
@@ -242,7 +265,15 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           setMoraMap(m);
           setMoraFecha(d.actualizado || null);
         } else {
-          setMoraError(d?.error || 'Sin caché de mora');
+          const err = d?.error || 'Sin caché de mora';
+          if (/GET no reconocida|getMoraGrupos/i.test(err)) {
+            // Este backend no trae endpoint de mora global. No debe verse como
+            // error rojo ni bloquear el calendario.
+            setMoraUnsupported(true);
+            setMoraError(null);
+          } else {
+            setMoraError(err);
+          }
           setMoraMap(new Map());
         }
       })
@@ -418,7 +449,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
               textTransform:'uppercase',
               color: moraError ? 'var(--an-red, #C8302A)' : 'var(--ink-3)',
             }}>
-              {moraError ? '⚠ ' + moraError : 'Mora'}
+              {moraUnsupported ? 'Mora no conectada' : (moraError ? '⚠ ' + moraError : 'Mora')}
             </span>
             <span style={{
               fontSize:11, fontWeight:600,
@@ -428,22 +459,22 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
             }}>
               {moraFecha
                 ? `actualizada ${tFmtMoraActualizado(moraFecha)}`
-                : (moraLoading ? 'cargando…' : 'sin calcular — tocá Actualizar')}
+                : (moraUnsupported ? 'opcional · backend sin endpoint' : (moraLoading ? 'cargando…' : 'sin calcular — tocá Actualizar'))}
             </span>
           </div>
           <button
             onClick={actualizarMora}
-            disabled={moraUpdating}
+            disabled={moraUpdating || moraUnsupported}
             style={{
               padding:'7px 12px', display:'inline-flex', alignItems:'center', gap:6,
               border:'1.5px solid var(--line)',
               background: moraUpdating ? 'var(--bg-deep)' : 'var(--surface)',
               borderRadius:'var(--r-sm)',
               fontSize:12, fontWeight:700, color:'var(--ink-2)',
-              cursor: moraUpdating ? 'wait' : 'pointer',
+              cursor: (moraUpdating || moraUnsupported) ? 'wait' : 'pointer',
               fontFamily:'inherit',
               letterSpacing:'0.02em',
-              opacity: moraUpdating ? 0.85 : 1,
+              opacity: (moraUpdating || moraUnsupported) ? 0.65 : 1,
             }}
             title="Recalcular mora de todos los grupos (tarda unos segundos)"
           >
@@ -498,7 +529,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
       </div>
 
       {sub === 'semana' ? (
-        <VistaSemana
+        <TodosVistaSemana
           weekStart={weekStart}
           setWeekStart={setWeekStart}
           gruposOrdenados={gruposOrdenados}
@@ -507,7 +538,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           onAbrir={setDetalle}
         />
       ) : (
-        <VistaMes
+        <TodosVistaMes
           monthCursor={monthCursor}
           setMonthCursor={setMonthCursor}
           byDate={byDate}
@@ -532,7 +563,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
 // ─────────────────────────────────────────────────────────────────
 // VISTA SEMANA — Gantt: filas = grupos, columnas = días
 // ─────────────────────────────────────────────────────────────────
-function VistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, onAbrir }) {
+function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, onAbrir }) {
   // Siempre Lun-Sáb (6 columnas). Si algún grupo tiene clase domingo igual
   // se ve porque su celda existe — pero rara vez ocurre en la academia.
   const days = React.useMemo(() => {
@@ -730,7 +761,7 @@ function VistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, mo
 // ─────────────────────────────────────────────────────────────────
 const MES_VISIBLE_PILLS = 3;
 
-function VistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, onAbrir }) {
+function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, onAbrir }) {
   const year  = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const today = React.useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
