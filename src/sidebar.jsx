@@ -390,6 +390,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
     { id: 'asistencia', label: 'Asistencia', icon: 'check' },
+    { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },

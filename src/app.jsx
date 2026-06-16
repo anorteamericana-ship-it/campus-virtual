@@ -42,14 +42,14 @@ function ProximamenteView({ title }) {
 }
 
 
-// ── Exámenes escritos — integración admin/superadmin sin backend ──────────
+// ── Exámenes escritos — integración por iframe interno sin backend ───────
 // El módulo ya existe y monta su propio React sobre modulos/examenes.html.
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
-function ExamenesAdminPanel() {
-  const src = 'modulos/examenes.html?view=admin';
+function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle }) {
+  const src = `modulos/examenes.html?view=${view}`;
   return (
-    <section data-screen-label="Admin · Exámenes" style={{
+    <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
       minHeight: 'calc(100vh - 28px)', padding: 18,
     }}>
@@ -64,14 +64,14 @@ function ExamenesAdminPanel() {
             fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em',
             textTransform: 'uppercase', color: 'var(--an-granate, #7A1E2C)',
             marginBottom: 4,
-          }}>Panel administrativo</div>
+          }}>{eyebrow}</div>
           <div style={{
             fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 25,
             fontWeight: 500, color: 'var(--an-navy-ink, #001E47)',
             letterSpacing: '-0.02em',
           }}>Exámenes escritos</div>
           <div style={{ fontSize: 12.5, color: 'var(--ink-3, #6B7280)', marginTop: 3 }}>
-            Catálogo maestro integrado en modo administrador. Sin conexión a notas, activaciones ni guardado de entregas.
+            {description}
           </div>
         </div>
         <div style={{
@@ -81,7 +81,7 @@ function ExamenesAdminPanel() {
           color: 'var(--ink-2, #4A413A)', fontSize: 11.5, fontWeight: 800,
           whiteSpace: 'nowrap',
         }}>
-          16 oficiales · iframe interno
+          {badge}
         </div>
       </div>
 
@@ -93,13 +93,42 @@ function ExamenesAdminPanel() {
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
-          title="Panel administrativo de exámenes"
+          title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
           loading="eager"
+          referrerPolicy="same-origin"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
         />
       </div>
     </section>
+  );
+}
+
+function ExamenesAdminPanel() {
+  return (
+    <ExamenesIframePanel
+      view="admin"
+      screenLabel="Admin · Exámenes"
+      eyebrow="Panel administrativo"
+      description="Catálogo maestro integrado en modo administrador. Sin conexión a notas, activaciones ni guardado de entregas."
+      badge="16 oficiales · iframe interno"
+      iframeTitle="Panel administrativo de exámenes"
+    />
+  );
+}
+
+function ExamenesTeacherPanel() {
+  return (
+    <ExamenesIframePanel
+      view="teacher"
+      screenLabel="Docente · Exámenes"
+      eyebrow="Panel docente seguro"
+      description="Vista profesor integrada sin acceso a administrador ni preview. Guardado de revisiones y notas queda pendiente de backend."
+      badge="Vista docente · sin notas reales"
+      iframeTitle="Panel docente de exámenes"
+    />
   );
 }
 
@@ -399,6 +428,7 @@ function App() {
       calificar:   <CalificarView toast={toast} />,
       asistencia:  <AsistenciaView toast={toast} />,
       cronograma_grupo: <CronogramaGrupo rol="teacher" />,
+      examenes:    <ExamenesTeacherPanel />,
       materiales:  <MaterialesView onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,
       mensajes:    <MensajesView />,

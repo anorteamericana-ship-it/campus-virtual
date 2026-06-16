@@ -100,8 +100,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan })
           <span>{answered} de {all.length} respondidas · {pct}%</span>
         </div>
         <div className="stbar-actions">
-          <button className="btn-ghost" onClick={()=>alert('Avance guardado (simulado).')}>Guardar avance</button>
-          <button className="btn-primary" onClick={()=>setStage('sent')}>Enviar examen</button>
+          <button className="btn-ghost" disabled title="Pendiente de backend">Guardar avance · pendiente backend</button>
+          <button className="btn-primary" disabled title="Pendiente de backend">Enviar examen · pendiente backend</button>
         </div>
       </div>
     </div>
@@ -126,7 +126,8 @@ function AssignmentCard({ exam, tema, opcion, plan, onStart }) {
       </div>
       <div className="ascard-note">
         Este examen fue asignado automáticamente según tu grupo y el cronograma.
-        No es posible escoger otro examen ni cambiar de opción.
+        No es posible escoger otro examen ni cambiar de opción. El envío real queda pendiente
+        de backend; esta pantalla no guarda entregas todavía.
       </div>
       <button className="btn-primary ascard-go" onClick={onStart}>Iniciar examen</button>
     </div>
@@ -225,7 +226,7 @@ function TeacherInbox({ onOpen }) {
           <div className="tch-stat"><b>{INBOX.length}</b><span>entregas</span></div>
         </div>
       </div>
-      <div className="tch-note">La nota final NO pasa a <b>Mis Notas</b> hasta que el profesor cierra la revisión. La corrección automática es solo preliminar.</div>
+      <div className="tch-note"><b>Vista docente de revisión visual.</b> Esta bandeja usa entregas de demostración para validar interfaz y corrección preliminar. No consulta estudiantes reales, no guarda borradores y no envía notas a <b>Mis Notas</b>.</div>
       <table className="tch-table">
         <thead><tr><th>Estudiante</th><th>Grupo</th><th>Opción</th><th>Enviado</th><th>Tiempo</th><th>Estado</th><th></th></tr></thead>
         <tbody>
@@ -323,11 +324,11 @@ function TeacherReview({ sub, shell, density, onBack }) {
 
         <textarea className="rev-fb" placeholder="Retroalimentación final para el estudiante…" value={feedback} onChange={e=>setFeedback(e.target.value)} />
 
-        <button className="btn-ghost" disabled={closed} onClick={()=>alert('Borrador guardado (simulado).')}>Guardar borrador</button>
+        <button className="btn-ghost" disabled title="Pendiente de backend">Guardar borrador · pendiente backend</button>
         <button className={`btn-close${closed?' done':''}`} disabled={closed} onClick={()=>setClosed(true)}>
-          {closed ? '✓ Nota final cerrada' : 'Cerrar nota final'}
+          {closed ? '✓ Cierre local previsualizado' : 'Previsualizar cierre local'}
         </button>
-        {closed && <div className="rev-closed">Nota <b>{note100}</b> enviada a <b>Mis Notas</b> (simulado). Estado: Cerrada.</div>}
+        {closed && <div className="rev-closed">Nota <b>{note100}</b> previsualizada localmente. No se guardó, no se cerró en servidor y no se envió a <b>Mis Notas</b>.</div>}
       </aside>
 
       {/* examen con clave + corrección por pregunta */}

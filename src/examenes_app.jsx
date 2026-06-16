@@ -9,38 +9,166 @@ const VIEWS = [
   { k:'preview', t:'Preview' },
 ];
 
-function readInitialViewConfig() {
+const VIEW_TITLES = VIEWS.reduce((m, v) => Object.assign(m, { [v.k]: v.t }), {});
+
+function normalizeRole(rol) {
+  const r = String(rol || '').trim().toLowerCase();
+  if (r === 'superadmin' || r === 'admin') return 'admin';
+  if (r === 'teacher') return 'teacher';
+  if (r === 'student') return 'student';
+  return '';
+}
+
+function getCampusParentSession() {
   try {
-    const params = new URLSearchParams(window.location.search || '');
-    const raw = String(params.get('view') || '').trim().toLowerCase();
-    const allowed = VIEWS.some(v => v.k === raw);
-    return {
-      view: allowed ? raw : 'student',
-      explicit: !!raw && allowed,
-      studentLocked: allowed && raw === 'student',
-    };
+    if (!window.parent || window.parent === window) return null;
+    if (typeof window.parent.getSesion !== 'function') return null;
+    return window.parent.getSesion();
   } catch (_) {
-    return { view: 'student', explicit: false, studentLocked: false };
+    return null;
   }
 }
 
-const INITIAL_VIEW_CONFIG = readInitialViewConfig();
+function readRequestedView() {
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const raw = String(params.get('view') || '').trim().toLowerCase();
+    return VIEWS.some(v => v.k === raw) ? raw : '';
+  } catch (_) {
+    return '';
+  }
+}
 
-// ── auditMode ───────────────────────────────────────────────────────────
-// true  → panel de auditoría montado (admin/docente/preview): se puede
-//         cambiar vista, opción, plan, nivel visual, clave/preview.
-// false → estudiante entra DIRECTO a su examen asignado. NO se monta el
-//         panel; no puede cambiar opción/plan/nivel, ni ver clave, ni entrar
-//         a profesor/admin/preview.
-// En campus principal admin/superadmin carga ?view=admin. Si alguien carga
-// explícitamente ?view=student, se bloquea en modo estudiante asignado.
-const AUDIT_MODE = !INITIAL_VIEW_CONFIG.studentLocked;
+function normalizeExamNivel(v) {
+  const n = String(v || '').trim().toUpperCase();
+  return ['B1','B2','I1','I2'].includes(n) ? n : '';
+}
 
-// Asignación oficial del estudiante (vendría del cronograma/backend).
-const ASIGNACION = { nivel: 'I2', test: 'TEST1', opcion: 'A', plan: 'con_ina' };
+function normalizeExamTest(v) {
+  const t = String(v || '').trim().toUpperCase();
+  if (t === 'TEST1' || t === 'T1' || t === 'L18' || t === '18') return 'TEST1';
+  if (t === 'TEST2' || t === 'T2' || t === 'L32' || t === '32') return 'TEST2';
+  return '';
+}
+
+function normalizeExamOpcion(v) {
+  const o = String(v || '').trim().toUpperCase();
+  return o === 'A' || o === 'B' ? o : '';
+}
+
+function normalizeExamPlan(v) {
+  const p = String(v || '').trim().toLowerCase();
+  if (p === 'con_ina' || p === 'con ina' || p === 'ina' || p === 'conina') return 'con_ina';
+  if (p === 'sin_ina' || p === 'sin ina' || p === 'sinina') return 'sin_ina';
+  return '';
+}
+
+function resolveStudentAssignment(session) {
+  if (!session || typeof session !== 'object') return null;
+
+  // V6: no examen fijo de prueba. El estudiante solo carga contenido si la
+  // sesión trae una asignación explícita desde el campus/backend futuro.
+  // No se leen nivel/test/opción desde query params para evitar selección manual.
+  const src = session.examenAsignado || session.examen_asignado || session.examAssignment || null;
+  if (!src || typeof src !== 'object') return null;
+
+  const nivel = normalizeExamNivel(src.nivel || src.level);
+  const test = normalizeExamTest(src.test || src.prueba || src.leccion);
+  const opcion = normalizeExamOpcion(src.opcion || src.option || src.variante);
+  const plan = normalizeExamPlan(src.plan || src.programa || session.programa) || normalizeExamPlan(session.programa);
+
+  if (!nivel || !test || !opcion || !plan) return null;
+  return {
+    nivel,
+    test,
+    opcion,
+    plan,
+    grupo: session.grupoActivo || session.grupo || '',
+    codigo: session.codigo || '',
+    nombre: session.nombre || '',
+  };
+}
+
+function buildInitialViewConfig() {
+  const requested = readRequestedView();
+  const framed = (() => {
+    try { return !!window.parent && window.parent !== window; }
+    catch (_) { return false; }
+  })();
+
+  if (!framed) {
+    return {
+      authorized: false,
+      view: 'blocked',
+      role: '',
+      requested,
+      allowedViews: [],
+      controls: false,
+      locked: true,
+      reason: 'Este módulo solo puede abrirse desde el campus principal.',
+    };
+  }
+
+  const session = getCampusParentSession();
+  const role = normalizeRole(session && session.rol);
+  if (!role) {
+    return {
+      authorized: false,
+      view: 'blocked',
+      role: '',
+      requested,
+      allowedViews: [],
+      controls: false,
+      locked: true,
+      reason: 'No se pudo validar una sesión activa del campus.',
+    };
+  }
+
+  const allowedViewsByRole = {
+    admin:   ['admin', 'preview'],
+    teacher: ['teacher'],
+    student: ['student'],
+  };
+  const defaultViewByRole = {
+    admin: 'admin',
+    teacher: 'teacher',
+    student: 'student',
+  };
+
+  const allowedViews = allowedViewsByRole[role] || [];
+  const fallbackView = defaultViewByRole[role] || '';
+  const view = requested || fallbackView;
+
+  if (!allowedViews.includes(view)) {
+    return {
+      authorized: false,
+      view: 'blocked',
+      role,
+      requested: view,
+      allowedViews,
+      controls: false,
+      locked: true,
+      reason: `La vista ${VIEW_TITLES[view] || view || 'solicitada'} no está autorizada para este rol.`,
+    };
+  }
+
+  return {
+    authorized: true,
+    view,
+    role,
+    requested: view,
+    allowedViews,
+    controls: role === 'admin',
+    locked: role !== 'admin',
+    reason: '',
+    studentAssignment: role === 'student' ? resolveStudentAssignment(session) : null,
+  };
+}
+
+const INITIAL_VIEW_CONFIG = buildInitialViewConfig();
 
 function App() {
-  const [view, setView] = useState(INITIAL_VIEW_CONFIG.view);
+  const [view, setViewRaw] = useState(INITIAL_VIEW_CONFIG.view);
   const [nivel, setNivel] = useState('I2');
   const [test, setTest] = useState('TEST1'); // TEST1 (L18) | TEST2 (L32)
   const [opcion, setOpcion] = useState('A');
@@ -50,16 +178,46 @@ function App() {
   const [previewExam, setPreviewExam] = useState(null);
   const [plan, setPlan] = useState('ambos'); // ambos | con_ina | sin_ina
 
-  const goPreview = (entry) => { setPreviewExam(entry); setView('preview'); };
+  const canEnter = (target) => INITIAL_VIEW_CONFIG.allowedViews.includes(target);
+  const setView = (target) => {
+    if (!canEnter(target)) return;
+    setViewRaw(target);
+  };
+  const goPreview = (entry) => {
+    if (!canEnter('preview')) return;
+    setPreviewExam(entry);
+    setViewRaw('preview');
+  };
 
-  // Sin auditoría: el estudiante solo ve su examen asignado, sin controles.
-  if (!AUDIT_MODE) {
+  if (!INITIAL_VIEW_CONFIG.authorized) {
+    return <AccessBlockedView config={INITIAL_VIEW_CONFIG} />;
+  }
+
+  // Estudiante: solo examen asignado por sesión/backend futuro. Sin
+  // asignación explícita, NO se carga ningún examen real ni demo fijo.
+  if (INITIAL_VIEW_CONFIG.role === 'student') {
+    const asig = INITIAL_VIEW_CONFIG.studentAssignment;
     return (
       <div className="exapp">
         <main className="exmain">
-          <StudentMode shell="premium" density="comfy"
-                       nivel={ASIGNACION.nivel} test={ASIGNACION.test}
-                       opcion={ASIGNACION.opcion} plan={ASIGNACION.plan} />
+          {asig
+            ? <StudentMode shell="premium" density="comfy"
+                           nivel={asig.nivel} test={asig.test}
+                           opcion={asig.opcion} plan={asig.plan} />
+            : <StudentNoAssignmentView />}
+        </main>
+      </div>
+    );
+  }
+
+  // Docente: vista fija de profesor. No puede saltar a Admin ni Preview desde
+  // este shell. La operación real de guardado queda para una fase con backend.
+  if (INITIAL_VIEW_CONFIG.role === 'teacher') {
+    return (
+      <div className="exapp">
+        <RoleLockBanner role="teacher" />
+        <main className="exmain">
+          <TeacherMode shell="premium" density="comfy" />
         </main>
       </div>
     );
@@ -67,10 +225,14 @@ function App() {
 
   return (
     <div className="exapp">
-      <ControlBar {...{ view, setView, nivel, setNivel, test, setTest, opcion, setOpcion, shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan }} />
+      {INITIAL_VIEW_CONFIG.controls && (
+        <ControlBar {...{
+          view, setView, allowedViews: INITIAL_VIEW_CONFIG.allowedViews,
+          nivel, setNivel, test, setTest, opcion, setOpcion,
+          shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan
+        }} />
+      )}
       <main className="exmain">
-        {view==='student' && <StudentMode shell={shell} density={density} nivel={nivel} test={test} opcion={opcion} plan={plan} />}
-        {view==='teacher' && <TeacherMode shell={shell} density={density} />}
         {view==='admin'   && <AdminMode shell={shell} density={density} onPreview={goPreview} />}
         {view==='preview' && <PreviewMode shell={shell} density={density} nivel={nivel} test={test} opcion={opcion} showKey={previewKey} entry={previewExam} plan={plan} />}
       </main>
@@ -78,36 +240,112 @@ function App() {
   );
 }
 
-function ControlBar({ view, setView, nivel, setNivel, test, setTest, opcion, setOpcion, shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan }) {
-  const tema = NIVEL_TEMA[nivel];
+function AccessBlockedView({ config }) {
+  return (
+    <div className="exapp">
+      <main className="exmain">
+        <div style={{
+          maxWidth: 620, margin: '72px auto', padding: '30px 32px',
+          borderRadius: 18, background: '#fff', border: '1px solid #E2D8C8',
+          boxShadow: '0 18px 60px rgba(0,0,0,0.10)', fontFamily: 'Poppins, system-ui, sans-serif',
+          textAlign: 'center', color: '#001E47',
+        }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px',
+            borderRadius: 999, background: '#F7E8E9', color: '#7A1E2C', fontSize: 11,
+            fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14,
+          }}>Acceso restringido</div>
+          <h2 style={{ margin: '0 0 8px', fontSize: 26, letterSpacing: '-0.03em' }}>Panel de exámenes no disponible</h2>
+          <p style={{ margin: '0 auto 18px', maxWidth: 500, color: '#5A6472', fontSize: 14, lineHeight: 1.55 }}>
+            {config.reason || 'Esta vista no está autorizada para la sesión actual.'}
+          </p>
+          <div style={{
+            display: 'grid', gap: 8, maxWidth: 430, margin: '0 auto', padding: 12,
+            borderRadius: 14, background: '#F8F6F1', color: '#4A413A', fontSize: 12.5,
+            textAlign: 'left',
+          }}>
+            <div><b>Vista solicitada:</b> {VIEW_TITLES[config.requested] || config.requested || 'ninguna'}</div>
+            <div><b>Rol detectado:</b> {config.role || 'sin validar'}</div>
+            <div><b>Regla:</b> abrir siempre desde el campus principal y según rol.</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function RoleLockBanner({ role }) {
+  const label = role === 'teacher' ? 'Modo profesor' : 'Modo restringido';
+  return (
+    <div className="cbar-banner" style={{ margin: 12 }}>
+      <span className="cbar-eye">🔒</span>
+      {label} · vista fija sin acceso a administrador ni preview. Guardado real pendiente de backend.
+    </div>
+  );
+}
+
+function StudentNoAssignmentView() {
+  return (
+    <div style={{
+      maxWidth: 640, margin: '72px auto', padding: '30px 32px',
+      borderRadius: 18, background: '#fff', border: '1px solid #E2D8C8',
+      boxShadow: '0 18px 60px rgba(0,0,0,0.10)', fontFamily: 'Poppins, system-ui, sans-serif',
+      textAlign: 'center', color: '#001E47',
+    }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px',
+        borderRadius: 999, background: '#FFF5D6', color: '#7A4A00', fontSize: 11,
+        fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 14,
+      }}>Examen no asignado</div>
+      <h2 style={{ margin: '0 0 8px', fontSize: 26, letterSpacing: '-0.03em' }}>No hay examen disponible</h2>
+      <p style={{ margin: '0 auto 18px', maxWidth: 520, color: '#5A6472', fontSize: 14, lineHeight: 1.55 }}>
+        El estudiante no puede escoger exámenes manualmente. Para mostrar un examen real,
+        el campus debe recibir una asignación oficial desde cronograma/backend.
+      </p>
+      <div style={{
+        display: 'grid', gap: 8, maxWidth: 460, margin: '0 auto', padding: 12,
+        borderRadius: 14, background: '#F8F6F1', color: '#4A413A', fontSize: 12.5,
+        textAlign: 'left',
+      }}>
+        <div><b>Regla:</b> sin asignación explícita no se carga ningún examen.</div>
+        <div><b>Estado:</b> pendiente de activación real con backend.</div>
+        <div><b>Seguridad:</b> se eliminó la asignación fija de demostración.</div>
+      </div>
+    </div>
+  );
+}
+
+
+function ControlBar({ view, setView, allowedViews, nivel, setNivel, test, setTest, opcion, setOpcion, shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan }) {
   const showKeyToggle = view==='preview';
-  const themeable = view==='preview' || view==='admin';
   return (
     <div className="cbar">
       <div className="cbar-banner">
         <span className="cbar-eye">👁</span>
-        Panel de auditoría · <b>no visible para el estudiante</b> · solo para administración / docente / preview
+        Panel de auditoría · <b>solo administración</b> · sin backend, sin notas, sin entregas reales
       </div>
       <div className="cbar-row">
       <div className="cbar-brand">
         <span className="cbar-logo">AN</span>
         <div>
           <div className="cbar-t">Exámenes · Sistema maestro</div>
-          <div className="cbar-s">Maqueta de auditoría · sin backend · EXAM-MASTER-001</div>
+          <div className="cbar-s">Catálogo administrativo · EXAM-MASTER-001</div>
         </div>
       </div>
 
       <div className="cbar-group">
         <label>Vista</label>
         <div className="seg">
-          {VIEWS.map(v => <button key={v.k} className={view===v.k?'on':''} onClick={()=>setView(v.k)}>{v.t}</button>)}
+          {VIEWS.filter(v => allowedViews.includes(v.k)).map(v => (
+            <button key={v.k} className={view===v.k?'on':''} onClick={()=>setView(v.k)}>{v.t}</button>
+          ))}
         </div>
       </div>
 
       <div className="cbar-group">
         <label>Prueba (test)</label>
         <div className="seg seg-sm">
-          {[['TEST1','Prueba 1'],['TEST2','Prueba 2']].map(([k,l]) =>
+          {[["TEST1","Prueba 1"],["TEST2","Prueba 2"]].map(([k,l]) =>
             <button key={k} className={test===k?'on':''} onClick={()=>setTest(k)}>{l}</button>)}
         </div>
       </div>
@@ -122,12 +360,12 @@ function ControlBar({ view, setView, nivel, setNivel, test, setTest, opcion, set
       <div className="cbar-group">
         <label>Plan académico</label>
         <div className="seg seg-sm">
-          {[['ambos','Ambos'],['con_ina','CON INA'],['sin_ina','SIN INA']].map(([k,l]) =>
+          {[["ambos","Ambos"],["con_ina","CON INA"],["sin_ina","SIN INA"]].map(([k,l]) =>
             <button key={k} className={plan===k?'on':''} onClick={()=>setPlan(k)}>{l}</button>)}
         </div>
       </div>
 
-      <div className={`cbar-group${themeable?'':' dim'}`}>
+      <div className="cbar-group">
         <label>Tema por nivel</label>
         <div className="lvlswatches">
           {Object.keys(NIVEL_TEMA).map(k => (
@@ -140,7 +378,7 @@ function ControlBar({ view, setView, nivel, setNivel, test, setTest, opcion, set
       <div className="cbar-group">
         <label>Formato</label>
         <div className="seg seg-sm">
-          {[['premium','Premium'],['compact','Compacto'],['sheet','Hoja']].map(([k,l]) =>
+          {[["premium","Premium"],["compact","Compacto"],["sheet","Hoja"]].map(([k,l]) =>
             <button key={k} className={shell===k?'on':''} onClick={()=>setShell(k)}>{l}</button>)}
         </div>
       </div>
@@ -148,7 +386,7 @@ function ControlBar({ view, setView, nivel, setNivel, test, setTest, opcion, set
       <div className="cbar-group">
         <label>Densidad</label>
         <div className="seg seg-sm">
-          {[['comfy','Cómoda'],['compact','Compacta']].map(([k,l]) =>
+          {[["comfy","Cómoda"],["compact","Compacta"]].map(([k,l]) =>
             <button key={k} className={density===k?'on':''} onClick={()=>setDensity(k)}>{l}</button>)}
         </div>
       </div>
