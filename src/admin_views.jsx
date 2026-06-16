@@ -337,6 +337,69 @@ const initState = () => ({
   confirmado:false,
 });
 
+// STEP4_BECAS_REALES_RESUMEN_V2_20260616
+// Helpers de becas para el simulador del Paso 4.
+// Toma las becas reales desde CONFIG_BECAS (vía window.getBecas) y las adapta
+// al selector visual del wizard, sin cambiar la regla principal del sistema:
+// la beca no se guarda al grupo, la elige cada estudiante al inscribirse.
+function _becaCfgValue(id) { return `cfg:${String(id || '').trim()}`; }
+function _pctNum(v) { return Math.max(0, Number(v) || 0); }
+function _becaPctResumen(b) {
+  return Math.max(_pctNum(b?.pct_matricula), _pctNum(b?.pct_cuota), _pctNum(b?.pct_certificado), _pctNum(b?.pct_titulo));
+}
+function _becaResumenLineas(b) {
+  const parts = [];
+  if (_pctNum(b?.pct_matricula)) parts.push(`Matrícula ${_pctNum(b.pct_matricula)}%`);
+  if (_pctNum(b?.pct_cuota)) parts.push(`Cuotas ${_pctNum(b.pct_cuota)}%`);
+  if (_pctNum(b?.pct_certificado)) parts.push(`Certificados ${_pctNum(b.pct_certificado)}%`);
+  if (_pctNum(b?.pct_titulo)) parts.push(`Título ${_pctNum(b.pct_titulo)}%`);
+  return parts.length ? parts.join(' · ') : 'Sin descuento configurado';
+}
+function _becaNormLite(b) {
+  return {
+    id: String(b?.id || ''),
+    nombre: b?.nombre || 'Beca',
+    descripcion: b?.descripcion || '',
+    pct_matricula: _pctNum(b?.pct_matricula),
+    pct_cuota: _pctNum(b?.pct_cuota),
+    pct_certificado: _pctNum(b?.pct_certificado),
+    pct_titulo: _pctNum(b?.pct_titulo),
+    pct_resumen: _becaPctResumen(b),
+    resumen: _becaResumenLineas(b),
+  };
+}
+function _becaLegacyFromValue(value) {
+  if (value === 'impacta') {
+    return _becaNormLite({ id:'IMPACTA', nombre:'Beca Impacta', descripcion:'Descuento del 25% en matrícula y cuotas.', pct_matricula:25, pct_cuota:25 });
+  }
+  if (value === 'mujer') {
+    return _becaNormLite({ id:'MUJER', nombre:'Beca Mujer', descripcion:'Descuento del 50% en matrícula y cuotas.', pct_matricula:50, pct_cuota:50 });
+  }
+  return null;
+}
+function getSelectedBecaMeta(form, becasConfig = []) {
+  if (form?.beca === 'none' || !form?.beca) {
+    return { kind:'none', value:'none', nombre:'Sin beca', descripcion:'Sin descuento aplicado.', pct_matricula:0, pct_cuota:0, pct_certificado:0, pct_titulo:0, pct_resumen:0, resumen:'Sin descuento aplicado.' };
+  }
+  if (form?.beca === 'custom') {
+    const pct = _pctNum(form?.becaCustomPct);
+    return {
+      kind:'custom',
+      value:'custom',
+      nombre: form?.becaCustomNombre || 'Beca personalizada',
+      descripcion:'Simulación manual para visualizar costos.',
+      pct_matricula:pct, pct_cuota:pct, pct_certificado:0, pct_titulo:0,
+      pct_resumen:pct,
+      resumen:`Matrícula ${pct}% · Cuotas ${pct}%`,
+    };
+  }
+  const hit = (becasConfig || []).find(b => _becaCfgValue(b.id) === form?.beca || String(b.id) === String(form?.beca));
+  if (hit) return { kind:'config', value:_becaCfgValue(hit.id), ..._becaNormLite(hit) };
+  const legacy = _becaLegacyFromValue(form?.beca);
+  if (legacy) return { kind:'config', value:_becaCfgValue(legacy.id), ...legacy };
+  return { kind:'none', value:'none', nombre:'Sin beca', descripcion:'Sin descuento aplicado.', pct_matricula:0, pct_cuota:0, pct_certificado:0, pct_titulo:0, pct_resumen:0, resumen:'Sin descuento aplicado.' };
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // WIZARD PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
@@ -346,10 +409,30 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const [errors, setErrors]     = React.useState({});
   const [guardando, setGuardando] = React.useState(false);
   const [avisoManual, setAvisoManual] = React.useState(false);
+  const [becasConfig, setBecasConfig] = React.useState([]);
+  const [becasLoading, setBecasLoading] = React.useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Docentes reales construidos desde APOLLO — se recalcula cuando cambian los grupos
   const docentesActivos = React.useMemo(() => buildDocentesActivos(grupos), [grupos]);
+
+  React.useEffect(() => {
+    let cancel = false;
+    const programa = form.modelo === 'ina' ? 'INA' : 'SIN_INA';
+    if (!window.getBecas) { setBecasConfig([]); return () => { cancel = true; }; }
+    setBecasLoading(true);
+    Promise.resolve(window.getBecas({ solo_visibles: true, programa }))
+      .then(r => {
+        if (cancel) return;
+        const becas = ((r && r.becas) || []).map(_becaNormLite);
+        setBecasConfig(becas);
+      })
+      .catch(() => { if (!cancel) setBecasConfig([]); })
+      .finally(() => { if (!cancel) setBecasLoading(false); });
+    return () => { cancel = true; };
+  }, [form.modelo]);
+
+  const selectedBeca = React.useMemo(() => getSelectedBecaMeta(form, becasConfig), [form, becasConfig]);
 
   const nivel = NIVEL_META[form.niveles[0]] || NIVEL_META['b1'];
   const nCuotas = form.modalidad === 'super_intensivo' ? 2 : 4;
@@ -358,13 +441,15 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const nNiveles = form.niveles.length;
 
   // Beca = simulador visual. NO se guarda al grupo. Cada estudiante elige la suya.
-  const descuento = form.beca === 'impacta' ? 0.25 : form.beca === 'mujer' ? 0.50 : form.beca === 'custom' ? (form.becaCustomPct/100) : 0;
+  const descuentoMatricula = (selectedBeca?.pct_matricula || 0) / 100;
+  const descuentoCuota     = (selectedBeca?.pct_cuota || 0) / 100;
+  const descuento = Math.max(descuentoMatricula, descuentoCuota);
 
   // Matrícula + cuotas (base por nivel)
   const matrPorNivel   = form.matriculaObligatoria ? form.matricula : 0;
   const cuotasPorNivel = form.cuota * nCuotas;
-  const matFinal       = Math.round(matrPorNivel * (1 - descuento));
-  const cuotasFinal    = Math.round(cuotasPorNivel * (1 - descuento));
+  const matFinal       = Math.round(matrPorNivel * (1 - descuentoMatricula));
+  const cuotasFinal    = Math.round(cuotasPorNivel * (1 - descuentoCuota));
   const totalNivel     = matFinal + cuotasFinal;
 
   // Rubros por nivel (obligatorios vs opcionales)
@@ -638,11 +723,13 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
             {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} docentesActivos={docentesActivos} />}
             {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[form.dias]||'XX')+(HORA_CODIGO[form.horaInicio]||''); return p; })()} />}
             {step===4 && <Step4 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas}
-              matFinal={matFinal} cuotasFinal={cuotasFinal} descuento={descuento} />}
+              matFinal={matFinal} cuotasFinal={cuotasFinal} descuento={descuento}
+              becasConfig={becasConfig} becasLoading={becasLoading} selectedBeca={selectedBeca} />}
             {step===5 && <Step5 form={form} set={set} nivel={nivel} />}
             {step===6 && <Step6 form={form} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal} totalNivel={totalNivel} totalPrograma={totalPrograma}
-              descuento={descuento} grupos={grupos} docentesActivos={docentesActivos} onConfirm={() => set('confirmado', !form.confirmado)} />}
+              descuento={descuento} grupos={grupos} docentesActivos={docentesActivos}
+              selectedBeca={selectedBeca} onConfirm={() => set('confirmado', !form.confirmado)} />}
           </div>
 
           {/* Paso 4: sidebar financiero en vivo */}
@@ -650,7 +737,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
             <FinanceSidebar form={form} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal}
               totalNivel={totalNivel} totalPrograma={totalPrograma}
-              descuento={descuento} />
+              descuento={descuento} selectedBeca={selectedBeca} />
           )}
         </div>
 
@@ -1228,7 +1315,7 @@ function Step3({ form, set, errors, nivel, docentesActivos, nuevoHorarioCod }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 4 — Precios y rubros
 // ─────────────────────────────────────────────────────────────────────────
-function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descuento }) {
+function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descuento, becasConfig, becasLoading, selectedBeca }) {
   const [nuevoRubro, setNuevoRubro] = React.useState({ nombre:'', monto:0, obligatorio:false, tipo_aplicacion:'por_nivel' });
 
   const addRubro = () => {
@@ -1238,6 +1325,8 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
   };
 
   const removeRubro = (id) => set('rubrosExtra', form.rubrosExtra.filter(r => r.id !== id));
+  const becasReales = Array.isArray(becasConfig) ? becasConfig : [];
+  const programaLabel = form.modelo === 'ina' ? 'INA' : 'SIN INA';
 
   return (
     <div>
@@ -1392,31 +1481,70 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
         borderRadius:'var(--r-md)',
         fontSize:12, color:'var(--ink-2)', marginBottom:12, lineHeight:1.5,
       }}>
-        <strong>Las becas las elige cada estudiante al inscribirse</strong>, no son del grupo. Este selector es solo un <strong>simulador visual</strong> para ver cómo cambia el costo si un estudiante tomara la beca elegida.
+        <strong>Las becas las elige cada estudiante al inscribirse</strong>, no son del grupo. Este selector usa las becas públicas reales configuradas para <strong>{programaLabel}</strong> y sirve solo como <strong>simulador visual</strong> para estimar precios.
       </div>
       <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:10 }}>
-        La beca aplica a matrícula y cuotas. Nunca a certificados, opcionales ni cargos una-vez.
+        La beca aplica según su configuración real. Los certificados, opcionales y cargos una-vez no se descuentan salvo que la beca los incluya explícitamente.
       </div>
-      {[
-        ['none', 'Sin beca', '0%', ''],
-        ['impacta', 'Beca Impacta', '25%', 'Descuento en matrícula y cuotas'],
-        ['mujer', 'Beca Mujer', '50%', 'Descuento en matrícula y cuotas'],
-        ['custom', 'Beca personalizada', '', 'Configura nombre y porcentaje'],
-      ].map(([k,l,pct,desc]) => (
-        <label key={k} style={{
-          display:'flex', gap:12, padding:'10px 14px', borderRadius:'var(--r-md)',
-          border:`2px solid ${form.beca===k ? nivel.color : 'var(--line)'}`,
-          background: form.beca===k ? `color-mix(in srgb, ${nivel.color} 6%, white)` : 'var(--surface)',
-          cursor:'pointer', marginBottom:8, alignItems:'center',
-        }}>
-          <input type="radio" checked={form.beca===k} onChange={() => set('beca',k)} />
-          <div style={{ flex:1 }}>
-            <span style={{ fontWeight:700, fontSize:13 }}>{l}</span>
-            {pct && <span style={{ marginLeft:8, fontFamily:'var(--f-mono)', fontWeight:700, color: nivel.color }}>{pct}</span>}
-            {desc && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{desc}</div>}
-          </div>
-        </label>
-      ))}
+
+      <label style={{
+        display:'flex', gap:12, padding:'10px 14px', borderRadius:'var(--r-md)',
+        border:`2px solid ${form.beca==='none' ? nivel.color : 'var(--line)'}`,
+        background: form.beca==='none' ? `color-mix(in srgb, ${nivel.color} 6%, white)` : 'var(--surface)',
+        cursor:'pointer', marginBottom:8, alignItems:'center',
+      }}>
+        <input type="radio" checked={form.beca==='none'} onChange={() => set('beca','none')} />
+        <div style={{ flex:1 }}>
+          <span style={{ fontWeight:700, fontSize:13 }}>Sin beca</span>
+          <span style={{ marginLeft:8, fontFamily:'var(--f-mono)', fontWeight:700, color: nivel.color }}>0%</span>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Costo base sin descuento aplicado.</div>
+        </div>
+      </label>
+
+      {becasLoading && (
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginBottom:10 }}>Cargando becas configuradas…</div>
+      )}
+      {!becasLoading && !becasReales.length && (
+        <div style={{ padding:'10px 12px', border:'1px dashed var(--line)', borderRadius:'var(--r-md)', fontSize:12, color:'var(--ink-3)', marginBottom:10 }}>
+          No hay becas públicas activas para {programaLabel} en este momento. Podés usar la beca personalizada solo para simulación interna.
+        </div>
+      )}
+
+      {becasReales.map(b => {
+        const value = _becaCfgValue(b.id);
+        return (
+          <label key={b.id} style={{
+            display:'flex', gap:12, padding:'10px 14px', borderRadius:'var(--r-md)',
+            border:`2px solid ${form.beca===value ? nivel.color : 'var(--line)'}`,
+            background: form.beca===value ? `color-mix(in srgb, ${nivel.color} 6%, white)` : 'var(--surface)',
+            cursor:'pointer', marginBottom:8, alignItems:'center',
+          }}>
+            <input type="radio" checked={form.beca===value} onChange={() => set('beca', value)} />
+            <div style={{ flex:1 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <span style={{ fontWeight:700, fontSize:13 }}>{b.nombre}</span>
+                {b.pct_resumen > 0 && <span style={{ fontFamily:'var(--f-mono)', fontWeight:700, color: nivel.color }}>{b.pct_resumen}%</span>}
+              </div>
+              <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{b.descripcion || b.resumen}</div>
+              <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:4, letterSpacing:'0.02em' }}>{b.resumen}</div>
+            </div>
+          </label>
+        );
+      })}
+
+      <label style={{
+        display:'flex', gap:12, padding:'10px 14px', borderRadius:'var(--r-md)',
+        border:`2px solid ${form.beca==='custom' ? nivel.color : 'var(--line)'}`,
+        background: form.beca==='custom' ? `color-mix(in srgb, ${nivel.color} 6%, white)` : 'var(--surface)',
+        cursor:'pointer', marginBottom:8, alignItems:'center',
+      }}>
+        <input type="radio" checked={form.beca==='custom'} onChange={() => set('beca','custom')} />
+        <div style={{ flex:1 }}>
+          <span style={{ fontWeight:700, fontSize:13 }}>Beca personalizada</span>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Configurá nombre y porcentaje solo para simulación interna.</div>
+        </div>
+      </label>
+
       {form.beca==='custom' && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:8, padding:'12px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)' }}>
           <div>
@@ -1434,103 +1562,101 @@ function Step4({ form, set, errors, nivel, nCuotas, matFinal, cuotasFinal, descu
           </div>
         </div>
       )}
+
+      {selectedBeca && selectedBeca.kind !== 'none' && (
+        <div style={{ marginTop:14, padding:'12px 14px', borderRadius:'var(--r-md)', border:`1px solid ${nivel.color}`, background:`color-mix(in srgb, ${nivel.color} 7%, white)` }}>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:nivel.color }}>Simulación activa</div>
+          <div style={{ fontSize:14, fontWeight:700, marginTop:4 }}>{selectedBeca.nombre}</div>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3 }}>{selectedBeca.resumen}</div>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:6 }}>Matrícula simulada: <strong>{fmtMoney(matFinal)}</strong> · Cuotas simuladas: <strong>{fmtMoney(cuotasFinal)}</strong></div>
+        </div>
+      )}
     </div>
   );
 }
 
-function FinanceSidebar({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento }) {
-  // Recomputamos piso/techo localmente para mantener el componente autónomo.
+function FinanceSidebar({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento, selectedBeca }) {
   const nNiveles = form.niveles.length;
-  const matrPorNivel    = form.matriculaObligatoria ? form.matricula : 0;
-  const cuotasPorNivel  = form.cuota * nCuotas;
+  const matrPorNivel   = form.matriculaObligatoria ? form.matricula : 0;
+  const cuotasPorNivel = form.cuota * nCuotas;
 
-  const rubrosObligPorNivel = form.rubrosExtra
-    .filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel')
-    .reduce((s, r) => s + (r.monto || 0), 0);
-  const rubrosOpcPorNivel = form.rubrosExtra
-    .filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel')
-    .reduce((s, r) => s + (r.monto || 0), 0);
-  const subtotalOblPorNivel = matrPorNivel + cuotasPorNivel + rubrosObligPorNivel;
+  const rubrosObligPorNivelArr = form.rubrosExtra.filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel');
+  const rubrosOpcPorNivelArr   = form.rubrosExtra.filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel');
+  const rubrosUnaVezArr        = form.rubrosExtra.filter(r => (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel');
 
-  const certObligPorNivel = (niv) => form.certificadosPorNivel[niv]?.obligatorio
-    ? (form.certificadosPorNivel[niv].monto || 0) : 0;
-  const certOpcPorNivel = (niv) => form.certificadosPorNivel[niv]?.obligatorio
-    ? 0 : (form.certificadosPorNivel[niv]?.monto || 0);
-  const subtotalCertObl = form.niveles.reduce((s, n) => s + certObligPorNivel(n), 0);
-  const subtotalCertOpc = form.niveles.reduce((s, n) => s + certOpcPorNivel(n), 0);
+  const rubrosObligPorNivel = rubrosObligPorNivelArr.reduce((s, r) => s + (r.monto || 0), 0);
+  const rubrosOpcPorNivel   = rubrosOpcPorNivelArr.reduce((s, r) => s + (r.monto || 0), 0);
+  const totalUnaVezOblig    = rubrosUnaVezArr.filter(r => r.obligatorio).reduce((s, r) => s + (r.monto || 0), 0);
+  const totalUnaVezOpcional = rubrosUnaVezArr.filter(r => !r.obligatorio).reduce((s, r) => s + (r.monto || 0), 0) + (form.toeic ? form.toeicMonto : 0);
 
-  const rubrosObligUnaVez = form.rubrosExtra
-    .filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel')
-    .reduce((s, r) => s + (r.monto || 0), 0);
-  const rubrosOpcUnaVez = form.rubrosExtra
-    .filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel')
-    .reduce((s, r) => s + (r.monto || 0), 0);
-  const totalUnaVezOblig    = rubrosObligUnaVez;
-  const totalUnaVezOpcional = rubrosOpcUnaVez + (form.toeic ? form.toeicMonto : 0);
+  const nivelRows = (niv, conBeca) => {
+    const meta = NIVEL_META[niv] || NIVEL_META.b1;
+    const cert = form.certificadosPorNivel[niv] || { monto:0, obligatorio:false };
+    const mat  = conBeca ? matFinal : matrPorNivel;
+    const cuo  = conBeca ? cuotasFinal : cuotasPorNivel;
+    const rows = [];
+    if (form.matriculaObligatoria) rows.push({ label: conBeca ? `Matrícula${selectedBeca?.pct_matricula ? ` (-${selectedBeca.pct_matricula}%)` : ''}` : 'Matrícula', val: mat });
+    rows.push({ label: conBeca ? `Cuotas ×${nCuotas}${selectedBeca?.pct_cuota ? ` (-${selectedBeca.pct_cuota}%)` : ''}` : `Cuotas (×${nCuotas})`, val: cuo });
+    rubrosObligPorNivelArr.forEach(r => rows.push({ label:r.nombre, val:r.monto || 0 }));
+    if (cert.obligatorio && cert.monto) rows.push({ label:`Cert ${niv.toUpperCase()}`, val: cert.monto || 0 });
+    const total = rows.reduce((s, r) => s + (Number(r.val) || 0), 0);
+    return { meta, rows, total, certOpcional: !cert.obligatorio && (cert.monto || 0) ? cert.monto : 0 };
+  };
 
-  const pisoPrograma  = subtotalOblPorNivel * nNiveles + subtotalCertObl + totalUnaVezOblig;
-  const techoPrograma = (subtotalOblPorNivel + rubrosOpcPorNivel) * nNiveles
-                      + subtotalCertObl + subtotalCertOpc
-                      + totalUnaVezOblig + totalUnaVezOpcional;
-  const baseConBeca   = (matrPorNivel + cuotasPorNivel) * (1 - descuento);
-  const pisoConBeca   = (baseConBeca + rubrosObligPorNivel) * nNiveles
-                      + subtotalCertObl + totalUnaVezOblig;
-  const techoConBeca  = (baseConBeca + rubrosObligPorNivel + rubrosOpcPorNivel) * nNiveles
-                      + subtotalCertObl + subtotalCertOpc
-                      + totalUnaVezOblig + totalUnaVezOpcional;
+  const nivelesBase = form.niveles.map(niv => nivelRows(niv, false));
+  const nivelesBeca = form.niveles.map(niv => nivelRows(niv, true));
+  const totalBasePrograma = nivelesBase.reduce((s, n) => s + n.total, 0) + totalUnaVezOblig;
+  const totalBecaPrograma = nivelesBeca.reduce((s, n) => s + n.total, 0) + totalUnaVezOblig;
+  const totalOpcionalesPrograma = rubrosOpcPorNivel * nNiveles + totalUnaVezOpcional + form.niveles.reduce((s, niv) => {
+    const c = form.certificadosPorNivel[niv];
+    return s + ((!c?.obligatorio && c?.monto) ? c.monto : 0);
+  }, 0);
 
-  const becaLabel = form.beca==='none' ? null
-                  : form.beca==='impacta' ? 'Beca Impacta (-25%)'
-                  : form.beca==='mujer'   ? 'Beca Mujer (-50%)'
-                  : `${form.becaCustomNombre || 'Beca personalizada'} (-${form.becaCustomPct}%)`;
-
-  const rubrosOblPorNivelArr = form.rubrosExtra.filter(r => r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel');
-  const rubrosOpcPorNivelArr = form.rubrosExtra.filter(r => !r.obligatorio && (r.tipo_aplicacion || 'por_nivel') === 'por_nivel');
-  const rubrosUnaVezArr      = form.rubrosExtra.filter(r => (r.tipo_aplicacion || 'por_nivel') !== 'por_nivel');
-
-  const hayOpcPorNivel = rubrosOpcPorNivel > 0 || subtotalCertOpc > 0;
-  const hayUnaVez      = totalUnaVezOblig > 0 || totalUnaVezOpcional > 0;
-
-  const SubHeader = ({ children, color }) => (
-    <div style={{
-      fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase',
-      color: color || 'var(--ink-3)', marginTop:14, marginBottom:6,
-    }}>{children}</div>
-  );
+  const cardStyle = {
+    background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'12px 12px', marginBottom:10,
+  };
 
   return (
     <div style={{ borderLeft:'1px solid var(--line)', padding:'24px 18px', background:'var(--surface-2)', overflowY:'auto' }}>
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>
         Resumen financiero
       </div>
+      <div style={{ fontSize:12, color:'var(--ink-2)', marginBottom:14 }}>
+        Vista por <strong>niveles seleccionados</strong> y, abajo, simulación del mismo costo <strong>con beca aplicada</strong>.
+      </div>
 
-      <SubHeader>Obligatorio por nivel</SubHeader>
-      <FinRow label="Matrícula" val={fmtMoney(matrPorNivel)} muted={!form.matriculaObligatoria} />
-      <FinRow label={`Cuotas (×${nCuotas})`} val={fmtMoney(cuotasPorNivel)} />
-      {rubrosOblPorNivelArr.map(r => <FinRow key={r.id} label={r.nombre} val={fmtMoney(r.monto)} />)}
-      {form.niveles.map(niv => {
-        const c = form.certificadosPorNivel[niv];
-        if (!c?.obligatorio || !c.monto) return null;
-        return <FinRow key={`co-${niv}`} label={`Cert ${niv.toUpperCase()}`} val={fmtMoney(c.monto)} />;
-      })}
-      <div style={{ borderTop:'1px solid var(--line)', margin:'8px 0' }} />
-      <FinRow label="Subtotal obligatorio / nivel" val={fmtMoney(subtotalOblPorNivel)} bold />
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:8 }}>
+        Niveles seleccionados · costo base
+      </div>
+      {nivelesBase.map(({ meta, rows, total }) => (
+        <div key={`base-${meta.nombre}`} style={{ ...cardStyle, borderLeft:`4px solid ${meta.color}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, gap:8 }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{meta.nombre}</div>
+              <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{meta.emoji} {meta === NIVEL_META[form.niveles[0]] ? 'Nivel base' : 'Nivel seleccionado'}</div>
+            </div>
+            <div style={{ fontFamily:'var(--f-mono)', fontWeight:700, color:meta.color }}>{fmtMoney(total)}</div>
+          </div>
+          {rows.map((r, idx) => <FinRow key={`${meta.nombre}-${idx}`} label={r.label} val={fmtMoney(r.val)} />)}
+          <div style={{ borderTop:'1px solid var(--line)', margin:'8px 0 0' }} />
+          <FinRow label="Total del nivel" val={fmtMoney(total)} bold />
+        </div>
+      ))}
 
-      {hayOpcPorNivel && (
-        <>
-          <SubHeader>Opcional por nivel</SubHeader>
-          {form.niveles.map(niv => {
-            const c = form.certificadosPorNivel[niv];
-            if (!c || c.obligatorio || !c.monto) return null;
-            return <FinRow key={`copt-${niv}`} label={`Cert ${niv.toUpperCase()}`} val={fmtMoney(c.monto)} muted />;
-          })}
-          {rubrosOpcPorNivelArr.map(r => <FinRow key={r.id} label={r.nombre} val={fmtMoney(r.monto)} muted />)}
-        </>
-      )}
+      <div style={{ ...cardStyle, background:'color-mix(in srgb, var(--an-navy) 3%, white)' }}>
+        <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-navy)', marginBottom:6 }}>
+          Programa sin beca
+        </div>
+        <FinRow label="Total obligatorio" val={fmtMoney(totalBasePrograma)} bold />
+        <FinRow label="Opcionales / extras" val={fmtMoney(totalOpcionalesPrograma)} muted />
+        <FinRow label="Techo con opcionales" val={fmtMoney(totalBasePrograma + totalOpcionalesPrograma)} bold muted />
+      </div>
 
-      {hayUnaVez && (
-        <>
-          <SubHeader>Una vez en el programa</SubHeader>
+      {!!(totalUnaVezOblig || totalUnaVezOpcional) && (
+        <div style={{ ...cardStyle }}>
+          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>
+            Una vez en el programa
+          </div>
           {rubrosUnaVezArr.map(r => (
             <FinRow key={r.id}
               label={`${r.nombre} ${r.tipo_aplicacion === 'una_vez_inicio' ? '(inicio)' : '(final)'}`}
@@ -1538,40 +1664,36 @@ function FinanceSidebar({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNive
               muted={!r.obligatorio} />
           ))}
           {form.toeic && <FinRow label="TOEIC (final)" val={fmtMoney(form.toeicMonto)} muted />}
-        </>
+        </div>
       )}
 
-      <div style={{ borderTop:'2px solid var(--line)', margin:'16px 0 8px' }} />
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color: nivel.color, marginBottom:6 }}>
-        Programa ({nNiveles} {nNiveles === 1 ? 'nivel' : 'niveles'})
-      </div>
-      <FinRow label="Piso (solo obligatorios)" val={fmtMoney(pisoPrograma)} bold />
-      <FinRow label="Techo (con opcionales)" val={fmtMoney(techoPrograma)} bold muted />
-
-      {becaLabel && descuento > 0 && (
-        <>
-          <div style={{ borderTop:'2px solid var(--ok)', margin:'16px 0 8px' }} />
-          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ok)', marginBottom:6 }}>
-            Simulador · {becaLabel}
+      {selectedBeca && selectedBeca.kind !== 'none' && (selectedBeca.pct_matricula > 0 || selectedBeca.pct_cuota > 0) && (
+        <div style={{ marginTop:16, padding:'12px 12px', borderRadius:'var(--r-lg)', background:'color-mix(in srgb, #2B7FC1 6%, white)', border:'1px solid color-mix(in srgb, #2B7FC1 30%, transparent)' }}>
+          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#2B7FC1', marginBottom:8 }}>
+            Con beca aplicada · {selectedBeca.nombre}
           </div>
-          <FinRow label="Piso con beca"  val={fmtMoney(pisoConBeca)}  bold green />
-          <FinRow label="Techo con beca" val={fmtMoney(techoConBeca)} bold green muted />
-          <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:8, fontStyle:'italic', lineHeight:1.4 }}>
-            La beca aplica a matrícula y cuotas. No aplica a opcionales, certificados ni cargos una-vez.
+          <div style={{ fontSize:11, color:'var(--ink-2)', marginBottom:10 }}>{selectedBeca.resumen}</div>
+          {nivelesBeca.map(({ meta, rows, total }) => (
+            <div key={`beca-${meta.nombre}`} style={{ ...cardStyle, background:'rgba(255,255,255,0.82)', borderLeft:`4px solid ${meta.color}` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, gap:8 }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{meta.nombre}</div>
+                  <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Mismo nivel con descuento</div>
+                </div>
+                <div style={{ fontFamily:'var(--f-mono)', fontWeight:700, color:'#2B7FC1' }}>{fmtMoney(total)}</div>
+              </div>
+              {rows.map((r, idx) => <FinRow key={`${meta.nombre}-d-${idx}`} label={r.label} val={fmtMoney(r.val)} green />)}
+              <div style={{ borderTop:'1px solid var(--line)', margin:'8px 0 0' }} />
+              <FinRow label="Total del nivel con beca" val={fmtMoney(total)} bold green />
+            </div>
+          ))}
+          <div style={{ ...cardStyle, background:'rgba(255,255,255,0.78)', marginBottom:0 }}>
+            <FinRow label="Total obligatorio con beca" val={fmtMoney(totalBecaPrograma)} bold green />
+            <FinRow label="Opcionales / extras (sin cambio)" val={fmtMoney(totalOpcionalesPrograma)} muted />
+            <FinRow label="Techo con beca + opcionales" val={fmtMoney(totalBecaPrograma + totalOpcionalesPrograma)} bold green muted />
           </div>
-        </>
+        </div>
       )}
-
-      <div style={{ marginTop:18, padding:'10px 12px', background:'var(--surface)', borderRadius:'var(--r-md)', border:'1px solid var(--line)' }}>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color: nivel.color, letterSpacing:'-0.02em', lineHeight:1.1 }}>
-          {fmtMoney(pisoPrograma)}
-          <span style={{ fontSize:14, color:'var(--ink-3)', fontWeight:400 }}> — </span>
-          {fmtMoney(techoPrograma)}
-        </div>
-        <div style={{ fontSize:10, color:'var(--ink-3)', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginTop:2 }}>
-          Rango total del programa
-        </div>
-      </div>
     </div>
   );
 }
@@ -1867,10 +1989,10 @@ const SYLLABUS_BASICO_I_DATA = {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 6 — Resumen y confirmación
 // ─────────────────────────────────────────────────────────────────────────
-function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento, onConfirm, grupos, docentesActivos }) {
+function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalPrograma, descuento, onConfirm, grupos, docentesActivos, selectedBeca }) {
   const docente = (docentesActivos||[]).find(d => d.id === form.docente);
   const { code } = generarCodigoGrupo(form, grupos);
-  const becaLabel = form.beca==='none' ? 'Sin beca' : form.beca==='impacta' ? 'Beca Impacta 25%' : form.beca==='mujer' ? 'Beca Mujer 50%' : `${form.becaCustomNombre} ${form.becaCustomPct}%`;
+  const becaLabel = selectedBeca?.kind === 'none' ? 'Sin beca' : `${selectedBeca?.nombre || 'Beca'} ${selectedBeca?.pct_resumen ? `${selectedBeca.pct_resumen}%` : ''}`.trim();
   const cr = form.cronograma;
 
   return (
