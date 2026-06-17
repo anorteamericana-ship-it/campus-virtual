@@ -629,3 +629,47 @@ input[readonly] { background: var(--ins-bg); color: var(--ins-ink-2); cursor: de
   background: none; border: none; padding: 0; font: inherit; cursor: pointer;
   color: inherit; font-weight: 700; text-decoration: underline;
 }
+
+
+/* CALGRUPO_F53_20260617_INSCRIPCION_HORARIO_COMERCIAL_ICAN */
+.gh-dias-main {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.16;
+  color: #0b1f3a;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+}
+.gh-hora-main {
+  margin-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #0b1f3a;
+}
+.gh-hora-main span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ins-ink-2);
+}
+.gh-hora-main strong {
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  color: #0b1f3a;
+}
+.gh-ican {
+  margin-top: 7px;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: #eef8f0;
+  color: #1f6b34;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+}

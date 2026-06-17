@@ -405,8 +405,10 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     // ✱ Si el nivel está bloqueado para el estudiante: NO llamar getLeccionDetalle
     if (nivelBloqueado) { setDetalle(null); return; }
     setCargandoDet(true);
-    const id = idLeccion(nivel, selLec.leccion);
-    postCronoGrupo('getLeccionDetalle', { id_leccion: id })
+    // CALGRUPO_F53_20260617_CRONOGRAMA_DETALLE_ROUTER_FIX
+    const riel = selLec.tipo === 'ICAN' ? 'ican' : 'curso';
+    const id = riel === 'curso' ? idLeccion(nivel, selLec.leccion) : '';
+    postCronoGrupo('getLeccionDetalle', { id_leccion: id, nivel, leccion: selLec.leccion, riel })
       .then(d => {
         if (d?.ok && d.leccion) setDetalle(d.leccion);
         else setDetalle(null);
@@ -2558,6 +2560,7 @@ function ModalCobertura({ selLec, codGrupo, nivel, docenteTitular, adminNombre, 
   const handleAsignar = async () => {
     if (!docSel) { setErr('Seleccioná un docente.'); return; }
     setEnviando(true); setErr(null);
+    // CALGRUPO_F53_20260617_CRONOGRAMA_DETALLE_ROUTER_FIX
     const riel = selLec.tipo === 'ICAN' ? 'ican' : 'curso';
     const payload = {
       cod_grupo: codGrupo,

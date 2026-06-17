@@ -236,6 +236,111 @@ function formatRango12(ini, fin) {
   return [formatHora12(ini), formatHora12(fin)].filter(Boolean).join('–');
 }
 
+// CALGRUPO_F53_20260617_INSCRIPCION_HORARIO_COMERCIAL_ICAN
+// Las celdas de hora en Sheets pueden viajar como Date 1899. Nunca mostramos
+// ese Date.toString() crudo; preferimos hora_label/horario y, si hace falta,
+// deducimos del código del grupo.
+function esFechaFantasmaHora(v) {
+  const s = String(v || '').trim();
+  return /1899|GMT|hora est[aá]ndar|standard/i.test(s);
+}
+function limpiarAmpmIns(s) {
+  return String(s || '')
+    .replace(/\s*a\.\s*m\.?/ig, 'am')
+    .replace(/\s*p\.\s*m\.?/ig, 'pm')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function compactarHoraComercial(h) {
+  if (!h || esFechaFantasmaHora(h)) return '';
+  let s = limpiarAmpmIns(h).toLowerCase();
+  let m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  if (m) {
+    const hh = Number(m[1]);
+    const mm = m[2] || '00';
+    const ap = m[3].toLowerCase();
+    return mm === '00' ? `${hh}${ap}` : `${hh}:${mm}${ap}`;
+  }
+  m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m) {
+    let hh = Number(m[1]);
+    const mm = m[2];
+    const ap = hh >= 12 ? 'pm' : 'am';
+    hh = hh % 12 || 12;
+    return mm === '00' ? `${hh}${ap}` : `${hh}:${mm}${ap}`;
+  }
+  return '';
+}
+function rangoDesdeTextoHorario(raw) {
+  if (!raw || esFechaFantasmaHora(raw)) return '';
+  const s = limpiarAmpmIns(raw).toLowerCase();
+  const re = /(\d{1,2}(?::\d{2})?\s*(?:am|pm)|\d{1,2}:\d{2}(?::\d{2})?)/ig;
+  const parts = s.match(re) || [];
+  if (parts.length >= 2) {
+    const a = compactarHoraComercial(parts[0]);
+    const b = compactarHoraComercial(parts[1]);
+    if (a && b) return `${a}–${b}`;
+  }
+  return '';
+}
+function horarioComercialGrupo(g) {
+  // 1) Primero usar etiquetas ya legibles del backend.
+  const labels = [g.hora_label, g.horario_label, g.hora, g.horario, g.schedule];
+  for (const v of labels) {
+    const r = rangoDesdeTextoHorario(v);
+    if (r) return r;
+  }
+  // 2) Luego intentar HORA_INICIO/HORA_FIN normalizadas.
+  const ini = g.hora_inicio || g.hora_ini || g.horaInicio || '';
+  const fin = g.hora_fin || g.horaFin || '';
+  const a = compactarHoraComercial(ini);
+  const b = compactarHoraComercial(fin);
+  if (a && b) return `${a}–${b}`;
+  // 3) Fallback desde el código del grupo: LM18/KJ18/LJ18 → 6pm–9pm; SA94 → 9am–4pm.
+  const code = String(G.cod(g) || '').toUpperCase();
+  const seg = code.split('-')[1] || '';
+  if (/18/.test(seg) || /6A?9/.test(seg)) return '6pm–9pm';
+  if (/94|9A?4/.test(seg)) return '9am–4pm';
+  if (/13/.test(seg) || /1A?4/.test(seg)) return '1pm–4pm';
+  return '';
+}
+function horario24Ins(ini, fin, raw) {
+  const label = raw ? rangoDesdeTextoHorario(raw) : '';
+  if (label) {
+    // Para Club iCan la dirección pidió 18:00 a 20:00, no 6pm–8pm.
+    const m = String(raw).match(/(\d{1,2}:\d{2}).*?(\d{1,2}:\d{2})/);
+    if (m) return `${m[1]} a ${m[2]}`;
+  }
+  const norm = (v) => {
+    if (!v || esFechaFantasmaHora(v)) return '';
+    const m = String(v).match(/(\d{1,2}):(\d{2})/);
+    if (m) return `${String(Number(m[1])).padStart(2,'0')}:${m[2]}`;
+    return '';
+  };
+  const a = norm(ini), b = norm(fin);
+  return a && b ? `${a} a ${b}` : '';
+}
+function decodeDiasInscripcion(cod) {
+  const txt = decodeDiasLargo(cod)
+    .replace(/\s*\/\s*/g, ' y ')
+    .replace(/Miércoles/ig, 'MIÉRCOLES')
+    .replace(/Sábado/ig, 'SÁBADO')
+    .toUpperCase();
+  return txt;
+}
+function clubIcanTexto(g) {
+  const aplicaRaw = g.ican_aplica ?? g.club_ican_aplica ?? g.aplica_ican ?? g.ican ?? g.club_ican;
+  const diasRaw = g.ican_dias || g.club_ican_dias || g.dias_ican || g.dia_ican || '';
+  const horaRaw = g.ican_horario || g.club_ican_horario || g.horario_ican || g.hora_ican || '';
+  const hi = g.ican_hora_inicio || g.club_ican_hora_inicio || g.hora_inicio_ican || '';
+  const hf = g.ican_hora_fin || g.club_ican_hora_fin || g.hora_fin_ican || '';
+  const aplica = String(aplicaRaw || '').toUpperCase();
+  if (!diasRaw && !horaRaw && !hi && !hf && !['SI','SÍ','TRUE','1','YES'].includes(aplica)) return '';
+  const dias = decodeDiasLargo(diasRaw || 'V').replace(/\s*\/\s*/g, ' y ');
+  const hora = horario24Ins(hi, hf, horaRaw) || horario24Ins('18:00', '20:00', '');
+  return `Club iCan ${dias}${hora ? ` ${hora}` : ''}`;
+}
+
 // Días con nombre COMPLETO separados por " / " → "Lunes / Miércoles", "Martes / Jueves".
 // Caso especial: "LJ" (Super Intensivo, lunes a jueves seguidos) → "Lunes a Jueves".
 // Recibe el código limpio de días (lo que devuelve diasDeGrupo).
@@ -461,10 +566,13 @@ const G = {
   horas: (g) => {
     const ini = g.hora_inicio || g.hora_ini || g.horaInicio || '';
     const fin = g.hora_fin || g.horaFin || '';
-    if (ini || fin) return { ini, fin };
-    const raw = g.hora || g.horario || '';
-    const parts = String(raw).split(/[-–]/).map((s) => s.trim());
-    return { ini: parts[0] || '', fin: parts[1] || '' };
+    if ((ini || fin) && !esFechaFantasmaHora(ini) && !esFechaFantasmaHora(fin)) return { ini, fin };
+    const raw = g.hora_label || g.horario_label || g.hora || g.horario || '';
+    if (raw && !esFechaFantasmaHora(raw)) {
+      const parts = String(raw).split(/\s+a\s+|[-–]/i).map((s) => s.trim()).filter(Boolean);
+      return { ini: parts[0] || '', fin: parts[1] || '' };
+    }
+    return { ini: '', fin: '' };
   }
 };
 
@@ -760,20 +868,12 @@ function CupoBadge({ g }) {
 
 function GrupoCard({ g, selected, onSelect }) {
   const nivel = NIVEL_LABEL[G.nivel(g)] || { nombre: G.nivel(g) || 'Nivel', color: '#2B7FC1', emoji: '📘' };
-  const { ini, fin } = G.horas(g);
-  // Formato EXACTO pedido por dirección (6 líneas, en este orden):
-  //   1) Nivel largo            → "Básico I"
-  //   2) Período largo          → "Cuatrimestre 3 — Septiembre a Diciembre 2026"
-  //   3) Días con nombre largo  → "Lunes / Miércoles"
-  //   4) Hora                   → "6:00pm a 9:00pm"
-  //   5) 🗓 Inicia + fecha      → "🗓 Inicia 14-sep-2026"
-  //   6) Cupo                   → "5 cupos disponibles"
-  const periodoTxt = buildPeriodoLargo(g);                             // "Cuatrimestre 3 — Septiembre a Diciembre 2026"
-  const diasTxt = decodeDiasLargo(diasDeGrupo(g));                     // "Lunes / Miércoles" (días tomados del código)
-  const horaTxt = (ini || fin)                                        // "6:00pm a 9:00pm" (am/pm minúsculas, separador " a ")
-    ? [formatHora12(ini), formatHora12(fin)].filter(Boolean).join(' a ')
-    : '';
-  const fechaTxt = G.fecha(g) ? formatFechaInicio(G.fecha(g)) : '';    // "14-sep-2026"
+  // Formato comercial pedido para inscripción:
+  //   DÍAS en mayúscula + Hora grande "6pm–9pm" + Club iCan si aplica.
+  const periodoTxt = buildPeriodoLargo(g);
+  const diasTxt = decodeDiasInscripcion(diasDeGrupo(g));
+  const horaTxt = horarioComercialGrupo(g);
+  const icanTxt = clubIcanTexto(g);
 
   return (
     <div
@@ -789,13 +889,15 @@ function GrupoCard({ g, selected, onSelect }) {
 
       {periodoTxt && <div className="gh-periodo">{periodoTxt}</div>}
 
-      {diasTxt && <div className="gh-dias">{diasTxt}</div>}
+      {diasTxt && <div className="gh-dias gh-dias-main">{diasTxt}</div>}
 
-      {horaTxt && <div className="gh-hora">{horaTxt}</div>}
+      {horaTxt && (
+        <div className="gh-hora gh-hora-main">
+          <span>Hora</span> <strong>{horaTxt}</strong>
+        </div>
+      )}
 
-      <div className="gcard-meta">
-        {fechaTxt && <div className="gm-row">🗓 Inicia {fechaTxt}</div>}
-      </div>
+      {icanTxt && <div className="gh-ican">{icanTxt}</div>}
 
       <div className="gcard-foot"><CupoBadge g={g} /></div>
     </div>);
