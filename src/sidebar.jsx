@@ -399,6 +399,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'supervision', label: 'Supervisión', icon: 'bell' },
+    // CALGRUPO_F1_20260616_PANEL_NUEVO: panel fusionado calendario + grupo + estudiantes.
+    { id: 'calendario_grupo', label: 'Calendario de Grupo', icon: 'calendar' },
     { id: 'auditoria_academica', label: 'Auditoría Académica', icon: 'grades' },
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },

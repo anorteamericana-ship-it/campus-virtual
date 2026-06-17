@@ -445,6 +445,7 @@ function App() {
       matriculas:    <MatriculasView onNavigate={navigateTo} />,
       dashboard:    <AdminDashboard setActive={setActive} />,
       supervision:  <PanelAdminSupervision />,
+      calendario_grupo: <CalendarioGrupoOperativo rol={rolReal} onNavigate={navigateTo} />,
       auditoria_academica: <AuditoriaAcademicaView />,
       examenes:    <ExamenesAdminPanel />,
       suspensiones: <PanelSuspensiones />,
