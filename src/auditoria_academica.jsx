@@ -1,6 +1,6 @@
 /* global React, PageHeader, LoadingState, ErrorState, EmptyState */
 // CALGRUPO_F4_20260616_AUDITORIA_ACADEMICA_CONTEXTUAL
-// CALGRUPO_F8_20260617_AUDITORIA_INTELIGENTE_VISUAL
+// CALGRUPO_F34_20260617_AUDITORIA_CIERRE_ACADEMICO_CONECTADO
 // ─────────────────────────────────────────────────────────────────────────
 // AUDITORÍA ACADÉMICA (solo lectura) — auditoria_academica.jsx
 // Vista admin/superadmin para supervisar, por grupo + nivel, el estado
@@ -891,6 +891,246 @@ function aaDescargarCSV(contenido, nombre) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+
+
+// ── F34 · Diagnóstico de cierre académico dentro de Auditoría ───────────────
+// Usa el endpoint seguro F30: getCierreAcademicoNivelPreview.
+// Solo lectura desde auditoría: no ejecuta cierre ni modifica ESTATUS.
+function aaDecisionCierreChip(decision) {
+  switch (String(decision || '').toLowerCase()) {
+    case 'apr':        return { label: 'APR listo', bg: '#E2F1E5', fg: '#1B5E20' };
+    case 'rep':        return { label: 'REP listo', bg: '#FCE6E4', fg: 'var(--danger)' };
+    case 'incompleto': return { label: 'Incompleto', bg: '#FFF3D6', fg: '#7A5400' };
+    case 'ya_cerrado': return { label: 'Ya cerrado', bg: 'var(--bg-deep)', fg: 'var(--ink-2)' };
+    default:           return { label: 'Sin acción', bg: 'var(--surface-2)', fg: 'var(--ink-3)' };
+  }
+}
+function aaCierreCsv(preview) {
+  const r = preview || {};
+  const lines = [];
+  lines.push('CIERRE ACADÉMICO · VISTA PREVIA');
+  lines.push(aaCsvRow(['Grupo', r.grupo || '', 'Nivel', r.nivel || '', 'Generado', new Date().toISOString()]));
+  lines.push('');
+  lines.push(aaCsvRow(['Código','Cédula','Nombre','Estatus actual','Nota final','Decisión','Faltantes','Componentes']));
+  (r.detalle || []).forEach(e => {
+    const comps = e.componentes
+      ? Object.keys(e.componentes).map(k => `${k}:${e.componentes[k]}`).join(' | ')
+      : '';
+    lines.push(aaCsvRow([
+      e.codigo || '', e.cedula || '', e.nombre || '', e.estatus || '',
+      e.nota_total != null ? e.nota_total : '', e.decision_label || e.decision || '',
+      (e.faltantes || []).join(' | '), comps,
+    ]));
+  });
+  return lines.join('\r\n');
+}
+function AACierreAcademicoAuditoriaPanel({ grupo, nivel, auditoriaData, onBuscarEstudiante, onVerAlertas, onNavigate }) {
+  const [loading, setLoading] = React.useState(false);
+  const [preview, setPreview] = React.useState(null);
+  const [error, setError] = React.useState('');
+
+  const cargar = React.useCallback(async () => {
+    if (!grupo || !nivel) return;
+    setLoading(true); setError('');
+    try {
+      const d = await postAuditoria('getCierreAcademicoNivelPreview', { cod_grupo: grupo, grupo, nivel });
+      if (d && d.ok) setPreview(d);
+      else { setPreview(null); setError((d && (d.mensaje || d.error)) || 'No se pudo cargar el diagnóstico de cierre.'); }
+    } catch (_) {
+      setPreview(null); setError('No se pudo conectar con el diagnóstico de cierre.');
+    } finally {
+      setLoading(false);
+    }
+  }, [grupo, nivel]);
+
+  React.useEffect(() => {
+    setPreview(null); setError('');
+    if (grupo && nivel) cargar();
+  }, [grupo, nivel, cargar]);
+
+  const resumen = preview && preview.resumen ? preview.resumen : {};
+  const detalle = preview && Array.isArray(preview.detalle) ? preview.detalle : [];
+  const listos = (resumen.listo_apr || 0) + (resumen.listo_rep || 0);
+  const incompletos = detalle.filter(e => e.decision === 'incompleto');
+  const yaCerrados = detalle.filter(e => e.decision === 'ya_cerrado');
+  const sinAccion = detalle.filter(e => e.decision === 'sin_accion');
+  const accionables = detalle.filter(e => e.decision === 'apr' || e.decision === 'rep');
+
+  const faltantesMap = React.useMemo(() => {
+    const m = {};
+    incompletos.forEach(e => (e.faltantes || []).forEach(f => { m[f] = (m[f] || 0) + 1; }));
+    return Object.keys(m).sort((a, b) => m[b] - m[a]).map(k => ({ nombre: k, total: m[k] }));
+  }, [incompletos]);
+
+  const cierreEstado = !preview ? { label: 'Sin diagnóstico', color: 'var(--ink-3)', bg: 'var(--surface-2)', pct: 0 }
+    : !detalle.length ? { label: 'Sin estudiantes', color: 'var(--ink-3)', bg: 'var(--surface-2)', pct: 0 }
+    : incompletos.length ? { label: 'No cerrar todavía', color: 'var(--danger)', bg: '#FCE6E4', pct: Math.max(0, Math.round(((detalle.length - incompletos.length) / detalle.length) * 100)) }
+    : listos > 0 ? { label: 'Listo para cierre seguro', color: '#1B5E20', bg: '#E2F1E5', pct: 100 }
+    : { label: 'Sin acción pendiente', color: 'var(--ink-2)', bg: 'var(--bg-deep)', pct: 100 };
+
+  const copiarResumen = async () => {
+    if (!preview) return;
+    const txt = [
+      `CIERRE ACADÉMICO · ${grupo} · ${nivel}`,
+      `Estado: ${cierreEstado.label}`,
+      `Total: ${resumen.total || 0}`,
+      `Listos APR: ${resumen.listo_apr || 0}`,
+      `Listos REP: ${resumen.listo_rep || 0}`,
+      `Incompletos: ${resumen.incompletos || 0}`,
+      `Ya cerrados: ${resumen.ya_cerrados || 0}`,
+      `Sin acción: ${resumen.sin_accion || 0}`,
+      faltantesMap.length ? `Faltantes: ${faltantesMap.map(f => `${f.nombre} (${f.total})`).join(', ')}` : 'Faltantes: ninguno',
+    ].join('\n');
+    try { await navigator.clipboard.writeText(txt); }
+    catch (_) {
+      const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    }
+  };
+
+  const exportar = () => {
+    if (!preview) return;
+    const nombre = `preview_cierre_${grupo || 'grupo'}_${nivel || ''}_${new Date().toISOString().slice(0,10)}.csv`;
+    aaDescargarCSV(aaCierreCsv(preview), nombre);
+  };
+
+  const primerIncompleto = incompletos[0];
+  const primerasAcciones = [];
+  if (incompletos.length) primerasAcciones.push(`Completar ${incompletos.length} estudiante(s) con notas faltantes.`);
+  if ((resumen.listo_apr || 0) > 0) primerasAcciones.push(`Preparar aprobación APR para ${resumen.listo_apr} estudiante(s).`);
+  if ((resumen.listo_rep || 0) > 0) primerasAcciones.push(`Revisar REP para ${resumen.listo_rep} estudiante(s) antes de confirmar.`);
+  if (!incompletos.length && listos > 0) primerasAcciones.push('El grupo/nivel puede pasar a Cierre Académico Seguro desde Estudiantes del grupo.');
+  if (!primerasAcciones.length) primerasAcciones.push('No hay acción de cierre pendiente para este nivel.');
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 20, border: `1.5px solid ${incompletos.length ? '#F1C9C4' : 'var(--line)'}` }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div>
+          <div style={{ ...aaLabelStyle, color: 'var(--an-navy)' }}>Cierre académico seguro</div>
+          <h2 style={{ ...aaH2Style, marginBottom: 4 }}>Diagnóstico de cierre del nivel</h2>
+          <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+            Solo lectura desde Auditoría. La ejecución real se confirma en Estudiantes del grupo.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <AAChip bg={cierreEstado.bg} fg={cierreEstado.color}>{cierreEstado.label}</AAChip>
+          <button className="btn btn-ghost" style={{ padding: '7px 11px', fontSize: 11 }} onClick={cargar} disabled={loading}>
+            {loading ? 'Actualizando…' : 'Actualizar'}
+          </button>
+          {preview && <button className="btn btn-ghost" style={{ padding: '7px 11px', fontSize: 11 }} onClick={copiarResumen}>Copiar resumen</button>}
+          {preview && <button className="btn btn-navy" style={{ padding: '7px 11px', fontSize: 11 }} onClick={exportar}>Exportar preview</button>}
+        </div>
+      </div>
+
+      {error ? (
+        <div style={{ padding: '10px 12px', borderRadius: 'var(--r-sm)', background: '#FCE6E4', color: 'var(--danger)', fontSize: 12, fontWeight: 700 }}>
+          ⚠ {error}
+        </div>
+      ) : loading && !preview ? (
+        <div style={{ padding: 18, fontSize: 13, color: 'var(--ink-3)' }}>Cargando diagnóstico de cierre…</div>
+      ) : preview ? (
+        <React.Fragment>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
+            <AAResumenCard label="Listos APR" valor={resumen.listo_apr || 0} tone={(resumen.listo_apr || 0) ? 'ok' : undefined} />
+            <AAResumenCard label="Listos REP" valor={resumen.listo_rep || 0} tone={(resumen.listo_rep || 0) ? 'alert' : undefined} />
+            <AAResumenCard label="Incompletos" valor={resumen.incompletos || 0} tone={(resumen.incompletos || 0) ? 'alert' : 'ok'} />
+            <AAResumenCard label="Ya cerrados" valor={resumen.ya_cerrados || 0} />
+            <AAResumenCard label="Sin acción" valor={resumen.sin_accion || 0} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.1fr) minmax(260px, 1.4fr)', gap: 14, alignItems: 'stretch' }}>
+            <div style={{ padding: 14, borderRadius: 'var(--r-md)', background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
+              <div style={aaLabelStyle}>Semáforo de cierre</div>
+              <div style={{ height: 8, borderRadius: 999, background: 'var(--bg-deep)', overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ width: `${cierreEstado.pct}%`, height: '100%', background: cierreEstado.color, transition: 'width .2s ease' }} />
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.45 }}>
+                {incompletos.length
+                  ? 'El nivel todavía tiene componentes pendientes. No conviene ejecutar cierre hasta corregirlos.'
+                  : listos > 0
+                    ? 'El nivel tiene estudiantes accionables. La ejecución debe hacerse desde el panel de Estudiantes con confirmación.'
+                    : 'No se detectan estudiantes accionables para cierre en este momento.'}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                {primerIncompleto && (
+                  <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 11 }}
+                    onClick={() => onBuscarEstudiante && onBuscarEstudiante(primerIncompleto.nombre || primerIncompleto.codigo)}>
+                    Ver primer incompleto
+                  </button>
+                )}
+                {onVerAlertas && (
+                  <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 11 }} onClick={onVerAlertas}>
+                    Ver alertas académicas
+                  </button>
+                )}
+                {onNavigate && (
+                  <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: 11 }} onClick={() => onNavigate('calendario_grupo')}>
+                    Ir a centro operativo
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={{ padding: 14, borderRadius: 'var(--r-md)', background: 'var(--surface)', border: '1px solid var(--line)' }}>
+              <div style={aaLabelStyle}>Acciones recomendadas</div>
+              <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.55 }}>
+                {primerasAcciones.map((x, i) => <li key={i}>{x}</li>)}
+              </ul>
+              {faltantesMap.length > 0 && (
+                <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {faltantesMap.slice(0, 8).map(f => (
+                    <AAChip key={f.nombre} bg="#FFF3D6" fg="#7A5400">{f.nombre}: {f.total}</AAChip>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {detalle.length > 0 && (
+            <div style={{ marginTop: 14, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ color: 'var(--ink-3)', textAlign: 'left' }}>
+                    <th style={{ padding: '0 10px' }}>Estudiante</th>
+                    <th style={{ padding: '0 10px' }}>Estatus</th>
+                    <th style={{ padding: '0 10px' }}>Nota</th>
+                    <th style={{ padding: '0 10px' }}>Decisión</th>
+                    <th style={{ padding: '0 10px' }}>Faltantes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalle.slice(0, 8).map(e => {
+                    const chip = aaDecisionCierreChip(e.decision);
+                    return (
+                      <tr key={e.codigo} style={{ background: 'var(--surface-2)' }}>
+                        <td style={{ padding: '9px 10px', borderRadius: '8px 0 0 8px' }}>
+                          <button type="button" onClick={() => onBuscarEstudiante && onBuscarEstudiante(e.nombre || e.codigo)}
+                            style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--an-navy)', fontWeight: 800, cursor: 'pointer', textAlign: 'left' }}>
+                            {e.nombre || e.codigo}
+                          </button>
+                          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: 'var(--f-mono)' }}>{e.codigo}</div>
+                        </td>
+                        <td style={{ padding: '9px 10px' }}>{e.estatus || '—'}</td>
+                        <td style={{ padding: '9px 10px', fontWeight: 800 }}>{e.nota_total != null ? e.nota_total : '—'}</td>
+                        <td style={{ padding: '9px 10px' }}><AAChip bg={chip.bg} fg={chip.fg}>{chip.label}</AAChip></td>
+                        <td style={{ padding: '9px 10px', borderRadius: '0 8px 8px 0', color: 'var(--ink-2)' }}>
+                          {(e.faltantes || []).length ? e.faltantes.join(', ') : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {detalle.length > 8 && <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>Mostrando 8 de {detalle.length}. Exportá el preview para ver el detalle completo.</div>}
+            </div>
+          )}
+        </React.Fragment>
+      ) : (
+        <div style={{ padding: 14, fontSize: 12, color: 'var(--ink-3)' }}>Presioná actualizar para generar el diagnóstico de cierre.</div>
+      )}
+    </div>
+  );
+}
+
 // ── Modal de edición controlada (SOLO superadmin) ──────────────────────────
 // Reutiliza window.fetchEditarRetroPCCerrada / fetchEditarAsistenciaNotaCerrada
 // de data.jsx con su forma de payload exacta. No edición optimista: la vista
@@ -1205,128 +1445,6 @@ function AAEditarLeccion({ leccion, estudiantes, matriz, codGrupo, nivel, supera
 }
 const aaEditLabel = { fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 4 };
 
-
-// ── Auditoría inteligente visual (sin endpoints nuevos / sin escribir datos) ──
-// Construye un diagnóstico operativo con la data ya cargada por
-// fetchAuditoriaAcademicaGrupo: resumen, lecciones, estudiantes y matriz.
-function aaPct(n, d) {
-  const a = Number(n) || 0;
-  const b = Number(d) || 0;
-  return b ? Math.round((a / b) * 100) : 0;
-}
-function aaBuildInteligencia(data, riesgo) {
-  const resumen = (data && data.resumen) || {};
-  const lecciones = (data && Array.isArray(data.lecciones)) ? data.lecciones : [];
-  const estudiantes = (data && Array.isArray(data.estudiantes)) ? data.estudiantes : [];
-  const cerradas = Number(resumen.lecciones_cerradas ?? lecciones.filter(l => String(l.estado || '').toUpperCase() === 'CERRADA').length) || 0;
-  const total = Number(resumen.lecciones_total ?? lecciones.length) || 0;
-  const avance = aaPct(cerradas, total);
-  const asistencia = resumen.asistencia_promedio_pct != null ? Math.round(Number(resumen.asistencia_promedio_pct)) : null;
-  const alertasLecciones = lecciones.filter(l => Array.isArray(l.alertas) && l.alertas.length > 0);
-  const riesgoAlto = (riesgo || []).filter(r => r.riesgo === 'alto');
-  const riesgoMedio = (riesgo || []).filter(r => r.riesgo === 'medio');
-  const sinDatos = (riesgo || []).filter(r => (r.conReg || 0) === 0 && (r.notas || 0) === 0);
-  const pendientes = lecciones.filter(l => String(l.estado || '').toUpperCase() !== 'CERRADA');
-  const proxima = pendientes[0] || null;
-  const notasRegistradas = Number(resumen.notas_registradas || 0);
-  const retro = Number(resumen.retroalimentaciones || 0);
-  const pc = Number(resumen.progress_checks || 0);
-  const hallazgos = [];
-
-  if (total && avance < 30) hallazgos.push({ tone:'info', titulo:'Grupo iniciando', detalle:`Avance académico ${avance}%. Aún hay poca data para conclusiones fuertes.` });
-  if (asistencia != null && asistencia < 70) hallazgos.push({ tone:'danger', titulo:'Asistencia crítica', detalle:`Promedio de asistencia ${asistencia}%. Requiere intervención.` });
-  else if (asistencia != null && asistencia < 85) hallazgos.push({ tone:'warn', titulo:'Asistencia en observación', detalle:`Promedio de asistencia ${asistencia}%. Conviene revisar ausencias.` });
-  if (riesgoAlto.length) hallazgos.push({ tone:'danger', titulo:'Estudiantes en riesgo alto', detalle:`${riesgoAlto.length} estudiante${riesgoAlto.length !== 1 ? 's' : ''} con asistencia o promedio bajo.` });
-  if (alertasLecciones.length) hallazgos.push({ tone:'warn', titulo:'Lecciones con alertas', detalle:`${alertasLecciones.length} lección${alertasLecciones.length !== 1 ? 'es' : ''} con asistencia, retro o progress check pendiente.` });
-  if (sinDatos.length && estudiantes.length) hallazgos.push({ tone:'warn', titulo:'Estudiantes sin data académica', detalle:`${sinDatos.length} estudiante${sinDatos.length !== 1 ? 's' : ''} sin registros detectados en este nivel.` });
-  if (cerradas > 0 && notasRegistradas === 0) hallazgos.push({ tone:'warn', titulo:'Sin notas registradas', detalle:'Hay lecciones cerradas, pero no se detectan notas en la auditoría.' });
-  if (cerradas > 0 && retro === 0) hallazgos.push({ tone:'warn', titulo:'Sin retroalimentación', detalle:'Hay lecciones cerradas sin retroalimentaciones registradas.' });
-  if (!hallazgos.length) hallazgos.push({ tone:'ok', titulo:'Sin alertas fuertes', detalle:'La auditoría no detecta inconsistencias críticas con la data disponible.' });
-
-  const score = (riesgoAlto.length * 3) + (alertasLecciones.length * 2) + (asistencia != null && asistencia < 70 ? 4 : 0) + (sinDatos.length ? 1 : 0);
-  const estado = score >= 7 ? 'crítico' : score >= 3 ? 'observación' : 'estable';
-  const estadoChip = estado === 'crítico'
-    ? { label:'Crítico', bg:'#FCE6E4', fg:'var(--danger)' }
-    : estado === 'observación'
-    ? { label:'En observación', bg:'color-mix(in srgb, var(--an-gold) 22%, white)', fg:'#6B4A00' }
-    : { label:'Estable', bg:'#E2F1E5', fg:'#1B5E20' };
-
-  const acciones = [];
-  if (riesgoAlto.length) acciones.push('Abrir fichas de estudiantes en riesgo alto y revisar ausencias/notas.');
-  if (alertasLecciones.length) acciones.push('Filtrar “Con alertas” y revisar lecciones cerradas sin asistencia, retro o progress check.');
-  if (sinDatos.length) acciones.push('Confirmar si el docente ya cerró lecciones y registró asistencia/notas.');
-  if (proxima) acciones.push(`Próxima lección detectada: L${String(proxima.leccion || '').padStart(2, '0')} · ${aaFmtFecha(proxima.fecha)}.`);
-  if (!acciones.length) acciones.push('Mantener seguimiento normal del grupo y exportar CSV si se ocupa respaldo.');
-
-  return {
-    estado, estadoChip, avance, asistencia, cerradas, total, proxima,
-    riesgoAlto, riesgoMedio, sinDatos, alertasLecciones, hallazgos, acciones,
-    notasRegistradas, retro, pc, estudiantesTotal: estudiantes.length,
-  };
-}
-function AAAuditoriaInteligente({ info, nivelColor, onVerAlertas, onLimpiarFiltro }) {
-  if (!info) return null;
-  const toneColor = info.estado === 'crítico' ? 'var(--danger)' : info.estado === 'observación' ? '#9A6A00' : '#1B5E20';
-  const box = { background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'12px 14px' };
-  const tiny = { fontSize:9, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4 };
-  return (
-    <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:20, border:`1px solid color-mix(in srgb, ${nivelColor} 18%, var(--line))` }}>
-      <div style={{ height:5, background:nivelColor }} />
-      <div style={{ padding:'16px 18px 14px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', gap:14, alignItems:'flex-start', flexWrap:'wrap', marginBottom:14 }}>
-          <div>
-            <div style={{ ...tiny, color:nivelColor }}>Auditoría inteligente</div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:23, fontWeight:600, letterSpacing:'-0.03em', color:'var(--ink)' }}>
-              Diagnóstico operativo del grupo
-            </div>
-            <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>
-              Lectura automática con la data disponible. No modifica registros.
-            </div>
-          </div>
-          <AAChip bg={info.estadoChip.bg} fg={info.estadoChip.fg}>{info.estadoChip.label}</AAChip>
-        </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(135px, 1fr))', gap:10, marginBottom:14 }}>
-          <div style={box}><div style={tiny}>Avance</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:nivelColor }}>{info.avance}%</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>{info.cerradas}/{info.total} lecciones cerradas</div></div>
-          <div style={box}><div style={tiny}>Asistencia</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color: info.asistencia != null && info.asistencia < 70 ? 'var(--danger)' : 'var(--ink)' }}>{info.asistencia != null ? `${info.asistencia}%` : '—'}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>promedio del grupo</div></div>
-          <div style={box}><div style={tiny}>Riesgo alto</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color: info.riesgoAlto.length ? 'var(--danger)' : '#1B5E20' }}>{info.riesgoAlto.length}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>estudiantes</div></div>
-          <div style={box}><div style={tiny}>Alertas</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color: info.alertasLecciones.length ? '#9A6A00' : '#1B5E20' }}>{info.alertasLecciones.length}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>lecciones con hallazgos</div></div>
-        </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.25fr) minmax(260px, .75fr)', gap:12 }}>
-          <div style={{ ...box, background:'var(--surface-2)' }}>
-            <div style={tiny}>Hallazgos</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {info.hallazgos.map((h, idx) => {
-                const color = h.tone === 'danger' ? 'var(--danger)' : h.tone === 'warn' ? '#9A6A00' : h.tone === 'ok' ? '#1B5E20' : 'var(--an-navy)';
-                return (
-                  <div key={idx} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                    <span style={{ width:8, height:8, borderRadius:999, background:color, marginTop:5, flexShrink:0 }} />
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{h.titulo}</div>
-                      <div style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.45 }}>{h.detalle}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div style={box}>
-            <div style={tiny}>Acción recomendada</div>
-            <ol style={{ margin:'0 0 12px 18px', padding:0, display:'flex', flexDirection:'column', gap:7 }}>
-              {info.acciones.map((a, idx) => <li key={idx} style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.42 }}>{a}</li>)}
-            </ol>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {info.alertasLecciones.length > 0 && <button type="button" className="btn btn-ghost" style={{ padding:'7px 11px', fontSize:12 }} onClick={onVerAlertas}>Ver alertas</button>}
-              <button type="button" className="btn btn-ghost" style={{ padding:'7px 11px', fontSize:12 }} onClick={onLimpiarFiltro}>Ver todo</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
@@ -1432,7 +1550,6 @@ function AuditoriaAcademicaView({ initialGrupo = '', initialNivel = '', origen =
     return true;
   });
   const riesgo = data ? aaComputeRiesgo(data.estudiantes || [], leccionesAll, data.matriz || {}) : [];
-  const inteligencia = data ? aaBuildInteligencia(data, riesgo) : null;
   const riesgoVisible = riesgo.filter(matchEst);
   const estudiantesDrawer = (data && Array.isArray(data.estudiantes)) ? data.estudiantes.filter(matchEst) : [];
 
@@ -1593,15 +1710,15 @@ function AuditoriaAcademicaView({ initialGrupo = '', initialNivel = '', origen =
             </div>
           )}
 
-          {/* Diagnóstico inteligente del grupo */}
-          {inteligencia && (
-            <AAAuditoriaInteligente
-              info={inteligencia}
-              nivelColor={nivelColor}
-              onVerAlertas={() => setFiltroEstado('alertas')}
-              onLimpiarFiltro={() => { setFiltroEstado('todas'); setBusqueda(''); }}
-            />
-          )}
+          {/* F34 · Diagnóstico de cierre académico conectado */}
+          <AACierreAcademicoAuditoriaPanel
+            grupo={(grupoMeta && grupoMeta.cod_grupo) || codGrupo}
+            nivel={(grupoMeta && grupoMeta.nivel) || nivel}
+            auditoriaData={data}
+            onBuscarEstudiante={(q) => setBusqueda(q || '')}
+            onVerAlertas={() => setFiltroEstado('alertas')}
+            onNavigate={onNavigate}
+          />
 
           {/* Toolbar: filtro de estado + buscador de estudiante */}
           <div className="card" style={{

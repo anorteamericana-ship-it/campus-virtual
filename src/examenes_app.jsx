@@ -1,6 +1,10 @@
+// CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_APP
+// CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_APP
+// CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_APP
+// CALGRUPO_F48_20260617_CENTRO_DIAGNOSTICO_EXAMENES_APP
 /* global React, ReactDOM, NIVEL_TEMA, StudentMode, TeacherMode, AdminMode, ExamShell, EXAM_I2_T1_A, themedExam */
 // examenes_app.jsx — shell + barra de control (auditoría / tweaks)
-const { useState } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 const VIEWS = [
   { k:'student', t:'Estudiante' },
@@ -167,6 +171,149 @@ function buildInitialViewConfig() {
 
 const INITIAL_VIEW_CONFIG = buildInitialViewConfig();
 
+
+// CALGRUPO_F27_20260617_EXAMENES_ESTUDIANTE_LIVE_BACKEND
+// CALGRUPO_F43_20260617_EXAMENES_ESTUDIANTE_QA_AUTOSAVE_TIMER
+function examParentApiUrl() {
+  try {
+    if (window.parent && window.parent !== window && window.parent.APPS_SCRIPT_URL) return window.parent.APPS_SCRIPT_URL;
+  } catch (_) {}
+  try { return window.APPS_SCRIPT_URL || ''; } catch (_) { return ''; }
+}
+function examParentToken() {
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.getSessionToken === 'function') return window.parent.getSessionToken() || '';
+  } catch (_) {}
+  try { return window.getSessionToken ? window.getSessionToken() : ''; } catch (_) { return ''; }
+}
+async function examPostLive(fn, payload = {}) {
+  const url = examParentApiUrl();
+  if (!url) return { ok:false, error:'apps_script_url_no_disponible', mensaje:'No se encontró la URL del backend del campus.' };
+  const token = examParentToken();
+  const res = await fetch(`${url}?fn=${encodeURIComponent(fn)}`, {
+    method: 'POST',
+    headers: { 'Content-Type':'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ fn, token }, payload || {})),
+  });
+  return await res.json();
+}
+function parseExamAnswersJson(v) {
+  if (!v) return {};
+  if (typeof v === 'object') return v;
+  try { return JSON.parse(String(v || '{}')); } catch (_) { return {}; }
+}
+function activationToStudentConfig(activation) {
+  const a = activation || {};
+  const nivel = normalizeExamNivel(a.NIVEL || a.nivel);
+  const test = normalizeExamTest(a.TEST_CODE || a.test_code || a.LECCION || a.leccion);
+  const opcion = normalizeExamOpcion(a.OPCION || a.opcion);
+  const plan = normalizeExamPlan(a.PLAN || a.plan) || 'con_ina';
+  return { nivel, test, opcion, plan };
+}
+function StudentLiveLoading() {
+  return (
+    <div style={{ maxWidth:620, margin:'72px auto', padding:'30px 32px', borderRadius:18, background:'#fff', border:'1px solid #E2D8C8', boxShadow:'0 18px 60px rgba(0,0,0,0.10)', fontFamily:'Poppins, system-ui, sans-serif', textAlign:'center', color:'#001E47' }}>
+      <div style={{ fontSize:11, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#7A1E2C', marginBottom:12 }}>Consultando cronograma</div>
+      <h2 style={{ margin:'0 0 8px', fontSize:26 }}>Buscando examen disponible…</h2>
+      <p style={{ color:'#5A6472', fontSize:14 }}>El sistema valida tu grupo, la lección activa y la activación oficial.</p>
+    </div>
+  );
+}
+function StudentLiveStatusCard({ title, badge='Examen no disponible', children, tone='gold', onRefresh }) {
+  const bg = tone === 'red' ? '#F7E8E9' : tone === 'blue' ? '#E2EFF8' : '#FFF5D6';
+  const ink = tone === 'red' ? '#7A1E2C' : tone === 'blue' ? '#0C447C' : '#7A4A00';
+  return (
+    <div style={{ maxWidth:660, margin:'72px auto', padding:'30px 32px', borderRadius:18, background:'#fff', border:'1px solid #E2D8C8', boxShadow:'0 18px 60px rgba(0,0,0,0.10)', fontFamily:'Poppins, system-ui, sans-serif', textAlign:'center', color:'#001E47' }}>
+      <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'5px 12px', borderRadius:999, background:bg, color:ink, fontSize:11, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', marginBottom:14 }}>{badge}</div>
+      <h2 style={{ margin:'0 0 8px', fontSize:26, letterSpacing:'-0.03em' }}>{title}</h2>
+      <div style={{ margin:'0 auto 18px', maxWidth:530, color:'#5A6472', fontSize:14, lineHeight:1.55 }}>{children}</div>
+      {onRefresh && <button className="btn-primary" onClick={onRefresh}>Actualizar estado</button>}
+    </div>
+  );
+}
+function StudentLiveExamApp() {
+  const [live, setLive] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [attemptId, setAttemptId] = useState('');
+  const [publicExam, setPublicExam] = useState(null);
+  const [currentAttempt, setCurrentAttempt] = useState(null);
+
+  const load = useCallback(() => {
+    setLoading(true); setError('');
+    examPostLive('examGetStudentLivePanel', { client_meta:{ source:'student_iframe_f27' } })
+      .then(r => {
+        if (!r || r.ok === false) {
+          // Compatibilidad: si el backend F27 aún no está instalado, intenta el endpoint V10H.
+          if (r && String(r.error || '').includes('desconocido')) return examPostLive('examGetStudentAssignment', { client_meta:{ source:'student_iframe_f27_fallback' } });
+          throw r || { error:'respuesta_invalida' };
+        }
+        return r;
+      })
+      .then(r => {
+        if (!r || r.ok === false) throw r || { error:'respuesta_invalida' };
+        setLive(r);
+        const a = r.current_attempt || null;
+        setCurrentAttempt(a);
+        setAttemptId(a && a.ATTEMPT_ID || '');
+        setPublicExam(r.public_exam || null);
+      })
+      .catch(e => setError((e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.'))
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const activation = live && live.activation;
+  const cfg = activationToStudentConfig(activation || {});
+  const initialAnswers = parseExamAnswersJson(currentAttempt && (currentAttempt.ANSWERS_JSON || currentAttempt.answers_json));
+
+  const startAttempt = async () => {
+    const r = await examPostLive('examStartAttempt', { activation_id: activation && activation.ACTIVATION_ID, client_meta:{ source:'student_iframe_f43_start' }, user_agent: navigator.userAgent });
+    if (r && r.ok) {
+      setAttemptId(r.attempt_id || '');
+      setPublicExam(r.public_exam || publicExam);
+      setCurrentAttempt({ ATTEMPT_ID:r.attempt_id, STATUS:'STARTED', STARTED_AT:r.started_at || r.server_now || '', ANSWERS_JSON:'{}' });
+    }
+    return r;
+  };
+  const saveAttempt = async (answers) => {
+    return await examPostLive('examSaveAttemptDraft', { attempt_id: attemptId, answers, client_meta:{ source:'student_iframe_f43_save', answered:Object.keys(answers || {}).length } });
+  };
+  const submitAttempt = async (answers, meta = {}) => {
+    const autoSubmit = !!(meta && meta.autoSubmit);
+    const r = await examPostLive('examSubmitAttempt', {
+      attempt_id: attemptId,
+      answers,
+      time_spent_sec: meta && meta.timeSpentSec != null ? meta.timeSpentSec : '',
+      auto_submit: autoSubmit ? 'SI' : 'NO',
+      client_meta:{ source:autoSubmit ? 'student_iframe_f43_auto_submit_timeout' : 'student_iframe_f43_submit', answered:Object.keys(answers || {}).length }
+    });
+    if (r && r.ok) setCurrentAttempt(Object.assign({}, currentAttempt || {}, { STATUS:'SUBMITTED', SUBMITTED_AT:r.server_now || '' }));
+    return r;
+  };
+  const heartbeatAttempt = async () => {
+    return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
+  };
+
+  if (loading) return <StudentLiveLoading />;
+  if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
+  if (live && live.enabled === false) return <StudentLiveStatusCard title="Exámenes aún deshabilitados" badge="Configuración pendiente" tone="blue" onRefresh={load}>{live.mensaje || 'El backend está instalado, pero la configuración STUDENT_EXAMS_ENABLED todavía no está activa.'}</StudentLiveStatusCard>;
+  if (!live || live.assigned !== true || !activation) {
+    const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
+    return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'Tu grupo no tiene una lección 18 o 32 activa en este momento, o administración todavía no abrió la activación.'}</StudentLiveStatusCard>;
+  }
+  const submitted = currentAttempt && String(currentAttempt.STATUS || '').toUpperCase() === 'SUBMITTED';
+  if (submitted) return <StudentLiveStatusCard title="Examen ya enviado" badge="En revisión docente" tone="blue" onRefresh={load}>Tu intento fue recibido correctamente. La nota final aparecerá cuando el docente complete la revisión.</StudentLiveStatusCard>;
+
+  return <StudentMode
+    shell="premium" density="comfy"
+    nivel={cfg.nivel} test={cfg.test} opcion={cfg.opcion} plan={cfg.plan}
+    examOverride={publicExam}
+    assignment={activation}
+    backend={{ attemptId, initialAnswers, onStart:startAttempt, onSave:saveAttempt, onSubmit:submitAttempt, onHeartbeat:heartbeatAttempt, student: live.student || null, activation, timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 0) || 0, startedAt:currentAttempt && currentAttempt.STARTED_AT || '' }}
+  />;
+}
+
 function App() {
   const [view, setViewRaw] = useState(INITIAL_VIEW_CONFIG.view);
   const [nivel, setNivel] = useState('I2');
@@ -193,18 +340,13 @@ function App() {
     return <AccessBlockedView config={INITIAL_VIEW_CONFIG} />;
   }
 
-  // Estudiante: solo examen asignado por sesión/backend futuro. Sin
-  // asignación explícita, NO se carga ningún examen real ni demo fijo.
+  // F27: estudiante conectado a Apps Script. Ya no depende de una asignación
+  // manual en sesión: lee cronograma + activación oficial + intento real.
   if (INITIAL_VIEW_CONFIG.role === 'student') {
-    const asig = INITIAL_VIEW_CONFIG.studentAssignment;
     return (
       <div className="exapp">
         <main className="exmain">
-          {asig
-            ? <StudentMode shell="premium" density="comfy"
-                           nivel={asig.nivel} test={asig.test}
-                           opcion={asig.opcion} plan={asig.plan} />
-            : <StudentNoAssignmentView />}
+          <StudentLiveExamApp />
         </main>
       </div>
     );

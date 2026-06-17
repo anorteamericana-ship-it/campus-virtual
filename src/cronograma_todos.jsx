@@ -1,6 +1,4 @@
 /* global React */
-// CALGRUPO_F12_20260617_SNAPSHOT_GLOBAL_PRIORIDADES
-// CALGRUPO_F17_20260617_GLOBAL_MES_PREMIUM_OPERATIVO
 // ─────────────────────────────────────────────────────────────────────────
 // Vista "Todos los grupos" — solo admin / superadmin
 // CALGRUPO_F3_20260616_CALENDARIO_AMPLIO_CASILLAS_LEGIBLES
@@ -183,7 +181,7 @@ function tFmtMoraActualizado(s) {
   return `${parseInt(dd,10)}-${meses[idx] || mm} ${hh}:${mi}`;
 }
 
-function TodosLosGruposView({ gruposReales, onNavigate, onDataSnapshot }) {
+function TodosLosGruposView({ gruposReales, onNavigate }) {
   // Primera pintura con getGruposActivos; luego se enriquece con getFechasGrupo
   // por grupo para que la vista global coincida con la vista individual.
   const [gruposDetalle, setGruposDetalle] = React.useState(null);
@@ -424,18 +422,6 @@ function TodosLosGruposView({ gruposReales, onNavigate, onDataSnapshot }) {
     return { totalGrupos, aperturas, estudiantes };
   }, [safeGruposReales]);
 
-  // F12: entrega al panel padre la misma data global enriquecida por getFechasGrupo.
-  React.useEffect(() => {
-    if (typeof onDataSnapshot !== 'function') return;
-    onDataSnapshot({
-      source:'todos',
-      gruposReales: safeGruposReales,
-      items,
-      stats,
-      ts: Date.now(),
-    });
-  }, [onDataSnapshot, safeGruposReales, items, stats]);
-
   return (
     <div style={{ marginTop:14 }}>
       {/* Header con stats + switch + nav */}
@@ -596,7 +582,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
   const minWidth = COL_LABEL + 6 * COL_DAY_MIN;
 
   return (
-    <div className="card" style={{ padding:0, overflow:'hidden', borderRadius:'var(--r-lg)', boxShadow:'0 16px 38px rgba(12,41,77,.10)' }}>
+    <div className="card" style={{ padding:0, overflow:'hidden' }}>
       {/* Nav semana */}
       <div style={{
         padding:'12px 18px',
@@ -774,28 +760,12 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
 // ─────────────────────────────────────────────────────────────────
 // VISTA MES
 // ─────────────────────────────────────────────────────────────────
-const MES_VISIBLE_PILLS = 6;
+const MES_VISIBLE_PILLS = 5;
 
 function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, onAbrir }) {
   const year  = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const today = React.useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
-  const monthStats = React.useMemo(() => {
-    let diasConClase = 0, total = 0, examenes = 0;
-    try {
-      byDate.forEach((arr, iso) => {
-        if (!String(iso || '').startsWith(`${year}-${String(month + 1).padStart(2,'0')}`)) return;
-        const list = Array.isArray(arr) ? arr : [];
-        if (list.length) diasConClase += 1;
-        total += list.length;
-        examenes += list.filter(it => {
-          const l = it && it.leccion ? it.leccion : {};
-          return l.tipo === 'EVAL_ESCRITO' || l.tipo === 'EVAL_ORAL' || [18,32].includes(Number(l.leccion || 0));
-        }).length;
-      });
-    } catch (_) {}
-    return { diasConClase, total, examenes };
-  }, [byDate, year, month]);
 
   // Celdas (Lun-Dom)
   const celdas = React.useMemo(() => {
@@ -820,15 +790,13 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
   };
 
   return (
-    <div className="card" style={{ padding:0, overflow:'hidden', borderRadius:'var(--r-lg)', boxShadow:'0 16px 38px rgba(12,41,77,.10)' }}>
+    <div className="card" style={{ padding:0, overflow:'hidden' }}>
       {/* Nav mes */}
       <div style={{
-        padding:'14px 18px',
+        padding:'12px 18px',
         borderBottom:'1px solid var(--line)',
         display:'flex', alignItems:'center', justifyContent:'space-between',
         gap:14, flexWrap:'wrap',
-        background:'linear-gradient(135deg, var(--an-navy), #173B70)',
-        color:'white',
       }}>
         <div style={{ display:'flex', gap:6 }}>
           <NavBtn onClick={() => navMes(-1)} ariaLabel="Mes anterior">
@@ -837,38 +805,31 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
           <button
             onClick={() => { const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); setMonthCursor(d); }}
             style={{
-              padding:'6px 14px', border:'1px solid rgba(255,255,255,.30)',
-              background:'rgba(255,255,255,.12)', borderRadius:'var(--r-sm)',
-              fontSize:12, fontWeight:800, color:'white',
+              padding:'6px 14px', border:'1.5px solid var(--line)',
+              background:'var(--surface)', borderRadius:'var(--r-sm)',
+              fontSize:12, fontWeight:600, color:'var(--ink-2)',
               cursor:'pointer', fontFamily:'inherit',
             }}>Hoy</button>
           <NavBtn onClick={() => navMes(+1)} ariaLabel="Mes siguiente">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </NavBtn>
         </div>
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(255,255,255,.66)' }}>
-            Vista mes global
-          </div>
-          <div style={{
-            fontFamily:'var(--f-serif)', fontSize:27, fontWeight:500,
-            color:'white', letterSpacing:'-0.025em', lineHeight:1.05,
-          }}>
-            {TODOS_MESES[month]} {year}
-          </div>
+        <div style={{
+          fontFamily:'var(--f-serif)', fontSize:24, fontWeight:500,
+          color:'var(--ink)', letterSpacing:'-0.02em',
+        }}>
+          {TODOS_MESES[month]} {year}
         </div>
-        <div style={{ display:'flex', gap:7, flexWrap:'wrap', justifyContent:'flex-end' }}>
-          <TodosMesChip label="Días" value={monthStats.diasConClase} />
-          <TodosMesChip label="Clases" value={monthStats.total} />
-          <TodosMesChip label="Exámenes" value={monthStats.examenes} />
+        <div style={{ fontSize:11, color:'var(--ink-3)' }}>
+          Click sobre una lección para ver detalle
         </div>
       </div>
 
       {/* DOW header */}
       <div style={{
         display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-        padding:'11px 10px', borderBottom:'1px solid var(--line)',
-        background:'linear-gradient(180deg, #fff, var(--surface-2))',
+        padding:'10px 10px', borderBottom:'1px solid var(--line)',
+        background:'var(--surface-2)',
       }}>
         {TODOS_DIAS_LUN0.map((d, i) => (
           <div key={i} style={{
@@ -882,11 +843,11 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
       {/* Celdas */}
       <div style={{
         display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-        gap:6, background:'color-mix(in srgb, var(--an-navy) 4%, var(--surface))', padding:8,
+        gap:1, background:'var(--line)',
       }}>
         {celdas.map((c, i) => {
           if (!c.dentro) {
-            return <div key={i} style={{ background:'var(--bg-deep)', minHeight:168, borderRadius:10 }} />;
+            return <div key={i} style={{ background:'var(--bg-deep)', minHeight:148 }} />;
           }
           const list = byDate.get(c.iso) || [];
           const isToday = tSameDate(c.fecha, today);
@@ -895,19 +856,17 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
 
           return (
             <div key={i} style={{
-              background: isToday ? 'linear-gradient(180deg, color-mix(in srgb, var(--an-gold) 10%, white), white)' : 'var(--surface)',
-              padding:'10px 10px 11px',
-              minHeight:168,
-              display:'flex', flexDirection:'column', gap:7,
-              borderRadius:10,
-              border: isToday ? '1px solid color-mix(in srgb, var(--an-gold) 38%, white)' : '1px solid color-mix(in srgb, var(--line) 72%, transparent)',
+              background: isToday ? 'color-mix(in srgb, var(--an-granate) 4%, var(--surface))' : 'var(--surface)',
+              padding:'9px 9px 10px',
+              minHeight:148,
+              display:'flex', flexDirection:'column', gap:6,
             }}>
               <div style={{
                 display:'flex', justifyContent:'space-between', alignItems:'baseline',
                 marginBottom:2,
               }}>
                 <span style={{
-                  fontFamily:'var(--f-mono)', fontSize:14, fontWeight:900,
+                  fontFamily:'var(--f-mono)', fontSize:13, fontWeight:800,
                   color: isToday ? 'var(--an-granate)' : 'var(--ink-2)',
                 }}>{c.diaNum}</span>
                 {list.length > 0 && (
@@ -950,20 +909,6 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
           onAbrir={(it) => { setExpandedDay(null); onAbrir(it); }}
         />
       )}
-    </div>
-  );
-}
-
-
-function TodosMesChip({ label, value }) {
-  return (
-    <div style={{
-      minWidth:66, padding:'6px 9px', borderRadius:'var(--r-md)',
-      border:'1px solid rgba(255,255,255,.24)', background:'rgba(255,255,255,.10)',
-      textAlign:'center', color:'white',
-    }}>
-      <div style={{ fontSize:9, fontWeight:900, letterSpacing:'0.10em', textTransform:'uppercase', color:'rgba(255,255,255,.65)' }}>{label}</div>
-      <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, lineHeight:1, marginTop:2 }}>{value}</div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 /* global React, PageHeader */
+// CALGRUPO_F31_20260617_ADMIN_STUDENTS_CONSOLIDADO_F10_F30
 // CALGRUPO_F2_20260616_ESTUDIANTES_COMPACTO_OPERATIVO
 // CALGRUPO_F5_20260617_CERTIFICADOS_MASIVOS_UI
 // CALGRUPO_F6_20260617_ESTADOS_CERTIFICADO_VISUAL_SIN_BACKEND
@@ -8,6 +9,12 @@
 // CALGRUPO_F14_20260617_EXPORT_RESUMEN_OPERATIVO
 // CALGRUPO_F15_20260617_MAPA_NIVELES_ENFOQUE_OPERATIVO
 // CALGRUPO_F19_20260617_REPORTE_IMPRIMIBLE_GRUPO
+// CALGRUPO_F20_20260617_PANEL_OPERATIVO_PREMIUM_PRIORIDADES
+// CALGRUPO_F23_20260617_BITACORA_LOCAL_SEGUIMIENTO_VISUAL
+// CALGRUPO_F24_20260617_BITACORA_OFICIAL_BACKEND_FALLBACK_LOCAL
+// CALGRUPO_F25_20260617_CERTIFICADOS_FIRMADOS_UI_BACKEND
+// CALGRUPO_F26_20260617_CERTIFICADOS_MASIVOS_SEGUROS_CONFIRMACION
+// CALGRUPO_F29_20260617_NOTAS_MANUALES_OFICIALES_ORALES_SOCIAL
 
 // ─────────────────────────────────────────────────────────────────────────
 // VISTA RADIOGRAFÍA DE GRUPOS — admin_students.jsx
@@ -487,6 +494,154 @@ function seguimientoMensaje(est = {}, filtro = 'todos') {
     return `${saludo} Te escribimos para dar seguimiento a tu información relacionada con CONAPE y mantener tu expediente actualizado.`;
   }
   return `${saludo} Te escribimos para dar seguimiento a tu proceso académico en Academia Norteamericana.`;
+}
+
+
+const BITACORA_LOCAL_PREFIX = 'anorte_bitacora_estudiante_v1::';
+
+function codigoEstudianteClave(est = {}) {
+  return String(est.codigo || est.rec_m || est.REC_M || est.cedula || est.identificacion || est.id || '').trim() || 'sin_codigo';
+}
+
+function bitacoraEstudianteKey(est = {}) {
+  return BITACORA_LOCAL_PREFIX + codigoEstudianteClave(est);
+}
+
+function leerBitacoraLocal(est = {}) {
+  try {
+    const raw = window.localStorage ? window.localStorage.getItem(bitacoraEstudianteKey(est)) : '';
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter(x => x && typeof x === 'object').slice(0, 60) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function guardarBitacoraLocal(est = {}, items = []) {
+  try {
+    if (!window.localStorage) return false;
+    window.localStorage.setItem(bitacoraEstudianteKey(est), JSON.stringify((items || []).slice(0, 60)));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+
+function normalizarBitacoraRemota(item = {}) {
+  return {
+    id: item.id || item.ID || item.seguimiento_id || Date.now(),
+    fecha: item.fecha_iso || item.fecha || item.FECHA || new Date().toISOString(),
+    tipo: item.tipo || item.TIPO || 'General',
+    nota: item.nota || item.NOTA || item.observacion || item.OBSERVACION || '',
+    usuario: item.usuario || item.USUARIO || 'Admin',
+    rol: item.rol || item.ROL || '',
+    _backend: true,
+  };
+}
+
+async function listarBitacoraBackend(est = {}) {
+  try {
+    const resp = await postAdminStudents('listarSeguimientoEstudiante', {
+      codigo: codigoEstudianteClave(est),
+      cedula: est.cedula || est.identificacion || est.NUM_CEDULA || '',
+      cod_grupo: est.grupo || est.GRUPO || est.cod_grupo || '',
+    });
+    if (!resp || resp.ok !== true) return { ok: false, error: (resp && resp.error) || 'Backend no disponible' };
+    return {
+      ok: true,
+      items: (resp.items || resp.seguimientos || []).map(normalizarBitacoraRemota).slice(0, 80),
+      total: resp.total || (resp.items || []).length,
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+}
+
+async function registrarBitacoraBackend(est = {}, item = {}) {
+  try {
+    const resp = await postAdminStudents('registrarSeguimientoEstudiante', {
+      codigo: codigoEstudianteClave(est),
+      cedula: est.cedula || est.identificacion || est.NUM_CEDULA || '',
+      nombre: est.display || est.nombre || est.NOMBRE || '',
+      telefono: estudiantePhone(est),
+      cod_grupo: est.grupo || est.GRUPO || est.cod_grupo || '',
+      nivel: est.nivel || est.NIVEL || '',
+      tipo: item.tipo || 'General',
+      nota: item.nota || '',
+    });
+    if (!resp || resp.ok !== true) return { ok: false, error: (resp && resp.error) || 'No se pudo guardar en backend' };
+    return {
+      ok: true,
+      item: resp.item ? normalizarBitacoraRemota(resp.item) : null,
+      items: (resp.items || []).map(normalizarBitacoraRemota).slice(0, 80),
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+}
+
+async function eliminarBitacoraBackend(est = {}, id) {
+  try {
+    const resp = await postAdminStudents('eliminarSeguimientoEstudiante', {
+      id,
+      codigo: codigoEstudianteClave(est),
+      cedula: est.cedula || est.identificacion || est.NUM_CEDULA || '',
+    });
+    if (!resp || resp.ok !== true) return { ok: false, error: (resp && resp.error) || 'No se pudo eliminar en backend' };
+    return {
+      ok: true,
+      items: (resp.items || []).map(normalizarBitacoraRemota).slice(0, 80),
+    };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+}
+
+function formatFechaBitacora(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('es-CR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+  } catch (_) {
+    return '—';
+  }
+}
+
+function seguimientoFlagsEstudiante(est = {}) {
+  const flags = [];
+  if (moraEstudiante(est)) flags.push({ key:'mora', label:'Mora', tone:'bad' });
+  if (riesgoOperativoEstudiante(est)) flags.push({ key:'riesgo', label:'Riesgo', tone:'bad' });
+  if (certPendienteEstudiante(est)) flags.push({ key:'cert_pend', label:'Certificado', tone:'blue' });
+  if (notaFaltanteEstudiante(est)) flags.push({ key:'nota_faltante', label:'Nota faltante', tone:'warn' });
+  if (conapeEstudiante(est)) flags.push({ key:'conape', label:'CONAPE', tone:'blue' });
+  if (!flags.length) flags.push({ key:'ok', label:'Sin alerta crítica', tone:'ok' });
+  return flags;
+}
+
+function tipoBitacoraColor(tipo = '') {
+  const t = String(tipo || '').toLowerCase();
+  if (t.includes('mora') || t.includes('pago')) return { bg:'#FFEBEE', fg:'#C62828', bd:'#F4B7B7', icon:'💳' };
+  if (t.includes('acad') || t.includes('riesgo')) return { bg:'#FFF8E1', fg:'#9A6200', bd:'#F1D18A', icon:'📚' };
+  if (t.includes('conape')) return { bg:'#E3F2FD', fg:'#1565C0', bd:'#B9DAF5', icon:'🏦' };
+  if (t.includes('cert')) return { bg:'#E8F5E9', fg:'#2E7D32', bd:'#BFE4C3', icon:'🏅' };
+  if (t.includes('whatsapp') || t.includes('wa')) return { bg:'rgba(37,211,102,.10)', fg:'#128C4A', bd:'rgba(37,211,102,.35)', icon:'WA' };
+  if (t.includes('llamada')) return { bg:'#F3E5F5', fg:'#6A1B9A', bd:'#D7B8DF', icon:'☎' };
+  return { bg:'var(--surface-2,#f8f8f8)', fg:'var(--ink-2,#666)', bd:'var(--line,#ddd)', icon:'📝' };
+}
+
+function tipoBitacoraInicial(est = {}) {
+  if (moraEstudiante(est)) return 'Mora / pago';
+  if (riesgoOperativoEstudiante(est)) return 'Académico / riesgo';
+  if (certPendienteEstudiante(est)) return 'Certificado';
+  if (conapeEstudiante(est)) return 'CONAPE';
+  return 'General';
+}
+
+function resumenBitacoraLocal(est = {}) {
+  const items = leerBitacoraLocal(est);
+  return { total: items.length, ultimo: items[0] || null };
 }
 
 function WhatsAppMini({ est, filtro = 'todos' }) {
@@ -978,6 +1133,77 @@ function buildReporteOperativoHtml({ grupoCodigo, estado, resumen, filtro, motiv
 </html>`;
 }
 
+
+function tonoPrioridadOperativa(resumen = {}) {
+  const score = (resumen.riesgo || 0) * 4 + (resumen.morosos || 0) * 3 + (resumen.certPend || 0) * 2 + (resumen.notaFaltante || 0) * 2;
+  if (score >= 10) return { nivel:'Alta', color:'#C62828', bg:'#FFEBEE', border:'#F4B7B7', icon:'🔥' };
+  if (score >= 4) return { nivel:'Media', color:'#9A6200', bg:'#FFF8E1', border:'#F1D18A', icon:'⚠' };
+  return { nivel:'Baja', color:'#2E7D32', bg:'#E8F5E9', border:'#BFE4C3', icon:'✓' };
+}
+
+function accionesPrioridadOperativa(resumen = {}) {
+  const acciones = [];
+  if ((resumen.riesgo || 0) > 0) acciones.push({ titulo:'Riesgo académico', texto:`${resumen.riesgo} estudiante(s) requieren revisión académica.`, filtro:'riesgo', tono:'bad' });
+  if ((resumen.morosos || 0) > 0) acciones.push({ titulo:'Mora activa', texto:`${resumen.morosos} estudiante(s) deben pasar a seguimiento de pago.`, filtro:'mora', tono:'bad' });
+  if ((resumen.certPend || 0) > 0) acciones.push({ titulo:'Certificados pendientes', texto:`${resumen.certPend} certificado(s) listos para revisar proceso.`, filtro:'cert_pend', tono:'blue' });
+  if ((resumen.notaFaltante || 0) > 0) acciones.push({ titulo:'Notas faltantes', texto:`${resumen.notaFaltante} nota(s) requieren validación.`, filtro:'nota_faltante', tono:'warn' });
+  if ((resumen.conape || 0) > 0) acciones.push({ titulo:'CONAPE', texto:`${resumen.conape} estudiante(s) financiados en el grupo.`, filtro:'conape', tono:'blue' });
+  if (!acciones.length) acciones.push({ titulo:'Sin alertas fuertes', texto:'El grupo se ve estable en la radiografía actual.', filtro:'todos', tono:'ok' });
+  return acciones.slice(0, 3);
+}
+
+function PanelPrioridadOperativa({ resumen, setFiltro }) {
+  const tono = tonoPrioridadOperativa(resumen);
+  const acciones = accionesPrioridadOperativa(resumen);
+  const porcentajeOk = resumen.total ? Math.max(0, Math.round(((resumen.total - resumen.riesgo - resumen.morosos) / resumen.total) * 100)) : 100;
+  return (
+    <div style={{
+      margin:'10px 0 12px', display:'grid', gridTemplateColumns:'minmax(220px, .85fr) minmax(0, 1.65fr)', gap:10,
+    }}>
+      <div style={{
+        border:`1px solid ${tono.border}`, background:`linear-gradient(135deg, ${tono.bg}, white)`,
+        borderRadius:14, padding:'12px 14px', minHeight:108, display:'flex', flexDirection:'column', justifyContent:'space-between',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+          <div>
+            <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'0.14em', textTransform:'uppercase', color:tono.color }}>Prioridad operativa</div>
+            <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:24, lineHeight:1.05, color:tono.color, fontWeight:700, marginTop:2 }}>{tono.nivel}</div>
+          </div>
+          <div style={{ width:42, height:42, borderRadius:14, background:'rgba(255,255,255,.75)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, boxShadow:'inset 0 0 0 1px rgba(255,255,255,.8)' }}>{tono.icon}</div>
+        </div>
+        <div style={{ marginTop:10 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:10.5, color:'var(--ink-3,#777)', fontWeight:800, marginBottom:5 }}>
+            <span>Salud visual del grupo</span><span>{porcentajeOk}%</span>
+          </div>
+          <div style={{ height:7, borderRadius:999, background:'rgba(20,33,61,.10)', overflow:'hidden' }}>
+            <div style={{ width:`${porcentajeOk}%`, height:'100%', borderRadius:999, background:tono.color }} />
+          </div>
+        </div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(190px, 1fr))', gap:8 }}>
+        {acciones.map((a, idx) => {
+          const color = a.tono === 'bad' ? '#C62828' : a.tono === 'warn' ? '#9A6200' : a.tono === 'blue' ? '#1565C0' : '#2E7D32';
+          const bg = a.tono === 'bad' ? '#FFEBEE' : a.tono === 'warn' ? '#FFF8E1' : a.tono === 'blue' ? '#E3F2FD' : '#E8F5E9';
+          return (
+            <button key={idx} type="button" onClick={() => setFiltro(a.filtro)} style={{
+              textAlign:'left', border:`1px solid color-mix(in srgb, ${color} 25%, white)`, background:bg,
+              borderRadius:14, padding:'11px 12px', cursor:'pointer', minHeight:108,
+              boxShadow:'0 8px 18px rgba(20,33,61,0.04)', fontFamily:'inherit',
+            }}>
+              <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'0.12em', textTransform:'uppercase', color, marginBottom:5 }}>Acción sugerida {idx + 1}</div>
+              <div style={{ fontSize:13, fontWeight:900, color:'var(--an-navy,#14213D)', lineHeight:1.15 }}>{a.titulo}</div>
+              <div style={{ fontSize:11.5, color:'var(--ink-2,#666)', marginTop:5, lineHeight:1.35 }}>{a.texto}</div>
+              <div style={{ marginTop:8, fontSize:10.5, fontWeight:900, color, display:'inline-flex', alignItems:'center', gap:5 }}>
+                Aplicar filtro →
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PanelOperativoGrupo({ resumen, filtro, setFiltro, embebidoCalGrupo, estudiantesFiltrados, grupoCodigo }) {
   const estado = resumen.riesgo > 0 || resumen.morosos > 0 || resumen.certPend > 0 || resumen.notaFaltante > 0
     ? (resumen.riesgo + resumen.morosos >= 4 ? 'Crítico' : 'En observación')
@@ -1129,6 +1355,7 @@ function PanelOperativoGrupo({ resumen, filtro, setFiltro, embebidoCalGrupo, est
           <StatMini label="Riesgo" value={resumen.riesgo} warn={resumen.riesgo > 0} />
         </div>
       </div>
+      <PanelPrioridadOperativa resumen={resumen} setFiltro={setFiltro} />
       <div style={{ display:'flex', gap:7, flexWrap:'wrap', alignItems:'center' }}>
         {filtros.map(([k,l,c,t]) => (
           <FiltroOperativoBtn key={k} active={filtro === k} label={l} count={c} tone={t} onClick={() => setFiltro(k)} />
@@ -1150,7 +1377,9 @@ function PanelOperativoGrupo({ resumen, filtro, setFiltro, embebidoCalGrupo, est
               : `${seguimientoArr.length} estudiante(s) para ${motivo}. Cada botón WA usa un mensaje según este filtro.`}
           </div>
         </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:7, alignItems:'flex-end' }}>
+          <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3,#888)' }}>Herramientas de salida</div>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
           <button type="button" onClick={copiarResumenOperativo} style={{
             border:'1px solid rgba(20,33,61,.18)', background:'white', color:'var(--an-navy,#14213D)',
             borderRadius:9, padding:'7px 10px', fontSize:11, fontWeight:900, cursor:'pointer',
@@ -1185,6 +1414,7 @@ function PanelOperativoGrupo({ resumen, filtro, setFiltro, embebidoCalGrupo, est
           }}>
             Reporte / imprimir
           </button>
+          </div>
         </div>
       </div>
       {filtro !== 'todos' && (
@@ -1408,7 +1638,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
             onClick={(ev) => { ev.stopPropagation(); if (generarCertificadosNivel) generarCertificadosNivel(nivelKey); }}
             title={generarCertificadosNivel
               ? 'Genera solo certificados pendientes: APR + certificado pagado + sin REG_CERTIFICADOS. Omite los ya registrados.'
-              : 'Pendientes detectados. La generación masiva queda desactivada hasta validar F5 backend para proteger consecutivos.'}
+              : 'Generación masiva segura F26: primero muestra vista previa; solo ejecuta con confirmación. Los registros existentes no crean consecutivo nuevo.'}
             style={{
               marginLeft:4, padding:'4px 9px', borderRadius:7,
               border:'1px solid rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.18)',
@@ -1584,6 +1814,8 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                   <td style={{ padding:'10px 8px', whiteSpace:'nowrap', verticalAlign:'top' }}>
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
                       <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'pagos')} title="Ver ficha del estudiante" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>👤 Ficha</button>
+
+                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'seguimiento')} title="Abrir bitácora visual de seguimiento local" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid rgba(229,168,35,.35)', fontSize:11, cursor:'pointer', background:'color-mix(in srgb, var(--an-gold,#E5A823) 8%, white)', color:'#9A6200', fontWeight:800 }}>📝 Seg.</button>
                       <button onClick={() => setModalEstatus({ estudiante: e, nivel: nivelKey })} title="Cambiar estatus" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>✏️ Estado</button>
                       <button
                         onClick={async () => {
@@ -1646,6 +1878,176 @@ function StatMini({ label, value, warn }) {
     }}>
       <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.10em', textTransform:'uppercase', color: warn ? '#9A5A00' : 'var(--ink-3,#999)' }}>{label}</div>
       <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:22, lineHeight:1, color: warn ? '#9A5A00' : 'var(--an-navy,#14213D)', marginTop:3 }}>{value}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// F30 — Cierre académico seguro por grupo/nivel
+// Vista previa antes de tocar ESTATUS. Ejecuta solo con confirmación.
+// Marca: CALGRUPO_F30_20260617_CIERRE_ACADEMICO_SEGURO_PREVIEW
+// ─────────────────────────────────────────────────────────────────────────
+function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
+  const nivelesDisponibles = React.useMemo(() => {
+    const set = new Set((secciones || []).map(s => String(s.nivel || '').toUpperCase()).filter(Boolean));
+    return ORDEN_NIVELES.filter(n => set.has(n));
+  }, [secciones]);
+
+  const [nivel, setNivel] = React.useState('B1');
+  const [preview, setPreview] = React.useState(null);
+  const [resultado, setResultado] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [ejecutando, setEjecutando] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  React.useEffect(() => {
+    if (nivelesDisponibles.length && !nivelesDisponibles.includes(nivel)) {
+      setNivel(nivelesDisponibles[0]);
+      setPreview(null);
+      setResultado(null);
+    }
+  }, [nivelesDisponibles.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!grupo || !nivelesDisponibles.length) return null;
+
+  const resumen = preview?.resumen || {};
+  const detalle = preview?.detalle || [];
+  const accionables = Number(resumen.listo_apr || 0) + Number(resumen.listo_rep || 0);
+
+  async function cargarPreview(n = nivel) {
+    if (!grupo || !n) return;
+    setLoading(true); setError(''); setResultado(null);
+    try {
+      const d = await postAdminStudents('getCierreAcademicoNivelPreview', { cod_grupo: grupo, grupo, nivel: n });
+      if (d && d.ok) setPreview(d);
+      else setError((d && (d.mensaje || d.error)) || 'No se pudo cargar la vista previa del cierre.');
+    } catch(e) {
+      setError('Error de conexión: ' + (e.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function ejecutarCierre() {
+    if (!preview || !accionables) return;
+    const msg = `Vas a cerrar ${accionables} estudiante(s) de ${grupo} · ${nivel}.\n\nAPR: ${resumen.listo_apr || 0}\nREP: ${resumen.listo_rep || 0}\n\nNo se tocarán incompletos ni ya cerrados. ¿Continuar?`;
+    if (!window.confirm(msg)) return;
+    setEjecutando(true); setError(''); setResultado(null);
+    try {
+      const d = await postAdminStudents('ejecutarCierreAcademicoNivel', { cod_grupo: grupo, grupo, nivel, confirmar: true });
+      if (d && d.ok) {
+        setResultado(d);
+        setPreview(d.preview || preview);
+        if (onRefresh) onRefresh();
+      } else {
+        setError((d && (d.mensaje || d.error)) || 'No se pudo ejecutar el cierre académico.');
+      }
+    } catch(e) {
+      setError('Error de conexión: ' + (e.message || e));
+    } finally {
+      setEjecutando(false);
+    }
+  }
+
+  function badgeDecision(item) {
+    const d = String(item.decision || '').toLowerCase();
+    if (d === 'apr') return { txt:'APR', bg:'#E8F5E9', fg:'#2E7D32' };
+    if (d === 'rep') return { txt:'REP', bg:'#FFEBEE', fg:'#C62828' };
+    if (d === 'incompleto') return { txt:'Incompleto', bg:'#FFF8E1', fg:'#8A5A00' };
+    if (d === 'ya_cerrado') return { txt:'Ya cerrado', bg:'#E3F2FD', fg:'#1565C0' };
+    return { txt:item.decision_label || 'Sin acción', bg:'#F5F5F5', fg:'#666' };
+  }
+
+  return (
+    <div style={{
+      border:'1px solid rgba(20,33,61,.10)', borderRadius:16, padding:18, margin:'0 0 20px',
+      background:'linear-gradient(135deg, rgba(20,33,61,.035), rgba(229,168,35,.045))',
+      boxShadow:'0 8px 24px rgba(20,33,61,.06)'
+    }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
+        <div style={{ flex:'1 1 320px' }}>
+          <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:'#E5A823', marginBottom:5 }}>
+            Cierre académico seguro
+          </div>
+          <div style={{ fontFamily:'var(--f-serif, serif)', fontSize:24, fontWeight:500, color:'var(--an-navy-ink,#14213D)', lineHeight:1.1 }}>
+            Vista previa antes de aprobar o reprobar
+          </div>
+          <div style={{ fontSize:12, color:'var(--ink-3,#777)', marginTop:7, lineHeight:1.5 }}>
+            Recalcula por nivel, separa incompletos y solo cambia ESTATUS con confirmación. Los APR pasan por las validaciones administrativas existentes.
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', justifyContent:'flex-end' }}>
+          {nivelesDisponibles.map(n => (
+            <button key={n} onClick={() => { setNivel(n); setPreview(null); setResultado(null); setError(''); }} style={{
+              border:'1px solid ' + (nivel === n ? (NIVEL_COLOR_P[n] || '#14213D') : 'var(--line,#ddd)'),
+              background: nivel === n ? (NIVEL_COLOR_P[n] || '#14213D') : 'white',
+              color: nivel === n ? 'white' : 'var(--ink-2,#444)',
+              borderRadius:999, padding:'7px 12px', fontSize:11, fontWeight:800, cursor:'pointer'
+            }}>{n}</button>
+          ))}
+          <button onClick={() => cargarPreview()} disabled={loading || ejecutando} style={{
+            border:'none', background:'var(--an-navy,#14213D)', color:'white', borderRadius:999,
+            padding:'8px 14px', fontSize:11, fontWeight:800, cursor: loading ? 'wait' : 'pointer'
+          }}>{loading ? 'Calculando…' : 'Vista previa'}</button>
+          <button onClick={ejecutarCierre} disabled={!preview || !accionables || ejecutando} style={{
+            border:'none', background: (!preview || !accionables) ? '#BBB' : '#2E7D32', color:'white', borderRadius:999,
+            padding:'8px 14px', fontSize:11, fontWeight:800, cursor: (!preview || !accionables) ? 'not-allowed' : 'pointer'
+          }}>{ejecutando ? 'Cerrando…' : 'Cerrar nivel'}</button>
+        </div>
+      </div>
+
+      {error && <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#FFEBEE', color:'#C62828', fontSize:12, fontWeight:700 }}>{error}</div>}
+      {resultado && <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#E8F5E9', color:'#2E7D32', fontSize:12, fontWeight:700 }}>
+        Cierre ejecutado: APR {resultado.resumen?.apr || 0}, REP {resultado.resumen?.rep || 0}, bloqueados {resultado.resumen?.bloqueados || 0}.
+      </div>}
+
+      {preview && (
+        <div style={{ marginTop:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(6, minmax(0,1fr))', gap:10, marginBottom:14 }}>
+            {[
+              ['Total', resumen.total || 0, '#14213D'],
+              ['Listos APR', resumen.listo_apr || 0, '#2E7D32'],
+              ['Listos REP', resumen.listo_rep || 0, '#C62828'],
+              ['Incompletos', resumen.incompletos || 0, '#8A5A00'],
+              ['Ya cerrados', resumen.ya_cerrados || 0, '#1565C0'],
+              ['Sin acción', resumen.sin_accion || 0, '#777'],
+            ].map(([label, val, color]) => (
+              <div key={label} style={{ background:'white', border:'1px solid rgba(20,33,61,.08)', borderRadius:12, padding:'10px 12px' }}>
+                <div style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'.1em', fontWeight:800, color:'var(--ink-3,#888)' }}>{label}</div>
+                <div style={{ fontSize:24, fontWeight:800, color, fontFamily:'var(--f-serif, serif)', lineHeight:1 }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ maxHeight:260, overflow:'auto', background:'white', border:'1px solid var(--line,#eee)', borderRadius:12 }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead style={{ position:'sticky', top:0, background:'#FAFAFA' }}>
+                <tr>
+                  {['Estudiante','Código','Estado actual','Nota','Decisión','Faltantes'].map(h => (
+                    <th key={h} style={{ padding:'9px 10px', textAlign:'left', fontSize:10, textTransform:'uppercase', letterSpacing:'.08em', color:'var(--ink-3,#777)', borderBottom:'1px solid var(--line,#eee)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {detalle.slice(0, 80).map((it, idx) => {
+                  const b = badgeDecision(it);
+                  return (
+                    <tr key={(it.codigo || '') + idx} style={{ borderBottom:'1px solid #F2F2F2' }}>
+                      <td style={{ padding:'8px 10px', fontWeight:700 }}>{it.nombre || '—'}<div style={{ fontSize:10, color:'var(--ink-3,#999)', fontWeight:500 }}>{it.cedula || ''}</div></td>
+                      <td style={{ padding:'8px 10px', fontFamily:'var(--f-mono,monospace)', fontSize:11 }}>{it.codigo}</td>
+                      <td style={{ padding:'8px 10px' }}>{it.estatus || '—'}</td>
+                      <td style={{ padding:'8px 10px', fontWeight:800, color:Number(it.nota_total || 0) >= 70 ? '#2E7D32' : '#C62828' }}>{Number(it.nota_total || 0).toFixed(2)}</td>
+                      <td style={{ padding:'8px 10px' }}><span style={{ background:b.bg, color:b.fg, borderRadius:999, padding:'3px 8px', fontSize:10, fontWeight:800 }}>{b.txt}</span></td>
+                      <td style={{ padding:'8px 10px', color:'var(--ink-3,#888)', fontSize:11 }}>{(it.faltantes || []).join(', ') || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {detalle.length > 80 && <div style={{ marginTop:8, fontSize:11, color:'var(--ink-3,#888)' }}>Mostrando 80 de {detalle.length} registros.</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1732,21 +2134,61 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
 
   const handleGenerarCertificadosNivel = async (nivel) => {
     if (!grupoSel || !nivel) return;
-    setCertEstado({ loading: true, masivo: true, nivel });
+    setCertEstado({ loading: true, masivo: true, preview: true, nivel });
     try {
+      const preview = await postAdminStudents('generarCertificadosNivel', {
+        grupo: grupoSel,
+        nivel: nivel,
+        dry_run: true,
+        confirmar: false,
+      });
+      if (!preview || preview.ok !== true) {
+        setCertEstado({ ...(preview || {}), ok: false, masivo: true, error: (preview && (preview.error || preview.mensaje)) || 'No se pudo preparar la vista previa', nivel });
+        return;
+      }
+      const r = preview.resumen || {};
+      const porGenerar = Number(r.por_generar ?? r.generables ?? r.generados ?? 0) || 0;
+      const yaExistentes = Number(r.ya_existentes || 0) || 0;
+      const sinPdf = Number(r.sin_pdf || 0) || 0;
+      const noAptos = Number(r.no_aptos || 0) || 0;
+      const errores = Number(r.errores || 0) || 0;
+      const msg = [
+        `Grupo: ${grupoSel}`,
+        `Nivel: ${nivel}`,
+        '',
+        `Se crearán certificados nuevos: ${porGenerar}`,
+        `Ya registrados / existentes: ${yaExistentes}`,
+        `Registrados sin PDF localizado: ${sinPdf}`,
+        `No aptos: ${noAptos}`,
+        errores ? `Errores previos: ${errores}` : '',
+        '',
+        'Regla segura: los estudiantes con REG_CERTIFICADOS NO generan consecutivo nuevo.',
+        '',
+        '¿Confirmás ejecutar la generación masiva segura?'
+      ].filter(Boolean).join('\n');
+      const confirmar = window.confirm(msg);
+      if (!confirmar) {
+        setCertEstado({ ok: true, cancelado: true, masivo: true, nivel, resumen: r, mensaje: 'Proceso cancelado. No se generó ningún certificado.' });
+        setTimeout(() => { setCertEstado(null); }, 4200);
+        return;
+      }
+
+      setCertEstado({ loading: true, masivo: true, nivel });
       const data = await postAdminStudents('generarCertificadosNivel', {
         grupo: grupoSel,
         nivel: nivel,
+        confirmar: true,
+        modo: 'ejecutar',
       });
       setCertEstado({ ...data, masivo: true, nivel });
       if (data.ok) {
-        const r = data.resumen || {};
+        const r2 = data.resumen || {};
         setToast({
-          tipo: (r.errores || 0) ? 'err' : 'ok',
-          msg: `Certificados ${nivel}: ${r.generados || 0} creados · ${r.ya_existentes || 0} ya existían · ${r.no_aptos || 0} no aptos${(r.errores || 0) ? ` · ${r.errores} errores` : ''}`,
+          tipo: (r2.errores || 0) ? 'err' : 'ok',
+          msg: `Certificados ${nivel}: ${r2.generados || 0} creados · ${r2.ya_existentes || 0} ya existían · ${r2.sin_pdf || 0} sin PDF · ${r2.no_aptos || 0} no aptos${(r2.errores || 0) ? ` · ${r2.errores} errores` : ''}`,
         });
         setRefreshKey(k => k + 1);
-        setTimeout(() => { setCertEstado(null); }, 6500);
+        setTimeout(() => { setCertEstado(null); }, 7600);
       }
     } catch(e) {
       setCertEstado({ ok: false, masivo: true, error: 'Error de conexión', nivel });
@@ -2008,6 +2450,11 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
             </div>
           ) : (
             <React.Fragment>
+              <CierreAcademicoNivelPanel
+                grupo={grupoSel}
+                secciones={secciones}
+                onRefresh={() => setRefreshKey(k => k + 1)}
+              />
               <PanelOperativoGrupo
                 resumen={resumenOperativo}
                 filtro={filtroOperativo}
@@ -2041,7 +2488,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                   onNavigate={onNavigate}
                   onAbrirPanel={(est, tab) => setEstudiantePanelAbierto({ est, tab: tab || 'pagos' })}
                   generarCertificadoFila={(est, niv) => handleGenerarCertificado(est, niv)}
-                  generarCertificadosNivel={null}
+                  generarCertificadosNivel={handleGenerarCertificadosNivel}
                   filtroOperativo={filtroOperativo}
                 />
               ))}
@@ -2087,13 +2534,13 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
           fontSize:13, lineHeight:1.5,
         }}>
           {certEstado.loading ? (
-            <span>⏳ {certEstado.masivo ? `Generando certificados del nivel ${certEstado.nivel}...` : `Generando certificado ${certEstado.nivel}...`}</span>
+            <span>⏳ {certEstado.masivo ? (certEstado.preview ? `Preparando vista previa del nivel ${certEstado.nivel}...` : `Generando certificados seguros del nivel ${certEstado.nivel}...`) : `Generando certificado ${certEstado.nivel}...`}</span>
           ) : certEstado.ok ? (
             certEstado.masivo ? (
               <div>
                 <div style={{ fontWeight:700, marginBottom:4 }}>🏅 Certificados del nivel {certEstado.nivel}</div>
                 <div style={{ fontSize:11, opacity:0.9, lineHeight:1.45 }}>
-                  {(certEstado.resumen?.generados || 0)} creados · {(certEstado.resumen?.ya_existentes || 0)} ya existían · {(certEstado.resumen?.no_aptos || 0)} no aptos · {(certEstado.resumen?.errores || 0)} errores
+                  {(certEstado.resumen?.generados || 0)} creados · {(certEstado.resumen?.ya_existentes || 0)} ya existían · {(certEstado.resumen?.sin_pdf || 0)} sin PDF · {(certEstado.resumen?.no_aptos || 0)} no aptos · {(certEstado.resumen?.errores || 0)} errores
                 </div>
               </div>
             ) : (
@@ -2164,6 +2611,7 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate, initialTab }) {
 
   const tabs = [
     ['pagos',       '💳 Pagos'],
+    ['seguimiento', '📝 Seguimiento'],
     ['notas',       '📊 Notas'],
     ['asistencia',  '📅 Asistencia'],
     ['documentos',  '📄 Documentos'],
@@ -2258,8 +2706,11 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate, initialTab }) {
           {tabActiva === 'pagos' && !cargando && (
             <TabPagosPanel pagosEst={pagosEst} niveles={niveles} detalle={detalle} onNavigate={onNavigate} est={est} />
           )}
+          {tabActiva === 'seguimiento' && !cargando && (
+            <TabSeguimientoPanel est={est} detalle={detalle} />
+          )}
           {tabActiva === 'notas' && !cargando && (
-            <TabNotasPanel niveles={niveles} nivelActivo={nivelActivo} />
+            <TabNotasPanel niveles={niveles} nivelActivo={nivelActivo} est={est} detalle={detalle} />
           )}
           {tabActiva === 'asistencia' && !cargando && (
             <TabAsistenciaPanel est={est} detalle={detalle} />
@@ -2270,6 +2721,250 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate, initialTab }) {
         </div>
       </div>
     </React.Fragment>
+  );
+}
+
+
+function BitacoraFlag({ flag }) {
+  const tones = {
+    ok:   { bg:'#E8F5E9', fg:'#2E7D32', bd:'#BFE4C3' },
+    bad:  { bg:'#FFEBEE', fg:'#C62828', bd:'#F4B7B7' },
+    warn: { bg:'#FFF8E1', fg:'#9A6200', bd:'#F1D18A' },
+    blue: { bg:'#E3F2FD', fg:'#1565C0', bd:'#B9DAF5' },
+  };
+  const t = tones[flag?.tone] || tones.ok;
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 9px', borderRadius:999, background:t.bg, color:t.fg, border:`1px solid ${t.bd}`, fontSize:10.5, fontWeight:900 }}>
+      {flag?.label || 'Seguimiento'}
+    </span>
+  );
+}
+
+function TabSeguimientoPanel({ est, detalle }) {
+  const [items, setItems] = React.useState(() => leerBitacoraLocal(est));
+  const [tipo, setTipo] = React.useState(() => tipoBitacoraInicial(est));
+  const [nota, setNota] = React.useState('');
+  const [copiado, setCopiado] = React.useState(false);
+  const [guardado, setGuardado] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
+  const [fuente, setFuente] = React.useState('local');
+  const [syncMsg, setSyncMsg] = React.useState('');
+  const flags = seguimientoFlagsEstudiante(est);
+  const codigo = codigoEstudianteClave(est);
+  const nombre = est?.display || est?.nombre || detalle?.estudiante?.nombre || 'Estudiante';
+  const telefono = estudiantePhone(est) || 'sin teléfono';
+
+  React.useEffect(() => {
+    let activo = true;
+    setItems(leerBitacoraLocal(est));
+    setTipo(tipoBitacoraInicial(est));
+    setNota('');
+    setFuente('local');
+    setSyncMsg('');
+    setSyncing(true);
+    listarBitacoraBackend(est)
+      .then(resp => {
+        if (!activo) return;
+        if (resp && resp.ok === true) {
+          setItems(resp.items || []);
+          setFuente('backend');
+          setSyncMsg('Bitácora oficial conectada');
+        } else {
+          setFuente('local');
+          setSyncMsg('Modo local: subí el Apps Script F24 para guardar en base oficial.');
+        }
+      })
+      .catch(() => {
+        if (!activo) return;
+        setFuente('local');
+        setSyncMsg('Modo local: backend de seguimiento no disponible.');
+      })
+      .finally(() => { if (activo) setSyncing(false); });
+    return () => { activo = false; };
+  }, [est?.codigo, est?.rec_m, est?.cedula]);
+
+  const agregar = React.useCallback(async () => {
+    const texto = String(nota || '').trim();
+    if (!texto) return;
+    const nuevo = {
+      id: Date.now(),
+      fecha: new Date().toISOString(),
+      tipo,
+      nota: texto,
+      usuario: 'Admin',
+    };
+    setGuardado(false);
+    setSyncing(true);
+    try {
+      const remoto = await registrarBitacoraBackend(est, nuevo);
+      if (remoto && remoto.ok === true) {
+        const next = remoto.items && remoto.items.length ? remoto.items : [remoto.item || normalizarBitacoraRemota(nuevo), ...items].slice(0, 80);
+        setItems(next);
+        setFuente('backend');
+        setSyncMsg('Guardado en bitácora oficial');
+      } else {
+        const next = [nuevo, ...items].slice(0, 60);
+        setItems(next);
+        guardarBitacoraLocal(est, next);
+        setFuente('local');
+        setSyncMsg('Guardado localmente. Backend F24 no disponible o no aplicado.');
+      }
+      setNota('');
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 1400);
+    } finally {
+      setSyncing(false);
+    }
+  }, [nota, tipo, items, est]);
+
+  const borrarItem = React.useCallback(async (id) => {
+    if (!id) return;
+    setSyncing(true);
+    try {
+      if (fuente === 'backend') {
+        const remoto = await eliminarBitacoraBackend(est, id);
+        if (remoto && remoto.ok === true) {
+          setItems(remoto.items || []);
+          setSyncMsg('Registro eliminado de la bitácora oficial');
+          return;
+        }
+      }
+      const next = items.filter(x => x.id !== id);
+      setItems(next);
+      guardarBitacoraLocal(est, next);
+      setFuente('local');
+      setSyncMsg('Registro eliminado localmente.');
+    } finally {
+      setSyncing(false);
+    }
+  }, [items, est, fuente]);
+
+  const recargarBitacora = React.useCallback(async () => {
+    setSyncing(true);
+    const resp = await listarBitacoraBackend(est);
+    if (resp && resp.ok === true) {
+      setItems(resp.items || []);
+      setFuente('backend');
+      setSyncMsg('Bitácora oficial actualizada');
+    } else {
+      setItems(leerBitacoraLocal(est));
+      setFuente('local');
+      setSyncMsg('Modo local: backend de seguimiento no disponible.');
+    }
+    setSyncing(false);
+  }, [est]);
+
+  const copiarBitacora = React.useCallback(() => {
+    const lines = [
+      `BITÁCORA DE SEGUIMIENTO · ${nombre}`,
+      `Código: ${codigo}`,
+      `Teléfono: ${telefono}`,
+      `Fuente: ${fuente === 'backend' ? 'oficial' : 'local'}`,
+      `Alertas: ${flags.map(f => f.label).join(', ')}`,
+      '',
+      ...(items.length ? items.map((it, idx) => `${idx + 1}. ${formatFechaBitacora(it.fecha)} · ${it.tipo || 'General'} · ${it.nota || ''}`) : ['Sin registros.']),
+    ];
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lines.join('\n'));
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1400);
+    } catch (_) {}
+  }, [items, nombre, codigo, telefono, flags, fuente]);
+
+  const plantillas = [
+    ['WA enviado', 'Se envió WhatsApp de seguimiento. Pendiente respuesta del estudiante.'],
+    ['No respondió', 'Se intentó contactar al estudiante, pero no respondió. Reintentar seguimiento.'],
+    ['Pago', 'Se dio seguimiento por estado de pago/mora. Pendiente confirmación administrativa.'],
+    ['Académico', 'Se dio seguimiento académico por avance, asistencia o nota. Pendiente nueva revisión.'],
+    ['CONAPE', 'Se revisó información CONAPE. Pendiente actualización/confirmación del expediente.'],
+    ['Certificado', 'Se dio seguimiento al proceso de certificado. Validar pago, registro o PDF en Drive.'],
+  ];
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ border:'1px solid var(--line,#e6e0d8)', borderRadius:14, padding:'14px 16px', background:'linear-gradient(135deg, white, color-mix(in srgb, var(--an-gold,#E5A823) 5%, white))' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3,#888)' }}>Bitácora de seguimiento</div>
+            <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:22, color:'var(--an-navy,#14213D)', fontWeight:700, marginTop:2 }}>Seguimiento del estudiante</div>
+            <div style={{ fontSize:12, color:'var(--ink-2,#666)', marginTop:5, lineHeight:1.45 }}>
+              {fuente === 'backend'
+                ? 'Conectada a bitácora oficial del campus. Los registros quedan guardados en la hoja SEGUIMIENTO_ESTUDIANTES.'
+                : 'Modo local de respaldo. Guarda en este navegador hasta que se suba el Apps Script F24.'}
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:7, flexWrap:'wrap', justifyContent:'flex-end' }}>
+            <StatMini label="Registros" value={items.length} />
+            <StatMini label="Código" value={codigo} />
+            <StatMini label="Fuente" value={fuente === 'backend' ? 'Oficial' : 'Local'} />
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginTop:12, alignItems:'center' }}>
+          {flags.map(f => <BitacoraFlag key={f.key} flag={f} />)}
+          <button type="button" onClick={recargarBitacora} disabled={syncing} style={{ border:'1px solid rgba(20,33,61,.16)', background:'white', color:'var(--an-navy,#14213D)', borderRadius:999, padding:'5px 10px', fontSize:10.5, fontWeight:900, cursor: syncing ? 'wait' : 'pointer' }}>
+            {syncing ? 'Sincronizando…' : 'Recargar'}
+          </button>
+        </div>
+        {syncMsg ? <div style={{ marginTop:9, fontSize:11, color: fuente === 'backend' ? '#2E7D32' : '#9A6200', fontWeight:800 }}>{syncMsg}</div> : null}
+      </div>
+
+      <div style={{ border:'1px solid var(--line,#e6e0d8)', borderRadius:14, padding:'14px 16px', background:'white' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(150px, 210px) 1fr', gap:10, alignItems:'start' }}>
+          <div>
+            <label style={{ display:'block', fontSize:10, fontWeight:900, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3,#888)', marginBottom:5 }}>Tipo</label>
+            <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width:'100%', padding:'9px 10px', borderRadius:9, border:'1px solid var(--line,#ddd)', fontSize:12, fontWeight:800, background:'white' }}>
+              {['General','WhatsApp','Llamada','Mora / pago','Académico / riesgo','CONAPE','Certificado'].map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display:'block', fontSize:10, fontWeight:900, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3,#888)', marginBottom:5 }}>Nota rápida</label>
+            <textarea value={nota} onChange={e => setNota(e.target.value)} placeholder="Ejemplo: Se contactó por WhatsApp, queda pendiente respuesta..." rows={3} style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid var(--line,#ddd)', resize:'vertical', fontSize:12, lineHeight:1.45, fontFamily:'inherit' }} />
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginTop:10 }}>
+          {plantillas.map(([label, texto]) => (
+            <button key={label} type="button" onClick={() => setNota(texto)} style={{ border:'1px solid rgba(20,33,61,.14)', background:'var(--surface-2,#f8f8f8)', color:'var(--an-navy,#14213D)', borderRadius:999, padding:'5px 9px', fontSize:10.5, fontWeight:900, cursor:'pointer' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', gap:10, flexWrap:'wrap', marginTop:12, alignItems:'center' }}>
+          <div style={{ fontSize:11.5, color:'var(--ink-3,#777)' }}>Teléfono: <strong>{telefono}</strong></div>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+            <button type="button" onClick={copiarBitacora} style={{ border:'1px solid rgba(20,33,61,.20)', background:'white', color:'var(--an-navy,#14213D)', borderRadius:9, padding:'8px 12px', fontSize:11, fontWeight:900, cursor:'pointer' }}>
+              {copiado ? 'Copiado ✓' : 'Copiar bitácora'}
+            </button>
+            <button type="button" onClick={agregar} disabled={!String(nota || '').trim() || syncing} style={{ border:'1px solid rgba(229,168,35,.45)', background: String(nota || '').trim() && !syncing ? 'var(--an-gold,#E5A823)' : 'rgba(229,168,35,.22)', color: String(nota || '').trim() && !syncing ? 'white' : '#9A6200', borderRadius:9, padding:'8px 13px', fontSize:11, fontWeight:900, cursor:String(nota || '').trim() && !syncing ? 'pointer' : 'not-allowed' }}>
+              {guardado ? 'Guardado ✓' : (fuente === 'backend' ? 'Guardar nota oficial' : 'Guardar nota')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {items.length === 0 ? (
+          <div style={{ padding:'18px', textAlign:'center', color:'var(--ink-3,#888)', border:'1px dashed var(--line,#ddd)', borderRadius:12, background:'var(--surface-2,#fafafa)', fontSize:12 }}>
+            Sin notas todavía. Agregá una nota rápida para documentar el seguimiento.
+          </div>
+        ) : items.map(it => {
+          const c = tipoBitacoraColor(it.tipo);
+          return (
+            <div key={it.id} style={{ border:`1px solid ${c.bd}`, background:c.bg, borderRadius:12, padding:'11px 12px', display:'grid', gridTemplateColumns:'34px 1fr auto', gap:10, alignItems:'start' }}>
+              <div style={{ width:34, height:34, borderRadius:10, background:'rgba(255,255,255,.65)', color:c.fg, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize: c.icon === 'WA' ? 11 : 17 }}>{c.icon}</div>
+              <div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                  <strong style={{ fontSize:12.5, color:c.fg }}>{it.tipo || 'General'}</strong>
+                  <span style={{ fontSize:10.5, color:'var(--ink-3,#777)', fontWeight:800 }}>{formatFechaBitacora(it.fecha)}</span>
+                  {it._backend ? <span style={{ fontSize:9.5, fontWeight:900, color:'#2E7D32', background:'rgba(46,125,50,.10)', border:'1px solid rgba(46,125,50,.18)', borderRadius:999, padding:'2px 6px' }}>OFICIAL</span> : null}
+                </div>
+                <div style={{ marginTop:4, fontSize:12, color:'var(--ink,#222)', lineHeight:1.45, whiteSpace:'pre-wrap' }}>{it.nota}</div>
+              </div>
+              <button type="button" onClick={() => borrarItem(it.id)} title="Eliminar registro" style={{ border:'none', background:'rgba(255,255,255,.65)', color:c.fg, borderRadius:8, width:28, height:28, cursor:'pointer', fontWeight:900 }}>×</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -2339,13 +3034,128 @@ function TabPagosPanel({ pagosEst, niveles, detalle, onNavigate, est }) {
 }
 
 // ── TAB NOTAS ─────────────────────────────────────────────────────────────
-function TabNotasPanel({ niveles, nivelActivo }) {
+function TabNotasPanel({ niveles, nivelActivo, est, detalle }) {
+  const [tipoEval, setTipoEval] = React.useState('ORAL_1');
+  const [nota100, setNota100] = React.useState('');
+  const [comentario, setComentario] = React.useState('');
+  const [guardando, setGuardando] = React.useState(false);
+  const [resultado, setResultado] = React.useState(null);
+  const [resumenF29, setResumenF29] = React.useState(null);
+
+  const hActivo = niveles?.[nivelActivo] || {};
+  const codigoEst = est?.codigo || est?.rec_m || detalle?.codigo || detalle?.CODIGO || '';
+  const grupoActual = hActivo.grupo || hActivo.GRUPO || detalle?.grupo?.COD_GRUPO || detalle?.grupo?.GRUPO || est?.grupo || est?.cod_grupo || '';
+  const programaTxt = String(hActivo.programa || hActivo.PROGRAMA || detalle?.grupo?.PROGRAMA || detalle?.grupo?.PLAN || est?.programa || est?.convenio || '').toUpperCase();
+  const esINA = programaTxt.includes('INA') && !programaTxt.includes('SIN');
+
+  const opciones = [
+    ['ORAL_1', 'Oral 1', 15, 'L9'],
+    ['ORAL_2', 'Oral 2', 15, 'L17'],
+    ['ORAL_3', 'Oral 3', 15, 'L25'],
+    ['ORAL_4', 'Oral 4', 15, 'L31'],
+    ['ESCRITO_1', 'Escrito 1', esINA ? 5 : 15, 'L18'],
+    ['ESCRITO_2', 'Escrito 2', esINA ? 5 : 15, 'L32'],
+    ['SOCIAL', 'Social Skill', 10, 'Conducta/asistencia'],
+  ];
+  const optActual = opciones.find(o => o[0] === tipoEval) || opciones[0];
+  const maxActual = optActual[2];
+  const notaNum = Number(nota100);
+  const puntosCalc = Number.isFinite(notaNum) && notaNum >= 0 ? Math.round((Math.min(100, Math.max(0, notaNum)) * maxActual / 100) * 100) / 100 : '';
+
+  const componentesActuales = [
+    ['ORAL_1', 'Oral 1', hActivo.o1, 15],
+    ['ORAL_2', 'Oral 2', hActivo.o2, 15],
+    ['ORAL_3', 'Oral 3', hActivo.o3, 15],
+    ['ORAL_4', 'Oral 4', hActivo.o4, 15],
+    ['ESCRITO_1', 'Escrito 1', hActivo.e1, esINA ? 5 : 15],
+    ['ESCRITO_2', 'Escrito 2', hActivo.e2, esINA ? 5 : 15],
+    ['SOCIAL', 'Social', hActivo.s1, 10],
+  ];
+  const totalActual = componentesActuales.reduce((a, c) => a + (Number(c[2]) || 0), 0);
+
+  React.useEffect(() => {
+    let vivo = true;
+    setResumenF29(null);
+    if (!codigoEst || !nivelActivo) return undefined;
+    postAdminStudents('getResumenNotasOficialesEstudiante', {
+      codigo: codigoEst,
+      cod_estudiante: codigoEst,
+      grupo: grupoActual,
+      nivel: nivelActivo,
+    }).then(r => {
+      if (!vivo) return;
+      if (r && r.ok) setResumenF29(r);
+    }).catch(() => {});
+    return () => { vivo = false; };
+  }, [codigoEst, grupoActual, nivelActivo]);
+
+  const guardarNotaOficial = async () => {
+    if (!codigoEst || !nivelActivo || !grupoActual) {
+      setResultado({ ok:false, error:'Faltan código, grupo o nivel para guardar.' });
+      return;
+    }
+    if (!Number.isFinite(notaNum) || notaNum < 0 || notaNum > 100) {
+      setResultado({ ok:false, error:'Digite una nota válida de 0 a 100.' });
+      return;
+    }
+    setGuardando(true);
+    setResultado(null);
+    const payload = {
+      codigo: codigoEst,
+      cod_estudiante: codigoEst,
+      cedula: est?.cedula || detalle?.cedula || '',
+      nombre: est?.nombre || detalle?.nombre || '',
+      grupo: grupoActual,
+      nivel: nivelActivo,
+      tipo_eval: tipoEval,
+      nota_100: notaNum,
+      max_puntos: maxActual,
+      programa: esINA ? 'INA' : 'SIN_INA',
+      comentario,
+    };
+    try {
+      let r = await postAdminStudents('registrarNotaComponenteOficial', payload);
+      if (!r || (!r.ok && String(r.error || '').includes('no reconocida'))) {
+        r = await postAdminStudents('registrarNotaEstatus', { ...payload, nota: puntosCalc });
+      }
+      setResultado(r);
+      if (r && r.ok) {
+        setNota100('');
+        setComentario('');
+        try {
+          const resumen = await postAdminStudents('getResumenNotasOficialesEstudiante', payload);
+          if (resumen && resumen.ok) setResumenF29(resumen);
+        } catch (_) {}
+      }
+    } catch (e) {
+      setResultado({ ok:false, error:'Error de conexión: ' + (e.message || e) });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const resumenComponentes = resumenF29?.componentes || null;
+
   return (
     <div>
-      <div style={{ fontFamily:'var(--f-serif, serif)', fontSize:20, fontWeight:500, color:'var(--an-navy-ink, #14213D)', marginBottom:16 }}>
-        Notas por nivel
+      <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start', marginBottom:16 }}>
+        <div>
+          <div style={{ fontFamily:'var(--f-serif, serif)', fontSize:20, fontWeight:500, color:'var(--an-navy-ink, #14213D)' }}>
+            Notas por nivel
+          </div>
+          <div style={{ fontSize:11, color:'var(--ink-3,#777)', marginTop:3 }}>
+            F29: orales y Social Skill pueden guardarse como componente oficial. Escritos vienen de exámenes revisados, pero quedan visibles para control.
+          </div>
+        </div>
+        <div style={{ textAlign:'right', minWidth:110 }}>
+          <div style={{ fontSize:10, fontWeight:900, color:'var(--ink-3,#777)', textTransform:'uppercase', letterSpacing:'.08em' }}>Nota actual</div>
+          <div style={{ fontFamily:'var(--f-serif, serif)', fontSize:28, color: totalActual >= 70 ? '#2E7D32' : totalActual > 0 ? '#C00000' : 'var(--ink-3,#999)', lineHeight:1 }}>
+            {totalActual > 0 ? Math.round(totalActual * 10) / 10 : '—'}
+          </div>
+        </div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12 }}>
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12, marginBottom:16 }}>
         {NIVEL_ORDER_P.map(niv => {
           const h = niveles[niv];
           const c = NIVEL_COLOR_P[niv];
@@ -2375,14 +3185,14 @@ function TabNotasPanel({ niveles, nivelActivo }) {
                     {h.nota > 0 && <div style={{ fontSize:12, color:'var(--ink-3, #999)', fontWeight:600 }}>/100</div>}
                   </div>
                   {[
-                    { label:'Oral 1 (U1-4)',   val: h.o1, max:15 },
-                    { label:'Oral 2 (U5-8)',   val: h.o2, max:15 },
-                    { label:'Oral 3 (U9-12)',  val: h.o3, max:15 },
-                    { label:'Oral 4 (U13-16)', val: h.o4, max:15 },
-                    { label:'Escrito 1',       val: h.e1, max:15 },
-                    { label:'Escrito 2',       val: h.e2, max:15 },
-                    { label:'Social',          val: h.s1, max:10 },
-                  ].filter(e => e.val > 0).map(({ label, val, max }) => (
+                    { label:'Oral 1 (L9)',    val: h.o1, max:15 },
+                    { label:'Oral 2 (L17)',   val: h.o2, max:15 },
+                    { label:'Oral 3 (L25)',   val: h.o3, max:15 },
+                    { label:'Oral 4 (L31)',   val: h.o4, max:15 },
+                    { label:'Escrito 1',      val: h.e1, max: esINA ? 5 : 15 },
+                    { label:'Escrito 2',      val: h.e2, max: esINA ? 5 : 15 },
+                    { label:'Social',         val: h.s1, max:10 },
+                  ].filter(e => Number(e.val) > 0).map(({ label, val, max }) => (
                     <div key={label} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:3 }}>
                       <span style={{ color:'var(--ink-3, #999)' }}>{label}</span>
                       <span style={{ fontFamily:'var(--f-mono, monospace)', fontWeight:700, color: val >= (max*0.7) ? '#2E7D32' : '#C00000' }}>
@@ -2402,11 +3212,68 @@ function TabNotasPanel({ niveles, nivelActivo }) {
           );
         })}
       </div>
+
+      <div style={{ border:'1px solid rgba(20,33,61,.14)', borderRadius:14, padding:14, background:'linear-gradient(135deg,rgba(20,33,61,.035),rgba(229,168,35,.06))' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'flex-start', marginBottom:12 }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:900, color:'var(--an-navy,#14213D)' }}>Registro oficial de componente</div>
+            <div style={{ fontSize:11, color:'var(--ink-3,#777)', marginTop:2 }}>
+              Convierte la nota 0–100 al peso real del componente y actualiza ESTATUS.
+            </div>
+          </div>
+          <div style={{ fontSize:10.5, fontWeight:900, color: esINA ? '#1565C0' : '#7A4B00', background: esINA ? '#E3F2FD' : '#FFF8E1', border:`1px solid ${esINA ? '#B9DAF5' : '#F1D18A'}`, borderRadius:999, padding:'4px 9px' }}>
+            {esINA ? 'CON INA' : 'SIN INA'}
+          </div>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1.2fr .8fr .8fr', gap:10, alignItems:'end' }}>
+          <label style={{ fontSize:11, fontWeight:800, color:'var(--ink-2,#555)' }}>
+            Componente
+            <select value={tipoEval} onChange={e => setTipoEval(e.target.value)} style={{ width:'100%', marginTop:5, padding:'9px 10px', borderRadius:9, border:'1px solid var(--line,#ddd)', background:'white', fontWeight:800 }}>
+              {opciones.map(o => <option key={o[0]} value={o[0]}>{o[1]} · máx. {o[2]} pts · {o[3]}</option>)}
+            </select>
+          </label>
+          <label style={{ fontSize:11, fontWeight:800, color:'var(--ink-2,#555)' }}>
+            Nota 0–100
+            <input value={nota100} onChange={e => setNota100(e.target.value)} type="number" min="0" max="100" step="0.01" placeholder="Ej. 86" style={{ width:'100%', marginTop:5, padding:'9px 10px', borderRadius:9, border:'1px solid var(--line,#ddd)', fontWeight:900 }} />
+          </label>
+          <div style={{ padding:'9px 10px', borderRadius:9, border:'1px solid rgba(46,125,50,.18)', background:'rgba(46,125,50,.07)' }}>
+            <div style={{ fontSize:10, fontWeight:900, color:'#2E7D32', textTransform:'uppercase', letterSpacing:'.08em' }}>Puntos</div>
+            <div style={{ fontFamily:'var(--f-mono,monospace)', fontWeight:900, color:'#2E7D32' }}>{puntosCalc === '' ? '—' : `${puntosCalc}/${maxActual}`}</div>
+          </div>
+        </div>
+
+        <textarea value={comentario} onChange={e => setComentario(e.target.value)} placeholder="Comentario opcional para seguimiento académico…" rows={2} style={{ width:'100%', marginTop:10, padding:'9px 10px', borderRadius:9, border:'1px solid var(--line,#ddd)', resize:'vertical', fontFamily:'inherit', fontSize:12 }} />
+
+        <div style={{ display:'flex', justifyContent:'space-between', gap:10, alignItems:'center', marginTop:10, flexWrap:'wrap' }}>
+          <div style={{ fontSize:10.5, color:'var(--ink-3,#777)' }}>
+            Nivel: <strong>{nivelActivo}</strong> · Grupo: <strong>{grupoActual || '—'}</strong> · Código: <strong>{codigoEst || '—'}</strong>
+          </div>
+          <button type="button" onClick={guardarNotaOficial} disabled={guardando || !codigoEst || !grupoActual || !nivelActivo} style={{ border:'none', background:'var(--an-navy,#14213D)', color:'white', borderRadius:9, padding:'9px 14px', fontSize:11, fontWeight:900, cursor: guardando ? 'wait' : 'pointer', opacity: guardando ? .7 : 1 }}>
+            {guardando ? 'Guardando…' : 'Guardar nota oficial'}
+          </button>
+        </div>
+
+        {resultado && (
+          <div style={{ marginTop:10, padding:'9px 11px', borderRadius:10, background: resultado.ok ? '#E8F5E9' : '#FFEBEE', border:`1px solid ${resultado.ok ? '#BFE4C3' : '#F4B7B7'}`, color: resultado.ok ? '#2E7D32' : '#C62828', fontSize:12, fontWeight:800 }}>
+            {resultado.ok ? `✅ Guardado. ${resultado.tipo_eval || tipoEval}: ${resultado.puntos ?? puntosCalc} pts. Total: ${resultado.nota_total ?? resultado.total ?? 'actualizado'}` : `❌ ${resultado.error || resultado.mensaje || 'No se pudo guardar.'}`}
+          </div>
+        )}
+
+        {resumenComponentes && (
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:10 }}>
+            {Object.entries(resumenComponentes).map(([k, v]) => (
+              <span key={k} style={{ fontSize:10.5, fontWeight:900, border:'1px solid rgba(20,33,61,.12)', background:'white', borderRadius:999, padding:'4px 8px', color:'var(--ink-2,#555)' }}>
+                {k}: {v?.puntos || 0}/{v?.max || '—'}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── TAB ASISTENCIA ────────────────────────────────────────────────────────
 function TabAsistenciaPanel({ est, detalle }) {
   const [asistencia, setAsistencia] = React.useState(null);
   const [cargando, setCargando]     = React.useState(true);
@@ -2639,8 +3506,9 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
                     <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}>
                       <span>✅</span>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:11, fontWeight:700, color:'#2E7D32', marginBottom:1 }}>{tipo === 'CERTIFICACION' ? 'PDF localizado' : 'PDF generado'}</div>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#2E7D32', marginBottom:1 }}>{tipo === 'CERTIFICACION' ? 'PDF firmado/existente localizado' : 'PDF generado'}</div>
                         <div style={{ fontSize:10, color:'var(--ink-3, #999)', fontFamily:'var(--f-mono, monospace)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.nombre}</div>
+                        {r.mensaje && <div style={{ fontSize:10, color:'#2E7D32', marginTop:2, lineHeight:1.3 }}>{r.mensaje}</div>}
                       </div>
                       <a href={r.url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:5, background:'#2E7D32', color:'white', fontSize:11, fontWeight:700, textDecoration:'none' }}>Abrir</a>
                     </div>
@@ -2659,7 +3527,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
                     disabled={cargando}
                     title="Abre el PDF existente más reciente con el nombre oficial. No crea copias nuevas."
                     style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${color}`, background: color, color:'white', fontWeight:700, fontSize:11, cursor:cargando?'wait':'pointer', whiteSpace:'nowrap', textDecoration:'none', opacity:cargando?0.7:1 }}>
-                    {cargando ? 'Buscando…' : 'Ver PDF'}
+                    {cargando ? 'Buscando…' : 'Ver firmado/PDF'}
                   </button>
                 ) : (
                   <button
@@ -2676,7 +3544,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       </div>
 
       <div style={{ marginTop:14, fontSize:11, color:'var(--ink-3, #999)', padding:'10px 14px', background:'var(--surface-2, #f9f9f9)', borderRadius:'var(--r-md, 8px)' }}>
-        📁 Certificados: si ya existe REG_CERTIFICADOS, esta vista no debe crear otro consecutivo. Solo busca/abre el PDF existente; si suben el firmado con el mismo nombre, Drive debe devolver el más reciente desde backend.
+        📁 Certificados F25: si ya existe REG_CERTIFICADOS, no crea otro consecutivo. Busca/abre el PDF firmado o existente más reciente en Drive; si suben el firmado con el mismo nombre oficial, el backend devuelve el más reciente.
       </div>
     </div>
   );

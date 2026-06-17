@@ -1,11 +1,11 @@
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
-   StudentDashboard, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
+   StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
    ExamenOralView, GruposView, CalificarView, AsistenciaView,
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
-   AuditoriaAcademicaView */
+   AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -128,6 +128,20 @@ function ExamenesTeacherPanel() {
       description="Vista profesor integrada sin acceso a administrador ni preview. Guardado de revisiones y notas queda pendiente de backend."
       badge="Vista docente · sin notas reales"
       iframeTitle="Panel docente de exámenes"
+    />
+  );
+}
+
+// CALGRUPO_F37_20260617_EXAMENES_ESTUDIANTE_ROUTER
+function ExamenesStudentPanel() {
+  return (
+    <ExamenesIframePanel
+      view="student"
+      screenLabel="Estudiante · Exámenes"
+      eyebrow="Exámenes oficiales"
+      description="El sistema muestra únicamente el examen disponible según tu grupo, cronograma y activación oficial."
+      badge="Lección 18 / 32 · en vivo"
+      iframeTitle="Panel estudiante de exámenes"
     />
   );
 }
@@ -342,10 +356,6 @@ function App() {
   // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
   // cuando se navega desde el detalle de una lección en el Cronograma.
   const [pendingGrupo, setPendingGrupo] = useState(null);
-  // CALGRUPO_F4_20260616_AUDITORIA_CONTEXTO
-  // Contexto liviano para abrir Auditoría Académica desde Calendario de Grupo
-  // con el grupo/nivel ya seleccionado, sin tocar backend.
-  const [pendingAuditoria, setPendingAuditoria] = useState(null);
   const [modoPrueba, setModoPrueba] = useState(() => getModoPrueba());
 
   const navigateTo = (target, opts = {}) => {
@@ -353,15 +363,6 @@ function App() {
     else setPendingLesson(null);
     if (opts.grupo) setPendingGrupo(opts.grupo);
     else setPendingGrupo(null);
-    if (target === 'auditoria_academica') {
-      setPendingAuditoria(opts && opts.grupo ? {
-        grupo: opts.grupo,
-        nivel: opts.nivel || '',
-        origen: opts.origen || '',
-      } : null);
-    } else if (target !== 'auditoria_academica') {
-      setPendingAuditoria(null);
-    }
     setActive(target);
   };
 
@@ -418,12 +419,15 @@ function App() {
   if (role === 'student') {
     const map = {
       cronograma_grupo: <CronogramaGrupo rol="student" onNavigate={navigateTo} />,
+      // CALGRUPO_F37_20260617_PORTAL_ESTUDIANTE_ROUTER
+      portal_estudiante: <StudentPortalView toast={toast} onNavigate={navigateTo} />,
       dashboard:    <StudentDashboard toast={toast} onNavigate={navigateTo} />,
       notas:        <NotasView toast={toast} />,
       tareas:       <TareasView toast={toast} />,
       materiales:   <MaterialesView initialLesson={pendingLesson} onNavigate={navigateTo} />,
       info_programa: <InfoProgramaView />,
       ican:         <ICANViewNew toast={toast} role="student" />,
+      examenes:     <ExamenesStudentPanel />,
       mensajes:     <MensajesView />,
       pagos:        <PagosView />,
       certificados: <CertificadosView />,
@@ -437,6 +441,8 @@ function App() {
     const map = {
       dashboard:        <VistaDocente />,
       mi_panel_docente: <VistaDocente />,
+      // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_ROUTER
+      docente_operativo: <DocenteOperativoView onNavigate={navigateTo} />,
       grupos:      <GruposView />,
       calificar:   <CalificarView toast={toast} />,
       asistencia:  <AsistenciaView toast={toast} />,
@@ -459,12 +465,15 @@ function App() {
       dashboard:    <AdminDashboard setActive={setActive} />,
       supervision:  <PanelAdminSupervision />,
       calendario_grupo: <CalendarioGrupoOperativo rol={rolReal} onNavigate={navigateTo} />,
-      auditoria_academica: <AuditoriaAcademicaView
-        initialGrupo={pendingAuditoria?.grupo || pendingGrupo}
-        initialNivel={pendingAuditoria?.nivel || ''}
-        origen={pendingAuditoria?.origen || ''}
-        onNavigate={navigateTo}
-      />,
+      auditoria_academica: <AuditoriaAcademicaView />,
+      // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
+      diagnostico_interno: <DiagnosticoInternoView />,
+      // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_ROUTER
+      permisos_roles: <PermisosRolesView />,
+      // CALGRUPO_F36_20260617_CONAPE_COBRANZA_ROUTER
+      conape_cobranza: <ConapeCobranzaView onNavigate={navigateTo} />,
+      // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_ROUTER
+      reportes: <ReportesAdminView onNavigate={navigateTo} />,
       examenes:    <ExamenesAdminPanel />,
       suspensiones: <PanelSuspensiones />,
       solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
@@ -479,7 +488,6 @@ function App() {
       horas:     <ProximamenteView title="Horas docentes" />,
       ican:      <ProximamenteView title="Club I CAN" />,
       finanzas:  <ProximamenteView title="Finanzas" />,
-      reportes:  <ProximamenteView title="Reportes" />,
       config:    <ProximamenteView title="Configuración" />,
     };
     content = map[active] || map.dashboard;

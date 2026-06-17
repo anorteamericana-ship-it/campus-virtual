@@ -371,12 +371,14 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   }, [rolEfectivo, active]);
 
   const studentNav = [
+    // CALGRUPO_F37_20260617_PORTAL_ESTUDIANTE_MENU
+    { id: 'portal_estudiante', label: 'Mi Campus', icon: 'home' },
     { id: 'dashboard', label: 'Inicio', icon: 'home' },
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
     { id: 'info_programa', label: 'Información del Programa', icon: 'doc' },
     { id: 'notas', label: 'Mis Notas', icon: 'grades' },
-    { id: 'examenes', label: 'Exámenes', icon: 'check', proximamente: true },
+    { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'tareas', label: 'Tareas', icon: 'homework' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
@@ -386,6 +388,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const teacherNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'home', badge: pendientesDoc || null },
+    // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_MENU
+    { id: 'docente_operativo', label: 'Panel operativo', icon: 'grades' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
@@ -396,44 +400,37 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
   ];
   const adminNav = [
-    // CALGRUPO_F18_20260617_NAV_ADMIN_ORDEN_OPERATIVO
-    // El nuevo centro operativo queda destacado arriba. Las vistas anteriores
-    // siguen disponibles como respaldo, pero agrupadas para no confundir al
-    // usuario administrativo. No cambia rutas ni permisos; solo orden visual.
-    { type: 'section', label: 'Centro operativo' },
-    { id: 'calendario_grupo', label: 'Calendario de Grupo', icon: 'calendar', principal: true },
-    { id: 'auditoria_academica', label: 'Auditoría Académica', icon: 'grades' },
+    { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-
-    { type: 'section', label: 'Operación diaria' },
     { id: 'supervision', label: 'Supervisión', icon: 'bell' },
+    // CALGRUPO_F1_20260616_PANEL_NUEVO: panel fusionado calendario + grupo + estudiantes.
+    { id: 'calendario_grupo', label: 'Calendario de Grupo', icon: 'calendar' },
+    { id: 'auditoria_academica', label: 'Auditoría Académica', icon: 'grades' },
+    // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_MENU
+    { id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' },
+    // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_MENU
+    { id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' },
+    // CALGRUPO_F36_20260617_CONAPE_COBRANZA_MENU
+    { id: 'conape_cobranza', label: 'CONAPE y Cobranza', icon: 'payments' },
+    { id: 'examenes', label: 'Exámenes', icon: 'check' },
+    { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
     { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
-    { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },
-    { id: 'examenes', label: 'Exámenes', icon: 'check' },
-
-    { type: 'section', label: 'Consulta y respaldo' },
-    { id: 'estudiantes', label: 'Estudiantes · respaldo', icon: 'profile' },
-    { id: 'cronograma_grupo', label: 'Calendario anterior', icon: 'calendar' },
+    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
+    { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
     { id: 'buscador', label: 'Buscador', icon: 'search' },
-
-    { type: 'section', label: 'Pagos y banco' },
     { id: 'banco', label: 'Importar Banco', icon: 'payments' },
     { id: 'aplicar_pago', label: 'Aplicar Pago', icon: 'card' },
-
-    { type: 'section', label: 'Cuenta' },
-    { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
-
     // Ítems sin lógica real — marcados como "Próximamente" hasta que se
     // conecten. No navegan; renderizarían datos vacíos o demo si lo
     // hicieran (bloque 2).
-    { type: 'section', label: 'Próximamente' },
     { id: 'docentes', label: 'Docentes',         icon: 'graduation', proximamente: true },
     { id: 'horas',    label: 'Horas docentes',   icon: 'chart',      proximamente: true },
     { id: 'ican',     label: 'Club I CAN',       icon: 'ican',       proximamente: true },
     { id: 'finanzas', label: 'Finanzas',         icon: 'payments',   proximamente: true },
-    { id: 'reportes', label: 'Reportes',         icon: 'chart',      proximamente: true },
+    // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_MENU
+    { id: 'reportes', label: 'Reportes',         icon: 'chart' },
     { id: 'config',   label: 'Configuración',    icon: 'settings',   proximamente: true },
   ];
   const nav = role === 'student' ? studentNav : role === 'teacher' ? teacherNav : adminNav;
@@ -459,26 +456,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       {esSuperadmin && <ModoPruebaPanel />}
 
       <div className="sb-section">Menú</div>
-      {nav.map((item, idx) => {
-        if (item.type === 'section') {
-          return (
-            <div
-              key={`section-${item.label}-${idx}`}
-              style={{
-                margin: idx === 0 ? '4px 12px 6px' : '14px 12px 6px',
-                paddingTop: idx === 0 ? 0 : 8,
-                borderTop: idx === 0 ? 'none' : '1px solid color-mix(in srgb, var(--line) 70%, transparent)',
-                fontSize: 9.5,
-                fontWeight: 900,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-3)',
-              }}
-            >
-              {item.label}
-            </div>
-          );
-        }
+      {nav.map(item => {
         if (item.proximamente) {
           return (
             <button
@@ -516,32 +494,10 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
           <button
             key={item.id}
             className={`sb-item ${active===item.id?'active':''}`}
-            title={item.principal ? 'Centro operativo principal' : undefined}
-            onClick={() => setActive(item.id)}
-            style={item.principal ? {
-              minHeight: 42,
-              border: '1px solid color-mix(in srgb, var(--an-granate) 18%, transparent)',
-              background: active === item.id
-                ? 'var(--an-granate)'
-                : 'linear-gradient(135deg, color-mix(in srgb, var(--an-granate) 7%, transparent), color-mix(in srgb, var(--an-gold) 8%, transparent))',
-            } : undefined}>
+            onClick={() => setActive(item.id)}>
             <Icon name={item.icon} size={18} />
             <span className="sb-label">{item.label}</span>
             {item.badge && <span className="sb-badge">{item.badge}</span>}
-            {item.principal && !item.badge && (
-              <span style={{
-                marginLeft: 'auto',
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                padding: '2px 7px',
-                borderRadius: 999,
-                background: active === item.id ? 'rgba(255,255,255,0.2)' : 'color-mix(in srgb, var(--an-gold) 20%, transparent)',
-                color: active === item.id ? 'white' : 'var(--an-granate)',
-                whiteSpace: 'nowrap',
-              }}>Centro</span>
-            )}
           </button>
         );
       })}
