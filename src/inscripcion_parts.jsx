@@ -280,9 +280,9 @@ function buildPeriodoLargo(g) {
     num = nm ? nm[1] : '';
   }
   let rango = '';
-  const fecha = G.fecha(g);
+  const fecha = normalizeFechaCursoISO(G.fecha(g));
   if (fecha) {
-    const [y, mo] = String(fecha).split('-').map(Number);
+    const [y, mo] = fecha.split('-').map(Number);
     if (y && mo) {
       const endIdx = (mo - 1 + dur - 1) % 12;               // mes final = inicio + duración − 1
       rango = `${MESES_LARGO[mo - 1]} a ${MESES_LARGO[endIdx]} ${y}`;
@@ -292,11 +292,72 @@ function buildPeriodoLargo(g) {
   return rango ? `${izq} — ${rango}` : izq;
 }
 
+// CALGRUPO_F52_20260617_FIX_INSCRIPCION_FECHA_1899
+// Normaliza fechas de curso para evitar que Apps Script/Sheets exponga fechas
+// fantasma de Excel/Google Sheets (ej. Sat Dec 30 1899 ... cuando una celda
+// realmente contiene una hora). Si no hay una fecha válida de curso, devuelve
+// vacío: es mejor ocultar "Inicia" que mostrar una fecha falsa.
+function normalizeFechaCursoISO(raw) {
+  if (raw == null || raw === '') return '';
+
+  // Date real del navegador / objeto serializado en memoria.
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return '';
+    const y = raw.getFullYear();
+    if (y < 2020 || y > 2100) return '';
+    const m = raw.getMonth() + 1;
+    const d = raw.getDate();
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  const s = String(raw).trim();
+  if (!s) return '';
+
+  // ISO / yyyy-mm-dd / yyyy/mm/dd.
+  let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (y >= 2020 && y <= 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+    return '';
+  }
+
+  // dd/mm/yyyy o dd-mm-yyyy.
+  m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m) {
+    const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3]);
+    if (y >= 2020 && y <= 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+    return '';
+  }
+
+  // Strings Date.toString(): "Sat Dec 30 1899 ...". Rechazar años fantasma.
+  if (/GMT|standard|est\u00e1ndar|hora/i.test(s)) {
+    const yr = (s.match(/\b(\d{4})\b/) || [])[1];
+    if (!yr || Number(yr) < 2020 || Number(yr) > 2100) return '';
+  }
+
+  const dt = new Date(s);
+  if (!Number.isNaN(dt.getTime())) {
+    const y = dt.getFullYear();
+    if (y >= 2020 && y <= 2100) {
+      const mo = dt.getMonth() + 1;
+      const d = dt.getDate();
+      return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+  }
+
+  return '';
+}
+
 // Fecha de inicio corta en español → "12-may-2026"
 function formatFechaInicio(f) {
-  if (!f) return '';
-  const [y, m, d] = String(f).split('-').map(Number);
-  if (!y || !m || !d) return String(f);
+  const iso = normalizeFechaCursoISO(f);
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return '';
   return `${String(d).padStart(2, '0')}-${MESES_CORTO[m - 1].toLowerCase()}-${y}`;
 }
 
@@ -319,9 +380,9 @@ function buildPeriodo(g) {
   const izq = num ? `${tipoNom} ${num[1]}` : tipoNom;
 
   let rango = '';
-  const fecha = G.fecha(g);
+  const fecha = normalizeFechaCursoISO(G.fecha(g));
   if (fecha) {
-    const [y, m] = String(fecha).split('-').map(Number);
+    const [y, m] = fecha.split('-').map(Number);
     if (y && m) {
       const dur = bim ? 2 : 4;
       const endIdx = (m - 1 + dur - 1) % 12;
@@ -376,7 +437,19 @@ const G = {
   cod: (g) => g.codigo || g.cod || g.id || '',
   nivel: (g) => g.nivel || g.code || '',
   dias: (g) => g.dias || g.dia || g.modalidad_cod || '',
-  fecha: (g) => g.fecha_inicio || g.inicio || g.fechaInicio || '',
+  fecha: (g) => {
+    const candidates = [
+      g.fecha_inicio, g.fechaInicio, g.inicio_fecha, g.fecha, g.start_date, g.fecha_start,
+      // "inicio" se revisa de último porque en Sheets a veces llega como hora
+      // serializada en 1899 y no como fecha de inicio del curso.
+      g.inicio
+    ];
+    for (const c of candidates) {
+      const iso = normalizeFechaCursoISO(c);
+      if (iso) return iso;
+    }
+    return '';
+  },
   doc: (g) => g.docente || g.profesor || g.prof || '',
   cupo: (g) => {
     const v = g.cupo != null ? g.cupo :

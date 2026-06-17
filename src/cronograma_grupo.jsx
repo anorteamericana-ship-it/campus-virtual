@@ -29,6 +29,26 @@ const NIVEL_COLOR_CG  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50'
 const NIVEL_LABEL_CG  = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_OFFSET    = { B1:0, B2:32, I1:64, I2:96 };
 
+// CALGRUPO_F52_20260617_FIX_STUDENT_CRONOGRAMA_UNLOCK_RACE
+function normalizarNivelCG(n) {
+  const s = String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (!s) return '';
+  if (['B1', 'BASICO 1', 'BASICO I', 'BASIC 1', 'BASIC I'].includes(s)) return 'B1';
+  if (['B2', 'BASICO 2', 'BASICO II', 'BASIC 2', 'BASIC II'].includes(s)) return 'B2';
+  if (['I1', 'INTERMEDIO 1', 'INTERMEDIO I', 'INTERMEDIATE 1', 'INTERMEDIATE I'].includes(s)) return 'I1';
+  if (['I2', 'INTERMEDIO 2', 'INTERMEDIO II', 'INTERMEDIATE 2', 'INTERMEDIATE II'].includes(s)) return 'I2';
+  return s;
+}
+
+function normalizarEstatusCG(v) {
+  const s = String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (!s) return '';
+  if (s === 'CURSANDO' || s === 'CURSANDO ACTUALMENTE' || s === 'ACTIVO') return 'CA';
+  if (s === 'APROBADO' || s === 'APROBADA') return 'APR';
+  if (s === 'CONVALIDADO' || s === 'CONVALIDADA') return 'CNV';
+  return s;
+}
+
 const TIPO_BADGE = {
   CLASE:           '',
   PROGRESS_CHECK:  'PC',
@@ -231,15 +251,28 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   // Reglas:
   //   • student: solo niveles con estatus CA / APR / CNV son "desbloqueados"
   //   • teacher / admin: acceso total
-  const nivelesEstatus = (esStudent && usr?.niveles_estatus) ? usr.niveles_estatus : null;
-  const nivelActivoStudent = esStudent ? (usr?.nivel_activo || '') : '';
+  const nivelesEstatus = (esStudent && usr?.niveles_estatus && typeof usr.niveles_estatus === 'object') ? usr.niveles_estatus : null;
+  const nivelActivoStudent = esStudent ? normalizarNivelCG(usr?.nivel_activo || usr?.nivel || meta?.nivelId || '') : '';
 
   const nivelDesbloqueado = React.useCallback((n) => {
     if (!esStudent) return true;
+    const nn = normalizarNivelCG(n);
+
+    // El nivel activo del estudiante nunca debe quedar bloqueado por un mapa
+    // stale/incompleto de sessionStorage. Eso era lo que hacía aparecer
+    // "Nivel bloqueado" aunque el alumno estuviera en su grupo actual.
+    if (nivelActivoStudent && nn === nivelActivoStudent) return true;
+
     if (!nivelesEstatus) return true; // sin datos: no bloqueamos (fail-open en dev)
-    const e = nivelesEstatus[n];
+
+    const e = normalizarEstatusCG(
+      nivelesEstatus[n] ||
+      nivelesEstatus[nn] ||
+      nivelesEstatus[NIVEL_LABEL_CG[nn]] ||
+      nivelesEstatus[String(NIVEL_LABEL_CG[nn] || '').toUpperCase()]
+    );
     return e === 'CA' || e === 'APR' || e === 'CNV';
-  }, [esStudent, nivelesEstatus]);
+  }, [esStudent, nivelesEstatus, nivelActivoStudent]);
 
   // Nivel inicial: para student, preferir nivel_activo si está en el grupo
   const nivelInicial = (esStudent && nivelActivoStudent && niveles.includes(nivelActivoStudent))
@@ -257,6 +290,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const [loading, setLoading]       = React.useState(true);
   const [error, setError]           = React.useState(null);
   const [usandoMock, setUsandoMock] = React.useState(false);
+  const loadSeqRef = React.useRef(0);
 
   const cargar = React.useCallback(() => {
     if (!codGrupo || codGrupo === TODOS_GRUPOS) {
@@ -265,7 +299,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       setLecciones([]); setLoading(false); setError(null);
       return;
     }
+    const seq = ++loadSeqRef.current;
     setLoading(true); setError(null); setUsandoMock(false);
+    setSelLec(null); setDetalle(null);
 
     if (nivel === 'ICAN') {
       // I CAN: usamos las lecciones que ya vinieron embebidas en el grupo del
@@ -283,6 +319,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
     return postCronoGrupo('getFechasGrupo', { cod_grupo: codGrupo, nivel })
       .then(d => {
+        if (seq !== loadSeqRef.current) return;
         if (d?.ok && Array.isArray(d.lecciones)) {
           setLecciones(d.lecciones);
         } else {
@@ -295,13 +332,14 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         }
       })
       .catch(e => {
+        if (seq !== loadSeqRef.current) return;
         setLecciones([]);
         setError(esStudent
           ? 'No pudimos cargar las lecciones de tu grupo. Intentá de nuevo o contactá a la administración.'
           : ('No se pudieron cargar las lecciones. ' + (e?.message || '')));
       })
-      .finally(() => setLoading(false));
-  }, [codGrupo, nivel, gruposReales]);
+      .finally(() => { if (seq === loadSeqRef.current) setLoading(false); });
+  }, [codGrupo, nivel, gruposReales, esStudent]);
 
   React.useEffect(() => { cargar(); }, [cargar]);
 

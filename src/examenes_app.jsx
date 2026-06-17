@@ -244,8 +244,13 @@ function StudentLiveExamApp() {
     examPostLive('examGetStudentLivePanel', { client_meta:{ source:'student_iframe_f27' } })
       .then(r => {
         if (!r || r.ok === false) {
-          // Compatibilidad: si el backend F27 aún no está instalado, intenta el endpoint V10H.
-          if (r && String(r.error || '').includes('desconocido')) return examPostLive('examGetStudentAssignment', { client_meta:{ source:'student_iframe_f27_fallback' } });
+          // CALGRUPO_F52_20260617_EXAMENES_BACKEND_DESFASADO_MSG
+          // Compatibilidad: si el backend F27/F43+ aún no está instalado, intenta
+          // el endpoint viejo. Si también falla, mostramos un mensaje accionable.
+          const errTxt = String((r && (r.error || r.mensaje)) || '').toLowerCase();
+          if (r && (errTxt.includes('desconocid') || errTxt.includes('no reconoc'))) {
+            return examPostLive('examGetStudentAssignment', { client_meta:{ source:'student_iframe_f52_fallback_backend_desfasado' } });
+          }
           throw r || { error:'respuesta_invalida' };
         }
         return r;
@@ -258,7 +263,15 @@ function StudentLiveExamApp() {
         setAttemptId(a && a.ATTEMPT_ID || '');
         setPublicExam(r.public_exam || null);
       })
-      .catch(e => setError((e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.'))
+      .catch(e => {
+        const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
+        const txt = String(raw);
+        if (/no reconoc|desconocid/i.test(txt)) {
+          setError('El frontend ya está en F52, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el .gs F52 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
+        } else {
+          setError(txt);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); }, [load]);
