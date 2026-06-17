@@ -1,4 +1,5 @@
 /* global React, PageHeader */
+// CALGRUPO_F2_20260616_ESTUDIANTES_COMPACTO_OPERATIVO
 
 // ─────────────────────────────────────────────────────────────────────────
 // VISTA RADIOGRAFÍA DE GRUPOS — admin_students.jsx
@@ -406,6 +407,96 @@ function CuotasChecks({ cuotas, esperadas }) {
   );
 }
 
+
+function cleanCRPhone(value) {
+  const raw = String(value || '').replace(/\D/g, '');
+  if (!raw) return '';
+  if (raw.length === 8) return '506' + raw;
+  if (raw.length === 11 && raw.startsWith('506')) return raw;
+  if (raw.length > 8 && raw.startsWith('506')) return raw;
+  return raw;
+}
+
+function estudiantePhone(est) {
+  return cleanCRPhone(
+    est.telefono || est.tel || est.tel1 || est.tel_1 || est.telefono1 ||
+    est.whatsapp || est.celular || est.TEL1 || est.TELEFONO || ''
+  );
+}
+
+function edadEstudiante(est) {
+  const raw = est.fecha_nacimiento || est.fechaNacimiento || est.nacimiento || est.f_nacimiento || est.FECHA_NAC || est.fecha_nac || '';
+  if (!raw) return null;
+  let d;
+  if (/^\d{4}-\d{2}-\d{2}/.test(String(raw))) d = new Date(String(raw).slice(0,10) + 'T00:00:00');
+  else {
+    const m = String(raw).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    else d = new Date(raw);
+  }
+  if (!d || isNaN(d.getTime())) return null;
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - d.getFullYear();
+  const mm = hoy.getMonth() - d.getMonth();
+  if (mm < 0 || (mm === 0 && hoy.getDate() < d.getDate())) edad--;
+  return edad >= 0 && edad < 120 ? edad : null;
+}
+
+function WhatsAppMini({ est }) {
+  const phone = estudiantePhone(est);
+  const nombre = est.display || est.nombre || '';
+  const msg = encodeURIComponent(`Hola ${nombre ? nombre.split(' ')[0] : ''}, te saludamos de Academia Norteamericana.`);
+  if (!phone) {
+    return <span title="Sin teléfono disponible" style={{ width:28, height:28, borderRadius:8, display:'inline-flex', alignItems:'center', justifyContent:'center', border:'1px solid var(--line,#ddd)', color:'var(--ink-3,#999)', background:'var(--surface-2,#f8f8f8)', opacity:0.55 }}>☏</span>;
+  }
+  return (
+    <a href={`https://web.whatsapp.com/send?phone=${phone}&text=${msg}`} target="_blank" rel="noreferrer" title="Escribir por WhatsApp" style={{
+      width:28, height:28, borderRadius:8, display:'inline-flex', alignItems:'center', justifyContent:'center', textDecoration:'none',
+      border:'1px solid rgba(37,211,102,.35)', background:'rgba(37,211,102,.10)', color:'#128C4A', fontWeight:900, fontSize:13,
+    }}>WA</a>
+  );
+}
+
+function PillMini({ label, value, tone }) {
+  const tones = {
+    ok:    { bg:'#E8F5E9', fg:'#2E7D32', bd:'#BFE4C3' },
+    bad:   { bg:'#FFEBEE', fg:'#C62828', bd:'#F4B7B7' },
+    warn:  { bg:'#FFF8E1', fg:'#9A6200', bd:'#F1D18A' },
+    blue:  { bg:'#E3F2FD', fg:'#1565C0', bd:'#B9DAF5' },
+    muted: { bg:'var(--surface-2,#f8f8f8)', fg:'var(--ink-3,#888)', bd:'var(--line,#ddd)' },
+  };
+  const t = tones[tone] || tones.muted;
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 7px', borderRadius:999, background:t.bg, color:t.fg, border:`1px solid ${t.bd}`, fontSize:10.5, fontWeight:800, lineHeight:1.1, whiteSpace:'nowrap' }}>
+      <span style={{ opacity:.72 }}>{label}</span><strong>{value}</strong>
+    </span>
+  );
+}
+
+function CertificadoCell({ cert, certNum, estatus, onCrear, onVer }) {
+  const existe = !!certNum || !!cert;
+  if (existe) {
+    return (
+      <div style={{ display:'flex', flexDirection:'column', gap:5, alignItems:'flex-start' }}>
+        <PillMini label="Cert." value={certNum ? certNum : 'registrado'} tone="ok" />
+        <button onClick={onVer} title="Abrir ficha en Documentos para buscar/ver el certificado existente" style={{ padding:'5px 9px', borderRadius:7, border:'1px solid #BFE4C3', background:'#E8F5E9', color:'#2E7D32', fontSize:11, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap' }}>
+          Ver certificado
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button onClick={onCrear} disabled={estatus !== 'APR'} title={estatus === 'APR' ? 'Crear certificado de nivel' : 'Requiere estado APR'} style={{
+      padding:'6px 10px', borderRadius:8, border: estatus==='APR' ? '1px solid #4CAF50' : '1px solid var(--line,#ddd)',
+      background: estatus==='APR' ? 'color-mix(in srgb,#4CAF50 10%,white)' : 'var(--surface-2,#f8f8f8)',
+      color: estatus==='APR' ? '#2E7D32' : 'var(--ink-3,#999)', fontSize:11, fontWeight:800,
+      cursor: estatus==='APR' ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', opacity: estatus==='APR' ? 1 : .62,
+    }}>
+      Crear certificado
+    </button>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // SUBTÍTULO POR NIVEL (según mezcla de estados)
 // ─────────────────────────────────────────────────────────────────────────
@@ -651,38 +742,35 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
 
         <span style={{ fontSize:11, marginLeft: 4, opacity:0.85, flexShrink:0 }}>{abierto ? '▲' : '▼'}</span>
       </div>
-      {/* Tabla */}
+      {/* Tabla — rediseño operativo compacto para Calendario de Grupo */}
       {abierto && (
-      <div style={{ overflowX: 'auto', border: `1px solid ${cfg.color}`, borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <div style={{ overflowX: 'auto', border: `1px solid ${cfg.color}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background:'var(--surface,#fff)' }}>
+        <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'separate', borderSpacing: 0, fontSize: 12 }}>
           <thead>
             <tr style={{ background: cfg.bg }}>
               {[
-                { label:'Cód.',     sort:'codigo' },
-                { label:'Cédula',   sort:null },
-                { label:'Nombre',    sort:'nombre' },
-                { label:'Convenio',  sort:null },
-                { label:'Estado',    sort:'estatus' },
-                { label:'Mora',      sort:'mora' },
-                { label:'Matrícula', sort:null },
-                { label:'Cuota',     sort:null },
-                { label:'Cert.',     sort:null },
-                { label:'Nota',      sort:'nota' },
+                { label:'Código',      sort:'codigo', width:92 },
+                { label:'Estudiante',  sort:'nombre', width:310 },
+                { label:'Convenio',    sort:null,     width:90 },
+                { label:'Estado',      sort:'estatus',width:130 },
+                { label:'Finanzas',    sort:'mora',   width:230 },
+                { label:'Certificado', sort:null,     width:160 },
+                { label:'Nota',        sort:'nota',   width:82 },
+                { label:'Acciones',    sort:null,     width:220 },
               ].map(h => (
                 <th
                   key={h.label}
                   onClick={h.sort && toggleSort ? () => toggleSort(h.sort) : undefined}
                   style={{
-                    padding:'8px 10px', textAlign:'left', fontWeight:700, color:cfg.color,
-                    whiteSpace:'nowrap', fontSize:11, letterSpacing:'0.04em',
-                    cursor: h.sort && toggleSort ? 'pointer' : 'default',
-                    userSelect: h.sort ? 'none' : 'auto',
+                    width:h.width, padding:'9px 10px', textAlign:'left', fontWeight:900, color:cfg.color,
+                    whiteSpace:'nowrap', fontSize:10, letterSpacing:'0.10em', textTransform:'uppercase',
+                    cursor: h.sort && toggleSort ? 'pointer' : 'default', userSelect: h.sort ? 'none' : 'auto',
+                    borderBottom:'1px solid color-mix(in srgb, var(--line,#ddd) 80%, transparent)',
                   }}
                 >
                   {h.label}{h.sort ? sortArrow(h.sort) : ''}
                 </th>
               ))}
-              <th style={{ padding:'8px 10px' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -690,10 +778,9 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const codigo    = e.codigo || e.rec_m || '—';
               const cedula    = e.cedula || '—';
               const nombre    = e.display || e.nombre || '—';
+              const edad      = edadEstudiante(e);
               const convenio  = e.convenio || '';
               const estatus   = e.estatus || e.status_actual || 'PE';
-              // Mora: viene del backend ya calculada. No filtrar por hayActividad/estatus.
-              // Fallback a `morosidad` solo si el backend no envía `mora`.
               const mora = typeof e.mora !== 'undefined' ? !!e.mora : (e.morosidad === 'SI' || e.morosidad === true);
               const matricula    = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
               const cuotasPagadas = typeof e.cuotas_pagadas === 'number' ? e.cuotas_pagadas : null;
@@ -702,119 +789,102 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const cert      = e.certificado_pagado ?? e.certificado ?? e.cert ?? false;
               const certNum   = e.cert_num || '';
               const nota      = Number(e.nota || 0);
+              const cuotasLabel = cuotasPagadas == null ? '—' : `${cuotasPagadas}/${cuotasEsperadas}`;
               return (
                 <tr key={codigo + '-' + i} style={{ background: rowBg(estatus, i), borderBottom:'1px solid var(--line, #EEE)' }}>
-                  <td style={{ padding:'7px 10px', fontWeight:600, fontFamily:'var(--f-mono, monospace)' }}>{codigo}</td>
-                  <td style={{ padding:'7px 10px', color:'var(--ink-2, #555)', fontFamily:'var(--f-mono, monospace)', fontSize:11 }}>{cedula}</td>
-                  <td style={{ padding:'7px 10px', fontWeight:500 }}>{nombre}</td>
-                  <td style={{ padding:'7px 10px' }}>
+                  <td style={{ padding:'10px 10px', fontWeight:800, fontFamily:'var(--f-mono, monospace)', color:'var(--ink,#222)', verticalAlign:'top' }}>{codigo}</td>
+                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, alignItems:'start' }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontWeight:800, color:'var(--ink,#222)', lineHeight:1.25 }}>{nombre}</div>
+                        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:4 }}>
+                          <span style={{ color:'var(--ink-3,#888)', fontFamily:'var(--f-mono,monospace)', fontSize:10.5 }}>{cedula}</span>
+                          {edad !== null && <PillMini label="Edad" value={`${edad}`} tone="muted" />}
+                        </div>
+                      </div>
+                      <WhatsAppMini est={e} />
+                    </div>
+                  </td>
+                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
                     {convenio ? (
                       <span style={{
                         background: convenio==='CONAPE' ? '#E3F2FD' : convenio.toString().toUpperCase().includes('BECA') ? '#E8F5E9' : 'var(--surface, #F5F5F5)',
                         color: convenio==='CONAPE' ? '#1565C0' : convenio.toString().toUpperCase().includes('BECA') ? '#2E7D32' : 'var(--ink-3, #888)',
-                        padding:'2px 8px', borderRadius:4, fontSize:10, fontWeight:700, letterSpacing:'0.02em',
+                        padding:'3px 9px', borderRadius:999, fontSize:10, fontWeight:900, letterSpacing:'0.04em', whiteSpace:'nowrap',
                       }}>
                         {String(convenio).toUpperCase().includes('BECA') ? 'BECA' : convenio}
                       </span>
                     ) : <span style={{ color:'var(--ink-3, #999)', fontSize:11 }}>Regular</span>}
                   </td>
-                  <td style={{ padding:'7px 10px' }}>
+                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
                     <EstadoBadge estado={estatus} />
                     {periodoTexto && (
-                      <div style={{ fontSize:9, color:'var(--ink-3, #999)', marginTop:2, fontWeight:500, letterSpacing:'0.01em', whiteSpace:'nowrap' }}>
+                      <div style={{ fontSize:9.5, color:'var(--ink-3, #999)', marginTop:4, fontWeight:600, letterSpacing:'0.01em', whiteSpace:'nowrap' }}>
                         {periodoTexto}
                       </div>
                     )}
                   </td>
-                  <td style={{ padding:'7px 10px' }}>
-                    {estatus === 'PE' ? (
-                      <span style={{ color:'var(--ink-3, #BBB)', fontSize:13 }}>—</span>
-                    ) : (
-                      <span style={{ color: mora ? '#D32F2F' : '#2E7D32', fontWeight:700, fontSize:11, letterSpacing:'0.04em' }}>
-                        {mora ? 'SI' : 'NO'}
-                      </span>
-                    )}
+                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                    <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                      {estatus === 'PE'
+                        ? <PillMini label="Mora" value="—" tone="muted" />
+                        : <PillMini label="Mora" value={mora ? 'SI' : 'NO'} tone={mora ? 'bad' : 'ok'} />}
+                      <PillMini label="Matr." value={matricula ? '✓' : '—'} tone={matricula ? 'ok' : 'muted'} />
+                      <PillMini label="Cuotas" value={cuotasLabel} tone={cuotasPagadas >= cuotasEsperadas ? 'ok' : cuotasPagadas > 0 ? 'warn' : 'muted'} />
+                    </div>
+                    <div style={{ marginTop:6 }}><CuotasChecks cuotas={cuotasPagadas} esperadas={cuotasEsperadas} /></div>
                   </td>
-                  <td style={{ padding:'7px 10px', fontSize:13, color: matricula ? 'var(--ok, #2E7D32)' : 'var(--ink-3, #BBB)' }}>{matricula ? '✓' : '—'}</td>
-                  <td style={{ padding:'7px 10px' }}>
-                    <CuotasChecks cuotas={cuotasPagadas} esperadas={cuotasEsperadas} />
+                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                    <CertificadoCell
+                      cert={cert}
+                      certNum={certNum}
+                      estatus={estatus}
+                      onCrear={() => generarCertificadoFila && generarCertificadoFila(e, nivelKey)}
+                      onVer={() => onAbrirPanel && onAbrirPanel(e, 'documentos')}
+                    />
                   </td>
-                  <td style={{ padding:'7px 10px', fontSize:13, color: cert ? 'var(--ok, #2E7D32)' : 'var(--ink-3, #BBB)' }} title={certNum || undefined}>
-                    {cert ? '✓' : '—'}
-                    {certNum && (
-                      <div style={{ fontSize:9, color:'var(--ink-3, #999)', fontFamily:'var(--f-mono, monospace)', fontWeight:500, marginTop:1 }}>{certNum}</div>
-                    )}
+                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                    <span style={{
+                      display:'inline-flex', minWidth:46, justifyContent:'center', padding:'4px 8px', borderRadius:999,
+                      background: nota>=70 ? '#E8F5E9' : nota>0 ? '#FFEBEE' : 'var(--surface-2,#f8f8f8)',
+                      color: nota>=70 ? '#2E7D32' : nota>0 ? '#C62828' : 'var(--ink-3,#999)',
+                      fontWeight:900, fontFamily:'var(--f-mono,monospace)', fontSize:11,
+                    }}>
+                      {nota > 0 ? `${nota}%` : '—'}
+                    </span>
                   </td>
-                  <td style={{ padding:'7px 10px', fontWeight:700, color: nota>=70?'var(--ok, #2E7D32)':nota>0?'var(--err, #C62828)':'var(--ink-3, #BBB)' }}>
-                    {nota > 0 ? `${nota}%` : '—'}
-                  </td>
-                  <td style={{ padding:'7px 8px', whiteSpace:'nowrap' }}>
-                    <button
-                      onClick={() => generarCertificadoFila && generarCertificadoFila(e, nivelKey)}
-                      title="Generar certificado de nivel"
-                      style={{ padding:'3px 8px', marginRight:4, borderRadius:4,
-                        border: e.estatus==='APR' ? '1px solid #4CAF50' : '1px solid var(--border, #ddd)',
-                        fontSize:11, cursor: e.estatus==='APR' ? 'pointer' : 'not-allowed',
-                        background: e.estatus==='APR' ? 'color-mix(in srgb,#4CAF50 10%,white)' : '#f5f5f5',
-                        opacity: e.estatus==='APR' ? 1 : 0.4 }}>
-                      🏅
-                    </button>
-                    <button
-                      onClick={() => onAbrirPanel && onAbrirPanel(e)}
-                      title="Ver ficha del estudiante"
-                      style={{ padding:'3px 8px', marginRight:4, borderRadius:4, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white' }}>
-                      👤
-                    </button>
-                    <button
-                      onClick={() => setModalEstatus({ estudiante: e, nivel: nivelKey })}
-                      title="Cambiar estatus"
-                      style={{ padding:'3px 8px', marginRight:4, borderRadius:4, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white' }}>
-                      ✏️
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (resyncEst?.loading) return;
-                        setResyncEst({ codigo, loading: true });
-                        const r = await resincronizarEstudianteIndividual(codigo);
-                        setResyncEst({ codigo, loading: false, ok: r.ok, error: r.error });
-                        setTimeout(() => setResyncEst(null), 3000);
-                      }}
-                      disabled={resyncEst?.codigo === codigo && resyncEst?.loading}
-                      title={
-                        resyncEst?.codigo === codigo && resyncEst.loading ? 'Sincronizando CONAPE…'
-                        : resyncEst?.codigo === codigo && resyncEst.ok ? 'CONAPE sincronizado'
-                        : resyncEst?.codigo === codigo && resyncEst.error ? ('Error: ' + resyncEst.error)
-                        : 'Resincronizar CONAPE individual'
-                      }
-                      style={{
-                        padding:'3px 8px', marginRight:4, borderRadius:4,
-                        border:'1px solid ' + (
-                          resyncEst?.codigo === codigo && resyncEst?.ok ? '#2E7D32' :
-                          resyncEst?.codigo === codigo && resyncEst?.error ? '#C62828' :
-                          'var(--border, #ddd)'
-                        ),
-                        fontSize:11,
-                        cursor: resyncEst?.codigo === codigo && resyncEst?.loading ? 'wait' : 'pointer',
-                        background:
-                          resyncEst?.codigo === codigo && resyncEst?.ok ? '#E8F5E9' :
-                          resyncEst?.codigo === codigo && resyncEst?.error ? '#FFEBEE' :
-                          'white',
-                      }}>
-                      <span style={{
-                        display:'inline-block',
-                        animation: resyncEst?.codigo === codigo && resyncEst?.loading ? 'an-spin 0.9s linear infinite' : 'none',
-                      }}>
-                        {resyncEst?.codigo === codigo && resyncEst?.ok ? '✓'
-                         : resyncEst?.codigo === codigo && resyncEst?.error ? '⚠'
-                         : '↻'}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => abrirPago(e, nivelKey, onNavigate)}
-                      title="Aplicar pago"
-                      style={{ padding:'3px 8px', borderRadius:4, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white' }}>
-                      💳
-                    </button>
+                  <td style={{ padding:'10px 8px', whiteSpace:'nowrap', verticalAlign:'top' }}>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'pagos')} title="Ver ficha del estudiante" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>👤 Ficha</button>
+                      <button onClick={() => setModalEstatus({ estudiante: e, nivel: nivelKey })} title="Cambiar estatus" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>✏️ Estado</button>
+                      <button
+                        onClick={async () => {
+                          if (resyncEst?.loading) return;
+                          setResyncEst({ codigo, loading: true });
+                          const r = await resincronizarEstudianteIndividual(codigo);
+                          setResyncEst({ codigo, loading: false, ok: r.ok, error: r.error });
+                          setTimeout(() => setResyncEst(null), 3000);
+                        }}
+                        disabled={resyncEst?.codigo === codigo && resyncEst?.loading}
+                        title={
+                          resyncEst?.codigo === codigo && resyncEst.loading ? 'Sincronizando CONAPE…'
+                          : resyncEst?.codigo === codigo && resyncEst.ok ? 'CONAPE sincronizado'
+                          : resyncEst?.codigo === codigo && resyncEst.error ? ('Error: ' + resyncEst.error)
+                          : 'Resincronizar CONAPE individual'
+                        }
+                        style={{
+                          padding:'5px 8px', borderRadius:7,
+                          border:'1px solid ' + (resyncEst?.codigo === codigo && resyncEst?.ok ? '#2E7D32' : resyncEst?.codigo === codigo && resyncEst?.error ? '#C62828' : 'var(--border, #ddd)'),
+                          fontSize:11, fontWeight:700,
+                          cursor: resyncEst?.codigo === codigo && resyncEst?.loading ? 'wait' : 'pointer',
+                          background: resyncEst?.codigo === codigo && resyncEst?.ok ? '#E8F5E9' : resyncEst?.codigo === codigo && resyncEst?.error ? '#FFEBEE' : 'white',
+                        }}>
+                        <span style={{ display:'inline-block', animation: resyncEst?.codigo === codigo && resyncEst?.loading ? 'an-spin 0.9s linear infinite' : 'none' }}>
+                          {resyncEst?.codigo === codigo && resyncEst?.ok ? '✓ CONAPE' : resyncEst?.codigo === codigo && resyncEst?.error ? '⚠ CONAPE' : '↻ CONAPE'}
+                        </span>
+                      </button>
+                      <button onClick={() => abrirPago(e, nivelKey, onNavigate)} title="Aplicar pago" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>💳 Pago</button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -841,8 +911,9 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function AdminEstudiantesView({ onNavigate, grupoInicial }) {
+function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
   const { grupos, loading: loadingGrupos, error: errorGrupos } = useAdminGrupos();
+  const embebidoCalGrupo = modo === 'calgrupo';
   const [grupoSel, setGrupoSel] = React.useState(grupoInicial || null);
   // Si el caller cambia `grupoInicial` (ej. nueva navegación con otro grupo),
   // adoptarlo. No pisa la selección manual del admin: solo dispara cuando el
@@ -852,7 +923,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grupoInicial]);
   const [refreshKey, setRefreshKey] = React.useState(0);
-  const [estudiantePanelAbierto, setEstudiantePanelAbierto] = React.useState(null);
+  const [estudiantePanelAbierto, setEstudiantePanelAbierto] = React.useState(null); // { est, tab }
   const [certEstado, setCertEstado] = React.useState(null);
   // { loading: true } | { ok, registro, nombre, url, error }
 
@@ -950,7 +1021,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
     if (grupos.length && !grupoSel) setGrupoSel(grupos[0].code);
   }, [grupos]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const grupoInfo = grupos.find(g => g.code === grupoSel);
+  const grupoInfo = grupos.find(g => g.code === grupoSel) || (grupoSel ? { code: grupoSel, schedule: '—', estudiantes: 0 } : null);
 
   // Construir secciones desde getRadiografiaGrupo (data.niveles = { B1:[], B2:[], I1:[], I2:[] })
   const secciones = React.useMemo(() => {
@@ -967,16 +1038,16 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
     : 0;
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: embebidoCalGrupo ? 0 : 24 }}>
       <style>{`@keyframes an-spin { to { transform: rotate(360deg); } }`}</style>
-      <PageHeader
+      {!embebidoCalGrupo && <PageHeader
         kicker="Administración"
         title={<>Grupos <em>activos</em></>}
         sub="Click en un grupo para ver su radiografía completa"
-      />
+      />}
 
       {/* Grid de chips */}
-      {loadingGrupos ? (
+      {!embebidoCalGrupo && (loadingGrupos ? (
         <div style={{ color:'var(--ink-3, #888)', padding:20 }}>Cargando grupos…</div>
       ) : errorGrupos ? (
         <div style={{
@@ -1064,7 +1135,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
             });
           })()}
         </div>
-      )}
+      ))}
 
       {/* Panel radiografía */}
       {grupoSel && grupoInfo && (
@@ -1144,7 +1215,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
                 sortEstudiantes={sortEstudiantes}
                 onRefresh={() => setRefreshKey(k => k + 1)}
                 onNavigate={onNavigate}
-                onAbrirPanel={(est) => setEstudiantePanelAbierto(est)}
+                onAbrirPanel={(est, tab) => setEstudiantePanelAbierto({ est, tab: tab || 'pagos' })}
                 generarCertificadoFila={(est, niv) => handleGenerarCertificado(est, niv)}
               />
             ))
@@ -1154,7 +1225,8 @@ function AdminEstudiantesView({ onNavigate, grupoInicial }) {
 
       {estudiantePanelAbierto && (
         <PanelEstudianteDrawer
-          est={estudiantePanelAbierto}
+          est={estudiantePanelAbierto.est || estudiantePanelAbierto}
+          initialTab={estudiantePanelAbierto.tab || 'pagos'}
           onClose={() => setEstudiantePanelAbierto(null)}
           onNavigate={onNavigate}
         />
@@ -1223,11 +1295,13 @@ const NIVEL_COLOR_P  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' 
 const NIVEL_LABEL_P  = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_ORDER_P  = ['B1','B2','I1','I2'];
 
-function PanelEstudianteDrawer({ est, onClose, onNavigate }) {
+function PanelEstudianteDrawer({ est, onClose, onNavigate, initialTab }) {
   const [detalle, setDetalle]     = React.useState(null);
   const [cargando, setCargando]   = React.useState(true);
   const [error, setError]         = React.useState('');
-  const [tabActiva, setTabActiva] = React.useState('pagos');
+  const [tabActiva, setTabActiva] = React.useState(initialTab || 'pagos');
+
+  React.useEffect(() => { setTabActiva(initialTab || 'pagos'); }, [initialTab, est?.codigo, est?.rec_m]);
 
   React.useEffect(() => {
     if (!est) return;
@@ -1625,7 +1699,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     {
       tipo: 'CERTIFICACION',
       titulo: 'Certificación de Nivel',
-      desc: `Título oficial de ${NIVEL_LABEL_D[nivelActivo] || nivelActivo}. Requiere APR y certificado pagado.`,
+      desc: certNum ? `Certificado registrado: ${certNum}. No se genera copia; se busca el PDF existente o firmado en Drive.` : `Título oficial de ${NIVEL_LABEL_D[nivelActivo] || nivelActivo}. Requiere APR y certificado pagado.`,
       icono: '🏅', color: '#E5A823',
       ok: estatusAct === 'APR' && !!certNum,
       razon: !detalle ? 'Cargando…' : estatusAct !== 'APR' ? `Nivel debe estar APR (actual: ${estatusAct || '—'})` : !certNum ? 'REG_CERTIFICADOS vacío' : null,
@@ -1700,12 +1774,23 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
                     <div style={{ marginTop:6, padding:'6px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>❌ {r.error}</div>
                   )}
                 </div>
-                <button
-                  disabled={!ok || cargando}
-                  onClick={() => generar(tipo)}
-                  style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${ok ? color : 'var(--line, #eee)'}`, background: ok ? color : 'var(--surface-3, #eee)', color: ok ? 'white' : 'var(--ink-3, #999)', fontWeight:700, fontSize:11, cursor: ok && !cargando ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', opacity: cargando ? 0.7 : 1 }}>
-                  {cargando ? '⏳…' : 'Generar'}
-                </button>
+                {tipo === 'CERTIFICACION' && certNum ? (
+                  <a
+                    href={`https://drive.google.com/drive/search?q=${encodeURIComponent(certNum)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Buscar en Drive el certificado existente. No crea copias nuevas."
+                    style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${color}`, background: color, color:'white', fontWeight:700, fontSize:11, cursor:'pointer', whiteSpace:'nowrap', textDecoration:'none' }}>
+                    Buscar PDF
+                  </a>
+                ) : (
+                  <button
+                    disabled={!ok || cargando}
+                    onClick={() => generar(tipo)}
+                    style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${ok ? color : 'var(--line, #eee)'}`, background: ok ? color : 'var(--surface-3, #eee)', color: ok ? 'white' : 'var(--ink-3, #999)', fontWeight:700, fontSize:11, cursor: ok && !cargando ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', opacity: cargando ? 0.7 : 1 }}>
+                    {cargando ? '⏳…' : 'Generar'}
+                  </button>
+                )}
               </div>
             </div>
           );
