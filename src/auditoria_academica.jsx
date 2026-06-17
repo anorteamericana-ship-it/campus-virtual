@@ -1,4 +1,6 @@
 /* global React, PageHeader, LoadingState, ErrorState, EmptyState */
+// CALGRUPO_F4_20260616_AUDITORIA_ACADEMICA_CONTEXTUAL
+// CALGRUPO_F8_20260617_AUDITORIA_INTELIGENTE_VISUAL
 // ─────────────────────────────────────────────────────────────────────────
 // AUDITORÍA ACADÉMICA (solo lectura) — auditoria_academica.jsx
 // Vista admin/superadmin para supervisar, por grupo + nivel, el estado
@@ -51,6 +53,10 @@ function aaFmtFecha(iso) {
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(d)) return iso;
   return `${String(d.getDate()).padStart(2,'0')} ${AA_MES_CORTO[d.getMonth()]} ${d.getFullYear()}`;
+}
+function aaInferNivelFromGrupo(codGrupo) {
+  const p = String(codGrupo || '').trim().split('-')[0].toUpperCase();
+  return AA_NIVELES.includes(p) ? p : '';
 }
 
 // Estado de lección → chip {label, bg, fg}
@@ -1199,17 +1205,144 @@ function AAEditarLeccion({ leccion, estudiantes, matriz, codGrupo, nivel, supera
 }
 const aaEditLabel = { fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 4 };
 
+
+// ── Auditoría inteligente visual (sin endpoints nuevos / sin escribir datos) ──
+// Construye un diagnóstico operativo con la data ya cargada por
+// fetchAuditoriaAcademicaGrupo: resumen, lecciones, estudiantes y matriz.
+function aaPct(n, d) {
+  const a = Number(n) || 0;
+  const b = Number(d) || 0;
+  return b ? Math.round((a / b) * 100) : 0;
+}
+function aaBuildInteligencia(data, riesgo) {
+  const resumen = (data && data.resumen) || {};
+  const lecciones = (data && Array.isArray(data.lecciones)) ? data.lecciones : [];
+  const estudiantes = (data && Array.isArray(data.estudiantes)) ? data.estudiantes : [];
+  const cerradas = Number(resumen.lecciones_cerradas ?? lecciones.filter(l => String(l.estado || '').toUpperCase() === 'CERRADA').length) || 0;
+  const total = Number(resumen.lecciones_total ?? lecciones.length) || 0;
+  const avance = aaPct(cerradas, total);
+  const asistencia = resumen.asistencia_promedio_pct != null ? Math.round(Number(resumen.asistencia_promedio_pct)) : null;
+  const alertasLecciones = lecciones.filter(l => Array.isArray(l.alertas) && l.alertas.length > 0);
+  const riesgoAlto = (riesgo || []).filter(r => r.riesgo === 'alto');
+  const riesgoMedio = (riesgo || []).filter(r => r.riesgo === 'medio');
+  const sinDatos = (riesgo || []).filter(r => (r.conReg || 0) === 0 && (r.notas || 0) === 0);
+  const pendientes = lecciones.filter(l => String(l.estado || '').toUpperCase() !== 'CERRADA');
+  const proxima = pendientes[0] || null;
+  const notasRegistradas = Number(resumen.notas_registradas || 0);
+  const retro = Number(resumen.retroalimentaciones || 0);
+  const pc = Number(resumen.progress_checks || 0);
+  const hallazgos = [];
+
+  if (total && avance < 30) hallazgos.push({ tone:'info', titulo:'Grupo iniciando', detalle:`Avance académico ${avance}%. Aún hay poca data para conclusiones fuertes.` });
+  if (asistencia != null && asistencia < 70) hallazgos.push({ tone:'danger', titulo:'Asistencia crítica', detalle:`Promedio de asistencia ${asistencia}%. Requiere intervención.` });
+  else if (asistencia != null && asistencia < 85) hallazgos.push({ tone:'warn', titulo:'Asistencia en observación', detalle:`Promedio de asistencia ${asistencia}%. Conviene revisar ausencias.` });
+  if (riesgoAlto.length) hallazgos.push({ tone:'danger', titulo:'Estudiantes en riesgo alto', detalle:`${riesgoAlto.length} estudiante${riesgoAlto.length !== 1 ? 's' : ''} con asistencia o promedio bajo.` });
+  if (alertasLecciones.length) hallazgos.push({ tone:'warn', titulo:'Lecciones con alertas', detalle:`${alertasLecciones.length} lección${alertasLecciones.length !== 1 ? 'es' : ''} con asistencia, retro o progress check pendiente.` });
+  if (sinDatos.length && estudiantes.length) hallazgos.push({ tone:'warn', titulo:'Estudiantes sin data académica', detalle:`${sinDatos.length} estudiante${sinDatos.length !== 1 ? 's' : ''} sin registros detectados en este nivel.` });
+  if (cerradas > 0 && notasRegistradas === 0) hallazgos.push({ tone:'warn', titulo:'Sin notas registradas', detalle:'Hay lecciones cerradas, pero no se detectan notas en la auditoría.' });
+  if (cerradas > 0 && retro === 0) hallazgos.push({ tone:'warn', titulo:'Sin retroalimentación', detalle:'Hay lecciones cerradas sin retroalimentaciones registradas.' });
+  if (!hallazgos.length) hallazgos.push({ tone:'ok', titulo:'Sin alertas fuertes', detalle:'La auditoría no detecta inconsistencias críticas con la data disponible.' });
+
+  const score = (riesgoAlto.length * 3) + (alertasLecciones.length * 2) + (asistencia != null && asistencia < 70 ? 4 : 0) + (sinDatos.length ? 1 : 0);
+  const estado = score >= 7 ? 'crítico' : score >= 3 ? 'observación' : 'estable';
+  const estadoChip = estado === 'crítico'
+    ? { label:'Crítico', bg:'#FCE6E4', fg:'var(--danger)' }
+    : estado === 'observación'
+    ? { label:'En observación', bg:'color-mix(in srgb, var(--an-gold) 22%, white)', fg:'#6B4A00' }
+    : { label:'Estable', bg:'#E2F1E5', fg:'#1B5E20' };
+
+  const acciones = [];
+  if (riesgoAlto.length) acciones.push('Abrir fichas de estudiantes en riesgo alto y revisar ausencias/notas.');
+  if (alertasLecciones.length) acciones.push('Filtrar “Con alertas” y revisar lecciones cerradas sin asistencia, retro o progress check.');
+  if (sinDatos.length) acciones.push('Confirmar si el docente ya cerró lecciones y registró asistencia/notas.');
+  if (proxima) acciones.push(`Próxima lección detectada: L${String(proxima.leccion || '').padStart(2, '0')} · ${aaFmtFecha(proxima.fecha)}.`);
+  if (!acciones.length) acciones.push('Mantener seguimiento normal del grupo y exportar CSV si se ocupa respaldo.');
+
+  return {
+    estado, estadoChip, avance, asistencia, cerradas, total, proxima,
+    riesgoAlto, riesgoMedio, sinDatos, alertasLecciones, hallazgos, acciones,
+    notasRegistradas, retro, pc, estudiantesTotal: estudiantes.length,
+  };
+}
+function AAAuditoriaInteligente({ info, nivelColor, onVerAlertas, onLimpiarFiltro }) {
+  if (!info) return null;
+  const toneColor = info.estado === 'crítico' ? 'var(--danger)' : info.estado === 'observación' ? '#9A6A00' : '#1B5E20';
+  const box = { background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'12px 14px' };
+  const tiny = { fontSize:9, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4 };
+  return (
+    <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:20, border:`1px solid color-mix(in srgb, ${nivelColor} 18%, var(--line))` }}>
+      <div style={{ height:5, background:nivelColor }} />
+      <div style={{ padding:'16px 18px 14px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', gap:14, alignItems:'flex-start', flexWrap:'wrap', marginBottom:14 }}>
+          <div>
+            <div style={{ ...tiny, color:nivelColor }}>Auditoría inteligente</div>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:23, fontWeight:600, letterSpacing:'-0.03em', color:'var(--ink)' }}>
+              Diagnóstico operativo del grupo
+            </div>
+            <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>
+              Lectura automática con la data disponible. No modifica registros.
+            </div>
+          </div>
+          <AAChip bg={info.estadoChip.bg} fg={info.estadoChip.fg}>{info.estadoChip.label}</AAChip>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(135px, 1fr))', gap:10, marginBottom:14 }}>
+          <div style={box}><div style={tiny}>Avance</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:nivelColor }}>{info.avance}%</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>{info.cerradas}/{info.total} lecciones cerradas</div></div>
+          <div style={box}><div style={tiny}>Asistencia</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color: info.asistencia != null && info.asistencia < 70 ? 'var(--danger)' : 'var(--ink)' }}>{info.asistencia != null ? `${info.asistencia}%` : '—'}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>promedio del grupo</div></div>
+          <div style={box}><div style={tiny}>Riesgo alto</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color: info.riesgoAlto.length ? 'var(--danger)' : '#1B5E20' }}>{info.riesgoAlto.length}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>estudiantes</div></div>
+          <div style={box}><div style={tiny}>Alertas</div><div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color: info.alertasLecciones.length ? '#9A6A00' : '#1B5E20' }}>{info.alertasLecciones.length}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>lecciones con hallazgos</div></div>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.25fr) minmax(260px, .75fr)', gap:12 }}>
+          <div style={{ ...box, background:'var(--surface-2)' }}>
+            <div style={tiny}>Hallazgos</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {info.hallazgos.map((h, idx) => {
+                const color = h.tone === 'danger' ? 'var(--danger)' : h.tone === 'warn' ? '#9A6A00' : h.tone === 'ok' ? '#1B5E20' : 'var(--an-navy)';
+                return (
+                  <div key={idx} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+                    <span style={{ width:8, height:8, borderRadius:999, background:color, marginTop:5, flexShrink:0 }} />
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{h.titulo}</div>
+                      <div style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.45 }}>{h.detalle}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={box}>
+            <div style={tiny}>Acción recomendada</div>
+            <ol style={{ margin:'0 0 12px 18px', padding:0, display:'flex', flexDirection:'column', gap:7 }}>
+              {info.acciones.map((a, idx) => <li key={idx} style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.42 }}>{a}</li>)}
+            </ol>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {info.alertasLecciones.length > 0 && <button type="button" className="btn btn-ghost" style={{ padding:'7px 11px', fontSize:12 }} onClick={onVerAlertas}>Ver alertas</button>}
+              <button type="button" className="btn btn-ghost" style={{ padding:'7px 11px', fontSize:12 }} onClick={onLimpiarFiltro}>Ver todo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function AuditoriaAcademicaView() {
+function AuditoriaAcademicaView({ initialGrupo = '', initialNivel = '', origen = '', onNavigate } = {}) {
+  const initialGrupoNorm = String(initialGrupo || '').trim();
+  const initialNivelNorm = String(initialNivel || aaInferNivelFromGrupo(initialGrupoNorm) || '').toUpperCase();
+  const openedFromCalGrupo = origen === 'calendario_grupo' || !!initialGrupoNorm;
+  const autoLoadKeyRef = React.useRef('');
+
   // Grupos activos (reusa getGruposActivos — mismo origen que el calendario).
   const [grupos, setGrupos] = React.useState([]);
   const [loadingGrupos, setLoadingGrupos] = React.useState(true);
   const [errorGrupos, setErrorGrupos] = React.useState(null);
 
-  const [codGrupo, setCodGrupo] = React.useState('');
-  const [nivel, setNivel] = React.useState('B1');
+  const [codGrupo, setCodGrupo] = React.useState(initialGrupoNorm || '');
+  const [nivel, setNivel] = React.useState(AA_NIVELES.includes(initialNivelNorm) ? initialNivelNorm : 'B1');
 
   // Resultado de la auditoría.
   const [data, setData] = React.useState(null);
@@ -1229,10 +1362,13 @@ function AuditoriaAcademicaView() {
         if (d && d.ok && Array.isArray(d.grupos)) {
           setGrupos(d.grupos);
           if (d.grupos.length) {
-            setCodGrupo(prev => prev || d.grupos[0].code);
-            // Nivel por defecto = nivel activo del primer grupo si existe.
-            const g0 = d.grupos[0];
-            if (g0 && g0.nivelId && AA_NIVELES.includes(g0.nivelId)) setNivel(g0.nivelId);
+            const gInicial = initialGrupoNorm
+              ? (d.grupos.find(g => String(g.code) === initialGrupoNorm) || { code: initialGrupoNorm, nivelId: initialNivelNorm || aaInferNivelFromGrupo(initialGrupoNorm) })
+              : d.grupos[0];
+            setCodGrupo(prev => initialGrupoNorm || prev || gInicial.code || d.grupos[0].code);
+            // Nivel por defecto = nivel recibido desde Calendario de Grupo, nivel activo del grupo o B1.
+            const nPreferido = String(initialNivelNorm || gInicial.nivelId || aaInferNivelFromGrupo(gInicial.code) || 'B1').toUpperCase();
+            if (AA_NIVELES.includes(nPreferido)) setNivel(prev => initialGrupoNorm ? nPreferido : (prev || nPreferido));
           }
         } else {
           setErrorGrupos((d && d.error) || 'No se pudieron cargar los grupos activos.');
@@ -1240,7 +1376,7 @@ function AuditoriaAcademicaView() {
       })
       .catch(e => setErrorGrupos('Error de red: ' + (e && e.message ? e.message : e)))
       .finally(() => setLoadingGrupos(false));
-  }, []);
+  }, [initialGrupoNorm, initialNivelNorm]);
 
   React.useEffect(() => { cargarGrupos(); }, [cargarGrupos]);
 
@@ -1265,6 +1401,16 @@ function AuditoriaAcademicaView() {
     }
   }, [codGrupo, nivel]);
 
+  // Si la vista se abre desde Calendario de Grupo, dejamos el filtro listo y
+  // cargamos la auditoría automáticamente una sola vez para ese grupo/nivel.
+  React.useEffect(() => {
+    if (!initialGrupoNorm || loadingGrupos || !codGrupo || !nivel) return;
+    const key = `${codGrupo}|${nivel}`;
+    if (autoLoadKeyRef.current === key) return;
+    autoLoadKeyRef.current = key;
+    cargarAuditoria();
+  }, [initialGrupoNorm, loadingGrupos, codGrupo, nivel, cargarAuditoria]);
+
   // Rol actual desde la sesión real (sin localStorage). Sólo superadmin edita.
   const sesion = React.useMemo(() => (window.getSesion ? window.getSesion() : null), []);
   const esSuperadmin = !!sesion && sesion.rol === 'superadmin';
@@ -1286,6 +1432,7 @@ function AuditoriaAcademicaView() {
     return true;
   });
   const riesgo = data ? aaComputeRiesgo(data.estudiantes || [], leccionesAll, data.matriz || {}) : [];
+  const inteligencia = data ? aaBuildInteligencia(data, riesgo) : null;
   const riesgoVisible = riesgo.filter(matchEst);
   const estudiantesDrawer = (data && Array.isArray(data.estudiantes)) ? data.estudiantes.filter(matchEst) : [];
 
@@ -1306,6 +1453,34 @@ function AuditoriaAcademicaView() {
         title={<>Auditoría <em>Académica</em></>}
         sub="Supervisión por grupo, nivel y lección."
       />
+
+      {openedFromCalGrupo && (
+        <div style={{
+          marginBottom: 14,
+          padding: '12px 16px',
+          borderRadius: 'var(--r-md)',
+          border: '1px solid color-mix(in srgb, var(--an-navy) 24%, white)',
+          background: 'color-mix(in srgb, var(--an-navy) 7%, white)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--an-navy)' }}>
+              Abierta desde Calendario de Grupo
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 3 }}>
+              Grupo recibido: <strong style={{ fontFamily: 'var(--f-mono)', color: 'var(--ink)' }}>{initialGrupoNorm || codGrupo || '—'}</strong>
+              {nivel && <> · Nivel: <strong>{nivel}</strong></>}
+            </div>
+          </div>
+          {onNavigate && (
+            <button type="button" className="btn btn-ghost" style={{ padding: '8px 13px', fontSize: 12 }}
+              onClick={() => onNavigate('calendario_grupo')}>
+              ← Volver a Calendario de Grupo
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── FILTROS ─────────────────────────────────────────────────────── */}
       <div className="card" style={{
@@ -1416,6 +1591,16 @@ function AuditoriaAcademicaView() {
                 tone={(resumen.alertas_total || 0) > 0 ? 'alert' : 'ok'}
               />
             </div>
+          )}
+
+          {/* Diagnóstico inteligente del grupo */}
+          {inteligencia && (
+            <AAAuditoriaInteligente
+              info={inteligencia}
+              nivelColor={nivelColor}
+              onVerAlertas={() => setFiltroEstado('alertas')}
+              onLimpiarFiltro={() => { setFiltroEstado('todas'); setBusqueda(''); }}
+            />
           )}
 
           {/* Toolbar: filtro de estado + buscador de estudiante */}

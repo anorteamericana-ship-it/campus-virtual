@@ -1,6 +1,9 @@
 /* global React */
+// CALGRUPO_F12_20260617_SNAPSHOT_GLOBAL_PRIORIDADES
+// CALGRUPO_F17_20260617_GLOBAL_MES_PREMIUM_OPERATIVO
 // ─────────────────────────────────────────────────────────────────────────
 // Vista "Todos los grupos" — solo admin / superadmin
+// CALGRUPO_F3_20260616_CALENDARIO_AMPLIO_CASILLAS_LEGIBLES
 // Se monta dentro de CronogramaGrupo cuando codGrupo === '__TODOS__'.
 //
 // Switch SEMANA / MES. Las lecciones de TODOS los grupos activos se apilan
@@ -180,7 +183,7 @@ function tFmtMoraActualizado(s) {
   return `${parseInt(dd,10)}-${meses[idx] || mm} ${hh}:${mi}`;
 }
 
-function TodosLosGruposView({ gruposReales, onNavigate }) {
+function TodosLosGruposView({ gruposReales, onNavigate, onDataSnapshot }) {
   // Primera pintura con getGruposActivos; luego se enriquece con getFechasGrupo
   // por grupo para que la vista global coincida con la vista individual.
   const [gruposDetalle, setGruposDetalle] = React.useState(null);
@@ -421,6 +424,18 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
     return { totalGrupos, aperturas, estudiantes };
   }, [safeGruposReales]);
 
+  // F12: entrega al panel padre la misma data global enriquecida por getFechasGrupo.
+  React.useEffect(() => {
+    if (typeof onDataSnapshot !== 'function') return;
+    onDataSnapshot({
+      source:'todos',
+      gruposReales: safeGruposReales,
+      items,
+      stats,
+      ts: Date.now(),
+    });
+  }, [onDataSnapshot, safeGruposReales, items, stats]);
+
   return (
     <div style={{ marginTop:14 }}>
       {/* Header con stats + switch + nav */}
@@ -470,7 +485,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
               border:'1.5px solid var(--line)',
               background: moraUpdating ? 'var(--bg-deep)' : 'var(--surface)',
               borderRadius:'var(--r-sm)',
-              fontSize:12, fontWeight:700, color:'var(--ink-2)',
+              fontSize:13, fontWeight:800, color:'var(--ink-2)',
               cursor: (moraUpdating || moraUnsupported) ? 'wait' : 'pointer',
               fontFamily:'inherit',
               letterSpacing:'0.02em',
@@ -576,12 +591,12 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
 
   // Ancho mínimo de la grilla: 240px etiqueta + 6 × 140px = 1080. Si la pantalla
   // es más angosta, el contenedor hace scroll horizontal (mantiene la lectura).
-  const COL_LABEL = 240;
-  const COL_DAY_MIN = 140;
+  const COL_LABEL = 270;
+  const COL_DAY_MIN = 172;
   const minWidth = COL_LABEL + 6 * COL_DAY_MIN;
 
   return (
-    <div className="card" style={{ padding:0, overflow:'hidden' }}>
+    <div className="card" style={{ padding:0, overflow:'hidden', borderRadius:'var(--r-lg)', boxShadow:'0 16px 38px rgba(12,41,77,.10)' }}>
       {/* Nav semana */}
       <div style={{
         padding:'12px 18px',
@@ -683,7 +698,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                 {/* Etiqueta del grupo */}
                 <div style={{
                   background:'var(--surface)',
-                  padding:'10px 12px 10px 14px',
+                  padding:'14px 14px 14px 16px',
                   borderLeft:`3px solid ${color}`,
                   display:'flex', alignItems:'center', gap:10, minWidth:0,
                   position:'sticky', left:0, zIndex:1,
@@ -716,7 +731,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                       color:'var(--ink-3)', fontWeight:700,
                     }}>
                       {horaLbl && <span style={{ marginRight:5 }}>{horaLbl}</span>}
-                      {g.estudiantes || 0}e
+                      {g.estudiantes || 0} est
                     </span>
                   </div>
                 </div>
@@ -731,9 +746,9 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                       background: isToday
                         ? 'color-mix(in srgb, var(--an-navy) 3%, var(--surface))'
                         : 'var(--surface)',
-                      padding:'5px 5px',
-                      display:'flex', flexDirection:'column', gap:3,
-                      minHeight:54,
+                      padding:'8px 7px',
+                      display:'flex', flexDirection:'column', gap:6,
+                      minHeight:82,
                     }}>
                       {list.map((lec, idx) => (
                         <PillLeccion
@@ -759,12 +774,28 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
 // ─────────────────────────────────────────────────────────────────
 // VISTA MES
 // ─────────────────────────────────────────────────────────────────
-const MES_VISIBLE_PILLS = 3;
+const MES_VISIBLE_PILLS = 6;
 
 function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, onAbrir }) {
   const year  = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const today = React.useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
+  const monthStats = React.useMemo(() => {
+    let diasConClase = 0, total = 0, examenes = 0;
+    try {
+      byDate.forEach((arr, iso) => {
+        if (!String(iso || '').startsWith(`${year}-${String(month + 1).padStart(2,'0')}`)) return;
+        const list = Array.isArray(arr) ? arr : [];
+        if (list.length) diasConClase += 1;
+        total += list.length;
+        examenes += list.filter(it => {
+          const l = it && it.leccion ? it.leccion : {};
+          return l.tipo === 'EVAL_ESCRITO' || l.tipo === 'EVAL_ORAL' || [18,32].includes(Number(l.leccion || 0));
+        }).length;
+      });
+    } catch (_) {}
+    return { diasConClase, total, examenes };
+  }, [byDate, year, month]);
 
   // Celdas (Lun-Dom)
   const celdas = React.useMemo(() => {
@@ -789,13 +820,15 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
   };
 
   return (
-    <div className="card" style={{ padding:0, overflow:'hidden' }}>
+    <div className="card" style={{ padding:0, overflow:'hidden', borderRadius:'var(--r-lg)', boxShadow:'0 16px 38px rgba(12,41,77,.10)' }}>
       {/* Nav mes */}
       <div style={{
-        padding:'12px 18px',
+        padding:'14px 18px',
         borderBottom:'1px solid var(--line)',
         display:'flex', alignItems:'center', justifyContent:'space-between',
         gap:14, flexWrap:'wrap',
+        background:'linear-gradient(135deg, var(--an-navy), #173B70)',
+        color:'white',
       }}>
         <div style={{ display:'flex', gap:6 }}>
           <NavBtn onClick={() => navMes(-1)} ariaLabel="Mes anterior">
@@ -804,31 +837,38 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
           <button
             onClick={() => { const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); setMonthCursor(d); }}
             style={{
-              padding:'6px 14px', border:'1.5px solid var(--line)',
-              background:'var(--surface)', borderRadius:'var(--r-sm)',
-              fontSize:12, fontWeight:600, color:'var(--ink-2)',
+              padding:'6px 14px', border:'1px solid rgba(255,255,255,.30)',
+              background:'rgba(255,255,255,.12)', borderRadius:'var(--r-sm)',
+              fontSize:12, fontWeight:800, color:'white',
               cursor:'pointer', fontFamily:'inherit',
             }}>Hoy</button>
           <NavBtn onClick={() => navMes(+1)} ariaLabel="Mes siguiente">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </NavBtn>
         </div>
-        <div style={{
-          fontFamily:'var(--f-sans)', fontSize:18, fontWeight:600,
-          color:'var(--ink)', letterSpacing:'-0.02em',
-        }}>
-          {TODOS_MESES[month]} {year}
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(255,255,255,.66)' }}>
+            Vista mes global
+          </div>
+          <div style={{
+            fontFamily:'var(--f-serif)', fontSize:27, fontWeight:500,
+            color:'white', letterSpacing:'-0.025em', lineHeight:1.05,
+          }}>
+            {TODOS_MESES[month]} {year}
+          </div>
         </div>
-        <div style={{ fontSize:11, color:'var(--ink-3)' }}>
-          Click sobre una lección para ver detalle
+        <div style={{ display:'flex', gap:7, flexWrap:'wrap', justifyContent:'flex-end' }}>
+          <TodosMesChip label="Días" value={monthStats.diasConClase} />
+          <TodosMesChip label="Clases" value={monthStats.total} />
+          <TodosMesChip label="Exámenes" value={monthStats.examenes} />
         </div>
       </div>
 
       {/* DOW header */}
       <div style={{
         display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-        padding:'8px 8px', borderBottom:'1px solid var(--line)',
-        background:'var(--surface-2)',
+        padding:'11px 10px', borderBottom:'1px solid var(--line)',
+        background:'linear-gradient(180deg, #fff, var(--surface-2))',
       }}>
         {TODOS_DIAS_LUN0.map((d, i) => (
           <div key={i} style={{
@@ -842,11 +882,11 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
       {/* Celdas */}
       <div style={{
         display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-        gap:1, background:'var(--line)',
+        gap:6, background:'color-mix(in srgb, var(--an-navy) 4%, var(--surface))', padding:8,
       }}>
         {celdas.map((c, i) => {
           if (!c.dentro) {
-            return <div key={i} style={{ background:'var(--bg-deep)', minHeight:108 }} />;
+            return <div key={i} style={{ background:'var(--bg-deep)', minHeight:168, borderRadius:10 }} />;
           }
           const list = byDate.get(c.iso) || [];
           const isToday = tSameDate(c.fecha, today);
@@ -855,23 +895,26 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
 
           return (
             <div key={i} style={{
-              background: isToday ? 'color-mix(in srgb, var(--an-granate) 4%, var(--surface))' : 'var(--surface)',
-              padding:'6px 6px 8px',
-              minHeight:108,
-              display:'flex', flexDirection:'column', gap:3,
+              background: isToday ? 'linear-gradient(180deg, color-mix(in srgb, var(--an-gold) 10%, white), white)' : 'var(--surface)',
+              padding:'10px 10px 11px',
+              minHeight:168,
+              display:'flex', flexDirection:'column', gap:7,
+              borderRadius:10,
+              border: isToday ? '1px solid color-mix(in srgb, var(--an-gold) 38%, white)' : '1px solid color-mix(in srgb, var(--line) 72%, transparent)',
             }}>
               <div style={{
                 display:'flex', justifyContent:'space-between', alignItems:'baseline',
                 marginBottom:2,
               }}>
                 <span style={{
-                  fontFamily:'var(--f-mono)', fontSize:11, fontWeight:700,
+                  fontFamily:'var(--f-mono)', fontSize:14, fontWeight:900,
                   color: isToday ? 'var(--an-granate)' : 'var(--ink-2)',
                 }}>{c.diaNum}</span>
                 {list.length > 0 && (
                   <span style={{
-                    fontSize:9, fontWeight:700, color:'var(--ink-3)',
+                    fontSize:10, fontWeight:800, color:'var(--ink-2)',
                     fontFamily:'var(--f-mono)',
+                    padding:'2px 6px', borderRadius:'var(--r-pill)', background:'var(--bg-deep)',
                   }}>{list.length}</span>
                 )}
               </div>
@@ -884,9 +927,9 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
                 <button
                   onClick={() => setExpandedDay(c.iso)}
                   style={{
-                    padding:'3px 6px', background:'transparent',
+                    padding:'5px 8px', background:'var(--surface)',
                     border:'1px dashed var(--line-2, var(--line))',
-                    borderRadius:4, fontSize:10, fontWeight:700,
+                    borderRadius:6, fontSize:11, fontWeight:800,
                     color:'var(--ink-2)', cursor:'pointer', fontFamily:'inherit',
                     marginTop:1,
                   }}>
@@ -911,9 +954,29 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
   );
 }
 
+
+function TodosMesChip({ label, value }) {
+  return (
+    <div style={{
+      minWidth:66, padding:'6px 9px', borderRadius:'var(--r-md)',
+      border:'1px solid rgba(255,255,255,.24)', background:'rgba(255,255,255,.10)',
+      textAlign:'center', color:'white',
+    }}>
+      <div style={{ fontSize:9, fontWeight:900, letterSpacing:'0.10em', textTransform:'uppercase', color:'rgba(255,255,255,.65)' }}>{label}</div>
+      <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, lineHeight:1, marginTop:2 }}>{value}</div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // PILL — una lección. Color por NIVEL (no por grupo); estilo soft.
 // ─────────────────────────────────────────────────────────────────
+function todosShortCode(code) {
+  const parts = String(code || '').split('-').filter(Boolean);
+  if (parts.length >= 3) return `${parts[0]}-${parts[1]}-${parts[parts.length - 1]}`;
+  return String(code || '—');
+}
+
 function PillLeccion({ item, compact, moraMap, onClick }) {
   const { grupo, leccion } = item;
   const esApertura = !!grupo.esApertura;
@@ -927,17 +990,12 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
     ? TODOS_APERTURA_COL
     : (TODOS_NIVEL_COLOR[grupo.nivelId] || TODOS_APERTURA_COL);
 
-  // Fondo MUY suave; el rail izquierdo del color es lo que pinta.
   const bg     = `color-mix(in srgb, ${color} 7%, white)`;
-  const bgHoy  = `color-mix(in srgb, ${color} 14%, white)`;
-  const border = `color-mix(in srgb, ${color} 28%, white)`;
-
+  const bgHoy  = `color-mix(in srgb, ${color} 15%, white)`;
+  const border = `color-mix(in srgb, ${color} 32%, white)`;
   const horaLbl = TODOS_HORA_LABEL[grupo.turnoOrden] || '';
+  const shortCode = todosShortCode(grupo.code);
 
-  // ── Mora del grupo ─────────────────────────────────────────────
-  //   - moraMap null: aún no llegó → se muestra "…" como placeholder en mr
-  //   - moraMap con el grupo: se muestra Nst · Nmr (ca puede ser 0; intencional)
-  //   - moraMap sin el grupo: solo Nst desde grupo.estudiantes
   const moraInfo = moraMap && moraMap.get ? moraMap.get(grupo.code) : null;
   const ca = todosPickCa(grupo, moraInfo);
   const mr = todosPickMora(moraInfo);
@@ -949,79 +1007,71 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
       onClick={onClick}
       title={`${grupo.code} · ${grupo.docente} · ${grupo.hora || ''}`}
       style={{
-        display:'flex', alignItems:'center', gap: compact ? 5 : 7,
-        padding: compact ? '3px 7px 3px 8px' : '5px 9px 5px 10px',
+        display:'flex', flexDirection:'column', alignItems:'stretch', gap: compact ? 3 : 5,
+        padding: compact ? '7px 8px' : '8px 10px',
+        minHeight: compact ? 46 : 54,
         background: hoy ? bgHoy : bg,
         borderTop:    `1px solid ${border}`,
         borderRight:  `1px solid ${border}`,
         borderBottom: `1px solid ${border}`,
-        borderLeft:   `3px solid ${color}`,
-        borderRadius: 4,
+        borderLeft:   `4px solid ${color}`,
+        borderRadius: 7,
         cursor:'pointer', textAlign:'left', fontFamily:'inherit',
         color:'var(--ink)',
-        opacity: cerrada ? 0.55 : (esApertura ? 0.85 : 1),
-        overflow:'hidden', minWidth:0, lineHeight:1.2,
-        transition:'background .12s, transform .12s',
-        flexWrap:'wrap', rowGap:2,
+        opacity: cerrada ? 0.58 : (esApertura ? 0.88 : 1),
+        overflow:'hidden', minWidth:0, lineHeight:1.15,
+        transition:'background .12s, transform .12s, box-shadow .12s',
+        boxShadow: hoy ? `0 0 0 1px ${color}55` : 'none',
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = bgHoy; }}
-      onMouseLeave={e => { e.currentTarget.style.background = hoy ? bgHoy : bg; }}
+      onMouseEnter={e => { e.currentTarget.style.background = bgHoy; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = hoy ? bgHoy : bg; e.currentTarget.style.transform = 'none'; }}
     >
-      {horaLbl && (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, minWidth:0 }}>
         <span style={{
-          fontFamily:'var(--f-mono)', fontSize: compact ? 10 : 11,
-          fontWeight:800, color,
-        }}>{horaLbl}</span>
-      )}
-      {esApertura ? (
+          minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          fontFamily:'var(--f-mono)', fontSize: compact ? 10.5 : 11.5,
+          fontWeight:900, color:'var(--ink)', letterSpacing:'0.01em',
+        }}>{shortCode}</span>
         <span style={{
-          fontSize: compact ? 9 : 10, fontWeight:800,
-          color, letterSpacing:'0.08em', textTransform:'uppercase',
-        }}>Apertura</span>
-      ) : (
-        <span style={{
-          fontFamily:'var(--f-mono)', fontSize: compact ? 10 : 11,
-          fontWeight:700, color:'var(--ink)',
-        }}>
-          L{String(leccion.leccion || '—').padStart(2,'0')}
-        </span>
-      )}
-      {esICAN && <PillBadge color={color} label="I CAN" />}
-      {esEval && <PillBadge color={color} label={leccion.tipo === 'EVAL_ORAL' ? 'ORAL' : 'ESCR'} />}
-      {esPC && !esEval && <PillBadge color={color} label="PC" />}
+          flexShrink:0, fontSize: compact ? 9 : 10, fontWeight:900,
+          padding:'2px 6px', borderRadius:'var(--r-pill)',
+          background:`color-mix(in srgb, ${color} 14%, white)`, color,
+          fontFamily:'var(--f-mono)',
+        }}>{grupo.nivelId || '—'}</span>
+      </div>
 
-      {/* CA · Mora */}
+      <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
+        {horaLbl && (
+          <span style={{ fontFamily:'var(--f-mono)', fontSize: compact ? 9.5 : 10.5, fontWeight:900, color }}>
+            {horaLbl}
+          </span>
+        )}
+        {esApertura ? (
+          <span style={{ fontSize: compact ? 9.5 : 10.5, fontWeight:900, color, letterSpacing:'0.08em', textTransform:'uppercase' }}>Apertura</span>
+        ) : (
+          <span style={{ fontFamily:'var(--f-mono)', fontSize: compact ? 10.5 : 11.5, fontWeight:900, color:'var(--ink)' }}>
+            L{String(leccion.leccion || '—').padStart(2,'0')}
+          </span>
+        )}
+        {esICAN && <PillBadge color={color} label="I CAN" />}
+        {esEval && <PillBadge color={color} label={leccion.tipo === 'EVAL_ORAL' ? 'ORAL' : 'ESCR'} />}
+        {esPC && !esEval && <PillBadge color={color} label="PC" />}
+        {cerrada && <span style={{ marginLeft:'auto', fontSize:11, color, fontWeight:900 }}>✓</span>}
+      </div>
+
       {mostrarMora && (ca !== null || mr !== null) && (
-        <span style={{
-          marginLeft:4,
-          fontFamily:'var(--f-mono)', fontSize: compact ? 9 : 10,
-          fontWeight:700, color:'var(--ink-2)', whiteSpace:'nowrap',
-          display:'inline-flex', alignItems:'center', gap:4,
+        <div style={{
+          display:'flex', alignItems:'center', gap:5, flexWrap:'wrap',
+          fontFamily:'var(--f-mono)', fontSize: compact ? 9.5 : 10.5,
+          fontWeight:800, color:'var(--ink-2)', whiteSpace:'nowrap', marginTop:1,
         }}>
-          <span style={{ opacity:0.55 }}>·</span>
-          {ca !== null && (
-            <span style={{ color:'var(--ink-2)' }}>{ca}st</span>
-          )}
+          {ca !== null && <span style={{ color:'var(--ink-2)' }}>{ca} estudiantes</span>}
           {mr !== null ? (
-            mr > 0 ? (
-              <span style={{
-                color: '#C8302A', // rojo de mora
-                fontWeight:800,
-              }}>{mr}mr</span>
-            ) : (
-              <span style={{ color:'var(--ink-3)', opacity:0.7 }}>0mr</span>
-            )
-          ) : (
-            // moraMap aún null: placeholder
-            <span style={{ color:'var(--ink-3)', opacity:0.5 }}>…</span>
-          )}
-        </span>
-      )}
-
-      {cerrada && (
-        <span style={{
-          marginLeft:'auto', fontSize:10, color, fontWeight:800,
-        }}>✓</span>
+            mr > 0
+              ? <span style={{ color:'#C8302A', fontWeight:900 }}>{mr} mora</span>
+              : <span style={{ color:'var(--ink-3)', opacity:0.75 }}>0 mora</span>
+          ) : <span style={{ color:'var(--ink-3)', opacity:0.55 }}>mora …</span>}
+        </div>
       )}
     </button>
   );
@@ -1082,7 +1132,7 @@ function DiaExpandidoModal({ iso, items, moraMap, onCerrar, onAbrir }) {
               textTransform:'uppercase', color:'var(--ink-3)',
             }}>{items.length} lecciones</div>
             <div style={{
-              fontFamily:'var(--f-sans)', fontSize:18, fontWeight:600,
+              fontFamily:'var(--f-serif)', fontSize:24, fontWeight:500,
               color:'var(--ink)', letterSpacing:'-0.015em',
             }}>
               {tFmtFechaLarga(iso)}

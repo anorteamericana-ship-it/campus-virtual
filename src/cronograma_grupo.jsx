@@ -1,5 +1,8 @@
 /* global React */
 // ── CronogramaGrupo v2 — Calendario mensual de lecciones ────────────────
+// CALGRUPO_F3_20260616_MES_INDIVIDUAL_CASILLAS_AMPLIAS
+// CALGRUPO_F12_20260617_SNAPSHOT_CALENDARIO_A_PANEL_EJECUTIVO
+// CALGRUPO_F17_20260617_MES_PREMIUM_CASILLAS_PERFECTAS
 // Lee CALENDARIO_LECCIONES vía Apps Script.
 // Roles: student / teacher / admin / superadmin
 // • student / teacher → grupo fijo (sessionStorage.an_usuario.grupo)
@@ -132,7 +135,7 @@ function idLeccion(nivel, num) {
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function CronogramaGrupo({ rol = 'admin', onNavigate }) {
+function CronogramaGrupo({ rol = 'admin', onNavigate, onDataSnapshot }) {
   const usr = React.useMemo(() => {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
@@ -394,6 +397,18 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
   const nivelColor = NIVEL_COLOR_CG[nivel] || NIVEL_COLOR_CG.B1;
 
+  // F12: expone un snapshot liviano al panel padre (Calendario de Grupo).
+  // No cambia backend: solo comparte la misma data que esta vista ya cargó.
+  React.useEffect(() => {
+    if (typeof onDataSnapshot !== 'function') return;
+    onDataSnapshot({
+      source: esTodosGrupos ? 'todos' : 'grupo',
+      gruposReales: Array.isArray(gruposReales) ? gruposReales : [],
+      codGrupo, nivel, lecciones: Array.isArray(lecciones) ? lecciones : [],
+      stats, loading, loadingGrupos, error, errorGrupos, ts: Date.now(),
+    });
+  }, [onDataSnapshot, esTodosGrupos, gruposReales, codGrupo, nivel, lecciones, stats, loading, loadingGrupos, error, errorGrupos]);
+
   // Construir lista de meses a renderizar
   const meses = React.useMemo(() => {
     if (!lecciones.length) return [];
@@ -515,7 +530,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {esTodosGrupos ? (
         typeof window.TodosLosGruposView === 'function' ? (
-          React.createElement(window.TodosLosGruposView, { gruposReales, onNavigate })
+          React.createElement(window.TodosLosGruposView, { gruposReales, onNavigate, onDataSnapshot })
         ) : (
           <div className="card" style={{ padding:24, color:'var(--ink-3)' }}>No se pudo cargar la vista global de todos los grupos. Verificá que src/cronograma_todos.jsx esté cargado antes de cronograma_grupo.jsx.</div>
         )
@@ -621,7 +636,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div style={{
-        display:'grid', gridTemplateColumns:'minmax(0, 1fr) 360px',
+        display:'grid', gridTemplateColumns:'minmax(0, 1fr) 380px',
         gap:18, marginTop:6, alignItems:'start',
       }}>
         <div style={{ minWidth:0 }}>
@@ -1175,22 +1190,74 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
 // ── VISTA: Mes (compacta, scroll horizontal — ya no se estira) ──────────────
 function VistaMes({ meses, mapaLecciones, selLec, nivel, onClickLec }) {
   const multiple = meses.length > 1;
+  const totalLecciones = React.useMemo(() => {
+    let n = 0;
+    try {
+      Object.keys(mapaLecciones || {}).forEach(k => {
+        const arr = mapaLecciones[k];
+        if (Array.isArray(arr)) n += arr.length;
+      });
+    } catch (_) {}
+    return n;
+  }, [mapaLecciones]);
+
   return (
-    <div className="card" style={{ padding:18 }}>
+    <div className="card" style={{ padding:0, overflow:'hidden', borderRadius:'var(--r-lg)' }}>
       <div style={{
-        display: multiple ? 'flex' : 'grid',
-        gridTemplateColumns: multiple ? undefined : 'minmax(0, 420px)',
-        gap:16, overflowX: multiple ? 'auto' : 'visible', paddingBottom: multiple ? 6 : 0,
-        justifyContent: multiple ? 'flex-start' : 'center',
+        padding:'14px 18px', borderBottom:'1px solid var(--line)',
+        background:'linear-gradient(180deg, #fff, var(--surface-2))',
+        display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap',
       }}>
-        {meses.map(mes => (
-          <div key={`${mes.getFullYear()}-${mes.getMonth()}`}
-               style={{ flex: multiple ? '0 0 300px' : undefined, minWidth: multiple ? 300 : undefined, maxWidth: multiple ? 320 : undefined }}>
-            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
+        <div>
+          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.16em', textTransform:'uppercase', color:'var(--ink-3)' }}>
+            Vista mes premium
           </div>
-        ))}
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.02em', marginTop:2 }}>
+            Calendario mensual del grupo
+          </div>
+          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>
+            Casillas amplias para leer lección, tipo de evaluación y doble sesión sin apretar la vista.
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+          <CronoMesChip label="Meses" value={meses.length} />
+          <CronoMesChip label="Lecciones" value={totalLecciones} />
+          <CronoMesChip label="Nivel" value={nivel || '—'} mono />
+        </div>
       </div>
-      <Leyenda />
+      <div style={{
+        padding:18,
+        background:'linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--an-navy) 3%, var(--surface)))',
+      }}>
+        <div style={{
+          display: multiple ? 'flex' : 'grid',
+          gridTemplateColumns: multiple ? undefined : 'minmax(0, 860px)',
+          gap:18, overflowX: multiple ? 'auto' : 'visible', paddingBottom: multiple ? 8 : 0,
+          justifyContent: multiple ? 'flex-start' : 'center', alignItems:'start',
+        }}>
+          {meses.map(mes => (
+            <div key={`${mes.getFullYear()}-${mes.getMonth()}`}
+                 style={{ flex: multiple ? '0 0 640px' : undefined, minWidth: multiple ? 640 : undefined, maxWidth: multiple ? 700 : undefined }}>
+              <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding:'0 18px 16px' }}>
+        <Leyenda />
+      </div>
+    </div>
+  );
+}
+
+function CronoMesChip({ label, value, mono }) {
+  return (
+    <div style={{
+      padding:'8px 11px', borderRadius:'var(--r-md)', border:'1px solid var(--line)',
+      background:'white', minWidth:82, textAlign:'center', boxShadow:'var(--sh-1)',
+    }}>
+      <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
+      <div style={{ marginTop:2, fontFamily: mono ? 'var(--f-mono)' : 'var(--f-serif)', fontWeight: mono ? 900 : 500, fontSize: mono ? 14 : 20, color:'var(--an-navy-ink)', lineHeight:1 }}>{value}</div>
     </div>
   );
 }
@@ -1324,30 +1391,30 @@ function Mes({ mes, mapaLecciones, selLec, nivel, onClickLec }) {
 
   return (
     <div style={{
-      border:'1px solid var(--line)', borderRadius:'var(--r-md)',
-      background:'var(--surface)', overflow:'hidden',
+      border:'1px solid var(--line)', borderRadius:'var(--r-lg)',
+      background:'var(--surface)', overflow:'hidden', boxShadow:'0 14px 34px rgba(12,41,77,.08)',
     }}>
       {/* Header del mes */}
       <div style={{
-        padding:'10px 14px',
-        background:'var(--surface-2)',
-        borderBottom:'1px solid var(--line)',
+        padding:'16px 18px',
+        background:'linear-gradient(135deg, var(--an-navy), #173B70)',
+        borderBottom:'1px solid rgba(255,255,255,.14)',
         display:'flex', justifyContent:'space-between', alignItems:'baseline',
       }}>
         <div style={{
-          fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600,
-          color:'var(--ink)', letterSpacing:'-0.015em',
+          fontFamily:'var(--f-serif)', fontSize:24, fontWeight:500,
+          color:'white', letterSpacing:'-0.02em',
         }}>
           {MESES_NOMBRES[month]}
         </div>
-        <div style={{ fontSize:11, color:'var(--ink-3)', fontFamily:'var(--f-mono)' }}>
+        <div style={{ fontSize:11, color:'rgba(255,255,255,.76)', fontFamily:'var(--f-mono)', fontWeight:900 }}>
           {year}
         </div>
       </div>
 
       {/* Dow header */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-                    padding:'6px 4px', borderBottom:'1px solid var(--line)' }}>
+                    padding:'10px 8px', borderBottom:'1px solid var(--line)', background:'var(--surface-2)' }}>
         {DIA_INICIAL.map((d, i) => (
           <div key={i} style={{
             textAlign:'center', fontSize:10, fontWeight:700,
@@ -1359,7 +1426,7 @@ function Mes({ mes, mapaLecciones, selLec, nivel, onClickLec }) {
 
       {/* Celdas */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-                    gap:2, padding:3 }}>
+                    gap:6, padding:8, background:'color-mix(in srgb, var(--an-navy) 3%, var(--surface))' }}>
         {celdas.map((c, i) => (
           <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
         ))}
@@ -1372,7 +1439,7 @@ function CeldaDia({ celda, selLec, nivel, onClickLec }) {
   const { diaNum, dentro, lecs } = celda;
 
   if (!dentro) {
-    return <div style={{ minHeight:48 }} />;
+    return <div style={{ minHeight:112 }} />;
   }
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const esFinde = ((new Date(celda.iso + 'T00:00:00')).getDay() % 7 === 0 ||
@@ -1381,8 +1448,9 @@ function CeldaDia({ celda, selLec, nivel, onClickLec }) {
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight:48, padding:'4px 5px',
-        background:'var(--bg-deep)', borderRadius:6,
+        minHeight:112, padding:'8px 8px',
+        background:'linear-gradient(180deg, var(--bg-deep), color-mix(in srgb, var(--ink-3) 3%, var(--bg-deep)))', borderRadius:10,
+        border:'1px dashed color-mix(in srgb, var(--line) 70%, transparent)',
         opacity: esFinde ? 0.6 : 1,
       }}>
         <div style={{ fontSize:10, color:'var(--ink-3)', fontWeight:600, fontFamily:'var(--f-mono)' }}>
@@ -1395,10 +1463,10 @@ function CeldaDia({ celda, selLec, nivel, onClickLec }) {
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight:48,
+      minHeight:112,
       display:'grid',
       gridTemplateRows: lecs.length === 2 ? '1fr 1fr' : '1fr',
-      gap: 2,
+      gap: 5,
     }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
@@ -1415,6 +1483,9 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
   const badge = TIPO_BADGE[lec.tipo];
   const isFeriado = lec.estado === 'FERIADO';
   const isHoy = lec.estado === 'HOY';
+  const isEscrito = lec.tipo === 'EVAL_ESCRITO' || [18,32].includes(Number(lec.leccion));
+  const isOral = lec.tipo === 'EVAL_ORAL';
+  const tipoLinea = isEscrito ? 'Examen escrito' : (isOral ? 'Examen oral' : (lec.tipo === 'PROGRESS_CHECK' ? 'Progress Check' : 'Clase'));
 
   return (
     <div
@@ -1422,13 +1493,13 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
       style={{
         background: pal.bg,
         border: `1.5px solid ${selected ? pal.accent : (isHoy ? '#F57F17' : 'transparent')}`,
-        borderRadius: 6,
-        padding: '4px 5px',
+        borderRadius: 10,
+        padding: '8px 9px',
         cursor: 'pointer',
         display:'flex', flexDirection:'column', justifyContent:'space-between',
         minHeight: 0,
         position:'relative',
-        boxShadow: selected ? `0 0 0 2px ${pal.accent}` : (isHoy ? '0 0 0 1px #F57F17' : 'none'),
+        boxShadow: selected ? `0 0 0 2px ${pal.accent}` : (isHoy ? '0 0 0 1px #F57F17, 0 10px 18px rgba(245,127,23,.10)' : '0 8px 16px rgba(12,41,77,.05)'),
         transition: 'transform .12s, box-shadow .12s',
       }}
       onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.97)'; }}
@@ -1436,14 +1507,14 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
     >
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:2 }}>
         {diaNum != null && (
-          <span style={{ fontSize:10, fontWeight:700, color: pal.fg, fontFamily:'var(--f-mono)' }}>
+          <span style={{ fontSize:12, fontWeight:800, color: pal.fg, fontFamily:'var(--f-mono)' }}>
             {diaNum}
           </span>
         )}
         {!diaNum && <span />}
         {badge && (
           <span style={{
-            fontSize:8, fontWeight:800, color:'white', background:pal.accent,
+            fontSize:9, fontWeight:900, color:'white', background:pal.accent,
             padding:'1px 4px', borderRadius:3, letterSpacing:'0.04em',
             textTransform:'uppercase', lineHeight:1.2,
           }}>
@@ -1452,7 +1523,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
         )}
         {isHoy && !badge && (
           <span style={{
-            fontSize:8, fontWeight:800, color:'white', background:'#F57F17',
+            fontSize:9, fontWeight:900, color:'white', background:'#F57F17',
             padding:'1px 4px', borderRadius:3, letterSpacing:'0.04em',
             textTransform:'uppercase', lineHeight:1.2,
           }}>HOY</span>
@@ -1466,16 +1537,14 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
         ) : (
           <>
             <div style={{
-              fontSize:10, fontWeight:700, color:pal.fg, fontFamily:'var(--f-mono)',
-              lineHeight:1.1,
+              fontSize:14, fontWeight:950, color:pal.fg, fontFamily:'var(--f-mono)',
+              lineHeight:1.05,
             }}>
               Lec {String(lec.leccion).padStart(2,'0')}
             </div>
-            {lec.turno && (
-              <div style={{ fontSize:8, color:pal.fg, opacity:0.7, fontWeight:600, marginTop:1 }}>
-                {lec.turno.includes('Mañana') ? '☀ AM' : '🌙 PM'}
-              </div>
-            )}
+            <div style={{ fontSize:10, color:pal.fg, opacity:0.82, fontWeight:800, marginTop:2, lineHeight:1.15 }}>
+              {tipoLinea}{lec.turno ? ` · ${lec.turno.includes('Mañana') ? 'AM' : 'PM'}` : ''}
+            </div>
           </>
         )}
       </div>
