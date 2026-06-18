@@ -1,3 +1,4 @@
+// CALGRUPO_F67_20260618_AGENDA_DOCENTE_UNIFICADA_GRUPOS_EN_CURSO
 // CALGRUPO_F66_20260618_CRONOGRAMA_ASISTENCIA_UNICA_DOCENTE
 /* global React */
 // ── CronogramaGrupo v2 — Calendario mensual de lecciones ────────────────
@@ -388,6 +389,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const [usandoMock, setUsandoMock] = React.useState(false);
   const loadSeqRef = React.useRef(0);
 
+  // CALGRUPO_F67_20260618_AGENDA_DOCENTE_TODOS_GRUPOS_MISMO_CALENDARIO
+  // Para teacher, el cronograma ya no es “grupo seleccionado”: es agenda docente.
+  // Carga todas las líneas EN_CURSO que vienen de APOLLO.GRUPOS.DOCENTE y las
+  // pinta juntas en el mismo calendario, como una agenda tipo Google Calendar.
+  const agendaDocenteMode = esTeacher;
+  const [agendaLecciones, setAgendaLecciones] = React.useState([]);
+  const [loadingAgenda, setLoadingAgenda] = React.useState(false);
+  const [errorAgenda, setErrorAgenda] = React.useState(null);
+  const agendaSeqRef = React.useRef(0);
+
   const cargar = React.useCallback(() => {
     if (!codGrupo || codGrupo === TODOS_GRUPOS) {
       // No hay grupo activo (todavía o porque está en "Todos los grupos"):
@@ -439,6 +450,61 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
   React.useEffect(() => { cargar(); }, [cargar]);
 
+  React.useEffect(() => {
+    if (!agendaDocenteMode) return;
+    const seq = ++agendaSeqRef.current;
+    const gruposCurso = (gruposReales || []).filter(g => {
+      const e = String(g.estado_calculado || g.comentario_calculado || '').toUpperCase();
+      return !e || e.includes('EN_CURSO') || e.includes('EN CURSO') || e.includes('CURSO');
+    });
+    const gruposAgenda = gruposCurso.length ? gruposCurso : (gruposReales || []);
+    if (!gruposAgenda.length) {
+      setAgendaLecciones([]); setLoadingAgenda(false); setErrorAgenda(null);
+      return;
+    }
+    setLoadingAgenda(true); setErrorAgenda(null);
+    Promise.all(gruposAgenda.map(g => {
+      const nivelG = normalizarNivelCG(g.nivelId || g.nivel || 'B1');
+      return postCronoGrupo('getFechasGrupo', { cod_grupo: g.code || g.cod_grupo, nivel: nivelG })
+        .then(d => {
+          if (!d?.ok || !Array.isArray(d.lecciones)) {
+            return { ok:false, grupo:g, nivel:nivelG, error:d?.error || 'sin_lecciones', lecciones:[] };
+          }
+          return { ok:true, grupo:g, nivel:nivelG, lecciones:d.lecciones };
+        })
+        .catch(e => ({ ok:false, grupo:g, nivel:nivelG, error:e?.message || String(e || 'error_red'), lecciones:[] }));
+    })).then(results => {
+      if (seq !== agendaSeqRef.current) return;
+      const eventos = [];
+      const errores = [];
+      results.forEach(res => {
+        if (!res.ok) errores.push(`${grupoHorarioLabelCG(res.grupo)}: ${res.error}`);
+        (res.lecciones || []).forEach((lec, idx) => {
+          eventos.push({
+            ...lec,
+            cod_grupo: res.grupo.code || res.grupo.cod_grupo,
+            grupoLabel: grupoHorarioLabelCG(res.grupo),
+            horario_label: grupoHorarioLabelCG(res.grupo),
+            nivel: res.nivel,
+            nivelId: res.nivel,
+            docente: res.grupo.docente,
+            hora_i: res.grupo.hora_i || res.grupo.hora_inicio || '',
+            hora_f: res.grupo.hora_f || res.grupo.hora_fin || '',
+            dias: res.grupo.dias || res.grupo.diasCode || '',
+            agenda_event_id: `${res.grupo.code || res.grupo.cod_grupo}|${res.nivel}|${lec.fecha}|${lec.leccion}|${idx}`,
+          });
+        });
+      });
+      eventos.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || String(a.hora_i||'').localeCompare(String(b.hora_i||'')) || String(a.grupoLabel||'').localeCompare(String(b.grupoLabel||'')) || ((a.leccion||0)-(b.leccion||0)));
+      setAgendaLecciones(eventos);
+      setErrorAgenda(errores.length ? errores.slice(0,3).join(' · ') : null);
+    }).catch(e => {
+      if (seq !== agendaSeqRef.current) return;
+      setAgendaLecciones([]);
+      setErrorAgenda('No se pudo cargar la agenda docente: ' + (e?.message || e));
+    }).finally(() => { if (seq === agendaSeqRef.current) setLoadingAgenda(false); });
+  }, [agendaDocenteMode, gruposReales]);
+
   // Selección de lección (panel lateral)
   const [selLec, setSelLec]         = React.useState(null);
   const [detalle, setDetalle]       = React.useState(null);
@@ -484,15 +550,24 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     showToast(`Cobertura asignada: la lección la dará ${docente_cobertura}`, 'ok');
   }, [showToast]);
 
+  const leccionesVista = agendaDocenteMode ? agendaLecciones : lecciones;
+  const loadingVista = agendaDocenteMode ? loadingAgenda : loading;
+  const errorVista = agendaDocenteMode ? errorAgenda : error;
+
   // Auto-seleccionar HOY o primera PROGRAMADA/CALCULADA al cargar
   React.useEffect(() => {
-    if (!lecciones.length) return;
-    const sel = lecciones.find(l => l.estado === 'HOY')
-             || lecciones.find(l => l.estado === 'PROGRAMADA')
-             || lecciones.find(l => l.estado === 'CALCULADA')
-             || lecciones[0];
+    if (!leccionesVista.length) return;
+    const currentKey = selLec && (selLec.agenda_event_id || `${selLec.cod_grupo||codGrupo}|${selLec.nivel||nivel}|${selLec.fecha}|${selLec.leccion}`);
+    const stillExists = currentKey && leccionesVista.some(l => (l.agenda_event_id || `${l.cod_grupo||codGrupo}|${l.nivel||nivel}|${l.fecha}|${l.leccion}`) === currentKey);
+    if (stillExists) return;
+    const sel = leccionesVista.find(l => l.estado === 'HOY')
+             || leccionesVista.find(l => l.estado === 'PROGRAMADA')
+             || leccionesVista.find(l => l.estado === 'CALCULADA')
+             || leccionesVista[0];
+    if (sel?.cod_grupo) setCodGrupo(sel.cod_grupo);
+    if (sel?.nivel) setNivel(sel.nivel);
     setSelLec(sel);
-  }, [lecciones]);
+  }, [leccionesVista]);
 
   // Carga el detalle de la lección seleccionada. Extraído a un callback
   // para que el botón "Reintentar" del panel pueda volver a dispararlo.
@@ -519,23 +594,23 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   // Stats
   const stats = React.useMemo(() => {
     const esFutura     = l => l.estado === 'CALCULADA' || l.estado === 'PROGRAMADA';
-    const cerradas     = lecciones.filter(l => l.estado === 'CERRADA').length;
-    const feriados     = lecciones.filter(l => l.estado === 'FERIADO').length;
-    const calculadas   = lecciones.filter(esFutura).length;
-    const hoy          = lecciones.filter(l => l.estado === 'HOY').length;
-    const proxima      = lecciones.find(l => esFutura(l) || l.estado === 'HOY');
-    const primera      = lecciones[0];
-    const ultima       = [...lecciones].reverse()
+    const cerradas     = leccionesVista.filter(l => l.estado === 'CERRADA').length;
+    const feriados     = leccionesVista.filter(l => l.estado === 'FERIADO').length;
+    const calculadas   = leccionesVista.filter(esFutura).length;
+    const hoy          = leccionesVista.filter(l => l.estado === 'HOY').length;
+    const proxima      = leccionesVista.find(l => esFutura(l) || l.estado === 'HOY');
+    const primera      = leccionesVista[0];
+    const ultima       = [...leccionesVista].reverse()
                           .find(l => l.estado === 'CERRADA' || esFutura(l) || l.estado === 'HOY');
-    return { cerradas, feriados, calculadas, hoy, proxima, primera, ultima, total: lecciones.length };
-  }, [lecciones]);
+    return { cerradas, feriados, calculadas, hoy, proxima, primera, ultima, total: leccionesVista.length };
+  }, [leccionesVista]);
 
   const nivelColor = NIVEL_COLOR_CG[nivel] || NIVEL_COLOR_CG.B1;
 
   // Construir lista de meses a renderizar
   const meses = React.useMemo(() => {
-    if (!lecciones.length) return [];
-    const fechas = lecciones.map(l => parseISO(l.fecha)).filter(Boolean);
+    if (!leccionesVista.length) return [];
+    const fechas = leccionesVista.map(l => parseISO(l.fecha)).filter(Boolean);
     if (!fechas.length) return [];
     const fMin = new Date(Math.min(...fechas));
     const fMax = new Date(Math.max(...fechas));
@@ -547,17 +622,22 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       cur.setMonth(cur.getMonth() + 1);
     }
     return out;
-  }, [lecciones]);
+  }, [leccionesVista]);
 
   // Mapa fecha → lecciones (puede haber 2 para SA)
   const mapaLecciones = React.useMemo(() => {
     const m = {};
-    lecciones.forEach(l => {
+    leccionesVista.forEach(l => {
       if (!m[l.fecha]) m[l.fecha] = [];
       m[l.fecha].push(l);
     });
     return m;
-  }, [lecciones]);
+  }, [leccionesVista]);
+
+  const codGrupoSeleccionado = selLec?.cod_grupo || codGrupo;
+  const nivelSeleccionado = normalizarNivelCG(selLec?.nivel || nivel);
+  const metaSeleccionada = gruposReales.find(g => g.code === codGrupoSeleccionado || g.cod_grupo === codGrupoSeleccionado) || meta;
+  const nivelColorSeleccionado = NIVEL_COLOR_CG[nivelSeleccionado] || NIVEL_COLOR_CG.B1;
 
   // ── Early states: grupos cargando o caídos ───────────────────────────
   // Todos los hooks arriba ya corrieron; estos returns son seguros.
@@ -621,8 +701,8 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           </div>
         </div>
 
-        {/* Selector/grupos visibles — F66: horario visible, no código interno */}
-        <div style={{ display:'flex', gap:10, alignItems:'flex-end', maxWidth: esTeacher ? 620 : undefined }}>
+        {/* Selector/grupos visibles — F67: teacher ve agenda unificada, no grupo seleccionado */}
+        <div style={{ display:'flex', gap:10, alignItems:'flex-end', maxWidth: esTeacher ? 780 : undefined }}>
           {esAdmin ? (
             <div>
               <div style={labelStyle}>Grupo</div>
@@ -635,30 +715,24 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
                 ))}
               </select>
             </div>
-          ) : esTeacher && gruposReales.length > 1 ? (
-            <div style={{ maxWidth:620 }}>
-              <div style={labelStyle}>Mis horarios</div>
+          ) : esTeacher ? (
+            <div style={{ maxWidth:780 }}>
+              <div style={labelStyle}>Agenda docente · grupos en curso</div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
                 {gruposReales.map(g => {
                   const n = normalizarNivelCG(g.nivelId || g.nivel);
-                  const active = g.code === codGrupo;
                   const col = NIVEL_COLOR_CG[n] || 'var(--an-navy)';
                   return (
-                    <button key={g.code} type="button" onClick={() => setCodGrupo(g.code)}
-                      title={g.code}
-                      style={{
-                        display:'inline-flex', alignItems:'center', gap:7,
-                        padding:'8px 12px', borderRadius:'var(--r-pill)',
-                        border:`1.5px solid ${active ? col : 'var(--line)'}`,
-                        background: active ? `${col}18` : 'var(--surface)',
-                        color: active ? col : 'var(--ink-2)',
-                        fontSize:12, fontWeight:800, cursor:'pointer',
-                        boxShadow: active ? `0 0 0 2px ${col}18` : 'none',
-                        fontFamily:'inherit',
-                      }}>
+                    <span key={g.code} title={g.code} style={{
+                      display:'inline-flex', alignItems:'center', gap:7,
+                      padding:'8px 12px', borderRadius:'var(--r-pill)',
+                      border:`1.5px solid ${col}55`,
+                      background:`${col}14`, color:col,
+                      fontSize:12, fontWeight:800, fontFamily:'inherit',
+                    }}>
                       <span style={{ width:9, height:9, borderRadius:3, background:col }} />
                       {grupoHorarioLabelCG(g)}
-                    </button>
+                    </span>
                   );
                 })}
               </div>
@@ -754,13 +828,24 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         </div>
       )}
 
-      {/* ── PROGRESS BAR ───────────────────────────────────────────────── */}
-      <ProgressBar32 lecciones={lecciones} stats={stats} loading={loading}
-                     onClickSeg={l => setSelLec(l)} selLec={selLec} nivel={nivel} />
+      {/* ── RESUMEN / PROGRESS ───────────────────────────────────────────── */}
+      {agendaDocenteMode ? (
+        <AgendaDocenteResumenF67
+          grupos={gruposReales}
+          lecciones={agendaLecciones}
+          stats={stats}
+          loading={loadingAgenda}
+          error={errorAgenda}
+          onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }}
+        />
+      ) : (
+        <ProgressBar32 lecciones={lecciones} stats={stats} loading={loading}
+                       onClickSeg={l => setSelLec(l)} selLec={selLec} nivel={nivel} />
+      )}
 
-      {error && (
+      {errorVista && (
         <div style={errorBoxStyle}>
-          <span>⚠ {error}</span>
+          <span>⚠ {errorVista}</span>
           <button onClick={cargar} className="btn btn-ghost"
                   style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
         </div>
@@ -791,24 +876,24 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         gap:18, marginTop:6, alignItems:'start',
       }}>
         <div style={{ minWidth:0 }}>
-          {loading ? (
+          {loadingVista ? (
             <div className="card" style={{ padding:18 }}><SkeletonMeses /></div>
-          ) : !lecciones.length ? (
+          ) : !leccionesVista.length ? (
             <div className="card" style={{ padding:60, textAlign:'center', color:'var(--ink-3)' }}>
               No hay lecciones registradas para este nivel.
             </div>
           ) : vista === 'proxima' ? (
             <VistaProxima lecciones={lecciones} mapaLecciones={mapaLecciones} stats={stats}
-                          nivel={nivel} meta={meta} codGrupo={codGrupo} onSelect={l => setSelLec(l)} />
+                          nivel={nivelSeleccionado} meta={metaSeleccionada} codGrupo={codGrupoSeleccionado} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           ) : vista === 'semana' ? (
-            <VistaSemana lecciones={lecciones} mapaLecciones={mapaLecciones} nivel={nivel}
-                         selLec={selLec} onSelect={l => setSelLec(l)} />
+            <VistaSemana lecciones={leccionesVista} mapaLecciones={mapaLecciones} nivel={nivelSeleccionado}
+                         selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           ) : vista === 'lista' ? (
-            <VistaLista lecciones={lecciones} mapaLecciones={mapaLecciones} nivel={nivel}
-                        selLec={selLec} onSelect={l => setSelLec(l)} />
+            <VistaLista lecciones={leccionesVista} mapaLecciones={mapaLecciones} nivel={nivelSeleccionado}
+                        selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           ) : (
             <VistaMes meses={meses} mapaLecciones={mapaLecciones} selLec={selLec}
-                      nivel={nivel} onClickLec={l => setSelLec(l)} />
+                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           )}
         </div>
 
@@ -818,22 +903,22 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           selLec={selLec}
           detalle={detalle}
           cargando={cargandoDet}
-          nivelColor={nivelColor}
+          nivelColor={nivelColorSeleccionado}
           stats={stats}
-          nivel={nivel}
-          codGrupo={codGrupo}
-          grupoLabel={grupoHorarioLabelCG(meta)}
-          docente={meta.docente}
+          nivel={nivelSeleccionado}
+          codGrupo={codGrupoSeleccionado}
+          grupoLabel={grupoHorarioLabelCG(metaSeleccionada)}
+          docente={metaSeleccionada.docente}
           bloqueado={nivelBloqueado}
           soloFechas={studentSoloFechas}
           soloFechasMsg={acc ? acc.mensaje : ''}
           esAdmin={esAdmin}
           rol={rol}
           codigoUsr={usr?.codigo || ''}
-          grupoUsr={usr?.grupo || codGrupo}
+          grupoUsr={usr?.grupo || codGrupoSeleccionado}
           esSuperadmin={esSuperadmin}
           adminNombre={usr?.nombre || ''}
-          cobertura={selLec ? coberturas[idLeccion(nivel, selLec.leccion)] : null}
+          cobertura={selLec ? coberturas[idLeccion(nivelSeleccionado, selLec.leccion)] : null}
           onPedirCobertura={() => setModalCobertura({ selLec })}
           onPedirEditarCerrada={() => setModalEditarCerrada({ selLec })}
           onAbrirAsistencia={() => setModalCierreAsistencia({ selLec })}
@@ -875,17 +960,17 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       {modalCierreAsistencia && typeof ModalCierreLeccion === 'function' && (
         <ModalCierreLeccion
           lec={{
-            cod_grupo: codGrupo,
-            nivel,
+            cod_grupo: modalCierreAsistencia.selLec?.cod_grupo || codGrupoSeleccionado,
+            nivel: modalCierreAsistencia.selLec?.nivel || nivelSeleccionado,
             leccion: modalCierreAsistencia.selLec?.leccion,
             fecha: modalCierreAsistencia.selLec?.fecha,
-            turno: modalCierreAsistencia.selLec?.turno || cgHoraLabel(meta),
+            turno: modalCierreAsistencia.selLec?.turno || cgHoraLabel(metaSeleccionada),
             tipo: modalCierreAsistencia.selLec?.tipo,
             riel: modalCierreAsistencia.selLec?.tipo === 'ICAN' ? 'ican' : 'curso',
-            horario_label: grupoHorarioLabelCG(meta),
+            horario_label: modalCierreAsistencia.selLec?.grupoLabel || grupoHorarioLabelCG(metaSeleccionada),
           }}
-          docenteNombre={meta.docente || usr?.nombre || ''}
-          registradoPor={usr?.nombre || meta.docente || ''}
+          docenteNombre={metaSeleccionada.docente || usr?.nombre || ''}
+          registradoPor={usr?.nombre || metaSeleccionada.docente || ''}
           onClose={() => setModalCierreAsistencia(null)}
           onSuccess={(res) => {
             setModalCierreAsistencia(null);
@@ -1365,7 +1450,7 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
 }
 
 // ── VISTA: Mes (compacta, scroll horizontal — ya no se estira) ──────────────
-function VistaMes({ meses, mapaLecciones, selLec, nivel, onClickLec }) {
+function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) {
   // CALGRUPO_F66_20260618_MESES_VERTICAL_AMPLOS
   // Los meses van hacia abajo, no hacia la derecha, para usar todo el ancho.
   return (
@@ -1376,7 +1461,7 @@ function VistaMes({ meses, mapaLecciones, selLec, nivel, onClickLec }) {
       }}>
         {meses.map(mes => (
           <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', maxWidth:760 }}>
-            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
+            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} agenda={agenda} onClickLec={onClickLec} />
           </div>
         ))}
       </div>
@@ -1411,6 +1496,65 @@ function CronoAccesoBloqueo({ icon, badge, badgeColor, titulo, mensaje, accionLa
         <button type="button" onClick={onAccion} className="btn btn-primary" style={{ padding:'10px 20px', fontSize:14 }}>
           {accionLabel}
         </button>
+      )}
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// F67 — Resumen agenda docente unificada
+// ─────────────────────────────────────────────────────────────────────────
+function AgendaDocenteResumenF67({ grupos, lecciones, stats, loading, error, onSelect }) {
+  const proximas = (lecciones || [])
+    .filter(l => l.estado === 'HOY' || l.estado === 'PROGRAMADA' || l.estado === 'CALCULADA')
+    .slice(0, 4);
+  return (
+    <div className="card" style={{ padding:'14px 18px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ ...labelStyle, marginBottom:5 }}>Agenda docente unificada</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.02em' }}>
+            {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} en curso · ${stats.total || 0} lecciones`}
+          </div>
+          <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4, maxWidth:760, lineHeight:1.45 }}>
+            Todos los grupos del docente salen de <b>APOLLO · GRUPOS</b>. La agenda muestra los eventos juntos para detectar choques y horas libres.
+          </div>
+          {error && <div style={{ marginTop:7, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
+        </div>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end', maxWidth:520 }}>
+          {(grupos || []).map(g => {
+            const n = normalizarNivelCG(g.nivelId || g.nivel);
+            const col = NIVEL_COLOR_CG[n] || 'var(--an-navy)';
+            return (
+              <span key={g.code} title={g.code} style={{
+                display:'inline-flex', alignItems:'center', gap:7,
+                padding:'7px 10px', borderRadius:'var(--r-pill)',
+                background:`${col}12`, border:`1px solid ${col}44`, color:col,
+                fontSize:11, fontWeight:800,
+              }}>
+                <span style={{ width:8, height:8, borderRadius:3, background:col }} />
+                {grupoHorarioLabelCG(g)}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      {!!proximas.length && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))', gap:8, marginTop:14 }}>
+          {proximas.map((l, i) => {
+            const col = NIVEL_COLOR_CG[normalizarNivelCG(l.nivel)] || 'var(--an-navy)';
+            return (
+              <button key={l.agenda_event_id || i} type="button" onClick={() => onSelect && onSelect(l)} style={{
+                textAlign:'left', padding:'10px 12px', borderRadius:'var(--r-md)',
+                border:`1px solid ${col}44`, background:`${col}0F`, cursor:'pointer', fontFamily:'inherit',
+              }}>
+                <div style={{ fontSize:10, color:col, fontWeight:900, letterSpacing:'0.08em', textTransform:'uppercase' }}>{fmtDDMMM(l.fecha)} · Lec {String(l.leccion).padStart(2,'0')}</div>
+                <div style={{ fontSize:12, color:'var(--ink)', fontWeight:800, marginTop:3 }}>{l.grupoLabel}</div>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -1492,7 +1636,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
 // ─────────────────────────────────────────────────────────────────────────
 // Mes (cuadrícula Lun-Dom)
 // ─────────────────────────────────────────────────────────────────────────
-function Mes({ mes, mapaLecciones, selLec, nivel, onClickLec }) {
+function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) {
   const year  = mes.getFullYear();
   const month = mes.getMonth();
   const primeroDelMes = new Date(year, month, 1);
@@ -1551,14 +1695,14 @@ function Mes({ mes, mapaLecciones, selLec, nivel, onClickLec }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
                     gap:2, padding:3 }}>
         {celdas.map((c, i) => (
-          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
+          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} agenda={agenda} onClickLec={onClickLec} />
         ))}
       </div>
     </div>
   );
 }
 
-function CeldaDia({ celda, selLec, nivel, onClickLec }) {
+function CeldaDia({ celda, selLec, nivel, agenda = false, onClickLec }) {
   const { diaNum, dentro, lecs } = celda;
 
   if (!dentro) {
@@ -1571,7 +1715,7 @@ function CeldaDia({ celda, selLec, nivel, onClickLec }) {
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight:86, padding:'7px 7px',
+        minHeight: agenda ? 106 : 86, padding:'7px 7px',
         background:'var(--bg-deep)', borderRadius:6,
         opacity: esFinde ? 0.6 : 1,
       }}>
@@ -1585,22 +1729,23 @@ function CeldaDia({ celda, selLec, nivel, onClickLec }) {
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight:86,
+      minHeight: agenda ? 106 : 86,
       display:'grid',
-      gridTemplateRows: lecs.length === 2 ? '1fr 1fr' : '1fr',
+      gridTemplateRows: lecs.length > 1 ? `repeat(${lecs.length}, minmax(54px, auto))` : 'minmax(72px, auto)',
       gap: 2,
     }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
-                       nivel={nivel}
-                       selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion}
+                       nivel={lec.nivel || nivel}
+                       agenda={agenda}
+                       selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion && (!lec.cod_grupo || !selLec.cod_grupo || lec.cod_grupo === selLec.cod_grupo)}
                        onClick={() => onClickLec(lec)} />
       ))}
     </div>
   );
 }
 
-function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
+function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false }) {
   const pal = paletaCelda(lec.estado, lec.tipo, nivel);
   const badge = TIPO_BADGE[lec.tipo];
   const isFeriado = lec.estado === 'FERIADO';
@@ -1661,7 +1806,17 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
             }}>
               Lec {String(lec.leccion).padStart(2,'0')}
             </div>
-            {lec.turno && (
+            {agenda && lec.grupoLabel && (
+              <div style={{ fontSize:9.5, color:pal.fg, opacity:0.95, fontWeight:800, marginTop:2, lineHeight:1.1 }}>
+                {lec.grupoLabel}
+              </div>
+            )}
+            {agenda && (lec.hora_i || lec.hora_f) && (
+              <div style={{ fontSize:9.5, color:pal.fg, opacity:0.82, fontWeight:700, marginTop:1 }}>
+                {cgHoraLabel(lec)}
+              </div>
+            )}
+            {!agenda && lec.turno && (
               <div style={{ fontSize:10, color:pal.fg, opacity:0.78, fontWeight:600, marginTop:1 }}>
                 {lec.turno.includes('Mañana') ? '☀ AM' : '🌙 PM'}
               </div>
