@@ -421,6 +421,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const loadSeqRef = React.useRef(0);
 
   // CALGRUPO_F67_20260618_AGENDA_DOCENTE_TODOS_GRUPOS_MISMO_CALENDARIO
+// CALGRUPO_F72_20260618_AGENDA_DOCENTE_PANEL_DERECHO_FIJO_FILTROS_GRUPO
   // Para teacher, el cronograma ya no es “grupo seleccionado”: es agenda docente.
   // Carga todas las líneas EN_CURSO que vienen de APOLLO.GRUPOS.DOCENTE y las
   // pinta juntas en el mismo calendario, como una agenda tipo Google Calendar.
@@ -428,6 +429,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const [agendaLecciones, setAgendaLecciones] = React.useState([]);
   const [loadingAgenda, setLoadingAgenda] = React.useState(false);
   const [errorAgenda, setErrorAgenda] = React.useState(null);
+  // F72: filtro visual. El docente entra en TODOS, pero puede aislar un horario
+  // sin que aparezca el selector-modal de grupo ni se pierda el panel derecho.
+  const [agendaGrupoFiltro, setAgendaGrupoFiltro] = React.useState(TODOS_GRUPOS);
   const agendaSeqRef = React.useRef(0);
 
   const cargar = React.useCallback(() => {
@@ -586,7 +590,13 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     showToast(`Cobertura asignada: la lección la dará ${docente_cobertura}`, 'ok');
   }, [showToast]);
 
-  const leccionesVista = agendaDocenteMode ? agendaLecciones : lecciones;
+  const agendaLeccionesFiltradas = React.useMemo(() => {
+    if (!agendaDocenteMode) return [];
+    if (!agendaGrupoFiltro || agendaGrupoFiltro === TODOS_GRUPOS) return agendaLecciones;
+    return (agendaLecciones || []).filter(l => String(l.cod_grupo || '') === String(agendaGrupoFiltro));
+  }, [agendaDocenteMode, agendaGrupoFiltro, agendaLecciones]);
+
+  const leccionesVista = agendaDocenteMode ? agendaLeccionesFiltradas : lecciones;
   const loadingVista = agendaDocenteMode ? loadingAgenda : loading;
   const errorVista = agendaDocenteMode ? errorAgenda : error;
 
@@ -846,8 +856,10 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── RESUMEN / PROGRESS ───────────────────────────────────────────── */}
       {agendaDocenteMode ? (
-        <AgendaDocenteResumenF68
+        <AgendaDocenteResumenF72
           grupos={gruposReales}
+          filtro={agendaGrupoFiltro}
+          onFiltro={setAgendaGrupoFiltro}
           lecciones={agendaLecciones}
           stats={stats}
           loading={loadingAgenda}
@@ -892,10 +904,17 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div style={{
-        display:'grid', gridTemplateColumns: agendaDocenteMode ? 'minmax(0, 1fr) minmax(270px, 300px)' : 'minmax(0, 1fr) 340px',
-        gap: agendaDocenteMode ? 12 : 18, marginTop:6, alignItems:'start',
+        display:'grid',
+        gridTemplateColumns: agendaDocenteMode ? 'minmax(0, 1fr) minmax(330px, 360px)' : 'minmax(0, 1fr) 340px',
+        gap: agendaDocenteMode ? 14 : 18,
+        marginTop:6,
+        alignItems: agendaDocenteMode ? 'stretch' : 'start',
+        height: agendaDocenteMode ? 'calc(100vh - 250px)' : 'auto',
+        minHeight: agendaDocenteMode ? 540 : undefined,
+        maxHeight: agendaDocenteMode ? 'calc(100vh - 250px)' : undefined,
+        overflow: agendaDocenteMode ? 'hidden' : 'visible',
       }}>
-        <div style={{ minWidth:0 }}>
+        <div style={{ minWidth:0, minHeight:0, height: agendaDocenteMode ? '100%' : 'auto', overflowY: agendaDocenteMode ? 'auto' : 'visible', paddingRight: agendaDocenteMode ? 6 : 0 }}>
           {loadingVista ? (
             <div className="card" style={{ padding:18 }}><SkeletonMeses /></div>
           ) : !leccionesVista.length ? (
@@ -903,7 +922,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
               No hay lecciones registradas para este nivel.
             </div>
           ) : vista === 'proxima' ? (
-            <VistaProxima lecciones={lecciones} mapaLecciones={mapaLecciones} stats={stats}
+            <VistaProxima lecciones={leccionesVista} mapaLecciones={mapaLecciones} stats={stats}
                           nivel={nivelSeleccionado} meta={metaSeleccionada} codGrupo={codGrupoSeleccionado} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           ) : vista === 'semana' ? (
             <VistaSemana lecciones={leccionesVista} mapaLecciones={mapaLecciones} nivel={nivelSeleccionado}
@@ -919,6 +938,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
         {/* Panel detalle sticky */}
         <PanelDetalle
+          agendaDocente={agendaDocenteMode}
           onNavigate={onNavigate}
           selLec={selLec}
           detalle={detalle}
@@ -1489,13 +1509,14 @@ function MesesVistaControl({ valor, setValor }) {
 // ── VISTA: Mes / cuatrimestre docente ──────────────────────────────────────
 function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVista = 1, onClickLec }) {
   // CALGRUPO_F68_20260618_CUATRIMESTRE_1_2_4_MESES
+  // F72: el calendario vive dentro de su propio scroll; el detalle no debe empujarse fuera de pantalla.
   const visibles = (meses || []).slice(0, Math.max(1, Number(mesesVista) || 1));
-  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(250px, 1fr))' : 'minmax(0, 720px)';
+  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(230px, 1fr))' : 'minmax(0, 720px)';
   return (
-    <div className="card" style={{ padding: agenda ? 8 : 18 }}>
+    <div className="card" style={{ padding: agenda ? 6 : 18 }}>
       <div style={{
         display:'grid', gridTemplateColumns: cols,
-        gap:14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
+        gap: agenda ? 10 : 14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
       }}>
         {visibles.map(mes => (
           <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', minWidth:0 }}>
@@ -1503,7 +1524,7 @@ function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVi
           </div>
         ))}
       </div>
-      <Leyenda />
+      {!agenda && <Leyenda />}
     </div>
   );
 }
@@ -1543,32 +1564,66 @@ function CronoAccesoBloqueo({ icon, badge, badgeColor, titulo, mensaje, accionLa
 // ─────────────────────────────────────────────────────────────────────────
 // F67 — Resumen agenda docente unificada
 // ─────────────────────────────────────────────────────────────────────────
-function AgendaDocenteResumenF68({ grupos, lecciones, stats, loading, error }) {
-  // CALGRUPO_F68_20260618_RESUMEN_AGENDA_SIN_DUPLICAR_CHIPS
+function AgendaDocenteResumenF72({ grupos, filtro, onFiltro, lecciones, stats, loading, error }) {
+  // CALGRUPO_F72_20260618_RESUMEN_AGENDA_CON_FILTROS_REALES
   const niveles = (grupos || []).reduce((acc, g) => {
     const n = normalizarNivelCG(g.nivelId || g.nivel);
     acc[n] = (acc[n] || 0) + 1;
     return acc;
   }, {});
+  const activo = filtro || TODOS_GRUPOS;
+  const totalLecciones = Array.isArray(lecciones) ? lecciones.length : (stats.total || 0);
   return (
-    <div className="card" style={{ padding:'12px 16px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-        <div>
-          <div style={{ ...labelStyle, marginBottom:4 }}>Agenda docente · vista cuatrimestral</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.02em' }}>
-            {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} en curso · ${stats.total || 0} lecciones`}
+    <div className="card" style={{ padding:'10px 14px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+        <div style={{ minWidth:220 }}>
+          <div style={{ ...labelStyle, marginBottom:4 }}>Agenda docente · grupos en curso</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:600, color:'var(--ink)', letterSpacing:'-0.02em' }}>
+            {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} · ${totalLecciones || 0} lecciones`}
           </div>
-          {error && <div style={{ marginTop:5, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
+          {error && <div style={{ marginTop:4, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
         </div>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {Object.keys(niveles).filter(Boolean).map(n => {
-            const col = NIVEL_COLOR_CG[n] || 'var(--an-navy)';
-            return <span key={n} style={{ padding:'5px 8px', borderRadius:'var(--r-pill)', background:`${col}12`, border:`1px solid ${col}33`, color:col, fontSize:11, fontWeight:900 }}>{n} · {niveles[n]}</span>;
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', justifyContent:'flex-end', flex:1 }}>
+          <button type="button" onClick={() => onFiltro && onFiltro(TODOS_GRUPOS)}
+            style={agendaFiltroChipStyle(activo === TODOS_GRUPOS, '#073B7A')}>
+            Todos
+          </button>
+          {(grupos || []).map(g => {
+            const code = g.code || g.cod_grupo || '';
+            const n = normalizarNivelCG(g.nivelId || g.nivel);
+            const col = NIVEL_COLOR_CG[n] || '#073B7A';
+            const label = `${n} · ${cgHoraLabel(g) || 'Horario'} · ${cgCicloGrupo(code)}`;
+            return (
+              <button key={code} type="button" onClick={() => onFiltro && onFiltro(code)} title={grupoHorarioLabelCG(g)}
+                style={agendaFiltroChipStyle(String(activo) === String(code), col)}>
+                {label}
+              </button>
+            );
           })}
+          {Object.keys(niveles).filter(Boolean).length > 0 && (
+            <span style={{ fontSize:10, color:'var(--ink-3)', fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase', marginLeft:2 }}>
+              {Object.keys(niveles).map(n => `${n}:${niveles[n]}`).join(' · ')}
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
+}
+function agendaFiltroChipStyle(active, color) {
+  return {
+    border:'1.5px solid ' + (active ? color : color + '44'),
+    background: active ? color : 'color-mix(in srgb, ' + color + ' 8%, white)',
+    color: active ? '#FFFFFF' : color,
+    borderRadius:'999px',
+    padding:'7px 10px',
+    fontSize:11,
+    fontWeight:900,
+    letterSpacing:'0.01em',
+    cursor:'pointer',
+    fontFamily:'inherit',
+    boxShadow: active ? '0 6px 16px rgba(0,0,0,.12)' : 'none',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1726,7 +1781,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight: compacto ? 58 : (agenda ? 78 : 86), padding: compacto ? '3px 4px' : '7px 7px',
+        minHeight: compacto ? 54 : (agenda ? 72 : 86), padding: compacto ? '3px 4px' : '7px 7px',
         background:'var(--bg-deep)', borderRadius:6,
         opacity: esFinde ? 0.6 : 1,
       }}>
@@ -1740,9 +1795,9 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight: compacto ? 58 : (agenda ? 78 : 86),
+      minHeight: compacto ? 54 : (agenda ? 72 : 86),
       display:'grid',
-      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(21px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(42px, auto))` : 'minmax(62px, auto)'),
+      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(18px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(38px, auto))` : 'minmax(58px, auto)'),
       gap: compacto ? 1 : 2,
     }}>
       {lecs.map((lec, i) => (
@@ -1813,22 +1868,19 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
         ) : (
           <>
             <div style={{
-              fontSize:12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
-              lineHeight:1.1,
+              fontSize: agenda ? (compacto ? 10.5 : 11.5) : 12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
+              lineHeight:1.05,
             }}>
-              Lec {String(lec.leccion).padStart(2,'0')}
+              Lec {String(lec.leccion).padStart(2,'0')}{agenda ? ' ' + (lec.grupoSuffix || ('-' + cgUltimoCodigoGrupo(lec.cod_grupo || ''))) : ''}
             </div>
             {agenda && (
               <React.Fragment>
-                <div style={{ fontSize:compacto ? 8.2 : 9.2, color:pal.fg, opacity:0.95, fontWeight:900, marginTop:1, lineHeight:1.05 }}>
-                  {lec.grupoSuffix || ('-' + cgUltimoCodigoGrupo(lec.cod_grupo || ''))}
-                </div>
                 {lec.estudiantes_count !== '' && lec.estudiantes_count != null && (
-                  <div style={{ fontSize:compacto ? 7.8 : 8.8, color:pal.fg, opacity:0.88, fontWeight:800, lineHeight:1.05 }}>
+                  <div style={{ fontSize:compacto ? 7.6 : 8.6, color:pal.fg, opacity:0.88, fontWeight:800, lineHeight:1.05 }}>
                     {lec.estudiantes_count} estudiantes
                   </div>
                 )}
-                <div style={{ fontSize:compacto ? 7.8 : 8.8, color:pal.fg, opacity:0.9, fontWeight:800, lineHeight:1.05 }}>
+                <div style={{ fontSize:compacto ? 7.6 : 8.6, color:pal.fg, opacity:0.9, fontWeight:800, lineHeight:1.05 }}>
                   {cgHoraLabel(lec)}
                 </div>
               </React.Fragment>
@@ -1848,9 +1900,9 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, grupoLabel, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onAbrirAsistencia, onCerrar, onRecargar, onNavigate }) {
+function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, grupoLabel, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onAbrirAsistencia, onCerrar, onRecargar, onNavigate }) {
   return (
-    <div style={{ position:'sticky', top:12, maxHeight:'calc(100vh - 24px)', overflowY:'auto', paddingRight:4, display:'flex', flexDirection:'column', gap:12 }}>
+    <div style={{ position: agendaDocente ? 'relative' : 'sticky', top: agendaDocente ? 0 : 12, height: agendaDocente ? '100%' : 'auto', maxHeight: agendaDocente ? '100%' : 'calc(100vh - 24px)', overflowY:'auto', paddingRight:6, display:'flex', flexDirection:'column', gap:10 }}>
 
       {/* Resumen del nivel */}
       <div className="card" style={{ padding:16, overflow:'hidden', position:'relative' }}>
@@ -2010,13 +2062,25 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         )}
 
         {!isFeriado && !bloqueado && (rol === 'teacher' || esAdmin) && (
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12, alignItems:'center' }}>
             <button type="button" onClick={onAbrirAsistencia} style={{
               display:'inline-flex', alignItems:'center', gap:7,
               padding:'9px 13px', border:'none', borderRadius:'var(--r-md)',
               background:'var(--an-navy, #073B7A)', color:'#FFF',
               fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
             }}>✓ Pasar asistencia</button>
+            {detalle && !soloFechas && (
+              <div style={{ flex:'1 1 155px', minWidth:150 }}>
+                <BotonMaterialPDF
+                  selLec={selLec}
+                  nivel={nivel}
+                  rol={rol}
+                  codigoUsr={codigoUsr}
+                  grupoUsr={grupoUsr}
+                  detalle={detalle}
+                />
+              </div>
+            )}
             {selLec.tipo === 'EVAL_ESCRITO' && onNavigate && (
               <button type="button" onClick={() => onNavigate('examenes')} style={{
                 padding:'9px 13px', border:'1.5px solid var(--an-navy, #073B7A)',
@@ -2232,14 +2296,16 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
             ) : (
               <>
                 {/* Botón material PDF — backend decide acceso por rol/estado */}
-                <BotonMaterialPDF
-                  selLec={selLec}
-                  nivel={nivel}
-                  rol={rol}
-                  codigoUsr={codigoUsr}
-                  grupoUsr={grupoUsr}
-                  detalle={detalle}
-                />
+                {!(rol === 'teacher' || esAdmin) && (
+                  <BotonMaterialPDF
+                    selLec={selLec}
+                    nivel={nivel}
+                    rol={rol}
+                    codigoUsr={codigoUsr}
+                    grupoUsr={grupoUsr}
+                    detalle={detalle}
+                  />
+                )}
 
                 {/* STUDENT-LEARNING-EXPERIENCE-001: acciones de clase del estudiante
                     — Abrir Zoom (solo si hay link real) + Ver materiales de esta clase */}
