@@ -1,4 +1,4 @@
-// CALGRUPO_F69_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
+// CALGRUPO_F70_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
 // CALGRUPO_F68_20260618_AGENDA_DOCENTE_CUATRIMESTRE_COMPACTA
 // CALGRUPO_F68_20260618_FIX_HORA_1899_FRONTEND
 // CALGRUPO_F67_20260618_AGENDA_DOCENTE_UNIFICADA_GRUPOS_EN_CURSO
@@ -174,7 +174,7 @@ function cgTimePart(v) {
   if (!raw) return '';
   // No volver a imprimir fechas fantasma de Sheets como horario.
   // Si llega un Date.toString() de 1899, no intentamos usar esa hora histórica:
-  // F69 cae al horario inferido desde el código del grupo (KJ69, SA94, etc.).
+  // F70 cae al horario inferido desde el código del grupo (KJ69, SA94, etc.).
   if (/1899|GMT|hora est[aá]ndar|standard/i.test(raw)) return '';
   const m = raw.match(/^(\d{1,2})(?::(\d{2}))?/);
   if (!m) return raw;
@@ -196,14 +196,17 @@ function cgScheduleFromCode(code) {
 function cgHoraLabel(g) {
   if (!g) return '';
   const sched = cgScheduleFromCode(g.code || g.cod_grupo || g.grupo || '');
-  const hi = g.hora_i || g.hora_inicio || g.horaInicio || sched.hora_i || '';
-  const hf = g.hora_f || g.hora_fin || g.horaFin || sched.hora_f || '';
+  // CALGRUPO_F70_20260618_UI_HORARIO_CODIGO_PRIORITARIO
+  // Si el código trae horario (KJ69/SA94/etc.), ese es el horario limpio.
+  // Evita volver a pintar 23:23/6:23 derivados de Date 1899 de Sheets.
+  const schedLabel = [cgTimePart(sched.hora_i), cgTimePart(sched.hora_f)].filter(Boolean).join(' a ');
+  if (schedLabel) return schedLabel;
+  const hi = g.hora_i || g.hora_inicio || g.horaInicio || '';
+  const hf = g.hora_f || g.hora_fin || g.horaFin || '';
   const fromParts = [cgTimePart(hi), cgTimePart(hf)].filter(Boolean).join(' a ');
   if (fromParts) return fromParts;
   const h = String(g.hora || g.horario || '').trim();
-  if (!h || /1899|GMT|hora est[aá]ndar|standard/i.test(h)) {
-    return [cgTimePart(sched.hora_i), cgTimePart(sched.hora_f)].filter(Boolean).join(' a ');
-  }
+  if (!h || /1899|GMT|hora est[aá]ndar|standard/i.test(h)) return '';
   const parts = h.split(/[–-]/).map(x => x.trim()).filter(Boolean);
   const out = parts.length >= 2 ? (cgTimePart(parts[0]) + ' a ' + cgTimePart(parts[1])) : h;
   return /1899|GMT|hora est[aá]ndar|standard/i.test(out) ? '' : out;
@@ -476,11 +479,10 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   React.useEffect(() => {
     if (!agendaDocenteMode) return;
     const seq = ++agendaSeqRef.current;
-    const gruposCurso = (gruposReales || []).filter(g => {
-      const e = String(g.estado_calculado || g.comentario_calculado || '').toUpperCase();
-      return !e || e.includes('EN_CURSO') || e.includes('EN CURSO') || e.includes('CURSO');
-    });
-    const gruposAgenda = gruposCurso.length ? gruposCurso : (gruposReales || []);
+    // CALGRUPO_F70_20260618_FRONTEND_NO_REFILTRA_GRUPOS_DOCENTE
+    // El backend ya devuelve SOLO APOLLO.GRUPOS con COMENTARIO=En curso.
+    // El frontend no puede volver a meter calculados/proyectados porque inventa horarios.
+    const gruposAgenda = (gruposReales || []);
     if (!gruposAgenda.length) {
       setAgendaLecciones([]); setLoadingAgenda(false); setErrorAgenda(null);
       return;
