@@ -1,4 +1,4 @@
-// CALGRUPO_F73_20260618_AGENDA_DOCENTE_PANEL_FIJO_COLOR_CIERRE
+// CALGRUPO_F74_20260618_AGENDA_DOCENTE_TARJETAS_PANEL_FIJO_LEGIBLE
 // CALGRUPO_F71_20260618_AGENDA_DOCENTE_SIN_SELECTOR_COMPACTA
 // CALGRUPO_F70_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
 // CALGRUPO_F68_20260618_AGENDA_DOCENTE_CUATRIMESTRE_COMPACTA
@@ -932,20 +932,23 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         // El panel derecho queda visible para leer material y accionar asistencia
         // sin bajar zoom.
         display:'grid',
-        gridTemplateColumns: agendaDocenteMode ? 'minmax(0, 1fr) minmax(360px, 400px)' : 'minmax(0, 1fr) 340px',
-        gap: agendaDocenteMode ? 12 : 18,
+        // CALGRUPO_F74_20260618_LAYOUT_DOCENTE_PANEL_LEGIBLE
+        // El calendario tiene su scroll; el panel derecho queda fijo, completo y legible.
+        gridTemplateColumns: agendaDocenteMode ? 'minmax(620px, 1fr) minmax(360px, 380px)' : 'minmax(0, 1fr) 340px',
+        gap: agendaDocenteMode ? 14 : 18,
         marginTop:6,
-        alignItems:'stretch',
-        height: agendaDocenteMode ? 'calc(100dvh - 225px)' : 'auto',
-        minHeight: agendaDocenteMode ? 520 : undefined,
-        maxHeight: agendaDocenteMode ? 'calc(100dvh - 225px)' : undefined,
+        alignItems:'start',
+        height: agendaDocenteMode ? 'calc(100dvh - 185px)' : 'auto',
+        minHeight: agendaDocenteMode ? 560 : undefined,
+        maxHeight: agendaDocenteMode ? 'calc(100dvh - 185px)' : undefined,
         overflow: agendaDocenteMode ? 'hidden' : 'visible',
       }}>
         <div style={{
           minWidth:0, minHeight:0, height: agendaDocenteMode ? '100%' : 'auto',
           overflowY: agendaDocenteMode ? 'auto' : 'visible',
           overflowX:'hidden',
-          paddingRight: agendaDocenteMode ? 8 : 0,
+          paddingRight: agendaDocenteMode ? 10 : 0,
+          paddingBottom: agendaDocenteMode ? 18 : 0,
           borderRadius: agendaDocenteMode ? 'var(--r-lg)' : undefined,
           scrollbarGutter: agendaDocenteMode ? 'stable' : undefined,
         }}>
@@ -1549,12 +1552,12 @@ function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVi
   // CALGRUPO_F68_20260618_CUATRIMESTRE_1_2_4_MESES
   // F72: el calendario vive dentro de su propio scroll; el detalle no debe empujarse fuera de pantalla.
   const visibles = (meses || []).slice(0, Math.max(1, Number(mesesVista) || 1));
-  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(230px, 1fr))' : 'minmax(0, 720px)';
+  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(300px, 1fr))' : 'minmax(0, 760px)';
   return (
-    <div className="card" style={{ padding: agenda ? 8 : 18, background: agenda ? '#FBF7EF' : undefined, borderColor: agenda ? '#E6DCCB' : undefined }}>
+    <div className="card" style={{ padding: agenda ? 10 : 18, background: agenda ? '#FBF7EF' : undefined, borderColor: agenda ? '#E6DCCB' : undefined }}>
       <div style={{
         display:'grid', gridTemplateColumns: cols,
-        gap: agenda ? 10 : 14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
+        gap: agenda ? 12 : 14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
       }}>
         {visibles.map(mes => (
           <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', minWidth:0 }}>
@@ -1603,66 +1606,78 @@ function CronoAccesoBloqueo({ icon, badge, badgeColor, titulo, mensaje, accionLa
 // F67 — Resumen agenda docente unificada
 // ─────────────────────────────────────────────────────────────────────────
 function AgendaDocenteResumenF72({ grupos, filtro, onFiltro, lecciones, stats, loading, error }) {
-  // CALGRUPO_F72_20260618_RESUMEN_AGENDA_CON_FILTROS_REALES
-  const niveles = (grupos || []).reduce((acc, g) => {
-    const n = normalizarNivelCG(g.nivelId || g.nivel);
-    acc[n] = (acc[n] || 0) + 1;
-    return acc;
-  }, {});
+  // CALGRUPO_F74_20260618_TARJETAS_GRUPO_DOCENTE_COMO_MIS_GRUPOS
+  // Filtro superior útil: tarjetas limpias con día, hora y ciclo. No se repiten códigos
+  // largos ni se usa modal de selección.
   const activo = filtro || TODOS_GRUPOS;
   const totalLecciones = Array.isArray(lecciones) ? lecciones.length : (stats.total || 0);
+  const gruposNorm = grupos || [];
   return (
-    <div className="card" style={{ padding:'10px 14px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
-        <div style={{ minWidth:220 }}>
-          <div style={{ ...labelStyle, marginBottom:4 }}>Agenda docente · grupos en curso</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:600, color:'var(--ink)', letterSpacing:'-0.02em' }}>
-            {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} activos · ${totalLecciones || 0} lecciones`}
+    <div className="card" style={{ padding:'13px 15px', background:'#FBF7EF', borderColor:'#E7DCC8' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:12, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ ...labelStyle, marginBottom:3 }}>Agenda docente · grupos en curso</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--ink)', letterSpacing:'-0.02em' }}>
+            {loading ? 'Cargando agenda…' : `${gruposNorm.length} grupo${gruposNorm.length === 1 ? '' : 's'} · ${totalLecciones || 0} lecciones`}
           </div>
           {error && <div style={{ marginTop:4, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
         </div>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', justifyContent:'flex-end', flex:1 }}>
-          <button type="button" onClick={() => onFiltro && onFiltro(TODOS_GRUPOS)}
-            style={agendaFiltroChipStyle(activo === TODOS_GRUPOS, '#073B7A')}>
-            Todos
-          </button>
-          {(grupos || []).map(g => {
-            const code = g.code || g.cod_grupo || '';
-            const n = normalizarNivelCG(g.nivelId || g.nivel);
-            const col = NIVEL_COLOR_CG[n] || '#073B7A';
-            const label = `${n} · ${cgHoraLabel(g) || 'Horario'} · ${cgCicloGrupo(code)}`;
-            return (
-              <button key={code} type="button" onClick={() => onFiltro && onFiltro(code)} title={grupoHorarioLabelCG(g)}
-                style={agendaFiltroChipStyle(String(activo) === String(code), col)}>
-                {label}
-              </button>
-            );
-          })}
-          {Object.keys(niveles).filter(Boolean).length > 0 && (
-            <span style={{ fontSize:10, color:'var(--ink-3)', fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase', marginLeft:2 }}>
-              {Object.keys(niveles).map(n => `${n}:${niveles[n]}`).join(' · ')}
-            </span>
-          )}
-        </div>
+        <button type="button" onClick={() => onFiltro && onFiltro(TODOS_GRUPOS)}
+          style={agendaCardFiltroStyle(activo === TODOS_GRUPOS, '#073B7A', true)}>
+          <span style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', opacity:.8 }}>Vista</span>
+          <strong>Todos los grupos</strong>
+          <small>{gruposNorm.length} horarios activos</small>
+        </button>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(205px, 1fr))', gap:10 }}>
+        {gruposNorm.map(g => {
+          const code = g.code || g.cod_grupo || '';
+          const n = normalizarNivelCG(g.nivelId || g.nivel);
+          const col = NIVEL_COLOR_CG[n] || '#073B7A';
+          const sched = cgScheduleFromCode(code);
+          const dias = cgDiasLabel(g.dias || g.diasCode || sched.dias || '');
+          const hora = cgHoraLabel(g) || 'Horario';
+          const ciclo = cgCicloGrupo(code);
+          const active = String(activo) === String(code);
+          return (
+            <button key={code} type="button" onClick={() => onFiltro && onFiltro(code)} title={grupoHorarioLabelCG(g)}
+              style={agendaCardFiltroStyle(active, col)}>
+              <span style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                <strong style={{ fontSize:15, lineHeight:1.1 }}>{dias}</strong>
+                <em style={{ fontStyle:'normal', fontSize:10, fontWeight:900, color: active ? '#fff' : col, background: active ? 'rgba(255,255,255,.18)' : col + '18', borderRadius:999, padding:'2px 7px' }}>{n}</em>
+              </span>
+              <span style={{ fontSize:18, fontWeight:900, lineHeight:1 }}>{hora}</span>
+              <small style={{ fontSize:12, fontWeight:800, opacity:.85 }}>{ciclo}</small>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
-function agendaFiltroChipStyle(active, color) {
+
+function agendaCardFiltroStyle(active, color, todos) {
   return {
-    border:'1.5px solid ' + (active ? color : color + '44'),
-    background: active ? color : 'color-mix(in srgb, ' + color + ' 8%, white)',
-    color: active ? '#FFFFFF' : color,
-    borderRadius:'999px',
-    padding:'7px 10px',
-    fontSize:11,
-    fontWeight:900,
-    letterSpacing:'0.01em',
+    width:'100%',
+    minHeight: todos ? 58 : 92,
+    textAlign:'left',
+    border:'1.8px solid ' + (active ? color : 'color-mix(in srgb, '+color+' 28%, #D7CCBC)'),
+    background: active ? color : '#FFFFFF',
+    color: active ? '#FFFFFF' : 'var(--ink)',
+    borderRadius:'var(--r-lg)',
+    padding: todos ? '10px 16px' : '13px 16px',
     cursor:'pointer',
     fontFamily:'inherit',
-    boxShadow: active ? '0 6px 16px rgba(0,0,0,.12)' : 'none',
+    display:'flex',
+    flexDirection:'column',
+    justifyContent:'center',
+    gap: todos ? 3 : 7,
+    boxShadow: active ? '0 10px 22px rgba(0,0,0,.13)' : '0 1px 0 rgba(11,31,58,.05)',
+    transition:'transform .12s, box-shadow .12s, border-color .12s',
   };
 }
+function agendaFiltroChipStyle(active, color) { return agendaCardFiltroStyle(active, color); }
+
 
 // ─────────────────────────────────────────────────────────────────────────
 // Barra de 32 segmentos
@@ -1820,7 +1835,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight: compacto ? 48 : (agenda ? 64 : 86), padding: compacto ? '3px 4px' : '7px 7px',
+        minHeight: compacto ? 58 : (agenda ? 68 : 86), padding: compacto ? '4px 5px' : '7px 7px',
         background:'var(--bg-deep)', borderRadius:6,
         opacity: esFinde ? 0.6 : 1,
       }}>
@@ -1834,10 +1849,10 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight: compacto ? 48 : (agenda ? 64 : 86),
+      minHeight: compacto ? 58 : (agenda ? 68 : 86),
       display:'grid',
-      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(18px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(38px, auto))` : 'minmax(58px, auto)'),
-      gap: compacto ? 1 : 2,
+      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(25px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(38px, auto))` : 'minmax(58px, auto)'),
+      gap: compacto ? 2 : 2,
     }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
@@ -1908,19 +1923,19 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
         ) : (
           <>
             <div style={{
-              fontSize: agenda ? (compacto ? 10.8 : 11.8) : 12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
+              fontSize: agenda ? (compacto ? 12 : 12.5) : 12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
               lineHeight:1.05,
             }}>
-              Lec {String(lec.leccion).padStart(2,'0')}{agenda ? ' ' + (lec.grupoSuffix || ('-' + cgUltimoCodigoGrupo(lec.cod_grupo || ''))) : ''}
+              Lec {String(lec.leccion).padStart(2,'0')}
             </div>
             {agenda && (
               <React.Fragment>
                 {lec.estudiantes_count !== '' && lec.estudiantes_count != null && (
-                  <div style={{ fontSize:compacto ? 7.6 : 8.6, color:pal.fg, opacity:0.88, fontWeight:800, lineHeight:1.05 }}>
+                  <div style={{ fontSize:compacto ? 8.4 : 8.8, color:pal.fg, opacity:0.88, fontWeight:800, lineHeight:1.05 }}>
                     {lec.estudiantes_count} estudiantes
                   </div>
                 )}
-                <div style={{ fontSize:compacto ? 7.6 : 8.6, color:pal.fg, opacity:0.9, fontWeight:800, lineHeight:1.05 }}>
+                <div style={{ fontSize:compacto ? 8.4 : 8.8, color:pal.fg, opacity:0.9, fontWeight:800, lineHeight:1.05 }}>
                   {cgHoraLabel(lec)}
                 </div>
               </React.Fragment>
@@ -1944,16 +1959,16 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
   return (
     <div style={{
       // CALGRUPO_F73_20260618_PANEL_DETALLE_FIJO_VISIBLE
-      position:'sticky', top: agendaDocente ? 0 : 12,
-      height: agendaDocente ? '100%' : 'auto',
-      maxHeight: agendaDocente ? '100%' : 'calc(100vh - 24px)',
-      overflowY:'auto', overflowX:'hidden', paddingRight:6,
+      position: agendaDocente ? 'relative' : 'sticky', top: agendaDocente ? 0 : 12,
+      height: agendaDocente ? 'calc(100dvh - 185px)' : 'auto',
+      maxHeight: agendaDocente ? 'calc(100dvh - 185px)' : 'calc(100vh - 24px)',
+      overflowY:'auto', overflowX:'hidden', paddingRight:8, paddingBottom:18,
       display:'flex', flexDirection:'column', gap:10,
       scrollbarGutter:'stable',
     }}>
 
       {/* Resumen del nivel */}
-      <div className="card" style={{ padding: agendaDocente ? 11 : 16, overflow:'hidden', position:'relative' }}>
+      <div className="card" style={{ padding: agendaDocente ? 10 : 16, overflow:'hidden', position:'relative' }}>
         <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:nivelColor }} />
         <div style={{ marginTop:4 }}>
           <div style={labelStyle}>Nivel activo</div>
@@ -2057,15 +2072,15 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
 
   return (
     <div className="card" style={{ padding:0, overflow:'hidden' }}>
-      <div style={{ height:5, background: palVis.accent }} />
-      <div style={{ padding:'14px 18px 18px' }}>
+      <div style={{ height:4, background: palVis.accent }} />
+      <div style={{ padding: rol === 'teacher' ? '11px 14px 14px' : '14px 18px 18px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
           <div>
             <div style={{ ...labelStyle, marginBottom:4 }}>
               {isFeriado ? 'Feriado' : selLec.leccion ? `Lección ${String(selLec.leccion).padStart(2,'0')} · ${idLeccion(nivel, selLec.leccion)}` : 'Sin lección asignada'}
             </div>
             <div style={{
-              fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500,
+              fontFamily:'var(--f-serif)', fontSize: rol === 'teacher' ? 18 : 20, fontWeight:500,
               color:'var(--ink)', lineHeight:1.15, letterSpacing:'-0.02em',
             }}>
               {fmtLargo(selLec.fecha)}
@@ -2112,14 +2127,14 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         {!isFeriado && !bloqueado && (rol === 'teacher' || esAdmin) && (
           <div style={{
             // Acciones siempre visibles arriba del material.
-            display:'flex', gap:8, flexWrap:'wrap', marginTop:12, alignItems:'center',
+            display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:10, alignItems:'stretch',
             position:'sticky', top:0, zIndex:5,
             background:'#FFFFFFEE', backdropFilter:'blur(6px)',
             padding:'8px 0 10px', borderBottom:'1px solid var(--line)',
           }}>
             <button type="button" onClick={onAbrirAsistencia} style={{
               display:'inline-flex', alignItems:'center', gap:7,
-              padding:'9px 13px', border:'none', borderRadius:'var(--r-md)',
+              padding:'9px 10px', border:'none', borderRadius:'var(--r-md)',
               background:'var(--an-navy, #073B7A)', color:'#FFF',
               fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
             }}>✓ Pasar asistencia</button>
@@ -2137,14 +2152,14 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
             )}
             {selLec.tipo === 'EVAL_ESCRITO' && onNavigate && (
               <button type="button" onClick={() => onNavigate('examenes')} style={{
-                padding:'9px 13px', border:'1.5px solid var(--an-navy, #073B7A)',
+                padding:'9px 10px', border:'1.5px solid var(--an-navy, #073B7A)',
                 borderRadius:'var(--r-md)', background:'var(--surface)', color:'var(--an-navy, #073B7A)',
                 fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
               }}>Ver exámenes escritos</button>
             )}
             {selLec.tipo === 'EVAL_ORAL' && (
               <a href="modulos/examen_oral.html" target="_blank" rel="noopener noreferrer" style={{
-                padding:'9px 13px', border:'1.5px solid #8B1A10', borderRadius:'var(--r-md)',
+                padding:'9px 10px', border:'1.5px solid #8B1A10', borderRadius:'var(--r-md)',
                 background:'var(--surface)', color:'#8B1A10', fontSize:12, fontWeight:800,
                 textDecoration:'none', fontFamily:'inherit',
               }}>Abrir examen oral</a>
@@ -2452,8 +2467,8 @@ function Bloque({ titulo, texto, compact }) {
         color:'var(--ink-3)', marginBottom:3,
       }}>{titulo}</div>
       <div style={{
-        fontSize: compact ? 12 : 13,
-        color:'var(--ink-2)', lineHeight:1.5,
+        fontSize: compact ? 11.5 : 12.4,
+        color:'var(--ink-2)', lineHeight:1.38,
       }}>{texto}</div>
     </div>
   );
@@ -3093,7 +3108,7 @@ function ModalCobertura({ selLec, codGrupo, nivel, docenteTitular, adminNombre, 
               Cobertura puntual
             </div>
             <div style={{
-              fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500,
+              fontFamily:'var(--f-serif)', fontSize: rol === 'teacher' ? 18 : 20, fontWeight:500,
               color:'var(--ink)', letterSpacing:'-0.02em',
               marginTop:4, lineHeight:1.15,
             }}>
