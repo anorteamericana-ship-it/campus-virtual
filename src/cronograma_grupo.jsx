@@ -1,3 +1,6 @@
+// CALGRUPO_F69_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
+// CALGRUPO_F68_20260618_AGENDA_DOCENTE_CUATRIMESTRE_COMPACTA
+// CALGRUPO_F68_20260618_FIX_HORA_1899_FRONTEND
 // CALGRUPO_F67_20260618_AGENDA_DOCENTE_UNIFICADA_GRUPOS_EN_CURSO
 // CALGRUPO_F66_20260618_CRONOGRAMA_ASISTENCIA_UNICA_DOCENTE
 /* global React */
@@ -169,6 +172,10 @@ function cgDiasLabel(dias) {
 function cgTimePart(v) {
   const raw = String(v == null ? '' : v).trim();
   if (!raw) return '';
+  // No volver a imprimir fechas fantasma de Sheets como horario.
+  // Si llega un Date.toString() de 1899, no intentamos usar esa hora histórica:
+  // F69 cae al horario inferido desde el código del grupo (KJ69, SA94, etc.).
+  if (/1899|GMT|hora est[aá]ndar|standard/i.test(raw)) return '';
   const m = raw.match(/^(\d{1,2})(?::(\d{2}))?/);
   if (!m) return raw;
   let h = parseInt(m[1], 10);
@@ -177,15 +184,29 @@ function cgTimePart(v) {
   h = h % 12 || 12;
   return h + min + ap;
 }
+function cgScheduleFromCode(code) {
+  const s = String(code || '').toUpperCase().replace(/\s+/g, '');
+  const m = s.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || s.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+  if (!m) return {};
+  const dias = m[1] === 'SAB' ? 'SA' : m[1];
+  const map = { '69':['18:00','21:00'], '94':['09:00','16:00'], '96':['09:00','12:00'] };
+  const hh = map[m[2]] || [];
+  return { dias, hora_i: hh[0] || '', hora_f: hh[1] || '' };
+}
 function cgHoraLabel(g) {
   if (!g) return '';
-  const hi = g.hora_i || g.hora_inicio || g.horaInicio || '';
-  const hf = g.hora_f || g.hora_fin || g.horaFin || '';
-  if (hi || hf) return [cgTimePart(hi), cgTimePart(hf)].filter(Boolean).join(' a ');
+  const sched = cgScheduleFromCode(g.code || g.cod_grupo || g.grupo || '');
+  const hi = g.hora_i || g.hora_inicio || g.horaInicio || sched.hora_i || '';
+  const hf = g.hora_f || g.hora_fin || g.horaFin || sched.hora_f || '';
+  const fromParts = [cgTimePart(hi), cgTimePart(hf)].filter(Boolean).join(' a ');
+  if (fromParts) return fromParts;
   const h = String(g.hora || g.horario || '').trim();
-  if (!h) return '';
+  if (!h || /1899|GMT|hora est[aá]ndar|standard/i.test(h)) {
+    return [cgTimePart(sched.hora_i), cgTimePart(sched.hora_f)].filter(Boolean).join(' a ');
+  }
   const parts = h.split(/[–-]/).map(x => x.trim()).filter(Boolean);
-  return parts.length >= 2 ? (cgTimePart(parts[0]) + ' a ' + cgTimePart(parts[1])) : h;
+  const out = parts.length >= 2 ? (cgTimePart(parts[0]) + ' a ' + cgTimePart(parts[1])) : h;
+  return /1899|GMT|hora est[aá]ndar|standard/i.test(out) ? '' : out;
 }
 function cgCicloGrupo(code) {
   const parts = String(code || '').split('-').filter(Boolean);
@@ -194,9 +215,11 @@ function cgCicloGrupo(code) {
 }
 function grupoHorarioLabelCG(g) {
   if (!g) return '—';
-  const dias = cgDiasLabel(g.dias || g.diasCode || '');
+  const code = g.code || g.cod_grupo || g.grupo || '';
+  const sched = cgScheduleFromCode(code);
+  const dias = cgDiasLabel(g.dias || g.diasCode || sched.dias || '');
   const hora = cgHoraLabel(g);
-  const ciclo = cgCicloGrupo(g.code || g.cod_grupo || g.grupo || '');
+  const ciclo = cgCicloGrupo(code);
   return `${dias}${hora ? ' de ' + hora : ''}${ciclo ? ' - ' + ciclo : ''}`;
 }
 
@@ -242,7 +265,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
                 nivel: NIVEL_LABEL_CG[nivelId] || g.nivel || nivelId,
                 docente: g.docente || g.teacherName || usr?.nombre || '—',
                 dias: g.dias || g.diasCode || '',
-                hora: g.hora || '',
+                hora: /1899|GMT|hora est[aá]ndar|standard/i.test(String(g.hora || '')) ? '' : (g.hora || ''),
                 hora_i: g.hora_i || g.hora_inicio || '',
                 hora_f: g.hora_f || g.hora_fin || '',
                 programa: g.programa || usr?.programa || 'SIN_INA',
@@ -515,6 +538,10 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     try { return localStorage.getItem('an_crono_vista') || 'proxima'; } catch (_) { return 'proxima'; }
   });
   React.useEffect(() => { try { localStorage.setItem('an_crono_vista', vista); } catch (_) {} }, [vista]);
+  const [mesesVista, setMesesVista] = React.useState(() => {
+    try { return Number(localStorage.getItem('an_crono_meses_vista') || (esTeacher ? 4 : 1)); } catch (_) { return esTeacher ? 4 : 1; }
+  });
+  React.useEffect(() => { try { localStorage.setItem('an_crono_meses_vista', String(mesesVista)); } catch (_) {} }, [mesesVista]);
 
   // Acceso del estudiante (matrícula / cuota / mora). Para teacher/admin no se
   // consulta (codigoAcceso vacío → hook no hace fetch). El hook está siempre
@@ -685,12 +712,12 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
             fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.025em',
             fontSize:32, lineHeight:1.05, margin:0, color:'var(--ink)',
           }}>
-            {rol === 'student' ? 'Mis lecciones' : 'Cronograma de grupo'}
+            {rol === 'student' ? 'Mis lecciones' : rol === 'teacher' ? 'Agenda docente' : 'Cronograma de grupo'}
           </h1>
           <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>
             {rol === 'student'
               ? 'Calendario de tus 32 lecciones, con fechas reales y material.'
-              : 'Vista única de las 32 lecciones — reemplaza los spreadsheets por grupo.'}
+              : rol === 'teacher' ? 'Todos tus grupos en curso, vistos en una sola agenda.' : 'Vista única de las 32 lecciones — reemplaza los spreadsheets por grupo.'}
             {usandoMock && (
               <span style={{
                 marginLeft:10, padding:'2px 8px', fontSize:10, fontWeight:700,
@@ -716,25 +743,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
               </select>
             </div>
           ) : esTeacher ? (
-            <div style={{ maxWidth:780 }}>
-              <div style={labelStyle}>Agenda docente · grupos en curso</div>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
-                {gruposReales.map(g => {
-                  const n = normalizarNivelCG(g.nivelId || g.nivel);
-                  const col = NIVEL_COLOR_CG[n] || 'var(--an-navy)';
-                  return (
-                    <span key={g.code} title={g.code} style={{
-                      display:'inline-flex', alignItems:'center', gap:7,
-                      padding:'8px 12px', borderRadius:'var(--r-pill)',
-                      border:`1.5px solid ${col}55`,
-                      background:`${col}14`, color:col,
-                      fontSize:12, fontWeight:800, fontFamily:'inherit',
-                    }}>
-                      <span style={{ width:9, height:9, borderRadius:3, background:col }} />
-                      {grupoHorarioLabelCG(g)}
-                    </span>
-                  );
-                })}
+            <div style={{ minWidth:260, textAlign:'right' }}>
+              <div style={labelStyle}>Agenda docente</div>
+              <div style={{
+                display:'inline-flex', alignItems:'center', gap:8,
+                padding:'9px 13px', borderRadius:'var(--r-pill)',
+                background:'var(--surface)', border:'1.5px solid var(--line)',
+                fontSize:12, fontWeight:900, color:'var(--an-navy-ink)'
+              }}>
+                <span style={{ width:8, height:8, borderRadius:99, background:'#2E7D32' }} />
+                {(gruposReales || []).length} horario{(gruposReales || []).length === 1 ? '' : 's'} en curso
               </div>
             </div>
           ) : (
@@ -778,7 +796,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       ) : (
       <React.Fragment>
       {/* ── NIVEL TABS ──────────────────────────────────────────────────── */}
-      {(niveles.length > 1 || meta.programa === 'INA') && (
+      {!agendaDocenteMode && (niveles.length > 1 || meta.programa === 'INA') && (
         <div style={{
           display:'flex', gap:6, marginBottom:14, padding:5,
           background:'var(--bg-deep)', borderRadius:'var(--r-md)', width:'fit-content',
@@ -830,13 +848,12 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── RESUMEN / PROGRESS ───────────────────────────────────────────── */}
       {agendaDocenteMode ? (
-        <AgendaDocenteResumenF67
+        <AgendaDocenteResumenF68
           grupos={gruposReales}
           lecciones={agendaLecciones}
           stats={stats}
           loading={loadingAgenda}
           error={errorAgenda}
-          onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }}
         />
       ) : (
         <ProgressBar32 lecciones={lecciones} stats={stats} loading={loading}
@@ -866,13 +883,18 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── VISTA TABS ─────────────────────────────────────────────────── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginTop:14, marginBottom:6, flexWrap:'wrap' }}>
-        <VistaTabsCrono vista={vista} setVista={setVista} />
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <VistaTabsCrono vista={vista} setVista={setVista} />
+          {vista === 'mes' && (
+            <MesesVistaControl valor={mesesVista} setValor={setMesesVista} />
+          )}
+        </div>
         <div style={{ fontSize:11, color:'var(--ink-3)' }}>Click en una lección para ver el detalle</div>
       </div>
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div style={{
-        display:'grid', gridTemplateColumns:'minmax(0, 1fr) 380px',
+        display:'grid', gridTemplateColumns:'minmax(0, 1fr) 340px',
         gap:18, marginTop:6, alignItems:'start',
       }}>
         <div style={{ minWidth:0 }}>
@@ -893,7 +915,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
                         selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           ) : (
             <VistaMes meses={meses} mapaLecciones={mapaLecciones} selLec={selLec}
-                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
+                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} mesesVista={mesesVista} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           )}
         </div>
 
@@ -1450,18 +1472,36 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
 }
 
 // ── VISTA: Mes (compacta, scroll horizontal — ya no se estira) ──────────────
-function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) {
-  // CALGRUPO_F66_20260618_MESES_VERTICAL_AMPLOS
-  // Los meses van hacia abajo, no hacia la derecha, para usar todo el ancho.
+function MesesVistaControl({ valor, setValor }) {
+  const opts = [{n:1,t:'1 mes'}, {n:2,t:'2 meses'}, {n:4,t:'Cuatrimestre'}];
   return (
-    <div className="card" style={{ padding:18 }}>
+    <div style={{ display:'inline-flex', padding:4, borderRadius:'var(--r-pill)', background:'var(--surface)', border:'1px solid var(--line)', gap:4 }}>
+      {opts.map(o => (
+        <button key={o.n} type="button" onClick={() => setValor(o.n)} style={{
+          border:'none', borderRadius:'var(--r-pill)', padding:'7px 11px', cursor:'pointer',
+          background: valor === o.n ? 'var(--an-navy)' : 'transparent',
+          color: valor === o.n ? '#fff' : 'var(--ink-2)', fontSize:11, fontWeight:900,
+          fontFamily:'inherit'
+        }}>{o.t}</button>
+      ))}
+    </div>
+  );
+}
+
+// ── VISTA: Mes / cuatrimestre docente ──────────────────────────────────────
+function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVista = 1, onClickLec }) {
+  // CALGRUPO_F68_20260618_CUATRIMESTRE_1_2_4_MESES
+  const visibles = (meses || []).slice(0, Math.max(1, Number(mesesVista) || 1));
+  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(320px, 1fr))' : 'minmax(0, 760px)';
+  return (
+    <div className="card" style={{ padding: agenda ? 12 : 18 }}>
       <div style={{
-        display:'grid', gridTemplateColumns:'minmax(0, 760px)',
-        gap:22, justifyContent:'start', alignItems:'start', overflowX:'visible',
+        display:'grid', gridTemplateColumns: cols,
+        gap:14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
       }}>
-        {meses.map(mes => (
-          <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', maxWidth:760 }}>
-            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} agenda={agenda} onClickLec={onClickLec} />
+        {visibles.map(mes => (
+          <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', minWidth:0 }}>
+            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} agenda={agenda} compacto={agenda || Number(mesesVista) >= 2} onClickLec={onClickLec} />
           </div>
         ))}
       </div>
@@ -1505,57 +1545,30 @@ function CronoAccesoBloqueo({ icon, badge, badgeColor, titulo, mensaje, accionLa
 // ─────────────────────────────────────────────────────────────────────────
 // F67 — Resumen agenda docente unificada
 // ─────────────────────────────────────────────────────────────────────────
-function AgendaDocenteResumenF67({ grupos, lecciones, stats, loading, error, onSelect }) {
-  const proximas = (lecciones || [])
-    .filter(l => l.estado === 'HOY' || l.estado === 'PROGRAMADA' || l.estado === 'CALCULADA')
-    .slice(0, 4);
+function AgendaDocenteResumenF68({ grupos, lecciones, stats, loading, error }) {
+  // CALGRUPO_F68_20260618_RESUMEN_AGENDA_SIN_DUPLICAR_CHIPS
+  const niveles = (grupos || []).reduce((acc, g) => {
+    const n = normalizarNivelCG(g.nivelId || g.nivel);
+    acc[n] = (acc[n] || 0) + 1;
+    return acc;
+  }, {});
   return (
-    <div className="card" style={{ padding:'14px 18px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
+    <div className="card" style={{ padding:'12px 16px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
         <div>
-          <div style={{ ...labelStyle, marginBottom:5 }}>Agenda docente unificada</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.02em' }}>
+          <div style={{ ...labelStyle, marginBottom:4 }}>Agenda docente · vista cuatrimestral</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.02em' }}>
             {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} en curso · ${stats.total || 0} lecciones`}
           </div>
-          <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4, maxWidth:760, lineHeight:1.45 }}>
-            Todos los grupos del docente salen de <b>APOLLO · GRUPOS</b>. La agenda muestra los eventos juntos para detectar choques y horas libres.
-          </div>
-          {error && <div style={{ marginTop:7, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
+          {error && <div style={{ marginTop:5, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
         </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end', maxWidth:520 }}>
-          {(grupos || []).map(g => {
-            const n = normalizarNivelCG(g.nivelId || g.nivel);
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          {Object.keys(niveles).filter(Boolean).map(n => {
             const col = NIVEL_COLOR_CG[n] || 'var(--an-navy)';
-            return (
-              <span key={g.code} title={g.code} style={{
-                display:'inline-flex', alignItems:'center', gap:7,
-                padding:'7px 10px', borderRadius:'var(--r-pill)',
-                background:`${col}12`, border:`1px solid ${col}44`, color:col,
-                fontSize:11, fontWeight:800,
-              }}>
-                <span style={{ width:8, height:8, borderRadius:3, background:col }} />
-                {grupoHorarioLabelCG(g)}
-              </span>
-            );
+            return <span key={n} style={{ padding:'5px 8px', borderRadius:'var(--r-pill)', background:`${col}12`, border:`1px solid ${col}33`, color:col, fontSize:11, fontWeight:900 }}>{n} · {niveles[n]}</span>;
           })}
         </div>
       </div>
-      {!!proximas.length && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))', gap:8, marginTop:14 }}>
-          {proximas.map((l, i) => {
-            const col = NIVEL_COLOR_CG[normalizarNivelCG(l.nivel)] || 'var(--an-navy)';
-            return (
-              <button key={l.agenda_event_id || i} type="button" onClick={() => onSelect && onSelect(l)} style={{
-                textAlign:'left', padding:'10px 12px', borderRadius:'var(--r-md)',
-                border:`1px solid ${col}44`, background:`${col}0F`, cursor:'pointer', fontFamily:'inherit',
-              }}>
-                <div style={{ fontSize:10, color:col, fontWeight:900, letterSpacing:'0.08em', textTransform:'uppercase' }}>{fmtDDMMM(l.fecha)} · Lec {String(l.leccion).padStart(2,'0')}</div>
-                <div style={{ fontSize:12, color:'var(--ink)', fontWeight:800, marginTop:3 }}>{l.grupoLabel}</div>
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -1636,7 +1649,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
 // ─────────────────────────────────────────────────────────────────────────
 // Mes (cuadrícula Lun-Dom)
 // ─────────────────────────────────────────────────────────────────────────
-function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) {
+function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = false, onClickLec }) {
   const year  = mes.getFullYear();
   const month = mes.getMonth();
   const primeroDelMes = new Date(year, month, 1);
@@ -1663,13 +1676,13 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) 
     }}>
       {/* Header del mes */}
       <div style={{
-        padding:'13px 16px',
+        padding: compacto ? '9px 12px' : '13px 16px',
         background:'var(--surface-2)',
         borderBottom:'1px solid var(--line)',
         display:'flex', justifyContent:'space-between', alignItems:'baseline',
       }}>
         <div style={{
-          fontFamily:'var(--f-serif)', fontSize:21, fontWeight:500,
+          fontFamily:'var(--f-serif)', fontSize: compacto ? 18 : 21, fontWeight:500,
           color:'var(--ink)', letterSpacing:'-0.015em',
         }}>
           {MESES_NOMBRES[month]}
@@ -1681,7 +1694,7 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) 
 
       {/* Dow header */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-                    padding:'9px 6px', borderBottom:'1px solid var(--line)' }}>
+                    padding: compacto ? '6px 4px' : '9px 6px', borderBottom:'1px solid var(--line)' }}>
         {DIA_INICIAL.map((d, i) => (
           <div key={i} style={{
             textAlign:'center', fontSize:10, fontWeight:700,
@@ -1695,14 +1708,14 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, onClickLec }) 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
                     gap:2, padding:3 }}>
         {celdas.map((c, i) => (
-          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} agenda={agenda} onClickLec={onClickLec} />
+          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} agenda={agenda} compacto={compacto} onClickLec={onClickLec} />
         ))}
       </div>
     </div>
   );
 }
 
-function CeldaDia({ celda, selLec, nivel, agenda = false, onClickLec }) {
+function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onClickLec }) {
   const { diaNum, dentro, lecs } = celda;
 
   if (!dentro) {
@@ -1715,7 +1728,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, onClickLec }) {
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight: agenda ? 106 : 86, padding:'7px 7px',
+        minHeight: compacto ? 68 : (agenda ? 92 : 86), padding: compacto ? '4px 5px' : '7px 7px',
         background:'var(--bg-deep)', borderRadius:6,
         opacity: esFinde ? 0.6 : 1,
       }}>
@@ -1729,15 +1742,16 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, onClickLec }) {
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight: agenda ? 106 : 86,
+      minHeight: compacto ? 68 : (agenda ? 92 : 86),
       display:'grid',
-      gridTemplateRows: lecs.length > 1 ? `repeat(${lecs.length}, minmax(54px, auto))` : 'minmax(72px, auto)',
+      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(24px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(46px, auto))` : 'minmax(66px, auto)'),
       gap: 2,
     }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
                        nivel={lec.nivel || nivel}
                        agenda={agenda}
+                       compacto={compacto}
                        selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion && (!lec.cod_grupo || !selLec.cod_grupo || lec.cod_grupo === selLec.cod_grupo)}
                        onClick={() => onClickLec(lec)} />
       ))}
@@ -1745,7 +1759,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, onClickLec }) {
   );
 }
 
-function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false }) {
+function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, compacto = false }) {
   const pal = paletaCelda(lec.estado, lec.tipo, nivel);
   const badge = TIPO_BADGE[lec.tipo];
   const isFeriado = lec.estado === 'FERIADO';
@@ -1757,8 +1771,8 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false }
       style={{
         background: pal.bg,
         border: `1.5px solid ${selected ? pal.accent : (isHoy ? '#F57F17' : 'transparent')}`,
-        borderRadius: 8,
-        padding: '7px 8px',
+        borderRadius: compacto ? 6 : 8,
+        padding: compacto ? '4px 5px' : '7px 8px',
         cursor: 'pointer',
         display:'flex', flexDirection:'column', justifyContent:'space-between',
         minHeight: 0,
@@ -1807,12 +1821,12 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false }
               Lec {String(lec.leccion).padStart(2,'0')}
             </div>
             {agenda && lec.grupoLabel && (
-              <div style={{ fontSize:9.5, color:pal.fg, opacity:0.95, fontWeight:800, marginTop:2, lineHeight:1.1 }}>
+              <div style={{ fontSize:compacto ? 8.5 : 9.5, color:pal.fg, opacity:0.95, fontWeight:800, marginTop:1, lineHeight:1.05 }}>
                 {lec.grupoLabel}
               </div>
             )}
             {agenda && (lec.hora_i || lec.hora_f) && (
-              <div style={{ fontSize:9.5, color:pal.fg, opacity:0.82, fontWeight:700, marginTop:1 }}>
+              <div style={{ fontSize:compacto ? 8.5 : 9.5, color:pal.fg, opacity:0.82, fontWeight:700, marginTop:1 }}>
                 {cgHoraLabel(lec)}
               </div>
             )}
@@ -1833,7 +1847,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false }
 // ─────────────────────────────────────────────────────────────────────────
 function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, grupoLabel, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onAbrirAsistencia, onCerrar, onRecargar, onNavigate }) {
   return (
-    <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
+    <div style={{ position:'sticky', top:12, maxHeight:'calc(100vh - 24px)', overflowY:'auto', paddingRight:4, display:'flex', flexDirection:'column', gap:12 }}>
 
       {/* Resumen del nivel */}
       <div className="card" style={{ padding:16, overflow:'hidden', position:'relative' }}>
