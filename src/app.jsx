@@ -445,8 +445,9 @@ function App() {
       docente_operativo: <DocenteOperativoView onNavigate={navigateTo} />,
       grupos:      <GruposView />,
       calificar:   <CalificarView toast={toast} />,
-      asistencia:  <AsistenciaView toast={toast} />,
-      cronograma_grupo: <CronogramaGrupo rol="teacher" />,
+      // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
+      asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
+      cronograma_grupo: <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
       examenes:    <ExamenesTeacherPanel />,
       materiales:  <MaterialesView onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,

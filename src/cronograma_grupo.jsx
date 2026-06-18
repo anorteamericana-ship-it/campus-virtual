@@ -1,3 +1,4 @@
+// CALGRUPO_F66_20260618_CRONOGRAMA_ASISTENCIA_UNICA_DOCENTE
 /* global React */
 // ── CronogramaGrupo v2 — Calendario mensual de lecciones ────────────────
 // CALGRUPO_F3_20260616_MES_INDIVIDUAL_CASILLAS_AMPLIAS
@@ -151,6 +152,53 @@ function idLeccion(nivel, num) {
   return 'L' + String((NIVEL_OFFSET[nivel] || 0) + num).padStart(3,'0');
 }
 
+// CALGRUPO_F66_20260618_HORARIO_GRUPO_VISIBLE_NO_CODIGO
+// El docente no debe leer códigos internos como B1-SA94-C1-0326.
+// En interfaz mostramos horario + ciclo: "Sábado de 9am a 4pm - C1-0326".
+function cgDiasLabel(dias) {
+  const s = String(dias || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, '');
+  const map = {
+    LM:'Lunes y miércoles', KJ:'Martes y jueves', MJ:'Martes y jueves',
+    LJ:'Lunes a jueves', L4:'Lunes a jueves', SA:'Sábado', SAB:'Sábado',
+    S:'Sábado', L:'Lunes', K:'Martes', M:'Miércoles', MI:'Miércoles',
+    J:'Jueves', V:'Viernes', D:'Domingo'
+  };
+  return map[s] || String(dias || '').trim() || 'Horario';
+}
+function cgTimePart(v) {
+  const raw = String(v == null ? '' : v).trim();
+  if (!raw) return '';
+  const m = raw.match(/^(\d{1,2})(?::(\d{2}))?/);
+  if (!m) return raw;
+  let h = parseInt(m[1], 10);
+  const min = m[2] && m[2] !== '00' ? ':' + m[2] : '';
+  const ap = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return h + min + ap;
+}
+function cgHoraLabel(g) {
+  if (!g) return '';
+  const hi = g.hora_i || g.hora_inicio || g.horaInicio || '';
+  const hf = g.hora_f || g.hora_fin || g.horaFin || '';
+  if (hi || hf) return [cgTimePart(hi), cgTimePart(hf)].filter(Boolean).join(' a ');
+  const h = String(g.hora || g.horario || '').trim();
+  if (!h) return '';
+  const parts = h.split(/[–-]/).map(x => x.trim()).filter(Boolean);
+  return parts.length >= 2 ? (cgTimePart(parts[0]) + ' a ' + cgTimePart(parts[1])) : h;
+}
+function cgCicloGrupo(code) {
+  const parts = String(code || '').split('-').filter(Boolean);
+  if (parts.length >= 2) return parts.slice(-2).join('-');
+  return String(code || '').trim();
+}
+function grupoHorarioLabelCG(g) {
+  if (!g) return '—';
+  const dias = cgDiasLabel(g.dias || g.diasCode || '');
+  const hora = cgHoraLabel(g);
+  const ciclo = cgCicloGrupo(g.code || g.cod_grupo || g.grupo || '');
+  return `${dias}${hora ? ' de ' + hora : ''}${ciclo ? ' - ' + ciclo : ''}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
@@ -194,6 +242,8 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
                 docente: g.docente || g.teacherName || usr?.nombre || '—',
                 dias: g.dias || g.diasCode || '',
                 hora: g.hora || '',
+                hora_i: g.hora_i || g.hora_inicio || '',
+                hora_f: g.hora_f || g.hora_fin || '',
                 programa: g.programa || usr?.programa || 'SIN_INA',
                 comentario_calculado: g.comentario_calculado || '',
                 estado_calculado: g.estado_calculado || '',
@@ -237,6 +287,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
               nivel: NIVEL_LABEL_CG[nivelId] || nivelId,
               docente: d.docente || d.teacherName || usr?.nombre || '—',
               dias: d.dias || '',
+              hora: d.hora || '',
+              hora_i: d.hora_i || d.hora_inicio || '',
+              hora_f: d.hora_f || d.hora_fin || '',
               programa: d.programa || usr?.programa || 'SIN_INA',
               lecciones: Array.isArray(d.lecciones) ? d.lecciones : [],
             };
@@ -414,6 +467,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const [coberturas, setCoberturas]     = React.useState({});
   const [modalCobertura, setModalCobertura] = React.useState(null); // { selLec } | null
   const [modalEditarCerrada, setModalEditarCerrada] = React.useState(null); // { selLec } | null
+  const [modalCierreAsistencia, setModalCierreAsistencia] = React.useState(null); // F66: asistencia desde cronograma
   const [toast, setToast]               = React.useState(null);     // { msg, kind } | null
 
   const showToast = React.useCallback((msg, kind = 'ok') => {
@@ -567,30 +621,58 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           </div>
         </div>
 
-        {/* Selector grupo */}
-        <div style={{ display:'flex', gap:10, alignItems:'flex-end' }}>
+        {/* Selector/grupos visibles — F66: horario visible, no código interno */}
+        <div style={{ display:'flex', gap:10, alignItems:'flex-end', maxWidth: esTeacher ? 620 : undefined }}>
           {esAdmin ? (
             <div>
               <div style={labelStyle}>Grupo</div>
-              <select value={codGrupo} onChange={e => setCodGrupo(e.target.value)} style={selectStyle}>
+              <select value={codGrupo} onChange={e => setCodGrupo(e.target.value)} style={{ ...selectStyle, minWidth:360 }}>
                 {esAdmin && (
                   <option value={TODOS_GRUPOS}>★ Todos los grupos ({gruposReales.length})</option>
                 )}
                 {gruposReales.map(g => (
-                  <option key={g.code} value={g.code}>{g.code} · {g.docente}</option>
+                  <option key={g.code} value={g.code}>{grupoHorarioLabelCG(g)} · {g.docente}</option>
                 ))}
               </select>
             </div>
+          ) : esTeacher && gruposReales.length > 1 ? (
+            <div style={{ maxWidth:620 }}>
+              <div style={labelStyle}>Mis horarios</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+                {gruposReales.map(g => {
+                  const n = normalizarNivelCG(g.nivelId || g.nivel);
+                  const active = g.code === codGrupo;
+                  const col = NIVEL_COLOR_CG[n] || 'var(--an-navy)';
+                  return (
+                    <button key={g.code} type="button" onClick={() => setCodGrupo(g.code)}
+                      title={g.code}
+                      style={{
+                        display:'inline-flex', alignItems:'center', gap:7,
+                        padding:'8px 12px', borderRadius:'var(--r-pill)',
+                        border:`1.5px solid ${active ? col : 'var(--line)'}`,
+                        background: active ? `${col}18` : 'var(--surface)',
+                        color: active ? col : 'var(--ink-2)',
+                        fontSize:12, fontWeight:800, cursor:'pointer',
+                        boxShadow: active ? `0 0 0 2px ${col}18` : 'none',
+                        fontFamily:'inherit',
+                      }}>
+                      <span style={{ width:9, height:9, borderRadius:3, background:col }} />
+                      {grupoHorarioLabelCG(g)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             <div>
-              <div style={labelStyle}>{rol === 'teacher' ? 'Grupo asignado' : 'Mi grupo'}</div>
+              <div style={labelStyle}>{rol === 'teacher' ? 'Horario asignado' : 'Mi horario'}</div>
               <div style={{
                 padding:'10px 14px', background:'var(--surface)',
                 border:'1.5px solid var(--line)', borderRadius:'var(--r-md)',
-                fontFamily:'var(--f-mono)', fontWeight:600, fontSize:13,
-                color:'var(--ink)', minWidth:200,
-              }}>
-                {codGrupo}
+                fontWeight:800, fontSize:13,
+                color:'var(--ink)', minWidth:260,
+              }} title={codGrupo}>
+                {grupoHorarioLabelCG(meta)}
               </div>
             </div>
           )}
@@ -740,6 +822,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           stats={stats}
           nivel={nivel}
           codGrupo={codGrupo}
+          grupoLabel={grupoHorarioLabelCG(meta)}
           docente={meta.docente}
           bloqueado={nivelBloqueado}
           soloFechas={studentSoloFechas}
@@ -753,6 +836,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           cobertura={selLec ? coberturas[idLeccion(nivel, selLec.leccion)] : null}
           onPedirCobertura={() => setModalCobertura({ selLec })}
           onPedirEditarCerrada={() => setModalEditarCerrada({ selLec })}
+          onAbrirAsistencia={() => setModalCierreAsistencia({ selLec })}
           onCerrar={() => setSelLec(null)}
           onRecargar={cargarDetalle}
         />
@@ -785,6 +869,30 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
             // Forzar refetch del detalle re-tocando selLec
             setSelLec(s => (s ? { ...s } : s));
           }}
+        />
+      )}
+
+      {modalCierreAsistencia && typeof ModalCierreLeccion === 'function' && (
+        <ModalCierreLeccion
+          lec={{
+            cod_grupo: codGrupo,
+            nivel,
+            leccion: modalCierreAsistencia.selLec?.leccion,
+            fecha: modalCierreAsistencia.selLec?.fecha,
+            turno: modalCierreAsistencia.selLec?.turno || cgHoraLabel(meta),
+            tipo: modalCierreAsistencia.selLec?.tipo,
+            riel: modalCierreAsistencia.selLec?.tipo === 'ICAN' ? 'ican' : 'curso',
+            horario_label: grupoHorarioLabelCG(meta),
+          }}
+          docenteNombre={meta.docente || usr?.nombre || ''}
+          registradoPor={usr?.nombre || meta.docente || ''}
+          onClose={() => setModalCierreAsistencia(null)}
+          onSuccess={(res) => {
+            setModalCierreAsistencia(null);
+            showToast(`Asistencia guardada ✓ · ${res?.asistencia?.presentes ?? 0} presentes, ${res?.asistencia?.ausentes ?? 0} ausentes`, 'ok');
+            cargar();
+          }}
+          onSolicitudEnviada={(mensaje) => showToast(mensaje || 'Solicitud de suspensión enviada', 'ok')}
         />
       )}
 
@@ -1258,18 +1366,16 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
 
 // ── VISTA: Mes (compacta, scroll horizontal — ya no se estira) ──────────────
 function VistaMes({ meses, mapaLecciones, selLec, nivel, onClickLec }) {
-  const multiple = meses.length > 1;
+  // CALGRUPO_F66_20260618_MESES_VERTICAL_AMPLOS
+  // Los meses van hacia abajo, no hacia la derecha, para usar todo el ancho.
   return (
     <div className="card" style={{ padding:18 }}>
       <div style={{
-        display: multiple ? 'flex' : 'grid',
-        gridTemplateColumns: multiple ? undefined : 'minmax(0, 680px)',
-        gap:18, overflowX: multiple ? 'auto' : 'visible', paddingBottom: multiple ? 8 : 0,
-        justifyContent: multiple ? 'flex-start' : 'center',
+        display:'grid', gridTemplateColumns:'minmax(0, 760px)',
+        gap:22, justifyContent:'start', alignItems:'start', overflowX:'visible',
       }}>
         {meses.map(mes => (
-          <div key={`${mes.getFullYear()}-${mes.getMonth()}`}
-               style={{ flex: multiple ? '0 0 520px' : undefined, minWidth: multiple ? 520 : undefined, maxWidth: multiple ? 560 : undefined }}>
+          <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', maxWidth:760 }}>
             <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} onClickLec={onClickLec} />
           </div>
         ))}
@@ -1570,7 +1676,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
-function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
+function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, grupoLabel, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onAbrirAsistencia, onCerrar, onRecargar, onNavigate }) {
   return (
     <div style={{ position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12 }}>
 
@@ -1632,6 +1738,7 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
           esSuperadmin={esSuperadmin}
           cobertura={cobertura}
           docenteTitular={docente}
+          onAbrirAsistencia={onAbrirAsistencia}
           onPedirCobertura={onPedirCobertura}
           onPedirEditarCerrada={onPedirEditarCerrada}
           onCerrar={onCerrar}
@@ -1653,14 +1760,14 @@ function PanelDetalle({ selLec, detalle, cargando, nivelColor, stats, nivel, cod
         fontSize:10, color:'var(--ink-3)', letterSpacing:'0.04em', lineHeight:1.5,
       }}>
         Fuente: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>CALENDARIO_LECCIONES</strong><br/>
-        Grupo: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{codGrupo}</strong><br/>
+        Horario: <strong style={{ color:'var(--ink-2)' }}>{grupoLabel || codGrupo}</strong><br/>
         Docente: <strong style={{ color:'var(--ink-2)' }}>{docente}</strong>
       </div>
     </div>
   );
 }
 
-function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
+function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, cobertura, docenteTitular, onAbrirAsistencia, onPedirCobertura, onPedirEditarCerrada, onCerrar, onRecargar, onNavigate }) {
   const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
   const isFeriado = selLec.estado === 'FERIADO';
   const feriadoName = FERIADOS_CR_NAMES[selLec.fecha] || 'Feriado nacional';
@@ -1727,6 +1834,31 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
             borderRadius:'var(--r-pill)',
           }}>
             {TIPO_LABEL_LARGO[selLec.tipo]}
+          </div>
+        )}
+
+        {!isFeriado && !bloqueado && (rol === 'teacher' || esAdmin) && (
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
+            <button type="button" onClick={onAbrirAsistencia} style={{
+              display:'inline-flex', alignItems:'center', gap:7,
+              padding:'9px 13px', border:'none', borderRadius:'var(--r-md)',
+              background:'var(--an-navy, #073B7A)', color:'#FFF',
+              fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
+            }}>✓ Pasar asistencia</button>
+            {selLec.tipo === 'EVAL_ESCRITO' && onNavigate && (
+              <button type="button" onClick={() => onNavigate('examenes')} style={{
+                padding:'9px 13px', border:'1.5px solid var(--an-navy, #073B7A)',
+                borderRadius:'var(--r-md)', background:'var(--surface)', color:'var(--an-navy, #073B7A)',
+                fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
+              }}>Ver exámenes escritos</button>
+            )}
+            {selLec.tipo === 'EVAL_ORAL' && (
+              <a href="modulos/examen_oral.html" target="_blank" rel="noopener noreferrer" style={{
+                padding:'9px 13px', border:'1.5px solid #8B1A10', borderRadius:'var(--r-md)',
+                background:'var(--surface)', color:'#8B1A10', fontSize:12, fontWeight:800,
+                textDecoration:'none', fontFamily:'inherit',
+              }}>Abrir examen oral</a>
+            )}
           </div>
         )}
 

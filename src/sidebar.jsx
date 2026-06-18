@@ -393,7 +393,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },
-    { id: 'asistencia', label: 'Asistencia', icon: 'check' },
+    // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
+    // La asistencia docente se opera desde Cronograma académico; se elimina la pestaña duplicada.
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },

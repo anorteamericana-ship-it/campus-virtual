@@ -1,3 +1,4 @@
+// CALGRUPO_F66_20260618_ASISTENCIA_COMPACTA_SIN_CONVENIO
 /* global React, Icon, PageHeader, EmptyState, ErrorState,
    fetchCalendarioDocente, fetchTareasPendientesDocente,
    fetchEstudiantesParaCierre, postCerrarLeccionCompleta */
@@ -1248,28 +1249,16 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
             </span>
           </div>
           <div style={{
-            fontSize: 12, color: 'var(--ink-3)',
-            marginTop: 6, fontFamily: 'var(--f-mono)',
-          }}>
-            {lec.cod_grupo}
+            fontSize: 13, color: 'var(--ink-2)', marginTop: 6,
+            fontWeight: 800,
+          }} title={lec.cod_grupo}>
+            {lec.horario_label || lec.horario || lec.cod_grupo}
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6 }}>
             {vdFmtLargo(lec.fecha)}
             {lec.turno && <> · <span style={{ fontFamily: 'var(--f-mono)' }}>{lec.turno}</span></>}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-              padding: '3px 8px', borderRadius: 'var(--r-pill)',
-              background: programa === 'INA' || programa === 'CON_INA'
-                ? 'color-mix(in srgb, var(--an-navy) 12%, white)'
-                : 'var(--bg-deep)',
-              color: programa === 'INA' || programa === 'CON_INA'
-                ? 'var(--an-navy-ink)' : 'var(--ink-2)',
-              textTransform: 'uppercase',
-            }}>
-              {programa ? programaLabel : '— programa —'}
-            </span>
             {includesPC && (
               <span style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
@@ -1432,15 +1421,19 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
           ? '1.5px solid #E8372A'
           : '1px solid var(--line)',
         borderRadius: 'var(--r-md)',
-        padding: '14px 16px',
-        marginBottom: 12,
+        padding: '12px 14px',
+        marginBottom: 10,
         boxShadow: hasError ? '0 0 0 3px rgba(232,55,42,0.08)' : 'none',
         transition: 'border-color .15s, box-shadow .15s',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(230px, 1fr) 164px minmax(260px, 1.35fr)',
+        gap: 12,
+        alignItems: 'start',
       }}>
       {/* Cabecera */}
       <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: 12,
-        marginBottom: 10, flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 0, minWidth: 0, gridColumn: '1 / 3',
       }}>
         <div style={{
           width: 30, height: 30, borderRadius: '50%',
@@ -1460,13 +1453,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
             display: 'flex', gap: 8, flexWrap: 'wrap',
           }}>
             <span>{estudiante.code}</span>
-            {estudiante.convenio && estudiante.convenio !== '—' && (
-              <span style={{
-                padding: '0 6px', background: 'var(--bg-deep)',
-                borderRadius: 4, color: 'var(--ink-2)', fontWeight: 600,
-                fontSize: 10,
-              }}>{estudiante.convenio}</span>
-            )}
+
           </div>
         </div>
 
@@ -1517,7 +1504,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
       </div>
 
       {/* Retro */}
-      <div style={{ marginBottom: includesPC && presente ? 10 : 0 }}>
+      <div style={{ marginBottom: includesPC && presente ? 10 : 0, gridColumn: '3 / 4' }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           marginBottom: 4,
@@ -1537,14 +1524,14 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
           value={data.retro}
           onChange={e => onChange(estudiante.code, 'retro', e.target.value)}
           placeholder={retroPlaceholder}
-          rows={3}
+          rows={2}
           style={textareaStyle(hasError)}
         />
       </div>
 
       {/* Progress Check */}
       {includesPC && presente && (
-        <div>
+        <div style={{ gridColumn: '3 / 4' }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
             marginBottom: 4,
@@ -1590,7 +1577,7 @@ function textareaStyle(hasError) {
     borderRadius: 'var(--r-sm)',
     background: 'var(--surface)',
     fontFamily: 'var(--f-sans)', fontSize: 13, lineHeight: 1.5,
-    color: 'var(--ink)', outline: 'none', resize: 'vertical', minHeight: 60,
+    color: 'var(--ink)', outline: 'none', resize: 'vertical', minHeight: 48,
   };
 }
 
