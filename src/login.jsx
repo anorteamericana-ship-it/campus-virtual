@@ -349,16 +349,26 @@ function App() {
         return;
       }
 
-      // Multi-grupo → mostrar selector (conservando token/expira para el cierre).
+      // CALGRUPO_F71_20260618_LOGIN_SIN_SELECTOR_GRUPO_DOCENTE
+      // El docente NO elige grupo al entrar. La agenda docente se resuelve desde
+      // APOLLO.GRUPOS (COMENTARIO=En curso). Conservamos la lista completa de
+      // grupos para compatibilidad, pero entramos directo con el primer grupo.
       if (data.multiGrupo && Array.isArray(data.grupos) && data.grupos.length > 0) {
-        setLoading(false);
-        setPendingMulti({
-          nombre: data.nombre,
-          rol:    data.rol,
-          cedula: (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
-          grupos: data.grupos,
-          token:  data.token  || null,
-          expira: data.expira || null,
+        const first = data.grupos[0] || {};
+        const gruposAsignados = data.grupos
+          .map(x => (typeof x === 'string' ? x : (x.grupo || x.cod_grupo || x.codigo || x.code || '')))
+          .filter(Boolean);
+        finishLogin({
+          rol:        data.rol,
+          nombre:     data.nombre,
+          grupos:     gruposAsignados,
+          grupoActivo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
+          grupo:      typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
+          codigo:     data.codigo || first.codigo || null,
+          cedula:     (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
+          programa:   first.programa || data.programa || 'SIN_INA',
+          token:      data.token  || null,
+          expira:     data.expira || null,
         });
         return;
       }

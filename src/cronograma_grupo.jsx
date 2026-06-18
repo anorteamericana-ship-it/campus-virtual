@@ -1,3 +1,4 @@
+// CALGRUPO_F71_20260618_AGENDA_DOCENTE_SIN_SELECTOR_COMPACTA
 // CALGRUPO_F70_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
 // CALGRUPO_F68_20260618_AGENDA_DOCENTE_CUATRIMESTRE_COMPACTA
 // CALGRUPO_F68_20260618_FIX_HORA_1899_FRONTEND
@@ -215,6 +216,10 @@ function cgCicloGrupo(code) {
   const parts = String(code || '').split('-').filter(Boolean);
   if (parts.length >= 2) return parts.slice(-2).join('-');
   return String(code || '').trim();
+}
+function cgUltimoCodigoGrupo(code) {
+  const parts = String(code || '').split('-').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : String(code || '').trim();
 }
 function grupoHorarioLabelCG(g) {
   if (!g) return '—';
@@ -510,6 +515,8 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
             cod_grupo: res.grupo.code || res.grupo.cod_grupo,
             grupoLabel: grupoHorarioLabelCG(res.grupo),
             horario_label: grupoHorarioLabelCG(res.grupo),
+            grupoSuffix: '-' + cgUltimoCodigoGrupo(res.grupo.code || res.grupo.cod_grupo || ''),
+            estudiantes_count: res.grupo.estudiantes_count || res.grupo.estudiantes || res.grupo.total_estudiantes || '',
             nivel: res.nivel,
             nivelId: res.nivel,
             docente: res.grupo.docente,
@@ -745,18 +752,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
               </select>
             </div>
           ) : esTeacher ? (
-            <div style={{ minWidth:260, textAlign:'right' }}>
-              <div style={labelStyle}>Agenda docente</div>
-              <div style={{
-                display:'inline-flex', alignItems:'center', gap:8,
-                padding:'9px 13px', borderRadius:'var(--r-pill)',
-                background:'var(--surface)', border:'1.5px solid var(--line)',
-                fontSize:12, fontWeight:900, color:'var(--an-navy-ink)'
-              }}>
-                <span style={{ width:8, height:8, borderRadius:99, background:'#2E7D32' }} />
-                {(gruposReales || []).length} horario{(gruposReales || []).length === 1 ? '' : 's'} en curso
-              </div>
-            </div>
+            <div style={{ display:'none' }} aria-hidden="true" />
           ) : (
             <div>
               <div style={labelStyle}>{rol === 'teacher' ? 'Horario asignado' : 'Mi horario'}</div>
@@ -896,8 +892,8 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div style={{
-        display:'grid', gridTemplateColumns:'minmax(0, 1fr) 340px',
-        gap:18, marginTop:6, alignItems:'start',
+        display:'grid', gridTemplateColumns: agendaDocenteMode ? 'minmax(0, 1fr) minmax(270px, 300px)' : 'minmax(0, 1fr) 340px',
+        gap: agendaDocenteMode ? 12 : 18, marginTop:6, alignItems:'start',
       }}>
         <div style={{ minWidth:0 }}>
           {loadingVista ? (
@@ -1494,9 +1490,9 @@ function MesesVistaControl({ valor, setValor }) {
 function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVista = 1, onClickLec }) {
   // CALGRUPO_F68_20260618_CUATRIMESTRE_1_2_4_MESES
   const visibles = (meses || []).slice(0, Math.max(1, Number(mesesVista) || 1));
-  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(320px, 1fr))' : 'minmax(0, 760px)';
+  const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(250px, 1fr))' : 'minmax(0, 720px)';
   return (
-    <div className="card" style={{ padding: agenda ? 12 : 18 }}>
+    <div className="card" style={{ padding: agenda ? 8 : 18 }}>
       <div style={{
         display:'grid', gridTemplateColumns: cols,
         gap:14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
@@ -1678,13 +1674,13 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
     }}>
       {/* Header del mes */}
       <div style={{
-        padding: compacto ? '9px 12px' : '13px 16px',
+        padding: compacto ? '7px 10px' : '13px 16px',
         background:'var(--surface-2)',
         borderBottom:'1px solid var(--line)',
         display:'flex', justifyContent:'space-between', alignItems:'baseline',
       }}>
         <div style={{
-          fontFamily:'var(--f-serif)', fontSize: compacto ? 18 : 21, fontWeight:500,
+          fontFamily:'var(--f-serif)', fontSize: compacto ? 16 : 21, fontWeight:500,
           color:'var(--ink)', letterSpacing:'-0.015em',
         }}>
           {MESES_NOMBRES[month]}
@@ -1696,7 +1692,7 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
 
       {/* Dow header */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-                    padding: compacto ? '6px 4px' : '9px 6px', borderBottom:'1px solid var(--line)' }}>
+                    padding: compacto ? '4px 3px' : '9px 6px', borderBottom:'1px solid var(--line)' }}>
         {DIA_INICIAL.map((d, i) => (
           <div key={i} style={{
             textAlign:'center', fontSize:10, fontWeight:700,
@@ -1730,7 +1726,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight: compacto ? 68 : (agenda ? 92 : 86), padding: compacto ? '4px 5px' : '7px 7px',
+        minHeight: compacto ? 58 : (agenda ? 78 : 86), padding: compacto ? '3px 4px' : '7px 7px',
         background:'var(--bg-deep)', borderRadius:6,
         opacity: esFinde ? 0.6 : 1,
       }}>
@@ -1744,10 +1740,10 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight: compacto ? 68 : (agenda ? 92 : 86),
+      minHeight: compacto ? 58 : (agenda ? 78 : 86),
       display:'grid',
-      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(24px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(46px, auto))` : 'minmax(66px, auto)'),
-      gap: 2,
+      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(21px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(42px, auto))` : 'minmax(62px, auto)'),
+      gap: compacto ? 1 : 2,
     }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
@@ -1822,15 +1818,20 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
             }}>
               Lec {String(lec.leccion).padStart(2,'0')}
             </div>
-            {agenda && lec.grupoLabel && (
-              <div style={{ fontSize:compacto ? 8.5 : 9.5, color:pal.fg, opacity:0.95, fontWeight:800, marginTop:1, lineHeight:1.05 }}>
-                {lec.grupoLabel}
-              </div>
-            )}
-            {agenda && (lec.hora_i || lec.hora_f) && (
-              <div style={{ fontSize:compacto ? 8.5 : 9.5, color:pal.fg, opacity:0.82, fontWeight:700, marginTop:1 }}>
-                {cgHoraLabel(lec)}
-              </div>
+            {agenda && (
+              <React.Fragment>
+                <div style={{ fontSize:compacto ? 8.2 : 9.2, color:pal.fg, opacity:0.95, fontWeight:900, marginTop:1, lineHeight:1.05 }}>
+                  {lec.grupoSuffix || ('-' + cgUltimoCodigoGrupo(lec.cod_grupo || ''))}
+                </div>
+                {lec.estudiantes_count !== '' && lec.estudiantes_count != null && (
+                  <div style={{ fontSize:compacto ? 7.8 : 8.8, color:pal.fg, opacity:0.88, fontWeight:800, lineHeight:1.05 }}>
+                    {lec.estudiantes_count} estudiantes
+                  </div>
+                )}
+                <div style={{ fontSize:compacto ? 7.8 : 8.8, color:pal.fg, opacity:0.9, fontWeight:800, lineHeight:1.05 }}>
+                  {cgHoraLabel(lec)}
+                </div>
+              </React.Fragment>
             )}
             {!agenda && lec.turno && (
               <div style={{ fontSize:10, color:pal.fg, opacity:0.78, fontWeight:600, marginTop:1 }}>
