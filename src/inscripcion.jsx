@@ -1204,10 +1204,16 @@ function App() {
       if (data && data.ok) {
         setDone(true);
         window.scrollTo({ top: 0, behavior: 'auto' });
-      } else if (data && data.error === 'cedula_duplicada') {
+      } else if (data && String(data.error || '').indexOf('cedula_duplicada') === 0) {
         setPaso(1);
-        setErrors({ cedula: 'Ya existe una cuenta con este número. Iniciá sesión o recuperá tu contraseña.' });
+        setErrors({ cedula: data.mensaje || 'Ya existe un registro con este número. Iniciá sesión o comunicate con tu asesor.' });
+        setToast(data.mensaje || 'Esta cédula ya tiene un registro previo.');
         setTimeout(() => scrollToField('cedula'), 80);
+      } else if (data && (data.mensaje || data.error)) {
+        // CALGRUPO_F54_20260617_INSCRIPCION_MOSTRAR_ERROR_BACKEND
+        // Antes todo caía en un mensaje genérico. Para QA necesitamos ver
+        // si el backend rechazó por sesión, cupo, hoja, columnas o duplicado.
+        setToast(data.mensaje || data.error);
       } else {
         setToast('No pudimos completar tu registro. Intentá de nuevo en un momento.');
       }
