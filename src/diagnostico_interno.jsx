@@ -1,6 +1,6 @@
 /* global React, PageHeader */
 // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_FRONTEND
-// CALGRUPO_F41_20260617_DIAGNOSTICO_INTERNO_AVANZADO_FRONTEND
+// CALGRUPO_F60_20260618_DIAGNOSTICO_INTERNO_FRONTEND_LABELS
 
 const SCRIPT_URL_DIAG = window.APPS_SCRIPT_URL;
 
@@ -212,7 +212,7 @@ function DiagnosticoInternoView() {
   return (
     <div data-screen-label="Admin · Diagnóstico interno avanzado" style={{ padding: 22, maxWidth: 1360, margin: '0 auto' }}>
       <PageHeader
-        kicker="Sistema · F41"
+        kicker="Sistema · F60"
         title="Diagnóstico interno avanzado"
         sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos: certificados, cronograma, exámenes, notas, cierre académico y seguimiento."
         right={
@@ -254,7 +254,7 @@ function DiagnosticoInternoView() {
           <DiagSection title="Lectura ejecutiva" sub="Este bloque resume si el sistema está listo para operar módulos delicados.">
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap: 10 }}>
               <DiagCard title="Hojas revisadas" value={hojas.length} status="info" sub="Base maestra + operativo" onClick={() => setTab('hojas')} />
-              <DiagCard title="Endpoints revisados" value={endpoints.length} status="info" sub="Funciones críticas F24–F41" onClick={() => setTab('endpoints')} />
+              <DiagCard title="Endpoints revisados" value={endpoints.length} status="info" sub="Funciones críticas F24–F60" onClick={() => setTab('endpoints')} />
               <DiagCard title="Base maestra" value={resumen.master_ok ? 'Lista' : 'Revisar'} status={resumen.master_ok ? 'ok' : 'warn'} sub="DATOS, ESTATUS, GRUPOS, USUARIOS" />
               <DiagCard title="Operativo" value={resumen.operativo_ok ? 'Lista' : 'Revisar'} status={resumen.operativo_ok ? 'ok' : 'warn'} sub="Calendario, exámenes, logs y seguimiento" />
             </div>

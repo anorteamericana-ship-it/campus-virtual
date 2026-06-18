@@ -1,5 +1,5 @@
 /* global React, window */
-// CALGRUPO_F58_20260618_SUPERADMIN_EDITOR_INSCRIPCION_TIPO_FORMULARIO_UI
+// CALGRUPO_F59_20260618_SUPERADMIN_EDITOR_INSCRIPCION_TIPO_PAGINA_EDITABLE
 // CALGRUPO_F55_20260618_SUPERADMIN_EDITOR_INSCRIPCION_PUBLICA_UI
 const { useEffect: useEffectInsAdmin, useMemo: useMemoInsAdmin, useState: useStateInsAdmin } = React;
 
@@ -53,7 +53,7 @@ function InscripcionAdminView({ toast }) {
   const [grupos, setGrupos] = useStateInsAdmin([]);
   const [filter, setFilter] = useStateInsAdmin('');
   const [error, setError] = useStateInsAdmin('');
-  const [activeSection, setActiveSection] = useStateInsAdmin('programa');
+  const [activeSection, setActiveSection] = useStateInsAdmin('pagina');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -122,6 +122,7 @@ function InscripcionAdminView({ toast }) {
   };
 
   const sections = useMemoInsAdmin(() => [
+    { id:'pagina', icon:'🧾', title:'Editor tipo página', hint:'Misma lógica de la inscripción pública, editable por bloques visibles.' },
     { id:'programa', icon:'📌', title:'Encabezado y selección inicial', hint:'Lo primero que ve el estudiante al elegir programa y horario.' },
     { id:'ina', icon:'🏛️', title:'Tarjeta Programa INA', hint:'Nombre, etiqueta, beneficios e imagen del programa acreditado.' },
     { id:'libre', icon:'🧭', title:'Tarjeta sin acreditación', hint:'Texto visible para el programa propio de la academia.' },
@@ -184,6 +185,96 @@ function InscripcionAdminView({ toast }) {
   );
 
   const renderSection = () => {
+    if (activeSection === 'pagina') return (
+      <div className="insedit-section-body insedit-page-editor">
+        <div className="insedit-section-title">
+          <h2>Editor tipo página</h2>
+          <p>Vista de edición en el mismo orden de la inscripción pública. Cada bloque importante tiene su texto editable sin tocar código.</p>
+        </div>
+
+        <div className="insedit-form-section">
+          <div className="insedit-form-section-head"><span>01</span><div><b>Encabezado</b><small>Título inicial y selección de horario.</small></div></div>
+          <Field path="textos.programa_titulo" label="Título principal" />
+          <Field path="textos.programa_subtitulo" label="Subtítulo" rows={2} />
+          <Field path="textos.horario_titulo" label="Título de selección de horario" />
+        </div>
+
+        <div className="insedit-form-section">
+          <div className="insedit-form-section-head"><span>02</span><div><b>Programas</b><small>Tarjetas que el estudiante ve al elegir programa.</small></div></div>
+          <div className="insedit-split">
+            <div>
+              <ImageField slot="ina" label="Imagen Programa INA" />
+              <Field path="textos.ina_nombre" label="Nombre Programa INA" />
+              <Field path="textos.ina_badge" label="Etiqueta Programa INA" />
+              <Field path="textos.ina_bullets" label="Beneficios Programa INA" rows={5} />
+            </div>
+            <div>
+              <ImageField slot="libre" label="Imagen Programa sin acreditación" />
+              <Field path="textos.libre_nombre" label="Nombre programa sin acreditación" />
+              <Field path="textos.libre_badge" label="Etiqueta programa sin acreditación" />
+              <Field path="textos.libre_bullets" label="Beneficios programa sin acreditación" rows={5} />
+            </div>
+          </div>
+        </div>
+
+        <div className="insedit-form-section">
+          <div className="insedit-form-section-head"><span>03</span><div><b>Financiamiento</b><small>CONAPE y pago propio.</small></div></div>
+          <div className="insedit-split">
+            <div>
+              <Field path="textos.conape_titulo" label="Título CONAPE" />
+              <Field path="textos.conape_subtitulo" label="Descripción CONAPE" rows={3} />
+            </div>
+            <div>
+              <Field path="textos.propio_titulo" label="Título pago propio" />
+              <Field path="textos.propio_subtitulo" label="Descripción pago propio" rows={3} />
+            </div>
+          </div>
+        </div>
+
+        <div className="insedit-form-section">
+          <div className="insedit-form-section-head"><span>04</span><div><b>Equipo de cómputo</b><small>Imágenes, textos y precios.</small></div></div>
+          <Field path="textos.equipo_titulo" label="Título del bloque de equipo" />
+          <div className="insedit-split">
+            <div>
+              <ImageField slot="equipo_basico" label="Imagen equipo básico" />
+              <Field path="textos.equipo_basico_titulo" label="Nombre equipo básico" />
+              <Field path="textos.equipo_basico_bullets" label="Detalle equipo básico" rows={4} />
+              <Field path="precios.equipo_basico" label="Precio equipo básico" type="number" money />
+            </div>
+            <div>
+              <ImageField slot="equipo_premium" label="Imagen equipo premium" />
+              <Field path="textos.equipo_premium_titulo" label="Nombre equipo premium" />
+              <Field path="textos.equipo_premium_bullets" label="Detalle equipo premium" rows={4} />
+              <Field path="precios.equipo_premium" label="Precio equipo premium" type="number" money />
+            </div>
+          </div>
+        </div>
+
+        <div className="insedit-form-section">
+          <div className="insedit-form-section-head"><span>05</span><div><b>Prueba TOEIC</b><small>Texto general y precio default. El grupo puede tener un monto distinto.</small></div></div>
+          <Field path="textos.toeic_titulo" label="Pregunta visible TOEIC" rows={2} />
+          <Field path="textos.toeic_nota" label="Detalle TOEIC" rows={4} />
+          <Field path="precios.toeic_default" label="Precio TOEIC por defecto" type="number" money />
+        </div>
+
+        <div className="insedit-form-section insedit-form-section-focus">
+          <div className="insedit-form-section-head"><span>06</span><div><b>Gastos de sostenimiento</b><small>Este bloque queda listo para cambios directos de texto.</small></div></div>
+          <Field path="textos.sostenimiento_titulo" label="Título del bloque" />
+          <Field path="textos.sostenimiento_nota" label="Detalle completo" help="Pegá aquí exactamente el nuevo texto que querés publicar." rows={8} />
+          <div className="insedit-browser-preview sostenimiento">
+            <small>Así se leerá aproximadamente en inscripción</small>
+            <h3>{getDeepInsAdmin(cfg,'textos.sostenimiento_titulo','Gastos de sostenimiento')} <em>Opcional</em></h3>
+            <p>{getDeepInsAdmin(cfg,'textos.sostenimiento_nota')}</p>
+          </div>
+        </div>
+
+        <div className="insedit-save-footer">
+          <button className="btn btn-primary" onClick={saveConfig} disabled={saving}>{saving ? 'Guardando…' : 'Guardar todos los cambios de la página'}</button>
+          <button className="btn btn-secondary" onClick={() => setActiveSection('grupos')}>Editar TOEIC por grupo</button>
+        </div>
+      </div>
+    );
+
     if (activeSection === 'programa') return (
       <div className="insedit-section-body">
         <div className="insedit-section-title"><h2>Encabezado de inscripción</h2><p>Editá el texto de la primera parte tal como se lee en la página pública.</p></div>
@@ -340,7 +431,7 @@ function InscripcionAdminView({ toast }) {
       </div>
 
       <style>{`
-        .insedit-page{display:flex;flex-direction:column;gap:18px}.insedit-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.insedit-head h1{margin:4px 0 6px;font-size:30px}.insedit-head p{margin:0;color:var(--ink-3);font-size:13px}.insedit-actions{display:flex;gap:8px;flex-wrap:wrap}.insedit-shell{display:grid;grid-template-columns:310px minmax(0,1fr);gap:18px;align-items:start}.insedit-nav{position:sticky;top:16px;display:flex;flex-direction:column;gap:10px}.insedit-nav button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:14px;text-align:left;display:grid;grid-template-columns:34px 1fr;gap:2px 10px;cursor:pointer;box-shadow:0 10px 24px rgba(15,35,70,.04)}.insedit-nav button span{grid-row:1/3;width:34px;height:34px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center}.insedit-nav button b{font-size:13px;color:var(--ink-1)}.insedit-nav button small{font-size:11px;line-height:1.35;color:var(--ink-3)}.insedit-nav button.active{border-color:#2B7FC1;box-shadow:0 0 0 3px rgba(43,127,193,.12);background:#f8fbff}.insedit-main{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 18px 45px rgba(15,35,70,.06)}.insedit-section-body{display:flex;flex-direction:column;gap:16px}.insedit-section-title h2{margin:0 0 5px;font-size:22px}.insedit-section-title p{margin:0;color:var(--ink-3);font-size:13px}.insedit-field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:900;color:var(--ink-2)}.insedit-field small{font-weight:600;color:var(--ink-3);line-height:1.35}.insedit-field input,.insedit-field textarea,.insedit-search,.insedit-money input{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-family:inherit;font-size:14px;background:#fbfdff;outline:none}.insedit-field textarea{resize:vertical;line-height:1.45}.insedit-field input:focus,.insedit-field textarea:focus,.insedit-search:focus,.insedit-money input:focus{border-color:#2B7FC1;box-shadow:0 0 0 3px rgba(43,127,193,.10);background:#fff}.insedit-field em,.insedit-money em{font-style:normal;color:#0B7A32;font-size:12px;font-weight:900}.insedit-image-field{display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px;border:1px solid #e6edf5;background:#f8fbff;border-radius:18px;padding:14px}.insedit-image-preview{height:130px;border-radius:16px;background:#edf3fa;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--ink-3);font-size:12px}.insedit-image-preview img{width:100%;height:100%;object-fit:contain}.insedit-image-control{display:flex;flex-direction:column;gap:10px}.insedit-upload{position:relative;overflow:hidden;border:1px solid #2B7FC1;color:#0B3A78;border-radius:12px;padding:10px 12px;display:inline-flex;align-self:flex-start;font-size:12px;font-weight:900;cursor:pointer;background:#fff}.insedit-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}.insedit-browser-preview{border:1px dashed #c7d6e7;border-radius:18px;background:#fbfdff;padding:16px}.insedit-browser-preview small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:9px}.insedit-browser-preview h3{margin:0 0 7px;font-size:19px}.insedit-browser-preview p{margin:0 0 12px;color:var(--ink-2);font-size:13px;line-height:1.5}.insedit-browser-preview em{font-style:normal;background:#e8f2ff;border-radius:999px;padding:3px 8px;font-size:11px;color:#2B7FC1}.fake-select{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:white;max-width:230px}.insedit-preview-card{display:grid;grid-template-columns:170px 1fr;gap:14px;border:1px solid var(--line);border-radius:18px;padding:14px;background:#fff}.insedit-preview-img{height:115px;border-radius:16px;background:#edf3fa;display:flex;align-items:center;justify-content:center;overflow:hidden}.insedit-preview-img img{width:100%;height:100%;object-fit:cover}.insedit-preview-body{display:flex;flex-direction:column;gap:7px}.insedit-preview-body b{font-size:16px}.insedit-preview-body span{align-self:flex-start;border-radius:999px;background:#e8f2ff;color:#0B3A78;padding:4px 9px;font-size:11px;font-weight:900}.insedit-preview-body ul{margin:4px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px}.insedit-two-preview,.insedit-split{display:grid;grid-template-columns:1fr 1fr;gap:14px}.insedit-two-preview>div{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff}.insedit-two-preview b,.insedit-two-preview span{display:block}.insedit-two-preview span{margin-top:5px;color:var(--ink-3);font-size:13px}.insedit-group-list{display:flex;flex-direction:column;gap:10px}.insedit-group-card{display:grid;grid-template-columns:minmax(220px,1.3fr) 150px 190px auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff}.insedit-group-card b,.insedit-group-card span,.insedit-group-card small{display:block}.insedit-group-card span{font-size:12px;color:var(--ink-2)}.insedit-group-card small{font-size:11px;color:var(--ink-3)}.insedit-switch{font-size:12px;font-weight:900;display:flex;align-items:center;gap:8px}.insedit-money{display:grid;gap:5px;font-size:11px;font-weight:900;color:var(--ink-3)}.empty{padding:20px;text-align:center;color:var(--ink-3);border:1px dashed var(--line);border-radius:16px}@media(max-width:1050px){.insedit-shell{grid-template-columns:1fr}.insedit-nav{position:relative;top:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.insedit-group-card{grid-template-columns:1fr}.insedit-split,.insedit-two-preview{grid-template-columns:1fr}}@media(max-width:680px){.insedit-head{flex-direction:column}.insedit-nav{grid-template-columns:1fr}.insedit-image-field,.insedit-preview-card{grid-template-columns:1fr}.insedit-main{padding:16px}}
+        .insedit-page{display:flex;flex-direction:column;gap:18px}.insedit-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.insedit-head h1{margin:4px 0 6px;font-size:30px}.insedit-head p{margin:0;color:var(--ink-3);font-size:13px}.insedit-actions{display:flex;gap:8px;flex-wrap:wrap}.insedit-shell{display:grid;grid-template-columns:310px minmax(0,1fr);gap:18px;align-items:start}.insedit-nav{position:sticky;top:16px;display:flex;flex-direction:column;gap:10px}.insedit-nav button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:14px;text-align:left;display:grid;grid-template-columns:34px 1fr;gap:2px 10px;cursor:pointer;box-shadow:0 10px 24px rgba(15,35,70,.04)}.insedit-nav button span{grid-row:1/3;width:34px;height:34px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center}.insedit-nav button b{font-size:13px;color:var(--ink-1)}.insedit-nav button small{font-size:11px;line-height:1.35;color:var(--ink-3)}.insedit-nav button.active{border-color:#2B7FC1;box-shadow:0 0 0 3px rgba(43,127,193,.12);background:#f8fbff}.insedit-main{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 18px 45px rgba(15,35,70,.06)}.insedit-section-body{display:flex;flex-direction:column;gap:16px}.insedit-section-title h2{margin:0 0 5px;font-size:22px}.insedit-section-title p{margin:0;color:var(--ink-3);font-size:13px}.insedit-field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:900;color:var(--ink-2)}.insedit-field small{font-weight:600;color:var(--ink-3);line-height:1.35}.insedit-field input,.insedit-field textarea,.insedit-search,.insedit-money input{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-family:inherit;font-size:14px;background:#fbfdff;outline:none}.insedit-field textarea{resize:vertical;line-height:1.45}.insedit-field input:focus,.insedit-field textarea:focus,.insedit-search:focus,.insedit-money input:focus{border-color:#2B7FC1;box-shadow:0 0 0 3px rgba(43,127,193,.10);background:#fff}.insedit-field em,.insedit-money em{font-style:normal;color:#0B7A32;font-size:12px;font-weight:900}.insedit-image-field{display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px;border:1px solid #e6edf5;background:#f8fbff;border-radius:18px;padding:14px}.insedit-image-preview{height:130px;border-radius:16px;background:#edf3fa;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--ink-3);font-size:12px}.insedit-image-preview img{width:100%;height:100%;object-fit:contain}.insedit-image-control{display:flex;flex-direction:column;gap:10px}.insedit-upload{position:relative;overflow:hidden;border:1px solid #2B7FC1;color:#0B3A78;border-radius:12px;padding:10px 12px;display:inline-flex;align-self:flex-start;font-size:12px;font-weight:900;cursor:pointer;background:#fff}.insedit-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}.insedit-browser-preview{border:1px dashed #c7d6e7;border-radius:18px;background:#fbfdff;padding:16px}.insedit-browser-preview small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:9px}.insedit-browser-preview h3{margin:0 0 7px;font-size:19px}.insedit-browser-preview p{margin:0 0 12px;color:var(--ink-2);font-size:13px;line-height:1.5}.insedit-browser-preview em{font-style:normal;background:#e8f2ff;border-radius:999px;padding:3px 8px;font-size:11px;color:#2B7FC1}.fake-select{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:white;max-width:230px}.insedit-preview-card{display:grid;grid-template-columns:170px 1fr;gap:14px;border:1px solid var(--line);border-radius:18px;padding:14px;background:#fff}.insedit-preview-img{height:115px;border-radius:16px;background:#edf3fa;display:flex;align-items:center;justify-content:center;overflow:hidden}.insedit-preview-img img{width:100%;height:100%;object-fit:cover}.insedit-preview-body{display:flex;flex-direction:column;gap:7px}.insedit-preview-body b{font-size:16px}.insedit-preview-body span{align-self:flex-start;border-radius:999px;background:#e8f2ff;color:#0B3A78;padding:4px 9px;font-size:11px;font-weight:900}.insedit-preview-body ul{margin:4px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px}.insedit-two-preview,.insedit-split{display:grid;grid-template-columns:1fr 1fr;gap:14px}.insedit-two-preview>div{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff}.insedit-two-preview b,.insedit-two-preview span{display:block}.insedit-two-preview span{margin-top:5px;color:var(--ink-3);font-size:13px}.insedit-group-list{display:flex;flex-direction:column;gap:10px}.insedit-group-card{display:grid;grid-template-columns:minmax(220px,1.3fr) 150px 190px auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff}.insedit-group-card b,.insedit-group-card span,.insedit-group-card small{display:block}.insedit-group-card span{font-size:12px;color:var(--ink-2)}.insedit-group-card small{font-size:11px;color:var(--ink-3)}.insedit-switch{font-size:12px;font-weight:900;display:flex;align-items:center;gap:8px}.insedit-money{display:grid;gap:5px;font-size:11px;font-weight:900;color:var(--ink-3)}.empty{padding:20px;text-align:center;color:var(--ink-3);border:1px dashed var(--line);border-radius:16px}.insedit-form-section{border:1px solid var(--line);border-radius:20px;padding:16px;background:#fff;display:flex;flex-direction:column;gap:13px}.insedit-form-section-head{display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid #eef3f8;padding-bottom:12px}.insedit-form-section-head span{width:34px;height:34px;border-radius:12px;background:#0B3A78;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}.insedit-form-section-head b{display:block;font-size:15px;color:var(--ink-1)}.insedit-form-section-head small{display:block;margin-top:3px;color:var(--ink-3);font-size:12px}.insedit-form-section-focus{background:#f8fbff;border-color:#b9d7f4}.insedit-save-footer{position:sticky;bottom:10px;display:flex;gap:10px;justify-content:flex-end;padding:12px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 18px 45px rgba(15,35,70,.10);backdrop-filter:blur(8px)}@media(max-width:1050px){.insedit-shell{grid-template-columns:1fr}.insedit-nav{position:relative;top:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.insedit-group-card{grid-template-columns:1fr}.insedit-split,.insedit-two-preview{grid-template-columns:1fr}}@media(max-width:680px){.insedit-head{flex-direction:column}.insedit-nav{grid-template-columns:1fr}.insedit-image-field,.insedit-preview-card{grid-template-columns:1fr}.insedit-main{padding:16px}}
       `}</style>
     </div>
   );
