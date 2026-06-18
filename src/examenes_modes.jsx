@@ -440,54 +440,102 @@ const INBOX = [
   Object.assign({}, window.SUBMISSION_DEMO_B1_T2_B),
 ];
 
-function TeacherMode({ shell, density }) {
-  const [openId, setOpenId] = useState(null);
-  const sub = openId != null ? INBOX[openId] : null;
-  if (sub && !sub.stub) {
-    return <TeacherReview sub={sub} shell={shell} density={density} onBack={()=>setOpenId(null)} />;
+// CALGRUPO_F64_20260618_DOCENTE_EXAMENES_ESCRITOS_SIN_DEMO
+function examTeacherSessionGroups() {
+  const ses = getExamParentSession() || {};
+  const raw = [];
+  if (ses.grupo) raw.push(ses.grupo);
+  if (ses.grupoActivo) raw.push(ses.grupoActivo);
+  if (ses.cod_grupo) raw.push(ses.cod_grupo);
+  if (Array.isArray(ses.grupos)) {
+    ses.grupos.forEach(g => raw.push(typeof g === 'string' ? g : (g && (g.grupo || g.cod_grupo || g.codigo || g.code))));
   }
-  return <TeacherInbox onOpen={setOpenId} />;
+  return [...new Set(raw.map(g => String(g || '').trim()).filter(Boolean))];
 }
 
-function TeacherInbox({ onOpen }) {
-  const counts = INBOX.reduce((m,s)=>{ m[s.estado]=(m[s.estado]||0)+1; return m; },{});
+function TeacherMode({ shell, density }) {
+  return <TeacherWrittenLiveInbox />;
+}
+
+function TeacherWrittenLiveInbox() {
+  const grupos = examTeacherSessionGroups();
+  const [grupo, setGrupo] = useState(grupos[0] || '');
+  const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+
+  const load = async () => {
+    const g = String(grupo || '').trim();
+    if (!g) {
+      setRows([]); setSummary(null); setMsg('');
+      setErr('Tu usuario docente no tiene grupo asignado. Revisá usuarios/roles antes de usar exámenes escritos.');
+      return;
+    }
+    setLoading(true); setErr(''); setMsg('');
+    const r = await postExamBackend('examReviewInbox', { cod_grupo:g, queue:'NEEDS_ACTION', limit:120 });
+    setLoading(false);
+    if (r && r.ok) {
+      setRows(Array.isArray(r.rows) ? r.rows : []);
+      setSummary(r.summary || null);
+      setMsg(`Backend real consultado · ${r.total || 0} registro(s).`);
+    } else {
+      setRows([]); setSummary(null);
+      setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja real de revisiones.');
+    }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [grupo]);
+
+  const counts = summary || {};
   return (
     <div className="tchwrap">
       <div className="tch-head">
         <div>
-          <div className="tch-kicker">BANDEJA DE REVISIÓN · B1 / B2 / I1 / I2 · pruebas oficiales</div>
-          <h2 className="tch-title">Exámenes por revisar</h2>
+          <div className="tch-kicker">BANDEJA REAL · EXÁMENES ESCRITOS · GRUPO DOCENTE</div>
+          <h2 className="tch-title">Exámenes escritos por revisar</h2>
+          <div className="tch-subline">Sin datos demo. Esta vista consulta únicamente el backend y el grupo autorizado del docente.</div>
         </div>
         <div className="tch-stats">
-          <div className="tch-stat"><b>{counts.pendiente||0}</b><span>pendientes</span></div>
-          <div className="tch-stat"><b>{INBOX.length}</b><span>entregas</span></div>
+          <div className="tch-stat"><b>{counts.needs_action || rows.length || 0}</b><span>requieren acción</span></div>
+          <div className="tch-stat"><b>{counts.pushed || 0}</b><span>en Mis Notas</span></div>
         </div>
       </div>
-      <div className="tch-note"><b>Vista docente de revisión visual.</b> Esta bandeja usa entregas de demostración para validar interfaz y corrección preliminar. No consulta estudiantes reales, no guarda borradores y no envía notas a <b>Mis Notas</b>.</div>
-      <TeacherBackendReviewPanel />
+
+      <div className="tch-note"><b>Vista real de docente.</b> Si no aparecen entregas, no se inventan estudiantes ni exámenes de demostración. La revisión escrita se habilita solo con intentos reales enviados.</div>
+
+      <div className="tch-realbox always-open">
+        <div className="tch-realbox-b">
+          <div className="tch-realrow">
+            {grupos.length > 1 ? (
+              <select value={grupo} onChange={e=>setGrupo(e.target.value)}>
+                {grupos.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            ) : (
+              <input value={grupo || 'Sin grupo asignado'} readOnly />
+            )}
+            <button className="btn-sm" disabled={loading || !grupo} onClick={load}>{loading ? 'Consultando…' : 'Recargar'}</button>
+          </div>
+          {msg && <div className="ex-okmsg">✓ {msg}</div>}
+          {err && <div className="ex-errmsg">⚠ {err}</div>}
+        </div>
+      </div>
+
       <table className="tch-table">
-        <thead><tr><th>Estudiante</th><th>Grupo</th><th>Opción</th><th>Enviado</th><th>Tiempo</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Estudiante</th><th>Grupo</th><th>Examen</th><th>Intento</th><th>Estado revisión</th><th>Mis Notas</th></tr></thead>
         <tbody>
-          {INBOX.map((s, i) => {
-            const est = ESTADOS[s.estado];
-            return (
-              <tr key={i} className={s.pendiente?'row-pend':''}>
-                <td><b>{s.estudiante}</b><span className="tch-code">{s.codigo}</span></td>
-                <td>{s.grupo}</td>
-                <td><span className={`mini-opt opt-${s.opcion}`}>{s.opcion}</span></td>
-                <td>{s.enviado}</td>
-                <td>{s.tiempo}</td>
-                <td><span className="tch-pill" style={{ color:est.c, background:est.bg }}>{est.t}</span></td>
-                <td>
-                  {s.pendiente
-                    ? <span className="tch-stub">Opción B pendiente</span>
-                    : s.stub
-                      ? <span className="tch-stub">demo: 1 examen</span>
-                      : <button className="btn-sm" onClick={()=>onOpen(i)}>Revisar →</button>}
-                </td>
-              </tr>
-            );
-          })}
+          {!rows.length && <tr><td colSpan="6"><div className="actempty">No hay entregas reales pendientes para este grupo.</div></td></tr>}
+          {rows.map((r, i) => (
+            <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>
+              <td><b>{r.NOMBRE || r.CODIGO || '—'}</b><span className="tch-code">{r.CODIGO || r.COD_ESTUDIANTE || '—'}</span></td>
+              <td>{r.COD_GRUPO || grupo}</td>
+              <td>{r.NIVEL || '—'} · {r.EXAM_ID || r.TEST_CODE || r.LECCION || '—'}</td>
+              <td>{r.ATTEMPT_STATUS || r.STATUS || r.bucket || '—'}</td>
+              <td><span className="tch-pill">{r.REVIEW_STATUS || 'SIN_REVISIÓN'}</span></td>
+              <td>{String(r.PUSHED_TO_NOTAS || '').toUpperCase() === 'SI' ? 'Enviado' : 'Pendiente'}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

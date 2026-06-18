@@ -29,6 +29,7 @@ const NIVEL_COLOR_CG  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50'
 const NIVEL_LABEL_CG  = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_OFFSET    = { B1:0, B2:32, I1:64, I2:96 };
 
+// CALGRUPO_F64_20260618_DOCENTE_CRONOGRAMA_GRUPO_PROPIO
 // CALGRUPO_F52_20260617_FIX_STUDENT_CRONOGRAMA_UNLOCK_RACE
 function normalizarNivelCG(n) {
   const s = String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
@@ -161,6 +162,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const esAdmin    = rol === 'admin' || rol === 'superadmin';
   const esSuperadmin = rol === 'superadmin';
   const esStudent  = rol === 'student';
+  const esTeacher  = rol === 'teacher';
 
   // ── PASO A: lista de grupos REALES del backend (getGruposActivos) ─────
   // Reemplaza la antigua constante hardcodeada GRUPOS_DISPONIBLES.
@@ -176,34 +178,45 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     // (endpoint administrativo → no_autorizado). Usa únicamente su propio grupo
     // de la sesión y lo describe con getGrupoInfo (endpoint permitido al
     // estudiante). Así no se consultan todos los grupos ni datos de otros.
-    if (esStudent) {
-      const miGrupo = usr?.grupo || usr?.grupoActivo
-        || (Array.isArray(usr?.grupos) ? usr.grupos[0] : '') || '';
-      if (!miGrupo) {
-        setErrorGrupos('No se pudo cargar el calendario del grupo. Contactá a la administración.');
+    if (esStudent || esTeacher) {
+      const rawGroups = [];
+      if (usr?.grupo) rawGroups.push(usr.grupo);
+      if (usr?.grupoActivo) rawGroups.push(usr.grupoActivo);
+      if (usr?.cod_grupo) rawGroups.push(usr.cod_grupo);
+      if (Array.isArray(usr?.grupos)) {
+        usr.grupos.forEach(g => rawGroups.push(typeof g === 'string' ? g : (g?.grupo || g?.cod_grupo || g?.codigo || g?.code || '')));
+      }
+      const propios = [...new Set(rawGroups.map(g => String(g || '').trim()).filter(Boolean))];
+      if (!propios.length) {
+        setErrorGrupos(esTeacher
+          ? 'Tu usuario docente no tiene grupo asignado. Pedí a administración revisar la columna de grupo del usuario.'
+          : 'No se pudo cargar el calendario del grupo. Contactá a la administración.');
         setLoadingGrupos(false);
         return Promise.resolve();
       }
-      return postCronoGrupo('getGrupoInfo', { cod_grupo: miGrupo })
-        .then(d => {
-          if (d?.ok) {
+      return Promise.all(propios.map(miGrupo =>
+        postCronoGrupo('getGrupoInfo', { cod_grupo: miGrupo })
+          .then(d => {
+            if (!d?.ok) return { code: miGrupo, error: d?.error || 'no_disponible' };
             const nivelId = String(d.nivelId || d.levelId || usr?.nivel_activo || 'B1').toUpperCase();
-            setGruposReales([{
+            return {
               code: miGrupo,
               nivelId,
               nivel: NIVEL_LABEL_CG[nivelId] || nivelId,
-              docente: d.docente || d.teacherName || '—',
+              docente: d.docente || d.teacherName || usr?.nombre || '—',
               dias: d.dias || '',
               programa: d.programa || usr?.programa || 'SIN_INA',
               lecciones: Array.isArray(d.lecciones) ? d.lecciones : [],
-            }]);
-          } else {
-            // Nunca exponemos "no_autorizado" crudo al estudiante.
-            setErrorGrupos('No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.');
-          }
-        })
-        .catch(() => setErrorGrupos('No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.'))
-        .finally(() => setLoadingGrupos(false));
+            };
+          })
+          .catch(() => ({ code: miGrupo, error: 'conexion' }))
+      )).then(items => {
+        const okItems = items.filter(x => x && !x.error);
+        if (okItems.length) setGruposReales(okItems);
+        else setErrorGrupos(esTeacher
+          ? 'No pudimos cargar tus grupos asignados. Revisá que el grupo de tu usuario coincida exactamente con CALENDARIO_LECCIONES.'
+          : 'No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.');
+      }).finally(() => setLoadingGrupos(false));
     }
 
     return postCronoGrupo('getGruposActivos')

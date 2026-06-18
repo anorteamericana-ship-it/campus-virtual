@@ -125,8 +125,8 @@ function ExamenesTeacherPanel() {
       view="teacher"
       screenLabel="Docente · Exámenes"
       eyebrow="Panel docente seguro"
-      description="Vista profesor integrada sin acceso a administrador ni preview. Guardado de revisiones y notas queda pendiente de backend."
-      badge="Vista docente · sin notas reales"
+      description="Vista profesor integrada con backend real por grupo propio. Sin datos demo ni acceso administrador."
+      badge="Vista docente · backend real"
       iframeTitle="Panel docente de exámenes"
     />
   );
