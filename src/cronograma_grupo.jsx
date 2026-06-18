@@ -1,3 +1,4 @@
+// CALGRUPO_F73_20260618_AGENDA_DOCENTE_PANEL_FIJO_COLOR_CIERRE
 // CALGRUPO_F71_20260618_AGENDA_DOCENTE_SIN_SELECTOR_COMPACTA
 // CALGRUPO_F70_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
 // CALGRUPO_F68_20260618_AGENDA_DOCENTE_CUATRIMESTRE_COMPACTA
@@ -685,6 +686,28 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   const metaSeleccionada = gruposReales.find(g => g.code === codGrupoSeleccionado || g.cod_grupo === codGrupoSeleccionado) || meta;
   const nivelColorSeleccionado = NIVEL_COLOR_CG[nivelSeleccionado] || NIVEL_COLOR_CG.B1;
 
+  // CALGRUPO_F73_20260618_CIERRE_ASISTENCIA_REFRESCO_INMEDIATO
+  // Al guardar/cerrar asistencia no podemos esperar a que el docente recargue.
+  // Marcamos la lección localmente como CERRADA en la agenda y en el panel para
+  // que el color cambie al instante, igual que en el tablero superadmin.
+  const marcarLeccionCerradaLocal = React.useCallback((lecBase) => {
+    if (!lecBase) return;
+    const cod = String(lecBase.cod_grupo || codGrupoSeleccionado || '').trim();
+    const niv = normalizarNivelCG(lecBase.nivel || nivelSeleccionado || nivel);
+    const num = Number(lecBase.leccion);
+    const matches = (x) => {
+      if (!x) return false;
+      return String(x.cod_grupo || codGrupoSeleccionado || '').trim() === cod
+        && normalizarNivelCG(x.nivel || niv) === niv
+        && Number(x.leccion) === num
+        && String(x.fecha || '') === String(lecBase.fecha || '');
+    };
+    const closeOne = (x) => matches(x) ? { ...x, estado:'CERRADA', asistencia_guardada:true } : x;
+    setAgendaLecciones(prev => Array.isArray(prev) ? prev.map(closeOne) : prev);
+    setLecciones(prev => Array.isArray(prev) ? prev.map(closeOne) : prev);
+    setSelLec(prev => matches(prev) ? { ...prev, estado:'CERRADA', asistencia_guardada:true } : prev);
+  }, [codGrupoSeleccionado, nivelSeleccionado, nivel]);
+
   // ── Early states: grupos cargando o caídos ───────────────────────────
   // Todos los hooks arriba ya corrieron; estos returns son seguros.
   if (loadingGrupos) {
@@ -904,17 +927,28 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div style={{
+        // CALGRUPO_F73_20260618_DOS_ZONAS_SCROLL_INDEPENDIENTE
+        // Agenda docente profesional: calendario y detalle no comparten scroll.
+        // El panel derecho queda visible para leer material y accionar asistencia
+        // sin bajar zoom.
         display:'grid',
-        gridTemplateColumns: agendaDocenteMode ? 'minmax(0, 1fr) minmax(330px, 360px)' : 'minmax(0, 1fr) 340px',
-        gap: agendaDocenteMode ? 14 : 18,
+        gridTemplateColumns: agendaDocenteMode ? 'minmax(0, 1fr) minmax(360px, 400px)' : 'minmax(0, 1fr) 340px',
+        gap: agendaDocenteMode ? 12 : 18,
         marginTop:6,
-        alignItems: agendaDocenteMode ? 'stretch' : 'start',
-        height: agendaDocenteMode ? 'calc(100vh - 250px)' : 'auto',
-        minHeight: agendaDocenteMode ? 540 : undefined,
-        maxHeight: agendaDocenteMode ? 'calc(100vh - 250px)' : undefined,
+        alignItems:'stretch',
+        height: agendaDocenteMode ? 'calc(100dvh - 225px)' : 'auto',
+        minHeight: agendaDocenteMode ? 520 : undefined,
+        maxHeight: agendaDocenteMode ? 'calc(100dvh - 225px)' : undefined,
         overflow: agendaDocenteMode ? 'hidden' : 'visible',
       }}>
-        <div style={{ minWidth:0, minHeight:0, height: agendaDocenteMode ? '100%' : 'auto', overflowY: agendaDocenteMode ? 'auto' : 'visible', paddingRight: agendaDocenteMode ? 6 : 0 }}>
+        <div style={{
+          minWidth:0, minHeight:0, height: agendaDocenteMode ? '100%' : 'auto',
+          overflowY: agendaDocenteMode ? 'auto' : 'visible',
+          overflowX:'hidden',
+          paddingRight: agendaDocenteMode ? 8 : 0,
+          borderRadius: agendaDocenteMode ? 'var(--r-lg)' : undefined,
+          scrollbarGutter: agendaDocenteMode ? 'stable' : undefined,
+        }}>
           {loadingVista ? (
             <div className="card" style={{ padding:18 }}><SkeletonMeses /></div>
           ) : !leccionesVista.length ? (
@@ -1013,9 +1047,13 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           registradoPor={usr?.nombre || metaSeleccionada.docente || ''}
           onClose={() => setModalCierreAsistencia(null)}
           onSuccess={(res) => {
+            const cerrada = modalCierreAsistencia.selLec;
             setModalCierreAsistencia(null);
+            marcarLeccionCerradaLocal(cerrada);
             showToast(`Asistencia guardada ✓ · ${res?.asistencia?.presentes ?? 0} presentes, ${res?.asistencia?.ausentes ?? 0} ausentes`, 'ok');
-            cargar();
+            // En vista docente unificada el cierre se refleja localmente de inmediato;
+            // en vistas no-docente seguimos refrescando la fuente normal.
+            if (!agendaDocenteMode) cargar();
           }}
           onSolicitudEnviada={(mensaje) => showToast(mensaje || 'Solicitud de suspensión enviada', 'ok')}
         />
@@ -1513,7 +1551,7 @@ function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVi
   const visibles = (meses || []).slice(0, Math.max(1, Number(mesesVista) || 1));
   const cols = Number(mesesVista) >= 2 ? 'repeat(2, minmax(230px, 1fr))' : 'minmax(0, 720px)';
   return (
-    <div className="card" style={{ padding: agenda ? 6 : 18 }}>
+    <div className="card" style={{ padding: agenda ? 8 : 18, background: agenda ? '#FBF7EF' : undefined, borderColor: agenda ? '#E6DCCB' : undefined }}>
       <div style={{
         display:'grid', gridTemplateColumns: cols,
         gap: agenda ? 10 : 14, justifyContent:'stretch', alignItems:'start', overflowX:'visible',
@@ -1579,7 +1617,7 @@ function AgendaDocenteResumenF72({ grupos, filtro, onFiltro, lecciones, stats, l
         <div style={{ minWidth:220 }}>
           <div style={{ ...labelStyle, marginBottom:4 }}>Agenda docente · grupos en curso</div>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:600, color:'var(--ink)', letterSpacing:'-0.02em' }}>
-            {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} · ${totalLecciones || 0} lecciones`}
+            {loading ? 'Cargando agenda…' : `${(grupos || []).length} horario${(grupos || []).length === 1 ? '' : 's'} activos · ${totalLecciones || 0} lecciones`}
           </div>
           {error && <div style={{ marginTop:4, fontSize:11, color:'#9A6A00' }}>⚠ {error}</div>}
         </div>
@@ -1726,6 +1764,7 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
     <div style={{
       border:'1px solid var(--line)', borderRadius:'var(--r-md)',
       background:'var(--surface)', overflow:'hidden',
+      boxShadow: compacto ? '0 1px 0 rgba(11,31,58,.04)' : undefined,
     }}>
       {/* Header del mes */}
       <div style={{
@@ -1781,7 +1820,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   if (!lecs.length) {
     return (
       <div style={{
-        minHeight: compacto ? 54 : (agenda ? 72 : 86), padding: compacto ? '3px 4px' : '7px 7px',
+        minHeight: compacto ? 48 : (agenda ? 64 : 86), padding: compacto ? '3px 4px' : '7px 7px',
         background:'var(--bg-deep)', borderRadius:6,
         opacity: esFinde ? 0.6 : 1,
       }}>
@@ -1795,7 +1834,7 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
   // 1 o 2 lecciones (caso SA)
   return (
     <div style={{
-      minHeight: compacto ? 54 : (agenda ? 72 : 86),
+      minHeight: compacto ? 48 : (agenda ? 64 : 86),
       display:'grid',
       gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(18px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(38px, auto))` : 'minmax(58px, auto)'),
       gap: compacto ? 1 : 2,
@@ -1823,9 +1862,10 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
       onClick={onClick}
       style={{
         background: pal.bg,
-        border: `1.5px solid ${selected ? pal.accent : (isHoy ? '#F57F17' : 'transparent')}`,
+        border: `1px solid ${selected ? pal.accent : (isHoy ? '#F57F17' : pal.accent + '33')}`,
+        borderLeft: `4px solid ${pal.accent}`,
         borderRadius: compacto ? 6 : 8,
-        padding: compacto ? '4px 5px' : '7px 8px',
+        padding: compacto ? '4px 5px 4px 6px' : '7px 8px',
         cursor: 'pointer',
         display:'flex', flexDirection:'column', justifyContent:'space-between',
         minHeight: 0,
@@ -1868,7 +1908,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
         ) : (
           <>
             <div style={{
-              fontSize: agenda ? (compacto ? 10.5 : 11.5) : 12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
+              fontSize: agenda ? (compacto ? 10.8 : 11.8) : 12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
               lineHeight:1.05,
             }}>
               Lec {String(lec.leccion).padStart(2,'0')}{agenda ? ' ' + (lec.grupoSuffix || ('-' + cgUltimoCodigoGrupo(lec.cod_grupo || ''))) : ''}
@@ -1902,19 +1942,27 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
 // ─────────────────────────────────────────────────────────────────────────
 function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, grupoLabel, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onAbrirAsistencia, onCerrar, onRecargar, onNavigate }) {
   return (
-    <div style={{ position: agendaDocente ? 'relative' : 'sticky', top: agendaDocente ? 0 : 12, height: agendaDocente ? '100%' : 'auto', maxHeight: agendaDocente ? '100%' : 'calc(100vh - 24px)', overflowY:'auto', paddingRight:6, display:'flex', flexDirection:'column', gap:10 }}>
+    <div style={{
+      // CALGRUPO_F73_20260618_PANEL_DETALLE_FIJO_VISIBLE
+      position:'sticky', top: agendaDocente ? 0 : 12,
+      height: agendaDocente ? '100%' : 'auto',
+      maxHeight: agendaDocente ? '100%' : 'calc(100vh - 24px)',
+      overflowY:'auto', overflowX:'hidden', paddingRight:6,
+      display:'flex', flexDirection:'column', gap:10,
+      scrollbarGutter:'stable',
+    }}>
 
       {/* Resumen del nivel */}
-      <div className="card" style={{ padding:16, overflow:'hidden', position:'relative' }}>
+      <div className="card" style={{ padding: agendaDocente ? 11 : 16, overflow:'hidden', position:'relative' }}>
         <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:nivelColor }} />
         <div style={{ marginTop:4 }}>
           <div style={labelStyle}>Nivel activo</div>
           <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
             <span style={{
-              fontFamily:'var(--f-mono)', fontSize:22, fontWeight:700, color:nivelColor,
+              fontFamily:'var(--f-mono)', fontSize: agendaDocente ? 18 : 22, fontWeight:700, color:nivelColor,
             }}>{nivel}</span>
             <span style={{
-              fontFamily:'var(--f-serif)', fontWeight:500, fontSize:15,
+              fontFamily:'var(--f-serif)', fontWeight:500, fontSize: agendaDocente ? 13 : 15,
               color:'var(--ink)', letterSpacing:'-0.015em',
             }}>{NIVEL_LABEL_CG[nivel]}</span>
             {bloqueado && (
@@ -1936,7 +1984,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
         </div>
         <div style={{
           display:'grid', gridTemplateColumns:'repeat(3, 1fr)',
-          gap:6, marginTop:12, textAlign:'center',
+          gap:6, marginTop: agendaDocente ? 8 : 12, textAlign:'center',
         }}>
           <MiniStat n={stats.cerradas + stats.hoy} l="dadas" c="#2E7D32" />
           <MiniStat n={stats.feriados}             l="feriados" c="#C67100" />
@@ -2062,7 +2110,13 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         )}
 
         {!isFeriado && !bloqueado && (rol === 'teacher' || esAdmin) && (
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12, alignItems:'center' }}>
+          <div style={{
+            // Acciones siempre visibles arriba del material.
+            display:'flex', gap:8, flexWrap:'wrap', marginTop:12, alignItems:'center',
+            position:'sticky', top:0, zIndex:5,
+            background:'#FFFFFFEE', backdropFilter:'blur(6px)',
+            padding:'8px 0 10px', borderBottom:'1px solid var(--line)',
+          }}>
             <button type="button" onClick={onAbrirAsistencia} style={{
               display:'inline-flex', alignItems:'center', gap:7,
               padding:'9px 13px', border:'none', borderRadius:'var(--r-md)',
