@@ -2,6 +2,7 @@
 // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_FRONTEND
 // CALGRUPO_F61_20260618_REPARADOR_ESTRUCTURAL_SEGURO_FRONTEND
 // CALGRUPO_F60_20260618_DIAGNOSTICO_INTERNO_FRONTEND_LABELS
+// CALGRUPO_F62_20260618_DIAGNOSTICO_OPERATIVO_NO_BLOQUEAR_CAMPUS_POR_ALERTAS_ACADEMICAS_UI
 
 const SCRIPT_URL_DIAG = window.APPS_SCRIPT_URL;
 
@@ -201,7 +202,7 @@ function DiagnosticoInternoView() {
     setReviewLoading(true);
     setError('');
     try {
-      const resp = await postDiagnosticoInterno('revisionAcademicaAsistidaF61', {});
+      const resp = await postDiagnosticoInterno('revisionAcademicaAsistidaF62', {});
       if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo cargar revisión F61.');
       setReviewF61(resp);
     } catch (e) {
@@ -248,13 +249,13 @@ function DiagnosticoInternoView() {
   return (
     <div data-screen-label="Admin · Diagnóstico interno avanzado" style={{ padding: 22, maxWidth: 1360, margin: '0 auto' }}>
       <PageHeader
-        kicker="Sistema · F61"
+        kicker="Sistema · F62"
         title="Diagnóstico interno avanzado"
-        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. F61 agrega reparación segura de logs y revisión académica asistida: certificados, cronograma, exámenes, notas, cierre académico y seguimiento."
+        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. F62 separa bloqueos técnicos de bloqueos académicos por área: certificados, cronograma, exámenes, notas, cierre académico y seguimiento."
         right={
           <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
             <button type="button" onClick={ejecutarReparacionF61} disabled={repairLoading} className="btn" style={{ padding:'9px 14px' }}>{repairLoading ? 'Reparando…' : 'Crear logs F61'}</button>
-            <button type="button" onClick={() => { setTab('f61'); cargarRevisionF61(); }} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>{reviewLoading ? 'Cargando…' : 'Revisión F61'}</button>
+            <button type="button" onClick={() => { setTab('f61'); cargarRevisionF61(); }} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>{reviewLoading ? 'Cargando…' : 'Revisión F62'}</button>
             <button type="button" onClick={copiarResumen} disabled={!data} className="btn" style={{ padding:'9px 14px' }}>Copiar resumen</button>
             <button type="button" onClick={cargar} disabled={loading} className="btn btn-primary" style={{ padding:'9px 16px' }}>{loading ? 'Diagnosticando…' : 'Ejecutar diagnóstico'}</button>
           </div>
@@ -267,17 +268,18 @@ function DiagnosticoInternoView() {
         </div>
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(6, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
         <DiagCard title="Estado general" value={resumen.estado_label || (loading ? '...' : '—')} status={estado} sub={data?.version || 'Backend no consultado'} />
         <DiagCard title="OK" value={ok || '0'} status="ok" sub="Controles listos" onClick={() => setTab('resumen')} />
         <DiagCard title="Revisar" value={advertencias || '0'} status={advertencias ? 'warn' : 'ok'} sub="Advertencias no bloqueantes" onClick={() => setTab('avanzado')} />
-        <DiagCard title="Crítico" value={criticos || '0'} status={criticos ? 'error' : 'ok'} sub="Puede bloquear operación" onClick={() => setTab('recomendaciones')} />
-        <DiagCard title="Avanzado" value={resumen.avanzado_ok ? 'Listo' : 'Revisar'} status={resumen.avanzado_ok ? 'ok' : (resumen.avanzado_error ? 'error' : 'warn')} sub={`${avanzado.length || 0} controles operativos`} onClick={() => setTab('avanzado')} />
+        <DiagCard title="Críticos técnicos" value={criticos || '0'} status={criticos ? 'error' : 'ok'} sub="Bloquean producción general" onClick={() => setTab('recomendaciones')} />
+        <DiagCard title="Certificados" value={resumen.certificados_bloqueados ? 'Bloqueados' : 'Listos'} status={resumen.certificados_bloqueados ? 'warn' : 'ok'} sub="Bloqueo por área, no campus completo" onClick={() => setTab('f61')} />
+        <DiagCard title="Avanzado" value={resumen.avanzado_ok ? 'Listo' : 'Revisar'} status={resumen.avanzado_ok ? 'ok' : (resumen.avanzado_error ? 'error' : 'warn')} sub={`${avanzado.length || 0} controles · bloqueos académicos: ${resumen.bloqueos_academicos || 0}`} onClick={() => setTab('avanzado')} />
       </div>
 
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom: 16 }}>
         {[
-          ['resumen','Resumen'], ['f61','F61 limpieza segura'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
+          ['resumen','Resumen'], ['f61','F61/F62 limpieza segura'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
         ].map(([id,label]) => (
           <button key={id} type="button" onClick={() => setTab(id)} style={{
             padding:'8px 12px', borderRadius:999, border:'1px solid var(--line)', cursor:'pointer',
@@ -313,7 +315,7 @@ function DiagnosticoInternoView() {
 
 
       {tab === 'f61' && (
-        <DiagSection title="F61 · reparación segura y revisión asistida" sub="Crea únicamente hojas/logs faltantes. Las alertas académicas se muestran para revisión humana, sin arreglos automáticos peligrosos.">
+        <DiagSection title="F61/F62 · reparación segura y revisión asistida" sub="Crea únicamente hojas/logs faltantes. F62 separa bloqueos técnicos de bloqueos académicos por área, sin arreglos automáticos peligrosos.">
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div style={{ padding:14, border:'1px solid var(--line)', borderRadius:14, background:'color-mix(in srgb, var(--an-gold) 5%, white)' }}>
               <div style={{ fontWeight:900, color:'var(--an-navy-ink)', marginBottom:6 }}>Reparación estructural segura</div>
@@ -337,12 +339,12 @@ function DiagnosticoInternoView() {
             <div style={{ padding:14, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface)' }}>
               <div style={{ fontWeight:900, color:'var(--an-navy-ink)', marginBottom:6 }}>Revisión académica asistida</div>
               <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>
-                Agrupa certificados duplicados, APR/CNV sin registro, cronogramas sin CA y exámenes sin activación. Solo lectura.
+                Agrupa certificados duplicados, APR/CNV sin registro, cronogramas sin CA y exámenes sin activación. Solo lectura; certificados duplicados bloquean certificados, no todo el campus.
               </div>
               <button type="button" onClick={cargarRevisionF61} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>
                 {reviewLoading ? 'Cargando…' : 'Cargar revisión académica'}
               </button>
-              {reviewF61 && <div style={{ marginTop:12 }}><DiagBadge status={reviewF61.decision === 'REVISAR_CRITICOS' ? 'error' : (reviewF61.pendientes_total ? 'warn' : 'ok')}>{reviewF61.decision}</DiagBadge> <span style={{ fontSize:13, color:'var(--ink-3)' }}>{reviewF61.pendientes_total || 0} pendientes</span></div>}
+              {reviewF61 && <div style={{ marginTop:12 }}><DiagBadge status={(reviewF61.decision || '').includes('CRITICOS') ? 'error' : (reviewF61.pendientes_total ? 'warn' : 'ok')}>{reviewF61.decision}</DiagBadge> <span style={{ fontSize:13, color:'var(--ink-3)' }}>{reviewF61.pendientes_total || 0} pendientes</span>{reviewF61.nota_f62 && <div style={{ marginTop:6, fontSize:12, color:'var(--ink-3)' }}>{reviewF61.nota_f62}</div>}</div>}
             </div>
           </div>
           {reviewF61 && (
