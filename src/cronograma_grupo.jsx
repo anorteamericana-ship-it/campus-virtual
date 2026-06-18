@@ -3,7 +3,7 @@
 // CALGRUPO_F3_20260616_MES_INDIVIDUAL_CASILLAS_AMPLIAS
 // Lee CALENDARIO_LECCIONES vía Apps Script.
 // Roles: student / teacher / admin / superadmin
-// • student / teacher → grupo fijo (sessionStorage.an_usuario.grupo)
+// • student → grupo fijo de sesión; teacher → grupos actuales desde APOLLO.GRUPOS.DOCENTE
 // • admin / superadmin → selector de grupo
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
@@ -178,7 +178,41 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     // (endpoint administrativo → no_autorizado). Usa únicamente su propio grupo
     // de la sesión y lo describe con getGrupoInfo (endpoint permitido al
     // estudiante). Así no se consultan todos los grupos ni datos de otros.
-    if (esStudent || esTeacher) {
+    // CALGRUPO_F65_20260618_CRONOGRAMA_DOCENTE_DESDE_GRUPOS
+    // Teacher no usa USUARIOS.GRUPO como fuente de verdad. USUARIOS solo identifica
+    // al docente; los grupos/niveles vigentes se resuelven desde APOLLO.GRUPOS.DOCENTE.
+    if (esTeacher) {
+      return postCronoGrupo('getDocenteGruposActuales', {})
+        .then(d => {
+          if (d?.ok && Array.isArray(d.grupos) && d.grupos.length) {
+            const mapped = d.grupos.map(g => {
+              const nivelId = String(g.nivelId || g.levelId || g.nivel || 'B1').toUpperCase();
+              return {
+                code: g.code || g.cod_grupo,
+                nivelId,
+                nivel: NIVEL_LABEL_CG[nivelId] || g.nivel || nivelId,
+                docente: g.docente || g.teacherName || usr?.nombre || '—',
+                dias: g.dias || g.diasCode || '',
+                hora: g.hora || '',
+                programa: g.programa || usr?.programa || 'SIN_INA',
+                comentario_calculado: g.comentario_calculado || '',
+                estado_calculado: g.estado_calculado || '',
+                source: g.source || 'GRUPOS_F65',
+                lecciones: Array.isArray(g.lecciones) ? g.lecciones : [],
+              };
+            }).filter(g => g.code);
+            setGruposReales(mapped);
+            if (d.mensaje && !mapped.length) setErrorGrupos(d.mensaje);
+          } else {
+            setGruposReales([]);
+            setErrorGrupos(d?.mensaje || d?.error || 'No hay grupos en curso o proyectados para este docente según APOLLO.GRUPOS. Revisá columna DOCENTE y fechas de inicio.');
+          }
+        })
+        .catch(e => setErrorGrupos('Error de conexión cargando grupos docentes desde GRUPOS: ' + (e?.message || e)))
+        .finally(() => setLoadingGrupos(false));
+    }
+
+    if (esStudent) {
       const rawGroups = [];
       if (usr?.grupo) rawGroups.push(usr.grupo);
       if (usr?.grupoActivo) rawGroups.push(usr.grupoActivo);
@@ -188,9 +222,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       }
       const propios = [...new Set(rawGroups.map(g => String(g || '').trim()).filter(Boolean))];
       if (!propios.length) {
-        setErrorGrupos(esTeacher
-          ? 'Tu usuario docente no tiene grupo asignado. Pedí a administración revisar la columna de grupo del usuario.'
-          : 'No se pudo cargar el calendario del grupo. Contactá a la administración.');
+        setErrorGrupos('No se pudo cargar el calendario del grupo. Contactá a la administración.');
         setLoadingGrupos(false);
         return Promise.resolve();
       }
@@ -213,9 +245,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       )).then(items => {
         const okItems = items.filter(x => x && !x.error);
         if (okItems.length) setGruposReales(okItems);
-        else setErrorGrupos(esTeacher
-          ? 'No pudimos cargar tus grupos asignados. Revisá que el grupo de tu usuario coincida exactamente con CALENDARIO_LECCIONES.'
-          : 'No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.');
+        else setErrorGrupos('No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.');
       }).finally(() => setLoadingGrupos(false));
     }
 
@@ -229,7 +259,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       })
       .catch(e => setErrorGrupos('Error de red: ' + (e?.message || e)))
       .finally(() => setLoadingGrupos(false));
-  }, [esStudent, usr]);
+  }, [esStudent, esTeacher, usr]);
 
   React.useEffect(() => { cargarGrupos(); }, [cargarGrupos]);
 
@@ -243,7 +273,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       return;
     }
     if (codGrupo || !gruposReales.length) return;
-    const usrGrupoOk = usr?.grupo && gruposReales.some(g => g.code === usr.grupo);
+    const usrGrupoOk = !esTeacher && usr?.grupo && gruposReales.some(g => g.code === usr.grupo);
     setCodGrupo(usrGrupoOk ? usr.grupo : gruposReales[0].code);
   }, [gruposReales, codGrupo, esAdmin, usr]);
 
