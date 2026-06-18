@@ -1,4 +1,5 @@
 /* global React, ReactDOM, window */
+// CALGRUPO_F55_20260618_INSCRIPCION_CONFIG_PUBLIC_FRONTEND
 /* ============================================================================
    Inscripción pública — Academia Norteamericana · Campus Virtual
    Flujo de 2 páginas. Sin login. Accesible desde "Registrarse" en login.html.
@@ -506,7 +507,7 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 2 — PROGRAMA Y FINANCIAMIENTO
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, asesores }) {
+function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, asesores, insConfig }) {
   const esNacional = form.idTipo === 'nac'; // requerido por ProgramCard locked={!esNacional}
   const [loadingGrupos, setLoadingGrupos] = useState(false);
   const [gruposError, setGruposError] = useState(false);
@@ -556,8 +557,8 @@ function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, ase
     <div className="ins-body">
       <div className="p2-head">
         <button className="back-btn" onClick={onBack}><Ico d={I.back} size={16} /> Atrás · Datos personales</button>
-        <div className="p2-title">Programa y horario</div>
-        <div className="p2-sub">Elegí tu programa y el horario que mejor se adapte a tus metas.</div>
+        <div className="p2-title">{insCfgText(insConfig, 'programa_titulo', 'Programa y horario')}</div>
+        <div className="p2-sub">{insCfgText(insConfig, 'programa_subtitulo', 'Elegí tu programa y el horario que mejor se adapte a tus metas.')}</div>
       </div>
 
       <div id="fld-programa">
@@ -565,17 +566,17 @@ function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, ase
           <ProgramCard
             tipo="ina" selected={form.programa==='ina'} locked={!esNacional}
             onSelect={t => set('programa', t)}
-            img={IMG_INA} fallbackBg="linear-gradient(135deg, #1a2547, #2B7FC1)" fallbackText="Programa INA Acreditado"
-            badge="Financiable con CONAPE" badgeColor="green"
-            name="Programa INA Acreditado"
-            bullets={['Certificado avalado por INA','Financiable con CONAPE','4 niveles · 128h por nivel']} />
+            img={insCfgImg(insConfig, 'ina', IMG_INA)} fallbackBg="linear-gradient(135deg, #1a2547, #2B7FC1)" fallbackText="Programa INA Acreditado"
+            badge={insCfgText(insConfig, 'ina_badge', 'Financiable con CONAPE')} badgeColor="green"
+            name={insCfgText(insConfig, 'ina_nombre', 'Programa INA Acreditado')}
+            bullets={linesCfg(insCfgText(insConfig, 'ina_bullets', ''), ['Certificado avalado por INA','Financiable con CONAPE','4 niveles · 128h por nivel'])} />
           <ProgramCard
             tipo="sin_ina" selected={form.programa==='sin_ina'} locked={false}
             onSelect={t => set('programa', t)}
-            img={IMG_LIBRE} fallbackBg="linear-gradient(135deg, #2B7FC1, #1a2547)" fallbackText="Programa SIN acreditación"
-            badge="Flexible y accesible" badgeColor="blue"
-            name="Programa SIN acreditación"
-            bullets={['Certificado propio de la academia','Disponible para todos los tipos de ID','4 niveles · 96h por nivel']} />
+            img={insCfgImg(insConfig, 'libre', IMG_LIBRE)} fallbackBg="linear-gradient(135deg, #2B7FC1, #1a2547)" fallbackText="Programa SIN acreditación"
+            badge={insCfgText(insConfig, 'libre_badge', 'Flexible y accesible')} badgeColor="blue"
+            name={insCfgText(insConfig, 'libre_nombre', 'Programa SIN acreditación')}
+            bullets={linesCfg(insCfgText(insConfig, 'libre_bullets', ''), ['Certificado propio de la academia','Disponible para todos los tipos de ID','4 niveles · 96h por nivel'])} />
         </div>
         {errors.programa && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.programa}</div>}
       </div>
@@ -586,7 +587,7 @@ function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, ase
           <div className="card" style={{ marginTop:16 }}>
             <div className="sec-head">
               <div className="sec-eyebrow">Horario</div>
-              <div className="sec-title">Seleccioná tu horario</div>
+              <div className="sec-title">{insCfgText(insConfig, 'horario_titulo', 'Seleccioná tu horario')}</div>
             </div>
             <div id="fld-grupo">
               {loadingGrupos ? (
@@ -662,8 +663,14 @@ function Pagina2({ form, set, errors, onBack, onContinue, grupos, setGrupos, ase
 // ─────────────────────────────────────────────────────────────────────────────
 // PÁGINA 3 — FINANCIAMIENTO Y ADICIONALES
 // ─────────────────────────────────────────────────────────────────────────────
-function Pagina3({ form, set, errors, onBack, onSubmit, submitting }) {
+function Pagina3({ form, set, errors, onBack, onSubmit, submitting, grupos, insConfig }) {
   const esNacional = form.idTipo === 'nac';
+  const grupoObj = getGrupoSeleccionado(grupos, form.grupo);
+  const toeicMontoGrupo = getToeicMontoGrupo(grupoObj, insConfig);
+  const toeicDisponibleGrupo = getToeicDisponibleGrupo(grupoObj) && toeicMontoGrupo > 0;
+  useEffect(() => {
+    if (!toeicDisponibleGrupo && form.conapeToeic) set('conapeToeic', false);
+  }, [toeicDisponibleGrupo, form.conapeToeic]);
   const [becasDisp, setBecasDisp] = useState([]);
 
   // Becas disponibles — dinámicas desde CONFIG_BECAS. Solo las visibles + activas
@@ -719,12 +726,12 @@ function Pagina3({ form, set, errors, onBack, onSubmit, submitting }) {
           <div className="fin-stack">
             <FinCard value="CONAPE" selected={form.financiamiento==='CONAPE'} locked={!esNacional}
               onSelect={v => set('financiamiento', v)} icon="🏦"
-              title="Financiamiento CONAPE" badge={esNacional ? 'Disponible para vos' : null}
-              subtitle="Financiá el 100% sin fiador, sin intereses." />
+              title={insCfgText(insConfig, 'conape_titulo', 'Financiamiento CONAPE')} badge={esNacional ? 'Disponible para vos' : null}
+              subtitle={insCfgText(insConfig, 'conape_subtitulo', 'Financiá el 100% sin fiador, sin intereses.')} />
             <FinCard value="PROPIO" selected={form.financiamiento==='PROPIO'}
               onSelect={v => set('financiamiento', v)} icon="💳"
-              title="Pago propio"
-              subtitle="Pagás directamente a la academia." />
+              title={insCfgText(insConfig, 'propio_titulo', 'Pago propio')}
+              subtitle={insCfgText(insConfig, 'propio_subtitulo', 'Pagás directamente a la academia.')} />
           </div>
           {errors.financiamiento && <div className="field-error" style={{marginTop:10}}><Ico d={I.alert} size={13} /> {errors.financiamiento}</div>}
         </div>
@@ -734,21 +741,21 @@ function Pagina3({ form, set, errors, onBack, onSubmit, submitting }) {
           <div className="conape-box reveal">
             {/* Equipo de cómputo */}
             <div className="conape-block">
-              <div className="cb-title">¿Necesitás financiar un equipo de cómputo?</div>
+              <div className="cb-title">{insCfgText(insConfig, 'equipo_titulo', '¿Necesitás financiar un equipo de cómputo?')}</div>
               <div id="fld-conapeEquipo">
                 <div className="equipo-grid">
                   <EquipoCard value="NINGUNO" selected={form.conapeEquipo==='NINGUNO'} simple
                     onSelect={v => set('conapeEquipo', v)} title="No necesito equipo" />
                   <EquipoCard value="BASICO" selected={form.conapeEquipo==='BASICO'}
                     onSelect={v => set('conapeEquipo', v)}
-                    img={IMG_BASICO} fallbackBg="#1a2547" fallbackText="Plan Básico"
-                    title="Plan Básico · ₡319,000"
-                    bullets={['Laptop HP 15"','Core i3 N305 · 8GB RAM · 256GB SSD']} />
+                    img={insCfgImg(insConfig, 'equipo_basico', IMG_BASICO)} fallbackBg="#1a2547" fallbackText="Plan Básico"
+                    title={`${insCfgText(insConfig, 'equipo_basico_titulo', 'Plan Básico')} · ${moneyCR(insCfgPrice(insConfig, 'equipo_basico', 319000))}`}
+                    bullets={linesCfg(insCfgText(insConfig, 'equipo_basico_bullets', ''), ['Laptop HP 15"','Core i3 N305 · 8GB RAM · 256GB SSD'])} />
                   <EquipoCard value="PREMIUM" selected={form.conapeEquipo==='PREMIUM'}
                     onSelect={v => set('conapeEquipo', v)}
-                    img={IMG_PREMIUM} fallbackBg="#2B7FC1" fallbackText="Plan Premium"
-                    title="Plan Premium · ₡360,000"
-                    bullets={['Laptop HP 15"','+ Headset · Mouse · Licencias']} />
+                    img={insCfgImg(insConfig, 'equipo_premium', IMG_PREMIUM)} fallbackBg="#2B7FC1" fallbackText="Plan Premium"
+                    title={`${insCfgText(insConfig, 'equipo_premium_titulo', 'Plan Premium')} · ${moneyCR(insCfgPrice(insConfig, 'equipo_premium', 360000))}`}
+                    bullets={linesCfg(insCfgText(insConfig, 'equipo_premium_bullets', ''), ['Laptop HP 15"','+ Headset · Mouse · Licencias'])} />
                 </div>
                 {errors.conapeEquipo && <div className="field-error" style={{marginTop:8}}><Ico d={I.alert} size={13} /> {errors.conapeEquipo}</div>}
               </div>
@@ -756,12 +763,18 @@ function Pagina3({ form, set, errors, onBack, onSubmit, submitting }) {
 
             {/* TOEIC */}
             <div className="conape-block">
-              <div className="cb-title">¿Deseás incluir la prueba internacional TOEIC al finalizar el programa?</div>
-              <div className="cb-note">Certificación reconocida a nivel mundial que evalúa tu nivel de inglés para fines académicos y laborales. Su aplicación es opcional y se realiza al finalizar el programa.</div>
+              <div className="cb-title">{insCfgText(insConfig, 'toeic_titulo', '¿Deseás incluir la prueba internacional TOEIC al finalizar el programa?')}</div>
+              <div className="cb-note">{insCfgText(insConfig, 'toeic_nota', 'Certificación reconocida a nivel mundial que evalúa tu nivel de inglés para fines académicos y laborales. Su aplicación es opcional y se realiza al finalizar el programa.')}</div>
+              {!toeicDisponibleGrupo && (
+                <div className="inline-alert warn" style={{ marginTop:10 }}>
+                  <Ico d={I.warn} size={18} />
+                  <span>Este grupo no tiene TOEIC configurado. Podés ajustar esto desde el panel Superadmin · Inscripción pública.</span>
+                </div>
+              )}
               <div className="choice-row" style={{ marginTop:10 }}>
-                {[[true,'Sí, deseo financiar la prueba (₡136,730)'],[false,'No']].map(([v,l]) => (
-                  <label key={String(v)} className={`choice-card${form.conapeToeic===v?' sel':''}`}>
-                    <input type="radio" name="toeic" checked={form.conapeToeic===v} onChange={() => set('conapeToeic', v)} />
+                {[[true, `Sí, deseo financiar la prueba (${moneyCR(toeicMontoGrupo)})`],[false,'No']].map(([v,l]) => (
+                  <label key={String(v)} className={`choice-card${form.conapeToeic===v?' sel':''}${v && !toeicDisponibleGrupo ? ' locked' : ''}`}>
+                    <input type="radio" name="toeic" disabled={v && !toeicDisponibleGrupo} checked={form.conapeToeic===v} onChange={() => set('conapeToeic', v)} />
                     <span className="choice-txt">{l}</span>
                   </label>
                 ))}
@@ -770,8 +783,8 @@ function Pagina3({ form, set, errors, onBack, onSubmit, submitting }) {
 
             {/* Sostenimiento */}
             <div className="conape-block">
-              <div className="cb-title">Gastos de sostenimiento <span className="cb-opt">Opcional</span></div>
-              <div className="cb-note">Este rubro es OPCIONAL y está pensado para ayudarte con gastos básicos durante el curso, como el pago del internet. Podés pedir hasta ₡60,000 por mes (₡240,000 por cuatrimestre / ₡120,000 por bimestre).</div>
+              <div className="cb-title">{insCfgText(insConfig, 'sostenimiento_titulo', 'Gastos de sostenimiento')} <span className="cb-opt">Opcional</span></div>
+              <div className="cb-note">{insCfgText(insConfig, 'sostenimiento_nota', 'Este rubro es OPCIONAL y está pensado para ayudarte con gastos básicos durante el curso, como el pago del internet. Podés pedir hasta ₡60,000 por mes (₡240,000 por cuatrimestre / ₡120,000 por bimestre).')}</div>
               <select value={form.conapeSost} style={{ marginTop:10 }}
                 onChange={e => set('conapeSost', e.target.value)}>
                 <option value="">No lo necesito</option>
@@ -918,6 +931,46 @@ function fileToBase64(fileObj) {
   });
 }
 
+
+// CALGRUPO_F55_20260618_INSCRIPCION_CONFIG_HELPERS
+function insCfgText(cfg, key, fallback = '') {
+  return String((cfg && cfg.textos && cfg.textos[key]) || fallback || '');
+}
+function insCfgImg(cfg, key, fallback = '') {
+  return String((cfg && cfg.imagenes && cfg.imagenes[key]) || fallback || '');
+}
+function insCfgPrice(cfg, key, fallback = 0) {
+  const n = Number(cfg && cfg.precios ? cfg.precios[key] : NaN);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+function moneyCR(n) {
+  const v = Number(n) || 0;
+  return `₡${v.toLocaleString('es-CR')}`;
+}
+function linesCfg(txt, fallbackArr) {
+  const arr = String(txt || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  return arr.length ? arr : (fallbackArr || []);
+}
+function boolFalseLike(v) {
+  return v === false || String(v || '').toUpperCase() === 'FALSE' || String(v || '').toUpperCase() === 'NO' || String(v || '') === '0';
+}
+function getGrupoSeleccionado(grupos, codigo) {
+  const cod = String(codigo || '').trim();
+  return (grupos || []).find(g => String(g.codigo || g.code || g.cod || '').trim() === cod) || null;
+}
+function getToeicMontoGrupo(grupo, cfg) {
+  const raw = grupo ? (grupo.toeic_monto ?? grupo.toeicMonto ?? grupo.TOEIC_MONTO) : null;
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) return n;
+  return insCfgPrice(cfg, 'toeic_default', 136730);
+}
+function getToeicDisponibleGrupo(grupo) {
+  if (!grupo) return true;
+  const raw = grupo.toeic_disponible ?? grupo.toeicDisponible ?? grupo.TOEIC ?? grupo.toeic;
+  if (raw === undefined || raw === null || raw === '') return true;
+  return !boolFalseLike(raw);
+}
+
 function App() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState(FORM_INIT);
@@ -932,6 +985,7 @@ function App() {
   const [toast, setToast] = useState('');
   const [asesores, setAsesores] = useState([]); // asesores activos (rol=ventas) cargados del backend
   const [asesoresEstado, setAsesoresEstado] = useState('loading'); // loading | ok | error
+  const [insConfig, setInsConfig] = useState(null); // F55: textos, imágenes y precios editables por superadmin
 
   const set = useCallback((k, v) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -957,6 +1011,16 @@ function App() {
     const t = setTimeout(() => setToast(''), 5000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // CALGRUPO_F55_20260618_INSCRIPCION_PUBLIC_CONFIG_FETCH
+  useEffect(() => {
+    fetch(`${SCRIPT_URL}?fn=getInscripcionPublicConfig`)
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.ok && d.config) setInsConfig(d.config);
+      })
+      .catch(() => { /* sin config: se usan textos/imágenes por defecto */ });
+  }, []);
 
   // Asesores activos (rol=ventas) desde el backend — alimentan el dropdown
   // "Asesor de referencia" y el link de WhatsApp final. Si la lista viene
@@ -1105,8 +1169,9 @@ function App() {
     const esConape = form.financiamiento === 'CONAPE';
     const menor = (calcEdad(form.fechaNac) ?? 99) < 18;
     // Modalidad derivada del grupo elegido (la lista viene del backend).
-    const grupoObj = (grupos || []).find(g => (g.codigo || g.code) === form.grupo);
+    const grupoObj = getGrupoSeleccionado(grupos, form.grupo);
     const modalidad = grupoObj ? (grupoObj.modalidad || '').toUpperCase() : '';
+    const toeicMontoGrupo = getToeicMontoGrupo(grupoObj, insConfig);
 
     // ── Validar tamaño de las fotos antes de convertir ──────────────────────
     // (UploadZone ya filtra al seleccionar; esto es una red de seguridad y
@@ -1163,6 +1228,8 @@ function App() {
       financiamiento: form.financiamiento,
       conape_equipo: esConape ? form.conapeEquipo : 'NINGUNO',
       conape_toeic: esConape ? form.conapeToeic : false,
+      conape_toeic_monto: (esConape && form.conapeToeic) ? toeicMontoGrupo : 0,
+      toeic_monto: (esConape && form.conapeToeic) ? toeicMontoGrupo : 0,
       conape_sostenimiento: esConape ? form.conapeSost.trim() : '',
       beca: form.financiamiento === 'PROPIO' ? form.becaPropio : '',
       como_entero: form.como,
@@ -1245,9 +1312,9 @@ function App() {
           verifInfo={verifInfo} setVerifInfo={setVerifInfo} asesores={asesores} asesoresEstado={asesoresEstado} />
       ) : paso === 2 ? (
         <Pagina2 form={form} set={set} errors={errors} onBack={volverPaso1} onContinue={irPaso3}
-          grupos={grupos} setGrupos={setGrupos} asesores={asesores} />
+          grupos={grupos} setGrupos={setGrupos} asesores={asesores} insConfig={insConfig} />
       ) : (
-        <Pagina3 form={form} set={set} errors={errors} onBack={volverPaso2} onSubmit={registrar} submitting={submitting} />
+        <Pagina3 form={form} set={set} errors={errors} onBack={volverPaso2} onSubmit={registrar} submitting={submitting} grupos={grupos} insConfig={insConfig} />
       )}
       <div className="ins-foot">© 2026 Academia Norteamericana · San José, Costa Rica</div>
 

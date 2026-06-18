@@ -412,6 +412,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' },
     // CALGRUPO_F36_20260617_CONAPE_COBRANZA_MENU
     { id: 'conape_cobranza', label: 'CONAPE y Cobranza', icon: 'payments' },
+    ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },

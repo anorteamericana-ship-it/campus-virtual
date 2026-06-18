@@ -474,6 +474,10 @@ function App() {
       conape_cobranza: <ConapeCobranzaView onNavigate={navigateTo} />,
       // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_ROUTER
       reportes: <ReportesAdminView onNavigate={navigateTo} />,
+      // CALGRUPO_F55_20260618_SUPERADMIN_EDITOR_INSCRIPCION_PUBLICA_ROUTER
+      inscripcion_admin: rolReal === 'superadmin'
+        ? <InscripcionAdminView toast={toast} />
+        : <NoAutorizadoCampus rol={rolReal} />,
       examenes:    <ExamenesAdminPanel />,
       suspensiones: <PanelSuspensiones />,
       solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
