@@ -1,4 +1,5 @@
 /* global React, ReactDOM, window */
+// CALGRUPO_F58_20260618_INSCRIPCION_PUBLICA_SUBMIT_SIN_SESION_FRONTEND
 // CALGRUPO_F55_20260618_INSCRIPCION_CONFIG_PUBLIC_FRONTEND
 /* ============================================================================
    Inscripción pública — Academia Norteamericana · Campus Virtual
@@ -1204,7 +1205,7 @@ function App() {
     }
 
     const payload = {
-      fn: 'crearUsuarioEstudiante',
+      fn: 'crearInscripcionPublica',
       cedula: form.cedula.trim(),
       nombre: form.nombre.trim(),
       tipo_id: form.idTipo,
@@ -1246,7 +1247,7 @@ function App() {
       // text/plain: evita el preflight CORS que rompe Apps Script (doPost lee
       // el JSON en e.postData.contents igual). Patrón usado en todo el campus.
       const enviarPayload = async (extra) => {
-        const res = await fetch(`${SCRIPT_URL}?fn=crearUsuarioEstudiante`, {
+        const res = await fetch(`${SCRIPT_URL}?fn=crearInscripcionPublica`, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(extra ? { ...payload, ...extra } : payload),
