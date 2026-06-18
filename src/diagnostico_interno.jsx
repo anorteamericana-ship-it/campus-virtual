@@ -1,5 +1,6 @@
 /* global React, PageHeader */
 // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_FRONTEND
+// CALGRUPO_F61_20260618_REPARADOR_ESTRUCTURAL_SEGURO_FRONTEND
 // CALGRUPO_F60_20260618_DIAGNOSTICO_INTERNO_FRONTEND_LABELS
 
 const SCRIPT_URL_DIAG = window.APPS_SCRIPT_URL;
@@ -158,6 +159,10 @@ function DiagnosticoInternoView() {
   const [error, setError] = React.useState('');
   const [tab, setTab] = React.useState('resumen');
   const [categoria, setCategoria] = React.useState('Todas');
+  const [repairResult, setRepairResult] = React.useState(null);
+  const [repairLoading, setRepairLoading] = React.useState(false);
+  const [reviewF61, setReviewF61] = React.useState(null);
+  const [reviewLoading, setReviewLoading] = React.useState(false);
 
   const cargar = React.useCallback(async () => {
     setLoading(true);
@@ -174,6 +179,37 @@ function DiagnosticoInternoView() {
   }, []);
 
   React.useEffect(() => { cargar(); }, [cargar]);
+
+
+  const ejecutarReparacionF61 = async () => {
+    if (!confirm('F61 solo creará/normalizará hojas de bitácora faltantes. No tocará notas, certificados ni activaciones. ¿Continuar?')) return;
+    setRepairLoading(true);
+    setError('');
+    try {
+      const resp = await postDiagnosticoInterno('repararEstructuraOperativaF61', {});
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo ejecutar reparación F61.');
+      setRepairResult(resp);
+      await cargar();
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setRepairLoading(false);
+    }
+  };
+
+  const cargarRevisionF61 = async () => {
+    setReviewLoading(true);
+    setError('');
+    try {
+      const resp = await postDiagnosticoInterno('revisionAcademicaAsistidaF61', {});
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo cargar revisión F61.');
+      setReviewF61(resp);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setReviewLoading(false);
+    }
+  };
 
   const resumen = data?.resumen || {};
   const estado = resumen.estado_general || 'info';
@@ -212,11 +248,13 @@ function DiagnosticoInternoView() {
   return (
     <div data-screen-label="Admin · Diagnóstico interno avanzado" style={{ padding: 22, maxWidth: 1360, margin: '0 auto' }}>
       <PageHeader
-        kicker="Sistema · F60"
+        kicker="Sistema · F61"
         title="Diagnóstico interno avanzado"
-        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos: certificados, cronograma, exámenes, notas, cierre académico y seguimiento."
+        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. F61 agrega reparación segura de logs y revisión académica asistida: certificados, cronograma, exámenes, notas, cierre académico y seguimiento."
         right={
           <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+            <button type="button" onClick={ejecutarReparacionF61} disabled={repairLoading} className="btn" style={{ padding:'9px 14px' }}>{repairLoading ? 'Reparando…' : 'Crear logs F61'}</button>
+            <button type="button" onClick={() => { setTab('f61'); cargarRevisionF61(); }} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>{reviewLoading ? 'Cargando…' : 'Revisión F61'}</button>
             <button type="button" onClick={copiarResumen} disabled={!data} className="btn" style={{ padding:'9px 14px' }}>Copiar resumen</button>
             <button type="button" onClick={cargar} disabled={loading} className="btn btn-primary" style={{ padding:'9px 16px' }}>{loading ? 'Diagnosticando…' : 'Ejecutar diagnóstico'}</button>
           </div>
@@ -239,7 +277,7 @@ function DiagnosticoInternoView() {
 
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom: 16 }}>
         {[
-          ['resumen','Resumen'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
+          ['resumen','Resumen'], ['f61','F61 limpieza segura'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
         ].map(([id,label]) => (
           <button key={id} type="button" onClick={() => setTab(id)} style={{
             padding:'8px 12px', borderRadius:999, border:'1px solid var(--line)', cursor:'pointer',
@@ -271,6 +309,67 @@ function DiagnosticoInternoView() {
             </div>
           </DiagSection>
         </div>
+      )}
+
+
+      {tab === 'f61' && (
+        <DiagSection title="F61 · reparación segura y revisión asistida" sub="Crea únicamente hojas/logs faltantes. Las alertas académicas se muestran para revisión humana, sin arreglos automáticos peligrosos.">
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div style={{ padding:14, border:'1px solid var(--line)', borderRadius:14, background:'color-mix(in srgb, var(--an-gold) 5%, white)' }}>
+              <div style={{ fontWeight:900, color:'var(--an-navy-ink)', marginBottom:6 }}>Reparación estructural segura</div>
+              <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>
+                Crea SEGUIMIENTO_ESTUDIANTES, NOTAS_OFICIALES_LOG y CIERRE_ACADEMICO_LOG si faltan. No toca datos académicos existentes.
+              </div>
+              <button type="button" onClick={ejecutarReparacionF61} disabled={repairLoading} className="btn btn-primary" style={{ padding:'9px 14px' }}>
+                {repairLoading ? 'Ejecutando…' : 'Ejecutar reparación F61'}
+              </button>
+              {repairResult && (
+                <div style={{ marginTop:12, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.45 }}>
+                  <b>Resultado:</b> {repairResult.ok ? 'OK' : 'Con errores'} · {repairResult.fecha}
+                  <ul style={{ margin:'8px 0 0 18px' }}>
+                    {(repairResult.acciones || []).map((a, i) => (
+                      <li key={i}>{a.hoja}: {a.creada ? 'creada' : 'existente'}{a.encabezados_agregados?.length ? ' · encabezados agregados: ' + a.encabezados_agregados.length : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div style={{ padding:14, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface)' }}>
+              <div style={{ fontWeight:900, color:'var(--an-navy-ink)', marginBottom:6 }}>Revisión académica asistida</div>
+              <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>
+                Agrupa certificados duplicados, APR/CNV sin registro, cronogramas sin CA y exámenes sin activación. Solo lectura.
+              </div>
+              <button type="button" onClick={cargarRevisionF61} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>
+                {reviewLoading ? 'Cargando…' : 'Cargar revisión académica'}
+              </button>
+              {reviewF61 && <div style={{ marginTop:12 }}><DiagBadge status={reviewF61.decision === 'REVISAR_CRITICOS' ? 'error' : (reviewF61.pendientes_total ? 'warn' : 'ok')}>{reviewF61.decision}</DiagBadge> <span style={{ fontSize:13, color:'var(--ink-3)' }}>{reviewF61.pendientes_total || 0} pendientes</span></div>}
+            </div>
+          </div>
+          {reviewF61 && (
+            <div style={{ display:'grid', gap:12 }}>
+              {(reviewF61.grupos || []).map((g, idx) => (
+                <div key={idx} style={{ border:'1px solid var(--line)', borderRadius:14, overflow:'hidden' }}>
+                  <div style={{ padding:'12px 14px', background:'color-mix(in srgb, var(--an-navy) 5%, white)', display:'flex', justifyContent:'space-between', gap:10 }}>
+                    <b style={{ color:'var(--an-navy-ink)' }}>{g.categoria}</b>
+                    <span style={{ fontSize:12, color:'var(--ink-3)' }}>{g.total} pendientes · {g.criticos} críticos · {g.advertencias} revisar</span>
+                  </div>
+                  <div style={{ padding:12, display:'grid', gap:10 }}>
+                    {(g.items || []).map((it, i) => (
+                      <div key={i} style={{ padding:12, border:'1px solid var(--line)', borderRadius:12, background:'var(--surface)' }}>
+                        <div style={{ display:'flex', gap:8, alignItems:'center' }}><DiagBadge status={it.status}>{it.status_label}</DiagBadge><b>{it.titulo}</b><span style={{ marginLeft:'auto', fontSize:12, color:'var(--ink-3)' }}>{it.total || 0}</span></div>
+                        <div style={{ marginTop:6, fontSize:13, color:'var(--ink-3)', lineHeight:1.45 }}>{it.detalle}</div>
+                        {it.accion && <div style={{ marginTop:6, fontSize:12.5 }}><b>Acción:</b> {it.accion}</div>}
+                        {Array.isArray(it.muestra) && it.muestra.length > 0 && (
+                          <details style={{ marginTop:8 }}><summary style={{ cursor:'pointer', fontWeight:800 }}>Ver muestra</summary><pre style={{ whiteSpace:'pre-wrap', fontSize:11.5 }}>{it.muestra.join('\n')}</pre></details>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DiagSection>
       )}
 
       {tab === 'avanzado' && (
