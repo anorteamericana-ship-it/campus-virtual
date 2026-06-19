@@ -1,7 +1,7 @@
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
-   ExamenOralView, GruposView, CalificarView, AsistenciaView,
+   ExamenOralView, GruposView, CalificarView, AsistenciaView, CronogramaDocenteSeguroF82,
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
@@ -445,7 +445,7 @@ function App() {
       calificar:   <CalificarView toast={toast} />,
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
       asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
-      cronograma_grupo: <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
+      cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} />,
       examenes:    <ExamenesTeacherPanel />,
       materiales:  <MaterialesView onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,
