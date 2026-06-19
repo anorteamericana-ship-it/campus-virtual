@@ -1,3 +1,4 @@
+// F86_20260619_EXAMEN_ORAL_CONTEXTO_EXACTO
 /* global React, Icon, Ring, Chip, Stat, AnimatedBar, LEVELS, PRECIOS,
    useUsuario, useEstudiante, EmptyState, ErrorState */
 // ──────────────────────────────────────────────────────────────────────────
@@ -993,19 +994,32 @@ function PerfilContenido({ usr, data, onNavigate }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// ExamenOralView — embed externo (sin datos personales aquí)
+// ExamenOralView — F86 integrado al cronograma con contexto exacto
 // ──────────────────────────────────────────────────────────────────────────
-function ExamenOralView() {
+function ExamenOralView({ context = null, onNavigate }) {
+  const ctx = context && typeof context === 'object' ? context : {};
+  const params = new URLSearchParams();
+  if (ctx.grupo) params.set('grupo', ctx.grupo);
+  if (ctx.nivel) params.set('nivel', ctx.nivel);
+  if (ctx.leccion) params.set('leccion', String(ctx.leccion));
+  if (ctx.fecha) params.set('fecha', String(ctx.fecha).slice(0,10));
+  params.set('v', 'F86');
+  const src = `modulos/examen_oral.html?${params.toString()}`;
+  const titulo = ({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[Number(ctx.leccion || 0)] || 'Examen Oral';
   return (
     <div>
       <PageHeader
-        kicker="Evaluación"
-        title={<>Examen <em>Oral</em></>}
-        sub="Banco de preguntas y estructura del test"
-        right={<a href="modulos/examen_oral.html" target="_blank" className="btn btn-ghost">Abrir en pestaña nueva →</a>}
+        kicker="Evaluación docente"
+        title={<>{titulo}</>}
+        sub={ctx.grupo ? `${ctx.grupo} · ${ctx.nivel || 'Nivel'} · ${ctx.fecha || 'fecha del cronograma'}` : 'Seleccioná una lección oral desde el cronograma para cargar el examen exacto.'}
+        right={onNavigate ? (
+          <button type="button" className="btn btn-ghost" onClick={() => onNavigate('cronograma_grupo')}>
+            ← Volver al cronograma
+          </button>
+        ) : null}
       />
-      <div className="card" style={{ padding:0, overflow:'hidden', height:'calc(100vh - 220px)', minHeight:620 }}>
-        <iframe src="modulos/examen_oral.html" style={{ width:'100%', height:'100%', border:0 }} title="Examen Oral" />
+      <div className="card" style={{ padding:0, overflow:'hidden', height:'calc(100vh - 190px)', minHeight:680 }}>
+        <iframe src={src} style={{ width:'100%', height:'100%', border:0 }} title={titulo} />
       </div>
     </div>
   );

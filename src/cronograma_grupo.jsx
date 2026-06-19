@@ -1,3 +1,4 @@
+// CALGRUPO_F86_20260619_ETIQUETAS_EXAMEN_ORAL_INTEGRADO
 // CALGRUPO_F80_20260619_CRONOGRAMA_TIMEOUT_RESPUESTA_SEGURA
 // CALGRUPO_F74_20260618_AGENDA_DOCENTE_TARJETAS_PANEL_FIJO_LEGIBLE
 // CALGRUPO_F71_20260618_AGENDA_DOCENTE_SIN_SELECTOR_COMPACTA
@@ -87,6 +88,33 @@ const TIPO_LABEL_LARGO = {
   EVAL_ESCRITO:    'Examen Escrito',
   ICAN:            'Sesión I CAN',
 };
+
+// F86 — Nombre humano y orden de cada evaluación dentro del nivel.
+// Evita que dos bloques del mismo sábado se vean solo como “Oral/Escrito”.
+const EVALUACION_LABEL_CG = {
+  EVAL_ORAL: {
+    9:  { corto:'1.er oral', largo:'1.er Examen Oral' },
+    17: { corto:'2.º oral',  largo:'2.º Examen Oral' },
+    25: { corto:'3.er oral', largo:'3.er Examen Oral' },
+    31: { corto:'4.º oral',  largo:'4.º Examen Oral' },
+  },
+  EVAL_ESCRITO: {
+    18: { corto:'1.er escrito', largo:'1.er Examen Escrito' },
+    32: { corto:'2.º escrito',  largo:'2.º Examen Escrito' },
+  },
+};
+function etiquetaEvaluacionCG(tipo, leccion, larga = false) {
+  const item = EVALUACION_LABEL_CG[String(tipo || '').toUpperCase()]?.[Number(leccion)];
+  return item ? (larga ? item.largo : item.corto) : '';
+}
+function contextoOralCG(lec, nivelFallback) {
+  return {
+    grupo: String(lec?.cod_grupo || lec?.grupo || '').trim(),
+    nivel: normalizarNivelCG(lec?.nivel || lec?.nivelId || nivelFallback || ''),
+    leccion: Number(lec?.leccion || 0),
+    fecha: String(lec?.fecha || '').slice(0, 10),
+  };
+}
 
 // Color base por nivel
 const NIVEL_BASE = {
@@ -1764,7 +1792,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
           {unicas.map(l => (
             <div key={l.leccion}
                  onClick={() => onClickSeg(l)}
-                 title={`Lec ${l.leccion} · ${fmtDDMMM(l.fecha)} · ${l.estado}`}
+                 title={`${etiquetaEvaluacionCG(l.tipo, l.leccion, true) || `Lección ${l.leccion}`} · ${fmtDDMMM(l.fecha)} · ${l.estado}`}
                  style={{
                    flex:1, height:'100%', borderRadius:2,
                    background: colorProgreso(l.estado, l.tipo, nivel),
@@ -1898,7 +1926,8 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
 
 function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, compacto = false }) {
   const pal = paletaCelda(lec.estado, lec.tipo, nivel);
-  const badge = TIPO_BADGE[lec.tipo];
+  const evalLabel = etiquetaEvaluacionCG(lec.tipo, lec.leccion);
+  const badge = evalLabel || TIPO_BADGE[lec.tipo];
   const isFeriado = lec.estado === 'FERIADO';
   const isHoy = lec.estado === 'HOY';
 
@@ -1960,8 +1989,16 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
               lineHeight:1.05,
               whiteSpace:'nowrap',
             }}>
-              Lec {String(lec.leccion).padStart(2,'0')}
+              {evalLabel || `Lec ${String(lec.leccion).padStart(2,'0')}`}
             </div>
+            {evalLabel && (
+              <div style={{
+                marginTop:2, fontSize: compacto ? 8.5 : 9.2, color:pal.fg,
+                opacity:0.86, fontWeight:800, fontFamily:'var(--f-mono)', whiteSpace:'nowrap',
+              }}>
+                Lec {String(lec.leccion).padStart(2,'0')}
+              </div>
+            )}
             {agenda && (
               <div style={{
                 marginTop:2,
@@ -2010,7 +2047,7 @@ function AgendaAccionesLeccionF76({ selLec, detalle, nivel, rol, codigoUsr, grup
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginTop:3 }}>
           <strong style={{ fontFamily:'var(--f-serif)', fontSize:18, color:'var(--ink)' }}>
-            Lec {String(selLec.leccion).padStart(2,'0')}
+            {etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || `Lec ${String(selLec.leccion).padStart(2,'0')}`}
           </strong>
           <span style={{ fontSize:12, fontWeight:800, color:pal.fg, background:pal.bg, borderRadius:999, padding:'4px 9px' }}>{status}</span>
           <span style={{ fontSize:12, color:'var(--ink-3)', fontWeight:700 }}>{fecha}</span>
@@ -2040,12 +2077,12 @@ function AgendaAccionesLeccionF76({ selLec, detalle, nivel, rol, codigoUsr, grup
             fontSize:12, fontWeight:900, cursor:'pointer', fontFamily:'inherit',
           }}>Ver exámenes</button>
         )}
-        {selLec.tipo === 'EVAL_ORAL' && (
-          <a href="modulos/examen_oral.html" target="_blank" rel="noopener noreferrer" style={{
+        {selLec.tipo === 'EVAL_ORAL' && onNavigate && (
+          <button type="button" onClick={() => onNavigate('examen_oral', { oral: contextoOralCG(selLec, nivel) })} style={{
             padding:'10px 14px', border:'1.5px solid #8B1A10', borderRadius:'var(--r-md)',
             background:'var(--surface)', color:'#8B1A10', fontSize:12, fontWeight:900,
-            textDecoration:'none', fontFamily:'inherit',
-          }}>Examen oral</a>
+            cursor:'pointer', fontFamily:'inherit',
+          }}>{`Aplicar ${etiquetaEvaluacionCG(selLec.tipo, selLec.leccion) || 'oral'}`}</button>
         )}
       </div>
     </div>
@@ -2180,7 +2217,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
           <div>
             <div style={{ ...labelStyle, marginBottom:4 }}>
-              {isFeriado ? 'Feriado' : selLec.leccion ? `Lección ${String(selLec.leccion).padStart(2,'0')} · ${idLeccion(nivel, selLec.leccion)}` : 'Sin lección asignada'}
+              {isFeriado ? 'Feriado' : selLec.leccion ? `${etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || `Lección ${String(selLec.leccion).padStart(2,'0')}`} · ${idLeccion(nivel, selLec.leccion)}` : 'Sin lección asignada'}
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontSize: rol === 'teacher' ? 18 : 20, fontWeight:500,
@@ -2223,7 +2260,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
             fontSize:11, fontWeight:700, letterSpacing:'0.04em',
             borderRadius:'var(--r-pill)',
           }}>
-            {TIPO_LABEL_LARGO[selLec.tipo]}
+            {etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || TIPO_LABEL_LARGO[selLec.tipo]}
           </div>
         )}
 
@@ -2260,12 +2297,12 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                 fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
               }}>Ver exámenes escritos</button>
             )}
-            {selLec.tipo === 'EVAL_ORAL' && (
-              <a href="modulos/examen_oral.html" target="_blank" rel="noopener noreferrer" style={{
+            {selLec.tipo === 'EVAL_ORAL' && onNavigate && (
+              <button type="button" onClick={() => onNavigate('examen_oral', { oral: contextoOralCG(selLec, nivel) })} style={{
                 padding:'9px 10px', border:'1.5px solid #8B1A10', borderRadius:'var(--r-md)',
                 background:'var(--surface)', color:'#8B1A10', fontSize:12, fontWeight:800,
-                textDecoration:'none', fontFamily:'inherit',
-              }}>Abrir examen oral</a>
+                cursor:'pointer', fontFamily:'inherit',
+              }}>{`Aplicar ${etiquetaEvaluacionCG(selLec.tipo, selLec.leccion) || 'examen oral'}`}</button>
             )}
           </div>
         )}

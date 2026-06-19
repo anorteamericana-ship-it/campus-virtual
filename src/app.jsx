@@ -1,3 +1,4 @@
+// F86_20260619_ROUTER_EXAMEN_ORAL_INTEGRADO
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
@@ -351,6 +352,10 @@ function App() {
   // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
   // cuando se navega desde el detalle de una lección en el Cronograma.
   const [pendingGrupo, setPendingGrupo] = useState(null);
+  const [pendingOral, setPendingOral] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('an_oral_context') || 'null'); }
+    catch (_) { return null; }
+  });
   const [modoPrueba, setModoPrueba] = useState(() => getModoPrueba());
 
   const navigateTo = (target, opts = {}) => {
@@ -358,6 +363,13 @@ function App() {
     else setPendingLesson(null);
     if (opts.grupo) setPendingGrupo(opts.grupo);
     else setPendingGrupo(null);
+    if (opts.oral) {
+      setPendingOral(opts.oral);
+      try { sessionStorage.setItem('an_oral_context', JSON.stringify(opts.oral)); } catch (_) {}
+    } else if (target !== 'examen_oral') {
+      setPendingOral(null);
+      try { sessionStorage.removeItem('an_oral_context'); } catch (_) {}
+    }
     setActive(target);
   };
 
@@ -447,6 +459,7 @@ function App() {
       asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
       cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} />,
       examenes:    <ExamenesTeacherPanel />,
+      examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
       materiales:  <MaterialesView onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,
       mensajes:    <MensajesView />,
@@ -478,6 +491,7 @@ function App() {
         ? <InscripcionAdminView toast={toast} />
         : <NoAutorizadoCampus rol={rolReal} />,
       examenes:    <ExamenesAdminPanel />,
+      examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
       suspensiones: <PanelSuspensiones />,
       solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,

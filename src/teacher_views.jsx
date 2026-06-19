@@ -1,3 +1,4 @@
+// F86_20260619_DOCENTE_ETIQUETAS_Y_APLICACION_ORAL
 // CALGRUPO_F82_20260619_MIS_GRUPOS_SEMANA_PROXIMA_LECCION_DRAWER
 /* global React, Icon, Chip, Stat, PageHeader */
 
@@ -541,6 +542,15 @@ function tvLessonIdF82(nivel, leccion) {
   const off={B1:0,B2:32,I1:64,I2:96};
   return 'L'+String((off[tvUpper(nivel)]||0)+Number(leccion||0)).padStart(3,'0');
 }
+function tvEvalLabelF86(tipo, leccion, largo=false) {
+  const t=tvUpper(tipo), n=Number(leccion||0);
+  const map={
+    EVAL_ORAL:{9:['1.er oral','1.er Examen Oral'],17:['2.º oral','2.º Examen Oral'],25:['3.er oral','3.er Examen Oral'],31:['4.º oral','4.º Examen Oral']},
+    EVAL_ESCRITO:{18:['1.er escrito','1.er Examen Escrito'],32:['2.º escrito','2.º Examen Escrito']},
+  };
+  const v=map[t]?.[n];
+  return v ? v[largo?1:0] : '';
+}
 function tvDateLabelF82(iso) {
   if (!iso) return '—';
   const d=new Date(String(iso).slice(0,10)+'T00:00:00');
@@ -563,7 +573,7 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
     {state.loading?'Verificando material…':url?'Ver material PDF':'Material no disponible'}
   </button>;
 }
-function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged }) {
+function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [busy,setBusy]=React.useState(false), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=new Date().toISOString().slice(0,10);
@@ -593,7 +603,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
       <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
-          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>Lección {String(lesson?.leccion||'').padStart(2,'0')}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>{tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
+          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
@@ -602,6 +612,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             {abierta&&<button className="btn btn-primary" disabled={busy} onClick={finalizar}>CERRAR CLASE</button>}
             {!closed&&(isToday||abierta)&&<button className="btn btn-primary" onClick={()=>setAttendanceOpen(true)}>PASAR ASISTENCIA</button>}
             <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
+            {tvUpper(lesson?.tipo)==='EVAL_ORAL'&&onNavigate&&<button className="btn btn-primary" onClick={()=>onNavigate('examen_oral',{oral:{grupo:code,nivel,leccion:Number(lesson.leccion),fecha:String(lesson.fecha||'').slice(0,10)}})}>APLICAR {tvEvalLabelF86(lesson.tipo,lesson.leccion).toUpperCase()}</button>}
+            {tvUpper(lesson?.tipo)==='EVAL_ESCRITO'&&onNavigate&&<button className="btn btn-ghost" onClick={()=>onNavigate('examenes')}>IR A {tvEvalLabelF86(lesson.tipo,lesson.leccion).toUpperCase()}</button>}
             {!closed&&String(lesson?.fecha||'')>=today&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
           </div>
           {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Sesión finalizada · {sesion?.MINUTOS_REALES||sesion?.minutos_reales||0} minutos registrados</div>}
@@ -704,7 +716,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
         <table className="table-soft" style={{width:'max-content',minWidth:286+148+lessons.length*90,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0}}>
           <thead><tr>
             <th style={{...stickyStudentCellF79(true),minWidth:286,width:286,maxWidth:286}}>Estudiante</th>
-            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso;return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isNext?'#EAF3FF':'var(--surface-2)',borderTop:isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:isNext?'translateY(-3px)':'none',boxShadow:isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>Lec {String(l.leccion).padStart(2,'0')}</div><div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isNext&&<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>}{isToday&&!isNext&&<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>}</th>;})}
+            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso;return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isNext?'#EAF3FF':'var(--surface-2)',borderTop:isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:isNext?'translateY(-3px)':'none',boxShadow:isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>{tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}<div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isNext&&<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>}{isToday&&!isNext&&<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>}</th>;})}
             <th style={{...stickyNoteCellF79(true),minWidth:148,width:148,maxWidth:148}}>Nota completa</th>
           </tr></thead>
           <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
@@ -753,9 +765,9 @@ function TeacherAgendaMonthF82({ month, events, onSelect }) {
   const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),cells=[];
   for(let i=0;i<first;i++)cells.push(null);for(let d=1;d<=days;d++)cells.push(d);
   const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  return <div className="card" style={{padding:0,overflow:'hidden'}}><div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}><strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>{['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}</div><div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>{cells.map((d,i)=>{if(!d)return <div key={i} style={{minHeight:78,background:'#F7F3EC',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ev=events.filter(x=>String(x.fecha||'')===iso);return <div key={i} style={{minHeight:78,padding:4,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}><div style={{fontSize:9,color:'var(--ink-3)',fontWeight:800}}>{d}</div><div style={{display:'grid',gap:3,marginTop:3}}>{ev.map((e,j)=>{const pal=nivelPal(tvNivelId(e.meta));return <button key={j} onClick={()=>onSelect(e)} title={tvGrupoLabel(e.meta).full} style={{border:0,borderLeft:`3px solid ${pal.dark}`,background:pal.light,color:pal.dark,borderRadius:5,padding:'3px 4px',fontSize:8.5,fontWeight:900,textAlign:'left',cursor:'pointer'}}>Lec {String(e.leccion).padStart(2,'0')}<br/><span style={{fontSize:7.5}}>{tvHoraLabel(e.meta)}</span></button>;})}</div></div>;})}</div></div>;
+  return <div className="card" style={{padding:0,overflow:'hidden'}}><div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}><strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>{['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}</div><div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>{cells.map((d,i)=>{if(!d)return <div key={i} style={{minHeight:78,background:'#F7F3EC',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ev=events.filter(x=>String(x.fecha||'')===iso);return <div key={i} style={{minHeight:78,padding:4,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}><div style={{fontSize:9,color:'var(--ink-3)',fontWeight:800}}>{d}</div><div style={{display:'grid',gap:3,marginTop:3}}>{ev.map((e,j)=>{const pal=nivelPal(tvNivelId(e.meta));return <button key={j} onClick={()=>onSelect(e)} title={`${tvEvalLabelF86(e.tipo,e.leccion,true)||`Lección ${e.leccion}`} · ${tvGrupoLabel(e.meta).full}`} style={{border:0,borderLeft:`3px solid ${pal.dark}`,background:pal.light,color:pal.dark,borderRadius:5,padding:'3px 4px',fontSize:8.5,fontWeight:900,textAlign:'left',cursor:'pointer'}}>{tvEvalLabelF86(e.tipo,e.leccion)||`Lec ${String(e.leccion).padStart(2,'0')}`}<br/><span style={{fontSize:7.5}}>Lec {String(e.leccion).padStart(2,'0')} · {tvLessonHoraLabel(e,e.meta)}</span></button>;})}</div></div>;})}</div></div>;
 }
-function CronogramaDocenteSeguroF82() {
+function CronogramaDocenteSeguroF82({ onNavigate }) {
   const {grupos,meta,codGrupo,cambiarGrupo,roster,asistenciaDetalle,comentariosDetalle,recargarPanel,loading,error}=useTeacherSession();
   const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null);
   React.useEffect(()=>{let live=true;const list=grupos||[];if(!list.length){setEvents([]);setLoadingAgenda(false);return()=>{live=false;};}setLoadingAgenda(true);Promise.all(list.map(g=>postTeacher('getFechasGrupo',{cod_grupo:tvGroupCode(g),nivel:tvNivelId(g)},30000).then(r=>({r,g})).catch(e=>({r:null,g,e})))).then(rows=>{if(!live)return;const out=[];rows.forEach(({r,g})=>(r?.lecciones||[]).forEach(l=>out.push({...l,cod_grupo:tvGroupCode(g),nivel:tvNivelId(g),meta:g})));out.sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion)-Number(b.leccion));setEvents(out);}).finally(()=>live&&setLoadingAgenda(false));return()=>{live=false;};},[JSON.stringify((grupos||[]).map(g=>tvGroupCode(g)))]);
@@ -765,7 +777,7 @@ function CronogramaDocenteSeguroF82() {
     <MisGruposSwitcher grupos={grupos||[]} activo={codGrupo} onSelect={cambiarGrupo}/>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><div style={{display:'flex',gap:7}}>{[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}</div><button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button></div>
     {(loading||loadingAgenda)?<LoadingState title="Cargando agenda…" subtitle="Consultando calendarios de los grupos en curso"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
-    {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel}/>}</div>;
+    {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate}/>}</div>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
