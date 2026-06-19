@@ -182,19 +182,14 @@ class VistaErrorBoundary extends React.Component {
             No pudimos mostrar esta sección
           </div>
           <div style={{ fontSize: 13.5, color: 'var(--ink-3, #6B7280)', lineHeight: 1.55, marginBottom: 22 }}>
-            Ocurrió un problema al cargar esta vista. El resto del campus sigue
-            disponible — podés volver al panel o reintentar.
+            Ocurrió un problema al cargar esta vista. La sección actual se mantiene;
+            podés reintentar sin ser enviado automáticamente a Mi Panel.
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-primary"
-              onClick={() => this.props.onReset && this.props.onReset()}
-              style={{ padding: '9px 18px', fontSize: 13 }}>
-              Ir al panel
-            </button>
-            <button type="button"
               onClick={() => window.location.reload()}
-              style={{ padding: '9px 18px', fontSize: 13, background: 'transparent', border: '1px solid var(--line-2, #D4C9B6)', color: 'var(--ink-2, #4A413A)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-              Reintentar
+              style={{ padding: '9px 18px', fontSize: 13 }}>
+              Reintentar esta sección
             </button>
           </div>
         </div>
@@ -389,7 +384,10 @@ function App() {
       if (!u) { window.location.replace('login.html'); return; }
       setUsuario(u);
       setModoPrueba(getModoPrueba());
-      setActive('dashboard');
+      // F81: cambiar grupo o refrescar datos de sesión no debe sacar al docente
+      // de la vista actual ni enviarlo automáticamente a Mi Panel.
+      // El menú conserva la sección activa y solo actualiza la identidad/sesión.
+
     };
     window.addEventListener('an:session-changed', handler);
     return () => window.removeEventListener('an:session-changed', handler);
@@ -522,7 +520,7 @@ function App() {
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
         )}
-        <VistaErrorBoundary key={active} onReset={() => setActive('dashboard')}>
+        <VistaErrorBoundary key={active}>
           {content}
         </VistaErrorBoundary>
       </main>

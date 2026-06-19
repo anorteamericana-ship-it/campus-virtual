@@ -1,4 +1,4 @@
-// CALGRUPO_F80_20260619_MIS_GRUPOS_CARGA_RESILIENTE
+// CALGRUPO_F81_20260619_MIS_GRUPOS_RESPONSIVE_SIN_RETORNO_PANEL
 /* global React, Icon, Chip, Stat, PageHeader */
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -403,8 +403,8 @@ function nivelLabelDe(code) {
 function MisGruposSwitcher({ grupos, activo, onSelect }) {
   const lista = grupos || [];
   return (
-    <div className="card" style={{ marginBottom:18, padding:'16px 18px', background:'#FBF7EF' }}>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(245px, 1fr))', gap:12 }}>
+    <div className="card" style={{ marginBottom:18, padding:'14px 14px', background:'#FBF7EF', width:'100%', maxWidth:'100%', minWidth:0, overflow:'hidden' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap:10, width:'100%', minWidth:0 }}>
         {lista.map(g => {
           const code = tvGroupCode(g);
           const active = String(code) === String(activo);
@@ -414,7 +414,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect }) {
           return (
             <button key={code} type="button" onClick={() => onSelect(code)} disabled={active}
               style={{
-                textAlign:'left', minHeight:112, borderRadius:'var(--r-lg)', padding:'16px 18px',
+                textAlign:'left', minHeight:104, minWidth:0, width:'100%', borderRadius:'var(--r-lg)', padding:'14px 16px', overflow:'hidden',
                 border:`1.8px solid ${active ? pal.dark : 'var(--line)'}`,
                 background: active ? `color-mix(in srgb, ${pal.light} 68%, white)` : '#FFF',
                 boxShadow: active ? '0 0 0 1px rgba(7,59,122,.08)' : '0 1px 0 rgba(11,31,58,.05)',
@@ -437,7 +437,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect }) {
 }
 
 function StatF77({ label, value, sub, color='var(--an-navy)' }) {
-  return <div className="card" style={{ padding:'18px 20px' }}>
+  return <div className="card" style={{ padding:'16px 18px', minWidth:0, overflow:'hidden' }}>
     <div style={{ ...vdLabelStyle, marginBottom:8 }}>{label}</div>
     <div style={{ fontFamily:'var(--f-serif)', fontSize:32, fontWeight:700, color, lineHeight:1 }}>{value}</div>
     {sub && <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:8 }}>{sub}</div>}
@@ -479,7 +479,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
     } catch(e){ alert(e.message || String(e)); }
     finally { setBusy(false); }
   };
-  return <div className="card" style={{ padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, borderLeft:'4px solid var(--an-navy)' }}>
+  return <div className="card" style={{ padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, borderLeft:'4px solid var(--an-navy)', width:'100%', maxWidth:'100%', minWidth:0, flexWrap:'wrap' }}>
     <div>
       <div style={vdLabelStyle}>Clase de hoy</div>
       <div style={{ fontSize:18, fontWeight:800, color:'var(--ink)' }}>Lección {String(leccionHoy.leccion).padStart(2,'0')} · {tvHoraLabel(meta)}</div>
@@ -569,7 +569,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
     const idxToday = hoy ? lessons.findIndex(l => Number(l.leccion) === Number(hoy.leccion)) : -1;
     const idxClosed = lessons.reduce((acc,l,i) => String(l.estado||'').toUpperCase()==='CERRADA' ? i : acc, -1);
     const idx = idxToday >= 0 ? idxToday : Math.max(0, idxClosed);
-    requestAnimationFrame(() => { box.scrollLeft = Math.max(0, idx * 104 - 90); });
+    requestAnimationFrame(() => { box.scrollLeft = Math.max(0, idx * 96 - 78); });
   }, [hoy?.leccion, lessons.length, tvGroupCode(meta)]);
 
   const hoyCerrada = hoy && String(hoy.estado || '').toUpperCase() === 'CERRADA';
@@ -593,7 +593,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
 
   const scrollBy = delta => scrollRef.current?.scrollBy({ left:delta, behavior:'smooth' });
   return <>
-    <div className="card" style={{ padding:0, overflow:'hidden' }}>
+    <div className="card" style={{ padding:0, overflow:'hidden', width:'100%', maxWidth:'100%', minWidth:0 }}>
       <div style={{ padding:'16px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap', borderBottom:'1px solid var(--line)' }}>
         <div>
           <div className="card-title">Estudiantes · asistencia y notas</div>
@@ -618,20 +618,20 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
         <label style={{ ...labelStyle, display:'block', marginBottom:6 }}>Nota general del docente · opcional</label>
         <textarea value={notaGeneral} onChange={e=>setNotaGeneral(e.target.value)} placeholder="Cubrimos hasta la página 14..." style={{ width:'100%', minHeight:52, border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:10, fontFamily:'inherit', resize:'vertical' }} />
       </div>}
-      <div ref={scrollRef} style={{ overflowX:'auto', overflowY:'visible', position:'relative', scrollbarGutter:'stable', borderTop:'0' }}>
-        <table className="table-soft" style={{ minWidth:430 + lessons.length * 104, borderCollapse:'separate', borderSpacing:0 }}>
+      <div ref={scrollRef} style={{ overflowX:'auto', overflowY:'hidden', position:'relative', scrollbarGutter:'stable', borderTop:'0', width:'100%', maxWidth:'100%', minWidth:0, WebkitOverflowScrolling:'touch' }}>
+        <table className="table-soft" style={{ width:'max-content', minWidth:300 + 160 + lessons.length * 96, maxWidth:'none', tableLayout:'fixed', borderCollapse:'separate', borderSpacing:0 }}>
           <thead>
             <tr>
-              <th style={{ ...stickyStudentCellF79(true), minWidth:330, width:330 }}>Estudiante</th>
+              <th style={{ ...stickyStudentCellF79(true), minWidth:300, width:300, maxWidth:300 }}>Estudiante</th>
               {lessons.map(l => {
                 const isToday = hoy && Number(l.leccion)===Number(hoy.leccion);
-                return <th key={`${l.leccion}-${l.fecha}`} style={{ minWidth:104, width:104, textAlign:'center', background:isToday?'#EAF3FF':'var(--surface-2)', borderTop:isToday?'3px solid var(--an-navy)':'3px solid transparent' }}>
+                return <th key={`${l.leccion}-${l.fecha}`} style={{ minWidth:96, width:96, textAlign:'center', background:isToday?'#EAF3FF':'var(--surface-2)', borderTop:isToday?'3px solid var(--an-navy)':'3px solid transparent' }}>
                   <div style={{ fontSize:11, fontWeight:900 }}>Lec {String(l.leccion).padStart(2,'0')}</div>
                   <div style={{ fontSize:9, color:'var(--ink-3)', marginTop:2 }}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
                   {isToday && <div style={{ fontSize:8, color:'var(--an-navy)', fontWeight:900, marginTop:3 }}>HOY</div>}
                 </th>;
               })}
-              <th style={{ ...stickyNoteCellF79(true), minWidth:190, width:190 }}>Nota completa</th>
+              <th style={{ ...stickyNoteCellF79(true), minWidth:160, width:160, maxWidth:160 }}>Nota completa</th>
             </tr>
           </thead>
           <tbody>
@@ -639,7 +639,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
               const att = asistenciaGrupo?.[r.code];
               const note = notasGrupo?.[r.code] || r.note;
               return <tr key={r.code || i}>
-                <td style={{ ...stickyStudentCellF79(false), minWidth:330, width:330 }}>
+                <td style={{ ...stickyStudentCellF79(false), minWidth:300, width:300, maxWidth:300 }}>
                   <div style={{ display:'flex', gap:10, alignItems:'center' }}>
                     <div style={{ width:34, height:34, flex:'0 0 34px', borderRadius:'50%', background:'var(--an-navy)', color:'#FFF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800 }}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                     <div style={{ minWidth:0 }}>
@@ -653,7 +653,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
                   const isToday=hoy && Number(hoy.leccion)===Number(l.leccion);
                   const closed=String(l.estado||'').toUpperCase()==='CERRADA' || !!det;
                   const future=String(l.fecha||'')>hoyIso;
-                  return <td key={`${r.code}-${key}`} style={{ minWidth:104, width:104, textAlign:'center', verticalAlign:'middle', padding:'7px 6px', background:isToday?'#F7FBFF':'#FFF' }}>
+                  return <td key={`${r.code}-${key}`} style={{ minWidth:96, width:96, textAlign:'center', verticalAlign:'middle', padding:'7px 6px', background:isToday?'#F7FBFF':'#FFF' }}>
                     {isToday && !closed && String(l.fecha||'')===hoyIso ? <div style={{ display:'grid', gap:5 }}>
                       <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:true}))} style={miniAttendBtn(draft[r.code]!==false,true)}>Presente</button>
                       <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:false}))} style={miniAttendBtn(draft[r.code]===false,false)}>Ausente</button>
@@ -664,13 +664,13 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
                     </div> : future ? <span style={{ color:'var(--ink-3)', fontSize:10 }}>Programada</span> : <span style={{ color:'var(--ink-3)', fontSize:10 }}>Sin dato</span>}
                   </td>;
                 })}
-                <td style={{ ...stickyNoteCellF79(false), minWidth:190, width:190 }}>
+                <td style={{ ...stickyNoteCellF79(false), minWidth:160, width:160, maxWidth:160 }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
                     <div>
                       <div style={{ fontSize:22, fontWeight:900, color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)' }}>{note?.tiene_notas ? note.nota_total : '—'}</div>
                       <div style={{ fontSize:9, color:'var(--ink-3)', marginTop:1 }}>{note?.tiene_notas?'acumulada':'sin notas'}</div>
                     </div>
-                    <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{ padding:'7px 9px', fontSize:10 }}>Ver detalle</button>
+                    <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{ padding:'6px 7px', fontSize:9.5, whiteSpace:'nowrap' }}>Ver detalle</button>
                   </div>
                 </td>
               </tr>;
@@ -696,12 +696,12 @@ function GruposView() {
 
   const promedioGrupo = resumenGrupo?.promedioGrupo;
   const promedioAsistencia = resumenGrupo?.promedioAsistencia;
-  return <div>
+  return <div style={{ width:'100%', maxWidth:'100%', minWidth:0, overflow:'hidden' }}>
     <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={lista.length > 1 ? `Tenés ${lista.length} grupos en curso` : tvGrupoLabel(meta).full} />
     <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} />
     {error && !loading && <div style={{ marginBottom:14 }}><ErrorState message={error} onRetry={recargarPanel} /></div>}
     {loading ? <LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales" /> : <>
-      <div className="grid-4" style={{ marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(210px, 100%), 1fr))', gap:14, marginBottom:20, width:'100%', minWidth:0 }}>
         <StatF77 label="Matriculados CA" value={resumenGrupo?.totalCA ?? roster.length} sub="Solo estudiantes CA del nivel en curso" color="var(--an-navy)" />
         <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark} />
         <StatF77 label="Promedio grupo" value={promedioGrupo != null ? promedioGrupo : '—'} sub={promedioGrupo != null ? `${resumenGrupo?.estudiantesConNotas || 0} estudiantes con notas` : 'Sin notas oficiales registradas'} color="var(--an-navy)" />
@@ -1021,7 +1021,7 @@ function AsistenciaView({ toast }) {
         }
       />
 
-      <div className="grid-4" style={{ marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(210px, 100%), 1fr))', gap:14, marginBottom:20, width:'100%', minWidth:0 }}>
         <div className="card" style={{ textAlign:'center', background:'color-mix(in srgb, var(--ok) 10%, white)', borderColor:'var(--ok)' }}>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:42, fontWeight:500, color:'var(--ok)' }}>{counts.present}</div>
           <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ok)' }}>Presentes</div>
