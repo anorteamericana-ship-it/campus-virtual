@@ -723,13 +723,27 @@ function getSessionToken() {
 //   1) si existe sesion.grupoActivo → lo devuelve.
 //   2) si no → primer grupo asignado (fallback seguro, compat sesiones viejas).
 //   3) si no hay grupos → ''.
+function normalizarGrupoDocenteValor(v) {
+  if (!v) return '';
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'object') {
+    return String(
+      v.code || v.cod_grupo || v.codigo_grupo || v.grupo || v.codigo || v.id || ''
+    ).trim();
+  }
+  return String(v || '').trim();
+}
+
 function getGrupoActivoDocente() {
   const u = getSesion();
   if (!u) return '';
-  if (u.grupoActivo) return u.grupoActivo;
-  if (Array.isArray(u.grupos) && u.grupos.length) return u.grupos[0];
-  if (u.grupo) return u.grupo;
-  return '';
+  const activo = normalizarGrupoDocenteValor(u.grupoActivo);
+  if (activo) return activo;
+  if (Array.isArray(u.grupos) && u.grupos.length) {
+    const primero = normalizarGrupoDocenteValor(u.grupos[0]);
+    if (primero) return primero;
+  }
+  return normalizarGrupoDocenteValor(u.grupo);
 }
 
 // Cambia el grupo activo conservando TODOS los demás datos de la sesión
@@ -738,8 +752,9 @@ function getGrupoActivoDocente() {
 // vistas que dependen de la sesión se refresquen. NO toca el backend.
 function setGrupoActivoDocente(codGrupo) {
   const u = getSesion();
-  if (!u || !codGrupo) return;
-  setSesion({ ...u, grupoActivo: codGrupo, grupo: codGrupo });
+  const limpio = normalizarGrupoDocenteValor(codGrupo);
+  if (!u || !limpio) return;
+  setSesion({ ...u, grupoActivo: limpio, grupo: limpio });
   try { window.dispatchEvent(new Event('an:session-changed')); } catch (_) {}
 }
 

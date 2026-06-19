@@ -64,11 +64,17 @@ function __startDateFromCodGrupo(codGrupo) {
 let __TV_ROSTER_CACHE = null; // { codGrupo, roster }
 
 
-function tvText(v){ return String(v == null ? '' : v).trim(); }
+function tvGroupCode(v){
+  if (!v) return '';
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'object') return String(v.code || v.cod_grupo || v.codigo_grupo || v.grupo || v.codigo || v.id || '').trim();
+  return String(v || '').trim();
+}
+function tvText(v){ return String(v == null ? '' : (typeof v === 'object' ? tvGroupCode(v) : v)).trim(); }
 function tvUpper(v){ return tvText(v).toUpperCase(); }
-function tvCiclo(code){ const p=tvText(code).split('-'); return p.length>=2 ? p[p.length-1] : code; }
+function tvCiclo(code){ const c=tvGroupCode(code) || tvText(code); const p=c.split('-'); return p.length>=2 ? p[p.length-1] : c; }
 function tvScheduleFromCode(code){
-  const s=tvUpper(code).replace(/\s+/g,'');
+  const s=tvUpper(tvGroupCode(code) || code).replace(/\s+/g,'');
   const m=s.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || s.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
   if(!m) return {};
   const dias=m[1]==='SAB'?'SA':m[1]; const hh=m[2];
@@ -80,23 +86,45 @@ function tvDiasLabel(code){
   return ({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábado',SAB:'Sábado',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingo'}[d]) || d || 'Horario';
 }
 function tvHoraLabel(g){
-  const sched=tvScheduleFromCode(g?.code || g?.cod_grupo || '');
+  const code = tvGroupCode(g) || tvGroupCode(g?.code || g?.cod_grupo || '');
+  const sched=tvScheduleFromCode(code);
   const hi=tvText(g?.hora_i || g?.hora_inicio || sched.hora_i);
   const hf=tvText(g?.hora_f || g?.hora_fin || sched.hora_f);
   const norm=(x)=>{ const m=String(x).match(/^(\d{1,2})(?::(\d{2}))?/); if(!m) return x; const h=Number(m[1]); const min=m[2]&&m[2]!=='00'? ':'+m[2] : ''; return (h===0?'12':h>12?String(h-12):String(h))+min+(h>=12?'pm':'am'); };
   return [norm(hi), norm(hf)].filter(Boolean).join(' a ');
 }
 function tvGrupoLabel(g){
-  const code=g?.code || g?.cod_grupo || g || '';
+  const code=tvGroupCode(g) || tvGroupCode(g?.code || g?.cod_grupo || '');
   const sched=tvScheduleFromCode(code);
   const dias=tvDiasLabel(g?.dias || g?.diasCode || sched.dias || '');
   const hora=tvHoraLabel(g);
   return { dias, hora, ciclo:tvCiclo(code), full:`${dias}${hora?' de '+hora:''} - ${tvCiclo(code)}` };
 }
-function tvNivelId(g){ return tvUpper(g?.nivelId || g?.nivel || (tvText(g?.code||g?.cod_grupo).split('-')[0]) || 'B1'); }
+function tvNivelId(g){ const code = tvGroupCode(g) || tvGroupCode(g?.code||g?.cod_grupo); return tvUpper(g?.nivelId || g?.nivel || (code.split('-')[0]) || 'B1'); }
 function tvNivelLabel(g){ return VD_NIVEL_LABEL[tvNivelId(g)] || tvNivelId(g); }
 function tvIsToday(iso){ return iso && iso === new Date().toISOString().slice(0,10); }
 function tvMinutes(hhmm){ const m=String(hhmm||'').match(/^(\d{1,2})(?::(\d{2}))?/); return m ? Number(m[1])*60 + Number(m[2]||0) : null; }
+function tvSessionGroups(usuario){
+  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (usuario?.grupo ? [usuario.grupo] : []);
+  const out = [];
+  const seen = new Set();
+  raw.forEach((g) => {
+    const code = tvGroupCode(g);
+    if (!code || seen.has(code)) return;
+    seen.add(code);
+    const base = typeof g === 'object' ? { ...g } : {};
+    out.push({
+      ...base,
+      code,
+      cod_grupo: code,
+      nivelId: base.nivelId || base.nivel || code.split('-')[0] || 'B1',
+      nivel: base.nivel || base.nivelId || code.split('-')[0] || 'B1',
+      docente: base.docente || usuario?.nombre || usuario?.nombre_completo || usuario?.usuario || '',
+      source:'SESSION_FALLBACK'
+    });
+  });
+  return out;
+}
 function tvNowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function useTeacherSession() {
   const readSession = React.useCallback(() => {
@@ -104,7 +132,8 @@ function useTeacherSession() {
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
     const nombre = usuario?.nombre || '';
     const programa = usuario?.programa || '';
-    const grupoActivo = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : (usuario?.grupoActivo || usuario?.grupo || '');
+    const grupoActivoRaw = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : (usuario?.grupoActivo || usuario?.grupo || '');
+    const grupoActivo = tvGroupCode(grupoActivoRaw);
     return { usuario, nombre, programa, grupoActivo };
   }, []);
 
@@ -128,14 +157,16 @@ function useTeacherSession() {
   React.useEffect(() => {
     let cancel=false;
     setLoading(true); setError(null);
-    postTeacher('getDocenteGruposActuales', {})
+    postTeacher('getDocenteGruposActuales', { docente:nombre })
       .then(d => {
         if (cancel) return;
         if (!d?.ok) throw new Error(d?.error || 'No se pudieron cargar grupos del docente.');
-        const grupos = Array.isArray(d.grupos) ? d.grupos : [];
+        const gruposBackend = Array.isArray(d.grupos) ? d.grupos : [];
+        const gruposFallback = tvSessionGroups(usuario);
+        const grupos = gruposBackend.length ? gruposBackend : gruposFallback;
         setGruposMeta(grupos);
-        const vigente = grupos.find(g => String(g.code || g.cod_grupo) === String(grupoActivo));
-        const nuevo = (vigente || grupos[0] || {}).code || (vigente || grupos[0] || {}).cod_grupo || '';
+        const vigente = grupos.find(g => String(tvGroupCode(g)) === String(grupoActivo));
+        const nuevo = tvGroupCode(vigente || grupos[0] || '');
         setCodGrupo(nuevo);
         if (nuevo && typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(nuevo);
         if (!grupos.length) setError(d.mensaje || 'No hay grupos marcados En curso para este docente en APOLLO.GRUPOS.');
@@ -145,7 +176,7 @@ function useTeacherSession() {
     return ()=>{cancel=true};
   }, [grupoActivo]);
 
-  const meta = React.useMemo(() => gruposMeta.find(g => String(g.code || g.cod_grupo) === String(codGrupo)) || gruposMeta[0] || {}, [gruposMeta, codGrupo]);
+  const meta = React.useMemo(() => gruposMeta.find(g => String(tvGroupCode(g)) === String(codGrupo)) || gruposMeta[0] || {}, [gruposMeta, codGrupo]);
   const nivel = tvNivelId(meta);
 
   React.useEffect(() => {
@@ -260,7 +291,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect }) {
     <div className="card" style={{ marginBottom:18, padding:'16px 18px', background:'#FBF7EF' }}>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(245px, 1fr))', gap:12 }}>
         {lista.map(g => {
-          const code = g.code || g.cod_grupo || '';
+          const code = tvGroupCode(g);
           const active = String(code) === String(activo);
           const n = tvNivelId(g);
           const pal = nivelPal(n);
@@ -306,8 +337,8 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
   const iniciar = async () => {
     const zoom = prompt('Pegá el link de Zoom para iniciar la sesión de clase:');
     if (!zoom) return;
-    const hi = tvMinutes(meta.hora_i || tvScheduleFromCode(meta.code || meta.cod_grupo).hora_i);
-    const hf = tvMinutes(meta.hora_f || tvScheduleFromCode(meta.code || meta.cod_grupo).hora_f);
+    const hi = tvMinutes(meta.hora_i || tvScheduleFromCode(tvGroupCode(meta)).hora_i);
+    const hf = tvMinutes(meta.hora_f || tvScheduleFromCode(tvGroupCode(meta)).hora_f);
     const now = tvNowMinutes();
     let motivo = '';
     if (hi != null && (now < hi || (hf != null && now > hf))) {
@@ -316,7 +347,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
     }
     setBusy(true);
     try {
-      const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:meta.code||meta.cod_grupo, nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom, motivo_inicio:motivo });
+      const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom, motivo_inicio:motivo });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo iniciar sesión.');
       onStarted && onStarted(r.sesion || r);
     } catch(e){ alert(e.message || String(e)); }
@@ -326,7 +357,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
     if (!confirm('¿Finalizar la sesión? Esta acción no se podrá modificar.')) return;
     setBusy(true);
     try {
-      const r = await postTeacher('docenteFinalizarSesionClaseF77', { cod_grupo:meta.code||meta.cod_grupo, nivel:tvNivelId(meta), leccion:leccionHoy.leccion });
+      const r = await postTeacher('docenteFinalizarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo finalizar sesión.');
       onClosed && onClosed(r.sesion || r);
     } catch(e){ alert(e.message || String(e)); }
@@ -366,7 +397,7 @@ function RosterAsistenciaF77({ roster, lecciones, asistenciaDetalle, asistenciaG
     const asistencias = {};
     roster.forEach(r => { asistencias[r.code] = draft[r.code] !== false; });
     const r = await postTeacher('cerrarLeccion', {
-      cod_grupo: meta.code || meta.cod_grupo,
+      cod_grupo: tvGroupCode(meta),
       nivel: tvNivelId(meta),
       leccion: hoy.leccion,
       riel: hoy.tipo === 'ICAN' ? 'ican' : 'curso',
