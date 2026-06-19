@@ -1,3 +1,4 @@
+// CALGRUPO_F80_20260619_MIS_GRUPOS_CARGA_RESILIENTE
 /* global React, Icon, Chip, Stat, PageHeader */
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -8,14 +9,74 @@
 const SCRIPT_URL_TV = window.APPS_SCRIPT_URL;
 
 // FIX-ADMIN-CORE-POST-001: lecturas sensibles vía POST text/plain (token en body).
-async function postTeacher(fn, payload = {}) {
+async function postTeacher(fn, payload = {}, timeoutMs = 30000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const res = await fetch(`${SCRIPT_URL_TV}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ fn, token, ...payload }),
-  });
-  return await res.json();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${SCRIPT_URL_TV}?fn=${encodeURIComponent(fn)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn, token, ...payload }),
+      signal: controller ? controller.signal : undefined,
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; }
+    catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+    if (!res.ok) throw new Error((data && (data.error || data.mensaje)) || `HTTP ${res.status}`);
+    return data;
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error(`El backend tardó demasiado en responder (${fn}).`);
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// F80: el panel consolidado es la ruta principal. Si falla, usamos las rutas
+// estables anteriores para que el docente no quede atrapado en un spinner.
+async function cargarPanelDocenteF80(codGrupo, nivel) {
+  try {
+    const r = await postTeacher('getDocenteGrupoPanelF80', { cod_grupo:codGrupo, nivel }, 45000);
+    if (r && r.ok) return r;
+    throw new Error((r && (r.error || r.mensaje)) || 'Panel consolidado no disponible.');
+  } catch (primaryError) {
+    const calls = await Promise.allSettled([
+      postTeacher('getEstudiantesParaCierre', { cod_grupo:codGrupo, nivel }, 30000),
+      postTeacher('getAsistenciaGrupoCompleta', { cod_grupo:codGrupo, nivel }, 30000),
+      postTeacher('getFechasGrupo', { cod_grupo:codGrupo, nivel }, 30000),
+      postTeacher('getAsistenciaDetalleGrupoF77', { cod_grupo:codGrupo, nivel }, 30000),
+      postTeacher('getDocenteSesionClaseF77', { cod_grupo:codGrupo, nivel }, 30000),
+    ]);
+    const value = (i) => calls[i].status === 'fulfilled' ? calls[i].value : null;
+    const rEst=value(0), rAsis=value(1), rLec=value(2), rDet=value(3), rSesion=value(4);
+    if (!rEst || !rEst.ok) throw primaryError;
+    const lecciones = rLec && rLec.ok && Array.isArray(rLec.lecciones) ? rLec.lecciones : [];
+    const today = new Date().toISOString().slice(0,10);
+    const leccionHoy = lecciones.find(l => String(l.fecha || '') === today && String(l.estado || '').toUpperCase() !== 'FERIADO') || null;
+    const asistencia = rAsis && rAsis.ok ? (rAsis.asistencia || {}) : {};
+    const vals = Object.values(asistencia).map(v => Number(v && v.pct)).filter(Number.isFinite);
+    return {
+      ok:true,
+      version:'F80_FALLBACK',
+      parcial:true,
+      estudiantes:rEst.estudiantes || [],
+      total_ca:(rEst.estudiantes || []).length,
+      lecciones,
+      leccion_hoy:leccionHoy,
+      cerradas:lecciones.filter(l => String(l.estado || '').toUpperCase() === 'CERRADA').length,
+      asistencia,
+      asistencia_detalle:rDet && rDet.ok ? (rDet.detalle || {}) : {},
+      comentarios:{},
+      notas:{},
+      promedio_grupo:null,
+      estudiantes_con_notas:0,
+      promedio_asistencia:vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null,
+      sesion_clase:rSesion && rSesion.ok ? (rSesion.sesion || null) : null,
+      advertencia:'Se cargó el panel básico porque el resumen consolidado no respondió.'
+    };
+  }
 }
 
 // ── Lección sugerida según fecha de inicio + días de clase ──────────────
@@ -166,7 +227,7 @@ function useTeacherSession() {
     let cancel = false;
     setLoadingGroups(true);
     setErrorGroups(null);
-    postTeacher('getDocenteGruposActuales', {})
+    postTeacher('getDocenteGruposActuales', { docente:nombre }, 30000)
       .then(d => {
         if (cancel) return;
         if (!d?.ok) throw new Error(d?.error || d?.mensaje || 'No se pudieron cargar los grupos del docente.');
@@ -209,7 +270,7 @@ function useTeacherSession() {
     let cancel = false;
     setLoadingPanel(true);
     setErrorPanel(null);
-    postTeacher('getDocenteGrupoPanelF79', { cod_grupo:codGrupo, nivel })
+    cargarPanelDocenteF80(codGrupo, nivel)
       .then(r => {
         if (cancel) return;
         if (!r?.ok) throw new Error(r?.error || r?.mensaje || 'No se pudo cargar el panel del grupo.');
@@ -386,8 +447,9 @@ function StatF77({ label, value, sub, color='var(--an-navy)' }) {
 function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) {
   const [busy, setBusy] = React.useState(false);
   if (!leccionHoy) return null;
-  const abierta = sesionClase && sesionClase.estado === 'ABIERTA';
-  const cerrada = sesionClase && sesionClase.estado === 'CERRADA';
+  const estadoSesion = String((sesionClase && (sesionClase.estado || sesionClase.ESTADO)) || '').toUpperCase();
+  const abierta = estadoSesion === 'ABIERTA';
+  const cerrada = estadoSesion === 'CERRADA';
   const iniciar = async () => {
     const zoom = prompt('Pegá el link de Zoom para iniciar la sesión de clase:');
     if (!zoom) return;

@@ -1,3 +1,4 @@
+// CALGRUPO_F80_20260619_CRONOGRAMA_TIMEOUT_RESPUESTA_SEGURA
 // CALGRUPO_F74_20260618_AGENDA_DOCENTE_TARJETAS_PANEL_FIJO_LEGIBLE
 // CALGRUPO_F71_20260618_AGENDA_DOCENTE_SIN_SELECTOR_COMPACTA
 // CALGRUPO_F70_20260618_AGENDA_DOCENTE_SOLO_GRUPOS_EN_CURSO_REALES
@@ -17,14 +18,29 @@
 const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
 
 // FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
-async function postCronoGrupo(fn, payload = {}) {
+async function postCronoGrupo(fn, payload = {}, timeoutMs = 30000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const res = await fetch(`${SCRIPT_URL_CG}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ fn, token, ...payload }),
-  });
-  return await res.json();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${SCRIPT_URL_CG}?fn=${encodeURIComponent(fn)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn, token, ...payload }),
+      signal: controller ? controller.signal : undefined,
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; }
+    catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+    if (!res.ok) throw new Error((data && (data.error || data.mensaje)) || `HTTP ${res.status}`);
+    return data;
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error(`El backend tardó demasiado en responder (${fn}).`);
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 // Sentinel para la vista "Todos los grupos" (solo admin/superadmin).

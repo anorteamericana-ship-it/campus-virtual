@@ -1,3 +1,4 @@
+// CALGRUPO_F80_20260619_NORMALIZACION_SESION_DOCENTE_ESTABLE
 /* global window */
 
 // ── Apps Script URL (compartida) ─────────────────────────────────────────
@@ -754,10 +755,15 @@ function setGrupoActivoDocente(codGrupo) {
   const u = getSesion();
   const limpio = normalizarGrupoDocenteValor(codGrupo);
   if (!u || !limpio) return;
-  const actual = normalizarGrupoDocenteValor(u.grupoActivo || u.grupo);
-  // F79: no reescribir ni disparar an:session-changed cuando el grupo ya es el mismo.
-  // El bucle anterior dejaba Mis Grupos en “Cargando grupo…” y podía tumbar Cronograma.
-  if (actual === limpio) return;
+
+  // F80: no basta comparar el valor normalizado. F79 podía dejar `grupo` como
+  // objeto aunque `grupoActivo` ya fuera el código correcto; otras vistas luego
+  // recibían [object Object] o fallaban al renderizar. Normalizamos ambos campos
+  // una sola vez y únicamente evitamos el evento cuando YA son strings limpios.
+  const activoOk = typeof u.grupoActivo === 'string' && u.grupoActivo.trim() === limpio;
+  const grupoOk  = typeof u.grupo === 'string' && u.grupo.trim() === limpio;
+  if (activoOk && grupoOk) return;
+
   setSesion({ ...u, grupoActivo: limpio, grupo: limpio });
   try { window.dispatchEvent(new Event('an:session-changed')); } catch (_) {}
 }
