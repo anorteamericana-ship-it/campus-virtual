@@ -63,112 +63,123 @@ function __startDateFromCodGrupo(codGrupo) {
 // Cache en módulo para que, al cambiar de vista, no se refetchee siempre.
 let __TV_ROSTER_CACHE = null; // { codGrupo, roster }
 
+
+function tvText(v){ return String(v == null ? '' : v).trim(); }
+function tvUpper(v){ return tvText(v).toUpperCase(); }
+function tvCiclo(code){ const p=tvText(code).split('-'); return p.length>=2 ? p[p.length-1] : code; }
+function tvScheduleFromCode(code){
+  const s=tvUpper(code).replace(/\s+/g,'');
+  const m=s.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || s.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+  if(!m) return {};
+  const dias=m[1]==='SAB'?'SA':m[1]; const hh=m[2];
+  const horas={ '69':['6pm','9pm'], '94':['9am','4pm'], '96':['9am','12pm'] }[hh] || [];
+  return { dias, hora_i:horas[0]||'', hora_f:horas[1]||'' };
+}
+function tvDiasLabel(code){
+  const d=tvUpper(code);
+  return ({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábado',SAB:'Sábado',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingo'}[d]) || d || 'Horario';
+}
+function tvHoraLabel(g){
+  const sched=tvScheduleFromCode(g?.code || g?.cod_grupo || '');
+  const hi=tvText(g?.hora_i || g?.hora_inicio || sched.hora_i);
+  const hf=tvText(g?.hora_f || g?.hora_fin || sched.hora_f);
+  const norm=(x)=>{ const m=String(x).match(/^(\d{1,2})(?::(\d{2}))?/); if(!m) return x; const h=Number(m[1]); const min=m[2]&&m[2]!=='00'? ':'+m[2] : ''; return (h===0?'12':h>12?String(h-12):String(h))+min+(h>=12?'pm':'am'); };
+  return [norm(hi), norm(hf)].filter(Boolean).join(' a ');
+}
+function tvGrupoLabel(g){
+  const code=g?.code || g?.cod_grupo || g || '';
+  const sched=tvScheduleFromCode(code);
+  const dias=tvDiasLabel(g?.dias || g?.diasCode || sched.dias || '');
+  const hora=tvHoraLabel(g);
+  return { dias, hora, ciclo:tvCiclo(code), full:`${dias}${hora?' de '+hora:''} - ${tvCiclo(code)}` };
+}
+function tvNivelId(g){ return tvUpper(g?.nivelId || g?.nivel || (tvText(g?.code||g?.cod_grupo).split('-')[0]) || 'B1'); }
+function tvNivelLabel(g){ return VD_NIVEL_LABEL[tvNivelId(g)] || tvNivelId(g); }
+function tvIsToday(iso){ return iso && iso === new Date().toISOString().slice(0,10); }
+function tvMinutes(hhmm){ const m=String(hhmm||'').match(/^(\d{1,2})(?::(\d{2}))?/); return m ? Number(m[1])*60 + Number(m[2]||0) : null; }
+function tvNowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function useTeacherSession() {
-  // Lee la sesión actual y deriva grupos asignados + grupo activo.
   const readSession = React.useCallback(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
-    // v4.15: soportar docente con múltiples grupos
-    const grupos     = usuario?.grupos || (usuario?.grupo ? [usuario.grupo] : []);
-    // DOCENTE-002-A: operar sobre el GRUPO ACTIVO elegido, no grupos[0].
-    // Fallback seguro al primer grupo si aún no hay activo (sesión vieja).
-    const codGrupo   = (typeof window.getGrupoActivoDocente === 'function')
-      ? window.getGrupoActivoDocente()
-      : (usuario?.grupoActivo || grupos[0] || '');
-    const programa   = usuario?.programa || 'SIN_INA';
-    const nombre     = usuario?.nombre || '';
-    return { grupos, codGrupo, programa, nombre };
+    const nombre = usuario?.nombre || '';
+    const programa = usuario?.programa || '';
+    const grupoActivo = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : (usuario?.grupoActivo || usuario?.grupo || '');
+    return { usuario, nombre, programa, grupoActivo };
   }, []);
 
-  const [state, setState] = React.useState(() => {
-    const { grupos, codGrupo, programa, nombre } = readSession();
-    // leccionNum NO viene de sesión: el docente la ingresa manualmente en cada vista
-    if (__TV_ROSTER_CACHE && __TV_ROSTER_CACHE.codGrupo === codGrupo) {
-      return { codGrupo, grupos, programa, nombre, roster: __TV_ROSTER_CACHE.roster, loading:false, error:null };
-    }
-    return { codGrupo, grupos, programa, nombre, roster: [], loading: !!codGrupo, error: codGrupo ? null : 'No hay sesión de docente activa.' };
-  });
+  const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
+  const [gruposMeta, setGruposMeta] = React.useState([]);
+  const [codGrupo, setCodGrupo] = React.useState(grupoActivo || '');
+  const [roster, setRoster] = React.useState([]);
+  const [lecciones, setLecciones] = React.useState([]);
+  const [asistenciaGrupo, setAsistenciaGrupo] = React.useState({});
+  const [asistenciaDetalle, setAsistenciaDetalle] = React.useState({});
+  const [sesionClase, setSesionClase] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
 
-  // DOCENTE-002-B: refrescar en vivo cuando cambia el grupo activo (evento
-  // 'an:session-changed', emitido por setGrupoActivoDocente). Si el grupo
-  // cambió, recargamos el roster del nuevo grupo activo sin recargar la
-  // página; si es el mismo, solo refrescamos la lista de grupos/labels.
   React.useEffect(() => {
-    const onChange = () => {
-      const { grupos, codGrupo, programa, nombre } = readSession();
-      setState(prev => {
-        if (codGrupo === prev.codGrupo) {
-          return { ...prev, grupos, programa, nombre };
-        }
-        const cached = !!(__TV_ROSTER_CACHE && __TV_ROSTER_CACHE.codGrupo === codGrupo);
-        return {
-          codGrupo, grupos, programa, nombre,
-          roster: cached ? __TV_ROSTER_CACHE.roster : [],
-          loading: cached ? false : !!codGrupo,
-          error: codGrupo ? null : 'No hay sesión de docente activa.',
-        };
-      });
-    };
+    const onChange = () => setSesionLocal(readSession());
     window.addEventListener('an:session-changed', onChange);
     return () => window.removeEventListener('an:session-changed', onChange);
   }, [readSession]);
 
-  // DOCENTE-002-A: auto-curación de sesiones viejas / mono-grupo. Si hay un
-  // grupo en juego pero la sesión aún no tiene `grupoActivo`, lo fijamos al
-  // grupo en uso para que quede explícito (no cambia de grupo, solo lo marca).
   React.useEffect(() => {
-    if (!state.codGrupo) return;
-    const u = (typeof window.getSesion === 'function') ? window.getSesion() : null;
-    if (u && u.rol === 'teacher' && !u.grupoActivo &&
-        typeof window.setGrupoActivoDocente === 'function') {
-      window.setGrupoActivoDocente(state.codGrupo);
-    }
-  }, [state.codGrupo]);
-
-  React.useEffect(() => {
-    if (!state.codGrupo || !state.loading) return;
-    let cancel = false;
-    (async () => {
-      try {
-        const data = await postTeacher('getGrupoEstudiantes', { cod_grupo: state.codGrupo });
+    let cancel=false;
+    setLoading(true); setError(null);
+    postTeacher('getDocenteGruposActuales', {})
+      .then(d => {
         if (cancel) return;
-        if (!data.ok) {
-          setState(s => ({ ...s, loading:false, error: data.error || 'No se pudo cargar el grupo.' }));
-          return;
-        }
-        const roster = (data.estudiantes || []).map(e => ({
-          code: e.code,
-          name: e.name,
-          status: 'al-dia',
-          att: null, avg: null, oral: null, lastSeen: null,
-        }));
-        __TV_ROSTER_CACHE = { codGrupo: state.codGrupo, roster };
-        setState(s => ({ ...s, loading:false, error:null, roster }));
-      } catch(e) {
-        if (cancel) return;
-        setState(s => ({ ...s, loading:false, error: 'Error de conexión: ' + e.message }));
-      }
-    })();
-    return () => { cancel = true; };
-  }, [state.codGrupo, state.loading]);
+        if (!d?.ok) throw new Error(d?.error || 'No se pudieron cargar grupos del docente.');
+        const grupos = Array.isArray(d.grupos) ? d.grupos : [];
+        setGruposMeta(grupos);
+        const vigente = grupos.find(g => String(g.code || g.cod_grupo) === String(grupoActivo));
+        const nuevo = (vigente || grupos[0] || {}).code || (vigente || grupos[0] || {}).cod_grupo || '';
+        setCodGrupo(nuevo);
+        if (nuevo && typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(nuevo);
+        if (!grupos.length) setError(d.mensaje || 'No hay grupos marcados En curso para este docente en APOLLO.GRUPOS.');
+      })
+      .catch(e => { if(!cancel) setError(e.message || String(e)); })
+      .finally(() => { if(!cancel) setLoading(false); });
+    return ()=>{cancel=true};
+  }, [grupoActivo]);
 
-  // grupoInfo derivado: startDate desde el último segmento del codGrupo (MMYY)
-  const grupoInfo = React.useMemo(() => ({
-    startDate: __startDateFromCodGrupo(state.codGrupo),
-  }), [state.codGrupo]);
+  const meta = React.useMemo(() => gruposMeta.find(g => String(g.code || g.cod_grupo) === String(codGrupo)) || gruposMeta[0] || {}, [gruposMeta, codGrupo]);
+  const nivel = tvNivelId(meta);
 
-  // v4.16: cargar asistencia % real del grupo
-  const [asistenciaGrupo, setAsistenciaGrupo] = React.useState({});
   React.useEffect(() => {
-    if (!state.codGrupo || state.loading) return;
-    postTeacher('getAsistenciaGrupoCompleta', { cod_grupo: state.codGrupo })
-      .then(d => { if (d?.ok) setAsistenciaGrupo(d.asistencia || {}); })
-      .catch(() => {});
-  }, [state.codGrupo, state.loading]);
+    if (!codGrupo || !nivel) return;
+    let cancel=false;
+    setLoading(true); setError(null);
+    Promise.all([
+      postTeacher('getEstudiantesParaCierre', { cod_grupo: codGrupo, nivel }),
+      postTeacher('getAsistenciaGrupoCompleta', { cod_grupo: codGrupo, nivel }),
+      postTeacher('getFechasGrupo', { cod_grupo: codGrupo, nivel }),
+      postTeacher('getAsistenciaDetalleGrupoF77', { cod_grupo: codGrupo, nivel }),
+      postTeacher('getDocenteSesionClaseF77', { cod_grupo: codGrupo, nivel }),
+    ]).then(([rEst, rAsis, rLec, rDet, rSesion]) => {
+      if(cancel) return;
+      if(!rEst?.ok) throw new Error(rEst?.error || 'No se pudo cargar estudiantes CA.');
+      const rs = (rEst.estudiantes || []).map(e => ({ code:e.code || e.codigo || e.CODIGO, name:e.name || e.nombre || e.NOMBRE, avg:null, oral:null, lastSeen:null }));
+      setRoster(rs);
+      setAsistenciaGrupo(rAsis?.ok ? (rAsis.asistencia || {}) : {});
+      setLecciones(rLec?.ok && Array.isArray(rLec.lecciones) ? rLec.lecciones : []);
+      setAsistenciaDetalle(rDet?.ok ? (rDet.detalle || {}) : {});
+      setSesionClase(rSesion?.ok ? (rSesion.sesion || null) : null);
+    }).catch(e => { if(!cancel) setError(e.message || String(e)); })
+      .finally(()=>{ if(!cancel) setLoading(false); });
+    return ()=>{cancel=true};
+  }, [codGrupo, nivel]);
 
-  return { ...state, grupoInfo, asistenciaGrupo };
+  const cambiarGrupo = React.useCallback((code) => {
+    if (!code || code === codGrupo) return;
+    setCodGrupo(code);
+    if (typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(code);
+  }, [codGrupo]);
+
+  return { usuario, nombre, programa, codGrupo, grupos: gruposMeta, meta, nivel, roster, lecciones, asistenciaGrupo, asistenciaDetalle, sesionClase, loading, error, cambiarGrupo };
 }
-
 // (TeacherLoadingState eliminado — usa <LoadingState/> + <ErrorState/> de primitives.jsx.)
 
 // ── Tareas pendientes derivadas del cronograma real ─────────────────────
@@ -235,206 +246,218 @@ const EVAL_TYPES_SIN_INA = [
 // (TeacherDashboard y QuickStat eliminados en bloque 2 — VistaDocente es
 // ahora la única pantalla principal del docente, conectada al backend.)
 // ─────────────────────────────────────────────────────────────────────────
-// ── DOCENTE-002-B: selector de grupo activo del docente ──────────────────
+
+// ── DOCENTE F77: Mis Grupos operativo desde APOLLO.GRUPOS ────────────────
 const NIVEL_LABEL_GRUPO = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II', A1:'Avanzado I', A2:'Avanzado II' };
 function nivelLabelDe(code) {
   const ini = ((code || '').split('-')[0] || '').toUpperCase();
   return NIVEL_LABEL_GRUPO[ini] || ini || '—';
 }
 
-// Tarjetas: una por grupo asignado. Marca el activo y permite cambiarlo.
-function MisGruposSwitcher({ grupos, activo, programa, onSelect }) {
+function MisGruposSwitcher({ grupos, activo, onSelect }) {
+  const lista = grupos || [];
   return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:12 }}>
-        {grupos.map(code => {
-          const esActivo = code === activo;
+    <div className="card" style={{ marginBottom:18, padding:'16px 18px', background:'#FBF7EF' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(245px, 1fr))', gap:12 }}>
+        {lista.map(g => {
+          const code = g.code || g.cod_grupo || '';
+          const active = String(code) === String(activo);
+          const n = tvNivelId(g);
+          const pal = nivelPal(n);
+          const lab = tvGrupoLabel(g);
           return (
-            <div key={code} className="card" style={{
-              padding:'16px 18px',
-              border: esActivo ? '2px solid var(--an-granate)' : '1px solid var(--line)',
-              background: esActivo ? 'color-mix(in srgb, var(--an-granate) 5%, white)' : 'var(--surface)',
-              display:'flex', flexDirection:'column', gap:14,
-            }}>
-              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontFamily:'var(--f-mono)', fontWeight:700, fontSize:14, color:'var(--ink)', letterSpacing:'-0.01em', wordBreak:'break-all' }}>{code}</div>
-                  <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>
-                    {nivelLabelDe(code)}{esActivo && programa ? ` · ${programa}` : ''}
-                  </div>
-                </div>
-                {esActivo && (
-                  <span style={{
-                    flexShrink:0, fontSize:10, fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase',
-                    padding:'4px 9px', borderRadius:999, background:'var(--an-granate)', color:'white',
-                    display:'inline-flex', alignItems:'center', gap:5,
-                  }}>
-                    <span style={{ width:6, height:6, borderRadius:'50%', background:'white' }} />Activo
-                  </span>
-                )}
+            <button key={code} type="button" onClick={() => onSelect(code)} disabled={active}
+              style={{
+                textAlign:'left', minHeight:112, borderRadius:'var(--r-lg)', padding:'16px 18px',
+                border:`1.8px solid ${active ? pal.dark : 'var(--line)'}`,
+                background: active ? `color-mix(in srgb, ${pal.light} 68%, white)` : '#FFF',
+                boxShadow: active ? '0 0 0 1px rgba(7,59,122,.08)' : '0 1px 0 rgba(11,31,58,.05)',
+                cursor: active ? 'default' : 'pointer', fontFamily:'inherit', position:'relative',
+                display:'flex', flexDirection:'column', justifyContent:'center', gap:6,
+              }}>
+              {active && <span style={{ position:'absolute', top:13, right:14, background:'var(--an-navy)', color:'#fff', borderRadius:999, padding:'4px 11px', fontSize:10, fontWeight:900, letterSpacing:'.08em' }}>● ACTIVO</span>}
+              <div style={{ fontSize:17, fontWeight:900, color:'var(--ink)', lineHeight:1.05 }}>{lab.dias}</div>
+              <div style={{ fontSize:20, fontWeight:900, color:'var(--an-navy)', lineHeight:1 }}>{lab.hora || 'Horario'}</div>
+              <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:2 }}>
+                <span style={{ fontSize:13, fontWeight:900, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{lab.ciclo}</span>
+                <span style={{ fontSize:10, fontWeight:900, color:pal.dark, background:pal.light, borderRadius:999, padding:'2px 8px' }}>{n}</span>
               </div>
-              {esActivo ? (
-                <button className="btn btn-ghost" disabled
-                  style={{ opacity:0.55, cursor:'default', justifyContent:'center' }}>
-                  Grupo en uso
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={() => onSelect(code)}
-                  style={{ justifyContent:'center' }}>
-                  Usar este grupo
-                </button>
-              )}
-            </div>
+            </button>
           );
         })}
-      </div>
-      <div style={{ marginTop:12, fontSize:12, color:'var(--ink-2)', lineHeight:1.5, display:'flex', alignItems:'flex-start', gap:8 }}>
-        <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--an-granate)', marginTop:5, flexShrink:0 }} />
-        <span>El grupo activo se usará en <b>Asistencia</b>, <b>Calificar</b>, <b>Calendario</b> y <b>Materiales</b>. Cambiarlo no elimina tus otros grupos.</span>
       </div>
     </div>
   );
 }
 
-function GruposView() {
-  const { codGrupo, grupos, programa, roster, loading, error, asistenciaGrupo } = useTeacherSession();
+function StatF77({ label, value, sub, color='var(--an-navy)' }) {
+  return <div className="card" style={{ padding:'18px 20px' }}>
+    <div style={{ ...vdLabelStyle, marginBottom:8 }}>{label}</div>
+    <div style={{ fontFamily:'var(--f-serif)', fontSize:32, fontWeight:700, color, lineHeight:1 }}>{value}</div>
+    {sub && <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:8 }}>{sub}</div>}
+  </div>;
+}
 
-  // Aviso efímero al cambiar de grupo activo.
-  const [aviso, setAviso] = React.useState('');
-  const avisoTimer = React.useRef(null);
-  React.useEffect(() => () => clearTimeout(avisoTimer.current), []);
-
-  const lista = (grupos && grupos.length) ? grupos : (codGrupo ? [codGrupo] : []);
-
-  const cambiarGrupo = (code) => {
-    if (!code || code === codGrupo) return;
-    // Actualiza sessionStorage (grupoActivo + grupo) y emite 'an:session-changed';
-    // useTeacherSession lo escucha y recarga el roster del nuevo grupo activo.
-    if (typeof window.setGrupoActivoDocente === 'function') {
-      window.setGrupoActivoDocente(code);
+function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) {
+  const [busy, setBusy] = React.useState(false);
+  if (!leccionHoy) return null;
+  const abierta = sesionClase && sesionClase.estado === 'ABIERTA';
+  const cerrada = sesionClase && sesionClase.estado === 'CERRADA';
+  const iniciar = async () => {
+    const zoom = prompt('Pegá el link de Zoom para iniciar la sesión de clase:');
+    if (!zoom) return;
+    const hi = tvMinutes(meta.hora_i || tvScheduleFromCode(meta.code || meta.cod_grupo).hora_i);
+    const hf = tvMinutes(meta.hora_f || tvScheduleFromCode(meta.code || meta.cod_grupo).hora_f);
+    const now = tvNowMinutes();
+    let motivo = '';
+    if (hi != null && (now < hi || (hf != null && now > hf))) {
+      motivo = prompt('Brinda una breve explicación de la razón de inicio fuera del horario establecido:') || '';
+      if (!motivo.trim()) { alert('El motivo es obligatorio si iniciás fuera del horario.'); return; }
     }
-    setAviso('Grupo activo actualizado');
-    clearTimeout(avisoTimer.current);
-    avisoTimer.current = setTimeout(() => setAviso(''), 2600);
+    setBusy(true);
+    try {
+      const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:meta.code||meta.cod_grupo, nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom, motivo_inicio:motivo });
+      if (!r?.ok) throw new Error(r?.error || 'No se pudo iniciar sesión.');
+      onStarted && onStarted(r.sesion || r);
+    } catch(e){ alert(e.message || String(e)); }
+    finally { setBusy(false); }
+  };
+  const finalizar = async () => {
+    if (!confirm('¿Finalizar la sesión? Esta acción no se podrá modificar.')) return;
+    setBusy(true);
+    try {
+      const r = await postTeacher('docenteFinalizarSesionClaseF77', { cod_grupo:meta.code||meta.cod_grupo, nivel:tvNivelId(meta), leccion:leccionHoy.leccion });
+      if (!r?.ok) throw new Error(r?.error || 'No se pudo finalizar sesión.');
+      onClosed && onClosed(r.sesion || r);
+    } catch(e){ alert(e.message || String(e)); }
+    finally { setBusy(false); }
+  };
+  return <div className="card" style={{ padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, borderLeft:'4px solid var(--an-navy)' }}>
+    <div>
+      <div style={vdLabelStyle}>Clase de hoy</div>
+      <div style={{ fontSize:18, fontWeight:800, color:'var(--ink)' }}>Lección {String(leccionHoy.leccion).padStart(2,'0')} · {tvHoraLabel(meta)}</div>
+      <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>
+        {cerrada ? 'Sesión finalizada. Registro bloqueado para planilla.' : abierta ? 'Sesión abierta. Recordá finalizar al terminar la clase.' : 'Iniciá sesión para registrar horas reales de planilla.'}
+      </div>
+    </div>
+    <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+      {!abierta && !cerrada && <button className="btn btn-primary" disabled={busy} onClick={iniciar}>INICIAR SESIÓN</button>}
+      {abierta && <button className="btn btn-primary" disabled={busy} onClick={finalizar}>FINALIZAR SESIÓN</button>}
+      {cerrada && <span style={{ padding:'10px 14px', borderRadius:'var(--r-md)', background:'color-mix(in srgb, var(--ok) 12%, white)', color:'#166534', fontWeight:800 }}>✓ Sesión cerrada</span>}
+    </div>
+  </div>;
+}
+
+function RosterAsistenciaF77({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, meta, docenteNombre, onSaved }) {
+  const hoyIso = new Date().toISOString().slice(0,10);
+  const lessons = (lecciones || []).filter(l => String(l.tipo || 'CLASE').toUpperCase() !== 'FERIADO').slice(0, 32);
+  const hoy = lessons.find(l => l.fecha === hoyIso && String(l.estado || '').toUpperCase() !== 'CERRADA') || lessons.find(l => l.fecha === hoyIso);
+  const [draft, setDraft] = React.useState({});
+  const [nota, setNota] = React.useState('');
+  React.useEffect(() => {
+    if (!hoy || !roster.length) return;
+    const next = {};
+    roster.forEach(r => { next[r.code] = true; });
+    setDraft(next);
+  }, [hoy?.leccion, roster.length]);
+
+  const guardarHoy = async () => {
+    if (!hoy) return;
+    const asistencias = {};
+    roster.forEach(r => { asistencias[r.code] = draft[r.code] !== false; });
+    const r = await postTeacher('cerrarLeccion', {
+      cod_grupo: meta.code || meta.cod_grupo,
+      nivel: tvNivelId(meta),
+      leccion: hoy.leccion,
+      riel: hoy.tipo === 'ICAN' ? 'ican' : 'curso',
+      docente_real: docenteNombre,
+      registrado_por: docenteNombre,
+      nota_docente: nota,
+      asistencias
+    });
+    if (!r?.ok) { alert(r?.error || r?.detalle || 'No se pudo guardar asistencia.'); return; }
+    alert('Asistencia guardada.');
+    onSaved && onSaved();
   };
 
-  // Estado vacío: docente sin grupos asignados.
-  if (!lista.length) {
-    return (
+  return <div className="card" style={{ padding:0, overflow:'hidden' }}>
+    <div className="card-h" style={{ padding:'18px 20px', alignItems:'center' }}>
       <div>
-        <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados" />
-        <div style={{
-          padding:'48px 24px', textAlign:'center', background:'var(--surface-2)',
-          border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)',
-          color:'var(--ink-2)', fontSize:15, fontWeight:600,
-        }}>
-          No hay grupos asignados.
-        </div>
+        <div className="card-title">Roster · {tvGrupoLabel(meta).full}</div>
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Solo estudiantes CA del nivel en curso. La asistencia se mueve horizontalmente.</div>
       </div>
-    );
+      {hoy && <button className="btn btn-primary" onClick={guardarHoy}>✓ Pasar asistencia</button>}
+    </div>
+    {hoy && <div style={{ padding:'0 20px 14px' }}>
+      <textarea value={nota} onChange={e=>setNota(e.target.value)} placeholder="Nota general del docente · opcional. Ej.: Cubrimos hasta la página 14..." style={{ width:'100%', minHeight:54, border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:10, fontFamily:'inherit', resize:'vertical' }} />
+    </div>}
+    <div style={{ overflowX:'auto', borderTop:'1px solid var(--line)' }}>
+      <table className="table-soft" style={{ minWidth: 760 + lessons.length * 96 }}>
+        <thead>
+          <tr>
+            <th style={{ minWidth:90 }}>Cód.</th>
+            <th style={{ minWidth:280 }}>Estudiante</th>
+            <th style={{ minWidth:150, textAlign:'right' }}>Promedio asistencia</th>
+            {lessons.map(l => <th key={l.leccion} style={{ minWidth:96, textAlign:'center' }}>Lec {String(l.leccion).padStart(2,'0')}</th>)}
+            <th style={{ minWidth:120, textAlign:'right' }}>Promedio nota</th>
+            <th style={{ minWidth:110 }}>Últ. visto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roster.map((r,i) => <tr key={r.code || i}>
+            <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-3)' }}>{r.code}</td>
+            <td><div style={{ display:'flex', gap:10, alignItems:'center' }}><div style={{ width:30, height:30, borderRadius:'50%', background:'var(--an-navy)', color:'white', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div><span style={{ fontWeight:600 }}>{r.name}</span></div></td>
+            <td style={{ textAlign:'right', fontWeight:500 }}>{asistenciaGrupo[r.code]?.pct != null ? asistenciaGrupo[r.code].pct + '%' : '—'}</td>
+            {lessons.map(l => {
+              const isHoy = hoy && Number(hoy.leccion) === Number(l.leccion);
+              const det = asistenciaDetalle?.[String(l.leccion)]?.[r.code];
+              const closed = String(l.estado||'').toUpperCase() === 'CERRADA' || det;
+              const future = l.fecha && l.fecha > hoyIso;
+              return <td key={l.leccion} style={{ textAlign:'center', verticalAlign:'top', padding:'8px 6px' }}>
+                {isHoy && !closed ? <div style={{ display:'grid', gap:4 }}>
+                  <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:true}))} style={miniAttendBtn(draft[r.code] !== false, true)}>Presente</button>
+                  <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:false}))} style={miniAttendBtn(draft[r.code] === false, false)}>Ausente</button>
+                </div> : closed ? <div style={{ fontSize:11, fontWeight:800, color: det?.presente === false ? '#B3261E' : '#166534' }}>{det?.presente === false ? 'Ausente' : 'Presente'}</div> : future ? <span style={{ color:'var(--ink-3)' }}>—</span> : <span style={{ color:'var(--ink-3)' }}>Sin dato</span>}
+              </td>;
+            })}
+            <td style={{ textAlign:'right', fontWeight:700 }}>{r.avg ?? '—'}</td>
+            <td style={{ fontSize:11, color:'var(--ink-3)' }}>{r.lastSeen ?? '—'}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'5px 7px', fontSize:10, fontWeight:800, cursor:'pointer' }; }
+
+function GruposView() {
+  const { codGrupo, grupos, meta, nivel, nombre, roster, loading, error, asistenciaGrupo, asistenciaDetalle, lecciones, sesionClase, cambiarGrupo } = useTeacherSession();
+  const [refreshKey, setRefreshKey] = React.useState(0);
+  const lista = grupos || [];
+
+  if (!lista.length && !loading) {
+    return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados" /><ErrorState message={error || 'No hay grupos En curso asignados.'} onRetry={() => location.reload()} /></div>;
   }
 
-  const nivelLabel = nivelLabelDe(codGrupo);
-
-  // Promedio y asistencia reales del roster cargado
-  const valid    = roster.filter(r => typeof r.avg === 'number');
-  const avgClass = valid.length ? (valid.reduce((a,r)=>a+r.avg,0)/valid.length).toFixed(1) : null;
-  // v4.16: asistencia real desde CAMPUS_OPERATIVO
   const attValues = roster.map(r => asistenciaGrupo[r.code]?.pct).filter(v => v != null);
   const attClass = attValues.length ? Math.round(attValues.reduce((a,v)=>a+v,0)/attValues.length) : null;
+  const leccionHoy = (lecciones || []).find(l => tvIsToday(l.fecha));
 
   return (
-    <div>
-      <PageHeader
-        kicker="Gestión académica"
-        title={<>Mis <em>Grupos</em></>}
-        sub={lista.length > 1 ? `Tenés ${lista.length} grupos asignados` : `Grupo ${codGrupo}`}
-      />
-
-      {aviso && (
-        <div style={{
-          display:'flex', alignItems:'center', gap:10, padding:'10px 14px', marginBottom:16,
-          background:'color-mix(in srgb, var(--ok) 10%, white)', border:'1px solid var(--ok)',
-          borderRadius:'var(--r-md)', fontSize:13, fontWeight:600, color:'#166534',
-        }}>
-          <span style={{ width:18, height:18, borderRadius:'50%', background:'var(--ok)', color:'white', display:'grid', placeItems:'center', fontSize:12 }}>✓</span>
-          {aviso}
+    <div key={refreshKey}>
+      <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={lista.length > 1 ? `Tenés ${lista.length} grupos en curso` : tvGrupoLabel(meta).full} />
+      <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} />
+      {error && <div style={{ marginBottom:14 }}><ErrorState message={error} onRetry={() => location.reload()} /></div>}
+      {loading ? <LoadingState title="Cargando grupo…" subtitle="Consultando APOLLO.GRUPOS, ESTATUS y asistencia" /> : <>
+        <div className="grid-4" style={{ marginBottom:20 }}>
+          <StatF77 label="Matriculados CA" value={roster.length} sub="Solo estudiantes cursando actualmente" color="var(--an-navy)" />
+          <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark} />
+          <StatF77 label="Promedio grupo" value="—" sub="Sin notas oficiales registradas" color="var(--ink-3)" />
+          <StatF77 label="Asistencia" value={attClass != null ? `${attClass}%` : '—'} sub={attClass != null ? 'Promedio del grupo' : 'Sin registro aún'} color="var(--warn)" />
         </div>
-      )}
-
-      <MisGruposSwitcher grupos={lista} activo={codGrupo} programa={programa} onSelect={cambiarGrupo} />
-
-      {error ? (
-        <ErrorState message={error} onRetry={() => location.reload()} />
-      ) : loading ? (
-        <LoadingState title="Cargando grupo…" subtitle="Consultando lista de estudiantes" />
-      ) : (
-        <>
-      <div className="grid-4" style={{ marginBottom:20 }}>
-        <Stat label="Matriculados"   num={roster.length}                 sub="Máximo: 12" pct={roster.length/12*100} color="var(--an-navy)" />
-        <Stat label="Nivel actual"   num={nivelLabel}                    sub={codGrupo}   pct={0}                    color="var(--an-granate)" />
-        <Stat label="Promedio grupo" num={avgClass ?? '—'} suffix={avgClass?'%':''} sub={avgClass?'Sobre 100':'Sin notas aún'} subTone={avgClass?'ok':'muted'} pct={avgClass?Number(avgClass):0} color="var(--ok)" />
-        <Stat label="Asistencia"     num={attClass ?? '—'} suffix={attClass!=null?'%':''} sub={attClass!=null?'Promedio del grupo':'Sin registro aún'} subTone={attClass!=null?'warn':'muted'} pct={attClass||0} color="var(--warn)" />
-      </div>
-
-      <div className="card" style={{ padding:0, overflow:'hidden' }}>
-        <div className="card-h" style={{ padding:'18px 20px' }}>
-          <div className="card-title">Roster · {codGrupo}</div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button className="btn btn-ghost"><Icon name="download" size={14} className="" /> Exportar</button>
-          </div>
-        </div>
-        <table className="table-soft">
-          <thead>
-            <tr>
-              <th>Cód.</th>
-              <th>Estudiante</th>
-              <th style={{ textAlign:'right' }}>Promedio</th>
-              <th style={{ textAlign:'right' }}>Asistencia</th>
-              <th style={{ textAlign:'right' }}>Oral 1 /15</th>
-              <th>Últ. visto</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {roster.map((r,i) => (
-              <tr key={i}>
-                <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-3)' }}>{r.code}</td>
-                <td>
-                  <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                    <div style={{ width:30, height:30, borderRadius:'50%', background:'var(--an-navy)', color:'white', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {r.name.split(' ').slice(0,2).map(w=>w[0]).join('')}
-                    </div>
-                    <span style={{ fontWeight:500 }}>{r.name}</span>
-                  </div>
-                </td>
-                <td style={{ textAlign:'right', fontWeight:600, color: r.avg==null?'var(--ink-3)':r.avg>=85?'var(--ok)':r.avg>=75?'var(--ink)':'var(--danger)' }}>{r.avg ?? '—'}</td>
-                <td style={{ textAlign:'right', fontWeight:500 }}>
-                  {(() => {
-                    const att = asistenciaGrupo[r.code]?.pct;
-                    if (att == null) return <span style={{ color:'var(--ink-3)' }}>—</span>;
-                    return (
-                      <div style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                        <div style={{ width:50, height:4, background:'var(--bg-deep)', borderRadius:2 }}>
-                          <div style={{ width:`${att}%`, height:'100%', background: att>=85?'var(--ok)':att>=70?'var(--warn)':'var(--danger)', borderRadius:2 }} />
-                        </div>
-                        {att}%
-                      </div>
-                    );
-                  })()}
-                </td>
-                <td style={{ textAlign:'right', fontFamily:'var(--f-mono)' }}>{r.oral ?? '—'}</td>
-                <td style={{ fontSize:11, color:'var(--ink-3)' }}>{r.lastSeen ?? '—'}</td>
-                <td style={{ textAlign:'right' }}>
-                  <button className="btn btn-icon btn-ghost"><Icon name="messages" size={14} className="" /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-        </>
-      )}
+        <SesionClaseBox meta={meta} leccionHoy={leccionHoy} sesionClase={sesionClase} onStarted={()=>setRefreshKey(k=>k+1)} onClosed={()=>setRefreshKey(k=>k+1)} />
+        <RosterAsistenciaF77 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} meta={meta} docenteNombre={nombre} onSaved={()=>setRefreshKey(k=>k+1)} />
+      </>}
     </div>
   );
 }
