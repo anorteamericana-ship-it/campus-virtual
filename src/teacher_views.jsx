@@ -469,9 +469,6 @@ function MisGruposSwitcher({ grupos, activo, onSelect }) {
           })}
         </div>
       </div>
-      <div style={{ padding:'8px 12px', fontSize:10.5, color:'var(--ink-3)', borderTop:'1px solid var(--line)' }}>
-        Seleccioná cualquier tarjeta. Si el grupo se reúne varios días, todas sus tarjetas quedan marcadas al mismo tiempo.
-      </div>
     </div>
   );
 }
@@ -565,7 +562,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [busy,setBusy]=React.useState(false), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=new Date().toISOString().slice(0,10);
-  const isToday=String(lesson?.fecha||'')===today, closed=String(lesson?.estado||'').toUpperCase()==='CERRADA';
+  const isToday=String(lesson?.fecha||'')===today, isUpcoming=String(lesson?.fecha||'')>=today, closed=String(lesson?.estado||'').toUpperCase()==='CERRADA';
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado), abierta=estadoSesion==='ABIERTA', sesionCerrada=estadoSesion==='CERRADA';
   const load=React.useCallback(()=>{
     if(!lesson)return; setLoading(true);
@@ -582,7 +579,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const iniciar=async()=>{
     const zoom=prompt('Pegá el link de Zoom para iniciar la sesión de clase:'); if(!zoom)return;
     const sched=tvScheduleFromCode(code), hi=tvMinutes(meta?.hora_i||sched.hora_i), hf=tvMinutes(meta?.hora_f||sched.hora_f), now=tvNowMinutes();
-    let motivo=''; if(hi!=null&&(now<hi||(hf!=null&&now>hf))){motivo=prompt('Brinda una breve explicación de la razón de inicio fuera del horario establecido:')||''; if(!motivo.trim()){alert('La explicación es obligatoria.');return;}}
+    let motivo=''; if(!isToday||(hi!=null&&(now<hi||(hf!=null&&now>hf)))){motivo=prompt('Brinda una breve explicación de la razón de inicio fuera del horario establecido:')||''; if(!motivo.trim()){alert('La explicación es obligatoria.');return;}}
     setBusy(true); try{const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,zoom_link:zoom,motivo_inicio:motivo}); if(!r?.ok)throw new Error(r?.error||'No se pudo iniciar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);}
   };
   const finalizar=async()=>{ if(!confirm('¿Finalizar la sesión? Esta acción quedará bloqueada para planilla.'))return; setBusy(true); try{const r=await postTeacher('docenteFinalizarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion}); if(!r?.ok)throw new Error(r?.error||'No se pudo finalizar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);} };
@@ -591,14 +588,14 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
       <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
-          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>Lección {String(lesson?.leccion||'').padStart(2,'0')}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>{tvDateLabelF82(lesson?.fecha)} · {tvHoraLabel(meta)}</div></div>
+          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>Lección {String(lesson?.leccion||'').padStart(2,'0')}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>{tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvHoraLabel(meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginBottom:16}}>
-            {isToday&&!abierta&&!sesionCerrada&&<button className="btn btn-primary" disabled={busy} onClick={iniciar}>INICIAR CLASE</button>}
-            {isToday&&abierta&&<button className="btn btn-primary" disabled={busy} onClick={finalizar}>FINALIZAR CLASE</button>}
-            {isToday&&!closed&&<button className="btn btn-primary" onClick={()=>setAttendanceOpen(true)}>PASAR ASISTENCIA</button>}
+            {isUpcoming&&!closed&&!abierta&&!sesionCerrada&&<button className="btn btn-primary" disabled={busy} onClick={iniciar}>INICIAR CLASE</button>}
+            {abierta&&<button className="btn btn-primary" disabled={busy} onClick={finalizar}>CERRAR CLASE</button>}
+            {!closed&&(isToday||abierta)&&<button className="btn btn-primary" onClick={()=>setAttendanceOpen(true)}>PASAR ASISTENCIA</button>}
             <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
             {!closed&&String(lesson?.fecha||'')>=today&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN</button>}
           </div>
@@ -673,7 +670,13 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   const todayIso=new Date().toISOString().slice(0,10);
   const lessons=React.useMemo(()=>(lecciones||[]).filter(l=>tvUpper(l.tipo)!=='FERIADO'&&tvUpper(l.tipo)!=='ICAN').slice().sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion||0)-Number(b.leccion||0)).slice(0,32),[lecciones]);
   const todayLesson=leccionHoy||lessons.find(l=>String(l.fecha||'')===todayIso&&tvUpper(l.estado)!=='FERIADO')||null;
-  const nextLesson=React.useMemo(()=>lessons.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA')||lessons.find(l=>tvUpper(l.estado)!=='CERRADA')||lessons[lessons.length-1]||null,[lessons,todayIso]);
+  const nextDate=React.useMemo(()=>{
+    const upcoming=lessons.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
+    const fallback=lessons.find(l=>tvUpper(l.estado)!=='CERRADA')||lessons[lessons.length-1]||null;
+    return String((upcoming||fallback)?.fecha||'');
+  },[lessons,todayIso]);
+  const nextLessons=React.useMemo(()=>lessons.filter(l=>String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA'),[lessons,nextDate]);
+  const nextLesson=nextLessons[0]||null;
   const [draft,setDraft]=React.useState({}),[comments,setComments]=React.useState({}),[notaGeneral,setNotaGeneral]=React.useState(''),[saving,setSaving]=React.useState(false),[selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
   const scrollRef=React.useRef(null), positionedRef=React.useRef('');
   React.useEffect(()=>{const n={},c={};roster.forEach(r=>{const d=todayLesson?asistenciaDetalle?.[String(todayLesson.leccion)]?.[r.code]:null;n[r.code]=d?d.presente!==false:true;c[r.code]=d?(comentariosDetalle?.[String(todayLesson.leccion)]?.[r.code]||''):'';});setDraft(n);setComments(c);},[todayLesson?.leccion,roster,asistenciaDetalle,comentariosDetalle]);
@@ -689,19 +692,19 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   return <>
     <div className="card" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
-        <div><div className="card-title">Estudiantes · asistencia y notas</div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:3}}>Al cargar el grupo, la próxima lección se acomoda antes de una lección futura. Después podés mover el historial libremente.</div></div>
+        <div><div className="card-title">Estudiantes · asistencia y notas</div></div>
         <div style={{display:'flex',gap:7}}><button type="button" onClick={()=>scrollBy(-560)} className="btn btn-ghost" style={{width:38,padding:8}}>←</button><button type="button" onClick={()=>scrollBy(560)} className="btn btn-ghost" style={{width:38,padding:8}}>→</button></div>
       </div>
       <div ref={scrollRef} style={{overflowX:'auto',overflowY:'hidden',position:'relative',scrollbarGutter:'stable',width:'100%',WebkitOverflowScrolling:'touch'}}>
         <table className="table-soft" style={{width:'max-content',minWidth:286+148+lessons.length*90,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0}}>
           <thead><tr>
             <th style={{...stickyStudentCellF79(true),minWidth:286,width:286,maxWidth:286}}>Estudiante</th>
-            {lessons.map(l=>{const isNext=nextLesson&&Number(l.leccion)===Number(nextLesson.leccion),isToday=String(l.fecha||'')===todayIso;return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson(l)} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isNext?'#EAF3FF':'var(--surface-2)',borderTop:isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:isNext?'translateY(-3px)':'none',boxShadow:isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>Lec {String(l.leccion).padStart(2,'0')}</div><div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isNext&&<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>}{isToday&&!isNext&&<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>}</th>;})}
+            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso;return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isNext?'#EAF3FF':'var(--surface-2)',borderTop:isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:isNext?'translateY(-3px)':'none',boxShadow:isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>Lec {String(l.leccion).padStart(2,'0')}</div><div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isNext&&<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>}{isToday&&!isNext&&<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>}</th>;})}
             <th style={{...stickyNoteCellF79(true),minWidth:148,width:148,maxWidth:148}}>Nota completa</th>
           </tr></thead>
           <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
             <td style={{...stickyStudentCellF79(false),minWidth:286,width:286,maxWidth:286}}><div style={{display:'flex',gap:9,alignItems:'center'}}><div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div><div style={{minWidth:0}}><div style={{fontWeight:750,lineHeight:1.2,fontSize:12}}>{r.name}</div><div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · Asistencia {att?.pct!=null?`${att.pct}%`:'—'}</div></div></div></td>
-            {lessons.map(l=>{const key=String(l.leccion),det=asistenciaDetalle?.[key]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||''):'',isToday=String(l.fecha||'')===todayIso,editable=isToday&&tvUpper(l.estado)!=='CERRADA'&&!det,future=String(l.fecha||'')>todayIso,isNext=nextLesson&&Number(l.leccion)===Number(nextLesson.leccion);return <td key={`${r.code}-${key}`} onDoubleClick={()=>setSelectedLesson(l)} style={{minWidth:90,width:90,textAlign:'center',verticalAlign:'middle',padding:'6px 5px',background:isNext?'#F7FBFF':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
+            {lessons.map(l=>{const key=String(l.leccion),det=asistenciaDetalle?.[key]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||''):'',isToday=String(l.fecha||'')===todayIso,editable=isToday&&tvUpper(l.estado)!=='CERRADA'&&!det,future=String(l.fecha||'')>todayIso,isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA';return <td key={`${r.code}-${key}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',verticalAlign:'middle',padding:'6px 5px',background:isNext?'#F7FBFF':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
               {editable?<div style={{display:'grid',gap:4}}><button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:true}))} style={miniAttendBtn(draft[r.code]!==false,true)}>Presente</button><button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:false}))} style={miniAttendBtn(draft[r.code]===false,false)}>Ausente</button><input value={comments[r.code]||''} onChange={e=>setComments(c=>({...c,[r.code]:e.target.value}))} placeholder="Comentario" style={{width:'100%',border:'1px solid var(--line)',borderRadius:6,padding:'4px 5px',fontSize:8.5,fontFamily:'inherit'}}/></div>
               :det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>
               :future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Sin dato</span>}
@@ -731,7 +734,7 @@ function GruposView() {
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
     {loading?<LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
-        <StatF77 label="Matriculados CA" value={resumenGrupo?.totalCA??roster.length} sub="Solo estudiantes CA del nivel en curso" color="var(--an-navy)"/>
+        <StatF77 label="Matriculados" value={resumenGrupo?.totalCA??roster.length} color="var(--an-navy)"/>
         <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
         <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
         <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>

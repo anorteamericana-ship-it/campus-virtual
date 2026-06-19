@@ -1106,7 +1106,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
     <div
       onClick={e => { if (e.target === e.currentTarget) handleCancel(); }}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
+        position: 'fixed', inset: 0, zIndex: 3000,
         background: 'rgba(26, 22, 19, 0.55)',
         backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1968,7 +1968,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
     <div
       onClick={(e) => { if (e.target === e.currentTarget && !enviando) onCerrar(); }}
       style={{
-        position:'fixed', inset:0, zIndex:1200,
+        position:'fixed', inset:0, zIndex:3100,
         background:'rgba(20,16,12,0.55)',
         backdropFilter:'blur(3px)',
         display:'flex', alignItems:'center', justifyContent:'center',
