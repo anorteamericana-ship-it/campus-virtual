@@ -754,6 +754,10 @@ function setGrupoActivoDocente(codGrupo) {
   const u = getSesion();
   const limpio = normalizarGrupoDocenteValor(codGrupo);
   if (!u || !limpio) return;
+  const actual = normalizarGrupoDocenteValor(u.grupoActivo || u.grupo);
+  // F79: no reescribir ni disparar an:session-changed cuando el grupo ya es el mismo.
+  // El bucle anterior dejaba Mis Grupos en “Cargando grupo…” y podía tumbar Cronograma.
+  if (actual === limpio) return;
   setSesion({ ...u, grupoActivo: limpio, grupo: limpio });
   try { window.dispatchEvent(new Event('an:session-changed')); } catch (_) {}
 }

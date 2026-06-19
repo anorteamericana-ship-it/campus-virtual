@@ -130,11 +130,12 @@ function useTeacherSession() {
   const readSession = React.useCallback(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
-    const nombre = usuario?.nombre || '';
+    const nombre = usuario?.nombre || usuario?.nombre_completo || usuario?.usuario || '';
     const programa = usuario?.programa || '';
-    const grupoActivoRaw = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : (usuario?.grupoActivo || usuario?.grupo || '');
-    const grupoActivo = tvGroupCode(grupoActivoRaw);
-    return { usuario, nombre, programa, grupoActivo };
+    const grupoActivoRaw = (typeof window.getGrupoActivoDocente === 'function')
+      ? window.getGrupoActivoDocente()
+      : (usuario?.grupoActivo || usuario?.grupo || '');
+    return { usuario, nombre, programa, grupoActivo:tvGroupCode(grupoActivoRaw) };
   }, []);
 
   const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
@@ -144,9 +145,16 @@ function useTeacherSession() {
   const [lecciones, setLecciones] = React.useState([]);
   const [asistenciaGrupo, setAsistenciaGrupo] = React.useState({});
   const [asistenciaDetalle, setAsistenciaDetalle] = React.useState({});
+  const [comentariosDetalle, setComentariosDetalle] = React.useState({});
+  const [notasGrupo, setNotasGrupo] = React.useState({});
+  const [resumenGrupo, setResumenGrupo] = React.useState({});
+  const [leccionHoy, setLeccionHoy] = React.useState(null);
   const [sesionClase, setSesionClase] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
+  const [loadingGroups, setLoadingGroups] = React.useState(true);
+  const [loadingPanel, setLoadingPanel] = React.useState(false);
+  const [errorGroups, setErrorGroups] = React.useState(null);
+  const [errorPanel, setErrorPanel] = React.useState(null);
+  const [reloadTick, setReloadTick] = React.useState(0);
 
   React.useEffect(() => {
     const onChange = () => setSesionLocal(readSession());
@@ -155,61 +163,107 @@ function useTeacherSession() {
   }, [readSession]);
 
   React.useEffect(() => {
-    let cancel=false;
-    setLoading(true); setError(null);
-    postTeacher('getDocenteGruposActuales', { docente:nombre })
+    let cancel = false;
+    setLoadingGroups(true);
+    setErrorGroups(null);
+    postTeacher('getDocenteGruposActuales', {})
       .then(d => {
         if (cancel) return;
-        if (!d?.ok) throw new Error(d?.error || 'No se pudieron cargar grupos del docente.');
-        const gruposBackend = Array.isArray(d.grupos) ? d.grupos : [];
-        const gruposFallback = tvSessionGroups(usuario);
-        const grupos = gruposBackend.length ? gruposBackend : gruposFallback;
+        if (!d?.ok) throw new Error(d?.error || d?.mensaje || 'No se pudieron cargar los grupos del docente.');
+        const grupos = Array.isArray(d.grupos) ? d.grupos.filter(g => tvGroupCode(g)) : [];
         setGruposMeta(grupos);
-        const vigente = grupos.find(g => String(tvGroupCode(g)) === String(grupoActivo));
-        const nuevo = tvGroupCode(vigente || grupos[0] || '');
+        if (!grupos.length) {
+          setCodGrupo('');
+          setErrorGroups(d.mensaje || 'No hay grupos marcados En curso para este docente en APOLLO.GRUPOS.');
+          return;
+        }
+        const vigente = grupos.find(g => tvGroupCode(g) === grupoActivo);
+        const nuevo = tvGroupCode(vigente || grupos[0]);
         setCodGrupo(nuevo);
-        if (nuevo && typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(nuevo);
-        if (!grupos.length) setError(d.mensaje || 'No hay grupos marcados En curso para este docente en APOLLO.GRUPOS.');
+        if (nuevo && nuevo !== grupoActivo && typeof window.setGrupoActivoDocente === 'function') {
+          window.setGrupoActivoDocente(nuevo);
+        }
       })
-      .catch(e => { if(!cancel) setError(e.message || String(e)); })
-      .finally(() => { if(!cancel) setLoading(false); });
-    return ()=>{cancel=true};
-  }, [grupoActivo]);
+      .catch(e => { if (!cancel) setErrorGroups(e?.message || String(e)); })
+      .finally(() => { if (!cancel) setLoadingGroups(false); });
+    return () => { cancel = true; };
+  }, [nombre]);
 
-  const meta = React.useMemo(() => gruposMeta.find(g => String(tvGroupCode(g)) === String(codGrupo)) || gruposMeta[0] || {}, [gruposMeta, codGrupo]);
+  React.useEffect(() => {
+    if (!grupoActivo || !gruposMeta.length) return;
+    if (grupoActivo === codGrupo) return;
+    if (gruposMeta.some(g => tvGroupCode(g) === grupoActivo)) setCodGrupo(grupoActivo);
+  }, [grupoActivo, gruposMeta, codGrupo]);
+
+  const meta = React.useMemo(
+    () => gruposMeta.find(g => tvGroupCode(g) === codGrupo) || gruposMeta[0] || {},
+    [gruposMeta, codGrupo]
+  );
   const nivel = tvNivelId(meta);
 
   React.useEffect(() => {
-    if (!codGrupo || !nivel) return;
-    let cancel=false;
-    setLoading(true); setError(null);
-    Promise.all([
-      postTeacher('getEstudiantesParaCierre', { cod_grupo: codGrupo, nivel }),
-      postTeacher('getAsistenciaGrupoCompleta', { cod_grupo: codGrupo, nivel }),
-      postTeacher('getFechasGrupo', { cod_grupo: codGrupo, nivel }),
-      postTeacher('getAsistenciaDetalleGrupoF77', { cod_grupo: codGrupo, nivel }),
-      postTeacher('getDocenteSesionClaseF77', { cod_grupo: codGrupo, nivel }),
-    ]).then(([rEst, rAsis, rLec, rDet, rSesion]) => {
-      if(cancel) return;
-      if(!rEst?.ok) throw new Error(rEst?.error || 'No se pudo cargar estudiantes CA.');
-      const rs = (rEst.estudiantes || []).map(e => ({ code:e.code || e.codigo || e.CODIGO, name:e.name || e.nombre || e.NOMBRE, avg:null, oral:null, lastSeen:null }));
-      setRoster(rs);
-      setAsistenciaGrupo(rAsis?.ok ? (rAsis.asistencia || {}) : {});
-      setLecciones(rLec?.ok && Array.isArray(rLec.lecciones) ? rLec.lecciones : []);
-      setAsistenciaDetalle(rDet?.ok ? (rDet.detalle || {}) : {});
-      setSesionClase(rSesion?.ok ? (rSesion.sesion || null) : null);
-    }).catch(e => { if(!cancel) setError(e.message || String(e)); })
-      .finally(()=>{ if(!cancel) setLoading(false); });
-    return ()=>{cancel=true};
-  }, [codGrupo, nivel]);
+    if (!codGrupo || !nivel) {
+      setRoster([]); setLecciones([]); setLoadingPanel(false);
+      return;
+    }
+    let cancel = false;
+    setLoadingPanel(true);
+    setErrorPanel(null);
+    postTeacher('getDocenteGrupoPanelF79', { cod_grupo:codGrupo, nivel })
+      .then(r => {
+        if (cancel) return;
+        if (!r?.ok) throw new Error(r?.error || r?.mensaje || 'No se pudo cargar el panel del grupo.');
+        const notes = r.notas || {};
+        const rs = (r.estudiantes || []).map(e => {
+          const code = String(e.code || e.codigo || e.CODIGO || '').trim();
+          const note = notes[code] || null;
+          return {
+            code,
+            name:e.name || e.nombre || e.NOMBRE || '',
+            avg:note?.tiene_notas ? note.nota_total : null,
+            note,
+            lastSeen:null,
+          };
+        });
+        setRoster(rs);
+        setLecciones(Array.isArray(r.lecciones) ? r.lecciones : []);
+        setAsistenciaGrupo(r.asistencia || {});
+        setAsistenciaDetalle(r.asistencia_detalle || {});
+        setComentariosDetalle(r.comentarios || {});
+        setNotasGrupo(notes);
+        setLeccionHoy(r.leccion_hoy || null);
+        setSesionClase(r.sesion_clase || null);
+        setResumenGrupo({
+          totalCA:r.total_ca ?? rs.length,
+          promedioGrupo:r.promedio_grupo,
+          promedioAsistencia:r.promedio_asistencia,
+          cerradas:r.cerradas || 0,
+          estudiantesConNotas:r.estudiantes_con_notas || 0,
+        });
+      })
+      .catch(e => { if (!cancel) setErrorPanel(e?.message || String(e)); })
+      .finally(() => { if (!cancel) setLoadingPanel(false); });
+    return () => { cancel = true; };
+  }, [codGrupo, nivel, reloadTick]);
 
   const cambiarGrupo = React.useCallback((code) => {
-    if (!code || code === codGrupo) return;
-    setCodGrupo(code);
-    if (typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(code);
+    const limpio = tvGroupCode(code);
+    if (!limpio || limpio === codGrupo) return;
+    setCodGrupo(limpio);
+    if (typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(limpio);
   }, [codGrupo]);
+  const recargarPanel = React.useCallback(() => setReloadTick(v => v + 1), []);
 
-  return { usuario, nombre, programa, codGrupo, grupos: gruposMeta, meta, nivel, roster, lecciones, asistenciaGrupo, asistenciaDetalle, sesionClase, loading, error, cambiarGrupo };
+  return {
+    usuario, nombre, programa,
+    codGrupo, grupos:gruposMeta, meta, nivel, grupoInfo:meta,
+    roster, lecciones, asistenciaGrupo, asistenciaDetalle, comentariosDetalle,
+    notasGrupo, resumenGrupo, leccionHoy, sesionClase,
+    loading:loadingGroups || loadingPanel,
+    loadingGroups, loadingPanel,
+    error:errorGroups || errorPanel,
+    cambiarGrupo, recargarPanel,
+  };
 }
 // (TeacherLoadingState eliminado — usa <LoadingState/> + <ErrorState/> de primitives.jsx.)
 
@@ -379,118 +433,222 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
   </div>;
 }
 
-function RosterAsistenciaF77({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, meta, docenteNombre, onSaved }) {
-  const hoyIso = new Date().toISOString().slice(0,10);
-  const lessons = (lecciones || []).filter(l => String(l.tipo || 'CLASE').toUpperCase() !== 'FERIADO').slice(0, 32);
-  const hoy = lessons.find(l => l.fecha === hoyIso && String(l.estado || '').toUpperCase() !== 'CERRADA') || lessons.find(l => l.fecha === hoyIso);
-  const [draft, setDraft] = React.useState({});
-  const [nota, setNota] = React.useState('');
-  React.useEffect(() => {
-    if (!hoy || !roster.length) return;
-    const next = {};
-    roster.forEach(r => { next[r.code] = true; });
-    setDraft(next);
-  }, [hoy?.leccion, roster.length]);
-
-  const guardarHoy = async () => {
-    if (!hoy) return;
-    const asistencias = {};
-    roster.forEach(r => { asistencias[r.code] = draft[r.code] !== false; });
-    const r = await postTeacher('cerrarLeccion', {
-      cod_grupo: tvGroupCode(meta),
-      nivel: tvNivelId(meta),
-      leccion: hoy.leccion,
-      riel: hoy.tipo === 'ICAN' ? 'ican' : 'curso',
-      docente_real: docenteNombre,
-      registrado_por: docenteNombre,
-      nota_docente: nota,
-      asistencias
-    });
-    if (!r?.ok) { alert(r?.error || r?.detalle || 'No se pudo guardar asistencia.'); return; }
-    alert('Asistencia guardada.');
-    onSaved && onSaved();
-  };
-
-  return <div className="card" style={{ padding:0, overflow:'hidden' }}>
-    <div className="card-h" style={{ padding:'18px 20px', alignItems:'center' }}>
-      <div>
-        <div className="card-title">Roster · {tvGrupoLabel(meta).full}</div>
-        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Solo estudiantes CA del nivel en curso. La asistencia se mueve horizontalmente.</div>
+function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
+  if (!estudiante) return null;
+  const defs = [
+    ['ORAL_1','Lección 09 · Oral 1'], ['ORAL_2','Lección 17 · Oral 2'],
+    ['ESCRITO_1','Lección 18 · Escrito 1'], ['ORAL_3','Lección 25 · Oral 3'],
+    ['ORAL_4','Lección 31 · Oral 4'], ['ESCRITO_2','Lección 32 · Escrito 2'],
+    ['SOCIAL','Social Skill'],
+  ];
+  return <div style={{ position:'fixed', inset:0, zIndex:1900, background:'rgba(7,22,45,.48)', display:'flex', justifyContent:'flex-end' }} onMouseDown={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+    <aside style={{ width:'min(440px, 94vw)', height:'100%', background:'#FFF', boxShadow:'-18px 0 50px rgba(0,0,0,.2)', display:'flex', flexDirection:'column' }}>
+      <div style={{ padding:'22px 22px 18px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:12 }}>
+        <div>
+          <div style={{ ...labelStyle, marginBottom:5 }}>Historial académico</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:700 }}>{estudiante.name}</div>
+          <div style={{ color:'var(--ink-3)', fontSize:12, marginTop:3 }}>Código {estudiante.code}</div>
+        </div>
+        <button type="button" onClick={onClose} style={{ border:0, background:'transparent', fontSize:24, cursor:'pointer', color:'var(--ink-3)' }}>×</button>
       </div>
-      {hoy && <button className="btn btn-primary" onClick={guardarHoy}>✓ Pasar asistencia</button>}
-    </div>
-    {hoy && <div style={{ padding:'0 20px 14px' }}>
-      <textarea value={nota} onChange={e=>setNota(e.target.value)} placeholder="Nota general del docente · opcional. Ej.: Cubrimos hasta la página 14..." style={{ width:'100%', minHeight:54, border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:10, fontFamily:'inherit', resize:'vertical' }} />
-    </div>}
-    <div style={{ overflowX:'auto', borderTop:'1px solid var(--line)' }}>
-      <table className="table-soft" style={{ minWidth: 760 + lessons.length * 96 }}>
-        <thead>
-          <tr>
-            <th style={{ minWidth:90 }}>Cód.</th>
-            <th style={{ minWidth:280 }}>Estudiante</th>
-            <th style={{ minWidth:150, textAlign:'right' }}>Promedio asistencia</th>
-            {lessons.map(l => <th key={l.leccion} style={{ minWidth:96, textAlign:'center' }}>Lec {String(l.leccion).padStart(2,'0')}</th>)}
-            <th style={{ minWidth:120, textAlign:'right' }}>Promedio nota</th>
-            <th style={{ minWidth:110 }}>Últ. visto</th>
-          </tr>
-        </thead>
-        <tbody>
-          {roster.map((r,i) => <tr key={r.code || i}>
-            <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-3)' }}>{r.code}</td>
-            <td><div style={{ display:'flex', gap:10, alignItems:'center' }}><div style={{ width:30, height:30, borderRadius:'50%', background:'var(--an-navy)', color:'white', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div><span style={{ fontWeight:600 }}>{r.name}</span></div></td>
-            <td style={{ textAlign:'right', fontWeight:500 }}>{asistenciaGrupo[r.code]?.pct != null ? asistenciaGrupo[r.code].pct + '%' : '—'}</td>
-            {lessons.map(l => {
-              const isHoy = hoy && Number(hoy.leccion) === Number(l.leccion);
-              const det = asistenciaDetalle?.[String(l.leccion)]?.[r.code];
-              const closed = String(l.estado||'').toUpperCase() === 'CERRADA' || det;
-              const future = l.fecha && l.fecha > hoyIso;
-              return <td key={l.leccion} style={{ textAlign:'center', verticalAlign:'top', padding:'8px 6px' }}>
-                {isHoy && !closed ? <div style={{ display:'grid', gap:4 }}>
-                  <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:true}))} style={miniAttendBtn(draft[r.code] !== false, true)}>Presente</button>
-                  <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:false}))} style={miniAttendBtn(draft[r.code] === false, false)}>Ausente</button>
-                </div> : closed ? <div style={{ fontSize:11, fontWeight:800, color: det?.presente === false ? '#B3261E' : '#166534' }}>{det?.presente === false ? 'Ausente' : 'Presente'}</div> : future ? <span style={{ color:'var(--ink-3)' }}>—</span> : <span style={{ color:'var(--ink-3)' }}>Sin dato</span>}
-              </td>;
-            })}
-            <td style={{ textAlign:'right', fontWeight:700 }}>{r.avg ?? '—'}</td>
-            <td style={{ fontSize:11, color:'var(--ink-3)' }}>{r.lastSeen ?? '—'}</td>
-          </tr>)}
-        </tbody>
-      </table>
-    </div>
+      <div style={{ padding:22, overflowY:'auto', flex:1 }}>
+        <div style={{ padding:'18px 20px', borderRadius:'var(--r-lg)', background:'var(--an-navy)', color:'#FFF', marginBottom:18 }}>
+          <div style={{ fontSize:11, letterSpacing:'.12em', textTransform:'uppercase', opacity:.75 }}>Nota acumulada</div>
+          <div style={{ fontSize:42, fontWeight:900, lineHeight:1.05, marginTop:4 }}>{nota?.tiene_notas ? nota.nota_total : '—'}</div>
+          <div style={{ fontSize:12, opacity:.78, marginTop:4 }}>{nota?.tiene_notas ? 'Puntos oficiales acumulados' : 'Sin notas oficiales registradas'}</div>
+        </div>
+        <div style={{ display:'grid', gap:10 }}>
+          {defs.map(([key,label]) => {
+            const c = nota?.componentes?.[key];
+            const value = c?.puntos ?? 0;
+            return <div key={key} style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+              <div>
+                <div style={{ fontWeight:750, fontSize:13 }}>{label}</div>
+                <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>{key}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <strong style={{ fontSize:18, color:value ? 'var(--an-navy)' : 'var(--ink-3)' }}>{value || '—'}</strong>
+                <div style={{ fontSize:10, color:'var(--ink-3)' }}>de {c?.max ?? (key==='SOCIAL'?10:15)}</div>
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>
+    </aside>
   </div>;
 }
-function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'5px 7px', fontSize:10, fontWeight:800, cursor:'pointer' }; }
+
+function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved }) {
+  const hoyIso = new Date().toISOString().slice(0,10);
+  const lessons = React.useMemo(() => (lecciones || [])
+    .filter(l => String(l.tipo || '').toUpperCase() !== 'FERIADO' && String(l.tipo || '').toUpperCase() !== 'ICAN')
+    .slice(0,32), [lecciones]);
+  const hoy = leccionHoy || lessons.find(l => String(l.fecha || '') === hoyIso && String(l.estado || '').toUpperCase() !== 'FERIADO') || null;
+  const [draft, setDraft] = React.useState({});
+  const [comments, setComments] = React.useState({});
+  const [notaGeneral, setNotaGeneral] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [selectedStudent, setSelectedStudent] = React.useState(null);
+  const scrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const next = {}, nextComments = {};
+    roster.forEach(r => {
+      const det = hoy ? asistenciaDetalle?.[String(hoy.leccion)]?.[r.code] : null;
+      next[r.code] = det ? det.presente !== false : true;
+      nextComments[r.code] = hoy ? (comentariosDetalle?.[String(hoy.leccion)]?.[r.code] || '') : '';
+    });
+    setDraft(next); setComments(nextComments);
+  }, [hoy?.leccion, roster, asistenciaDetalle, comentariosDetalle]);
+
+  React.useEffect(() => {
+    const box = scrollRef.current;
+    if (!box || !lessons.length) return;
+    const idxToday = hoy ? lessons.findIndex(l => Number(l.leccion) === Number(hoy.leccion)) : -1;
+    const idxClosed = lessons.reduce((acc,l,i) => String(l.estado||'').toUpperCase()==='CERRADA' ? i : acc, -1);
+    const idx = idxToday >= 0 ? idxToday : Math.max(0, idxClosed);
+    requestAnimationFrame(() => { box.scrollLeft = Math.max(0, idx * 104 - 90); });
+  }, [hoy?.leccion, lessons.length, tvGroupCode(meta)]);
+
+  const hoyCerrada = hoy && String(hoy.estado || '').toUpperCase() === 'CERRADA';
+  const guardarHoy = async () => {
+    if (!hoy || hoyCerrada || String(hoy.fecha || '') !== hoyIso) return;
+    setSaving(true);
+    try {
+      const r = await postTeacher('cerrarLeccionDesdeMisGruposF79', {
+        cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:hoy.leccion,
+        nota_docente:notaGeneral,
+        asistencias:draft,
+        comentarios,
+        programa:meta?.programa || '',
+      });
+      if (!r?.ok) throw new Error(r?.error || r?.detalle || 'No se pudo guardar asistencia.');
+      alert('Asistencia de la clase de hoy guardada.');
+      onSaved && onSaved();
+    } catch (e) { alert(e?.message || String(e)); }
+    finally { setSaving(false); }
+  };
+
+  const scrollBy = delta => scrollRef.current?.scrollBy({ left:delta, behavior:'smooth' });
+  return <>
+    <div className="card" style={{ padding:0, overflow:'hidden' }}>
+      <div style={{ padding:'16px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap', borderBottom:'1px solid var(--line)' }}>
+        <div>
+          <div className="card-title">Estudiantes · asistencia y notas</div>
+          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>
+            El historial queda hacia la izquierda; la clase de hoy se abre directamente para marcar Presente o Ausente.
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button type="button" onClick={()=>scrollBy(-420)} className="btn btn-ghost" style={{ width:38, padding:8 }}>←</button>
+          <button type="button" onClick={()=>scrollBy(420)} className="btn btn-ghost" style={{ width:38, padding:8 }}>→</button>
+          {hoy && !hoyCerrada && String(hoy.fecha||'')===hoyIso && <button type="button" className="btn btn-primary" disabled={saving} onClick={guardarHoy}>{saving?'Guardando…':'✓ Pasar asistencia de hoy'}</button>}
+        </div>
+      </div>
+      <div style={{ padding:'12px 18px', background:'#FBF7EF', borderBottom:'1px solid var(--line)', display:'grid', gridTemplateColumns:'minmax(240px,1fr) auto', gap:12, alignItems:'center' }}>
+        <div>
+          <strong style={{ fontSize:13 }}>{hoy ? `Clase de hoy · Lección ${String(hoy.leccion).padStart(2,'0')}` : 'Hoy no hay una clase programada para este grupo'}</strong>
+          {hoy && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{hoy.fecha} · {tvHoraLabel(meta)}</div>}
+        </div>
+        <div style={{ fontSize:11, fontWeight:800, color:hoyCerrada?'#166534':'var(--an-navy)' }}>{hoyCerrada?'✓ Asistencia cerrada':hoy?'Pendiente de cierre':'Sin acción hoy'}</div>
+      </div>
+      {hoy && !hoyCerrada && String(hoy.fecha||'')===hoyIso && <div style={{ padding:'12px 18px', borderBottom:'1px solid var(--line)' }}>
+        <label style={{ ...labelStyle, display:'block', marginBottom:6 }}>Nota general del docente · opcional</label>
+        <textarea value={notaGeneral} onChange={e=>setNotaGeneral(e.target.value)} placeholder="Cubrimos hasta la página 14..." style={{ width:'100%', minHeight:52, border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:10, fontFamily:'inherit', resize:'vertical' }} />
+      </div>}
+      <div ref={scrollRef} style={{ overflowX:'auto', overflowY:'visible', position:'relative', scrollbarGutter:'stable', borderTop:'0' }}>
+        <table className="table-soft" style={{ minWidth:430 + lessons.length * 104, borderCollapse:'separate', borderSpacing:0 }}>
+          <thead>
+            <tr>
+              <th style={{ ...stickyStudentCellF79(true), minWidth:330, width:330 }}>Estudiante</th>
+              {lessons.map(l => {
+                const isToday = hoy && Number(l.leccion)===Number(hoy.leccion);
+                return <th key={`${l.leccion}-${l.fecha}`} style={{ minWidth:104, width:104, textAlign:'center', background:isToday?'#EAF3FF':'var(--surface-2)', borderTop:isToday?'3px solid var(--an-navy)':'3px solid transparent' }}>
+                  <div style={{ fontSize:11, fontWeight:900 }}>Lec {String(l.leccion).padStart(2,'0')}</div>
+                  <div style={{ fontSize:9, color:'var(--ink-3)', marginTop:2 }}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
+                  {isToday && <div style={{ fontSize:8, color:'var(--an-navy)', fontWeight:900, marginTop:3 }}>HOY</div>}
+                </th>;
+              })}
+              <th style={{ ...stickyNoteCellF79(true), minWidth:190, width:190 }}>Nota completa</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roster.map((r,i) => {
+              const att = asistenciaGrupo?.[r.code];
+              const note = notasGrupo?.[r.code] || r.note;
+              return <tr key={r.code || i}>
+                <td style={{ ...stickyStudentCellF79(false), minWidth:330, width:330 }}>
+                  <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                    <div style={{ width:34, height:34, flex:'0 0 34px', borderRadius:'50%', background:'var(--an-navy)', color:'#FFF', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800 }}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontWeight:750, lineHeight:1.25 }}>{r.name}</div>
+                      <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:3 }}>Código {r.code} · Asistencia {att?.pct != null ? `${att.pct}%` : '—'}</div>
+                    </div>
+                  </div>
+                </td>
+                {lessons.map(l => {
+                  const key=String(l.leccion), det=asistenciaDetalle?.[key]?.[r.code], comment=comentariosDetalle?.[key]?.[r.code] || '';
+                  const isToday=hoy && Number(hoy.leccion)===Number(l.leccion);
+                  const closed=String(l.estado||'').toUpperCase()==='CERRADA' || !!det;
+                  const future=String(l.fecha||'')>hoyIso;
+                  return <td key={`${r.code}-${key}`} style={{ minWidth:104, width:104, textAlign:'center', verticalAlign:'middle', padding:'7px 6px', background:isToday?'#F7FBFF':'#FFF' }}>
+                    {isToday && !closed && String(l.fecha||'')===hoyIso ? <div style={{ display:'grid', gap:5 }}>
+                      <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:true}))} style={miniAttendBtn(draft[r.code]!==false,true)}>Presente</button>
+                      <button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:false}))} style={miniAttendBtn(draft[r.code]===false,false)}>Ausente</button>
+                      <input value={comments[r.code]||''} onChange={e=>setComments(c=>({...c,[r.code]:e.target.value}))} placeholder="Comentario" style={{ width:'100%', border:'1px solid var(--line)', borderRadius:6, padding:'5px 6px', fontSize:9, fontFamily:'inherit' }} />
+                    </div> : closed ? <div title={comment || 'Sin comentario'}>
+                      <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:58, padding:'5px 7px', borderRadius:999, fontSize:10, fontWeight:900, color:det?.presente===false?'#B3261E':'#166534', background:det?.presente===false?'#FDECEA':'#E8F5E9' }}>{det?.presente===false?'Ausente':'Presente'}</div>
+                      {comment && <div style={{ fontSize:9, color:'var(--ink-3)', marginTop:4 }}>💬 comentario</div>}
+                    </div> : future ? <span style={{ color:'var(--ink-3)', fontSize:10 }}>Programada</span> : <span style={{ color:'var(--ink-3)', fontSize:10 }}>Sin dato</span>}
+                  </td>;
+                })}
+                <td style={{ ...stickyNoteCellF79(false), minWidth:190, width:190 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                    <div>
+                      <div style={{ fontSize:22, fontWeight:900, color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)' }}>{note?.tiene_notas ? note.nota_total : '—'}</div>
+                      <div style={{ fontSize:9, color:'var(--ink-3)', marginTop:1 }}>{note?.tiene_notas?'acumulada':'sin notas'}</div>
+                    </div>
+                    <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{ padding:'7px 9px', fontSize:10 }}>Ver detalle</button>
+                  </div>
+                </td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <NotaDetalleDrawerF79 estudiante={selectedStudent} nota={selectedStudent ? (notasGrupo?.[selectedStudent.code] || selectedStudent.note) : null} onClose={()=>setSelectedStudent(null)} />
+  </>;
+}
+function stickyStudentCellF79(head){ return { position:'sticky', left:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'8px 0 14px -14px rgba(0,0,0,.55)', borderRight:'1px solid var(--line)' }; }
+function stickyNoteCellF79(head){ return { position:'sticky', right:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)', borderLeft:'1px solid var(--line)' }; }
+function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'6px 7px', fontSize:9.5, fontWeight:850, cursor:'pointer' }; }
 
 function GruposView() {
-  const { codGrupo, grupos, meta, nivel, nombre, roster, loading, error, asistenciaGrupo, asistenciaDetalle, lecciones, sesionClase, cambiarGrupo } = useTeacherSession();
-  const [refreshKey, setRefreshKey] = React.useState(0);
+  const { codGrupo, grupos, meta, nivel, nombre, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, sesionClase, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
   const lista = grupos || [];
 
   if (!lista.length && !loading) {
     return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados" /><ErrorState message={error || 'No hay grupos En curso asignados.'} onRetry={() => location.reload()} /></div>;
   }
 
-  const attValues = roster.map(r => asistenciaGrupo[r.code]?.pct).filter(v => v != null);
-  const attClass = attValues.length ? Math.round(attValues.reduce((a,v)=>a+v,0)/attValues.length) : null;
-  const leccionHoy = (lecciones || []).find(l => tvIsToday(l.fecha));
-
-  return (
-    <div key={refreshKey}>
-      <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={lista.length > 1 ? `Tenés ${lista.length} grupos en curso` : tvGrupoLabel(meta).full} />
-      <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} />
-      {error && <div style={{ marginBottom:14 }}><ErrorState message={error} onRetry={() => location.reload()} /></div>}
-      {loading ? <LoadingState title="Cargando grupo…" subtitle="Consultando APOLLO.GRUPOS, ESTATUS y asistencia" /> : <>
-        <div className="grid-4" style={{ marginBottom:20 }}>
-          <StatF77 label="Matriculados CA" value={roster.length} sub="Solo estudiantes cursando actualmente" color="var(--an-navy)" />
-          <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark} />
-          <StatF77 label="Promedio grupo" value="—" sub="Sin notas oficiales registradas" color="var(--ink-3)" />
-          <StatF77 label="Asistencia" value={attClass != null ? `${attClass}%` : '—'} sub={attClass != null ? 'Promedio del grupo' : 'Sin registro aún'} color="var(--warn)" />
-        </div>
-        <SesionClaseBox meta={meta} leccionHoy={leccionHoy} sesionClase={sesionClase} onStarted={()=>setRefreshKey(k=>k+1)} onClosed={()=>setRefreshKey(k=>k+1)} />
-        <RosterAsistenciaF77 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} meta={meta} docenteNombre={nombre} onSaved={()=>setRefreshKey(k=>k+1)} />
-      </>}
-    </div>
-  );
+  const promedioGrupo = resumenGrupo?.promedioGrupo;
+  const promedioAsistencia = resumenGrupo?.promedioAsistencia;
+  return <div>
+    <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={lista.length > 1 ? `Tenés ${lista.length} grupos en curso` : tvGrupoLabel(meta).full} />
+    <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} />
+    {error && !loading && <div style={{ marginBottom:14 }}><ErrorState message={error} onRetry={recargarPanel} /></div>}
+    {loading ? <LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales" /> : <>
+      <div className="grid-4" style={{ marginBottom:20 }}>
+        <StatF77 label="Matriculados CA" value={resumenGrupo?.totalCA ?? roster.length} sub="Solo estudiantes CA del nivel en curso" color="var(--an-navy)" />
+        <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark} />
+        <StatF77 label="Promedio grupo" value={promedioGrupo != null ? promedioGrupo : '—'} sub={promedioGrupo != null ? `${resumenGrupo?.estudiantesConNotas || 0} estudiantes con notas` : 'Sin notas oficiales registradas'} color="var(--an-navy)" />
+        <StatF77 label="Asistencia" value={promedioAsistencia != null ? `${promedioAsistencia}%` : '—'} sub={promedioAsistencia != null ? `${resumenGrupo?.cerradas || 0} clases cerradas` : 'Sin registro aún'} color="var(--warn)" />
+      </div>
+      <SesionClaseBox meta={meta} leccionHoy={leccionHoy} sesionClase={sesionClase} onStarted={recargarPanel} onClosed={recargarPanel} />
+      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} />
+    </>}
+  </div>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
