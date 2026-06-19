@@ -893,6 +893,20 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
                        onClickSeg={l => setSelLec(l)} selLec={selLec} nivel={nivel} />
       )}
 
+      {agendaDocenteMode && selLec && !selLec.estado?.includes?.('FERIADO') && (
+        <AgendaAccionesLeccionF76
+          selLec={selLec}
+          detalle={detalle}
+          nivel={nivelSeleccionado}
+          rol={rol}
+          codigoUsr={codigoUsr}
+          grupoUsr={grupoUsr}
+          esAdmin={esAdmin}
+          onAbrirAsistencia={() => setModalCierreAsistencia({ selLec })}
+          onNavigate={onNavigate}
+        />
+      )}
+
       {errorVista && (
         <div style={errorBoxStyle}>
           <span>⚠ {errorVista}</span>
@@ -1957,6 +1971,71 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
   );
 }
 
+
+function AgendaAccionesLeccionF76({ selLec, detalle, nivel, rol, codigoUsr, grupoUsr, esAdmin, onAbrirAsistencia, onNavigate }) {
+  if (!selLec) return null;
+  const fecha = fmtDDMMM(selLec.fecha);
+  const pal = paletaCelda(selLec.estado, selLec.tipo, nivel);
+  const status = selLec.estado === 'CERRADA' ? 'Clase dada' : selLec.estado === 'HOY' ? 'Hoy' : selLec.estado === 'PROGRAMADA' ? 'Programada' : 'Proyectada';
+  return (
+    <div className="card" style={{
+      marginTop:12,
+      padding:'10px 12px',
+      display:'grid',
+      gridTemplateColumns:'minmax(220px, 1fr) auto',
+      gap:12,
+      alignItems:'center',
+      borderLeft:`5px solid ${pal.accent}`,
+      background:'#FFFFFF',
+    }}>
+      <div style={{ minWidth:0 }}>
+        <div style={{ fontSize:10, fontWeight:900, color:'var(--ink-3)', letterSpacing:'0.12em', textTransform:'uppercase' }}>
+          Lección seleccionada
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginTop:3 }}>
+          <strong style={{ fontFamily:'var(--f-serif)', fontSize:18, color:'var(--ink)' }}>
+            Lec {String(selLec.leccion).padStart(2,'0')}
+          </strong>
+          <span style={{ fontSize:12, fontWeight:800, color:pal.fg, background:pal.bg, borderRadius:999, padding:'4px 9px' }}>{status}</span>
+          <span style={{ fontSize:12, color:'var(--ink-3)', fontWeight:700 }}>{fecha}</span>
+          <span style={{ fontSize:12, color:'var(--ink-3)', fontWeight:700 }}>{cgHoraLabel(selLec)}</span>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', justifyContent:'flex-end' }}>
+        <button type="button" onClick={onAbrirAsistencia} style={{
+          padding:'10px 14px', border:'none', borderRadius:'var(--r-md)',
+          background:'var(--an-navy, #073B7A)', color:'#FFF',
+          fontSize:12, fontWeight:900, cursor:'pointer', fontFamily:'inherit',
+        }}>✓ Pasar asistencia</button>
+        {detalle && (
+          <BotonMaterialPDF
+            selLec={selLec}
+            nivel={nivel}
+            rol={rol}
+            codigoUsr={codigoUsr}
+            grupoUsr={grupoUsr}
+            detalle={detalle}
+          />
+        )}
+        {selLec.tipo === 'EVAL_ESCRITO' && onNavigate && (
+          <button type="button" onClick={() => onNavigate('examenes')} style={{
+            padding:'10px 14px', border:'1.5px solid var(--an-navy, #073B7A)',
+            borderRadius:'var(--r-md)', background:'var(--surface)', color:'var(--an-navy, #073B7A)',
+            fontSize:12, fontWeight:900, cursor:'pointer', fontFamily:'inherit',
+          }}>Ver exámenes</button>
+        )}
+        {selLec.tipo === 'EVAL_ORAL' && (
+          <a href="modulos/examen_oral.html" target="_blank" rel="noopener noreferrer" style={{
+            padding:'10px 14px', border:'1.5px solid #8B1A10', borderRadius:'var(--r-md)',
+            background:'var(--surface)', color:'#8B1A10', fontSize:12, fontWeight:900,
+            textDecoration:'none', fontFamily:'inherit',
+          }}>Examen oral</a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Panel de detalle (sticky a la derecha)
 // ─────────────────────────────────────────────────────────────────────────
@@ -2132,7 +2211,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
           </div>
         )}
 
-        {!isFeriado && !bloqueado && (rol === 'teacher' || esAdmin) && (
+        {!isFeriado && !bloqueado && esAdmin && (
           <div style={{
             // Acciones siempre visibles arriba del material.
             display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:8, alignItems:'stretch',

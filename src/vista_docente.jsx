@@ -1599,7 +1599,7 @@ function NotaDocenteField({ value, onChange }) {
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder="Ej: hubo apagón los primeros 15 min, cubrimos hasta pág. 12…"
+        placeholder="Cubrimos hasta la página 14..."
         rows={2}
         style={textareaStyle(false)}
       />
@@ -2051,20 +2051,6 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
             </div>
           </div>
 
-          <div style={{
-            padding:'10px 12px',
-            background:'#FFF3CD',
-            border:'1px solid #FFE082',
-            borderRadius:'var(--r-md)',
-            fontSize:12, color:'#7A4F00', lineHeight:1.5,
-            marginBottom:14,
-          }}>
-            <b>Importante:</b> suspender <u>no elimina</u> la lección.
-            Al aprobar, el admin la corre a la siguiente fecha del patrón;
-            todas las lecciones siguientes se desplazan un día hábil.
-            Las 32 lecciones se dan siempre.
-          </div>
-
           <label style={{ display:'block', marginBottom:14 }}>
             <div style={vdLabelStyle}>Motivo *</div>
             <textarea
@@ -2072,7 +2058,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
               onChange={e => { setMotivo(e.target.value); setErr(''); }}
               disabled={enviando}
               rows={4}
-              placeholder="Ej.: docente incapacitado, corte de luz en la sede, etc."
+              placeholder="Brinda una breve explicación de la razón de suspensión."
               style={{
                 width:'100%', marginTop:6,
                 padding:'10px 12px',
