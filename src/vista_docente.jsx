@@ -1320,7 +1320,7 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
                 <line x1="12" y1="9" x2="12" y2="13"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-              Solicitar suspensión
+              Solicitar suspensión o reprogramación
             </button>
           )}
         </div>
@@ -1928,10 +1928,44 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
 // El docente PIDE suspender una lección PROGRAMADA; el admin aprueba.
 // Solo al aprobar se empuja el calendario.
 // ─────────────────────────────────────────────────────────────────
+function vdF84TimeDefaults(lec) {
+  const norm = (v) => {
+    const m = String(v || '').match(/(\d{1,2}):(\d{2})/);
+    return m ? `${String(Number(m[1])).padStart(2,'0')}:${m[2]}` : '';
+  };
+  let ini = norm(lec?.hora_inicio), fin = norm(lec?.hora_fin);
+  if (ini && fin) return { ini, fin };
+  const label = String(lec?.horario_label || lec?.turno || '').toLowerCase();
+  const times = [...label.matchAll(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/g)].map(m => {
+    let h = Number(m[1]); const min = Number(m[2] || 0); const ap = m[3];
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    return h * 60 + min;
+  });
+  if (times.length >= 2) {
+    const start = times[0], end = times[1];
+    const turno = String(lec?.turno || '').toLowerCase();
+    if (end - start >= 360 && turno.includes('tarde')) {
+      ini = '13:00'; fin = `${String(Math.floor(end/60)).padStart(2,'0')}:${String(end%60).padStart(2,'0')}`;
+    } else if (end - start >= 360 && turno.includes('mañ')) {
+      ini = `${String(Math.floor(start/60)).padStart(2,'0')}:${String(start%60).padStart(2,'0')}`; fin = '12:00';
+    } else {
+      ini = `${String(Math.floor(start/60)).padStart(2,'0')}:${String(start%60).padStart(2,'0')}`;
+      fin = `${String(Math.floor(end/60)).padStart(2,'0')}:${String(end%60).padStart(2,'0')}`;
+    }
+  }
+  return { ini, fin };
+}
+
 function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
-  const [motivo, setMotivo]     = React.useState('');
+  const defaults = React.useMemo(() => vdF84TimeDefaults(lec), [lec?.hora_inicio, lec?.hora_fin, lec?.horario_label, lec?.turno]);
+  const [tipo, setTipo] = React.useState('SUSPENSION');
+  const [motivo, setMotivo] = React.useState('');
+  const [fechaDestino, setFechaDestino] = React.useState('');
+  const [horaInicio, setHoraInicio] = React.useState(defaults.ini || '');
+  const [horaFin, setHoraFin] = React.useState(defaults.fin || '');
   const [enviando, setEnviando] = React.useState(false);
-  const [err, setErr]           = React.useState('');
+  const [err, setErr] = React.useState('');
 
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !enviando) onCerrar(); };
@@ -1939,209 +1973,205 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [enviando, onCerrar]);
 
+  const esReprogramacion = tipo === 'REPROGRAMACION';
+  const inputStyle = {
+    width:'100%', marginTop:6, padding:'10px 12px', boxSizing:'border-box',
+    border:'1.5px solid var(--line)', background:'var(--surface)',
+    borderRadius:'var(--r-md)', fontSize:13, color:'var(--ink)',
+    fontFamily:'inherit', outline:'none', lineHeight:1.4,
+  };
+
   const handleEnviar = async () => {
     const m = motivo.trim();
-    if (!m) { setErr('Indicá un motivo para la suspensión.'); return; }
-    if (m.length < 8) { setErr('El motivo es muy corto. Describí qué pasó.'); return; }
-    setEnviando(true); setErr('');
-
-    const payload = {
-      cod_grupo: lec.cod_grupo,
-      nivel:     lec.nivel,
-      leccion:   lec.leccion,
-      riel:      lec.riel || 'curso',
-      motivo:    m,
-      solicitante: solicitante || '',
-    };
-    const res = await window.fetchSolicitarSuspension(payload);
-    setEnviando(false);
-    if (!res?.ok) {
-      setErr(res?.error || 'No se pudo enviar la solicitud.');
+    if (!m || m.length < 8) {
+      setErr('Brinda una explicación breve de al menos 8 caracteres.');
       return;
     }
-    onEnviada(`Solicitud enviada · pendiente de aprobación (${res.id || ''}).`);
+    if (esReprogramacion) {
+      if (!fechaDestino || !horaInicio || !horaFin) {
+        setErr('Indicá la fecha, hora de inicio y hora de finalización.');
+        return;
+      }
+      if (horaFin <= horaInicio) {
+        setErr('La hora de finalización debe ser posterior a la hora de inicio.');
+        return;
+      }
+    }
+
+    setEnviando(true); setErr('');
+    const payload = {
+      tipo_solicitud: tipo,
+      cod_grupo: lec.cod_grupo,
+      nivel: lec.nivel,
+      leccion: lec.leccion,
+      riel: lec.riel || 'curso',
+      motivo: m,
+      solicitante: solicitante || '',
+      fecha_original: lec.fecha || '',
+      hora_original_inicio: lec.hora_inicio || '',
+      hora_original_fin: lec.hora_fin || '',
+      fecha_destino: esReprogramacion ? fechaDestino : '',
+      hora_destino_inicio: esReprogramacion ? horaInicio : '',
+      hora_destino_fin: esReprogramacion ? horaFin : '',
+    };
+
+    try {
+      const res = await window.fetchSolicitarSuspension(payload);
+      setEnviando(false);
+      if (!res?.ok) {
+        setErr(res?.error || 'No se pudo enviar la solicitud.');
+        return;
+      }
+      onEnviada(res.mensaje || `Solicitud enviada · pendiente de aprobación (${res.id || ''}).`);
+    } catch (e) {
+      setEnviando(false);
+      setErr(e?.message || String(e));
+    }
   };
 
   const pal = VD_NIVEL_COLORES && VD_NIVEL_COLORES[lec.nivel];
+  const nowLocal = new Date();
+  const today = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}-${String(nowLocal.getDate()).padStart(2,'0')}`;
 
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget && !enviando) onCerrar(); }}
       style={{
-        position:'fixed', inset:0, zIndex:3100,
-        background:'rgba(20,16,12,0.55)',
-        backdropFilter:'blur(3px)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        padding:18,
+        position:'fixed', inset:0, zIndex:5200,
+        background:'rgba(20,16,12,0.58)', backdropFilter:'blur(4px)',
+        display:'flex', alignItems:'center', justifyContent:'center', padding:18,
       }}>
-      <div role="dialog" aria-modal="true"
-        style={{
-          width:'100%', maxWidth:480,
-          background:'var(--surface)',
-          borderRadius:'var(--r-lg, 12px)',
-          boxShadow:'0 24px 64px rgba(0,0,0,0.36)',
-          overflow:'hidden',
-          display:'flex', flexDirection:'column',
-          maxHeight:'calc(100vh - 36px)',
-        }}>
-        {/* Header ámbar — "acción excepcional" */}
+      <div role="dialog" aria-modal="true" style={{
+        width:'100%', maxWidth:570, maxHeight:'calc(100vh - 36px)',
+        background:'var(--surface)', borderRadius:'var(--r-lg, 12px)',
+        boxShadow:'0 24px 70px rgba(0,0,0,.4)', overflow:'hidden',
+        display:'flex', flexDirection:'column',
+      }}>
         <div style={{
-          padding:'16px 22px 12px',
-          background:'#FFF8E1',
-          borderBottom:'1px solid #F0E1A8',
-          display:'flex', alignItems:'flex-start', gap:14,
+          padding:'16px 22px 13px', background:'#FFF8E1',
+          borderBottom:'1px solid #F0E1A8', display:'flex', gap:14,
+          alignItems:'flex-start',
         }}>
           <div style={{
-            width:34, height:34, borderRadius:8,
-            background:'#B7791F', color:'#FFF',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            flexShrink:0,
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </div>
-          <div style={{ minWidth:0, flex:1 }}>
-            <div style={{
-              fontSize:10, fontWeight:800, letterSpacing:'0.16em',
-              textTransform:'uppercase', color:'#7A4F00',
-            }}>Solicitud de suspensión</div>
-            <div style={{
-              fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600,
-              color:'var(--ink)', letterSpacing:'-0.015em',
-              marginTop:2, lineHeight:1.2,
-            }}>
-              ¿Por qué hay que suspender esta lección?
+            width:36, height:36, borderRadius:9, background:'#B7791F', color:'#FFF',
+            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+          }}>↻</div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.16em', textTransform:'uppercase', color:'#7A4F00' }}>
+              Cambio excepcional de clase
+            </div>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:650, lineHeight:1.2, marginTop:2 }}>
+              Solicitar suspensión o reprogramación
             </div>
           </div>
-          <button type="button" onClick={() => !enviando && onCerrar()} aria-label="Cerrar"
-            style={{
-              background:'none', border:'none',
-              cursor: enviando ? 'not-allowed' : 'pointer',
-              padding:4, color:'#7A4F00', lineHeight:0,
-              opacity: enviando ? 0.4 : 1,
-            }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
+          <button type="button" onClick={() => !enviando && onCerrar()} aria-label="Cerrar" style={{
+            border:0, background:'transparent', color:'#7A4F00', fontSize:24,
+            cursor:enviando?'not-allowed':'pointer', opacity:enviando?.45:1,
+          }}>×</button>
         </div>
 
-        {/* Cuerpo */}
-        <div style={{ padding:'16px 22px 4px', overflowY:'auto' }}>
+        <div style={{ padding:'16px 22px 6px', overflowY:'auto' }}>
           <div style={{
-            display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'10px 16px',
-            padding:'12px 14px',
-            background:'var(--surface-2)',
-            border:'1px solid var(--line)',
-            borderRadius:'var(--r-md)',
-            marginBottom:16,
+            display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:'10px 16px',
+            padding:'12px 14px', background:'var(--surface-2)', border:'1px solid var(--line)',
+            borderRadius:'var(--r-md)', marginBottom:14,
           }}>
             <SuspField label="Grupo" value={lec.cod_grupo} mono />
             <SuspField label="Nivel" value={lec.nivel} pal={pal} />
             <SuspField label="Lección" value={`#${String(lec.leccion).padStart(2,'0')}`} mono />
-            <SuspField label="Fecha" value={vdFmtLargo(lec.fecha)} />
+            <SuspField label="Fecha actual" value={vdFmtLargo(lec.fecha)} />
             <div style={{ gridColumn:'1 / -1' }}>
-              <SuspField label="Riel"
-                value={(lec.riel || 'curso') === 'ican' ? 'I CAN' : 'Curso (Teórica/Práctica)'} />
+              <SuspField label="Horario actual" value={lec.horario_label || lec.turno || '—'} />
             </div>
           </div>
 
-          <label style={{ display:'block', marginBottom:14 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:14 }}>
+            <button type="button" disabled={enviando} onClick={() => { setTipo('SUSPENSION'); setErr(''); }} style={{
+              padding:'12px 13px', textAlign:'left', borderRadius:'var(--r-md)', cursor:'pointer',
+              border:`2px solid ${!esReprogramacion ? '#B7791F' : 'var(--line)'}`,
+              background:!esReprogramacion ? '#FFF8E1' : '#FFF', color:'var(--ink)', fontFamily:'inherit',
+            }}>
+              <b style={{ display:'block', fontSize:13 }}>Suspender esta clase</b>
+              <span style={{ display:'block', fontSize:10.5, color:'var(--ink-3)', marginTop:4, lineHeight:1.35 }}>
+                La lección pasa al siguiente espacio del patrón y desplaza las posteriores.
+              </span>
+            </button>
+            <button type="button" disabled={enviando} onClick={() => { setTipo('REPROGRAMACION'); setErr(''); }} style={{
+              padding:'12px 13px', textAlign:'left', borderRadius:'var(--r-md)', cursor:'pointer',
+              border:`2px solid ${esReprogramacion ? '#0D47A1' : 'var(--line)'}`,
+              background:esReprogramacion ? '#EEF5FF' : '#FFF', color:'var(--ink)', fontFamily:'inherit',
+            }}>
+              <b style={{ display:'block', fontSize:13 }}>Reprogramar esta lección</b>
+              <span style={{ display:'block', fontSize:10.5, color:'var(--ink-3)', marginTop:4, lineHeight:1.35 }}>
+                Mueve solo esta lección a un espacio libre; las demás fechas permanecen iguales.
+              </span>
+            </button>
+          </div>
+
+          {esReprogramacion && (
+            <div style={{
+              padding:'13px 14px', border:'1px solid #B7D2F3', background:'#F5F9FF',
+              borderRadius:'var(--r-md)', marginBottom:14,
+            }}>
+              <div style={{ ...vdLabelStyle, color:'#0D47A1', marginBottom:8 }}>Nueva fecha y horario</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1.25fr .85fr .85fr', gap:9 }}>
+                <label style={{ fontSize:10, color:'var(--ink-3)', fontWeight:700 }}>
+                  Fecha
+                  <input type="date" min={today} value={fechaDestino} disabled={enviando}
+                    onChange={e => { setFechaDestino(e.target.value); setErr(''); }} style={inputStyle}/>
+                </label>
+                <label style={{ fontSize:10, color:'var(--ink-3)', fontWeight:700 }}>
+                  Inicio
+                  <input type="time" value={horaInicio} disabled={enviando}
+                    onChange={e => { setHoraInicio(e.target.value); setErr(''); }} style={inputStyle}/>
+                </label>
+                <label style={{ fontSize:10, color:'var(--ink-3)', fontWeight:700 }}>
+                  Finaliza
+                  <input type="time" value={horaFin} disabled={enviando}
+                    onChange={e => { setHoraFin(e.target.value); setErr(''); }} style={inputStyle}/>
+                </label>
+              </div>
+              <div style={{ fontSize:10.5, color:'#42566E', lineHeight:1.45, marginTop:10 }}>
+                El sistema validará duración, orden de lecciones y choques del grupo o del docente. Si el destino coincide con otra clase, corresponde suspensión.
+              </div>
+            </div>
+          )}
+
+          <label style={{ display:'block', marginBottom:13 }}>
             <div style={vdLabelStyle}>Motivo *</div>
-            <textarea
-              value={motivo}
+            <textarea value={motivo} disabled={enviando} rows={4}
               onChange={e => { setMotivo(e.target.value); setErr(''); }}
-              disabled={enviando}
-              rows={4}
-              placeholder="Brinda una breve explicación de la razón de suspensión."
-              style={{
-                width:'100%', marginTop:6,
-                padding:'10px 12px',
-                border:'1.5px solid var(--line)',
-                background:'var(--surface)',
-                borderRadius:'var(--r-md)',
-                fontSize:13, color:'var(--ink)',
-                fontFamily:'inherit',
-                outline:'none', resize:'vertical',
-                boxSizing:'border-box', lineHeight:1.5,
-              }}
-            />
+              placeholder={esReprogramacion
+                ? 'Brinda una breve explicación de la razón de reprogramación.'
+                : 'Brinda una breve explicación de la razón de suspensión.'}
+              style={{ ...inputStyle, resize:'vertical' }}/>
           </label>
 
-          <div style={{
-            fontSize:11, color:'var(--ink-3)', marginBottom:12,
-          }}>
+          <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:12 }}>
             Solicitante: <b style={{ color:'var(--ink-2)' }}>{solicitante || '—'}</b>
           </div>
 
-          {err && (
-            <div style={{
-              padding:'10px 12px',
-              background:'color-mix(in srgb, var(--danger, #B71C1C) 8%, white)',
-              border:'1px solid color-mix(in srgb, var(--danger, #B71C1C) 28%, white)',
-              borderRadius:'var(--r-sm)',
-              fontSize:12, color:'var(--danger, #B71C1C)',
-              marginBottom:12, fontWeight:600,
-            }}>⚠ {err}</div>
-          )}
+          {err && <div style={{
+            padding:'10px 12px', marginBottom:12, background:'#FDECEA', border:'1px solid #F5C2BD',
+            borderRadius:'var(--r-sm)', color:'#8B1A10', fontSize:12, fontWeight:650,
+          }}>⚠ {err}</div>}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding:'14px 22px 18px',
-          borderTop:'1px solid var(--line)',
-          display:'flex', justifyContent:'flex-end', gap:10,
-        }}>
-          <button type="button"
-            onClick={() => !enviando && onCerrar()}
-            disabled={enviando}
-            style={{
-              padding:'10px 16px', background:'transparent',
-              border:'1.5px solid var(--line-2, var(--line))',
-              color:'var(--ink-2)',
-              fontSize:13, fontWeight:600,
-              borderRadius:'var(--r-md)',
-              cursor: enviando ? 'not-allowed' : 'pointer',
-              fontFamily:'inherit',
-            }}>Cancelar</button>
-          <button type="button"
-            onClick={handleEnviar}
-            disabled={enviando || !motivo.trim()}
-            style={{
-              padding:'10px 18px',
-              background: (enviando || !motivo.trim()) ? '#C9BFB1' : '#B7791F',
-              border:'none', color:'#FFF',
-              fontSize:13, fontWeight:700,
-              borderRadius:'var(--r-md)',
-              cursor: (enviando || !motivo.trim()) ? 'not-allowed' : 'pointer',
-              letterSpacing:'0.02em',
-              fontFamily:'inherit',
-              display:'inline-flex', alignItems:'center', gap:8,
-            }}>
-            {enviando ? (
-              <>
-                <span style={{
-                  width:11, height:11, borderRadius:'50%',
-                  border:'2px solid rgba(255,255,255,0.4)',
-                  borderTopColor:'#FFF',
-                  animation:'an-spin .8s linear infinite',
-                  display:'inline-block',
-                }} />
-                Enviando…
-              </>
-            ) : 'Enviar solicitud'}
-          </button>
+        <div style={{ padding:'14px 22px 18px', borderTop:'1px solid var(--line)', display:'flex', justifyContent:'flex-end', gap:10 }}>
+          <button type="button" disabled={enviando} onClick={() => !enviando && onCerrar()} style={{
+            padding:'10px 16px', border:'1.5px solid var(--line)', background:'#FFF',
+            borderRadius:'var(--r-md)', fontFamily:'inherit', cursor:'pointer',
+          }}>Cancelar</button>
+          <button type="button" disabled={enviando || !motivo.trim()} onClick={handleEnviar} style={{
+            padding:'10px 18px', border:0, borderRadius:'var(--r-md)', fontFamily:'inherit',
+            background:(enviando || !motivo.trim()) ? '#C9BFB1' : (esReprogramacion ? '#0D47A1' : '#B7791F'),
+            color:'#FFF', fontWeight:800, cursor:(enviando || !motivo.trim())?'not-allowed':'pointer',
+          }}>{enviando ? 'Enviando…' : 'Enviar solicitud'}</button>
         </div>
       </div>
     </div>
   );
 }
-
 const VD_NIVEL_COLORES = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 
 function SuspField({ label, value, mono, pal }) {

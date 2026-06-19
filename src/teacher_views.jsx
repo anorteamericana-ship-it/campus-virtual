@@ -161,6 +161,11 @@ function tvHoraLabel(g){
   };
   return [norm(rawHi),norm(rawHf)].filter(Boolean).join(' a ');
 }
+function tvLessonHoraLabel(lesson, meta){
+  const hi = lesson?.hora_inicio, hf = lesson?.hora_fin;
+  if (hi && hf) return tvHoraLabel({ hora_i:hi, hora_f:hf });
+  return tvHoraLabel(meta);
+}
 function tvGrupoLabel(g){
   const code=tvGroupCode(g) || tvGroupCode(g?.code || g?.cod_grupo || '');
   const sched=tvScheduleFromCode(code);
@@ -519,7 +524,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
   return <div className="card" style={{ padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, borderLeft:'4px solid var(--an-navy)', width:'100%', maxWidth:'100%', minWidth:0, flexWrap:'wrap' }}>
     <div>
       <div style={vdLabelStyle}>Clase de hoy</div>
-      <div style={{ fontSize:18, fontWeight:800, color:'var(--ink)' }}>Lección {String(leccionHoy.leccion).padStart(2,'0')} · {tvHoraLabel(meta)}</div>
+      <div style={{ fontSize:18, fontWeight:800, color:'var(--ink)' }}>Lección {String(leccionHoy.leccion).padStart(2,'0')} · {tvLessonHoraLabel(leccionHoy, meta)}</div>
       <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>
         {cerrada ? 'Sesión finalizada. Registro bloqueado para planilla.' : abierta ? 'Sesión abierta. Recordá finalizar al terminar la clase.' : 'Iniciá sesión para registrar horas reales de planilla.'}
       </div>
@@ -578,9 +583,9 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')onClose();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose]);
   const iniciar=async()=>{
     const zoom=prompt('Pegá el link de Zoom para iniciar la sesión de clase:'); if(!zoom)return;
-    const sched=tvScheduleFromCode(code), hi=tvMinutes(meta?.hora_i||sched.hora_i), hf=tvMinutes(meta?.hora_f||sched.hora_f), now=tvNowMinutes();
+    const sched=tvScheduleFromCode(code), hi=tvMinutes(lesson?.hora_inicio||meta?.hora_i||sched.hora_i), hf=tvMinutes(lesson?.hora_fin||meta?.hora_f||sched.hora_f), now=tvNowMinutes();
     let motivo=''; if(!isToday||(hi!=null&&(now<hi||(hf!=null&&now>hf)))){motivo=prompt('Brinda una breve explicación de la razón de inicio fuera del horario establecido:')||''; if(!motivo.trim()){alert('La explicación es obligatoria.');return;}}
-    setBusy(true); try{const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,zoom_link:zoom,motivo_inicio:motivo}); if(!r?.ok)throw new Error(r?.error||'No se pudo iniciar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);}
+    setBusy(true); try{const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',zoom_link:zoom,motivo_inicio:motivo}); if(!r?.ok)throw new Error(r?.error||'No se pudo iniciar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);}
   };
   const finalizar=async()=>{ if(!confirm('¿Finalizar la sesión? Esta acción quedará bloqueada para planilla.'))return; setBusy(true); try{const r=await postTeacher('docenteFinalizarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion}); if(!r?.ok)throw new Error(r?.error||'No se pudo finalizar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);} };
   const detByStudent=asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[String(lesson?.leccion)]||{};
@@ -588,7 +593,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
       <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
-          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>Lección {String(lesson?.leccion||'').padStart(2,'0')}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>{tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvHoraLabel(meta)}</div></div>
+          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>Lección {String(lesson?.leccion||'').padStart(2,'0')}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>{tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
@@ -597,7 +602,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             {abierta&&<button className="btn btn-primary" disabled={busy} onClick={finalizar}>CERRAR CLASE</button>}
             {!closed&&(isToday||abierta)&&<button className="btn btn-primary" onClick={()=>setAttendanceOpen(true)}>PASAR ASISTENCIA</button>}
             <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
-            {!closed&&String(lesson?.fecha||'')>=today&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN</button>}
+            {!closed&&String(lesson?.fecha||'')>=today&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
           </div>
           {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Sesión finalizada · {sesion?.MINUTOS_REALES||sesion?.minutos_reales||0} minutos registrados</div>}
           {loading?<LoadingState variant="small" title="Cargando detalle…"/>:<>
@@ -616,8 +621,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         </div>
       </aside>
     </div>
-    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvHoraLabel(meta),tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} onClose={()=>setAttendanceOpen(false)} onSuccess={()=>{setAttendanceOpen(false);onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
-    {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvHoraLabel(meta),tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
+    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} onClose={()=>setAttendanceOpen(false)} onSuccess={()=>{setAttendanceOpen(false);onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
+    {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno||tvHoraLabel(meta),hora_inicio:lesson.hora_inicio||meta?.hora_i||'',hora_fin:lesson.hora_fin||meta?.hora_f||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;
 }
 

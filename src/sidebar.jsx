@@ -415,7 +415,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'conape_cobranza', label: 'CONAPE y Cobranza', icon: 'payments' },
     ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
-    { id: 'suspensiones', label: 'Suspensiones', icon: 'calendar', badge: pendientesSusp || null },
+    { id: 'suspensiones', label: 'Cambios de clase', icon: 'calendar', badge: pendientesSusp || null },
     { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
     { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
     { id: 'grupos', label: 'Grupos', icon: 'roster' },

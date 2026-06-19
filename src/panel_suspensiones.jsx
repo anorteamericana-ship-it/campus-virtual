@@ -1,9 +1,9 @@
 /* global React, fetchGetSolicitudesSuspension, fetchResolverSolicitudSuspension */
 
 // ─────────────────────────────────────────────────────────────────
-// PanelSuspensiones — Cola de solicitudes de suspensión (admin)
+// PanelSuspensiones — Solicitudes de suspensión o reprogramación (admin)
 // Lista PENDIENTES (default), aprueba o rechaza. La aprobación
-// ejecuta la suspensión real y empuja el calendario una fecha.
+// aplica la suspensión o mueve una lección a un espacio libre validado.
 // ─────────────────────────────────────────────────────────────────
 
 const PSU_NIVEL = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -79,8 +79,8 @@ function PanelSuspensiones() {
       return;
     }
     setLista(prev => prev.filter(s => s.id !== sol.id));
-    const mensaje = res.suspension?.mensaje || res.mensaje || 'Suspensión aprobada · calendario actualizado.';
-    showToast(`Aprobada · ${mensaje}`, 'ok');
+    const mensaje = res.cambio?.mensaje || res.suspension?.mensaje || res.mensaje || 'Cambio aprobado y aplicado.';
+    showToast(`Aplicada · ${mensaje}`, 'ok');
   };
 
   const handleRechazar = async (sol, nota) => {
@@ -115,11 +115,9 @@ function PanelSuspensiones() {
           <h1 style={{
             fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.02em',
             fontSize:32, lineHeight:1.05, margin:0, color:'var(--ink)',
-          }}>Solicitudes de suspensión</h1>
+          }}>Suspensión o reprogramación</h1>
           <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:8, maxWidth:560 }}>
-            Los docentes solicitan suspender una lección. Aprobar empuja
-            el calendario una fecha; rechazar lo deja intacto.
-            <b> Las 32 lecciones se dan siempre.</b>
+            Los docentes pueden solicitar suspender una clase o mover una lección a un espacio libre. La aprobación valida choques, orden académico y duración antes de modificar el calendario.
           </div>
         </div>
 
@@ -163,8 +161,7 @@ function PanelSuspensiones() {
           background:'#FFF8E1', border:'1px dashed #B7791F',
           fontSize:11, color:'#7A4F00', lineHeight:1.5,
         }}>
-          <b>Aprobar</b> ejecuta la suspensión y desplaza todas las lecciones siguientes
-          una fecha hábil del patrón. La acción queda registrada.
+          <b>Aprobar</b> aplica el tipo solicitado: suspensión desplaza el patrón; reprogramación mueve solo la lección seleccionada. Toda acción queda registrada.
         </div>
       </div>
 
@@ -234,7 +231,7 @@ function PanelSuspensiones() {
 
 // ─────────────────────────────────────────────────────────────────
 function FiltroEstado({ value, onChange, cargando }) {
-  const opciones = ['PENDIENTE', 'APROBADA', 'RECHAZADA', 'TODAS'];
+  const opciones = ['PENDIENTE', 'APLICADA', 'RECHAZADA', 'TODAS'];
   return (
     <div style={{
       display:'inline-flex', gap:0,
@@ -286,7 +283,7 @@ function EmptyCola({ estado }) {
           : `Sin solicitudes ${estado.toLowerCase()}.`}
       </div>
       <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:6 }}>
-        Cuando un docente pida suspender una lección aparecerá acá.
+        Cuando un docente solicite suspensión o reprogramación aparecerá acá.
       </div>
     </div>
   );
@@ -298,6 +295,7 @@ function TarjetaSolicitud({ sol, onAprobar, onRechazar, resolviendo }) {
   const c     = PSU_NIVEL[nivel] || '#777';
   const ink   = PSU_NIVEL_INK[nivel] || 'var(--ink)';
   const esICAN= (sol.riel || 'curso') === 'ican';
+  const esReprogramacion = String(sol.tipo || '').toUpperCase() === 'REPROGRAMACION';
   const isPendiente = sol.estado === 'PENDIENTE';
   const bloqueado = !!resolviendo && resolviendo.id === sol.id;
 
@@ -338,6 +336,14 @@ function TarjetaSolicitud({ sol, onAprobar, onRechazar, resolviendo }) {
           }}>
             Lección {String(sol.leccion).padStart(2,'0')}
           </span>
+          <span style={{
+            padding:'2px 8px',
+            background: esReprogramacion ? '#E8F1FD' : '#FFF3CD',
+            color: esReprogramacion ? '#0D47A1' : '#7A4F00',
+            border:`1px solid ${esReprogramacion ? '#B7D2F3' : '#FFE082'}`,
+            fontSize:10, fontWeight:850, letterSpacing:'0.08em',
+            borderRadius:'var(--r-pill)', textTransform:'uppercase',
+          }}>{esReprogramacion ? 'Reprogramación' : 'Suspensión'}</span>
           {esICAN && (
             <span style={{
               padding:'2px 8px', background:'#4CAF50', color:'#FFF',
@@ -348,9 +354,9 @@ function TarjetaSolicitud({ sol, onAprobar, onRechazar, resolviendo }) {
           {!isPendiente && (
             <span style={{
               padding:'2px 8px',
-              background: sol.estado === 'APROBADA' ? '#E8F5E9' : '#FDECEA',
-              color:      sol.estado === 'APROBADA' ? '#2E7D32' : '#8B1A10',
-              border:`1px solid ${sol.estado === 'APROBADA' ? '#A5D6A7' : '#F5C2BD'}`,
+              background: sol.estado === 'APLICADA' ? '#E8F5E9' : '#FDECEA',
+              color:      sol.estado === 'APLICADA' ? '#2E7D32' : '#8B1A10',
+              border:`1px solid ${sol.estado === 'APLICADA' ? '#A5D6A7' : '#F5C2BD'}`,
               fontSize:10, fontWeight:800, letterSpacing:'0.1em',
               borderRadius:'var(--r-pill)', textTransform:'uppercase',
             }}>{sol.estado}</span>
@@ -372,6 +378,22 @@ function TarjetaSolicitud({ sol, onAprobar, onRechazar, resolviendo }) {
           }}>Motivo</div>
           {sol.motivo || <i style={{ color:'var(--ink-3)' }}>— sin motivo —</i>}
         </div>
+
+        {esReprogramacion && (
+          <div style={{
+            marginTop:10, padding:'10px 12px', background:'#F5F9FF',
+            border:'1px solid #B7D2F3', borderRadius:'var(--r-md)',
+            display:'grid', gridTemplateColumns:'1fr auto', gap:12, alignItems:'center',
+          }}>
+            <div>
+              <div style={{ fontSize:9, fontWeight:750, letterSpacing:'0.14em', textTransform:'uppercase', color:'#0D47A1' }}>Nueva fecha</div>
+              <div style={{ fontSize:13, fontWeight:750, marginTop:3 }}>{psuFmt(sol.fecha_destino)}</div>
+            </div>
+            <div style={{ fontFamily:'var(--f-mono)', fontSize:12, fontWeight:800, color:'#0D47A1' }}>
+              {sol.hora_destino_inicio || '—'}–{sol.hora_destino_fin || '—'}
+            </div>
+          </div>
+        )}
 
         {/* Meta */}
         <div style={{
@@ -454,133 +476,72 @@ function ModalConfirmarAprobar({ sol, enviando, onCerrar, onConfirmar }) {
   }, [enviando, onCerrar]);
 
   const nivelC = PSU_NIVEL[sol.nivel] || 'var(--ink)';
+  const esReprogramacion = String(sol.tipo || '').toUpperCase() === 'REPROGRAMACION';
+  const titulo = esReprogramacion
+    ? `Aprobar reprogramación de la lección ${String(sol.leccion).padStart(2,'0')}`
+    : `Aprobar suspensión de la lección ${String(sol.leccion).padStart(2,'0')}`;
 
   return (
-    <div onClick={(e)=>{ if (e.target === e.currentTarget && !enviando) onCerrar(); }}
-      style={{
-        position:'fixed', inset:0, zIndex:1100,
-        background:'rgba(20,16,12,0.6)',
-        backdropFilter:'blur(4px)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        padding:18,
+    <div onClick={(e)=>{ if (e.target === e.currentTarget && !enviando) onCerrar(); }} style={{
+      position:'fixed', inset:0, zIndex:4300, background:'rgba(20,16,12,.62)',
+      backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:18,
+    }}>
+      <div role="dialog" aria-modal="true" style={{
+        width:'100%', maxWidth:530, background:'var(--surface)', borderRadius:'var(--r-lg,12px)',
+        boxShadow:'0 24px 70px rgba(0,0,0,.4)', overflow:'hidden', display:'flex', flexDirection:'column',
       }}>
-      <div role="dialog" aria-modal="true"
-        style={{
-          width:'100%', maxWidth:500,
-          background:'var(--surface)',
-          borderRadius:'var(--r-lg, 12px)',
-          boxShadow:'0 24px 64px rgba(0,0,0,0.36)',
-          overflow:'hidden',
-          display:'flex', flexDirection:'column',
-        }}>
         <div style={{
-          padding:'18px 22px 14px',
-          background:'#FFF3CD',
-          borderBottom:'1px solid #FFE082',
+          padding:'18px 22px 14px', background:esReprogramacion?'#EEF5FF':'#FFF3CD',
+          borderBottom:`1px solid ${esReprogramacion?'#B7D2F3':'#FFE082'}`,
           display:'flex', alignItems:'flex-start', gap:14,
         }}>
           <div style={{
-            width:36, height:36, borderRadius:8,
-            background:'#7A4F00', color:'#FFF',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            flexShrink:0,
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </div>
+            width:36, height:36, borderRadius:8, background:esReprogramacion?'#0D47A1':'#7A4F00',
+            color:'#FFF', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+          }}>{esReprogramacion?'↻':'!'}</div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{
-              fontSize:10, fontWeight:800, letterSpacing:'0.16em',
-              textTransform:'uppercase', color:'#7A4F00',
-            }}>Esto mueve TODO el calendario hacia adelante</div>
-            <div style={{
-              fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600,
-              color:'var(--ink)', letterSpacing:'-0.015em',
-              marginTop:2, lineHeight:1.2,
-            }}>
-              Aprobar suspensión de la lección {String(sol.leccion).padStart(2,'0')}
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.16em', textTransform:'uppercase', color:esReprogramacion?'#0D47A1':'#7A4F00' }}>
+              {esReprogramacion ? 'Mover solo esta lección' : 'Desplazar calendario desde esta lección'}
+            </div>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:19, fontWeight:650, marginTop:2, lineHeight:1.2 }}>
+              {titulo}
               <span style={{
-                marginLeft:8, padding:'2px 8px', borderRadius:'var(--r-pill)',
-                background:nivelC, color:'#FFF',
-                fontSize:10, fontWeight:800, letterSpacing:'0.1em', textTransform:'uppercase',
-                fontFamily:'var(--f-sans, inherit)',
-                verticalAlign:'middle',
+                marginLeft:8, padding:'2px 8px', borderRadius:'var(--r-pill)', background:nivelC,
+                color:'#FFF', fontSize:10, fontWeight:800, verticalAlign:'middle',
               }}>{sol.nivel}</span>
             </div>
           </div>
         </div>
 
         <div style={{ padding:'16px 22px', fontSize:13, color:'var(--ink-2)', lineHeight:1.6 }}>
-          Al aprobar, la lección <b>{String(sol.leccion).padStart(2,'0')}</b> del grupo{' '}
-          <b style={{ fontFamily:'var(--f-mono)' }}>{sol.cod_grupo}</b> queda suspendida y
-          <b> todas las lecciones siguientes se corren una fecha hábil del patrón</b>.
-          Ninguna lección se elimina — las 32 se dan siempre.
-          <div style={{
-            marginTop:12, padding:'10px 12px',
-            background:'var(--surface-2)',
-            border:'1px solid var(--line)',
-            borderRadius:'var(--r-md)',
-            fontSize:12,
-          }}>
-            <div style={{
-              fontSize:9, fontWeight:700, letterSpacing:'0.14em',
-              textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4,
-            }}>Motivo del docente</div>
+          {esReprogramacion ? (
+            <>
+              La lección <b>{String(sol.leccion).padStart(2,'0')}</b> del grupo <b style={{fontFamily:'var(--f-mono)'}}>{sol.cod_grupo}</b>{' '}
+              se moverá a <b>{psuFmt(sol.fecha_destino)}</b>, de <b>{sol.hora_destino_inicio}</b> a <b>{sol.hora_destino_fin}</b>.
+              Las demás fechas permanecen iguales. Antes de aplicar, el sistema volverá a validar duración, orden y choques del grupo/docente.
+            </>
+          ) : (
+            <>
+              La lección <b>{String(sol.leccion).padStart(2,'0')}</b> del grupo <b style={{fontFamily:'var(--f-mono)'}}>{sol.cod_grupo}</b>{' '}
+              quedará suspendida y todas las lecciones posteriores se moverán al siguiente espacio del patrón. Las 32 lecciones se mantienen.
+            </>
+          )}
+
+          <div style={{ marginTop:13, padding:'10px 12px', background:'var(--surface-2)', border:'1px solid var(--line)', borderRadius:'var(--r-md)' }}>
+            <div style={{ fontSize:9, fontWeight:750, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4 }}>Motivo del docente</div>
             <div style={{ color:'var(--ink)' }}>{sol.motivo || <i>(sin motivo)</i>}</div>
-            <div style={{
-              fontSize:11, color:'var(--ink-3)', marginTop:6,
-            }}>Solicitante: {sol.solicitante || '—'}</div>
+            <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:6 }}>Solicitante: {sol.solicitante || '—'}</div>
           </div>
         </div>
 
-        <div style={{
-          padding:'14px 22px 18px',
-          borderTop:'1px solid var(--line)',
-          display:'flex', justifyContent:'flex-end', gap:10,
-        }}>
-          <button type="button"
-            onClick={() => !enviando && onCerrar()}
-            disabled={enviando}
-            style={{
-              padding:'10px 16px', background:'transparent',
-              border:'1.5px solid var(--line-2, var(--line))',
-              color:'var(--ink-2)',
-              fontSize:13, fontWeight:600,
-              borderRadius:'var(--r-md)',
-              cursor: enviando ? 'not-allowed' : 'pointer',
-              fontFamily:'inherit',
-            }}>Cancelar</button>
-          <button type="button"
-            onClick={onConfirmar}
-            disabled={enviando}
-            style={{
-              padding:'10px 18px',
-              background: enviando ? '#C9BFB1' : '#1E4D2B',
-              border:'none', color:'#FFF',
-              fontSize:13, fontWeight:700,
-              borderRadius:'var(--r-md)',
-              cursor: enviando ? 'not-allowed' : 'pointer',
-              letterSpacing:'0.02em',
-              fontFamily:'inherit',
-              display:'inline-flex', alignItems:'center', gap:8,
-            }}>
-            {enviando ? (
-              <>
-                <span style={{
-                  width:11, height:11, borderRadius:'50%',
-                  border:'2px solid rgba(255,255,255,0.4)',
-                  borderTopColor:'#FFF',
-                  animation:'an-spin .8s linear infinite',
-                  display:'inline-block',
-                }} />
-                Aprobando…
-              </>
-            ) : 'Sí, aprobar y mover calendario'}
-          </button>
+        <div style={{ padding:'14px 22px 18px', borderTop:'1px solid var(--line)', display:'flex', justifyContent:'flex-end', gap:10 }}>
+          <button type="button" disabled={enviando} onClick={() => !enviando && onCerrar()} style={{
+            padding:'10px 16px', background:'#FFF', border:'1.5px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit', cursor:'pointer',
+          }}>Cancelar</button>
+          <button type="button" disabled={enviando} onClick={onConfirmar} style={{
+            padding:'10px 18px', background:enviando?'#C9BFB1':'#1E4D2B', color:'#FFF', border:0,
+            borderRadius:'var(--r-md)', fontWeight:800, fontFamily:'inherit', cursor:enviando?'wait':'pointer',
+          }}>{enviando ? 'Aplicando…' : (esReprogramacion ? 'Aprobar y reprogramar' : 'Aprobar y suspender')}</button>
         </div>
       </div>
     </div>
