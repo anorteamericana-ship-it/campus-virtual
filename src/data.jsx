@@ -371,12 +371,9 @@ function _solpResolverDemo(id, patch) {
   return { ok: true, solicitud: arr[idx] };
 }
 
-// Helper genérico: intenta el endpoint real; si falla o responde algo que no
-// es JSON conforme, cae al callback demo. Así el deploy real funciona y el
-// preview sin backend sigue siendo demostrable. Una vez que detectamos que el
-// backend no responde (timeout/red), marcamos la sesión como "sin backend" y
-// las llamadas siguientes van directo al store demo (preview ágil).
-let _solpBackendDown = false;
+// Helper genérico: el fallback demo solo existe cuando se activa explícitamente
+// con ?demo=1 / ?preview=... o localStorage. En producción, una falla real se
+// reporta y nunca se convierte en un éxito local ficticio.
 // Modo demo forzado: en el preview (sin sesión real) no queremos tocar ni
 // contaminar el backend en producción. Se activa con ?demo=1 o ?preview=… en
 // la URL, o con localStorage an_solp_demo=1. En producción (sin flag) se usan
@@ -389,20 +386,19 @@ const _solpDemoForced = (() => {
   } catch (_) { return false; }
 })();
 async function _solpFetch(realCall, demoCall) {
-  if (_solpDemoForced || _solpBackendDown) return demoCall();
+  if (_solpDemoForced) return demoCall();
   try {
     const d = await realCall();
     if (d && typeof d === 'object' && (d.ok === true || d.ok === false)) return d;
-    throw new Error('respuesta no conforme');
+    return { ok:false, error:'El servidor devolvió una respuesta no válida. No se guardó ningún cambio.' };
   } catch (e) {
-    if (e && (e.name === 'AbortError' || e.name === 'TypeError')) _solpBackendDown = true;
-    return demoCall();
+    return { ok:false, error:`No se pudo conectar con el servidor: ${e?.message || 'error de red'}. No se guardó ningún cambio.` };
   }
 }
 
-// POST al Apps Script con timeout: si el backend no responde a tiempo (p. ej.
-// en el preview sin red), abortamos para caer rápido al store demo.
-async function _solpPost(fn, payload, ms = 3500) {
+// POST al Apps Script con timeout. En producción, el aborto se muestra como error;
+// solo el modo demo explícito usa el store local.
+async function _solpPost(fn, payload, ms = 15000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {

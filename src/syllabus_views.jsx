@@ -97,21 +97,45 @@ const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
 
 function useScheduleState(grupoInfo, grupo) {
-  // Generamos schedule a partir del grupo real (suspensiones aún no implementadas → [])
+  const [fechasReales, setFechasReales] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!grupoInfo || !grupo?.code) { setFechasReales(null); return; }
+    let cancelled = false;
+    const nivel = String(grupo.levelId || grupoInfo.levelId || 'b1').toUpperCase();
+    postSyllabus('getFechasGrupo', { cod_grupo: grupo.code, nivel, riel:'curso' })
+      .then(d => { if (!cancelled) setFechasReales(d?.ok && Array.isArray(d.lecciones) ? d.lecciones : []); })
+      .catch(() => { if (!cancelled) setFechasReales([]); });
+    return () => { cancelled = true; };
+  }, [grupoInfo, grupo?.code, grupo?.levelId]);
+
   const schedule = React.useMemo(() => {
     if (!grupoInfo || !grupo?.startDate) return [];
-    return buildGroupSchedule(grupo?.levelId || grupoInfo.levelId || 'b1', grupo, []);
-  }, [grupoInfo, grupo]);
-  // Marcar done/next/future basándonos en HOY
+    const base = buildGroupSchedule(grupo?.levelId || grupoInfo.levelId || 'b1', grupo, []);
+    if (!Array.isArray(fechasReales) || !fechasReales.length) return base;
+    const porLeccion = new Map(fechasReales.filter(x => Number(x.leccion) > 0 && String(x.riel || (String(x.tipo).toUpperCase() === 'ICAN' ? 'ican' : 'curso')).toLowerCase() === 'curso').map(x => [Number(x.leccion), x]));
+    return base.map(item => {
+      const real = porLeccion.get(Number(item.n));
+      if (!real?.fecha) return item;
+      const date = new Date(`${String(real.fecha).slice(0,10)}T00:00:00`);
+      const estado = String(real.estado || '').toUpperCase();
+      return {
+        ...item,
+        date: isNaN(date) ? item.date : date,
+        status: real.reprogramada ? 'rescheduled' : (estado === 'CERRADA' ? 'done' : 'scheduled'),
+        backendEstado: estado,
+        horaInicio: real.hora_inicio || '',
+        horaFin: real.hora_fin || '',
+        suspension: real.reprogramada ? { action:'rescheduled', reason:'Cambio aprobado por administración', byName:'Administración', detail:`Fecha original: ${real.fecha_original || '—'}` } : null,
+      };
+    });
+  }, [grupoInfo, grupo, fechasReales]);
+
   return React.useMemo(() => schedule.map(s => {
     const st = (() => {
-      if (s.status === 'suspended' || s.status === 'rescheduled') {
-        // Si ya pasó la fecha nueva => done; si no, upcoming
-        if (s.status === 'rescheduled' && s.date < TODAY) return 'done-rescheduled';
-        return s.status;
-      }
+      if (s.status === 'done') return 'done';
+      if (s.status === 'rescheduled') return s.date < TODAY ? 'done-rescheduled' : 'rescheduled';
       if (s.date < TODAY) return 'done';
-      // mismo día
       if (s.date.toDateString() === TODAY.toDateString()) return 'today';
       return 'upcoming';
     })();
