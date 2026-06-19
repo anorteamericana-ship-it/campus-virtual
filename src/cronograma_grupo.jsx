@@ -938,9 +938,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         gap: agendaDocenteMode ? 14 : 18,
         marginTop:6,
         alignItems:'start',
-        height: agendaDocenteMode ? 'calc(100dvh - 185px)' : 'auto',
-        minHeight: agendaDocenteMode ? 560 : undefined,
-        maxHeight: agendaDocenteMode ? 'calc(100dvh - 185px)' : undefined,
+        height: agendaDocenteMode ? 'calc(100dvh - 156px)' : 'auto',
+        minHeight: agendaDocenteMode ? 540 : undefined,
+        maxHeight: agendaDocenteMode ? 'calc(100dvh - 156px)' : undefined,
         overflow: agendaDocenteMode ? 'hidden' : 'visible',
       }}>
         <div style={{
@@ -1923,22 +1923,27 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
         ) : (
           <>
             <div style={{
-              fontSize: agenda ? (compacto ? 12 : 12.5) : 12, fontWeight:900, color:pal.fg, fontFamily:'var(--f-mono)',
+              fontSize: agenda ? (compacto ? 11.2 : 12) : 12,
+              fontWeight:900,
+              color:pal.fg,
+              fontFamily:'var(--f-mono)',
               lineHeight:1.05,
+              whiteSpace:'nowrap',
             }}>
               Lec {String(lec.leccion).padStart(2,'0')}
             </div>
             {agenda && (
-              <React.Fragment>
-                {lec.estudiantes_count !== '' && lec.estudiantes_count != null && (
-                  <div style={{ fontSize:compacto ? 8.4 : 8.8, color:pal.fg, opacity:0.88, fontWeight:800, lineHeight:1.05 }}>
-                    {lec.estudiantes_count} estudiantes
-                  </div>
-                )}
-                <div style={{ fontSize:compacto ? 8.4 : 8.8, color:pal.fg, opacity:0.9, fontWeight:800, lineHeight:1.05 }}>
-                  {cgHoraLabel(lec)}
-                </div>
-              </React.Fragment>
+              <div style={{
+                marginTop:2,
+                fontSize: compacto ? 8.8 : 9.4,
+                color:pal.fg,
+                opacity:0.92,
+                fontWeight:800,
+                lineHeight:1.1,
+                whiteSpace:'nowrap',
+              }}>
+                {cgHoraLabel(lec)}
+              </div>
             )}
             {!agenda && lec.turno && (
               <div style={{ fontSize:10, color:pal.fg, opacity:0.78, fontWeight:600, marginTop:1 }}>
@@ -1959,10 +1964,11 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
   return (
     <div style={{
       // CALGRUPO_F73_20260618_PANEL_DETALLE_FIJO_VISIBLE
-      position: agendaDocente ? 'relative' : 'sticky', top: agendaDocente ? 0 : 12,
-      height: agendaDocente ? 'calc(100dvh - 185px)' : 'auto',
-      maxHeight: agendaDocente ? 'calc(100dvh - 185px)' : 'calc(100vh - 24px)',
-      overflowY:'auto', overflowX:'hidden', paddingRight:8, paddingBottom:18,
+      position:'sticky', top: agendaDocente ? 8 : 12,
+      alignSelf:'start',
+      height: agendaDocente ? 'calc(100dvh - 156px)' : 'auto',
+      maxHeight: agendaDocente ? 'calc(100dvh - 156px)' : 'calc(100vh - 24px)',
+      overflowY:'auto', overflowX:'hidden', paddingRight:6, paddingBottom:8,
       display:'flex', flexDirection:'column', gap:10,
       scrollbarGutter:'stable',
     }}>
@@ -2040,16 +2046,18 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
         </div>
       )}
 
-      {/* Footer info */}
-      <div style={{
-        padding:'10px 14px', background:'var(--surface-2)',
-        border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)',
-        fontSize:10, color:'var(--ink-3)', letterSpacing:'0.04em', lineHeight:1.5,
-      }}>
-        Fuente: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>CALENDARIO_LECCIONES</strong><br/>
-        Horario: <strong style={{ color:'var(--ink-2)' }}>{grupoLabel || codGrupo}</strong><br/>
-        Docente: <strong style={{ color:'var(--ink-2)' }}>{docente}</strong>
-      </div>
+      {/* Footer info — se oculta en agenda docente para dar más altura útil al detalle */}
+      {!agendaDocente && (
+        <div style={{
+          padding:'10px 14px', background:'var(--surface-2)',
+          border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)',
+          fontSize:10, color:'var(--ink-3)', letterSpacing:'0.04em', lineHeight:1.5,
+        }}>
+          Fuente: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>CALENDARIO_LECCIONES</strong><br/>
+          Horario: <strong style={{ color:'var(--ink-2)' }}>{grupoLabel || codGrupo}</strong><br/>
+          Docente: <strong style={{ color:'var(--ink-2)' }}>{docente}</strong>
+        </div>
+      )}
     </div>
   );
 }
@@ -2073,7 +2081,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
   return (
     <div className="card" style={{ padding:0, overflow:'hidden' }}>
       <div style={{ height:4, background: palVis.accent }} />
-      <div style={{ padding: rol === 'teacher' ? '11px 14px 14px' : '14px 18px 18px' }}>
+      <div style={{ padding: rol === 'teacher' ? '10px 12px 12px' : '14px 18px 18px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
           <div>
             <div style={{ ...labelStyle, marginBottom:4 }}>
@@ -2127,7 +2135,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         {!isFeriado && !bloqueado && (rol === 'teacher' || esAdmin) && (
           <div style={{
             // Acciones siempre visibles arriba del material.
-            display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:10, alignItems:'stretch',
+            display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:8, alignItems:'stretch',
             position:'sticky', top:0, zIndex:5,
             background:'#FFFFFFEE', backdropFilter:'blur(6px)',
             padding:'8px 0 10px', borderBottom:'1px solid var(--line)',
