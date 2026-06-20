@@ -1,3 +1,4 @@
+// F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
 // F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
@@ -41,6 +42,40 @@ function ProximamenteView({ title }) {
       </div>
     </div>
   );
+}
+
+
+// F92.5: envoltorios seguros para módulos externos. Si un archivo opcional
+// no cargó, el Campus sigue funcionando y muestra un aviso en lugar de una
+// pantalla completamente en blanco.
+function ModuloNoDisponibleView({ titulo = 'Módulo temporalmente no disponible' }) {
+  return (
+    <div data-screen-label={'Campus · ' + titulo} style={{
+      maxWidth: 720, margin: '56px auto', padding: '28px 30px',
+      background: 'var(--surface, #fff)', border: '1px solid var(--line, #e5e0d8)',
+      borderRadius: 18, boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,.08))',
+      fontFamily: 'var(--f-sans, system-ui)', textAlign: 'center'
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--an-granate, #7A1E2C)' }}>Campus Virtual</div>
+      <div style={{ fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 28, color: 'var(--an-navy-ink, #001E47)', marginTop: 8 }}>{titulo}</div>
+      <div style={{ fontSize: 13, color: 'var(--ink-3, #6B7280)', lineHeight: 1.6, marginTop: 10 }}>
+        Recargá la página. Si el problema continúa, el archivo del módulo no terminó de publicarse en GitHub.
+      </div>
+      <button type="button" className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 18 }}>Recargar</button>
+    </div>
+  );
+}
+
+function SolicitudesEstudianteSafe(props) {
+  return typeof SolicitudesEstudianteView === 'function'
+    ? <SolicitudesEstudianteView {...props} />
+    : <ModuloNoDisponibleView titulo="Solicitudes del estudiante" />;
+}
+
+function SolicitudesUnificadasSafe(props) {
+  return typeof SolicitudesUnificadasView === 'function'
+    ? <SolicitudesUnificadasView {...props} />
+    : <ModuloNoDisponibleView titulo="Solicitudes administrativas" />;
 }
 
 
@@ -570,7 +605,7 @@ function App() {
       mensajes:     <MensajesView />,
       pagos:        <PagosView />,
       certificados: <CertificadosView />,
-      solicitudes_estudiante: <SolicitudesEstudianteView onNavigate={navigateTo} />,
+      solicitudes_estudiante: <SolicitudesEstudianteSafe onNavigate={navigateTo} />,
       perfil:       <PerfilView onNavigate={navigateTo} />,
     };
     content = map[active] || map.dashboard;
@@ -622,8 +657,8 @@ function App() {
         : <NoAutorizadoCampus rol={rolReal} />,
       examenes:    <ExamenesAdminPanel />,
       examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
-      suspensiones: <SolicitudesUnificadasView onNavigate={navigateTo} />,
-      solicitudes:  <SolicitudesUnificadasView onNavigate={navigateTo} />,
+      suspensiones: <SolicitudesUnificadasSafe onNavigate={navigateTo} />,
+      solicitudes:  <SolicitudesUnificadasSafe onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,
       estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
       cronograma_grupo: <CronogramaGrupo rol={rolReal} onNavigate={navigateTo} />,
@@ -762,6 +797,41 @@ function CampusValidando({ lento }) {
   );
 }
 
+
+class CampusRootErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    try { console.error('CampusRootErrorBoundary', error, info); } catch (_) {}
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    const mensaje = String(this.state.error && this.state.error.message ? this.state.error.message : this.state.error || 'Error inesperado');
+    return (
+      <div data-screen-label="Campus · Error de carga" style={{
+        minHeight:'100vh', display:'grid', placeItems:'center', padding:24,
+        background:'var(--bg, #F3EEE6)', fontFamily:'var(--f-sans, system-ui)'
+      }}>
+        <div style={{ maxWidth:720, width:'100%', background:'#fff', border:'1px solid var(--line, #e5e0d8)', borderRadius:20, padding:'28px 30px', boxShadow:'0 20px 60px rgba(0,0,0,.12)' }}>
+          <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate, #7A1E2C)' }}>Campus Virtual</div>
+          <h1 style={{ fontFamily:'var(--f-serif, Georgia, serif)', fontSize:30, color:'var(--an-navy-ink, #001E47)', margin:'8px 0 10px' }}>No se pudo completar la carga</h1>
+          <p style={{ fontSize:13, color:'var(--ink-2, #4A413A)', lineHeight:1.6, margin:0 }}>La sesión permanece guardada. Recargá la página después de que GitHub termine de publicar todos los archivos.</p>
+          <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#F8F4EE', color:'#6B6258', fontFamily:'monospace', fontSize:11, overflowWrap:'anywhere' }}>{mensaje}</div>
+          <div style={{ display:'flex', gap:10, marginTop:18, flexWrap:'wrap' }}>
+            <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>Recargar Campus</button>
+            <button type="button" className="btn" onClick={campusIrALogin}>Volver al inicio de sesión</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
 // ── Guard de sesión del campus (SEC-006-B) ────────────────────────────────
 // Equivalente a <VentasGate/> de ventas.html. Resuelve la identidad ANTES de
 // montar <App/> y NO fabrica sesiones:
@@ -842,7 +912,7 @@ function CampusGate() {
 
   if (estado === 'check') return <CampusValidando lento={lento} />;
   if (estado === 'denegado') return <NoAutorizadoCampus rol={sesion ? sesion.rol : ''} />;
-  return <App />;
+  return <CampusRootErrorBoundary><App /></CampusRootErrorBoundary>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<CampusGate />);
