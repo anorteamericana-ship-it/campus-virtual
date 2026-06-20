@@ -9,12 +9,13 @@ window.EXAM_CSS = `
 .exh{ display:flex; justify-content:space-between; align-items:flex-start; gap:24px; position:relative; }
 .exh-rail{ display:none; }
 .exh-brand{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
-.exh-logo{ width:34px; height:34px; border-radius:8px; background:var(--lvl); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
-.exh-org{ font-size:12px; font-weight:600; letter-spacing:0.03em; }
+.exh-logo{ width:44px; height:44px; border-radius:999px; background:#fff; object-fit:cover; border:1px solid var(--line); box-shadow:0 4px 12px rgba(12,40,75,.10); }
+.exh-org{ font-size:13px; font-weight:800; letter-spacing:0.02em; display:flex; flex-direction:column; line-height:1.35; }
 .exh-org i{ font-style:normal; opacity:0.6; font-weight:500; }
 .exh-kicker{ font-family:var(--f-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--lvl); margin-bottom:8px; }
 .exh-title{ font-size:34px; font-weight:700; letter-spacing:-0.02em; line-height:1.04; margin:0 0 6px; }
 .exh-sub{ font-size:13px; opacity:0.72; }
+.exh-official{ margin-top:9px; font-family:var(--f-mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); }
 .exh-pond{ display:inline-block; margin-top:8px; font-size:12px; font-weight:600; color:var(--lvl-ink); background:var(--lvl-soft); padding:4px 12px; border-radius:999px; }
 .exh-attr{ font-family:var(--f-mono); font-size:10.5px; opacity:0.55; margin-top:16px; }
 .exh-side{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
@@ -27,7 +28,7 @@ window.EXAM_CSS = `
 /* premium header — claro/académico, color de nivel dominante */
 .exh-premium .exh{ background:#fff; color:var(--ink); padding:30px 38px 26px; border-top:7px solid var(--lvl); border-bottom:1px solid var(--line); }
 .exh-premium .exh-org{ color:var(--ink-2); }
-.exh-premium .exh-logo{ background:var(--lvl); }
+.exh-premium .exh-logo{ background:#fff; }
 .exh-premium .exh-kicker{ color:var(--lvl-ink); }
 .exh-premium .exh-title{ color:var(--an-navy-ink); }
 .exh-premium .exh-sub{ color:var(--ink-2); opacity:1; }
@@ -255,5 +256,25 @@ window.EXAM_CSS = `
   .expass{ column-count:1; }
   .exrow{ grid-template-columns:26px 1fr; }
   .exrow-arrow,.exrow > .exrow-ans{ grid-column:2; }
+}
+
+
+.ex-footer{ display:flex; justify-content:space-between; gap:16px; padding:10px 34px; border-top:1px solid var(--line); background:#fff; color:var(--ink-3); font-family:var(--f-mono); font-size:8.5px; letter-spacing:.04em; }
+
+/* ── IMPRESIÓN / PDF INSTITUCIONAL F92 ── */
+@media print{
+  @page{ size:A4; margin:10mm; }
+  body{ background:#fff!important; }
+  .ex-shell{ box-shadow:none!important; border-radius:0!important; overflow:visible!important; }
+  .exh{ break-inside:avoid; }
+  .exh-premium .exh,.exh-compact .exh,.exh-sheet .exh{ padding:14mm 12mm 8mm!important; border-top:5px solid var(--lvl)!important; }
+  .exh-brand{ margin-bottom:10px!important; }
+  .exh-logo{ width:48px!important; height:48px!important; }
+  .exh-title{ font-size:25px!important; }
+  .exm{ padding:8px 12mm!important; }
+  .exb{ padding:9mm 12mm 14mm!important; background:#fff!important; }
+  .exs{ box-shadow:none!important; break-inside:avoid; margin-bottom:8mm!important; }
+  .exs-h{ break-after:avoid; }
+  input,textarea,select{ border:1px solid #8E9AAA!important; background:#fff!important; }
 }
 `;

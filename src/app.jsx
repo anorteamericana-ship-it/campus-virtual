@@ -6,7 +6,8 @@
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
-   AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView */
+   AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView,
+   SolicitudesUnificadasView, SolicitudesEstudianteView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -191,17 +192,23 @@ function ReposicionesPanelF91({ role='teacher', onNavigate }) {
 }
 
 function ExamenesAdminPanel() {
-  return (
-    <ExamenesIframePanel
-      view="admin"
-      screenLabel="Admin · Exámenes"
-      eyebrow="Panel administrativo"
-      description="Catálogo maestro integrado en modo administrador. Sin conexión a notas, activaciones ni guardado de entregas."
-      badge="16 oficiales"
-      iframeTitle="Panel administrativo de exámenes"
-      topContent={<ReposicionesPanelF91 role="admin" />}
-    />
-  );
+  const [tab,setTab]=React.useState('oral');
+  const [nivel,setNivel]=React.useState('B1');
+  const [leccion,setLeccion]=React.useState(9);
+  const ses=typeof getSesion==='function'?getSesion():{};
+  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';
+  const oralSrc=`modulos/examen_oral.html?preview=1&nivel=${encodeURIComponent(nivel)}&leccion=${leccion}&v=F92`;
+  return <section data-screen-label="Admin · Exámenes" style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}>
+      <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>EXÁMENES INSTITUCIONALES</div><div style={{fontSize:20,fontWeight:900,marginTop:2}}>Vista previa y administración</div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:3}}>{superadmin?'Superadmin puede administrar los escritos; el oral se muestra como vista previa segura.':'Vista previa segura sin modificación de notas ni contenido.'}</div></div>
+      <div style={{display:'flex',gap:6,padding:4,border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE'}}><button className={tab==='oral'?'btn btn-primary':'btn btn-ghost'} onClick={()=>setTab('oral')}>Examen oral</button><button className={tab==='written'?'btn btn-primary':'btn btn-ghost'} onClick={()=>setTab('written')}>Exámenes escritos</button></div>
+    </div>
+    <ReposicionesPanelF91 role="admin" />
+    {tab==='oral'?<>
+      <div style={{display:'flex',gap:9,alignItems:'end',flexWrap:'wrap',padding:'11px 13px',background:'#fff',border:'1px solid var(--line)',borderRadius:12}}><label style={{fontSize:10,fontWeight:900,color:'var(--ink-3)'}}>NIVEL<select value={nivel} onChange={e=>setNivel(e.target.value)} style={{display:'block',marginTop:4,padding:'8px 10px',border:'1px solid var(--line)',borderRadius:8}}>{['B1','B2','I1','I2'].map(n=><option key={n}>{n}</option>)}</select></label><label style={{fontSize:10,fontWeight:900,color:'var(--ink-3)'}}>EXAMEN<select value={leccion} onChange={e=>setLeccion(Number(e.target.value))} style={{display:'block',marginTop:4,padding:'8px 10px',border:'1px solid var(--line)',borderRadius:8}}>{[[9,'1.er oral · Units 1–4'],[17,'2.º oral · Units 5–8'],[25,'3.er oral · Units 9–12'],[31,'4.º oral · Units 13–16']].map(([n,t])=><option key={n} value={n}>{t}</option>)}</select></label></div>
+      <div style={{background:'#fff',border:'1px solid var(--line)',borderRadius:14,overflow:'hidden'}}><iframe key={oralSrc} src={oralSrc} title="Vista previa institucional del examen oral" style={{display:'block',width:'100%',height:'1900px',border:0}} /></div>
+    </>:<ExamenesIframePanel view={superadmin?'admin':'preview'} screenLabel={superadmin?'Superadmin · Exámenes escritos':'Admin · Vista previa escrita'} eyebrow="Exámenes escritos institucionales" description={superadmin?'Catálogo maestro y herramientas administrativas de exámenes escritos.':'Vista previa institucional sin operaciones administrativas.'} badge={superadmin?'Administración':'Solo lectura'} iframeTitle="Panel de exámenes escritos" />}
+  </section>;
 }
 
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
@@ -563,6 +570,7 @@ function App() {
       mensajes:     <MensajesView />,
       pagos:        <PagosView />,
       certificados: <CertificadosView />,
+      solicitudes_estudiante: <SolicitudesEstudianteView onNavigate={navigateTo} />,
       perfil:       <PerfilView onNavigate={navigateTo} />,
     };
     content = map[active] || map.dashboard;
@@ -614,8 +622,8 @@ function App() {
         : <NoAutorizadoCampus rol={rolReal} />,
       examenes:    <ExamenesAdminPanel />,
       examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
-      suspensiones: <PanelSuspensiones />,
-      solicitudes:  <SolicitudesPagoView onNavigate={navigateTo} />,
+      suspensiones: <SolicitudesUnificadasView onNavigate={navigateTo} />,
+      solicitudes:  <SolicitudesUnificadasView onNavigate={navigateTo} />,
       grupos:       <AdminGruposView />,
       estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
       cronograma_grupo: <CronogramaGrupo rol={rolReal} onNavigate={navigateTo} />,

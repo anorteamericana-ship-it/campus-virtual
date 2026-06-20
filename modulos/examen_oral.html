@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Examen Oral F91 · Academia Norteamericana</title>
+<title>Examen Oral F92 · Academia Norteamericana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -160,7 +160,7 @@ function clearVisibleFormF90(message){state.scores={COMPREHENSION:null,FLUENCY:n
 function resetEvaluationF90(){if(!state.selected)return toast('Seleccioná estudiante.');if(!confirm('¿Limpiar la evaluación visible y empezar de cero?'))return;clearVisibleFormF90(state.selected.nombre||'Estudiante');document.getElementById('fi-code').textContent=state.selected.codigo;toast('Evaluación limpia.');}
 function advanceAfterCloseF90(completedCode){renderStudents();const next=state.students.find(s=>String(s.codigo)!==String(completedCode)&&!['CERRADO','PDF_GENERADO'].includes(String((state.evaluations[s.codigo]||{}).ESTADO||'')));if(next){selectStudent(next.codigo);return;}state.selected=null;clearVisibleFormF90('Grupo completado');renderStudents();}
 function pdfBlobUrlF90(base64,mime){if(!base64)return'';const raw=atob(base64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:mime||'application/pdf'}));}
-async function generatePdfAndCloseF90(){const err=validateClose();if(err)return toast(err);if(state.busy)return;const selectedCode=String(state.selected.codigo);const payload=currentPayload();const btn=document.getElementById('btn-pdf');state.busy=true;if(btn){btn.disabled=true;btn.textContent='GENERANDO…';}try{let ev=state.evaluations[selectedCode]||{};if(!['CERRADO','PDF_GENERADO'].includes(String(ev.ESTADO||'').toUpperCase())){const closed=await api('oralCloseEvaluacion',payload);ev=closed.evaluacion||ev;state.evaluations[selectedCode]=ev;}const archiveHtml=buildPdfHtmlF90(payload,ev,'__AN_LOGO__');const pdf=await api('oralGeneratePdf',{...payload,estado:'CERRADO',html:archiveHtml});ev=pdf.evaluacion||ev;state.evaluations[selectedCode]=ev;if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}state.lastPdfBlobUrl=pdfBlobUrlF90(pdf.pdf_base64,pdf.pdf_mime);state.lastPdfDriveUrl=pdf.pdf_url||'';document.getElementById('pdf-content').innerHTML=buildPdfHtmlF90(payload,ev,'../assets/logo_circular.jpg');advanceAfterCloseF90(selectedCode);notifyParentOral();document.getElementById('pdf-modal').classList.add('open');toast('Evaluación cerrada, nota guardada y PDF archivado.');reportHeightF89();}catch(e){toast(e.message||String(e));}finally{state.busy=false;if(btn){btn.disabled=false;btn.textContent='Generar PDF';}}}
+async function generatePdfAndCloseF90(){const qs0=new URLSearchParams(location.search);if(qs0.get('preview')==='1')return toast('Vista previa administrativa: no guarda ni genera archivos.');const err=validateClose();if(err)return toast(err);if(state.busy)return;const selectedCode=String(state.selected.codigo);const payload=currentPayload();const btn=document.getElementById('btn-pdf');state.busy=true;if(btn){btn.disabled=true;btn.textContent='GENERANDO…';}try{let ev=state.evaluations[selectedCode]||{};if(!['CERRADO','PDF_GENERADO'].includes(String(ev.ESTADO||'').toUpperCase())){const closed=await api('oralCloseEvaluacion',payload);ev=closed.evaluacion||ev;state.evaluations[selectedCode]=ev;}const archiveHtml=buildPdfHtmlF90(payload,ev,'__AN_LOGO__');const pdf=await api('oralGeneratePdf',{...payload,estado:'CERRADO',html:archiveHtml});ev=pdf.evaluacion||ev;state.evaluations[selectedCode]=ev;if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}state.lastPdfBlobUrl=pdfBlobUrlF90(pdf.pdf_base64,pdf.pdf_mime);state.lastPdfDriveUrl=pdf.pdf_url||'';document.getElementById('pdf-content').innerHTML=buildPdfHtmlF90(payload,ev,'../assets/logo_circular.jpg');advanceAfterCloseF90(selectedCode);notifyParentOral();document.getElementById('pdf-modal').classList.add('open');toast('Evaluación cerrada, nota guardada y PDF archivado.');reportHeightF89();}catch(e){toast(e.message||String(e));}finally{state.busy=false;if(btn){btn.disabled=false;btn.textContent='Generar PDF';}}}
 function closePdfPreviewF90(){document.getElementById('pdf-modal').classList.remove('open');reportHeightF89();}
 function printPdfF90(){const url=state.lastPdfBlobUrl||state.lastPdfDriveUrl;if(!url)return toast('No se encontró el PDF generado.');const w=window.open(url,'_blank','noopener');if(!w)toast('El navegador bloqueó la apertura del PDF. Permití ventanas emergentes para imprimir o guardarlo.');}
 async function loadPanel(){
@@ -171,6 +171,23 @@ async function loadPanel(){
   errBox.style.display='none'; errBox.textContent='';
   try{
     const qs=new URLSearchParams(location.search);
+    if(qs.get('preview')==='1'){
+      const nivel=String(qs.get('nivel')||'B1').toUpperCase();
+      const leccion=Number(qs.get('leccion')||9);
+      const meta=LECCIONES[leccion]||LECCIONES[9];
+      state.panel={cod_grupo:'PREVIEW-INSTITUCIONAL',nivel,leccion,titulo:meta.label,docente:'Docente de muestra',fecha:new Date().toLocaleDateString('es-CR'),peso_porcentaje:15,preview:true};
+      state.students=[{codigo:'00001',nombre:'ESTUDIANTE DE MUESTRA',cedula:'0-0000-0000',convenio:'Vista previa'}];state.evaluations={};
+      document.getElementById('session-chip').textContent='Vista previa administrativa';
+      document.getElementById('ctx-grupo').textContent='Sábados de 9am a 4pm - 0326';
+      document.getElementById('ctx-nivel').textContent=nivel;
+      document.getElementById('ctx-examen').textContent=meta.label;
+      document.getElementById('ctx-docente').textContent='Docente de muestra';
+      document.getElementById('ctx-fecha').textContent=state.panel.fecha;
+      document.getElementById('warning-box').style.display='block';document.getElementById('warning-box').textContent='Vista previa institucional. No guarda notas, preguntas ni documentos.';
+      renderStudents();renderQBank();setStatus('Vista previa','ok');selectStudent('00001');
+      const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.disabled=true;pdfBtn.textContent='Vista previa · sin guardar';}
+      return;
+    }
     const j=await api('oralGetPanelDocente',{cod_grupo:qs.get('grupo')||'',nivel:qs.get('nivel')||'',leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',reposicion_id:qs.get('reposicion_id')||''});
     state.panel=j.panel; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};
     document.getElementById('ctx-grupo').textContent=visibleGroupF88(state.panel.cod_grupo)||'—';

@@ -913,6 +913,7 @@ function PerfilContenido({ usr, data, onNavigate }) {
 
       {/* Camino / Configuración */}
       <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+        {!esTeacherPerfil && <ReposicionStudentCardF92 onNavigate={onNavigate} />}
         {!esTeacherPerfil && (
           <div className="card">
             <div className="card-h">

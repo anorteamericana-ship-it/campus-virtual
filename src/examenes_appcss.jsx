@@ -457,6 +457,8 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 .closure-kpis span{ min-width:130px; }
 @media(max-width:900px){ .closure-grid{ grid-template-columns:1fr; } }
 
+
+@media print{ .cbar,.cbar-banner,.admbar,.tch-head,.tch-realbox,.rev-side{display:none!important;} .app,.exam-app,.preview-wrap{padding:0!important;margin:0!important;background:#fff!important;} }
 `;
 (function(){
   if (!document.getElementById('exam-app-css')) {

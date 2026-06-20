@@ -92,12 +92,13 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
       <header className="exh">
         <div className="exh-main">
           <div className="exh-brand">
-            <span className="exh-logo">AN</span>
-            <span className="exh-org">Academia Norteamericana</span>
+            <img className="exh-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
+            <span className="exh-org">Academia Norteamericana <i>· Programa Inglés Conversacional · 2519-P-6813</i></span>
           </div>
           <div className="exh-kicker">{tema.nombre.toUpperCase()}</div>
           <h1 className="exh-title">{exam.titulo}</h1>
           <div className="exh-sub">{exam.subtitulo}</div>
+          <div className="exh-official">Documento oficial de evaluación · Campus Virtual</div>
           {exam.ponderacion_por_plan && (
             <div className="exh-pond">{window.ponderacionTexto(exam.ponderacion_por_plan, plan)}</div>
           )}
@@ -128,6 +129,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
                    onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} />
         ))}
       </div>
+      <footer className="ex-footer"><span>Academia Norteamericana · Programa Inglés Conversacional</span><span>Documento institucional · Campus Virtual</span></footer>
     </div>
   );
 }

@@ -464,12 +464,13 @@ function ControlBar({ view, setView, allowedViews, nivel, setNivel, test, setTes
   return (
     <div className="cbar">
       <div className="cbar-banner">
-        <span className="cbar-eye">👁</span>
-        Panel de auditoría · <b>solo administración</b> · backend parcial conectado, sin estudiante real ni Mis Notas
+        <span className="cbar-eye">●</span>
+        Exámenes institucionales · <b>Academia Norteamericana</b>
+        <button type="button" onClick={()=>window.print()} style={{marginLeft:'auto',border:'1px solid currentColor',background:'#fff',color:'#073B7A',borderRadius:8,padding:'6px 10px',fontWeight:800,cursor:'pointer'}}>Imprimir / Guardar PDF</button>
       </div>
       <div className="cbar-row">
       <div className="cbar-brand">
-        <span className="cbar-logo">AN</span>
+        <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
         <div>
           <div className="cbar-t">Exámenes · Sistema maestro</div>
           <div className="cbar-s">Catálogo administrativo · EXAM-MASTER-001</div>

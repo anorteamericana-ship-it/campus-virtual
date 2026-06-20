@@ -24,7 +24,7 @@ function psuFmtTs(iso) {
     String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
-function PanelSuspensiones() {
+function PanelSuspensiones({ embedded = false } = {}) {
   const adminNombre = React.useMemo(() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
@@ -104,7 +104,7 @@ function PanelSuspensiones() {
   const total = lista.length;
 
   return (
-    <div className="page" style={{ padding:'28px 32px 60px', maxWidth:1100, margin:'0 auto' }}>
+    <div className="page" style={{ padding:embedded ? 0 : '28px 32px 60px', maxWidth:1100, margin:'0 auto' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', gap:18, flexWrap:'wrap', marginBottom:22 }}>
         <div style={{ flex:1, minWidth:240 }}>

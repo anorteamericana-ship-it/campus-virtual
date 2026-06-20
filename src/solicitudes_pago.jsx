@@ -58,7 +58,7 @@ function SpToast({ toast }) {
   );
 }
 
-function SolicitudesPagoView({ onNavigate }) {
+function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false }) {
   const adminNombre = React.useMemo(() => {
     try { return (window.getSesion && window.getSesion() || {}).nombre || 'admin'; } catch (_) { return 'admin'; }
   }, []);
@@ -92,12 +92,18 @@ function SolicitudesPagoView({ onNavigate }) {
     window.getSolicitudesPago({ estado, asesor, fecha_desde: desde, fecha_hasta: hasta })
       .then(r => {
         if (!r || !r.ok) { setErr((r && r.error) || 'No se pudo cargar la cola.'); setLista([]); return; }
-        setLista(r.solicitudes || []);
+        const base = r.solicitudes || [];
+        const filtrada = categoria === 'MATRICULA'
+          ? base.filter(x => String(x.tipo_pago || '').toUpperCase() === 'MATRICULA')
+          : categoria === 'CUOTAS'
+            ? base.filter(x => String(x.tipo_pago || '').toUpperCase() !== 'MATRICULA')
+            : base;
+        setLista(filtrada);
         if (typeof r.pendientes === 'number') setPendientes(r.pendientes);
       })
       .catch(e => { setErr('Error de red: ' + e.message); setLista([]); })
       .finally(() => setCargando(false));
-  }, [estado, asesor, desde, hasta]);
+  }, [estado, asesor, desde, hasta, categoria]);
 
   React.useEffect(() => { refrescar(); }, [refrescar]);
 
@@ -175,7 +181,7 @@ function SolicitudesPagoView({ onNavigate }) {
   };
 
   return (
-    <div className="page" data-screen-label="Admin · Solicitudes de pago" style={{ padding: '28px 32px 60px', maxWidth: 1240, margin: '0 auto' }}>
+    <div className="page" data-screen-label={`Admin · ${categoria === 'MATRICULA' ? 'Solicitudes de matrícula' : categoria === 'CUOTAS' ? 'Solicitudes de cuotas' : 'Solicitudes de pago'}`} style={{ padding: embedded ? 0 : '28px 32px 60px', maxWidth: 1240, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap', marginBottom: 20 }}>
         <div style={{ flex: 1, minWidth: 240 }}>
@@ -183,7 +189,7 @@ function SolicitudesPagoView({ onNavigate }) {
             Pagos · Operaciones
           </div>
           <h1 style={{ fontFamily: 'var(--f-serif)', fontWeight: 500, letterSpacing: '-0.02em', fontSize: 32, lineHeight: 1.05, margin: 0, color: 'var(--ink)' }}>
-            Solicitudes de pago
+            {categoria === 'MATRICULA' ? 'Solicitudes de matrícula' : categoria === 'CUOTAS' ? 'Solicitudes de cuotas y otros pagos' : 'Solicitudes de pago'}
           </h1>
           <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 8, maxWidth: 640 }}>
             Comprobantes que reportan los asesores. Verificá el monto en{' '}
