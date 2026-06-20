@@ -111,7 +111,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo ya existe y monta su propio React sobre modulos/examenes.html.
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
-function ExamenesIframePanel({ view, screenLabel, eyebrow, title='Exámenes escritos', description, badge, iframeTitle, topContent, hideHeader = false }) {
+function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
   const src = `modulos/examenes.html?view=${view}&v=F91`;
   return (
     <section data-screen-label={screenLabel} style={{
@@ -126,7 +126,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, title='Exámenes escr
       }}>
         <div>
           <div style={{fontSize:10.5,fontWeight:800,letterSpacing:'0.16em',textTransform:'uppercase',color:'var(--an-granate, #7A1E2C)',marginBottom:4}}>{eyebrow}</div>
-          <div style={{fontFamily:'var(--f-serif, Georgia, serif)',fontSize:25,fontWeight:500,color:'var(--an-navy-ink, #001E47)',letterSpacing:'-0.02em'}}>{title}</div>
+          <div style={{fontFamily:'var(--f-serif, Georgia, serif)',fontSize:25,fontWeight:500,color:'var(--an-navy-ink, #001E47)',letterSpacing:'-0.02em'}}>Exámenes escritos</div>
           <div style={{fontSize:12.5,color:'var(--ink-3, #6B7280)',marginTop:3}}>{description}</div>
         </div>
         <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 11px',borderRadius:999,background:'color-mix(in srgb, var(--an-gold, #D6A94A) 16%, transparent)',color:'var(--ink-2, #4A413A)',fontSize:11.5,fontWeight:800,whiteSpace:'nowrap'}}>{badge}</div>
@@ -226,17 +226,15 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
 }
 
 // CALGRUPO_F37_20260617_EXAMENES_ESTUDIANTE_ROUTER
-function ExamenesStudentPanel({ onNavigate }) {
+function ExamenesStudentPanel() {
   return (
     <ExamenesIframePanel
       view="student"
       screenLabel="Estudiante · Exámenes"
       eyebrow="Exámenes oficiales"
-      title="Exámenes"
-      description="Primero se muestran tus evaluaciones orales pendientes o autorizadas; debajo aparecen los exámenes escritos disponibles."
-      badge="Orales y escritos"
+      description="El sistema muestra únicamente el examen disponible según tu grupo, cronograma y activación oficial."
+      badge="Lección 18 / 32 · en vivo"
       iframeTitle="Panel estudiante de exámenes"
-      topContent={<ReposicionStudentCardF92 onNavigate={onNavigate} />}
     />
   );
 }
@@ -568,7 +566,7 @@ function App() {
       materiales:   <MaterialesView initialLesson={pendingLesson} onNavigate={navigateTo} />,
       info_programa: <InfoProgramaView />,
       ican:         <ICANViewNew toast={toast} role="student" />,
-      examenes:     <ExamenesStudentPanel onNavigate={navigateTo} />,
+      examenes:     <ExamenesStudentPanel />,
       mensajes:     <MensajesView />,
       pagos:        <PagosView />,
       certificados: <CertificadosView />,
