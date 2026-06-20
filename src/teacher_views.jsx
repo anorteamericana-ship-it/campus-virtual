@@ -1,4 +1,4 @@
-// F88_20260620_FLUJO_ORAL_DOCENTE_ESTADO_SESION
+// F89_20260620_ACCESO_EXAMENES_Y_AVISO_CIERRE
 // F86_20260619_DOCENTE_ETIQUETAS_Y_APLICACION_ORAL
 // CALGRUPO_F82_20260619_MIS_GRUPOS_SEMANA_PROXIMA_LECCION_DRAWER
 /* global React, Icon, Chip, Stat, PageHeader */
@@ -584,9 +584,7 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
 function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
-  const [clock,setClock]=React.useState(Date.now());
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
-  const sessionTone=tvSessionToneF88(lesson,clock,sesion);
   const closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tvUpper(lesson?.tipo)==='EVAL_ORAL';
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado), abierta=estadoSesion==='ABIERTA', sesionCerrada=estadoSesion==='CERRADA';
   const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
@@ -608,7 +606,6 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   React.useEffect(()=>{load();},[load]);
   React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')onClose();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose]);
   React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
-  React.useEffect(()=>{const id=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(id);},[]);
 
   const iniciar=async()=>{
     const zoom=prompt('Pegá el link de Zoom para iniciar la clase:'); if(!zoom)return;
@@ -625,13 +622,12 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const workflow=()=>{
     if(closed||sesionCerrada) return <button className="btn btn-primary" disabled style={{gridColumn:'1/-1',opacity:.7}}>CLASE CERRADA</button>;
     if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
-    if(esOral&&!oralListoParaCerrar) return <button className="btn btn-primary" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>ABRIR EXAMEN ORAL</button>;
-    return <button className="btn btn-primary" onClick={abrirCierre} style={{gridColumn:'1/-1'}}>CERRAR CLASE</button>;
+    const bloqueadoPorOral=esOral&&!oralListoParaCerrar;
+    return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>CERRAR CLASE</button>;
   };
   return <>
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column',borderLeft:abierta?`6px solid ${sessionTone.bg}`:'none'}}>
-        {abierta&&<div style={{padding:'9px 20px',background:sessionTone.bg,color:'#FFF',fontSize:11,fontWeight:900,letterSpacing:'.12em'}}>{sessionTone.label}</div>}
+      <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
           <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
@@ -639,6 +635,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         <div style={{padding:20,overflowY:'auto',flex:1}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginBottom:16}}>
             {workflow()}
+            {abierta&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
             <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
             {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
           </div>
@@ -718,7 +715,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   },[lessons,todayIso]);
   const nextLesson=(lessons.filter(l=>String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA')[0])||null;
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
-  const scrollRef=React.useRef(null), positionedRef=React.useRef(''), activeDrawerRef=React.useRef('');
+  const scrollRef=React.useRef(null), positionedRef=React.useRef('');
   React.useEffect(()=>{
     const box=scrollRef.current;if(!box||!lessons.length||!nextLesson)return;
     const key=`${tvGroupCode(meta)}|${nextLesson.leccion}|${lessons.length}`;if(positionedRef.current===key)return;positionedRef.current=key;
@@ -727,18 +724,9 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   },[tvGroupCode(meta),nextLesson?.leccion,lessons.length]);
   const scrollBy=d=>scrollRef.current?.scrollBy({left:d,behavior:'smooth'});
   const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||''), activeLec=Number(activeSession?.LECCION||activeSession?.leccion||0);
-  // F87: al volver de Exámenes o recargar con una sesión abierta, mostramos
-  // directamente el detalle activo. El docente puede cerrarlo y seguir
-  // navegando; no se vuelve a abrir hasta un nuevo montaje/retorno a la vista.
-  React.useEffect(()=>{
-    if(!activeCode||!activeLec||activeCode!==tvGroupCode(meta)||!lessons.length)return;
-    const sessionId=String(activeSession?.SESION_ID||activeSession?.sesion_id||`${activeCode}|${activeLec}`);
-    if(activeDrawerRef.current===sessionId)return;
-    const target=lessons.find(l=>Number(l.leccion)===activeLec);
-    if(!target)return;
-    activeDrawerRef.current=sessionId;
-    setSelectedLesson({...target,__sessionActive:true});
-  },[activeCode,activeLec,tvGroupCode(meta),lessons.length,activeSession?.SESION_ID]);
+  // F89: una sesión activa no fuerza la apertura del detalle ni cambia la vista.
+  // El docente conserva el contexto actual; el recordatorio global aparece solo
+  // durante los últimos 10 minutos o cuando la sesión quedó vencida.
   return <>
     <div className="card" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>

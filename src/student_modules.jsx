@@ -994,29 +994,36 @@ function PerfilContenido({ usr, data, onNavigate }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// ExamenOralView — F88 pantalla operativa completa dentro del Campus
+// ExamenOralView — F89 contenido completo sin barras internas
 // ──────────────────────────────────────────────────────────────────────────
 function ExamenOralView({ context = null }) {
   const ctx = context && typeof context === 'object' ? context : {};
+  const [frameHeight,setFrameHeight]=React.useState(1200);
   const params = new URLSearchParams();
   if (ctx.grupo) params.set('grupo', ctx.grupo);
   if (ctx.nivel) params.set('nivel', ctx.nivel);
   if (ctx.leccion) params.set('leccion', String(ctx.leccion));
   if (ctx.fecha) params.set('fecha', String(ctx.fecha).slice(0,10));
-  params.set('v', 'F88');
+  params.set('v', 'F89');
   const src = `modulos/examen_oral.html?${params.toString()}`;
   const titulo = ({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[Number(ctx.leccion || 0)] || 'Examen Oral';
   React.useEffect(() => {
     const handler = (event) => {
-      if (event.origin !== window.location.origin || event.data?.type !== 'an:oral-updated') return;
+      if (event.origin !== window.location.origin) return;
+      if(event.data?.type==='an:oral-height'){
+        const h=Math.max(900,Math.min(12000,Number(event.data.height)||1200));
+        setFrameHeight(h);
+        return;
+      }
+      if (event.data?.type !== 'an:oral-updated') return;
       window.dispatchEvent(new CustomEvent('an:oral-updated', { detail:event.data }));
       window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
-  return <div className="card" style={{padding:0,overflow:'hidden',height:'calc(100vh - 88px)',minHeight:720,borderRadius:0,borderLeft:0,borderRight:0}}>
-    <iframe src={src} style={{width:'100%',height:'100%',border:0,display:'block'}} title={titulo}/>
+  return <div className="oral-shell-f89" style={{padding:0,overflow:'visible',width:'100%',minWidth:0}}>
+    <iframe src={src} scrolling="no" style={{width:'100%',height:frameHeight,border:0,display:'block',overflow:'hidden'}} title={titulo}/>
   </div>;
 }
 

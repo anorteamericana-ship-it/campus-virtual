@@ -1,4 +1,4 @@
-// F88_20260620_FLUJO_ORAL_DOCENTE_Y_UI_LIMPIA
+// F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
@@ -76,30 +76,33 @@ function appTimeMinutesF88(v) {
   if(ap==='pm'&&h<12)h+=12; if(ap==='am'&&h===12)h=0;
   return h*60+Number(m[2]||0);
 }
-function appSessionToneF88(s,l,nowMs) {
+function appSessionReminderF89(s,l,nowMs) {
   const now=new Date(nowMs||Date.now());
   const end=appTimeMinutesF88(s?.HORA_PROGRAMADA_FIN||s?.HORA_FIN||s?.hora_fin||l?.hora_fin||'');
   const date=String(l?.fecha||s?.FECHA||s?.fecha||'').slice(0,10);
   const localIso=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(date&&date>localIso)return null;
   if(date&&date<localIso)return {bg:'#C62828',shadow:'rgba(198,40,40,.28)',ink:'#9B1C1C',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
-  if(date&&date>localIso)return {bg:'#16834A',shadow:'rgba(22,131,74,.24)',ink:'#116337',label:'● SESIÓN ACTIVA'};
-  if(end==null)return {bg:'#16834A',shadow:'rgba(22,131,74,.24)',ink:'#116337',label:'● SESIÓN ACTIVA'};
+  if(end==null)return null;
   const remaining=end-(now.getHours()*60+now.getMinutes());
+  if(remaining>10)return null;
   if(remaining<=0)return {bg:'#C62828',shadow:'rgba(198,40,40,.28)',ink:'#9B1C1C',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
-  if(remaining<=30)return {bg:'#B77900',shadow:'rgba(183,121,0,.25)',ink:'#805500',label:'● SESIÓN ACTIVA · ÚLTIMOS 30 MINUTOS'};
-  return {bg:'#16834A',shadow:'rgba(22,131,74,.24)',ink:'#116337',label:'● SESIÓN ACTIVA'};
+  return {bg:'#B77900',shadow:'rgba(183,121,0,.25)',ink:'#805500',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
 }
-function TeacherActiveSessionBanner({ state, onGo }) {
+function TeacherActiveSessionBanner({ state, viewKey }) {
   const s=state?.sesion, l=state?.leccion;
   const [clock,setClock]=React.useState(Date.now());
+  const [hidden,setHidden]=React.useState(false);
   React.useEffect(()=>{const id=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(id);},[]);
+  React.useEffect(()=>setHidden(false),[viewKey,s?.SESION_ID,s?.sesion_id]);
   if (!s || String(s.ESTADO||s.estado||'').toUpperCase()!=='ABIERTA') return null;
+  const tone=appSessionReminderF89(s,l,clock);
+  if(!tone||hidden)return null;
   const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
   const oralLabel=({9:'1.er examen oral',17:'2.º examen oral',25:'3.er examen oral',31:'4.º examen oral'})[lec];
-  const tone=appSessionToneF88(s,l,clock);
   return <div role="status" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:tone.bg,color:'#FFF',boxShadow:`0 8px 24px ${tone.shadow}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
     <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>{tone.label}</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{appTeacherGroupLabelF88(grupo)} · Lección {String(lec).padStart(2,'0')}{oralLabel?` · ${oralLabel}`:''}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
-    <button type="button" onClick={onGo} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:tone.ink,borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>VOLVER A MIS GRUPOS</button>
+    <button type="button" onClick={()=>setHidden(true)} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:tone.ink,borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>OCULTAR</button>
   </div>;
 }
 
@@ -108,7 +111,7 @@ function TeacherActiveSessionBanner({ state, onGo }) {
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F88`;
+  const src = `modulos/examenes.html?view=${view}&v=F89`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -404,7 +407,6 @@ function App() {
   const [modoPrueba, setModoPrueba] = useState(() => getModoPrueba());
   const [activeTeacherState, setActiveTeacherState] = useState(null);
   const activeTeacherSession = activeTeacherState?.sesion || null;
-  const activeSessionRedirectedRef = React.useRef(false);
 
   const navigateTo = (target, opts = {}) => {
     if (opts.lesson) setPendingLesson(opts.lesson);
@@ -442,7 +444,6 @@ function App() {
       const r=await postAppF87('getDocenteSesionActivaF87',{},30000);
       if(live&&r?.ok){
         setActiveTeacherState(r.sesion?r:null);
-        if(r.sesion&&!activeSessionRedirectedRef.current){activeSessionRedirectedRef.current=true;setActive('grupos');}
       }
     };
     refresh();
@@ -599,7 +600,7 @@ function App() {
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
         )}
-        {role === 'teacher' && <TeacherActiveSessionBanner state={activeTeacherState} onGo={() => navigateTo('grupos')} />}
+        {role === 'teacher' && <TeacherActiveSessionBanner state={activeTeacherState} viewKey={active} />}
         <VistaErrorBoundary key={active}>
           {content}
         </VistaErrorBoundary>
