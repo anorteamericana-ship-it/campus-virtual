@@ -790,13 +790,23 @@ function CampusGate() {
       // 1) Sin sesión o sin token → al login. No se crea ninguna sesión.
       if (!ses || !token) { campusIrALogin(); return; }
 
-      // 2) Validación contra el servidor (si la función está disponible).
+      // 2) Validación contra el servidor. Una respuesta explícita de sesión
+      // inválida cierra el acceso; una falla temporal de red NO debe dejar el
+      // Campus en blanco. Los endpoints siguen validando el token en backend.
       if (typeof window.validarSesionServidor === 'function') {
         let r = null;
-        try { r = await window.validarSesionServidor(); } catch (_) { r = null; }
+        try {
+          r = await Promise.race([
+            window.validarSesionServidor(),
+            new Promise(resolve => setTimeout(() => resolve({ ok:false, network_error:true, error:'timeout_gate' }), 14000)),
+          ]);
+        } catch (_) {
+          r = { ok:false, network_error:true, error:'validacion_no_disponible' };
+        }
         if (cancel) return;
-        if (!r || !r.ok) {
-          // Sesión inválida/expirada o sin conexión: limpiamos y al login.
+
+        const esFallaTemporal = !!(r && r.network_error);
+        if (!r || (!r.ok && !esFallaTemporal)) {
           try {
             if (typeof window.cerrarSesionServidor === 'function') {
               await window.cerrarSesionServidor();
@@ -804,6 +814,11 @@ function CampusGate() {
           } catch (_) {}
           if (!cancel) campusIrALogin();
           return;
+        }
+        if (esFallaTemporal) {
+          try { sessionStorage.setItem('an_validacion_diferida', String(Date.now())); } catch (_) {}
+        } else {
+          try { sessionStorage.removeItem('an_validacion_diferida'); } catch (_) {}
         }
       }
 

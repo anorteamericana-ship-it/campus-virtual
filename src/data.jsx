@@ -767,36 +767,55 @@ function setGrupoActivoDocente(codGrupo) {
 // Valida la sesión contra el backend (Apps Script v4.38.0, fn=validarSesion).
 // NO redirige automáticamente todavía: solo devuelve la respuesta del backend
 // para que el caller decida. Sin token → { ok:false, error:'sesion_requerida' }.
-async function validarSesionServidor() {
-  const token = getSessionToken();
-  if (!token) return { ok: false, error: 'sesion_requerida' };
+// F92.4.2: la validación de sesión nunca puede dejar el Campus esperando
+// indefinidamente. Apps Script responde mediante una redirección 302 y, si
+// hay una falla temporal de red/CORS, eso NO equivale a una sesión inválida.
+async function _anFetchJsonConTimeout_(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn: 'validarSesion', token }),
-    });
-    return await res.json();
+    const res = await fetch(url, { ...options, signal: controller.signal, redirect: 'follow' });
+    const text = await res.text();
+    if (!res.ok) {
+      return { ok: false, error: 'http_' + res.status, network_error: true };
+    }
+    try {
+      return JSON.parse(text);
+    } catch (_) {
+      return { ok: false, error: 'respuesta_no_json', network_error: true };
+    }
   } catch (e) {
-    return { ok: false, error: 'Error de conexión: ' + e.message };
+    const msg = e && e.name === 'AbortError' ? 'tiempo_agotado' : String(e && e.message ? e.message : e);
+    return { ok: false, error: msg, network_error: true };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-// Cierra la sesión en el backend (fn=cerrarSesion) y SIEMPRE limpia la
-// sesión local al final, aunque la red falle. No lanza errores que puedan
-// bloquear el logout.
+async function validarSesionServidor() {
+  const token = getSessionToken();
+  if (!token) return { ok: false, error: 'sesion_requerida', invalid_session: true };
+  return await _anFetchJsonConTimeout_(`${APPS_SCRIPT_URL}?fn=validarSesion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn: 'validarSesion', token }),
+  }, 12000);
+}
+
+// Cierra la sesión en el backend y SIEMPRE limpia la sesión local. El cierre
+// remoto tiene un timeout corto para que el botón Salir nunca congele la UI.
 async function cerrarSesionServidor() {
   const token = getSessionToken();
   try {
     if (token) {
-      await fetch(APPS_SCRIPT_URL, {
+      await _anFetchJsonConTimeout_(`${APPS_SCRIPT_URL}?fn=cerrarSesion`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ fn: 'cerrarSesion', token }),
-      });
+      }, 5000);
     }
   } catch (_) {
-    // Ignoramos cualquier fallo de red: el logout local debe completarse.
+    // El logout local debe completarse aunque el servidor no responda.
   } finally {
     setSesion(null);
   }
