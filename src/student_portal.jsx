@@ -215,8 +215,6 @@ function StudentPortalView({ toast, onNavigate }) {
         onNavigate={go}
       />
 
-      <ReposicionStudentCardF92 onNavigate={go} />
-
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4, minmax(150px, 1fr))', gap:12 }}>
         <PortalMetric label="Asistencia" value={asistenciaPct != null ? `${asistenciaPct}%` : '—'} tone={asistenciaPct == null ? 'neutral' : asistenciaPct >= 70 ? 'ok' : 'warn'} sub={asistenciaPct == null ? 'Sin registro completo' : asistenciaPct >= 70 ? 'En regla' : 'Revisar'} />
         <PortalMetric label="Nota oficial" value={notaFinal != null ? `${notaFinal}` : '—'} tone={notaFinal == null ? 'neutral' : notaFinal >= 70 ? 'ok' : 'warn'} sub={notaFinal != null ? '/100' : (promedioEval != null ? `Prom. eval. ${promedioEval}` : 'Sin nota final')} />
