@@ -148,7 +148,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F92.8`;
+  const src = `modulos/examenes.html?view=${view}&v=F92.9`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -319,21 +319,51 @@ function StudentOralOverviewF927(){
   </div>;
 }
 
+function WrittenSessionCardF929({ session }) {
+  const lec=Number(session?.LECCION||session?.leccion||0);
+  const group=session?.COD_GRUPO||session?.cod_grupo||'';
+  const level=session?.NIVEL||session?.nivel||'';
+  const [state,setState]=React.useState({loading:true,error:'',assigned:false,data:null});
+  const load=React.useCallback(()=>{
+    if(!group||!level||![18,32].includes(lec)){setState({loading:false,error:'',assigned:false,data:null});return;}
+    setState({loading:true,error:'',assigned:false,data:null});
+    appPostF91('examGetCronogramaExamAvailability',{cod_grupo:group,nivel:level,tipo:'ORDINARIO'},60000)
+      .then(r=>setState({loading:false,error:'',assigned:r.assigned===true,data:r}))
+      .catch(e=>setState({loading:false,error:e.message||String(e),assigned:false,data:null}));
+  },[group,level,lec]);
+  React.useEffect(()=>{load();},[load]);
+  const title=lec===18?'1.er Examen Escrito':'2.º Examen Escrito';
+  return <div style={{padding:'15px 17px',border:`2px solid ${state.assigned?'#2B8A57':state.error?'#C43C3C':'#0C4F86'}`,borderRadius:14,background:state.assigned?'#EAF8EF':state.error?'#FDECEA':'#E7F1FA',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+    <div>
+      <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:state.assigned?'#197044':state.error?'#8B1F1F':'#0C4F86'}}>ESCRITO · SESIÓN ACTIVA</div>
+      <div style={{fontSize:19,fontWeight:900,color:state.assigned?'#145C38':state.error?'#6B1717':'#083B66',marginTop:3}}>{title}</div>
+      <div style={{fontSize:12,color:'var(--ink-2)',marginTop:3}}>{appTeacherGroupLabelF88(group)} · Lección {String(lec).padStart(2,'0')}</div>
+      <div style={{fontSize:12.5,color:'var(--ink-2)',marginTop:5}}>{state.loading?'Habilitando el examen para los estudiantes…':state.assigned?'El examen está disponible. Los estudiantes ya pueden abrirlo desde Exámenes.':state.error||state.data?.mensaje||'No se pudo habilitar el examen escrito.'}</div>
+    </div>
+    <div style={{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}}>
+      {state.assigned&&<span style={{padding:'7px 11px',borderRadius:999,background:'#fff',border:'1px solid #2B8A57',color:'#197044',fontSize:10.5,fontWeight:900}}>ACTIVO</span>}
+      {!state.loading&&!state.assigned&&<button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button>}
+    </div>
+  </div>;
+}
+
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
   const lec=Number(s?.LECCION||s?.leccion||pending?.leccion||0), open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
   const esOral=open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec));
+  const esEscrito=open&&[18,32].includes(lec);
   const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
   const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
-  const oralCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
-  :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes orales</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral activo en este momento.</div></div>;
-  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>Cada bloque muestra únicamente las acciones que corresponden al docente.</div></div>{oralCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/><div style={{padding:'13px 15px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>REVISIÓN DOCENTE</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes escritos por revisar</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:3}}>Entregas escritas reales pendientes de revisión y envío a Mis Notas.</div></div></>;
+  const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
+  :esEscrito?<WrittenSessionCardF929 session={s}/>
+  :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
   return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={top}/>;
 }
 
 function ExamenesStudentPanel() {
-  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES OFICIALES</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Evaluaciones del nivel</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>Consultá el estado de tus exámenes orales y los escritos habilitados por cronograma.</div></div><StudentOralOverviewF927/><div style={{padding:'13px 15px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>APLICACIÓN EN LÍNEA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:3}}>Solo se habilitan durante la fecha y horario oficial asignados.</div></div></>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES OFICIALES</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Evaluaciones del nivel</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>Consultá el estado de tus exámenes orales y los escritos habilitados por la clase activa.</div></div><StudentOralOverviewF927/><div style={{padding:'13px 15px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>APLICACIÓN EN LÍNEA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:3}}>Se habilitan automáticamente mientras esté abierta la sesión de la lección 18 o 32.</div></div></>;
   return <ExamenesIframePanel hideHeader view="student" screenLabel="Estudiante · Exámenes" iframeTitle="Panel estudiante de exámenes" topContent={top}/>;
 }
 
