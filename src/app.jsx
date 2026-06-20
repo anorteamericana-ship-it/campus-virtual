@@ -111,7 +111,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F90`;
+  const src = `modulos/examenes.html?view=${view}&v=F91`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -145,6 +145,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
           loading="eager"
+          onLoad={(e) => { try { e.currentTarget.contentWindow.scrollTo(0, 0); } catch (_) {} }}
           referrerPolicy="same-origin"
           sandbox="allow-scripts allow-same-origin allow-presentation"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
@@ -154,6 +155,41 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
   );
 }
 
+
+async function appPostF91(fn, payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({ fn, token, ...payload }),
+  });
+  const data = await res.json();
+  if (!data?.ok) throw new Error(data?.mensaje || data?.error || 'No se pudo completar la operación.');
+  return data;
+}
+function reposEstadoF91(estado) {
+  const e=String(estado||'').toUpperCase();
+  const map={PENDIENTE_JUSTIFICACION:['Pendiente de justificación','#8B5A00','#FFF4D6'],JUSTIFICADA_GRATUITA:['Autorizada sin costo','#146C2E','#EAF8EF'],PENDIENTE_PAGO:['Pendiente de pago','#991B1B','#FDECEA'],PAGADA_AUTORIZADA:['Pago confirmado','#146C2E','#EAF8EF'],PROGRAMADA:['Programada','#0C4F86','#E7F1FA'],ENTREGADA_POR_REVISAR:['Entregada · por revisar','#805500','#FFF4D6'],APLICADA:['Aplicada','#40516A','#EEF2F7'],VENCIDA_0:['Vencida · nota 0','#991B1B','#FDECEA'],CANCELADA:['Cancelada','#5F6875','#EEF2F7']};
+  return map[e]||[e||'Pendiente','#5F6875','#EEF2F7'];
+}
+function fechaF91(v){const s=String(v||'').slice(0,10);if(!s)return'—';const d=new Date(s+'T12:00:00');return Number.isNaN(d.getTime())?s:d.toLocaleDateString('es-CR',{day:'2-digit',month:'short',year:'numeric'});}
+function ReposicionesPanelF91({ role='teacher', onNavigate }) {
+  const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
+  const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
+  React.useEffect(()=>{load();},[load]);
+  const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;}if(accion==='CONFIRMAR_PAGO'){const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(accion==='PROGRAMAR_ESCRITO'?'reposProgramarEscrito':'reposResolverExamen',payload);await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
+  if(loading)return <div style={{padding:14,border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}>Cargando reposiciones…</div>;
+  if(error)return <div style={{padding:14,border:'1px solid #F0B9B9',borderRadius:14,background:'#FDECEA',color:'#8B1F1F'}}>{error}</div>;
+  if(!visible.length)return null;
+  return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}>
+    <div style={{padding:'12px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>REPOSICIONES DE EXAMEN</div><div style={{fontSize:13,color:'var(--ink-2)',marginTop:3}}>Cada reposición es individual y conserva su fecha límite.</div></div>
+    <div style={{display:'flex',flexDirection:'column',gap:9,padding:10}}>{visible.map(row=>{const [label,ink,bg]=reposEstadoF91(row.ESTADO);const authorized=['JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','PROGRAMADA'].includes(String(row.ESTADO||'').toUpperCase());return <div key={row.REPOSICION_ID} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'11px 12px',border:'1px solid var(--line)',borderRadius:11}}>
+      <div><div style={{fontSize:13,fontWeight:850}}>{row.NOMBRE} <span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>#{row.COD_ESTUDIANTE}</span></div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{appTeacherGroupLabelF88(row.COD_GRUPO)} · Lección {String(row.LECCION).padStart(2,'0')} · {row.TIPO_EXAMEN} · vence {fechaF91(row.FECHA_LIMITE)}</div><span style={{display:'inline-flex',marginTop:6,padding:'3px 8px',borderRadius:999,background:bg,color:ink,fontSize:9.5,fontWeight:900}}>{label}</span></div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'flex-end'}}>{role==='admin'&&String(row.ESTADO).toUpperCase()==='PENDIENTE_JUSTIFICACION'&&<><button className="btn btn-ghost" disabled={!!busy} onClick={()=>act(row,'RECHAZAR_JUSTIFICACION')}>Requiere ₡10.000</button><button className="btn btn-primary" disabled={!!busy} onClick={()=>act(row,'APROBAR_JUSTIFICACION')}>Aprobar sin costo</button></>}{role==='admin'&&String(row.ESTADO).toUpperCase()==='PENDIENTE_PAGO'&&<button className="btn btn-primary" disabled={!!busy} onClick={()=>act(row,'CONFIRMAR_PAGO')}>Confirmar pago</button>}{role==='admin'&&authorized&&String(row.TIPO_EXAMEN).toUpperCase()==='ESCRITO'&&<button className="btn btn-primary" disabled={!!busy} onClick={()=>act(row,'PROGRAMAR_ESCRITO')}>Programar escrito</button>}{role==='teacher'&&authorized&&String(row.TIPO_EXAMEN).toUpperCase()==='ORAL'&&<button className="btn btn-primary" onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{grupo:row.COD_GRUPO,nivel:row.NIVEL,leccion:Number(row.LECCION),fecha:row.FECHA_ORIGINAL,reposicion_id:row.REPOSICION_ID}})}>APLICAR REPOSICIÓN ORAL</button>}</div>
+    </div>})}</div>
+  </div>;
+}
+
 function ExamenesAdminPanel() {
   return (
     <ExamenesIframePanel
@@ -161,8 +197,9 @@ function ExamenesAdminPanel() {
       screenLabel="Admin · Exámenes"
       eyebrow="Panel administrativo"
       description="Catálogo maestro integrado en modo administrador. Sin conexión a notas, activaciones ni guardado de entregas."
-      badge="16 oficiales · iframe interno"
+      badge="16 oficiales"
       iframeTitle="Panel administrativo de exámenes"
+      topContent={<ReposicionesPanelF91 role="admin" />}
     />
   );
 }
@@ -171,14 +208,14 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
   const lec=Number(s?.LECCION||s?.leccion||pending?.leccion||0), open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
-  const esOral=(open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec)))||(!s&&pending&&[9,17,25,31].includes(lec));
+  const esOral=open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec));
   const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
   const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
   const card=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
     <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>EXAMEN DE LA SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div>
     <button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button>
   </div>:null;
-  return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={card}/>;
+  return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={<>{card}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate} /></>}/>;
 }
 
 // CALGRUPO_F37_20260617_EXAMENES_ESTUDIANTE_ROUTER
@@ -408,6 +445,21 @@ function App() {
   const [activeTeacherState, setActiveTeacherState] = useState(null);
   const activeTeacherSession = activeTeacherState?.sesion || null;
 
+  const scrollCampusTopF91 = () => {
+    const run = () => {
+      try { window.scrollTo({ top:0, left:0, behavior:'auto' }); } catch (_) { window.scrollTo(0,0); }
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      try {
+        const main = document.querySelector('main.main');
+        if (main) main.scrollTop = 0;
+      } catch (_) {}
+    };
+    run();
+    requestAnimationFrame(run);
+    setTimeout(run, 80);
+  };
+
   const navigateTo = (target, opts = {}) => {
     if (opts.lesson) setPendingLesson(opts.lesson);
     else setPendingLesson(null);
@@ -421,6 +473,7 @@ function App() {
       try { sessionStorage.removeItem('an_oral_context'); } catch (_) {}
     }
     setActive(target);
+    scrollCampusTopF91();
   };
 
   // Welcome banner: shown once for student after login (unless dismissed)
@@ -436,6 +489,9 @@ function App() {
   };
 
   useEffect(() => { localStorage.setItem('an_active', active); }, [active]);
+  useEffect(() => {
+    scrollCampusTopF91();
+  }, [active]);
 
   useEffect(() => {
     if (rolReal !== 'teacher') { setActiveTeacherState(null); return undefined; }
@@ -593,7 +649,7 @@ function App() {
         usuario={usuario}
         setRole={setRoleNoop}
         active={active}
-        setActive={setActive}
+        setActive={(target) => navigateTo(target)}
       />
       <main className="main">
         {esDemo && <DemoBanner />}

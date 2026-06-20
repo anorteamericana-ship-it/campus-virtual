@@ -1004,7 +1004,8 @@ function ExamenOralView({ context = null }) {
   if (ctx.nivel) params.set('nivel', ctx.nivel);
   if (ctx.leccion) params.set('leccion', String(ctx.leccion));
   if (ctx.fecha) params.set('fecha', String(ctx.fecha).slice(0,10));
-  params.set('v', 'F90');
+  if (ctx.reposicion_id) params.set('reposicion_id', String(ctx.reposicion_id));
+  params.set('v', 'F91');
   const src = `modulos/examen_oral.html?${params.toString()}`;
   const titulo = ({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[Number(ctx.leccion || 0)] || 'Examen Oral';
   React.useEffect(() => {
