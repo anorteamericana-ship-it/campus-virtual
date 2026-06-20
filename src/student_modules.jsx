@@ -135,7 +135,7 @@ function LeccionLocked() {
 // ──────────────────────────────────────────────────────────────────────────
 // NotasView — evaluaciones reales (getEvaluacionesEstudiante)
 // ──────────────────────────────────────────────────────────────────────────
-function NotasView() {
+function NotasView({ onNavigate }) {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   const codigo = usr?.codigo || '';
 
@@ -145,7 +145,7 @@ function NotasView() {
     if (!codigo) return;
     let cancelled = false;
     setEvalErr('');
-    postStudentModules('getEvaluacionesEstudiante', { codigo })
+    postStudentModules('getMisNotasF921', { codigo })
       .then(d => {
         if (cancelled) return;
         if (d?.ok && Array.isArray(d.evaluaciones)) setEvaluaciones(d.evaluaciones);
@@ -162,6 +162,7 @@ function NotasView() {
         title={<>Mis <em>Notas</em></>}
         sub="Historial de evaluaciones registradas por tu docente"
       />
+      <ReposicionStudentCardF92 onNavigate={onNavigate} />
       <GuardSesion usr={usr}>
         {loading && !data ? (
           <SkeletonTable />
