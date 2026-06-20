@@ -453,6 +453,15 @@ function examTeacherSessionGroups() {
   return [...new Set(raw.map(g => String(g || '').trim()).filter(Boolean))];
 }
 
+function examTeacherGroupLabelF88(code) {
+  const raw=String(code||'').trim().toUpperCase();
+  const cycle=(raw.split('-').filter(Boolean).pop()||'').trim();
+  const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+  const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]] || 'Grupo';
+  const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]] || '';
+  return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;
+}
+
 function TeacherMode({ shell, density }) {
   return <TeacherWrittenLiveInbox />;
 }
@@ -470,7 +479,7 @@ function TeacherWrittenLiveInbox() {
     const g = String(grupo || '').trim();
     if (!g) {
       setRows([]); setSummary(null); setMsg('');
-      setErr('Tu usuario docente no tiene grupo asignado. Revisá usuarios/roles antes de usar exámenes escritos.');
+      setErr('No tenés un grupo asignado para revisar exámenes.');
       return;
     }
     setLoading(true); setErr(''); setMsg('');
@@ -479,7 +488,7 @@ function TeacherWrittenLiveInbox() {
     if (r && r.ok) {
       setRows(Array.isArray(r.rows) ? r.rows : []);
       setSummary(r.summary || null);
-      setMsg(`Backend real consultado · ${r.total || 0} registro(s).`);
+      setMsg(`Actualizado · ${r.total || 0} entrega(s).`);
     } else {
       setRows([]); setSummary(null);
       setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja real de revisiones.');
@@ -493,9 +502,8 @@ function TeacherWrittenLiveInbox() {
     <div className="tchwrap">
       <div className="tch-head">
         <div>
-          <div className="tch-kicker">BANDEJA REAL · EXÁMENES ESCRITOS · GRUPO DOCENTE</div>
+          <div className="tch-kicker">EXÁMENES ESCRITOS</div>
           <h2 className="tch-title">Exámenes escritos por revisar</h2>
-          <div className="tch-subline">Sin datos demo. Esta vista consulta únicamente el backend y el grupo autorizado del docente.</div>
         </div>
         <div className="tch-stats">
           <div className="tch-stat"><b>{counts.needs_action || rows.length || 0}</b><span>requieren acción</span></div>
@@ -503,17 +511,15 @@ function TeacherWrittenLiveInbox() {
         </div>
       </div>
 
-      <div className="tch-note"><b>Vista real de docente.</b> Si no aparecen entregas, no se inventan estudiantes ni exámenes de demostración. La revisión escrita se habilita solo con intentos reales enviados.</div>
-
       <div className="tch-realbox always-open">
         <div className="tch-realbox-b">
           <div className="tch-realrow">
             {grupos.length > 1 ? (
               <select value={grupo} onChange={e=>setGrupo(e.target.value)}>
-                {grupos.map(g => <option key={g} value={g}>{g}</option>)}
+                {grupos.map(g => <option key={g} value={g}>{examTeacherGroupLabelF88(g)}</option>)}
               </select>
             ) : (
-              <input value={grupo || 'Sin grupo asignado'} readOnly />
+              <input value={grupo ? examTeacherGroupLabelF88(grupo) : 'Sin grupo asignado'} readOnly />
             )}
             <button className="btn-sm" disabled={loading || !grupo} onClick={load}>{loading ? 'Consultando…' : 'Recargar'}</button>
           </div>
@@ -529,7 +535,7 @@ function TeacherWrittenLiveInbox() {
           {rows.map((r, i) => (
             <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>
               <td><b>{r.NOMBRE || r.CODIGO || '—'}</b><span className="tch-code">{r.CODIGO || r.COD_ESTUDIANTE || '—'}</span></td>
-              <td>{r.COD_GRUPO || grupo}</td>
+              <td>{examTeacherGroupLabelF88(r.COD_GRUPO || grupo)}</td>
               <td>{r.NIVEL || '—'} · {r.EXAM_ID || r.TEST_CODE || r.LECCION || '—'}</td>
               <td>{r.ATTEMPT_STATUS || r.STATUS || r.bucket || '—'}</td>
               <td><span className="tch-pill">{r.REVIEW_STATUS || 'SIN_REVISIÓN'}</span></td>

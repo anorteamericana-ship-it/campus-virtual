@@ -62,6 +62,14 @@ function vdFmtLargo(iso) {
   if (!d) return '—';
   return `${DOW_CORTO[d.getDay()]} ${String(d.getDate()).padStart(2,'0')} ${MES_CORTO[d.getMonth()]} ${d.getFullYear()}`;
 }
+function vdGrupoDocenteF88(code) {
+  const raw=String(code||'').trim().toUpperCase();
+  const ciclo=(raw.split('-').filter(Boolean).pop()||'').trim();
+  const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/)||raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+  const dia=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]]||'Grupo';
+  const hora=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]]||'';
+  return `${dia}${hora?' de '+hora:''}${ciclo?' - '+ciclo:''}`;
+}
 
 // ── Estilos compartidos (igual que cronograma_grupo) ────────────────────
 const vdLabelStyle = {
@@ -356,7 +364,7 @@ function PendienteItem({ pendiente, accion, accionable, onClick }) {
         fontSize: 11, color: 'var(--ink-3)',
         fontFamily: 'var(--f-mono)', flex: '1 1 auto', minWidth: 0,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{pendiente.cod_grupo}</span>
+      }}>{vdGrupoDocenteF88(pendiente.cod_grupo)}</span>
       <span style={{
         fontSize: 11, color: 'var(--ink-2)', flexShrink: 0,
       }}>{vdFmtCorto(pendiente.fecha)}</span>
@@ -548,7 +556,7 @@ function LeccionRow({ lec, variant = 'active', diasAtraso = null, highlight = nu
               fontSize: 11, color: 'var(--ink-3)', fontFamily: 'var(--f-mono)',
               marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {lec.cod_grupo}
+              {vdGrupoDocenteF88(lec.cod_grupo)}
             </div>
           </div>
         </div>
@@ -1259,8 +1267,8 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
           <div style={{
             fontSize: 13, color: 'var(--ink-2)', marginTop: 6,
             fontWeight: 800,
-          }} title={lec.cod_grupo}>
-            {lec.horario_label || lec.horario || lec.cod_grupo}
+          }} title={vdGrupoDocenteF88(lec.cod_grupo)}>
+            {lec.horario_label || lec.horario || vdGrupoDocenteF88(lec.cod_grupo)}
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6 }}>
             {vdFmtLargo(lec.fecha)}
@@ -2084,7 +2092,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
             padding:'12px 14px', background:'var(--surface-2)', border:'1px solid var(--line)',
             borderRadius:'var(--r-md)', marginBottom:14,
           }}>
-            <SuspField label="Grupo" value={lec.cod_grupo} mono />
+            <SuspField label="Grupo" value={vdGrupoDocenteF88(lec.cod_grupo)} />
             <SuspField label="Nivel" value={lec.nivel} pal={pal} />
             <SuspField label="Lección" value={`#${String(lec.leccion).padStart(2,'0')}`} mono />
             <SuspField label="Fecha actual" value={vdFmtLargo(lec.fecha)} />

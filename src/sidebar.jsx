@@ -273,6 +273,15 @@ function ModoPruebaPanel() {
   );
 }
 
+function sidebarTeacherGroupLabelF88(code) {
+  const raw=String(code||'').trim().toUpperCase();
+  const cycle=(raw.split('-').filter(Boolean).pop()||'').trim();
+  const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+  const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]] || 'Grupo';
+  const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]] || '';
+  return `${day}${hours?' '+hours:''}${cycle?' · '+cycle:''}`;
+}
+
 function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   // Sesión única — sin fallbacks a claves sueltas.
   const usr = usuario || (typeof getSesion === 'function' ? getSesion() : null);
@@ -438,7 +447,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const userRole = usr
     ? (usr.rol === 'superadmin' ? 'Superadmin'
       : usr.rol === 'admin'    ? 'Administración'
-      : usr.rol === 'teacher'  ? `Docente${usr.grupo ? ' · ' + usr.grupo : ''}`
+      : usr.rol === 'teacher'  ? `Docente${usr.grupo ? ' · ' + sidebarTeacherGroupLabelF88(usr.grupo) : ''}`
       : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
     : 'Sin sesión';
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';

@@ -1,4 +1,4 @@
-// F87_20260620_FLUJO_DOCENTE_UNICO_SESION_ORAL_ASISTENCIA
+// F88_20260620_FLUJO_ORAL_DOCENTE_ESTADO_SESION
 // F86_20260619_DOCENTE_ETIQUETAS_Y_APLICACION_ORAL
 // CALGRUPO_F82_20260619_MIS_GRUPOS_SEMANA_PROXIMA_LECCION_DRAWER
 /* global React, Icon, Chip, Stat, PageHeader */
@@ -181,6 +181,18 @@ function tvNivelId(g){ const code = tvGroupCode(g) || tvGroupCode(g?.code||g?.co
 function tvNivelLabel(g){ return VD_NIVEL_LABEL[tvNivelId(g)] || tvNivelId(g); }
 function tvIsToday(iso){ return iso && iso === new Date().toISOString().slice(0,10); }
 function tvMinutes(hhmm){ const m=String(hhmm||'').trim().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i); if(!m)return null; let h=Number(m[1]),ap=(m[3]||'').toLowerCase(); if(ap==='pm'&&h<12)h+=12; if(ap==='am'&&h===12)h=0; return h*60+Number(m[2]||0); }
+function tvLocalIsoF88(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function tvSessionToneF88(lesson,nowMs=Date.now(),session=null){
+  const now=new Date(nowMs), date=String(session?.FECHA||session?.fecha||lesson?.fecha||'').slice(0,10), end=tvMinutes(session?.HORA_PROGRAMADA_FIN||session?.HORA_FIN||session?.hora_fin||lesson?.hora_fin||'');
+  const green={bg:'#16834A',soft:'#EAF8EF',ink:'#145C38',label:'● SESIÓN ACTIVA'};
+  if(date&&date<tvLocalIsoF88(now))return {bg:'#C62828',soft:'#FDECEA',ink:'#8B1F1F',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
+  if(date&&date>tvLocalIsoF88(now))return green;
+  if(end==null)return green;
+  const remain=end-(now.getHours()*60+now.getMinutes());
+  if(remain<=0)return {bg:'#C62828',soft:'#FDECEA',ink:'#8B1F1F',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
+  if(remain<=30)return {bg:'#B77900',soft:'#FFF4D6',ink:'#704A00',label:'● SESIÓN ACTIVA · ÚLTIMOS 30 MINUTOS'};
+  return green;
+}
 function tvSessionGroups(usuario){
   const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (usuario?.grupo ? [usuario.grupo] : []);
   const out = [];
@@ -572,13 +584,13 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
 function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
-  const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=new Date().toISOString().slice(0,10);
-  const oralVisitKey=`an_oral_opened_${code}_${nivel}_${Number(lesson?.leccion||0)}`;
-  const [oralVisited,setOralVisited]=React.useState(()=>{try{return sessionStorage.getItem(oralVisitKey)==='1';}catch(_){return false;}});
+  const [clock,setClock]=React.useState(Date.now());
+  const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
+  const sessionTone=tvSessionToneF88(lesson,clock,sesion);
   const closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tvUpper(lesson?.tipo)==='EVAL_ORAL';
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado), abierta=estadoSesion==='ABIERTA', sesionCerrada=estadoSesion==='CERRADA';
-  const oralYaAplicado=esOral && Number(oralSummary?.cerradas||0)>0;
-  const oralListoParaCerrar=oralYaAplicado||oralVisited;
+  const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
+  const oralListoParaCerrar=esOral && oralTotal>0 && Number(oralSummary?.cerradas||0)>=oralTotal;
   const oralContext={grupo:code,nivel,leccion:Number(lesson?.leccion||0),fecha:String(lesson?.fecha||'').slice(0,10)};
 
   const load=React.useCallback(()=>{
@@ -596,6 +608,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   React.useEffect(()=>{load();},[load]);
   React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')onClose();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose]);
   React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
+  React.useEffect(()=>{const id=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(id);},[]);
 
   const iniciar=async()=>{
     const zoom=prompt('Pegá el link de Zoom para iniciar la clase:'); if(!zoom)return;
@@ -606,21 +619,21 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       setSesion(r.sesion||r); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
     }catch(e){alert(e.message||String(e));}finally{setBusy('');}
   };
-  const abrirExamen=()=>{setOralVisited(true);try{sessionStorage.setItem(oralVisitKey,'1');}catch(_){} if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
+  const abrirExamen=()=>{ if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
   const abrirCierre=()=>setAttendanceOpen(true);
   const detByStudent=asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[String(lesson?.leccion)]||{};
   const workflow=()=>{
     if(closed||sesionCerrada) return <button className="btn btn-primary" disabled style={{gridColumn:'1/-1',opacity:.7}}>CLASE CERRADA</button>;
     if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
-    if(esOral&&!oralListoParaCerrar) return <button className="btn btn-primary" onClick={abrirExamen} style={{gridColumn:'1/-1'}}>VER EXAMEN DE HOY</button>;
+    if(esOral&&!oralListoParaCerrar) return <button className="btn btn-primary" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>ABRIR EXAMEN ORAL</button>;
     return <button className="btn btn-primary" onClick={abrirCierre} style={{gridColumn:'1/-1'}}>CERRAR CLASE</button>;
   };
   return <>
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column',borderLeft:abierta?'6px solid #C62828':'none'}}>
-        {abierta&&<div style={{padding:'9px 20px',background:'#C62828',color:'#FFF',fontSize:11,fontWeight:900,letterSpacing:'.12em'}}>● SESIÓN ACTIVA · NO OLVIDÉS CERRARLA</div>}
+      <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column',borderLeft:abierta?`6px solid ${sessionTone.bg}`:'none'}}>
+        {abierta&&<div style={{padding:'9px 20px',background:sessionTone.bg,color:'#FFF',fontSize:11,fontWeight:900,letterSpacing:'.12em'}}>{sessionTone.label}</div>}
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
-          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
+          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
@@ -629,7 +642,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
             {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
           </div>
-          {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:'#FFF8E1',color:'#7A4F00',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.</div>}
+          {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:oralListoParaCerrar?'#E8F5E9':'#EAF8EF',color:'#166534',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.{!oralListoParaCerrar?' Aplicá el examen antes de cerrar la clase.':''}</div>}
           {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Clase cerrada</div>}
           {loading?<LoadingState variant="small" title="Cargando detalle…"/>:<>
             <div style={{padding:'16px 17px',border:'1px solid var(--line)',borderRadius:'var(--r-lg)',background:'#FBF7EF',marginBottom:15}}>
@@ -801,7 +814,7 @@ function CronogramaDocenteSeguroF82({ onNavigate }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 function CalificarView({ toast }) {
-  const { codGrupo, programa, roster, grupoInfo, loading, error } = useTeacherSession();
+  const { codGrupo, programa, roster, grupoInfo, meta, loading, error } = useTeacherSession();
   const diasCode = (codGrupo || '').split('-')[1] || 'LM';
   const leccionSugerida = calcularLeccionSugerida(grupoInfo?.startDate, diasCode);
   const [tipoEval, setTipoEval]   = React.useState('ORAL_2');
@@ -894,7 +907,7 @@ function CalificarView({ toast }) {
       <PageHeader
         kicker="Evaluación"
         title={<>Calificar · <em>{evalDef.label}</em></>}
-        sub={`${codGrupo} · Programa ${programa} · ${evalDef.max} pts máximo`}
+        sub={`${tvGrupoLabel(meta || { code:codGrupo }).full} · Programa ${programa} · ${evalDef.max} pts máximo`}
         right={
           <button className="btn btn-primary" onClick={guardar} disabled={cargando}
             style={{ opacity: cargando?0.6:1 }}>
@@ -924,7 +937,7 @@ function CalificarView({ toast }) {
           </div>
         </div>
         <div style={{ marginLeft:'auto', padding:'10px 16px', background:'color-mix(in srgb,var(--an-navy) 6%,white)', borderRadius:'var(--r-md)', fontSize:12, color:'var(--an-navy)', fontWeight:600 }}>
-          Programa: {programa} · Grupo: {codGrupo}
+          Programa: {programa} · Grupo: {tvGrupoLabel(meta || { code:codGrupo }).full}
         </div>
       </div>
 
@@ -1007,7 +1020,7 @@ function CalificarView({ toast }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 function AsistenciaView({ toast }) {
-  const { codGrupo, programa, roster, grupoInfo, loading, error } = useTeacherSession();
+  const { codGrupo, programa, roster, grupoInfo, meta, loading, error } = useTeacherSession();
   const diasCode = (codGrupo || '').split('-')[1] || 'LM';
   const leccionSugerida = calcularLeccionSugerida(grupoInfo?.startDate, diasCode);
   const [leccion, setLeccion]     = React.useState(leccionSugerida || '');
@@ -1087,7 +1100,7 @@ function AsistenciaView({ toast }) {
       <PageHeader
         kicker={`Asistencia · ${new Date().toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})}`}
         title={<>Pasar <em>lista</em></>}
-        sub={`${codGrupo} · Programa ${programa}`}
+        sub={`${tvGrupoLabel(meta || { code:codGrupo }).full} · Programa ${programa}`}
         right={
           <div style={{ display:'flex', gap:10, alignItems:'flex-end' }}>
             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
@@ -1177,7 +1190,7 @@ function AsistenciaView({ toast }) {
           <div>
             <div style={{ fontWeight:700, fontSize:14, color:'#166534' }}>Lista cerrada correctamente</div>
             <div style={{ fontSize:12, color:'#166534', marginTop:2 }}>
-              {resultado.presentes} presente{resultado.presentes!==1?'s':''} · {resultado.ausentes} ausente{resultado.ausentes!==1?'s':''} · Lección {leccion} · {codGrupo}
+              {resultado.presentes} presente{resultado.presentes!==1?'s':''} · {resultado.ausentes} ausente{resultado.ausentes!==1?'s':''} · Lección {leccion} · {tvGrupoLabel(meta || { code:codGrupo }).full}
             </div>
           </div>
           <button onClick={() => setResultado(null)} className="btn btn-ghost" style={{ marginLeft:'auto', fontSize:12 }}>

@@ -1,4 +1,4 @@
-// F87_20260620_FLUJO_DOCENTE_UNICO_SESION_ORAL_ASISTENCIA
+// F88_20260620_FLUJO_ORAL_DOCENTE_Y_UI_LIMPIA
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
@@ -62,14 +62,44 @@ async function postAppF87(fn, payload = {}, timeoutMs = 30000) {
   } finally { if (timer) clearTimeout(timer); }
 }
 
+function appTeacherGroupLabelF88(code) {
+  const raw=String(code||'').trim().toUpperCase();
+  const cycle=(raw.split('-').filter(Boolean).pop()||'').trim();
+  const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+  const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]] || 'Grupo';
+  const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]] || '';
+  return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;
+}
+function appTimeMinutesF88(v) {
+  const m=String(v||'').trim().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if(!m)return null; let h=Number(m[1]), ap=(m[3]||'').toLowerCase();
+  if(ap==='pm'&&h<12)h+=12; if(ap==='am'&&h===12)h=0;
+  return h*60+Number(m[2]||0);
+}
+function appSessionToneF88(s,l,nowMs) {
+  const now=new Date(nowMs||Date.now());
+  const end=appTimeMinutesF88(s?.HORA_PROGRAMADA_FIN||s?.HORA_FIN||s?.hora_fin||l?.hora_fin||'');
+  const date=String(l?.fecha||s?.FECHA||s?.fecha||'').slice(0,10);
+  const localIso=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(date&&date<localIso)return {bg:'#C62828',shadow:'rgba(198,40,40,.28)',ink:'#9B1C1C',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
+  if(date&&date>localIso)return {bg:'#16834A',shadow:'rgba(22,131,74,.24)',ink:'#116337',label:'● SESIÓN ACTIVA'};
+  if(end==null)return {bg:'#16834A',shadow:'rgba(22,131,74,.24)',ink:'#116337',label:'● SESIÓN ACTIVA'};
+  const remaining=end-(now.getHours()*60+now.getMinutes());
+  if(remaining<=0)return {bg:'#C62828',shadow:'rgba(198,40,40,.28)',ink:'#9B1C1C',label:'● SESIÓN ACTIVA · PENDIENTE DE CIERRE'};
+  if(remaining<=30)return {bg:'#B77900',shadow:'rgba(183,121,0,.25)',ink:'#805500',label:'● SESIÓN ACTIVA · ÚLTIMOS 30 MINUTOS'};
+  return {bg:'#16834A',shadow:'rgba(22,131,74,.24)',ink:'#116337',label:'● SESIÓN ACTIVA'};
+}
 function TeacherActiveSessionBanner({ state, onGo }) {
   const s=state?.sesion, l=state?.leccion;
+  const [clock,setClock]=React.useState(Date.now());
+  React.useEffect(()=>{const id=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(id);},[]);
   if (!s || String(s.ESTADO||s.estado||'').toUpperCase()!=='ABIERTA') return null;
   const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
-  const oralLabel=({9:'1.er oral',17:'2.º oral',25:'3.er oral',31:'4.º oral'})[lec];
-  return <div role="status" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:'#C62828',color:'#FFF',boxShadow:'0 8px 24px rgba(198,40,40,.28)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
-    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>● SESIÓN ACTIVA</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{grupo} · Lección {String(lec).padStart(2,'0')}{oralLabel?` · ${oralLabel}`:''}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
-    <button type="button" onClick={onGo} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:'#9B1C1C',borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>VOLVER A MIS GRUPOS</button>
+  const oralLabel=({9:'1.er examen oral',17:'2.º examen oral',25:'3.er examen oral',31:'4.º examen oral'})[lec];
+  const tone=appSessionToneF88(s,l,clock);
+  return <div role="status" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:tone.bg,color:'#FFF',boxShadow:`0 8px 24px ${tone.shadow}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
+    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>{tone.label}</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{appTeacherGroupLabelF88(grupo)} · Lección {String(lec).padStart(2,'0')}{oralLabel?` · ${oralLabel}`:''}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
+    <button type="button" onClick={onGo} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:tone.ink,borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>VOLVER A MIS GRUPOS</button>
   </div>;
 }
 
@@ -77,44 +107,26 @@ function TeacherActiveSessionBanner({ state, onGo }) {
 // El módulo ya existe y monta su propio React sobre modulos/examenes.html.
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
-function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent }) {
-  const src = `modulos/examenes.html?view=${view}`;
+function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
+  const src = `modulos/examenes.html?view=${view}&v=F88`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
       minHeight: 'calc(100vh - 28px)', padding: 18,
     }}>
-      <div style={{
+      {!hideHeader && <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         padding: '14px 16px', background: 'var(--surface, #fff)',
         border: '1px solid var(--line, #e5e0d8)', borderRadius: 'var(--r-lg, 14px)',
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <div>
-          <div style={{
-            fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em',
-            textTransform: 'uppercase', color: 'var(--an-granate, #7A1E2C)',
-            marginBottom: 4,
-          }}>{eyebrow}</div>
-          <div style={{
-            fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 25,
-            fontWeight: 500, color: 'var(--an-navy-ink, #001E47)',
-            letterSpacing: '-0.02em',
-          }}>Exámenes escritos</div>
-          <div style={{ fontSize: 12.5, color: 'var(--ink-3, #6B7280)', marginTop: 3 }}>
-            {description}
-          </div>
+          <div style={{fontSize:10.5,fontWeight:800,letterSpacing:'0.16em',textTransform:'uppercase',color:'var(--an-granate, #7A1E2C)',marginBottom:4}}>{eyebrow}</div>
+          <div style={{fontFamily:'var(--f-serif, Georgia, serif)',fontSize:25,fontWeight:500,color:'var(--an-navy-ink, #001E47)',letterSpacing:'-0.02em'}}>Exámenes escritos</div>
+          <div style={{fontSize:12.5,color:'var(--ink-3, #6B7280)',marginTop:3}}>{description}</div>
         </div>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '7px 11px', borderRadius: 999,
-          background: 'color-mix(in srgb, var(--an-gold, #D6A94A) 16%, transparent)',
-          color: 'var(--ink-2, #4A413A)', fontSize: 11.5, fontWeight: 800,
-          whiteSpace: 'nowrap',
-        }}>
-          {badge}
-        </div>
-      </div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 11px',borderRadius:999,background:'color-mix(in srgb, var(--an-gold, #D6A94A) 16%, transparent)',color:'var(--ink-2, #4A413A)',fontSize:11.5,fontWeight:800,whiteSpace:'nowrap'}}>{badge}</div>
+      </div>}
 
       {topContent || null}
 
@@ -159,11 +171,11 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const esOral=(open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec)))||(!s&&pending&&[9,17,25,31].includes(lec));
   const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
   const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
-  const card=esOral?<div style={{padding:'15px 17px',border:'2px solid #C62828',borderRadius:14,background:'#FDECEA',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
-    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#C62828'}}>EXAMEN DE LA SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#7A1717',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#6B2A2A',marginTop:3}}>{ctx.grupo} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div>
-    <button className="btn btn-primary" type="button" onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button>
+  const card=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>EXAMEN DE LA SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div>
+    <button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button>
   </div>:null;
-  return <ExamenesIframePanel view="teacher" screenLabel="Docente · Exámenes" eyebrow="Panel docente seguro" description="El examen oral de una sesión activa aparece arriba; los exámenes escritos permanecen en el panel inferior." badge={esOral?'Examen oral listo':'Vista docente · backend real'} iframeTitle="Panel docente de exámenes" topContent={card}/>;
+  return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={card}/>;
 }
 
 // CALGRUPO_F37_20260617_EXAMENES_ESTUDIANTE_ROUTER

@@ -365,12 +365,10 @@ function App() {
     );
   }
 
-  // Docente: vista fija de profesor. No puede saltar a Admin ni Preview desde
-  // este shell. La operación real de guardado queda para una fase con backend.
+  // Docente: vista operativa limpia, sin mensajes técnicos ni controles de administrador.
   if (INITIAL_VIEW_CONFIG.role === 'teacher') {
     return (
       <div className="exapp">
-        <RoleLockBanner role="teacher" />
         <main className="exmain">
           <TeacherMode shell="premium" density="comfy" />
         </main>
@@ -425,16 +423,6 @@ function AccessBlockedView({ config }) {
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-function RoleLockBanner({ role }) {
-  const label = role === 'teacher' ? 'Modo profesor' : 'Modo restringido';
-  return (
-    <div className="cbar-banner" style={{ margin: 12 }}>
-      <span className="cbar-eye">🔒</span>
-      {label} · vista fija sin acceso a administrador ni preview. Guardado real pendiente de backend.
     </div>
   );
 }
