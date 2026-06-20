@@ -148,7 +148,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F92.7`;
+  const src = `modulos/examenes.html?view=${view}&v=F92.8`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -193,7 +193,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
 }
 
 
-async function appPostF91(fn, payload = {}, timeoutMs = 18000) {
+async function appPostF91(fn, payload = {}, timeoutMs = 45000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -278,8 +278,21 @@ function StudentOralOverviewF927(){
   const load=React.useCallback(()=>{
     if(!codigo){setState({loading:false,error:'Sin código de estudiante.',evals:[],repos:[],nivelActivo:''});return;}
     setState(s=>({...s,loading:true,error:''}));
-    Promise.all([appPostF91('getMisNotasF921',{codigo}),appPostF91('reposMiEstadoF92',{codigo})])
-      .then(([n,r])=>setState({loading:false,error:'',evals:n.evaluaciones||[],repos:r.rows||[],nivelActivo:n.nivel_activo||''}))
+    appPostF91('getMisNotasF921',{codigo},60000)
+      .then(n=>{
+        const evals=n.evaluaciones||[];
+        const repos=evals.filter(e=>e.reposicion_id).map(e=>({
+          REPOSICION_ID:e.reposicion_id,
+          NIVEL:e.nivel,
+          LECCION:e.leccion,
+          ESTADO:e.estado,
+          SOLICITUD_ESTADO:e.solicitud_estado||'',
+          FECHA_PROGRAMADA:e.fecha_programada||'',
+          FECHA_ORIGINAL:e.fecha_original||'',
+          FECHA_LIMITE:e.fecha_limite||''
+        }));
+        setState({loading:false,error:'',evals,repos,nivelActivo:n.nivel_activo||''});
+      })
       .catch(e=>setState({loading:false,error:e.message||String(e),evals:[],repos:[],nivelActivo:''}));
   },[codigo]);
   React.useEffect(()=>{load();},[load]);
@@ -535,6 +548,7 @@ function App() {
   });
   const [modoPrueba, setModoPrueba] = useState(() => getModoPrueba());
   const [activeTeacherState, setActiveTeacherState] = useState(null);
+  const [activeTeacherCheck, setActiveTeacherCheck] = useState(() => ({ ready: rolReal !== 'teacher', error:false }));
   const activeTeacherSession = activeTeacherState?.sesion || null;
 
   const scrollCampusTopF91 = () => {
@@ -586,13 +600,19 @@ function App() {
   }, [active]);
 
   useEffect(() => {
-    if (rolReal !== 'teacher') { setActiveTeacherState(null); return undefined; }
-    let live=true;
+    if (rolReal !== 'teacher') { setActiveTeacherState(null); setActiveTeacherCheck({ready:true,error:false}); return undefined; }
+    let live=true, first=true;
+    setActiveTeacherCheck({ready:false,error:false});
     const refresh=async()=>{
       const r=await postAppF87('getDocenteSesionActivaF87',{},30000);
-      if(live&&r?.ok){
+      if(!live)return;
+      if(r?.ok){
         setActiveTeacherState(r.sesion?r:null);
+        setActiveTeacherCheck({ready:true,error:false});
+      }else{
+        setActiveTeacherCheck({ready:true,error:true});
       }
+      first=false;
     };
     refresh();
     const timer=setInterval(refresh,30000);
@@ -667,11 +687,11 @@ function App() {
       dashboard:        <VistaDocente />,
       mi_panel_docente: <VistaDocente />,
       // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_ROUTER
-      docente_operativo: <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} />,
-      grupos:      <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} />,
+      docente_operativo: <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
+      grupos:      <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
       asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
-      cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} />,
+      cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       examenes:    <ExamenesTeacherPanel activeState={activeTeacherState} pendingOral={pendingOral} onNavigate={navigateTo} />,
       examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
       materiales:  <MaterialesView onNavigate={navigateTo} />,

@@ -582,7 +582,7 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
     {state.loading?'Verificando material…':url?'Ver material PDF':'Material no disponible'}
   </button>;
 }
-function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate }) {
+function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [sessionCheck,setSessionCheck]=React.useState('loading');
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
@@ -590,7 +590,15 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tipoLeccion==='EVAL_ORAL';
   const esEscrito=tipoLeccion==='EVAL_ESCRITO'||[18,32].includes(Number(lesson?.leccion||0));
   const esExamen=esOral||esEscrito||[9,17,18,25,31,32].includes(Number(lesson?.leccion||0));
-  const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado), abierta=estadoSesion==='ABIERTA', sesionCerrada=estadoSesion==='CERRADA';
+  const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado);
+  const globalEstado=tvUpper(activeSession?.ESTADO||activeSession?.estado);
+  const globalOpen=globalEstado==='ABIERTA';
+  const globalCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
+  const globalNivel=tvUpper(activeSession?.NIVEL||activeSession?.nivel);
+  const globalLec=Number(activeSession?.LECCION||activeSession?.leccion||0);
+  const sameGlobal=globalOpen&&globalCode===String(code)&&globalNivel===tvUpper(nivel)&&globalLec===Number(lesson?.leccion||0);
+  const otherGlobal=globalOpen&&!sameGlobal;
+  const abierta=estadoSesion==='ABIERTA'||sameGlobal, sesionCerrada=estadoSesion==='CERRADA';
   const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
   const oralListoParaCerrar=esOral && oralTotal>0 && Number(oralSummary?.cerradas||0)>=oralTotal;
   const oralContext={grupo:code,nivel,leccion:Number(lesson?.leccion||0),fecha:String(lesson?.fecha||'').slice(0,10)};
@@ -615,6 +623,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
 
   const iniciar=async()=>{
+    if(!activeSessionReady||activeSessionError){alert('No se pudo verificar la sesión docente global. Reintentá antes de iniciar otra clase.');return;}
+    if(otherGlobal){alert(`Ya existe una sesión activa en la lección ${String(globalLec).padStart(2,'0')}. Cerrala antes de iniciar otra clase.`);return;}
     const zoom=prompt('Pegá el link de Zoom para iniciar la clase:'); if(!zoom)return;
     setBusy('start');
     try{
@@ -627,9 +637,12 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const abrirCierre=()=>setAttendanceOpen(true);
   const detByStudent=asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[String(lesson?.leccion)]||{};
   const workflow=()=>{
+    if(!activeSessionReady) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE',color:'var(--ink-3)',fontWeight:800,textAlign:'center'}}>VERIFICANDO SI EXISTE OTRA SESIÓN ACTIVA…</div>;
+    if(activeSessionError) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',color:'#8B1F1F',fontSize:12,fontWeight:800,lineHeight:1.5}}>No se pudo verificar la sesión docente global. No se muestran acciones para evitar abrir dos clases al mismo tiempo.</div>;
     if(loading||sessionCheck==='loading') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE',color:'var(--ink-3)',fontWeight:800,textAlign:'center'}}>VERIFICANDO ESTADO DE LA CLASE…</div>;
     if(sessionCheck==='error') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><span style={{fontSize:12,color:'#8B1F1F',fontWeight:750}}>No se pudo verificar si la clase está abierta o cerrada. No hay acciones disponibles por seguridad.</span><button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button></div>;
     if(closed||sesionCerrada) return <button className="btn btn-primary" disabled style={{gridColumn:'1/-1',opacity:.7}}>CLASE CERRADA</button>;
+    if(otherGlobal) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',color:'#8B1F1F',fontSize:12,fontWeight:800,lineHeight:1.5}}>TENÉS OTRA SESIÓN ACTIVA · Lección {String(globalLec).padStart(2,'0')}. Debés cerrarla antes de iniciar esta clase.</div>;
     if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
     const bloqueadoPorOral=esOral&&!oralListoParaCerrar;
     return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>CERRAR CLASE</button>;
@@ -647,7 +660,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             {!loading&&sessionCheck==='ok'&&<>
               {abierta&&esExamen&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
               <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
-              {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
+              {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&!otherGlobal&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
             </>}
           </div>
           {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:oralListoParaCerrar?'#E8F5E9':'#EAF8EF',color:'#166534',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.{!oralListoParaCerrar?' Aplicá el examen antes de cerrar la clase.':''}</div>}
@@ -716,7 +729,7 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
   </div>;
 }
 
-function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession }) {
+function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const todayIso=new Date().toISOString().slice(0,10);
   const lessons=React.useMemo(()=>(lecciones||[]).filter(l=>tvUpper(l.tipo)!=='FERIADO'&&tvUpper(l.tipo)!=='ICAN').slice().sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion||0)-Number(b.leccion||0)).slice(0,32),[lecciones]);
   const nextDate=React.useMemo(()=>{
@@ -748,7 +761,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
         <table className="table-soft" style={{width:'max-content',minWidth:286+148+lessons.length*90,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0}}>
           <thead><tr>
             <th style={{...stickyStudentCellF79(true),minWidth:286,width:286,maxWidth:286}}>Estudiante</th>
-            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso,isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion);return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?'#EAF3FF':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:(isNext||isActive)?'translateY(-3px)':'none',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>{tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}<div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}</th>;})}
+            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso,isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion),isExam=[9,17,18,25,31,32].includes(Number(l.leccion||0));return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?'#EAF3FF':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:(isNext||isActive)?'translateY(-3px)':'none',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>{tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}<div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}{isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}</th>;})}
             <th style={{...stickyNoteCellF79(true),minWidth:148,width:148,maxWidth:148}}>Nota completa</th>
           </tr></thead>
           <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
@@ -762,14 +775,14 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
       </div>
     </div>
     <NotaDetalleDrawerF79 estudiante={selectedStudent} nota={selectedStudent?(notasGrupo?.[selectedStudent.code]||selectedStudent.note):null} onClose={()=>setSelectedStudent(null)}/>
-    {selectedLesson&&<LessonDrawerF82 lesson={selectedLesson} meta={meta} roster={roster} asistenciaDetalle={asistenciaDetalle} comentariosDetalle={comentariosDetalle} onClose={()=>setSelectedLesson(null)} onChanged={()=>{onSaved&&onSaved();}} onNavigate={onNavigate}/>}  
+    {selectedLesson&&<LessonDrawerF82 lesson={selectedLesson} meta={meta} roster={roster} asistenciaDetalle={asistenciaDetalle} comentariosDetalle={comentariosDetalle} onClose={()=>setSelectedLesson(null)} onChanged={()=>{onSaved&&onSaved();}} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}  
   </>;
 }
 function stickyStudentCellF79(head){ return { position:'sticky', left:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'8px 0 14px -14px rgba(0,0,0,.55)', borderRight:'1px solid var(--line)' }; }
 function stickyNoteCellF79(head){ return { position:'sticky', right:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)', borderLeft:'1px solid var(--line)' }; }
 function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'6px 7px', fontSize:9.5, fontWeight:850, cursor:'pointer' }; }
 
-function GruposView({ onNavigate, activeSession }) {
+function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const { codGrupo, grupos, meta, nivel, nombre, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
   const lista=grupos||[];
   const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
@@ -787,7 +800,7 @@ function GruposView({ onNavigate, activeSession }) {
         <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
         <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
       </div>
-      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession}/>
+      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     </>}
   </div>;
 }
@@ -798,17 +811,17 @@ function TeacherAgendaMonthF82({ month, events, onSelect }) {
   const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   return <div className="card" style={{padding:0,overflow:'hidden'}}><div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}><strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>{['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}</div><div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>{cells.map((d,i)=>{if(!d)return <div key={i} style={{minHeight:78,background:'#F7F3EC',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ev=events.filter(x=>String(x.fecha||'')===iso);return <div key={i} style={{minHeight:78,padding:4,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}><div style={{fontSize:9,color:'var(--ink-3)',fontWeight:800}}>{d}</div><div style={{display:'grid',gap:3,marginTop:3}}>{ev.map((e,j)=>{const pal=nivelPal(tvNivelId(e.meta));return <button key={j} onClick={()=>onSelect(e)} title={`${tvEvalLabelF86(e.tipo,e.leccion,true)||`Lección ${e.leccion}`} · ${tvGrupoLabel(e.meta).full}`} style={{border:0,borderLeft:`3px solid ${pal.dark}`,background:pal.light,color:pal.dark,borderRadius:5,padding:'3px 4px',fontSize:8.5,fontWeight:900,textAlign:'left',cursor:'pointer'}}>{tvEvalLabelF86(e.tipo,e.leccion)||`Lec ${String(e.leccion).padStart(2,'0')}`}<br/><span style={{fontSize:7.5}}>Lec {String(e.leccion).padStart(2,'0')} · {tvLessonHoraLabel(e,e.meta)}</span></button>;})}</div></div>;})}</div></div>;
 }
-function CronogramaDocenteSeguroF82({ onNavigate }) {
+function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const {grupos,meta,codGrupo,cambiarGrupo,roster,asistenciaDetalle,comentariosDetalle,recargarPanel,loading,error}=useTeacherSession();
   const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null);
   React.useEffect(()=>{let live=true;const list=grupos||[];if(!list.length){setEvents([]);setLoadingAgenda(false);return()=>{live=false;};}setLoadingAgenda(true);Promise.all(list.map(g=>postTeacher('getFechasGrupo',{cod_grupo:tvGroupCode(g),nivel:tvNivelId(g)},30000).then(r=>({r,g})).catch(e=>({r:null,g,e})))).then(rows=>{if(!live)return;const out=[];rows.forEach(({r,g})=>(r?.lecciones||[]).forEach(l=>out.push({...l,cod_grupo:tvGroupCode(g),nivel:tvNivelId(g),meta:g})));out.sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion)-Number(b.leccion));setEvents(out);}).finally(()=>live&&setLoadingAgenda(false));return()=>{live=false;};},[JSON.stringify((grupos||[]).map(g=>tvGroupCode(g)))]);
   const base=React.useMemo(()=>{const today=new Date(),future=events.find(e=>String(e.fecha||'')>=today.toISOString().slice(0,10));const d=future?new Date(String(future.fecha).slice(0,10)+'T00:00:00'):today;return new Date(d.getFullYear(),d.getMonth(),1);},[events]);
   const months=Array.from({length:monthCount},(_,i)=>new Date(base.getFullYear(),base.getMonth()+i,1));
   return <div style={{width:'100%',minWidth:0}}><PageHeader kicker="Calendario de lecciones · vista docente" title={<>Agenda <em>docente</em></>} sub="Todos tus grupos en curso, vistos en una sola agenda."/>
-    <MisGruposSwitcher grupos={grupos||[]} activo={codGrupo} onSelect={cambiarGrupo}/>
+    <MisGruposSwitcher grupos={grupos||[]} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><div style={{display:'flex',gap:7}}>{[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}</div><button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button></div>
     {(loading||loadingAgenda)?<LoadingState title="Cargando agenda…" subtitle="Consultando calendarios de los grupos en curso"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
-    {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate}/>}</div>;
+    {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}</div>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
