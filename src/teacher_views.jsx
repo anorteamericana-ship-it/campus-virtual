@@ -1,3 +1,4 @@
+// F87_20260620_FLUJO_DOCENTE_UNICO_SESION_ORAL_ASISTENCIA
 // F86_20260619_DOCENTE_ETIQUETAS_Y_APLICACION_ORAL
 // CALGRUPO_F82_20260619_MIS_GRUPOS_SEMANA_PROXIMA_LECCION_DRAWER
 /* global React, Icon, Chip, Stat, PageHeader */
@@ -150,8 +151,10 @@ function tvDiasLabel(code){
 function tvHoraLabel(g){
   const code = tvGroupCode(g) || tvGroupCode(g?.code || g?.cod_grupo || '');
   const sched=tvScheduleFromCode(code);
-  const rawHi=g?.hora_i || g?.hora_inicio || sched.hora_i;
-  const rawHf=g?.hora_f || g?.hora_fin || sched.hora_f;
+  // F87: el horario codificado (SA94/KJ69/etc.) prevalece sobre valores Date
+  // de Sheets, que en navegadores podían aparecer desplazados a minutos :23.
+  const rawHi=sched.hora_i || g?.hora_i || g?.hora_inicio;
+  const rawHf=sched.hora_f || g?.hora_f || g?.hora_fin;
   const norm=(x)=>{
     if(x instanceof Date&&!Number.isNaN(x.getTime())){const h=x.getHours(),min=x.getMinutes();return `${h===0?'12':h>12?h-12:h}${min?':'+String(min).padStart(2,'0'):''}${h>=12?'pm':'am'}`;}
     const str=String(x==null?'':x).trim();
@@ -439,7 +442,7 @@ function tvStartMinutesF82(g) {
   const fallback = tvMinutes(sched.hora_i);
   return direct != null ? direct : (fallback != null ? fallback : 9999);
 }
-function MisGruposSwitcher({ grupos, activo, onSelect }) {
+function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
   const lista = Array.isArray(grupos) ? grupos : [];
   return (
     <div className="card" style={{ marginBottom:18, padding:0, background:'#FBF7EF', width:'100%', maxWidth:'100%', minWidth:0, overflow:'hidden' }}>
@@ -453,9 +456,10 @@ function MisGruposSwitcher({ grupos, activo, onSelect }) {
                 <div style={{ display:'grid', gap:7, padding:7 }}>
                   {dayGroups.map(g => {
                     const code=tvGroupCode(g), active=String(code)===String(activo), n=tvNivelId(g), pal=nivelPal(n), lab=tvGrupoLabel(g);
+                    const sessionHere=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA'&&String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'')===String(code);
                     return <button key={`${day.key}-${code}`} type="button" onClick={()=>onSelect(code)} title={lab.full} style={{
-                      border:`1.5px solid ${active?pal.dark:'var(--line)'}`, borderLeft:`4px solid ${pal.dark}`,
-                      background:active?`color-mix(in srgb, ${pal.light} 70%, white)`:'#FFF', borderRadius:10,
+                      border:`1.5px solid ${sessionHere?'#C62828':active?pal.dark:'var(--line)'}`, borderLeft:`4px solid ${sessionHere?'#C62828':pal.dark}`,
+                      background:sessionHere?'#FDECEA':active?`color-mix(in srgb, ${pal.light} 70%, white)`:'#FFF', borderRadius:10,
                       padding:'8px 9px', textAlign:'left', cursor:active?'default':'pointer', fontFamily:'inherit',
                       boxShadow:active?'0 0 0 2px rgba(7,59,122,.10)':'0 2px 8px rgba(8,30,60,.05)', position:'relative', minHeight:68,
                     }}>
@@ -464,7 +468,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect }) {
                       <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                         <span style={{ fontSize:9.5, fontWeight:900, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{lab.ciclo}</span>
                         <span style={{ fontSize:8, fontWeight:900, color:pal.dark, background:pal.light, borderRadius:999, padding:'1px 5px' }}>{n}</span>
-                        {active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>ACTIVO</span>}
+                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>SESIÓN ACTIVA</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>SELECCIONADO</span>}
                       </div>
                     </button>;
                   })}
@@ -496,24 +500,16 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
   const iniciar = async () => {
     const zoom = prompt('Pegá el link de Zoom para iniciar la sesión de clase:');
     if (!zoom) return;
-    const hi = tvMinutes(meta.hora_i || tvScheduleFromCode(tvGroupCode(meta)).hora_i);
-    const hf = tvMinutes(meta.hora_f || tvScheduleFromCode(tvGroupCode(meta)).hora_f);
-    const now = tvNowMinutes();
-    let motivo = '';
-    if (hi != null && (now < hi || (hf != null && now > hf))) {
-      motivo = prompt('Brinda una breve explicación de la razón de inicio fuera del horario establecido:') || '';
-      if (!motivo.trim()) { alert('El motivo es obligatorio si iniciás fuera del horario.'); return; }
-    }
     setBusy(true);
     try {
-      const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom, motivo_inicio:motivo });
+      const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo iniciar sesión.');
       onStarted && onStarted(r.sesion || r);
     } catch(e){ alert(e.message || String(e)); }
     finally { setBusy(false); }
   };
   const finalizar = async () => {
-    if (!confirm('¿Finalizar la sesión? Esta acción no se podrá modificar.')) return;
+    if (!confirm('¿Cerrar la clase?')) return;
     setBusy(true);
     try {
       const r = await postTeacher('docenteFinalizarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion });
@@ -527,7 +523,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
       <div style={vdLabelStyle}>Clase de hoy</div>
       <div style={{ fontSize:18, fontWeight:800, color:'var(--ink)' }}>Lección {String(leccionHoy.leccion).padStart(2,'0')} · {tvLessonHoraLabel(leccionHoy, meta)}</div>
       <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>
-        {cerrada ? 'Sesión finalizada. Registro bloqueado para planilla.' : abierta ? 'Sesión abierta. Recordá finalizar al terminar la clase.' : 'Iniciá sesión para registrar horas reales de planilla.'}
+        {cerrada ? 'Clase cerrada.' : abierta ? 'Sesión abierta. Recordá finalizar al terminar la clase.' : 'Iniciá la clase cuando estés listo.'}
       </div>
     </div>
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
@@ -575,48 +571,66 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
 }
 function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
-  const [busy,setBusy]=React.useState(false), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
+  const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=new Date().toISOString().slice(0,10);
-  const isToday=String(lesson?.fecha||'')===today, isUpcoming=String(lesson?.fecha||'')>=today, closed=String(lesson?.estado||'').toUpperCase()==='CERRADA';
+  const oralVisitKey=`an_oral_opened_${code}_${nivel}_${Number(lesson?.leccion||0)}`;
+  const [oralVisited,setOralVisited]=React.useState(()=>{try{return sessionStorage.getItem(oralVisitKey)==='1';}catch(_){return false;}});
+  const closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tvUpper(lesson?.tipo)==='EVAL_ORAL';
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado), abierta=estadoSesion==='ABIERTA', sesionCerrada=estadoSesion==='CERRADA';
+  const oralYaAplicado=esOral && Number(oralSummary?.cerradas||0)>0;
+  const oralListoParaCerrar=oralYaAplicado||oralVisited;
+  const oralContext={grupo:code,nivel,leccion:Number(lesson?.leccion||0),fecha:String(lesson?.fecha||'').slice(0,10)};
+
   const load=React.useCallback(()=>{
     if(!lesson)return; setLoading(true);
-    Promise.allSettled([
+    const calls=[
       postTeacher('getLeccionDetalle',{id_leccion:tvLessonIdF82(nivel,lesson.leccion),nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso'},30000),
       postTeacher('getDocenteSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion},30000),
-    ]).then(rs=>{
-      const a=rs[0].status==='fulfilled'?rs[0].value:null, b=rs[1].status==='fulfilled'?rs[1].value:null;
-      setDetalle(a?.ok?a.leccion:null); setSesion(b?.ok?b.sesion:null);
+      esOral?postTeacher('oralGetResumenGrupo',{cod_grupo:code,nivel,leccion:lesson.leccion},30000):Promise.resolve(null),
+    ];
+    Promise.allSettled(calls).then(rs=>{
+      const a=rs[0].status==='fulfilled'?rs[0].value:null, b=rs[1].status==='fulfilled'?rs[1].value:null, c=rs[2].status==='fulfilled'?rs[2].value:null;
+      setDetalle(a?.ok?a.leccion:null); setSesion(b?.ok?b.sesion:null); setOralSummary(c?.ok?c:null);
     }).finally(()=>setLoading(false));
-  },[lesson?.leccion,lesson?.fecha,code,nivel]);
+  },[lesson?.leccion,lesson?.fecha,lesson?.tipo,code,nivel,esOral]);
   React.useEffect(()=>{load();},[load]);
   React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')onClose();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose]);
+  React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
+
   const iniciar=async()=>{
-    const zoom=prompt('Pegá el link de Zoom para iniciar la sesión de clase:'); if(!zoom)return;
-    const sched=tvScheduleFromCode(code), hi=tvMinutes(lesson?.hora_inicio||meta?.hora_i||sched.hora_i), hf=tvMinutes(lesson?.hora_fin||meta?.hora_f||sched.hora_f), now=tvNowMinutes();
-    let motivo=''; if(!isToday||(hi!=null&&(now<hi||(hf!=null&&now>hf)))){motivo=prompt('Brinda una breve explicación de la razón de inicio fuera del horario establecido:')||''; if(!motivo.trim()){alert('La explicación es obligatoria.');return;}}
-    setBusy(true); try{const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',zoom_link:zoom,motivo_inicio:motivo}); if(!r?.ok)throw new Error(r?.error||'No se pudo iniciar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);}
+    const zoom=prompt('Pegá el link de Zoom para iniciar la clase:'); if(!zoom)return;
+    setBusy('start');
+    try{
+      const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',zoom_link:zoom});
+      if(!r?.ok)throw new Error(r?.mensaje||r?.error||'No se pudo iniciar la clase.');
+      setSesion(r.sesion||r); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
+    }catch(e){alert(e.message||String(e));}finally{setBusy('');}
   };
-  const finalizar=async()=>{ if(!confirm('¿Finalizar la sesión? Esta acción quedará bloqueada para planilla.'))return; setBusy(true); try{const r=await postTeacher('docenteFinalizarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion}); if(!r?.ok)throw new Error(r?.error||'No se pudo finalizar.'); setSesion(r.sesion||r); onChanged&&onChanged();}catch(e){alert(e.message||String(e));}finally{setBusy(false);} };
+  const abrirExamen=()=>{setOralVisited(true);try{sessionStorage.setItem(oralVisitKey,'1');}catch(_){} if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
+  const abrirCierre=()=>setAttendanceOpen(true);
   const detByStudent=asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[String(lesson?.leccion)]||{};
+  const workflow=()=>{
+    if(closed||sesionCerrada) return <button className="btn btn-primary" disabled style={{gridColumn:'1/-1',opacity:.7}}>CLASE CERRADA</button>;
+    if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
+    if(esOral&&!oralListoParaCerrar) return <button className="btn btn-primary" onClick={abrirExamen} style={{gridColumn:'1/-1'}}>VER EXAMEN DE HOY</button>;
+    return <button className="btn btn-primary" onClick={abrirCierre} style={{gridColumn:'1/-1'}}>CERRAR CLASE</button>;
+  };
   return <>
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
+      <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column',borderLeft:abierta?'6px solid #C62828':'none'}}>
+        {abierta&&<div style={{padding:'9px 20px',background:'#C62828',color:'#FFF',fontSize:11,fontWeight:900,letterSpacing:'.12em'}}>● SESIÓN ACTIVA · NO OLVIDÉS CERRARLA</div>}
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
           <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginBottom:16}}>
-            {isUpcoming&&!closed&&!abierta&&!sesionCerrada&&<button className="btn btn-primary" disabled={busy} onClick={iniciar}>INICIAR CLASE</button>}
-            {abierta&&<button className="btn btn-primary" disabled={busy} onClick={finalizar}>CERRAR CLASE</button>}
-            {!closed&&(isToday||abierta)&&<button className="btn btn-primary" onClick={()=>setAttendanceOpen(true)}>PASAR ASISTENCIA</button>}
+            {workflow()}
             <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
-            {tvUpper(lesson?.tipo)==='EVAL_ORAL'&&onNavigate&&<button className="btn btn-primary" onClick={()=>onNavigate('examen_oral',{oral:{grupo:code,nivel,leccion:Number(lesson.leccion),fecha:String(lesson.fecha||'').slice(0,10)}})}>APLICAR {tvEvalLabelF86(lesson.tipo,lesson.leccion).toUpperCase()}</button>}
-            {tvUpper(lesson?.tipo)==='EVAL_ESCRITO'&&onNavigate&&<button className="btn btn-ghost" onClick={()=>onNavigate('examenes')}>IR A {tvEvalLabelF86(lesson.tipo,lesson.leccion).toUpperCase()}</button>}
-            {!closed&&String(lesson?.fecha||'')>=today&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
+            {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
           </div>
-          {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Sesión finalizada · {sesion?.MINUTOS_REALES||sesion?.minutos_reales||0} minutos registrados</div>}
+          {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:'#FFF8E1',color:'#7A4F00',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.</div>}
+          {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Clase cerrada</div>}
           {loading?<LoadingState variant="small" title="Cargando detalle…"/>:<>
             <div style={{padding:'16px 17px',border:'1px solid var(--line)',borderRadius:'var(--r-lg)',background:'#FBF7EF',marginBottom:15}}>
               <div style={{...labelStyle,marginBottom:5}}>{detalle?.unidad||`Nivel ${nivel}`}</div>
@@ -624,17 +638,15 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
               {detalle?.objetivo&&<div style={{marginTop:12}}><div style={labelStyle}>Objetivo</div><div style={{fontSize:13,lineHeight:1.55,marginTop:4}}>{detalle.objetivo}</div></div>}
               {detalle?.speaking&&<div style={{marginTop:10}}><div style={labelStyle}>Speaking</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.speaking}</div></div>}
               {detalle?.grammar&&<div style={{marginTop:10}}><div style={labelStyle}>Grammar</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.grammar}</div></div>}
-              {detalle?.pronunciacion&&<div style={{marginTop:10}}><div style={labelStyle}>Pronunciación</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.pronunciacion}</div></div>}
-              {detalle?.writing&&<div style={{marginTop:10}}><div style={labelStyle}>Writing</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.writing}</div></div>}
             </div>
             <div style={{...labelStyle,marginBottom:8}}>Asistencia registrada</div>
-            <div style={{display:'grid',gap:7}}>{(roster||[]).map(s=>{const d=detByStudent[s.code],c=d?comByStudent[s.code]:'';return <div key={s.code} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,padding:'9px 11px',border:'1px solid var(--line)',borderRadius:9}}><div><strong style={{fontSize:12}}>{s.name}</strong>{c&&<div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>💬 {c}</div>}</div><span style={{fontSize:10,fontWeight:900,color:!d?'var(--ink-3)':d.presente===false?'#B3261E':'#166534'}}>{!d?'Sin dato':d.presente===false?'Ausente':'Presente'}</span></div>;})}</div>
+            <div style={{display:'grid',gap:7}}>{(roster||[]).map(s=>{const d=detByStudent[s.code],c=d?comByStudent[s.code]:'';return <div key={s.code} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,padding:'9px 11px',border:'1px solid var(--line)',borderRadius:9}}><div><strong style={{fontSize:12}}>{s.name}</strong>{c&&<div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>💬 {c}</div>}</div><span style={{fontSize:10,fontWeight:900,color:!d?'var(--ink-3)':d.presente===false?'#B3261E':'#166534'}}>{!d?'Pendiente':d.presente===false?'Ausente':'Presente'}</span></div>;})}</div>
           </>}
         </div>
       </aside>
     </div>
-    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} onClose={()=>setAttendanceOpen(false)} onSuccess={()=>{setAttendanceOpen(false);onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
-    {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno||tvHoraLabel(meta),hora_inicio:lesson.hora_inicio||meta?.hora_i||'',hora_fin:lesson.hora_fin||meta?.hora_f||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
+    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
+    {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso'}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;
 }
 
@@ -683,71 +695,78 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
   </div>;
 }
 
-function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved }) {
+function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession }) {
   const todayIso=new Date().toISOString().slice(0,10);
   const lessons=React.useMemo(()=>(lecciones||[]).filter(l=>tvUpper(l.tipo)!=='FERIADO'&&tvUpper(l.tipo)!=='ICAN').slice().sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion||0)-Number(b.leccion||0)).slice(0,32),[lecciones]);
-  const todayLesson=leccionHoy||lessons.find(l=>String(l.fecha||'')===todayIso&&tvUpper(l.estado)!=='FERIADO')||null;
   const nextDate=React.useMemo(()=>{
     const upcoming=lessons.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
     const fallback=lessons.find(l=>tvUpper(l.estado)!=='CERRADA')||lessons[lessons.length-1]||null;
     return String((upcoming||fallback)?.fecha||'');
   },[lessons,todayIso]);
-  const nextLessons=React.useMemo(()=>lessons.filter(l=>String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA'),[lessons,nextDate]);
-  const nextLesson=nextLessons[0]||null;
-  const [draft,setDraft]=React.useState({}),[comments,setComments]=React.useState({}),[notaGeneral,setNotaGeneral]=React.useState(''),[saving,setSaving]=React.useState(false),[selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
-  const scrollRef=React.useRef(null), positionedRef=React.useRef('');
-  React.useEffect(()=>{const n={},c={};roster.forEach(r=>{const d=todayLesson?asistenciaDetalle?.[String(todayLesson.leccion)]?.[r.code]:null;n[r.code]=d?d.presente!==false:true;c[r.code]=d?(comentariosDetalle?.[String(todayLesson.leccion)]?.[r.code]||''):'';});setDraft(n);setComments(c);},[todayLesson?.leccion,roster,asistenciaDetalle,comentariosDetalle]);
+  const nextLesson=(lessons.filter(l=>String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA')[0])||null;
+  const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
+  const scrollRef=React.useRef(null), positionedRef=React.useRef(''), activeDrawerRef=React.useRef('');
   React.useEffect(()=>{
     const box=scrollRef.current;if(!box||!lessons.length||!nextLesson)return;
     const key=`${tvGroupCode(meta)}|${nextLesson.leccion}|${lessons.length}`;if(positionedRef.current===key)return;positionedRef.current=key;
     const idx=lessons.findIndex(l=>Number(l.leccion)===Number(nextLesson.leccion));
     requestAnimationFrame(()=>{const colW=90,leftW=286,rightW=148,targetX=Math.max(leftW,box.clientWidth-rightW-(2*colW));const actualX=leftW+Math.max(0,idx)*colW;box.scrollLeft=Math.max(0,actualX-targetX);});
   },[tvGroupCode(meta),nextLesson?.leccion,lessons.length]);
-  const todayClosed=todayLesson&&tvUpper(todayLesson.estado)==='CERRADA';
-  const guardar=async()=>{if(!todayLesson||todayClosed||String(todayLesson.fecha)!==todayIso)return;setSaving(true);try{const r=await postTeacher('cerrarLeccionDesdeMisGruposF79',{cod_grupo:tvGroupCode(meta),nivel:tvNivelId(meta),leccion:todayLesson.leccion,nota_docente:notaGeneral,asistencias:draft,comentarios,programa:meta?.programa||''});if(!r?.ok)throw new Error(r?.error||r?.detalle||'No se pudo guardar asistencia.');alert('Asistencia guardada.');onSaved&&onSaved();}catch(e){alert(e.message||String(e));}finally{setSaving(false);}};
   const scrollBy=d=>scrollRef.current?.scrollBy({left:d,behavior:'smooth'});
+  const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||''), activeLec=Number(activeSession?.LECCION||activeSession?.leccion||0);
+  // F87: al volver de Exámenes o recargar con una sesión abierta, mostramos
+  // directamente el detalle activo. El docente puede cerrarlo y seguir
+  // navegando; no se vuelve a abrir hasta un nuevo montaje/retorno a la vista.
+  React.useEffect(()=>{
+    if(!activeCode||!activeLec||activeCode!==tvGroupCode(meta)||!lessons.length)return;
+    const sessionId=String(activeSession?.SESION_ID||activeSession?.sesion_id||`${activeCode}|${activeLec}`);
+    if(activeDrawerRef.current===sessionId)return;
+    const target=lessons.find(l=>Number(l.leccion)===activeLec);
+    if(!target)return;
+    activeDrawerRef.current=sessionId;
+    setSelectedLesson({...target,__sessionActive:true});
+  },[activeCode,activeLec,tvGroupCode(meta),lessons.length,activeSession?.SESION_ID]);
   return <>
     <div className="card" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
-        <div><div className="card-title">Estudiantes · asistencia y notas</div></div>
+        <div><div className="card-title">Estudiantes · asistencia y notas</div><div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>La asistencia se completa obligatoriamente al cerrar la clase.</div></div>
         <div style={{display:'flex',gap:7}}><button type="button" onClick={()=>scrollBy(-560)} className="btn btn-ghost" style={{width:38,padding:8}}>←</button><button type="button" onClick={()=>scrollBy(560)} className="btn btn-ghost" style={{width:38,padding:8}}>→</button></div>
       </div>
       <div ref={scrollRef} style={{overflowX:'auto',overflowY:'hidden',position:'relative',scrollbarGutter:'stable',width:'100%',WebkitOverflowScrolling:'touch'}}>
         <table className="table-soft" style={{width:'max-content',minWidth:286+148+lessons.length*90,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0}}>
           <thead><tr>
             <th style={{...stickyStudentCellF79(true),minWidth:286,width:286,maxWidth:286}}>Estudiante</th>
-            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso;return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isNext?'#EAF3FF':'var(--surface-2)',borderTop:isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:isNext?'translateY(-3px)':'none',boxShadow:isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>{tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}<div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isNext&&<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>}{isToday&&!isNext&&<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>}</th>;})}
+            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso,isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion);return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?'#EAF3FF':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:(isNext||isActive)?'translateY(-3px)':'none',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>{tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}<div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}</th>;})}
             <th style={{...stickyNoteCellF79(true),minWidth:148,width:148,maxWidth:148}}>Nota completa</th>
           </tr></thead>
           <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
             <td style={{...stickyStudentCellF79(false),minWidth:286,width:286,maxWidth:286}}><div style={{display:'flex',gap:9,alignItems:'center'}}><div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div><div style={{minWidth:0}}><div style={{fontWeight:750,lineHeight:1.2,fontSize:12}}>{r.name}</div><div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · Asistencia {att?.pct!=null?`${att.pct}%`:'—'}</div></div></div></td>
-            {lessons.map(l=>{const key=String(l.leccion),det=asistenciaDetalle?.[key]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||''):'',isToday=String(l.fecha||'')===todayIso,editable=isToday&&tvUpper(l.estado)!=='CERRADA'&&!det,future=String(l.fecha||'')>todayIso,isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA';return <td key={`${r.code}-${key}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',verticalAlign:'middle',padding:'6px 5px',background:isNext?'#F7FBFF':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
-              {editable?<div style={{display:'grid',gap:4}}><button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:true}))} style={miniAttendBtn(draft[r.code]!==false,true)}>Presente</button><button type="button" onClick={()=>setDraft(d=>({...d,[r.code]:false}))} style={miniAttendBtn(draft[r.code]===false,false)}>Ausente</button><input value={comments[r.code]||''} onChange={e=>setComments(c=>({...c,[r.code]:e.target.value}))} placeholder="Comentario" style={{width:'100%',border:'1px solid var(--line)',borderRadius:6,padding:'4px 5px',fontSize:8.5,fontFamily:'inherit'}}/></div>
-              :det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>
-              :future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Sin dato</span>}
+            {lessons.map(l=>{const key=String(l.leccion),det=asistenciaDetalle?.[key]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA';return <td key={`${r.code}-${key}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',verticalAlign:'middle',padding:'6px 5px',background:isNext?'#F7FBFF':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
+              {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
             </td>;})}
             <td style={{...stickyNoteCellF79(false),minWidth:148,width:148,maxWidth:148}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:7}}><div><div style={{fontSize:20,fontWeight:900,color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)'}}>{note?.tiene_notas?note.nota_total:'—'}</div><div style={{fontSize:8.5,color:'var(--ink-3)'}}>{note?.tiene_notas?'acumulada':'sin notas'}</div></div><button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{padding:'5px 6px',fontSize:8.8,whiteSpace:'nowrap'}}>Ver detalle</button></div></td>
           </tr>;})}</tbody>
         </table>
       </div>
-      {todayLesson&&!todayClosed&&String(todayLesson.fecha||'')===todayIso&&<div style={{padding:'11px 16px',borderTop:'1px solid var(--line)',display:'grid',gridTemplateColumns:'1fr auto',gap:10,alignItems:'end'}}><div><label style={{...labelStyle,display:'block',marginBottom:5}}>Nota general del docente · opcional</label><textarea value={notaGeneral} onChange={e=>setNotaGeneral(e.target.value)} placeholder="Cubrimos hasta la página 14..." style={{width:'100%',minHeight:46,border:'1px solid var(--line)',borderRadius:'var(--r-md)',padding:9,fontFamily:'inherit',resize:'vertical'}}/></div><button className="btn btn-primary" disabled={saving} onClick={guardar}>{saving?'Guardando…':'✓ Pasar asistencia de hoy'}</button></div>}
     </div>
     <NotaDetalleDrawerF79 estudiante={selectedStudent} nota={selectedStudent?(notasGrupo?.[selectedStudent.code]||selectedStudent.note):null} onClose={()=>setSelectedStudent(null)}/>
-    {selectedLesson&&<LessonDrawerF82 lesson={selectedLesson} meta={meta} roster={roster} asistenciaDetalle={asistenciaDetalle} comentariosDetalle={comentariosDetalle} onClose={()=>setSelectedLesson(null)} onChanged={()=>{onSaved&&onSaved();}}/>}
+    {selectedLesson&&<LessonDrawerF82 lesson={selectedLesson} meta={meta} roster={roster} asistenciaDetalle={asistenciaDetalle} comentariosDetalle={comentariosDetalle} onClose={()=>setSelectedLesson(null)} onChanged={()=>{onSaved&&onSaved();}} onNavigate={onNavigate}/>}  
   </>;
 }
 function stickyStudentCellF79(head){ return { position:'sticky', left:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'8px 0 14px -14px rgba(0,0,0,.55)', borderRight:'1px solid var(--line)' }; }
 function stickyNoteCellF79(head){ return { position:'sticky', right:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)', borderLeft:'1px solid var(--line)' }; }
 function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'6px 7px', fontSize:9.5, fontWeight:850, cursor:'pointer' }; }
 
-function GruposView() {
+function GruposView({ onNavigate, activeSession }) {
   const { codGrupo, grupos, meta, nivel, nombre, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
   const lista=grupos||[];
+  const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
+  React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
   if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos En curso asignados.'} onRetry={recargarPanel}/></div>;
   const promedioGrupo=resumenGrupo?.promedioGrupo,promedioAsistencia=resumenGrupo?.promedioAsistencia;
   return <div style={{width:'100%',maxWidth:'100%',minWidth:0,overflow:'hidden'}}>
     <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={lista.length>1?`Tenés ${lista.length} grupos en curso`:tvGrupoLabel(meta).full}/>
-    <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo}/>
+    <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
     {loading?<LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
@@ -756,7 +775,7 @@ function GruposView() {
         <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
         <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
       </div>
-      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel}/>
+      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession}/>
     </>}
   </div>;
 }

@@ -1,4 +1,4 @@
-// F86_20260619_ROUTER_EXAMEN_ORAL_INTEGRADO
+// F87_20260620_FLUJO_DOCENTE_UNICO_SESION_ORAL_ASISTENCIA
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
@@ -43,11 +43,41 @@ function ProximamenteView({ title }) {
 }
 
 
+async function postAppF87(fn, payload = {}, timeoutMs = 30000) {
+  const url = window.APPS_SCRIPT_URL;
+  if (!url) return { ok:false, error:'Backend no configurado.' };
+  const token = typeof window.getSessionToken === 'function' ? window.getSessionToken() : '';
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${url}?fn=${encodeURIComponent(fn)}`, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({fn, token, ...payload}), signal:controller?.signal,
+    });
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : null;
+    return data || {ok:false,error:'Respuesta vacía.'};
+  } catch (e) {
+    return {ok:false,error:e?.name==='AbortError'?'El backend tardó demasiado.':(e?.message||String(e))};
+  } finally { if (timer) clearTimeout(timer); }
+}
+
+function TeacherActiveSessionBanner({ state, onGo }) {
+  const s=state?.sesion, l=state?.leccion;
+  if (!s || String(s.ESTADO||s.estado||'').toUpperCase()!=='ABIERTA') return null;
+  const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
+  const oralLabel=({9:'1.er oral',17:'2.º oral',25:'3.er oral',31:'4.º oral'})[lec];
+  return <div role="status" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:'#C62828',color:'#FFF',boxShadow:'0 8px 24px rgba(198,40,40,.28)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
+    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>● SESIÓN ACTIVA</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{grupo} · Lección {String(lec).padStart(2,'0')}{oralLabel?` · ${oralLabel}`:''}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
+    <button type="button" onClick={onGo} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:'#9B1C1C',borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>VOLVER A MIS GRUPOS</button>
+  </div>;
+}
+
 // ── Exámenes escritos — integración por iframe interno sin backend ───────
 // El módulo ya existe y monta su propio React sobre modulos/examenes.html.
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
-function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle }) {
+function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent }) {
   const src = `modulos/examenes.html?view=${view}`;
   return (
     <section data-screen-label={screenLabel} style={{
@@ -86,6 +116,8 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         </div>
       </div>
 
+      {topContent || null}
+
       <div style={{
         flex: 1, minHeight: 640,
         background: 'var(--surface, #fff)',
@@ -120,17 +152,18 @@ function ExamenesAdminPanel() {
   );
 }
 
-function ExamenesTeacherPanel() {
-  return (
-    <ExamenesIframePanel
-      view="teacher"
-      screenLabel="Docente · Exámenes"
-      eyebrow="Panel docente seguro"
-      description="Vista profesor integrada con backend real por grupo propio. Sin datos demo ni acceso administrador."
-      badge="Vista docente · backend real"
-      iframeTitle="Panel docente de exámenes"
-    />
-  );
+function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
+  const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
+  const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
+  const lec=Number(s?.LECCION||s?.leccion||pending?.leccion||0), open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
+  const esOral=(open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec)))||(!s&&pending&&[9,17,25,31].includes(lec));
+  const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
+  const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
+  const card=esOral?<div style={{padding:'15px 17px',border:'2px solid #C62828',borderRadius:14,background:'#FDECEA',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#C62828'}}>EXAMEN DE LA SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#7A1717',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#6B2A2A',marginTop:3}}>{ctx.grupo} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div>
+    <button className="btn btn-primary" type="button" onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button>
+  </div>:null;
+  return <ExamenesIframePanel view="teacher" screenLabel="Docente · Exámenes" eyebrow="Panel docente seguro" description="El examen oral de una sesión activa aparece arriba; los exámenes escritos permanecen en el panel inferior." badge={esOral?'Examen oral listo':'Vista docente · backend real'} iframeTitle="Panel docente de exámenes" topContent={card}/>;
 }
 
 // CALGRUPO_F37_20260617_EXAMENES_ESTUDIANTE_ROUTER
@@ -357,6 +390,9 @@ function App() {
     catch (_) { return null; }
   });
   const [modoPrueba, setModoPrueba] = useState(() => getModoPrueba());
+  const [activeTeacherState, setActiveTeacherState] = useState(null);
+  const activeTeacherSession = activeTeacherState?.sesion || null;
+  const activeSessionRedirectedRef = React.useRef(false);
 
   const navigateTo = (target, opts = {}) => {
     if (opts.lesson) setPendingLesson(opts.lesson);
@@ -386,6 +422,23 @@ function App() {
   };
 
   useEffect(() => { localStorage.setItem('an_active', active); }, [active]);
+
+  useEffect(() => {
+    if (rolReal !== 'teacher') { setActiveTeacherState(null); return undefined; }
+    let live=true;
+    const refresh=async()=>{
+      const r=await postAppF87('getDocenteSesionActivaF87',{},30000);
+      if(live&&r?.ok){
+        setActiveTeacherState(r.sesion?r:null);
+        if(r.sesion&&!activeSessionRedirectedRef.current){activeSessionRedirectedRef.current=true;setActive('grupos');}
+      }
+    };
+    refresh();
+    const timer=setInterval(refresh,30000);
+    window.addEventListener('an:teacher-session-changed',refresh);
+    window.addEventListener('an:oral-updated',refresh);
+    return()=>{live=false;clearInterval(timer);window.removeEventListener('an:teacher-session-changed',refresh);window.removeEventListener('an:oral-updated',refresh);};
+  },[rolReal]);
 
   // Si otro componente reescribe `an_usuario` (típicamente el Modo prueba
   // del superadmin), refrescamos el estado de App para que el router
@@ -452,13 +505,13 @@ function App() {
       dashboard:        <VistaDocente />,
       mi_panel_docente: <VistaDocente />,
       // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_ROUTER
-      docente_operativo: <DocenteOperativoView onNavigate={navigateTo} />,
-      grupos:      <GruposView />,
+      docente_operativo: <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} />,
+      grupos:      <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} />,
       calificar:   <CalificarView toast={toast} />,
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
       asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
       cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} />,
-      examenes:    <ExamenesTeacherPanel />,
+      examenes:    <ExamenesTeacherPanel activeState={activeTeacherState} pendingOral={pendingOral} onNavigate={navigateTo} />,
       examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
       materiales:  <MaterialesView onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,
@@ -534,6 +587,7 @@ function App() {
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
         )}
+        {role === 'teacher' && <TeacherActiveSessionBanner state={activeTeacherState} onGo={() => navigateTo('grupos')} />}
         <VistaErrorBoundary key={active}>
           {content}
         </VistaErrorBoundary>

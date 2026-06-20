@@ -930,7 +930,7 @@ const PC_UNIDADES_MAP = {
   21:'U9-U10', 24:'U11-U12', 28:'U13-U14', 30:'U15-U16',
 };
 
-function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada }) {
+function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase' }) {
   // ── B1: el panel admin reusa este modal para cerrar lecciones de otro
   // docente.  docente_real = dueño de la lección; registrado_por = admin
   // logueado.  Si no se pasa registradoPor, asumimos que el dueño se
@@ -1065,15 +1065,22 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
       ...(notaDocente.trim() ? { nota_docente: notaDocente.trim() } : {}),
     };
 
-    const res = await postCerrarLeccionCompleta(body);
+    let res = null;
+    try {
+      res = submitFn ? await submitFn(body) : await postCerrarLeccionCompleta(body);
+    } catch (e) {
+      setSubmitting(false);
+      setSubmitErr(e?.message || String(e) || 'No se pudo guardar la asistencia.');
+      return;
+    }
     setSubmitting(false);
 
     if (!res?.ok) {
-      setSubmitErr(res?.error || 'No se pudo cerrar la lección.');
+      setSubmitErr(res?.mensaje || res?.error || 'No se pudo cerrar la lección.');
       if (Array.isArray(res?.estudiantes_faltantes) && res.estudiantes_faltantes.length) {
         const errs2 = {};
         res.estudiantes_faltantes.forEach(code => {
-          errs2[code] = res.error || 'Pendiente';
+          errs2[code] = res?.mensaje || res?.error || 'Pendiente';
         });
         setErrors(errs2);
         scrollToCard(res.estudiantes_faltantes[0]);
@@ -1189,6 +1196,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
           onSubmit={handleSubmit}
           totalEstudiantes={students?.length || 0}
           totalPresentes={students ? Object.values(formData).filter(f => f.presente).length : 0}
+          submitLabel={submitLabel}
         />
       </div>
 
@@ -1330,7 +1338,7 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
 }
 
 // ── Footer del modal ────────────────────────────────────────────────────
-function ModalCierreFooter({ submitting, submitErr, disabled, onCancel, onSubmit, totalEstudiantes, totalPresentes }) {
+function ModalCierreFooter({ submitting, submitErr, disabled, onCancel, onSubmit, totalEstudiantes, totalPresentes, submitLabel='Cerrar lección' }) {
   return (
     <div style={{
       borderTop: '1px solid var(--line)',
@@ -1389,7 +1397,7 @@ function ModalCierreFooter({ submitting, submitErr, disabled, onCancel, onSubmit
               display: 'inline-block',
             }} />
           )}
-          {submitting ? 'Cerrando…' : 'Cerrar lección'}
+          {submitting ? 'Guardando asistencia…' : submitLabel}
         </button>
       </div>
     </div>

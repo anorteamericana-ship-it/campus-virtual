@@ -388,8 +388,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const teacherNav = [
     { id: 'perfil', label: 'Teacher', icon: 'profile' },
     { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'home', badge: pendientesDoc || null },
-    // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_MENU
-    { id: 'docente_operativo', label: 'Panel operativo', icon: 'grades' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'calificar', label: 'Calificar', icon: 'grades' },

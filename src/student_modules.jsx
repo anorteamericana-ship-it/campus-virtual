@@ -994,7 +994,7 @@ function PerfilContenido({ usr, data, onNavigate }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// ExamenOralView — F86 integrado al cronograma con contexto exacto
+// ExamenOralView — F87 integrado a la sesión docente activa
 // ──────────────────────────────────────────────────────────────────────────
 function ExamenOralView({ context = null, onNavigate }) {
   const ctx = context && typeof context === 'object' ? context : {};
@@ -1003,9 +1003,18 @@ function ExamenOralView({ context = null, onNavigate }) {
   if (ctx.nivel) params.set('nivel', ctx.nivel);
   if (ctx.leccion) params.set('leccion', String(ctx.leccion));
   if (ctx.fecha) params.set('fecha', String(ctx.fecha).slice(0,10));
-  params.set('v', 'F86');
+  params.set('v', 'F87');
   const src = `modulos/examen_oral.html?${params.toString()}`;
   const titulo = ({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[Number(ctx.leccion || 0)] || 'Examen Oral';
+  React.useEffect(() => {
+    const handler = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'an:oral-updated') return;
+      window.dispatchEvent(new CustomEvent('an:oral-updated', { detail:event.data }));
+      window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
   return (
     <div>
       <PageHeader
@@ -1013,8 +1022,8 @@ function ExamenOralView({ context = null, onNavigate }) {
         title={<>{titulo}</>}
         sub={ctx.grupo ? `${ctx.grupo} · ${ctx.nivel || 'Nivel'} · ${ctx.fecha || 'fecha del cronograma'}` : 'Seleccioná una lección oral desde el cronograma para cargar el examen exacto.'}
         right={onNavigate ? (
-          <button type="button" className="btn btn-ghost" onClick={() => onNavigate('cronograma_grupo')}>
-            ← Volver al cronograma
+          <button type="button" className="btn btn-ghost" onClick={() => onNavigate('grupos')}>
+            ← Volver a Mis grupos
           </button>
         ) : null}
       />
