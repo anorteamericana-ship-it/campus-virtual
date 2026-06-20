@@ -1,10 +1,12 @@
+// CAMPUS_F93_0_20260620_CARGA_EXAMENES_ESTABLE_TIMEOUT
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_APP
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_APP
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_APP
 // CALGRUPO_F48_20260617_CENTRO_DIAGNOSTICO_EXAMENES_APP
 /* global React, ReactDOM, NIVEL_TEMA, StudentMode, TeacherMode, AdminMode, ExamShell, EXAM_I2_T1_A, themedExam */
 // examenes_app.jsx — shell + barra de control (auditoría / tweaks)
-const { useState, useEffect, useMemo, useCallback, useRef } = React;
+// F93.0: no destructurar hooks en el ámbito global. examenes_modes.jsx ya
+// declara esos nombres y los scripts clásicos comparten el mismo entorno léxico.
 
 const VIEWS = [
   { k:'student', t:'Estudiante' },
@@ -190,12 +192,53 @@ async function examPostLive(fn, payload = {}) {
   const url = examParentApiUrl();
   if (!url) return { ok:false, error:'apps_script_url_no_disponible', mensaje:'No se encontró la URL del backend del campus.' };
   const token = examParentToken();
-  const res = await fetch(`${url}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ fn, token }, payload || {})),
-  });
-  return await res.json();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutMs = 25000;
+  const timeoutId = setTimeout(() => {
+    try { if (controller) controller.abort(); } catch (_) {}
+  }, timeoutMs);
+  try {
+    const res = await fetch(`${url}?fn=${encodeURIComponent(fn)}`, {
+      method: 'POST',
+      headers: { 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ fn, token }, payload || {})),
+      signal: controller ? controller.signal : undefined,
+      cache: 'no-store',
+    });
+    const raw = await res.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : {}; }
+    catch (_) {
+      return {
+        ok:false,
+        error:'respuesta_backend_no_json',
+        mensaje:`El backend respondió en un formato inválido (HTTP ${res.status}). Volvé a cargar el Campus; si continúa, revisá la implementación de Apps Script.`,
+      };
+    }
+    if (!res.ok && data && data.ok !== false) {
+      return Object.assign({}, data, {
+        ok:false,
+        error:data.error || `http_${res.status}`,
+        mensaje:data.mensaje || `El backend respondió con HTTP ${res.status}.`,
+      });
+    }
+    return data;
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      return {
+        ok:false,
+        error:'backend_timeout',
+        mensaje:'El backend tardó más de 25 segundos en responder. No se dejó la pantalla congelada: presioná “Actualizar estado”.',
+      };
+    }
+    return {
+      ok:false,
+      error:'backend_fetch_error',
+      mensaje:String(err && err.message ? err.message : 'No se pudo conectar con Apps Script.'),
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 function parseExamAnswersJson(v) {
   if (!v) return {};
@@ -232,14 +275,14 @@ function StudentLiveStatusCard({ title, badge='Examen no disponible', children, 
   );
 }
 function StudentLiveExamApp() {
-  const [live, setLive] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [attemptId, setAttemptId] = useState('');
-  const [publicExam, setPublicExam] = useState(null);
-  const [currentAttempt, setCurrentAttempt] = useState(null);
+  const [live, setLive] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [attemptId, setAttemptId] = React.useState('');
+  const [publicExam, setPublicExam] = React.useState(null);
+  const [currentAttempt, setCurrentAttempt] = React.useState(null);
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     setLoading(true); setError('');
     examPostLive('examGetStudentLivePanel', { client_meta:{ source:'student_iframe_f27' } })
       .then(r => {
@@ -274,7 +317,7 @@ function StudentLiveExamApp() {
       })
       .finally(() => setLoading(false));
   }, []);
-  useEffect(() => { load(); }, [load]);
+  React.useEffect(() => { load(); }, [load]);
 
   const activation = live && live.activation;
   const cfg = activationToStudentConfig(activation || {});
@@ -328,15 +371,15 @@ function StudentLiveExamApp() {
 }
 
 function App() {
-  const [view, setViewRaw] = useState(INITIAL_VIEW_CONFIG.view);
-  const [nivel, setNivel] = useState('I2');
-  const [test, setTest] = useState('TEST1'); // TEST1 (L18) | TEST2 (L32)
-  const [opcion, setOpcion] = useState('A');
-  const [shell, setShell] = useState('premium');
-  const [density, setDensity] = useState('comfy');
-  const [previewKey, setPreviewKey] = useState(true);
-  const [previewExam, setPreviewExam] = useState(null);
-  const [plan, setPlan] = useState('ambos'); // ambos | con_ina | sin_ina
+  const [view, setViewRaw] = React.useState(INITIAL_VIEW_CONFIG.view);
+  const [nivel, setNivel] = React.useState('I2');
+  const [test, setTest] = React.useState('TEST1'); // TEST1 (L18) | TEST2 (L32)
+  const [opcion, setOpcion] = React.useState('A');
+  const [shell, setShell] = React.useState('premium');
+  const [density, setDensity] = React.useState('comfy');
+  const [previewKey, setPreviewKey] = React.useState(true);
+  const [previewExam, setPreviewExam] = React.useState(null);
+  const [plan, setPlan] = React.useState('ambos'); // ambos | con_ina | sin_ina
 
   const canEnter = (target) => INITIAL_VIEW_CONFIG.allowedViews.includes(target);
   const setView = (target) => {
@@ -629,4 +672,7 @@ function PvScript({ section, exam, onClose }) {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+const EXAM_ROOT_F930 = document.getElementById('root');
+ReactDOM.createRoot(EXAM_ROOT_F930).render(<App />);
+window.__EXAMENES_BOOT_OK__ = true;
+try { EXAM_ROOT_F930.setAttribute('data-exam-boot', 'F93.0'); } catch (_) {}

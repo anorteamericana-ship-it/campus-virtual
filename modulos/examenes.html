@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Exámenes · Sistema Maestro · Academia Norteamericana</title>
+<title>Exámenes · F93.0 · Academia Norteamericana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -18,18 +18,44 @@
 <body>
 <div id="root"></div>
 
+<script>
+(function(){
+  var root = document.getElementById('root');
+  var shown = false;
+  function esc(v){ return String(v || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function showBootError(detail){
+    if (shown || window.__EXAMENES_BOOT_OK__ || !root || root.children.length) return;
+    shown = true;
+    root.innerHTML = '<div style="max-width:680px;margin:72px auto;padding:30px 32px;border-radius:18px;background:#fff;border:1px solid #E2D8C8;box-shadow:0 18px 60px rgba(0,0,0,.10);font-family:Poppins,system-ui,sans-serif;text-align:center;color:#001E47">'
+      + '<div style="display:inline-flex;padding:5px 12px;border-radius:999px;background:#F7E8E9;color:#7A1E2C;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px">Error de carga</div>'
+      + '<h2 style="margin:0 0 8px;font-size:26px">No se pudo iniciar el módulo de exámenes</h2>'
+      + '<p style="color:#5A6472;font-size:14px;line-height:1.55">La pantalla ya no quedará congelada. Recargá el Campus con Ctrl + Shift + R. Si continúa, verificá que GitHub tenga completos los archivos F93.0.</p>'
+      + (detail ? '<div style="margin:14px auto;padding:10px 12px;max-width:560px;border-radius:10px;background:#F8F6F1;color:#594F46;font:12px/1.45 JetBrains Mono,monospace;text-align:left;word-break:break-word">'+esc(detail)+'</div>' : '')
+      + '<button onclick="location.reload()" style="margin-top:4px;background:#001E47;color:#fff;border:0;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer">Volver a cargar</button></div>';
+  }
+  window.addEventListener('error', function(e){
+    var detail = e && e.message ? e.message : (e && e.target && e.target.src ? 'No cargó: '+e.target.src : 'Error al cargar un recurso del módulo.');
+    setTimeout(function(){ showBootError(detail); }, 0);
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    var r=e&&e.reason; showBootError(r&&r.message?r.message:String(r||'Promesa rechazada durante el arranque.'));
+  });
+  setTimeout(function(){ showBootError('Tiempo de arranque excedido (12 segundos).'); }, 12000);
+})();
+</script>
+
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
 <!-- CSS as JS strings (injected before app) -->
-<script type="text/babel" src="../src/examenes_css.jsx?v=F92.7"></script>
-<script type="text/babel" src="../src/examenes_appcss.jsx?v=F92.7"></script>
+<script type="text/babel" src="../src/examenes_css.jsx?v=F93.0"></script>
+<script type="text/babel" src="../src/examenes_appcss.jsx?v=F93.0"></script>
 
 <!-- data + render + modes + app -->
-<script type="text/babel" src="../src/examenes_data.jsx?v=F92.7"></script>
-<script type="text/babel" src="../src/examenes_render.jsx?v=F92.7"></script>
-<script type="text/babel" src="../src/examenes_modes.jsx?v=F92.7"></script>
-<script type="text/babel" src="../src/examenes_app.jsx?v=F92.7"></script>
+<script type="text/babel" src="../src/examenes_data.jsx?v=F93.0"></script>
+<script type="text/babel" src="../src/examenes_render.jsx?v=F93.0"></script>
+<script type="text/babel" src="../src/examenes_modes.jsx?v=F93.0"></script>
+<script type="text/babel" src="../src/examenes_app.jsx?v=F93.0"></script>
 </body>
 </html>
