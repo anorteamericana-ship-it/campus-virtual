@@ -135,23 +135,103 @@ function LeccionLocked() {
 // ──────────────────────────────────────────────────────────────────────────
 // NotasView — evaluaciones reales (getEvaluacionesEstudiante)
 // ──────────────────────────────────────────────────────────────────────────
-function NotasView({ onNavigate }) {
+function _smNivelEval_(e) {
+  const raw = String(e?.nivel || e?.NIVEL || e?.nivel_actual || '').trim().toUpperCase();
+  if (['B1','B2','I1','I2'].includes(raw)) return raw;
+  const txt = String(e?.titulo || e?.tipo || e?.unidad || '').toUpperCase();
+  if (txt.includes('BÁSICO I') || txt.includes('BASICO I') || txt.includes('B1')) return 'B1';
+  if (txt.includes('BÁSICO II') || txt.includes('BASICO II') || txt.includes('B2')) return 'B2';
+  if (txt.includes('INTERMEDIO I') || txt.includes('I1')) return 'I1';
+  if (txt.includes('INTERMEDIO II') || txt.includes('I2')) return 'I2';
+  return '';
+}
+function _smEvalKind_(e) {
+  const txt = String(e?.titulo || e?.tipo || '').toLowerCase();
+  if (txt.includes('oral')) return 'oral';
+  if (txt.includes('escrito') || txt.includes('written')) return 'esc';
+  if (txt.includes('progress') || txt.includes('social') || txt.includes('particip')) return 'prog';
+  return 'other';
+}
+function _smFechaLarga_(iso) {
+  if (!iso) return '—';
+  const s = String(iso).replace(/\.000z$/i,'Z');
+  const d = new Date(s.length <= 10 ? s + 'T00:00:00' : s);
+  if (isNaN(d)) return String(iso);
+  return d.toLocaleDateString('es-CR', { day:'2-digit', month:'long', year:'numeric' });
+}
+function _smChipToneByStatus_(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'APR') return 'green';
+  if (s === 'CA') return 'gold';
+  if (s === 'CNV') return 'navy';
+  return 'navy';
+}
+function _smReposTone_(estado) {
+  const s = String(estado || '').toUpperCase();
+  if (s === 'PENDIENTE_PAGO') return { bg:'#FFF4D6', border:'#E5A823', kicker:'#8A5A00', title:'#6C1A1A' };
+  if (s === 'AUTORIZADA' || s === 'PROGRAMADA') return { bg:'#EAF6EE', border:'#4CAF50', kicker:'#2E7D32', title:'#123524' };
+  return { bg:'#FFF7E8', border:'#E5A823', kicker:'#8A5A00', title:'#6C1A1A' };
+}
+function _smReposMensaje_(row) {
+  const s = String(row?.ESTADO || '').toUpperCase();
+  if (s === 'PENDIENTE_PAGO') return 'Administración indicó que la reposición requiere ₡10.000. Adjuntá el comprobante para habilitarla.';
+  if (s === 'AUTORIZADA' || s === 'PROGRAMADA') return 'Tu reposición ya fue autorizada. Revisá Exámenes para cuando se habilite la aplicación.';
+  return 'Enviá la solicitud dentro de las primeras 24 horas y adjuntá el respaldo. Administración definirá si procede sin costo o requiere ₡10.000.';
+}
+function _smBuildRepoEval_(r) {
+  return {
+    __kind: 'repo',
+    nivel: String(r?.NIVEL || '').toUpperCase(),
+    tipo: 'oral',
+    titulo: `${Number(r?.LECCION || 0) === 9 ? '1.er' : Number(r?.LECCION || 0) === 17 ? '2.º' : Number(r?.LECCION || 0) === 25 ? '3.er' : Number(r?.LECCION || 0) === 31 ? '4.º' : 'Examen'} Examen Oral · reposición`,
+    unidad: NIVEL_NOMBRE_SM[String(r?.NIVEL || '').toUpperCase()] || String(r?.NIVEL || '').toUpperCase(),
+    leccion: r?.LECCION || '',
+    fecha: _smFechaLarga_(r?.FECHA_ORIGINAL),
+    rawFecha: r?.FECHA_ORIGINAL || '',
+    nota: null,
+    max: 15,
+    pct: null,
+    estado: r?.ESTADO || 'PENDIENTE_JUSTIFICACION',
+    reposicion_id: r?.REPOSICION_ID || '',
+    solicitud_limite: r?.SOLICITUD_LIMITE || '',
+    fecha_limite: r?.FECHA_LIMITE || ''
+  };
+}
+function NotasView() {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   const codigo = usr?.codigo || '';
 
   const [evaluaciones, setEvaluaciones] = React.useState(null); // null=cargando, []=vacío
   const [evalErr, setEvalErr] = React.useState('');
+  const [reposRows, setReposRows] = React.useState([]);
+  const [reposErr, setReposErr] = React.useState('');
+
   React.useEffect(() => {
     if (!codigo) return;
     let cancelled = false;
     setEvalErr('');
-    postStudentModules('getMisNotasF921', { codigo })
+    setEvaluaciones(null);
+    postStudentModules('getEvaluacionesEstudiante', { codigo })
       .then(d => {
         if (cancelled) return;
         if (d?.ok && Array.isArray(d.evaluaciones)) setEvaluaciones(d.evaluaciones);
-        else { setEvaluaciones([]); }
+        else setEvaluaciones([]);
       })
       .catch(() => { if (!cancelled) { setEvaluaciones([]); setEvalErr('Sin conexión'); } });
+    return () => { cancelled = true; };
+  }, [codigo]);
+
+  React.useEffect(() => {
+    if (!codigo) return;
+    let cancelled = false;
+    setReposErr('');
+    postStudentModules('reposListarSolicitudesF92', { codigo })
+      .then(r => {
+        if (cancelled) return;
+        if (r?.ok && Array.isArray(r.rows)) setReposRows(r.rows);
+        else setReposRows([]);
+      })
+      .catch(() => { if (!cancelled) { setReposRows([]); setReposErr('Sin conexión'); } });
     return () => { cancelled = true; };
   }, [codigo]);
 
@@ -162,7 +242,6 @@ function NotasView({ onNavigate }) {
         title={<>Mis <em>Notas</em></>}
         sub="Historial de evaluaciones registradas por tu docente"
       />
-      <ReposicionStudentCardF92 onNavigate={onNavigate} />
       <GuardSesion usr={usr}>
         {loading && !data ? (
           <SkeletonTable />
@@ -173,6 +252,8 @@ function NotasView({ onNavigate }) {
             data={data}
             evaluaciones={evaluaciones}
             evalErr={evalErr}
+            reposRows={reposRows}
+            reposErr={reposErr}
           />
         )}
       </GuardSesion>
@@ -180,16 +261,41 @@ function NotasView({ onNavigate }) {
   );
 }
 
-function NotasContenido({ data, evaluaciones, evalErr }) {
-  const niveles     = data?.niveles || {};
+function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr }) {
+  const niveles = data?.niveles || {};
   const nivelActivo = calcularNivelActivoSM(niveles);
-  const notaActiva  = notaDeNivelSM(niveles, nivelActivo);
+  const nivelesDisponibles = ['B1','B2','I1','I2'].filter(n => {
+    const est = estatusDe(niveles, n);
+    const nota = notaDeNivelSM(niveles, n);
+    return !!(est || nota != null || n === nivelActivo);
+  });
+  const [selectedLevel, setSelectedLevel] = React.useState(nivelActivo || nivelesDisponibles[0] || 'B1');
+  const [filter, setFilter] = React.useState('all');
+  React.useEffect(() => {
+    if (nivelActivo) setSelectedLevel(prev => prev || nivelActivo);
+  }, [nivelActivo]);
 
-  const evs = Array.isArray(evaluaciones) ? evaluaciones : [];
-  const completed = evs.filter(e => e.nota != null);
-  const avg = completed.length
-    ? (completed.reduce((a, e) => a + Number(e.nota || 0), 0) / completed.length).toFixed(1)
+  const rawEvs = Array.isArray(evaluaciones) ? evaluaciones : [];
+  const repoEvs = (Array.isArray(reposRows) ? reposRows : [])
+    .filter(r => ['PENDIENTE_JUSTIFICACION','PENDIENTE_PAGO','AUTORIZADA','PROGRAMADA'].includes(String(r.ESTADO || '').toUpperCase()))
+    .map(_smBuildRepoEval_);
+
+  const mergedEvs = [...rawEvs.map(e => ({ ...e, __kind:'eval', nivel:_smNivelEval_(e), tipo_normalizado:_smEvalKind_(e) })), ...repoEvs];
+  const selected = selectedLevel || nivelActivo || nivelesDisponibles[0] || 'B1';
+  const rowsByLevel = mergedEvs.filter(e => (e.nivel || '').toUpperCase() === selected);
+  const visibleRows = rowsByLevel.filter(e => {
+    const kind = e.__kind === 'repo' ? 'oral' : (e.tipo_normalizado || _smEvalKind_(e));
+    return filter === 'all' ? true : kind === filter;
+  });
+
+  const completedLevel = rowsByLevel.filter(e => e.nota != null);
+  const avgLevel = completedLevel.length
+    ? (completedLevel.reduce((a,e) => a + Number(e.nota || 0), 0) / completedLevel.length).toFixed(1)
     : null;
+  const notaNivel = notaDeNivelSM(niveles, selected);
+  const estatusNivel = estatusDe(niveles, selected) || (selected === nivelActivo ? 'CA' : 'PE');
+  const pendingRepos = (Array.isArray(reposRows) ? reposRows : []).filter(r => String(r.NIVEL || '').toUpperCase() === selected && ['PENDIENTE_JUSTIFICACION','PENDIENTE_PAGO','AUTORIZADA','PROGRAMADA'].includes(String(r.ESTADO || '').toUpperCase()));
+  const pendingAlert = pendingRepos[0] || null;
 
   const gradeLetter = (pct) => {
     if (pct == null) return '—';
@@ -210,153 +316,122 @@ function NotasContenido({ data, evaluaciones, evalErr }) {
     return 'var(--danger)';
   };
 
-  const [filter, setFilter] = React.useState('all');
-
-  // Niveles del estudiante con nota
-  const nivelesConNota = Object.keys(niveles).filter(n => notaDeNivelSM(niveles, n) != null);
-
   return (
-    <>
-      <div className="grid-4" style={{ marginBottom: 24 }}>
-        <Stat
-          label="Nivel activo"
-          num={nivelActivo || '—'}
-          sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : 'Sin nivel activo'}
-          subTone=""
-          pct={0}
-          color={NIVEL_COLOR_SM[nivelActivo] || 'var(--an-granate)'}
-        />
-        <Stat
-          label="Nota del nivel"
-          num={notaActiva != null ? String(notaActiva) : '—'}
-          suffix={notaActiva != null ? '/100' : ''}
-          sub={notaActiva != null ? gradeLetter(notaActiva) : 'Sin evaluación final'}
-          subTone={notaActiva != null && notaActiva >= 70 ? 'ok' : ''}
-          pct={notaActiva || 0}
-          color="var(--an-granate)"
-        />
-        <Stat
-          label="Evaluaciones"
-          num={evaluaciones === null ? '…' : String(evs.length)}
-          sub={evs.length === 0 ? 'Sin evaluaciones registradas' : `${completed.length} con nota`}
-          subTone=""
-          pct={evs.length ? (completed.length / evs.length) * 100 : 0}
-          color="var(--an-navy)"
-        />
-        <Stat
-          label="Promedio de evaluaciones"
-          num={avg != null ? String(avg) : '—'}
-          suffix={avg != null ? '%' : ''}
-          sub={completed.length ? `${completed.length} con nota` : 'Sin datos aún'}
-          subTone={avg != null && Number(avg) >= 70 ? 'ok' : ''}
-          pct={avg != null ? Number(avg) : 0}
-          color="var(--an-gold)"
-        />
+    <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+      {pendingAlert && (() => {
+        const tone = _smReposTone_(pendingAlert.ESTADO);
+        return (
+          <section style={{ border:`1px solid ${tone.border}`, background:tone.bg, borderRadius:20, padding:18, boxShadow:'var(--sh-1)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:14, alignItems:'flex-start', flexWrap:'wrap' }}>
+              <div>
+                <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:tone.kicker }}>Alerta académica</div>
+                <div style={{ fontFamily:'var(--f-serif)', fontSize:30, lineHeight:1.02, color:tone.title, marginTop:4 }}>Solicitud de reposición pendiente</div>
+                <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:8, maxWidth:860, lineHeight:1.6 }}>
+                  <strong>Examen oral · Lección {String(pendingAlert.LECCION || '').padStart(2,'0')}</strong><br />
+                  Fecha original: {_smFechaLarga_(pendingAlert.FECHA_ORIGINAL)} · Solicitud hasta: {_smFechaLarga_(pendingAlert.SOLICITUD_LIMITE)} · Aplicación máxima: {_smFechaLarga_(pendingAlert.FECHA_LIMITE)}.<br />
+                  {_smReposMensaje_(pendingAlert)}
+                </div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8 }}>
+                <span style={{ padding:'7px 12px', borderRadius:999, background:'#fff', border:`1px solid ${tone.border}`, color:tone.kicker, fontSize:11, fontWeight:900 }}>{String(pendingAlert.ESTADO || '').replaceAll('_',' ')}</span>
+                <button className="btn btn-primary" type="button" onClick={() => { try { localStorage.setItem('an_active','solicitudes_estudiante'); } catch (_) {} window.location.reload(); }}>Ir a Solicitudes</button>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
+      <section className="card" style={{ padding:18 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-end', flexWrap:'wrap', marginBottom:14 }}>
+          <div>
+            <div className="card-title">Resumen por nivel</div>
+            <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>Al abrir la sección se muestra tu nivel actual. Podés cambiar al historial de niveles anteriores cuando lo necesités.</div>
+          </div>
+          <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:800 }}>{selected === nivelActivo ? 'Vista actual del nivel en curso' : 'Vista histórica seleccionada'}</div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:12 }}>
+          {['B1','B2','I1','I2'].map(n => {
+            const est = estatusDe(niveles, n) || (n === nivelActivo ? 'CA' : 'PE');
+            const nota = notaDeNivelSM(niveles, n);
+            const active = n === selected;
+            const color = NIVEL_COLOR_SM[n] || 'var(--an-navy)';
+            return (
+              <button key={n} type="button" onClick={() => setSelectedLevel(n)} style={{ border:`2px solid ${active ? color : 'var(--line)'}`, background:active ? `color-mix(in srgb, ${color} 8%, white)` : '#fff', borderRadius:18, padding:16, textAlign:'left', cursor:'pointer', fontFamily:'inherit', boxShadow: active ? '0 12px 26px -18px rgba(10,35,66,.38)' : 'none' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:'var(--ink-3)' }}>{NIVEL_NOMBRE_SM[n]}</span>
+                  {active && <span style={{ fontSize:10, fontWeight:900, color:color }}>{n===nivelActivo ? 'ACTUAL' : 'VISTA'}</span>}
+                </div>
+                <div style={{ fontFamily:'var(--f-serif)', fontSize:28, lineHeight:1, color: color, marginTop:8 }}>{n}</div>
+                <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4 }}>{nota != null ? `${nota}/100` : 'Sin nota final registrada'}</div>
+                <div style={{ marginTop:8 }}><Chip tone={_smChipToneByStatus_(est)} dot>{ESTATUS_LABEL_SM[est] || est || 'Pendiente'}</Chip></div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="grid-4">
+        <Stat label="Nivel consultado" num={selected || '—'} sub={NIVEL_NOMBRE_SM[selected] || 'Nivel no definido'} subTone="" pct={0} color={NIVEL_COLOR_SM[selected] || 'var(--an-navy)'} />
+        <Stat label="Nota final del nivel" num={notaNivel != null ? String(notaNivel) : '—'} suffix={notaNivel != null ? '/100' : ''} sub={notaNivel != null ? gradeLetter(notaNivel) : 'Sin cierre final'} subTone={notaNivel != null && notaNivel >= 70 ? 'ok' : ''} pct={notaNivel || 0} color="var(--an-granate)" />
+        <Stat label="Evaluaciones del nivel" num={evaluaciones === null ? '…' : String(rowsByLevel.length)} sub={rowsByLevel.length ? `${completedLevel.length} con nota` : 'Sin registros en este nivel'} subTone="" pct={rowsByLevel.length ? (completedLevel.length / rowsByLevel.length) * 100 : 0} color="var(--an-navy)" />
+        <Stat label="Promedio del nivel" num={avgLevel != null ? String(avgLevel) : '—'} suffix={avgLevel != null ? '%' : ''} sub={completedLevel.length ? `${completedLevel.length} evaluaciones calificadas` : 'Sin datos aún'} subTone={avgLevel != null && Number(avgLevel) >= 70 ? 'ok' : ''} pct={avgLevel != null ? Number(avgLevel) : 0} color="var(--an-gold)" />
       </div>
 
-      {/* Tabs */}
-      <div className="tabs">
-        {[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check']]
-          .map(([k, l]) => (
-            <button key={k} className={`tab ${filter===k?'active':''}`} onClick={() => setFilter(k)}>{l}</button>
-          ))}
-      </div>
-
-      {/* Tabla */}
-      <div className="card" style={{ padding: 0, overflow:'hidden' }}>
+      <section className="card" style={{ padding:0, overflow:'hidden' }}>
+        <div style={{ padding:'16px 18px 12px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+          <div>
+            <div className="card-title">Detalle de evaluaciones</div>
+            <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4 }}>Vista filtrada por <strong>{NIVEL_NOMBRE_SM[selected] || selected}</strong>. Si querés revisar otro nivel, seleccioná la tarjeta correspondiente arriba.</div>
+          </div>
+          <div className="tabs" style={{ margin:0 }}>
+            {[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check']].map(([k, l]) => (
+              <button key={k} className={`tab ${filter===k?'active':''}`} onClick={() => setFilter(k)}>{l}</button>
+            ))}
+          </div>
+        </div>
         <table className="table-soft">
           <thead>
             <tr>
-              <th>Lec.</th>
+              <th style={{ width:80 }}>Lec.</th>
               <th>Evaluación</th>
-              <th>Fecha</th>
-              <th style={{ textAlign:'right' }}>Puntaje</th>
-              <th style={{ textAlign:'right' }}>%</th>
-              <th style={{ textAlign:'center' }}>Nota</th>
+              <th style={{ width:180 }}>Fecha</th>
+              <th style={{ textAlign:'right', width:140 }}>Puntaje</th>
+              <th style={{ textAlign:'right', width:90 }}>%</th>
+              <th style={{ textAlign:'center', width:90 }}>Nota</th>
             </tr>
           </thead>
           <tbody>
             {evaluaciones === null ? (
               <tr><td colSpan={6} style={{ padding:24, textAlign:'center', color:'var(--ink-3)' }}>Cargando…</td></tr>
-            ) : evs.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding:'32px 16px', textAlign:'center', color:'var(--ink-3)' }}>
-                  {evalErr
-                    ? '— No se pudieron cargar las evaluaciones —'
-                    : 'Aún no tenés evaluaciones registradas. Aparecerán acá cuando tu docente las califique.'}
-                </td>
-              </tr>
+            ) : visibleRows.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding:'34px 16px', textAlign:'center', color:'var(--ink-3)' }}>{evalErr || reposErr ? 'No se pudieron cargar algunos registros.' : `No hay evaluaciones visibles para ${NIVEL_NOMBRE_SM[selected] || selected} con el filtro actual.`}</td></tr>
             ) : (
-              evs
-                .filter(e => filter === 'all' || (e.tipo || '').toLowerCase().startsWith(filter))
-                .map((e, i) => {
-                  const pct = e.nota != null && e.max ? Math.round((Number(e.nota) / Number(e.max)) * 100) : (e.pct ?? null);
-                  const grade = gradeLetter(pct);
-                  return (
-                    <tr key={i} style={{ opacity: e.nota == null ? 0.55 : 1 }}>
-                      <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-3)' }}>
-                        L{String(e.leccion ?? '—').padStart(2,'0')}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight:600 }}>{e.titulo || e.tipo || '—'}</div>
-                        {e.unidad && <div style={{ fontSize:11, color:'var(--ink-3)' }}>{e.unidad}</div>}
-                      </td>
-                      <td style={{ fontSize:12, color:'var(--ink-2)' }}>{e.fecha || '—'}</td>
-                      <td style={{ textAlign:'right', fontFamily:'var(--f-mono)' }}>
-                        {e.nota != null ? `${e.nota}${e.max ? '/' + e.max : ''}` : 'Pendiente'}
-                      </td>
-                      <td style={{ textAlign:'right', fontWeight:600 }}>
-                        {pct != null ? `${pct}%` : '—'}
-                      </td>
-                      <td style={{ textAlign:'center' }}>
-                        <span style={{
-                          display:'inline-flex', alignItems:'center', justifyContent:'center',
-                          width:36, height:36, borderRadius:10,
-                          background: pct != null ? `color-mix(in srgb, ${gradeColor(grade)} 14%, white)` : 'var(--bg-deep)',
-                          color: gradeColor(grade),
-                          fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600,
-                        }}>{grade}</span>
-                      </td>
-                    </tr>
-                  );
-                })
+              visibleRows.map((e, i) => {
+                const pct = e.nota != null && e.max ? Math.round((Number(e.nota) / Number(e.max)) * 100) : (e.pct ?? null);
+                const grade = gradeLetter(pct);
+                const isPending = e.nota == null;
+                const subtitle = e.__kind === 'repo' ? `Reposición · ${NIVEL_NOMBRE_SM[e.nivel] || e.nivel}` : (e.unidad || NIVEL_NOMBRE_SM[e.nivel] || '');
+                return (
+                  <tr key={i} style={{ opacity:isPending ? 0.82 : 1 }}>
+                    <td style={{ fontFamily:'var(--f-mono)', color:'var(--ink-3)' }}>L{String(e.leccion ?? '—').padStart(2,'0')}</td>
+                    <td>
+                      <div style={{ fontWeight:700, color:'var(--ink)' }}>{e.titulo || e.tipo || '—'}</div>
+                      {subtitle && <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:3 }}>{subtitle}</div>}
+                    </td>
+                    <td style={{ fontSize:12, color:'var(--ink-2)' }}>{e.fecha || '—'}</td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--f-mono)' }}>{e.nota != null ? `${e.nota}${e.max ? '/' + e.max : ''}` : 'Pendiente'}</td>
+                    <td style={{ textAlign:'right', fontWeight:700 }}>{pct != null ? `${pct}%` : '—'}</td>
+                    <td style={{ textAlign:'center' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:38, height:38, padding:'0 8px', borderRadius:10, background:pct != null ? `color-mix(in srgb, ${gradeColor(grade)} 14%, white)` : 'var(--bg-deep)', color:gradeColor(grade), fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600 }}>{pct != null ? grade : '—'}</span>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Historial de niveles cursados */}
-      {nivelesConNota.length > 0 && (
-        <div style={{ marginTop:24 }}>
-          <div className="card-h" style={{ padding:'0 4px' }}>
-            <div className="card-title">Notas finales por nivel</div>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:10 }}>
-            {nivelesConNota.map(n => {
-              const nota = notaDeNivelSM(niveles, n);
-              const estatus = estatusDe(niveles, n);
-              const c = NIVEL_COLOR_SM[n];
-              return (
-                <div key={n} className="card" style={{ padding:14, borderTop:`3px solid ${c}` }}>
-                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-                    {NIVEL_NOMBRE_SM[n]}
-                  </div>
-                  <div style={{ fontFamily:'var(--f-serif)', fontSize:28, fontWeight:600, color:'var(--ink)', marginTop:2, lineHeight:1 }}>
-                    {nota}
-                    <span style={{ fontSize:14, color:'var(--ink-3)' }}>/100</span>
-                  </div>
-                  <div style={{ marginTop:6 }}>
-                    <Chip tone={estatus==='APR' ? 'green' : estatus==='CA' ? 'gold' : 'navy'} dot>
-                      {ESTATUS_LABEL_SM[estatus] || estatus}
-                    </Chip>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </>
+      </section>
+    </div>
   );
 }
 
