@@ -1,9 +1,10 @@
+// F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
 // F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
-   ExamenOralView, GruposView, CalificarView, AsistenciaView, CronogramaDocenteSeguroF82,
+   ExamenOralView, GruposView, AsistenciaView, CronogramaDocenteSeguroF82,
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
@@ -147,7 +148,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F92.6`;
+  const src = `modulos/examenes.html?view=${view}&v=F92.7`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -192,15 +193,22 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
 }
 
 
-async function appPostF91(fn, payload = {}) {
+async function appPostF91(fn, payload = {}, timeoutMs = 18000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
-    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({ fn, token, ...payload }),
-  });
-  const data = await res.json();
-  if (!data?.ok) throw new Error(data?.mensaje || data?.error || 'No se pudo completar la operación.');
-  return data;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({ fn, token, ...payload }), signal:ctrl.signal,
+    });
+    const data = await res.json();
+    if (!data?.ok) throw new Error(data?.mensaje || data?.error || 'No se pudo completar la operación.');
+    return data;
+  } catch (e) {
+    if (e?.name === 'AbortError') throw new Error('La consulta tardó demasiado. Presioná Recargar para intentarlo de nuevo.');
+    throw e;
+  } finally { clearTimeout(timer); }
 }
 function reposEstadoF91(estado) {
   const e=String(estado||'').toUpperCase();
@@ -216,11 +224,13 @@ function ReposicionesPanelF91({ role='teacher', onNavigate }) {
   React.useEffect(()=>{load();},[load]);
   const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};let endpoint='reposResolverExamen';if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){endpoint='reposResolverSolicitudF92';const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;payload.admin_nota=nota;}if(accion==='CONFIRMAR_PAGO'){endpoint='reposResolverSolicitudF92';const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;payload.admin_nota=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};endpoint='reposProgramarEscrito';}if(accion==='COORDINAR_ORAL'){const fecha=window.prompt('Fecha tentativa de reposición (AAAA-MM-DD). Podés iniciar la prueba antes si ambos están disponibles:',row.FECHA_PROGRAMADA||row.FECHA_LIMITE||'');if(fecha===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_tentativa:fecha};endpoint='reposCoordinarOralF926';}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(endpoint,payload);await load();}catch(e){setError(e.message);}finally{setBusy('');}};
   const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
-  if(loading)return <div style={{padding:14,border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}>Cargando reposiciones…</div>;
-  if(error)return <div style={{padding:14,border:'1px solid #F0B9B9',borderRadius:14,background:'#FDECEA',color:'#8B1F1F'}}>{error}</div>;
-  if(!visible.length)return null;
+  const sectionTitle=role==='teacher'?'Reposiciones orales':'Reposiciones de examen';
+  const sectionKicker=role==='teacher'?'ORAL · AUTORIZACIONES':'CONTROL ADMINISTRATIVO';
+  if(loading)return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}><div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{sectionKicker}</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>{sectionTitle}</div></div><div style={{padding:18,color:'var(--ink-3)',fontSize:13}}>Consultando reposiciones autorizadas…</div></div>;
+  if(error)return <div style={{border:'1px solid #F0B9B9',borderRadius:14,background:'#fff',overflow:'hidden'}}><div style={{padding:'13px 15px',borderBottom:'1px solid #F0B9B9',background:'#FDECEA'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#8B1F1F'}}>{sectionKicker}</div><div style={{fontSize:18,fontWeight:900,marginTop:3,color:'#6B1717'}}>{sectionTitle}</div></div><div style={{padding:16,display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><span style={{fontSize:12,color:'#8B1F1F'}}>{error}</span><button className="btn btn-ghost" onClick={load}>Recargar</button></div></div>;
+  if(!visible.length)return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}><div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{sectionKicker}</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>{sectionTitle}</div></div><div style={{padding:18,color:'var(--ink-3)',fontSize:13}}>No hay reposiciones orales autorizadas pendientes.</div></div>;
   return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}>
-    <div style={{padding:'12px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{role==='teacher'?'REPOSICIONES ORALES AUTORIZADAS':'REPOSICIONES DE EXAMEN'}</div><div style={{fontSize:13,color:'var(--ink-2)',marginTop:3}}>{role==='teacher'?'Coordiná una fecha tentativa o iniciá la prueba cuando el estudiante esté disponible.':'Cada reposición es individual y conserva su fecha límite.'}</div></div>
+    <div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{sectionKicker}</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>{sectionTitle}</div><div style={{fontSize:12.5,color:'var(--ink-2)',marginTop:3}}>{role==='teacher'?'Coordiná una fecha tentativa o iniciá la prueba cuando el estudiante esté disponible.':'Cada reposición es individual y conserva su fecha límite.'}</div></div>
     <div style={{display:'flex',flexDirection:'column',gap:9,padding:10}}>{visible.map(row=>{const teacherAuthorized=role==='teacher'&&String(row.TIPO_EXAMEN||'').toUpperCase()==='ORAL';const [label0,ink0,bg0]=reposEstadoF91(row.ESTADO);const label=teacherAuthorized?(row.FECHA_PROGRAMADA?'FECHA TENTATIVA REGISTRADA':'PENDIENTE DE COORDINAR FECHA DE REPOSICIÓN'):label0;const ink=teacherAuthorized?'#0C4F86':ink0;const bg=teacherAuthorized?'#E7F1FA':bg0;const authorized=teacherAuthorized||['JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','PROGRAMADA'].includes(String(row.ESTADO||'').toUpperCase());return <div key={row.REPOSICION_ID} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'13px 14px',border:'1px solid var(--line)',borderRadius:12,background:teacherAuthorized?'linear-gradient(135deg,#fff 0%,#F7FBFF 100%)':'#fff'}}>
       <div><div style={{fontSize:13,fontWeight:850}}>{row.NOMBRE} <span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>#{row.COD_ESTUDIANTE}</span></div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{appTeacherGroupLabelF88(row.COD_GRUPO)} · Lección {String(row.LECCION).padStart(2,'0')} · {row.TIPO_EXAMEN} · límite {fechaF91(row.FECHA_LIMITE)}</div>{teacherAuthorized&&<div style={{fontSize:11.5,color:'#0C4F86',marginTop:5,fontWeight:750}}>Fecha tentativa: {row.FECHA_PROGRAMADA?fechaF91(row.FECHA_PROGRAMADA):'sin coordinar'} · La prueba puede iniciarse antes de esa fecha.</div>}<span style={{display:'inline-flex',marginTop:7,padding:'4px 8px',borderRadius:999,background:bg,color:ink,fontSize:9.5,fontWeight:900}}>{label}</span></div>
       <div style={{display:'flex',gap:7,flexWrap:'wrap',justifyContent:'flex-end'}}>{canResolve&&String(row.ESTADO).toUpperCase()==='PENDIENTE_JUSTIFICACION'&&<><button className="btn btn-ghost" disabled={!!busy} onClick={()=>act(row,'RECHAZAR_JUSTIFICACION')}>Requiere ₡10.000</button><button className="btn btn-primary" disabled={!!busy} onClick={()=>act(row,'APROBAR_JUSTIFICACION')}>Aprobar sin costo</button></>}{canResolve&&String(row.ESTADO).toUpperCase()==='PENDIENTE_PAGO'&&<button className="btn btn-primary" disabled={!!busy} onClick={()=>act(row,'CONFIRMAR_PAGO')}>Confirmar pago</button>}{role==='admin'&&authorized&&String(row.TIPO_EXAMEN).toUpperCase()==='ESCRITO'&&<button className="btn btn-primary" disabled={!!busy} onClick={()=>act(row,'PROGRAMAR_ESCRITO')}>Programar escrito</button>}{role==='teacher'&&teacherAuthorized&&<><button className="btn btn-ghost" disabled={!!busy} onClick={()=>act(row,'COORDINAR_ORAL')}>{row.FECHA_PROGRAMADA?'CAMBIAR FECHA TENTATIVA':'COORDINAR FECHA TENTATIVA'}</button><button className="btn btn-primary" disabled={!!busy} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{grupo:row.COD_GRUPO,nivel:row.NIVEL,leccion:Number(row.LECCION),fecha:row.FECHA_ORIGINAL,reposicion_id:row.REPOSICION_ID}})}>APLICAR REPOSICIÓN ORAL</button></>}</div>
@@ -248,6 +258,54 @@ function ExamenesAdminPanel() {
   </section>;
 }
 
+const APP_ORAL_DEFS_F927 = [
+  {key:'ORAL_1',leccion:9,titulo:'1.er Examen Oral'},
+  {key:'ORAL_2',leccion:17,titulo:'2.º Examen Oral'},
+  {key:'ORAL_3',leccion:25,titulo:'3.er Examen Oral'},
+  {key:'ORAL_4',leccion:31,titulo:'4.º Examen Oral'},
+];
+function appOralTypeF927(e){
+  const direct=String(e?.tipo_oficial||e?.tipo||'').toUpperCase();
+  if(APP_ORAL_DEFS_F927.some(d=>d.key===direct))return direct;
+  const t=String(e?.titulo||'').toLowerCase();
+  return t.includes('1.er examen oral')?'ORAL_1':t.includes('2.º examen oral')?'ORAL_2':t.includes('3.er examen oral')?'ORAL_3':t.includes('4.º examen oral')?'ORAL_4':'';
+}
+function appLevelOrderF927(n){return({B1:1,B2:2,I1:3,I2:4})[String(n||'').toUpperCase()]||0;}
+function StudentOralOverviewF927(){
+  const ses=typeof getSesion==='function'?getSesion():{};
+  const codigo=ses?.codigo||ses?.cedula||'';
+  const [state,setState]=React.useState({loading:true,error:'',evals:[],repos:[],nivelActivo:''});
+  const load=React.useCallback(()=>{
+    if(!codigo){setState({loading:false,error:'Sin código de estudiante.',evals:[],repos:[],nivelActivo:''});return;}
+    setState(s=>({...s,loading:true,error:''}));
+    Promise.all([appPostF91('getMisNotasF921',{codigo}),appPostF91('reposMiEstadoF92',{codigo})])
+      .then(([n,r])=>setState({loading:false,error:'',evals:n.evaluaciones||[],repos:r.rows||[],nivelActivo:n.nivel_activo||''}))
+      .catch(e=>setState({loading:false,error:e.message||String(e),evals:[],repos:[],nivelActivo:''}));
+  },[codigo]);
+  React.useEffect(()=>{load();},[load]);
+  const activeRepos=state.repos.filter(r=>!['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
+  const levels=[...new Set(state.evals.map(e=>String(e.nivel||'').toUpperCase()).filter(Boolean))].sort((a,b)=>appLevelOrderF927(a)-appLevelOrderF927(b));
+  const level=String(state.nivelActivo||activeRepos[0]?.NIVEL||ses?.nivel_activo||ses?.nivel||levels[levels.length-1]||'').toUpperCase();
+  const oralRows=APP_ORAL_DEFS_F927.map(def=>{
+    const ev=state.evals.find(e=>String(e.nivel||'').toUpperCase()===level&&appOralTypeF927(e)===def.key)||{};
+    const rep=activeRepos.find(r=>String(r.NIVEL||'').toUpperCase()===level&&Number(r.LECCION||0)===def.leccion)||null;
+    const registered=ev.registrada===true||String(ev.estado||'').toUpperCase()==='REGISTRADA';
+    let label='Sin nota registrada',tone='#991B1B',bg='#FDECEA';
+    if(registered){label=`Nota ${Number(ev.nota||0)}/${Number(ev.max||15)}`;tone='#176B36';bg='#E7F4EA';}
+    else if(rep){
+      const st=String(rep.ESTADO||'').toUpperCase(),sol=String(rep.SOLICITUD_ESTADO||'').toUpperCase();
+      if(['JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','AUTORIZADA','PROGRAMADA'].includes(st)){label=rep.FECHA_PROGRAMADA?`Fecha tentativa: ${fechaF91(rep.FECHA_PROGRAMADA)}`:'Autorizada · pendiente de coordinar';tone='#0C4F86';bg='#E7F1FA';}
+      else if(sol==='ENVIADA'||sol==='PAGO_REPORTADO'){label='Solicitud en proceso';tone='#805500';bg='#FFF4D6';}
+      else {label='Reposición pendiente';tone='#805500';bg='#FFF4D6';}
+    } else if(ev.fecha){label=`Programado: ${fechaF91(ev.fecha)}`;tone='#40516A';bg='#EEF2F7';}
+    return {...def,ev,rep,label,tone,bg};
+  });
+  return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}>
+    <div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>EVALUACIONES ORALES</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes orales · {level||'nivel actual'}</div></div>{state.error&&<button className="btn btn-ghost" onClick={load}>Recargar</button>}</div>
+    {state.loading?<div style={{padding:18,color:'var(--ink-3)'}}>Consultando evaluaciones orales…</div>:state.error?<div style={{padding:18,color:'#991B1B'}}>{state.error}</div>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:10,padding:12}}>{oralRows.map(r=><div key={r.key} style={{border:'1px solid var(--line)',borderRadius:12,padding:13}}><div style={{fontSize:12.5,fontWeight:850}}>{r.titulo}</div><div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>Lección {String(r.leccion).padStart(2,'0')}</div><span style={{display:'inline-flex',marginTop:9,padding:'5px 8px',borderRadius:999,background:r.bg,color:r.tone,fontSize:10,fontWeight:900}}>{r.label}</span></div>)}</div>}
+  </div>;
+}
+
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
@@ -255,25 +313,15 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const esOral=open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec));
   const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
   const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
-  const card=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
-    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>EXAMEN DE LA SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div>
-    <button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button>
-  </div>:null;
-  return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={<>{card}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate} /></>}/>;
+  const oralCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
+  :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes orales</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral activo en este momento.</div></div>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>Cada bloque muestra únicamente las acciones que corresponden al docente.</div></div>{oralCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/><div style={{padding:'13px 15px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>REVISIÓN DOCENTE</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes escritos por revisar</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:3}}>Entregas escritas reales pendientes de revisión y envío a Mis Notas.</div></div></>;
+  return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={top}/>;
 }
 
-// CALGRUPO_F37_20260617_EXAMENES_ESTUDIANTE_ROUTER
 function ExamenesStudentPanel() {
-  return (
-    <ExamenesIframePanel
-      view="student"
-      screenLabel="Estudiante · Exámenes"
-      eyebrow="Exámenes oficiales"
-      description="El sistema muestra únicamente el examen disponible según tu grupo, cronograma y activación oficial."
-      badge="Lección 18 / 32 · en vivo"
-      iframeTitle="Panel estudiante de exámenes"
-    />
-  );
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES OFICIALES</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Evaluaciones del nivel</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>Consultá el estado de tus exámenes orales y los escritos habilitados por cronograma.</div></div><StudentOralOverviewF927/><div style={{padding:'13px 15px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>APLICACIÓN EN LÍNEA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:3}}>Solo se habilitan durante la fecha y horario oficial asignados.</div></div></>;
+  return <ExamenesIframePanel hideHeader view="student" screenLabel="Estudiante · Exámenes" iframeTitle="Panel estudiante de exámenes" topContent={top}/>;
 }
 
 const { useState, useEffect } = React;
@@ -621,7 +669,6 @@ function App() {
       // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_ROUTER
       docente_operativo: <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} />,
       grupos:      <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} />,
-      calificar:   <CalificarView toast={toast} />,
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
       asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
       cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} />,

@@ -1,3 +1,4 @@
+// F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
 // F89_20260620_ACCESO_EXAMENES_Y_AVISO_CIERRE
 // F86_20260619_DOCENTE_ETIQUETAS_Y_APLICACION_ORAL
 // CALGRUPO_F82_20260619_MIS_GRUPOS_SEMANA_PROXIMA_LECCION_DRAWER
@@ -583,16 +584,19 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
 }
 function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
+  const [sessionCheck,setSessionCheck]=React.useState('loading');
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
-  const closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tvUpper(lesson?.tipo)==='EVAL_ORAL';
+  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tipoLeccion==='EVAL_ORAL';
+  const esEscrito=tipoLeccion==='EVAL_ESCRITO'||[18,32].includes(Number(lesson?.leccion||0));
+  const esExamen=esOral||esEscrito||[9,17,18,25,31,32].includes(Number(lesson?.leccion||0));
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado), abierta=estadoSesion==='ABIERTA', sesionCerrada=estadoSesion==='CERRADA';
   const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
   const oralListoParaCerrar=esOral && oralTotal>0 && Number(oralSummary?.cerradas||0)>=oralTotal;
   const oralContext={grupo:code,nivel,leccion:Number(lesson?.leccion||0),fecha:String(lesson?.fecha||'').slice(0,10)};
 
   const load=React.useCallback(()=>{
-    if(!lesson)return; setLoading(true);
+    if(!lesson)return; setLoading(true); setSessionCheck('loading');
     const calls=[
       postTeacher('getLeccionDetalle',{id_leccion:tvLessonIdF82(nivel,lesson.leccion),nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso'},30000),
       postTeacher('getDocenteSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion},30000),
@@ -600,7 +604,10 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     ];
     Promise.allSettled(calls).then(rs=>{
       const a=rs[0].status==='fulfilled'?rs[0].value:null, b=rs[1].status==='fulfilled'?rs[1].value:null, c=rs[2].status==='fulfilled'?rs[2].value:null;
-      setDetalle(a?.ok?a.leccion:null); setSesion(b?.ok?b.sesion:null); setOralSummary(c?.ok?c:null);
+      setDetalle(a?.ok?a.leccion:null);
+      if(b?.ok){ setSesion(b.sesion||null); setSessionCheck('ok'); }
+      else { setSesion(null); setSessionCheck('error'); }
+      setOralSummary(c?.ok?c:null);
     }).finally(()=>setLoading(false));
   },[lesson?.leccion,lesson?.fecha,lesson?.tipo,code,nivel,esOral]);
   React.useEffect(()=>{load();},[load]);
@@ -613,13 +620,15 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     try{
       const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',zoom_link:zoom});
       if(!r?.ok)throw new Error(r?.mensaje||r?.error||'No se pudo iniciar la clase.');
-      setSesion(r.sesion||r); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
+      setSesion(r.sesion||r); setSessionCheck('ok'); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
     }catch(e){alert(e.message||String(e));}finally{setBusy('');}
   };
   const abrirExamen=()=>{ if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
   const abrirCierre=()=>setAttendanceOpen(true);
   const detByStudent=asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[String(lesson?.leccion)]||{};
   const workflow=()=>{
+    if(loading||sessionCheck==='loading') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE',color:'var(--ink-3)',fontWeight:800,textAlign:'center'}}>VERIFICANDO ESTADO DE LA CLASE…</div>;
+    if(sessionCheck==='error') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><span style={{fontSize:12,color:'#8B1F1F',fontWeight:750}}>No se pudo verificar si la clase está abierta o cerrada. No hay acciones disponibles por seguridad.</span><button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button></div>;
     if(closed||sesionCerrada) return <button className="btn btn-primary" disabled style={{gridColumn:'1/-1',opacity:.7}}>CLASE CERRADA</button>;
     if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
     const bloqueadoPorOral=esOral&&!oralListoParaCerrar;
@@ -635,9 +644,11 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         <div style={{padding:20,overflowY:'auto',flex:1}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginBottom:16}}>
             {workflow()}
-            {abierta&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
-            <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
-            {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
+            {!loading&&sessionCheck==='ok'&&<>
+              {abierta&&esExamen&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
+              <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
+              {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
+            </>}
           </div>
           {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:oralListoParaCerrar?'#E8F5E9':'#EAF8EF',color:'#166534',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.{!oralListoParaCerrar?' Aplicá el examen antes de cerrar la clase.':''}</div>}
           {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Clase cerrada</div>}
@@ -655,7 +666,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         </div>
       </aside>
     </div>
-    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
+    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
     {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso'}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;
 }

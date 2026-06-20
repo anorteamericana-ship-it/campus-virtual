@@ -1,3 +1,4 @@
+// F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY
 /* global React, Icon, getSesion, setSesion */
 const { useState: _u1 } = React;
 
@@ -400,7 +401,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'home', badge: pendientesDoc || null },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
-    { id: 'calificar', label: 'Calificar', icon: 'grades' },
     // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
     // La asistencia docente se opera desde Cronograma académico; se elimina la pestaña duplicada.
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
