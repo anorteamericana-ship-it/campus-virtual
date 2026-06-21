@@ -1,3 +1,4 @@
+// CAMPUS_F94_0_20260621_BUNDLE_UNICO_BANDEJA_DOCENTE_ESCALABLE
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_UI
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_UI
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_UI
@@ -144,12 +145,18 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     setSaving(true);
     setSaveMsg(source === 'auto' ? 'Guardando automáticamente…' : 'Guardando…');
     try {
-      const r = await backend.onSave(answersRef.current || {});
-      if (r && r.ok) {
+      const r = await backend.onSave(answersRef.current || {}, { source });
+      if (r && r.ok && r.saved !== false && !r.deferred) {
         lastSavedJsonRef.current = snapshot;
         dirtyRef.current = false;
         setDirty(false);
         setSaveMsg(source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.');
+      } else if (r && r.ok && (r.deferred || r.saved === false)) {
+        // El servidor estaba atendiendo otros estudiantes. Conservamos el
+        // indicador de cambios pendientes y el próximo ciclo volverá a intentar.
+        dirtyRef.current = true;
+        setDirty(true);
+        setSaveMsg(r.mensaje || 'Autoguardado pospuesto; se intentará nuevamente.');
       } else {
         setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo guardar.');
       }
@@ -207,8 +214,20 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
 
   useEffect(() => {
     if (stage !== 'taking' || !(backend && backend.attemptId)) return;
-    const t = window.setInterval(() => { doSave('auto'); }, 25000);
-    return () => window.clearInterval(t);
+    let cancelled = false;
+    let timer = null;
+    const schedule = () => {
+      // F94.0: dispersa los autoguardados entre estudiantes para evitar que
+      // todos escriban en la hoja durante el mismo segundo.
+      const delay = 28000 + Math.floor(Math.random() * 9000);
+      timer = window.setTimeout(async () => {
+        if (cancelled) return;
+        await doSave('auto');
+        if (!cancelled) schedule();
+      }, delay);
+    };
+    schedule();
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer); };
   }, [stage, backend && backend.attemptId, doSave]);
 
   useEffect(() => {
@@ -466,6 +485,236 @@ function TeacherMode({ shell, density }) {
   return <TeacherWrittenLiveInbox />;
 }
 
+function examTeacherShortGroupF940(code) {
+  const raw = String(code || '').trim().toUpperCase();
+  const parts = raw.split('-').filter(Boolean);
+  if (!parts.length) return 'Grupo';
+  return `${parts[0] || 'Grupo'} · ${parts[parts.length - 1] || ''}`;
+}
+
+function examTeacherBucketLabelF940(row) {
+  const bucket = String(row && row.bucket || '').toUpperCase();
+  if (bucket === 'SUBMITTED_WITHOUT_REVIEW') return 'Pendiente de revisar';
+  if (bucket === 'IN_REVIEW') return 'Revisión iniciada';
+  if (bucket === 'CLOSED_NOT_PUSHED') return 'Lista · falta Mis Notas';
+  if (bucket === 'PUSHED') return 'En Mis Notas';
+  return String(row && row.REVIEW_STATUS || 'Pendiente');
+}
+
+function examTeacherActionLabelF940(row) {
+  const bucket = String(row && row.bucket || '').toUpperCase();
+  if (bucket === 'IN_REVIEW') return 'Continuar revisión';
+  if (bucket === 'CLOSED_NOT_PUSHED') return 'Abrir y enviar nota';
+  return 'Revisar examen';
+}
+
+function examTeacherDurationF940(sec) {
+  const n = Math.max(0, Number(sec) || 0);
+  if (!n) return '—';
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  return h ? `${h} h ${m} min` : `${m} min`;
+}
+
+function examTeacherAdjustmentsF940(raw) {
+  const parsed = parseJsonMaybe(raw) || {};
+  const marks = {};
+  const comments = {};
+  Object.keys(parsed.marks || {}).forEach(k => {
+    const n = Number(parsed.marks[k]);
+    if ([0, 0.5, 1].includes(n)) marks[k] = n;
+  });
+  Object.keys(parsed.comments || {}).forEach(k => { comments[k] = String(parsed.comments[k] || ''); });
+  return { marks, comments };
+}
+
+function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
+  const attemptId = String(row && row.ATTEMPT_ID || '').trim();
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+  const [attempt, setAttempt] = useState(null);
+  const [reviewData, setReviewData] = useState(null);
+  const [marks, setMarks] = useState({});
+  const [comments, setComments] = useState({});
+  const [openComment, setOpenComment] = useState(null);
+  const [internalComments, setInternalComments] = useState('');
+  const [studentFeedback, setStudentFeedback] = useState('');
+  const [scriptSec, setScriptSec] = useState(null);
+
+  const hydrateReview = useCallback((rev) => {
+    const adj = examTeacherAdjustmentsF940(rev && rev.MANUAL_ADJUSTMENTS_JSON);
+    setMarks(adj.marks);
+    setComments(adj.comments);
+    setInternalComments(String(rev && rev.COMMENTS || ''));
+    setStudentFeedback(String(rev && rev.STUDENT_FEEDBACK || ''));
+  }, []);
+
+  const load = useCallback(async () => {
+    if (!attemptId) { setLoading(false); setErr('La entrega no tiene ATTEMPT_ID.'); return; }
+    setLoading(true); setErr(''); setMsg('');
+    const attRes = await postExamBackend('examGetAttempt', { attempt_id:attemptId });
+    if (!attRes || attRes.ok === false || !attRes.attempt) {
+      setLoading(false);
+      setErr((attRes && (attRes.mensaje || attRes.error)) || 'No se pudo abrir la entrega.');
+      return;
+    }
+    setAttempt(attRes.attempt);
+
+    let revRes = null;
+    if (row && row.REVIEW_ID) {
+      revRes = await postExamBackend('examGetReview', { review_id:row.REVIEW_ID, attempt_id:attemptId });
+    } else {
+      const createRes = await postExamBackend('examCreateReviewDraft', { attempt_id:attemptId });
+      if (!createRes || createRes.ok === false) {
+        setLoading(false);
+        setErr((createRes && (createRes.mensaje || createRes.error)) || 'No se pudo preparar la revisión.');
+        return;
+      }
+      revRes = await postExamBackend('examGetReview', { review_id:createRes.review_id || (createRes.review && createRes.review.REVIEW_ID), attempt_id:attemptId });
+    }
+    if (!revRes || revRes.ok === false || !revRes.review) {
+      setLoading(false);
+      setErr((revRes && (revRes.mensaje || revRes.error)) || 'No se pudo cargar la revisión.');
+      return;
+    }
+    setReviewData(revRes.review);
+    hydrateReview(revRes.review);
+    setLoading(false);
+  }, [attemptId, row && row.REVIEW_ID, hydrateReview]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const exam = attempt ? ((window.EXAMS || {})[attempt.EXAM_ID] || null) : null;
+  const answers = useMemo(() => {
+    if (!attempt) return {};
+    return parseJsonMaybe(attempt.ANSWERS_JSON) || {};
+  }, [attempt && attempt.ANSWERS_JSON]);
+  const all = useMemo(() => exam ? examQuestions(exam) : [], [exam]);
+  const autoRows = useMemo(() => all.map(({ section, q, kind }) => {
+    const value = kind === 'match' ? getMatchVal(answers, q.n, section.letter) : answers[q.id];
+    return { id:kind === 'match' ? section.letter + q.n : q.id, ev:evalQuestion(section, q, value) };
+  }), [all, answers]);
+  const autoCorrect = autoRows.filter(x => x.ev.verdict === 'ok').length;
+  const needManual = autoRows.filter(x => x.ev.verdict === 'review').length;
+  const finalPoints = autoRows.reduce((sum, x) => {
+    const mark = marks[x.id];
+    return sum + (mark == null ? (x.ev.verdict === 'ok' ? 1 : 0) : Number(mark));
+  }, 0);
+  const calculated100 = all.length ? Math.round((finalPoints / all.length) * 100) : 0;
+  const status = String(reviewData && reviewData.REVIEW_STATUS || '').toUpperCase();
+  const closed = status === 'CLOSED' || String(reviewData && reviewData.LOCKED || '').toUpperCase() === 'SI';
+  const pushed = String(reviewData && reviewData.PUSHED_TO_NOTAS || '').toUpperCase() === 'SI';
+  const displayScore = closed && reviewData && reviewData.FINAL_SCORE_100 !== '' ? Number(reviewData.FINAL_SCORE_100) : calculated100;
+
+  const setMark = (id, value) => { if (!closed) setMarks(m => Object.assign({}, m, { [id]:value })); };
+  const setComment = (id, value) => { if (!closed) setComments(c => Object.assign({}, c, { [id]:value })); };
+  const reviewApi = { marks, setMark, comments, setComment, openComment, setOpenComment:(id)=>{ if (!closed) setOpenComment(id); }, locked:closed };
+
+  const payload = () => ({
+    review_id: reviewData && reviewData.REVIEW_ID,
+    final_score_100: calculated100,
+    comments: internalComments,
+    student_feedback: studentFeedback,
+    manual_adjustments: { marks, comments, source:'teacher_written_review_f94' }
+  });
+
+  const refreshReview = async () => {
+    const r = await postExamBackend('examGetReview', { review_id:reviewData && reviewData.REVIEW_ID, attempt_id:attemptId });
+    if (r && r.ok && r.review) { setReviewData(r.review); hydrateReview(r.review); }
+    return r;
+  };
+
+  const saveDraft = async () => {
+    if (!reviewData || !reviewData.REVIEW_ID) return;
+    setBusy('save'); setErr(''); setMsg('');
+    const r = await postExamBackend('examSaveReviewDraft', payload());
+    setBusy('');
+    if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo guardar la revisión.'); return; }
+    await refreshReview();
+    setMsg('Borrador guardado. Podés continuar revisando más tarde.');
+    if (onDone) onDone(false);
+  };
+
+  const closeAndPush = async () => {
+    if (!reviewData || !reviewData.REVIEW_ID || closed) return;
+    const ok = window.confirm(`Se cerrará la revisión con nota ${calculated100}/100 y se enviará a Mis Notas. Después no podrá editarse. ¿Continuar?`);
+    if (!ok) return;
+    setBusy('close'); setErr(''); setMsg('');
+    const r = await postExamBackend('examCloseReview', Object.assign(payload(), { push_to_notas:'SI' }), 35000);
+    setBusy('');
+    if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo cerrar la revisión.'); return; }
+    await refreshReview();
+    setMsg(r.pushed_to_notas === 'SI' ? 'Revisión cerrada y nota enviada a Mis Notas.' : 'La revisión se cerró, pero Mis Notas no confirmó el envío. Usá “Enviar a Mis Notas”.');
+    if (onDone) onDone(true);
+  };
+
+  const pushToNotas = async () => {
+    if (!reviewData || !reviewData.REVIEW_ID || pushed) return;
+    setBusy('push'); setErr(''); setMsg('');
+    const r = await postExamBackend('examPushReviewToNotas', { review_id:reviewData.REVIEW_ID, source:'teacher_written_review_f94' }, 35000);
+    setBusy('');
+    if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }
+    await refreshReview();
+    setMsg('Nota enviada a Mis Notas.');
+    if (onDone) onDone(true);
+  };
+
+  if (loading) return <div className="tch-review-loading"><div className="exam-boot-spinner" /><b>Abriendo entrega y preparando revisión…</b></div>;
+  if (err && !attempt) return <div className="tch-review-error"><b>No se pudo abrir la entrega.</b><span>{err}</span><div><button className="btn-sm" onClick={onBack}>Volver</button><button className="ad-meta-btn" onClick={load}>Reintentar</button></div></div>;
+  if (!exam) return <div className="tch-review-error"><b>El examen de esta entrega no existe en el catálogo publicado.</b><span>{attempt && attempt.EXAM_ID || 'EXAM_ID no disponible'}</span><button className="btn-sm" onClick={onBack}>Volver</button></div>;
+
+  const tema = NIVEL_TEMA[exam.nivel];
+  return (
+    <div className="tchrev tchrev-live" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
+      <ScriptModal section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
+      <aside className="rev-side">
+        <button className="rev-back" onClick={onBack}>← Entregas del grupo</button>
+        <div className="rev-live-tag">REVISIÓN OFICIAL</div>
+        <div className="rev-stud">
+          <h3>{attempt.NOMBRE || row.NOMBRE || 'Estudiante'}</h3>
+          <div className="rev-meta"><span>Código</span>{attempt.CODIGO || '—'}</div>
+          <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
+          <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '—'}</div>
+          <div className="rev-meta"><span>Enviado</span>{normalizeBackendDate(attempt.SUBMITTED_AT) || '—'}</div>
+          <div className="rev-meta"><span>Tiempo</span>{examTeacherDurationF940(attempt.TIME_SPENT_SEC)}</div>
+        </div>
+
+        <div className="rev-prelim">
+          <div className="rev-prelim-h">Cálculo de la revisión</div>
+          <div className="rev-prelim-row"><span>Auto correctas</span><b>{autoCorrect}/{all.length}</b></div>
+          <div className="rev-prelim-row warn"><span>Revisión manual</span><b>{needManual}</b></div>
+          <div className="rev-prelim-row"><span>Ajustes realizados</span><b>{Object.keys(marks).length}</b></div>
+          <div className="rev-note">Revisá cada respuesta marcada en amarillo. La nota no llega a Mis Notas hasta cerrar.</div>
+        </div>
+
+        <div className="rev-score">
+          <div className="rev-score-num" style={{ color:tema.ink }}>{displayScore}</div>
+          <div className="rev-score-lbl">Nota actual · {closed ? 'cerrada' : `${finalPoints}/${all.length} pts`}</div>
+        </div>
+
+        <label className="rev-field"><span>Retroalimentación para el estudiante</span><textarea className="rev-fb" disabled={closed} placeholder="Qué hizo bien y qué debe corregir…" value={studentFeedback} onChange={e=>setStudentFeedback(e.target.value)} /></label>
+        <label className="rev-field"><span>Observación interna</span><textarea className="rev-fb compact" disabled={closed} placeholder="Nota interna opcional…" value={internalComments} onChange={e=>setInternalComments(e.target.value)} /></label>
+
+        {msg && <div className="rev-live-ok">✓ {msg}</div>}
+        {err && <div className="rev-live-err">⚠ {err}</div>}
+        {!closed && <button className="btn-ghost" disabled={!!busy} onClick={saveDraft}>{busy === 'save' ? 'Guardando…' : 'Guardar y continuar después'}</button>}
+        {!closed && <button className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Cerrando…' : `Cerrar con ${calculated100}/100 y enviar`}</button>}
+        {closed && !pushed && <button className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando…' : 'Enviar a Mis Notas'}</button>}
+        {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
+      </aside>
+
+      <div className="rev-main">
+        <ExamShell exam={exam} answers={answers} mode="review" showKey={true}
+          shell="premium" density="compact" review={reviewApi}
+          onOpenScript={setScriptSec}
+          meta={{ nombre:attempt.NOMBRE || '', fecha:normalizeBackendDate(attempt.SUBMITTED_AT), grupo:attempt.COD_GRUPO || '', opcion:String(exam.opcion || '').toUpperCase(), scoreLabel:`${displayScore} / 100` }} />
+      </div>
+    </div>
+  );
+}
+
 function TeacherWrittenLiveInbox() {
   const grupos = examTeacherSessionGroups();
   const [grupo, setGrupo] = useState(grupos[0] || '');
@@ -474,76 +723,89 @@ function TeacherWrittenLiveInbox() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
+  const [selected, setSelected] = useState(null);
 
-  const load = async () => {
+  useEffect(() => {
+    if (!grupos.length) return;
+    if (!grupo || !grupos.includes(grupo)) setGrupo(grupos[0]);
+  }, [grupos.join('|')]);
+
+  const load = async (silent) => {
     const g = String(grupo || '').trim();
     if (!g) {
       setRows([]); setSummary(null); setMsg('');
-      setErr('No tenés un grupo asignado para revisar exámenes.');
+      setErr('No se encontró un grupo docente asignado para consultar entregas.');
       return;
     }
-    setLoading(true); setErr(''); setMsg('');
+    setLoading(true); setErr(''); if (!silent) setMsg('');
     const r = await postExamBackend('examReviewInbox', { cod_grupo:g, queue:'NEEDS_ACTION', limit:120 });
     setLoading(false);
     if (r && r.ok) {
       setRows(Array.isArray(r.rows) ? r.rows : []);
       setSummary(r.summary || null);
-      setMsg(`Actualizado · ${r.total || 0} entrega(s).`);
+      if (!silent) setMsg(`Actualizado · ${r.total || 0} entrega(s) requieren atención.`);
     } else {
       setRows([]); setSummary(null);
-      setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja real de revisiones.');
+      setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [grupo]);
+  useEffect(() => { setSelected(null); load(true); /* eslint-disable-next-line */ }, [grupo]);
+
+  if (selected) return <TeacherWrittenBackendReviewF940 row={selected} onBack={()=>{ setSelected(null); load(true); }} onDone={()=>load(true)} />;
 
   const counts = summary || {};
+  const pendingCount = Number(counts.needs_action != null ? counts.needs_action : rows.length) || 0;
+  const pushedCount = Number(counts.pushed_to_notas || 0) || 0;
+
   return (
     <div className="tchwrap">
-      <div className="tch-head">
+      <div className="tch-head tch-head-explain">
         <div>
-          <div className="tch-kicker">EXÁMENES ESCRITOS</div>
-          <h2 className="tch-title">Exámenes escritos por revisar</h2>
+          <div className="tch-kicker">ENTREGAS DEL ESTUDIANTE</div>
+          <h2 className="tch-title">Exámenes escritos entregados</h2>
+          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. Si nadie ha presionado “Enviar examen”, no aparecerá ninguna persona.</p>
         </div>
         <div className="tch-stats">
-          <div className="tch-stat"><b>{counts.needs_action || rows.length || 0}</b><span>requieren acción</span></div>
-          <div className="tch-stat"><b>{counts.pushed || 0}</b><span>en Mis Notas</span></div>
+          <div className="tch-stat"><b>{pendingCount}</b><span>requieren atención</span></div>
+          <div className="tch-stat"><b>{pushedCount}</b><span>ya están en Mis Notas</span></div>
         </div>
       </div>
 
-      <div className="tch-realbox always-open">
-        <div className="tch-realbox-b">
-          <div className="tch-realrow">
-            {grupos.length > 1 ? (
-              <select value={grupo} onChange={e=>setGrupo(e.target.value)}>
-                {grupos.map(g => <option key={g} value={g}>{examTeacherGroupLabelF88(g)}</option>)}
-              </select>
-            ) : (
-              <input value={grupo ? examTeacherGroupLabelF88(grupo) : 'Sin grupo asignado'} readOnly />
-            )}
-            <button className="btn-sm" disabled={loading || !grupo} onClick={load}>{loading ? 'Consultando…' : 'Recargar'}</button>
-          </div>
-          {msg && <div className="ex-okmsg">✓ {msg}</div>}
-          {err && <div className="ex-errmsg">⚠ {err}</div>}
+      <div className="tch-groups-panel">
+        <div className="tch-groups-label">ELEGÍ EL GRUPO CON UNA TARJETA</div>
+        <div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
+          {grupos.length ? grupos.map(g => (
+            <button key={g} type="button" role="tab" aria-selected={grupo===g}
+              className={`tch-group-card${grupo===g?' active':''}`}
+              onClick={()=>setGrupo(g)}>
+              <span>{examTeacherGroupLabelF88(g)}</span>
+              <small>{examTeacherShortGroupF940(g)}</small>
+            </button>
+          )) : <div className="tch-group-empty">Sin grupos asignados en la sesión.</div>}
+          <button type="button" className="tch-refresh" disabled={loading || !grupo} onClick={()=>load(false)}>{loading ? 'Actualizando…' : 'Actualizar entregas'}</button>
         </div>
+        {msg && <div className="ex-okmsg">✓ {msg}</div>}
+        {err && <div className="ex-errmsg">⚠ {err}</div>}
       </div>
 
-      <table className="tch-table">
-        <thead><tr><th>Estudiante</th><th>Grupo</th><th>Examen</th><th>Intento</th><th>Estado revisión</th><th>Mis Notas</th></tr></thead>
-        <tbody>
-          {!rows.length && <tr><td colSpan="6"><div className="actempty">No hay entregas reales pendientes para este grupo.</div></td></tr>}
-          {rows.map((r, i) => (
-            <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>
-              <td><b>{r.NOMBRE || r.CODIGO || '—'}</b><span className="tch-code">{r.CODIGO || r.COD_ESTUDIANTE || '—'}</span></td>
-              <td>{examTeacherGroupLabelF88(r.COD_GRUPO || grupo)}</td>
-              <td>{r.NIVEL || '—'} · {r.EXAM_ID || r.TEST_CODE || r.LECCION || '—'}</td>
-              <td>{r.ATTEMPT_STATUS || r.STATUS || r.bucket || '—'}</td>
-              <td><span className="tch-pill">{r.REVIEW_STATUS || 'SIN_REVISIÓN'}</span></td>
-              <td>{String(r.PUSHED_TO_NOTAS || '').toUpperCase() === 'SI' ? 'Enviado' : 'Pendiente'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="tch-table-wrap">
+        <table className="tch-table">
+          <thead><tr><th>Estudiante</th><th>Examen</th><th>Enviado</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody>
+            {!rows.length && <tr><td colSpan="5"><div className="tch-empty-state"><b>No hay exámenes enviados que requieran atención.</b><span>Que el examen esté activo no significa que ya haya entregas. La lista cambia cuando el estudiante termina y presiona “Enviar examen”.</span></div></td></tr>}
+            {rows.map((r, i) => (
+              <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>
+                <td><b>{r.NOMBRE || r.CODIGO || '—'}</b><span className="tch-code">{r.CODIGO || r.COD_ESTUDIANTE || '—'}</span></td>
+                <td><b>{r.NIVEL || '—'} · Lección {r.LECCION || (String(r.TEST_CODE||'').toUpperCase()==='TEST2'?32:18)}</b><span className="tch-code">{r.EXAM_ID || r.TEST_CODE || '—'}</span></td>
+                <td>{normalizeBackendDate(r.SUBMITTED_AT || r.UPDATED_AT) || '—'}</td>
+                <td><span className={`tch-pill bucket-${String(r.bucket||'').toLowerCase()}`}>{examTeacherBucketLabelF940(r)}</span></td>
+                <td><button type="button" className="tch-review-open" onClick={()=>setSelected(r)}>{examTeacherActionLabelF940(r)}</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -706,20 +968,32 @@ function getExamAppsScriptUrl() {
   return window.APPS_SCRIPT_URL || '';
 }
 
-async function postExamBackend(fn, payload = {}) {
+async function postExamBackend(fn, payload = {}, timeoutMs = 25000) {
   const url = getExamAppsScriptUrl();
   const token = getExamParentToken();
   if (!url) return { ok:false, error:'apps_script_url_no_disponible', mensaje:'No se encontró APPS_SCRIPT_URL desde el campus padre.' };
-  if (!token) return { ok:false, error:'token_no_disponible', mensaje:'No se encontró token de sesión admin/superadmin.' };
+  if (!token) return { ok:false, error:'token_no_disponible', mensaje:'No se encontró el token de la sesión activa.' };
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = window.setTimeout(() => { try { if (controller) controller.abort(); } catch (_) {} }, timeoutMs);
   try {
     const res = await fetch(`${url}?fn=${encodeURIComponent(fn)}`, {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body:JSON.stringify(Object.assign({ fn, token }, payload || {})),
+      signal:controller ? controller.signal : undefined,
+      cache:'no-store',
     });
-    return await res.json();
+    const raw = await res.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : {}; }
+    catch (_) { return { ok:false, error:'respuesta_backend_no_json', mensaje:`Apps Script respondió en formato inválido (HTTP ${res.status}).` }; }
+    if (!res.ok && data && data.ok !== false) return Object.assign({}, data, { ok:false, error:data.error || `http_${res.status}`, mensaje:data.mensaje || `Apps Script respondió con HTTP ${res.status}.` });
+    return data;
   } catch (e) {
+    if (e && e.name === 'AbortError') return { ok:false, error:'backend_timeout', mensaje:'La consulta tardó más de 25 segundos. Presioná Actualizar para reintentar.' };
     return { ok:false, error:'conexion', mensaje:e && e.message ? e.message : String(e) };
+  } finally {
+    window.clearTimeout(timer);
   }
 }
 

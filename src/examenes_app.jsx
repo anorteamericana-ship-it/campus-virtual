@@ -1,11 +1,11 @@
-// CAMPUS_F93_0_20260620_CARGA_EXAMENES_ESTABLE_TIMEOUT
+// CAMPUS_F94_0_20260621_BUNDLE_UNICO_CARGA_CONFIRMADA
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_APP
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_APP
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_APP
 // CALGRUPO_F48_20260617_CENTRO_DIAGNOSTICO_EXAMENES_APP
 /* global React, ReactDOM, NIVEL_TEMA, StudentMode, TeacherMode, AdminMode, ExamShell, EXAM_I2_T1_A, themedExam */
 // examenes_app.jsx — shell + barra de control (auditoría / tweaks)
-// F93.0: no destructurar hooks en el ámbito global. examenes_modes.jsx ya
+// F94.0: no destructurar hooks en el ámbito global. examenes_modes.jsx ya
 // declara esos nombres y los scripts clásicos comparten el mismo entorno léxico.
 
 const VIEWS = [
@@ -332,8 +332,9 @@ function StudentLiveExamApp() {
     }
     return r;
   };
-  const saveAttempt = async (answers) => {
-    return await examPostLive('examSaveAttemptDraft', { attempt_id: attemptId, answers, client_meta:{ source:'student_iframe_f43_save', answered:Object.keys(answers || {}).length } });
+  const saveAttempt = async (answers, meta = {}) => {
+    const source = meta && meta.source === 'auto' ? 'student_iframe_f94_auto_save' : 'student_iframe_f94_manual_save';
+    return await examPostLive('examSaveAttemptDraft', { attempt_id: attemptId, answers, client_meta:{ source, answered:Object.keys(answers || {}).length } });
   };
   const submitAttempt = async (answers, meta = {}) => {
     const autoSubmit = !!(meta && meta.autoSubmit);
@@ -674,5 +675,16 @@ function PvScript({ section, exam, onClose }) {
 
 const EXAM_ROOT_F930 = document.getElementById('root');
 ReactDOM.createRoot(EXAM_ROOT_F930).render(<App />);
-window.__EXAMENES_BOOT_OK__ = true;
-try { EXAM_ROOT_F930.setAttribute('data-exam-boot', 'F93.0'); } catch (_) {}
+// Confirmar el montaje real, no solo que el archivo alcanzó la última línea.
+// Si React falla durante el primer render, el cargador de examenes.html conserva
+// el control y muestra el error en lugar de dejar una pantalla vacía.
+(function confirmExamMountF940(tries) {
+  try {
+    if (EXAM_ROOT_F930 && EXAM_ROOT_F930.querySelector('.exapp')) {
+      window.__EXAMENES_BOOT_OK__ = true;
+      EXAM_ROOT_F930.setAttribute('data-exam-boot', 'F94.0');
+      return;
+    }
+  } catch (_) {}
+  if (tries < 25) window.setTimeout(() => confirmExamMountF940(tries + 1), 100);
+})(0);

@@ -238,14 +238,14 @@ function ReviewBar({ id, section, q, val, review }) {
       <span className="exrev-key">Clave: <b>{ev.key || '—'}</b></span>
       <div className="exrev-pts">
         {[0, 0.5, 1].map(p => (
-          <button key={p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
+          <button key={p} disabled={!!review.locked} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
         ))}
       </div>
-      <button className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>
+      <button disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>
         {review.comments[id] ? '✎ comentario' : '+ comentario'}
       </button>
       {open && (
-        <textarea className="exrev-c" autoFocus placeholder="Comentario para el estudiante…"
+        <textarea className="exrev-c" disabled={!!review.locked} autoFocus placeholder="Comentario para el estudiante…"
           value={review.comments[id]||''} onChange={e=>review.setComment(id, e.target.value)} />
       )}
     </div>

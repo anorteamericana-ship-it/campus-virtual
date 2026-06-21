@@ -1,4 +1,4 @@
-// F93.0_20260620_EXAMENES_CARGA_ESTABLE
+// F94.0_20260620_EXAMENES_CARGA_ESTABLE
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
 // F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
@@ -149,7 +149,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
 // del campus principal y no toca Apps Script ni endpoints.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F93.0`;
+  const src = `modulos/examenes.html?view=${view}&v=F94.0`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -179,6 +179,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
+          key={`${view}-F94.0`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
@@ -336,13 +337,13 @@ function WrittenSessionCardF929({ session }) {
   const title=lec===18?'1.er Examen Escrito':'2.º Examen Escrito';
   return <div style={{padding:'15px 17px',border:`2px solid ${state.assigned?'#2B8A57':state.error?'#C43C3C':'#0C4F86'}`,borderRadius:14,background:state.assigned?'#EAF8EF':state.error?'#FDECEA':'#E7F1FA',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
     <div>
-      <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:state.assigned?'#197044':state.error?'#8B1F1F':'#0C4F86'}}>ESCRITO · SESIÓN ACTIVA</div>
+      <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:state.assigned?'#197044':state.error?'#8B1F1F':'#0C4F86'}}>ESCRITO · HABILITADO AUTOMÁTICAMENTE</div>
       <div style={{fontSize:19,fontWeight:900,color:state.assigned?'#145C38':state.error?'#6B1717':'#083B66',marginTop:3}}>{title}</div>
       <div style={{fontSize:12,color:'var(--ink-2)',marginTop:3}}>{appTeacherGroupLabelF88(group)} · Lección {String(lec).padStart(2,'0')}</div>
-      <div style={{fontSize:12.5,color:'var(--ink-2)',marginTop:5}}>{state.loading?'Habilitando el examen para los estudiantes…':state.assigned?'El examen está disponible. Los estudiantes ya pueden abrirlo desde Exámenes.':state.error||state.data?.mensaje||'No se pudo habilitar el examen escrito.'}</div>
+      <div style={{fontSize:12.5,color:'var(--ink-2)',marginTop:5}}>{state.loading?'Habilitando el examen para los estudiantes…':state.assigned?'No tenés que presionar ningún botón: el examen ya está disponible para los estudiantes y permanecerá abierto hasta cerrar la clase.':state.error||state.data?.mensaje||'No se pudo habilitar el examen escrito.'}</div>
     </div>
     <div style={{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}}>
-      {state.assigned&&<span style={{padding:'7px 11px',borderRadius:999,background:'#fff',border:'1px solid #2B8A57',color:'#197044',fontSize:10.5,fontWeight:900}}>ACTIVO</span>}
+      {state.assigned&&<div aria-label="Examen disponible para estudiantes" style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:999,background:'#fff',border:'1px solid #2B8A57',color:'#197044',fontSize:10.5,fontWeight:900}}><span aria-hidden="true" style={{width:8,height:8,borderRadius:'50%',background:'#2B8A57',boxShadow:'0 0 0 4px rgba(43,138,87,.12)'}}/>DISPONIBLE PARA ESTUDIANTES</div>}
       {!state.loading&&!state.assigned&&<button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button>}
     </div>
   </div>;

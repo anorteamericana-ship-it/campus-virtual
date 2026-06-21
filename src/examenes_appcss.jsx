@@ -458,6 +458,47 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 @media(max-width:900px){ .closure-grid{ grid-template-columns:1fr; } }
 
 
+
+/* F94.0 · bandeja docente clara y selector de grupos integrado */
+.tch-head-explain{align-items:flex-start;gap:24px}
+.tch-help{max-width:650px;margin:8px 0 0;color:var(--ink-3);font-size:12.5px;line-height:1.55}
+.tch-groups-panel{padding:14px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#F8FAFE}
+.tch-groups-label{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;color:var(--ink-3);font-weight:800;margin-bottom:8px}
+.tch-groups-row{display:flex;align-items:stretch;gap:9px;flex-wrap:wrap}
+.tch-group-card{min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--an-navy-ink);font-family:var(--f-sans);cursor:pointer;text-align:left;transition:.15s ease}
+.tch-group-card:hover{border-color:#8AA6C4;box-shadow:0 5px 16px rgba(0,38,82,.08)}
+.tch-group-card.active{border:2px solid var(--an-navy);padding:9px 12px;background:#EEF4FB;box-shadow:0 6px 18px rgba(0,38,82,.10)}
+.tch-group-card span{font-size:12.5px;font-weight:800}
+.tch-group-card small{font-family:var(--f-mono);font-size:9.5px;color:var(--ink-3)}
+.tch-refresh{margin-left:auto;align-self:center;padding:10px 15px;border:0;border-radius:10px;background:var(--an-navy);color:#fff;font-family:var(--f-sans);font-size:11.5px;font-weight:800;cursor:pointer}
+.tch-refresh:disabled{opacity:.5;cursor:not-allowed}
+.tch-group-empty{padding:11px 13px;border:1px dashed var(--line-2);border-radius:10px;color:var(--ink-3);font-size:12px}
+.tch-table-wrap{overflow:auto}
+.tch-empty-state{display:flex;flex-direction:column;align-items:center;gap:5px;padding:30px 18px;color:var(--ink-3);text-align:center}
+.tch-empty-state b{color:var(--an-navy-ink);font-size:14px}
+.tch-empty-state span{max-width:560px;font-size:12px;line-height:1.5}
+@media(max-width:760px){.tch-head-explain{flex-direction:column}.tch-stats{width:100%;justify-content:flex-start}.tch-group-card{min-width:100%}.tch-refresh{width:100%;margin-left:0}.tch-table{min-width:780px}}
+
+
+/* F94.0 · revisión docente real y accionable */
+.tch-review-open{border:0;border-radius:9px;background:var(--an-navy);color:#fff;padding:8px 11px;font-family:var(--f-sans);font-size:10.5px;font-weight:800;white-space:nowrap;cursor:pointer}
+.tch-review-open:hover{filter:brightness(1.08)}
+.tch-pill.bucket-submitted_without_review{background:#FBF1D8;color:#7B5600;border-color:#EAD9A8}
+.tch-pill.bucket-in_review{background:#E2EFF8;color:#0C447C;border-color:#C7DFF0}
+.tch-pill.bucket-closed_not_pushed{background:#EEE8F7;color:#5B3F91;border-color:#D9CDEE}
+.tch-review-loading,.tch-review-error{min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center;color:var(--ink-2)}
+.tch-review-loading .exam-boot-spinner{width:28px;height:28px;border:3px solid #DCE7F3;border-top-color:#003B7A;border-radius:50%;animation:examspin .8s linear infinite}
+.tch-review-error{border:1px solid #F1B8B1;background:#FFF7F6;border-radius:14px;margin:18px;color:#8E2B20}
+.tch-review-error b{font-size:17px}.tch-review-error span{max-width:620px;font-size:12.5px;line-height:1.5}.tch-review-error>div{display:flex;gap:8px}
+.tchrev-live{align-items:start}
+.rev-live-tag{display:inline-flex;width:max-content;padding:5px 9px;border-radius:999px;background:#E7F1FA;color:#0C4F86;font-family:var(--f-mono);font-size:9px;font-weight:900;letter-spacing:.1em;margin-bottom:10px}
+.rev-field{display:flex;flex-direction:column;gap:5px;margin-top:10px}.rev-field>span{font-family:var(--f-mono);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.rev-fb.compact{min-height:70px}
+.rev-live-ok,.rev-live-err{margin-top:10px;padding:9px 10px;border-radius:9px;font-size:11.5px;line-height:1.45}
+.rev-live-ok{background:#E4F3E5;border:1px solid #BFE1C1;color:#1F6B25}.rev-live-err{background:#FBE6E3;border:1px solid #F1B8B1;color:#8E2B20}
+.exrev-p:disabled,.exrev-cbtn:disabled,.exrev-c:disabled{cursor:not-allowed;opacity:.65}
+@media(max-width:760px){.tch-review-open{width:100%}.tchrev-live{display:block}.tchrev-live .rev-side{margin-bottom:14px}}
+
 @media print{ .cbar,.cbar-banner,.admbar,.tch-head,.tch-realbox,.rev-side{display:none!important;} .app,.exam-app,.preview-wrap{padding:0!important;margin:0!important;background:#fff!important;} }
 `;
 (function(){
