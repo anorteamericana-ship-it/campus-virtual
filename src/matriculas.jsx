@@ -768,7 +768,7 @@ function MStep6({ form, set, errors, accentColor, nivelMeta, descuento, matFinal
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div>
               <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, letterSpacing:'-0.01em' }}>Proforma de Matrícula</div>
-              <div style={{ fontSize:10, opacity:0.75, marginTop:2 }}>Academia Norteamericana Internacional · INA Resolución 2519</div>
+              <div style={{ fontSize:10, opacity:0.75, marginTop:2 }}>Academia Norteamericana Internacional · Programa INA</div>
             </div>
             <div style={{ textAlign:'right', fontSize:11, opacity:0.8 }}>
               <div>Fecha: {new Date().toLocaleDateString('es-CR')}</div>

@@ -459,7 +459,7 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 
 
 
-/* F94.0 · bandeja docente clara y selector de grupos integrado */
+/* F95.0 · bandeja docente clara y selector de grupos integrado */
 .tch-head-explain{align-items:flex-start;gap:24px}
 .tch-help{max-width:650px;margin:8px 0 0;color:var(--ink-3);font-size:12.5px;line-height:1.55}
 .tch-groups-panel{padding:14px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#F8FAFE}
@@ -480,7 +480,7 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 @media(max-width:760px){.tch-head-explain{flex-direction:column}.tch-stats{width:100%;justify-content:flex-start}.tch-group-card{min-width:100%}.tch-refresh{width:100%;margin-left:0}.tch-table{min-width:780px}}
 
 
-/* F94.0 · revisión docente real y accionable */
+/* F95.0 · revisión docente real y accionable */
 .tch-review-open{border:0;border-radius:9px;background:var(--an-navy);color:#fff;padding:8px 11px;font-family:var(--f-sans);font-size:10.5px;font-weight:800;white-space:nowrap;cursor:pointer}
 .tch-review-open:hover{filter:brightness(1.08)}
 .tch-pill.bucket-submitted_without_review{background:#FBF1D8;color:#7B5600;border-color:#EAD9A8}

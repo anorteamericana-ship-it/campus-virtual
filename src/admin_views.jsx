@@ -789,7 +789,7 @@ function Step1({ form, set, errors, nivel }) {
       <SectionTitle>Modelo del grupo</SectionTitle>
       <Opt value="ina" current={form.modelo} onChange={() => set('modelo','ina')} accent="var(--an-navy)">
         <div>
-          <div style={{ fontWeight:700, fontSize:15 }}>Con INA <span style={{ fontWeight:400, fontSize:12, color:'var(--ink-3)' }}>· Acreditado INA Resolución 2519</span></div>
+          <div style={{ fontWeight:700, fontSize:15 }}>Con INA <span style={{ fontWeight:400, fontSize:12, color:'var(--ink-3)' }}>· Acreditado por INA</span></div>
           <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:3 }}>128h totales (96h curso + 32h Club I CAN) · Certificado oficial INA · Compatible con CONAPE</div>
         </div>
       </Opt>
@@ -2292,7 +2292,7 @@ function AdminDashboard({ setActive }) {
             <div className="hero-sub">Vista ejecutiva · {k.grupos ?? grupos.length} grupos activos · {k.docentes ?? '—'} docentes · {k.activos ?? '—'} estudiantes matriculados</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
               <Chip tone="granate" dot>Período activo</Chip>
-              <Chip tone="navy">INA Resolución 2519</Chip>
+              <Chip tone="navy">Programa INA</Chip>
               <Chip tone="gold">CONAPE aprobado</Chip>
               <button onClick={handleSyncConape} disabled={syncing} style={{
                 background: '#1565C0', color: 'white', border: 'none',

@@ -1,4 +1,4 @@
-// CAMPUS_F94_0_20260621_BUNDLE_UNICO_BANDEJA_DOCENTE_ESCALABLE
+// CAMPUS_F95_0_20260621_BUNDLE_UNICO_BANDEJA_DOCENTE_ESCALABLE
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_UI
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_UI
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_UI
@@ -217,7 +217,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     let cancelled = false;
     let timer = null;
     const schedule = () => {
-      // F94.0: dispersa los autoguardados entre estudiantes para evitar que
+      // F95.0: dispersa los autoguardados entre estudiantes para evitar que
       // todos escriban en la hoja durante el mismo segundo.
       const delay = 28000 + Math.floor(Math.random() * 9000);
       timer = window.setTimeout(async () => {
@@ -617,7 +617,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     final_score_100: calculated100,
     comments: internalComments,
     student_feedback: studentFeedback,
-    manual_adjustments: { marks, comments, source:'teacher_written_review_f94' }
+    manual_adjustments: { marks, comments, source:'teacher_written_review_f95' }
   });
 
   const refreshReview = async () => {
@@ -653,7 +653,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const pushToNotas = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || pushed) return;
     setBusy('push'); setErr(''); setMsg('');
-    const r = await postExamBackend('examPushReviewToNotas', { review_id:reviewData.REVIEW_ID, source:'teacher_written_review_f94' }, 35000);
+    const r = await postExamBackend('examPushReviewToNotas', { review_id:reviewData.REVIEW_ID, source:'teacher_written_review_f95' }, 35000);
     setBusy('');
     if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }
     await refreshReview();

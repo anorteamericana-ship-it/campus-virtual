@@ -93,7 +93,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
         <div className="exh-main">
           <div className="exh-brand">
             <img className="exh-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
-            <span className="exh-org">Academia Norteamericana <i>· Programa Inglés Conversacional · 2519-P-6813</i></span>
+            <span className="exh-org">Academia Norteamericana <i>· Programa Inglés Conversacional</i></span>
           </div>
           <div className="exh-kicker">{tema.nombre.toUpperCase()}</div>
           <h1 className="exh-title">{exam.titulo}</h1>

@@ -381,9 +381,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   }, [rolEfectivo, active]);
 
   const studentNav = [
-    // CALGRUPO_F37_20260617_PORTAL_ESTUDIANTE_MENU
-    { id: 'portal_estudiante', label: 'Mi Campus', icon: 'home' },
-    { id: 'dashboard', label: 'Inicio', icon: 'home' },
+    // F95.0: una sola entrada. Conserva el dashboard completo y adopta el nombre Mi Campus.
+    { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
     { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
     { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
     { id: 'info_programa', label: 'Información del Programa', icon: 'doc' },

@@ -1,4 +1,4 @@
-// F94.0_20260620_EXAMENES_CARGA_ESTABLE
+// F95.0_20260620_EXAMENES_CARGA_ESTABLE
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
 // F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
@@ -144,12 +144,11 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
   </div>;
 }
 
-// ── Exámenes escritos — integración por iframe interno sin backend ───────
-// El módulo ya existe y monta su propio React sobre modulos/examenes.html.
-// Por eso se integra como iframe interno: no duplica EXAMS, no mezcla scripts
-// del campus principal y no toca Apps Script ni endpoints.
+// ── Exámenes escritos — iframe aislado con backend oficial ───────────────
+// El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
+// Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F94.0`;
+  const src = `modulos/examenes.html?view=${view}&v=F95.0`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -179,7 +178,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
-          key={`${view}-F94.0`}
+          key={`${view}-F95.0`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
@@ -321,11 +320,30 @@ function StudentOralOverviewF927(){
   </div>;
 }
 
+function TeacherWrittenPreviewModalF950({ activation, group, leccion, onClose }) {
+  if (!activation) return null;
+  const nivel=activation.NIVEL||activation.nivel||'';
+  const test=activation.TEST_CODE||activation.test_code||(Number(leccion)===32?'TEST2':'TEST1');
+  const opcion=activation.OPCION||activation.opcion||'A';
+  const plan=String(activation.PLAN||activation.plan||'CON_INA').toLowerCase();
+  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F95.0`;
+  return <div role="dialog" aria-modal="true" aria-label="Modelo del examen escrito" style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,20,48,.72)',padding:18,display:'flex',alignItems:'stretch',justifyContent:'center'}} onClick={onClose}>
+    <div style={{width:'min(1500px,100%)',height:'calc(100vh - 36px)',background:'#F7F3EC',borderRadius:18,overflow:'hidden',boxShadow:'0 26px 80px rgba(0,0,0,.35)',display:'flex',flexDirection:'column'}} onClick={e=>e.stopPropagation()}>
+      <div style={{padding:'11px 14px',background:'#fff',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+        <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>MODELO DEL EXAMEN · SOLO DOCENTE</div><div style={{fontSize:15,fontWeight:900,marginTop:2}}>{appTeacherGroupLabelF88(group)} · {nivel} · {test==='TEST2'?'2.º escrito':'1.er escrito'} · Opción {opcion}</div></div>
+        <button className="btn btn-ghost" type="button" onClick={onClose}>CERRAR MODELO</button>
+      </div>
+      <iframe key={src} title="Modelo del examen para el docente" src={src} style={{width:'100%',flex:1,border:0,display:'block'}} loading="eager" referrerPolicy="same-origin" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" />
+    </div>
+  </div>;
+}
+
 function WrittenSessionCardF929({ session }) {
   const lec=Number(session?.LECCION||session?.leccion||0);
   const group=session?.COD_GRUPO||session?.cod_grupo||'';
   const level=session?.NIVEL||session?.nivel||'';
   const [state,setState]=React.useState({loading:true,error:'',assigned:false,data:null});
+  const [previewOpen,setPreviewOpen]=React.useState(false);
   const load=React.useCallback(()=>{
     if(!group||!level||![18,32].includes(lec)){setState({loading:false,error:'',assigned:false,data:null});return;}
     setState({loading:true,error:'',assigned:false,data:null});
@@ -335,18 +353,22 @@ function WrittenSessionCardF929({ session }) {
   },[group,level,lec]);
   React.useEffect(()=>{load();},[load]);
   const title=lec===18?'1.er Examen Escrito':'2.º Examen Escrito';
-  return <div style={{padding:'15px 17px',border:`2px solid ${state.assigned?'#2B8A57':state.error?'#C43C3C':'#0C4F86'}`,borderRadius:14,background:state.assigned?'#EAF8EF':state.error?'#FDECEA':'#E7F1FA',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
-    <div>
-      <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:state.assigned?'#197044':state.error?'#8B1F1F':'#0C4F86'}}>ESCRITO · HABILITADO AUTOMÁTICAMENTE</div>
-      <div style={{fontSize:19,fontWeight:900,color:state.assigned?'#145C38':state.error?'#6B1717':'#083B66',marginTop:3}}>{title}</div>
-      <div style={{fontSize:12,color:'var(--ink-2)',marginTop:3}}>{appTeacherGroupLabelF88(group)} · Lección {String(lec).padStart(2,'0')}</div>
-      <div style={{fontSize:12.5,color:'var(--ink-2)',marginTop:5}}>{state.loading?'Habilitando el examen para los estudiantes…':state.assigned?'No tenés que presionar ningún botón: el examen ya está disponible para los estudiantes y permanecerá abierto hasta cerrar la clase.':state.error||state.data?.mensaje||'No se pudo habilitar el examen escrito.'}</div>
+  const activation=state.data?.activation||null;
+  return <>
+    <div style={{padding:'15px 17px',border:`2px solid ${state.assigned?'#2B8A57':state.error?'#C43C3C':'#0C4F86'}`,borderRadius:14,background:state.assigned?'#EAF8EF':state.error?'#FDECEA':'#E7F1FA',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+      <div>
+        <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:state.assigned?'#197044':state.error?'#8B1F1F':'#0C4F86'}}>ESCRITO · HABILITADO AUTOMÁTICAMENTE</div>
+        <div style={{fontSize:19,fontWeight:900,color:state.assigned?'#145C38':state.error?'#6B1717':'#083B66',marginTop:3}}>{title}</div>
+        <div style={{fontSize:12,color:'var(--ink-2)',marginTop:3}}>{appTeacherGroupLabelF88(group)} · Lección {String(lec).padStart(2,'0')}</div>
+        <div style={{fontSize:12.5,color:'var(--ink-2)',marginTop:5}}>{state.loading?'Habilitando el examen para los estudiantes…':state.assigned?'El examen está abierto para el grupo. Usá el modelo para revisar preguntas, reproducir audio o mostrar solo lo que necesités en pantalla.':state.error||state.data?.mensaje||'No se pudo habilitar el examen escrito.'}</div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}}>
+        {state.assigned&&<button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>setPreviewOpen(true)}>VER MODELO DEL EXAMEN</button>}
+        {!state.loading&&!state.assigned&&<button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button>}
+      </div>
     </div>
-    <div style={{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}}>
-      {state.assigned&&<div aria-label="Examen disponible para estudiantes" style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:999,background:'#fff',border:'1px solid #2B8A57',color:'#197044',fontSize:10.5,fontWeight:900}}><span aria-hidden="true" style={{width:8,height:8,borderRadius:'50%',background:'#2B8A57',boxShadow:'0 0 0 4px rgba(43,138,87,.12)'}}/>DISPONIBLE PARA ESTUDIANTES</div>}
-      {!state.loading&&!state.assigned&&<button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button>}
-    </div>
-  </div>;
+    {previewOpen&&<TeacherWrittenPreviewModalF950 activation={activation} group={group} leccion={lec} onClose={()=>setPreviewOpen(false)} />}
+  </>;
 }
 
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
@@ -568,7 +590,12 @@ function App() {
     : rolReal === 'student'   ? 'student'
     : null;
 
-  const [active, setActive] = useState(() => localStorage.getItem('an_active') || 'dashboard');
+  const [active, setActive] = useState(() => {
+    const saved = localStorage.getItem('an_active') || 'dashboard';
+    // F95.0: el antiguo "Mi Campus" se fusionó con Inicio. Conservamos
+    // compatibilidad con pestañas abiertas y localStorage de versiones previas.
+    return saved === 'portal_estudiante' ? 'dashboard' : saved;
+  });
   const [toastMsg, setToastMsg] = useState('');
   const [pendingLesson, setPendingLesson] = useState(null);
   // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
@@ -695,8 +722,8 @@ function App() {
   if (role === 'student') {
     const map = {
       cronograma_grupo: <CronogramaGrupo rol="student" onNavigate={navigateTo} />,
-      // CALGRUPO_F37_20260617_PORTAL_ESTUDIANTE_ROUTER
-      portal_estudiante: <StudentPortalView toast={toast} onNavigate={navigateTo} />,
+      // F95.0: alias de compatibilidad; ambos nombres abren el nuevo Mi Campus.
+      portal_estudiante: <StudentDashboard toast={toast} onNavigate={navigateTo} />,
       dashboard:    <StudentDashboard toast={toast} onNavigate={navigateTo} />,
       notas:        <NotasView toast={toast} onNavigate={navigateTo} />,
       tareas:       <TareasView toast={toast} />,

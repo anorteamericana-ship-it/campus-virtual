@@ -386,7 +386,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
         sub={`${libro}${cefr ? ' · ' + cefr + ' · MCER' : ''} — libro, audios, PDFs y recursos por lección`}
         right={
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {esINA && <Chip tone="navy">INA 2519</Chip>}
+            {esINA && <Chip tone="navy">Programa INA</Chip>}
             {cefr && <Chip tone="gold">{cefr} · MCER</Chip>}
             <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={irCronograma}>← Cronograma académico</button>
           </div>

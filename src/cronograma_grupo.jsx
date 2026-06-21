@@ -1358,7 +1358,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
   const cuando  = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : dias > 1 ? `En ${dias} días` : '—';
   const d       = parseISO(prox.fecha);
   const diaSem  = d ? ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()] : '';
-  const programaLbl = meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'INA · Resolución 2519' : 'Programa propio';
+  const programaLbl = meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>

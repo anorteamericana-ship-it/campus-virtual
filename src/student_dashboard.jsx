@@ -73,6 +73,60 @@ function notaDeNivel(niveles, nivel) {
   return null;
 }
 
+// F95.0 — un nivel seleccionado controla objetivo, cronograma, asistencia y nota.
+function estatusDeNivelSD(niveles, nivel) {
+  const v = niveles && niveles[nivel];
+  return String((typeof v === 'object' && v ? (v.estatus ?? v.ESTATUS) : v) || 'PE').toUpperCase();
+}
+function grupoDeNivelSD(niveles, nivel, fallback) {
+  const v = niveles && niveles[nivel];
+  if (v && typeof v === 'object') {
+    return v.grupo || v.GRUPO || v.cod_grupo || v.COD_GRUPO || v.codigo_grupo || v.CODIGO_GRUPO || fallback || '';
+  }
+  return fallback || '';
+}
+function sufijoGrupoSD(codGrupo) {
+  const parts = String(codGrupo || '').trim().split('-').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : '';
+}
+function horarioGrupoCompletoSD(grupo, codGrupo) {
+  const dias = String(grupo?.DIAS_TEXT || grupo?.DIAS || grupo?.HORARIO_DIAS || grupo?.dias_text || '').trim();
+  const hora = String(grupo?.HORA_TEXT || grupo?.HORA || grupo?.HORARIO || grupo?.hora_text || '').trim();
+  const sufijo = sufijoGrupoSD(codGrupo);
+  let base = '';
+  if (dias || hora) {
+    if (dias && hora) {
+      const nd = dias.toLowerCase().replace(/\s+/g, ' ');
+      const nh = hora.toLowerCase().replace(/\s+/g, ' ');
+      base = nd.includes(nh) ? dias : `${dias} de ${hora}`;
+    } else {
+      base = dias || hora;
+    }
+  } else {
+    const raw = String(codGrupo || '').trim().toUpperCase();
+    const m = raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/) || raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);
+    const day = ({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]] || '';
+    const hours = ({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]] || '';
+    base = `${day}${hours ? ' de ' + hours : ''}`.trim();
+  }
+  if (!base && !sufijo) return '';
+  return `${base || 'Grupo'}${sufijo ? ' - ' + sufijo : ''}`;
+}
+function registrosAsistenciaNivelSD(asistencia, nivel, codGrupo) {
+  const all = Array.isArray(asistencia?.asistencia) ? asistencia.asistencia : [];
+  if (!all.length) return all;
+  const n = String(nivel || '').toUpperCase();
+  const g = String(codGrupo || '').toUpperCase();
+  const hasNivel = all.some(a => String(a?.nivel || a?.NIVEL || '').trim());
+  const hasGrupo = all.some(a => String(a?.cod_grupo || a?.COD_GRUPO || a?.grupo || a?.GRUPO || '').trim());
+  const filtered = all.filter(a => {
+    const an = String(a?.nivel || a?.NIVEL || '').toUpperCase();
+    const ag = String(a?.cod_grupo || a?.COD_GRUPO || a?.grupo || a?.GRUPO || '').toUpperCase();
+    return (!hasNivel || !n || an === n) && (!hasGrupo || !g || ag === g);
+  });
+  return filtered.length || hasNivel || hasGrupo ? filtered : all;
+}
+
 function useRetroalimentacion(codigo) {
   const [data, setData] = React.useState(null);
   React.useEffect(() => {
@@ -203,10 +257,15 @@ function StudentDashboard({ toast, onNavigate }) {
   const pendientes = data?.pendientes  || {};
 
   const codGrupo     = grupo.CODIGO_GRUPO || est.GRUPO || usr?.grupo || usr?.grupoActivo || '';
-  // Nivel activo real; si no hay, inferimos del código de grupo para PODER
-  // consultar el cronograma (caso 1794). Para textos usamos solo el real.
+  // Nivel académico real y nivel que el estudiante está consultando en la ruta.
   const nivelReal    = calcularNivelActivo(niveles, usr?.nivel_activo);
-  const nivelParaCal = nivelReal || inferirNivelDesdeGrupo(codGrupo);
+  const nivelInicial = nivelReal || inferirNivelDesdeGrupo(codGrupo) || 'B1';
+  const [nivelVista, setNivelVista] = React.useState('');
+  React.useEffect(() => {
+    setNivelVista(nivelInicial);
+  }, [nivelReal, codGrupo]);
+  const nivelSeleccionado = nivelVista || nivelInicial;
+  const codGrupoSeleccionado = grupoDeNivelSD(niveles, nivelSeleccionado, codGrupo);
   const esConape     = est.CONVENIO === 'CONAPE';
   const cedula       = est.CEDULA || est.NUM_CEDULA || usr?.cedula || null;
   const programa     = grupo.PROGRAMA || usr?.programa || 'SIN_INA';
@@ -215,7 +274,7 @@ function StudentDashboard({ toast, onNavigate }) {
   // Hooks que dependen de los datos derivados — siempre se ejecutan.
   const asistencia    = useAsistencia(codigo);
   const retroData     = useRetroalimentacion(codigo);
-  const lecciones     = useProximasLecciones(codGrupo, nivelParaCal);
+  const lecciones     = useProximasLecciones(codGrupoSeleccionado, nivelSeleccionado);
   const conapeEstado  = useEstadoConape(esConape ? cedula : null);
   const evaluaciones  = useEvaluaciones(codigo);
   const icanData      = useICAN(codigo, esINA);
@@ -251,23 +310,23 @@ function StudentDashboard({ toast, onNavigate }) {
   }
 
   // ── Datos derivados de presentación ─────────────────────────────────
-  const nivelNombre  = NIVEL_NOMBRE[nivelReal] || '';
+  const nivelNombre  = NIVEL_NOMBRE[nivelSeleccionado] || '';
   const docente      = grupo.DOCENTE || '';
   const docenteCorto = docente ? docente.split(' ').slice(0,2).join(' ') : '';
 
   // Nombre COMPLETO (no solo el primer nombre).
   const nombreCompleto = nombreCompletoLegible(est.NOMBRE || usr.nombre || '') || '—';
 
-  // Asistencia derivada (campo unificado)
+  // Asistencia y nota del nivel elegido en Ruta académica.
   let asistPresentes = null, asistTotal = null, asistPct = null;
-  if (asistencia && Array.isArray(asistencia.asistencia)) {
-    asistTotal     = asistencia.asistencia.length;
-    asistPresentes = asistencia.asistencia.filter(esPresente).length;
+  const asistenciaVista = registrosAsistenciaNivelSD(asistencia, nivelSeleccionado, codGrupoSeleccionado);
+  if (Array.isArray(asistenciaVista)) {
+    asistTotal     = asistenciaVista.length;
+    asistPresentes = asistenciaVista.filter(esPresente).length;
     asistPct       = asistTotal ? Math.round((asistPresentes / asistTotal) * 100) : null;
   }
 
-  // Nota acumulada — del nivel activo
-  const notaActiva = notaDeNivel(niveles, nivelReal);
+  const notaActiva = notaDeNivel(niveles, nivelSeleccionado);
 
   // Progreso del módulo / próximos exámenes
   let cerradas = 0, totalLecciones = 0, progresoPct = 0;
@@ -286,10 +345,12 @@ function StudentDashboard({ toast, onNavigate }) {
   }
   const cronoPublicado = Array.isArray(lecciones) && lecciones.length > 0;
 
-  // Chips de niveles
-  const nivelesChips = ['B1','B2','I1','I2']
-    .map(n => ({ nivel: n, estatus: typeof niveles[n] === 'object' ? niveles[n]?.estatus : niveles[n] }))
-    .filter(x => x.estatus);
+  // La ruta siempre muestra los cuatro niveles; los pendientes no desaparecen.
+  const nivelesRuta = ['B1','B2','I1','I2'].map(n => ({
+    nivel:n,
+    estatus:estatusDeNivelSD(niveles,n),
+    nota:notaDeNivel(niveles,n),
+  }));
 
   // STUDENT-ACCESS-CALENDAR-001: el Dashboard se adapta al estado de acceso.
   // Derivado de los datos de getEstudiante (sin fetch extra). Solo cambia la
@@ -327,16 +388,13 @@ function StudentDashboard({ toast, onNavigate }) {
           <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
         </div>
       )}
-      {/* ── BLOQUE OBLIGATORIO · ANTES DE EMPEZAR (primer bloque — INA/CONAPE) ─ */}
-      <AntesDeEmpezar codigo={codigo} onNavigate={go} />
-
       {/* ── SALUDO (nombre completo) ─────────────────────────────────── */}
       <div className="hero" style={{ marginBottom: 18 }}>
         <div className="watermark-a">A</div>
         <div className="hero-grid">
           <div>
             <div className="hero-kicker">
-              {codGrupo ? `Grupo ${codGrupo}` : 'Tu campus'}
+              {horarioGrupoCompletoSD(grupo, codGrupo)}
               {docenteCorto && ` · Prof. ${docenteCorto}`}
             </div>
             <h1 className="hero-h1">
@@ -345,17 +403,10 @@ function StudentDashboard({ toast, onNavigate }) {
             </h1>
             <div className="hero-sub">
               {nivelReal
-                ? <>Estás cursando <strong>{nivelNombre}</strong> — {NIVEL_LIBRO[nivelReal]}.</>
+                ? nivelSeleccionado === nivelReal
+                  ? <>Estás cursando <strong>{nivelNombre}</strong> — {NIVEL_LIBRO[nivelSeleccionado]}.</>
+                  : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
                 : <>Tu nivel activo aparecerá acá cuando tu matrícula esté procesada.</>}
-            </div>
-            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginTop:14 }}>
-              {nivelesChips.length > 0 ? (
-                nivelesChips.map(({ nivel, estatus }) => (
-                  <NivelChip key={nivel} nivel={nivel} estatus={estatus} activo={nivel === nivelReal} />
-                ))
-              ) : (
-                <span style={{ fontSize:12, color:'var(--ink-3)' }}>Sin niveles registrados aún.</span>
-              )}
             </div>
           </div>
 
@@ -373,8 +424,17 @@ function StudentDashboard({ toast, onNavigate }) {
         </div>
       </div>
 
-      {/* ── RESUMEN ACADÉMICO (dinámico por nivel real) ──────────────── */}
-      <ResumenAcademico nivelReal={nivelReal} programa={programa} />
+      <RutaAcademicaDashboard
+        niveles={nivelesRuta}
+        nivelActivo={nivelReal}
+        nivelSeleccionado={nivelSeleccionado}
+        onSelect={setNivelVista}
+      />
+
+      <AccesosRapidosDashboard onNavigate={go} />
+
+      {/* ── RESUMEN ACADÉMICO: cambia al tocar un nivel ─────────────── */}
+      <ResumenAcademico nivelReal={nivelSeleccionado} programa={programa} />
 
       {/* ── KPIs ─────────────────────────────────────────────────────── */}
       <div className="grid-4" style={{ marginBottom: 18 }}>
@@ -391,7 +451,7 @@ function StudentDashboard({ toast, onNavigate }) {
           label="Nota acumulada"
           num={notaActiva != null ? String(notaActiva) : '—'}
           suffix={notaActiva != null ? '/100' : ''}
-          sub={notaActiva != null ? `Nivel ${nivelReal || '—'}` : 'Sin evaluación final aún'}
+          sub={notaActiva != null ? `Nivel ${nivelSeleccionado || '—'}` : 'Sin evaluación final aún'}
           subTone={notaActiva != null && notaActiva >= 80 ? 'ok' : ''}
           pct={notaActiva || 0}
           color="var(--an-granate)"
@@ -425,21 +485,24 @@ function StudentDashboard({ toast, onNavigate }) {
         )}
       </div>
 
+      <AntesDeEmpezar codigo={codigo} onNavigate={go} />
+
       {/* ── TARJETAS-MÓDULO (estado real por bloque) ─────────────────── */}
       <DashSection title="Tus módulos" hint="Cada bloque refleja su estado real" />
       <div className="grid-mods" style={{ marginBottom: 20 }}>
-        <ModNotas niveles={niveles} nivelReal={nivelReal} notaActiva={notaActiva} evaluaciones={evaluaciones} onNavigate={go} />
+        <ModNotas niveles={niveles} nivelReal={nivelSeleccionado} notaActiva={notaActiva} evaluaciones={evaluaciones} onNavigate={go} />
         <ModTareas onNavigate={go} />
-        <ModInfoCurso nivelReal={nivelReal} codGrupo={codGrupo} grupo={grupo} programa={programa} onNavigate={go} />
+        <ModInfoCurso nivelReal={nivelSeleccionado} codGrupo={codGrupoSeleccionado} grupo={grupo} programa={programa} onNavigate={go} />
         <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />
         <ModMensajes onNavigate={go} />
         <ModEstadoCuenta pendientes={pendientes} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
         <ModCertificados niveles={niveles} onNavigate={go} />
+        <ModInsignias onNavigate={go} />
         <ModRetro retroData={retroData} onNavigate={go} />
       </div>
 
       {/* ── CALENDARIO / PRÓXIMAS CLASES + EXAMEN ────────────────────── */}
-      <DashSection title="Tu calendario" hint="Lecciones reales de tu grupo" />
+      <DashSection title="Tu calendario" hint={`Lecciones de ${NIVEL_NOMBRE[nivelSeleccionado] || nivelSeleccionado}`} />
       <div className="grid-2">
         <div className="card">
           <div className="card-h">
@@ -453,7 +516,7 @@ function StudentDashboard({ toast, onNavigate }) {
               <div style={{ fontSize:26, opacity:0.4, marginBottom:6 }}>🗓️</div>
               El cronograma de tu grupo aún no está publicado.
               <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:4 }}>
-                Cuando administración publique las fechas de {codGrupo || 'tu grupo'}, aparecerán acá.
+                Cuando administración publique las fechas de {codGrupoSeleccionado || 'tu grupo'}, aparecerán acá.
               </div>
             </div>
           ) : proximas.length === 0 ? (
@@ -585,7 +648,7 @@ function AccDatosPersonales({ est, nombreCompleto, codGrupo }) {
         <AccInfoRow label="Código" value={codigo} />
         <AccInfoRow label="Grupo" value={codGrupo} />
         <AccInfoRow label="Correo" value={correo} />
-        <AccInfoRow label="Programa" value={programa === 'INA' || programa === 'CON_INA' ? 'INA · Resolución 2519' : programa ? 'Programa propio' : ''} />
+        <AccInfoRow label="Programa" value={programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : programa ? 'Programa propio' : ''} />
       </div>
       {!cedula && !codigo && !codGrupo && (
         <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:6 }}>Tus datos aparecerán cuando administración complete tu registro.</div>
@@ -701,6 +764,63 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// F95.0 — Ruta académica interactiva y accesos rápidos fusionados en Mi Campus
+// ─────────────────────────────────────────────────────────────────────────
+function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSelect }) {
+  const STATUS = { CA:'Cursando', APR:'Aprobado', CNV:'Convalidado', PE:'Pendiente', RPB:'Reprobado', REP:'Reprobado' };
+  return (
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Ruta académica">
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Ruta académica</div>
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Tocá un nivel para consultar su objetivo, nota, asistencia y calendario.</div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12, padding:16 }}>
+        {(niveles || []).map(item => {
+          const n=item.nivel, est=String(item.estatus||'PE').toUpperCase();
+          const selected=n===nivelSeleccionado, active=n===nivelActivo;
+          const color=NIVEL_COLOR[n] || 'var(--an-navy)';
+          const pct=['APR','CNV'].includes(est)?100:est==='CA'?55:['RPB','REP'].includes(est)?100:8;
+          return (
+            <button key={n} type="button" onClick={()=>onSelect && onSelect(n)} aria-pressed={selected}
+              style={{ appearance:'none', textAlign:'left', cursor:'pointer', fontFamily:'inherit', border:`2px solid ${selected?color:'var(--line)'}`, borderRadius:16, padding:14, background:selected?`color-mix(in srgb, ${color} 8%, white)`:'#fff', boxShadow:selected?'0 10px 24px rgba(0,30,71,.08)':'none', transition:'transform .16s ease,border-color .16s ease', minWidth:0 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                <strong style={{ color, fontSize:17, fontFamily:'var(--f-mono)' }}>{n}</strong>
+                <span style={{ fontSize:9.5, fontWeight:900, color:['APR','CNV'].includes(est)?'var(--ok)':est==='CA'?'var(--an-navy)':est==='RPB'||est==='REP'?'var(--danger)':'var(--ink-3)', textTransform:'uppercase' }}>{active?'ACTUAL · ':''}{STATUS[est]||est}</span>
+              </div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:5 }}>{NIVEL_NOMBRE[n]}</div>
+              <div style={{ height:7, borderRadius:999, background:'var(--line)', overflow:'hidden', marginTop:12 }}><div style={{ width:`${pct}%`, height:'100%', background:color }} /></div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:9 }}>Nota: <strong>{item.nota != null ? item.nota : '—'}</strong></div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AccesosRapidosDashboard({ onNavigate }) {
+  const items = [
+    ['cronograma_grupo','Cronograma','🗓️'],
+    ['examenes','Exámenes','📝'],
+    ['notas','Mis notas','📊'],
+    ['pagos','Pagos','💳'],
+    ['materiales','Materiales','📚'],
+    ['certificados','Certificados','🏅'],
+  ];
+  return (
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Accesos rápidos">
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Accesos rápidos</div>
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Entradas principales del campus</div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))', gap:12, padding:16 }}>
+        {items.map(([view,label,icon],idx)=><button key={view} type="button" onClick={()=>onNavigate && onNavigate(view)} style={{ minHeight:72, border:`1.5px solid ${idx===1?'var(--an-granate)':'var(--line)'}`, background:idx===1?'color-mix(in srgb, var(--an-granate) 7%, white)':'#fff', borderRadius:16, padding:'13px 12px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:10, textAlign:'left' }}><span aria-hidden="true" style={{ fontSize:23 }}>{icon}</span><span style={{ fontSize:12.5, fontWeight:800, color:'var(--ink)' }}>{label}</span></button>)}
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Bloque obligatorio — Antes de empezar tu programa (5 recuadros, colapsable)
 // ─────────────────────────────────────────────────────────────────────────
 function AntesDeEmpezar({ codigo, onNavigate }) {
@@ -729,7 +849,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
         <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--an-granate)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:20 }}>📋</div>
         <div style={{ flex:1, minWidth:200 }}>
           <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--an-granate)' }}>
-            Material obligatorio · Resolución 2519
+            Material obligatorio
           </div>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--an-navy-ink)', letterSpacing:'-0.02em', lineHeight:1.15 }}>
             Antes de empezar tu programa
@@ -786,7 +906,7 @@ function ResumenAcademico({ nivelReal, programa }) {
   const duracion  = syl.totalHours ? `${syl.totalHours} h` : '—';
   const plataforma= syl.platform || 'Zoom';
   const nivelLbl  = nivelReal ? (NIVEL_NOMBRE[nivelReal] || 'Nivel actual') : 'Nivel actual';
-  const programaLbl = programa === 'INA' || programa === 'CON_INA' ? 'INA · Resolución 2519' : 'Programa propio';
+  const programaLbl = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
 
   return (
     <div className="card" style={{ padding:'18px 22px', marginBottom:18 }}>
@@ -881,7 +1001,7 @@ function ModTareas({ onNavigate }) {
 
 function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
   const docente  = grupo.DOCENTE || '';
-  const horario  = [grupo.DIAS_TEXT, grupo.HORA_TEXT].filter(Boolean).join(' · ');
+  const horario  = horarioGrupoCompletoSD(grupo, codGrupo);
   const modalidad = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio';
   const hay = !!(codGrupo || docente || horario);
   return (
@@ -890,9 +1010,8 @@ function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
       {hay ? (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
           <div>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Nivel actual'} · {modalidad}</div>
-          {codGrupo && <div style={{ fontFamily:'var(--f-mono)', fontSize:11, color:'var(--ink-3)' }}>{codGrupo}</div>}
-          {docente && <div style={{ color:'var(--ink-3)' }}>Prof. {docente}</div>}
           {horario && <div style={{ color:'var(--ink-3)' }}>{horario}</div>}
+          {docente && <div style={{ color:'var(--ink-3)' }}>Prof. {docente}</div>}
         </div>
       ) : (
         <span style={{ color:'var(--ink-3)' }}>Los datos de tu grupo aparecerán cuando se asigne.</span>
@@ -973,6 +1092,14 @@ function ModCertificados({ niveles, onNavigate }) {
       ) : (
         <span style={{ color:'var(--ink-3)' }}>Se desbloquean al aprobar o convalidar un nivel.</span>
       )}
+    </ModTile>
+  );
+}
+
+function ModInsignias({ onNavigate }) {
+  return (
+    <ModTile icon="certificates" title="Insignias y retos" status="soon" statusLabel="En diseño" cta="Ver próximamente" onClick={() => onNavigate('dashboard')}>
+      <span style={{ color:'var(--ink-3)' }}>Aquí aparecerán los logros de retos, juegos de inglés y competencias entre estudiantes o grupos. No se muestran premios ficticios antes de definir las reglas.</span>
     </ModTile>
   );
 }

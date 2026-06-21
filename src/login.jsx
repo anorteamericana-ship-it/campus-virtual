@@ -39,7 +39,7 @@ const BACKERS = [
 const PHRASES = [
   { main: 'Inglés que abre puertas',    sub: 'Nivel A1 a B2' },
   { main: 'Clases 100% virtuales',      sub: 'Desde cualquier lugar de Costa Rica' },
-  { main: 'Certificado avalado por INA', sub: 'Resolución 2519-02' },
+  { main: 'Certificado avalado por INA', sub: 'Programa de Inglés Conversacional' },
   { main: 'Financiá con CONAPE',        sub: 'Sin deudas al comenzar' },
   { main: 'Tu futuro empieza hoy',      sub: 'Academia Norteamericana' },
 ];

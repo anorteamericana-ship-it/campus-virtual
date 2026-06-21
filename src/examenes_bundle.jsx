@@ -1,7 +1,9 @@
-// CAMPUS_F94_0_20260621_EXAMENES_BUNDLE_UNICO
-// Generado desde seis fuentes; no editar este archivo directamente.
+// CAMPUS_F95_0_20260621_EXAMENES_BUNDLE_UNICO
+// Generado desde: examenes_css.jsx, examenes_appcss.jsx, examenes_data.jsx, examenes_render.jsx, examenes_modes.jsx, examenes_app.jsx
 
-// ===== src/examenes_css.jsx =====
+
+// ===== examenes_css.jsx =====
+
 /* examenes_css.jsx — CSS del motor de examen (inyectado una sola vez).
    Todo el color temático sale de --lvl / --lvl-ink / --lvl-soft (nivel).
    Marca: Academia Norteamericana (navy). Atribución Cambridge en texto. */
@@ -283,7 +285,8 @@ window.EXAM_CSS = `
 }
 `;
 
-// ===== src/examenes_appcss.jsx =====
+// ===== examenes_appcss.jsx =====
+
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_UI_CSS
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_UI_CSS
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_UI_CSS
@@ -745,7 +748,7 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 
 
 
-/* F94.0 · bandeja docente clara y selector de grupos integrado */
+/* F95.0 · bandeja docente clara y selector de grupos integrado */
 .tch-head-explain{align-items:flex-start;gap:24px}
 .tch-help{max-width:650px;margin:8px 0 0;color:var(--ink-3);font-size:12.5px;line-height:1.55}
 .tch-groups-panel{padding:14px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#F8FAFE}
@@ -766,7 +769,7 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 @media(max-width:760px){.tch-head-explain{flex-direction:column}.tch-stats{width:100%;justify-content:flex-start}.tch-group-card{min-width:100%}.tch-refresh{width:100%;margin-left:0}.tch-table{min-width:780px}}
 
 
-/* F94.0 · revisión docente real y accionable */
+/* F95.0 · revisión docente real y accionable */
 .tch-review-open{border:0;border-radius:9px;background:var(--an-navy);color:#fff;padding:8px 11px;font-family:var(--f-sans);font-size:10.5px;font-weight:800;white-space:nowrap;cursor:pointer}
 .tch-review-open:hover{filter:brightness(1.08)}
 .tch-pill.bucket-submitted_without_review{background:#FBF1D8;color:#7B5600;border-color:#EAD9A8}
@@ -794,7 +797,8 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
   }
 })();
 
-// ===== src/examenes_data.jsx =====
+// ===== examenes_data.jsx =====
+
 /* global React */
 // ──────────────────────────────────────────────────────────────────────────
 // examenes_data.jsx — EXAM-MASTER-SKILL-001
@@ -4449,7 +4453,8 @@ function ponderacionTexto(pp, plan) {
   return `Valor según plan académico: ${pp.con_ina}% CON INA / ${pp.sin_ina}% SIN INA`;
 }
 
-// ===== src/examenes_render.jsx =====
+// ===== examenes_render.jsx =====
+
 /* global React, NIVEL_TEMA */
 // ──────────────────────────────────────────────────────────────────────────
 // examenes_render.jsx — Motor de formato visual UNIFORME del examen.
@@ -4545,7 +4550,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
         <div className="exh-main">
           <div className="exh-brand">
             <img className="exh-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
-            <span className="exh-org">Academia Norteamericana <i>· Programa Inglés Conversacional · 2519-P-6813</i></span>
+            <span className="exh-org">Academia Norteamericana <i>· Programa Inglés Conversacional</i></span>
           </div>
           <div className="exh-kicker">{tema.nombre.toUpperCase()}</div>
           <h1 className="exh-title">{exam.titulo}</h1>
@@ -5067,8 +5072,9 @@ Object.assign(window, {
   ExamShell, evalQuestion, examQuestions, getMatchVal, exNorm, exKeyText,
 });
 
-// ===== src/examenes_modes.jsx =====
-// CAMPUS_F94_0_20260621_BUNDLE_UNICO_BANDEJA_DOCENTE_ESCALABLE
+// ===== examenes_modes.jsx =====
+
+// CAMPUS_F95_0_20260621_BUNDLE_UNICO_BANDEJA_DOCENTE_ESCALABLE
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_UI
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_UI
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_UI
@@ -5287,7 +5293,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     let cancelled = false;
     let timer = null;
     const schedule = () => {
-      // F94.0: dispersa los autoguardados entre estudiantes para evitar que
+      // F95.0: dispersa los autoguardados entre estudiantes para evitar que
       // todos escriban en la hoja durante el mismo segundo.
       const delay = 28000 + Math.floor(Math.random() * 9000);
       timer = window.setTimeout(async () => {
@@ -5687,7 +5693,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     final_score_100: calculated100,
     comments: internalComments,
     student_feedback: studentFeedback,
-    manual_adjustments: { marks, comments, source:'teacher_written_review_f94' }
+    manual_adjustments: { marks, comments, source:'teacher_written_review_f95' }
   });
 
   const refreshReview = async () => {
@@ -5723,7 +5729,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const pushToNotas = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || pushed) return;
     setBusy('push'); setErr(''); setMsg('');
-    const r = await postExamBackend('examPushReviewToNotas', { review_id:reviewData.REVIEW_ID, source:'teacher_written_review_f94' }, 35000);
+    const r = await postExamBackend('examPushReviewToNotas', { review_id:reviewData.REVIEW_ID, source:'teacher_written_review_f95' }, 35000);
     setBusy('');
     if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }
     await refreshReview();
@@ -7307,20 +7313,22 @@ function MetaModal({ e, onClose }) {
 
 Object.assign(window, { StudentMode, TeacherMode, AdminMode, themedExam, getExam, examIdDe });
 
-// ===== src/examenes_app.jsx =====
-// CAMPUS_F94_0_20260621_BUNDLE_UNICO_CARGA_CONFIRMADA
+// ===== examenes_app.jsx =====
+
+// CAMPUS_F95_0_20260621_PREVIEW_DOCENTE_Y_RUNTIME_ESTUDIANTE
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_APP
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_APP
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_APP
 // CALGRUPO_F48_20260617_CENTRO_DIAGNOSTICO_EXAMENES_APP
 /* global React, ReactDOM, NIVEL_TEMA, StudentMode, TeacherMode, AdminMode, ExamShell, EXAM_I2_T1_A, themedExam */
 // examenes_app.jsx — shell + barra de control (auditoría / tweaks)
-// F94.0: no destructurar hooks en el ámbito global. examenes_modes.jsx ya
+// F95.0: no destructurar hooks en el ámbito global. examenes_modes.jsx ya
 // declara esos nombres y los scripts clásicos comparten el mismo entorno léxico.
 
 const VIEWS = [
   { k:'student', t:'Estudiante' },
   { k:'teacher', t:'Profesor' },
+  { k:'teacher_preview', t:'Modelo docente' },
   { k:'admin',   t:'Administrador' },
   { k:'preview', t:'Preview' },
 ];
@@ -7352,6 +7360,21 @@ function readRequestedView() {
     return VIEWS.some(v => v.k === raw) ? raw : '';
   } catch (_) {
     return '';
+  }
+}
+
+function readTeacherPreviewParams() {
+  try {
+    const p = new URLSearchParams(window.location.search || '');
+    return {
+      nivel: normalizeExamNivel(p.get('nivel')) || 'B1',
+      test: normalizeExamTest(p.get('test')) || 'TEST1',
+      opcion: normalizeExamOpcion(p.get('opcion')) || 'A',
+      plan: normalizeExamPlan(p.get('plan')) || 'con_ina',
+      grupo: String(p.get('grupo') || '').trim(),
+    };
+  } catch (_) {
+    return { nivel:'B1', test:'TEST1', opcion:'A', plan:'con_ina', grupo:'' };
   }
 }
 
@@ -7442,7 +7465,7 @@ function buildInitialViewConfig() {
 
   const allowedViewsByRole = {
     admin:   ['admin', 'preview'],
-    teacher: ['teacher'],
+    teacher: ['teacher', 'teacher_preview'],
     student: ['student'],
   };
   const defaultViewByRole = {
@@ -7594,7 +7617,13 @@ function StudentLiveExamApp() {
 
   const load = React.useCallback(() => {
     setLoading(true); setError('');
-    examPostLive('examGetStudentLivePanel', { client_meta:{ source:'student_iframe_f27' } })
+    const ses = getCampusParentSession() || {};
+    examPostLive('examGetStudentLivePanel', {
+      cod_grupo_hint: ses.grupoActivo || ses.grupo || ses.cod_grupo || '',
+      nivel_hint: ses.nivel_activo || ses.nivel || '',
+      codigo_hint: ses.codigo || '',
+      client_meta:{ source:'student_iframe_f95_runtime_group_resolution' }
+    })
       .then(r => {
         if (!r || r.ok === false) {
           // CALGRUPO_F52_20260617_EXAMENES_BACKEND_DESFASADO_MSG
@@ -7620,7 +7649,7 @@ function StudentLiveExamApp() {
         const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
         const txt = String(raw);
         if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend ya está en F52, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el .gs F52 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
+          setError('El frontend ya está en F95.0, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
         } else {
           setError(txt);
         }
@@ -7628,6 +7657,11 @@ function StudentLiveExamApp() {
       .finally(() => setLoading(false));
   }, []);
   React.useEffect(() => { load(); }, [load]);
+  React.useEffect(() => {
+    if (!(live && live.preparing)) return;
+    const timer = window.setTimeout(load, 3500);
+    return () => window.clearTimeout(timer);
+  }, [live && live.preparing, load]);
 
   const activation = live && live.activation;
   const cfg = activationToStudentConfig(activation || {});
@@ -7643,7 +7677,7 @@ function StudentLiveExamApp() {
     return r;
   };
   const saveAttempt = async (answers, meta = {}) => {
-    const source = meta && meta.source === 'auto' ? 'student_iframe_f94_auto_save' : 'student_iframe_f94_manual_save';
+    const source = meta && meta.source === 'auto' ? 'student_iframe_f95_auto_save' : 'student_iframe_f95_manual_save';
     return await examPostLive('examSaveAttemptDraft', { attempt_id: attemptId, answers, client_meta:{ source, answered:Object.keys(answers || {}).length } });
   };
   const submitAttempt = async (answers, meta = {}) => {
@@ -7665,9 +7699,10 @@ function StudentLiveExamApp() {
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
   if (live && live.enabled === false) return <StudentLiveStatusCard title="Exámenes aún deshabilitados" badge="Configuración pendiente" tone="blue" onRefresh={load}>{live.mensaje || 'El backend está instalado, pero la configuración STUDENT_EXAMS_ENABLED todavía no está activa.'}</StudentLiveStatusCard>;
+  if (live && live.preparing) return <StudentLiveStatusCard title="Preparando tu examen" badge="Reintento automático" tone="blue" onRefresh={load}>{live.mensaje || 'La clase está abierta. El sistema está creando una única activación y volverá a consultar en unos segundos.'}</StudentLiveStatusCard>;
   if (!live || live.assigned !== true || !activation) {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
-    return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'Tu grupo no tiene una lección 18 o 32 activa en este momento, o administración todavía no abrió la activación.'}</StudentLiveStatusCard>;
+    return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'No hay una sesión docente abierta de la lección 18 o 32 para tu matrícula activa.'}</StudentLiveStatusCard>;
   }
   const submitted = currentAttempt && String(currentAttempt.STATUS || '').toUpperCase() === 'SUBMITTED';
   if (submitted) return <StudentLiveStatusCard title="Examen ya enviado" badge="En revisión docente" tone="blue" onRefresh={load}>Tu intento fue recibido correctamente. La nota final aparecerá cuando el docente complete la revisión.</StudentLiveStatusCard>;
@@ -7679,6 +7714,36 @@ function StudentLiveExamApp() {
     assignment={activation}
     backend={{ attemptId, initialAnswers, onStart:startAttempt, onSave:saveAttempt, onSubmit:submitAttempt, onHeartbeat:heartbeatAttempt, student: live.student || null, activation, timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 0) || 0, startedAt:currentAttempt && currentAttempt.STARTED_AT || '' }}
   />;
+}
+
+function TeacherPreviewLiveApp() {
+  const cfg = React.useMemo(() => readTeacherPreviewParams(), []);
+  const [showKey, setShowKey] = React.useState(false);
+  const [scriptSec, setScriptSec] = React.useState(null);
+  const exam = window.getExam ? window.getExam(cfg.nivel, cfg.test, cfg.opcion) : null;
+  const tema = NIVEL_TEMA[cfg.nivel] || NIVEL_TEMA.B1;
+  if (!exam) return <StudentLiveStatusCard title="Modelo no disponible" badge="Revisar catálogo" tone="red">No existe contenido para {cfg.nivel} · {cfg.test} · Opción {cfg.opcion}.</StudentLiveStatusCard>;
+  return (
+    <div className="pvwrap" style={{paddingTop:0}}>
+      <div style={{position:'sticky',top:0,zIndex:40,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',padding:'12px 16px',background:'#fff',borderBottom:'1px solid #E2D8C8',boxShadow:'0 8px 20px rgba(0,30,71,.07)'}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em',color:'#7A1E2C'}}>MODELO DOCENTE · VISTA SEGURA</div>
+          <div style={{fontSize:15,fontWeight:900,color:'#001E47',marginTop:2}}>{cfg.grupo || 'Grupo'} · {cfg.nivel} · {cfg.test==='TEST2'?'2.º examen escrito':'1.er examen escrito'} · Opción {cfg.opcion}</div>
+          <div style={{fontSize:11.5,color:'#667085',marginTop:2}}>{showKey?'Las respuestas y guiones están visibles. No proyectés esta vista al estudiante.':'Así lo ve el estudiante, sin respuestas correctas ni guiones.'}</div>
+        </div>
+        <button type="button" onClick={()=>setShowKey(v=>!v)} style={{border:`1.5px solid ${showKey?'#7A1E2C':'#003B7A'}`,background:showKey?'#F7E8E9':'#E7F1FA',color:showKey?'#7A1E2C':'#003B7A',padding:'10px 14px',borderRadius:10,fontWeight:900,cursor:'pointer',fontFamily:'inherit'}}>{showKey?'OCULTAR RESPUESTAS':'VER RESPUESTAS'}</button>
+      </div>
+      <div className="pv-banner" style={{'--lvl':tema.color,'--lvl-soft':tema.soft,'--lvl-ink':tema.ink,marginTop:12}}>
+        <span className="pv-tag">{showKey?'CLAVE DOCENTE':'VISTA ESTUDIANTE'}</span>
+        <span>{exam.id}</span>
+        <span className="pv-dim">· audio disponible · el guion aparece únicamente al mostrar respuestas</span>
+      </div>
+      <ExamShell exam={exam} answers={{}} mode="preview" showKey={showKey} shell="premium" density="comfy" plan={cfg.plan}
+        onOpenScript={setScriptSec}
+        meta={{nombre:'Modelo para el docente',fecha:'',grupo:cfg.grupo,opcion:cfg.opcion,scoreLabel:'solo lectura'}} />
+      <PvScript section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
+    </div>
+  );
 }
 
 function App() {
@@ -7724,7 +7789,9 @@ function App() {
     return (
       <div className="exapp">
         <main className="exmain">
-          <TeacherMode shell="premium" density="comfy" />
+          {INITIAL_VIEW_CONFIG.view === 'teacher_preview'
+            ? <TeacherPreviewLiveApp />
+            : <TeacherMode shell="premium" density="comfy" />}
         </main>
       </div>
     );
@@ -7983,18 +8050,28 @@ function PvScript({ section, exam, onClose }) {
   );
 }
 
-const EXAM_ROOT_F930 = document.getElementById('root');
-ReactDOM.createRoot(EXAM_ROOT_F930).render(<App />);
-// Confirmar el montaje real, no solo que el archivo alcanzó la última línea.
-// Si React falla durante el primer render, el cargador de examenes.html conserva
-// el control y muestra el error en lugar de dejar una pantalla vacía.
-(function confirmExamMountF940(tries) {
+class ExamRuntimeBoundaryF950 extends React.Component {
+  constructor(props) { super(props); this.state = { error:null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error) {
+    try { console.error('F95 exam runtime error', error); } catch (_) {}
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    const msg = this.state.error && this.state.error.message ? this.state.error.message : String(this.state.error || 'Error desconocido');
+    return <div className="exapp"><main className="exmain"><StudentLiveStatusCard title="El módulo de exámenes se detuvo" badge="Error visible" tone="red" onRefresh={()=>window.location.reload()}>Ya no se ocultará detrás de una pantalla en blanco. Detalle técnico: {msg}</StudentLiveStatusCard></main></div>;
+  }
+}
+
+const EXAM_ROOT_F950 = document.getElementById('root');
+ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></ExamRuntimeBoundaryF950>);
+(function confirmExamMountF950(tries) {
   try {
-    if (EXAM_ROOT_F930 && EXAM_ROOT_F930.querySelector('.exapp')) {
+    if (EXAM_ROOT_F950 && EXAM_ROOT_F950.querySelector('.exapp')) {
       window.__EXAMENES_BOOT_OK__ = true;
-      EXAM_ROOT_F930.setAttribute('data-exam-boot', 'F94.0');
+      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.0');
       return;
     }
   } catch (_) {}
-  if (tries < 25) window.setTimeout(() => confirmExamMountF940(tries + 1), 100);
+  if (tries < 35) window.setTimeout(() => confirmExamMountF950(tries + 1), 100);
 })(0);

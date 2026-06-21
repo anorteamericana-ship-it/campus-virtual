@@ -1,14 +1,14 @@
 /* global window */
 // ─────────────────────────────────────────────────────────────────────────
 // SÍLABUS CANÓNICO · Academia Norteamericana
-// Fuente: Datos del Módulo – Nivel Básico I (INA · Resolución 2519)
+// Fuente: Datos institucionales del Módulo – Nivel Básico I
 // Cada nivel tiene estructura idéntica: 32 lecciones (3h c/u) + 16 I CAN (2h c/u)
 // ─────────────────────────────────────────────────────────────────────────
 
 // ── Bloque prioridad INA — siempre visible al inicio ─────────────────────
 const PRIORITY_BLOCK = {
   title: 'Antes de empezar — Material obligatorio INA',
-  note: 'Requerido por Resolución 2519. El INA exige que todo estudiante y docente revise este material antes de iniciar lecciones.',
+  note: 'Material institucional requerido antes de iniciar lecciones.',
   items: [
     { id: 'reg-estudiantil', code: '1.1', title: 'Reglamento estudiantil',              type: 'pdf',   required: true,  minutes: 20, desc: 'Derechos, deberes y conducta académica.' },
     { id: 'reg-netiqueta',   code: '1.2', title: 'Reglamento de netiqueta',             type: 'pdf',   required: true,  minutes: 10, desc: 'Normas de comportamiento en sesiones virtuales (Zoom).' },
