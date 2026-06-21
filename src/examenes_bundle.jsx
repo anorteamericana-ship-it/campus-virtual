@@ -1,4 +1,4 @@
-// CAMPUS_F95_0_20260621_EXAMENES_BUNDLE_UNICO
+// CAMPUS_F95_1_20260621_EXAMENES_BUNDLE_UNICO
 // Generado desde: examenes_css.jsx, examenes_appcss.jsx, examenes_data.jsx, examenes_render.jsx, examenes_modes.jsx, examenes_app.jsx
 
 
@@ -284,6 +284,7 @@ window.EXAM_CSS = `
   input,textarea,select{ border:1px solid #8E9AAA!important; background:#fff!important; }
 }
 `;
+
 
 // ===== examenes_appcss.jsx =====
 
@@ -796,6 +797,7 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
     s.textContent = window.EXAM_APP_CSS; document.head.appendChild(s);
   }
 })();
+
 
 // ===== examenes_data.jsx =====
 
@@ -4453,6 +4455,7 @@ function ponderacionTexto(pp, plan) {
   return `Valor según plan académico: ${pp.con_ina}% CON INA / ${pp.sin_ina}% SIN INA`;
 }
 
+
 // ===== examenes_render.jsx =====
 
 /* global React, NIVEL_TEMA */
@@ -4500,7 +4503,12 @@ function examQuestions(exam) {
   const list = [];
   exam.sections.forEach(s => {
     if (s.type === 'matching') {
-      s.left.forEach(row => list.push({ section:s, q:{ id:s.letter+row.n, n:row.n, correct:s.answers[row.n] }, kind:'match' }));
+      // El payload público del estudiante elimina deliberadamente `answers`
+      // porque contiene la clave correcta del matching. El renderer solo
+      // necesita los identificadores para contar progreso; la clave puede
+      // permanecer ausente hasta la revisión docente.
+      const answerMap = s.answers && typeof s.answers === 'object' ? s.answers : {};
+      (s.left || []).forEach(row => list.push({ section:s, q:{ id:s.letter+row.n, n:row.n, correct:answerMap[row.n] }, kind:'match' }));
     } else if (s.type === 'table-fill') {
       (s.rows||[]).filter(row => !row.fixed).forEach(row => list.push({ section:s, q:{ id:row.id, correct:row.correct, accepted:row.accepted }, kind:'q' }));
     } else if (s.type === 'para-fill' || s.type === 'para-verb' || s.type === 'para-choice') {
@@ -4815,6 +4823,9 @@ function ParaChoice({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 
 // ── Matching ──────────────────────────────────────────────────────────────
 function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
+  // En la vista estudiante la clave `sec.answers` no viaja desde Apps Script.
+  // Nunca debe ser requisito para dibujar ni responder el ejercicio.
+  const answerMap = sec.answers && typeof sec.answers === 'object' ? sec.answers : {};
   const setMatch = (n, v) => {
     const F = Object.assign({}, answers[sec.letter] || {}); F[n] = v; onAnswer && onAnswer(sec.letter, F);
   };
@@ -4824,7 +4835,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         <div className="exmatch-col">
           {sec.left.map(row => {
             const val = getMatchVal(answers, row.n, sec.letter) || '';
-            const correct = sec.answers[row.n];
+            const correct = answerMap[row.n];
             let cls = 'exmatch-item';
             if (showKey && val && val===correct) cls += ' m-ok';
             if (showKey && val && val!==correct) cls += ' m-bad';
@@ -4836,7 +4847,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
                   <option value="">—</option>
                   {sec.right.map(r => <option key={r.l} value={r.l}>{r.l}</option>)}
                 </select>
-                {showKey && <span className="exmatch-key">{correct}</span>}
+                {showKey && correct && <span className="exmatch-key">{correct}</span>}
               </div>
             );
           })}
@@ -4851,7 +4862,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         </div>
       </div>
       {mode==='review' && <div className="exq-rows" style={{marginTop:14}}>
-        {sec.left.map(row => { const val=getMatchVal(answers,row.n,sec.letter); const q={ id:sec.letter+row.n, correct:sec.answers[row.n] };
+        {sec.left.map(row => { const val=getMatchVal(answers,row.n,sec.letter); const q={ id:sec.letter+row.n, correct:answerMap[row.n] };
           return <div key={row.n} className="exrev-line"><span className="exrev-id">{sec.letter}{row.n}</span><span className="exrev-stud">Resp.: <b>{val||'—'}</b></span><ReviewBar id={sec.letter+row.n} section={sec} q={q} val={val} review={review} /></div>; })}
       </div>}
     </div>
@@ -5071,6 +5082,7 @@ function exInCls(section, q, val, showKey) {
 Object.assign(window, {
   ExamShell, evalQuestion, examQuestions, getMatchVal, exNorm, exKeyText,
 });
+
 
 // ===== examenes_modes.jsx =====
 
@@ -7313,9 +7325,10 @@ function MetaModal({ e, onClose }) {
 
 Object.assign(window, { StudentMode, TeacherMode, AdminMode, themedExam, getExam, examIdDe });
 
+
 // ===== examenes_app.jsx =====
 
-// CAMPUS_F95_0_20260621_PREVIEW_DOCENTE_Y_RUNTIME_ESTUDIANTE
+// CAMPUS_F95_1_20260621_PAYLOAD_PUBLICO_MATCHING_SEGURO
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_APP
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_APP
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_APP
@@ -7649,7 +7662,7 @@ function StudentLiveExamApp() {
         const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
         const txt = String(raw);
         if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend ya está en F95.0, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
+          setError('El frontend ya está en F95.1, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
         } else {
           setError(txt);
         }
@@ -8069,7 +8082,7 @@ ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></Exa
   try {
     if (EXAM_ROOT_F950 && EXAM_ROOT_F950.querySelector('.exapp')) {
       window.__EXAMENES_BOOT_OK__ = true;
-      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.0');
+      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.1');
       return;
     }
   } catch (_) {}

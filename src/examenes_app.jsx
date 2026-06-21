@@ -1,4 +1,4 @@
-// CAMPUS_F95_0_20260621_PREVIEW_DOCENTE_Y_RUNTIME_ESTUDIANTE
+// CAMPUS_F95_1_20260621_PAYLOAD_PUBLICO_MATCHING_SEGURO
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_APP
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_APP
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_APP
@@ -332,7 +332,7 @@ function StudentLiveExamApp() {
         const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
         const txt = String(raw);
         if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend ya está en F95.0, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
+          setError('El frontend ya está en F95.1, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
         } else {
           setError(txt);
         }
@@ -752,7 +752,7 @@ ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></Exa
   try {
     if (EXAM_ROOT_F950 && EXAM_ROOT_F950.querySelector('.exapp')) {
       window.__EXAMENES_BOOT_OK__ = true;
-      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.0');
+      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.1');
       return;
     }
   } catch (_) {}

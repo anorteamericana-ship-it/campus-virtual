@@ -43,7 +43,12 @@ function examQuestions(exam) {
   const list = [];
   exam.sections.forEach(s => {
     if (s.type === 'matching') {
-      s.left.forEach(row => list.push({ section:s, q:{ id:s.letter+row.n, n:row.n, correct:s.answers[row.n] }, kind:'match' }));
+      // El payload público del estudiante elimina deliberadamente `answers`
+      // porque contiene la clave correcta del matching. El renderer solo
+      // necesita los identificadores para contar progreso; la clave puede
+      // permanecer ausente hasta la revisión docente.
+      const answerMap = s.answers && typeof s.answers === 'object' ? s.answers : {};
+      (s.left || []).forEach(row => list.push({ section:s, q:{ id:s.letter+row.n, n:row.n, correct:answerMap[row.n] }, kind:'match' }));
     } else if (s.type === 'table-fill') {
       (s.rows||[]).filter(row => !row.fixed).forEach(row => list.push({ section:s, q:{ id:row.id, correct:row.correct, accepted:row.accepted }, kind:'q' }));
     } else if (s.type === 'para-fill' || s.type === 'para-verb' || s.type === 'para-choice') {
@@ -358,6 +363,9 @@ function ParaChoice({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 
 // ── Matching ──────────────────────────────────────────────────────────────
 function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
+  // En la vista estudiante la clave `sec.answers` no viaja desde Apps Script.
+  // Nunca debe ser requisito para dibujar ni responder el ejercicio.
+  const answerMap = sec.answers && typeof sec.answers === 'object' ? sec.answers : {};
   const setMatch = (n, v) => {
     const F = Object.assign({}, answers[sec.letter] || {}); F[n] = v; onAnswer && onAnswer(sec.letter, F);
   };
@@ -367,7 +375,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         <div className="exmatch-col">
           {sec.left.map(row => {
             const val = getMatchVal(answers, row.n, sec.letter) || '';
-            const correct = sec.answers[row.n];
+            const correct = answerMap[row.n];
             let cls = 'exmatch-item';
             if (showKey && val && val===correct) cls += ' m-ok';
             if (showKey && val && val!==correct) cls += ' m-bad';
@@ -379,7 +387,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
                   <option value="">—</option>
                   {sec.right.map(r => <option key={r.l} value={r.l}>{r.l}</option>)}
                 </select>
-                {showKey && <span className="exmatch-key">{correct}</span>}
+                {showKey && correct && <span className="exmatch-key">{correct}</span>}
               </div>
             );
           })}
@@ -394,7 +402,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         </div>
       </div>
       {mode==='review' && <div className="exq-rows" style={{marginTop:14}}>
-        {sec.left.map(row => { const val=getMatchVal(answers,row.n,sec.letter); const q={ id:sec.letter+row.n, correct:sec.answers[row.n] };
+        {sec.left.map(row => { const val=getMatchVal(answers,row.n,sec.letter); const q={ id:sec.letter+row.n, correct:answerMap[row.n] };
           return <div key={row.n} className="exrev-line"><span className="exrev-id">{sec.letter}{row.n}</span><span className="exrev-stud">Resp.: <b>{val||'—'}</b></span><ReviewBar id={sec.letter+row.n} section={sec} q={q} val={val} review={review} /></div>; })}
       </div>}
     </div>

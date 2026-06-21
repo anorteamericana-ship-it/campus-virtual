@@ -1,4 +1,4 @@
-// F95.0_20260620_EXAMENES_CARGA_ESTABLE
+// F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
 // F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
@@ -148,7 +148,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
 // Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F95.0`;
+  const src = `modulos/examenes.html?view=${view}&v=F95.1`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -178,7 +178,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
-          key={`${view}-F95.0`}
+          key={`${view}-F95.1`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
@@ -326,7 +326,7 @@ function TeacherWrittenPreviewModalF950({ activation, group, leccion, onClose })
   const test=activation.TEST_CODE||activation.test_code||(Number(leccion)===32?'TEST2':'TEST1');
   const opcion=activation.OPCION||activation.opcion||'A';
   const plan=String(activation.PLAN||activation.plan||'CON_INA').toLowerCase();
-  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F95.0`;
+  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F95.1`;
   return <div role="dialog" aria-modal="true" aria-label="Modelo del examen escrito" style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,20,48,.72)',padding:18,display:'flex',alignItems:'stretch',justifyContent:'center'}} onClick={onClose}>
     <div style={{width:'min(1500px,100%)',height:'calc(100vh - 36px)',background:'#F7F3EC',borderRadius:18,overflow:'hidden',boxShadow:'0 26px 80px rgba(0,0,0,.35)',display:'flex',flexDirection:'column'}} onClick={e=>e.stopPropagation()}>
       <div style={{padding:'11px 14px',background:'#fff',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
