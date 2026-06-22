@@ -4,7 +4,7 @@
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F96.2-LAZY-E';
+  const VERSION = 'F98.3-B-CERTIFICADOS';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){

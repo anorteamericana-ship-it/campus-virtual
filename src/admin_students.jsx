@@ -1577,7 +1577,7 @@ function rowBg(estatus, idx) {
   return idx%2===0 ? 'white' : 'var(--surface, #FAFAF7)';
 }
 
-function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, filtroOperativo }) {
+function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, filtroOperativo }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
   const [resyncEst, setResyncEst] = React.useState(null);
@@ -1646,6 +1646,19 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               textTransform:'uppercase', whiteSpace:'nowrap', opacity: generarCertificadosNivel ? 1 : 0.82,
             }}>
             🏅 Cert. pendientes ({certPendientes})
+          </button>
+        )}
+        {certRegistrados > 0 && regenerarCertificadosNivel && (
+          <button
+            onClick={(ev) => { ev.stopPropagation(); regenerarCertificadosNivel(nivelKey); }}
+            title="Vuelve a crear los PDF seleccionados usando exactamente el mismo REG_CERTIFICADOS. No genera consecutivos nuevos ni cambia ESTATUS."
+            style={{
+              marginLeft:4, padding:'4px 9px', borderRadius:7,
+              border:'1px solid rgba(255,255,255,0.72)', background:'rgba(0,0,0,0.16)',
+              color:'white', fontSize:10.5, fontWeight:900, cursor:'pointer', letterSpacing:'0.04em',
+              textTransform:'uppercase', whiteSpace:'nowrap',
+            }}>
+            ♻ Rehacer registrados ({certRegistrados})
           </button>
         )}
 
@@ -2194,6 +2207,83 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       setCertEstado({ ok: false, masivo: true, error: 'Error de conexión', nivel });
     }
   };
+  const handleRegenerarCertificadosNivel = async (nivel) => {
+    if (!grupoSel || !nivel) return;
+    setCertEstado({ loading: true, masivo: true, regenerando: true, preview: true, nivel });
+    try {
+      const preview = await postAdminStudents('generarCertificadosNivel', {
+        grupo: grupoSel,
+        nivel,
+        dry_run: true,
+        confirmar: false,
+        regenerar_registrados: true,
+      });
+      if (!preview || preview.ok !== true) {
+        setCertEstado({ ...(preview || {}), ok:false, masivo:true, regenerando:true, error:(preview && (preview.error || preview.mensaje)) || 'No se pudo preparar la regeneración', nivel });
+        return;
+      }
+
+      const candidatos = (preview.detalle || []).filter(x => x && x.estado === 'por_regenerar' && x.registro);
+      const registrosDefault = candidatos.map(x => x.registro).join(', ');
+      if (!registrosDefault) {
+        setCertEstado({ ok:false, masivo:true, regenerando:true, nivel, error:'No hay certificados registrados aptos para regenerar en este nivel.' });
+        return;
+      }
+
+      const seleccionTexto = window.prompt(
+        `Regenerar certificados de ${grupoSel} · ${nivel}\n\n` +
+        'Se conservará exactamente el mismo número de registro.\n' +
+        'Podés dejar todos o borrar los que no querés rehacer.\n\n' +
+        'Registros separados por coma:',
+        registrosDefault
+      );
+      if (seleccionTexto === null) {
+        setCertEstado({ ok:true, cancelado:true, masivo:true, regenerando:true, nivel, mensaje:'Regeneración cancelada. No se modificó nada.' });
+        setTimeout(() => setCertEstado(null), 4200);
+        return;
+      }
+      const registros = String(seleccionTexto || '').split(/[\n,;]+/).map(x => x.trim()).filter(Boolean);
+      if (!registros.length) {
+        setCertEstado({ ok:false, masivo:true, regenerando:true, nivel, error:'No se indicó ningún registro para regenerar.' });
+        return;
+      }
+
+      const confirmacion = window.confirm(
+        `Se volverán a crear ${registros.length} PDF de ${grupoSel} · ${nivel}.\n\n` +
+        registros.join('\n') +
+        '\n\nNo se crearán consecutivos nuevos. No se cambiará ESTATUS ni REG_CERTIFICADOS.\n\n¿Continuar?'
+      );
+      if (!confirmacion) {
+        setCertEstado({ ok:true, cancelado:true, masivo:true, regenerando:true, nivel, mensaje:'Regeneración cancelada. No se modificó nada.' });
+        setTimeout(() => setCertEstado(null), 4200);
+        return;
+      }
+
+      setCertEstado({ loading:true, masivo:true, regenerando:true, nivel });
+      const data = await postAdminStudents('generarCertificadosNivel', {
+        grupo: grupoSel,
+        nivel,
+        confirmar: true,
+        modo: 'ejecutar',
+        regenerar_registrados: true,
+        registros,
+      });
+      setCertEstado({ ...data, masivo:true, regenerando:true, nivel });
+      if (data && data.ok) {
+        const rr = data.resumen || {};
+        const noEncontrados = (data.registros_no_encontrados || []).length;
+        setToast({
+          tipo: (rr.errores || noEncontrados) ? 'err' : 'ok',
+          msg: `Certificados ${nivel}: ${rr.regenerados || 0} regenerados con el mismo número${(rr.errores || 0) ? ` · ${rr.errores} errores` : ''}${noEncontrados ? ` · ${noEncontrados} registros no encontrados` : ''}`,
+        });
+        setRefreshKey(k => k + 1);
+        setTimeout(() => setCertEstado(null), 9000);
+      }
+    } catch(e) {
+      setCertEstado({ ok:false, masivo:true, regenerando:true, error:'Error de conexión: ' + (e?.message || e), nivel });
+    }
+  };
+
   const { data, loading: loadingRad } = useRadiografia(grupoSel, refreshKey);
   const grupoInfoDetalle = useGrupoInfo(grupoSel);
 
@@ -2489,6 +2579,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                   onAbrirPanel={(est, tab) => setEstudiantePanelAbierto({ est, tab: tab || 'pagos' })}
                   generarCertificadoFila={(est, niv) => handleGenerarCertificado(est, niv)}
                   generarCertificadosNivel={handleGenerarCertificadosNivel}
+                  regenerarCertificadosNivel={handleRegenerarCertificadosNivel}
                   filtroOperativo={filtroOperativo}
                 />
               ))}
@@ -3409,7 +3500,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       tipo: 'CERTIFICACION',
       titulo: 'Certificación de Nivel',
       desc: certNum
-        ? `Certificado registrado: ${certNum}. No se genera copia; se busca el PDF existente o firmado en Drive.`
+        ? `Certificado registrado: ${certNum}. Puede abrir el PDF existente o regenerarlo conservando exactamente el mismo número.`
         : `Estado: ${certStateAct.label}. ${certStateAct.sub}.`,
       icono: '🏅', color: '#E5A823',
       ok: !!certNum,
@@ -3458,6 +3549,36 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
       } else {
         setRes(r => ({...r, [tipo]: { error:data.mensaje || data.error, search_url:data.search_url }}));
+      }
+    } catch(e) {
+      setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
+    } finally {
+      setGen(g => ({...g, [tipo]: false}));
+    }
+  };
+
+  const regenerarCertificadoMismoRegistro = async () => {
+    const tipo = 'CERTIFICACION';
+    if (gen[tipo] || !certNum) return;
+    const confirmar = window.confirm(
+      `Se volverá a crear el PDF ${certNum}.\n\n` +
+      'Se conservará el mismo número de certificado. No se cambiará ESTATUS ni se generará un consecutivo nuevo.\n\n¿Continuar?'
+    );
+    if (!confirmar) return;
+    setGen(g => ({...g, [tipo]: true}));
+    setRes(r => ({...r, [tipo]: null}));
+    try {
+      const data = await postAdminStudents('generarCertificado', {
+        codigo: String(est.codigo || est.rec_m || ''),
+        nivel: nivelActivo,
+        grupo: String(est.grupo || ''),
+        forzar_generar: true,
+      });
+      if (data && data.ok) {
+        setRes(r => ({...r, [tipo]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
+        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+      } else {
+        setRes(r => ({...r, [tipo]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
       }
     } catch(e) {
       setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
@@ -3521,14 +3642,24 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
                   )}
                 </div>
                 {tipo === 'CERTIFICACION' && certNum ? (
-                  <button
-                    type="button"
-                    onClick={buscarCertificado}
-                    disabled={cargando}
-                    title="Abre el PDF existente más reciente con el nombre oficial. No crea copias nuevas."
-                    style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${color}`, background: color, color:'white', fontWeight:700, fontSize:11, cursor:cargando?'wait':'pointer', whiteSpace:'nowrap', textDecoration:'none', opacity:cargando?0.7:1 }}>
-                    {cargando ? 'Buscando…' : 'Ver firmado/PDF'}
-                  </button>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'stretch' }}>
+                    <button
+                      type="button"
+                      onClick={buscarCertificado}
+                      disabled={cargando}
+                      title="Abre el PDF existente más reciente con el nombre oficial. No crea copias nuevas."
+                      style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${color}`, background: color, color:'white', fontWeight:700, fontSize:11, cursor:cargando?'wait':'pointer', whiteSpace:'nowrap', textDecoration:'none', opacity:cargando?0.7:1 }}>
+                      {cargando ? 'Procesando…' : 'Ver firmado/PDF'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={regenerarCertificadoMismoRegistro}
+                      disabled={cargando}
+                      title={`Vuelve a crear el PDF usando el mismo registro ${certNum}. No genera un consecutivo nuevo.`}
+                      style={{ padding:'7px 10px', borderRadius:'var(--r-md, 8px)', border:`1px solid ${color}`, background:'white', color:color, fontWeight:800, fontSize:10.5, cursor:cargando?'wait':'pointer', whiteSpace:'nowrap', opacity:cargando?0.7:1 }}>
+                      ♻ Regenerar mismo #
+                    </button>
+                  </div>
                 ) : (
                   <button
                     disabled={!ok || cargando}
@@ -3544,7 +3675,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       </div>
 
       <div style={{ marginTop:14, fontSize:11, color:'var(--ink-3, #999)', padding:'10px 14px', background:'var(--surface-2, #f9f9f9)', borderRadius:'var(--r-md, 8px)' }}>
-        📁 Certificados F25: si ya existe REG_CERTIFICADOS, no crea otro consecutivo. Busca/abre el PDF firmado o existente más reciente en Drive; si suben el firmado con el mismo nombre oficial, el backend devuelve el más reciente.
+        📁 Certificados F98.3-B: si ya existe REG_CERTIFICADOS, nunca crea otro consecutivo. Puede abrir el PDF más reciente o regenerarlo con exactamente el mismo número. Para certificados nuevos, el registro se escribe en ESTATUS únicamente después de crear correctamente el PDF.
       </div>
     </div>
   );
