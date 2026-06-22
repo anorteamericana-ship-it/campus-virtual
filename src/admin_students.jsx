@@ -713,21 +713,21 @@ function certVisualState({ estatus, certPago, certNum }) {
       canVer:true, canCrear:false,
     };
   }
-  if (st === 'APR' && certPago) {
+  if ((st === 'APR' || st === 'CNV') && certPago) {
     return {
-      key:'listo', tone:'blue', label:'Listo para crear', sub:'APR + certificado pagado',
+      key:'listo', tone:'blue', label:'Listo para crear', sub:`${st} + certificado pagado`,
       hint:'Puede generar el certificado por primera vez. Después debe cambiar a Ver PDF.',
       canVer:false, canCrear:true,
     };
   }
-  if (st === 'APR' && !certPago) {
+  if ((st === 'APR' || st === 'CNV') && !certPago) {
     return {
       key:'falta_pago', tone:'warn', label:'Falta pago', sub:'Certificado no pagado',
       hint:'El estudiante está APR, pero no aparece pago de certificado.',
       canVer:false, canCrear:false,
     };
   }
-  if (certPago && st !== 'APR') {
+  if (certPago && st !== 'APR' && st !== 'CNV') {
     return {
       key:'pagado_no_apr', tone:'warn', label:'Pagado', sub:`Falta APR (${st || '—'})`,
       hint:'Hay pago de certificado, pero el nivel todavía no está aprobado.',
@@ -2631,7 +2631,11 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
               <div>
                 <div style={{ fontWeight:700, marginBottom:4 }}>🏅 Certificados del nivel {certEstado.nivel}</div>
                 <div style={{ fontSize:11, opacity:0.9, lineHeight:1.45 }}>
-                  {(certEstado.resumen?.generados || 0)} creados · {(certEstado.resumen?.ya_existentes || 0)} ya existían · {(certEstado.resumen?.sin_pdf || 0)} sin PDF · {(certEstado.resumen?.no_aptos || 0)} no aptos · {(certEstado.resumen?.errores || 0)} errores
+                  {certEstado.regenerando ? (
+                    <>{(certEstado.resumen?.regenerados || 0)} regenerados · {(certEstado.resumen?.omitidos || 0)} omitidos · {(certEstado.resumen?.no_aptos || 0)} no aptos · {(certEstado.resumen?.errores || 0)} errores</>
+                  ) : (
+                    <>{(certEstado.resumen?.generados || 0)} creados · {(certEstado.resumen?.ya_existentes || 0)} ya existían · {(certEstado.resumen?.sin_pdf || 0)} sin PDF · {(certEstado.resumen?.no_aptos || 0)} no aptos · {(certEstado.resumen?.errores || 0)} errores</>
+                  )}
                 </div>
               </div>
             ) : (
@@ -3467,17 +3471,40 @@ function TabAsistenciaPanel({ est, detalle }) {
 function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
   const NIVEL_LABEL_D = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
   const NIVEL_COLOR_D = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
+  const ORDEN_NIVELES_D = ['B1','B2','I1','I2'];
+  const nivelesSeguros = niveles || {};
 
   const nivelAntMap  = { B1:null, B2:'B1', I1:'B2', I2:'I1' };
   const nivAnt       = nivelAntMap[nivelActivo];
-  const estatusAnt   = nivAnt ? String(niveles[nivAnt]?.estatus || '').toUpperCase() : null;
-  const estatusAct   = String(niveles[nivelActivo]?.estatus || '').toUpperCase();
-  const nivelInfo    = niveles[nivelActivo] || {};
-  const certLoose    = String(nivelInfo.cert || '').trim();
-  const certLooseReg = (/^SJ\d{0,3}-|-[0-9]{4}$|CERT|REG/i.test(certLoose) && !/^\d+(\.\d+)?$/.test(certLoose)) ? certLoose : '';
-  const certNum      = certRegistroEstudiante({ ...est, ...nivelInfo }) || certLooseReg;
-  const certPagoAct  = certPagoEstudiante({ ...est, ...nivelInfo }) || (!!certLoose && /^\d+(\.\d+)?$/.test(certLoose) && Number(certLoose) > 0);
-  const certStateAct = certVisualState({ estatus: estatusAct, certPago: certPagoAct, certNum });
+  const estatusAnt   = nivAnt ? String(nivelesSeguros[nivAnt]?.estatus || '').toUpperCase() : null;
+
+  // F98.3-C: cada certificado se resuelve exclusivamente desde la fila del
+  // nivel seleccionado. Nunca se hereda el número de la fila/table activa.
+  const nivelesConFila = ORDEN_NIVELES_D.filter(n => nivelesSeguros[n] && typeof nivelesSeguros[n] === 'object');
+  const firmaCertificados = nivelesConFila.map(n => `${n}:${certRegistroEstudiante(nivelesSeguros[n])}`).join('|');
+  const nivelCertDefault = (() => {
+    const registrados = nivelesConFila.filter(n => !!certRegistroEstudiante(nivelesSeguros[n]));
+    if (registrados.length) return registrados[registrados.length - 1];
+    if (nivelesConFila.includes(nivelActivo)) return nivelActivo;
+    return nivelesConFila[0] || nivelActivo || 'B1';
+  })();
+  const [nivelCert, setNivelCert] = React.useState(nivelCertDefault);
+
+  React.useEffect(() => {
+    const registrados = nivelesConFila.filter(n => !!certRegistroEstudiante(nivelesSeguros[n]));
+    const proximo = registrados.length
+      ? registrados[registrados.length - 1]
+      : (nivelesConFila.includes(nivelActivo) ? nivelActivo : (nivelesConFila[0] || nivelActivo || 'B1'));
+    setNivelCert(proximo);
+  }, [est?.codigo, est?.rec_m, nivelActivo, firmaCertificados]);
+
+  const nivelInfoCert = nivelesSeguros[nivelCert] || {};
+  const estatusCert   = String(nivelInfoCert.estatus || '').toUpperCase();
+  const certNum       = certRegistroEstudiante(nivelInfoCert);
+  const certPago      = certPagoEstudiante(nivelInfoCert);
+  const certState     = certVisualState({ estatus: estatusCert, certPago, certNum });
+  const grupoCert     = String(nivelInfoCert.grupo || detalle?.cod_grupo || est.grupo || '').trim();
+  const certKey       = `CERTIFICACION_${nivelCert}`;
 
   const docs = [
     {
@@ -3493,26 +3520,15 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       titulo: 'Carta No Deuda CONAPE',
       desc: `Requerida por CONAPE para ${NIVEL_LABEL_D[nivelActivo] || nivelActivo}. Requiere nivel anterior aprobado.`,
       icono: '🏦', color: '#4CAF50',
-      ok: !!nivAnt && estatusAnt === 'APR',
-      razon: !detalle ? 'Cargando…' : !nivAnt ? 'No aplica para Básico I' : estatusAnt !== 'APR' ? `${nivAnt} debe estar APR (actual: ${estatusAnt || '—'})` : null,
-    },
-    {
-      tipo: 'CERTIFICACION',
-      titulo: 'Certificación de Nivel',
-      desc: certNum
-        ? `Certificado registrado: ${certNum}. Puede abrir el PDF existente o regenerarlo conservando exactamente el mismo número.`
-        : `Estado: ${certStateAct.label}. ${certStateAct.sub}.`,
-      icono: '🏅', color: '#E5A823',
-      ok: !!certNum,
-      razon: !detalle ? 'Cargando…' : certNum ? null : certStateAct.hint,
-      certState: certStateAct,
+      ok: !!nivAnt && (estatusAnt === 'APR' || estatusAnt === 'CNV'),
+      razon: !detalle ? 'Cargando…' : !nivAnt ? 'No aplica para Básico I' : (estatusAnt !== 'APR' && estatusAnt !== 'CNV') ? `${nivAnt} debe estar APR o CNV (actual: ${estatusAnt || '—'})` : null,
     },
   ];
 
   const [gen, setGen] = React.useState({});
   const [res, setRes] = React.useState({});
 
-  const generar = async (tipo) => {
+  const generarDocumentoComun = async (tipo) => {
     if (gen[tipo]) return;
     setGen(g => ({...g, [tipo]: true}));
     setRes(r => ({...r, [tipo]: null}));
@@ -3524,7 +3540,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         body: JSON.stringify({ fn:'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
-      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error }}));
+      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}));
     } catch(e) {
       setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
     } finally {
@@ -3533,59 +3549,90 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
   };
 
   const buscarCertificado = async () => {
-    const tipo = 'CERTIFICACION';
-    if (gen[tipo]) return;
-    setGen(g => ({...g, [tipo]: true}));
-    setRes(r => ({...r, [tipo]: null}));
+    if (gen[certKey] || !certNum) return;
+    setGen(g => ({...g, [certKey]: true}));
+    setRes(r => ({...r, [certKey]: null}));
     try {
       const data = await postAdminStudents('buscarCertificadoExistente', {
         codigo: String(est.codigo || est.rec_m || ''),
-        nivel: nivelActivo,
-        grupo: String(est.grupo || ''),
+        nivel: nivelCert,
+        grupo: grupoCert,
         registro: certNum,
       });
       if (data.ok) {
-        setRes(r => ({...r, [tipo]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
+        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
         if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
       } else {
-        setRes(r => ({...r, [tipo]: { error:data.mensaje || data.error, search_url:data.search_url }}));
+        setRes(r => ({...r, [certKey]: { error:data.mensaje || data.error, search_url:data.search_url }}));
       }
     } catch(e) {
-      setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
+      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
     } finally {
-      setGen(g => ({...g, [tipo]: false}));
+      setGen(g => ({...g, [certKey]: false}));
     }
   };
 
   const regenerarCertificadoMismoRegistro = async () => {
-    const tipo = 'CERTIFICACION';
-    if (gen[tipo] || !certNum) return;
+    if (gen[certKey] || !certNum) return;
     const confirmar = window.confirm(
-      `Se volverá a crear el PDF ${certNum}.\n\n` +
-      'Se conservará el mismo número de certificado. No se cambiará ESTATUS ni se generará un consecutivo nuevo.\n\n¿Continuar?'
+      `Se volverá a crear el PDF de ${NIVEL_LABEL_D[nivelCert] || nivelCert} con el registro ${certNum}.\n\n` +
+      'El sistema comprobará que ese número pertenece exactamente a ese nivel. No se cambiará ESTATUS ni se generará un consecutivo nuevo.\n\n¿Continuar?'
     );
     if (!confirmar) return;
-    setGen(g => ({...g, [tipo]: true}));
-    setRes(r => ({...r, [tipo]: null}));
+    setGen(g => ({...g, [certKey]: true}));
+    setRes(r => ({...r, [certKey]: null}));
     try {
       const data = await postAdminStudents('generarCertificado', {
         codigo: String(est.codigo || est.rec_m || ''),
-        nivel: nivelActivo,
-        grupo: String(est.grupo || ''),
+        nivel: nivelCert,
+        grupo: grupoCert,
+        registro_esperado: certNum,
         forzar_generar: true,
       });
       if (data && data.ok) {
-        setRes(r => ({...r, [tipo]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
+        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
         if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
       } else {
-        setRes(r => ({...r, [tipo]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
+        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
       }
     } catch(e) {
-      setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
+      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
     } finally {
-      setGen(g => ({...g, [tipo]: false}));
+      setGen(g => ({...g, [certKey]: false}));
     }
   };
+
+  const generarCertificadoNuevo = async () => {
+    if (gen[certKey] || !certState.canCrear) return;
+    const confirmar = window.confirm(
+      `Generar por primera vez el certificado de ${NIVEL_LABEL_D[nivelCert] || nivelCert}.\n\n` +
+      `Estado: ${estatusCert || '—'} · Pago de certificado: ${certPago ? 'Sí' : 'No'}\n\n¿Continuar?`
+    );
+    if (!confirmar) return;
+    setGen(g => ({...g, [certKey]: true}));
+    setRes(r => ({...r, [certKey]: null}));
+    try {
+      const data = await postAdminStudents('generarCertificado', {
+        codigo: String(est.codigo || est.rec_m || ''),
+        nivel: nivelCert,
+        grupo: grupoCert,
+      });
+      if (data && data.ok) {
+        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
+        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+      } else {
+        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo generar el certificado.' }}));
+      }
+    } catch(e) {
+      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+    } finally {
+      setGen(g => ({...g, [certKey]: false}));
+    }
+  };
+
+  const certResult = res[certKey];
+  const certLoading = !!gen[certKey];
+  const certColor = NIVEL_COLOR_D[nivelCert] || '#E5A823';
 
   return (
     <div>
@@ -3597,7 +3644,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       </div>
 
       <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-        {docs.map(({ tipo, titulo, desc, icono, color, ok, razon, certState }) => {
+        {docs.map(({ tipo, titulo, desc, icono, color, ok, razon }) => {
           const r = res[tipo]; const cargando = gen[tipo];
           return (
             <div key={tipo} style={{
@@ -3607,75 +3654,58 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
               opacity: ok ? 1 : 0.65,
             }}>
               <div style={{ display:'grid', gridTemplateColumns:'40px 1fr auto', gap:12, alignItems:'flex-start' }}>
-                <div style={{ width:40, height:40, borderRadius:'var(--r-md, 8px)', background:`color-mix(in srgb, ${color} 15%, white)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>
-                  {icono}
-                </div>
+                <div style={{ width:40, height:40, borderRadius:'var(--r-md, 8px)', background:`color-mix(in srgb, ${color} 15%, white)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>{icono}</div>
                 <div>
                   <div style={{ fontWeight:700, fontSize:13, marginBottom:3 }}>{titulo}</div>
                   <div style={{ fontSize:11, color:'var(--ink-3, #999)', lineHeight:1.4 }}>{desc}</div>
-                  {certState && (
-                    <div style={{ marginTop:8 }}>
-                      <CertificadoEstadoBox state={certState} />
-                    </div>
-                  )}
-                  {razon && (
-                    <div style={{ marginTop:6, fontSize:11, color:'#C67100', fontWeight:600, padding:'2px 8px', background:'color-mix(in srgb,#E5A823 10%,white)', borderRadius:5, display:'inline-block' }}>
-                      🔒 {razon}
-                    </div>
-                  )}
-                  {r?.url && (
-                    <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}>
-                      <span>✅</span>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:11, fontWeight:700, color:'#2E7D32', marginBottom:1 }}>{tipo === 'CERTIFICACION' ? 'PDF firmado/existente localizado' : 'PDF generado'}</div>
-                        <div style={{ fontSize:10, color:'var(--ink-3, #999)', fontFamily:'var(--f-mono, monospace)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.nombre}</div>
-                        {r.mensaje && <div style={{ fontSize:10, color:'#2E7D32', marginTop:2, lineHeight:1.3 }}>{r.mensaje}</div>}
-                      </div>
-                      <a href={r.url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:5, background:'#2E7D32', color:'white', fontSize:11, fontWeight:700, textDecoration:'none' }}>Abrir</a>
-                    </div>
-                  )}
-                  {r?.error && (
-                    <div style={{ marginTop:6, padding:'6px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>
-                      ❌ {r.error}
-                      {r.search_url && <a href={r.search_url} target="_blank" rel="noreferrer" style={{ marginLeft:8, color:'#8B0000', fontWeight:800 }}>Buscar en Drive</a>}
-                    </div>
-                  )}
+                  {razon && <div style={{ marginTop:6, fontSize:11, color:'#C67100', fontWeight:600, padding:'2px 8px', background:'color-mix(in srgb,#E5A823 10%,white)', borderRadius:5, display:'inline-block' }}>🔒 {razon}</div>}
+                  {r?.url && <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}><span>✅</span><div style={{ flex:1 }}><div style={{ fontSize:11, fontWeight:700, color:'#2E7D32' }}>PDF generado</div><div style={{ fontSize:10, color:'var(--ink-3, #999)' }}>{r.nombre}</div></div><a href={r.url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:5, background:'#2E7D32', color:'white', fontSize:11, fontWeight:700, textDecoration:'none' }}>Abrir</a></div>}
+                  {r?.error && <div style={{ marginTop:6, padding:'6px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>❌ {r.error}</div>}
                 </div>
-                {tipo === 'CERTIFICACION' && certNum ? (
-                  <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'stretch' }}>
-                    <button
-                      type="button"
-                      onClick={buscarCertificado}
-                      disabled={cargando}
-                      title="Abre el PDF existente más reciente con el nombre oficial. No crea copias nuevas."
-                      style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${color}`, background: color, color:'white', fontWeight:700, fontSize:11, cursor:cargando?'wait':'pointer', whiteSpace:'nowrap', textDecoration:'none', opacity:cargando?0.7:1 }}>
-                      {cargando ? 'Procesando…' : 'Ver firmado/PDF'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={regenerarCertificadoMismoRegistro}
-                      disabled={cargando}
-                      title={`Vuelve a crear el PDF usando el mismo registro ${certNum}. No genera un consecutivo nuevo.`}
-                      style={{ padding:'7px 10px', borderRadius:'var(--r-md, 8px)', border:`1px solid ${color}`, background:'white', color:color, fontWeight:800, fontSize:10.5, cursor:cargando?'wait':'pointer', whiteSpace:'nowrap', opacity:cargando?0.7:1 }}>
-                      ♻ Regenerar mismo #
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    disabled={!ok || cargando}
-                    onClick={() => generar(tipo)}
-                    style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${ok ? color : 'var(--line, #eee)'}`, background: ok ? color : 'var(--surface-3, #eee)', color: ok ? 'white' : 'var(--ink-3, #999)', fontWeight:700, fontSize:11, cursor: ok && !cargando ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', opacity: cargando ? 0.7 : 1 }}>
-                    {cargando ? '⏳…' : 'Generar'}
-                  </button>
-                )}
+                <button disabled={!ok || cargando} onClick={() => generarDocumentoComun(tipo)} style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${ok ? color : 'var(--line, #eee)'}`, background: ok ? color : 'var(--surface-3, #eee)', color: ok ? 'white' : 'var(--ink-3, #999)', fontWeight:700, fontSize:11, cursor: ok && !cargando ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', opacity:cargando?0.7:1 }}>{cargando ? '⏳…' : 'Generar'}</button>
               </div>
             </div>
           );
         })}
+
+        <div style={{ border:`2px solid ${certColor}`, borderRadius:'var(--r-lg, 12px)', padding:'16px 18px', background:`color-mix(in srgb, ${certColor} 4%, white)` }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12, alignItems:'center' }}>
+            <span style={{ fontSize:11, color:'var(--ink-3,#777)', fontWeight:700 }}>Certificado correspondiente a:</span>
+            {nivelesConFila.map(n => {
+              const reg = certRegistroEstudiante(nivelesSeguros[n]);
+              const selected = n === nivelCert;
+              return <button key={n} type="button" onClick={() => setNivelCert(n)} style={{ padding:'5px 10px', borderRadius:999, border:`1px solid ${NIVEL_COLOR_D[n]}`, background:selected ? NIVEL_COLOR_D[n] : 'white', color:selected ? 'white' : NIVEL_COLOR_D[n], fontSize:10.5, fontWeight:800, cursor:'pointer' }}>{reg ? '✓ ' : ''}{NIVEL_LABEL_D[n] || n}</button>;
+            })}
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'40px 1fr auto', gap:12, alignItems:'flex-start' }}>
+            <div style={{ width:40, height:40, borderRadius:'var(--r-md, 8px)', background:`color-mix(in srgb, ${certColor} 15%, white)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🏅</div>
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, marginBottom:3 }}>Certificación de Nivel — {NIVEL_LABEL_D[nivelCert] || nivelCert}</div>
+              <div style={{ fontSize:11, color:'var(--ink-3, #777)', lineHeight:1.45 }}>
+                {certNum
+                  ? `Registro oficial de ${nivelCert}: ${certNum}. Las acciones siguientes operan únicamente sobre este nivel.`
+                  : `Estado ${nivelCert}: ${estatusCert || '—'}. ${certState.sub}.`}
+              </div>
+              <div style={{ marginTop:8 }}><CertificadoEstadoBox state={certState} /></div>
+              {!certNum && certState.hint && <div style={{ marginTop:6, fontSize:11, color:'#C67100', fontWeight:600, padding:'2px 8px', background:'color-mix(in srgb,#E5A823 10%,white)', borderRadius:5, display:'inline-block' }}>🔒 {certState.hint}</div>}
+              {certResult?.url && <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}><span>✅</span><div style={{ flex:1 }}><div style={{ fontSize:11, fontWeight:700, color:'#2E7D32' }}>{certResult.mensaje || `PDF de ${nivelCert} listo`}</div><div style={{ fontSize:10, color:'var(--ink-3, #999)' }}>{certResult.nombre}</div></div><a href={certResult.url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:5, background:'#2E7D32', color:'white', fontSize:11, fontWeight:700, textDecoration:'none' }}>Abrir</a></div>}
+              {certResult?.error && <div style={{ marginTop:6, padding:'8px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>❌ {certResult.error}{certResult.search_url && <a href={certResult.search_url} target="_blank" rel="noreferrer" style={{ marginLeft:8, color:'#8B0000', fontWeight:800 }}>Buscar en Drive</a>}</div>}
+            </div>
+            {certNum ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'stretch' }}>
+                <button type="button" onClick={buscarCertificado} disabled={certLoading} title={`Abre exclusivamente el PDF de ${nivelCert} registrado como ${certNum}.`} style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${certColor}`, background:certColor, color:'white', fontWeight:700, fontSize:11, cursor:certLoading?'wait':'pointer', whiteSpace:'nowrap', opacity:certLoading?0.7:1 }}>{certLoading ? 'Procesando…' : `Ver PDF ${nivelCert}`}</button>
+                <button type="button" onClick={regenerarCertificadoMismoRegistro} disabled={certLoading} title={`Regenera únicamente ${nivelCert} usando ${certNum}.`} style={{ padding:'7px 10px', borderRadius:'var(--r-md, 8px)', border:`1px solid ${certColor}`, background:'white', color:certColor, fontWeight:800, fontSize:10.5, cursor:certLoading?'wait':'pointer', whiteSpace:'nowrap', opacity:certLoading?0.7:1 }}>♻ Regenerar {nivelCert}</button>
+              </div>
+            ) : (
+              <button type="button" onClick={generarCertificadoNuevo} disabled={!certState.canCrear || certLoading} style={{ padding:'8px 14px', borderRadius:'var(--r-md, 8px)', border:`2px solid ${certState.canCrear ? certColor : 'var(--line,#ddd)'}`, background:certState.canCrear ? certColor : 'var(--surface-3,#eee)', color:certState.canCrear ? 'white' : 'var(--ink-3,#999)', fontWeight:700, fontSize:11, cursor:certState.canCrear && !certLoading ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', opacity:certLoading?0.7:1 }}>{certLoading ? 'Procesando…' : `Generar ${nivelCert}`}</button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div style={{ marginTop:14, fontSize:11, color:'var(--ink-3, #999)', padding:'10px 14px', background:'var(--surface-2, #f9f9f9)', borderRadius:'var(--r-md, 8px)' }}>
-        📁 Certificados F98.3-B: si ya existe REG_CERTIFICADOS, nunca crea otro consecutivo. Puede abrir el PDF más reciente o regenerarlo con exactamente el mismo número. Para certificados nuevos, el registro se escribe en ESTATUS únicamente después de crear correctamente el PDF.
+      <div style={{ marginTop:14, fontSize:11, color:'var(--ink-3, #777)', padding:'10px 14px', background:'var(--surface-2, #f9f9f9)', borderRadius:'var(--r-md, 8px)' }}>
+        📁 Control F98.3-C: el nivel activo y el nivel del certificado son datos distintos. Cada botón valida en backend que el REG_CERTIFICADOS pertenece exactamente a la fila académica seleccionada antes de abrir o regenerar un PDF.
       </div>
     </div>
   );

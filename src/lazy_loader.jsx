@@ -4,7 +4,7 @@
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.3-B-CERTIFICADOS';
+  const VERSION = 'F98.3-C-CERTIFICADOS-NIVEL';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){
