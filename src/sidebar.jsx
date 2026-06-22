@@ -380,22 +380,32 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     };
   }, [rolEfectivo, active]);
 
-  const studentNav = [
-    // F96.5 UX-F: el menú del estudiante sigue la misma jerarquía de Mi Campus.
-    // No se elimina ningún módulo; solo se reordena para que lo académico
-    // frecuente esté arriba y lo administrativo/seguimiento quede abajo.
-    { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
-    { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
-    { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
-    { id: 'examenes', label: 'Exámenes', icon: 'check' },
-    { id: 'notas', label: 'Mis Notas', icon: 'grades' },
-    { id: 'info_programa', label: 'Material obligatorio INA', icon: 'doc' },
-    { id: 'solicitudes_estudiante', label: 'Solicitudes', icon: 'card' },
-    { id: 'pagos', label: 'Estado de cuenta', icon: 'payments' },
-    { id: 'certificados', label: 'Certificaciones', icon: 'certificates' },
-    { id: 'ican', label: 'Club I CAN', icon: 'ican' },
-    { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
-    { id: 'tareas', label: 'Tareas', icon: 'homework' },
+  // F98.4-A: menú del estudiante por proceso académico, no por archivo interno.
+  // Club I CAN usa primero un indicador explícito de sesión (`acceso_ican`) y,
+  // si no existe, el campo PROGRAMA proveniente de GRUPOS. No se muestra una
+  // opción permanente "No aplica".
+  const programaEstudiante = String(usr?.programa || usr?.PROGRAMA || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const tieneICANExplicito = usr?.acceso_ican === true || String(usr?.acceso_ican || '').toUpperCase() === 'TRUE';
+  const tieneICANPrograma = ['INA','CON_INA'].includes(programaEstudiante);
+  const mostrarICAN = tieneICANExplicito || tieneICANPrograma;
+  const studentSections = [
+    {
+      label: 'Aprendizaje',
+      items: [
+        { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
+        { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
+        { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
+        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
+      ],
+    },
+    {
+      label: 'Gestión',
+      items: [
+        { id: 'pagos', label: 'Pagos y estado de cuenta', icon: 'payments' },
+        { id: 'certificados', label: 'Certificados', icon: 'certificates' },
+        { id: 'documentos_ayuda', label: 'Documentos y ayuda', icon: 'doc' },
+      ],
+    },
   ];
   const teacherNav = [
     { id: 'perfil', label: 'Teacher', icon: 'profile' },
@@ -443,7 +453,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'reportes', label: 'Reportes',         icon: 'chart' },
     { id: 'config',   label: 'Configuración',    icon: 'settings',   proximamente: true },
   ];
-  const nav = role === 'student' ? studentNav : role === 'teacher' ? teacherNav : adminNav;
+  const nav = role === 'teacher' ? teacherNav : adminNav;
   const userName = usr?.nombre || '—';
   const userRole = usr
     ? (usr.rol === 'superadmin' ? 'Superadmin'
@@ -465,52 +475,63 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
 
       {esSuperadmin && <ModoPruebaPanel />}
 
-      <div className="sb-section">Menú</div>
-      {nav.map(item => {
-        if (item.proximamente) {
-          return (
+      {role === 'student' ? studentSections.map(section => (
+        <React.Fragment key={section.label}>
+          <div className="sb-section">{section.label}</div>
+          {section.items.map(item => (
             <button
               key={item.id}
-              type="button"
-              disabled
-              aria-disabled="true"
-              title="En construcción — lo conectamos pronto"
-              className="sb-item"
-              style={{
-                opacity: 0.42,
-                cursor: 'not-allowed',
-                pointerEvents: 'auto', // queremos el tooltip
-                background: 'transparent',
-              }}
-            >
+              className={`sb-item ${active===item.id?'active':''}`}
+              onClick={() => setActive(item.id)}>
               <Icon name={item.icon} size={18} />
-              <span className="sb-label" style={{ textDecoration: 'none' }}>{item.label}</span>
-              <span style={{
-                marginLeft: 'auto',
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                padding: '2px 7px',
-                borderRadius: 999,
-                background: 'color-mix(in srgb, var(--ink-3) 18%, transparent)',
-                color: 'var(--ink-3)',
-                whiteSpace: 'nowrap',
-              }}>Pronto</span>
+              <span className="sb-label">{item.label}</span>
             </button>
-          );
-        }
-        return (
-          <button
-            key={item.id}
-            className={`sb-item ${active===item.id?'active':''}`}
-            onClick={() => setActive(item.id)}>
-            <Icon name={item.icon} size={18} />
-            <span className="sb-label">{item.label}</span>
-            {item.badge && <span className="sb-badge">{item.badge}</span>}
-          </button>
-        );
-      })}
+          ))}
+        </React.Fragment>
+      )) : (
+        <>
+          <div className="sb-section">Menú</div>
+          {nav.map(item => {
+            if (item.proximamente) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="En construcción — lo conectamos pronto"
+                  className="sb-item"
+                  style={{
+                    opacity: 0.42,
+                    cursor: 'not-allowed',
+                    pointerEvents: 'auto',
+                    background: 'transparent',
+                  }}
+                >
+                  <Icon name={item.icon} size={18} />
+                  <span className="sb-label" style={{ textDecoration: 'none' }}>{item.label}</span>
+                  <span style={{
+                    marginLeft: 'auto', fontSize:9, fontWeight:800,
+                    letterSpacing:'0.14em', textTransform:'uppercase', padding:'2px 7px',
+                    borderRadius:999, background:'color-mix(in srgb, var(--ink-3) 18%, transparent)',
+                    color:'var(--ink-3)', whiteSpace:'nowrap',
+                  }}>Pronto</span>
+                </button>
+              );
+            }
+            return (
+              <button
+                key={item.id}
+                className={`sb-item ${active===item.id?'active':''}`}
+                onClick={() => setActive(item.id)}>
+                <Icon name={item.icon} size={18} />
+                <span className="sb-label">{item.label}</span>
+                {item.badge && <span className="sb-badge">{item.badge}</span>}
+              </button>
+            );
+          })}
+        </>
+      )}
 
       <div className="sb-user">
         <div className="sb-avatar">{userInit}</div>

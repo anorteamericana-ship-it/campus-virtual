@@ -240,12 +240,33 @@ function useEstadoConape(cedula) {
   return estado;
 }
 
+function ConapeBannerDashboardF984({ estado }) {
+  if (!estado || !estado.ok) return null;
+  const principal = String(estado.estadoTexto || '').trim();
+  const detalle = String(estado.desembolsoTexto || '').trim();
+  if (!principal && !detalle) return null;
+  return (
+    <section className="card" aria-label="Financiamiento CONAPE" style={{
+      marginBottom:18, padding:'14px 18px', border:'1px solid color-mix(in srgb,#1565C0 28%,white)',
+      background:'linear-gradient(135deg,color-mix(in srgb,#1565C0 10%,white),#fff)',
+      display:'flex', alignItems:'center', gap:14, flexWrap:'wrap'
+    }}>
+      <div style={{ width:42, height:42, borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', background:'#1565C0', color:'#fff', fontSize:21 }}>🏛️</div>
+      <div style={{ flex:1, minWidth:230 }}>
+        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:'#0D47A1' }}>Financiamiento CONAPE</div>
+        <div style={{ marginTop:3, fontSize:14.5, fontWeight:850, color:'var(--an-navy-ink)' }}>{principal || 'Estado disponible'}</div>
+        {detalle && <div style={{ marginTop:2, fontSize:12, color:'var(--ink-3)' }}>{detalle}</div>}
+      </div>
+    </section>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
 function StudentDashboard({ toast, onNavigate }) {
   const usr    = useUsuario();
-  const go     = (t) => (onNavigate ? onNavigate(t) : null);
+  const go     = (t, opts = {}) => (onNavigate ? onNavigate(t, opts) : null);
   // BUG C fix → si `codigo` (REC_M) viene vacío de la sesión, fallback a cédula.
   const codigo = usr?.codigo || usr?.cedula || '';
   const { data, loading, error, reload } = useEstudiante(codigo);
@@ -266,9 +287,9 @@ function StudentDashboard({ toast, onNavigate }) {
   }, [nivelReal, codGrupo]);
   const nivelSeleccionado = nivelVista || nivelInicial;
   const codGrupoSeleccionado = grupoDeNivelSD(niveles, nivelSeleccionado, codGrupo);
-  const esConape     = est.CONVENIO === 'CONAPE';
+  const esConape     = String(est.CONVENIO || est.convenio || '').trim().toUpperCase() === 'CONAPE';
   const cedula       = est.CEDULA || est.NUM_CEDULA || usr?.cedula || null;
-  const programa     = grupo.PROGRAMA || usr?.programa || 'SIN_INA';
+  const programa     = String(grupo.PROGRAMA || grupo.programa || usr?.programa || usr?.PROGRAMA || 'SIN_INA').trim().toUpperCase().replace(/[\s-]+/g, '_');
   const esINA        = programa === 'INA' || programa === 'CON_INA';
 
   // Hooks que dependen de los datos derivados — siempre se ejecutan.
@@ -347,11 +368,16 @@ function StudentDashboard({ toast, onNavigate }) {
   const cronoPublicado = Array.isArray(lecciones) && lecciones.length > 0;
 
   // La ruta siempre muestra los cuatro niveles; los pendientes no desaparecen.
-  const nivelesRuta = ['B1','B2','I1','I2'].map(n => ({
-    nivel:n,
-    estatus:estatusDeNivelSD(niveles,n),
-    nota:notaDeNivel(niveles,n),
-  }));
+  const nivelesRuta = ['B1','B2','I1','I2'].map(n => {
+    const raw = niveles && niveles[n];
+    return {
+      nivel:n,
+      estatus:estatusDeNivelSD(niveles,n),
+      nota:notaDeNivel(niveles,n),
+      registro: raw && typeof raw === 'object' ? (raw.reg_certificados || raw.cert_num || '') : '',
+      grupo: grupoDeNivelSD(niveles,n,codGrupo),
+    };
+  });
 
   // STUDENT-ACCESS-CALENDAR-001: el Dashboard se adapta al estado de acceso.
   // Derivado de los datos de getEstudiante (sin fetch extra). Solo cambia la
@@ -373,24 +399,11 @@ function StudentDashboard({ toast, onNavigate }) {
 
   return (
     <div data-screen-label="Estudiante · Mi Campus">
-      {/* ── MATRICULA_PAGADA: aviso de material bloqueado hasta primera cuota ─ */}
-      {matriculaPagadaBanner && (
-        <div style={{
-          marginBottom:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
-          background:'color-mix(in srgb, var(--an-gold) 12%, white)',
-          border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)',
-          borderRadius:'var(--r-lg)', color:'#6B4A00',
-        }}>
-          <span style={{ fontSize:22 }}>🗓️</span>
-          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}>
-            <strong style={{ color:'var(--an-navy-ink)' }}>Tu cronograma ya está disponible.</strong>{' '}
-            El material del curso (PDFs, audios, biblioteca y Zoom) se habilitará cuando se registre la primera cuota del nivel.
-          </div>
-          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
-        </div>
-      )}
-      {/* ── SALUDO (nombre completo) ─────────────────────────────────── */}
-      <div className="hero" style={{ marginBottom: 18 }}>
+      {/* 1. Material obligatorio: requisito de orientación y consulta permanente. */}
+      <AntesDeEmpezar codigo={codigo} onNavigate={go} />
+
+      {/* 2. Saludo principal. El encabezado usa horario real + consecutivo corto. */}
+      <div className="hero" style={{ marginBottom:18 }}>
         <div className="watermark-a">A</div>
         <div className="hero-grid">
           <div>
@@ -398,65 +411,34 @@ function StudentDashboard({ toast, onNavigate }) {
               {horarioCurso || 'Mi Campus'}
               {docenteCorto && ` · Teacher ${docenteCorto}`}
             </div>
-            <h1 className="hero-h1">
-              Buen día,<br/>
-              <em>{nombreCompleto}</em>
-            </h1>
+            <h1 className="hero-h1">Buen día,<br/><em>{nombreCompleto}</em></h1>
             <div className="hero-sub">
               {nivelReal
                 ? nivelSeleccionado === nivelReal
                   ? <>Estás cursando <strong>{nivelNombre}</strong> — {NIVEL_LIBRO[nivelSeleccionado]}.</>
                   : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
-                : <>Tu nivel activo aparecerá acá cuando tu matrícula esté procesada.</>}
+                : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
             </div>
           </div>
-
           <div style={{ display:'flex', justifyContent:'center' }}>
             <Ring pct={progresoPct} size={210}>
               <div className="ring-pct">{progresoPct}<sup>%</sup></div>
               <div className="ring-label">Módulo completado</div>
               <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:4, textAlign:'center', maxWidth:150 }}>
-                {cronoPublicado
-                  ? `${cerradas} de ${totalLecciones} lecciones`
-                  : 'Cronograma no publicado aún'}
+                {cronoPublicado ? `${cerradas} de ${totalLecciones} lecciones` : 'Cronograma no publicado aún'}
               </div>
             </Ring>
           </div>
         </div>
       </div>
 
-      <DatosAcademicosInicio
-        est={est}
-        nombreCompleto={nombreCompleto}
-        codigo={codigo}
-        cedula={cedula}
-        codGrupo={codGrupo}
-        nivelReal={nivelReal}
-        docente={docente}
-        horario={horarioCurso}
-        programa={programa}
-        onNavigate={go}
-      />
+      {/* 3. CONAPE: una sola aparición, únicamente con convenio y respuesta real. */}
+      {esConape && conapeEstado && <ConapeBannerDashboardF984 estado={conapeEstado} />}
 
-      <AntesDeEmpezar codigo={codigo} onNavigate={go} />
+      {/* 4. Accesos rápidos. */}
+      <AccesosRapidosDashboard onNavigate={go} />
 
-      <OrientacionInicialCampus
-        codigo={codigo}
-        nombreCompleto={nombreCompleto}
-        codGrupo={codGrupo}
-        nivelReal={nivelReal}
-        docente={docente}
-        horario={horarioCurso}
-        onNavigate={go}
-      />
-
-      <ProximaAccionCampus
-        proximaClase={proximas[0]}
-        proximoExamen={proximoExamen}
-        cronoPublicado={cronoPublicado}
-        onNavigate={go}
-      />
-
+      {/* 5. Ruta académica interactiva. */}
       <RutaAcademicaDashboard
         niveles={nivelesRuta}
         nivelActivo={nivelReal}
@@ -464,69 +446,28 @@ function StudentDashboard({ toast, onNavigate }) {
         onSelect={setNivelVista}
       />
 
-      <AccesosRapidosDashboard onNavigate={go} />
-
-      <SoportePruebaViva nombreCompleto={nombreCompleto} codGrupo={codGrupo} />
-
-      {/* ── RESUMEN ACADÉMICO: cambia al tocar un nivel ─────────────── */}
+      {/* 6. Objetivo general y libro del nivel seleccionado. */}
       <ResumenAcademico nivelReal={nivelSeleccionado} programa={programa} />
 
-      {/* ── KPIs ─────────────────────────────────────────────────────── */}
-      <div className="grid-4" style={{ marginBottom: 18 }}>
-        <Stat
-          label="Asistencia"
-          num={asistPct != null ? String(asistPct) : '—'}
-          suffix={asistPct != null ? '%' : ''}
+      {/* 7–9. Asistencia, nota acumulada y progreso académico del nivel elegido. */}
+      <div className="grid-3" style={{ marginBottom:18 }}>
+        <Stat label="Asistencia" num={asistPct != null ? String(asistPct) : '—'} suffix={asistPct != null ? '%' : ''}
           sub={asistTotal != null ? `${asistPresentes} de ${asistTotal} clases` : 'Sin registros aún'}
-          subTone={asistPct != null && asistPct >= 80 ? 'ok' : ''}
-          pct={asistPct || 0}
-          color="var(--ok)"
-        />
-        <Stat
-          label="Nota acumulada"
-          num={notaActiva != null ? String(notaActiva) : '—'}
-          suffix={notaActiva != null ? '/100' : ''}
+          subTone={asistPct != null && asistPct >= 70 ? 'ok' : ''} pct={asistPct || 0} color="var(--ok)" />
+        <Stat label="Nota acumulada" num={notaActiva != null ? String(notaActiva) : '—'} suffix={notaActiva != null ? '/100' : ''}
           sub={notaActiva != null ? `Nivel ${nivelSeleccionado || '—'}` : 'Sin evaluación final aún'}
-          subTone={notaActiva != null && notaActiva >= 80 ? 'ok' : ''}
-          pct={notaActiva || 0}
-          color="var(--an-granate)"
-        />
-        <Stat
-          label="Lecciones dadas"
-          num={cronoPublicado ? String(cerradas) : '—'}
-          suffix={cronoPublicado ? `/${totalLecciones}` : ''}
-          sub={cronoPublicado ? `${progresoPct}% del módulo` : 'Cronograma no publicado'}
-          subTone=""
-          pct={progresoPct}
-          color="var(--an-navy)"
-        />
-        {esINA ? (
-          <ICANStat icanData={icanData} />
-        ) : (
-          <Stat
-            label="Cuotas al día"
-            num={pendientes.cuotas_pendientes != null
-              ? String(Math.max(0, (pendientes.cuotas_total || 4) - pendientes.cuotas_pendientes))
-              : '—'}
-            suffix={pendientes.cuotas_total ? `/${pendientes.cuotas_total}` : ''}
-            sub={pendientes.cuotas_pendientes === 0 ? 'Todo al día ✓'
-              : pendientes.cuotas_pendientes
-                ? `${pendientes.cuotas_pendientes} pendiente${pendientes.cuotas_pendientes>1?'s':''}`
-                : 'Sin registros'}
-            subTone={pendientes.cuotas_pendientes === 0 ? 'ok' : pendientes.cuotas_pendientes ? 'warn' : ''}
-            pct={pendientes.cuotas_total ? ((pendientes.cuotas_total - (pendientes.cuotas_pendientes||0)) / pendientes.cuotas_total)*100 : 0}
-            color="var(--an-gold)"
-          />
-        )}
+          subTone={notaActiva != null && notaActiva >= 70 ? 'ok' : ''} pct={notaActiva || 0} color="var(--an-granate)" />
+        <Stat label="Progreso académico" num={cronoPublicado ? String(cerradas) : '—'} suffix={cronoPublicado ? `/${totalLecciones}` : ''}
+          sub={cronoPublicado ? `${progresoPct}% del nivel` : 'Cronograma no publicado'} pct={progresoPct} color="var(--an-navy)" />
       </div>
 
+      {/* 10–11. Próxima clase y próximo examen. */}
+      <ProximaAccionCampus proximaClase={proximas[0]} proximoExamen={proximoExamen}
+        cronoPublicado={cronoPublicado} onNavigate={go} />
 
-      {/* ── SERVICIOS Y SEGUIMIENTO (sin placeholders en Mi Campus) ───────
-          UX-C: Mi Campus no debe parecer incompleto. Los módulos en diseño
-          siguen existiendo en el menú/rutas, pero se retiran del home para
-          no mostrar "Próximamente" a estudiantes nuevos antes de la prueba. */}
-      <DashSection title="Servicios y seguimiento" hint="Solo información útil para tu operación diaria" />
-      <div className="grid-mods" style={{ marginBottom: 20 }}>
+      {/* 12. Tus módulos. Solo módulos operativos o con datos honestos. */}
+      <DashSection title="Tus módulos" hint="Servicios académicos y administrativos" />
+      <div className="grid-mods" style={{ marginBottom:20 }}>
         <ModInfoCurso nivelReal={nivelSeleccionado} codGrupo={codGrupoSeleccionado} grupo={grupo} programa={programa} onNavigate={go} />
         <ModEstadoCuenta pendientes={pendientes} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
         <ModCertificados niveles={niveles} onNavigate={go} />
@@ -534,120 +475,26 @@ function StudentDashboard({ toast, onNavigate }) {
         {esINA && <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />}
       </div>
 
-      {/* ── CALENDARIO / PRÓXIMAS CLASES + EXAMEN ────────────────────── */}
-      <DashSection title="Tu calendario" hint={`Lecciones de ${NIVEL_NOMBRE[nivelSeleccionado] || nivelSeleccionado}`} />
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-h">
-            <div className="card-title">Próximas clases</div>
-            <button className="btn btn-ghost" onClick={() => go('cronograma_grupo')}>Ver calendario →</button>
-          </div>
-          {lecciones === null ? (
-            <SkeletonList rows={4} />
-          ) : !cronoPublicado ? (
-            <div style={{ padding:'28px 16px', textAlign:'center', color:'var(--ink-3)', fontSize:13, lineHeight:1.55 }}>
-              <div style={{ fontSize:26, opacity:0.4, marginBottom:6 }}>🗓️</div>
-              El cronograma de tu grupo aún no está publicado.
-              <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:4 }}>
-                Cuando administración publique las fechas de {codGrupoSeleccionado || 'tu grupo'}, aparecerán acá.
-              </div>
-            </div>
-          ) : proximas.length === 0 ? (
-            <div style={{ padding:'24px 12px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
-              ¡Felicidades! No tenés clases por venir en este módulo.
-            </div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column' }}>
-              {proximas.map((l, i) => {
-                const dias = diasEntreSD(l.fecha);
-                const etiq = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : dias > 1 ? `En ${dias} días` : '—';
-                const esExamen = l.tipo === 'EVAL_ORAL' || l.tipo === 'EVAL_ESCRITO';
-                const esPC     = l.tipo === 'PROGRESS_CHECK';
-                return (
-                  <div key={i} style={{
-                    display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14,
-                    alignItems:'center', padding:'12px 4px',
-                    borderBottom: i < proximas.length-1 ? '1px solid var(--line)' : 'none',
-                  }}>
-                    <div style={{ width:50, textAlign:'center', padding:'6px 4px', borderRadius:'var(--r-sm)', background:'var(--bg-deep)' }}>
-                      <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:600, lineHeight:1, color:'var(--ink)' }}>
-                        {fmtFechaCorta(l.fecha).split(' ')[0]}
-                      </div>
-                      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--ink-3)', marginTop:2 }}>
-                        {fmtFechaCorta(l.fecha).split(' ')[1]}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                        <strong style={{ fontFamily:'var(--f-mono)', fontSize:13 }}>Lec {String(l.leccion).padStart(2,'0')}</strong>
-                        {esExamen && <Chip tone="red">Examen</Chip>}
-                        {esPC && <Chip tone="navy">Progress Check</Chip>}
-                        {l.estado === 'HOY' && <Chip tone="gold" dot>Hoy</Chip>}
-                      </div>
-                      <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
-                        {l.dia}{l.turno ? ` · ${l.turno}` : ''} · {etiq}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {/* 13. Elementos adicionales útiles: bloqueo parcial, verificación y ayuda. */}
+      {matriculaPagadaBanner && (
+        <div style={{ marginBottom:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', background:'color-mix(in srgb, var(--an-gold) 12%, white)', border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)', borderRadius:'var(--r-lg)', color:'#6B4A00' }}>
+          <span style={{ fontSize:22 }}>🗓️</span>
+          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}><strong style={{ color:'var(--an-navy-ink)' }}>Tu cronograma ya está disponible.</strong>{' '}El material se habilitará cuando se registre la primera cuota del nivel.</div>
+          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
         </div>
+      )}
 
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {proximoExamen ? (
-            <div className="card" style={{ background:'linear-gradient(135deg, #FCF6E5, #FBEEC9)', border:'1px solid var(--an-gold-soft)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'var(--an-gold)', color:'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Icon name="bolt" size={18} className="" />
-                </div>
-                <div>
-                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6B4A00' }}>
-                    Próximo examen
-                  </div>
-                  <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, color:'var(--an-navy-ink)', marginTop:2 }}>
-                    {proximoExamen.tipo === 'EVAL_ORAL' ? 'Examen Oral' : 'Examen Escrito'}
-                  </div>
-                </div>
-              </div>
-              <div style={{ fontSize:12, color:'var(--ink-2)' }}>
-                Lección {proximoExamen.leccion} · {fmtFechaCorta(proximoExamen.fecha)}{proximoExamen.turno ? ` · ${proximoExamen.turno}` : ''}
-                {(() => { const d = diasEntreSD(proximoExamen.fecha); const t = d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`; return <strong style={{ color:'#6B4A00' }}> · {t}</strong>; })()}
-              </div>
-            </div>
-          ) : (
-            <div className="card" style={{ opacity:0.75 }}>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>Próximo examen</div>
-              <div style={{ fontSize:13, color:'var(--ink-3)' }}>
-                {cronoPublicado ? 'Sin exámenes por venir en este módulo.' : 'Disponible cuando se publique el cronograma.'}
-              </div>
-            </div>
-          )}
+      <DatosAcademicosInicio est={est} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
+        codGrupo={codGrupo} nivelReal={nivelReal} docente={docente} horario={horarioCurso}
+        programa={programa} onNavigate={go} />
+      <OrientacionInicialCampus codigo={codigo} nombreCompleto={nombreCompleto} codGrupo={codGrupo}
+        nivelReal={nivelReal} docente={docente} horario={horarioCurso} onNavigate={go} />
+      <SoportePruebaViva nombreCompleto={nombreCompleto} codGrupo={horarioCurso || sufijoGrupoSD(codGrupo)} />
 
-          {/* CONAPE — solo si está en convenio y hay estado real */}
-          {esConape && conapeEstado && (
-            <div style={{ background:'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)', borderRadius:12, padding:'16px 20px', color:'white', display:'flex', alignItems:'center', gap:16 }}>
-              <div style={{ fontSize:30 }}>🏛️</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:11, opacity:0.75, fontWeight:600, letterSpacing:1, textTransform:'uppercase' }}>Financiamiento CONAPE</div>
-                <div style={{ fontSize:15, fontWeight:700, marginTop:2 }}>{conapeEstado.estadoTexto || '—'}</div>
-                {conapeEstado.desembolsoTexto && <div style={{ fontSize:12, opacity:0.8, marginTop:4 }}>{conapeEstado.desembolsoTexto}</div>}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* STUDENT-CONTACT-ADMIN-002: bloque de ayuda general → contacto de
-          ADMINISTRACIÓN dinámico. Solo muestra el botón si hay número real
-          (hideWhenPending); nunca se inventa contacto. */}
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ flex:1, minWidth:220, fontSize:13, color:'var(--ink-2)' }}>
-            <strong style={{ color:'var(--ink)' }}>¿Necesitás ayuda con tu campus?</strong>{' '}
-            Soporte general y datos personales.
-          </div>
+          <div style={{ flex:1, minWidth:220, fontSize:13, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás ayuda?</strong>{' '}Usá Documentos y ayuda o contactá a administración.</div>
+          <button className="btn btn-ghost" onClick={() => go('documentos_ayuda', { tab:'ayuda' })}>Documentos y ayuda</button>
           <window.ContactoAdmin est={est} tipo="administracion" hideWhenPending />
         </div>
       )}
@@ -807,7 +654,7 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
     ['Nombre', nombreCompleto && nombreCompleto !== '—' ? nombreCompleto : 'Pendiente'],
     ['Cédula', cedula || 'Pendiente'],
     ['Código', codigo || est.REC_M || est.CODIGO || 'Pendiente'],
-    ['Grupo', codGrupo || 'Pendiente'],
+    ['Grupo y horario', horario || (sufijoGrupoSD(codGrupo) ? 'Grupo ' + sufijoGrupoSD(codGrupo) : 'Pendiente')],
     ['Nivel', nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'],
     ['Teacher', docente || 'Pendiente'],
     ['Horario', horario || 'Pendiente'],
@@ -837,7 +684,7 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
         <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45 }}><strong style={{ color:'var(--ink)' }}>Primer paso:</strong> confirmá que tus datos coincidan con tu grupo y horario real. Si algo no coincide, reportalo antes de usar exámenes o asistencia.</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('info_programa')}>Material obligatorio →</button>
-          <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('perfil')}>Revisar perfil →</button>
+          <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('documentos_ayuda', { tab:'ayuda' })}>Ayuda y contactos →</button>
         </div>
       </div>
     </section>
@@ -873,7 +720,7 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10, padding:16, background:'color-mix(in srgb, var(--bg-deep) 30%, white)' }}>
         <div style={datoStyle}><div style={labelStyle}>Estudiante</div><div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div></div>
-        <div style={datoStyle}><div style={labelStyle}>Grupo</div><div style={valueStyle}>{codGrupo || 'Pendiente'}</div></div>
+        <div style={datoStyle}><div style={labelStyle}>Grupo y horario</div><div style={valueStyle}>{horario || (sufijoGrupoSD(codGrupo) ? 'Grupo ' + sufijoGrupoSD(codGrupo) : 'Pendiente')}</div></div>
         <div style={datoStyle}><div style={labelStyle}>Nivel</div><div style={valueStyle}>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'}</div></div>
         <div style={datoStyle}><div style={labelStyle}>Teacher</div><div style={valueStyle}>{docente || 'Pendiente'}</div></div>
         <div style={datoStyle}><div style={labelStyle}>Horario</div><div style={valueStyle}>{horario || 'Pendiente'}</div></div>
@@ -920,7 +767,6 @@ function ProximaAccionCampus({ proximaClase, proximoExamen, cronoPublicado, onNa
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12, padding:16 }}>
         {card('Próxima clase', claseLabel, cronoPublicado ? 'Confirmá fecha y lección.' : 'Aparecerá cuando administración publique el calendario.', '🗓️', 'Abrir', 'cronograma_grupo')}
         {card('Próximo examen', examenLabel, proximoExamen ? 'La disponibilidad depende de la sesión docente.' : 'No hay examen activo por ahora.', '📝', 'Ver', 'examenes')}
-        {card('Material obligatorio', 'Lecturas y normas del programa', 'Disponible siempre desde Información del Programa.', '📖', 'Leer', 'info_programa')}
       </div>
     </section>
   );
@@ -975,6 +821,9 @@ function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSel
               <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:5 }}>{NIVEL_NOMBRE[n]}</div>
               <div style={{ height:7, borderRadius:999, background:'var(--line)', overflow:'hidden', marginTop:12 }}><div style={{ width:`${pct}%`, height:'100%', background:color }} /></div>
               <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:9 }}>Nota: <strong>{item.nota != null ? item.nota : '—'}</strong></div>
+              <div style={{ fontSize:10.5, color:'var(--ink-3)', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {item.registro ? `Certificado: ${item.registro}` : (['APR','CNV'].includes(est) ? 'Certificado: sin registro oficial' : 'Certificado: no aplica aún')}
+              </div>
             </button>
           );
         })}
@@ -985,10 +834,10 @@ function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSel
 
 function AccesosRapidosDashboard({ onNavigate }) {
   const items = [
-    ['cronograma_grupo','Cronograma','🗓️','Qué sigue'],
-    ['materiales','Materiales','📚','Lecturas y recursos'],
-    ['examenes','Exámenes','📝','Disponibles'],
-    ['notas','Mis notas','📊','Resultados'],
+    ['cronograma_grupo','Cronograma','🗓️','Mi curso'],
+    ['materiales','Materiales','📚','Mi curso'],
+    ['examenes','Evaluaciones','📝','Próximas y activas'],
+    ['notas','Resultados','📊','Notas y retroalimentación'],
   ];
   return (
     <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Accesos rápidos">
@@ -1038,7 +887,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
             Antes de empezar tu programa
           </div>
           <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2, lineHeight:1.4 }}>
-            Revisá estos materiales en <strong>Información del Programa</strong> antes de tu primera lección. Este bloque queda visible en Mi Campus para consulta rápida.
+            Revisá estos materiales en <strong>Documentos y ayuda</strong> antes de tu primera lección. Este bloque queda visible en Mi Campus para consulta rápida.
           </div>
         </div>
         <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={toggle}>
@@ -1188,8 +1037,8 @@ function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
   const modalidad = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio';
   const hay = !!(codGrupo || docente || horario);
   return (
-    <ModTile icon="doc" title="Información del curso" status={hay ? 'ok' : 'empty'}
-             statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver programa" onClick={() => onNavigate('info_programa')}>
+    <ModTile icon="doc" title="Mi curso" status={hay ? 'ok' : 'empty'}
+             statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Abrir Mi curso" onClick={() => onNavigate('mi_curso')}>
       {hay ? (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
           <div>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Nivel actual'} · {modalidad}</div>
@@ -1244,7 +1093,7 @@ function ModEstadoCuenta({ pendientes, esConape, conapeEstado, onNavigate }) {
   const alDia = total === 0;
   const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (
-    <ModTile icon="payments" title="Estado de cuenta" status={alDia ? 'ok' : 'pending'}
+    <ModTile icon="payments" title="Pagos y estado de cuenta" status={alDia ? 'ok' : 'pending'}
              statusLabel={alDia ? 'Al día' : `${total} pendiente${total>1?'s':''}`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
       {alDia ? (
         <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ No tenés conceptos pendientes.</div>
@@ -1255,26 +1104,24 @@ function ModEstadoCuenta({ pendientes, esConape, conapeEstado, onNavigate }) {
           {certPend && <div>Certificado — {fmt(pendientes.certificado)}</div>}
         </div>
       )}
-      {esConape && conapeEstado?.estadoTexto && (
-        <div style={{ marginTop:6, fontSize:11, color:'var(--an-navy)', fontWeight:600 }}>CONAPE: {conapeEstado.estadoTexto}</div>
-      )}
     </ModTile>
   );
 }
 
 function ModCertificados({ niveles, onNavigate }) {
   const ORDEN = ['B1','B2','I1','I2'];
-  const est = (n) => typeof niveles?.[n] === 'object' ? niveles[n]?.estatus : niveles?.[n];
-  const disponibles = ORDEN.filter(n => ['APR','CNV'].includes(est(n)));
-  const hay = disponibles.length > 0;
+  const rows = ORDEN.map(n => ({ n, raw: niveles?.[n] || {}, estatus: estatusDeNivelSD(niveles,n) }));
+  const registrados = rows.filter(x => typeof x.raw === 'object' && (x.raw.reg_certificados || x.raw.cert_num));
+  const elegibles = rows.filter(x => ['APR','CNV'].includes(x.estatus) && !registrados.includes(x));
+  const status = registrados.length ? 'ok' : elegibles.length ? 'pending' : 'empty';
+  const label = registrados.length ? `${registrados.length} registrado${registrados.length>1?'s':''}` : elegibles.length ? 'Revisar emisión' : 'Sin registros';
   return (
-    <ModTile icon="certificates" title="Certificaciones" status={hay ? 'ok' : 'empty'}
-             statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver certificados" onClick={() => onNavigate('certificados')}>
-      {hay ? (
-        <div><strong style={{ color:'var(--ink)' }}>{disponibles.length}</strong> certificado{disponibles.length>1?'s':''} disponible{disponibles.length>1?'s':''} ({disponibles.join(', ')})</div>
-      ) : (
-        <span style={{ color:'var(--ink-3)' }}>Se desbloquean al aprobar o convalidar un nivel.</span>
-      )}
+    <ModTile icon="certificates" title="Certificados" status={status} statusLabel={label} cta="Consultar estado" onClick={() => onNavigate('certificados')}>
+      {registrados.length > 0
+        ? <div>Hay <strong>{registrados.length}</strong> número{registrados.length>1?'s':''} oficial{registrados.length>1?'es':''} registrado{registrados.length>1?'s':''}. La pantalla de certificados verificará si existe PDF y enlace.</div>
+        : elegibles.length > 0
+          ? <div>{elegibles.map(x=>x.n).join(', ')} aprobado/convalidado. La elegibilidad y disponibilidad se verifican por separado.</div>
+          : <span style={{ color:'var(--ink-3)' }}>Aún no hay niveles aprobados o convalidados con registro oficial.</span>}
     </ModTile>
   );
 }

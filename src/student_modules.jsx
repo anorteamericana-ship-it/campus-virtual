@@ -31,6 +31,9 @@ const ESTATUS_LABEL_SM = {
   CNV: 'Convalidado',
   PE:  'Pendiente',
   RPB: 'Reprobado',
+  REP: 'Reprobado',
+  RI:  'Retiro interno',
+  RJ:  'Retiro justificado',
 };
 
 function calcularNivelActivoSM(niveles, fallback) {
@@ -435,7 +438,7 @@ function PagosView() {
     <div>
       <PageHeader
         kicker="Estado financiero"
-        title={<>Estado de <em>cuenta</em></>}
+        title={<>Pagos y <em>estado de cuenta</em></>}
         sub="Matrícula, cuotas y certificado · información en tiempo real"
       />
       <GuardSesion usr={usr}>
@@ -650,153 +653,112 @@ function FilaConcepto({ label, sub, monto, fecha, color, accent }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// CertificadosView — derivados del objeto niveles
+// CertificadosView — estado verificable de emisión y PDF oficial (F98.4-A)
 // ──────────────────────────────────────────────────────────────────────────
+function useMisCertificadosEstadoF984(codigo) {
+  const [state, setState] = React.useState({ data:null, loading:!!codigo, error:'' });
+  const reload = React.useCallback(() => {
+    if (!codigo) { setState({ data:null, loading:false, error:'Código de estudiante no disponible.' }); return; }
+    setState(prev => ({ ...prev, loading:true, error:'' }));
+    postStudentModules('getMisCertificadosEstado', { codigo })
+      .then(r => {
+        if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo verificar los certificados.');
+        setState({ data:r, loading:false, error:'' });
+      })
+      .catch(e => setState({ data:null, loading:false, error:e?.message || 'No se pudo verificar los certificados.' }));
+  }, [codigo]);
+  React.useEffect(() => { reload(); }, [reload]);
+  return { ...state, reload };
+}
+
+const CERT_ESTADO_UI_F984 = {
+  NO_ELEGIBLE: { label:'No elegible', fg:'#6B2A2A', bg:'#FDECEA' },
+  ELEGIBLE_EMISION: { label:'Elegible para emisión', fg:'#805500', bg:'#FFF4D6' },
+  EN_PROCESO: { label:'En proceso', fg:'#0C4F86', bg:'#E7F1FA' },
+  EMITIDO: { label:'Emitido', fg:'#40516A', bg:'#EEF2F7' },
+  DISPONIBLE_DESCARGA: { label:'Disponible para descargar', fg:'#166534', bg:'#EAF8EF' },
+};
+
 function CertificadosView() {
-  const { usr, data, loading, error, reload } = useEstudianteDeSesion();
+  const usr = useUsuario();
+  const codigo = usr?.codigo || '';
+  const { data, loading, error, reload } = useMisCertificadosEstadoF984(codigo);
   return (
     <div>
       <PageHeader
         kicker="Documentos oficiales"
         title={<>Mis <em>Certificados</em></>}
-        sub="Disponibles cuando un nivel queda aprobado o convalidado"
+        sub="Estado real de elegibilidad, emisión, PDF oficial y disponibilidad de descarga"
       />
       <GuardSesion usr={usr}>
-        {loading && !data ? (
-          <SkeletonGrid />
-        ) : error ? (
-          <ErrorState message={error} onRetry={reload} />
-        ) : (
-          <CertificadosContenido data={data} />
-        )}
+        {loading && !data ? <SkeletonGrid /> : error ? <ErrorState message={error} onRetry={reload} /> : <CertificadosContenido data={data} />}
       </GuardSesion>
     </div>
   );
 }
 
 function CertificadosContenido({ data }) {
-  const niveles = data?.niveles || {};
-  const ORDEN = ['B1','B2','I1','I2'];
-  const disponibles = ORDEN
-    .filter(n => ['APR','CNV'].includes(estatusDe(niveles, n)))
-    .map(n => ({ nivel:n, estatus: estatusDe(niveles, n), nota: notaDeNivelSM(niveles, n) }));
-  const porDesbloquear = ORDEN.filter(n => !disponibles.find(d => d.nivel === n));
-
-  if (disponibles.length === 0) {
-    return (
-      <>
-        <EmptyState
-          icon="🎖️"
-          title="Aún no tenés certificados disponibles"
-          subtitle="Tu primer certificado se desbloqueará al aprobar tu primer nivel. Seguí adelante."
-        />
-        <div style={{ marginTop:24 }}>
-          <div className="card-h" style={{ padding:'0 4px' }}>
-            <div className="card-title">Por desbloquear</div>
-          </div>
-          <PorDesbloquearGrid niveles={porDesbloquear} estatusNiveles={niveles} />
-        </div>
-      </>
-    );
+  const rows = Array.isArray(data?.certificados) ? data.certificados : [];
+  if (!rows.length) {
+    return <EmptyState icon="🎖️" title="Sin niveles para consultar" subtitle="No fue posible relacionar niveles académicos con tu expediente." />;
   }
-
   return (
     <>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:16, marginBottom:24 }}>
-        {disponibles.map(d => (
-          <div key={d.nivel} className="card" style={{
-            padding:24, background:'linear-gradient(135deg, #FFFFFF 0%, #FBF8F2 100%)',
-            position:'relative', overflow:'hidden', minHeight:200,
-            borderTop:`4px solid ${NIVEL_COLOR_SM[d.nivel]}`,
-          }}>
-            <div style={{
-              position:'absolute', right:-40, bottom:-40, width:180, height:180,
-              background: NIVEL_COLOR_SM[d.nivel], opacity:0.06, borderRadius:'50%',
-            }} />
-            <div style={{ display:'flex', alignItems:'flex-start', gap:16, position:'relative' }}>
-              <div style={{
-                width:56, height:56, borderRadius:'50%',
-                background: NIVEL_COLOR_SM[d.nivel],
-                display:'flex', alignItems:'center', justifyContent:'center',
-                color:'white', flexShrink:0, boxShadow:'var(--sh-1)',
-              }}>
-                <Icon name="certificates" size={26} className="" />
-              </div>
-              <div>
-                <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:NIVEL_COLOR_SM[d.nivel] }}>
-                  {d.estatus === 'CNV' ? 'Nivel convalidado' : 'Nivel aprobado'}
-                </div>
-                <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, lineHeight:1.2, margin:'6px 0', color:'var(--an-navy-ink)' }}>
-                  Certificado · {NIVEL_NOMBRE_SM[d.nivel]}
-                </div>
-                <div style={{ fontSize:12, color:'var(--ink-2)' }}>
-                  {NIVEL_LIBRO_SM[d.nivel]}{d.nota != null ? ` · Nota final: ${d.nota}/100` : ''}
-                </div>
-              </div>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:20, position:'relative' }}>
-              {/* PRE-GITHUB-LOCK-001: la descarga directa NO tiene endpoint en el
-                  panel del estudiante. El certificado oficial lo emite la
-                  administración (generarCertificado/generarDocumento). Botón
-                  honesto: deshabilitado + indicación de a quién solicitarlo.
-                  No se inventa una descarga que no existe. */}
-              <button className="btn btn-ghost" disabled
-                      style={{ opacity:0.65, cursor:'not-allowed', justifyContent:'center' }}
-                      title="La descarga directa estará disponible próximamente">
-                <Icon name="download" size={14} className="" /> Descarga próximamente
-              </button>
-              <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5 }}>
-                Solicitá tu certificado oficial a la administración de la Academia.
-              </div>
-              {/* STUDENT-CONTACT-ADMIN-002: certificación académica → contacto
-                  ACADÉMICO, solo si hay número real (si no, texto honesto arriba). */}
-              <ContactoAdmin est={data?.estudiante || data} tipo="academico" hideWhenPending size={11} />
-            </div>
-          </div>
-        ))}
+      <div className="card" style={{ padding:'14px 18px', marginBottom:16, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
+        Aprobar o convalidar un nivel no significa que el PDF ya exista. Esta pantalla distingue la elegibilidad, el registro oficial, la generación del archivo y la disponibilidad real del enlace.
       </div>
-
-      {porDesbloquear.length > 0 && (
-        <div>
-          <div className="card-h" style={{ padding:'0 4px' }}>
-            <div className="card-title">Por desbloquear</div>
-          </div>
-          <PorDesbloquearGrid niveles={porDesbloquear} estatusNiveles={niveles} />
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(290px,1fr))', gap:16 }}>
+        {rows.map(row => <CertificadoEstadoCardF984 key={row.nivel} row={row} />)}
+      </div>
+      {typeof window.ContactoAdmin === 'function' && (
+        <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás revisar una emisión?</strong> Contactá al área académica con tu código y nivel.</div>
+          <window.ContactoAdmin est={data?.estudiante || { CODIGO:data?.codigo }} tipo="academico" hideWhenPending />
         </div>
       )}
     </>
   );
 }
 
-function PorDesbloquearGrid({ niveles, estatusNiveles }) {
+function CertificadoEstadoCardF984({ row }) {
+  const meta = CERT_ESTADO_UI_F984[row.estado] || CERT_ESTADO_UI_F984.NO_ELEGIBLE;
+  const razones = Array.isArray(row.razones) ? row.razones : [];
+  const checks = [
+    ['Estado académico', row.estatus || 'Sin registro'],
+    ['Nota', row.nota != null ? `${row.nota}/100` : 'Sin dato'],
+    ['Asistencia', row.asistencia_pct != null ? `${row.asistencia_pct}%` : 'Sin dato verificable'],
+    ['Morosidad', row.morosidad_verificada ? (row.morosidad ? 'Registra morosidad' : 'No registra') : 'Sin dato verificable'],
+    ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
+    ['Número oficial', row.registro || 'Sin asignar'],
+    ['PDF oficial', row.pdf_existente ? 'Localizado' : 'No localizado'],
+    ['Firma', row.firmado_probable ? 'Detectada' : (row.pdf_existente ? 'No confirmada' : 'No aplica')],
+  ];
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:12 }}>
-      {niveles.map(n => {
-        const estatus = estatusDe(estatusNiveles, n);
-        const enCurso = estatus === 'CA';
-        return (
-          <div key={n} className="card" style={{
-            textAlign:'center', padding:20,
-            opacity: enCurso ? 1 : 0.55,
-            borderTop:`3px solid ${NIVEL_COLOR_SM[n]}`,
-          }}>
-            <div style={{
-              width:54, height:54, margin:'0 auto 10px',
-              borderRadius:'50%', background: enCurso ? NIVEL_COLOR_SM[n] : 'var(--bg-deep)',
-              color: enCurso ? 'white' : 'var(--ink-3)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontFamily:'var(--f-mono)', fontWeight:700,
-            }}>
-              {enCurso ? '●' : '🔒'}
-            </div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500 }}>{NIVEL_NOMBRE_SM[n]}</div>
-            <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
-              {enCurso ? 'En curso · al aprobar' : (estatus ? ESTATUS_LABEL_SM[estatus] : 'Bloqueado')}
-            </div>
+    <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${NIVEL_COLOR_SM[row.nivel] || 'var(--an-navy)'}` }}>
+      <div style={{ padding:'18px 20px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg,#fff,#FBF8F2)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start' }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:NIVEL_COLOR_SM[row.nivel] }}>{row.nivel}</div>
+            <h2 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'4px 0 2px', color:'var(--an-navy-ink)' }}>{NIVEL_NOMBRE_SM[row.nivel] || row.nivel}</h2>
+            <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{NIVEL_LIBRO_SM[row.nivel] || ''}</div>
           </div>
-        );
-      })}
-    </div>
+          <span style={{ padding:'5px 9px', borderRadius:999, background:meta.bg, color:meta.fg, fontSize:10, fontWeight:900, textAlign:'center' }}>{meta.label}</span>
+        </div>
+      </div>
+      <div style={{ padding:'14px 20px' }}>
+        {checks.map(([label,value]) => <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'7px 0', borderBottom:'1px solid var(--line)', fontSize:11.5 }}><span style={{ color:'var(--ink-3)' }}>{label}</span><strong style={{ color:'var(--ink)', textAlign:'right' }}>{value}</strong></div>)}
+        {razones.length > 0 && <div style={{ marginTop:12, padding:'10px 12px', borderRadius:10, background:meta.bg, color:meta.fg, fontSize:11.5, lineHeight:1.5 }}>{razones.join(' · ')}</div>}
+        {row.url ? (
+          <a className="btn btn-primary" href={row.url} target="_blank" rel="noreferrer" style={{ marginTop:14, width:'100%', justifyContent:'center' }}>
+            <Icon name="download" size={14} className="" /> Abrir PDF oficial
+          </a>
+        ) : (
+          <div style={{ marginTop:14, fontSize:11.5, color:'var(--ink-3)', lineHeight:1.5 }}>
+            {row.estado === 'ELEGIBLE_EMISION' ? 'El nivel cumple los requisitos verificables, pero todavía no tiene número oficial ni PDF.' : row.estado === 'EN_PROCESO' ? (row.registro ? 'Existe registro oficial, pero no se localizó un PDF disponible en la ruta de certificados.' : 'Falta completar una o más verificaciones administrativas antes de emitir el certificado.') : row.estado === 'EMITIDO' ? 'El PDF fue localizado; la firma todavía no está confirmada.' : 'No hay un enlace real disponible para este nivel.'}
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 
