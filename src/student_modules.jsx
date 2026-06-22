@@ -1,3 +1,4 @@
+// F96.0_20260622_MENU_ESTUDIANTE_FLUJO_Y_CERTIFICADOS_HONESTOS
 // F92.7_20260620_MIS_NOTAS_COMPLETAS_ORDEN_CRONOGRAMA
 // F86_20260619_EXAMEN_ORAL_CONTEXTO_EXACTO
 /* global React, Icon, Ring, Chip, Stat, AnimatedBar, LEVELS, PRECIOS,
@@ -434,9 +435,9 @@ function PagosView() {
   return (
     <div>
       <PageHeader
-        kicker="Estado financiero"
-        title={<>Estado de <em>cuenta</em></>}
-        sub="Matrícula, cuotas y certificado · información en tiempo real"
+        kicker="Gestión financiera"
+        title={<>Pagos y <em>estado de cuenta</em></>}
+        sub="Matrícula, cuotas, certificado e historial · información en tiempo real"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -659,7 +660,7 @@ function CertificadosView() {
       <PageHeader
         kicker="Documentos oficiales"
         title={<>Mis <em>Certificados</em></>}
-        sub="Disponibles cuando un nivel queda aprobado o convalidado"
+        sub="Estado académico para solicitud, emisión y futura descarga"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -677,18 +678,19 @@ function CertificadosView() {
 function CertificadosContenido({ data }) {
   const niveles = data?.niveles || {};
   const ORDEN = ['B1','B2','I1','I2'];
-  const disponibles = ORDEN
+  // F96: APR/CNV demuestra elegibilidad académica, no que exista un PDF emitido.
+  const elegibles = ORDEN
     .filter(n => ['APR','CNV'].includes(estatusDe(niveles, n)))
     .map(n => ({ nivel:n, estatus: estatusDe(niveles, n), nota: notaDeNivelSM(niveles, n) }));
-  const porDesbloquear = ORDEN.filter(n => !disponibles.find(d => d.nivel === n));
+  const porDesbloquear = ORDEN.filter(n => !elegibles.find(d => d.nivel === n));
 
-  if (disponibles.length === 0) {
+  if (elegibles.length === 0) {
     return (
       <>
         <EmptyState
           icon="🎖️"
-          title="Aún no tenés certificados disponibles"
-          subtitle="Tu primer certificado se desbloqueará al aprobar tu primer nivel. Seguí adelante."
+          title="Aún no tenés niveles elegibles para certificado"
+          subtitle="La elegibilidad académica inicia al aprobar o convalidar un nivel. La emisión oficial se confirma por separado."
         />
         <div style={{ marginTop:24 }}>
           <div className="card-h" style={{ padding:'0 4px' }}>
@@ -703,7 +705,7 @@ function CertificadosContenido({ data }) {
   return (
     <>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:16, marginBottom:24 }}>
-        {disponibles.map(d => (
+        {elegibles.map(d => (
           <div key={d.nivel} className="card" style={{
             padding:24, background:'linear-gradient(135deg, #FFFFFF 0%, #FBF8F2 100%)',
             position:'relative', overflow:'hidden', minHeight:200,
@@ -724,7 +726,7 @@ function CertificadosContenido({ data }) {
               </div>
               <div>
                 <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:NIVEL_COLOR_SM[d.nivel] }}>
-                  {d.estatus === 'CNV' ? 'Nivel convalidado' : 'Nivel aprobado'}
+                  {d.estatus === 'CNV' ? 'Convalidado · elegible' : 'Aprobado · elegible'}
                 </div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, lineHeight:1.2, margin:'6px 0', color:'var(--an-navy-ink)' }}>
                   Certificado · {NIVEL_NOMBRE_SM[d.nivel]}
@@ -735,18 +737,8 @@ function CertificadosContenido({ data }) {
               </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:20, position:'relative' }}>
-              {/* PRE-GITHUB-LOCK-001: la descarga directa NO tiene endpoint en el
-                  panel del estudiante. El certificado oficial lo emite la
-                  administración (generarCertificado/generarDocumento). Botón
-                  honesto: deshabilitado + indicación de a quién solicitarlo.
-                  No se inventa una descarga que no existe. */}
-              <button className="btn btn-ghost" disabled
-                      style={{ opacity:0.65, cursor:'not-allowed', justifyContent:'center' }}
-                      title="La descarga directa estará disponible próximamente">
-                <Icon name="download" size={14} className="" /> Descarga próximamente
-              </button>
-              <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5 }}>
-                Solicitá tu certificado oficial a la administración de la Academia.
+              <div style={{padding:'10px 12px',borderRadius:12,background:'var(--bg-deep)',fontSize:11.5,color:'var(--ink-2)',lineHeight:1.55}}>
+                Este nivel es elegible académicamente. La emisión, el número oficial y el archivo PDF deben ser confirmados por administración.
               </div>
               {/* STUDENT-CONTACT-ADMIN-002: certificación académica → contacto
                   ACADÉMICO, solo si hay número real (si no, texto honesto arriba). */}

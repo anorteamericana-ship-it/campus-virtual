@@ -1,3 +1,4 @@
+// F95.3_20260622_ORDEN_MI_CAMPUS_ESTUDIANTE_Y_CINTILLO_CONAPE
 /* global React, Icon, Ring, Stat, Chip, AnimatedBar, LEVELS, SYLLABUS_BY_LEVEL, PRIORITY_BLOCK,
    useUsuario, useEstudiante, EmptyState, ErrorState, nombreAmable */
 
@@ -372,22 +373,9 @@ function StudentDashboard({ toast, onNavigate }) {
 
   return (
     <div data-screen-label="Estudiante · Dashboard">
-      {/* ── MATRICULA_PAGADA: aviso de material bloqueado hasta primera cuota ─ */}
-      {matriculaPagadaBanner && (
-        <div style={{
-          marginBottom:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
-          background:'color-mix(in srgb, var(--an-gold) 12%, white)',
-          border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)',
-          borderRadius:'var(--r-lg)', color:'#6B4A00',
-        }}>
-          <span style={{ fontSize:22 }}>🗓️</span>
-          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}>
-            <strong style={{ color:'var(--an-navy-ink)' }}>Tu cronograma ya está disponible.</strong>{' '}
-            El material del curso (PDFs, audios, biblioteca y Zoom) se habilitará cuando se registre la primera cuota del nivel.
-          </div>
-          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
-        </div>
-      )}
+      {/* F95.3: Material obligatorio es el primer bloque de Mi Campus. */}
+      <AntesDeEmpezar codigo={codigo} onNavigate={go} />
+
       {/* ── SALUDO (nombre completo) ─────────────────────────────────── */}
       <div className="hero" style={{ marginBottom: 18 }}>
         <div className="watermark-a">A</div>
@@ -424,6 +412,14 @@ function StudentDashboard({ toast, onNavigate }) {
         </div>
       </div>
 
+      {/* F95.3: el financiamiento aparece como cintillo inmediatamente bajo el saludo. */}
+      {esConape && conapeEstado && (
+        <ConapeCintilloDashboard conapeEstado={conapeEstado} />
+      )}
+
+      {/* F95.3: orden solicitado — Accesos rápidos antes de Ruta académica. */}
+      <AccesosRapidosDashboard onNavigate={go} esINA={esINA} />
+
       <RutaAcademicaDashboard
         niveles={nivelesRuta}
         nivelActivo={nivelReal}
@@ -431,11 +427,26 @@ function StudentDashboard({ toast, onNavigate }) {
         onSelect={setNivelVista}
       />
 
-      <AccesosRapidosDashboard onNavigate={go} />
-
       {/* ── RESUMEN ACADÉMICO: cambia al tocar un nivel ─────────────── */}
       <ResumenAcademico nivelReal={nivelSeleccionado} programa={programa} />
 
+      {/* Aviso operativo: se conserva después del bloque académico principal. */}
+      {/* ── MATRICULA_PAGADA: aviso de material bloqueado hasta primera cuota ─ */}
+      {matriculaPagadaBanner && (
+        <div style={{
+          marginBottom:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap',
+          background:'color-mix(in srgb, var(--an-gold) 12%, white)',
+          border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)',
+          borderRadius:'var(--r-lg)', color:'#6B4A00',
+        }}>
+          <span style={{ fontSize:22 }}>🗓️</span>
+          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}>
+            <strong style={{ color:'var(--an-navy-ink)' }}>Tu cronograma ya está disponible.</strong>{' '}
+            El material del curso (PDFs, audios, biblioteca y Zoom) se habilitará cuando se registre la primera cuota del nivel.
+          </div>
+          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
+        </div>
+      )}
       {/* ── KPIs ─────────────────────────────────────────────────────── */}
       <div className="grid-4" style={{ marginBottom: 18 }}>
         <Stat
@@ -485,21 +496,19 @@ function StudentDashboard({ toast, onNavigate }) {
         )}
       </div>
 
-      <AntesDeEmpezar codigo={codigo} onNavigate={go} />
-
-      {/* ── TARJETAS-MÓDULO (estado real por bloque) ─────────────────── */}
-      <DashSection title="Tus módulos" hint="Cada bloque refleja su estado real" />
+      {/* ── TARJETAS-MÓDULO F96: mismas rutas que el menú lateral ─────── */}
+      <DashSection title="Tus módulos" hint="Organizados según tu recorrido académico" />
       <div className="grid-mods" style={{ marginBottom: 20 }}>
-        <ModNotas niveles={niveles} nivelReal={nivelSeleccionado} notaActiva={notaActiva} evaluaciones={evaluaciones} onNavigate={go} />
-        <ModTareas onNavigate={go} />
-        <ModInfoCurso nivelReal={nivelSeleccionado} codGrupo={codGrupoSeleccionado} grupo={grupo} programa={programa} onNavigate={go} />
-        <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />
-        <ModMensajes onNavigate={go} />
+        <ModMiCursoF96 nivelReal={nivelSeleccionado} codGrupo={codGrupoSeleccionado} grupo={grupo} programa={programa} onNavigate={go} />
+        <ModEvaluacionesF96 nivelReal={nivelSeleccionado} notaActiva={notaActiva} evaluaciones={evaluaciones} retroData={retroData} onNavigate={go} />
+        {esINA && <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />}
         <ModEstadoCuenta pendientes={pendientes} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
         <ModCertificados niveles={niveles} onNavigate={go} />
-        <ModInsignias onNavigate={go} />
-        <ModRetro retroData={retroData} onNavigate={go} />
+        <ModDocumentosAyudaF96 onNavigate={go} />
       </div>
+
+      <DashSection title="En desarrollo" hint="Se conservan en el plan, pero no ocupan espacio como menús vacíos" />
+      <FutureModulesRoadmapF96 />
 
       {/* ── CALENDARIO / PRÓXIMAS CLASES + EXAMEN ────────────────────── */}
       <DashSection title="Tu calendario" hint={`Lecciones de ${NIVEL_NOMBRE[nivelSeleccionado] || nivelSeleccionado}`} />
@@ -592,17 +601,6 @@ function StudentDashboard({ toast, onNavigate }) {
             </div>
           )}
 
-          {/* CONAPE — solo si está en convenio y hay estado real */}
-          {esConape && conapeEstado && (
-            <div style={{ background:'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)', borderRadius:12, padding:'16px 20px', color:'white', display:'flex', alignItems:'center', gap:16 }}>
-              <div style={{ fontSize:30 }}>🏛️</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:11, opacity:0.75, fontWeight:600, letterSpacing:1, textTransform:'uppercase' }}>Financiamiento CONAPE</div>
-                <div style={{ fontSize:15, fontWeight:700, marginTop:2 }}>{conapeEstado.estadoTexto || '—'}</div>
-                {conapeEstado.desembolsoTexto && <div style={{ fontSize:12, opacity:0.8, marginTop:4 }}>{conapeEstado.desembolsoTexto}</div>}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -764,6 +762,36 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// F95.3 — Cintillo CONAPE: solo se renderiza cuando el estudiante pertenece al convenio
+// y el backend devuelve un estado real. No inventa desembolsos ni fechas.
+function ConapeCintilloDashboard({ conapeEstado }) {
+  if (!conapeEstado) return null;
+  const estado = String(conapeEstado.estadoTexto || '').trim() || 'Estado pendiente de actualizar';
+  const desembolso = String(conapeEstado.desembolsoTexto || '').trim();
+  return (
+    <section aria-label="Financiamiento CONAPE" style={{
+      marginBottom:18,
+      padding:'13px 18px',
+      borderRadius:'var(--r-lg)',
+      background:'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+      color:'white',
+      display:'flex',
+      alignItems:'center',
+      gap:14,
+      boxShadow:'0 8px 24px rgba(13,71,161,0.16)',
+    }}>
+      <div aria-hidden="true" style={{ fontSize:26, lineHeight:1, flexShrink:0 }}>🏛️</div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:10.5, opacity:0.78, fontWeight:700, letterSpacing:'0.11em', textTransform:'uppercase' }}>
+          Financiamiento CONAPE
+        </div>
+        <div style={{ fontSize:14.5, fontWeight:700, marginTop:2, lineHeight:1.35 }}>{estado}</div>
+        {desembolso && <div style={{ fontSize:11.5, opacity:0.84, marginTop:2, lineHeight:1.35 }}>{desembolso}</div>}
+      </div>
+    </section>
+  );
+}
+
 // F95.0 — Ruta académica interactiva y accesos rápidos fusionados en Mi Campus
 // ─────────────────────────────────────────────────────────────────────────
 function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSelect }) {
@@ -798,14 +826,14 @@ function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSel
   );
 }
 
-function AccesosRapidosDashboard({ onNavigate }) {
+function AccesosRapidosDashboard({ onNavigate, esINA }) {
   const items = [
-    ['cronograma_grupo','Cronograma','🗓️'],
-    ['examenes','Exámenes','📝'],
-    ['notas','Mis notas','📊'],
+    ['mi_curso','Mi curso','📚'],
+    ['evaluaciones','Evaluaciones','📝'],
+    ...(esINA ? [['ican','Club I CAN','🗣️']] : []),
     ['pagos','Pagos','💳'],
-    ['materiales','Materiales','📚'],
     ['certificados','Certificados','🏅'],
+    ['documentos_ayuda','Documentos y ayuda','📄'],
   ];
   return (
     <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Accesos rápidos">
@@ -967,6 +995,63 @@ function ModTile({ icon, title, status, statusLabel, children, cta = 'Abrir', on
   );
 }
 
+function ModMiCursoF96({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
+  const docente = grupo?.DOCENTE || grupo?.docente || '';
+  const horario = horarioGrupoCompletoSD(grupo || {}, codGrupo);
+  const modalidad = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
+  return (
+    <ModTile icon="materials" title="Mi curso" status="ok" statusLabel={nivelReal || 'Activo'} cta="Abrir curso" onClick={() => onNavigate('mi_curso')}>
+      <div style={{display:'flex',flexDirection:'column',gap:3}}>
+        <div><strong style={{color:'var(--ink)'}}>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Nivel actual'}</strong> · {modalidad}</div>
+        {horario && <div style={{color:'var(--ink-3)'}}>{horario}</div>}
+        {docente && <div style={{color:'var(--ink-3)'}}>Prof. {docente}</div>}
+        <div style={{marginTop:3,color:'var(--ink-3)'}}>Cronograma, materiales y futuras tareas en un solo lugar.</div>
+      </div>
+    </ModTile>
+  );
+}
+
+function ModEvaluacionesF96({ nivelReal, notaActiva, evaluaciones, retroData, onNavigate }) {
+  const evs = Array.isArray(evaluaciones) ? evaluaciones : [];
+  const conNota = evs.filter(e => e.nota != null);
+  const retro = Array.isArray(retroData?.retroalimentacion) ? retroData.retroalimentacion.length : 0;
+  const hay = notaActiva != null || conNota.length > 0;
+  return (
+    <ModTile icon="grades" title="Evaluaciones" status={hay ? 'ok' : 'empty'} statusLabel={hay ? 'Con resultados' : 'Sin registros'} cta="Abrir evaluaciones" onClick={() => onNavigate('evaluaciones')}>
+      {hay ? <>
+        {notaActiva != null && <div><strong style={{color:'var(--ink)'}}>{notaActiva}/100</strong> · acumulado de {nivelReal || 'tu nivel'}</div>}
+        <div style={{color:'var(--ink-3)',marginTop:3}}>{conNota.length} resultado{conNota.length===1?'':'s'}{retro ? ` · ${retro} comentario${retro===1?'':'s'}` : ''}</div>
+      </> : <span style={{color:'var(--ink-3)'}}>Aquí se concentran exámenes, resultados y reposiciones.</span>}
+    </ModTile>
+  );
+}
+
+function ModDocumentosAyudaF96({ onNavigate }) {
+  return (
+    <ModTile icon="doc" title="Documentos y ayuda" status="ok" statusLabel="Disponible" cta="Abrir información" onClick={() => onNavigate('documentos_ayuda')}>
+      <div>Programa, reglamentos y canales correctos de atención.</div>
+      <div style={{color:'var(--ink-3)',marginTop:3}}>Los futuros avisos oficiales también vivirán aquí.</div>
+    </ModTile>
+  );
+}
+
+function FutureModulesRoadmapF96() {
+  const items = [
+    ['📚','Tareas','Dentro de Mi curso','Asignaciones, entregas y revisión vinculadas a cada lección.'],
+    ['🔔','Avisos','Dentro de Documentos y ayuda','Comunicados oficiales; no será otro chat que duplique WhatsApp.'],
+    ['🏆','Insignias y retos','Fase de gamificación','Juegos de inglés, competencias e insignias con reglas reales.'],
+  ];
+  return (
+    <div className="card" style={{padding:0,overflow:'hidden',marginBottom:20}}>
+      {items.map(([icon,title,place,desc],i)=><div key={title} style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:13,alignItems:'center',padding:'15px 18px',borderBottom:i<items.length-1?'1px solid var(--line)':'none'}}>
+        <div style={{width:38,height:38,borderRadius:11,background:'var(--bg-deep)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:19}}>{icon}</div>
+        <div><div style={{fontWeight:800,fontSize:13.5}}>{title}</div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:2,lineHeight:1.45}}>{desc}</div></div>
+        <div style={{textAlign:'right'}}><div style={{fontSize:9,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--an-granate)'}}>Próximamente</div><div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{place}</div></div>
+      </div>)}
+    </div>
+  );
+}
+
 function ModNotas({ niveles, nivelReal, notaActiva, evaluaciones, onNavigate }) {
   const evs = Array.isArray(evaluaciones) ? evaluaciones : [];
   const conNota = evs.filter(e => e.nota != null);
@@ -1085,12 +1170,12 @@ function ModCertificados({ niveles, onNavigate }) {
   const disponibles = ORDEN.filter(n => ['APR','CNV'].includes(est(n)));
   const hay = disponibles.length > 0;
   return (
-    <ModTile icon="certificates" title="Certificaciones" status={hay ? 'ok' : 'empty'}
-             statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver certificados" onClick={() => onNavigate('certificados')}>
+    <ModTile icon="certificates" title="Certificados" status={hay ? 'ok' : 'empty'}
+             statusLabel={hay ? 'Elegible' : 'Sin niveles elegibles'} cta="Ver estado" onClick={() => onNavigate('certificados')}>
       {hay ? (
-        <div><strong style={{ color:'var(--ink)' }}>{disponibles.length}</strong> certificado{disponibles.length>1?'s':''} disponible{disponibles.length>1?'s':''} ({disponibles.join(', ')})</div>
+        <div><strong style={{ color:'var(--ink)' }}>{disponibles.length}</strong> nivel{disponibles.length>1?'es':''} elegible{disponibles.length>1?'s':''} para emisión ({disponibles.join(', ')}). La aprobación no confirma que el PDF ya exista.</div>
       ) : (
-        <span style={{ color:'var(--ink-3)' }}>Se desbloquean al aprobar o convalidar un nivel.</span>
+        <span style={{ color:'var(--ink-3)' }}>La elegibilidad inicia al aprobar o convalidar un nivel.</span>
       )}
     </ModTile>
   );

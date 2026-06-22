@@ -1,3 +1,4 @@
+// F96.0_20260622_MENU_ESTUDIANTE_POR_FLUJO_ACADEMICO
 // F95.2_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
@@ -107,6 +108,14 @@ function appTeacherGroupLabelF88(code) {
   const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]] || 'Grupo';
   const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]] || '';
   return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;
+}
+function appStudentHasIcanF96(usr) {
+  if (!usr) return false;
+  const explicit = [usr.ican_habilitado,usr.ICAN_HABILITADO,usr.club_ican,usr.CLUB_ICAN,usr.tiene_ican,usr.TIENE_ICAN,usr.es_ina,usr.ES_INA];
+  if (explicit.some(v => v === true || ['SI','SÍ','TRUE','1'].includes(String(v || '').trim().toUpperCase()))) return true;
+  const programa=String(usr.programa||usr.PROGRAMA||'').trim().toUpperCase().replace(/\s+/g,'_');
+  if (!programa || programa.includes('SIN_INA')) return false;
+  return programa==='INA'||programa.includes('CON_INA')||programa.includes('PROGRAMA_INA');
 }
 function appTimeMinutesF88(v) {
   const m=String(v||'').trim().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
@@ -391,6 +400,112 @@ function ExamenesStudentPanel() {
   return <ExamenesIframePanel hideHeader view="student" screenLabel="Estudiante · Exámenes" iframeTitle="Panel estudiante de exámenes" topContent={top}/>;
 }
 
+
+function StudentHubNavF96({ eyebrow, title, description, tabs, value, onChange }) {
+  return (
+    <section style={{marginBottom:18,padding:'16px 18px',border:'1px solid var(--line)',borderRadius:18,background:'linear-gradient(135deg,#fff 0%,#FBF8F2 100%)',boxShadow:'0 10px 28px rgba(0,30,71,.06)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:16,alignItems:'flex-end',flexWrap:'wrap'}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:900,letterSpacing:'.15em',textTransform:'uppercase',color:'var(--an-granate)'}}>{eyebrow}</div>
+          <div style={{fontFamily:'var(--f-serif)',fontSize:29,fontWeight:600,color:'var(--an-navy-ink)',marginTop:3}}>{title}</div>
+          {description && <div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4,maxWidth:720,lineHeight:1.55}}>{description}</div>}
+        </div>
+      </div>
+      <div role="tablist" aria-label={title} style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:15}}>
+        {tabs.map(tab => {
+          const selected = value === tab.id;
+          return (
+            <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={()=>onChange(tab.id)}
+              style={{border:selected?'1px solid var(--an-granate)':'1px solid var(--line)',background:selected?'var(--an-granate)':'#fff',color:selected?'#fff':'var(--ink-2)',borderRadius:999,padding:'8px 13px',fontFamily:'inherit',fontSize:11.5,fontWeight:850,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:7}}>
+              <span>{tab.label}</span>
+              {tab.soon && <span style={{fontSize:8.5,letterSpacing:'.08em',textTransform:'uppercase',padding:'2px 6px',borderRadius:999,background:selected?'rgba(255,255,255,.18)':'var(--bg-deep)',color:selected?'#fff':'var(--ink-3)'}}>Pronto</span>}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function StudentFutureModuleF96({ icon, title, description, points = [] }) {
+  return (
+    <section style={{maxWidth:860,margin:'0 auto',padding:'30px 30px',border:'1px dashed var(--line-2)',borderRadius:20,background:'#fff'}}>
+      <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:16,alignItems:'start'}}>
+        <div style={{width:54,height:54,borderRadius:16,display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg-deep)',fontSize:27}}>{icon}</div>
+        <div>
+          <div style={{display:'inline-flex',padding:'3px 9px',borderRadius:999,background:'var(--bg-deep)',color:'var(--ink-3)',fontSize:9.5,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase'}}>Próximamente</div>
+          <h2 style={{fontFamily:'var(--f-serif)',fontSize:27,color:'var(--an-navy-ink)',margin:'8px 0 6px'}}>{title}</h2>
+          <p style={{margin:0,color:'var(--ink-2)',fontSize:13,lineHeight:1.65}}>{description}</p>
+          {points.length > 0 && <div style={{display:'grid',gap:8,marginTop:17}}>{points.map((point,i)=><div key={i} style={{display:'flex',gap:9,fontSize:12.5,color:'var(--ink-2)'}}><span style={{color:'var(--an-gold)',fontWeight:900}}>•</span><span>{point}</span></div>)}</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StudentMiCursoViewF96({ initialTab = 'cronograma', initialLesson = null, onNavigate }) {
+  const [tab,setTab]=React.useState(initialTab);
+  React.useEffect(()=>setTab(initialTab || 'cronograma'),[initialTab]);
+  const tabs=[
+    {id:'cronograma',label:'Cronograma'},
+    {id:'materiales',label:'Materiales'},
+    {id:'tareas',label:'Tareas',soon:true},
+  ];
+  return <div data-screen-label="Estudiante · Mi curso">
+    <StudentHubNavF96 eyebrow="Aprendizaje" title="Mi curso" description="Fechas, lecciones, recursos y trabajo independiente del nivel que estás cursando." tabs={tabs} value={tab} onChange={setTab}/>
+    {tab==='cronograma' && <CronogramaGrupo rol="student" onNavigate={onNavigate}/>} 
+    {tab==='materiales' && <MaterialesView initialLesson={initialLesson} onNavigate={onNavigate}/>} 
+    {tab==='tareas' && <StudentFutureModuleF96 icon="📚" title="Tareas y trabajo independiente" description="Este módulo queda reservado dentro de Mi curso, no como una opción vacía del menú principal." points={['Asignaciones vinculadas a la lección correspondiente.','Fecha de entrega, archivos y estado de revisión.','Retroalimentación del docente sin duplicar Mis notas.']}/>} 
+  </div>;
+}
+
+function StudentEvaluacionesViewF96({ initialTab = 'examenes', onNavigate }) {
+  const [tab,setTab]=React.useState(initialTab);
+  React.useEffect(()=>setTab(initialTab || 'examenes'),[initialTab]);
+  const tabs=[
+    {id:'examenes',label:'Próximas y activas'},
+    {id:'resultados',label:'Resultados'},
+    {id:'reposiciones',label:'Reposiciones'},
+  ];
+  return <div data-screen-label="Estudiante · Evaluaciones">
+    <StudentHubNavF96 eyebrow="Proceso académico" title="Evaluaciones" description="Un solo recorrido para realizar exámenes, revisar resultados y tramitar una reposición cuando corresponda." tabs={tabs} value={tab} onChange={setTab}/>
+    {tab==='examenes' && <ExamenesStudentPanel/>}
+    {tab==='resultados' && <NotasView onNavigate={onNavigate}/>} 
+    {tab==='reposiciones' && <SolicitudesEstudianteSafe onNavigate={onNavigate}/>} 
+  </div>;
+}
+
+function StudentHelpContactsF96() {
+  const usr=typeof getSesion==='function'?getSesion():null;
+  const contact=(tipo,label)=>typeof ContactoAdmin==='function'
+    ? <ContactoAdmin usr={usr} tipo={tipo} label={label}/>
+    : <span style={{fontSize:12,color:'var(--ink-3)'}}>Contacto pendiente de configurar.</span>;
+  const cards=[
+    ['Académico','Clases, notas, asistencia, reposiciones y certificados.','academico','Contactar área académica'],
+    ['Administración','Datos personales, matrícula y gestiones generales.','administracion','Contactar administración'],
+    ['Cobros','Pagos, cuotas, comprobantes y estado de cuenta.','cobros','Contactar cobros'],
+  ];
+  return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14}}>
+    {cards.map(([title,desc,tipo,label])=><section key={tipo} className="card" style={{padding:20}}><div style={{fontFamily:'var(--f-serif)',fontSize:20,color:'var(--an-navy-ink)'}}>{title}</div><div style={{fontSize:12.5,color:'var(--ink-3)',lineHeight:1.55,margin:'7px 0 16px'}}>{desc}</div>{contact(tipo,label)}</section>)}
+  </div>;
+}
+
+function StudentDocumentosAyudaViewF96({ initialTab = 'programa' }) {
+  const [tab,setTab]=React.useState(initialTab);
+  React.useEffect(()=>setTab(initialTab || 'programa'),[initialTab]);
+  const tabs=[
+    {id:'programa',label:'Programa y documentos'},
+    {id:'avisos',label:'Avisos',soon:true},
+    {id:'ayuda',label:'Ayuda y contactos'},
+  ];
+  return <div data-screen-label="Estudiante · Documentos y ayuda">
+    <StudentHubNavF96 eyebrow="Orientación" title="Documentos y ayuda" description="Información institucional, canales correctos de atención y futuros avisos oficiales del Campus." tabs={tabs} value={tab} onChange={setTab}/>
+    {tab==='programa' && <InfoProgramaView/>}
+    {tab==='avisos' && <StudentFutureModuleF96 icon="🔔" title="Avisos del Campus" description="Mensajes deja de plantearse como otro chat. El futuro módulo será una bandeja de avisos oficiales, clara y auditable." points={['Comunicados académicos y administrativos.','Confirmación de lectura cuando sea necesaria.','Enlaces directos a la gestión o módulo relacionado.']}/>} 
+    {tab==='ayuda' && <StudentHelpContactsF96/>}
+  </div>;
+}
+
 const { useState, useEffect } = React;
 
 // ── Límite de error por vista ───────────────────────────────────────
@@ -590,11 +705,21 @@ function App() {
     : rolReal === 'student'   ? 'student'
     : null;
 
+  const savedStudentActiveF96 = React.useMemo(() => localStorage.getItem('an_active') || 'dashboard', []);
+  const [studentHubTabs, setStudentHubTabs] = useState(() => ({
+    course: savedStudentActiveF96 === 'materiales' ? 'materiales' : savedStudentActiveF96 === 'tareas' ? 'tareas' : 'cronograma',
+    evaluations: savedStudentActiveF96 === 'notas' ? 'resultados' : savedStudentActiveF96 === 'solicitudes_estudiante' ? 'reposiciones' : 'examenes',
+    help: savedStudentActiveF96 === 'mensajes' ? 'avisos' : 'programa',
+  }));
   const [active, setActive] = useState(() => {
-    const saved = localStorage.getItem('an_active') || 'dashboard';
-    // F95.0: el antiguo "Mi Campus" se fusionó con Inicio. Conservamos
-    // compatibilidad con pestañas abiertas y localStorage de versiones previas.
-    return saved === 'portal_estudiante' ? 'dashboard' : saved;
+    const saved = savedStudentActiveF96;
+    if (rolReal !== 'student') return saved;
+    const legacy = {
+      portal_estudiante:'dashboard', cronograma_grupo:'mi_curso', materiales:'mi_curso', tareas:'mi_curso',
+      examenes:'evaluaciones', notas:'evaluaciones', solicitudes_estudiante:'evaluaciones',
+      info_programa:'documentos_ayuda', mensajes:'documentos_ayuda',
+    };
+    return legacy[saved] || saved;
   });
   const [toastMsg, setToastMsg] = useState('');
   const [pendingLesson, setPendingLesson] = useState(null);
@@ -626,6 +751,22 @@ function App() {
   };
 
   const navigateTo = (target, opts = {}) => {
+    let destination = target;
+    if (role === 'student') {
+      const courseTabs = { cronograma_grupo:'cronograma', materiales:'materiales', tareas:'tareas' };
+      const evaluationTabs = { examenes:'examenes', notas:'resultados', solicitudes_estudiante:'reposiciones' };
+      const helpTabs = { info_programa:'programa', mensajes:'avisos' };
+      if (courseTabs[target]) {
+        setStudentHubTabs(prev => ({...prev, course:courseTabs[target]}));
+        destination = 'mi_curso';
+      } else if (evaluationTabs[target]) {
+        setStudentHubTabs(prev => ({...prev, evaluations:evaluationTabs[target]}));
+        destination = 'evaluaciones';
+      } else if (helpTabs[target]) {
+        setStudentHubTabs(prev => ({...prev, help:helpTabs[target]}));
+        destination = 'documentos_ayuda';
+      } else if (target === 'portal_estudiante') destination = 'dashboard';
+    }
     if (opts.lesson) setPendingLesson(opts.lesson);
     else setPendingLesson(null);
     if (opts.grupo) setPendingGrupo(opts.grupo);
@@ -633,11 +774,11 @@ function App() {
     if (opts.oral) {
       setPendingOral(opts.oral);
       try { sessionStorage.setItem('an_oral_context', JSON.stringify(opts.oral)); } catch (_) {}
-    } else if (target !== 'examen_oral') {
+    } else if (destination !== 'examen_oral') {
       setPendingOral(null);
       try { sessionStorage.removeItem('an_oral_context'); } catch (_) {}
     }
-    setActive(target);
+    setActive(destination);
     scrollCampusTopF91();
   };
 
@@ -721,21 +862,24 @@ function App() {
   let content = null;
   if (role === 'student') {
     const map = {
-      cronograma_grupo: <CronogramaGrupo rol="student" onNavigate={navigateTo} />,
-      // F95.0: alias de compatibilidad; ambos nombres abren el nuevo Mi Campus.
       portal_estudiante: <StudentDashboard toast={toast} onNavigate={navigateTo} />,
-      dashboard:    <StudentDashboard toast={toast} onNavigate={navigateTo} />,
-      notas:        <NotasView toast={toast} onNavigate={navigateTo} />,
-      tareas:       <TareasView toast={toast} />,
-      materiales:   <MaterialesView initialLesson={pendingLesson} onNavigate={navigateTo} />,
-      info_programa: <InfoProgramaView />,
-      ican:         <ICANViewNew toast={toast} role="student" />,
-      examenes:     <ExamenesStudentPanel />,
-      mensajes:     <MensajesView />,
-      pagos:        <PagosView />,
+      dashboard: <StudentDashboard toast={toast} onNavigate={navigateTo} />,
+      mi_curso: <StudentMiCursoViewF96 initialTab={studentHubTabs.course} initialLesson={pendingLesson} onNavigate={navigateTo} />,
+      evaluaciones: <StudentEvaluacionesViewF96 initialTab={studentHubTabs.evaluations} onNavigate={navigateTo} />,
+      ican: appStudentHasIcanF96(usuario) ? <ICANViewNew toast={toast} role="student" /> : <StudentDocumentosAyudaViewF96 initialTab="programa" />,
+      pagos: <PagosView />,
       certificados: <CertificadosView />,
-      solicitudes_estudiante: <SolicitudesEstudianteSafe onNavigate={navigateTo} />,
-      perfil:       <PerfilView onNavigate={navigateTo} />,
+      documentos_ayuda: <StudentDocumentosAyudaViewF96 initialTab={studentHubTabs.help} />,
+      perfil: <PerfilView onNavigate={navigateTo} />,
+      // Alias de compatibilidad: cualquier enlace viejo entra al hub correcto.
+      cronograma_grupo: <StudentMiCursoViewF96 initialTab="cronograma" onNavigate={navigateTo} />,
+      materiales: <StudentMiCursoViewF96 initialTab="materiales" initialLesson={pendingLesson} onNavigate={navigateTo} />,
+      tareas: <StudentMiCursoViewF96 initialTab="tareas" onNavigate={navigateTo} />,
+      examenes: <StudentEvaluacionesViewF96 initialTab="examenes" onNavigate={navigateTo} />,
+      notas: <StudentEvaluacionesViewF96 initialTab="resultados" onNavigate={navigateTo} />,
+      solicitudes_estudiante: <StudentEvaluacionesViewF96 initialTab="reposiciones" onNavigate={navigateTo} />,
+      info_programa: <StudentDocumentosAyudaViewF96 initialTab="programa" />,
+      mensajes: <StudentDocumentosAyudaViewF96 initialTab="avisos" />,
     };
     content = map[active] || map.dashboard;
   } else if (role === 'teacher') {
