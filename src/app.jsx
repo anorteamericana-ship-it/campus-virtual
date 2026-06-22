@@ -1,5 +1,4 @@
-// F96.0_20260622_MENU_ESTUDIANTE_POR_FLUJO_ACADEMICO
-// F95.2_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
+// F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
 // F89_20260620_AVISO_CIERRE_NO_INTRUSIVO_EXPEDIENTE_ESTUDIANTIL
@@ -11,7 +10,7 @@
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
    AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView,
-   SolicitudesUnificadasView, SolicitudesEstudianteView */
+   SolicitudesUnificadasView, SolicitudesEstudianteView, LazyModuleView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -46,6 +45,43 @@ function ProximamenteView({ title }) {
     </div>
   );
 }
+
+
+// F96.5-UX-G · rutas diferidas por pantalla + validación estática de dependencias.
+function LazyRoute({ title, component, files, ...props }) {
+  if (typeof LazyModuleView !== 'function') return <ModuloNoDisponibleView titulo={title || component} />;
+  return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
+}
+const F96_LAZY = {
+  student_dashboard: ['src/student_dashboard.jsx?v=F96.5G'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F96.5G','src/solicitudes_pago.jsx?v=F96.5G','src/solicitudes_unificadas.jsx?v=F96.5G','src/student_modules.jsx?v=F96.5G'],
+  syllabus_views: ['src/syllabus_views.jsx?v=F96.5G'],
+  teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F96.5G'],
+  vista_docente: ['src/vista_docente.jsx?v=F96.5G'],
+  admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F96.5G'],
+  admin_students: ['src/admin_students.jsx?v=F96.5G'],
+  matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
+  cronograma: ['src/cronograma.jsx?v=F96.5G'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F96.5G'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F96.5G','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F96.5G'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F96.5G','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F96.5G','src/admin_students.jsx?v=F96.5G','src/calendario_grupo.jsx?v=F96.5G'],
+  docente_operativo: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F96.5G','src/docente_operativo.jsx?v=F96.5G'],
+  buscador: ['src/buscador.jsx?v=F96.5G'],
+  banco: ['src/importador_banco.jsx?v=F96.5G'],
+  aplicar_pago: ['src/aplicar_pago.jsx?v=F96.5G'],
+  conape: ['src/conape_cobranza.jsx?v=F96.5G'],
+  supervision: ['src/vista_docente.jsx?v=F96.5G','src/panel_admin_supervision.jsx?v=F96.5G'],
+  auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
+  diagnostico: ['src/diagnostico_interno.jsx?v=F96.5G'],
+  permisos: ['src/permisos_roles.jsx?v=F96.5G'],
+  reportes: ['src/reportes_admin.jsx?v=F96.5G'],
+  inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
+  solicitudes: ['src/panel_suspensiones.jsx?v=F96.5G','src/solicitudes_pago.jsx?v=F96.5G','src/solicitudes_unificadas.jsx?v=F96.5G'],
+};
+// F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
+// No cambia navegación: permite ejecutar window.anLazyCampus.validateMap(window.F96_LAZY_MAP)
+// durante QA para detectar rutas o archivos diferidos antes de abrir grupos.
+try { window.F96_LAZY_MAP = F96_LAZY; } catch(_) {}
 
 
 // F92.5: envoltorios seguros para módulos externos. Si un archivo opcional
@@ -109,14 +145,6 @@ function appTeacherGroupLabelF88(code) {
   const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]] || '';
   return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;
 }
-function appStudentHasIcanF96(usr) {
-  if (!usr) return false;
-  const explicit = [usr.ican_habilitado,usr.ICAN_HABILITADO,usr.club_ican,usr.CLUB_ICAN,usr.tiene_ican,usr.TIENE_ICAN,usr.es_ina,usr.ES_INA];
-  if (explicit.some(v => v === true || ['SI','SÍ','TRUE','1'].includes(String(v || '').trim().toUpperCase()))) return true;
-  const programa=String(usr.programa||usr.PROGRAMA||'').trim().toUpperCase().replace(/\s+/g,'_');
-  if (!programa || programa.includes('SIN_INA')) return false;
-  return programa==='INA'||programa.includes('CON_INA')||programa.includes('PROGRAMA_INA');
-}
 function appTimeMinutesF88(v) {
   const m=String(v||'').trim().match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
   if(!m)return null; let h=Number(m[1]), ap=(m[3]||'').toLowerCase();
@@ -157,7 +185,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
 // Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F95.2`;
+  const src = `modulos/examenes.html?view=${view}&v=F95.1`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -187,7 +215,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
-          key={`${view}-F95.2`}
+          key={`${view}-F95.1`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
@@ -335,7 +363,7 @@ function TeacherWrittenPreviewModalF950({ activation, group, leccion, onClose })
   const test=activation.TEST_CODE||activation.test_code||(Number(leccion)===32?'TEST2':'TEST1');
   const opcion=activation.OPCION||activation.opcion||'A';
   const plan=String(activation.PLAN||activation.plan||'CON_INA').toLowerCase();
-  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F95.2`;
+  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F95.1`;
   return <div role="dialog" aria-modal="true" aria-label="Modelo del examen escrito" style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,20,48,.72)',padding:18,display:'flex',alignItems:'stretch',justifyContent:'center'}} onClick={onClose}>
     <div style={{width:'min(1500px,100%)',height:'calc(100vh - 36px)',background:'#F7F3EC',borderRadius:18,overflow:'hidden',boxShadow:'0 26px 80px rgba(0,0,0,.35)',display:'flex',flexDirection:'column'}} onClick={e=>e.stopPropagation()}>
       <div style={{padding:'11px 14px',background:'#fff',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
@@ -398,112 +426,6 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
 function ExamenesStudentPanel() {
   const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES OFICIALES</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Evaluaciones del nivel</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>Consultá el estado de tus exámenes orales y los escritos habilitados por la clase activa.</div></div><StudentOralOverviewF927/><div style={{padding:'13px 15px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>APLICACIÓN EN LÍNEA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:3}}>Se habilitan automáticamente mientras esté abierta la sesión de la lección 18 o 32.</div></div></>;
   return <ExamenesIframePanel hideHeader view="student" screenLabel="Estudiante · Exámenes" iframeTitle="Panel estudiante de exámenes" topContent={top}/>;
-}
-
-
-function StudentHubNavF96({ eyebrow, title, description, tabs, value, onChange }) {
-  return (
-    <section style={{marginBottom:18,padding:'16px 18px',border:'1px solid var(--line)',borderRadius:18,background:'linear-gradient(135deg,#fff 0%,#FBF8F2 100%)',boxShadow:'0 10px 28px rgba(0,30,71,.06)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',gap:16,alignItems:'flex-end',flexWrap:'wrap'}}>
-        <div>
-          <div style={{fontSize:10,fontWeight:900,letterSpacing:'.15em',textTransform:'uppercase',color:'var(--an-granate)'}}>{eyebrow}</div>
-          <div style={{fontFamily:'var(--f-serif)',fontSize:29,fontWeight:600,color:'var(--an-navy-ink)',marginTop:3}}>{title}</div>
-          {description && <div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4,maxWidth:720,lineHeight:1.55}}>{description}</div>}
-        </div>
-      </div>
-      <div role="tablist" aria-label={title} style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:15}}>
-        {tabs.map(tab => {
-          const selected = value === tab.id;
-          return (
-            <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={()=>onChange(tab.id)}
-              style={{border:selected?'1px solid var(--an-granate)':'1px solid var(--line)',background:selected?'var(--an-granate)':'#fff',color:selected?'#fff':'var(--ink-2)',borderRadius:999,padding:'8px 13px',fontFamily:'inherit',fontSize:11.5,fontWeight:850,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:7}}>
-              <span>{tab.label}</span>
-              {tab.soon && <span style={{fontSize:8.5,letterSpacing:'.08em',textTransform:'uppercase',padding:'2px 6px',borderRadius:999,background:selected?'rgba(255,255,255,.18)':'var(--bg-deep)',color:selected?'#fff':'var(--ink-3)'}}>Pronto</span>}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function StudentFutureModuleF96({ icon, title, description, points = [] }) {
-  return (
-    <section style={{maxWidth:860,margin:'0 auto',padding:'30px 30px',border:'1px dashed var(--line-2)',borderRadius:20,background:'#fff'}}>
-      <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:16,alignItems:'start'}}>
-        <div style={{width:54,height:54,borderRadius:16,display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg-deep)',fontSize:27}}>{icon}</div>
-        <div>
-          <div style={{display:'inline-flex',padding:'3px 9px',borderRadius:999,background:'var(--bg-deep)',color:'var(--ink-3)',fontSize:9.5,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase'}}>Próximamente</div>
-          <h2 style={{fontFamily:'var(--f-serif)',fontSize:27,color:'var(--an-navy-ink)',margin:'8px 0 6px'}}>{title}</h2>
-          <p style={{margin:0,color:'var(--ink-2)',fontSize:13,lineHeight:1.65}}>{description}</p>
-          {points.length > 0 && <div style={{display:'grid',gap:8,marginTop:17}}>{points.map((point,i)=><div key={i} style={{display:'flex',gap:9,fontSize:12.5,color:'var(--ink-2)'}}><span style={{color:'var(--an-gold)',fontWeight:900}}>•</span><span>{point}</span></div>)}</div>}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StudentMiCursoViewF96({ initialTab = 'cronograma', initialLesson = null, onNavigate }) {
-  const [tab,setTab]=React.useState(initialTab);
-  React.useEffect(()=>setTab(initialTab || 'cronograma'),[initialTab]);
-  const tabs=[
-    {id:'cronograma',label:'Cronograma'},
-    {id:'materiales',label:'Materiales'},
-    {id:'tareas',label:'Tareas',soon:true},
-  ];
-  return <div data-screen-label="Estudiante · Mi curso">
-    <StudentHubNavF96 eyebrow="Aprendizaje" title="Mi curso" description="Fechas, lecciones, recursos y trabajo independiente del nivel que estás cursando." tabs={tabs} value={tab} onChange={setTab}/>
-    {tab==='cronograma' && <CronogramaGrupo rol="student" onNavigate={onNavigate}/>} 
-    {tab==='materiales' && <MaterialesView initialLesson={initialLesson} onNavigate={onNavigate}/>} 
-    {tab==='tareas' && <StudentFutureModuleF96 icon="📚" title="Tareas y trabajo independiente" description="Este módulo queda reservado dentro de Mi curso, no como una opción vacía del menú principal." points={['Asignaciones vinculadas a la lección correspondiente.','Fecha de entrega, archivos y estado de revisión.','Retroalimentación del docente sin duplicar Mis notas.']}/>} 
-  </div>;
-}
-
-function StudentEvaluacionesViewF96({ initialTab = 'examenes', onNavigate }) {
-  const [tab,setTab]=React.useState(initialTab);
-  React.useEffect(()=>setTab(initialTab || 'examenes'),[initialTab]);
-  const tabs=[
-    {id:'examenes',label:'Próximas y activas'},
-    {id:'resultados',label:'Resultados'},
-    {id:'reposiciones',label:'Reposiciones'},
-  ];
-  return <div data-screen-label="Estudiante · Evaluaciones">
-    <StudentHubNavF96 eyebrow="Proceso académico" title="Evaluaciones" description="Un solo recorrido para realizar exámenes, revisar resultados y tramitar una reposición cuando corresponda." tabs={tabs} value={tab} onChange={setTab}/>
-    {tab==='examenes' && <ExamenesStudentPanel/>}
-    {tab==='resultados' && <NotasView onNavigate={onNavigate}/>} 
-    {tab==='reposiciones' && <SolicitudesEstudianteSafe onNavigate={onNavigate}/>} 
-  </div>;
-}
-
-function StudentHelpContactsF96() {
-  const usr=typeof getSesion==='function'?getSesion():null;
-  const contact=(tipo,label)=>typeof ContactoAdmin==='function'
-    ? <ContactoAdmin usr={usr} tipo={tipo} label={label}/>
-    : <span style={{fontSize:12,color:'var(--ink-3)'}}>Contacto pendiente de configurar.</span>;
-  const cards=[
-    ['Académico','Clases, notas, asistencia, reposiciones y certificados.','academico','Contactar área académica'],
-    ['Administración','Datos personales, matrícula y gestiones generales.','administracion','Contactar administración'],
-    ['Cobros','Pagos, cuotas, comprobantes y estado de cuenta.','cobros','Contactar cobros'],
-  ];
-  return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14}}>
-    {cards.map(([title,desc,tipo,label])=><section key={tipo} className="card" style={{padding:20}}><div style={{fontFamily:'var(--f-serif)',fontSize:20,color:'var(--an-navy-ink)'}}>{title}</div><div style={{fontSize:12.5,color:'var(--ink-3)',lineHeight:1.55,margin:'7px 0 16px'}}>{desc}</div>{contact(tipo,label)}</section>)}
-  </div>;
-}
-
-function StudentDocumentosAyudaViewF96({ initialTab = 'programa' }) {
-  const [tab,setTab]=React.useState(initialTab);
-  React.useEffect(()=>setTab(initialTab || 'programa'),[initialTab]);
-  const tabs=[
-    {id:'programa',label:'Programa y documentos'},
-    {id:'avisos',label:'Avisos',soon:true},
-    {id:'ayuda',label:'Ayuda y contactos'},
-  ];
-  return <div data-screen-label="Estudiante · Documentos y ayuda">
-    <StudentHubNavF96 eyebrow="Orientación" title="Documentos y ayuda" description="Información institucional, canales correctos de atención y futuros avisos oficiales del Campus." tabs={tabs} value={tab} onChange={setTab}/>
-    {tab==='programa' && <InfoProgramaView/>}
-    {tab==='avisos' && <StudentFutureModuleF96 icon="🔔" title="Avisos del Campus" description="Mensajes deja de plantearse como otro chat. El futuro módulo será una bandeja de avisos oficiales, clara y auditable." points={['Comunicados académicos y administrativos.','Confirmación de lectura cuando sea necesaria.','Enlaces directos a la gestión o módulo relacionado.']}/>} 
-    {tab==='ayuda' && <StudentHelpContactsF96/>}
-  </div>;
 }
 
 const { useState, useEffect } = React;
@@ -705,21 +627,16 @@ function App() {
     : rolReal === 'student'   ? 'student'
     : null;
 
-  const savedStudentActiveF96 = React.useMemo(() => localStorage.getItem('an_active') || 'dashboard', []);
-  const [studentHubTabs, setStudentHubTabs] = useState(() => ({
-    course: savedStudentActiveF96 === 'materiales' ? 'materiales' : savedStudentActiveF96 === 'tareas' ? 'tareas' : 'cronograma',
-    evaluations: savedStudentActiveF96 === 'notas' ? 'resultados' : savedStudentActiveF96 === 'solicitudes_estudiante' ? 'reposiciones' : 'examenes',
-    help: savedStudentActiveF96 === 'mensajes' ? 'avisos' : 'programa',
-  }));
   const [active, setActive] = useState(() => {
-    const saved = savedStudentActiveF96;
-    if (rolReal !== 'student') return saved;
-    const legacy = {
-      portal_estudiante:'dashboard', cronograma_grupo:'mi_curso', materiales:'mi_curso', tareas:'mi_curso',
-      examenes:'evaluaciones', notas:'evaluaciones', solicitudes_estudiante:'evaluaciones',
-      info_programa:'documentos_ayuda', mensajes:'documentos_ayuda',
-    };
-    return legacy[saved] || saved;
+    // F96.5 UX: el estudiante SIEMPRE inicia en Mi Campus.
+    // No se hereda la última pantalla porque mañana entran usuarios nuevos y
+    // la primera impresión debe ser clara, estable y orientada al cumplimiento INA.
+    if (role === 'student') return 'dashboard';
+
+    // Admin/docente sí conservan su última pantalla porque trabajan operación diaria.
+    const roleKey = 'an_active_' + (role || 'unknown');
+    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';
+    return saved === 'portal_estudiante' ? 'dashboard' : saved;
   });
   const [toastMsg, setToastMsg] = useState('');
   const [pendingLesson, setPendingLesson] = useState(null);
@@ -751,22 +668,6 @@ function App() {
   };
 
   const navigateTo = (target, opts = {}) => {
-    let destination = target;
-    if (role === 'student') {
-      const courseTabs = { cronograma_grupo:'cronograma', materiales:'materiales', tareas:'tareas' };
-      const evaluationTabs = { examenes:'examenes', notas:'resultados', solicitudes_estudiante:'reposiciones' };
-      const helpTabs = { info_programa:'programa', mensajes:'avisos' };
-      if (courseTabs[target]) {
-        setStudentHubTabs(prev => ({...prev, course:courseTabs[target]}));
-        destination = 'mi_curso';
-      } else if (evaluationTabs[target]) {
-        setStudentHubTabs(prev => ({...prev, evaluations:evaluationTabs[target]}));
-        destination = 'evaluaciones';
-      } else if (helpTabs[target]) {
-        setStudentHubTabs(prev => ({...prev, help:helpTabs[target]}));
-        destination = 'documentos_ayuda';
-      } else if (target === 'portal_estudiante') destination = 'dashboard';
-    }
     if (opts.lesson) setPendingLesson(opts.lesson);
     else setPendingLesson(null);
     if (opts.grupo) setPendingGrupo(opts.grupo);
@@ -774,11 +675,11 @@ function App() {
     if (opts.oral) {
       setPendingOral(opts.oral);
       try { sessionStorage.setItem('an_oral_context', JSON.stringify(opts.oral)); } catch (_) {}
-    } else if (destination !== 'examen_oral') {
+    } else if (target !== 'examen_oral') {
       setPendingOral(null);
       try { sessionStorage.removeItem('an_oral_context'); } catch (_) {}
     }
-    setActive(destination);
+    setActive(target);
     scrollCampusTopF91();
   };
 
@@ -794,7 +695,12 @@ function App() {
     localStorage.setItem('an_welcome_dismissed', '1');
   };
 
-  useEffect(() => { localStorage.setItem('an_active', active); }, [active]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('an_active', active);
+      localStorage.setItem('an_active_' + (role || 'unknown'), active);
+    } catch (_) {}
+  }, [active, role]);
   useEffect(() => {
     scrollCampusTopF91();
   }, [active]);
@@ -862,24 +768,21 @@ function App() {
   let content = null;
   if (role === 'student') {
     const map = {
-      portal_estudiante: <StudentDashboard toast={toast} onNavigate={navigateTo} />,
-      dashboard: <StudentDashboard toast={toast} onNavigate={navigateTo} />,
-      mi_curso: <StudentMiCursoViewF96 initialTab={studentHubTabs.course} initialLesson={pendingLesson} onNavigate={navigateTo} />,
-      evaluaciones: <StudentEvaluacionesViewF96 initialTab={studentHubTabs.evaluations} onNavigate={navigateTo} />,
-      ican: appStudentHasIcanF96(usuario) ? <ICANViewNew toast={toast} role="student" /> : <StudentDocumentosAyudaViewF96 initialTab="programa" />,
-      pagos: <PagosView />,
-      certificados: <CertificadosView />,
-      documentos_ayuda: <StudentDocumentosAyudaViewF96 initialTab={studentHubTabs.help} />,
-      perfil: <PerfilView onNavigate={navigateTo} />,
-      // Alias de compatibilidad: cualquier enlace viejo entra al hub correcto.
-      cronograma_grupo: <StudentMiCursoViewF96 initialTab="cronograma" onNavigate={navigateTo} />,
-      materiales: <StudentMiCursoViewF96 initialTab="materiales" initialLesson={pendingLesson} onNavigate={navigateTo} />,
-      tareas: <StudentMiCursoViewF96 initialTab="tareas" onNavigate={navigateTo} />,
-      examenes: <StudentEvaluacionesViewF96 initialTab="examenes" onNavigate={navigateTo} />,
-      notas: <StudentEvaluacionesViewF96 initialTab="resultados" onNavigate={navigateTo} />,
-      solicitudes_estudiante: <StudentEvaluacionesViewF96 initialTab="reposiciones" onNavigate={navigateTo} />,
-      info_programa: <StudentDocumentosAyudaViewF96 initialTab="programa" />,
-      mensajes: <StudentDocumentosAyudaViewF96 initialTab="avisos" />,
+      cronograma_grupo: <LazyRoute title="Cronograma académico" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol="student" onNavigate={navigateTo} />,
+      // F95.0: alias de compatibilidad; ambos nombres abren el nuevo Mi Campus.
+      portal_estudiante: <LazyRoute title="Mi Campus" component="StudentDashboard" files={F96_LAZY.student_dashboard} toast={toast} onNavigate={navigateTo} />,
+      dashboard:    <LazyRoute title="Mi Campus" component="StudentDashboard" files={F96_LAZY.student_dashboard} toast={toast} onNavigate={navigateTo} />,
+      notas:        <LazyRoute title="Mis Notas" component="NotasView" files={F96_LAZY.student_modules} toast={toast} onNavigate={navigateTo} />,
+      tareas:       <LazyRoute title="Tareas" component="TareasView" files={F96_LAZY.student_modules} toast={toast} />,
+      materiales:   <LazyRoute title="Biblioteca del curso" component="MaterialesView" files={F96_LAZY.syllabus_views} initialLesson={pendingLesson} onNavigate={navigateTo} />,
+      info_programa: <LazyRoute title="Material obligatorio INA" component="InfoProgramaView" files={F96_LAZY.syllabus_views} />,
+      ican:         <LazyRoute title="Club I CAN" component="ICANViewNew" files={F96_LAZY.syllabus_views} toast={toast} role="student" />,
+      examenes:     <ExamenesStudentPanel />,
+      mensajes:     <LazyRoute title="Mensajes" component="MensajesView" files={F96_LAZY.student_modules} />,
+      pagos:        <LazyRoute title="Estado de cuenta" component="PagosView" files={F96_LAZY.student_modules} />,
+      certificados: <LazyRoute title="Certificaciones" component="CertificadosView" files={F96_LAZY.student_modules} />,
+      solicitudes_estudiante: <LazyRoute title="Solicitudes del estudiante" component="SolicitudesEstudianteView" files={F96_LAZY.solicitudes} onNavigate={navigateTo} />,
+      perfil:       <LazyRoute title="Perfil" component="PerfilView" files={F96_LAZY.student_modules} onNavigate={navigateTo} />,
     };
     content = map[active] || map.dashboard;
   } else if (role === 'teacher') {
@@ -887,20 +790,20 @@ function App() {
     // TeacherDashboard se eliminó (bloque 2). 'dashboard' queda como
     // alias por compatibilidad con an_active viejo en localStorage.
     const map = {
-      dashboard:        <VistaDocente />,
-      mi_panel_docente: <VistaDocente />,
+      dashboard:        <LazyRoute title="Mi Panel Docente" component="VistaDocente" files={F96_LAZY.vista_docente} />,
+      mi_panel_docente: <LazyRoute title="Mi Panel Docente" component="VistaDocente" files={F96_LAZY.vista_docente} />,
       // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_ROUTER
-      docente_operativo: <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
-      grupos:      <GruposView onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
+      docente_operativo: <LazyRoute title="Mis Grupos" component="GruposView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
+      grupos:      <LazyRoute title="Mis Grupos" component="GruposView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
-      asistencia:  <CronogramaGrupo rol="teacher" onNavigate={navigateTo} />,
-      cronograma_grupo: <CronogramaDocenteSeguroF82 onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
+      asistencia:  <LazyRoute title="Asistencia" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol="teacher" onNavigate={navigateTo} />,
+      cronograma_grupo: <LazyRoute title="Cronograma docente" component="CronogramaDocenteSeguroF82" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       examenes:    <ExamenesTeacherPanel activeState={activeTeacherState} pendingOral={pendingOral} onNavigate={navigateTo} />,
-      examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
-      materiales:  <MaterialesView onNavigate={navigateTo} />,
+      examen_oral: <LazyRoute title="Examen oral" component="ExamenOralView" files={F96_LAZY.student_modules} context={pendingOral} onNavigate={navigateTo} />,
+      materiales:  <LazyRoute title="Biblioteca del curso" component="MaterialesView" files={F96_LAZY.syllabus_views} onNavigate={navigateTo} />,
       ican:        <ProximamenteView title="Club I CAN" />,
-      mensajes:    <MensajesView />,
-      perfil:      <PerfilView />,
+      mensajes:    <LazyRoute title="Mensajes" component="MensajesView" files={F96_LAZY.student_modules} />,
+      perfil:      <LazyRoute title="Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
     };
     content = map[active] || map.mi_panel_docente;
   } else if (role === 'admin') {
@@ -910,33 +813,33 @@ function App() {
     // como no-clickeables; esto es la red de seguridad por si el id
     // llega vía state antiguo.
     const map = {
-      matriculas:    <MatriculasView onNavigate={navigateTo} />,
-      dashboard:    <AdminDashboard setActive={setActive} />,
-      supervision:  <PanelAdminSupervision />,
-      calendario_grupo: <CalendarioGrupoOperativo rol={rolReal} onNavigate={navigateTo} />,
-      auditoria_academica: <AuditoriaAcademicaView />,
+      matriculas:    <LazyRoute title="Matrículas" component="MatriculasView" files={F96_LAZY.matriculas} onNavigate={navigateTo} />,
+      dashboard:    <LazyRoute title="Dashboard" component="AdminDashboard" files={F96_LAZY.admin_views} setActive={setActive} />,
+      supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
+      calendario_grupo: <LazyRoute title="Calendario de Grupo" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} />,
+      auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
-      diagnostico_interno: <DiagnosticoInternoView />,
+      diagnostico_interno: <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />,
       // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_ROUTER
-      permisos_roles: <PermisosRolesView />,
+      permisos_roles: <LazyRoute title="Permisos y roles" component="PermisosRolesView" files={F96_LAZY.permisos} />,
       // CALGRUPO_F36_20260617_CONAPE_COBRANZA_ROUTER
-      conape_cobranza: <ConapeCobranzaView onNavigate={navigateTo} />,
+      conape_cobranza: <LazyRoute title="CONAPE y Cobranza" component="ConapeCobranzaView" files={F96_LAZY.conape} onNavigate={navigateTo} />,
       // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_ROUTER
-      reportes: <ReportesAdminView onNavigate={navigateTo} />,
+      reportes: <LazyRoute title="Reportes" component="ReportesAdminView" files={F96_LAZY.reportes} onNavigate={navigateTo} />,
       // CALGRUPO_F55_20260618_SUPERADMIN_EDITOR_INSCRIPCION_PUBLICA_ROUTER
       inscripcion_admin: rolReal === 'superadmin'
-        ? <InscripcionAdminView toast={toast} />
+        ? <LazyRoute title="Inscripción pública" component="InscripcionAdminView" files={F96_LAZY.inscripcion_admin} toast={toast} />
         : <NoAutorizadoCampus rol={rolReal} />,
       examenes:    <ExamenesAdminPanel />,
-      examen_oral: <ExamenOralView context={pendingOral} onNavigate={navigateTo} />,
-      suspensiones: <SolicitudesUnificadasSafe onNavigate={navigateTo} />,
-      solicitudes:  <SolicitudesUnificadasSafe onNavigate={navigateTo} />,
-      grupos:       <AdminGruposView />,
-      estudiantes:  <AdminEstudiantesView onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
-      cronograma_grupo: <CronogramaGrupo rol={rolReal} onNavigate={navigateTo} />,
-      buscador:     <BuscadorEstudiantes />,
-      banco:        <ImportadorBancario />,
-      aplicar_pago: <AplicarPago />,
+      examen_oral: <LazyRoute title="Examen oral" component="ExamenOralView" files={F96_LAZY.student_modules} context={pendingOral} onNavigate={navigateTo} />,
+      suspensiones: <LazyRoute title="Solicitudes administrativas" component="SolicitudesUnificadasView" files={F96_LAZY.solicitudes} onNavigate={navigateTo} />,
+      solicitudes:  <LazyRoute title="Solicitudes administrativas" component="SolicitudesUnificadasView" files={F96_LAZY.solicitudes} onNavigate={navigateTo} />,
+      grupos:       <LazyRoute title="Grupos" component="AdminGruposView" files={F96_LAZY.admin_views} />,
+      estudiantes:  <LazyRoute title="Estudiantes" component="AdminEstudiantesView" files={F96_LAZY.admin_students} onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
+      cronograma_grupo: <LazyRoute title="Cronograma académico" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol={rolReal} onNavigate={navigateTo} />,
+      buscador:     <LazyRoute title="Buscador" component="BuscadorEstudiantes" files={F96_LAZY.buscador} />,
+      banco:        <LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />,
+      aplicar_pago: <LazyRoute title="Aplicar Pago" component="AplicarPago" files={F96_LAZY.aplicar_pago} />,
       // — Próximamente (sin datos demo) ——————————————————————
       docentes:  <ProximamenteView title="Docentes" />,
       horas:     <ProximamenteView title="Horas docentes" />,
@@ -977,7 +880,7 @@ function App() {
         </VistaErrorBoundary>
       </main>
       <Toast msg={toastMsg} onClose={() => setToastMsg('')} />
-      {showWelcome && role === 'student' && <WelcomeBanner onClose={closeWelcome} />}
+      {showWelcome && role === 'student' && <LazyRoute title="Bienvenida" component="WelcomeBanner" files={F96_LAZY.syllabus_views} onClose={closeWelcome} />}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-// F96.0_20260622_MENU_ESTUDIANTE_FLUJO_Y_CERTIFICADOS_HONESTOS
 // F92.7_20260620_MIS_NOTAS_COMPLETAS_ORDEN_CRONOGRAMA
 // F86_20260619_EXAMEN_ORAL_CONTEXTO_EXACTO
 /* global React, Icon, Ring, Chip, Stat, AnimatedBar, LEVELS, PRECIOS,
@@ -435,9 +434,9 @@ function PagosView() {
   return (
     <div>
       <PageHeader
-        kicker="Gestión financiera"
-        title={<>Pagos y <em>estado de cuenta</em></>}
-        sub="Matrícula, cuotas, certificado e historial · información en tiempo real"
+        kicker="Estado financiero"
+        title={<>Estado de <em>cuenta</em></>}
+        sub="Matrícula, cuotas y certificado · información en tiempo real"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -660,7 +659,7 @@ function CertificadosView() {
       <PageHeader
         kicker="Documentos oficiales"
         title={<>Mis <em>Certificados</em></>}
-        sub="Estado académico para solicitud, emisión y futura descarga"
+        sub="Disponibles cuando un nivel queda aprobado o convalidado"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -678,19 +677,18 @@ function CertificadosView() {
 function CertificadosContenido({ data }) {
   const niveles = data?.niveles || {};
   const ORDEN = ['B1','B2','I1','I2'];
-  // F96: APR/CNV demuestra elegibilidad académica, no que exista un PDF emitido.
-  const elegibles = ORDEN
+  const disponibles = ORDEN
     .filter(n => ['APR','CNV'].includes(estatusDe(niveles, n)))
     .map(n => ({ nivel:n, estatus: estatusDe(niveles, n), nota: notaDeNivelSM(niveles, n) }));
-  const porDesbloquear = ORDEN.filter(n => !elegibles.find(d => d.nivel === n));
+  const porDesbloquear = ORDEN.filter(n => !disponibles.find(d => d.nivel === n));
 
-  if (elegibles.length === 0) {
+  if (disponibles.length === 0) {
     return (
       <>
         <EmptyState
           icon="🎖️"
-          title="Aún no tenés niveles elegibles para certificado"
-          subtitle="La elegibilidad académica inicia al aprobar o convalidar un nivel. La emisión oficial se confirma por separado."
+          title="Aún no tenés certificados disponibles"
+          subtitle="Tu primer certificado se desbloqueará al aprobar tu primer nivel. Seguí adelante."
         />
         <div style={{ marginTop:24 }}>
           <div className="card-h" style={{ padding:'0 4px' }}>
@@ -705,7 +703,7 @@ function CertificadosContenido({ data }) {
   return (
     <>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:16, marginBottom:24 }}>
-        {elegibles.map(d => (
+        {disponibles.map(d => (
           <div key={d.nivel} className="card" style={{
             padding:24, background:'linear-gradient(135deg, #FFFFFF 0%, #FBF8F2 100%)',
             position:'relative', overflow:'hidden', minHeight:200,
@@ -726,7 +724,7 @@ function CertificadosContenido({ data }) {
               </div>
               <div>
                 <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:NIVEL_COLOR_SM[d.nivel] }}>
-                  {d.estatus === 'CNV' ? 'Convalidado · elegible' : 'Aprobado · elegible'}
+                  {d.estatus === 'CNV' ? 'Nivel convalidado' : 'Nivel aprobado'}
                 </div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, lineHeight:1.2, margin:'6px 0', color:'var(--an-navy-ink)' }}>
                   Certificado · {NIVEL_NOMBRE_SM[d.nivel]}
@@ -737,8 +735,18 @@ function CertificadosContenido({ data }) {
               </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:20, position:'relative' }}>
-              <div style={{padding:'10px 12px',borderRadius:12,background:'var(--bg-deep)',fontSize:11.5,color:'var(--ink-2)',lineHeight:1.55}}>
-                Este nivel es elegible académicamente. La emisión, el número oficial y el archivo PDF deben ser confirmados por administración.
+              {/* PRE-GITHUB-LOCK-001: la descarga directa NO tiene endpoint en el
+                  panel del estudiante. El certificado oficial lo emite la
+                  administración (generarCertificado/generarDocumento). Botón
+                  honesto: deshabilitado + indicación de a quién solicitarlo.
+                  No se inventa una descarga que no existe. */}
+              <button className="btn btn-ghost" disabled
+                      style={{ opacity:0.65, cursor:'not-allowed', justifyContent:'center' }}
+                      title="La descarga directa estará disponible próximamente">
+                <Icon name="download" size={14} className="" /> Descarga próximamente
+              </button>
+              <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5 }}>
+                Solicitá tu certificado oficial a la administración de la Academia.
               </div>
               {/* STUDENT-CONTACT-ADMIN-002: certificación académica → contacto
                   ACADÉMICO, solo si hay número real (si no, texto honesto arriba). */}
@@ -945,39 +953,57 @@ function PerfilContenido({ usr, data, onNavigate }) {
           </div>
         )}
 
-        <div className="card">
-          <div className="card-h">
-            <div className="card-title">Configuración</div>
+        {esTeacherPerfil ? (
+          <div className="card">
+            <div className="card-h">
+              <div className="card-title">Documentos del docente</div>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 }}>
+              <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface-2)' }}>
+                <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Curriculum</div>
+                <div style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.45, marginTop:6 }}>Vista disponible para el docente. La edición, reemplazo o descarga oficial corresponde a administración.</div>
+              </div>
+              <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface-2)' }}>
+                <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Aval INA</div>
+                <div style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.45, marginTop:6 }}>Documento visible para consulta docente. El control documental queda reservado para administración.</div>
+              </div>
+            </div>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-            {[
-              { label:'Notificaciones por correo', sub:'Recordatorios y avisos académicos', key:'notif_email', disabled:true },
-              { label:'Recordatorios por WhatsApp', sub:'Avisos de clase y evaluaciones', key:'notif_wa', disabled:true },
-              { label:'Modo oscuro', sub:'Cambia la apariencia del campus', key:'dark_mode', disabled:false },
-            ].map((cfg, i, arr) => {
-              const [on, setOn] = React.useState(() => {
-                try { return localStorage.getItem('an_cfg_' + cfg.key) === '1'; } catch { return false; }
-              });
-              const toggle = () => {
-                if (cfg.disabled) return;
-                const next = !on;
-                setOn(next);
-                try { localStorage.setItem('an_cfg_' + cfg.key, next ? '1' : '0'); } catch {}
-              };
-              return (
-                <div key={cfg.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom: i < arr.length-1 ? '1px solid var(--line)' : 'none', opacity: cfg.disabled ? 0.5 : 1 }}>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:600 }}>{cfg.label}</div>
-                    <div style={{ fontSize:11, color:'var(--ink-3)' }}>{cfg.disabled ? cfg.sub + ' — Próximamente' : cfg.sub}</div>
+        ) : (
+          <div className="card">
+            <div className="card-h">
+              <div className="card-title">Configuración</div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+              {[
+                { label:'Notificaciones por correo', sub:'Recordatorios y avisos académicos', key:'notif_email', disabled:true },
+                { label:'Recordatorios por WhatsApp', sub:'Avisos de clase y evaluaciones', key:'notif_wa', disabled:true },
+                { label:'Modo oscuro', sub:'Cambia la apariencia del campus', key:'dark_mode', disabled:false },
+              ].map((cfg, i, arr) => {
+                const [on, setOn] = React.useState(() => {
+                  try { return localStorage.getItem('an_cfg_' + cfg.key) === '1'; } catch { return false; }
+                });
+                const toggle = () => {
+                  if (cfg.disabled) return;
+                  const next = !on;
+                  setOn(next);
+                  try { localStorage.setItem('an_cfg_' + cfg.key, next ? '1' : '0'); } catch {}
+                };
+                return (
+                  <div key={cfg.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom: i < arr.length-1 ? '1px solid var(--line)' : 'none', opacity: cfg.disabled ? 0.5 : 1 }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600 }}>{cfg.label}</div>
+                      <div style={{ fontSize:11, color:'var(--ink-3)' }}>{cfg.disabled ? cfg.sub + ' — Próximamente' : cfg.sub}</div>
+                    </div>
+                    <div onClick={toggle} style={{ width:44, height:24, borderRadius:12, background: on ? 'var(--ok)' : 'var(--line-2)', cursor: cfg.disabled ? 'not-allowed' : 'pointer', position:'relative', transition:'background .2s', flexShrink:0 }}>
+                      <div style={{ position:'absolute', top:3, left: on ? 23 : 3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left .2s' }} />
+                    </div>
                   </div>
-                  <div onClick={toggle} style={{ width:44, height:24, borderRadius:12, background: on ? 'var(--ok)' : 'var(--line-2)', cursor: cfg.disabled ? 'not-allowed' : 'pointer', position:'relative', transition:'background .2s', flexShrink:0 }}>
-                    <div style={{ position:'absolute', top:3, left: on ? 23 : 3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left .2s' }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

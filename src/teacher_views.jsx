@@ -1215,3 +1215,6 @@ function AsistenciaView({ toast }) {
 }
 
 Object.assign(window, { GruposView, CalificarView, AsistenciaView });
+
+// F96.2-LAZY-A export explícito para carga diferida
+Object.assign(window, { CronogramaDocenteSeguroF82 });

@@ -1,4 +1,4 @@
-// F96.0_20260622_MENU_ESTUDIANTE_REORGANIZADO
+// F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY
 /* global React, Icon, getSesion, setSesion */
 const { useState: _u1 } = React;
 
@@ -283,20 +283,6 @@ function sidebarTeacherGroupLabelF88(code) {
   return `${day}${hours?' '+hours:''}${cycle?' · '+cycle:''}`;
 }
 
-function sidebarStudentHasIcanF96(usr) {
-  if (!usr) return false;
-  const explicit = [
-    usr.ican_habilitado, usr.ICAN_HABILITADO,
-    usr.club_ican, usr.CLUB_ICAN,
-    usr.tiene_ican, usr.TIENE_ICAN,
-    usr.es_ina, usr.ES_INA,
-  ];
-  if (explicit.some(v => v === true || ['SI','SÍ','TRUE','1'].includes(String(v || '').trim().toUpperCase()))) return true;
-  const programa = String(usr.programa || usr.PROGRAMA || '').trim().toUpperCase().replace(/\s+/g, '_');
-  if (!programa || programa.includes('SIN_INA')) return false;
-  return programa === 'INA' || programa.includes('CON_INA') || programa.includes('PROGRAMA_INA');
-}
-
 function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   // Sesión única — sin fallbacks a claves sueltas.
   const usr = usuario || (typeof getSesion === 'function' ? getSesion() : null);
@@ -395,15 +381,21 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   }, [rolEfectivo, active]);
 
   const studentNav = [
-    { type: 'section', label: 'Aprendizaje' },
+    // F96.5 UX-F: el menú del estudiante sigue la misma jerarquía de Mi Campus.
+    // No se elimina ningún módulo; solo se reordena para que lo académico
+    // frecuente esté arriba y lo administrativo/seguimiento quede abajo.
     { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
-    { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
-    { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
-    ...(sidebarStudentHasIcanF96(usr) ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
-    { type: 'section', label: 'Gestión' },
-    { id: 'pagos', label: 'Pagos y estado de cuenta', icon: 'payments' },
-    { id: 'certificados', label: 'Certificados', icon: 'certificates' },
-    { id: 'documentos_ayuda', label: 'Documentos y ayuda', icon: 'doc' },
+    { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
+    { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
+    { id: 'examenes', label: 'Exámenes', icon: 'check' },
+    { id: 'notas', label: 'Mis Notas', icon: 'grades' },
+    { id: 'info_programa', label: 'Material obligatorio INA', icon: 'doc' },
+    { id: 'solicitudes_estudiante', label: 'Solicitudes', icon: 'card' },
+    { id: 'pagos', label: 'Estado de cuenta', icon: 'payments' },
+    { id: 'certificados', label: 'Certificaciones', icon: 'certificates' },
+    { id: 'ican', label: 'Club I CAN', icon: 'ican' },
+    { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
+    { id: 'tareas', label: 'Tareas', icon: 'homework' },
   ];
   const teacherNav = [
     { id: 'perfil', label: 'Teacher', icon: 'profile' },
@@ -474,14 +466,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       {esSuperadmin && <ModoPruebaPanel />}
 
       <div className="sb-section">Menú</div>
-      {nav.map((item, index) => {
-        if (item.type === 'section') {
-          return (
-            <div key={`section-${item.label}-${index}`} className="sb-section" style={{ marginTop:index === 0 ? 2 : 14 }}>
-              {item.label}
-            </div>
-          );
-        }
+      {nav.map(item => {
         if (item.proximamente) {
           return (
             <button

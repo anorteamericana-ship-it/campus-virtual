@@ -354,8 +354,47 @@ function EmptyState({ icon = '—', title, subtitle, action }) {
   );
 }
 
+
+
+// F96.2-LAZY-C · Header compartido para rutas diferidas.
+// Antes PageHeader vivía dentro de student_modules.jsx; varios módulos admin/docente
+// lo usaban de forma implícita. Se declara en primitives para que esté disponible
+// desde el núcleo inicial sin arrastrar módulos de estudiante.
+function PageHeader({ kicker, title, sub, right }) {
+  return (
+    <div style={{ marginBottom:24, display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+      <div>
+        {kicker && <div className="hero-kicker" style={{ marginBottom:8 }}>{kicker}</div>}
+        <h1 style={{ fontFamily:'var(--f-serif)', fontSize:40, fontWeight:400, letterSpacing:'-0.035em', lineHeight:1.05, margin:0, color:'var(--an-navy-ink)' }}>
+          {title}
+        </h1>
+        {sub && <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6, maxWidth:640 }}>{sub}</div>}
+      </div>
+      {right}
+    </div>
+  );
+}
+
 // ── ErrorState — usado cuando un endpoint falla ──────────────────────────
+// F96.5 UX-E: ningún estudiante/docente debe ver errores técnicos crudos
+// como "Cannot read properties...". El detalle queda disponible solo si el
+// usuario lo despliega para soporte.
+function normalizarMensajeErrorCampus(message) {
+  const raw = String(message || '').trim();
+  if (!raw) return { titulo:'No se pudo cargar la información.', detalle:'' };
+  const tecnico = /Cannot read|undefined|null|TypeError|ReferenceError|SyntaxError|stack|Exception|Failed to fetch|NetworkError|Unexpected token/i.test(raw);
+  if (tecnico) {
+    return {
+      titulo:'No se pudo cargar este módulo.',
+      detalle:raw,
+    };
+  }
+  return { titulo:raw, detalle:'' };
+}
+
 function ErrorState({ message, onRetry }) {
+  const err = normalizarMensajeErrorCampus(message);
+  const [showDetail, setShowDetail] = React.useState(false);
   return (
     <div style={{
       padding:'24px', textAlign:'center',
@@ -363,13 +402,26 @@ function ErrorState({ message, onRetry }) {
       border:'1px solid color-mix(in srgb, var(--danger) 25%, white)',
       borderRadius:'var(--r-md)', color:'var(--danger)',
     }}>
-      <div style={{ fontWeight:700, marginBottom:4 }}>⚠ {message || 'No se pudo cargar la información.'}</div>
-      <div style={{ fontSize:12, color:'var(--ink-2)', marginBottom:10 }}>
-        Intentá de nuevo en un momento.
+      <div style={{ fontWeight:800, marginBottom:4 }}>⚠ {err.titulo}</div>
+      <div style={{ fontSize:12, color:'var(--ink-2)', marginBottom:10, lineHeight:1.5 }}>
+        Intentá de nuevo. Si continúa, enviá una captura indicando tu nombre, grupo y la pantalla donde ocurrió.
       </div>
-      {onRetry && (
-        <button className="btn btn-ghost" onClick={onRetry}
-                style={{ fontSize:12, padding:'6px 14px' }}>Reintentar</button>
+      <div style={{ display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap' }}>
+        {onRetry && (
+          <button className="btn btn-ghost" onClick={onRetry}
+                  style={{ fontSize:12, padding:'6px 14px' }}>Reintentar</button>
+        )}
+        {err.detalle && (
+          <button className="btn btn-ghost" onClick={() => setShowDetail(!showDetail)}
+                  style={{ fontSize:12, padding:'6px 14px' }}>
+            {showDetail ? 'Ocultar detalle técnico' : 'Ver detalle para soporte'}
+          </button>
+        )}
+      </div>
+      {showDetail && err.detalle && (
+        <pre style={{ margin:'12px auto 0', maxWidth:680, whiteSpace:'pre-wrap', textAlign:'left', fontSize:11, lineHeight:1.45, color:'var(--ink-2)', background:'#fff', border:'1px solid var(--line)', borderRadius:10, padding:12 }}>
+          {err.detalle}
+        </pre>
       )}
     </div>
   );
@@ -379,5 +431,5 @@ Object.assign(window, {
   Icon, Ring, Toast, AnimatedBar, Stat, Chip,
   useState, useEffect, useRef,
   useUsuario, useEstudiante,
-  LoadingState, EmptyState, ErrorState,
+  LoadingState, EmptyState, ErrorState, PageHeader,
 });

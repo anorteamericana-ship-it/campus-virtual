@@ -233,3 +233,6 @@ function RepTable({ rows = [], columns = [], rowAction }) {
   if (!rows.length) return <div style={{ padding:16, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)' }}>Sin datos para esta vista.</div>;
   return <div style={{ overflowX:'auto', border:'1px solid var(--line)', borderRadius:14 }}><table style={{ width:'100%', borderCollapse:'collapse' }}><thead><tr style={{ background:'color-mix(in srgb, var(--an-navy) 5%, white)' }}>{columns.map(([k,l]) => <th key={k} style={thRep}>{l}</th>)}{rowAction && <th style={thRep}>Acción</th>}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{columns.map(([k]) => <td key={k} style={tdRep}>{k === 'riesgo' || k === 'estado' ? <RepBadge status={r[k]}>{repText(r[k])}</RepBadge> : repText(r[k])}</td>)}{rowAction && <td style={tdRep}>{rowAction(r)}</td>}</tr>)}</tbody></table></div>;
 }
+
+// F96.2-LAZY-A export explícito para carga diferida
+Object.assign(window, { ReportesAdminView });

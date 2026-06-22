@@ -286,6 +286,36 @@ function BibliotecaBloqueo({ variante, mensaje, nivelNombre, onNavigate }) {
   );
 }
 
+
+
+function BibliotecaGuiaRapida({ onNavigate }) {
+  const step = (n, title, text) => (
+    <div style={{ padding:'14px 15px', border:'1px solid var(--line)', borderRadius:14, background:'#fff', display:'flex', gap:11, alignItems:'flex-start' }}>
+      <div style={{ width:28, height:28, borderRadius:999, background:'var(--an-navy)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:900, flexShrink:0 }}>{n}</div>
+      <div>
+        <div style={{ fontSize:13, fontWeight:900, color:'var(--ink)' }}>{title}</div>
+        <div style={{ fontSize:11.5, color:'var(--ink-3)', lineHeight:1.45, marginTop:2 }}>{text}</div>
+      </div>
+    </div>
+  );
+  return (
+    <section className="card" style={{ padding:16, margin:'0 0 18px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 4%, white), #fff)' }} aria-label="Cómo usar la biblioteca">
+      <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:12 }}>
+        <div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600, color:'var(--an-navy-ink)' }}>Cómo usar tu biblioteca</div>
+          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Primero ubicá tu lección en el cronograma; luego abrí aquí sus recursos.</div>
+        </div>
+        <button type="button" className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('cronograma_grupo')}>Ver cronograma</button>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:10 }}>
+        {step('1','Revisá qué lección sigue','El cronograma te dice la fecha, número de lección y si hay examen.')}
+        {step('2','Abrí el material de esa lección','Cada fila puede contener páginas, PDF, guías o recursos del docente.')}
+        {step('3','Guardá captura si algo falta','Durante la prueba viva, reportá nombre, grupo, lección y hora.')}
+      </div>
+    </section>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // MATERIALES — sílabus completo, pestañas Actuales/Futuras/Completadas
 // ─────────────────────────────────────────────────────────────────────────
@@ -396,6 +426,8 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
       {/* Banner prioridad INA — solo para programa INA */}
       {esINA && <PriorityBanner />}
 
+      <BibliotecaGuiaRapida onNavigate={onNavigate} />
+
       {/* 1 · Recomendado para hoy / Materiales para la lección X */}
       <RecomendadoLeccion
         leccion={openLec}
@@ -417,8 +449,8 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
         </div>
         <div className="card" style={{ padding:'16px 18px' }}>
           <BiblioKicker icon="materials">Audios</BiblioKicker>
-          <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6, lineHeight:1.5 }}>No hay audios publicados todavía.</div>
-          <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.5 }}>Cuando tu docente habilite el audio Self-Study de una lección, lo vas a ver en sus recursos.</div>
+          <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6, lineHeight:1.5 }}>Los audios aparecerán aquí cuando estén habilitados para tu lección.</div>
+          <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.5 }}>Si un audio aún no aparece, revisá primero el número de lección y reportalo con captura.</div>
         </div>
         <div className="card" style={{ padding:'16px 18px' }}>
           <BiblioKicker icon="doc">PDFs y documentos</BiblioKicker>
@@ -443,7 +475,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
 
       {lessons.length === 0 ? (
         <div className="card" style={{ padding:36, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
-          El material de este nivel aún no está disponible.
+          Todavía no hay material publicado para este nivel. Revisá el cronograma y reportá esta pantalla si tu clase ya inició.
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -461,7 +493,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
           ))}
           {lessonsFiltradas.length === 0 && (
             <div className="card" style={{ padding:36, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
-              No hay lecciones en esta categoría.
+              No hay lecciones para este filtro. Probá con “Todas” o revisá el cronograma del grupo.
             </div>
           )}
         </div>
@@ -1312,62 +1344,91 @@ function TeacherCalendarRow({ teacher }) {
 // WELCOME MODAL — aparece post-login primera vez
 // ─────────────────────────────────────────────────────────────────────────
 function WelcomeBanner({ onClose }) {
-  // STUDENT-LEARNING-EXPERIENCE-001 / no datos falsos: saludo con el nombre REAL
-  // de la sesión (antes había un nombre quemado). Si no hay nombre, sin nombre.
-  const primerNombre = (() => {
-    try {
-      const u = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
-      const n = String(u?.nombre || '').trim().split(/\s+/).filter(Boolean)[0] || '';
-      return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
-    } catch { return ''; }
+  // F96.5 UX/INA — primer ingreso con datos a la mano y material obligatorio.
+  // Es una guía visual; la evidencia oficial de lectura debe cerrarse en backend
+  // cuando exista endpoint específico. No inventamos confirmación oficial aquí.
+  const u = (() => {
+    try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null') || {}; }
+    catch { return {}; }
   })();
+  const primerNombre = (() => {
+    const n = String(u?.nombre || '').trim().split(/\s+/).filter(Boolean)[0] || '';
+    return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
+  })();
+  const datos = [
+    ['Nombre', u?.nombre || 'Verificar en Mi Campus'],
+    ['Cédula', u?.cedula || 'Verificar en Mi Campus'],
+    ['Código', u?.codigo || u?.REC_M || 'Verificar en Mi Campus'],
+    ['Grupo', u?.grupo || u?.grupoActivo || 'Verificar en Mi Campus'],
+    ['Nivel', u?.nivel_activo || u?.nivel || 'Verificar en Mi Campus'],
+  ];
   return (
     <div style={{
-      position:'fixed', inset:0, background:'rgba(20,18,30,0.65)',
+      position:'fixed', inset:0, background:'rgba(20,18,30,0.68)',
       display:'flex', alignItems:'center', justifyContent:'center',
       zIndex:200, padding:20,
-    }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
+    }}>
+      <div style={{
         background:'var(--surface)', borderRadius:'var(--r-lg)',
-        maxWidth:620, width:'100%', overflow:'hidden',
-        boxShadow:'0 20px 60px rgba(0,0,0,0.3)',
+        maxWidth:760, width:'100%', overflow:'hidden',
+        boxShadow:'0 22px 70px rgba(0,0,0,0.34)', border:'1px solid rgba(255,255,255,.25)'
       }}>
         <div style={{
-          padding:'30px 30px 20px',
-          background:'linear-gradient(135deg, var(--an-granate) 0%, var(--an-red) 100%)',
-          color:'white',
+          padding:'30px 32px 22px',
+          background:'linear-gradient(135deg, var(--an-granate) 0%, var(--an-red) 55%, #7A1E2C 100%)',
+          color:'white', position:'relative', overflow:'hidden'
         }}>
-          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', opacity:0.85 }}>
+          <div style={{ position:'absolute', right:-34, top:-52, fontFamily:'var(--f-serif)', fontSize:180, opacity:.08, lineHeight:1 }}>A</div>
+          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.18em', textTransform:'uppercase', opacity:0.86 }}>
             Academia Norteamericana · Campus Virtual
           </div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:34, fontWeight:400, letterSpacing:'-0.03em', marginTop:4 }}>
-            ¡Bienvenido{primerNombre ? `, ${primerNombre}` : ''}!
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:36, fontWeight:500, letterSpacing:'-0.03em', marginTop:5, lineHeight:1.05 }}>
+            Bienvenido{primerNombre ? `, ${primerNombre}` : ''}.
           </div>
-          <div style={{ fontSize:13, opacity:0.9, marginTop:6, lineHeight:1.5 }}>
-            Nos alegra tenerte en el programa. Antes de tu primera lección, revisa el material obligatorio del INA. Puedes volver a esto desde <strong>Información del Programa</strong> en cualquier momento.
+          <div style={{ fontSize:13.5, opacity:0.92, marginTop:9, lineHeight:1.55, maxWidth:590 }}>
+            Antes de usar el campus, tenés que tener tus datos académicos a mano y revisar el material obligatorio de lectura. Esta guía queda disponible desde <strong>Mi Campus</strong> e <strong>Información del Programa</strong>.
           </div>
         </div>
-        <div style={{ padding:'20px 30px 26px' }}>
-          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:10 }}>
-            Material obligatorio antes de empezar
-          </div>
-          {PRIORITY_BLOCK.items.filter(i => i.required).map(item => (
-            <div key={item.id} style={{
-              padding:'10px 12px', background:'var(--surface-2)', borderRadius:8,
-              display:'flex', alignItems:'center', gap:10, marginBottom:6,
-            }}>
-              <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-3)', fontWeight:700 }}>{item.code}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:'var(--ink)' }}>{item.title}</div>
-                <div style={{ fontSize:11, color:'var(--ink-3)' }}>{item.desc}</div>
-              </div>
-              <span style={{ fontSize:11, color:'var(--ink-3)', fontWeight:600 }}>~{item.minutes}min</span>
-            </div>
-          ))}
 
-          <div style={{ display:'flex', gap:8, marginTop:18, justifyContent:'flex-end' }}>
-            <button onClick={onClose} className="btn btn-ghost">Más tarde</button>
-            <button onClick={onClose} className="btn btn-primary">Comenzar a revisar →</button>
+        <div style={{ padding:'20px 30px 26px', display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(260px,.8fr)', gap:18 }}>
+          <div>
+            <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'0.13em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:10 }}>
+              Material obligatorio antes de empezar
+            </div>
+            {PRIORITY_BLOCK.items.filter(i => i.required).map(item => (
+              <div key={item.id} style={{
+                padding:'10px 12px', background:'var(--surface-2)', borderRadius:10,
+                display:'flex', alignItems:'center', gap:10, marginBottom:7,
+                border:'1px solid var(--line)'
+              }}>
+                <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--an-granate)', fontWeight:900, minWidth:46 }}>{item.code}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:'var(--ink)' }}>{item.title}</div>
+                  <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.35 }}>{item.desc}</div>
+                </div>
+                <span style={{ fontSize:11, color:'var(--ink-3)', fontWeight:700 }}>~{item.minutes}min</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ border:'1px solid var(--line)', borderRadius:14, overflow:'hidden', background:'#fff' }}>
+            <div style={{ padding:'13px 14px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 8%, white), #fff)', borderBottom:'1px solid var(--line)' }}>
+              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Tus datos</div>
+              <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Verificalos en Mi Campus.</div>
+            </div>
+            <div>
+              {datos.map(([label,value]) => (
+                <div key={label} style={{ padding:'9px 14px', borderBottom:'1px solid var(--line)' }}>
+                  <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
+                  <div style={{ fontSize:12.5, fontWeight:800, color:'var(--ink)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ gridColumn:'1 / -1', display:'flex', gap:10, marginTop:2, justifyContent:'flex-end', flexWrap:'wrap' }}>
+            <button onClick={onClose} className="btn btn-ghost">Entrar a Mi Campus</button>
+            <button onClick={onClose} className="btn btn-primary">Entendido, revisaré el material →</button>
           </div>
         </div>
       </div>

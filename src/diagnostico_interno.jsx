@@ -419,3 +419,6 @@ function DiagnosticoInternoView() {
     </div>
   );
 }
+
+// F96.2-LAZY-A export explícito para carga diferida
+Object.assign(window, { DiagnosticoInternoView });
