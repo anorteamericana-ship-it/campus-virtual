@@ -282,6 +282,7 @@ function StudentDashboard({ toast, onNavigate }) {
   const nivelReal    = calcularNivelActivo(niveles, usr?.nivel_activo);
   const nivelInicial = nivelReal || inferirNivelDesdeGrupo(codGrupo) || 'B1';
   const [nivelVista, setNivelVista] = React.useState('');
+  const [mostrarPanelDatos, setMostrarPanelDatos] = React.useState(false);
   React.useEffect(() => {
     setNivelVista(nivelInicial);
   }, [nivelReal, codGrupo]);
@@ -419,6 +420,24 @@ function StudentDashboard({ toast, onNavigate }) {
                   : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
                 : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
             </div>
+            <div style={{ marginTop:18 }}>
+              <button
+                type="button"
+                onClick={() => setMostrarPanelDatos(v => !v)}
+                aria-expanded={mostrarPanelDatos ? 'true' : 'false'}
+                aria-controls="panel-actualizar-datos"
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:10,
+                  padding:'12px 22px', borderRadius:0,
+                  border:'3px solid #E7D100', background:'#fff', color:'#000',
+                  fontSize:17, fontWeight:900, letterSpacing:'.02em', cursor:'pointer',
+                  boxShadow:'0 2px 0 rgba(0,0,0,.03)'
+                }}
+              >
+                ACTUALIZAR DATOS
+                <span aria-hidden="true" style={{ fontSize:14 }}>{mostrarPanelDatos ? '▲' : '▼'}</span>
+              </button>
+            </div>
           </div>
           <div style={{ display:'flex', justifyContent:'center' }}>
             <Ring pct={progresoPct} size={210}>
@@ -431,6 +450,10 @@ function StudentDashboard({ toast, onNavigate }) {
           </div>
         </div>
       </div>
+
+      <DatosAcademicosInicio est={est} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
+        codGrupo={codGrupo} nivelReal={nivelReal} docente={docente} horario={horarioCurso}
+        programa={programa} onNavigate={go} expanded={mostrarPanelDatos} onReload={reload} />
 
       {/* 3. CONAPE: una sola aparición, únicamente con convenio y respuesta real. */}
       {esConape && conapeEstado && <ConapeBannerDashboardF984 estado={conapeEstado} />}
@@ -484,9 +507,6 @@ function StudentDashboard({ toast, onNavigate }) {
         </div>
       )}
 
-      <DatosAcademicosInicio est={est} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
-        codGrupo={codGrupo} nivelReal={nivelReal} docente={docente} horario={horarioCurso}
-        programa={programa} onNavigate={go} />
       <OrientacionInicialCampus codigo={codigo} nombreCompleto={nombreCompleto} codGrupo={codGrupo}
         nivelReal={nivelReal} docente={docente} horario={horarioCurso} onNavigate={go} />
       <SoportePruebaViva nombreCompleto={nombreCompleto} codGrupo={horarioCurso || sufijoGrupoSD(codGrupo)} />
@@ -647,41 +667,173 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 // ─────────────────────────────────────────────────────────────────────────
 // F96.5 — Datos a la mano + cumplimiento INA en Mi Campus
 // ─────────────────────────────────────────────────────────────────────────
-function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, onNavigate }) {
+function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, onNavigate, expanded, onReload }) {
   const correo = est.CORREO || est.EMAIL || est.correo || est.email || '';
+  const telefono1 = est.TEL1 || est.TELEFONO1 || est.TELEFONO_1 || est.TELEFONO || est.tel1 || '';
+  const telefono2 = est.TEL2 || est.TELEFONO2 || est.TELEFONO_2 || est.tel2 || '';
+  const direccion = est.DIRECCION || est['DIRECCIÓN'] || est.direccion || '';
   const programaLabel = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : (programa ? 'Programa propio' : '—');
-  const rows = [
-    ['Nombre', nombreCompleto && nombreCompleto !== '—' ? nombreCompleto : 'Pendiente'],
-    ['Cédula', cedula || 'Pendiente'],
+  const personalInicial = React.useMemo(() => ({
+    nombre: nombreCompleto && nombreCompleto !== '—' ? nombreCompleto : '',
+    cedula: cedula || '',
+    correo: correo || '',
+    telefono1: telefono1 || '',
+    telefono2: telefono2 || '',
+    direccion: direccion || ''
+  }), [nombreCompleto, cedula, correo, telefono1, telefono2, direccion]);
+  const [editando, setEditando] = React.useState(false);
+  const [guardando, setGuardando] = React.useState(false);
+  const [mensaje, setMensaje] = React.useState(null);
+  const [form, setForm] = React.useState(personalInicial);
+
+  React.useEffect(() => {
+    setForm(personalInicial);
+    setEditando(false);
+    setMensaje(null);
+  }, [personalInicial, expanded]);
+
+  if (!expanded) return null;
+
+  const programaRows = [
     ['Código', codigo || est.REC_M || est.CODIGO || 'Pendiente'],
+    ['Grupo', codGrupo || 'Pendiente'],
     ['Grupo y horario', horario || (sufijoGrupoSD(codGrupo) ? 'Grupo ' + sufijoGrupoSD(codGrupo) : 'Pendiente')],
     ['Nivel', nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'],
     ['Teacher', docente || 'Pendiente'],
-    ['Horario', horario || 'Pendiente'],
-    ['Correo', correo || 'Pendiente'],
+    ['Programa', programaLabel],
   ];
+
+  const handleChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCancelar = () => {
+    setForm(personalInicial);
+    setEditando(false);
+    setMensaje(null);
+  };
+
+  const handleGuardar = async () => {
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const res = await postStudentDash('actualizarDatosPersonalesEstudiante', {
+        codigo,
+        correo: form.correo,
+        telefono1: form.telefono1,
+        telefono2: form.telefono2,
+        direccion: form.direccion,
+      });
+      if (res?.ok) {
+        setEditando(false);
+        setMensaje({ tipo:'ok', texto: res.mensaje || 'Datos personales actualizados correctamente.' });
+        onReload && onReload();
+      } else {
+        setMensaje({ tipo:'err', texto: res?.mensaje || res?.error || 'No se pudieron actualizar los datos.' });
+      }
+    } catch (err) {
+      setMensaje({ tipo:'err', texto: err?.message || 'No se pudieron actualizar los datos.' });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const barStyle = {
+    display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap',
+    padding:'12px 16px', borderBottom:'1px solid var(--line)',
+    background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 6%, white), #fff)'
+  };
+  const sectionCardStyle = { border:'1px solid var(--line)', borderRadius:18, overflow:'hidden', background:'#fff' };
+  const gridStyle = { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12, padding:16, background:'color-mix(in srgb, var(--bg-deep) 26%, white)' };
+  const itemStyle = { border:'1px solid var(--line)', borderRadius:14, padding:'12px 13px', background:'#fff', minHeight:76 };
+  const labelStyle = { fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' };
+  const valueStyle = { marginTop:6, fontSize:13, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' };
+  const inputStyle = { width:'100%', marginTop:6, border:'1px solid var(--line)', borderRadius:12, padding:'10px 11px', fontSize:13, fontWeight:600, color:'var(--ink)', outline:'none', background:'#fff' };
+  const editableFields = { correo:true, telefono1:true, telefono2:true, direccion:true };
+  const personalFields = [
+    { key:'nombre', label:'Nombre completo', editable:false },
+    { key:'cedula', label:'Cédula', editable:false },
+    { key:'correo', label:'Correo', editable:true, type:'email' },
+    { key:'telefono1', label:'Teléfono 1', editable:true },
+    { key:'telefono2', label:'Teléfono 2', editable:true },
+    { key:'direccion', label:'Dirección', editable:true },
+  ];
+
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'1.5px solid color-mix(in srgb, var(--an-navy) 18%, var(--line))' }} aria-label="Datos académicos del estudiante">
-      <div style={{ padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 6%, white), #fff)' }}>
-        <div>
-          <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Mi Campus · datos a la mano</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>Verificá tu información académica</div>
-          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>Estos datos deben estar correctos antes de iniciar clases, materiales y evaluaciones.</div>
-        </div>
-        <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:'999px', background:'color-mix(in srgb, var(--ok) 10%, white)', color:'var(--ok)', fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'.08em' }}>
-          <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--ok)' }} /> {programaLabel}
-        </div>
+    <section id="panel-actualizar-datos" className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'1.5px solid color-mix(in srgb, var(--an-navy) 18%, var(--line))' }} aria-label="Panel de actualización de datos">
+      <div style={{ padding:'15px 18px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }}>
+        <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Mi Campus · actualización de datos</div>
+        <div style={{ marginTop:4, fontFamily:'var(--f-serif)', fontSize:21, fontWeight:600, color:'var(--an-navy-ink)' }}>Revisá y actualizá tu información</div>
+        <div style={{ marginTop:4, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>Separamos tu información en dos bloques: <strong>Datos personales</strong> y <strong>Datos del programa</strong>. El programa queda en solo lectura para no romper grupo, nivel, certificados, pagos o cronograma.</div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:0, borderTop:'1px solid var(--line)' }}>
-        {rows.map(([label,value],idx)=>(
-          <div key={label} style={{ padding:'12px 16px', borderRight:'1px solid var(--line)', borderBottom:'1px solid var(--line)', background: idx%2 ? '#fff' : 'color-mix(in srgb, var(--bg-deep) 45%, white)' }}>
-            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
-            <div style={{ marginTop:4, fontSize:13, fontWeight:800, color: value==='Pendiente'?'var(--danger)':'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
+
+      <div style={{ padding:16, display:'grid', gap:16, background:'#fff' }}>
+        <section style={sectionCardStyle} aria-label="Datos personales">
+          <div style={barStyle}>
+            <div>
+              <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
+              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Podés actualizar correo, teléfonos y dirección. Nombre y cédula siguen protegidos para evitar inconsistencias.</div>
+            </div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+              {!editando ? (
+                <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar datos personales</button>
+              ) : (
+                <>
+                  <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
+                  <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={handleCancelar} disabled={guardando}>Cancelar</button>
+                </>
+              )}
+            </div>
           </div>
-        ))}
+          <div style={gridStyle}>
+            {personalFields.map(field => (
+              <div key={field.key} style={itemStyle}>
+                <div style={labelStyle}>{field.label}</div>
+                {editando && field.editable ? (
+                  field.key === 'direccion' ? (
+                    <textarea value={form[field.key] || ''} onChange={(e) => handleChange(field.key, e.target.value)} rows={3} style={{ ...inputStyle, resize:'vertical', minHeight:88 }} />
+                  ) : (
+                    <input type={field.type || 'text'} value={form[field.key] || ''} onChange={(e) => handleChange(field.key, e.target.value)} style={inputStyle} />
+                  )
+                ) : (
+                  <div style={valueStyle}>{form[field.key] || 'Pendiente'}</div>
+                )}
+                {!field.editable && (
+                  <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>Dato oficial. Si está mal, reportalo a administración.</div>
+                )}
+              </div>
+            ))}
+          </div>
+          {mensaje && (
+            <div style={{ margin:'0 16px 16px', padding:'12px 14px', borderRadius:14, border:`1px solid ${mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background: mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 10%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color: mensaje.tipo==='ok' ? 'var(--ok)' : 'var(--danger)', fontSize:12.5, fontWeight:700 }}>
+              {mensaje.texto}
+            </div>
+          )}
+        </section>
+
+        <section style={sectionCardStyle} aria-label="Datos del programa">
+          <div style={barStyle}>
+            <div>
+              <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
+              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Solo visualización. Estos datos dependen de la matrícula, el grupo, el cronograma y el control académico.</div>
+            </div>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:'999px', background:'color-mix(in srgb, var(--ok) 10%, white)', color:'var(--ok)', fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'.08em' }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--ok)' }} /> Solo lectura
+            </div>
+          </div>
+          <div style={gridStyle}>
+            {programaRows.map(([label, value]) => (
+              <div key={label} style={itemStyle}>
+                <div style={labelStyle}>{label}</div>
+                <div style={valueStyle}>{value || 'Pendiente'}</div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
-      <div style={{ padding:'12px 16px', display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', flexWrap:'wrap', background:'#fff' }}>
-        <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45 }}><strong style={{ color:'var(--ink)' }}>Primer paso:</strong> confirmá que tus datos coincidan con tu grupo y horario real. Si algo no coincide, reportalo antes de usar exámenes o asistencia.</div>
+
+      <div style={{ padding:'12px 16px', display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', flexWrap:'wrap', background:'#fff', borderTop:'1px solid var(--line)' }}>
+        <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45 }}><strong style={{ color:'var(--ink)' }}>Importante:</strong> si tu grupo, teacher, nivel o convenio están mal, no los edites manualmente. Reportalo antes de usar exámenes, asistencia o certificados.</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('info_programa')}>Material obligatorio →</button>
           <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('documentos_ayuda', { tab:'ayuda' })}>Ayuda y contactos →</button>
@@ -690,7 +842,6 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
     </section>
   );
 }
-
 
 
 // ─────────────────────────────────────────────────────────────────────────
