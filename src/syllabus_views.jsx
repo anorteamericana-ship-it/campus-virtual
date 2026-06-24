@@ -296,6 +296,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   const [catalogo, setCatalogo] = React.useState(null);
   const [error, setError] = React.useState('');
   const [unidadPlanActiva, setUnidadPlanActiva] = React.useState('');
+  const [unidadPlanQuery, setUnidadPlanQuery] = React.useState('');
   const [audioQuery, setAudioQuery] = React.useState('');
   const [audioSeleccionado, setAudioSeleccionado] = React.useState(null);
 
@@ -304,6 +305,8 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     setEstado('load');
     setError('');
     setCatalogo(null);
+    setUnidadPlanActiva('');
+    setUnidadPlanQuery('');
     setAudioQuery('');
     setAudioSeleccionado(null);
     postSyllabus('getBibliotecaNivelEstudiante', {
@@ -315,9 +318,10 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       if (r?.ok && r?.acceso && r?.catalogo) {
         const cat = r.catalogo;
         setCatalogo(cat);
-        const unidadesPlan = Array.isArray(cat.planeamiento_unidades) ? cat.planeamiento_unidades : [];
-        const porLeccion = unidadesPlan.find(u => (u.lecciones || []).some(l => Number(l.leccion) === Number(leccionInicial)));
-        setUnidadPlanActiva(porLeccion?.key || unidadesPlan[0]?.key || '');
+        // La ficha inicia cerrada. El estudiante elige explícitamente la unidad
+        // para evitar desplegar de una vez todo el planeamiento académico.
+        setUnidadPlanActiva('');
+        setUnidadPlanQuery('');
         setEstado('ok');
       } else if (r?.ok && r?.acceso === false) {
         setError(r.motivo || 'La biblioteca no está habilitada para tu estado académico.');
@@ -363,13 +367,24 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   const libros = catalogo?.libros || [];
   const unidadesAudio = catalogo?.audios_unidades || [];
   const unidadesPlan = catalogo?.planeamiento_unidades || [];
-  const unidadPlan = unidadesPlan.find(u => String(u.key) === String(unidadPlanActiva)) || unidadesPlan[0] || null;
+  const unidadPlan = unidadesPlan.find(u => String(u.key) === String(unidadPlanActiva)) || null;
+  const unidadPlanOptions = unidadesPlan.map(u => ({
+    key:String(u.key),
+    display:`${u.label}${u.titulo_unidad ? ` · ${u.titulo_unidad}` : ''}`,
+    unidad:u,
+  }));
   const audioOptions = unidadesAudio.flatMap(unidad => (unidad.pistas || []).map(pista => ({
     id:pista.id,
     display:`${unidad.label} · ${pista.nombre}`,
     unidad:unidad.label,
     pista,
   })));
+
+  const handleUnidadPlanQuery = (value) => {
+    setUnidadPlanQuery(value);
+    const exacto = unidadPlanOptions.find(x => x.display === value);
+    setUnidadPlanActiva(exacto ? exacto.key : '');
+  };
 
   const handleAudioQuery = (value) => {
     setAudioQuery(value);
@@ -390,22 +405,34 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   return (
     <div style={{ display:'grid', gap:18, marginBottom:20 }}>
       <section id="biblioteca-planeamiento" className="card" style={{ padding:'18px 20px', scrollMarginTop:20, borderLeft:'4px solid var(--an-navy)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:14, flexWrap:'wrap' }}>
-          <div>
-            <BiblioKicker icon="calendar">Planeamiento académico</BiblioKicker>
-            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>PLANEAMIENTO POR UNIDAD</div>
-            <div style={{ marginTop:4, fontSize:11.5, color:'var(--ink-3)' }}>Fuente: APOLLO G3 · DETALLE DEL PROGRAMA</div>
-          </div>
-          <label style={{ minWidth:250, maxWidth:360, flex:'0 1 360px' }}>
-            <span style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Seleccionar unidad</span>
-            <select value={unidadPlanActiva} onChange={e => setUnidadPlanActiva(e.target.value)} style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'10px 12px', background:'#fff', color:'var(--ink)', fontSize:13, fontWeight:750 }}>
-              {unidadesPlan.map(u => <option key={u.key} value={u.key}>{u.label}{u.titulo_unidad ? ` · ${u.titulo_unidad}` : ''}</option>)}
-            </select>
-          </label>
+        <div>
+          <BiblioKicker icon="calendar">Planeamiento académico</BiblioKicker>
+          <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>PLANEAMIENTO POR UNIDAD</div>
+          <div style={{ marginTop:4, fontSize:11.5, color:'var(--ink-3)' }}>Fuente: APOLLO G3 · DETALLE DEL PROGRAMA</div>
         </div>
 
-        {!unidadPlan ? (
+        <div style={{ marginTop:14 }}>
+          <label htmlFor="planeamiento-unidad-combobox" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Buscar planeamiento por unidad</label>
+          <input
+            id="planeamiento-unidad-combobox"
+            type="search"
+            list="planeamiento-unidad-opciones"
+            value={unidadPlanQuery}
+            onChange={e => handleUnidadPlanQuery(e.target.value)}
+            placeholder="Escribí o seleccioná una unidad"
+            autoComplete="off"
+            style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 13px', background:'#fff', color:'var(--ink)', fontSize:13 }}
+          />
+          <datalist id="planeamiento-unidad-opciones">
+            {unidadPlanOptions.map(x => <option key={x.key} value={x.display} />)}
+          </datalist>
+          <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>Seleccioná una unidad para desplegar únicamente sus lecciones y campos académicos.</div>
+        </div>
+
+        {!unidadesPlan.length ? (
           <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>No se encontró planeamiento para este nivel.</div>
+        ) : !unidadPlan ? (
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>Buscá y seleccioná una unidad para abrir el planeamiento.</div>
         ) : (
           <div style={{ marginTop:16 }}>
             <div style={{ padding:'14px 15px', borderRadius:14, background:'color-mix(in srgb, var(--an-navy) 6%, white)', border:'1px solid color-mix(in srgb, var(--an-navy) 18%, white)' }}>
@@ -464,7 +491,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
           <div>
             <BiblioKicker icon="materials">Audios por unidad</BiblioKicker>
-            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Reproductor individual por pista</div>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Reproductor individual por unidad</div>
           </div>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>{catalogo?.totales?.audios || 0} pistas · {unidadesAudio.length} unidades</span>
         </div>
