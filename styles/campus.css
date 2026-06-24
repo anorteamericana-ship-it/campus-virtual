@@ -870,3 +870,24 @@ a { color: inherit; text-decoration: none; }
     padding-right: 0 !important;
   }
 }
+
+/* F98.4-I · Planeamiento académico por unidad */
+.an-planeamiento-top {
+  display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 3.1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.an-planeamiento-skills {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+@media (max-width: 980px) {
+  .an-planeamiento-top { grid-template-columns: 1fr; }
+  .an-planeamiento-skills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .an-planeamiento-skills { grid-template-columns: 1fr; }
+}

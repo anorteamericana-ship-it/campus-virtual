@@ -2528,7 +2528,7 @@ function Bloque({ titulo, texto, compact }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Botón "Ver material PDF" + Modal embebido
+// Botón de planeamiento PDF. En estudiante abre el PDF oficial directamente.
 // Backend v4.22.4: getMaterialLeccion decide acceso por rol/estado.
 // ─────────────────────────────────────────────────────────────────
 // STUDENT-LEARNING-EXPERIENCE-001 — Acciones de clase para el estudiante.
@@ -2665,25 +2665,26 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
     );
   }
 
-  // Fallback de red: usar pdf_drive_id del detalle si está
+  // Fallback de red: nunca usar el PDF legacy del detalle para estudiantes,
+  // porque ese campo puede corresponder al material interno del docente.
   if (errRed || !mat || mat.ok === false) {
-    if (detalle && detalle.pdf_drive_id) {
+    if (rol !== 'student' && detalle && detalle.pdf_drive_id) {
       return (
         <a
           href={`https://drive.google.com/file/d/${detalle.pdf_drive_id}/view`}
           target="_blank" rel="noopener noreferrer"
           style={btnPDFActivo}>
           <IconoPDF />
-          Ver material PDF
+          Ver planeamiento PDF
         </a>
       );
     }
     return (
       <button type="button" disabled
-        title="No se pudo verificar el material. Reintentá más tarde."
+        title="No se pudo verificar el planeamiento. Reintentá más tarde."
         style={btnPDFDisabled}>
         <IconoPDF />
-        Material no disponible
+        Planeamiento no disponible
       </button>
     );
   }
@@ -2701,7 +2702,37 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
     );
   }
 
-  // Con acceso: botón activo → modal embebido
+  // Estudiante: abrir directamente el PDF oficial de planeamiento en Drive.
+  // Se elimina el modal interno que quedaba atrapado dentro del panel derecho.
+  if (rol === 'student') {
+    const hrefPlaneamiento = mat.pdf_url || (mat.pdf_id ? `https://drive.google.com/file/d/${mat.pdf_id}/view` : '');
+    if (!hrefPlaneamiento) {
+      return (
+        <button type="button" disabled style={btnPDFDisabled}>
+          <IconoPDF />
+          Planeamiento no disponible
+        </button>
+      );
+    }
+    return (
+      <a
+        href={hrefPlaneamiento}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={btnPDFActivo}
+      >
+        <IconoPDF />
+        Ver planeamiento PDF
+        <span style={{
+          marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
+          background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
+          letterSpacing:'0.08em', textTransform:'uppercase',
+        }}>Estudiante</span>
+      </a>
+    );
+  }
+
+  // Docente y administración conservan el visor embebido interno.
   return (
     <>
       <button
@@ -2709,7 +2740,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         onClick={() => setAbierto(true)}
         style={{ ...btnPDFActivo, border:'none', cursor:'pointer', fontFamily:'inherit' }}>
         <IconoPDF />
-        Ver material PDF
+        Ver planeamiento PDF
         {mat.tipo_pdf === 'estudiante' && (
           <span style={{
             marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',

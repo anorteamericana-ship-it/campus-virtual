@@ -288,6 +288,86 @@ function BibliotecaBloqueo({ variante, mensaje, nivelNombre, onNavigate }) {
 
 
 
+// F98.4-I · ComboBox propio para que la lista siempre se despliegue debajo
+// y centrada dentro de la franja. Permite cambiar de unidad sin limpiar antes.
+function PlaneamientoUnidadCombobox({ options, query, selectedKey, onQueryChange, onSelect }) {
+  const [abierto, setAbierto] = React.useState(false);
+  const boxRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const cerrarFuera = (ev) => {
+      if (boxRef.current && !boxRef.current.contains(ev.target)) setAbierto(false);
+    };
+    document.addEventListener('mousedown', cerrarFuera);
+    return () => document.removeEventListener('mousedown', cerrarFuera);
+  }, []);
+
+  const selected = options.find(x => String(x.key) === String(selectedKey)) || null;
+  const normalized = String(query || '').trim().toLowerCase();
+  const mostrandoSeleccion = !!selected && query === selected.display;
+  const filtradas = (mostrandoSeleccion || !normalized)
+    ? options
+    : options.filter(x => String(x.display || '').toLowerCase().includes(normalized));
+
+  return (
+    <div ref={boxRef} style={{ position:'relative', width:'100%', maxWidth:760, margin:'0 auto' }}>
+      <input
+        id="planeamiento-unidad-combobox"
+        type="text"
+        value={query}
+        onFocus={e => { setAbierto(true); if (selected) requestAnimationFrame(() => e.target.select()); }}
+        onClick={e => { setAbierto(true); if (selected) e.currentTarget.select(); }}
+        onChange={e => { onQueryChange(e.target.value); setAbierto(true); }}
+        placeholder="Escribí o seleccioná una unidad"
+        autoComplete="off"
+        aria-expanded={abierto ? 'true' : 'false'}
+        aria-controls="planeamiento-unidad-menu"
+        style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 42px 11px 13px', background:'#fff', color:'var(--ink)', fontSize:13 }}
+      />
+      <button
+        type="button"
+        aria-label="Mostrar unidades"
+        onClick={() => setAbierto(v => !v)}
+        style={{ position:'absolute', right:7, top:7, width:30, height:30, border:'none', borderRadius:8, background:'transparent', color:'var(--an-navy)', cursor:'pointer', fontSize:14 }}
+      >
+        {abierto ? '▲' : '▼'}
+      </button>
+
+      {abierto && (
+        <div id="planeamiento-unidad-menu" role="listbox" style={{
+          position:'absolute', top:'calc(100% + 8px)', left:'50%', transform:'translateX(-50%)',
+          width:'100%', maxHeight:310, overflowY:'auto', zIndex:80,
+          background:'#fff', border:'1px solid var(--line)', borderRadius:14,
+          boxShadow:'0 18px 45px rgba(17,34,68,.18)', padding:7,
+        }}>
+          {filtradas.length ? filtradas.map(x => (
+            <button
+              key={x.key}
+              type="button"
+              role="option"
+              aria-selected={String(x.key) === String(selectedKey)}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onSelect(x); setAbierto(false); }}
+              style={{
+                width:'100%', border:'none', borderRadius:10, padding:'10px 12px',
+                background:String(x.key) === String(selectedKey) ? 'color-mix(in srgb, var(--an-navy) 9%, white)' : '#fff',
+                color:'var(--ink)', cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+                fontSize:12.5, fontWeight:String(x.key) === String(selectedKey) ? 800 : 600,
+                display:'flex', justifyContent:'space-between', alignItems:'center', gap:10,
+              }}
+            >
+              <span>{x.display}</span>
+              {String(x.key) === String(selectedKey) ? <span style={{ color:'var(--an-navy)' }}>✓</span> : null}
+            </button>
+          )) : (
+            <div style={{ padding:'14px 12px', color:'var(--ink-3)', fontSize:12, textAlign:'center' }}>No hay unidades que coincidan con la búsqueda.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // F98.4-H · Catálogo oficial + planeamiento real + audio seguro por Blob.
 // Libros y recursos se cargan por IDs fijos; los audios se reproducen pista
 // por pista y se ordenan por unidad. No se exponen keys, scripts ni DOCs.
@@ -460,6 +540,12 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     setUnidadPlanActiva(exacto ? exacto.key : '');
   };
 
+  const handleUnidadPlanSelect = (option) => {
+    if (!option) return;
+    setUnidadPlanQuery(option.display);
+    setUnidadPlanActiva(option.key);
+  };
+
   const handleAudioQuery = (value) => {
     setAudioQuery(value);
     const exacto = audioOptions.find(x => x.display === value);
@@ -487,19 +573,13 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
 
         <div style={{ marginTop:14 }}>
           <label htmlFor="planeamiento-unidad-combobox" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Buscar planeamiento por unidad</label>
-          <input
-            id="planeamiento-unidad-combobox"
-            type="search"
-            list="planeamiento-unidad-opciones"
-            value={unidadPlanQuery}
-            onChange={e => handleUnidadPlanQuery(e.target.value)}
-            placeholder="Escribí o seleccioná una unidad"
-            autoComplete="off"
-            style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 13px', background:'#fff', color:'var(--ink)', fontSize:13 }}
+          <PlaneamientoUnidadCombobox
+            options={unidadPlanOptions}
+            query={unidadPlanQuery}
+            selectedKey={unidadPlanActiva}
+            onQueryChange={handleUnidadPlanQuery}
+            onSelect={handleUnidadPlanSelect}
           />
-          <datalist id="planeamiento-unidad-opciones">
-            {unidadPlanOptions.map(x => <option key={x.key} value={x.display} />)}
-          </datalist>
           <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>Seleccioná una unidad para desplegar únicamente sus lecciones y campos académicos.</div>
         </div>
 
@@ -509,10 +589,14 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
           <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>Buscá y seleccioná una unidad para abrir el planeamiento.</div>
         ) : (
           <div style={{ marginTop:16 }}>
-            <div style={{ padding:'14px 15px', borderRadius:14, background:'color-mix(in srgb, var(--an-navy) 6%, white)', border:'1px solid color-mix(in srgb, var(--an-navy) 18%, white)' }}>
-              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>{unidadPlan.label}</div>
-              <div style={{ marginTop:4, fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600, color:'var(--an-navy-ink)' }}>{unidadPlan.titulo_unidad || unidadPlan.label}</div>
-              <div style={{ marginTop:4, fontSize:11.5, color:'var(--ink-3)' }}>{unidadPlan.lecciones?.length || 0} lecciones en esta selección</div>
+            <div style={{ padding:'16px 18px', borderRadius:14, background:'color-mix(in srgb, var(--an-navy) 6%, white)', border:'1px solid color-mix(in srgb, var(--an-navy) 18%, white)', textAlign:'center' }}>
+              <div style={{ fontFamily:'var(--f-serif)', fontSize:23, fontWeight:800, color:'var(--an-navy-ink)', textTransform:'uppercase' }}>{unidadPlan.label}</div>
+              {unidadPlan.titulo_unidad ? (
+                <div style={{ marginTop:4, fontSize:14, fontWeight:700, color:'var(--ink)' }}>{unidadPlan.titulo_unidad}</div>
+              ) : null}
+              <div style={{ marginTop:7, fontSize:11.5, fontWeight:700, color:'var(--ink-3)' }}>
+                {(unidadPlan.lecciones || []).map(lec => lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`).join(' · ')}
+              </div>
             </div>
 
             <div style={{ display:'grid', gap:12, marginTop:12 }}>
@@ -521,17 +605,28 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
                   <div style={{ padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', borderBottom:'1px solid var(--line)', background:'var(--surface-2)' }}>
                     <div>
                       <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-granate)' }}>{lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`}</div>
-                      <div style={{ marginTop:3, fontFamily:'var(--f-serif)', fontSize:17, fontWeight:600, color:'var(--an-navy-ink)' }}>{lec.titulo_unidad || unidadPlan.titulo_unidad}</div>
+                      <div style={{ marginTop:3, fontFamily:'var(--f-serif)', fontSize:18, fontWeight:800, color:'var(--an-navy-ink)' }}>{lec.titulo_unidad || unidadPlan.titulo_unidad}</div>
                     </div>
                     <span style={{ padding:'4px 10px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 9%, white)', color:'var(--an-navy)', fontSize:10, fontWeight:900, letterSpacing:'.07em' }}>{lec.tipo || 'TEÓRICA'}</span>
                   </div>
-                  <div style={{ padding:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:10 }}>
-                    {campo('Asignatura', lec.asignatura)}
-                    {campo('Tema / Objetivo general', lec.tema_objetivo_general)}
-                    {campo('Speaking', lec.speaking)}
-                    {campo('Grammar', lec.grammar)}
-                    {campo('Pronunciation / Listening', lec.pronunciation_listening)}
-                    {campo('Writing / Reading', lec.writing_reading)}
+
+                  <div style={{ padding:14, display:'grid', gap:10 }}>
+                    <div className="an-planeamiento-top">
+                      {campo('Asignatura', lec.asignatura)}
+                      {lec.tema_objetivo_general ? (
+                        <div style={{ padding:'12px 14px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' }}>
+                          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Tema / Objetivo general</div>
+                          <div style={{ marginTop:6, fontSize:13, fontWeight:700, lineHeight:1.55, color:'var(--ink)' }}>{lec.tema_objetivo_general}</div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="an-planeamiento-skills">
+                      {campo('Speaking', lec.speaking)}
+                      {campo('Grammar', lec.grammar)}
+                      {campo('Pronunciation / Listening', lec.pronunciation_listening)}
+                      {campo('Writing / Reading', lec.writing_reading)}
+                    </div>
                   </div>
                 </article>
               ))}
