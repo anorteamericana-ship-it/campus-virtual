@@ -1816,62 +1816,37 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
 function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = false, onClickLec }) {
   const year  = mes.getFullYear();
   const month = mes.getMonth();
-  const primeroDelMes = new Date(year, month, 1);
-  const ultimoDelMes  = new Date(year, month + 1, 0);
-  // Día de semana del 1 (0=Dom, 1=Lun…); reorientamos a Lun=0
-  const dowPrimero = (primeroDelMes.getDay() + 6) % 7;
-  const numDias    = ultimoDelMes.getDate();
-  const totalCeldas = Math.ceil((dowPrimero + numDias) / 7) * 7;
-
+  const primero = new Date(year, month, 1);
   const celdas = [];
-  for (let i = 0; i < totalCeldas; i++) {
-    const diaNum = i - dowPrimero + 1;
-    const dentro = diaNum >= 1 && diaNum <= numDias;
-    const fecha  = dentro ? new Date(year, month, diaNum) : null;
-    const iso    = fecha ? isoOf(fecha) : null;
-    const lecs   = iso ? (mapaLecciones[iso] || []) : [];
-    celdas.push({ diaNum, dentro, iso, lecs });
+  const cur = new Date(primero);
+  cur.setDate(1 - primero.getDay());
+  for (let i = 0; i < 42; i++) {
+    const fecha = new Date(cur);
+    const iso = isoOf(fecha);
+    const dentro = fecha.getMonth() === month;
+    const lecs = dentro ? (mapaLecciones[iso] || []) : [];
+    celdas.push({ diaNum: fecha.getDate(), dentro, iso, lecs, fecha });
+    cur.setDate(cur.getDate() + 1);
   }
-
+  const diasHdr = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   return (
-    <div style={{
-      border:'1px solid var(--line)', borderRadius:'var(--r-md)',
-      background:'var(--surface)', overflow:'hidden',
-      boxShadow: compacto ? '0 1px 0 rgba(11,31,58,.04)' : undefined,
-    }}>
-      {/* Header del mes */}
-      <div style={{
-        padding: compacto ? '7px 10px' : '13px 16px',
-        background:'var(--surface-2)',
-        borderBottom:'1px solid var(--line)',
-        display:'flex', justifyContent:'space-between', alignItems:'baseline',
-      }}>
-        <div style={{
-          fontFamily:'var(--f-serif)', fontSize: compacto ? 16 : 21, fontWeight:500,
-          color:'var(--ink)', letterSpacing:'-0.015em',
-        }}>
-          {MESES_NOMBRES[month]}
+    <div style={{ marginBottom: agenda ? 0 : 26 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:12 }}>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:compacto ? 18 : 20, fontWeight:600, color:'var(--an-navy-ink)' }}>
+          {MESES_NOMBRES[month]} De {year}
         </div>
-        <div style={{ fontSize:11, color:'var(--ink-3)', fontFamily:'var(--f-mono)' }}>
-          {year}
-        </div>
+        {!agenda && (
+          <div style={{ padding:'6px 12px', borderRadius:'999px', border:'1px solid var(--line)', background:'#fff', fontSize:11, fontWeight:800, color:'var(--ink-2)' }}>
+            Ver mes →
+          </div>
+        )}
       </div>
-
-      {/* Dow header */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-                    padding: compacto ? '4px 3px' : '9px 6px', borderBottom:'1px solid var(--line)' }}>
-        {DIA_INICIAL.map((d, i) => (
-          <div key={i} style={{
-            textAlign:'center', fontSize:10, fontWeight:700,
-            color: i >= 5 ? 'var(--ink-3)' : 'var(--ink-2)',
-            letterSpacing:'0.1em',
-          }}>{d}</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:4 }}>
+        {diasHdr.map(d => (
+          <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:800, color:'var(--ink-3)', padding:'3px 0' }}>{d}</div>
         ))}
       </div>
-
-      {/* Celdas */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
-                    gap:2, padding:3 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
         {celdas.map((c, i) => (
           <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} agenda={agenda} compacto={compacto} onClickLec={onClickLec} />
         ))}
@@ -1882,36 +1857,23 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
 
 function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onClickLec }) {
   const { diaNum, dentro, lecs } = celda;
-
+  const minH = compacto ? 54 : (agenda ? 66 : 72);
   if (!dentro) {
-    return <div style={{ minHeight:86 }} />;
-  }
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const esFinde = ((new Date(celda.iso + 'T00:00:00')).getDay() % 7 === 0 ||
-                   (new Date(celda.iso + 'T00:00:00')).getDay() === 6);
-
-  if (!lecs.length) {
     return (
-      <div style={{
-        minHeight: compacto ? 58 : (agenda ? 68 : 86), padding: compacto ? '4px 5px' : '7px 7px',
-        background:'var(--bg-deep)', borderRadius:6,
-        opacity: esFinde ? 0.6 : 1,
-      }}>
-        <div style={{ fontSize:10, color:'var(--ink-3)', fontWeight:600, fontFamily:'var(--f-mono)' }}>
-          {diaNum}
-        </div>
+      <div style={{ minHeight:minH, borderRadius:6, padding:'6px 7px', opacity:0.38 }}>
+        <div style={{ fontSize:11, color:'var(--ink-3)' }}>{diaNum}</div>
       </div>
     );
   }
-
-  // 1 o 2 lecciones (caso SA)
+  if (!lecs.length) {
+    return (
+      <div style={{ minHeight:minH, borderRadius:6, padding:'6px 7px', background:'var(--surface-2)', border:'1px solid var(--line)' }}>
+        <div style={{ fontSize:11, color:'var(--ink-3)' }}>{diaNum}</div>
+      </div>
+    );
+  }
   return (
-    <div style={{
-      minHeight: compacto ? 58 : (agenda ? 68 : 86),
-      display:'grid',
-      gridTemplateRows: compacto ? `repeat(${lecs.length}, minmax(25px, auto))` : (lecs.length > 1 ? `repeat(${lecs.length}, minmax(38px, auto))` : 'minmax(58px, auto)'),
-      gap: compacto ? 2 : 2,
-    }}>
+    <div style={{ minHeight:minH, display:'grid', gap:4, gridTemplateRows:`repeat(${Math.max(1, lecs.length)}, minmax(${compacto ? 24 : 30}px, auto))` }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
                        nivel={lec.nivel || nivel}
@@ -1927,99 +1889,41 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
 function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, compacto = false }) {
   const pal = paletaCelda(lec.estado, lec.tipo, nivel);
   const evalLabel = etiquetaEvaluacionCG(lec.tipo, lec.leccion);
-  const badge = evalLabel || TIPO_BADGE[lec.tipo];
+  const badgeText = lec.tipo === 'ICAN'
+    ? 'ICAN'
+    : (evalLabel ? evalLabel.replace(/\s+/g, ' ') : `${String((lec.nivel || nivel || '')).toUpperCase()} L${String(lec.leccion).padStart(2,'0')}`);
   const isFeriado = lec.estado === 'FERIADO';
-  const isHoy = lec.estado === 'HOY';
-
   return (
     <div
       onClick={onClick}
       style={{
         background: pal.bg,
-        border: `1px solid ${selected ? pal.accent : (isHoy ? '#F57F17' : pal.accent + '33')}`,
-        borderLeft: `4px solid ${pal.accent}`,
-        borderRadius: compacto ? 6 : 8,
-        padding: compacto ? '4px 5px 4px 6px' : '7px 8px',
-        cursor: 'pointer',
-        display:'flex', flexDirection:'column', justifyContent:'space-between',
-        minHeight: 0,
-        position:'relative',
-        boxShadow: selected ? `0 0 0 2px ${pal.accent}` : (isHoy ? '0 0 0 1px #F57F17' : 'none'),
-        transition: 'transform .12s, box-shadow .12s',
+        border:`1px solid ${selected ? pal.accent : pal.bg}`,
+        borderRadius:6,
+        padding: compacto ? '4px 5px' : '6px 7px',
+        cursor:'pointer',
+        display:'flex', flexDirection:'column', gap:4,
+        boxShadow: selected ? `0 0 0 2px ${pal.accent}` : 'none',
+        minHeight:0,
       }}
       onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.97)'; }}
       onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
     >
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:2 }}>
-        {diaNum != null && (
-          <span style={{ fontSize:12, fontWeight:800, color: pal.fg, fontFamily:'var(--f-mono)' }}>
-            {diaNum}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:4 }}>
+        <span style={{ fontSize:11, fontWeight:700, color:pal.fg, lineHeight:1 }}>{diaNum != null ? diaNum : ''}</span>
+        {isFeriado ? null : (
+          <span style={{ fontSize:8.5, fontWeight:800, color:'#fff', background:'rgba(0,0,0,0.18)', borderRadius:3, padding:'1px 4px', lineHeight:1.3, whiteSpace:'nowrap' }}>
+            {badgeText}
           </span>
         )}
-        {!diaNum && <span />}
-        {badge && (
-          <span style={{
-            fontSize:9, fontWeight:900, color:'white', background:pal.accent,
-            padding:'1px 4px', borderRadius:3, letterSpacing:'0.04em',
-            textTransform:'uppercase', lineHeight:1.2,
-          }}>
-            {badge}
-          </span>
-        )}
-        {isHoy && !badge && (
-          <span style={{
-            fontSize:9, fontWeight:900, color:'white', background:'#F57F17',
-            padding:'1px 4px', borderRadius:3, letterSpacing:'0.04em',
-            textTransform:'uppercase', lineHeight:1.2,
-          }}>HOY</span>
-        )}
       </div>
-      <div style={{ marginTop:'auto' }}>
-        {isFeriado ? (
-          <div style={{ fontSize:10, fontWeight:700, color:pal.fg, lineHeight:1.1 }}>
-            🚫 Feriado
-          </div>
-        ) : (
-          <>
-            <div style={{
-              fontSize: agenda ? (compacto ? 11.2 : 12) : 12,
-              fontWeight:900,
-              color:pal.fg,
-              fontFamily:'var(--f-mono)',
-              lineHeight:1.05,
-              whiteSpace:'nowrap',
-            }}>
-              {evalLabel || `Lec ${String(lec.leccion).padStart(2,'0')}`}
-            </div>
-            {evalLabel && (
-              <div style={{
-                marginTop:2, fontSize: compacto ? 8.5 : 9.2, color:pal.fg,
-                opacity:0.86, fontWeight:800, fontFamily:'var(--f-mono)', whiteSpace:'nowrap',
-              }}>
-                Lec {String(lec.leccion).padStart(2,'0')}
-              </div>
-            )}
-            {agenda && (
-              <div style={{
-                marginTop:2,
-                fontSize: compacto ? 8.8 : 9.4,
-                color:pal.fg,
-                opacity:0.92,
-                fontWeight:800,
-                lineHeight:1.1,
-                whiteSpace:'nowrap',
-              }}>
-                {cgHoraLabel(lec)}
-              </div>
-            )}
-            {!agenda && lec.turno && (
-              <div style={{ fontSize:10, color:pal.fg, opacity:0.78, fontWeight:600, marginTop:1 }}>
-                {lec.turno.includes('Mañana') ? '☀ AM' : '🌙 PM'}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {isFeriado ? (
+        <div style={{ fontSize:9.5, color:pal.fg, fontWeight:700, lineHeight:1.1 }}>Fer.</div>
+      ) : agenda ? (
+        <div style={{ fontSize:9.2, color:pal.fg, opacity:0.92, fontWeight:800, lineHeight:1.1, whiteSpace:'nowrap' }}>
+          {cgHoraLabel(lec)}
+        </div>
+      ) : null}
     </div>
   );
 }

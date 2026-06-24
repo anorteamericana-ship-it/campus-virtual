@@ -112,6 +112,61 @@ function horarioGrupoCompletoSD(grupo, codGrupo) {
   if (!base && !sufijo) return '';
   return `${base || 'Grupo'}${sufijo ? ' - ' + sufijo : ''}`;
 }
+
+function studentGrupoCodeInfo(codGrupo) {
+  const raw = String(codGrupo || '').trim().toUpperCase();
+  const m = raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/)
+    || raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/)
+    || raw.match(/^(?:[A-Z0-9]+-)?(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/);
+  return { dayCode: m?.[1] || '', hourCode: m?.[2] || '' };
+}
+function studentDiaCompletoSD(code) {
+  return ({
+    LM:'Lunes y miércoles', KJ:'Martes y jueves', LJ:'Lunes a jueves', L4:'Lunes a jueves',
+    SA:'Sábado', SAB:'Sábado', L:'Lunes', K:'Martes', M:'Miércoles', J:'Jueves', V:'Viernes', D:'Domingo'
+  })[String(code || '').toUpperCase()] || '';
+}
+function studentHoraCompletaSD(code) {
+  return ({
+    '18':'6pm a 9pm', '69':'6pm a 9pm', '94':'9am a 4pm', '96':'9am a 12pm', '09':'9am a 12pm'
+  })[String(code || '').toUpperCase()] || '';
+}
+function normalizarDiasTextoSD(raw, fallbackCode) {
+  const txt = String(raw || '').trim();
+  if (!txt) return studentDiaCompletoSD(fallbackCode);
+  const up = txt.toUpperCase();
+  const simple = { LM:'Lunes y miércoles', KJ:'Martes y jueves', LJ:'Lunes a jueves', L4:'Lunes a jueves', SA:'Sábado', SAB:'Sábado' };
+  if (simple[up]) return simple[up];
+  return txt
+    .replace(/\bLUN\/?MIE\b/i, 'Lunes y miércoles')
+    .replace(/\bMAR\/?JUE\b/i, 'Martes y jueves')
+    .replace(/\bLUN\/?JUE\b/i, 'Lunes a jueves')
+    .replace(/\bSAB(?:ADO)?S?\b/i, 'Sábado');
+}
+function inferirModalidadProgramaSD(est, grupo, codGrupo) {
+  const raw = String(grupo?.MODALIDAD || est?.MODALIDAD || est?.modalidad || '').toUpperCase().trim();
+  if (raw.includes('SUPER')) return 'SUPER INTENSIVO';
+  if (raw.includes('INTENS')) return 'INTENSIVO';
+  const info = studentGrupoCodeInfo(codGrupo);
+  return (info.dayCode === 'L4' || info.dayCode === 'LJ') ? 'SUPER INTENSIVO' : 'INTENSIVO';
+}
+function buildProgramaFichaSD(est, grupo, codGrupo, horarioTexto) {
+  const info = studentGrupoCodeInfo(codGrupo);
+  const modalidad = inferirModalidadProgramaSD(est, grupo, codGrupo);
+  const dias = normalizarDiasTextoSD(grupo?.DIAS_TEXT || grupo?.DIAS || grupo?.HORARIO_DIAS || grupo?.dias_text || '', info.dayCode);
+  const hora = String(grupo?.HORA_TEXT || grupo?.HORA || grupo?.HORARIO || grupo?.hora_text || '').trim() || studentHoraCompletaSD(info.hourCode);
+  let horario = [dias, hora].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (!horario) {
+    horario = String(horarioTexto || '').replace(/\s*-\s*\d{4}\s*$/, '').trim();
+  }
+  const horasSemanales = modalidad === 'SUPER INTENSIVO' ? '12 HORAS X SEMANA' : '6 HORAS X SEMANA';
+  return {
+    horario: horario || 'Pendiente',
+    horasSemanales,
+    modalidad,
+    programaNombre: 'INGLES CONVERSACIONAL',
+  };
+}
 function registrosAsistenciaNivelSD(asistencia, nivel, codGrupo) {
   const all = Array.isArray(asistencia?.asistencia) ? asistencia.asistencia : [];
   if (!all.length) return all;
@@ -437,7 +492,7 @@ function StudentDashboard({ toast, onNavigate }) {
         </div>
       </div>
 
-      <DatosAcademicosInicio est={est} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
+      <DatosAcademicosInicio est={est} grupo={grupo} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
         codGrupo={codGrupo} nivelReal={nivelReal} docente={docente} horario={horarioCurso}
         programa={programa} contactos={contactosEstudiante} onNavigate={go}
         expanded={mostrarPanelDatos} onReload={reload} />
@@ -655,12 +710,11 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 // F96.5 — Datos a la mano + cumplimiento INA en Mi Campus
 // ─────────────────────────────────────────────────────────────────────────
 
-function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, contactos, onNavigate, expanded, onReload }) {
+function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, contactos, onNavigate, expanded, onReload }) {
   const correoBase = est.CORREO || est.EMAIL || est.Email || est.correo || est.email || '';
   const telefonoBase = est.TEL1 || est.Tel1 || est.TELEFONO1 || est.TELEFONO_1 || est.TELEFONO || est.tel1 || '';
-  const programaLabel = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : (programa ? 'Programa propio' : '—');
-  const programaNombreCompleto = 'Inglés conversacional';
   const fotoInicial = est.FOTO_PERFIL_URL || est.foto_perfil_url || est.FOTO_URL || '';
+  const programaFicha = React.useMemo(() => buildProgramaFichaSD(est, grupo, codGrupo, horario), [est, grupo, codGrupo, horario]);
 
   const contactosIniciales = React.useMemo(() => ({
     correo_principal: contactos?.correo_principal || correoBase || '',
@@ -685,17 +739,16 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
   React.useEffect(() => { setContactosVista(contactosIniciales); }, [contactosIniciales]);
   React.useEffect(() => { setFotoUrl(fotoInicial); }, [fotoInicial]);
 
-  const programaHorario = String(horario || '').replace(/\s*-\s*\d{4}\s*$/, '').replace(/\s+de\s+/i, ' ').trim() || 'Pendiente';
   const grupoLabel = codGrupo || 'Pendiente';
   const initials = (nombreCompleto || 'EE').split(/\s+/).filter(Boolean).slice(0,2).map(w => (w[0]||'')).join('').toUpperCase() || 'EE';
 
   const programaRows = [
     ['Código', codigo || est.REC_M || est.CODIGO || 'Pendiente'],
     ['Grupo', grupoLabel],
-    ['Horario', programaHorario],
+    ['Horario', programaFicha.horario, programaFicha.horasSemanales],
     ['Nivel', nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'],
     ['Teacher', docente || 'Pendiente'],
-    ['Programa', programaLabel, programaNombreCompleto],
+    ['Programa', programaFicha.modalidad, programaFicha.programaNombre],
   ];
 
   const resetEdicion = () => {
