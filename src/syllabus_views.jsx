@@ -288,7 +288,7 @@ function BibliotecaBloqueo({ variante, mensaje, nivelNombre, onNavigate }) {
 
 
 
-// F98.4-F · Catálogo oficial + planeamiento real desde APOLLO G3.
+// F98.4-H · Catálogo oficial + planeamiento real + audio seguro por Blob.
 // Libros y recursos se cargan por IDs fijos; los audios se reproducen pista
 // por pista y se ordenan por unidad. No se exponen keys, scripts ni DOCs.
 function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial }) {
@@ -299,6 +299,10 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   const [unidadPlanQuery, setUnidadPlanQuery] = React.useState('');
   const [audioQuery, setAudioQuery] = React.useState('');
   const [audioSeleccionado, setAudioSeleccionado] = React.useState(null);
+  const [audioSrc, setAudioSrc] = React.useState('');
+  const [audioEstado, setAudioEstado] = React.useState('idle');
+  const [audioError, setAudioError] = React.useState('');
+  const audioObjectUrlRef = React.useRef('');
 
   React.useEffect(() => {
     let vivo = true;
@@ -309,6 +313,9 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     setUnidadPlanQuery('');
     setAudioQuery('');
     setAudioSeleccionado(null);
+    setAudioSrc('');
+    setAudioEstado('idle');
+    setAudioError('');
     postSyllabus('getBibliotecaNivelEstudiante', {
       nivel:nivelCode,
       codigo:codigoUsr,
@@ -351,6 +358,73 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
     }, 120);
   }, [estado]);
+
+
+  React.useEffect(() => {
+    let cancelado = false;
+
+    const liberarAnterior = () => {
+      if (audioObjectUrlRef.current) {
+        try { URL.revokeObjectURL(audioObjectUrlRef.current); } catch (_) {}
+        audioObjectUrlRef.current = '';
+      }
+    };
+
+    liberarAnterior();
+    setAudioSrc('');
+    setAudioError('');
+
+    if (!audioSeleccionado?.pista?.id) {
+      setAudioEstado('idle');
+      return () => { cancelado = true; };
+    }
+
+    setAudioEstado('loading');
+    postSyllabus('getAudioPistaEstudiante', {
+      nivel:nivelCode,
+      codigo:codigoUsr,
+      cod_grupo:codGrupo,
+      archivo_id:audioSeleccionado.pista.id,
+    }).then(r => {
+      if (cancelado) return;
+      if (!r?.ok || !r?.audio?.base64) {
+        setAudioEstado('error');
+        setAudioError(r?.mensaje || r?.error || 'No se pudo cargar la pista seleccionada.');
+        return;
+      }
+
+      try {
+        const binario = atob(r.audio.base64);
+        const bytes = new Uint8Array(binario.length);
+        for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+        const blob = new Blob([bytes], { type:r.audio.mime || 'audio/mpeg' });
+        const objectUrl = URL.createObjectURL(blob);
+        if (cancelado) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        audioObjectUrlRef.current = objectUrl;
+        setAudioSrc(objectUrl);
+        setAudioEstado('ready');
+      } catch (e) {
+        setAudioEstado('error');
+        setAudioError(e?.message || 'El navegador no pudo preparar la pista de audio.');
+      }
+    }).catch(e => {
+      if (cancelado) return;
+      setAudioEstado('error');
+      setAudioError(e?.message || 'No se pudo cargar la pista seleccionada.');
+    });
+
+    return () => { cancelado = true; };
+  }, [audioSeleccionado?.pista?.id, nivelCode, codigoUsr, codGrupo]);
+
+  React.useEffect(() => () => {
+    if (audioObjectUrlRef.current) {
+      try { URL.revokeObjectURL(audioObjectUrlRef.current); } catch (_) {}
+      audioObjectUrlRef.current = '';
+    }
+  }, []);
 
   if (estado === 'load') {
     return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title="Cargando planeamiento, libros y audios del nivel…" /></div>;
@@ -520,10 +594,27 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
           <div style={{ marginTop:14, padding:'14px 15px', border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>
             <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--an-navy)' }}>{audioSeleccionado.unidad}</div>
             <div style={{ marginTop:5, fontSize:13, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' }}>{audioSeleccionado.pista.nombre}</div>
-            <audio controls preload="none" src={audioSeleccionado.pista.stream_url} style={{ width:'100%', height:38, marginTop:10 }}>
-              Tu navegador no puede reproducir este audio.
-            </audio>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:6 }}>
+            {audioEstado === 'loading' ? (
+              <div style={{ marginTop:10, padding:'13px 14px', border:'1px dashed var(--line)', borderRadius:12, color:'var(--ink-3)', fontSize:12, textAlign:'center' }}>
+                Cargando la pista seleccionada…
+              </div>
+            ) : audioEstado === 'error' ? (
+              <div style={{ marginTop:10, padding:'12px 14px', border:'1px solid color-mix(in srgb, var(--danger) 32%, white)', borderRadius:12, background:'color-mix(in srgb, var(--danger) 7%, white)', color:'var(--danger)', fontSize:12, lineHeight:1.45 }}>
+                {audioError || 'No se pudo cargar la pista.'}
+              </div>
+            ) : audioSrc ? (
+              <audio
+                key={audioSeleccionado.pista.id}
+                controls
+                preload="metadata"
+                src={audioSrc}
+                style={{ width:'100%', height:42, marginTop:10 }}
+                onError={() => { setAudioEstado('error'); setAudioError('El navegador no pudo reproducir esta pista.'); }}
+              >
+                Tu navegador no puede reproducir este audio.
+              </audio>
+            ) : null}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:8 }}>
               <a href={audioSeleccionado.pista.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--an-navy)' }}>Abrir pista en Drive</a>
               <button type="button" className="btn btn-ghost" style={{ fontSize:11, padding:'6px 10px' }} onClick={() => { setAudioQuery(''); setAudioSeleccionado(null); }}>Limpiar selección</button>
             </div>
