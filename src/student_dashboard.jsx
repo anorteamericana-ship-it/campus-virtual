@@ -421,23 +421,8 @@ function StudentDashboard({ toast, onNavigate }) {
                   : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
                 : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
             </div>
-            <div style={{ marginTop:18 }}>
-              <button
-                type="button"
-                onClick={() => setMostrarPanelDatos(v => !v)}
-                aria-expanded={mostrarPanelDatos ? 'true' : 'false'}
-                aria-controls="panel-actualizar-datos"
-                style={{
-                  display:'inline-flex', alignItems:'center', gap:10,
-                  padding:'12px 22px', borderRadius:0,
-                  border:'3px solid #E7D100', background:'#fff', color:'#000',
-                  fontSize:17, fontWeight:900, letterSpacing:'.02em', cursor:'pointer',
-                  boxShadow:'0 2px 0 rgba(0,0,0,.03)'
-                }}
-              >
-                ACTUALIZAR DATOS
-                <span aria-hidden="true" style={{ fontSize:14 }}>{mostrarPanelDatos ? '▲' : '▼'}</span>
-              </button>
+            <div style={{ marginTop:18, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.55, maxWidth:560 }}>
+              Revisá tus datos personales, tu fotografía y la información académica desde la ficha del estudiante.
             </div>
           </div>
           <div style={{ display:'flex', justifyContent:'center' }}>
@@ -669,10 +654,13 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 // ─────────────────────────────────────────────────────────────────────────
 // F96.5 — Datos a la mano + cumplimiento INA en Mi Campus
 // ─────────────────────────────────────────────────────────────────────────
+
 function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, contactos, onNavigate, expanded, onReload }) {
   const correoBase = est.CORREO || est.EMAIL || est.Email || est.correo || est.email || '';
   const telefonoBase = est.TEL1 || est.Tel1 || est.TELEFONO1 || est.TELEFONO_1 || est.TELEFONO || est.tel1 || '';
   const programaLabel = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : (programa ? 'Programa propio' : '—');
+  const programaNombreCompleto = 'Inglés conversacional';
+  const fotoInicial = est.FOTO_PERFIL_URL || est.foto_perfil_url || est.FOTO_URL || '';
 
   const contactosIniciales = React.useMemo(() => ({
     correo_principal: contactos?.correo_principal || correoBase || '',
@@ -681,36 +669,33 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
     telefonos_adicionales: Array.isArray(contactos?.telefonos_adicionales) ? contactos.telefonos_adicionales : [],
   }), [contactos, correoBase, telefonoBase]);
 
+  const [tab, setTab] = React.useState(null);
   const [editando, setEditando] = React.useState(false);
   const [guardando, setGuardando] = React.useState(false);
   const [mensaje, setMensaje] = React.useState(null);
+  const [mensajeFoto, setMensajeFoto] = React.useState(null);
+  const [subiendoFoto, setSubiendoFoto] = React.useState(false);
   const [contactosVista, setContactosVista] = React.useState(contactosIniciales);
+  const [fotoUrl, setFotoUrl] = React.useState(fotoInicial);
   const [form, setForm] = React.useState({
     correo_adicional:'', telefono_adicional:'',
     correo_como_principal:false, telefono_como_principal:false,
   });
 
-  React.useEffect(() => {
-    setContactosVista(contactosIniciales);
-  }, [contactosIniciales]);
+  React.useEffect(() => { setContactosVista(contactosIniciales); }, [contactosIniciales]);
+  React.useEffect(() => { setFotoUrl(fotoInicial); }, [fotoInicial]);
 
-  React.useEffect(() => {
-    if (!expanded) {
-      setEditando(false);
-      setMensaje(null);
-      setForm({ correo_adicional:'', telefono_adicional:'', correo_como_principal:false, telefono_como_principal:false });
-    }
-  }, [expanded]);
-
-  if (!expanded) return null;
+  const programaHorario = String(horario || '').replace(/\s*-\s*\d{4}\s*$/, '').replace(/\s+de\s+/i, ' ').trim() || 'Pendiente';
+  const grupoLabel = codGrupo || 'Pendiente';
+  const initials = (nombreCompleto || 'EE').split(/\s+/).filter(Boolean).slice(0,2).map(w => (w[0]||'')).join('').toUpperCase() || 'EE';
 
   const programaRows = [
     ['Código', codigo || est.REC_M || est.CODIGO || 'Pendiente'],
-    ['Grupo', codGrupo || 'Pendiente'],
-    ['Grupo y horario', horario || (sufijoGrupoSD(codGrupo) ? 'Grupo ' + sufijoGrupoSD(codGrupo) : 'Pendiente')],
+    ['Grupo', grupoLabel],
+    ['Horario', programaHorario],
     ['Nivel', nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'],
     ['Teacher', docente || 'Pendiente'],
-    ['Programa', programaLabel],
+    ['Programa', programaLabel, programaNombreCompleto],
   ];
 
   const resetEdicion = () => {
@@ -752,16 +737,59 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
     }
   };
 
-  const barStyle = {
-    display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap',
-    padding:'12px 16px', borderBottom:'1px solid var(--line)',
-    background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 6%, white), #fff)'
+  const fileToPayload = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const base64 = result.indexOf(',') >= 0 ? result.split(',').pop() : result;
+      resolve({ base64, mime:file.type || 'image/jpeg', nombre:file.name || 'foto_perfil.jpg' });
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen seleccionada.'));
+    reader.readAsDataURL(file);
+  });
+
+  const handleFotoSeleccionada = async (e) => {
+    const file = e.target?.files && e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    if (!String(file.type || '').startsWith('image/')) {
+      setMensajeFoto({ tipo:'err', texto:'Seleccioná una imagen JPG o PNG.' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMensajeFoto({ tipo:'err', texto:'La imagen supera el máximo permitido de 5 MB.' });
+      return;
+    }
+    setSubiendoFoto(true);
+    setMensajeFoto(null);
+    try {
+      const payload = await fileToPayload(file);
+      const res = await postStudentDash('uploadFotoPerfilEstudiante', {
+        codigo,
+        archivo_base64: payload.base64,
+        archivo_mime: payload.mime,
+        archivo_nombre: payload.nombre,
+      });
+      if (res?.ok) {
+        setFotoUrl(res.foto_url || fotoUrl || '');
+        setMensajeFoto({ tipo:'ok', texto: res?.mensaje || 'Fotografía actualizada correctamente.' });
+        if (onReload) setTimeout(() => onReload(), 350);
+      } else {
+        setMensajeFoto({ tipo:'err', texto: res?.mensaje || res?.error || 'No se pudo actualizar la fotografía.' });
+      }
+    } catch (err) {
+      setMensajeFoto({ tipo:'err', texto: err?.message || 'No se pudo actualizar la fotografía.' });
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
-  const sectionCardStyle = { border:'1px solid var(--line)', borderRadius:18, overflow:'hidden', background:'#fff' };
-  const gridStyle = { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:12, padding:16, background:'color-mix(in srgb, var(--bg-deep) 26%, white)' };
-  const itemStyle = { border:'1px solid var(--line)', borderRadius:14, padding:'13px 14px', background:'#fff', minHeight:86 };
+
+  const infoRowStyle = { display:'flex', justifyContent:'space-between', gap:12, fontSize:12.5, padding:'8px 0', borderBottom:'1px solid var(--line)' };
+  const itemStyle = { border:'1px solid var(--line)', borderRadius:16, padding:'14px 15px', background:'#fff', minHeight:94 };
   const labelStyle = { fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' };
-  const valueStyle = { marginTop:6, fontSize:13.5, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' };
+  const valueStyle = { marginTop:7, fontSize:13.5, fontWeight:800, color:'var(--ink)', lineHeight:1.42, wordBreak:'break-word' };
+  const subValueStyle = { marginTop:6, fontSize:11.5, fontWeight:700, color:'var(--ink-3)' };
+  const panelGridStyle = { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:12 };
   const inputStyle = { width:'100%', marginTop:7, border:'1px solid var(--line)', borderRadius:12, padding:'10px 11px', fontSize:13, fontWeight:600, color:'var(--ink)', outline:'none', background:'#fff' };
   const checkStyle = { display:'flex', alignItems:'flex-start', gap:8, marginTop:9, fontSize:11.5, lineHeight:1.4, color:'var(--ink-2)', cursor:'pointer' };
 
@@ -776,156 +804,166 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
   };
 
   return (
-    <section id="panel-actualizar-datos" className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'1.5px solid color-mix(in srgb, var(--an-navy) 18%, var(--line))' }} aria-label="Panel de actualización de datos">
-      <div style={{ padding:'15px 18px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }}>
-        <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Mi Campus · actualización de datos</div>
-        <div style={{ marginTop:4, fontFamily:'var(--f-serif)', fontSize:21, fontWeight:600, color:'var(--an-navy-ink)' }}>Información del estudiante</div>
-        <div style={{ marginTop:4, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>La información se presenta como ficha técnica. Solo podés agregar correo electrónico y teléfono; los datos académicos permanecen protegidos.</div>
-      </div>
-
-      <div style={{ padding:16, display:'grid', gap:16, background:'#fff' }}>
-        <section style={sectionCardStyle} aria-label="Datos personales">
-          <div style={barStyle}>
-            <div>
-              <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
-              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Ficha de identificación y contacto. Nombre y cédula son datos oficiales de solo lectura.</div>
+    <section id="panel-actualizar-datos" style={{ marginBottom:18 }} aria-label="Ficha del estudiante">
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(300px,420px) minmax(0,1fr)', gap:18, alignItems:'start' }}>
+        <aside className="card" style={{ padding:'20px 24px' }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ position:'relative', width:126, height:126, margin:'0 auto 14px' }}>
+              <div style={{
+                width:'100%', height:'100%', borderRadius:'50%', overflow:'hidden',
+                background: fotoUrl ? '#f2f2f2' : 'linear-gradient(135deg, #1B2B6B, #D92D2A)',
+                color:'#fff', fontFamily:'var(--f-serif)', fontSize:42, fontWeight:700,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                boxShadow:'var(--sh-2)', border:'4px solid white'
+              }}>
+                {fotoUrl ? <img src={fotoUrl} alt="Foto del estudiante" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : initials}
+              </div>
+              <label style={{
+                position:'absolute', left:'50%', bottom:-8, transform:'translateX(-50%)',
+                padding:'6px 10px', borderRadius:999, background:'#fff', border:'1px solid var(--line)',
+                fontSize:10.5, fontWeight:900, color:'var(--an-navy)', cursor:'pointer', boxShadow:'var(--sh-1)'
+              }}>
+                {subiendoFoto ? 'Subiendo…' : (fotoUrl ? 'Cambiar foto' : 'Cargar foto')}
+                <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleFotoSeleccionada} disabled={subiendoFoto} />
+              </label>
             </div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-              {!editando ? (
-                <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar contacto</button>
-              ) : (
-                <>
-                  <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
-                  <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={resetEdicion} disabled={guardando}>Cancelar</button>
-                </>
-              )}
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, lineHeight:1.15, color:'var(--an-navy-ink)', marginTop:18 }}>
+              {nombreCompleto || 'Estudiante'}
             </div>
-          </div>
-
-          <div style={gridStyle}>
-            <div style={itemStyle}>
-              <div style={labelStyle}>Nombre completo</div>
-              <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
-              <div style={{ marginTop:7, fontSize:11, color:'var(--ink-3)' }}>Dato oficial · solo lectura</div>
-            </div>
-
-            <div style={itemStyle}>
-              <div style={labelStyle}>Cédula</div>
-              <div style={valueStyle}>{cedula || 'Pendiente'}</div>
-              <div style={{ marginTop:7, fontSize:11, color:'var(--ink-3)' }}>Dato oficial · solo lectura</div>
-            </div>
-
-            <div style={itemStyle}>
-              <div style={labelStyle}>Correo electrónico actual</div>
-              <div style={valueStyle}>{contactosVista.correo_principal || 'Pendiente'}</div>
-              {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
-              {editando && (
-                <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
-                  <label style={labelStyle} htmlFor="correo-adicional-estudiante">Correo electrónico adicional</label>
-                  <input id="correo-adicional-estudiante" type="email" value={form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_adicional:e.target.value, correo_como_principal:e.target.value ? prev.correo_como_principal : false }))} placeholder="nuevo@correo.com" style={inputStyle} />
-                  <label style={{ ...checkStyle, opacity:form.correo_adicional ? 1 : .55 }}>
-                    <input type="checkbox" checked={!!form.correo_como_principal} disabled={!form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_como_principal:e.target.checked }))} />
-                    <span><strong>Elegir como correo principal.</strong> El correo actual se conserva como adicional; no se elimina.</span>
-                  </label>
-                </div>
-              )}
-            </div>
-
-            <div style={itemStyle}>
-              <div style={labelStyle}>Teléfono actual</div>
-              <div style={valueStyle}>{contactosVista.telefono_principal || 'Pendiente'}</div>
-              {adicionales(contactosVista.telefonos_adicionales, 'No hay teléfonos adicionales registrados.')}
-              {editando && (
-                <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
-                  <label style={labelStyle} htmlFor="telefono-adicional-estudiante">Teléfono adicional</label>
-                  <input id="telefono-adicional-estudiante" type="tel" value={form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_adicional:e.target.value, telefono_como_principal:e.target.value ? prev.telefono_como_principal : false }))} placeholder="8888-8888" style={inputStyle} />
-                  <label style={{ ...checkStyle, opacity:form.telefono_adicional ? 1 : .55 }}>
-                    <input type="checkbox" checked={!!form.telefono_como_principal} disabled={!form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_como_principal:e.target.checked }))} />
-                    <span><strong>Elegir como teléfono principal.</strong> El teléfono actual se conserva como adicional; no se elimina.</span>
-                  </label>
-                </div>
-              )}
+            <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4, fontFamily:'var(--f-mono)' }}>Estudiante</div>
+            <div style={{ display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap', marginTop:14 }}>
+              <Chip tone="granate">Estudiante activo</Chip>
+              {grupoLabel && <Chip tone="navy">{grupoLabel}</Chip>}
             </div>
           </div>
 
-          {mensaje && (
-            <div style={{ margin:'0 16px 16px', padding:'12px 14px', borderRadius:14, border:`1px solid ${mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background: mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 10%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color: mensaje.tipo==='ok' ? 'var(--ok)' : 'var(--danger)', fontSize:12.5, fontWeight:700 }}>
-              {mensaje.texto}
+          {mensajeFoto && (
+            <div style={{ marginTop:16, padding:'10px 12px', borderRadius:12, border:`1px solid ${mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensajeFoto.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:12, lineHeight:1.45 }}>
+              {mensajeFoto.texto}
             </div>
           )}
-        </section>
 
-        <section style={sectionCardStyle} aria-label="Datos del programa">
-          <div style={barStyle}>
-            <div>
-              <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
-              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Solo visualización. Estos datos dependen de matrícula, grupo, cronograma y control académico.</div>
-            </div>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:'999px', background:'color-mix(in srgb, var(--ok) 10%, white)', color:'var(--ok)', fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'.08em' }}>
-              <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--ok)' }} /> Solo lectura
-            </div>
-          </div>
-          <div style={gridStyle}>
-            {programaRows.map(([label, value]) => (
-              <div key={label} style={itemStyle}>
-                <div style={labelStyle}>{label}</div>
-                <div style={valueStyle}>{value || 'Pendiente'}</div>
+          <div style={{ marginTop:22, textAlign:'left', borderTop:'1px solid var(--line)', paddingTop:16 }}>
+            {[
+              ['Correo', contactosVista.correo_principal || '—'],
+              ['Teléfono', contactosVista.telefono_principal || '—'],
+              ['Cédula', cedula || '—'],
+            ].map(([k, v], i, arr) => (
+              <div key={i} style={{ ...infoRowStyle, borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                <span style={{ color:'var(--ink-3)', fontWeight:700 }}>{k}</span>
+                <span style={{ color:'var(--ink)', fontWeight:700, textAlign:'right', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis' }}>{v}</span>
               </div>
             ))}
           </div>
-        </section>
-      </div>
 
-      <div style={{ padding:'12px 16px', display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', flexWrap:'wrap', background:'#fff', borderTop:'1px solid var(--line)' }}>
-        <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45 }}><strong style={{ color:'var(--ink)' }}>Importante:</strong> si tu nombre, cédula, grupo, teacher, nivel o convenio están mal, reportalo a administración. Esos datos no se modifican desde el perfil.</div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('documentos_ayuda', { tab:'ayuda' })}>Ayuda y contactos →</button>
-        </div>
-      </div>
-    </section>
-  );
-}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:18 }}>
+            <button type="button" className="btn btn-primary" style={{ justifyContent:'center', padding:'11px 12px', fontSize:12.5 }} onClick={() => { setTab(tab === 'personal' ? null : 'personal'); setEditando(false); setMensaje(null); }}>
+              ACTUALIZAR DATOS
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ justifyContent:'center', padding:'11px 12px', fontSize:12.5 }} onClick={() => { setTab(tab === 'programa' ? null : 'programa'); setEditando(false); setMensaje(null); }}>
+              DATOS DEL PROGRAMA
+            </button>
+          </div>
+        </aside>
 
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          {!tab && (
+            <section className="card" style={{ padding:'20px 22px' }}>
+              <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Mi Campus · ficha del estudiante</div>
+              <div style={{ marginTop:6, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Información personal y académica</div>
+              <div style={{ marginTop:8, fontSize:13, color:'var(--ink-3)', lineHeight:1.6 }}>
+                Usá <strong>Actualizar datos</strong> para gestionar tu correo, teléfono y fotografía. Usá <strong>Datos del programa</strong> para revisar la información académica de solo lectura.
+              </div>
+            </section>
+          )}
 
-// ─────────────────────────────────────────────────────────────────────────
-// F96.5-B — Orientación inicial INA + próxima acción sin bloquear navegación
-// ─────────────────────────────────────────────────────────────────────────
-function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal, docente, horario, onNavigate }) {
-  const KEY = 'an_orientacion_inicial_v2_' + (codigo || 'anon');
-  const [cerrado, setCerrado] = React.useState(() => {
-    try { return localStorage.getItem(KEY) === '1'; } catch (_) { return false; }
-  });
-  if (cerrado) return null;
-  const confirmar = () => {
-    setCerrado(true);
-    try { localStorage.setItem(KEY, '1'); } catch (_) {}
-  };
-  const datoStyle = { padding:'10px 12px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' };
-  const labelStyle = { fontSize:9.5, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' };
-  const valueStyle = { marginTop:3, fontSize:12.5, fontWeight:850, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' };
-  return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'2px solid color-mix(in srgb, var(--an-gold) 55%, white)' }} aria-label="Orientación inicial del campus">
-      <div style={{ padding:'16px 20px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-gold) 16%, white), #fff)', borderBottom:'1px solid var(--line)' }}>
-        <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A4E00' }}>Primer ingreso · orientación obligatoria</div>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>Antes de avanzar, verificá tus datos</div>
-        <div style={{ fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5, marginTop:4 }}>
-          El Campus inicia en <strong>Mi Campus</strong> para que tengás a mano tu información académica, horario, grupo y material de lectura obligatorio solicitado para el programa. Esta guía aparece en el primer ingreso de este equipo y queda disponible desde el material del programa.
-        </div>
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10, padding:16, background:'color-mix(in srgb, var(--bg-deep) 30%, white)' }}>
-        <div style={datoStyle}><div style={labelStyle}>Estudiante</div><div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div></div>
-        <div style={datoStyle}><div style={labelStyle}>Grupo y horario</div><div style={valueStyle}>{horario || (sufijoGrupoSD(codGrupo) ? 'Grupo ' + sufijoGrupoSD(codGrupo) : 'Pendiente')}</div></div>
-        <div style={datoStyle}><div style={labelStyle}>Nivel</div><div style={valueStyle}>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'}</div></div>
-        <div style={datoStyle}><div style={labelStyle}>Teacher</div><div style={valueStyle}>{docente || 'Pendiente'}</div></div>
-        <div style={datoStyle}><div style={labelStyle}>Horario</div><div style={valueStyle}>{horario || 'Pendiente'}</div></div>
-      </div>
-      <div style={{ padding:'14px 16px', display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', background:'#fff' }}>
-        <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45, maxWidth:620 }}>
-          <strong style={{ color:'var(--ink)' }}>Checklist inicial:</strong> verificá tus datos, abrí el material obligatorio y guardá esta información. Si algo no coincide con tu grupo real, reportalo antes de hacer exámenes o registrar asistencia.
-        </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button className="btn btn-ghost" type="button" onClick={() => onNavigate && onNavigate('info_programa')}>Ver material obligatorio</button>
-          <button className="btn btn-primary" type="button" onClick={confirmar}>Mis datos están a la mano</button>
+          {tab === 'personal' && (
+            <section className="card" style={{ padding:'18px 20px' }} aria-label="Datos personales">
+              <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:14 }}>
+                <div>
+                  <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
+                  <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Solo podés actualizar correo electrónico, teléfono y fotografía. Los datos oficiales permanecen protegidos.</div>
+                </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                  {!editando ? (
+                    <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar contacto</button>
+                  ) : (
+                    <>
+                      <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
+                      <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={resetEdicion} disabled={guardando}>Cancelar</button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div style={panelGridStyle}>
+                <div style={itemStyle}>
+                  <div style={labelStyle}>Nombre completo</div>
+                  <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
+                  <div style={subValueStyle}>Dato oficial · solo lectura</div>
+                </div>
+                <div style={itemStyle}>
+                  <div style={labelStyle}>Cédula</div>
+                  <div style={valueStyle}>{cedula || 'Pendiente'}</div>
+                  <div style={subValueStyle}>Dato oficial · solo lectura</div>
+                </div>
+                <div style={itemStyle}>
+                  <div style={labelStyle}>Correo electrónico actual</div>
+                  <div style={valueStyle}>{contactosVista.correo_principal || 'Pendiente'}</div>
+                  {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
+                  {editando && (
+                    <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
+                      <label style={labelStyle} htmlFor="correo-adicional-estudiante">Correo electrónico adicional</label>
+                      <input id="correo-adicional-estudiante" type="email" value={form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_adicional:e.target.value, correo_como_principal:e.target.value ? prev.correo_como_principal : false }))} placeholder="nuevo@correo.com" style={inputStyle} />
+                      <label style={{ ...checkStyle, opacity:form.correo_adicional ? 1 : .55 }}>
+                        <input type="checkbox" checked={!!form.correo_como_principal} disabled={!form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_como_principal:e.target.checked }))} />
+                        <span><strong>Elegir como correo principal.</strong> El correo actual se conserva como adicional; no se elimina.</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <div style={itemStyle}>
+                  <div style={labelStyle}>Teléfono actual</div>
+                  <div style={valueStyle}>{contactosVista.telefono_principal || 'Pendiente'}</div>
+                  {adicionales(contactosVista.telefonos_adicionales, 'No hay teléfonos adicionales registrados.')}
+                  {editando && (
+                    <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
+                      <label style={labelStyle} htmlFor="telefono-adicional-estudiante">Teléfono adicional</label>
+                      <input id="telefono-adicional-estudiante" type="tel" value={form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_adicional:e.target.value, telefono_como_principal:e.target.value ? prev.telefono_como_principal : false }))} placeholder="8888-8888" style={inputStyle} />
+                      <label style={{ ...checkStyle, opacity:form.telefono_adicional ? 1 : .55 }}>
+                        <input type="checkbox" checked={!!form.telefono_como_principal} disabled={!form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_como_principal:e.target.checked }))} />
+                        <span><strong>Elegir como teléfono principal.</strong> El teléfono actual se conserva como adicional; no se elimina.</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {mensaje && (
+                <div style={{ marginTop:14, padding:'12px 14px', borderRadius:14, border:`1px solid ${mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensaje.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:12.5, lineHeight:1.5 }}>
+                  {mensaje.texto}
+                </div>
+              )}
+            </section>
+          )}
+
+          {tab === 'programa' && (
+            <section className="card" style={{ padding:'18px 20px' }} aria-label="Datos del programa">
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
+                <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Esta información es solo de consulta. Si detectás un error, reportalo a administración antes de usar evaluaciones o asistencia.</div>
+              </div>
+              <div style={panelGridStyle}>
+                {programaRows.map(([label, value, sub]) => (
+                  <div key={label} style={itemStyle}>
+                    <div style={labelStyle}>{label}</div>
+                    <div style={valueStyle}>{value}</div>
+                    {sub ? <div style={subValueStyle}>{sub}</div> : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </section>
@@ -968,20 +1006,25 @@ function ProximaAccionCampus({ proximaClase, proximoExamen, cronoPublicado, onNa
 
 
 
+
 function SoportePruebaViva({ nombreCompleto, codGrupo }) {
+  const waUrl = 'https://wa.me/50689528787?text=' + encodeURIComponent('Hola, necesito soporte técnico con el Campus Virtual. Mi nombre es ' + (nombreCompleto || 'estudiante') + (codGrupo ? ' y mi grupo es ' + codGrupo + '.' : '.'));
   return (
-    <section className="card" style={{ padding:'14px 18px', marginBottom:18, border:'1px solid color-mix(in srgb, var(--an-navy) 16%, white)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }} aria-label="Soporte de prueba viva">
+    <section className="card" style={{ padding:'14px 18px', marginBottom:18, border:'1px solid color-mix(in srgb, var(--an-navy) 16%, white)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }} aria-label="Soporte técnico">
       <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-        <div style={{ width:38, height:38, borderRadius:12, background:'color-mix(in srgb, var(--an-navy) 12%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🛟</div>
+        <div style={{ width:38, height:38, borderRadius:12, background:'color-mix(in srgb, var(--an-navy) 12%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🛠️</div>
         <div style={{ flex:1, minWidth:240 }}>
-          <div style={{ fontSize:12, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Soporte durante la prueba del campus</div>
+          <div style={{ fontSize:12, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Soporte técnico</div>
           <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:3, lineHeight:1.5 }}>
-            Si algo no carga, actualizá una vez la página. Si continúa, enviá captura con tu nombre, grupo y hora.
+            Si tenés problemas de acceso, carga, exámenes o visualización, escribí directamente al soporte técnico por WhatsApp.
           </div>
         </div>
-        <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.45, textAlign:'right' }}>
-          <strong>{nombreCompleto || 'Estudiante'}</strong><br/>
-          {codGrupo || 'Grupo pendiente'}
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.45, textAlign:'right' }}>
+            <strong>{nombreCompleto || 'Estudiante'}</strong><br/>
+            {codGrupo || 'Grupo pendiente'}
+          </div>
+          <button className="btn btn-primary" type="button" style={{ fontSize:12.5 }} onClick={() => window.open(waUrl, '_blank', 'noopener')}>WhatsApp 89528787</button>
         </div>
       </div>
     </section>
