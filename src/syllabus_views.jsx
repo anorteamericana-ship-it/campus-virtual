@@ -317,6 +317,164 @@ function BibliotecaGuiaRapida({ onNavigate }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+
+// F98.4-E · Catálogo oficial del nivel desde la rama 3. Estudiantil.
+// Libros y recursos se cargan por IDs fijos; los audios se reproducen pista
+// por pista y se ordenan por unidad. No se exponen keys, scripts ni DOCs.
+function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, unidadInicial }) {
+  const [estado, setEstado] = React.useState('load');
+  const [catalogo, setCatalogo] = React.useState(null);
+  const [error, setError] = React.useState('');
+  const [unidadActiva, setUnidadActiva] = React.useState('');
+
+  React.useEffect(() => {
+    let vivo = true;
+    setEstado('load'); setError(''); setCatalogo(null);
+    postSyllabus('getBibliotecaNivelEstudiante', {
+      nivel:nivelCode,
+      codigo:codigoUsr,
+      cod_grupo:codGrupo,
+    }).then(r => {
+      if (!vivo) return;
+      if (r?.ok && r?.acceso && r?.catalogo) {
+        setCatalogo(r.catalogo);
+        const unidades = r.catalogo.audios_unidades || [];
+        const wanted = String(unidadInicial || '').match(/\d+/)?.[0] || '';
+        const match = unidades.find(u => String(u.key) === wanted || String(u.key).split('-').includes(wanted));
+        setUnidadActiva(match?.key || unidades[0]?.key || '');
+        setEstado('ok');
+      } else if (r?.ok && r?.acceso === false) {
+        setError(r.motivo || 'La biblioteca no está habilitada para tu estado académico.');
+        setEstado('blocked');
+      } else {
+        setError(r?.mensaje || r?.error || 'No se pudo cargar el catálogo del nivel.');
+        setEstado('error');
+      }
+    }).catch(e => {
+      if (!vivo) return;
+      setError(e?.message || 'No se pudo cargar el catálogo del nivel.');
+      setEstado('error');
+    });
+    return () => { vivo = false; };
+  }, [nivelCode, codigoUsr, codGrupo, unidadInicial]);
+
+  React.useEffect(() => {
+    if (estado !== 'ok') return;
+    let focus = '';
+    try {
+      focus = sessionStorage.getItem('an_biblioteca_focus') || '';
+      sessionStorage.removeItem('an_biblioteca_focus');
+    } catch (_) {}
+    if (!focus) return;
+    setTimeout(() => {
+      const el = document.getElementById(`biblioteca-${focus}`);
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 120);
+  }, [estado]);
+
+  if (estado === 'load') {
+    return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title="Cargando libros, audios y recursos del nivel…" /></div>;
+  }
+  if (estado === 'error' || estado === 'blocked') {
+    return (
+      <div className="card" style={{ padding:18, marginBottom:18, borderStyle:'dashed' }}>
+        <div style={{ fontWeight:800, color:'var(--ink)' }}>Catálogo del nivel no disponible</div>
+        <div style={{ marginTop:5, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>{error}</div>
+      </div>
+    );
+  }
+
+  const libros = catalogo?.libros || [];
+  const recursos = catalogo?.recursos || [];
+  const unidades = catalogo?.audios_unidades || [];
+  const unidad = unidades.find(u => String(u.key) === String(unidadActiva)) || unidades[0] || null;
+  const resourceIcon = (tipo) => tipo === 'folder' ? '📁' : tipo === 'pdf' ? '📄' : '🔗';
+
+  return (
+    <div style={{ display:'grid', gap:18, marginBottom:20 }}>
+      <section id="biblioteca-libros" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
+          <div>
+            <BiblioKicker icon="book">Libros del nivel</BiblioKicker>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Student Book y Workbook</div>
+          </div>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{libros.length} archivos oficiales</span>
+        </div>
+        <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))', gap:10 }}>
+          {libros.map(item => (
+            <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ padding:'13px 14px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', textDecoration:'none', background:'#fff', color:'var(--ink)', display:'flex', gap:10, alignItems:'center' }}>
+              <span style={{ fontSize:22 }}>📘</span>
+              <span style={{ minWidth:0 }}>
+                <strong style={{ display:'block', fontSize:12.5, lineHeight:1.35 }}>{item.nombre}</strong>
+                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>Abrir en Drive</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section id="biblioteca-audios" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
+          <div>
+            <BiblioKicker icon="materials">Audios por unidad</BiblioKicker>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Reproductor individual por pista</div>
+          </div>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{catalogo?.totales?.audios || 0} pistas · {unidades.length} unidades</span>
+        </div>
+        <div className="tabs" style={{ marginTop:14, marginBottom:14, flexWrap:'wrap', maxHeight:116, overflowY:'auto' }}>
+          {unidades.map(u => (
+            <button key={u.key} className={`tab ${String(unidadActiva)===String(u.key)?'active':''}`} onClick={() => setUnidadActiva(u.key)}>
+              {u.label} · {u.pistas?.length || 0}
+            </button>
+          ))}
+        </div>
+        {!unidad ? (
+          <div style={{ padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>No hay pistas disponibles para este nivel.</div>
+        ) : (
+          <div>
+            <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--an-navy)', marginBottom:10 }}>{unidad.label}</div>
+            <div style={{ display:'grid', gap:9 }}>
+              {(unidad.pistas || []).map((pista, i) => (
+                <div key={pista.id} style={{ display:'grid', gridTemplateColumns:'34px minmax(0,1fr)', gap:10, alignItems:'start', padding:'11px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', background:'#fff' }}>
+                  <div style={{ width:30, height:30, borderRadius:'50%', background:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:900 }}>{String(i+1).padStart(2,'0')}</div>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:12, fontWeight:750, color:'var(--ink)', lineHeight:1.35, wordBreak:'break-word' }}>{pista.nombre}</div>
+                    <audio controls preload="none" src={pista.stream_url} style={{ width:'100%', height:34, marginTop:7 }}>
+                      Tu navegador no puede reproducir este audio.
+                    </audio>
+                    <a href={pista.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:4, fontSize:10.5, color:'var(--an-navy)' }}>Abrir pista en Drive</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section id="biblioteca-recursos" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
+          <div>
+            <BiblioKicker icon="doc">Recursos adicionales</BiblioKicker>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Material complementario del nivel</div>
+          </div>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{recursos.length} recursos</span>
+        </div>
+        <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(245px,1fr))', gap:10 }}>
+          {recursos.map(item => (
+            <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ padding:'12px 13px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', textDecoration:'none', background:'#fff', color:'var(--ink)', display:'flex', gap:10, alignItems:'center' }}>
+              <span style={{ fontSize:21 }}>{resourceIcon(item.tipo)}</span>
+              <span style={{ minWidth:0 }}>
+                <strong style={{ display:'block', fontSize:12.2, lineHeight:1.35 }}>{item.nombre}</strong>
+                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>{item.tipo === 'folder' ? 'Abrir carpeta' : 'Abrir recurso'}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 // MATERIALES — sílabus completo, pestañas Actuales/Futuras/Completadas
 // ─────────────────────────────────────────────────────────────────────────
 function MaterialesView({ initialLesson = null, onNavigate } = {}) {
@@ -399,6 +557,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   const codigoUsr = sesion?.codigo || sesion?.cedula || '';
   const nivelCode = levelId.toUpperCase(); // B1/B2/I1/I2 para fetchMaterialLeccion
   const lessons   = Array.isArray(syl.lessons) ? syl.lessons : [];
+  const unidadInicialCatalogo = lessons.find(l => Number(l.n) === Number(openLec))?.unit || '';
   const esExamen  = (l) => l.kind === 'exam-oral' || l.kind === 'exam-written';
   const unidades  = [...new Set(lessons.filter(l => l.kind === 'lesson').map(l => l.unit))];
   const lessonsFiltradas = lessons.filter(l => {
@@ -439,25 +598,13 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
         onIrCronograma={irCronograma}
       />
 
-      {/* 2 · Libro del nivel · Audios · PDFs */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:14, margin:'0 0 18px' }}>
-        <div className="card" style={{ padding:'16px 18px' }}>
-          <BiblioKicker icon="book">Libro del nivel</BiblioKicker>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:17, fontWeight:500, color:'var(--an-navy-ink)', lineHeight:1.2, marginTop:4 }}>{libro}</div>
-          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>{nivelNombre}{cefr ? ` · ${cefr} MCER` : ''}</div>
-          <div style={{ fontSize:11.5, color:'var(--ink-2)', marginTop:10, lineHeight:1.5 }}>Las páginas asignadas de cada clase aparecen en el detalle de su lección.</div>
-        </div>
-        <div className="card" style={{ padding:'16px 18px' }}>
-          <BiblioKicker icon="materials">Audios</BiblioKicker>
-          <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6, lineHeight:1.5 }}>Los audios aparecerán aquí cuando estén habilitados para tu lección.</div>
-          <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.5 }}>Si un audio aún no aparece, revisá primero el número de lección y reportalo con captura.</div>
-        </div>
-        <div className="card" style={{ padding:'16px 18px' }}>
-          <BiblioKicker icon="doc">PDFs y documentos</BiblioKicker>
-          <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6, lineHeight:1.5 }}>Planeamientos y rúbricas se abren desde cada lección, con el botón <strong>Ver material</strong>.</div>
-          <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.5 }}>Los documentos institucionales (reglamento, netiqueta, guías) están en <strong>Información del Programa</strong>.</div>
-        </div>
-      </div>
+      {/* 2 · Catálogo oficial del nivel: libros, audios por unidad y recursos */}
+      <BibliotecaCatalogoNivel
+        nivelCode={nivelCode}
+        codigoUsr={codigoUsr}
+        codGrupo={codGrupo}
+        unidadInicial={unidadInicialCatalogo}
+      />
 
       {/* 3 · Material por unidad o lección */}
       <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, margin:'4px 2px 10px' }}>
@@ -565,7 +712,7 @@ function LessonMaterialBtn({ nivelCode, leccion, rol, codigoUsr, codGrupo }) {
 function RecomendadoLeccion({ leccion, lessons, nivelCode, rol, codigoUsr, codGrupo, onIrCronograma }) {
   if (!leccion) {
     return (
-      <div className="card" style={{ padding:'18px 20px', marginBottom:18, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', borderStyle:'dashed' }}>
+      <div id="biblioteca-leccion" className="card" style={{ padding:'18px 20px', marginBottom:18, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', borderStyle:'dashed' }}>
         <span style={{ width:40, height:40, borderRadius:10, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <Icon name="calendar" size={18} className="" />
         </span>
@@ -579,7 +726,7 @@ function RecomendadoLeccion({ leccion, lessons, nivelCode, rol, codigoUsr, codGr
   }
   const lec = lessons.find(l => l.n === leccion) || null;
   return (
-    <div className="card" style={{ padding:'18px 20px', marginBottom:18, borderLeft:'4px solid var(--an-granate)' }}>
+    <div id="biblioteca-leccion" className="card" style={{ padding:'18px 20px', marginBottom:18, borderLeft:'4px solid var(--an-granate)' }}>
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)' }}>
         Materiales para la lección {String(leccion).padStart(2,'0')}
       </div>

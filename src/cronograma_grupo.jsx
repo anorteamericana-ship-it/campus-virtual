@@ -984,7 +984,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       </div>
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
-      <div style={{
+      <div className="cg-layout-f984e" style={{
         // CALGRUPO_F73_20260618_DOS_ZONAS_SCROLL_INDEPENDIENTE
         // Agenda docente profesional: calendario y detalle no comparten scroll.
         // El panel derecho queda visible para leer material y accionar asistencia
@@ -992,7 +992,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         display:'grid',
         // CALGRUPO_F74_20260618_LAYOUT_DOCENTE_PANEL_LEGIBLE
         // El calendario tiene su scroll; el panel derecho queda fijo, completo y legible.
-        gridTemplateColumns: agendaDocenteMode ? 'minmax(620px, 1fr) minmax(360px, 380px)' : 'minmax(0, 1fr) 340px',
+        gridTemplateColumns: agendaDocenteMode ? 'minmax(620px, 1fr) minmax(360px, 380px)' : 'minmax(0, 1fr) minmax(390px, 420px)',
         gap: agendaDocenteMode ? 14 : 18,
         marginTop:6,
         alignItems:'start',
@@ -1998,12 +1998,12 @@ function AgendaAccionesLeccionF76({ selLec, detalle, nivel, rol, codigoUsr, grup
 // ─────────────────────────────────────────────────────────────────────────
 function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelColor, stats, nivel, codGrupo, grupoLabel, docente, bloqueado, soloFechas, soloFechasMsg, esAdmin, rol, codigoUsr, grupoUsr, esSuperadmin, adminNombre, cobertura, onPedirCobertura, onPedirEditarCerrada, onAbrirAsistencia, onCerrar, onRecargar, onNavigate }) {
   return (
-    <div style={{
+    <div className="cg-panel-f984e" style={{
       // CALGRUPO_F73_20260618_PANEL_DETALLE_FIJO_VISIBLE
       position:'sticky', top: agendaDocente ? 8 : 12,
       alignSelf:'start',
-      height: agendaDocente ? 'calc(100dvh - 156px)' : 'auto',
-      maxHeight: agendaDocente ? 'calc(100dvh - 156px)' : 'calc(100vh - 24px)',
+      height: agendaDocente ? 'calc(100dvh - 156px)' : 'calc(100dvh - 24px)',
+      maxHeight: agendaDocente ? 'calc(100dvh - 156px)' : 'calc(100dvh - 24px)',
       overflowY:'auto', overflowX:'hidden', paddingRight:6, paddingBottom:8,
       display:'flex', flexDirection:'column', gap:10,
       scrollbarGutter:'stable',
@@ -2082,17 +2082,16 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
         </div>
       )}
 
-      {/* Footer info — se oculta en agenda docente para dar más altura útil al detalle */}
+      {/* Información técnica plegable: no ocupa el espacio de las acciones */}
       {!agendaDocente && (
-        <div style={{
-          padding:'10px 14px', background:'var(--surface-2)',
-          border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)',
-          fontSize:10, color:'var(--ink-3)', letterSpacing:'0.04em', lineHeight:1.5,
-        }}>
-          Fuente: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>CALENDARIO_LECCIONES</strong><br/>
-          Horario: <strong style={{ color:'var(--ink-2)' }}>{grupoLabel || codGrupo}</strong><br/>
-          Docente: <strong style={{ color:'var(--ink-2)' }}>{docente}</strong>
-        </div>
+        <details style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:10.5, color:'var(--ink-3)' }}>
+          <summary style={{ cursor:'pointer', fontWeight:800, color:'var(--ink-2)' }}>Información de la clase</summary>
+          <div style={{ marginTop:8, letterSpacing:'0.03em', lineHeight:1.55 }}>
+            Fuente: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>CALENDARIO_LECCIONES</strong><br/>
+            Horario: <strong style={{ color:'var(--ink-2)' }}>{grupoLabel || codGrupo}</strong><br/>
+            Docente: <strong style={{ color:'var(--ink-2)' }}>{docente}</strong>
+          </div>
+        </details>
       )}
     </div>
   );
@@ -2382,6 +2381,33 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               </div>
             </div>
 
+            {/* F98.4-E: acciones del estudiante siempre visibles antes del detalle largo */}
+            {rol === 'student' && !soloFechas && (
+              <div style={{
+                position:'sticky', top:0, zIndex:6,
+                background:'rgba(255,255,255,.97)', backdropFilter:'blur(7px)',
+                padding:'10px 0 11px', borderBottom:'1px solid var(--line)',
+                display:'grid', gap:8,
+              }}>
+                <BotonMaterialPDF
+                  selLec={selLec}
+                  nivel={nivel}
+                  rol={rol}
+                  codigoUsr={codigoUsr}
+                  grupoUsr={grupoUsr}
+                  detalle={detalle}
+                />
+                <AccionesClaseEstudiante
+                  selLec={selLec}
+                  detalle={detalle}
+                  nivel={nivel}
+                  codigoUsr={codigoUsr}
+                  grupoUsr={grupoUsr}
+                  onNavigate={onNavigate}
+                />
+              </div>
+            )}
+
             {/* Objetivo */}
             {detalle.objetivo && (
               <Bloque titulo="Objetivo" texto={detalle.objetivo} />
@@ -2408,23 +2434,6 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               </div>
             ) : (
               <>
-                {/* Botón material PDF — backend decide acceso por rol/estado */}
-                {!(rol === 'teacher' || esAdmin) && (
-                  <BotonMaterialPDF
-                    selLec={selLec}
-                    nivel={nivel}
-                    rol={rol}
-                    codigoUsr={codigoUsr}
-                    grupoUsr={grupoUsr}
-                    detalle={detalle}
-                  />
-                )}
-
-                {/* STUDENT-LEARNING-EXPERIENCE-001: acciones de clase del estudiante
-                    — Abrir Zoom (solo si hay link real) + Ver materiales de esta clase */}
-                {rol === 'student' && (
-                  <AccionesClaseEstudiante selLec={selLec} detalle={detalle} onNavigate={onNavigate} />
-                )}
               </>
             )}
 
@@ -2527,52 +2536,70 @@ function Bloque({ titulo, texto, compact }) {
 // detalle si existe; si ningún campo es una URL http(s) válida → '' (no se
 // inventa nada). AccionesClaseEstudiante: "Abrir Zoom" solo si hay link (si no,
 // mensaje honesto) + "Ver materiales de esta clase" → Biblioteca filtrada.
-function getZoomLinkClase(selLec, detalle) {
-  const fuentes = [selLec, detalle].filter(Boolean);
-  const campos = ['zoom','zoom_link','zoomLink','meet','meet_link','meetLink',
-    'enlace_zoom','enlace_meet','link_clase','url_clase','clase_url','enlace_clase','link_zoom','link_meet'];
-  for (const f of fuentes) {
-    for (const c of campos) {
-      const v = f[c];
-      if (typeof v === 'string' && /^https?:\/\//i.test(v.trim())) return v.trim();
-    }
-  }
-  return '';
-}
+function AccionesClaseEstudiante({ selLec, detalle, nivel, codigoUsr, grupoUsr, onNavigate }) {
+  const [sesionClase, setSesionClase] = React.useState({ estado:'CARGANDO', activa:false, link:'' });
 
-function AccionesClaseEstudiante({ selLec, detalle, onNavigate }) {
-  const zoom = getZoomLinkClase(selLec, detalle);
-  const esActivable = selLec.estado === 'HOY' || selLec.estado === 'CALCULADA' || selLec.estado === 'PROGRAMADA';
+  React.useEffect(() => {
+    let vivo = true;
+    setSesionClase({ estado:'CARGANDO', activa:false, link:'' });
+    postCronoGrupo('getSesionClaseEstudiante', {
+      codigo:codigoUsr,
+      cod_grupo:grupoUsr,
+      nivel,
+      leccion:selLec?.leccion,
+      fecha:selLec?.fecha,
+    }, 18000).then(r => {
+      if (!vivo) return;
+      if (r?.ok) setSesionClase({ estado:r.estado || 'NO_DISPONIBLE', activa:!!r.activa, link:r.link || '' });
+      else setSesionClase({ estado:'ERROR', activa:false, link:'' });
+    }).catch(() => { if (vivo) setSesionClase({ estado:'ERROR', activa:false, link:'' }); });
+    return () => { vivo = false; };
+  }, [codigoUsr, grupoUsr, nivel, selLec?.leccion, selLec?.fecha]);
+
+  const irBiblioteca = (focus) => {
+    try { sessionStorage.setItem('an_biblioteca_focus', focus); } catch (_) {}
+    if (onNavigate) onNavigate('materiales', { lesson:selLec.leccion });
+  };
+
+  const estadoTexto =
+    sesionClase.estado === 'CARGANDO' ? 'Verificando la sesión de clase…' :
+    sesionClase.estado === 'FUTURA' ? 'El enlace se habilitará cuando el docente inicie la clase.' :
+    sesionClase.estado === 'NO_INICIADA' ? 'La clase de hoy aún no ha sido iniciada.' :
+    sesionClase.estado === 'ERROR' ? 'No se pudo verificar el enlace de la clase.' : '';
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:2 }}>
-      {zoom ? (
-        <a href={zoom} target="_blank" rel="noopener noreferrer"
-           style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#1565C0', color:'#fff', borderRadius:'var(--r-md)', fontSize:13, fontWeight:700, textDecoration:'none', letterSpacing:'0.02em' }}>
+    <div style={{ display:'grid', gap:8 }}>
+      {sesionClase.activa && sesionClase.link ? (
+        <a href={sesionClase.link} target="_blank" rel="noopener noreferrer"
+           style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#1565C0', color:'#fff', borderRadius:'var(--r-md)', fontSize:13, fontWeight:800, textDecoration:'none', letterSpacing:'0.02em' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          Abrir Zoom
+          Entrar a clase
         </a>
-      ) : esActivable ? (
-        <div style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:12, color:'var(--ink-3)', textAlign:'center' }}>
-          Link de clase pendiente de publicar.
-          {/* STUDENT-CONTACT-ADMIN-002: dudas de clase → contacto ACADÉMICO.
-              Solo abre WhatsApp si existe un número académico real. */}
-          <div style={{ marginTop:2, fontSize:11 }}>Consultá con administración si necesitás ayuda.</div>
-          {typeof window.ContactoAdmin === 'function' && (
-            <div style={{ marginTop:8 }}>
-              <window.ContactoAdmin tipo="academico" hideWhenPending size={11} />
-            </div>
-          )}
+      ) : estadoTexto ? (
+        <div style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:11.5, color:'var(--ink-3)', textAlign:'center', lineHeight:1.45 }}>
+          {estadoTexto}
         </div>
       ) : null}
-      {onNavigate && selLec.leccion && (
-        <button type="button" onClick={() => onNavigate('materiales', { lesson: selLec.leccion })}
-                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'var(--surface)', border:'1.5px solid var(--ink)', color:'var(--ink)', fontSize:13, fontWeight:700, borderRadius:'var(--r-md)', cursor:'pointer', letterSpacing:'0.02em', fontFamily:'inherit' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          Ver materiales de esta clase
-        </button>
+
+      {onNavigate && selLec?.leccion && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          <button type="button" onClick={() => irBiblioteca('libros')} style={studentActionButtonStyleCG('#073B7A')}>📘 Libros y workbook</button>
+          <button type="button" onClick={() => irBiblioteca('audios')} style={studentActionButtonStyleCG('#6B4BA1')}>🎧 Audios por unidad</button>
+          <button type="button" onClick={() => irBiblioteca('recursos')} style={studentActionButtonStyleCG('#2E7D32')}>📚 Recursos adicionales</button>
+          <button type="button" onClick={() => irBiblioteca('leccion')} style={studentActionButtonStyleCG('#8B1A10')}>▶ Biblioteca de la lección</button>
+        </div>
       )}
     </div>
   );
+}
+
+function studentActionButtonStyleCG(color) {
+  return {
+    display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+    padding:'9px 8px', background:'#fff', border:`1.4px solid ${color}`,
+    color, fontSize:11.2, fontWeight:800, borderRadius:'var(--r-md)',
+    cursor:'pointer', fontFamily:'inherit', lineHeight:1.25, textAlign:'center'
+  };
 }
 
 function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) {
