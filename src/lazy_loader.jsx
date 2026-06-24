@@ -4,7 +4,7 @@
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-A-MENU-ESTUDIANTE';
+  const VERSION = 'F98.4-C-CONTACTOS-ESTUDIANTE';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){

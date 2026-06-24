@@ -276,6 +276,7 @@ function StudentDashboard({ toast, onNavigate }) {
   const niveles    = data?.niveles     || {};
   const grupo      = data?.grupo       || {};
   const pendientes = data?.pendientes  || {};
+  const contactosEstudiante = data?.contactos_estudiante || {};
 
   const codGrupo     = grupo.CODIGO_GRUPO || est.GRUPO || usr?.grupo || usr?.grupoActivo || '';
   // Nivel académico real y nivel que el estudiante está consultando en la ruta.
@@ -453,7 +454,8 @@ function StudentDashboard({ toast, onNavigate }) {
 
       <DatosAcademicosInicio est={est} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
         codGrupo={codGrupo} nivelReal={nivelReal} docente={docente} horario={horarioCurso}
-        programa={programa} onNavigate={go} expanded={mostrarPanelDatos} onReload={reload} />
+        programa={programa} contactos={contactosEstudiante} onNavigate={go}
+        expanded={mostrarPanelDatos} onReload={reload} />
 
       {/* 3. CONAPE: una sola aparición, únicamente con convenio y respuesta real. */}
       {esConape && conapeEstado && <ConapeBannerDashboardF984 estado={conapeEstado} />}
@@ -667,30 +669,38 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 // ─────────────────────────────────────────────────────────────────────────
 // F96.5 — Datos a la mano + cumplimiento INA en Mi Campus
 // ─────────────────────────────────────────────────────────────────────────
-function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, onNavigate, expanded, onReload }) {
-  const correo = est.CORREO || est.EMAIL || est.correo || est.email || '';
-  const telefono1 = est.TEL1 || est.TELEFONO1 || est.TELEFONO_1 || est.TELEFONO || est.tel1 || '';
-  const telefono2 = est.TEL2 || est.TELEFONO2 || est.TELEFONO_2 || est.tel2 || '';
-  const direccion = est.DIRECCION || est['DIRECCIÓN'] || est.direccion || '';
+function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, contactos, onNavigate, expanded, onReload }) {
+  const correoBase = est.CORREO || est.EMAIL || est.Email || est.correo || est.email || '';
+  const telefonoBase = est.TEL1 || est.Tel1 || est.TELEFONO1 || est.TELEFONO_1 || est.TELEFONO || est.tel1 || '';
   const programaLabel = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : (programa ? 'Programa propio' : '—');
-  const personalInicial = React.useMemo(() => ({
-    nombre: nombreCompleto && nombreCompleto !== '—' ? nombreCompleto : '',
-    cedula: cedula || '',
-    correo: correo || '',
-    telefono1: telefono1 || '',
-    telefono2: telefono2 || '',
-    direccion: direccion || ''
-  }), [nombreCompleto, cedula, correo, telefono1, telefono2, direccion]);
+
+  const contactosIniciales = React.useMemo(() => ({
+    correo_principal: contactos?.correo_principal || correoBase || '',
+    telefono_principal: contactos?.telefono_principal || telefonoBase || '',
+    correos_adicionales: Array.isArray(contactos?.correos_adicionales) ? contactos.correos_adicionales : [],
+    telefonos_adicionales: Array.isArray(contactos?.telefonos_adicionales) ? contactos.telefonos_adicionales : [],
+  }), [contactos, correoBase, telefonoBase]);
+
   const [editando, setEditando] = React.useState(false);
   const [guardando, setGuardando] = React.useState(false);
   const [mensaje, setMensaje] = React.useState(null);
-  const [form, setForm] = React.useState(personalInicial);
+  const [contactosVista, setContactosVista] = React.useState(contactosIniciales);
+  const [form, setForm] = React.useState({
+    correo_adicional:'', telefono_adicional:'',
+    correo_como_principal:false, telefono_como_principal:false,
+  });
 
   React.useEffect(() => {
-    setForm(personalInicial);
-    setEditando(false);
-    setMensaje(null);
-  }, [personalInicial, expanded]);
+    setContactosVista(contactosIniciales);
+  }, [contactosIniciales]);
+
+  React.useEffect(() => {
+    if (!expanded) {
+      setEditando(false);
+      setMensaje(null);
+      setForm({ correo_adicional:'', telefono_adicional:'', correo_como_principal:false, telefono_como_principal:false });
+    }
+  }, [expanded]);
 
   if (!expanded) return null;
 
@@ -703,31 +713,35 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
     ['Programa', programaLabel],
   ];
 
-  const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleCancelar = () => {
-    setForm(personalInicial);
+  const resetEdicion = () => {
     setEditando(false);
     setMensaje(null);
+    setForm({ correo_adicional:'', telefono_adicional:'', correo_como_principal:false, telefono_como_principal:false });
   };
 
   const handleGuardar = async () => {
+    const correoNuevo = String(form.correo_adicional || '').trim();
+    const telefonoNuevo = String(form.telefono_adicional || '').trim();
+    if (!correoNuevo && !telefonoNuevo) {
+      setMensaje({ tipo:'err', texto:'Ingresá un correo electrónico adicional, un teléfono adicional o ambos.' });
+      return;
+    }
     setGuardando(true);
     setMensaje(null);
     try {
       const res = await postStudentDash('actualizarDatosPersonalesEstudiante', {
         codigo,
-        correo: form.correo,
-        telefono1: form.telefono1,
-        telefono2: form.telefono2,
-        direccion: form.direccion,
+        correo_adicional: correoNuevo,
+        telefono_adicional: telefonoNuevo,
+        correo_como_principal: !!form.correo_como_principal,
+        telefono_como_principal: !!form.telefono_como_principal,
       });
       if (res?.ok) {
+        if (res.contactos) setContactosVista(res.contactos);
         setEditando(false);
-        setMensaje({ tipo:'ok', texto: res.mensaje || 'Datos personales actualizados correctamente.' });
-        onReload && onReload();
+        setForm({ correo_adicional:'', telefono_adicional:'', correo_como_principal:false, telefono_como_principal:false });
+        setMensaje({ tipo:'ok', texto: res.mensaje || 'Información de contacto actualizada correctamente.' });
+        if (onReload) setTimeout(() => onReload(), 350);
       } else {
         setMensaje({ tipo:'err', texto: res?.mensaje || res?.error || 'No se pudieron actualizar los datos.' });
       }
@@ -744,27 +758,29 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
     background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 6%, white), #fff)'
   };
   const sectionCardStyle = { border:'1px solid var(--line)', borderRadius:18, overflow:'hidden', background:'#fff' };
-  const gridStyle = { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12, padding:16, background:'color-mix(in srgb, var(--bg-deep) 26%, white)' };
-  const itemStyle = { border:'1px solid var(--line)', borderRadius:14, padding:'12px 13px', background:'#fff', minHeight:76 };
+  const gridStyle = { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:12, padding:16, background:'color-mix(in srgb, var(--bg-deep) 26%, white)' };
+  const itemStyle = { border:'1px solid var(--line)', borderRadius:14, padding:'13px 14px', background:'#fff', minHeight:86 };
   const labelStyle = { fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' };
-  const valueStyle = { marginTop:6, fontSize:13, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' };
-  const inputStyle = { width:'100%', marginTop:6, border:'1px solid var(--line)', borderRadius:12, padding:'10px 11px', fontSize:13, fontWeight:600, color:'var(--ink)', outline:'none', background:'#fff' };
-  const editableFields = { correo:true, telefono1:true, telefono2:true, direccion:true };
-  const personalFields = [
-    { key:'nombre', label:'Nombre completo', editable:false },
-    { key:'cedula', label:'Cédula', editable:false },
-    { key:'correo', label:'Correo', editable:true, type:'email' },
-    { key:'telefono1', label:'Teléfono 1', editable:true },
-    { key:'telefono2', label:'Teléfono 2', editable:true },
-    { key:'direccion', label:'Dirección', editable:true },
-  ];
+  const valueStyle = { marginTop:6, fontSize:13.5, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' };
+  const inputStyle = { width:'100%', marginTop:7, border:'1px solid var(--line)', borderRadius:12, padding:'10px 11px', fontSize:13, fontWeight:600, color:'var(--ink)', outline:'none', background:'#fff' };
+  const checkStyle = { display:'flex', alignItems:'flex-start', gap:8, marginTop:9, fontSize:11.5, lineHeight:1.4, color:'var(--ink-2)', cursor:'pointer' };
+
+  const adicionales = (items, emptyText) => {
+    const list = Array.from(new Set((items || []).filter(Boolean)));
+    if (!list.length) return <div style={{ marginTop:7, fontSize:11.5, color:'var(--ink-3)' }}>{emptyText}</div>;
+    return (
+      <div style={{ marginTop:8, display:'flex', gap:6, flexWrap:'wrap' }}>
+        {list.map(v => <span key={v} style={{ padding:'5px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 7%, white)', color:'var(--an-navy)', fontSize:10.5, fontWeight:750 }}>{v}</span>)}
+      </div>
+    );
+  };
 
   return (
     <section id="panel-actualizar-datos" className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'1.5px solid color-mix(in srgb, var(--an-navy) 18%, var(--line))' }} aria-label="Panel de actualización de datos">
       <div style={{ padding:'15px 18px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }}>
         <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Mi Campus · actualización de datos</div>
-        <div style={{ marginTop:4, fontFamily:'var(--f-serif)', fontSize:21, fontWeight:600, color:'var(--an-navy-ink)' }}>Revisá y actualizá tu información</div>
-        <div style={{ marginTop:4, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>Separamos tu información en dos bloques: <strong>Datos personales</strong> y <strong>Datos del programa</strong>. El programa queda en solo lectura para no romper grupo, nivel, certificados, pagos o cronograma.</div>
+        <div style={{ marginTop:4, fontFamily:'var(--f-serif)', fontSize:21, fontWeight:600, color:'var(--an-navy-ink)' }}>Información del estudiante</div>
+        <div style={{ marginTop:4, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>La información se presenta como ficha técnica. Solo podés agregar correo electrónico y teléfono; los datos académicos permanecen protegidos.</div>
       </div>
 
       <div style={{ padding:16, display:'grid', gap:16, background:'#fff' }}>
@@ -772,38 +788,66 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
           <div style={barStyle}>
             <div>
               <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
-              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Podés actualizar correo, teléfonos y dirección. Nombre y cédula siguen protegidos para evitar inconsistencias.</div>
+              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Ficha de identificación y contacto. Nombre y cédula son datos oficiales de solo lectura.</div>
             </div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
               {!editando ? (
-                <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar datos personales</button>
+                <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar contacto</button>
               ) : (
                 <>
                   <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
-                  <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={handleCancelar} disabled={guardando}>Cancelar</button>
+                  <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={resetEdicion} disabled={guardando}>Cancelar</button>
                 </>
               )}
             </div>
           </div>
+
           <div style={gridStyle}>
-            {personalFields.map(field => (
-              <div key={field.key} style={itemStyle}>
-                <div style={labelStyle}>{field.label}</div>
-                {editando && field.editable ? (
-                  field.key === 'direccion' ? (
-                    <textarea value={form[field.key] || ''} onChange={(e) => handleChange(field.key, e.target.value)} rows={3} style={{ ...inputStyle, resize:'vertical', minHeight:88 }} />
-                  ) : (
-                    <input type={field.type || 'text'} value={form[field.key] || ''} onChange={(e) => handleChange(field.key, e.target.value)} style={inputStyle} />
-                  )
-                ) : (
-                  <div style={valueStyle}>{form[field.key] || 'Pendiente'}</div>
-                )}
-                {!field.editable && (
-                  <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>Dato oficial. Si está mal, reportalo a administración.</div>
-                )}
-              </div>
-            ))}
+            <div style={itemStyle}>
+              <div style={labelStyle}>Nombre completo</div>
+              <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
+              <div style={{ marginTop:7, fontSize:11, color:'var(--ink-3)' }}>Dato oficial · solo lectura</div>
+            </div>
+
+            <div style={itemStyle}>
+              <div style={labelStyle}>Cédula</div>
+              <div style={valueStyle}>{cedula || 'Pendiente'}</div>
+              <div style={{ marginTop:7, fontSize:11, color:'var(--ink-3)' }}>Dato oficial · solo lectura</div>
+            </div>
+
+            <div style={itemStyle}>
+              <div style={labelStyle}>Correo electrónico actual</div>
+              <div style={valueStyle}>{contactosVista.correo_principal || 'Pendiente'}</div>
+              {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
+              {editando && (
+                <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
+                  <label style={labelStyle} htmlFor="correo-adicional-estudiante">Correo electrónico adicional</label>
+                  <input id="correo-adicional-estudiante" type="email" value={form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_adicional:e.target.value, correo_como_principal:e.target.value ? prev.correo_como_principal : false }))} placeholder="nuevo@correo.com" style={inputStyle} />
+                  <label style={{ ...checkStyle, opacity:form.correo_adicional ? 1 : .55 }}>
+                    <input type="checkbox" checked={!!form.correo_como_principal} disabled={!form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_como_principal:e.target.checked }))} />
+                    <span><strong>Elegir como correo principal.</strong> El correo actual se conserva como adicional; no se elimina.</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div style={itemStyle}>
+              <div style={labelStyle}>Teléfono actual</div>
+              <div style={valueStyle}>{contactosVista.telefono_principal || 'Pendiente'}</div>
+              {adicionales(contactosVista.telefonos_adicionales, 'No hay teléfonos adicionales registrados.')}
+              {editando && (
+                <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
+                  <label style={labelStyle} htmlFor="telefono-adicional-estudiante">Teléfono adicional</label>
+                  <input id="telefono-adicional-estudiante" type="tel" value={form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_adicional:e.target.value, telefono_como_principal:e.target.value ? prev.telefono_como_principal : false }))} placeholder="8888-8888" style={inputStyle} />
+                  <label style={{ ...checkStyle, opacity:form.telefono_adicional ? 1 : .55 }}>
+                    <input type="checkbox" checked={!!form.telefono_como_principal} disabled={!form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_como_principal:e.target.checked }))} />
+                    <span><strong>Elegir como teléfono principal.</strong> El teléfono actual se conserva como adicional; no se elimina.</span>
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
+
           {mensaje && (
             <div style={{ margin:'0 16px 16px', padding:'12px 14px', borderRadius:14, border:`1px solid ${mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background: mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 10%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color: mensaje.tipo==='ok' ? 'var(--ok)' : 'var(--danger)', fontSize:12.5, fontWeight:700 }}>
               {mensaje.texto}
@@ -815,7 +859,7 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
           <div style={barStyle}>
             <div>
               <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
-              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Solo visualización. Estos datos dependen de la matrícula, el grupo, el cronograma y el control académico.</div>
+              <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Solo visualización. Estos datos dependen de matrícula, grupo, cronograma y control académico.</div>
             </div>
             <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:'999px', background:'color-mix(in srgb, var(--ok) 10%, white)', color:'var(--ok)', fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'.08em' }}>
               <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--ok)' }} /> Solo lectura
@@ -833,9 +877,8 @@ function DatosAcademicosInicio({ est, nombreCompleto, codigo, cedula, codGrupo, 
       </div>
 
       <div style={{ padding:'12px 16px', display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', flexWrap:'wrap', background:'#fff', borderTop:'1px solid var(--line)' }}>
-        <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45 }}><strong style={{ color:'var(--ink)' }}>Importante:</strong> si tu grupo, teacher, nivel o convenio están mal, no los edites manualmente. Reportalo antes de usar exámenes, asistencia o certificados.</div>
+        <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45 }}><strong style={{ color:'var(--ink)' }}>Importante:</strong> si tu nombre, cédula, grupo, teacher, nivel o convenio están mal, reportalo a administración. Esos datos no se modifican desde el perfil.</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('info_programa')}>Material obligatorio →</button>
           <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('documentos_ayuda', { tab:'ayuda' })}>Ayuda y contactos →</button>
         </div>
       </div>
