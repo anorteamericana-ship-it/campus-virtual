@@ -4,7 +4,7 @@
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-E-BIBLIOTECA-AUDIOS-CRONOGRAMA';
+  const VERSION = 'F98.4-F-PLANEAMIENTO-UNIDAD-AUDIO-COMBO';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){

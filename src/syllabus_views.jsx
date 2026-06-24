@@ -288,48 +288,24 @@ function BibliotecaBloqueo({ variante, mensaje, nivelNombre, onNavigate }) {
 
 
 
-function BibliotecaGuiaRapida({ onNavigate }) {
-  const step = (n, title, text) => (
-    <div style={{ padding:'14px 15px', border:'1px solid var(--line)', borderRadius:14, background:'#fff', display:'flex', gap:11, alignItems:'flex-start' }}>
-      <div style={{ width:28, height:28, borderRadius:999, background:'var(--an-navy)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:900, flexShrink:0 }}>{n}</div>
-      <div>
-        <div style={{ fontSize:13, fontWeight:900, color:'var(--ink)' }}>{title}</div>
-        <div style={{ fontSize:11.5, color:'var(--ink-3)', lineHeight:1.45, marginTop:2 }}>{text}</div>
-      </div>
-    </div>
-  );
-  return (
-    <section className="card" style={{ padding:16, margin:'0 0 18px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 4%, white), #fff)' }} aria-label="Cómo usar la biblioteca">
-      <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600, color:'var(--an-navy-ink)' }}>Cómo usar tu biblioteca</div>
-          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Primero ubicá tu lección en el cronograma; luego abrí aquí sus recursos.</div>
-        </div>
-        <button type="button" className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate('cronograma_grupo')}>Ver cronograma</button>
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:10 }}>
-        {step('1','Revisá qué lección sigue','El cronograma te dice la fecha, número de lección y si hay examen.')}
-        {step('2','Abrí el material de esa lección','Cada fila puede contener páginas, PDF, guías o recursos del docente.')}
-        {step('3','Guardá captura si algo falta','Durante la prueba viva, reportá nombre, grupo, lección y hora.')}
-      </div>
-    </section>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-
-// F98.4-E · Catálogo oficial del nivel desde la rama 3. Estudiantil.
+// F98.4-F · Catálogo oficial + planeamiento real desde APOLLO G3.
 // Libros y recursos se cargan por IDs fijos; los audios se reproducen pista
 // por pista y se ordenan por unidad. No se exponen keys, scripts ni DOCs.
-function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, unidadInicial }) {
+function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial }) {
   const [estado, setEstado] = React.useState('load');
   const [catalogo, setCatalogo] = React.useState(null);
   const [error, setError] = React.useState('');
-  const [unidadActiva, setUnidadActiva] = React.useState('');
+  const [unidadPlanActiva, setUnidadPlanActiva] = React.useState('');
+  const [audioQuery, setAudioQuery] = React.useState('');
+  const [audioSeleccionado, setAudioSeleccionado] = React.useState(null);
 
   React.useEffect(() => {
     let vivo = true;
-    setEstado('load'); setError(''); setCatalogo(null);
+    setEstado('load');
+    setError('');
+    setCatalogo(null);
+    setAudioQuery('');
+    setAudioSeleccionado(null);
     postSyllabus('getBibliotecaNivelEstudiante', {
       nivel:nivelCode,
       codigo:codigoUsr,
@@ -337,11 +313,11 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, unidadInicial
     }).then(r => {
       if (!vivo) return;
       if (r?.ok && r?.acceso && r?.catalogo) {
-        setCatalogo(r.catalogo);
-        const unidades = r.catalogo.audios_unidades || [];
-        const wanted = String(unidadInicial || '').match(/\d+/)?.[0] || '';
-        const match = unidades.find(u => String(u.key) === wanted || String(u.key).split('-').includes(wanted));
-        setUnidadActiva(match?.key || unidades[0]?.key || '');
+        const cat = r.catalogo;
+        setCatalogo(cat);
+        const unidadesPlan = Array.isArray(cat.planeamiento_unidades) ? cat.planeamiento_unidades : [];
+        const porLeccion = unidadesPlan.find(u => (u.lecciones || []).some(l => Number(l.leccion) === Number(leccionInicial)));
+        setUnidadPlanActiva(porLeccion?.key || unidadesPlan[0]?.key || '');
         setEstado('ok');
       } else if (r?.ok && r?.acceso === false) {
         setError(r.motivo || 'La biblioteca no está habilitada para tu estado académico.');
@@ -356,7 +332,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, unidadInicial
       setEstado('error');
     });
     return () => { vivo = false; };
-  }, [nivelCode, codigoUsr, codGrupo, unidadInicial]);
+  }, [nivelCode, codigoUsr, codGrupo, leccionInicial]);
 
   React.useEffect(() => {
     if (estado !== 'ok') return;
@@ -373,25 +349,96 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, unidadInicial
   }, [estado]);
 
   if (estado === 'load') {
-    return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title="Cargando libros, audios y recursos del nivel…" /></div>;
+    return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title="Cargando planeamiento, libros y audios del nivel…" /></div>;
   }
   if (estado === 'error' || estado === 'blocked') {
     return (
       <div className="card" style={{ padding:18, marginBottom:18, borderStyle:'dashed' }}>
-        <div style={{ fontWeight:800, color:'var(--ink)' }}>Catálogo del nivel no disponible</div>
+        <div style={{ fontWeight:800, color:'var(--ink)' }}>Biblioteca del nivel no disponible</div>
         <div style={{ marginTop:5, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>{error}</div>
       </div>
     );
   }
 
   const libros = catalogo?.libros || [];
-  const recursos = catalogo?.recursos || [];
-  const unidades = catalogo?.audios_unidades || [];
-  const unidad = unidades.find(u => String(u.key) === String(unidadActiva)) || unidades[0] || null;
-  const resourceIcon = (tipo) => tipo === 'folder' ? '📁' : tipo === 'pdf' ? '📄' : '🔗';
+  const unidadesAudio = catalogo?.audios_unidades || [];
+  const unidadesPlan = catalogo?.planeamiento_unidades || [];
+  const unidadPlan = unidadesPlan.find(u => String(u.key) === String(unidadPlanActiva)) || unidadesPlan[0] || null;
+  const audioOptions = unidadesAudio.flatMap(unidad => (unidad.pistas || []).map(pista => ({
+    id:pista.id,
+    display:`${unidad.label} · ${pista.nombre}`,
+    unidad:unidad.label,
+    pista,
+  })));
+
+  const handleAudioQuery = (value) => {
+    setAudioQuery(value);
+    const exacto = audioOptions.find(x => x.display === value);
+    setAudioSeleccionado(exacto || null);
+  };
+
+  const campo = (label, value) => {
+    if (!value) return null;
+    return (
+      <div style={{ padding:'11px 12px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' }}>
+        <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
+        <div style={{ marginTop:5, fontSize:12.2, lineHeight:1.5, color:'var(--ink)' }}>{value}</div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ display:'grid', gap:18, marginBottom:20 }}>
+      <section id="biblioteca-planeamiento" className="card" style={{ padding:'18px 20px', scrollMarginTop:20, borderLeft:'4px solid var(--an-navy)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:14, flexWrap:'wrap' }}>
+          <div>
+            <BiblioKicker icon="calendar">Planeamiento académico</BiblioKicker>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>PLANEAMIENTO POR UNIDAD</div>
+            <div style={{ marginTop:4, fontSize:11.5, color:'var(--ink-3)' }}>Fuente: APOLLO G3 · DETALLE DEL PROGRAMA</div>
+          </div>
+          <label style={{ minWidth:250, maxWidth:360, flex:'0 1 360px' }}>
+            <span style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Seleccionar unidad</span>
+            <select value={unidadPlanActiva} onChange={e => setUnidadPlanActiva(e.target.value)} style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'10px 12px', background:'#fff', color:'var(--ink)', fontSize:13, fontWeight:750 }}>
+              {unidadesPlan.map(u => <option key={u.key} value={u.key}>{u.label}{u.titulo_unidad ? ` · ${u.titulo_unidad}` : ''}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {!unidadPlan ? (
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>No se encontró planeamiento para este nivel.</div>
+        ) : (
+          <div style={{ marginTop:16 }}>
+            <div style={{ padding:'14px 15px', borderRadius:14, background:'color-mix(in srgb, var(--an-navy) 6%, white)', border:'1px solid color-mix(in srgb, var(--an-navy) 18%, white)' }}>
+              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>{unidadPlan.label}</div>
+              <div style={{ marginTop:4, fontFamily:'var(--f-serif)', fontSize:19, fontWeight:600, color:'var(--an-navy-ink)' }}>{unidadPlan.titulo_unidad || unidadPlan.label}</div>
+              <div style={{ marginTop:4, fontSize:11.5, color:'var(--ink-3)' }}>{unidadPlan.lecciones?.length || 0} lecciones en esta selección</div>
+            </div>
+
+            <div style={{ display:'grid', gap:12, marginTop:12 }}>
+              {(unidadPlan.lecciones || []).map(lec => (
+                <article key={`${unidadPlan.key}-${lec.leccion}`} style={{ border:'1px solid var(--line)', borderRadius:16, background:'var(--surface)', overflow:'hidden' }}>
+                  <div style={{ padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', borderBottom:'1px solid var(--line)', background:'var(--surface-2)' }}>
+                    <div>
+                      <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-granate)' }}>{lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`}</div>
+                      <div style={{ marginTop:3, fontFamily:'var(--f-serif)', fontSize:17, fontWeight:600, color:'var(--an-navy-ink)' }}>{lec.titulo_unidad || unidadPlan.titulo_unidad}</div>
+                    </div>
+                    <span style={{ padding:'4px 10px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 9%, white)', color:'var(--an-navy)', fontSize:10, fontWeight:900, letterSpacing:'.07em' }}>{lec.tipo || 'TEÓRICA'}</span>
+                  </div>
+                  <div style={{ padding:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:10 }}>
+                    {campo('Asignatura', lec.asignatura)}
+                    {campo('Tema / Objetivo general', lec.tema_objetivo_general)}
+                    {campo('Speaking', lec.speaking)}
+                    {campo('Grammar', lec.grammar)}
+                    {campo('Pronunciation / Listening', lec.pronunciation_listening)}
+                    {campo('Writing / Reading', lec.writing_reading)}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
       <section id="biblioteca-libros" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
           <div>
@@ -419,57 +466,42 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, unidadInicial
             <BiblioKicker icon="materials">Audios por unidad</BiblioKicker>
             <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Reproductor individual por pista</div>
           </div>
-          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{catalogo?.totales?.audios || 0} pistas · {unidades.length} unidades</span>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{catalogo?.totales?.audios || 0} pistas · {unidadesAudio.length} unidades</span>
         </div>
-        <div className="tabs" style={{ marginTop:14, marginBottom:14, flexWrap:'wrap', maxHeight:116, overflowY:'auto' }}>
-          {unidades.map(u => (
-            <button key={u.key} className={`tab ${String(unidadActiva)===String(u.key)?'active':''}`} onClick={() => setUnidadActiva(u.key)}>
-              {u.label} · {u.pistas?.length || 0}
-            </button>
-          ))}
+
+        <div style={{ marginTop:14 }}>
+          <label htmlFor="audio-combobox-biblioteca" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Buscar audio por unidad</label>
+          <input
+            id="audio-combobox-biblioteca"
+            type="search"
+            list="biblioteca-audio-opciones"
+            value={audioQuery}
+            onChange={e => handleAudioQuery(e.target.value)}
+            placeholder="Escribí la unidad o el nombre de la pista"
+            autoComplete="off"
+            style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 13px', background:'#fff', color:'var(--ink)', fontSize:13 }}
+          />
+          <datalist id="biblioteca-audio-opciones">
+            {audioOptions.map(x => <option key={x.id} value={x.display} />)}
+          </datalist>
+          <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>El buscador contiene cada pista agrupada por el nombre de su unidad. Solo se muestra el reproductor del audio seleccionado.</div>
         </div>
-        {!unidad ? (
-          <div style={{ padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>No hay pistas disponibles para este nivel.</div>
+
+        {!audioSeleccionado ? (
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Buscá y seleccioná una pista para abrir el reproductor.</div>
         ) : (
-          <div>
-            <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--an-navy)', marginBottom:10 }}>{unidad.label}</div>
-            <div style={{ display:'grid', gap:9 }}>
-              {(unidad.pistas || []).map((pista, i) => (
-                <div key={pista.id} style={{ display:'grid', gridTemplateColumns:'34px minmax(0,1fr)', gap:10, alignItems:'start', padding:'11px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', background:'#fff' }}>
-                  <div style={{ width:30, height:30, borderRadius:'50%', background:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:900 }}>{String(i+1).padStart(2,'0')}</div>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:750, color:'var(--ink)', lineHeight:1.35, wordBreak:'break-word' }}>{pista.nombre}</div>
-                    <audio controls preload="none" src={pista.stream_url} style={{ width:'100%', height:34, marginTop:7 }}>
-                      Tu navegador no puede reproducir este audio.
-                    </audio>
-                    <a href={pista.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:4, fontSize:10.5, color:'var(--an-navy)' }}>Abrir pista en Drive</a>
-                  </div>
-                </div>
-              ))}
+          <div style={{ marginTop:14, padding:'14px 15px', border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>
+            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--an-navy)' }}>{audioSeleccionado.unidad}</div>
+            <div style={{ marginTop:5, fontSize:13, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' }}>{audioSeleccionado.pista.nombre}</div>
+            <audio controls preload="none" src={audioSeleccionado.pista.stream_url} style={{ width:'100%', height:38, marginTop:10 }}>
+              Tu navegador no puede reproducir este audio.
+            </audio>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:6 }}>
+              <a href={audioSeleccionado.pista.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--an-navy)' }}>Abrir pista en Drive</a>
+              <button type="button" className="btn btn-ghost" style={{ fontSize:11, padding:'6px 10px' }} onClick={() => { setAudioQuery(''); setAudioSeleccionado(null); }}>Limpiar selección</button>
             </div>
           </div>
         )}
-      </section>
-
-      <section id="biblioteca-recursos" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
-          <div>
-            <BiblioKicker icon="doc">Recursos adicionales</BiblioKicker>
-            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Material complementario del nivel</div>
-          </div>
-          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{recursos.length} recursos</span>
-        </div>
-        <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(245px,1fr))', gap:10 }}>
-          {recursos.map(item => (
-            <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ padding:'12px 13px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', textDecoration:'none', background:'#fff', color:'var(--ink)', display:'flex', gap:10, alignItems:'center' }}>
-              <span style={{ fontSize:21 }}>{resourceIcon(item.tipo)}</span>
-              <span style={{ minWidth:0 }}>
-                <strong style={{ display:'block', fontSize:12.2, lineHeight:1.35 }}>{item.nombre}</strong>
-                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>{item.tipo === 'folder' ? 'Abrir carpeta' : 'Abrir recurso'}</span>
-              </span>
-            </a>
-          ))}
-        </div>
       </section>
     </div>
   );
@@ -484,9 +516,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   // calendario mensual: solo libro, audios, PDFs y recursos por lección.
   const { grupoInfo, grupo, codGrupo, loading, error, reload } = useGroupFromSession();
 
-  // Estado mínimo: filtro por unidad/tipo + lección expandida. `initialLesson`
-  // (llega desde el Cronograma) abre directamente los recursos de esa lección.
-  const [filtro, setFiltro]   = React.useState('todas'); // todas | <Unit n> | examenes
+  // `initialLesson` llega desde el Cronograma y selecciona la unidad real en APOLLO G3.
   const [openLec, setOpenLec] = React.useState(initialLesson);
   React.useEffect(() => { if (initialLesson) setOpenLec(initialLesson); }, [initialLesson]);
   const sesion = React.useMemo(() => {
@@ -546,25 +576,10 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   const cefr         = syl.cefr || '';
   const programa     = grupoInfo.programa || grupo.programa || '';
   const esINA        = programa === 'INA' || programa === 'CON_INA';
-  const totalLecc    = syl.totalLessons || 32;
-  const totalHoras   = syl.totalHours || null;
-  const moduleHoras  = syl.moduleHours || null;
-  const icanHoras    = syl.icanHours || null;
-  const plataforma   = syl.platform || 'Zoom';
-  const objetivo     = syl.objective || '';
 
   const rol       = sesion?.rol || 'student';
   const codigoUsr = sesion?.codigo || sesion?.cedula || '';
   const nivelCode = levelId.toUpperCase(); // B1/B2/I1/I2 para fetchMaterialLeccion
-  const lessons   = Array.isArray(syl.lessons) ? syl.lessons : [];
-  const unidadInicialCatalogo = lessons.find(l => Number(l.n) === Number(openLec))?.unit || '';
-  const esExamen  = (l) => l.kind === 'exam-oral' || l.kind === 'exam-written';
-  const unidades  = [...new Set(lessons.filter(l => l.kind === 'lesson').map(l => l.unit))];
-  const lessonsFiltradas = lessons.filter(l => {
-    if (filtro === 'todas') return true;
-    if (filtro === 'examenes') return esExamen(l);
-    return l.unit === filtro;
-  });
   const irCronograma = () => { if (onNavigate) onNavigate('cronograma_grupo'); };
 
   return (
@@ -572,7 +587,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
       <PageHeader
         kicker="Biblioteca del curso"
         title={<>Biblioteca del curso · <em>{nivelNombre}</em></>}
-        sub={`${libro}${cefr ? ' · ' + cefr + ' · MCER' : ''} — libro, audios, PDFs y recursos por lección`}
+        sub={`${libro}${cefr ? ' · ' + cefr + ' · MCER' : ''} — planeamiento, libros y audios por unidad`}
         right={
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {esINA && <Chip tone="navy">Programa INA</Chip>}
@@ -585,66 +600,12 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
       {/* Banner prioridad INA — solo para programa INA */}
       {esINA && <PriorityBanner />}
 
-      <BibliotecaGuiaRapida onNavigate={onNavigate} />
-
-      {/* 1 · Recomendado para hoy / Materiales para la lección X */}
-      <RecomendadoLeccion
-        leccion={openLec}
-        lessons={lessons}
-        nivelCode={nivelCode}
-        rol={rol}
-        codigoUsr={codigoUsr}
-        codGrupo={codGrupo}
-        onIrCronograma={irCronograma}
-      />
-
-      {/* 2 · Catálogo oficial del nivel: libros, audios por unidad y recursos */}
       <BibliotecaCatalogoNivel
         nivelCode={nivelCode}
         codigoUsr={codigoUsr}
         codGrupo={codGrupo}
-        unidadInicial={unidadInicialCatalogo}
+        leccionInicial={openLec}
       />
-
-      {/* 3 · Material por unidad o lección */}
-      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, margin:'4px 2px 10px' }}>
-        <h2 style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500, letterSpacing:'-0.02em', margin:0, color:'var(--an-navy-ink)' }}>Material por unidad o lección</h2>
-        <span style={{ fontSize:11, color:'var(--ink-3)' }}>{lessons.length} lecciones del sílabus</span>
-      </div>
-
-      <div className="tabs" style={{ marginBottom:14, flexWrap:'wrap' }}>
-        <button className={`tab ${filtro==='todas'?'active':''}`} onClick={() => setFiltro('todas')}>Todas</button>
-        {unidades.map(u => (
-          <button key={u} className={`tab ${filtro===u?'active':''}`} onClick={() => setFiltro(u)}>{String(u).replace('Unit ','Unidad ')}</button>
-        ))}
-        <button className={`tab ${filtro==='examenes'?'active':''}`} onClick={() => setFiltro('examenes')}>Exámenes</button>
-      </div>
-
-      {lessons.length === 0 ? (
-        <div className="card" style={{ padding:36, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
-          Todavía no hay material publicado para este nivel. Revisá el cronograma y reportá esta pantalla si tu clase ya inició.
-        </div>
-      ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {lessonsFiltradas.map(l => (
-            <BiblioLeccionRow
-              key={l.n}
-              lec={l}
-              nivelCode={nivelCode}
-              rol={rol}
-              codigoUsr={codigoUsr}
-              codGrupo={codGrupo}
-              isOpen={openLec === l.n}
-              onToggle={() => setOpenLec(v => v === l.n ? null : l.n)}
-            />
-          ))}
-          {lessonsFiltradas.length === 0 && (
-            <div className="card" style={{ padding:36, textAlign:'center', color:'var(--ink-3)', borderStyle:'dashed' }}>
-              No hay lecciones para este filtro. Probá con “Todas” o revisá el cronograma del grupo.
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Volver al Cronograma académico */}
       <div style={{ marginTop:18, display:'flex', justifyContent:'center' }}>
@@ -668,129 +629,6 @@ function BiblioKicker({ icon, children }) {
   );
 }
 
-// Botón de material real por lección. Usa window.fetchMaterialLeccion (el mismo
-// endpoint que el Cronograma). NUNCA inventa enlaces: si el backend no da
-// acceso/PDF, muestra "Material pendiente de publicar."
-function LessonMaterialBtn({ nivelCode, leccion, rol, codigoUsr, codGrupo }) {
-  const [estado, setEstado] = React.useState('load'); // load | ok | none
-  const [data, setData]     = React.useState(null);
-  React.useEffect(() => {
-    let vivo = true;
-    const helper = window.fetchMaterialLeccion;
-    if (typeof helper !== 'function') { setEstado('none'); return () => { vivo = false; }; }
-    helper({
-      nivel: nivelCode, leccion, riel: 'curso', rol,
-      codigo:    rol === 'student' ? codigoUsr : undefined,
-      cod_grupo: rol === 'student' ? codGrupo  : undefined,
-    })
-      .then(d => {
-        if (!vivo) return;
-        if (d && d.ok && d.acceso) { setData(d); setEstado('ok'); }
-        else { setEstado('none'); }
-      })
-      .catch(() => { if (vivo) setEstado('none'); });
-    return () => { vivo = false; };
-  }, [nivelCode, leccion, rol, codigoUsr, codGrupo]);
-
-  if (estado === 'load') {
-    return <span style={{ fontSize:11.5, color:'var(--ink-3)' }}>Verificando material…</span>;
-  }
-  if (estado === 'ok') {
-    const href = data.pdf_url || (data.pdf_id ? `https://drive.google.com/file/d/${data.pdf_id}/view` : '');
-    if (href) {
-      return (
-        <a href={href} target="_blank" rel="noopener noreferrer"
-           style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'8px 14px', background:'var(--an-navy, #0B1F3A)', color:'#fff', borderRadius:'var(--r-sm, 6px)', fontSize:12, fontWeight:600, textDecoration:'none' }}>
-          <Icon name="download" size={13} className="" /> Ver material {data.tipo_pdf ? `· ${data.tipo_pdf}` : '(PDF)'}
-        </a>
-      );
-    }
-  }
-  return <span style={{ fontSize:11.5, color:'var(--ink-3)' }}>Material pendiente de publicar.</span>;
-}
-
-function RecomendadoLeccion({ leccion, lessons, nivelCode, rol, codigoUsr, codGrupo, onIrCronograma }) {
-  if (!leccion) {
-    return (
-      <div id="biblioteca-leccion" className="card" style={{ padding:'18px 20px', marginBottom:18, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', borderStyle:'dashed' }}>
-        <span style={{ width:40, height:40, borderRadius:10, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <Icon name="calendar" size={18} className="" />
-        </span>
-        <div style={{ flex:1, minWidth:200 }}>
-          <div style={{ fontWeight:600, fontSize:14, color:'var(--ink)' }}>Recursos por clase</div>
-          <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:2, lineHeight:1.5 }}>Seleccioná una lección desde el <strong>Cronograma académico</strong> para ver los recursos específicos de esa clase.</div>
-        </div>
-        <button className="btn btn-primary" onClick={onIrCronograma}>Ir al Cronograma académico</button>
-      </div>
-    );
-  }
-  const lec = lessons.find(l => l.n === leccion) || null;
-  return (
-    <div id="biblioteca-leccion" className="card" style={{ padding:'18px 20px', marginBottom:18, borderLeft:'4px solid var(--an-granate)' }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)' }}>
-        Materiales para la lección {String(leccion).padStart(2,'0')}
-      </div>
-      <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500, color:'var(--an-navy-ink)', lineHeight:1.2, marginTop:3 }}>
-        {lec?.title || `Lección ${leccion}`}
-      </div>
-      {lec?.unit && <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:2 }}>{String(lec.unit).replace('Unit ','Unidad ')}</div>}
-      {lec?.objective && <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:8, lineHeight:1.5 }}>{lec.objective}</div>}
-      <div style={{ marginTop:12 }}>
-        <LessonMaterialBtn nivelCode={nivelCode} leccion={leccion} rol={rol} codigoUsr={codigoUsr} codGrupo={codGrupo} />
-      </div>
-    </div>
-  );
-}
-
-function BiblioLeccionRow({ lec, nivelCode, rol, codigoUsr, codGrupo, isOpen, onToggle }) {
-  const esExamen = lec.kind === 'exam-oral' || lec.kind === 'exam-written';
-  const kindMeta = esExamen
-    ? { label: lec.kind === 'exam-oral' ? 'Examen Oral' : 'Examen Escrito', bg:'color-mix(in srgb, var(--an-granate) 12%, white)', color:'var(--an-granate)', rail:'var(--an-granate)' }
-    : { label:'Lección', bg:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy)', rail:'var(--an-navy)' };
-  return (
-    <div className="card" style={{ padding:0, borderLeft:`4px solid ${kindMeta.rail}`, overflow:'hidden' }}>
-      <div onClick={onToggle} role="button" tabIndex={0}
-           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
-           style={{ padding:'12px 16px', display:'grid', gridTemplateColumns:'auto auto 1fr auto', gap:14, alignItems:'center', cursor:'pointer' }}>
-        <div style={{ width:40, height:40, borderRadius:9, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <div style={{ fontSize:8, fontWeight:700, letterSpacing:'0.08em', opacity:0.8 }}>LEC</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600, lineHeight:1 }}>{String(lec.n).padStart(2,'0')}</div>
-        </div>
-        <span style={{ padding:'3px 9px', borderRadius:'var(--r-pill)', background:kindMeta.bg, color:kindMeta.color, fontSize:9.5, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', whiteSpace:'nowrap' }}>{kindMeta.label}</span>
-        <div style={{ minWidth:0 }}>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:15, fontWeight:500, color:'var(--ink)', letterSpacing:'-0.01em' }}>{lec.title}</div>
-          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:1 }}>{String(lec.unit).replace('Unit ','Unidad ')}{lec.progress ? ' · Progress Check' : ''}</div>
-        </div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-             style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}>
-          <path d="M6 9l6 6 6-6"/>
-        </svg>
-      </div>
-      {isOpen && (
-        <div style={{ padding:'0 16px 16px', display:'grid', gridTemplateColumns:'1fr', gap:12 }}>
-          {lec.objective && (
-            <div>
-              <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:4 }}>Objetivo</div>
-              <div style={{ fontSize:13, color:'var(--ink)', lineHeight:1.5 }}>{lec.objective}</div>
-            </div>
-          )}
-          {lec.activity && (
-            <div>
-              <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4 }}>Situación de aprendizaje</div>
-              <div style={{ fontSize:12.5, color:'var(--ink-2)', lineHeight:1.5 }}>{lec.activity}</div>
-            </div>
-          )}
-          <div>
-            <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6 }}>Material de la lección</div>
-            <LessonMaterialBtn nivelCode={nivelCode} leccion={lec.n} rol={rol} codigoUsr={codigoUsr} codGrupo={codGrupo} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
 // CALENDARIO — cronograma del grupo con suspender/recuperar
 // ─────────────────────────────────────────────────────────────────────────
 function CalendarioView() {
