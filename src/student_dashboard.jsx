@@ -456,6 +456,12 @@ function StudentDashboard({ toast, onNavigate }) {
 
   return (
     <div data-screen-label="Estudiante · Mi Campus">
+      <div style={{ marginBottom:18, display:'flex', justifyContent:'center' }}>
+        <div className="card" style={{ width:'100%', padding:'18px 22px', display:'flex', justifyContent:'center', alignItems:'center', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)' }}>
+          <img src="assets/logo_circular.jpg" alt="Academia Norteamericana" style={{ width:'min(100%, 560px)', height:'auto', display:'block', objectFit:'contain' }} />
+        </div>
+      </div>
+
       {/* 1. Material obligatorio: requisito de orientación y consulta permanente. */}
       <AntesDeEmpezar codigo={codigo} onNavigate={go} />
 
@@ -465,20 +471,17 @@ function StudentDashboard({ toast, onNavigate }) {
         <div className="hero-grid">
           <div>
             <div className="hero-kicker">
-              {horarioCurso || 'Mi Campus'}
-              {docenteCorto && ` · Teacher ${docenteCorto}`}
+              {docenteCorto ? `TEACHER ${String(docenteCorto).toUpperCase()}` : (docente ? `TEACHER ${String(docente).toUpperCase()}` : 'BIENVENIDO')}
             </div>
-            <h1 className="hero-h1">Buen día,<br/><em>{nombreCompleto}</em></h1>
-            <div className="hero-sub">
+            <h1 className="hero-h1">Bienvenido,<br/><em>{nombreCompleto}</em></h1>
+            <div className="hero-sub" style={{ fontSize:18, lineHeight:1.45, fontWeight:700, maxWidth:620 }}>
               {nivelReal
                 ? nivelSeleccionado === nivelReal
                   ? <>Estás cursando <strong>{nivelNombre}</strong> — {NIVEL_LIBRO[nivelSeleccionado]}.</>
                   : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
                 : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
             </div>
-            <div style={{ marginTop:18, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.55, maxWidth:560 }}>
-              Revisá tus datos personales, tu fotografía y la información académica desde la ficha del estudiante.
-            </div>
+
           </div>
           <div style={{ display:'flex', justifyContent:'center' }}>
             <Ring pct={progresoPct} size={210}>
@@ -531,7 +534,7 @@ function StudentDashboard({ toast, onNavigate }) {
         cronoPublicado={cronoPublicado} onNavigate={go} />
 
       {/* 12. Tus módulos. Solo módulos operativos o con datos honestos. */}
-      <DashSection title="Tus módulos" hint="Servicios académicos y administrativos" />
+      <DashSection title="Tu expediente" />
       <div className="grid-mods" style={{ marginBottom:20 }}>
         <ModInfoCurso nivelReal={nivelSeleccionado} codGrupo={codGrupoSeleccionado} grupo={grupo} programa={programa} onNavigate={go} />
         <ModEstadoCuenta pendientes={pendientes} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
@@ -552,21 +555,10 @@ function StudentDashboard({ toast, onNavigate }) {
       <OrientacionInicialCampus codigo={codigo} nombreCompleto={nombreCompleto} codGrupo={codGrupo}
         nivelReal={nivelReal} docente={docente} horario={horarioCurso} onNavigate={go} />
       <SoportePruebaViva nombreCompleto={nombreCompleto} codGrupo={horarioCurso || sufijoGrupoSD(codGrupo)} />
-
-      {typeof window.ContactoAdmin === 'function' && (
-        <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ flex:1, minWidth:220, fontSize:13, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás ayuda?</strong>{' '}Usá Documentos y ayuda o contactá a administración.</div>
-          <button className="btn btn-ghost" onClick={() => go('documentos_ayuda', { tab:'ayuda' })}>Documentos y ayuda</button>
-          <window.ContactoAdmin est={est} tipo="administracion" hideWhenPending />
-        </div>
-      )}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// STUDENT-ACCESS-CALENDAR-001 — Dashboards por estado de acceso
-// ─────────────────────────────────────────────────────────────────────────
 function AccInfoRow({ label, value }) {
   if (!value) return null;
   return (
@@ -953,16 +945,16 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
                 <div style={itemStyle}>
                   <div style={labelStyle}>Nombre completo</div>
                   <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
-                  <div style={subValueStyle}>Dato oficial · solo lectura</div>
+
                 </div>
                 <div style={itemStyle}>
                   <div style={labelStyle}>Cédula</div>
                   <div style={valueStyle}>{cedula || 'Pendiente'}</div>
-                  <div style={subValueStyle}>Dato oficial · solo lectura</div>
+
                 </div>
                 <div style={itemStyle}>
                   <div style={labelStyle}>Correo electrónico actual</div>
-                  <div style={valueStyle}>{contactosVista.correo_principal || 'Pendiente'}</div>
+                  <div style={{ ...valueStyle, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', wordBreak:'normal', fontSize:12.25 }}>{contactosVista.correo_principal || 'Pendiente'}</div>
                   {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
                   {editando && (
                     <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
@@ -1004,7 +996,7 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
             <section className="card" style={{ padding:'18px 20px' }} aria-label="Datos del programa">
               <div style={{ marginBottom:14 }}>
                 <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
-                <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Esta información es solo de consulta. Si detectás un error, reportalo a administración antes de usar evaluaciones o asistencia.</div>
+
               </div>
               <div style={panelGridStyle}>
                 {programaRows.map(([label, value, sub]) => (
@@ -1088,8 +1080,7 @@ function ProximaAccionCampus({ proximaClase, proximoExamen, cronoPublicado, onNa
     <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Qué sigue en el campus">
       <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center' }}>
         <div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Qué sigue</div>
-          <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Tus próximas acciones sin buscar en el menú.</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Resumen de próximos eventos</div>
         </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12, padding:16 }}>
@@ -1116,10 +1107,6 @@ function SoportePruebaViva({ nombreCompleto, codGrupo }) {
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.45, textAlign:'right' }}>
-            <strong>{nombreCompleto || 'Estudiante'}</strong><br/>
-            {codGrupo || 'Grupo pendiente'}
-          </div>
           <button className="btn btn-primary" type="button" style={{ fontSize:12.5 }} onClick={() => window.open(waUrl, '_blank', 'noopener')}>WhatsApp 89528787</button>
         </div>
       </div>
@@ -1176,7 +1163,7 @@ function AccesosRapidosDashboard({ onNavigate }) {
     <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Accesos rápidos">
       <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
         <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Entradas principales</div>
-        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Las 4 acciones principales del estudiante. Lo administrativo queda abajo para no distraer.</div>
+
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))', gap:12, padding:16 }}>
         {items.map(([view,label,icon,hint])=><button key={view} type="button" onClick={()=>onNavigate && onNavigate(view)} style={{ minHeight:86, border:'1.5px solid var(--an-granate)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-granate) 7%, white), #fff)', borderRadius:16, padding:'13px 12px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:11, textAlign:'left' }}><span aria-hidden="true" style={{ fontSize:25 }}>{icon}</span><span style={{ display:'flex', flexDirection:'column', gap:2 }}><span style={{ fontSize:13, fontWeight:900, color:'var(--ink)' }}>{label}</span><span style={{ fontSize:10.5, color:'var(--ink-3)', fontWeight:700 }}>{hint}</span></span></button>)}
@@ -1219,9 +1206,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
           <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--an-navy-ink)', letterSpacing:'-0.02em', lineHeight:1.15 }}>
             Antes de empezar tu programa
           </div>
-          <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2, lineHeight:1.4 }}>
-            Revisá estos materiales en <strong>Documentos y ayuda</strong> antes de tu primera lección. Este bloque queda visible en Mi Campus para consulta rápida.
-          </div>
+
         </div>
         <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={toggle}>
           {oculto ? 'Ver material' : 'Marcar revisado en este equipo'}
@@ -1313,14 +1298,14 @@ function StatusPill({ kind, label }) {
   const s = MOD_STATUS[kind] || MOD_STATUS.empty;
   return <span className={`status-pill ${s.cls}`}><i />{label || s.label}</span>;
 }
-function ModTile({ icon, title, status, statusLabel, children, cta = 'Abrir', onClick }) {
+function ModTile({ icon, emoji, title, status, statusLabel, children, cta = 'Abrir', onClick }) {
   return (
     <div className="mod-tile" onClick={onClick} role="button" tabIndex={0}
          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick(); } }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:10 }}>
         <div style={{ display:'flex', alignItems:'center', gap:9, minWidth:0 }}>
-          <span style={{ width:30, height:30, borderRadius:8, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Icon name={icon} size={16} className="" />
+          <span style={{ width:30, height:30, borderRadius:8, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:18 }}>
+            {emoji ? <span aria-hidden="true">{emoji}</span> : <Icon name={icon} size={16} className="" />}
           </span>
           <span style={{ fontWeight:600, fontSize:14, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{title}</span>
         </div>
@@ -1370,7 +1355,7 @@ function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
   const modalidad = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio';
   const hay = !!(codGrupo || docente || horario);
   return (
-    <ModTile icon="doc" title="Mi curso" status={hay ? 'ok' : 'empty'}
+    <ModTile icon="doc" emoji="📚" title="Mi curso" status={hay ? 'ok' : 'empty'}
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Abrir Mi curso" onClick={() => onNavigate('mi_curso')}>
       {hay ? (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -1388,7 +1373,7 @@ function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
 function ModICAN({ esINA, icanData, onNavigate }) {
   if (!esINA) {
     return (
-      <ModTile icon="ican" title="Club I CAN" status="empty" statusLabel="No aplica" cta="Más info" onClick={() => onNavigate('ican')}>
+      <ModTile icon="ican" emoji="🎤" title="Club I CAN" status="empty" statusLabel="No aplica" cta="Más info" onClick={() => onNavigate('ican')}>
         <span style={{ color:'var(--ink-3)' }}>El Club I CAN está disponible para el programa INA.</span>
       </ModTile>
     );
@@ -1397,7 +1382,7 @@ function ModICAN({ esINA, icanData, onNavigate }) {
   const requeridas = icanData?.requeridas;
   const hay = asistidas != null || requeridas != null;
   return (
-    <ModTile icon="ican" title="Club I CAN" status={hay ? 'ok' : 'empty'}
+    <ModTile icon="ican" emoji="🎤" title="Club I CAN" status={hay ? 'ok' : 'empty'}
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver Club I CAN" onClick={() => onNavigate('ican')}>
       {hay ? (
         <div><strong style={{ color:'var(--ink)' }}>{asistidas ?? '—'}{requeridas ? `/${requeridas}` : ''}</strong> sesiones asistidas · asistencia flexible</div>
@@ -1426,7 +1411,7 @@ function ModEstadoCuenta({ pendientes, esConape, conapeEstado, onNavigate }) {
   const alDia = total === 0;
   const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (
-    <ModTile icon="payments" title="Pagos y estado de cuenta" status={alDia ? 'ok' : 'pending'}
+    <ModTile icon="payments" emoji="💳" title="Pagos y estado de cuenta" status={alDia ? 'ok' : 'pending'}
              statusLabel={alDia ? 'Al día' : `${total} pendiente${total>1?'s':''}`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
       {alDia ? (
         <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ No tenés conceptos pendientes.</div>
@@ -1449,7 +1434,7 @@ function ModCertificados({ niveles, onNavigate }) {
   const status = registrados.length ? 'ok' : elegibles.length ? 'pending' : 'empty';
   const label = registrados.length ? `${registrados.length} registrado${registrados.length>1?'s':''}` : elegibles.length ? 'Revisar emisión' : 'Sin registros';
   return (
-    <ModTile icon="certificates" title="Certificados" status={status} statusLabel={label} cta="Consultar estado" onClick={() => onNavigate('certificados')}>
+    <ModTile icon="certificates" emoji="📄" title="Certificados" status={status} statusLabel={label} cta="Consultar estado" onClick={() => onNavigate('certificados')}>
       {registrados.length > 0
         ? <div>Hay <strong>{registrados.length}</strong> número{registrados.length>1?'s':''} oficial{registrados.length>1?'es':''} registrado{registrados.length>1?'s':''}. La pantalla de certificados verificará si existe PDF y enlace.</div>
         : elegibles.length > 0
@@ -1472,7 +1457,7 @@ function ModRetro({ retroData, onNavigate }) {
   const hay = items.length > 0;
   const ultimo = hay ? items[items.length - 1] : null;
   return (
-    <ModTile icon="messages" title="Retroalimentación" status={hay ? 'ok' : 'empty'}
+    <ModTile icon="messages" emoji="💬" title="Retroalimentación" status={hay ? 'ok' : 'empty'}
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver notas" onClick={() => onNavigate('notas')}>
       {hay ? (
         <div>
