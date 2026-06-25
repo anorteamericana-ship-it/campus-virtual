@@ -4,7 +4,7 @@
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-H-AUDIO-BLOB-SEGURO';
+  const VERSION = 'F98.4-L-EVALUACIONES-RESULTADOS';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){
@@ -60,18 +60,26 @@
 
   function LazyModuleView({ files, component, props, title }){
     const React = window.React;
-    const [state, setState] = React.useState(() => ({ ready: !!window[component], error:'' }));
+    const list = files || [];
+    const depsReady = () => list.every(f => loaded.has(normalize(f)));
+    const [state, setState] = React.useState(() => ({
+      ready: typeof window[component] === 'function' && depsReady(),
+      error:''
+    }));
     React.useEffect(() => {
       let live = true;
-      if (window[component]) { setState({ ready:true, error:'' }); return undefined; }
-      setState({ ready:false, error:'' });
-      loadMany(files).then(() => {
+      // Un componente puede existir porque otra ruta cargó student_experience,
+      // pero sus dependencias específicas todavía no. Antes se daba por listo y
+      // Resultados quedaba sin NotasView. Siempre validamos/cargamos la lista de
+      // archivos de la ruta antes de montar el componente.
+      if (!depsReady()) setState({ ready:false, error:'' });
+      loadMany(list).then(() => {
         if(!live) return;
         if (typeof window[component] === 'function') setState({ ready:true, error:'' });
         else setState({ ready:false, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
       }).catch(e => live && setState({ ready:false, error:e?.message || String(e) }));
       return () => { live = false; };
-    }, [component, JSON.stringify(files || [])]);
+    }, [component, JSON.stringify(list)]);
     if (!state.ready) {
       return React.createElement('div', { style:{ maxWidth:680, margin:'56px auto', padding:'26px 28px', border:'1px solid var(--line)', borderRadius:18, background:'var(--surface)', boxShadow:'var(--sh-1)', fontFamily:'var(--f-sans)', textAlign:'center' } },
         React.createElement('div', { style:{ fontSize:11, fontWeight:900, letterSpacing:'.14em', color:'var(--an-granate)', textTransform:'uppercase' } }, 'Cargando módulo'),

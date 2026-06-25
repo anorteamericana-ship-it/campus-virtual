@@ -261,7 +261,7 @@ function ReviewBar({ id, section, q, val, review }) {
 function MCQ({ sec, q, answers, onAnswer, ro, mode, showKey, review, inline }) {
   const val = answers[q.id];
   return (
-    <div className="exq">
+    <div className="exq" data-question-id={q.id}>
       <div className="exq-stem"><span className="exq-num">{q.id.replace(/^[A-Z]/,'')}</span>{q.stem}</div>
       <div className={`exopts${inline?' exopts-row':''}`}>
         {q.opts.map(([v, label]) => {
@@ -290,7 +290,7 @@ function MCQ({ sec, q, answers, onAnswer, ro, mode, showKey, review, inline }) {
 function ErrQ({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   return (
-    <div className="exrow">
+    <div className="exrow" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <span className="exrow-txt" dangerouslySetInnerHTML={{ __html: q.html }} />
       <span className="exrow-arrow">→</span>
@@ -315,7 +315,7 @@ function ParaFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
           if (typeof node === 'string') return <span key={i}>{node}</span>;
           const b = byId[node.b]; const val = answers[b.id] || '';
           return (
-            <span key={i} className="exfill-wrap">
+            <span key={i} className="exfill-wrap" data-question-id={b.id}>
               <input className={`exfill ${exInCls(sec,b,val,showKey)}`} value={val} disabled={ro}
                      placeholder={`(${b.hint})`} title={b.hint} onChange={e=>onAnswer && onAnswer(b.id, e.target.value)} />
               <span className="exfill-n">{b.id.replace(/^[A-Z]/,'')}</span>
@@ -343,7 +343,7 @@ function ParaChoice({ sec, answers, onAnswer, ro, mode, showKey, review }) {
           let cls = 'exchoice';
           if (showKey && val) cls += (val === b.correct ? ' ch-ok' : ' ch-bad');
           return (
-            <span key={i} className="exfill-wrap">
+            <span key={i} className="exfill-wrap" data-question-id={b.id}>
               <select className={cls} value={val} disabled={ro} onChange={e=>onAnswer && onAnswer(b.id, e.target.value)}>
                 <option value="">— elegir —</option>
                 {b.opts.map(([v,label]) => <option key={v} value={v}>{label}</option>)}
@@ -380,7 +380,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
             if (showKey && val && val===correct) cls += ' m-ok';
             if (showKey && val && val!==correct) cls += ' m-bad';
             return (
-              <div key={row.n} className={cls}>
+              <div key={row.n} className={cls} data-question-id={`${sec.letter}${row.n}`}>
                 <span className="exmatch-n">{row.n}</span>
                 <span className="exmatch-t">{row.text}</span>
                 <select className="exmatch-sel" value={val} disabled={ro} onChange={e=>setMatch(row.n, e.target.value)}>
@@ -422,7 +422,7 @@ function TableFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
               const val = answers[row.id] || '';
               const q = { id: row.id, correct: row.correct, accepted: row.accepted };
               return (
-                <tr key={row.id}>
+                <tr key={row.id} data-question-id={!row.fixed ? row.id : undefined}>
                   <td>{row.left}</td>
                   <td>
                     {row.fixed
@@ -450,7 +450,7 @@ function ShortWrite({ sec, answers, onAnswer, ro, mode, showKey, review }) {
       {sec.questions.map(q => {
         const val = answers[q.id] || '';
         return (
-          <div key={q.id} className="exshort">
+          <div key={q.id} className="exshort" data-question-id={q.id}>
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exshort-body">
               {q.prompt && <div className="exshort-prompt" dangerouslySetInnerHTML={{ __html:q.prompt }} />}
@@ -478,7 +478,7 @@ function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         {sec.questions.map(q => {
           const val = answers[q.id];
           return (
-            <div key={q.id} className="extf">
+            <div key={q.id} className="extf" data-question-id={q.id}>
               <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
               <span className="extf-t">{q.text}</span>
               <div className="extf-btns">
@@ -504,7 +504,7 @@ function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 function VerbFill({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   return (
-    <div className="exrow exrow-2">
+    <div className="exrow exrow-2" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <span className="exrow-txt">
         {q.pre}{' '}
@@ -537,7 +537,7 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
     ));
   };
   return (
-    <div className="exrow exrow-2 exrow-dlg">
+    <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <div className="exdlg">
         <div className="exdlg-a"><b>A:</b> {renderLine(q.a)}</div>
@@ -567,7 +567,7 @@ function Transform({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         {sec.questions.map(q => {
           const val = answers[q.id] || '';
           return (
-            <div key={q.id} className="extrans">
+            <div key={q.id} className="extrans" data-question-id={q.id}>
               <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
               <div className="extrans-body">
                 <div className="extrans-prompt">{q.prompt}</div>
@@ -592,7 +592,7 @@ function Arrange({ sec, answers, onAnswer, ro, mode, showKey, review }) {
       {sec.questions.map(q => {
         const val = answers[q.id] || '';
         return (
-          <div key={q.id} className="exarr">
+          <div key={q.id} className="exarr" data-question-id={q.id}>
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exarr-body">
               <div className="exarr-prompt">{q.prompt}</div>

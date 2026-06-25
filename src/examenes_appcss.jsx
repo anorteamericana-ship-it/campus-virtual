@@ -72,6 +72,9 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 .sent-grid span{ font-family:var(--f-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-3); }
 .sent-grid b{ font-size:13px; }
 .sent-pending{ color:var(--warn); }
+.sent-summary{ width:100%; margin-top:18px; }
+.sent-summary-head{ max-width:900px; margin:0 auto 12px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink-2); font-size:12.5px; line-height:1.55; }
+.sent-summary-head b{ color:var(--an-navy-ink); }
 
 .stbar{ position:sticky; bottom:0; z-index:30; display:flex; align-items:center; gap:20px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-2); padding:14px 20px; margin-top:22px; width:100%; }
 .stbar-prog{ flex:1; display:flex; flex-direction:column; gap:6px; }
@@ -79,6 +82,9 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 .stbar-track{ height:7px; background:var(--bg-deep); border-radius:999px; overflow:hidden; }
 .stbar-fill{ height:100%; border-radius:999px; transition:width .3s; }
 .stbar-actions{ display:flex; gap:10px; }
+.stbar-missing{ padding:9px 11px; border:1px solid #F3B3AE; background:#FFF1F0; border-radius:9px; color:#8A1C13 !important; font-family:var(--f-sans) !important; font-size:11.5px !important; line-height:1.45; }
+.stbar-missing b{ color:#7A1E2C; }
+.stbar-missing code{ font-family:var(--f-mono); font-size:10.5px; }
 
 /* ── PROFESOR ── */
 .tchwrap{ background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-1); overflow:hidden; }

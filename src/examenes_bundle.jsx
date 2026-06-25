@@ -1,6 +1,5 @@
-// CAMPUS_F95_1_20260621_EXAMENES_BUNDLE_UNICO
+// CAMPUS_F98_4_L_20260625_EVALUACIONES_ENVIO_UNICO_RESULTADOS
 // Generado desde: examenes_css.jsx, examenes_appcss.jsx, examenes_data.jsx, examenes_render.jsx, examenes_modes.jsx, examenes_app.jsx
-
 
 // ===== examenes_css.jsx =====
 
@@ -181,6 +180,18 @@ window.EXAM_CSS = `
 /* paragraph */
 .expara{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:20px 24px; font-size:var(--exfs); line-height:2.5; }
 .exfill-wrap{ white-space:nowrap; }
+
+/* Preguntas sin responder: se activan tras el primer intento de envío. */
+.mode-student [data-question-id].ex-missing{
+  outline:3px solid #D92D20;
+  outline-offset:3px;
+  background:#FFF1F0 !important;
+  border-color:#D92D20 !important;
+  border-radius:10px;
+  box-shadow:0 0 0 5px rgba(217,45,32,.10);
+}
+.mode-student .exfill-wrap.ex-missing{ padding:4px 6px; display:inline-block; }
+.mode-student tr.ex-missing td{ background:#FFF1F0 !important; }
 .exfill-n{ font-family:var(--f-mono); font-size:9px; color:var(--ink-3); vertical-align:super; margin-left:2px; }
 .exchoice{ font-family:var(--f-sans); font-size:calc(var(--exfs) - 0.5px); border:1px solid var(--line-2); border-radius:6px; padding:3px 6px; background:var(--surface-2); color:var(--an-navy-ink); cursor:pointer; vertical-align:baseline; }
 .exchoice:focus{ outline:2px solid var(--lvl); }
@@ -362,6 +373,9 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 .sent-grid span{ font-family:var(--f-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-3); }
 .sent-grid b{ font-size:13px; }
 .sent-pending{ color:var(--warn); }
+.sent-summary{ width:100%; margin-top:18px; }
+.sent-summary-head{ max-width:900px; margin:0 auto 12px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink-2); font-size:12.5px; line-height:1.55; }
+.sent-summary-head b{ color:var(--an-navy-ink); }
 
 .stbar{ position:sticky; bottom:0; z-index:30; display:flex; align-items:center; gap:20px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-2); padding:14px 20px; margin-top:22px; width:100%; }
 .stbar-prog{ flex:1; display:flex; flex-direction:column; gap:6px; }
@@ -369,6 +383,9 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 .stbar-track{ height:7px; background:var(--bg-deep); border-radius:999px; overflow:hidden; }
 .stbar-fill{ height:100%; border-radius:999px; transition:width .3s; }
 .stbar-actions{ display:flex; gap:10px; }
+.stbar-missing{ padding:9px 11px; border:1px solid #F3B3AE; background:#FFF1F0; border-radius:9px; color:#8A1C13 !important; font-family:var(--f-sans) !important; font-size:11.5px !important; line-height:1.45; }
+.stbar-missing b{ color:#7A1E2C; }
+.stbar-missing code{ font-family:var(--f-mono); font-size:10.5px; }
 
 /* ── PROFESOR ── */
 .tchwrap{ background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-1); overflow:hidden; }
@@ -4721,7 +4738,7 @@ function ReviewBar({ id, section, q, val, review }) {
 function MCQ({ sec, q, answers, onAnswer, ro, mode, showKey, review, inline }) {
   const val = answers[q.id];
   return (
-    <div className="exq">
+    <div className="exq" data-question-id={q.id}>
       <div className="exq-stem"><span className="exq-num">{q.id.replace(/^[A-Z]/,'')}</span>{q.stem}</div>
       <div className={`exopts${inline?' exopts-row':''}`}>
         {q.opts.map(([v, label]) => {
@@ -4750,7 +4767,7 @@ function MCQ({ sec, q, answers, onAnswer, ro, mode, showKey, review, inline }) {
 function ErrQ({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   return (
-    <div className="exrow">
+    <div className="exrow" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <span className="exrow-txt" dangerouslySetInnerHTML={{ __html: q.html }} />
       <span className="exrow-arrow">→</span>
@@ -4775,7 +4792,7 @@ function ParaFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
           if (typeof node === 'string') return <span key={i}>{node}</span>;
           const b = byId[node.b]; const val = answers[b.id] || '';
           return (
-            <span key={i} className="exfill-wrap">
+            <span key={i} className="exfill-wrap" data-question-id={b.id}>
               <input className={`exfill ${exInCls(sec,b,val,showKey)}`} value={val} disabled={ro}
                      placeholder={`(${b.hint})`} title={b.hint} onChange={e=>onAnswer && onAnswer(b.id, e.target.value)} />
               <span className="exfill-n">{b.id.replace(/^[A-Z]/,'')}</span>
@@ -4803,7 +4820,7 @@ function ParaChoice({ sec, answers, onAnswer, ro, mode, showKey, review }) {
           let cls = 'exchoice';
           if (showKey && val) cls += (val === b.correct ? ' ch-ok' : ' ch-bad');
           return (
-            <span key={i} className="exfill-wrap">
+            <span key={i} className="exfill-wrap" data-question-id={b.id}>
               <select className={cls} value={val} disabled={ro} onChange={e=>onAnswer && onAnswer(b.id, e.target.value)}>
                 <option value="">— elegir —</option>
                 {b.opts.map(([v,label]) => <option key={v} value={v}>{label}</option>)}
@@ -4840,7 +4857,7 @@ function Matching({ sec, answers, onAnswer, ro, mode, showKey, review }) {
             if (showKey && val && val===correct) cls += ' m-ok';
             if (showKey && val && val!==correct) cls += ' m-bad';
             return (
-              <div key={row.n} className={cls}>
+              <div key={row.n} className={cls} data-question-id={`${sec.letter}${row.n}`}>
                 <span className="exmatch-n">{row.n}</span>
                 <span className="exmatch-t">{row.text}</span>
                 <select className="exmatch-sel" value={val} disabled={ro} onChange={e=>setMatch(row.n, e.target.value)}>
@@ -4882,7 +4899,7 @@ function TableFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
               const val = answers[row.id] || '';
               const q = { id: row.id, correct: row.correct, accepted: row.accepted };
               return (
-                <tr key={row.id}>
+                <tr key={row.id} data-question-id={!row.fixed ? row.id : undefined}>
                   <td>{row.left}</td>
                   <td>
                     {row.fixed
@@ -4910,7 +4927,7 @@ function ShortWrite({ sec, answers, onAnswer, ro, mode, showKey, review }) {
       {sec.questions.map(q => {
         const val = answers[q.id] || '';
         return (
-          <div key={q.id} className="exshort">
+          <div key={q.id} className="exshort" data-question-id={q.id}>
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exshort-body">
               {q.prompt && <div className="exshort-prompt" dangerouslySetInnerHTML={{ __html:q.prompt }} />}
@@ -4938,7 +4955,7 @@ function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         {sec.questions.map(q => {
           const val = answers[q.id];
           return (
-            <div key={q.id} className="extf">
+            <div key={q.id} className="extf" data-question-id={q.id}>
               <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
               <span className="extf-t">{q.text}</span>
               <div className="extf-btns">
@@ -4964,7 +4981,7 @@ function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 function VerbFill({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   return (
-    <div className="exrow exrow-2">
+    <div className="exrow exrow-2" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <span className="exrow-txt">
         {q.pre}{' '}
@@ -4997,7 +5014,7 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
     ));
   };
   return (
-    <div className="exrow exrow-2 exrow-dlg">
+    <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <div className="exdlg">
         <div className="exdlg-a"><b>A:</b> {renderLine(q.a)}</div>
@@ -5027,7 +5044,7 @@ function Transform({ sec, answers, onAnswer, ro, mode, showKey, review }) {
         {sec.questions.map(q => {
           const val = answers[q.id] || '';
           return (
-            <div key={q.id} className="extrans">
+            <div key={q.id} className="extrans" data-question-id={q.id}>
               <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
               <div className="extrans-body">
                 <div className="extrans-prompt">{q.prompt}</div>
@@ -5052,7 +5069,7 @@ function Arrange({ sec, answers, onAnswer, ro, mode, showKey, review }) {
       {sec.questions.map(q => {
         const val = answers[q.id] || '';
         return (
-          <div key={q.id} className="exarr">
+          <div key={q.id} className="exarr" data-question-id={q.id}>
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exarr-body">
               <div className="exarr-prompt">{q.prompt}</div>
@@ -5181,14 +5198,21 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   // se usa el banco local solo como respaldo visual controlado.
   const exam = examOverride || getExam(nivel, test, opcion);
   const tema = NIVEL_TEMA[nivel] || NIVEL_TEMA['I2'];
-  const [stage, setStage] = useState((backend && backend.attemptId) ? 'taking' : 'lobby'); // lobby | taking | sent
+  const initialAttemptStatus = String((backend && backend.initialStatus) || '').toUpperCase();
+  const [stage, setStage] = useState(
+    initialAttemptStatus === 'SUBMITTED' || initialAttemptStatus === 'REVIEWED'
+      ? 'sent'
+      : ((backend && backend.attemptId) ? 'taking' : 'lobby')
+  ); // lobby | taking | sent
   const [answers, setAnswers] = useState(backend && backend.initialAnswers ? backend.initialAnswers : {});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [missingWarningShown, setMissingWarningShown] = useState(false);
 
-  const timeLimitMin = Number((backend && backend.timeLimitMin) || (assignment && assignment.TIME_LIMIT_MIN) || 0) || 0;
+  // Regla oficial: el intento escrito dura 90 minutos desde STARTED_AT.
+  const timeLimitMin = Number((backend && backend.timeLimitMin) || (assignment && assignment.TIME_LIMIT_MIN) || 90) || 90;
   const limitSec = timeLimitMin > 0 ? timeLimitMin * 60 : 0;
   const startedAtText = (backend && backend.startedAt) || '';
   const startMs = useMemo(() => examParseLocalMs(startedAtText) || Date.now(), [startedAtText, backend && backend.attemptId]);
@@ -5230,6 +5254,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     if (savingRef.current || sendingRef.current) return null;
     const snapshot = JSON.stringify(answersRef.current || {});
     if (source === 'auto' && (!dirtyRef.current || snapshot === lastSavedJsonRef.current)) return { ok:true, skipped:true };
+    savingRef.current = true;
     setSaving(true);
     setSaveMsg(source === 'auto' ? 'Guardando automáticamente…' : 'Guardando…');
     try {
@@ -5253,6 +5278,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg('No se pudo guardar. Revise la conexión.');
       return { ok:false, error:'save_exception' };
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }, [backend && backend.attemptId, backend && backend.onSave]);
@@ -5260,6 +5286,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const doSubmit = useCallback(async (auto=false) => {
     if (sendingRef.current) return null;
     if (backend && typeof backend.onSubmit === 'function') {
+      sendingRef.current = true;
       setSending(true);
       setSaveMsg(auto ? 'Tiempo agotado. Enviando automáticamente…' : 'Enviando…');
       try {
@@ -5279,6 +5306,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         autoSubmitRef.current = false;
         return { ok:false, error:'submit_exception' };
       } finally {
+        sendingRef.current = false;
         setSending(false);
       }
     }
@@ -5367,17 +5395,36 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     return () => { cancelled = true; window.clearInterval(t); };
   }, [stage, backend && backend.attemptId, backend && backend.onHeartbeat, doSubmit]);
 
+  const all = useMemo(() => exam ? examQuestions(exam) : [], [exam]);
+  const missingQuestions = useMemo(() => all.filter(({ q, kind, section }) => {
+    if (kind === 'match') {
+      const value = getMatchVal(answers, q.n, section.letter);
+      return value == null || String(value).trim() === '';
+    }
+    return answers[q.id] == null || String(answers[q.id]).trim() === '';
+  }), [all, answers]);
+  const missingIds = useMemo(() => missingQuestions.map(({ q, kind, section }) =>
+    kind === 'match' ? `${section.letter}${q.n}` : q.id
+  ), [missingQuestions]);
+
+  useEffect(() => {
+    const root = document.querySelector('.sttake');
+    if (!root) return;
+    const missingSet = new Set(missingWarningShown ? missingIds : []);
+    root.querySelectorAll('[data-question-id]').forEach(el => {
+      const id = String(el.getAttribute('data-question-id') || '');
+      el.classList.toggle('ex-missing', missingSet.has(id));
+    });
+  }, [missingWarningShown, missingIds.join('|'), stage]);
+
   // Sin contenido real — NUNCA carga otro examen.
   if (!exam) {
     return <div className="stwrap"><PendingCard tema={tema} opcion={opcion} /></div>;
   }
 
-  const all = examQuestions(exam);
-  const answered = all.filter(({ q, kind, section }) => {
-    if (kind === 'match') return getMatchVal(answers, q.n, section.letter) != null;
-    return answers[q.id] != null && String(answers[q.id]).trim() !== '';
-  }).length;
+  const answered = all.length - missingQuestions.length;
   const pct = Math.round((answered / Math.max(1, all.length)) * 100);
+  const timeExpired = !!(limitSec && Number(timeLeftSec) <= 0);
   const lowTime = limitSec && Number(timeLeftSec) <= 60;
 
   const handleStart = async () => {
@@ -5402,7 +5449,19 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const handleSave = async () => { await doSave('manual'); };
 
   const handleSubmit = async () => {
-    if (!window.confirm('¿Enviar examen ahora? Después de enviarlo no podrás editar tus respuestas.')) return;
+    if (missingIds.length && !missingWarningShown) {
+      setMissingWarningShown(true);
+      setSaveMsg(`Hay ${missingIds.length} pregunta(s) sin responder. Están marcadas en rojo. Revisalas o presioná “Enviar de todos modos”.`);
+      window.setTimeout(() => {
+        const first = document.querySelector(`.sttake [data-question-id="${missingIds[0]}"]`);
+        if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 80);
+      return;
+    }
+    const warning = missingIds.length
+      ? `Se enviará el examen con ${missingIds.length} pregunta(s) sin responder. El envío es único y no permite correcciones. ¿Continuar?`
+      : '¿Enviar examen ahora? El envío es único y después no podrás editar ni corregir tus respuestas.';
+    if (!window.confirm(warning)) return;
     await doSubmit(false);
   };
 
@@ -5414,7 +5473,12 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   }
 
   if (stage === 'sent') {
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} /></div>;
+    const sentMeta = {
+      nombre:(assignment && (assignment.NOMBRE || assignment.nombre)) || (backend && backend.student && backend.student.nombre) || 'Estudiante',
+      fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
+      grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
+    };
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -5424,7 +5488,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   return (
     <div className="stwrap">
       <div className="sttake">
-        <ExamShell exam={exam} answers={answers} onAnswer={onAnswer} mode="student" showKey={false}
+        <ExamShell exam={exam} answers={answers} onAnswer={timeExpired ? undefined : onAnswer} mode={timeExpired ? 'preview' : 'student'} showKey={false}
                    shell={shell} density={density} plan={plan}
                    meta={{ nombre: metaNombre || 'Estudiante', fecha: metaFecha, grupo: metaGrupo || 'Grupo activo', opcion, scoreLabel:`${answered} / ${all.length} resp.` }} />
       </div>
@@ -5435,13 +5499,16 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
           {limitSec > 0 && <span style={{ marginLeft:10, color:lowTime ? '#7A1E2C' : '#001E47', fontWeight:800 }}>Tiempo: {examFormatClock(timeLeftSec == null ? limitSec : timeLeftSec)}</span>}
           {dirty && <span style={{ marginLeft:10, color:'#7A4A00' }}>Cambios sin guardar</span>}
           {saveMsg && <span style={{ marginLeft:10, color: saveMsg.includes('correct') ? '#1F6B25' : '#7A1E2C' }}>{saveMsg}</span>}
+          {missingWarningShown && missingIds.length > 0 && (
+            <span className="stbar-missing"><b>Sin responder:</b> <code>{missingIds.join(', ')}</code></span>
+          )}
         </div>
         <div className="stbar-actions">
-          <button className="btn-ghost" onClick={handleSave} disabled={saving || sending || !(backend && backend.attemptId)}>
+          <button className="btn-ghost" onClick={handleSave} disabled={timeExpired || saving || sending || !(backend && backend.attemptId)}>
             {saving ? 'Guardando…' : 'Guardar avance'}
           </button>
           <button className="btn-primary" onClick={handleSubmit} disabled={sending || saving || !(backend && backend.attemptId)}>
-            {sending ? 'Enviando…' : 'Enviar examen'}
+            {sending ? 'Enviando…' : (missingWarningShown && missingIds.length ? 'Enviar de todos modos' : 'Enviar examen')}
           </button>
         </div>
       </div>
@@ -5469,8 +5536,8 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
         <div><span>Puntos</span><b>{exam.puntos_totales}</b></div>
       </div>
       <div className="ascard-note">
-        Este examen fue asignado automáticamente según tu grupo y el cronograma.
-        No es posible escoger otro examen ni cambiar de opción. {intentoTxt}
+        Este examen fue asignado automáticamente según tu grupo y la lección correspondiente.
+        Al iniciarlo comienza un contador único de 90 minutos. Solo puede enviarse una vez y, después del envío, no admite correcciones. {intentoTxt}
       </div>
       <button className="btn-primary ascard-go" onClick={onStart} disabled={!!starting}>{starting ? 'Preparando intento…' : 'Iniciar examen'}</button>
     </div>
@@ -5496,22 +5563,30 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {} }) {
   return (
-    <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
-      <div className="sent-check" style={{ background:tema.color }}>✓</div>
-      <h2 className="ascard-title">Examen enviado</h2>
-      <p className="sent-msg">Tu examen fue enviado correctamente. La nota final estará disponible cuando el docente complete la revisión.</p>
-      <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
-      <div className="sent-grid">
-        <div><span>Examen</span><b>{exam.titulo}</b></div>
-        <div><span>Opción</span><b>{opcion}</b></div>
-        <div><span>Valor</span><b>{planValor(exam.ponderacion_por_plan, plan)}</b></div>
-        <div><span>Nota</span><b className="sent-pending">Pendiente</b></div>
-        {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
+    <>
+      <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
+        <div className="sent-check" style={{ background:tema.color }}>✓</div>
+        <h2 className="ascard-title">Examen enviado</h2>
+        <p className="sent-msg">Tu examen fue recibido. El envío es único y tus respuestas ya no pueden modificarse.</p>
+        <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
+        <div className="sent-grid">
+          <div><span>Examen</span><b>{exam.titulo}</b></div>
+          <div><span>Opción</span><b>{opcion}</b></div>
+          <div><span>Valor</span><b>{planValor(exam.ponderacion_por_plan, plan)}</b></div>
+          <div><span>Nota</span><b className="sent-pending">Pendiente</b></div>
+          {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
+        </div>
+        <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
       </div>
-      <div className="ascard-note">No verás respuestas correctas ni una nota automática. La nota la confirma tu profesor.</div>
-    </div>
+      <div className="sent-summary">
+        <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>
+        <ExamShell exam={exam} answers={answers} mode="preview" showKey={false}
+          shell="premium" density="compact" plan={plan}
+          meta={{ nombre:meta.nombre || 'Estudiante', fecha:meta.fecha || '', grupo:meta.grupo || '', opcion, scoreLabel:'Enviado' }} />
+      </div>
+    </>
   );
 }
 
@@ -5818,7 +5893,7 @@ function TeacherWrittenLiveInbox() {
     if (!grupo || !grupos.includes(grupo)) setGrupo(grupos[0]);
   }, [grupos.join('|')]);
 
-  const load = async (silent) => {
+  const load = useCallback(async (silent) => {
     const g = String(grupo || '').trim();
     if (!g) {
       setRows([]); setSummary(null); setMsg('');
@@ -5836,9 +5911,20 @@ function TeacherWrittenLiveInbox() {
       setRows([]); setSummary(null);
       setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');
     }
-  };
+  }, [grupo]);
 
-  useEffect(() => { setSelected(null); load(true); /* eslint-disable-next-line */ }, [grupo]);
+  useEffect(() => { setSelected(null); load(true); }, [grupo, load]);
+  useEffect(() => {
+    if (!grupo || selected) return undefined;
+    const refresh = () => load(true);
+    const timer = window.setInterval(refresh, 15000);
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [grupo, selected, load]);
 
   if (selected) return <TeacherWrittenBackendReviewF940 row={selected} onBack={()=>{ setSelected(null); load(true); }} onDone={()=>load(true)} />;
 
@@ -5852,7 +5938,7 @@ function TeacherWrittenLiveInbox() {
         <div>
           <div className="tch-kicker">ENTREGAS DEL ESTUDIANTE</div>
           <h2 className="tch-title">Exámenes escritos entregados</h2>
-          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. Si nadie ha presionado “Enviar examen”, no aparecerá ninguna persona.</p>
+          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. La bandeja se actualiza automáticamente cada 15 segundos y al volver a esta ventana.</p>
         </div>
         <div className="tch-stats">
           <div className="tch-stat"><b>{pendingCount}</b><span>requieren atención</span></div>
@@ -7662,7 +7748,7 @@ function StudentLiveExamApp() {
         const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
         const txt = String(raw);
         if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend ya está en F95.1, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
+          setError('El frontend de evaluaciones está actualizado, pero el Apps Script publicado no reconoce sus endpoints. Reemplazá el Code.gs completo de esta entrega y creá una nueva implementación. Detalle: ' + txt);
         } else {
           setError(txt);
         }
@@ -7717,15 +7803,25 @@ function StudentLiveExamApp() {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
     return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'No hay una sesión docente abierta de la lección 18 o 32 para tu matrícula activa.'}</StudentLiveStatusCard>;
   }
-  const submitted = currentAttempt && String(currentAttempt.STATUS || '').toUpperCase() === 'SUBMITTED';
-  if (submitted) return <StudentLiveStatusCard title="Examen ya enviado" badge="En revisión docente" tone="blue" onRefresh={load}>Tu intento fue recibido correctamente. La nota final aparecerá cuando el docente complete la revisión.</StudentLiveStatusCard>;
-
   return <StudentMode
     shell="premium" density="comfy"
     nivel={cfg.nivel} test={cfg.test} opcion={cfg.opcion} plan={cfg.plan}
     examOverride={publicExam}
     assignment={activation}
-    backend={{ attemptId, initialAnswers, onStart:startAttempt, onSave:saveAttempt, onSubmit:submitAttempt, onHeartbeat:heartbeatAttempt, student: live.student || null, activation, timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 0) || 0, startedAt:currentAttempt && currentAttempt.STARTED_AT || '' }}
+    backend={{
+      attemptId,
+      initialAnswers,
+      initialStatus:currentAttempt && currentAttempt.STATUS || '',
+      submittedAt:currentAttempt && currentAttempt.SUBMITTED_AT || '',
+      onStart:startAttempt,
+      onSave:saveAttempt,
+      onSubmit:submitAttempt,
+      onHeartbeat:heartbeatAttempt,
+      student:live.student || null,
+      activation,
+      timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 90) || 90,
+      startedAt:currentAttempt && currentAttempt.STARTED_AT || ''
+    }}
   />;
 }
 
@@ -8083,7 +8179,7 @@ ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></Exa
   try {
     if (EXAM_ROOT_F950 && EXAM_ROOT_F950.querySelector('.exapp')) {
       window.__EXAMENES_BOOT_OK__ = true;
-      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.1');
+      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F98.4L');
       return;
     }
   } catch (_) {}

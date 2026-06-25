@@ -175,6 +175,18 @@ window.EXAM_CSS = `
 /* paragraph */
 .expara{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:20px 24px; font-size:var(--exfs); line-height:2.5; }
 .exfill-wrap{ white-space:nowrap; }
+
+/* Preguntas sin responder: se activan tras el primer intento de envío. */
+.mode-student [data-question-id].ex-missing{
+  outline:3px solid #D92D20;
+  outline-offset:3px;
+  background:#FFF1F0 !important;
+  border-color:#D92D20 !important;
+  border-radius:10px;
+  box-shadow:0 0 0 5px rgba(217,45,32,.10);
+}
+.mode-student .exfill-wrap.ex-missing{ padding:4px 6px; display:inline-block; }
+.mode-student tr.ex-missing td{ background:#FFF1F0 !important; }
 .exfill-n{ font-family:var(--f-mono); font-size:9px; color:var(--ink-3); vertical-align:super; margin-left:2px; }
 .exchoice{ font-family:var(--f-sans); font-size:calc(var(--exfs) - 0.5px); border:1px solid var(--line-2); border-radius:6px; padding:3px 6px; background:var(--surface-2); color:var(--an-navy-ink); cursor:pointer; vertical-align:baseline; }
 .exchoice:focus{ outline:2px solid var(--lvl); }

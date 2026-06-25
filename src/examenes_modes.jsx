@@ -93,14 +93,21 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   // se usa el banco local solo como respaldo visual controlado.
   const exam = examOverride || getExam(nivel, test, opcion);
   const tema = NIVEL_TEMA[nivel] || NIVEL_TEMA['I2'];
-  const [stage, setStage] = useState((backend && backend.attemptId) ? 'taking' : 'lobby'); // lobby | taking | sent
+  const initialAttemptStatus = String((backend && backend.initialStatus) || '').toUpperCase();
+  const [stage, setStage] = useState(
+    initialAttemptStatus === 'SUBMITTED' || initialAttemptStatus === 'REVIEWED'
+      ? 'sent'
+      : ((backend && backend.attemptId) ? 'taking' : 'lobby')
+  ); // lobby | taking | sent
   const [answers, setAnswers] = useState(backend && backend.initialAnswers ? backend.initialAnswers : {});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [missingWarningShown, setMissingWarningShown] = useState(false);
 
-  const timeLimitMin = Number((backend && backend.timeLimitMin) || (assignment && assignment.TIME_LIMIT_MIN) || 0) || 0;
+  // Regla oficial: el intento escrito dura 90 minutos desde STARTED_AT.
+  const timeLimitMin = Number((backend && backend.timeLimitMin) || (assignment && assignment.TIME_LIMIT_MIN) || 90) || 90;
   const limitSec = timeLimitMin > 0 ? timeLimitMin * 60 : 0;
   const startedAtText = (backend && backend.startedAt) || '';
   const startMs = useMemo(() => examParseLocalMs(startedAtText) || Date.now(), [startedAtText, backend && backend.attemptId]);
@@ -142,6 +149,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     if (savingRef.current || sendingRef.current) return null;
     const snapshot = JSON.stringify(answersRef.current || {});
     if (source === 'auto' && (!dirtyRef.current || snapshot === lastSavedJsonRef.current)) return { ok:true, skipped:true };
+    savingRef.current = true;
     setSaving(true);
     setSaveMsg(source === 'auto' ? 'Guardando automáticamente…' : 'Guardando…');
     try {
@@ -165,6 +173,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg('No se pudo guardar. Revise la conexión.');
       return { ok:false, error:'save_exception' };
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }, [backend && backend.attemptId, backend && backend.onSave]);
@@ -172,6 +181,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const doSubmit = useCallback(async (auto=false) => {
     if (sendingRef.current) return null;
     if (backend && typeof backend.onSubmit === 'function') {
+      sendingRef.current = true;
       setSending(true);
       setSaveMsg(auto ? 'Tiempo agotado. Enviando automáticamente…' : 'Enviando…');
       try {
@@ -191,6 +201,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         autoSubmitRef.current = false;
         return { ok:false, error:'submit_exception' };
       } finally {
+        sendingRef.current = false;
         setSending(false);
       }
     }
@@ -279,17 +290,36 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     return () => { cancelled = true; window.clearInterval(t); };
   }, [stage, backend && backend.attemptId, backend && backend.onHeartbeat, doSubmit]);
 
+  const all = useMemo(() => exam ? examQuestions(exam) : [], [exam]);
+  const missingQuestions = useMemo(() => all.filter(({ q, kind, section }) => {
+    if (kind === 'match') {
+      const value = getMatchVal(answers, q.n, section.letter);
+      return value == null || String(value).trim() === '';
+    }
+    return answers[q.id] == null || String(answers[q.id]).trim() === '';
+  }), [all, answers]);
+  const missingIds = useMemo(() => missingQuestions.map(({ q, kind, section }) =>
+    kind === 'match' ? `${section.letter}${q.n}` : q.id
+  ), [missingQuestions]);
+
+  useEffect(() => {
+    const root = document.querySelector('.sttake');
+    if (!root) return;
+    const missingSet = new Set(missingWarningShown ? missingIds : []);
+    root.querySelectorAll('[data-question-id]').forEach(el => {
+      const id = String(el.getAttribute('data-question-id') || '');
+      el.classList.toggle('ex-missing', missingSet.has(id));
+    });
+  }, [missingWarningShown, missingIds.join('|'), stage]);
+
   // Sin contenido real — NUNCA carga otro examen.
   if (!exam) {
     return <div className="stwrap"><PendingCard tema={tema} opcion={opcion} /></div>;
   }
 
-  const all = examQuestions(exam);
-  const answered = all.filter(({ q, kind, section }) => {
-    if (kind === 'match') return getMatchVal(answers, q.n, section.letter) != null;
-    return answers[q.id] != null && String(answers[q.id]).trim() !== '';
-  }).length;
+  const answered = all.length - missingQuestions.length;
   const pct = Math.round((answered / Math.max(1, all.length)) * 100);
+  const timeExpired = !!(limitSec && Number(timeLeftSec) <= 0);
   const lowTime = limitSec && Number(timeLeftSec) <= 60;
 
   const handleStart = async () => {
@@ -314,7 +344,19 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const handleSave = async () => { await doSave('manual'); };
 
   const handleSubmit = async () => {
-    if (!window.confirm('¿Enviar examen ahora? Después de enviarlo no podrás editar tus respuestas.')) return;
+    if (missingIds.length && !missingWarningShown) {
+      setMissingWarningShown(true);
+      setSaveMsg(`Hay ${missingIds.length} pregunta(s) sin responder. Están marcadas en rojo. Revisalas o presioná “Enviar de todos modos”.`);
+      window.setTimeout(() => {
+        const first = document.querySelector(`.sttake [data-question-id="${missingIds[0]}"]`);
+        if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 80);
+      return;
+    }
+    const warning = missingIds.length
+      ? `Se enviará el examen con ${missingIds.length} pregunta(s) sin responder. El envío es único y no permite correcciones. ¿Continuar?`
+      : '¿Enviar examen ahora? El envío es único y después no podrás editar ni corregir tus respuestas.';
+    if (!window.confirm(warning)) return;
     await doSubmit(false);
   };
 
@@ -326,7 +368,12 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   }
 
   if (stage === 'sent') {
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} /></div>;
+    const sentMeta = {
+      nombre:(assignment && (assignment.NOMBRE || assignment.nombre)) || (backend && backend.student && backend.student.nombre) || 'Estudiante',
+      fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
+      grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
+    };
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -336,7 +383,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   return (
     <div className="stwrap">
       <div className="sttake">
-        <ExamShell exam={exam} answers={answers} onAnswer={onAnswer} mode="student" showKey={false}
+        <ExamShell exam={exam} answers={answers} onAnswer={timeExpired ? undefined : onAnswer} mode={timeExpired ? 'preview' : 'student'} showKey={false}
                    shell={shell} density={density} plan={plan}
                    meta={{ nombre: metaNombre || 'Estudiante', fecha: metaFecha, grupo: metaGrupo || 'Grupo activo', opcion, scoreLabel:`${answered} / ${all.length} resp.` }} />
       </div>
@@ -347,13 +394,16 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
           {limitSec > 0 && <span style={{ marginLeft:10, color:lowTime ? '#7A1E2C' : '#001E47', fontWeight:800 }}>Tiempo: {examFormatClock(timeLeftSec == null ? limitSec : timeLeftSec)}</span>}
           {dirty && <span style={{ marginLeft:10, color:'#7A4A00' }}>Cambios sin guardar</span>}
           {saveMsg && <span style={{ marginLeft:10, color: saveMsg.includes('correct') ? '#1F6B25' : '#7A1E2C' }}>{saveMsg}</span>}
+          {missingWarningShown && missingIds.length > 0 && (
+            <span className="stbar-missing"><b>Sin responder:</b> <code>{missingIds.join(', ')}</code></span>
+          )}
         </div>
         <div className="stbar-actions">
-          <button className="btn-ghost" onClick={handleSave} disabled={saving || sending || !(backend && backend.attemptId)}>
+          <button className="btn-ghost" onClick={handleSave} disabled={timeExpired || saving || sending || !(backend && backend.attemptId)}>
             {saving ? 'Guardando…' : 'Guardar avance'}
           </button>
           <button className="btn-primary" onClick={handleSubmit} disabled={sending || saving || !(backend && backend.attemptId)}>
-            {sending ? 'Enviando…' : 'Enviar examen'}
+            {sending ? 'Enviando…' : (missingWarningShown && missingIds.length ? 'Enviar de todos modos' : 'Enviar examen')}
           </button>
         </div>
       </div>
@@ -381,8 +431,8 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
         <div><span>Puntos</span><b>{exam.puntos_totales}</b></div>
       </div>
       <div className="ascard-note">
-        Este examen fue asignado automáticamente según tu grupo y el cronograma.
-        No es posible escoger otro examen ni cambiar de opción. {intentoTxt}
+        Este examen fue asignado automáticamente según tu grupo y la lección correspondiente.
+        Al iniciarlo comienza un contador único de 90 minutos. Solo puede enviarse una vez y, después del envío, no admite correcciones. {intentoTxt}
       </div>
       <button className="btn-primary ascard-go" onClick={onStart} disabled={!!starting}>{starting ? 'Preparando intento…' : 'Iniciar examen'}</button>
     </div>
@@ -408,22 +458,30 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {} }) {
   return (
-    <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
-      <div className="sent-check" style={{ background:tema.color }}>✓</div>
-      <h2 className="ascard-title">Examen enviado</h2>
-      <p className="sent-msg">Tu examen fue enviado correctamente. La nota final estará disponible cuando el docente complete la revisión.</p>
-      <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
-      <div className="sent-grid">
-        <div><span>Examen</span><b>{exam.titulo}</b></div>
-        <div><span>Opción</span><b>{opcion}</b></div>
-        <div><span>Valor</span><b>{planValor(exam.ponderacion_por_plan, plan)}</b></div>
-        <div><span>Nota</span><b className="sent-pending">Pendiente</b></div>
-        {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
+    <>
+      <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
+        <div className="sent-check" style={{ background:tema.color }}>✓</div>
+        <h2 className="ascard-title">Examen enviado</h2>
+        <p className="sent-msg">Tu examen fue recibido. El envío es único y tus respuestas ya no pueden modificarse.</p>
+        <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
+        <div className="sent-grid">
+          <div><span>Examen</span><b>{exam.titulo}</b></div>
+          <div><span>Opción</span><b>{opcion}</b></div>
+          <div><span>Valor</span><b>{planValor(exam.ponderacion_por_plan, plan)}</b></div>
+          <div><span>Nota</span><b className="sent-pending">Pendiente</b></div>
+          {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
+        </div>
+        <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
       </div>
-      <div className="ascard-note">No verás respuestas correctas ni una nota automática. La nota la confirma tu profesor.</div>
-    </div>
+      <div className="sent-summary">
+        <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>
+        <ExamShell exam={exam} answers={answers} mode="preview" showKey={false}
+          shell="premium" density="compact" plan={plan}
+          meta={{ nombre:meta.nombre || 'Estudiante', fecha:meta.fecha || '', grupo:meta.grupo || '', opcion, scoreLabel:'Enviado' }} />
+      </div>
+    </>
   );
 }
 
@@ -730,7 +788,7 @@ function TeacherWrittenLiveInbox() {
     if (!grupo || !grupos.includes(grupo)) setGrupo(grupos[0]);
   }, [grupos.join('|')]);
 
-  const load = async (silent) => {
+  const load = useCallback(async (silent) => {
     const g = String(grupo || '').trim();
     if (!g) {
       setRows([]); setSummary(null); setMsg('');
@@ -748,9 +806,20 @@ function TeacherWrittenLiveInbox() {
       setRows([]); setSummary(null);
       setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');
     }
-  };
+  }, [grupo]);
 
-  useEffect(() => { setSelected(null); load(true); /* eslint-disable-next-line */ }, [grupo]);
+  useEffect(() => { setSelected(null); load(true); }, [grupo, load]);
+  useEffect(() => {
+    if (!grupo || selected) return undefined;
+    const refresh = () => load(true);
+    const timer = window.setInterval(refresh, 15000);
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [grupo, selected, load]);
 
   if (selected) return <TeacherWrittenBackendReviewF940 row={selected} onBack={()=>{ setSelected(null); load(true); }} onDone={()=>load(true)} />;
 
@@ -764,7 +833,7 @@ function TeacherWrittenLiveInbox() {
         <div>
           <div className="tch-kicker">ENTREGAS DEL ESTUDIANTE</div>
           <h2 className="tch-title">Exámenes escritos entregados</h2>
-          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. Si nadie ha presionado “Enviar examen”, no aparecerá ninguna persona.</p>
+          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. La bandeja se actualiza automáticamente cada 15 segundos y al volver a esta ventana.</p>
         </div>
         <div className="tch-stats">
           <div className="tch-stat"><b>{pendingCount}</b><span>requieren atención</span></div>

@@ -332,7 +332,7 @@ function StudentLiveExamApp() {
         const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
         const txt = String(raw);
         if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend ya está en F95.1, pero el Apps Script publicado no reconoce los endpoints de exámenes. Actualizá y desplegá el Apps Script v5.89.0 F95.0 en Apps Script; subir GitHub solo no basta para esta sección. Detalle: ' + txt);
+          setError('El frontend de evaluaciones está actualizado, pero el Apps Script publicado no reconoce sus endpoints. Reemplazá el Code.gs completo de esta entrega y creá una nueva implementación. Detalle: ' + txt);
         } else {
           setError(txt);
         }
@@ -387,15 +387,25 @@ function StudentLiveExamApp() {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
     return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'No hay una sesión docente abierta de la lección 18 o 32 para tu matrícula activa.'}</StudentLiveStatusCard>;
   }
-  const submitted = currentAttempt && String(currentAttempt.STATUS || '').toUpperCase() === 'SUBMITTED';
-  if (submitted) return <StudentLiveStatusCard title="Examen ya enviado" badge="En revisión docente" tone="blue" onRefresh={load}>Tu intento fue recibido correctamente. La nota final aparecerá cuando el docente complete la revisión.</StudentLiveStatusCard>;
-
   return <StudentMode
     shell="premium" density="comfy"
     nivel={cfg.nivel} test={cfg.test} opcion={cfg.opcion} plan={cfg.plan}
     examOverride={publicExam}
     assignment={activation}
-    backend={{ attemptId, initialAnswers, onStart:startAttempt, onSave:saveAttempt, onSubmit:submitAttempt, onHeartbeat:heartbeatAttempt, student: live.student || null, activation, timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 0) || 0, startedAt:currentAttempt && currentAttempt.STARTED_AT || '' }}
+    backend={{
+      attemptId,
+      initialAnswers,
+      initialStatus:currentAttempt && currentAttempt.STATUS || '',
+      submittedAt:currentAttempt && currentAttempt.SUBMITTED_AT || '',
+      onStart:startAttempt,
+      onSave:saveAttempt,
+      onSubmit:submitAttempt,
+      onHeartbeat:heartbeatAttempt,
+      student:live.student || null,
+      activation,
+      timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 90) || 90,
+      startedAt:currentAttempt && currentAttempt.STARTED_AT || ''
+    }}
   />;
 }
 
@@ -753,7 +763,7 @@ ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></Exa
   try {
     if (EXAM_ROOT_F950 && EXAM_ROOT_F950.querySelector('.exapp')) {
       window.__EXAMENES_BOOT_OK__ = true;
-      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F95.1');
+      EXAM_ROOT_F950.setAttribute('data-exam-boot', 'F98.4L');
       return;
     }
   } catch (_) {}
