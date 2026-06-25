@@ -382,6 +382,11 @@ function extraerNumeroUnidadBiblioteca(...values) {
   return null;
 }
 
+function extraerUnitDeNombreAudio(nombre) {
+  const match = String(nombre || '').match(/(?:UNIT|UNIDAD)[\s_-]*0*(\d{1,2})(?=\D|$)/i);
+  return match ? Number(match[1]) : null;
+}
+
 function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial }) {
   const [estado, setEstado] = React.useState('load');
   const [catalogo, setCatalogo] = React.useState(null);
@@ -553,15 +558,37 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   const unidadPlanNumero = unidadPlan
     ? extraerNumeroUnidadBiblioteca(unidadPlan.key, unidadPlan.label, unidadPlan.titulo_unidad)
     : null;
-  const unidadesAudioFiltradas = unidadPlanNumero == null
-    ? []
-    : unidadesAudio.filter(unidad => extraerNumeroUnidadBiblioteca(unidad.key, unidad.label, unidad.nombre) === unidadPlanNumero);
-  const audioOptions = unidadesAudioFiltradas.flatMap(unidad => (unidad.pistas || []).map(pista => ({
-    id:pista.id,
-    display:pista.nombre,
-    unidad:unidad.label,
-    pista,
-  })));
+
+  // F98.4-K: el vínculo entre Planeamiento y Audios se resuelve por el nombre
+  // REAL de cada archivo, no por la carpeta o agrupación devuelta por Drive.
+  // Ejemplo: UNIDAD 1 muestra únicamente pistas cuyo nombre contiene Unit 01.
+  const audioOptions = (() => {
+    if (unidadPlanNumero == null) return [];
+    const vistos = new Set();
+    const resultado = [];
+
+    unidadesAudio.forEach(unidad => {
+      (unidad.pistas || []).forEach(pista => {
+        const nombreReal = String(
+          pista?.nombre || pista?.name || pista?.archivo_nombre || pista?.filename || ''
+        ).trim();
+        const numeroEnArchivo = extraerUnitDeNombreAudio(nombreReal);
+        const esMp3 = /\.mp3$/i.test(nombreReal);
+        const id = String(pista?.id || nombreReal);
+
+        if (numeroEnArchivo !== unidadPlanNumero || !esMp3 || vistos.has(id)) return;
+        vistos.add(id);
+        resultado.push({
+          id,
+          display:nombreReal,
+          unidad:`Unit ${String(unidadPlanNumero).padStart(2,'0')}`,
+          pista,
+        });
+      });
+    });
+
+    return resultado.sort((a, b) => a.display.localeCompare(b.display, undefined, { numeric:true, sensitivity:'base' }));
+  })();
 
   const handleUnidadPlanQuery = (value) => {
     setUnidadPlanQuery(value);
