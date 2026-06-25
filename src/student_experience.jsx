@@ -82,7 +82,7 @@ function StudentEvaluationsView({ initialTab='proximas', onTabChange, onNavigate
 
   return (
     <div data-screen-label="Estudiante · Evaluaciones" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
-      <StudentSectionHeaderF984 kicker="Aprendizaje" title="Evaluaciones" sub="Exámenes, resultados y reposiciones en un flujo único. Las reposiciones no se mezclan con matrícula ni cuotas." />
+      <StudentSectionHeaderF984 title="Evaluaciones" />
       <div style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Evaluaciones">
         <StudentTabButtonF984 active={tab==='proximas'} onClick={()=>choose('proximas')}>Próximas y activas</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='resultados'} onClick={()=>choose('resultados')}>Resultados</StudentTabButtonF984>
