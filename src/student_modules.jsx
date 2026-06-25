@@ -926,7 +926,7 @@ function CertificadosContenido({ data }) {
       </div>
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás revisar una emisión?</strong> Contactá al área académica con tu código y nivel.</div>
+          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás hacer una consulta?</strong> Contactá al área académica con tu código y nivel.</div>
           <window.ContactoAdmin
             est={Object.assign({}, data?.estudiante || { CODIGO:data?.codigo }, {
               contactos_campus:data?.contactos_campus || {},
@@ -953,7 +953,6 @@ function CertificadoEstadoCardF984({ row }) {
     ['Morosidad', row.morosidad_verificada ? (row.morosidad ? 'Registra morosidad' : 'Al Día') : 'Sin dato verificable'],
     ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
     ['Número oficial', row.registro || 'Sin asignar'],
-    ['PDF oficial', row.pdf_existente ? 'Localizado' : 'No localizado'],
   ];
   return (
     <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${NIVEL_COLOR_SM[row.nivel] || 'var(--an-navy)'}` }}>
@@ -971,7 +970,7 @@ function CertificadoEstadoCardF984({ row }) {
         {checks.map(([label,value]) => <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'7px 0', borderBottom:'1px solid var(--line)', fontSize:11.5 }}><span style={{ color:'var(--ink-3)' }}>{label}</span><strong style={{ color:'var(--ink)', textAlign:'right' }}>{value}</strong></div>)}
         {row.url ? (
           <a className="btn btn-primary" href={row.url} target="_blank" rel="noreferrer" style={{ marginTop:14, width:'100%', justifyContent:'center' }}>
-            <Icon name="download" size={14} className="" /> Abrir PDF oficial
+            <Icon name="download" size={14} className="" /> Abrir Certificado
           </a>
         ) : null}
       </div>
