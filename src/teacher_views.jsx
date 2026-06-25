@@ -1,3 +1,4 @@
+// F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
 // F89_20260620_ACCESO_EXAMENES_Y_AVISO_CIERRE
 // F86_20260619_DOCENTE_ETIQUETAS_Y_APLICACION_ORAL
@@ -651,7 +652,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
       <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
-          <div><div style={{...labelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
+          <div><div style={{...vdLabelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
@@ -667,13 +668,13 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
           {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Clase cerrada</div>}
           {loading?<LoadingState variant="small" title="Cargando detalle…"/>:<>
             <div style={{padding:'16px 17px',border:'1px solid var(--line)',borderRadius:'var(--r-lg)',background:'#FBF7EF',marginBottom:15}}>
-              <div style={{...labelStyle,marginBottom:5}}>{detalle?.unidad||`Nivel ${nivel}`}</div>
+              <div style={{...vdLabelStyle,marginBottom:5}}>{detalle?.unidad||`Nivel ${nivel}`}</div>
               <div style={{fontFamily:'var(--f-serif)',fontSize:21,fontWeight:700}}>{detalle?.titulo||'Clase programada'}</div>
-              {detalle?.objetivo&&<div style={{marginTop:12}}><div style={labelStyle}>Objetivo</div><div style={{fontSize:13,lineHeight:1.55,marginTop:4}}>{detalle.objetivo}</div></div>}
-              {detalle?.speaking&&<div style={{marginTop:10}}><div style={labelStyle}>Speaking</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.speaking}</div></div>}
-              {detalle?.grammar&&<div style={{marginTop:10}}><div style={labelStyle}>Grammar</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.grammar}</div></div>}
+              {detalle?.objetivo&&<div style={{marginTop:12}}><div style={vdLabelStyle}>Objetivo</div><div style={{fontSize:13,lineHeight:1.55,marginTop:4}}>{detalle.objetivo}</div></div>}
+              {detalle?.speaking&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Speaking</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.speaking}</div></div>}
+              {detalle?.grammar&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Grammar</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.grammar}</div></div>}
             </div>
-            <div style={{...labelStyle,marginBottom:8}}>Asistencia registrada</div>
+            <div style={{...vdLabelStyle,marginBottom:8}}>Asistencia registrada</div>
             <div style={{display:'grid',gap:7}}>{(roster||[]).map(s=>{const d=detByStudent[s.code],c=d?comByStudent[s.code]:'';return <div key={s.code} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,padding:'9px 11px',border:'1px solid var(--line)',borderRadius:9}}><div><strong style={{fontSize:12}}>{s.name}</strong>{c&&<div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>💬 {c}</div>}</div><span style={{fontSize:10,fontWeight:900,color:!d?'var(--ink-3)':d.presente===false?'#B3261E':'#166534'}}>{!d?'Pendiente':d.presente===false?'Ausente':'Presente'}</span></div>;})}</div>
           </>}
         </div>
@@ -696,7 +697,7 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
     <aside style={{ width:'min(440px, 94vw)', height:'100%', background:'#FFF', boxShadow:'-18px 0 50px rgba(0,0,0,.2)', display:'flex', flexDirection:'column' }}>
       <div style={{ padding:'22px 22px 18px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:12 }}>
         <div>
-          <div style={{ ...labelStyle, marginBottom:5 }}>Historial académico</div>
+          <div style={{ ...vdLabelStyle, marginBottom:5 }}>Historial académico</div>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:700 }}>{estudiante.name}</div>
           <div style={{ color:'var(--ink-3)', fontSize:12, marginTop:3 }}>Código {estudiante.code}</div>
         </div>
