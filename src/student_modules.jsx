@@ -874,7 +874,8 @@ function useMisCertificadosEstadoF984(codigo) {
 }
 
 const CERT_ESTADO_UI_F984 = {
-  NO_ELEGIBLE: { label:'No elegible', fg:'#6B2A2A', bg:'#FDECEA' },
+  NO_ELEGIBLE: { label:'Pendiente', fg:'#40516A', bg:'#EEF2F7' },
+  CURSANDO_ACTUALMENTE: { label:'Cursando Actualmente', fg:'#805500', bg:'#FFF4D6' },
   ELEGIBLE_EMISION: { label:'Elegible para emisión', fg:'#805500', bg:'#FFF4D6' },
   EN_PROCESO: { label:'En proceso', fg:'#0C4F86', bg:'#E7F1FA' },
   EMITIDO: { label:'Emitido', fg:'#40516A', bg:'#EEF2F7' },
@@ -904,7 +905,23 @@ function CertificadosContenido({ data }) {
   }
   return (
     <>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(290px,1fr))', gap:16 }}>
+      <style>{`
+        .certificados-grid-f984u {
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:14px;
+          width:100%;
+          align-items:stretch;
+        }
+        .certificados-grid-f984u > article { min-width:0; height:100%; }
+        @media (max-width:900px) {
+          .certificados-grid-f984u { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        }
+        @media (max-width:620px) {
+          .certificados-grid-f984u { grid-template-columns:minmax(0,1fr); }
+        }
+      `}</style>
+      <div className="certificados-grid-f984u">
         {rows.map(row => <CertificadoEstadoCardF984 key={row.nivel} row={row} />)}
       </div>
       {typeof window.ContactoAdmin === 'function' && (
@@ -925,7 +942,10 @@ function CertificadosContenido({ data }) {
 }
 
 function CertificadoEstadoCardF984({ row }) {
-  const meta = CERT_ESTADO_UI_F984[row.estado] || CERT_ESTADO_UI_F984.NO_ELEGIBLE;
+  const estatusAcademico = String(row.estatus || '').trim().toUpperCase();
+  const meta = row.estado === 'NO_ELEGIBLE' && estatusAcademico === 'CA'
+    ? CERT_ESTADO_UI_F984.CURSANDO_ACTUALMENTE
+    : (CERT_ESTADO_UI_F984[row.estado] || CERT_ESTADO_UI_F984.NO_ELEGIBLE);
   const checks = [
     ['Estado académico', row.estatus || 'Sin registro'],
     ['Nota', row.nota != null ? `${row.nota}/100` : 'Sin dato'],
@@ -934,7 +954,6 @@ function CertificadoEstadoCardF984({ row }) {
     ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
     ['Número oficial', row.registro || 'Sin asignar'],
     ['PDF oficial', row.pdf_existente ? 'Localizado' : 'No localizado'],
-    ['Firma', row.firmado_probable ? 'Detectada' : (row.pdf_existente ? 'No confirmada' : 'Pendiente de PDF')],
   ];
   return (
     <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${NIVEL_COLOR_SM[row.nivel] || 'var(--an-navy)'}` }}>
