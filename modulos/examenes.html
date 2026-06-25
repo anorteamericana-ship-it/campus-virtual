@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Exámenes · F98.4L · Academia Norteamericana</title>
+<title>Exámenes · F98.4M · Academia Norteamericana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../styles/tokens.css?v=F98.4L">
+<link rel="stylesheet" href="../styles/tokens.css?v=F98.4M">
 <style>
   html,body{margin:0;min-height:100%;background:var(--bg,#f5f0e7)}
   #root{min-height:100vh}
@@ -34,7 +34,7 @@
 <script>
 (function(){
   'use strict';
-  var BUILD='F98.4L';
+  var BUILD='F98.4M';
   var root=document.getElementById('root');
   var failed=false;
   window.__EXAMENES_BUILD__=BUILD;
@@ -46,7 +46,7 @@
     root.innerHTML='<div class="exam-boot"><div class="exam-boot-card">'
       +'<div class="exam-boot-k" style="background:#F7E8E9;color:#7A1E2C">Error de carga</div>'
       +'<h2>No se pudo iniciar el examen</h2>'
-      +'<p>El módulo dejó de cargar antes de abrir la aplicación. Recargá esta sección. Si continúa, la versión publicada de GitHub no coincide con F98.4L.</p>'
+      +'<p>El módulo dejó de cargar antes de abrir la aplicación. Recargá esta sección. Si continúa, la versión publicada de GitHub no coincide con F98.4M.</p>'
       +(detail?'<div style="margin:15px auto;padding:10px 12px;max-width:540px;border-radius:10px;background:#F8F6F1;color:#594F46;font:11.5px/1.45 JetBrains Mono,monospace;text-align:left;word-break:break-word">'+esc(detail)+'</div>':'')
       +'<button type="button" onclick="location.reload()" style="margin-top:16px;background:#001E47;color:#fff;border:0;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer">Volver a cargar</button>'
       +'</div></div>';

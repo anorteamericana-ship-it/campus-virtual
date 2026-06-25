@@ -54,7 +54,7 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4E'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4L'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4M'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4K'],
   teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F96.5G'],
   vista_docente: ['src/vista_docente.jsx?v=F96.5G'],
@@ -83,10 +83,10 @@ const F96_LAZY = {
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F98.4L','src/student_experience.jsx?v=F98.4J'
+    'src/student_modules.jsx?v=F98.4M','src/student_experience.jsx?v=F98.4J'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4K','src/student_modules.jsx?v=F98.4L','src/student_experience.jsx?v=F98.4J'
+    'src/syllabus_views.jsx?v=F98.4K','src/student_modules.jsx?v=F98.4M','src/student_experience.jsx?v=F98.4J'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
@@ -215,7 +215,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
 // Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F98.4L`;
+  const src = `modulos/examenes.html?view=${view}&v=F98.4M`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -245,14 +245,14 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
-          key={`${view}-F98.4L`}
+          key={`${view}-F98.4M`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
           loading="eager"
           onLoad={(e) => { try { e.currentTarget.contentWindow.scrollTo(0, 0); } catch (_) {} }}
           referrerPolicy="same-origin"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-modals"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
         />
       </div>
@@ -393,14 +393,14 @@ function TeacherWrittenPreviewModalF950({ activation, group, leccion, onClose })
   const test=activation.TEST_CODE||activation.test_code||(Number(leccion)===32?'TEST2':'TEST1');
   const opcion=activation.OPCION||activation.opcion||'A';
   const plan=String(activation.PLAN||activation.plan||'CON_INA').toLowerCase();
-  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F98.4L`;
+  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F98.4M`;
   return <div role="dialog" aria-modal="true" aria-label="Modelo del examen escrito" style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,20,48,.72)',padding:18,display:'flex',alignItems:'stretch',justifyContent:'center'}} onClick={onClose}>
     <div style={{width:'min(1500px,100%)',height:'calc(100vh - 36px)',background:'#F7F3EC',borderRadius:18,overflow:'hidden',boxShadow:'0 26px 80px rgba(0,0,0,.35)',display:'flex',flexDirection:'column'}} onClick={e=>e.stopPropagation()}>
       <div style={{padding:'11px 14px',background:'#fff',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
         <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>MODELO DEL EXAMEN · SOLO DOCENTE</div><div style={{fontSize:15,fontWeight:900,marginTop:2}}>{appTeacherGroupLabelF88(group)} · {nivel} · {test==='TEST2'?'2.º escrito':'1.er escrito'} · Opción {opcion}</div></div>
         <button className="btn btn-ghost" type="button" onClick={onClose}>CERRAR MODELO</button>
       </div>
-      <iframe key={src} title="Modelo del examen para el docente" src={src} style={{width:'100%',flex:1,border:0,display:'block'}} loading="eager" referrerPolicy="same-origin" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" />
+      <iframe key={src} title="Modelo del examen para el docente" src={src} style={{width:'100%',flex:1,border:0,display:'block'}} loading="eager" referrerPolicy="same-origin" sandbox="allow-scripts allow-same-origin allow-presentation allow-modals" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" />
     </div>
   </div>;
 }

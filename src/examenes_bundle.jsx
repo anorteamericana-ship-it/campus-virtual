@@ -1,4 +1,4 @@
-// CAMPUS_F98_4_L_20260625_EVALUACIONES_ENVIO_UNICO_RESULTADOS
+// CAMPUS_F98_4_M_20260625_ENVIO_NOTA_DOCENTE_FEEDBACK_OBLIGATORIO
 // Generado desde: examenes_css.jsx, examenes_appcss.jsx, examenes_data.jsx, examenes_render.jsx, examenes_modes.jsx, examenes_app.jsx
 
 // ===== examenes_css.jsx =====
@@ -295,7 +295,6 @@ window.EXAM_CSS = `
   input,textarea,select{ border:1px solid #8E9AAA!important; background:#fff!important; }
 }
 `;
-
 
 // ===== examenes_appcss.jsx =====
 
@@ -814,7 +813,6 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
     s.textContent = window.EXAM_APP_CSS; document.head.appendChild(s);
   }
 })();
-
 
 // ===== examenes_data.jsx =====
 
@@ -4472,7 +4470,6 @@ function ponderacionTexto(pp, plan) {
   return `Valor según plan académico: ${pp.con_ina}% CON INA / ${pp.sin_ina}% SIN INA`;
 }
 
-
 // ===== examenes_render.jsx =====
 
 /* global React, NIVEL_TEMA */
@@ -5100,10 +5097,9 @@ Object.assign(window, {
   ExamShell, evalQuestion, examQuestions, getMatchVal, exNorm, exKeyText,
 });
 
-
 // ===== examenes_modes.jsx =====
 
-// CAMPUS_F95_0_20260621_BUNDLE_UNICO_BANDEJA_DOCENTE_ESCALABLE
+// CAMPUS_F98_4_M_20260625_ENVIO_NOTA_DOCENTE_FEEDBACK_OBLIGATORIO
 // CALGRUPO_F51_20260617_INDICE_MAESTRO_CAMPUS_UI
 // CALGRUPO_F50_20260617_CIERRE_TECNICO_EXAMENES_UI
 // CALGRUPO_F49_20260617_CHECKLIST_QA_FINAL_EXAMENES_UI
@@ -5702,7 +5698,6 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const [marks, setMarks] = useState({});
   const [comments, setComments] = useState({});
   const [openComment, setOpenComment] = useState(null);
-  const [internalComments, setInternalComments] = useState('');
   const [studentFeedback, setStudentFeedback] = useState('');
   const [scriptSec, setScriptSec] = useState(null);
 
@@ -5710,7 +5705,6 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     const adj = examTeacherAdjustmentsF940(rev && rev.MANUAL_ADJUSTMENTS_JSON);
     setMarks(adj.marks);
     setComments(adj.comments);
-    setInternalComments(String(rev && rev.COMMENTS || ''));
     setStudentFeedback(String(rev && rev.STUDENT_FEEDBACK || ''));
   }, []);
 
@@ -5778,9 +5772,9 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const payload = () => ({
     review_id: reviewData && reviewData.REVIEW_ID,
     final_score_100: calculated100,
-    comments: internalComments,
-    student_feedback: studentFeedback,
-    manual_adjustments: { marks, comments, source:'teacher_written_review_f95' }
+    comments: '',
+    student_feedback: String(studentFeedback || '').trim(),
+    manual_adjustments: { marks, comments, source:'teacher_written_review_f98_4_m' }
   });
 
   const refreshReview = async () => {
@@ -5789,40 +5783,51 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     return r;
   };
 
-  const saveDraft = async () => {
-    if (!reviewData || !reviewData.REVIEW_ID) return;
-    setBusy('save'); setErr(''); setMsg('');
-    const r = await postExamBackend('examSaveReviewDraft', payload());
-    setBusy('');
-    if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo guardar la revisión.'); return; }
-    await refreshReview();
-    setMsg('Borrador guardado. Podés continuar revisando más tarde.');
-    if (onDone) onDone(false);
+  const pushClosedReviewToNotas = async () => {
+    const reviewId = reviewData && reviewData.REVIEW_ID;
+    if (!reviewId) return { ok:false, error:'review_id_no_disponible', mensaje:'No se encontró la revisión que debe enviarse.' };
+    return await postExamBackend('examPushReviewToNotas', { review_id:reviewId, source:'teacher_written_review_f98_4_m' }, 45000);
   };
 
   const closeAndPush = async () => {
-    if (!reviewData || !reviewData.REVIEW_ID || closed) return;
-    const ok = window.confirm(`Se cerrará la revisión con nota ${calculated100}/100 y se enviará a Mis Notas. Después no podrá editarse. ¿Continuar?`);
-    if (!ok) return;
+    if (!reviewData || !reviewData.REVIEW_ID || closed || busy) return;
+    const feedback = String(studentFeedback || '').trim();
+    if (!feedback) {
+      setMsg('');
+      setErr('La retroalimentación para el estudiante es obligatoria antes de enviar la nota.');
+      return;
+    }
+
     setBusy('close'); setErr(''); setMsg('');
-    const r = await postExamBackend('examCloseReview', Object.assign(payload(), { push_to_notas:'SI' }), 35000);
+    const closeRes = await postExamBackend('examCloseReview', Object.assign(payload(), { push_to_notas:'NO' }), 45000);
+    if (!closeRes || closeRes.ok === false) {
+      setBusy('');
+      setErr((closeRes && (closeRes.mensaje || closeRes.error)) || 'No se pudo cerrar la revisión.');
+      return;
+    }
+
+    const pushRes = await pushClosedReviewToNotas();
     setBusy('');
-    if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo cerrar la revisión.'); return; }
     await refreshReview();
-    setMsg(r.pushed_to_notas === 'SI' ? 'Revisión cerrada y nota enviada a Mis Notas.' : 'La revisión se cerró, pero Mis Notas no confirmó el envío. Usá “Enviar a Mis Notas”.');
+    if (!pushRes || pushRes.ok === false) {
+      setErr((pushRes && (pushRes.mensaje || pushRes.error)) || 'La revisión se cerró, pero no se pudo registrar la nota. Presioná Enviar Nota nuevamente.');
+      return;
+    }
+    setMsg('Nota enviada correctamente a Mis Notas.');
     if (onDone) onDone(true);
   };
 
   const pushToNotas = async () => {
-    if (!reviewData || !reviewData.REVIEW_ID || pushed) return;
+    if (!reviewData || !reviewData.REVIEW_ID || pushed || busy) return;
     setBusy('push'); setErr(''); setMsg('');
-    const r = await postExamBackend('examPushReviewToNotas', { review_id:reviewData.REVIEW_ID, source:'teacher_written_review_f95' }, 35000);
+    const r = await pushClosedReviewToNotas();
     setBusy('');
     if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }
     await refreshReview();
-    setMsg('Nota enviada a Mis Notas.');
+    setMsg('Nota enviada correctamente a Mis Notas.');
     if (onDone) onDone(true);
   };
+
 
   if (loading) return <div className="tch-review-loading"><div className="exam-boot-spinner" /><b>Abriendo entrega y preparando revisión…</b></div>;
   if (err && !attempt) return <div className="tch-review-error"><b>No se pudo abrir la entrega.</b><span>{err}</span><div><button className="btn-sm" onClick={onBack}>Volver</button><button className="ad-meta-btn" onClick={load}>Reintentar</button></div></div>;
@@ -5833,7 +5838,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     <div className="tchrev tchrev-live" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
       <ScriptModal section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
       <aside className="rev-side">
-        <button className="rev-back" onClick={onBack}>← Entregas del grupo</button>
+        <button type="button" className="rev-back" onClick={onBack}>← Entregas del grupo</button>
         <div className="rev-live-tag">REVISIÓN OFICIAL</div>
         <div className="rev-stud">
           <h3>{attempt.NOMBRE || row.NOMBRE || 'Estudiante'}</h3>
@@ -5857,14 +5862,23 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
           <div className="rev-score-lbl">Nota actual · {closed ? 'cerrada' : `${finalPoints}/${all.length} pts`}</div>
         </div>
 
-        <label className="rev-field"><span>Retroalimentación para el estudiante</span><textarea className="rev-fb" disabled={closed} placeholder="Qué hizo bien y qué debe corregir…" value={studentFeedback} onChange={e=>setStudentFeedback(e.target.value)} /></label>
-        <label className="rev-field"><span>Observación interna</span><textarea className="rev-fb compact" disabled={closed} placeholder="Nota interna opcional…" value={internalComments} onChange={e=>setInternalComments(e.target.value)} /></label>
+        <label className="rev-field">
+          <span>Retroalimentación para el estudiante · obligatoria</span>
+          <textarea
+            className="rev-fb"
+            disabled={closed}
+            required
+            aria-required="true"
+            placeholder="Indicá qué hizo bien y qué debe corregir antes de enviar la nota…"
+            value={studentFeedback}
+            onChange={e=>{ setStudentFeedback(e.target.value); if (err && String(e.target.value || '').trim()) setErr(''); }}
+          />
+        </label>
 
         {msg && <div className="rev-live-ok">✓ {msg}</div>}
         {err && <div className="rev-live-err">⚠ {err}</div>}
-        {!closed && <button className="btn-ghost" disabled={!!busy} onClick={saveDraft}>{busy === 'save' ? 'Guardando…' : 'Guardar y continuar después'}</button>}
-        {!closed && <button className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Cerrando…' : `Cerrar con ${calculated100}/100 y enviar`}</button>}
-        {closed && !pushed && <button className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando…' : 'Enviar a Mis Notas'}</button>}
+        {!closed && <button type="button" className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
+        {closed && !pushed && <button type="button" className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
       </aside>
 
@@ -6025,7 +6039,7 @@ function TeacherReview({ sub, shell, density, onBack }) {
       <ScriptModal section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
       {/* sidebar de control */}
       <aside className="rev-side">
-        <button className="rev-back" onClick={onBack}>← Bandeja</button>
+        <button type="button" className="rev-back" onClick={onBack}>← Bandeja</button>
         <div className="rev-stud">
           <h3>{sub.estudiante}</h3>
           <div className="rev-meta"><span>Código</span>{sub.codigo}</div>
@@ -7411,7 +7425,6 @@ function MetaModal({ e, onClose }) {
 
 Object.assign(window, { StudentMode, TeacherMode, AdminMode, themedExam, getExam, examIdDe });
 
-
 // ===== examenes_app.jsx =====
 
 // CAMPUS_F95_1_20260621_PAYLOAD_PUBLICO_MATCHING_SEGURO
@@ -8185,3 +8198,4 @@ ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></Exa
   } catch (_) {}
   if (tries < 35) window.setTimeout(() => confirmExamMountF950(tries + 1), 100);
 })(0);
+
