@@ -930,7 +930,7 @@ function CertificadoEstadoCardF984({ row }) {
     ['Estado académico', row.estatus || 'Sin registro'],
     ['Nota', row.nota != null ? `${row.nota}/100` : 'Sin dato'],
     ['Asistencia', row.asistencia_pct != null ? `${row.asistencia_pct}%` : 'Sin dato verificable'],
-    ['Morosidad', row.morosidad_verificada ? (row.morosidad ? 'Registra morosidad' : 'No registra') : 'Sin dato verificable'],
+    ['Morosidad', row.morosidad_verificada ? (row.morosidad ? 'Registra morosidad' : 'Al Día') : 'Sin dato verificable'],
     ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
     ['Número oficial', row.registro || 'Sin asignar'],
     ['PDF oficial', row.pdf_existente ? 'Localizado' : 'No localizado'],
