@@ -193,6 +193,7 @@ function agruparPagosPorModuloSM(pagos, otrosPagos) {
       nivel,
       comprobantes,
       movimientos:items.length,
+      total:items.reduce((sum, item) => sum + (Number(item.monto) || 0), 0),
       primerComprobante:comprobantes.length ? comprobantes[0].numero : Number.MAX_SAFE_INTEGER,
     };
   }).sort((a,b) => {
@@ -789,6 +790,14 @@ function PagoModuloCardSM({ bloque, fmt }) {
           <PagoComprobanteSM key={`${nivel}-${grupo.comprobante || 'sin'}-${i}`} grupo={grupo} fmt={fmt} />
         ))}
       </div>
+      <div style={{
+        display:'flex', justifyContent:'space-between', alignItems:'center', gap:14,
+        padding:'13px 18px', borderTop:`2px solid ${color}`,
+        background:'color-mix(in srgb, '+color+' 6%, white)',
+      }}>
+        <strong style={{ fontSize:12, letterSpacing:'.12em', color:'var(--an-navy-ink)' }}>TOTAL</strong>
+        <strong style={{ fontFamily:'var(--f-mono)', fontSize:16, color:'var(--an-navy-ink)' }}>{fmt(bloque.total)}</strong>
+      </div>
     </article>
   );
 }
@@ -879,9 +888,7 @@ function CertificadosView() {
   return (
     <div>
       <PageHeader
-        kicker="Documentos oficiales"
         title={<>Mis <em>Certificados</em></>}
-        sub="Estado real de elegibilidad, emisión, PDF oficial y disponibilidad de descarga"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? <SkeletonGrid /> : error ? <ErrorState message={error} onRetry={reload} /> : <CertificadosContenido data={data} />}
@@ -897,16 +904,20 @@ function CertificadosContenido({ data }) {
   }
   return (
     <>
-      <div className="card" style={{ padding:'14px 18px', marginBottom:16, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
-        Aprobar o convalidar un nivel no significa que el PDF ya exista. Esta pantalla distingue la elegibilidad, el registro oficial, la generación del archivo y la disponibilidad real del enlace.
-      </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(290px,1fr))', gap:16 }}>
         {rows.map(row => <CertificadoEstadoCardF984 key={row.nivel} row={row} />)}
       </div>
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
           <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás revisar una emisión?</strong> Contactá al área académica con tu código y nivel.</div>
-          <window.ContactoAdmin est={data?.estudiante || { CODIGO:data?.codigo }} tipo="academico" hideWhenPending />
+          <window.ContactoAdmin
+            est={Object.assign({}, data?.estudiante || { CODIGO:data?.codigo }, {
+              contactos_campus:data?.contactos_campus || {},
+              contacto_academico:data?.contacto_academico || data?.contactos_campus?.academico || null,
+            })}
+            tipo="academico"
+            label="Consultar al Director de profesores"
+          />
         </div>
       )}
     </>
@@ -915,7 +926,6 @@ function CertificadosContenido({ data }) {
 
 function CertificadoEstadoCardF984({ row }) {
   const meta = CERT_ESTADO_UI_F984[row.estado] || CERT_ESTADO_UI_F984.NO_ELEGIBLE;
-  const razones = Array.isArray(row.razones) ? row.razones : [];
   const checks = [
     ['Estado académico', row.estatus || 'Sin registro'],
     ['Nota', row.nota != null ? `${row.nota}/100` : 'Sin dato'],
@@ -924,7 +934,7 @@ function CertificadoEstadoCardF984({ row }) {
     ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
     ['Número oficial', row.registro || 'Sin asignar'],
     ['PDF oficial', row.pdf_existente ? 'Localizado' : 'No localizado'],
-    ['Firma', row.firmado_probable ? 'Detectada' : (row.pdf_existente ? 'No confirmada' : 'No aplica')],
+    ['Firma', row.firmado_probable ? 'Detectada' : (row.pdf_existente ? 'No confirmada' : 'Pendiente de PDF')],
   ];
   return (
     <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${NIVEL_COLOR_SM[row.nivel] || 'var(--an-navy)'}` }}>
@@ -940,16 +950,11 @@ function CertificadoEstadoCardF984({ row }) {
       </div>
       <div style={{ padding:'14px 20px' }}>
         {checks.map(([label,value]) => <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'7px 0', borderBottom:'1px solid var(--line)', fontSize:11.5 }}><span style={{ color:'var(--ink-3)' }}>{label}</span><strong style={{ color:'var(--ink)', textAlign:'right' }}>{value}</strong></div>)}
-        {razones.length > 0 && <div style={{ marginTop:12, padding:'10px 12px', borderRadius:10, background:meta.bg, color:meta.fg, fontSize:11.5, lineHeight:1.5 }}>{razones.join(' · ')}</div>}
         {row.url ? (
           <a className="btn btn-primary" href={row.url} target="_blank" rel="noreferrer" style={{ marginTop:14, width:'100%', justifyContent:'center' }}>
             <Icon name="download" size={14} className="" /> Abrir PDF oficial
           </a>
-        ) : (
-          <div style={{ marginTop:14, fontSize:11.5, color:'var(--ink-3)', lineHeight:1.5 }}>
-            {row.estado === 'ELEGIBLE_EMISION' ? 'El nivel cumple los requisitos verificables, pero todavía no tiene número oficial ni PDF.' : row.estado === 'EN_PROCESO' ? (row.registro ? 'Existe registro oficial, pero no se localizó un PDF disponible en la ruta de certificados.' : 'Falta completar una o más verificaciones administrativas antes de emitir el certificado.') : row.estado === 'EMITIDO' ? 'El PDF fue localizado; la firma todavía no está confirmada.' : 'No hay un enlace real disponible para este nivel.'}
-          </div>
-        )}
+        ) : null}
       </div>
     </article>
   );
