@@ -53,24 +53,153 @@ function notaDeNivelSM(niveles, nivel) {
   return typeof v === 'object' ? (v?.nota ?? v?.NOTA ?? null) : null;
 }
 
-// Parte el concepto crudo del backend en (concepto limpio | comprobante).
-// Formato típico: "TIPO_NIVEL-BANCO-NUMERO-FECHA"
-//   TIPO  = CUOTA | MATRICULA | CERTIFICADO
-//   NIVEL = B1 | B2 | I1 | I2  (puede faltar en casos rotos: "CERTIFICADO_-BCR-...")
-// Solo presentación visual; el dato crudo no se modifica.
+// Normalización del historial financiero.
+// Los movimientos de un mismo comprobante pertenecen al mismo módulo. Primero
+// se busca un nivel explícito en el concepto; luego se propaga ese nivel a los
+// demás movimientos que comparten exactamente el mismo comprobante. Nunca se
+// usa el GRUPO histórico para asignar nivel porque puede conservar el código B1.
+const PAGO_NIVEL_ORDEN_SM = ['B1','B2','I1','I2'];
+const PAGO_TIPO_LABEL_SM = {
+  CUOTA:'Cuota',
+  MATRICULA:'Matrícula',
+  CERTIFICADO:'Certificado',
+};
+const PAGO_TIPO_ORDEN_SM = { CUOTA:1, MATRICULA:2, CERTIFICADO:3 };
+const PAGO_CUENTA_NIVEL_SM = { '43':'B1', '44':'B2', '45':'I1', '46':'I2' };
+
 function partirConcepto(conceptoRaw) {
   const c = String(conceptoRaw || '').trim();
-  if (!c) return { concepto: '—', comprobante: '' };
-  const m = c.match(/^(CUOTA|MATRICULA|CERTIFICADO)_(B1|B2|I1|I2)?/i);
-  if (m) {
-    const tipo  = m[1].toUpperCase();
-    const nivel = m[2] ? m[2].toUpperCase() : '';
-    const conceptoLimpio = nivel ? `${tipo}_${nivel}` : tipo;
-    let resto = c.slice(m[0].length);
-    resto = resto.replace(/^[-_\s]+/, '');
-    return { concepto: conceptoLimpio, comprobante: resto || '' };
+  if (!c) return { concepto:'Movimiento', tipo:'', nivel:'', comprobante:'' };
+
+  const m = c.match(/^(CUOTA|MATRICULA|CERTIFICADO)[_\s-]*(B1|B2|I1|I2)?/i);
+  if (!m) {
+    const nivelLibre = (c.match(/(?:^|[_\s-])(B1|B2|I1|I2)(?:$|[_\s-])/i) || [])[1] || '';
+    return {
+      concepto:c,
+      tipo:'',
+      nivel:String(nivelLibre || '').toUpperCase(),
+      comprobante:'',
+    };
   }
-  return { concepto: c, comprobante: '' };
+
+  const tipo = String(m[1] || '').toUpperCase();
+  const nivel = String(m[2] || '').toUpperCase();
+  let resto = c.slice(m[0].length).replace(/^[-_\s]+/, '').trim();
+  return {
+    concepto:PAGO_TIPO_LABEL_SM[tipo] || tipo || 'Movimiento',
+    tipo,
+    nivel,
+    comprobante:resto,
+  };
+}
+
+function numeroComprobanteSM(raw) {
+  const txt = String(raw || '').trim();
+  if (!txt) return Number.MAX_SAFE_INTEGER;
+  const banco = txt.match(/(?:BCR|BNCR|BN|BAC|SINPE|RECIBO|COMPROBANTE)[^0-9]*([0-9]{4,})/i);
+  if (banco) return Number(banco[1]) || Number.MAX_SAFE_INTEGER;
+  const candidatos = (txt.match(/[0-9]+/g) || [])
+    .filter(x => x.length >= 4)
+    .sort((a,b) => b.length - a.length);
+  return candidatos.length ? (Number(candidatos[0]) || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+}
+
+function fechaOrdenPagoSM(raw) {
+  const txt = String(raw || '').trim();
+  const latam = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (latam) return Date.UTC(Number(latam[3]), Number(latam[2]) - 1, Number(latam[1]));
+  const iso = txt.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const parsed = Date.parse(txt);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+function normalizarMovimientoPagoSM(p, index) {
+  p = p || {};
+  const crudo = p.concepto || p.CONCEPTO || p.descripcion || p.DESCRIPCION || '';
+  const parsed = partirConcepto(crudo);
+  const comprobante = String(
+    parsed.comprobante || p.comprobante || p.COMPROBANTE || p.recibo || p.RECIBO || ''
+  ).trim();
+  const nivelCampo = String(p.nivel || p.NIVEL || '').trim().toUpperCase();
+  const nivelCuenta = PAGO_CUENTA_NIVEL_SM[String(p.ncuenta || p.NCUENTA || '').trim()] || '';
+  const nivelComprobante = String((comprobante.match(/(?:^|[_\s-])(B1|B2|I1|I2)(?:$|[_\s-])/i) || [])[1] || '').toUpperCase();
+  const nivel = parsed.nivel || nivelCampo || nivelCuenta || nivelComprobante || '';
+  const fecha = p.fecha || p.FECHA || '';
+  const claveComprobante = comprobante
+    ? comprobante.toUpperCase().replace(/\s+/g, ' ').trim()
+    : `SIN-COMPROBANTE-${index}`;
+
+  return {
+    id:`pago-${index}`,
+    concepto:parsed.concepto || 'Movimiento',
+    tipo:parsed.tipo || '',
+    nivel,
+    nivelFinal:nivel,
+    comprobante,
+    claveComprobante,
+    numeroComprobante:numeroComprobanteSM(comprobante),
+    fecha,
+    fechaOrden:fechaOrdenPagoSM(fecha),
+    monto:p.monto ?? p.MONTO ?? p.pago ?? p.PAGO ?? null,
+  };
+}
+
+function agruparPagosPorModuloSM(pagos, otrosPagos) {
+  const movimientos = [...(pagos || []), ...(otrosPagos || [])]
+    .map((p,i) => normalizarMovimientoPagoSM(p, i));
+
+  // El comprobante es el vínculo fiable entre cuota, matrícula y certificado.
+  const porComprobante = new Map();
+  movimientos.forEach(m => {
+    if (!porComprobante.has(m.claveComprobante)) porComprobante.set(m.claveComprobante, []);
+    porComprobante.get(m.claveComprobante).push(m);
+  });
+
+  porComprobante.forEach(items => {
+    const niveles = [...new Set(items.map(x => x.nivel).filter(n => PAGO_NIVEL_ORDEN_SM.includes(n)))];
+    const nivelComprobante = niveles.length === 1 ? niveles[0] : '';
+    items.forEach(item => {
+      // Si una fila no trae nivel, hereda el de las demás filas del mismo recibo.
+      // Si el recibo contiene niveles contradictorios, no se adivina.
+      item.nivelFinal = item.nivel || nivelComprobante || 'OTROS';
+    });
+  });
+
+  const bloques = new Map();
+  movimientos.forEach(m => {
+    const nivel = PAGO_NIVEL_ORDEN_SM.includes(m.nivelFinal) ? m.nivelFinal : 'OTROS';
+    if (!bloques.has(nivel)) bloques.set(nivel, []);
+    bloques.get(nivel).push(m);
+  });
+
+  return [...bloques.entries()].map(([nivel, items]) => {
+    const recibos = new Map();
+    items.forEach(item => {
+      if (!recibos.has(item.claveComprobante)) recibos.set(item.claveComprobante, []);
+      recibos.get(item.claveComprobante).push(item);
+    });
+    const comprobantes = [...recibos.values()].map(rows => {
+      rows.sort((a,b) => (PAGO_TIPO_ORDEN_SM[a.tipo] || 99) - (PAGO_TIPO_ORDEN_SM[b.tipo] || 99) || a.fechaOrden - b.fechaOrden || String(a.concepto).localeCompare(String(b.concepto), 'es'));
+      return {
+        comprobante:rows[0]?.comprobante || '',
+        numero:Math.min(...rows.map(x => x.numeroComprobante)),
+        fechaOrden:Math.min(...rows.map(x => x.fechaOrden)),
+        movimientos:rows,
+      };
+    }).sort((a,b) => a.numero - b.numero || a.fechaOrden - b.fechaOrden || String(a.comprobante).localeCompare(String(b.comprobante), 'es'));
+
+    return {
+      nivel,
+      comprobantes,
+      movimientos:items.length,
+      primerComprobante:comprobantes.length ? comprobantes[0].numero : Number.MAX_SAFE_INTEGER,
+    };
+  }).sort((a,b) => {
+    if (a.primerComprobante !== b.primerComprobante) return a.primerComprobante - b.primerComprobante;
+    const ia = PAGO_NIVEL_ORDEN_SM.indexOf(a.nivel), ib = PAGO_NIVEL_ORDEN_SM.indexOf(b.nivel);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -470,9 +599,7 @@ function PagosView() {
   return (
     <div>
       <PageHeader
-        kicker="Estado financiero"
         title={<>Pagos y <em>estado de cuenta</em></>}
-        sub="Matrícula, cuotas y certificado · información en tiempo real"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -492,7 +619,6 @@ function PagosContenido({ data }) {
   const niveles     = data?.niveles     || {};
   const pagos       = data?.pagos       || [];
   const otrosPagos  = data?.otrosPagos  || [];
-  const grupo       = data?.grupo       || {};
 
   const nivelActivo = calcularNivelActivoSM(niveles);
   const nivelColor  = NIVEL_COLOR_SM[nivelActivo] || 'var(--an-granate)';
@@ -511,6 +637,7 @@ function PagosContenido({ data }) {
   const fmt = (n) => n != null ? '₡' + Number(n).toLocaleString('es-CR') : '—';
 
   const todosPagos = [...pagos, ...otrosPagos];
+  const bloquesPagos = agruparPagosPorModuloSM(pagos, otrosPagos);
 
   return (
     <>
@@ -546,7 +673,6 @@ function PagosContenido({ data }) {
             </div>
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:4 }}>
               {nivelActivo ? <>Cursando <strong style={{ color:'var(--ink)' }}>{NIVEL_NOMBRE_SM[nivelActivo]}</strong></> : 'Sin nivel activo'}
-              {grupo.CODIGO_GRUPO && <> · Grupo {grupo.CODIGO_GRUPO}</>}
             </div>
           </div>
         </div>
@@ -597,46 +723,22 @@ function PagosContenido({ data }) {
         )}
       </div>
 
-      {/* Historial de pagos */}
-      <div className="card" style={{ padding:0, overflow:'hidden' }}>
-        <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
-          <div className="card-title">Historial de pagos</div>
+      {/* Historial de pagos dividido por módulo, como Certificados */}
+      <section style={{ marginTop:22 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap', margin:'0 2px 12px' }}>
+          <h2 style={{ fontFamily:'var(--f-serif)', fontSize:24, margin:0, color:'var(--an-navy-ink)' }}>Historial de pagos</h2>
           {todosPagos.length > 0 && <span style={{ fontSize:11, color:'var(--ink-3)' }}>{todosPagos.length} movimientos</span>}
         </div>
         {todosPagos.length === 0 ? (
-          <div style={{ padding:'28px 20px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
+          <div className="card" style={{ padding:'28px 20px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
             Sin pagos registrados aún.
           </div>
         ) : (
-          <table className="table-soft">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Concepto</th>
-                <th>Comprobante</th>
-                <th style={{ textAlign:'right' }}>Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todosPagos.map((p, i) => {
-                const crudo = p.concepto || p.CONCEPTO || p.descripcion || p.DESCRIPCION || '';
-                const { concepto, comprobante } = partirConcepto(crudo);
-                return (
-                <tr key={i}>
-                  <td style={{ fontSize:12, color:'var(--ink-2)' }}>{p.fecha || p.FECHA || '—'}</td>
-                  <td>
-                    <div style={{ fontWeight:600 }}>{concepto || '—'}</div>
-                    {(p.grupo || p.GRUPO) && <div style={{ fontSize:11, color:'var(--ink-3)' }}>{p.grupo || p.GRUPO}</div>}
-                  </td>
-                  <td style={{ fontSize:12, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{comprobante || '—'}</td>
-                  <td style={{ textAlign:'right', fontFamily:'var(--f-mono)', fontWeight:600 }}>{fmt(p.monto ?? p.MONTO)}</td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(330px,1fr))', gap:16 }}>
+            {bloquesPagos.map(bloque => <PagoModuloCardSM key={bloque.nivel} bloque={bloque} fmt={fmt} />)}
+          </div>
         )}
-      </div>
+      </section>
 
       <div style={{
         marginTop:20, padding:'14px 18px',
@@ -646,14 +748,72 @@ function PagosContenido({ data }) {
       }}>
         <div style={{ flex:1, minWidth:240 }}>
           <strong style={{ color:'var(--ink)' }}>¿Alguna dificultad este mes?</strong>{' '}
-          Podemos acomodar fechas — escribinos a administración.
+          Podemos revisar tu caso — escribinos directamente a cobros.
         </div>
         {/* STUDENT-CONTACT-ADMIN-002: Estado de cuenta → contacto de COBROS
             dinámico (getContactoCampus tipo='cobros'). Abre WhatsApp solo si hay
             número real; si no, estado honesto. Sin números quemados. */}
-        <ContactoAdmin est={data?.estudiante || data} tipo="cobros" />
+        <ContactoAdmin
+          est={Object.assign({}, data?.estudiante || {}, {
+            contactos_campus:data?.contactos_campus || {},
+            contacto_cobros:data?.contacto_cobros || data?.contactos_campus?.cobros || null,
+          })}
+          tipo="cobros"
+        />
       </div>
     </>
+  );
+}
+
+function PagoModuloCardSM({ bloque, fmt }) {
+  const nivel = bloque?.nivel || 'OTROS';
+  const conocido = PAGO_NIVEL_ORDEN_SM.includes(nivel);
+  const color = conocido ? (NIVEL_COLOR_SM[nivel] || 'var(--an-navy)') : 'var(--ink-3)';
+  const titulo = conocido ? (NIVEL_NOMBRE_SM[nivel] || nivel) : 'Otros movimientos';
+  const libro = conocido ? (NIVEL_LIBRO_SM[nivel] || '') : 'Movimientos sin módulo verificable';
+  return (
+    <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${color}` }}>
+      <div style={{ padding:'17px 19px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg,#fff,#FBF8F2)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+          <div>
+            <h3 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'0 0 3px', color:'var(--an-navy-ink)' }}>{titulo}</h3>
+            <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{libro}</div>
+          </div>
+          <span style={{ padding:'5px 9px', borderRadius:999, background:'var(--bg-deep)', color:'var(--ink-2)', fontSize:10, fontWeight:900, whiteSpace:'nowrap' }}>
+            {bloque.movimientos} movimiento{bloque.movimientos === 1 ? '' : 's'}
+          </span>
+        </div>
+      </div>
+      <div style={{ padding:'13px 15px', display:'grid', gap:10 }}>
+        {bloque.comprobantes.map((grupo, i) => (
+          <PagoComprobanteSM key={`${nivel}-${grupo.comprobante || 'sin'}-${i}`} grupo={grupo} fmt={fmt} />
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function PagoComprobanteSM({ grupo, fmt }) {
+  const comprobante = grupo?.comprobante || 'Sin comprobante identificado';
+  const movimientos = grupo?.movimientos || [];
+  return (
+    <section style={{ border:'1px solid var(--line)', borderRadius:12, overflow:'hidden', background:'#fff' }}>
+      <div style={{ padding:'9px 11px', borderBottom:'1px solid var(--line)', background:'var(--surface-2)' }}>
+        <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Comprobante</div>
+        <div style={{ marginTop:3, fontSize:11.5, fontFamily:'var(--f-mono)', fontWeight:700, color:'var(--ink)', wordBreak:'break-word' }}>{comprobante}</div>
+      </div>
+      <div>
+        {movimientos.map((mov, i) => (
+          <div key={mov.id} style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) auto', gap:12, alignItems:'center', padding:'10px 11px', borderBottom:i < movimientos.length - 1 ? '1px solid var(--line)' : 'none' }}>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontSize:12.5, fontWeight:750, color:'var(--ink)' }}>{mov.concepto}</div>
+              <div style={{ marginTop:2, fontSize:10.5, color:'var(--ink-3)' }}>{mov.fecha || 'Fecha no registrada'}</div>
+            </div>
+            <strong style={{ fontFamily:'var(--f-mono)', fontSize:12.5, color:'var(--ink)', whiteSpace:'nowrap' }}>{fmt(mov.monto)}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
