@@ -107,6 +107,15 @@ function etiquetaEvaluacionCG(tipo, leccion, larga = false) {
   const item = EVALUACION_LABEL_CG[String(tipo || '').toUpperCase()]?.[Number(leccion)];
   return item ? (larga ? item.largo : item.corto) : '';
 }
+function modalidadPeriodoCronoCG(meta) {
+  const raw = String(meta?.modalidad || meta?.MODALIDAD || '').trim().toUpperCase();
+  const code = String(meta?.code || meta?.cod_grupo || '').trim().toUpperCase();
+  const sched = typeof cgScheduleFromCode === 'function' ? cgScheduleFromCode(code) : {};
+  const esBimestre = raw.includes('SUPER') || raw.includes('BIMEST') || sched?.dayCode === 'L4' || sched?.dayCode === 'LJ';
+  return esBimestre
+    ? { meses:2, key:'bimestre', label:'Bimestre completo' }
+    : { meses:4, key:'cuatrimestre', label:'Cuatrimestre completo' };
+}
 function contextoOralCG(lec, nivelFallback) {
   return {
     grupo: String(lec?.cod_grupo || lec?.grupo || '').trim(),
@@ -129,39 +138,45 @@ const NIVEL_BASE = {
 // de la barra de progreso superior (base.dark) para unificar visualmente.
 function paletaCelda(estado, tipo, nivel) {
   const base = NIVEL_BASE[nivel] || NIVEL_BASE.B1;
+  const tipoNorm = String(tipo || '').toUpperCase();
 
   if (estado === 'FERIADO') return { bg:'#FDECEA', fg:'#B71C1C', accent:'#B71C1C' };
-  if (estado === 'HOY')     return { bg: base.mid, fg:'#FFFFFF', accent: base.dark };
 
-  // v4.16: I CAN sessions — verde
-  if (tipo === 'ICAN') {
+  if (tipoNorm === 'ICAN') {
     if (estado === 'CERRADA') return { bg:'#1B5E20', fg:'#FFFFFF', accent:'#1B5E20' };
+    if (estado === 'HOY') return { bg:'#4CAF50', fg:'#FFFFFF', accent:'#1B5E20' };
     return { bg:'#F1F8E9', fg:'#2E7D32', accent:'#4CAF50' };
   }
-
-  if (estado === 'CERRADA') {
-    if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
-      return { bg:'#7B5600', fg:'#FFFFFF', accent:'#7B5600' };
-    }
-    // ★ FIX: antes era { bg: base.light, fg: base.dark } — ahora coincide con
-    //   la barra de progreso (base.dark) para consistencia visual.
-    return { bg: base.dark, fg:'#FFFFFF', accent: base.dark };
+  if (tipoNorm === 'PROGRESS_CHECK') {
+    if (estado === 'CERRADA') return { bg:'#6A1B9A', fg:'#FFFFFF', accent:'#6A1B9A' };
+    if (estado === 'HOY') return { bg:'#7B1FA2', fg:'#FFFFFF', accent:'#6A1B9A' };
+    return { bg:'#F3E5F5', fg:'#7B1FA2', accent:'#7B1FA2' };
+  }
+  if (tipoNorm === 'EVAL_ORAL') {
+    if (estado === 'CERRADA') return { bg:'#E65100', fg:'#FFFFFF', accent:'#E65100' };
+    if (estado === 'HOY') return { bg:'#F57F17', fg:'#FFFFFF', accent:'#E65100' };
+    return { bg:'#FFF8E1', fg:'#9A6A00', accent:'#F57F17' };
+  }
+  if (tipoNorm === 'EVAL_ESCRITO') {
+    if (estado === 'CERRADA') return { bg:'#BF360C', fg:'#FFFFFF', accent:'#BF360C' };
+    if (estado === 'HOY') return { bg:'#E65100', fg:'#FFFFFF', accent:'#BF360C' };
+    return { bg:'#FFF3E0', fg:'#BF360C', accent:'#E65100' };
   }
 
-  // CALCULADA / PROGRAMADA / PRE_CAMPUS / LIBRE (todo lo no-dado)
-  if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') {
-    return { bg:'#FFFDE7', fg:'#9B6A00', accent:'#F9A825' };
-  }
+  if (estado === 'HOY') return { bg: base.mid, fg:'#FFFFFF', accent: base.dark };
+  if (estado === 'CERRADA') return { bg: base.dark, fg:'#FFFFFF', accent: base.dark };
   return { bg: base.lighter, fg: base.mid, accent: base.mid + '60' };
 }
 
 // Color para segmento de progress bar
 function colorProgreso(estado, tipo, nivel) {
+  const tipoNorm = String(tipo || '').toUpperCase();
+  if (estado === 'FERIADO') return '#B71C1C';
+  const pal = paletaCelda(estado, tipoNorm, nivel);
+  if (estado === 'HOY') return pal.bg;
+  if (estado === 'CERRADA') return pal.bg;
+  if (tipoNorm === 'PROGRESS_CHECK' || tipoNorm === 'EVAL_ORAL' || tipoNorm === 'EVAL_ESCRITO' || tipoNorm === 'ICAN') return pal.accent;
   const base = NIVEL_BASE[nivel] || NIVEL_BASE.B1;
-  if (estado === 'HOY')       return base.mid;
-  if (estado === 'FERIADO')   return '#FFCA28';
-  if (estado === 'CERRADA')   return base.dark;
-  if (tipo === 'EVAL_ORAL' || tipo === 'EVAL_ESCRITO') return '#F9A825';
   return base.light;
 }
 
@@ -419,6 +434,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   // Backend devuelve UN nivel activo por grupo (nivelId). El selector de
   // niveles múltiples del componente viejo se reduce a ese nivel activo.
   const niveles = [meta.nivelId];
+  const periodoPrograma = modalidadPeriodoCronoCG(meta);
 
   // ── CONTROL DE ACCESO POR NIVEL (solo student) ─────────────────────
   // Reglas:
@@ -600,6 +616,11 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     try { return Number(localStorage.getItem('an_crono_meses_vista') || (esTeacher ? 4 : 1)); } catch (_) { return esTeacher ? 4 : 1; }
   });
   React.useEffect(() => { try { localStorage.setItem('an_crono_meses_vista', String(mesesVista)); } catch (_) {} }, [mesesVista]);
+  React.useEffect(() => {
+    if (esTeacher || esAdmin) return;
+    const validos = new Set([1, periodoPrograma.meses]);
+    if (!validos.has(Number(mesesVista))) setMesesVista(1);
+  }, [esTeacher, esAdmin, mesesVista, periodoPrograma.meses]);
 
   // Acceso del estudiante (matrícula / cuota / mora). Para teacher/admin no se
   // consulta (codigoAcceso vacío → hook no hace fetch). El hook está siempre
@@ -788,30 +809,32 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         flexWrap:'wrap', gap:14, marginBottom:18,
       }}>
         <div>
-          <div style={{
-            fontSize:10, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase',
-            color:'var(--ink-3)', marginBottom:6,
-          }}>
-            Calendario de lecciones · {esAdmin ? 'Administración' : rol === 'teacher' ? 'Vista docente' : 'Mis lecciones'}
-          </div>
+          {!esStudent && (
+            <div style={{
+              fontSize:10, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase',
+              color:'var(--ink-3)', marginBottom:6,
+            }}>
+              Calendario de lecciones · {esAdmin ? 'Administración' : rol === 'teacher' ? 'Vista docente' : 'Mis lecciones'}
+            </div>
+          )}
           <h1 style={{
             fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.025em',
             fontSize:32, lineHeight:1.05, margin:0, color:'var(--ink)',
           }}>
             {rol === 'student' ? 'Mis lecciones' : rol === 'teacher' ? 'Agenda docente' : 'Cronograma de grupo'}
           </h1>
-          <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>
-            {rol === 'student'
-              ? 'Calendario de tus 32 lecciones, con fechas reales y material.'
-              : rol === 'teacher' ? 'Todos tus grupos en curso, vistos en una sola agenda.' : 'Vista única de las 32 lecciones — reemplaza los spreadsheets por grupo.'}
-            {usandoMock && (
-              <span style={{
-                marginLeft:10, padding:'2px 8px', fontSize:10, fontWeight:700,
-                background:'color-mix(in srgb, var(--an-gold) 18%, white)',
-                color:'#7B5600', borderRadius:'var(--r-pill)', letterSpacing:'0.06em',
-              }}>VISTA PREVIA · datos simulados</span>
-            )}
-          </div>
+          {!esStudent && (
+            <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>
+              {rol === 'teacher' ? 'Todos tus grupos en curso, vistos en una sola agenda.' : 'Vista única de las 32 lecciones — reemplaza los spreadsheets por grupo.'}
+              {usandoMock && (
+                <span style={{
+                  marginLeft:10, padding:'2px 8px', fontSize:10, fontWeight:700,
+                  background:'color-mix(in srgb, var(--an-gold) 18%, white)',
+                  color:'#7B5600', borderRadius:'var(--r-pill)', letterSpacing:'0.06em',
+                }}>VISTA PREVIA · datos simulados</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Selector/grupos visibles — F67: teacher ve agenda unificada, no grupo seleccionado */}
@@ -832,7 +855,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
             <div style={{ display:'none' }} aria-hidden="true" />
           ) : (
             <div>
-              <div style={labelStyle}>{rol === 'teacher' ? 'Horario asignado' : 'Mi horario'}</div>
+              {rol === 'teacher' ? <div style={labelStyle}>Horario asignado</div> : null}
               <div style={{
                 padding:'10px 14px', background:'var(--surface)',
                 border:'1.5px solid var(--line)', borderRadius:'var(--r-md)',
@@ -977,10 +1000,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <VistaTabsCrono vista={vista} setVista={setVista} />
           {vista === 'mes' && (
-            <MesesVistaControl valor={mesesVista} setValor={setMesesVista} />
+            <MesesVistaControl valor={mesesVista} setValor={setMesesVista} esAlumno={esStudent} fullRangeMonths={periodoPrograma.meses} fullRangeLabel={periodoPrograma.label} />
           )}
         </div>
-        <div style={{ fontSize:11, color:'var(--ink-3)' }}>Click en una lección para ver el detalle</div>
       </div>
 
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
@@ -1530,7 +1552,7 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
           })}
         </div>
       )}
-      <Leyenda />
+      <Leyenda nivel={nivel} />
     </div>
   );
 }
@@ -1583,18 +1605,20 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
           );
         })}
       </div>
-      <Leyenda />
+      <Leyenda nivel={nivel} />
     </div>
   );
 }
 
 // ── VISTA: Mes (compacta, scroll horizontal — ya no se estira) ──────────────
-function MesesVistaControl({ valor, setValor }) {
-  const opts = [{n:1,t:'1 mes'}, {n:2,t:'2 meses'}, {n:4,t:'Cuatrimestre'}];
+function MesesVistaControl({ valor, setValor, esAlumno = false, fullRangeMonths = 4, fullRangeLabel = 'Cuatrimestre completo' }) {
+  const opts = esAlumno
+    ? [{ n:1, t:'Mes actual' }, { n:fullRangeMonths, t:fullRangeLabel }]
+    : [{ n:1, t:'1 mes' }, { n:2, t:'2 meses' }, { n:4, t:'Cuatrimestre' }];
   return (
     <div style={{ display:'inline-flex', padding:4, borderRadius:'var(--r-pill)', background:'var(--surface)', border:'1px solid var(--line)', gap:4 }}>
       {opts.map(o => (
-        <button key={o.n} type="button" onClick={() => setValor(o.n)} style={{
+        <button key={`${o.n}-${o.t}`} type="button" onClick={() => setValor(o.n)} style={{
           border:'none', borderRadius:'var(--r-pill)', padding:'7px 11px', cursor:'pointer',
           background: valor === o.n ? 'var(--an-navy)' : 'transparent',
           color: valor === o.n ? '#fff' : 'var(--ink-2)', fontSize:11, fontWeight:900,
@@ -1623,7 +1647,7 @@ function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVi
           </div>
         ))}
       </div>
-      {!agenda && <Leyenda />}
+      {!agenda && <Leyenda nivel={nivel} />}
     </div>
   );
 }
@@ -2083,16 +2107,6 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
       )}
 
       {/* Información técnica plegable: no ocupa el espacio de las acciones */}
-      {!agendaDocente && (
-        <details style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:10.5, color:'var(--ink-3)' }}>
-          <summary style={{ cursor:'pointer', fontWeight:800, color:'var(--ink-2)' }}>Información de la clase</summary>
-          <div style={{ marginTop:8, letterSpacing:'0.03em', lineHeight:1.55 }}>
-            Fuente: <strong style={{ fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>CALENDARIO_LECCIONES</strong><br/>
-            Horario: <strong style={{ color:'var(--ink-2)' }}>{grupoLabel || codGrupo}</strong><br/>
-            Docente: <strong style={{ color:'var(--ink-2)' }}>{docente}</strong>
-          </div>
-        </details>
-      )}
     </div>
   );
 }
@@ -2156,16 +2170,19 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         }}>
           {estadoLabel}
         </div>
-        {!isFeriado && selLec.tipo !== 'CLASE' && !bloqueado && (
-          <div style={{
-            marginLeft:6, display:'inline-block',
-            padding:'4px 10px', background: pal.accent, color:'white',
-            fontSize:11, fontWeight:700, letterSpacing:'0.04em',
-            borderRadius:'var(--r-pill)',
-          }}>
-            {etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || TIPO_LABEL_LARGO[selLec.tipo]}
-          </div>
-        )}
+        {!isFeriado && selLec.tipo !== 'CLASE' && !bloqueado && (() => {
+          const tipoExtraLabel = etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || TIPO_LABEL_LARGO[selLec.tipo] || '';
+          return tipoExtraLabel ? (
+            <div style={{
+              marginLeft:6, display:'inline-block',
+              padding:'4px 10px', background: pal.accent, color:'white',
+              fontSize:11, fontWeight:700, letterSpacing:'0.04em',
+              borderRadius:'var(--r-pill)',
+            }}>
+              {tipoExtraLabel}
+            </div>
+          ) : null;
+        })()}
 
         {!isFeriado && !bloqueado && esAdmin && (
           <div style={{
@@ -3017,15 +3034,15 @@ function skeletonLine(widthPct) {
 // ─────────────────────────────────────────────────────────────────────────
 // Leyenda
 // ─────────────────────────────────────────────────────────────────────────
-function Leyenda() {
+function Leyenda({ nivel = 'B1' }) {
   const items = [
-    { bg:'#EBF5EB', ac:'#2E7D32', l:'Clase dada' },
-    { bg:'#EBF0FB', ac:'#1565C0', l:'Próxima' },
-    { bg:'#F3E5F5', ac:'#7B1FA2', l:'Progress Check' },
-    { bg:'#FFF8E1', ac:'#F57F17', l:'Examen Oral' },
-    { bg:'#FFF3E0', ac:'#E65100', l:'Examen Escrito' },
-    { bg:'#FFF9C4', ac:'#F57F17', l:'Hoy' },
-    { bg:'#FDECEA', ac:'#B71C1C', l:'Feriado' },
+    { ...paletaCelda('CERRADA', 'CLASE', nivel), l:'Clase dada' },
+    { ...paletaCelda('PROGRAMADA', 'CLASE', nivel), l:'Próxima' },
+    { ...paletaCelda('PROGRAMADA', 'PROGRESS_CHECK', nivel), l:'Progress Check' },
+    { ...paletaCelda('PROGRAMADA', 'EVAL_ORAL', nivel), l:'Examen Oral' },
+    { ...paletaCelda('PROGRAMADA', 'EVAL_ESCRITO', nivel), l:'Examen Escrito' },
+    { ...paletaCelda('HOY', 'CLASE', nivel), l:'Hoy' },
+    { ...paletaCelda('FERIADO', 'CLASE', nivel), l:'Feriado' },
   ];
   return (
     <div style={{
@@ -3036,7 +3053,7 @@ function Leyenda() {
         <span key={it.l} style={{ display:'flex', alignItems:'center', gap:6 }}>
           <span style={{
             width:14, height:14, borderRadius:4,
-            background:it.bg, border:`1.5px solid ${it.ac}`,
+            background:it.bg, border:`1.5px solid ${it.accent}`,
           }} />
           {it.l}
         </span>

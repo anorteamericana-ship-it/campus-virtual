@@ -21,7 +21,7 @@ function StudentTabButtonF984({ active, children, onClick }) {
 function StudentSectionHeaderF984({ kicker, title, sub }) {
   return (
     <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{kicker}</div>
+      {kicker ? <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{kicker}</div> : null}
       <h1 style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}>{title}</h1>
       {sub && <p style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}>{sub}</p>}
     </div>
@@ -50,7 +50,7 @@ function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, i
 
   return (
     <div data-screen-label="Estudiante · Mi curso" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
-      <StudentSectionHeaderF984 kicker="Aprendizaje" title="Mi curso" sub="Cronograma, materiales y tareas reunidos en un solo lugar, sin perder las funciones existentes." />
+      <StudentSectionHeaderF984 title="Mi curso" />
       <div style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Mi curso">
         <StudentTabButtonF984 active={tab==='cronograma'} onClick={()=>choose('cronograma')}>Cronograma</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='materiales'} onClick={()=>choose('materiales')}>Materiales</StudentTabButtonF984>

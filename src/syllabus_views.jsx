@@ -371,6 +371,17 @@ function PlaneamientoUnidadCombobox({ options, query, selectedKey, onQueryChange
 // F98.4-H · Catálogo oficial + planeamiento real + audio seguro por Blob.
 // Libros y recursos se cargan por IDs fijos; los audios se reproducen pista
 // por pista y se ordenan por unidad. No se exponen keys, scripts ni DOCs.
+function extraerNumeroUnidadBiblioteca(...values) {
+  for (const raw of values) {
+    const txt = String(raw || '').trim();
+    if (!txt) continue;
+    const up = txt.toUpperCase();
+    const match = up.match(/(?:UNIDAD|UNIT)\s*0*(\d{1,2})/) || up.match(/\b0*(\d{1,2})\b/);
+    if (match) return Number(match[1]);
+  }
+  return null;
+}
+
 function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial }) {
   const [estado, setEstado] = React.useState('load');
   const [catalogo, setCatalogo] = React.useState(null);
@@ -506,6 +517,18 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     }
   }, []);
 
+  React.useEffect(() => {
+    if (audioObjectUrlRef.current) {
+      try { URL.revokeObjectURL(audioObjectUrlRef.current); } catch (_) {}
+      audioObjectUrlRef.current = '';
+    }
+    setAudioSrc('');
+    setAudioEstado('idle');
+    setAudioError('');
+    setAudioQuery('');
+    setAudioSeleccionado(null);
+  }, [unidadPlanActiva]);
+
   if (estado === 'load') {
     return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title="Cargando planeamiento, libros y audios del nivel…" /></div>;
   }
@@ -527,9 +550,15 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     display:`${u.label}${u.titulo_unidad ? ` · ${u.titulo_unidad}` : ''}`,
     unidad:u,
   }));
-  const audioOptions = unidadesAudio.flatMap(unidad => (unidad.pistas || []).map(pista => ({
+  const unidadPlanNumero = unidadPlan
+    ? extraerNumeroUnidadBiblioteca(unidadPlan.key, unidadPlan.label, unidadPlan.titulo_unidad)
+    : null;
+  const unidadesAudioFiltradas = unidadPlanNumero == null
+    ? []
+    : unidadesAudio.filter(unidad => extraerNumeroUnidadBiblioteca(unidad.key, unidad.label, unidad.nombre) === unidadPlanNumero);
+  const audioOptions = unidadesAudioFiltradas.flatMap(unidad => (unidad.pistas || []).map(pista => ({
     id:pista.id,
-    display:`${unidad.label} · ${pista.nombre}`,
+    display:pista.nombre,
     unidad:unidad.label,
     pista,
   })));
@@ -568,7 +597,6 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
         <div>
           <BiblioKicker icon="calendar">Planeamiento académico</BiblioKicker>
           <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>PLANEAMIENTO POR UNIDAD</div>
-          <div style={{ marginTop:4, fontSize:11.5, color:'var(--ink-3)' }}>Fuente: APOLLO G3 · DETALLE DEL PROGRAMA</div>
         </div>
 
         <div style={{ marginTop:14 }}>
@@ -638,7 +666,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       <section id="biblioteca-libros" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
           <div>
-            <BiblioKicker icon="book">Libros del nivel</BiblioKicker>
+            <BiblioKicker icon="book">Libros por modulo</BiblioKicker>
             <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Student Book y Workbook</div>
           </div>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>{libros.length} archivos oficiales</span>
@@ -662,7 +690,9 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
             <BiblioKicker icon="materials">Audios por unidad</BiblioKicker>
             <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Reproductor individual por unidad</div>
           </div>
-          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{catalogo?.totales?.audios || 0} pistas · {unidadesAudio.length} unidades</span>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>
+            {unidadPlan ? `${audioOptions.length} pistas · ${unidadPlan.label}` : `${catalogo?.totales?.audios || 0} pistas · ${unidadesAudio.length} unidades`}
+          </span>
         </div>
 
         <div style={{ marginTop:14 }}>
@@ -673,18 +703,27 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
             list="biblioteca-audio-opciones"
             value={audioQuery}
             onChange={e => handleAudioQuery(e.target.value)}
-            placeholder="Escribí la unidad o el nombre de la pista"
+            placeholder={unidadPlan ? 'Escribí o seleccioná una pista de esta unidad' : 'Primero seleccioná una unidad en Planeamiento'}
             autoComplete="off"
-            style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 13px', background:'#fff', color:'var(--ink)', fontSize:13 }}
+            disabled={!unidadPlan || !audioOptions.length}
+            style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 13px', background:(!unidadPlan || !audioOptions.length) ? 'var(--surface-2)' : '#fff', color:'var(--ink)', fontSize:13 }}
           />
           <datalist id="biblioteca-audio-opciones">
             {audioOptions.map(x => <option key={x.id} value={x.display} />)}
           </datalist>
-          <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>El buscador contiene cada pista agrupada por el nombre de su unidad. Solo se muestra el reproductor del audio seleccionado.</div>
+          <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>
+            {unidadPlan
+              ? 'Solo se muestran las pistas que corresponden a la unidad seleccionada arriba.'
+              : 'Seleccioná una unidad en Planeamiento por unidad para ver únicamente sus audios.'}
+          </div>
         </div>
 
-        {!audioSeleccionado ? (
-          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Buscá y seleccioná una pista para abrir el reproductor.</div>
+        {!unidadPlan ? (
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Seleccioná una unidad en Planeamiento por unidad para filtrar sus audios.</div>
+        ) : !audioOptions.length ? (
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Esta unidad no tiene audios registrados en la biblioteca.</div>
+        ) : !audioSeleccionado ? (
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Seleccioná una pista de {unidadPlan.label} para abrir el reproductor.</div>
         ) : (
           <div style={{ marginTop:14, padding:'14px 15px', border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>
             <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--an-navy)' }}>{audioSeleccionado.unidad}</div>
@@ -751,9 +790,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
     return (
       <div>
         <PageHeader
-          kicker="Biblioteca del curso"
           title={<>Biblioteca del curso</>}
-          sub="Libro, audios, PDFs y recursos de tu nivel"
         />
         <ErrorState message={msg} onRetry={reload} />
       </div>
@@ -798,16 +835,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   return (
     <div>
       <PageHeader
-        kicker="Biblioteca del curso"
         title={<>Biblioteca del curso · <em>{nivelNombre}</em></>}
-        sub={`${libro}${cefr ? ' · ' + cefr + ' · MCER' : ''} — planeamiento, libros y audios por unidad`}
-        right={
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {esINA && <Chip tone="navy">Programa INA</Chip>}
-            {cefr && <Chip tone="gold">{cefr} · MCER</Chip>}
-            <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={irCronograma}>← Cronograma académico</button>
-          </div>
-        }
       />
 
       {/* Banner prioridad INA — solo para programa INA */}
