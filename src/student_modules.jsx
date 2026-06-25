@@ -206,6 +206,32 @@ function _smReposMensaje_(row) {
   if (String(row?.SOLICITUD_ESTADO || '').toUpperCase() === 'ENVIADA') return 'Tu solicitud fue recibida y se encuentra en revisión por Administración.';
   return 'Enviá la solicitud dentro de las primeras 24 horas y adjuntá el respaldo. Administración definirá si procede sin costo o requiere ₡10.000.';
 }
+function _smReposExamLabel_(row) {
+  const leccion = Number(row?.LECCION || row?.leccion || 0);
+  const labels = {
+    9:'1.er Examen Oral', 17:'2.º Examen Oral', 18:'1.er Examen Escrito',
+    25:'3.er Examen Oral', 31:'4.º Examen Oral', 32:'2.º Examen Escrito',
+  };
+  const tipo = String(row?.TIPO_EXAMEN || '').toUpperCase();
+  const fallback = tipo === 'ESCRITO' ? 'Examen Escrito' : tipo === 'ORAL' ? 'Examen Oral' : 'Evaluación';
+  return `${labels[leccion] || fallback}${leccion ? ` · Lección ${String(leccion).padStart(2,'0')}` : ''}`;
+}
+function _smEvalRegistrada_(e) {
+  return !!e && (e.registrada === true || (e.registrada == null && e.nota != null && String(e.estado || '').toUpperCase() !== 'SIN_NOTA'));
+}
+function _smRepoTieneNotaOficial_(repo, evaluaciones) {
+  const nivel = String(repo?.NIVEL || repo?.nivel || '').trim().toUpperCase();
+  const grupo = String(repo?.COD_GRUPO || repo?.grupo || '').trim().toUpperCase();
+  const leccion = Number(repo?.LECCION || repo?.leccion || 0);
+  if (!nivel || !leccion) return false;
+  return (Array.isArray(evaluaciones) ? evaluaciones : []).some(e => {
+    if (!_smEvalRegistrada_(e)) return false;
+    if (_smNivelEval_(e) !== nivel) return false;
+    if (Number(e?.leccion || e?.LECCION || 0) !== leccion) return false;
+    const eg = String(e?.grupo || e?.COD_GRUPO || '').trim().toUpperCase();
+    return !grupo || !eg || eg === grupo;
+  });
+}
 function _smStatusLabel_(row) {
   const s = String(row?.estado || '').toUpperCase();
   const map = {
@@ -235,11 +261,15 @@ function _smEvalDateText_(row) {
 }
 function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
   const raw = (Array.isArray(evaluaciones) ? evaluaciones : []).filter(e => _smNivelEval_(e) === nivel);
-  const repos = (Array.isArray(reposRows) ? reposRows : []).filter(r => String(r.NIVEL || '').toUpperCase() === nivel && !['CANCELADA','APLICADA'].includes(String(r.ESTADO || '').toUpperCase()));
+  const repos = (Array.isArray(reposRows) ? reposRows : []).filter(r =>
+    String(r.NIVEL || '').toUpperCase() === nivel &&
+    !['CANCELADA','APLICADA','VENCIDA_0'].includes(String(r.ESTADO || '').toUpperCase()) &&
+    !_smRepoTieneNotaOficial_(r, evaluaciones)
+  );
   return EVAL_SCHEMA_SM.map(def => {
     const found = raw.find(e => _smOfficialType_(e) === def.key) || null;
-    const rep = repos.find(r => Number(r.LECCION || 0) === Number(def.leccion || -1)) || null;
-    const registered = found ? (found.registrada === true || (found.registrada == null && found.nota != null && String(found.estado || '').toUpperCase() !== 'SIN_NOTA')) : false;
+    const registered = _smEvalRegistrada_(found);
+    const rep = registered ? null : (repos.find(r => Number(r.LECCION || 0) === Number(def.leccion || -1)) || null);
     const fechaBase = found?.fecha_clase || found?.fecha || '';
     let estado = String(found?.estado || '').toUpperCase();
     if (!registered && rep) {
@@ -256,21 +286,22 @@ function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
     return {
       ...def,
       ...(found || {}),
-      key:def.key, tipo_normalizado:def.tipo, titulo:(rep && !registered ? `${def.titulo} · reposición` : def.titulo),
+      key:def.key, tipo_normalizado:def.tipo, titulo:(rep ? `${def.titulo} · reposición` : def.titulo),
       leccion:def.leccion, orden:def.orden, nivel,
       nota:registered ? Number(found?.nota || 0) : 0,
       max:Number(found?.max || def.max),
       pct:registered ? Number(found?.pct ?? ((Number(found?.nota || 0) / Number(found?.max || def.max))*100)) : 0,
       registrada:registered, faltante:!registered, estado,
-      es_reposicion:!!(rep || found?.es_reposicion || found?.reposicion_id),
-      reposicion_id:rep?.REPOSICION_ID || found?.reposicion_id || '',
+      es_reposicion:!!rep,
+      reposicion_id:rep?.REPOSICION_ID || '',
       fecha_clase:fechaBase,
-      fecha_original:rep?.FECHA_ORIGINAL || found?.fecha_original || '',
-      fecha_programada:rep?.FECHA_PROGRAMADA || found?.fecha_programada || '',
-      fecha_limite:rep?.FECHA_LIMITE || found?.fecha_limite || ''
+      fecha_original:rep?.FECHA_ORIGINAL || '',
+      fecha_programada:rep?.FECHA_PROGRAMADA || '',
+      fecha_limite:rep?.FECHA_LIMITE || ''
     };
   });
 }
+
 function NotasView({ onNavigate }) {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   const codigo = usr?.codigo || '';
@@ -299,7 +330,7 @@ function NotasView({ onNavigate }) {
   }, [codigo]);
 
   return <div>
-    <PageHeader kicker="Mi rendimiento" title={<>Mis <em>Notas</em></>} sub="Expediente académico por nivel y evaluaciones oficiales" />
+    <PageHeader title={<>Mis <em>Notas</em></>} />
     <GuardSesion usr={usr}>
       {loading && !data ? <SkeletonTable /> : error ? <ErrorState message={error} onRetry={reload} /> :
         <NotasContenido data={data} evaluaciones={evaluaciones} evalErr={evalErr} reposRows={reposRows} reposErr={reposErr} onNavigate={onNavigate} />}
@@ -323,8 +354,10 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
   const avgLevel = completedLevel.length ? (completedLevel.reduce((a,e)=>a+Number(e.pct||0),0)/completedLevel.length).toFixed(1) : null;
   const notaNivel = notaDeNivelSM(niveles, selected);
   const estatusNivel = estatusDe(niveles, selected) || (selected === nivelActivo ? 'CA' : 'PE');
-  const activeRepos = (Array.isArray(reposRows) ? reposRows : []).filter(r => !['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO || '').toUpperCase()));
-  const pendingRepos = activeRepos.filter(r => String(r.NIVEL || '').toUpperCase() === selected);
+  const activeRepos = evaluaciones === null ? [] : (Array.isArray(reposRows) ? reposRows : []).filter(r =>
+    !['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO || '').toUpperCase()) &&
+    !_smRepoTieneNotaOficial_(r, evaluaciones)
+  );
   const pendingAlert = activeRepos[0] || null;
 
   const gradeLetter = (pct) => pct >= 95?'A+':pct >= 90?'A':pct >= 85?'A-':pct >= 80?'B+':pct >= 75?'B':pct >= 70?'B-':pct >= 65?'C':'D';
@@ -335,7 +368,7 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
       <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
         <div><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.14em',textTransform:'uppercase',color:tone.kicker}}>Aviso académico importante</div>
           <div style={{fontFamily:'var(--f-serif)',fontSize:30,lineHeight:1.02,color:tone.title,marginTop:4}}>Tenés una reposición pendiente</div>
-          <div style={{fontSize:13,color:'var(--ink-2)',marginTop:8,maxWidth:860,lineHeight:1.6}}><strong>Examen oral · Lección {String(pendingAlert.LECCION||'').padStart(2,'0')}</strong><br/>
+          <div style={{fontSize:13,color:'var(--ink-2)',marginTop:8,maxWidth:860,lineHeight:1.6}}><strong>{_smReposExamLabel_(pendingAlert)}</strong><br/>
             Fecha original: {_smFechaLarga_(pendingAlert.FECHA_ORIGINAL)} · Solicitud hasta: {_smFechaLarga_(pendingAlert.SOLICITUD_LIMITE_AT||pendingAlert.SOLICITUD_LIMITE)} · Aplicación máxima: {_smFechaLarga_(pendingAlert.FECHA_LIMITE)}.<br/>{_smReposMensaje_(pendingAlert)}
             <div style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:'rgba(255,255,255,.72)',border:'1px solid rgba(138,90,0,.18)',color:'var(--ink-2)'}}>La reposición <strong>no bloquea tu acceso al curso</strong>. Si vence sin aplicarse, este componente queda en 0; el nivel se aprueba con un acumulado final de 70 o más.</div>
           </div></div>
@@ -343,14 +376,14 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
       </div></section>; })()}
 
     <section className="card" style={{padding:18}}>
-      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'flex-end',flexWrap:'wrap',marginBottom:14}}><div><div className="card-title">Resumen por nivel</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Se abre en tu nivel actual. Seleccioná otro nivel para consultar su historial.</div></div><div style={{fontSize:11,color:'var(--ink-3)',fontWeight:800}}>{selected===nivelActivo?'Vista actual del nivel en curso':'Vista histórica seleccionada'}</div></div>
+      <div className="card-title" style={{marginBottom:14}}>Resumen por nivel</div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{['B1','B2','I1','I2'].map(n=>{const est=estatusDe(niveles,n)||(n===nivelActivo?'CA':'PE'),nota=notaDeNivelSM(niveles,n),active=n===selected,color=NIVEL_COLOR_SM[n]||'var(--an-navy)';return <button key={n} type="button" onClick={()=>setSelectedLevel(n)} style={{border:`2px solid ${active?color:'var(--line)'}`,background:active?`color-mix(in srgb, ${color} 8%, white)`:'#fff',borderRadius:18,padding:16,textAlign:'left',cursor:'pointer',fontFamily:'inherit'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{fontSize:10.5,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--ink-3)'}}>{NIVEL_NOMBRE_SM[n]}</span>{active&&<span style={{fontSize:10,fontWeight:900,color}}>{n===nivelActivo?'ACTUAL':'VISTA'}</span>}</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,lineHeight:1,color,marginTop:8}}>{n}</div><div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>{nota!=null?`${nota}/100 acumulado`:(est==='CA'?'Nivel en curso':'Sin nota final registrada')}</div><div style={{marginTop:8}}><Chip tone={_smChipToneByStatus_(est)} dot>{ESTATUS_LABEL_SM[est]||est||'Pendiente'}</Chip></div></button>})}</div>
     </section>
 
     <div className="grid-4"><Stat label="Nivel consultado" num={selected} sub={NIVEL_NOMBRE_SM[selected]} pct={0} color={NIVEL_COLOR_SM[selected]}/><Stat label="Acumulado oficial" num={String(totalPuntos)} suffix="/100" sub={estatusNivel==='CA'?'Nota en construcción':'Total del nivel'} subTone={totalPuntos>=70?'ok':''} pct={totalPuntos} color="var(--an-granate)"/><Stat label="Evaluaciones registradas" num={`${completedLevel.length}/7`} sub={`${7-completedLevel.length} pendientes o programadas`} pct={(completedLevel.length/7)*100} color="var(--an-navy)"/><Stat label="Promedio de evaluaciones" num={avgLevel||'—'} suffix={avgLevel?'%':''} sub={completedLevel.length?`${completedLevel.length} calificadas`:'Sin datos aún'} pct={Number(avgLevel||0)} color="var(--an-gold)"/></div>
 
     <section className="card" style={{padding:0,overflow:'hidden'}}>
-      <div style={{padding:'16px 18px 12px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12,alignItems:'flex-end',flexWrap:'wrap'}}><div><div className="card-title">Detalle de evaluaciones</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:4}}>Todas las evaluaciones oficiales de <strong>{NIVEL_NOMBRE_SM[selected]}</strong> aparecen siempre en el orden del cronograma. {pendingRepos.length?`${pendingRepos.length} reposición activa.`:''}</div></div><div className="tabs" style={{margin:0}}>{[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check']].map(([k,l])=><button key={k} className={`tab ${filter===k?'active':''}`} onClick={()=>setFilter(k)}>{l}</button>)}</div></div>
+      <div style={{padding:'16px 18px 12px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div className="card-title">Detalle de evaluaciones</div><div className="tabs" style={{margin:0}}>{[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check']].map(([k,l])=><button key={k} className={`tab ${filter===k?'active':''}`} onClick={()=>setFilter(k)}>{l}</button>)}</div></div>
       <div style={{overflowX:'auto'}}><table className="table-soft" style={{minWidth:940}}><thead><tr><th style={{width:72}}>Lec.</th><th>Evaluación</th><th style={{width:190}}>Fecha</th><th style={{width:160}}>Estado</th><th style={{textAlign:'right',width:120}}>Puntaje</th><th style={{textAlign:'right',width:80}}>%</th><th style={{textAlign:'center',width:80}}>Nota</th></tr></thead><tbody>
         {evaluaciones===null?<tr><td colSpan={7} style={{padding:24,textAlign:'center'}}>Cargando…</td></tr>:visibleRows.map(row=>{const pct=Number(row.pct||0),grade=gradeLetter(pct),tone=_smStatusTone_(row);const statusUpper=String(row.estado||'').toUpperCase(),rowBg=(statusUpper==='SIN_NOTA'||statusUpper==='VENCIDA_0')?'color-mix(in srgb, var(--danger) 3%, white)':statusUpper==='PROGRAMADA'?'#F8FAFE':'#fff';return <tr key={row.key} style={{background:rowBg}}><td style={{fontFamily:'var(--f-mono)',color:'var(--ink-3)'}}>{row.leccion?`L${String(row.leccion).padStart(2,'0')}`:'—'}</td><td><div style={{fontWeight:750}}>{row.titulo}</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{NIVEL_NOMBRE_SM[selected]}{row.es_reposicion?' · Reposición':''}</div></td><td style={{fontSize:12,color:'var(--ink-2)'}}>{_smEvalDateText_(row)}</td><td><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:tone.bg,color:tone.color,fontSize:10,fontWeight:900}}>{_smStatusLabel_(row)}</span></td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontWeight:750}}>{row.registrada?`${Number(row.nota||0)}/${row.max}`:(String(row.estado||'').toUpperCase()==='PROGRAMADA'?`—/${row.max}`:`0/${row.max}`)}</td><td style={{textAlign:'right',fontWeight:750}}>{row.registrada?`${Math.round(pct)}%`:(String(row.estado||'').toUpperCase()==='PROGRAMADA'?'—':'0%')}</td><td style={{textAlign:'center'}}><span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minWidth:38,height:38,borderRadius:10,background:row.registrada?`color-mix(in srgb, ${gradeColor(grade)} 14%, white)`:String(row.estado||'').toUpperCase()==='PROGRAMADA'?'#EEF2F7':'#FDECEA',color:row.registrada?gradeColor(grade):String(row.estado||'').toUpperCase()==='PROGRAMADA'?'#40516A':'#991B1B',fontWeight:800}}>{row.registrada?grade:String(row.estado||'').toUpperCase()==='PROGRAMADA'?'—':'0'}</span></td></tr>})}
       </tbody><tfoot><tr style={{background:'#F7F3EC',borderTop:'2px solid var(--an-navy)'}}><td colSpan={4} style={{fontWeight:900,color:'var(--an-navy)',textAlign:'right'}}>SUMA TOTAL DEL NIVEL</td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontSize:16,fontWeight:900,color:'var(--an-navy)'}}>{totalPuntos}/{totalMax}</td><td style={{textAlign:'right',fontWeight:900,color:'var(--an-navy)'}}>{Math.round((totalPuntos/totalMax)*100)}%</td><td style={{textAlign:'center',fontWeight:900,color:totalPuntos>=70?'var(--ok)':'var(--danger)'}}>{totalPuntos>=70?'APR':'—'}</td></tr></tfoot></table></div>

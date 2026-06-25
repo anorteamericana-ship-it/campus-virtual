@@ -54,7 +54,7 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4E'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4M'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Q'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4K'],
   teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4O'],
   vista_docente: ['src/vista_docente.jsx?v=F96.5G'],
@@ -83,10 +83,10 @@ const F96_LAZY = {
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F98.4M','src/student_experience.jsx?v=F98.4N'
+    'src/student_modules.jsx?v=F98.4Q','src/student_experience.jsx?v=F98.4N'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4K','src/student_modules.jsx?v=F98.4M','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F98.4K','src/student_modules.jsx?v=F98.4Q','src/student_experience.jsx?v=F98.4N'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
