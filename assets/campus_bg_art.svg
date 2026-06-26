@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2600" viewBox="0 0 1600 2600" fill="none">
+  <defs>
+    <linearGradient id="navyBlob" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d3a84"/>
+      <stop offset="1" stop-color="#062c69"/>
+    </linearGradient>
+    <linearGradient id="redA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#92294f"/>
+      <stop offset="1" stop-color="#da2d34"/>
+    </linearGradient>
+    <g id="waterA" opacity="0.075">
+      <path d="M78 170 146 24h53l72 154h-48l-16-38H132l-16 38H78Zm68-67h48l-24-58-24 58Z" fill="#8d96a6"/>
+      <path d="M90 108c67 10 122 13 173 6" stroke="#c44a4a" stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+    <g id="topLines" opacity="0.55" stroke="#ffffff" stroke-width="6" stroke-linecap="round">
+      <path d="M0 0h310"/>
+      <path d="M0 26h310"/>
+      <path d="M0 52h310"/>
+      <path d="M0 78h310"/>
+      <path d="M0 104h310"/>
+      <path d="M0 130h310"/>
+      <path d="M0 156h310"/>
+    </g>
+    <g id="smallLines" opacity="0.5" stroke="#7a74ca" stroke-width="4" stroke-linecap="round">
+      <path d="M0 0h120"/>
+      <path d="M0 18h120"/>
+      <path d="M0 36h120"/>
+      <path d="M0 54h120"/>
+    </g>
+  </defs>
+
+  <rect width="1600" height="2600" fill="none"/>
+
+  <!-- main decorative forms -->
+  <ellipse cx="-40" cy="420" rx="360" ry="470" fill="url(#navyBlob)" opacity="0.98"/>
+  <circle cx="720" cy="270" r="375" fill="#cfcfcf" opacity="0.55"/>
+
+  <!-- background watermarks -->
+  <use href="#waterA" x="92" y="100" width="270" height="190"/>
+  <use href="#waterA" x="920" y="140" width="270" height="190"/>
+  <use href="#waterA" x="1110" y="370" width="270" height="190"/>
+  <use href="#waterA" x="715" y="560" width="270" height="190"/>
+  <use href="#waterA" x="1120" y="760" width="270" height="190"/>
+  <use href="#waterA" x="860" y="980" width="270" height="190"/>
+  <use href="#waterA" x="108" y="1140" width="270" height="190"/>
+  <use href="#waterA" x="980" y="1250" width="270" height="190"/>
+  <use href="#waterA" x="350" y="1470" width="270" height="190"/>
+  <use href="#waterA" x="1110" y="1660" width="270" height="190"/>
+  <use href="#waterA" x="175" y="1850" width="270" height="190"/>
+  <use href="#waterA" x="870" y="2030" width="270" height="190"/>
+  <use href="#waterA" x="1115" y="2280" width="270" height="190"/>
+
+  <!-- white lines top -->
+  <g transform="translate(325 35)">
+    <use href="#topLines"/>
+  </g>
+  <!-- dotted circle over blue blob -->
+  <circle cx="124" cy="505" r="98" stroke="#ffffff" stroke-width="5" stroke-dasharray="2 18" stroke-linecap="round" opacity="0.92"/>
+  <g transform="translate(125 530)">
+    <use href="#smallLines"/>
+  </g>
+
+  <!-- decorative waves -->
+  <g opacity="0.85" stroke="#7a74ca" stroke-width="5" stroke-linecap="round">
+    <path d="M26 955c17 13 35 13 52 0s35-13 52 0"/>
+    <path d="M26 980c17 13 35 13 52 0s35-13 52 0"/>
+    <path d="M26 1005c17 13 35 13 52 0s35-13 52 0"/>
+  </g>
+
+  <!-- small dark squares -->
+  <rect x="1210" y="270" width="22" height="22" rx="2" fill="#1a1a1a" opacity="0.9"/>
+  <rect x="1200" y="630" width="22" height="22" rx="2" fill="#1a1a1a" opacity="0.9"/>
+  <rect x="1178" y="1080" width="22" height="22" rx="2" fill="#1a1a1a" opacity="0.75"/>
+  <rect x="132" y="1540" width="22" height="22" rx="2" fill="#1a1a1a" opacity="0.72"/>
+
+  <!-- subtle lower branding accent -->
+  <g transform="translate(1180 820) scale(0.62)">
+    <path d="M78 170 146 24h53l72 154h-48l-16-38H132l-16 38H78Z" fill="url(#redA)"/>
+    <path d="M92 108c67 10 122 13 173 6" stroke="#da291c" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>
