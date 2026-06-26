@@ -556,21 +556,10 @@ function ConapeBannerDashboardF984({ estado }) {
   );
 }
 
-function CampusExecutiveHeaderD({ nivelNombre, codGrupo, horario }) {
-  const grupoCorto = sufijoGrupoSD(codGrupo) || codGrupo || 'Grupo pendiente';
+function CampusExecutiveHeaderD() {
   return (
     <header className="campus-d-header" aria-label="Cabecera institucional de Mi Campus">
       <img className="campus-d-header-logo" src="assets/logo_oficial_transparent.png" alt="Academia Norteamericana" />
-      <div className="campus-d-header-meta">
-        <div className="campus-d-header-meta-block">
-          <div className="campus-d-eyebrow">Nivel activo</div>
-          <div className="campus-d-meta-value">{nivelNombre || 'Nivel pendiente'}</div>
-        </div>
-        <div className="campus-d-header-meta-block secondary">
-          <div className="campus-d-eyebrow">Grupo · horario</div>
-          <div className="campus-d-meta-value neutral">{horario || grupoCorto}</div>
-        </div>
-      </div>
     </header>
   );
 }
@@ -767,11 +756,7 @@ function StudentDashboard({ toast, onNavigate }) {
 
   return (
     <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
-      <CampusExecutiveHeaderD
-        nivelNombre={nivelNombre}
-        codGrupo={codGrupoSeleccionado || codGrupo}
-        horario={horarioCurso}
-      />
+      <CampusExecutiveHeaderD />
 
       {/* Material obligatorio se conserva íntegro y funcional. */}
       <AntesDeEmpezar codigo={codigo} onNavigate={go} />
@@ -1172,11 +1157,6 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
             />
             <span className="campus-d-photo-overlay">{subiendoFoto ? 'Subiendo…' : (fotoUrl ? 'Cambiar foto' : 'Subir foto')}</span>
           </button>
-          <div className="campus-d-profile-copy">
-            <div className="campus-d-profile-name">{nombreCompleto || 'Estudiante'}</div>
-            <div className="campus-d-profile-role">Estudiante · {nivelSeleccionado || nivelReal || 'Nivel pendiente'}</div>
-            <div className="campus-d-active">Activo</div>
-          </div>
         </aside>
 
         <div className="campus-d-welcome-card">
@@ -1184,11 +1164,6 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
           <div className="campus-d-welcome-copy">
             <div className="campus-d-welcome-kicker">Bienvenido</div>
             <div className="campus-d-welcome-name">{nombreCompleto || 'Estudiante'}</div>
-            <div className="campus-d-welcome-chips">
-              <span className="campus-d-chip primary">{nivelNombre || NIVEL_NOMBRE[nivelSeleccionado] || 'Nivel pendiente'}</span>
-              <span className="campus-d-chip">{libroNivel || 'Libro pendiente'}</span>
-              <span className="campus-d-chip">{totalLecciones ? `${cerradas} de ${totalLecciones} lecciones` : 'Cronograma pendiente'}</span>
-            </div>
           </div>
           <img className="campus-d-a-accent" src="assets/logo_a_transparent.png" alt="" aria-hidden="true" />
         </div>
@@ -1506,12 +1481,12 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
                 const isActive = idx === activeIndex;
                 const isNext = idx === nextIndex;
                 return (
-                  <div className={`campus-d-lesson-column ${isActive ? 'is-active' : ''}`} key={row.key || `${row.fecha}-${row.actividad}-${idx}`}>
+                  <div className={`campus-d-lesson-column ${isActive ? 'is-active' : ''} ${focusRequest && isActive ? 'is-focused' : ''}`} key={row.key || `${row.fecha}-${row.actividad}-${idx}`}>
                     <div className="campus-d-lesson-head">
                       <div className="campus-d-lesson-date">{row.fecha ? fmtFechaCorta(row.fecha) : 'Fecha pendiente'}</div>
                       <div className="campus-d-lesson-label">{row.actividad || 'Actividad'}</div>
                       <span className={`campus-d-type-tag ${type.cls}`}>{type.label}</span>
-                      {isActive ? <div className="campus-d-active-lesson-label">{focusRequest ? 'SELECCIONADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA')}</div> : null}
+                      {isActive ? <div className="campus-d-active-lesson-label">{focusRequest ? 'ENCONTRADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA')}</div> : null}
                     </div>
                     <div className="campus-d-lesson-attendance">
                       <span className="campus-d-attendance" style={{ color:attendance.color }}>
@@ -1545,17 +1520,18 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
   );
 }
 
-function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, cronoPublicado, onFocus }) {
-  const order = [
-    ['leccion', { title:'Próxima lección', code:'LEC', color:'#002F6C', data:proximaLeccion, empty:cronoPublicado ? 'Sin lecciones próximas' : 'Cronograma pendiente' }],
-    ['ican', { title:'Próximo I CAN', code:'IC', color:'#2E7D32', data:proximoICAN, hidden:!proximoICAN }],
-    ['oral', { title:'Examen oral', code:'ORA', color:'#C67100', data:proximoOral, empty:'Sin examen oral próximo' }],
-    ['escrito', { title:'Examen escrito', code:'ESC', color:'#DA291C', data:proximoEscrito, empty:'Sin examen escrito próximo' }],
+function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, onFocus }) {
+  const items = [
+    ['leccion', { title:'Próxima lección', data:proximaLeccion }],
+    ['ican',    { title:'Próximo I CAN', data:proximoICAN, hidden:!proximoICAN }],
+    ['escrito', { title:'Próximo examen escrito', data:proximoEscrito }],
+    ['oral',    { title:'Próximo examen oral', data:proximoOral }],
   ].filter(([, meta]) => !meta.hidden);
   const [selected, setSelected] = React.useState('');
+
   React.useEffect(() => {
-    if (selected && !order.some(([key, meta]) => key === selected && meta.data)) setSelected('');
-  }, [proximaLeccion, proximoICAN, proximoOral, proximoEscrito]);
+    if (selected && !items.some(([key, meta]) => key === selected && meta.data)) setSelected('');
+  }, [selected, proximaLeccion, proximoICAN, proximoOral, proximoEscrito]);
 
   const focusEvent = (key, ev) => {
     if (!ev) return;
@@ -1567,26 +1543,19 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
   return (
     <section className="campus-d-events" aria-label="Resumen de próximos eventos">
       <div className="campus-d-events-head">Próximos eventos</div>
-      <div className="campus-d-event-grid">
-        {order.map(([key, meta]) => {
+      <div className={`campus-d-event-grid ${items.length <= 3 ? 'cols-3' : 'cols-4'}`}>
+        {items.map(([key, meta]) => {
           const ev = meta.data;
           return (
             <button
               type="button"
-              className={`campus-d-event-card ${selected === key ? 'active' : ''}`}
+              className={`campus-d-event-card simple ${selected === key ? 'active' : ''}`}
               key={key}
               disabled={!ev}
               onClick={() => focusEvent(key, ev)}
             >
-              <span className="campus-d-event-kind" style={{ color:meta.color, background:`color-mix(in srgb, ${meta.color} 11%, white)` }}>{meta.code}</span>
-              <span className="campus-d-event-copy">
-                <span className="campus-d-event-title">{ev ? (ev.leccionLabel || ev.title) : meta.empty}</span>
-                <span className="campus-d-event-meta">{meta.title}{ev?.estado ? ` · ${ev.estado}` : ''}</span>
-              </span>
-              <span style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                <span className="campus-d-event-date">{ev ? fmtFechaCorta(ev.fecha) : '—'}</span>
-                {ev ? <span className="campus-d-event-action">Buscar</span> : null}
-              </span>
+              <span className="campus-d-event-title only">{meta.title}</span>
+              <span className="campus-d-event-action pill">Buscar</span>
             </button>
           );
         })}
