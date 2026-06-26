@@ -281,6 +281,213 @@ function diasEntreSD(iso) {
   return Math.round((d - h) / 86400000);
 }
 
+function padLecSD(n) {
+  const num = Number(n || 0);
+  return Number.isFinite(num) && num > 0 ? String(num).padStart(2,'0') : '—';
+}
+function isoFechaSD(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  if (isNaN(d)) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fechaDeItemSD(item) {
+  return isoFechaSD(item?.fecha || item?.FECHA || item?.fecha_clase || item?.fechaClase || item?.fecha_programada || item?.fecha_original || item?.fechaAplicacion || item?.FECHA_APLICACION || '');
+}
+function normTipoEventoSD(raw) {
+  const t = String(raw || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (!t) return '';
+  if (t.includes('EVAL') && t.includes('ORAL')) return 'EVAL_ORAL';
+  if (t.includes('EVAL') && (t.includes('ESCR') || t.includes('WRIT'))) return 'EVAL_ESCRITO';
+  if (t.includes('PROGRESS')) return 'PROGRESS_CHECK';
+  if (t.includes('ICAN') || t === 'I_CAN' || t === 'I CAN') return 'ICAN';
+  if (t.includes('FERIADO')) return 'FERIADO';
+  if (t.includes('LECCION') || t === 'CLASE' || t === 'CURSO') return 'LECCION';
+  return t;
+}
+function labelTipoEventoSD(raw) {
+  const t = normTipoEventoSD(raw);
+  return ({
+    LECCION:'Lección',
+    ICAN:'I CAN',
+    EVAL_ORAL:'Examen oral',
+    EVAL_ESCRITO:'Examen escrito',
+    PROGRESS_CHECK:'Progress Check',
+    FERIADO:'Feriado',
+  })[t] || (raw ? String(raw).replace(/_/g,' ') : 'Actividad');
+}
+function estadoAsistenciaLabelSD(row) {
+  if (!row) return 'Sin registro';
+  if (esPresente(row)) return 'Presente';
+  const e = String(row.estado || row.status || '').toUpperCase();
+  if (['A','AUSENTE','AUS'].includes(e)) return 'Ausente';
+  if (['J','JUST','JUSTIFICADO'].includes(e)) return 'Justificado';
+  if (['T','TARDE','TARDANZA'].includes(e)) return 'Tardanza';
+  if (['PENDIENTE','PROGRAMADA'].includes(e)) return 'Pendiente';
+  return e ? e : 'Sin registro';
+}
+function toneAsistenciaSD(label) {
+  const v = String(label || '').toLowerCase();
+  if (v.includes('presente')) return { bg:'color-mix(in srgb, var(--ok) 12%, white)', fg:'#25683B' };
+  if (v.includes('ausente')) return { bg:'color-mix(in srgb, var(--danger) 10%, white)', fg:'#A03333' };
+  if (v.includes('just')) return { bg:'color-mix(in srgb, var(--an-gold) 18%, white)', fg:'#7A5A00' };
+  if (v.includes('tard')) return { bg:'color-mix(in srgb, var(--an-navy) 10%, white)', fg:'var(--an-navy)' };
+  return { bg:'var(--bg-deep)', fg:'var(--ink-2)' };
+}
+function extraerLeccionNumSD(item) {
+  const direct = Number(item?.leccion || item?.LECCION || item?.lec || item?.Lec || item?.numero || item?.NUMERO || 0);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const candidates = [item?.titulo, item?.nombre, item?.tipo, item?.descripcion, item?.detalle, item?.evaluacion, item?.label, item?.codigo].filter(Boolean);
+  for (const c of candidates) {
+    const s = String(c);
+    let m = s.match(/\bL(?:EC)?\s*0?(\d{1,2})\b/i) || s.match(/\bLECCI[ÓO]N\s*0?(\d{1,2})\b/i);
+    if (m) return Number(m[1]);
+  }
+  return 0;
+}
+function notaTextoSD(item) {
+  if (!item) return '';
+  const nota = item.nota ?? item.NOTA ?? item.calificacion ?? item.CALIFICACION ?? item.puntaje ?? item.PUNTAJE ?? item.score ?? item.SCORE;
+  const max = item.max ?? item.MAX ?? item.total ?? item.TOTAL ?? item.sobre ?? item.SOBRE;
+  if (nota == null || nota === '') return '';
+  return max != null && max !== '' ? `${nota}/${max}` : String(nota);
+}
+function buildEventoConsultaSD(item, forcedKind = '') {
+  if (!item) return null;
+  const fecha = fechaDeItemSD(item);
+  const leccion = extraerLeccionNumSD(item);
+  const tipo = forcedKind || normTipoEventoSD(item?.tipo || item?.TIPO || item?.riel || item?.RIEL || item?.tipo_evento);
+  return {
+    key: `${tipo || 'EVENTO'}-${fecha || 'sin-fecha'}-${leccion || '0'}`,
+    kind: tipo || 'LECCION',
+    title: labelTipoEventoSD(tipo || item?.tipo),
+    fecha,
+    leccion,
+    leccionLabel: leccion ? `Lec ${padLecSD(leccion)}` : 'Actividad programada',
+    estado: String(item?.estado || item?.ESTADO || '').toUpperCase(),
+    raw: item,
+  };
+}
+function buildICANEventoDesdeDataSD(data) {
+  const sesiones = Array.isArray(data?.sesiones) ? data.sesiones : Array.isArray(data?.historial) ? data.historial : Array.isArray(data?.registros) ? data.registros : [];
+  const futura = sesiones
+    .map(s => ({ ...s, __fecha: fechaDeItemSD(s) }))
+    .filter(s => s.__fecha)
+    .sort((a,b) => String(a.__fecha).localeCompare(String(b.__fecha)))
+    .find(s => diasEntreSD(s.__fecha) != null && diasEntreSD(s.__fecha) >= 0);
+  return futura ? buildEventoConsultaSD({ ...futura, tipo:'ICAN', fecha:futura.__fecha }, 'ICAN') : null;
+}
+function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, retroData, icanData, nivel, codGrupo, notaActiva, asistPct, asistPresentes, asistTotal }) {
+  const rows = [];
+  const outKeys = new Set();
+  const retroItems = Array.isArray(retroData?.retroalimentacion) ? retroData.retroalimentacion : [];
+  const leccionesArr = Array.isArray(lecciones) ? lecciones : [];
+  const evalArr = Array.isArray(evaluaciones) ? evaluaciones : [];
+  const sesionesICAN = Array.isArray(icanData?.sesiones) ? icanData.sesiones : Array.isArray(icanData?.historial) ? icanData.historial : Array.isArray(icanData?.registros) ? icanData.registros : [];
+  const lessonByNum = new Map();
+  leccionesArr.forEach(l => {
+    const n = extraerLeccionNumSD(l);
+    if (n > 0 && !lessonByNum.has(n)) lessonByNum.set(n, l);
+  });
+  const evalByNum = new Map();
+  evalArr.forEach(e => {
+    const evNivel = String(e?.nivel || e?.NIVEL || '').toUpperCase();
+    const evGrupo = String(e?.cod_grupo || e?.COD_GRUPO || e?.grupo || e?.GRUPO || '').toUpperCase();
+    if (nivel && evNivel && evNivel !== String(nivel).toUpperCase()) return;
+    if (codGrupo && evGrupo && evGrupo !== String(codGrupo).toUpperCase()) return;
+    const n = extraerLeccionNumSD(e);
+    if (n > 0 && !evalByNum.has(n)) evalByNum.set(n, e);
+  });
+  const retroByNum = new Map();
+  retroItems.forEach(r => {
+    const n = extraerLeccionNumSD(r);
+    if (n > 0 && !retroByNum.has(n)) retroByNum.set(n, r);
+  });
+  const pushRow = (row) => {
+    if (!row || !row.fecha) return;
+    const key = `${row.kind || 'X'}-${row.fecha}-${row.leccion || 0}`;
+    if (outKeys.has(key)) return;
+    outKeys.add(key);
+    rows.push(row);
+  };
+  (Array.isArray(asistenciaRows) ? asistenciaRows : []).forEach(a => {
+    const leccionNum = extraerLeccionNumSD(a);
+    const lesson = lessonByNum.get(leccionNum) || null;
+    const fecha = fechaDeItemSD(a) || fechaDeItemSD(lesson);
+    const tipo = normTipoEventoSD(a?.tipo || a?.TIPO || lesson?.tipo || lesson?.TIPO || 'LECCION');
+    const retro = retroByNum.get(leccionNum);
+    const ev = evalByNum.get(leccionNum);
+    const comentario = String(a?.comentario || a?.COMENTARIO || a?.observacion || a?.OBSERVACION || retro?.comentario || retro?.COMENTARIO || '').trim();
+    pushRow({
+      fecha,
+      leccion: leccionNum || extraerLeccionNumSD(lesson),
+      actividad: leccionNum ? `Lec ${padLecSD(leccionNum)}` : labelTipoEventoSD(tipo),
+      tipo: labelTipoEventoSD(tipo),
+      kind: tipo || 'LECCION',
+      asistencia: estadoAsistenciaLabelSD(a),
+      comentario,
+      nota: notaTextoSD(ev),
+    });
+  });
+  evalArr.forEach(e => {
+    const evNivel = String(e?.nivel || e?.NIVEL || '').toUpperCase();
+    const evGrupo = String(e?.cod_grupo || e?.COD_GRUPO || e?.grupo || e?.GRUPO || '').toUpperCase();
+    if (nivel && evNivel && evNivel !== String(nivel).toUpperCase()) return;
+    if (codGrupo && evGrupo && evGrupo !== String(codGrupo).toUpperCase()) return;
+    const leccionNum = extraerLeccionNumSD(e);
+    const lesson = lessonByNum.get(leccionNum) || null;
+    const fecha = fechaDeItemSD(e) || fechaDeItemSD(lesson);
+    const kind = normTipoEventoSD(e?.tipo || e?.TIPO || lesson?.tipo || lesson?.TIPO || (String(e?.titulo || '').toUpperCase().includes('ORAL') ? 'EVAL_ORAL' : String(e?.titulo || '').toUpperCase().includes('ESCR') ? 'EVAL_ESCRITO' : 'LECCION'));
+    const comentario = String(e?.comentario || e?.COMENTARIO || '').trim();
+    pushRow({
+      fecha,
+      leccion: leccionNum,
+      actividad: leccionNum ? `Lec ${padLecSD(leccionNum)}` : (e?.titulo || e?.evaluacion || 'Evaluación'),
+      tipo: labelTipoEventoSD(kind),
+      kind,
+      asistencia: 'Registrada',
+      comentario,
+      nota: notaTextoSD(e),
+    });
+  });
+  sesionesICAN.forEach((s, idx) => {
+    const fecha = fechaDeItemSD(s);
+    const comentario = String(s?.comentario || s?.COMENTARIO || s?.tema || s?.TEMA || '').trim();
+    const asistencia = estadoAsistenciaLabelSD(s);
+    pushRow({
+      fecha,
+      leccion: 0,
+      actividad: `I CAN ${idx + 1}`,
+      tipo: 'I CAN',
+      kind: 'ICAN',
+      asistencia,
+      comentario,
+      nota: '',
+    });
+  });
+  rows.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || Number(a.leccion||0)-Number(b.leccion||0));
+  const presentCount = (Array.isArray(asistenciaRows) ? asistenciaRows : []).filter(esPresente).length;
+  const commentCount = rows.filter(r => r.comentario).length;
+  const evalCount = evalArr.filter(e => notaTextoSD(e)).length;
+  const icanCount = rows.filter(r => r.kind === 'ICAN').length;
+  return {
+    rows,
+    summary: {
+      note: notaActiva,
+      asistenciaPct: asistPct,
+      asistenciaPresentes: asistPresentes,
+      asistenciaTotal: asistTotal,
+      comments: commentCount,
+      evaluations: evalCount,
+      ican: icanCount,
+      totalRows: rows.length,
+      presentCount,
+    },
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // CONAPE (endpoint real)
 // ─────────────────────────────────────────────────────────────────────────
@@ -407,22 +614,44 @@ function StudentDashboard({ toast, onNavigate }) {
 
   const notaActiva = notaDeNivel(niveles, nivelSeleccionado);
 
-  // Progreso del módulo / próximos exámenes
+  // Progreso del módulo / próximos eventos
   let cerradas = 0, totalLecciones = 0, progresoPct = 0;
   let proximas = [];
-  let proximoExamen = null;
+  let proximaLeccionEvento = null;
+  let proximoIcanEvento = null;
+  let proximoOralEvento = null;
+  let proximoEscritoEvento = null;
   if (Array.isArray(lecciones) && lecciones.length) {
     const seen = new Set();
     const unicas = lecciones.filter(l => seen.has(l.leccion) ? false : (seen.add(l.leccion), true));
     totalLecciones = unicas.length;
-    cerradas = unicas.filter(l => l.estado === 'CERRADA').length;
+    cerradas = unicas.filter(l => String(l.estado || '').toUpperCase() === 'CERRADA').length;
     progresoPct = totalLecciones ? Math.round((cerradas / totalLecciones) * 100) : 0;
-    proximas = lecciones.filter(l => l.estado === 'CALCULADA' || l.estado === 'HOY').slice(0, 4);
-    proximoExamen = lecciones.find(l =>
-      (l.estado === 'CALCULADA' || l.estado === 'HOY') &&
-      (l.tipo === 'EVAL_ORAL' || l.tipo === 'EVAL_ESCRITO'));
+    proximas = lecciones.filter(l => ['CALCULADA','HOY'].includes(String(l.estado || '').toUpperCase())).slice(0, 8);
+    const firstUpcoming = (pred) => proximas.find(l => pred(l));
+    proximaLeccionEvento = buildEventoConsultaSD(firstUpcoming(l => {
+      const t = normTipoEventoSD(l.tipo || l.TIPO);
+      return t !== 'ICAN' && t !== 'EVAL_ORAL' && t !== 'EVAL_ESCRITO' && t !== 'FERIADO';
+    }), 'LECCION');
+    proximoIcanEvento = buildEventoConsultaSD(firstUpcoming(l => normTipoEventoSD(l.tipo || l.TIPO) === 'ICAN'), 'ICAN');
+    proximoOralEvento = buildEventoConsultaSD(firstUpcoming(l => normTipoEventoSD(l.tipo || l.TIPO) === 'EVAL_ORAL'), 'EVAL_ORAL');
+    proximoEscritoEvento = buildEventoConsultaSD(firstUpcoming(l => normTipoEventoSD(l.tipo || l.TIPO) === 'EVAL_ESCRITO'), 'EVAL_ESCRITO');
   }
+  if (!proximoIcanEvento) proximoIcanEvento = buildICANEventoDesdeDataSD(icanData);
   const cronoPublicado = Array.isArray(lecciones) && lecciones.length > 0;
+  const registroAcademico = React.useMemo(() => buildRegistroAcademicoSD({
+    asistenciaRows: asistenciaVista,
+    lecciones,
+    evaluaciones,
+    retroData,
+    icanData,
+    nivel: nivelSeleccionado,
+    codGrupo: codGrupoSeleccionado,
+    notaActiva,
+    asistPct,
+    asistPresentes,
+    asistTotal,
+  }), [asistenciaVista, lecciones, evaluaciones, retroData, icanData, nivelSeleccionado, codGrupoSeleccionado, notaActiva, asistPct, asistPresentes, asistTotal]);
 
   // La ruta siempre muestra los cuatro niveles; los pendientes no desaparecen.
   const nivelesRuta = ['B1','B2','I1','I2'].map(n => {
@@ -457,33 +686,32 @@ function StudentDashboard({ toast, onNavigate }) {
   return (
     <div data-screen-label="Estudiante · Mi Campus">
       <div style={{ marginBottom:18, display:'flex', justifyContent:'center' }}>
-        <div className="card" style={{ width:'100%', padding:'18px 22px', display:'flex', justifyContent:'center', alignItems:'center', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)' }}>
-          <img src="assets/logo_circular.jpg" alt="Academia Norteamericana" style={{ width:'min(100%, 560px)', height:'auto', display:'block', objectFit:'contain' }} />
+        <div className="card" style={{ width:'100%', padding:'20px 26px', display:'flex', justifyContent:'center', alignItems:'center', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)', border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)' }}>
+          <img src="assets/logo_oficial.jpeg" alt="Academia Norteamericana" style={{ width:'min(100%, 620px)', height:'auto', display:'block', objectFit:'contain' }} />
         </div>
       </div>
 
       {/* 1. Material obligatorio: requisito de orientación y consulta permanente. */}
       <AntesDeEmpezar codigo={codigo} onNavigate={go} />
 
-      {/* 2. Saludo principal. El encabezado usa horario real + consecutivo corto. */}
-      <div className="hero" style={{ marginBottom:18 }}>
-        <div className="watermark-a">A</div>
-        <div className="hero-grid">
+      {/* 2. Saludo principal. Encabezado limpio con branding oficial. */}
+      <div className="hero" style={{ marginBottom:18, position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', inset:'0 0 0 auto', width:'42%', display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none', opacity:.07 }}>
+          <img src="assets/logo_oficial.jpeg" alt="Marca de agua Academia Norteamericana" style={{ width:'100%', maxWidth:420, objectFit:'contain', filter:'grayscale(100%) brightness(1.15)' }} />
+        </div>
+        <div className="hero-grid" style={{ position:'relative', zIndex:1 }}>
           <div>
-            <div className="hero-kicker">
-              {docenteCorto ? `TEACHER ${String(docenteCorto).toUpperCase()}` : (docente ? `TEACHER ${String(docente).toUpperCase()}` : 'BIENVENIDO')}
-            </div>
+            <div className="hero-kicker">Mi Campus</div>
             <h1 className="hero-h1">Bienvenido,<br/><em>{nombreCompleto}</em></h1>
-            <div className="hero-sub" style={{ fontSize:18, lineHeight:1.45, fontWeight:700, maxWidth:620 }}>
+            <div className="hero-sub" style={{ fontSize:24, lineHeight:1.35, fontWeight:800, maxWidth:680 }}>
               {nivelReal
                 ? nivelSeleccionado === nivelReal
                   ? <>Estás cursando <strong>{nivelNombre}</strong> — {NIVEL_LIBRO[nivelSeleccionado]}.</>
                   : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
                 : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
             </div>
-
           </div>
-          <div style={{ display:'flex', justifyContent:'center' }}>
+          <div style={{ display:'flex', justifyContent:'center', position:'relative', zIndex:1 }}>
             <Ring pct={progresoPct} size={210}>
               <div className="ring-pct">{progresoPct}<sup>%</sup></div>
               <div className="ring-label">Módulo completado</div>
@@ -529,9 +757,22 @@ function StudentDashboard({ toast, onNavigate }) {
           sub={cronoPublicado ? `${progresoPct}% del nivel` : 'Cronograma no publicado'} pct={progresoPct} color="var(--an-navy)" />
       </div>
 
-      {/* 10–11. Próxima clase y próximo examen. */}
-      <ProximaAccionCampus proximaClase={proximas[0]} proximoExamen={proximoExamen}
-        cronoPublicado={cronoPublicado} onNavigate={go} />
+      {/* 10. Registro académico detallado. */}
+      <RegistroNotasAsistenciaCampus
+        nivel={nivelSeleccionado}
+        summary={registroAcademico.summary}
+        rows={registroAcademico.rows}
+      />
+
+      {/* 11. Resumen de próximos eventos con calendario focalizado. */}
+      <ProximaAccionCampus
+        proximaLeccion={proximaLeccionEvento}
+        proximoICAN={proximoIcanEvento}
+        proximoOral={proximoOralEvento}
+        proximoEscrito={proximoEscritoEvento}
+        cronoPublicado={cronoPublicado}
+        onNavigate={go}
+      />
 
       {/* 12. Tus módulos. Solo módulos operativos o con datos honestos. */}
       <DashSection title="Tu expediente" />
@@ -853,26 +1094,10 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
       <div style={{ display:'grid', gridTemplateColumns:'minmax(300px,420px) minmax(0,1fr)', gap:18, alignItems:'start' }}>
         <aside className="card" style={{ padding:'20px 24px' }}>
           <div style={{ textAlign:'center' }}>
-            <div style={{ position:'relative', width:126, height:126, margin:'0 auto 14px' }}>
-              <div style={{
-                width:'100%', height:'100%', borderRadius:'50%', overflow:'hidden',
-                background: fotoUrl ? '#f2f2f2' : 'linear-gradient(135deg, #1B2B6B, #D92D2A)',
-                color:'#fff', fontFamily:'var(--f-serif)', fontSize:42, fontWeight:700,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                boxShadow:'var(--sh-2)', border:'4px solid white'
-              }}>
-                {fotoUrl ? <img src={fotoUrl} alt="Foto del estudiante" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : initials}
-              </div>
-              <label style={{
-                position:'absolute', left:'50%', bottom:-8, transform:'translateX(-50%)',
-                padding:'6px 10px', borderRadius:999, background:'#fff', border:'1px solid var(--line)',
-                fontSize:10.5, fontWeight:900, color:'var(--an-navy)', cursor:'pointer', boxShadow:'var(--sh-1)'
-              }}>
-                {subiendoFoto ? 'Subiendo…' : (fotoUrl ? 'Cambiar foto' : 'Cargar foto')}
-                <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleFotoSeleccionada} disabled={subiendoFoto} />
-              </label>
+            <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:248, minHeight:126, margin:'0 auto 14px', padding:'16px 18px', borderRadius:24, background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)', border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)', boxShadow:'var(--sh-1)' }}>
+              <img src="assets/logo_oficial.jpeg" alt="Logo oficial Academia Norteamericana" style={{ width:'100%', maxWidth:210, height:'auto', objectFit:'contain' }} />
             </div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, lineHeight:1.15, color:'var(--an-navy-ink)', marginTop:18 }}>
+            <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, lineHeight:1.15, color:'var(--an-navy-ink)', marginTop:10 }}>
               {nombreCompleto || 'Estudiante'}
             </div>
             <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4, fontFamily:'var(--f-mono)' }}>Estudiante</div>
@@ -881,12 +1106,6 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
               {grupoLabel && <Chip tone="navy">{grupoLabel}</Chip>}
             </div>
           </div>
-
-          {mensajeFoto && (
-            <div style={{ marginTop:16, padding:'10px 12px', borderRadius:12, border:`1px solid ${mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensajeFoto.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:12, lineHeight:1.45 }}>
-              {mensajeFoto.texto}
-            </div>
-          )}
 
           <div style={{ marginTop:22, textAlign:'left', borderTop:'1px solid var(--line)', paddingTop:16 }}>
             {[
@@ -1058,41 +1277,167 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
 }
 
 
-function ProximaAccionCampus({ proximaClase, proximoExamen, cronoPublicado, onNavigate }) {
-  const claseLabel = proximaClase
-    ? `Lección ${String(proximaClase.leccion || proximaClase.LECCION || '').padStart(2,'0')}${proximaClase.fecha ? ' · ' + fmtFechaCorta(proximaClase.fecha) : ''}`
-    : (cronoPublicado ? 'Sin clases pendientes' : 'Cronograma pendiente');
-  const examenLabel = proximoExamen
-    ? `Lección ${String(proximoExamen.leccion || proximoExamen.LECCION || '').padStart(2,'0')} · ${(proximoExamen.tipo || '').replace('EVAL_','')}`
-    : 'Se mostrará cuando corresponda';
-  const card = (title, value, hint, icon, action, view) => (
-    <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:16, background:'#fff', display:'flex', gap:12, alignItems:'center' }}>
-      <div style={{ width:42, height:42, borderRadius:14, background:'color-mix(in srgb, var(--an-navy) 8%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21 }}>{icon}</div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{title}</div>
-        <div style={{ fontSize:14.5, fontWeight:900, color:'var(--ink)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
-        <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{hint}</div>
-      </div>
-      <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={() => onNavigate && onNavigate(view)}>{action}</button>
-    </div>
-  );
+
+
+function RegistroNotasAsistenciaCampus({ nivel, summary, rows }) {
+  const list = Array.isArray(rows) ? rows : [];
+  const toneChip = (label) => {
+    const tone = toneAsistenciaSD(label);
+    return <span style={{ display:'inline-flex', alignItems:'center', padding:'5px 10px', borderRadius:999, background:tone.bg, color:tone.fg, fontSize:11, fontWeight:800 }}>{label}</span>;
+  };
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Resumen de próximos eventos">
-      <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-        <div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Resumen de próximos eventos</div>
-        </div>
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Registro de notas y asistencia">
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Registro de notas y asistencia</div>
+        <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Asistencia del expediente, comentarios, progress check, evaluaciones y sesiones I CAN del nivel consultado.</div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12, padding:16 }}>
-        {card('Próxima clase', claseLabel, cronoPublicado ? 'Confirmá fecha y lección.' : 'Aparecerá cuando administración publique el calendario.', '🗓️', 'Abrir', 'cronograma_grupo')}
-        {card('Próximo examen', examenLabel, proximoExamen ? 'La disponibilidad depende de la sesión docente.' : 'No hay examen activo por ahora.', '📝', 'Ver', 'examenes')}
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) 300px', gap:0 }}>
+        <div style={{ padding:'12px 16px 18px', overflowX:'auto' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
+            <thead>
+              <tr>
+                {['Fecha','Actividad','Tipo','Asistencia','Comentario','Nota'].map(h => (
+                  <th key={h} style={{ textAlign:'left', padding:'10px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-3)', fontSize:10.5, letterSpacing:'.12em', textTransform:'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {list.length ? list.map((row, idx) => (
+                <tr key={`${row.fecha}-${row.actividad}-${idx}`}>
+                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', whiteSpace:'nowrap', fontWeight:700, color:'var(--ink)' }}>{fmtFechaCorta(row.fecha)}</td>
+                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', fontWeight:800, color:'var(--ink)' }}>{row.actividad || 'Actividad'}</td>
+                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-2)' }}>{row.tipo || '—'}</td>
+                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)' }}>{toneChip(row.asistencia || 'Sin registro')}</td>
+                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-2)', minWidth:180 }}>{row.comentario || '—'}</td>
+                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', fontWeight:800, color:'var(--an-navy-ink)', whiteSpace:'nowrap' }}>{row.nota || '—'}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={6} style={{ padding:'18px 8px', color:'var(--ink-3)' }}>Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <aside style={{ borderLeft:'1px solid var(--line)', background:'linear-gradient(180deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)', padding:'16px 16px 18px' }}>
+          <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Panel lateral del estudiante</div>
+          <div style={{ fontSize:15, fontWeight:900, color:'var(--an-navy-ink)', marginTop:6 }}>Compilado del nivel {nivel || 'consultado'}</div>
+          <div style={{ display:'grid', gap:10, marginTop:14 }}>
+            {[
+              ['Asistencia', summary?.asistenciaPct != null ? `${summary.asistenciaPct}%` : '—', summary?.asistenciaTotal != null ? `${summary.asistenciaPresentes} de ${summary.asistenciaTotal} clases` : 'Sin registros'],
+              ['Nota acumulada', summary?.note != null ? `${summary.note}/100` : '—', 'Promedio oficial del nivel'],
+              ['Evaluaciones', summary?.evaluations != null ? String(summary.evaluations) : '0', 'Registros con nota'],
+              ['Comentarios', summary?.comments != null ? String(summary.comments) : '0', 'Observaciones o retroalimentación'],
+              ['I CAN', summary?.ican != null ? String(summary.ican) : '0', 'Sesiones visibles en el expediente'],
+            ].map(([label, value, hint]) => (
+              <div key={label} style={{ border:'1px solid var(--line)', borderRadius:16, background:'#fff', padding:'14px 14px' }}>
+                <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
+                <div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:'var(--an-navy-ink)', marginTop:4 }}>{value}</div>
+                <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:4, lineHeight:1.45 }}>{hint}</div>
+              </div>
+            ))}
+          </div>
+        </aside>
       </div>
     </section>
   );
 }
 
+function EventCalendarMini({ evento }) {
+  if (!evento || !evento.fecha) return null;
+  const base = new Date(`${evento.fecha}T00:00:00`);
+  if (isNaN(base)) return null;
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const offset = (first.getDay() + 6) % 7;
+  const days = [];
+  for (let i = 0; i < offset; i++) days.push(null);
+  for (let d = 1; d <= last.getDate(); d++) days.push(d);
+  while (days.length % 7 !== 0) days.push(null);
+  const dow = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const mes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][month];
+  return (
+    <div className="card" style={{ padding:'16px 18px', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+        <div>
+          <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Actividad seleccionada</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>{evento.title}</div>
+          <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:4 }}>{evento.leccionLabel} · {fmtFechaCorta(evento.fecha)}{evento.estado ? ` · ${evento.estado}` : ''}</div>
+        </div>
+        <div style={{ padding:'7px 12px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 8%, white)', color:'var(--an-navy)', fontWeight:800, fontSize:12 }}>Solo esta actividad</div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(260px,330px) minmax(0,1fr)', gap:18, alignItems:'start' }}>
+        <div style={{ border:'1px solid var(--line)', borderRadius:18, padding:14, background:'#fff' }}>
+          <div style={{ fontSize:15, fontWeight:900, color:'var(--ink)', marginBottom:10 }}>{mes} {year}</div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:6, textAlign:'center' }}>
+            {dow.map(d => <div key={d} style={{ fontSize:10.5, fontWeight:800, color:'var(--ink-3)', padding:'6px 0' }}>{d}</div>)}
+            {days.map((day, idx) => {
+              const active = day === base.getDate();
+              return <div key={idx} style={{ height:38, borderRadius:12, border:active ? '2px solid var(--an-navy)' : '1px solid var(--line)', background:active ? 'color-mix(in srgb, var(--an-navy) 10%, white)' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:active ? 900 : 700, color:active ? 'var(--an-navy-ink)' : 'var(--ink)' }}>{day || ''}</div>;
+            })}
+          </div>
+        </div>
+        <div style={{ border:'1px solid var(--line)', borderRadius:18, padding:'16px 18px', background:'#fff' }}>
+          <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Fecha marcada</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:30, color:'var(--an-navy-ink)', marginTop:2 }}>{fmtFechaCorta(evento.fecha)}</div>
+          <div style={{ marginTop:10, fontSize:13, lineHeight:1.6, color:'var(--ink-2)' }}>
+            El calendario se enfoca únicamente en la actividad seleccionada para que el estudiante identifique con claridad cuándo corresponde su próxima lección, I CAN o evaluación.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-
+function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, cronoPublicado, onNavigate }) {
+  const initialKey = proximaLeccion ? 'leccion' : proximoICAN ? 'ican' : proximoOral ? 'oral' : proximoEscrito ? 'escrito' : '';
+  const [selected, setSelected] = React.useState(initialKey);
+  React.useEffect(() => { setSelected(initialKey); }, [initialKey]);
+  const eventos = {
+    leccion: { title:'Próxima lección', data:proximaLeccion, empty: cronoPublicado ? 'No hay más lecciones programadas.' : 'Cronograma pendiente.' },
+    ican: { title:'Próximo I CAN', data:proximoICAN, empty:'No hay I CAN programado por ahora.' },
+    oral: { title:'Próximo examen oral', data:proximoOral, empty:'No hay examen oral programado por ahora.' },
+    escrito: { title:'Próximo examen escrito', data:proximoEscrito, empty:'No hay examen escrito programado por ahora.' },
+  };
+  const card = (key, meta) => {
+    const ev = meta.data;
+    const label = ev ? `${ev.leccionLabel} · ${fmtFechaCorta(ev.fecha)}` : meta.empty;
+    const active = selected === key;
+    return (
+      <div style={{ padding:16, border:`2px solid ${active ? 'var(--an-navy)' : 'var(--line)'}`, borderRadius:18, background:active ? 'color-mix(in srgb, var(--an-navy) 5%, white)' : '#fff', display:'flex', gap:12, alignItems:'center' }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{meta.title}</div>
+          <div style={{ fontSize:16, fontWeight:900, color:'var(--ink)', marginTop:4 }}>{ev ? ev.title : 'Sin actividad'}</div>
+          <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4, lineHeight:1.45 }}>{label}</div>
+        </div>
+        <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} disabled={!ev} onClick={() => setSelected(key)}>Ver</button>
+      </div>
+    );
+  };
+  const activeEvento = selected ? eventos[selected]?.data : null;
+  return (
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Resumen de próximos eventos">
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Resumen de próximos eventos</div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))', gap:12, padding:16 }}>
+        {card('leccion', eventos.leccion)}
+        {card('ican', eventos.ican)}
+        {card('oral', eventos.oral)}
+        {card('escrito', eventos.escrito)}
+      </div>
+      <div style={{ padding:'0 16px 16px' }}>
+        {activeEvento ? <EventCalendarMini evento={activeEvento} /> : (
+          <div className="card" style={{ padding:'16px 18px', borderStyle:'dashed', color:'var(--ink-3)' }}>
+            Seleccioná una actividad con el botón <strong>Ver</strong> para desplegar el calendario enfocado únicamente en esa consulta.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function SoportePruebaViva({ nombreCompleto, codGrupo }) {
   const waUrl = 'https://wa.me/50689528787?text=' + encodeURIComponent('Hola, necesito soporte técnico con el Campus Virtual. Mi nombre es ' + (nombreCompleto || 'estudiante') + (codGrupo ? ' y mi grupo es ' + codGrupo + '.' : '.'));
