@@ -289,23 +289,32 @@ function isoFechaSD(raw) {
   const v = String(raw || '').trim();
   if (!v) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const latam = v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if (latam) return `${latam[3]}-${String(latam[2]).padStart(2,'0')}-${String(latam[1]).padStart(2,'0')}`;
   const d = new Date(v);
   if (isNaN(d)) return '';
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function fechaDeItemSD(item) {
-  return isoFechaSD(item?.fecha || item?.FECHA || item?.fecha_clase || item?.fechaClase || item?.fecha_programada || item?.fecha_original || item?.fechaAplicacion || item?.FECHA_APLICACION || '');
+  return isoFechaSD(item?.fecha || item?.FECHA || item?.fecha_leccion || item?.FECHA_LECCION || item?.fecha_clase || item?.fechaClase || item?.fecha_programada || item?.fecha_original || item?.fechaAplicacion || item?.FECHA_APLICACION || item?.FECHA_ISO || item?.timestamp || item?.TIMESTAMP || '');
 }
 function normTipoEventoSD(raw) {
   const t = String(raw || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
   if (!t) return '';
-  if (t.includes('EVAL') && t.includes('ORAL')) return 'EVAL_ORAL';
-  if (t.includes('EVAL') && (t.includes('ESCR') || t.includes('WRIT'))) return 'EVAL_ESCRITO';
+  if ((t.includes('EVAL') && t.includes('ORAL')) || /^ORAL_?[1-4]$/.test(t) || t.includes('REPOSICION_ORAL')) return 'EVAL_ORAL';
+  if ((t.includes('EVAL') && (t.includes('ESCR') || t.includes('WRIT'))) || /^ESCRITO_?[1-2]$/.test(t) || t.includes('WRITTEN')) return 'EVAL_ESCRITO';
   if (t.includes('PROGRESS')) return 'PROGRESS_CHECK';
   if (t.includes('ICAN') || t === 'I_CAN' || t === 'I CAN') return 'ICAN';
+  if (t.includes('SOCIAL')) return 'SOCIAL_SKILL';
   if (t.includes('FERIADO')) return 'FERIADO';
-  if (t.includes('LECCION') || t === 'CLASE' || t === 'CURSO') return 'LECCION';
+  if (t.includes('LECCION') || t === 'CLASE' || t === 'CURSO' || t === 'TEORICA' || t === 'PRACTICA') return 'LECCION';
   return t;
+}
+function tipoEventoPorLeccionSD(leccion, raw) {
+  const n = Number(leccion || 0);
+  if ([9,17,25,31].includes(n)) return 'EVAL_ORAL';
+  if ([18,32].includes(n)) return 'EVAL_ESCRITO';
+  return normTipoEventoSD(raw) || 'LECCION';
 }
 function labelTipoEventoSD(raw) {
   const t = normTipoEventoSD(raw);
@@ -315,12 +324,15 @@ function labelTipoEventoSD(raw) {
     EVAL_ORAL:'Examen oral',
     EVAL_ESCRITO:'Examen escrito',
     PROGRESS_CHECK:'Progress Check',
+    SOCIAL_SKILL:'Participación / Social Skill',
     FERIADO:'Feriado',
   })[t] || (raw ? String(raw).replace(/_/g,' ') : 'Actividad');
 }
 function estadoAsistenciaLabelSD(row) {
   if (!row) return 'Sin registro';
   if (esPresente(row)) return 'Presente';
+  const presenteRaw = row.presente ?? row.PRESENTE;
+  if (presenteRaw === false || presenteRaw === 0 || String(presenteRaw || '').toUpperCase() === 'FALSE' || String(presenteRaw || '').toUpperCase() === 'NO') return 'Ausente';
   const e = String(row.estado || row.status || '').toUpperCase();
   if (['A','AUSENTE','AUS'].includes(e)) return 'Ausente';
   if (['J','JUST','JUSTIFICADO'].includes(e)) return 'Justificado';
@@ -337,7 +349,7 @@ function toneAsistenciaSD(label) {
   return { bg:'var(--bg-deep)', fg:'var(--ink-2)' };
 }
 function extraerLeccionNumSD(item) {
-  const direct = Number(item?.leccion || item?.LECCION || item?.lec || item?.Lec || item?.numero || item?.NUMERO || 0);
+  const direct = Number(item?.leccion || item?.LECCION || item?.leccion_num || item?.LECCION_NUM || item?.lec || item?.Lec || item?.numero || item?.NUMERO || 0);
   if (Number.isFinite(direct) && direct > 0) return direct;
   const candidates = [item?.titulo, item?.nombre, item?.tipo, item?.descripcion, item?.detalle, item?.evaluacion, item?.label, item?.codigo].filter(Boolean);
   for (const c of candidates) {
@@ -349,8 +361,8 @@ function extraerLeccionNumSD(item) {
 }
 function notaTextoSD(item) {
   if (!item) return '';
-  const nota = item.nota ?? item.NOTA ?? item.calificacion ?? item.CALIFICACION ?? item.puntaje ?? item.PUNTAJE ?? item.score ?? item.SCORE;
-  const max = item.max ?? item.MAX ?? item.total ?? item.TOTAL ?? item.sobre ?? item.SOBRE;
+  const nota = item.nota_obtenida ?? item.NOTA_OBTENIDA ?? item.puntos ?? item.PUNTOS ?? item.nota_ponderada ?? item.NOTA_PONDERADA ?? item.weighted_score ?? item.WEIGHTED_SCORE ?? item.nota ?? item.NOTA ?? item.calificacion ?? item.CALIFICACION ?? item.puntaje ?? item.PUNTAJE ?? item.score ?? item.SCORE;
+  const max = item.peso_maximo ?? item.PESO_MAXIMO ?? item.max_puntos ?? item.MAX_PUNTOS ?? item.weight_percent ?? item.WEIGHT_PERCENT ?? item.max ?? item.MAX ?? item.total ?? item.TOTAL ?? item.sobre ?? item.SOBRE;
   if (nota == null || nota === '') return '';
   return max != null && max !== '' ? `${nota}/${max}` : String(nota);
 }
@@ -402,8 +414,12 @@ function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, ret
   });
   const retroByNum = new Map();
   retroItems.forEach(r => {
+    const rg = String(r?.cod_grupo || r?.COD_GRUPO || '').toUpperCase();
+    if (codGrupo && rg && rg !== String(codGrupo).toUpperCase()) return;
     const n = extraerLeccionNumSD(r);
-    if (n > 0 && !retroByNum.has(n)) retroByNum.set(n, r);
+    if (n <= 0) return;
+    if (!retroByNum.has(n)) retroByNum.set(n, []);
+    retroByNum.get(n).push(r);
   });
   const pushRow = (row) => {
     if (!row || !row.fecha) return;
@@ -416,10 +432,14 @@ function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, ret
     const leccionNum = extraerLeccionNumSD(a);
     const lesson = lessonByNum.get(leccionNum) || null;
     const fecha = fechaDeItemSD(a) || fechaDeItemSD(lesson);
-    const tipo = normTipoEventoSD(a?.tipo || a?.TIPO || lesson?.tipo || lesson?.TIPO || 'LECCION');
-    const retro = retroByNum.get(leccionNum);
+    const retroList = retroByNum.get(leccionNum) || [];
+    const tienePC = retroList.some(r => normTipoEventoSD(r?.tipo || r?.TIPO) === 'PROGRESS_CHECK');
+    const tipo = tienePC ? 'PROGRESS_CHECK' : tipoEventoPorLeccionSD(leccionNum, a?.tipo || a?.TIPO || lesson?.tipo || lesson?.TIPO || 'LECCION');
     const ev = evalByNum.get(leccionNum);
-    const comentario = String(a?.comentario || a?.COMENTARIO || a?.observacion || a?.OBSERVACION || retro?.comentario || retro?.COMENTARIO || '').trim();
+    const comentarios = [a?.comentario, a?.COMENTARIO, a?.observacion, a?.OBSERVACION, ev?.comentario, ev?.COMENTARIO]
+      .concat(retroList.map(r => r?.comentario || r?.COMENTARIO || ''))
+      .map(v => String(v || '').trim()).filter(Boolean);
+    const comentario = Array.from(new Set(comentarios)).join(' · ');
     pushRow({
       fecha,
       leccion: leccionNum || extraerLeccionNumSD(lesson),
@@ -439,8 +459,8 @@ function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, ret
     const leccionNum = extraerLeccionNumSD(e);
     const lesson = lessonByNum.get(leccionNum) || null;
     const fecha = fechaDeItemSD(e) || fechaDeItemSD(lesson);
-    const kind = normTipoEventoSD(e?.tipo || e?.TIPO || lesson?.tipo || lesson?.TIPO || (String(e?.titulo || '').toUpperCase().includes('ORAL') ? 'EVAL_ORAL' : String(e?.titulo || '').toUpperCase().includes('ESCR') ? 'EVAL_ESCRITO' : 'LECCION'));
-    const comentario = String(e?.comentario || e?.COMENTARIO || '').trim();
+    const kind = tipoEventoPorLeccionSD(leccionNum, e?.tipo_eval || e?.TIPO_EVAL || e?.tipo || e?.TIPO || lesson?.tipo || lesson?.TIPO || (String(e?.titulo || '').toUpperCase().includes('ORAL') ? 'EVAL_ORAL' : String(e?.titulo || '').toUpperCase().includes('ESCR') ? 'EVAL_ESCRITO' : 'LECCION'));
+    const comentario = String(e?.comentario || e?.COMENTARIO || e?.student_feedback || e?.STUDENT_FEEDBACK || e?.sugerencias || e?.SUGERENCIAS || '').trim();
     pushRow({
       fecha,
       leccion: leccionNum,
@@ -470,7 +490,11 @@ function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, ret
   rows.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || Number(a.leccion||0)-Number(b.leccion||0));
   const presentCount = (Array.isArray(asistenciaRows) ? asistenciaRows : []).filter(esPresente).length;
   const commentCount = rows.filter(r => r.comentario).length;
-  const evalCount = evalArr.filter(e => notaTextoSD(e)).length;
+  const evalCount = evalArr.filter(e => {
+    const evNivel = String(e?.nivel || e?.NIVEL || '').toUpperCase();
+    const evGrupo = String(e?.cod_grupo || e?.COD_GRUPO || e?.grupo || e?.GRUPO || '').toUpperCase();
+    return (!nivel || !evNivel || evNivel === String(nivel).toUpperCase()) && (!codGrupo || !evGrupo || evGrupo === String(codGrupo).toUpperCase()) && !!notaTextoSD(e);
+  }).length;
   const icanCount = rows.filter(r => r.kind === 'ICAN').length;
   return {
     rows,
@@ -627,15 +651,23 @@ function StudentDashboard({ toast, onNavigate }) {
     totalLecciones = unicas.length;
     cerradas = unicas.filter(l => String(l.estado || '').toUpperCase() === 'CERRADA').length;
     progresoPct = totalLecciones ? Math.round((cerradas / totalLecciones) * 100) : 0;
-    proximas = lecciones.filter(l => ['CALCULADA','HOY'].includes(String(l.estado || '').toUpperCase())).slice(0, 8);
+    proximas = lecciones
+      .filter(l => ['CALCULADA','HOY','PROGRAMADA'].includes(String(l.estado || '').toUpperCase()))
+      .filter(l => {
+        const f = fechaDeItemSD(l);
+        const d = f ? diasEntreSD(f) : null;
+        return d == null || d >= 0;
+      })
+      .sort((a,b) => String(fechaDeItemSD(a)).localeCompare(String(fechaDeItemSD(b))) || Number(extraerLeccionNumSD(a))-Number(extraerLeccionNumSD(b)));
     const firstUpcoming = (pred) => proximas.find(l => pred(l));
     proximaLeccionEvento = buildEventoConsultaSD(firstUpcoming(l => {
-      const t = normTipoEventoSD(l.tipo || l.TIPO);
-      return t !== 'ICAN' && t !== 'EVAL_ORAL' && t !== 'EVAL_ESCRITO' && t !== 'FERIADO';
+      const n = extraerLeccionNumSD(l);
+      const t = tipoEventoPorLeccionSD(n, l.tipo || l.TIPO);
+      return t === 'LECCION';
     }), 'LECCION');
-    proximoIcanEvento = buildEventoConsultaSD(firstUpcoming(l => normTipoEventoSD(l.tipo || l.TIPO) === 'ICAN'), 'ICAN');
-    proximoOralEvento = buildEventoConsultaSD(firstUpcoming(l => normTipoEventoSD(l.tipo || l.TIPO) === 'EVAL_ORAL'), 'EVAL_ORAL');
-    proximoEscritoEvento = buildEventoConsultaSD(firstUpcoming(l => normTipoEventoSD(l.tipo || l.TIPO) === 'EVAL_ESCRITO'), 'EVAL_ESCRITO');
+    proximoIcanEvento = buildEventoConsultaSD(firstUpcoming(l => tipoEventoPorLeccionSD(extraerLeccionNumSD(l), l.tipo || l.TIPO) === 'ICAN'), 'ICAN');
+    proximoOralEvento = buildEventoConsultaSD(firstUpcoming(l => tipoEventoPorLeccionSD(extraerLeccionNumSD(l), l.tipo || l.TIPO) === 'EVAL_ORAL'), 'EVAL_ORAL');
+    proximoEscritoEvento = buildEventoConsultaSD(firstUpcoming(l => tipoEventoPorLeccionSD(extraerLeccionNumSD(l), l.tipo || l.TIPO) === 'EVAL_ESCRITO'), 'EVAL_ESCRITO');
   }
   if (!proximoIcanEvento) proximoIcanEvento = buildICANEventoDesdeDataSD(icanData);
   const cronoPublicado = Array.isArray(lecciones) && lecciones.length > 0;
