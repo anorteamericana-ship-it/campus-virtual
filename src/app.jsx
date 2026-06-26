@@ -1,3 +1,4 @@
+// F98.4-Z6-F · rutas docente + Club I CAN operativo
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
 // F92.5_20260620_CAMPUS_ESTABLE_CARGA_SEGURA
@@ -5,7 +6,7 @@
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
-   ExamenOralView, GruposView, AsistenciaView, CronogramaDocenteSeguroF82,
+   ExamenOralView, GruposView, AsistenciaView, CronogramaDocenteSeguroF82, ClubICANDocenteView,
    AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
@@ -54,23 +55,23 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4V'],
-  syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6E'],
-  teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4Z6E'],
-  vista_docente: ['src/vista_docente.jsx?v=F96.5G'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6F'],
+  syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6F'],
+  teacher_views: ['src/vista_docente.jsx?v=F98.4Z6F','src/teacher_views.jsx?v=F98.4Z6F'],
+  vista_docente: ['src/vista_docente.jsx?v=F98.4Z6F'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F96.5G'],
   admin_students: ['src/admin_students.jsx?v=F98.3C'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F96.5G'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F96.5G','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4J'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F96.5G','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4J','src/admin_students.jsx?v=F98.3C','src/calendario_grupo.jsx?v=F96.5G'],
-  docente_operativo: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4Z6E','src/docente_operativo.jsx?v=F96.5G'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6F','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4J'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6F','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4J','src/admin_students.jsx?v=F98.3C','src/calendario_grupo.jsx?v=F96.5G'],
+  docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6F','src/teacher_views.jsx?v=F98.4Z6F','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/buscador.jsx?v=F96.5G'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F96.5G'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
-  supervision: ['src/vista_docente.jsx?v=F96.5G','src/panel_admin_supervision.jsx?v=F96.5G'],
+  supervision: ['src/vista_docente.jsx?v=F98.4Z6F','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
   diagnostico: ['src/diagnostico_interno.jsx?v=F96.5G'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
@@ -78,15 +79,15 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F98.4A','src/cronograma_todos.jsx?v=F98.4A','src/cronograma_grupo.jsx?v=F98.4J',
-    'src/syllabus_views.jsx?v=F98.4Z6E','src/student_experience.jsx?v=F98.4N'
+    'src/vista_docente.jsx?v=F98.4Z6F','src/cronograma_todos.jsx?v=F98.4A','src/cronograma_grupo.jsx?v=F98.4J',
+    'src/syllabus_views.jsx?v=F98.4Z6F','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F98.4V','src/student_experience.jsx?v=F98.4N'
+    'src/student_modules.jsx?v=F98.4Z6F','src/student_experience.jsx?v=F98.4N'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4Z6E','src/student_modules.jsx?v=F98.4V','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F98.4Z6F','src/student_modules.jsx?v=F98.4Z6F','src/student_experience.jsx?v=F98.4N'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
@@ -204,9 +205,11 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
   const tone=appSessionReminderF89(s,l,clock);
   if(!tone||hidden)return null;
   const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
-  const oralLabel=({9:'1.er examen oral',17:'2.º examen oral',25:'3.er examen oral',31:'4.º examen oral'})[lec];
+  const riel=String(s.RIEL||s.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
+  const oralLabel=riel==='curso'?({9:'1.er examen oral',17:'2.º examen oral',25:'3.er examen oral',31:'4.º examen oral'})[lec]:'';
+  const actividadLabel=riel==='ican'?`Club I CAN · Sesión ${String(lec).padStart(2,'0')}`:`Lección ${String(lec).padStart(2,'0')}${oralLabel?` · ${oralLabel}`:''}`;
   return <div role="status" className="teacher-active-session-banner" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:tone.bg,color:'#FFF',boxShadow:`0 8px 24px ${tone.shadow}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
-    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>{tone.label}</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{appTeacherGroupLabelF88(grupo)} · Lección {String(lec).padStart(2,'0')}{oralLabel?` · ${oralLabel}`:''}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
+    <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>{tone.label}</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{appTeacherGroupLabelF88(grupo)} · {actividadLabel}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
     <button type="button" onClick={()=>setHidden(true)} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:tone.ink,borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>OCULTAR</button>
   </div>;
 }
@@ -896,20 +899,20 @@ function App() {
     // TeacherDashboard se eliminó (bloque 2). 'dashboard' queda como
     // alias por compatibilidad con an_active viejo en localStorage.
     const map = {
-      dashboard:        <LazyRoute title="Mi Panel Docente" component="VistaDocente" files={F96_LAZY.vista_docente} />,
-      mi_panel_docente: <LazyRoute title="Mi Panel Docente" component="VistaDocente" files={F96_LAZY.vista_docente} />,
+      dashboard:        <LazyRoute title="Mis pendientes" component="VistaDocente" files={F96_LAZY.vista_docente} />,
+      mi_panel_docente: <LazyRoute title="Mis pendientes" component="VistaDocente" files={F96_LAZY.vista_docente} />,
       // CALGRUPO_F35_20260617_DOCENTE_OPERATIVO_ROUTER
       docente_operativo: <LazyRoute title="Mis Grupos" component="GruposView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       grupos:      <LazyRoute title="Mis Grupos" component="GruposView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
       asistencia:  <LazyRoute title="Asistencia" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol="teacher" onNavigate={navigateTo} />,
-      cronograma_grupo: <LazyRoute title="Cronograma docente" component="CronogramaDocenteSeguroF82" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
+      cronograma_grupo: <LazyRoute title="Cronograma Inglés Conversacional" component="CronogramaDocenteSeguroF82" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       examenes:    <ExamenesTeacherPanel activeState={activeTeacherState} pendingOral={pendingOral} onNavigate={navigateTo} />,
       examen_oral: <LazyRoute title="Examen oral" component="ExamenOralView" files={F96_LAZY.student_modules} context={pendingOral} onNavigate={navigateTo} />,
-      materiales:  <LazyRoute title="Biblioteca del curso" component="MaterialesView" files={F96_LAZY.syllabus_views} onNavigate={navigateTo} />,
-      ican:        <ProximamenteView title="Club I CAN" />,
-      mensajes:    <LazyRoute title="Mensajes" component="MensajesView" files={F96_LAZY.student_modules} />,
-      perfil:      <LazyRoute title="Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
+      materiales:  <LazyRoute title="Biblioteca del Programa" component="MaterialesView" files={F96_LAZY.syllabus_views} onNavigate={navigateTo} />,
+      ican:        <LazyRoute title="Club I CAN" component="ClubICANDocenteView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
+      mensajes:    <LazyRoute title="Comunicados" component="MensajesView" files={F96_LAZY.student_modules} />,
+      perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
     };
     content = map[active] || map.mi_panel_docente;
   } else if (role === 'admin') {

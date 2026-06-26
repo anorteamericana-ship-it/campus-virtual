@@ -1,3 +1,4 @@
+// F98.4-Z6-F · cronograma curso/Progress Check/I CAN + riel operativo
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
 // F89_20260620_ACCESO_EXAMENES_Y_AVISO_CIERRE
@@ -561,6 +562,26 @@ function tvEvalLabelF86(tipo, leccion, largo=false) {
   const v=map[t]?.[n];
   return v ? v[largo?1:0] : '';
 }
+const TV_PROGRESS_CHECK_LESSONS_F96 = new Set([4,8,13,16,21,24,28,30]);
+function tvIsIcanEventF96(evento) {
+  return tvUpper(evento?.tipo)==='ICAN' || String(evento?.riel||'').trim().toLowerCase()==='ican';
+}
+function tvIsProgressCheckF96(evento) {
+  return !tvIsIcanEventF96(evento) && (evento?.progress_check===true || String(evento?.progress_check||'').toUpperCase()==='TRUE');
+}
+function tvAgendaEventLabelF96(evento, largo=false) {
+  const n=Number(evento?.leccion||0);
+  if(tvIsIcanEventF96(evento)) return largo?`Club I CAN · Sesión ${String(n).padStart(2,'0')}`:`I CAN ${String(n).padStart(2,'0')}`;
+  if(tvIsProgressCheckF96(evento)) return largo?`Progress Check · Lección ${String(n).padStart(2,'0')}`:'Progress Check';
+  return tvEvalLabelF86(evento?.tipo,n,largo)||(largo?`Lección ${String(n).padStart(2,'0')}`:`Lec ${String(n).padStart(2,'0')}`);
+}
+function tvAgendaToneF96(evento, meta) {
+  if(tvIsIcanEventF96(evento)) return {dark:'#6A3D91',light:'#F2EAF8'};
+  if(tvIsProgressCheckF96(evento)) return {dark:'#A45D00',light:'#FFF1D8'};
+  const tipo=tvUpper(evento?.tipo);
+  if(tipo==='EVAL_ORAL'||tipo==='EVAL_ESCRITO') return {dark:'#A32424',light:'#FDE8E8'};
+  return nivelPal(tvNivelId(meta));
+}
 function tvDateLabelF82(iso) {
   if (!iso) return '—';
   const d=new Date(String(iso).slice(0,10)+'T00:00:00');
@@ -588,16 +609,18 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const [sessionCheck,setSessionCheck]=React.useState('loading');
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
-  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=tipoLeccion==='EVAL_ORAL';
-  const esEscrito=tipoLeccion==='EVAL_ESCRITO'||[18,32].includes(Number(lesson?.leccion||0));
-  const esExamen=esOral||esEscrito||[9,17,18,25,31,32].includes(Number(lesson?.leccion||0));
+  const rielLeccion=tvIsIcanEventF96(lesson)?'ican':'curso';
+  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=rielLeccion==='curso'&&tipoLeccion==='EVAL_ORAL';
+  const esEscrito=rielLeccion==='curso'&&(tipoLeccion==='EVAL_ESCRITO'||[18,32].includes(Number(lesson?.leccion||0)));
+  const esExamen=rielLeccion==='curso'&&(esOral||esEscrito||[9,17,18,25,31,32].includes(Number(lesson?.leccion||0)));
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado);
   const globalEstado=tvUpper(activeSession?.ESTADO||activeSession?.estado);
   const globalOpen=globalEstado==='ABIERTA';
   const globalCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   const globalNivel=tvUpper(activeSession?.NIVEL||activeSession?.nivel);
   const globalLec=Number(activeSession?.LECCION||activeSession?.leccion||0);
-  const sameGlobal=globalOpen&&globalCode===String(code)&&globalNivel===tvUpper(nivel)&&globalLec===Number(lesson?.leccion||0);
+  const globalRiel=String(activeSession?.RIEL||activeSession?.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
+  const sameGlobal=globalOpen&&globalCode===String(code)&&globalNivel===tvUpper(nivel)&&globalLec===Number(lesson?.leccion||0)&&globalRiel===rielLeccion;
   const otherGlobal=globalOpen&&!sameGlobal;
   const abierta=estadoSesion==='ABIERTA'||sameGlobal, sesionCerrada=estadoSesion==='CERRADA';
   const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
@@ -607,8 +630,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const load=React.useCallback(()=>{
     if(!lesson)return; setLoading(true); setSessionCheck('loading');
     const calls=[
-      postTeacher('getLeccionDetalle',{id_leccion:tvLessonIdF82(nivel,lesson.leccion),nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso'},30000),
-      postTeacher('getDocenteSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion},30000),
+      postTeacher('getLeccionDetalle',{id_leccion:tvLessonIdF82(nivel,lesson.leccion),nivel,leccion:lesson.leccion,riel:rielLeccion},30000),
+      postTeacher('getDocenteSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion},30000),
       esOral?postTeacher('oralGetResumenGrupo',{cod_grupo:code,nivel,leccion:lesson.leccion},30000):Promise.resolve(null),
     ];
     Promise.allSettled(calls).then(rs=>{
@@ -618,7 +641,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       else { setSesion(null); setSessionCheck('error'); }
       setOralSummary(c?.ok?c:null);
     }).finally(()=>setLoading(false));
-  },[lesson?.leccion,lesson?.fecha,lesson?.tipo,code,nivel,esOral]);
+  },[lesson?.leccion,lesson?.fecha,lesson?.tipo,code,nivel,esOral,rielLeccion]);
   React.useEffect(()=>{load();},[load]);
   React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')onClose();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose]);
   React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
@@ -629,7 +652,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     const zoom=prompt('Pegá el link de Zoom para iniciar la clase:'); if(!zoom)return;
     setBusy('start');
     try{
-      const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',zoom_link:zoom});
+      const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,zoom_link:zoom});
       if(!r?.ok)throw new Error(r?.mensaje||r?.error||'No se pudo iniciar la clase.');
       setSesion(r.sesion||r); setSessionCheck('ok'); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
     }catch(e){alert(e.message||String(e));}finally{setBusy('');}
@@ -652,7 +675,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
       <aside style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
-          <div><div style={{...vdLabelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvEvalLabelF86(lesson?.tipo,lesson?.leccion,true)||`Lección ${String(lesson?.leccion||'').padStart(2,'0')}`}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
+          <div><div style={{...vdLabelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvAgendaEventLabelF96(lesson,true)}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
@@ -680,8 +703,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         </div>
       </aside>
     </div>
-    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso',horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
-    {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:String(lesson.tipo||'').toUpperCase()==='ICAN'?'ican':'curso'}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
+    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:rielLeccion,horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
+    {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:rielLeccion}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;
 }
 
@@ -868,23 +891,64 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   </div>;
 }
 
+function TeacherAgendaLegendF96() {
+  const items=[
+    ['#0B5AA6','#E7F1FB','Lección'],
+    ['#A45D00','#FFF1D8','Progress Check'],
+    ['#6A3D91','#F2EAF8','Club I CAN'],
+    ['#A32424','#FDE8E8','Exámenes'],
+  ];
+  return <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>{items.map(([c,b,l])=><span key={l} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'5px 8px',borderRadius:999,background:b,color:c,fontSize:9.5,fontWeight:900}}><span style={{width:7,height:7,borderRadius:'50%',background:c}}/>{l}</span>)}</div>;
+}
 function TeacherAgendaMonthF82({ month, events, onSelect }) {
   const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),cells=[];
   for(let i=0;i<first;i++)cells.push(null);for(let d=1;d<=days;d++)cells.push(d);
   const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  return <div className="card" style={{padding:0,overflow:'hidden'}}><div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}><strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>{['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}</div><div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>{cells.map((d,i)=>{if(!d)return <div key={i} style={{minHeight:78,background:'#F7F3EC',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ev=events.filter(x=>String(x.fecha||'')===iso);return <div key={i} style={{minHeight:78,padding:4,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}><div style={{fontSize:9,color:'var(--ink-3)',fontWeight:800}}>{d}</div><div style={{display:'grid',gap:3,marginTop:3}}>{ev.map((e,j)=>{const pal=nivelPal(tvNivelId(e.meta));return <button key={j} onClick={()=>onSelect(e)} title={`${tvEvalLabelF86(e.tipo,e.leccion,true)||`Lección ${e.leccion}`} · ${tvGrupoLabel(e.meta).full}`} style={{border:0,borderLeft:`3px solid ${pal.dark}`,background:pal.light,color:pal.dark,borderRadius:5,padding:'3px 4px',fontSize:8.5,fontWeight:900,textAlign:'left',cursor:'pointer'}}>{tvEvalLabelF86(e.tipo,e.leccion)||`Lec ${String(e.leccion).padStart(2,'0')}`}<br/><span style={{fontSize:7.5}}>Lec {String(e.leccion).padStart(2,'0')} · {tvLessonHoraLabel(e,e.meta)}</span></button>;})}</div></div>;})}</div></div>;
+  return <div className="card" style={{padding:0,overflow:'hidden'}}><div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}><strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>{['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}</div><div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>{cells.map((d,i)=>{if(!d)return <div key={i} style={{minHeight:78,background:'#F7F3EC',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ev=events.filter(x=>String(x.fecha||'')===iso);return <div key={i} style={{minHeight:78,padding:4,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}><div style={{fontSize:9,color:'var(--ink-3)',fontWeight:800}}>{d}</div><div style={{display:'grid',gap:3,marginTop:3}}>{ev.map((e,j)=>{const tone=tvAgendaToneF96(e,e.meta);return <button key={`${e.cod_grupo||''}-${e.riel||''}-${e.leccion||''}-${j}`} onClick={()=>onSelect(e)} title={`${tvAgendaEventLabelF96(e,true)} · ${tvGrupoLabel(e.meta).full}`} style={{border:0,borderLeft:`3px solid ${tone.dark}`,background:tone.light,color:tone.dark,borderRadius:5,padding:'3px 4px',fontSize:8.5,fontWeight:900,textAlign:'left',cursor:'pointer'}}>{tvAgendaEventLabelF96(e)}<br/><span style={{fontSize:7.5}}>Lec {String(e.leccion).padStart(2,'0')} · {tvLessonHoraLabel(e,e.meta)}</span></button>;})}</div></div>;})}</div></div>;
 }
-function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
+function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false, onlyIcan=false }) {
   const {grupos,meta,codGrupo,cambiarGrupo,roster,asistenciaDetalle,comentariosDetalle,recargarPanel,loading,error}=useTeacherSession();
   const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null);
-  React.useEffect(()=>{let live=true;const list=grupos||[];if(!list.length){setEvents([]);setLoadingAgenda(false);return()=>{live=false;};}setLoadingAgenda(true);Promise.all(list.map(g=>postTeacher('getFechasGrupo',{cod_grupo:tvGroupCode(g),nivel:tvNivelId(g)},30000).then(r=>({r,g})).catch(e=>({r:null,g,e})))).then(rows=>{if(!live)return;const out=[];rows.forEach(({r,g})=>(r?.lecciones||[]).forEach(l=>out.push({...l,cod_grupo:tvGroupCode(g),nivel:tvNivelId(g),meta:g})));out.sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion)-Number(b.leccion));setEvents(out);}).finally(()=>live&&setLoadingAgenda(false));return()=>{live=false;};},[JSON.stringify((grupos||[]).map(g=>tvGroupCode(g)))]);
+  const groupKey=JSON.stringify((grupos||[]).map(g=>[tvGroupCode(g),tvNivelId(g),String(g?.programa||'')]));
+  React.useEffect(()=>{
+    let live=true;
+    const list=grupos||[];
+    if(!list.length){setEvents([]);setLoadingAgenda(false);return()=>{live=false;};}
+    setLoadingAgenda(true);
+    Promise.all(list.map(g=>{
+      const payload={cod_grupo:tvGroupCode(g),nivel:tvNivelId(g)};
+      return Promise.allSettled([
+        postTeacher('getFechasGrupo',{...payload,riel:'curso'},30000),
+        postTeacher('getFechasGrupo',{...payload,riel:'ican'},30000),
+      ]).then(rs=>({g,curso:rs[0].status==='fulfilled'?rs[0].value:null,ican:rs[1].status==='fulfilled'?rs[1].value:null}));
+    })).then(rows=>{
+      if(!live)return;
+      const out=[];
+      rows.forEach(({g,curso,ican})=>{
+        const cursoRows=curso?.lecciones||[],icanRows=ican?.lecciones||[];
+        const programaIna=tvUpper(g?.programa)==='INA'||icanRows.length>0;
+        cursoRows.forEach(l=>out.push({...l,cod_grupo:tvGroupCode(g),nivel:tvNivelId(g),meta:g,progress_check:programaIna&&TV_PROGRESS_CHECK_LESSONS_F96.has(Number(l.leccion||0))}));
+        icanRows.forEach(l=>out.push({...l,cod_grupo:tvGroupCode(g),nivel:tvNivelId(g),meta:{...g,programa:'INA'},progress_check:false,riel:'ican',tipo:'ICAN'}));
+      });
+      const filtered=onlyIcan?out.filter(tvIsIcanEventF96):out;
+      filtered.sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion)-Number(b.leccion)||String(a.riel||'').localeCompare(String(b.riel||'')));
+      setEvents(filtered);
+    }).finally(()=>live&&setLoadingAgenda(false));
+    return()=>{live=false;};
+  },[groupKey,onlyIcan]);
   const base=React.useMemo(()=>{const today=new Date(),future=events.find(e=>String(e.fecha||'')>=today.toISOString().slice(0,10));const d=future?new Date(String(future.fecha).slice(0,10)+'T00:00:00'):today;return new Date(d.getFullYear(),d.getMonth(),1);},[events]);
   const months=Array.from({length:monthCount},(_,i)=>new Date(base.getFullYear(),base.getMonth()+i,1));
-  return <div style={{width:'100%',minWidth:0}}><PageHeader kicker="Calendario de lecciones · vista docente" title={<>Agenda <em>docente</em></>} sub="Todos tus grupos en curso, vistos en una sola agenda."/>
+  const title=onlyIcan?<>Club <em>I CAN</em></>:<>Cronograma <em>Inglés Conversacional</em></>;
+  const kicker=onlyIcan?'Programa INA · sesiones complementarias':'Calendario académico · vista docente';
+  const sub=onlyIcan?'Sesiones I CAN reales de tus grupos asignados. Podés abrir cada fecha y operar la clase desde el mismo panel.':'Curso, Progress Check, exámenes y Club I CAN reunidos en una sola agenda.';
+  return <div style={{width:'100%',minWidth:0}}><PageHeader kicker={kicker} title={title} sub={sub}/>
     <MisGruposSwitcher grupos={grupos||[]} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
-    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><div style={{display:'flex',gap:7}}>{[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}</div><button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button></div>
-    {(loading||loadingAgenda)?<LoadingState title="Cargando agenda…" subtitle="Consultando calendarios de los grupos en curso"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><TeacherAgendaLegendF96/><div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>{[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}<button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button></div></div>
+    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
     {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}</div>;
+}
+function ClubICANDocenteView(props) {
+  return <CronogramaDocenteSeguroF82 {...props} onlyIcan={true}/>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────

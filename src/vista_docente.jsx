@@ -1,3 +1,4 @@
+// F98.4-Z6-F · Mi Panel renombrado a Mis pendientes
 // CALGRUPO_F66_20260618_ASISTENCIA_COMPACTA_SIN_CONVENIO
 /* global React, Icon, PageHeader, EmptyState, ErrorState,
    fetchCalendarioDocente, fetchTareasPendientesDocente,
@@ -1756,8 +1757,8 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
     return (
       <div data-screen-label="Vista docente · sin sesión">
         <PageHeader
-          kicker="Panel del docente"
-          title={<>Mi <em>Panel</em></>}
+          kicker="Gestión docente"
+          title={<>Mis <em>pendientes</em></>}
           sub="No hay docente identificado en la sesión. Iniciá sesión nuevamente."
         />
         <div style={{
@@ -1800,11 +1801,11 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
     return (
       <div data-screen-label="Vista docente · cargando">
         <PageHeader
-          kicker="Panel del docente"
-          title={<>Mi <em>Panel</em></>}
+          kicker="Gestión docente"
+          title={<>Mis <em>pendientes</em></>}
           sub={nombreAmable(nombre) || cedula}
         />
-        <LoadingState variant="small" title="Cargando panel del docente…" />
+        <LoadingState variant="small" title="Cargando pendientes del docente…" />
       </div>
     );
   }
@@ -1813,8 +1814,8 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
     return (
       <div data-screen-label="Vista docente · error">
         <PageHeader
-          kicker="Panel del docente"
-          title={<>Mi <em>Panel</em></>}
+          kicker="Gestión docente"
+          title={<>Mis <em>pendientes</em></>}
           sub={nombreAmable(nombre) || cedula}
         />
         <ErrorState message={error} onRetry={refetch} />
@@ -1876,8 +1877,8 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   return (
     <div data-screen-label="Vista docente">
       <PageHeader
-        kicker="Panel del docente"
-        title={<>Mi <em>Panel</em></>}
+        kicker="Gestión docente"
+        title={<>Mis <em>pendientes</em></>}
         sub={nombreAmable(nombre) || cedula}
       />
 

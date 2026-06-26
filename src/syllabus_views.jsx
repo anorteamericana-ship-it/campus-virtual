@@ -1,3 +1,4 @@
+// F98.4-Z6-F · Biblioteca del Programa docente
 /* global React, Icon, Chip, PageHeader, PRIORITY_BLOCK, SYLLABUS_BY_LEVEL, ICAN_SLOTS_AFTER,
    useUsuario, EmptyState, ErrorState, LoadingState,
    buildGroupSchedule, fmtDate, fmtDateLong, MONTHS_ES */
@@ -837,12 +838,12 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   ];
   const irCronograma = () => { if (onNavigate) onNavigate('cronograma_grupo'); };
 
-  if (loading) return <LoadingState title="Cargando la biblioteca de tu curso…" />;
+  if (loading) return <LoadingState title={esTeacher ? "Cargando Biblioteca del Programa…" : "Cargando la biblioteca de tu curso…"} />;
   if (error || !grupoInfo || !grupo) {
     const msg = error === 'autoriz'
       ? 'No pudimos cargar tu biblioteca. Verificá tu sesión o contactá a la administración.'
-      : 'No pudimos cargar la biblioteca de tu curso. Intentá de nuevo o contactá a la administración.';
-    return <div><PageHeader title={<>Biblioteca del curso</>} /><ErrorState message={msg} onRetry={reload} /></div>;
+      : (esTeacher ? 'No pudimos cargar la Biblioteca del Programa. Intentá de nuevo o contactá a la administración.' : 'No pudimos cargar la biblioteca de tu curso. Intentá de nuevo o contactá a la administración.');
+    return <div><PageHeader title={esTeacher ? <>Biblioteca del Programa</> : <>Biblioteca del curso</>} /><ErrorState message={msg} onRetry={reload} /></div>;
   }
 
   if (esStudentBiblio && accBiblio && accBiblio.determinado) {
@@ -868,7 +869,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   return (
     <div>
       <PageHeader
-        title={<>Biblioteca del curso · <em>{nivelNombre}</em></>}
+        title={esTeacher ? <>Biblioteca del Programa · <em>{nivelNombre}</em></> : <>Biblioteca del curso · <em>{nivelNombre}</em></>}
         sub={esTeacher ? 'Seleccioná cualquiera de los cuatro niveles. El planeamiento, libros, sílabus, audios y documentos se actualizan sin salir de esta pantalla.' : undefined}
         right={selectorNivel}
       />
@@ -884,7 +885,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
       />
 
       <div style={{ marginTop:18, display:'flex', justifyContent:'center' }}>
-        <button className="btn btn-ghost" onClick={irCronograma}>← Volver al Cronograma académico</button>
+        <button className="btn btn-ghost" onClick={irCronograma}>{esTeacher ? "← Volver al Cronograma Inglés Conversacional" : "← Volver al Cronograma académico"}</button>
       </div>
     </div>
   );

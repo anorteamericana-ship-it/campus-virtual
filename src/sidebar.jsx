@@ -1,3 +1,4 @@
+// F98.4-Z6-F · menú docente reordenado y renombrado
 // F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY
 /* global React, Icon, getSesion, setSesion */
 const { useState: _u1 } = React;
@@ -407,17 +408,18 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       ],
     },
   ];
+  // F98.4-Z6-F · orden y nombres definitivos del menú docente.
+  // Club I CAN queda operativo para todos los docentes; cuando no existan
+  // sesiones asignadas la vista muestra un estado vacío real, no “Próximamente”.
   const teacherNav = [
-    { id: 'perfil', label: 'Teacher', icon: 'profile' },
-    { id: 'mi_panel_docente', label: 'Mi Panel', icon: 'home', badge: pendientesDoc || null },
+    { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
-    { id: 'cronograma_grupo', label: 'Cronograma académico', icon: 'calendar' },
-    // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
-    // La asistencia docente se opera desde Cronograma académico; se elimina la pestaña duplicada.
+    { id: 'materiales', label: 'Biblioteca del Programa', icon: 'materials' },
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
-    { id: 'materiales', label: 'Biblioteca del curso', icon: 'materials' },
-    { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },
-    { id: 'mensajes', label: 'Mensajes', icon: 'messages' },
+    { id: 'cronograma_grupo', label: 'Cronograma Inglés Conversacional', icon: 'calendar' },
+    { id: 'ican', label: 'Club I CAN', icon: 'ican' },
+    { id: 'mensajes', label: 'Comunicados', icon: 'messages' },
+    { id: 'mi_panel_docente', label: 'Mis pendientes', icon: 'home', badge: pendientesDoc || null },
   ];
   const adminNav = [
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },

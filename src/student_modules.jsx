@@ -1,3 +1,4 @@
+// F98.4-Z6-F · comunicados docentes
 // F92.7_20260620_MIS_NOTAS_COMPLETAS_ORDEN_CRONOGRAMA
 // F86_20260619_EXAMEN_ORAL_CONTEXTO_EXACTO
 /* global React, Icon, Ring, Chip, Stat, AnimatedBar, LEVELS, PRECIOS,
@@ -570,7 +571,7 @@ function MaterialesViewLegacy() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// MensajesView — pendiente backend
+// Comunicados — pendiente backend
 // ──────────────────────────────────────────────────────────────────────────
 function MensajesView() {
   const usr = useUsuario();
@@ -578,14 +579,14 @@ function MensajesView() {
     <div>
       <PageHeader
         kicker="Comunicación"
-        title={<>Mis <em>Mensajes</em></>}
-        sub="Canal directo con tu docente y administración"
+        title={<>Mis <em>Comunicados</em></>}
+        sub="Avisos y comunicación institucional"
       />
       <GuardSesion usr={usr}>
         <EmptyState
           icon="💬"
-          title="Mensajes próximamente disponibles"
-          subtitle="Estamos terminando de conectar este módulo. Mientras tanto, podés contactar a tu docente o a administración por los canales habituales."
+          title="Comunicados próximamente disponibles"
+          subtitle="Estamos terminando de conectar este canal institucional. Mientras tanto, podés contactar a la administración por los medios habituales."
         />
       </GuardSesion>
     </div>
@@ -598,7 +599,7 @@ function MensajesView() {
 function PagosView() {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   return (
-    <div className="student-page student-page-payments" data-screen-label="Estudiante · Pagos y estado de cuenta">
+    <div>
       <PageHeader
         title={<>Pagos y <em>estado de cuenta</em></>}
       />
@@ -887,7 +888,7 @@ function CertificadosView() {
   const codigo = usr?.codigo || '';
   const { data, loading, error, reload } = useMisCertificadosEstadoF984(codigo);
   return (
-    <div className="student-page student-page-certificates" data-screen-label="Estudiante · Certificados">
+    <div>
       <PageHeader
         title={<>Mis <em>Certificados</em></>}
       />
@@ -989,7 +990,7 @@ function PerfilView({ onNavigate } = {}) {
     <div>
       <PageHeader
         kicker="Mi cuenta"
-        title={esTeacherPerfil ? <>Teacher</> : <>Mi <em>Perfil</em></>}
+        title={<>Mi <em>Perfil</em></>}
         sub={esTeacherPerfil ? 'Información profesional del docente' : 'Información personal y académica'}
       />
       <GuardSesion usr={usr}>
