@@ -464,7 +464,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
   return (
-    <aside className={`sb ${role === 'student' ? 'student-sb' : ''}`} data-role={role || 'unknown'}>
+    <aside className={`sb ${role === 'student' ? 'student-sb' : ''} ${role === 'teacher' ? 'teacher-sb' : ''}`} data-role={role || 'unknown'}>
       <div className="sb-brand">
         <div className="sb-logo" />
         <div className="sb-brand-text">
@@ -491,7 +491,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         </React.Fragment>
       )) : (
         <>
-          <div className="sb-section">Menú</div>
+          <div className={`sb-section ${role === 'teacher' ? 'teacher-sb-section' : ''}`}>Menú</div>
           {nav.map(item => {
             if (item.proximamente) {
               return (
@@ -501,7 +501,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                   disabled
                   aria-disabled="true"
                   title="En construcción — lo conectamos pronto"
-                  className="sb-item"
+                  className={`sb-item ${role === 'teacher' ? 'teacher-sb-item' : ''}`}
                   style={{
                     opacity: 0.42,
                     cursor: 'not-allowed',
@@ -523,7 +523,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
             return (
               <button
                 key={item.id}
-                className={`sb-item ${active===item.id?'active':''}`}
+                className={`sb-item ${role === 'teacher' ? 'teacher-sb-item' : ''} ${active===item.id?'active':''}`}
                 onClick={() => setActive(item.id)}>
                 <Icon name={item.icon} size={18} />
                 <span className="sb-label">{item.label}</span>

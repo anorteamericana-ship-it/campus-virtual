@@ -53,7 +53,7 @@ function LazyRoute({ title, component, files, ...props }) {
   return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
 }
 const F96_LAZY = {
-  student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z5D3'],
+  student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4V'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4K'],
   teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4O'],
@@ -205,7 +205,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
   if(!tone||hidden)return null;
   const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
   const oralLabel=({9:'1.er examen oral',17:'2.º examen oral',25:'3.er examen oral',31:'4.º examen oral'})[lec];
-  return <div role="status" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:tone.bg,color:'#FFF',boxShadow:`0 8px 24px ${tone.shadow}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
+  return <div role="status" className="teacher-active-session-banner" style={{position:'sticky',top:0,zIndex:110,margin:'0 18px 14px',padding:'11px 14px',borderRadius:'0 0 12px 12px',background:tone.bg,color:'#FFF',boxShadow:`0 8px 24px ${tone.shadow}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
     <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em'}}>{tone.label}</div><div style={{fontSize:13,fontWeight:800,marginTop:2}}>{appTeacherGroupLabelF88(grupo)} · Lección {String(lec).padStart(2,'0')}{oralLabel?` · ${oralLabel}`:''}</div><div style={{fontSize:10.5,opacity:.9,marginTop:2}}>La sesión seguirá activa hasta guardar asistencia y cerrar la clase.</div></div>
     <button type="button" onClick={()=>setHidden(true)} style={{border:'1px solid rgba(255,255,255,.55)',background:'#FFF',color:tone.ink,borderRadius:9,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>OCULTAR</button>
   </div>;
@@ -975,14 +975,16 @@ function App() {
         active={active}
         setActive={(target) => navigateTo(target)}
       />
-      <main className="main">
+      <main className={`main ${role === 'teacher' ? 'teacher-unified-main' : ''}`}>
         {esDemo && <DemoBanner />}
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
         )}
         {role === 'teacher' && <TeacherActiveSessionBanner state={activeTeacherState} viewKey={active} />}
         <VistaErrorBoundary key={active}>
-          {content}
+          {role === 'teacher'
+            ? <div className={`teacher-page teacher-page-${active}`}>{content}</div>
+            : content}
         </VistaErrorBoundary>
       </main>
       <Toast msg={toastMsg} onClose={() => setToastMsg('')} />
