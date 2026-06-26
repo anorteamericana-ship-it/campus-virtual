@@ -10,7 +10,7 @@ const STUDENT_TAB_STYLE_F984 = {
 
 function StudentTabButtonF984({ active, children, onClick }) {
   return (
-    <button type="button" className={active ? 'btn btn-primary' : 'btn btn-ghost'}
+    <button type="button" className={`student-tab-button ${active ? 'btn btn-primary active' : 'btn btn-ghost'}`}
       onClick={onClick} aria-pressed={active}
       style={{ flex:'1 1 170px', justifyContent:'center', minHeight:40 }}>
       {children}
@@ -20,10 +20,10 @@ function StudentTabButtonF984({ active, children, onClick }) {
 
 function StudentSectionHeaderF984({ kicker, title, sub }) {
   return (
-    <div style={{ marginBottom:20 }}>
-      {kicker ? <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{kicker}</div> : null}
-      <h1 style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}>{title}</h1>
-      {sub && <p style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}>{sub}</p>}
+    <div className="student-section-header" style={{ marginBottom:20 }}>
+      {kicker ? <div className="student-section-kicker" style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{kicker}</div> : null}
+      <h1 className="student-section-title" style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}>{title}</h1>
+      {sub && <p className="student-section-subtitle" style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}>{sub}</p>}
     </div>
   );
 }
@@ -49,9 +49,9 @@ function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, i
   const choose = (next) => { setTab(next); if (onTabChange) onTabChange(next); };
 
   return (
-    <div data-screen-label="Estudiante · Mi curso" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
+    <div className="student-page student-page-course" data-screen-label="Estudiante · Mi curso" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
       <StudentSectionHeaderF984 title="Mi curso" />
-      <div style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Mi curso">
+      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Mi curso">
         <StudentTabButtonF984 active={tab==='cronograma'} onClick={()=>choose('cronograma')}>Cronograma</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='materiales'} onClick={()=>choose('materiales')}>Materiales</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='tareas'} onClick={()=>choose('tareas')}>Tareas</StudentTabButtonF984>
@@ -81,9 +81,9 @@ function StudentEvaluationsView({ initialTab='proximas', onTabChange, onNavigate
   const choose = (next) => { setTab(next); if (onTabChange) onTabChange(next); };
 
   return (
-    <div data-screen-label="Estudiante · Evaluaciones" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
+    <div className="student-page student-page-evaluations" data-screen-label="Estudiante · Evaluaciones" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
       <StudentSectionHeaderF984 title="Evaluaciones" />
-      <div style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Evaluaciones">
+      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Evaluaciones">
         <StudentTabButtonF984 active={tab==='proximas'} onClick={()=>choose('proximas')}>Próximas y activas</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='resultados'} onClick={()=>choose('resultados')}>Resultados</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='reposiciones'} onClick={()=>choose('reposiciones')}>Reposiciones</StudentTabButtonF984>
@@ -158,9 +158,9 @@ function StudentDocumentsHelpView({ initialTab='programa', onTabChange }) {
   React.useEffect(() => setTab(normalized), [normalized]);
   const choose = (next) => { setTab(next); if (onTabChange) onTabChange(next); };
   return (
-    <div data-screen-label="Estudiante · Documentos y ayuda" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
+    <div className="student-page student-page-documents" data-screen-label="Estudiante · Documentos y ayuda" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
       <StudentSectionHeaderF984 kicker="Gestión" title="Documentos y ayuda" sub="Información institucional, avisos y contactos reales configurados para tu perfil." />
-      <div style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Documentos y ayuda">
+      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Documentos y ayuda">
         <StudentTabButtonF984 active={tab==='programa'} onClick={()=>choose('programa')}>Programa y documentos</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='avisos'} onClick={()=>choose('avisos')}>Avisos</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='ayuda'} onClick={()=>choose('ayuda')}>Ayuda y contactos</StudentTabButtonF984>

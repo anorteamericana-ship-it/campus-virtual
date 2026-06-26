@@ -598,7 +598,7 @@ function MensajesView() {
 function PagosView() {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   return (
-    <div>
+    <div className="student-page student-page-payments" data-screen-label="Estudiante · Pagos y estado de cuenta">
       <PageHeader
         title={<>Pagos y <em>estado de cuenta</em></>}
       />
@@ -887,7 +887,7 @@ function CertificadosView() {
   const codigo = usr?.codigo || '';
   const { data, loading, error, reload } = useMisCertificadosEstadoF984(codigo);
   return (
-    <div>
+    <div className="student-page student-page-certificates" data-screen-label="Estudiante · Certificados">
       <PageHeader
         title={<>Mis <em>Certificados</em></>}
       />

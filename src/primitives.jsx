@@ -362,15 +362,15 @@ function EmptyState({ icon = '—', title, subtitle, action }) {
 // desde el núcleo inicial sin arrastrar módulos de estudiante.
 function PageHeader({ kicker, title, sub, right }) {
   return (
-    <div style={{ marginBottom:24, display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
-      <div>
-        {kicker && <div className="hero-kicker" style={{ marginBottom:8 }}>{kicker}</div>}
-        <h1 style={{ fontFamily:'var(--f-serif)', fontSize:40, fontWeight:400, letterSpacing:'-0.035em', lineHeight:1.05, margin:0, color:'var(--an-navy-ink)' }}>
+    <div className="page-header" style={{ marginBottom:24, display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+      <div className="page-header-copy">
+        {kicker && <div className="hero-kicker page-header-kicker" style={{ marginBottom:8 }}>{kicker}</div>}
+        <h1 className="page-header-title" style={{ fontFamily:'var(--f-serif)', fontSize:40, fontWeight:400, letterSpacing:'-0.035em', lineHeight:1.05, margin:0, color:'var(--an-navy-ink)' }}>
           {title}
         </h1>
-        {sub && <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6, maxWidth:640 }}>{sub}</div>}
+        {sub && <div className="page-header-subtitle" style={{ fontSize:13, color:'var(--ink-2)', marginTop:6, maxWidth:640 }}>{sub}</div>}
       </div>
-      {right}
+      {right && <div className="page-header-actions">{right}</div>}
     </div>
   );
 }

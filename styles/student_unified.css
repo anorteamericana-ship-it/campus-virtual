@@ -1,0 +1,434 @@
+/* ========================================================================
+   F98.4-Z6-C · Tema unificado del menú estudiante
+   Aplica la identidad visual de Mi Campus a Mi curso, Evaluaciones,
+   Pagos, Certificados y Documentos y ayuda sin alterar su lógica.
+   ======================================================================== */
+
+/* ── Shell del estudiante ─────────────────────────────────────────────── */
+.app:has(.student-sb) {
+  --student-navy: #002f6c;
+  --student-navy-dark: #001e47;
+  --student-red: #da291c;
+  --student-bg: #f1ece2;
+  --student-card: rgba(255,255,255,.94);
+  --student-line: rgba(221,215,204,.92);
+  --student-muted: #6d7480;
+  --student-shadow: 0 10px 28px rgba(0,31,71,.055);
+  --student-shadow-hover: 0 15px 34px rgba(0,31,71,.085);
+}
+
+.app:has(.student-sb) .main {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.12)),
+    var(--student-bg);
+}
+.app:has(.student-sb) .main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    url('../assets/campus_bg_art.svg') center top / 100% auto repeat-y,
+    linear-gradient(180deg,#f3eee5 0%,#eee7dc 100%);
+  opacity: .72;
+}
+.app:has(.student-sb) .main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url('../assets/virtual_pattern.svg') left top / 220px 74px repeat,
+    linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08));
+  opacity: .08;
+}
+
+/* ── Sidebar estudiante ───────────────────────────────────────────────── */
+.student-sb {
+  background: rgba(255,255,255,.975);
+  border-right: 1px solid rgba(221,215,204,.95);
+  box-shadow: 10px 0 30px rgba(0,31,71,.025);
+  font-family: 'Poppins', var(--f-sans), sans-serif;
+  gap: 7px;
+}
+.student-sb .sb-brand {
+  min-height: 72px;
+  gap: 11px;
+  padding: 7px 7px 17px;
+  margin-bottom: 5px;
+  border-bottom-color: rgba(218,41,28,.18);
+}
+.student-sb .sb-logo {
+  width: 58px;
+  height: 38px;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: url('../assets/logo_oficial_transparent.png');
+  background-size: contain;
+  box-shadow: none;
+}
+.student-sb .sb-brand-t1 {
+  font-family: 'Poppins', var(--f-sans), sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--student-navy-dark);
+  letter-spacing: -.025em;
+}
+.student-sb .sb-brand-t2 {
+  color: var(--student-navy);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .14em;
+}
+.student-sb .student-sb-section {
+  position: relative;
+  margin-top: 4px;
+  padding: 14px 12px 7px 27px;
+  color: var(--student-navy);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.student-sb .student-sb-section::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 9px;
+  height: 2px;
+  border-radius: 3px;
+  background: var(--student-red);
+}
+.student-sb .student-sb-item {
+  min-height: 48px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  color: #424a58;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.student-sb .student-sb-item:hover {
+  background: color-mix(in srgb,var(--student-navy) 5%,white);
+  color: var(--student-navy);
+  transform: translateX(2px);
+}
+.student-sb .student-sb-item:hover .sb-icon { color: var(--student-navy); }
+.student-sb .student-sb-item.active {
+  background: var(--student-navy);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 9px 20px rgba(0,47,108,.18);
+}
+.student-sb .student-sb-item.active .sb-icon { color: #fff; }
+.student-sb .sb-user {
+  padding: 13px;
+  border: 1px solid rgba(221,215,204,.9);
+  border-radius: 14px;
+  background: linear-gradient(135deg,#f7f3eb,#ece4d6);
+}
+.student-sb .sb-avatar {
+  background: var(--student-navy);
+  box-shadow: 0 7px 15px rgba(0,47,108,.18);
+}
+.student-sb .sb-user-t1 {
+  color: var(--student-navy-dark);
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.student-sb .sb-user-t2 { font-size: 10.5px; }
+
+/* ── Contenedor compartido de módulos ─────────────────────────────────── */
+.student-page {
+  width: min(100%,1320px);
+  margin: 0 auto;
+  padding: 10px 4px 60px !important;
+  font-family: 'Poppins', var(--f-sans), sans-serif;
+  color: #1d2430;
+}
+.student-page,
+.student-page button,
+.student-page input,
+.student-page select,
+.student-page textarea {
+  font-family: 'Poppins', var(--f-sans), sans-serif;
+}
+.student-page > * { min-width: 0; }
+
+/* ── Encabezado compartido ────────────────────────────────────────────── */
+.app:has(.student-sb) .student-section-header,
+.app:has(.student-sb) .student-page > .page-header {
+  position: relative;
+  overflow: hidden;
+  min-height: 112px;
+  padding: 22px 26px !important;
+  margin: 0 0 18px !important;
+  align-items: center !important;
+  border: 1px solid rgba(221,215,204,.9);
+  border-bottom: 3px solid var(--student-red);
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.96),rgba(255,255,255,.90)),
+    url('../assets/virtual_pattern.svg') center / 170px 57px repeat;
+  box-shadow: var(--student-shadow);
+}
+.app:has(.student-sb) .student-section-header::after,
+.app:has(.student-sb) .student-page > .page-header::after {
+  content: "A";
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0,47,108,.055);
+  font-size: 102px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+}
+.app:has(.student-sb) .student-section-kicker,
+.app:has(.student-sb) .page-header-kicker {
+  color: var(--student-red) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .16em !important;
+}
+.app:has(.student-sb) .student-section-title,
+.app:has(.student-sb) .page-header-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 !important;
+  color: var(--student-navy) !important;
+  font-family: 'Poppins',var(--f-sans),sans-serif !important;
+  font-size: clamp(31px,3.1vw,43px) !important;
+  font-weight: 700 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.035em !important;
+}
+.app:has(.student-sb) .page-header-title em,
+.app:has(.student-sb) .student-section-title em {
+  color: inherit;
+  font-style: normal;
+}
+.app:has(.student-sb) .student-section-subtitle,
+.app:has(.student-sb) .page-header-subtitle {
+  position: relative;
+  z-index: 1;
+  color: var(--student-muted) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.55 !important;
+}
+
+/* ── Pestañas ─────────────────────────────────────────────────────────── */
+.student-page .student-tabs {
+  gap: 7px !important;
+  padding: 6px !important;
+  margin-bottom: 18px !important;
+  border: 1px solid rgba(221,215,204,.92) !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,.93) !important;
+  box-shadow: var(--student-shadow);
+}
+.student-page .student-tab-button {
+  min-height: 44px !important;
+  border-radius: 9px !important;
+  border-color: transparent !important;
+  color: #443f39 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+.student-page .student-tab-button:not(.active):hover {
+  background: color-mix(in srgb,var(--student-navy) 5%,white) !important;
+  color: var(--student-navy) !important;
+}
+.student-page .student-tab-button.active {
+  background: var(--student-navy) !important;
+  color: #fff !important;
+  border-color: var(--student-navy) !important;
+  box-shadow: 0 7px 16px rgba(0,47,108,.16) !important;
+}
+
+/* ── Tarjetas, secciones y contenido ──────────────────────────────────── */
+.student-page .card,
+.student-page .stat,
+.student-page .table-soft,
+.student-page [class*="wrap"],
+.student-page iframe {
+  border-color: var(--student-line) !important;
+}
+.student-page .card,
+.student-page .stat {
+  background: var(--student-card) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--student-shadow) !important;
+}
+.student-page .card:hover,
+.student-page .stat:hover {
+  box-shadow: var(--student-shadow-hover) !important;
+}
+.student-page .card-title,
+.student-page h2,
+.student-page h3,
+.student-page h4 {
+  color: var(--student-navy-dark) !important;
+  font-family: 'Poppins',var(--f-sans),sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -.025em;
+}
+.student-page p,
+.student-page li,
+.student-page td,
+.student-page label,
+.student-page .stat-sub {
+  font-weight: 500;
+}
+.student-page strong,
+.student-page b { font-weight: 700; }
+.student-page .stat-num { color: var(--student-navy) !important; }
+
+/* Tablas y listados */
+.student-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  background: rgba(255,255,255,.94);
+  border: 1px solid var(--student-line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--student-shadow);
+}
+.student-page table th {
+  padding: 11px 13px !important;
+  background: #f6f3ed !important;
+  color: #697180 !important;
+  font-family: 'Poppins',var(--f-sans),sans-serif !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase;
+  border-bottom-color: var(--student-line) !important;
+}
+.student-page table td {
+  padding: 13px !important;
+  color: #252b35;
+  border-bottom-color: var(--student-line) !important;
+}
+.student-page table tbody tr:hover td {
+  background: color-mix(in srgb,var(--student-navy) 2.5%,white);
+}
+
+/* Controles */
+.student-page .btn,
+.student-page button {
+  border-radius: 9px;
+  font-weight: 700;
+}
+.student-page .btn-primary {
+  background: var(--student-navy) !important;
+  border-color: var(--student-navy) !important;
+  color: #fff !important;
+}
+.student-page .btn-primary:hover {
+  background: var(--student-navy-dark) !important;
+}
+.student-page .btn-ghost {
+  background: rgba(255,255,255,.8) !important;
+  border-color: var(--student-line) !important;
+  color: #4d5360 !important;
+}
+.student-page input,
+.student-page select,
+.student-page textarea {
+  border-radius: 9px !important;
+  border-color: var(--student-line) !important;
+  color: #1f2630 !important;
+  font-weight: 500;
+}
+.student-page input:focus,
+.student-page select:focus,
+.student-page textarea:focus {
+  border-color: color-mix(in srgb,var(--student-navy) 65%,white) !important;
+  box-shadow: 0 0 0 4px rgba(0,47,108,.10) !important;
+  outline: none;
+}
+
+/* Pagos y certificados */
+.student-page-payments > .card:first-of-type,
+.student-page-certificates .certificados-grid-f984u > article {
+  overflow: hidden;
+}
+.student-page-payments section > div[style*="grid-template-columns"],
+.student-page-certificates .certificados-grid-f984u {
+  gap: 14px !important;
+}
+.student-page-certificates .certificados-grid-f984u > article,
+.student-page-payments article.card {
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.student-page-certificates .certificados-grid-f984u > article:hover,
+.student-page-payments article.card:hover {
+  transform: translateY(-2px);
+}
+
+/* Exámenes embebidos */
+.student-page-evaluations iframe {
+  width: 100%;
+  border-radius: 12px !important;
+  background: #fff;
+  box-shadow: var(--student-shadow);
+}
+
+/* Estados vacíos / errores */
+.student-page [data-screen-label*="error" i],
+.student-page .empty-state,
+.student-page .error-state {
+  border-radius: 12px !important;
+  box-shadow: var(--student-shadow);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .student-sb {
+    background: rgba(255,255,255,.98);
+    border-right: 0;
+    border-bottom: 1px solid var(--student-line);
+    box-shadow: 0 8px 20px rgba(0,31,71,.05);
+  }
+  .student-sb .sb-logo { width: 44px; height: 30px; }
+  .student-sb .student-sb-item {
+    min-height: 42px;
+    border-radius: 10px;
+  }
+  .student-page { padding: 4px 0 44px !important; }
+  .app:has(.student-sb) .student-section-header,
+  .app:has(.student-sb) .student-page > .page-header {
+    min-height: 94px;
+    padding: 18px 20px !important;
+  }
+  .app:has(.student-sb) .student-section-header::after,
+  .app:has(.student-sb) .student-page > .page-header::after {
+    right: 12px;
+    font-size: 78px;
+  }
+}
+
+@media (max-width: 620px) {
+  .app:has(.student-sb) .main { padding-left: 10px; padding-right: 10px; }
+  .app:has(.student-sb) .student-section-title,
+  .app:has(.student-sb) .page-header-title {
+    font-size: 29px !important;
+  }
+  .student-page .student-tabs { gap: 5px !important; }
+  .student-page .student-tab-button {
+    flex-basis: 100% !important;
+    min-height: 42px !important;
+  }
+  .student-page table { display: block; overflow-x: auto; }
+}

@@ -1270,7 +1270,7 @@ function ICANViewNew({ toast, role = 'student' }) {
   // Sin sesión activa
   if (!usr) {
     return (
-      <div>
+      <div className="student-page student-page-ican" data-screen-label="Estudiante · Club I CAN">
         {header}
         <EmptyState
           icon="👤"
@@ -1284,7 +1284,7 @@ function ICANViewNew({ toast, role = 'student' }) {
   // Cargando
   if (data === null) {
     return (
-      <div>
+      <div className="student-page student-page-ican" data-screen-label="Estudiante · Club I CAN">
         {header}
         <LoadingState title="Cargando tu Club I CAN…" />
       </div>
@@ -1294,7 +1294,7 @@ function ICANViewNew({ toast, role = 'student' }) {
   // Error controlado (nunca texto técnico crudo)
   if (error) {
     return (
-      <div>
+      <div className="student-page student-page-ican" data-screen-label="Estudiante · Club I CAN">
         {header}
         <ErrorState message={error} onRetry={cargar} />
       </div>
@@ -1313,7 +1313,7 @@ function ICANViewNew({ toast, role = 'student' }) {
   const sinDatos = asistidas == null && requeridas == null && sesiones.length === 0;
   if (sinDatos) {
     return (
-      <div>
+      <div className="student-page student-page-ican" data-screen-label="Estudiante · Club I CAN">
         {header}
         <EmptyState
           icon="🗣️"
@@ -1329,7 +1329,7 @@ function ICANViewNew({ toast, role = 'student' }) {
     : null;
 
   return (
-    <div>
+    <div className="student-page student-page-ican" data-screen-label="Estudiante · Club I CAN">
       {header}
 
       {/* Resumen real del estudiante */}

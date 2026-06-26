@@ -390,7 +390,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const mostrarICAN = tieneICANExplicito || tieneICANPrograma;
   const studentSections = [
     {
-      label: 'Aprendizaje',
+      label: 'Menú',
       items: [
         { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
@@ -464,7 +464,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
   return (
-    <aside className="sb">
+    <aside className={`sb ${role === 'student' ? 'student-sb' : ''}`} data-role={role || 'unknown'}>
       <div className="sb-brand">
         <div className="sb-logo" />
         <div className="sb-brand-text">
@@ -477,11 +477,12 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
 
       {role === 'student' ? studentSections.map(section => (
         <React.Fragment key={section.label}>
-          <div className="sb-section">{section.label}</div>
+          <div className="sb-section student-sb-section">{section.label}</div>
           {section.items.map(item => (
             <button
               key={item.id}
-              className={`sb-item ${active===item.id?'active':''}`}
+              className={`sb-item student-sb-item ${active===item.id?'active':''}`}
+              data-nav-id={item.id}
               onClick={() => setActive(item.id)}>
               <Icon name={item.icon} size={18} />
               <span className="sb-label">{item.label}</span>
