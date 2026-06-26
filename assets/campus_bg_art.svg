@@ -49,9 +49,9 @@
   <ellipse cx="1510" cy="640" rx="220" ry="260" fill="url(#lightGrad)" opacity="0.28"/>
   <ellipse cx="-120" cy="1780" rx="260" ry="360" fill="url(#navyGrad)" opacity="0.88"/>
   <circle cx="1010" cy="1830" r="300" fill="url(#lightGrad)" opacity="0.24"/>
-  <path d="M0 2250c160-12 334-13 522-4 227 12 432 10 648-8 165-13 311-36 430-72v110H0v-26Z" fill="#d6d6d6" opacity="0.22"/>
-  <path d="M0 2286c171 8 342 2 517-12 236-18 471-27 710-12 121 8 246 7 373-7v58H0v-27Z" fill="url(#navyGrad)" opacity="0.72"/>
-  <path d="M0 2314c132 9 270 5 412-8 229-21 476-30 731-10 148 12 300 12 457 0v39H0v-21Z" fill="#aab7d0" opacity="0.54"/>
+  <path d="M0 2468c160-12 334-13 522-4 227 12 432 10 648-8 165-13 311-36 430-72v110H0v-26Z" fill="#d6d6d6" opacity="0.22"/>
+  <path d="M0 2504c171 8 342 2 517-12 236-18 471-27 710-12 121 8 246 7 373-7v58H0v-27Z" fill="url(#navyGrad)" opacity="0.72"/>
+  <path d="M0 2532c132 9 270 5 412-8 229-21 476-30 731-10 148 12 300 12 457 0v39H0v-21Z" fill="#aab7d0" opacity="0.54"/>
 
   <!-- watermark As distributed through the page -->
   <use href="#waterA" x="88" y="110"/>
@@ -106,10 +106,4 @@
     <use href="#accentLines"/>
   </g>
   <circle cx="214" cy="2088" r="92" stroke="#ffffff" stroke-width="4" stroke-dasharray="2 14" stroke-linecap="round" opacity="0.55"/>
-
-  <!-- bottom-right brand accent -->
-  <g transform="translate(1160 2480) scale(0.9)" opacity="0.96">
-    <path d="M70 176 147 19h54l79 157h-52l-18-39h-68l-18 39H70Z" fill="url(#redAGrad)"/>
-    <path d="M82 109c73 13 132 16 187 10" stroke="#da291c" stroke-width="4" stroke-linecap="round"/>
-  </g>
 </svg>

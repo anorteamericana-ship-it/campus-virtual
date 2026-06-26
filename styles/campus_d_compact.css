@@ -1,4 +1,4 @@
-/* F98.4-Z5D8 · Afinación visual final juvenil/dinámica */
+/* F98.4-Z5D9 · Ajuste final: banda azul debajo de recuadros + limpieza de mancha roja */
 
 :root {
   --d-navy: #002f6c;
@@ -38,7 +38,7 @@
   z-index: -2;
   pointer-events: none;
   background:
-    url("../assets/campus_bg_art.svg?v=F98.4Z5D8") center top / 100% auto repeat-y,
+    url("../assets/campus_bg_art.svg?v=F98.4Z5D9") center top / 100% auto repeat-y,
     linear-gradient(180deg, #f2ede3 0%, #efe9de 100%);
   opacity: 1;
 }
@@ -49,7 +49,7 @@
   z-index: -1;
   pointer-events: none;
   background:
-    url("../assets/virtual_pattern.svg?v=F98.4Z5D8") left top / 210px 70px repeat,
+    url("../assets/virtual_pattern.svg?v=F98.4Z5D9") left top / 210px 70px repeat,
     radial-gradient(circle at 16% 28%, rgba(9,58,132,.085) 0 14%, transparent 14.5%),
     radial-gradient(circle at 72% 12%, rgba(40,40,40,.055) 0 16%, transparent 16.5%),
     radial-gradient(circle at 82% 68%, rgba(9,58,132,.05) 0 12%, transparent 12.5%),
@@ -108,7 +108,7 @@
   position: absolute;
   inset: 0;
   width: auto;
-  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D8");
+  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D9");
   background-repeat: repeat;
   background-size: 150px 50px;
   background-position: left top;
