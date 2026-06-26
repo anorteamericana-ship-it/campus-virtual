@@ -732,7 +732,11 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
 
 function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const todayIso=new Date().toISOString().slice(0,10);
-  const lessons=React.useMemo(()=>(lecciones||[]).filter(l=>tvUpper(l.tipo)!=='FERIADO'&&tvUpper(l.tipo)!=='ICAN').slice().sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion||0)-Number(b.leccion||0)).slice(0,32),[lecciones]);
+  const lessons=React.useMemo(()=>(lecciones||[])
+    .filter(l=>tvUpper(l.tipo)!=='FERIADO'&&tvUpper(l.tipo)!=='ICAN')
+    .slice()
+    .sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||''))||Number(a.leccion||0)-Number(b.leccion||0))
+    .slice(0,32),[lecciones]);
   const nextDate=React.useMemo(()=>{
     const upcoming=lessons.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
     const fallback=lessons.find(l=>tvUpper(l.estado)!=='CERRADA')||lessons[lessons.length-1]||null;
@@ -740,39 +744,97 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   },[lessons,todayIso]);
   const nextLesson=(lessons.filter(l=>String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA')[0])||null;
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
-  const scrollRef=React.useRef(null), positionedRef=React.useRef('');
+  const calendarRef=React.useRef(null), positionedRef=React.useRef('');
+  const COL_W=94, LEFT_W=286, RIGHT_W=154, HEADER_H=104, ROW_H=68;
+
   React.useEffect(()=>{
-    const box=scrollRef.current;if(!box||!lessons.length||!nextLesson)return;
-    const key=`${tvGroupCode(meta)}|${nextLesson.leccion}|${lessons.length}`;if(positionedRef.current===key)return;positionedRef.current=key;
+    const box=calendarRef.current;
+    if(!box||!lessons.length||!nextLesson)return;
+    const key=`${tvGroupCode(meta)}|${nextLesson.leccion}|${lessons.length}`;
+    if(positionedRef.current===key)return;
+    positionedRef.current=key;
     const idx=lessons.findIndex(l=>Number(l.leccion)===Number(nextLesson.leccion));
-    requestAnimationFrame(()=>{const colW=90,leftW=286,rightW=148,targetX=Math.max(leftW,box.clientWidth-rightW-(2*colW));const actualX=leftW+Math.max(0,idx)*colW;box.scrollLeft=Math.max(0,actualX-targetX);});
+    requestAnimationFrame(()=>{
+      const penultimateX=Math.max(0,box.clientWidth-(2*COL_W));
+      const actualX=Math.max(0,idx)*COL_W;
+      box.scrollLeft=Math.max(0,actualX-penultimateX);
+    });
   },[tvGroupCode(meta),nextLesson?.leccion,lessons.length]);
-  const scrollBy=d=>scrollRef.current?.scrollBy({left:d,behavior:'smooth'});
+
+  const scrollBy=d=>calendarRef.current?.scrollBy({left:d,behavior:'smooth'});
   const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||''), activeLec=Number(activeSession?.LECCION||activeSession?.leccion||0);
-  // F89: una sesión activa no fuerza la apertura del detalle ni cambia la vista.
-  // El docente conserva el contexto actual; el recordatorio global aparece solo
-  // durante los últimos 10 minutos o cuando la sesión quedó vencida.
+  const tableBase={border:0,borderRadius:0,boxShadow:'none',margin:0,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0,background:'#fff'};
+  const headCell={height:HEADER_H,minHeight:HEADER_H,maxHeight:HEADER_H,verticalAlign:'middle',borderBottom:'1px solid var(--line)',background:'var(--surface-2)',padding:'9px 10px'};
+  const bodyCell={height:ROW_H,minHeight:ROW_H,maxHeight:ROW_H,verticalAlign:'middle',borderBottom:'1px solid var(--line)',background:'#fff',padding:'7px 10px'};
+
   return <>
-    <div className="card" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
+    <div className="card teacher-roster-fixed" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
-        <div><div className="card-title">Estudiantes · asistencia y notas</div><div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>La asistencia se completa obligatoriamente al cerrar la clase.</div></div>
-        <div style={{display:'flex',gap:7}}><button type="button" onClick={()=>scrollBy(-560)} className="btn btn-ghost" style={{width:38,padding:8}}>←</button><button type="button" onClick={()=>scrollBy(560)} className="btn btn-ghost" style={{width:38,padding:8}}>→</button></div>
+        <div>
+          <div className="card-title">Estudiantes · asistencia y notas</div>
+          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>Los estudiantes y la nota final permanecen fijos. Solo se desplaza el calendario de asistencia.</div>
+        </div>
+        <div style={{display:'flex',gap:7}}>
+          <button type="button" onClick={()=>scrollBy(-6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}}>←</button>
+          <button type="button" onClick={()=>scrollBy(6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}}>→</button>
+        </div>
       </div>
-      <div ref={scrollRef} style={{overflowX:'auto',overflowY:'hidden',position:'relative',scrollbarGutter:'stable',width:'100%',WebkitOverflowScrolling:'touch'}}>
-        <table className="table-soft" style={{width:'max-content',minWidth:286+148+lessons.length*90,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0}}>
-          <thead><tr>
-            <th style={{...stickyStudentCellF79(true),minWidth:286,width:286,maxWidth:286}}>Estudiante</th>
-            {lessons.map(l=>{const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA',isToday=String(l.fecha||'')===todayIso,isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion),isExam=[9,17,18,25,31,32].includes(Number(l.leccion||0));return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?'#EAF3FF':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?'4px solid var(--an-navy)':'4px solid transparent',transform:(isNext||isActive)?'translateY(-3px)':'none',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}><div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>{tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}<div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>{isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}{isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}</th>;})}
-            <th style={{...stickyNoteCellF79(true),minWidth:148,width:148,maxWidth:148}}>Nota completa</th>
-          </tr></thead>
-          <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
-            <td style={{...stickyStudentCellF79(false),minWidth:286,width:286,maxWidth:286}}><div style={{display:'flex',gap:9,alignItems:'center'}}><div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div><div style={{minWidth:0}}><div style={{fontWeight:750,lineHeight:1.2,fontSize:12}}>{r.name}</div><div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · Asistencia {att?.pct!=null?`${att.pct}%`:'—'}</div></div></div></td>
-            {lessons.map(l=>{const key=String(l.leccion),det=asistenciaDetalle?.[key]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA';return <td key={`${r.code}-${key}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{minWidth:90,width:90,textAlign:'center',verticalAlign:'middle',padding:'6px 5px',background:isNext?'#F7FBFF':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
-              {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
-            </td>;})}
-            <td style={{...stickyNoteCellF79(false),minWidth:148,width:148,maxWidth:148}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:7}}><div><div style={{fontSize:20,fontWeight:900,color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)'}}>{note?.tiene_notas?note.nota_total:'—'}</div><div style={{fontSize:8.5,color:'var(--ink-3)'}}>{note?.tiene_notas?'acumulada':'sin notas'}</div></div><button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{padding:'5px 6px',fontSize:8.8,whiteSpace:'nowrap'}}>Ver detalle</button></div></td>
-          </tr>;})}</tbody>
-        </table>
+
+      <div className="teacher-roster-fixed-grid" style={{display:'grid',gridTemplateColumns:`${LEFT_W}px minmax(0,1fr) ${RIGHT_W}px`,width:'100%',minWidth:0,background:'#fff'}}>
+        <div className="teacher-roster-identity" style={{zIndex:3,borderRight:'1px solid var(--line)',boxShadow:'8px 0 14px -14px rgba(0,0,0,.55)'}}>
+          <table className="teacher-roster-fixed-table" style={{...tableBase,width:LEFT_W}}>
+            <thead><tr><th style={{...headCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W,textAlign:'left'}}>Estudiante</th></tr></thead>
+            <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code];return <tr key={r.code||i}>
+              <td style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W}}>
+                <div style={{display:'flex',gap:9,alignItems:'center'}}>
+                  <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontWeight:750,lineHeight:1.2,fontSize:12,whiteSpace:'normal'}}>{r.name}</div>
+                    <div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · Asistencia {att?.pct!=null?`${att.pct}%`:'—'}</div>
+                  </div>
+                </div>
+              </td>
+            </tr>;})}</tbody>
+          </table>
+        </div>
+
+        <div ref={calendarRef} className="teacher-roster-calendar-scroll" style={{overflowX:'auto',overflowY:'hidden',minWidth:0,scrollbarGutter:'stable',WebkitOverflowScrolling:'touch'}}>
+          <table className="teacher-roster-fixed-table teacher-roster-calendar-table" style={{...tableBase,width:Math.max(COL_W,lessons.length*COL_W),minWidth:Math.max(COL_W,lessons.length*COL_W)}}>
+            <thead><tr>{lessons.map(l=>{
+              const isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA';
+              const isToday=String(l.fecha||'')===todayIso;
+              const isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion);
+              const isExam=[9,17,18,25,31,32].includes(Number(l.leccion||0));
+              return <th key={`${l.leccion}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...headCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?'#EAF3FF':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?'4px solid var(--an-navy)':'4px solid transparent',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}>
+                <div style={{fontSize:10.5,fontWeight:900}}>{tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>
+                {tvEvalLabelF86(l.tipo,l.leccion)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}
+                <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
+                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
+                {isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}
+              </th>;
+            })}</tr></thead>
+            <tbody>{roster.map((r,i)=><tr key={r.code||i}>{lessons.map(l=>{
+              const key=String(l.leccion),det=asistenciaDetalle?.[key]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=!!nextDate&&String(l.fecha||'')===nextDate&&tvUpper(l.estado)!=='CERRADA';
+              return <td key={`${r.code}-${key}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...bodyCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',padding:'6px 5px',background:isNext?'#F7FBFF':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
+                {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
+              </td>;
+            })}</tr>)}</tbody>
+          </table>
+        </div>
+
+        <div className="teacher-roster-final-note" style={{zIndex:3,borderLeft:'1px solid var(--line)',boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)'}}>
+          <table className="teacher-roster-fixed-table" style={{...tableBase,width:RIGHT_W}}>
+            <thead><tr><th style={{...headCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W,textAlign:'left'}}>Nota completa</th></tr></thead>
+            <tbody>{roster.map((r,i)=>{const note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
+              <td style={{...bodyCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:7}}>
+                  <div><div style={{fontSize:20,fontWeight:900,color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)'}}>{note?.tiene_notas?note.nota_total:'—'}</div><div style={{fontSize:8.5,color:'var(--ink-3)'}}>{note?.tiene_notas?'acumulada':'sin notas'}</div></div>
+                  <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{padding:'5px 6px',fontSize:8.8,whiteSpace:'nowrap'}}>Ver detalle</button>
+                </div>
+              </td>
+            </tr>;})}</tbody>
+          </table>
+        </div>
       </div>
     </div>
     <NotaDetalleDrawerF79 estudiante={selectedStudent} nota={selectedStudent?(notasGrupo?.[selectedStudent.code]||selectedStudent.note):null} onClose={()=>setSelectedStudent(null)}/>

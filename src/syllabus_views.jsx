@@ -387,7 +387,7 @@ function extraerUnitDeNombreAudio(nombre) {
   return match ? Number(match[1]) : null;
 }
 
-function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial }) {
+function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial, modoDocente=false }) {
   const [estado, setEstado] = React.useState('load');
   const [catalogo, setCatalogo] = React.useState(null);
   const [error, setError] = React.useState('');
@@ -398,6 +398,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   const [audioSrc, setAudioSrc] = React.useState('');
   const [audioEstado, setAudioEstado] = React.useState('idle');
   const [audioError, setAudioError] = React.useState('');
+  const [leccionPlanAbierta, setLeccionPlanAbierta] = React.useState(null);
   const audioObjectUrlRef = React.useRef('');
 
   React.useEffect(() => {
@@ -416,6 +417,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       nivel:nivelCode,
       codigo:codigoUsr,
       cod_grupo:codGrupo,
+      vista:modoDocente ? 'docente' : 'estudiante',
     }).then(r => {
       if (!vivo) return;
       if (r?.ok && r?.acceso && r?.catalogo) {
@@ -439,7 +441,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       setEstado('error');
     });
     return () => { vivo = false; };
-  }, [nivelCode, codigoUsr, codGrupo, leccionInicial]);
+  }, [nivelCode, codigoUsr, codGrupo, leccionInicial, modoDocente]);
 
   React.useEffect(() => {
     if (estado !== 'ok') return;
@@ -532,6 +534,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     setAudioError('');
     setAudioQuery('');
     setAudioSeleccionado(null);
+    setLeccionPlanAbierta(null);
   }, [unidadPlanActiva]);
 
   if (estado === 'load') {
@@ -655,36 +658,42 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
             </div>
 
             <div style={{ display:'grid', gap:12, marginTop:12 }}>
-              {(unidadPlan.lecciones || []).map(lec => (
-                <article key={`${unidadPlan.key}-${lec.leccion}`} style={{ border:'1px solid var(--line)', borderRadius:16, background:'var(--surface)', overflow:'hidden' }}>
-                  <div style={{ padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', borderBottom:'1px solid var(--line)', background:'var(--surface-2)' }}>
-                    <div>
-                      <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-granate)' }}>{lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`}</div>
-                      <div style={{ marginTop:3, fontFamily:'var(--f-serif)', fontSize:18, fontWeight:800, color:'var(--an-navy-ink)' }}>{lec.titulo_unidad || unidadPlan.titulo_unidad}</div>
-                    </div>
-                    <span style={{ padding:'4px 10px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 9%, white)', color:'var(--an-navy)', fontSize:10, fontWeight:900, letterSpacing:'.07em' }}>{lec.tipo || 'TEÓRICA'}</span>
-                  </div>
-
-                  <div style={{ padding:14, display:'grid', gap:10 }}>
-                    <div className="an-planeamiento-top">
-                      {campo('Asignatura', lec.asignatura)}
-                      {lec.tema_objetivo_general ? (
-                        <div style={{ padding:'12px 14px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' }}>
-                          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Tema / Objetivo general</div>
-                          <div style={{ marginTop:6, fontSize:13, fontWeight:700, lineHeight:1.55, color:'var(--ink)' }}>{lec.tema_objetivo_general}</div>
-                        </div>
-                      ) : null}
+              {(unidadPlan.lecciones || []).map(lec => {
+                const abierta = Number(leccionPlanAbierta) === Number(lec.leccion);
+                return (
+                  <article key={`${unidadPlan.key}-${lec.leccion}`} style={{ border:'1px solid var(--line)', borderRadius:16, background:'var(--surface)', overflow:'hidden' }}>
+                    <div style={{ padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', borderBottom:abierta?'1px solid var(--line)':'none', background:'var(--surface-2)' }}>
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-granate)' }}>{lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`}</div>
+                        <div style={{ marginTop:3, fontFamily:'var(--f-serif)', fontSize:18, fontWeight:800, color:'var(--an-navy-ink)' }}>{lec.titulo_unidad || unidadPlan.titulo_unidad}</div>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                        <button type="button" className={abierta?'btn btn-ghost':'btn btn-primary'} onClick={()=>setLeccionPlanAbierta(abierta?null:lec.leccion)} style={{ fontSize:11, padding:'8px 12px' }}>{abierta?'Ocultar planeamiento':'Ver planeamiento'}</button>
+                        <span style={{ padding:'4px 10px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 9%, white)', color:'var(--an-navy)', fontSize:10, fontWeight:900, letterSpacing:'.07em' }}>{lec.tipo || 'TEÓRICA'}</span>
+                      </div>
                     </div>
 
-                    <div className="an-planeamiento-skills">
-                      {campo('Speaking', lec.speaking)}
-                      {campo('Grammar', lec.grammar)}
-                      {campo('Pronunciation / Listening', lec.pronunciation_listening)}
-                      {campo('Writing / Reading', lec.writing_reading)}
-                    </div>
-                  </div>
-                </article>
-              ))}
+                    {abierta ? <div style={{ padding:14, display:'grid', gap:10 }}>
+                      <div className="an-planeamiento-top">
+                        {campo('Asignatura', lec.asignatura)}
+                        {lec.tema_objetivo_general ? (
+                          <div style={{ padding:'12px 14px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' }}>
+                            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Tema / Objetivo general</div>
+                            <div style={{ marginTop:6, fontSize:13, fontWeight:700, lineHeight:1.55, color:'var(--ink)' }}>{lec.tema_objetivo_general}</div>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="an-planeamiento-skills">
+                        {campo('Speaking', lec.speaking)}
+                        {campo('Grammar', lec.grammar)}
+                        {campo('Pronunciation / Listening', lec.pronunciation_listening)}
+                        {campo('Writing / Reading', lec.writing_reading)}
+                      </div>
+                    </div> : null}
+                  </article>
+                );
+              })}
             </div>
           </div>
         )}
@@ -694,17 +703,17 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
           <div>
             <BiblioKicker icon="book">Libros por modulo</BiblioKicker>
-            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Student Book y Workbook</div>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>{modoDocente ? 'Libros, sílabus y planeamiento oficial' : 'Student Book y Workbook'}</div>
           </div>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>{libros.length} archivos oficiales</span>
         </div>
         <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))', gap:10 }}>
           {libros.map(item => (
             <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" style={{ padding:'13px 14px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', textDecoration:'none', background:'#fff', color:'var(--ink)', display:'flex', gap:10, alignItems:'center' }}>
-              <span style={{ fontSize:22 }}>📘</span>
+              <span style={{ fontSize:22 }}>{item.categoria==='teacher_book'?'📕':item.categoria==='silabus'?'📄':item.categoria==='planeamiento'?'🗂️':'📘'}</span>
               <span style={{ minWidth:0 }}>
                 <strong style={{ display:'block', fontSize:12.5, lineHeight:1.35 }}>{item.nombre}</strong>
-                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>Abrir en Drive</span>
+                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>{item.categoria_label || 'Abrir en Drive'}</span>
               </span>
             </a>
           ))}
@@ -789,83 +798,81 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
 // MATERIALES — sílabus completo, pestañas Actuales/Futuras/Completadas
 // ─────────────────────────────────────────────────────────────────────────
 function MaterialesView({ initialLesson = null, onNavigate } = {}) {
-  // STUDENT-LEARNING-EXPERIENCE-001: "Materiales" se reinventa como
-  // "Biblioteca del curso". El calendario oficial vive SOLO en el Cronograma
-  // académico (cronograma_grupo.jsx). Acá ya NO se genera ni muestra un
-  // calendario mensual: solo libro, audios, PDFs y recursos por lección.
   const { grupoInfo, grupo, codGrupo, loading, error, reload } = useGroupFromSession();
-
-  // `initialLesson` llega desde el Cronograma y selecciona la unidad real en APOLLO G3.
   const [openLec, setOpenLec] = React.useState(initialLesson);
   React.useEffect(() => { if (initialLesson) setOpenLec(initialLesson); }, [initialLesson]);
+
   const sesion = React.useMemo(() => {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
-
-  // STUDENT-ACCESS-CALENDAR-001: la Biblioteca respeta el acceso del estudiante.
-  // (Docente/admin no se gatean: codigoBiblio queda vacío → sin fetch.)
-  const esStudentBiblio = (sesion?.rol || 'student') === 'student';
+  const rol = sesion?.rol || 'student';
+  const esTeacher = rol === 'teacher';
+  const esStudentBiblio = rol === 'student';
   const codigoBiblio = esStudentBiblio ? (sesion?.codigo || sesion?.cedula || '') : '';
   const accBiblioState = window.useStudentAccess(codigoBiblio, '');
   const accBiblio = accBiblioState.access;
+
+  const nivelGrupoBase = String(
+    grupoInfo?.levelId ||
+    grupo?.levelId ||
+    inferirLevelIdDesdeGrupo(grupoInfo?.codigo || grupoInfo?.cod_grupo || grupo?.code || grupo?.grupo || '')
+  ).toLowerCase();
+  const [nivelDocente, setNivelDocente] = React.useState('');
+  React.useEffect(() => {
+    if (esTeacher && nivelGrupoBase && !nivelDocente) setNivelDocente(nivelGrupoBase);
+  }, [esTeacher, nivelGrupoBase, nivelDocente]);
+
+  const levelId = esTeacher ? (nivelDocente || nivelGrupoBase || 'b1') : nivelGrupoBase;
+  const syl = SYLLABUS_BY_LEVEL[levelId] || {};
+  const nivelNombre = esTeacher ? (syl.levelName || ({b1:'Básico I',b2:'Básico II',i1:'Intermedio I',i2:'Intermedio II'}[levelId]) || 'Nivel') : (grupoInfo?.nivel || syl.levelName || 'Nivel actual');
+  const programa = grupoInfo?.programa || grupo?.programa || '';
+  const esINA = programa === 'INA' || programa === 'CON_INA';
+  const codigoUsr = sesion?.codigo || sesion?.cedula || '';
+  const nivelCode = String(levelId || '').toUpperCase();
+  const nivelesDocente = [
+    { value:'b1', label:'Básico I' },
+    { value:'b2', label:'Básico II' },
+    { value:'i1', label:'Intermedio I' },
+    { value:'i2', label:'Intermedio II' },
+  ];
+  const irCronograma = () => { if (onNavigate) onNavigate('cronograma_grupo'); };
 
   if (loading) return <LoadingState title="Cargando la biblioteca de tu curso…" />;
   if (error || !grupoInfo || !grupo) {
     const msg = error === 'autoriz'
       ? 'No pudimos cargar tu biblioteca. Verificá tu sesión o contactá a la administración.'
       : 'No pudimos cargar la biblioteca de tu curso. Intentá de nuevo o contactá a la administración.';
-    return (
-      <div>
-        <PageHeader
-          title={<>Biblioteca del curso</>}
-        />
-        <ErrorState message={msg} onRetry={reload} />
-      </div>
-    );
+    return <div><PageHeader title={<>Biblioteca del curso</>} /><ErrorState message={msg} onRetry={reload} /></div>;
   }
 
-  // STUDENT-ACCESS-CALENDAR-001: bloqueo honesto de la biblioteca por acceso.
-  // Solo bloquea cuando el estado es DETERMINADO (no sobre-bloquea sin datos).
   if (esStudentBiblio && accBiblio && accBiblio.determinado) {
-    if (accBiblio.flags.accountOnly) {
-      return <BibliotecaBloqueo variante="mora" mensaje={accBiblio.mensaje} onNavigate={onNavigate} />;
-    }
+    if (accBiblio.flags.accountOnly) return <BibliotecaBloqueo variante="mora" mensaje={accBiblio.mensaje} onNavigate={onNavigate} />;
     if (!accBiblio.flags.canBiblioteca) {
-      return <BibliotecaBloqueo
-        variante="cuota"
-        mensaje="La biblioteca se habilitará con la primera cuota del nivel."
-        nivelNombre={grupoInfo.nivel || ''}
-        onNavigate={onNavigate} />;
+      return <BibliotecaBloqueo variante="cuota" mensaje="La biblioteca se habilitará con la primera cuota del nivel." nivelNombre={grupoInfo.nivel || ''} onNavigate={onNavigate} />;
     }
   }
 
-  // FIX STUDENT-PANEL-001-B (R4): nivel/material DINÁMICOS desde el grupo real
-  // del estudiante. Inferimos el nivel del código del grupo cuando el backend no
-  // manda levelId; NUNCA caemos por defecto a Básico I.
-  const levelId      = String(
-    grupoInfo.levelId ||
-    grupo.levelId ||
-    inferirLevelIdDesdeGrupo(grupoInfo.codigo || grupoInfo.cod_grupo || grupo.code || grupo.grupo || '')
-  ).toLowerCase();
-  const syl          = SYLLABUS_BY_LEVEL[levelId] || {};
-  const nivelNombre  = grupoInfo.nivel || syl.levelName || 'Nivel actual';
-  const libro        = grupoInfo.libro || syl.book || 'Libro del curso';
-  const cefr         = syl.cefr || '';
-  const programa     = grupoInfo.programa || grupo.programa || '';
-  const esINA        = programa === 'INA' || programa === 'CON_INA';
-
-  const rol       = sesion?.rol || 'student';
-  const codigoUsr = sesion?.codigo || sesion?.cedula || '';
-  const nivelCode = levelId.toUpperCase(); // B1/B2/I1/I2 para fetchMaterialLeccion
-  const irCronograma = () => { if (onNavigate) onNavigate('cronograma_grupo'); };
+  const selectorNivel = esTeacher ? (
+    <label style={{ display:'grid', gap:6, minWidth:250 }}>
+      <span style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Cambiar nivel</span>
+      <select
+        value={levelId}
+        onChange={e=>{ setNivelDocente(e.target.value); setOpenLec(null); }}
+        style={{ width:'100%', minHeight:42, border:'1px solid var(--line)', borderRadius:10, padding:'9px 38px 9px 12px', background:'#fff', color:'var(--an-navy-ink)', fontSize:13, fontWeight:800 }}
+      >
+        {nivelesDocente.map(n=><option key={n.value} value={n.value}>{n.label}</option>)}
+      </select>
+    </label>
+  ) : null;
 
   return (
     <div>
       <PageHeader
         title={<>Biblioteca del curso · <em>{nivelNombre}</em></>}
+        sub={esTeacher ? 'Seleccioná cualquiera de los cuatro niveles. El planeamiento, libros, sílabus, audios y documentos se actualizan sin salir de esta pantalla.' : undefined}
+        right={selectorNivel}
       />
 
-      {/* Banner prioridad INA — solo para programa INA */}
       {esINA && <PriorityBanner />}
 
       <BibliotecaCatalogoNivel
@@ -873,9 +880,9 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
         codigoUsr={codigoUsr}
         codGrupo={codGrupo}
         leccionInicial={openLec}
+        modoDocente={esTeacher}
       />
 
-      {/* Volver al Cronograma académico */}
       <div style={{ marginTop:18, display:'flex', justifyContent:'center' }}>
         <button className="btn btn-ghost" onClick={irCronograma}>← Volver al Cronograma académico</button>
       </div>

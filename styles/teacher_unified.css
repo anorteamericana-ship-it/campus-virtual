@@ -449,3 +449,52 @@
   .teacher-page > div[style*="overflow: hidden"] { overflow-x: auto !important; }
   .teacher-active-session-banner { margin-left: 0 !important; margin-right: 0 !important; }
 }
+
+/* ── F98.4-Z6-E · Cuaderno docente con extremos realmente fijos ───────── */
+.teacher-page .teacher-roster-fixed-grid {
+  overflow: hidden;
+  border-top: 0;
+  background: rgba(255,255,255,.97);
+}
+.teacher-page .teacher-roster-fixed-table {
+  display: table !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  background: #fff !important;
+}
+.teacher-page .teacher-roster-fixed-table th,
+.teacher-page .teacher-roster-fixed-table td {
+  box-sizing: border-box;
+}
+.teacher-page .teacher-roster-calendar-scroll {
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,47,108,.25) transparent;
+}
+.teacher-page .teacher-roster-calendar-scroll::-webkit-scrollbar { height: 9px; }
+.teacher-page .teacher-roster-calendar-scroll::-webkit-scrollbar-track { background: transparent; }
+.teacher-page .teacher-roster-calendar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0,47,108,.22);
+  border-radius: 999px;
+}
+.teacher-page .teacher-roster-identity,
+.teacher-page .teacher-roster-final-note {
+  background: #fff;
+}
+.teacher-page .teacher-roster-fixed-table tbody tr:hover td {
+  background: color-mix(in srgb,var(--teacher-navy) 2.5%,white) !important;
+}
+
+@media (max-width: 760px) {
+  .teacher-page .teacher-roster-fixed-grid {
+    grid-template-columns: 220px minmax(0,1fr) 132px !important;
+  }
+  .teacher-page .teacher-roster-identity table,
+  .teacher-page .teacher-roster-identity th,
+  .teacher-page .teacher-roster-identity td { width:220px !important; min-width:220px !important; max-width:220px !important; }
+  .teacher-page .teacher-roster-final-note table,
+  .teacher-page .teacher-roster-final-note th,
+  .teacher-page .teacher-roster-final-note td { width:132px !important; min-width:132px !important; max-width:132px !important; }
+}

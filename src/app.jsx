@@ -55,8 +55,8 @@ function LazyRoute({ title, component, files, ...props }) {
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4V'],
-  syllabus_views: ['src/syllabus_views.jsx?v=F98.4K'],
-  teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4O'],
+  syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6E'],
+  teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4Z6E'],
   vista_docente: ['src/vista_docente.jsx?v=F96.5G'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F96.5G'],
   admin_students: ['src/admin_students.jsx?v=F98.3C'],
@@ -65,7 +65,7 @@ const F96_LAZY = {
   cronograma_todos: ['src/cronograma_todos.jsx?v=F96.5G'],
   cronograma_grupo: ['src/vista_docente.jsx?v=F96.5G','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4J'],
   calendario_grupo: ['src/vista_docente.jsx?v=F96.5G','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4J','src/admin_students.jsx?v=F98.3C','src/calendario_grupo.jsx?v=F96.5G'],
-  docente_operativo: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4O','src/docente_operativo.jsx?v=F96.5G'],
+  docente_operativo: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4Z6E','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/buscador.jsx?v=F96.5G'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F96.5G'],
@@ -79,14 +79,14 @@ const F96_LAZY = {
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
     'src/vista_docente.jsx?v=F98.4A','src/cronograma_todos.jsx?v=F98.4A','src/cronograma_grupo.jsx?v=F98.4J',
-    'src/syllabus_views.jsx?v=F98.4K','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F98.4Z6E','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
     'src/student_modules.jsx?v=F98.4V','src/student_experience.jsx?v=F98.4N'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4K','src/student_modules.jsx?v=F98.4V','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F98.4Z6E','src/student_modules.jsx?v=F98.4V','src/student_experience.jsx?v=F98.4N'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
