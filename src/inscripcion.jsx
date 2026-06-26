@@ -465,7 +465,12 @@ function Pagina1({ form, set, setMany, prellenado, setPrellenado, files, setFile
           {asesoresEstado === 'error' && (
             <div className="inline-alert warn" style={{ marginTop: 8 }}>
               <Ico d={I.warn} size={18} />
-              <span>No se pudieron cargar asesores disponibles. Podés continuar sin seleccionar uno.</span>
+              <span>No se pudo consultar la lista de asesores. Recargá la página antes de continuar.</span>
+            </div>
+          )}
+          {asesoresEstado === 'empty' && (
+            <div className="inline-alert" style={{ marginTop: 8 }}>
+              <span>No hay asesores de ventas activos configurados en este momento.</span>
             </div>
           )}
         </Field>
@@ -1031,28 +1036,36 @@ function App() {
   // estado para mostrar "No se pudieron cargar asesores disponibles." si falla o
   // viene vacío (en vez de un dropdown silenciosamente vacío).
   useEffect(() => {
+    let cancelado = false;
     setAsesoresEstado('loading');
-    fetch(`${SCRIPT_URL}?fn=getAsesoresActivos`)
-      .then(r => r.json())
+    const url = `${SCRIPT_URL}?fn=getAsesoresActivos&_v=F98.4Y&_ts=${Date.now()}`;
+    fetch(url, { cache:'no-store' })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => {
-        // Tolerante a shapes: { ok, asesores:[] } | { asesores:[] } | [] directo.
+        if (cancelado) return;
         const lista = Array.isArray(d) ? d
           : (d && Array.isArray(d.asesores)) ? d.asesores
           : (d && Array.isArray(d.data)) ? d.data
           : null;
-        if (lista && lista.length) {
-          setAsesores(lista);
-          setAsesoresEstado('ok');
-        } else {
-          setAsesores([]);
-          setAsesoresEstado('error'); // sin asesores o shape no reconocido → avisar
+        if (d && d.ok === false) {
+          throw new Error(d.detalle || d.error || 'El backend no pudo leer USUARIOS.');
         }
+        const validos = (lista || [])
+          .filter(a => a && String(a.nombre || '').trim())
+          .map(a => ({ ...a, nombre:String(a.nombre).trim() }));
+        setAsesores(validos);
+        setAsesoresEstado(validos.length ? 'ok' : 'empty');
       })
       .catch(err => {
+        if (cancelado) return;
         console.error('Error cargando asesores:', err);
         setAsesores([]);
         setAsesoresEstado('error');
       });
+    return () => { cancelado = true; };
   }, []);
 
   // ── Validación Página 1 ──
