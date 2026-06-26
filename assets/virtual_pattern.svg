@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
+  <rect width="100%" height="100%" fill="#f5f6f8"/>
+  <g stroke="#b8bfce" stroke-width="3" fill="none" opacity="0.7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- laptop -->
+    <g transform="translate(70 80)"><rect x="0" y="0" width="88" height="56" rx="6"/><path d="M-10 62h108"/><path d="M36 62h16"/></g>
+    <!-- book -->
+    <g transform="translate(275 54)"><path d="M0 15c0-7 6-13 13-13h52c9 0 17 4 22 9v76c-5-6-13-9-22-9H13c-7 0-13 6-13 13Z"/><path d="M87 15c0-7 6-13 13-13h52c9 0 17 4 22 9v76c-5-6-13-9-22-9h-52c-7 0-13 6-13 13Z"/></g>
+    <!-- glasses -->
+    <g transform="translate(540 72)"><circle cx="20" cy="20" r="18"/><circle cx="74" cy="20" r="18"/><path d="M38 20h18"/><path d="M2 14L-8 8"/><path d="M92 14l10-6"/></g>
+    <!-- mouse -->
+    <g transform="translate(820 60)"><rect x="0" y="0" width="34" height="52" rx="16"/><path d="M17 9v12"/></g>
+    <!-- headphones -->
+    <g transform="translate(1010 54)"><path d="M0 34a34 34 0 1 1 68 0"/><rect x="-4" y="32" width="15" height="34" rx="6"/><rect x="57" y="32" width="15" height="34" rx="6"/></g>
+    <!-- microphone -->
+    <g transform="translate(150 235)"><rect x="14" y="0" width="32" height="54" rx="16"/><path d="M30 54v28"/><path d="M8 72a22 22 0 0 0 44 0"/><path d="M2 90h56"/></g>
+    <!-- laptop 2 -->
+    <g transform="translate(360 210)"><rect x="0" y="0" width="88" height="56" rx="6"/><path d="M-10 62h108"/><path d="M36 62h16"/></g>
+    <!-- book 2 -->
+    <g transform="translate(655 216)"><path d="M0 15c0-7 6-13 13-13h52c9 0 17 4 22 9v76c-5-6-13-9-22-9H13c-7 0-13 6-13 13Z"/><path d="M87 15c0-7 6-13 13-13h52c9 0 17 4 22 9v76c-5-6-13-9-22-9h-52c-7 0-13 6-13 13Z"/></g>
+    <!-- mouse 2 -->
+    <g transform="translate(980 240)"><rect x="0" y="0" width="34" height="52" rx="16"/><path d="M17 9v12"/></g>
+    <!-- headphones 2 -->
+    <g transform="translate(60 380)"><path d="M0 34a34 34 0 1 1 68 0"/><rect x="-4" y="32" width="15" height="34" rx="6"/><rect x="57" y="32" width="15" height="34" rx="6"/></g>
+    <!-- glasses 2 -->
+    <g transform="translate(298 386)"><circle cx="20" cy="20" r="18"/><circle cx="74" cy="20" r="18"/><path d="M38 20h18"/><path d="M2 14L-8 8"/><path d="M92 14l10-6"/></g>
+    <!-- microphone 2 -->
+    <g transform="translate(610 372)"><rect x="14" y="0" width="32" height="54" rx="16"/><path d="M30 54v28"/><path d="M8 72a22 22 0 0 0 44 0"/><path d="M2 90h56"/></g>
+    <!-- book 3 -->
+    <g transform="translate(860 360)"><path d="M0 15c0-7 6-13 13-13h52c9 0 17 4 22 9v76c-5-6-13-9-22-9H13c-7 0-13 6-13 13Z"/><path d="M87 15c0-7 6-13 13-13h52c9 0 17 4 22 9v76c-5-6-13-9-22-9h-52c-7 0-13 6-13 13Z"/></g>
+  </g>
+  <g fill="#c0c6d2" opacity="0.6">
+    <circle cx="212" cy="160" r="6"/><circle cx="520" cy="180" r="5"/><circle cx="936" cy="164" r="7"/>
+    <circle cx="101" cy="325" r="5"/><circle cx="498" cy="324" r="6"/><circle cx="784" cy="302" r="5"/><circle cx="1110" cy="316" r="7"/>
+    <circle cx="188" cy="462" r="6"/><circle cx="540" cy="454" r="5"/><circle cx="746" cy="444" r="7"/>
+  </g>
+</svg>

@@ -718,8 +718,21 @@ function StudentDashboard({ toast, onNavigate }) {
   return (
     <div data-screen-label="Estudiante · Mi Campus">
       <div style={{ marginBottom:18, display:'flex', justifyContent:'center' }}>
-        <div className="card" style={{ width:'100%', padding:'20px 26px', display:'flex', justifyContent:'center', alignItems:'center', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)', border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)' }}>
-          <img src="assets/logo_oficial.jpeg" alt="Academia Norteamericana" style={{ width:'min(100%, 620px)', height:'auto', display:'block', objectFit:'contain' }} />
+        <div className="card" style={{
+          width:'100%',
+          padding:'26px 28px',
+          display:'flex',
+          justifyContent:'center',
+          alignItems:'center',
+          minHeight:248,
+          backgroundImage:`linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.92)), url(assets/virtual_pattern.svg)`,
+          backgroundSize:'cover',
+          backgroundPosition:'center',
+          border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)'
+        }}>
+          <div style={{ padding:'24px 28px', borderRadius:28, background:'rgba(255,255,255,.72)', boxShadow:'0 16px 36px rgba(0,30,71,.08)', backdropFilter:'blur(3px)' }}>
+            <img src="assets/logo_oficial_transparent.png" alt="Academia Norteamericana" style={{ width:'min(100%, 620px)', height:'auto', display:'block', objectFit:'contain' }} />
+          </div>
         </div>
       </div>
 
@@ -727,11 +740,8 @@ function StudentDashboard({ toast, onNavigate }) {
       <AntesDeEmpezar codigo={codigo} onNavigate={go} />
 
       {/* 2. Saludo principal. Encabezado limpio con branding oficial. */}
-      <div className="hero" style={{ marginBottom:18, position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', inset:'0 0 0 auto', width:'42%', display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none', opacity:.07 }}>
-          <img src="assets/logo_oficial.jpeg" alt="Marca de agua Academia Norteamericana" style={{ width:'100%', maxWidth:420, objectFit:'contain', filter:'grayscale(100%) brightness(1.15)' }} />
-        </div>
-        <div className="hero-grid" style={{ position:'relative', zIndex:1 }}>
+      <div className="hero" style={{ marginBottom:18, position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)' }}>
+        <div className="hero-grid" style={{ position:'relative', zIndex:1, alignItems:'center' }}>
           <div>
             <div className="hero-kicker">Mi Campus</div>
             <h1 className="hero-h1">Bienvenido,<br/><em>{nombreCompleto}</em></h1>
@@ -743,7 +753,10 @@ function StudentDashboard({ toast, onNavigate }) {
                 : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
             </div>
           </div>
-          <div style={{ display:'flex', justifyContent:'center', position:'relative', zIndex:1 }}>
+          <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:20, position:'relative', zIndex:1, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', opacity:.18 }}>
+              <img src="assets/logo_a_transparent.png" alt="Logo Academia Norteamericana" style={{ width:110, height:'auto', objectFit:'contain', filter:'grayscale(100%) brightness(.82)' }} />
+            </div>
             <Ring pct={progresoPct} size={210}>
               <div className="ring-pct">{progresoPct}<sup>%</sup></div>
               <div className="ring-label">Módulo completado</div>
@@ -794,6 +807,8 @@ function StudentDashboard({ toast, onNavigate }) {
         nivel={nivelSeleccionado}
         summary={registroAcademico.summary}
         rows={registroAcademico.rows}
+        nombreCompleto={nombreCompleto}
+        codigo={codigo}
       />
 
       {/* 11. Resumen de próximos eventos con calendario focalizado. */}
@@ -996,6 +1011,7 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
   const [subiendoFoto, setSubiendoFoto] = React.useState(false);
   const [contactosVista, setContactosVista] = React.useState(contactosIniciales);
   const [fotoUrl, setFotoUrl] = React.useState(fotoInicial);
+  const fotoInputRef = React.useRef(null);
   const [form, setForm] = React.useState({
     correo_adicional:'', telefono_adicional:'',
     correo_como_principal:false, telefono_como_principal:false,
@@ -1126,9 +1142,20 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
       <div style={{ display:'grid', gridTemplateColumns:'minmax(300px,420px) minmax(0,1fr)', gap:18, alignItems:'start' }}>
         <aside className="card" style={{ padding:'20px 24px' }}>
           <div style={{ textAlign:'center' }}>
-            <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:248, minHeight:126, margin:'0 auto 14px', padding:'16px 18px', borderRadius:24, background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)', border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)', boxShadow:'var(--sh-1)' }}>
-              <img src="assets/logo_oficial.jpeg" alt="Logo oficial Academia Norteamericana" style={{ width:'100%', maxWidth:210, height:'auto', objectFit:'contain' }} />
-            </div>
+            <input ref={fotoInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFotoSeleccionada} />
+            <button type="button" onClick={() => !subiendoFoto && fotoInputRef.current && fotoInputRef.current.click()} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:310, margin:'0 auto 14px', padding:0, border:'none', background:'transparent', cursor:subiendoFoto ? 'progress' : 'pointer' }}>
+              <div style={{ width:'100%', minHeight:226, padding:'16px 18px', borderRadius:24, background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)', border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)', boxShadow:'var(--sh-1)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', position:'relative' }}>
+                <img src={fotoUrl || 'assets/foto_placeholder.svg'} alt={fotoUrl ? 'Fotografía del estudiante' : 'Espacio para adjuntar fotografía'} style={{ width:'100%', height:190, objectFit:fotoUrl ? 'cover' : 'contain', borderRadius:18, display:'block' }} />
+                <div style={{ position:'absolute', left:14, right:14, bottom:14, padding:'8px 10px', borderRadius:14, background:'rgba(255,255,255,.82)', fontSize:11.5, fontWeight:800, color:'var(--an-navy-ink)', boxShadow:'0 8px 18px rgba(0,30,71,.08)' }}>
+                  {subiendoFoto ? 'Subiendo fotografía…' : (fotoUrl ? 'Clic para cambiar tu fotografía' : 'Adjuntá tu foto tamaño pasaporte')}
+                </div>
+              </div>
+            </button>
+            {mensajeFoto && (
+              <div style={{ margin:'0 auto 8px', maxWidth:300, padding:'10px 12px', borderRadius:14, border:`1px solid ${mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensajeFoto.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:11.5, lineHeight:1.45 }}>
+                {mensajeFoto.texto}
+              </div>
+            )}
             <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, lineHeight:1.15, color:'var(--an-navy-ink)', marginTop:10 }}>
               {nombreCompleto || 'Estudiante'}
             </div>
@@ -1311,57 +1338,101 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
 
 
 
-function RegistroNotasAsistenciaCampus({ nivel, summary, rows }) {
-  const list = Array.isArray(rows) ? rows : [];
+function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, codigo }) {
+  const showICAN = Number(summary?.ican || 0) > 0;
+  const list = Array.isArray(rows) ? rows.filter(r => showICAN || r.kind !== 'ICAN') : [];
+  const pageSize = 5;
+  const [offset, setOffset] = React.useState(0);
+  React.useEffect(() => { setOffset(0); }, [nivel, list.length]);
+  const maxOffset = Math.max(0, list.length - pageSize);
+  const prev = () => setOffset(v => Math.max(0, v - pageSize));
+  const next = () => setOffset(v => Math.min(maxOffset, v + pageSize));
+  const visible = list.slice(offset, offset + pageSize);
+  const totalVisible = `${Math.min(list.length, offset + 1)}–${Math.min(list.length, offset + pageSize)} de ${list.length}`;
   const toneChip = (label) => {
     const tone = toneAsistenciaSD(label);
     return <span style={{ display:'inline-flex', alignItems:'center', padding:'5px 10px', borderRadius:999, background:tone.bg, color:tone.fg, fontSize:11, fontWeight:800 }}>{label}</span>;
   };
+  const tipoBadge = (row) => {
+    const kind = String(row?.kind || '').toUpperCase();
+    if (kind === 'EVAL_ORAL') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-gold) 18%, white)', color:'#7A4E00', fontSize:10.5, fontWeight:900 }}>Prueba oral</span>;
+    if (kind === 'EVAL_ESCRITO') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-granate) 10%, white)', color:'var(--an-granate)', fontSize:10.5, fontWeight:900 }}>Prueba escrita</span>;
+    if (kind === 'PROGRESS_CHECK') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy-ink)', fontSize:10.5, fontWeight:900 }}>Progress Check</span>;
+    if (kind === 'ICAN') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--ok) 12%, white)', color:'#25683B', fontSize:10.5, fontWeight:900 }}>I CAN</span>;
+    return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--line) 70%, white)', color:'var(--ink-2)', fontSize:10.5, fontWeight:800 }}>Lección</span>;
+  };
+  const summaryCards = [
+    ['Asistencia', summary?.asistenciaPct != null ? `${summary.asistenciaPct}%` : '—', summary?.asistenciaTotal != null ? `${summary.asistenciaPresentes} de ${summary.asistenciaTotal} clases` : 'Sin registros'],
+    ['Nota acumulada', summary?.note != null ? `${summary.note}/100` : '—', 'Promedio oficial del nivel'],
+    ['Evaluaciones', summary?.evaluations != null ? String(summary.evaluations) : '0', 'Registros con nota'],
+    ['Comentarios', summary?.comments != null ? String(summary.comments) : '0', 'Observaciones o retroalimentación'],
+  ];
+  if (showICAN) summaryCards.push(['I CAN', summary?.ican != null ? String(summary.ican) : '0', 'Sesiones visibles en el expediente']);
   return (
     <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Registro de notas y asistencia">
       <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
         <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Registro de notas y asistencia</div>
-        <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Asistencia del expediente, comentarios, progress check, evaluaciones y sesiones I CAN del nivel consultado.</div>
+        <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Deslizá el historial por bloques para revisar la asistencia del expediente, comentarios, progress check y evaluaciones del nivel consultado.</div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) 300px', gap:0 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) 330px', gap:0 }}>
         <div style={{ padding:'12px 16px 18px', overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
-            <thead>
-              <tr>
-                {['Fecha','Actividad','Tipo','Asistencia','Comentario','Nota'].map(h => (
-                  <th key={h} style={{ textAlign:'left', padding:'10px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-3)', fontSize:10.5, letterSpacing:'.12em', textTransform:'uppercase' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {list.length ? list.map((row, idx) => (
-                <tr key={`${row.fecha}-${row.actividad}-${idx}`}>
-                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', whiteSpace:'nowrap', fontWeight:700, color:'var(--ink)' }}>{fmtFechaCorta(row.fecha)}</td>
-                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', fontWeight:800, color:'var(--ink)' }}>{row.actividad || 'Actividad'}</td>
-                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-2)' }}>{row.tipo || '—'}</td>
-                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)' }}>{toneChip(row.asistencia || 'Sin registro')}</td>
-                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', color:'var(--ink-2)', minWidth:180 }}>{row.comentario || '—'}</td>
-                  <td style={{ padding:'12px 8px', borderBottom:'1px solid var(--line)', fontWeight:800, color:'var(--an-navy-ink)', whiteSpace:'nowrap' }}>{row.nota || '—'}</td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={6} style={{ padding:'18px 8px', color:'var(--ink-3)' }}>Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {list.length ? (
+            <div style={{ minWidth:960 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:12, flexWrap:'wrap' }}>
+                <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Visualización horizontal del expediente</div>
+                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12, color:'var(--ink-3)', fontWeight:700 }}>{totalVisible}</span>
+                  <button className="btn btn-ghost" type="button" style={{ width:38, justifyContent:'center', padding:'10px 0', fontSize:16 }} onClick={prev} disabled={offset <= 0}>←</button>
+                  <button className="btn btn-ghost" type="button" style={{ width:38, justifyContent:'center', padding:'10px 0', fontSize:16 }} onClick={next} disabled={offset >= maxOffset}>→</button>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', gap:14, alignItems:'stretch' }}>
+                <div style={{ border:'1px solid var(--line)', borderRadius:18, background:'linear-gradient(180deg,#fff 0%, color-mix(in srgb, var(--an-navy) 2%, white) 100%)', padding:'16px 16px', minHeight:246, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                  <div>
+                    <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Estudiante</div>
+                    <div style={{ fontFamily:'var(--f-serif)', fontSize:21, color:'var(--an-navy-ink)', marginTop:8, lineHeight:1.15 }}>{nombreCompleto || 'Estudiante'}</div>
+                    <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:8 }}>{codigo ? `Código ${codigo}` : `Nivel ${nivel || '—'}`}</div>
+                  </div>
+                  <div style={{ padding:'12px 14px', borderRadius:16, background:'color-mix(in srgb, var(--an-navy) 5%, white)' }}>
+                    <div style={{ fontSize:11, fontWeight:800, color:'var(--ink-2)' }}>Nivel consultado</div>
+                    <div style={{ fontSize:22, fontWeight:900, color:'var(--an-navy-ink)', marginTop:2 }}>{nivel || '—'}</div>
+                    <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:6 }}>Cada flecha despliega el siguiente bloque de lecciones y evaluaciones.</div>
+                  </div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.max(visible.length, 1)}, minmax(140px, 1fr))`, gap:12 }}>
+                  {visible.map((row, idx) => (
+                    <div key={`${row.fecha}-${row.actividad}-${idx}`} style={{ border:'1px solid var(--line)', borderRadius:18, background:'#fff', minHeight:246, padding:'14px 14px', display:'flex', flexDirection:'column', gap:10 }}>
+                      <div style={{ paddingBottom:10, borderBottom:'1px solid var(--line)' }}>
+                        <div style={{ fontSize:11, fontWeight:900, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'.10em' }}>{fmtFechaCorta(row.fecha)}</div>
+                        <div style={{ fontSize:19, fontWeight:900, color:'var(--an-navy-ink)', marginTop:6 }}>{row.actividad || 'Actividad'}</div>
+                        <div style={{ marginTop:8 }}>{tipoBadge(row)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Asistencia</div>
+                        <div style={{ marginTop:7 }}>{toneChip(row.asistencia || 'Sin registro')}</div>
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Comentario</div>
+                        <div style={{ marginTop:6, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.45, minHeight:58, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{row.comentario || '—'}</div>
+                      </div>
+                      <div style={{ marginTop:'auto' }}>
+                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Nota</div>
+                        <div style={{ marginTop:6, fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:'var(--an-navy-ink)', whiteSpace:'nowrap' }}>{row.nota || '—'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding:'18px 8px', color:'var(--ink-3)' }}>Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</div>
+          )}
         </div>
         <aside style={{ borderLeft:'1px solid var(--line)', background:'linear-gradient(180deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)', padding:'16px 16px 18px' }}>
           <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Panel lateral del estudiante</div>
           <div style={{ fontSize:15, fontWeight:900, color:'var(--an-navy-ink)', marginTop:6 }}>Compilado del nivel {nivel || 'consultado'}</div>
           <div style={{ display:'grid', gap:10, marginTop:14 }}>
-            {[
-              ['Asistencia', summary?.asistenciaPct != null ? `${summary.asistenciaPct}%` : '—', summary?.asistenciaTotal != null ? `${summary.asistenciaPresentes} de ${summary.asistenciaTotal} clases` : 'Sin registros'],
-              ['Nota acumulada', summary?.note != null ? `${summary.note}/100` : '—', 'Promedio oficial del nivel'],
-              ['Evaluaciones', summary?.evaluations != null ? String(summary.evaluations) : '0', 'Registros con nota'],
-              ['Comentarios', summary?.comments != null ? String(summary.comments) : '0', 'Observaciones o retroalimentación'],
-              ['I CAN', summary?.ican != null ? String(summary.ican) : '0', 'Sesiones visibles en el expediente'],
-            ].map(([label, value, hint]) => (
+            {summaryCards.map(([label, value, hint]) => (
               <div key={label} style={{ border:'1px solid var(--line)', borderRadius:16, background:'#fff', padding:'14px 14px' }}>
                 <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:'var(--an-navy-ink)', marginTop:4 }}>{value}</div>
@@ -1424,15 +1495,16 @@ function EventCalendarMini({ evento }) {
 }
 
 function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, cronoPublicado, onNavigate }) {
-  const initialKey = proximaLeccion ? 'leccion' : proximoICAN ? 'ican' : proximoOral ? 'oral' : proximoEscrito ? 'escrito' : '';
+  const order = [
+    ['leccion', { title:'Próxima lección', data:proximaLeccion, empty: cronoPublicado ? 'No hay más lecciones programadas.' : 'Cronograma pendiente.' }],
+    ['ican', { title:'Próximo I CAN', data:proximoICAN, empty:'No hay I CAN programado por ahora.', hidden: !proximoICAN }],
+    ['oral', { title:'Próximo examen oral', data:proximoOral, empty:'No hay examen oral programado por ahora.' }],
+    ['escrito', { title:'Próximo examen escrito', data:proximoEscrito, empty:'No hay examen escrito programado por ahora.' }],
+  ].filter(([, meta]) => !meta.hidden);
+  const initialKey = (order.find(([, meta]) => !!meta.data) || order[0] || [null])[0] || '';
   const [selected, setSelected] = React.useState(initialKey);
   React.useEffect(() => { setSelected(initialKey); }, [initialKey]);
-  const eventos = {
-    leccion: { title:'Próxima lección', data:proximaLeccion, empty: cronoPublicado ? 'No hay más lecciones programadas.' : 'Cronograma pendiente.' },
-    ican: { title:'Próximo I CAN', data:proximoICAN, empty:'No hay I CAN programado por ahora.' },
-    oral: { title:'Próximo examen oral', data:proximoOral, empty:'No hay examen oral programado por ahora.' },
-    escrito: { title:'Próximo examen escrito', data:proximoEscrito, empty:'No hay examen escrito programado por ahora.' },
-  };
+  const eventos = Object.fromEntries(order);
   const card = (key, meta) => {
     const ev = meta.data;
     const label = ev ? `${ev.leccionLabel} · ${fmtFechaCorta(ev.fecha)}` : meta.empty;
@@ -1455,10 +1527,7 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
         <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Resumen de próximos eventos</div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))', gap:12, padding:16 }}>
-        {card('leccion', eventos.leccion)}
-        {card('ican', eventos.ican)}
-        {card('oral', eventos.oral)}
-        {card('escrito', eventos.escrito)}
+        {order.map(([key, meta]) => card(key, meta))}
       </div>
       <div style={{ padding:'0 16px 16px' }}>
         {activeEvento ? <EventCalendarMini evento={activeEvento} /> : (
