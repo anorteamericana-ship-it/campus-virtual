@@ -1,50 +1,59 @@
 /* global React, ReactDOM, setSesion */
 const { useState, useEffect, useRef } = React;
 
-// ── Apps Script endpoint (única fuente: data.jsx → window.APPS_SCRIPT_URL) ──
 const SCRIPT_URL_LOGIN = window.APPS_SCRIPT_URL;
 
 const ERR_MSG = {
   credenciales_invalidas: 'Cédula o contraseña incorrectos',
-  usuario_inactivo:       'Tu cuenta está desactivada. Contactá a la academia.',
+  usuario_inactivo: 'Tu cuenta está desactivada. Contactá a la academia.',
 };
 
 const ROLE_LABEL = {
   superadmin: 'Superadmin',
-  admin:   'Administrador',
+  admin: 'Administrador',
   teacher: 'Docente',
   student: 'Estudiante',
-  family:  'Familiar / Encargado',
-  ventas:  'Asesor/a',
+  family: 'Familiar / Encargado',
+  ventas: 'Asesor/a',
 };
 
-// ── Brand assets (locales) ─────────────────────────────────────────────────
-// Nota: los archivos vienen con el nombre invertido — logo_circular.jpg es en
-// realidad el logo HORIZONTAL a color, y logo_horizontal.png es el SELLO redondo.
-const LOGO = 'assets/logo_circular.jpg';   // horizontal full-color (nav + A roja)
-const SEAL = 'assets/logo_horizontal.png'; // sello circular
-
-// Tarjetas de programa (decorativas · Google Drive con fallback a degradado)
-const CARD_INA   = 'https://lh3.googleusercontent.com/d/1MFNnwetDSIxTmCJALDO30-QqMMToCEgH';
-const CARD_LIBRE = 'https://lh3.googleusercontent.com/d/1ZoRy2blF7yP__GRdl6W_FVtgNytUtYhF';
-
-// Logos de respaldo institucional (externos · con fallback a texto)
-const BACKERS = [
-  { src: 'https://www.ina.ac.cr/PublishingImages/Logos/Logo%20INA%20Blanco.png', text: 'INA' },
-  { src: 'https://www.conape.go.cr/images/logo_conape.png',                       text: 'CONAPE' },
-  { src: LOGO,                                                                     text: 'ANORTEAM' },
+const LOGO = 'assets/logo_oficial_transparent.png';
+const HERO_OVERRIDE_PREFIX = 'an_login_hero_override_';
+const HERO_SCENES = [
+  {
+    image: 'assets/login_hero_1.jpg',
+    kicker: 'Financiá tu curso con CONAPE',
+    detail: 'Una opción para iniciar tu programa con apoyo para estudios.',
+  },
+  {
+    image: 'assets/login_hero_2.jpg',
+    kicker: 'Acreditado por el INA',
+    detail: 'Resolución: 2519-02',
+  },
+  {
+    image: 'assets/login_hero_3.jpg',
+    kicker: 'Prueba internacional TOEIC',
+    detail: 'Medí tu dominio del inglés con una certificación reconocida.',
+  },
 ];
 
-// ── Frases del timeline ─────────────────────────────────────────────────────
-const PHRASES = [
-  { main: 'Inglés que abre puertas',    sub: 'Nivel A1 a B2' },
-  { main: 'Clases 100% virtuales',      sub: 'Desde cualquier lugar de Costa Rica' },
-  { main: 'Certificado avalado por INA', sub: 'Programa de Inglés Conversacional' },
-  { main: 'Financiá con CONAPE',        sub: 'Sin deudas al comenzar' },
-  { main: 'Tu futuro empieza hoy',      sub: 'Academia Norteamericana' },
-];
+const DEV_IMAGE_PICKER = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dev') === '1') {
+      localStorage.setItem('an_login_dev_mode', '1');
+      return true;
+    }
+    if (params.get('dev') === '0') {
+      localStorage.removeItem('an_login_dev_mode');
+      return false;
+    }
+    return localStorage.getItem('an_login_dev_mode') === '1';
+  } catch (_) {
+    return false;
+  }
+})();
 
-// ── Iconos ──────────────────────────────────────────────────────────────────
 const EyeIcon = ({ off }) => (
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,12 +62,14 @@ const EyeIcon = ({ off }) => (
       : <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" /></>}
   </svg>
 );
+
 const ArrowIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 12h14M13 5l7 7-7 7" />
   </svg>
 );
+
 const WarnIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,178 +77,154 @@ const WarnIcon = () => (
   </svg>
 );
 
-// ── <img> con fallback a texto si falla la carga ───────────────────────────
-function ImgFallback({ src, text, imgClass, textClass }) {
-  const [failed, setFailed] = useState(false);
-  if (failed || !src) return <span className={textClass}>{text}</span>;
-  return <img src={src} alt={text} className={imgClass} onError={() => setFailed(true)} />;
-}
+const CameraIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+);
 
-// ── Capas de onda (SVG, abajo) ──────────────────────────────────────────────
-function Waves() {
-  return (
-    <div className="waves" aria-hidden="true">
-      <svg className="wave-back" viewBox="0 0 1440 320" preserveAspectRatio="none">
-        <path d="M0,224 C360,170 1080,290 1440,224 L1440,320 L0,320 Z" />
-      </svg>
-      <svg className="wave-mid" viewBox="0 0 1440 320" preserveAspectRatio="none">
-        <path d="M0,256 C320,200 640,302 960,250 C1200,212 1330,272 1440,240 L1440,320 L0,320 Z" />
-      </svg>
-      <svg className="wave-front" viewBox="0 0 1440 320" preserveAspectRatio="none">
-        <path d="M0,212 C240,130 480,292 720,208 C960,126 1200,292 1440,206 L1440,320 L0,320 Z" />
-      </svg>
-    </div>
-  );
-}
-
-// ── Tarjeta de imagen con fallback a degradado a rayas ──────────────────────
-function ProgImg({ src, alt }) {
-  const [failed, setFailed] = useState(false);
-  if (failed || !src) return <div className="pc-img-ph" aria-hidden="true" />;
-  return <img src={src} alt={alt} className="pc-img" onError={() => setFailed(true)} />;
-}
-
-// ── Timeline de frases (GSAP si está disponible · fallback a CSS) ────────────
-const ENTER_MS = 600, HOLD_MS = 2800, EXIT_MS = 450;
-function PhraseTimeline() {
-  const [i, setI] = useState(0);
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const g = (typeof window !== 'undefined') ? window.gsap : null;
-    let exitT, advT;
-    if (g) {
-      g.killTweensOf(el);
-      g.fromTo(el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: ENTER_MS / 1000, ease: 'power2.out' });
-      exitT = setTimeout(() => {
-        g.to(el, {
-          opacity: 0, y: -14, duration: EXIT_MS / 1000, ease: 'power1.in',
-          onComplete: () => setI(n => (n + 1) % PHRASES.length),
-        });
-      }, ENTER_MS + HOLD_MS);
-    } else {
-      el.style.transition = 'none';
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(20px)';
-      void el.offsetWidth; // reflow
-      el.style.transition = `opacity ${ENTER_MS}ms ease, transform ${ENTER_MS}ms cubic-bezier(0.22,1,0.36,1)`;
-      el.style.opacity = '1';
-      el.style.transform = 'translateY(0)';
-      exitT = setTimeout(() => {
-        el.style.transition = `opacity ${EXIT_MS}ms ease, transform ${EXIT_MS}ms ease`;
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(-14px)';
-        advT = setTimeout(() => setI(n => (n + 1) % PHRASES.length), EXIT_MS);
-      }, ENTER_MS + HOLD_MS);
+function compressImageFile(file, maxSide = 1800, quality = 0.84) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      reject(new Error('Seleccioná un archivo de imagen válido.'));
+      return;
     }
-    return () => { clearTimeout(exitT); clearTimeout(advT); };
-  }, [i]);
-  const p = PHRASES[i];
-  return (
-    <>
-      <div className="phrases">
-        <div className="phrase" ref={ref} key={i}>
-          <div className="p-main">{p.main}</div>
-          <div className="p-sub">{p.sub}</div>
-        </div>
-      </div>
-      <div className="phrase-ticks">
-        {PHRASES.map((_, n) => <i key={n} className={n === i ? 'on' : ''} />)}
-      </div>
-    </>
-  );
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('No se pudo procesar la imagen.'));
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-// ── Stage izquierdo — hero animado (timeline GSAP) ──────────────────────────
-const HEADLINE_LINES = [
-  <>Te garantizamos</>,
-  <>que <em>eliminás tu</em></>,
-  <>bloqueo con el inglés</>,
-];
+function HeroCarousel() {
+  const [scene, setScene] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [images, setImages] = useState(() => HERO_SCENES.map((item, index) => {
+    try { return localStorage.getItem(HERO_OVERRIDE_PREFIX + index) || item.image; }
+    catch (_) { return item.image; }
+  }));
+  const [devMessage, setDevMessage] = useState('');
+  const inputRef = useRef(null);
 
-function Stage() {
-  const ref = useRef(null);
   useEffect(() => {
-    const root = ref.current;
-    const g = (typeof window !== 'undefined') ? window.gsap : null;
-    if (!root || !g) return;
-    const q = g.utils.selector(root);
-    const ctx = g.context(() => {
-      const tl = g.timeline({ defaults: { ease: 'power3.out' } });
-      tl.from('.hg-texture',   { opacity: 0, duration: 0.9 })
-        .from('.hg-brandchip', { y: -24, opacity: 0, duration: 0.6 }, 0.1)
-        .from('.hg-eyebrow',   { x: -20, opacity: 0, duration: 0.5 }, 0.25)
-        .from('.hl-line',      { yPercent: 115, opacity: 0, duration: 0.7, stagger: 0.12 }, 0.35)
-        .from('.hg-wave',      { xPercent: -118, opacity: 0, duration: 1.0, ease: 'power4.out' }, 0.45)
-        .from('.hg-ground',    { yPercent: 105, duration: 0.85, ease: 'power3.out' }, 0.6)
-        .from('.hg-ground-seal', { scale: 0.4, rotate: -16, opacity: 0, duration: 0.7, ease: 'back.out(1.6)' }, 0.9)
-        .from('.hg-student, .hg-student-more', { y: 56, opacity: 0, scale: 0.78, duration: 0.6, stagger: 0.1, ease: 'back.out(1.5)' }, 1.0)
-        .from('.hg-ground-cap', { y: 16, opacity: 0, duration: 0.5 }, 1.25)
-        .from('.hg-phrases-wrap', { opacity: 0, y: 16, duration: 0.6 }, 1.3);
-      // ambiente: estudiantes flotando suavemente
-      g.to('.hg-student, .hg-student-more', {
-        y: '-=7', duration: 2.6, ease: 'sine.inOut', yoyo: true, repeat: -1, stagger: 0.35,
-      });
-    }, root);
-    return () => ctx.revert();
-  }, []);
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return undefined;
+    const timer = setInterval(() => {
+      if (!paused) setScene(current => (current + 1) % HERO_SCENES.length);
+    }, 5200);
+    return () => clearInterval(timer);
+  }, [paused]);
+
+  const changeCurrentBackground = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      setDevMessage('Procesando imagen…');
+      const dataUrl = await compressImageFile(file);
+      setImages(current => current.map((src, index) => index === scene ? dataUrl : src));
+      try {
+        localStorage.setItem(HERO_OVERRIDE_PREFIX + scene, dataUrl);
+        setDevMessage(`Escena ${scene + 1} guardada en este navegador.`);
+      } catch (_) {
+        setDevMessage(`Escena ${scene + 1} cambiada para esta sesión.`);
+      }
+    } catch (error) {
+      setDevMessage(error.message || 'No se pudo cambiar la imagen.');
+    }
+    setTimeout(() => setDevMessage(''), 3600);
+  };
+
+  const resetCurrentBackground = () => {
+    try { localStorage.removeItem(HERO_OVERRIDE_PREFIX + scene); } catch (_) {}
+    setImages(current => current.map((src, index) => index === scene ? HERO_SCENES[index].image : src));
+    setDevMessage(`Escena ${scene + 1} restaurada.`);
+    setTimeout(() => setDevMessage(''), 2600);
+  };
 
   return (
-    <div className="stage" ref={ref}>
-      <div className="hg-texture" />
-      <div className="hg-watermark" style={{ backgroundImage: `url(${SEAL})` }} />
-
-      <div className="hg-brandchip">
-        <ImgFallback src={LOGO} text="Academia Norteamericana" textClass="logo-fallback" />
+    <section className="hero-carousel" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <div className="hero-scenes" aria-live="polite">
+        {HERO_SCENES.map((item, index) => (
+          <div className={'hero-scene' + (scene === index ? ' is-active' : '')} key={item.kicker}>
+            <img src={images[index]} alt="Estudiantes de inglés en modalidad virtual" className={'hero-photo hero-photo-' + (index + 1)} />
+          </div>
+        ))}
       </div>
 
-      <div className="hg-content">
-        <div className="hg-eyebrow">Academia Norteamericana</div>
-        <h2 className="hg-headline">
-          {HEADLINE_LINES.map((l, n) => <span className="hl-line" key={n}>{l}</span>)}
-        </h2>
-        <div className="hg-phrases-wrap"><PhraseTimeline /></div>
-      </div>
+      <div className="hero-overlay hero-overlay-main" />
+      <div className="hero-overlay hero-overlay-bottom" />
+      <div className="hero-lines" aria-hidden="true" />
+      <div className="hero-red-glow" aria-hidden="true" />
 
-      <div className="hg-wave">
-        <svg viewBox="0 0 1440 150" preserveAspectRatio="none">
-          <path className="w-burgundy" d="M0,96 C300,18 560,150 860,92 C1100,46 1300,118 1440,70 L1440,150 L0,150 Z" />
-          <path className="w-red"      d="M0,116 C300,44 560,162 860,108 C1100,66 1300,132 1440,90 L1440,150 L0,150 Z" />
-        </svg>
-      </div>
+      <div className="hero-logo-halo" aria-hidden="true" />
+      <img className="hero-logo" src={LOGO} alt="Academia Norteamericana" />
 
-      <div className="hg-ground">
-        <div className="hg-students">
-          <image-slot id="login_stu1" shape="circle" placeholder="Foto" class="hg-student"></image-slot>
-          <image-slot id="login_stu2" shape="circle" placeholder="Foto" class="hg-student"></image-slot>
-          <image-slot id="login_stu3" shape="circle" placeholder="Foto" class="hg-student"></image-slot>
-          <div className="hg-student-more">+900</div>
+      {DEV_IMAGE_PICKER && (
+        <div className="dev-image-tools">
+          <input ref={inputRef} type="file" accept="image/*" onChange={changeCurrentBackground} hidden />
+          <button type="button" className="dev-camera" onClick={() => inputRef.current && inputRef.current.click()}
+                  title="Cambiar la imagen de la escena actual">
+            <CameraIcon />
+            <span>Cambiar fondo {scene + 1}</span>
+          </button>
+          <button type="button" className="dev-reset" onClick={resetCurrentBackground}
+                  title="Restaurar la imagen original de esta escena">Restaurar</button>
+          {devMessage && <div className="dev-image-message">{devMessage}</div>}
         </div>
-        <div className="hg-ground-cap">
-          <b>Estudiantes</b> que ya eliminaron su bloqueo con el inglés.
+      )}
+
+      <div className="hero-copy">
+        <div className="hero-badge"><span /> Programa 100% virtual</div>
+        <h1>Eliminá tu bloqueo<br />con el <em>inglés.</em></h1>
+        <div className="hero-message-wrap">
+          {HERO_SCENES.map((item, index) => (
+            <div className={'hero-message' + (scene === index ? ' is-active' : '')} key={item.detail}>
+              <div className="hero-message-title">{item.kicker}</div>
+              <div className="hero-message-detail">{item.detail}</div>
+            </div>
+          ))}
         </div>
-        <div className="hg-ground-seal" style={{ backgroundImage: `url(${SEAL})` }} />
+        <div className="hero-progress" aria-label="Cambiar escena promocional">
+          {HERO_SCENES.map((item, index) => (
+            <button key={item.kicker} type="button" className={scene === index ? 'is-active' : ''}
+                    onClick={() => setScene(index)} aria-label={`Mostrar escena ${index + 1}`} />
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-// ── Modal de selección de grupo (multi-grupo) ───────────────────────────────
 function GroupModal({ data, onPick, onCancel }) {
   return (
     <div className="modal-scrim" onClick={onCancel}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal" onClick={event => event.stopPropagation()}>
         <div className="m-kicker">Selección de grupo</div>
         <h2>Hola, {data.nombre.split(' ')[0]}</h2>
-        <div className="m-sub">
-          Tenés {data.grupos.length} grupos asignados. Elegí con cuál querés trabajar en esta sesión.
-        </div>
-        {data.grupos.map((g, n) => (
-          <button key={n} className="group-opt" onClick={() => onPick(g)}>
+        <div className="m-sub">Tenés {data.grupos.length} grupos asignados. Elegí con cuál querés trabajar en esta sesión.</div>
+        {data.grupos.map((group, index) => (
+          <button key={index} className="group-opt" onClick={() => onPick(group)}>
             <div>
-              <div className="g-name">{g.grupo}</div>
-              <div className="g-prog">Programa {g.programa || 'SIN_INA'}</div>
+              <div className="g-name">{group.grupo}</div>
+              <div className="g-prog">Programa {group.programa || 'SIN_INA'}</div>
             </div>
             <span className="g-arrow"><ArrowIcon /></span>
           </button>
@@ -248,91 +235,77 @@ function GroupModal({ data, onPick, onCancel }) {
   );
 }
 
-// ── Overlay de redirección post-login ───────────────────────────────────────
 function RedirectOverlay({ account }) {
   return (
     <div className="redirect">
       <div>
-        <div className="seal" style={{ backgroundImage: `url(${SEAL})` }} />
+        <div className="redirect-loader"><span /><span /><span /></div>
         <div className="r-title">¡Hola, {(account.nombre || '').split(' ')[0] || 'de nuevo'}!</div>
-        <div className="r-sub">
-          {ROLE_LABEL[account.rol] || 'Usuario'} · Entrando al Campus…
-        </div>
+        <div className="r-sub">{ROLE_LABEL[account.rol] || 'Usuario'} · Entrando al Campus…</div>
       </div>
     </div>
   );
 }
 
-// ── App ─────────────────────────────────────────────────────────────────────
 function App() {
-  const [usuario, setUsuario]   = useState('');
-  const [pass, setPass]         = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(true);
-  const [loading, setLoading]   = useState(false);
-  const [err, setErr]           = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
   const [pendingMulti, setPendingMulti] = useState(null);
-  const [account, setAccount]   = useState(null);
-  const [shaking, setShaking]   = useState(false);
+  const [account, setAccount] = useState(null);
+  const [shaking, setShaking] = useState(false);
 
-  // Sacude el formulario cuando aparece un error
   useEffect(() => {
-    if (!err) return;
+    if (!err) return undefined;
     setShaking(true);
-    const t = setTimeout(() => setShaking(false), 460);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setShaking(false), 460);
+    return () => clearTimeout(timer);
   }, [err]);
 
   const finishLogin = (acc) => {
     setAccount(acc);
     try {
       sessionStorage.setItem('an_just_logged_in', '1');
-      // SEC-003A: persistimos la sesión con la función compartida de data.jsx
-      // (setSesion → sessionStorage.an_usuario). Incluye token y expira.
-      // DOCENTE-002-A: separar "grupos asignados" de "grupo activo".
-      //   • grupos      → SIEMPRE la lista completa de grupos asignados.
-      //   • grupoActivo → el grupo elegido para trabajar esta sesión.
-      //   • grupo       → se mantiene = grupoActivo por compatibilidad con
-      //     pantallas que aún leen `an_usuario.grupo` directo (cronograma_grupo).
-      // En login mono-grupo, grupoActivo = ese único grupo.
-      const __gruposAsignados = acc.grupos || (acc.grupo ? [acc.grupo] : []);
-      const __grupoActivo     = acc.grupoActivo || acc.grupo || __gruposAsignados[0] || null;
+      const gruposAsignados = acc.grupos || (acc.grupo ? [acc.grupo] : []);
+      const grupoActivo = acc.grupoActivo || acc.grupo || gruposAsignados[0] || null;
       setSesion({
-        rol:             acc.rol,
-        nombre:          acc.nombre,
-        grupo:           __grupoActivo,
-        grupos:          __gruposAsignados,
-        grupoActivo:     __grupoActivo,
-        codigo:          acc.codigo || null,
-        cedula:          acc.cedula || null,
-        programa:        acc.programa || 'SIN_INA',
-        token:           acc.token  || null,
-        expira:          acc.expira || null,
-        nivel_activo:    acc.nivel_activo   || null,
-        estatus_activo:  acc.estatus_activo || null,
+        rol: acc.rol,
+        nombre: acc.nombre,
+        grupo: grupoActivo,
+        grupos: gruposAsignados,
+        grupoActivo,
+        codigo: acc.codigo || null,
+        cedula: acc.cedula || null,
+        programa: acc.programa || 'SIN_INA',
+        token: acc.token || null,
+        expira: acc.expira || null,
+        nivel_activo: acc.nivel_activo || null,
+        estatus_activo: acc.estatus_activo || null,
         niveles_estatus: acc.niveles_estatus || {},
       });
       const rolCampus = acc.rol === 'teacher' ? 'teacher'
-                      : acc.rol === 'student' ? 'student'
-                      : acc.rol === 'ventas'  ? 'ventas'
-                      : 'admin';
+        : acc.rol === 'student' ? 'student'
+        : acc.rol === 'ventas' ? 'ventas'
+        : 'admin';
       localStorage.setItem('an_role', rolCampus);
-    } catch (e) {}
-    // El panel de ventas vive en ventas.html; el resto de roles entra al campus.
+    } catch (_) {}
     const destino = acc.rol === 'ventas' ? 'ventas.html' : 'campus.html';
     setTimeout(() => { window.location.href = destino; }, 1100);
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const submit = async (event) => {
+    event.preventDefault();
     setErr('');
-    if (!usuario || !pass) { setErr('Completá ambos campos para continuar.'); return; }
+    if (!usuario || !pass) {
+      setErr('Completá ambos campos para continuar.');
+      return;
+    }
     setLoading(true);
     try {
-      // SEC-003A: iniciarSesion por POST. El usuario y la contraseña viajan en
-      // el body, NUNCA en la URL. text/plain;charset=utf-8 evita el preflight
-      // CORS de Apps Script (lee el body en e.postData.contents).
-      const res  = await fetch(SCRIPT_URL_LOGIN, {
+      const response = await fetch(SCRIPT_URL_LOGIN, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -341,72 +314,63 @@ function App() {
           clave: pass,
         }),
       });
-      const data = await res.json();
-
+      const data = await response.json();
       if (!data.ok) {
         setLoading(false);
         setErr(ERR_MSG[data.error] || 'Cédula o contraseña incorrectos');
         return;
       }
-
-      // CALGRUPO_F71_20260618_LOGIN_SIN_SELECTOR_GRUPO_DOCENTE
-      // El docente NO elige grupo al entrar. La agenda docente se resuelve desde
-      // APOLLO.GRUPOS (COMENTARIO=En curso). Conservamos la lista completa de
-      // grupos para compatibilidad, pero entramos directo con el primer grupo.
       if (data.multiGrupo && Array.isArray(data.grupos) && data.grupos.length > 0) {
         const first = data.grupos[0] || {};
         const gruposAsignados = data.grupos
-          .map(x => (typeof x === 'string' ? x : (x.grupo || x.cod_grupo || x.codigo || x.code || '')))
+          .map(item => typeof item === 'string' ? item : (item.grupo || item.cod_grupo || item.codigo || item.code || ''))
           .filter(Boolean);
         finishLogin({
-          rol:        data.rol,
-          nombre:     data.nombre,
-          grupos:     gruposAsignados,
+          rol: data.rol,
+          nombre: data.nombre,
+          grupos: gruposAsignados,
           grupoActivo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
-          grupo:      typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
-          codigo:     data.codigo || first.codigo || null,
-          cedula:     (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
-          programa:   first.programa || data.programa || 'SIN_INA',
-          token:      data.token  || null,
-          expira:     data.expira || null,
+          grupo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
+          codigo: data.codigo || first.codigo || null,
+          cedula: (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
+          programa: first.programa || data.programa || 'SIN_INA',
+          token: data.token || null,
+          expira: data.expira || null,
         });
         return;
       }
-
       finishLogin({
-        rol:      data.rol,
-        nombre:   data.nombre,
-        grupo:    data.grupo  || null,
-        codigo:   data.codigo || null,
-        cedula:   (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
+        rol: data.rol,
+        nombre: data.nombre,
+        grupo: data.grupo || null,
+        codigo: data.codigo || null,
+        cedula: (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
         programa: data.programa || 'SIN_INA',
-        token:    data.token  || null,
-        expira:   data.expira || null,
+        token: data.token || null,
+        expira: data.expira || null,
       });
-    } catch (e) {
+    } catch (_) {
       setLoading(false);
       setErr('No se pudo conectar. Intentá de nuevo.');
     }
   };
 
-  const pickGroup = (g) => {
-    const m = pendingMulti;
+  const pickGroup = (group) => {
+    const pending = pendingMulti;
     setPendingMulti(null);
-    // DOCENTE-002-A: NO perder la lista completa. Conservamos los grupos
-    // asignados originales (m.grupos) y marcamos el elegido como activo.
-    const gruposAsignados = (Array.isArray(m.grupos) ? m.grupos : [])
-      .map(x => (typeof x === 'string' ? x : x.grupo))
+    const gruposAsignados = (Array.isArray(pending.grupos) ? pending.grupos : [])
+      .map(item => typeof item === 'string' ? item : item.grupo)
       .filter(Boolean);
     finishLogin({
-      rol:        m.rol,
-      nombre:     m.nombre,
-      grupos:     gruposAsignados.length ? gruposAsignados : [g.grupo],
-      grupoActivo: g.grupo,
-      codigo:     g.codigo || null,
-      cedula:     m.cedula || (usuario || '').toString().trim().toLowerCase() || null,
-      programa:   g.programa || 'SIN_INA',
-      token:      m.token  || null,
-      expira:     m.expira || null,
+      rol: pending.rol,
+      nombre: pending.nombre,
+      grupos: gruposAsignados.length ? gruposAsignados : [group.grupo],
+      grupoActivo: group.grupo,
+      codigo: group.codigo || null,
+      cedula: pending.cedula || (usuario || '').toString().trim().toLowerCase() || null,
+      programa: group.programa || 'SIN_INA',
+      token: pending.token || null,
+      expira: pending.expira || null,
     });
   };
 
@@ -414,67 +378,38 @@ function App() {
 
   return (
     <>
-      <div className="auth">
-        <Stage />
-
-        <div className="panel">
-          <div className={'panel-inner' + (shaking ? ' shake' : '')}>
-            {/* logo móvil (visible cuando el stage se oculta) */}
-            <div className="mobile-logo">
-              <ImgFallback src={LOGO} text="Academia Norteamericana" textClass="pl-fallback" />
-            </div>
-
-            {/* logo del panel (desktop) */}
-            <div className="panel-logo">
-              <ImgFallback src={LOGO} text="Academia Norteamericana" textClass="pl-fallback" />
-            </div>
-            <div className="panel-rule" />
-
-            <h1>Bienvenido de nuevo</h1>
-            <div className="sub">Ingresá con tu número de cédula</div>
+      <main className="auth-shell">
+        <HeroCarousel />
+        <section className="login-panel">
+          <div className={'login-card' + (shaking ? ' shake' : '')}>
+            <h2>Bienvenido de nuevo</h2>
+            <p className="login-subtitle">Ingresá con tu número de cédula</p>
 
             <form onSubmit={submit} noValidate>
               <div className="field">
                 <label htmlFor="usuario">Cédula / Usuario</label>
                 <div className="ctrl">
-                  <input
-                    id="usuario"
-                    type="text"
-                    autoComplete="off"
-                    placeholder="Ej: 1-2345-6789"
-                    value={usuario}
-                    onChange={e => { setUsuario(e.target.value); setErr(''); }}
-                    autoFocus
-                  />
+                  <input id="usuario" type="text" autoComplete="off" placeholder="Ej: 1-2345-6789"
+                         value={usuario} onChange={event => { setUsuario(event.target.value); setErr(''); }} autoFocus />
                 </div>
               </div>
 
               <div className="field">
                 <label htmlFor="clave">Contraseña</label>
                 <div className={'ctrl' + (err ? ' has-error' : '')}>
-                  <input
-                    id="clave"
-                    type={showPass ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="Tu contraseña"
-                    className="with-trail"
-                    value={pass}
-                    onChange={e => { setPass(e.target.value); setErr(''); }}
-                  />
-                  <button type="button" className="toggle-eye"
-                    onClick={() => setShowPass(s => !s)}
-                    aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                  <input id="clave" type={showPass ? 'text' : 'password'} autoComplete="current-password"
+                         placeholder="Tu contraseña" className="with-trail" value={pass}
+                         onChange={event => { setPass(event.target.value); setErr(''); }} />
+                  <button type="button" className="toggle-eye" onClick={() => setShowPass(value => !value)}
+                          aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                     <EyeIcon off={showPass} />
                   </button>
                 </div>
-                {err && (
-                  <div className="field-error"><WarnIcon /> {err}</div>
-                )}
+                {err && <div className="field-error"><WarnIcon /> {err}</div>}
               </div>
 
               <label className="remember">
-                <input type="checkbox" checked={remember}
-                  onChange={e => setRemember(e.target.checked)} />
+                <input type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} />
                 <span className="box" />
                 Recordar sesión
               </label>
@@ -485,23 +420,18 @@ function App() {
                     ? <><span className="spinner" /> {account ? 'Redirigiendo…' : 'Verificando…'}</>
                     : <>Ingresar al Campus <ArrowIcon /></>}
                 </button>
-                <button type="button" className="btn btn-secondary"
-                  onClick={() => { window.location.href = 'inscripcion.html'; }}>
-                  ¡Matriculate Aquí! 🎓
+                <button type="button" className="btn btn-secondary" onClick={() => { window.location.href = 'inscripcion.html'; }}>
+                  ¡Matricúlate aquí!
                 </button>
               </div>
             </form>
 
-            <div className="forgot">
-              <a href="recovery.html">¿Olvidaste tu contraseña?</a>
-            </div>
+            <div className="forgot"><a href="recovery.html">¿Olvidaste tu contraseña?</a></div>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {pendingMulti && (
-        <GroupModal data={pendingMulti} onPick={pickGroup} onCancel={() => setPendingMulti(null)} />
-      )}
+      {pendingMulti && <GroupModal data={pendingMulti} onPick={pickGroup} onCancel={() => setPendingMulti(null)} />}
       {account && <RedirectOverlay account={account} />}
     </>
   );
