@@ -392,17 +392,25 @@ function buildICANEventoDesdeDataSD(data) {
   return futura ? buildEventoConsultaSD({ ...futura, tipo:'ICAN', fecha:futura.__fecha }, 'ICAN') : null;
 }
 function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, retroData, icanData, nivel, codGrupo, notaActiva, asistPct, asistPresentes, asistTotal }) {
-  const rows = [];
-  const outKeys = new Set();
+  const todayIso = new Date().toISOString().slice(0,10);
   const retroItems = Array.isArray(retroData?.retroalimentacion) ? retroData.retroalimentacion : [];
   const leccionesArr = Array.isArray(lecciones) ? lecciones : [];
   const evalArr = Array.isArray(evaluaciones) ? evaluaciones : [];
+  const asistenciaArr = Array.isArray(asistenciaRows) ? asistenciaRows : [];
   const sesionesICAN = Array.isArray(icanData?.sesiones) ? icanData.sesiones : Array.isArray(icanData?.historial) ? icanData.historial : Array.isArray(icanData?.registros) ? icanData.registros : [];
+
   const lessonByNum = new Map();
   leccionesArr.forEach(l => {
     const n = extraerLeccionNumSD(l);
-    if (n > 0 && !lessonByNum.has(n)) lessonByNum.set(n, l);
+    if (n > 0 && n <= 32 && !lessonByNum.has(n)) lessonByNum.set(n, l);
   });
+
+  const attendanceByNum = new Map();
+  asistenciaArr.forEach(a => {
+    const n = extraerLeccionNumSD(a);
+    if (n > 0 && n <= 32 && !attendanceByNum.has(n)) attendanceByNum.set(n, a);
+  });
+
   const evalByNum = new Map();
   evalArr.forEach(e => {
     const evNivel = String(e?.nivel || e?.NIVEL || '').toUpperCase();
@@ -410,92 +418,92 @@ function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, ret
     if (nivel && evNivel && evNivel !== String(nivel).toUpperCase()) return;
     if (codGrupo && evGrupo && evGrupo !== String(codGrupo).toUpperCase()) return;
     const n = extraerLeccionNumSD(e);
-    if (n > 0 && !evalByNum.has(n)) evalByNum.set(n, e);
+    if (n <= 0 || n > 32) return;
+    const prev = evalByNum.get(n);
+    if (!prev || (!notaTextoSD(prev) && notaTextoSD(e))) evalByNum.set(n, e);
   });
+
   const retroByNum = new Map();
   retroItems.forEach(r => {
     const rg = String(r?.cod_grupo || r?.COD_GRUPO || '').toUpperCase();
     if (codGrupo && rg && rg !== String(codGrupo).toUpperCase()) return;
     const n = extraerLeccionNumSD(r);
-    if (n <= 0) return;
+    if (n <= 0 || n > 32) return;
     if (!retroByNum.has(n)) retroByNum.set(n, []);
     retroByNum.get(n).push(r);
   });
-  const pushRow = (row) => {
-    if (!row || !row.fecha) return;
-    const key = `${row.kind || 'X'}-${row.fecha}-${row.leccion || 0}`;
-    if (outKeys.has(key)) return;
-    outKeys.add(key);
-    rows.push(row);
-  };
-  (Array.isArray(asistenciaRows) ? asistenciaRows : []).forEach(a => {
-    const leccionNum = extraerLeccionNumSD(a);
+
+  // El cuaderno siempre contiene las 32 lecciones oficiales. Los registros de
+  // asistencia, comentarios y notas se integran sobre esa estructura, pero una
+  // lección no desaparece porque todavía no tenga información docente.
+  const lessonRows = Array.from({ length:32 }, (_, idx) => {
+    const leccionNum = idx + 1;
     const lesson = lessonByNum.get(leccionNum) || null;
-    const fecha = fechaDeItemSD(a) || fechaDeItemSD(lesson);
+    const att = attendanceByNum.get(leccionNum) || null;
+    const ev = evalByNum.get(leccionNum) || null;
     const retroList = retroByNum.get(leccionNum) || [];
-    const tienePC = retroList.some(r => normTipoEventoSD(r?.tipo || r?.TIPO) === 'PROGRESS_CHECK');
-    const tipo = tienePC ? 'PROGRESS_CHECK' : tipoEventoPorLeccionSD(leccionNum, a?.tipo || a?.TIPO || lesson?.tipo || lesson?.TIPO || 'LECCION');
-    const ev = evalByNum.get(leccionNum);
-    const comentarios = [a?.comentario, a?.COMENTARIO, a?.observacion, a?.OBSERVACION, ev?.comentario, ev?.COMENTARIO]
-      .concat(retroList.map(r => r?.comentario || r?.COMENTARIO || ''))
+    const fecha = fechaDeItemSD(lesson) || fechaDeItemSD(att) || fechaDeItemSD(ev);
+    const tienePC = retroList.some(r => normTipoEventoSD(r?.tipo || r?.TIPO) === 'PROGRESS_CHECK') || normTipoEventoSD(lesson?.tipo || lesson?.TIPO) === 'PROGRESS_CHECK';
+    const kind = tienePC ? 'PROGRESS_CHECK' : tipoEventoPorLeccionSD(leccionNum, lesson?.tipo || lesson?.TIPO || ev?.tipo_eval || ev?.TIPO_EVAL || ev?.tipo || ev?.TIPO || 'LECCION');
+    const comentarios = [
+      att?.comentario, att?.COMENTARIO, att?.observacion, att?.OBSERVACION,
+      ev?.comentario, ev?.COMENTARIO, ev?.student_feedback, ev?.STUDENT_FEEDBACK,
+      ev?.sugerencias, ev?.SUGERENCIAS,
+    ].concat(retroList.map(r => r?.comentario || r?.COMENTARIO || ''))
       .map(v => String(v || '').trim()).filter(Boolean);
-    const comentario = Array.from(new Set(comentarios)).join(' · ');
-    pushRow({
+    const estadoLeccion = String(lesson?.estado || lesson?.ESTADO || '').toUpperCase();
+    let asistenciaLabel = 'Sin registro';
+    if (att) asistenciaLabel = estadoAsistenciaLabelSD(att);
+    else if (fecha && fecha > todayIso) asistenciaLabel = 'Programada';
+    else if (fecha && fecha === todayIso) asistenciaLabel = 'Programada';
+    else if (estadoLeccion === 'CERRADA') asistenciaLabel = 'Pendiente';
+    else if (fecha && fecha < todayIso) asistenciaLabel = 'Pendiente';
+
+    return {
+      key:`LEC-${leccionNum}`,
       fecha,
-      leccion: leccionNum || extraerLeccionNumSD(lesson),
-      actividad: leccionNum ? `Lec ${padLecSD(leccionNum)}` : labelTipoEventoSD(tipo),
-      tipo: labelTipoEventoSD(tipo),
-      kind: tipo || 'LECCION',
-      asistencia: estadoAsistenciaLabelSD(a),
-      comentario,
-      nota: notaTextoSD(ev),
-    });
-  });
-  evalArr.forEach(e => {
-    const evNivel = String(e?.nivel || e?.NIVEL || '').toUpperCase();
-    const evGrupo = String(e?.cod_grupo || e?.COD_GRUPO || e?.grupo || e?.GRUPO || '').toUpperCase();
-    if (nivel && evNivel && evNivel !== String(nivel).toUpperCase()) return;
-    if (codGrupo && evGrupo && evGrupo !== String(codGrupo).toUpperCase()) return;
-    const leccionNum = extraerLeccionNumSD(e);
-    const lesson = lessonByNum.get(leccionNum) || null;
-    const fecha = fechaDeItemSD(e) || fechaDeItemSD(lesson);
-    const kind = tipoEventoPorLeccionSD(leccionNum, e?.tipo_eval || e?.TIPO_EVAL || e?.tipo || e?.TIPO || lesson?.tipo || lesson?.TIPO || (String(e?.titulo || '').toUpperCase().includes('ORAL') ? 'EVAL_ORAL' : String(e?.titulo || '').toUpperCase().includes('ESCR') ? 'EVAL_ESCRITO' : 'LECCION'));
-    const comentario = String(e?.comentario || e?.COMENTARIO || e?.student_feedback || e?.STUDENT_FEEDBACK || e?.sugerencias || e?.SUGERENCIAS || '').trim();
-    pushRow({
-      fecha,
-      leccion: leccionNum,
-      actividad: leccionNum ? `Lec ${padLecSD(leccionNum)}` : (e?.titulo || e?.evaluacion || 'Evaluación'),
-      tipo: labelTipoEventoSD(kind),
+      leccion:leccionNum,
+      actividad:`Lec ${padLecSD(leccionNum)}`,
+      tipo:labelTipoEventoSD(kind),
       kind,
-      asistencia: 'Registrada',
-      comentario,
-      nota: notaTextoSD(e),
-    });
+      asistencia:asistenciaLabel,
+      comentario:Array.from(new Set(comentarios)).join(' · '),
+      nota:notaTextoSD(ev),
+      estado:estadoLeccion,
+      isLesson:true,
+    };
   });
-  sesionesICAN.forEach((s, idx) => {
-    const fecha = fechaDeItemSD(s);
-    const comentario = String(s?.comentario || s?.COMENTARIO || s?.tema || s?.TEMA || '').trim();
-    const asistencia = estadoAsistenciaLabelSD(s);
-    pushRow({
-      fecha,
-      leccion: 0,
-      actividad: `I CAN ${idx + 1}`,
-      tipo: 'I CAN',
-      kind: 'ICAN',
-      asistencia,
-      comentario,
-      nota: '',
-    });
+
+  // I CAN no forma parte de las 32 lecciones. Solo se incorpora cuando existe
+  // un registro real, respetando la regla de ocultarlo por completo si no aplica.
+  const icanRows = sesionesICAN.map((s, idx) => ({
+    key:`ICAN-${idx + 1}-${fechaDeItemSD(s) || idx}`,
+    fecha:fechaDeItemSD(s),
+    leccion:0,
+    actividad:`I CAN ${idx + 1}`,
+    tipo:'I CAN',
+    kind:'ICAN',
+    asistencia:estadoAsistenciaLabelSD(s),
+    comentario:String(s?.comentario || s?.COMENTARIO || s?.tema || s?.TEMA || '').trim(),
+    nota:'',
+    estado:String(s?.estado || s?.ESTADO || '').toUpperCase(),
+    isLesson:false,
+  })).filter(r => r.fecha || r.comentario || r.asistencia !== 'Sin registro');
+
+  const rows = lessonRows.concat(icanRows).sort((a,b) => {
+    if (a.fecha && b.fecha) return String(a.fecha).localeCompare(String(b.fecha)) || Number(a.leccion || 99) - Number(b.leccion || 99);
+    if (a.fecha) return -1;
+    if (b.fecha) return 1;
+    return Number(a.leccion || 99) - Number(b.leccion || 99);
   });
-  rows.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || Number(a.leccion||0)-Number(b.leccion||0));
-  const presentCount = (Array.isArray(asistenciaRows) ? asistenciaRows : []).filter(esPresente).length;
+
   const commentCount = rows.filter(r => r.comentario).length;
   const evalCount = evalArr.filter(e => {
     const evNivel = String(e?.nivel || e?.NIVEL || '').toUpperCase();
     const evGrupo = String(e?.cod_grupo || e?.COD_GRUPO || e?.grupo || e?.GRUPO || '').toUpperCase();
     return (!nivel || !evNivel || evNivel === String(nivel).toUpperCase()) && (!codGrupo || !evGrupo || evGrupo === String(codGrupo).toUpperCase()) && !!notaTextoSD(e);
   }).length;
-  const icanCount = rows.filter(r => r.kind === 'ICAN').length;
+
   return {
     rows,
     summary: {
@@ -505,9 +513,10 @@ function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, ret
       asistenciaTotal: asistTotal,
       comments: commentCount,
       evaluations: evalCount,
-      ican: icanCount,
+      ican: icanRows.length,
       totalRows: rows.length,
-      presentCount,
+      totalLessons:32,
+      presentCount: asistenciaArr.filter(esPresente).length,
     },
   };
 }
@@ -609,11 +618,13 @@ function StudentDashboard({ toast, onNavigate }) {
   const nivelInicial = nivelReal || inferirNivelDesdeGrupo(codGrupo) || 'B1';
   const [nivelVista, setNivelVista] = React.useState('');
   const [mostrarPanelDatos, setMostrarPanelDatos] = React.useState(false);
+  const [registroFocus, setRegistroFocus] = React.useState(null);
   React.useEffect(() => {
     setNivelVista(nivelInicial);
   }, [nivelReal, codGrupo]);
   const nivelSeleccionado = nivelVista || nivelInicial;
   const codGrupoSeleccionado = grupoDeNivelSD(niveles, nivelSeleccionado, codGrupo);
+  React.useEffect(() => { setRegistroFocus(null); }, [nivelSeleccionado, codGrupoSeleccionado]);
   const esConape     = String(est.CONVENIO || est.convenio || '').trim().toUpperCase() === 'CONAPE';
   const cedula       = est.CEDULA || est.NUM_CEDULA || usr?.cedula || null;
   const programa     = String(grupo.PROGRAMA || grupo.programa || usr?.programa || usr?.PROGRAMA || 'SIN_INA').trim().toUpperCase().replace(/[\s-]+/g, '_');
@@ -630,7 +641,7 @@ function StudentDashboard({ toast, onNavigate }) {
   // Sin sesión activa
   if (!usr) {
     return (
-      <div data-screen-label="Estudiante · Mi Campus">
+      <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
         <DashHeader title="Mi Campus" />
         <EmptyState
           icon="👤"
@@ -642,7 +653,7 @@ function StudentDashboard({ toast, onNavigate }) {
   }
   if (loading && !data) {
     return (
-      <div data-screen-label="Estudiante · Mi Campus">
+      <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
         <DashHeader title="Cargando tu información…" />
         <SkeletonDashboard />
       </div>
@@ -650,7 +661,7 @@ function StudentDashboard({ toast, onNavigate }) {
   }
   if (error && !data) {
     return (
-      <div data-screen-label="Estudiante · Mi Campus">
+      <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
         <DashHeader title="Mi Campus" />
         <ErrorState message={error} onRetry={reload} />
       </div>
@@ -755,7 +766,7 @@ function StudentDashboard({ toast, onNavigate }) {
   const matriculaPagadaBanner = accDet && acc.flags.canCalendar && !acc.flags.canMateriales;
 
   return (
-    <div data-screen-label="Estudiante · Mi Campus">
+    <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
       <CampusExecutiveHeaderD
         nivelNombre={nivelNombre}
         codGrupo={codGrupoSeleccionado || codGrupo}
@@ -814,6 +825,7 @@ function StudentDashboard({ toast, onNavigate }) {
         rows={registroAcademico.rows}
         nombreCompleto={nombreCompleto}
         codigo={codigo}
+        focusRequest={registroFocus}
       />
 
       {/* 11. Resumen de próximos eventos con calendario focalizado. */}
@@ -823,7 +835,7 @@ function StudentDashboard({ toast, onNavigate }) {
         proximoOral={proximoOralEvento}
         proximoEscrito={proximoEscritoEvento}
         cronoPublicado={cronoPublicado}
-        onNavigate={go}
+        onFocus={(ev) => setRegistroFocus({ key:ev?.key || '', leccion:ev?.leccion || 0, fecha:ev?.fecha || '', stamp:Date.now() })}
       />
 
       {/* 12. Tus módulos. Solo módulos operativos o con datos honestos. */}
@@ -1342,26 +1354,95 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
 
 
 
-function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, codigo }) {
+function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, codigo, focusRequest }) {
   const showICAN = Number(summary?.ican || 0) > 0;
   const list = Array.isArray(rows) ? rows.filter(r => showICAN || r.kind !== 'ICAN') : [];
-  const pageSizeForWidth = () => (typeof window !== 'undefined' && window.innerWidth <= 620 ? 3 : 6);
-  const [pageSize, setPageSize] = React.useState(pageSizeForWidth);
-  const [offset, setOffset] = React.useState(0);
+  const scrollRef = React.useRef(null);
+  const positionedRef = React.useRef('');
+  const [visibleRange, setVisibleRange] = React.useState({ start:0, end:0 });
+
+  const todayIso = new Date().toISOString().slice(0,10);
+  const nextIndex = React.useMemo(() => {
+    const upcoming = list.findIndex(r => r.isLesson && r.fecha && r.fecha >= todayIso && String(r.estado || '').toUpperCase() !== 'CERRADA');
+    if (upcoming >= 0) return upcoming;
+    const pending = list.findIndex(r => r.isLesson && String(r.estado || '').toUpperCase() !== 'CERRADA');
+    if (pending >= 0) return pending;
+    const lastLesson = list.map((r,i) => r.isLesson ? i : -1).filter(i => i >= 0).pop();
+    return lastLesson == null ? 0 : lastLesson;
+  }, [list, todayIso]);
+
+  const requestedIndex = React.useMemo(() => {
+    if (!focusRequest) return -1;
+    if (focusRequest.key) {
+      const byKey = list.findIndex(r => String(r.key) === String(focusRequest.key));
+      if (byKey >= 0) return byKey;
+    }
+    if (focusRequest.leccion) {
+      const byLesson = list.findIndex(r => Number(r.leccion) === Number(focusRequest.leccion));
+      if (byLesson >= 0) return byLesson;
+    }
+    if (focusRequest.fecha) {
+      const byDate = list.findIndex(r => String(r.fecha || '') === String(focusRequest.fecha));
+      if (byDate >= 0) return byDate;
+    }
+    return -1;
+  }, [focusRequest, list]);
+
+  const activeIndex = requestedIndex >= 0 ? requestedIndex : nextIndex;
+  const activeRow = list[activeIndex] || null;
+
+  const updateRange = React.useCallback(() => {
+    const box = scrollRef.current;
+    if (!box || !list.length) return;
+    const mobile = box.clientWidth <= 620;
+    const leftW = mobile ? 78 : 182;
+    const colW = mobile ? 96 : 138;
+    const usable = Math.max(colW, box.clientWidth - leftW);
+    const start = Math.min(list.length - 1, Math.max(0, Math.floor(box.scrollLeft / colW)));
+    const count = Math.max(1, Math.floor(usable / colW));
+    setVisibleRange({ start:start + 1, end:Math.min(list.length, start + count) });
+  }, [list.length]);
 
   React.useEffect(() => {
-    const handleResize = () => setPageSize(pageSizeForWidth());
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  React.useEffect(() => { setOffset(0); }, [nivel, list.length, pageSize]);
+    const box = scrollRef.current;
+    if (!box || !list.length || activeIndex < 0) return;
+    const requestKey = focusRequest?.stamp || `${nivel}|${activeRow?.key || activeIndex}|${list.length}`;
+    if (!focusRequest && positionedRef.current === requestKey) return;
+    positionedRef.current = requestKey;
+    requestAnimationFrame(() => {
+      const mobile = box.clientWidth <= 620;
+      const leftW = mobile ? 78 : 182;
+      const col = box.querySelector('.campus-d-lesson-column');
+      const colW = col?.offsetWidth || (mobile ? 96 : 138);
+      const actualX = leftW + Math.max(0, activeIndex) * colW;
+      // Igual que el cuaderno docente: la lección objetivo queda en la
+      // penúltima posición visible y permanece una lección más adelante.
+      const targetX = Math.max(leftW, box.clientWidth - (2 * colW));
+      box.scrollTo({ left:Math.max(0, actualX - targetX), behavior:focusRequest ? 'smooth' : 'auto' });
+      setTimeout(updateRange, focusRequest ? 380 : 30);
+    });
+  }, [nivel, activeIndex, activeRow?.key, list.length, focusRequest?.stamp, updateRange]);
 
-  const maxOffset = Math.max(0, list.length - pageSize);
-  const visible = list.slice(offset, offset + pageSize);
-  const prev = () => setOffset(v => Math.max(0, v - pageSize));
-  const next = () => setOffset(v => Math.min(maxOffset, v + pageSize));
-  const startN = list.length ? offset + 1 : 0;
-  const endN = Math.min(list.length, offset + pageSize);
+  React.useEffect(() => {
+    const box = scrollRef.current;
+    if (!box) return;
+    updateRange();
+    const onScroll = () => updateRange();
+    const onResize = () => updateRange();
+    box.addEventListener('scroll', onScroll, { passive:true });
+    window.addEventListener('resize', onResize);
+    return () => {
+      box.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [updateRange]);
+
+  const scrollByBlock = (dir) => {
+    const box = scrollRef.current;
+    if (!box) return;
+    const mobile = box.clientWidth <= 620;
+    box.scrollBy({ left:dir * (mobile ? 288 : 828), behavior:'smooth' });
+  };
 
   const attendanceMeta = (label) => {
     const v = String(label || '').toLowerCase();
@@ -1370,7 +1451,9 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
     if (v.includes('ausente')) return { short:'Aus.', color:'#B3261E' };
     if (v.includes('just')) return { short:'Just.', color:'#002F6C' };
     if (v.includes('registrada')) return { short:'Reg.', color:'#002F6C' };
-    return { short: label || '—', color:'#6B7280' };
+    if (v.includes('program')) return { short:'Prog.', color:'#6B7280' };
+    if (v.includes('pendiente')) return { short:'Pend.', color:'#6B7280' };
+    return { short:label || '—', color:'#6B7280' };
   };
   const typeMeta = (row) => {
     const kind = String(row?.kind || '').toUpperCase();
@@ -1390,21 +1473,21 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
   if (showICAN) summaryRows.push({ label:'I CAN', value:String(summary?.ican || 0), extra:true });
 
   return (
-    <section className="campus-d-gradebook" aria-label="Registro de notas y asistencia">
+    <section id="registro-notas-asistencia" className="campus-d-gradebook" aria-label="Registro de notas y asistencia">
       <div className="campus-d-gradebook-head">
         <div>
           <div className="campus-d-gradebook-title">Registro de notas y asistencia</div>
-          <div className="campus-d-gradebook-sub">Vista de cuaderno: la identidad y las filas quedan fijas; las lecciones se recorren con las flechas.</div>
+          <div className="campus-d-gradebook-sub">Las 32 lecciones permanecen en un único calendario movible. La próxima se marca en azul y queda en la penúltima posición visible.</div>
         </div>
         <div className="campus-d-gradebook-nav">
-          <span className="campus-d-gradebook-range">{startN}–{endN} de {list.length}</span>
-          <button className="campus-d-arrow" type="button" onClick={prev} disabled={offset <= 0} aria-label="Ver lecciones anteriores">←</button>
-          <button className="campus-d-arrow" type="button" onClick={next} disabled={offset >= maxOffset} aria-label="Ver siguientes lecciones">→</button>
+          <span className="campus-d-gradebook-range">{visibleRange.start || 0}–{visibleRange.end || 0} de {list.length}</span>
+          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(-1)} disabled={!list.length} aria-label="Ver lecciones anteriores">←</button>
+          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(1)} disabled={!list.length} aria-label="Ver siguientes lecciones">→</button>
         </div>
       </div>
 
       <div className="campus-d-gradebook-body">
-        <div className="campus-d-ledger">
+        <div ref={scrollRef} className="campus-d-ledger">
           {list.length ? (
             <div className="campus-d-ledger-inner">
               <div className="campus-d-ledger-labels">
@@ -1417,15 +1500,18 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
                 <div className="campus-d-ledger-row-label grade">Nota</div>
               </div>
 
-              {visible.map((row, idx) => {
+              {list.map((row, idx) => {
                 const type = typeMeta(row);
                 const attendance = attendanceMeta(row.asistencia);
+                const isActive = idx === activeIndex;
+                const isNext = idx === nextIndex;
                 return (
-                  <div className="campus-d-lesson-column" key={`${row.fecha}-${row.actividad}-${offset + idx}`}>
+                  <div className={`campus-d-lesson-column ${isActive ? 'is-active' : ''}`} key={row.key || `${row.fecha}-${row.actividad}-${idx}`}>
                     <div className="campus-d-lesson-head">
-                      <div className="campus-d-lesson-date">{fmtFechaCorta(row.fecha)}</div>
+                      <div className="campus-d-lesson-date">{row.fecha ? fmtFechaCorta(row.fecha) : 'Fecha pendiente'}</div>
                       <div className="campus-d-lesson-label">{row.actividad || 'Actividad'}</div>
                       <span className={`campus-d-type-tag ${type.cls}`}>{type.label}</span>
+                      {isActive ? <div className="campus-d-active-lesson-label">{focusRequest ? 'SELECCIONADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA')}</div> : null}
                     </div>
                     <div className="campus-d-lesson-attendance">
                       <span className="campus-d-attendance" style={{ color:attendance.color }}>
@@ -1459,51 +1545,7 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
   );
 }
 
-function EventCalendarMini({ evento }) {
-  if (!evento || !evento.fecha) return null;
-  const base = new Date(`${evento.fecha}T00:00:00`);
-  if (isNaN(base)) return null;
-  const year = base.getFullYear();
-  const month = base.getMonth();
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const offset = (first.getDay() + 6) % 7;
-  const days = [];
-  for (let i = 0; i < offset; i++) days.push(null);
-  for (let d = 1; d <= last.getDate(); d++) days.push(d);
-  while (days.length % 7 !== 0) days.push(null);
-  const dow = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const mes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][month];
-  return (
-    <div className="campus-d-calendar">
-      <div className="campus-d-calendar-head">
-        <div>
-          <div className="campus-d-calendar-title">{evento.title}</div>
-          <div className="campus-d-calendar-meta">{evento.leccionLabel} · {fmtFechaCorta(evento.fecha)}{evento.estado ? ` · ${evento.estado}` : ''}</div>
-        </div>
-        <span className="campus-d-calendar-badge">Solo esta actividad</span>
-      </div>
-      <div className="campus-d-calendar-gridwrap">
-        <div className="campus-d-calendar-month">
-          <div className="campus-d-calendar-month-title">{mes} {year}</div>
-          <div className="campus-d-calendar-days">
-            {dow.map(d => <div className="campus-d-calendar-dow" key={d}>{d}</div>)}
-            {days.map((day, idx) => (
-              <div className={`campus-d-calendar-day ${day === base.getDate() ? 'active' : ''}`} key={idx}>{day || ''}</div>
-            ))}
-          </div>
-        </div>
-        <div className="campus-d-calendar-detail">
-          <div className="campus-d-calendar-detail-label">Fecha marcada</div>
-          <div className="campus-d-calendar-detail-date">{fmtFechaCorta(evento.fecha)}</div>
-          <div className="campus-d-calendar-detail-copy">El calendario muestra únicamente la actividad seleccionada para identificar claramente la próxima lección o evaluación.</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, cronoPublicado, onNavigate }) {
+function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, cronoPublicado, onFocus }) {
   const order = [
     ['leccion', { title:'Próxima lección', code:'LEC', color:'#002F6C', data:proximaLeccion, empty:cronoPublicado ? 'Sin lecciones próximas' : 'Cronograma pendiente' }],
     ['ican', { title:'Próximo I CAN', code:'IC', color:'#2E7D32', data:proximoICAN, hidden:!proximoICAN }],
@@ -1514,8 +1556,13 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
   React.useEffect(() => {
     if (selected && !order.some(([key, meta]) => key === selected && meta.data)) setSelected('');
   }, [proximaLeccion, proximoICAN, proximoOral, proximoEscrito]);
-  const eventos = Object.fromEntries(order);
-  const activeEvento = selected ? eventos[selected]?.data : null;
+
+  const focusEvent = (key, ev) => {
+    if (!ev) return;
+    setSelected(key);
+    if (onFocus) onFocus(ev);
+    setTimeout(() => document.getElementById('registro-notas-asistencia')?.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
+  };
 
   return (
     <section className="campus-d-events" aria-label="Resumen de próximos eventos">
@@ -1529,7 +1576,7 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
               className={`campus-d-event-card ${selected === key ? 'active' : ''}`}
               key={key}
               disabled={!ev}
-              onClick={() => ev && setSelected(selected === key ? '' : key)}
+              onClick={() => focusEvent(key, ev)}
             >
               <span className="campus-d-event-kind" style={{ color:meta.color, background:`color-mix(in srgb, ${meta.color} 11%, white)` }}>{meta.code}</span>
               <span className="campus-d-event-copy">
@@ -1538,13 +1585,12 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
               </span>
               <span style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                 <span className="campus-d-event-date">{ev ? fmtFechaCorta(ev.fecha) : '—'}</span>
-                {ev ? <span style={{ fontSize:9.5, fontWeight:850, color:'var(--d-navy)' }}>Ver</span> : null}
+                {ev ? <span className="campus-d-event-action">Buscar</span> : null}
               </span>
             </button>
           );
         })}
       </div>
-      {activeEvento && <div className="campus-d-calendar-wrap"><EventCalendarMini evento={activeEvento} /></div>}
     </section>
   );
 }
@@ -1935,7 +1981,7 @@ function Kicker({ children }) {
 function DashSection({ title, hint }) {
   return (
     <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, margin:'4px 2px 12px' }}>
-      <h2 style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:500, letterSpacing:'-0.02em', margin:0, color:'var(--an-navy-ink)' }}>{title}</h2>
+      <h2 style={{ fontFamily:'Poppins, system-ui, sans-serif', fontSize:20, fontWeight:800, letterSpacing:'-0.01em', margin:0, color:'#002F6C' }}>{title}</h2>
       {hint && <span style={{ fontSize:11, color:'var(--ink-3)' }}>{hint}</span>}
     </div>
   );

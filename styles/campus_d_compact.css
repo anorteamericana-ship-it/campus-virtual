@@ -1,4 +1,4 @@
-/* F98.4-Z4D · Mi Campus — Ejecutivo institucional compacto */
+/* F98.4-Z5D · Tipografía unificada + cuaderno único de 32 lecciones */
 
 :root {
   --d-navy: #002f6c;
@@ -14,7 +14,45 @@
   --d-danger: #b3261e;
 }
 
-.d-serif { font-family: "Source Serif 4", Georgia, serif; }
+
+.campus-d-root,
+.campus-d-root * {
+  font-family: "Poppins", system-ui, sans-serif !important;
+}
+.campus-d-root {
+  color: var(--d-ink);
+}
+.campus-d-root h1,
+.campus-d-root h2,
+.campus-d-root h3,
+.campus-d-root .card-title,
+.campus-d-root .campus-d-gradebook-title,
+.campus-d-root .campus-d-events-head,
+.campus-d-root .campus-d-summary-title,
+.campus-d-root .campus-d-welcome-name {
+  color: var(--d-navy) !important;
+  font-weight: 800 !important;
+}
+.campus-d-root p,
+.campus-d-root .campus-d-gradebook-sub,
+.campus-d-root .campus-d-profile-role,
+.campus-d-root .campus-d-eyebrow,
+.campus-d-root .campus-d-contact-label,
+.campus-d-root .campus-d-event-meta,
+.campus-d-root .campus-d-ledger-student-meta {
+  color: var(--d-muted);
+}
+.campus-d-root .campus-d-contact-value,
+.campus-d-root .campus-d-profile-name,
+.campus-d-root .campus-d-meta-value,
+.campus-d-root .campus-d-event-title,
+.campus-d-root .campus-d-lesson-label,
+.campus-d-root .campus-d-comment-text,
+.campus-d-root .campus-d-summary-label,
+.campus-d-root .campus-d-panel-item {
+  font-weight: 700;
+}
+.d-serif { font-family: "Poppins", system-ui, sans-serif; }
 
 .campus-d-header {
   position: relative;
@@ -157,7 +195,7 @@
   font-size: 13px;
   line-height: 1.2;
   font-weight: 800;
-  color: var(--d-navy-ink);
+  color: var(--d-navy);
   overflow-wrap: anywhere;
 }
 .campus-d-profile-role {
@@ -208,7 +246,7 @@
   text-align: center;
 }
 .campus-d-progress-pct {
-  font-family: "Source Serif 4", Georgia, serif;
+  font-family: "Poppins", system-ui, sans-serif;
   font-size: 31px;
   font-weight: 650;
   line-height: 1;
@@ -217,7 +255,7 @@
 }
 .campus-d-progress-pct sup {
   margin-left: 1px;
-  font-family: Poppins, sans-serif;
+  font-family: "Poppins", system-ui, sans-serif;
   font-size: 12px;
   font-weight: 600;
   color: var(--d-muted);
@@ -241,12 +279,12 @@
 }
 .campus-d-welcome-name {
   margin-top: 3px;
-  font-family: "Source Serif 4", Georgia, serif;
+  font-family: "Poppins", system-ui, sans-serif;
   font-size: clamp(24px, 2.2vw, 31px);
   line-height: 1.08;
   font-weight: 650;
   letter-spacing: -.02em;
-  color: var(--d-navy-ink);
+  color: var(--d-navy);
   overflow-wrap: anywhere;
 }
 .campus-d-welcome-chips {
@@ -373,14 +411,15 @@
   flex-wrap: wrap;
 }
 .campus-d-gradebook-title {
-  font-size: 14px;
-  font-weight: 850;
-  letter-spacing: .02em;
-  color: var(--d-navy-ink);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  color: var(--d-navy);
 }
 .campus-d-gradebook-sub {
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 10.5px;
+  font-weight: 600;
   color: var(--d-muted);
 }
 .campus-d-gradebook-nav {
@@ -420,6 +459,10 @@
 .campus-d-ledger {
   min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--d-line);
   border-radius: 4px;
 }
@@ -542,6 +585,7 @@
   overflow: hidden;
   font-size: 10px;
   line-height: 1.35;
+  font-weight: 700;
   color: #4a413a;
 }
 .campus-d-lesson-grade {
@@ -549,7 +593,7 @@
   padding: 0 10px;
   display: flex;
   align-items: center;
-  font-family: "Source Serif 4", Georgia, serif;
+  font-family: "Poppins", system-ui, sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: var(--d-navy-ink);
@@ -580,9 +624,9 @@
   border-bottom: 1px solid var(--d-line-soft);
 }
 .campus-d-summary-row:last-child { border-bottom: none; }
-.campus-d-summary-label { font-size: 11.5px; color: #4a413a; }
+.campus-d-summary-label { font-size: 11.5px; font-weight: 700; color: #4a413a; }
 .campus-d-summary-value {
-  font-family: "Source Serif 4", Georgia, serif;
+  font-family: "Poppins", system-ui, sans-serif;
   font-size: 18px;
   font-weight: 700;
   color: var(--d-navy-ink);
@@ -593,6 +637,38 @@
   padding: 20px;
   color: var(--d-muted);
   font-size: 12px;
+}
+
+
+.campus-d-lesson-column.is-active {
+  position: relative;
+  background: #f7fbff;
+  box-shadow: inset 1px 0 #b9d8fa, inset -1px 0 #b9d8fa;
+}
+.campus-d-lesson-column.is-active .campus-d-lesson-head {
+  position: relative;
+  background: #eaf3ff;
+  border-top: 4px solid var(--d-navy);
+  padding-top: 4px;
+  box-shadow: 0 -5px 16px rgba(0,46,105,.12);
+}
+.campus-d-lesson-column.is-active .campus-d-lesson-attendance,
+.campus-d-lesson-column.is-active .campus-d-lesson-comment,
+.campus-d-lesson-column.is-active .campus-d-lesson-grade {
+  background: #f7fbff;
+}
+.campus-d-active-lesson-label {
+  margin-top: 3px;
+  font-size: 7px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: var(--d-navy);
+}
+.campus-d-event-action {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--d-navy);
 }
 
 /* Próximos eventos D */
@@ -607,11 +683,11 @@
 }
 .campus-d-events-head {
   padding: 13px 18px 8px;
-  font-size: 9.5px;
-  font-weight: 850;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--d-muted);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  text-transform: none;
+  color: var(--d-navy);
 }
 .campus-d-event-grid {
   padding: 0 18px 16px;
@@ -671,84 +747,6 @@
   color: var(--d-muted);
   white-space: nowrap;
 }
-.campus-d-calendar-wrap { padding: 0 18px 16px; }
-.campus-d-calendar {
-  padding: 14px 16px;
-  border: 1px solid var(--d-line);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--d-navy) 2%, white);
-}
-.campus-d-calendar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.campus-d-calendar-title {
-  font-family: "Source Serif 4", Georgia, serif;
-  font-size: 19px;
-  font-weight: 650;
-  color: var(--d-navy-ink);
-}
-.campus-d-calendar-meta { margin-top: 2px; font-size: 11px; color: var(--d-muted); }
-.campus-d-calendar-badge {
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--d-navy) 8%, white);
-  color: var(--d-navy);
-  font-size: 10px;
-  font-weight: 800;
-}
-.campus-d-calendar-gridwrap {
-  display: grid;
-  grid-template-columns: minmax(250px,320px) minmax(0,1fr);
-  gap: 14px;
-  align-items: start;
-}
-.campus-d-calendar-month,
-.campus-d-calendar-detail {
-  padding: 13px 14px;
-  background: #fff;
-  border: 1px solid var(--d-line);
-  border-radius: 4px;
-}
-.campus-d-calendar-month-title { margin-bottom: 9px; font-size: 13px; font-weight: 850; color: var(--d-ink); }
-.campus-d-calendar-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; text-align: center; }
-.campus-d-calendar-dow { padding: 4px 0; font-size: 9px; font-weight: 800; color: var(--d-muted); }
-.campus-d-calendar-day {
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--d-line-soft);
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 650;
-  color: var(--d-ink);
-}
-.campus-d-calendar-day.active {
-  border: 2px solid var(--d-navy);
-  background: color-mix(in srgb, var(--d-navy) 10%, white);
-  color: var(--d-navy-ink);
-  font-weight: 850;
-}
-.campus-d-calendar-detail-label {
-  font-size: 9px;
-  font-weight: 850;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--d-muted);
-}
-.campus-d-calendar-detail-date {
-  margin-top: 3px;
-  font-family: "Source Serif 4", Georgia, serif;
-  font-size: 25px;
-  font-weight: 650;
-  color: var(--d-navy-ink);
-}
-.campus-d-calendar-detail-copy { margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: #4a413a; }
-
 @media (max-width: 1080px) {
   .campus-d-contact-strip { grid-template-columns: repeat(3,minmax(0,1fr)); }
   .campus-d-actions { grid-column: 1 / -1; justify-content: flex-start; padding: 0 8px 4px; }
@@ -773,8 +771,6 @@
   .campus-d-gradebook-head { padding: 12px 12px 8px; }
   .campus-d-event-grid { grid-template-columns: 1fr; padding: 0 12px 12px; }
   .campus-d-events-head { padding: 12px 12px 8px; }
-  .campus-d-calendar-wrap { padding: 0 12px 12px; }
-  .campus-d-calendar-gridwrap { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -825,8 +821,5 @@
   .campus-d-summary-value { font-size: 15px; }
   .campus-d-gradebook-range { min-width: auto; font-size: 9px; }
   .campus-d-arrow { width: 28px; height: 28px; font-size: 13px; }
-  .campus-d-calendar { padding: 10px; }
-  .campus-d-calendar-title { font-size: 16px; }
-  .campus-d-calendar-badge { display: none; }
-  .campus-d-calendar-day { height: 28px; font-size: 10px; }
 }
+
