@@ -1,4 +1,4 @@
-/* F98.4-Z5D · Tipografía unificada + cuaderno único de 32 lecciones */
+/* F98.4-Z5D7 · Tipografía unificada + cuaderno único de 32 lecciones */
 
 :root {
   --d-navy: #002f6c;
@@ -12,6 +12,10 @@
   --d-success: #2e7d32;
   --d-warning: #c67100;
   --d-danger: #b3261e;
+  --d-card-bg: rgba(255,255,255,.90);
+  --d-card-bg-strong: rgba(255,255,255,.94);
+  --d-shadow-soft: 0 10px 24px rgba(0, 31, 71, .05);
+  --d-shadow-hover: 0 14px 32px rgba(0, 31, 71, .08);
 }
 
 
@@ -24,7 +28,7 @@
   isolation: isolate;
   color: var(--d-ink);
   background:
-    linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.08)),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08)),
     #f1ece2;
 }
 .campus-d-root::before {
@@ -34,7 +38,7 @@
   z-index: -2;
   pointer-events: none;
   background:
-    url("../assets/campus_bg_art.svg?v=F98.4Z5D6") center top / 100% auto repeat-y,
+    url("../assets/campus_bg_art.svg?v=F98.4Z5D7") center top / 100% auto repeat-y,
     linear-gradient(180deg, #f2ede3 0%, #efe9de 100%);
   opacity: 1;
 }
@@ -45,7 +49,7 @@
   z-index: -1;
   pointer-events: none;
   background:
-    url("../assets/virtual_pattern.svg?v=F98.4Z5D6") left top / 240px 80px repeat,
+    url("../assets/virtual_pattern.svg?v=F98.4Z5D7") left top / 240px 80px repeat,
     radial-gradient(circle at 22% 20%, rgba(9,58,132,.055) 0 16%, transparent 16.5%),
     radial-gradient(circle at 72% 8%, rgba(40,40,40,.05) 0 18%, transparent 18.5%),
     linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
@@ -85,7 +89,7 @@
 
 .campus-d-header {
   position: relative;
-  min-height: 114px;
+  min-height: 118px;
   margin-bottom: 18px;
   padding: 0 28px;
   display: flex;
@@ -95,15 +99,15 @@
   overflow: hidden;
   background: linear-gradient(180deg, rgba(255,255,255,.88) 0%, rgba(252,250,246,.94) 100%);
   border: 1px solid var(--d-line);
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  border-radius: 10px;
+  box-shadow: var(--d-shadow-soft);
 }
 .campus-d-header::before {
   content: "";
   position: absolute;
   inset: 0;
   width: auto;
-  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D6");
+  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D7");
   background-repeat: repeat;
   background-size: 210px 70px;
   background-position: left top;
@@ -123,7 +127,7 @@
   position: relative;
   z-index: 1;
   width: auto;
-  height: 62px;
+  height: 64px;
   max-width: 450px;
   object-fit: contain;
 }
@@ -162,10 +166,10 @@
 .campus-d-welcome-card,
 .campus-d-contact-strip,
 .campus-d-panel {
-  background: rgba(255,255,255,.94);
-  border: 1px solid var(--d-line);
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  background: var(--d-card-bg-strong);
+  border: 1px solid rgba(230,226,218,.88);
+  border-radius: 10px;
+  box-shadow: var(--d-shadow-soft);
 }
 .campus-d-profile-card {
   padding: 14px;
@@ -184,8 +188,17 @@
   cursor: pointer;
   background: var(--d-soft);
   border: 1px solid var(--d-line);
-  border-radius: 4px;
+  border-radius: 8px;
 }
+.campus-d-profile-card:hover,
+.campus-d-welcome-card:hover,
+.campus-d-contact-strip:hover,
+.campus-d-panel:hover,
+.campus-d-gradebook:hover,
+.campus-d-events:hover {
+  box-shadow: var(--d-shadow-hover);
+}
+
 .campus-d-photo-button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--d-navy) 25%, transparent);
   outline-offset: 2px;
@@ -249,7 +262,7 @@
 .campus-d-welcome-card {
   position: relative;
   min-width: 0;
-  padding: 14px 20px;
+  padding: 18px 22px;
   display: flex;
   align-items: center;
   gap: 22px;
@@ -325,7 +338,7 @@
 }
 .campus-d-chip {
   padding: 4px 9px;
-  border-radius: 4px;
+  border-radius: 10px;
   background: var(--d-soft);
   color: #4a413a;
   font-size: 10.5px;
@@ -338,19 +351,19 @@
 }
 .campus-d-a-accent {
   position: absolute;
-  right: 26px;
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   width: auto;
-  height: 138px;
+  height: 150px;
   object-fit: contain;
-  filter: grayscale(100%) brightness(.94);
-  opacity: .12;
+  filter: grayscale(100%) brightness(.95);
+  opacity: .14;
   pointer-events: none;
 }
 .campus-d-photo-message {
   margin-top: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 4px;
   font-size: 11.5px;
   line-height: 1.4;
@@ -428,13 +441,13 @@
 .campus-d-gradebook {
   margin-bottom: 18px;
   overflow: hidden;
-  background: rgba(255,255,255,.94);
-  border: 1px solid var(--d-line);
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  background: var(--d-card-bg-strong);
+  border: 1px solid rgba(230,226,218,.88);
+  border-radius: 10px;
+  box-shadow: var(--d-shadow-soft);
 }
 .campus-d-gradebook-head {
-  padding: 14px 18px 10px;
+  padding: 16px 20px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -472,16 +485,16 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background: rgba(255,255,255,.94);
-  border: 1px solid var(--d-line);
-  border-radius: 4px;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(230,226,218,.92);
+  border-radius: 10px;
   color: var(--d-navy);
   font-size: 15px;
   font-weight: 800;
 }
 .campus-d-arrow:disabled { opacity: .36; cursor: not-allowed; }
 .campus-d-gradebook-body {
-  padding: 0 18px 16px;
+  padding: 0 20px 18px;
   display: grid;
   grid-template-columns: minmax(0,1fr) 236px;
   gap: 14px;
@@ -633,9 +646,9 @@
 .campus-d-summary {
   min-width: 0;
   padding: 12px 14px;
-  background: rgba(255,255,255,.94);
-  border: 1px solid var(--d-line);
-  border-radius: 4px;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(230,226,218,.92);
+  border-radius: 10px;
 }
 .campus-d-summary-title {
   margin-bottom: 8px;
@@ -730,13 +743,13 @@
   margin-bottom: 18px;
   padding: 0;
   overflow: hidden;
-  background: rgba(255,255,255,.94);
-  border: 1px solid var(--d-line);
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  background: var(--d-card-bg-strong);
+  border: 1px solid rgba(230,226,218,.88);
+  border-radius: 10px;
+  box-shadow: var(--d-shadow-soft);
 }
 .campus-d-events-head {
-  padding: 13px 18px 8px;
+  padding: 15px 20px 10px;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: .01em;
@@ -744,7 +757,7 @@
   color: var(--d-navy);
 }
 .campus-d-event-grid {
-  padding: 0 18px 16px;
+  padding: 0 20px 18px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 12px;
@@ -760,9 +773,9 @@
   justify-content: space-between;
   gap: 12px;
   cursor: pointer;
-  background: rgba(255,255,255,.94);
-  border: 1px solid var(--d-line);
-  border-radius: 4px;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(230,226,218,.92);
+  border-radius: 10px;
   text-align: left;
 }
 .campus-d-event-card.simple {
@@ -770,8 +783,10 @@
 }
 .campus-d-event-card:hover,
 .campus-d-event-card.active {
+  transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--d-navy) 48%, var(--d-line));
   background: color-mix(in srgb, var(--d-navy) 3.5%, white);
+  box-shadow: 0 8px 18px rgba(0, 47, 108, .08);
 }
 .campus-d-event-card:disabled { opacity: .55; cursor: not-allowed; }
 .campus-d-event-kind,
