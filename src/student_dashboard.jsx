@@ -639,7 +639,7 @@ function StudentDashboard({ toast, onNavigate }) {
   }
   if (!proximoIcanEvento) proximoIcanEvento = buildICANEventoDesdeDataSD(icanData);
   const cronoPublicado = Array.isArray(lecciones) && lecciones.length > 0;
-  const registroAcademico = React.useMemo(() => buildRegistroAcademicoSD({
+  const registroAcademico = buildRegistroAcademicoSD({
     asistenciaRows: asistenciaVista,
     lecciones,
     evaluaciones,
@@ -651,7 +651,7 @@ function StudentDashboard({ toast, onNavigate }) {
     asistPct,
     asistPresentes,
     asistTotal,
-  }), [asistenciaVista, lecciones, evaluaciones, retroData, icanData, nivelSeleccionado, codGrupoSeleccionado, notaActiva, asistPct, asistPresentes, asistTotal]);
+  });
 
   // La ruta siempre muestra los cuatro niveles; los pendientes no desaparecen.
   const nivelesRuta = ['B1','B2','I1','I2'].map(n => {

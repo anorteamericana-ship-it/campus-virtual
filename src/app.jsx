@@ -53,7 +53,7 @@ function LazyRoute({ title, component, files, ...props }) {
   return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
 }
 const F96_LAZY = {
-  student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z'],
+  student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z1'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4V'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4K'],
   teacher_views: ['src/vista_docente.jsx?v=F96.5G','src/teacher_views.jsx?v=F98.4O'],
