@@ -1077,7 +1077,7 @@ function ProximaAccionCampus({ proximaClase, proximoExamen, cronoPublicado, onNa
     </div>
   );
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Qué sigue en el campus">
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Resumen de próximos eventos">
       <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center' }}>
         <div>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Resumen de próximos eventos</div>
