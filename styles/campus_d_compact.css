@@ -1,4 +1,4 @@
-/* F98.4-Z5D9 · Ajuste final: banda azul debajo de recuadros + limpieza de mancha roja */
+/* F98.4-Z5D10 · Microafinación final: banda bajo expediente + limpieza de acentos */
 
 :root {
   --d-navy: #002f6c;
@@ -38,7 +38,7 @@
   z-index: -2;
   pointer-events: none;
   background:
-    url("../assets/campus_bg_art.svg?v=F98.4Z5D9") center top / 100% auto repeat-y,
+    url("../assets/campus_bg_art.svg?v=F98.4Z5D10") center top / 100% auto repeat-y,
     linear-gradient(180deg, #f2ede3 0%, #efe9de 100%);
   opacity: 1;
 }
@@ -49,7 +49,7 @@
   z-index: -1;
   pointer-events: none;
   background:
-    url("../assets/virtual_pattern.svg?v=F98.4Z5D9") left top / 210px 70px repeat,
+    url("../assets/virtual_pattern.svg?v=F98.4Z5D10") left top / 210px 70px repeat,
     radial-gradient(circle at 16% 28%, rgba(9,58,132,.085) 0 14%, transparent 14.5%),
     radial-gradient(circle at 72% 12%, rgba(40,40,40,.055) 0 16%, transparent 16.5%),
     radial-gradient(circle at 82% 68%, rgba(9,58,132,.05) 0 12%, transparent 12.5%),
@@ -108,7 +108,7 @@
   position: absolute;
   inset: 0;
   width: auto;
-  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D9");
+  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D10");
   background-repeat: repeat;
   background-size: 150px 50px;
   background-position: left top;
@@ -883,3 +883,34 @@
   .campus-d-arrow { width: 28px; height: 28px; font-size: 13px; }
 }
 
+
+
+/* F98.4-Z5D10 · Banda institucional controlada debajo de Tu expediente */
+.campus-d-root .campus-d-events + div + .grid-mods {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 48px !important;
+}
+.campus-d-root .campus-d-events + div + .grid-mods::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -30px;
+  height: 22px;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(176,190,215,.72) 0 30%, transparent 31%),
+    linear-gradient(180deg, rgba(0,47,108,.90) 0 62%, rgba(55,96,153,.82) 63% 100%);
+  clip-path: polygon(0 36%, 8% 24%, 18% 32%, 30% 18%, 42% 28%, 55% 12%, 69% 25%, 82% 17%, 92% 27%, 100% 20%, 100% 76%, 90% 83%, 77% 72%, 64% 87%, 51% 73%, 38% 88%, 24% 74%, 12% 86%, 0 76%);
+  opacity: .92;
+}
+@media (max-width: 780px) {
+  .campus-d-root .campus-d-events + div + .grid-mods {
+    margin-bottom: 38px !important;
+  }
+  .campus-d-root .campus-d-events + div + .grid-mods::after {
+    bottom: -24px;
+    height: 17px;
+  }
+}
