@@ -1,4 +1,4 @@
-/* F98.4-Z5D7 · Tipografía unificada + cuaderno único de 32 lecciones */
+/* F98.4-Z5D8 · Afinación visual final juvenil/dinámica */
 
 :root {
   --d-navy: #002f6c;
@@ -29,7 +29,7 @@
   color: var(--d-ink);
   background:
     linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08)),
-    #f1ece2;
+    linear-gradient(120deg, #f1ece2 0%, #efe8dd 45%, #f4efe5 100%);
 }
 .campus-d-root::before {
   content: "";
@@ -38,7 +38,7 @@
   z-index: -2;
   pointer-events: none;
   background:
-    url("../assets/campus_bg_art.svg?v=F98.4Z5D7") center top / 100% auto repeat-y,
+    url("../assets/campus_bg_art.svg?v=F98.4Z5D8") center top / 100% auto repeat-y,
     linear-gradient(180deg, #f2ede3 0%, #efe9de 100%);
   opacity: 1;
 }
@@ -49,11 +49,12 @@
   z-index: -1;
   pointer-events: none;
   background:
-    url("../assets/virtual_pattern.svg?v=F98.4Z5D7") left top / 240px 80px repeat,
-    radial-gradient(circle at 22% 20%, rgba(9,58,132,.055) 0 16%, transparent 16.5%),
-    radial-gradient(circle at 72% 8%, rgba(40,40,40,.05) 0 18%, transparent 18.5%),
+    url("../assets/virtual_pattern.svg?v=F98.4Z5D8") left top / 210px 70px repeat,
+    radial-gradient(circle at 16% 28%, rgba(9,58,132,.085) 0 14%, transparent 14.5%),
+    radial-gradient(circle at 72% 12%, rgba(40,40,40,.055) 0 16%, transparent 16.5%),
+    radial-gradient(circle at 82% 68%, rgba(9,58,132,.05) 0 12%, transparent 12.5%),
     linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
-  opacity: .15;
+  opacity: .2;
 }
 .campus-d-root h1,
 .campus-d-root h2,
@@ -107,11 +108,11 @@
   position: absolute;
   inset: 0;
   width: auto;
-  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D7");
+  background-image: url("../assets/virtual_pattern.svg?v=F98.4Z5D8");
   background-repeat: repeat;
-  background-size: 210px 70px;
+  background-size: 150px 50px;
   background-position: left top;
-  opacity: .36;
+  opacity: .42;
   pointer-events: none;
 }
 .campus-d-header::after {
@@ -358,7 +359,7 @@
   height: 150px;
   object-fit: contain;
   filter: grayscale(100%) brightness(.95);
-  opacity: .14;
+  opacity: .11;
   pointer-events: none;
 }
 .campus-d-photo-message {

@@ -45,6 +45,14 @@
   <path d="M0 1144c175 4 369-6 556-24 154-15 348-30 548-16 171 12 328 8 496-27v96H0v-29Z" fill="url(#navyGrad)" opacity="0.96"/>
   <path d="M0 1184c151 11 312 3 475-15 204-23 430-38 664-13 129 14 277 12 461-6v64H0v-30Z" fill="#aab7d0" opacity="0.72"/>
 
+  <!-- supporting youthful shapes across full page -->
+  <ellipse cx="1510" cy="640" rx="220" ry="260" fill="url(#lightGrad)" opacity="0.28"/>
+  <ellipse cx="-120" cy="1780" rx="260" ry="360" fill="url(#navyGrad)" opacity="0.88"/>
+  <circle cx="1010" cy="1830" r="300" fill="url(#lightGrad)" opacity="0.24"/>
+  <path d="M0 2250c160-12 334-13 522-4 227 12 432 10 648-8 165-13 311-36 430-72v110H0v-26Z" fill="#d6d6d6" opacity="0.22"/>
+  <path d="M0 2286c171 8 342 2 517-12 236-18 471-27 710-12 121 8 246 7 373-7v58H0v-27Z" fill="url(#navyGrad)" opacity="0.72"/>
+  <path d="M0 2314c132 9 270 5 412-8 229-21 476-30 731-10 148 12 300 12 457 0v39H0v-21Z" fill="#aab7d0" opacity="0.54"/>
+
   <!-- watermark As distributed through the page -->
   <use href="#waterA" x="88" y="110"/>
   <use href="#waterA" x="430" y="190"/>
@@ -80,7 +88,7 @@
   </g>
 
   <!-- additional mid-page accents to keep background alive -->
-  <circle cx="1338" cy="1008" r="14" fill="#1a1a1a" opacity="0.58"/>
+  <rect x="1324" y="994" width="26" height="26" rx="4" fill="#20304a" opacity="0.18"/>
   <g opacity="0.7" stroke="#ffffff" stroke-width="6" stroke-linecap="round">
     <path d="M430 1760h230"/>
     <path d="M430 1790h230"/>
@@ -90,6 +98,14 @@
   <path d="M1506 1608c-14 8-24 20-29 35" stroke="#7a74ca" stroke-width="6" stroke-linecap="round" opacity="0.72"/>
   <path d="M1460 1652c-18 2-33 11-43 27" stroke="#7a74ca" stroke-width="6" stroke-linecap="round" opacity="0.72"/>
   <path d="M1425 1700c-11 9-18 20-21 34" stroke="#7a74ca" stroke-width="6" stroke-linecap="round" opacity="0.72"/>
+
+  <g transform="translate(112 1430)">
+    <use href="#waves"/>
+  </g>
+  <g transform="translate(1220 2060)">
+    <use href="#accentLines"/>
+  </g>
+  <circle cx="214" cy="2088" r="92" stroke="#ffffff" stroke-width="4" stroke-dasharray="2 14" stroke-linecap="round" opacity="0.55"/>
 
   <!-- bottom-right brand accent -->
   <g transform="translate(1160 2480) scale(0.9)" opacity="0.96">
