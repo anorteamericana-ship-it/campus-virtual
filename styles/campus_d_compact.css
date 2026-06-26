@@ -1,0 +1,832 @@
+/* F98.4-Z4D · Mi Campus — Ejecutivo institucional compacto */
+
+:root {
+  --d-navy: #002f6c;
+  --d-navy-ink: #001e47;
+  --d-red: #da291c;
+  --d-ink: #1a1613;
+  --d-muted: #6b7280;
+  --d-line: #e6e2da;
+  --d-line-soft: #efede7;
+  --d-soft: #f5f4f1;
+  --d-success: #2e7d32;
+  --d-warning: #c67100;
+  --d-danger: #b3261e;
+}
+
+.d-serif { font-family: "Source Serif 4", Georgia, serif; }
+
+.campus-d-header {
+  position: relative;
+  min-height: 100px;
+  margin-bottom: 18px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.campus-d-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 320px;
+  background-image: url("../assets/virtual_pattern.svg");
+  background-size: cover;
+  background-position: left center;
+  opacity: .14;
+  pointer-events: none;
+}
+.campus-d-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--d-red);
+}
+.campus-d-header-logo {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  height: 46px;
+  max-width: 360px;
+  object-fit: contain;
+}
+.campus-d-header-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  text-align: right;
+}
+.campus-d-header-meta-block + .campus-d-header-meta-block {
+  padding-left: 22px;
+  border-left: 1px solid var(--d-line);
+}
+.campus-d-eyebrow {
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--d-muted);
+}
+.campus-d-meta-value {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--d-navy);
+  white-space: nowrap;
+}
+.campus-d-meta-value.neutral { color: var(--d-ink); }
+
+.campus-d-student-section { margin-bottom: 18px; }
+.campus-d-intro {
+  display: grid;
+  grid-template-columns: 228px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.campus-d-profile-card,
+.campus-d-welcome-card,
+.campus-d-contact-strip,
+.campus-d-panel {
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.campus-d-profile-card {
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+.campus-d-photo-button {
+  position: relative;
+  width: 84px;
+  min-width: 84px;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--d-soft);
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+}
+.campus-d-photo-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--d-navy) 25%, transparent);
+  outline-offset: 2px;
+}
+.campus-d-photo-button img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.campus-d-photo-button img.is-placeholder { object-fit: contain; }
+.campus-d-photo-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 3px;
+  background: rgba(0,30,71,.78);
+  color: #fff;
+  font-size: 8px;
+  line-height: 1.15;
+  font-weight: 800;
+  text-align: center;
+}
+.campus-d-profile-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+.campus-d-profile-name {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--d-navy-ink);
+  overflow-wrap: anywhere;
+}
+.campus-d-profile-role {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--d-muted);
+}
+.campus-d-active {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--d-success);
+}
+.campus-d-active::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--d-success);
+}
+.campus-d-welcome-card {
+  position: relative;
+  min-width: 0;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  overflow: hidden;
+}
+.campus-d-progress-ring {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  min-width: 108px;
+}
+.campus-d-progress-ring svg { display: block; transform: rotate(-90deg); }
+.campus-d-progress-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.campus-d-progress-pct {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 31px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -.035em;
+  color: var(--d-navy-ink);
+}
+.campus-d-progress-pct sup {
+  margin-left: 1px;
+  font-family: Poppins, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--d-muted);
+}
+.campus-d-progress-sub {
+  margin-top: 3px;
+  font-size: 8px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--d-muted);
+}
+.campus-d-welcome-copy { position: relative; z-index: 1; min-width: 0; flex: 1; }
+.campus-d-welcome-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--d-red);
+}
+.campus-d-welcome-name {
+  margin-top: 3px;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(24px, 2.2vw, 31px);
+  line-height: 1.08;
+  font-weight: 650;
+  letter-spacing: -.02em;
+  color: var(--d-navy-ink);
+  overflow-wrap: anywhere;
+}
+.campus-d-welcome-chips {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.campus-d-chip {
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: var(--d-soft);
+  color: #4a413a;
+  font-size: 10.5px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.campus-d-chip.primary {
+  background: color-mix(in srgb, var(--d-navy) 8%, white);
+  color: var(--d-navy);
+}
+.campus-d-a-accent {
+  position: absolute;
+  right: 15px;
+  bottom: -7px;
+  width: auto;
+  height: 88px;
+  object-fit: contain;
+  filter: grayscale(100%) brightness(.85);
+  opacity: .12;
+  pointer-events: none;
+}
+.campus-d-photo-message {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.campus-d-photo-message.ok {
+  color: #25683b;
+  border: 1px solid color-mix(in srgb, var(--d-success) 30%, white);
+  background: color-mix(in srgb, var(--d-success) 8%, white);
+}
+.campus-d-photo-message.err {
+  color: #9c2f2f;
+  border: 1px solid color-mix(in srgb, var(--d-danger) 30%, white);
+  background: color-mix(in srgb, var(--d-danger) 8%, white);
+}
+.campus-d-contact-strip {
+  margin-top: 12px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,.7fr) minmax(0,.7fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+.campus-d-contact-item {
+  min-width: 0;
+  padding: 8px 10px;
+  border-right: 1px solid var(--d-line-soft);
+}
+.campus-d-contact-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--d-muted);
+}
+.campus-d-contact-value {
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 750;
+  color: var(--d-ink);
+}
+.campus-d-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.campus-d-actions .btn {
+  min-height: 38px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  font-size: 10.5px;
+}
+.campus-d-panel {
+  margin-top: 12px;
+  padding: 16px 18px;
+}
+.campus-d-panel .campus-d-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.campus-d-panel .campus-d-panel-item {
+  min-height: 86px;
+  padding: 12px 13px;
+  border: 1px solid var(--d-line);
+  border-radius: 5px;
+  background: #fff;
+}
+
+/* Registro compacto tipo cuaderno */
+.campus-d-gradebook {
+  margin-bottom: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.campus-d-gradebook-head {
+  padding: 14px 18px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.campus-d-gradebook-title {
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: .02em;
+  color: var(--d-navy-ink);
+}
+.campus-d-gradebook-sub {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--d-muted);
+}
+.campus-d-gradebook-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.campus-d-gradebook-range {
+  min-width: 68px;
+  text-align: right;
+  font-size: 10.5px;
+  font-weight: 750;
+  color: var(--d-muted);
+}
+.campus-d-arrow {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+  color: var(--d-navy);
+  font-size: 15px;
+  font-weight: 800;
+}
+.campus-d-arrow:disabled { opacity: .36; cursor: not-allowed; }
+.campus-d-gradebook-body {
+  padding: 0 18px 16px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 236px;
+  gap: 14px;
+  align-items: stretch;
+}
+.campus-d-ledger {
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+}
+.campus-d-ledger-inner {
+  display: inline-flex;
+  min-width: 100%;
+}
+.campus-d-ledger-labels {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: 182px;
+  min-width: 182px;
+  background: #fff;
+  border-right: 2px solid var(--d-line);
+}
+.campus-d-ledger-student {
+  height: 68px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--d-soft);
+  border-bottom: 1px solid var(--d-line);
+}
+.campus-d-ledger-student-name {
+  font-size: 12.5px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: var(--d-navy-ink);
+}
+.campus-d-ledger-student-meta {
+  margin-top: 3px;
+  font-size: 9px;
+  color: var(--d-muted);
+}
+.campus-d-ledger-row-label {
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--d-muted);
+  border-bottom: 1px solid var(--d-line-soft);
+}
+.campus-d-ledger-row-label.attendance { height: 42px; }
+.campus-d-ledger-row-label.comment { height: 68px; }
+.campus-d-ledger-row-label.grade { height: 50px; border-bottom: none; }
+.campus-d-lesson-column {
+  width: 138px;
+  min-width: 138px;
+  border-right: 1px solid var(--d-line-soft);
+}
+.campus-d-lesson-head {
+  height: 68px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--d-line);
+}
+.campus-d-lesson-date {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--d-muted);
+}
+.campus-d-lesson-label {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--d-navy-ink);
+}
+.campus-d-type-tag {
+  margin-top: 5px;
+  display: inline-flex;
+  max-width: 100%;
+  padding: 2px 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 4px;
+  font-size: 8.5px;
+  font-weight: 850;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.campus-d-type-tag.lesson { color: #4a413a; background: color-mix(in srgb, #4a413a 9%, white); }
+.campus-d-type-tag.progress { color: var(--d-navy); background: color-mix(in srgb, var(--d-navy) 9%, white); }
+.campus-d-type-tag.oral { color: #7a4e00; background: color-mix(in srgb, var(--d-warning) 15%, white); }
+.campus-d-type-tag.written { color: var(--d-red); background: color-mix(in srgb, var(--d-red) 9%, white); }
+.campus-d-type-tag.ican { color: var(--d-success); background: color-mix(in srgb, var(--d-success) 10%, white); }
+.campus-d-lesson-attendance {
+  height: 42px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--d-line-soft);
+}
+.campus-d-attendance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+.campus-d-attendance-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.campus-d-lesson-comment {
+  height: 68px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--d-line-soft);
+}
+.campus-d-comment-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #4a413a;
+}
+.campus-d-lesson-grade {
+  height: 50px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--d-navy-ink);
+}
+.campus-d-lesson-grade.empty { color: #b8ae9c; }
+.campus-d-summary {
+  min-width: 0;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+}
+.campus-d-summary-title {
+  margin-bottom: 8px;
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--d-navy);
+}
+.campus-d-summary-row {
+  min-height: 40px;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--d-line-soft);
+}
+.campus-d-summary-row:last-child { border-bottom: none; }
+.campus-d-summary-label { font-size: 11.5px; color: #4a413a; }
+.campus-d-summary-value {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--d-navy-ink);
+  white-space: nowrap;
+}
+.campus-d-summary-value small { font-size: 11px; color: var(--d-muted); }
+.campus-d-gradebook-empty {
+  padding: 20px;
+  color: var(--d-muted);
+  font-size: 12px;
+}
+
+/* Próximos eventos D */
+.campus-d-events {
+  margin-bottom: 18px;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.campus-d-events-head {
+  padding: 13px 18px 8px;
+  font-size: 9.5px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--d-muted);
+}
+.campus-d-event-grid {
+  padding: 0 18px 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+.campus-d-event-card {
+  min-width: 0;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+  text-align: left;
+}
+.campus-d-event-card:hover,
+.campus-d-event-card.active {
+  border-color: color-mix(in srgb, var(--d-navy) 48%, var(--d-line));
+  background: color-mix(in srgb, var(--d-navy) 3.5%, white);
+}
+.campus-d-event-card:disabled { opacity: .55; cursor: not-allowed; }
+.campus-d-event-kind {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 8.5px;
+  font-weight: 900;
+}
+.campus-d-event-copy { min-width: 0; flex: 1; }
+.campus-d-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--d-ink);
+}
+.campus-d-event-meta {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9.5px;
+  color: var(--d-muted);
+}
+.campus-d-event-date {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--d-muted);
+  white-space: nowrap;
+}
+.campus-d-calendar-wrap { padding: 0 18px 16px; }
+.campus-d-calendar {
+  padding: 14px 16px;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--d-navy) 2%, white);
+}
+.campus-d-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.campus-d-calendar-title {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--d-navy-ink);
+}
+.campus-d-calendar-meta { margin-top: 2px; font-size: 11px; color: var(--d-muted); }
+.campus-d-calendar-badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--d-navy) 8%, white);
+  color: var(--d-navy);
+  font-size: 10px;
+  font-weight: 800;
+}
+.campus-d-calendar-gridwrap {
+  display: grid;
+  grid-template-columns: minmax(250px,320px) minmax(0,1fr);
+  gap: 14px;
+  align-items: start;
+}
+.campus-d-calendar-month,
+.campus-d-calendar-detail {
+  padding: 13px 14px;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+}
+.campus-d-calendar-month-title { margin-bottom: 9px; font-size: 13px; font-weight: 850; color: var(--d-ink); }
+.campus-d-calendar-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; text-align: center; }
+.campus-d-calendar-dow { padding: 4px 0; font-size: 9px; font-weight: 800; color: var(--d-muted); }
+.campus-d-calendar-day {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--d-line-soft);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--d-ink);
+}
+.campus-d-calendar-day.active {
+  border: 2px solid var(--d-navy);
+  background: color-mix(in srgb, var(--d-navy) 10%, white);
+  color: var(--d-navy-ink);
+  font-weight: 850;
+}
+.campus-d-calendar-detail-label {
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--d-muted);
+}
+.campus-d-calendar-detail-date {
+  margin-top: 3px;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 25px;
+  font-weight: 650;
+  color: var(--d-navy-ink);
+}
+.campus-d-calendar-detail-copy { margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: #4a413a; }
+
+@media (max-width: 1080px) {
+  .campus-d-contact-strip { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .campus-d-actions { grid-column: 1 / -1; justify-content: flex-start; padding: 0 8px 4px; }
+  .campus-d-gradebook-body { grid-template-columns: minmax(0,1fr); }
+  .campus-d-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+  .campus-d-summary-title { grid-column: 1 / -1; margin-bottom: 0; }
+  .campus-d-summary-row { padding: 8px 10px; border: 1px solid var(--d-line-soft); border-radius: 4px; }
+}
+
+@media (max-width: 780px) {
+  .campus-d-header { min-height: 70px; padding: 0 16px; }
+  .campus-d-header-logo { height: 34px; max-width: 220px; }
+  .campus-d-header-meta-block.secondary { display: none; }
+  .campus-d-header-meta-block + .campus-d-header-meta-block { padding-left: 0; border-left: none; }
+  .campus-d-intro { grid-template-columns: 1fr; gap: 10px; }
+  .campus-d-profile-card { order: 2; }
+  .campus-d-welcome-card { order: 1; }
+  .campus-d-contact-strip { grid-template-columns: 1fr 1fr; }
+  .campus-d-contact-item:nth-child(3) { border-right: none; }
+  .campus-d-actions { grid-column: 1 / -1; }
+  .campus-d-gradebook-body { padding: 0 10px 12px; }
+  .campus-d-gradebook-head { padding: 12px 12px 8px; }
+  .campus-d-event-grid { grid-template-columns: 1fr; padding: 0 12px 12px; }
+  .campus-d-events-head { padding: 12px 12px 8px; }
+  .campus-d-calendar-wrap { padding: 0 12px 12px; }
+  .campus-d-calendar-gridwrap { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .campus-d-header { min-height: 58px; border-radius: 4px; }
+  .campus-d-header::before { width: 150px; opacity: .1; }
+  .campus-d-header-logo { height: 28px; max-width: 185px; }
+  .campus-d-header-meta { gap: 0; }
+  .campus-d-eyebrow { display: none; }
+  .campus-d-meta-value { font-size: 10px; }
+  .campus-d-welcome-card { min-height: 94px; padding: 12px; gap: 12px; }
+  .campus-d-progress-ring { width: 68px; height: 68px; min-width: 68px; }
+  .campus-d-progress-ring svg { width: 68px; height: 68px; }
+  .campus-d-progress-pct { font-size: 20px; }
+  .campus-d-progress-pct sup { font-size: 9px; }
+  .campus-d-progress-sub { font-size: 7px; }
+  .campus-d-welcome-name { font-size: 18px; }
+  .campus-d-welcome-chips { margin-top: 6px; gap: 5px; }
+  .campus-d-chip { padding: 3px 6px; font-size: 9px; }
+  .campus-d-a-accent { display: none; }
+  .campus-d-profile-card { min-height: 88px; }
+  .campus-d-photo-button { width: 60px; min-width: 60px; }
+  .campus-d-contact-strip { grid-template-columns: 1fr; }
+  .campus-d-contact-item { border-right: none; border-bottom: 1px solid var(--d-line-soft); }
+  .campus-d-actions { padding: 2px 0 0; }
+  .campus-d-actions .btn { flex: 1; }
+  .campus-d-ledger-labels { width: 78px; min-width: 78px; }
+  .campus-d-ledger-student { height: 48px; padding: 6px 8px; }
+  .campus-d-ledger-student-name { font-size: 9.5px; }
+  .campus-d-ledger-student-meta { display: none; }
+  .campus-d-ledger-row-label { padding: 0 8px; font-size: 8px; }
+  .campus-d-ledger-row-label.attendance { height: 34px; }
+  .campus-d-ledger-row-label.comment { height: 50px; }
+  .campus-d-ledger-row-label.grade { height: 38px; }
+  .campus-d-lesson-column { width: 96px; min-width: 96px; }
+  .campus-d-lesson-head { height: 48px; padding: 5px 7px; }
+  .campus-d-lesson-date { font-size: 8px; }
+  .campus-d-lesson-label { font-size: 10.5px; }
+  .campus-d-type-tag { margin-top:2px; padding:1px 4px; font-size:6.5px; line-height:1.1; }
+  .campus-d-lesson-attendance { height: 34px; padding: 0 7px; }
+  .campus-d-attendance { font-size: 8.5px; }
+  .campus-d-lesson-comment { height: 50px; padding: 5px 7px; }
+  .campus-d-comment-text { -webkit-line-clamp: 2; font-size: 8.5px; line-height: 1.3; }
+  .campus-d-lesson-grade { height: 38px; padding: 0 7px; font-size: 16px; }
+  .campus-d-summary { grid-template-columns: repeat(3,minmax(0,1fr)); padding: 8px; gap: 6px; }
+  .campus-d-summary-title { display: none; }
+  .campus-d-summary-row { min-height: 52px; padding: 7px 8px; flex-direction: column-reverse; justify-content: center; gap: 1px; text-align: center; }
+  .campus-d-summary-label { font-size: 8px; font-weight: 800; text-transform: uppercase; }
+  .campus-d-summary-value { font-size: 15px; }
+  .campus-d-gradebook-range { min-width: auto; font-size: 9px; }
+  .campus-d-arrow { width: 28px; height: 28px; font-size: 13px; }
+  .campus-d-calendar { padding: 10px; }
+  .campus-d-calendar-title { font-size: 16px; }
+  .campus-d-calendar-badge { display: none; }
+  .campus-d-calendar-day { height: 28px; font-size: 10px; }
+}

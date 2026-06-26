@@ -547,6 +547,45 @@ function ConapeBannerDashboardF984({ estado }) {
   );
 }
 
+function CampusExecutiveHeaderD({ nivelNombre, codGrupo, horario }) {
+  const grupoCorto = sufijoGrupoSD(codGrupo) || codGrupo || 'Grupo pendiente';
+  return (
+    <header className="campus-d-header" aria-label="Cabecera institucional de Mi Campus">
+      <img className="campus-d-header-logo" src="assets/logo_oficial_transparent.png" alt="Academia Norteamericana" />
+      <div className="campus-d-header-meta">
+        <div className="campus-d-header-meta-block">
+          <div className="campus-d-eyebrow">Nivel activo</div>
+          <div className="campus-d-meta-value">{nivelNombre || 'Nivel pendiente'}</div>
+        </div>
+        <div className="campus-d-header-meta-block secondary">
+          <div className="campus-d-eyebrow">Grupo · horario</div>
+          <div className="campus-d-meta-value neutral">{horario || grupoCorto}</div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function ExecutiveProgressRingD({ pct, cerradas, total }) {
+  const safePct = Math.max(0, Math.min(100, Number(pct || 0)));
+  const r = 45;
+  const circumference = 2 * Math.PI * r;
+  const dash = circumference * (1 - safePct / 100);
+  return (
+    <div className="campus-d-progress-ring" aria-label={`${safePct}% del módulo completado`}>
+      <svg width="108" height="108" viewBox="0 0 108 108" aria-hidden="true">
+        <circle cx="54" cy="54" r={r} fill="none" stroke="#EDEAE3" strokeWidth="8" />
+        <circle cx="54" cy="54" r={r} fill="none" stroke="#002F6C" strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={dash} />
+      </svg>
+      <div className="campus-d-progress-center">
+        <div className="campus-d-progress-pct">{safePct}<sup>%</sup></div>
+        <div className="campus-d-progress-sub">{total ? `${cerradas}/${total} lec.` : 'Pendiente'}</div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
@@ -717,61 +756,37 @@ function StudentDashboard({ toast, onNavigate }) {
 
   return (
     <div data-screen-label="Estudiante · Mi Campus">
-      <div style={{ marginBottom:18, display:'flex', justifyContent:'center' }}>
-        <div className="card" style={{
-          width:'100%',
-          padding:'26px 28px',
-          display:'flex',
-          justifyContent:'center',
-          alignItems:'center',
-          minHeight:248,
-          backgroundImage:`linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.92)), url(assets/virtual_pattern.svg)`,
-          backgroundSize:'cover',
-          backgroundPosition:'center',
-          border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)'
-        }}>
-          <div style={{ padding:'24px 28px', borderRadius:28, background:'rgba(255,255,255,.72)', boxShadow:'0 16px 36px rgba(0,30,71,.08)', backdropFilter:'blur(3px)' }}>
-            <img src="assets/logo_oficial_transparent.png" alt="Academia Norteamericana" style={{ width:'min(100%, 620px)', height:'auto', display:'block', objectFit:'contain' }} />
-          </div>
-        </div>
-      </div>
+      <CampusExecutiveHeaderD
+        nivelNombre={nivelNombre}
+        codGrupo={codGrupoSeleccionado || codGrupo}
+        horario={horarioCurso}
+      />
 
-      {/* 1. Material obligatorio: requisito de orientación y consulta permanente. */}
+      {/* Material obligatorio se conserva íntegro y funcional. */}
       <AntesDeEmpezar codigo={codigo} onNavigate={go} />
 
-      {/* 2. Saludo principal. Encabezado limpio con branding oficial. */}
-      <div className="hero" style={{ marginBottom:18, position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)' }}>
-        <div className="hero-grid" style={{ position:'relative', zIndex:1, alignItems:'center' }}>
-          <div>
-            <div className="hero-kicker">Mi Campus</div>
-            <h1 className="hero-h1">Bienvenido,<br/><em>{nombreCompleto}</em></h1>
-            <div className="hero-sub" style={{ fontSize:24, lineHeight:1.35, fontWeight:800, maxWidth:680 }}>
-              {nivelReal
-                ? nivelSeleccionado === nivelReal
-                  ? <>Estás cursando <strong>{nivelNombre}</strong> — {NIVEL_LIBRO[nivelSeleccionado]}.</>
-                  : <>Estás consultando <strong>{nivelNombre}</strong>. Tu nivel activo es {NIVEL_NOMBRE[nivelReal]}.</>
-                : <>Tu nivel activo aparecerá cuando tu matrícula esté procesada.</>}
-            </div>
-          </div>
-          <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:20, position:'relative', zIndex:1, flexWrap:'wrap' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', opacity:.18 }}>
-              <img src="assets/logo_a_transparent.png" alt="Logo Academia Norteamericana" style={{ width:110, height:'auto', objectFit:'contain', filter:'grayscale(100%) brightness(.82)' }} />
-            </div>
-            <Ring pct={progresoPct} size={210}>
-              <div className="ring-pct">{progresoPct}<sup>%</sup></div>
-              <div className="ring-label">Módulo completado</div>
-              <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:4, textAlign:'center', maxWidth:150 }}>
-                {cronoPublicado ? `${cerradas} de ${totalLecciones} lecciones` : 'Cronograma no publicado aún'}
-              </div>
-            </Ring>
-          </div>
-        </div>
-      </div>
-
-      <DatosAcademicosInicio est={est} grupo={grupo} nombreCompleto={nombreCompleto} codigo={codigo} cedula={cedula}
-        codGrupo={codGrupo} nivelReal={nivelReal} docente={docente} horario={horarioCurso}
-        programa={programa} contactos={contactosEstudiante} onNavigate={go}
-        expanded={mostrarPanelDatos} onReload={reload} />
+      <DatosAcademicosInicio
+        est={est}
+        grupo={grupo}
+        nombreCompleto={nombreCompleto}
+        codigo={codigo}
+        cedula={cedula}
+        codGrupo={codGrupo}
+        nivelReal={nivelReal}
+        nivelSeleccionado={nivelSeleccionado}
+        nivelNombre={nivelNombre}
+        libroNivel={NIVEL_LIBRO[nivelSeleccionado]}
+        docente={docente}
+        horario={horarioCurso}
+        programa={programa}
+        contactos={contactosEstudiante}
+        progresoPct={progresoPct}
+        cerradas={cerradas}
+        totalLecciones={totalLecciones}
+        onNavigate={go}
+        expanded={mostrarPanelDatos}
+        onReload={reload}
+      />
 
       {/* 3. CONAPE: una sola aparición, únicamente con convenio y respuesta real. */}
       {esConape && conapeEstado && <ConapeBannerDashboardF984 estado={conapeEstado} />}
@@ -790,17 +805,7 @@ function StudentDashboard({ toast, onNavigate }) {
       {/* 6. Objetivo general y libro del nivel seleccionado. */}
       <ResumenAcademico nivelReal={nivelSeleccionado} programa={programa} />
 
-      {/* 7–9. Asistencia, nota acumulada y progreso académico del nivel elegido. */}
-      <div className="grid-3" style={{ marginBottom:18 }}>
-        <Stat label="Asistencia" num={asistPct != null ? String(asistPct) : '—'} suffix={asistPct != null ? '%' : ''}
-          sub={asistTotal != null ? `${asistPresentes} de ${asistTotal} clases` : 'Sin registros aún'}
-          subTone={asistPct != null && asistPct >= 70 ? 'ok' : ''} pct={asistPct || 0} color="var(--ok)" />
-        <Stat label="Nota acumulada" num={notaActiva != null ? String(notaActiva) : '—'} suffix={notaActiva != null ? '/100' : ''}
-          sub={notaActiva != null ? `Nivel ${nivelSeleccionado || '—'}` : 'Sin evaluación final aún'}
-          subTone={notaActiva != null && notaActiva >= 70 ? 'ok' : ''} pct={notaActiva || 0} color="var(--an-granate)" />
-        <Stat label="Progreso académico" num={cronoPublicado ? String(cerradas) : '—'} suffix={cronoPublicado ? `/${totalLecciones}` : ''}
-          sub={cronoPublicado ? `${progresoPct}% del nivel` : 'Cronograma no publicado'} pct={progresoPct} color="var(--an-navy)" />
-      </div>
+      {/* Los indicadores se consolidan en el registro compacto para evitar duplicación visual. */}
 
       {/* 10. Registro académico detallado. */}
       <RegistroNotasAsistenciaCampus
@@ -990,7 +995,7 @@ function DashboardBloqueoMora({ est, nombreCompleto, acc, codGrupo, pendientes, 
 // F96.5 — Datos a la mano + cumplimiento INA en Mi Campus
 // ─────────────────────────────────────────────────────────────────────────
 
-function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, codGrupo, nivelReal, docente, horario, programa, contactos, onNavigate, expanded, onReload }) {
+function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, codGrupo, nivelReal, nivelSeleccionado, nivelNombre, libroNivel, docente, horario, programa, contactos, progresoPct, cerradas, totalLecciones, onNavigate, expanded, onReload }) {
   const correoBase = est.CORREO || est.EMAIL || est.Email || est.correo || est.email || '';
   const telefonoBase = est.TEL1 || est.Tel1 || est.TELEFONO1 || est.TELEFONO_1 || est.TELEFONO || est.tel1 || '';
   const fotoInicial = est.FOTO_PERFIL_URL || est.foto_perfil_url || est.FOTO_URL || '';
@@ -1138,157 +1143,156 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
   };
 
   return (
-    <section id="panel-actualizar-datos" style={{ marginBottom:18 }} aria-label="Ficha del estudiante">
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(300px,420px) minmax(0,1fr)', gap:18, alignItems:'start' }}>
-        <aside className="card" style={{ padding:'20px 24px' }}>
-          <div style={{ textAlign:'center' }}>
-            <input ref={fotoInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFotoSeleccionada} />
-            <button type="button" onClick={() => !subiendoFoto && fotoInputRef.current && fotoInputRef.current.click()} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:310, margin:'0 auto 14px', padding:0, border:'none', background:'transparent', cursor:subiendoFoto ? 'progress' : 'pointer' }}>
-              <div style={{ width:'100%', minHeight:226, padding:'16px 18px', borderRadius:24, background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 4%, white) 100%)', border:'1px solid color-mix(in srgb, var(--an-navy) 10%, white)', boxShadow:'var(--sh-1)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', position:'relative' }}>
-                <img src={fotoUrl || 'assets/foto_placeholder.svg'} alt={fotoUrl ? 'Fotografía del estudiante' : 'Espacio para adjuntar fotografía'} style={{ width:'100%', height:190, objectFit:fotoUrl ? 'cover' : 'contain', borderRadius:18, display:'block' }} />
-                <div style={{ position:'absolute', left:14, right:14, bottom:14, padding:'8px 10px', borderRadius:14, background:'rgba(255,255,255,.82)', fontSize:11.5, fontWeight:800, color:'var(--an-navy-ink)', boxShadow:'0 8px 18px rgba(0,30,71,.08)' }}>
-                  {subiendoFoto ? 'Subiendo fotografía…' : (fotoUrl ? 'Clic para cambiar tu fotografía' : 'Adjuntá tu foto tamaño pasaporte')}
-                </div>
-              </div>
-            </button>
-            {mensajeFoto && (
-              <div style={{ margin:'0 auto 8px', maxWidth:300, padding:'10px 12px', borderRadius:14, border:`1px solid ${mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensajeFoto.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensajeFoto.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:11.5, lineHeight:1.45 }}>
-                {mensajeFoto.texto}
-              </div>
-            )}
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, lineHeight:1.15, color:'var(--an-navy-ink)', marginTop:10 }}>
-              {nombreCompleto || 'Estudiante'}
-            </div>
-            <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4, fontFamily:'var(--f-mono)' }}>Estudiante</div>
-            <div style={{ display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap', marginTop:14 }}>
-              <Chip tone="granate">Estudiante activo</Chip>
-              {grupoLabel && <Chip tone="navy">{grupoLabel}</Chip>}
-            </div>
-          </div>
-
-          <div style={{ marginTop:22, textAlign:'left', borderTop:'1px solid var(--line)', paddingTop:16 }}>
-            {[
-              ['Correo', contactosVista.correo_principal || '—'],
-              ['Teléfono', contactosVista.telefono_principal || '—'],
-              ['Cédula', cedula || '—'],
-            ].map(([k, v], i, arr) => (
-              <div key={i} style={{ ...infoRowStyle, borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
-                <span style={{ color:'var(--ink-3)', fontWeight:700 }}>{k}</span>
-                <span style={{ color:'var(--ink)', fontWeight:700, textAlign:'right', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:18 }}>
-            <button type="button" className="btn btn-primary" style={{ justifyContent:'center', padding:'11px 12px', fontSize:12.5 }} onClick={() => { setTab(tab === 'personal' ? null : 'personal'); setEditando(false); setMensaje(null); }}>
-              ACTUALIZAR DATOS
-            </button>
-            <button type="button" className="btn btn-ghost" style={{ justifyContent:'center', padding:'11px 12px', fontSize:12.5 }} onClick={() => { setTab(tab === 'programa' ? null : 'programa'); setEditando(false); setMensaje(null); }}>
-              DATOS DEL PROGRAMA
-            </button>
+    <section id="panel-actualizar-datos" className="campus-d-student-section" aria-label="Ficha del estudiante">
+      <div className="campus-d-intro">
+        <aside className="campus-d-profile-card">
+          <input ref={fotoInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFotoSeleccionada} />
+          <button
+            type="button"
+            className="campus-d-photo-button"
+            onClick={() => !subiendoFoto && fotoInputRef.current && fotoInputRef.current.click()}
+            aria-label={fotoUrl ? 'Cambiar fotografía del estudiante' : 'Adjuntar fotografía del estudiante'}
+          >
+            <img
+              className={fotoUrl ? '' : 'is-placeholder'}
+              src={fotoUrl || 'assets/foto_placeholder.svg'}
+              alt={fotoUrl ? 'Fotografía del estudiante' : 'Silueta para adjuntar fotografía'}
+            />
+            <span className="campus-d-photo-overlay">{subiendoFoto ? 'Subiendo…' : (fotoUrl ? 'Cambiar foto' : 'Subir foto')}</span>
+          </button>
+          <div className="campus-d-profile-copy">
+            <div className="campus-d-profile-name">{nombreCompleto || 'Estudiante'}</div>
+            <div className="campus-d-profile-role">Estudiante · {nivelSeleccionado || nivelReal || 'Nivel pendiente'}</div>
+            <div className="campus-d-active">Activo</div>
           </div>
         </aside>
 
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {!tab && (
-            <section className="card" style={{ padding:'20px 22px' }}>
-              <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Mi Campus · ficha del estudiante</div>
-              <div style={{ marginTop:6, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Información personal y académica</div>
-              <div style={{ marginTop:8, fontSize:13, color:'var(--ink-3)', lineHeight:1.6 }}>
-                Usá <strong>Actualizar datos</strong> para gestionar tu correo, teléfono y fotografía. Usá <strong>Datos del programa</strong> para revisar la información académica de solo lectura.
-              </div>
-            </section>
-          )}
-
-          {tab === 'personal' && (
-            <section className="card" style={{ padding:'18px 20px' }} aria-label="Datos personales">
-              <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:14 }}>
-                <div>
-                  <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
-                  <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Solo podés actualizar correo electrónico, teléfono y fotografía. Los datos oficiales permanecen protegidos.</div>
-                </div>
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-                  {!editando ? (
-                    <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar contacto</button>
-                  ) : (
-                    <>
-                      <button className="btn btn-primary" type="button" style={{ fontSize:12 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
-                      <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} onClick={resetEdicion} disabled={guardando}>Cancelar</button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div style={panelGridStyle}>
-                <div style={itemStyle}>
-                  <div style={labelStyle}>Nombre completo</div>
-                  <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
-
-                </div>
-                <div style={itemStyle}>
-                  <div style={labelStyle}>Cédula</div>
-                  <div style={valueStyle}>{cedula || 'Pendiente'}</div>
-
-                </div>
-                <div style={itemStyle}>
-                  <div style={labelStyle}>Correo electrónico actual</div>
-                  <div style={{ ...valueStyle, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', wordBreak:'normal', fontSize:12.25 }}>{contactosVista.correo_principal || 'Pendiente'}</div>
-                  {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
-                  {editando && (
-                    <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
-                      <label style={labelStyle} htmlFor="correo-adicional-estudiante">Correo electrónico adicional</label>
-                      <input id="correo-adicional-estudiante" type="email" value={form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_adicional:e.target.value, correo_como_principal:e.target.value ? prev.correo_como_principal : false }))} placeholder="nuevo@correo.com" style={inputStyle} />
-                      <label style={{ ...checkStyle, opacity:form.correo_adicional ? 1 : .55 }}>
-                        <input type="checkbox" checked={!!form.correo_como_principal} disabled={!form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_como_principal:e.target.checked }))} />
-                        <span><strong>Elegir como correo principal.</strong> El correo actual se conserva como adicional; no se elimina.</span>
-                      </label>
-                    </div>
-                  )}
-                </div>
-                <div style={itemStyle}>
-                  <div style={labelStyle}>Teléfono actual</div>
-                  <div style={valueStyle}>{contactosVista.telefono_principal || 'Pendiente'}</div>
-                  {adicionales(contactosVista.telefonos_adicionales, 'No hay teléfonos adicionales registrados.')}
-                  {editando && (
-                    <div style={{ marginTop:12, paddingTop:12, borderTop:'1px dashed var(--line)' }}>
-                      <label style={labelStyle} htmlFor="telefono-adicional-estudiante">Teléfono adicional</label>
-                      <input id="telefono-adicional-estudiante" type="tel" value={form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_adicional:e.target.value, telefono_como_principal:e.target.value ? prev.telefono_como_principal : false }))} placeholder="8888-8888" style={inputStyle} />
-                      <label style={{ ...checkStyle, opacity:form.telefono_adicional ? 1 : .55 }}>
-                        <input type="checkbox" checked={!!form.telefono_como_principal} disabled={!form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_como_principal:e.target.checked }))} />
-                        <span><strong>Elegir como teléfono principal.</strong> El teléfono actual se conserva como adicional; no se elimina.</span>
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {mensaje && (
-                <div style={{ marginTop:14, padding:'12px 14px', borderRadius:14, border:`1px solid ${mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensaje.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:12.5, lineHeight:1.5 }}>
-                  {mensaje.texto}
-                </div>
-              )}
-            </section>
-          )}
-
-          {tab === 'programa' && (
-            <section className="card" style={{ padding:'18px 20px' }} aria-label="Datos del programa">
-              <div style={{ marginBottom:14 }}>
-                <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
-
-              </div>
-              <div style={panelGridStyle}>
-                {programaRows.map(([label, value, sub]) => (
-                  <div key={label} style={itemStyle}>
-                    <div style={labelStyle}>{label}</div>
-                    <div style={valueStyle}>{value}</div>
-                    {sub ? <div style={subValueStyle}>{sub}</div> : null}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="campus-d-welcome-card">
+          <ExecutiveProgressRingD pct={progresoPct} cerradas={cerradas} total={totalLecciones} />
+          <div className="campus-d-welcome-copy">
+            <div className="campus-d-welcome-kicker">Bienvenido</div>
+            <div className="campus-d-welcome-name">{nombreCompleto || 'Estudiante'}</div>
+            <div className="campus-d-welcome-chips">
+              <span className="campus-d-chip primary">{nivelNombre || NIVEL_NOMBRE[nivelSeleccionado] || 'Nivel pendiente'}</span>
+              <span className="campus-d-chip">{libroNivel || 'Libro pendiente'}</span>
+              <span className="campus-d-chip">{totalLecciones ? `${cerradas} de ${totalLecciones} lecciones` : 'Cronograma pendiente'}</span>
+            </div>
+          </div>
+          <img className="campus-d-a-accent" src="assets/logo_a_transparent.png" alt="" aria-hidden="true" />
         </div>
       </div>
+
+      {mensajeFoto && (
+        <div className={`campus-d-photo-message ${mensajeFoto.tipo === 'ok' ? 'ok' : 'err'}`}>
+          {mensajeFoto.texto}
+        </div>
+      )}
+
+      <div className="campus-d-contact-strip">
+        <div className="campus-d-contact-item">
+          <div className="campus-d-contact-label">Correo</div>
+          <div className="campus-d-contact-value" title={contactosVista.correo_principal || ''}>{contactosVista.correo_principal || 'Pendiente'}</div>
+        </div>
+        <div className="campus-d-contact-item">
+          <div className="campus-d-contact-label">Teléfono</div>
+          <div className="campus-d-contact-value">{contactosVista.telefono_principal || 'Pendiente'}</div>
+        </div>
+        <div className="campus-d-contact-item">
+          <div className="campus-d-contact-label">Cédula</div>
+          <div className="campus-d-contact-value">{cedula || 'Pendiente'}</div>
+        </div>
+        <div className="campus-d-actions">
+          <button type="button" className="btn btn-primary" onClick={() => { setTab(tab === 'personal' ? null : 'personal'); setEditando(false); setMensaje(null); }}>
+            ACTUALIZAR DATOS
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => { setTab(tab === 'programa' ? null : 'programa'); setEditando(false); setMensaje(null); }}>
+            DATOS DEL PROGRAMA
+          </button>
+        </div>
+      </div>
+
+      {tab === 'personal' && (
+        <section className="campus-d-panel" aria-label="Datos personales">
+          <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+            <div>
+              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
+              <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:3 }}>Podés actualizar correo electrónico, teléfono y fotografía.</div>
+            </div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+              {!editando ? (
+                <button className="btn btn-primary" type="button" style={{ fontSize:11 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar contacto</button>
+              ) : (
+                <>
+                  <button className="btn btn-primary" type="button" style={{ fontSize:11 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
+                  <button className="btn btn-ghost" type="button" style={{ fontSize:11 }} onClick={resetEdicion} disabled={guardando}>Cancelar</button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="campus-d-panel-grid">
+            <div className="campus-d-panel-item">
+              <div style={labelStyle}>Nombre completo</div>
+              <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
+            </div>
+            <div className="campus-d-panel-item">
+              <div style={labelStyle}>Cédula</div>
+              <div style={valueStyle}>{cedula || 'Pendiente'}</div>
+            </div>
+            <div className="campus-d-panel-item">
+              <div style={labelStyle}>Correo electrónico actual</div>
+              <div style={{ ...valueStyle, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', wordBreak:'normal', fontSize:12.25 }}>{contactosVista.correo_principal || 'Pendiente'}</div>
+              {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
+              {editando && (
+                <div style={{ marginTop:10, paddingTop:10, borderTop:'1px dashed var(--line)' }}>
+                  <label style={labelStyle} htmlFor="correo-adicional-estudiante">Correo electrónico adicional</label>
+                  <input id="correo-adicional-estudiante" type="email" value={form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_adicional:e.target.value, correo_como_principal:e.target.value ? prev.correo_como_principal : false }))} placeholder="nuevo@correo.com" style={inputStyle} />
+                  <label style={{ ...checkStyle, opacity:form.correo_adicional ? 1 : .55 }}>
+                    <input type="checkbox" checked={!!form.correo_como_principal} disabled={!form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_como_principal:e.target.checked }))} />
+                    <span><strong>Elegir como correo principal.</strong> El correo actual se conserva como adicional.</span>
+                  </label>
+                </div>
+              )}
+            </div>
+            <div className="campus-d-panel-item">
+              <div style={labelStyle}>Teléfono actual</div>
+              <div style={valueStyle}>{contactosVista.telefono_principal || 'Pendiente'}</div>
+              {adicionales(contactosVista.telefonos_adicionales, 'No hay teléfonos adicionales registrados.')}
+              {editando && (
+                <div style={{ marginTop:10, paddingTop:10, borderTop:'1px dashed var(--line)' }}>
+                  <label style={labelStyle} htmlFor="telefono-adicional-estudiante">Teléfono adicional</label>
+                  <input id="telefono-adicional-estudiante" type="tel" value={form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_adicional:e.target.value, telefono_como_principal:e.target.value ? prev.telefono_como_principal : false }))} placeholder="8888-8888" style={inputStyle} />
+                  <label style={{ ...checkStyle, opacity:form.telefono_adicional ? 1 : .55 }}>
+                    <input type="checkbox" checked={!!form.telefono_como_principal} disabled={!form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_como_principal:e.target.checked }))} />
+                    <span><strong>Elegir como teléfono principal.</strong> El teléfono actual se conserva como adicional.</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {mensaje && (
+            <div style={{ marginTop:12, padding:'10px 12px', borderRadius:4, border:`1px solid ${mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 35%, white)' : 'color-mix(in srgb, var(--danger) 35%, white)'}`, background:mensaje.tipo==='ok' ? 'color-mix(in srgb, var(--ok) 8%, white)' : 'color-mix(in srgb, var(--danger) 8%, white)', color:mensaje.tipo==='ok' ? '#25683B' : '#9C2F2F', fontSize:11.5, lineHeight:1.5 }}>
+              {mensaje.texto}
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'programa' && (
+        <section className="campus-d-panel" aria-label="Datos del programa">
+          <div style={{ marginBottom:12, fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
+          <div className="campus-d-panel-grid">
+            {programaRows.map(([label, value, sub]) => (
+              <div key={label} className="campus-d-panel-item">
+                <div style={labelStyle}>{label}</div>
+                <div style={valueStyle}>{value}</div>
+                {sub ? <div style={subValueStyle}>{sub}</div> : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </section>
   );
 }
@@ -1341,105 +1345,114 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
 function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, codigo }) {
   const showICAN = Number(summary?.ican || 0) > 0;
   const list = Array.isArray(rows) ? rows.filter(r => showICAN || r.kind !== 'ICAN') : [];
-  const pageSize = 5;
+  const pageSizeForWidth = () => (typeof window !== 'undefined' && window.innerWidth <= 620 ? 3 : 6);
+  const [pageSize, setPageSize] = React.useState(pageSizeForWidth);
   const [offset, setOffset] = React.useState(0);
-  React.useEffect(() => { setOffset(0); }, [nivel, list.length]);
+
+  React.useEffect(() => {
+    const handleResize = () => setPageSize(pageSizeForWidth());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  React.useEffect(() => { setOffset(0); }, [nivel, list.length, pageSize]);
+
   const maxOffset = Math.max(0, list.length - pageSize);
+  const visible = list.slice(offset, offset + pageSize);
   const prev = () => setOffset(v => Math.max(0, v - pageSize));
   const next = () => setOffset(v => Math.min(maxOffset, v + pageSize));
-  const visible = list.slice(offset, offset + pageSize);
-  const totalVisible = `${Math.min(list.length, offset + 1)}–${Math.min(list.length, offset + pageSize)} de ${list.length}`;
-  const toneChip = (label) => {
-    const tone = toneAsistenciaSD(label);
-    return <span style={{ display:'inline-flex', alignItems:'center', padding:'5px 10px', borderRadius:999, background:tone.bg, color:tone.fg, fontSize:11, fontWeight:800 }}>{label}</span>;
+  const startN = list.length ? offset + 1 : 0;
+  const endN = Math.min(list.length, offset + pageSize);
+
+  const attendanceMeta = (label) => {
+    const v = String(label || '').toLowerCase();
+    if (v.includes('presente')) return { short:'Pres.', color:'#2E7D32' };
+    if (v.includes('tard')) return { short:'Tarde', color:'#C67100' };
+    if (v.includes('ausente')) return { short:'Aus.', color:'#B3261E' };
+    if (v.includes('just')) return { short:'Just.', color:'#002F6C' };
+    if (v.includes('registrada')) return { short:'Reg.', color:'#002F6C' };
+    return { short: label || '—', color:'#6B7280' };
   };
-  const tipoBadge = (row) => {
+  const typeMeta = (row) => {
     const kind = String(row?.kind || '').toUpperCase();
-    if (kind === 'EVAL_ORAL') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-gold) 18%, white)', color:'#7A4E00', fontSize:10.5, fontWeight:900 }}>Prueba oral</span>;
-    if (kind === 'EVAL_ESCRITO') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-granate) 10%, white)', color:'var(--an-granate)', fontSize:10.5, fontWeight:900 }}>Prueba escrita</span>;
-    if (kind === 'PROGRESS_CHECK') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 10%, white)', color:'var(--an-navy-ink)', fontSize:10.5, fontWeight:900 }}>Progress Check</span>;
-    if (kind === 'ICAN') return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--ok) 12%, white)', color:'#25683B', fontSize:10.5, fontWeight:900 }}>I CAN</span>;
-    return <span style={{ display:'inline-flex', padding:'4px 8px', borderRadius:999, background:'color-mix(in srgb, var(--line) 70%, white)', color:'var(--ink-2)', fontSize:10.5, fontWeight:800 }}>Lección</span>;
+    if (kind === 'PROGRESS_CHECK') return { label:'P. Check', cls:'progress' };
+    if (kind === 'EVAL_ORAL') return { label:'Oral', cls:'oral' };
+    if (kind === 'EVAL_ESCRITO') return { label:'Escrito', cls:'written' };
+    if (kind === 'ICAN') return { label:'I CAN', cls:'ican' };
+    return { label:'Lección', cls:'lesson' };
   };
-  const summaryCards = [
-    ['Asistencia', summary?.asistenciaPct != null ? `${summary.asistenciaPct}%` : '—', summary?.asistenciaTotal != null ? `${summary.asistenciaPresentes} de ${summary.asistenciaTotal} clases` : 'Sin registros'],
-    ['Nota acumulada', summary?.note != null ? `${summary.note}/100` : '—', 'Promedio oficial del nivel'],
-    ['Evaluaciones', summary?.evaluations != null ? String(summary.evaluations) : '0', 'Registros con nota'],
-    ['Comentarios', summary?.comments != null ? String(summary.comments) : '0', 'Observaciones o retroalimentación'],
+
+  const summaryRows = [
+    { label:'Asistencia', value:summary?.asistenciaPct != null ? `${summary.asistenciaPct}%` : '—' },
+    { label:'Nota acumulada', value:summary?.note != null ? `${summary.note}` : '—', suffix:summary?.note != null ? '/100' : '' },
+    { label:'Evaluaciones', value:summary?.evaluations != null ? String(summary.evaluations) : '0' },
+    { label:'Comentarios', value:summary?.comments != null ? String(summary.comments) : '0', extra:true },
   ];
-  if (showICAN) summaryCards.push(['I CAN', summary?.ican != null ? String(summary.ican) : '0', 'Sesiones visibles en el expediente']);
+  if (showICAN) summaryRows.push({ label:'I CAN', value:String(summary?.ican || 0), extra:true });
+
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Registro de notas y asistencia">
-      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Registro de notas y asistencia</div>
-        <div style={{ fontSize:12.5, color:'var(--ink-3)', marginTop:4 }}>Deslizá el historial por bloques para revisar la asistencia del expediente, comentarios, progress check y evaluaciones del nivel consultado.</div>
+    <section className="campus-d-gradebook" aria-label="Registro de notas y asistencia">
+      <div className="campus-d-gradebook-head">
+        <div>
+          <div className="campus-d-gradebook-title">Registro de notas y asistencia</div>
+          <div className="campus-d-gradebook-sub">Vista de cuaderno: la identidad y las filas quedan fijas; las lecciones se recorren con las flechas.</div>
+        </div>
+        <div className="campus-d-gradebook-nav">
+          <span className="campus-d-gradebook-range">{startN}–{endN} de {list.length}</span>
+          <button className="campus-d-arrow" type="button" onClick={prev} disabled={offset <= 0} aria-label="Ver lecciones anteriores">←</button>
+          <button className="campus-d-arrow" type="button" onClick={next} disabled={offset >= maxOffset} aria-label="Ver siguientes lecciones">→</button>
+        </div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) 330px', gap:0 }}>
-        <div style={{ padding:'12px 16px 18px', overflowX:'auto' }}>
+
+      <div className="campus-d-gradebook-body">
+        <div className="campus-d-ledger">
           {list.length ? (
-            <div style={{ minWidth:960 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:12, flexWrap:'wrap' }}>
-                <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Visualización horizontal del expediente</div>
-                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                  <span style={{ fontSize:12, color:'var(--ink-3)', fontWeight:700 }}>{totalVisible}</span>
-                  <button className="btn btn-ghost" type="button" style={{ width:38, justifyContent:'center', padding:'10px 0', fontSize:16 }} onClick={prev} disabled={offset <= 0}>←</button>
-                  <button className="btn btn-ghost" type="button" style={{ width:38, justifyContent:'center', padding:'10px 0', fontSize:16 }} onClick={next} disabled={offset >= maxOffset}>→</button>
+            <div className="campus-d-ledger-inner">
+              <div className="campus-d-ledger-labels">
+                <div className="campus-d-ledger-student">
+                  <div className="campus-d-ledger-student-name">{nombreCompleto || 'Estudiante'}</div>
+                  <div className="campus-d-ledger-student-meta">{codigo ? `Código ${codigo}` : 'Código pendiente'} · Nivel {nivel || '—'}</div>
                 </div>
+                <div className="campus-d-ledger-row-label attendance">Asistencia</div>
+                <div className="campus-d-ledger-row-label comment">Comentario</div>
+                <div className="campus-d-ledger-row-label grade">Nota</div>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', gap:14, alignItems:'stretch' }}>
-                <div style={{ border:'1px solid var(--line)', borderRadius:18, background:'linear-gradient(180deg,#fff 0%, color-mix(in srgb, var(--an-navy) 2%, white) 100%)', padding:'16px 16px', minHeight:246, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-                  <div>
-                    <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Estudiante</div>
-                    <div style={{ fontFamily:'var(--f-serif)', fontSize:21, color:'var(--an-navy-ink)', marginTop:8, lineHeight:1.15 }}>{nombreCompleto || 'Estudiante'}</div>
-                    <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:8 }}>{codigo ? `Código ${codigo}` : `Nivel ${nivel || '—'}`}</div>
-                  </div>
-                  <div style={{ padding:'12px 14px', borderRadius:16, background:'color-mix(in srgb, var(--an-navy) 5%, white)' }}>
-                    <div style={{ fontSize:11, fontWeight:800, color:'var(--ink-2)' }}>Nivel consultado</div>
-                    <div style={{ fontSize:22, fontWeight:900, color:'var(--an-navy-ink)', marginTop:2 }}>{nivel || '—'}</div>
-                    <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:6 }}>Cada flecha despliega el siguiente bloque de lecciones y evaluaciones.</div>
-                  </div>
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.max(visible.length, 1)}, minmax(140px, 1fr))`, gap:12 }}>
-                  {visible.map((row, idx) => (
-                    <div key={`${row.fecha}-${row.actividad}-${idx}`} style={{ border:'1px solid var(--line)', borderRadius:18, background:'#fff', minHeight:246, padding:'14px 14px', display:'flex', flexDirection:'column', gap:10 }}>
-                      <div style={{ paddingBottom:10, borderBottom:'1px solid var(--line)' }}>
-                        <div style={{ fontSize:11, fontWeight:900, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'.10em' }}>{fmtFechaCorta(row.fecha)}</div>
-                        <div style={{ fontSize:19, fontWeight:900, color:'var(--an-navy-ink)', marginTop:6 }}>{row.actividad || 'Actividad'}</div>
-                        <div style={{ marginTop:8 }}>{tipoBadge(row)}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Asistencia</div>
-                        <div style={{ marginTop:7 }}>{toneChip(row.asistencia || 'Sin registro')}</div>
-                      </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Comentario</div>
-                        <div style={{ marginTop:6, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.45, minHeight:58, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{row.comentario || '—'}</div>
-                      </div>
-                      <div style={{ marginTop:'auto' }}>
-                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Nota</div>
-                        <div style={{ marginTop:6, fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:'var(--an-navy-ink)', whiteSpace:'nowrap' }}>{row.nota || '—'}</div>
-                      </div>
+
+              {visible.map((row, idx) => {
+                const type = typeMeta(row);
+                const attendance = attendanceMeta(row.asistencia);
+                return (
+                  <div className="campus-d-lesson-column" key={`${row.fecha}-${row.actividad}-${offset + idx}`}>
+                    <div className="campus-d-lesson-head">
+                      <div className="campus-d-lesson-date">{fmtFechaCorta(row.fecha)}</div>
+                      <div className="campus-d-lesson-label">{row.actividad || 'Actividad'}</div>
+                      <span className={`campus-d-type-tag ${type.cls}`}>{type.label}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="campus-d-lesson-attendance">
+                      <span className="campus-d-attendance" style={{ color:attendance.color }}>
+                        <i className="campus-d-attendance-dot" />{attendance.short}
+                      </span>
+                    </div>
+                    <div className="campus-d-lesson-comment">
+                      <div className="campus-d-comment-text" title={row.comentario || ''}>{row.comentario || '—'}</div>
+                    </div>
+                    <div className={`campus-d-lesson-grade ${row.nota ? '' : 'empty'}`}>{row.nota || '—'}</div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <div style={{ padding:'18px 8px', color:'var(--ink-3)' }}>Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</div>
+            <div className="campus-d-gradebook-empty">Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</div>
           )}
         </div>
-        <aside style={{ borderLeft:'1px solid var(--line)', background:'linear-gradient(180deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)', padding:'16px 16px 18px' }}>
-          <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Panel lateral del estudiante</div>
-          <div style={{ fontSize:15, fontWeight:900, color:'var(--an-navy-ink)', marginTop:6 }}>Compilado del nivel {nivel || 'consultado'}</div>
-          <div style={{ display:'grid', gap:10, marginTop:14 }}>
-            {summaryCards.map(([label, value, hint]) => (
-              <div key={label} style={{ border:'1px solid var(--line)', borderRadius:16, background:'#fff', padding:'14px 14px' }}>
-                <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
-                <div style={{ fontFamily:'var(--f-serif)', fontSize:26, fontWeight:700, color:'var(--an-navy-ink)', marginTop:4 }}>{value}</div>
-                <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:4, lineHeight:1.45 }}>{hint}</div>
-              </div>
-            ))}
-          </div>
+
+        <aside className="campus-d-summary" aria-label="Resumen del nivel">
+          <div className="campus-d-summary-title">Resumen · {nivel || 'Nivel'}</div>
+          {summaryRows.map(item => (
+            <div className={`campus-d-summary-row ${item.extra ? 'extra' : ''}`} key={item.label}>
+              <span className="campus-d-summary-label">{item.label}</span>
+              <span className="campus-d-summary-value">{item.value}{item.suffix ? <small>{item.suffix}</small> : null}</span>
+            </div>
+          ))}
         </aside>
       </div>
     </section>
@@ -1462,32 +1475,28 @@ function EventCalendarMini({ evento }) {
   const dow = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
   const mes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][month];
   return (
-    <div className="card" style={{ padding:'16px 18px', background:'linear-gradient(135deg,#fff 0%, color-mix(in srgb, var(--an-navy) 3%, white) 100%)' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+    <div className="campus-d-calendar">
+      <div className="campus-d-calendar-head">
         <div>
-          <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Actividad seleccionada</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>{evento.title}</div>
-          <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:4 }}>{evento.leccionLabel} · {fmtFechaCorta(evento.fecha)}{evento.estado ? ` · ${evento.estado}` : ''}</div>
+          <div className="campus-d-calendar-title">{evento.title}</div>
+          <div className="campus-d-calendar-meta">{evento.leccionLabel} · {fmtFechaCorta(evento.fecha)}{evento.estado ? ` · ${evento.estado}` : ''}</div>
         </div>
-        <div style={{ padding:'7px 12px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 8%, white)', color:'var(--an-navy)', fontWeight:800, fontSize:12 }}>Solo esta actividad</div>
+        <span className="campus-d-calendar-badge">Solo esta actividad</span>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(260px,330px) minmax(0,1fr)', gap:18, alignItems:'start' }}>
-        <div style={{ border:'1px solid var(--line)', borderRadius:18, padding:14, background:'#fff' }}>
-          <div style={{ fontSize:15, fontWeight:900, color:'var(--ink)', marginBottom:10 }}>{mes} {year}</div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:6, textAlign:'center' }}>
-            {dow.map(d => <div key={d} style={{ fontSize:10.5, fontWeight:800, color:'var(--ink-3)', padding:'6px 0' }}>{d}</div>)}
-            {days.map((day, idx) => {
-              const active = day === base.getDate();
-              return <div key={idx} style={{ height:38, borderRadius:12, border:active ? '2px solid var(--an-navy)' : '1px solid var(--line)', background:active ? 'color-mix(in srgb, var(--an-navy) 10%, white)' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:active ? 900 : 700, color:active ? 'var(--an-navy-ink)' : 'var(--ink)' }}>{day || ''}</div>;
-            })}
+      <div className="campus-d-calendar-gridwrap">
+        <div className="campus-d-calendar-month">
+          <div className="campus-d-calendar-month-title">{mes} {year}</div>
+          <div className="campus-d-calendar-days">
+            {dow.map(d => <div className="campus-d-calendar-dow" key={d}>{d}</div>)}
+            {days.map((day, idx) => (
+              <div className={`campus-d-calendar-day ${day === base.getDate() ? 'active' : ''}`} key={idx}>{day || ''}</div>
+            ))}
           </div>
         </div>
-        <div style={{ border:'1px solid var(--line)', borderRadius:18, padding:'16px 18px', background:'#fff' }}>
-          <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Fecha marcada</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:30, color:'var(--an-navy-ink)', marginTop:2 }}>{fmtFechaCorta(evento.fecha)}</div>
-          <div style={{ marginTop:10, fontSize:13, lineHeight:1.6, color:'var(--ink-2)' }}>
-            El calendario se enfoca únicamente en la actividad seleccionada para que el estudiante identifique con claridad cuándo corresponde su próxima lección, I CAN o evaluación.
-          </div>
+        <div className="campus-d-calendar-detail">
+          <div className="campus-d-calendar-detail-label">Fecha marcada</div>
+          <div className="campus-d-calendar-detail-date">{fmtFechaCorta(evento.fecha)}</div>
+          <div className="campus-d-calendar-detail-copy">El calendario muestra únicamente la actividad seleccionada para identificar claramente la próxima lección o evaluación.</div>
         </div>
       </div>
     </div>
@@ -1496,46 +1505,46 @@ function EventCalendarMini({ evento }) {
 
 function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximoEscrito, cronoPublicado, onNavigate }) {
   const order = [
-    ['leccion', { title:'Próxima lección', data:proximaLeccion, empty: cronoPublicado ? 'No hay más lecciones programadas.' : 'Cronograma pendiente.' }],
-    ['ican', { title:'Próximo I CAN', data:proximoICAN, empty:'No hay I CAN programado por ahora.', hidden: !proximoICAN }],
-    ['oral', { title:'Próximo examen oral', data:proximoOral, empty:'No hay examen oral programado por ahora.' }],
-    ['escrito', { title:'Próximo examen escrito', data:proximoEscrito, empty:'No hay examen escrito programado por ahora.' }],
+    ['leccion', { title:'Próxima lección', code:'LEC', color:'#002F6C', data:proximaLeccion, empty:cronoPublicado ? 'Sin lecciones próximas' : 'Cronograma pendiente' }],
+    ['ican', { title:'Próximo I CAN', code:'IC', color:'#2E7D32', data:proximoICAN, hidden:!proximoICAN }],
+    ['oral', { title:'Examen oral', code:'ORA', color:'#C67100', data:proximoOral, empty:'Sin examen oral próximo' }],
+    ['escrito', { title:'Examen escrito', code:'ESC', color:'#DA291C', data:proximoEscrito, empty:'Sin examen escrito próximo' }],
   ].filter(([, meta]) => !meta.hidden);
-  const initialKey = (order.find(([, meta]) => !!meta.data) || order[0] || [null])[0] || '';
-  const [selected, setSelected] = React.useState(initialKey);
-  React.useEffect(() => { setSelected(initialKey); }, [initialKey]);
+  const [selected, setSelected] = React.useState('');
+  React.useEffect(() => {
+    if (selected && !order.some(([key, meta]) => key === selected && meta.data)) setSelected('');
+  }, [proximaLeccion, proximoICAN, proximoOral, proximoEscrito]);
   const eventos = Object.fromEntries(order);
-  const card = (key, meta) => {
-    const ev = meta.data;
-    const label = ev ? `${ev.leccionLabel} · ${fmtFechaCorta(ev.fecha)}` : meta.empty;
-    const active = selected === key;
-    return (
-      <div style={{ padding:16, border:`2px solid ${active ? 'var(--an-navy)' : 'var(--line)'}`, borderRadius:18, background:active ? 'color-mix(in srgb, var(--an-navy) 5%, white)' : '#fff', display:'flex', gap:12, alignItems:'center' }}>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{meta.title}</div>
-          <div style={{ fontSize:16, fontWeight:900, color:'var(--ink)', marginTop:4 }}>{ev ? ev.title : 'Sin actividad'}</div>
-          <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:4, lineHeight:1.45 }}>{label}</div>
-        </div>
-        <button className="btn btn-ghost" type="button" style={{ fontSize:12 }} disabled={!ev} onClick={() => setSelected(key)}>Ver</button>
-      </div>
-    );
-  };
   const activeEvento = selected ? eventos[selected]?.data : null;
+
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Resumen de próximos eventos">
-      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>Resumen de próximos eventos</div>
+    <section className="campus-d-events" aria-label="Resumen de próximos eventos">
+      <div className="campus-d-events-head">Próximos eventos</div>
+      <div className="campus-d-event-grid">
+        {order.map(([key, meta]) => {
+          const ev = meta.data;
+          return (
+            <button
+              type="button"
+              className={`campus-d-event-card ${selected === key ? 'active' : ''}`}
+              key={key}
+              disabled={!ev}
+              onClick={() => ev && setSelected(selected === key ? '' : key)}
+            >
+              <span className="campus-d-event-kind" style={{ color:meta.color, background:`color-mix(in srgb, ${meta.color} 11%, white)` }}>{meta.code}</span>
+              <span className="campus-d-event-copy">
+                <span className="campus-d-event-title">{ev ? (ev.leccionLabel || ev.title) : meta.empty}</span>
+                <span className="campus-d-event-meta">{meta.title}{ev?.estado ? ` · ${ev.estado}` : ''}</span>
+              </span>
+              <span style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                <span className="campus-d-event-date">{ev ? fmtFechaCorta(ev.fecha) : '—'}</span>
+                {ev ? <span style={{ fontSize:9.5, fontWeight:850, color:'var(--d-navy)' }}>Ver</span> : null}
+              </span>
+            </button>
+          );
+        })}
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))', gap:12, padding:16 }}>
-        {order.map(([key, meta]) => card(key, meta))}
-      </div>
-      <div style={{ padding:'0 16px 16px' }}>
-        {activeEvento ? <EventCalendarMini evento={activeEvento} /> : (
-          <div className="card" style={{ padding:'16px 18px', borderStyle:'dashed', color:'var(--ink-3)' }}>
-            Seleccioná una actividad con el botón <strong>Ver</strong> para desplegar el calendario enfocado únicamente en esa consulta.
-          </div>
-        )}
-      </div>
+      {activeEvento && <div className="campus-d-calendar-wrap"><EventCalendarMini evento={activeEvento} /></div>}
     </section>
   );
 }
