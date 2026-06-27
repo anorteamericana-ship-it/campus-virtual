@@ -1,8 +1,6 @@
 /* global React, CronogramaGrupo, AdminEstudiantesView */
-// CALGRUPO_F1_20260616_PANEL_NUEVO
-// Panel nuevo de transición: fusiona el calendario operativo con acceso rápido
-// a estudiantes del grupo y Auditoría Académica, sin borrar las vistas viejas.
-// Fase 1 = visual/routing solamente. No toca backend ni Apps Script.
+// CALGRUPO_F4_20260627_VISTA_OPERATIVA_LIMPIA
+// Vista operativa consolidada del calendario académico.
 
 function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
   const [grupoSeleccionado, setGrupoSeleccionado] = React.useState(null);
@@ -175,26 +173,6 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
         )}
       </div>
     </section>
-  );
-}
-
-function CalGrupoHint({ n, title, text }) {
-  return (
-    <div style={{
-      padding:'12px 14px', border:'1px solid var(--line)', borderRadius:'var(--r-md)',
-      background:'var(--surface)', display:'flex', gap:12, alignItems:'flex-start',
-      minHeight:86,
-    }}>
-      <div style={{
-        width:28, height:28, borderRadius:'50%', flexShrink:0,
-        background:'var(--an-gold)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center',
-        fontSize:12, fontWeight:900, fontFamily:'var(--f-mono)',
-      }}>{n}</div>
-      <div style={{ minWidth:0 }}>
-        <div style={{ fontSize:13, fontWeight:800, color:'var(--ink)', marginBottom:3 }}>{title}</div>
-        <div style={{ fontSize:11.5, color:'var(--ink-3)', lineHeight:1.45 }}>{text}</div>
-      </div>
-    </div>
   );
 }
 

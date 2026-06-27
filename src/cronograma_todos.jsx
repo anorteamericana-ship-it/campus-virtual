@@ -1,7 +1,7 @@
 /* global React */
 // ─────────────────────────────────────────────────────────────────────────
 // Vista "Todos los grupos" — solo admin / superadmin
-// CALGRUPO_F3_20260616_CALENDARIO_AMPLIO_CASILLAS_LEGIBLES
+// CALGRUPO_F4_20260627_CALENDARIO_SIN_SCROLL_NIVEL_REAL
 // Se monta dentro de CronogramaGrupo cuando codGrupo === '__TODOS__'.
 //
 // Switch SEMANA / MES. Las lecciones de TODOS los grupos activos se apilan
@@ -276,12 +276,12 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           } else {
             setMoraError(err);
           }
-          setMoraMap(new Map());
+          setMoraMap(null);
         }
       })
       .catch(e => {
         setMoraError('Error de red al leer mora');
-        setMoraMap(new Map());
+        setMoraMap(null);
       })
       .finally(() => setMoraLoading(false));
   }, []);
@@ -439,7 +439,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
         </div>
 
         {/* Mora: solo si el backend la soporta */}
-        {!moraUnsupported && (
+        {!moraUnsupported && moraMap !== null && (
           <div style={{
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
           }}>
@@ -560,7 +560,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           item={detalle}
           moraMap={moraMap}
           onNavigate={onNavigate}
-          onCerrar={() => setDetalle(null)} />
+          onCerrar={() => { setDetalle(null); setSelectedKey(''); }} />
       )}
     </div>
   );
@@ -581,7 +581,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
 
   // Ajustada para caber de lunes a sábado sin scroll horizontal en escritorio.
-  const COL_LABEL = 220;
+  const COL_LABEL = 'clamp(176px, 16vw, 220px)';
 
   return (
     <div className="card" style={{ padding:0, overflow:'hidden' }}>
@@ -623,7 +623,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
       <div>
         <div style={{
           display:'grid',
-          gridTemplateColumns:`${COL_LABEL}px repeat(6, minmax(0, 1fr))`,
+          gridTemplateColumns:`${COL_LABEL} repeat(6, minmax(0, 1fr))`,
           width:'100%', background:'var(--line)', gap:1,
           borderTop:'1px solid var(--line)',
         }}>
@@ -721,6 +721,13 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                       {horaLbl && <span style={{ marginRight:5 }}>{horaLbl}</span>}
                       {g.estudiantes || 0} est
                     </span>
+                    {selectedKey && selectedKey.indexOf(`${g.code}|`) === 0 && (
+                      <span style={{
+                        fontSize:7.5, fontWeight:900, color:'#FFF',
+                        background:'var(--an-navy)', borderRadius:999,
+                        padding:'2px 5px', letterSpacing:'0.04em',
+                      }}>SELECCIONADO</span>
+                    )}
                   </div>
                 </div>
 
@@ -780,19 +787,24 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
   const month = monthCursor.getMonth();
   const today = React.useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
 
-  // Celdas (Lun-Dom)
+  // Celdas (Lun-Sáb). Domingo se excluye porque la operación académica
+  // de esta vista se trabaja de lunes a sábado.
   const celdas = React.useMemo(() => {
-    const primero = new Date(year, month, 1);
-    const ultimo  = new Date(year, month + 1, 0);
-    const dowPrim = (primero.getDay() + 6) % 7; // Lun=0
-    const total = Math.ceil((dowPrim + ultimo.getDate()) / 7) * 7;
+    const ultimo = new Date(year, month + 1, 0);
+    const fechas = [];
+    for (let dia = 1; dia <= ultimo.getDate(); dia++) {
+      const fecha = new Date(year, month, dia);
+      if (fecha.getDay() !== 0) fechas.push(fecha);
+    }
+    const primera = fechas[0] || new Date(year, month, 1);
+    const dowPrim = (primera.getDay() + 6) % 7; // Lun=0 ... Sáb=5
+    const total = Math.ceil((dowPrim + fechas.length) / 6) * 6;
     const out = [];
     for (let i = 0; i < total; i++) {
-      const diaNum = i - dowPrim + 1;
-      const dentro = diaNum >= 1 && diaNum <= ultimo.getDate();
-      const fecha  = dentro ? new Date(year, month, diaNum) : null;
-      const iso    = fecha ? tIsoOf(fecha) : null;
-      out.push({ diaNum, dentro, fecha, iso });
+      const idx = i - dowPrim;
+      const fecha = idx >= 0 && idx < fechas.length ? fechas[idx] : null;
+      const iso = fecha ? tIsoOf(fecha) : null;
+      out.push({ diaNum: fecha ? fecha.getDate() : null, dentro: !!fecha, fecha, iso });
     }
     return out;
   }, [year, month]);
@@ -840,11 +852,11 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
 
       {/* DOW header */}
       <div style={{
-        display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
+        display:'grid', gridTemplateColumns:'repeat(6, 1fr)',
         padding:'10px 10px', borderBottom:'1px solid var(--line)',
         background:'var(--surface-2)',
       }}>
-        {TODOS_DIAS_LUN0.map((d, i) => (
+        {TODOS_DIAS_LUN0.slice(0,6).map((d, i) => (
           <div key={i} style={{
             textAlign:'center', fontSize:10, fontWeight:800,
             letterSpacing:'0.14em',
@@ -855,7 +867,7 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
 
       {/* Celdas */}
       <div style={{
-        display:'grid', gridTemplateColumns:'repeat(7, 1fr)',
+        display:'grid', gridTemplateColumns:'repeat(6, 1fr)',
         gap:1, background:'var(--line)',
       }}>
         {celdas.map((c, i) => {
@@ -964,13 +976,14 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
   const moraInfo = moraMap && moraMap.get ? moraMap.get(grupo.code) : null;
   const ca = todosPickCa(grupo, moraInfo);
   const mr = todosPickMora(moraInfo);
-  const mostrarMora = !esApertura;
+  const mostrarMora = !esApertura && !!moraInfo;
 
   return (
     <button
       type="button"
       onClick={onClick}
       title={`${grupo.code} · ${grupo.docente} · ${grupo.hora || ''}`}
+      aria-pressed={selected}
       style={{
         display:'flex', flexDirection:'column', alignItems:'stretch', gap: compact ? 3 : 5,
         padding: compact ? '7px 8px' : '8px 10px',
@@ -983,7 +996,7 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
         borderRadius: 7,
         cursor:'pointer', textAlign:'left', fontFamily:'inherit',
         color:'var(--ink)',
-        opacity: cerrada ? 0.58 : (esApertura ? 0.88 : 1),
+        opacity: selected ? 1 : (cerrada ? 0.58 : (esApertura ? 0.88 : 1)),
         overflow:'hidden', minWidth:0, lineHeight:1.15,
         transition:'background .12s, transform .12s, box-shadow .12s',
         boxShadow: selected ? `0 0 0 2px ${color}77, 0 8px 16px rgba(0,0,0,0.08)` : (hoy ? `0 0 0 1px ${color}55` : 'none'),
@@ -1021,7 +1034,7 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
         {esICAN && <PillBadge color={color} label="I CAN" />}
         {esEval && <PillBadge color={color} label={leccion.tipo === 'EVAL_ORAL' ? 'ORAL' : 'ESCR'} />}
         {esPC && !esEval && <PillBadge color={color} label="PC" />}
-        {selected && <PillBadge color={'var(--an-navy)'} label={'SEL'} />}
+        {selected && <PillBadge color={'var(--an-navy)'} label={'SELECCIONADO'} />}
         {cerrada && <span style={{ marginLeft:selected ? 0 : 'auto', fontSize:11, color, fontWeight:900 }}>✓</span>}
       </div>
 
