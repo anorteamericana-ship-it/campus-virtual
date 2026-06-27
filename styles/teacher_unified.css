@@ -498,3 +498,42 @@
   .teacher-page .teacher-roster-final-note th,
   .teacher-page .teacher-roster-final-note td { width:132px !important; min-width:132px !important; max-width:132px !important; }
 }
+
+/* ── F98.4-Z6-J · desplazamiento superior del cuaderno docente ─────────── */
+.teacher-page .teacher-roster-top-scroll-grid {
+  min-height: 20px;
+  align-items: stretch;
+}
+.teacher-page .teacher-roster-top-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 20px;
+  min-width: 0;
+  overscroll-behavior-x: contain;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(0,59,122,.68) #dfe7f1;
+  background: #f7f9fc;
+}
+.teacher-page .teacher-roster-top-scroll::-webkit-scrollbar { height: 13px; }
+.teacher-page .teacher-roster-top-scroll::-webkit-scrollbar-track {
+  background: #dfe7f1;
+  border-radius: 999px;
+  margin: 3px 4px;
+}
+.teacher-page .teacher-roster-top-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0,59,122,.68);
+  border: 2px solid #dfe7f1;
+  border-radius: 999px;
+}
+.teacher-page .teacher-roster-top-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,59,122,.9);
+}
+.teacher-page .teacher-roster-identity input[type="search"]:focus {
+  border-color: var(--an-navy) !important;
+  box-shadow: 0 0 0 3px rgba(0,59,122,.12);
+}
+@media (max-width: 760px) {
+  .teacher-page .teacher-roster-top-scroll-grid {
+    grid-template-columns: 220px minmax(0,1fr) 132px !important;
+  }
+}
