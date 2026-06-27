@@ -1,4 +1,4 @@
-// F98.4-Z6-F · Mi Panel renombrado a Mis pendientes
+// F98.4-Z6-G · Mi Panel renombrado a Mis pendientes
 // CALGRUPO_F66_20260618_ASISTENCIA_COMPACTA_SIN_CONVENIO
 /* global React, Icon, PageHeader, EmptyState, ErrorState,
    fetchCalendarioDocente, fetchTareasPendientesDocente,
@@ -147,7 +147,7 @@ function PendientesBanner({
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: '50%',
-          background: '#4CAF50', color: 'white',
+          background: '#6A3D91', color: 'white',
           display: 'grid', placeItems: 'center', flexShrink: 0,
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1014,16 +1014,14 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
     for (const s of (students || [])) {
       const f = formData[s.code];
       if (!f) continue;
-      if (!f.presente && !f.retro.trim()) {
-        errs[s.code] = `Falta el mensaje para ${s.name} (ausente).`;
+      if (!f.retro.trim()) {
+        errs[s.code] = !f.presente
+          ? `Falta el mensaje para ${s.name} (ausente).`
+          : `Falta retroalimentación para ${s.name}.`;
         continue;
       }
-      if (f.presente && esINA && !f.retro.trim()) {
-        errs[s.code] = `Falta retroalimentación para ${s.name}.`;
-        continue;
-      }
-      if (f.presente && includesPC && !f.pc.trim()) {
-        errs[s.code] = `Falta Progress Check para ${s.name}.`;
+      if (includesPC && !f.pc.trim()) {
+        errs[s.code] = `Falta la retroalimentación de Progress Check para ${s.name}.`;
         continue;
       }
     }
@@ -1058,7 +1056,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
       if (!f) continue;
       asistencias[s.code] = !!f.presente;
       if (f.retro.trim()) retroalimentacion[s.code] = f.retro.trim();
-      if (includesPC && f.presente && f.pc.trim()) progress_check[s.code] = f.pc.trim();
+      if (includesPC && f.pc.trim()) progress_check[s.code] = f.pc.trim();
     }
 
     const body = {
@@ -1184,6 +1182,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
                   data={formData[s.code] || { presente: true, retro: '', pc: '' }}
                   programa={programa}
                   esINA={esINA}
+                  riel={riel}
                   includesPC={includesPC}
                   pcUnidades={includesPC ? PC_UNIDADES_MAP[leccionNum] : null}
                   error={errors[s.code]}
@@ -1237,13 +1236,13 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ ...vdLabelStyle, marginBottom: 6 }}>Cerrar lección</div>
+          <div style={{ ...vdLabelStyle, marginBottom: 6 }}>{lec.riel === 'ican' ? 'Cerrar sesión Club I CAN' : 'Cerrar lección'}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
             <h2 style={{
               margin: 0, fontFamily: 'var(--f-serif)', fontWeight: 500,
               fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)',
             }}>
-              Lección {String(lec.leccion).padStart(2, '0')}
+              {lec.riel === 'ican' ? 'Sesión I CAN ' : 'Lección '}{String(lec.leccion).padStart(2, '0')}
               {lec.tipo && lec.tipo !== 'TEORICA' && lec.tipo !== 'CLASE' && (
                 <span style={{
                   fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
@@ -1290,7 +1289,7 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
               <span style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
                 padding: '3px 8px', borderRadius: 'var(--r-pill)',
-                background: '#4CAF50', color: 'white', textTransform: 'uppercase',
+                background: '#6A3D91', color: 'white', textTransform: 'uppercase',
               }}>I CAN</span>
             )}
           </div>
@@ -1415,17 +1414,20 @@ function ModalCierreFooter({ submitting, submitErr, disabled, onCancel, onSubmit
 
 // ── Tarjeta por estudiante ──────────────────────────────────────────────
 const EstudianteCard = React.forwardRef(function EstudianteCard(
-  { estudiante, index, data, programa, esINA, includesPC, pcUnidades, error, onChange },
+  { estudiante, index, data, programa, esINA, riel='curso', includesPC, pcUnidades, error, onChange },
   ref
 ) {
   const presente = data.presente;
-  // Reglas de retro
-  const retroObligatoria = !presente || (presente && esINA);
+  // Regla institucional F98.4-Z6-G: toda sesión requiere comentario individual.
+  const esIcan = String(riel||'').toLowerCase()==='ican';
+  const retroObligatoria = true;
   const retroPlaceholder = !presente
-    ? 'Avisá al estudiante qué se vio, tareas, páginas, lo que debe ponerse al día (obligatorio).'
-    : esINA
-      ? 'Retroalimentación de la clase (obligatorio).'
-      : 'Nota opcional para el estudiante.';
+    ? (esIcan
+        ? 'Indicá qué se trabajó en I CAN y cómo puede recuperar la participación (obligatorio).'
+        : 'Avisá qué se vio, tareas y lo que debe ponerse al día (obligatorio).')
+    : (esIcan
+        ? 'Retroalimentación individual de la sesión Club I CAN (obligatorio).'
+        : 'Retroalimentación individual de la clase (obligatorio).');
 
   const hasError = !!error;
 
@@ -1521,13 +1523,13 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
       </div>
 
       {/* Retro */}
-      <div style={{ marginBottom: includesPC && presente ? 10 : 0, gridColumn: '3 / 4' }}>
+      <div style={{ marginBottom: includesPC ? 10 : 0, gridColumn: '3 / 4' }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           marginBottom: 4,
         }}>
           <label style={vdLabelStyle}>
-            {!presente ? 'Mensaje para el ausente' : 'Retroalimentación'}
+            {!presente ? 'Mensaje para el ausente' : (esIcan ? 'Retroalimentación I CAN' : 'Retroalimentación')}
           </label>
           <span style={{
             fontSize: 10, fontWeight: 600,
@@ -1547,7 +1549,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
       </div>
 
       {/* Progress Check */}
-      {includesPC && presente && (
+      {includesPC && (
         <div style={{ gridColumn: '3 / 4' }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
@@ -1564,7 +1566,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
           <textarea
             value={data.pc}
             onChange={e => onChange(estudiante.code, 'pc', e.target.value)}
-            placeholder={`Observación de Progress Check para las unidades ${pcUnidades}.`}
+            placeholder={!presente ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}
             rows={2}
             style={textareaStyle(hasError)}
           />
