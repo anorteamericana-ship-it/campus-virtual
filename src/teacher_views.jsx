@@ -1,4 +1,4 @@
-// F98.4-Z6-J · buscador de estudiantes + barra superior + próxima lección por riel
+// F98.4-Z6-K · horario I CAN estable + Progress Check obligatorio y recuperable
 // Base preservada: F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
@@ -175,8 +175,16 @@ function tvHoraLabel(g){
   return [norm(rawHi),norm(rawHf)].filter(Boolean).join(' a ');
 }
 function tvLessonHoraLabel(lesson, meta){
-  const hi = lesson?.hora_inicio, hf = lesson?.hora_fin;
-  if (hi && hf) return tvHoraLabel({ hora_i:hi, hora_f:hf });
+  const esIcan=String(lesson?.riel||'').toLowerCase()==='ican'||tvUpper(lesson?.tipo)==='ICAN';
+  // Z6-K: I CAN usa primero el horario oficial del grupo. Las filas históricas
+  // del calendario podían contener 20:23–23:23 por serialización Date(1899).
+  if(esIcan){
+    const hiI=meta?.hora_i_ican||meta?.hora_inicio_ican||meta?.horaIniIcan;
+    const hfI=meta?.hora_f_ican||meta?.hora_fin_ican||meta?.horaFinIcan;
+    if(hiI&&hfI)return tvHoraLabel({hora_i:hiI,hora_f:hfI});
+  }
+  const hi=lesson?.hora_inicio,hf=lesson?.hora_fin;
+  if(hi&&hf)return tvHoraLabel({hora_i:hi,hora_f:hf});
   return tvHoraLabel(meta);
 }
 function tvGrupoLabel(g){
@@ -760,7 +768,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         </div>
       </aside>
     </div>
-    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:lesson.hora_inicio||'',hora_fin:lesson.hora_fin||'',tipo:lesson.tipo,riel:rielLeccion,horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
+    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:rielLeccion==='ican'?(meta?.hora_i_ican||meta?.hora_inicio_ican||lesson.hora_inicio||''):(lesson.hora_inicio||''),hora_fin:rielLeccion==='ican'?(meta?.hora_f_ican||meta?.hora_fin_ican||lesson.hora_fin||''):(lesson.hora_fin||''),tipo:lesson.tipo,riel:rielLeccion,programa:meta?.programa||'',progress_check:lesson?.progress_check===true,horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
     {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:rielLeccion}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;
 }

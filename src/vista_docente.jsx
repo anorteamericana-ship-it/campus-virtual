@@ -2,7 +2,7 @@
 // CALGRUPO_F66_20260618_ASISTENCIA_COMPACTA_SIN_CONVENIO
 /* global React, Icon, PageHeader, EmptyState, ErrorState,
    fetchCalendarioDocente, fetchTareasPendientesDocente,
-   fetchEstudiantesParaCierre, postCerrarLeccionCompleta */
+   fetchEstudiantesParaCierre, postCerrarLeccionCompleta, postCompletarProgressCheckCerradoF98Z6K */
 
 // ─────────────────────────────────────────────────────────────────────────
 // VISTA DOCENTE — Fase 2
@@ -187,9 +187,9 @@ function PendientesBanner({
   });
   if (sp > 0) cats.push({
     id: 'sin_pc', label: 'Lecciones sin Progress Check', count: sp,
-    color: '#7B1FA2', accion: 'Ver en histórico', list: sinPC || [],
+    color: '#7B1FA2', accion: 'Completar Progress Check', list: sinPC || [],
     onClickItem: onClickSinPC,
-    accionable: false,
+    accionable: true,
   });
 
   return (
@@ -939,6 +939,54 @@ const PC_UNIDADES_MAP = {
   21:'U9-U10', 24:'U11-U12', 28:'U13-U14', 30:'U15-U16',
 };
 
+function ModalCompletarProgressCheck({ pendiente, docenteNombre, onClose, onSuccess }) {
+  const leccion=Number(pendiente?.leccion||0);
+  const unidades=PC_UNIDADES_MAP[leccion]||'';
+  const [students,setStudents]=React.useState(null);
+  const [comments,setComments]=React.useState({});
+  const [errors,setErrors]=React.useState({});
+  const [loading,setLoading]=React.useState(true);
+  const [submitting,setSubmitting]=React.useState(false);
+  const [message,setMessage]=React.useState('');
+
+  React.useEffect(()=>{
+    let cancel=false;
+    setLoading(true);setMessage('');
+    fetchEstudiantesParaCierre(pendiente.cod_grupo,pendiente.nivel).then(r=>{
+      if(cancel)return;
+      if(!r?.ok){setMessage(r?.error||'No se pudo cargar el roster.');setLoading(false);return;}
+      const list=r.estudiantes||[];setStudents(list);
+      const init={};list.forEach(e=>{init[e.code]='';});setComments(init);setLoading(false);
+    });
+    return()=>{cancel=true;};
+  },[pendiente.cod_grupo,pendiente.nivel]);
+
+  const submit=async()=>{
+    if(submitting)return;
+    const missing={};(students||[]).forEach(e=>{if(!String(comments[e.code]||'').trim())missing[e.code]=`Falta el Progress Check de ${e.name}.`;});
+    if(Object.keys(missing).length){setErrors(missing);setMessage(`Faltan ${Object.keys(missing).length} comentarios individuales.`);return;}
+    setErrors({});setMessage('');setSubmitting(true);
+    const res=await postCompletarProgressCheckCerradoF98Z6K({cod_grupo:pendiente.cod_grupo,nivel:pendiente.nivel,leccion,progress_check:comments,registrado_por:docenteNombre});
+    setSubmitting(false);
+    if(!res?.ok){setMessage(res?.mensaje||res?.error||'No se pudo completar el Progress Check.');if(Array.isArray(res?.estudiantes_faltantes)){const e2={};res.estudiantes_faltantes.forEach(c=>e2[c]='Comentario obligatorio.');setErrors(e2);}return;}
+    onSuccess&&onSuccess(res);
+  };
+
+  return <div style={{position:'fixed',inset:0,zIndex:3100,background:'rgba(26,22,19,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onMouseDown={e=>{if(e.target===e.currentTarget&&!submitting)onClose();}}>
+    <div role="dialog" aria-modal="true" style={{width:'min(760px,100%)',maxHeight:'calc(100vh - 32px)',background:'var(--surface)',borderRadius:'var(--r-lg)',boxShadow:'var(--sh-3)',display:'flex',flexDirection:'column',overflow:'hidden',borderTop:'5px solid #6A3D91'}}>
+      <div style={{padding:'17px 22px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:16}}>
+        <div><div style={{...vdLabelStyle,color:'#6A3D91'}}>Completar obligación pendiente</div><h2 style={{margin:'5px 0 0',fontFamily:'var(--f-serif)',fontSize:23}}>Progress Check · Lección {String(leccion).padStart(2,'0')}</h2><div style={{fontSize:12,color:'var(--ink-2)',marginTop:5}}>{pendiente.cod_grupo} · {pendiente.nivel} · {unidades}</div><div style={{fontSize:11,color:'#7B1FA2',fontWeight:800,marginTop:7}}>La clase permanece cerrada. Solo se registran los comentarios individuales faltantes.</div></div>
+        <button type="button" onClick={onClose} disabled={submitting} style={{border:0,background:'transparent',fontSize:25,cursor:'pointer'}}>×</button>
+      </div>
+      <div style={{padding:'15px 20px',overflowY:'auto',background:'var(--bg)',flex:1}}>
+        {loading?<LoadingState variant="small" title="Cargando estudiantes…"/>:message&&(!students||!students.length)?<div style={{padding:16,color:'#B3261E'}}>{message}</div>:(students||[]).map((e,i)=><div key={e.code} style={{background:'var(--surface)',border:errors[e.code]?'1.5px solid #E8372A':'1px solid var(--line)',borderRadius:'var(--r-md)',padding:'11px 13px',marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',gap:10,marginBottom:6}}><strong>{i+1}. {e.name}</strong><span style={{fontFamily:'var(--f-mono)',fontSize:11,color:'var(--ink-3)'}}>{e.code}</span></div><label style={{...vdLabelStyle,display:'block',marginBottom:4}}>Progress Check {unidades} · obligatorio</label><textarea rows={2} value={comments[e.code]||''} onChange={ev=>{setComments(p=>({...p,[e.code]:ev.target.value}));if(errors[e.code])setErrors(p=>{const n={...p};delete n[e.code];return n;});}} placeholder={`Observación individual del Progress Check ${unidades}.`} style={textareaStyle(!!errors[e.code])}/>{errors[e.code]&&<div style={{fontSize:11,color:'#B3261E',fontWeight:700,marginTop:4}}>{errors[e.code]}</div>}</div>)}
+      </div>
+      <div style={{padding:'13px 20px',borderTop:'1px solid var(--line)',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}><div style={{fontSize:11,color:message?'#B3261E':'var(--ink-3)',fontWeight:message?700:500}}>{message||`${students?.length||0} estudiantes · todos requieren comentario`}</div><div style={{display:'flex',gap:8}}><button className="btn btn-ghost" type="button" onClick={onClose} disabled={submitting}>Cancelar</button><button className="btn btn-primary" type="button" onClick={submit} disabled={loading||submitting||!students?.length} style={{background:'#6A3D91',borderColor:'#6A3D91'}}>{submitting?'Guardando…':'Guardar Progress Check'}</button></div></div>
+    </div>
+  </div>;
+}
+
+
 function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase' }) {
   // ── B1: el panel admin reusa este modal para cerrar lecciones de otro
   // docente.  docente_real = dueño de la lección; registrado_por = admin
@@ -980,7 +1028,9 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
       }
       const list = r.estudiantes || [];
       setStudents(list);
-      setPrograma(r.programa || 'SIN_INA');
+      const declarado=String(r.programa||lec.programa||'').trim().toUpperCase();
+      const efectivo=(declarado==='INA'||declarado==='CON_INA'||lec.progress_check===true)?'INA':(declarado||'SIN_INA');
+      setPrograma(efectivo);
       const initial = {};
       list.forEach(e => { initial[e.code] = { presente: true, retro: '', pc: '' }; });
       setFormData(initial);
@@ -990,7 +1040,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
   }, [lec.cod_grupo, lec.nivel]);
 
   const esINA      = programa === 'INA' || programa === 'CON_INA';
-  const includesPC = esPCLec && esINA && riel === 'curso';
+  const includesPC = esPCLec && riel === 'curso' && (esINA || lec.progress_check === true);
 
   // ¿Hay cambios? — para confirmar al cancelar
   const dirty = React.useMemo(() => {
@@ -1282,7 +1332,7 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
                 background: 'color-mix(in srgb, #4CAF50 14%, white)',
                 color: '#1B5E20', textTransform: 'uppercase',
               }}>
-                Incluye Progress Check
+                Progress Check obligatorio · {PC_UNIDADES_MAP[Number(lec.leccion)] || ''}
               </span>
             )}
             {lec.riel === 'ican' && (
@@ -1290,7 +1340,7 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
                 padding: '3px 8px', borderRadius: 'var(--r-pill)',
                 background: '#6A3D91', color: 'white', textTransform: 'uppercase',
-              }}>I CAN</span>
+              }}>I CAN · retroalimentación individual obligatoria</span>
             )}
           </div>
         </div>
@@ -1708,6 +1758,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const [error, setError]           = React.useState('');
   const [tab, setTab]               = React.useState('proximas');
   const [modalLec, setModalLec]     = React.useState(null);   // lección en cierre
+  const [modalPC, setModalPC]       = React.useState(null);   // recuperación PC cerrado
   const [toastMsg, setToastMsg]     = React.useState('');
   const [bannerAbierto, setBannerAbierto] = React.useState(false);
   const [catAbierta, setCatAbierta]       = React.useState(null);
@@ -1862,18 +1913,15 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
     setModalLec(match || { ...p, estado: 'PROGRAMADA' });
   };
 
-  // ── Click en pendiente sin_retro / sin_pc → tab Histórico + aviso ────
-  // La edición de retro/PC de lecciones ya cerradas es funcionalidad
-  // futura.  Llevamos al docente al histórico para que vea el contexto.
-  // TODO: editar retro de lección cerrada — fase futura
-  // TODO: editar Progress Check de lección cerrada — fase futura
+  // Retro cerrada continúa reservada para administración. Z6-K habilita
+  // únicamente la recuperación segura de Progress Check omitido.
   const navegarAHistorico = (msgPrefix) => {
     setTab('historico');
-    setToastMsg(`${msgPrefix}: la edición de lecciones cerradas estará disponible próximamente.`);
-    // Subir el scroll para que el docente vea el histórico desde arriba.
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    setToastMsg(`${msgPrefix}: revisá la lección cerrada en el histórico.`);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const abrirProgressCheckPendiente = (p) => {
+    setModalPC({ ...p, riel:'curso', estado:'CERRADA' });
   };
 
   return (
@@ -1895,7 +1943,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         onToggleCat={setCatAbierta}
         onClickSinCerrar={abrirCierreDesdePendiente}
         onClickSinRetro={() => navegarAHistorico('Sin retroalimentación')}
-        onClickSinPC={() => navegarAHistorico('Sin Progress Check')}
+        onClickSinPC={abrirProgressCheckPendiente}
       />
 
       <VDTabs value={tab} onChange={setTab} counts={counts} />
@@ -1932,6 +1980,19 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
           }}
           onSolicitudEnviada={(mensaje) => {
             setToastMsg(mensaje || 'Solicitud enviada, pendiente de aprobación.');
+            refetch();
+          }}
+        />
+      )}
+
+      {modalPC && (
+        <ModalCompletarProgressCheck
+          pendiente={modalPC}
+          docenteNombre={nombre || cedula}
+          onClose={() => setModalPC(null)}
+          onSuccess={(res) => {
+            setModalPC(null);
+            setToastMsg(res?.mensaje || 'Progress Check obligatorio completado.');
             refetch();
           }}
         />

@@ -54,6 +54,16 @@ async function fetchEstudiantesParaCierre(codGrupo, nivel) {
   }
 }
 
+// F98.4-Z6-K — completa únicamente el Progress Check de una lección cerrada.
+// No reabre ni modifica asistencia, retroalimentación o nota.
+async function postCompletarProgressCheckCerradoF98Z6K(payload = {}) {
+  try {
+    return await postCampusData('completarProgressCheckCerradoF98Z6K', payload);
+  } catch (e) {
+    return { ok: false, error: 'Error de conexión: ' + e.message };
+  }
+}
+
 // ── Supervisión: docentes con lecciones atrasadas (panel admin B1) ───────
 // Endpoint pesado (~11 s).  El caller DEBE mostrar spinner.
 async function fetchDocentesAtrasados() {
@@ -934,7 +944,7 @@ Object.assign(window, {
   getSessionToken, validarSesionServidor, cerrarSesionServidor,
   getGrupoActivoDocente, setGrupoActivoDocente,
   fetchCalendarioDocente, fetchTareasPendientesDocente,
-  fetchEstudiantesParaCierre, postCerrarLeccionCompleta,
+  fetchEstudiantesParaCierre, postCerrarLeccionCompleta, postCompletarProgressCheckCerradoF98Z6K,
   fetchDocentesAtrasados,
   fetchAsignarCobertura,
   fetchMaterialLeccion,
