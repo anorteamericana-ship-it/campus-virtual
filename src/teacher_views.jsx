@@ -1,4 +1,4 @@
-// F98.4-Z6-G · I CAN oficial: calendario morado, cierre completo, retro obligatoria y nota 20%
+// F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
 // F89_20260620_ACCESO_EXAMENES_Y_AVISO_CIERRE
@@ -781,13 +781,40 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
   </div>;
 }
 
-function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
+function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, programa, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const todayIso=new Date().toISOString().slice(0,10);
-  const lessons=React.useMemo(()=>(lecciones||[])
+  const allLessons=React.useMemo(()=>(lecciones||[])
     .filter(l=>tvUpper(l.tipo)!=='FERIADO')
     .slice()
     .sort(tvLessonSortF97)
-    .slice(0,48),[lecciones]);
+    .slice(0,64),[lecciones]);
+  const courseCount=React.useMemo(()=>allLessons.filter(l=>!tvIsIcanEventF96(l)).length,[allLessons]);
+  const icanCount=React.useMemo(()=>allLessons.filter(tvIsIcanEventF96).length,[allLessons]);
+  const programLabel=tvUpper(meta?.programa||meta?.tipo_programa||meta?.modelo_programa||programa||'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+  const programSaysNoIcan=programLabel.includes('SIN INA')||programLabel.includes('PROGRAMA LIBRE')||programLabel==='LIBRE'||programLabel==='NO INA';
+  const programSaysIna=!programSaysNoIcan&&/(^| )INA( |$)/.test(programLabel);
+  const iCanApplies=!programSaysNoIcan&&(programSaysIna||icanCount>0);
+  const groupCode=tvGroupCode(meta);
+  const viewStorageKey=`an_teacher_attendance_view:${groupCode||'default'}`;
+  const [viewMode,setViewMode]=React.useState('total');
+  React.useEffect(()=>{
+    let saved='total';
+    try{saved=sessionStorage.getItem(viewStorageKey)||'total';}catch(_){}
+    if(!['total','curso','ican'].includes(saved))saved='total';
+    if(saved==='ican'&&!iCanApplies)saved='total';
+    setViewMode(saved);
+  },[viewStorageKey,iCanApplies]);
+  const selectView=React.useCallback((mode)=>{
+    const clean=['total','curso','ican'].includes(mode)?mode:'total';
+    if(clean==='ican'&&!iCanApplies)return;
+    setViewMode(clean);
+    try{sessionStorage.setItem(viewStorageKey,clean);}catch(_){}
+  },[iCanApplies,viewStorageKey]);
+  const lessons=React.useMemo(()=>{
+    if(viewMode==='curso')return allLessons.filter(l=>!tvIsIcanEventF96(l));
+    if(viewMode==='ican')return allLessons.filter(tvIsIcanEventF96);
+    return allLessons;
+  },[allLessons,viewMode]);
   const nextLesson=React.useMemo(()=>{
     const upcoming=lessons.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
     return upcoming||lessons.find(l=>tvUpper(l.estado)!=='CERRADA')||lessons[lessons.length-1]||null;
@@ -800,7 +827,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   React.useEffect(()=>{
     const box=calendarRef.current;
     if(!box||!lessons.length||!nextLesson)return;
-    const key=`${tvGroupCode(meta)}|${nextKey}|${lessons.length}`;
+    const key=`${tvGroupCode(meta)}|${viewMode}|${nextKey}|${lessons.length}`;
     if(positionedRef.current===key)return;
     positionedRef.current=key;
     const idx=lessons.findIndex(l=>tvLessonKeyF97(l)===tvLessonKeyF97(nextLesson)&&String(l.fecha||'')===String(nextLesson.fecha||''));
@@ -809,7 +836,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
       const actualX=Math.max(0,idx)*COL_W;
       box.scrollLeft=Math.max(0,actualX-penultimateX);
     });
-  },[tvGroupCode(meta),nextKey,lessons.length]);
+  },[tvGroupCode(meta),viewMode,nextKey,lessons.length]);
 
   const scrollBy=d=>calendarRef.current?.scrollBy({left:d,behavior:'smooth'});
   const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||''), activeLec=Number(activeSession?.LECCION||activeSession?.leccion||0), activeRiel=String(activeSession?.RIEL||activeSession?.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
@@ -820,13 +847,26 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   return <>
     <div className="card teacher-roster-fixed" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
-        <div>
+        <div style={{minWidth:240,flex:'1 1 320px'}}>
           <div className="card-title">Estudiantes · asistencia y notas</div>
-          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>Los estudiantes y la nota final permanecen fijos. Se desplazan las 32 lecciones y las 16 sesiones I CAN; I CAN aparece en morado.</div>
+          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?'Vista TOTAL: lecciones e I CAN mezclados por fecha y hora.':viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
         </div>
-        <div style={{display:'flex',gap:7}}>
-          <button type="button" onClick={()=>scrollBy(-6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}}>←</button>
-          <button type="button" onClick={()=>scrollBy(6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}}>→</button>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap',flex:'1 1 420px'}}>
+          <div role="tablist" aria-label="Filtrar asistencia" style={{display:'inline-flex',gap:5,padding:4,border:'1px solid var(--line)',borderRadius:12,background:'#F7F9FC',flexWrap:'wrap'}}>
+            {[
+              {id:'total',label:'TOTAL',count:allLessons.length},
+              {id:'curso',label:'SOLO LECCIONES',count:courseCount},
+              ...(iCanApplies?[{id:'ican',label:'SOLO I CAN',count:icanCount}]:[]),
+            ].map(opt=>{
+              const active=viewMode===opt.id, purple=opt.id==='ican';
+              return <button key={opt.id} type="button" role="tab" aria-selected={active} onClick={()=>selectView(opt.id)} style={{border:'1px solid '+(active?(purple?'#6A3D91':'var(--an-navy)'):'transparent'),background:active?(purple?'#6A3D91':'var(--an-navy)'):'#FFF',color:active?'#FFF':purple?'#6A3D91':'var(--ink-2)',borderRadius:9,padding:'7px 10px',fontSize:9.5,fontWeight:900,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap'}}>{opt.label} <span style={{opacity:.78}}>({opt.count})</span></button>;
+            })}
+          </div>
+          {!iCanApplies&&<span title="Este grupo no está configurado como Programa INA" style={{padding:'7px 9px',borderRadius:9,background:'#F1F3F6',color:'var(--ink-3)',fontSize:9,fontWeight:850,whiteSpace:'nowrap'}}>I CAN · NO APLICA</span>}
+          <div style={{display:'flex',gap:7}}>
+            <button type="button" onClick={()=>scrollBy(-6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la izquierda">←</button>
+            <button type="button" onClick={()=>scrollBy(6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la derecha">→</button>
+          </div>
         </div>
       </div>
 
@@ -849,7 +889,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
         </div>
 
         <div ref={calendarRef} className="teacher-roster-calendar-scroll" style={{overflowX:'auto',overflowY:'hidden',minWidth:0,scrollbarGutter:'stable',WebkitOverflowScrolling:'touch'}}>
-          <table className="teacher-roster-fixed-table teacher-roster-calendar-table" style={{...tableBase,width:Math.max(COL_W,lessons.length*COL_W),minWidth:Math.max(COL_W,lessons.length*COL_W)}}>
+          {!lessons.length?<div style={{minHeight:HEADER_H+(Math.max(1,roster.length)*ROW_H),display:'flex',alignItems:'center',justifyContent:'center',padding:28,textAlign:'center',background:viewMode==='ican'?'#FBF7FE':'#FFF',color:viewMode==='ican'?'#6A3D91':'var(--ink-3)',fontWeight:850,fontSize:12,borderBottom:'1px solid var(--line)'}}>{viewMode==='ican'?'Todavía no hay sesiones I CAN programadas para este grupo.':'No hay actividades programadas en esta vista.'}</div>:<table className="teacher-roster-fixed-table teacher-roster-calendar-table" style={{...tableBase,width:Math.max(COL_W,lessons.length*COL_W),minWidth:Math.max(COL_W,lessons.length*COL_W)}}>
             <thead><tr>{lessons.map(l=>{
               const isNext=!!nextLesson&&tvLessonKeyF97(l)===tvLessonKeyF97(nextLesson)&&String(l.fecha||'')===String(nextLesson.fecha||'')&&tvUpper(l.estado)!=='CERRADA';
               const isToday=String(l.fecha||'')===todayIso;
@@ -870,7 +910,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
                 {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
               </td>;
             })}</tr>)}</tbody>
-          </table>
+          </table>}
         </div>
 
         <div className="teacher-roster-final-note" style={{zIndex:3,borderLeft:'1px solid var(--line)',boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)'}}>
@@ -897,7 +937,7 @@ function stickyNoteCellF79(head){ return { position:'sticky', right:0, zIndex:he
 function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'6px 7px', fontSize:9.5, fontWeight:850, cursor:'pointer' }; }
 
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
-  const { codGrupo, grupos, meta, nivel, nombre, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
+  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
   const lista=grupos||[];
   const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
@@ -914,7 +954,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
         <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
         <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
       </div>
-      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
+      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} programa={programa} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     </>}
   </div>;
 }
