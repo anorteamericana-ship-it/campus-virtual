@@ -1,3 +1,4 @@
+// F98.4-Z6-P · navegación Super Admin agrupada por operación
 // F98.4-Z6-F · menú docente reordenado y renombrado
 // F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY
 /* global React, Icon, getSesion, setSesion */
@@ -421,40 +422,57 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'mensajes', label: 'Comunicados', icon: 'messages' },
     { id: 'mi_panel_docente', label: 'Mis pendientes', icon: 'home', badge: pendientesDoc || null },
   ];
-  const adminNav = [
-    { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
-    { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-    { id: 'supervision', label: 'Supervisión', icon: 'bell' },
-    // CALGRUPO_F1_20260616_PANEL_NUEVO: panel fusionado calendario + grupo + estudiantes.
-    { id: 'calendario_grupo', label: 'Calendario de Grupo', icon: 'calendar' },
-    { id: 'auditoria_academica', label: 'Auditoría Académica', icon: 'grades' },
-    // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_MENU
-    { id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' },
-    // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_MENU
-    { id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' },
-    // CALGRUPO_F36_20260617_CONAPE_COBRANZA_MENU
-    { id: 'conape_cobranza', label: 'CONAPE y Cobranza', icon: 'payments' },
-    ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
-    { id: 'examenes', label: 'Exámenes', icon: 'check' },
-    { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
-    { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
-    { id: 'grupos', label: 'Grupos', icon: 'roster' },
-    { id: 'cronograma_grupo', label: 'Calendario', icon: 'calendar' },
-    { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
-    { id: 'buscador', label: 'Buscador', icon: 'search' },
-    { id: 'banco', label: 'Importar Banco', icon: 'payments' },
-    { id: 'aplicar_pago', label: 'Aplicar Pago', icon: 'card' },
-    // Ítems sin lógica real — marcados como "Próximamente" hasta que se
-    // conecten. No navegan; renderizarían datos vacíos o demo si lo
-    // hicieran (bloque 2).
-    { id: 'docentes', label: 'Docentes',         icon: 'graduation', proximamente: true },
-    { id: 'horas',    label: 'Horas docentes',   icon: 'chart',      proximamente: true },
-    { id: 'ican',     label: 'Club I CAN',       icon: 'ican',       proximamente: true },
-    { id: 'finanzas', label: 'Finanzas',         icon: 'payments',   proximamente: true },
-    // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_MENU
-    { id: 'reportes', label: 'Reportes',         icon: 'chart' },
-    { id: 'config',   label: 'Configuración',    icon: 'settings',   proximamente: true },
+  const adminSections = [
+    {
+      label: 'Principal',
+      items: [
+        { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
+        { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+        { id: 'supervision', label: 'Supervisión', icon: 'bell' },
+      ],
+    },
+    {
+      label: 'Gestión académica',
+      items: [
+        { id: 'calendario_grupo', label: 'Calendario académico', icon: 'calendar' },
+        { id: 'grupos', label: 'Grupos', icon: 'roster' },
+        { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
+        { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
+        { id: 'examenes', label: 'Exámenes', icon: 'check' },
+        { id: 'auditoria_academica', label: 'Auditoría académica', icon: 'grades' },
+      ],
+    },
+    {
+      label: 'Operación administrativa',
+      items: [
+        ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
+        { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
+        { id: 'buscador', label: 'Buscador general', icon: 'search' },
+      ],
+    },
+    {
+      label: 'Finanzas y cobranza',
+      items: [
+        { id: 'conape_cobranza', label: 'CONAPE y Cobranza', icon: 'payments' },
+        { id: 'banco', label: 'Importar banco', icon: 'payments' },
+        { id: 'aplicar_pago', label: 'Aplicar pago', icon: 'card' },
+        { id: 'reportes', label: 'Reportes', icon: 'chart' },
+        { id: 'finanzas', label: 'Finanzas', icon: 'payments', proximamente: true },
+      ],
+    },
+    {
+      label: 'Control del sistema',
+      items: [
+        { id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' },
+        { id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' },
+        { id: 'docentes', label: 'Docentes', icon: 'graduation', proximamente: true },
+        { id: 'horas', label: 'Horas docentes', icon: 'chart', proximamente: true },
+        { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },
+        { id: 'config', label: 'Configuración', icon: 'settings', proximamente: true },
+      ],
+    },
   ];
+  const adminNav = adminSections.flatMap(section => section.items);
   const nav = role === 'teacher' ? teacherNav : adminNav;
   const userName = usr?.nombre || '—';
   const userRole = usr
@@ -466,7 +484,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
   return (
-    <aside className={`sb ${role === 'student' ? 'student-sb' : ''} ${role === 'teacher' ? 'teacher-sb' : ''}`} data-role={role || 'unknown'}>
+    <aside className={`sb ${role === 'student' ? 'student-sb' : ''} ${role === 'teacher' ? 'teacher-sb' : ''} ${role === 'admin' ? 'admin-sb' : ''}`} data-role={role || 'unknown'}>
       <div className="sb-brand">
         <div className="sb-logo" />
         <div className="sb-brand-text">
@@ -491,48 +509,54 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
             </button>
           ))}
         </React.Fragment>
-      )) : (
+      )) : role === 'teacher' ? (
         <>
-          <div className={`sb-section ${role === 'teacher' ? 'teacher-sb-section' : ''}`}>Menú</div>
-          {nav.map(item => {
-            if (item.proximamente) {
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  title="En construcción — lo conectamos pronto"
-                  className={`sb-item ${role === 'teacher' ? 'teacher-sb-item' : ''}`}
-                  style={{
-                    opacity: 0.42,
-                    cursor: 'not-allowed',
-                    pointerEvents: 'auto',
-                    background: 'transparent',
-                  }}
-                >
-                  <Icon name={item.icon} size={18} />
-                  <span className="sb-label" style={{ textDecoration: 'none' }}>{item.label}</span>
-                  <span style={{
-                    marginLeft: 'auto', fontSize:9, fontWeight:800,
-                    letterSpacing:'0.14em', textTransform:'uppercase', padding:'2px 7px',
-                    borderRadius:999, background:'color-mix(in srgb, var(--ink-3) 18%, transparent)',
-                    color:'var(--ink-3)', whiteSpace:'nowrap',
-                  }}>Pronto</span>
-                </button>
-              );
-            }
-            return (
-              <button
-                key={item.id}
-                className={`sb-item ${role === 'teacher' ? 'teacher-sb-item' : ''} ${active===item.id?'active':''}`}
-                onClick={() => setActive(item.id)}>
-                <Icon name={item.icon} size={18} />
-                <span className="sb-label">{item.label}</span>
-                {item.badge && <span className="sb-badge">{item.badge}</span>}
-              </button>
-            );
-          })}
+          <div className="sb-section teacher-sb-section">Menú</div>
+          {teacherNav.map(item => (
+            <button
+              key={item.id}
+              className={`sb-item teacher-sb-item ${active===item.id?'active':''}`}
+              onClick={() => setActive(item.id)}>
+              <Icon name={item.icon} size={18} />
+              <span className="sb-label">{item.label}</span>
+              {item.badge && <span className="sb-badge">{item.badge}</span>}
+            </button>
+          ))}
+        </>
+      ) : (
+        <>
+          {adminSections.map(section => (
+            <React.Fragment key={section.label}>
+              <div className="sb-section admin-sb-section">{section.label}</div>
+              {section.items.map(item => {
+                if (item.proximamente) {
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      title="En construcción — lo conectamos pronto"
+                      className="sb-item admin-sb-item admin-sb-item-future">
+                      <Icon name={item.icon} size={18} />
+                      <span className="sb-label">{item.label}</span>
+                      <span className="admin-sb-soon">Pronto</span>
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    key={item.id}
+                    className={`sb-item admin-sb-item ${active===item.id?'active':''}`}
+                    onClick={() => setActive(item.id)}>
+                    <Icon name={item.icon} size={18} />
+                    <span className="sb-label">{item.label}</span>
+                    {item.badge && <span className="sb-badge">{item.badge}</span>}
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </>
       )}
 

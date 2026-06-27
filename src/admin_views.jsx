@@ -1,3 +1,4 @@
+// F98.4-Z6-P · Dashboard Super Admin unificado y conectado a datos reales
 /* global React, Icon, Chip, Stat, PageHeader */
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
@@ -2252,11 +2253,27 @@ function AdminGruposView() {
 // VISTAS EXISTENTES — sin cambios
 // ─────────────────────────────────────────────────────────────────────────
 
+function AdminKpiCardF98({ label, value, hint, tone='navy', icon='chart' }) {
+  return <div className={`admin-kpi-card admin-kpi-${tone}`}>
+    <div className="admin-kpi-top">
+      <span className="admin-kpi-label">{label}</span>
+      <span className="admin-kpi-icon"><Icon name={icon} size={18} /></span>
+    </div>
+    <div className="admin-kpi-value">{value}</div>
+    <div className="admin-kpi-hint">{hint}</div>
+  </div>;
+}
+
+function AdminEmptyStateF98({ text }) {
+  return <div className="admin-empty-state">{text}</div>;
+}
+
 function AdminDashboard({ setActive }) {
   const { data, loading, error } = useAdminDashboard();
   const { novedades, ultimoSync, resumen: conapeResumen } = useNovedadesConape();
   const usr = useUsuario();
   const saludoAdmin = nombreAmable(usr?.nombre || '');
+  const esSuperadmin = String(usr?.rol || '').toLowerCase() === 'superadmin';
   const [syncing, setSyncing] = React.useState(false);
   const handleSyncConape = async () => {
     setSyncing(true);
@@ -2270,159 +2287,157 @@ function AdminDashboard({ setActive }) {
     }
   };
   if (error)   return <ErrorState message={error} onRetry={() => location.reload()} />;
-  if (loading) return <LoadingState title="Cargando datos…" />;
+  if (loading) return <LoadingState title="Cargando panel institucional…" subtitle="Consultando APOLLO, CAMPUS_OPERATIVO y CONAPE" />;
+
   const k       = data?.kpis    || {};
   const grupos  = data?.grupos  || [];
   const alertas = data?.alertas || [];
   const fmtMoney2 = (n) => {
     if (n == null || isNaN(n)) return '—';
     if (n >= 1_000_000) return '₡' + (n/1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000)     return '₡' + (n/1_000).toFixed(0) + 'K';
+    if (n >= 1_000) return '₡' + (n/1_000).toFixed(0) + 'K';
     return '₡' + Number(n).toLocaleString('es-CR');
   };
-  const altas = alertas.filter(a => a.level==='high').length;
-  return (
-    <div>
-      <div className="hero">
-        <div className="watermark-a">A</div>
-        <div className="hero-grid">
+  const altas = alertas.filter(a => a.level === 'high').length;
+  const medias = alertas.filter(a => a.level === 'med').length;
+
+  const nivelOrden = ['b1','b2','i1','i2'];
+  const nivelStats = nivelOrden.map(id => {
+    const meta = NIVEL_META[id];
+    const filas = grupos.filter(g => String(g.nivelId || '').toLowerCase() === id);
+    return {
+      id,
+      nombre: meta?.nombre || id.toUpperCase(),
+      color: meta?.color || 'var(--an-navy)',
+      grupos: filas.length,
+      estudiantes: filas.reduce((sum, g) => sum + (Number(g.estudiantes) || 0), 0),
+    };
+  });
+  const totalNivelEst = nivelStats.reduce((sum, x) => sum + x.estudiantes, 0);
+
+  const docentes = buildDocentesActivos(grupos)
+    .map(d => ({ ...d, estudiantes: d.grupos.reduce((sum, item) => {
+      const g = grupos.find(row => row.code === item.code);
+      return sum + (Number(g?.estudiantes) || 0);
+    }, 0) }))
+    .sort((a,b) => b.grupos.length - a.grupos.length || a.nombre.localeCompare(b.nombre, 'es'));
+
+  const quickActions = [
+    ['supervision','bell','Supervisión','Clases, pendientes y seguimiento'],
+    ['calendario_grupo','calendar','Calendario académico','Grupos, lecciones e I CAN'],
+    ['matriculas','graduation','Matrículas','Admisión y movimientos'],
+    ['solicitudes','card','Solicitudes','Casos administrativos pendientes'],
+  ];
+
+  return <div className="admin-dashboard-unified">
+    <PageHeader
+      kicker="Control institucional"
+      title={<>{esSuperadmin ? 'Panel ' : 'Panel '}<em>{esSuperadmin ? 'Super Admin' : 'Administrativo'}</em></>}
+      sub={`${saludoAdmin ? `Hola, ${saludoAdmin}. ` : ''}Vista ejecutiva del Campus Virtual · ${new Date().toLocaleDateString('es-CR',{month:'long',year:'numeric'})}`}
+      right={<button className="btn btn-primary admin-sync-btn" onClick={handleSyncConape} disabled={syncing}>{syncing ? 'Sincronizando…' : 'Sincronizar CONAPE'}</button>}
+    />
+
+    <div className="admin-source-strip">
+      <span><i className="admin-live-dot" /> Datos en vivo</span>
+      <span>Fuente académica: APOLLO</span>
+      <span>Operación: CAMPUS_OPERATIVO</span>
+      {ultimoSync && <span>Último CONAPE: {ultimoSync}</span>}
+    </div>
+
+    <div className="admin-kpi-grid">
+      <AdminKpiCardF98 label="Estudiantes activos" value={k.activos ?? '—'} hint={`${k.totalEstudiantes ?? '—'} registros históricos`} tone="navy" icon="profile" />
+      <AdminKpiCardF98 label="Grupos en operación" value={k.grupos ?? grupos.length} hint={`${nivelStats.filter(x=>x.grupos>0).length} niveles con actividad`} tone="gold" icon="roster" />
+      <AdminKpiCardF98 label="Docentes activos" value={k.docentes ?? docentes.length} hint={`${docentes.reduce((s,d)=>s+d.grupos.length,0)} asignaciones de grupo`} tone="green" icon="graduation" />
+      <AdminKpiCardF98 label="Ingreso acumulado" value={fmtMoney2(k.ingresoTotal)} hint={`${fmtMoney2(k.ingresoMes)} durante el mes`} tone="red" icon="payments" />
+    </div>
+
+    <section className="admin-quick-actions" aria-label="Acciones rápidas">
+      {quickActions.map(([id,icon,title,detail]) => <button key={id} type="button" onClick={() => setActive(id)} className="admin-quick-card">
+        <span className="admin-quick-icon"><Icon name={icon} size={20} /></span>
+        <span><strong>{title}</strong><small>{detail}</small></span>
+        <span className="admin-quick-arrow">→</span>
+      </button>)}
+    </section>
+
+    <div className="admin-dashboard-grid">
+      <section className="card admin-panel-card">
+        <div className="card-h admin-card-header">
           <div>
-            <div className="hero-kicker">{saludoAdmin ? `Hola, ${saludoAdmin}` : 'Panel administrativo'} · {new Date().toLocaleDateString('es-CR',{month:'long',year:'numeric'})}</div>
-            <h1 className="hero-h1">Academia <em>Norteamericana</em></h1>
-            <div className="hero-sub">Vista ejecutiva · {k.grupos ?? grupos.length} grupos activos · {k.docentes ?? '—'} docentes · {k.activos ?? '—'} estudiantes matriculados</div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-              <Chip tone="granate" dot>Período activo</Chip>
-              <Chip tone="navy">Programa INA</Chip>
-              <Chip tone="gold">CONAPE aprobado</Chip>
-              <button onClick={handleSyncConape} disabled={syncing} style={{
-                background: '#1565C0', color: 'white', border: 'none',
-                borderRadius: 8, padding: '8px 16px',
-                cursor: syncing ? 'wait' : 'pointer', opacity: syncing ? 0.7 : 1,
-                fontSize: 13, fontWeight: 600,
-              }}>
-                {syncing ? '⏳ Sincronizando…' : '🔄 Sincronizar CONAPE'}
-              </button>
-            </div>
+            <div className="admin-card-eyebrow">Operación</div>
+            <div className="card-title">Alertas institucionales</div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12 }}>
-            {[
-              [fmtMoney2(k.ingresoTotal), 'Ingreso total', 'Período actual', 'var(--an-granate)'],
-              [k.activos ?? '—',  'Estudiantes activos', '', 'var(--an-navy-ink)'],
-              [k.grupos  ?? grupos.length, 'Grupos abiertos',     '', 'var(--an-navy-ink)'],
-              [k.docentes ?? '—', 'Docentes activos',    '', 'var(--an-navy-ink)'],
-            ].map(([n,l,s,c],i) => (
-              <div key={i} style={{ background:'var(--surface-2)', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:14 }}>
-                <div style={{ fontFamily:'var(--f-serif)', fontSize:34, fontWeight:500, color:c, letterSpacing:'-0.03em', lineHeight:1 }}>{n}</div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginTop:6 }}>{l}</div>
-                <div style={{ fontSize:11, color:'var(--ok)', fontWeight:600, marginTop:4 }}>{s}</div>
-              </div>
-            ))}
+          <div className="admin-alert-summary">
+            <span className="admin-alert-high">{altas} altas</span>
+            <span className="admin-alert-med">{medias} medias</span>
           </div>
         </div>
-      </div>
-
-      <div className="card" style={{ marginBottom:20 }}>
-        <div className="card-h">
-          <div className="card-title">Alertas operativas</div>
-          <Chip tone="red" dot>{altas} alta prioridad</Chip>
+        <div className="admin-alert-list">
+          {!alertas.length && <AdminEmptyStateF98 text="No hay alertas operativas en este momento." />}
+          {alertas.slice(0,8).map((a,i) => <div key={i} className={`admin-alert-row admin-alert-${a.level || 'low'}`}>
+            <span className="admin-alert-icon"><Icon name="bell" size={18} /></span>
+            <div className="admin-alert-copy"><strong>{a.title}</strong><span>{a.detail}</span></div>
+            <button className="btn btn-ghost" onClick={() => setActive('supervision')}>Revisar</button>
+          </div>)}
         </div>
-        <div style={{ display:'grid', gap:10 }}>
-          {alertas.length === 0 && (
-            <div style={{ padding:20, textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>Sin alertas operativas en este momento.</div>
-          )}
-          {alertas.map((a, i) => (
-            <div key={i} style={{ display:'flex', gap:14, padding:'12px 14px', borderRadius:'var(--r-md)', background: a.level==='high' ? 'color-mix(in srgb, var(--danger) 7%, white)' : a.level==='med' ? 'color-mix(in srgb, var(--warn) 7%, white)' : 'var(--surface-2)', borderLeft: `4px solid ${a.level==='high'?'var(--danger)':a.level==='med'?'var(--warn)':'var(--ink-3)'}` }}>
-              <Icon name="bell" size={20} className="" />
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:600, fontSize:14 }}>{a.title}</div>
-                <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:2 }}>{a.detail}</div>
-              </div>
-              <div style={{ fontSize:11, color:'var(--ink-3)', whiteSpace:'nowrap' }}>{a.date}</div>
-              <button className="btn btn-ghost">Atender</button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Panel CONAPE */}
-      <section style={{ marginTop: 24, marginBottom: 20 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <h3 style={{ margin:0, fontSize:15, fontWeight:700 }}>CONAPE — Novedades</h3>
-          {ultimoSync && (
-            <span style={{ fontSize:11, color:'var(--ink-3)' }}>
-              Último sync: {ultimoSync}
-            </span>
-          )}
-        </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
-          <div style={{ background:'var(--surface)', borderRadius:10, padding:'12px 16px' }}>
-            <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:600 }}>Total CONAPE</div>
-            <div style={{ fontSize:24, fontWeight:800 }}>{conapeResumen.total ?? '—'}</div>
-          </div>
-          <div style={{ background:'color-mix(in srgb,var(--warn) 10%,white)', borderRadius:10, padding:'12px 16px' }}>
-            <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:600 }}>Sin vincular</div>
-            <div style={{ fontSize:24, fontWeight:800, color:'var(--warn)' }}>{conapeResumen.sinVincular || 0}</div>
-          </div>
-          <div style={{ background:'color-mix(in srgb,var(--danger) 10%,white)', borderRadius:10, padding:'12px 16px' }}>
-            <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:600 }}>Sin desembolso</div>
-            <div style={{ fontSize:24, fontWeight:800, color:'var(--danger)' }}>{conapeResumen.sinDesembolso || 0}</div>
-          </div>
-        </div>
-
-        {novedades.length === 0 ? (
-          <div style={{ textAlign:'center', color:'var(--ink-3)', padding:24, fontSize:13 }}>
-            Sin novedades desde el último sync
-          </div>
-        ) : novedades.map((n, i) => (
-          <div key={i} style={{
-            display:'flex', alignItems:'center', gap:12,
-            padding:'10px 14px', borderRadius:8, marginBottom:6,
-            background:'var(--surface)', borderLeft:'3px solid #1565C0',
-          }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:600, fontSize:13 }}>{n.nombre}</div>
-              <div style={{ fontSize:11, color:'var(--ink-3)' }}>
-                {n.grupo || 'Sin grupo'} · Cédula {n.cedula}
-              </div>
-            </div>
-            <div style={{
-              background:'#E3F2FD', color:'#1565C0',
-              borderRadius:6, padding:'3px 10px', fontSize:11, fontWeight:700,
-            }}>
-              Desembolso {n.desembolso} · {n.periodo}
-            </div>
-          </div>
-        ))}
       </section>
 
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-h"><div className="card-title">Distribución por nivel</div><button className="btn btn-ghost" onClick={()=>setActive('grupos')}>Ver grupos →</button></div>
-          {[['Básico I',6,62,'var(--lvl-basic1)'],['Básico II',5,54,'var(--lvl-basic2)'],['Intermedio I',6,72,'var(--lvl-inter1)'],['Intermedio II',3,22,'var(--lvl-inter2)'],['Conversacional',2,18,'var(--an-navy)']].map(([l,gr,st,c],i) => {
-            const totalStudents=62+54+72+22+18; const pct=(st/totalStudents)*100;
-            return (<div key={i} style={{ padding:'10px 0', borderBottom: i<4?'1px solid var(--line)':'none' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
-                <div><span style={{ fontWeight:600, fontSize:13 }}>{l}</span><span style={{ fontSize:11, color:'var(--ink-3)', marginLeft:8 }}>{gr} grupos</span></div>
-                <div style={{ fontWeight:700, fontFamily:'var(--f-mono)' }}>{st}</div>
-              </div>
-              <div style={{ height:6, background:'var(--bg-deep)', borderRadius:3, overflow:'hidden' }}><div style={{ width:`${pct}%`, height:'100%', background:c }} /></div>
-            </div>);
+      <section className="card admin-panel-card">
+        <div className="card-h admin-card-header">
+          <div>
+            <div className="admin-card-eyebrow">Financiamiento</div>
+            <div className="card-title">CONAPE</div>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setActive('conape_cobranza')}>Abrir módulo →</button>
+        </div>
+        <div className="admin-conape-metrics">
+          <div><span>Total</span><strong>{conapeResumen.total ?? '—'}</strong></div>
+          <div><span>Sin vincular</span><strong>{conapeResumen.sinVincular || 0}</strong></div>
+          <div><span>Sin desembolso</span><strong>{conapeResumen.sinDesembolso || 0}</strong></div>
+        </div>
+        <div className="admin-conape-list">
+          {!novedades.length && <AdminEmptyStateF98 text="Sin novedades desde la última sincronización." />}
+          {novedades.slice(0,6).map((n,i) => <div key={i} className="admin-conape-row">
+            <div><strong>{n.nombre}</strong><span>{n.grupo || 'Sin grupo'} · Cédula {n.cedula}</span></div>
+            <small>Desembolso {n.desembolso} · {n.periodo}</small>
+          </div>)}
+        </div>
+      </section>
+    </div>
+
+    <div className="admin-dashboard-grid admin-dashboard-grid-secondary">
+      <section className="card admin-panel-card">
+        <div className="card-h admin-card-header">
+          <div><div className="admin-card-eyebrow">Académico</div><div className="card-title">Distribución por nivel</div></div>
+          <button className="btn btn-ghost" onClick={() => setActive('grupos')}>Ver grupos →</button>
+        </div>
+        <div className="admin-level-list">
+          {nivelStats.map(x => {
+            const pct = totalNivelEst > 0 ? Math.round((x.estudiantes / totalNivelEst) * 100) : 0;
+            return <div key={x.id} className="admin-level-row">
+              <div className="admin-level-line"><span><i style={{background:x.color}} />{x.nombre}</span><strong>{x.estudiantes}</strong></div>
+              <div className="admin-level-meta"><span>{x.grupos} grupos</span><span>{pct}% de estudiantes activos</span></div>
+              <div className="admin-level-track"><span style={{width:`${pct}%`,background:x.color}} /></div>
+            </div>;
           })}
         </div>
-        <div className="card">
-          <div className="card-h"><div className="card-title">Docentes destacados</div><button className="btn btn-ghost" onClick={()=>setActive('docentes')}>Ver todos →</button></div>
-          {[{n:'Ricardo Arias Arroyo',gr:3,r:'94%',p:88},{n:'Ana Castro Mora',gr:2,r:'92%',p:91},{n:'Sofía Méndez',gr:2,r:'89%',p:85},{n:'Kevin Brown',gr:2,r:'87%',p:83}].map((t,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom: i<3?'1px solid var(--line)':'none' }}>
-              <div style={{ width:38, height:38, borderRadius:'50%', background:['var(--an-granate)','var(--an-navy)','var(--an-gold)','#5E8C5E'][i], color:'white', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{t.n.split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
-              <div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:13 }}>{t.n}</div><div style={{ fontSize:11, color:'var(--ink-3)' }}>{t.gr} grupos · {t.r} retención · Prom. {t.p}</div></div>
-              <Chip tone="green" dot>Activo</Chip>
-            </div>
-          ))}
+      </section>
+
+      <section className="card admin-panel-card">
+        <div className="card-h admin-card-header">
+          <div><div className="admin-card-eyebrow">Equipo académico</div><div className="card-title">Carga docente actual</div></div>
+          <button className="btn btn-ghost" onClick={() => setActive('supervision')}>Supervisar →</button>
         </div>
-      </div>
+        <div className="admin-teacher-list">
+          {!docentes.length && <AdminEmptyStateF98 text="No hay docentes activos asignados." />}
+          {docentes.slice(0,7).map((d,i) => <div key={d.nombre} className="admin-teacher-row">
+            <span className="admin-teacher-avatar">{d.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</span>
+            <div><strong>{d.nombre}</strong><span>{d.grupos.length} grupo{d.grupos.length===1?'':'s'} · {d.estudiantes} estudiantes</span></div>
+            <span className="admin-teacher-rank">{i+1}</span>
+          </div>)}
+        </div>
+      </section>
     </div>
-  );
+  </div>;
 }
 
 function FinanzasView() {

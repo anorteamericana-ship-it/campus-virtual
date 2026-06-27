@@ -1,4 +1,4 @@
-// F98.4-Z6-O · Cuatrimestre muestra el periodo completo real
+// F98.4-Z6-P · Cuatrimestre muestra el periodo completo real
 // Base preservada: F98.4-Z6-G · Club I CAN: asistencia, retroalimentación y ponderación 20%
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
@@ -60,7 +60,7 @@ const F96_LAZY = {
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
-  admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F96.5G'],
+  admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6P'],
   admin_students: ['src/admin_students.jsx?v=F98.3C'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
@@ -979,7 +979,7 @@ function App() {
         active={active}
         setActive={(target) => navigateTo(target)}
       />
-      <main className={`main ${role === 'teacher' ? 'teacher-unified-main' : ''}`}>
+      <main className={`main ${role === 'teacher' ? 'teacher-unified-main' : ''} ${role === 'admin' ? 'admin-unified-main' : ''}`}>
         {esDemo && <DemoBanner />}
         {modoPrueba && (
           <ModoPruebaRibbon usuario={usuario} onVolver={volverASuperadmin} />
@@ -988,7 +988,9 @@ function App() {
         <VistaErrorBoundary key={active}>
           {role === 'teacher'
             ? <div className={`teacher-page teacher-page-${active}`}>{content}</div>
-            : content}
+            : role === 'admin'
+              ? <div className={`admin-page admin-page-${active}`}>{content}</div>
+              : content}
         </VistaErrorBoundary>
       </main>
       <Toast msg={toastMsg} onClose={() => setToastMsg('')} />
