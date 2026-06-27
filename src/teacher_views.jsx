@@ -1,4 +1,4 @@
-// F98.4-Z6-K · horario I CAN estable + Progress Check obligatorio y recuperable
+// F98.4-Z6-M · bloques compactos + cronograma fecha real + resumen estudiante
 // Base preservada: F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
@@ -128,6 +128,46 @@ function __startDateFromCodGrupo(codGrupo) {
   const yy = parseInt(last.slice(2,4), 10);
   if (!mm || mm < 1 || mm > 12) return null;
   return new Date(2000 + yy, mm - 1, 1);
+}
+
+function tvNormalizeIsoDateF98(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth()+1).padStart(2,'0');
+    const d = String(value.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  const raw = String(value).trim();
+  if (!raw) return '';
+  const m1 = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+  const m2 = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m2) return `${m2[3]}-${String(m2[2]).padStart(2,'0')}-${String(m2[1]).padStart(2,'0')}`;
+  const dt = new Date(raw);
+  if (!Number.isNaN(dt.getTime())) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth()+1).padStart(2,'0');
+    const d = String(dt.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  return '';
+}
+function tvGroupStartDateF98(group) {
+  if (!group || typeof group !== 'object') {
+    const fallback = __startDateFromCodGrupo(tvGroupCode(group));
+    return fallback ? tvNormalizeIsoDateF98(fallback) : '';
+  }
+  const candidates = [
+    group.startDate, group.fecha_inicio, group.fechaInicio, group.FECHA_INICIO,
+    group.inicio, group.start_date, group.fecha, group.fechaInicioNivel
+  ];
+  for (const c of candidates) {
+    const iso = tvNormalizeIsoDateF98(c);
+    if (iso) return iso;
+  }
+  const fallback = __startDateFromCodGrupo(tvGroupCode(group));
+  return fallback ? tvNormalizeIsoDateF98(fallback) : '';
 }
 
 // ── Sesión real del docente ──────────────────────────────────────────────
@@ -558,34 +598,31 @@ function MatriculadosActivosCardF98({ total=0, activos=0, cerradas=0, threshold=
   const pct = totalN > 0 ? Math.round((activosN / totalN) * 100) : 0;
   const ringBg = `conic-gradient(var(--an-navy) 0 ${pct}%, #E7ECF4 ${pct}% 100%)`;
   const helper = cerradas > 0
-    ? `${activosN} estudiantes mantienen ${threshold}% o más de asistencia en el módulo.`
-    : 'Sin clases cerradas aún · todos conservan el requisito mínimo de asistencia.';
+    ? `${activosN} cumplen ${threshold}% o más.`
+    : 'Aún sin clases cerradas.';
   return (
-    <div className="card" style={{ padding:'14px 18px 16px', minWidth:0, overflow:'hidden' }}>
-      <div style={{ ...vdLabelStyle, marginBottom:10 }}>Matriculados</div>
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(88px,1fr) 118px', alignItems:'center', gap:12 }}>
+    <div className="card" style={{ padding:'14px 16px', minWidth:0, overflow:'hidden', minHeight:142, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+      <div style={{ ...vdLabelStyle, marginBottom:8 }}>Matriculados</div>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(90px,1fr) 82px', alignItems:'center', gap:10 }}>
         <div style={{ minWidth:0 }}>
-          <div style={{ fontSize:40, lineHeight:0.96, fontWeight:900, color:'var(--an-navy)' }}>{activosN}</div>
-          <div style={{ fontSize:12.5, fontWeight:800, color:'var(--ink-2)', marginTop:2 }}>Activos</div>
-          <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:6, lineHeight:1.35 }}>Con {threshold}% o más de asistencia</div>
+          <div style={{ fontSize:31, lineHeight:0.96, fontWeight:900, color:'var(--an-navy)' }}>{activosN}</div>
+          <div style={{ fontSize:11.5, fontWeight:800, color:'var(--ink-2)', marginTop:4 }}>Activos</div>
+          <div style={{ fontSize:9.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.3 }}>{helper}</div>
         </div>
-        <div style={{ justifySelf:'end', width:118, display:'grid', placeItems:'center' }}>
-          <div style={{ width:104, height:104, borderRadius:'50%', background:ringBg, display:'grid', placeItems:'center', boxShadow:'inset 0 0 0 1px rgba(11,90,166,.08)' }}>
-            <div style={{ width:76, height:76, borderRadius:'50%', background:'#FFF', display:'grid', placeItems:'center', boxShadow:'inset 0 0 0 1px #E7ECF4' }}>
+        <div style={{ justifySelf:'end', width:82, display:'grid', placeItems:'center' }}>
+          <div style={{ width:70, height:70, borderRadius:'50%', background:ringBg, display:'grid', placeItems:'center', boxShadow:'inset 0 0 0 1px rgba(11,90,166,.08)' }}>
+            <div style={{ width:50, height:50, borderRadius:'50%', background:'#FFF', display:'grid', placeItems:'center', boxShadow:'inset 0 0 0 1px #E7ECF4' }}>
               <div style={{ textAlign:'center', lineHeight:1 }}>
-                <div style={{ fontSize:27, fontWeight:900, color:'#4A49C5' }}>{totalN}</div>
-                <div style={{ fontSize:8.5, fontWeight:900, color:'var(--ink-3)', letterSpacing:'.04em', marginTop:4 }}>TOTAL</div>
+                <div style={{ fontSize:18, fontWeight:900, color:'#4A49C5' }}>{totalN}</div>
+                <div style={{ fontSize:7.2, fontWeight:900, color:'var(--ink-3)', letterSpacing:'.04em', marginTop:2 }}>TOTAL</div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div style={{ marginTop:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
-        <div style={{ fontSize:10.5, color:'var(--ink-3)', lineHeight:1.35, minWidth:0, flex:'1 1 220px' }}>{helper}</div>
-        <div style={{ display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap', fontSize:9.5, fontWeight:900, color:'var(--an-navy)' }}>
-          <span style={{ width:9, height:9, borderRadius:'50%', background:'var(--an-navy)' }} />
-          <span>{pct}% del grupo cumple el requisito</span>
-        </div>
+      <div style={{ marginTop:10, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap', fontSize:9.2, fontWeight:900, color:'var(--an-navy)' }}>
+        <span style={{ width:8, height:8, borderRadius:'50%', background:'var(--an-navy)' }} />
+        <span>{pct}% del grupo cumple el requisito</span>
       </div>
     </div>
   );
@@ -812,7 +849,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   </>;
 }
 
-function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
+function NotaDetalleDrawerF79({ estudiante, nota, attendance, commentsSummary, commentsByLesson, onClose }) {
   if (!estudiante) return null;
   const defs = [
     ['ORAL_1','Lección 09 · Oral 1'], ['ORAL_2','Lección 17 · Oral 2'],
@@ -837,6 +874,33 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
           <div style={{ fontSize:42, fontWeight:900, lineHeight:1.05, marginTop:4 }}>{nota?.tiene_notas ? nota.nota_total : '—'}</div>
           <div style={{ fontSize:12, opacity:.78, marginTop:4 }}>{nota?.tiene_notas ? 'Puntos oficiales acumulados' : 'Sin notas oficiales registradas'}</div>
         </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,minmax(0,1fr))', gap:10, marginBottom:16 }}>
+          <div style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#F9FBFD' }}>
+            <div style={{ ...vdLabelStyle, marginBottom:6 }}>Asistencia</div>
+            <div style={{ fontSize:22, fontWeight:900, color:'var(--an-navy)' }}>{Number.isFinite(Number(attendance?.pct)) ? `${Math.round(Number(attendance.pct))}%` : '—'}</div>
+            <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>{Number(attendance?.presentes||0)} presentes · {Number(attendance?.ausentes||0)} ausencias</div>
+          </div>
+          <div style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#F9FBFD' }}>
+            <div style={{ ...vdLabelStyle, marginBottom:6 }}>Comentarios</div>
+            <div style={{ fontSize:22, fontWeight:900, color:'var(--an-navy)' }}>{Number(commentsSummary?.total||0)}</div>
+            <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>Retroalimentaciones registradas</div>
+          </div>
+          <div style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#F9FBFD' }}>
+            <div style={{ ...vdLabelStyle, marginBottom:6 }}>Club I CAN</div>
+            <div style={{ fontSize:22, fontWeight:900, color:'#6A3D91' }}>{Number(nota?.componentes?.ICAN?.pct_asistencia||0)}%</div>
+            <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>{Number(nota?.componentes?.ICAN?.asistidas||0)}/{Number(nota?.componentes?.ICAN?.requeridas||16)} sesiones</div>
+          </div>
+        </div>
+        {!!(commentsByLesson && commentsByLesson.length) && <div style={{ marginBottom:16 }}>
+          <div style={{ ...vdLabelStyle, marginBottom:8 }}>Comentarios del docente</div>
+          <div style={{ display:'grid', gap:8 }}>
+            {commentsByLesson.slice(0,8).map((row, idx) => <div key={`${row.key||idx}-${idx}`} style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#FFF' }}>
+              <div style={{ fontSize:10.5, fontWeight:900, color:row.isIcan?'#6A3D91':row.isPC?'#A45D00':'var(--an-navy)' }}>{row.label}</div>
+              <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>{row.fecha || 'Sin fecha'}</div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:6, lineHeight:1.45 }}>{row.comment}</div>
+            </div>)}
+          </div>
+        </div>}
         <div style={{ display:'grid', gap:10 }}>
           {defs.map(([key,label]) => {
             const c = nota?.componentes?.[key];
@@ -1060,7 +1124,23 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
         </div>
       </div>
     </div>
-    <NotaDetalleDrawerF79 estudiante={selectedStudent} nota={selectedStudent?(notasGrupo?.[selectedStudent.code]||selectedStudent.note):null} onClose={()=>setSelectedStudent(null)}/>
+    <NotaDetalleDrawerF79
+      estudiante={selectedStudent}
+      nota={selectedStudent?(notasGrupo?.[selectedStudent.code]||selectedStudent.note):null}
+      attendance={selectedStudent?(asistenciaGrupo?.[selectedStudent.code]||null):null}
+      commentsSummary={selectedStudent?{ total:Object.values(comentariosDetalle||{}).reduce((acc, bucket) => {
+        const txt = bucket && selectedStudent ? String(bucket[selectedStudent.code] || '').trim() : '';
+        return acc + (txt ? 1 : 0);
+      }, 0) }:null}
+      commentsByLesson={selectedStudent?lessons.map(l => {
+        const key = tvLessonKeyF97(l);
+        const txt = String((comentariosDetalle?.[key]?.[selectedStudent.code]) || (comentariosDetalle?.[String(l.leccion)]?.[selectedStudent.code]) || '').trim();
+        if (!txt) return null;
+        const isIcan = tvIsIcanEventF96(l), isPC = tvIsProgressCheckF96(l);
+        return { key, fecha:l.fecha, isIcan, isPC, label:isIcan?`I CAN ${String(l.leccion).padStart(2,'0')}`:isPC?'Progress Check':`Lección ${String(l.leccion).padStart(2,'0')}`, comment:txt };
+      }).filter(Boolean):[]}
+      onClose={()=>setSelectedStudent(null)}
+    />
     {selectedLesson&&<LessonDrawerF82 lesson={selectedLesson} meta={meta} roster={roster} asistenciaDetalle={asistenciaDetalle} comentariosDetalle={comentariosDetalle} onClose={()=>setSelectedLesson(null)} onChanged={()=>{onSaved&&onSaved();}} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}  
   </>;
 }
@@ -1168,7 +1248,7 @@ function ClubICANDocenteView(props) {
 function CalificarView({ toast }) {
   const { codGrupo, programa, roster, grupoInfo, meta, loading, error } = useTeacherSession();
   const diasCode = (codGrupo || '').split('-')[1] || 'LM';
-  const leccionSugerida = calcularLeccionSugerida(grupoInfo?.startDate, diasCode);
+  const leccionSugerida = calcularLeccionSugerida(tvGroupStartDateF98(grupoInfo), diasCode);
   const [tipoEval, setTipoEval]   = React.useState('ORAL_2');
   const [leccion,  setLeccion]    = React.useState(leccionSugerida || '');
   const [cargando, setCargando]   = React.useState(false);
@@ -1374,7 +1454,7 @@ function CalificarView({ toast }) {
 function AsistenciaView({ toast }) {
   const { codGrupo, programa, roster, grupoInfo, meta, loading, error } = useTeacherSession();
   const diasCode = (codGrupo || '').split('-')[1] || 'LM';
-  const leccionSugerida = calcularLeccionSugerida(grupoInfo?.startDate, diasCode);
+  const leccionSugerida = calcularLeccionSugerida(tvGroupStartDateF98(grupoInfo), diasCode);
   const [leccion, setLeccion]     = React.useState(leccionSugerida || '');
   const [att, setAtt]             = React.useState({});
   const [cargando, setCargando]   = React.useState(false);
