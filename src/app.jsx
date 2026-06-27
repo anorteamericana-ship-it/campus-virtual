@@ -61,7 +61,7 @@ const F96_LAZY = {
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
-  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6X','src/admin_master_dashboard.jsx?v=F98.4Z6X'],
+  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AE','src/admin_master_dashboard.jsx?v=F98.4Z6AE'],
   admin_students: ['src/admin_students.jsx?v=F98.3C'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],

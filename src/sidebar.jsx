@@ -427,7 +427,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       label: 'Principal',
       items: [
         { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
-        { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+        { id: 'dashboard', label: 'Panel Maestro', icon: 'chart' },
         { id: 'supervision', label: 'Supervisión', icon: 'bell' },
       ],
     },

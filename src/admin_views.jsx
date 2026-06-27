@@ -1,4 +1,4 @@
-// F98.4-Z6-Q · Dashboard Super Admin visual + datos reales depurados
+// F98.4-Z6-R · Dashboard Super Admin + Mi Perfil real separado
 /* global React, Icon, Chip, Stat, PageHeader */
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
@@ -78,6 +78,132 @@ function useAdminDashboard() {
   }, [tick]);
 
   return { data, loading, error, refetch: () => setTick(t => t + 1) };
+}
+
+
+// ─────────────────────────────────────────────────────────────────
+// F98.4-Z6-R · Perfil administrativo real y separado del Dashboard
+// ─────────────────────────────────────────────────────────────────
+function adminPerfilFechaF98(value, withTime = false) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString('es-CR', withTime
+    ? { dateStyle:'medium', timeStyle:'short', timeZone:'America/Costa_Rica' }
+    : { dateStyle:'medium', timeZone:'America/Costa_Rica' });
+}
+
+function adminPerfilRolLabelF98(rol) {
+  const r = String(rol || '').trim().toLowerCase();
+  if (r === 'superadmin') return 'Super Admin';
+  if (r === 'admin') return 'Administrador';
+  return rol || 'Administración';
+}
+
+function useAdminPerfilF98() {
+  const local = (() => {
+    try { return typeof window.getSesion === 'function' ? (window.getSesion() || {}) : {}; }
+    catch (_) { return {}; }
+  })();
+  const [data, setData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [tick, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    postCampus('getMiPerfilAdmin')
+      .then(res => {
+        if (cancelled) return;
+        if (res && res.ok) setData(res);
+        else setError((res && (res.mensaje || res.error)) || 'No se pudo cargar el perfil administrativo.');
+      })
+      .catch(err => { if (!cancelled) setError(err && err.message ? err.message : 'No se pudo cargar el perfil administrativo.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  return { data, local, loading, error, reload:() => setTick(v => v + 1) };
+}
+
+function AdminPerfilView() {
+  const { data, local, loading, error, reload } = useAdminPerfilF98();
+  const perfil = (data && data.perfil) || {};
+  const sesion = (data && data.sesion) || local || {};
+  const nombre = perfil.nombre || sesion.nombre || 'Usuario administrativo';
+  const usuario = perfil.usuario || sesion.usuario || '—';
+  const rol = perfil.rol || sesion.rol || 'admin';
+  const rolLabel = adminPerfilRolLabelF98(rol);
+  const initials = String(nombre).split(/\s+/).filter(Boolean).slice(0,2).map(x => x.charAt(0)).join('').toUpperCase() || 'AN';
+  const esSuper = String(rol).toLowerCase() === 'superadmin';
+  const fields = [
+    ['Usuario', usuario],
+    ['Cédula', perfil.cedula || sesion.cedula || '—'],
+    ['Correo electrónico', perfil.correo || '—'],
+    ['Teléfono', perfil.telefono || '—'],
+    ['Fecha de creación', adminPerfilFechaF98(perfil.fecha_creacion)],
+    ['Estado de cuenta', perfil.estado_cuenta || (perfil.activo === false ? 'INACTIVO' : 'ACTIVO')],
+  ];
+
+  return (
+    <div className="admin-profile-page" data-screen-label="Super Admin · Mi Perfil">
+      <PageHeader kicker="Mi cuenta" title={<>Mi <em>Perfil</em></>} sub="Identidad, sesión y nivel de acceso administrativo" />
+      {loading && !data ? <LoadingState title="Cargando perfil…" subtitle="Validando la sesión y la cuenta institucional" /> : null}
+      {!loading && error ? <ErrorState message={error} onRetry={reload} /> : null}
+      {!loading && !error ? <>
+        <section className="card" style={{padding:0,overflow:'hidden',marginBottom:18}}>
+          <div style={{padding:'22px 24px',background:'linear-gradient(135deg,var(--an-navy),#123E78)',color:'#fff',display:'flex',gap:18,alignItems:'center',flexWrap:'wrap'}}>
+            <div style={{width:82,height:82,borderRadius:'50%',background:'#fff',color:'var(--an-navy)',display:'grid',placeItems:'center',fontSize:28,fontWeight:900,border:'4px solid rgba(255,255,255,.28)',boxShadow:'0 12px 30px rgba(0,0,0,.18)'}}>{initials}</div>
+            <div style={{minWidth:0,flex:'1 1 260px'}}>
+              <div style={{fontSize:11,fontWeight:900,letterSpacing:'.15em',textTransform:'uppercase',opacity:.72}}>Cuenta institucional</div>
+              <h2 style={{margin:'5px 0 4px',fontSize:28,lineHeight:1.05,color:'#fff'}}>{nombre}</h2>
+              <div style={{fontSize:13,opacity:.82}}>{rolLabel} · Academia Norteamericana</div>
+            </div>
+            <div style={{display:'grid',justifyItems:'end',gap:7}}>
+              <span style={{padding:'7px 11px',borderRadius:999,background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.24)',fontSize:10,fontWeight:900,letterSpacing:'.08em',textTransform:'uppercase'}}>{perfil.activo === false ? 'Cuenta inactiva' : 'Cuenta activa'}</span>
+              <span style={{fontSize:10.5,opacity:.72}}>Sesión verificada</span>
+            </div>
+          </div>
+        </section>
+
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(330px,100%),1fr))',gap:18,alignItems:'start'}}>
+          <section className="card" style={{padding:0,overflow:'hidden'}}>
+            <div className="card-h" style={{padding:'17px 20px'}}>
+              <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--an-red)'}}>Información de cuenta</div><div className="card-title">Datos del perfil</div></div>
+            </div>
+            <div style={{padding:'6px 20px 18px'}}>
+              {fields.map(([label,value],idx) => <div key={label} style={{display:'grid',gridTemplateColumns:'160px minmax(0,1fr)',gap:16,padding:'13px 0',borderBottom:idx<fields.length-1?'1px solid var(--line)':'none',alignItems:'center'}}>
+                <span style={{fontSize:11,color:'var(--ink-3)',fontWeight:750}}>{label}</span>
+                <strong style={{fontSize:12.5,color:'var(--ink)',overflowWrap:'anywhere'}}>{value || '—'}</strong>
+              </div>)}
+            </div>
+          </section>
+
+          <div style={{display:'grid',gap:18}}>
+            <section className="card" style={{padding:'18px 20px'}}>
+              <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--an-red)',marginBottom:7}}>Nivel de acceso</div>
+              <div style={{fontSize:22,fontWeight:900,color:'var(--an-navy)',lineHeight:1.1}}>{rolLabel}</div>
+              <p style={{fontSize:11.5,color:'var(--ink-3)',lineHeight:1.5,margin:'9px 0 14px'}}>{esSuper ? 'Acceso institucional completo, incluido control de roles, configuración y auditoría.' : 'Acceso a las funciones administrativas autorizadas para esta cuenta.'}</p>
+              <div style={{display:'grid',gap:8}}>
+                {(esSuper ? ['Gestión académica completa','Finanzas y cobranza','Permisos y auditoría','Configuración institucional'] : ['Gestión académica','Operación administrativa','Consultas y reportes']).map(item => <div key={item} style={{display:'flex',gap:8,alignItems:'center',fontSize:11.5,color:'var(--ink-2)'}}><span style={{width:8,height:8,borderRadius:'50%',background:'var(--an-navy)',flex:'0 0 auto'}} />{item}</div>)}
+              </div>
+            </section>
+
+            <section className="card" style={{padding:'18px 20px'}}>
+              <div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--an-red)',marginBottom:9}}>Sesión actual</div>
+              <div style={{display:'grid',gap:10}}>
+                <div><div style={{fontSize:10,color:'var(--ink-3)'}}>Válida hasta</div><strong style={{fontSize:12,color:'var(--ink)'}}>{adminPerfilFechaF98(sesion.expira, true)}</strong></div>
+                <div><div style={{fontSize:10,color:'var(--ink-3)'}}>Protección</div><strong style={{fontSize:12,color:'var(--ink)'}}>Token privado activo</strong></div>
+              </div>
+              <div style={{marginTop:14,padding:'10px 12px',borderRadius:10,background:'#F6F8FB',fontSize:10.5,lineHeight:1.45,color:'var(--ink-3)'}}>Por seguridad, la contraseña nunca se muestra ni se devuelve al Campus.</div>
+            </section>
+          </div>
+        </div>
+      </> : null}
+    </div>
+  );
 }
 
 // (AdminLoadingState eliminado — usa <LoadingState/> + <ErrorState/> de primitives.jsx.)
@@ -2513,4 +2639,4 @@ function AdminPlaceholderView({ title }) {
   );
 }
 
-Object.assign(window, { AdminDashboard, AdminGruposView, FinanzasView, AdminPlaceholderView });
+Object.assign(window, { AdminDashboard, AdminPerfilView, AdminGruposView, FinanzasView, AdminPlaceholderView });

@@ -1,4 +1,4 @@
-// F98.4-Z6-X · Gráficos SVG propios para Panel Maestro Super Admin
+// F98.4-Z6-AE · Gráficos SVG propios para Panel Maestro Super Admin
 /* global React */
 
 function MasterFmtNumber(value) {
@@ -110,4 +110,50 @@ function MasterHeatmap({ rows = [], labels = [], rowLabel = 'Asesor', valueSuffi
   </div></div>;
 }
 
-Object.assign(window, { MasterFmtNumber, MasterFmtMoney, MasterSparkline, MasterBarLineChart, MasterDonut, MasterFunnel, MasterHorizontalRanking, MasterHeatmap });
+
+function MasterRadar({ items = [], valueLabel = '%' }) {
+  const safe = (items || []).filter(x => x && x.label).map(x => ({...x, value: MasterClamp(Number(x.value || 0), 0, Number(x.max || 100) || 100)}));
+  const n = Math.max(3, safe.length || 3), size = 360, cx = 180, cy = 180, radius = 118;
+  const pt = (i, ratio) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * i / n);
+    return [cx + Math.cos(angle) * radius * ratio, cy + Math.sin(angle) * radius * ratio];
+  };
+  const rings = [.25,.5,.75,1];
+  const polygon = safe.map((x,i)=>{const p=pt(i, x.value/(Number(x.max||100)||100));return `${p[0]},${p[1]}`;}).join(' ');
+  return <div className="master-radar-wrap">
+    <svg className="master-radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Comparativo por componente">
+      {rings.map(r=><polygon key={r} points={Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' ')} fill="none" stroke="#ded7ca" strokeWidth="1" />)}
+      {Array.from({length:n},(_,i)=>{const p=pt(i,1);return <line key={i} x1={cx} y1={cy} x2={p[0]} y2={p[1]} stroke="#e6e0d5" strokeWidth="1"/>})}
+      {safe.length>0&&<polygon points={polygon} fill="rgba(22,41,79,.2)" stroke="#16294f" strokeWidth="3" strokeLinejoin="round"/>}
+      {safe.map((x,i)=>{const p=pt(i,x.value/(Number(x.max||100)||100)),l=pt(i,1.22);return <g key={x.label}><circle cx={p[0]} cy={p[1]} r="5" fill={x.color||'#c49a40'} stroke="#fff" strokeWidth="2"><title>{x.label}: {MasterFmtNumber(x.value)}{valueLabel}</title></circle><text x={l[0]} y={l[1]} textAnchor={Math.abs(l[0]-cx)<10?'middle':l[0]>cx?'start':'end'} dominantBaseline="middle" fontSize="11" fontWeight="700" fill="#526078">{x.label}</text></g>})}
+    </svg>
+    <div className="master-radar-legend">{safe.map(x=><div key={x.label}><i style={{background:x.color||'#c49a40'}}/><span>{x.label}</span><strong>{MasterFmtNumber(x.value)}{valueLabel}</strong></div>)}</div>
+  </div>;
+}
+
+
+function MasterMultiLineChart({ series = [], labels = [], formatValue = MasterFmtNumber, valueSuffix = '' }) {
+  const clean = (series || []).filter(s => s && Array.isArray(s.values));
+  const width = 900, height = 340, left = 58, right = 28, top = 32, bottom = 48;
+  const innerW = width-left-right, innerH = height-top-bottom;
+  const count = Math.max(1, labels.length), step = count > 1 ? innerW/(count-1) : innerW;
+  const vals = clean.flatMap(s => s.values.map(v => Number(v||0))).filter(Number.isFinite);
+  const max = Math.max(1, ...vals), min = Math.min(0, ...vals);
+  const range = max-min || 1;
+  const y = v => top + innerH - ((Number(v||0)-min)/range)*innerH;
+  const x = i => left + (count===1 ? innerW/2 : step*i);
+  const ticks = [0,.25,.5,.75,1].map(r=>({v:min+range*r,y:top+innerH-innerH*r}));
+  return <div className="master-multiline-wrap">
+    <div className="master-multiline-legend">{clean.map(s=><span key={s.label}><i style={{background:s.color||'#16294f'}}/>{s.label}</span>)}</div>
+    <svg className="master-multiline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tendencia multianual">
+      {ticks.map((t,i)=><g key={i}><line x1={left} x2={width-right} y1={t.y} y2={t.y} stroke="#e7e1d7" strokeWidth="1"/><text x={left-10} y={t.y+4} textAnchor="end" fontSize="11" fill="#7b8494">{formatValue(t.v)}{valueSuffix}</text></g>)}
+      {labels.map((l,i)=><text key={l} x={x(i)} y={height-18} textAnchor="middle" fontSize="11" fill="#667085">{l}</text>)}
+      {clean.map((serie,si)=>{
+        const points=labels.map((_,i)=>`${x(i)},${y(serie.values[i]||0)}`).join(' ');
+        return <g key={serie.label}><polyline points={points} fill="none" stroke={serie.color||'#16294f'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>{labels.map((l,i)=><circle key={i} cx={x(i)} cy={y(serie.values[i]||0)} r="4" fill="#fff" stroke={serie.color||'#16294f'} strokeWidth="2"><title>{serie.label} · {l}: {formatValue(serie.values[i]||0)}{valueSuffix}</title></circle>)}</g>;
+      })}
+    </svg>
+  </div>;
+}
+
+Object.assign(window, { MasterFmtNumber, MasterFmtMoney, MasterSparkline, MasterBarLineChart, MasterDonut, MasterFunnel, MasterHorizontalRanking, MasterHeatmap, MasterRadar, MasterMultiLineChart });
