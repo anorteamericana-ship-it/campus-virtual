@@ -1,4 +1,5 @@
-// F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
+// F98.4-Z6-I · I CAN integrado en calendario semanal + panel TOTAL/LECCIONES/I CAN
+// Base preservada: F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
 // F89_20260620_ACCESO_EXAMENES_Y_AVISO_CIERRE
@@ -246,6 +247,7 @@ function useTeacherSession() {
   const [notasGrupo, setNotasGrupo] = React.useState({});
   const [resumenGrupo, setResumenGrupo] = React.useState({});
   const [icanResumen, setIcanResumen] = React.useState({});
+  const [panelPrograma, setPanelPrograma] = React.useState('');
   const [leccionHoy, setLeccionHoy] = React.useState(null);
   const [sesionClase, setSesionClase] = React.useState(null);
   const [loadingGroups, setLoadingGroups] = React.useState(true);
@@ -332,6 +334,7 @@ function useTeacherSession() {
         setLeccionHoy(r.leccion_hoy || null);
         setSesionClase(r.sesion_clase || null);
         setIcanResumen(r.ican || {});
+        setPanelPrograma(r.programa || r.grupo?.programa || '');
         setResumenGrupo({
           totalCA:r.total_ca ?? rs.length,
           promedioGrupo:r.promedio_grupo,
@@ -354,7 +357,7 @@ function useTeacherSession() {
   const recargarPanel = React.useCallback(() => setReloadTick(v => v + 1), []);
 
   return {
-    usuario, nombre, programa,
+    usuario, nombre, programa:panelPrograma || meta?.programa || programa,
     codGrupo, grupos:gruposMeta, meta, nivel, grupoInfo:meta,
     roster, lecciones, asistenciaGrupo, asistenciaDetalle, comentariosDetalle,
     notasGrupo, resumenGrupo, icanResumen, leccionHoy, sesionClase,
@@ -464,6 +467,22 @@ function tvStartMinutesF82(g) {
   const fallback = tvMinutes(sched.hora_i);
   return direct != null ? direct : (fallback != null ? fallback : 9999);
 }
+function tvIcanDayIndexesF82(g) {
+  const raw = tvUpper(g?.dias_ican || g?.diasIcan || g?.dias_ican_code || '');
+  if (!raw) return [];
+  return tvGroupDayIndexesF82({ dias:raw, diasCode:raw, code:'' });
+}
+function tvIcanStartMinutesF82(g) {
+  const direct = tvMinutes(g?.hora_i_ican || g?.hora_inicio_ican);
+  return direct != null ? direct : 9999;
+}
+function tvIcanHoraLabelF82(g) {
+  return tvHoraLabel({ hora_i:g?.hora_i_ican || g?.hora_inicio_ican, hora_f:g?.hora_f_ican || g?.hora_fin_ican });
+}
+function tvGroupHasIcanF82(g) {
+  const configured = !!(g?.dias_ican && (g?.hora_i_ican || g?.hora_inicio_ican) && (g?.hora_f_ican || g?.hora_fin_ican));
+  return g?.puede_ican === true || tvUpper(g?.programa)==='INA' || configured;
+}
 function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
   const lista = Array.isArray(grupos) ? grupos : [];
   return (
@@ -471,30 +490,41 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
       <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
         <div style={{ minWidth:980, display:'grid', gridTemplateColumns:'repeat(7, minmax(128px, 1fr))', borderTop:'1px solid var(--line)', borderLeft:'1px solid var(--line)' }}>
           {TV_WEEK_DAYS_F82.map(day => {
-            const dayGroups = lista.filter(g => tvGroupDayIndexesF82(g).includes(day.key)).sort((a,b)=>tvStartMinutesF82(a)-tvStartMinutesF82(b));
+            const dayItems=[];
+            lista.forEach(g=>{
+              if(g?.puede_curso!==false && tvGroupDayIndexesF82(g).includes(day.key)) dayItems.push({g,riel:'curso',start:tvStartMinutesF82(g)});
+              const canIcan=g?.puede_ican===true || (g?.puede_ican==null && tvGroupHasIcanF82(g));
+              if(canIcan && tvIcanDayIndexesF82(g).includes(day.key)) dayItems.push({g,riel:'ican',start:tvIcanStartMinutesF82(g)});
+            });
+            dayItems.sort((a,b)=>a.start-b.start||String(a.riel).localeCompare(String(b.riel)));
             return (
               <div key={day.key} style={{ minHeight:158, borderRight:'1px solid var(--line)', borderBottom:'1px solid var(--line)', background:'#FFF' }}>
                 <div style={{ padding:'11px 8px', textAlign:'center', fontSize:11, fontWeight:900, letterSpacing:'.08em', color:'var(--ink-2)', borderBottom:'1px solid var(--line)', background:'#F7F3EC' }}>{day.label}</div>
                 <div style={{ display:'grid', gap:7, padding:7 }}>
-                  {dayGroups.map(g => {
-                    const code=tvGroupCode(g), active=String(code)===String(activo), n=tvNivelId(g), pal=nivelPal(n), lab=tvGrupoLabel(g);
-                    const sessionHere=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA'&&String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'')===String(code);
-                    return <button key={`${day.key}-${code}`} type="button" onClick={()=>onSelect(code)} title={lab.full} style={{
-                      border:`1.5px solid ${sessionHere?'#C62828':active?pal.dark:'var(--line)'}`, borderLeft:`4px solid ${sessionHere?'#C62828':pal.dark}`,
-                      background:sessionHere?'#FDECEA':active?`color-mix(in srgb, ${pal.light} 70%, white)`:'#FFF', borderRadius:10,
+                  {dayItems.map(({g,riel}) => {
+                    const code=tvGroupCode(g), active=String(code)===String(activo), n=tvNivelId(g), pal=nivelPal(n), lab=tvGrupoLabel(g), isIcan=riel==='ican';
+                    const activeRiel=String(activeSession?.RIEL||activeSession?.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
+                    const sessionHere=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA'&&String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'')===String(code)&&activeRiel===riel;
+                    const dark=isIcan?'#6A3D91':pal.dark, light=isIcan?'#F2EAF8':pal.light;
+                    const daysLabel=isIcan?'Club I CAN':lab.dias;
+                    const hourLabel=isIcan?tvIcanHoraLabelF82(g):lab.hora;
+                    const title=isIcan?`Club I CAN · ${tvDiasLabel(g?.dias_ican||'')} de ${hourLabel} - ${lab.ciclo}`:lab.full;
+                    return <button key={`${day.key}-${code}-${riel}`} type="button" onClick={()=>onSelect(code)} title={title} style={{
+                      border:`1.5px solid ${sessionHere?'#C62828':active?dark:'var(--line)'}`, borderLeft:`4px solid ${sessionHere?'#C62828':dark}`,
+                      background:sessionHere?'#FDECEA':active?light:'#FFF', borderRadius:10,
                       padding:'8px 9px', textAlign:'left', cursor:active?'default':'pointer', fontFamily:'inherit',
                       boxShadow:active?'0 0 0 2px rgba(7,59,122,.10)':'0 2px 8px rgba(8,30,60,.05)', position:'relative', minHeight:68,
                     }}>
-                      <div style={{ fontSize:10.5, fontWeight:800, color:'var(--ink)', lineHeight:1.15 }}>{lab.dias}</div>
-                      <div style={{ fontSize:15, fontWeight:900, color:'var(--an-navy)', lineHeight:1.1, marginTop:3 }}>{lab.hora}</div>
+                      <div style={{ fontSize:10.5, fontWeight:900, color:isIcan?dark:'var(--ink)', lineHeight:1.15 }}>{daysLabel}</div>
+                      <div style={{ fontSize:15, fontWeight:900, color:isIcan?dark:'var(--an-navy)', lineHeight:1.1, marginTop:3 }}>{hourLabel||'Horario pendiente'}</div>
                       <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                         <span style={{ fontSize:9.5, fontWeight:900, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{lab.ciclo}</span>
-                        <span style={{ fontSize:8, fontWeight:900, color:pal.dark, background:pal.light, borderRadius:999, padding:'1px 5px' }}>{n}</span>
-                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>SESIÓN ACTIVA</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>SELECCIONADO</span>}
+                        <span style={{ fontSize:8, fontWeight:900, color:dark, background:light, borderRadius:999, padding:'1px 5px' }}>{isIcan?'I CAN':n}</span>
+                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>SESIÓN ACTIVA</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>SELECCIONADO</span>}
                       </div>
                     </button>;
                   })}
-                  {!dayGroups.length && <div style={{ height:58 }} />}
+                  {!dayItems.length && <div style={{ height:58 }} />}
                 </div>
               </div>
             );
@@ -793,7 +823,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   const programLabel=tvUpper(meta?.programa||meta?.tipo_programa||meta?.modelo_programa||programa||'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
   const programSaysNoIcan=programLabel.includes('SIN INA')||programLabel.includes('PROGRAMA LIBRE')||programLabel==='LIBRE'||programLabel==='NO INA';
   const programSaysIna=!programSaysNoIcan&&/(^| )INA( |$)/.test(programLabel);
-  const iCanApplies=!programSaysNoIcan&&(programSaysIna||icanCount>0);
+  const iCanApplies=icanCount>0||programSaysIna;
   const groupCode=tvGroupCode(meta);
   const viewStorageKey=`an_teacher_attendance_view:${groupCode||'default'}`;
   const [viewMode,setViewMode]=React.useState('total');
@@ -862,7 +892,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
               return <button key={opt.id} type="button" role="tab" aria-selected={active} onClick={()=>selectView(opt.id)} style={{border:'1px solid '+(active?(purple?'#6A3D91':'var(--an-navy)'):'transparent'),background:active?(purple?'#6A3D91':'var(--an-navy)'):'#FFF',color:active?'#FFF':purple?'#6A3D91':'var(--ink-2)',borderRadius:9,padding:'7px 10px',fontSize:9.5,fontWeight:900,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap'}}>{opt.label} <span style={{opacity:.78}}>({opt.count})</span></button>;
             })}
           </div>
-          {!iCanApplies&&<span title="Este grupo no está configurado como Programa INA" style={{padding:'7px 9px',borderRadius:9,background:'#F1F3F6',color:'var(--ink-3)',fontSize:9,fontWeight:850,whiteSpace:'nowrap'}}>I CAN · NO APLICA</span>}
+          {!iCanApplies&&<span title="No existen sesiones I CAN configuradas para este grupo y nivel" style={{padding:'7px 9px',borderRadius:9,background:'#F1F3F6',color:'var(--ink-3)',fontSize:9,fontWeight:850,whiteSpace:'nowrap'}}>I CAN · NO APLICA</span>}
           <div style={{display:'flex',gap:7}}>
             <button type="button" onClick={()=>scrollBy(-6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la izquierda">←</button>
             <button type="button" onClick={()=>scrollBy(6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la derecha">→</button>
