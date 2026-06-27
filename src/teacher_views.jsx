@@ -1,4 +1,4 @@
-// F98.4-Z6-I · I CAN integrado en calendario semanal + panel TOTAL/LECCIONES/I CAN
+// F98.4-Z6-J · buscador de estudiantes + barra superior + próxima lección por riel
 // Base preservada: F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
@@ -320,6 +320,7 @@ function useTeacherSession() {
           return {
             code,
             name:e.name || e.nombre || e.NOMBRE || '',
+            cedula:String(e.cedula || e.CEDULA || e.NUM_CEDULA || e.identificacion || '').trim(),
             avg:note?.tiene_notas ? note.nota_total : null,
             note,
             lastSeen:null,
@@ -505,7 +506,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
                     const code=tvGroupCode(g), active=String(code)===String(activo), n=tvNivelId(g), pal=nivelPal(n), lab=tvGrupoLabel(g), isIcan=riel==='ican';
                     const activeRiel=String(activeSession?.RIEL||activeSession?.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
                     const sessionHere=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA'&&String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'')===String(code)&&activeRiel===riel;
-                    const dark=isIcan?'#6A3D91':pal.dark, light=isIcan?'#F2EAF8':pal.light;
+                    const dark=isIcan?'#57217F':pal.dark, light=isIcan?'#EADCF5':pal.light;
                     const daysLabel=isIcan?'Club I CAN':lab.dias;
                     const hourLabel=isIcan?tvIcanHoraLabelF82(g):lab.hora;
                     const title=isIcan?`Club I CAN · ${tvDiasLabel(g?.dias_ican||'')} de ${hourLabel} - ${lab.ciclo}`:lab.full;
@@ -513,7 +514,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
                       border:`1.5px solid ${sessionHere?'#C62828':active?dark:'var(--line)'}`, borderLeft:`4px solid ${sessionHere?'#C62828':dark}`,
                       background:sessionHere?'#FDECEA':active?light:'#FFF', borderRadius:10,
                       padding:'8px 9px', textAlign:'left', cursor:active?'default':'pointer', fontFamily:'inherit',
-                      boxShadow:active?'0 0 0 2px rgba(7,59,122,.10)':'0 2px 8px rgba(8,30,60,.05)', position:'relative', minHeight:68,
+                      boxShadow:active?(isIcan?'0 0 0 3px rgba(87,33,127,.18), 0 8px 18px rgba(87,33,127,.12)':'0 0 0 2px rgba(7,59,122,.10)'):(isIcan?'0 4px 12px rgba(87,33,127,.12)':'0 2px 8px rgba(8,30,60,.05)'), position:'relative', minHeight:68,
                     }}>
                       <div style={{ fontSize:10.5, fontWeight:900, color:isIcan?dark:'var(--ink)', lineHeight:1.15 }}>{daysLabel}</div>
                       <div style={{ fontSize:15, fontWeight:900, color:isIcan?dark:'var(--an-navy)', lineHeight:1.1, marginTop:3 }}>{hourLabel||'Horario pendiente'}</div>
@@ -811,8 +812,23 @@ function NotaDetalleDrawerF79({ estudiante, nota, onClose }) {
   </div>;
 }
 
+function tvSearchNormalizeF98(value) {
+  return String(value == null ? '' : value)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function tvTodayIsoCostaRicaF98() {
+  try {
+    const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Costa_Rica',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const map={};parts.forEach(p=>{if(p.type!=='literal')map[p.type]=p.value;});
+    return `${map.year}-${map.month}-${map.day}`;
+  } catch (_) {
+    return new Date(Date.now()-6*60*60*1000).toISOString().slice(0,10);
+  }
+}
+
 function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, programa, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
-  const todayIso=new Date().toISOString().slice(0,10);
+  const todayIso=tvTodayIsoCostaRicaF98();
   const allLessons=React.useMemo(()=>(lecciones||[])
     .filter(l=>tvUpper(l.tipo)!=='FERIADO')
     .slice()
@@ -827,6 +843,16 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   const groupCode=tvGroupCode(meta);
   const viewStorageKey=`an_teacher_attendance_view:${groupCode||'default'}`;
   const [viewMode,setViewMode]=React.useState('total');
+  const [studentSearch,setStudentSearch]=React.useState('');
+  const filteredRoster=React.useMemo(()=>{
+    const terms=tvSearchNormalizeF98(studentSearch).split(' ').filter(Boolean);
+    if(!terms.length)return roster||[];
+    return (roster||[]).filter(r=>{
+      const haystack=tvSearchNormalizeF98([r?.name,r?.nombre,r?.code,r?.codigo,r?.cedula,r?.CEDULA,r?.NUM_CEDULA].filter(Boolean).join(' '));
+      return terms.every(term=>haystack.includes(term));
+    });
+  },[roster,studentSearch]);
+  React.useEffect(()=>setStudentSearch(''),[groupCode]);
   React.useEffect(()=>{
     let saved='total';
     try{saved=sessionStorage.getItem(viewStorageKey)||'total';}catch(_){}
@@ -845,13 +871,20 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
     if(viewMode==='ican')return allLessons.filter(tvIsIcanEventF96);
     return allLessons;
   },[allLessons,viewMode]);
-  const nextLesson=React.useMemo(()=>{
-    const upcoming=lessons.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
-    return upcoming||lessons.find(l=>tvUpper(l.estado)!=='CERRADA')||lessons[lessons.length-1]||null;
-  },[lessons,todayIso]);
+  const pickNextLesson=React.useCallback((rows)=>{
+    const upcoming=(rows||[]).find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
+    return upcoming||(rows||[]).find(l=>tvUpper(l.estado)!=='CERRADA')||(rows||[])[(rows||[]).length-1]||null;
+  },[todayIso]);
+  const nextCourseLesson=React.useMemo(()=>pickNextLesson(allLessons.filter(l=>!tvIsIcanEventF96(l))),[allLessons,pickNextLesson]);
+  const nextIcanLesson=React.useMemo(()=>pickNextLesson(allLessons.filter(tvIsIcanEventF96)),[allLessons,pickNextLesson]);
+  const nextLesson=React.useMemo(()=>pickNextLesson(lessons),[lessons,pickNextLesson]);
   const nextKey=nextLesson?`${tvLessonKeyF97(nextLesson)}|${String(nextLesson.fecha||'')}`:'';
+  const isRailNext=React.useCallback((lesson)=>{
+    const target=tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson;
+    return !!target&&tvLessonKeyF97(lesson)===tvLessonKeyF97(target)&&String(lesson.fecha||'')===String(target.fecha||'')&&tvUpper(lesson.estado)!=='CERRADA';
+  },[nextCourseLesson,nextIcanLesson]);
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
-  const calendarRef=React.useRef(null), positionedRef=React.useRef('');
+  const calendarRef=React.useRef(null), topScrollRef=React.useRef(null), positionedRef=React.useRef('');
   const COL_W=94, LEFT_W=286, RIGHT_W=154, HEADER_H=104, ROW_H=68;
 
   React.useEffect(()=>{
@@ -864,11 +897,21 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
     requestAnimationFrame(()=>{
       const penultimateX=Math.max(0,box.clientWidth-(2*COL_W));
       const actualX=Math.max(0,idx)*COL_W;
-      box.scrollLeft=Math.max(0,actualX-penultimateX);
+      const targetLeft=Math.max(0,actualX-penultimateX);
+      box.scrollLeft=targetLeft;
+      if(topScrollRef.current)topScrollRef.current.scrollLeft=targetLeft;
     });
   },[tvGroupCode(meta),viewMode,nextKey,lessons.length]);
 
-  const scrollBy=d=>calendarRef.current?.scrollBy({left:d,behavior:'smooth'});
+  const syncHorizontalScroll=(source,targetRef)=>{
+    const target=targetRef.current;
+    if(target&&Math.abs(target.scrollLeft-source.currentTarget.scrollLeft)>1)target.scrollLeft=source.currentTarget.scrollLeft;
+  };
+  const scrollBy=d=>{
+    const box=calendarRef.current;
+    if(!box)return;
+    box.scrollBy({left:d,behavior:'smooth'});
+  };
   const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||''), activeLec=Number(activeSession?.LECCION||activeSession?.leccion||0), activeRiel=String(activeSession?.RIEL||activeSession?.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
   const tableBase={border:0,borderRadius:0,boxShadow:'none',margin:0,tableLayout:'fixed',borderCollapse:'separate',borderSpacing:0,background:'#fff'};
   const headCell={height:HEADER_H,minHeight:HEADER_H,maxHeight:HEADER_H,verticalAlign:'middle',borderBottom:'1px solid var(--line)',background:'var(--surface-2)',padding:'9px 10px'};
@@ -900,12 +943,24 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
         </div>
       </div>
 
+      <div className="teacher-roster-top-scroll-grid" style={{display:'grid',gridTemplateColumns:`${LEFT_W}px minmax(0,1fr) ${RIGHT_W}px`,width:'100%',minWidth:0,background:'#F7F9FC',borderBottom:'1px solid var(--line)'}}>
+        <div style={{borderRight:'1px solid var(--line)'}} />
+        <div ref={topScrollRef} className="teacher-roster-top-scroll" onScroll={e=>syncHorizontalScroll(e,calendarRef)} aria-label="Desplazamiento horizontal de lecciones">
+          <div style={{width:Math.max(COL_W,lessons.length*COL_W),height:1}} />
+        </div>
+        <div style={{borderLeft:'1px solid var(--line)'}} />
+      </div>
+
       <div className="teacher-roster-fixed-grid" style={{display:'grid',gridTemplateColumns:`${LEFT_W}px minmax(0,1fr) ${RIGHT_W}px`,width:'100%',minWidth:0,background:'#fff'}}>
         <div className="teacher-roster-identity" style={{zIndex:3,borderRight:'1px solid var(--line)',boxShadow:'8px 0 14px -14px rgba(0,0,0,.55)'}}>
           <table className="teacher-roster-fixed-table" style={{...tableBase,width:LEFT_W}}>
-            <thead><tr><th style={{...headCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W,textAlign:'left'}}>Estudiante</th></tr></thead>
-            <tbody>{roster.map((r,i)=>{const att=asistenciaGrupo?.[r.code];return <tr key={r.code||i}>
-              <td style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W}}>
+            <thead><tr><th style={{...headCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W,textAlign:'left',padding:'9px 12px'}}>
+              <label htmlFor={`teacher-student-search-${groupCode||'grupo'}`} style={{display:'block',fontSize:10.5,fontWeight:900,color:'var(--ink-2)',marginBottom:6}}>Buscar estudiante en lista</label>
+              <input id={`teacher-student-search-${groupCode||'grupo'}`} type="search" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder="Nombre, apellido, cédula o código" aria-label="Buscar estudiante por nombre, apellido, cédula o código" style={{width:'100%',height:34,border:'1.5px solid #B7C3D4',borderRadius:8,padding:'0 10px',fontFamily:'inherit',fontSize:10.5,fontWeight:650,color:'var(--ink)',background:'#FFF',outline:'none'}} />
+              <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:4,fontWeight:750}}>{filteredRoster.length} de {(roster||[]).length} estudiantes</div>
+            </th></tr></thead>
+            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const att=asistenciaGrupo?.[r.code];return <tr key={r.code||i}>
+              <td title={r.cedula?`Cédula ${r.cedula}`:''} style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W}}>
                 <div style={{display:'flex',gap:9,alignItems:'center'}}>
                   <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                   <div style={{minWidth:0}}>
@@ -914,46 +969,46 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
                   </div>
                 </div>
               </td>
-            </tr>;})}</tbody>
+            </tr>;}) : <tr><td style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W,height:ROW_H,color:'var(--ink-3)',fontSize:10.5,fontWeight:750,textAlign:'center'}}>No se encontraron estudiantes.</td></tr>}</tbody>
           </table>
         </div>
 
-        <div ref={calendarRef} className="teacher-roster-calendar-scroll" style={{overflowX:'auto',overflowY:'hidden',minWidth:0,scrollbarGutter:'stable',WebkitOverflowScrolling:'touch'}}>
+        <div ref={calendarRef} className="teacher-roster-calendar-scroll" onScroll={e=>syncHorizontalScroll(e,topScrollRef)} style={{overflowX:'auto',overflowY:'hidden',minWidth:0,scrollbarGutter:'stable',WebkitOverflowScrolling:'touch'}}>
           {!lessons.length?<div style={{minHeight:HEADER_H+(Math.max(1,roster.length)*ROW_H),display:'flex',alignItems:'center',justifyContent:'center',padding:28,textAlign:'center',background:viewMode==='ican'?'#FBF7FE':'#FFF',color:viewMode==='ican'?'#6A3D91':'var(--ink-3)',fontWeight:850,fontSize:12,borderBottom:'1px solid var(--line)'}}>{viewMode==='ican'?'Todavía no hay sesiones I CAN programadas para este grupo.':'No hay actividades programadas en esta vista.'}</div>:<table className="teacher-roster-fixed-table teacher-roster-calendar-table" style={{...tableBase,width:Math.max(COL_W,lessons.length*COL_W),minWidth:Math.max(COL_W,lessons.length*COL_W)}}>
             <thead><tr>{lessons.map(l=>{
-              const isNext=!!nextLesson&&tvLessonKeyF97(l)===tvLessonKeyF97(nextLesson)&&String(l.fecha||'')===String(nextLesson.fecha||'')&&tvUpper(l.estado)!=='CERRADA';
+              const isNext=isRailNext(l);
               const isToday=String(l.fecha||'')===todayIso;
               const isIcan=tvIsIcanEventF96(l), isPC=tvIsProgressCheckF96(l);
               const isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion)&&activeRiel===tvLessonRielF97(l);
               const isExam=[9,17,18,25,31,32].includes(Number(l.leccion||0));
-              return <th key={`${tvLessonKeyF97(l)}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...headCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?'#EAF3FF':isIcan?'#F2EAF8':isPC?'#FFF1D8':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?'4px solid var(--an-navy)':isIcan?'4px solid #6A3D91':isPC?'4px solid #A45D00':'4px solid transparent',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?'0 -5px 16px rgba(0,46,105,.12)':'none'}}>
-                <div style={{fontSize:10.5,fontWeight:900,color:isIcan?'#6A3D91':isPC?'#8A5500':undefined}}>{isIcan?`I CAN ${String(l.leccion).padStart(2,'0')}`:isPC?'Progress Check':tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>
+              return <th key={`${tvLessonKeyF97(l)}-${l.fecha}`} onClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...headCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',cursor:'pointer',background:isActive?'#FDECEA':isNext?(isIcan?'#E4D2F2':'#DDEBFF'):isIcan?'#F0E5F8':isPC?'#FFF1D8':'var(--surface-2)',borderTop:isActive?'4px solid #C62828':isNext?(isIcan?'4px solid #57217F':'4px solid #003B7A'):isIcan?'4px solid #6A3D91':isPC?'4px solid #A45D00':'4px solid transparent',boxShadow:isActive?'0 -5px 16px rgba(198,40,40,.16)':isNext?(isIcan?'0 -5px 18px rgba(87,33,127,.28)':'0 -5px 18px rgba(0,59,122,.22)'):'none'}}>
+                <div style={{fontSize:10.5,fontWeight:900,color:isIcan?'#57217F':isPC?'#8A5500':undefined}}>{isIcan?`I CAN ${String(l.leccion).padStart(2,'0')}`:isPC?'Progress Check':tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>
                 {!isIcan&&(tvEvalLabelF86(l.tipo,l.leccion)||isPC)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}
-                <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:2}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
-                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{fontSize:7.5,color:'var(--an-navy)',fontWeight:900,marginTop:3}}>PRÓXIMA</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
+                <div style={{fontSize:8.5,color:isNext?(isIcan?'#57217F':'#003B7A'):'var(--ink-3)',marginTop:2,fontWeight:isNext?850:500}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
+                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PRÓXIMA LECCIÓN</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
                 {isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}
               </th>;
             })}</tr></thead>
-            <tbody>{roster.map((r,i)=><tr key={r.code||i}>{lessons.map(l=>{
-              const key=tvLessonKeyF97(l),det=asistenciaDetalle?.[key]?.[r.code]||asistenciaDetalle?.[String(l.leccion)]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||comentariosDetalle?.[String(l.leccion)]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=!!nextLesson&&key===tvLessonKeyF97(nextLesson)&&String(l.fecha||'')===String(nextLesson.fecha||'')&&tvUpper(l.estado)!=='CERRADA',isIcan=tvIsIcanEventF96(l),isPC=tvIsProgressCheckF96(l);
-              return <td key={`${r.code}-${key}-${l.fecha}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...bodyCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',padding:'6px 5px',background:isNext?'#F7FBFF':isIcan?'#FBF7FE':isPC?'#FFFBF2':'#FFF',borderLeft:isNext?'1px solid #B9D8FA':undefined,borderRight:isNext?'1px solid #B9D8FA':undefined}}>
+            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=><tr key={r.code||i}>{lessons.map(l=>{
+              const key=tvLessonKeyF97(l),det=asistenciaDetalle?.[key]?.[r.code]||asistenciaDetalle?.[String(l.leccion)]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||comentariosDetalle?.[String(l.leccion)]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=isRailNext(l),isIcan=tvIsIcanEventF96(l),isPC=tvIsProgressCheckF96(l);
+              return <td key={`${r.code}-${key}-${l.fecha}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...bodyCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',padding:'6px 5px',background:isNext?(isIcan?'#F2E8F9':'#F0F7FF'):isIcan?'#FBF7FE':isPC?'#FFFBF2':'#FFF',borderLeft:isNext?`1px solid ${isIcan?'#A985C7':'#8EB9E8'}`:undefined,borderRight:isNext?`1px solid ${isIcan?'#A985C7':'#8EB9E8'}`:undefined}}>
                 {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
               </td>;
-            })}</tr>)}</tbody>
+            })}</tr>):<tr><td colSpan={Math.max(1,lessons.length)} style={{...bodyCell,height:ROW_H,textAlign:'center',color:'var(--ink-3)',fontSize:10.5,fontWeight:750}}>Ajustá la búsqueda para volver a mostrar estudiantes.</td></tr>}</tbody>
           </table>}
         </div>
 
         <div className="teacher-roster-final-note" style={{zIndex:3,borderLeft:'1px solid var(--line)',boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)'}}>
           <table className="teacher-roster-fixed-table" style={{...tableBase,width:RIGHT_W}}>
             <thead><tr><th style={{...headCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W,textAlign:'left'}}>Nota completa</th></tr></thead>
-            <tbody>{roster.map((r,i)=>{const note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
+            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
               <td style={{...bodyCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:7}}>
                   <div><div style={{fontSize:20,fontWeight:900,color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)'}}>{note?.tiene_notas?note.nota_total:'—'}</div><div style={{fontSize:8.5,color:'var(--ink-3)'}}>{note?.tiene_notas?'acumulada':'sin notas'}</div></div>
                   <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{padding:'5px 6px',fontSize:8.8,whiteSpace:'nowrap'}}>Ver detalle</button>
                 </div>
               </td>
-            </tr>;})}</tbody>
+            </tr>;}) : <tr><td style={{...bodyCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W,height:ROW_H}} /></tr>}</tbody>
           </table>
         </div>
       </div>
@@ -974,7 +1029,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos En curso asignados.'} onRetry={recargarPanel}/></div>;
   const promedioGrupo=resumenGrupo?.promedioGrupo,promedioAsistencia=resumenGrupo?.promedioAsistencia;
   return <div style={{width:'100%',maxWidth:'100%',minWidth:0,overflow:'hidden'}}>
-    <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={lista.length>1?`Tenés ${lista.length} grupos en curso`:tvGrupoLabel(meta).full}/>
+    <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={<strong style={{fontWeight:900,letterSpacing:'.035em'}}>ELIJE EL GRUPO QUE DESEAS VISUALIZAR.</strong>}/>
     <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
     {loading?<LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales"/>:<>
