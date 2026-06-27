@@ -1,4 +1,4 @@
-// F98.4-Z6-P · Dashboard Super Admin unificado y conectado a datos reales
+// F98.4-Z6-Q · Dashboard Super Admin visual + datos reales depurados
 /* global React, Icon, Chip, Stat, PageHeader */
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
@@ -2268,6 +2268,40 @@ function AdminEmptyStateF98({ text }) {
   return <div className="admin-empty-state">{text}</div>;
 }
 
+function AdminStudentHistoryCardF98({ active=0, historical=0 }) {
+  const activeN=Math.max(0,Number(active)||0);
+  const historicalN=Math.max(activeN,Number(historical)||0);
+  const pct=historicalN?Math.round((activeN/historicalN)*100):0;
+  return <section className="admin-kpi-card admin-kpi-students admin-kpi-navy" aria-label="Estudiantes activos e inscritos históricos">
+    <div className="admin-kpi-top"><span className="admin-kpi-label">Estudiantes activos · inscritos</span><span className="admin-kpi-icon"><Icon name="profile" size={18}/></span></div>
+    <div className="admin-students-layout">
+      <div className="admin-students-active">
+        <strong>{activeN}</strong>
+        <span>Activos ahora</span>
+        <small>{pct}% del historial continúa activo</small>
+      </div>
+      <div className="admin-students-ring" style={{'--student-active-pct':`${pct}%`}}>
+        <div><strong>{historicalN}</strong><span>INSCRITOS</span></div>
+      </div>
+    </div>
+    <div className="admin-kpi-footnote">Histórico único en DATOS vs. estudiantes CA en grupos y niveles en curso.</div>
+  </section>;
+}
+
+function AdminActiveGroupsCardF98({ total=0, levels=[] }) {
+  return <section className="admin-kpi-card admin-kpi-groups admin-kpi-gold" aria-label="Grupos activos por nivel">
+    <div className="admin-kpi-top"><span className="admin-kpi-label">Grupos activos</span><span className="admin-kpi-icon"><Icon name="roster" size={18}/></span></div>
+    <div className="admin-groups-total">{Number(total)||0}</div>
+    <div className="admin-groups-levels">
+      {levels.map(x=><div key={x.id} className="admin-groups-level-item">
+        <i style={{borderColor:x.color,background:`color-mix(in srgb, ${x.color} 12%, white)`}} />
+        <span>{x.nombre}</span>
+        <strong>{x.grupos}</strong>
+      </div>)}
+    </div>
+  </section>;
+}
+
 function AdminDashboard({ setActive }) {
   const { data, loading, error } = useAdminDashboard();
   const { novedades, ultimoSync, resumen: conapeResumen } = useNovedadesConape();
@@ -2290,7 +2324,7 @@ function AdminDashboard({ setActive }) {
   if (loading) return <LoadingState title="Cargando panel institucional…" subtitle="Consultando APOLLO, CAMPUS_OPERATIVO y CONAPE" />;
 
   const k       = data?.kpis    || {};
-  const grupos  = data?.grupos  || [];
+  const grupos  = data?.gruposActivos || data?.grupos || [];
   const alertas = data?.alertas || [];
   const fmtMoney2 = (n) => {
     if (n == null || isNaN(n)) return '—';
@@ -2333,22 +2367,23 @@ function AdminDashboard({ setActive }) {
     <PageHeader
       kicker="Control institucional"
       title={<>{esSuperadmin ? 'Panel ' : 'Panel '}<em>{esSuperadmin ? 'Super Admin' : 'Administrativo'}</em></>}
-      sub={`${saludoAdmin ? `Hola, ${saludoAdmin}. ` : ''}Vista ejecutiva del Campus Virtual · ${new Date().toLocaleDateString('es-CR',{month:'long',year:'numeric'})}`}
       right={<button className="btn btn-primary admin-sync-btn" onClick={handleSyncConape} disabled={syncing}>{syncing ? 'Sincronizando…' : 'Sincronizar CONAPE'}</button>}
     />
 
-    <div className="admin-source-strip">
-      <span><i className="admin-live-dot" /> Datos en vivo</span>
-      <span>Fuente académica: APOLLO</span>
-      <span>Operación: CAMPUS_OPERATIVO</span>
-      {ultimoSync && <span>Último CONAPE: {ultimoSync}</span>}
+    <div className="admin-summary-strip">
+      <strong>Resumen de estadísticas</strong>
+      <div className="admin-summary-meta">
+        <span><i className="admin-live-dot" /> Datos en vivo</span>
+        <span>Actualizado: {new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'short',year:'numeric'})}</span>
+        {ultimoSync && <span>CONAPE: {ultimoSync}</span>}
+      </div>
     </div>
 
-    <div className="admin-kpi-grid">
-      <AdminKpiCardF98 label="Estudiantes activos" value={k.activos ?? '—'} hint={`${k.totalEstudiantes ?? '—'} registros históricos`} tone="navy" icon="profile" />
-      <AdminKpiCardF98 label="Grupos en operación" value={k.grupos ?? grupos.length} hint={`${nivelStats.filter(x=>x.grupos>0).length} niveles con actividad`} tone="gold" icon="roster" />
-      <AdminKpiCardF98 label="Docentes activos" value={k.docentes ?? docentes.length} hint={`${docentes.reduce((s,d)=>s+d.grupos.length,0)} asignaciones de grupo`} tone="green" icon="graduation" />
-      <AdminKpiCardF98 label="Ingreso acumulado" value={fmtMoney2(k.ingresoTotal)} hint={`${fmtMoney2(k.ingresoMes)} durante el mes`} tone="red" icon="payments" />
+    <div className="admin-kpi-grid admin-kpi-grid-dashboard">
+      <AdminStudentHistoryCardF98 active={k.activos} historical={k.totalEstudiantes}/>
+      <AdminActiveGroupsCardF98 total={k.grupos ?? grupos.length} levels={nivelStats}/>
+      <AdminKpiCardF98 label="Docentes activos" value={k.docentes ?? docentes.length} hint={`${docentes.reduce((s,d)=>s+d.grupos.length,0)} asignaciones en grupos activos`} tone="green" icon="graduation" />
+      <AdminKpiCardF98 label="Ingreso mensual" value={fmtMoney2(k.ingresoMes)} hint={`${fmtMoney2(k.ingresoTotal)} acumulado en PAGOS_CAMPUS`} tone="red" icon="payments" />
     </div>
 
     <section className="admin-quick-actions" aria-label="Acciones rápidas">
