@@ -1,4 +1,4 @@
-// F98.4-Z6-Q · Dashboard Super Admin con datos reales
+// F98.4-Z6-R · Mi Perfil Super Admin real y separado del Dashboard
 // Base preservada: F98.4-Z6-G · Club I CAN: asistencia, retroalimentación y ponderación 20%
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
 // F92.7_20260620_EXAMENES_UNIFICADOS_Y_CIERRE_SEGURO
@@ -8,7 +8,7 @@
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
    ExamenOralView, GruposView, AsistenciaView, CronogramaDocenteSeguroF82, ClubICANDocenteView,
-   AdminDashboard, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
+   AdminDashboard, AdminPerfilView, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
    AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView,
@@ -60,13 +60,13 @@ const F96_LAZY = {
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
-  admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6Q'],
+  admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_students: ['src/admin_students.jsx?v=F98.3C'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
-  cronograma_todos: ['src/cronograma_todos.jsx?v=F96.5G'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4Z6O'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F96.5G','src/cronograma_grupo.jsx?v=F98.4Z6O','src/admin_students.jsx?v=F98.3C','src/calendario_grupo.jsx?v=F96.5G'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6S'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6S','src/cronograma_grupo.jsx?v=F98.4Z6O'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6S','src/cronograma_grupo.jsx?v=F98.4Z6O','src/admin_students.jsx?v=F98.3C','src/calendario_grupo.jsx?v=F98.4Z6S'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/buscador.jsx?v=F96.5G'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
@@ -923,7 +923,8 @@ function App() {
     // como no-clickeables; esto es la red de seguridad por si el id
     // llega vía state antiguo.
     const map = {
-      matriculas:    <LazyRoute title="Matrículas" component="MatriculasView" files={F96_LAZY.matriculas} onNavigate={navigateTo} />,
+      perfil:       <LazyRoute title="Mi Perfil" component="AdminPerfilView" files={F96_LAZY.admin_views} />,
+      matriculas:   <LazyRoute title="Matrículas" component="MatriculasView" files={F96_LAZY.matriculas} onNavigate={navigateTo} />,
       dashboard:    <LazyRoute title="Dashboard" component="AdminDashboard" files={F96_LAZY.admin_views} setActive={setActive} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
       calendario_grupo: <LazyRoute title="Calendario de Grupo" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} />,

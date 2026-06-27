@@ -29,7 +29,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
   }, [onNavigate]);
 
   return (
-    <section data-screen-label="Calendario de Grupo · Fase 1" style={{ padding: 24 }}>
+    <section data-screen-label="Calendario de Grupo" style={{ padding: 24 }}>
       <div style={{
         display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:18,
         marginBottom:18, flexWrap:'wrap',
@@ -39,17 +39,17 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
             fontSize:10, fontWeight:800, letterSpacing:'0.22em', textTransform:'uppercase',
             color:'var(--ink-3)', marginBottom:6,
           }}>
-            Centro operativo · calendario vivo
+            Centro operativo · calendario académico
           </div>
           <h1 style={{
             fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.03em',
-            fontSize:34, lineHeight:1.05, margin:'0 0 6px', color:'var(--ink)',
+            fontSize:36, lineHeight:1.05, margin:'0 0 6px', color:'var(--ink)',
           }}>
             Calendario de Grupo
           </h1>
-          <div style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.45, maxWidth:720 }}>
-            Panel nuevo para comparar y evolucionar: calendario arriba, grupo seleccionado y estudiantes abajo.
-            Esta fase no cambia datos, CONAPE, certificados ni Apps Script.
+          <div style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.5, maxWidth:820 }}>
+            Vista operativa del calendario académico con selección directa de lecciones,
+            lectura limpia y acceso rápido a estudiantes del grupo.
           </div>
         </div>
 
@@ -77,28 +77,6 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
           </button>
         </div>
       </div>
-
-      <div style={{
-        display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:12,
-        marginBottom:18,
-      }}>
-        <CalGrupoHint
-          n="1"
-          title="Calendario vivo"
-          text="Usa la misma fuente del cronograma: si una clase se suspende o se mueve, la vista se actualiza por lección."
-        />
-        <CalGrupoHint
-          n="2"
-          title="Grupo seleccionado"
-          text="Desde una clase podés cargar estudiantes del grupo sin salir de esta pantalla."
-        />
-        <CalGrupoHint
-          n="3"
-          title="Auditoría conectada"
-          text="Botón preparado para abrir Auditoría Académica desde el flujo operativo."
-        />
-      </div>
-
       <div style={{
         background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-lg)',
         boxShadow:'var(--sh-1)', overflow:'hidden', marginBottom:22,
@@ -113,14 +91,14 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
               Vista calendario
             </div>
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:2 }}>
-              Mantenemos la vista actual para comparación; la siguiente fase agranda casillas y limpia la lectura.
+              Casillas amplias, lectura limpia y selección directa de lecciones.
             </div>
           </div>
           <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:700 }}>
-            Tip: abrí una clase y tocá “Ver estudiantes de este grupo”.
+            Tocá una lección para ver su detalle o abrir estudiantes del grupo.
           </div>
         </div>
-        <div style={{ padding: 18 }}>
+        <div style={{ padding: 14 }}>
           <CronogramaGrupo rol={rol} onNavigate={handleNavigateFromCronograma} />
         </div>
       </div>
@@ -183,7 +161,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
             </div>
             <div style={{ fontSize:13, lineHeight:1.5 }}>
               Abrí una clase en el calendario y usá el botón <strong>Ver estudiantes de este grupo</strong>.
-              En la siguiente fase haremos que la selección sea más directa.
+              La selección queda activa igual que en el calendario docente.
             </div>
           </div>
         ) : mostrarEstudiantes ? (
@@ -192,7 +170,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
           </div>
         ) : (
           <div style={{ padding:'22px 24px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>
-            Grupo listo para cargar estudiantes. Usá <strong>Mostrar estudiantes</strong> para abrir la radiografía actual sin salir de Calendario de Grupo.
+            Grupo listo para cargar estudiantes. Usá <strong>Mostrar estudiantes</strong> para revisar su radiografía sin salir del calendario académico.
           </div>
         )}
       </div>

@@ -243,6 +243,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
     const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;
   });
   const [detalle, setDetalle] = React.useState(null); // { grupo, leccion }
+  const [selectedKey, setSelectedKey] = React.useState('');
   const [expandedDay, setExpandedDay] = React.useState(null); // iso del día expandido en VistaMes
 
   // ── MORA (caché en backend) ───────────────────────────────────
@@ -431,76 +432,78 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
         gap:14, flexWrap:'wrap', marginBottom:14,
       }}>
         {/* Stats */}
-        <div style={{ display:'flex', gap:24, alignItems:'baseline' }}>
+        <div style={{ display:'flex', gap:24, alignItems:'baseline', flexWrap:'wrap' }}>
           <StatPill n={stats.totalGrupos} l="grupos activos" />
           <StatPill n={stats.estudiantes} l="estudiantes" />
           <StatPill n={stats.aperturas}   l="aperturas"     color={TODOS_APERTURA_COL} />
         </div>
 
-        {/* Mora: estado + botón actualizar */}
-        <div style={{
-          display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
-        }}>
+        {/* Mora: solo si el backend la soporta */}
+        {!moraUnsupported && (
           <div style={{
-            display:'flex', flexDirection:'column', alignItems:'flex-end',
-            lineHeight:1.25,
+            display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
           }}>
-            <span style={{
-              fontSize:10, fontWeight:800, letterSpacing:'0.14em',
-              textTransform:'uppercase',
-              color: moraError ? 'var(--an-red, #C8302A)' : 'var(--ink-3)',
+            <div style={{
+              display:'flex', flexDirection:'column', alignItems:'flex-end',
+              lineHeight:1.25,
             }}>
-              {moraUnsupported ? 'Mora no conectada' : (moraError ? '⚠ ' + moraError : 'Mora')}
-            </span>
-            <span style={{
-              fontSize:11, fontWeight:600,
-              color: moraFecha ? 'var(--ink-2)' : 'var(--ink-3)',
-              fontFamily: moraFecha ? 'var(--f-mono)' : 'inherit',
-              fontStyle: moraFecha ? 'normal' : 'italic',
-            }}>
-              {moraFecha
-                ? `actualizada ${tFmtMoraActualizado(moraFecha)}`
-                : (moraUnsupported ? 'opcional · backend sin endpoint' : (moraLoading ? 'cargando…' : 'sin calcular — tocá Actualizar'))}
-            </span>
+              <span style={{
+                fontSize:10, fontWeight:800, letterSpacing:'0.14em',
+                textTransform:'uppercase',
+                color: moraError ? 'var(--an-red, #C8302A)' : 'var(--ink-3)',
+              }}>
+                {moraError ? '⚠ ' + moraError : 'Mora'}
+              </span>
+              <span style={{
+                fontSize:11, fontWeight:600,
+                color: moraFecha ? 'var(--ink-2)' : 'var(--ink-3)',
+                fontFamily: moraFecha ? 'var(--f-mono)' : 'inherit',
+                fontStyle: moraFecha ? 'normal' : 'italic',
+              }}>
+                {moraFecha
+                  ? `actualizada ${tFmtMoraActualizado(moraFecha)}`
+                  : (moraLoading ? 'cargando…' : 'sin calcular — tocá Actualizar')}
+              </span>
+            </div>
+            <button
+              onClick={actualizarMora}
+              disabled={moraUpdating}
+              style={{
+                padding:'7px 12px', display:'inline-flex', alignItems:'center', gap:6,
+                border:'1.5px solid var(--line)',
+                background: moraUpdating ? 'var(--bg-deep)' : 'var(--surface)',
+                borderRadius:'var(--r-sm)',
+                fontSize:13, fontWeight:800, color:'var(--ink-2)',
+                cursor: moraUpdating ? 'wait' : 'pointer',
+                fontFamily:'inherit',
+                letterSpacing:'0.02em',
+                opacity: moraUpdating ? 0.65 : 1,
+              }}
+              title="Recalcular mora de todos los grupos (tarda unos segundos)"
+            >
+              {moraUpdating ? (
+                <React.Fragment>
+                  <span style={{
+                    width:12, height:12, borderRadius:'50%',
+                    border:'2px solid var(--line)', borderTopColor:'var(--an-navy)',
+                    animation:'an-spin .8s linear infinite',
+                    display:'inline-block',
+                  }} />
+                  Actualizando…
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                  Actualizar mora
+                </React.Fragment>
+              )}
+            </button>
           </div>
-          <button
-            onClick={actualizarMora}
-            disabled={moraUpdating || moraUnsupported}
-            style={{
-              padding:'7px 12px', display:'inline-flex', alignItems:'center', gap:6,
-              border:'1.5px solid var(--line)',
-              background: moraUpdating ? 'var(--bg-deep)' : 'var(--surface)',
-              borderRadius:'var(--r-sm)',
-              fontSize:13, fontWeight:800, color:'var(--ink-2)',
-              cursor: (moraUpdating || moraUnsupported) ? 'wait' : 'pointer',
-              fontFamily:'inherit',
-              letterSpacing:'0.02em',
-              opacity: (moraUpdating || moraUnsupported) ? 0.65 : 1,
-            }}
-            title="Recalcular mora de todos los grupos (tarda unos segundos)"
-          >
-            {moraUpdating ? (
-              <React.Fragment>
-                <span style={{
-                  width:12, height:12, borderRadius:'50%',
-                  border:'2px solid var(--line)', borderTopColor:'var(--an-navy)',
-                  animation:'an-spin .8s linear infinite',
-                  display:'inline-block',
-                }} />
-                Actualizando…
-              </React.Fragment>
-            ) : (
-              <React.Fragment>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                </svg>
-                Actualizar mora
-              </React.Fragment>
-            )}
-          </button>
-        </div>
+        )}
 
         {/* Switch Semana / Mes */}
         <div style={{
@@ -536,7 +539,8 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           gruposOrdenados={gruposOrdenados}
           byGrupoDate={byGrupoDate}
           moraMap={moraMap}
-          onAbrir={setDetalle}
+          selectedKey={selectedKey}
+          onAbrir={(it) => { setSelectedKey(todosItemKey(it)); setDetalle(it); }}
         />
       ) : (
         <TodosVistaMes
@@ -546,7 +550,8 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           moraMap={moraMap}
           expandedDay={expandedDay}
           setExpandedDay={setExpandedDay}
-          onAbrir={setDetalle}
+          selectedKey={selectedKey}
+          onAbrir={(it) => { setSelectedKey(todosItemKey(it)); setDetalle(it); }}
         />
       )}
 
@@ -564,7 +569,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
 // ─────────────────────────────────────────────────────────────────
 // VISTA SEMANA — Gantt: filas = grupos, columnas = días
 // ─────────────────────────────────────────────────────────────────
-function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, onAbrir }) {
+function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, selectedKey, onAbrir }) {
   // Siempre Lun-Sáb (6 columnas). Si algún grupo tiene clase domingo igual
   // se ve porque su celda existe — pero rara vez ocurre en la academia.
   const days = React.useMemo(() => {
@@ -575,11 +580,8 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
 
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
 
-  // Ancho mínimo de la grilla: 240px etiqueta + 6 × 140px = 1080. Si la pantalla
-  // es más angosta, el contenedor hace scroll horizontal (mantiene la lectura).
-  const COL_LABEL = 270;
-  const COL_DAY_MIN = 172;
-  const minWidth = COL_LABEL + 6 * COL_DAY_MIN;
+  // Ajustada para caber de lunes a sábado sin scroll horizontal en escritorio.
+  const COL_LABEL = 220;
 
   return (
     <div className="card" style={{ padding:0, overflow:'hidden' }}>
@@ -618,17 +620,17 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
       </div>
 
       {/* Grilla Gantt */}
-      <div style={{ overflowX:'auto' }}>
+      <div>
         <div style={{
           display:'grid',
-          gridTemplateColumns:`${COL_LABEL}px repeat(6, minmax(${COL_DAY_MIN}px, 1fr))`,
-          minWidth, background:'var(--line)', gap:1,
+          gridTemplateColumns:`${COL_LABEL}px repeat(6, minmax(0, 1fr))`,
+          width:'100%', background:'var(--line)', gap:1,
           borderTop:'1px solid var(--line)',
         }}>
           {/* ── Header row ───────────────────────────────────────── */}
           <div style={{
             background:'var(--bg-deep)',
-            padding:'10px 14px',
+            padding:'10px 12px',
             display:'flex', alignItems:'center',
             position:'sticky', left:0, zIndex:2,
           }}>
@@ -684,21 +686,21 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                 {/* Etiqueta del grupo */}
                 <div style={{
                   background:'var(--surface)',
-                  padding:'14px 14px 14px 16px',
-                  borderLeft:`3px solid ${color}`,
+                  padding:'12px 12px 12px 14px',
+                  borderLeft:`4px solid ${color}`,
                   display:'flex', alignItems:'center', gap:10, minWidth:0,
                   position:'sticky', left:0, zIndex:1,
                   opacity: g.esApertura ? 0.85 : 1,
                 }}>
                   <div style={{ minWidth:0, flex:1 }}>
                     <div style={{
-                      fontFamily:'var(--f-mono)', fontSize:12, fontWeight:700,
+                      fontFamily:'var(--f-mono)', fontSize:13, fontWeight:800,
                       color:'var(--ink)', whiteSpace:'nowrap',
                       overflow:'hidden', textOverflow:'ellipsis',
                       letterSpacing:'0.01em',
                     }}>{g.code}</div>
                     <div style={{
-                      fontSize:10, color:'var(--ink-3)', marginTop:2,
+                      fontSize:10.5, color:'var(--ink-3)', marginTop:3,
                       whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
                     }}>{g.docente || '—'}</div>
                   </div>
@@ -732,19 +734,30 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                       background: isToday
                         ? 'color-mix(in srgb, var(--an-navy) 3%, var(--surface))'
                         : 'var(--surface)',
-                      padding:'8px 7px',
+                      padding:'7px 6px',
                       display:'flex', flexDirection:'column', gap:6,
-                      minHeight:82,
+                      minHeight:78,
+                      justifyContent: list.length ? 'flex-start' : 'center',
                     }}>
-                      {list.map((lec, idx) => (
-                        <PillLeccion
-                          key={idx}
-                          item={{ grupo:g, leccion:lec }}
-                          moraMap={moraMap}
-                          onClick={() => onAbrir({ grupo:g, leccion:lec })}
-                          compact
-                        />
-                      ))}
+                      {list.length ? list.map((lec, idx) => {
+                        const item = { grupo:g, leccion:lec };
+                        return (
+                          <PillLeccion
+                            key={idx}
+                            item={item}
+                            moraMap={moraMap}
+                            selected={selectedKey === todosItemKey(item)}
+                            onClick={() => onAbrir(item)}
+                            compact
+                          />
+                        );
+                      }) : (
+                        <div style={{
+                          textAlign:'center', fontSize:11, fontWeight:700,
+                          color:'var(--ink-3)', opacity:0.45,
+                          letterSpacing:'0.04em',
+                        }}>—</div>
+                      )}
                     </div>
                   );
                 })}
@@ -760,9 +773,9 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
 // ─────────────────────────────────────────────────────────────────
 // VISTA MES
 // ─────────────────────────────────────────────────────────────────
-const MES_VISIBLE_PILLS = 5;
+const MES_VISIBLE_PILLS = 4;
 
-function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, onAbrir }) {
+function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, selectedKey, onAbrir }) {
   const year  = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const today = React.useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
@@ -880,6 +893,7 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
               {visibles.map((it, idx) => (
                 <PillLeccion key={idx} item={it} compact
                   moraMap={moraMap}
+                  selected={selectedKey === todosItemKey(it)}
                   onClick={() => onAbrir(it)} />
               ))}
               {restantes > 0 && (
@@ -922,7 +936,12 @@ function todosShortCode(code) {
   return String(code || '—');
 }
 
-function PillLeccion({ item, compact, moraMap, onClick }) {
+function todosItemKey(item) {
+  if (!item || !item.grupo || !item.leccion) return '';
+  return [item.grupo.code || '', item.leccion.fecha || '', item.leccion.tipo || '', item.leccion.leccion || 0].join('|');
+}
+
+function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
   const { grupo, leccion } = item;
   const esApertura = !!grupo.esApertura;
   const esICAN     = leccion.tipo === 'ICAN';
@@ -937,6 +956,7 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
 
   const bg     = `color-mix(in srgb, ${color} 7%, white)`;
   const bgHoy  = `color-mix(in srgb, ${color} 15%, white)`;
+  const bgSel  = `color-mix(in srgb, ${color} 22%, white)`;
   const border = `color-mix(in srgb, ${color} 32%, white)`;
   const horaLbl = TODOS_HORA_LABEL[grupo.turnoOrden] || '';
   const shortCode = todosShortCode(grupo.code);
@@ -955,7 +975,7 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
         display:'flex', flexDirection:'column', alignItems:'stretch', gap: compact ? 3 : 5,
         padding: compact ? '7px 8px' : '8px 10px',
         minHeight: compact ? 46 : 54,
-        background: hoy ? bgHoy : bg,
+        background: selected ? bgSel : (hoy ? bgHoy : bg),
         borderTop:    `1px solid ${border}`,
         borderRight:  `1px solid ${border}`,
         borderBottom: `1px solid ${border}`,
@@ -966,10 +986,10 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
         opacity: cerrada ? 0.58 : (esApertura ? 0.88 : 1),
         overflow:'hidden', minWidth:0, lineHeight:1.15,
         transition:'background .12s, transform .12s, box-shadow .12s',
-        boxShadow: hoy ? `0 0 0 1px ${color}55` : 'none',
+        boxShadow: selected ? `0 0 0 2px ${color}77, 0 8px 16px rgba(0,0,0,0.08)` : (hoy ? `0 0 0 1px ${color}55` : 'none'),
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = bgHoy; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = hoy ? bgHoy : bg; e.currentTarget.style.transform = 'none'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = selected ? bgSel : bgHoy; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = selected ? bgSel : (hoy ? bgHoy : bg); e.currentTarget.style.transform = 'none'; }}
     >
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, minWidth:0 }}>
         <span style={{
@@ -1001,7 +1021,8 @@ function PillLeccion({ item, compact, moraMap, onClick }) {
         {esICAN && <PillBadge color={color} label="I CAN" />}
         {esEval && <PillBadge color={color} label={leccion.tipo === 'EVAL_ORAL' ? 'ORAL' : 'ESCR'} />}
         {esPC && !esEval && <PillBadge color={color} label="PC" />}
-        {cerrada && <span style={{ marginLeft:'auto', fontSize:11, color, fontWeight:900 }}>✓</span>}
+        {selected && <PillBadge color={'var(--an-navy)'} label={'SEL'} />}
+        {cerrada && <span style={{ marginLeft:selected ? 0 : 'auto', fontSize:11, color, fontWeight:900 }}>✓</span>}
       </div>
 
       {mostrarMora && (ca !== null || mr !== null) && (
