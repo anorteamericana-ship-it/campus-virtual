@@ -1,4 +1,4 @@
-// F98.4-Z6-M · bloques compactos + cronograma fecha real + resumen estudiante
+// F98.4-Z6-N · cronograma abre desde la fecha real del grupo seleccionado
 // Base preservada: F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
@@ -1201,7 +1201,7 @@ function TeacherAgendaMonthF82({ month, events, onSelect }) {
 }
 function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false, onlyIcan=false }) {
   const {grupos,meta,codGrupo,cambiarGrupo,roster,asistenciaDetalle,comentariosDetalle,recargarPanel,loading,error}=useTeacherSession();
-  const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null);
+  const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null),[monthOffset,setMonthOffset]=React.useState(0);
   const groupKey=JSON.stringify((grupos||[]).map(g=>[tvGroupCode(g),tvNivelId(g),String(g?.programa||'')]));
   React.useEffect(()=>{
     let live=true;
@@ -1229,14 +1229,32 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
     }).finally(()=>live&&setLoadingAgenda(false));
     return()=>{live=false;};
   },[groupKey,onlyIcan]);
-  const base=React.useMemo(()=>{const today=new Date(),future=events.find(e=>String(e.fecha||'')>=today.toISOString().slice(0,10));const d=future?new Date(String(future.fecha).slice(0,10)+'T00:00:00'):today;return new Date(d.getFullYear(),d.getMonth(),1);},[events]);
+  React.useEffect(()=>{setMonthOffset(0);},[codGrupo,onlyIcan]);
+  const startBase=React.useMemo(()=>{
+    const selectedEvents=events.filter(e=>String(e.cod_grupo||'')===String(codGrupo||''));
+    const source=selectedEvents.length?selectedEvents:events;
+    const first=source.find(e=>/^\d{4}-\d{2}-\d{2}$/.test(String(e.fecha||'').slice(0,10)));
+    const metaIso=tvGroupStartDateF98(meta);
+    const iso=first?String(first.fecha).slice(0,10):metaIso;
+    const d=iso?new Date(`${iso}T12:00:00`):new Date();
+    return new Date(d.getFullYear(),d.getMonth(),1);
+  },[events,codGrupo,meta]);
+  const base=React.useMemo(()=>new Date(startBase.getFullYear(),startBase.getMonth()+monthOffset,1),[startBase,monthOffset]);
   const months=Array.from({length:monthCount},(_,i)=>new Date(base.getFullYear(),base.getMonth()+i,1));
+  const goToday=()=>{const now=new Date();setMonthOffset((now.getFullYear()-startBase.getFullYear())*12+(now.getMonth()-startBase.getMonth()));};
   const title=onlyIcan?<>Club <em>I CAN</em></>:<>Cronograma <em>Inglés Conversacional</em></>;
   const kicker=onlyIcan?'Programa INA · sesiones complementarias':'Calendario académico · vista docente';
   const sub=onlyIcan?'Sesiones I CAN reales de tus grupos asignados. Podés abrir cada fecha y operar la clase desde el mismo panel.':'Curso, Progress Check, exámenes y Club I CAN reunidos en una sola agenda.';
   return <div style={{width:'100%',minWidth:0}}><PageHeader kicker={kicker} title={title} sub={sub}/>
     <MisGruposSwitcher grupos={grupos||[]} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
-    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><TeacherAgendaLegendF96/><div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>{[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}<button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button></div></div>
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><TeacherAgendaLegendF96/><div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>
+      <button className="btn btn-ghost" type="button" onClick={()=>setMonthOffset(v=>v-1)} aria-label="Mes anterior">←</button>
+      <button className={monthOffset===0?'btn btn-primary':'btn btn-ghost'} type="button" onClick={()=>setMonthOffset(0)}>Inicio del grupo</button>
+      <button className="btn btn-ghost" type="button" onClick={goToday}>Mes actual</button>
+      <button className="btn btn-ghost" type="button" onClick={()=>setMonthOffset(v=>v+1)} aria-label="Mes siguiente">→</button>
+      {[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
+      <button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button>
+    </div></div>
     {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
     {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}</div>;
 }
