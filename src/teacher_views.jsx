@@ -1,4 +1,4 @@
-// F98.4-Z6-N · cronograma abre desde la fecha real del grupo seleccionado
+// F98.4-Z6-O · Cuatrimestre muestra el periodo completo real
 // Base preservada: F98.4-Z6-H · Asistencia inteligente: TOTAL / SOLO LECCIONES / SOLO I CAN
 // F98.4-O_20260625_FIX_MIS_GRUPOS_LABELSTYLE_CIERRE_LECCION
 // F92.7_20260620_DRAWER_DOCENTE_ESTADO_SEGURO
@@ -1239,6 +1239,17 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
     const d=iso?new Date(`${iso}T12:00:00`):new Date();
     return new Date(d.getFullYear(),d.getMonth(),1);
   },[events,codGrupo,meta]);
+  const periodMonthCount=React.useMemo(()=>{
+    const selectedEvents=events.filter(e=>String(e.cod_grupo||'')===String(codGrupo||''));
+    const source=selectedEvents.length?selectedEvents:events;
+    const dates=source.map(e=>String(e.fecha||'').slice(0,10)).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));
+    if(!dates.length)return 4;
+    dates.sort();
+    const first=new Date(`${dates[0]}T12:00:00`),last=new Date(`${dates[dates.length-1]}T12:00:00`);
+    if(Number.isNaN(first.getTime())||Number.isNaN(last.getTime()))return 4;
+    return Math.max(4,(last.getFullYear()-first.getFullYear())*12+(last.getMonth()-first.getMonth())+1);
+  },[events,codGrupo]);
+  React.useEffect(()=>{if(monthCount>2&&monthCount!==periodMonthCount)setMonthCount(periodMonthCount);},[periodMonthCount]);
   const base=React.useMemo(()=>new Date(startBase.getFullYear(),startBase.getMonth()+monthOffset,1),[startBase,monthOffset]);
   const months=Array.from({length:monthCount},(_,i)=>new Date(base.getFullYear(),base.getMonth()+i,1));
   const goToday=()=>{const now=new Date();setMonthOffset((now.getFullYear()-startBase.getFullYear())*12+(now.getMonth()-startBase.getMonth()));};
@@ -1252,7 +1263,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       <button className={monthOffset===0?'btn btn-primary':'btn btn-ghost'} type="button" onClick={()=>setMonthOffset(0)}>Inicio del grupo</button>
       <button className="btn btn-ghost" type="button" onClick={goToday}>Mes actual</button>
       <button className="btn btn-ghost" type="button" onClick={()=>setMonthOffset(v=>v+1)} aria-label="Mes siguiente">→</button>
-      {[[1,'1 mes'],[2,'2 meses'],[4,'Cuatrimestre']].map(([n,l])=><button key={n} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
+      {[[1,'1 mes'],[2,'2 meses'],[periodMonthCount,'Cuatrimestre']].map(([n,l])=><button key={`${n}-${l}`} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
       <button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button>
     </div></div>
     {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}

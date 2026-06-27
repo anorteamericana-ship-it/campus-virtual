@@ -1,3 +1,4 @@
+// F98.4-Z6-O · Cuatrimestre visualiza el periodo completo real
 // CALGRUPO_F86_20260619_ETIQUETAS_EXAMEN_ORAL_INTEGRADO
 // CALGRUPO_F80_20260619_CRONOGRAMA_TIMEOUT_RESPUESTA_SEGURA
 // CALGRUPO_F74_20260618_AGENDA_DOCENTE_TARJETAS_PANEL_FIJO_LEGIBLE
@@ -616,12 +617,6 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     try { return Number(localStorage.getItem('an_crono_meses_vista') || (esTeacher ? 4 : 1)); } catch (_) { return esTeacher ? 4 : 1; }
   });
   React.useEffect(() => { try { localStorage.setItem('an_crono_meses_vista', String(mesesVista)); } catch (_) {} }, [mesesVista]);
-  React.useEffect(() => {
-    if (esTeacher || esAdmin) return;
-    const validos = new Set([1, periodoPrograma.meses]);
-    if (!validos.has(Number(mesesVista))) setMesesVista(1);
-  }, [esTeacher, esAdmin, mesesVista, periodoPrograma.meses]);
-
   // Acceso del estudiante (matrícula / cuota / mora). Para teacher/admin no se
   // consulta (codigoAcceso vacío → hook no hace fetch). El hook está siempre
   // cargado (campus.html lo importa antes que este archivo).
@@ -735,6 +730,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     }
     return out;
   }, [leccionesVista]);
+
+  const fullPeriodMonths = Math.max(periodoPrograma.meses, meses.length || periodoPrograma.meses);
+  React.useEffect(() => {
+    if (Number(mesesVista) > 2 && Number(mesesVista) !== fullPeriodMonths) setMesesVista(fullPeriodMonths);
+  }, [fullPeriodMonths]);
+  React.useEffect(() => {
+    if (esTeacher || esAdmin) return;
+    const validos = new Set([1, fullPeriodMonths]);
+    if (!validos.has(Number(mesesVista))) setMesesVista(1);
+  }, [esTeacher, esAdmin, mesesVista, fullPeriodMonths]);
 
   // Mapa fecha → lecciones (puede haber 2 para SA)
   const mapaLecciones = React.useMemo(() => {
@@ -1000,7 +1005,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <VistaTabsCrono vista={vista} setVista={setVista} />
           {vista === 'mes' && (
-            <MesesVistaControl valor={mesesVista} setValor={setMesesVista} esAlumno={esStudent} fullRangeMonths={periodoPrograma.meses} fullRangeLabel={periodoPrograma.label} />
+            <MesesVistaControl valor={mesesVista} setValor={setMesesVista} esAlumno={esStudent} fullRangeMonths={fullPeriodMonths} fullRangeLabel={periodoPrograma.label} />
           )}
         </div>
       </div>
@@ -1614,7 +1619,7 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
 function MesesVistaControl({ valor, setValor, esAlumno = false, fullRangeMonths = 4, fullRangeLabel = 'Cuatrimestre completo' }) {
   const opts = esAlumno
     ? [{ n:1, t:'Mes actual' }, { n:fullRangeMonths, t:fullRangeLabel }]
-    : [{ n:1, t:'1 mes' }, { n:2, t:'2 meses' }, { n:4, t:'Cuatrimestre' }];
+    : [{ n:1, t:'1 mes' }, { n:2, t:'2 meses' }, { n:fullRangeMonths, t:'Cuatrimestre' }];
   return (
     <div style={{ display:'inline-flex', padding:4, borderRadius:'var(--r-pill)', background:'var(--surface)', border:'1px solid var(--line)', gap:4 }}>
       {opts.map(o => (
