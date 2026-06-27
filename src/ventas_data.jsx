@@ -488,11 +488,17 @@ async function getBecasDisponiblesV() {
   const res = await fetch(`${SCRIPT_URL_V}?fn=getBecasDisponibles`);
   return await res.json();
 }
-async function generarProformaProspecto(cedula) {
-  // FIX-VENTAS-DATA-POST-001: la cédula es dato sensible (PII) — ya no viaja en
-  // la URL. POST text/plain (postVentasData): token + cédula en el body JSON,
-  // ?fn= solo enruta. El backend ya soporta este fn por POST (ver admin).
-  return await postVentasData('generarProformaProspecto', { cedula: cedula || '' });
+async function generarProformaProspecto(cedula, tipo = 'ambas') {
+  // F98.4-Z6-V: la cédula y el tipo viajan por POST junto al token real.
+  // tipo: 'curso' | 'equipo' | 'ambas'. El backend valida que el prospecto
+  // pertenezca al asesor cuando la sesión tiene rol ventas.
+  const tipoSeguro = ['curso','equipo','ambas'].includes(String(tipo || '').toLowerCase())
+    ? String(tipo).toLowerCase()
+    : 'ambas';
+  return await postVentasData('generarProformaProspecto', {
+    cedula: cedula || '',
+    tipo: tipoSeguro,
+  });
 }
 const aprobarBecaProspecto = (cedula, decision, admin) =>
   postVentas({ fn:'aprobarBecaProspecto', cedula, decision, admin });

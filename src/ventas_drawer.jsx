@@ -112,8 +112,8 @@ const ICON_LAPTOP = 'M4 5h16v10H4z|M2 19h20l-2-3H4z';
 // admin (PFCard en matriculas_admin.jsx): ícono superior, título fuerte, subtítulo
 // gris, botón principal azul (Descargar), secundario (WhatsApp) y terciario
 // (Regenerar). Adaptada a los estilos del módulo ventas (vx-*) y a su flujo real:
-// la generación la hace `window.generarProformaProspecto(cedula)` (regenera ambas
-// proformas a la vez) — NO se inventa ningún endpoint nuevo.
+// la generación la hace `window.generarProformaProspecto(cedula, tipo)` y
+// cada tarjeta genera únicamente su documento (curso o equipo).
 function ProformaCardVx({ iconPath, title, subtitle, url, waNum, waMsg, regenerating, canGenerate, onRegen, disabled, disabledMsg, onToast }) {
   const cardStyle = {
     border: '1.5px solid var(--v-line)', borderRadius: 'var(--v-r-md, 10px)', padding: 15,
@@ -593,7 +593,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   const [savingNota, setSavingNota] = vUseState(false);
   const [modal, setModal] = vUseState(null);   // 'cobrar' | 'activar' | 'cancelar' | { tipo:'success', result }
   const [actLoading, setActLoading] = vUseState('');
-  const [loadingProforma, setLoadingProforma] = vUseState(false);
+  const [loadingProforma, setLoadingProforma] = vUseState('');
   const fileRef = React.useRef(null);
   const pendingDocKey = React.useRef(null);
 
@@ -691,24 +691,42 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   };
 
   // ── Generar proforma CONAPE ──
-  const generarProforma = async () => {
-    setLoadingProforma(true);
+  const generarProforma = async (tipo = 'curso') => {
+    if (loadingProforma) return;
+    setLoadingProforma(tipo);
     try {
+      const demoConsec = 'DEMO-' + Math.floor(1000 + Math.random()*9000);
       const r = demo
-        ? (await sleep(1200), { ok: true, url_programa: '#demo', url_equipo: '#demo', consecutivo_programa: 'DEMO-' + Math.floor(1000 + Math.random()*9000) })
-        : await window.generarProformaProspecto(detalle.cedula);
-      setLoadingProforma(false);
+        ? (await sleep(1200), tipo === 'equipo'
+            ? { ok: true, tipo, url_equipo: '#demo', consecutivo_equipo: demoConsec }
+            : { ok: true, tipo, url_programa: '#demo', consecutivo_programa: demoConsec })
+        : await window.generarProformaProspecto(detalle.cedula, tipo);
+
       if (r && r.ok) {
-        onToast({ tipo: 'ok', msg: `Proforma Nº${r.consecutivo_programa} generada.` });
-        // Actualizar localmente las URLs en el drawer sin recargar
-        setDetalle(d => ({ ...d, proforma_url: r.url_programa, proforma_equipo_url: r.url_equipo }));
-        onChanged && onChanged({ cedula: detalle.cedula, proforma_url: r.url_programa, proforma_equipo_url: r.url_equipo });
+        const patch = {};
+        if (r.url_programa) patch.proforma_url = r.url_programa;
+        if (r.url_equipo) patch.proforma_equipo_url = r.url_equipo;
+        const consecutivo = tipo === 'equipo' ? r.consecutivo_equipo : r.consecutivo_programa;
+        const etiqueta = tipo === 'equipo' ? 'equipo' : 'curso';
+
+        onToast({
+          tipo: 'ok',
+          msg: `Proforma de ${etiqueta}${consecutivo ? ` Nº${consecutivo}` : ''} generada.`,
+        });
+
+        // Actualizar únicamente la URL generada; no borrar la otra proforma.
+        setDetalle(d => ({ ...d, ...patch }));
+        onChanged && onChanged({ cedula: detalle.cedula, ...patch });
       } else {
-        onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo generar la proforma.' });
+        onToast({
+          tipo: 'err',
+          msg: (r && (r.mensaje || r.error)) || 'No se pudo generar la proforma.',
+        });
       }
-    } catch (_) {
-      setLoadingProforma(false);
-      onToast({ tipo: 'err', msg: 'Error de conexión.' });
+    } catch (err) {
+      onToast({ tipo: 'err', msg: (err && err.message) || 'Error de conexión.' });
+    } finally {
+      setLoadingProforma('');
     }
   };
 
@@ -868,15 +886,15 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                         iconPath={window.VI.doc} title="Proforma del Curso"
                         subtitle={`Programa de inglés (${window.progLabel(d.programa)})`}
                         url={d.proforma_url} waNum={waNum} waMsg={waMsgCurso}
-                        regenerating={loadingProforma} canGenerate={canGenerate}
-                        onRegen={generarProforma} onToast={onToast} />
+                        regenerating={loadingProforma === 'curso'} canGenerate={canGenerate && !loadingProforma}
+                        onRegen={() => generarProforma('curso')} onToast={onToast} />
                       <ProformaCardVx
                         iconPath={ICON_LAPTOP} title="Proforma del Equipo"
                         subtitle={equipoLabel}
                         disabled={sinEquipo} disabledMsg="Este prospecto no eligió equipo CONAPE."
                         url={d.proforma_equipo_url} waNum={waNum} waMsg={waMsgEquipo}
-                        regenerating={loadingProforma} canGenerate={canGenerate}
-                        onRegen={generarProforma} onToast={onToast} />
+                        regenerating={loadingProforma === 'equipo'} canGenerate={canGenerate && !loadingProforma}
+                        onRegen={() => generarProforma('equipo')} onToast={onToast} />
                     </div>
                   </section>
                 );
