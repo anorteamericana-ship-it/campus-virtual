@@ -552,6 +552,45 @@ function StatF77({ label, value, sub, color='var(--an-navy)' }) {
   </div>;
 }
 
+function MatriculadosActivosCardF98({ total=0, activos=0, cerradas=0, threshold=85 }) {
+  const totalN = Math.max(0, Number(total) || 0);
+  const activosN = Math.max(0, Math.min(totalN, Number(activos) || 0));
+  const pct = totalN > 0 ? Math.round((activosN / totalN) * 100) : 0;
+  const ringBg = `conic-gradient(var(--an-navy) 0 ${pct}%, #E7ECF4 ${pct}% 100%)`;
+  const helper = cerradas > 0
+    ? `${activosN} estudiantes mantienen ${threshold}% o más de asistencia en el módulo.`
+    : 'Sin clases cerradas aún · todos conservan el requisito mínimo de asistencia.';
+  return (
+    <div className="card" style={{ padding:'14px 18px 16px', minWidth:0, overflow:'hidden' }}>
+      <div style={{ ...vdLabelStyle, marginBottom:10 }}>Matriculados</div>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(88px,1fr) 118px', alignItems:'center', gap:12 }}>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:40, lineHeight:0.96, fontWeight:900, color:'var(--an-navy)' }}>{activosN}</div>
+          <div style={{ fontSize:12.5, fontWeight:800, color:'var(--ink-2)', marginTop:2 }}>Activos</div>
+          <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:6, lineHeight:1.35 }}>Con {threshold}% o más de asistencia</div>
+        </div>
+        <div style={{ justifySelf:'end', width:118, display:'grid', placeItems:'center' }}>
+          <div style={{ width:104, height:104, borderRadius:'50%', background:ringBg, display:'grid', placeItems:'center', boxShadow:'inset 0 0 0 1px rgba(11,90,166,.08)' }}>
+            <div style={{ width:76, height:76, borderRadius:'50%', background:'#FFF', display:'grid', placeItems:'center', boxShadow:'inset 0 0 0 1px #E7ECF4' }}>
+              <div style={{ textAlign:'center', lineHeight:1 }}>
+                <div style={{ fontSize:27, fontWeight:900, color:'#4A49C5' }}>{totalN}</div>
+                <div style={{ fontSize:8.5, fontWeight:900, color:'var(--ink-3)', letterSpacing:'.04em', marginTop:4 }}>TOTAL</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
+        <div style={{ fontSize:10.5, color:'var(--ink-3)', lineHeight:1.35, minWidth:0, flex:'1 1 220px' }}>{helper}</div>
+        <div style={{ display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap', fontSize:9.5, fontWeight:900, color:'var(--an-navy)' }}>
+          <span style={{ width:9, height:9, borderRadius:'50%', background:'var(--an-navy)' }} />
+          <span>{pct}% del grupo cumple el requisito</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) {
   const [busy, setBusy] = React.useState(false);
   if (!leccionHoy) return null;
@@ -1036,13 +1075,26 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
   if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos En curso asignados.'} onRetry={recargarPanel}/></div>;
   const promedioGrupo=resumenGrupo?.promedioGrupo,promedioAsistencia=resumenGrupo?.promedioAsistencia;
+  const totalMatriculados = Number(resumenGrupo?.totalCA ?? roster.length ?? 0) || 0;
+  const cerradas = Number(resumenGrupo?.cerradas || 0) || 0;
+  const activos85 = totalMatriculados > 0
+    ? (cerradas > 0
+        ? roster.reduce((acc, r) => {
+            const pct = Number(asistenciaGrupo?.[r.code]?.pct);
+            return acc + (Number.isFinite(pct) && pct >= 85 ? 1 : 0);
+          }, 0)
+        : totalMatriculados)
+    : 0;
   return <div style={{width:'100%',maxWidth:'100%',minWidth:0,overflow:'hidden'}}>
-    <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub={<strong style={{fontWeight:900,letterSpacing:'.035em'}}>ELIJE EL GRUPO QUE DESEAS VISUALIZAR.</strong>}/>
+    <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} />
+    <div className="card" style={{padding:'15px 18px',margin:'-6px 0 14px',background:'#FFF',borderRadius:14,border:'1px solid rgba(15,23,42,.07)',boxShadow:'0 10px 24px rgba(12,27,53,.05)'}}>
+      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elije el grupo que deseas visualizar</div>
+    </div>
     <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
     {loading?<LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
-        <StatF77 label="Matriculados" value={resumenGrupo?.totalCA??roster.length} color="var(--an-navy)"/>
+        <MatriculadosActivosCardF98 total={totalMatriculados} activos={activos85} cerradas={cerradas} threshold={85}/>
         <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
         <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
         <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
