@@ -60,13 +60,17 @@ async function resincronizarEstudianteIndividual(codigo) {
 // ─────────────────────────────────────────────────────────────────────────
 // HOOKS
 // ─────────────────────────────────────────────────────────────────────────
-function useAdminGrupos() {
+function useAdminGrupos(enabled = true) {
   const [grupos, setGrupos]   = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(!!enabled);
   const [error, setError]     = React.useState('');
   React.useEffect(() => {
     let activo = true;
-    setError('');
+    if (!enabled) {
+      setGrupos([]); setError(''); setLoading(false);
+      return () => { activo = false; };
+    }
+    setLoading(true); setError('');
     postAdminStudents('getAdminDashboard')
       .then(d => {
         if (!activo) return;
@@ -79,22 +83,32 @@ function useAdminGrupos() {
       .catch(e => { if (activo) setError('Error de conexión: ' + (e.message || e)); })
       .finally(() => { if (activo) setLoading(false); });
     return () => { activo = false; };
-  }, []);
+  }, [enabled]);
   return { grupos, loading, error };
 }
 
 function useRadiografia(codGrupo, refreshKey) {
   const [data, setData]       = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [error, setError]     = React.useState('');
   React.useEffect(() => {
-    if (!codGrupo) return;
-    setLoading(true); setData(null);
+    let activo = true;
+    if (!codGrupo) {
+      setData(null); setError(''); setLoading(false);
+      return () => { activo = false; };
+    }
+    setLoading(true); setData(null); setError('');
     postAdminStudents('getRadiografiaGrupo', { cod_grupo: codGrupo })
-      .then(d => { if (d && d.ok) setData(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then(d => {
+        if (!activo) return;
+        if (d && d.ok) setData(d);
+        else setError((d && (d.error || d.mensaje)) || 'No se pudo cargar la radiografía del grupo.');
+      })
+      .catch(e => { if (activo) setError('Error de conexión: ' + (e?.message || e)); })
+      .finally(() => { if (activo) setLoading(false); });
+    return () => { activo = false; };
   }, [codGrupo, refreshKey]);
-  return { data, loading };
+  return { data, loading, error };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2069,8 +2083,11 @@ function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
 function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
-  const { grupos, loading: loadingGrupos, error: errorGrupos } = useAdminGrupos();
   const embebidoCalGrupo = modo === 'calgrupo';
+  // En Calendario de Grupo ya conocemos el código exacto. Evitar una llamada
+  // adicional a getAdminDashboard: no es necesaria para cargar la lista y podía
+  // hacer que el panel pareciera detenido aunque la radiografía sí estuviera disponible.
+  const { grupos, loading: loadingGrupos, error: errorGrupos } = useAdminGrupos(!embebidoCalGrupo);
   const [grupoSel, setGrupoSel] = React.useState(grupoInicial || null);
   const [filtroGrupos, setFiltroGrupos] = React.useState('');
   // Si el caller cambia `grupoInicial` (ej. nueva navegación con otro grupo),
@@ -2284,7 +2301,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
     }
   };
 
-  const { data, loading: loadingRad } = useRadiografia(grupoSel, refreshKey);
+  const { data, loading: loadingRad, error: errorRad } = useRadiografia(grupoSel, refreshKey);
   const grupoInfoDetalle = useGrupoInfo(grupoSel);
 
   // Estado de ordenamiento (compartido entre tablas de niveles)
@@ -2531,12 +2548,23 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
 
           {/* Secciones por nivel. En modo calgrupo inicia exactamente en la vista previa de cierre. */}
           {loadingRad ? (
-            <div style={{ textAlign:'center', padding:40, color:'var(--ink-3, #888)' }}>
-              Cargando radiografía del grupo…
+            <div style={{ textAlign:'center', padding:'44px 24px', color:'var(--ink-3, #888)', background:'white' }}>
+              <div style={{ fontSize:26, marginBottom:8, animation:'an-spin 1s linear infinite', display:'inline-block' }}>↻</div>
+              <div style={{ fontWeight:800, color:'var(--an-navy,#14213D)' }}>Cargando estudiantes del grupo…</div>
+              <div style={{ fontSize:11, marginTop:4 }}>{grupoSel}</div>
+            </div>
+          ) : errorRad ? (
+            <div style={{ padding:22, background:'white' }}>
+              <div style={{ padding:'14px 16px', border:'1px solid #F4B7B7', background:'#FFEBEE', color:'#C62828', borderRadius:12 }}>
+                <div style={{ fontWeight:900 }}>No se pudo cargar la lista de estudiantes</div>
+                <div style={{ fontSize:11.5, marginTop:4, lineHeight:1.45 }}>{errorRad}</div>
+              </div>
+              <button type="button" onClick={() => setRefreshKey(k => k + 1)} style={{ marginTop:12, padding:'9px 14px', borderRadius:9, border:'1px solid var(--line,#ddd)', background:'white', color:'var(--an-navy,#14213D)', fontWeight:900, cursor:'pointer' }}>Reintentar carga</button>
             </div>
           ) : secciones.length === 0 ? (
-            <div style={{ textAlign:'center', padding:40, color:'var(--ink-3, #888)' }}>
-              Sin estudiantes registrados en este grupo
+            <div style={{ textAlign:'center', padding:'40px 24px', color:'var(--ink-3, #888)', background:'white' }}>
+              <div style={{ fontWeight:900, color:'var(--an-navy,#14213D)' }}>Sin estudiantes registrados en este grupo</div>
+              <div style={{ fontSize:11, marginTop:5 }}>{grupoSel}{data && data.total != null ? ` · ${data.total} registros encontrados` : ''}</div>
             </div>
           ) : (
             <React.Fragment>
@@ -3714,7 +3742,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
 
 
 // ─────────────────────────────────────────────────────────────────────────
-// F98.4-Z6-AG · FICHA INDIVIDUAL COMPACTA PARA CALENDARIO SUPERADMIN
+// F98.4-Z6-AH · FICHA INDIVIDUAL COMPACTA PARA CALENDARIO SUPERADMIN
 // Sustituye únicamente el panel inferior. El calendario superior permanece.
 // Muestra siempre las cuatro líneas académicas y un resumen de asistencia.
 // Por decisión administrativa, pagos se reducen a MOROSO: SÍ / NO.

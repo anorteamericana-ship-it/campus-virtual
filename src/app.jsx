@@ -62,12 +62,12 @@ const F96_LAZY = {
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AE','src/admin_master_dashboard.jsx?v=F98.4Z6AE'],
-  admin_students: ['src/admin_students.jsx?v=F98.4Z6AG'],
+  admin_students: ['src/admin_students.jsx?v=F98.4Z6AH'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
-  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AG'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AG','src/cronograma_grupo.jsx?v=F98.4Z6O'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AG','src/cronograma_grupo.jsx?v=F98.4Z6O','src/admin_students.jsx?v=F98.4Z6AG','src/calendario_grupo.jsx?v=F98.4Z6AG'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AH'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AH','src/cronograma_grupo.jsx?v=F98.4Z6O'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AH','src/cronograma_grupo.jsx?v=F98.4Z6O','src/admin_students.jsx?v=F98.4Z6AH','src/calendario_grupo.jsx?v=F98.4Z6AH'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/buscador.jsx?v=F96.5G'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
@@ -81,7 +81,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AG','src/cronograma_grupo.jsx?v=F98.4Z6O',
+    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AH','src/cronograma_grupo.jsx?v=F98.4Z6O',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [

@@ -1,7 +1,7 @@
 /* global React */
 // ─────────────────────────────────────────────────────────────────────────
 // Vista "Todos los grupos" — solo admin / superadmin
-// F98.4-Z6-AG · calendario superadmin: selección por grupo + aperturas B1
+// F98.4-Z6-AH · calendario superadmin: aperturas operativas B1 + selección por grupo
 // Se monta dentro de CronogramaGrupo cuando codGrupo === '__TODOS__'.
 //
 // Switch SEMANA / MES. Las lecciones de TODOS los grupos activos se apilan
@@ -21,6 +21,8 @@ const TODOS_NIVEL_LABEL = {
 };
 const TODOS_NIVEL_ORDEN  = { I2:4, I1:3, B2:2, B1:1 }; // mayor → primero
 const TODOS_APERTURA_COL = '#F57C00';
+const TODOS_NIVEL_BG = { B1:'#FFF4CE', B2:'#FFE2DE', I1:'#E1F0FA', I2:'#E3F3E0' };
+const TODOS_APERTURA_BG = '#FFE0BF';
 const TODOS_HORA_LABEL   = { 1:'9a', 2:'6p' };
 // Nota: la asignación de "tonos por código" del prompt anterior se descartó —
 // ahora cada grupo se distingue por su FILA (Gantt), no por un tono propio.
@@ -80,6 +82,7 @@ const TODOS_TIPO_LBL = {
   EVAL_ORAL:'Examen Oral',
   EVAL_ESCRITO:'Examen Escrito',
   ICAN:'Sesión I CAN',
+  APERTURA:'Apertura proyectada',
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -117,6 +120,65 @@ function todosNivelId(v) {
   if (['I2','INTERMEDIO II','INTERMEDIO 2','INTERMEDIATE II','INTERMEDIATE 2'].includes(up)) return 'I2';
   return up || 'B1';
 }
+
+function todosNormDias(v) {
+  return todosText(v)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/\s+/g, ' ').trim();
+}
+
+// Devuelve días JavaScript: 1=Lun ... 6=Sáb.
+// Soporta códigos LM/KJ/LJ/SA y textos reales de GRUPOS como LUN/MIÉ y MAR/JUE.
+function todosDiasApertura(grupo) {
+  const raw = todosNormDias(grupo?.diasCode || grupo?.dias || '');
+  const codeSeg = todosNormDias(String(grupo?.code || '').split('-')[1] || '').replace(/[0-9]/g, '');
+  const v = `${raw} ${codeSeg}`;
+  if (/\bSA\b|SAB/.test(v)) return [6];
+  if (/\bLJ\b|LUN[^A-Z]*JUE|LUNES[^A-Z]*JUEVES|LUN[- A]JUE/.test(v)) return [1,2,3,4];
+  if (/\bKJ\b|MAR[^A-Z]*JUE|MARTES[^A-Z]*JUEVES/.test(v)) return [2,4];
+  if (/\bLM\b|LUN[^A-Z]*MIE|LUNES[^A-Z]*MIERCOLES/.test(v)) return [1,3];
+  // Respaldo por código del grupo: LM18, KJ18, LM69, SA94, etc.
+  if (codeSeg.startsWith('SA')) return [6];
+  if (codeSeg.startsWith('LJ')) return [1,2,3,4];
+  if (codeSeg.startsWith('KJ')) return [2,4];
+  if (codeSeg.startsWith('LM')) return [1,3];
+  return [];
+}
+
+function todosFechaApertura(grupo) {
+  const directa = todosText(grupo?.aperturaFechaInicio || grupo?.fechaInicio || grupo?.fecha_inicio);
+  if (directa) return tParseISO(directa);
+  const primera = Array.isArray(grupo?.lecciones)
+    ? grupo.lecciones.find(l => l && l.fecha && (grupo.esApertura || todosText(l.tipo).toUpperCase() === 'APERTURA'))
+    : null;
+  return primera?.fecha ? tParseISO(primera.fecha) : null;
+}
+
+// F98.4-Z6-AH: una apertura B1 se muestra en cada día de su horario desde
+// la semana operativa actual hasta su fecha oficial de inicio. Así el Super
+// Admin ve LUN/MIÉ o MAR/JUE en el calendario aun cuando el grupo no inició.
+function todosCrearMarcadoresApertura(grupo) {
+  if (!grupo?.esApertura) return [];
+  const inicio = todosFechaApertura(grupo);
+  const dias = todosDiasApertura(grupo);
+  if (!inicio || !dias.length) return [];
+  inicio.setHours(0,0,0,0);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const desde = tMondayOf(hoy);
+  if (inicio < desde) return [];
+  const out = [];
+  for (let d = new Date(desde); d <= inicio; d = tAddDays(d, 1)) {
+    if (!dias.includes(d.getDay())) continue;
+    out.push({
+      leccion: 0,
+      fecha: tIsoOf(d),
+      tipo: 'APERTURA',
+      estado: 'APERTURA',
+      fecha_inicio: tIsoOf(inicio),
+    });
+  }
+  return out;
+}
 function todosPickCa(grupo, moraInfo) {
   const caGrupo = todosNum(grupo && grupo.estudiantes);
   const caMora  = todosNum(moraInfo && moraInfo.ca);
@@ -144,10 +206,13 @@ function todosNormalizarLeccion(l) {
 function todosNormalizarGrupo(g) {
   if (!g || !g.code) return null;
   const nivelId = todosNivelId(g.nivelId || g.nivel || 'B1');
-  const lecciones = Array.isArray(g.lecciones)
+  const baseLecciones = Array.isArray(g.lecciones)
     ? g.lecciones.map(todosNormalizarLeccion).filter(Boolean)
     : [];
-  lecciones.sort((a,b) => (a.leccion || 0) - (b.leccion || 0));
+  // Compatible con backend AH y también con AG: si AG mandó un único
+  // marcador en FECHA_INICIO, se usa como referencia y se expande aquí.
+  const lecciones = g.esApertura ? todosCrearMarcadoresApertura({ ...g, lecciones:baseLecciones }) : baseLecciones;
+  lecciones.sort((a,b) => String(a.fecha || '').localeCompare(String(b.fecha || '')) || ((a.leccion || 0) - (b.leccion || 0)));
   return {
     ...g,
     code: todosText(g.code),
@@ -981,10 +1046,12 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
     ? TODOS_APERTURA_COL
     : (TODOS_NIVEL_COLOR[grupo.nivelId] || TODOS_APERTURA_COL);
 
-  const bg     = `color-mix(in srgb, ${color} 7%, white)`;
-  const bgHoy  = `color-mix(in srgb, ${color} 15%, white)`;
-  const bgSel  = `color-mix(in srgb, ${color} 22%, white)`;
-  const border = `color-mix(in srgb, ${color} 32%, white)`;
+  // Fondo sólido pastel: evita que las clases cerradas (especialmente SA)
+  // parezcan transparentes sobre la grilla.
+  const bg     = esApertura ? TODOS_APERTURA_BG : (TODOS_NIVEL_BG[grupo.nivelId] || '#F7F3EE');
+  const bgHoy  = `color-mix(in srgb, ${color} 24%, white)`;
+  const bgSel  = `color-mix(in srgb, ${color} 34%, white)`;
+  const border = `color-mix(in srgb, ${color} 58%, white)`;
   const horaLbl = TODOS_HORA_LABEL[grupo.turnoOrden] || '';
   const shortCode = todosShortCode(grupo.code);
 
@@ -1011,7 +1078,7 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
         borderRadius: 7,
         cursor:'pointer', textAlign:'left', fontFamily:'inherit',
         color:'var(--ink)',
-        // F98.4-Z6-AG: ninguna lección se vuelve transparente.
+        // F98.4-Z6-AH: ninguna lección se vuelve transparente.
         // El estado cerrado se distingue con ✓, no reduciendo legibilidad.
         opacity: 1,
         overflow:'hidden', minWidth:0, lineHeight:1.15,
@@ -1032,7 +1099,7 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
           padding:'2px 6px', borderRadius:'var(--r-pill)',
           background:`color-mix(in srgb, ${color} 14%, white)`, color,
           fontFamily:'var(--f-mono)',
-        }}>{grupo.nivelId || '—'}</span>
+        }}>{esApertura ? 'B1' : (grupo.nivelId || '—')}</span>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>

@@ -1,5 +1,5 @@
 /* global React, CronogramaGrupo, AdminEstudiantesView, AdminEstudianteResumenIndividual */
-// F98.4-Z6-AG · Calendario académico Super Admin
+// F98.4-Z6-AH · Calendario académico Super Admin · hotfix aperturas/carga estudiantes
 // - Calendario superior permanente.
 // - Selección de grupo desde cualquier lección.
 // - Vista de grupo inicia en "Vista previa antes de aprobar o reprobar".
@@ -35,12 +35,23 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
     if (onNavigate) onNavigate('auditoria_academica');
   }, [onNavigate]);
 
-  const scrollPanel = React.useCallback(() => {
-    setTimeout(() => {
+  const scrollPanel = React.useCallback((behavior = 'smooth') => {
+    // El drawer del calendario bloquea temporalmente el scroll del body.
+    // Esperar a que se desmonte y a que React pinte el panel inferior evita
+    // que el click parezca no hacer nada.
+    const mover = () => {
       const el = document.getElementById('calgrupo-estudiantes-panel');
-      if (el && el.scrollIntoView) el.scrollIntoView({ behavior:'smooth', block:'start' });
-    }, 80);
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior, block:'start' });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(mover));
+    setTimeout(mover, 260);
   }, []);
+
+  React.useEffect(() => {
+    if ((grupoSeleccionado && mostrarEstudiantes) || estudianteSeleccionado) {
+      scrollPanel('smooth');
+    }
+  }, [grupoSeleccionado, mostrarEstudiantes, estudianteSeleccionado, scrollPanel]);
 
   const handleNavigateFromCronograma = React.useCallback((target, opts = {}) => {
     if (target === 'estudiantes' && opts && opts.grupo) {
@@ -49,7 +60,6 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
       setEstudianteSeleccionado(null);
       setBusqueda('');
       setResultadosAbiertos(false);
-      scrollPanel();
       return;
     }
     if (onNavigate) onNavigate(target, opts);
@@ -87,8 +97,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
     setBusqueda(est?.nombre || est?.display || est?.codigo || '');
     setResultadosAbiertos(false);
     setMostrarEstudiantes(false);
-    scrollPanel();
-  }, [scrollPanel]);
+  }, []);
 
   const limpiarFicha = React.useCallback(() => {
     setEstudianteSeleccionado(null);
@@ -122,7 +131,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
           </h1>
           <div style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.5, maxWidth:820 }}>
             Tocá cualquier lección para seleccionar todas las fechas visibles del mismo grupo.
-            Las aperturas B1 proyectadas aparecen en naranja en su fecha de inicio.
+            Las aperturas B1 proyectadas aparecen en naranja en cada día de su horario hasta la fecha de inicio.
           </div>
         </div>
 
@@ -165,7 +174,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
               Vista calendario
             </div>
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:2 }}>
-              Lecciones sólidas, selección por grupo y aperturas B1 visibles.
+              Lecciones sólidas, selección completa por grupo y aperturas B1 visibles cada semana.
             </div>
           </div>
           <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:700 }}>
@@ -305,7 +314,12 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
           </div>
         ) : mostrarEstudiantes ? (
           <div style={{ background:'var(--bg)', borderTop:'1px solid var(--line)' }}>
-            <AdminEstudiantesView onNavigate={onNavigate} grupoInicial={grupoSeleccionado} modo="calgrupo" />
+            <AdminEstudiantesView
+              key={`calgrupo-${grupoSeleccionado}`}
+              onNavigate={onNavigate}
+              grupoInicial={grupoSeleccionado}
+              modo="calgrupo"
+            />
           </div>
         ) : (
           <div style={{ padding:'22px 24px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>
