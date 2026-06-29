@@ -2477,8 +2477,8 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       {/* Panel radiografía */}
       {grupoSel && grupoInfo && (
         <div>
-          {/* Header del grupo */}
-          <div style={{
+          {/* Header del grupo: en Calendario de Grupo ya existe un encabezado externo. */}
+          {!embebidoCalGrupo && <div style={{
             background:'var(--an-navy, #14213D)', color:'white', borderRadius:10,
             padding:'14px 20px', marginBottom:20, display:'flex',
             alignItems:'center', gap:24, flexWrap:'wrap',
@@ -2527,9 +2527,9 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                 {syncConape.loading ? 'Sincronizando…' : 'Sync CONAPE'}
               </button>
             )}
-          </div>
+          </div>}
 
-          {/* Secciones por nivel */}
+          {/* Secciones por nivel. En modo calgrupo inicia exactamente en la vista previa de cierre. */}
           {loadingRad ? (
             <div style={{ textAlign:'center', padding:40, color:'var(--ink-3, #888)' }}>
               Cargando radiografía del grupo…
@@ -3711,4 +3711,188 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
   );
 }
 
-Object.assign(window, { AdminEstudiantesView });
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// F98.4-Z6-AG · FICHA INDIVIDUAL COMPACTA PARA CALENDARIO SUPERADMIN
+// Sustituye únicamente el panel inferior. El calendario superior permanece.
+// Muestra siempre las cuatro líneas académicas y un resumen de asistencia.
+// Por decisión administrativa, pagos se reducen a MOROSO: SÍ / NO.
+// ─────────────────────────────────────────────────────────────────────────
+function agIndNorm(v) {
+  return String(v == null ? '' : v).trim();
+}
+function agIndUpper(v) {
+  return agIndNorm(v).toUpperCase();
+}
+function agIndPresente(v) {
+  const n = agIndUpper(v);
+  return v === true || Number(v) === 1 || n === 'TRUE' || n === 'SI' || n === 'PRESENTE' || n === 'P';
+}
+function agIndMoroso(nivelData, pendienteData) {
+  const estatus = agIndUpper(nivelData?.estatus || pendienteData?.estatus);
+  if (!estatus || estatus === 'PE' || estatus === 'CNV') return false;
+  const mat = Number(pendienteData?.matricula_pend || 0) || 0;
+  const cuotas = Number(pendienteData?.cuotas_pend || 0) || 0;
+  const cert = Number(pendienteData?.cert_pend || 0) || 0;
+  if (estatus === 'APR' || estatus === 'REP') return cert > 0;
+  return mat > 0 || cuotas > 0 || cert > 0;
+}
+function agIndAsistenciaNivel(rows, nivel, grupo) {
+  const nv = agIndUpper(nivel);
+  const gp = agIndUpper(grupo);
+  const filtradas = (rows || []).filter(r => {
+    const rn = agIndUpper(r?.nivel || r?.NIVEL);
+    const rg = agIndUpper(r?.cod_grupo || r?.COD_GRUPO || r?.grupo || r?.GRUPO);
+    if (rn) return rn === nv;
+    return gp && rg === gp;
+  });
+  const total = filtradas.length;
+  const presentes = filtradas.filter(r => agIndPresente(r?.presente ?? r?.PRESENTE)).length;
+  return { total, presentes, pct: total ? Math.round((presentes / total) * 100) : null };
+}
+function agIndStatusTone(estatus) {
+  const e = agIndUpper(estatus);
+  if (e === 'APR' || e === 'CNV') return { bg:'#E8F5E9', fg:'#2E7D32', bd:'#BFE4C3' };
+  if (e === 'CA') return { bg:'#E3F2FD', fg:'#1565C0', bd:'#B9DAF5' };
+  if (e === 'REP' || e === 'RI' || e === 'RJ') return { bg:'#FFEBEE', fg:'#C62828', bd:'#F4B7B7' };
+  return { bg:'#F4F1EC', fg:'#7B7168', bd:'#DED7CF' };
+}
+
+function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
+  const codigo = agIndNorm(estudianteBase?.codigo || estudianteBase?.rec_m || estudianteBase?.CODIGO);
+  const [estado, setEstado] = React.useState({ loading:true, detalle:null, asistencia:[], error:'' });
+
+  React.useEffect(() => {
+    let activo = true;
+    if (!codigo) {
+      setEstado({ loading:false, detalle:null, asistencia:[], error:'El estudiante no tiene código de expediente.' });
+      return () => { activo = false; };
+    }
+    setEstado({ loading:true, detalle:null, asistencia:[], error:'' });
+    Promise.all([
+      postAdminStudents('getEstudiante', { codigo }),
+      postAdminStudents('getAsistenciaEstudiante', { codigo }),
+    ]).then(([ficha, asist]) => {
+      if (!activo) return;
+      if (!ficha || ficha.ok !== true) {
+        setEstado({ loading:false, detalle:null, asistencia:[], error:(ficha && ficha.error) || 'No se pudo cargar el expediente.' });
+        return;
+      }
+      setEstado({
+        loading:false,
+        detalle:ficha,
+        asistencia:(asist && asist.ok && Array.isArray(asist.asistencia)) ? asist.asistencia : [],
+        error:'',
+      });
+    }).catch(e => {
+      if (activo) setEstado({ loading:false, detalle:null, asistencia:[], error:'Error de conexión: ' + (e?.message || e) });
+    });
+    return () => { activo = false; };
+  }, [codigo]);
+
+  if (estado.loading) {
+    return <div style={{ padding:'42px 24px', textAlign:'center', color:'var(--ink-3,#888)' }}>Cargando ficha individual…</div>;
+  }
+  if (estado.error || !estado.detalle) {
+    return (
+      <div style={{ padding:24 }}>
+        <div style={{ padding:'14px 16px', border:'1px solid #F4B7B7', background:'#FFEBEE', color:'#C62828', borderRadius:12, fontWeight:700 }}>{estado.error || 'Ficha no disponible.'}</div>
+        <button type="button" onClick={onClose} style={{ marginTop:12, padding:'9px 14px', borderRadius:9, border:'1px solid var(--line,#ddd)', background:'white', cursor:'pointer', fontWeight:800 }}>Volver al grupo</button>
+      </div>
+    );
+  }
+
+  const d = estado.detalle;
+  const est = d.estudiante || {};
+  const niveles = d.niveles || {};
+  const pend = d.pendientes?.por_nivel || {};
+  const nombre = agIndNorm(est.NOMBRE || estudianteBase?.nombre || estudianteBase?.display) || 'Estudiante';
+  const cedula = agIndNorm(est.NUM_CEDULA || estudianteBase?.cedula);
+  const telefono = agIndNorm(est.TELEFONO || estudianteBase?.telefono);
+  const correo = agIndNorm(est.email || est.EMAIL || estudianteBase?.email);
+  const convenio = agIndNorm(est.CONVENIO || estudianteBase?.convenio) || '—';
+  const grupoActual = agIndNorm(d.cod_grupo || est.GRUPO || estudianteBase?.grupo) || '—';
+  const totalAsis = estado.asistencia.length;
+  const totalPres = estado.asistencia.filter(r => agIndPresente(r?.presente ?? r?.PRESENTE)).length;
+  const pctGlobal = totalAsis ? Math.round((totalPres / totalAsis) * 100) : null;
+  const orden = ['B1','B2','I1','I2'];
+
+  return (
+    <div style={{ padding:'18px 20px 24px', background:'var(--bg,#f7f4ef)' }}>
+      <div style={{
+        background:'white', border:'1px solid var(--line,#e4ddd5)', borderRadius:14,
+        padding:'16px 18px', marginBottom:14, boxShadow:'0 8px 22px rgba(20,33,61,.05)',
+      }}>
+        <div style={{ display:'flex', justifyContent:'space-between', gap:16, flexWrap:'wrap', alignItems:'flex-start' }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)' }}>Consulta individual</div>
+            <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:25, fontWeight:600, color:'var(--an-navy,#14213D)', marginTop:3 }}>{nombre}</div>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:7, fontSize:11.5, color:'var(--ink-2,#665f58)' }}>
+              <span>Código: <strong>{codigo}</strong></span>
+              {cedula && <span>Cédula: <strong>{cedula}</strong></span>}
+              <span>Grupo actual: <strong>{grupoActual}</strong></span>
+              <span>Convenio: <strong>{convenio}</strong></span>
+              {telefono && <span>Teléfono: <strong>{telefono}</strong></span>}
+              {correo && <span>Correo: <strong>{correo}</strong></span>}
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8, alignItems:'stretch', flexWrap:'wrap' }}>
+            <div style={{ minWidth:118, padding:'10px 12px', borderRadius:10, background:'#F7F9FC', border:'1px solid #DCE5F0', textAlign:'center' }}>
+              <div style={{ fontSize:9, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', color:'#64748B' }}>Asistencia total</div>
+              <div style={{ marginTop:3, fontFamily:'var(--f-serif,serif)', fontSize:23, fontWeight:700, color:pctGlobal == null ? '#64748B' : (pctGlobal >= 70 ? '#2E7D32' : '#C62828') }}>{pctGlobal == null ? '—' : `${pctGlobal}%`}</div>
+              <div style={{ fontSize:9.5, color:'#64748B' }}>{totalAsis ? `${totalPres}/${totalAsis} registros` : 'Sin registros'}</div>
+            </div>
+            <button type="button" onClick={onClose} style={{ padding:'9px 13px', borderRadius:10, border:'1px solid var(--line,#ddd)', background:'white', color:'var(--an-navy,#14213D)', fontWeight:900, cursor:'pointer', alignSelf:'stretch' }}>Volver al grupo</button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gap:9 }}>
+        {orden.map(nivel => {
+          const info = niveles[nivel] || {};
+          const estatus = agIndUpper(info.estatus) || 'SIN REGISTRO';
+          const tone = agIndStatusTone(estatus);
+          const grupo = agIndNorm(info.grupo) || '—';
+          const notaNum = info.nota === '' || info.nota == null || isNaN(Number(info.nota)) ? null : Number(info.nota);
+          const asis = agIndAsistenciaNivel(estado.asistencia, nivel, grupo);
+          const moroso = agIndMoroso(info, pend[nivel]);
+          const color = NIVEL_COLOR_P[nivel] || '#8B8178';
+          return (
+            <div key={nivel} style={{
+              display:'grid', gridTemplateColumns:'minmax(150px,1.2fr) minmax(130px,1fr) repeat(4,minmax(95px,.72fr))',
+              gap:10, alignItems:'center', padding:'13px 14px', background:'white',
+              border:'1px solid var(--line,#e4ddd5)', borderLeft:`5px solid ${color}`, borderRadius:12,
+              boxShadow:'0 4px 12px rgba(20,33,61,.035)', overflowX:'auto',
+            }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:900, color }}>{NIVEL_LABEL_P[nivel]}</div>
+                <div style={{ fontSize:10.5, color:'var(--ink-3,#888)', marginTop:2, fontFamily:'var(--f-mono,monospace)' }}>{grupo}</div>
+              </div>
+              <div><span style={{ display:'inline-flex', padding:'4px 9px', borderRadius:999, background:tone.bg, color:tone.fg, border:`1px solid ${tone.bd}`, fontSize:10, fontWeight:900 }}>{estatus}</span></div>
+              <AgIndMetric label="Nota" value={notaNum == null ? '—' : notaNum.toFixed(notaNum % 1 ? 1 : 0)} warn={notaNum != null && notaNum < 70} />
+              <AgIndMetric label="Asistencia" value={asis.pct == null ? '—' : `${asis.pct}%`} warn={asis.pct != null && asis.pct < 70} sub={asis.total ? `${asis.presentes}/${asis.total}` : ''} />
+              <AgIndMetric label="Moroso" value={moroso ? 'SÍ' : 'NO'} warn={moroso} />
+              <AgIndMetric label="Certificado" value={agIndNorm(info.reg_certificados || info.cert_num) || '—'} />
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop:10, fontSize:10.5, color:'var(--ink-3,#81776f)' }}>
+        La ficha muestra únicamente el estado financiero MOROSO SÍ/NO. No expone el detalle de recibos ni movimientos de pago.
+      </div>
+    </div>
+  );
+}
+
+function AgIndMetric({ label, value, warn, sub }) {
+  return (
+    <div style={{ minWidth:92, padding:'7px 9px', borderRadius:9, background:warn ? '#FFF1F1' : '#F8F7F5', border:`1px solid ${warn ? '#F4B7B7' : '#EAE5DF'}` }}>
+      <div style={{ fontSize:8.5, fontWeight:900, letterSpacing:'.09em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)' }}>{label}</div>
+      <div style={{ marginTop:2, fontSize:12.5, fontWeight:900, color:warn ? '#C62828' : 'var(--an-navy,#14213D)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{value}</div>
+      {sub && <div style={{ fontSize:8.5, color:'var(--ink-3,#8b8178)', marginTop:1 }}>{sub}</div>}
+    </div>
+  );
+}
+
+Object.assign(window, { AdminEstudiantesView, AdminEstudianteResumenIndividual });

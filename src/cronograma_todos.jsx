@@ -1,7 +1,7 @@
 /* global React */
 // ─────────────────────────────────────────────────────────────────────────
 // Vista "Todos los grupos" — solo admin / superadmin
-// CALGRUPO_F4_20260627_CALENDARIO_SIN_SCROLL_NIVEL_REAL
+// F98.4-Z6-AG · calendario superadmin: selección por grupo + aperturas B1
 // Se monta dentro de CronogramaGrupo cuando codGrupo === '__TODOS__'.
 //
 // Switch SEMANA / MES. Las lecciones de TODOS los grupos activos se apilan
@@ -20,7 +20,7 @@ const TODOS_NIVEL_LABEL = {
   B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II',
 };
 const TODOS_NIVEL_ORDEN  = { I2:4, I1:3, B2:2, B1:1 }; // mayor → primero
-const TODOS_APERTURA_COL = '#9F8F7D';
+const TODOS_APERTURA_COL = '#F57C00';
 const TODOS_HORA_LABEL   = { 1:'9a', 2:'6p' };
 // Nota: la asignación de "tonos por código" del prompt anterior se descartó —
 // ahora cada grupo se distingue por su FILA (Gantt), no por un tono propio.
@@ -244,6 +244,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
   });
   const [detalle, setDetalle] = React.useState(null); // { grupo, leccion }
   const [selectedKey, setSelectedKey] = React.useState('');
+  const [selectedGroupCode, setSelectedGroupCode] = React.useState('');
   const [expandedDay, setExpandedDay] = React.useState(null); // iso del día expandido en VistaMes
 
   // ── MORA (caché en backend) ───────────────────────────────────
@@ -540,7 +541,12 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           byGrupoDate={byGrupoDate}
           moraMap={moraMap}
           selectedKey={selectedKey}
-          onAbrir={(it) => { setSelectedKey(todosItemKey(it)); setDetalle(it); }}
+          selectedGroupCode={selectedGroupCode}
+          onAbrir={(it) => {
+            setSelectedKey(todosItemKey(it));
+            setSelectedGroupCode(it?.grupo?.code || '');
+            setDetalle(it);
+          }}
         />
       ) : (
         <TodosVistaMes
@@ -551,7 +557,12 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           expandedDay={expandedDay}
           setExpandedDay={setExpandedDay}
           selectedKey={selectedKey}
-          onAbrir={(it) => { setSelectedKey(todosItemKey(it)); setDetalle(it); }}
+          selectedGroupCode={selectedGroupCode}
+          onAbrir={(it) => {
+            setSelectedKey(todosItemKey(it));
+            setSelectedGroupCode(it?.grupo?.code || '');
+            setDetalle(it);
+          }}
         />
       )}
 
@@ -560,7 +571,11 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           item={detalle}
           moraMap={moraMap}
           onNavigate={onNavigate}
-          onCerrar={() => { setDetalle(null); setSelectedKey(''); }} />
+          onCerrar={() => {
+            // La selección del grupo permanece visible, igual que en el calendario docente.
+            setDetalle(null);
+            setSelectedKey('');
+          }} />
       )}
     </div>
   );
@@ -569,7 +584,7 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
 // ─────────────────────────────────────────────────────────────────
 // VISTA SEMANA — Gantt: filas = grupos, columnas = días
 // ─────────────────────────────────────────────────────────────────
-function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, selectedKey, onAbrir }) {
+function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, selectedKey, selectedGroupCode, onAbrir }) {
   // Siempre Lun-Sáb (6 columnas). Si algún grupo tiene clase domingo igual
   // se ve porque su celda existe — pero rara vez ocurre en la academia.
   const days = React.useMemo(() => {
@@ -690,7 +705,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                   borderLeft:`4px solid ${color}`,
                   display:'flex', alignItems:'center', gap:10, minWidth:0,
                   position:'sticky', left:0, zIndex:1,
-                  opacity: g.esApertura ? 0.85 : 1,
+                  opacity: 1,
                 }}>
                   <div style={{ minWidth:0, flex:1 }}>
                     <div style={{
@@ -721,7 +736,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                       {horaLbl && <span style={{ marginRight:5 }}>{horaLbl}</span>}
                       {g.estudiantes || 0} est
                     </span>
-                    {selectedKey && selectedKey.indexOf(`${g.code}|`) === 0 && (
+                    {selectedGroupCode === g.code && (
                       <span style={{
                         fontSize:7.5, fontWeight:900, color:'#FFF',
                         background:'var(--an-navy)', borderRadius:999,
@@ -753,7 +768,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                             key={idx}
                             item={item}
                             moraMap={moraMap}
-                            selected={selectedKey === todosItemKey(item)}
+                            selected={selectedGroupCode === g.code}
                             onClick={() => onAbrir(item)}
                             compact
                           />
@@ -782,7 +797,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
 // ─────────────────────────────────────────────────────────────────
 const MES_VISIBLE_PILLS = 4;
 
-function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, selectedKey, onAbrir }) {
+function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedDay, setExpandedDay, selectedKey, selectedGroupCode, onAbrir }) {
   const year  = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const today = React.useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
@@ -905,7 +920,7 @@ function TodosVistaMes({ monthCursor, setMonthCursor, byDate, moraMap, expandedD
               {visibles.map((it, idx) => (
                 <PillLeccion key={idx} item={it} compact
                   moraMap={moraMap}
-                  selected={selectedKey === todosItemKey(it)}
+                  selected={selectedGroupCode === it.grupo.code}
                   onClick={() => onAbrir(it)} />
               ))}
               {restantes > 0 && (
@@ -996,7 +1011,9 @@ function PillLeccion({ item, compact, moraMap, onClick, selected=false }) {
         borderRadius: 7,
         cursor:'pointer', textAlign:'left', fontFamily:'inherit',
         color:'var(--ink)',
-        opacity: selected ? 1 : (cerrada ? 0.58 : (esApertura ? 0.88 : 1)),
+        // F98.4-Z6-AG: ninguna lección se vuelve transparente.
+        // El estado cerrado se distingue con ✓, no reduciendo legibilidad.
+        opacity: 1,
         overflow:'hidden', minWidth:0, lineHeight:1.15,
         transition:'background .12s, transform .12s, box-shadow .12s',
         boxShadow: selected ? `0 0 0 2px ${color}77, 0 8px 16px rgba(0,0,0,0.08)` : (hoy ? `0 0 0 1px ${color}55` : 'none'),
