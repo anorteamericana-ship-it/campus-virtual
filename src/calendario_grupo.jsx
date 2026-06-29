@@ -1,9 +1,9 @@
 /* global React, CronogramaGrupo, AdminEstudiantesView, AdminEstudianteResumenIndividual */
-// F98.4-Z6-AH · Calendario académico Super Admin · hotfix aperturas/carga estudiantes
-// - Calendario superior permanente.
-// - Selección de grupo desde cualquier lección.
-// - Vista de grupo inicia en "Vista previa antes de aprobar o reprobar".
-// - Buscador individual global que sustituye únicamente el panel inferior.
+// F98.4-Z6-AJ · Calendario académico Super Admin
+// - Consulta individual primero.
+// - Calendario completo debajo.
+// - Vista de grupo permanece como panel inferior.
+// - La ficha individual conserva el calendario y permite desplegar pagos por nivel.
 
 function calGrupoNormAG(v) {
   return String(v == null ? '' : v)
@@ -35,10 +35,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
     if (onNavigate) onNavigate('auditoria_academica');
   }, [onNavigate]);
 
-  const scrollPanel = React.useCallback((behavior = 'smooth') => {
-    // El drawer del calendario bloquea temporalmente el scroll del body.
-    // Esperar a que se desmonte y a que React pinte el panel inferior evita
-    // que el click parezca no hacer nada.
+  const scrollGrupo = React.useCallback((behavior = 'smooth') => {
     const mover = () => {
       const el = document.getElementById('calgrupo-estudiantes-panel');
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior, block:'start' });
@@ -47,23 +44,31 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
     setTimeout(mover, 260);
   }, []);
 
+  const scrollConsulta = React.useCallback((behavior = 'smooth') => {
+    const mover = () => {
+      const el = document.getElementById('calgrupo-consulta-panel');
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior, block:'start' });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(mover));
+    setTimeout(mover, 120);
+  }, []);
+
   React.useEffect(() => {
-    if ((grupoSeleccionado && mostrarEstudiantes) || estudianteSeleccionado) {
-      scrollPanel('smooth');
-    }
-  }, [grupoSeleccionado, mostrarEstudiantes, estudianteSeleccionado, scrollPanel]);
+    if (grupoSeleccionado && mostrarEstudiantes) scrollGrupo('smooth');
+  }, [grupoSeleccionado, mostrarEstudiantes, scrollGrupo]);
+
+  React.useEffect(() => {
+    if (estudianteSeleccionado) scrollConsulta('smooth');
+  }, [estudianteSeleccionado, scrollConsulta]);
 
   const handleNavigateFromCronograma = React.useCallback((target, opts = {}) => {
     if (target === 'estudiantes' && opts && opts.grupo) {
       setGrupoSeleccionado(opts.grupo);
       setMostrarEstudiantes(true);
-      setEstudianteSeleccionado(null);
-      setBusqueda('');
-      setResultadosAbiertos(false);
       return;
     }
     if (onNavigate) onNavigate(target, opts);
-  }, [onNavigate, scrollPanel]);
+  }, [onNavigate]);
 
   React.useEffect(() => {
     const q = calGrupoNormAG(busqueda);
@@ -85,30 +90,21 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
   const resultados = React.useMemo(() => {
     const q = calGrupoNormAG(busqueda);
     if (q.length < 2 || !Array.isArray(padron)) return [];
-    return padron.filter(e => {
-      const hay = [e.nombre, e.display, e.codigo, e.cedula, e.email, e.telefono, e.grupo]
-        .some(v => calGrupoNormAG(v).includes(q));
-      return hay;
-    }).slice(0, 10);
+    return padron.filter(e => [e.nombre, e.display, e.codigo, e.cedula, e.email, e.telefono, e.grupo]
+      .some(v => calGrupoNormAG(v).includes(q))).slice(0, 10);
   }, [busqueda, padron]);
 
   const elegirEstudiante = React.useCallback((est) => {
     setEstudianteSeleccionado(est);
     setBusqueda(est?.nombre || est?.display || est?.codigo || '');
     setResultadosAbiertos(false);
-    setMostrarEstudiantes(false);
   }, []);
 
   const limpiarFicha = React.useCallback(() => {
     setEstudianteSeleccionado(null);
     setBusqueda('');
     setResultadosAbiertos(false);
-    if (grupoSeleccionado) setMostrarEstudiantes(true);
-  }, [grupoSeleccionado]);
-
-  const panelTitulo = estudianteSeleccionado
-    ? (estudianteSeleccionado.nombre || estudianteSeleccionado.display || estudianteSeleccionado.codigo)
-    : (grupoSeleccionado || 'Seleccioná un grupo desde el calendario');
+  }, []);
 
   return (
     <section data-screen-label="Calendario de Grupo" style={{ padding:24 }}>
@@ -130,8 +126,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
             Calendario de Grupo
           </h1>
           <div style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.5, maxWidth:820 }}>
-            Tocá cualquier lección para seleccionar todas las fechas visibles del mismo grupo.
-            Las aperturas B1 proyectadas aparecen en naranja en cada día de su horario hasta la fecha de inicio.
+            Consultá primero a una persona específica o revisá después el calendario completo y sus grupos.
           </div>
         </div>
 
@@ -160,86 +155,43 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
         </div>
       </div>
 
-      <div style={{
+      <div id="calgrupo-consulta-panel" style={{
         background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-lg)',
-        boxShadow:'var(--sh-1)', overflow:'hidden', marginBottom:22,
-      }}>
-        <div style={{
-          padding:'12px 16px', borderBottom:'1px solid var(--line)',
-          display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap',
-          background:'linear-gradient(180deg, #fff, var(--surface-2))',
-        }}>
-          <div>
-            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.16em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-              Vista calendario
-            </div>
-            <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:2 }}>
-              Lecciones sólidas, selección completa por grupo y aperturas B1 visibles cada semana.
-            </div>
-          </div>
-          <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:700 }}>
-            Tocá una lección para abrir el grupo o revisar su detalle.
-          </div>
-        </div>
-        <div style={{ padding:14 }}>
-          <CronogramaGrupo rol={rol} onNavigate={handleNavigateFromCronograma} />
-        </div>
-      </div>
-
-      <div id="calgrupo-estudiantes-panel" style={{
-        background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-lg)',
-        boxShadow:'var(--sh-1)', overflow:'visible',
+        boxShadow:'var(--sh-1)', overflow:'visible', marginBottom:22,
       }}>
         <div style={{
           padding:'14px 18px', borderBottom:'1px solid var(--line)',
-          background: (grupoSeleccionado || estudianteSeleccionado)
+          background: estudianteSeleccionado
             ? 'linear-gradient(135deg, var(--an-navy), #123A73)'
             : 'linear-gradient(180deg, #fff, var(--surface-2))',
-          color: (grupoSeleccionado || estudianteSeleccionado) ? 'white' : 'var(--ink)',
+          color: estudianteSeleccionado ? 'white' : 'var(--ink)',
           display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap',
           borderRadius:'var(--r-lg) var(--r-lg) 0 0',
         }}>
           <div>
             <div style={{
               fontSize:10, fontWeight:800, letterSpacing:'0.16em', textTransform:'uppercase',
-              color:(grupoSeleccionado || estudianteSeleccionado) ? 'rgba(255,255,255,0.78)' : 'var(--ink-3)',
+              color:estudianteSeleccionado ? 'rgba(255,255,255,0.78)' : 'var(--ink-3)',
             }}>
-              {estudianteSeleccionado ? 'Ficha individual' : 'Estudiantes del grupo'}
+              Consulta individual
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, letterSpacing:'-0.02em', marginTop:2,
             }}>
-              {panelTitulo}
+              {estudianteSeleccionado
+                ? (estudianteSeleccionado.nombre || estudianteSeleccionado.display || estudianteSeleccionado.codigo)
+                : 'Buscador de estudiantes'}
             </div>
           </div>
-          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-            {estudianteSeleccionado && (
-              <button type="button" onClick={limpiarFicha} style={{
-                padding:'8px 12px', borderRadius:'var(--r-md)', border:'1px solid rgba(255,255,255,.35)',
-                background:'rgba(255,255,255,.10)', color:'white', fontSize:12, fontWeight:800, cursor:'pointer',
-              }}>Volver al grupo</button>
-            )}
-            {grupoSeleccionado && !estudianteSeleccionado && (
-              <button type="button" onClick={() => setMostrarEstudiantes(v => !v)} style={{
-                padding:'8px 12px', borderRadius:'var(--r-md)',
-                border:'1px solid rgba(255,255,255,0.35)',
-                background:'rgba(255,255,255,0.10)', color:'white',
-                fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
-              }}>
-                {mostrarEstudiantes ? 'Ocultar estudiantes' : 'Mostrar estudiantes'}
-              </button>
-            )}
-            <button type="button" onClick={irAuditoria} style={{
-              padding:'8px 12px', borderRadius:'var(--r-md)',
-              border:(grupoSeleccionado || estudianteSeleccionado) ? '1px solid rgba(255,255,255,0.35)' : '1px solid var(--line)',
-              background:(grupoSeleccionado || estudianteSeleccionado) ? 'rgba(255,255,255,0.10)' : 'var(--surface)',
-              color:(grupoSeleccionado || estudianteSeleccionado) ? 'white' : 'var(--ink-2)',
-              fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
-            }}>Auditoría</button>
-          </div>
+          {estudianteSeleccionado && (
+            <button type="button" onClick={limpiarFicha} style={{
+              padding:'8px 12px', borderRadius:'var(--r-md)', border:'1px solid rgba(255,255,255,.35)',
+              background:'rgba(255,255,255,.10)', color:'white', fontSize:12, fontWeight:800, cursor:'pointer',
+            }}>Nueva consulta</button>
+          )}
         </div>
 
-        <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--line)', background:'linear-gradient(180deg,#fff,#fbfaf8)', position:'relative', zIndex:5 }}>
+        <div style={{ padding:'14px 18px', borderBottom:estudianteSeleccionado ? '1px solid var(--line)' : 'none', background:'linear-gradient(180deg,#fff,#fbfaf8)', position:'relative', zIndex:8 }}>
           <div style={{ display:'grid', gridTemplateColumns:'minmax(260px,1fr) auto', gap:10, alignItems:'center' }}>
             <div style={{ position:'relative' }}>
               <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--ink-3)', fontSize:14 }}>🔎</span>
@@ -249,13 +201,10 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
                   const value = e.target.value;
                   setBusqueda(value);
                   setResultadosAbiertos(true);
-                  if (!value) {
-                    setEstudianteSeleccionado(null);
-                    if (grupoSeleccionado) setMostrarEstudiantes(true);
-                  }
+                  if (!value) setEstudianteSeleccionado(null);
                 }}
                 onFocus={() => setResultadosAbiertos(true)}
-                placeholder="Buscar estudiante por nombre, código, cédula, correo o teléfono…"
+                placeholder="Buscar por nombre, código, cédula, correo o teléfono…"
                 style={{
                   width:'100%', padding:'11px 12px 11px 38px', borderRadius:10,
                   border:'1px solid var(--line,#ddd)', background:'white', fontSize:13,
@@ -264,7 +213,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
               />
               {resultadosAbiertos && calGrupoNormAG(busqueda).length >= 2 && (
                 <div style={{
-                  position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:20,
+                  position:'absolute', top:'calc(100% + 6px)', left:0, right:0, zIndex:30,
                   background:'white', border:'1px solid var(--line,#ddd)', borderRadius:10,
                   boxShadow:'0 16px 32px rgba(20,33,61,.16)', maxHeight:320, overflowY:'auto',
                 }}>
@@ -298,18 +247,98 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
             )}
           </div>
           <div style={{ marginTop:6, fontSize:10.5, color:'var(--ink-3,#888)' }}>
-            La búsqueda abre una sola ficha con Básico I, Básico II, Intermedio I e Intermedio II. Pagos se muestran únicamente como MOROSO SÍ/NO.
+            Elegí una persona para ver sus cuatro niveles. Tocá un nivel para desplegar matrícula, cuotas y certificado.
           </div>
         </div>
 
         {estudianteSeleccionado ? (
           <AdminEstudianteResumenIndividual estudianteBase={estudianteSeleccionado} onClose={limpiarFicha} />
-        ) : !grupoSeleccionado ? (
+        ) : (
+          <div style={{ padding:'20px 22px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>
+            La consulta individual aparece primero para localizar rápidamente a una persona sin abrir todo su grupo.
+          </div>
+        )}
+      </div>
+
+      <div style={{
+        background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-lg)',
+        boxShadow:'var(--sh-1)', overflow:'hidden', marginBottom:22,
+      }}>
+        <div style={{
+          padding:'12px 16px', borderBottom:'1px solid var(--line)',
+          display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap',
+          background:'linear-gradient(180deg, #fff, var(--surface-2))',
+        }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.16em', textTransform:'uppercase', color:'var(--ink-3)' }}>
+              Calendario académico
+            </div>
+            <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:2 }}>
+              Lecciones sólidas, selección completa por grupo y aperturas B1 visibles cada semana.
+            </div>
+          </div>
+          <div style={{ fontSize:11, color:'var(--ink-3)', fontWeight:700 }}>
+            Tocá una lección para abrir el grupo o revisar su detalle.
+          </div>
+        </div>
+        <div style={{ padding:14 }}>
+          <CronogramaGrupo rol={rol} onNavigate={handleNavigateFromCronograma} />
+        </div>
+      </div>
+
+      <div id="calgrupo-estudiantes-panel" style={{
+        background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-lg)',
+        boxShadow:'var(--sh-1)', overflow:'visible',
+      }}>
+        <div style={{
+          padding:'14px 18px', borderBottom:'1px solid var(--line)',
+          background: grupoSeleccionado
+            ? 'linear-gradient(135deg, var(--an-navy), #123A73)'
+            : 'linear-gradient(180deg, #fff, var(--surface-2))',
+          color: grupoSeleccionado ? 'white' : 'var(--ink)',
+          display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap',
+          borderRadius:'var(--r-lg) var(--r-lg) 0 0',
+        }}>
+          <div>
+            <div style={{
+              fontSize:10, fontWeight:800, letterSpacing:'0.16em', textTransform:'uppercase',
+              color:grupoSeleccionado ? 'rgba(255,255,255,0.78)' : 'var(--ink-3)',
+            }}>
+              Estudiantes del grupo
+            </div>
+            <div style={{
+              fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, letterSpacing:'-0.02em', marginTop:2,
+            }}>
+              {grupoSeleccionado || 'Seleccioná un grupo desde el calendario'}
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            {grupoSeleccionado && (
+              <button type="button" onClick={() => setMostrarEstudiantes(v => !v)} style={{
+                padding:'8px 12px', borderRadius:'var(--r-md)',
+                border:'1px solid rgba(255,255,255,0.35)',
+                background:'rgba(255,255,255,0.10)', color:'white',
+                fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
+              }}>
+                {mostrarEstudiantes ? 'Ocultar estudiantes' : 'Mostrar estudiantes'}
+              </button>
+            )}
+            <button type="button" onClick={irAuditoria} style={{
+              padding:'8px 12px', borderRadius:'var(--r-md)',
+              border:grupoSeleccionado ? '1px solid rgba(255,255,255,0.35)' : '1px solid var(--line)',
+              background:grupoSeleccionado ? 'rgba(255,255,255,0.10)' : 'var(--surface)',
+              color:grupoSeleccionado ? 'white' : 'var(--ink-2)',
+              fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit',
+            }}>Auditoría</button>
+          </div>
+        </div>
+
+        {!grupoSeleccionado ? (
           <div style={{ padding:'34px 24px', textAlign:'center', color:'var(--ink-3)' }}>
             <div style={{ fontSize:30, marginBottom:8, opacity:.55 }}>🗓️</div>
-            <div style={{ fontSize:16, fontWeight:700, color:'var(--ink)', marginBottom:4 }}>Seleccioná un grupo o buscá un estudiante</div>
+            <div style={{ fontSize:16, fontWeight:700, color:'var(--ink)', marginBottom:4 }}>Seleccioná un grupo</div>
             <div style={{ fontSize:13, lineHeight:1.5 }}>
-              Abrí una clase y usá <strong>Ver estudiantes de este grupo</strong>, o buscá directamente a una persona arriba.
+              Abrí una clase y usá <strong>Ver estudiantes de este grupo</strong> para cargar la vista previa de cierre académico.
             </div>
           </div>
         ) : mostrarEstudiantes ? (

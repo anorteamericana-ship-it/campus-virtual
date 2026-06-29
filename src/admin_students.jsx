@@ -3742,16 +3742,20 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
 
 
 // ─────────────────────────────────────────────────────────────────────────
-// F98.4-Z6-AH · FICHA INDIVIDUAL COMPACTA PARA CALENDARIO SUPERADMIN
-// Sustituye únicamente el panel inferior. El calendario superior permanece.
-// Muestra siempre las cuatro líneas académicas y un resumen de asistencia.
-// Por decisión administrativa, pagos se reducen a MOROSO: SÍ / NO.
+// F98.4-Z6-AJ · FICHA INDIVIDUAL PARA CALENDARIO SUPERADMIN
+// - Consulta ubicada antes del calendario.
+// - Estado académico y morosidad aparecen juntos.
+// - Cada nivel despliega sus movimientos reales de matrícula, cuotas y certificado.
+// - OTROS_PAGOS.ncuenta 60–63 se reconoce como matrícula B1/B2/I1/I2.
 // ─────────────────────────────────────────────────────────────────────────
 function agIndNorm(v) {
   return String(v == null ? '' : v).trim();
 }
 function agIndUpper(v) {
   return agIndNorm(v).toUpperCase();
+}
+function agIndPlain(v) {
+  return agIndUpper(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 function agIndPresente(v) {
   const n = agIndUpper(v);
@@ -3786,10 +3790,81 @@ function agIndStatusTone(estatus) {
   if (e === 'REP' || e === 'RI' || e === 'RJ') return { bg:'#FFEBEE', fg:'#C62828', bd:'#F4B7B7' };
   return { bg:'#F4F1EC', fg:'#7B7168', bd:'#DED7CF' };
 }
+function agIndMoney(v) {
+  const n = Number(v || 0) || 0;
+  try {
+    return new Intl.NumberFormat('es-CR', { style:'currency', currency:'CRC', maximumFractionDigits:0 }).format(n);
+  } catch (_) {
+    return '₡' + Math.round(n).toLocaleString('es-CR');
+  }
+}
+function agIndNivelMovimiento(mov) {
+  const nc = String(mov?.ncuenta == null ? '' : mov.ncuenta).trim();
+  const cuentaNivel = { '54':'B1', '60':'B1', '61':'B2', '62':'I1', '63':'I2', '43':'B1', '44':'B2', '45':'I1', '46':'I2' };
+  if (cuentaNivel[nc]) return cuentaNivel[nc];
+  const texto = agIndPlain([mov?.concepto, mov?.Concepto, mov?.descripcion, mov?.grupo].filter(Boolean).join(' '))
+    .replace(/[_-]+/g, ' ');
+  const cod = texto.match(/(?:^|\s)(B1|B2|I1|I2)(?:\s|$)/);
+  if (cod) return cod[1];
+  if (/INTERMEDIO\s*(II|2)\b/.test(texto)) return 'I2';
+  if (/INTERMEDIO\s*(I|1)\b/.test(texto)) return 'I1';
+  if (/BASICO\s*(II|2)\b/.test(texto)) return 'B2';
+  if (/BASICO\s*(I|1)\b/.test(texto)) return 'B1';
+  if (/MATRICULA\s*(1ER|PRIMER)\s*INGRESO/.test(texto)) return 'B1';
+  return '';
+}
+function agIndTipoMovimiento(mov, fuente) {
+  const nc = Number(mov?.ncuenta || 0) || 0;
+  const texto = agIndPlain([mov?.concepto, mov?.Concepto, mov?.descripcion].filter(Boolean).join(' '));
+  if (nc === 54 || (nc >= 60 && nc <= 63) || texto.includes('MATRICULA')) return 'Matrícula';
+  if ((nc >= 43 && nc <= 46) || texto.includes('CERTIF')) return 'Certificado';
+  if (texto.includes('CUOTA') || fuente === 'PAGOS') return 'Cuota';
+  return 'Otro movimiento';
+}
+function agIndMovimientos(detalle) {
+  const out = [];
+  (detalle?.pagos || []).forEach((p, i) => {
+    const monto = Number(p?.monto ?? p?.PAGO ?? 0) || 0;
+    const concepto = agIndNorm(p?.concepto || p?.Concepto);
+    const recibo = agIndNorm(p?.recibo || p?.RECIBO);
+    if (monto <= 0 || /^CUOTA_0\b/i.test(concepto) || recibo === '0') return;
+    const mov = { ...p, fuente:'PAGOS', monto, concepto };
+    mov.nivel = agIndNivelMovimiento(mov);
+    mov.tipo = agIndTipoMovimiento(mov, 'PAGOS');
+    mov.id = `p-${recibo || i}-${mov.nivel || 'x'}`;
+    out.push(mov);
+  });
+  (detalle?.otrosPagos || []).forEach((p, i) => {
+    const monto = Number(p?.monto ?? 0) || 0;
+    if (monto <= 0) return;
+    const mov = { ...p, fuente:'OTROS PAGOS', monto };
+    mov.nivel = agIndNivelMovimiento(mov);
+    mov.tipo = agIndTipoMovimiento(mov, 'OTROS PAGOS');
+    mov.concepto = agIndNorm(p?.descripcion || p?.concepto || 'Movimiento aplicado');
+    mov.id = `o-${agIndNorm(p?.recibo) || i}-${mov.nivel || 'x'}`;
+    out.push(mov);
+  });
+  const ordenTipo = { 'Matrícula':1, 'Cuota':2, 'Certificado':3, 'Otro movimiento':4 };
+  return out.sort((a, b) => (ordenTipo[a.tipo] || 9) - (ordenTipo[b.tipo] || 9));
+}
+function agIndResumenMovimientos(movs, pendiente) {
+  const totalTipo = tipo => movs.filter(m => m.tipo === tipo).reduce((s, m) => s + (Number(m.monto) || 0), 0);
+  return {
+    matriculaPagada: totalTipo('Matrícula'),
+    cuotasPagadas: totalTipo('Cuota'),
+    certificadoPagado: totalTipo('Certificado'),
+    otrosPagados: totalTipo('Otro movimiento'),
+    matriculaPendiente: Number(pendiente?.matricula_pend || 0) || 0,
+    cuotasPendientes: Number(pendiente?.cuotas_pend || 0) || 0,
+    certificadoPendiente: Number(pendiente?.cert_pend || 0) || 0,
+    totalPagado: movs.reduce((s, m) => s + (Number(m.monto) || 0), 0),
+  };
+}
 
 function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
   const codigo = agIndNorm(estudianteBase?.codigo || estudianteBase?.rec_m || estudianteBase?.CODIGO);
   const [estado, setEstado] = React.useState({ loading:true, detalle:null, asistencia:[], error:'' });
+  const [nivelAbierto, setNivelAbierto] = React.useState('');
 
   React.useEffect(() => {
     let activo = true;
@@ -3798,6 +3873,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
       return () => { activo = false; };
     }
     setEstado({ loading:true, detalle:null, asistencia:[], error:'' });
+    setNivelAbierto('');
     Promise.all([
       postAdminStudents('getEstudiante', { codigo }),
       postAdminStudents('getAsistenciaEstudiante', { codigo }),
@@ -3826,7 +3902,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
     return (
       <div style={{ padding:24 }}>
         <div style={{ padding:'14px 16px', border:'1px solid #F4B7B7', background:'#FFEBEE', color:'#C62828', borderRadius:12, fontWeight:700 }}>{estado.error || 'Ficha no disponible.'}</div>
-        <button type="button" onClick={onClose} style={{ marginTop:12, padding:'9px 14px', borderRadius:9, border:'1px solid var(--line,#ddd)', background:'white', cursor:'pointer', fontWeight:800 }}>Volver al grupo</button>
+        <button type="button" onClick={onClose} style={{ marginTop:12, padding:'9px 14px', borderRadius:9, border:'1px solid var(--line,#ddd)', background:'white', cursor:'pointer', fontWeight:800 }}>Cerrar consulta</button>
       </div>
     );
   }
@@ -3835,6 +3911,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
   const est = d.estudiante || {};
   const niveles = d.niveles || {};
   const pend = d.pendientes?.por_nivel || {};
+  const movimientos = agIndMovimientos(d);
   const nombre = agIndNorm(est.NOMBRE || estudianteBase?.nombre || estudianteBase?.display) || 'Estudiante';
   const cedula = agIndNorm(est.NUM_CEDULA || estudianteBase?.cedula);
   const telefono = agIndNorm(est.TELEFONO || estudianteBase?.telefono);
@@ -3854,10 +3931,10 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
       }}>
         <div style={{ display:'flex', justifyContent:'space-between', gap:16, flexWrap:'wrap', alignItems:'flex-start' }}>
           <div>
-            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)' }}>Consulta individual</div>
+            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)' }}>Expediente individual</div>
             <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:25, fontWeight:600, color:'var(--an-navy,#14213D)', marginTop:3 }}>{nombre}</div>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:7, fontSize:11.5, color:'var(--ink-2,#665f58)' }}>
-              <span>Código: <strong>{codigo}</strong></span>
+              <span>Estudiante: <strong>{codigo}</strong></span>
               {cedula && <span>Cédula: <strong>{cedula}</strong></span>}
               <span>Grupo actual: <strong>{grupoActual}</strong></span>
               <span>Convenio: <strong>{convenio}</strong></span>
@@ -3871,43 +3948,102 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
               <div style={{ marginTop:3, fontFamily:'var(--f-serif,serif)', fontSize:23, fontWeight:700, color:pctGlobal == null ? '#64748B' : (pctGlobal >= 70 ? '#2E7D32' : '#C62828') }}>{pctGlobal == null ? '—' : `${pctGlobal}%`}</div>
               <div style={{ fontSize:9.5, color:'#64748B' }}>{totalAsis ? `${totalPres}/${totalAsis} registros` : 'Sin registros'}</div>
             </div>
-            <button type="button" onClick={onClose} style={{ padding:'9px 13px', borderRadius:10, border:'1px solid var(--line,#ddd)', background:'white', color:'var(--an-navy,#14213D)', fontWeight:900, cursor:'pointer', alignSelf:'stretch' }}>Volver al grupo</button>
+            <button type="button" onClick={onClose} style={{ padding:'9px 13px', borderRadius:10, border:'1px solid var(--line,#ddd)', background:'white', color:'var(--an-navy,#14213D)', fontWeight:900, cursor:'pointer', alignSelf:'stretch' }}>Cerrar consulta</button>
           </div>
         </div>
       </div>
 
-      <div style={{ display:'grid', gap:9 }}>
+      <div style={{ margin:'0 2px 9px', fontSize:11, color:'var(--ink-3,#81776f)' }}>
+        Tocá cualquiera de los cuatro niveles para abrir su detalle de pagos. El estado académico y la morosidad se muestran juntos.
+      </div>
+
+      <div style={{ display:'grid', gap:10 }}>
         {orden.map(nivel => {
           const info = niveles[nivel] || {};
+          const pendienteNivel = pend[nivel] || {};
           const estatus = agIndUpper(info.estatus) || 'SIN REGISTRO';
           const tone = agIndStatusTone(estatus);
           const grupo = agIndNorm(info.grupo) || '—';
           const notaNum = info.nota === '' || info.nota == null || isNaN(Number(info.nota)) ? null : Number(info.nota);
           const asis = agIndAsistenciaNivel(estado.asistencia, nivel, grupo);
-          const moroso = agIndMoroso(info, pend[nivel]);
+          const moroso = agIndMoroso(info, pendienteNivel);
           const color = NIVEL_COLOR_P[nivel] || '#8B8178';
+          const movsNivel = movimientos.filter(m => m.nivel === nivel);
+          const resumen = agIndResumenMovimientos(movsNivel, pendienteNivel);
+          const abierto = nivelAbierto === nivel;
           return (
             <div key={nivel} style={{
-              display:'grid', gridTemplateColumns:'minmax(150px,1.2fr) minmax(130px,1fr) repeat(4,minmax(95px,.72fr))',
-              gap:10, alignItems:'center', padding:'13px 14px', background:'white',
-              border:'1px solid var(--line,#e4ddd5)', borderLeft:`5px solid ${color}`, borderRadius:12,
-              boxShadow:'0 4px 12px rgba(20,33,61,.035)', overflowX:'auto',
+              background:'white', border:'1px solid var(--line,#e4ddd5)', borderLeft:`5px solid ${color}`,
+              borderRadius:12, boxShadow:abierto ? '0 10px 24px rgba(20,33,61,.09)' : '0 4px 12px rgba(20,33,61,.035)',
+              overflow:'hidden',
             }}>
-              <div>
-                <div style={{ fontSize:15, fontWeight:900, color }}>{NIVEL_LABEL_P[nivel]}</div>
-                <div style={{ fontSize:10.5, color:'var(--ink-3,#888)', marginTop:2, fontFamily:'var(--f-mono,monospace)' }}>{grupo}</div>
-              </div>
-              <div><span style={{ display:'inline-flex', padding:'4px 9px', borderRadius:999, background:tone.bg, color:tone.fg, border:`1px solid ${tone.bd}`, fontSize:10, fontWeight:900 }}>{estatus}</span></div>
-              <AgIndMetric label="Nota" value={notaNum == null ? '—' : notaNum.toFixed(notaNum % 1 ? 1 : 0)} warn={notaNum != null && notaNum < 70} />
-              <AgIndMetric label="Asistencia" value={asis.pct == null ? '—' : `${asis.pct}%`} warn={asis.pct != null && asis.pct < 70} sub={asis.total ? `${asis.presentes}/${asis.total}` : ''} />
-              <AgIndMetric label="Moroso" value={moroso ? 'SÍ' : 'NO'} warn={moroso} />
-              <AgIndMetric label="Certificado" value={agIndNorm(info.reg_certificados || info.cert_num) || '—'} />
+              <button type="button" onClick={() => setNivelAbierto(abierto ? '' : nivel)} aria-expanded={abierto} style={{
+                width:'100%', border:'none', background:'white', cursor:'pointer', padding:'13px 14px',
+                display:'grid', gridTemplateColumns:'minmax(150px,1.15fr) minmax(180px,1fr) repeat(3,minmax(95px,.72fr)) 28px',
+                gap:10, alignItems:'center', textAlign:'left', fontFamily:'inherit', overflowX:'auto',
+              }}>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:900, color }}>{NIVEL_LABEL_P[nivel]}</div>
+                  <div style={{ fontSize:10.5, color:'var(--ink-3,#888)', marginTop:2, fontFamily:'var(--f-mono,monospace)' }}>{grupo}</div>
+                </div>
+                <div style={{ display:'flex', gap:7, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ display:'inline-flex', padding:'5px 10px', borderRadius:999, background:tone.bg, color:tone.fg, border:`1px solid ${tone.bd}`, fontSize:10, fontWeight:900 }}>{estatus}</span>
+                  <span style={{ display:'inline-flex', padding:'5px 10px', borderRadius:999, background:moroso ? '#FFEBEE' : '#E8F5E9', color:moroso ? '#C62828' : '#2E7D32', border:`1px solid ${moroso ? '#F4B7B7' : '#BFE4C3'}`, fontSize:10, fontWeight:900 }}>MOROSO {moroso ? 'SÍ' : 'NO'}</span>
+                </div>
+                <AgIndMetric label="Nota" value={notaNum == null ? '—' : notaNum.toFixed(notaNum % 1 ? 1 : 0)} warn={notaNum != null && notaNum < 70} />
+                <AgIndMetric label="Asistencia" value={asis.pct == null ? '—' : `${asis.pct}%`} warn={asis.pct != null && asis.pct < 70} sub={asis.total ? `${asis.presentes}/${asis.total}` : ''} />
+                <AgIndMetric label="Certificado" value={agIndNorm(info.reg_certificados || info.cert_num) || '—'} />
+                <span style={{ width:26, height:26, borderRadius:999, display:'inline-flex', alignItems:'center', justifyContent:'center', background:abierto ? color : '#F4F1EC', color:abierto ? 'white' : '#6B625A', fontSize:15, fontWeight:900, transition:'transform .18s ease', transform:abierto ? 'rotate(180deg)' : 'none' }}>⌄</span>
+              </button>
+
+              {abierto && (
+                <div style={{ padding:'0 14px 15px', borderTop:'1px solid #EEE8E1', background:'linear-gradient(180deg,#FBFAF8,#fff)' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(150px,1fr))', gap:9, padding:'13px 0 11px', overflowX:'auto' }}>
+                    <AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} color={color} />
+                    <AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} color={color} />
+                    <AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} color={color} />
+                    <AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente + resumen.cuotasPendientes + resumen.certificadoPendiente} color={color} />
+                  </div>
+
+                  {movsNivel.length ? (
+                    <div style={{ border:'1px solid #E9E2DA', borderRadius:11, overflow:'hidden', background:'white' }}>
+                      <div style={{ padding:'9px 12px', background:'#F7F4EF', borderBottom:'1px solid #E9E2DA', display:'flex', justifyContent:'space-between', gap:10, alignItems:'center' }}>
+                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'#6F665E' }}>Movimientos aplicados a {NIVEL_LABEL_P[nivel]}</div>
+                        <div style={{ fontSize:10, color:'#81776F', fontWeight:800 }}>{movsNivel.length} movimiento{movsNivel.length === 1 ? '' : 's'}</div>
+                      </div>
+                      {movsNivel.map((mov, idx) => (
+                        <div key={mov.id || idx} style={{
+                          display:'grid', gridTemplateColumns:'110px 100px minmax(220px,1fr) 110px', gap:12, alignItems:'center',
+                          padding:'11px 12px', borderBottom:idx === movsNivel.length - 1 ? 'none' : '1px solid #F0ECE7', overflowX:'auto',
+                        }}>
+                          <div>
+                            <div style={{ fontSize:11.5, fontWeight:900, color:'var(--an-navy,#14213D)' }}>{mov.tipo}</div>
+                            <div style={{ marginTop:2, fontSize:9.5, color:'#8A8178' }}>{mov.fuente}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize:10.5, fontWeight:800, color:'#4E4842' }}>{agIndNorm(mov.fecha) || 'Sin fecha'}</div>
+                            <div style={{ marginTop:2, fontSize:9.5, color:'#8A8178' }}>Recibo {agIndNorm(mov.recibo || mov.RECIBO) || '—'}</div>
+                          </div>
+                          <div style={{ minWidth:220 }}>
+                            <div style={{ fontSize:11, color:'#3F3A35', lineHeight:1.35, wordBreak:'break-word' }}>{agIndNorm(mov.concepto || mov.descripcion) || 'Movimiento aplicado'}</div>
+                          </div>
+                          <div style={{ textAlign:'right', fontFamily:'var(--f-mono,monospace)', fontSize:12.5, fontWeight:900, color:'#14213D' }}>{agIndMoney(mov.monto)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding:'13px 14px', border:'1px dashed #D9D0C7', borderRadius:10, color:'#81776F', fontSize:11.5, background:'white' }}>
+                      No hay movimientos clasificados para este nivel. Los montos pendientes se conservan arriba según el expediente financiero.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
       <div style={{ marginTop:10, fontSize:10.5, color:'var(--ink-3,#81776f)' }}>
-        La ficha muestra únicamente el estado financiero MOROSO SÍ/NO. No expone el detalle de recibos ni movimientos de pago.
+        Los movimientos se asignan por el código del concepto y por la cuenta contable: matrículas 60–63, certificados 43–46 y cuotas identificadas por nivel.
       </div>
     </div>
   );
@@ -3919,6 +4055,24 @@ function AgIndMetric({ label, value, warn, sub }) {
       <div style={{ fontSize:8.5, fontWeight:900, letterSpacing:'.09em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)' }}>{label}</div>
       <div style={{ marginTop:2, fontSize:12.5, fontWeight:900, color:warn ? '#C62828' : 'var(--an-navy,#14213D)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{value}</div>
       {sub && <div style={{ fontSize:8.5, color:'var(--ink-3,#8b8178)', marginTop:1 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function AgIndPagoResumen({ label, pagado, pendiente, color }) {
+  const alDia = Number(pendiente || 0) <= 0;
+  return (
+    <div style={{ minWidth:150, padding:'10px 11px', borderRadius:10, background:'white', border:'1px solid #E7E0D8', boxShadow:'0 3px 10px rgba(20,33,61,.03)' }}>
+      <div style={{ fontSize:9, fontWeight:900, letterSpacing:'.09em', textTransform:'uppercase', color:'#81776F' }}>{label}</div>
+      <div style={{ marginTop:4, display:'flex', justifyContent:'space-between', gap:8, alignItems:'baseline' }}>
+        <span style={{ fontSize:10, color:'#81776F' }}>Pagado</span>
+        <strong style={{ fontFamily:'var(--f-mono,monospace)', fontSize:12, color:'#14213D' }}>{agIndMoney(pagado)}</strong>
+      </div>
+      <div style={{ marginTop:3, display:'flex', justifyContent:'space-between', gap:8, alignItems:'baseline' }}>
+        <span style={{ fontSize:10, color:'#81776F' }}>Pendiente</span>
+        <strong style={{ fontFamily:'var(--f-mono,monospace)', fontSize:12, color:alDia ? '#2E7D32' : '#C67100' }}>{alDia ? 'AL DÍA' : agIndMoney(pendiente)}</strong>
+      </div>
+      <div style={{ height:3, borderRadius:999, background:color, opacity:.8, marginTop:8 }} />
     </div>
   );
 }
