@@ -1,4 +1,4 @@
-// F98.4-Z6-AE · Gráficos SVG propios para Panel Maestro Super Admin
+// F98.4-Z6-AI · Gráficos SVG del Panel Maestro sincronizado
 /* global React */
 
 function MasterFmtNumber(value) {
