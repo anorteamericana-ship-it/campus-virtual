@@ -1,4 +1,5 @@
 /* global React, CronogramaGrupo, AdminEstudiantesView, AdminEstudianteResumenIndividual */
+// F98.4-Z6-AK · Consulta individual con periodos, acciones y cambio de grupo
 // F98.4-Z6-AJ · Calendario académico Super Admin
 // - Consulta individual primero.
 // - Calendario completo debajo.
@@ -252,7 +253,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate }) {
         </div>
 
         {estudianteSeleccionado ? (
-          <AdminEstudianteResumenIndividual estudianteBase={estudianteSeleccionado} onClose={limpiarFicha} />
+          <AdminEstudianteResumenIndividual estudianteBase={estudianteSeleccionado} onClose={limpiarFicha} onNavigate={onNavigate} />
         ) : (
           <div style={{ padding:'20px 22px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>
             La consulta individual aparece primero para localizar rápidamente a una persona sin abrir todo su grupo.

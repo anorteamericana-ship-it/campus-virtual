@@ -1,5 +1,5 @@
 /* global React, PageHeader */
-// CALGRUPO_F31_20260617_ADMIN_STUDENTS_CONSOLIDADO_F10_F30
+// CALGRUPO_F98_4_Z6_AK_20260629_CAMBIO_GRUPO_PERIODOS_ACCIONES
 // CALGRUPO_F2_20260616_ESTUDIANTES_COMPACTO_OPERATIVO
 // CALGRUPO_F5_20260617_CERTIFICADOS_MASIVOS_UI
 // CALGRUPO_F6_20260617_ESTADOS_CERTIFICADO_VISUAL_SIN_BACKEND
@@ -274,6 +274,8 @@ function abrirPago(est, niv, onNavigate) {
     codigo,
     nivel: niv || '',
     forcePaso: 2,
+    return_route: 'calendario_grupo',
+    return_context: { codigo, nivel: niv || '' },
   }));
   if (onNavigate) onNavigate('aplicar_pago');
 }
@@ -2372,6 +2374,21 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
 
   const resumenOperativo = React.useMemo(() => resumenOperativoEstudiantes(secciones), [secciones]);
 
+  // F98.4-Z6-AK: abrir la misma ficha lateral cuando la acción viene desde
+  // Calendario académico / Consulta individual. El prefill se consume una vez.
+  React.useEffect(() => {
+    if (!secciones.length) return;
+    const raw = sessionStorage.getItem('an_estudiante_prefill');
+    if (!raw) return;
+    let pre; try { pre = JSON.parse(raw); } catch (_) { sessionStorage.removeItem('an_estudiante_prefill'); return; }
+    const codigoPref = String(pre?.codigo || '').trim();
+    if (!codigoPref) { sessionStorage.removeItem('an_estudiante_prefill'); return; }
+    const encontrado = secciones.flatMap(s => s.estudiantes || []).find(e => String(e.codigo || e.rec_m || e.CODIGO || '').trim() === codigoPref);
+    if (!encontrado) return;
+    sessionStorage.removeItem('an_estudiante_prefill');
+    setEstudiantePanelAbierto({ est: encontrado, tab: pre?.tab === 'seguimiento' ? 'seguimiento' : 'pagos' });
+  }, [secciones]);
+
   const seccionesFiltradas = React.useMemo(() => {
     const base = nivelEnfoque ? secciones.filter(s => s.nivel === nivelEnfoque) : secciones;
     if (filtroOperativo === 'todos') return base;
@@ -3861,193 +3878,269 @@ function agIndResumenMovimientos(movs, pendiente) {
   };
 }
 
-function AdminEstudianteResumenIndividual({ estudianteBase, onClose }) {
-  const codigo = agIndNorm(estudianteBase?.codigo || estudianteBase?.rec_m || estudianteBase?.CODIGO);
-  const [estado, setEstado] = React.useState({ loading:true, detalle:null, asistencia:[], error:'' });
-  const [nivelAbierto, setNivelAbierto] = React.useState('');
+function AkActionButton({ children, onClick, danger, disabled, title }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} title={title} style={{
+      padding:'8px 11px', borderRadius:9, border:`1px solid ${danger ? '#F3B7B7' : '#D8E0EA'}`,
+      background:danger ? '#FFF1F1' : 'white', color:danger ? '#B42318' : '#14213D',
+      fontSize:10.5, fontWeight:900, cursor:disabled ? 'not-allowed' : 'pointer', opacity:disabled ? .55 : 1,
+      whiteSpace:'nowrap', boxShadow:'0 2px 7px rgba(20,33,61,.035)'
+    }}>{children}</button>
+  );
+}
+
+function AkCambioGrupoWizard({ codigo, nivel, infoNivel, onClose, onSuccess }) {
+  const [contexto, setContexto] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [grupoDestino, setGrupoDestino] = React.useState('');
+  const [motivo, setMotivo] = React.useState('');
+  const [detalleOtro, setDetalleOtro] = React.useState('');
+  const [simulacion, setSimulacion] = React.useState(null);
+  const [simulando, setSimulando] = React.useState(false);
+  const [ejecutando, setEjecutando] = React.useState(false);
+  const [confirmado, setConfirmado] = React.useState(false);
+  const [convalidarManual, setConvalidarManual] = React.useState(false);
 
   React.useEffect(() => {
     let activo = true;
-    if (!codigo) {
-      setEstado({ loading:false, detalle:null, asistencia:[], error:'El estudiante no tiene código de expediente.' });
-      return () => { activo = false; };
-    }
-    setEstado({ loading:true, detalle:null, asistencia:[], error:'' });
-    setNivelAbierto('');
-    Promise.all([
-      postAdminStudents('getEstudiante', { codigo }),
-      postAdminStudents('getAsistenciaEstudiante', { codigo }),
-    ]).then(([ficha, asist]) => {
-      if (!activo) return;
-      if (!ficha || ficha.ok !== true) {
-        setEstado({ loading:false, detalle:null, asistencia:[], error:(ficha && ficha.error) || 'No se pudo cargar el expediente.' });
-        return;
-      }
-      setEstado({
-        loading:false,
-        detalle:ficha,
-        asistencia:(asist && asist.ok && Array.isArray(asist.asistencia)) ? asist.asistencia : [],
-        error:'',
-      });
-    }).catch(e => {
-      if (activo) setEstado({ loading:false, detalle:null, asistencia:[], error:'Error de conexión: ' + (e?.message || e) });
-    });
+    setLoading(true); setError('');
+    postAdminStudents('getCambioGrupoContexto', { codigo, nivel })
+      .then(r => {
+        if (!activo) return;
+        if (!r?.ok) { setError(r?.error || 'No se pudo cargar el cambio de grupo.'); return; }
+        setContexto(r);
+        const primero = (r.candidatos || []).find(x => x.seleccionable) || (r.candidatos || [])[0];
+        if (primero) setGrupoDestino(primero.grupo);
+      })
+      .catch(e => activo && setError('Error de conexión: ' + (e?.message || e)))
+      .finally(() => activo && setLoading(false));
     return () => { activo = false; };
-  }, [codigo]);
+  }, [codigo, nivel]);
 
-  if (estado.loading) {
-    return <div style={{ padding:'42px 24px', textAlign:'center', color:'var(--ink-3,#888)' }}>Cargando ficha individual…</div>;
-  }
-  if (estado.error || !estado.detalle) {
-    return (
-      <div style={{ padding:24 }}>
-        <div style={{ padding:'14px 16px', border:'1px solid #F4B7B7', background:'#FFEBEE', color:'#C62828', borderRadius:12, fontWeight:700 }}>{estado.error || 'Ficha no disponible.'}</div>
-        <button type="button" onClick={onClose} style={{ marginTop:12, padding:'9px 14px', borderRadius:9, border:'1px solid var(--line,#ddd)', background:'white', cursor:'pointer', fontWeight:800 }}>Cerrar consulta</button>
-      </div>
-    );
+  async function simular() {
+    if (!grupoDestino || !motivo) { setError('Seleccioná el grupo destino y el motivo.'); return; }
+    if (motivo === 'Otro' && (detalleOtro.trim().length < 15 || detalleOtro.trim().length > 500)) {
+      setError('La explicación de “Otro” debe tener entre 15 y 500 caracteres.'); return;
+    }
+    setSimulando(true); setError(''); setSimulacion(null); setConfirmado(false);
+    try {
+      const r = await postAdminStudents('simularCambioGrupo', {
+        codigo, nivel, grupo_origen:contexto?.actual?.grupo || infoNivel?.grupo || '',
+        grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(), convalidar_academico_manual:convalidarManual,
+      });
+      if (!r?.ok) setError(r?.error || 'No fue posible simular el cambio.');
+      else setSimulacion(r.simulacion);
+    } catch(e) { setError('Error de conexión: ' + (e?.message || e)); }
+    finally { setSimulando(false); }
   }
 
-  const d = estado.detalle;
-  const est = d.estudiante || {};
-  const niveles = d.niveles || {};
-  const pend = d.pendientes?.por_nivel || {};
-  const movimientos = agIndMovimientos(d);
-  const nombre = agIndNorm(est.NOMBRE || estudianteBase?.nombre || estudianteBase?.display) || 'Estudiante';
-  const cedula = agIndNorm(est.NUM_CEDULA || estudianteBase?.cedula);
-  const telefono = agIndNorm(est.TELEFONO || estudianteBase?.telefono);
-  const correo = agIndNorm(est.email || est.EMAIL || estudianteBase?.email);
-  const convenio = agIndNorm(est.CONVENIO || estudianteBase?.convenio) || '—';
-  const grupoActual = agIndNorm(d.cod_grupo || est.GRUPO || estudianteBase?.grupo) || '—';
-  const totalAsis = estado.asistencia.length;
-  const totalPres = estado.asistencia.filter(r => agIndPresente(r?.presente ?? r?.PRESENTE)).length;
-  const pctGlobal = totalAsis ? Math.round((totalPres / totalAsis) * 100) : null;
-  const orden = ['B1','B2','I1','I2'];
+  async function ejecutar() {
+    if (!simulacion || !confirmado) return;
+    setEjecutando(true); setError('');
+    try {
+      const r = await postAdminStudents('ejecutarCambioGrupo', {
+        codigo, nivel, grupo_origen:simulacion.grupo_origen, grupo_destino:grupoDestino,
+        motivo, detalle_otro:detalleOtro.trim(), convalidar_academico_manual:convalidarManual, confirmacion_piloto:true,
+      });
+      if (!r?.ok) { setError(r?.error || 'No fue posible ejecutar el cambio.'); return; }
+      onSuccess?.(r);
+      onClose();
+    } catch(e) { setError('Error de conexión: ' + (e?.message || e)); }
+    finally { setEjecutando(false); }
+  }
+
+  const cand = (contexto?.candidatos || []).find(x => x.grupo === grupoDestino);
+  const fin = simulacion?.financiero || {};
+  const res = simulacion?.resumen || {};
 
   return (
-    <div style={{ padding:'18px 20px 24px', background:'var(--bg,#f7f4ef)' }}>
-      <div style={{
-        background:'white', border:'1px solid var(--line,#e4ddd5)', borderRadius:14,
-        padding:'16px 18px', marginBottom:14, boxShadow:'0 8px 22px rgba(20,33,61,.05)',
-      }}>
-        <div style={{ display:'flex', justifyContent:'space-between', gap:16, flexWrap:'wrap', alignItems:'flex-start' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:2500, background:'rgba(7,20,40,.68)', display:'flex', alignItems:'center', justifyContent:'center', padding:18 }}>
+      <div style={{ width:'min(1050px,96vw)', maxHeight:'92vh', overflowY:'auto', background:'#F8F6F2', borderRadius:16, boxShadow:'0 28px 80px rgba(0,0,0,.35)', border:'1px solid #DDE4EC' }}>
+        <div style={{ padding:'18px 20px', background:'#0D2B51', color:'white', borderRadius:'16px 16px 0 0', display:'flex', justifyContent:'space-between', gap:16, alignItems:'center' }}>
           <div>
-            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)' }}>Expediente individual</div>
-            <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:25, fontWeight:600, color:'var(--an-navy,#14213D)', marginTop:3 }}>{nombre}</div>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:7, fontSize:11.5, color:'var(--ink-2,#665f58)' }}>
-              <span>Estudiante: <strong>{codigo}</strong></span>
-              {cedula && <span>Cédula: <strong>{cedula}</strong></span>}
-              <span>Grupo actual: <strong>{grupoActual}</strong></span>
-              <span>Convenio: <strong>{convenio}</strong></span>
-              {telefono && <span>Teléfono: <strong>{telefono}</strong></span>}
-              {correo && <span>Correo: <strong>{correo}</strong></span>}
-            </div>
+            <div style={{ fontSize:10, letterSpacing:'.15em', fontWeight:900, textTransform:'uppercase', opacity:.72 }}>Asistente controlado</div>
+            <div style={{ fontSize:21, fontWeight:900, marginTop:3 }}>Cambio de grupo · {NIVEL_LABEL_P[nivel]}</div>
+            <div style={{ fontSize:11.5, opacity:.82, marginTop:3 }}>Estudiante {codigo} · origen {contexto?.actual?.grupo || infoNivel?.grupo || '—'}</div>
           </div>
-          <div style={{ display:'flex', gap:8, alignItems:'stretch', flexWrap:'wrap' }}>
-            <div style={{ minWidth:118, padding:'10px 12px', borderRadius:10, background:'#F7F9FC', border:'1px solid #DCE5F0', textAlign:'center' }}>
-              <div style={{ fontSize:9, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', color:'#64748B' }}>Asistencia total</div>
-              <div style={{ marginTop:3, fontFamily:'var(--f-serif,serif)', fontSize:23, fontWeight:700, color:pctGlobal == null ? '#64748B' : (pctGlobal >= 70 ? '#2E7D32' : '#C62828') }}>{pctGlobal == null ? '—' : `${pctGlobal}%`}</div>
-              <div style={{ fontSize:9.5, color:'#64748B' }}>{totalAsis ? `${totalPres}/${totalAsis} registros` : 'Sin registros'}</div>
-            </div>
-            <button type="button" onClick={onClose} style={{ padding:'9px 13px', borderRadius:10, border:'1px solid var(--line,#ddd)', background:'white', color:'var(--an-navy,#14213D)', fontWeight:900, cursor:'pointer', alignSelf:'stretch' }}>Cerrar consulta</button>
-          </div>
+          <button type="button" onClick={onClose} style={{ width:34, height:34, borderRadius:999, border:'1px solid rgba(255,255,255,.4)', background:'rgba(255,255,255,.1)', color:'white', fontSize:20, cursor:'pointer' }}>×</button>
         </div>
-      </div>
 
-      <div style={{ margin:'0 2px 9px', fontSize:11, color:'var(--ink-3,#81776f)' }}>
-        Tocá cualquiera de los cuatro niveles para abrir su detalle de pagos. El estado académico y la morosidad se muestran juntos.
-      </div>
+        <div style={{ padding:20 }}>
+          {loading && <div style={{ padding:35, textAlign:'center', color:'#667085', fontWeight:800 }}>Cargando grupos compatibles…</div>}
+          {error && <div style={{ marginBottom:14, padding:'11px 13px', borderRadius:10, background:'#FFEBEE', border:'1px solid #F2B8B8', color:'#B42318', fontSize:12, fontWeight:800 }}>{error}</div>}
 
-      <div style={{ display:'grid', gap:10 }}>
-        {orden.map(nivel => {
-          const info = niveles[nivel] || {};
-          const pendienteNivel = pend[nivel] || {};
-          const estatus = agIndUpper(info.estatus) || 'SIN REGISTRO';
-          const tone = agIndStatusTone(estatus);
-          const grupo = agIndNorm(info.grupo) || '—';
-          const notaNum = info.nota === '' || info.nota == null || isNaN(Number(info.nota)) ? null : Number(info.nota);
-          const asis = agIndAsistenciaNivel(estado.asistencia, nivel, grupo);
-          const moroso = agIndMoroso(info, pendienteNivel);
-          const color = NIVEL_COLOR_P[nivel] || '#8B8178';
-          const movsNivel = movimientos.filter(m => m.nivel === nivel);
-          const resumen = agIndResumenMovimientos(movsNivel, pendienteNivel);
-          const abierto = nivelAbierto === nivel;
-          return (
-            <div key={nivel} style={{
-              background:'white', border:'1px solid var(--line,#e4ddd5)', borderLeft:`5px solid ${color}`,
-              borderRadius:12, boxShadow:abierto ? '0 10px 24px rgba(20,33,61,.09)' : '0 4px 12px rgba(20,33,61,.035)',
-              overflow:'hidden',
-            }}>
-              <button type="button" onClick={() => setNivelAbierto(abierto ? '' : nivel)} aria-expanded={abierto} style={{
-                width:'100%', border:'none', background:'white', cursor:'pointer', padding:'13px 14px',
-                display:'grid', gridTemplateColumns:'minmax(150px,1.15fr) minmax(180px,1fr) repeat(3,minmax(95px,.72fr)) 28px',
-                gap:10, alignItems:'center', textAlign:'left', fontFamily:'inherit', overflowX:'auto',
-              }}>
-                <div>
-                  <div style={{ fontSize:15, fontWeight:900, color }}>{NIVEL_LABEL_P[nivel]}</div>
-                  <div style={{ fontSize:10.5, color:'var(--ink-3,#888)', marginTop:2, fontFamily:'var(--f-mono,monospace)' }}>{grupo}</div>
-                </div>
-                <div style={{ display:'flex', gap:7, alignItems:'center', flexWrap:'wrap' }}>
-                  <span style={{ display:'inline-flex', padding:'5px 10px', borderRadius:999, background:tone.bg, color:tone.fg, border:`1px solid ${tone.bd}`, fontSize:10, fontWeight:900 }}>{estatus}</span>
-                  <span style={{ display:'inline-flex', padding:'5px 10px', borderRadius:999, background:moroso ? '#FFEBEE' : '#E8F5E9', color:moroso ? '#C62828' : '#2E7D32', border:`1px solid ${moroso ? '#F4B7B7' : '#BFE4C3'}`, fontSize:10, fontWeight:900 }}>MOROSO {moroso ? 'SÍ' : 'NO'}</span>
-                </div>
-                <AgIndMetric label="Nota" value={notaNum == null ? '—' : notaNum.toFixed(notaNum % 1 ? 1 : 0)} warn={notaNum != null && notaNum < 70} />
-                <AgIndMetric label="Asistencia" value={asis.pct == null ? '—' : `${asis.pct}%`} warn={asis.pct != null && asis.pct < 70} sub={asis.total ? `${asis.presentes}/${asis.total}` : ''} />
-                <AgIndMetric label="Certificado" value={agIndNorm(info.reg_certificados || info.cert_num) || '—'} />
-                <span style={{ width:26, height:26, borderRadius:999, display:'inline-flex', alignItems:'center', justifyContent:'center', background:abierto ? color : '#F4F1EC', color:abierto ? 'white' : '#6B625A', fontSize:15, fontWeight:900, transition:'transform .18s ease', transform:abierto ? 'rotate(180deg)' : 'none' }}>⌄</span>
-              </button>
-
-              {abierto && (
-                <div style={{ padding:'0 14px 15px', borderTop:'1px solid #EEE8E1', background:'linear-gradient(180deg,#FBFAF8,#fff)' }}>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(150px,1fr))', gap:9, padding:'13px 0 11px', overflowX:'auto' }}>
-                    <AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} color={color} />
-                    <AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} color={color} />
-                    <AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} color={color} />
-                    <AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente + resumen.cuotasPendientes + resumen.certificadoPendiente} color={color} />
-                  </div>
-
-                  {movsNivel.length ? (
-                    <div style={{ border:'1px solid #E9E2DA', borderRadius:11, overflow:'hidden', background:'white' }}>
-                      <div style={{ padding:'9px 12px', background:'#F7F4EF', borderBottom:'1px solid #E9E2DA', display:'flex', justifyContent:'space-between', gap:10, alignItems:'center' }}>
-                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'#6F665E' }}>Movimientos aplicados a {NIVEL_LABEL_P[nivel]}</div>
-                        <div style={{ fontSize:10, color:'#81776F', fontWeight:800 }}>{movsNivel.length} movimiento{movsNivel.length === 1 ? '' : 's'}</div>
-                      </div>
-                      {movsNivel.map((mov, idx) => (
-                        <div key={mov.id || idx} style={{
-                          display:'grid', gridTemplateColumns:'110px 100px minmax(220px,1fr) 110px', gap:12, alignItems:'center',
-                          padding:'11px 12px', borderBottom:idx === movsNivel.length - 1 ? 'none' : '1px solid #F0ECE7', overflowX:'auto',
-                        }}>
-                          <div>
-                            <div style={{ fontSize:11.5, fontWeight:900, color:'var(--an-navy,#14213D)' }}>{mov.tipo}</div>
-                            <div style={{ marginTop:2, fontSize:9.5, color:'#8A8178' }}>{mov.fuente}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize:10.5, fontWeight:800, color:'#4E4842' }}>{agIndNorm(mov.fecha) || 'Sin fecha'}</div>
-                            <div style={{ marginTop:2, fontSize:9.5, color:'#8A8178' }}>Recibo {agIndNorm(mov.recibo || mov.RECIBO) || '—'}</div>
-                          </div>
-                          <div style={{ minWidth:220 }}>
-                            <div style={{ fontSize:11, color:'#3F3A35', lineHeight:1.35, wordBreak:'break-word' }}>{agIndNorm(mov.concepto || mov.descripcion) || 'Movimiento aplicado'}</div>
-                          </div>
-                          <div style={{ textAlign:'right', fontFamily:'var(--f-mono,monospace)', fontSize:12.5, fontWeight:900, color:'#14213D' }}>{agIndMoney(mov.monto)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ padding:'13px 14px', border:'1px dashed #D9D0C7', borderRadius:10, color:'#81776F', fontSize:11.5, background:'white' }}>
-                      No hay movimientos clasificados para este nivel. Los montos pendientes se conservan arriba según el expediente financiero.
+          {!loading && contexto && (
+            <>
+              <div style={{ display:'grid', gridTemplateColumns:'minmax(240px,1.15fr) minmax(220px,.85fr)', gap:14 }}>
+                <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
+                  <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>1. Grupo destino</div>
+                  <select value={grupoDestino} onChange={e => { setGrupoDestino(e.target.value); setSimulacion(null); setConfirmado(false); }} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
+                    {(contexto.candidatos || []).map(g => <option key={g.grupo} value={g.grupo} disabled={!g.seleccionable}>{g.grupo} · {g.periodo_corto || 'sin periodo'} · {g.cupo} cupos · {g.comentario || 'sin estado'}{!g.seleccionable?' · NO DISPONIBLE':''}</option>)}
+                  </select>
+                  {cand && (
+                    <div style={{ marginTop:11, display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:8, fontSize:11 }}>
+                      <div><b>Periodo:</b> {cand.periodo_corto || '—'}<br/><span style={{ color:'#667085' }}>{cand.periodo_largo || ''}</span></div>
+                      <div><b>Modalidad:</b> {cand.modalidad || '—'}<br/><span style={{ color:'#667085' }}>{cand.dias || '—'} · {cand.hora_ini || '—'}–{cand.hora_fin || '—'}</span></div>
+                      <div><b>Docente:</b> {cand.docente || '—'}</div>
+                      <div><b>Cupo:</b> {cand.cupo}/{cand.capacidad}</div>
+                      <div style={{ gridColumn:'1/-1', padding:'8px 9px', background:cand.seleccionable?'#E8F5E9':'#FFF3E0', borderRadius:8, color:cand.seleccionable?'#246B2A':'#9A5B00', fontWeight:800 }}>{cand.recomendacion || 'Sin recomendación automática'}</div>
                     </div>
                   )}
                 </div>
+
+                <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
+                  <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>2. Motivo</div>
+                  <select value={motivo} onChange={e => { setMotivo(e.target.value); setSimulacion(null); setConfirmado(false); }} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
+                    <option value="">Seleccionar motivo…</option>
+                    {(contexto.motivos || []).map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  {motivo === 'Otro' && <textarea value={detalleOtro} onChange={e => setDetalleOtro(e.target.value)} rows={4} maxLength={500} placeholder="Explique el motivo (15–500 caracteres)" style={{ width:'100%', boxSizing:'border-box', marginTop:10, padding:10, borderRadius:9, border:'1px solid #BFC9D6', resize:'vertical', fontFamily:'inherit' }} />}
+                  {motivo === 'Retiro temporal' && <label style={{ display:'flex', gap:8, alignItems:'flex-start', marginTop:10, padding:'9px 10px', borderRadius:8, background:'#EEF4FF', border:'1px solid #C9D9F1', color:'#244A7C', fontSize:10.5, cursor:'pointer' }}><input type="checkbox" checked={convalidarManual} onChange={e=>{setConvalidarManual(e.target.checked);setSimulacion(null);setConfirmado(false);}} style={{marginTop:2}}/><span><b>Convalidar manualmente lo académico:</b> conservar asistencia, notas y comentarios del intento anterior. Los pagos no se convalidan y el nuevo intento inicia con matrícula y cuotas completas.</span></label>}
+                  <div style={{ marginTop:10, padding:'9px 10px', borderRadius:8, background:'#FFF7E6', border:'1px solid #F4D59A', color:'#7A4A00', fontSize:10.5, lineHeight:1.4 }}>
+                    Modo piloto: un superadministrador confirma la operación. El registro queda marcado como <b>APROBACIÓN PILOTO</b>; no se simula una segunda firma.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:13 }}>
+                <button type="button" onClick={simular} disabled={simulando || !grupoDestino || !motivo} style={{ padding:'10px 16px', borderRadius:9, border:'none', background:'#14213D', color:'white', fontWeight:900, cursor:simulando?'wait':'pointer' }}>{simulando?'Analizando…':'Simular antes y después'}</button>
+              </div>
+
+              {simulacion && (
+                <div style={{ marginTop:16, display:'grid', gap:13 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(135px,1fr))', gap:9 }}>
+                    <AgIndMetric label="Asistencia proyectada" value={res.asistencia_proyectada == null ? '—' : `${res.asistencia_proyectada}%`} warn={res.asistencia_proyectada != null && res.asistencia_proyectada < 70} sub={`${res.presentes || 0} presentes · ${res.ausentes || 0} ausentes`} />
+                    <AgIndMetric label="Nota proyectada" value={res.nota_proyectada == null ? '—' : res.nota_proyectada} warn={res.nota_proyectada != null && res.nota_proyectada < 70} />
+                    <AgIndMetric label="Evaluaciones pendientes" value={res.evaluaciones_pendientes || 0} warn={res.evaluaciones_pendientes > 0} sub="PENDIENTE / NO APLICADO" />
+                    <AgIndMetric label="Diferencia de avance" value={`${res.diferencia_lecciones || 0} lecciones`} warn={res.diferencia_lecciones > 0} />
+                  </div>
+
+                  {(simulacion.warnings || []).length > 0 && (
+                    <div style={{ padding:'12px 14px', borderRadius:11, background:'#FFF3E0', border:'1px solid #F0C27B', color:'#7A4400' }}>
+                      <div style={{ fontSize:10, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:6 }}>Advertencias críticas</div>
+                      {(simulacion.warnings || []).map((w,i) => <div key={i} style={{ fontSize:11.5, fontWeight:700, marginTop:i?5:0 }}>• {w}</div>)}
+                    </div>
+                  )}
+
+                  <div style={{ display:'grid', gridTemplateColumns:'minmax(280px,1.1fr) minmax(250px,.9fr)', gap:12 }}>
+                    <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:12, overflow:'hidden' }}>
+                      <div style={{ padding:'10px 12px', background:'#F4F7FA', fontSize:10, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', color:'#536273' }}>Lecciones consolidadas hasta hoy</div>
+                      <div style={{ maxHeight:260, overflowY:'auto', display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:1, background:'#EAEFF4' }}>
+                        {(simulacion.lecciones || []).map(l => {
+                          const bg=l.estado==='PRESENTE'?'#E8F5E9':l.estado==='AUSENTE'?'#FFEBEE':'white';
+                          const fg=l.estado==='PRESENTE'?'#246B2A':l.estado==='AUSENTE'?'#B42318':'#667085';
+                          return <div key={l.leccion} style={{ padding:'8px 7px', background:bg, minHeight:48 }}><div style={{ fontSize:10, fontWeight:900, color:'#14213D' }}>Lec {String(l.leccion).padStart(2,'0')}</div><div style={{ fontSize:9.5, color:fg, fontWeight:900, marginTop:2 }}>{l.estado}</div>{l.evaluacion==='PENDIENTE_NO_APLICADO'&&<div style={{ fontSize:8.5, color:'#9A5B00', marginTop:2 }}>Examen pendiente</div>}</div>;
+                        })}
+                      </div>
+                    </div>
+                    <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:12, padding:14 }}>
+                      <div style={{ fontSize:10, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', color:'#536273', marginBottom:9 }}>Impacto financiero</div>
+                      <div style={{ display:'grid', gap:7, fontSize:11.5 }}>
+                        <div><b>Nuevo intento:</b> {fin.nuevo_intento?'SÍ':'NO'}</div>
+                        <div><b>Nueva matrícula:</b> {fin.nueva_matricula?'SÍ':'NO'}</div>
+                        <div><b>Nuevas cuotas completas:</b> {fin.nuevas_cuotas?'SÍ':'NO'}</div>
+                        <div><b>Convalida lo académico:</b> {fin.convalida_academico?'SÍ':'NO'}</div>
+                        <div><b>Convalida pagos existentes:</b> {fin.convalida_pagos?'SÍ, con leyenda':'NO'}</div>
+                        <div><b>Cargo CAMBIO DE GRUPO:</b> {fin.cobra_cambio_grupo ? agIndMoney(fin.monto_cambio_grupo) : 'NO'}</div>
+                        <div style={{ padding:'8px 9px', borderRadius:8, background:'#F7F4EF', color:'#615850' }}><b>Certificado:</b> {fin.certificado}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <label style={{ display:'flex', alignItems:'flex-start', gap:9, padding:'11px 12px', border:'1px solid #D7DEE7', borderRadius:10, background:'white', cursor:'pointer' }}>
+                    <input type="checkbox" checked={confirmado} onChange={e => setConfirmado(e.target.checked)} style={{ marginTop:2 }} />
+                    <span style={{ fontSize:11.5, lineHeight:1.45, color:'#344054' }}>Confirmo que revisé el impacto académico, financiero, CONAPE e INA. Entiendo que la operación se registrará como <b>APROBACIÓN PILOTO</b>.</span>
+                  </label>
+
+                  <div style={{ display:'flex', justifyContent:'flex-end', gap:9 }}>
+                    <button type="button" onClick={onClose} style={{ padding:'10px 15px', borderRadius:9, border:'1px solid #C9D2DE', background:'white', color:'#344054', fontWeight:900, cursor:'pointer' }}>Cancelar</button>
+                    <button type="button" onClick={ejecutar} disabled={!confirmado || ejecutando} style={{ padding:'10px 17px', borderRadius:9, border:'none', background:'#B42318', color:'white', fontWeight:900, cursor:(!confirmado||ejecutando)?'not-allowed':'pointer', opacity:(!confirmado||ejecutando)?.55:1 }}>{ejecutando?'Aplicando cambio…':'Confirmar cambio de grupo'}</button>
+                  </div>
+                </div>
               )}
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop:10, fontSize:10.5, color:'var(--ink-3,#81776f)' }}>
-        Los movimientos se asignan por el código del concepto y por la cuenta contable: matrículas 60–63, certificados 43–46 y cuotas identificadas por nivel.
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
+  const [estado,setEstado]=React.useState({loading:true,error:'',rows:[]});
+  const [busy,setBusy]=React.useState('');
+  function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
+  React.useEffect(cargar,[codigo]);
+  async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
+  return <div style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(7,20,40,.68)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(960px,96vw)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:15,boxShadow:'0 28px 80px rgba(0,0,0,.35)'}}>
+    <div style={{padding:'16px 18px',background:'#0D2B51',color:'white',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'15px 15px 0 0'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase',opacity:.7}}>Auditoría inmutable</div><div style={{fontSize:20,fontWeight:900}}>Historial de cambios de grupo</div></div><button onClick={onClose} style={{background:'none',border:'none',color:'white',fontSize:24,cursor:'pointer'}}>×</button></div>
+    <div style={{padding:17}}>{estado.loading?<div style={{padding:25,textAlign:'center'}}>Cargando historial…</div>:estado.error?<div style={{padding:12,background:'#FFEBEE',color:'#B42318',borderRadius:9}}>{estado.error}</div>:!estado.rows.length?<div style={{padding:25,textAlign:'center',color:'#667085'}}>No existen cambios de grupo registrados.</div>:<div style={{display:'grid',gap:9}}>{estado.rows.map(r=><div key={r.CAMBIO_ID} style={{border:'1px solid #E0E6ED',borderRadius:11,padding:12,display:'grid',gridTemplateColumns:'1fr auto',gap:12,alignItems:'center'}}><div><div style={{fontWeight:900,color:'#14213D'}}>{r.NIVEL} · {r.GRUPO_ORIGEN} → {r.GRUPO_DESTINO}</div><div style={{fontSize:10.5,color:'#667085',marginTop:3}}>{String(r.FECHA||'')} · {r.MOTIVO} · {r.ESTADO_APROBACION}</div><div style={{fontSize:10.5,color:'#667085',marginTop:2}}>Por {r.APROBADO_POR_1||'—'} · CONAPE {r.CONAPE_SYNC||'—'} · INA {r.INA_ESTADO||'—'}</div>{r.REVERSADO_EN&&<div style={{fontSize:10.5,color:'#B42318',fontWeight:900,marginTop:3}}>Reversado: {String(r.REVERSADO_EN)}</div>}</div><AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':'↶ Deshacer'}</AkActionButton></div>)}</div>}</div>
+  </div></div>;
+}
+
+function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate }) {
+  const codigo = agIndNorm(estudianteBase?.codigo || estudianteBase?.rec_m || estudianteBase?.CODIGO);
+  const [estado, setEstado] = React.useState({ loading:true, detalle:null, asistencia:[], error:'' });
+  const [nivelAbierto, setNivelAbierto] = React.useState('');
+  const [refreshKey,setRefreshKey]=React.useState(0);
+  const [modalEstado,setModalEstado]=React.useState(null);
+  const [modalCambio,setModalCambio]=React.useState(null);
+  const [historial,setHistorial]=React.useState(false);
+  const [syncing,setSyncing]=React.useState('');
+  const [toast,setToast]=React.useState('');
+
+  React.useEffect(() => {
+    let activo = true;
+    if (!codigo) { setEstado({ loading:false, detalle:null, asistencia:[], error:'El estudiante no tiene código de expediente.' }); return () => { activo=false; }; }
+    setEstado(v=>({ ...v, loading:true, error:'' }));
+    Promise.all([postAdminStudents('getEstudiante', { codigo }),postAdminStudents('getAsistenciaEstudiante', { codigo })])
+      .then(([ficha, asist]) => {
+        if (!activo) return;
+        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], error:(ficha&&ficha.error)||'No se pudo cargar el expediente.' }); return; }
+        setEstado({ loading:false, detalle:ficha, asistencia:(asist&&asist.ok&&Array.isArray(asist.asistencia))?asist.asistencia:[], error:'' });
+      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], error:'Error de conexión: '+(e?.message||e) }));
+    return () => { activo=false; };
+  }, [codigo,refreshKey]);
+
+  function refrescar(msg){if(msg)setToast(msg);setRefreshKey(k=>k+1);setTimeout(()=>setToast(''),4500);}
+  async function syncConape(nivel){setSyncing(nivel);const r=await resincronizarEstudianteIndividual(codigo);setSyncing('');refrescar(r?.ok?'CONAPE actualizado correctamente.':'CONAPE quedó pendiente: '+(r?.error||'error de sincronización'));}
+  function abrirFicha(info,nivel){sessionStorage.setItem('an_estudiante_prefill',JSON.stringify({codigo,nivel,grupo:info.grupo,tab:'ficha'}));if(onNavigate)onNavigate('estudiantes',{grupo:info.grupo});else setToast('La ficha completa ya está abierta en esta consulta.');}
+
+  if (estado.loading) return <div style={{padding:'42px 24px',textAlign:'center',color:'var(--ink-3,#888)'}}>Cargando ficha individual…</div>;
+  if (estado.error || !estado.detalle) return <div style={{padding:24}}><div style={{padding:'14px 16px',border:'1px solid #F4B7B7',background:'#FFEBEE',color:'#C62828',borderRadius:12,fontWeight:700}}>{estado.error||'Ficha no disponible.'}</div><button type="button" onClick={onClose} style={{marginTop:12,padding:'9px 14px',borderRadius:9,border:'1px solid var(--line,#ddd)',background:'white',cursor:'pointer',fontWeight:800}}>Cerrar consulta</button></div>;
+
+  const d=estado.detalle,est=d.estudiante||{},niveles=d.niveles||{},pend=d.pendientes?.por_nivel||{},movimientos=agIndMovimientos(d);
+  const nombre=agIndNorm(est.NOMBRE||estudianteBase?.nombre||estudianteBase?.display)||'Estudiante',cedula=agIndNorm(est.NUM_CEDULA||estudianteBase?.cedula),telefono=agIndNorm(est.TELEFONO||estudianteBase?.telefono),correo=agIndNorm(est.email||est.EMAIL||estudianteBase?.email),convenio=agIndNorm(est.CONVENIO||estudianteBase?.convenio)||'—',grupoActual=agIndNorm(d.cod_grupo||est.GRUPO||estudianteBase?.grupo)||'—';
+  const totalAsis=estado.asistencia.length,totalPres=estado.asistencia.filter(r=>agIndPresente(r?.presente??r?.PRESENTE)).length,pctGlobal=totalAsis?Math.round(totalPres/totalAsis*100):null,orden=['B1','B2','I1','I2'];
+
+  return <div style={{padding:'18px 20px 24px',background:'var(--bg,#f7f4ef)'}}>
+    {toast&&<div style={{position:'fixed',right:22,bottom:22,zIndex:2600,padding:'11px 15px',borderRadius:10,background:toast.startsWith('CONAPE quedó')?'#B42318':'#2E7D32',color:'white',fontSize:12,fontWeight:900,boxShadow:'0 8px 25px rgba(0,0,0,.24)'}}>{toast}</div>}
+    <div style={{background:'white',border:'1px solid var(--line,#e4ddd5)',borderRadius:14,padding:'16px 18px',marginBottom:14,boxShadow:'0 8px 22px rgba(20,33,61,.05)'}}><div style={{display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap',alignItems:'flex-start'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.16em',textTransform:'uppercase',color:'var(--ink-3,#8b8178)'}}>Expediente individual</div><div style={{fontFamily:'var(--f-serif,serif)',fontSize:25,fontWeight:600,color:'var(--an-navy,#14213D)',marginTop:3}}>{nombre}</div><div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:7,fontSize:11.5,color:'var(--ink-2,#665f58)'}}><span>Estudiante: <strong>{codigo}</strong></span>{cedula&&<span>Cédula: <strong>{cedula}</strong></span>}<span>Grupo actual: <strong>{grupoActual}</strong></span><span>Convenio actual: <strong>{convenio}</strong></span>{telefono&&<span>Teléfono: <strong>{telefono}</strong></span>}{correo&&<span>Correo: <strong>{correo}</strong></span>}</div></div><div style={{display:'flex',gap:8,alignItems:'stretch',flexWrap:'wrap'}}><div style={{minWidth:118,padding:'10px 12px',borderRadius:10,background:'#F7F9FC',border:'1px solid #DCE5F0',textAlign:'center'}}><div style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'#64748B'}}>Asistencia total</div><div style={{marginTop:3,fontFamily:'var(--f-serif,serif)',fontSize:23,fontWeight:700,color:pctGlobal==null?'#64748B':(pctGlobal>=70?'#2E7D32':'#C62828')}}>{pctGlobal==null?'—':`${pctGlobal}%`}</div><div style={{fontSize:9.5,color:'#64748B'}}>{totalAsis?`${totalPres}/${totalAsis} registros`:'Sin registros'}</div></div><AkActionButton onClick={()=>setHistorial(true)}>🕘 Historial</AkActionButton><button type="button" onClick={onClose} style={{padding:'9px 13px',borderRadius:10,border:'1px solid var(--line,#ddd)',background:'white',color:'var(--an-navy,#14213D)',fontWeight:900,cursor:'pointer',alignSelf:'stretch'}}>Cerrar consulta</button></div></div></div>
+    <div style={{margin:'0 2px 9px',fontSize:11,color:'var(--ink-3,#81776f)'}}>Cada nivel conserva su grupo, periodo, año y convenio histórico. Tocá un nivel para ver pagos y acciones administrativas.</div>
+    <div style={{display:'grid',gap:10}}>{orden.map(nivel=>{const info=niveles[nivel]||{},pendienteNivel=pend[nivel]||{},estatus=agIndUpper(info.estatus)||'SIN REGISTRO',tone=agIndStatusTone(estatus),grupo=agIndNorm(info.grupo)||'—',notaNum=info.nota===''||info.nota==null||isNaN(Number(info.nota))?null:Number(info.nota),asis=agIndAsistenciaNivel(estado.asistencia,nivel,grupo),moroso=agIndMoroso(info,pendienteNivel),color=NIVEL_COLOR_P[nivel]||'#8B8178',movsNivel=movimientos.filter(m=>m.nivel===nivel),resumen=agIndResumenMovimientos(movsNivel,pendienteNivel),abierto=nivelAbierto===nivel,periodoCorto=agIndNorm(info.periodo_corto)||'PERIODO SIN DEFINIR',periodoLargo=agIndNorm(info.periodo_largo),convNivel=agIndNorm(info.convenio)||convenio,intentos=Array.isArray(info.intentos)?info.intentos:[];
+      return <div key={nivel} style={{background:'white',border:'1px solid var(--line,#e4ddd5)',borderLeft:`5px solid ${color}`,borderRadius:12,boxShadow:abierto?'0 10px 24px rgba(20,33,61,.09)':'0 4px 12px rgba(20,33,61,.035)',overflow:'hidden'}}>
+        <button type="button" onClick={()=>setNivelAbierto(abierto?'':nivel)} aria-expanded={abierto} style={{width:'100%',border:'none',background:'white',cursor:'pointer',padding:'13px 14px',display:'grid',gridTemplateColumns:'minmax(155px,1.05fr) minmax(170px,.9fr) minmax(180px,1fr) repeat(3,minmax(92px,.65fr)) 28px',gap:9,alignItems:'center',textAlign:'left',fontFamily:'inherit',overflowX:'auto'}}>
+          <div><div style={{fontSize:15,fontWeight:900,color}}>{NIVEL_LABEL_P[nivel]}</div><div style={{fontSize:10.5,color:'var(--ink-3,#888)',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{intentos.length>1&&<div style={{fontSize:9,color:'#9A5B00',fontWeight:900,marginTop:2}}>{intentos.length} intentos registrados</div>}</div>
+          <div><div style={{fontSize:11,fontWeight:900,color:'#14213D'}}>{periodoCorto}</div><div style={{fontSize:9.5,color:'#667085',marginTop:2}}>{periodoLargo||'Periodo del grupo'}</div></div>
+          <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:tone.bg,color:tone.fg,border:`1px solid ${tone.bd}`,fontSize:10,fontWeight:900}}>{estatus}</span><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:moroso?'#FFEBEE':'#E8F5E9',color:moroso?'#C62828':'#2E7D32',border:`1px solid ${moroso?'#F4B7B7':'#BFE4C3'}`,fontSize:10,fontWeight:900}}>MOROSO {moroso?'SÍ':'NO'}</span><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',border:'1px solid #C9D9F1',fontSize:10,fontWeight:900}}>{convNivel}</span></div>
+          <AgIndMetric label="Nota" value={notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)} warn={notaNum!=null&&notaNum<70}/><AgIndMetric label="Asistencia" value={asis.pct==null?'—':`${asis.pct}%`} warn={asis.pct!=null&&asis.pct<70} sub={asis.total?`${asis.presentes}/${asis.total}`:''}/><AgIndMetric label="Certificado" value={agIndNorm(info.reg_certificados||info.cert_num)||'—'}/><span style={{width:26,height:26,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:abierto?color:'#F4F1EC',color:abierto?'white':'#6B625A',fontSize:15,fontWeight:900,transform:abierto?'rotate(180deg)':'none'}}>⌄</span>
+        </button>
+        {abierto&&<div style={{padding:'0 14px 15px',borderTop:'1px solid #EEE8E1',background:'linear-gradient(180deg,#FBFAF8,#fff)'}}>
+          <div style={{padding:'12px 0 10px',display:'flex',gap:7,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.11em',color:'#81776F',marginRight:3}}>Acciones</span><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton onClick={()=>abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton onClick={()=>setModalCambio({nivel,info})}>🔄 Cambio de grupo</AkActionButton><AkActionButton onClick={()=>setHistorial(true)}>🕘 Historial</AkActionButton></div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(150px,1fr))',gap:9,padding:'3px 0 11px',overflowX:'auto'}}><AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} color={color}/><AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} color={color}/><AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} color={color}/><AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente+resumen.cuotasPendientes+resumen.certificadoPendiente} color={color}/></div>
+          {intentos.length>1&&<div style={{marginBottom:10,padding:'10px 11px',borderRadius:10,background:'#FFF7E6',border:'1px solid #F0D39A'}}><div style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'#7A4A00',marginBottom:5}}>Historial del nivel</div>{intentos.map((it,i)=><div key={it.intento_id||i} style={{fontSize:10.5,color:'#5F4630',marginTop:i?4:0}}><b>{it.etiqueta}</b> · {it.grupo||'—'} · {it.estatus||'—'} {it.periodo_info?.corto?`· ${it.periodo_info.corto}`:''}</div>)}</div>}
+          {movsNivel.length?<div style={{border:'1px solid #E9E2DA',borderRadius:11,overflow:'hidden',background:'white'}}><div style={{padding:'9px 12px',background:'#F7F4EF',borderBottom:'1px solid #E9E2DA',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.11em',textTransform:'uppercase',color:'#6F665E'}}>Movimientos aplicados a {NIVEL_LABEL_P[nivel]}</div><div style={{fontSize:10,color:'#81776F',fontWeight:800}}>{movsNivel.length} movimiento{movsNivel.length===1?'':'s'}</div></div>{movsNivel.map((mov,idx)=><div key={mov.id||idx} style={{display:'grid',gridTemplateColumns:'110px 100px minmax(220px,1fr) 110px',gap:12,alignItems:'center',padding:'11px 12px',borderBottom:idx===movsNivel.length-1?'none':'1px solid #F0ECE7',overflowX:'auto'}}><div><div style={{fontSize:11.5,fontWeight:900,color:'var(--an-navy,#14213D)'}}>{mov.tipo}</div><div style={{marginTop:2,fontSize:9.5,color:'#8A8178'}}>{mov.fuente}</div></div><div><div style={{fontSize:10.5,fontWeight:800,color:'#4E4842'}}>{agIndNorm(mov.fecha)||'Sin fecha'}</div><div style={{marginTop:2,fontSize:9.5,color:'#8A8178'}}>Recibo {agIndNorm(mov.recibo||mov.RECIBO)||'—'}</div></div><div style={{minWidth:220}}><div style={{fontSize:11,color:'#3F3A35',lineHeight:1.35,wordBreak:'break-word'}}>{agIndNorm(mov.concepto||mov.descripcion)||'Movimiento aplicado'}</div></div><div style={{textAlign:'right',fontFamily:'var(--f-mono,monospace)',fontSize:12.5,fontWeight:900,color:'#14213D'}}>{agIndMoney(mov.monto)}</div></div>)}</div>:<div style={{padding:'13px 14px',border:'1px dashed #D9D0C7',borderRadius:10,color:'#81776F',fontSize:11.5,background:'white'}}>No hay movimientos clasificados para este nivel. Los montos pendientes se conservan arriba según el expediente financiero.</div>}
+        </div>}
+      </div>;
+    })}</div>
+    <div style={{marginTop:10,fontSize:10.5,color:'var(--ink-3,#81776f)'}}>Los recibos permanecen ligados a su grupo e intento original. Una convalidación agrega leyenda; nunca duplica ni mueve el pago.</div>
+    {modalEstado&&<ModalEstatus estudiante={{...estudianteBase,...est,codigo,display:nombre,grupo:modalEstado.info.grupo,estatus:modalEstado.info.estatus,nota:modalEstado.info.nota}} nivel={modalEstado.nivel} onClose={()=>setModalEstado(null)} onSuccess={()=>refrescar('Estado actualizado.')}/>} 
+    {modalCambio&&<AkCambioGrupoWizard codigo={codigo} nivel={modalCambio.nivel} infoNivel={modalCambio.info} onClose={()=>setModalCambio(null)} onSuccess={()=>refrescar('Cambio de grupo aplicado. Revisá el nuevo plan y el cargo pendiente.')}/>} 
+    {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')}/>} 
+  </div>;
+}
+
 
 function AgIndMetric({ label, value, warn, sub }) {
   return (

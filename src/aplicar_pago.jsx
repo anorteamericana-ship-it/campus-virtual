@@ -1,3 +1,4 @@
+// F98.4-Z6-AK · Otros pagos configurables y retorno al panel
 /* global React, PageHeader */
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -169,6 +170,7 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
         grupo:      data.cod_grupo || String(data.grupo?.CODIGO_GRUPO || data.grupo || ''),
         grupo_tipo: data.grupo_tipo || '',
         pendientes: data.pendientes || {},
+        otros_cargos: data.otros_cargos || [],
       });
       setError('');
       setPaso(2);
@@ -256,6 +258,11 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
           const c   = NIVEL_COLOR_A[niv];
           const h   = niveles[niv];
           const ok  = desbloq[niv];
+          const pNivel = pendientes?.por_nivel?.[niv] || {};
+          const cuotaNivel = Number(pNivel.precio_cuota ?? cuota ?? 0);
+          const matriculaNivel = Number(pNivel.matricula_pend ?? matricula ?? 0);
+          const grupoNivel = h?.grupo || grupo;
+          const cargoNivel = (estData?.otros_cargos || []).find(x => String(x.ESTADO||'').toUpperCase()==='PENDIENTE' && String(x.NIVEL||'').toUpperCase()===niv);
           return (
             <div key={niv} onClick={()=>seleccionarNivel(niv)} style={{
               padding:'18px 20px', borderRadius:'var(--r-lg)',
@@ -272,13 +279,15 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
               </div>
               {ok ? (
                 <>
-                  <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:4 }}>{grupo || 'Sin grupo asignado'}</div>
+                  <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:4 }}>{grupoNivel || 'Sin grupo asignado'}</div>
                   <div style={{ fontSize:12, color:'var(--ink-2)' }}>
-                    {cuota > 0
-                      ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuota)}</strong></>
+                    {cuotaNivel > 0 && Number(pNivel.cuotas_pend || 0) > 0
+                      ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · pendiente {fmtCRC_A(pNivel.cuotas_pend)}</>
                       : <span style={{ color:'#2E7D32', fontWeight:600 }}>✓ Sin cuotas pendientes</span>}
                   </div>
-                  {matricula > 0 && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Matrícula: {fmtCRC_A(matricula)}</div>}
+                  {matriculaNivel > 0 && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Matrícula pendiente: {fmtCRC_A(matriculaNivel)}</div>}
+                  {cargoNivel && <div style={{ fontSize:11, color:'#9A5B00', fontWeight:700, marginTop:2 }}>{cargoNivel.CONCEPTO}: {fmtCRC_A(cargoNivel.MONTO)}</div>}
+                  {h?.periodo_corto && <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:3 }}>{h.periodo_corto} · {h.convenio || 'Sin convenio'}</div>}
                 </>
               ) : (
                 <div style={{ fontSize:12, color:'var(--ink-3)', fontStyle:'italic' }}>
@@ -383,9 +392,9 @@ function Paso3AP({ comprobantes, setComprobantes, setComprSel, setPaso, setError
 // ─────────────────────────────────────────────────────────────────────────
 function Paso4AP({
   estSel, nivelSel, comprSel, estData,
-  qMat, setQMat, qCuota, setQCuota, qCert, setQCert,
+  qMat, setQMat, qCuota, setQCuota, qCert, setQCert, qOtro, setQOtro,
   setTotalAplicarPanel, setComprobantes, setConfirmado,
-  confirmado, setPaso, reiniciar, error
+  confirmado, setPaso, reiniciar, error, onNavigate, returnTarget
 }) {
   const est    = estSel;
   const niv    = nivelSel;
@@ -393,17 +402,25 @@ function Paso4AP({
   const pend   = estData?.pendientes || {};
   const saldo  = compr ? (compr.saldo ?? (compr.credito - compr.aplicado)) : 0;
 
-  const montoMat   = pend.matricula     || 0;
-  const montoCuota = pend.cuota_mensual || 0;
-  const montoCert  = pend.certificado   || 0;
+  const pendNivel = pend?.por_nivel?.[niv] || {};
+  const montoMat   = Number(pendNivel.matricula_pend ?? pend.matricula ?? 0);
+  const montoCuota = Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0);
+  const montoCert  = Number(pendNivel.cert_pend ?? pend.certificado ?? 0);
+  const cargoOtro = (estData?.otros_cargos || []).find(c =>
+    String(c.ESTADO || '').toUpperCase() === 'PENDIENTE' &&
+    (!c.NIVEL || String(c.NIVEL).toUpperCase() === String(niv || '').toUpperCase())
+  ) || null;
+  const montoOtro = Number(cargoOtro?.MONTO || 0);
 
-  // tipo_periodo 'B' (bimestral) = 2 cuotas; 'C' (cuatrimestral) o default = 4
-  const nCuotas = estData?.grupo_tipo === 'B' ? 2 : 4;
+  // Cantidad realmente pendiente del intento seleccionado. Evita cobrar de más
+  // cuando ya existen una o más cuotas aplicadas en ese mismo grupo/intento.
+  const nCuotasPeriodo = Number(pendNivel.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
+  const nCuotas = montoCuota > 0 ? Math.min(nCuotasPeriodo, Math.ceil(Number(pendNivel.cuotas_pend || 0) / montoCuota)) : 0;
 
   const [cargandoApl, setCargandoApl] = React.useState(false);
   const [errLocal, setErrLocal] = React.useState('');
 
-  const total       = qMat*montoMat + qCuota*montoCuota + qCert*montoCert;
+  const total       = qMat*montoMat + qCuota*montoCuota + qCert*montoCert + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
   const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl;
 
@@ -417,11 +434,12 @@ function Paso4AP({
       // est.GRUPO viene de la hoja DATOS y corresponde al grupo ORIGINAL de matrícula
       // (siempre B1). Para escribir el grupo correcto del nivel seleccionado en
       // OTROS_PAGOS y PAGOS usamos estData.grupo que llega de getEstudiante.
-      const grupoActual = estData?.grupo || '';
+      const grupoActual = estData?.niveles?.[niv]?.grupo || estData?.grupo || '';
       const rubros = [
         { tipo:'MATRICULA',   nivel:niv, monto:qMat*montoMat,     grupo: grupoActual },
         { tipo:'CUOTA',       nivel:niv, monto:qCuota*montoCuota, grupo: grupoActual },
         { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: grupoActual },
+        { tipo:'OTRO', nivel:niv, monto:qOtro*montoOtro, grupo: grupoActual, codigo_precio:cargoOtro?.CODIGO_PRECIO || '', concepto:cargoOtro?.CONCEPTO || 'OTRO PAGO', cargo_id:cargoOtro?.CARGO_ID || '' },
       ].filter(r => r.monto > 0);
 
       // FIX-PAGOS-ADMIN-001: ya era POST; ahora con Content-Type text/plain
@@ -500,11 +518,10 @@ function Paso4AP({
             </span>
           </div>
         )}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        <div style={{ display:'grid', gridTemplateColumns:returnTarget ? 'repeat(3,1fr)' : '1fr 1fr', gap:10 }}>
           <button onClick={reiniciar} className="btn btn-ghost" style={{ padding:14 }}>Nuevo pago</button>
-          <button onClick={()=>{ setConfirmado(null); setTotalAplicarPanel(0); setPaso(3); }} className="btn btn-primary" style={{ background:'var(--an-granate)', borderColor:'var(--an-granate)', padding:14 }}>
-            Otro comprobante
-          </button>
+          <button onClick={()=>{ setConfirmado(null); setTotalAplicarPanel(0); setPaso(3); }} className="btn btn-primary" style={{ background:'var(--an-granate)', borderColor:'var(--an-granate)', padding:14 }}>Otro comprobante</button>
+          {returnTarget && <button onClick={()=>onNavigate?.(returnTarget.route || 'calendario_grupo', returnTarget.context || {})} className="btn btn-primary" style={{ background:'var(--an-navy)', borderColor:'var(--an-navy)', padding:14 }}>Volver al panel</button>}
         </div>
       </div>
     );
@@ -544,7 +561,8 @@ function Paso4AP({
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
         {montoCuota > 0 && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} />}
         {montoCert  > 0 && <RubroRow label="Certificado del nivel"            monto={montoCert}  qty={qCert}  maxQty={1}       onQty={setQCert}  />}
-        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && (
+        {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
+        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoOtro === 0 && (
           <div style={{ padding:'16px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', color:'var(--ink-3)', fontSize:13, textAlign:'center' }}>
             No hay rubros pendientes para este estudiante
           </div>
@@ -591,7 +609,7 @@ function Paso4AP({
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function AplicarPago() {
+function AplicarPago({ onNavigate }) {
   const [paso, setPaso]             = React.useState(1);
   const [estSel, setEstSel]         = React.useState(null);   // objeto estudiante del servidor
   const [estData, setEstData]       = React.useState(null);   // { niveles, pagos, pendientes, grupo }
@@ -605,6 +623,8 @@ function AplicarPago() {
   const [qMat,  setQMat]   = React.useState(0);
   const [qCuota,setQCuota] = React.useState(0);
   const [qCert, setQCert]  = React.useState(0);
+  const [qOtro, setQOtro]  = React.useState(0);
+  const [returnTarget, setReturnTarget] = React.useState(null);
 
   // FIX-NAVEGACION-APLICAR-PAGO-001: acceso rápido desde Estudiantes / Solicitudes.
   const [prefillError, setPrefillError] = React.useState('');
@@ -651,7 +671,9 @@ function AplicarPago() {
           grupo:      data.cod_grupo || String(data.grupo?.CODIGO_GRUPO || data.grupo || ''),
           grupo_tipo: data.grupo_tipo || '',
           pendientes: data.pendientes || {},
+          otros_cargos: data.otros_cargos || [],
         });
+        if (prefill.return_route) setReturnTarget({ route:prefill.return_route, context:prefill.return_context || {} });
         setError('');
         // forcePaso siempre 2: caemos en "Seleccionar nivel" con el estudiante
         // cargado. NO saltamos al paso 3 aunque el prefill traiga nivel.
@@ -667,13 +689,13 @@ function AplicarPago() {
     setPaso(1); setEstSel(null); setEstData(null); setNivelSel(null);
     setComprSel(null); setComprobantes([]); setError(''); setConfirmado(null);
     setCargando(false); setTotalAplicarPanel(0);
-    setQMat(0); setQCuota(0); setQCert(0);
+    setQMat(0); setQCuota(0); setQCert(0); setQOtro(0);
   };
 
   // T-fix-stepper: al volver del paso 4 al 3 los contadores deben quedar en 0
   // para que cuando se vuelva a entrar al paso 4 no aparezcan los valores viejos.
   const resetRubros = () => {
-    setQMat(0); setQCuota(0); setQCert(0); setTotalAplicarPanel(0);
+    setQMat(0); setQCuota(0); setQCert(0); setQOtro(0); setTotalAplicarPanel(0);
   };
 
   const handlePrev = () => {
@@ -764,6 +786,7 @@ function AplicarPago() {
               qMat={qMat}   setQMat={setQMat}
               qCuota={qCuota} setQCuota={setQCuota}
               qCert={qCert}  setQCert={setQCert}
+              qOtro={qOtro} setQOtro={setQOtro}
               setTotalAplicarPanel={setTotalAplicarPanel}
               setComprobantes={setComprobantes}
               setConfirmado={setConfirmado}
@@ -771,6 +794,8 @@ function AplicarPago() {
               setPaso={setPaso}
               reiniciar={reiniciar}
               error={error}
+              onNavigate={onNavigate}
+              returnTarget={returnTarget}
             />
           )}
 
