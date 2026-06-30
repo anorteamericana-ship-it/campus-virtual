@@ -1,5 +1,5 @@
 /* global React, PageHeader */
-// CALGRUPO_F98_4_Z6_AK_20260629_CAMBIO_GRUPO_PERIODOS_ACCIONES
+// CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
 // CALGRUPO_F2_20260616_ESTUDIANTES_COMPACTO_OPERATIVO
 // CALGRUPO_F5_20260617_CERTIFICADOS_MASIVOS_UI
 // CALGRUPO_F6_20260617_ESTADOS_CERTIFICADO_VISUAL_SIN_BACKEND
@@ -32,18 +32,38 @@ const SCRIPT_URL_AS = window.APPS_SCRIPT_URL;
 // Conserva `?fn=...` en la URL porque el Apps Script enruta con
 // e.parameter.fn. El token NUNCA va en la URL: viaja en el body JSON.
 // ─────────────────────────────────────────────────────────────────────────
-async function postAdminStudents(fn, payload = {}) {
+async function postAdminStudents(fn, payload = {}, timeoutMs = 25000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const r = await fetch(`${SCRIPT_URL_AS}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      fn,
-      token,
-      ...payload,
-    }),
-  });
-  return await r.json();
+  const body = JSON.stringify({ fn, token, ...payload });
+  const urls = [`${SCRIPT_URL_AS}?fn=${encodeURIComponent(fn)}`, SCRIPT_URL_AS];
+  let lastError = null;
+  for (let attempt = 0; attempt < urls.length; attempt += 1) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      const r = await fetch(urls[attempt], {
+        method:'POST',
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+        body,
+        cache:'no-store',
+        redirect:'follow',
+        signal:controller ? controller.signal : undefined,
+      });
+      const raw = await r.text();
+      const text = String(raw || '').trim();
+      if (!text) throw new Error(`El backend no devolvió contenido en ${fn}.`);
+      if (/^<!doctype\s+html|^<html/i.test(text)) throw new Error('El backend devolvió HTML en lugar de JSON. Revisá la publicación vigente de Apps Script.');
+      let data;
+      try { data = JSON.parse(text); } catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+      if (!r.ok) throw new Error(data?.mensaje || data?.error || `HTTP ${r.status}`);
+      return data;
+    } catch (e) {
+      lastError = e?.name === 'AbortError' ? new Error(`El backend tardó demasiado en responder (${fn}).`) : e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
 }
 
 async function resincronizarEstudianteIndividual(codigo) {

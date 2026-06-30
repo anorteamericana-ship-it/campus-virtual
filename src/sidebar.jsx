@@ -428,6 +428,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       items: [
         { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
         { id: 'dashboard', label: 'Panel Maestro', icon: 'chart' },
+        { id: 'buscador', label: 'Consulta individual', icon: 'search' },
         { id: 'supervision', label: 'Supervisión', icon: 'bell' },
       ],
     },
@@ -447,7 +448,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       items: [
         ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
         { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
-        { id: 'buscador', label: 'Buscador general', icon: 'search' },
       ],
     },
     {

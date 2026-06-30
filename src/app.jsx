@@ -62,14 +62,14 @@ const F96_LAZY = {
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AI','src/admin_master_dashboard.jsx?v=F98.4Z6AI'],
-  admin_students: ['src/admin_students.jsx?v=F98.4Z6AK'],
+  admin_students: ['src/admin_students.jsx?v=F98.4Z6AN'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
-  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AH'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AH','src/cronograma_grupo.jsx?v=F98.4Z6O'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AH','src/cronograma_grupo.jsx?v=F98.4Z6O','src/admin_students.jsx?v=F98.4Z6AK','src/calendario_grupo.jsx?v=F98.4Z6AK'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AN'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AN','src/cronograma_grupo.jsx?v=F98.4Z6AN'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AN','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AN','src/calendario_grupo.jsx?v=F98.4Z6AN'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
-  buscador: ['src/buscador.jsx?v=F96.5G'],
+  buscador: ['src/admin_students.jsx?v=F98.4Z6AN','src/buscador.jsx?v=F98.4Z6AN'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AK'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
@@ -81,7 +81,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AH','src/cronograma_grupo.jsx?v=F98.4Z6O',
+    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AN','src/cronograma_grupo.jsx?v=F98.4Z6AN',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
@@ -928,7 +928,7 @@ function App() {
       matriculas:   <LazyRoute title="Matrículas" component="MatriculasView" files={F96_LAZY.matriculas} onNavigate={navigateTo} />,
       dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
-      calendario_grupo: <LazyRoute title="Calendario de Grupo" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} />,
+      calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
       diagnostico_interno: <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />,
@@ -949,7 +949,7 @@ function App() {
       grupos:       <LazyRoute title="Grupos" component="AdminGruposView" files={F96_LAZY.admin_views} />,
       estudiantes:  <LazyRoute title="Estudiantes" component="AdminEstudiantesView" files={F96_LAZY.admin_students} onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
       cronograma_grupo: <LazyRoute title="Cronograma académico" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol={rolReal} onNavigate={navigateTo} />,
-      buscador:     <LazyRoute title="Buscador" component="BuscadorEstudiantes" files={F96_LAZY.buscador} />,
+      buscador:     <LazyRoute title="Consulta individual" component="BuscadorEstudiantes" files={F96_LAZY.buscador} onNavigate={navigateTo} />,
       banco:        <LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />,
       aplicar_pago: <LazyRoute title="Aplicar Pago" component="AplicarPago" files={F96_LAZY.aplicar_pago} onNavigate={navigateTo} />,
       // — Próximamente (sin datos demo) ——————————————————————

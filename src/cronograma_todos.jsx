@@ -223,14 +223,34 @@ function todosNormalizarGrupo(g) {
     turnoOrden: todosNum(g.turnoOrden) ?? 99,
   };
 }
-async function todosPost(fn, payload = {}) {
+async function todosPost(fn, payload = {}, timeoutMs = 20000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const res = await fetch(`${TODOS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ fn, token, ...payload }),
-  });
-  return await res.json();
+  const body = JSON.stringify({ fn, token, ...payload });
+  const urls = [`${TODOS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, TODOS_SCRIPT_URL];
+  let lastError = null;
+  for (let attempt = 0; attempt < urls.length; attempt += 1) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      const res = await fetch(urls[attempt], {
+        method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body,
+        cache:'no-store', redirect:'follow', signal:controller ? controller.signal : undefined,
+      });
+      const raw = await res.text();
+      const text = String(raw || '').trim();
+      if (!text) throw new Error(`El backend no devolvió contenido en ${fn}.`);
+      if (/^<!doctype\s+html|^<html/i.test(text)) throw new Error('El backend devolvió HTML en lugar de JSON. Revisá la publicación vigente de Apps Script.');
+      let data;
+      try { data = JSON.parse(text); } catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+      if (!res.ok) throw new Error(data?.mensaje || data?.error || `HTTP ${res.status}`);
+      return data;
+    } catch (e) {
+      lastError = e?.name === 'AbortError' ? new Error(`El backend tardó demasiado en responder (${fn}).`) : e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
 }
 
 // Formatea el campo `actualizado` del caché de mora (yyyy-mm-dd hh:mm) en
@@ -247,8 +267,7 @@ function tFmtMoraActualizado(s) {
 }
 
 function TodosLosGruposView({ gruposReales, onNavigate }) {
-  // Primera pintura con getGruposActivos; luego se enriquece con getFechasGrupo
-  // por grupo para que la vista global coincida con la vista individual.
+  // Primera pintura y fuente única: getGruposActivos ya incluye las lecciones.
   const [gruposDetalle, setGruposDetalle] = React.useState(null);
   const safeGruposReales = React.useMemo(() => {
     const base = Array.isArray(gruposDetalle) ? gruposDetalle : (Array.isArray(gruposReales) ? gruposReales : []);
@@ -256,49 +275,13 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
   }, [gruposReales, gruposDetalle]);
 
   React.useEffect(() => {
-    let cancelado = false;
+    // F98.4-Z6-AN: getGruposActivos ya entrega las lecciones del nivel activo.
+    // No se dispara una petición getFechasGrupo por cada grupo. Esto elimina
+    // la ráfaga de llamadas que producía demora, cuotas y errores intermitentes.
     const base = (Array.isArray(gruposReales) ? gruposReales : [])
       .map(todosNormalizarGrupo)
       .filter(Boolean);
     setGruposDetalle(base);
-
-    // Refuerzo fino: traer lecciones reales con getFechasGrupo, por lotes para
-    // no saturar Apps Script. Si un grupo falla, conserva el resumen inicial.
-    const targets = base.filter(g => !g.esApertura && g.code && g.nivelId);
-    if (!targets.length) return () => { cancelado = true; };
-
-    (async () => {
-      const out = base.map(g => ({ ...g, lecciones: [...(g.lecciones || [])] }));
-      const idxByCode = new Map(out.map((g, i) => [g.code, i]));
-      const BATCH = 4;
-      for (let i = 0; i < targets.length; i += BATCH) {
-        const batch = targets.slice(i, i + BATCH);
-        const results = await Promise.allSettled(batch.map(g =>
-          todosPost('getFechasGrupo', { cod_grupo: g.code, nivel: g.nivelId })
-        ));
-        if (cancelado) return;
-        results.forEach((r, j) => {
-          if (r.status !== 'fulfilled') return;
-          const d = r.value;
-          if (!d || !d.ok || !Array.isArray(d.lecciones)) return;
-          const g = batch[j];
-          const idx = idxByCode.get(g.code);
-          if (idx === undefined) return;
-          const normalizadas = d.lecciones.map(todosNormalizarLeccion).filter(Boolean);
-          // No pisar el resumen global con un array vacío. Si getFechasGrupo falla
-          // por nivel/permiso/datos incompletos, se conserva lo que ya venía en
-          // getGruposActivos, que era la fuente del panel global original.
-          if (!normalizadas.length && (out[idx].lecciones || []).length) return;
-          out[idx] = {
-            ...out[idx],
-            lecciones: normalizadas,
-          };
-        });
-        setGruposDetalle(out.map(g => ({ ...g, lecciones: [...(g.lecciones || [])] })));
-      }
-    })();
-
-    return () => { cancelado = true; };
   }, [gruposReales]);
 
   // ── HOOKS ARRIBA (sin returns condicionales antes) ────────────

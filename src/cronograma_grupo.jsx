@@ -1,4 +1,4 @@
-// F98.4-Z6-O · Cuatrimestre visualiza el periodo completo real
+// F98.4-Z6-AN · Calendario sin ráfaga de llamadas y respuesta JSON segura
 // CALGRUPO_F86_20260619_ETIQUETAS_EXAMEN_ORAL_INTEGRADO
 // CALGRUPO_F80_20260619_CRONOGRAMA_TIMEOUT_RESPUESTA_SEGURA
 // CALGRUPO_F74_20260618_AGENDA_DOCENTE_TARJETAS_PANEL_FIJO_LEGIBLE
@@ -18,31 +18,42 @@
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
+const CG_GRUPOS_CACHE_AN = window.__AN_CAL_GRUPOS_CACHE || { at:0, data:null };
+window.__AN_CAL_GRUPOS_CACHE = CG_GRUPOS_CACHE_AN;
 
-// FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
-async function postCronoGrupo(fn, payload = {}, timeoutMs = 30000) {
+// F98.4-Z6-AN: respuesta segura, timeout y segundo intento sin ?fn.
+async function postCronoGrupo(fn, payload = {}, timeoutMs = 22000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
-  try {
-    const res = await fetch(`${SCRIPT_URL_CG}?fn=${encodeURIComponent(fn)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ fn, token, ...payload }),
-      signal: controller ? controller.signal : undefined,
-    });
-    const text = await res.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; }
-    catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
-    if (!res.ok) throw new Error((data && (data.error || data.mensaje)) || `HTTP ${res.status}`);
-    return data;
-  } catch (e) {
-    if (e && e.name === 'AbortError') throw new Error(`El backend tardó demasiado en responder (${fn}).`);
-    throw e;
-  } finally {
-    if (timer) clearTimeout(timer);
+  const body = JSON.stringify({ fn, token, ...payload });
+  const urls = [`${SCRIPT_URL_CG}?fn=${encodeURIComponent(fn)}`, SCRIPT_URL_CG];
+  let lastError = null;
+  for (let attempt = 0; attempt < urls.length; attempt += 1) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      const res = await fetch(urls[attempt], {
+        method:'POST',
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+        body,
+        cache:'no-store',
+        redirect:'follow',
+        signal:controller ? controller.signal : undefined,
+      });
+      const raw = await res.text();
+      const text = String(raw || '').trim();
+      if (!text) throw new Error(`El backend no devolvió contenido en ${fn}.`);
+      if (/^<!doctype\s+html|^<html/i.test(text)) throw new Error('El backend devolvió HTML en lugar de JSON. Revisá la publicación vigente de Apps Script.');
+      let data;
+      try { data = JSON.parse(text); } catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+      if (!res.ok) throw new Error(data?.mensaje || data?.error || `HTTP ${res.status}`);
+      return data;
+    } catch (e) {
+      lastError = e?.name === 'AbortError' ? new Error(`El backend tardó demasiado en responder (${fn}).`) : e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
+  throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
 }
 
 // Sentinel para la vista "Todos los grupos" (solo admin/superadmin).
@@ -395,15 +406,26 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       }).finally(() => setLoadingGrupos(false));
     }
 
+    const cacheVigente = CG_GRUPOS_CACHE_AN.data && (Date.now() - CG_GRUPOS_CACHE_AN.at < 60000);
+    if (cacheVigente) {
+      setGruposReales(CG_GRUPOS_CACHE_AN.data);
+      setLoadingGrupos(false);
+    }
     return postCronoGrupo('getGruposActivos')
       .then(d => {
         if (d?.ok && Array.isArray(d.grupos)) {
+          CG_GRUPOS_CACHE_AN.data = d.grupos;
+          CG_GRUPOS_CACHE_AN.at = Date.now();
           setGruposReales(d.grupos);
-        } else {
+          setErrorGrupos(null);
+        } else if (!cacheVigente) {
           setErrorGrupos(d?.error || 'No se pudieron cargar los grupos activos.');
         }
       })
-      .catch(e => setErrorGrupos('Error de red: ' + (e?.message || e)))
+      .catch(e => {
+        if (!cacheVigente) setErrorGrupos('Error de red: ' + (e?.message || e));
+        else console.warn('Calendario usando caché local por error de red:', e);
+      })
       .finally(() => setLoadingGrupos(false));
   }, [esStudent, esTeacher, usr]);
 
