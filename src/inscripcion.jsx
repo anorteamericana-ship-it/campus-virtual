@@ -1345,18 +1345,26 @@ function App() {
 
 function Header() {
   return (
-    <div className="ins-header">
-      <div className="ins-logo" />
-      <div>
-        <div className="ins-brand-t1">Academia Norteamericana</div>
-        <div className="ins-brand-t2">Campus Virtual · Inscripción</div>
-      </div>
-      <div className="ins-header-right">
-        <a className="ins-help-link" href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">
-          <Ico d={I.help} size={15} /> Ayuda
+    <header className="ins-header">
+      <div className="ins-header-inner">
+        <a className="ins-brand" href="login.html" aria-label="Academia Norteamericana">
+          <img className="ins-logo" src="assets/logo_horizontal.png" alt="Academia Norteamericana" />
+          <span className="ins-brand-divider" aria-hidden="true" />
+          <span className="ins-brand-copy">
+            <strong>Inscripción en línea</strong>
+            <small>Campus Virtual</small>
+          </span>
         </a>
+        <div className="ins-header-right">
+          <span className="ins-secure-badge" title="Formulario institucional protegido">
+            <span className="ins-secure-dot" /> Formulario seguro
+          </span>
+          <a className="ins-help-link" href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener">
+            <Ico d={I.help} size={15} /> Ayuda
+          </a>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
 
