@@ -1,4 +1,4 @@
-// F98.4-Z6-AU · Diagnóstico limpio + corrección controlada 17115/17106
+// F98.4-Z6-AV · Diagnóstico limpio + reparación controlada calendario 0425
 /* global React, PageHeader */
 // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_FRONTEND
 // CALGRUPO_F61_20260618_REPARADOR_ESTRUCTURAL_SEGURO_FRONTEND
@@ -173,6 +173,10 @@ function DiagnosticoInternoView() {
   const [atStatusLoading, setAtStatusLoading] = React.useState(false);
   const [atRepairResult, setAtRepairResult] = React.useState(null);
   const [atRepairLoading, setAtRepairLoading] = React.useState(false);
+  const [avCalStatus, setAvCalStatus] = React.useState(null);
+  const [avCalStatusLoading, setAvCalStatusLoading] = React.useState(false);
+  const [avCalRepairResult, setAvCalRepairResult] = React.useState(null);
+  const [avCalRepairLoading, setAvCalRepairLoading] = React.useState(false);
   const sessionRole = React.useMemo(() => {
     try { return String((window.getSesion && window.getSesion() || {}).rol || '').toLowerCase(); }
     catch (_) { return ''; }
@@ -248,6 +252,63 @@ Escribí CORREGIR para continuar.`
     }
   };
 
+
+
+  const cargarEstadoCalendario0425 = async () => {
+    if (!canUseAT) {
+      setError('La reparación del calendario 0425 está disponible únicamente para superadmin.');
+      return null;
+    }
+    setAvCalStatusLoading(true);
+    setError('');
+    try {
+      const resp = await postDiagnosticoInterno('estadoCalendario0425AV', {});
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo revisar el calendario 0425.');
+      setAvCalStatus(resp);
+      return resp;
+    } catch (e) {
+      setError(e.message || String(e));
+      return null;
+    } finally {
+      setAvCalStatusLoading(false);
+    }
+  };
+
+  const ejecutarCorreccionCalendario0425 = async () => {
+    const estadoActual = avCalStatus || await cargarEstadoCalendario0425();
+    if (!estadoActual) return;
+    if (!estadoActual.puede_aplicar) {
+      alert(estadoActual.estado === 'OK'
+        ? 'El calendario 0425 ya coincide con APOLLO. No se realizará ninguna escritura.'
+        : (estadoActual.mensaje || 'La estructura requiere revisión manual.'));
+      return;
+    }
+    const texto = window.prompt(
+      `Esta acción reparará únicamente CALENDARIO_LECCIONES del grupo B1-KJ94-B6-0425.
+
+Conservará B1 y B2, reconstruirá I1 histórico y moverá el bloque operativo real a I2.
+
+Escribí REPARAR 0425 para continuar.`
+    );
+    if (String(texto || '').trim().toUpperCase() !== 'REPARAR 0425') return;
+    setAvCalRepairLoading(true);
+    setError('');
+    setAvCalRepairResult(null);
+    try {
+      const resp = await postDiagnosticoInterno('aplicarCorreccionCalendario0425AV', {
+        confirmacion: 'REPARAR 0425',
+      });
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo reparar el calendario 0425.');
+      setAvCalRepairResult(resp);
+      await cargarEstadoCalendario0425();
+      await cargar();
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setAvCalRepairLoading(false);
+    }
+  };
+
   const resumen = data?.resumen || {};
   const estado = resumen.estado_general || 'info';
   const hojas = data?.hojas || [];
@@ -285,7 +346,7 @@ Escribí CORREGIR para continuar.`
   return (
     <div data-screen-label="Admin · Diagnóstico interno avanzado" style={{ padding: 22, maxWidth: 1360, margin: '0 auto' }}>
       <PageHeader
-        kicker="Sistema · AU"
+        kicker="Sistema · AV"
         title="Diagnóstico interno avanzado"
         sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. Las herramientas temporales quedan separadas y visibles para ejecutar correcciones controladas sin automatismos ocultos."
         right={
@@ -398,6 +459,58 @@ Escribí CORREGIR para continuar.`
               <div style={{ marginTop:14, padding:13, borderRadius:13, border:'1px solid rgba(22,163,74,.28)', background:'rgba(22,163,74,.08)', color:'#166534', fontSize:13, lineHeight:1.5 }}>
                 <b>{atRepairResult.mensaje || 'Corrección ejecutada.'}</b>
                 <div style={{ marginTop:5 }}>Ahora revisá 17115 y 17106 en Consulta individual y Calendario académico. Después ejecutá Sync CONAPE manualmente para ambos.</div>
+              </div>
+            )}
+          </div>
+
+
+
+          <div style={{ marginTop:14, padding:16, border:'1px solid var(--line)', borderRadius:16, background:'color-mix(in srgb, #2B7FC1 5%, white)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+              <div>
+                <div style={{ fontWeight:900, color:'var(--an-navy-ink)', fontSize:16 }}>Calendario 0425 · I2 operativo</div>
+                <div style={{ marginTop:5, fontSize:13, color:'var(--ink-3)', lineHeight:1.5, maxWidth:850 }}>
+                  APOLLO marca I2 EN CURSO desde el 19-may-2026. La hoja operativa dejó ese bloque rotulado como I1 y creó otro I2 futuro. Esta herramienta conserva B1/B2, reconstruye el I1 histórico y deja I2 en Mar/Jue con dos lecciones por día.
+                </div>
+              </div>
+              <DiagBadge status={avCalStatus?.estado === 'PENDIENTE' ? 'warn' : (avCalStatus?.estado === 'OK' ? 'ok' : (avCalStatus ? 'error' : 'info'))}>
+                {avCalStatus?.estado || 'Sin revisar'}
+              </DiagBadge>
+            </div>
+
+            <div style={{ display:'flex', gap:9, flexWrap:'wrap', marginTop:14 }}>
+              <button type="button" onClick={cargarEstadoCalendario0425} disabled={!canUseAT || avCalStatusLoading || avCalRepairLoading} className="btn" style={{ padding:'9px 14px' }}>
+                {avCalStatusLoading ? 'Revisando…' : 'Revisar calendario 0425'}
+              </button>
+              <button type="button" onClick={ejecutarCorreccionCalendario0425} disabled={!canUseAT || avCalRepairLoading || avCalStatusLoading || (avCalStatus && !avCalStatus.puede_aplicar)} className="btn btn-primary" style={{ padding:'9px 14px' }}>
+                {avCalRepairLoading ? 'Reparando…' : 'Reparar calendario 0425'}
+              </button>
+            </div>
+
+            {avCalStatus && (
+              <div style={{ marginTop:15, display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:12 }}>
+                <div style={{ padding:13, border:'1px solid var(--line)', borderRadius:13, background:'var(--surface)' }}>
+                  <div style={{ fontWeight:900, color:'var(--an-navy-ink)' }}>Esperado según APOLLO</div>
+                  <div style={{ marginTop:7, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
+                    I1: <b>{avCalStatus.esperado?.I1?.primera || '—'}</b> → <b>{avCalStatus.esperado?.I1?.ultima || '—'}</b> · {avCalStatus.esperado?.I1?.total ?? 0} lecciones<br/>
+                    I2: <b>{avCalStatus.esperado?.I2?.primera || '—'}</b> → <b>{avCalStatus.esperado?.I2?.ultima || '—'}</b> · {avCalStatus.esperado?.I2?.total ?? 0} lecciones
+                  </div>
+                </div>
+                <div style={{ padding:13, border:'1px solid var(--line)', borderRadius:13, background:'var(--surface)' }}>
+                  <div style={{ fontWeight:900, color:'var(--an-navy-ink)' }}>Actualmente en CALENDARIO_LECCIONES</div>
+                  <div style={{ marginTop:7, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
+                    I1: <b>{avCalStatus.actual?.I1?.primera || '—'}</b> → <b>{avCalStatus.actual?.I1?.ultima || '—'}</b> · {avCalStatus.actual?.I1?.total ?? 0} filas<br/>
+                    I2: <b>{avCalStatus.actual?.I2?.primera || '—'}</b> → <b>{avCalStatus.actual?.I2?.ultima || '—'}</b> · {avCalStatus.actual?.I2?.total ?? 0} filas<br/>
+                    Bloque I2 mal rotulado como I1: <b>{avCalStatus.bloque_operativo_mal_rotulado ?? 0}</b>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {avCalRepairResult && (
+              <div style={{ marginTop:14, padding:13, borderRadius:13, border:'1px solid rgba(22,163,74,.28)', background:'rgba(22,163,74,.08)', color:'#166534', fontSize:13, lineHeight:1.5 }}>
+                <b>{avCalRepairResult.mensaje || 'Calendario reparado.'}</b>
+                <div style={{ marginTop:5 }}>Actualizadas: {avCalRepairResult.resultado?.i2_filas_corregidas ?? 0} · I2 duplicadas eliminadas: {avCalRepairResult.resultado?.i2_filas_futuras_eliminadas ?? 0} · I1 históricas creadas: {avCalRepairResult.resultado?.i1_filas_creadas ?? 0}.</div>
               </div>
             )}
           </div>

@@ -1,4 +1,4 @@
-/* global React, PageHeader */
+// F98.4-Z6-AV · Traslado desde Calendario académico + lista compacta
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
 // CALGRUPO_F2_20260616_ESTUDIANTES_COMPACTO_OPERATIVO
 // CALGRUPO_F5_20260617_CERTIFICADOS_MASIVOS_UI
@@ -1602,6 +1602,7 @@ function rowAccent(estatus) {
 function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, filtroOperativo }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
+  const [modalCambio, setModalCambio] = React.useState(null);
   const [resyncEst, setResyncEst] = React.useState(null);
   // { codigo, loading, ok?, error? }
   if (!estudiantes.length) return null;
@@ -1879,7 +1880,12 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                   <td style={{padding:'6px 7px',whiteSpace:'nowrap',verticalAlign:'middle'}}>
                     <div style={{display:'flex',gap:4,flexWrap:'nowrap',alignItems:'center'}}>
                       <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'pagos')} title="Ficha" aria-label="Ficha" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>👤</button>
-                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'seguimiento')} title="Seguimiento" aria-label="Seguimiento" style={{width:29,height:29,borderRadius:7,border:'1px solid #E7C26B',fontSize:13,cursor:'pointer',background:'#FFF6D8'}}>📝</button>
+                      <button
+                        onClick={() => String(estatus || '').toUpperCase() === 'CA' && setModalCambio({ estudiante:e, nivel:nivelKey })}
+                        disabled={String(estatus || '').toUpperCase() !== 'CA'}
+                        title={String(estatus || '').toUpperCase() === 'CA' ? 'Traslado / cambio de grupo' : 'Traslado bloqueado: solo se permite en el nivel que está cursando (CA)'}
+                        aria-label="Traslado / cambio de grupo"
+                        style={{height:29,padding:'0 8px',borderRadius:7,border:'1px solid '+(String(estatus || '').toUpperCase()==='CA'?'#9DBCE2':'#D5D9DE'),fontSize:10.5,fontWeight:900,cursor:String(estatus || '').toUpperCase()==='CA'?'pointer':'not-allowed',background:String(estatus || '').toUpperCase()==='CA'?'#EAF3FF':'#F1F2F3',color:String(estatus || '').toUpperCase()==='CA'?'#174E8C':'#9AA1A8',opacity:String(estatus || '').toUpperCase()==='CA'?1:.65,whiteSpace:'nowrap'}}>⇄ Traslado</button>
                       <button onClick={() => setModalEstatus({ estudiante:e, nivel:nivelKey })} title="Cambiar estado" aria-label="Cambiar estado" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>✏️</button>
                       <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.error});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
                       <button onClick={() => abrirPago(e,nivelKey,onNavigate)} title="Aplicar pago" aria-label="Aplicar pago" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>💳</button>
@@ -1899,6 +1905,18 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
           onClose={() => setModalEstatus(null)}
           onSuccess={() => {
             setModalEstatus(null);
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
+      {modalCambio && (
+        <AkCambioGrupoWizard
+          codigo={modalCambio.estudiante?.codigo || modalCambio.estudiante?.rec_m || ''}
+          nivel={modalCambio.nivel}
+          infoNivel={modalCambio.estudiante}
+          onClose={() => setModalCambio(null)}
+          onSuccess={() => {
+            setModalCambio(null);
             if (onRefresh) onRefresh();
           }}
         />
