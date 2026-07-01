@@ -1,3 +1,4 @@
+// F98.4-Z6-AU · Corrección controlada desde Diagnóstico interno
 // F98.4-Z6-AI · Sincronización forzada del Panel Maestro completo de 10 secciones
 // Base preservada: F98.4-Z6-G · Club I CAN: asistencia, retroalimentación y ponderación 20%
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
@@ -75,7 +76,7 @@ const F96_LAZY = {
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6O','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
-  diagnostico: ['src/diagnostico_interno.jsx?v=F96.5G'],
+  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6AU'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
   reportes: ['src/reportes_admin.jsx?v=F96.5G'],
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
@@ -799,26 +800,6 @@ function App() {
     scrollCampusTopF91();
   }, [active]);
 
-  // F98.4-Z6-AT: corrección idempotente de dos traslados detectados en QA.
-  // Se ejecuta una sola vez al ingresar como superadmin y deja auditoría en el backend.
-  useEffect(() => {
-    if (rolReal !== 'superadmin') return undefined;
-    let live = true;
-    postAppF87('aplicarCorreccionTrasladosAT', { confirmacion:'AT_17115_17106' }, 90000)
-      .then(r => {
-        if (!live || !r) return;
-        if (r.ok && r.aplicado) {
-          setToastMsg('Corrección AT aplicada: 17115 y 17106 restaurados. El Campus se recargará una vez.');
-          try { sessionStorage.setItem('an_at_repair_done','1'); } catch (_) {}
-          setTimeout(() => { if (live) window.location.reload(); }, 1800);
-        } else if (!r.ok) {
-          setToastMsg('Corrección AT pendiente: ' + (r.error || 'revisar Apps Script'));
-          setTimeout(() => live && setToastMsg(''), 6500);
-        }
-      })
-      .catch(() => {});
-    return () => { live = false; };
-  }, [rolReal]);
 
   // F98.4-A: atrás/adelante conserva módulo y pestaña del estudiante.
   useEffect(() => {

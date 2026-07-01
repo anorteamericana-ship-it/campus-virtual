@@ -1,3 +1,4 @@
+// F98.4-Z6-AU · Diagnóstico limpio + corrección controlada 17115/17106
 /* global React, PageHeader */
 // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_FRONTEND
 // CALGRUPO_F61_20260618_REPARADOR_ESTRUCTURAL_SEGURO_FRONTEND
@@ -13,7 +14,15 @@ async function postDiagnosticoInterno(fn, payload = {}) {
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ fn, token, ...payload }),
   });
-  return await res.json();
+  const raw = await res.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; }
+  catch (_) {
+    const sample = String(raw || '').replace(/\s+/g, ' ').slice(0, 180);
+    throw new Error(`Apps Script respondió HTML/texto en ${fn} (HTTP ${res.status}). ${sample || 'Respuesta vacía.'}`);
+  }
+  if (!res.ok) throw new Error(data?.error || data?.mensaje || `Error HTTP ${res.status} en ${fn}.`);
+  return data;
 }
 
 const DIAG_STATUS_STYLE = {
@@ -160,10 +169,15 @@ function DiagnosticoInternoView() {
   const [error, setError] = React.useState('');
   const [tab, setTab] = React.useState('resumen');
   const [categoria, setCategoria] = React.useState('Todas');
-  const [repairResult, setRepairResult] = React.useState(null);
-  const [repairLoading, setRepairLoading] = React.useState(false);
-  const [reviewF61, setReviewF61] = React.useState(null);
-  const [reviewLoading, setReviewLoading] = React.useState(false);
+  const [atStatus, setAtStatus] = React.useState(null);
+  const [atStatusLoading, setAtStatusLoading] = React.useState(false);
+  const [atRepairResult, setAtRepairResult] = React.useState(null);
+  const [atRepairLoading, setAtRepairLoading] = React.useState(false);
+  const sessionRole = React.useMemo(() => {
+    try { return String((window.getSesion && window.getSesion() || {}).rol || '').toLowerCase(); }
+    catch (_) { return ''; }
+  }, []);
+  const canUseAT = sessionRole === 'superadmin';
 
   const cargar = React.useCallback(async () => {
     setLoading(true);
@@ -182,33 +196,55 @@ function DiagnosticoInternoView() {
   React.useEffect(() => { cargar(); }, [cargar]);
 
 
-  const ejecutarReparacionF61 = async () => {
-    if (!confirm('F61 solo creará/normalizará hojas de bitácora faltantes. No tocará notas, certificados ni activaciones. ¿Continuar?')) return;
-    setRepairLoading(true);
+  const cargarEstadoAT = async () => {
+    if (!canUseAT) {
+      setError('La corrección temporal AU está disponible únicamente para superadmin.');
+      return null;
+    }
+    setAtStatusLoading(true);
     setError('');
     try {
-      const resp = await postDiagnosticoInterno('repararEstructuraOperativaF61', {});
-      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo ejecutar reparación F61.');
-      setRepairResult(resp);
+      const resp = await postDiagnosticoInterno('estadoCorreccionTrasladosAT', {});
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo revisar la corrección AU.');
+      setAtStatus(resp);
+      return resp;
+    } catch (e) {
+      setError(e.message || String(e));
+      return null;
+    } finally {
+      setAtStatusLoading(false);
+    }
+  };
+
+  const ejecutarCorreccionAT = async () => {
+    const estadoActual = atStatus || await cargarEstadoAT();
+    if (!estadoActual) return;
+    if (!estadoActual.puede_aplicar) {
+      alert('Los expedientes ya aparecen limpios. No se realizará ninguna escritura.');
+      return;
+    }
+    const texto = window.prompt(
+      `Esta acción corregirá únicamente los registros 17115 y 17106. No sincronizará CONAPE automáticamente.
+
+Escribí CORREGIR para continuar.`
+    );
+    if (String(texto || '').trim().toUpperCase() !== 'CORREGIR') return;
+    setAtRepairLoading(true);
+    setError('');
+    setAtRepairResult(null);
+    try {
+      const resp = await postDiagnosticoInterno('aplicarCorreccionTrasladosAT', {
+        confirmacion: 'AT_17115_17106',
+        sincronizar_conape: false,
+      });
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo aplicar la corrección AU.');
+      setAtRepairResult(resp);
+      await cargarEstadoAT();
       await cargar();
     } catch (e) {
       setError(e.message || String(e));
     } finally {
-      setRepairLoading(false);
-    }
-  };
-
-  const cargarRevisionF61 = async () => {
-    setReviewLoading(true);
-    setError('');
-    try {
-      const resp = await postDiagnosticoInterno('revisionAcademicaAsistidaF62', {});
-      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo cargar revisión F61.');
-      setReviewF61(resp);
-    } catch (e) {
-      setError(e.message || String(e));
-    } finally {
-      setReviewLoading(false);
+      setAtRepairLoading(false);
     }
   };
 
@@ -249,13 +285,11 @@ function DiagnosticoInternoView() {
   return (
     <div data-screen-label="Admin · Diagnóstico interno avanzado" style={{ padding: 22, maxWidth: 1360, margin: '0 auto' }}>
       <PageHeader
-        kicker="Sistema · F62"
+        kicker="Sistema · AU"
         title="Diagnóstico interno avanzado"
-        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. F62 separa bloqueos técnicos de bloqueos académicos por área: certificados, cronograma, exámenes, notas, cierre académico y seguimiento."
+        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. Las herramientas temporales quedan separadas y visibles para ejecutar correcciones controladas sin automatismos ocultos."
         right={
           <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
-            <button type="button" onClick={ejecutarReparacionF61} disabled={repairLoading} className="btn" style={{ padding:'9px 14px' }}>{repairLoading ? 'Reparando…' : 'Crear logs F61'}</button>
-            <button type="button" onClick={() => { setTab('f61'); cargarRevisionF61(); }} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>{reviewLoading ? 'Cargando…' : 'Revisión F62'}</button>
             <button type="button" onClick={copiarResumen} disabled={!data} className="btn" style={{ padding:'9px 14px' }}>Copiar resumen</button>
             <button type="button" onClick={cargar} disabled={loading} className="btn btn-primary" style={{ padding:'9px 16px' }}>{loading ? 'Diagnosticando…' : 'Ejecutar diagnóstico'}</button>
           </div>
@@ -273,13 +307,13 @@ function DiagnosticoInternoView() {
         <DiagCard title="OK" value={ok || '0'} status="ok" sub="Controles listos" onClick={() => setTab('resumen')} />
         <DiagCard title="Revisar" value={advertencias || '0'} status={advertencias ? 'warn' : 'ok'} sub="Advertencias no bloqueantes" onClick={() => setTab('avanzado')} />
         <DiagCard title="Críticos técnicos" value={criticos || '0'} status={criticos ? 'error' : 'ok'} sub="Bloquean producción general" onClick={() => setTab('recomendaciones')} />
-        <DiagCard title="Certificados" value={resumen.certificados_bloqueados ? 'Bloqueados' : 'Listos'} status={resumen.certificados_bloqueados ? 'warn' : 'ok'} sub="Bloqueo por área, no campus completo" onClick={() => setTab('f61')} />
+        <DiagCard title="Certificados" value={resumen.certificados_bloqueados ? 'Bloqueados' : 'Listos'} status={resumen.certificados_bloqueados ? 'warn' : 'ok'} sub="Bloqueo por área, no campus completo" onClick={() => setTab('recomendaciones')} />
         <DiagCard title="Avanzado" value={resumen.avanzado_ok ? 'Listo' : 'Revisar'} status={resumen.avanzado_ok ? 'ok' : (resumen.avanzado_error ? 'error' : 'warn')} sub={`${avanzado.length || 0} controles · bloqueos académicos: ${resumen.bloqueos_academicos || 0}`} onClick={() => setTab('avanzado')} />
       </div>
 
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom: 16 }}>
         {[
-          ['resumen','Resumen'], ['f61','F61/F62 limpieza segura'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
+          ['resumen','Resumen'], ['herramientas','Herramientas temporales'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
         ].map(([id,label]) => (
           <button key={id} type="button" onClick={() => setTab(id)} style={{
             padding:'8px 12px', borderRadius:999, border:'1px solid var(--line)', cursor:'pointer',
@@ -314,63 +348,63 @@ function DiagnosticoInternoView() {
       )}
 
 
-      {tab === 'f61' && (
-        <DiagSection title="F61/F62 · reparación segura y revisión asistida" sub="Crea únicamente hojas/logs faltantes. F62 separa bloqueos técnicos de bloqueos académicos por área, sin arreglos automáticos peligrosos.">
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div style={{ padding:14, border:'1px solid var(--line)', borderRadius:14, background:'color-mix(in srgb, var(--an-gold) 5%, white)' }}>
-              <div style={{ fontWeight:900, color:'var(--an-navy-ink)', marginBottom:6 }}>Reparación estructural segura</div>
-              <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>
-                Crea SEGUIMIENTO_ESTUDIANTES, NOTAS_OFICIALES_LOG y CIERRE_ACADEMICO_LOG si faltan. No toca datos académicos existentes.
-              </div>
-              <button type="button" onClick={ejecutarReparacionF61} disabled={repairLoading} className="btn btn-primary" style={{ padding:'9px 14px' }}>
-                {repairLoading ? 'Ejecutando…' : 'Ejecutar reparación F61'}
-              </button>
-              {repairResult && (
-                <div style={{ marginTop:12, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.45 }}>
-                  <b>Resultado:</b> {repairResult.ok ? 'OK' : 'Con errores'} · {repairResult.fecha}
-                  <ul style={{ margin:'8px 0 0 18px' }}>
-                    {(repairResult.acciones || []).map((a, i) => (
-                      <li key={i}>{a.hoja}: {a.creada ? 'creada' : 'existente'}{a.encabezados_agregados?.length ? ' · encabezados agregados: ' + a.encabezados_agregados.length : ''}</li>
-                    ))}
-                  </ul>
+      {tab === 'herramientas' && (
+        <DiagSection title="Herramientas temporales controladas" sub="Estas acciones se usan durante la estabilización y se retirarán antes de la entrega final. No hay ejecución automática al iniciar sesión.">
+          <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:16, background:'color-mix(in srgb, var(--an-gold) 5%, white)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+              <div>
+                <div style={{ fontWeight:900, color:'var(--an-navy-ink)', fontSize:16 }}>Corrección controlada · 17115 y 17106</div>
+                <div style={{ marginTop:5, fontSize:13, color:'var(--ink-3)', lineHeight:1.5, maxWidth:820 }}>
+                  Elimina el RJ duplicado nocturno de 17115 y revierte localmente el cambio de B2 de 17106 para repetirlo desde el motor oficial. B1 APR de 17106 nunca se modifica. CONAPE queda pendiente de sincronización manual después de verificar los expedientes.
                 </div>
-              )}
-            </div>
-            <div style={{ padding:14, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface)' }}>
-              <div style={{ fontWeight:900, color:'var(--an-navy-ink)', marginBottom:6 }}>Revisión académica asistida</div>
-              <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>
-                Agrupa certificados duplicados, APR/CNV sin registro, cronogramas sin CA y exámenes sin activación. Solo lectura; certificados duplicados bloquean certificados, no todo el campus.
               </div>
-              <button type="button" onClick={cargarRevisionF61} disabled={reviewLoading} className="btn" style={{ padding:'9px 14px' }}>
-                {reviewLoading ? 'Cargando…' : 'Cargar revisión académica'}
-              </button>
-              {reviewF61 && <div style={{ marginTop:12 }}><DiagBadge status={(reviewF61.decision || '').includes('CRITICOS') ? 'error' : (reviewF61.pendientes_total ? 'warn' : 'ok')}>{reviewF61.decision}</DiagBadge> <span style={{ fontSize:13, color:'var(--ink-3)' }}>{reviewF61.pendientes_total || 0} pendientes</span>{reviewF61.nota_f62 && <div style={{ marginTop:6, fontSize:12, color:'var(--ink-3)' }}>{reviewF61.nota_f62}</div>}</div>}
+              <DiagBadge status={atStatus?.estado === 'PENDIENTE' || atStatus?.estado === 'INCONSISTENTE' ? 'warn' : (atStatus ? 'ok' : 'info')}>
+                {atStatus?.estado || 'Sin revisar'}
+              </DiagBadge>
             </div>
+
+            {!canUseAT && <div style={{ marginTop:12, color:'#991B1B', fontWeight:800, fontSize:12.5 }}>Solo superadmin puede revisar o ejecutar esta corrección.</div>}
+            <div style={{ display:'flex', gap:9, flexWrap:'wrap', marginTop:14 }}>
+              <button type="button" onClick={cargarEstadoAT} disabled={!canUseAT || atStatusLoading || atRepairLoading} className="btn" style={{ padding:'9px 14px' }}>
+                {atStatusLoading ? 'Revisando…' : 'Revisar estado'}
+              </button>
+              <button type="button" onClick={ejecutarCorreccionAT} disabled={!canUseAT || atRepairLoading || atStatusLoading || (atStatus && !atStatus.puede_aplicar)} className="btn btn-primary" style={{ padding:'9px 14px' }}>
+                {atRepairLoading ? 'Corrigiendo…' : 'Aplicar corrección 17115 / 17106'}
+              </button>
+            </div>
+
+            {atStatus && (
+              <div style={{ marginTop:15, display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:12 }}>
+                <div style={{ padding:13, border:'1px solid var(--line)', borderRadius:13, background:'var(--surface)' }}>
+                  <div style={{ fontWeight:900, color:'var(--an-navy-ink)' }}>17115 · William Zúñiga</div>
+                  <div style={{ marginTop:7, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
+                    RJ original sábados: <b>{atStatus.codigo_17115?.original_rj_sabados ?? 0}</b><br/>
+                    RJ duplicado nocturno: <b>{atStatus.codigo_17115?.duplicado_rj_nocturno ?? 0}</b>
+                  </div>
+                </div>
+                <div style={{ padding:13, border:'1px solid var(--line)', borderRadius:13, background:'var(--surface)' }}>
+                  <div style={{ fontWeight:900, color:'var(--an-navy-ink)' }}>17106 · Chadday Elizondo</div>
+                  <div style={{ marginTop:7, fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
+                    DATOS.GRUPO: <b>{atStatus.codigo_17106?.datos_grupo || '—'}</b><br/>
+                    Filas B2–I2 fuera del origen: <b>{atStatus.codigo_17106?.filas_fuera_origen ?? 0}</b><br/>
+                    Plan / convalidación / avisos: <b>{atStatus.codigo_17106?.plan_cambio ?? 0}</b> / <b>{atStatus.codigo_17106?.convalidaciones ?? 0}</b> / <b>{atStatus.codigo_17106?.notificaciones ?? 0}</b><br/>
+                    Cambio reversado: <b>{atStatus.codigo_17106?.cambio_reversado ? 'Sí' : 'No'}</b>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {atRepairResult && (
+              <div style={{ marginTop:14, padding:13, borderRadius:13, border:'1px solid rgba(22,163,74,.28)', background:'rgba(22,163,74,.08)', color:'#166534', fontSize:13, lineHeight:1.5 }}>
+                <b>{atRepairResult.mensaje || 'Corrección ejecutada.'}</b>
+                <div style={{ marginTop:5 }}>Ahora revisá 17115 y 17106 en Consulta individual y Calendario académico. Después ejecutá Sync CONAPE manualmente para ambos.</div>
+              </div>
+            )}
           </div>
-          {reviewF61 && (
-            <div style={{ display:'grid', gap:12 }}>
-              {(reviewF61.grupos || []).map((g, idx) => (
-                <div key={idx} style={{ border:'1px solid var(--line)', borderRadius:14, overflow:'hidden' }}>
-                  <div style={{ padding:'12px 14px', background:'color-mix(in srgb, var(--an-navy) 5%, white)', display:'flex', justifyContent:'space-between', gap:10 }}>
-                    <b style={{ color:'var(--an-navy-ink)' }}>{g.categoria}</b>
-                    <span style={{ fontSize:12, color:'var(--ink-3)' }}>{g.total} pendientes · {g.criticos} críticos · {g.advertencias} revisar</span>
-                  </div>
-                  <div style={{ padding:12, display:'grid', gap:10 }}>
-                    {(g.items || []).map((it, i) => (
-                      <div key={i} style={{ padding:12, border:'1px solid var(--line)', borderRadius:12, background:'var(--surface)' }}>
-                        <div style={{ display:'flex', gap:8, alignItems:'center' }}><DiagBadge status={it.status}>{it.status_label}</DiagBadge><b>{it.titulo}</b><span style={{ marginLeft:'auto', fontSize:12, color:'var(--ink-3)' }}>{it.total || 0}</span></div>
-                        <div style={{ marginTop:6, fontSize:13, color:'var(--ink-3)', lineHeight:1.45 }}>{it.detalle}</div>
-                        {it.accion && <div style={{ marginTop:6, fontSize:12.5 }}><b>Acción:</b> {it.accion}</div>}
-                        {Array.isArray(it.muestra) && it.muestra.length > 0 && (
-                          <details style={{ marginTop:8 }}><summary style={{ cursor:'pointer', fontWeight:800 }}>Ver muestra</summary><pre style={{ whiteSpace:'pre-wrap', fontSize:11.5 }}>{it.muestra.join('\n')}</pre></details>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+
+          <div style={{ marginTop:12, padding:12, border:'1px dashed var(--line)', borderRadius:12, color:'var(--ink-3)', fontSize:12.5, lineHeight:1.5 }}>
+            Los botones históricos <b>Crear logs F61</b> y <b>Revisión F62</b> fueron retirados de la interfaz porque esas estructuras ya existen. Las funciones backend se conservan temporalmente para compatibilidad y se evaluarán en la limpieza final.
+          </div>
         </DiagSection>
       )}
 
