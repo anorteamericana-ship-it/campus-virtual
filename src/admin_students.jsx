@@ -422,12 +422,12 @@ function ChipGrupo({ grupo, seleccionado, onClick }) {
 function EstadoBadge({ estado }) {
   const map = {
     CA:  { label:'Cursando',   bg:'#E3F2FD', color:'#1565C0' },
-    APR: { label:'Aprobado',   bg:'#E8F5E9', color:'#2E7D32' },
-    REP: { label:'Reprobado',  bg:'#FFEBEE', color:'#C62828' },
+    APR: { label:'Aprobado',   bg:'#CFEED6', color:'#176B2B' },
+    REP: { label:'Reprobado',  bg:'#FFD7DB', color:'#A91624' },
     RI:  { label:'Retirado+',  bg:'#FFF3E0', color:'#E65100' },
-    RJ:  { label:'Retirado',   bg:'#FAFAFA', color:'#757575' },
+    RJ:  { label:'Retirado',   bg:'#E3E7EA', color:'#455A64' },
     CNV: { label:'Convalida',  bg:'#F3E5F5', color:'#6A1B9A' },
-    PE:  { label:'Proyectado', bg:'#F5F5F5', color:'#9E9E9E' },
+    PE:  { label:'Proyectado', bg:'#ECE8E1', color:'#6F665E' },
   };
   const cfg = map[estado] || map.PE;
   return (
@@ -704,7 +704,7 @@ function PillMini({ label, value, tone }) {
   };
   const t = tones[tone] || tones.muted;
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 7px', borderRadius:999, background:t.bg, color:t.fg, border:`1px solid ${t.bd}`, fontSize:10.5, fontWeight:800, lineHeight:1.1, whiteSpace:'nowrap' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 6px', borderRadius:999, background:t.bg, color:t.fg, border:`1px solid ${t.bd}`, fontSize:9.5, fontWeight:850, lineHeight:1, whiteSpace:'nowrap' }}>
       <span style={{ opacity:.72 }}>{label}</span><strong>{value}</strong>
     </span>
   );
@@ -779,41 +779,18 @@ function certVisualState({ estatus, certPago, certNum }) {
 
 function CertificadoEstadoBox({ state }) {
   const tones = {
-    ok:    { bg:'#E8F5E9', fg:'#2E7D32', bd:'#BFE4C3' },
+    ok:    { bg:'#DDF3E2', fg:'#176B2B', bd:'#9FD5AA' },
     blue:  { bg:'#E3F2FD', fg:'#1565C0', bd:'#B9DAF5' },
-    warn:  { bg:'#FFF8E1', fg:'#9A6200', bd:'#F1D18A' },
-    muted: { bg:'var(--surface-2,#f8f8f8)', fg:'var(--ink-3,#888)', bd:'var(--line,#ddd)' },
+    warn:  { bg:'#FFF0C7', fg:'#8A5600', bd:'#E9C36D' },
+    muted: { bg:'#ECE8E1', fg:'#6F665E', bd:'#D3CCC2' },
   };
   const t = tones[state.tone] || tones.muted;
-  return (
-    <div title={state.hint} style={{ display:'inline-flex', flexDirection:'column', gap:2, padding:'5px 8px', borderRadius:9, background:t.bg, color:t.fg, border:`1px solid ${t.bd}`, minWidth:118 }}>
-      <span style={{ fontSize:10.5, fontWeight:900, lineHeight:1.1 }}>{state.label}</span>
-      <span style={{ fontSize:9.5, fontWeight:700, opacity:.78, lineHeight:1.15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:138 }}>{state.sub}</span>
-    </div>
-  );
+  return <div title={state.hint} style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 7px',borderRadius:8,background:t.bg,color:t.fg,border:`1px solid ${t.bd}`,maxWidth:148,minHeight:24}}><span style={{fontSize:9.5,fontWeight:900,whiteSpace:'nowrap'}}>{state.label}</span>{state.sub&&<span style={{fontSize:8.5,fontWeight:700,opacity:.78,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{state.sub}</span>}</div>;
 }
 
 function CertificadoCell({ certPago, certNum, estatus, onCrear, onVer }) {
   const state = certVisualState({ estatus, certPago, certNum });
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-start' }}>
-      <CertificadoEstadoBox state={state} />
-      {state.canVer && (
-        <button onClick={onVer} title="Buscar/abrir PDF existente. No genera copias nuevas." style={{ padding:'5px 9px', borderRadius:7, border:'1px solid #BFE4C3', background:'#E8F5E9', color:'#2E7D32', fontSize:11, fontWeight:800, cursor:'pointer', whiteSpace:'nowrap' }}>
-          Ver PDF
-        </button>
-      )}
-      {state.canCrear && (
-        <button onClick={onCrear} title="Crear certificado por primera vez" style={{
-          padding:'6px 10px', borderRadius:8, border:'1px solid #1565C0',
-          background:'#E3F2FD', color:'#1565C0', fontSize:11, fontWeight:800,
-          cursor:'pointer', whiteSpace:'nowrap',
-        }}>
-          Crear certificado
-        </button>
-      )}
-    </div>
-  );
+  return <div style={{display:'flex',gap:4,alignItems:'center',whiteSpace:'nowrap'}}><CertificadoEstadoBox state={state}/>{state.canVer&&<button onClick={onVer} title="Abrir PDF" aria-label="Abrir PDF" style={{width:27,height:27,borderRadius:7,border:'1px solid #9FD5AA',background:'#DDF3E2',color:'#176B2B',fontSize:10,fontWeight:900,cursor:'pointer'}}>PDF</button>}{state.canCrear&&<button onClick={onCrear} title="Crear certificado" aria-label="Crear certificado" style={{width:27,height:27,borderRadius:7,border:'1px solid #7EB4E2',background:'#E3F2FD',color:'#1565C0',fontSize:14,fontWeight:900,cursor:'pointer'}}>＋</button>}</div>;
 }
 
 function moraEstudiante(e = {}) {
@@ -1606,11 +1583,20 @@ function LeccionesChip({ dadas, total }) {
 // TABLA DE NIVEL
 // ─────────────────────────────────────────────────────────────────────────
 function rowBg(estatus, idx) {
-  if (estatus === 'APR') return 'rgba(76,175,80,0.07)';   // verde muy suave
-  if (estatus === 'CA')  return idx%2===0 ? 'white' : 'var(--surface, #FAFAF7)'; // normal
-  if (estatus === 'RI' || estatus === 'RJ') return 'rgba(0,0,0,0.03)'; // gris muy suave
-  if (estatus === 'REP') return 'rgba(232,55,42,0.05)';  // rojo muy suave
-  return idx%2===0 ? 'white' : 'var(--surface, #FAFAF7)';
+  if (estatus === 'APR' || estatus === 'CNV') return '#DDF3E2';
+  if (estatus === 'CA')  return idx%2===0 ? '#EDF6FF' : '#E5F1FC';
+  if (estatus === 'RI' || estatus === 'RJ' || estatus === 'RE') return '#E9EDF0';
+  if (estatus === 'REP') return '#FFE1E4';
+  if (estatus === 'PE') return '#F3F0EA';
+  return idx%2===0 ? 'white' : '#F8F6F2';
+}
+function rowAccent(estatus) {
+  if (estatus === 'APR' || estatus === 'CNV') return '#2E8B43';
+  if (estatus === 'CA') return '#2F78B7';
+  if (estatus === 'RI' || estatus === 'RJ' || estatus === 'RE') return '#607D8B';
+  if (estatus === 'REP') return '#C62828';
+  if (estatus === 'PE') return '#9A8F82';
+  return 'transparent';
 }
 
 function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, filtroOperativo }) {
@@ -1807,44 +1793,43 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                   if (onNavigate && e.grupo_actual) onNavigate('calendario_grupo', { grupo:e.grupo_actual });
                 };
                 return (
-                  <tr key={codigo + '-traslado-' + nivelKey + '-' + i} style={{ background:'linear-gradient(90deg,#F7F9FC,#FFF)', borderBottom:'1px solid var(--line,#EEE)' }}>
-                    <td style={{ padding:'10px',fontWeight:800,fontFamily:'var(--f-mono,monospace)',verticalAlign:'top' }}>{codigo}</td>
-                    <td style={{ padding:'10px',verticalAlign:'top' }}>
-                      <div style={{fontWeight:900,color:'var(--ink,#222)'}}>{nombre}</div>
-                      <div style={{display:'inline-flex',marginTop:6,padding:'4px 9px',borderRadius:999,background:'#FFF4E5',border:'1px solid #F2C57C',color:'#9A5B00',fontSize:9.5,fontWeight:900,letterSpacing:'.05em',textTransform:'uppercase'}}>{e.cintillo_registro || `Traslado al grupo ${e.grupo_actual}`}</div>
-                      <div style={{marginTop:5,fontSize:10.5,color:'var(--ink-3,#888)'}}>{cedula}{e.motivo_traslado?` · ${e.motivo_traslado}`:''}</div>
+                  <tr key={codigo + '-traslado-' + nivelKey + '-' + i} style={{ background:'#EEF2F6', borderBottom:'1px solid #CDD6DF', borderLeft:'4px solid #607D8B' }}>
+                    <td style={{ padding:'6px 8px',fontWeight:900,fontFamily:'var(--f-mono,monospace)',verticalAlign:'middle' }}>{codigo}</td>
+                    <td style={{ padding:'6px 8px',verticalAlign:'middle' }}>
+                      <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}}><span style={{fontWeight:900,color:'var(--ink,#222)',lineHeight:1.1}}>{nombre}</span><span style={{display:'inline-flex',padding:'2px 7px',borderRadius:999,background:'#FFF4E5',border:'1px solid #F2C57C',color:'#9A5B00',fontSize:8.5,fontWeight:900,letterSpacing:'.04em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{e.cintillo_registro || `Traslado al grupo ${e.grupo_actual}`}</span></div>
+                      <div style={{marginTop:2,fontSize:9.5,color:'var(--ink-3,#888)'}}>{cedula}{e.motivo_traslado?` · ${e.motivo_traslado}`:''}</div>
                     </td>
-                    <td style={{padding:'10px',verticalAlign:'top'}}>{convenio?<span style={{padding:'3px 9px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',fontSize:10,fontWeight:900}}>{convenio}</span>:'—'}</td>
-                    <td style={{padding:'10px',verticalAlign:'top'}}><span style={{display:'inline-flex',padding:'4px 9px',borderRadius:999,background:'#FFF4E5',color:'#9A5B00',fontSize:10,fontWeight:900}}>TRASLADO</span></td>
-                    <td style={{padding:'10px',verticalAlign:'top',color:'var(--ink-3,#777)',fontSize:11,lineHeight:1.45}}>La información financiera y la mora se consultan en el grupo actual.</td>
-                    <td style={{padding:'10px',verticalAlign:'top',color:'var(--ink-3,#999)'}}>—</td>
-                    <td style={{padding:'10px',verticalAlign:'top',color:'var(--ink-3,#999)'}}>—</td>
-                    <td style={{padding:'10px 8px',verticalAlign:'top'}}>
-                      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                        <button type="button" onClick={abrirConsultaIndividual} style={{padding:'6px 9px',borderRadius:7,border:'1px solid var(--line,#ddd)',background:'white',fontSize:10.5,fontWeight:800,cursor:'pointer'}}>⌕ Consulta individual</button>
-                        <button type="button" onClick={abrirGrupoActual} disabled={!e.grupo_actual} style={{padding:'6px 9px',borderRadius:7,border:'1px solid #C9D9F1',background:'#EEF4FF',color:'#244A7C',fontSize:10.5,fontWeight:800,cursor:e.grupo_actual?'pointer':'not-allowed'}}>🗓 Grupo actual</button>
+                    <td style={{padding:'5px 7px',verticalAlign:'middle'}}>{convenio?<span style={{padding:'3px 9px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',fontSize:10,fontWeight:900}}>{convenio}</span>:'—'}</td>
+                    <td style={{padding:'5px 7px',verticalAlign:'middle'}}><span style={{display:'inline-flex',padding:'4px 9px',borderRadius:999,background:'#FFF4E5',color:'#9A5B00',fontSize:10,fontWeight:900}}>TRASLADO</span></td>
+                    <td style={{padding:'5px 7px',verticalAlign:'middle',color:'var(--ink-3,#667)',fontSize:10.5,lineHeight:1.3}}>La información financiera y la mora se consultan en el grupo actual.</td>
+                    <td style={{padding:'5px 7px',verticalAlign:'middle',color:'var(--ink-3,#999)'}}>—</td>
+                    <td style={{padding:'5px 7px',verticalAlign:'middle',color:'var(--ink-3,#999)'}}>—</td>
+                    <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
+                      <div style={{display:'flex',gap:4,flexWrap:'nowrap'}}>
+                        <button type="button" onClick={abrirConsultaIndividual} style={{padding:'4px 6px',borderRadius:7,border:'1px solid var(--line,#ddd)',background:'white',fontSize:10.5,fontWeight:800,cursor:'pointer'}}>⌕ Consulta individual</button>
+                        <button type="button" onClick={abrirGrupoActual} disabled={!e.grupo_actual} style={{padding:'4px 6px',borderRadius:7,border:'1px solid #C9D9F1',background:'#EEF4FF',color:'#244A7C',fontSize:10.5,fontWeight:800,cursor:e.grupo_actual?'pointer':'not-allowed'}}>🗓 Grupo actual</button>
                       </div>
                     </td>
                   </tr>
                 );
               }
               return (
-                <tr key={codigo + '-' + i} style={{ background: rowBg(estatus, i), borderBottom:'1px solid var(--line, #EEE)' }}>
-                  <td style={{ padding:'10px 10px', fontWeight:800, fontFamily:'var(--f-mono, monospace)', color:'var(--ink,#222)', verticalAlign:'top' }}>{codigo}</td>
-                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, alignItems:'start' }}>
+                <tr key={codigo + '-' + i} style={{ background:rowBg(estatus,i), borderBottom:'1px solid #D8DDE2', borderLeft:`4px solid ${rowAccent(estatus)}` }}>
+                  <td style={{padding:'5px 7px',fontWeight:900,fontFamily:'var(--f-mono,monospace)',color:'var(--ink,#222)',verticalAlign:'middle'}}>{codigo}</td>
+                  <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:7,alignItems:'center'}}>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontWeight:800, color:'var(--ink,#222)', lineHeight:1.25 }}>{nombre}</div>
+                        <div style={{fontWeight:900,color:'var(--ink,#222)',lineHeight:1.15,fontSize:11.5}}>{nombre}</div>
                         {e.cintillo_registro && <div style={{display:'inline-flex',marginTop:5,padding:'3px 7px',borderRadius:999,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:9,fontWeight:900,letterSpacing:'.04em',textTransform:'uppercase'}}>{e.cintillo_registro}</div>}
-                        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:4 }}>
-                          <span style={{ color:'var(--ink-3,#888)', fontFamily:'var(--f-mono,monospace)', fontSize:10.5 }}>{cedula}</span>
+                        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:2 }}>
+                          <span style={{color:'var(--ink-3,#777)',fontFamily:'var(--f-mono,monospace)',fontSize:9.5}}>{cedula}</span>
                           {edad !== null && <PillMini label="Edad" value={`${edad}`} tone="muted" />}
                         </div>
                       </div>
                       <WhatsAppMini est={e} filtro={filtroOperativo} />
                     </div>
                   </td>
-                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                  <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
                     {convenio ? (
                       <span style={{
                         background: convenio==='CONAPE' ? '#E3F2FD' : convenio.toString().toUpperCase().includes('BECA') ? '#E8F5E9' : 'var(--surface, #F5F5F5)',
@@ -1855,7 +1840,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                       </span>
                     ) : <span style={{ color:'var(--ink-3, #999)', fontSize:11 }}>Regular</span>}
                   </td>
-                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                  <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
                     <EstadoBadge estado={estatus} />
                     {periodoTexto && (
                       <div style={{ fontSize:9.5, color:'var(--ink-3, #999)', marginTop:4, fontWeight:600, letterSpacing:'0.01em', whiteSpace:'nowrap' }}>
@@ -1863,17 +1848,16 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                       </div>
                     )}
                   </td>
-                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
-                    <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
+                  <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
+                    <div style={{ display:'flex', gap:4, flexWrap:'nowrap', alignItems:'center', whiteSpace:'nowrap' }}>
                       {estatus === 'PE'
                         ? <PillMini label="Mora" value="—" tone="muted" />
                         : <PillMini label="Mora" value={mora ? 'SI' : 'NO'} tone={mora ? 'bad' : 'ok'} />}
                       <PillMini label="Matr." value={matricula ? '✓' : '—'} tone={matricula ? 'ok' : 'muted'} />
                       <PillMini label="Cuotas" value={cuotasLabel} tone={cuotasPagadas >= cuotasEsperadas ? 'ok' : cuotasPagadas > 0 ? 'warn' : 'muted'} />
                     </div>
-                    <div style={{ marginTop:6 }}><CuotasChecks cuotas={cuotasPagadas} esperadas={cuotasEsperadas} /></div>
                   </td>
-                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                  <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
                     <CertificadoCell
                       certPago={certPago}
                       certNum={certNum}
@@ -1882,7 +1866,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                       onVer={() => onAbrirPanel && onAbrirPanel(e, 'documentos')}
                     />
                   </td>
-                  <td style={{ padding:'10px 10px', verticalAlign:'top' }}>
+                  <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
                     <span style={{
                       display:'inline-flex', minWidth:46, justifyContent:'center', padding:'4px 8px', borderRadius:999,
                       background: nota>=70 ? '#E8F5E9' : nota>0 ? '#FFEBEE' : 'var(--surface-2,#f8f8f8)',
@@ -1892,39 +1876,13 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                       {nota > 0 ? `${nota}%` : '—'}
                     </span>
                   </td>
-                  <td style={{ padding:'10px 8px', whiteSpace:'nowrap', verticalAlign:'top' }}>
-                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'pagos')} title="Ver ficha del estudiante" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>👤 Ficha</button>
-
-                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'seguimiento')} title="Abrir bitácora visual de seguimiento local" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid rgba(229,168,35,.35)', fontSize:11, cursor:'pointer', background:'color-mix(in srgb, var(--an-gold,#E5A823) 8%, white)', color:'#9A6200', fontWeight:800 }}>📝 Seg.</button>
-                      <button onClick={() => setModalEstatus({ estudiante: e, nivel: nivelKey })} title="Cambiar estatus" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>✏️ Estado</button>
-                      <button
-                        onClick={async () => {
-                          if (resyncEst?.loading) return;
-                          setResyncEst({ codigo, loading: true });
-                          const r = await resincronizarEstudianteIndividual(codigo);
-                          setResyncEst({ codigo, loading: false, ok: r.ok, error: r.error });
-                          setTimeout(() => setResyncEst(null), 3000);
-                        }}
-                        disabled={resyncEst?.codigo === codigo && resyncEst?.loading}
-                        title={
-                          resyncEst?.codigo === codigo && resyncEst.loading ? 'Sincronizando CONAPE…'
-                          : resyncEst?.codigo === codigo && resyncEst.ok ? 'CONAPE sincronizado'
-                          : resyncEst?.codigo === codigo && resyncEst.error ? ('Error: ' + resyncEst.error)
-                          : 'Resincronizar CONAPE individual'
-                        }
-                        style={{
-                          padding:'5px 8px', borderRadius:7,
-                          border:'1px solid ' + (resyncEst?.codigo === codigo && resyncEst?.ok ? '#2E7D32' : resyncEst?.codigo === codigo && resyncEst?.error ? '#C62828' : 'var(--border, #ddd)'),
-                          fontSize:11, fontWeight:700,
-                          cursor: resyncEst?.codigo === codigo && resyncEst?.loading ? 'wait' : 'pointer',
-                          background: resyncEst?.codigo === codigo && resyncEst?.ok ? '#E8F5E9' : resyncEst?.codigo === codigo && resyncEst?.error ? '#FFEBEE' : 'white',
-                        }}>
-                        <span style={{ display:'inline-block', animation: resyncEst?.codigo === codigo && resyncEst?.loading ? 'an-spin 0.9s linear infinite' : 'none' }}>
-                          {resyncEst?.codigo === codigo && resyncEst?.ok ? '✓ CONAPE' : resyncEst?.codigo === codigo && resyncEst?.error ? '⚠ CONAPE' : '↻ CONAPE'}
-                        </span>
-                      </button>
-                      <button onClick={() => abrirPago(e, nivelKey, onNavigate)} title="Aplicar pago" style={{ padding:'5px 8px', borderRadius:7, border:'1px solid var(--border, #ddd)', fontSize:11, cursor:'pointer', background:'white', fontWeight:700 }}>💳 Pago</button>
+                  <td style={{padding:'6px 7px',whiteSpace:'nowrap',verticalAlign:'middle'}}>
+                    <div style={{display:'flex',gap:4,flexWrap:'nowrap',alignItems:'center'}}>
+                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'pagos')} title="Ficha" aria-label="Ficha" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>👤</button>
+                      <button onClick={() => onAbrirPanel && onAbrirPanel(e, 'seguimiento')} title="Seguimiento" aria-label="Seguimiento" style={{width:29,height:29,borderRadius:7,border:'1px solid #E7C26B',fontSize:13,cursor:'pointer',background:'#FFF6D8'}}>📝</button>
+                      <button onClick={() => setModalEstatus({ estudiante:e, nivel:nivelKey })} title="Cambiar estado" aria-label="Cambiar estado" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>✏️</button>
+                      <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.error});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
+                      <button onClick={() => abrirPago(e,nivelKey,onNavigate)} title="Aplicar pago" aria-label="Aplicar pago" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>💳</button>
                     </div>
                   </td>
                 </tr>
@@ -4227,16 +4185,17 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
     {toast&&<div style={{position:'fixed',right:22,bottom:22,zIndex:2600,padding:'11px 15px',borderRadius:10,background:toast.startsWith('CONAPE quedó')?'#B42318':'#2E7D32',color:'white',fontSize:12,fontWeight:900,boxShadow:'0 8px 25px rgba(0,0,0,.24)'}}>{toast}</div>}
     <div style={{background:'white',border:'1px solid var(--line,#e4ddd5)',borderRadius:14,padding:'16px 18px',marginBottom:14,boxShadow:'0 8px 22px rgba(20,33,61,.05)'}}><div style={{display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap',alignItems:'flex-start'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.16em',textTransform:'uppercase',color:'var(--ink-3,#8b8178)'}}>Expediente individual</div><div style={{fontFamily:'var(--f-serif,serif)',fontSize:25,fontWeight:600,color:'var(--an-navy,#14213D)',marginTop:3}}>{nombre}</div><div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:7,fontSize:11.5,color:'var(--ink-2,#665f58)'}}><span>Estudiante: <strong>{codigo}</strong></span>{cedula&&<span>Cédula: <strong>{cedula}</strong></span>}<span>Grupo actual: <strong>{grupoActual}</strong></span><span>Convenio actual: <strong>{convenio}</strong></span>{telefono&&<span>Teléfono: <strong>{telefono}</strong></span>}{correo&&<span>Correo: <strong>{correo}</strong></span>}</div></div><div style={{display:'flex',gap:8,alignItems:'stretch',flexWrap:'wrap'}}><div style={{minWidth:118,padding:'10px 12px',borderRadius:10,background:'#F7F9FC',border:'1px solid #DCE5F0',textAlign:'center'}}><div style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'#64748B'}}>Asistencia total</div><div style={{marginTop:3,fontFamily:'var(--f-serif,serif)',fontSize:23,fontWeight:700,color:pctGlobal==null?'#64748B':(pctGlobal>=70?'#2E7D32':'#C62828')}}>{pctGlobal==null?'—':`${pctGlobal}%`}</div><div style={{fontSize:9.5,color:'#64748B'}}>{totalAsis?`${totalPres}/${totalAsis} registros`:'Sin registros'}</div></div><AkActionButton onClick={()=>setHistorial(true)}>🕘 Historial</AkActionButton><button type="button" onClick={onClose} style={{padding:'9px 13px',borderRadius:10,border:'1px solid var(--line,#ddd)',background:'white',color:'var(--an-navy,#14213D)',fontWeight:900,cursor:'pointer',alignSelf:'stretch'}}>Cerrar consulta</button></div></div></div>
     <div style={{margin:'0 2px 9px',fontSize:11,color:'var(--ink-3,#81776f)'}}>Cada nivel conserva su grupo, periodo, año y convenio histórico. Tocá un nivel para ver pagos y acciones administrativas.</div>
-    <div style={{display:'grid',gap:10}}>{orden.map(nivel=>{const info=niveles[nivel]||{},pendienteNivel=pend[nivel]||{},estatus=agIndUpper(info.estatus)||'SIN REGISTRO',tone=agIndStatusTone(estatus),grupo=agIndNorm(info.grupo)||'—',notaNum=info.nota===''||info.nota==null||isNaN(Number(info.nota))?null:Number(info.nota),asis=agIndAsistenciaNivel(estado.asistencia,nivel,grupo),moroso=agIndMoroso(info,pendienteNivel),color=NIVEL_COLOR_P[nivel]||'#8B8178',movsNivel=movimientos.filter(m=>m.nivel===nivel),resumen=agIndResumenMovimientos(movsNivel,pendienteNivel),abierto=nivelAbierto===nivel,periodoCorto=agIndNorm(info.periodo_corto)||'PERIODO SIN DEFINIR',periodoLargo=agIndNorm(info.periodo_largo),convNivel=agIndNorm(info.convenio)||convenio,intentos=Array.isArray(info.intentos)?info.intentos:[],grupoActualEst=agIndNorm(est.GRUPO||est.grupo||estudianteBase?.grupo),registroOtroGrupo=!!grupoActualEst&&grupo!=='—'&&agIndUpper(grupo)!==agIndUpper(grupoActualEst),gruposPagoAplicados=Array.isArray(pendienteNivel?.grupos_pago_aplicados)?pendienteNivel.grupos_pago_aplicados:[],pagosConvalidados=!!pendienteNivel?.pagos_convalidados;
+    <div style={{display:'grid',gap:10}}>{orden.map(nivel=>{const info=niveles[nivel]||{},pendienteNivel=pend[nivel]||{},estatus=agIndUpper(info.estatus)||'SIN REGISTRO',tone=agIndStatusTone(estatus),grupo=agIndNorm(info.grupo)||'—',notaNum=info.nota===''||info.nota==null||isNaN(Number(info.nota))?null:Number(info.nota),asis=agIndAsistenciaNivel(estado.asistencia,nivel,grupo),moroso=agIndMoroso(info,pendienteNivel),color=NIVEL_COLOR_P[nivel]||'#8B8178',movsNivel=movimientos.filter(m=>m.nivel===nivel),resumen=agIndResumenMovimientos(movsNivel,pendienteNivel),abierto=nivelAbierto===nivel,periodoCorto=agIndNorm(info.periodo_corto)||'PERIODO SIN DEFINIR',periodoLargo=agIndNorm(info.periodo_largo),convNivel=agIndNorm(info.convenio)||convenio,intentos=Array.isArray(info.intentos)?info.intentos:[],trasladoDesde=agIndNorm(info.traslado_desde),gruposPagoAplicados=Array.isArray(pendienteNivel?.grupos_pago_aplicados)?pendienteNivel.grupos_pago_aplicados:[],pagosConvalidados=!!pendienteNivel?.pagos_convalidados;
       return <div key={nivel} style={{background:'white',border:'1px solid var(--line,#e4ddd5)',borderLeft:`5px solid ${color}`,borderRadius:12,boxShadow:abierto?'0 10px 24px rgba(20,33,61,.09)':'0 4px 12px rgba(20,33,61,.035)',overflow:'hidden'}}>
         <button type="button" onClick={()=>setNivelAbierto(abierto?'':nivel)} aria-expanded={abierto} style={{width:'100%',border:'none',background:'white',cursor:'pointer',padding:'13px 14px',display:'grid',gridTemplateColumns:'minmax(155px,1.05fr) minmax(170px,.9fr) minmax(180px,1fr) repeat(3,minmax(92px,.65fr)) 28px',gap:9,alignItems:'center',textAlign:'left',fontFamily:'inherit',overflowX:'auto'}}>
-          <div><div style={{fontSize:15,fontWeight:900,color}}>{NIVEL_LABEL_P[nivel]}</div><div style={{fontSize:10.5,color:'var(--ink-3,#888)',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{registroOtroGrupo&&<div style={{display:'inline-flex',marginTop:5,padding:'3px 7px',borderRadius:999,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:8.5,fontWeight:900,letterSpacing:'.04em',textTransform:'uppercase'}}>Registro en grupo {agIndGrupoCorto(grupo)}</div>}{intentos.length>1&&<div style={{fontSize:9,color:'#9A5B00',fontWeight:900,marginTop:2}}>{intentos.length} intentos registrados</div>}</div>
+          <div><div style={{fontSize:15,fontWeight:900,color}}>{NIVEL_LABEL_P[nivel]}</div><div style={{fontSize:10.5,color:'var(--ink-3,#888)',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{trasladoDesde&&<div style={{display:'inline-flex',marginTop:5,padding:'3px 7px',borderRadius:999,background:'#FFF0C7',border:'1px solid #E9C36D',color:'#8A5600',fontSize:8.5,fontWeight:900,letterSpacing:'.04em',textTransform:'uppercase'}}>Traslado desde {agIndGrupoCorto(trasladoDesde)}</div>}{intentos.length>1&&<div style={{fontSize:9,color:'#9A5B00',fontWeight:900,marginTop:2}}>{intentos.length} intentos registrados</div>}</div>
           <div><div style={{fontSize:11,fontWeight:900,color:'#14213D'}}>{periodoCorto}</div><div style={{fontSize:9.5,color:'#667085',marginTop:2}}>{periodoLargo||'Periodo del grupo'}</div></div>
           <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:tone.bg,color:tone.fg,border:`1px solid ${tone.bd}`,fontSize:10,fontWeight:900}}>{estatus}</span><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:moroso?'#FFEBEE':'#E8F5E9',color:moroso?'#C62828':'#2E7D32',border:`1px solid ${moroso?'#F4B7B7':'#BFE4C3'}`,fontSize:10,fontWeight:900}}>MOROSO {moroso?'SÍ':'NO'}</span><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',border:'1px solid #C9D9F1',fontSize:10,fontWeight:900}}>{convNivel}</span></div>
           <AgIndMetric label="Nota" value={notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)} warn={notaNum!=null&&notaNum<70}/><AgIndMetric label="Asistencia" value={asis.pct==null?'—':`${asis.pct}%`} warn={asis.pct!=null&&asis.pct<70} sub={asis.total?`${asis.presentes}/${asis.total}`:''}/><AgIndMetric label="Certificado" value={agIndNorm(info.reg_certificados||info.cert_num)||'—'}/><span style={{width:26,height:26,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:abierto?color:'#F4F1EC',color:abierto?'white':'#6B625A',fontSize:15,fontWeight:900,transform:abierto?'rotate(180deg)':'none'}}>⌄</span>
         </button>
         {abierto&&<div style={{padding:'0 14px 15px',borderTop:'1px solid #EEE8E1',background:'linear-gradient(180deg,#FBFAF8,#fff)'}}>
-          <div style={{padding:'12px 0 10px',display:'flex',gap:7,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.11em',color:'#81776F',marginRight:3}}>Acciones</span><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton onClick={()=>abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton onClick={()=>setModalCambio({nivel,info})}>🔄 Cambio de grupo</AkActionButton><AkActionButton onClick={()=>setHistorial(true)}>🕘 Historial</AkActionButton></div>
+          <div style={{padding:'8px 0 5px',fontSize:9.5,fontWeight:800,color:estatus==='CA'?'#256B36':'#7A6250'}}>Cambio de grupo: {estatus==='CA'?'habilitado para este nivel CA':'bloqueado; solo se permite en el nivel que está cursando (CA)'}</div>
+          <div style={{padding:'5px 0 8px',display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.11em',color:'#81776F',marginRight:3}}>Acciones</span><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton onClick={()=>abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={estatus!=='CA'} title={estatus==='CA'?'Trasladar el nivel en curso':'Solo puede trasladarse un nivel con estado CA'} onClick={()=>estatus==='CA'&&setModalCambio({nivel,info})}>🔄 Cambio de grupo</AkActionButton><AkActionButton onClick={()=>setHistorial(true)}>🕘 Historial</AkActionButton></div>
           {pagosConvalidados&&<div style={{margin:'0 0 10px',padding:'9px 11px',borderRadius:10,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:10.5,fontWeight:750,lineHeight:1.45}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Los pagos conservan su recibo original y se aplican a ${agIndGrupoCorto(grupo)}.`}</div>}
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(150px,1fr))',gap:9,padding:'3px 0 11px',overflowX:'auto'}}><AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} color={color}/><AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} color={color}/><AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} color={color}/><AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente+resumen.cuotasPendientes+resumen.certificadoPendiente} color={color}/></div>
           {intentos.length>1&&<div style={{marginBottom:10,padding:'10px 11px',borderRadius:10,background:'#FFF7E6',border:'1px solid #F0D39A'}}><div style={{fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'#7A4A00',marginBottom:5}}>Historial del nivel</div>{intentos.map((it,i)=><div key={it.intento_id||i} style={{fontSize:10.5,color:'#5F4630',marginTop:i?4:0}}><b>{it.etiqueta}</b> · {it.grupo||'—'} · {it.estatus||'—'} {it.periodo_info?.corto?`· ${it.periodo_info.corto}`:''}</div>)}</div>}

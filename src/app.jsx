@@ -62,14 +62,14 @@ const F96_LAZY = {
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AI','src/admin_master_dashboard.jsx?v=F98.4Z6AI'],
-  admin_students: ['src/admin_students.jsx?v=F98.4Z6AS'],
+  admin_students: ['src/admin_students.jsx?v=F98.4Z6AT'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AS'],
   cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AS','src/calendario_grupo.jsx?v=F98.4Z6AS'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AT','src/calendario_grupo.jsx?v=F98.4Z6AS'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
-  buscador: ['src/admin_students.jsx?v=F98.4Z6AS','src/buscador.jsx?v=F98.4Z6AS'],
+  buscador: ['src/admin_students.jsx?v=F98.4Z6AT','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
@@ -798,6 +798,27 @@ function App() {
   useEffect(() => {
     scrollCampusTopF91();
   }, [active]);
+
+  // F98.4-Z6-AT: corrección idempotente de dos traslados detectados en QA.
+  // Se ejecuta una sola vez al ingresar como superadmin y deja auditoría en el backend.
+  useEffect(() => {
+    if (rolReal !== 'superadmin') return undefined;
+    let live = true;
+    postAppF87('aplicarCorreccionTrasladosAT', { confirmacion:'AT_17115_17106' }, 90000)
+      .then(r => {
+        if (!live || !r) return;
+        if (r.ok && r.aplicado) {
+          setToastMsg('Corrección AT aplicada: 17115 y 17106 restaurados. El Campus se recargará una vez.');
+          try { sessionStorage.setItem('an_at_repair_done','1'); } catch (_) {}
+          setTimeout(() => { if (live) window.location.reload(); }, 1800);
+        } else if (!r.ok) {
+          setToastMsg('Corrección AT pendiente: ' + (r.error || 'revisar Apps Script'));
+          setTimeout(() => live && setToastMsg(''), 6500);
+        }
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [rolReal]);
 
   // F98.4-A: atrás/adelante conserva módulo y pestaña del estudiante.
   useEffect(() => {
