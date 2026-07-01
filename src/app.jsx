@@ -65,13 +65,13 @@ const F96_LAZY = {
   admin_students: ['src/admin_students.jsx?v=F98.4Z6AO'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
-  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AN'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AN','src/cronograma_grupo.jsx?v=F98.4Z6AN'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AN','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AO','src/calendario_grupo.jsx?v=F98.4Z6AN'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AP'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AP','src/cronograma_grupo.jsx?v=F98.4Z6AN'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AP','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AO','src/calendario_grupo.jsx?v=F98.4Z6AN'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F98.4Z6AO','src/buscador.jsx?v=F98.4Z6AN'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
-  aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AK'],
+  aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6O','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
@@ -81,7 +81,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AN','src/cronograma_grupo.jsx?v=F98.4Z6AN',
+    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AP','src/cronograma_grupo.jsx?v=F98.4Z6AN',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [

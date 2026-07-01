@@ -1,7 +1,7 @@
 /* global React */
 // ─────────────────────────────────────────────────────────────────────────
 // Vista "Todos los grupos" — solo admin / superadmin
-// F98.4-Z6-AH · calendario superadmin: aperturas operativas B1 + selección por grupo
+// F98.4-Z6-AP · calendario superadmin + mora por POST autenticado
 // Se monta dentro de CronogramaGrupo cuando codGrupo === '__TODOS__'.
 //
 // Switch SEMANA / MES. Las lecciones de TODOS los grupos activos se apilan
@@ -305,34 +305,25 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
   const [moraError,   setMoraError]   = React.useState(null);
   const [moraUnsupported, setMoraUnsupported] = React.useState(false);
 
-  const cargarMora = React.useCallback(() => {
+  const cargarMora = React.useCallback(async () => {
     setMoraLoading(true); setMoraError(null); setMoraUnsupported(false);
-    return fetch(`${TODOS_SCRIPT_URL}?fn=getMoraGrupos`)
-      .then(r => r.json())
-      .then(d => {
-        if (d?.ok && d.grupos && typeof d.grupos === 'object') {
-          const m = new Map();
-          for (const code of Object.keys(d.grupos)) m.set(code, d.grupos[code]);
-          setMoraMap(m);
-          setMoraFecha(d.actualizado || null);
-        } else {
-          const err = d?.error || 'Sin caché de mora';
-          if (/GET no reconocida|getMoraGrupos/i.test(err)) {
-            // Este backend no trae endpoint de mora global. No debe verse como
-            // error rojo ni bloquear el calendario.
-            setMoraUnsupported(true);
-            setMoraError(null);
-          } else {
-            setMoraError(err);
-          }
-          setMoraMap(null);
-        }
-      })
-      .catch(e => {
-        setMoraError('Error de red al leer mora');
+    try {
+      const d = await todosPost('getMoraGrupos', {}, 25000);
+      if (d?.ok && d.grupos && typeof d.grupos === 'object') {
+        const m = new Map();
+        for (const code of Object.keys(d.grupos)) m.set(code, d.grupos[code]);
+        setMoraMap(m);
+        setMoraFecha(d.actualizado || null);
+      } else {
         setMoraMap(null);
-      })
-      .finally(() => setMoraLoading(false));
+        setMoraError(d?.error || 'Sin caché de mora');
+      }
+    } catch (e) {
+      setMoraMap(null);
+      setMoraError(e?.message || 'Error de red al leer mora');
+    } finally {
+      setMoraLoading(false);
+    }
   }, []);
 
   React.useEffect(() => { cargarMora(); }, [cargarMora]);
@@ -341,15 +332,11 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
     if (moraUpdating) return;
     setMoraUpdating(true); setMoraError(null);
     try {
-      const r = await fetch(TODOS_SCRIPT_URL, {
-        method: 'POST',
-        body: new URLSearchParams({ fn: 'actualizarMoraCache' }),
-      });
-      const d = await r.json();
+      const d = await todosPost('actualizarMoraCache', {}, 120000);
       if (!d?.ok) throw new Error(d?.error || 'Falló actualización');
       await cargarMora();
     } catch (e) {
-      setMoraError('No se pudo actualizar la mora, reintentá');
+      setMoraError(e?.message || 'No se pudo actualizar la mora, reintentá');
     } finally {
       setMoraUpdating(false);
     }

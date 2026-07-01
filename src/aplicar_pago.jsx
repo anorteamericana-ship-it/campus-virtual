@@ -1,4 +1,4 @@
-// F98.4-Z6-AK · Otros pagos configurables y retorno al panel
+// F98.4-Z6-AP · pagos idempotentes, respuesta segura y validación backend
 /* global React, PageHeader */
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -17,21 +17,43 @@ const SCRIPT_URL_AP = window.APPS_SCRIPT_URL;
 //     getProspectoDetalle → postVentas) y deja de exponer el token.
 //   • Content-Type text/plain;charset=utf-8 esquiva el preflight CORS; Apps
 //     Script lee el JSON en e.postData.contents igual.
-async function postAP(payload) {
-  // FIX-ROUTING-POST-APPS-SCRIPT-001: el Apps Script enruta por e.parameter.fn,
-  // así que el ?fn= DEBE conservarse en la URL (sin él → "Función POST no
-  // reconocida: getEstudiante"). Sigue siendo POST text/plain; el token NO va en
-  // la URL: token y datos viajan en el body.
+async function postAP(payload, timeoutMs = 45000) {
   const fn = (payload && payload.fn) || '';
-  const res = await fetch(`${SCRIPT_URL_AP}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      token: window.getSessionToken ? window.getSessionToken() : '',
-      ...payload,
-    }),
-  });
-  return await res.json();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${SCRIPT_URL_AP}?fn=${encodeURIComponent(fn)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        token: window.getSessionToken ? window.getSessionToken() : '',
+        ...payload,
+      }),
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: controller ? controller.signal : undefined,
+    });
+    const raw = await res.text();
+    const text = String(raw || '').trim();
+    if (!text) throw new Error(`El backend no devolvió contenido en ${fn}.`);
+    if (/^<!doctype\s+html|^<html/i.test(text)) {
+      throw new Error('Apps Script devolvió una página HTML. Revisá la implementación publicada y la sesión.');
+    }
+    let data;
+    try { data = JSON.parse(text); }
+    catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+    if (!res.ok) throw new Error(data?.error || data?.mensaje || `HTTP ${res.status}`);
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`El backend tardó demasiado en responder (${fn}).`);
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+function crearRequestIdPagoAP() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return `PAY-${window.crypto.randomUUID()}`;
+  return `PAY-${Date.now()}-${Math.random().toString(36).slice(2,12)}`;
 }
 
 const NIVEL_COLOR_A = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -127,8 +149,9 @@ function PanelResumen({ est, nivel, comprobante, totalAplicar }) {
 }
 
 // ── Fila de rubro con stepper de cantidad ────────────────────────────────
-function RubroRow({ label, monto, qty, maxQty, onQty }) {
-  const subtotal = qty * monto;
+function RubroRow({ label, monto, qty, maxQty, onQty, subtotalMax }) {
+  const subtotalBruto = qty * monto;
+  const subtotal = Number.isFinite(Number(subtotalMax)) ? Math.min(subtotalBruto, Number(subtotalMax)) : subtotalBruto;
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto auto', gap:12, alignItems:'center', padding:'12px 16px', background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'var(--r-md)' }}>
       <div>
@@ -414,13 +437,19 @@ function Paso4AP({
 
   // Cantidad realmente pendiente del intento seleccionado. Evita cobrar de más
   // cuando ya existen una o más cuotas aplicadas en ese mismo grupo/intento.
+  const cuotaPendienteTotal = Number(pendNivel.cuotas_pend || 0);
   const nCuotasPeriodo = Number(pendNivel.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
-  const nCuotas = montoCuota > 0 ? Math.min(nCuotasPeriodo, Math.ceil(Number(pendNivel.cuotas_pend || 0) / montoCuota)) : 0;
+  const nCuotas = montoCuota > 0 ? Math.min(nCuotasPeriodo, Math.ceil(cuotaPendienteTotal / montoCuota)) : 0;
+  const subtotalCuotas = Math.min(qCuota * montoCuota, cuotaPendienteTotal);
 
   const [cargandoApl, setCargandoApl] = React.useState(false);
   const [errLocal, setErrLocal] = React.useState('');
+  const requestIdRef = React.useRef('');
+  React.useEffect(() => {
+    requestIdRef.current = '';
+  }, [est?.CODIGO, est?.rec_m, niv, compr?.doc, qMat, qCuota, qCert, qOtro]);
 
-  const total       = qMat*montoMat + qCuota*montoCuota + qCert*montoCert + qOtro*montoOtro;
+  const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
   const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl;
 
@@ -437,7 +466,7 @@ function Paso4AP({
       const grupoActual = estData?.niveles?.[niv]?.grupo || estData?.grupo || '';
       const rubros = [
         { tipo:'MATRICULA',   nivel:niv, monto:qMat*montoMat,     grupo: grupoActual },
-        { tipo:'CUOTA',       nivel:niv, monto:qCuota*montoCuota, grupo: grupoActual },
+        { tipo:'CUOTA',       nivel:niv, monto:subtotalCuotas, grupo: grupoActual },
         { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: grupoActual },
         { tipo:'OTRO', nivel:niv, monto:qOtro*montoOtro, grupo: grupoActual, codigo_precio:cargoOtro?.CODIGO_PRECIO || '', concepto:cargoOtro?.CONCEPTO || 'OTRO PAGO', cargo_id:cargoOtro?.CARGO_ID || '' },
       ].filter(r => r.monto > 0);
@@ -446,14 +475,17 @@ function Paso4AP({
       // explícito (vía postAP) para garantizar que no se dispare un preflight
       // CORS. El shape del body NO cambia (doc, monto_total, cod_estudiante,
       // rubros); el token sigue viajando en el body.
+      if (!requestIdRef.current) requestIdRef.current = crearRequestIdPagoAP();
       const data = await postAP({
         fn:             'aplicarPago',
+        request_id:     requestIdRef.current,
         doc:            compr.doc,
         monto_total:    total,
         cod_estudiante: est?.CODIGO || est?.rec_m,
         rubros,
       });
       if (!data.ok) { setErrLocal(data.error || 'Error al aplicar el pago'); return; }
+      requestIdRef.current = '';
       // v4.15: si CONAPE no se sincronizó lo dejamos en la consola — y además lo
       // pasamos a la pantalla de confirmación para que el admin lo vea.
       const conapeSyncFallo = data.conape_sync === false;
@@ -559,7 +591,7 @@ function Paso4AP({
       {/* Rubros */}
       <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
-        {montoCuota > 0 && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} />}
+        {montoCuota > 0 && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
         {montoCert  > 0 && <RubroRow label="Certificado del nivel"            monto={montoCert}  qty={qCert}  maxQty={1}       onQty={setQCert}  />}
         {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
         {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoOtro === 0 && (
