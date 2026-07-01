@@ -2154,7 +2154,8 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       const data = await postAdminStudents('sincronizarCONAPE', { cod_grupo: grupoSel });
       if (data.ok) {
         const n = data.total ?? data.actualizados ?? data.estudiantes ?? data.count ?? 0;
-        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'}` });
+        const caConNota = Number(data.niveles_ca_con_nota || 0);
+        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'}${caConNota ? ` · ${caConNota} CA con nota vigente` : ''}` });
         setRefreshKey(k => k + 1);
       } else {
         setToast({ tipo: 'err', msg: data.error || 'Error al sincronizar CONAPE' });
@@ -2583,6 +2584,58 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
               </button>
             )}
           </div>}
+
+          {embebidoCalGrupo && (
+            <div style={{
+              margin:'0 0 14px', padding:'12px 14px',
+              display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap',
+              background:'linear-gradient(135deg,color-mix(in srgb,var(--an-navy,#14213D) 7%,white),#fff)',
+              border:'1px solid var(--line,#e4ddd4)', borderRadius:12,
+              boxShadow:'0 8px 20px rgba(20,33,61,.05)'
+            }}>
+              <div style={{minWidth:240,flex:'1 1 360px'}}>
+                <div style={{fontSize:10,fontWeight:900,letterSpacing:'.15em',textTransform:'uppercase',color:'var(--ink-3,#8b8178)'}}>Herramientas del grupo</div>
+                <div style={{fontSize:13,fontWeight:800,color:'var(--an-navy,#14213D)',marginTop:3}}>
+                  {grupoSel} · gestión completa de estudiantes
+                </div>
+                <div style={{fontSize:11.5,color:'var(--ink-2,#6f665e)',marginTop:3,lineHeight:1.45}}>
+                  Incluye ficha, estado, pagos, cambio de grupo, historial, certificados y sincronización CONAPE individual o masiva.
+                </div>
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}>
+                <button
+                  type="button"
+                  onClick={() => setRefreshKey(k => k + 1)}
+                  disabled={loadingRad}
+                  style={{
+                    padding:'8px 12px',borderRadius:8,border:'1px solid var(--line,#ddd)',
+                    background:'white',color:'var(--an-navy,#14213D)',fontSize:11.5,fontWeight:900,
+                    cursor:loadingRad?'wait':'pointer',fontFamily:'inherit'
+                  }}
+                >↻ Actualizar lista</button>
+                {esAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleSyncConape}
+                    disabled={syncConape.loading}
+                    title="Actualizar en CONAPE a todos los estudiantes con huella en este grupo"
+                    style={{
+                      display:'inline-flex',alignItems:'center',gap:7,padding:'8px 13px',borderRadius:8,
+                      border:'1px solid color-mix(in srgb,var(--an-navy,#14213D) 40%,white)',
+                      background:syncConape.loading?'#E7ECF3':'var(--an-navy,#14213D)',color:syncConape.loading?'#53627A':'white',
+                      fontSize:11.5,fontWeight:900,cursor:syncConape.loading?'wait':'pointer',fontFamily:'inherit',whiteSpace:'nowrap'
+                    }}
+                  >
+                    <span style={{display:'inline-block',animation:syncConape.loading?'an-spin .9s linear infinite':'none'}}>↻</span>
+                    {syncConape.loading?'Sincronizando grupo…':'Sync CONAPE · toda la lista'}
+                  </button>
+                )}
+              </div>
+              <div style={{flexBasis:'100%',fontSize:10.8,color:'var(--ink-3,#8b8178)',lineHeight:1.45}}>
+                Los estudiantes en <strong>CA</strong> conservan el estado CA y envían a CONAPE la nota vigente registrada en ESTATUS.
+              </div>
+            </div>
+          )}
 
           {/* Secciones por nivel. En modo calgrupo inicia exactamente en la vista previa de cierre. */}
           {loadingRad ? (
