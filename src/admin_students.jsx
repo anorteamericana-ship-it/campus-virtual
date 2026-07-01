@@ -1797,6 +1797,37 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const certNum   = certRegistroEstudiante(e);
               const nota      = Number(e.nota || 0);
               const cuotasLabel = cuotasPagadas == null ? '—' : `${cuotasPagadas}/${cuotasEsperadas}`;
+              const esTraslado = !!e.es_traslado;
+              if (esTraslado) {
+                const abrirConsultaIndividual = () => {
+                  try { sessionStorage.setItem('an_consulta_prefill', JSON.stringify({ codigo, nombre })); } catch (_) {}
+                  if (onNavigate) onNavigate('buscador');
+                };
+                const abrirGrupoActual = () => {
+                  if (onNavigate && e.grupo_actual) onNavigate('calendario_grupo', { grupo:e.grupo_actual });
+                };
+                return (
+                  <tr key={codigo + '-traslado-' + nivelKey + '-' + i} style={{ background:'linear-gradient(90deg,#F7F9FC,#FFF)', borderBottom:'1px solid var(--line,#EEE)' }}>
+                    <td style={{ padding:'10px',fontWeight:800,fontFamily:'var(--f-mono,monospace)',verticalAlign:'top' }}>{codigo}</td>
+                    <td style={{ padding:'10px',verticalAlign:'top' }}>
+                      <div style={{fontWeight:900,color:'var(--ink,#222)'}}>{nombre}</div>
+                      <div style={{display:'inline-flex',marginTop:6,padding:'4px 9px',borderRadius:999,background:'#FFF4E5',border:'1px solid #F2C57C',color:'#9A5B00',fontSize:9.5,fontWeight:900,letterSpacing:'.05em',textTransform:'uppercase'}}>{e.cintillo_registro || `Traslado al grupo ${e.grupo_actual}`}</div>
+                      <div style={{marginTop:5,fontSize:10.5,color:'var(--ink-3,#888)'}}>{cedula}{e.motivo_traslado?` · ${e.motivo_traslado}`:''}</div>
+                    </td>
+                    <td style={{padding:'10px',verticalAlign:'top'}}>{convenio?<span style={{padding:'3px 9px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',fontSize:10,fontWeight:900}}>{convenio}</span>:'—'}</td>
+                    <td style={{padding:'10px',verticalAlign:'top'}}><span style={{display:'inline-flex',padding:'4px 9px',borderRadius:999,background:'#FFF4E5',color:'#9A5B00',fontSize:10,fontWeight:900}}>TRASLADO</span></td>
+                    <td style={{padding:'10px',verticalAlign:'top',color:'var(--ink-3,#777)',fontSize:11,lineHeight:1.45}}>La información financiera y la mora se consultan en el grupo actual.</td>
+                    <td style={{padding:'10px',verticalAlign:'top',color:'var(--ink-3,#999)'}}>—</td>
+                    <td style={{padding:'10px',verticalAlign:'top',color:'var(--ink-3,#999)'}}>—</td>
+                    <td style={{padding:'10px 8px',verticalAlign:'top'}}>
+                      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                        <button type="button" onClick={abrirConsultaIndividual} style={{padding:'6px 9px',borderRadius:7,border:'1px solid var(--line,#ddd)',background:'white',fontSize:10.5,fontWeight:800,cursor:'pointer'}}>⌕ Consulta individual</button>
+                        <button type="button" onClick={abrirGrupoActual} disabled={!e.grupo_actual} style={{padding:'6px 9px',borderRadius:7,border:'1px solid #C9D9F1',background:'#EEF4FF',color:'#244A7C',fontSize:10.5,fontWeight:800,cursor:e.grupo_actual?'pointer':'not-allowed'}}>🗓 Grupo actual</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
               return (
                 <tr key={codigo + '-' + i} style={{ background: rowBg(estatus, i), borderBottom:'1px solid var(--line, #EEE)' }}>
                   <td style={{ padding:'10px 10px', fontWeight:800, fontFamily:'var(--f-mono, monospace)', color:'var(--ink,#222)', verticalAlign:'top' }}>{codigo}</td>

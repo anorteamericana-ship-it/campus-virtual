@@ -429,13 +429,13 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
         { id: 'dashboard', label: 'Panel Maestro', icon: 'chart' },
         { id: 'buscador', label: 'Consulta individual', icon: 'search' },
+        { id: 'calendario_grupo', label: 'Calendario académico', icon: 'calendar' },
         { id: 'supervision', label: 'Supervisión', icon: 'bell' },
       ],
     },
     {
       label: 'Gestión académica',
       items: [
-        { id: 'calendario_grupo', label: 'Calendario académico', icon: 'calendar' },
         { id: 'grupos', label: 'Grupos', icon: 'roster' },
         { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
         { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },

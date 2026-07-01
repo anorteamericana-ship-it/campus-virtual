@@ -93,6 +93,29 @@ function BuscadorEstudiantes({ onNavigate }) {
   const [error,setError] = React.useState('');
   const [seleccionado,setSeleccionado] = React.useState(null);
   const seqRef = React.useRef(0);
+  const prefillRef = React.useRef(null);
+
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('an_consulta_prefill');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      const codigo = String(data?.codigo || '').trim();
+      if (!codigo) return;
+      prefillRef.current = codigo;
+      setQuery(codigo);
+    } catch (_) {}
+  }, []);
+
+  React.useEffect(() => {
+    const codigo = String(prefillRef.current || '').trim();
+    if (!codigo || seleccionado || !resultados.length) return;
+    const exacto = resultados.find(x => String(x?.codigo || x?.rec_m || '').trim() === codigo);
+    if (!exacto) return;
+    prefillRef.current = null;
+    try { sessionStorage.removeItem('an_consulta_prefill'); } catch (_) {}
+    setSeleccionado(exacto);
+  }, [resultados, seleccionado]);
 
   React.useEffect(() => {
     if (seleccionado) return undefined;

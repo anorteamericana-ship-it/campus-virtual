@@ -764,6 +764,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                       background:`color-mix(in srgb, ${color} 14%, white)`,
                       color, letterSpacing:'0.08em',
                     }}>{g.esApertura ? 'APERT' : g.nivelId}</span>
+                    {g.estadoGrupo && <span style={{fontSize:7.5,fontWeight:900,padding:'2px 5px',borderRadius:999,background:'var(--surface-2)',border:'1px solid var(--line)',color:'var(--ink-3)',letterSpacing:'.05em',textTransform:'uppercase'}}>{g.estadoGrupo}</span>}
                     <span style={{
                       fontSize:9, fontFamily:'var(--f-mono)',
                       color:'var(--ink-3)', fontWeight:700,
