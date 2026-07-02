@@ -1,3 +1,4 @@
+// F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-AV · Traslado desde Calendario académico + lista compacta
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
 // CALGRUPO_F2_20260616_ESTUDIANTES_COMPACTO_OPERATIVO
@@ -2155,22 +2156,46 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
 
   const handleSyncConape = async () => {
     if (!grupoSel || syncConape.loading) return;
-    setSyncConape({ loading: true });
+    const storageKey = `an_conape_group_job_${grupoSel}`;
+    let jobId = '';
+    try { jobId = sessionStorage.getItem(storageKey) || ''; } catch (_) {}
+    setSyncConape({ loading: true, procesados: 0, total: 0, jobId });
     setToast(null);
+    let last = null;
     try {
-      const data = await postAdminStudents('sincronizarCONAPE', { cod_grupo: grupoSel });
-      if (data.ok) {
-        const n = data.total ?? data.actualizados ?? data.estudiantes ?? data.count ?? 0;
-        const caConNota = Number(data.niveles_ca_con_nota || 0);
-        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'}${caConNota ? ` · ${caConNota} CA con nota vigente` : ''}` });
-        setRefreshKey(k => k + 1);
-      } else {
-        setToast({ tipo: 'err', msg: data.error || 'Error al sincronizar CONAPE' });
+      for (let guard = 0; guard < 250; guard += 1) {
+        last = await postAdminStudents('sincronizarCONAPE', {
+          cod_grupo: grupoSel,
+          job_id: jobId,
+          accion_grupo: jobId ? 'CONTINUAR' : 'INICIAR',
+        }, 60000);
+        if (!last || last.ok === false) throw new Error(last?.error || 'CONAPE no pudo continuar el trabajo por grupo.');
+        jobId = last.job_id || jobId;
+        try { if (jobId) sessionStorage.setItem(storageKey, jobId); } catch (_) {}
+        setSyncConape({
+          loading: !!last.pendiente,
+          procesados: Number(last.procesados || 0),
+          total: Number(last.total || 0),
+          jobId,
+          ultimo: last.ultimo || null,
+        });
+        if (!last.pendiente) break;
+        await new Promise(resolve => setTimeout(resolve, 180));
       }
+      if (!last || last.pendiente) throw new Error('El trabajo quedó pausado antes de completar la lista. Presione nuevamente para reanudar.');
+      try { sessionStorage.removeItem(storageKey); } catch (_) {}
+      const n = Number(last.total || 0);
+      const errors = Number(last.errores_total || 0);
+      if (errors) {
+        const sample = (last.errores || []).slice(0, 3).map(x => `${x.codigo}: ${x.error}`).join(' · ');
+        setToast({ tipo: 'err', msg: `CONAPE terminó ${last.correctos || 0}/${n}. ${errors} pendiente${errors === 1 ? '' : 's'}${sample ? ` · ${sample}` : ''}` });
+      } else {
+        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'} confirmados uno por uno en hojas 4, 5, 6 y 7.` });
+      }
+      setRefreshKey(k => k + 1);
     } catch (e) {
-      setToast({ tipo: 'err', msg: 'Error de conexión: ' + (e.message || e) });
-    } finally {
-      setSyncConape({ loading: false });
+      setSyncConape(s => ({ ...s, loading: false, paused: true, jobId }));
+      setToast({ tipo: 'err', msg: `Sincronización pausada${last?.procesados != null ? ` en ${last.procesados}/${last.total}` : ''}. No reinicie desde cero: presione Sync CONAPE para reanudar. Detalle: ${e.message || e}` });
     }
   };
 
@@ -2587,7 +2612,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                     animation: syncConape.loading ? 'an-spin 0.9s linear infinite' : 'none',
                   }}
                 >↻</span>
-                {syncConape.loading ? 'Sincronizando…' : 'Sync CONAPE'}
+                {syncConape.loading ? `CONAPE ${syncConape.procesados || 0}/${syncConape.total || '…'}` : (syncConape.paused ? 'Reanudar CONAPE' : 'Sync CONAPE')}
               </button>
             )}
           </div>}
@@ -2634,7 +2659,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                     }}
                   >
                     <span style={{display:'inline-block',animation:syncConape.loading?'an-spin .9s linear infinite':'none'}}>↻</span>
-                    {syncConape.loading?'Sincronizando grupo…':'Sync CONAPE · toda la lista'}
+                    {syncConape.loading?`CONAPE ${syncConape.procesados||0}/${syncConape.total||'…'}`:(syncConape.paused?'Reanudar CONAPE':'Sync CONAPE · toda la lista')}
                   </button>
                 )}
               </div>
