@@ -1,21 +1,38 @@
-// F98.4-Z6-BB · Diagnóstico ESTATUS ↔ hojas CONAPE ↔ n8n/MySQL ↔ API destino
+// F98.4-Z6-BC · Hotfix diagnóstico manual · sin consultas automáticas
 /* global React, PageHeader */
 const SCRIPT_URL_DIAG=window.APPS_SCRIPT_URL;
 
 async function postDiagnosticoInterno(fn,payload={}){
   const token=window.getSessionToken?window.getSessionToken():'';
-  const res=await fetch(`${SCRIPT_URL_DIAG}?fn=${encodeURIComponent(fn)}`,{
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({fn,token,...payload}),
-    cache:'no-store',
-  });
-  const raw=await res.text();
-  let data=null;
-  try{data=raw?JSON.parse(raw):null;}
-  catch(_){throw new Error(`Apps Script respondió HTML/texto en ${fn} (HTTP ${res.status}).`);}
-  if(!res.ok||!data?.ok)throw new Error(data?.mensaje||data?.error||`Error en ${fn}.`);
-  return data;
+  const body=JSON.stringify({fn,token,...payload});
+  const urls=[`${SCRIPT_URL_DIAG}?fn=${encodeURIComponent(fn)}`,SCRIPT_URL_DIAG];
+  let lastError=null;
+
+  for(let attempt=0;attempt<urls.length;attempt+=1){
+    try{
+      const res=await fetch(urls[attempt],{
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body,
+        cache:'no-store',
+        redirect:'follow',
+      });
+      const raw=await res.text();
+      const text=String(raw||'').trim();
+      if(!text)throw new Error(`Apps Script no devolvió contenido en ${fn} (HTTP ${res.status}).`);
+      if(/^<!doctype\s+html|^<html/i.test(text)){
+        throw new Error(`Apps Script respondió HTML/texto en ${fn} (HTTP ${res.status}). Revisá la versión publicada de Apps Script.`);
+      }
+      let data=null;
+      try{data=JSON.parse(text);}
+      catch(_){throw new Error(`Apps Script devolvió una respuesta no válida en ${fn} (HTTP ${res.status}).`);}
+      if(!res.ok||!data?.ok)throw new Error(data?.mensaje||data?.error||`Error en ${fn} (HTTP ${res.status}).`);
+      return data;
+    }catch(e){
+      lastError=e;
+    }
+  }
+  throw lastError||new Error(`No se pudo conectar con Apps Script en ${fn}.`);
 }
 
 const DS={
@@ -83,7 +100,6 @@ function DiagnosticoInternoView(){
     }catch(e){setError(e.message||String(e));}
     finally{setBusy('');}
   };
-  React.useEffect(()=>{run('general');},[]);
 
   const res=audit?.resumen||{};
   const hall=audit?.hallazgos||[];
@@ -102,7 +118,7 @@ function DiagnosticoInternoView(){
   return <div className="page-wrap" style={{maxWidth:1460,margin:'0 auto',padding:'18px 18px 42px'}}>
     <PageHeader title="Diagnóstico interno" subtitle="Auditoría de solo lectura: ESTATUS, siete hojas, claves n8n/MySQL y API destino, sin recrear ni limpiar archivos."/>
     {error&&<Notice tone="CRITICO"><b>{error}</b></Notice>}
-    <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'14px 0'}}>{[['conape','Auditoría CONAPE'],['general','Sistema interno'],['reglas','Reglas de continuidad']].map(([id,label])=><button key={id} type="button" className={tab===id?'btn btn-primary':'btn'} onClick={()=>setTab(id)}>{label}</button>)}</div>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'14px 0'}}>{[['conape','Auditoría CONAPE'],['general','Sistema interno'],['reglas','Reglas de continuidad']].map(([id,label])=><button key={id} type="button" className={tab===id?'btn btn-primary':'btn'} onClick={()=>{setTab(id);setError('');}}>{label}</button>)}</div>
 
     {tab==='conape'&&<>
       <Section title="Integración CONAPE en producción" sub="Valida las condiciones que históricamente rompieron Insertar Estudiantes e Insertar Plan antes de que una carga externa vuelva a ejecutarse.">
