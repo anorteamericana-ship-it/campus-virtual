@@ -1,4 +1,4 @@
-// F98.4-Z6-AW · Auditoría permanente CONAPE + limpieza segura
+// F98.4-Z6-AX · Auditoría CONAPE de solo lectura + movimientos mensuales
 // F98.4-Z6-AI · Sincronización forzada del Panel Maestro completo de 10 secciones
 // Base preservada: F98.4-Z6-G · Club I CAN: asistencia, retroalimentación y ponderación 20%
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
@@ -62,7 +62,7 @@ const F96_LAZY = {
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
-  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AI','src/admin_master_dashboard.jsx?v=F98.4Z6AI'],
+  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AX','src/admin_master_dashboard.jsx?v=F98.4Z6AX'],
   admin_students: ['src/admin_students.jsx?v=F98.4Z6AW'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
@@ -76,7 +76,7 @@ const F96_LAZY = {
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6O','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
-  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6AW'],
+  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6AX'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
   reportes: ['src/reportes_admin.jsx?v=F96.5G'],
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
