@@ -1,4 +1,4 @@
-// F98.4-Z6-AX · Diagnóstico interno limpio + auditoría permanente CONAPE
+// F98.4-Z6-AY · Diagnóstico interno protegido · CONAPE en modo manual
 /* global React, PageHeader */
 const SCRIPT_URL_DIAG=window.APPS_SCRIPT_URL;
 async function postDiagnosticoInterno(fn,payload={}){
@@ -16,7 +16,7 @@ function SimpleTable({headers,rows,empty='Sin registros.'}){return <div style={{
 function DiagnosticoInternoView(){
   const [general,setGeneral]=React.useState(null),[audit,setAudit]=React.useState(null),[monitor,setMonitor]=React.useState(null),[busy,setBusy]=React.useState(''),[error,setError]=React.useState(''),[tab,setTab]=React.useState('conape');
   const run=async(kind)=>{setBusy(kind);setError('');try{if(kind==='general')setGeneral(await postDiagnosticoInterno('diagnosticoSistemaInterno',{detalle:true}));if(kind==='audit')setAudit(await postDiagnosticoInterno('auditarArchivosCONAPE',{api:true}));if(kind==='state')setMonitor(await postDiagnosticoInterno('estadoMonitoreoConapeAX'));if(kind==='on')setMonitor(await postDiagnosticoInterno('instalarMonitoreoConapeAX'));if(kind==='off')setMonitor(await postDiagnosticoInterno('desinstalarMonitoreoConapeAX'));}catch(e){setError(e.message||String(e));}finally{setBusy('');}};
-  React.useEffect(()=>{run('general');run('state');},[]);
+  React.useEffect(()=>{run('general');},[]);
   const res=audit?.resumen||{},hall=audit?.hallazgos||[],files=audit?.archivos||[],api=audit?.api||{};
   return <div className="page-wrap" style={{maxWidth:1460,margin:'0 auto',padding:'18px 18px 42px'}}>
     <PageHeader title="Diagnóstico interno" subtitle="Controles permanentes de lectura, estructura y monitoreo. Sin herramientas temporales ni limpieza automática."/>
@@ -25,8 +25,8 @@ function DiagnosticoInternoView(){
 
     {tab==='conape'&&<>
       <Section title="Integración CONAPE en producción" sub="Lee los siete archivos originales y la disponibilidad del servicio externo. No elimina, renombra, recrea ni reordena archivos.">
-        <div style={{display:'flex',gap:9,flexWrap:'wrap',alignItems:'center'}}><button className="btn btn-primary" type="button" onClick={()=>run('audit')} disabled={!!busy}>{busy==='audit'?'Auditando…':'Auditar integración CONAPE'}</button><button className="btn" type="button" onClick={()=>run('state')} disabled={!!busy}>Revisar monitoreo</button>{monitor?.activo?<button className="btn" type="button" onClick={()=>run('off')} disabled={!!busy}>Desactivar monitoreo</button>:<button className="btn" type="button" onClick={()=>run('on')} disabled={!!busy}>Activar monitoreo horario</button>}<Badge value={audit?.estado||'INFO'}/><Badge value={monitor?.activo?'RESPONDE':'OMITIDO'}/></div>
-        <div style={{marginTop:10,fontSize:12,color:'#6f7889'}}>Monitoreo: <b>{monitor?.activo?'sincronización cada hora':'solo actualización manual'}</b> · Auditoría diaria: <b>{monitor?.auditoria_diaria?'activa':'inactiva'}</b>. El botón del Panel Maestro permite consultar CONAPE en ese momento.</div>
+        <div style={{display:'flex',gap:9,flexWrap:'wrap',alignItems:'center'}}><button className="btn btn-primary" type="button" onClick={()=>run('audit')} disabled={!!busy}>{busy==='audit'?'Auditando…':'Auditar integración CONAPE'}</button><Badge value={audit?.estado||'INFO'}/><Badge value="PROTEGIDO"/><span style={{fontSize:11,fontWeight:900,color:'#295483'}}>MODO MANUAL</span></div>
+        <div style={{marginTop:10,fontSize:12,color:'#6f7889'}}>La integración se consulta únicamente con <b>Actualizar CONAPE ahora</b> desde el Panel Maestro. No se crean, eliminan ni administran triggers; tampoco se modifican los IDs, rutas, encabezados o credenciales de las siete hojas.</div>
       </Section>
       {audit&&<>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10,marginBottom:14}}><Card label="Estado" value={audit.estado} tone={audit.estado}/><Card label="Críticos" value={res.criticos||0} tone={(res.criticos||0)?'CRITICO':'OK'}/><Card label="Advertencias" value={res.advertencias||0} tone={(res.advertencias||0)?'REVISAR':'OK'}/><Card label="Archivos válidos" value={`${res.archivos_ok||0}/7`} tone={(res.archivos_ok===7)?'OK':'CRITICO'}/><Card label="Estudiantes" value={res.estudiantes||0} sub="identidades externas"/><Card label="API externa" value={api.estado||'—'} tone={api.estado||'INFO'}/></div>
