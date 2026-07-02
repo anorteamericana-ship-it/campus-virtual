@@ -1,4 +1,4 @@
-// F98.4-Z6-AV · Diagnóstico limpio + reparación controlada calendario 0425
+// F98.4-Z6-AW · Diagnóstico permanente CONAPE + lectura segura
 /* global React, PageHeader */
 // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_FRONTEND
 // CALGRUPO_F61_20260618_REPARADOR_ESTRUCTURAL_SEGURO_FRONTEND
@@ -177,6 +177,10 @@ function DiagnosticoInternoView() {
   const [avCalStatusLoading, setAvCalStatusLoading] = React.useState(false);
   const [avCalRepairResult, setAvCalRepairResult] = React.useState(null);
   const [avCalRepairLoading, setAvCalRepairLoading] = React.useState(false);
+  const [conapeAudit, setConapeAudit] = React.useState(null);
+  const [conapeAuditLoading, setConapeAuditLoading] = React.useState(false);
+  const [conapeRepairLoading, setConapeRepairLoading] = React.useState(false);
+  const [conapeRepairResult, setConapeRepairResult] = React.useState(null);
   const sessionRole = React.useMemo(() => {
     try { return String((window.getSesion && window.getSesion() || {}).rol || '').toLowerCase(); }
     catch (_) { return ''; }
@@ -309,6 +313,58 @@ Escribí REPARAR 0425 para continuar.`
     }
   };
 
+  const ejecutarAuditoriaCONAPE = async () => {
+    setConapeAuditLoading(true);
+    setError('');
+    try {
+      const resp = await postDiagnosticoInterno('auditarArchivosCONAPE', {});
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo auditar CONAPE.');
+      setConapeAudit(resp);
+      setConapeRepairResult(null);
+      return resp;
+    } catch (e) {
+      setError(e.message || String(e));
+      return null;
+    } finally {
+      setConapeAuditLoading(false);
+    }
+  };
+
+  const ejecutarLimpiezaCONAPE = async () => {
+    if (!canUseAT) {
+      setError('La limpieza segura de CONAPE está disponible únicamente para superadmin.');
+      return;
+    }
+    const audit = conapeAudit || await ejecutarAuditoriaCONAPE();
+    if (!audit) return;
+    if (!audit.limpieza_disponible) {
+      alert('La auditoría no detectó bloqueadores estructurales que requieran limpieza.');
+      return;
+    }
+    const texto = window.prompt(
+      `La limpieza creará cuatro respaldos y eliminará únicamente filas externas sin identidad válida, huérfanas o duplicadas.
+
+No modificará APOLLO, notas, estados, pagos ni morosidad válida.
+
+Escribí LIMPIAR CONAPE para continuar.`
+    );
+    if (String(texto || '').trim().toUpperCase() !== 'LIMPIAR CONAPE') return;
+    setConapeRepairLoading(true);
+    setConapeRepairResult(null);
+    setError('');
+    try {
+      const resp = await postDiagnosticoInterno('limpiarErroresLecturaCONAPE', { confirmacion: 'LIMPIAR CONAPE' });
+      if (!resp || resp.ok !== true) throw new Error(resp?.error || resp?.mensaje || 'No se pudo limpiar CONAPE.');
+      setConapeRepairResult(resp);
+      setConapeAudit(resp.auditoria || null);
+      await cargar();
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setConapeRepairLoading(false);
+    }
+  };
+
   const resumen = data?.resumen || {};
   const estado = resumen.estado_general || 'info';
   const hojas = data?.hojas || [];
@@ -346,9 +402,9 @@ Escribí REPARAR 0425 para continuar.`
   return (
     <div data-screen-label="Admin · Diagnóstico interno avanzado" style={{ padding: 22, maxWidth: 1360, margin: '0 auto' }}>
       <PageHeader
-        kicker="Sistema · AV"
+        kicker="Sistema · AW"
         title="Diagnóstico interno avanzado"
-        sub="Verifica backend, hojas, columnas, endpoints y riesgos operativos. Las herramientas temporales quedan separadas y visibles para ejecutar correcciones controladas sin automatismos ocultos."
+        sub="Verifica backend, hojas, columnas, endpoints y los cuatro archivos externos de CONAPE. Las auditorías son manuales, registradas y no ejecutan correcciones ocultas."
         right={
           <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
             <button type="button" onClick={copiarResumen} disabled={!data} className="btn" style={{ padding:'9px 14px' }}>Copiar resumen</button>
@@ -363,18 +419,19 @@ Escribí REPARAR 0425 para continuar.`
         </div>
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(6, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(165px, 1fr))', gap: 12, marginBottom: 16 }}>
         <DiagCard title="Estado general" value={resumen.estado_label || (loading ? '...' : '—')} status={estado} sub={data?.version || 'Backend no consultado'} />
         <DiagCard title="OK" value={ok || '0'} status="ok" sub="Controles listos" onClick={() => setTab('resumen')} />
         <DiagCard title="Revisar" value={advertencias || '0'} status={advertencias ? 'warn' : 'ok'} sub="Advertencias no bloqueantes" onClick={() => setTab('avanzado')} />
         <DiagCard title="Críticos técnicos" value={criticos || '0'} status={criticos ? 'error' : 'ok'} sub="Bloquean producción general" onClick={() => setTab('recomendaciones')} />
         <DiagCard title="Certificados" value={resumen.certificados_bloqueados ? 'Bloqueados' : 'Listos'} status={resumen.certificados_bloqueados ? 'warn' : 'ok'} sub="Bloqueo por área, no campus completo" onClick={() => setTab('recomendaciones')} />
         <DiagCard title="Avanzado" value={resumen.avanzado_ok ? 'Listo' : 'Revisar'} status={resumen.avanzado_ok ? 'ok' : (resumen.avanzado_error ? 'error' : 'warn')} sub={`${avanzado.length || 0} controles · bloqueos académicos: ${resumen.bloqueos_academicos || 0}`} onClick={() => setTab('avanzado')} />
+        <DiagCard title="CONAPE" value={conapeAudit?.estado || 'Sin revisar'} status={conapeAudit?.estado === 'OK' ? 'ok' : (conapeAudit?.estado === 'BLOQUEADO' ? 'error' : (conapeAudit ? 'warn' : 'info'))} sub={conapeAudit ? `${conapeAudit.resumen?.criticos || 0} críticos · ${conapeAudit.resumen?.advertencias || 0} advertencias` : 'Auditoría externa manual'} onClick={() => setTab('conape')} />
       </div>
 
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom: 16 }}>
         {[
-          ['resumen','Resumen'], ['herramientas','Herramientas temporales'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
+          ['resumen','Resumen'], ['conape','Auditoría CONAPE'], ['avanzado','Riesgos avanzados'], ['hojas','Hojas y columnas'], ['endpoints','Endpoints'], ['recomendaciones','Recomendaciones']
         ].map(([id,label]) => (
           <button key={id} type="button" onClick={() => setTab(id)} style={{
             padding:'8px 12px', borderRadius:999, border:'1px solid var(--line)', cursor:'pointer',
@@ -406,6 +463,97 @@ Escribí REPARAR 0425 para continuar.`
             </div>
           </DiagSection>
         </div>
+      )}
+
+
+      {tab === 'conape' && (
+        <DiagSection title="Auditoría permanente de archivos CONAPE" sub="Revisa 4-estudiantes, 5-plan_estudios, 6-historial y 7-morosidad contra la base vigente de APOLLO.">
+          <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:16, background:'color-mix(in srgb, #2B7FC1 5%, white)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+              <div>
+                <div style={{ fontWeight:900, color:'var(--an-navy-ink)', fontSize:17 }}>Control de lectura CONAPE</div>
+                <div style={{ marginTop:5, fontSize:13, color:'var(--ink-3)', lineHeight:1.55, maxWidth:900 }}>
+                  Detecta campos obligatorios vacíos, identidades duplicadas, estudiantes huérfanos, materias repetidas, diferencias entre plan e historial y alertas de notas. La auditoría no modifica información académica.
+                </div>
+              </div>
+              <DiagBadge status={conapeAudit?.estado === 'OK' ? 'ok' : (conapeAudit?.estado === 'BLOQUEADO' ? 'error' : (conapeAudit ? 'warn' : 'info'))}>
+                {conapeAudit?.estado || 'Sin revisar'}
+              </DiagBadge>
+            </div>
+
+            <div style={{ display:'flex', gap:9, flexWrap:'wrap', marginTop:14 }}>
+              <button type="button" onClick={ejecutarAuditoriaCONAPE} disabled={conapeAuditLoading || conapeRepairLoading} className="btn btn-primary" style={{ padding:'9px 15px' }}>
+                {conapeAuditLoading ? 'Auditando…' : 'Auditar archivos CONAPE'}
+              </button>
+              <button type="button" onClick={ejecutarLimpiezaCONAPE} disabled={!canUseAT || conapeAuditLoading || conapeRepairLoading || (conapeAudit && !conapeAudit.limpieza_disponible)} className="btn" style={{ padding:'9px 15px' }}>
+                {conapeRepairLoading ? 'Respaldando y limpiando…' : 'Limpiar errores seguros'}
+              </button>
+            </div>
+            {!canUseAT && <div style={{ marginTop:10, color:'#991B1B', fontWeight:800, fontSize:12.5 }}>La auditoría puede verla admin o superadmin. La limpieza requiere superadmin.</div>}
+            <div style={{ marginTop:10, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>
+              La limpieza segura crea respaldos de los cuatro archivos y solo elimina filas externas sin cédula, que ya no existen en DATOS o que repiten la misma llave. <b>No cambia notas, estados, pagos ni APOLLO.</b>
+            </div>
+          </div>
+
+          {conapeAudit && (
+            <>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:10, marginTop:14 }}>
+                <DiagCard title="Estado" value={conapeAudit.estado || '—'} status={conapeAudit.estado === 'OK' ? 'ok' : (conapeAudit.estado === 'BLOQUEADO' ? 'error' : 'warn')} sub={conapeAudit.fecha || '—'} />
+                <DiagCard title="Críticos" value={conapeAudit.resumen?.criticos || 0} status={conapeAudit.resumen?.criticos ? 'error' : 'ok'} sub="Pueden impedir la lectura" />
+                <DiagCard title="Advertencias" value={conapeAudit.resumen?.advertencias || 0} status={conapeAudit.resumen?.advertencias ? 'warn' : 'ok'} sub="Revisión académica" />
+                <DiagCard title="APOLLO" value={conapeAudit.resumen?.total_apollo || 0} status="info" sub="Identidades vigentes" />
+              </div>
+
+              <div style={{ overflowX:'auto', border:'1px solid var(--line)', borderRadius:14, marginTop:14 }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
+                  <thead><tr style={{ background:'color-mix(in srgb, var(--an-navy) 5%, white)' }}>
+                    <th style={th}>Archivo</th><th style={th}>Filas</th><th style={th}>Columnas</th><th style={th}>Encabezado</th><th style={th}>Lectura</th>
+                  </tr></thead>
+                  <tbody>{(conapeAudit.resumen?.archivos || []).map((f, i) => (
+                    <tr key={i} style={{ borderTop:'1px solid var(--line)' }}>
+                      <td style={{...td,fontWeight:900,color:'var(--an-navy-ink)'}}>{f.nombre}</td>
+                      <td style={td}>{f.filas}</td><td style={td}>{f.columnas}</td>
+                      <td style={td}><DiagBadge status={f.encabezado_ok ? 'ok' : 'error'}>{f.encabezado_ok ? 'Correcto' : 'Incorrecto'}</DiagBadge></td>
+                      <td style={td}>{f.error ? <span style={{color:'#991B1B',fontWeight:800}}>{f.error}</span> : 'Disponible'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop:14, display:'grid', gap:10 }}>
+                {(conapeAudit.hallazgos || []).length === 0 && (
+                  <div style={{ padding:14, borderRadius:13, border:'1px solid rgba(22,163,74,.28)', background:'rgba(22,163,74,.08)', color:'#166534', fontWeight:800 }}>Los cuatro archivos pasaron la auditoría estructural.</div>
+                )}
+                {(conapeAudit.hallazgos || []).map((h, i) => (
+                  <div key={i} style={{ padding:13, borderRadius:13, border:'1px solid var(--line)', background:'var(--surface)' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+                      <div style={{ display:'flex', gap:9, alignItems:'center', flexWrap:'wrap' }}>
+                        <DiagBadge status={h.severidad === 'CRITICO' ? 'error' : 'warn'}>{h.severidad}</DiagBadge>
+                        <b style={{color:'var(--an-navy-ink)'}}>{h.codigo}</b>
+                        <span style={{color:'var(--ink-3)'}}>{h.archivo}</span>
+                      </div>
+                      <b>{h.total || 0}</b>
+                    </div>
+                    <div style={{ marginTop:7, color:'var(--ink-2)', fontSize:13, lineHeight:1.5 }}>{h.mensaje}</div>
+                    {Array.isArray(h.muestra) && h.muestra.length > 0 && (
+                      <details style={{ marginTop:8 }}><summary style={{cursor:'pointer',fontWeight:800}}>Ver muestra ({h.muestra.length})</summary>
+                        <div style={{marginTop:7,whiteSpace:'pre-wrap',fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:11.5}}>{h.muestra.join('\n')}</div>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {conapeRepairResult && (
+            <div style={{ marginTop:14, padding:14, borderRadius:13, border:'1px solid rgba(22,163,74,.28)', background:'rgba(22,163,74,.08)', color:'#166534', fontSize:13, lineHeight:1.55 }}>
+              <b>{conapeRepairResult.mensaje || 'Limpieza completada.'}</b>
+              <div style={{marginTop:7}}>{(conapeRepairResult.resumen_limpieza || []).map(x => `${x.archivo}: ${x.antes} → ${x.despues} (${x.eliminadas} eliminadas)`).join(' · ')}</div>
+              <div style={{marginTop:7}}>Se crearon {conapeRepairResult.respaldos?.length || 0} respaldos antes de escribir.</div>
+            </div>
+          )}
+        </DiagSection>
       )}
 
 

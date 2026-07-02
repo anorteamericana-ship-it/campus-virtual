@@ -1,4 +1,4 @@
-// F98.4-Z6-AV · Calendario 0425 + traslado desde lista
+// F98.4-Z6-AW · Auditoría permanente CONAPE + limpieza segura
 // F98.4-Z6-AI · Sincronización forzada del Panel Maestro completo de 10 secciones
 // Base preservada: F98.4-Z6-G · Club I CAN: asistencia, retroalimentación y ponderación 20%
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
@@ -63,20 +63,20 @@ const F96_LAZY = {
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AI','src/admin_master_dashboard.jsx?v=F98.4Z6AI'],
-  admin_students: ['src/admin_students.jsx?v=F98.4Z6AV'],
+  admin_students: ['src/admin_students.jsx?v=F98.4Z6AW'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AS'],
   cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AV','src/calendario_grupo.jsx?v=F98.4Z6AS'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6AW','src/calendario_grupo.jsx?v=F98.4Z6AS'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
-  buscador: ['src/admin_students.jsx?v=F98.4Z6AV','src/buscador.jsx?v=F98.4Z6AS'],
+  buscador: ['src/admin_students.jsx?v=F98.4Z6AW','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6O','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
-  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6AV'],
+  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6AW'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
   reportes: ['src/reportes_admin.jsx?v=F96.5G'],
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
