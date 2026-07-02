@@ -1,4 +1,4 @@
-// F98.4-Z6-AX · Auditoría CONAPE de solo lectura + movimientos mensuales
+// F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
 // F98.4-Z6-AI · Sincronización forzada del Panel Maestro completo de 10 secciones
 // Base preservada: F98.4-Z6-G · Club I CAN: asistencia, retroalimentación y ponderación 20%
 // F95.1_20260621_EXAMENES_MATCHING_PUBLICO_SEGURO
@@ -76,7 +76,7 @@ const F96_LAZY = {
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6O','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
-  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6AX'],
+  diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6BB'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
   reportes: ['src/reportes_admin.jsx?v=F96.5G'],
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
