@@ -1,4 +1,4 @@
-// F98.4-Z6-AP · pagos idempotentes, respuesta segura y validación backend
+// F98.4-Z6-BG · certificado cobrable en CA + título final I2 separado
 /* global React, PageHeader */
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -238,12 +238,19 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
   const pendientes = estData?.pendientes || {};
   const grupo      = estData?.grupo    || '';
 
-  // Desbloqueo: B1 siempre; siguiente requiere APR/CNV del anterior
+  // F98.4-Z6-BG: un nivel solo admite pagos si existe realmente en ESTATUS
+  // y no está PE. El nivel siguiente además requiere APR/CNV del anterior.
+  // Esto evita cobrar cursos proyectados que todavía no están matriculados.
   const desbloq = {};
   NIVEL_ORDER_A.forEach((niv, i) => {
-    if (i === 0) { desbloq[niv] = true; return; }
+    const actual = niveles[niv];
+    const estadoActual = String(actual?.estatus || '').trim().toUpperCase();
+    const existe = !!actual && typeof actual === 'object';
+    const activoFinanciero = existe && estadoActual !== 'PE';
+    if (i === 0) { desbloq[niv] = activoFinanciero; return; }
     const prev = NIVEL_ORDER_A[i-1];
-    desbloq[niv] = STATUS_APROBADO.includes(niveles[prev]?.estatus);
+    const estadoPrev = String(niveles[prev]?.estatus || '').trim().toUpperCase();
+    desbloq[niv] = activoFinanciero && STATUS_APROBADO.includes(estadoPrev);
   });
 
   const seleccionarNivel = (niv) => {
@@ -263,7 +270,7 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
   return (
     <div>
       <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, marginBottom:6, color:'var(--an-navy-ink)' }}>Seleccionar nivel</div>
-      <div style={{ fontSize:13, color:'var(--ink-3)', marginBottom:18 }}>Solo los niveles desbloqueados pueden recibir pagos.</div>
+      <div style={{ fontSize:13, color:'var(--ink-3)', marginBottom:18 }}>Solo los niveles existentes y no proyectados (PE) pueden recibir pagos.</div>
 
       {/* Info estudiante */}
       <div style={{ padding:'12px 16px', background:'color-mix(in srgb,var(--an-navy) 5%,white)', border:'1px solid color-mix(in srgb,var(--an-navy) 20%,white)', borderRadius:'var(--r-md)', marginBottom:18, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
@@ -277,7 +284,7 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12 }}>
-        {NIVEL_ORDER_A.filter(niv => niv in niveles || NIVEL_ORDER_A.indexOf(niv) === 0).map(niv => {
+        {NIVEL_ORDER_A.filter(niv => niv in niveles).map(niv => {
           const c   = NIVEL_COLOR_A[niv];
           const h   = niveles[niv];
           const ok  = desbloq[niv];
@@ -314,7 +321,9 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
                 </>
               ) : (
                 <div style={{ fontSize:12, color:'var(--ink-3)', fontStyle:'italic' }}>
-                  🔒 Debe promover el nivel anterior primero
+                  {String(h?.estatus || '').toUpperCase() === 'PE'
+                    ? '🔒 Nivel proyectado: no admite pagos hasta su matrícula/activación'
+                    : '🔒 Debe promover el nivel anterior primero'}
                 </div>
               )}
             </div>
@@ -415,7 +424,7 @@ function Paso3AP({ comprobantes, setComprobantes, setComprSel, setPaso, setError
 // ─────────────────────────────────────────────────────────────────────────
 function Paso4AP({
   estSel, nivelSel, comprSel, estData,
-  qMat, setQMat, qCuota, setQCuota, qCert, setQCert, qOtro, setQOtro,
+  qMat, setQMat, qCuota, setQCuota, qCert, setQCert, qTitulo, setQTitulo, qOtro, setQOtro,
   setTotalAplicarPanel, setComprobantes, setConfirmado,
   confirmado, setPaso, reiniciar, error, onNavigate, returnTarget
 }) {
@@ -426,9 +435,29 @@ function Paso4AP({
   const saldo  = compr ? (compr.saldo ?? (compr.credito - compr.aplicado)) : 0;
 
   const pendNivel = pend?.por_nivel?.[niv] || {};
-  const montoMat   = Number(pendNivel.matricula_pend ?? pend.matricula ?? 0);
-  const montoCuota = Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0);
-  const montoCert  = Number(pendNivel.cert_pend ?? pend.certificado ?? 0);
+  const estadoNivel = String(pendNivel.estatus || estData?.niveles?.[niv]?.estatus || '').trim().toUpperCase();
+  const nivelMatriculado = !!estData?.niveles?.[niv] && estadoNivel !== 'PE';
+  const documentoCobrable = nivelMatriculado && ['CA','APR'].includes(estadoNivel);
+  const montoMat   = nivelMatriculado ? Number(pendNivel.matricula_pend ?? pend.matricula ?? 0) : 0;
+  const montoCuota = nivelMatriculado ? Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0) : 0;
+
+  // El certificado puede cobrarse durante CA. La morosidad sigue exigiéndolo
+  // únicamente al aprobar; aquí solo se habilita el cobro anticipado/controlado.
+  const precioCert = Number(pendNivel.precio_certificado || 0);
+  const pagadoCert = Number(pendNivel.cert_pagado || 0);
+  const saldoCert = Math.max(0, precioCert - pagadoCert);
+  const montoCert = documentoCobrable
+    ? Math.max(Number(pendNivel.cert_pend || 0), saldoCert)
+    : 0;
+
+  // I2 tiene dos documentos independientes: certificado del nivel y título
+  // final del programa. El título se registra con un tipo/recibo separado.
+  const precioTitulo = Number(pendNivel.precio_titulo || 0);
+  const pagadoTitulo = Number(pendNivel.titulo_pagado || 0);
+  const montoTitulo = niv === 'I2' && documentoCobrable
+    ? Math.max(Number(pendNivel.titulo_pend || 0), Math.max(0, precioTitulo - pagadoTitulo))
+    : 0;
+
   const cargoOtro = (estData?.otros_cargos || []).find(c =>
     String(c.ESTADO || '').toUpperCase() === 'PENDIENTE' &&
     (!c.NIVEL || String(c.NIVEL).toUpperCase() === String(niv || '').toUpperCase())
@@ -447,9 +476,9 @@ function Paso4AP({
   const requestIdRef = React.useRef('');
   React.useEffect(() => {
     requestIdRef.current = '';
-  }, [est?.CODIGO, est?.rec_m, niv, compr?.doc, qMat, qCuota, qCert, qOtro]);
+  }, [est?.CODIGO, est?.rec_m, niv, compr?.doc, qMat, qCuota, qCert, qTitulo, qOtro]);
 
-  const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qOtro*montoOtro;
+  const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
   const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl;
 
@@ -468,6 +497,7 @@ function Paso4AP({
         { tipo:'MATRICULA',   nivel:niv, monto:qMat*montoMat,     grupo: grupoActual },
         { tipo:'CUOTA',       nivel:niv, monto:subtotalCuotas, grupo: grupoActual },
         { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: grupoActual },
+        { tipo:'TITULO',      nivel:'I2', monto:qTitulo*montoTitulo, grupo: grupoActual },
         { tipo:'OTRO', nivel:niv, monto:qOtro*montoOtro, grupo: grupoActual, codigo_precio:cargoOtro?.CODIGO_PRECIO || '', concepto:cargoOtro?.CONCEPTO || 'OTRO PAGO', cargo_id:cargoOtro?.CARGO_ID || '' },
       ].filter(r => r.monto > 0);
 
@@ -592,9 +622,10 @@ function Paso4AP({
       <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
         {montoCuota > 0 && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
-        {montoCert  > 0 && <RubroRow label="Certificado del nivel"            monto={montoCert}  qty={qCert}  maxQty={1}       onQty={setQCert}  />}
+        {montoCert  > 0 && <RubroRow label={`Certificado de ${NIVEL_LABEL_A[niv] || niv}`} monto={montoCert} qty={qCert} maxQty={1} onQty={setQCert} />}
+        {montoTitulo > 0 && <RubroRow label="Título final del programa"        monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
         {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
-        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoOtro === 0 && (
+        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoTitulo === 0 && montoOtro === 0 && (
           <div style={{ padding:'16px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', color:'var(--ink-3)', fontSize:13, textAlign:'center' }}>
             No hay rubros pendientes para este estudiante
           </div>
@@ -655,6 +686,7 @@ function AplicarPago({ onNavigate }) {
   const [qMat,  setQMat]   = React.useState(0);
   const [qCuota,setQCuota] = React.useState(0);
   const [qCert, setQCert]  = React.useState(0);
+  const [qTitulo, setQTitulo] = React.useState(0);
   const [qOtro, setQOtro]  = React.useState(0);
   const [returnTarget, setReturnTarget] = React.useState(null);
 
@@ -721,13 +753,13 @@ function AplicarPago({ onNavigate }) {
     setPaso(1); setEstSel(null); setEstData(null); setNivelSel(null);
     setComprSel(null); setComprobantes([]); setError(''); setConfirmado(null);
     setCargando(false); setTotalAplicarPanel(0);
-    setQMat(0); setQCuota(0); setQCert(0); setQOtro(0);
+    setQMat(0); setQCuota(0); setQCert(0); setQTitulo(0); setQOtro(0);
   };
 
   // T-fix-stepper: al volver del paso 4 al 3 los contadores deben quedar en 0
   // para que cuando se vuelva a entrar al paso 4 no aparezcan los valores viejos.
   const resetRubros = () => {
-    setQMat(0); setQCuota(0); setQCert(0); setQOtro(0); setTotalAplicarPanel(0);
+    setQMat(0); setQCuota(0); setQCert(0); setQTitulo(0); setQOtro(0); setTotalAplicarPanel(0);
   };
 
   const handlePrev = () => {
@@ -818,6 +850,7 @@ function AplicarPago({ onNavigate }) {
               qMat={qMat}   setQMat={setQMat}
               qCuota={qCuota} setQCuota={setQCuota}
               qCert={qCert}  setQCert={setQCert}
+              qTitulo={qTitulo} setQTitulo={setQTitulo}
               qOtro={qOtro} setQOtro={setQOtro}
               setTotalAplicarPanel={setTotalAplicarPanel}
               setComprobantes={setComprobantes}

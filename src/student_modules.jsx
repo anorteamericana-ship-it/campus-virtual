@@ -64,15 +64,16 @@ const PAGO_TIPO_LABEL_SM = {
   CUOTA:'Cuota',
   MATRICULA:'Matrícula',
   CERTIFICADO:'Certificado',
+  TITULO:'Título final',
 };
-const PAGO_TIPO_ORDEN_SM = { CUOTA:1, MATRICULA:2, CERTIFICADO:3 };
-const PAGO_CUENTA_NIVEL_SM = { '43':'B1', '44':'B2', '45':'I1', '46':'I2' };
+const PAGO_TIPO_ORDEN_SM = { CUOTA:1, MATRICULA:2, CERTIFICADO:3, TITULO:4 };
+const PAGO_CUENTA_NIVEL_SM = { '43':'B1', '44':'B2', '45':'I1', '46':'I2', '47':'I2' };
 
 function partirConcepto(conceptoRaw) {
   const c = String(conceptoRaw || '').trim();
   if (!c) return { concepto:'Movimiento', tipo:'', nivel:'', comprobante:'' };
 
-  const m = c.match(/^(CUOTA|MATRICULA|CERTIFICADO)[_\s-]*(B1|B2|I1|I2)?/i);
+  const m = c.match(/^(CUOTA|MATRICULA|CERTIFICADO|TITULO)[_\s-]*(B1|B2|I1|I2)?/i);
   if (!m) {
     const nivelLibre = (c.match(/(?:^|[_\s-])(B1|B2|I1|I2)(?:$|[_\s-])/i) || [])[1] || '';
     return {
