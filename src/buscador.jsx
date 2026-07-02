@@ -153,13 +153,10 @@ function BuscadorEstudiantes({ onNavigate }) {
 
   if (seleccionado) {
     return (
-      <section data-screen-label="Consulta individual" style={{ padding:24 }}>
-        <div style={{ display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap' }}>
-          <div>
-            <div style={{ fontSize:10,fontWeight:900,letterSpacing:'.16em',textTransform:'uppercase',color:'var(--ink-3,#81776f)' }}>Consulta individual</div>
-            <div style={{ fontFamily:'var(--f-serif,serif)',fontSize:28,fontWeight:600,color:'var(--an-navy,#14213D)' }}>{seleccionado.nombre || seleccionado.display}</div>
-          </div>
-          <button type="button" onClick={limpiar} style={{ padding:'9px 13px',borderRadius:9,border:'1px solid var(--line,#ddd)',background:'white',fontWeight:900,cursor:'pointer' }}>Nueva consulta</button>
+      <section data-screen-label="Consulta individual" style={{ padding:'14px 18px 24px' }}>
+        <div style={{ display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',marginBottom:7,flexWrap:'wrap' }}>
+          <div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-3,#81776f)'}}>Consulta individual</div>
+          <button type="button" onClick={limpiar} style={{ padding:'7px 11px',borderRadius:8,border:'1px solid var(--line,#ddd)',background:'white',fontWeight:900,cursor:'pointer' }}>⌕ Nueva consulta</button>
         </div>
         <AdminEstudianteResumenIndividual estudianteBase={seleccionado} onClose={limpiar} onNavigate={onNavigate} />
       </section>
