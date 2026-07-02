@@ -1,4 +1,4 @@
-// F98.4-Z6-BC · Hotfix diagnóstico manual · sin consultas automáticas
+// F98.4-Z6-BE · DATOS maestro + integridad ESTATUS + auditoría manual CONAPE
 /* global React, PageHeader */
 const SCRIPT_URL_DIAG=window.APPS_SCRIPT_URL;
 
@@ -91,6 +91,11 @@ function DiagnosticoInternoView(){
   const [error,setError]=React.useState('');
   const [tab,setTab]=React.useState('conape');
   const [verifyCed,setVerifyCed]=React.useState('');
+  const [moraQuery,setMoraQuery]=React.useState('');
+  const [moraAudit,setMoraAudit]=React.useState(null);
+  const [moraBusy,setMoraBusy]=React.useState('');
+  const [moraError,setMoraError]=React.useState('');
+  const [moraNote,setMoraNote]=React.useState('');
 
   const run=async(kind)=>{
     setBusy(kind);setError('');
@@ -99,6 +104,39 @@ function DiagnosticoInternoView(){
       if(kind==='audit')setAudit(await postDiagnosticoInterno('auditarArchivosCONAPE',{api:true,cedula_verificacion:String(verifyCed||'').trim()}));
     }catch(e){setError(e.message||String(e));}
     finally{setBusy('');}
+  };
+
+
+  const runMoraAudit=async(query=moraQuery)=>{
+    setMoraBusy('audit');setMoraError('');
+    try{
+      const q=String(query||'').trim();
+      const data=await postDiagnosticoInterno('auditarMorosidadConapeManual',{busqueda:q});
+      setMoraAudit(data);
+      if(data?.estudiante){setMoraQuery(data.estudiante.codigo||data.estudiante.cedula||q);}
+    }catch(e){setMoraError(e.message||String(e));}
+    finally{setMoraBusy('');}
+  };
+
+  const applyMora=async(item,accion)=>{
+    const motivo=String(moraNote||'').trim();
+    if(motivo.length<10){setMoraError('Escribí un motivo de al menos 10 caracteres antes de corregir.');return;}
+    const label=accion==='DELETE'?'eliminar la fila':accion==='SET_SI'?'establecer MORA SI':'establecer MORA NO';
+    if(!window.confirm(`Se va a ${label} para ${item.nivel} · ${item.anio}/${item.periodo}.\n\nSolo se modificará esta llave de 7-morosidad. ¿Continuar?`))return;
+    setMoraBusy(`${item.nivel}-${accion}`);setMoraError('');
+    try{
+      const data=await postDiagnosticoInterno('aplicarCorreccionMorosidadConapeManual',{
+        codigo:moraAudit?.estudiante?.codigo,
+        cedula:moraAudit?.estudiante?.cedula,
+        nivel:item.nivel,
+        accion,
+        firma_actual:item.firma_actual||'',
+        cantidad_actual:(item.filas_morosidad||[]).length,
+        motivo,
+      });
+      setMoraAudit(data);setMoraNote('');
+    }catch(e){setMoraError(e.message||String(e));}
+    finally{setMoraBusy('');}
   };
 
   const res=audit?.resumen||{};
@@ -114,9 +152,12 @@ function DiagnosticoInternoView(){
   const blockers=pf?.bloqueos||[];
   const pfWarnings=pf?.advertencias||[];
   const pfAvailable=!!pf?.estado;
+  const identidad=audit?.integridad_datos_estatus||{};
+  const ir=identidad?.resumen||{};
+  const ih=identidad?.hallazgos||[];
 
   return <div className="page-wrap" style={{maxWidth:1460,margin:'0 auto',padding:'18px 18px 42px'}}>
-    <PageHeader title="Diagnóstico interno" subtitle="Auditoría de solo lectura: ESTATUS, siete hojas, claves n8n/MySQL y API destino, sin recrear ni limpiar archivos."/>
+    <PageHeader title="Diagnóstico interno" subtitle="Auditoría manual: DATOS como identidad maestra, ESTATUS íntegro, comprobantes por nivel, siete hojas, claves n8n/MySQL y API destino. Ninguna limpieza se ejecuta automáticamente."/>
     {error&&<Notice tone="CRITICO"><b>{error}</b></Notice>}
     <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'14px 0'}}>{[['conape','Auditoría CONAPE'],['general','Sistema interno'],['reglas','Reglas de continuidad']].map(([id,label])=><button key={id} type="button" className={tab===id?'btn btn-primary':'btn'} onClick={()=>{setTab(id);setError('');}}>{label}</button>)}</div>
 
@@ -127,6 +168,50 @@ function DiagnosticoInternoView(){
           <Badge value={audit?.estado||'INFO'}/><Badge value="PROTEGIDO"/><span style={{fontSize:11,fontWeight:900,color:'#295483'}}>SOLO LECTURA · MODO MANUAL</span>
         </div>
         <div style={{marginTop:10,fontSize:12,color:'#6f7889'}}>No se crean, eliminan ni administran triggers. Tampoco se modifican IDs, rutas, encabezados, credenciales o filas de las siete hojas.</div>
+      </Section>
+
+      <Section title="Integridad maestra DATOS → ESTATUS" sub="DATOS se crea primero y manda. ESTATUS solo es válido cuando el código existe en DATOS; el correo es un control cruzado, nunca la identidad principal.">
+        <div style={{display:'flex',gap:9,flexWrap:'wrap',alignItems:'center',marginBottom:audit?12:0}}>
+          <Badge value={identidad?.estado||'INFO'}/>
+          <span style={{fontSize:11,fontWeight:900,color:'#295483'}}>SOLO LECTURA · SIN BORRADO AUTOMÁTICO</span>
+        </div>
+        {audit&&<>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:9,marginBottom:12}}>
+            <Card label="Filas DATOS" value={ir.datos_filas??0} sub="Identidades maestras" tone="OK"/>
+            <Card label="Filas ESTATUS" value={ir.estatus_filas??0} sub="Historial académico" tone="INFO"/>
+            <Card label="ESTATUS sin DATOS" value={ir.estatus_sin_datos??0} sub="Filas huérfanas" tone={(ir.estatus_sin_datos||0)?'CRITICO':'OK'}/>
+            <Card label="DATOS sin ESTATUS" value={ir.datos_sin_estatus??0} sub="Identidades sin trayectoria" tone={(ir.datos_sin_estatus||0)?'CRITICO':'OK'}/>
+            <Card label="Correos cruzados" value={ir.correos_de_otro_estudiante??0} sub="Correo de otro código" tone={(ir.correos_de_otro_estudiante||0)?'CRITICO':'OK'}/>
+            <Card label="Llaves inválidas" value={ir.llaves_invalidas??0} sub="Duplicadas o mal construidas" tone={(ir.llaves_invalidas||0)?'CRITICO':'OK'}/>
+          </div>
+          {identidad?.estado==='OK'&&<Notice tone="OK"><b>Integridad válida.</b> Todos los códigos de ESTATUS existen primero en DATOS y no se detectaron correos cruzados, llaves inválidas ni identidades sin trayectoria.</Notice>}
+          {identidad?.estado==='CRITICO'&&<Notice tone="CRITICO"><b>ESTATUS no está íntegro.</b> No sincronice ni corrija copiando datos a ciegas. Revise cada fila señalada contra DATOS; DATOS es la fuente maestra.</Notice>}
+          <div style={{marginTop:12}}>
+            <SimpleTable headers={['Severidad','Código','Cruce','Total','Regla','Muestra']} empty="Sin hallazgos DATOS ↔ ESTATUS." rows={ih.map((x,i)=><tr key={`${x.codigo}-${i}`} style={{borderTop:'1px solid #eee9df'}}><td style={{padding:9}}><Badge value={x.severidad}/></td><td style={{padding:9,fontWeight:900}}>{x.codigo}</td><td style={{padding:9}}>{x.archivo}</td><td style={{padding:9}}>{x.total}</td><td style={{padding:9,maxWidth:450}}>{x.detalle}</td><td style={{padding:9,fontFamily:'monospace',fontSize:10.5,whiteSpace:'pre-wrap',minWidth:320}}>{(x.muestra||[]).slice(0,8).join('\n')||'—'}</td></tr>)}/>
+          </div>
+        </>}
+        {!audit&&<div style={{fontSize:12,color:'#6f7889'}}>Se ejecuta junto con <b>Auditar integración CONAPE</b>. No modifica DATOS, ESTATUS ni las siete hojas externas.</div>}
+      </Section>
+
+      <Section title="Auditoría manual de 7-morosidad" sub="Revisa comprobantes por nivel y la fila externa correspondiente. No corrige en masa: cada llave se mantiene, cambia o elimina por decisión explícita del Super Admin.">
+        <div style={{display:'flex',gap:9,flexWrap:'wrap',alignItems:'center'}}>
+          <input value={moraQuery} onChange={e=>setMoraQuery(e.target.value.replace(/[^0-9]/g,''))} placeholder="Código o cédula" style={{minWidth:230,padding:'10px 12px',border:'1px solid #d8d2c8',borderRadius:10,fontSize:13}}/>
+          <button className="btn btn-primary" type="button" onClick={()=>runMoraAudit()} disabled={!!moraBusy}>{moraBusy==='audit'?'Auditando…':String(moraQuery).trim()?'Auditar estudiante':'Listar casos pendientes'}</button>
+          {moraAudit&&<Badge value={moraAudit?.estudiante?(moraAudit.resumen?.criticos?'CRITICO':moraAudit.resumen?.revisar?'REVISAR':'OK'):(moraAudit.resumen?.criticos?'CRITICO':moraAudit.resumen?.revisar?'REVISAR':'OK')}/>} 
+          <span style={{fontSize:11,fontWeight:900,color:'#295483'}}>CASO POR CASO · SIN LIMPIEZA MASIVA</span>
+        </div>
+        {moraError&&<Notice tone="CRITICO"><b>{moraError}</b></Notice>}
+        {!moraAudit&&<Notice tone="INFO">Un nivel PE o SIN REGISTRO debe aparecer como <b>NO APLICA</b> y no debe tener fila SI/NO en 7-morosidad. La existencia de cero pendiente tampoco prueba que haya un comprobante.</Notice>}
+        {moraAudit?.casos&&<div style={{marginTop:14}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:9,marginBottom:12}}><Card label="Casos detectados" value={moraAudit.resumen?.total||0} tone={(moraAudit.resumen?.total||0)?'REVISAR':'OK'}/><Card label="Críticos" value={moraAudit.resumen?.criticos||0} tone={(moraAudit.resumen?.criticos||0)?'CRITICO':'OK'}/><Card label="Revisar" value={moraAudit.resumen?.revisar||0} tone={(moraAudit.resumen?.revisar||0)?'REVISAR':'OK'}/></div>
+          <SimpleTable headers={['Severidad','Código','Estudiante','Nivel','Periodo','Fila actual','Acción sugerida','Abrir']} empty="No se detectaron inconsistencias entre historial y 7-morosidad." rows={(moraAudit.casos||[]).map((x,i)=><tr key={`${x.codigo}-${x.estudiante?.cedula}-${x.anio}-${x.periodo}-${i}`} style={{borderTop:'1px solid #eee9df'}}><td style={{padding:9}}><Badge value={x.severidad}/></td><td style={{padding:9,fontWeight:900}}>{x.codigo}</td><td style={{padding:9}}><b>{x.estudiante?.nombre||'—'}</b><div style={{fontSize:10,color:'#7b8494'}}>{x.estudiante?.codigo||'—'} · {x.estudiante?.cedula||'—'}</div></td><td style={{padding:9}}>{x.nivel||'—'}</td><td style={{padding:9}}>{x.anio||'—'} / {x.periodo||'—'}</td><td style={{padding:9}}>{x.estado_morosidad||'—'}</td><td style={{padding:9,maxWidth:330}}><b>{x.accion}</b><div style={{fontSize:10.5,color:'#6f7889'}}>{x.detalle}</div></td><td style={{padding:9}}><button className="btn" type="button" onClick={()=>{const q=x.estudiante?.codigo||x.estudiante?.cedula||'';setMoraQuery(q);runMoraAudit(q);}}>Revisar</button></td></tr>)}/>
+        </div>}
+        {moraAudit?.estudiante&&<div style={{marginTop:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',alignItems:'center',marginBottom:10}}><div><b style={{fontSize:16,color:'#16294f'}}>{moraAudit.estudiante.nombre}</b><div style={{fontSize:11,color:'#6f7889'}}>Código {moraAudit.estudiante.codigo} · Cédula {moraAudit.estudiante.cedula}</div></div><div style={{display:'flex',gap:7,flexWrap:'wrap'}}><Badge value={(moraAudit.resumen?.criticos||0)?'CRITICO':(moraAudit.resumen?.revisar||0)?'REVISAR':'OK'}/><button className="btn" type="button" onClick={()=>{setMoraQuery('');setMoraAudit(null);setMoraError('');}}>Cerrar caso</button></div></div>
+          <div style={{marginBottom:10}}><input value={moraNote} onChange={e=>setMoraNote(e.target.value)} placeholder="Motivo obligatorio para corregir (mínimo 10 caracteres)" style={{width:'min(760px,100%)',padding:'10px 12px',border:'1px solid #d8d2c8',borderRadius:10,fontSize:12}}/></div>
+          <SimpleTable minWidth={1180} headers={['Nivel','ESTATUS','Periodo','Comprobantes reales','7-morosidad actual','Cálculo sugerido','Diagnóstico','Acciones manuales']} rows={(moraAudit.niveles||[]).map(x=>{const ev=x.evidencia||{},rows=x.filas_morosidad||[],busyKey=`${x.nivel}-`;return <tr key={x.nivel} style={{borderTop:'1px solid #eee9df'}}><td style={{padding:9,fontWeight:950}}>{x.nivel}</td><td style={{padding:9}}><Badge value={x.estatus==='PE'||x.estatus==='SIN_REGISTRO'?'NO_VERIFICABLE':x.estatus}/><div style={{fontSize:10,color:'#7b8494',marginTop:3}}>{x.grupo||'Sin grupo'}</div></td><td style={{padding:9}}>{x.anio&&x.periodo?`${x.anio} / ${x.periodo}`:'Sin definir'}</td><td style={{padding:9,minWidth:250}}><div><b>Matrícula:</b> {ev.matricula?.cantidad||0} · {Number(ev.matricula?.total||0).toLocaleString('es-CR')}</div><div><b>Cuotas:</b> {ev.cuotas?.cantidad||0} · {Number(ev.cuotas?.total||0).toLocaleString('es-CR')}</div><div><b>Certificado:</b> {ev.certificado?.cantidad||0} · {Number(ev.certificado?.total||0).toLocaleString('es-CR')}</div>{(ev.comprobantes||[]).slice(0,3).map((c,i)=><div key={i} style={{fontSize:9.5,color:'#6f7889',marginTop:2}}>{c.tipo} · {c.recibo||'sin recibo'} · {c.concepto}</div>)}</td><td style={{padding:9}}>{rows.length?rows.map(r=><div key={r.row}><b>{r.estado}</b> · fila {r.row}</div>):<b>SIN FILA</b>}</td><td style={{padding:9}}><Badge value={x.esperado==='PE'?'NO_VERIFICABLE':x.esperado||'INFO'}/><div style={{fontSize:10,color:'#6f7889',marginTop:3}}>{x.esperado==='PE'?'No debe existir fila':`MORA ${x.esperado}`}</div></td><td style={{padding:9,maxWidth:300}}><Badge value={x.severidad}/><div style={{fontWeight:900,marginTop:4}}>{x.recomendacion}</div><div style={{fontSize:10.5,color:'#6f7889',marginTop:3}}>{x.detalle}</div></td><td style={{padding:9}}><div style={{display:'flex',gap:5,flexWrap:'wrap'}}>{(x.estatus==='PE'||x.estatus==='SIN_REGISTRO'||x.esperado==='PE')&&rows.length===1&&<button className="btn" type="button" disabled={!!moraBusy} onClick={()=>applyMora(x,'DELETE')}>{moraBusy===`${busyKey}DELETE`?'Aplicando…':'Eliminar fila'}</button>}{x.esperado!=='PE'&&x.estatus!=='PE'&&x.estatus!=='SIN_REGISTRO'&&rows.length<=1&&<><button className="btn" type="button" disabled={!!moraBusy} onClick={()=>applyMora(x,'SET_SI')}>MORA SI</button><button className="btn" type="button" disabled={!!moraBusy} onClick={()=>applyMora(x,'SET_NO')}>MORA NO</button></>}{x.recomendacion==='MANTENER'||x.recomendacion==='NO_APLICA'?<span style={{fontSize:10.5,color:'#2E7D32',fontWeight:900}}>Sin cambio</span>:null}</div></td></tr>})}/>
+          <Notice tone="REVISAR"><b>Control de seguridad:</b> establecer SI/NO está bloqueado para PE y SIN REGISTRO. Eliminar exige exactamente una fila. Si el dato cambia después de la auditoría, la corrección se rechaza y obliga a recargar el caso.</Notice>
+        </div>}
       </Section>
 
       {audit&&<Section title="Preflight de carga n8n / MySQL" sub="FUENTE APTA significa que Google Sheets no produciría las PRIMARY duplicadas ni las FOREIGN KEY observadas. No significa que el workflow externo esté bien diseñado.">
@@ -182,7 +267,7 @@ function DiagnosticoInternoView(){
           <SimpleTable headers={['Estado','Archivo','Filas con datos','Filas físicas','Vacías al final','Encabezado','Última modificación']} rows={files.map(f=><tr key={f.nombre} style={{borderTop:'1px solid #eee9df'}}><td style={{padding:9}}><Badge value={f.error||!f.encabezado_ok?'CRITICO':'OK'}/></td><td style={{padding:9,fontWeight:900,color:'#16294f'}}>{f.nombre}</td><td style={{padding:9}}>{f.filas}</td><td style={{padding:9}}>{f.filas_fisicas??f.filas}</td><td style={{padding:9}}>{f.filas_vacias_finales||0}</td><td style={{padding:9}}>{f.encabezado_ok?'Compatible':'Revisar'}</td><td style={{padding:9,whiteSpace:'nowrap'}}>{f.ultima_modificacion||'—'}</td></tr>)}/>
         </Section>
 
-        <Section title="Hallazgos académicos y de salida" sub="ESTATUS es la fuente vigente. Las hojas son la salida local; la API representa lo que realmente ve la plataforma externa.">
+        <Section title="Hallazgos académicos y de salida" sub="DATOS define la identidad; ESTATUS define la trayectoria académica únicamente para códigos válidos. Las hojas son la salida local y la API representa lo que ve la plataforma externa.">
           <SimpleTable headers={['Severidad','Código','Archivo','Total','Detalle','Muestra']} rows={hall.map((x,i)=><tr key={`${x.codigo}-${i}`} style={{borderTop:'1px solid #eee9df'}}><td style={{padding:9}}><Badge value={x.severidad}/></td><td style={{padding:9,fontWeight:900}}>{x.codigo}</td><td style={{padding:9}}>{x.archivo}</td><td style={{padding:9}}>{x.total}</td><td style={{padding:9,maxWidth:430}}>{x.detalle}</td><td style={{padding:9,fontFamily:'monospace',fontSize:10.5,whiteSpace:'pre-wrap'}}>{(x.muestra||[]).slice(0,4).join('\n')||'—'}</td></tr>)}/>
         </Section>
 
