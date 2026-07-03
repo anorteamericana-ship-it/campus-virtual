@@ -1,4 +1,4 @@
-// F98.4-Z6-BM · Horarios oficiales + PDF de traslado + carta integral CONAPE
+// F98.4-Z6-BN · Horarios oficiales + PDF de traslado + carta integral CONAPE
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4293,6 +4293,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   const [busy,setBusy]=React.useState('');
   const [docBusy,setDocBusy]=React.useState('');
   const [approveBusy,setApproveBusy]=React.useState('');
+  const [formBusy,setFormBusy]=React.useState('');
   function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
   React.useEffect(cargar,[codigo]);
   async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
@@ -4318,6 +4319,48 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
       cargar();
     }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+  }
+  async function descargarFormularioConape(r){
+    const key=`${r.CAMBIO_ID}-F`;setFormBusy(key);
+    try{
+      if(!window.PDFLib||!window.PDFLib.PDFDocument){
+        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
+        await window.__anPdfLibLoading;
+      }
+      if(!window.PDFLib||!window.PDFLib.PDFDocument)throw new Error('El módulo para prellenar el PDF no está disponible.');
+      const resp=await postAdminStudents('getFormularioConapePrefill',{cambio_id:r.CAMBIO_ID},80000);
+      if(!resp?.ok)throw new Error(resp?.error||'No se pudo preparar el formulario CONAPE.');
+      const templateUrl=resp.template_url||'assets/forms/Formulario-8-Modificar-Plan-Estudios-y-Desembolsos.pdf';
+      const tr=await fetch(templateUrl,{cache:'no-store'});if(!tr.ok)throw new Error(`No se pudo cargar la plantilla oficial (${tr.status}).`);
+      const bytes=await tr.arrayBuffer();
+      const {PDFDocument,StandardFonts,PDFTextField,PDFCheckBox,PDFRadioGroup}=window.PDFLib;
+      const pdfDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+      const form=pdfDoc.getForm();
+      const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const faltantes=[];
+      const text=resp.fields?.text||{},checks=resp.fields?.check||{},radios=resp.fields?.radio||{};
+      Object.entries(text).forEach(([name,value])=>{
+        if(value===null||value===undefined||String(value)==='')return;
+        try{
+          const field=form.getTextField(name);
+          try{if(field.isReadOnly?.())field.disableReadOnly();}catch(_){ }
+          field.setText(String(value));
+          try{const n=String(value).length;field.setFontSize(n>70?5.8:n>45?6.5:n>28?7.5:9);}catch(_){ }
+        }catch(e){faltantes.push(`${name}: ${e?.message||e}`);}
+      });
+      Object.entries(checks).forEach(([name,value])=>{try{const f=form.getCheckBox(name);value?f.check():f.uncheck();}catch(e){faltantes.push(`${name}: ${e?.message||e}`);}});
+      Object.entries(radios).forEach(([name,value])=>{if(!value)return;try{const f=form.getRadioGroup(name);const opts=f.getOptions?.()||[];let selected=String(value);if(!opts.includes(selected)){const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();selected=opts.find(o=>norm(o)===norm(value))||opts.find(o=>norm(o).includes(norm(value)))||'';}if(selected)f.select(selected);else faltantes.push(`${name}: opción ${value} no disponible`);}catch(e){faltantes.push(`${name}: ${e?.message||e}`);}});
+      try{form.updateFieldAppearances(font);}catch(_){ }
+      (resp.draw_text||[]).forEach(d=>{try{const page=pdfDoc.getPages()[Math.max(0,Number(d.page||1)-1)];page.drawText(String(d.text||''),{x:Number(d.x)||0,y:Number(d.y)||0,size:Number(d.size)||9,font});}catch(_){ }});
+      const out=await pdfDoc.save({useObjectStreams:false});
+      const blob=new Blob([out],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=resp.file_name||`FORMULARIOS_CONAPE_${r.CODIGO}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),45000);
+      const pendientes=resp.campos_pendientes||[];
+      const msg=['Formulario oficial prellenado y descargado.','El PDF permanece editable para revisar o completar los campos faltantes.'];
+      if(pendientes.length)msg.push('\nPendientes de revisión:\n• '+pendientes.join('\n• '));
+      if(faltantes.length)msg.push('\nCampos que el navegador no logró escribir:\n• '+faltantes.slice(0,8).join('\n• '));
+      alert(msg.join('\n'));
+    }catch(e){alert(e?.message||String(e));}finally{setFormBusy('');}
   }
   async function aprobarConape(r){
     const estado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
@@ -4363,6 +4406,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
         <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end',maxWidth:430}}>
           <AkActionButton disabled={docBusy===docKey} onClick={()=>abrirDocumento(r)}>{docBusy===docKey?'Generando…':simple?(r.PDF_TRASLADO_URL?'📄 Abrir traslado':'📄 Generar traslado'):(r.CARTA_CONAPE_URL?'📄 Abrir carta CONAPE':'📄 Carta CONAPE')}</AkActionButton>
           {!simple&&r.CARTA_CONAPE_URL&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-R`} onClick={()=>regenerarCarta(r)}>{docBusy===`${r.CAMBIO_ID}-R`?'Recalculando…':'↻ Recalcular carta'}</AkActionButton>}
+          {!simple&&<AkActionButton disabled={formBusy===`${r.CAMBIO_ID}-F`} onClick={()=>descargarFormularioConape(r)}>{formBusy===`${r.CAMBIO_ID}-F`?'Preparando…':'⬇ Descargar formulario CONAPE'}</AkActionButton>}
           {!simple&&String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase()!=='APLICADO_CONAPE'&&<AkActionButton disabled={approveBusy===r.CAMBIO_ID} onClick={()=>aprobarConape(r)}>{approveBusy===r.CAMBIO_ID?'Publicando…':'✓ CONAPE aprobó · Publicar plan'}</AkActionButton>}
           {simple&&r.PDF_TRASLADO_URL&&String(r.PDF_TRASLADO_ESTADO||'').toUpperCase()!=='ENTREGADO_AL_ESTUDIANTE'&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-E`} onClick={()=>marcarEntregado(r)}>{docBusy===`${r.CAMBIO_ID}-E`?'Guardando…':'✓ Marcar entregado'}</AkActionButton>}
           <AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID||String(r.REVERSIBLE||'').toUpperCase()!=='SI'} title={String(r.REVERSIBLE||'').toUpperCase()==='SI'?'Reversión automática disponible':'Este cambio requiere revisión asistida; no se revierte desde el botón.'} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':String(r.REVERSIBLE||'').toUpperCase()==='SI'?'↶ Deshacer':'Revisión asistida'}</AkActionButton>
