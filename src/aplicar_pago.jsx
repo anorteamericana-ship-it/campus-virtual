@@ -1,4 +1,4 @@
-// F98.4-Z6-BG · certificado cobrable en CA + título final I2 separado
+// F98.4-Z6-BK · mora I2 unificada + cuotas sin pendiente ocultas
 /* global React, PageHeader */
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -520,8 +520,15 @@ function Paso4AP({
   // cuando ya existen una o más cuotas aplicadas en ese mismo grupo/intento.
   const cuotaPendienteTotal = Number(pendNivel.cuotas_pend || 0);
   const nCuotasPeriodo = Number(pendNivel.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
-  const nCuotas = montoCuota > 0 ? Math.min(nCuotasPeriodo, Math.ceil(cuotaPendienteTotal / montoCuota)) : 0;
-  const subtotalCuotas = Math.min(qCuota * montoCuota, cuotaPendienteTotal);
+  const nCuotas = montoCuota > 0 && cuotaPendienteTotal > 0
+    ? Math.min(nCuotasPeriodo, Math.ceil(cuotaPendienteTotal / montoCuota))
+    : 0;
+  const mostrarCuotas = montoCuota > 0 && cuotaPendienteTotal > 0 && nCuotas > 0;
+  const subtotalCuotas = mostrarCuotas ? Math.min(qCuota * montoCuota, cuotaPendienteTotal) : 0;
+  React.useEffect(() => {
+    if (!mostrarCuotas && qCuota !== 0) setQCuota(0);
+    else if (mostrarCuotas && qCuota > nCuotas) setQCuota(nCuotas);
+  }, [mostrarCuotas, nCuotas, qCuota, setQCuota]);
 
   const [cargandoApl, setCargandoApl] = React.useState(false);
   const [errLocal, setErrLocal] = React.useState('');
@@ -674,14 +681,14 @@ function Paso4AP({
       {/* Rubros */}
       <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
-        {montoCuota > 0 && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
+        {mostrarCuotas && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
         {montoCert  > 0 && <RubroRow label={`Certificado de ${NIVEL_LABEL_A[niv] || niv}`} monto={montoCert} qty={qCert} maxQty={1} onQty={setQCert} />}
         {montoTitulo > 0 && <RubroRow label="Certificado Programa Completo" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
         {niv === 'I2' && pendNivel.programa_completo_estado === 'NO_APLICA_NIVELACION' && <div style={{padding:'10px 12px',borderRadius:9,background:'#F4F1EC',color:'#756D65',fontSize:11,fontWeight:700}}>Programa Completo: no aplica por nivel convalidado mediante examen de nivelación.</div>}
         {montoToeic > 0 && <RubroRow label="Prueba TOEIC" monto={montoToeic} qty={qToeic} maxQty={1} onQty={setQToeic} />}
         {niv === 'I2' && pendNivel.toeic_omitido && <div style={{padding:'10px 12px',borderRadius:9,background:'#E8F5E9',color:'#2E7D32',fontSize:11,fontWeight:700}}>TOEIC omitido administrativamente: no bloquea la mora.</div>}
         {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
-        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoTitulo === 0 && montoToeic === 0 && montoOtro === 0 && (
+        {montoMat === 0 && !mostrarCuotas && montoCert === 0 && montoTitulo === 0 && montoToeic === 0 && montoOtro === 0 && (
           <div style={{ padding:'16px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', color:'var(--ink-3)', fontSize:13, textAlign:'center' }}>
             No hay rubros pendientes para este estudiante
           </div>
