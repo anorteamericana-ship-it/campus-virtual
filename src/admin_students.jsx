@@ -1,4 +1,4 @@
-// F98.4-Z6-BJ · Cambios académicos individuales; sin fusión ni operación masiva
+// F98.4-Z6-BL · Horarios oficiales + PDF de traslado + carta integral CONAPE
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -66,6 +66,23 @@ async function postAdminStudents(fn, payload = {}, timeoutMs = 25000) {
     }
   }
   throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
+}
+
+function abrirPdfBackend(payload, fallbackUrl = '') {
+  try {
+    if (payload?.pdf_base64) {
+      const bin = atob(payload.pdf_base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: payload.pdf_mime || 'application/pdf' }));
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+      return true;
+    }
+    const url = payload?.pdf_url || fallbackUrl;
+    if (url) { window.open(url, '_blank', 'noopener,noreferrer'); return true; }
+  } catch (_) {}
+  return false;
 }
 
 async function resincronizarEstudianteIndividual(codigo) {
@@ -1606,6 +1623,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
   const [modalEstatus, setModalEstatus] = React.useState(null);
   const [modalCambio, setModalCambio] = React.useState(null);
   const [resyncEst, setResyncEst] = React.useState(null);
+  const [pdfTrasladoBusy, setPdfTrasladoBusy] = React.useState('');
   // { codigo, loading, ok?, error? }
   if (!estudiantes.length) return null;
   const subtitulo = calcularSubtitulo(estudiantes);
@@ -1741,7 +1759,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
       {/* Tabla — rediseño operativo compacto para Calendario de Grupo */}
       {abierto && (
       <div style={{ overflowX: 'auto', border: `1px solid ${cfg.color}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background:'var(--surface,#fff)' }}>
-        <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'separate', borderSpacing: 0, fontSize: 12 }}>
+        <table style={{ width: '100%', minWidth: 1220, borderCollapse: 'separate', borderSpacing: 0, fontSize: 12 }}>
           <thead>
             <tr style={{ background: cfg.bg }}>
               {[
@@ -1752,7 +1770,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                 { label:'Finanzas',    sort:'mora',   width:230 },
                 { label:'Certificado', sort:null,     width:160 },
                 { label:'Nota',        sort:'nota',   width:82 },
-                { label:'Acciones',    sort:null,     width:220 },
+                { label:'Acciones',    sort:null,     width:310 },
               ].map(h => (
                 <th
                   key={h.label}
@@ -1795,6 +1813,18 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                 const abrirGrupoActual = () => {
                   if (onNavigate && e.grupo_actual) onNavigate('calendario_grupo', { grupo:e.grupo_actual });
                 };
+                const abrirPdfTraslado = async () => {
+                  const id = e.cambio_id || `${codigo}-${nivelKey}`;
+                  if (e.pdf_traslado_url) { window.open(e.pdf_traslado_url, '_blank', 'noopener,noreferrer'); return; }
+                  setPdfTrasladoBusy(id);
+                  try {
+                    const r = await postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey }, 70000);
+                    if (!r?.ok) throw new Error(r?.error || 'No se pudo generar la constancia.');
+                    if (!abrirPdfBackend(r, r.pdf_url)) alert('La constancia se generó, pero el navegador bloqueó la apertura. Puede abrirla desde el historial.');
+                    onRefresh?.();
+                  } catch (err) { alert(err?.message || String(err)); }
+                  finally { setPdfTrasladoBusy(''); }
+                };
                 return (
                   <tr key={codigo + '-traslado-' + nivelKey + '-' + i} style={{ background:'#EEF2F6', borderBottom:'1px solid #CDD6DF', borderLeft:'4px solid #607D8B' }}>
                     <td style={{ padding:'6px 8px',fontWeight:900,fontFamily:'var(--f-mono,monospace)',verticalAlign:'middle' }}>{codigo}</td>
@@ -1811,6 +1841,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                       <div style={{display:'flex',gap:4,flexWrap:'nowrap'}}>
                         <button type="button" onClick={abrirConsultaIndividual} style={{padding:'4px 6px',borderRadius:7,border:'1px solid var(--line,#ddd)',background:'white',fontSize:10.5,fontWeight:800,cursor:'pointer'}}>⌕ Consulta individual</button>
                         <button type="button" onClick={abrirGrupoActual} disabled={!e.grupo_actual} style={{padding:'4px 6px',borderRadius:7,border:'1px solid #C9D9F1',background:'#EEF4FF',color:'#244A7C',fontSize:10.5,fontWeight:800,cursor:e.grupo_actual?'pointer':'not-allowed'}}>🗓 Grupo actual</button>
+                        <button type="button" onClick={abrirPdfTraslado} disabled={pdfTrasladoBusy===(e.cambio_id||`${codigo}-${nivelKey}`)} style={{padding:'4px 7px',borderRadius:7,border:'1px solid #A7D4B0',background:'#EEF8EF',color:'#246B2A',fontSize:10.5,fontWeight:900,cursor:'pointer',whiteSpace:'nowrap'}}>{pdfTrasladoBusy===(e.cambio_id||`${codigo}-${nivelKey}`)?'Generando…':e.pdf_traslado_url?'📄 Abrir traslado':'📄 PDF traslado'}</button>
                       </div>
                     </td>
                   </tr>
@@ -4048,6 +4079,18 @@ function AkActionButton({ children, onClick, danger, disabled, title }) {
   );
 }
 
+function agCambioHora12(v) {
+  const m = String(v || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return String(v || '');
+  const h = Number(m[1]), min = m[2], pm = h >= 12;
+  const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  return `${h12}:${min} ${pm ? 'p.m.' : 'a.m.'}`;
+}
+function agCambioDias(v) {
+  const k = String(v || '').toUpperCase().trim();
+  return ({LM:'Lunes y miércoles',KJ:'Martes y jueves',MJ:'Martes y jueves',LJ:'Lunes a jueves',L4:'Lunes a jueves',SA:'Sábado',S:'Sábado',V:'Viernes',MV:'Miércoles y viernes'})[k] || k || 'Días sin definir';
+}
+
 function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess }) {
   const [contexto, setContexto] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -4191,7 +4234,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
                     {!candidatos.length&&<option value="">Sin destinos compatibles</option>}
                     {candidatos.map(g => <option key={g.grupo} value={g.grupo} disabled={!g.seleccionable}>{g.grupo} · {g.periodo_corto || 'sin periodo'} · {g.comentario} · {g.cupo} cupos</option>)}
                   </select>
-                  {candidato&&<div style={{marginTop:8,padding:'8px 9px',borderRadius:8,background:candidato.seleccionable?'#E8F5E9':'#FFF3E0',color:candidato.seleccionable?'#246B2A':'#9A5B00',fontSize:10.5,fontWeight:800,lineHeight:1.4}}>{candidato.dias} {candidato.hora_ini}–{candidato.hora_fin} · {candidato.docente || 'Sin docente'}<br/>{candidato.recomendacion}</div>}
+                  {candidato&&<div style={{marginTop:8,padding:'8px 9px',borderRadius:8,background:candidato.seleccionable?'#E8F5E9':'#FFF3E0',color:candidato.seleccionable?'#246B2A':'#9A5B00',fontSize:10.5,fontWeight:800,lineHeight:1.4}}>{agCambioDias(candidato.dias)} · {agCambioHora12(candidato.hora_ini)}–{agCambioHora12(candidato.hora_fin)} · {candidato.docente || 'Sin docente'}<br/>{candidato.recomendacion}</div>}
 
                   <label style={{display:'block',fontSize:10,fontWeight:900,margin:'12px 0 5px'}}>Motivo oficial</label>
                   <select value={motivo} onChange={e=>{setMotivo(e.target.value);setSimulacion(null);setConfirmacion('');}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
@@ -4247,12 +4290,48 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   const [estado,setEstado]=React.useState({loading:true,error:'',rows:[]});
   const [busy,setBusy]=React.useState('');
+  const [docBusy,setDocBusy]=React.useState('');
   function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
   React.useEffect(cargar,[codigo]);
   async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
-  return <div style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(7,20,40,.68)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(960px,96vw)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:15,boxShadow:'0 28px 80px rgba(0,0,0,.35)'}}>
-    <div style={{padding:'16px 18px',background:'#0D2B51',color:'white',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'15px 15px 0 0'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase',opacity:.7}}>Auditoría inmutable</div><div style={{fontSize:20,fontWeight:900}}>Historial de cambios de grupo</div></div><button onClick={onClose} style={{background:'none',border:'none',color:'white',fontSize:24,cursor:'pointer'}}>×</button></div>
-    <div style={{padding:17}}>{estado.loading?<div style={{padding:25,textAlign:'center'}}>Cargando historial…</div>:estado.error?<div style={{padding:12,background:'#FFEBEE',color:'#B42318',borderRadius:9}}>{estado.error}</div>:!estado.rows.length?<div style={{padding:25,textAlign:'center',color:'#667085'}}>No existen cambios de grupo registrados.</div>:<div style={{display:'grid',gap:9}}>{estado.rows.map(r=><div key={r.CAMBIO_ID} style={{border:'1px solid #E0E6ED',borderRadius:11,padding:12,display:'grid',gridTemplateColumns:'1fr auto',gap:12,alignItems:'center'}}><div><div style={{fontWeight:900,color:'#14213D'}}>{r.NIVEL} · {r.GRUPO_ORIGEN} → {r.GRUPO_DESTINO}</div><div style={{fontSize:10.5,color:'#667085',marginTop:3}}>{String(r.FECHA||'')} · {r.MOTIVO} · {r.ESTADO_APROBACION}</div><div style={{fontSize:10.5,color:'#667085',marginTop:2}}>Por {r.APROBADO_POR_1||'—'} · CONAPE {r.CONAPE_SYNC||'—'} · INA {r.INA_ESTADO||'—'}</div>{r.REVERSADO_EN&&<div style={{fontSize:10.5,color:'#B42318',fontWeight:900,marginTop:3}}>Reversado: {String(r.REVERSADO_EN)}</div>}</div><AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID||String(r.REVERSIBLE||'').toUpperCase()!=='SI'} title={String(r.REVERSIBLE||'').toUpperCase()==='SI'?'Reversión automática disponible':'Este cambio requiere revisión asistida; no se revierte desde el botón.'} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':String(r.REVERSIBLE||'').toUpperCase()==='SI'?'↶ Deshacer':'Revisión asistida'}</AkActionButton></div>)}</div>}</div>
+  async function abrirDocumento(r){
+    const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
+    const key=`${r.CAMBIO_ID}-${simple?'T':'C'}`;setDocBusy(key);
+    try{
+      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID},80000);
+      if(!resp?.ok)throw new Error(resp?.error||'No se pudo generar el documento.');
+      if(!abrirPdfBackend(resp,resp.pdf_url))alert('El documento se generó, pero el navegador bloqueó la apertura.');
+      cargar();
+    }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+  }
+  async function marcarEntregado(r){
+    if(!confirm('¿Confirmar que la constancia fue entregada al estudiante?'))return;
+    const key=`${r.CAMBIO_ID}-E`;setDocBusy(key);
+    try{const resp=await postAdminStudents('marcarConstanciaTrasladoEntregada',{cambio_id:r.CAMBIO_ID});if(!resp?.ok)throw new Error(resp?.error||'No se pudo registrar la entrega.');cargar();}
+    catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+  }
+  return <div style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(7,20,40,.68)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(1080px,96vw)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:15,boxShadow:'0 28px 80px rgba(0,0,0,.35)'}}>
+    <div style={{padding:'16px 18px',background:'#0D2B51',color:'white',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'15px 15px 0 0'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase',opacity:.7}}>Auditoría inmutable</div><div style={{fontSize:20,fontWeight:900}}>Historial y documentos de cambios</div></div><button onClick={onClose} style={{background:'none',border:'none',color:'white',fontSize:24,cursor:'pointer'}}>×</button></div>
+    <div style={{padding:17}}>{estado.loading?<div style={{padding:25,textAlign:'center'}}>Cargando historial…</div>:estado.error?<div style={{padding:12,background:'#FFEBEE',color:'#B42318',borderRadius:9}}>{estado.error}</div>:!estado.rows.length?<div style={{padding:25,textAlign:'center',color:'#667085'}}>No existen cambios registrados.</div>:<div style={{display:'grid',gap:9}}>{estado.rows.map(r=>{
+      const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
+      const docKey=`${r.CAMBIO_ID}-${simple?'T':'C'}`;
+      return <div key={r.CAMBIO_ID} style={{border:'1px solid #E0E6ED',borderRadius:11,padding:12,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}>
+        <div>
+          <div style={{fontWeight:900,color:'#14213D'}}>{r.NIVEL} · {r.GRUPO_ORIGEN} → {r.GRUPO_DESTINO}</div>
+          <div style={{fontSize:10.5,color:'#667085',marginTop:3}}>{String(r.FECHA||'')} · {r.MOTIVO} · {r.ESTADO_APROBACION}</div>
+          <div style={{fontSize:10.5,color:'#667085',marginTop:2}}>{r.horario_origen||'Horario origen sin registrar'} → {r.horario_destino||'Horario destino sin registrar'}</div>
+          <div style={{fontSize:10.5,color:'#667085',marginTop:2}}>Por {r.APROBADO_POR_1||'—'} · CONAPE {r.CONAPE_SYNC||'—'} · INA {r.INA_ESTADO||'—'}</div>
+          {r.PDF_TRASLADO_ESTADO&&<div style={{fontSize:10,color:'#246B2A',fontWeight:900,marginTop:3}}>Constancia: {r.PDF_TRASLADO_ESTADO}</div>}
+          {r.CARTA_CONAPE_ESTADO&&<div style={{fontSize:10,color:'#244A7C',fontWeight:900,marginTop:3}}>Carta CONAPE: {r.CARTA_CONAPE_ESTADO}</div>}
+          {r.REVERSADO_EN&&<div style={{fontSize:10.5,color:'#B42318',fontWeight:900,marginTop:3}}>Reversado: {String(r.REVERSADO_EN)}</div>}
+        </div>
+        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end',maxWidth:430}}>
+          <AkActionButton disabled={docBusy===docKey} onClick={()=>abrirDocumento(r)}>{docBusy===docKey?'Generando…':simple?(r.PDF_TRASLADO_URL?'📄 Abrir traslado':'📄 Generar traslado'):(r.CARTA_CONAPE_URL?'📄 Abrir carta CONAPE':'📄 Carta CONAPE')}</AkActionButton>
+          {simple&&r.PDF_TRASLADO_URL&&String(r.PDF_TRASLADO_ESTADO||'').toUpperCase()!=='ENTREGADO_AL_ESTUDIANTE'&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-E`} onClick={()=>marcarEntregado(r)}>{docBusy===`${r.CAMBIO_ID}-E`?'Guardando…':'✓ Marcar entregado'}</AkActionButton>}
+          <AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID||String(r.REVERSIBLE||'').toUpperCase()!=='SI'} title={String(r.REVERSIBLE||'').toUpperCase()==='SI'?'Reversión automática disponible':'Este cambio requiere revisión asistida; no se revierte desde el botón.'} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':String(r.REVERSIBLE||'').toUpperCase()==='SI'?'↶ Deshacer':'Revisión asistida'}</AkActionButton>
+        </div>
+      </div>;
+    })}</div>}</div>
   </div></div>;
 }
 
