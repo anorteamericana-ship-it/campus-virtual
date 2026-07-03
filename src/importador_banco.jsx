@@ -2,6 +2,7 @@
 
 // ─────────────────────────────────────────────────────────────────────────
 // IMPORTADOR BANCARIO — BCR extracto XLS/HTML
+// F98.4-Z6-BH · importación autenticada, idempotente y sin escrituras parciales
 // T-02: Parseo real del HTML del BCR + llamada al Apps Script
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -12,21 +13,41 @@ const SCRIPT_URL = window.APPS_SCRIPT_URL;
 // Lecturas sensibles (comprobantes BCR) van por POST text/plain: fn + token +
 // datos en el BODY JSON, NUNCA en la URL. Esto elimina el Error CORS de las
 // llamadas GET con token en query string y deja de exponer el token.
-async function postImportador(payload) {
-  // FIX-ROUTING-POST-APPS-SCRIPT-001: el Apps Script enruta por e.parameter.fn,
-  // así que el ?fn= DEBE conservarse en la URL (sin él → "Función POST no
-  // reconocida"). Sigue siendo POST text/plain; el token NO va en la URL:
-  // token y datos viajan en el body.
+async function postImportador(payload, timeoutMs = 45000) {
+  // El Apps Script enruta por e.parameter.fn. El token viaja exclusivamente
+  // dentro del body; nunca se expone en la URL.
   const fn = (payload && payload.fn) || '';
-  const res = await fetch(`${SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      token: window.getSessionToken ? window.getSessionToken() : '',
-      ...payload,
-    }),
-  });
-  return await res.json();
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  if (!token) throw new Error('Tu sesión administrativa no está disponible. Cerrá sesión e ingresá nuevamente.');
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, ...payload }),
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: controller ? controller.signal : undefined,
+    });
+    const raw = await res.text();
+    const text = String(raw || '').trim();
+    if (!text) throw new Error(`El backend no devolvió contenido en ${fn}.`);
+    if (/^<!doctype\s+html|^<html/i.test(text)) {
+      throw new Error('Apps Script devolvió HTML. Revisá la implementación publicada y la sesión.');
+    }
+    let data;
+    try { data = JSON.parse(text); }
+    catch (_) { throw new Error(`Respuesta inválida del backend en ${fn}.`); }
+    if (!res.ok) throw new Error(data?.error || data?.mensaje || `HTTP ${res.status}`);
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`El backend tardó demasiado en responder (${fn}).`);
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 // ── Parseo real del HTML del BCR ──────────────────────────────────────────
@@ -229,14 +250,19 @@ function ImportadorBancario() {
           credito:        m.credito || 0,
         }));
 
-      const res = await fetch(`${SCRIPT_URL}?fn=importarExtracto`, {
-        method: 'POST',
-        body: JSON.stringify(filasAImportar),
+      // F98.4-Z6-BH: la importación usa el mismo canal autenticado que la
+      // lectura de comprobantes. Antes se enviaba un array crudo sin token y
+      // el backend respondía `sesion_requerida` antes de escribir.
+      const data = await postImportador({
+        fn: 'importarExtracto',
+        filas: filasAImportar,
       });
-      const data = await res.json();
 
-      if (data.error) {
-        setError('Error del servidor: ' + data.error);
+      if (!data.ok) {
+        const detalle = data.error === 'sesion_requerida'
+          ? 'La sesión administrativa venció o no llegó al backend. Ingresá nuevamente.'
+          : (data.error || 'No fue posible importar el extracto.');
+        setError('Error del servidor: ' + detalle);
         return;
       }
 
