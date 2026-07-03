@@ -1,4 +1,4 @@
-// F98.4-Z6-BE · DATOS maestro + integridad ESTATUS + auditoría manual CONAPE
+// F98.4-Z6-BI · DATOS maestro; correo exclusivo de DATOS; llaves históricas estables
 /* global React, PageHeader */
 const SCRIPT_URL_DIAG=window.APPS_SCRIPT_URL;
 
@@ -170,7 +170,7 @@ function DiagnosticoInternoView(){
         <div style={{marginTop:10,fontSize:12,color:'#6f7889'}}>No se crean, eliminan ni administran triggers. Tampoco se modifican IDs, rutas, encabezados, credenciales o filas de las siete hojas.</div>
       </Section>
 
-      <Section title="Integridad maestra DATOS → ESTATUS" sub="DATOS se crea primero y manda. ESTATUS solo es válido cuando el código existe en DATOS; el correo es un control cruzado, nunca la identidad principal.">
+      <Section title="Integridad maestra DATOS → ESTATUS" sub="DATOS se crea primero y manda. ESTATUS solo es válido cuando el código existe en DATOS. El correo se toma únicamente desde DATOS y ya no se audita en ESTATUS.">
         <div style={{display:'flex',gap:9,flexWrap:'wrap',alignItems:'center',marginBottom:audit?12:0}}>
           <Badge value={identidad?.estado||'INFO'}/>
           <span style={{fontSize:11,fontWeight:900,color:'#295483'}}>SOLO LECTURA · SIN BORRADO AUTOMÁTICO</span>
@@ -181,10 +181,9 @@ function DiagnosticoInternoView(){
             <Card label="Filas ESTATUS" value={ir.estatus_filas??0} sub="Historial académico" tone="INFO"/>
             <Card label="ESTATUS sin DATOS" value={ir.estatus_sin_datos??0} sub="Filas huérfanas" tone={(ir.estatus_sin_datos||0)?'CRITICO':'OK'}/>
             <Card label="DATOS sin ESTATUS" value={ir.datos_sin_estatus??0} sub="Identidades sin trayectoria" tone={(ir.datos_sin_estatus||0)?'CRITICO':'OK'}/>
-            <Card label="Correos cruzados" value={ir.correos_de_otro_estudiante??0} sub="Correo de otro código" tone={(ir.correos_de_otro_estudiante||0)?'CRITICO':'OK'}/>
-            <Card label="Llaves inválidas" value={ir.llaves_invalidas??0} sub="Duplicadas o mal construidas" tone={(ir.llaves_invalidas||0)?'CRITICO':'OK'}/>
+            <Card label="Llaves inválidas" value={ir.llaves_invalidas??0} sub="Vacías o duplicadas" tone={(ir.llaves_invalidas||0)?'CRITICO':'OK'}/>
           </div>
-          {identidad?.estado==='OK'&&<Notice tone="OK"><b>Integridad válida.</b> Todos los códigos de ESTATUS existen primero en DATOS y no se detectaron correos cruzados, llaves inválidas ni identidades sin trayectoria.</Notice>}
+          {identidad?.estado==='OK'&&<Notice tone="OK"><b>Integridad válida.</b> Todos los códigos de ESTATUS existen primero en DATOS y no se detectaron llaves inválidas ni identidades sin trayectoria.</Notice>}
           {identidad?.estado==='CRITICO'&&<Notice tone="CRITICO"><b>ESTATUS no está íntegro.</b> No sincronice ni corrija copiando datos a ciegas. Revise cada fila señalada contra DATOS; DATOS es la fuente maestra.</Notice>}
           <div style={{marginTop:12}}>
             <SimpleTable headers={['Severidad','Código','Cruce','Total','Regla','Muestra']} empty="Sin hallazgos DATOS ↔ ESTATUS." rows={ih.map((x,i)=><tr key={`${x.codigo}-${i}`} style={{borderTop:'1px solid #eee9df'}}><td style={{padding:9}}><Badge value={x.severidad}/></td><td style={{padding:9,fontWeight:900}}>{x.codigo}</td><td style={{padding:9}}>{x.archivo}</td><td style={{padding:9}}>{x.total}</td><td style={{padding:9,maxWidth:450}}>{x.detalle}</td><td style={{padding:9,fontFamily:'monospace',fontSize:10.5,whiteSpace:'pre-wrap',minWidth:320}}>{(x.muestra||[]).slice(0,8).join('\n')||'—'}</td></tr>)}/>
