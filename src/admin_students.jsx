@@ -1,4 +1,4 @@
-// F98.4-Z6-BL · Horarios oficiales + PDF de traslado + carta integral CONAPE
+// F98.4-Z6-BM · Horarios oficiales + PDF de traslado + carta integral CONAPE
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4175,8 +4175,9 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
         grupo_origen:simulacion?.antes?.grupo || contexto?.actual?.grupo || '',
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
         confirmacion_individual:String(codigo),
-      }, 90000);
+      }, 45000);
       if (!r?.ok) { setError(r?.error || 'No fue posible ejecutar el movimiento.'); return; }
+      alert(r?.mensaje || (r?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.'));
       onSuccess?.(r);
       onClose();
     } catch(e) {
@@ -4291,18 +4292,50 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   const [estado,setEstado]=React.useState({loading:true,error:'',rows:[]});
   const [busy,setBusy]=React.useState('');
   const [docBusy,setDocBusy]=React.useState('');
+  const [approveBusy,setApproveBusy]=React.useState('');
   function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
   React.useEffect(cargar,[codigo]);
   async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
   async function abrirDocumento(r){
     const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
+    const existingUrl=simple?r.PDF_TRASLADO_URL:r.CARTA_CONAPE_URL;
+    if(existingUrl){window.open(existingUrl,'_blank','noopener,noreferrer');return;}
     const key=`${r.CAMBIO_ID}-${simple?'T':'C'}`;setDocBusy(key);
     try{
-      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID},80000);
+      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,include_base64:false},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo generar el documento.');
       if(!abrirPdfBackend(resp,resp.pdf_url))alert('El documento se generó, pero el navegador bloqueó la apertura.');
       cargar();
     }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+  }
+  async function regenerarCarta(r){
+    if(!confirm('Se recalcularán pagos y mora. La carta anterior será reemplazada. ¿Continuar?'))return;
+    const key=`${r.CAMBIO_ID}-R`;setDocBusy(key);
+    try{
+      const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:false},80000);
+      if(!resp?.ok)throw new Error(resp?.error||'No se pudo regenerar la carta.');
+      alert(resp?.estado==='LISTA_PARA_FIRMA'?'Carta de no deuda recalculada y lista para firma.':'La carta sigue como borrador porque todavía existen rubros pendientes.');
+      if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
+      cargar();
+    }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+  }
+  async function aprobarConape(r){
+    const estado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
+    if(estado==='APLICADO_CONAPE'){alert('Este expediente ya fue publicado en las hojas CONAPE.');return;}
+    const referencia=prompt('Referencia o detalle de la respuesta de CONAPE (opcional):','Aprobación recibida por la Academia');
+    if(referencia===null)return;
+    const confirmacion=prompt(`Para publicar únicamente el expediente ${r.CODIGO}, escribí exactamente su código:`,'');
+    if(confirmacion===null)return;
+    if(String(confirmacion).trim()!==String(r.CODIGO)){alert('El código no coincide. No se modificó CONAPE.');return;}
+    if(!confirm('Se actualizarán quirúrgicamente las hojas 4, 5, 6 y 7 de CONAPE para este estudiante. ¿Continuar?'))return;
+    setApproveBusy(r.CAMBIO_ID);
+    try{
+      const resp=await postAdminStudents('aprobarAplicarCambioConape',{cambio_id:r.CAMBIO_ID,codigo:r.CODIGO,confirmacion_individual:String(r.CODIGO),referencia_aprobacion:referencia,respuesta_conape:referencia},90000);
+      if(!resp?.ok)throw new Error(resp?.error||'No fue posible publicar el plan CONAPE.');
+      const fin=resp?.estado_financiero||{};
+      alert((resp?.mensaje||'Plan CONAPE publicado.')+(resp?.carta_no_deuda_lista?'':'\n\nLa carta de no deuda todavía no es apta: primero aplicá los pagos pendientes y luego usá “Recalcular carta”.'));
+      cargar();onReverted?.(resp);
+    }catch(e){alert(e?.message||String(e));}finally{setApproveBusy('');}
   }
   async function marcarEntregado(r){
     if(!confirm('¿Confirmar que la constancia fue entregada al estudiante?'))return;
@@ -4323,10 +4356,14 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
           <div style={{fontSize:10.5,color:'#667085',marginTop:2}}>Por {r.APROBADO_POR_1||'—'} · CONAPE {r.CONAPE_SYNC||'—'} · INA {r.INA_ESTADO||'—'}</div>
           {r.PDF_TRASLADO_ESTADO&&<div style={{fontSize:10,color:'#246B2A',fontWeight:900,marginTop:3}}>Constancia: {r.PDF_TRASLADO_ESTADO}</div>}
           {r.CARTA_CONAPE_ESTADO&&<div style={{fontSize:10,color:'#244A7C',fontWeight:900,marginTop:3}}>Carta CONAPE: {r.CARTA_CONAPE_ESTADO}</div>}
+          {!simple&&<div style={{fontSize:10,color:String(r.CONAPE_EXPEDIENTE_ESTADO||'').toUpperCase()==='APLICADO_CONAPE'?'#246B2A':'#B42318',fontWeight:900,marginTop:3}}>Expediente CONAPE: {r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'PENDIENTE'}</div>}
+          {r.CONAPE_REFERENCIA&&<div style={{fontSize:9.5,color:'#667085',marginTop:2}}>Referencia: {r.CONAPE_REFERENCIA}</div>}
           {r.REVERSADO_EN&&<div style={{fontSize:10.5,color:'#B42318',fontWeight:900,marginTop:3}}>Reversado: {String(r.REVERSADO_EN)}</div>}
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end',maxWidth:430}}>
           <AkActionButton disabled={docBusy===docKey} onClick={()=>abrirDocumento(r)}>{docBusy===docKey?'Generando…':simple?(r.PDF_TRASLADO_URL?'📄 Abrir traslado':'📄 Generar traslado'):(r.CARTA_CONAPE_URL?'📄 Abrir carta CONAPE':'📄 Carta CONAPE')}</AkActionButton>
+          {!simple&&r.CARTA_CONAPE_URL&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-R`} onClick={()=>regenerarCarta(r)}>{docBusy===`${r.CAMBIO_ID}-R`?'Recalculando…':'↻ Recalcular carta'}</AkActionButton>}
+          {!simple&&String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase()!=='APLICADO_CONAPE'&&<AkActionButton disabled={approveBusy===r.CAMBIO_ID} onClick={()=>aprobarConape(r)}>{approveBusy===r.CAMBIO_ID?'Publicando…':'✓ CONAPE aprobó · Publicar plan'}</AkActionButton>}
           {simple&&r.PDF_TRASLADO_URL&&String(r.PDF_TRASLADO_ESTADO||'').toUpperCase()!=='ENTREGADO_AL_ESTUDIANTE'&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-E`} onClick={()=>marcarEntregado(r)}>{docBusy===`${r.CAMBIO_ID}-E`?'Guardando…':'✓ Marcar entregado'}</AkActionButton>}
           <AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID||String(r.REVERSIBLE||'').toUpperCase()!=='SI'} title={String(r.REVERSIBLE||'').toUpperCase()==='SI'?'Reversión automática disponible':'Este cambio requiere revisión asistida; no se revierte desde el botón.'} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':String(r.REVERSIBLE||'').toUpperCase()==='SI'?'↶ Deshacer':'Revisión asistida'}</AkActionButton>
         </div>
