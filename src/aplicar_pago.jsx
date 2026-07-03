@@ -230,10 +230,57 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
   );
 }
 
+function ToeicDecisionAP({ estData, setEstData, estSel }) {
+  const info = estData?.pendientes?.por_nivel?.I2 || {};
+  const aplica = info.toeic_aplica !== false && Number(info.precio_toeic || 0) > 0;
+  const pagado = Number(info.toeic_pagado || 0) > 0 || String(info.toeic_estado || '').toUpperCase() === 'PAGADO';
+  const cobrable = info.toeic_cobrable === true;
+  const [omitido, setOmitido] = React.useState(!!info.toeic_omitido);
+  const [motivo, setMotivo] = React.useState(info.toeic_motivo_omision || '');
+  const [guardando, setGuardando] = React.useState(false);
+  const [mensaje, setMensaje] = React.useState('');
+
+  React.useEffect(() => {
+    setOmitido(!!info.toeic_omitido);
+    setMotivo(info.toeic_motivo_omision || '');
+  }, [info.toeic_omitido, info.toeic_motivo_omision, info.toeic_estado]);
+
+  if (!aplica) return null;
+  const guardar = async () => {
+    if (omitido && !motivo.trim()) { setMensaje('Indicá el motivo de la omisión.'); return; }
+    setGuardando(true); setMensaje('');
+    try {
+      const data = await postAP({ fn:'configurarToeicEstudiante', codigo:estSel?.CODIGO || estSel?.rec_m, omitido, motivo:motivo.trim() });
+      if (!data.ok) { setMensaje(data.error || 'No se pudo guardar la decisión TOEIC.'); return; }
+      const f = data.ficha || {};
+      setEstData(prev => ({
+        ...(prev || {}),
+        niveles:f.niveles || prev?.niveles || {}, pagos:f.pagos || prev?.pagos || [], otrosPagos:f.otrosPagos || prev?.otrosPagos || [],
+        grupo:f.cod_grupo || prev?.grupo || '', grupo_tipo:f.grupo_tipo || prev?.grupo_tipo || '', pendientes:f.pendientes || prev?.pendientes || {}, otros_cargos:f.otros_cargos || prev?.otros_cargos || [],
+      }));
+      setMensaje(omitido ? 'TOEIC omitido. Ya no bloquea la mora.' : 'TOEIC reactivado como pendiente de pago.');
+    } catch (e) { setMensaje('Error de conexión: ' + e.message); }
+    finally { setGuardando(false); }
+  };
+  const estado = String(info.toeic_estado || 'PENDIENTE').toUpperCase();
+  return <div onClick={e=>e.stopPropagation()} style={{marginTop:9,padding:'9px 10px',border:'1px solid #D8E0EA',borderRadius:10,background:'white'}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+      <div><b style={{fontSize:11}}>TOEIC {fmtCRC_A(info.precio_toeic)}</b><div style={{fontSize:9.5,color:estado==='PAGADO'||estado==='OMITIDO'?'#2E7D32':'#9A5B00'}}>Estado: {estado.replace(/_/g,' ')}</div></div>
+      <label style={{display:'flex',gap:6,alignItems:'center',fontSize:10.5,fontWeight:700,cursor:pagado?'not-allowed':'pointer'}}>
+        <input type="checkbox" checked={omitido} disabled={pagado||guardando||!cobrable} onChange={e=>setOmitido(e.target.checked)} /> Omitir cobro
+      </label>
+    </div>
+    {omitido && !pagado && <input value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Motivo obligatorio" style={{width:'100%',marginTop:7,padding:'7px 9px',border:'1px solid var(--line)',borderRadius:8,fontSize:10.5}} />}
+    {!pagado && cobrable && <button type="button" onClick={guardar} disabled={guardando} className="btn btn-ghost" style={{marginTop:7,padding:'6px 9px',fontSize:10}}>{guardando?'Guardando…':'Guardar decisión TOEIC'}</button>}
+    {!cobrable && <div style={{fontSize:9.5,color:'#756D65',marginTop:5}}>La decisión se habilita cuando I2 esté CA o APR.</div>}
+    {mensaje && <div style={{fontSize:9.5,color:mensaje.startsWith('Error')||mensaje.startsWith('Indicá')?'#C00000':'#2E7D32',marginTop:5,fontWeight:700}}>{mensaje}</div>}
+  </div>;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 2 — Seleccionar nivel (componente independiente)
 // ─────────────────────────────────────────────────────────────────────────
-function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros }) {
+function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, resetRubros }) {
   const niveles    = estData?.niveles  || {};
   const pendientes = estData?.pendientes || {};
   const grupo      = estData?.grupo    || '';
@@ -318,6 +365,7 @@ function Paso2AP({ estData, estSel, setNivelSel, setError, setPaso, resetRubros 
                   {matriculaNivel > 0 && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Matrícula pendiente: {fmtCRC_A(matriculaNivel)}</div>}
                   {cargoNivel && <div style={{ fontSize:11, color:'#9A5B00', fontWeight:700, marginTop:2 }}>{cargoNivel.CONCEPTO}: {fmtCRC_A(cargoNivel.MONTO)}</div>}
                   {h?.periodo_corto && <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:3 }}>{h.periodo_corto} · {h.convenio || 'Sin convenio'}</div>}
+                  {niv === 'I2' && <ToeicDecisionAP estData={estData} setEstData={setEstData} estSel={estSel} />}
                 </>
               ) : (
                 <div style={{ fontSize:12, color:'var(--ink-3)', fontStyle:'italic' }}>
@@ -424,7 +472,7 @@ function Paso3AP({ comprobantes, setComprobantes, setComprSel, setPaso, setError
 // ─────────────────────────────────────────────────────────────────────────
 function Paso4AP({
   estSel, nivelSel, comprSel, estData,
-  qMat, setQMat, qCuota, setQCuota, qCert, setQCert, qTitulo, setQTitulo, qOtro, setQOtro,
+  qMat, setQMat, qCuota, setQCuota, qCert, setQCert, qTitulo, setQTitulo, qToeic, setQToeic, qOtro, setQOtro,
   setTotalAplicarPanel, setComprobantes, setConfirmado,
   confirmado, setPaso, reiniciar, error, onNavigate, returnTarget
 }) {
@@ -450,12 +498,16 @@ function Paso4AP({
     ? Math.max(Number(pendNivel.cert_pend || 0), saldoCert)
     : 0;
 
-  // I2 tiene dos documentos independientes: certificado del nivel y título
-  // final del programa. El título se registra con un tipo/recibo separado.
-  const precioTitulo = Number(pendNivel.precio_titulo || 0);
-  const pagadoTitulo = Number(pendNivel.titulo_pagado || 0);
-  const montoTitulo = niv === 'I2' && documentoCobrable
-    ? Math.max(Number(pendNivel.titulo_pend || 0), Math.max(0, precioTitulo - pagadoTitulo))
+  // I2 cierra con certificado de nivel, certificado de Programa Completo y TOEIC.
+  // Programa Completo no aplica cuando existe CNV por examen de nivelación.
+  const precioTitulo = Number(pendNivel.precio_programa_completo ?? pendNivel.precio_titulo ?? 0);
+  const pagadoTitulo = Number(pendNivel.programa_completo_pagado ?? pendNivel.titulo_pagado ?? 0);
+  const montoTitulo = niv === 'I2' && documentoCobrable && pendNivel.programa_completo_aplica !== false && pendNivel.programa_completo_cobrable !== false
+    ? Math.max(Number(pendNivel.programa_completo_pend ?? pendNivel.titulo_pend ?? 0), Math.max(0, precioTitulo - pagadoTitulo))
+    : 0;
+  const precioToeic = Number(pendNivel.precio_toeic || 0);
+  const montoToeic = niv === 'I2' && documentoCobrable && pendNivel.toeic_aplica !== false && !pendNivel.toeic_omitido
+    ? Math.max(Number(pendNivel.toeic_pend || 0), Math.max(0, precioToeic - Number(pendNivel.toeic_pagado || 0)))
     : 0;
 
   const cargoOtro = (estData?.otros_cargos || []).find(c =>
@@ -476,9 +528,9 @@ function Paso4AP({
   const requestIdRef = React.useRef('');
   React.useEffect(() => {
     requestIdRef.current = '';
-  }, [est?.CODIGO, est?.rec_m, niv, compr?.doc, qMat, qCuota, qCert, qTitulo, qOtro]);
+  }, [est?.CODIGO, est?.rec_m, niv, compr?.doc, qMat, qCuota, qCert, qTitulo, qToeic, qOtro]);
 
-  const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qOtro*montoOtro;
+  const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qToeic*montoToeic + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
   const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl;
 
@@ -497,7 +549,8 @@ function Paso4AP({
         { tipo:'MATRICULA',   nivel:niv, monto:qMat*montoMat,     grupo: grupoActual },
         { tipo:'CUOTA',       nivel:niv, monto:subtotalCuotas, grupo: grupoActual },
         { tipo:'CERTIFICADO', nivel:niv, monto:qCert*montoCert,   grupo: grupoActual },
-        { tipo:'TITULO',      nivel:'I2', monto:qTitulo*montoTitulo, grupo: grupoActual },
+        { tipo:'PROGRAMA_COMPLETO', nivel:'I2', monto:qTitulo*montoTitulo, grupo: grupoActual },
+        { tipo:'TOEIC', nivel:'I2', monto:qToeic*montoToeic, grupo: grupoActual },
         { tipo:'OTRO', nivel:niv, monto:qOtro*montoOtro, grupo: grupoActual, codigo_precio:cargoOtro?.CODIGO_PRECIO || '', concepto:cargoOtro?.CONCEPTO || 'OTRO PAGO', cargo_id:cargoOtro?.CARGO_ID || '' },
       ].filter(r => r.monto > 0);
 
@@ -623,9 +676,12 @@ function Paso4AP({
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
         {montoCuota > 0 && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
         {montoCert  > 0 && <RubroRow label={`Certificado de ${NIVEL_LABEL_A[niv] || niv}`} monto={montoCert} qty={qCert} maxQty={1} onQty={setQCert} />}
-        {montoTitulo > 0 && <RubroRow label="Título final del programa"        monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
+        {montoTitulo > 0 && <RubroRow label="Certificado Programa Completo" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
+        {niv === 'I2' && pendNivel.programa_completo_estado === 'NO_APLICA_NIVELACION' && <div style={{padding:'10px 12px',borderRadius:9,background:'#F4F1EC',color:'#756D65',fontSize:11,fontWeight:700}}>Programa Completo: no aplica por nivel convalidado mediante examen de nivelación.</div>}
+        {montoToeic > 0 && <RubroRow label="Prueba TOEIC" monto={montoToeic} qty={qToeic} maxQty={1} onQty={setQToeic} />}
+        {niv === 'I2' && pendNivel.toeic_omitido && <div style={{padding:'10px 12px',borderRadius:9,background:'#E8F5E9',color:'#2E7D32',fontSize:11,fontWeight:700}}>TOEIC omitido administrativamente: no bloquea la mora.</div>}
         {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
-        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoTitulo === 0 && montoOtro === 0 && (
+        {montoMat === 0 && montoCuota === 0 && montoCert === 0 && montoTitulo === 0 && montoToeic === 0 && montoOtro === 0 && (
           <div style={{ padding:'16px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', color:'var(--ink-3)', fontSize:13, textAlign:'center' }}>
             No hay rubros pendientes para este estudiante
           </div>
@@ -687,6 +743,7 @@ function AplicarPago({ onNavigate }) {
   const [qCuota,setQCuota] = React.useState(0);
   const [qCert, setQCert]  = React.useState(0);
   const [qTitulo, setQTitulo] = React.useState(0);
+  const [qToeic, setQToeic] = React.useState(0);
   const [qOtro, setQOtro]  = React.useState(0);
   const [returnTarget, setReturnTarget] = React.useState(null);
 
@@ -753,13 +810,13 @@ function AplicarPago({ onNavigate }) {
     setPaso(1); setEstSel(null); setEstData(null); setNivelSel(null);
     setComprSel(null); setComprobantes([]); setError(''); setConfirmado(null);
     setCargando(false); setTotalAplicarPanel(0);
-    setQMat(0); setQCuota(0); setQCert(0); setQTitulo(0); setQOtro(0);
+    setQMat(0); setQCuota(0); setQCert(0); setQTitulo(0); setQToeic(0); setQOtro(0);
   };
 
   // T-fix-stepper: al volver del paso 4 al 3 los contadores deben quedar en 0
   // para que cuando se vuelva a entrar al paso 4 no aparezcan los valores viejos.
   const resetRubros = () => {
-    setQMat(0); setQCuota(0); setQCert(0); setQTitulo(0); setQOtro(0); setTotalAplicarPanel(0);
+    setQMat(0); setQCuota(0); setQCert(0); setQTitulo(0); setQToeic(0); setQOtro(0); setTotalAplicarPanel(0);
   };
 
   const handlePrev = () => {
@@ -825,6 +882,7 @@ function AplicarPago({ onNavigate }) {
           {paso===2 && (
             <Paso2AP
               estData={estData}
+              setEstData={setEstData}
               estSel={estSel}
               setNivelSel={setNivelSel}
               setError={setError}
@@ -851,6 +909,7 @@ function AplicarPago({ onNavigate }) {
               qCuota={qCuota} setQCuota={setQCuota}
               qCert={qCert}  setQCert={setQCert}
               qTitulo={qTitulo} setQTitulo={setQTitulo}
+              qToeic={qToeic} setQToeic={setQToeic}
               qOtro={qOtro} setQOtro={setQOtro}
               setTotalAplicarPanel={setTotalAplicarPanel}
               setComprobantes={setComprobantes}

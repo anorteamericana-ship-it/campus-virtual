@@ -1,4 +1,4 @@
-// F98.4-Z6-BI · Cambios académicos individuales; sin fusión ni operación masiva
+// F98.4-Z6-BJ · Cambios académicos individuales; sin fusión ni operación masiva
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -3892,12 +3892,14 @@ function agIndPresente(v) {
 function agIndMoroso(nivelData, pendienteData) {
   const estatus = agIndUpper(nivelData?.estatus || pendienteData?.estatus);
   if (!estatus || estatus === 'PE' || estatus === 'CNV') return false;
+  if (pendienteData?.mora_exigible != null) return Number(pendienteData.mora_exigible || 0) > 0;
   const mat = Number(pendienteData?.matricula_pend || 0) || 0;
   const cuotas = Number(pendienteData?.cuotas_pend || 0) || 0;
   const cert = Number(pendienteData?.cert_pend || 0) || 0;
-  const titulo = Number(pendienteData?.titulo_pend || 0) || 0;
-  if (estatus === 'APR') return cert > 0 || titulo > 0;
-  return mat > 0 || cuotas > 0;
+  const programa = Number(pendienteData?.programa_completo_pend ?? pendienteData?.titulo_pend ?? 0) || 0;
+  const toeic = Number(pendienteData?.toeic_pend || 0) || 0;
+  if (estatus === 'APR') return mat > 0 || cuotas > 0 || cert > 0 || programa > 0 || toeic > 0;
+  return mat > 0 || cuotas > 0 || toeic > 0 || (agIndUpper(nivelData?.nivel)==='I2' && (cert > 0 || programa > 0));
 }
 function agIndAsistenciaNivel(rows, nivel, grupo) {
   const nv = agIndUpper(nivel);
@@ -3929,7 +3931,7 @@ function agIndMoney(v) {
 }
 function agIndNivelMovimiento(mov) {
   const nc = String(mov?.ncuenta == null ? '' : mov.ncuenta).trim();
-  const cuentaNivel = { '54':'B1', '60':'B1', '61':'B2', '62':'I1', '63':'I2', '43':'B1', '44':'B2', '45':'I1', '46':'I2', '47':'I2' };
+  const cuentaNivel = { '54':'B1', '60':'B1', '61':'B2', '62':'I1', '63':'I2', '43':'B1', '44':'B2', '45':'I1', '46':'I2', '47':'I2', '48':'I2' };
   if (cuentaNivel[nc]) return cuentaNivel[nc];
   const texto = agIndPlain([mov?.concepto, mov?.Concepto, mov?.descripcion, mov?.grupo].filter(Boolean).join(' '))
     .replace(/[_-]+/g, ' ');
@@ -3946,7 +3948,8 @@ function agIndTipoMovimiento(mov, fuente) {
   const nc = Number(mov?.ncuenta || 0) || 0;
   const texto = agIndPlain([mov?.concepto, mov?.Concepto, mov?.descripcion].filter(Boolean).join(' '));
   if (nc === 54 || (nc >= 60 && nc <= 63) || texto.includes('MATRICULA')) return 'Matrícula';
-  if (nc === 47 || texto.includes('TITULO_I2') || texto.includes('TITULO FINAL')) return 'Título';
+  if (nc === 47 || texto.includes('PROGRAMA_COMPLETO') || texto.includes('TITULO_I2') || texto.includes('TITULO FINAL')) return 'Programa completo';
+  if (nc === 48 || texto.includes('TOEIC')) return 'TOEIC';
   if ((nc >= 43 && nc <= 46) || texto.includes('CERTIF')) return 'Certificado';
   if (texto.includes('CUOTA') || fuente === 'PAGOS') return 'Cuota';
   return 'Otro movimiento';
@@ -3974,7 +3977,7 @@ function agIndMovimientos(detalle) {
     mov.id = `o-${agIndNorm(p?.recibo) || i}-${mov.nivel || 'x'}`;
     out.push(mov);
   });
-  const ordenTipo = { 'Matrícula':1, 'Cuota':2, 'Certificado':3, 'Título':4, 'Otro movimiento':5 };
+  const ordenTipo = { 'Matrícula':1, 'Cuota':2, 'Certificado':3, 'Programa completo':4, 'TOEIC':5, 'Otro movimiento':6 };
   return out.sort((a, b) => (ordenTipo[a.tipo] || 9) - (ordenTipo[b.tipo] || 9));
 }
 function agIndResumenMovimientos(movs, pendiente) {
@@ -3983,12 +3986,14 @@ function agIndResumenMovimientos(movs, pendiente) {
     matriculaPagada: totalTipo('Matrícula'),
     cuotasPagadas: totalTipo('Cuota'),
     certificadoPagado: totalTipo('Certificado'),
-    tituloPagado: totalTipo('Título'),
+    tituloPagado: totalTipo('Programa completo'),
+    toeicPagado: totalTipo('TOEIC'),
     otrosPagados: totalTipo('Otro movimiento'),
     matriculaPendiente: Number(pendiente?.matricula_pend || 0) || 0,
     cuotasPendientes: Number(pendiente?.cuotas_pend || 0) || 0,
     certificadoPendiente: Number(pendiente?.cert_pend || 0) || 0,
-    tituloPendiente: Number(pendiente?.titulo_pend || 0) || 0,
+    tituloPendiente: Number(pendiente?.programa_completo_pend ?? pendiente?.titulo_pend ?? 0) || 0,
+    toeicPendiente: Number(pendiente?.toeic_pend || 0) || 0,
     totalPagado: movs.reduce((s, m) => s + (Number(m.monto) || 0), 0),
   };
 }
@@ -4002,14 +4007,15 @@ function agIndFinanzasNivel(estatus, movs, resumen) {
   const matriculas = (movs || []).filter(m => m.tipo === 'Matrícula');
   const cuotas = (movs || []).filter(m => m.tipo === 'Cuota');
   const certificados = (movs || []).filter(m => m.tipo === 'Certificado');
-  const titulos = (movs || []).filter(m => m.tipo === 'Título');
-  const totalComprobantes = matriculas.length + cuotas.length + certificados.length + titulos.length;
+  const titulos = (movs || []).filter(m => m.tipo === 'Programa completo');
+  const toeic = (movs || []).filter(m => m.tipo === 'TOEIC');
+  const totalComprobantes = matriculas.length + cuotas.length + certificados.length + titulos.length + toeic.length;
   if (!aplica) {
     return {
       aplica:false,
       label:'NO APLICA',
       bg:'#F4F1EC', fg:'#756D65', bd:'#DED7CF',
-      matriculas:0, cuotas:0, certificados:0, titulos:0, totalComprobantes:0,
+      matriculas:0, cuotas:0, certificados:0, titulos:0, toeic:0, totalComprobantes:0,
       detalle:'Sin matrícula activa; no se afirma MORA NO ni curso pagado.',
     };
   }
@@ -4024,6 +4030,7 @@ function agIndFinanzasNivel(estatus, movs, resumen) {
     cuotas:cuotas.length,
     certificados:certificados.length,
     titulos:titulos.length,
+    toeic:toeic.length,
     totalComprobantes,
     detalle:conComprobantes ? `${totalComprobantes} comprobante(s) aplicado(s) al nivel.` : 'No hay comprobantes clasificados para este nivel.',
     resumen:resumen || {},
@@ -4305,7 +4312,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
               <div><div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}><span style={{fontSize:14,fontWeight:950,color}}>{NIVEL_LABEL_P[nivel]}</span><span style={{fontSize:9,fontWeight:900,color:'#5D6673'}}>{periodoCorto}</span></div><div style={{fontSize:10,color:'#596273',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{periodoLargo&&<div style={{fontSize:8.5,color:'#8A8178',marginTop:1}}>{periodoLargo}</div>}{trasladoDesde&&<div style={{fontSize:8.5,color:'#8A5600',fontWeight:900,marginTop:2}}>↪ desde {agIndGrupoCorto(trasladoDesde)}</div>}</div>
               <span style={{justifySelf:'start',display:'inline-flex',padding:'4px 7px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',border:'1px solid #C9D9F1',fontSize:9,fontWeight:900,maxWidth:108,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{convNivel}</span>
               <div><span style={{display:'inline-flex',padding:'4px 8px',borderRadius:999,background:tone.bg,color:tone.fg,border:`1px solid ${tone.bd}`,fontSize:9.5,fontWeight:950}}>{estatus}</span>{intentos.length>1&&<div style={{fontSize:8.5,color:'#9A5B00',fontWeight:900,marginTop:3}}>{intentos.length} intentos</div>}</div>
-              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:finanzas.bg,color:finanzas.fg,border:`1px solid ${finanzas.bd}`,fontSize:9,fontWeight:950}}>{finanzas.label}</span>{finanzas.aplica?<><span style={{fontSize:9,color:'#5C6572'}}>Mat. <b>{finanzas.matriculas?'Sí':'No'}</b></span><span style={{fontSize:9,color:'#5C6572'}}>Cuotas <b>{finanzas.cuotas}</b></span><span style={{fontSize:9,color:'#5C6572'}}>Cert. <b>{finanzas.certificados?'Sí':'No'}</b></span>{nivel==='I2'&&<span style={{fontSize:9,color:'#5C6572'}}>Título <b>{finanzas.titulos?'Sí':'No'}</b></span>}</>:<span style={{fontSize:9,color:'#756D65',fontWeight:800}}>Sin matrícula / obligación</span>}</div>
+              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:finanzas.bg,color:finanzas.fg,border:`1px solid ${finanzas.bd}`,fontSize:9,fontWeight:950}}>{finanzas.label}</span>{finanzas.aplica?<><span style={{fontSize:9,color:'#5C6572'}}>Mat. <b>{finanzas.matriculas?'Sí':'No'}</b></span><span style={{fontSize:9,color:'#5C6572'}}>Cuotas <b>{finanzas.cuotas}</b></span><span style={{fontSize:9,color:'#5C6572'}}>Cert. <b>{finanzas.certificados?'Sí':'No'}</b></span>{nivel==='I2'&&<><span style={{fontSize:9,color:'#5C6572'}}>Programa <b>{finanzas.titulos?'Sí':'No'}</b></span><span style={{fontSize:9,color:'#5C6572'}}>TOEIC <b>{finanzas.toeic?'Sí':pendienteNivel?.toeic_omitido?'Omitido':'No'}</b></span></>}</>:<span style={{fontSize:9,color:'#756D65',fontWeight:800}}>Sin matrícula / obligación</span>}</div>
               <div style={{fontSize:9.5,fontWeight:850,color:'#25364F',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{agIndNorm(info.reg_certificados||info.cert_num)||'—'}</div>
               <div style={{fontSize:12,fontWeight:950,color:notaNum!=null&&notaNum<70?'#C62828':'#14213D'}}>{notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)}</div>
               <div><div style={{fontSize:11,fontWeight:950,color:asis.pct!=null&&asis.pct<70?'#C62828':'#14213D'}}>{asis.pct==null?'—':`${asis.pct}%`}</div>{asis.total>0&&<div style={{fontSize:8.5,color:'#81776F'}}>{asis.presentes}/{asis.total}</div>}</div>
@@ -4314,7 +4321,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
             {abierto&&<div style={{padding:'8px 12px 12px 16px',borderTop:'1px solid #EAE4DC',background:'#FBFAF8'}}>
               <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica} title={!finanzas.aplica?'El nivel no tiene matrícula activa. No se permite registrar pagos por adelantado.':''} onClick={()=>finanzas.aplica&&abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={!['CA','REP'].includes(estatus)} onClick={()=>['CA','REP'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
               {pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
-              <div style={{display:'grid',gridTemplateColumns:`repeat(${nivel==='I2'?5:4},minmax(110px,1fr))`,gap:6,marginBottom:7}}><AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} comprobantes={finanzas.matriculas} aplica={finanzas.aplica} color={color}/><AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} comprobantes={finanzas.cuotas} aplica={finanzas.aplica} color={color}/><AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} comprobantes={finanzas.certificados} aplica={finanzas.aplica} color={color}/>{nivel==='I2'&&<AgIndPagoResumen label="Título final" pagado={resumen.tituloPagado} pendiente={resumen.tituloPendiente} comprobantes={finanzas.titulos} aplica={finanzas.aplica} color={color}/>}<AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente+resumen.cuotasPendientes+resumen.certificadoPendiente+resumen.tituloPendiente} comprobantes={finanzas.totalComprobantes} aplica={finanzas.aplica} color={color}/></div>
+              <div style={{display:'grid',gridTemplateColumns:`repeat(${nivel==='I2'?6:4},minmax(110px,1fr))`,gap:6,marginBottom:7}}><AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} comprobantes={finanzas.matriculas} aplica={finanzas.aplica} color={color}/><AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} comprobantes={finanzas.cuotas} aplica={finanzas.aplica} color={color}/><AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} comprobantes={finanzas.certificados} aplica={finanzas.aplica} color={color}/>{nivel==='I2'&&<><AgIndPagoResumen label="Programa completo" pagado={resumen.tituloPagado} pendiente={resumen.tituloPendiente} comprobantes={finanzas.titulos} aplica={pendienteNivel?.programa_completo_aplica!==false&&finanzas.aplica} color={color}/><AgIndPagoResumen label={pendienteNivel?.toeic_omitido?'TOEIC (omitido)':'TOEIC'} pagado={resumen.toeicPagado} pendiente={resumen.toeicPendiente} comprobantes={finanzas.toeic} aplica={pendienteNivel?.toeic_aplica!==false&&finanzas.aplica} color={color}/></>}<AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente+resumen.cuotasPendientes+resumen.certificadoPendiente+resumen.tituloPendiente+resumen.toeicPendiente} comprobantes={finanzas.totalComprobantes} aplica={finanzas.aplica} color={color}/></div>
               {intentos.length>1&&<div style={{marginBottom:7,padding:'7px 9px',borderRadius:8,background:'#FFF7E6',border:'1px solid #F0D39A'}}>{intentos.map((it,i)=><div key={it.intento_id||i} style={{fontSize:9.5,color:'#5F4630',marginTop:i?3:0}}><b>{it.etiqueta}</b> · {it.grupo||'—'} · {it.estatus||'—'} {it.periodo_info?.corto?`· ${it.periodo_info.corto}`:''}</div>)}</div>}
               {movsNivel.length?<div style={{border:'1px solid #E5DED6',borderRadius:9,overflow:'hidden',background:'white'}}><div style={{padding:'6px 9px',background:'#F2EEE8',borderBottom:'1px solid #E5DED6',display:'flex',justifyContent:'space-between',fontSize:9,fontWeight:900,color:'#615950'}}><span>Movimientos de {NIVEL_LABEL_P[nivel]}</span><span>{movsNivel.length}</span></div><div style={{maxHeight:230,overflowY:'auto'}}>{movsNivel.map((mov,idx)=><div key={mov.id||idx} style={{display:'grid',gridTemplateColumns:'100px 96px minmax(180px,1fr) 104px',gap:8,alignItems:'center',padding:'7px 9px',borderBottom:idx===movsNivel.length-1?'none':'1px solid #F0ECE7'}}><div><b style={{fontSize:10.5,color:'#14213D'}}>{mov.tipo}</b><div style={{fontSize:8.5,color:'#8A8178'}}>{mov.fuente}</div></div><div><div style={{fontSize:9.5,fontWeight:800}}>{agIndNorm(mov.fecha)||'Sin fecha'}</div><div style={{fontSize:8.5,color:'#8A8178'}}>Recibo {agIndNorm(mov.recibo||mov.RECIBO)||'—'}</div></div><div style={{fontSize:9.5,color:'#3F3A35',lineHeight:1.25}}>{agIndNorm(mov.concepto||mov.descripcion)||'Movimiento aplicado'}{agIndNorm(mov.grupo)&&agIndUpper(mov.grupo)!==agIndUpper(grupo)&&gruposPagoAplicados.some(g=>agIndUpper(g)===agIndUpper(mov.grupo))&&<div style={{fontSize:8,color:'#244A7C',fontWeight:900,marginTop:2}}>Grupo original {agIndGrupoCorto(mov.grupo)}</div>}</div><div style={{textAlign:'right',fontFamily:'var(--f-mono,monospace)',fontSize:11,fontWeight:950,color:'#14213D'}}>{agIndMoney(mov.monto)}</div></div>)}</div></div>:<div style={{padding:'8px 10px',border:'1px dashed #D9D0C7',borderRadius:8,color:'#81776F',fontSize:10,background:'white'}}>{finanzas.aplica?'Sin comprobantes clasificados para este nivel.':'No aplica: el nivel no tiene matrícula activa ni obligación financiera.'}</div>}
             </div>}
