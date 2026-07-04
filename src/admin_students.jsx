@@ -1,4 +1,4 @@
-// F98.4-Z6-BU · Carta CONAPE 13/9 + firma 3 espacios y pie 2 espacios
+// F98.4-Z6-BV · Carta CONAPE oficial + firma 3x14 pt y pie 2x14 pt
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
