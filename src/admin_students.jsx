@@ -1,4 +1,4 @@
-// F98.4-Z6-BZ · Finanzas por intento + comprobantes compactos + comentario interno
+// F98.4-Z6-CA · Carta por tipo de caso + finanzas por intento + diagnóstico exacto
 // APR histórico usa cédula + año + periodo del evento concreto; evita que
 // una matrícula legada del motor canónico invalide un cierre oficial NO.
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
@@ -4355,11 +4355,17 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, comentarioAdmin,
       const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:false},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo regenerar la carta.');
       if(resp?.estado==='LISTA_PARA_FIRMA'){
-        alert('Carta recalculada y lista para firma.');
+        const diag=resp?.diagnostico_emision||{};
+        const extra=diag?.tipo_caso==='REPETICION'&&!diag?.solicitud_definida
+          ?'\n\nLa carta documenta la repetición y la actualización del plan. No solicita todavía el siguiente desembolso.'
+          :'';
+        alert(`Carta recalculada y lista para firma.${extra}`);
       }else{
-        const pendientes=Array.isArray(resp?.estado_financiero?.niveles_financieros_pendientes)
-          ?resp.estado_financiero.niveles_financieros_pendientes:[];
-        const detalle=pendientes.map(x=>{
+        const financiero=resp?.estado_financiero||{};
+        const diag=resp?.diagnostico_emision||{};
+        const pendientes=Array.isArray(financiero?.niveles_financieros_pendientes)
+          ?financiero.niveles_financieros_pendientes:[];
+        const detalleFinanciero=pendientes.map(x=>{
           const p=x?.detalle_financiero||{};
           const rubros=[];
           const add=(label,value)=>{const n=Number(value||0);if(n>0.005)rubros.push(`${label}: ₡${Math.round(n).toLocaleString('es-CR')}`);};
@@ -4369,15 +4375,23 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, comentarioAdmin,
           if(p.programa_completo_exigible||p.titulo_exigible)add('Programa completo',p.programa_completo_pend??p.titulo_pend);
           if(p.toeic_cobrable&&!p.toeic_omitido)add('TOEIC',p.toeic_pend);
           const nivel=x?.nivel_nombre||x?.nivel||'Nivel no identificado';
+          const intento=x?.numero_intento?` · intento ${x.numero_intento}`:'';
           const fuente=x?.fuente_confirmacion?` · fuente: ${x.fuente_confirmacion}`:'';
           const busqueda=x?.reconciliacion_busqueda||{};
           const oficial=x?.reconciliacion_oficial||{};
           const lookup=busqueda?.clave
             ?` · 7-morosidad ${busqueda.clave}: ${oficial?.conflicto?'DUPLICADO CONFLICTIVO':(oficial?.estado||'SIN COINCIDENCIA')}`
             :'';
-          return `• ${nivel}${x?.periodo?` · ${x.periodo}`:''}: ${rubros.length?rubros.join(', '):'estado financiero pendiente sin desglose'}${fuente}${lookup}`;
-        }).join('\n');
-        alert(`La carta sigue como borrador porque el motor aún detecta obligaciones exigibles.${detalle?`\n\n${detalle}`:'\n\nNo se recibió el desglose; revisá la respuesta del backend.'}`);
+          return `• ${nivel}${intento}${x?.periodo?` · ${x.periodo}`:''}: ${rubros.length?rubros.join(', '):'revisión financiera requerida'}${fuente}${lookup}`;
+        });
+        const causas=Array.isArray(diag?.causas_bloqueo)?diag.causas_bloqueo:[];
+        const lineasCausa=causas.map(c=>`• ${c?.mensaje||c?.codigo||'Bloqueo sin descripción'}`);
+        let titulo='La carta continúa como borrador.';
+        if(diag?.apto_financiero===false)titulo='La carta continúa como borrador porque existen obligaciones exigibles.';
+        else if(diag?.apto_academico===false)titulo='La carta continúa como borrador por una condición académica pendiente.';
+        else if(diag?.solicitud_definida===false)titulo='La carta continúa como borrador porque no existe una solicitud elegible.';
+        const lineas=[...lineasCausa,...detalleFinanciero];
+        alert(`${titulo}${lineas.length?`\n\n${lineas.join('\n')}`:'\n\nEl backend no informó una causa específica; verificá que Apps Script y GitHub estén en la misma versión.'}`);
       }
       if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
       cargar();
