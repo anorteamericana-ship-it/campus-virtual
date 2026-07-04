@@ -1,4 +1,5 @@
-// F98.4-Z6-CA · Carta por tipo de caso + finanzas por intento + diagnóstico exacto
+// F98.4-Z6-CC · Repetición bimestre/cuatrimestre + solicitud del intento no cubierto
+// Base preservada: F98.4-Z6-CB
 // APR histórico usa cédula + año + periodo del evento concreto; evita que
 // una matrícula legada del motor canónico invalide un cierre oficial NO.
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
@@ -4124,6 +4125,29 @@ function agCambioDias(v) {
   const k = String(v || '').toUpperCase().trim();
   return ({LM:'Lunes y miércoles',KJ:'Martes y jueves',MJ:'Martes y jueves',LJ:'Lunes a jueves',L4:'Lunes a jueves',SA:'Sábado',S:'Sábado',V:'Viernes',MV:'Miércoles y viernes'})[k] || k || 'Días sin definir';
 }
+function agCambioTipoPeriodo(v) {
+  const k = String(v || '').toUpperCase().trim();
+  return k.startsWith('B') ? 'Bimestre' : k.startsWith('C') ? 'Cuatrimestre' : 'Periodo sin definir';
+}
+function agCambioFecha(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return 'Fecha de inicio sin definir';
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T12:00:00` : raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString('es-CR', { day:'2-digit', month:'short', year:'numeric' }).replace('.', '');
+}
+function agCambioEstadoGrupo(v) {
+  const k = String(v || '').toUpperCase().trim();
+  return ({'EN CURSO':'En curso','PROYECTADO':'Proyectado','COMPLETADO':'Completado'})[k] || v || 'Estado sin definir';
+}
+function agCambioOpcionGrupo(g) {
+  const nivel = g?.nivel_nombre || NIVEL_LABEL_P[g?.nivel] || g?.nivel || 'Nivel sin definir';
+  const tipo = g?.tipo_periodo_nombre || agCambioTipoPeriodo(g?.tipo_periodo);
+  const periodo = g?.periodo_corto || 'periodo sin definir';
+  const inicio = agCambioFecha(g?.fecha_inicio);
+  const horario = `${agCambioDias(g?.dias)} ${agCambioHora12(g?.hora_ini)}–${agCambioHora12(g?.hora_fin)}`;
+  return `${nivel} · ${tipo} · ${periodo} · inicia ${inicio} · ${horario} · ${agCambioEstadoGrupo(g?.comentario)} · ${g?.cupo ?? 0} cupos · ${g?.grupo || ''}`;
+}
 
 function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess }) {
   const [contexto, setContexto] = React.useState(null);
@@ -4267,9 +4291,25 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
                   <label style={{display:'block',fontSize:10,fontWeight:900,marginBottom:5}}>Grupo destino</label>
                   <select value={grupoDestino} onChange={e=>{setGrupoDestino(e.target.value);setSimulacion(null);setConfirmacion('');}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
                     {!candidatos.length&&<option value="">Sin destinos compatibles</option>}
-                    {candidatos.map(g => <option key={g.grupo} value={g.grupo} disabled={!g.seleccionable}>{g.grupo} · {g.periodo_corto || 'sin periodo'} · {g.comentario} · {g.cupo} cupos</option>)}
+                    {candidatos.map(g => <option key={g.grupo} value={g.grupo} disabled={!g.seleccionable}>{agCambioOpcionGrupo(g)}</option>)}
                   </select>
-                  {candidato&&<div style={{marginTop:8,padding:'8px 9px',borderRadius:8,background:candidato.seleccionable?'#E8F5E9':'#FFF3E0',color:candidato.seleccionable?'#246B2A':'#9A5B00',fontSize:10.5,fontWeight:800,lineHeight:1.4}}>{agCambioDias(candidato.dias)} · {agCambioHora12(candidato.hora_ini)}–{agCambioHora12(candidato.hora_fin)} · {candidato.docente || 'Sin docente'}<br/>{candidato.recomendacion}</div>}
+                  {candidato&&<div style={{marginTop:9,padding:'11px 12px',borderRadius:10,background:candidato.seleccionable?'#E8F5E9':'#FFF3E0',border:`1px solid ${candidato.seleccionable?'#BFE4C3':'#F0C27B'}`,color:candidato.seleccionable?'#246B2A':'#8A5200'}}>
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:8}}>
+                      <span style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid currentColor',fontSize:9,fontWeight:950}}>{candidato.nivel_nombre || NIVEL_LABEL_P[candidato.nivel] || candidato.nivel}</span>
+                      <span style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid currentColor',fontSize:9,fontWeight:950}}>{candidato.tipo_periodo_nombre || agCambioTipoPeriodo(candidato.tipo_periodo)}</span>
+                      <span style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid currentColor',fontSize:9,fontWeight:950}}>{agCambioEstadoGrupo(candidato.comentario)}</span>
+                      {candidato.cambio_tipo_periodo&&<span style={{padding:'4px 7px',borderRadius:999,background:'#FFF7DF',border:'1px solid #D9AF50',color:'#7A4A00',fontSize:9,fontWeight:950}}>Cambio de periodo permitido</span>}
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(150px,1fr))',gap:'6px 14px',fontSize:10.5,lineHeight:1.35}}>
+                      <div><b>Periodo:</b> {candidato.periodo_corto || 'Sin definir'}</div>
+                      <div><b>Inicio:</b> {agCambioFecha(candidato.fecha_inicio)}</div>
+                      <div><b>Horario:</b> {agCambioDias(candidato.dias)} · {agCambioHora12(candidato.hora_ini)}–{agCambioHora12(candidato.hora_fin)}</div>
+                      <div><b>Docente:</b> {candidato.docente || 'Sin docente'}</div>
+                      <div><b>Código:</b> {candidato.grupo}</div>
+                      <div><b>Cupo:</b> {candidato.cupo} disponible(s) de {candidato.capacidad}</div>
+                    </div>
+                    <div style={{marginTop:8,paddingTop:7,borderTop:'1px dashed currentColor',fontSize:10.5,fontWeight:850,lineHeight:1.4}}>{candidato.recomendacion}</div>
+                  </div>}
 
                   <label style={{display:'block',fontSize:10,fontWeight:900,margin:'12px 0 5px'}}>Motivo oficial</label>
                   <select value={motivo} onChange={e=>{setMotivo(e.target.value);setSimulacion(null);setConfirmacion('');}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
