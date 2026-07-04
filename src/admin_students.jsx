@@ -1,4 +1,4 @@
-// F98.4-Z6-BP · Carta CONAPE: movimiento financiero, historial completo y una página
+// F98.4-Z6-BR · Carta CONAPE 14/11 + espacio para firma digital
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4349,7 +4349,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       if(!confirm(lineas.join('\n')))return;
 
       if(!window.PDFLib||!window.PDFLib.PDFDocument){
-        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1-BP';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
+        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1-BR';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
         await window.__anPdfLibLoading;
       }
       if(!window.PDFLib||!window.PDFLib.PDFDocument)throw new Error('El módulo para prellenar el PDF no está disponible.');
