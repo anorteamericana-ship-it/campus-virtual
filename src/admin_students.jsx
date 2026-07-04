@@ -1,4 +1,4 @@
-// F98.4-Z6-BX · Carta CONAPE + reconciliación por periodo histórico exacto
+// F98.4-Z6-BY · Carta CONAPE + reconciliación por periodo histórico exacto
 // APR histórico usa cédula + año + periodo del evento concreto; evita que
 // una matrícula legada del motor canónico invalide un cierre oficial NO.
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
