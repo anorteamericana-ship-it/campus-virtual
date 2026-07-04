@@ -1,4 +1,4 @@
-// F98.4-Z6-BY · Carta CONAPE + reconciliación por periodo histórico exacto
+// F98.4-Z6-BZ · Finanzas por intento + comprobantes compactos + comentario interno
 // APR histórico usa cédula + año + periodo del evento concreto; evita que
 // una matrícula legada del motor canónico invalide un cierre oficial NO.
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
@@ -4070,6 +4070,38 @@ function agIndFinanzasNivel(estatus, movs, resumen) {
   };
 }
 
+
+function agIndFinanzasIntentos(detalle, nivel) {
+  const mapa = detalle?.finanzas_por_intento || {};
+  return Array.isArray(mapa?.[nivel]) ? mapa[nivel] : [];
+}
+function agIndRubroLabel(tipo) {
+  return ({MATRICULA:'Matrícula',CUOTA:'Cuotas',CERTIFICADO:'Certificado',PROGRAMA_COMPLETO:'Programa completo',TOEIC:'TOEIC'}[tipo] || tipo);
+}
+function AgIndRubroIntento({ tipo, rubro, color }) {
+  const r=rubro||{},comps=Array.isArray(r.comprobantes)?r.comprobantes:[],deuda=Number(r.deuda_exigible||0),saldo=Number(r.saldo_contractual||0),alDia=deuda<=0.005;
+  return <div style={{padding:'8px 9px',borderRadius:9,border:'1px solid #E2DDD6',background:'white',minWidth:0}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:6,alignItems:'center'}}><span style={{fontSize:8.5,fontWeight:950,letterSpacing:'.07em',textTransform:'uppercase',color:'#756D65'}}>{agIndRubroLabel(tipo)}</span><span style={{width:18,height:3,borderRadius:999,background:color}}/></div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:7,marginTop:5}}><span style={{fontSize:8.5,color:'#81776F'}}>Aplicado</span><b style={{fontSize:10.5,fontFamily:'var(--f-mono,monospace)',color:'#14213D'}}>{agIndMoney(r.aplicado)}</b></div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:7,marginTop:2}}><span style={{fontSize:8.5,color:'#81776F'}}>Pendiente</span><b style={{fontSize:9.5,color:alDia?'#2E7D32':'#C62828'}}>{alDia?'AL DÍA':agIndMoney(deuda)}</b></div>
+    {alDia&&saldo>0.005&&<div style={{marginTop:2,fontSize:7.8,color:'#8A6D3B'}}>Saldo contractual futuro: {agIndMoney(saldo)}</div>}
+    <div style={{marginTop:6,paddingTop:5,borderTop:'1px dashed #E6E0D9'}}>{comps.length?comps.map((c,i)=><div key={c.id||i} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:5,fontSize:7.8,color:'#5D6673',marginTop:i?3:0}}><span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.fecha||'Sin fecha'} · Rec. {c.recibo||'—'}{c.documento?` · Doc. ${c.documento}`:''}</span><b style={{fontFamily:'var(--f-mono,monospace)',color:'#25364F'}}>{agIndMoney(c.monto)}</b></div>):<div style={{fontSize:7.8,color:'#9A9087'}}>Sin comprobante aplicado en este intento.</div>}</div>
+  </div>;
+}
+function AgIndIntentoFinanciero({ intento, color, nivel }) {
+  const it=intento||{},rubros=it.rubros||{},tipos=nivel==='I2'?['MATRICULA','CUOTA','CERTIFICADO','PROGRAMA_COMPLETO','TOEIC']:['MATRICULA','CUOTA','CERTIFICADO'];
+  const deuda=Number(it.deuda_exigible||0),alDia=deuda<=0.005,excedente=Number(it.excedente_bancario||0),periodo=it.periodo?.corto||it.periodo?.largo||'';
+  return <div style={{border:'1px solid #DCD5CC',borderRadius:11,overflow:'hidden',background:'#FDFCFA'}}>
+    <div style={{padding:'8px 10px',background:it.es_actual?'#EEF5FC':'#F3EFE9',display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',flexWrap:'wrap',borderBottom:'1px solid #DDD6CE'}}>
+      <div><div style={{fontSize:11,fontWeight:950,color:'#14213D'}}>{it.etiqueta||`Intento ${it.numero||''}`}</div><div style={{fontSize:8.5,color:'#667085',marginTop:2}}>{it.grupo||'Grupo sin identificar'}{periodo?` · ${periodo}`:''} · {it.estatus||'—'}{it.nota!==''&&it.nota!=null?` · nota ${it.nota}`:''}</div></div>
+      <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}><span style={{padding:'4px 7px',borderRadius:999,border:`1px solid ${alDia?'#BFE4C3':'#F4B7B7'}`,background:alDia?'#E8F5E9':'#FFEBEE',color:alDia?'#2E7D32':'#C62828',fontSize:8.5,fontWeight:950}}>{alDia?'AL DÍA':`DEUDA ${agIndMoney(deuda)}`}</span>{excedente>0.005&&<span style={{padding:'4px 7px',borderRadius:999,border:'1px solid #E8C67A',background:'#FFF7DF',color:'#8A5A00',fontSize:8.5,fontWeight:950}}>EXCEDENTE {agIndMoney(excedente)}</span>}</div>
+    </div>
+    <div style={{padding:8}}><div style={{display:'grid',gridTemplateColumns:`repeat(${tipos.length},minmax(135px,1fr))`,gap:6,overflowX:'auto'}}>{tipos.map(t=><AgIndRubroIntento key={t} tipo={t} rubro={rubros[t]} color={color}/>)}</div>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:14,flexWrap:'wrap',marginTop:6,fontSize:8.2,color:'#667085'}}><span>Aplicado: <b style={{color:'#14213D'}}>{agIndMoney(it.total_aplicado)}</b></span>{Number(it.depositado_banco||0)>0&&<span>Depositado: <b style={{color:'#14213D'}}>{agIndMoney(it.depositado_banco)}</b></span>}<span>Contrato: <b style={{color:'#14213D'}}>{agIndMoney(it.total_contractual)}</b></span></div>
+    </div>
+  </div>;
+}
+
 function AkActionButton({ children, onClick, danger, disabled, title }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} title={title} style={{
@@ -4290,12 +4322,17 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 }
 
 
-function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
+function AkHistorialCambiosModal({ codigo, onClose, onReverted, comentarioAdmin, onComentarioGuardado }) {
   const [estado,setEstado]=React.useState({loading:true,error:'',rows:[]});
   const [busy,setBusy]=React.useState('');
   const [docBusy,setDocBusy]=React.useState('');
   const [approveBusy,setApproveBusy]=React.useState('');
   const [formBusy,setFormBusy]=React.useState('');
+  const [comentarioOpen,setComentarioOpen]=React.useState(false);
+  const [comentarioValue,setComentarioValue]=React.useState(comentarioAdmin||'');
+  const [comentarioBusy,setComentarioBusy]=React.useState(false);
+  React.useEffect(()=>setComentarioValue(comentarioAdmin||''),[comentarioAdmin,codigo]);
+  async function guardarComentario(){setComentarioBusy(true);try{const r=await postAdminStudents('guardarComentarioAdminEstudiante',{codigo,comentario:comentarioValue});if(!r?.ok)throw new Error(r?.error||'No se pudo guardar el comentario.');setComentarioOpen(false);onComentarioGuardado?.(r.comentario_admin||'');}catch(e){alert(e?.message||String(e));}finally{setComentarioBusy(false);}}
   function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
   React.useEffect(cargar,[codigo]);
   async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
@@ -4470,12 +4507,14 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
         </div>
       </div>;
     })}</div>}</div>
+    <div style={{padding:'0 17px 17px'}}><div style={{borderTop:'1px solid #E3E8EF',paddingTop:11,display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><div style={{minWidth:0}}><div style={{fontSize:9,fontWeight:950,letterSpacing:'.08em',textTransform:'uppercase',color:'#667085'}}>Comentario interno del estudiante</div><div style={{fontSize:9.5,color:'#667085',marginTop:2,maxWidth:690,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{comentarioAdmin||'Sin comentario administrativo.'}</div></div><button type="button" onClick={()=>setComentarioOpen(true)} style={{padding:'8px 11px',borderRadius:9,border:`1px solid ${comentarioAdmin?'#D19A27':'#B8C6D8'}`,background:comentarioAdmin?'#FFF3CF':'#F7FAFD',color:comentarioAdmin?'#7A4A00':'#244A7C',fontWeight:950,cursor:'pointer'}}>{comentarioAdmin?'📝 Comentario registrado':'＋ Agregar comentario'}</button></div></div>
+    {comentarioOpen&&<div style={{position:'fixed',inset:0,zIndex:2750,background:'rgba(7,20,40,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(620px,94vw)',background:'white',borderRadius:14,boxShadow:'0 24px 70px rgba(0,0,0,.35)',overflow:'hidden'}}><div style={{padding:'13px 15px',background:'#173A67',color:'white',fontWeight:950}}>Comentario interno · {codigo}</div><div style={{padding:15}}><div style={{fontSize:10,color:'#667085',marginBottom:7}}>Solo administración autorizada puede leer o modificar este texto. Se guarda en DATOS · COMENTARIO_ADMIN.</div><textarea value={comentarioValue} onChange={e=>setComentarioValue(e.target.value)} maxLength={3000} rows={7} style={{width:'100%',resize:'vertical',border:'1px solid #CCD6E2',borderRadius:9,padding:10,fontFamily:'inherit',fontSize:12,lineHeight:1.45,boxSizing:'border-box'}}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:10}}><span style={{fontSize:9,color:'#8A8178'}}>{comentarioValue.length}/3000</span><div style={{display:'flex',gap:7}}><button type="button" onClick={()=>setComentarioOpen(false)} disabled={comentarioBusy} style={{padding:'8px 11px',borderRadius:8,border:'1px solid #CCD6E2',background:'white',fontWeight:850,cursor:'pointer'}}>Cancelar</button><button type="button" onClick={guardarComentario} disabled={comentarioBusy} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #173A67',background:'#173A67',color:'white',fontWeight:950,cursor:'pointer'}}>{comentarioBusy?'Guardando…':'Guardar comentario'}</button></div></div></div></div></div>}
   </div></div>;
 }
 
 function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate }) {
   const codigo = agIndNorm(estudianteBase?.codigo || estudianteBase?.rec_m || estudianteBase?.CODIGO);
-  const [estado, setEstado] = React.useState({ loading:true, detalle:null, asistencia:[], error:'' });
+  const [estado, setEstado] = React.useState({ loading:true, detalle:null, asistencia:[], comentarioAdmin:'', error:'' });
   const [nivelAbierto, setNivelAbierto] = React.useState('');
   const [refreshKey,setRefreshKey]=React.useState(0);
   const [modalEstado,setModalEstado]=React.useState(null);
@@ -4487,14 +4526,14 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
 
   React.useEffect(() => {
     let activo = true;
-    if (!codigo) { setEstado({ loading:false, detalle:null, asistencia:[], error:'El estudiante no tiene código de expediente.' }); return () => { activo=false; }; }
+    if (!codigo) { setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', error:'El estudiante no tiene código de expediente.' }); return () => { activo=false; }; }
     setEstado(v=>({ ...v, loading:true, error:'' }));
-    Promise.all([postAdminStudents('getEstudiante', { codigo }),postAdminStudents('getAsistenciaEstudiante', { codigo })])
-      .then(([ficha, asist]) => {
+    Promise.all([postAdminStudents('getEstudiante', { codigo }),postAdminStudents('getAsistenciaEstudiante', { codigo }),postAdminStudents('getComentarioAdminEstudiante',{codigo}).catch(()=>({ok:false}))])
+      .then(([ficha, asist, comentario]) => {
         if (!activo) return;
-        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], error:(ficha&&ficha.error)||'No se pudo cargar el expediente.' }); return; }
-        setEstado({ loading:false, detalle:ficha, asistencia:(asist&&asist.ok&&Array.isArray(asist.asistencia))?asist.asistencia:[], error:'' });
-      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], error:'Error de conexión: '+(e?.message||e) }));
+        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', error:(ficha&&ficha.error)||'No se pudo cargar el expediente.' }); return; }
+        setEstado({ loading:false, detalle:ficha, asistencia:(asist&&asist.ok&&Array.isArray(asist.asistencia))?asist.asistencia:[], comentarioAdmin:comentario?.ok?agIndNorm(comentario.comentario_admin):'', error:'' });
+      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', error:'Error de conexión: '+(e?.message||e) }));
     return () => { activo=false; };
   }, [codigo,refreshKey]);
 
@@ -4505,7 +4544,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
   if (estado.loading) return <div style={{padding:'42px 24px',textAlign:'center',color:'var(--ink-3,#888)'}}>Cargando ficha individual…</div>;
   if (estado.error || !estado.detalle) return <div style={{padding:24}}><div style={{padding:'14px 16px',border:'1px solid #F4B7B7',background:'#FFEBEE',color:'#C62828',borderRadius:12,fontWeight:700}}>{estado.error||'Ficha no disponible.'}</div><button type="button" onClick={onClose} style={{marginTop:12,padding:'9px 14px',borderRadius:9,border:'1px solid var(--line,#ddd)',background:'white',cursor:'pointer',fontWeight:800}}>Cerrar consulta</button></div>;
 
-  const d=estado.detalle,est=d.estudiante||{},niveles=d.niveles||{},pend=d.pendientes?.por_nivel||{},movimientos=agIndMovimientos(d);
+  const d=estado.detalle,est=d.estudiante||{},niveles=d.niveles||{},pend=d.pendientes?.por_nivel||{},movimientos=agIndMovimientos(d),comentarioAdmin=agIndNorm(estado.comentarioAdmin);
   const nombre=agIndNorm(est.NOMBRE||estudianteBase?.nombre||estudianteBase?.display)||'Estudiante',cedula=agIndNorm(est.NUM_CEDULA||estudianteBase?.cedula),telefono=agIndNorm(est.TELEFONO||estudianteBase?.telefono),correo=agIndNorm(est.email||est.EMAIL||estudianteBase?.email),convenio=agIndNorm(est.CONVENIO||estudianteBase?.convenio)||'—',grupoActual=agIndNorm(d.cod_grupo||est.GRUPO||estudianteBase?.grupo)||'—';
   const totalAsis=estado.asistencia.length,totalPres=estado.asistencia.filter(r=>agIndPresente(r?.presente??r?.PRESENTE)).length,pctGlobal=totalAsis?Math.round(totalPres/totalAsis*100):null,orden=['B1','B2','I1','I2'];
   const gridCols='minmax(190px,1.2fr) minmax(112px,.62fr) minmax(128px,.72fr) minmax(215px,1.08fr) minmax(118px,.66fr) 82px 92px 30px';
@@ -4522,14 +4561,14 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
     <div style={{overflowX:'auto',borderRadius:12}}>
       <div style={{minWidth:1040}}>
         <div style={{display:'grid',gridTemplateColumns:gridCols,gap:8,padding:'0 13px 7px 18px',fontSize:8.5,fontWeight:900,letterSpacing:'.09em',textTransform:'uppercase',color:'#756D65'}}><span>Nivel y grupo</span><span>Convenio</span><span>Estado</span><span>Finanzas / comprobantes</span><span>Certificado</span><span>Nota</span><span>Asistencia</span><span></span></div>
-        <div style={{display:'grid',gap:8}}>{orden.map(nivel=>{const info=niveles[nivel]||{},pendienteNivel=pend[nivel]||{},estatus=agIndUpper(info.estatus)||'SIN REGISTRO',tone=agIndStatusTone(estatus),grupo=agIndNorm(info.grupo)||'—',notaNum=info.nota===''||info.nota==null||isNaN(Number(info.nota))?null:Number(info.nota),asis=agIndAsistenciaNivel(estado.asistencia,nivel,grupo),color=nivelColor[nivel]||'#8B8178',movsNivel=movimientos.filter(m=>m.nivel===nivel),resumen=agIndResumenMovimientos(movsNivel,pendienteNivel),finanzas=agIndFinanzasNivel(estatus,movsNivel,resumen),abierto=nivelAbierto===nivel,periodoCorto=agIndNorm(info.periodo_corto)||'PERIODO SIN DEFINIR',periodoLargo=agIndNorm(info.periodo_largo),convNivel=agIndNorm(info.convenio)||convenio,intentos=Array.isArray(info.intentos)?info.intentos:[],trasladoDesde=agIndNorm(info.traslado_desde),gruposPagoAplicados=Array.isArray(pendienteNivel?.grupos_pago_aplicados)?pendienteNivel.grupos_pago_aplicados:[],pagosConvalidados=!!pendienteNivel?.pagos_convalidados;
+        <div style={{display:'grid',gap:8}}>{orden.map(nivel=>{const info=niveles[nivel]||{},pendienteNivel=pend[nivel]||{},estatus=agIndUpper(info.estatus)||'SIN REGISTRO',tone=agIndStatusTone(estatus),grupo=agIndNorm(info.grupo)||'—',notaNum=info.nota===''||info.nota==null||isNaN(Number(info.nota))?null:Number(info.nota),asis=agIndAsistenciaNivel(estado.asistencia,nivel,grupo),color=nivelColor[nivel]||'#8B8178',movsNivel=movimientos.filter(m=>m.nivel===nivel),resumen=agIndResumenMovimientos(movsNivel,pendienteNivel),finanzas=agIndFinanzasNivel(estatus,movsNivel,resumen),abierto=nivelAbierto===nivel,periodoCorto=agIndNorm(info.periodo_corto)||'PERIODO SIN DEFINIR',periodoLargo=agIndNorm(info.periodo_largo),convNivel=agIndNorm(info.convenio)||convenio,intentos=Array.isArray(info.intentos)?info.intentos:[],trasladoDesde=agIndNorm(info.traslado_desde),gruposPagoAplicados=Array.isArray(pendienteNivel?.grupos_pago_aplicados)?pendienteNivel.grupos_pago_aplicados:[],pagosConvalidados=!!pendienteNivel?.pagos_convalidados,finIntentos=agIndFinanzasIntentos(d,nivel),finActual=finIntentos.find(x=>x?.es_actual)||finIntentos[finIntentos.length-1]||null,deudaFin=Number(finActual?.deuda_exigible||0),excedenteFin=Number(finActual?.excedente_bancario||0),finLabel=finIntentos.length?(deudaFin>0.005?`DEUDA ${agIndMoney(deudaFin)}`:'AL DÍA'):finanzas.label,finTone=deudaFin>0.005?{bg:'#FFEBEE',fg:'#C62828',bd:'#F4B7B7'}:{bg:'#E8F5E9',fg:'#2E7D32',bd:'#BFE4C3'};
           return <div key={nivel} style={{background:'white',border:'1px solid #DED8D0',borderRadius:11,boxShadow:abierto?'0 10px 24px rgba(20,33,61,.10)':'0 3px 10px rgba(20,33,61,.035)',overflow:'hidden'}}>
             <button type="button" onClick={()=>setNivelAbierto(abierto?'':nivel)} aria-expanded={abierto} style={{width:'100%',border:'none',background:'white',cursor:'pointer',padding:'9px 12px 9px 0',display:'grid',gridTemplateColumns:`8px ${gridCols}`,gap:8,alignItems:'center',textAlign:'left',fontFamily:'inherit'}}>
               <span style={{alignSelf:'stretch',background:color,borderRadius:'0 6px 6px 0'}}></span>
               <div><div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}><span style={{fontSize:14,fontWeight:950,color}}>{NIVEL_LABEL_P[nivel]}</span><span style={{fontSize:9,fontWeight:900,color:'#5D6673'}}>{periodoCorto}</span></div><div style={{fontSize:10,color:'#596273',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{periodoLargo&&<div style={{fontSize:8.5,color:'#8A8178',marginTop:1}}>{periodoLargo}</div>}{trasladoDesde&&<div style={{fontSize:8.5,color:'#8A5600',fontWeight:900,marginTop:2}}>↪ desde {agIndGrupoCorto(trasladoDesde)}</div>}</div>
               <span style={{justifySelf:'start',display:'inline-flex',padding:'4px 7px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',border:'1px solid #C9D9F1',fontSize:9,fontWeight:900,maxWidth:108,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{convNivel}</span>
               <div><span style={{display:'inline-flex',padding:'4px 8px',borderRadius:999,background:tone.bg,color:tone.fg,border:`1px solid ${tone.bd}`,fontSize:9.5,fontWeight:950}}>{estatus}</span>{intentos.length>1&&<div style={{fontSize:8.5,color:'#9A5B00',fontWeight:900,marginTop:3}}>{intentos.length} intentos</div>}</div>
-              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:finanzas.bg,color:finanzas.fg,border:`1px solid ${finanzas.bd}`,fontSize:9,fontWeight:950}}>{finanzas.label}</span>{finanzas.aplica?<><span style={{fontSize:9,color:'#5C6572'}}>Mat. <b>{finanzas.matriculas?'Sí':'No'}</b></span><span style={{fontSize:9,color:'#5C6572'}}>Cuotas <b>{finanzas.cuotas}</b></span><span style={{fontSize:9,color:'#5C6572'}}>Cert. <b>{finanzas.certificados?'Sí':'No'}</b></span>{nivel==='I2'&&<><span style={{fontSize:9,color:'#5C6572'}}>Programa <b>{finanzas.titulos?'Sí':'No'}</b></span><span style={{fontSize:9,color:'#5C6572'}}>TOEIC <b>{finanzas.toeic?'Sí':pendienteNivel?.toeic_omitido?'Omitido':'No'}</b></span></>}</>:<span style={{fontSize:9,color:'#756D65',fontWeight:800}}>Sin matrícula / obligación</span>}</div>
+              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:finIntentos.length?finTone.bg:finanzas.bg,color:finIntentos.length?finTone.fg:finanzas.fg,border:`1px solid ${finIntentos.length?finTone.bd:finanzas.bd}`,fontSize:9,fontWeight:950}}>{finLabel}</span>{finIntentos.length>1&&<span style={{fontSize:8.5,color:'#7A4A00',fontWeight:900}}>{finIntentos.length} intentos separados</span>}{excedenteFin>0.005&&<span style={{fontSize:8.5,color:'#8A5A00',fontWeight:900}}>Excedente {agIndMoney(excedenteFin)}</span>}{!finIntentos.length&&!finanzas.aplica&&<span style={{fontSize:9,color:'#756D65',fontWeight:800}}>Sin matrícula / obligación</span>}</div>
               <div style={{fontSize:9.5,fontWeight:850,color:'#25364F',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{agIndNorm(info.reg_certificados||info.cert_num)||'—'}</div>
               <div style={{fontSize:12,fontWeight:950,color:notaNum!=null&&notaNum<70?'#C62828':'#14213D'}}>{notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)}</div>
               <div><div style={{fontSize:11,fontWeight:950,color:asis.pct!=null&&asis.pct<70?'#C62828':'#14213D'}}>{asis.pct==null?'—':`${asis.pct}%`}</div>{asis.total>0&&<div style={{fontSize:8.5,color:'#81776F'}}>{asis.presentes}/{asis.total}</div>}</div>
@@ -4538,18 +4577,16 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
             {abierto&&<div style={{padding:'8px 12px 12px 16px',borderTop:'1px solid #EAE4DC',background:'#FBFAF8'}}>
               <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica} title={!finanzas.aplica?'El nivel no tiene matrícula activa. No se permite registrar pagos por adelantado.':''} onClick={()=>finanzas.aplica&&abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={!['CA','REP'].includes(estatus)} onClick={()=>['CA','REP'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
               {pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
-              <div style={{display:'grid',gridTemplateColumns:`repeat(${nivel==='I2'?6:4},minmax(110px,1fr))`,gap:6,marginBottom:7}}><AgIndPagoResumen label="Matrícula" pagado={resumen.matriculaPagada} pendiente={resumen.matriculaPendiente} comprobantes={finanzas.matriculas} aplica={finanzas.aplica} color={color}/><AgIndPagoResumen label="Cuotas" pagado={resumen.cuotasPagadas} pendiente={resumen.cuotasPendientes} comprobantes={finanzas.cuotas} aplica={finanzas.aplica} color={color}/><AgIndPagoResumen label="Certificado" pagado={resumen.certificadoPagado} pendiente={resumen.certificadoPendiente} comprobantes={finanzas.certificados} aplica={finanzas.aplica} color={color}/>{nivel==='I2'&&<><AgIndPagoResumen label="Programa completo" pagado={resumen.tituloPagado} pendiente={resumen.tituloPendiente} comprobantes={finanzas.titulos} aplica={pendienteNivel?.programa_completo_aplica!==false&&finanzas.aplica} color={color}/><AgIndPagoResumen label={pendienteNivel?.toeic_omitido?'TOEIC (omitido)':'TOEIC'} pagado={resumen.toeicPagado} pendiente={resumen.toeicPendiente} comprobantes={finanzas.toeic} aplica={pendienteNivel?.toeic_aplica!==false&&finanzas.aplica} color={color}/></>}<AgIndPagoResumen label="Total aplicado" pagado={resumen.totalPagado} pendiente={resumen.matriculaPendiente+resumen.cuotasPendientes+resumen.certificadoPendiente+resumen.tituloPendiente+resumen.toeicPendiente} comprobantes={finanzas.totalComprobantes} aplica={finanzas.aplica} color={color}/></div>
-              {intentos.length>1&&<div style={{marginBottom:7,padding:'7px 9px',borderRadius:8,background:'#FFF7E6',border:'1px solid #F0D39A'}}>{intentos.map((it,i)=><div key={it.intento_id||i} style={{fontSize:9.5,color:'#5F4630',marginTop:i?3:0}}><b>{it.etiqueta}</b> · {it.grupo||'—'} · {it.estatus||'—'} {it.periodo_info?.corto?`· ${it.periodo_info.corto}`:''}</div>)}</div>}
-              {movsNivel.length?<div style={{border:'1px solid #E5DED6',borderRadius:9,overflow:'hidden',background:'white'}}><div style={{padding:'6px 9px',background:'#F2EEE8',borderBottom:'1px solid #E5DED6',display:'flex',justifyContent:'space-between',fontSize:9,fontWeight:900,color:'#615950'}}><span>Movimientos de {NIVEL_LABEL_P[nivel]}</span><span>{movsNivel.length}</span></div><div style={{maxHeight:230,overflowY:'auto'}}>{movsNivel.map((mov,idx)=><div key={mov.id||idx} style={{display:'grid',gridTemplateColumns:'100px 96px minmax(180px,1fr) 104px',gap:8,alignItems:'center',padding:'7px 9px',borderBottom:idx===movsNivel.length-1?'none':'1px solid #F0ECE7'}}><div><b style={{fontSize:10.5,color:'#14213D'}}>{mov.tipo}</b><div style={{fontSize:8.5,color:'#8A8178'}}>{mov.fuente}</div></div><div><div style={{fontSize:9.5,fontWeight:800}}>{agIndNorm(mov.fecha)||'Sin fecha'}</div><div style={{fontSize:8.5,color:'#8A8178'}}>Recibo {agIndNorm(mov.recibo||mov.RECIBO)||'—'}</div></div><div style={{fontSize:9.5,color:'#3F3A35',lineHeight:1.25}}>{agIndNorm(mov.concepto||mov.descripcion)||'Movimiento aplicado'}{agIndNorm(mov.grupo)&&agIndUpper(mov.grupo)!==agIndUpper(grupo)&&gruposPagoAplicados.some(g=>agIndUpper(g)===agIndUpper(mov.grupo))&&<div style={{fontSize:8,color:'#244A7C',fontWeight:900,marginTop:2}}>Grupo original {agIndGrupoCorto(mov.grupo)}</div>}</div><div style={{textAlign:'right',fontFamily:'var(--f-mono,monospace)',fontSize:11,fontWeight:950,color:'#14213D'}}>{agIndMoney(mov.monto)}</div></div>)}</div></div>:<div style={{padding:'8px 10px',border:'1px dashed #D9D0C7',borderRadius:8,color:'#81776F',fontSize:10,background:'white'}}>{finanzas.aplica?'Sin comprobantes clasificados para este nivel.':'No aplica: el nivel no tiene matrícula activa ni obligación financiera.'}</div>}
+              {finIntentos.length?<div style={{display:'grid',gap:7}}>{finIntentos.map((it,i)=><AgIndIntentoFinanciero key={it.intento_id||i} intento={it} color={color} nivel={nivel}/>)}</div>:<div style={{padding:'9px 10px',border:'1px dashed #D9D0C7',borderRadius:8,color:'#81776F',fontSize:10,background:'white'}}>{finanzas.aplica?'El backend todavía no separó los comprobantes por intento.':'No aplica: el nivel no tiene matrícula activa ni obligación financiera.'}</div>}
             </div>}
           </div>;
         })}</div>
       </div>
     </div>
-    <div style={{marginTop:8,fontSize:9.5,color:'var(--ink-3,#81776f)'}}>La columna financiera muestra comprobantes reales por nivel. PE y SIN REGISTRO se presentan como NO APLICA; nunca como MORA NO ni como pagados.</div>
+    <div style={{marginTop:8,fontSize:9.5,color:'var(--ink-3,#81776f)'}}>La columna financiera separa comprobantes por intento. Los excedentes se informan, pero no se aplican automáticamente. PE y SIN REGISTRO se presentan como NO APLICA.</div>
     {modalEstado&&<ModalEstatus estudiante={{...estudianteBase,...est,codigo,display:nombre,grupo:modalEstado.info.grupo,estatus:modalEstado.info.estatus,nota:modalEstado.info.nota}} nivel={modalEstado.nivel} onClose={()=>setModalEstado(null)} onSuccess={()=>refrescar('Estado actualizado.')}/>} 
     {modalCambio&&<AkCambioAcademicoWizard codigo={codigo} nivel={modalCambio.nivel} infoNivel={modalCambio.info} onClose={()=>setModalCambio(null)} onSuccess={()=>refrescar('Cambio académico individual aplicado. Revisá grupo, intento, pagos y estado CONAPE.')}/>} 
-    {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')}/>} 
+    {historial&&<AkHistorialCambiosModal codigo={codigo} comentarioAdmin={comentarioAdmin} onComentarioGuardado={(comentario)=>{setEstado(v=>({...v,comentarioAdmin:comentario||''}));setToast('Comentario administrativo actualizado.');setTimeout(()=>setToast(''),4500);}} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')}/>} 
   </div>;
 }
 
