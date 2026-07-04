@@ -1,4 +1,4 @@
-// F98.4-Z6-BN · Horarios oficiales + PDF de traslado + carta integral CONAPE
+// F98.4-Z6-BO · Control preventivo CONAPE + carta institucional final
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4323,17 +4323,39 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   async function descargarFormularioConape(r){
     const key=`${r.CAMBIO_ID}-F`;setFormBusy(key);
     try{
+      const resp=await postAdminStudents('getFormularioConapePrefill',{cambio_id:r.CAMBIO_ID},80000);
+      if(!resp?.ok)throw new Error(resp?.error||'No se pudo preparar el formulario CONAPE.');
+      const control=resp.control||{};
+      const bloqueos=Array.isArray(control.bloqueos)?control.bloqueos:[];
+      if(bloqueos.length)throw new Error(bloqueos.join('\n'));
+      const actual=control.nivel_actual||{};
+      const solicitado=control.nivel_solicitado||control.sd18_solicita||null;
+      const incluidos=Array.isArray(control.sd17_incluye)?control.sd17_incluye:[];
+      if(solicitado?.pago_completo)throw new Error('No se puede generar el formulario: el nivel solicitado ya aparece como pagado.');
+      const nombreNivel=x=>x?.nivel_nombre||x?.nivel||'No definido';
+      const lineas=[
+        'CONTROL PREVENTIVO CONAPE',
+        '',
+        `Nivel actual pagado: ${control.nivel_actual_pagado?'SÍ · ':'NO · '}${nombreNivel(actual)}`,
+        `Nivel solicitado: ${solicitado?nombreNivel(solicitado):'No existe un PE posterior pendiente'}`,
+        `SD-17 incluye: ${incluidos.length?incluidos.map(nombreNivel).join(', '):'Ningún nivel'}`,
+        `SD-18 solicita: ${solicitado?nombreNivel(solicitado):'Sin asignatura automática'}`,
+        `Tipo de ciclo: ${control.tipo_ciclo||'Por revisar'}`
+      ];
+      const advertencias=Array.isArray(control.advertencias)?control.advertencias:[];
+      if(advertencias.length)lineas.push('',`Advertencias:\n• ${advertencias.join('\n• ')}`);
+      lineas.push('','Revisá este control antes de crear el PDF. ¿Continuar con la descarga?');
+      if(!confirm(lineas.join('\n')))return;
+
       if(!window.PDFLib||!window.PDFLib.PDFDocument){
-        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
+        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1-BO';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
         await window.__anPdfLibLoading;
       }
       if(!window.PDFLib||!window.PDFLib.PDFDocument)throw new Error('El módulo para prellenar el PDF no está disponible.');
-      const resp=await postAdminStudents('getFormularioConapePrefill',{cambio_id:r.CAMBIO_ID},80000);
-      if(!resp?.ok)throw new Error(resp?.error||'No se pudo preparar el formulario CONAPE.');
       const templateUrl=resp.template_url||'assets/forms/Formulario-8-Modificar-Plan-Estudios-y-Desembolsos.pdf';
       const tr=await fetch(templateUrl,{cache:'no-store'});if(!tr.ok)throw new Error(`No se pudo cargar la plantilla oficial (${tr.status}).`);
       const bytes=await tr.arrayBuffer();
-      const {PDFDocument,StandardFonts,PDFTextField,PDFCheckBox,PDFRadioGroup}=window.PDFLib;
+      const {PDFDocument,StandardFonts,rgb}=window.PDFLib;
       const pdfDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
       const form=pdfDoc.getForm();
       const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -4350,6 +4372,14 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       });
       Object.entries(checks).forEach(([name,value])=>{try{const f=form.getCheckBox(name);value?f.check():f.uncheck();}catch(e){faltantes.push(`${name}: ${e?.message||e}`);}});
       Object.entries(radios).forEach(([name,value])=>{if(!value)return;try{const f=form.getRadioGroup(name);const opts=f.getOptions?.()||[];let selected=String(value);if(!opts.includes(selected)){const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();selected=opts.find(o=>norm(o)===norm(value))||opts.find(o=>norm(o).includes(norm(value)))||'';}if(selected)f.select(selected);else faltantes.push(`${name}: opción ${value} no disponible`);}catch(e){faltantes.push(`${name}: ${e?.message||e}`);}});
+      (resp.clear_radio||[]).forEach(name=>{try{form.getRadioGroup(name).clear();}catch(e){faltantes.push(`${name}: ${e?.message||e}`);}});
+      (resp.overlay_radios||[]).forEach(group=>{try{
+        let field;try{field=form.getRadioGroup(group.name);}catch(_){field=form.createRadioGroup(group.name);}
+        const page=pdfDoc.getPages()[Math.max(0,Number(group.page||1)-1)];
+        const existing=field.getOptions?.()||[];
+        (group.options||[]).forEach(o=>{if(existing.includes(String(o.value)))return;field.addOptionToPage(String(o.value),page,{x:Number(o.x)||0,y:Number(o.y)||0,width:Number(o.width)||18,height:Number(o.height)||18,borderWidth:1,backgroundColor:rgb(1,1,1),borderColor:rgb(0,0,0),textColor:rgb(0,0,0)});});
+        if(group.selected)field.select(String(group.selected));
+      }catch(e){faltantes.push(`${group?.name||'radio editable'}: ${e?.message||e}`);}});
       try{form.updateFieldAppearances(font);}catch(_){ }
       (resp.draw_text||[]).forEach(d=>{try{const page=pdfDoc.getPages()[Math.max(0,Number(d.page||1)-1)];page.drawText(String(d.text||''),{x:Number(d.x)||0,y:Number(d.y)||0,size:Number(d.size)||9,font});}catch(_){ }});
       const out=await pdfDoc.save({useObjectStreams:false});
