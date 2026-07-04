@@ -1,6 +1,6 @@
-// F98.4-Z6-BW · Carta CONAPE + reconciliación oficial 7-morosidad
-// APR histórico usa la fila oficial del mismo año/periodo; el alert muestra
-// el nivel y los rubros exactos si la carta continúa como borrador.
+// F98.4-Z6-BX · Carta CONAPE + reconciliación por periodo histórico exacto
+// APR histórico usa cédula + año + periodo del evento concreto; evita que
+// una matrícula legada del motor canónico invalide un cierre oficial NO.
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4333,7 +4333,12 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
           if(p.toeic_cobrable&&!p.toeic_omitido)add('TOEIC',p.toeic_pend);
           const nivel=x?.nivel_nombre||x?.nivel||'Nivel no identificado';
           const fuente=x?.fuente_confirmacion?` · fuente: ${x.fuente_confirmacion}`:'';
-          return `• ${nivel}${x?.periodo?` · ${x.periodo}`:''}: ${rubros.length?rubros.join(', '):'estado financiero pendiente sin desglose'}${fuente}`;
+          const busqueda=x?.reconciliacion_busqueda||{};
+          const oficial=x?.reconciliacion_oficial||{};
+          const lookup=busqueda?.clave
+            ?` · 7-morosidad ${busqueda.clave}: ${oficial?.conflicto?'DUPLICADO CONFLICTIVO':(oficial?.estado||'SIN COINCIDENCIA')}`
+            :'';
+          return `• ${nivel}${x?.periodo?` · ${x.periodo}`:''}: ${rubros.length?rubros.join(', '):'estado financiero pendiente sin desglose'}${fuente}${lookup}`;
         }).join('\n');
         alert(`La carta sigue como borrador porque el motor aún detecta obligaciones exigibles.${detalle?`\n\n${detalle}`:'\n\nNo se recibió el desglose; revisá la respuesta del backend.'}`);
       }
