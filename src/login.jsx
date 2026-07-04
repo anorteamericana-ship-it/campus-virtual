@@ -76,7 +76,7 @@ function HeroCarousel() {
       <div className="hero-scenes" aria-live="off">
         {HERO_SCENES.map((item, index) => (
           <figure
-            className={'hero-scene hero-motion-' + ((index % 4) + 1) + (scene === index ? ' is-active' : '')}
+            className={'hero-scene' + (scene === index ? ' is-active' : '')}
             key={item.image}
             aria-hidden={scene !== index}
           >
@@ -85,13 +85,14 @@ function HeroCarousel() {
               alt={scene === index ? item.alt : ''}
               className="hero-photo"
               draggable="false"
+              loading="eager"
+              decoding="async"
+              fetchPriority={index === 0 ? 'high' : 'auto'}
             />
           </figure>
         ))}
       </div>
 
-      <div className="hero-cinematic-shade" aria-hidden="true" />
-      <div className="hero-light-sweep" aria-hidden="true" />
 
       <nav className="hero-progress" aria-label="Cambiar imagen promocional">
         {HERO_SCENES.map((item, index) => (
