@@ -1,4 +1,4 @@
-// F98.4-Z6-BO · Control preventivo CONAPE + carta institucional final
+// F98.4-Z6-BP · Carta CONAPE: movimiento financiero, historial completo y una página
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4337,6 +4337,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
         'CONTROL PREVENTIVO CONAPE',
         '',
         `Nivel actual pagado: ${control.nivel_actual_pagado?'SÍ · ':'NO · '}${nombreNivel(actual)}`,
+        `Resultado académico actual: ${control.nivel_actual_aprobado?'APROBATORIO':'NO HABILITA'}${control.nota_actual!=null?` · nota ${control.nota_actual}`:''}${control.criterio_aprobacion?` · ${control.criterio_aprobacion}`:''}`,
         `Nivel solicitado: ${solicitado?nombreNivel(solicitado):'No existe un PE posterior pendiente'}`,
         `SD-17 incluye: ${incluidos.length?incluidos.map(nombreNivel).join(', '):'Ningún nivel'}`,
         `SD-18 solicita: ${solicitado?nombreNivel(solicitado):'Sin asignatura automática'}`,
@@ -4348,7 +4349,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       if(!confirm(lineas.join('\n')))return;
 
       if(!window.PDFLib||!window.PDFLib.PDFDocument){
-        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1-BO';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
+        if(!window.__anPdfLibLoading){window.__anPdfLibLoading=new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='vendor/pdf-lib.min.js?v=1.17.1-BP';sc.async=true;sc.onload=()=>resolve(window.PDFLib);sc.onerror=()=>reject(new Error('No se pudo cargar el módulo local para prellenar PDF.'));document.head.appendChild(sc);}).finally(()=>{window.__anPdfLibLoading=null;});}
         await window.__anPdfLibLoading;
       }
       if(!window.PDFLib||!window.PDFLib.PDFDocument)throw new Error('El módulo para prellenar el PDF no está disponible.');
