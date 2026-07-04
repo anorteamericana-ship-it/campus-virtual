@@ -1,4 +1,6 @@
-// F98.4-Z6-BV · Carta CONAPE oficial + firma 3x14 pt y pie 2x14 pt
+// F98.4-Z6-BW · Carta CONAPE + reconciliación oficial 7-morosidad
+// APR histórico usa la fila oficial del mismo año/periodo; el alert muestra
+// el nivel y los rubros exactos si la carta continúa como borrador.
 // F98.4-Z6-BF · Sync CONAPE por grupo reanudable y sin cortes parciales
 // F98.4-Z6-BG · pagos por nivel + título final I2 separado
 // CALGRUPO_F98_4_Z6_AN_20260630_CONSULTA_CALENDARIO_OPTIMIZADOS
@@ -4315,7 +4317,26 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
     try{
       const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:false},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo regenerar la carta.');
-      alert(resp?.estado==='LISTA_PARA_FIRMA'?'Carta de no deuda recalculada y lista para firma.':'La carta sigue como borrador porque todavía existen rubros pendientes.');
+      if(resp?.estado==='LISTA_PARA_FIRMA'){
+        alert('Carta recalculada y lista para firma.');
+      }else{
+        const pendientes=Array.isArray(resp?.estado_financiero?.niveles_financieros_pendientes)
+          ?resp.estado_financiero.niveles_financieros_pendientes:[];
+        const detalle=pendientes.map(x=>{
+          const p=x?.detalle_financiero||{};
+          const rubros=[];
+          const add=(label,value)=>{const n=Number(value||0);if(n>0.005)rubros.push(`${label}: ₡${Math.round(n).toLocaleString('es-CR')}`);};
+          add('Matrícula',p.matricula_pend);
+          add('Cuotas',p.cuotas_pend);
+          if(p.certificado_exigible!==false)add('Certificado',p.cert_pend);
+          if(p.programa_completo_exigible||p.titulo_exigible)add('Programa completo',p.programa_completo_pend??p.titulo_pend);
+          if(p.toeic_cobrable&&!p.toeic_omitido)add('TOEIC',p.toeic_pend);
+          const nivel=x?.nivel_nombre||x?.nivel||'Nivel no identificado';
+          const fuente=x?.fuente_confirmacion?` · fuente: ${x.fuente_confirmacion}`:'';
+          return `• ${nivel}${x?.periodo?` · ${x.periodo}`:''}: ${rubros.length?rubros.join(', '):'estado financiero pendiente sin desglose'}${fuente}`;
+        }).join('\n');
+        alert(`La carta sigue como borrador porque el motor aún detecta obligaciones exigibles.${detalle?`\n\n${detalle}`:'\n\nNo se recibió el desglose; revisá la respuesta del backend.'}`);
+      }
       if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
       cargar();
     }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
