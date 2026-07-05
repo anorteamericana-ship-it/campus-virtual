@@ -266,43 +266,91 @@ function tFmtMoraActualizado(s) {
   return `${parseInt(dd,10)}-${meses[idx] || mm} ${hh}:${mi}`;
 }
 
+function todosCategoriaGrupo(g) {
+  const raw = todosText(g?.estadoCategoria || g?.estadoGrupo || g?.comentario).toUpperCase();
+  if (g?.esApertura || raw === 'PROYECTADO') return 'PROYECTADO';
+  if (raw === 'COMPLETADO' || raw === 'CERRADO') return 'COMPLETADO';
+  return 'ACTIVO';
+}
+
+function todosFechaReferenciaGrupo(g) {
+  return todosText(g?.fechaUltimaLeccion || g?.fechaInicioNivel || g?.aperturaFechaInicio);
+}
+
+function todosModalidadGrupo(g) {
+  const directa = todosText(g?.modalidad);
+  if (directa) return directa;
+  const tipo = todosText(g?.tipoPeriodo).toUpperCase();
+  if (tipo === 'B') return 'Bimestre';
+  if (tipo === 'C') return 'Cuatrimestre';
+  const code = todosText(g?.code).toUpperCase();
+  return /-B\d-/.test(code) ? 'Bimestre' : (/-C\d-/.test(code) ? 'Cuatrimestre' : '');
+}
+
 function TodosLosGruposView({ gruposReales, onNavigate }) {
-  // Primera pintura y fuente única: getGruposActivos ya incluye las lecciones.
   const [gruposDetalle, setGruposDetalle] = React.useState(null);
-  const safeGruposReales = React.useMemo(() => {
+  const [alcance, setAlcance] = React.useState('completo'); // completo | activos | completados
+  const [sub, setSub] = React.useState('semana');
+  const [weekStart, setWeekStart] = React.useState(() => tMondayOf(new Date()));
+  const [monthCursor, setMonthCursor] = React.useState(() => {
+    const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;
+  });
+  const [detalle, setDetalle] = React.useState(null);
+  const [selectedKey, setSelectedKey] = React.useState('');
+  const [selectedGroupCode, setSelectedGroupCode] = React.useState('');
+  const [expandedDay, setExpandedDay] = React.useState(null);
+
+  const gruposBase = React.useMemo(() => {
     const base = Array.isArray(gruposDetalle) ? gruposDetalle : (Array.isArray(gruposReales) ? gruposReales : []);
     return base.map(todosNormalizarGrupo).filter(Boolean);
   }, [gruposReales, gruposDetalle]);
 
   React.useEffect(() => {
-    // F98.4-Z6-AN: getGruposActivos ya entrega las lecciones del nivel activo.
-    // No se dispara una petición getFechasGrupo por cada grupo. Esto elimina
-    // la ráfaga de llamadas que producía demora, cuotas y errores intermitentes.
     const base = (Array.isArray(gruposReales) ? gruposReales : [])
       .map(todosNormalizarGrupo)
       .filter(Boolean);
     setGruposDetalle(base);
   }, [gruposReales]);
 
-  // ── HOOKS ARRIBA (sin returns condicionales antes) ────────────
-  const [sub, setSub] = React.useState('semana'); // 'semana' | 'mes'
-  const [weekStart, setWeekStart] = React.useState(() => tMondayOf(new Date()));
-  const [monthCursor, setMonthCursor] = React.useState(() => {
-    const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;
-  });
-  const [detalle, setDetalle] = React.useState(null); // { grupo, leccion }
-  const [selectedKey, setSelectedKey] = React.useState('');
-  const [selectedGroupCode, setSelectedGroupCode] = React.useState('');
-  const [expandedDay, setExpandedDay] = React.useState(null); // iso del día expandido en VistaMes
+  const conteos = React.useMemo(() => {
+    const activos = gruposBase.filter(g => todosCategoriaGrupo(g) === 'ACTIVO').length;
+    const completados = gruposBase.filter(g => todosCategoriaGrupo(g) === 'COMPLETADO').length;
+    const proyectados = gruposBase.filter(g => todosCategoriaGrupo(g) === 'PROYECTADO').length;
+    return { total:gruposBase.length, activos, completados, proyectados };
+  }, [gruposBase]);
 
-  // ── MORA (caché en backend) ───────────────────────────────────
-  // moraMap: code → { ca, mora }. moraFecha: timestamp legible del caché.
-  // Se carga después del Gantt para NO bloquear el render del calendario.
-  const [moraMap,     setMoraMap]     = React.useState(null); // null = todavía no llegó
-  const [moraFecha,   setMoraFecha]   = React.useState(null);
+  const safeGruposReales = React.useMemo(() => gruposBase.filter(g => {
+    const cat = todosCategoriaGrupo(g);
+    if (alcance === 'activos') return cat === 'ACTIVO';
+    if (alcance === 'completados') return cat === 'COMPLETADO';
+    return true;
+  }), [gruposBase, alcance]);
+
+  React.useEffect(() => {
+    setDetalle(null);
+    setSelectedKey('');
+    setSelectedGroupCode('');
+    setExpandedDay(null);
+    if (alcance === 'completados') {
+      const fechas = gruposBase.map(todosFechaReferenciaGrupo).filter(Boolean).sort();
+      const ultima = fechas[fechas.length - 1];
+      const d = tParseISO(ultima);
+      if (d) {
+        setWeekStart(tMondayOf(d));
+        const m = new Date(d); m.setDate(1); setMonthCursor(m);
+      }
+    } else {
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
+      setWeekStart(tMondayOf(hoy));
+      const m = new Date(hoy); m.setDate(1); setMonthCursor(m);
+    }
+  }, [alcance]); // eslint-disable-line
+
+  const [moraMap, setMoraMap] = React.useState(null);
+  const [moraFecha, setMoraFecha] = React.useState(null);
   const [moraLoading, setMoraLoading] = React.useState(false);
   const [moraUpdating, setMoraUpdating] = React.useState(false);
-  const [moraError,   setMoraError]   = React.useState(null);
+  const [moraError, setMoraError] = React.useState(null);
   const [moraUnsupported, setMoraUnsupported] = React.useState(false);
 
   const cargarMora = React.useCallback(async () => {
@@ -342,53 +390,42 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
     }
   }, [cargarMora, moraUpdating]);
 
-  // Aplanado: { grupo, leccion } por cada lección
   const items = React.useMemo(() => {
     const out = [];
     for (const g of safeGruposReales) {
       if (!Array.isArray(g.lecciones)) continue;
       for (const l of g.lecciones) {
         if (!l || !l.fecha) continue;
-        out.push({ grupo: g, leccion: l });
+        out.push({ grupo:g, leccion:l });
       }
     }
     return out;
   }, [safeGruposReales]);
 
-  // ── DATOS PARA VISTA GANTT ──────────────────────────────────────
-  // gruposOrdenados: filas, en el orden de presentación (vert.).
-  // byGrupoDate: code → (iso → leccion[]) con lecciones ASC dentro del día.
   const gruposOrdenados = React.useMemo(() => {
     const arr = [...safeGruposReales];
-    arr.sort((a, b) => {
-      // 1. turnoOrden ASC (9am arriba, 6pm abajo)
-      const ta = a.turnoOrden ?? 99;
-      const tb = b.turnoOrden ?? 99;
+    arr.sort((a,b) => {
+      const ca = todosCategoriaGrupo(a), cb = todosCategoriaGrupo(b);
+      const rank = { ACTIVO:1, PROYECTADO:2, COMPLETADO:3 };
+      if ((rank[ca] || 9) !== (rank[cb] || 9)) return (rank[ca] || 9) - (rank[cb] || 9);
+      if (ca === 'COMPLETADO' && cb === 'COMPLETADO') {
+        const fa = todosFechaReferenciaGrupo(a), fb = todosFechaReferenciaGrupo(b);
+        if (fa !== fb) return fb.localeCompare(fa);
+      }
+      const ta = a.turnoOrden ?? 99, tb = b.turnoOrden ?? 99;
       if (ta !== tb) return ta - tb;
-      // 2. aperturas al final (globalmente)
-      const ea = a.esApertura ? 1 : 0;
-      const eb = b.esApertura ? 1 : 0;
-      if (ea !== eb) return ea - eb;
-      // 3. nivel DESC (I2 > I1 > B2 > B1)
-      const na = TODOS_NIVEL_ORDEN[a.nivelId] || 0;
-      const nb = TODOS_NIVEL_ORDEN[b.nivelId] || 0;
+      const na = TODOS_NIVEL_ORDEN[a.nivelId] || 0, nb = TODOS_NIVEL_ORDEN[b.nivelId] || 0;
       if (na !== nb) return nb - na;
-      // 4. leccionActual DESC (grupo más avanzado arriba)
-      const la = a.leccionActual || 0;
-      const lb = b.leccionActual || 0;
+      const la = a.leccionActual || 0, lb = b.leccionActual || 0;
       if (la !== lb) return lb - la;
-      // 5. estudiantes DESC
-      const ea2 = a.estudiantes || 0;
-      const eb2 = b.estudiantes || 0;
-      if (ea2 !== eb2) return eb2 - ea2;
-      // tiebreak determinístico
+      const ea = a.estudiantes || 0, eb = b.estudiantes || 0;
+      if (ea !== eb) return eb - ea;
       return (a.code || '').localeCompare(b.code || '');
     });
     return arr;
   }, [safeGruposReales]);
 
   const byGrupoDate = React.useMemo(() => {
-    // code → Map<iso, leccion[]>
     const out = new Map();
     for (const g of safeGruposReales) {
       const m = new Map();
@@ -399,18 +436,12 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           m.get(l.fecha).push(l);
         }
       }
-      // Mismo grupo + mismo día: ASC por número de lección (5 antes que 6).
-      for (const list of m.values()) {
-        list.sort((a, b) => (a.leccion || 0) - (b.leccion || 0));
-      }
+      for (const list of m.values()) list.sort((a,b) => (a.leccion || 0) - (b.leccion || 0));
       out.set(g.code, m);
     }
     return out;
   }, [safeGruposReales]);
 
-  // ── DATOS PARA VISTA MES (apilado por día) ──────────────────────
-  // Mantiene la lógica de bloques: cada grupo aporta sus lecciones del día
-  // en orden natural; los grupos entre sí compiten por hora/nivel/lecMax.
   const byDate = React.useMemo(() => {
     const m = new Map();
     for (const it of items) {
@@ -422,149 +453,91 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
       const porGrupo = new Map();
       for (const it of list) {
         const code = it.grupo.code;
-        if (!porGrupo.has(code)) porGrupo.set(code, { grupo: it.grupo, lecciones: [] });
+        if (!porGrupo.has(code)) porGrupo.set(code, { grupo:it.grupo, lecciones:[] });
         porGrupo.get(code).lecciones.push(it.leccion);
       }
       for (const bloque of porGrupo.values()) {
-        bloque.lecciones.sort((a, b) => (a.leccion || 0) - (b.leccion || 0));
+        bloque.lecciones.sort((a,b) => (a.leccion || 0) - (b.leccion || 0));
         bloque.lecMax = Math.max(...bloque.lecciones.map(l => l.leccion || 0));
       }
       const bloques = Array.from(porGrupo.values());
-      bloques.sort((A, B) => {
-        const ga = A.grupo, gb = B.grupo;
-        const ta = ga.turnoOrden ?? 99, tb = gb.turnoOrden ?? 99;
-        if (ta !== tb) return ta - tb;
-        const ea = ga.esApertura ? 1 : 0, eb = gb.esApertura ? 1 : 0;
-        if (ea !== eb) return ea - eb;
-        const na = TODOS_NIVEL_ORDEN[ga.nivelId] || 0;
-        const nb = TODOS_NIVEL_ORDEN[gb.nivelId] || 0;
-        if (na !== nb) return nb - na;
-        if (A.lecMax !== B.lecMax) return B.lecMax - A.lecMax;
-        return (gb.estudiantes || 0) - (ga.estudiantes || 0);
+      bloques.sort((A,B) => {
+        const ga=A.grupo, gb=B.grupo;
+        const ca=todosCategoriaGrupo(ga), cb=todosCategoriaGrupo(gb);
+        const rank={ACTIVO:1,PROYECTADO:2,COMPLETADO:3};
+        if ((rank[ca]||9)!==(rank[cb]||9)) return (rank[ca]||9)-(rank[cb]||9);
+        const ta=ga.turnoOrden??99, tb=gb.turnoOrden??99;
+        if (ta!==tb) return ta-tb;
+        const na=TODOS_NIVEL_ORDEN[ga.nivelId]||0, nb=TODOS_NIVEL_ORDEN[gb.nivelId]||0;
+        if (na!==nb) return nb-na;
+        return B.lecMax-A.lecMax;
       });
-      const flat = [];
-      for (const b of bloques) {
-        for (const l of b.lecciones) flat.push({ grupo: b.grupo, leccion: l });
-      }
+      const flat=[];
+      for (const b of bloques) for (const l of b.lecciones) flat.push({grupo:b.grupo, leccion:l});
       m.set(fecha, flat);
     }
     return m;
   }, [items]);
 
-  // Stats para header
   const stats = React.useMemo(() => {
-    const totalGrupos = safeGruposReales.length;
-    const aperturas = safeGruposReales.filter(g => g.esApertura).length;
-    const estudiantes = safeGruposReales.reduce((s,g) => s + (g.estudiantes||0), 0);
-    return { totalGrupos, aperturas, estudiantes };
+    const estudiantes = safeGruposReales
+      .filter(g => todosCategoriaGrupo(g) !== 'COMPLETADO')
+      .reduce((s,g) => s + (g.estudiantes || 0), 0);
+    return { totalGrupos:safeGruposReales.length, estudiantes };
   }, [safeGruposReales]);
+
+  const alcanceLabel = alcance === 'activos' ? 'grupos activos' : alcance === 'completados' ? 'grupos completados' : 'cronograma completo';
 
   return (
     <div style={{ marginTop:14 }}>
-      {/* Header con stats + switch + nav */}
-      <div className="card" style={{
-        padding:'14px 18px',
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-        gap:14, flexWrap:'wrap', marginBottom:14,
-      }}>
-        {/* Stats */}
-        <div style={{ display:'flex', gap:24, alignItems:'baseline', flexWrap:'wrap' }}>
-          <StatPill n={stats.totalGrupos} l="grupos activos" />
-          <StatPill n={stats.estudiantes} l="estudiantes" />
-          <StatPill n={stats.aperturas}   l="aperturas"     color={TODOS_APERTURA_COL} />
+      <div className="card" style={{ padding:'14px 18px', marginBottom:14 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', padding:4, background:'var(--bg-deep)', borderRadius:'var(--r-md)', gap:3, flexWrap:'wrap' }}>
+            {[
+              { id:'completo', label:'Cronograma completo', n:conteos.total },
+              { id:'activos', label:'Grupos activos', n:conteos.activos },
+              { id:'completados', label:'Grupos completados', n:conteos.completados },
+            ].map(opt => {
+              const active = alcance === opt.id;
+              return <button key={opt.id} onClick={() => setAlcance(opt.id)} style={{
+                padding:'8px 13px', borderRadius:'var(--r-sm)', border:'none',
+                background:active ? 'var(--surface)' : 'transparent',
+                boxShadow:active ? 'var(--sh-1)' : 'none', cursor:'pointer',
+                fontWeight:800, fontSize:12, color:active ? 'var(--ink)' : 'var(--ink-3)',
+                fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:7,
+              }}>{opt.label}<span style={{fontFamily:'var(--f-mono)',fontSize:10,padding:'2px 6px',borderRadius:999,background:active?'var(--an-navy)':'var(--surface-2)',color:active?'#fff':'var(--ink-3)'}}>{opt.n}</span></button>;
+            })}
+          </div>
+          <div style={{ display:'flex', padding:4, background:'var(--bg-deep)', borderRadius:'var(--r-md)', gap:2 }}>
+            {[{id:'semana',label:'Semana'},{id:'mes',label:'Mes'}].map(opt => {
+              const active=sub===opt.id;
+              return <button key={opt.id} onClick={() => setSub(opt.id)} style={{
+                padding:'7px 16px',borderRadius:'var(--r-sm)',border:'none',
+                background:active?'var(--surface)':'transparent',boxShadow:active?'var(--sh-1)':'none',
+                cursor:'pointer',fontWeight:700,fontSize:12,color:active?'var(--ink)':'var(--ink-3)',fontFamily:'inherit',
+              }}>{opt.label}</button>;
+            })}
+          </div>
         </div>
 
-        {/* Mora: solo si el backend la soporta */}
-        {!moraUnsupported && moraMap !== null && (
-          <div style={{
-            display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
-          }}>
-            <div style={{
-              display:'flex', flexDirection:'column', alignItems:'flex-end',
-              lineHeight:1.25,
-            }}>
-              <span style={{
-                fontSize:10, fontWeight:800, letterSpacing:'0.14em',
-                textTransform:'uppercase',
-                color: moraError ? 'var(--an-red, #C8302A)' : 'var(--ink-3)',
-              }}>
-                {moraError ? '⚠ ' + moraError : 'Mora'}
-              </span>
-              <span style={{
-                fontSize:11, fontWeight:600,
-                color: moraFecha ? 'var(--ink-2)' : 'var(--ink-3)',
-                fontFamily: moraFecha ? 'var(--f-mono)' : 'inherit',
-                fontStyle: moraFecha ? 'normal' : 'italic',
-              }}>
-                {moraFecha
-                  ? `actualizada ${tFmtMoraActualizado(moraFecha)}`
-                  : (moraLoading ? 'cargando…' : 'sin calcular — tocá Actualizar')}
-              </span>
-            </div>
-            <button
-              onClick={actualizarMora}
-              disabled={moraUpdating}
-              style={{
-                padding:'7px 12px', display:'inline-flex', alignItems:'center', gap:6,
-                border:'1.5px solid var(--line)',
-                background: moraUpdating ? 'var(--bg-deep)' : 'var(--surface)',
-                borderRadius:'var(--r-sm)',
-                fontSize:13, fontWeight:800, color:'var(--ink-2)',
-                cursor: moraUpdating ? 'wait' : 'pointer',
-                fontFamily:'inherit',
-                letterSpacing:'0.02em',
-                opacity: moraUpdating ? 0.65 : 1,
-              }}
-              title="Recalcular mora de todos los grupos (tarda unos segundos)"
-            >
-              {moraUpdating ? (
-                <React.Fragment>
-                  <span style={{
-                    width:12, height:12, borderRadius:'50%',
-                    border:'2px solid var(--line)', borderTopColor:'var(--an-navy)',
-                    animation:'an-spin .8s linear infinite',
-                    display:'inline-block',
-                  }} />
-                  Actualizando…
-                </React.Fragment>
-              ) : (
-                <React.Fragment>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 4 23 10 17 10"/>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                  </svg>
-                  Actualizar mora
-                </React.Fragment>
-              )}
-            </button>
+        <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid var(--line)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', gap:22, alignItems:'baseline', flexWrap:'wrap' }}>
+            <StatPill n={stats.totalGrupos} l={alcanceLabel} />
+            {alcance !== 'completados' && <StatPill n={stats.estudiantes} l="estudiantes activos" />}
+            {alcance === 'completo' && conteos.proyectados > 0 && <StatPill n={conteos.proyectados} l="aperturas" color={TODOS_APERTURA_COL} />}
           </div>
-        )}
 
-        {/* Switch Semana / Mes */}
-        <div style={{
-          display:'flex', padding:4, background:'var(--bg-deep)',
-          borderRadius:'var(--r-md)', gap:2,
-        }}>
-          {[
-            { id:'semana', label:'Semana' },
-            { id:'mes',    label:'Mes' },
-          ].map(opt => {
-            const active = sub === opt.id;
-            return (
-              <button key={opt.id}
-                onClick={() => setSub(opt.id)}
-                style={{
-                  padding:'7px 16px', borderRadius:'var(--r-sm)', border:'none',
-                  background: active ? 'var(--surface)' : 'transparent',
-                  boxShadow: active ? 'var(--sh-1)' : 'none',
-                  cursor:'pointer', fontWeight:700, fontSize:12,
-                  color: active ? 'var(--ink)' : 'var(--ink-3)',
-                  letterSpacing:'0.04em', fontFamily:'inherit',
-                  transition:'background .15s',
-                }}>{opt.label}</button>
-            );
-          })}
+          {alcance !== 'completados' && !moraUnsupported && moraMap !== null && (
+            <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap' }}>
+              <span style={{fontSize:10,fontWeight:700,color:moraError?'#C8302A':'var(--ink-3)'}}>
+                {moraError ? `⚠ ${moraError}` : (moraFecha ? `Mora actualizada ${tFmtMoraActualizado(moraFecha)}` : (moraLoading ? 'Cargando mora…' : 'Mora sin calcular'))}
+              </span>
+              <button onClick={actualizarMora} disabled={moraUpdating} style={{
+                padding:'6px 10px',border:'1px solid var(--line)',background:'var(--surface)',borderRadius:'var(--r-sm)',
+                fontSize:11,fontWeight:800,color:'var(--ink-2)',cursor:moraUpdating?'wait':'pointer',fontFamily:'inherit',opacity:moraUpdating ? .65 : 1,
+              }}>{moraUpdating?'Actualizando…':'Actualizar mora'}</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -575,13 +548,11 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           gruposOrdenados={gruposOrdenados}
           byGrupoDate={byGrupoDate}
           moraMap={moraMap}
+          alcance={alcance}
+          vacioLabel={alcanceLabel}
           selectedKey={selectedKey}
           selectedGroupCode={selectedGroupCode}
-          onAbrir={(it) => {
-            setSelectedKey(todosItemKey(it));
-            setSelectedGroupCode(it?.grupo?.code || '');
-            setDetalle(it);
-          }}
+          onAbrir={(it) => { setSelectedKey(todosItemKey(it)); setSelectedGroupCode(it?.grupo?.code || ''); setDetalle(it); }}
         />
       ) : (
         <TodosVistaMes
@@ -593,33 +564,22 @@ function TodosLosGruposView({ gruposReales, onNavigate }) {
           setExpandedDay={setExpandedDay}
           selectedKey={selectedKey}
           selectedGroupCode={selectedGroupCode}
-          onAbrir={(it) => {
-            setSelectedKey(todosItemKey(it));
-            setSelectedGroupCode(it?.grupo?.code || '');
-            setDetalle(it);
-          }}
+          onAbrir={(it) => { setSelectedKey(todosItemKey(it)); setSelectedGroupCode(it?.grupo?.code || ''); setDetalle(it); }}
         />
       )}
 
       {detalle && (
-        <DetalleModal
-          item={detalle}
-          moraMap={moraMap}
-          onNavigate={onNavigate}
-          onCerrar={() => {
-            // La selección del grupo permanece visible, igual que en el calendario docente.
-            setDetalle(null);
-            setSelectedKey('');
-          }} />
+        <DetalleModal item={detalle} moraMap={moraMap} onNavigate={onNavigate} onCerrar={() => { setDetalle(null); setSelectedKey(''); }} />
       )}
     </div>
   );
 }
 
+
 // ─────────────────────────────────────────────────────────────────
 // VISTA SEMANA — Gantt: filas = grupos, columnas = días
 // ─────────────────────────────────────────────────────────────────
-function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, selectedKey, selectedGroupCode, onAbrir }) {
+function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDate, moraMap, alcance, vacioLabel, selectedKey, selectedGroupCode, onAbrir }) {
   // Siempre Lun-Sáb (6 columnas). Si algún grupo tiene clase domingo igual
   // se ve porque su celda existe — pero rara vez ocurre en la academia.
   const days = React.useMemo(() => {
@@ -629,6 +589,19 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
   }, [weekStart]);
 
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+
+  const gruposVisibles = React.useMemo(() => {
+    const fechas = new Set(days.map(tIsoOf));
+    return gruposOrdenados.filter(g => {
+      const cat = todosCategoriaGrupo(g);
+      if (alcance === 'completados') return true;
+      if (cat === 'ACTIVO' || cat === 'PROYECTADO') return true;
+      const cells = byGrupoDate.get(g.code);
+      if (!cells) return false;
+      for (const iso of fechas) if ((cells.get(iso) || []).length) return true;
+      return false;
+    });
+  }, [days, gruposOrdenados, byGrupoDate, alcance]);
 
   // Ajustada para caber de lunes a sábado sin scroll horizontal en escritorio.
   const COL_LABEL = 'clamp(176px, 16vw, 220px)';
@@ -665,7 +638,7 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
           {tFmtRangoSemana(weekStart)}
         </div>
         <div style={{ fontSize:11, color:'var(--ink-3)' }}>
-          {gruposOrdenados.length} grupos · click en lección para detalle
+          {gruposVisibles.length} grupos en esta semana
         </div>
       </div>
 
@@ -716,16 +689,16 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
           })}
 
           {/* ── Filas (un grupo por fila) ────────────────────────── */}
-          {gruposOrdenados.length === 0 && (
+          {gruposVisibles.length === 0 && (
             <div style={{
               gridColumn:'1 / -1',
               background:'var(--surface)', padding:'40px 18px',
               textAlign:'center', color:'var(--ink-3)', fontSize:13,
             }}>
-              No hay grupos activos para mostrar.
+              No hay {vacioLabel || 'grupos'} para mostrar en esta vista.
             </div>
           )}
-          {gruposOrdenados.map(g => {
+          {gruposVisibles.map(g => {
             const color = g.esApertura
               ? TODOS_APERTURA_COL
               : (TODOS_NIVEL_COLOR[g.nivelId] || TODOS_APERTURA_COL);
@@ -743,41 +716,34 @@ function TodosVistaSemana({ weekStart, setWeekStart, gruposOrdenados, byGrupoDat
                   opacity: 1,
                 }}>
                   <div style={{ minWidth:0, flex:1 }}>
-                    <div style={{
-                      fontFamily:'var(--f-mono)', fontSize:13, fontWeight:800,
-                      color:'var(--ink)', whiteSpace:'nowrap',
-                      overflow:'hidden', textOverflow:'ellipsis',
-                      letterSpacing:'0.01em',
-                    }}>{g.code}</div>
-                    <div style={{
-                      fontSize:10.5, color:'var(--ink-3)', marginTop:3,
-                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                    }}>{g.docente || '—'}</div>
-                  </div>
-                  <div style={{
-                    display:'flex', flexDirection:'column', alignItems:'flex-end',
-                    gap:3, flexShrink:0,
-                  }}>
-                    <span style={{
-                      fontSize:9, fontWeight:800,
-                      padding:'2px 6px', borderRadius:3,
-                      background:`color-mix(in srgb, ${color} 14%, white)`,
-                      color, letterSpacing:'0.08em',
-                    }}>{g.esApertura ? 'APERT' : g.nivelId}</span>
-                    {g.estadoGrupo && <span style={{fontSize:7.5,fontWeight:900,padding:'2px 5px',borderRadius:999,background:'var(--surface-2)',border:'1px solid var(--line)',color:'var(--ink-3)',letterSpacing:'.05em',textTransform:'uppercase'}}>{g.estadoGrupo}</span>}
-                    <span style={{
-                      fontSize:9, fontFamily:'var(--f-mono)',
-                      color:'var(--ink-3)', fontWeight:700,
-                    }}>
-                      {horaLbl && <span style={{ marginRight:5 }}>{horaLbl}</span>}
-                      {g.estudiantes || 0} est
-                    </span>
-                    {selectedGroupCode === g.code && (
+                    <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
                       <span style={{
-                        fontSize:7.5, fontWeight:900, color:'#FFF',
-                        background:'var(--an-navy)', borderRadius:999,
-                        padding:'2px 5px', letterSpacing:'0.04em',
-                      }}>SELECCIONADO</span>
+                        fontFamily:'var(--f-mono)', fontSize:12.5, fontWeight:800,
+                        color:'var(--ink)', whiteSpace:'nowrap', overflow:'hidden',
+                        textOverflow:'ellipsis', letterSpacing:'0.01em',
+                      }}>{todosShortCode(g.code)}</span>
+                      <span style={{
+                        fontSize:8.5, fontWeight:900, padding:'2px 6px', borderRadius:999,
+                        background:`color-mix(in srgb, ${color} 14%, white)`, color, letterSpacing:'.06em', flexShrink:0,
+                      }}>{g.nivelId}</span>
+                    </div>
+                    <div style={{ fontSize:10.5, color:'var(--ink-2)', marginTop:4, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {g.dias || 'Horario no indicado'}{g.hora ? ` · ${g.hora}` : ''}
+                    </div>
+                    <div style={{ fontSize:9.5, color:'var(--ink-3)', marginTop:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {todosModalidadGrupo(g) || 'Modalidad no indicada'} · {g.docente || 'Docente por definir'}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                    <span style={{
+                      fontSize:7.5,fontWeight:900,padding:'2px 6px',borderRadius:999,
+                      background:todosCategoriaGrupo(g)==='COMPLETADO'?'#ECE8E2':todosCategoriaGrupo(g)==='PROYECTADO'?TODOS_APERTURA_BG:'#E7F3EC',
+                      color:todosCategoriaGrupo(g)==='COMPLETADO'?'#5E554C':todosCategoriaGrupo(g)==='PROYECTADO'?TODOS_APERTURA_COL:'#24633E',letterSpacing:'.05em',
+                    }}>{todosCategoriaGrupo(g)==='COMPLETADO'?'CERRADO':todosCategoriaGrupo(g)==='PROYECTADO'?'APERTURA':'ACTIVO'}</span>
+                    {todosCategoriaGrupo(g)==='COMPLETADO' ? (
+                      <span style={{fontSize:8.5,fontFamily:'var(--f-mono)',color:'var(--ink-3)',fontWeight:700}}>{g.fechaUltimaLeccion || 'sin fecha'}</span>
+                    ) : (
+                      <span style={{fontSize:9,fontFamily:'var(--f-mono)',color:'var(--ink-3)',fontWeight:700}}>{g.estudiantes || 0} est</span>
                     )}
                   </div>
                 </div>
@@ -1212,202 +1178,87 @@ function DetalleModal({ item, moraMap, onNavigate, onCerrar }) {
   }, [onCerrar]);
 
   const { grupo, leccion } = item;
-  const esApertura = !!grupo.esApertura;
-  const tono = esApertura
-    ? TODOS_APERTURA_COL
-    : (TODOS_NIVEL_COLOR[grupo.nivelId] || TODOS_APERTURA_COL);
-  const colorNivel = tono;
-
-  // Mora del grupo (puede ser undefined si no está en el caché)
+  const categoria = todosCategoriaGrupo(grupo);
+  const esApertura = categoria === 'PROYECTADO';
+  const esCompletado = categoria === 'COMPLETADO';
+  const colorNivel = esApertura ? TODOS_APERTURA_COL : (TODOS_NIVEL_COLOR[grupo.nivelId] || TODOS_APERTURA_COL);
   const moraInfo = moraMap && moraMap.get ? moraMap.get(grupo.code) : null;
-  const moraCa   = todosPickCa(grupo, moraInfo);
-  const moraMr   = todosPickMora(moraInfo);
+  const moraCa = todosPickCa(grupo, moraInfo);
+  const moraMr = todosPickMora(moraInfo);
 
   const verEstudiantes = () => {
     if (!onNavigate) return;
-    onNavigate('estudiantes', { grupo: grupo.code });
+    onNavigate('estudiantes', { grupo:grupo.code });
     onCerrar();
   };
 
   const estadoLabel =
-    leccion.estado === 'CERRADA'    ? '✓ Clase dada' :
-    leccion.estado === 'HOY'        ? '● Hoy' :
-    leccion.estado === 'PROGRAMADA' ? '○ Programada' :
-    leccion.estado === 'CALCULADA'  ? '○ Proyectada' :
-    leccion.estado === 'FERIADO'    ? '🚫 Feriado' :
-    leccion.estado || '—';
+    leccion.estado === 'CERRADA' ? 'Clase dada' :
+    leccion.estado === 'HOY' ? 'Hoy' :
+    leccion.estado === 'PROGRAMADA' ? 'Programada' :
+    leccion.estado === 'CALCULADA' ? 'Proyectada' :
+    leccion.estado === 'FERIADO' ? 'Feriado' :
+    leccion.estado || 'Sin estado';
+
+  const categoriaLabel = esCompletado ? 'Grupo cerrado' : esApertura ? 'Apertura proyectada' : 'Grupo activo';
 
   return (
-    <div
-      onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
-      style={{
-        position:'fixed', inset:0, zIndex:1100,
-        background:'rgba(20, 16, 12, 0.55)', backdropFilter:'blur(3px)',
-        display:'flex', alignItems:'stretch', justifyContent:'flex-end',
-      }}>
+    <div onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }} style={{
+      position:'fixed',inset:0,zIndex:1100,background:'rgba(20,16,12,.55)',backdropFilter:'blur(3px)',
+      display:'flex',alignItems:'stretch',justifyContent:'flex-end',
+    }}>
       <div style={{
-        width:'100%', maxWidth:420, height:'100%',
-        background:'var(--surface)',
-        boxShadow:'-16px 0 48px rgba(0,0,0,0.32)',
-        overflow:'hidden', display:'flex', flexDirection:'column',
-        animation:'an-slide-in-right .18s ease-out',
+        width:'100%',maxWidth:390,height:'100%',background:'var(--surface)',boxShadow:'-16px 0 48px rgba(0,0,0,.32)',
+        overflow:'hidden',display:'flex',flexDirection:'column',animation:'an-slide-in-right .18s ease-out',
       }}>
-        <div style={{ height:5, background: colorNivel }} />
-        <div style={{
-          padding:'18px 22px 14px',
-          borderBottom:'1px solid var(--line)',
-          display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:14,
-        }}>
-          <div style={{ minWidth:0 }}>
-            <div style={{
-              fontSize:10, fontWeight:800, letterSpacing:'0.16em',
-              textTransform:'uppercase', color:'var(--ink-3)', marginBottom:4,
-            }}>
-              {esApertura ? 'Apertura' : `Lección ${String(leccion.leccion || '—').padStart(2,'0')}`}
-            </div>
-            <div style={{
-              fontFamily:'var(--f-sans)', fontSize:22, fontWeight:600,
-              color:'var(--ink)', letterSpacing:'-0.02em', lineHeight:1.15,
-            }}>
-              {tFmtFechaLarga(leccion.fecha)}
-            </div>
-            <div style={{
-              fontSize:12, color:'var(--ink-2)', marginTop:6,
-              display:'flex', flexWrap:'wrap', gap:8, alignItems:'center',
-            }}>
-              <span style={{
-                padding:'3px 9px', borderRadius:'var(--r-pill)',
-                background:'color-mix(in srgb, ' + colorNivel + ' 12%, white)',
-                color: colorNivel, fontWeight:800, fontSize:11,
-                letterSpacing:'0.04em',
-              }}>{estadoLabel}</span>
-              {grupo.hora && (
-                <span style={{ fontFamily:'var(--f-mono)', fontWeight:600 }}>
-                  {grupo.hora}
-                </span>
-              )}
+        <div style={{height:5,background:colorNivel}} />
+        <div style={{padding:'18px 20px 15px',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:14}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-3)',marginBottom:5}}>{categoriaLabel}</div>
+            <div style={{fontFamily:'var(--f-sans)',fontSize:21,fontWeight:700,color:'var(--ink)',letterSpacing:'-.02em',lineHeight:1.15}}>{tFmtFechaLarga(leccion.fecha)}</div>
+            <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap',marginTop:8}}>
+              <span style={{padding:'3px 8px',borderRadius:999,background:`color-mix(in srgb, ${colorNivel} 13%, white)`,color:colorNivel,fontSize:10,fontWeight:900}}>{grupo.nivelId} · {grupo.nivel || TODOS_NIVEL_LABEL[grupo.nivelId]}</span>
+              <span style={{fontSize:11,fontWeight:800,color:'var(--ink-2)'}}>{estadoLabel}</span>
             </div>
           </div>
-          <button onClick={onCerrar} aria-label="Cerrar"
-            style={{ background:'none', border:'none', cursor:'pointer',
-                     padding:6, color:'var(--ink-3)', lineHeight:0, flexShrink:0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
+          <button onClick={onCerrar} aria-label="Cerrar" style={{background:'none',border:'none',cursor:'pointer',padding:6,color:'var(--ink-3)',lineHeight:0,flexShrink:0}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div style={{
-          flex:1, overflowY:'auto', padding:'16px 22px',
-          display:'flex', flexDirection:'column', gap:14,
-        }}>
-          {/* Grupo card */}
-          <div style={{
-            padding:'14px 14px',
-            background:'var(--bg-deep)',
-            borderRadius:'var(--r-md)',
-            border:'1px solid var(--line)',
-          }}>
-            <div style={{
-              fontSize:10, fontWeight:700, letterSpacing:'0.14em',
-              textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6,
-            }}>Grupo</div>
-            <div style={{
-              fontFamily:'var(--f-mono)', fontWeight:700, fontSize:15,
-              color:'var(--ink)', letterSpacing:'0.02em',
-              wordBreak:'break-all',
-            }}>{grupo.code}</div>
-            <div style={{
-              fontSize:12, color:'var(--ink-2)', marginTop:8,
-              display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 12px',
-            }}>
+        <div style={{flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:12}}>
+          <div style={{padding:'14px',background:'var(--bg-deep)',borderRadius:'var(--r-md)',border:'1px solid var(--line)'}}>
+            <div style={{fontFamily:'var(--f-mono)',fontWeight:800,fontSize:14,color:'var(--ink)',wordBreak:'break-word'}}>{grupo.code}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px 12px',marginTop:12}}>
+              <Campo label="Horario" value={`${grupo.dias || '—'}${grupo.hora ? ` · ${grupo.hora}` : ''}`} />
+              <Campo label="Modalidad" value={todosModalidadGrupo(grupo) || '—'} />
               <Campo label="Docente" value={grupo.docente || '—'} />
-              <Campo label="Nivel"   value={
-                <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                  <span style={{ width:8, height:8, borderRadius:2, background: colorNivel }} />
-                  {grupo.nivel || TODOS_NIVEL_LABEL[grupo.nivelId] || grupo.nivelId || '—'}
-                </span>
-              } mono={false} />
-              <Campo label="Días"        value={grupo.dias || '—'} />
-              <Campo label="Hora"        value={grupo.hora || '—'} mono />
-              <Campo label="Programa"    value={grupo.programa || '—'} />
-              <Campo label="Estudiantes"
-                value={moraCa !== null && moraCa !== undefined ? moraCa : '—'}
-                mono />
-              <Campo label="Mora" value={
-                moraMr === null || moraMr === undefined
-                  ? <span style={{ color:'var(--ink-3)', fontStyle:'italic' }}>…</span>
-                  : moraMr > 0
-                    ? <span style={{ color:'#C8302A', fontWeight:800 }}>{moraMr}</span>
-                    : <span style={{ color:'var(--ink-3)' }}>0</span>
-              } mono />
+              <Campo label={esCompletado ? 'Último nivel' : 'Estado'} value={esCompletado ? (grupo.nivel || grupo.nivelId) : categoriaLabel} />
+              {esCompletado && <Campo label="Cierre" value={grupo.fechaUltimaLeccion || '—'} mono />}
+              {!esCompletado && <Campo label="Estudiantes" value={moraCa !== null && moraCa !== undefined ? moraCa : (grupo.estudiantes || 0)} mono />}
+              {!esCompletado && <Campo label="Mora" value={moraMr === null || moraMr === undefined ? '—' : moraMr} mono />}
+              {grupo.periodoInicio && <Campo label="Periodo" value={`${grupo.periodoInicio}${grupo.anioInicio ? ` ${grupo.anioInicio}` : ''}`} />}
             </div>
             {onNavigate && !esApertura && (
-              <button
-                onClick={verEstudiantes}
-                style={{
-                  marginTop:12, width:'100%',
-                  padding:'9px 14px',
-                  display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7,
-                  background:'var(--an-navy)', color:'#fff',
-                  border:'none', borderRadius:'var(--r-sm)',
-                  fontSize:12, fontWeight:700, letterSpacing:'0.04em',
-                  cursor:'pointer', fontFamily:'inherit',
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="2.5"
-                     strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                Ver estudiantes de este grupo
-              </button>
+              <button onClick={verEstudiantes} style={{
+                marginTop:12,width:'100%',padding:'9px 12px',display:'inline-flex',alignItems:'center',justifyContent:'center',gap:7,
+                background:'var(--an-navy)',color:'#fff',border:'none',borderRadius:'var(--r-sm)',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'inherit',
+              }}>Ver estudiantes del grupo</button>
             )}
           </div>
 
-          {/* Lección card */}
-          <div style={{
-            padding:'14px 14px',
-            background:'var(--surface)',
-            border:'1px solid var(--line)',
-            borderRadius:'var(--r-md)',
-          }}>
-            <div style={{
-              fontSize:10, fontWeight:700, letterSpacing:'0.14em',
-              textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6,
-            }}>Lección</div>
-            <div style={{
-              fontFamily:'var(--f-sans)', fontSize:16, fontWeight:600,
-              color:'var(--ink)', letterSpacing:'-0.01em',
-            }}>
-              {TODOS_TIPO_LBL[leccion.tipo] || leccion.tipo || '—'}
-            </div>
-            <div style={{
-              fontSize:12, color:'var(--ink-2)', marginTop:8,
-              display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 12px',
-            }}>
-              <Campo label="Número"  value={leccion.leccion ?? '—'} mono />
-              <Campo label="Estado"  value={leccion.estado || '—'} />
-              <Campo label="Fecha"   value={leccion.fecha} mono />
-              {leccion.dia && <Campo label="Día" value={leccion.dia} />}
-              {leccion.turno && <Campo label="Turno" value={leccion.turno} />}
+          <div style={{padding:'14px',background:'var(--surface)',border:'1px solid var(--line)',borderRadius:'var(--r-md)'}}>
+            <div style={{fontSize:10,fontWeight:800,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--ink-3)',marginBottom:6}}>Lección</div>
+            <div style={{fontFamily:'var(--f-sans)',fontSize:16,fontWeight:700,color:'var(--ink)'}}>{TODOS_TIPO_LBL[leccion.tipo] || leccion.tipo || 'Clase regular'}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px 12px',marginTop:11}}>
+              <Campo label="Número" value={leccion.leccion || '—'} mono />
+              <Campo label="Estado" value={estadoLabel} />
             </div>
           </div>
 
-          {esApertura && (
-            <div style={{
-              padding:'10px 12px',
-              background:'color-mix(in srgb, #9F8F7D 8%, white)',
-              border:'1px dashed #9F8F7D',
-              borderRadius:'var(--r-sm)',
-              fontSize:12, color:'#5C5147', lineHeight:1.5,
-            }}>
-              <b>Apertura</b>: este grupo todavía no tiene calendario completo
-              generado. La fecha mostrada es proyectada.
+          {esApertura && grupo.aperturaFechaInicio && (
+            <div style={{padding:'10px 12px',background:TODOS_APERTURA_BG,border:`1px solid color-mix(in srgb, ${TODOS_APERTURA_COL} 35%, white)`,borderRadius:'var(--r-sm)',fontSize:12,color:'#6F4300'}}>
+              Inicio previsto: <strong>{grupo.aperturaFechaInicio}</strong>
             </div>
           )}
         </div>
@@ -1415,6 +1266,7 @@ function DetalleModal({ item, moraMap, onNavigate, onCerrar }) {
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────────
 // Helpers UI

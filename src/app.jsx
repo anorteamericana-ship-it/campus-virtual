@@ -67,9 +67,9 @@ const F96_LAZY = {
   admin_students: ['src/admin_students.jsx?v=F98.4Z6CD'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
-  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6AS'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN','src/admin_students.jsx?v=F98.4Z6CD','src/calendario_grupo.jsx?v=F98.4Z6AS'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CE'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CE','src/cronograma_grupo.jsx?v=F98.4Z6CE'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CE','src/cronograma_grupo.jsx?v=F98.4Z6CE','src/admin_students.jsx?v=F98.4Z6CD','src/calendario_grupo.jsx?v=F98.4Z6AS'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F98.4Z6CD','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
@@ -83,7 +83,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6AS','src/cronograma_grupo.jsx?v=F98.4Z6AN',
+    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CE','src/cronograma_grupo.jsx?v=F98.4Z6CE',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [

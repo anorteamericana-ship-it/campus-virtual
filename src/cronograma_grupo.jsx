@@ -411,7 +411,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
       setGruposReales(CG_GRUPOS_CACHE_AN.data);
       setLoadingGrupos(false);
     }
-    return postCronoGrupo('getGruposActivos')
+    return postCronoGrupo('getGruposActivos', { alcance:'COMPLETO' })
       .then(d => {
         if (d?.ok && Array.isArray(d.grupos)) {
           CG_GRUPOS_CACHE_AN.data = d.grupos;
@@ -419,7 +419,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           setGruposReales(d.grupos);
           setErrorGrupos(null);
         } else if (!cacheVigente) {
-          setErrorGrupos(d?.error || 'No se pudieron cargar los grupos activos.');
+          setErrorGrupos(d?.error || 'No se pudo cargar el calendario académico.');
         }
       })
       .catch(e => {
@@ -446,6 +446,21 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
   }, [gruposReales, codGrupo, esAdmin, usr]);
 
   const esTodosGrupos = codGrupo === TODOS_GRUPOS;
+
+  const gruposSelectorOrdenados = React.useMemo(() => {
+    const rank = { ACTIVO:1, PROYECTADO:2, COMPLETADO:3 };
+    return [...gruposReales].sort((a,b) => {
+      const ea = String(a.estadoCategoria || a.estadoGrupo || '').toUpperCase();
+      const eb = String(b.estadoCategoria || b.estadoGrupo || '').toUpperCase();
+      if ((rank[ea] || 9) !== (rank[eb] || 9)) return (rank[ea] || 9) - (rank[eb] || 9);
+      if (ea === 'COMPLETADO' && eb === 'COMPLETADO') {
+        const fa = String(a.fechaUltimaLeccion || a.fechaInicioNivel || '');
+        const fb = String(b.fechaUltimaLeccion || b.fechaInicioNivel || '');
+        if (fa !== fb) return fb.localeCompare(fa);
+      }
+      return String(a.code || '').localeCompare(String(b.code || ''));
+    });
+  }, [gruposReales]);
 
   // Meta del grupo activo — todo lo derivado sale de aquí.
   // En "Todos los grupos", meta es un placeholder neutro (no se usa para datos).
@@ -811,7 +826,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
           border:'2.5px solid var(--line)', borderTopColor:'var(--ink)',
           animation:'an-spin .8s linear infinite',
         }} />
-        Cargando grupos activos…
+        Cargando calendario académico…
       </div>
     );
   }
@@ -820,7 +835,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
     return (
       <div data-screen-label="Cronograma de grupo" style={{ padding:24 }}>
         <div style={errorBoxStyle}>
-          <span>⚠ {errorGrupos || 'No hay grupos activos para mostrar.'}</span>
+          <span>⚠ {errorGrupos || 'No hay grupos disponibles para mostrar.'}</span>
           <button onClick={cargarGrupos} className="btn btn-ghost"
                   style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
         </div>
@@ -871,11 +886,13 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
               <div style={labelStyle}>Grupo</div>
               <select value={codGrupo} onChange={e => setCodGrupo(e.target.value)} style={{ ...selectStyle, minWidth:360 }}>
                 {esAdmin && (
-                  <option value={TODOS_GRUPOS}>★ Todos los grupos ({gruposReales.length})</option>
+                  <option value={TODOS_GRUPOS}>★ Calendario académico ({gruposReales.length})</option>
                 )}
-                {gruposReales.map(g => (
-                  <option key={g.code} value={g.code}>{grupoHorarioLabelCG(g)} · {g.docente}</option>
-                ))}
+                {gruposSelectorOrdenados.map(g => {
+                  const estado = String(g.estadoCategoria || g.estadoGrupo || '').toUpperCase();
+                  const prefijo = estado === 'COMPLETADO' ? '✓ Cerrado' : estado === 'PROYECTADO' ? '○ Apertura' : '● Activo';
+                  return <option key={g.code} value={g.code}>{prefijo} · {g.nivel || g.nivelId || '—'} · {g.dias || '—'} {g.hora || ''} · {g.code}</option>;
+                })}
               </select>
             </div>
           ) : esTeacher ? (
