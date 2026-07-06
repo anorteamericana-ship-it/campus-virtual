@@ -65,7 +65,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
       ) : previewMatriculaCR ? (
         <React.Fragment>
           <div className="vx-docest-sub">
-            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión de las dos plantillas nuevas.
+            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión usando las plantillas oficiales guardadas en Drive / PLANTILLAS.
           </div>
           <div className="vx-docest-btns">
             <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('MATRICULA_INA_TEST', 'CERT_MATRICULA_INA_TEST', 'No se pudo generar la prueba INA.')}>
