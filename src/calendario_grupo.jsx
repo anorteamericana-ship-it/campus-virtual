@@ -1,20 +1,20 @@
 /* global React, CronogramaGrupo, AdminEstudiantesView */
-// F98.4-Z6-BI · Calendario académico individual
+// F98.4-Z6-CM · Calendario académico + apertura directa de seguimiento
 // - Se retiró por completo la fusión/cambio masivo de grupos.
 // - Todo movimiento académico se evalúa estudiante por estudiante.
 // - La vista de estudiantes se abre bajo demanda para no bloquear la primera pintura.
 
-function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate, grupoInicial }) {
+function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate, grupoInicial, seguimientoInicial }) {
   const [grupoSeleccionado,setGrupoSeleccionado] = React.useState(grupoInicial||null);
-  const [mostrarEstudiantes,setMostrarEstudiantes] = React.useState(!!grupoInicial);
+  const [mostrarEstudiantes,setMostrarEstudiantes] = React.useState(!!grupoInicial && !seguimientoInicial);
   const [consultaGrupo,setConsultaGrupo]=React.useState('');
 
   React.useEffect(()=>{
     if(grupoInicial){
       setGrupoSeleccionado(grupoInicial);
-      setMostrarEstudiantes(true);
+      setMostrarEstudiantes(!seguimientoInicial);
     }
-  },[grupoInicial]);
+  },[grupoInicial,seguimientoInicial]);
 
   const irAuditoria = React.useCallback(() => {
     if (onNavigate) onNavigate('auditoria_academica');
@@ -74,7 +74,7 @@ function CalendarioGrupoOperativo({ rol = 'superadmin', onNavigate, grupoInicial
           <div><div style={{fontSize:10,fontWeight:800,letterSpacing:'0.16em',textTransform:'uppercase',color:'var(--ink-3)'}}>Calendario de grupos</div><div style={{fontSize:13,color:'var(--ink-2)',marginTop:2}}>El nivel y color se toman primero de GRUPOS.COMENTARIO; el calendario es respaldo.</div></div>
           <div style={{fontSize:11,color:'var(--ink-3)',fontWeight:700}}>Tocá una lección para abrir el grupo.</div>
         </div>
-        <div style={{padding:14}}><CronogramaGrupo rol={rol} onNavigate={handleNavigateFromCronograma} /></div>
+        <div style={{padding:14}}><CronogramaGrupo rol={rol} onNavigate={handleNavigateFromCronograma} grupoInicial={grupoInicial} seguimientoInicial={seguimientoInicial} /></div>
       </div>
 
       <div id="calgrupo-estudiantes-panel" style={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:'var(--r-lg)',boxShadow:'var(--sh-1)',overflow:'visible'}}>

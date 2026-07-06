@@ -1,4 +1,4 @@
-// F98.4-Z6-AN · Calendario sin ráfaga de llamadas y respuesta JSON segura
+// F98.4-Z6-CM · QA integral + seguimiento inicial desde Panel Maestro
 // CALGRUPO_F86_20260619_ETIQUETAS_EXAMEN_ORAL_INTEGRADO
 // CALGRUPO_F80_20260619_CRONOGRAMA_TIMEOUT_RESPUESTA_SEGURA
 // CALGRUPO_F74_20260618_AGENDA_DOCENTE_TARJETAS_PANEL_FIJO_LEGIBLE
@@ -306,7 +306,7 @@ function grupoHorarioLabelCG(g) {
 // ─────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────
-function CronogramaGrupo({ rol = 'admin', onNavigate }) {
+function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoInicial }) {
   const usr = React.useMemo(() => {
     try { return JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch { return null; }
   }, []);
@@ -915,7 +915,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate }) {
 
       {esTodosGrupos ? (
         typeof window.TodosLosGruposView === 'function' ? (
-          React.createElement(window.TodosLosGruposView, { gruposReales, onNavigate })
+          React.createElement(window.TodosLosGruposView, { gruposReales, onNavigate, grupoInicial, seguimientoInicial })
         ) : (
           <div className="card" style={{ padding:24, color:'var(--ink-3)' }}>No se pudo cargar la vista global de todos los grupos. Verificá que src/cronograma_todos.jsx esté cargado antes de cronograma_grupo.jsx.</div>
         )

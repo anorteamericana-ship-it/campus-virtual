@@ -1,3 +1,4 @@
+// F98.4-Z6-CP · Cierre operativo, evidencia técnica y sello de versión estable
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
 // F98.4-Z6-AI · Sincronización forzada del Panel Maestro completo de 10 secciones
@@ -63,13 +64,13 @@ const F96_LAZY = {
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
-  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6AX','src/admin_master_dashboard.jsx?v=F98.4Z6AX'],
+  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CP'],
   admin_students: ['src/admin_students.jsx?v=F98.4Z6CD'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
-  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CE'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CE','src/cronograma_grupo.jsx?v=F98.4Z6CE'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CE','src/cronograma_grupo.jsx?v=F98.4Z6CE','src/admin_students.jsx?v=F98.4Z6CD','src/calendario_grupo.jsx?v=F98.4Z6AS'],
+  cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F98.4Z6CM'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F98.4Z6CM','src/admin_students.jsx?v=F98.4Z6CD','src/calendario_grupo.jsx?v=F98.4Z6CM'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F98.4Z6CD','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G'],
@@ -83,7 +84,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CE','src/cronograma_grupo.jsx?v=F98.4Z6CE',
+    'src/vista_docente.jsx?v=F98.4Z6O','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F98.4Z6CE',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
@@ -703,6 +704,8 @@ function App() {
   // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
   // cuando se navega desde el detalle de una lección en el Cronograma.
   const [pendingGrupo, setPendingGrupo] = useState(null);
+  // CM: contexto de seguimiento directo desde Panel Maestro.
+  const [pendingSeguimiento, setPendingSeguimiento] = useState(null);
   const [pendingOral, setPendingOral] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('an_oral_context') || 'null'); }
     catch (_) { return null; }
@@ -742,6 +745,8 @@ function App() {
     else if (!(role === 'student' && finalTarget === 'mi_curso')) setPendingLesson(null);
     if (opts.grupo) setPendingGrupo(opts.grupo);
     else setPendingGrupo(null);
+    if (opts.seguimiento) setPendingSeguimiento(opts.seguimiento);
+    else setPendingSeguimiento(null);
     if (opts.oral) {
       setPendingOral(opts.oral);
       try { sessionStorage.setItem('an_oral_context', JSON.stringify(opts.oral)); } catch (_) {}
@@ -929,9 +934,9 @@ function App() {
     const map = {
       perfil:       <LazyRoute title="Mi Perfil" component="AdminPerfilView" files={F96_LAZY.admin_views} />,
       matriculas:   <LazyRoute title="Matrículas" component="MatriculasView" files={F96_LAZY.matriculas} onNavigate={navigateTo} />,
-      dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} />,
+      dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} onNavigate={navigateTo} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
-      calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
+      calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
       diagnostico_interno: <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />,

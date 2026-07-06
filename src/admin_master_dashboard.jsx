@@ -1,7 +1,7 @@
-// F98.4-Z6-AX · Panel Maestro + movimientos CONAPE del mes
+// F98.4-Z6-CP · Cierre operativo + historial de smoke tests + sello estable
 /* global React, Icon, MasterFmtNumber, MasterFmtMoney, MasterSparkline, MasterBarLineChart, MasterDonut, MasterFunnel, MasterHorizontalRanking, MasterHeatmap, MasterRadar, MasterMultiLineChart */
 
-const MASTER_PANEL_BUILD = 'F98.4-Z6-AX';
+const MASTER_PANEL_BUILD = 'F98.4-Z6-CP';
 const MASTER_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MASTER_LEVEL_COLORS = { B1:'#e4a924', B2:'#df3a32', I1:'#2d78b7', I2:'#3c9a62' };
 const MASTER_SECTIONS = [
@@ -9,6 +9,7 @@ const MASTER_SECTIONS = [
   {id:'ventas',label:'Ventas y matrícula',icon:'chart',color:'#c49a40'},
   {id:'academica',label:'Operación académica',icon:'calendar',color:'#315f96'},
   {id:'estudiantes',label:'Estudiantes y retención',icon:'profile',color:'#2f8a5b'},
+  {id:'seguimiento',label:'Seguimiento de grupos',icon:'bell',color:'#b04c37'},
   {id:'cobranza',label:'Cobranza y cartera',icon:'payments',color:'#bf403b'},
   {id:'conape',label:'CONAPE',icon:'graduation',color:'#7956a8'},
   {id:'docentes',label:'Docentes y grupos',icon:'roster',color:'#287f83'},
@@ -675,6 +676,90 @@ function MasterTendencias({data,year,compareYear}){
   </>;
 }
 
+
+function useMasterTracking(active) {
+  const [state,setState]=React.useState({loading:false,error:'',data:null});
+  const load=React.useCallback((refresh=false)=>{
+    setState(s=>({...s,loading:true,error:''}));
+    masterAction('getSuperAdminSeguimientoResumen',{refresh}).then(data=>setState({loading:false,error:'',data})).catch(e=>setState(s=>({loading:false,error:e.message||String(e),data:s.data})));
+  },[]);
+  React.useEffect(()=>{if(active&&!state.data&&!state.loading)load(false);},[active,state.data,state.loading,load]);
+  return {...state,refetch:()=>load(true)};
+}
+function masterTrackingFiltered(data,filters={}){
+  const q=String(filters.search||'').trim().toLowerCase();
+  return (data?.groups||[]).filter(g=>(!filters.level||g.level===filters.level)&&(!filters.teacher||g.teacher===filters.teacher)&&(!filters.status||g.status===filters.status)&&(!q||`${g.code} ${g.short_code} ${g.teacher} ${g.level}`.toLowerCase().includes(q)));
+}
+function masterTrackingSummary(rows=[]){
+  const out={active_groups:rows.length,current_students:0,immediate:0,watch:0,stable:0,without_evidence:0,critical_group_alerts:0,groups_critical:0,groups_attention:0,groups_stable:0,open_cases:0,overdue_cases:0,cases_today:0,students_without_followup:0,rescue:0,rescue_immediate:0,reconcile:0,conape_high:0,conape_mora:0,conape_current_movements:0};
+  rows.forEach(g=>{out.current_students+=Number(g.roster?.cursando||0);out.immediate+=Number(g.students?.immediate||0);out.watch+=Number(g.students?.watch||0);out.stable+=Number(g.students?.stable||0);out.without_evidence+=Number(g.students?.without_evidence||0);out.critical_group_alerts+=Number(g.group_alerts?.critical||0);out.open_cases+=Number(g.followup?.open||0);out.overdue_cases+=Number(g.followup?.overdue||0);out.cases_today+=Number(g.followup?.today||0);out.students_without_followup+=Number(g.followup?.without_followup||0);out.rescue+=Number(g.rescue?.total||0);out.rescue_immediate+=Number(g.rescue?.immediate||0);out.reconcile+=Number(g.roster?.por_reconciliar||0);out.conape_high+=Number(g.conape?.high||0);out.conape_mora+=Number(g.conape?.mora||0);out.conape_current_movements+=Number(g.conape?.movements||0);if(g.status==='CRITICO')out.groups_critical++;else if(g.status==='ATENCION')out.groups_attention++;else out.groups_stable++;});
+  return out;
+}
+function MasterTrackingStatus({status}){
+  const label=status==='CRITICO'?'Crítico':status==='ATENCION'?'Atención':'Estable';return <span className={`master-tracking-status ${String(status||'').toLowerCase()}`}>{label}</span>;
+}
+function MasterTrackingMeter({value=0,label}){
+  const v=Math.max(0,Math.min(100,Number(value||0)));return <div className="master-tracking-meter"><div><span>{label}</span><b>{v}%</b></div><i><em style={{width:`${v}%`}}/></i></div>;
+}
+function MasterTrackingGroupsTable({rows=[],onOpen}){
+  return <div className="master-tracking-table-wrap"><table className="master-tracking-table"><thead><tr><th>Grupo</th><th>Estado</th><th>Roster actual</th><th>Alertas</th><th>Cobertura</th><th>Seguimiento</th><th>Rescate</th><th>CONAPE</th><th>Acción</th></tr></thead><tbody>{rows.map(g=><tr key={`${g.code}|${g.level}`} className={`tracking-${String(g.status||'').toLowerCase()}`}><td><strong>{g.short_code||g.code} · {g.level}</strong><small>{g.code}</small><small>{g.teacher||'Sin docente'}</small><small>{g.schedule||'Sin horario'}</small></td><td><MasterTrackingStatus status={g.status}/><small>Puntaje operativo {g.priority_score||0}</small></td><td><b>{MasterFmtNumber(g.roster?.cursando||0)} cursando</b><small>{MasterFmtNumber(g.roster?.total||0)} en lista completa</small>{Number(g.roster?.por_reconciliar||0)>0&&<small className="tracking-danger">{g.roster.por_reconciliar} por reconciliar</small>}</td><td><b className={Number(g.students?.immediate||0)>0?'tracking-danger':''}>{g.students?.immediate||0} inmediatas</b><small>{g.students?.watch||0} preventivas</small><small>{g.students?.without_evidence||0} sin evidencia</small></td><td><MasterTrackingMeter value={g.coverage?.attendance_pct} label="Asistencia"/><MasterTrackingMeter value={g.coverage?.notes_pct} label="Notas"/><small>Lección {g.coverage?.last_lesson||0}</small></td><td><b>{g.followup?.open||0} abiertos</b><small className={Number(g.followup?.overdue||0)>0?'tracking-danger':''}>{g.followup?.overdue||0} vencidos · {g.followup?.today||0} hoy</small><small>{g.followup?.without_followup||0} sin bitácora</small></td><td><b>{g.rescue?.total||0} casos</b><small className={Number(g.rescue?.immediate||0)>0?'tracking-danger':''}>{g.rescue?.immediate||0} prioritarios</small></td><td><b>{g.conape?.beneficiaries||0} beneficiarios</b><small className={Number(g.conape?.high||0)>0?'tracking-danger':''}>{g.conape?.high||0} atención alta</small><small>{g.conape?.movements||0} movimientos · {g.conape?.mora||0} mora</small></td><td><button type="button" onClick={()=>onOpen?.(g)}>Abrir seguimiento</button></td></tr>)}</tbody></table>{!rows.length&&<MasterEmpty text="No hay grupos que coincidan con los filtros."/>}</div>;
+}
+function MasterTrackingQueue({rows=[],onOpen}){
+  return <div className="master-tracking-queue-wrap"><table className="master-tracking-queue"><thead><tr><th>Prioridad</th><th>Persona / grupo</th><th>Origen</th><th>Motivo</th><th>Acción sugerida</th><th>Grupo</th></tr></thead><tbody>{rows.map((r,i)=><tr key={`${r.group}|${r.level}|${r.codigo}|${i}`}><td><span className={`master-queue-priority ${String(r.priority||'').toLowerCase()}`}>{r.priority||'MEDIA'}</span></td><td><strong>{r.nombre||r.codigo}</strong><small>{r.codigo==='GRUPO'?'Alerta operativa':r.codigo}</small></td><td><div className="master-queue-categories">{(r.categories||[]).map(x=><span key={x}>{String(x).replaceAll('_',' ')}</span>)}</div></td><td><small>{(r.motivos||[]).join(' · ')||'Revisión requerida'}</small></td><td><small>{r.action||'Abrir el seguimiento y documentar la acción.'}</small></td><td><button type="button" onClick={()=>onOpen?.(r)}>{r.group}<small>{r.level}</small></button></td></tr>)}</tbody></table>{!rows.length&&<MasterEmpty text="No existen elementos urgentes bajo los filtros actuales."/>}</div>;
+}
+function MasterProductionSmoke(){
+  const [state,setState]=React.useState({loading:false,error:'',data:null});
+  const [registry,setRegistry]=React.useState({loading:false,error:'',data:null});
+  const [confirming,setConfirming]=React.useState(false);
+  const loadRegistry=React.useCallback(async()=>{setRegistry(s=>({...s,loading:true,error:''}));try{const data=await masterAction('getSeguimientoReleaseEstado');setRegistry({loading:false,error:'',data});}catch(e){setRegistry(s=>({loading:false,error:e.message||String(e),data:s.data}));}},[]);
+  React.useEffect(()=>{loadRegistry();},[loadRegistry]);
+  const run=async()=>{setState(s=>({...s,loading:true,error:''}));try{const data=await masterAction('ejecutarSmokeTestSeguimiento',{frontend_version:MASTER_PANEL_BUILD});setState({loading:false,error:'',data});await loadRegistry();}catch(e){setState({loading:false,error:e.message||String(e),data:null});}};
+  const copy=async()=>{if(!state.data)return;const d=state.data,stable=registry.data?.stable,lines=[`Smoke test ${d.version||MASTER_PANEL_BUILD}`,`Resultado: ${d.release_candidate?'CANDIDATA A PRODUCCIÓN':d.ready?'LISTA CON ADVERTENCIAS':'BLOQUEADA'}`,`Frontend: ${d.frontend_version||'—'}`,`Backend: ${d.version||'—'}`,`Solicitud: ${d.request_id||'—'}`,`Generado: ${d.generated_at||'—'}`,`Duración: ${d.duration_ms||0} ms`,`Evidencia guardada: ${d.audit?.saved?'Sí':'No'}`,`Versión estable: ${stable?.version||'Sin registrar'}`,'',...(d.checks||[]).map(x=>`[${x.status}] ${x.code}: ${x.message}${x.detail?` · ${x.detail}`:''}`)];try{await navigator.clipboard.writeText(lines.join('\n'));}catch(_){window.prompt('Copiá el informe:',lines.join('\n'));}};
+  const confirmStable=async()=>{const d=state.data;if(!d?.release_candidate||!d?.request_id)return;if(!window.confirm(`¿Registrar ${MASTER_PANEL_BUILD} como versión estable?\n\nSe conservará la referencia ${d.request_id}. Esta acción no modifica hojas académicas.`))return;setConfirming(true);try{await masterAction('confirmarVersionEstableSeguimiento',{frontend_version:MASTER_PANEL_BUILD,smoke_request_id:d.request_id,confirmacion:MASTER_PANEL_BUILD});await loadRegistry();}catch(e){setState(s=>({...s,error:e.message||String(e)}));}finally{setConfirming(false);}};
+  const d=state.data,summary=d?.resumen||{},release=registry.data||{},stable=release.stable,latest=release.latest_smoke;
+  const stableCurrent=!!release.stable_matches_current;
+  const headline=!d?'Prueba posterior a publicación':d.release_candidate?'Candidata aprobada para sello':d.ready?'Publicación funcional con advertencias':'Publicación bloqueada';
+  const message=!d?'Comprueba versión, rutas, totales, caché y un grupo real. La evidencia técnica se conserva fuera de las hojas académicas.':d.release_candidate?'La prueba terminó limpia. Registre la versión estable para cerrar formalmente la entrega.':d.ready?'Las rutas funcionan, pero existe al menos una advertencia que impide declarar la versión estable.':'Existe al menos una comprobación crítica. No debe cerrarse esta entrega todavía.';
+  return <section className="master-card master-tracking-method"><header><div><span>Control de publicación y cierre</span><h3>{headline}</h3><p>{message}</p></div><div className="master-actions"><button type="button" onClick={run} disabled={state.loading||confirming}>{state.loading?'Probando…':'Ejecutar smoke test'}</button>{d&&<button type="button" onClick={copy}>Copiar informe</button>}{d?.release_candidate&&!stableCurrent&&<button type="button" onClick={confirmStable} disabled={confirming}>{confirming?'Registrando…':'Declarar versión estable'}</button>}<button type="button" onClick={loadRegistry} disabled={registry.loading}>{registry.loading?'Consultando…':'Actualizar historial'}</button></div></header>
+    {state.error&&<div className="master-tracking-loading master-error"><h3>No se pudo completar el control</h3><p>{state.error}</p></div>}
+    {registry.error&&<div className="master-tracking-loading master-error"><h3>No se pudo consultar el historial</h3><p>{registry.error}</p></div>}
+    <div className="master-notes"><p><strong>Versión cargada:</strong> {MASTER_PANEL_BUILD}.</p><p><strong>Sello estable:</strong> {stable?`${stable.version} · ${stable.confirmado_en||'sin fecha'} · ${stable.confirmado_por?.nombre||stable.confirmado_por?.usuario||'Administrador'}`:'todavía no registrado'}.</p><p><strong>Estado actual:</strong> {stableCurrent?'La versión cargada coincide con la versión estable.':stable?'La versión estable registrada no coincide con la entrega cargada.':'Ejecute una prueba limpia y declare la versión estable.'}</p><p><strong>Última evidencia:</strong> {latest?`${latest.request_id} · ${latest.saved_at||latest.generated_at} · ${latest.clean?'limpia':latest.ready?'con advertencias':'bloqueada'}`:'sin smoke tests guardados'}.</p><p><strong>Reversión disponible:</strong> {stable?.rollback_base||release.rollback_base||'F98.4-Z6-CO'}.</p></div>
+    {d&&<><div className="master-notes"><p><strong>Frontend / backend:</strong> {d.frontend_version||'—'} / {d.version||'—'}.</p><p><strong>Resultado:</strong> {summary.ok||0} correctas · {summary.advertencias||0} advertencias · {summary.criticos||0} críticas.</p><p><strong>Grupo representativo:</strong> {d.representative_group?`${d.representative_group.code} · ${d.representative_group.level} · ${d.representative_group.current_students} CA`:'no disponible'}.</p><p><strong>Duración:</strong> {d.duration_ms||0} ms · solicitud {d.request_id||'—'}.</p><p><strong>Evidencia técnica:</strong> {d.audit?.saved?'guardada':'no guardada'} en {d.audit?.storage||'ScriptProperties'} · {d.audit?.history_total||0} prueba{Number(d.audit?.history_total||0)===1?'':'s'} conservada{Number(d.audit?.history_total||0)===1?'':'s'}.</p></div><details style={{marginTop:12}}><summary style={{cursor:'pointer',fontWeight:800}}>Ver {d.checks?.length||0} comprobaciones</summary><div className="master-notes" style={{marginTop:10}}>{(d.checks||[]).map(x=><p key={x.code}><MasterTrackingStatus status={x.status==='CRITICO'?'CRITICO':x.status==='ADVERTENCIA'?'ATENCION':'ESTABLE'}/><strong> {x.code}:</strong> {x.message}{x.detail&&<small> · {x.detail}</small>}</p>)}</div></details></>}
+    {!!release.smoke_history?.length&&<details style={{marginTop:12}}><summary style={{cursor:'pointer',fontWeight:800}}>Historial técnico ({release.smoke_history.length})</summary><div className="master-notes" style={{marginTop:10}}>{release.smoke_history.map(x=><p key={x.request_id}><strong>{x.version} · {x.request_id}</strong> · {x.saved_at||x.generated_at} · {x.release_candidate?'candidata limpia':x.ready?'con advertencias':'bloqueada'} · {x.actor?.nombre||x.actor?.usuario||'Administrador'}</p>)}</div></details>}
+    {!!release.release_history?.length&&<details style={{marginTop:12}}><summary style={{cursor:'pointer',fontWeight:800}}>Versiones declaradas estables ({release.release_history.length})</summary><div className="master-notes" style={{marginTop:10}}>{release.release_history.map((x,i)=><p key={`${x.version}-${x.timestamp}-${i}`}><strong>{x.version}</strong> · {x.timestamp} · {x.actor?.nombre||x.actor?.usuario||'Administrador'} · reversión {x.rollback_base||'—'}</p>)}</div></details>}
+  </section>;
+}
+
+function MasterSeguimiento({state,filters,onRefresh,onNavigate}){
+  if(state.loading&&!state.data)return <div className="master-tracking-loading"><span/><h3>Consolidando seguimiento institucional…</h3><p>Se reutilizan roster, alertas, bitácora y CONAPE de cada grupo activo.</p></div>;
+  if(state.error&&!state.data)return <div className="master-tracking-loading master-error"><h3>No se pudo cargar seguimiento</h3><p>{state.error}</p><button onClick={onRefresh}>Reintentar</button></div>;
+  const data=state.data||{},rows=masterTrackingFiltered(data,filters),sum=masterTrackingSummary(rows),allowed=new Set(rows.map(g=>`${g.code}|${g.level}`));
+  const versionMismatch=!!(data.version&&data.version!==MASTER_PANEL_BUILD);
+  const q=String(filters.search||'').trim().toLowerCase();
+  const queue=(data.queue||[]).filter(r=>allowed.has(`${r.group}|${r.level}`)&&(!q||`${r.nombre} ${r.codigo} ${r.group} ${(r.motivos||[]).join(' ')}`.toLowerCase().includes(q)));
+  const open=g=>{const grupo=g.code||g.group,nivel=g.level||'';onNavigate?.('calendario_grupo',{grupo,seguimiento:{grupo,nivel,codigo:g.codigo&&g.codigo!=='GRUPO'?g.codigo:''}});};
+  return <>
+    <div className="master-tracking-banner"><div><span>Seguimiento institucional · CP</span><h3>Prioridades de grupos activos con recuperación controlada</h3><p>La sección reutiliza lecturas compartidas, aísla fallos por grupo y conserva una copia anterior cuando el recálculo no puede completarse.</p></div><div><button onClick={onRefresh} disabled={state.loading}>{state.loading?'Actualizando…':'↻ Recalcular seguimiento'}</button><small>{data.cache?.stale?'Copia anterior de recuperación':data.cache?.hit?'Caché institucional':'Lectura consolidada'} · {data.generado_en||'—'}</small><small>Solicitud {data.request_id||'—'}</small></div></div>
+    {versionMismatch&&<div className="master-tracking-loading master-error"><h3>Publicación incompleta: versiones distintas</h3><p>El navegador cargó {MASTER_PANEL_BUILD}, pero Apps Script respondió {data.version}. Publique ambos archivos de la misma entrega antes de usar el seguimiento.</p></div>}
+    {data.cache?.stale&&<div className="master-tracking-loading master-error"><h3>Se muestra la última consolidación disponible</h3><p>El recálculo actual no terminó o existe otra ejecución en curso. Los datos no se eliminaron; use Recalcular seguimiento nuevamente.</p></div>}
+    {data.degradado?.activo&&<div className="master-tracking-loading master-error"><h3>Resumen parcial con {data.degradado.total||0} comprobación{Number(data.degradado.total||0)===1?'':'es'} pendiente{Number(data.degradado.total||0)===1?'':'s'}</h3><p>Áreas afectadas: {(data.degradado.areas||[]).join(', ')||'seguimiento'}. Los grupos afectados se mantienen visibles como críticos y no se presentan como estables.</p></div>}
+    <div className="master-kpi-grid">
+      <MasterKpi label="Grupos en curso" value={MasterFmtNumber(sum.active_groups)} sub={`${sum.groups_critical} críticos · ${sum.groups_attention} en atención`} tone="#16294f" icon="roster" values={rows.map(g=>g.priority_score||0)}/>
+      <MasterKpi label="Estudiantes cursando" value={MasterFmtNumber(sum.current_students)} sub="roster CA conciliado" tone="#315f96" icon="profile" values={rows.map(g=>g.roster?.cursando||0)}/>
+      <MasterKpi label="Atención inmediata" value={MasterFmtNumber(sum.immediate)} sub="señales individuales comprobables" tone="#c8302a" icon="bell" values={rows.map(g=>g.students?.immediate||0)}/>
+      <MasterKpi label="Sin evidencia suficiente" value={MasterFmtNumber(sum.without_evidence)} sub="no se clasifican como estables ni desertores" tone="#7b8494" icon="check" values={rows.map(g=>g.students?.without_evidence||0)}/>
+      <MasterKpi label="Alertas críticas de grupo" value={MasterFmtNumber(sum.critical_group_alerts)} sub="fallas operativas separadas del estudiante" tone="#b04c37" icon="calendar" values={rows.map(g=>g.group_alerts?.critical||0)}/>
+      <MasterKpi label="Casos abiertos" value={MasterFmtNumber(sum.open_cases)} sub={`${sum.overdue_cases} vencidos · ${sum.cases_today} para hoy`} tone="#7956a8" icon="profile" values={rows.map(g=>g.followup?.open||0)}/>
+      <MasterKpi label="Cola de rescate" value={MasterFmtNumber(sum.rescue)} sub={`${sum.rescue_immediate} requieren prioridad`} tone="#c49a40" icon="graduation" values={rows.map(g=>g.rescue?.total||0)}/>
+      <MasterKpi label="CONAPE atención alta" value={MasterFmtNumber(sum.conape_high)} sub={`${sum.conape_mora} con mora · ${sum.conape_current_movements} movimientos actuales`} tone="#68458f" icon="payments" values={rows.map(g=>g.conape?.high||0)}/>
+    </div>
+    <section className="master-card master-tracking-groups-card"><header><div><span>Mapa institucional</span><h3>Salud operativa por grupo y nivel</h3><p>La lista completa permanece disponible al abrir el seguimiento del grupo</p></div><strong className="master-table-count">{rows.length} grupo{rows.length===1?'':'s'}</strong></header><MasterTrackingGroupsTable rows={rows} onOpen={open}/></section>
+    <section className="master-card master-tracking-queue-card"><header><div><span>Cola unificada</span><h3>Qué necesita respuesta primero</h3><p>Riesgo comprobado, rescate, bitácora vencida, CONAPE y fallas operativas</p></div><strong className="master-table-count">{queue.length} elemento{queue.length===1?'':'s'}</strong></header><MasterTrackingQueue rows={queue} onOpen={open}/></section>
+    <MasterProductionSmoke/>
+    <section className="master-card master-tracking-method"><header><div><span>Rendimiento del endpoint</span><h3>Carga separada y lecturas compartidas</h3></div></header><div className="master-notes"><p><strong>Primera pintura:</strong> el Panel Maestro original carga sin esperar esta sección.</p><p><strong>Lecturas:</strong> {data.performance?.source_reads??'—'} lecturas reales y {data.performance?.shared_read_hits??'—'} reutilizaciones internas en la última consolidación.</p><p><strong>Duración backend:</strong> {data.performance?.duration_ms??'—'} ms para {data.performance?.groups_processed??rows.length} grupos.</p><p><strong>Caché:</strong> {data.cache?.storage||'sin caché'}{data.cache?.parts?` · ${data.cache.parts} parte${data.cache.parts===1?'':'s'}`:''}{data.cache?.stale?' · recuperación':''}.</p><p><strong>Protección:</strong> presupuesto de {data.produccion?.runtime_budget_ms??'—'} ms · {data.produccion?.diagnostic_count||0} diagnósticos.</p><p><strong>CONAPE:</strong> actualización manual; última sincronización {data.conape?.last_sync||'sin registro'}.</p></div></section>
+  </>;
+}
+
 function MasterPendingSection({ section }) {
   const meta={
     conape:['CONAPE',['PROSPECTOS','CONAPE_SYNC','CONAPE_EVENTOS']],
@@ -687,9 +772,10 @@ function MasterPendingSection({ section }) {
 }
 function MasterEmpty({text}){return <div className="master-empty"><Icon name="chart" size={24}/><span>{text}</span></div>}
 
-function AdminMasterDashboard() {
+function AdminMasterDashboard({onNavigate}) {
   const {data,loading,error,refetch}=useMasterData();
   const [section,setSection]=React.useState('resumen');
+  const trackingState=useMasterTracking(section==='seguimiento');
   const [year,setYear]=React.useState('');
   const [compareYear,setCompareYear]=React.useState('');
   const [advisors,setAdvisors]=React.useState([]);
@@ -701,6 +787,10 @@ function AdminMasterDashboard() {
   const [studentGroup,setStudentGroup]=React.useState('');
   const [studentRisk,setStudentRisk]=React.useState('');
   const [studentSearch,setStudentSearch]=React.useState('');
+  const [trackingLevel,setTrackingLevel]=React.useState('');
+  const [trackingTeacher,setTrackingTeacher]=React.useState('');
+  const [trackingStatus,setTrackingStatus]=React.useState('');
+  const [trackingSearch,setTrackingSearch]=React.useState('');
   const [collectionLevel,setCollectionLevel]=React.useState('');
   const [collectionConvenio,setCollectionConvenio]=React.useState('');
   const [collectionGroup,setCollectionGroup]=React.useState('');
@@ -733,13 +823,15 @@ function AdminMasterDashboard() {
   React.useEffect(()=>{setExamGroup('');},[examLevel,examTeacher]);
   if(loading&&!data)return <div className="master-loading"><span/><h2>Construyendo Panel Maestro…</h2><p>Agregando datos reales de APOLLO y CAMPUS_OPERATIVO.</p></div>;
   if(error)return <div className="master-loading master-error"><h2>No se pudo cargar el Panel Maestro</h2><p>{error}</p><button onClick={refetch}>Reintentar</button></div>;
-  const years=(data?.filters?.years||[]).map(String),advisorOptions=data?.filters?.advisors||[],connected=['resumen','ventas','academica','estudiantes','cobranza','conape','docentes','examenes','alertas','tendencias'];
+  const years=(data?.filters?.years||[]).map(String),advisorOptions=data?.filters?.advisors||[],connected=['resumen','ventas','academica','estudiantes','seguimiento','cobranza','conape','docentes','examenes','alertas','tendencias'];
   const academicOptions=data?.academic?.filters||{levels:[],teachers:[],groups:[]};
   const availableGroups=(academicOptions.groups||[]).filter(g=>(!academicLevel||g.level===academicLevel)&&(!academicTeacher||g.teacher===academicTeacher));
   const academicFilters={level:academicLevel,teacher:academicTeacher,group:academicGroup};
   const studentOptions=data?.students?.filters||{levels:[],teachers:[],groups:[]};
   const availableStudentGroups=(studentOptions.groups||[]).filter(g=>(!studentLevel||g.level===studentLevel)&&(!studentTeacher||g.teacher===studentTeacher));
   const studentFilters={level:studentLevel,teacher:studentTeacher,group:studentGroup,risk:studentRisk,search:studentSearch};
+  const trackingOptions=trackingState.data?.filters||{levels:[],teachers:[],statuses:[],groups:[]};
+  const trackingFilters={level:trackingLevel,teacher:trackingTeacher,status:trackingStatus,search:trackingSearch};
   const collectionOptions=data?.collections?.filters||{levels:[],convenios:[],groups:[]};
   const availableCollectionGroups=Array.from(new Map((collectionOptions.groups||[]).filter(g=>(!collectionLevel||g.level===collectionLevel)&&(!collectionConvenio||g.convenio===collectionConvenio)).map(g=>[`${g.code}|${g.level}`,g])).values());
   const collectionFilters={level:collectionLevel,convenio:collectionConvenio,group:collectionGroup,status:collectionStatus,search:collectionSearch};
@@ -753,6 +845,11 @@ function AdminMasterDashboard() {
   const alertOptions=data?.institutionalAlerts?.filters||{levels:['critical','medium','info'],areas:[],ageBuckets:['0-7','8-30','31-60','61+']};
   const alertFilters={level:alertLevel,area:alertArea,age:alertAge,search:alertSearch};
   const exportCurrent=()=>{
+    if(section==='seguimiento'){
+      const rows=masterTrackingFiltered(trackingState.data,trackingFilters);
+      masterCsvDownload(`panel_maestro_seguimiento_grupos.csv`,[['Grupo','Nivel','Docente','Estado','Cursando','Lista completa','Atención inmediata','Vigilar','Sin evidencia','Cobertura asistencia %','Cobertura notas %','Casos abiertos','Casos vencidos','Rescate','Rescate prioritario','Por reconciliar','CONAPE alta','Mora CONAPE','Movimientos actuales'],...rows.map(g=>[g.code,g.level,g.teacher,g.status,g.roster?.cursando||0,g.roster?.total||0,g.students?.immediate||0,g.students?.watch||0,g.students?.without_evidence||0,g.coverage?.attendance_pct||0,g.coverage?.notes_pct||0,g.followup?.open||0,g.followup?.overdue||0,g.rescue?.total||0,g.rescue?.immediate||0,g.roster?.por_reconciliar||0,g.conape?.high||0,g.conape?.mora||0,g.conape?.movements||0])]);
+      return;
+    }
     if(section==='estudiantes'){
       const rows=masterStudentFiltered(data,studentFilters);
       masterCsvDownload(`panel_maestro_estudiantes_${year}.csv`,[['Código','Nombre','Grupo','Nivel','Docente','Asistencia %','Promedio evaluaciones','Ausencias recientes','Mora','Avance %','Riesgo','Puntaje','Motivos'],...rows.map(s=>[s.code,s.name,s.group,s.level,s.teacher,s.attendancePct??'',s.gradeAvg??'',s.recentAbsences||0,s.mora?'SI':'NO',s.progressPct,s.riskLevel,s.riskScore,(s.riskReasons||[]).join(' | ')])]);
@@ -798,11 +895,11 @@ function AdminMasterDashboard() {
   };
   const selectedMeta=MASTER_SECTIONS.find(x=>x.id===section)||MASTER_SECTIONS[0];
   return <div className="master-admin" data-build={MASTER_PANEL_BUILD}>
-    <header className="master-header"><div><div className="master-title-line"><h1>Panel Maestro Super Admin</h1><span>Datos reales · AX</span></div><p>Control institucional y analítica integral · actualizado {data.generatedAt||'—'}</p></div><div className="master-actions"><button onClick={refetch} disabled={loading}><span aria-hidden="true">↻</span>{loading?'Sincronizando…':'Sincronizar'}</button><button onClick={exportCurrent}><Icon name="download" size={15}/>Exportar CSV</button></div></header>
+    <header className="master-header"><div><div className="master-title-line"><h1>Panel Maestro Super Admin</h1><span>Datos reales · CO</span></div><p>Control institucional y analítica integral · actualizado {data.generatedAt||'—'}</p></div><div className="master-actions"><button onClick={section==='seguimiento'?trackingState.refetch:refetch} disabled={section==='seguimiento'?trackingState.loading:loading}><span aria-hidden="true">↻</span>{(section==='seguimiento'?trackingState.loading:loading)?'Sincronizando…':'Sincronizar'}</button><button onClick={exportCurrent}><Icon name="download" size={15}/>Exportar CSV</button></div></header>
     <MasterDataStatus coverage={data.coverage}/>
     <div className="master-filterbar">
-      <label><span>{section==='estudiantes'?'Año de cohorte':'Año'}</span><select value={year} onChange={e=>setYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>
-      {section!=='academica'&&section!=='estudiantes'&&section!=='docentes'&&section!=='alertas'&&<label><span>Comparar con</span><select value={compareYear} onChange={e=>setCompareYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}
+      {section!=='seguimiento'&&<label><span>{section==='estudiantes'?'Año de cohorte':'Año'}</span><select value={year} onChange={e=>setYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}
+      {section!=='academica'&&section!=='seguimiento'&&section!=='estudiantes'&&section!=='docentes'&&section!=='alertas'&&<label><span>Comparar con</span><select value={compareYear} onChange={e=>setCompareYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}
       {(section==='resumen'||section==='ventas')&&<MasterAdvisorFilter advisors={advisorOptions} selected={advisors} onChange={setAdvisors}/>} 
       {section==='academica'&&<>
         <MasterAcademicFilter label="Nivel" value={academicLevel} onChange={setAcademicLevel} options={(academicOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
@@ -815,6 +912,12 @@ function AdminMasterDashboard() {
         <MasterAcademicFilter label="Grupo" value={studentGroup} onChange={setStudentGroup} options={availableStudentGroups.map(g=>({value:g.code,label:`${g.code} · ${g.level}`}))} placeholder="Todos los grupos"/>
         <MasterAcademicFilter label="Riesgo" value={studentRisk} onChange={setStudentRisk} options={[{value:'high',label:'Alto'},{value:'medium',label:'Medio'},{value:'low',label:'Bajo'}]} placeholder="Todos los riesgos"/>
         <label className="master-student-search"><span>Buscar</span><input value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder="Nombre, código o grupo"/></label>
+      </>}
+      {section==='seguimiento'&&<>
+        <MasterAcademicFilter label="Nivel" value={trackingLevel} onChange={setTrackingLevel} options={(trackingOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
+        <MasterAcademicFilter label="Docente" value={trackingTeacher} onChange={setTrackingTeacher} options={trackingOptions.teachers||[]} placeholder="Todos los docentes"/>
+        <MasterAcademicFilter label="Estado" value={trackingStatus} onChange={setTrackingStatus} options={[{value:'CRITICO',label:'Crítico'},{value:'ATENCION',label:'Atención'},{value:'ESTABLE',label:'Estable'}]} placeholder="Todos los estados"/>
+        <label className="master-student-search"><span>Buscar</span><input value={trackingSearch} onChange={e=>setTrackingSearch(e.target.value)} placeholder="Grupo, docente o nivel"/></label>
       </>}
       {section==='cobranza'&&<>
         <MasterAcademicFilter label="Nivel actual" value={collectionLevel} onChange={setCollectionLevel} options={(collectionOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
@@ -852,10 +955,10 @@ function AdminMasterDashboard() {
         <label className="master-student-search"><span>Buscar</span><input value={alertSearch} onChange={e=>setAlertSearch(e.target.value)} placeholder="Alerta, entidad, responsable o área"/></label>
       </>}
       <div className="master-filter-chip"><i style={{background:selectedMeta.color}}/>{selectedMeta.label}</div>
-      {((section==='academica'&&(academicLevel||academicTeacher||academicGroup))||(section==='estudiantes'&&(studentLevel||studentTeacher||studentGroup||studentRisk||studentSearch))||(section==='cobranza'&&(collectionLevel||collectionConvenio||collectionGroup||collectionStatus||collectionSearch))||(section==='conape'&&(conapeAdvisor||conapeStage||conapePriority||conapeLinkStatus||conapeGroup||conapeSearch))||(section==='docentes'&&(teacherName||teacherLevel||teacherStatus||teacherSearch))||(section==='examenes'&&(examLevel||examTeacher||examGroup||examCategory||examStatus||examSearch))||(section==='alertas'&&(alertLevel||alertArea||alertAge||alertSearch))||((section==='resumen'||section==='ventas')&&advisors.length>0))&&<button className="master-clear-filter" onClick={()=>{setAdvisors([]);setAcademicLevel('');setAcademicTeacher('');setAcademicGroup('');setStudentLevel('');setStudentTeacher('');setStudentGroup('');setStudentRisk('');setStudentSearch('');setCollectionLevel('');setCollectionConvenio('');setCollectionGroup('');setCollectionStatus('');setCollectionSearch('');setConapeAdvisor('');setConapeStage('');setConapePriority('');setConapeLinkStatus('');setConapeGroup('');setConapeSearch('');setTeacherName('');setTeacherLevel('');setTeacherStatus('');setTeacherSearch('');setExamLevel('');setExamTeacher('');setExamGroup('');setExamCategory('');setExamStatus('');setExamSearch('');setAlertLevel('');setAlertArea('');setAlertAge('');setAlertSearch('');}}>Limpiar filtros ×</button>}
+      {((section==='academica'&&(academicLevel||academicTeacher||academicGroup))||(section==='estudiantes'&&(studentLevel||studentTeacher||studentGroup||studentRisk||studentSearch))||(section==='seguimiento'&&(trackingLevel||trackingTeacher||trackingStatus||trackingSearch))||(section==='cobranza'&&(collectionLevel||collectionConvenio||collectionGroup||collectionStatus||collectionSearch))||(section==='conape'&&(conapeAdvisor||conapeStage||conapePriority||conapeLinkStatus||conapeGroup||conapeSearch))||(section==='docentes'&&(teacherName||teacherLevel||teacherStatus||teacherSearch))||(section==='examenes'&&(examLevel||examTeacher||examGroup||examCategory||examStatus||examSearch))||(section==='alertas'&&(alertLevel||alertArea||alertAge||alertSearch))||((section==='resumen'||section==='ventas')&&advisors.length>0))&&<button className="master-clear-filter" onClick={()=>{setAdvisors([]);setAcademicLevel('');setAcademicTeacher('');setAcademicGroup('');setStudentLevel('');setStudentTeacher('');setStudentGroup('');setStudentRisk('');setStudentSearch('');setTrackingLevel('');setTrackingTeacher('');setTrackingStatus('');setTrackingSearch('');setCollectionLevel('');setCollectionConvenio('');setCollectionGroup('');setCollectionStatus('');setCollectionSearch('');setConapeAdvisor('');setConapeStage('');setConapePriority('');setConapeLinkStatus('');setConapeGroup('');setConapeSearch('');setTeacherName('');setTeacherLevel('');setTeacherStatus('');setTeacherSearch('');setExamLevel('');setExamTeacher('');setExamGroup('');setExamCategory('');setExamStatus('');setExamSearch('');setAlertLevel('');setAlertArea('');setAlertAge('');setAlertSearch('');}}>Limpiar filtros ×</button>}
     </div>
     <nav className="master-section-nav" aria-label="Secciones del Panel Maestro">{MASTER_SECTIONS.map(item=><button key={item.id} className={section===item.id?'active':''} style={{'--section-color':item.color}} onClick={()=>setSection(item.id)}><i/><Icon name={item.icon} size={16}/><span>{item.label}</span>{!connected.includes(item.id)&&<small>próxima conexión</small>}</button>)}</nav>
-    <main className="master-content"><div className="master-section-heading"><div><span>{selectedMeta.label}</span><h2>{section==='resumen'?'Visión ejecutiva de la academia':section==='ventas'?'Analítica comercial y matrículas':section==='academica'?'Control operativo académico en tiempo real':section==='estudiantes'?'Retención, asistencia y riesgo estudiantil':section==='cobranza'?'Cobros aplicados, cartera activa y morosidad':section==='conape'?'Financiamiento, desembolsos y vinculación institucional':section==='docentes'?'Carga, cumplimiento y salud operativa docente':section==='examenes'?'Aplicación, revisión y rendimiento académico':section==='alertas'?'Centro transversal de alertas y pendientes institucionales':section==='tendencias'?'Evolución multianual de la Academia':selectedMeta.label}</h2></div>{!connected.includes(section)&&<em className="master-integration-chip">Depende de integración</em>}</div>{section==='resumen'?<MasterResumen data={data} year={year} compareYear={compareYear} advisors={advisors} setSection={setSection}/>:section==='ventas'?<MasterVentas data={data} year={year} compareYear={compareYear} advisors={advisors}/>:section==='academica'?<MasterAcademica data={data} year={year} filters={academicFilters}/>:section==='estudiantes'?<MasterEstudiantes data={data} year={year} filters={studentFilters}/>:section==='cobranza'?<MasterCobranza data={data} year={year} compareYear={compareYear} filters={collectionFilters} onRefresh={refetch}/>:section==='conape'?<MasterConape data={data} year={year} compareYear={compareYear} filters={conapeFilters}/>:section==='docentes'?<MasterDocentes data={data} year={year} filters={teacherFilters}/>:section==='examenes'?<MasterExamenes data={data} year={year} compareYear={compareYear} filters={examFilters}/>:section==='alertas'?<MasterAlertas data={data} year={year} filters={alertFilters} setSection={setSection}/>:section==='tendencias'?<MasterTendencias data={data} year={year} compareYear={compareYear}/>:<MasterPendingSection section={section}/>}</main>
+    <main className="master-content"><div className="master-section-heading"><div><span>{selectedMeta.label}</span><h2>{section==='resumen'?'Visión ejecutiva de la academia':section==='ventas'?'Analítica comercial y matrículas':section==='academica'?'Control operativo académico en tiempo real':section==='estudiantes'?'Retención, asistencia y riesgo estudiantil':section==='seguimiento'?'Prioridades operativas, rescate y seguimiento humano por grupo':section==='cobranza'?'Cobros aplicados, cartera activa y morosidad':section==='conape'?'Financiamiento, desembolsos y vinculación institucional':section==='docentes'?'Carga, cumplimiento y salud operativa docente':section==='examenes'?'Aplicación, revisión y rendimiento académico':section==='alertas'?'Centro transversal de alertas y pendientes institucionales':section==='tendencias'?'Evolución multianual de la Academia':selectedMeta.label}</h2></div>{!connected.includes(section)&&<em className="master-integration-chip">Depende de integración</em>}</div>{section==='resumen'?<MasterResumen data={data} year={year} compareYear={compareYear} advisors={advisors} setSection={setSection}/>:section==='ventas'?<MasterVentas data={data} year={year} compareYear={compareYear} advisors={advisors}/>:section==='academica'?<MasterAcademica data={data} year={year} filters={academicFilters}/>:section==='estudiantes'?<MasterEstudiantes data={data} year={year} filters={studentFilters}/>:section==='seguimiento'?<MasterSeguimiento state={trackingState} filters={trackingFilters} onRefresh={trackingState.refetch} onNavigate={onNavigate}/>:section==='cobranza'?<MasterCobranza data={data} year={year} compareYear={compareYear} filters={collectionFilters} onRefresh={refetch}/>:section==='conape'?<MasterConape data={data} year={year} compareYear={compareYear} filters={conapeFilters}/>:section==='docentes'?<MasterDocentes data={data} year={year} filters={teacherFilters}/>:section==='examenes'?<MasterExamenes data={data} year={year} compareYear={compareYear} filters={examFilters}/>:section==='alertas'?<MasterAlertas data={data} year={year} filters={alertFilters} setSection={setSection}/>:section==='tendencias'?<MasterTendencias data={data} year={year} compareYear={compareYear}/>:<MasterPendingSection section={section}/>}</main>
   </div>;
 }
 
