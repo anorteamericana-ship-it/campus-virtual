@@ -27,6 +27,8 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   const d = detalle || {};
   const est = window.calcularEstadoEstudianteVentas(d);
   const matriculado = est.estado === 'MATRICULADO';
+  const cedulaPreviewMatricula = String(d.cedula || d.CEDULA || '').replace(/[^\d]/g, '');
+  const previewMatriculaCR = cedulaPreviewMatricula === '120180140';
   const codigo = String(d.codigo || d.codigo_estudiante || d.CODIGO_ESTUDIANTE || d.rec_m || '').trim();
   const nivel = d.nivel || d.NIVEL || 'B1';
 
@@ -55,11 +57,27 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   return (
     <section className="vx-block vx-docest">
       <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Documentos del estudiante</div>
-      {!matriculado ? (
+      {!matriculado && !previewMatriculaCR ? (
         <div className="vx-docest-lock">
           <window.Vico d={window.VI.shield} size={15} />
           <span>Los documentos estarán disponibles cuando el estudiante esté matriculado.</span>
         </div>
+      ) : previewMatriculaCR ? (
+        <React.Fragment>
+          <div className="vx-docest-sub">
+            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión de las dos plantillas nuevas.
+          </div>
+          <div className="vx-docest-btns">
+            <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('MATRICULA_INA_TEST', 'CERT_MATRICULA_INA_TEST', 'No se pudo generar la prueba INA.')}>
+              {busy === 'MATRICULA_INA_TEST' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Certificado matrícula INA</>}
+            </button>
+            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('MATRICULA_SIN_INA_TEST', 'CERT_MATRICULA_SIN_INA_TEST', 'No se pudo generar la prueba SIN INA.')}>
+              {busy === 'MATRICULA_SIN_INA_TEST' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Certificado matrícula SIN INA</>}
+            </button>
+          </div>
+          <div className="vx-docest-note">Estos botones son temporales y solo aparecen para este prospecto de prueba.</div>
+          {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
+        </React.Fragment>
       ) : (
         <React.Fragment>
           <div className="vx-docest-sub">
