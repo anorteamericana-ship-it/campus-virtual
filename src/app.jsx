@@ -1,4 +1,4 @@
-// F98.4-Z6-CQ · Hotfix smoke test autenticado y auditoría tolerante a fallos
+// F98.4-Z6-CR · Hotfix guardado de evidencia técnica
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
 // F98.4-Z6-AI · Sincronización forzada del Panel Maestro completo de 10 secciones
@@ -64,7 +64,7 @@ const F96_LAZY = {
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6O'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
-  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CQ'],
+  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CR'],
   admin_students: ['src/admin_students.jsx?v=F98.4Z6CD'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
