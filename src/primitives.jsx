@@ -158,8 +158,24 @@ async function postPrimitives(fn, payload = {}) {
   return await res.json();
 }
 
+// F98.4-Z6-CS-PERF1: cache corto por estudiante para evitar que Mi Campus
+// quede en blanco/lento por cada recarga. El reload fuerza lectura fresca.
+const STUDENT_PROFILE_CACHE_TTL_MS = 90 * 1000;
+function studentProfileCacheKey(codigo) { return 'an_student_profile_v1_' + String(codigo || '').trim(); }
+function studentProfileCacheGet(codigo) {
+  try {
+    const raw = sessionStorage.getItem(studentProfileCacheKey(codigo));
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || (Date.now() - obj.ts) > STUDENT_PROFILE_CACHE_TTL_MS) return null;
+    return obj.data || null;
+  } catch (_) { return null; }
+}
+function studentProfileCachePut(codigo, data) {
+  try { if (data && data.ok) sessionStorage.setItem(studentProfileCacheKey(codigo), JSON.stringify({ ts: Date.now(), data })); } catch (_) {}
+}
 function useEstudiante(codigo) {
-  const [data, setData]       = React.useState(null);
+  const [data, setData]       = React.useState(() => codigo ? studentProfileCacheGet(codigo) : null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError]     = React.useState('');
   const [tick, setTick]       = React.useState(0);
@@ -167,6 +183,13 @@ function useEstudiante(codigo) {
   React.useEffect(() => {
     if (!codigo) { setData(null); return; }
     let cancelled = false;
+    const cached = tick === 0 ? studentProfileCacheGet(codigo) : null;
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      setError('');
+      return () => { cancelled = true; };
+    }
     setLoading(true);
     setError('');
     postPrimitives('getEstudiante', { codigo })
@@ -177,6 +200,7 @@ function useEstudiante(codigo) {
           setData(null);
           return;
         }
+        studentProfileCachePut(codigo, d);
         setData(d);
       })
       .catch(() => { if (!cancelled) setError('Error de conexión'); })
@@ -184,7 +208,7 @@ function useEstudiante(codigo) {
     return () => { cancelled = true; };
   }, [codigo, tick]);
 
-  return { data, loading, error, reload: () => setTick(t => t + 1) };
+  return { data, loading, error, reload: () => { try { sessionStorage.removeItem(studentProfileCacheKey(codigo)); } catch (_) {} setTick(t => t + 1); } };
 }
 
 // ── LoadingState — primitiva única para estados de carga ─────────────────

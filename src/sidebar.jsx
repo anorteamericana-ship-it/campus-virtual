@@ -370,6 +370,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
 
     return () => {
       cancel = true;
+      clearTimeout(initialTimer);
       if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVis);
     };
@@ -390,17 +391,19 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     };
     const refrescar = () => { if (document.visibilityState === 'visible') fetchCount(); };
     const onVis = () => { if (document.visibilityState === 'visible') fetchCount(); };
-    fetchCount();   // inicial, sin gate de visibilidad para poblar el badge en el primer render
-    intervalId = setInterval(refrescar, 2 * 60 * 1000);
+    // PERF1: no bloquear el primer render del panel por contadores administrativos.
+    const initialTimer = setTimeout(fetchCount, 900);
+    intervalId = setInterval(refrescar, 3 * 60 * 1000);
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('an:solicitudes-pago-changed', fetchCount);
     return () => {
       cancel = true;
+      clearTimeout(initialTimer);
       if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('an:solicitudes-pago-changed', fetchCount);
     };
-  }, [rolEfectivo, active]);
+  }, [rolEfectivo]);
 
   // F98.4-Z6-PLAY1: badge rojo para solicitudes de usuarios gratis sin registro.
   const [pendientesGratis, setPendientesGratis] = React.useState(0);
@@ -422,17 +425,19 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     };
     const refrescar = () => { if (document.visibilityState === 'visible') fetchCount(); };
     const onVis = () => { if (document.visibilityState === 'visible') fetchCount(); };
-    fetchCount();
-    intervalId = setInterval(refrescar, 2 * 60 * 1000);
+    // PERF1: se difiere para que el Campus pinte primero.
+    const initialTimer = setTimeout(fetchCount, 1200);
+    intervalId = setInterval(refrescar, 3 * 60 * 1000);
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('an:free-user-solicitudes-changed', fetchCount);
     return () => {
       cancel = true;
+      clearTimeout(initialTimer);
       if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('an:free-user-solicitudes-changed', fetchCount);
     };
-  }, [rolEfectivo, active]);
+  }, [rolEfectivo]);
 
   const solicitudesBadge = (Number(pendientesPago || 0) + Number(pendientesGratis || 0)) || null;
   const esUsuarioGratis = role === 'student' && !String(usr?.codigo || usr?.CODIGO || usr?.CODIGO_ESTUDIANTE || '').trim();

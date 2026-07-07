@@ -376,7 +376,38 @@ function mapResumenVentas(rs, lista) {
 // dejaba e.postData undefined en Apps Script ("Cannot read ... 'contents'").
 // text/plain;charset=utf-8 sigue esquivando el preflight CORS. Los prospectos
 // vienen en MINÚSCULAS, sin normalizar.
-async function getDashboardVentas(asesor) {
+// F98.4-Z6-CS-PERF1: cache corto local para que el panel de ventas no quede
+// bloqueado esperando Apps Script en cada recarga/navegación. El backend sigue
+// siendo la fuente de verdad; las acciones del drawer limpian este cache.
+const VENTAS_DASH_CACHE_TTL_MS = 90 * 1000;
+function ventasDashCacheKey(asesor) {
+  const u = (window.getSesion && window.getSesion()) || {};
+  return 'an_ventas_dash_v1_' + String(asesor || u.nombre || u.usuario || '').trim().toUpperCase();
+}
+function ventasDashCacheGet(asesor) {
+  try {
+    const raw = sessionStorage.getItem(ventasDashCacheKey(asesor));
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || (Date.now() - obj.ts) > VENTAS_DASH_CACHE_TTL_MS) return null;
+    return obj.data || null;
+  } catch (_) { return null; }
+}
+function ventasDashCachePut(asesor, data) {
+  try {
+    if (data && data.ok) sessionStorage.setItem(ventasDashCacheKey(asesor), JSON.stringify({ ts: Date.now(), data }));
+  } catch (_) {}
+}
+function ventasDashCacheClear() {
+  try {
+    Object.keys(sessionStorage).forEach(k => { if (k.indexOf('an_ventas_dash_v1_') === 0) sessionStorage.removeItem(k); });
+  } catch (_) {}
+}
+async function getDashboardVentas(asesor, opts = {}) {
+  if (!opts.force) {
+    const cached = ventasDashCacheGet(asesor);
+    if (cached) return { ...cached, cache_local: true };
+  }
   const res = await fetch(SCRIPT_URL_V, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -386,7 +417,9 @@ async function getDashboardVentas(asesor) {
       asesor: asesor || '',
     }),
   });
-  return await res.json();
+  const data = await res.json();
+  ventasDashCachePut(asesor, data);
+  return data;
 }
 // Adaptador LIGERO (no normalizador): los campos ya vienen en minúsculas; solo
 // rellenamos los alias que la tabla/drawer existentes esperan con otro nombre
@@ -460,11 +493,11 @@ async function postVentasData(fn, payload = {}) {
   });
   return await res.json();
 }
-const agregarNotaProspecto    = (cedula, asesor, texto)               => postVentas({ fn:'agregarNotaProspecto', cedula, asesor, texto });
-const subirDocumentoExtra     = (cedula, nombre_archivo, mime_type, base64) => postVentas({ fn:'subirDocumentoExtra', cedula, nombre_archivo, mime_type, base64 });
-const marcarEtapaProspecto    = (cedula, etapa, asesor)               => postVentas({ fn:'marcarEtapaProspecto', cedula, etapa, asesor });
-const cobrarMatriculaProspecto= (cedula, grupo, monto, comprobante, asesor) => postVentas({ fn:'cobrarMatriculaProspecto', cedula, grupo, monto, comprobante, asesor });
-const activarEstudiante       = (cedula, grupo, asesor)               => postVentas({ fn:'activarEstudiante', cedula, grupo, asesor });
+const agregarNotaProspecto    = (cedula, asesor, texto)               => { ventasDashCacheClear(); return postVentas({ fn:'agregarNotaProspecto', cedula, asesor, texto }); };
+const subirDocumentoExtra     = (cedula, nombre_archivo, mime_type, base64) => { ventasDashCacheClear(); return postVentas({ fn:'subirDocumentoExtra', cedula, nombre_archivo, mime_type, base64 }); };
+const marcarEtapaProspecto    = (cedula, etapa, asesor)               => { ventasDashCacheClear(); return postVentas({ fn:'marcarEtapaProspecto', cedula, etapa, asesor }); };
+const cobrarMatriculaProspecto= (cedula, grupo, monto, comprobante, asesor) => { ventasDashCacheClear(); return postVentas({ fn:'cobrarMatriculaProspecto', cedula, grupo, monto, comprobante, asesor }); };
+const activarEstudiante       = (cedula, grupo, asesor)               => { ventasDashCacheClear(); return postVentas({ fn:'activarEstudiante', cedula, grupo, asesor }); };
 
 // ── VENTAS-DOC-002-B: documentos PDF del estudiante (hoja de matrícula / CONAPE) ──
 // Llama al endpoint SEGURO de ventas (generarDocumentoVentas, VENTAS-DOC-002-A).
@@ -813,7 +846,7 @@ Object.assign(window, {
   formatHorarioGrupo, fmtFechaLarga, diasParaIniciar, diasCompletos,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,
-  getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,
+  getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas, ventasDashCacheClear,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
   generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro,
