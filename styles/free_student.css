@@ -85,3 +85,31 @@
 .free-admin-priority.muted{background:#f4f4f5;color:#667085;border-color:#e5e7eb;}
 @media(max-width:1180px){.free-admin-metrics{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:720px){.free-admin-metrics{grid-template-columns:1fr;}.free-admin-filters.compact{overflow:auto;flex-wrap:nowrap;padding-bottom:2px}.free-admin-filters.compact button{white-space:nowrap;}}
+
+/* F98.4-Z6-CS7A · Limpieza visual de prematrícula */
+.premat-page-lite .student-section-subtitle,.premat-page-lite .premat-disclaimer{display:none!important;}
+.premat-hero-lite{grid-template-columns:minmax(0,1fr) 280px;}
+.premat-hero-lite .premat-hero-main p{max-width:720px;}
+.premat-access-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
+.premat-access-card{display:flex;gap:10px;align-items:center;border:1px solid var(--student-line,rgba(221,215,204,.92));background:#fff;border-radius:17px;padding:13px;box-shadow:var(--student-shadow,0 10px 28px rgba(0,31,71,.055));min-height:76px;}
+.premat-access-card span{display:block;font-size:9px;font-weight:950;letter-spacing:.12em;text-transform:uppercase;color:var(--student-muted,#6d7480);}
+.premat-access-card strong{display:block;margin-top:3px;color:var(--student-navy-dark,#001e47);font-size:14px;line-height:1.22;}
+.premat-access-icon{width:34px;height:34px;border-radius:12px;background:#eef5ff;color:#002f6c;display:grid;place-items:center;flex:0 0 auto;}
+.premat-access-card.ok .premat-access-icon{background:#eaf8ef;color:#166534;}
+.premat-access-card.info .premat-access-icon{background:#eef5ff;color:#002f6c;}
+.premat-note-master{border:1px solid rgba(0,47,108,.15);background:#f7faff;color:#30415e;border-radius:16px;padding:13px 15px;font-size:12.5px;line-height:1.48;}
+.premat-note-master strong{color:#002f6c;}
+.premat-layout-lite{align-items:start;}
+.premat-request-lite p{display:none;}
+.free-admin-note{border:1px solid var(--line,#e5e0d8);background:#fff;border-radius:16px;padding:12px 14px;color:var(--ink-2,#475467);font-size:12.5px;line-height:1.45;}
+.free-admin-note strong{color:var(--an-blue,#002f6c);}
+.free-admin-state-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.free-admin-state-buttons button{border:1px solid var(--line,#e5e0d8);background:#fff;border-radius:12px;padding:10px 11px;font:800 12px/1.2 var(--f-sans,system-ui);cursor:pointer;color:var(--ink,#1f2937);}
+.free-admin-state-buttons button:nth-child(3){background:var(--an-blue,#002f6c);border-color:var(--an-blue,#002f6c);color:#fff;}
+.free-admin-state-buttons button:disabled{opacity:.55;cursor:wait;}
+.free-admin-note-field{display:flex;flex-direction:column;gap:6px;}
+.free-admin-note-field span{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3,#667085);}
+.free-admin-message span{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#7a1e2c;margin-bottom:5px;}
+.free-admin-message p{margin:0;color:var(--ink-2,#475467);font-size:12.5px;line-height:1.45;}
+@media(max-width:1050px){.premat-hero-lite{grid-template-columns:1fr}.premat-access-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){.premat-access-grid{grid-template-columns:1fr}.free-admin-state-buttons{grid-template-columns:1fr}.premat-hero-lite .premat-hero-actions{display:grid}.premat-hero-lite .premat-hero-actions .btn{width:100%;justify-content:center;}}
