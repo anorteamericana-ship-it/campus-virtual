@@ -371,7 +371,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
 
     return () => {
       cancel = true;
-      clearTimeout(initialTimer);
       if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVis);
     };
@@ -453,16 +452,21 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const mostrarICAN = tieneICANExplicito || tieneICANPrograma;
   const studentSections = esUsuarioGratis ? [
     {
-      label: 'Acceso gratis',
+      label: 'Aprendizaje',
       items: [
-        { id: 'dashboard', label: 'Mi perfil', icon: 'home' },
+        { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
+        { id: 'mi_curso', label: 'Mi curso', icon: 'materials', locked: true },
         ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Gratis' }] : []),
+        { id: 'documentos_ayuda', label: 'Materiales', icon: 'doc', locked: true },
+        { id: 'ican', label: 'Club I CAN', icon: 'ican', locked: true },
       ],
     },
     {
       label: 'Gestión',
       items: [
         { id: 'dashboard', label: 'Solicitar contacto', icon: 'card', badge: 'Nuevo' },
+        { id: 'pagos', label: 'Pagos', icon: 'payments', locked: true },
+        { id: 'certificados', label: 'Certificados', icon: 'certificates', locked: true },
       ],
     },
   ] : [
@@ -557,7 +561,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     ? (usr.rol === 'superadmin' ? 'Superadmin'
       : usr.rol === 'admin'    ? 'Administración'
       : usr.rol === 'teacher'  ? `Docente${usr.grupo ? ' · ' + sidebarTeacherGroupLabelF88(usr.grupo) : ''}`
-      : (esUsuarioGratis ? 'Usuario gratis' : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`))
+      : (esUsuarioGratis ? 'Prematrícula' : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`))
     : 'Sin sesión';
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
@@ -576,17 +580,35 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       {role === 'student' ? studentSections.map(section => (
         <React.Fragment key={section.label}>
           <div className="sb-section student-sb-section">{section.label}</div>
-          {section.items.map(item => (
-            <button
-              key={item.id}
-              className={`sb-item student-sb-item ${active===item.id?'active':''}`}
-              data-nav-id={item.id}
-              onClick={() => setActive(item.id)}>
-              <Icon name={item.icon} size={18} />
-              <span className="sb-label">{item.label}</span>
-              {item.badge && <span className="sb-badge">{item.badge}</span>}
-            </button>
-          ))}
+          {section.items.map(item => {
+            if (item.locked) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Se desbloquea al activar matrícula"
+                  className="sb-item student-sb-item student-sb-item-free-locked"
+                  data-nav-id={item.id}>
+                  <Icon name={item.icon} size={18} />
+                  <span className="sb-label">{item.label}</span>
+                  <span className="student-sb-soon">Bloqueado</span>
+                </button>
+              );
+            }
+            return (
+              <button
+                key={item.id}
+                className={`sb-item student-sb-item ${active===item.id?'active':''}`}
+                data-nav-id={item.id}
+                onClick={() => setActive(item.id)}>
+                <Icon name={item.icon} size={18} />
+                <span className="sb-label">{item.label}</span>
+                {item.badge && <span className="sb-badge">{item.badge}</span>}
+              </button>
+            );
+          })}
         </React.Fragment>
       )) : role === 'teacher' ? (
         <>

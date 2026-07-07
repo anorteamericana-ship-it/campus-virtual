@@ -59,8 +59,8 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6PREMAT1'],
-  academia_play: ['src/academia_play.jsx?v=F98.4Z6PLAY1'],
+  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS1PREMAT'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS1PLAY15'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
@@ -911,7 +911,11 @@ function App() {
         initialTab={studentDocsTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('documentos_ayuda', tab)} />,
       academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
-    content = map[active] || map.dashboard;
+    // CS1: usuario gratis solo puede montar Mi Campus prematrícula y Academia Play.
+    // Esto evita que una ruta vieja o hash manual cargue módulos que consultan datos académicos reales.
+    content = esProspectoGratis && !['dashboard','academia_play'].includes(active)
+      ? map.dashboard
+      : (map[active] || map.dashboard);
   } else if (role === 'teacher') {
     // VistaDocente es la pantalla principal del docente. El antiguo
     // TeacherDashboard se eliminó (bloque 2). 'dashboard' queda como
