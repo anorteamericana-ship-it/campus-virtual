@@ -1,4 +1,4 @@
-// F98.4-Z6-CS1A · QA hardening usuario gratis/prematrícula
+// F98.4-Z6-CS2 · Sidebar prematrícula unificada
 // F98.4-Z6-P · navegación Super Admin agrupada por operación
 // F98.4-Z6-F · menú docente reordenado y renombrado
 // F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY

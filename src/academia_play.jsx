@@ -1,5 +1,5 @@
 /* global React, Icon */
-// F98.4-Z6-CS1A · Academia Play V1.5 visual + QA hardening usuario gratis.
+// F98.4-Z6-CS2 · Academia Play V1.5 visual + prematrícula unificada.
 // Frontend/demo únicamente: no llama backend, no guarda intentos, no crea rankings y no modifica notas oficiales.
 
 const { useMemo: apUseMemo, useState: apUseState } = React;
@@ -548,7 +548,7 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
             <button type="button" className="ap-btn ap-btn-primary ap-breathe" onClick={() => openGame(AP_GAMES[0])}>Practicar ahora</button>
             <button type="button" className="ap-btn ap-btn-ghost" onClick={() => setScreen('catalog')}>Ver catálogo de juegos</button>
           </div>
-          <p className="ap-demo-note">Se conserva al matricularte solo como idea visual; en CS1 todavía no hay historial productivo.</p>
+          <p className="ap-demo-note">Se conserva al matricularte solo como idea visual; en CS2 todavía no hay historial productivo.</p>
         </div>
         <div className="ap-panel ap-daily-card ap-cascade ap-cascade-2">
           <span className="ap-small-label">Acceso gratis de hoy</span>
