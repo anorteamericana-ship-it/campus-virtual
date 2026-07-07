@@ -1169,6 +1169,28 @@ function CampusGate() {
       // 1) Sin sesión o sin token → al login. No se crea ninguna sesión.
       if (!ses || !token) { campusIrALogin(); return; }
 
+      // PERF LOGIN-STABLE: si venimos de un login recién aprobado, no bloqueamos
+      // el primer render esperando validarSesion. Los endpoints siguen validando
+      // token en backend y la validación completa se hará en la siguiente carga.
+      let loginReciente = false;
+      try {
+        const just = sessionStorage.getItem('an_just_logged_in') === '1';
+        const recentAt = Number(sessionStorage.getItem('an_login_recent_at') || '0');
+        loginReciente = just || (recentAt && (Date.now() - recentAt < 70000));
+      } catch (_) {}
+      if (loginReciente) {
+        if (ses.rol === 'ventas') { campusIrAVentas(); return; }
+        if (!CAMPUS_ROLES_PERMITIDOS.includes(ses.rol)) {
+          setSesionState(ses);
+          setEstado('denegado');
+          return;
+        }
+        try { sessionStorage.removeItem('an_login_recent_at'); } catch (_) {}
+        setSesionState(ses);
+        setEstado('ok');
+        return;
+      }
+
       // 2) Validación contra el servidor. Una respuesta explícita de sesión
       // inválida cierra el acceso; una falla temporal de red NO debe dejar el
       // Campus en blanco. Los endpoints siguen validando el token en backend.

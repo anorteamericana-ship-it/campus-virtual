@@ -1,12 +1,48 @@
 /* global React, ReactDOM, setSesion */
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
-const SCRIPT_URL_LOGIN = window.APPS_SCRIPT_URL;
+const SCRIPT_URL_LOGIN = window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+try { window.APPS_SCRIPT_URL = window.APPS_SCRIPT_URL || SCRIPT_URL_LOGIN; } catch (_) {}
 
 const ERR_MSG = {
   credenciales_invalidas: 'Cédula o contraseña incorrectos',
   usuario_inactivo: 'Tu cuenta está desactivada. Contactá a la academia.',
 };
+
+
+function clearLocalLoginSession() {
+  try {
+    sessionStorage.removeItem('an_usuario');
+    sessionStorage.removeItem('an_just_logged_in');
+    sessionStorage.removeItem('an_login_recent_at');
+    sessionStorage.removeItem('an_validacion_diferida');
+    sessionStorage.removeItem('an_oral_context');
+    localStorage.removeItem('an_role');
+  } catch (_) {}
+}
+
+async function loginFetchJson(payload, timeoutMs = 26000) {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const response = await fetch(SCRIPT_URL_LOGIN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      signal: controller ? controller.signal : undefined,
+    });
+    const text = await response.text();
+    const limpio = String(text || '').trim();
+    if (!limpio) return { ok:false, error:'respuesta_vacia' };
+    if (limpio.charAt(0) === '<') return { ok:false, error:'backend_html', detalle:'La URL del backend devolvió HTML.' };
+    try { return JSON.parse(limpio); }
+    catch (e) { return { ok:false, error:'json_invalido', detalle:e.message }; }
+  } catch (e) {
+    return { ok:false, error:e && e.name === 'AbortError' ? 'timeout' : 'conexion', detalle:e && e.message ? e.message : String(e) };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 const ROLE_LABEL = {
   superadmin: 'Superadmin',
@@ -158,6 +194,7 @@ function App() {
   const [pendingMulti, setPendingMulti] = useState(null);
   const [account, setAccount] = useState(null);
   const [shaking, setShaking] = useState(false);
+  const requestRef = useRef(0);
 
   useEffect(() => {
     if (!err) return undefined;
@@ -169,7 +206,9 @@ function App() {
   const finishLogin = (acc) => {
     setAccount(acc);
     try {
+      clearLocalLoginSession();
       sessionStorage.setItem('an_just_logged_in', '1');
+      sessionStorage.setItem('an_login_recent_at', String(Date.now()));
       const gruposAsignados = acc.grupos || (acc.grupo ? [acc.grupo] : []);
       const grupoActivo = acc.grupoActivo || acc.grupo || gruposAsignados[0] || null;
       setSesion({
@@ -204,66 +243,76 @@ function App() {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (loading) return;
     setErr('');
-    if (!usuario || !pass) {
+    const usuarioLimpio = String(usuario || '').trim().toLowerCase();
+    if (!usuarioLimpio || !pass) {
       setErr('Completá ambos campos para continuar.');
       return;
     }
+    if (!SCRIPT_URL_LOGIN) {
+      setErr('Backend no configurado. Recargá la página.');
+      return;
+    }
+
+    const reqId = requestRef.current + 1;
+    requestRef.current = reqId;
     setLoading(true);
-    try {
-      const response = await fetch(SCRIPT_URL_LOGIN, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          fn: 'iniciarSesion',
-          usuario: usuario.trim().toLowerCase(),
-          clave: pass,
-        }),
-      });
-      const data = await response.json();
-      if (!data.ok) {
-        setLoading(false);
-        setErr(ERR_MSG[data.error] || 'Cédula o contraseña incorrectos');
-        return;
-      }
-      if (data.multiGrupo && Array.isArray(data.grupos) && data.grupos.length > 0) {
-        const first = data.grupos[0] || {};
-        const gruposAsignados = data.grupos
-          .map(item => typeof item === 'string' ? item : (item.grupo || item.cod_grupo || item.codigo || item.code || ''))
-          .filter(Boolean);
-        finishLogin({
-          rol: data.rol,
-          nombre: data.nombre,
-          grupos: gruposAsignados,
-          grupoActivo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
-          grupo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
-          codigo: data.codigo || first.codigo || null,
-          cedula: (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
-          programa: first.programa || data.programa || 'SIN_INA',
-          token: data.token || null,
-          expira: data.expira || null,
-        });
-        return;
-      }
+    clearLocalLoginSession();
+
+    const data = await loginFetchJson({
+      fn: 'iniciarSesion',
+      usuario: usuarioLimpio,
+      clave: pass,
+    });
+
+    if (reqId !== requestRef.current) return;
+
+    if (!data.ok) {
+      setLoading(false);
+      if (data.error === 'timeout') setErr('El servidor tardó demasiado. Reintentá en unos segundos.');
+      else if (data.error === 'backend_html') setErr('El Campus recibió HTML en vez de respuesta del servidor. Recargá con Ctrl+F5.');
+      else if (data.error === 'json_invalido') setErr('Respuesta inválida del servidor. Recargá e intentá de nuevo.');
+      else if (data.error === 'conexion') setErr('No se pudo conectar. Revisá la conexión e intentá de nuevo.');
+      else setErr(ERR_MSG[data.error] || 'Cédula o contraseña incorrectos');
+      return;
+    }
+
+    if (data.multiGrupo && Array.isArray(data.grupos) && data.grupos.length > 0) {
+      const first = data.grupos[0] || {};
+      const gruposAsignados = data.grupos
+        .map(item => typeof item === 'string' ? item : (item.grupo || item.cod_grupo || item.codigo || item.code || ''))
+        .filter(Boolean);
       finishLogin({
         rol: data.rol,
         nombre: data.nombre,
-        grupo: data.grupo || null,
-        codigo: data.codigo || null,
-        cedula: (data.cedula || usuario || '').toString().trim().toLowerCase() || null,
-        programa: data.programa || 'SIN_INA',
+        grupos: gruposAsignados,
+        grupoActivo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
+        grupo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
+        codigo: data.codigo || first.codigo || null,
+        cedula: (data.cedula || usuarioLimpio || '').toString().trim().toLowerCase() || null,
+        programa: first.programa || data.programa || 'SIN_INA',
         token: data.token || null,
         expira: data.expira || null,
-        estudiante_gratis: data.estudiante_gratis === true,
-        perfil_pre_matricula: data.perfil_pre_matricula === true,
-        etapa: data.etapa || null,
-        correo: data.correo || null,
-        telefono: data.telefono || null,
       });
-    } catch (_) {
-      setLoading(false);
-      setErr('No se pudo conectar. Intentá de nuevo.');
+      return;
     }
+
+    finishLogin({
+      rol: data.rol,
+      nombre: data.nombre,
+      grupo: data.grupo || null,
+      codigo: data.codigo || null,
+      cedula: (data.cedula || usuarioLimpio || '').toString().trim().toLowerCase() || null,
+      programa: data.programa || 'SIN_INA',
+      token: data.token || null,
+      expira: data.expira || null,
+      estudiante_gratis: data.estudiante_gratis === true,
+      perfil_pre_matricula: data.perfil_pre_matricula === true,
+      etapa: data.etapa || null,
+      correo: data.correo || null,
+      telefono: data.telefono || null,
+    });
   };
 
   const pickGroup = (group) => {
@@ -301,7 +350,7 @@ function App() {
                 <label htmlFor="usuario">Cédula / Usuario</label>
                 <div className="ctrl">
                   <input id="usuario" type="text" autoComplete="off" placeholder="Ej: 1-2345-6789"
-                         value={usuario} onChange={event => { setUsuario(event.target.value); setErr(''); }} autoFocus />
+                         value={usuario} disabled={busy} onChange={event => { setUsuario(event.target.value); setErr(''); }} autoFocus />
                 </div>
               </div>
 
@@ -310,8 +359,9 @@ function App() {
                 <div className={'ctrl' + (err ? ' has-error' : '')}>
                   <input id="clave" type={showPass ? 'text' : 'password'} autoComplete="current-password"
                          placeholder="Tu contraseña" className="with-trail" value={pass}
+                         disabled={busy}
                          onChange={event => { setPass(event.target.value); setErr(''); }} />
-                  <button type="button" className="toggle-eye" onClick={() => setShowPass(value => !value)}
+                  <button type="button" className="toggle-eye" disabled={busy} onClick={() => setShowPass(value => !value)}
                           aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                     <EyeIcon off={showPass} />
                   </button>
@@ -320,7 +370,7 @@ function App() {
               </div>
 
               <label className="remember">
-                <input type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} />
+                <input type="checkbox" checked={remember} disabled={busy} onChange={event => setRemember(event.target.checked)} />
                 <span className="box" />
                 Recordar sesión
               </label>
