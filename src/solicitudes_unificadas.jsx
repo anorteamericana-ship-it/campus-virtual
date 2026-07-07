@@ -2,7 +2,7 @@
 
 function f92Token(){ try{return (window.getSesion&&window.getSesion()||{}).token||'';}catch(_){return'';} }
 async function f92Post(fn,payload={}){
-  const r=await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`,{
+  const r=await fetch(window.APPS_SCRIPT_URL,{
     method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify({fn,token:f92Token(),...payload}),
   });

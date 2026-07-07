@@ -5,7 +5,7 @@
 function freeStudentToken(){ try{return (window.getSesion&&window.getSesion()||{}).token||'';}catch(_){return'';} }
 async function freeStudentPost(fn,payload={}){
   const token=freeStudentToken();
-  const res=await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`,{
+  const res=await fetch(window.APPS_SCRIPT_URL,{
     method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify({fn,token,...payload}),
   });

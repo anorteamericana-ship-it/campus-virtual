@@ -412,7 +412,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       try {
         const token = typeof window.getSessionToken === 'function' ? window.getSessionToken() : ((window.getSesion && window.getSesion() || {}).token || '');
         if (!token || !window.APPS_SCRIPT_URL) return;
-        const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=freeUserListarSolicitudes`, {
+        const res = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ fn:'freeUserListarSolicitudes', token, estado:'PENDIENTE', limit:1 }),
         });
