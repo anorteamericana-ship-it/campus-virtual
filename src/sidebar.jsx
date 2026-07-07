@@ -285,11 +285,31 @@ function sidebarTeacherGroupLabelF88(code) {
   return `${day}${hours?' '+hours:''}${cycle?' · '+cycle:''}`;
 }
 
+
+function sidebarNormCedulaAplay(v) {
+  return String(v || '').replace(/[^0-9]/g, '');
+}
+
+function sidebarMostrarAcademiaPlayF984Z6(usr, role, rolEfectivo) {
+  const rol = String(rolEfectivo || role || '').toLowerCase();
+  if (rol === 'superadmin' || rol === 'admin' || rol === 'teacher') return true;
+  const ced = sidebarNormCedulaAplay(usr?.cedula || usr?.CEDULA || usr?.identificacion || usr?.IDENTIFICACION || usr?.documento || usr?.DOCUMENTO || usr?.id || usr?.ID);
+  const cod = String(usr?.codigo || usr?.CODIGO || usr?.CODIGO_ESTUDIANTE || '').trim().toUpperCase();
+  if (ced === '120180140' || cod === '120814') return true;
+  try {
+    const q = new URLSearchParams(window.location.search || '');
+    if (q.get('aplay') === '1' || q.get('play') === '1') return true;
+    if (localStorage.getItem('an_academia_play_piloto') === '1') return true;
+  } catch (_) {}
+  return false;
+}
+
 function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   // Sesión única — sin fallbacks a claves sueltas.
   const usr = usuario || (typeof getSesion === 'function' ? getSesion() : null);
   const rolEfectivo = rolReal || usr?.rol || role;
   const esSuperadmin = rolEfectivo === 'superadmin';
+  const mostrarAcademiaPlay = sidebarMostrarAcademiaPlayF984Z6(usr, role, rolEfectivo);
 
   // ── Badge de pendientes para "Mi Panel" (solo docente real) ─────────────
   const [pendientesDoc, setPendientesDoc] = React.useState(0);
@@ -398,6 +418,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
         { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
         ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Piloto' }] : []),
       ],
     },
     {
@@ -416,6 +437,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'materiales', label: 'Biblioteca del Programa', icon: 'materials' },
+    ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Piloto' }] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'cronograma_grupo', label: 'Cronograma Inglés Conversacional', icon: 'calendar' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
@@ -431,6 +453,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'buscador', label: 'Consulta individual', icon: 'search' },
         { id: 'calendario_grupo', label: 'Calendario académico', icon: 'calendar' },
         { id: 'supervision', label: 'Supervisión', icon: 'bell' },
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Piloto' }] : []),
       ],
     },
     {
@@ -506,6 +529,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
               onClick={() => setActive(item.id)}>
               <Icon name={item.icon} size={18} />
               <span className="sb-label">{item.label}</span>
+              {item.badge && <span className="sb-badge">{item.badge}</span>}
             </button>
           ))}
         </React.Fragment>

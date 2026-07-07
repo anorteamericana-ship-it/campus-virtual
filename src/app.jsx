@@ -15,7 +15,7 @@
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
    AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView,
-   SolicitudesUnificadasView, SolicitudesEstudianteView, LazyModuleView */
+   SolicitudesUnificadasView, SolicitudesEstudianteView, AcademiaPlayView, LazyModuleView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -59,6 +59,7 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6PLAY0'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
@@ -107,6 +108,7 @@ const STUDENT_ROUTE_ALIASES_F984 = {
   examenes: ['evaluaciones', 'proximas'], notas: ['evaluaciones', 'resultados'], solicitudes_estudiante: ['evaluaciones', 'reposiciones'],
   info_programa: ['documentos_ayuda', 'programa'], mensajes: ['documentos_ayuda', 'avisos'], perfil: ['documentos_ayuda', 'ayuda'],
   pagos: ['pagos', null], certificados: ['certificados', null], ican: ['ican', null],
+  academia_play: ['academia_play', null], play: ['academia_play', null],
   mi_curso: ['mi_curso', null], evaluaciones: ['evaluaciones', null], documentos_ayuda: ['documentos_ayuda', null],
 };
 function normalizarRutaEstudianteF984(target, opts = {}) {
@@ -902,6 +904,7 @@ function App() {
       certificados: <LazyRoute title="Certificados" component="CertificadosView" files={F96_LAZY.student_modules} />,
       documentos_ayuda: <LazyRoute title="Documentos y ayuda" component="StudentDocumentsHelpView" files={F96_LAZY.student_documents}
         initialTab={studentDocsTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('documentos_ayuda', tab)} />,
+      academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
     content = map[active] || map.dashboard;
   } else if (role === 'teacher') {
@@ -923,6 +926,7 @@ function App() {
       ican:        <LazyRoute title="Club I CAN" component="ClubICANDocenteView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       mensajes:    <LazyRoute title="Comunicados" component="MensajesView" files={F96_LAZY.student_modules} />,
       perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
+      academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
     content = map[active] || map.mi_panel_docente;
   } else if (role === 'admin') {
@@ -960,6 +964,7 @@ function App() {
       buscador:     <LazyRoute title="Consulta individual" component="BuscadorEstudiantes" files={F96_LAZY.buscador} onNavigate={navigateTo} />,
       banco:        <LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />,
       aplicar_pago: <LazyRoute title="Aplicar Pago" component="AplicarPago" files={F96_LAZY.aplicar_pago} onNavigate={navigateTo} />,
+      academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
       // — Próximamente (sin datos demo) ——————————————————————
       docentes:  <ProximamenteView title="Docentes" />,
       horas:     <ProximamenteView title="Horas docentes" />,
