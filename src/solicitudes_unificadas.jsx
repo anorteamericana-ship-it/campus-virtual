@@ -102,35 +102,72 @@ function ReposicionesAdminSolicitudesF92(){
 
 
 
+function freeUserEstadoMetaF984(estado){
+  const k=String(estado||'PENDIENTE').toUpperCase();
+  return ({
+    PENDIENTE:['Pendiente','#991B1B','#FDECEA','Sin contestar'],
+    EN_GESTION:['En gestión','#8A5A00','#FFF4D6','Tomada por asesor'],
+    RESPONDIDA:['Respondida','#166534','#EAF8EF','Respuesta enviada'],
+    CONVERTIDA:['Convertida','#0C4F86','#E7F1FA','Pasó a matrícula'],
+    CERRADA:['Cerrada','#40516A','#EEF2F7','Gestión cerrada'],
+    DESCARTADA:['Descartada','#5F6875','#EEF2F7','Sin seguimiento']
+  })[k]||[k,'#40516A','#EEF2F7',''];
+}
+function FreeUserEstadoPillF984({estado}){
+  const [label,fg,bg]=freeUserEstadoMetaF984(estado);
+  return <span style={{padding:'4px 9px',borderRadius:999,background:bg,color:fg,fontSize:10,fontWeight:900,whiteSpace:'nowrap'}}>{label}</span>;
+}
+function FreeUserActionNoteF984({open,onClose,onSubmit,estado,nombre,busy}){
+  const [nota,setNota]=React.useState('');
+  React.useEffect(()=>{ if(open){ setNota(''); setTimeout(()=>document.getElementById('free-user-note-v2')?.focus(),40); } },[open]);
+  if(!open)return null;
+  const [label]=freeUserEstadoMetaF984(estado);
+  return <div role="dialog" aria-modal="true" aria-labelledby="free-user-note-title" style={{position:'fixed',inset:0,zIndex:10000,background:'rgba(8,28,56,.42)',display:'grid',placeItems:'center',padding:18}}>
+    <div className="card" style={{width:'min(560px,100%)',padding:20,boxShadow:'0 24px 70px rgba(0,0,0,.28)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'flex-start'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em',color:'var(--an-granate)'}}>CENTRO DE GESTIONES</div><h3 id="free-user-note-title" style={{margin:'4px 0 3px',fontFamily:'var(--f-serif)',fontSize:25}}>Marcar como {label}</h3><p style={{margin:0,fontSize:12.5,color:'var(--ink-3)'}}>Prospecto: {nombre||'Usuario gratis'}</p></div><button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>Cerrar</button></div>
+      <label style={{display:'block',marginTop:14,fontSize:11,fontWeight:850,color:'var(--ink-2)'}}>Nota interna / respuesta</label>
+      <textarea id="free-user-note-v2" rows="5" value={nota} onChange={e=>setNota(e.target.value)} placeholder="Ej.: Se llamó por WhatsApp, interesado en continuar matrícula. Pendiente validar horario." style={{width:'100%',marginTop:6,border:'1px solid var(--line)',borderRadius:12,padding:12,fontFamily:'inherit',resize:'vertical'}} />
+      <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:14,flexWrap:'wrap'}}><button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>Cancelar</button><button type="button" className="btn btn-primary" onClick={()=>onSubmit(nota)} disabled={busy}>{busy?'Guardando…':'Guardar gestión'}</button></div>
+    </div>
+  </div>;
+}
+
 function FreeUserSolicitudesAdminF984(){
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
   const [estado,setEstado]=React.useState('PENDIENTE');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('freeUserListarSolicitudes',{estado,limit:150}).then(r=>setRows(r.items||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[estado]);
+  const [counts,setCounts]=React.useState({});
+  const [modal,setModal]=React.useState(null);
+  const estados=['PENDIENTE','EN_GESTION','RESPONDIDA','CONVERTIDA','CERRADA'];
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('freeUserListarSolicitudes',{estado,limit:200}).then(r=>{setRows(r.items||[]);setCounts(r.counts||{});}).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[estado]);
   React.useEffect(()=>{load();},[load]);
-  const resolver=async(r,estadoFinal)=>{const nota=window.prompt(estadoFinal==='RESPONDIDA'?'Respuesta o nota para el asesor/estudiante:':'Nota de cierre:',r.RESPUESTA||'');if(nota===null)return;setBusy(r.ID);try{await f92Post('freeUserResolverSolicitud',{id:r.ID,estado:estadoFinal,respuesta:nota});try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const resolver=async(r,estadoFinal,nota)=>{setBusy(r.ID||'busy');try{await f92Post('freeUserResolverSolicitud',{id:r.ID,estado:estadoFinal,respuesta:nota||'',responsable:''});try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }setModal(null);await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const quick=(r,estadoFinal)=>{const defaults={EN_GESTION:'Solicitud tomada en gestión. Pendiente contactar al prospecto.',RESPONDIDA:'Se contactó al prospecto y se brindó seguimiento.',CONVERTIDA:'Prospecto convertido a proceso de matrícula.',CERRADA:'Gestión cerrada.'};resolver(r,estadoFinal,defaults[estadoFinal]||'');};
   const openWa=(r)=>{const tel=String(r.TELEFONO||'').replace(/[^0-9]/g,''); if(!tel){alert('Este prospecto no tiene teléfono registrado.');return;} const phone=tel.length===8?'506'+tel:tel; const msg=`Hola ${String(r.NOMBRE||'').split(' ')[0]||''}, soy de Academia Norteamericana. Vimos tu solicitud desde el Campus y queremos ayudarte a continuar tu matrícula.`; window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer');};
   const mail=(r)=>{if(!r.CORREO){alert('Este prospecto no tiene correo registrado.');return;} const subject='Academia Norteamericana · Continuación de matrícula'; const body=`Hola ${r.NOMBRE||''},\n\nVimos tu solicitud desde el Campus. Queremos ayudarte a continuar con tu matrícula y activar tu acceso completo.\n\nSaludos,\nAcademia Norteamericana`; window.location.href=`mailto:${r.CORREO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;};
+  const Stat=({id,label,color})=><button type="button" onClick={()=>setEstado(id)} style={{border:estado===id?'2px solid '+color:'1px solid var(--line)',background:'#fff',borderRadius:14,padding:'12px 14px',textAlign:'left',minWidth:138,boxShadow:estado===id?'0 14px 30px rgba(8,28,56,.10)':'none'}}><span style={{display:'block',fontSize:10,fontWeight:900,letterSpacing:'.12em',color:'var(--ink-3)'}}>{label}</span><strong style={{fontSize:25,color}}>{Number(counts?.[id]||0)}</strong></button>;
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}>
-      <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em',color:'var(--an-granate)'}}>USUARIO GRATIS SIN REGISTRO</div><h2 style={{margin:'4px 0',fontFamily:'var(--f-serif)'}}>Solicitudes de contacto</h2><p style={{margin:0,fontSize:12.5,color:'var(--ink-3)'}}>Prospectos que llenaron formulario, entraron al Campus con su contraseña y quieren continuar matrícula.</p></div>
-      <div style={{display:'flex',gap:6,background:'#fff',border:'1px solid var(--line)',borderRadius:12,padding:4}}>{['PENDIENTE','RESPONDIDA','CERRADA'].map(e=><button type="button" key={e} className={estado===e?'btn btn-primary':'btn btn-ghost'} onClick={()=>setEstado(e)}>{e}</button>)}</div>
+      <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.14em',color:'var(--an-granate)'}}>USUARIO GRATIS SIN REGISTRO</div><h2 style={{margin:'4px 0',fontFamily:'var(--f-serif)'}}>Solicitudes de contacto</h2><p style={{margin:0,fontSize:12.5,color:'var(--ink-3)'}}>Bandeja comercial para prospectos que entraron al Campus sin matrícula activa.</p></div>
+      <button type="button" className="btn btn-ghost" onClick={load} disabled={loading}>Actualizar</button>
     </div>
+    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:14}}><Stat id="PENDIENTE" label="Sin contestar" color="#991B1B"/><Stat id="EN_GESTION" label="En gestión" color="#8A5A00"/><Stat id="RESPONDIDA" label="Respondidas" color="#166534"/><Stat id="CONVERTIDA" label="Convertidas" color="#0C4F86"/><Stat id="CERRADA" label="Cerradas" color="#40516A"/></div>
     {error&&<div style={{padding:12,background:'#FDECEA',color:'#991B1B',borderRadius:10,marginBottom:10}}>{error}</div>}
-    {loading?<div className="card" style={{padding:20}}>Cargando usuarios gratis…</div>:!rows.length?<div className="card" style={{textAlign:'center',padding:34}}>No hay solicitudes en este estado.</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{rows.map(r=>{const st=String(r.ESTADO||'PENDIENTE').toUpperCase();return <div className="card" key={r.ID} style={{padding:16,border:st==='PENDIENTE'?'2px solid #DA291C':'1px solid var(--line)'}}>
+    {loading?<div className="card" style={{padding:20}}>Cargando usuarios gratis…</div>:!rows.length?<div className="card" style={{textAlign:'center',padding:34}}>No hay solicitudes en este estado.</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{rows.map(r=>{const st=String(r.ESTADO||'PENDIENTE').toUpperCase();const [,fg,bg,desc]=freeUserEstadoMetaF984(st);return <div className="card" key={r.ID} style={{padding:16,border:st==='PENDIENTE'?'2px solid #DA291C':'1px solid var(--line)'}}>
       <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'start'}}>
-        <div><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><b style={{fontSize:15}}>{r.NOMBRE||'Prospecto'}</b><span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>{r.CEDULA||'sin cédula'}</span>{st==='PENDIENTE'&&<span style={{padding:'3px 8px',borderRadius:999,background:'#FDECEA',color:'#991B1B',fontSize:10,fontWeight:900}}>SIN CONTESTAR</span>}</div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:4}}>{r.CORREO||'sin correo'} · {r.TELEFONO||'sin teléfono'} · Etapa: {r.PROSPECTO_ETAPA||'Lead'} · Asesor: {r.ASESOR_REF||'—'}</div></div>
-        <span style={{padding:'4px 9px',borderRadius:999,background:st==='PENDIENTE'?'#FDECEA':'#EEF2F7',color:st==='PENDIENTE'?'#991B1B':'#40516A',fontSize:10,fontWeight:900}}>{st}</span>
+        <div><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><b style={{fontSize:15}}>{r.NOMBRE||'Prospecto'}</b><span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>{r.CEDULA||'sin cédula'}</span>{st==='PENDIENTE'&&<span style={{padding:'3px 8px',borderRadius:999,background:'#FDECEA',color:'#991B1B',fontSize:10,fontWeight:900}}>SIN CONTESTAR</span>}</div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:4}}>{r.CORREO||'sin correo'} · {r.TELEFONO||'sin teléfono'} · Etapa: {r.PROSPECTO_ETAPA||'Lead'} · Responsable: {r.RESPONSABLE||r.ATENDIDO_POR||'—'}</div></div>
+        <FreeUserEstadoPillF984 estado={st}/>
       </div>
-      <div style={{marginTop:10,padding:11,borderRadius:12,background:'#F8FAFE',fontSize:12.5,lineHeight:1.55}}><b>Mensaje:</b> {r.MENSAJE||'—'}{r.RESPUESTA&&<div style={{marginTop:6,color:'#166534'}}><b>Respuesta:</b> {r.RESPUESTA}</div>}</div>
-      <div style={{display:'flex',justifyContent:'flex-end',gap:7,marginTop:10,flexWrap:'wrap'}}><button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>openWa(r)}>WhatsApp</button><button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>mail(r)}>Correo</button>{st==='PENDIENTE'&&<button type="button" className="btn btn-primary" disabled={!!busy} onClick={()=>resolver(r,'RESPONDIDA')}>Marcar respondida</button>}{st!=='CERRADA'&&<button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>resolver(r,'CERRADA')}>Cerrar</button>}</div>
+      <div style={{marginTop:10,padding:11,borderRadius:12,background:'#F8FAFE',fontSize:12.5,lineHeight:1.55}}><b>Mensaje:</b> {r.MENSAJE||'—'}<div style={{marginTop:6,display:'inline-flex',padding:'4px 8px',borderRadius:999,background:bg,color:fg,fontSize:10,fontWeight:900}}>{desc}</div>{(r.ULTIMA_NOTA||r.RESPUESTA)&&<div style={{marginTop:8,color:'#166534'}}><b>Última nota:</b> {r.ULTIMA_NOTA||r.RESPUESTA}</div>}{r.HISTORIAL&&<details style={{marginTop:8}}><summary style={{cursor:'pointer',fontWeight:850}}>Ver historial</summary><pre style={{whiteSpace:'pre-wrap',fontFamily:'var(--f-mono)',fontSize:11,background:'#fff',border:'1px solid var(--line)',borderRadius:10,padding:10,marginTop:7}}>{r.HISTORIAL}</pre></details>}</div>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:7,marginTop:10,flexWrap:'wrap'}}><button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>openWa(r)}>WhatsApp</button><button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>mail(r)}>Correo</button>{st==='PENDIENTE'&&<button type="button" className="btn btn-primary" disabled={!!busy} onClick={()=>quick(r,'EN_GESTION')}>Tomar gestión</button>}{['PENDIENTE','EN_GESTION'].includes(st)&&<button type="button" className="btn btn-primary" disabled={!!busy} onClick={()=>setModal({row:r,estado:'RESPONDIDA'})}>Marcar respondida</button>}{['PENDIENTE','EN_GESTION','RESPONDIDA'].includes(st)&&<button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>setModal({row:r,estado:'CONVERTIDA'})}>Convertida</button>}{st!=='CERRADA'&&<button type="button" className="btn btn-ghost" disabled={!!busy} onClick={()=>setModal({row:r,estado:'CERRADA'})}>Cerrar</button>}</div>
     </div>})}</div>}
+    <FreeUserActionNoteF984 open={!!modal} estado={modal?.estado} nombre={modal?.row?.NOMBRE} busy={!!busy} onClose={()=>setModal(null)} onSubmit={(nota)=>resolver(modal.row,modal.estado,nota)} />
   </div>;
 }
 
 function SolicitudesUnificadasView({ onNavigate }){
   const [tab,setTab]=React.useState('MATRICULAS');
   const [freeCount,setFreeCount]=React.useState(0);
-  React.useEffect(()=>{let cancel=false;f92Post('freeUserListarSolicitudes',{estado:'PENDIENTE',limit:1}).then(r=>{if(!cancel)setFreeCount(r.pendientes??r.total??0);}).catch(()=>{});return()=>{cancel=true};},[]);
+  React.useEffect(()=>{let cancel=false;f92Post('freeUserListarSolicitudes',{estado:'PENDIENTE',limit:1}).then(r=>{if(!cancel)setFreeCount(r.pendientes??r.counts?.PENDIENTE??r.total??0);}).catch(()=>{});return()=>{cancel=true};},[]);
   const tabs=[['GRATIS','Usuario gratis',freeCount],['MATRICULAS','Matrículas'],['CUOTAS','Cuotas'],['EXAMENES','Exámenes'],['CAMBIOS','Cambios de clase · Docente']];
   return <div data-screen-label="Admin · Solicitudes" style={{padding:'28px 32px 60px',maxWidth:1280,margin:'0 auto'}}>
     <div style={{fontSize:10,fontWeight:900,letterSpacing:'.15em',color:'var(--an-granate)'}}>CENTRO DE GESTIONES</div><h1 style={{fontFamily:'var(--f-serif)',fontSize:35,margin:'4px 0 5px'}}>Solicitudes</h1><p style={{margin:'0 0 18px',fontSize:13,color:'var(--ink-3)'}}>Una sola bandeja, separada por tipo y responsable.</p>
