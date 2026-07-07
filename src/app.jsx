@@ -277,7 +277,7 @@ async function appPostF91(fn, payload = {}, timeoutMs = 45000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(window.APPS_SCRIPT_URL, {
+    const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
       method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({ fn, token, ...payload }), signal:ctrl.signal,
     });
