@@ -1,3 +1,4 @@
+// F98.4-Z6-CS6 · Sidebar con bandeja interna de prematrículas
 // F98.4-Z6-CS2 · Sidebar prematrícula unificada
 // F98.4-Z6-P · navegación Super Admin agrupada por operación
 // F98.4-Z6-F · menú docente reordenado y renombrado
@@ -454,7 +455,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     };
   }, [rolEfectivo]);
 
-  const solicitudesBadge = (Number(pendientesPago || 0) + Number(pendientesGratis || 0)) || null;
+  const solicitudesBadge = Number(pendientesPago || 0) || null;
+  const prematriculasBadge = Number(pendientesGratis || 0) || null;
   const esUsuarioGratis = sidebarEsUsuarioGratisF984Z6CS(usr, role);
 
   // F98.4-A: menú del estudiante por proceso académico, no por archivo interno.
@@ -544,6 +546,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       label: 'Operación administrativa',
       items: [
         ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
+        { id: 'prematriculas', label: 'Prematrículas', icon: 'card', badge: prematriculasBadge },
         { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: solicitudesBadge },
       ],
     },

@@ -1,4 +1,5 @@
-// F98.4-Z6-CS2 · Prematrícula pulida + Academia Play V1.5 visual
+// F98.4-Z6-CS7 · Conexión ventas/admisiones para prematrículas
+// F98.4-Z6-CS3 · Academia Play V1.6 catálogo móvil
 // F98.4-Z6-CR · Hotfix guardado de evidencia técnica
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
@@ -53,6 +54,7 @@ function ProximamenteView({ title }) {
 }
 
 
+// F98.4-Z6-CS7 · Bandeja interna conectada con ventas/admisiones.
 // F96.5-UX-G · rutas diferidas por pantalla + validación estática de dependencias.
 function LazyRoute({ title, component, files, ...props }) {
   if (typeof LazyModuleView !== 'function') return <ModuloNoDisponibleView titulo={title || component} />;
@@ -60,8 +62,9 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS2_PREMAT'],
-  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS2_PLAY15'],
+  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7_GESTIONES'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS3_PLAY16'],
+  free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7_VENTAS'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
@@ -927,7 +930,7 @@ function App() {
         initialTab={studentDocsTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('documentos_ayuda', tab)} />,
       academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
-    // CS2: usuario gratis solo puede montar Mi Campus prematrícula y Academia Play.
+    // CS3: usuario gratis solo puede montar Mi Campus prematrícula y Academia Play.
     // Esto evita que una ruta vieja o hash manual cargue módulos que consultan datos académicos reales.
     content = esProspectoGratis && !['dashboard','academia_play'].includes(active)
       ? map.dashboard
@@ -983,6 +986,8 @@ function App() {
       examen_oral: <LazyRoute title="Examen oral" component="ExamenOralView" files={F96_LAZY.student_modules} context={pendingOral} onNavigate={navigateTo} />,
       suspensiones: <LazyRoute title="Solicitudes administrativas" component="SolicitudesUnificadasView" files={F96_LAZY.solicitudes} onNavigate={navigateTo} />,
       solicitudes:  <LazyRoute title="Solicitudes administrativas" component="SolicitudesUnificadasView" files={F96_LAZY.solicitudes} onNavigate={navigateTo} />,
+      prematriculas: <LazyRoute title="Prematrículas" component="FreeUserRequestsAdminView" files={F96_LAZY.free_user_admin} toast={toast} />,
+      solicitudes_prematricula: <LazyRoute title="Prematrículas" component="FreeUserRequestsAdminView" files={F96_LAZY.free_user_admin} toast={toast} />,
       grupos:       <LazyRoute title="Grupos" component="AdminGruposView" files={F96_LAZY.admin_views} />,
       estudiantes:  <LazyRoute title="Estudiantes" component="AdminEstudiantesView" files={F96_LAZY.admin_students} onNavigate={navigateTo} grupoInicial={pendingGrupo} />,
       cronograma_grupo: <LazyRoute title="Cronograma académico" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol={rolReal} onNavigate={navigateTo} />,

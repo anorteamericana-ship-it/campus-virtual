@@ -1,6 +1,6 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS2 · Prematrícula visual pulida dentro del portal estudiante real.
-// Usuario gratis: no crea matrícula, no genera código y no escribe en DATOS/ESTATUS.
+// F98.4-Z6-CS5 · Puente comercial de prematrícula.
+// Usuario gratis: crea/consulta solicitudes existentes, no genera matrícula/código y no escribe en DATOS/ESTATUS.
 
 function freeStudentToken(){
   try{return (window.getSesion&&window.getSesion()||{}).token||'';}catch(_){return'';}
@@ -28,6 +28,12 @@ function freeStudentFmtDate(v){
   const d=v instanceof Date?v:new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');
   return Number.isNaN(d.getTime())?raw:d.toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
 }
+function freeStudentDateMs(v){
+  if(!v)return 0;
+  const raw=String(v||'');
+  const d=v instanceof Date?v:new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');
+  return Number.isNaN(d.getTime())?0:d.getTime();
+}
 function freeStudentFirstName(nombre){
   const s=String(nombre||'').trim();
   return (s.split(/\s+/)[0]||'estudiante').toUpperCase();
@@ -36,6 +42,67 @@ function freeStudentClean(v, fallback='—'){
   const s=String(v||'').trim();
   return s || fallback;
 }
+function freeStudentSolicitudTipoLabel(tipo){
+  const meta=FREE_REQUEST_TYPES.find(t=>t.id===String(tipo||'').toUpperCase());
+  return meta?meta.title:(tipo||'Solicitud');
+}
+function freeStudentNormalizeRequests(list){
+  return (Array.isArray(list)?list:[]).slice().sort((a,b)=>freeStudentDateMs(b.FECHA_ISO||b.FECHA)-freeStudentDateMs(a.FECHA_ISO||a.FECHA));
+}
+
+const FREE_REQUEST_TYPES=[
+  {
+    id:'QUIERO_MATRICULARME',
+    title:'Matricularme',
+    desc:'activar proceso',
+    channel:'Admisiones',
+    priority:'Alta',
+    promise:'Grupo, inicio, modalidad y pasos de activación.',
+    needs:'Confirmar nombre, teléfono, correo y horario de preferencia.',
+    template:'Hola, quiero confirmar mi matrícula. Por favor indíquenme el grupo disponible, fecha de inicio, horario, modalidad, precio y próximos pasos para activar mi cuenta de estudiante.',
+  },
+  {
+    id:'CONSULTAR_HORARIO',
+    title:'Horarios',
+    desc:'ver opciones',
+    channel:'Admisiones',
+    priority:'Media',
+    promise:'Opciones disponibles antes de matricular.',
+    needs:'Indicar si prefiere noche, mañana, sábado o intensivo.',
+    template:'Hola, quiero consultar qué horarios tienen disponibles antes de activar mi matrícula. Me interesa saber días, hora, fecha de inicio y cupos.',
+  },
+  {
+    id:'FINANCIAMIENTO',
+    title:'Pagos / CONAPE',
+    desc:'orientación',
+    channel:'Financiamiento',
+    priority:'Media',
+    promise:'Opciones de pago, financiamiento o CONAPE.',
+    needs:'Indicar si desea pago directo, arreglo, beca o CONAPE.',
+    template:'Hola, quiero que me orienten con opciones de pago, financiamiento o CONAPE antes de matricular. Necesito saber requisitos, montos y próximos pasos.',
+  },
+  {
+    id:'CORREGIR_DATOS',
+    title:'Mis datos',
+    desc:'corregir perfil',
+    channel:'Registro',
+    priority:'Baja',
+    promise:'Corrección de correo, teléfono o datos básicos de contacto.',
+    needs:'Escribir claramente el dato actual y el dato correcto.',
+    template:'Hola, quiero corregir o confirmar mis datos personales antes de activar mi matrícula. El dato que deseo revisar es:',
+  },
+  {
+    id:'HABLAR_ASESOR',
+    title:'Hablar con asesor',
+    desc:'duda general',
+    channel:'Servicio',
+    priority:'Media',
+    promise:'Aclaración general antes de matricular.',
+    needs:'Explicar la duda concreta para evitar ida y vuelta.',
+    template:'Hola, necesito hablar con un asesor porque tengo una duda antes de matricular. Mi consulta es:',
+  },
+];
+
 function FreeStatusPill({estado}){
   const k=String(estado||'PENDIENTE').toUpperCase();
   const map={
@@ -88,10 +155,11 @@ function PrematTimeline({estado}){
     <div className="premat-timeline-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={pct} aria-label="Avance de prematrícula"><i style={{width:pct+'%'}} /></div>
   </div>;
 }
-function PrematQuickAction({active,title,desc,onClick}){
+function PrematQuickAction({active,title,desc,onClick,priority}){
   return <button type="button" className={`premat-quick-action ${active?'active':''}`} onClick={onClick}>
     <strong>{title}</strong>
     <small>{desc}</small>
+    {priority&&<em>{priority}</em>}
   </button>;
 }
 function PrematRuleCard({tone='neutral',title,desc}){
@@ -103,6 +171,65 @@ function PrematRuleCard({tone='neutral',title,desc}){
 function PrematMiniStatus({label,value,tone='neutral'}){
   return <div className={`premat-mini-status ${tone}`}><span>{label}</span><strong>{value}</strong></div>;
 }
+function PrematGuidanceCard({label,value,desc,tone='neutral'}){
+  return <div className={`premat-guidance-card ${tone}`}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+    <small>{desc}</small>
+  </div>;
+}
+function PrematChecklistItem({ok,text}){
+  return <li className={ok?'ok':''}><span>{ok?'✓':'•'}</span>{text}</li>;
+}
+function PrematRequestRow({solicitud,compact}){
+  const estado=String(solicitud?.ESTADO||'PENDIENTE').toUpperCase();
+  return <div className={`premat-request-row ${compact?'compact':''}`}>
+    <div>
+      <strong>{freeStudentSolicitudTipoLabel(solicitud?.TIPO)}</strong>
+      <small>{freeStudentFmtDate(solicitud?.FECHA_ISO||solicitud?.FECHA)} · {solicitud?.MENSAJE||''}</small>
+      {solicitud?.RESPUESTA&&<em>Respuesta: {solicitud.RESPUESTA}</em>}
+    </div>
+    <FreeStatusPill estado={estado}/>
+  </div>;
+}
+
+function freeStudentBuildAdvisorPack({p,usuario,programa,grupoTentativo,requestMeta,mensaje,solicitudes}){
+  const nombre=freeStudentClean(p.nombre||usuario?.nombre,'Sin nombre');
+  const cedula=freeStudentClean(p.cedula||usuario?.cedula,'Sin cédula');
+  const correo=freeStudentClean(p.correo||usuario?.correo,'Sin correo');
+  const telefono=freeStudentClean(p.telefono||usuario?.telefono,'Sin teléfono');
+  const etapa=freeStudentClean(p.etapa||usuario?.etapa,'Prematrícula');
+  const ultima=solicitudes?.[0];
+  const ultimaTxt=ultima?`${freeStudentSolicitudTipoLabel(ultima.TIPO)} · ${freeStudentFmtDate(ultima.FECHA_ISO||ultima.FECHA)} · ${String(ultima.ESTADO||'PENDIENTE').toUpperCase()}`:'Sin solicitudes previas';
+  return [
+    'FICHA PREMATRÍCULA · ACADEMIA NORTEAMERICANA',
+    `Nombre: ${nombre}`,
+    `Cédula: ${cedula}`,
+    `Teléfono: ${telefono}`,
+    `Correo: ${correo}`,
+    `Programa de interés: ${freeStudentClean(programa,'Inglés Conversacional')}`,
+    `Grupo tentativo: ${grupoTentativo||'Por asignar'}`,
+    `Estado comercial: ${etapa}`,
+    `Canal sugerido: ${requestMeta.channel}`,
+    `Motivo actual: ${requestMeta.title}`,
+    `Prioridad: ${requestMeta.priority}`,
+    `Última gestión: ${ultimaTxt}`,
+    '',
+    'Mensaje del estudiante:',
+    String(mensaje||'').trim()||'Sin mensaje escrito.',
+    '',
+    'Regla operativa: esta ficha NO activa matrícula, NO crea código académico y NO modifica DATOS/ESTATUS. La conversión debe hacerla admisiones de forma manual.'
+  ].join('\n');
+}
+function PrematPipelineNode({title,desc,tone='neutral',done,current}){
+  return <div className={`premat-pipeline-node ${tone} ${done?'done':''} ${current?'current':''}`}>
+    <span>{done?'✓':current?'→':'•'}</span>
+    <div><strong>{title}</strong><small>{desc}</small></div>
+  </div>;
+}
+function PrematHandoffField({label,value,tone='neutral'}){
+  return <div className={`premat-handoff-field ${tone}`}><span>{label}</span><strong>{value}</strong></div>;
+}
 
 function FreeProspectPortal({ usuario, onNavigate }){
   const [perfil,setPerfil]=React.useState(null);
@@ -111,28 +238,36 @@ function FreeProspectPortal({ usuario, onNavigate }){
   const [error,setError]=React.useState('');
   const [ok,setOk]=React.useState('');
   const [contactoTipo,setContactoTipo]=React.useState('QUIERO_MATRICULARME');
-  const [mensaje,setMensaje]=React.useState('Hola, quiero confirmar mi matrícula y que me contacten para conocer mi grupo, horario y próximos pasos.');
+  const [mensaje,setMensaje]=React.useState(FREE_REQUEST_TYPES[0].template);
   const [busy,setBusy]=React.useState(false);
   const [lastAction,setLastAction]=React.useState('');
+  const [copied,setCopied]=React.useState(false);
+  const [fichaCopied,setFichaCopied]=React.useState(false);
   const load=React.useCallback(()=>{
     setLoading(true);setError('');
     freeStudentPost('freeUserMiPerfil')
-      .then(r=>{setPerfil(r.perfil||{});setSolicitudes(Array.isArray(r.solicitudes)?r.solicitudes:[]);})
+      .then(r=>{setPerfil(r.perfil||{});setSolicitudes(freeStudentNormalizeRequests(r.solicitudes));})
       .catch(e=>{
         setError(e.message);
         setPerfil({nombre:usuario?.nombre,cedula:usuario?.cedula,correo:usuario?.correo,telefono:usuario?.telefono,etapa:usuario?.etapa||'Lead',programa:usuario?.programa});
+        setSolicitudes([]);
       })
       .finally(()=>setLoading(false));
   },[usuario]);
   React.useEffect(()=>{load();},[load]);
 
-  const templates={
-    QUIERO_MATRICULARME:'Hola, quiero confirmar mi matrícula y que me contacten para conocer mi grupo, horario y próximos pasos.',
-    CONSULTAR_HORARIO:'Hola, quiero consultar qué horarios tienen disponibles antes de activar mi matrícula.',
-    FINANCIAMIENTO:'Hola, quiero que me orienten con opciones de pago, financiamiento o CONAPE antes de matricular.',
-    CORREGIR_DATOS:'Hola, quiero corregir o confirmar mis datos personales antes de activar mi matrícula.',
+  const requestMeta=FREE_REQUEST_TYPES.find(t=>t.id===contactoTipo)||FREE_REQUEST_TYPES[0];
+  const elegirTipo=(tipo)=>{
+    const meta=FREE_REQUEST_TYPES.find(t=>t.id===tipo)||FREE_REQUEST_TYPES[0];
+    setContactoTipo(meta.id);setMensaje(meta.template);setCopied(false);setFichaCopied(false);
   };
-  const elegirTipo=(tipo)=>{setContactoTipo(tipo);setMensaje(templates[tipo]||templates.QUIERO_MATRICULARME);};
+  const copiarMensaje=async()=>{
+    setCopied(false);setLastAction('Copiando mensaje…');
+    try{
+      if(navigator?.clipboard?.writeText){await navigator.clipboard.writeText(mensaje);setCopied(true);setLastAction('Mensaje copiado.');}
+      else {setLastAction('Copiado no disponible en este navegador.');}
+    }catch(_){setLastAction('No se pudo copiar el mensaje.');}
+  };
   const enviar=async(tipo=contactoTipo,texto=mensaje)=>{
     setBusy(true);setError('');setOk('');setLastAction('Enviando solicitud…');
     try{
@@ -152,14 +287,33 @@ function FreeProspectPortal({ usuario, onNavigate }){
   const ultimaSolicitud=solicitudes[0]||null;
   const estadoSolicitud=String(ultimaSolicitud?.ESTADO||'PENDIENTE').toUpperCase();
   const pendientes=solicitudes.filter(s=>String(s.ESTADO||'').toUpperCase()==='PENDIENTE');
+  const pendienteMismoTipo=pendientes.find(s=>String(s.TIPO||'').toUpperCase()===contactoTipo);
   const haySolicitudPendiente=pendientes.length>0;
+  const respondidas=solicitudes.filter(s=>String(s.ESTADO||'').toUpperCase()==='RESPONDIDA');
   const ultimaFecha=ultimaSolicitud?freeStudentFmtDate(ultimaSolicitud.FECHA_ISO||ultimaSolicitud.FECHA):'Sin solicitudes';
+  const nombreOk=!!(p.nombre||usuario?.nombre);
+  const correoOk=!!(p.correo||usuario?.correo);
+  const telefonoOk=!!(p.telefono||usuario?.telefono);
+  const readiness=Math.round(([nombreOk,correoOk,telefonoOk,!!programa].filter(Boolean).length/4)*100);
+  const seguimientoEstado=haySolicitudPendiente?'En cola manual':respondidas.length?'Con respuesta':'Sin solicitud activa';
+  const asesorPack=freeStudentBuildAdvisorPack({p,usuario,programa,grupoTentativo,requestMeta,mensaje,solicitudes});
+  const copiarFicha=async()=>{
+    setFichaCopied(false);setLastAction('Copiando ficha comercial…');
+    try{
+      if(navigator?.clipboard?.writeText){await navigator.clipboard.writeText(asesorPack);setFichaCopied(true);setLastAction('Ficha comercial copiada.');}
+      else {setLastAction('Copiado no disponible en este navegador.');}
+    }catch(_){setLastAction('No se pudo copiar la ficha comercial.');}
+  };
+  const prepararSolicitud=()=>{
+    elegirTipo('QUIERO_MATRICULARME');
+    setTimeout(()=>document.getElementById('premat-solicitud')?.scrollIntoView({behavior:'smooth',block:'center'}),50);
+  };
   const go=(id)=>{ if(onNavigate) onNavigate(id); };
-  return <div className="student-page premat-page" data-screen-label="Estudiante · Prematrícula unificada CS2">
+  return <div className="student-page premat-page" data-screen-label="Estudiante · Prematrícula unificada CS5">
     {typeof PageHeader==='function'?<PageHeader
       kicker="Mi Campus · Prematrícula"
       title={<>Bienvenida, <em>{freeStudentFirstName(nombre)}</em></>}
-      sub="Este es el mismo portal estudiante, en modo prematrícula. Todavía no hay matrícula oficial, grupo activo, notas ni certificados. Sí podés solicitar contacto y practicar gratis."
+      sub="Este es el mismo portal estudiante, en modo prematrícula. Todavía no hay matrícula oficial, grupo activo, notas ni certificados. Sí podés solicitar contacto, copiar una ficha para asesoría y practicar gratis."
       right={<button type="button" className="btn btn-ghost" onClick={load} disabled={loading}>Actualizar</button>}
     />:<div className="premat-fallback-title"><h1>Bienvenida, {freeStudentFirstName(nombre)}</h1></div>}
 
@@ -171,11 +325,11 @@ function FreeProspectPortal({ usuario, onNavigate }){
       <div className="premat-hero-main">
         <span className="premat-kicker">Usuario gratis · post-formulario</span>
         <h2>Tu Campus ya existe, tu matrícula todavía no</h2>
-        <p>Esta vista evita una confusión peligrosa: ver el portal no significa estar matriculado. Los módulos oficiales se desbloquean únicamente cuando admisiones active la matrícula real.</p>
+        <p>Esta vista evita una confusión peligrosa: ver el portal no significa estar matriculado. CS5 ordena el seguimiento comercial, pero la conversión sigue siendo manual por admisiones.</p>
         <div className="premat-hero-facts">
           <span><b>Programa de interés</b>{freeStudentClean(programa)}</span>
           <span><b>Grupo</b>{grupoTentativo||'Por asignar'}</span>
-          <span><b>Última gestión</b>{ultimaFecha}</span>
+          <span><b>Última gestión</b>{ultimaFecha}</span><span><b>Seguimiento</b>{seguimientoEstado}</span>
         </div>
         <div className="premat-hero-actions">
           <button type="button" className="btn btn-primary" onClick={()=>document.getElementById('premat-solicitud')?.scrollIntoView({behavior:'smooth',block:'center'})}>Solicitar contacto</button>
@@ -201,7 +355,15 @@ function FreeProspectPortal({ usuario, onNavigate }){
       <PrematMetric icon="profile" label="Perfil" value="Activo" sub="acceso con contraseña" tone="ok" />
       <PrematMetric icon="graduation" label="Matrícula" value="Pendiente" sub="admisiones debe activar" tone="warn" />
       <PrematMetric icon="calendar" label="Grupo" value={grupoTentativo?'Tentativo':'Por asignar'} sub="no oficial todavía" tone="neutral" />
-      <PrematMetric icon="play" label="Academia Play" value="Gratis" sub="3 juegos abiertos" tone="info" />
+      <PrematMetric icon="play" label="Academia Play" value="Gratis" sub="5 juegos abiertos" tone="info" />
+    </section>
+
+    <section className="premat-gestiones-overview" aria-label="Resumen del Centro de gestiones">
+      <PrematGuidanceCard tone="info" label="Bandeja" value={`${solicitudes.length} gestión${solicitudes.length===1?'':'es'}`} desc="Solicitudes creadas desde prematrícula." />
+      <PrematGuidanceCard tone={pendientes.length?'warn':'ok'} label="Pendientes" value={String(pendientes.length)} desc={pendientes.length?'Hay solicitudes sin respuesta. Evitá duplicar si es el mismo tema.':'No hay gestiones pendientes.'} />
+      <PrematGuidanceCard tone="ok" label="Respondidas" value={String(respondidas.length)} desc="Respuestas recibidas desde admisiones o gestión." />
+      <PrematGuidanceCard tone="neutral" label="Canal sugerido" value={requestMeta.channel} desc={requestMeta.promise} />
+      <PrematGuidanceCard tone={readiness>=75?'ok':'warn'} label="Ficha comercial" value={`${readiness}%`} desc="Datos mínimos listos para que admisiones contacte sin adivinar." />
     </section>
 
     <div className="premat-layout">
@@ -227,14 +389,26 @@ function FreeProspectPortal({ usuario, onNavigate }){
           </div>
         </PrematPanel>
 
+        <PrematPanel kicker="Seguimiento comercial" title="Flujo recomendado antes de convertir">
+          <div className="premat-pipeline">
+            <PrematPipelineNode done title="Lead recibido" desc="El usuario ya puede entrar como prematrícula." tone="ok" />
+            <PrematPipelineNode done={solicitudes.length>0} current={!solicitudes.length} title="Solicitud clasificada" desc="Debe elegir matrícula, horarios, pagos/CONAPE, datos o asesor." tone={solicitudes.length>0?'ok':'warn'} />
+            <PrematPipelineNode done={respondidas.length>0} current={haySolicitudPendiente} title="Asesor contacta" desc="La atención sigue siendo manual; CS5 solo ordena la ficha." tone={respondidas.length>0?'ok':haySolicitudPendiente?'info':'neutral'} />
+            <PrematPipelineNode done={estadoSolicitud==='CONVERTIDA'} title="Conversión real" desc="Solo admisiones puede activar matrícula, código, grupo y portal completo." tone={estadoSolicitud==='CONVERTIDA'?'ok':'neutral'} />
+          </div>
+          <div className="premat-note subtle">No conecté esto a ventas automáticamente porque sería una mala práctica sin definir bandeja, responsables, SLA y cierre de solicitudes.</div>
+        </PrematPanel>
+
         <PrematPanel kicker="Academia Play gratis" title="Practicá mientras esperás" action={<button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Abrir juegos</button>}>
           <div className="premat-games">
             <PrematGameCard title="Vocabulary Sprint" tag="Gratis" desc="Vocabulario básico en rondas cortas." onClick={()=>go('academia_play')} />
             <PrematGameCard title="Word Match" tag="Gratis" desc="Uní palabras con su significado." onClick={()=>go('academia_play')} />
             <PrematGameCard title="Daily Challenge" tag="Gratis" desc="Reto rápido de práctica diaria." onClick={()=>go('academia_play')} />
+            <PrematGameCard title="Phrase Builder" tag="Gratis" desc="Ordená frases útiles de clase." onClick={()=>go('academia_play')} />
+            <PrematGameCard title="Survival English" tag="Gratis" desc="Situaciones reales para empezar." onClick={()=>go('academia_play')} />
             <PrematGameCard title="Live Trivia" tag="Matrícula" desc="Juego en vivo activado por docente." locked />
           </div>
-          <p className="premat-disclaimer">Academia Play en CS2 sigue siendo demo/frontend: no guarda intentos, no genera notas y no sustituye clases ni certificaciones.</p>
+          <p className="premat-disclaimer">Academia Play en CS5 sigue siendo demo/frontend: no guarda intentos, no genera notas y no sustituye clases ni certificaciones.</p>
         </PrematPanel>
 
         <PrematPanel kicker="Límites claros" title="Qué puede ver Camila antes de matricular">
@@ -247,19 +421,56 @@ function FreeProspectPortal({ usuario, onNavigate }){
       </div>
 
       <aside className="premat-side-col">
-        <PrematPanel kicker="Centro de gestiones" title="Solicitar contacto">
+        <PrematPanel kicker="Ventas / admisiones" title="Ficha para seguimiento manual">
+          <div className="premat-handoff-grid">
+            <PrematHandoffField label="Canal" value={requestMeta.channel} tone="info" />
+            <PrematHandoffField label="Prioridad" value={requestMeta.priority} tone={requestMeta.priority==='Alta'?'warn':'neutral'} />
+            <PrematHandoffField label="Datos" value={`${readiness}%`} tone={readiness>=75?'ok':'warn'} />
+            <PrematHandoffField label="Estado" value={seguimientoEstado} tone={haySolicitudPendiente?'warn':'neutral'} />
+          </div>
+          <div className="premat-handoff-preview" aria-label="Ficha comercial para copiar"><pre>{asesorPack}</pre></div>
+          <div className="premat-request-actions">
+            <button type="button" className="btn btn-ghost" onClick={copiarFicha}>{fichaCopied?'Ficha copiada':'Copiar ficha'}</button>
+            <button type="button" className="btn btn-primary" onClick={prepararSolicitud}>Preparar matrícula</button>
+          </div>
+          <div className="premat-note subtle">Esta ficha es puente operativo. No envía WhatsApp, no crea tarea en ventas y no convierte al estudiante.</div>
+        </PrematPanel>
+
+        <PrematPanel kicker="Centro de gestiones" title="Solicitud inteligente">
           <div id="premat-solicitud" className="premat-request-box">
-            <p>Elegí el motivo y enviá una solicitud. Si ya hay una pendiente, no conviene duplicarla: usá el mensaje como seguimiento concreto.</p>
+            <p>Elegí el motivo correcto. Esto evita ruido operativo: una solicitud mal clasificada hace que admisiones pierda tiempo y que el estudiante espere más.</p>
             <div className="premat-quick-actions" role="group" aria-label="Tipo de solicitud">
-              <PrematQuickAction active={contactoTipo==='QUIERO_MATRICULARME'} title="Matricularme" desc="activar proceso" onClick={()=>elegirTipo('QUIERO_MATRICULARME')} />
-              <PrematQuickAction active={contactoTipo==='CONSULTAR_HORARIO'} title="Horarios" desc="ver opciones" onClick={()=>elegirTipo('CONSULTAR_HORARIO')} />
-              <PrematQuickAction active={contactoTipo==='FINANCIAMIENTO'} title="Pagos / CONAPE" desc="orientación" onClick={()=>elegirTipo('FINANCIAMIENTO')} />
-              <PrematQuickAction active={contactoTipo==='CORREGIR_DATOS'} title="Mis datos" desc="corregir perfil" onClick={()=>elegirTipo('CORREGIR_DATOS')} />
+              {FREE_REQUEST_TYPES.map(t=><PrematQuickAction key={t.id} active={contactoTipo===t.id} title={t.title} desc={t.desc} priority={t.priority} onClick={()=>elegirTipo(t.id)} />)}
             </div>
-            <textarea value={mensaje} onChange={e=>setMensaje(e.target.value)} rows="5" maxLength="700" aria-label="Mensaje para admisiones" />
-            <button type="button" className="btn btn-primary" disabled={busy||!mensaje.trim()} onClick={()=>enviar()}>{busy?'Enviando…':haySolicitudPendiente?'Enviar seguimiento':'Enviar solicitud'}</button>
+            <div className="premat-selected-request">
+              <span>Canal: <b>{requestMeta.channel}</b></span>
+              <span>Necesita: {requestMeta.needs}</span>
+            </div>
+            {pendienteMismoTipo&&<div className="premat-duplicate-warning"><strong>Ya existe una solicitud pendiente de este tipo.</strong><small>Podés enviar otra, pero no conviene duplicar si no agrega información nueva.</small></div>}
+            <textarea value={mensaje} onChange={e=>{setMensaje(e.target.value);setCopied(false);setFichaCopied(false);}} rows="6" maxLength="700" aria-label="Mensaje para admisiones" />
+            <div className="premat-request-actions">
+              <button type="button" className="btn btn-ghost" disabled={!mensaje.trim()} onClick={copiarMensaje}>{copied?'Copiado':'Copiar mensaje'}</button>
+              <button type="button" className="btn btn-primary" disabled={busy||!mensaje.trim()} onClick={()=>enviar()}>{busy?'Enviando…':pendienteMismoTipo?'Enviar de todas formas':'Enviar solicitud'}</button>
+            </div>
             {haySolicitudPendiente&&<div className="premat-pending"><span />Tenés {pendientes.length} solicitud{pendientes.length===1?'':'es'} pendiente{pendientes.length===1?'':'s'}.</div>}
           </div>
+        </PrematPanel>
+
+        <PrematPanel kicker="Checklist" title="Antes de activar matrícula">
+          <ul className="premat-checklist">
+            <PrematChecklistItem ok={nombreOk} text="Nombre identificado en prematrícula." />
+            <PrematChecklistItem ok={correoOk} text="Correo disponible para notificaciones." />
+            <PrematChecklistItem ok={telefonoOk} text="Teléfono disponible para contacto." />
+            <PrematChecklistItem ok={!!grupoTentativo} text="Grupo tentativo definido." />
+            <PrematChecklistItem ok={estadoSolicitud==='CONVERTIDA'} text="Matrícula convertida por admisiones." />
+          </ul>
+          <div className="premat-note subtle">Este checklist no activa nada por sí solo; solo orienta al usuario gratis.</div>
+        </PrematPanel>
+
+        <PrematPanel kicker="Últimas gestiones" title="Bandeja reciente">
+          {!solicitudes.length?<div className="premat-empty">Todavía no hay gestiones registradas.</div>:<div className="premat-requests mini">
+            {solicitudes.slice(0,3).map((s,i)=><PrematRequestRow solicitud={s} compact key={s.ID||i}/>) }
+          </div>}
         </PrematPanel>
 
         <PrematPanel kicker="Módulos oficiales" title="Bloqueados hasta matrícula">
@@ -276,10 +487,7 @@ function FreeProspectPortal({ usuario, onNavigate }){
 
     <PrematPanel kicker="Historial" title="Solicitudes enviadas">
       {!solicitudes.length?<div className="premat-empty">Todavía no has enviado solicitudes.</div>:<div className="premat-requests">
-        {solicitudes.map((s,i)=><div className="premat-request-row" key={s.ID||i}>
-          <div><strong>{s.TIPO||'Solicitud'}</strong><small>{freeStudentFmtDate(s.FECHA_ISO||s.FECHA)} · {s.MENSAJE||''}</small>{s.RESPUESTA&&<em>Respuesta: {s.RESPUESTA}</em>}</div>
-          <FreeStatusPill estado={s.ESTADO}/>
-        </div>)}
+        {solicitudes.map((s,i)=><PrematRequestRow solicitud={s} key={s.ID||i}/>) }
       </div>}
     </PrematPanel>
   </div>;
