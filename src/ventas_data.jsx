@@ -484,7 +484,7 @@ async function generarDocumentoVentasSeguro({ cedula, codigo, nivel, tipo }) {
 }
 
 // ── Matrícula firmada: subir PDF al expediente y notificar ─────────────────
-async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre_archivo, mime_type, base64, enviar_correo = false, crear_alerta = false, email = '' }) {
+async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre_archivo, mime_type, base64, enviar_correo = false, crear_alerta = false, email = '', preview_test = false }) {
   return postVentasData('subirMatriculaFirmadaVentas', {
     cedula: cedula || '',
     codigo: codigo || '',
@@ -495,16 +495,18 @@ async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre
     enviar_correo,
     crear_alerta,
     email,
+    preview_test,
   });
 }
 
-async function notificarMatriculaFirmadaVentasSeguro({ cedula, codigo, canal, file_id = '', email = '' }) {
+async function notificarMatriculaFirmadaVentasSeguro({ cedula, codigo, canal, file_id = '', email = '', preview_test = false }) {
   return postVentasData('notificarMatriculaFirmadaVentas', {
     cedula: cedula || '',
     codigo: codigo || '',
     canal: canal || '',
     file_id,
     email,
+    preview_test,
   });
 }
 

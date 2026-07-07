@@ -32,6 +32,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   const cedulaPreviewMatricula = String(d.cedula || d.CEDULA || '').replace(/[^\d]/g, '');
   const previewMatriculaCR = cedulaPreviewMatricula === '120180140';
   const codigo = String(d.codigo || d.codigo_estudiante || d.CODIGO_ESTUDIANTE || d.rec_m || '').trim();
+  const puedeSubirFirmada = !!codigo || previewMatriculaCR;
   const nivel = d.nivel || d.NIVEL || 'B1';
   const cedulaDoc = d.cedula || d.CEDULA || '';
   const correoDoc = String(d.correo || d.email || d.CORREO || d.EMAIL || d.correo_electronico || d.CORREO_ELECTRONICO || '').trim();
@@ -60,7 +61,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   };
 
   const pickSigned = () => {
-    if (!codigo) { onToast && onToast({ tipo:'err', msg:'El estudiante debe tener código real para adjuntar la matrícula firmada.' }); return; }
+    if (!puedeSubirFirmada) { onToast && onToast({ tipo:'err', msg:'El estudiante debe tener código real para adjuntar la matrícula firmada.' }); return; }
     signedFileRef.current?.click();
   };
 
@@ -83,6 +84,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             nombre_archivo: file.name,
             mime_type: file.type || 'application/pdf',
             base64,
+            preview_test: previewMatriculaCR,
           });
       if (r && r.ok) {
         setSignedDoc(r);
@@ -98,7 +100,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   };
 
   const notifySigned = async (canal) => {
-    if (!codigo) return;
+    if (!puedeSubirFirmada) return;
     if (canal === 'whatsapp') {
       const url = signedDoc && signedDoc.url ? signedDoc.url : '';
       if (!url) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado para obtener el enlace.' }); return; }
@@ -117,6 +119,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             canal,
             file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
             email: correoDoc,
+            preview_test: previewMatriculaCR,
           });
       if (r && r.ok) {
         onToast && onToast({ tipo:'ok', msg: canal === 'correo' ? 'Correo enviado.' : 'Alerta del campus creada.' });
@@ -137,7 +140,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         Adjuntá aquí el PDF ya firmado digitalmente para dejarlo en el expediente del estudiante.
       </div>
       <div className="vx-docest-btns">
-        <button className="vx-btn vx-btn-navy" disabled={!!busy || !codigo} onClick={pickSigned}>
+        <button className="vx-btn vx-btn-navy" disabled={!!busy || !puedeSubirFirmada} onClick={pickSigned}>
           {busy === 'UPLOAD_SIGNED' ? <><span className="vx-spin" /> Subiendo…</> : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
         </button>
         {signedDoc && signedDoc.url ? (
@@ -157,7 +160,8 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
           </button>
         </div>
       ) : null}
-      {!codigo ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
+      {!codigo && !previewMatriculaCR ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
+      {!codigo && previewMatriculaCR ? <div className="vx-docest-note">Modo prueba: se adjunta por cédula y se usa un código sugerido solo para revisar el flujo. No matricula ni reserva consecutivo.</div> : null}
     </div>
   );
 
@@ -172,7 +176,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
       ) : previewMatriculaCR ? (
         <React.Fragment>
           <div className="vx-docest-sub">
-            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión de las dos plantillas nuevas.
+            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión y permite probar la subida del PDF firmado.
           </div>
           <div className="vx-docest-btns">
             <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('MATRICULA_INA_TEST', 'CERT_MATRICULA_INA_TEST', 'No se pudo generar la prueba INA.')}>
@@ -183,6 +187,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             </button>
           </div>
           <div className="vx-docest-note">Estos botones son temporales y solo aparecen para este prospecto de prueba.</div>
+          <SignedUploadBlock />
           {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
         </React.Fragment>
       ) : (
