@@ -59,7 +59,7 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6PLAY1'],
+  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6PREMAT1'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6PLAY1'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
@@ -896,7 +896,7 @@ function App() {
   if (role === 'student') {
     const map = {
       dashboard: esProspectoGratis
-        ? <LazyRoute title="Perfil de espera" component="FreeProspectPortal" files={F96_LAZY.free_student} usuario={usuario} toast={toast} onNavigate={navigateTo} />
+        ? <LazyRoute title="Mi Campus · Prematrícula" component="FreeProspectPortal" files={F96_LAZY.free_student} usuario={usuario} toast={toast} onNavigate={navigateTo} />
         : <LazyRoute title="Mi Campus" component="StudentDashboard" files={F96_LAZY.student_dashboard} toast={toast} onNavigate={navigateTo} />,
       mi_curso: <LazyRoute title="Mi curso" component="StudentCourseView" files={F96_LAZY.student_course}
         initialTab={studentCourseTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('mi_curso', tab)}
