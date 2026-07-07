@@ -5,7 +5,8 @@
 const { useState: _u1 } = React;
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
-const SCRIPT_URL_SB = window.APPS_SCRIPT_URL;
+const SCRIPT_URL_SB = window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+if (!window.APPS_SCRIPT_URL) window.APPS_SCRIPT_URL = SCRIPT_URL_SB;
 
 // FIX-ADMIN-CORE-POST-001: lectura de perfil vía POST text/plain. Conserva
 // `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía el token en
@@ -414,8 +415,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     const fetchCount = async () => {
       try {
         const token = typeof window.getSessionToken === 'function' ? window.getSessionToken() : ((window.getSesion && window.getSesion() || {}).token || '');
-        if (!token || !window.APPS_SCRIPT_URL) return;
-        const res = await fetch(window.APPS_SCRIPT_URL, {
+        if (!token || !SCRIPT_URL_SB) return;
+        const res = await fetch(SCRIPT_URL_SB, {
           method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ fn:'freeUserListarSolicitudes', token, estado:'PENDIENTE', limit:1 }),
         });

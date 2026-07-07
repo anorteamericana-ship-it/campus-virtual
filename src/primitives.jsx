@@ -145,7 +145,8 @@ function useUsuario() {
 // Retorna { data, loading, error, reload }.
 // data: { estudiante, niveles, pagos, otrosPagos, grupo, pendientes }
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
-const __ESTUDIANTE_SCRIPT_URL = window.APPS_SCRIPT_URL;
+const __ESTUDIANTE_SCRIPT_URL = window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+if (!window.APPS_SCRIPT_URL) window.APPS_SCRIPT_URL = __ESTUDIANTE_SCRIPT_URL;
 
 // FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
 async function postPrimitives(fn, payload = {}) {

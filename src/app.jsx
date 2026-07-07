@@ -158,7 +158,8 @@ function SolicitudesUnificadasSafe(props) {
 
 
 async function postAppF87(fn, payload = {}, timeoutMs = 30000) {
-  const url = window.APPS_SCRIPT_URL;
+  const url = window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+  if (!window.APPS_SCRIPT_URL) window.APPS_SCRIPT_URL = url;
   if (!url) return { ok:false, error:'Backend no configurado.' };
   const token = typeof window.getSessionToken === 'function' ? window.getSessionToken() : '';
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -277,7 +278,7 @@ async function appPostF91(fn, payload = {}, timeoutMs = 45000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`, {
+    const res = await fetch(`${window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec'}?fn=${encodeURIComponent(fn)}`, {
       method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({ fn, token, ...payload }), signal:ctrl.signal,
     });

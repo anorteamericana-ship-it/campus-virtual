@@ -3,6 +3,8 @@
 
 // ── Apps Script URL (compartida) ─────────────────────────────────────────
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// F98.4-Z6-PERF2: publicar la URL inmediatamente en window para evitar carreras de carga entre scripts Babel.
+window.APPS_SCRIPT_URL = window.APPS_SCRIPT_URL || APPS_SCRIPT_URL;
 
 // ── Fetch helpers para VISTA DOCENTE ─────────────────────────────────────
 // Ambos endpoints aceptan tanto nombre como cédula en `cod_docente`.

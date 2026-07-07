@@ -6,7 +6,8 @@
    lo consuman (cada <script type="text/babel"> tiene su propio scope).
    ============================================================================ */
 
-const SCRIPT_URL_V = window.APPS_SCRIPT_URL;
+const SCRIPT_URL_V = window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+if (!window.APPS_SCRIPT_URL) window.APPS_SCRIPT_URL = SCRIPT_URL_V;
 const WA_NUMBER_V = '50689528787';
 
 // ── EMBUDO DEL VENDEDOR — 7 etapas, orden fijo (Fase 3) ───────────────────
@@ -417,7 +418,12 @@ async function getDashboardVentas(asesor, opts = {}) {
       asesor: asesor || '',
     }),
   });
-  const data = await res.json();
+  const raw = await res.text();
+  const cleaned = String(raw || '').trim();
+  if (cleaned.charAt(0) === '<') {
+    throw new Error('El backend devolvió HTML en vez de JSON. Recargá con Ctrl+F5; si persiste, revisá que GitHub haya publicado src/data.jsx y que Apps Script esté desplegado.');
+  }
+  const data = cleaned ? JSON.parse(cleaned) : { ok:false, error:'Respuesta vacía del backend.' };
   ventasDashCachePut(asesor, data);
   return data;
 }
