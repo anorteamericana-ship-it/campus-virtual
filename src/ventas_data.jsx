@@ -483,6 +483,31 @@ async function generarDocumentoVentasSeguro({ cedula, codigo, nivel, tipo }) {
   });
 }
 
+// ── Matrícula firmada: subir PDF al expediente y notificar ─────────────────
+async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre_archivo, mime_type, base64, enviar_correo = false, crear_alerta = false, email = '' }) {
+  return postVentasData('subirMatriculaFirmadaVentas', {
+    cedula: cedula || '',
+    codigo: codigo || '',
+    nivel:  nivel  || 'B1',
+    nombre_archivo: nombre_archivo || 'matricula_firmada.pdf',
+    mime_type: mime_type || 'application/pdf',
+    base64: base64 || '',
+    enviar_correo,
+    crear_alerta,
+    email,
+  });
+}
+
+async function notificarMatriculaFirmadaVentasSeguro({ cedula, codigo, canal, file_id = '', email = '' }) {
+  return postVentasData('notificarMatriculaFirmadaVentas', {
+    cedula: cedula || '',
+    codigo: codigo || '',
+    canal: canal || '',
+    file_id,
+    email,
+  });
+}
+
 // ── ENDPOINTS v4.27.1 (becas + proformas CONAPE) ───────────────────────────
 async function getBecasDisponiblesV() {
   const res = await fetch(`${SCRIPT_URL_V}?fn=getBecasDisponibles`);
@@ -789,7 +814,7 @@ Object.assign(window, {
   getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
-  generarDocumentoVentasSeguro,
+  generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro,
   getBecasDisponiblesV, generarProformaProspecto, aprobarBecaProspecto,
   docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, DEMO_DASHBOARD, calcResumen, HOY,
 });

@@ -161,6 +161,7 @@ function StudentPortalView({ toast, onNavigate }) {
   const notasOficiales = data?.notas_oficiales || null;
   const asistencia = data?.asistencia || null;
   const conape = data?.conape || null;
+  const alertasCampus = Array.isArray(data?.alertas_campus) ? data.alertas_campus : [];
   const examenes = data?.examenes || null;
   const lecciones = _spOrdenLecciones(data?.lecciones || []);
   const ican = data?.ican || null;
@@ -265,6 +266,29 @@ function StudentPortalView({ toast, onNavigate }) {
           />
         </PortalPanel>
       </div>
+
+      {alertasCampus.length ? (
+        <PortalPanel title="Avisos del campus" subtitle="Comunicaciones y documentos recientes">
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {alertasCampus.map((a, i) => (
+              <div key={`${a.tipo || 'aviso'}-${i}`} style={{ border:'1px solid var(--line)', borderRadius:14, padding:'12px 13px', background:'var(--surface)' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', gap:10, alignItems:'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:900, color:'var(--ink)' }}>{a.titulo || 'Aviso del campus'}</div>
+                    <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45, marginTop:4 }}>{a.mensaje || ''}</div>
+                  </div>
+                  <span style={{ fontSize:10.5, color:'var(--ink-3)', whiteSpace:'nowrap' }}>{_spFecha(a.fecha)}</span>
+                </div>
+                {a.url ? (
+                  <a href={a.url} target="_blank" rel="noopener" style={{ display:'inline-flex', marginTop:10, fontSize:12, fontWeight:800, color:'var(--an-navy)', textDecoration:'none' }}>
+                    Abrir documento
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </PortalPanel>
+      ) : null}
 
       <PortalPanel title="Accesos rápidos" subtitle="Entradas principales del campus">
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(155px, 1fr))', gap:10 }}>
