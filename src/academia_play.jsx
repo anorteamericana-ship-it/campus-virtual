@@ -10,7 +10,7 @@ function apNormCedula(v) {
 
 function apEsUsuarioPiloto(usuario, role, rolReal) {
   const rol = String(rolReal || role || '').toLowerCase();
-  if (rol === 'superadmin' || rol === 'admin' || rol === 'teacher') return true;
+  if (rol === 'superadmin' || rol === 'admin' || rol === 'teacher' || rol === 'student') return true;
   const ced = apNormCedula(usuario?.cedula || usuario?.CEDULA || usuario?.identificacion || usuario?.IDENTIFICACION || usuario?.documento || usuario?.DOCUMENTO || usuario?.id || usuario?.ID);
   const cod = String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim().toUpperCase();
   if (ced === '120180140' || cod === '120814') return true;
@@ -150,8 +150,8 @@ function APStudentView({ usuario }) {
             </div>
           </div>
           <div className="ap-stats-grid">
-            <APStat label="Nivel" value={usuario?.nivel || usuario?.NIVEL || 'Básico I'} sub="Demo académico" />
-            <APStat label="Grupo" value={usuario?.grupo || usuario?.GRUPO || 'B1-LM18-C3-0726'} sub="Modo piloto" />
+            <APStat label="Nivel" value={usuario?.codigo ? (usuario?.nivel || usuario?.NIVEL || 'Básico I') : 'Acceso gratis'} sub={usuario?.codigo ? 'Demo académico' : 'Sin matrícula activa'} />
+            <APStat label="Grupo" value={usuario?.codigo ? (usuario?.grupo || usuario?.GRUPO || 'B1-LM18-C3-0726') : 'Pendiente'} sub={usuario?.codigo ? 'Modo piloto' : 'Sin grupo asignado'} />
             <APStat label="Actividad" value="12/18" sub="respondieron en sala demo" tone="red" />
           </div>
           <div className="ap-card-grid">
@@ -350,7 +350,7 @@ function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
         <div>
           <APBadge tone="red">V0 oculto · demo visual</APBadge>
           <h1>Academia Play</h1>
-          <p>{nombre} · Este piloto no guarda intentos, no crea rankings y no afecta notas oficiales.</p>
+          <p>{nombre} · Este piloto no guarda intentos, no crea rankings y no afecta notas oficiales{usuario?.codigo ? '' : ' · acceso gratis sin matrícula'}.</p>
         </div>
         <div className="ap-mode-tabs" role="tablist" aria-label="Vistas del piloto Academia Play">
           {modes.map(m => (

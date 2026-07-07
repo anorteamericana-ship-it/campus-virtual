@@ -292,7 +292,7 @@ function sidebarNormCedulaAplay(v) {
 
 function sidebarMostrarAcademiaPlayF984Z6(usr, role, rolEfectivo) {
   const rol = String(rolEfectivo || role || '').toLowerCase();
-  if (rol === 'superadmin' || rol === 'admin' || rol === 'teacher') return true;
+  if (rol === 'superadmin' || rol === 'admin' || rol === 'teacher' || rol === 'student') return true;
   const ced = sidebarNormCedulaAplay(usr?.cedula || usr?.CEDULA || usr?.identificacion || usr?.IDENTIFICACION || usr?.documento || usr?.DOCUMENTO || usr?.id || usr?.ID);
   const cod = String(usr?.codigo || usr?.CODIGO || usr?.CODIGO_ESTUDIANTE || '').trim().toUpperCase();
   if (ced === '120180140' || cod === '120814') return true;
@@ -402,6 +402,41 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     };
   }, [rolEfectivo, active]);
 
+  // F98.4-Z6-PLAY1: badge rojo para solicitudes de usuarios gratis sin registro.
+  const [pendientesGratis, setPendientesGratis] = React.useState(0);
+  React.useEffect(() => {
+    if (rolEfectivo !== 'admin' && rolEfectivo !== 'superadmin') return;
+    let cancel = false;
+    let intervalId = null;
+    const fetchCount = async () => {
+      try {
+        const token = typeof window.getSessionToken === 'function' ? window.getSessionToken() : ((window.getSesion && window.getSesion() || {}).token || '');
+        if (!token || !window.APPS_SCRIPT_URL) return;
+        const res = await fetch(`${window.APPS_SCRIPT_URL}?fn=freeUserListarSolicitudes`, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ fn:'freeUserListarSolicitudes', token, estado:'PENDIENTE', limit:1 }),
+        });
+        const r = await res.json();
+        if (!cancel && r?.ok) setPendientesGratis(r.pendientes ?? r.total ?? 0);
+      } catch (_) {}
+    };
+    const refrescar = () => { if (document.visibilityState === 'visible') fetchCount(); };
+    const onVis = () => { if (document.visibilityState === 'visible') fetchCount(); };
+    fetchCount();
+    intervalId = setInterval(refrescar, 2 * 60 * 1000);
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('an:free-user-solicitudes-changed', fetchCount);
+    return () => {
+      cancel = true;
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('an:free-user-solicitudes-changed', fetchCount);
+    };
+  }, [rolEfectivo, active]);
+
+  const solicitudesBadge = (Number(pendientesPago || 0) + Number(pendientesGratis || 0)) || null;
+  const esUsuarioGratis = role === 'student' && !String(usr?.codigo || usr?.CODIGO || usr?.CODIGO_ESTUDIANTE || '').trim();
+
   // F98.4-A: menú del estudiante por proceso académico, no por archivo interno.
   // Club I CAN usa primero un indicador explícito de sesión (`acceso_ican`) y,
   // si no existe, el campo PROGRAMA proveniente de GRUPOS. No se muestra una
@@ -410,7 +445,21 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const tieneICANExplicito = usr?.acceso_ican === true || String(usr?.acceso_ican || '').toUpperCase() === 'TRUE';
   const tieneICANPrograma = ['INA','CON_INA'].includes(programaEstudiante);
   const mostrarICAN = tieneICANExplicito || tieneICANPrograma;
-  const studentSections = [
+  const studentSections = esUsuarioGratis ? [
+    {
+      label: 'Acceso gratis',
+      items: [
+        { id: 'dashboard', label: 'Mi perfil', icon: 'home' },
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Gratis' }] : []),
+      ],
+    },
+    {
+      label: 'Gestión',
+      items: [
+        { id: 'dashboard', label: 'Solicitar contacto', icon: 'card', badge: 'Nuevo' },
+      ],
+    },
+  ] : [
     {
       label: 'Menú',
       items: [
@@ -470,7 +519,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       label: 'Operación administrativa',
       items: [
         ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
-        { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: pendientesPago || null },
+        { id: 'solicitudes', label: 'Solicitudes', icon: 'card', badge: solicitudesBadge },
       ],
     },
     {
@@ -502,7 +551,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     ? (usr.rol === 'superadmin' ? 'Superadmin'
       : usr.rol === 'admin'    ? 'Administración'
       : usr.rol === 'teacher'  ? `Docente${usr.grupo ? ' · ' + sidebarTeacherGroupLabelF88(usr.grupo) : ''}`
-      : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`)
+      : (esUsuarioGratis ? 'Usuario gratis' : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`))
     : 'Sin sesión';
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 

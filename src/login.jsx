@@ -186,6 +186,11 @@ function App() {
         nivel_activo: acc.nivel_activo || null,
         estatus_activo: acc.estatus_activo || null,
         niveles_estatus: acc.niveles_estatus || {},
+        estudiante_gratis: acc.estudiante_gratis === true,
+        perfil_pre_matricula: acc.perfil_pre_matricula === true,
+        etapa: acc.etapa || null,
+        correo: acc.correo || null,
+        telefono: acc.telefono || null,
       });
       const rolCampus = acc.rol === 'teacher' ? 'teacher'
         : acc.rol === 'student' ? 'student'
@@ -249,6 +254,11 @@ function App() {
         programa: data.programa || 'SIN_INA',
         token: data.token || null,
         expira: data.expira || null,
+        estudiante_gratis: data.estudiante_gratis === true,
+        perfil_pre_matricula: data.perfil_pre_matricula === true,
+        etapa: data.etapa || null,
+        correo: data.correo || null,
+        telefono: data.telefono || null,
       });
     } catch (_) {
       setLoading(false);

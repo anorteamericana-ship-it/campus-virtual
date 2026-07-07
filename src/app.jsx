@@ -15,7 +15,7 @@
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
    AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView,
-   SolicitudesUnificadasView, SolicitudesEstudianteView, AcademiaPlayView, LazyModuleView */
+   SolicitudesUnificadasView, SolicitudesEstudianteView, AcademiaPlayView, FreeProspectPortal, LazyModuleView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -59,7 +59,8 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  academia_play: ['src/academia_play.jsx?v=F98.4Z6PLAY0'],
+  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6PLAY1'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6PLAY1'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
@@ -716,6 +717,7 @@ function App() {
   const [activeTeacherState, setActiveTeacherState] = useState(null);
   const [activeTeacherCheck, setActiveTeacherCheck] = useState(() => ({ ready: rolReal !== 'teacher', error:false }));
   const activeTeacherSession = activeTeacherState?.sesion || null;
+  const esProspectoGratis = role === 'student' && !String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim();
 
   const scrollCampusTopF91 = () => {
     const run = () => {
@@ -892,7 +894,9 @@ function App() {
   let content = null;
   if (role === 'student') {
     const map = {
-      dashboard: <LazyRoute title="Mi Campus" component="StudentDashboard" files={F96_LAZY.student_dashboard} toast={toast} onNavigate={navigateTo} />,
+      dashboard: esProspectoGratis
+        ? <LazyRoute title="Perfil de espera" component="FreeProspectPortal" files={F96_LAZY.free_student} usuario={usuario} toast={toast} onNavigate={navigateTo} />
+        : <LazyRoute title="Mi Campus" component="StudentDashboard" files={F96_LAZY.student_dashboard} toast={toast} onNavigate={navigateTo} />,
       mi_curso: <LazyRoute title="Mi curso" component="StudentCourseView" files={F96_LAZY.student_course}
         initialTab={studentCourseTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('mi_curso', tab)}
         initialLesson={pendingLesson} onNavigate={navigateTo} />,
