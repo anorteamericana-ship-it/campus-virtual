@@ -1,5 +1,5 @@
 /* global React, Icon */
-// F98.4-Z6-CS1 · Academia Play V1.5 visual.
+// F98.4-Z6-CS1A · Academia Play V1.5 visual + QA hardening usuario gratis.
 // Frontend/demo únicamente: no llama backend, no guarda intentos, no crea rankings y no modifica notas oficiales.
 
 const { useMemo: apUseMemo, useState: apUseState } = React;
@@ -16,10 +16,14 @@ function apEsUsuarioGratis(usuario, role, rolReal) {
   const rol = apRole(role, rolReal);
   if (rol !== 'student') return false;
   const tipo = String(usuario?.tipoUsuario || usuario?.tipo_usuario || usuario?.origen || usuario?.ORIGEN || usuario?.etapa || usuario?.ETAPA || '').toLowerCase();
+  const explicito = /gratis|free|prospect|prematric|lead|formulario/.test(tipo);
   const cod = String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim();
+  const grupo = String(usuario?.grupo || usuario?.GRUPO || usuario?.grupo_actual || usuario?.GRUPO_ACTUAL || '').trim();
   const matricula = String(usuario?.matricula || usuario?.MATRICULA || usuario?.estadoAcademico || usuario?.ESTADO_ACADEMICO || '').trim();
-  if (tipo.includes('gratis') || tipo.includes('prospect') || tipo.includes('prematric') || tipo.includes('lead')) return true;
-  return !cod && !matricula;
+  const nivel = String(usuario?.nivel_activo || usuario?.NIVEL_ACTIVO || usuario?.estatus_activo || usuario?.ESTATUS_ACTIVO || '').trim();
+  const niveles = usuario?.niveles_estatus || usuario?.NIVELES_ESTATUS || null;
+  const tieneNivelOficial = !!(nivel || (niveles && typeof niveles === 'object' && Object.values(niveles).some(v => String(v || '').trim())));
+  return explicito || (!cod && !grupo && !matricula && !tieneNivelOficial);
 }
 
 function apEsUsuarioPiloto(usuario, role, rolReal) {

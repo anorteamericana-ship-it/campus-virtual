@@ -1,3 +1,4 @@
+// F98.4-Z6-CS1A · QA hardening usuario gratis/prematrícula
 // F98.4-Z6-CR · Hotfix guardado de evidencia técnica
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
@@ -59,8 +60,8 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS1PREMAT'],
-  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS1PLAY15'],
+  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS1A_PREMAT'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS1A_PLAY15'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],
@@ -120,6 +121,21 @@ function normalizarRutaEstudianteF984(target, opts = {}) {
 function studentRouteHashF984(target, tabs = {}) {
   const tab = target === 'mi_curso' ? tabs.course : target === 'evaluaciones' ? tabs.evaluations : target === 'documentos_ayuda' ? tabs.documents : '';
   return '#' + target + (tab ? '/' + tab : '');
+}
+
+function esUsuarioGratisSesionF984Z6CS(u, role) {
+  if (String(role || '').toLowerCase() !== 'student') return false;
+  const tipo = String(u?.tipoUsuario || u?.tipo_usuario || u?.origen || u?.ORIGEN || u?.etapa || u?.ETAPA || '').toLowerCase();
+  const explicito = /gratis|free|prospect|prematric|lead|formulario/.test(tipo);
+  const codigo = String(u?.codigo || u?.CODIGO || u?.CODIGO_ESTUDIANTE || '').trim();
+  const grupo = String(u?.grupo || u?.GRUPO || u?.grupo_actual || u?.GRUPO_ACTUAL || '').trim();
+  const matricula = String(u?.matricula || u?.MATRICULA || u?.estadoAcademico || u?.ESTADO_ACADEMICO || '').trim();
+  const nivel = String(u?.nivel_activo || u?.NIVEL_ACTIVO || u?.estatus_activo || u?.ESTATUS_ACTIVO || '').trim();
+  const niveles = u?.niveles_estatus || u?.NIVELES_ESTATUS || null;
+  const tieneNivelOficial = !!(nivel || (niveles && typeof niveles === 'object' && Object.values(niveles).some(v => String(v || '').trim())));
+  // No basta con “no tiene código”: durante fallos de sesión un estudiante real podría venir incompleto.
+  // Solo se considera gratis si el backend lo marca explícitamente o si no trae ninguna señal académica oficial.
+  return explicito || (!codigo && !grupo && !matricula && !tieneNivelOficial);
 }
 
 
@@ -718,7 +734,7 @@ function App() {
   const [activeTeacherState, setActiveTeacherState] = useState(null);
   const [activeTeacherCheck, setActiveTeacherCheck] = useState(() => ({ ready: rolReal !== 'teacher', error:false }));
   const activeTeacherSession = activeTeacherState?.sesion || null;
-  const esProspectoGratis = role === 'student' && !String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim();
+  const esProspectoGratis = esUsuarioGratisSesionF984Z6CS(usuario, role);
 
   const scrollCampusTopF91 = () => {
     const run = () => {

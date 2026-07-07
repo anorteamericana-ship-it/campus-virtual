@@ -1,3 +1,4 @@
+// F98.4-Z6-CS1A · QA hardening usuario gratis/prematrícula
 // F98.4-Z6-P · navegación Super Admin agrupada por operación
 // F98.4-Z6-F · menú docente reordenado y renombrado
 // F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY
@@ -287,6 +288,20 @@ function sidebarTeacherGroupLabelF88(code) {
 }
 
 
+
+function sidebarEsUsuarioGratisF984Z6CS(usr, role) {
+  if (String(role || '').toLowerCase() !== 'student') return false;
+  const tipo = String(usr?.tipoUsuario || usr?.tipo_usuario || usr?.origen || usr?.ORIGEN || usr?.etapa || usr?.ETAPA || '').toLowerCase();
+  const explicito = /gratis|free|prospect|prematric|lead|formulario/.test(tipo);
+  const codigo = String(usr?.codigo || usr?.CODIGO || usr?.CODIGO_ESTUDIANTE || '').trim();
+  const grupo = String(usr?.grupo || usr?.GRUPO || usr?.grupo_actual || usr?.GRUPO_ACTUAL || '').trim();
+  const matricula = String(usr?.matricula || usr?.MATRICULA || usr?.estadoAcademico || usr?.ESTADO_ACADEMICO || '').trim();
+  const nivel = String(usr?.nivel_activo || usr?.NIVEL_ACTIVO || usr?.estatus_activo || usr?.ESTATUS_ACTIVO || '').trim();
+  const niveles = usr?.niveles_estatus || usr?.NIVELES_ESTATUS || null;
+  const tieneNivelOficial = !!(nivel || (niveles && typeof niveles === 'object' && Object.values(niveles).some(v => String(v || '').trim())));
+  return explicito || (!codigo && !grupo && !matricula && !tieneNivelOficial);
+}
+
 function sidebarNormCedulaAplay(v) {
   return String(v || '').replace(/[^0-9]/g, '');
 }
@@ -440,7 +455,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   }, [rolEfectivo]);
 
   const solicitudesBadge = (Number(pendientesPago || 0) + Number(pendientesGratis || 0)) || null;
-  const esUsuarioGratis = role === 'student' && !String(usr?.codigo || usr?.CODIGO || usr?.CODIGO_ESTUDIANTE || '').trim();
+  const esUsuarioGratis = sidebarEsUsuarioGratisF984Z6CS(usr, role);
 
   // F98.4-A: menú del estudiante por proceso académico, no por archivo interno.
   // Club I CAN usa primero un indicador explícito de sesión (`acceso_ican`) y,
