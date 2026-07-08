@@ -1,6 +1,6 @@
 /* global React, Icon */
-// F98.4-Z6-CS13B · Academia Play visual mobile polish inspirado en Claude Rev03.
-// Mantiene banco curricular + completados 100; no toca notas oficiales ni evaluaciones.
+// F98.4-Z6-CS16 · Academia Play mapa visual de progreso por nivel/unidad.
+// Lee ACADEMIA_PLAY_BANK, muestra avance 100% por unidad y no genera notas oficiales.
 
 const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect } = React;
 
@@ -494,6 +494,303 @@ function apCanOpen(game, isFreeUser) {
 }
 
 
+
+function apAreaIdToCategory(areaId) {
+  const id = String(areaId || '').toUpperCase();
+  if (id === 'VOCAB') return 'Vocabulario';
+  if (id === 'GRAM') return 'Gramática';
+  if (id === 'SPEAK') return 'Speaking';
+  if (id === 'LISTEN') return 'Escucha';
+  if (id === 'READ') return 'Lectura';
+  if (id === 'MIX') return 'Mixto';
+  return id || 'Mixto';
+}
+
+function apTemplateName(templateId) {
+  const map = {
+    VOCAB_01:'Vocabulary Sprint', VOCAB_02:'Word Match', GRAM_01:'Grammar Fix', GRAM_02:'Sentence Order',
+    SPEAK_01:'Phrase Builder', SPEAK_02:'Response Builder', LISTEN_01:'Listening Choice', LISTEN_02:'Listen & Match',
+    READ_01:'Reading Flash', READ_02:'Detail Hunter', MIX_01:'Mini Challenge', MIX_02:'Survival Mission'
+  };
+  return map[String(templateId || '').toUpperCase()] || String(templateId || 'Juego');
+}
+
+function apAreaAccent(areaId) {
+  const id = String(areaId || '').toUpperCase();
+  if (id === 'VOCAB') return 'red';
+  if (id === 'GRAM') return 'navy';
+  if (id === 'SPEAK' || id === 'LISTEN') return 'blue';
+  if (id === 'READ' || id === 'MIX') return 'gold';
+  return 'navy';
+}
+
+
+function apLevelLabel(levelId) {
+  const id = String(levelId || '').toUpperCase();
+  if (id === 'B1') return 'Básico I';
+  if (id === 'B2') return 'Básico II';
+  if (id === 'I1') return 'Intermedio I';
+  if (id === 'I2') return 'Intermedio II';
+  return id || 'Nivel';
+}
+
+function apLevelShort(levelId) {
+  const id = String(levelId || '').toUpperCase();
+  return id || 'NIVEL';
+}
+
+function apLevelTone(levelId) {
+  const id = String(levelId || '').toUpperCase();
+  if (id === 'B1') return 'gold';
+  if (id === 'B2') return 'red';
+  if (id === 'I1') return 'blue';
+  if (id === 'I2') return 'ok';
+  return 'navy';
+}
+
+function apDefaultUnitForLevel(levelId) {
+  const id = String(levelId || 'B1').toUpperCase();
+  return id + '-U01';
+}
+
+function apUnitShort(unitId) {
+  const raw = String(unitId || '').toUpperCase();
+  const m = raw.match(/U\d{2}$/);
+  return m ? m[0] : raw;
+}
+
+const AP_LEVEL_ORDER = ['B1', 'B2', 'I1', 'I2'];
+
+function apBankGameToCard(game) {
+  const areaId = String(game.area_id || game.AREA_ID || '').toUpperCase();
+  const templateId = String(game.template_id || game.TEMPLATE_ID || '').toUpperCase();
+  const unitId = String(game.unit_id || game.UNIT_ID || '').toUpperCase();
+  const levelId = String(game.level_id || game.LEVEL_ID || '').toUpperCase();
+  const gameId = String(game.game_id || game.id || game.GAME_ID || '').toUpperCase();
+  const category = apAreaIdToCategory(areaId);
+  const templateName = apTemplateName(templateId);
+  const scope = String(game.status || game.access_scope || '').toLowerCase();
+  return {
+    ...game,
+    source:'bank',
+    id:gameId,
+    game_id:gameId,
+    title:String(game.title || game.game_title || templateName || gameId),
+    type:templateName,
+    category,
+    area_id:areaId,
+    template_id:templateId,
+    unit_id:unitId,
+    level_id:levelId,
+    skill:templateId,
+    unit:levelId + ' · ' + unitId,
+    desc:'Juego generado desde el banco curricular. ' + (Number(game.item_count || 0) || 5) + ' ítems de práctica.',
+    duration:(Number(game.item_count || 0) || 5) + ' ítems · práctica',
+    level:levelId || 'Banco',
+    status:scope === 'free' ? 'free' : 'matriculated',
+    accent:apAreaAccent(areaId),
+    item_count:Number(game.item_count || 0) || 0,
+    min_difficulty:Number(game.min_difficulty || 0) || 0,
+    max_difficulty:Number(game.max_difficulty || 0) || 0,
+  };
+}
+
+function apCorrectIndex(letter) {
+  const s = String(letter || '').trim().toUpperCase();
+  return { A:0, B:1, C:2, D:3 }[s] ?? 0;
+}
+
+function apSplitOrderWords(words, sentence) {
+  const raw = String(words || '').trim();
+  if (raw) {
+    const parts = /[\/|;,]/.test(raw) ? raw.split(/\s*[\/|;,]\s*/g) : raw.split(/\s+/g);
+    const clean = parts.map(x => String(x || '').trim()).filter(Boolean);
+    if (clean.length) return clean;
+  }
+  return String(sentence || '').trim().split(/\s+/g).filter(Boolean);
+}
+
+function apFlowFromBankGame(game, items) {
+  const safeItems = (items || []).filter(Boolean);
+  const first = safeItems[0] || {};
+  const itemType = String(first.item_type || first.ITEM_TYPE || '').toUpperCase();
+  const title = String(game?.title || game?.game_title || first.game_title || first.GAME_TITLE || game?.game_id || first.game_id || 'Juego del banco');
+  const unit = String(game?.unit_id || first.unit_id || first.UNIT_ID || 'Banco');
+  const area = apAreaIdToCategory(game?.area_id || first.area_id || first.AREA_ID);
+  const base = {
+    source:'bank', title, badge:'Banco', unit,
+    intro:'Práctica cargada desde el banco curricular. No genera nota oficial.',
+    how:['Leé la instrucción.', 'Respondé cada ítem.', 'Solo se registra premio si completás 100%.'],
+    bankGame:game || {},
+  };
+  if (itemType === 'MATCH') {
+    return {
+      ...base,
+      kind:'match',
+      pairs:safeItems.map((it, index) => ({
+        id:String(it.play_item_id || it.PLAY_ITEM_ID || index),
+        en:String(it.match_left || it.MATCH_LEFT || it.stem || it.STEM || 'Item ' + (index + 1)),
+        es:String(it.match_right || it.MATCH_RIGHT || it.option_a || it.OPTION_A || 'Respuesta ' + (index + 1)),
+      })).filter(x => x.en && x.es),
+    };
+  }
+  if (itemType === 'ORDER') {
+    return {
+      ...base,
+      kind:'order',
+      questions:safeItems.map((it, index) => {
+        const answerText = String(it.correct_sentence || it.CORRECT_SENTENCE || '').trim();
+        const answer = answerText.split(/\s+/g).filter(Boolean);
+        return {
+          type:area,
+          prompt:String(it.prompt_es || it.PROMPT_ES || 'Ordená la oración.'),
+          stem:String(it.stem || it.STEM || 'Ordená las palabras.'),
+          words:apSplitOrderWords(it.words_to_order || it.WORDS_TO_ORDER, answerText),
+          answer:answer.length ? answer : apSplitOrderWords('', answerText),
+          explain:String(it.explanation_es || it.EXPLANATION_ES || 'Revisá el orden natural de la oración.'),
+          key:String(it.play_item_id || it.PLAY_ITEM_ID || index),
+        };
+      }).filter(q => q.words.length && q.answer.length),
+    };
+  }
+  return {
+    ...base,
+    kind:'choice',
+    questions:safeItems.map((it, index) => {
+      const type = String(it.item_type || it.ITEM_TYPE || itemType || 'MCQ').toUpperCase();
+      return {
+        type:area,
+        prompt:String(it.prompt_es || it.PROMPT_ES || (type === 'READING_MCQ' ? 'Leé y elegí la mejor respuesta.' : type === 'DIALOGUE_MCQ' ? 'Leé el diálogo y respondé.' : 'Elegí la respuesta correcta.')),
+        stem:String(it.stem || it.STEM || 'Pregunta ' + (index + 1)),
+        context:String(it.mini_text_or_dialogue || it.MINI_TEXT_OR_DIALOGUE || ''),
+        options:[it.option_a || it.OPTION_A, it.option_b || it.OPTION_B, it.option_c || it.OPTION_C, it.option_d || it.OPTION_D].map(x => String(x || '').trim()),
+        correct:apCorrectIndex(it.correct_option || it.CORRECT_OPTION),
+        explain:String(it.explanation_es || it.EXPLANATION_ES || 'Respuesta de práctica.'),
+        key:String(it.play_item_id || it.PLAY_ITEM_ID || index),
+      };
+    }).filter(q => q.stem && q.options.every(Boolean)),
+  };
+}
+
+function apStateFromCompletions(items) {
+  const games = {};
+  const seenGames = [];
+  (items || []).forEach(item => {
+    const id = String(item.GAME_ID || item.game_id || '').trim();
+    if (!id) return;
+    seenGames.push(id);
+    games[id] = {
+      title:item.GAME_TITLE || item.game_title || id,
+      percent:100,
+      attempts:1,
+      lastPlayedAt:item.FECHA_ISO || item.fecha_iso || '',
+      synced:true,
+      completed100:true,
+    };
+  });
+  return { games, seenGames };
+}
+
+
+function apIsCompletedGame(playState, gameId) {
+  return apSafePct(playState?.games?.[gameId]?.percent || 0) >= 100;
+}
+
+function apUnitNumber(unitId) {
+  const raw = String(unitId || '').toUpperCase();
+  const m = raw.match(/U(\d{2})$/);
+  return m ? Number(m[1]) : 0;
+}
+
+function apBuildUnitProgress(levelId, bankLevelGames, playState) {
+  const map = {};
+  (bankLevelGames || []).forEach(g => {
+    const unitId = String(g.unit_id || '').toUpperCase();
+    if (!unitId) return;
+    if (!map[unitId]) map[unitId] = { id:unitId, games:[], completed:0, areas:{} };
+    map[unitId].games.push(g);
+    if (apIsCompletedGame(playState, g.id)) map[unitId].completed += 1;
+    const area = g.category || apAreaIdToCategory(g.area_id) || 'Mixto';
+    if (!map[unitId].areas[area]) map[unitId].areas[area] = { total:0, completed:0 };
+    map[unitId].areas[area].total += 1;
+    if (apIsCompletedGame(playState, g.id)) map[unitId].areas[area].completed += 1;
+  });
+  return Array.from({ length:16 }, (_, i) => {
+    const id = String(levelId || 'B1').toUpperCase() + '-U' + String(i + 1).padStart(2, '0');
+    const data = map[id] || { id, games:[], completed:0, areas:{} };
+    const total = data.games.length || 0;
+    return {
+      ...data,
+      id,
+      total,
+      percent: total ? Math.round((data.completed / total) * 100) : 0,
+      number:i + 1,
+    };
+  });
+}
+
+function apUnitMedalLabel(completed, total) {
+  if (!total) return 'Sin banco';
+  if (completed >= total) return 'Oro';
+  if (completed >= 10) return 'Plata';
+  if (completed >= 6) return 'Bronce';
+  if (completed >= 1) return 'Iniciado';
+  return 'Pendiente';
+}
+
+function APUnitProgressMap({ levelId, levelLabel, bankLevelGames, playState, selectedUnit, onSelectUnit, onRefresh }) {
+  const units = apBuildUnitProgress(levelId, bankLevelGames, playState);
+  const totalGames = units.reduce((sum, u) => sum + u.total, 0);
+  const totalCompleted = units.reduce((sum, u) => sum + u.completed, 0);
+  const totalPercent = totalGames ? Math.round((totalCompleted / totalGames) * 100) : 0;
+  const fullUnits = units.filter(u => u.total && u.completed >= u.total).length;
+  const startedUnits = units.filter(u => u.completed > 0 && u.completed < u.total).length;
+  const areas = ['Vocabulario', 'Gramática', 'Speaking', 'Escucha', 'Lectura', 'Mixto'];
+  return (
+    <div className={'ap-panel ap-progress-map ap-progress-map-' + String(levelId || '').toLowerCase()}>
+      <div className="ap-progress-map-head">
+        <div>
+          <APBadge tone={apLevelTone(levelId)}>Mapa de progreso</APBadge>
+          <h3>{levelLabel} · 16 unidades</h3>
+          <p>Seguimiento visual por juegos completados al 100%. No genera nota oficial.</p>
+        </div>
+        <div className="ap-progress-map-score">
+          <strong>{totalCompleted}/{totalGames || 192}</strong>
+          <span>juegos 100%</span>
+        </div>
+      </div>
+      <div className="ap-progress-map-summary">
+        <div><strong>{totalPercent}%</strong><span>avance del nivel</span></div>
+        <div><strong>{fullUnits}</strong><span>unidades oro</span></div>
+        <div><strong>{startedUnits}</strong><span>unidades iniciadas</span></div>
+        <button type="button" className="ap-btn ap-btn-light" onClick={onRefresh}>Actualizar</button>
+      </div>
+      <APProgress value={totalPercent} label={'Progreso total ' + (levelId || '')} />
+      <div className="ap-unit-map-grid" aria-label={'Mapa de unidades ' + levelLabel}>
+        {units.map(unit => {
+          const medal = apUnitMedalLabel(unit.completed, unit.total || 12);
+          const active = selectedUnit === unit.id;
+          return (
+            <button key={unit.id} type="button" className={(active ? 'active ' : '') + (unit.percent >= 100 ? 'is-gold ' : unit.completed ? 'is-started ' : '')} onClick={() => onSelectUnit(unit.id)}>
+              <span className="ap-unit-map-top"><b>{apUnitShort(unit.id)}</b><em>{medal}</em></span>
+              <strong>{unit.completed}/{unit.total || 12}</strong>
+              <i style={{ width:(unit.total ? unit.percent : 0) + '%' }} />
+              <small>{unit.percent}% completado</small>
+              <span className="ap-area-dots" aria-label="Áreas de la unidad">
+                {areas.map(area => {
+                  const a = unit.areas?.[area] || { total:2, completed:0 };
+                  const done = a.total ? Math.round((a.completed / a.total) * 100) : 0;
+                  return <em key={area} className={done >= 100 ? 'done' : done > 0 ? 'started' : ''} title={area + ' ' + (a.completed || 0) + '/' + (a.total || 2)}>{area.charAt(0)}</em>;
+                })}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function APGameCard({ game, isFreeUser, onOpen, playState, soundOn }) {
   const locked = !apCanOpen(game, isFreeUser);
   const area = apCognitiveArea(game.category);
@@ -749,6 +1046,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
       <h3>{flow.title}</h3>
       <p>{flow.intro}</p>
       <div className="ap-question-strip ap-question-strip-vivid"><strong>{q.prompt}</strong><span>Pregunta {qIndex + 1} de {flow.questions.length}</span></div>
+      {q.context && <div className="ap-bank-context"><span>{q.context}</span></div>}
       <p className="ap-question-stem">{q.stem}</p>
       <APProgress value={progress} label={'Progreso ' + flow.title} />
       <div className="ap-answer-list ap-answer-list-vivid">
@@ -936,6 +1234,75 @@ function APGameRunner({ gameId, isFreeUser, onBack, onComplete, soundOn }) {
   );
 }
 
+
+function APBankGameRunner({ game, isFreeUser, onBack, onComplete, soundOn }) {
+  const [status, setStatus] = apUseState('cargando');
+  const [flow, setFlow] = apUseState(null);
+  const [error, setError] = apUseState('');
+
+  apUseEffect(() => {
+    let alive = true;
+    setStatus('cargando');
+    setError('');
+    apPost('academiaPlayBankGetGame', { game_id:game?.game_id || game?.id }, 22000).then(res => {
+      if (!alive) return;
+      if (res && res.ok) {
+        const nextFlow = apFlowFromBankGame(res.game || game, res.items || []);
+        const hasContent = nextFlow.kind === 'match' ? nextFlow.pairs?.length : nextFlow.questions?.length;
+        if (!hasContent) {
+          setError('El juego existe, pero no tiene ítems compatibles para este formato.');
+          setStatus('error');
+        } else {
+          setFlow(nextFlow);
+          setStatus('listo');
+        }
+      } else {
+        setError(res?.error || 'No se pudo cargar el juego desde el banco.');
+        setStatus('error');
+      }
+    });
+    return () => { alive = false; };
+  }, [game?.game_id, game?.id]);
+
+  if (status === 'cargando') {
+    return (
+      <div className="ap-practice-wrap">
+        <div className="ap-practice-card ap-enter">
+          <button type="button" className="ap-btn ap-btn-light" onClick={onBack}>← Juegos</button>
+          <APBadge tone="navy">Banco curricular</APBadge>
+          <h3>Cargando juego real</h3>
+          <p>Estamos leyendo {game?.game_id || game?.id} desde ACADEMIA_PLAY_BANK.</p>
+          <APProgress value={48} label="Cargando juego desde banco" />
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'error' || !flow) {
+    return (
+      <div className="ap-practice-wrap">
+        <div className="ap-practice-card ap-enter">
+          <button type="button" className="ap-btn ap-btn-light" onClick={onBack}>← Juegos</button>
+          <APBadge tone="red">Banco curricular</APBadge>
+          <h3>No se pudo abrir este juego</h3>
+          <p>{error || 'Juego no disponible.'}</p>
+          <p className="ap-demo-note">Revisá que CS14 haya importado ACADEMIA_PLAY_BANK y que el GAME_ID exista.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ap-practice-wrap ap-bank-practice-wrap">
+      {flow.kind === 'match'
+        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />
+        : flow.kind === 'order'
+          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />
+          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />}
+    </div>
+  );
+}
+
 function APLockedState({ game, isFreeUser, onBack, onNavigate, soundOn }) {
   const isSoon = game?.status === 'soon';
   const title = isSoon ? 'Juego en preparación' : 'Disponible al activar tu matrícula';
@@ -958,23 +1325,30 @@ function APLockedState({ game, isFreeUser, onBack, onNavigate, soundOn }) {
 }
 
 
+
 function APStudentView({ usuario, role, rolReal, onNavigate }) {
   const isFreeUser = apEsUsuarioGratis(usuario, role, rolReal);
-  const [screen, setScreen] = apUseState('dashboard');
-  const [activeGame, setActiveGame] = apUseState(null);
-  const [filter, setFilter] = apUseState('Todos');
-  const [celebration, setCelebration] = apUseState(null);
   const first = apFirstName(usuario);
-  const userKey = apUseMemo(() => apStorageUserKey(usuario || {}), [usuario]);
+  const userKey = apStorageUserKey(usuario);
+  const cedula = apNormCedula(usuario?.cedula || usuario?.CEDULA || usuario?.identificacion || usuario?.IDENTIFICACION);
+  const codigo = String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim();
+  const [screen, setScreen] = apUseState('catalog');
+  const [filter, setFilter] = apUseState('Todos');
+  const [activeGame, setActiveGame] = apUseState(null);
   const [playState, setPlayState] = apUseState(() => apReadState(userKey));
   const [syncState, setSyncState] = apUseState('local');
-  apUseEffect(() => { setPlayState(apReadState(userKey)); setSyncState('local'); }, [userKey]);
+  const [celebration, setCelebration] = apUseState(null);
+  const [bankCatalog, setBankCatalog] = apUseState([]);
+  const [bankStatus, setBankStatus] = apUseState('sin cargar');
+  const [bankLevel, setBankLevel] = apUseState('B1');
+  const [bankUnit, setBankUnit] = apUseState('B1-U01');
+  const [bankArea, setBankArea] = apUseState('Todos');
+
   apUseEffect(() => { apWriteState(userKey, playState); }, [userKey, playState]);
+
   apUseEffect(() => {
     let alive = true;
-    const cedula = apNormCedula(usuario?.cedula || usuario?.CEDULA || usuario?.identificacion || usuario?.IDENTIFICACION);
-    const codigo = String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim();
-    window.setTimeout(() => {
+    const t = window.setTimeout(() => {
       apPost('academiaPlayGetProgress', { user_key:userKey, cedula, codigo }).then(res => {
         if (!alive) return;
         if (res && res.ok) {
@@ -985,9 +1359,36 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
           setSyncState('local');
         }
       });
+      apPost('academiaPlayCompletionSummary', { user_key:userKey, cedula, codigo }).then(res => {
+        if (!alive) return;
+        if (res && res.ok) {
+          const completions = apStateFromCompletions(res.items || []);
+          setPlayState(prev => apMergeStates(prev, completions));
+        }
+      });
     }, 650);
-    return () => { alive = false; };
+    return () => { alive = false; window.clearTimeout(t); };
   }, [userKey]);
+
+  function loadBankCatalog() {
+    setBankStatus('cargando');
+    apPost('academiaPlayBankCatalog', {}, 32000).then(res => {
+      if (res && res.ok) {
+        const games = (res.games || []).map(apBankGameToCard);
+        setBankCatalog(games);
+        setBankStatus(games.length ? 'sincronizado' : 'vacío');
+      } else {
+        setBankCatalog([]);
+        setBankStatus(res?.error || 'error');
+      }
+    });
+  }
+
+  apUseEffect(() => {
+    const t = window.setTimeout(loadBankCatalog, 900);
+    return () => window.clearTimeout(t);
+  }, []);
+
   apUseEffect(() => {
     if (!celebration) return undefined;
     const t = window.setTimeout(() => setCelebration(null), 2600);
@@ -1003,12 +1404,42 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
   const newCount = AP_GAMES.filter(g => apCanOpen(g, isFreeUser) && !(playState?.seenGames || []).includes(g.id)).length;
   const soundOn = playState?.celebrationEnabled !== false;
 
+  const bankLevels = apUseMemo(() => {
+    const map = {};
+    bankCatalog.forEach(g => { if (g.level_id) map[g.level_id] = (map[g.level_id] || 0) + 1; });
+    const found = Object.keys(map).sort((a, b) => (AP_LEVEL_ORDER.indexOf(a) < 0 ? 99 : AP_LEVEL_ORDER.indexOf(a)) - (AP_LEVEL_ORDER.indexOf(b) < 0 ? 99 : AP_LEVEL_ORDER.indexOf(b)) || a.localeCompare(b));
+    return (found.length ? found : AP_LEVEL_ORDER).map(id => ({ id, label:apLevelLabel(id), count:map[id] || 0 }));
+  }, [bankCatalog]);
+  const bankLevelGames = bankCatalog.filter(g => String(g.level_id || '').toUpperCase() === bankLevel);
+  const bankTotalCompleted = bankCatalog.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100).length;
+  const bankCompleted = bankLevelGames.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100).length;
+  const bankUnits = apUseMemo(() => {
+    const map = {};
+    bankLevelGames.forEach(g => { if (g.unit_id) map[g.unit_id] = (map[g.unit_id] || 0) + 1; });
+    return Object.keys(map).sort().map(id => ({ id, count:map[id] }));
+  }, [bankCatalog, bankLevel]);
+  const bankAreas = ['Todos', 'Vocabulario', 'Gramática', 'Speaking', 'Escucha', 'Lectura', 'Mixto'];
+  const bankVisible = bankLevelGames.filter(g => (!bankUnit || g.unit_id === bankUnit) && (bankArea === 'Todos' || g.category === bankArea));
+  const selectedLevelLabel = apLevelLabel(bankLevel);
+  const selectedUnitProgress = apBuildUnitProgress(bankLevel, bankLevelGames, playState).find(u => u.id === bankUnit) || null;
+
+  apUseEffect(() => {
+    const valid = bankUnits.some(u => u.id === bankUnit);
+    if (!valid) setBankUnit(bankUnits[0]?.id || apDefaultUnitForLevel(bankLevel));
+  }, [bankLevel, bankCatalog]);
+
   function openGame(game) {
     setPlayState(prev => apMarkSeen(prev, game.id));
     if (game.status === 'live' && apCanOpen(game, isFreeUser)) {
       setActiveGame(game); setScreen('live'); return;
     }
-    if (!apCanOpen(game, isFreeUser) || !AP_FLOWS[game.id]) {
+    if (!apCanOpen(game, isFreeUser)) {
+      setActiveGame(game); setScreen('locked'); return;
+    }
+    if (game.source === 'bank') {
+      setActiveGame(game); setScreen('bankplay'); return;
+    }
+    if (!AP_FLOWS[game.id]) {
       setActiveGame(game); setScreen('locked'); return;
     }
     setActiveGame(game); setScreen('play');
@@ -1016,25 +1447,31 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
 
   function handleComplete(result) {
     if (!activeGame?.id || !result) return;
+    const percent = apSafePct(result.percent || 0);
     const payload = {
       user_key:userKey,
-      cedula:apNormCedula(usuario?.cedula || usuario?.CEDULA || usuario?.identificacion || usuario?.IDENTIFICACION),
-      codigo:String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim(),
+      cedula,
+      codigo,
       nombre:String(usuario?.nombre || usuario?.NOMBRE || '').trim(),
       tipo_usuario:isFreeUser ? 'PREMATRICULA' : 'ESTUDIANTE',
       game_id:activeGame.id,
       game_title:activeGame.title,
       category:activeGame.category,
+      area_id:activeGame.area_id || activeGame.category,
+      template_id:activeGame.template_id || activeGame.skill,
+      level_id:activeGame.level_id || '',
+      unit_id:activeGame.unit_id || '',
       skill:activeGame.skill,
-      percent:apSafePct(result.percent || 0),
+      percent,
       score:Number(result.score || 0),
       total:Number(result.total || 0),
       errors:Number(result.errors || 0),
-      completed:apSafePct(result.percent || 0) >= 100,
+      completed:percent >= 100,
+      completed_100:percent >= 100,
     };
     setPlayState(prev => {
       const current = prev?.games?.[activeGame.id] || {};
-      const nextPercent = Math.max(apSafePct(current.percent || 0), apSafePct(result.percent || 0));
+      const nextPercent = Math.max(apSafePct(current.percent || 0), percent);
       const next = {
         ...prev,
         games: {
@@ -1044,7 +1481,8 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
             attempts: Number(current.attempts || 0) + 1,
             lastPlayedAt: Date.now(),
             title: activeGame.title,
-            synced: false,
+            synced: activeGame.source === 'bank' ? percent >= 100 : false,
+            completed100: nextPercent >= 100,
           },
         },
       };
@@ -1057,6 +1495,17 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
       }
       return next;
     });
+
+    if (activeGame.source === 'bank') {
+      if (percent < 100) { setSyncState('local · banco solo guarda 100%'); return; }
+      setSyncState('guardando 100%');
+      apPost('academiaPlayMarkCompletion', payload).then(res => {
+        if (res && res.ok) setSyncState('100% guardado');
+        else setSyncState('pendiente');
+      });
+      return;
+    }
+
     setSyncState('guardando');
     apPost('academiaPlaySaveProgress', payload).then(res => {
       if (res && res.ok) {
@@ -1078,20 +1527,21 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
   }
 
   if (screen === 'play') return <><APGameRunner gameId={activeGame?.id} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} soundOn={soundOn} /><APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
+  if (screen === 'bankplay') return <><APBankGameRunner game={activeGame} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} soundOn={soundOn} /><APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
   if (screen === 'locked') return <APLockedState game={activeGame} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onNavigate={onNavigate} soundOn={soundOn} />;
   if (screen === 'live') return <APLiveRoom onBack={() => setScreen('catalog')} />;
 
   return (
     <div className="ap-view ap-view-student">
-      <APSectionTitle eyebrow={isFreeUser ? 'Prematrícula · Acceso gratis' : 'Estudiante · Piloto visual'} title={isFreeUser ? 'Practicá desde hoy, ' + first : 'Academia Play'}>
-        {isFreeUser ? 'Juegos cortos, logros y progreso visual.' : 'Práctica visual organizada por áreas.'}
+      <APSectionTitle eyebrow={isFreeUser ? 'Prematrícula · Acceso gratis' : 'Estudiante · Motor banco'} title={isFreeUser ? 'Practicá desde hoy, ' + first : 'Academia Play'}>
+        {isFreeUser ? 'Juegos cortos, logros y progreso visual.' : 'Práctica por nivel, unidad, área y juego desde el banco curricular.'}
       </APSectionTitle>
 
       <div className="ap-dashboard-grid">
         <div className="ap-hero-card ap-cascade ap-cascade-1">
           <APBadge tone="red">Acceso activo</APBadge>
-          <h3>{isFreeUser ? 'Entrá a Academia Play y completá tus 5 juegos gratis' : 'Continuá tu ruta por áreas'}</h3>
-          <p>{isFreeUser ? 'Tu meta inicial es llevar los 5 juegos gratuitos al 100%.' : 'Tu progreso visual queda separado de las notas oficiales.'}</p>
+          <h3>{isFreeUser ? 'Entrá a Academia Play y completá tus 5 juegos gratis' : 'Continuá tu ruta por unidades'}</h3>
+          <p>{isFreeUser ? 'Tu meta inicial es llevar los 5 juegos gratuitos al 100%.' : 'El banco multi-nivel ya puede cargar juegos reales si CS14A fue importado.'}</p>
           <div className="ap-hero-actions">
             <button type="button" className="ap-btn ap-btn-primary ap-breathe" onClick={() => { apPlaySound('click', soundOn); openGame(AP_GAMES[0]); }}>Practicar ahora</button>
             <button type="button" className="ap-btn ap-btn-ghost" onClick={() => { apPlaySound('click', soundOn); setScreen('catalog'); }}>Ver catálogo</button>
@@ -1103,31 +1553,76 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
           <APProgress value={Math.round((freeCompleted / freeGamesCount) * 100)} label="Logros gratis completados" />
         </div>
         <div className="ap-panel ap-live-preview ap-cascade ap-cascade-2">
-          <APBadge tone={newCount ? 'red' : 'navy'}>{newCount ? newCount + ' nuevo' + (newCount > 1 ? 's' : '') : 'Al día'}</APBadge>
-          <h3>{unlockedGames} juegos visibles</h3>
-          <p>Filtrá por áreas y distinguí novedades desde el catálogo.</p>
-          <button type="button" className="ap-btn ap-btn-light" onClick={() => { apPlaySound('click', soundOn); setFilter('Gratis'); }}>Ver gratis</button>
+          <APBadge tone={bankCatalog.length ? 'ok' : 'navy'}>{bankStatus}</APBadge>
+          <h3>{bankCatalog.length || unlockedGames} juegos visibles</h3>
+          <p>{bankCatalog.length ? bankCompleted + ' juegos del banco al 100%.' : 'Importá el banco desde admin para activar la ruta real.'}</p>
+          <button type="button" className="ap-btn ap-btn-light" onClick={() => { apPlaySound('click', soundOn); loadBankCatalog(); }}>Actualizar banco</button>
         </div>
       </div>
 
       <div className="ap-stats-grid ap-stats-grid-compact">
         <APStat label="Juegos gratis" value={String(freeGamesCount)} sub="ruta inicial" tone="red" />
-        <APStat label="Logros 100%" value={String(freeCompleted)} sub="meta actual" />
-        <APStat label="Nuevos" value={String(newCount)} sub="sin revisar" />
-        <APStat label="Progreso" value={syncState === 'sincronizado' ? 'Real' : syncState === 'guardando' ? '...' : 'Local'} sub={syncState === 'pendiente' ? 'pendiente de sincronizar' : 'hoja separada'} />
+        <APStat label="Banco total" value={String(bankCatalog.length)} sub="768 esperados" />
+        <APStat label={bankLevel + " 100%"} value={String(bankCompleted)} sub={bankTotalCompleted + " total"} />
+        <APStat label="Progreso" value={syncState === 'sincronizado' ? 'Real' : syncState === 'guardando' ? '...' : syncState === '100% guardado' ? '100%' : 'Local'} sub={syncState} />
       </div>
 
       <APAchievementTrack freeGames={freeGames} playState={playState} onToggleCelebration={() => setPlayState(prev => ({ ...prev, celebrationEnabled: !(prev.celebrationEnabled !== false) }))} />
 
       <APMedalShelf freeGames={freeGames} playState={playState} />
 
+      <APUnitProgressMap
+        levelId={bankLevel}
+        levelLabel={selectedLevelLabel}
+        bankLevelGames={bankLevelGames}
+        playState={playState}
+        selectedUnit={bankUnit}
+        onSelectUnit={(unitId) => { setBankUnit(unitId); setBankArea('Todos'); }}
+        onRefresh={loadBankCatalog}
+      />
+
+      <div className="ap-panel ap-bank-student-panel">
+        <div className="ap-catalog-head ap-catalog-head-clean">
+          <div>
+            <APBadge tone={apLevelTone(bankLevel)}>Banco curricular</APBadge>
+            <h3>{selectedLevelLabel} · ruta por unidad</h3>
+            <p>{bankCatalog.length ? 'Elegí nivel, unidad y área. Cada unidad debe tener 12 juegos.' : 'Todavía no hay juegos importados o el banco no respondió.'}</p>
+          </div>
+          <button type="button" className="ap-btn ap-btn-light" onClick={loadBankCatalog}>Actualizar</button>
+        </div>
+        <div className="ap-bank-level-tabs" role="tablist" aria-label="Niveles Academia Play">
+          {bankLevels.map(level => (
+            <button key={level.id} type="button" className={bankLevel === level.id ? 'active level-' + level.id.toLowerCase() : 'level-' + level.id.toLowerCase()} onClick={() => { setBankLevel(level.id); setBankArea('Todos'); }}>
+              <span>{level.label}</span><b>{level.count || 0}</b>
+            </button>
+          ))}
+        </div>
+        <div className="ap-bank-unit-tabs" role="tablist" aria-label={'Unidades ' + selectedLevelLabel}>
+          {(bankUnits.length ? bankUnits : Array.from({length:16}, (_,i)=>({id:bankLevel + '-U' + String(i+1).padStart(2,'0'), count:0}))).map(unit => (
+            <button key={unit.id} type="button" className={bankUnit === unit.id ? 'active' : ''} onClick={() => setBankUnit(unit.id)}>
+              <span>{apUnitShort(unit.id)}</span><b>{unit.count || 0}</b>
+            </button>
+          ))}
+        </div>
+        <div className="ap-filter-tabs ap-bank-area-tabs" role="tablist" aria-label="Filtrar área del banco">
+          {bankAreas.map(area => <button key={area} type="button" className={bankArea === area ? 'active' : ''} onClick={() => setBankArea(area)}>{area}</button>)}
+        </div>
+        <div className="ap-bank-unit-summary">
+          <strong>{bankUnit}</strong>
+          <span>{bankVisible.length} juego(s) visibles · {bankVisible.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100).length} al 100% · unidad {selectedUnitProgress ? selectedUnitProgress.completed + '/' + (selectedUnitProgress.total || 12) : '0/12'}</span>
+        </div>
+        <div className="ap-card-grid ap-card-grid-catalog ap-bank-card-grid">
+          {bankVisible.length ? bankVisible.map(g => <APGameCard key={g.id} game={g} isFreeUser={isFreeUser} onOpen={openGame} playState={playState} soundOn={soundOn} />) : <div className="ap-empty-bank"><strong>Sin juegos para este filtro.</strong><span>Validá e importá cada nivel desde Admin → Banco curricular. Si ya importaste, tocá Actualizar.</span></div>}
+        </div>
+      </div>
+
       <div className="ap-catalog-head ap-catalog-head-clean">
-        <div><h3>Áreas cognitivas</h3><p>Elegí un área para filtrar el catálogo.</p></div>
+        <div><h3>Áreas cognitivas demo</h3><p>Catálogo visual inicial y juegos gratis.</p></div>
       </div>
       <APAreaGrid categories={categories} filter={filter} setFilter={setFilter} isFreeUser={isFreeUser} playState={playState} />
 
       <div className="ap-catalog-head">
-        <div><h3>Catálogo de juegos</h3><p>{filter === 'Todos' ? (isFreeUser ? freeGamesCount + ' gratis · ' + AP_GAMES.length + ' total' : AP_GAMES.length + ' juegos') : 'Filtro: ' + filter}</p></div>
+        <div><h3>Catálogo demo</h3><p>{filter === 'Todos' ? (isFreeUser ? freeGamesCount + ' gratis · ' + AP_GAMES.length + ' total' : AP_GAMES.length + ' juegos') : 'Filtro: ' + filter}</p></div>
         <div className="ap-filter-tabs" role="tablist" aria-label="Filtrar catálogo de juegos">
           {categories.map(cat => <button key={cat} type="button" className={filter === cat ? 'active' : ''} onClick={() => setFilter(cat)}>{cat}</button>)}
         </div>
@@ -1310,7 +1805,7 @@ function APBankAdminPanel() {
   }
 
   function importSource() {
-    const ok = window.confirm('Esto reemplaza ACADEMIA_PLAY_BANK con la fuente validada. No toca notas oficiales. ¿Continuar?');
+    const ok = window.confirm('Esto reemplaza solo el/los nivel(es) detectados en la fuente validada y conserva los demás. No toca notas oficiales. ¿Continuar?');
     if (!ok) return;
     setImportStatus('importando');
     apPost('academiaPlayBankImport', { source_spreadsheet_id: sourceId }, 60000).then(res => {
@@ -1350,7 +1845,7 @@ function APBankAdminPanel() {
           <div>
             <APBadge tone={resultOk ? 'ok' : 'navy'}>CS14 Importador</APBadge>
             <h4>Importar banco por nivel</h4>
-            <p>Valida B1, B2, I1 o I2 antes de importar. Si hay errores, bloquea la importación; si está correcto, reemplaza solo el nivel detectado.</p>
+            <p>Valida la fuente antes de importar. Reemplaza solo el nivel detectado y conserva los demás.</p>
           </div>
           <span className="ap-import-status">{importStatus || 'pendiente'}</span>
         </div>
@@ -1369,7 +1864,6 @@ function APBankAdminPanel() {
               <span>{importResult.total_items || 0} ítems</span>
               <span>{importResult.total_games || 0} juegos</span>
               <span>{importResult.total_units || 0} unidades</span>
-              <span>{(importResult.import_levels || Object.keys(importResult.by_level || {})).join(', ') || 'nivel'}</span>
               <span>{resultErrors.length} errores</span>
               <span>{resultWarnings.length} alertas</span>
             </div>
@@ -1407,7 +1901,7 @@ function APBankAdminPanel() {
       <div className="ap-bank-unit-strip">
         {units.slice(0, 16).map(x => <span key={x.unit_id}>{x.unit_id || 'SIN UNIDAD'} <b>{x.games}</b></span>)}
       </div>
-      <p className="ap-demo-note">CS14A importa el banco validado por nivel y sigue guardando solo completados 100%. No toca DATOS, ESTATUS ni notas oficiales.</p>
+      <p className="ap-demo-note">CS14 importa el banco validado y sigue guardando solo completados 100%. No toca DATOS, ESTATUS ni notas oficiales.</p>
     </div>
   );
 }
@@ -1553,10 +2047,10 @@ function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
   }
 
   return (
-    <div className="aplay-shell" data-screen-label="Academia Play · V2.2 ficha admin">
+    <div className="aplay-shell" data-screen-label="Academia Play · V2.4 mapa progreso">
       <div className="aplay-topbar">
         <div>
-          <APBadge tone="red">V2.2 · progreso y fichas</APBadge>
+          <APBadge tone="red">V2.4 · mapa progreso</APBadge>
           <h1>Academia Play</h1>
           <p>{nombre} · Práctica visual sin notas oficiales.</p>
         </div>
