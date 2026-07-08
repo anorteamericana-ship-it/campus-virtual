@@ -1,4 +1,4 @@
-/* F98.4-Z6-PLAY1 · Academia Play V1 demo enriquecido */
+/* F98.4-Z6-CS9 · Academia Play V1.9 sonidos + medallas visuales */
 .aplay-shell {
   --an-navy: var(--navy, #06366E);
   --an-navy-mid: #0B559D;
@@ -240,3 +240,28 @@
 @keyframes apConfetti{0%{transform:translateY(-10px) rotate(0deg);opacity:0}8%{opacity:1}100%{transform:translateY(100vh) rotate(280deg);opacity:0}}
 @media(max-width:980px){.ap-area-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ap-achievement-line{grid-template-columns:repeat(3,minmax(0,1fr))}.ap-achievement-line:before{display:none}}
 @media(max-width:700px){.ap-achievement-head{display:grid}.ap-stats-grid-compact{grid-template-columns:1fr}.ap-area-grid{grid-template-columns:1fr}.ap-achievement-line{grid-template-columns:1fr}.ap-achievement-node{grid-template-columns:auto 1fr;justify-items:start;text-align:left;padding:6px 0}.ap-achievement-node .ap-achievement-dot{grid-row:span 2}.ap-achievement-node strong,.ap-achievement-node small{padding-left:2px}}
+
+
+/* F98.4-Z6-CS9 · Medallas visuales y microanimaciones */
+
+.ap-medal-shelf{display:grid;grid-template-columns:1.15fr repeat(5,minmax(0,1fr));gap:10px;margin:0 0 20px;}
+.ap-medal-card{min-height:98px;border:1px solid var(--line);background:linear-gradient(180deg,#fff,#faf8f2);border-radius:18px;padding:12px;display:grid;align-content:center;justify-items:center;text-align:center;gap:5px;box-shadow:var(--sh-1);position:relative;overflow:hidden;}
+.ap-medal-card:after{content:'';position:absolute;right:-20px;bottom:-26px;width:72px;height:72px;border-radius:24px;background:rgba(6,54,110,.05);transform:rotate(14deg);}
+.ap-medal-card span{font-size:26px;position:relative;z-index:1;filter:grayscale(.35);}
+.ap-medal-card strong{font-size:12px;line-height:1.15;color:var(--an-navy-ink);position:relative;z-index:1;}
+.ap-medal-card small{font-size:11px;color:var(--ink-3);position:relative;z-index:1;}
+.ap-medal-card.done{border-color:rgba(46,125,50,.32);background:linear-gradient(180deg,#fff,#ecf8ee);animation:apMedalPop .55s ease both;}
+.ap-medal-card.done span{filter:none;}
+.ap-medal-card.progress{border-color:rgba(6,54,110,.28);background:linear-gradient(180deg,#fff,#eef5ff);}
+.ap-medal-card.master{background:linear-gradient(180deg,#fff,#fff7e3);}
+.ap-medal-card.master.done{border-color:rgba(203,146,44,.5);box-shadow:0 18px 38px rgba(203,146,44,.18);}
+.ap-game-card.is-complete{border-color:rgba(46,125,50,.35);background:linear-gradient(180deg,#fff,#f1fbf3);}
+.ap-game-card.is-complete:before{content:'100%';position:absolute;right:13px;top:13px;z-index:2;border-radius:999px;background:var(--ok-bg);color:var(--ok-ink);font-size:10px;font-weight:950;padding:5px 8px;border:1px solid rgba(46,125,50,.18);}
+.ap-game-card:not(.is-locked):active,.ap-area-card:active,.ap-btn:active{transform:scale(.985);}
+.ap-answer.correct{animation:apGlow .46s ease, apSuccessBounce .36s ease;}
+.ap-achievement-node.done .ap-achievement-dot{animation:apMedalPop .5s ease both;}
+@keyframes apMedalPop{0%{transform:scale(.86);opacity:.6}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes apSuccessBounce{0%,100%{transform:translateX(0)}45%{transform:translateX(4px)}}
+@media(max-width:1100px){.ap-medal-shelf{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:640px){.ap-medal-shelf{grid-template-columns:1fr 1fr}.ap-medal-card.master{grid-column:1/-1}.ap-medal-card{min-height:86px}.ap-medal-card span{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.ap-medal-card.done,.ap-achievement-node.done .ap-achievement-dot,.ap-answer.correct{animation:none!important}.ap-game-card:not(.is-locked):active,.ap-area-card:active,.ap-btn:active{transform:none!important}}
