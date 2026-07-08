@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3D · CONAPE visual y condiciones
+// F98.4-Z6-IP3E · validaciones y opciones de pago
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3D';
+const INS_VERSION = 'F98.4-Z6-IP3E';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -52,11 +52,22 @@ function fmtMoneyShort(v){
 }
 function conapeToeicAmount(group, form){
   const n = Number(group?.toeic_monto || form?.toeic_monto || form?.conape_toeic_monto || 0);
-  return n > 0 ? n : 0;
+  return n > 0 ? n : 137000;
 }
 function conapeSostenimientoLabel(v){
-  return isTruthy(v) || upper(v) === 'SI' ? 'Solicitado' : 'No solicitado';
+  const k = upper(v);
+  if(k === 'SI') return 'Solicitado';
+  return 'No solicitado';
 }
+function paymentLabel(v){
+  return upper(v) === 'CONAPE' ? 'Financiado por CONAPE' : 'BECA con la Academia';
+}
+const ENGLISH_EXPERIENCE_OPTIONS = [
+  'Nunca he llevado un curso o practicado el ingles',
+  'Tengo el ingles básico del colegio',
+  'He matriculado antes un curso de ingles, pero no aprendí nada',
+  'Tengo conocimientos suficientes para aplicar prueba de ubicación'
+];
 function formatPercent(v){
   const n = Number(v || 0);
   if(!n) return '';
@@ -256,7 +267,7 @@ const INITIAL_FORM = {
 };
 
 const STEPS = [
-  ['cedula','Cédula'], ['grupo','Curso y horario'], ['datos','Datos'], ['finanzas','Financiamiento'], ['docs','Documentos'], ['resumen','Resumen']
+  ['cedula','Cédula'], ['grupo','Curso y horario'], ['datos','Datos'], ['finanzas','Opciones de pago'], ['docs','Documentos'], ['resumen','Resumen']
 ];
 
 function Header({scrollToForm}){
@@ -532,7 +543,7 @@ function DatosStep({form,setForm,setStep,padronName}){
       <Field label="Provincia" required><SelectInput value={form.provincia} onChange={updateProvince}><option value="">Seleccionar</option>{Object.keys(LOCATION_DATA).map(p=><option key={p} value={p}>{p}</option>)}</SelectInput></Field>
       <Field label="Cantón" required><SelectInput value={form.canton} onChange={updateCanton} disabled={!form.provincia}><option value="">{form.provincia ? 'Seleccionar' : 'Primero elegí provincia'}</option>{cantons.map(c=><option key={c} value={c}>{c}</option>)}</SelectInput></Field>
       <Field label="Distrito" required><SelectInput value={form.distrito} onChange={updateDistrict} disabled={!form.canton}><option value="">{form.canton ? 'Seleccionar' : 'Primero elegí cantón'}</option>{districtOptions.map(d=><option key={d} value={d}>{d}</option>)}</SelectInput></Field>
-      <Field label="Clave para entrar al portal" required hint="La usarás con tu cédula para revisar tu solicitud."><TextInput type="password" value={form.clave} onChange={v=>setForm({clave:v})} autoComplete="new-password" /></Field>
+      <Field label="Crea tu contraseña para ingresar al Campus virtual" required hint="La usarás con tu cédula para revisar tu solicitud."><TextInput type="password" value={form.clave} onChange={v=>setForm({clave:v})} autoComplete="new-password" /></Field>
     </div>
     {upper(form.distrito)==='OTRO' && <Field label="Escribí tu distrito" required><TextInput value={form.distrito_otro} onChange={v=>setForm({distrito_otro:v})} /></Field>}
     <Field label="Dirección exacta" required><TextArea rows="3" value={form.direccion} onChange={v=>setForm({direccion:v})} placeholder="Ejemplo: de la iglesia 200 norte y 50 este, casa blanca portón negro." /></Field>
@@ -549,7 +560,14 @@ function DatosStep({form,setForm,setStep,padronName}){
 }
 
 function ConapeOptionCard({kind,title,subtitle,price,selected,onClick,disabled,children}){
-  return <button type="button" disabled={disabled} className={`ins-conape-card ${kind || ''} ${selected?'selected':''} ${disabled?'disabled':''}`} onClick={onClick}>
+  function handleKey(e){
+    if(disabled) return;
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      if(onClick) onClick(e);
+    }
+  }
+  return <div role="button" tabIndex={disabled ? -1 : 0} aria-pressed={!!selected} aria-disabled={!!disabled} className={`ins-conape-card ${kind || ''} ${selected?'selected':''} ${disabled?'disabled':''}`} onClick={disabled ? undefined : onClick} onKeyDown={handleKey}>
     <div className="ins-conape-visual">
       <span className="ins-conape-img"></span>
       <b>{selected ? 'Seleccionado' : (disabled ? 'No disponible' : 'Opcional')}</b>
@@ -558,17 +576,17 @@ function ConapeOptionCard({kind,title,subtitle,price,selected,onClick,disabled,c
       <h4>{title}</h4>
       <p>{subtitle}</p>
       {price && <strong>{price}</strong>}
-      {children && <small>{children}</small>}
+      {children && <small onClick={e=>e.stopPropagation()}>{children}</small>}
     </div>
-  </button>;
+  </div>;
 }
 
 function BecaCard({beca,selected,onSelect}){
   const disabled = beca && beca.disponible===false;
   return <button type="button" disabled={disabled} className={`ins-beca-card ${selected?'selected':''} ${disabled?'disabled':''}`} onClick={()=>onSelect(beca ? beca.id : '')}>
-    <div className="ins-beca-top"><span>{beca ? 'Beca activa' : 'Sin beca'}</span>{beca && <b>{beca.porcentaje || 'Por confirmar'}</b>}</div>
-    <h4>{beca ? beca.nombre : 'Continuar sin beca'}</h4>
-    <small>{beca ? (beca.descripcion || 'Aplicación sujeta a revisión de admisiones.') : 'Si no ocupás beca, continuá con el proceso regular.'}</small>
+    <div className="ins-beca-top"><span>{beca ? 'Beca activa' : 'Pendiente'}</span>{beca && <b>{beca.porcentaje || 'Por confirmar'}</b>}</div>
+    <h4>{beca ? beca.nombre : 'Seleccionar beca con admisiones'}</h4>
+    <small>{beca ? (beca.descripcion || 'Aplicación sujeta a revisión de admisiones.') : 'Usá esta opción solo si la beca se confirma directamente con admisiones.'}</small>
   </button>;
 }
 
@@ -578,28 +596,31 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   const conape = upper(form.financiamiento) === 'CONAPE';
   const becasActivas = (becas || []).filter(Boolean);
   const toeicAmount = conapeToeicAmount(selectedGroup, form);
-  const toeicAvailable = !!selectedGroup?.toeic_disponible;
+  const toeicAvailable = selectedGroup?.toeic_disponible || toeicAmount > 0;
   const laptopSelected = upper(form.conape_equipo) === 'LAPTOP';
-  const sostenimientoSelected = isTruthy(form.conape_sostenimiento) || upper(form.conape_sostenimiento) === 'SI';
+  const sostenimientoSelected = upper(form.conape_sostenimiento) === 'SI';
 
   function next(){
     const missing=[];
+    if(!clean(form.financiamiento)) missing.push('opción de pago');
+    if(propio && becasActivas.length > 0 && !clean(form.beca || form.beca_propio)) missing.push('beca seleccionada');
     if(!clean(form.como_entero)) missing.push('cómo se enteró');
+    if(!clean(form.conocimientos_previos)) missing.push('experiencia con el inglés');
     if(selectedGroup?.estado_cupo === 'LISTA_ESPERA' && !form.aceptar_lista_espera) missing.push('aceptación de lista de espera');
     if(missing.length){ setErr('Falta completar: ' + missing.join(', ') + '.'); return; }
     setErr(''); setStep(4);
   }
 
   return <section className="ins-card ins-step-card">
-    <div className="ins-card-head"><span>Paso 4</span><h2>Financiamiento y apoyo</h2><p>Indicá cómo querés llevar tu proceso para que admisiones te atienda con la ruta correcta.</p></div>
+    <div className="ins-card-head"><span>Paso 4</span><h2>Opciones de pago</h2><p>Elegí la opción que mejor se ajusta a tu proceso de ingreso.</p></div>
     <div className="ins-choice-grid finance-grid">
-      <button type="button" className={`ins-choice finance ${conape?'selected':''}`} onClick={()=>setForm({financiamiento:'CONAPE',beca:'',beca_propio:''})}><i>🏦</i><strong>CONAPE</strong><span>Solicitud de financiamiento y seguimiento del proceso.</span></button>
-      <button type="button" className={`ins-choice finance ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>💳</i><strong>Pago propio</strong><span>Proceso directo con matrícula, cuotas y promociones activas.</span></button>
+      <button type="button" className={`ins-choice finance ${conape?'selected':''}`} onClick={()=>setForm({financiamiento:'CONAPE',beca:'',beca_propio:''})}><i>🏦</i><strong>Financiado por CONAPE</strong><span>Financia el 100% del programa, laptop, internet y certificación internacional TOEIC.</span></button>
+      <button type="button" className={`ins-choice finance ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>🎓</i><strong>BECA con la Academia</strong><span>Descuento en todas las mensualidades si cancelás por tus propios medios. Conservá tu beca aprobando cada nivel.</span></button>
     </div>
 
     {conape && <div className="ins-subcard conape-panel">
       <div className="ins-conape-title">
-        <div><h3>Opciones CONAPE</h3><p>Seleccioná solo lo que querés incluir en la solicitud. Admisiones valida condiciones, montos y disponibilidad antes de enviar la propuesta.</p></div>
+        <div><h3>Opciones CONAPE</h3><p>Seleccioná lo que querés incluir en la propuesta. Admisiones valida condiciones, montos y disponibilidad antes de formalizar.</p></div>
         <span>{selectedGroup?.codigo || 'Grupo por confirmar'}</span>
       </div>
       <div className="ins-conape-grid">
@@ -607,29 +628,37 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
           kind="laptop"
           title="Laptop"
           subtitle={laptopSelected ? 'Solicitada para incluir en la propuesta.' : 'Podés solicitar equipo si necesitás estudiar desde casa.'}
-          price="Monto sujeto a propuesta"
+          price="Sujeto a propuesta"
           selected={laptopSelected}
           onClick={()=>setForm({conape_equipo:laptopSelected?'NINGUNO':'LAPTOP'})}
         >
+          <div className="ins-laptop-thumbs"><i></i><i></i></div>
           Se revisa según disponibilidad, perfil de financiamiento y condiciones vigentes de CONAPE.
         </ConapeOptionCard>
 
         <ConapeOptionCard
           kind="sostenimiento"
           title="Sostenimiento"
-          subtitle={sostenimientoSelected ? 'Solicitado para revisión de admisiones.' : 'Apoyo adicional sujeto a requisitos y aprobación.'}
-          price="Requiere validación"
+          subtitle={sostenimientoSelected ? 'Solicitado para revisión.' : 'Apoyo adicional sujeto a requisitos y aprobación.'}
+          price="Condicionado a validación"
           selected={sostenimientoSelected}
           onClick={()=>setForm({conape_sostenimiento:sostenimientoSelected?'NO':'SI'})}
         >
-          No se aprueba automáticamente desde este formulario. Se valida caso por caso antes de presentar la solicitud.
+          <label className="ins-inline-select" onClick={e=>e.stopPropagation()}>
+            <span>Elegí una opción</span>
+            <select value={form.conape_sostenimiento || 'NO'} onChange={e=>setForm({conape_sostenimiento:e.target.value})}>
+              <option value="NO">No solicitar sostenimiento</option>
+              <option value="SI">Solicitar sostenimiento</option>
+            </select>
+          </label>
+          No se aprueba automáticamente desde este formulario.
         </ConapeOptionCard>
 
         <ConapeOptionCard
           kind="toeic"
           title="Certificación TOEIC"
           subtitle={toeicAvailable ? 'Monto tomado del grupo seleccionado.' : 'Este grupo no tiene TOEIC marcado como disponible.'}
-          price={toeicAvailable ? fmtMoneyShort(toeicAmount) : 'No disponible'}
+          price={toeicAvailable ? fmtMoney(toeicAmount) : 'No disponible'}
           selected={!!form.conape_toeic}
           disabled={!toeicAvailable}
           onClick={()=> toeicAvailable && setForm({
@@ -638,7 +667,7 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
             toeic_monto:!form.conape_toeic ? toeicAmount : 0
           })}
         >
-          El precio puede cambiar según el grupo porque se lee desde la configuración real del horario elegido.
+          Si el grupo trae un monto específico, se usa ese dato. Si no, se muestra el monto vigente de referencia.
         </ConapeOptionCard>
       </div>
       <Alert>Estas opciones quedan como solicitud inicial. La propuesta final se confirma con admisiones antes de formalizar el proceso.</Alert>
@@ -650,13 +679,19 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
         <BecaCard beca={null} selected={!clean(form.beca || form.beca_propio)} onSelect={()=>setForm({beca:'',beca_propio:''})} />
         {becasActivas.map(b=><BecaCard key={b.id || b.nombre} beca={b} selected={(form.beca || form.beca_propio) === b.id} onSelect={id=>setForm({beca:id,beca_propio:id})} />)}
       </div>
+      {becasActivas.length > 0 && !clean(form.beca || form.beca_propio) && <Alert>Seleccioná la beca que querés solicitar antes de continuar.</Alert>}
     </div>}
 
     <div className="ins-grid two">
       <Field label="¿Cómo se enteró?" required><SelectInput value={form.como_entero} onChange={v=>setForm({como_entero:v})}><option value="">Seleccionar</option><option>Facebook / Instagram</option><option>WhatsApp</option><option>Recomendación</option><option>CONAPE</option><option>Google</option><option>Otro</option></SelectInput></Field>
       <Field label="Asesor de referencia"><SelectInput value={form.asesor_ref} onChange={v=>setForm({asesor_ref:v})}><option value="">Sin asesor específico</option>{asesores.map(a=><option key={a.cedula || a.nombre} value={a.nombre}>{a.nombre}</option>)}</SelectInput></Field>
     </div>
-    <Field label="Conocimientos previos de inglés"><TextArea rows="3" value={form.conocimientos_previos} onChange={v=>setForm({conocimientos_previos:v})} placeholder="Ejemplo: nunca he estudiado, básico, estudié en colegio, quiero prueba de ubicación…" /></Field>
+    <Field label="Contanos tu experiencia con el ingles" required>
+      <SelectInput value={form.conocimientos_previos} onChange={v=>setForm({conocimientos_previos:v})}>
+        <option value="">Seleccionar</option>
+        {ENGLISH_EXPERIENCE_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+      </SelectInput>
+    </Field>
     {selectedGroup?.estado_cupo === 'LISTA_ESPERA' && <label className="ins-check danger"><input type="checkbox" checked={!!form.aceptar_lista_espera} onChange={e=>setForm({aceptar_lista_espera:e.target.checked})} /><span>Acepto quedar en lista de espera para este horario si no hay cupo inmediato.</span></label>}
     {err && <Alert type="error">{err}</Alert>}
     <div className="ins-actions"><button type="button" className="ins-btn ghost" onClick={()=>setStep(2)}>Atrás</button><button type="button" className="ins-btn primary" onClick={next}>Continuar</button></div>
@@ -688,6 +723,13 @@ function DocsStep({form,setForm,setStep}){
 
 function SummaryRow({label,value}){ return <div className="ins-summary-row"><span>{label}</span><strong>{optionLabel(value)}</strong></div>; }
 
+function ReviewPanel({title,editLabel,onEdit,children}){
+  return <div className="ins-review-panel">
+    <div className="ins-review-head"><h3>{title}</h3><button type="button" onClick={onEdit}>{editLabel || 'Editar'}</button></div>
+    {children}
+  </div>;
+}
+
 function ReviewStep({form,selectedGroup,setStep,onSubmit,submitting,error,becas}){
   const conape = upper(form.financiamiento)==='CONAPE';
   const wait = selectedGroup?.estado_cupo === 'LISTA_ESPERA';
@@ -696,9 +738,27 @@ function ReviewStep({form,selectedGroup,setStep,onSubmit,submitting,error,becas}
   return <section className="ins-card ins-step-card">
     <div className="ins-card-head"><span>Paso 6</span><h2>Revisá antes de enviar</h2><p>Confirmá tus datos antes de registrar la solicitud. Aún no es matrícula activa.</p></div>
     <div className="ins-review-grid">
-      <div className="ins-review-panel"><h3>Estudiante</h3><SummaryRow label="Nombre" value={form.nombre}/><SummaryRow label="Cédula" value={form.cedula}/><SummaryRow label="Correo" value={form.correo}/><SummaryRow label="WhatsApp" value={form.whatsapp}/><SummaryRow label="Ubicación" value={[form.provincia, form.canton, upper(form.distrito)==='OTRO' ? form.distrito_otro : form.distrito].filter(Boolean).join(' · ')}/></div>
-      <div className="ins-review-panel"><h3>Curso</h3><SummaryRow label="Nivel" value={selectedGroup?.nivel}/><SummaryRow label="Horario" value={selectedGroup?.schedule_short}/><SummaryRow label="Inicio" value={selectedGroup?.fecha_inicio_label}/><SummaryRow label="Código" value={selectedGroup?.codigo}/></div>
-      <div className="ins-review-panel"><h3>Financiamiento</h3><SummaryRow label="Tipo" value={form.financiamiento}/>{conape && <SummaryRow label="Laptop" value={upper(form.conape_equipo)==='LAPTOP'?'Solicitada':'No solicitada'}/>} {conape && <SummaryRow label="Sostenimiento" value={conapeSostenimientoLabel(form.conape_sostenimiento)}/>} {conape && <SummaryRow label="TOEIC" value={form.conape_toeic ? `Solicitado · ${fmtMoneyShort(conapeToeicAmount(selectedGroup, form))}` : 'No solicitado'}/>} {!conape && <SummaryRow label="Beca" value={becaSel ? `${becaSel.nombre}${becaSel.porcentaje ? ` · ${becaSel.porcentaje}` : ''}` : 'Sin beca'}/>}</div>
+      <ReviewPanel title="Estudiante" onEdit={()=>setStep(2)}>
+        <SummaryRow label="Nombre" value={form.nombre}/>
+        <SummaryRow label="Cédula" value={form.cedula}/>
+        <SummaryRow label="Correo" value={form.correo}/>
+        <SummaryRow label="WhatsApp" value={form.whatsapp}/>
+        <SummaryRow label="Ubicación" value={[form.provincia, form.canton, upper(form.distrito)==='OTRO' ? form.distrito_otro : form.distrito].filter(Boolean).join(' · ')}/>
+      </ReviewPanel>
+      <ReviewPanel title="Curso" onEdit={()=>setStep(1)}>
+        <SummaryRow label="Nivel" value={selectedGroup?.nivel}/>
+        <SummaryRow label="Horario" value={selectedGroup?.schedule_short}/>
+        <SummaryRow label="Inicio" value={selectedGroup?.fecha_inicio_label}/>
+        <SummaryRow label="Código" value={selectedGroup?.codigo}/>
+      </ReviewPanel>
+      <ReviewPanel title="Opciones de pago" onEdit={()=>setStep(3)}>
+        <SummaryRow label="Tipo" value={paymentLabel(form.financiamiento)}/>
+        {conape && <SummaryRow label="Laptop" value={upper(form.conape_equipo)==='LAPTOP'?'Solicitada':'No solicitada'}/>}
+        {conape && <SummaryRow label="Sostenimiento" value={conapeSostenimientoLabel(form.conape_sostenimiento)}/>}
+        {conape && <SummaryRow label="TOEIC" value={form.conape_toeic ? `Solicitado · ${fmtMoney(conapeToeicAmount(selectedGroup, form))}` : 'No solicitado'}/>}
+        {!conape && <SummaryRow label="Beca" value={becaSel ? `${becaSel.nombre}${becaSel.porcentaje ? ` · ${becaSel.porcentaje}` : ''}` : 'Sin beca seleccionada'}/>}
+        <SummaryRow label="Experiencia" value={form.conocimientos_previos}/>
+      </ReviewPanel>
     </div>
     <div className="ins-legal"><strong>Importante:</strong> tu solicitud queda sujeta a revisión de admisiones. La matrícula se confirma cuando el proceso quede validado.</div>
     {!canSubmit && <Alert type="error">Este horario está en lista de espera. Marcá la aceptación en el paso anterior o elegí otra opción.</Alert>}
@@ -720,7 +780,7 @@ function SuccessTicket({result,form,selectedGroup}){
         <SummaryRow label="Grupo tentativo" value={selectedGroup?.codigo}/>
         <SummaryRow label="Horario" value={selectedGroup?.schedule_short}/>
         <SummaryRow label="Estado inicial" value={result?.estado || (conape?'PENDIENTE_CONAPE':'PENDIENTE_PAGO')}/>
-        <SummaryRow label="Financiamiento" value={form.financiamiento}/>
+        <SummaryRow label="Opción de pago" value={paymentLabel(form.financiamiento)}/>
       </div>
       <div className="ins-success-actions">
         <a className="ins-btn primary" href="campus.html">Entrar al portal</a>
@@ -820,7 +880,11 @@ function InscripcionApp(){
     if(!clean(form.provincia) || !clean(form.canton) || !clean(form.distrito)) return 'Completá provincia, cantón y distrito.';
     if(upper(form.distrito)==='OTRO' && !clean(form.distrito_otro)) return 'Escribí el distrito.';
     if(!clean(form.direccion) || !clean(form.fecha_nac) || !clean(form.sexo)) return 'Completá los datos personales obligatorios.';
+    if(form.es_menor && (!clean(form.tutor_nombre) || !clean(form.tutor_cedula) || !clean(form.tutor_tel))) return 'Completá los datos del representante legal.';
+    if(!clean(form.financiamiento)) return 'Seleccioná una opción de pago.';
+    if(upper(form.financiamiento)==='PROPIO' && becas.length > 0 && !clean(form.beca || form.beca_propio)) return 'Seleccioná la beca que querés solicitar.';
     if(!clean(form.como_entero)) return 'Indicá cómo te enteraste.';
+    if(!clean(form.conocimientos_previos)) return 'Seleccioná tu experiencia con el inglés.';
     if(!form.foto_ced_frente || !form.foto_ced_dorso || !form.foto_titulo) return 'Subí los tres documentos requeridos.';
     if(selectedGroup.estado_cupo === 'LISTA_ESPERA' && !form.aceptar_lista_espera) return 'Debés aceptar lista de espera o elegir otro horario.';
     return '';
@@ -848,7 +912,7 @@ function InscripcionApp(){
         conape_toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.conape_toeic_monto || 0) : 0,
         toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.toeic_monto || 0) : 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3D',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3E',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);

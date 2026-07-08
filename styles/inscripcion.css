@@ -661,3 +661,112 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
     padding:6px 8px;
   }
 }
+
+
+/* F98.4-Z6-IP3E · validaciones, opciones de pago y revisión editable */
+.ins-inline-select{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:10px 0;
+}
+.ins-inline-select span{
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.ins-inline-select select{
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+}
+.ins-laptop-thumbs{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin:10px 0;
+}
+.ins-laptop-thumbs i{
+  display:block;
+  height:58px;
+  border-radius:14px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.36),rgba(255,255,255,0)),
+    linear-gradient(135deg,#E9EFF8 0%,#FFFFFF 55%,#C9D6EB 100%);
+  border:1px solid #D8E4F4;
+  position:relative;
+  overflow:hidden;
+}
+.ins-laptop-thumbs i:before{
+  content:"";
+  position:absolute;
+  left:14%;
+  right:14%;
+  top:14%;
+  height:48%;
+  border-radius:6px;
+  border:2px solid #002F6C;
+  background:linear-gradient(135deg,#FFFFFF,#DDE8F7);
+}
+.ins-laptop-thumbs i:after{
+  content:"";
+  position:absolute;
+  left:9%;
+  right:9%;
+  bottom:18%;
+  height:7px;
+  border-radius:999px;
+  background:#002F6C;
+}
+.ins-laptop-thumbs i:nth-child(2){
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0)),
+    linear-gradient(135deg,#F7F2E9 0%,#FFFFFF 55%,#E9E2D2 100%);
+}
+.ins-laptop-thumbs i:nth-child(2):before{
+  border-color:#DA291C;
+}
+.ins-laptop-thumbs i:nth-child(2):after{
+  background:#DA291C;
+}
+.ins-review-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.ins-review-head h3{
+  margin:0!important;
+}
+.ins-review-head button{
+  border:1px solid rgba(0,47,108,.18);
+  background:#fff;
+  color:var(--an-navy);
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.ins-review-head button:hover{
+  background:var(--info-bg);
+}
+.ins-choice.finance strong{
+  text-transform:none;
+}
+.ins-choice.finance span{
+  font-weight:600;
+}
+@media (max-width:620px){
+  .ins-laptop-thumbs i{
+    height:46px;
+  }
+  .ins-review-head button{
+    padding:6px 9px;
+    font-size:10px;
+  }
+}
