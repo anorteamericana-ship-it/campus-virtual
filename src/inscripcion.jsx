@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3C · Inscripción Pública compacta
+// F98.4-Z6-IP3D · CONAPE visual y condiciones
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3C';
+const INS_VERSION = 'F98.4-Z6-IP3D';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -49,6 +49,13 @@ function fmtMoneyShort(v){
   const n = Number(v || 0);
   if(!n) return 'Sin costo adicional';
   return fmtMoney(n);
+}
+function conapeToeicAmount(group, form){
+  const n = Number(group?.toeic_monto || form?.toeic_monto || form?.conape_toeic_monto || 0);
+  return n > 0 ? n : 0;
+}
+function conapeSostenimientoLabel(v){
+  return isTruthy(v) || upper(v) === 'SI' ? 'Solicitado' : 'No solicitado';
 }
 function formatPercent(v){
   const n = Number(v || 0);
@@ -541,6 +548,21 @@ function DatosStep({form,setForm,setStep,padronName}){
   </section>;
 }
 
+function ConapeOptionCard({kind,title,subtitle,price,selected,onClick,disabled,children}){
+  return <button type="button" disabled={disabled} className={`ins-conape-card ${kind || ''} ${selected?'selected':''} ${disabled?'disabled':''}`} onClick={onClick}>
+    <div className="ins-conape-visual">
+      <span className="ins-conape-img"></span>
+      <b>{selected ? 'Seleccionado' : (disabled ? 'No disponible' : 'Opcional')}</b>
+    </div>
+    <div className="ins-conape-body">
+      <h4>{title}</h4>
+      <p>{subtitle}</p>
+      {price && <strong>{price}</strong>}
+      {children && <small>{children}</small>}
+    </div>
+  </button>;
+}
+
 function BecaCard({beca,selected,onSelect}){
   const disabled = beca && beca.disponible===false;
   return <button type="button" disabled={disabled} className={`ins-beca-card ${selected?'selected':''} ${disabled?'disabled':''}`} onClick={()=>onSelect(beca ? beca.id : '')}>
@@ -555,6 +577,10 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   const propio = upper(form.financiamiento) === 'PROPIO';
   const conape = upper(form.financiamiento) === 'CONAPE';
   const becasActivas = (becas || []).filter(Boolean);
+  const toeicAmount = conapeToeicAmount(selectedGroup, form);
+  const toeicAvailable = !!selectedGroup?.toeic_disponible;
+  const laptopSelected = upper(form.conape_equipo) === 'LAPTOP';
+  const sostenimientoSelected = isTruthy(form.conape_sostenimiento) || upper(form.conape_sostenimiento) === 'SI';
 
   function next(){
     const missing=[];
@@ -571,13 +597,51 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
       <button type="button" className={`ins-choice finance ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>💳</i><strong>Pago propio</strong><span>Proceso directo con matrícula, cuotas y promociones activas.</span></button>
     </div>
 
-    {conape && <div className="ins-subcard">
-      <h3>Opciones CONAPE</h3>
-      <div className="ins-grid two">
-        <Field label="Equipo"><SelectInput value={form.conape_equipo} onChange={v=>setForm({conape_equipo:v})}><option value="NINGUNO">No incluir equipo</option><option value="LAPTOP">Solicitar laptop</option></SelectInput></Field>
-        <Field label="Sostenimiento"><SelectInput value={form.conape_sostenimiento} onChange={v=>setForm({conape_sostenimiento:v})}><option value="NO">No solicitar</option><option value="SI">Solicitar sostenimiento</option></SelectInput></Field>
+    {conape && <div className="ins-subcard conape-panel">
+      <div className="ins-conape-title">
+        <div><h3>Opciones CONAPE</h3><p>Seleccioná solo lo que querés incluir en la solicitud. Admisiones valida condiciones, montos y disponibilidad antes de enviar la propuesta.</p></div>
+        <span>{selectedGroup?.codigo || 'Grupo por confirmar'}</span>
       </div>
-      {selectedGroup?.toeic_disponible ? <label className="ins-check"><input type="checkbox" checked={!!form.conape_toeic} onChange={e=>setForm({conape_toeic:e.target.checked, conape_toeic_monto:selectedGroup.toeic_monto || 0, toeic_monto:selectedGroup.toeic_monto || 0})} /><span>Incluir TOEIC en la solicitud {selectedGroup.toeic_monto ? `(${fmtMoney(selectedGroup.toeic_monto)})` : ''}</span></label> : <Alert>Este horario no tiene TOEIC marcado como disponible.</Alert>}
+      <div className="ins-conape-grid">
+        <ConapeOptionCard
+          kind="laptop"
+          title="Laptop"
+          subtitle={laptopSelected ? 'Solicitada para incluir en la propuesta.' : 'Podés solicitar equipo si necesitás estudiar desde casa.'}
+          price="Monto sujeto a propuesta"
+          selected={laptopSelected}
+          onClick={()=>setForm({conape_equipo:laptopSelected?'NINGUNO':'LAPTOP'})}
+        >
+          Se revisa según disponibilidad, perfil de financiamiento y condiciones vigentes de CONAPE.
+        </ConapeOptionCard>
+
+        <ConapeOptionCard
+          kind="sostenimiento"
+          title="Sostenimiento"
+          subtitle={sostenimientoSelected ? 'Solicitado para revisión de admisiones.' : 'Apoyo adicional sujeto a requisitos y aprobación.'}
+          price="Requiere validación"
+          selected={sostenimientoSelected}
+          onClick={()=>setForm({conape_sostenimiento:sostenimientoSelected?'NO':'SI'})}
+        >
+          No se aprueba automáticamente desde este formulario. Se valida caso por caso antes de presentar la solicitud.
+        </ConapeOptionCard>
+
+        <ConapeOptionCard
+          kind="toeic"
+          title="Certificación TOEIC"
+          subtitle={toeicAvailable ? 'Monto tomado del grupo seleccionado.' : 'Este grupo no tiene TOEIC marcado como disponible.'}
+          price={toeicAvailable ? fmtMoneyShort(toeicAmount) : 'No disponible'}
+          selected={!!form.conape_toeic}
+          disabled={!toeicAvailable}
+          onClick={()=> toeicAvailable && setForm({
+            conape_toeic:!form.conape_toeic,
+            conape_toeic_monto:!form.conape_toeic ? toeicAmount : 0,
+            toeic_monto:!form.conape_toeic ? toeicAmount : 0
+          })}
+        >
+          El precio puede cambiar según el grupo porque se lee desde la configuración real del horario elegido.
+        </ConapeOptionCard>
+      </div>
+      <Alert>Estas opciones quedan como solicitud inicial. La propuesta final se confirma con admisiones antes de formalizar el proceso.</Alert>
     </div>}
 
     {propio && <div className="ins-subcard">
@@ -634,7 +698,7 @@ function ReviewStep({form,selectedGroup,setStep,onSubmit,submitting,error,becas}
     <div className="ins-review-grid">
       <div className="ins-review-panel"><h3>Estudiante</h3><SummaryRow label="Nombre" value={form.nombre}/><SummaryRow label="Cédula" value={form.cedula}/><SummaryRow label="Correo" value={form.correo}/><SummaryRow label="WhatsApp" value={form.whatsapp}/><SummaryRow label="Ubicación" value={[form.provincia, form.canton, upper(form.distrito)==='OTRO' ? form.distrito_otro : form.distrito].filter(Boolean).join(' · ')}/></div>
       <div className="ins-review-panel"><h3>Curso</h3><SummaryRow label="Nivel" value={selectedGroup?.nivel}/><SummaryRow label="Horario" value={selectedGroup?.schedule_short}/><SummaryRow label="Inicio" value={selectedGroup?.fecha_inicio_label}/><SummaryRow label="Código" value={selectedGroup?.codigo}/></div>
-      <div className="ins-review-panel"><h3>Financiamiento</h3><SummaryRow label="Tipo" value={form.financiamiento}/>{conape && <SummaryRow label="Equipo" value={form.conape_equipo}/>} {conape && <SummaryRow label="TOEIC" value={form.conape_toeic?'Solicitado':'No solicitado'}/>} {!conape && <SummaryRow label="Beca" value={becaSel ? `${becaSel.nombre}${becaSel.porcentaje ? ` · ${becaSel.porcentaje}` : ''}` : 'Sin beca'}/>}</div>
+      <div className="ins-review-panel"><h3>Financiamiento</h3><SummaryRow label="Tipo" value={form.financiamiento}/>{conape && <SummaryRow label="Laptop" value={upper(form.conape_equipo)==='LAPTOP'?'Solicitada':'No solicitada'}/>} {conape && <SummaryRow label="Sostenimiento" value={conapeSostenimientoLabel(form.conape_sostenimiento)}/>} {conape && <SummaryRow label="TOEIC" value={form.conape_toeic ? `Solicitado · ${fmtMoneyShort(conapeToeicAmount(selectedGroup, form))}` : 'No solicitado'}/>} {!conape && <SummaryRow label="Beca" value={becaSel ? `${becaSel.nombre}${becaSel.porcentaje ? ` · ${becaSel.porcentaje}` : ''}` : 'Sin beca'}/>}</div>
     </div>
     <div className="ins-legal"><strong>Importante:</strong> tu solicitud queda sujeta a revisión de admisiones. La matrícula se confirma cuando el proceso quede validado.</div>
     {!canSubmit && <Alert type="error">Este horario está en lista de espera. Marcá la aceptación en el paso anterior o elegí otra opción.</Alert>}
@@ -784,7 +848,7 @@ function InscripcionApp(){
         conape_toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.conape_toeic_monto || 0) : 0,
         toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.toeic_monto || 0) : 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3C',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3D',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);
