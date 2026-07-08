@@ -1,6 +1,6 @@
 /* global React, Icon */
-// F98.4-Z6-CS7B · Academia Play V1.7 catálogo móvil + prematrícula unificada.
-// Frontend/demo únicamente: no llama backend, no guarda intentos, no crea rankings y no modifica notas oficiales.
+// F98.4-Z6-CS13B · Academia Play visual mobile polish inspirado en Claude Rev03.
+// Mantiene banco curricular + completados 100; no toca notas oficiales ni evaluaciones.
 
 const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect } = React;
 
@@ -669,16 +669,21 @@ function APStartScreen({ flow, isFreeUser, onStart, onBack, soundOn }) {
 }
 
 function APSummary({ title, score, total, errors, onReset, onBack }) {
-  const good = Number(score || 0) >= Math.ceil(Number(total || 1) * 0.7);
+  const safeTotal = Math.max(Number(total || 0), 1);
+  const safeScore = Number(score || 0);
+  const pct = Math.round((safeScore / safeTotal) * 100);
+  const perfect = pct >= 100;
+  const good = safeScore >= Math.ceil(safeTotal * 0.7);
   return (
-    <div className="ap-summary ap-enter">
-      <APBadge tone="red">Resumen demo</APBadge>
-      <h3>{good ? 'Buen trabajo' : 'Sigamos practicando'}</h3>
-      <p>Resultado visual: {score}/{total}. Este intento no se guarda y no afecta nota oficial.</p>
-      <div className="ap-summary-grid">
-        <APStat label="Correctas" value={String(score)} sub={title} />
-        <APStat label="Total" value={String(total)} sub="actividad demo" />
-        <APStat label="Errores" value={String(errors || 0)} sub="sin castigo" />
+    <div className="ap-summary ap-summary-celebrate ap-enter">
+      <div className="ap-summary-burst" aria-hidden="true">{perfect ? '🏆' : good ? '✨' : '💪'}</div>
+      <APBadge tone={perfect ? 'ok' : 'red'}>Resumen · conteo animado</APBadge>
+      <h3>{perfect ? '¡100% completado!' : good ? 'Buen trabajo' : 'Sigamos practicando'}</h3>
+      <p>Resultado de práctica: {safeScore}/{safeTotal}. No es nota oficial; solo sirve para práctica y logros visuales.</p>
+      <div className="ap-summary-grid ap-summary-grid-vivid">
+        <div className="ap-summary-count navy"><span>Correctas</span><strong>{safeScore}</strong><small>{title}</small></div>
+        <div className="ap-summary-count red"><span>Avance</span><strong>{pct}%</strong><small>{perfect ? 'listo para medalla' : 'podés repetir'}</small></div>
+        <div className="ap-summary-count gold"><span>Errores</span><strong>{Number(errors || 0)}</strong><small>sin castigo</small></div>
       </div>
       <div className="ap-hero-actions ap-center-actions">
         <button type="button" className="ap-btn ap-btn-primary" onClick={onReset}>Practicar otra vez</button>
@@ -695,6 +700,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   const [answered, setAnswered] = apUseState(false);
   const [score, setScore] = apUseState(0);
   const [errors, setErrors] = apUseState(0);
+  const [results, setResults] = apUseState([]);
   const q = flow.questions[qIndex];
   const correct = answered && selected === q.correct;
   const progress = Math.round(((qIndex + 1) / flow.questions.length) * 100);
@@ -706,22 +712,27 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
 
   function confirm() {
     if (selected === null || answered) return;
+    const ok = selected === q.correct;
+    const nextResults = [...results, ok];
+    setResults(nextResults);
     setAnswered(true);
-    if (selected === q.correct) { setScore(score + 1); apPlaySound('correct', soundOn); }
-    else { setErrors(errors + 1); apPlaySound('wrong', soundOn); }
+    setScore(nextResults.filter(Boolean).length);
+    setErrors(nextResults.filter(v => !v).length);
+    if (ok) apPlaySound('correct', soundOn); else apPlaySound('wrong', soundOn);
   }
   function next() {
     if (qIndex >= flow.questions.length - 1) {
-      const finalScore = score;
+      const finalScore = results.filter(Boolean).length;
+      const finalErrors = results.filter(v => !v).length;
       const finalPercent = Math.round((finalScore / flow.questions.length) * 100);
-      onComplete && onComplete({ title: flow.title, score: finalScore, total: flow.questions.length, errors, percent: finalPercent });
+      onComplete && onComplete({ title: flow.title, score: finalScore, total: flow.questions.length, errors: finalErrors, percent: finalPercent });
       setPhase('summary'); return; }
     setQIndex(qIndex + 1);
     setSelected(null);
     setAnswered(false);
   }
   function reset() {
-    setPhase('intro'); setQIndex(0); setSelected(null); setAnswered(false); setScore(0); setErrors(0);
+    setPhase('intro'); setQIndex(0); setSelected(null); setAnswered(false); setScore(0); setErrors(0); setResults([]);
   }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
@@ -737,10 +748,10 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
       <APBadge>{q.type}</APBadge>
       <h3>{flow.title}</h3>
       <p>{flow.intro}</p>
-      <div className="ap-question-strip"><strong>{q.prompt}</strong><span>Pregunta {qIndex + 1} de {flow.questions.length}</span></div>
+      <div className="ap-question-strip ap-question-strip-vivid"><strong>{q.prompt}</strong><span>Pregunta {qIndex + 1} de {flow.questions.length}</span></div>
       <p className="ap-question-stem">{q.stem}</p>
       <APProgress value={progress} label={'Progreso ' + flow.title} />
-      <div className="ap-answer-list">
+      <div className="ap-answer-list ap-answer-list-vivid">
         {q.options.map((opt, idx) => {
           const state = !answered ? (idx === selected ? 'selected' : '') : idx === q.correct ? 'correct' : idx === selected ? 'wrong' : 'locked';
           return (
@@ -808,9 +819,14 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
         <div className="ap-practice-meta"><APBadge tone="ok">Gratis</APBadge><APBadge>{score}/{total} pares</APBadge></div>
       </div>
       <h3>{flow.title}</h3>
-      <p>{selectedLeft ? <>Tocá el significado de <strong>{selectedLeft.en}</strong></> : 'Tocá una palabra en inglés y luego su significado.'}</p>
+      <div className="ap-runner-steps" aria-label="Cómo unir pares">
+        <span><b>1</b>Tocá una palabra en inglés.</span>
+        <span><b>2</b>Tocá su significado.</span>
+        <span><b>3</b>El par queda fijado.</span>
+      </div>
+      <div className="ap-match-focus">{selectedLeft ? <>Tocá el significado de <strong>{selectedLeft.en}</strong></> : 'Elegí una palabra para empezar'}</div>
       <APProgress value={Math.round((score / total) * 100)} label="Pares completados" />
-      <div className="ap-match-board">
+      <div className="ap-match-board ap-match-board-vivid">
         <div className="ap-match-col">
           <span className="ap-small-label">Inglés</span>
           {flow.pairs.map(pair => {
@@ -840,6 +856,7 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   const [answered, setAnswered] = apUseState(false);
   const [score, setScore] = apUseState(0);
   const [errors, setErrors] = apUseState(0);
+  const [results, setResults] = apUseState([]);
   const q = flow.questions[qIndex];
   const correct = answered && built.map(x => x.w).join(' ') === q.answer.join(' ');
   const remaining = q.words.map((w, i) => ({ w, key: w + '-' + i })).filter(x => !built.some(b => b.key === x.key));
@@ -850,18 +867,23 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   function confirm() {
     if (!built.length || answered) return;
     const ok = built.map(x => x.w).join(' ') === q.answer.join(' ');
+    const nextResults = [...results, ok];
+    setResults(nextResults);
     setAnswered(true);
-    if (ok) { setScore(score + 1); apPlaySound('correct', soundOn); } else { setErrors(errors + 1); apPlaySound('wrong', soundOn); }
+    setScore(nextResults.filter(Boolean).length);
+    setErrors(nextResults.filter(v => !v).length);
+    if (ok) apPlaySound('correct', soundOn); else apPlaySound('wrong', soundOn);
   }
   function next() {
     if (qIndex >= flow.questions.length - 1) {
-      const finalScore = score;
+      const finalScore = results.filter(Boolean).length;
+      const finalErrors = results.filter(v => !v).length;
       const finalPercent = Math.round((finalScore / flow.questions.length) * 100);
-      onComplete && onComplete({ title: flow.title, score: finalScore, total: flow.questions.length, errors, percent: finalPercent });
+      onComplete && onComplete({ title: flow.title, score: finalScore, total: flow.questions.length, errors: finalErrors, percent: finalPercent });
       setPhase('summary'); return; }
     setQIndex(qIndex + 1); setBuilt([]); setAnswered(false);
   }
-  function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); }
+  function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); setResults([]); }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
   if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} />;
@@ -874,13 +896,15 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
         <div className="ap-practice-meta"><APBadge tone="navy">Demo estudiante</APBadge><APBadge>{qIndex + 1}/{flow.questions.length}</APBadge></div>
       </div>
       <h3>{flow.title}</h3>
-      <div className="ap-question-strip"><strong>Ordená la oración</strong><span>{q.stem}</span></div>
+      <div className="ap-question-strip ap-question-strip-vivid"><strong>Ordená la oración</strong><span>{q.stem}</span></div>
       <APProgress value={Math.round(((qIndex + 1) / flow.questions.length) * 100)} label="Progreso Sentence Order" />
-      <div className={'ap-order-workbench ' + (answered ? (correct ? 'correct' : 'wrong') : '')}>
-        {built.length ? built.map(item => <button key={item.key} type="button" disabled={answered} onClick={() => setBuilt(built.filter(x => x.key !== item.key))}>{item.w}</button>) : <span>Tocá palabras para armar la frase</span>}
+      <div className="ap-order-label-row"><span>Tu oración</span><small>{built.length}/{q.answer.length} fichas</small></div>
+      <div className={'ap-order-workbench ap-order-workbench-vivid ' + (answered ? (correct ? 'correct' : 'wrong') : '')}>
+        {built.length ? built.map(item => <button className="ap-word-token placed" key={item.key} type="button" disabled={answered} onClick={() => setBuilt(built.filter(x => x.key !== item.key))}>{item.w}</button>) : <span>Tocá palabras para armar la frase</span>}
       </div>
-      <div className="ap-word-bank">
-        {remaining.map(item => <button key={item.key} type="button" disabled={answered} onClick={() => setBuilt([...built, item])}>{item.w}</button>)}
+      <div className="ap-order-label-row"><span>Banco de fichas</span><small>Tocá para agregar</small></div>
+      <div className="ap-word-bank ap-word-bank-vivid">
+        {remaining.map(item => <button className="ap-word-token" key={item.key} type="button" disabled={answered} onClick={() => setBuilt([...built, item])}>{item.w}</button>)}
       </div>
       {!answered ? (
         <div className="ap-hero-actions">
@@ -1195,16 +1219,223 @@ function APTeacherView() {
 
 
 
+
+function APAdminUserProfile({ profile, status, onClose, onRefresh }) {
+  if (!profile && !status) return null;
+  const summary = profile?.summary || {};
+  const rows = profile?.games || [];
+  const areas = profile?.areas || [];
+  return (
+    <div className="ap-panel ap-admin-profile-panel ap-enter">
+      <div className="ap-table-title-row">
+        <div>
+          <APBadge tone="navy">Ficha de progreso</APBadge>
+          <h3>{summary.nombre || summary.user_key || 'Usuario'}</h3>
+          <p>{summary.tipo_usuario || 'SIN_TIPO'} · {summary.cedula || summary.codigo || summary.user_key || 'sin identificador'}</p>
+        </div>
+        <button type="button" className="ap-btn ap-btn-light" onClick={onClose}>Cerrar ficha</button>
+      </div>
+      {status && status !== 'sincronizado' && <p className="ap-demo-note">Estado: {status}</p>}
+      {profile ? (
+        <>
+          <div className="ap-stats-grid ap-stats-grid-profile">
+            <APStat label="Intentos" value={String(summary.total_attempts || 0)} sub="práctica real" tone="red" />
+            <APStat label="100%" value={String(summary.completed_games || 0)} sub="juegos completados" />
+            <APStat label="Promedio" value={String(summary.avg_percent || 0) + '%'} sub="separado de notas" />
+            <APStat label="Última actividad" value={summary.last_played_label || '—'} sub="Academia Play" />
+          </div>
+          <div className="ap-profile-note">
+            <strong>Lectura administrativa:</strong>
+            <span>{summary.admin_note || 'Sin recomendación todavía.'}</span>
+          </div>
+          <div className="ap-profile-layout">
+            <div>
+              <h4>Juegos</h4>
+              <div className="ap-profile-game-list">
+                {rows.length ? rows.map(item => (
+                  <div key={item.game_id} className="ap-profile-game-row">
+                    <span><strong>{item.game_title || item.game_id}</strong><small>{item.category || 'Sin área'} · {item.attempts || 0} intento(s)</small></span>
+                    <div><APProgress value={item.percent || 0} label={'Progreso ' + (item.game_title || item.game_id)} /><em>{item.percent || 0}%</em></div>
+                  </div>
+                )) : <p className="ap-demo-note">Este usuario todavía no tiene juegos registrados.</p>}
+              </div>
+            </div>
+            <div>
+              <h4>Áreas</h4>
+              <div className="ap-profile-area-list">
+                {areas.length ? areas.map(area => (
+                  <div key={area.category} className="ap-profile-area-row">
+                    <strong>{apCognitiveArea(area.category).icon} {area.category}</strong>
+                    <small>{area.games} juego(s) · {area.completed} al 100%</small>
+                    <APProgress value={area.avg_percent || 0} label={'Área ' + area.category} />
+                  </div>
+                )) : <p className="ap-demo-note">Sin áreas registradas.</p>}
+              </div>
+              <div className="ap-hero-actions">
+                <button type="button" className="ap-btn ap-btn-primary" onClick={onRefresh}>Actualizar ficha</button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : <p className="ap-demo-note">Seleccioná un registro para abrir la ficha.</p>}
+    </div>
+  );
+}
+
+
+const AP_DEFAULT_BANK_SOURCE_ID = '1mabas6PES9aGeXBTF8a0LGzmAI2cgEhJUmDDYAZq3KU';
+
+function APBankAdminPanel() {
+  const [bank, setBank] = apUseState(null);
+  const [status, setStatus] = apUseState('cargando');
+  const [sourceId, setSourceId] = apUseState(AP_DEFAULT_BANK_SOURCE_ID);
+  const [importStatus, setImportStatus] = apUseState('');
+  const [importResult, setImportResult] = apUseState(null);
+
+  function loadBank() {
+    setStatus('cargando');
+    apPost('academiaPlayBankDashboard', {}, 22000).then(res => {
+      if (res && res.ok) { setBank(res); setStatus('sincronizado'); }
+      else { setBank(null); setStatus(res?.error || 'error'); }
+    });
+  }
+
+  function validateSource() {
+    setImportStatus('validando');
+    setImportResult(null);
+    apPost('academiaPlayBankValidateImport', { source_spreadsheet_id: sourceId }, 35000).then(res => {
+      setImportResult(res);
+      setImportStatus(res?.ok ? 'validado' : (res?.error || 'error_validacion'));
+    });
+  }
+
+  function importSource() {
+    const ok = window.confirm('Esto reemplaza ACADEMIA_PLAY_BANK con la fuente validada. No toca notas oficiales. ¿Continuar?');
+    if (!ok) return;
+    setImportStatus('importando');
+    apPost('academiaPlayBankImport', { source_spreadsheet_id: sourceId }, 60000).then(res => {
+      setImportResult(res);
+      setImportStatus(res?.ok && res?.imported ? 'importado' : (res?.error || 'bloqueado'));
+      if (res?.ok && res?.imported) loadBank();
+    });
+  }
+
+  apUseEffect(() => {
+    const t = window.setTimeout(loadBank, 700);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  const levels = bank?.by_level || [];
+  const units = bank?.by_unit || [];
+  const areas = bank?.by_area || [];
+  const templates = bank?.by_template || [];
+  const empty = bank && !Number(bank.total_items || 0);
+  const resultErrors = importResult?.errors || [];
+  const resultWarnings = importResult?.warnings || [];
+  const resultOk = importResult?.ok && !resultErrors.length;
+
+  return (
+    <div className="ap-panel ap-bank-panel">
+      <div className="ap-catalog-head ap-catalog-head-clean">
+        <div>
+          <APBadge tone={empty ? 'red' : 'navy'}>Banco curricular</APBadge>
+          <h3>ACADEMIA_PLAY_BANK</h3>
+          <p>{empty ? 'La estructura está lista. Importá la lista pedagógica corregida.' : 'Contenido listo para motor por nivel, unidad, área y template.'}</p>
+        </div>
+        <button type="button" className="ap-btn ap-btn-light" onClick={loadBank}>Actualizar banco</button>
+      </div>
+
+      <div className="ap-import-card">
+        <div className="ap-import-head">
+          <div>
+            <APBadge tone={resultOk ? 'ok' : 'navy'}>CS14 Importador</APBadge>
+            <h4>Importar Básico I corregido</h4>
+            <p>Valida la fuente antes de reemplazar el banco. Si hay errores, bloquea la importación.</p>
+          </div>
+          <span className="ap-import-status">{importStatus || 'pendiente'}</span>
+        </div>
+        <label className="ap-import-label">
+          ID o URL de Google Sheet
+          <input value={sourceId} onChange={e => setSourceId(e.target.value)} placeholder="ID del spreadsheet fuente" />
+        </label>
+        <div className="ap-hero-actions ap-import-actions">
+          <button type="button" className="ap-btn ap-btn-light" onClick={validateSource}>Validar fuente</button>
+          <button type="button" className="ap-btn ap-btn-primary" onClick={importSource} disabled={!resultOk}>Importar al banco</button>
+        </div>
+        {importResult ? (
+          <div className={"ap-import-result " + (resultOk ? 'is-ok' : 'is-error')}>
+            <strong>{importResult.message || (resultOk ? 'Fuente validada' : 'Revisar fuente')}</strong>
+            <div className="ap-import-metrics">
+              <span>{importResult.total_items || 0} ítems</span>
+              <span>{importResult.total_games || 0} juegos</span>
+              <span>{importResult.total_units || 0} unidades</span>
+              <span>{resultErrors.length} errores</span>
+              <span>{resultWarnings.length} alertas</span>
+            </div>
+            {resultErrors.length ? <div className="ap-import-list"><b>Errores</b>{resultErrors.slice(0, 5).map((x, i) => <small key={i}>{x}</small>)}</div> : null}
+            {resultWarnings.length ? <div className="ap-import-list"><b>Alertas</b>{resultWarnings.slice(0, 5).map((x, i) => <small key={i}>{x}</small>)}</div> : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="ap-stats-grid ap-stats-grid-compact">
+        <APStat label="Ítems" value={bank ? String(bank.total_items || 0) : '...'} sub={status} tone="red" />
+        <APStat label="Juegos" value={bank ? String(bank.total_games || 0) : '...'} sub="GAME_ID únicos" />
+        <APStat label="Completados" value={bank ? String(bank.total_completions || 0) : '...'} sub="100% registrados" />
+      </div>
+      <div className="ap-bank-grid">
+        <div>
+          <h4>Niveles</h4>
+          <div className="ap-mini-list">
+            {levels.length ? levels.slice(0, 8).map(x => <span key={x.level_id}>{x.level_id || 'SIN NIVEL'} · {x.items} ítems · {x.games} juegos</span>) : <span>Sin contenido importado.</span>}
+          </div>
+        </div>
+        <div>
+          <h4>Áreas</h4>
+          <div className="ap-mini-list">
+            {areas.length ? areas.map(x => <span key={x.area_id}>{x.area_id || 'SIN ÁREA'} · {x.items} ítems · {x.games} juegos</span>) : <span>Sin áreas todavía.</span>}
+          </div>
+        </div>
+        <div>
+          <h4>Templates</h4>
+          <div className="ap-mini-list">
+            {templates.length ? templates.slice(0, 12).map(x => <span key={x.template_id}>{x.template_id || 'SIN TEMPLATE'} · {x.items} ítems</span>) : <span>Sin templates todavía.</span>}
+          </div>
+        </div>
+      </div>
+      <div className="ap-bank-unit-strip">
+        {units.slice(0, 16).map(x => <span key={x.unit_id}>{x.unit_id || 'SIN UNIDAD'} <b>{x.games}</b></span>)}
+      </div>
+      <p className="ap-demo-note">CS14 importa el banco validado y sigue guardando solo completados 100%. No toca DATOS, ESTATUS ni notas oficiales.</p>
+    </div>
+  );
+}
+
 function APAdminView() {
   const [dash, setDash] = apUseState(null);
   const [status, setStatus] = apUseState('cargando');
   const [filter, setFilter] = apUseState('Todos');
+  const [selected, setSelected] = apUseState(null);
+  const [profile, setProfile] = apUseState(null);
+  const [profileStatus, setProfileStatus] = apUseState('');
 
   function loadDashboard() {
     setStatus('cargando');
-    apPost('academiaPlayAdminDashboard', { limit: 30 }, 20000).then(res => {
+    apPost('academiaPlayAdminDashboard', { limit: 40 }, 20000).then(res => {
       if (res && res.ok) { setDash(res); setStatus('sincronizado'); }
       else { setDash(null); setStatus(res?.error || 'error'); }
+    });
+  }
+
+  function loadProfile(item) {
+    if (!item) return;
+    setSelected(item);
+    setProfileStatus('cargando');
+    apPost('academiaPlayAdminUserProfile', {
+      user_key:item.user_key || '', cedula:item.cedula || '', codigo:item.codigo || '', nombre:item.nombre || ''
+    }, 20000).then(res => {
+      if (res && res.ok) { setProfile(res); setProfileStatus('sincronizado'); }
+      else { setProfile(null); setProfileStatus(res?.error || 'error'); }
     });
   }
 
@@ -1231,11 +1462,13 @@ function APAdminView() {
         <APStat label="Promedio" value={dash ? String(dash.avg_percent || 0) + '%' : '...'} sub={status === 'sincronizado' ? 'sincronizado' : status} />
       </div>
 
+      <APBankAdminPanel />
+
       <div className="ap-admin-grid ap-admin-grid-live">
         <div className="ap-panel ap-admin-note-panel">
           <APBadge tone="red">Nota admin</APBadge>
           <h3>Hoja separada</h3>
-          <p>Este panel lee ACADEMIA_PLAY_PROGRESS. No escribe DATOS, ESTATUS, notas oficiales, pagos ni certificados.</p>
+          <p>Este panel lee ACADEMIA_PLAY_PROGRESS. La ficha por estudiante ayuda a ventas/admin sin tocar notas oficiales.</p>
           <div className="ap-hero-actions">
             <button type="button" className="ap-btn ap-btn-primary" onClick={loadDashboard}>Actualizar panel</button>
             <button type="button" className="ap-btn ap-btn-ghost" onClick={() => setFilter('PREMATRICULA')}>Ver prematrícula</button>
@@ -1244,12 +1477,14 @@ function APAdminView() {
         <div className="ap-panel ap-admin-note-panel">
           <APBadge tone={needs.length ? 'red' : 'ok'}>{needs.length ? 'Revisar' : 'OK'}</APBadge>
           <h3>{needs.length} con intentos sin 100%</h3>
-          <p>{needs.length ? 'Casos con práctica iniciada, varios intentos y sin completar al 100%.' : 'No hay alertas de práctica pendientes.'}</p>
-          <div className="ap-mini-list">
-            {needs.slice(0, 4).map(item => <span key={(item.user_key || item.nombre) + item.game_id}>{item.nombre || item.user_key} · {item.game_title} · {item.percent}%</span>)}
+          <p>{needs.length ? 'Tocá un caso para abrir ficha de progreso.' : 'No hay alertas de práctica pendientes.'}</p>
+          <div className="ap-mini-list ap-mini-list-clickable">
+            {needs.slice(0, 4).map(item => <button type="button" key={(item.user_key || item.nombre) + item.game_id} onClick={() => loadProfile(item)}>{item.nombre || item.user_key} · {item.game_title} · {item.percent}%</button>)}
           </div>
         </div>
       </div>
+
+      <APAdminUserProfile profile={profile} status={profileStatus} onClose={() => { setProfile(null); setSelected(null); setProfileStatus(''); }} onRefresh={() => loadProfile(selected)} />
 
       <div className="ap-panel ap-admin-progress-panel">
         <div className="ap-catalog-head ap-catalog-head-clean">
@@ -1274,19 +1509,20 @@ function APAdminView() {
             {filters.map(f => <button key={f} type="button" className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{f}</button>)}
           </div>
         </div>
-        <div className="ap-table ap-table-rich">
-          {filteredRecent.length ? filteredRecent.slice(0, 24).map((item, idx) => (
-            <div key={(item.user_key || item.nombre || idx) + '-' + item.game_id + '-' + idx}>
+        <div className="ap-table ap-table-rich ap-table-clickable">
+          {filteredRecent.length ? filteredRecent.slice(0, 30).map((item, idx) => (
+            <button type="button" key={(item.user_key || item.nombre || idx) + '-' + item.game_id + '-' + idx} onClick={() => loadProfile(item)}>
               <span><strong>{item.nombre || item.user_key || 'Usuario'}</strong><small>{item.tipo_usuario || 'SIN_TIPO'} · {item.game_title || item.game_id}</small></span>
               <strong>{item.percent || 0}%</strong>
               <em>{item.attempts || 0} intento(s)</em>
-            </div>
+            </button>
           )) : <div><span>No hay registros para este filtro.</span><strong>—</strong></div>}
         </div>
       </div>
     </div>
   );
 }
+
 
 
 function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
@@ -1316,10 +1552,10 @@ function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
   }
 
   return (
-    <div className="aplay-shell" data-screen-label="Academia Play · V2.1 dashboard admin">
+    <div className="aplay-shell" data-screen-label="Academia Play · V2.2 ficha admin">
       <div className="aplay-topbar">
         <div>
-          <APBadge tone="red">V1.9 · sonidos y logros</APBadge>
+          <APBadge tone="red">V2.2 · progreso y fichas</APBadge>
           <h1>Academia Play</h1>
           <p>{nombre} · Práctica visual sin notas oficiales.</p>
         </div>
