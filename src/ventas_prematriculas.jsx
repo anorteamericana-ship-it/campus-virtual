@@ -1,5 +1,5 @@
 /* global React, ReactDOM */
-// F98.4-Z6-CS7A · Widget ventas/admisiones simplificado.
+// F98.4-Z6-CS7B · Widget ventas/admisiones simplificado.
 // Usa endpoints existentes. No crea matrícula, código, grupo, pagos, notas oficiales ni certificados.
 (function(){
   const {useEffect,useMemo,useState,useCallback}=React;
@@ -22,7 +22,7 @@
   function dateMs(v){if(!v)return 0;const raw=String(v);const d=new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');return Number.isNaN(d.getTime())?0:d.getTime();}
   function fmtDate(v){if(!v)return '—';const raw=String(v);const d=new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');return Number.isNaN(d.getTime())?raw:d.toLocaleString('es-CR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
   function advisor(s){return clean(s.ASESOR||s.ASESOR_ASIGNADO||s.VENDEDOR||s.RESPONSABLE||s.ATENDIDO_POR,'Asesor asignado');}
-  function nextStep(s){const e=upper(s.ESTADO||'PENDIENTE'),t=upper(s.TIPO); if(e==='PENDIENTE')return t==='FINANCIAMIENTO'?'Coordinar pago/CONAPE.':'Contactar por WhatsApp.'; if(e==='EN_GESTION')return 'Marcar contactado o prematrícula activa.'; if(e==='RESPONDIDA')return 'Esperar pago/confirmación.'; if(e==='CONVERTIDA')return 'Acceso anticipado activo.'; return 'Sin pendiente.';}
+  function nextStep(s){const e=upper(s.ESTADO||'PENDIENTE'); if(e==='CONVERTIDA')return 'Acceso anticipado activo. La matrícula oficial sigue el flujo normal.'; return 'El asesor del lead coordina contacto, pago y activación. Sin pasos extra para el cliente.';}
   function ficha(s){return [
     'PREMATRÍCULA · VENTAS/ADMISIONES',
     `Estado: ${estadoMeta(s.ESTADO)[0]}`,
@@ -89,7 +89,7 @@
         <div className="vp-body">
           <div className="vp-list">
             {!filtered.length?<div className="vp-empty">Sin solicitudes en esta vista.</div>:filtered.map(s=><button key={s.ID||s.CEDULA} type="button" className={(selected&&selected.ID)===s.ID?'sel':''} onClick={()=>{setSelected(s);setNota('');}}>
-              <div><strong>{clean(s.NOMBRE,'Sin nombre')}</strong><Badge estado={s.ESTADO}/></div><small>{clean(s.CEDULA,'Sin cédula')} · {tipoLabel(s.TIPO)} · {fmtDate(s.ULTIMA_ACCION_AT||s.FECHA_ISO||s.FECHA)}</small><p>{clean(s.MENSAJE,'Sin mensaje')}</p><footer><span>Asesor: {advisor(s)}</span><span>{nextStep(s)}</span></footer>
+              <div><strong>{clean(s.NOMBRE,'Sin nombre')}</strong><Badge estado={s.ESTADO}/></div><small>{clean(s.CEDULA,'Sin cédula')} · {tipoLabel(s.TIPO)} · {fmtDate(s.ULTIMA_ACCION_AT||s.FECHA_ISO||s.FECHA)}</small><p>{clean(s.MENSAJE,'Sin mensaje')}</p><footer><span>Asesor: {advisor(s)}</span></footer>
             </button>)}
           </div>
           <aside className="vp-detail">
@@ -97,7 +97,7 @@
               <div className="vp-detail-head"><div><span>{tipoLabel(selected.TIPO)}</span><h3>{clean(selected.NOMBRE,'Sin nombre')}</h3><small>{clean(selected.TELEFONO,'Sin teléfono')} · {clean(selected.CORREO,'Sin correo')}</small></div><Badge estado={selected.ESTADO}/></div>
               <div className="vp-card"><span>Asesor</span><p>{advisor(selected)}</p></div>
               <div className="vp-card"><span>Curso / grupo</span><p>{clean(selected.PROGRAMA||selected.CURSO,'Inglés Conversacional')} · {clean(selected.GRUPO_TENTATIVO||selected.GRUPO,'Por confirmar')}</p></div>
-              <div className="vp-card"><span>Próximo paso</span><p>{nextStep(selected)}</p></div>
+              <div className="vp-card"><span>Nota admin</span><p>{nextStep(selected)}</p></div>
               <div className="vp-card"><span>Mensaje</span><p>{clean(selected.MENSAJE,'Sin mensaje')}</p></div>
               <label>Nota interna<textarea value={nota} onChange={e=>setNota(e.target.value)} rows="4" placeholder="Ej: pago coordinado por WhatsApp…"/></label>
               <div className="vp-fast-actions">{FAST_STATES.map(a=><button key={a[0]} type="button" disabled={!!busy} onClick={()=>apply(a[0])}>{busy===a[0]?'Guardando…':a[1]}</button>)}</div>

@@ -1,5 +1,5 @@
 /* global React, Icon */
-// F98.4-Z6-CS3 · Academia Play V1.6 catálogo móvil + prematrícula unificada.
+// F98.4-Z6-CS7B · Academia Play V1.7 catálogo móvil + prematrícula unificada.
 // Frontend/demo únicamente: no llama backend, no guarda intentos, no crea rankings y no modifica notas oficiales.
 
 const { useMemo: apUseMemo, useState: apUseState } = React;
@@ -48,6 +48,18 @@ function apFirstName(usuario) {
 function apShuffleStatic(arr) {
   return [...arr].sort((a, b) => String(a.es || a.label || a).localeCompare(String(b.es || b.label || b)));
 }
+
+
+const AP_COGNITIVE_AREAS = {
+  Vocabulario: { icon: '🧠', label: 'Memoria verbal', tone: 'red' },
+  Gramática: { icon: '▦', label: 'Estructura lógica', tone: 'navy' },
+  Speaking: { icon: '💬', label: 'Producción oral', tone: 'blue' },
+  Escucha: { icon: '🎧', label: 'Discriminación auditiva', tone: 'blue' },
+  Lectura: { icon: '📖', label: 'Comprensión lectora', tone: 'gold' },
+  Mixto: { icon: '⚡', label: 'Agilidad mixta', tone: 'gold' },
+  'En vivo': { icon: '🎯', label: 'Respuesta rápida', tone: 'red' },
+};
+function apCognitiveArea(category){ return AP_COGNITIVE_AREAS[category] || { icon:'◆', label:'Práctica', tone:'navy' }; }
 
 const AP_GAMES = [
   {
@@ -299,10 +311,15 @@ function apCanOpen(game, isFreeUser) {
 
 function APGameCard({ game, isFreeUser, onOpen }) {
   const locked = !apCanOpen(game, isFreeUser);
+  const area = apCognitiveArea(game.category);
   return (
-    <button type="button" className={'ap-game-card ' + (game.status === 'live' ? 'is-live ' : '') + (locked ? 'is-locked ' : '') + (game.accent || '')} onClick={() => onOpen(game)}>
-      <span className="ap-game-eyebrow">{game.status === 'live' && <i aria-hidden="true" />} {game.type}</span>
+    <button type="button" className={'ap-game-card ap-game-card-visual ' + (game.status === 'live' ? 'is-live ' : '') + (locked ? 'is-locked ' : '') + (game.accent || '')} onClick={() => onOpen(game)}>
+      <div className="ap-game-visual-head">
+        <span className={'ap-cog-icon ' + area.tone} aria-hidden="true">{area.icon}</span>
+        <span className="ap-game-eyebrow">{game.status === 'live' && <i aria-hidden="true" />} {game.type}</span>
+      </div>
       <strong>{game.title}</strong>
+      <span className="ap-cog-label">{area.label}</span>
       <em>{game.desc}</em>
       <small>{game.level} · {game.duration}</small>
       <span className="ap-card-tags">
@@ -345,7 +362,7 @@ function APStartScreen({ flow, isFreeUser, onStart, onBack }) {
       <div className="ap-how-list" aria-label="Cómo se juega">
         {(flow.how || []).map((step, i) => <div key={step}><span>{i + 1}</span><strong>{step}</strong></div>)}
       </div>
-      <p className="ap-demo-note">Esta práctica es visual/demo: no guarda intentos, no crea notas oficiales y no alimenta rankings permanentes.</p>
+      <p className="ap-demo-note">Práctica visual: sin notas oficiales.</p>
       <div className="ap-hero-actions ap-center-actions">
         <button type="button" className="ap-btn ap-btn-primary" onClick={onStart}>Empezar</button>
         <button type="button" className="ap-btn ap-btn-ghost" onClick={onBack}>Volver a juegos</button>
@@ -635,31 +652,31 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
     <div className="ap-view ap-view-student">
       <APSectionTitle eyebrow={isFreeUser ? 'Prematrícula · Acceso gratis' : 'Estudiante · Piloto visual'} title={isFreeUser ? 'Practicá desde hoy, ' + first : 'Academia Play'}>
         {isFreeUser
-          ? 'No necesitás esperar la matrícula para empezar a soltar el inglés. Esto es práctica libre: no crea notas oficiales.'
-          : 'Juegos cortos para reforzar clase. V1.5 sigue siendo visual/demo hasta conectar backend real.'}
+          ? 'Práctica libre. Sin notas oficiales.'
+          : 'Juegos cortos por área. Piloto visual.'}
       </APSectionTitle>
 
       <div className="ap-dashboard-grid">
         <div className="ap-hero-card ap-cascade ap-cascade-1">
           <APBadge tone="red">Práctica recomendada de hoy</APBadge>
           <h3>{isFreeUser ? 'Vocabulary Sprint · Primeras palabras' : 'Grammar Builder · Básico I'}</h3>
-          <p>{isFreeUser ? 'Vocabulario esencial de presentaciones y saludos para entrar mejor preparada.' : 'Reforzá estructura, vocabulario y respuestas de clase con feedback inmediato.'}</p>
+          <p>{isFreeUser ? 'Primeras palabras para iniciar.' : 'Refuerzo rápido por área.'}</p>
           <div className="ap-hero-actions">
             <button type="button" className="ap-btn ap-btn-primary ap-breathe" onClick={() => openGame(AP_GAMES[0])}>Practicar ahora</button>
             <button type="button" className="ap-btn ap-btn-ghost" onClick={() => setScreen('catalog')}>Ver catálogo de juegos</button>
           </div>
-          <p className="ap-demo-note">Se conserva al matricularte solo como idea visual; en CS3 todavía no hay historial productivo.</p>
+          
         </div>
         <div className="ap-panel ap-daily-card ap-cascade ap-cascade-2">
           <span className="ap-small-label">Acceso gratis de hoy</span>
           <div className="ap-week-row"><strong>{isFreeUser ? '2/3' : 'Ilimitado'}</strong><span>{isFreeUser ? 'te queda 1 partida' : 'matrícula activa demo'}</span></div>
           <APProgress value={isFreeUser ? 66 : 100} label="Acceso diario demo" />
-          <p>{isFreeUser ? 'El límite es visual/demo. Cuando haya backend se definirá si realmente aplica.' : 'Partidas ilimitadas solo cuando el backend y reglas estén aprobados.'}</p>
+          
         </div>
         <div className="ap-panel ap-live-preview ap-cascade ap-cascade-2">
           <APBadge tone={isFreeUser ? 'muted' : 'red'}>{isFreeUser ? 'Bloqueado' : 'En vivo demo'}</APBadge>
           <h3>Live Trivia</h3>
-          <p>{isFreeUser ? 'Tu docente activa salas en vivo para el grupo cuando la matrícula esté activa.' : 'Sala PLAY-4821 · participantes entrando.'}</p>
+          <p>{isFreeUser ? 'Disponible con matrícula activa.' : 'Sala demo.'}</p>
           <button type="button" className="ap-btn ap-btn-light" onClick={() => openGame(AP_GAMES.find(g => g.id === 'live'))}>{isFreeUser ? 'Ver bloqueo' : 'Entrar a sala'}</button>
         </div>
       </div>
@@ -674,7 +691,7 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
       <APSkillTracks isFreeUser={isFreeUser} />
 
       <div className="ap-catalog-head">
-        <div><h3>Catálogo de juegos</h3><p>{isFreeUser ? freeGames + ' abiertos para vos; el resto se desbloquea al activar matrícula.' : AP_GAMES.length + ' juegos visuales; backend y banco real quedan para otra fase.'}</p></div>
+        <div><h3>Catálogo de juegos</h3><p>{isFreeUser ? freeGames + ' gratis · ' + AP_GAMES.length + ' total' : AP_GAMES.length + ' juegos · piloto visual'}</p></div>
         <div className="ap-filter-tabs" role="tablist" aria-label="Filtrar catálogo de juegos">
           {categories.map(cat => <button key={cat} type="button" className={filter === cat ? 'active' : ''} onClick={() => setFilter(cat)}>{cat}</button>)}
         </div>
@@ -830,12 +847,12 @@ function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
   }
 
   return (
-    <div className="aplay-shell" data-screen-label="Academia Play · V1.5 demo">
+    <div className="aplay-shell" data-screen-label="Academia Play · V1.7 visual">
       <div className="aplay-topbar">
         <div>
-          <APBadge tone="red">V1.6 demo · catálogo móvil · sin backend</APBadge>
+          <APBadge tone="red">V1.7 · catálogo visual</APBadge>
           <h1>Academia Play</h1>
-          <p>{nombre} · Este piloto no guarda intentos, no crea rankings y no afecta notas oficiales.</p>
+          <p>{nombre} · Práctica visual sin notas oficiales.</p>
         </div>
         <div className="ap-mode-tabs" role="tablist" aria-label="Vistas del piloto Academia Play">
           {modes.map(m => (

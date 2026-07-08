@@ -86,7 +86,7 @@
 @media(max-width:1180px){.free-admin-metrics{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:720px){.free-admin-metrics{grid-template-columns:1fr;}.free-admin-filters.compact{overflow:auto;flex-wrap:nowrap;padding-bottom:2px}.free-admin-filters.compact button{white-space:nowrap;}}
 
-/* F98.4-Z6-CS7A · Limpieza visual de prematrícula */
+/* F98.4-Z6-CS7B · Limpieza visual de prematrícula */
 .premat-page-lite .student-section-subtitle,.premat-page-lite .premat-disclaimer{display:none!important;}
 .premat-hero-lite{grid-template-columns:minmax(0,1fr) 280px;}
 .premat-hero-lite .premat-hero-main p{max-width:720px;}
@@ -113,3 +113,20 @@
 .free-admin-message p{margin:0;color:var(--ink-2,#475467);font-size:12.5px;line-height:1.45;}
 @media(max-width:1050px){.premat-hero-lite{grid-template-columns:1fr}.premat-access-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:720px){.premat-access-grid{grid-template-columns:1fr}.free-admin-state-buttons{grid-template-columns:1fr}.premat-hero-lite .premat-hero-actions{display:grid}.premat-hero-lite .premat-hero-actions .btn{width:100%;justify-content:center;}}
+
+/* F98.4-Z6-CS7B · Limpieza final de prematrícula */
+.premat-page-clean{gap:14px;}
+.premat-hero-clean .premat-hero-main{padding:24px 26px;}
+.premat-hero-clean .premat-hero-main p{font-size:13px;max-width:58ch;}
+.premat-access-grid-clean{grid-template-columns:repeat(5,minmax(0,1fr));}
+.premat-layout-clean{grid-template-columns:minmax(0,1fr) minmax(280px,.55fr);}
+.premat-layout-clean .premat-panel{min-width:0;}
+.premat-layout-clean .premat-panel-head h2{font-size:19px;}
+.premat-page-clean .premat-note-master{margin-top:0;}
+.premat-page-clean .premat-quick-actions{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:0;}
+.premat-page-clean .premat-quick-action{padding:10px;}
+.premat-page-clean .premat-quick-action small{font-size:10.5px;}
+.premat-page-clean .premat-request-actions{display:grid;grid-template-columns:160px 1fr;gap:8px;}
+.premat-page-clean .premat-request-actions .btn{width:100%;}
+@media(max-width:1100px){.premat-layout-clean{grid-template-columns:1fr}.premat-page-clean .premat-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){.premat-page-clean .premat-quick-actions,.premat-page-clean .premat-request-actions{grid-template-columns:1fr}.premat-access-grid-clean{grid-template-columns:1fr}.premat-hero-clean .premat-hero-main{padding:20px}.premat-hero-clean .premat-hero-main p{font-size:12.5px}}

@@ -1,5 +1,5 @@
 /* global React, PageHeader */
-// F98.4-Z6-CS7A · Bandeja interna simplificada de prematrículas.
+// F98.4-Z6-CS7B · Bandeja interna simplificada de prematrículas.
 // Usa endpoints existentes. No crea matrícula/código/grupo ni toca DATOS/ESTATUS.
 
 function freeAdminToken(){try{return (window.getSessionToken&&window.getSessionToken())||((window.getSesion&&window.getSesion()||{}).token)||'';}catch(_){return'';}}
@@ -24,12 +24,8 @@ function freeAdminNormalizeItems(items){return (Array.isArray(items)?items:[]).s
 function freeAdminAdvisor(s){return freeAdminClean(s.ASESOR||s.ASESOR_ASIGNADO||s.VENDEDOR||s.RESPONSABLE||s.ATENDIDO_POR,'Asesor asignado');}
 function freeAdminNextStep(s){
   const estado=freeAdminUpper(s.ESTADO||'PENDIENTE');
-  const tipo=freeAdminUpper(s.TIPO);
-  if(estado==='PENDIENTE')return tipo==='FINANCIAMIENTO'?'Coordinar pago o CONAPE con su asesor.':'Contactar por WhatsApp.';
-  if(estado==='EN_GESTION')return 'Registrar respuesta corta o marcar como contactado.';
-  if(estado==='RESPONDIDA')return 'Esperar pago/confirmación o marcar prematrícula activa.';
-  if(estado==='CONVERTIDA')return 'Acceso anticipado activo; matrícula oficial va por el flujo normal.';
-  return 'Sin pendiente operativo.';
+  if(estado==='CONVERTIDA')return 'Acceso anticipado activo. La matrícula oficial se hace por el flujo normal.';
+  return 'El asesor del lead coordina contacto, pago y activación. Sin pasos extra para el cliente.';
 }
 function freeAdminBuildFicha(s){return [
   'PREMATRÍCULA · SEGUIMIENTO',
@@ -129,7 +125,7 @@ function FreeUserRequestsAdminView({toast}){
         {loading?<FreeAdminEmpty title="Cargando prematrículas…" desc=""/>:!filtered.length?<FreeAdminEmpty title="Sin solicitudes" desc="No hay registros para esta vista."/>:filtered.map(s=><button key={s.ID||s.CEDULA} type="button" className={`free-admin-row ${selected?.ID===s.ID?'active':''}`} onClick={()=>{setSelected(s);setNota('');setCopied('');}}>
           <div className="free-admin-row-main"><div><strong>{freeAdminClean(s.NOMBRE,'Sin nombre')}</strong><small>{freeAdminClean(s.CEDULA,'Sin cédula')} · {freeAdminTipoLabel(s.TIPO)} · {freeAdminFmtDate(s.ULTIMA_ACCION_AT||s.FECHA_ISO||s.FECHA)}</small></div><FreeAdminBadge estado={s.ESTADO}/></div>
           <p>{freeAdminClean(s.MENSAJE,'Sin mensaje')}</p>
-          <footer><span>Asesor: {freeAdminAdvisor(s)}</span><span>{freeAdminNextStep(s)}</span></footer>
+          <footer><span>Asesor: {freeAdminAdvisor(s)}</span></footer>
         </button>)}
       </div>
 
@@ -143,7 +139,7 @@ function FreeUserRequestsAdminView({toast}){
             <div><span>Asesor</span><strong>{freeAdminAdvisor(selected)}</strong></div>
           </div>
           <div className="free-admin-message"><span>Mensaje</span><p>{freeAdminClean(selected.MENSAJE,'Sin mensaje')}</p></div>
-          <div className="free-admin-message"><span>Próximo paso</span><p>{freeAdminNextStep(selected)}</p></div>
+          <div className="free-admin-message"><span>Nota admin</span><p>{freeAdminNextStep(selected)}</p></div>
           <label className="free-admin-note-field"><span>Nota interna</span><textarea value={nota} onChange={e=>setNota(e.target.value)} rows="4" placeholder="Ej: contactado por WhatsApp, pago coordinado…" /></label>
           <div className="free-admin-state-buttons">{FREE_ADMIN_FAST_STATES.map(a=><button type="button" key={a.estado} disabled={!!busy} onClick={()=>aplicar(a.estado)}>{busy===a.estado?'Guardando…':a.label}</button>)}</div>
           <div className="free-admin-action-row"><button type="button" className="btn btn-ghost" onClick={()=>copiarFicha(selected)}>{copied===String(selected.ID||'')?'Ficha copiada':'Copiar ficha'}</button><button type="button" className="btn btn-primary" onClick={()=>abrirWhatsApp(selected)}>WhatsApp</button></div>

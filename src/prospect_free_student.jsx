@@ -1,5 +1,5 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS7A · Prematrícula simplificada.
+// F98.4-Z6-CS7B · Prematrícula simplificada.
 // Cliente: acceso anticipado + juegos gratis + coordinación de pago/matrícula. No crea matrícula/código/grupo ni toca DATOS/ESTATUS.
 
 function freeStudentToken(){
@@ -137,9 +137,11 @@ function FreeProspectPortal({ usuario, onNavigate }){
   const fechaInicio=freeStudentValue(p,['fecha_inicio','fechaInicio','FECHA_INICIO','inicio','INICIO'],freeStudentValue(usuario||{},['fecha_inicio','fechaInicio','inicio'],'Por confirmar'));
   const horario=freeStudentValue(p,['horario','HORARIO','hora','HORA'],freeStudentValue(usuario||{},['horario','hora'],'Por confirmar'));
   const asesor=freeStudentValue(p,['asesor','ASESOR','asesor_asignado','asesorAsignado','vendedor','VENDEDOR','responsable','RESPONSABLE'],freeStudentValue(usuario||{},['asesor','asesor_asignado','vendedor','responsable'],'Asesor asignado'));
+  const activacion = solicitudes.find(s=>String(s.TIPO||'').toUpperCase()==='QUIERO_MATRICULARME' && !['DESCARTADA','CERRADA'].includes(String(s.ESTADO||'').toUpperCase()));
   const ultimaSolicitud=solicitudes[0]||null;
-  const estadoActual=ultimaSolicitud?.ESTADO||'PENDIENTE';
+  const estadoActual=activacion?.ESTADO||ultimaSolicitud?.ESTADO||'SIN_CONFIRMAR';
   const pendientes=solicitudes.filter(s=>String(s.ESTADO||'').toUpperCase()==='PENDIENTE');
+  const accesoPlay=!!activacion;
   const meta=FREE_REQUEST_TYPES.find(t=>t.id===contactoTipo)||FREE_REQUEST_TYPES[0];
 
   const elegirTipo=(tipo)=>{
@@ -153,22 +155,30 @@ function FreeProspectPortal({ usuario, onNavigate }){
       else setLastAction('Copiado no disponible.');
     }catch(_){setLastAction('No se pudo copiar.');}
   };
-  const enviar=async()=>{
+  const enviarSolicitud=async(tipo=contactoTipo,texto=mensaje)=>{
     setBusy(true);setError('');setOk('');setLastAction('Enviando solicitud…');
     try{
-      const r=await freeStudentPost('freeUserCrearSolicitud',{tipo:contactoTipo,mensaje});
+      const r=await freeStudentPost('freeUserCrearSolicitud',{tipo,mensaje:texto});
       setOk(r.mensaje||'Solicitud enviada.');setLastAction('Solicitud enviada.');
       await load();
       try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
-    }catch(e){setError(e.message);setLastAction('No se pudo enviar.');}finally{setBusy(false);}
+      return true;
+    }catch(e){setError(e.message);setLastAction('No se pudo enviar.');return false;}finally{setBusy(false);}
+  };
+  const enviar=()=>enviarSolicitud(contactoTipo,mensaje);
+  const activarAcceso=async()=>{
+    const template=FREE_REQUEST_TYPES[0].template;
+    setContactoTipo('QUIERO_MATRICULARME');setMensaje(template);setCopied(false);
+    const okSend=await enviarSolicitud('QUIERO_MATRICULARME',template);
+    if(okSend){setOk('Acceso anticipado solicitado. Ya podés entrar a Academia Play.');}
   };
   const go=(id)=>{ if(onNavigate) onNavigate(id); };
 
-  return <div className="student-page premat-page premat-page-lite" data-screen-label="Estudiante · Prematrícula CS7A">
+  return <div className="student-page premat-page premat-page-lite premat-page-clean" data-screen-label="Estudiante · Prematrícula CS7B">
     {typeof PageHeader==='function'?<PageHeader
       kicker="Mi Campus · Acceso anticipado"
       title={<>Bienvenida, <em>{freeStudentFirstName(nombre)}</em></>}
-      sub="Prematrícula activa para practicar gratis y terminar la coordinación de pago/matrícula."
+      sub="Confirmá tu acceso y practicá gratis mientras coordinás pago/matrícula."
       right={<button type="button" className="btn btn-ghost" onClick={load} disabled={loading}>Actualizar</button>}
     />:<div className="premat-fallback-title"><h1>Bienvenida, {freeStudentFirstName(nombre)}</h1></div>}
 
@@ -176,24 +186,26 @@ function FreeProspectPortal({ usuario, onNavigate }){
     {error&&<div className="premat-alert error">{error}</div>}
     {ok&&<div className="premat-alert ok">{ok}</div>}
 
-    <section className="premat-hero premat-hero-lite">
+    <section className="premat-hero premat-hero-lite premat-hero-clean">
       <div className="premat-hero-main">
-        <span className="premat-kicker">Acceso anticipado</span>
-        <h2>Ya podés iniciar con juegos gratis</h2>
-        <p>Tu asesor, grupo, curso y fecha quedan visibles para que no tengas que pasar por cinco pasos antes de practicar.</p>
+        <span className="premat-kicker">Prematrícula</span>
+        <h2>{accesoPlay?'Academia Play activado':'Confirmá tu acceso anticipado'}</h2>
+        <p>{accesoPlay?'Tu acceso gratis ya quedó solicitado. Entrá a practicar desde Academia Play.':'Un botón, sin proceso largo: activás la prematrícula y el acceso a juegos gratis.'}</p>
         <div className="premat-hero-actions">
-          <button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Abrir Academia Play</button>
+          {accesoPlay
+            ? <button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Entrar a Academia Play</button>
+            : <button type="button" className="btn btn-primary" disabled={busy} onClick={activarAcceso}>{busy?'Activando…':'Activar prematrícula / confirmar acceso'}</button>}
           <button type="button" className="btn btn-ghost" onClick={()=>document.getElementById('premat-solicitud')?.scrollIntoView({behavior:'smooth',block:'center'})}>Coordinar pago</button>
         </div>
       </div>
       <aside className="premat-status-card">
         <span>Estado</span>
-        <strong>{freeStudentEstadoLabel(estadoActual)[0]}</strong>
-        <small>{pendientes.length?`${pendientes.length} solicitud pendiente`:'Sin gestiones pendientes'}</small>
+        <strong>{accesoPlay?freeStudentEstadoLabel(estadoActual)[0]:'Por activar'}</strong>
+        <small>{pendientes.length?`${pendientes.length} gestión pendiente`:'Sin pasos extra'}</small>
       </aside>
     </section>
 
-    <div className="premat-access-grid">
+    <div className="premat-access-grid premat-access-grid-clean">
       <PrematAccessCard label="Curso" value={freeStudentClean(programa)} icon="book" tone="info" />
       <PrematAccessCard label="Grupo" value={freeStudentClean(grupo)} icon="groups" tone="ok" />
       <PrematAccessCard label="Inicio" value={freeStudentClean(fechaInicio)} icon="calendar" tone="neutral" />
@@ -202,43 +214,28 @@ function FreeProspectPortal({ usuario, onNavigate }){
     </div>
 
     <div className="premat-note premat-note-master">
-      <strong>Nota:</strong> esta vista es acceso anticipado de prematrícula. Permite practicar gratis y coordinar activación, pero no genera notas oficiales, certificados, matrícula, código académico, grupo oficial ni pagos registrados automáticamente.
+      <strong>Nota:</strong> acceso anticipado para practicar y coordinar matrícula. No registra notas oficiales, certificados, pagos ni matrícula automática.
     </div>
 
-    <div className="premat-layout premat-layout-lite">
-      <div className="premat-main-col">
-        <PrematPanel kicker="Academia Play" title="Juegos gratis disponibles" action={<button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Ver catálogo</button>}>
-          <div className="premat-games">
-            <PrematGameCard title="Vocabulary Sprint" tag="Gratis" desc="Vocabulario básico en rondas cortas." onClick={()=>go('academia_play')} />
-            <PrematGameCard title="Word Match" tag="Gratis" desc="Uní palabras con su significado." onClick={()=>go('academia_play')} />
-            <PrematGameCard title="Daily Challenge" tag="Gratis" desc="Reto rápido de práctica diaria." onClick={()=>go('academia_play')} />
-            <PrematGameCard title="Phrase Builder" tag="Gratis" desc="Ordená frases útiles de clase." onClick={()=>go('academia_play')} />
-            <PrematGameCard title="Survival English" tag="Gratis" desc="Situaciones reales para empezar." onClick={()=>go('academia_play')} />
-            <PrematGameCard title="Live Trivia" tag="Matrícula" desc="Juego en vivo activado por docente." locked />
+    <div className="premat-layout premat-layout-clean">
+      <PrematPanel kicker="Activación" title="Coordinar pago o matrícula">
+        <div id="premat-solicitud" className="premat-request-box premat-request-lite">
+          <div className="premat-quick-actions" role="group" aria-label="Tipo de solicitud">
+            {FREE_REQUEST_TYPES.map(t=><button type="button" key={t.id} className={`premat-quick-action ${contactoTipo===t.id?'active':''}`} onClick={()=>elegirTipo(t.id)}><strong>{t.title}</strong><small>{t.desc}</small></button>)}
           </div>
-        </PrematPanel>
-      </div>
-
-      <aside className="premat-side-col">
-        <PrematPanel kicker="Activación" title="Coordinar pago o matrícula">
-          <div id="premat-solicitud" className="premat-request-box premat-request-lite">
-            <div className="premat-quick-actions" role="group" aria-label="Tipo de solicitud">
-              {FREE_REQUEST_TYPES.map(t=><button type="button" key={t.id} className={`premat-quick-action ${contactoTipo===t.id?'active':''}`} onClick={()=>elegirTipo(t.id)}><strong>{t.title}</strong><small>{t.desc}</small></button>)}
-            </div>
-            <textarea value={mensaje} onChange={e=>{setMensaje(e.target.value);setCopied(false);}} rows="4" maxLength="700" aria-label="Mensaje para asesor" />
-            <div className="premat-request-actions">
-              <button type="button" className="btn btn-ghost" disabled={!mensaje.trim()} onClick={copiarMensaje}>{copied?'Copiado':'Copiar'}</button>
-              <button type="button" className="btn btn-primary" disabled={busy||!mensaje.trim()} onClick={enviar}>{busy?'Enviando…':'Enviar a mi asesor'}</button>
-            </div>
+          <textarea value={mensaje} onChange={e=>{setMensaje(e.target.value);setCopied(false);}} rows="4" maxLength="700" aria-label="Mensaje para asesor" />
+          <div className="premat-request-actions">
+            <button type="button" className="btn btn-ghost" disabled={!mensaje.trim()} onClick={copiarMensaje}>{copied?'Copiado':'Copiar'}</button>
+            <button type="button" className="btn btn-primary" disabled={busy||!mensaje.trim()} onClick={enviar}>{busy?'Enviando…':'Enviar a mi asesor'}</button>
           </div>
-        </PrematPanel>
+        </div>
+      </PrematPanel>
 
-        <PrematPanel kicker="Historial" title="Últimas gestiones" compact>
-          {!solicitudes.length?<div className="premat-empty">Todavía no hay gestiones registradas.</div>:<div className="premat-requests mini">
-            {solicitudes.slice(0,4).map((s,i)=><PrematRequestRow solicitud={s} compact key={s.ID||i}/>) }
-          </div>}
-        </PrematPanel>
-      </aside>
+      <PrematPanel kicker="Gestiones" title="Último movimiento" compact>
+        {!solicitudes.length?<div className="premat-empty">Sin gestiones registradas.</div>:<div className="premat-requests mini">
+          {solicitudes.slice(0,3).map((s,i)=><PrematRequestRow solicitud={s} compact key={s.ID||i}/>) }
+        </div>}
+      </PrematPanel>
     </div>
   </div>;
 }
