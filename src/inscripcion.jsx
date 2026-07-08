@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3E · validaciones y opciones de pago
+// F98.4-Z6-IP3F · CONAPE imágenes y sostenimiento
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3E';
+const INS_VERSION = 'F98.4-Z6-IP3F';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -54,10 +54,25 @@ function conapeToeicAmount(group, form){
   const n = Number(group?.toeic_monto || form?.toeic_monto || form?.conape_toeic_monto || 0);
   return n > 0 ? n : 137000;
 }
+const SOSTENIMIENTO_OPTIONS = [
+  { value:'NO', label:'No solicito sostenimiento', amount:0 },
+  { value:'10000', label:'Sí solicito ₡10.000 x mes', amount:10000 },
+  { value:'20000', label:'Sí solicito ₡20.000 x mes', amount:20000 },
+  { value:'30000', label:'Sí solicito ₡30.000 x mes', amount:30000 },
+  { value:'40000', label:'Sí solicito ₡40.000 x mes', amount:40000 },
+  { value:'50000', label:'Sí solicito ₡50.000 x mes', amount:50000 },
+  { value:'60000', label:'Sí solicito ₡60.000 x mes', amount:60000 }
+];
 function conapeSostenimientoLabel(v){
-  const k = upper(v);
-  if(k === 'SI') return 'Solicitado';
+  const k = clean(v);
+  const found = SOSTENIMIENTO_OPTIONS.find(o => o.value === k);
+  if(found) return found.label;
+  if(upper(v) === 'SI') return 'Solicitado';
   return 'No solicitado';
+}
+function isSostenimientoSelected(v){
+  const k = clean(v);
+  return k !== '' && k !== 'NO';
 }
 function paymentLabel(v){
   return upper(v) === 'CONAPE' ? 'Financiado por CONAPE' : 'BECA con la Academia';
@@ -598,7 +613,7 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   const toeicAmount = conapeToeicAmount(selectedGroup, form);
   const toeicAvailable = selectedGroup?.toeic_disponible || toeicAmount > 0;
   const laptopSelected = upper(form.conape_equipo) === 'LAPTOP';
-  const sostenimientoSelected = upper(form.conape_sostenimiento) === 'SI';
+  const sostenimientoSelected = isSostenimientoSelected(form.conape_sostenimiento);
 
   function next(){
     const missing=[];
@@ -627,28 +642,30 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
         <ConapeOptionCard
           kind="laptop"
           title="Laptop"
-          subtitle={laptopSelected ? 'Solicitada para incluir en la propuesta.' : 'Podés solicitar equipo si necesitás estudiar desde casa.'}
-          price="Sujeto a propuesta"
+          subtitle={laptopSelected ? 'Equipo seleccionado para incluir en la propuesta.' : 'Seleccioná esta opción si querés financiar equipo junto con el programa.'}
+          price="Elegí la opción con admisiones"
           selected={laptopSelected}
           onClick={()=>setForm({conape_equipo:laptopSelected?'NINGUNO':'LAPTOP'})}
         >
-          <div className="ins-laptop-thumbs"><i></i><i></i></div>
-          Se revisa según disponibilidad, perfil de financiamiento y condiciones vigentes de CONAPE.
+          <div className="ins-laptop-images">
+            <img src="assets/inscripcion/financia_equipo_319.png" alt="Financia tu equipo 319" />
+            <img src="assets/inscripcion/financia_equipo_360.png" alt="Financia tu equipo 360" />
+          </div>
+          Las imágenes muestran las opciones de equipo disponibles para revisar con admisiones antes de enviar la propuesta.
         </ConapeOptionCard>
 
         <ConapeOptionCard
           kind="sostenimiento"
           title="Sostenimiento"
-          subtitle={sostenimientoSelected ? 'Solicitado para revisión.' : 'Apoyo adicional sujeto a requisitos y aprobación.'}
-          price="Condicionado a validación"
+          subtitle={sostenimientoSelected ? conapeSostenimientoLabel(form.conape_sostenimiento) : 'Apoyo adicional sujeto a requisitos y aprobación.'}
+          price="De ₡10.000 a ₡60.000 x mes"
           selected={sostenimientoSelected}
-          onClick={()=>setForm({conape_sostenimiento:sostenimientoSelected?'NO':'SI'})}
+          onClick={()=>setForm({conape_sostenimiento:sostenimientoSelected?'NO':'10000'})}
         >
           <label className="ins-inline-select" onClick={e=>e.stopPropagation()}>
             <span>Elegí una opción</span>
             <select value={form.conape_sostenimiento || 'NO'} onChange={e=>setForm({conape_sostenimiento:e.target.value})}>
-              <option value="NO">No solicitar sostenimiento</option>
-              <option value="SI">Solicitar sostenimiento</option>
+              {SOSTENIMIENTO_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </label>
           No se aprueba automáticamente desde este formulario.
@@ -912,7 +929,7 @@ function InscripcionApp(){
         conape_toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.conape_toeic_monto || 0) : 0,
         toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.toeic_monto || 0) : 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3E',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3F',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);

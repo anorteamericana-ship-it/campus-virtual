@@ -770,3 +770,70 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
     font-size:10px;
   }
 }
+
+
+/* F98.4-Z6-IP3F · imágenes reales de equipo y sostenimiento 10k-60k */
+.ins-conape-card.laptop{
+  grid-column:span 2;
+}
+.ins-laptop-images{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin:12px 0;
+}
+.ins-laptop-images img{
+  width:100%;
+  min-height:180px;
+  object-fit:contain;
+  background:#fff;
+  border:1px solid #D8E4F4;
+  border-radius:18px;
+  box-shadow:0 10px 22px rgba(0,31,71,.10);
+  display:block;
+}
+.ins-conape-card.laptop .ins-conape-visual{
+  min-height:132px;
+}
+.ins-conape-card.laptop .ins-conape-img{
+  display:none;
+}
+.ins-conape-card.laptop .ins-conape-visual:after{
+  content:"Financia tu equipo";
+  position:absolute;
+  left:20px;
+  bottom:22px;
+  color:#fff;
+  font-weight:900;
+  font-size:28px;
+  letter-spacing:-.04em;
+}
+.ins-inline-select select option{
+  font-weight:600;
+}
+
+@media (max-width:980px){
+  .ins-conape-card.laptop{
+    grid-column:auto;
+  }
+  .ins-conape-card.laptop{
+    display:flex;
+  }
+  .ins-laptop-images img{
+    min-height:150px;
+  }
+}
+@media (max-width:620px){
+  .ins-laptop-images{
+    grid-template-columns:1fr;
+  }
+  .ins-laptop-images img{
+    min-height:210px;
+    border-radius:16px;
+  }
+  .ins-conape-card.laptop .ins-conape-visual:after{
+    font-size:20px;
+    left:14px;
+    bottom:18px;
+  }
+}
