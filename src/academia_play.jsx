@@ -1349,8 +1349,8 @@ function APBankAdminPanel() {
         <div className="ap-import-head">
           <div>
             <APBadge tone={resultOk ? 'ok' : 'navy'}>CS14 Importador</APBadge>
-            <h4>Importar Básico I corregido</h4>
-            <p>Valida la fuente antes de reemplazar el banco. Si hay errores, bloquea la importación.</p>
+            <h4>Importar banco por nivel</h4>
+            <p>Valida B1, B2, I1 o I2 antes de importar. Si hay errores, bloquea la importación; si está correcto, reemplaza solo el nivel detectado.</p>
           </div>
           <span className="ap-import-status">{importStatus || 'pendiente'}</span>
         </div>
@@ -1369,6 +1369,7 @@ function APBankAdminPanel() {
               <span>{importResult.total_items || 0} ítems</span>
               <span>{importResult.total_games || 0} juegos</span>
               <span>{importResult.total_units || 0} unidades</span>
+              <span>{(importResult.import_levels || Object.keys(importResult.by_level || {})).join(', ') || 'nivel'}</span>
               <span>{resultErrors.length} errores</span>
               <span>{resultWarnings.length} alertas</span>
             </div>
@@ -1406,7 +1407,7 @@ function APBankAdminPanel() {
       <div className="ap-bank-unit-strip">
         {units.slice(0, 16).map(x => <span key={x.unit_id}>{x.unit_id || 'SIN UNIDAD'} <b>{x.games}</b></span>)}
       </div>
-      <p className="ap-demo-note">CS14 importa el banco validado y sigue guardando solo completados 100%. No toca DATOS, ESTATUS ni notas oficiales.</p>
+      <p className="ap-demo-note">CS14A importa el banco validado por nivel y sigue guardando solo completados 100%. No toca DATOS, ESTATUS ni notas oficiales.</p>
     </div>
   );
 }
