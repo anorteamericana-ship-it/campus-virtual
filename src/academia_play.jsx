@@ -2,7 +2,7 @@
 // F98.4-Z6-CS7B · Academia Play V1.7 catálogo móvil + prematrícula unificada.
 // Frontend/demo únicamente: no llama backend, no guarda intentos, no crea rankings y no modifica notas oficiales.
 
-const { useMemo: apUseMemo, useState: apUseState } = React;
+const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect } = React;
 
 function apNormCedula(v) {
   return String(v || '').replace(/[^0-9]/g, '');
@@ -243,6 +243,79 @@ const AP_FLOWS = {
   },
 };
 
+
+const AP_PLAY_RELEASE = 'V1.8';
+
+function apStorageUserKey(usuario) {
+  const ced = apNormCedula(usuario?.cedula || usuario?.CEDULA || usuario?.identificacion || usuario?.IDENTIFICACION || usuario?.documento || usuario?.DOCUMENTO || usuario?.id || usuario?.ID);
+  const cod = String(usuario?.codigo || usuario?.CODIGO || usuario?.CODIGO_ESTUDIANTE || '').trim().toUpperCase();
+  const name = String(usuario?.nombre || usuario?.NOMBRE || 'estudiante').trim().toLowerCase().replace(/\s+/g, '_');
+  return ced || cod || name || 'guest';
+}
+
+function apReadState(userKey) {
+  try {
+    const raw = localStorage.getItem('an_academia_play_state_' + userKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === 'object') {
+      return {
+        games: parsed.games && typeof parsed.games === 'object' ? parsed.games : {},
+        seenGames: Array.isArray(parsed.seenGames) ? parsed.seenGames : [],
+        celebrationEnabled: parsed.celebrationEnabled !== false,
+      };
+    }
+  } catch (_) {}
+  return { games: {}, seenGames: [], celebrationEnabled: true };
+}
+
+function apWriteState(userKey, nextState) {
+  try { localStorage.setItem('an_academia_play_state_' + userKey, JSON.stringify(nextState)); } catch (_) {}
+}
+
+function apSafePct(v) { return Math.max(0, Math.min(100, Math.round(Number(v) || 0))); }
+
+function apResultTone(percent) {
+  if (percent >= 100) return 'ok';
+  if (percent >= 60) return 'navy';
+  if (percent > 0) return 'red';
+  return 'muted';
+}
+
+function apResultLabel(percent) {
+  const safe = apSafePct(percent);
+  if (safe >= 100) return '100%';
+  if (safe > 0) return safe + '%';
+  return 'Nuevo';
+}
+
+function apMarkSeen(playState, gameId) {
+  if (!gameId) return playState;
+  if ((playState.seenGames || []).includes(gameId)) return playState;
+  return { ...playState, seenGames: [...(playState.seenGames || []), gameId] };
+}
+
+function apPlayCelebrationChime() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      gain.gain.setValueAtTime(0.0001, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.05, now + i * 0.12 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.22);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + i * 0.12 + 0.24);
+    });
+    window.setTimeout(() => { try { ctx.close(); } catch (_) {} }, 800);
+  } catch (_) {}
+}
+
 const AP_SKILL_TRACKS = [
   { id: 'starter', title: 'Starter Pack', desc: 'Vocabulario, frases de clase y presentaciones.', games: ['Vocabulary Sprint', 'Phrase Builder', 'Survival English'], tone: 'red' },
   { id: 'grammar', title: 'Grammar Path', desc: 'Estructuras, orden de oración y preguntas.', games: ['Grammar Builder', 'Sentence Order'], tone: 'navy' },
@@ -309,15 +382,23 @@ function apCanOpen(game, isFreeUser) {
   return !isFreeUser;
 }
 
-function APGameCard({ game, isFreeUser, onOpen }) {
+
+function APGameCard({ game, isFreeUser, onOpen, playState }) {
   const locked = !apCanOpen(game, isFreeUser);
   const area = apCognitiveArea(game.category);
+  const gameState = playState?.games?.[game.id] || null;
+  const best = apSafePct(gameState?.percent || 0);
+  const isNew = !locked && !(playState?.seenGames || []).includes(game.id);
   return (
     <button type="button" className={'ap-game-card ap-game-card-visual ' + (game.status === 'live' ? 'is-live ' : '') + (locked ? 'is-locked ' : '') + (game.accent || '')} onClick={() => onOpen(game)}>
       <div className="ap-game-visual-head">
         <span className={'ap-cog-icon ' + area.tone} aria-hidden="true">{area.icon}</span>
-        <span className="ap-game-eyebrow">{game.status === 'live' && <i aria-hidden="true" />} {game.type}</span>
+        <div className="ap-game-mini-badges">
+          {isNew && <APBadge tone="red">Nuevo</APBadge>}
+          {gameState && <APBadge tone={apResultTone(best)}>{apResultLabel(best)}</APBadge>}
+        </div>
       </div>
+      <span className="ap-game-eyebrow">{game.status === 'live' && <i aria-hidden="true" />} {game.type}</span>
       <strong>{game.title}</strong>
       <span className="ap-cog-label">{area.label}</span>
       <em>{game.desc}</em>
@@ -333,6 +414,85 @@ function APGameCard({ game, isFreeUser, onOpen }) {
     </button>
   );
 }
+
+function APAchievementTrack({ freeGames, playState, onToggleCelebration }) {
+  const completed = freeGames.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100).length;
+  return (
+    <div className="ap-panel ap-achievement-panel">
+      <div className="ap-achievement-head">
+        <div>
+          <span className="ap-small-label">Línea de logros</span>
+          <h3>{completed}/{freeGames.length} al 100%</h3>
+        </div>
+        <button type="button" className={'ap-sound-toggle ' + ((playState?.celebrationEnabled ?? true) ? 'active' : '')} onClick={onToggleCelebration}>
+          {(playState?.celebrationEnabled ?? true) ? '🔊 Celebración on' : '🔇 Celebración off'}
+        </button>
+      </div>
+      <div className="ap-achievement-line" aria-label="Progreso de juegos gratis al 100%">
+        {freeGames.map((game, index) => {
+          const pct = apSafePct(playState?.games?.[game.id]?.percent || 0);
+          const isSeen = (playState?.seenGames || []).includes(game.id);
+          const state = pct >= 100 ? 'done' : pct > 0 ? 'progress' : !isSeen ? 'new' : 'idle';
+          return (
+            <div key={game.id} className={'ap-achievement-node ' + state}>
+              <span className="ap-achievement-dot">{pct >= 100 ? '✓' : index + 1}</span>
+              <strong>{game.title}</strong>
+              <small>{pct >= 100 ? '100% completado' : pct > 0 ? pct + '% logrado' : !isSeen ? 'Nuevo' : 'Pendiente'}</small>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function APAreaGrid({ categories, filter, setFilter, isFreeUser, playState }) {
+  return (
+    <div className="ap-area-grid" aria-label="Áreas cognitivas Academia Play">
+      {categories.filter(cat => cat !== 'Todos' && cat !== 'Gratis').map(cat => {
+        const info = apCognitiveArea(cat);
+        const games = AP_GAMES.filter(g => g.category === cat);
+        const unlocked = games.filter(g => apCanOpen(g, isFreeUser)).length;
+        const completed = games.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100).length;
+        const fresh = games.filter(g => apCanOpen(g, isFreeUser) && !(playState?.seenGames || []).includes(g.id)).length;
+        return (
+          <button type="button" key={cat} className={'ap-area-card ' + info.tone + (filter === cat ? ' active' : '')} onClick={() => setFilter(cat)}>
+            <span className="ap-area-icon" aria-hidden="true">{info.icon}</span>
+            <div className="ap-area-copy">
+              <strong>{info.label}</strong>
+              <small>{cat}</small>
+            </div>
+            <div className="ap-area-stats">
+              <span>{unlocked}/{games.length} visibles</span>
+              <span>{completed} al 100%{fresh ? ' · ' + fresh + ' nuevo' + (fresh > 1 ? 's' : '') : ''}</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function APCelebrationOverlay({ celebration, onClose }) {
+  const pieces = apUseMemo(() => Array.from({ length: 18 }, (_, i) => ({
+    left: 6 + (i * 5), delay: (i % 6) * 0.08, rotate: (i % 2 ? 12 : -12) + i * 4,
+  })), []);
+  if (!celebration) return null;
+  return (
+    <div className="ap-celebration" role="status" aria-live="polite">
+      <div className="ap-celebration-card">
+        <span className="ap-celebration-emoji" aria-hidden="true">🎉</span>
+        <strong>¡{celebration.title} al 100%!</strong>
+        <p>Logro desbloqueado en Academia Play.</p>
+        <button type="button" className="ap-btn ap-btn-light" onClick={onClose}>Cerrar</button>
+      </div>
+      <div className="ap-confetti" aria-hidden="true">
+        {pieces.map((p, i) => <span key={i} style={{ left: p.left + '%', animationDelay: p.delay + 's', transform: 'rotate(' + p.rotate + 'deg)' }} />)}
+      </div>
+    </div>
+  );
+}
+
 
 function APSkillTracks({ isFreeUser }) {
   return (
@@ -391,7 +551,7 @@ function APSummary({ title, score, total, errors, onReset, onBack }) {
   );
 }
 
-function APChoiceRunner({ flow, isFreeUser, onBack }) {
+function APChoiceRunner({ flow, isFreeUser, onBack, onComplete }) {
   const [phase, setPhase] = apUseState('intro');
   const [qIndex, setQIndex] = apUseState(0);
   const [selected, setSelected] = apUseState(null);
@@ -414,7 +574,11 @@ function APChoiceRunner({ flow, isFreeUser, onBack }) {
     else setErrors(errors + 1);
   }
   function next() {
-    if (qIndex >= flow.questions.length - 1) { setPhase('summary'); return; }
+    if (qIndex >= flow.questions.length - 1) {
+      const finalScore = score;
+      const finalPercent = Math.round((finalScore / flow.questions.length) * 100);
+      onComplete && onComplete({ title: flow.title, score: finalScore, total: flow.questions.length, errors, percent: finalPercent });
+      setPhase('summary'); return; }
     setQIndex(qIndex + 1);
     setSelected(null);
     setAnswered(false);
@@ -463,7 +627,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack }) {
   );
 }
 
-function APMatchRunner({ flow, isFreeUser, onBack }) {
+function APMatchRunner({ flow, isFreeUser, onBack, onComplete }) {
   const [phase, setPhase] = apUseState('intro');
   const [selectedLeft, setSelectedLeft] = apUseState(null);
   const [fixed, setFixed] = apUseState([]);
@@ -481,7 +645,11 @@ function APMatchRunner({ flow, isFreeUser, onBack }) {
     if (selectedLeft.id === pair.id) {
       const next = [...fixed, pair.id];
       setFixed(next); setSelectedLeft(null); setWrong('');
-      if (next.length === total) setPhase('summary');
+      if (next.length === total) {
+        const percent = Math.round((total / Math.max(total + errors, 1)) * 100);
+        onComplete && onComplete({ title: flow.title, score: total, total, errors, percent });
+        setPhase('summary');
+      }
     } else {
       setErrors(errors + 1); setWrong(selectedLeft.id + '-' + pair.id);
       window.setTimeout(() => setWrong(''), 260);
@@ -527,7 +695,7 @@ function APMatchRunner({ flow, isFreeUser, onBack }) {
   );
 }
 
-function APOrderRunner({ flow, isFreeUser, onBack }) {
+function APOrderRunner({ flow, isFreeUser, onBack, onComplete }) {
   const [phase, setPhase] = apUseState('intro');
   const [qIndex, setQIndex] = apUseState(0);
   const [built, setBuilt] = apUseState([]);
@@ -548,7 +716,11 @@ function APOrderRunner({ flow, isFreeUser, onBack }) {
     if (ok) setScore(score + 1); else setErrors(errors + 1);
   }
   function next() {
-    if (qIndex >= flow.questions.length - 1) { setPhase('summary'); return; }
+    if (qIndex >= flow.questions.length - 1) {
+      const finalScore = score;
+      const finalPercent = Math.round((finalScore / flow.questions.length) * 100);
+      onComplete && onComplete({ title: flow.title, score: finalScore, total: flow.questions.length, errors, percent: finalPercent });
+      setPhase('summary'); return; }
     setQIndex(qIndex + 1); setBuilt([]); setAnswered(false);
   }
   function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); }
@@ -589,15 +761,15 @@ function APOrderRunner({ flow, isFreeUser, onBack }) {
   );
 }
 
-function APGameRunner({ gameId, isFreeUser, onBack }) {
+function APGameRunner({ gameId, isFreeUser, onBack, onComplete }) {
   const flow = AP_FLOWS[gameId] || AP_FLOWS.vocabulary;
   return (
     <div className="ap-practice-wrap">
       {flow.kind === 'match'
-        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} />
+        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} />
         : flow.kind === 'order'
-          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} />
-          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} />}
+          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} />
+          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} />}
     </div>
   );
 }
@@ -623,18 +795,34 @@ function APLockedState({ game, isFreeUser, onBack, onNavigate }) {
   );
 }
 
+
 function APStudentView({ usuario, role, rolReal, onNavigate }) {
   const isFreeUser = apEsUsuarioGratis(usuario, role, rolReal);
   const [screen, setScreen] = apUseState('dashboard');
   const [activeGame, setActiveGame] = apUseState(null);
   const [filter, setFilter] = apUseState('Todos');
+  const [celebration, setCelebration] = apUseState(null);
   const first = apFirstName(usuario);
-  const freeGames = AP_GAMES.filter(g => g.status === 'free').length;
+  const userKey = apUseMemo(() => apStorageUserKey(usuario || {}), [usuario]);
+  const [playState, setPlayState] = apUseState(() => apReadState(userKey));
+  apUseEffect(() => { setPlayState(apReadState(userKey)); }, [userKey]);
+  apUseEffect(() => { apWriteState(userKey, playState); }, [userKey, playState]);
+  apUseEffect(() => {
+    if (!celebration) return undefined;
+    const t = window.setTimeout(() => setCelebration(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [celebration]);
+
+  const freeGames = AP_GAMES.filter(g => g.status === 'free');
+  const freeGamesCount = freeGames.length;
   const unlockedGames = AP_GAMES.filter(g => apCanOpen(g, isFreeUser)).length;
   const categories = ['Todos', 'Gratis', 'Vocabulario', 'Gramática', 'Speaking', 'Escucha', 'Lectura', 'Mixto', 'En vivo'];
   const filtered = AP_GAMES.filter(g => filter === 'Todos' || (filter === 'Gratis' ? g.status === 'free' : g.category === filter));
+  const freeCompleted = freeGames.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100).length;
+  const newCount = AP_GAMES.filter(g => apCanOpen(g, isFreeUser) && !(playState?.seenGames || []).includes(g.id)).length;
 
   function openGame(game) {
+    setPlayState(prev => apMarkSeen(prev, game.id));
     if (game.status === 'live' && apCanOpen(game, isFreeUser)) {
       setActiveGame(game); setScreen('live'); return;
     }
@@ -644,64 +832,92 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
     setActiveGame(game); setScreen('play');
   }
 
-  if (screen === 'play') return <APGameRunner gameId={activeGame?.id} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} />;
+  function handleComplete(result) {
+    if (!activeGame?.id || !result) return;
+    setPlayState(prev => {
+      const current = prev?.games?.[activeGame.id] || {};
+      const nextPercent = Math.max(apSafePct(current.percent || 0), apSafePct(result.percent || 0));
+      const next = {
+        ...prev,
+        games: {
+          ...(prev.games || {}),
+          [activeGame.id]: {
+            percent: nextPercent,
+            attempts: Number(current.attempts || 0) + 1,
+            lastPlayedAt: Date.now(),
+            title: activeGame.title,
+          },
+        },
+      };
+      const firstPerfect = nextPercent >= 100 && apSafePct(current.percent || 0) < 100;
+      if (firstPerfect) {
+        setCelebration({ title: activeGame.title });
+        if (next.celebrationEnabled !== false) apPlayCelebrationChime();
+      }
+      return next;
+    });
+  }
+
+  if (screen === 'play') return <><APGameRunner gameId={activeGame?.id} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} /><APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
   if (screen === 'locked') return <APLockedState game={activeGame} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onNavigate={onNavigate} />;
   if (screen === 'live') return <APLiveRoom onBack={() => setScreen('catalog')} />;
 
   return (
     <div className="ap-view ap-view-student">
       <APSectionTitle eyebrow={isFreeUser ? 'Prematrícula · Acceso gratis' : 'Estudiante · Piloto visual'} title={isFreeUser ? 'Practicá desde hoy, ' + first : 'Academia Play'}>
-        {isFreeUser
-          ? 'Práctica libre. Sin notas oficiales.'
-          : 'Juegos cortos por área. Piloto visual.'}
+        {isFreeUser ? 'Juegos cortos, logros y progreso visual.' : 'Práctica visual organizada por áreas.'}
       </APSectionTitle>
 
       <div className="ap-dashboard-grid">
         <div className="ap-hero-card ap-cascade ap-cascade-1">
-          <APBadge tone="red">Práctica recomendada de hoy</APBadge>
-          <h3>{isFreeUser ? 'Vocabulary Sprint · Primeras palabras' : 'Grammar Builder · Básico I'}</h3>
-          <p>{isFreeUser ? 'Primeras palabras para iniciar.' : 'Refuerzo rápido por área.'}</p>
+          <APBadge tone="red">Acceso activo</APBadge>
+          <h3>{isFreeUser ? 'Entrá a Academia Play y completá tus 5 juegos gratis' : 'Continuá tu ruta por áreas'}</h3>
+          <p>{isFreeUser ? 'Tu meta inicial es llevar los 5 juegos gratuitos al 100%.' : 'Tu progreso visual queda separado de las notas oficiales.'}</p>
           <div className="ap-hero-actions">
             <button type="button" className="ap-btn ap-btn-primary ap-breathe" onClick={() => openGame(AP_GAMES[0])}>Practicar ahora</button>
-            <button type="button" className="ap-btn ap-btn-ghost" onClick={() => setScreen('catalog')}>Ver catálogo de juegos</button>
+            <button type="button" className="ap-btn ap-btn-ghost" onClick={() => setScreen('catalog')}>Ver catálogo</button>
           </div>
-          
         </div>
         <div className="ap-panel ap-daily-card ap-cascade ap-cascade-2">
-          <span className="ap-small-label">Acceso gratis de hoy</span>
-          <div className="ap-week-row"><strong>{isFreeUser ? '2/3' : 'Ilimitado'}</strong><span>{isFreeUser ? 'te queda 1 partida' : 'matrícula activa demo'}</span></div>
-          <APProgress value={isFreeUser ? 66 : 100} label="Acceso diario demo" />
-          
+          <span className="ap-small-label">Resumen rápido</span>
+          <div className="ap-week-row"><strong>{freeCompleted}/{freeGamesCount}</strong><span>juegos gratis al 100%</span></div>
+          <APProgress value={Math.round((freeCompleted / freeGamesCount) * 100)} label="Logros gratis completados" />
         </div>
         <div className="ap-panel ap-live-preview ap-cascade ap-cascade-2">
-          <APBadge tone={isFreeUser ? 'muted' : 'red'}>{isFreeUser ? 'Bloqueado' : 'En vivo demo'}</APBadge>
-          <h3>Live Trivia</h3>
-          <p>{isFreeUser ? 'Disponible con matrícula activa.' : 'Sala demo.'}</p>
-          <button type="button" className="ap-btn ap-btn-light" onClick={() => openGame(AP_GAMES.find(g => g.id === 'live'))}>{isFreeUser ? 'Ver bloqueo' : 'Entrar a sala'}</button>
+          <APBadge tone={newCount ? 'red' : 'navy'}>{newCount ? newCount + ' nuevo' + (newCount > 1 ? 's' : '') : 'Al día'}</APBadge>
+          <h3>{unlockedGames} juegos visibles</h3>
+          <p>Filtrá por áreas y distinguí novedades desde el catálogo.</p>
+          <button type="button" className="ap-btn ap-btn-light" onClick={() => setFilter('Gratis')}>Ver gratis</button>
         </div>
       </div>
 
-      <div className="ap-stats-grid">
-        <APStat label="Acceso" value={isFreeUser ? 'Gratis' : 'Piloto'} sub={isFreeUser ? 'sin matrícula activa' : 'estudiante demo'} tone={isFreeUser ? 'red' : ''} />
-        <APStat label="Juegos abiertos" value={String(unlockedGames)} sub={isFreeUser ? freeGames + ' gratis' : 'demo desbloqueado'} />
-        <APStat label="Prácticas demo" value={isFreeUser ? '5' : String(AP_GAMES.filter(g => g.status !== 'soon').length)} sub="no se guardan todavía" />
-        <APStat label="Nota oficial" value="0" sub="no afecta evaluaciones" />
+      <div className="ap-stats-grid ap-stats-grid-compact">
+        <APStat label="Juegos gratis" value={String(freeGamesCount)} sub="ruta inicial" tone="red" />
+        <APStat label="Logros 100%" value={String(freeCompleted)} sub="meta actual" />
+        <APStat label="Nuevos" value={String(newCount)} sub="sin revisar" />
       </div>
 
-      <APSkillTracks isFreeUser={isFreeUser} />
+      <APAchievementTrack freeGames={freeGames} playState={playState} onToggleCelebration={() => setPlayState(prev => ({ ...prev, celebrationEnabled: !(prev.celebrationEnabled !== false) }))} />
+
+      <div className="ap-catalog-head ap-catalog-head-clean">
+        <div><h3>Áreas cognitivas</h3><p>Elegí un área para filtrar el catálogo.</p></div>
+      </div>
+      <APAreaGrid categories={categories} filter={filter} setFilter={setFilter} isFreeUser={isFreeUser} playState={playState} />
 
       <div className="ap-catalog-head">
-        <div><h3>Catálogo de juegos</h3><p>{isFreeUser ? freeGames + ' gratis · ' + AP_GAMES.length + ' total' : AP_GAMES.length + ' juegos · piloto visual'}</p></div>
+        <div><h3>Catálogo de juegos</h3><p>{filter === 'Todos' ? (isFreeUser ? freeGamesCount + ' gratis · ' + AP_GAMES.length + ' total' : AP_GAMES.length + ' juegos') : 'Filtro: ' + filter}</p></div>
         <div className="ap-filter-tabs" role="tablist" aria-label="Filtrar catálogo de juegos">
           {categories.map(cat => <button key={cat} type="button" className={filter === cat ? 'active' : ''} onClick={() => setFilter(cat)}>{cat}</button>)}
         </div>
       </div>
       <div className="ap-card-grid ap-card-grid-catalog">
-        {filtered.map(g => <APGameCard key={g.id} game={g} isFreeUser={isFreeUser} onOpen={openGame} />)}
+        {filtered.map(g => <APGameCard key={g.id} game={g} isFreeUser={isFreeUser} onOpen={openGame} playState={playState} />)}
       </div>
+      <APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} />
     </div>
   );
 }
+
 
 function APLiveRoom({ onBack }) {
   return (
@@ -779,29 +995,24 @@ function APTeacherView() {
   );
 }
 
+
 function APAdminView() {
   return (
     <div className="ap-view ap-view-admin">
       <APSectionTitle eyebrow="Admin · Superadmin" title="Panel Academia Play">
-        Estado del módulo en piloto. Métricas demo para validar navegación, no producción.
+        Vista de control del piloto visual.
       </APSectionTitle>
       <div className="ap-stats-grid">
         <APStat label="Estado" value="Piloto" sub="sin backend productivo" tone="red" />
         <APStat label="Juegos" value={String(AP_GAMES.length)} sub="catálogo visual" />
-        <APStat label="Gratis" value={String(AP_GAMES.filter(g => g.status === 'free').length)} sub="para prospectos" />
-        <APStat label="Niveles" value="4" sub="B1 · B2 · I1 · I2" />
+        <APStat label="Gratis" value={String(AP_GAMES.filter(g => g.status === 'free').length)} sub="para prematrícula" />
+        <APStat label="Áreas" value="7" sub="cognitivas" />
       </div>
       <div className="ap-admin-grid">
-        <div className="ap-panel">
-          <APBadge tone="red">Módulo en piloto</APBadge>
-          <h3>Antes de producción falta</h3>
-          <ul className="ap-check-list">
-            <li>Definir hojas o backend de juegos separado de notas oficiales.</li>
-            <li>Banco real de preguntas por nivel, unidad y destreza.</li>
-            <li>Permisos por grupo, docente y usuario gratis.</li>
-            <li>Historial de práctica sin mezclar con evaluaciones.</li>
-            <li>QA mobile, accesibilidad y rendimiento con datos reales.</li>
-          </ul>
+        <div className="ap-panel ap-admin-note-panel">
+          <APBadge tone="red">Nota admin</APBadge>
+          <h3>Piloto controlado</h3>
+          <p>Academia Play solo guarda progreso local del navegador para la demo visual. No escribe notas oficiales, no crea evaluaciones y no reemplaza matrícula.</p>
         </div>
         <div className="ap-panel">
           <h3>Uso por nivel · demo</h3>
@@ -811,7 +1022,7 @@ function APAdminView() {
         </div>
       </div>
       <div className="ap-panel ap-table-panel">
-        <h3>Catálogo V1.6 · estado demo</h3>
+        <h3>Catálogo V1.8 · estado demo</h3>
         <div className="ap-table">
           {AP_GAMES.map(g => <div key={g.id}><span>{g.title}</span><strong>{apStatusLabel(g.status, false)}</strong></div>)}
         </div>
@@ -819,6 +1030,7 @@ function APAdminView() {
     </div>
   );
 }
+
 
 function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
   const allowed = apEsUsuarioPiloto(usuario, role, rolReal);
