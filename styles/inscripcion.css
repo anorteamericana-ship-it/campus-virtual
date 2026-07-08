@@ -283,3 +283,122 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
   .ins-ticket,.ins-timeline{box-shadow:none;border:1px solid #ddd}
   .ins-success{grid-template-columns:1fr}
 }
+
+
+/* F98.4-Z6-IP3C · Limpieza de entrada y Paso 2 móvil */
+.ins-hero-compact{
+  border-bottom-left-radius:24px;
+  border-bottom-right-radius:24px;
+}
+.ins-hero-compact .ins-topbar{
+  padding:16px 20px;
+}
+.ins-top-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.ins-top-button{
+  appearance:none;
+  border:1px solid rgba(255,255,255,.24);
+  color:#fff;
+}
+.ins-hero-compact + .ins-main{
+  padding-top:22px;
+}
+
+@media (max-width:980px){
+  .ins-course-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width:620px){
+  .ins-course-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .ins-course-card{
+    border-radius:18px;
+    padding:12px 10px;
+    min-height:142px;
+  }
+  .ins-course-head{
+    gap:6px;
+  }
+  .ins-course-head span{
+    font-size:22px;
+  }
+  .ins-course-head b{
+    font-size:9px;
+    letter-spacing:.04em;
+    line-height:1.15;
+    text-align:right;
+  }
+  .ins-course-card h3{
+    font-size:17px;
+    line-height:1.05;
+    margin:9px 0 3px;
+  }
+  .ins-course-card p{
+    font-size:11px;
+    line-height:1.25;
+  }
+  .ins-course-card small{
+    display:none;
+  }
+  .ins-course-card strong{
+    margin-top:10px;
+    padding:5px 7px;
+    font-size:10px;
+    line-height:1.15;
+  }
+  .ins-group-toolbar{
+    padding:12px;
+    border-radius:17px;
+    margin-bottom:12px;
+  }
+  .ins-group-toolbar strong{
+    font-size:14px;
+  }
+  .ins-group-toolbar small{
+    font-size:12px;
+  }
+  .ins-card-head{
+    margin-bottom:12px;
+  }
+  .ins-card-head h2{
+    font-size:25px;
+  }
+  .ins-card-head p{
+    font-size:13px;
+    line-height:1.45;
+  }
+}
+
+@media (max-width:420px){
+  .ins-topbar{
+    gap:10px;
+  }
+  .ins-top-actions{
+    gap:6px;
+  }
+  .ins-top-link{
+    padding:8px 9px;
+    font-size:11px;
+  }
+  .ins-course-card{
+    min-height:136px;
+  }
+  .ins-course-card h3{
+    font-size:15px;
+  }
+  .ins-course-head span{
+    font-size:20px;
+  }
+  .ins-course-card strong{
+    font-size:9px;
+  }
+}

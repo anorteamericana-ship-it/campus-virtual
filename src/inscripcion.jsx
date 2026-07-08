@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3B · Inscripción Pública V3 refinada
+// F98.4-Z6-IP3C · Inscripción Pública compacta
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3B';
+const INS_VERSION = 'F98.4-Z6-IP3C';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -252,50 +252,18 @@ const STEPS = [
   ['cedula','Cédula'], ['grupo','Curso y horario'], ['datos','Datos'], ['finanzas','Financiamiento'], ['docs','Documentos'], ['resumen','Resumen']
 ];
 
-function Header({config, scrollToForm}){
-  const heroTitle = 'Inscribite y empezá tu proceso con nosotros';
-  const heroSub = 'Elegí el tipo de curso, seleccioná tu horario y dejá tu solicitud en un flujo simple, guiado y claro.';
-  const heroImg = clean(config?.imagenes?.hero_url || config?.imagenes?.principal || '');
-  return <header className="ins-hero">
+function Header({scrollToForm}){
+  return <header className="ins-hero ins-hero-compact">
     <nav className="ins-topbar" aria-label="Encabezado">
       <div className="ins-brand">
         <div className="ins-brand-mark">AN</div>
         <div><strong>Academia Norteamericana</strong><span>Inglés Conversacional · Costa Rica</span></div>
       </div>
-      <a className="ins-top-link" href="campus.html">Ya tengo acceso</a>
-    </nav>
-    <section className="ins-hero-grid">
-      <div className="ins-hero-copy">
-        <span className="ins-kicker">Inscripción pública</span>
-        <h1>{heroTitle}</h1>
-        <p>{heroSub}</p>
-        <div className="ins-hero-actions">
-          <button type="button" className="ins-btn primary" onClick={scrollToForm}>Comenzar ahora</button>
-          <a className="ins-btn ghost" href="#como-funciona">Cómo funciona</a>
-        </div>
-        <div className="ins-hero-trust">
-          <span>Clases en vivo</span>
-          <span>Horarios disponibles</span>
-          <span>CONAPE o pago propio</span>
-          <span>Acompañamiento de admisiones</span>
-        </div>
+      <div className="ins-top-actions">
+        <button type="button" className="ins-top-link ins-top-button" onClick={scrollToForm}>Iniciar solicitud</button>
+        <a className="ins-top-link" href="campus.html">Ya tengo acceso</a>
       </div>
-      <aside className="ins-hero-card" style={heroImg ? {backgroundImage:`linear-gradient(135deg, rgba(0,47,108,.92), rgba(0,30,71,.76)), url(${heroImg})`} : null}>
-        <span>Ingreso 2026</span>
-        <h2>Elegí bien tu curso desde la primera pantalla.</h2>
-        <p>Te mostramos la modalidad, los horarios disponibles y los datos importantes antes de que envíes tu solicitud.</p>
-        <div className="ins-hero-mini-grid">
-          <div><strong>2</strong><small>tipos de curso</small></div>
-          <div><strong>100%</strong><small>proceso en línea</small></div>
-          <div><strong>1</strong><small>solicitud guiada</small></div>
-        </div>
-      </aside>
-    </section>
-    <section className="ins-how" id="como-funciona">
-      <article><b>1</b><strong>Verificá tu cédula</strong><small>Primero revisamos que puedas continuar.</small></article>
-      <article><b>2</b><strong>Elegí tu curso</strong><small>Primero modalidad, después horario disponible.</small></article>
-      <article><b>3</b><strong>Completá tu solicitud</strong><small>Dejá datos, documentos y listo.</small></article>
-    </section>
+    </nav>
   </header>;
 }
 
@@ -816,7 +784,7 @@ function InscripcionApp(){
         conape_toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.conape_toeic_monto || 0) : 0,
         toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.toeic_monto || 0) : 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3B',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3C',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);
