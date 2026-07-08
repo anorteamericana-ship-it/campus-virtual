@@ -1,6 +1,6 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS7B · Prematrícula simplificada.
-// Cliente: acceso anticipado + juegos gratis + coordinación de pago/matrícula. No crea matrícula/código/grupo ni toca DATOS/ESTATUS.
+// F98.4-Z6-CS7C · Prematrícula simplificada limpia.
+// Portal de seguimiento inicial para solicitudes de ingreso.
 
 function freeStudentToken(){
   try{return (window.getSesion&&window.getSesion()||{}).token||'';}catch(_){return'';}
@@ -18,7 +18,7 @@ async function freeStudentPost(fn,payload={}){
   });
   const text=await res.text();
   let json=null;
-  try{json=JSON.parse(text);}catch(_){throw new Error(text&&text.trim().startsWith('<')?'El backend devolvió HTML. Revisá la URL publicada de Apps Script.':'Respuesta inválida del servidor.');}
+  try{json=JSON.parse(text);}catch(_){throw new Error(text&&text.trim().startsWith('<')?'El servicio no está disponible en este momento. Intentá de nuevo más tarde.':'Respuesta inválida del servidor.');}
   if(!json?.ok) throw new Error(json?.mensaje||json?.error||'No se pudo completar la solicitud.');
   return json;
 }
@@ -99,7 +99,7 @@ function PrematRequestRow({solicitud,compact}){
 }
 
 const FREE_REQUEST_TYPES=[
-  {id:'QUIERO_MATRICULARME',title:'Activar prematrícula',desc:'confirmar acceso',template:'Hola, quiero confirmar mi prematrícula y dejar lista la activación de mi Campus con el grupo, fecha y curso asignado.'},
+  {id:'QUIERO_MATRICULARME',title:'Confirmar solicitud',desc:'siguiente paso',template:'Hola, quiero confirmar mi solicitud de ingreso y conocer el siguiente paso para completar la matrícula.'},
   {id:'FINANCIAMIENTO',title:'Coordinar pago',desc:'pago o CONAPE',template:'Hola, quiero coordinar el pago o financiamiento de mi matrícula. Por favor indíquenme el paso que corresponde para completar la activación.'},
   {id:'HABLAR_ASESOR',title:'Mi asesor',desc:'consulta directa',template:'Hola, necesito que mi asesor me contacte para terminar de coordinar mi prematrícula.'},
   {id:'CORREGIR_DATOS',title:'Actualizar datos',desc:'correo/teléfono',template:'Hola, quiero corregir o confirmar mis datos antes de activar la matrícula. El dato correcto es:'},
@@ -170,15 +170,15 @@ function FreeProspectPortal({ usuario, onNavigate }){
     const template=FREE_REQUEST_TYPES[0].template;
     setContactoTipo('QUIERO_MATRICULARME');setMensaje(template);setCopied(false);
     const okSend=await enviarSolicitud('QUIERO_MATRICULARME',template);
-    if(okSend){setOk('Acceso anticipado solicitado. Ya podés entrar a Academia Play.');}
+    if(okSend){setOk('Solicitud confirmada. Ya podés continuar desde tu portal de prematrícula.');}
   };
   const go=(id)=>{ if(onNavigate) onNavigate(id); };
 
   return <div className="student-page premat-page premat-page-lite premat-page-clean" data-screen-label="Estudiante · Prematrícula CS7B">
     {typeof PageHeader==='function'?<PageHeader
-      kicker="Mi Campus · Acceso anticipado"
+      kicker="Mi Campus · Prematrícula"
       title={<>Bienvenida, <em>{freeStudentFirstName(nombre)}</em></>}
-      sub="Confirmá tu acceso y practicá gratis mientras coordinás pago/matrícula."
+      sub="Revisá tus datos y coordiná el siguiente paso con admisiones."
       right={<button type="button" className="btn btn-ghost" onClick={load} disabled={loading}>Actualizar</button>}
     />:<div className="premat-fallback-title"><h1>Bienvenida, {freeStudentFirstName(nombre)}</h1></div>}
 
@@ -189,12 +189,12 @@ function FreeProspectPortal({ usuario, onNavigate }){
     <section className="premat-hero premat-hero-lite premat-hero-clean">
       <div className="premat-hero-main">
         <span className="premat-kicker">Prematrícula</span>
-        <h2>{accesoPlay?'Academia Play activado':'Confirmá tu acceso anticipado'}</h2>
-        <p>{accesoPlay?'Tu acceso gratis ya quedó solicitado. Entrá a practicar desde Academia Play.':'Un botón, sin proceso largo: activás la prematrícula y el acceso a juegos gratis.'}</p>
+        <h2>{accesoPlay?'Solicitud en seguimiento':'Confirmá tu solicitud'}</h2>
+        <p>{accesoPlay?'Tu solicitud ya quedó en seguimiento. Admisiones te acompañará con el siguiente paso.':'Confirmá tu solicitud para que admisiones pueda continuar la gestión.'}</p>
         <div className="premat-hero-actions">
           {accesoPlay
-            ? <button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Entrar a Academia Play</button>
-            : <button type="button" className="btn btn-primary" disabled={busy} onClick={activarAcceso}>{busy?'Activando…':'Activar prematrícula / confirmar acceso'}</button>}
+            ? <button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Abrir práctica inicial</button>
+            : <button type="button" className="btn btn-primary" disabled={busy} onClick={activarAcceso}>{busy?'Confirmando…':'Confirmar solicitud'}</button>}
           <button type="button" className="btn btn-ghost" onClick={()=>document.getElementById('premat-solicitud')?.scrollIntoView({behavior:'smooth',block:'center'})}>Coordinar pago</button>
         </div>
       </div>
@@ -214,11 +214,11 @@ function FreeProspectPortal({ usuario, onNavigate }){
     </div>
 
     <div className="premat-note premat-note-master">
-      <strong>Nota:</strong> acceso anticipado para practicar y coordinar matrícula. No registra notas oficiales, certificados, pagos ni matrícula automática.
+      <strong>Importante:</strong> este portal es para dar seguimiento a tu solicitud. La matrícula se confirma con admisiones.
     </div>
 
     <div className="premat-layout premat-layout-clean">
-      <PrematPanel kicker="Activación" title="Coordinar pago o matrícula">
+      <PrematPanel kicker="Admisiones" title="Coordinar el siguiente paso">
         <div id="premat-solicitud" className="premat-request-box premat-request-lite">
           <div className="premat-quick-actions" role="group" aria-label="Tipo de solicitud">
             {FREE_REQUEST_TYPES.map(t=><button type="button" key={t.id} className={`premat-quick-action ${contactoTipo===t.id?'active':''}`} onClick={()=>elegirTipo(t.id)}><strong>{t.title}</strong><small>{t.desc}</small></button>)}

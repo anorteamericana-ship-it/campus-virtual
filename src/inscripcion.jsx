@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3 · Inscripción Pública V3 + gancho Academia Play
-// Página pública. No crea matrícula oficial, no toca DATOS/ESTATUS/notas/certificados.
+// F98.4-Z6-IP3A · Inscripción Pública V3 limpieza comercial
+// Página pública de solicitud de ingreso.
 
-const INS_VERSION = 'F98.4-Z6-IP3';
+const INS_VERSION = 'F98.4-Z6-IP3A';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -22,7 +22,7 @@ async function insPost(fn, payload={}){
   try { json = JSON.parse(text); }
   catch(_){
     const msg = text && text.trim().startsWith('<')
-      ? 'El backend devolvió HTML. Revisá que el Apps Script esté publicado como Web App.'
+      ? 'El servicio no está disponible en este momento. Intentá de nuevo más tarde.'
       : 'Respuesta inválida del servidor.';
     throw new Error(msg);
   }
@@ -120,7 +120,7 @@ const STEPS = [
 function Header({config, scrollToForm}){
   const textos = config?.textos || {};
   const heroTitle = clean(textos.hero_titulo) || 'Empezá tu proceso de ingreso a la Academia';
-  const heroSub = clean(textos.hero_subtitulo) || 'Elegí tu grupo, dejá tus datos y entrá al Campus como prospecto para conocer Academia Play mientras admisiones valida tu matrícula.';
+  const heroSub = clean(textos.hero_subtitulo) || 'Completá tu solicitud en pocos minutos, elegí un grupo disponible y dejá tus datos para que admisiones te acompañe con el siguiente paso.';
   const heroImg = clean(config?.imagenes?.hero_url || config?.imagenes?.principal || '');
   return <header className="ins-hero">
     <nav className="ins-topbar" aria-label="Encabezado">
@@ -137,19 +137,18 @@ function Header({config, scrollToForm}){
         <p>{heroSub}</p>
         <div className="ins-hero-actions">
           <button type="button" className="ins-btn primary" onClick={scrollToForm}>Iniciar inscripción</button>
-          <a className="ins-btn ghost" href="#academia-play">Ver Academia Play</a>
         </div>
         <div className="ins-hero-trust">
-          <span>Virtual en vivo</span><span>Grupos reales</span><span>CONAPE / propio</span><span>Práctica inicial</span>
+          <span>Virtual en vivo</span><span>Grupos disponibles</span><span>CONAPE / propio</span><span>Acompañamiento de admisiones</span>
         </div>
       </div>
       <aside className="ins-hero-card" style={heroImg ? {backgroundImage:`linear-gradient(135deg, rgba(0,47,108,.92), rgba(0,30,71,.78)), url(${heroImg})`} : null}>
-        <span>Acceso de prospecto</span>
-        <h2>Conocé el Campus antes de activar matrícula.</h2>
-        <p>Después del formulario podrás iniciar sesión con tu cédula y clave para entrar al portal de prematrícula.</p>
+        <span>Ingreso 2026</span>
+        <h2>Tu primer paso para estudiar inglés con nosotros.</h2>
+        <p>Al finalizar recibirás tu comprobante de solicitud y el acceso inicial al portal de prematrícula.</p>
         <div className="ins-ticket-mini">
-          <strong>Academia Play</strong>
-          <small>Práctica motivacional · no notas oficiales</small>
+          <strong>Portal de prematrícula</strong>
+          <small>Seguimiento inicial de tu solicitud</small>
         </div>
       </aside>
     </section>
@@ -319,7 +318,7 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
     });
   }
   return <section className="ins-card ins-step-card">
-    <div className="ins-card-head"><span>Paso 2</span><h2>Elegí el grupo que más te sirve</h2><p>Mostramos solo grupos marcados como disponibles para inscripción. Los cupos se calculan contra estudiantes activos y reservas.</p></div>
+    <div className="ins-card-head"><span>Paso 2</span><h2>Elegí el grupo que más te sirve</h2><p>Seleccioná una opción disponible. Si un grupo está en lista de espera, admisiones te confirmará alternativas.</p></div>
     <div className="ins-filter-row">
       <SelectInput aria-label="Filtrar por nivel" value={level} onChange={setLevel}>
         <option value="">Todos los niveles</option><option value="B1">Básico I</option><option value="B2">Básico II</option><option value="I1">Intermedio I</option><option value="I2">Intermedio II</option>
@@ -355,7 +354,7 @@ function DatosStep({form,setForm,setStep,padronName}){
     setErr(''); setStep(3);
   }
   return <section className="ins-card ins-step-card">
-    <div className="ins-card-head"><span>Paso 3</span><h2>Datos personales</h2><p>Estos datos quedan como prospecto. La matrícula oficial se activa después de validación/pago/CONAPE.</p></div>
+    <div className="ins-card-head"><span>Paso 3</span><h2>Datos personales</h2><p>Usaremos esta información para revisar tu solicitud y coordinar el siguiente paso.</p></div>
     {padronName && <Alert type="ok">Nombre encontrado en padrón: <strong>{padronName}</strong>. Revisalo antes de continuar.</Alert>}
     <div className="ins-grid two">
       <Field label="Nombre completo" required><TextInput value={form.nombre} onChange={v=>setForm({nombre:v})} autoComplete="name" /></Field>
@@ -367,7 +366,7 @@ function DatosStep({form,setForm,setStep,padronName}){
       <Field label="Provincia"><TextInput value={form.provincia} onChange={v=>setForm({provincia:v})} /></Field>
       <Field label="Cantón"><TextInput value={form.canton} onChange={v=>setForm({canton:v})} /></Field>
       <Field label="Distrito"><TextInput value={form.distrito} onChange={v=>setForm({distrito:v})} /></Field>
-      <Field label="Clave para entrar al Campus" required hint="La usarás con tu cédula para entrar como prospecto."><TextInput type="password" value={form.clave} onChange={v=>setForm({clave:v})} autoComplete="new-password" /></Field>
+      <Field label="Clave para entrar al portal" required hint="La usarás con tu cédula para revisar tu solicitud."><TextInput type="password" value={form.clave} onChange={v=>setForm({clave:v})} autoComplete="new-password" /></Field>
     </div>
     <Field label="Dirección exacta"><TextArea rows="3" value={form.direccion} onChange={v=>setForm({direccion:v})} /></Field>
     <label className="ins-check"><input type="checkbox" checked={!!form.es_menor} onChange={e=>setForm({es_menor:e.target.checked})} /><span>El estudiante es menor de edad</span></label>
@@ -440,7 +439,7 @@ function ReviewStep({form,selectedGroup,setStep,onSubmit,submitting,error}){
       <div className="ins-review-panel"><h3>Grupo</h3><SummaryRow label="Nivel" value={selectedGroup?.nivel}/><SummaryRow label="Horario" value={`${selectedGroup?.dias_label || ''} · ${selectedGroup?.hora_label || ''}`}/><SummaryRow label="Inicio" value={selectedGroup?.fecha_inicio_label}/><SummaryRow label="Código" value={selectedGroup?.codigo}/></div>
       <div className="ins-review-panel"><h3>Financiamiento</h3><SummaryRow label="Tipo" value={form.financiamiento}/>{conape && <SummaryRow label="Equipo" value={form.conape_equipo}/>} {conape && <SummaryRow label="TOEIC" value={form.conape_toeic?'Solicitado':'No solicitado'}/>} {!conape && <SummaryRow label="Beca" value={form.beca || 'Sin beca'}/>}</div>
     </div>
-    <div className="ins-legal"><strong>Importante:</strong> la solicitud queda para revisión de admisiones. Academia Play es práctica motivacional y no afecta notas oficiales, certificados, pagos ni matrícula.</div>
+    <div className="ins-legal"><strong>Importante:</strong> esta solicitud queda para revisión de admisiones. La matrícula se confirma cuando el proceso quede validado.</div>
     {!canSubmit && <Alert type="error">Este grupo está en lista de espera. Marcá la aceptación en el paso anterior o elegí otro grupo.</Alert>}
     {error && <Alert type="error">{error}</Alert>}
     <div className="ins-actions"><button type="button" className="ins-btn ghost" onClick={()=>setStep(4)}>Atrás</button><button type="button" className="ins-btn primary" onClick={onSubmit} disabled={submitting || !canSubmit}>{submitting?'Enviando…':'Enviar solicitud'}</button></div>
@@ -463,12 +462,12 @@ function SuccessTicket({result,form,selectedGroup}){
         <SummaryRow label="Financiamiento" value={form.financiamiento}/>
       </div>
       <div className="ins-success-actions">
-        <a className="ins-btn primary" href="campus.html">Entrar al Campus / Academia Play</a>
+        <a className="ins-btn primary" href="campus.html">Entrar al portal</a>
         <button type="button" className="ins-btn ghost" onClick={()=>window.print()}>Guardar comprobante</button>
       </div>
     </div>
     <Timeline active={0}/>
-    <Alert>Al entrar al Campus verás tu portal de prematrícula y el acceso de práctica. Tu curso oficial se habilita cuando admisiones active la matrícula.</Alert>
+    <Alert>Al entrar al portal podrás dar seguimiento a tu solicitud. Tu curso se habilita cuando admisiones confirme la matrícula.</Alert>
   </section>;
 }
 
@@ -477,17 +476,17 @@ function Timeline({active=0}){
   return <div className="ins-timeline">{items.map((t,i)=><div key={t} className={`${i<active?'done':''} ${i===active?'active':''}`}><b>{i<active?'✓':i+1}</b><span>{t}</span></div>)}</div>;
 }
 
-function AcademiaPlayHook(){
-  return <section className="ins-play" id="academia-play">
+function NextStepsBlock(){
+  return <section className="ins-play" id="siguiente-paso">
     <div className="ins-play-copy">
-      <span>Academia Play</span>
-      <h2>El gancho correcto: practicar antes de estar oficialmente matriculado.</h2>
-      <p>Después de enviar tu solicitud, podrás entrar al portal de prematrícula y conocer Academia Play. Es práctica inicial para familiarizarte con el Campus, no evaluación oficial.</p>
+      <span>Siguiente paso</span>
+      <h2>Completá la solicitud y admisiones te guía.</h2>
+      <p>Después de enviar el formulario podrás entrar al portal de prematrícula para revisar tu información y continuar el proceso.</p>
     </div>
     <div className="ins-play-cards">
-      <article><b>VOCAB</b><strong>Vocabulary Sprint</strong><small>Palabras útiles del nivel.</small></article>
-      <article><b>GRAM</b><strong>Grammar Fix</strong><small>Estructuras básicas con feedback.</small></article>
-      <article><b>MIX</b><strong>Mini Challenge</strong><small>Práctica rápida para entrar en ritmo.</small></article>
+      <article><b>1</b><strong>Solicitud</strong><small>Dejás tus datos y elegís grupo.</small></article>
+      <article><b>2</b><strong>Revisión</strong><small>Admisiones valida la información.</small></article>
+      <article><b>3</b><strong>Activación</strong><small>Se confirma matrícula y acceso completo.</small></article>
     </div>
   </section>;
 }
@@ -579,7 +578,7 @@ function InscripcionApp(){
         conape_toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.conape_toeic_monto || 0) : 0,
         toeic_monto: form.conape_toeic ? (selectedGroup.toeic_monto || form.toeic_monto || 0) : 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3A',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);
@@ -596,7 +595,6 @@ function InscripcionApp(){
     <Header config={config} scrollToForm={scrollToForm}/>
     {globalError && <div className="ins-main"><Alert type="error">{globalError}</Alert></div>}
     {!success && <div className="ins-main">
-      <AcademiaPlayHook />
       <Stepper step={step} />
       {step===0 && <CedulaStep form={form} setForm={setForm} cedulaStatus={cedulaStatus} setCedulaStatus={setCedulaStatus} setStep={setStep} setPadronName={setPadronName}/>} 
       {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups}/>} 
@@ -607,7 +605,7 @@ function InscripcionApp(){
     </div>}
     {success && <div className="ins-main"><SuccessTicket result={success} form={form} selectedGroup={selectedGroup}/></div>}
     <footer className="ins-footer">
-      <strong>Academia Norteamericana</strong><span>Inscripción Pública V3 · {INS_VERSION}</span><small>Este formulario no registra matrícula oficial ni notas. La activación depende de admisiones.</small>
+      <strong>Academia Norteamericana</strong><span>Inglés Conversacional · Costa Rica</span><small>Tu solicitud será revisada por admisiones para confirmar el siguiente paso.</small>
     </footer>
   </main>;
 }
