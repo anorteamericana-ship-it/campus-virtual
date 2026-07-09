@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3H · orden pago, horario y paquetes limpios
+// F98.4-Z6-IP3I · becas desde CONFIG_BECAS
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3H';
+const INS_VERSION = 'F98.4-Z6-IP3I';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -252,7 +252,7 @@ function normalizeBeca(raw){
   const name = clean(raw.nombre || raw.NOMBRE || raw.id || raw.ID);
   if(!name) return null;
   const key = becaKey(name);
-  const pctRaw = raw.porcentaje ?? raw.PORCENTAJE ?? raw.pct_matricula ?? raw.PCT_MATRICULA ?? raw.pct_cuota ?? raw.PCT_CUOTA ?? raw.pct_total ?? raw.PCT_TOTAL ?? 0;
+  const pctRaw = raw.porcentaje_publico ?? raw.PORCENTAJE_PUBLICO ?? raw.pct_cuota ?? raw.PCT_CUOTA ?? raw.pct_matricula ?? raw.PCT_MATRICULA ?? raw.porcentaje ?? raw.PORCENTAJE ?? raw.pct_total ?? raw.PCT_TOTAL ?? 0;
   const pct = formatPercent(pctRaw);
   const cupo = Number(raw.cupo_disponible ?? raw.CUPO_DISPONIBLE ?? 0);
   const activa = raw.activa === undefined ? true : !!raw.activa;
@@ -1010,7 +1010,7 @@ function InscripcionApp(){
         conape_equipo_paquete: conapeEquipoLabel(form.conape_equipo),
         conape_sostenimiento_monto: Number(form.conape_sostenimiento || 0) || 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3H',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3I',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);
