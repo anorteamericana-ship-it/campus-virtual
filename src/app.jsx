@@ -1,5 +1,5 @@
 // F98.4-Z6-CS7B · Conexión ventas/admisiones para prematrículas
-// F98.4-Z6-CS17B · English LAB inicio gratuito
+// F98.4-Z6-CS3 · Academia Play V1.7 catálogo móvil
 // F98.4-Z6-CR · Hotfix guardado de evidencia técnica
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
@@ -62,9 +62,9 @@ function LazyRoute({ title, component, files, ...props }) {
 }
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z4D'],
-  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS17A'],
-  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS17A'],
-  free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS17A'],
+  free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
+  free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6O','src/teacher_views.jsx?v=F98.4Z6O'],

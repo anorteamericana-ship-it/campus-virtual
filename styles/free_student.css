@@ -130,3 +130,16 @@
 .premat-page-clean .premat-request-actions .btn{width:100%;}
 @media(max-width:1100px){.premat-layout-clean{grid-template-columns:1fr}.premat-page-clean .premat-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:720px){.premat-page-clean .premat-quick-actions,.premat-page-clean .premat-request-actions{grid-template-columns:1fr}.premat-access-grid-clean{grid-template-columns:1fr}.premat-hero-clean .premat-hero-main{padding:20px}.premat-hero-clean .premat-hero-main p{font-size:12.5px}}
+
+
+/* F98.4-Z6-IP4A · English LAB branding limpio */
+.lab-entry-strip{display:flex;align-items:center;justify-content:flex-start;margin-bottom:2px;}
+.lab-entry-brand{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(221,215,204,.92);background:rgba(255,255,255,.94);border-radius:16px;box-shadow:0 10px 24px rgba(0,31,71,.05);}
+.lab-entry-logo{display:block;width:180px;max-width:42vw;height:auto;object-fit:contain;}
+.lab-entry-brand span{display:block;color:#002f6c;font-size:17px;font-weight:800;line-height:1.05;letter-spacing:-.02em;}
+.lab-entry-brand small{display:block;color:#6d7480;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+.premat-page-clean .premat-note-master{font-size:12px;padding:11px 13px;}
+.premat-hero-clean .premat-hero-main h2{font-size:clamp(28px,3.7vw,38px);max-width:14ch;}
+.premat-hero-clean .premat-status-card strong{font-size:28px;}
+.premat-hero-clean .premat-kicker{letter-spacing:.18em;}
+@media(max-width:720px){.lab-entry-brand{width:100%;justify-content:flex-start;padding:10px 12px;}.lab-entry-logo{width:150px;max-width:54vw;}}

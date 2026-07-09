@@ -473,7 +473,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       items: [
         { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials', locked: true },
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Gratis' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Gratis' }] : []),
         { id: 'documentos_ayuda', label: 'Materiales', icon: 'doc', locked: true },
         { id: 'ican', label: 'Club I CAN', icon: 'ican', locked: true },
       ],
@@ -494,7 +494,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
         { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
         ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Piloto' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Piloto' }] : []),
       ],
     },
     {
@@ -513,7 +513,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'materiales', label: 'Biblioteca del Programa', icon: 'materials' },
-    ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Piloto' }] : []),
+    ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Piloto' }] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'cronograma_grupo', label: 'Cronograma Inglés Conversacional', icon: 'calendar' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
@@ -529,7 +529,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'buscador', label: 'Consulta individual', icon: 'search' },
         { id: 'calendario_grupo', label: 'Calendario académico', icon: 'calendar' },
         { id: 'supervision', label: 'Supervisión', icon: 'bell' },
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'Academia Play', icon: 'play', badge: 'Piloto' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Piloto' }] : []),
       ],
     },
     {
@@ -586,7 +586,9 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   return (
     <aside className={`sb ${role === 'student' ? 'student-sb' : ''} ${role === 'teacher' ? 'teacher-sb' : ''} ${role === 'admin' ? 'admin-sb' : ''}`} data-role={role || 'unknown'}>
       <div className="sb-brand">
-        <div className="sb-logo" />
+        <div className="sb-logo sb-logo-real" style={{ background:'none', width:88, height:44, borderRadius:12, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+          <img src="assets/logo_academia_norteamericana_original.png" alt="Academia Norteamericana" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }} />
+        </div>
         <div className="sb-brand-text">
           <div className="sb-brand-t1">Norteamericana</div>
           <div className="sb-brand-t2">Campus Virtual</div>
