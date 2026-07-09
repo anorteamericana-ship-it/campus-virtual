@@ -1,3 +1,4 @@
+// F98.4-Z6-CS20A · English LAB Live foundation
 // F98.4-Z6-CS19F · Agenda docente estable post-presentación
 // F98.4-Z6-CS19E · Agenda docente core-ready + vista semanal estable
 // F98.4-Z6-CS19D · Agenda docente modo Club I CAN aislado + slots visuales
@@ -16,7 +17,7 @@
 /* global React, ReactDOM, Toast, Sidebar, getSesion, setSesion,
    StudentDashboard, StudentPortalView, NotasView, TareasView, MaterialesView, InfoProgramaView, ICANView, ICANViewNew,
    MensajesView, PagosView, CertificadosView, PerfilView,
-   ExamenOralView, GruposView, AsistenciaView, CronogramaDocenteSeguroF82, ClubICANDocenteView,
+   ExamenOralView, GruposView, AsistenciaView, CronogramaDocenteSeguroF82, ClubICANDocenteView, EnglishLabLiveTeacherView,
    AdminDashboard, AdminPerfilView, AdminGruposView, WelcomeBanner, MatriculasView, AdminEstudiantesView,
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
@@ -72,6 +73,7 @@ const F96_LAZY = {
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/teacher_views.jsx?v=F98.4Z6CS19F','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS19F'],
+  english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20A'],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6CS19F'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CR'],
@@ -959,6 +961,7 @@ function App() {
       mensajes:    <LazyRoute title="Comunicados" component="MensajesView" files={F96_LAZY.student_modules} />,
       perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
       academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
+      english_lab_live: <LazyRoute title="English LAB Live" component="EnglishLabLiveTeacherView" files={F96_LAZY.english_lab_live} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
     content = map[active] || map.mi_panel_docente;
   } else if (role === 'admin') {
