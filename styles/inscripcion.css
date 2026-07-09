@@ -837,3 +837,122 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
     bottom:18px;
   }
 }
+
+
+/* F98.4-Z6-IP3G · paquetes de equipo seleccionables y becas Apollo */
+.ins-laptop-pick-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin:14px 0 10px;
+}
+.ins-laptop-pick{
+  position:relative;
+  border:3px solid var(--line);
+  background:#fff;
+  border-radius:22px;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:8px;
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.ins-laptop-pick:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--sh-card-hover);
+}
+.ins-laptop-pick.selected{
+  border-color:#2E7D32;
+  box-shadow:0 16px 34px rgba(46,125,50,.18);
+  background:#F1FBF3;
+}
+.ins-laptop-pick img{
+  width:100%;
+  max-height:260px;
+  object-fit:contain;
+  border-radius:16px;
+  background:#fff;
+}
+.ins-laptop-pick strong{
+  color:var(--an-navy-ink);
+  font-size:17px;
+  line-height:1.15;
+}
+.ins-laptop-pick small{
+  color:#2E7D32;
+  font-size:14px;
+  font-weight:900;
+}
+.ins-green-check{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#C9D6CE;
+  color:#fff;
+  font-size:18px;
+  font-weight:900;
+  border:3px solid #fff;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+  opacity:.65;
+}
+.ins-laptop-pick.selected .ins-green-check{
+  background:#2E7D32;
+  opacity:1;
+}
+.ins-beca-card.mujer{
+  border-color:#B77BE8;
+  background:linear-gradient(180deg,#FFFFFF 0%, #F8EEFF 100%);
+}
+.ins-beca-card.mujer.selected{
+  border-color:#8E24AA;
+  box-shadow:0 14px 30px rgba(142,36,170,.16);
+  background:#F4E4FF;
+}
+.ins-beca-card.mujer .ins-beca-top b{
+  color:#8E24AA;
+}
+.ins-beca-card.disabled{
+  opacity:1;
+  background:#F4F0E8;
+  border-style:dashed;
+}
+.ins-beca-card.disabled h4,
+.ins-beca-card.disabled small{
+  color:#7A6E65;
+}
+.ins-beca-card.disabled .ins-beca-top span{
+  color:#A81E15;
+}
+.ins-beca-card.disabled .ins-beca-top b{
+  color:#A81E15;
+}
+.ins-conape-card.toeic{
+  border-width:3px;
+}
+.ins-conape-card.toeic.selected{
+  border-color:#2E7D32;
+  background:#F1FBF3;
+}
+.ins-conape-card.toeic.selected .ins-conape-visual b{
+  background:#2E7D32;
+  color:#fff;
+}
+.ins-conape-card.toeic:not(.selected) .ins-conape-visual b{
+  background:#fff;
+  color:#A81E15;
+}
+@media (max-width:620px){
+  .ins-laptop-pick-grid{
+    grid-template-columns:1fr;
+  }
+  .ins-laptop-pick img{
+    max-height:none;
+  }
+}
