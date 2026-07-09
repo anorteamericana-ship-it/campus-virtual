@@ -139,3 +139,19 @@
 
 .premat-big-action:disabled{opacity:1;cursor:not-allowed;filter:none}
 .premat-big-action.btn-primary:disabled{background:#D7DDE8;border-color:#D7DDE8;color:#4F5D75;box-shadow:none}
+
+
+/* F98.4-Z6-CS17G · English LAB 2a dialog icon */
+.sb-english-lab-icon{
+  display:block;
+  color:currentColor;
+  --elab-blue:#2F6BE0;
+}
+.sb-item.active .sb-english-lab-icon,
+.teacher-sb-item.active .sb-english-lab-icon,
+.student-sb-item.active .sb-english-lab-icon{
+  --elab-blue:#5FA0FF;
+}
+.sb-item:hover .sb-english-lab-icon{
+  --elab-blue:#5FA0FF;
+}

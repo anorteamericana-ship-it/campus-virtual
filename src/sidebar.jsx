@@ -321,6 +321,24 @@ function sidebarMostrarAcademiaPlayF984Z6(usr, role, rolEfectivo) {
   return false;
 }
 
+
+function EnglishLabDialogIcon({ size=18 }){
+  const s = Number(size || 18);
+  return <svg className="sb-english-lab-icon" width={s} height={s} viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+    <rect x="4" y="7" width="27" height="19" rx="7" fill="currentColor"></rect>
+    <path d="M11 24l0 8 8-7z" fill="currentColor"></path>
+    <rect x="22" y="19" width="22" height="16" rx="6" fill="var(--elab-blue,#2F6BE0)"></rect>
+    <path d="M37 33l0 7-7-6z" fill="var(--elab-blue,#2F6BE0)"></path>
+    <circle cx="28" cy="27" r="1.7" fill="#fff"></circle>
+    <circle cx="33" cy="27" r="1.7" fill="#fff"></circle>
+    <circle cx="38" cy="27" r="1.7" fill="#fff"></circle>
+  </svg>;
+}
+function SidebarMenuIcon({ name, size=18 }){
+  if(String(name||'') === 'english_lab') return <EnglishLabDialogIcon size={size} />;
+  return <Icon name={name} size={size} />;
+}
+
 function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   // Sesión única — sin fallbacks a claves sueltas.
   const usr = usuario || (typeof getSesion === 'function' ? getSesion() : null);
@@ -473,7 +491,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       items: [
         { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials', locked: true },
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Gratis' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Gratis' }] : []),
         { id: 'documentos_ayuda', label: 'Materiales', icon: 'doc', locked: true },
         { id: 'ican', label: 'Club I CAN', icon: 'ican', locked: true },
       ],
@@ -494,7 +512,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
         { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
         ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Piloto' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' }] : []),
       ],
     },
     {
@@ -513,7 +531,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'materiales', label: 'Biblioteca del Programa', icon: 'materials' },
-    ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Piloto' }] : []),
+    ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' }] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'cronograma_grupo', label: 'Cronograma Inglés Conversacional', icon: 'calendar' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
@@ -529,7 +547,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'buscador', label: 'Consulta individual', icon: 'search' },
         { id: 'calendario_grupo', label: 'Calendario académico', icon: 'calendar' },
         { id: 'supervision', label: 'Supervisión', icon: 'bell' },
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'play', badge: 'Piloto' }] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' }] : []),
       ],
     },
     {
@@ -609,7 +627,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                   title="Se desbloquea al activar matrícula"
                   className="sb-item student-sb-item student-sb-item-free-locked"
                   data-nav-id={item.id}>
-                  <Icon name={item.icon} size={18} />
+                  <SidebarMenuIcon name={item.icon} size={18} />
                   <span className="sb-label">{item.label}</span>
                   <span className="student-sb-soon">Bloqueado</span>
                 </button>
@@ -621,7 +639,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                 className={`sb-item student-sb-item ${active===item.id?'active':''}`}
                 data-nav-id={item.id}
                 onClick={() => setActive(item.id)}>
-                <Icon name={item.icon} size={18} />
+                <SidebarMenuIcon name={item.icon} size={18} />
                 <span className="sb-label">{item.label}</span>
                 {item.badge && <span className="sb-badge">{item.badge}</span>}
               </button>
@@ -636,7 +654,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
               key={item.id}
               className={`sb-item teacher-sb-item ${active===item.id?'active':''}`}
               onClick={() => setActive(item.id)}>
-              <Icon name={item.icon} size={18} />
+              <SidebarMenuIcon name={item.icon} size={18} />
               <span className="sb-label">{item.label}</span>
               {item.badge && <span className="sb-badge">{item.badge}</span>}
             </button>
@@ -657,7 +675,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                       aria-disabled="true"
                       title="En construcción — lo conectamos pronto"
                       className="sb-item admin-sb-item admin-sb-item-future">
-                      <Icon name={item.icon} size={18} />
+                      <SidebarMenuIcon name={item.icon} size={18} />
                       <span className="sb-label">{item.label}</span>
                       <span className="admin-sb-soon">Pronto</span>
                     </button>
@@ -668,7 +686,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                     key={item.id}
                     className={`sb-item admin-sb-item ${active===item.id?'active':''}`}
                     onClick={() => setActive(item.id)}>
-                    <Icon name={item.icon} size={18} />
+                    <SidebarMenuIcon name={item.icon} size={18} />
                     <span className="sb-label">{item.label}</span>
                     {item.badge && <span className="sb-badge">{item.badge}</span>}
                   </button>

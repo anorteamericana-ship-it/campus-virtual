@@ -662,3 +662,19 @@
   .ap-summary-ring span{font-size:24px}
   .ap-next-splash-card{padding:26px 18px}
 }
+
+
+/* F98.4-Z6-CS17G · English LAB 2a dialog icon */
+.sb-english-lab-icon{
+  display:block;
+  color:currentColor;
+  --elab-blue:#2F6BE0;
+}
+.sb-item.active .sb-english-lab-icon,
+.teacher-sb-item.active .sb-english-lab-icon,
+.student-sb-item.active .sb-english-lab-icon{
+  --elab-blue:#5FA0FF;
+}
+.sb-item:hover .sb-english-lab-icon{
+  --elab-blue:#5FA0FF;
+}
