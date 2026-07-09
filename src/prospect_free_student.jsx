@@ -170,25 +170,15 @@ function FreeProspectPortal({ usuario, onNavigate }){
     const template=FREE_REQUEST_TYPES[0].template;
     setContactoTipo('QUIERO_MATRICULARME');setMensaje(template);setCopied(false);
     const okSend=await enviarSolicitud('QUIERO_MATRICULARME',template);
-    if(okSend){setOk('Acceso gratis activado. Ya podés entrar a English LAB.');}
+    if(okSend){setOk('Acceso anticipado solicitado. Ya podés entrar a English LAB.');}
   };
   const go=(id)=>{ if(onNavigate) onNavigate(id); };
 
   return <div className="student-page premat-page premat-page-lite premat-page-clean" data-screen-label="Estudiante · Prematrícula CS7B">
-    <div className="lab-entry-strip">
-      <div className="lab-entry-brand">
-        <img src="assets/logo_academia_norteamericana_original.png" alt="Academia Norteamericana" className="lab-entry-logo" />
-        <div>
-          <span>English LAB</span>
-          <small>Práctica inicial</small>
-        </div>
-      </div>
-    </div>
-
     {typeof PageHeader==='function'?<PageHeader
-      kicker="Mi Campus · English LAB"
-      title={<>Hola, <em>{freeStudentFirstName(nombre)}</em></>}
-      sub="Practicá con juegos gratis mientras coordinás tu ingreso."
+      kicker="Mi Campus · Acceso anticipado"
+      title={<>Bienvenida, <em>{freeStudentFirstName(nombre)}</em></>}
+      sub="Confirmá tu acceso y practicá gratis mientras coordinás pago/matrícula."
       right={<button type="button" className="btn btn-ghost" onClick={load} disabled={loading}>Actualizar</button>}
     />:<div className="premat-fallback-title"><h1>Bienvenida, {freeStudentFirstName(nombre)}</h1></div>}
 
@@ -198,13 +188,13 @@ function FreeProspectPortal({ usuario, onNavigate }){
 
     <section className="premat-hero premat-hero-lite premat-hero-clean">
       <div className="premat-hero-main">
-        <span className="premat-kicker">English LAB</span>
-        <h2>{accesoPlay?'English LAB activado':'Activá tu acceso gratis'}</h2>
-        <p>{accesoPlay?'Tu acceso ya está listo. Entrá a practicar en English LAB.':'Entrá al Campus, explorá la plataforma y practicá antes de tu matrícula oficial.'}</p>
+        <span className="premat-kicker">Prematrícula</span>
+        <h2>{accesoPlay?'English LAB activado':'Confirmá tu acceso anticipado'}</h2>
+        <p>{accesoPlay?'Tu acceso gratis ya quedó solicitado. Entrá a practicar desde English LAB.':'Un botón, sin proceso largo: activás la prematrícula y el acceso a juegos gratis.'}</p>
         <div className="premat-hero-actions">
           {accesoPlay
             ? <button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Entrar a English LAB</button>
-            : <button type="button" className="btn btn-primary" disabled={busy} onClick={activarAcceso}>{busy?'Activando…':'Activar acceso gratis'}</button>}
+            : <button type="button" className="btn btn-primary" disabled={busy} onClick={activarAcceso}>{busy?'Activando…':'Activar prematrícula / confirmar acceso'}</button>}
           <button type="button" className="btn btn-ghost" onClick={()=>document.getElementById('premat-solicitud')?.scrollIntoView({behavior:'smooth',block:'center'})}>Coordinar pago</button>
         </div>
       </div>
@@ -224,7 +214,7 @@ function FreeProspectPortal({ usuario, onNavigate }){
     </div>
 
     <div className="premat-note premat-note-master">
-      <strong>Práctica inicial:</strong> este acceso no registra notas oficiales ni certificados.
+      <strong>Nota:</strong> acceso anticipado para practicar y coordinar matrícula. No registra notas oficiales, certificados, pagos ni matrícula automática.
     </div>
 
     <div className="premat-layout premat-layout-clean">

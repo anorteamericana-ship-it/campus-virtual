@@ -586,9 +586,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   return (
     <aside className={`sb ${role === 'student' ? 'student-sb' : ''} ${role === 'teacher' ? 'teacher-sb' : ''} ${role === 'admin' ? 'admin-sb' : ''}`} data-role={role || 'unknown'}>
       <div className="sb-brand">
-        <div className="sb-logo sb-logo-real" style={{ background:'none', width:88, height:44, borderRadius:12, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
-          <img src="assets/logo_academia_norteamericana_original.png" alt="Academia Norteamericana" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }} />
-        </div>
+        <div className="sb-logo" />
         <div className="sb-brand-text">
           <div className="sb-brand-t1">Norteamericana</div>
           <div className="sb-brand-t2">Campus Virtual</div>

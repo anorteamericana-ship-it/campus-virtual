@@ -1,5 +1,5 @@
 /* global React, Icon */
-// F98.4-Z6-CS16 · Academia Play mapa visual de progreso por nivel/unidad.
+// F98.4-Z6-CS17B · English LAB header limpio + logo oficial.
 // Lee ACADEMIA_PLAY_BANK, muestra avance 100% por unidad y no genera notas oficiales.
 
 const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect } = React;
@@ -856,7 +856,7 @@ function APAchievementTrack({ freeGames, playState, onToggleCelebration }) {
 
 function APAreaGrid({ categories, filter, setFilter, isFreeUser, playState }) {
   return (
-    <div className="ap-area-grid" aria-label="Áreas cognitivas Academia Play">
+    <div className="ap-area-grid" aria-label="Áreas cognitivas English LAB">
       {categories.filter(cat => cat !== 'Todos' && cat !== 'Gratis').map(cat => {
         const info = apCognitiveArea(cat);
         const games = AP_GAMES.filter(g => g.category === cat);
@@ -887,7 +887,7 @@ function APMedalShelf({ freeGames, playState }) {
   const completed = freeGames.filter(g => apSafePct(playState?.games?.[g.id]?.percent || 0) >= 100);
   const allDone = completed.length === freeGames.length && freeGames.length > 0;
   return (
-    <div className="ap-medal-shelf" aria-label="Medallas visuales Academia Play">
+    <div className="ap-medal-shelf" aria-label="Medallas visuales English LAB">
       <div className={'ap-medal-card master ' + (allDone ? 'done' : '')}>
         <span aria-hidden="true">🏆</span>
         <strong>Starter Pack</strong>
@@ -930,7 +930,7 @@ function APCelebrationOverlay({ celebration, onClose }) {
 
 function APSkillTracks({ isFreeUser }) {
   return (
-    <div className="ap-track-grid" aria-label="Rutas sugeridas Academia Play">
+    <div className="ap-track-grid" aria-label="Rutas sugeridas English LAB">
       {AP_SKILL_TRACKS.map(track => (
         <div key={track.id} className={'ap-track-card ' + track.tone}>
           <APBadge tone={track.tone === 'red' ? 'red' : track.tone === 'gold' ? '' : 'navy'}>{isFreeUser && track.id !== 'starter' ? 'Al activar matrícula' : 'Ruta sugerida'}</APBadge>
@@ -1533,15 +1533,11 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
 
   return (
     <div className="ap-view ap-view-student">
-      <APSectionTitle eyebrow={isFreeUser ? 'Prematrícula · Acceso gratis' : 'Estudiante · Motor banco'} title={isFreeUser ? 'Practicá desde hoy, ' + first : 'English LAB'}>
-        {isFreeUser ? 'Juegos cortos, logros y progreso visual.' : 'Práctica por nivel, unidad, área y juego desde el banco curricular.'}
-      </APSectionTitle>
-
       <div className="ap-dashboard-grid">
-        <div className="ap-hero-card ap-cascade ap-cascade-1">
-          <APBadge tone="red">Acceso activo</APBadge>
-          <h3>{isFreeUser ? 'Entrá a English LAB y completá tus 5 juegos gratis' : 'Continuá tu ruta por unidades'}</h3>
-          <p>{isFreeUser ? 'Tu meta inicial es llevar los 5 juegos gratuitos al 100%.' : 'El banco multi-nivel ya puede cargar juegos reales si CS14A fue importado.'}</p>
+        <div className="ap-hero-card ap-cascade ap-cascade-1 ap-english-lab-entry">
+          <APBadge tone="red">{isFreeUser ? 'Inicio gratuito · English LAB' : 'English LAB'}</APBadge>
+          <h3>{isFreeUser ? 'Hola, ' + String(first || '').toUpperCase() + '. Empezá practicando con juegos gratis.' : 'Continuá tu ruta por unidades'}</h3>
+          <p>{isFreeUser ? 'Esta es una entrada limitada para conocer el Campus y practicar antes de la matrícula oficial. No registra notas ni certificados.' : 'Práctica por nivel, unidad, área y juego desde el banco curricular.'}</p>
           <div className="ap-hero-actions">
             <button type="button" className="ap-btn ap-btn-primary ap-breathe" onClick={() => { apPlaySound('click', soundOn); openGame(AP_GAMES[0]); }}>Practicar ahora</button>
             <button type="button" className="ap-btn ap-btn-ghost" onClick={() => { apPlaySound('click', soundOn); setScreen('catalog'); }}>Ver catálogo</button>
@@ -1590,7 +1586,7 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
           </div>
           <button type="button" className="ap-btn ap-btn-light" onClick={loadBankCatalog}>Actualizar</button>
         </div>
-        <div className="ap-bank-level-tabs" role="tablist" aria-label="Niveles Academia Play">
+        <div className="ap-bank-level-tabs" role="tablist" aria-label="Niveles English LAB">
           {bankLevels.map(level => (
             <button key={level.id} type="button" className={bankLevel === level.id ? 'active level-' + level.id.toLowerCase() : 'level-' + level.id.toLowerCase()} onClick={() => { setBankLevel(level.id); setBankArea('Todos'); }}>
               <span>{level.label}</span><b>{level.count || 0}</b>
@@ -1737,7 +1733,7 @@ function APAdminUserProfile({ profile, status, onClose, onRefresh }) {
             <APStat label="Intentos" value={String(summary.total_attempts || 0)} sub="práctica real" tone="red" />
             <APStat label="100%" value={String(summary.completed_games || 0)} sub="juegos completados" />
             <APStat label="Promedio" value={String(summary.avg_percent || 0) + '%'} sub="separado de notas" />
-            <APStat label="Última actividad" value={summary.last_played_label || '—'} sub="Academia Play" />
+            <APStat label="Última actividad" value={summary.last_played_label || '—'} sub="English LAB" />
           </div>
           <div className="ap-profile-note">
             <strong>Lectura administrativa:</strong>
@@ -2000,7 +1996,7 @@ function APAdminView() {
       <div className="ap-panel ap-table-panel ap-admin-live-table">
         <div className="ap-table-title-row">
           <h3>Actividad reciente</h3>
-          <div className="ap-filter-tabs" role="tablist" aria-label="Filtrar actividad Academia Play">
+          <div className="ap-filter-tabs" role="tablist" aria-label="Filtrar actividad English LAB">
             {filters.map(f => <button key={f} type="button" className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{f}</button>)}
           </div>
         </div>
@@ -2047,14 +2043,12 @@ function AcademiaPlayView({ usuario, role, rolReal, onNavigate }) {
   }
 
   return (
-    <div className="aplay-shell" data-screen-label="English LAB · V2.4 mapa progreso">
-      <div className="aplay-topbar">
-        <div>
-          <APBadge tone="red">V2.4 · mapa progreso</APBadge>
-          <h1>English LAB</h1>
-          <p>{nombre} · Práctica visual sin notas oficiales.</p>
+    <div className="aplay-shell" data-screen-label="English LAB · juegos">
+      <div className="aplay-topbar aplay-topbar-brandonly">
+        <div className="aplab-official-brand" aria-label="Academia Norteamericana English LAB">
+          <img src="assets/brand/logo_academia_norteamericana_hd.png" alt="Academia Norteamericana" />
         </div>
-        <div className="ap-mode-tabs" role="tablist" aria-label="Vistas del piloto Academia Play">
+        <div className="ap-mode-tabs" role="tablist" aria-label="Vistas de English LAB">
           {modes.map(m => (
             <button key={m} type="button" role="tab" aria-selected={mode === m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
               {m === 'student' ? 'Estudiante' : m === 'teacher' ? 'Docente' : 'Admin'}
