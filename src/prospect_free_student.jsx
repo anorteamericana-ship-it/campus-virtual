@@ -1,5 +1,5 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS17D · Mi Campus limpio 2 botones.
+// F98.4-Z6-CS17I · Mi Campus labels English LAB.
 // Cliente: solo solicitar prematrícula / entrar a English LAB y contactar asesor por WhatsApp. No muestra datos de grupo.
 
 function freeStudentToken(){
@@ -120,7 +120,7 @@ function freeStudentWhatsAppLink(perfil, usuario){
     'asesor_whatsapp','asesorWhatsapp','telefono_asesor','asesor_tel','whatsapp_asesor','telefonoAsesor'
   ],''));
   const phone=freeStudentPhoneDigits(raw);
-  const msg=encodeURIComponent('Hola, ya envié mi solicitud de prematrícula desde el Campus Virtual y deseo continuar el proceso. Quedo atento(a) a la guía para activar mi ingreso a English LAB.');
+  const msg=encodeURIComponent('Hola, ya envié mi solicitud de entrada a English LAB desde el Campus Virtual y deseo matricularme. Quedo atento(a) a la guía del asesor.');
   return phone?`https://wa.me/${phone}?text=${msg}`:'';
 }
 
@@ -195,8 +195,8 @@ function FreeProspectPortal({ usuario, onNavigate }){
       <div className="premat-two-actions-grid">
         {accesoPlay
           ? <button type="button" className="btn btn-primary premat-big-action" onClick={goLab}>Entrar a English LAB</button>
-          : <button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading||prematPendiente} onClick={enviarSolicitud}>{busy?'Solicitando…':prematPendiente?'Solicitud enviada · esperando aprobación':'Solicitar entrada prematrícula'}</button>}
-        <button type="button" className="btn btn-ghost premat-big-action" disabled={busy} onClick={contactarAsesor}>Contactar asesor por WhatsApp</button>
+          : <button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading||prematPendiente} onClick={enviarSolicitud}>{busy?'Solicitando…':prematPendiente?'Solicitud enviada · esperando aprobación':'Solicitar entrada English LAB'}</button>}
+        <button type="button" className="btn btn-ghost premat-big-action" disabled={busy} onClick={contactarAsesor}>Contactar asesor por WhatsApp para matricular</button>
       </div>
     </section>
   </div>;
