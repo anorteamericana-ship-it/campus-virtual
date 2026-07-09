@@ -1,5 +1,5 @@
 // F98.4-Z6-CS7B · Conexión ventas/admisiones para prematrículas
-// F98.4-Z6-CS3 · Academia Play V1.7 catálogo móvil
+// F98.4-Z6-CS17B · English LAB inicio gratuito
 // F98.4-Z6-CR · Hotfix guardado de evidencia técnica
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
@@ -928,7 +928,7 @@ function App() {
       certificados: <LazyRoute title="Certificados" component="CertificadosView" files={F96_LAZY.student_modules} />,
       documentos_ayuda: <LazyRoute title="Documentos y ayuda" component="StudentDocumentsHelpView" files={F96_LAZY.student_documents}
         initialTab={studentDocsTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('documentos_ayuda', tab)} />,
-      academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
+      academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
     // CS3: usuario gratis solo puede montar Mi Campus prematrícula y Academia Play.
     // Esto evita que una ruta vieja o hash manual cargue módulos que consultan datos académicos reales.
@@ -954,7 +954,7 @@ function App() {
       ican:        <LazyRoute title="Club I CAN" component="ClubICANDocenteView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       mensajes:    <LazyRoute title="Comunicados" component="MensajesView" files={F96_LAZY.student_modules} />,
       perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
-      academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
+      academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
     content = map[active] || map.mi_panel_docente;
   } else if (role === 'admin') {
@@ -994,7 +994,7 @@ function App() {
       buscador:     <LazyRoute title="Consulta individual" component="BuscadorEstudiantes" files={F96_LAZY.buscador} onNavigate={navigateTo} />,
       banco:        <LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />,
       aplicar_pago: <LazyRoute title="Aplicar Pago" component="AplicarPago" files={F96_LAZY.aplicar_pago} onNavigate={navigateTo} />,
-      academia_play: <LazyRoute title="Academia Play" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
+      academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
       // — Próximamente (sin datos demo) ——————————————————————
       docentes:  <ProximamenteView title="Docentes" />,
       horas:     <ProximamenteView title="Horas docentes" />,
