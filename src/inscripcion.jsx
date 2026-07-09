@@ -1,8 +1,8 @@
 /* global React, ReactDOM */
-// F98.4-Z6-IP3I · becas desde CONFIG_BECAS
+// F98.4-Z6-IP3J · descripciones públicas de beca
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3I';
+const INS_VERSION = 'F98.4-Z6-IP3J';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -247,6 +247,20 @@ function districtOptionsFor(canton){
   return Array.from(new Set(base.concat(GENERIC_DISTRICTS)));
 }
 
+function publicBecaDescription(key, pct, rawDescription){
+  const desc = clean(rawDescription || '');
+  if(key === 'BECA_IMPACTA'){
+    return pct ? `Beca del ${pct} en todas las mensualidades` : 'Beca en todas las mensualidades';
+  }
+  if(key === 'BECA_MUJER'){
+    return 'Beca para mujeres amas de casa, trabajadoras, estudiantes y mamas solteras.';
+  }
+  if(pct && /\d+\s*%/.test(desc) && !desc.includes(pct)){
+    return `Beca del ${pct}`;
+  }
+  return desc;
+}
+
 function normalizeBeca(raw){
   if(!raw) return null;
   const name = clean(raw.nombre || raw.NOMBRE || raw.id || raw.ID);
@@ -254,21 +268,20 @@ function normalizeBeca(raw){
   const key = becaKey(name);
   const pctRaw = raw.porcentaje_publico ?? raw.PORCENTAJE_PUBLICO ?? raw.pct_cuota ?? raw.PCT_CUOTA ?? raw.pct_matricula ?? raw.PCT_MATRICULA ?? raw.porcentaje ?? raw.PORCENTAJE ?? raw.pct_total ?? raw.PCT_TOTAL ?? 0;
   const pct = formatPercent(pctRaw);
+  const cupoTotal = Number(raw.cupo_total ?? raw.CUPO_TOTAL ?? 0);
   const cupo = Number(raw.cupo_disponible ?? raw.CUPO_DISPONIBLE ?? 0);
   const activa = raw.activa === undefined ? true : !!raw.activa;
   const visible = raw.visible_inscripcion === undefined ? true : !!raw.visible_inscripcion;
   const disponibleRaw = raw.disponible;
-  const disponible = disponibleRaw === undefined ? (activa && visible && (cupo > 0 || Number(raw.cupo_total || 0) === 0)) : !!disponibleRaw;
-  const defaults = {};
-  const def = defaults[key] || {};
+  const disponible = disponibleRaw === undefined ? (activa && visible && (cupo > 0 || cupoTotal === 0)) : !!disponibleRaw;
   return {
     id: clean(raw.id || raw.ID || name).toUpperCase(),
     key,
     nombre: key === 'BECA_IMPACTA' ? 'BECA IMPACTA' : (key === 'BECA_MUJER' ? 'BECA MUJER' : name),
-    porcentaje: pct || '',
+    porcentaje: pct,
     cupo_disponible: cupo,
     disponible,
-    descripcion: clean(raw.descripcion || raw.DESCRIPCION || '')
+    descripcion: publicBecaDescription(key, pct, raw.descripcion || raw.DESCRIPCION || '')
   };
 }
 
@@ -1010,7 +1023,7 @@ function InscripcionApp(){
         conape_equipo_paquete: conapeEquipoLabel(form.conape_equipo),
         conape_sostenimiento_monto: Number(form.conape_sostenimiento || 0) || 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3I',
+        origen_web: 'INSCRIPCION_PUBLICA_IP3J',
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);

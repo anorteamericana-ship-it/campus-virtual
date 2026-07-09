@@ -1023,3 +1023,16 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
     padding:6px;
   }
 }
+
+
+/* F98.4-Z6-IP3J · evitar textos viejos de porcentaje en becas */
+.ins-beca-card:not(.mujer).selected{
+  border-color:#C68D14;
+  background:
+    radial-gradient(circle at top right, rgba(198,141,20,.16), transparent 38%),
+    linear-gradient(180deg,#FFFFFF 0%, #FFF9EA 100%);
+  box-shadow:0 16px 34px rgba(198,141,20,.16);
+}
+.ins-beca-card:not(.mujer).selected .ins-beca-top b{
+  color:#C68D14;
+}
