@@ -1,6 +1,6 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS17C · Mi Campus limpio en móvil.
-// Cliente: acceso anticipado + juegos gratis + coordinación de pago/matrícula. No crea matrícula/código/grupo ni toca DATOS/ESTATUS.
+// F98.4-Z6-CS17D · Mi Campus limpio 2 botones.
+// Cliente: solo solicitar prematrícula / entrar a English LAB y contactar asesor por WhatsApp. No muestra datos de grupo.
 
 function freeStudentToken(){
   try{return (window.getSesion&&window.getSesion()||{}).token||'';}catch(_){return'';}
@@ -105,17 +105,34 @@ const FREE_REQUEST_TYPES=[
   {id:'CORREGIR_DATOS',title:'Actualizar datos',desc:'correo/teléfono',template:'Hola, quiero corregir o confirmar mis datos antes de activar la matrícula. El dato correcto es:'},
 ];
 
+function freeStudentPhoneDigits(v){
+  const d=String(v==null?'':v).replace(/\D/g,'');
+  if(!d)return '';
+  if(d.length===8)return '506'+d;
+  return d;
+}
+function freeStudentWhatsAppLink(perfil, usuario){
+  const raw=freeStudentValue(perfil||{},[
+    'asesor_whatsapp','ASESOR_WHATSAPP','asesorWhatsapp','wa_asesor','WA_ASESOR',
+    'telefono_asesor','TELEFONO_ASESOR','asesor_tel','ASESOR_TEL',
+    'whatsapp_asesor','WHATSAPP_ASESOR','telefonoAsesor'
+  ],freeStudentValue(usuario||{},[
+    'asesor_whatsapp','asesorWhatsapp','telefono_asesor','asesor_tel','whatsapp_asesor','telefonoAsesor'
+  ],''));
+  const phone=freeStudentPhoneDigits(raw);
+  const msg=encodeURIComponent('Hola, necesito contactar a mi asesor para continuar con mi prematrícula.');
+  return phone?`https://wa.me/${phone}?text=${msg}`:'';
+}
+
+
 function FreeProspectPortal({ usuario, onNavigate }){
   const [perfil,setPerfil]=React.useState(null);
   const [solicitudes,setSolicitudes]=React.useState([]);
   const [loading,setLoading]=React.useState(true);
   const [error,setError]=React.useState('');
   const [ok,setOk]=React.useState('');
-  const [contactoTipo,setContactoTipo]=React.useState('QUIERO_MATRICULARME');
-  const [mensaje,setMensaje]=React.useState(FREE_REQUEST_TYPES[0].template);
   const [busy,setBusy]=React.useState(false);
   const [lastAction,setLastAction]=React.useState('');
-  const [copied,setCopied]=React.useState(false);
 
   const load=React.useCallback(()=>{
     setLoading(true);setError('');
@@ -123,7 +140,7 @@ function FreeProspectPortal({ usuario, onNavigate }){
       .then(r=>{setPerfil(r.perfil||{});setSolicitudes(freeStudentNormalizeRequests(r.solicitudes));})
       .catch(e=>{
         setError(e.message);
-        setPerfil({nombre:usuario?.nombre,cedula:usuario?.cedula,correo:usuario?.correo,telefono:usuario?.telefono,etapa:usuario?.etapa||'Prematrícula',programa:usuario?.programa});
+        setPerfil({nombre:usuario?.nombre,cedula:usuario?.cedula,correo:usuario?.correo,telefono:usuario?.telefono,etapa:usuario?.etapa||'Prematrícula'});
         setSolicitudes([]);
       })
       .finally(()=>setLoading(false));
@@ -131,105 +148,55 @@ function FreeProspectPortal({ usuario, onNavigate }){
   React.useEffect(()=>{load();},[load]);
 
   const p=perfil||{};
-  const nombre=p.nombre||usuario?.nombre||'Estudiante';
-  const programa=freeStudentValue(p,['programa','PROGRAMA','curso','CURSO'],freeStudentValue(usuario||{},['programa','programa_interes','curso'],'Inglés Conversacional'));
-  const grupo=freeStudentValue(p,['grupo_tentativo','grupoTentativo','GRUPO_TENTATIVO','grupo','GRUPO'],freeStudentValue(usuario||{},['grupo_tentativo','grupoTentativo','grupo','GRUPO'],'Por confirmar'));
-  const fechaInicio=freeStudentValue(p,['fecha_inicio','fechaInicio','FECHA_INICIO','inicio','INICIO'],freeStudentValue(usuario||{},['fecha_inicio','fechaInicio','inicio'],'Por confirmar'));
-  const horario=freeStudentValue(p,['horario','HORARIO','hora','HORA'],freeStudentValue(usuario||{},['horario','hora'],'Por confirmar'));
-  const asesor=freeStudentValue(p,['asesor','ASESOR','asesor_asignado','asesorAsignado','vendedor','VENDEDOR','responsable','RESPONSABLE'],freeStudentValue(usuario||{},['asesor','asesor_asignado','vendedor','responsable'],'Asesor asignado'));
   const activacion = solicitudes.find(s=>String(s.TIPO||'').toUpperCase()==='QUIERO_MATRICULARME' && !['DESCARTADA','CERRADA'].includes(String(s.ESTADO||'').toUpperCase()));
-  const ultimaSolicitud=solicitudes[0]||null;
-  const estadoActual=activacion?.ESTADO||ultimaSolicitud?.ESTADO||'SIN_CONFIRMAR';
-  const pendientes=solicitudes.filter(s=>String(s.ESTADO||'').toUpperCase()==='PENDIENTE');
   const accesoPlay=!!activacion;
-  const meta=FREE_REQUEST_TYPES.find(t=>t.id===contactoTipo)||FREE_REQUEST_TYPES[0];
+  const asesorWa=freeStudentWhatsAppLink(p,usuario);
 
-  const elegirTipo=(tipo)=>{
-    const m=FREE_REQUEST_TYPES.find(t=>t.id===tipo)||FREE_REQUEST_TYPES[0];
-    setContactoTipo(m.id);setMensaje(m.template);setCopied(false);
-  };
-  const copiarMensaje=async()=>{
-    setCopied(false);setLastAction('Copiando mensaje…');
+  const enviarSolicitud=async()=>{
+    setBusy(true);setError('');setOk('');setLastAction('Solicitando entrada…');
     try{
-      if(navigator?.clipboard?.writeText){await navigator.clipboard.writeText(mensaje);setCopied(true);setLastAction('Mensaje copiado.');}
-      else setLastAction('Copiado no disponible.');
-    }catch(_){setLastAction('No se pudo copiar.');}
-  };
-  const enviarSolicitud=async(tipo=contactoTipo,texto=mensaje)=>{
-    setBusy(true);setError('');setOk('');setLastAction('Enviando solicitud…');
-    try{
-      const r=await freeStudentPost('freeUserCrearSolicitud',{tipo,mensaje:texto});
-      setOk(r.mensaje||'Solicitud enviada.');setLastAction('Solicitud enviada.');
+      const template=FREE_REQUEST_TYPES[0].template;
+      const r=await freeStudentPost('freeUserCrearSolicitud',{tipo:'QUIERO_MATRICULARME',mensaje:template});
+      setOk(r.mensaje||'Entrada solicitada.');
+      setLastAction('Entrada solicitada.');
       await load();
       try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
-      return true;
-    }catch(e){setError(e.message);setLastAction('No se pudo enviar.');return false;}finally{setBusy(false);}
+    }catch(e){setError(e.message);setLastAction('No se pudo solicitar.');}
+    finally{setBusy(false);}
   };
-  const enviar=()=>enviarSolicitud(contactoTipo,mensaje);
-  const activarAcceso=async()=>{
-    const template=FREE_REQUEST_TYPES[0].template;
-    setContactoTipo('QUIERO_MATRICULARME');setMensaje(template);setCopied(false);
-    const okSend=await enviarSolicitud('QUIERO_MATRICULARME',template);
-    if(okSend){setOk('Acceso anticipado solicitado. Ya podés entrar a English LAB.');}
+
+  const contactarAsesor=async()=>{
+    if(asesorWa){
+      window.open(asesorWa,'_blank','noopener,noreferrer');
+      return;
+    }
+    setBusy(true);setError('');setOk('');setLastAction('Solicitando contacto…');
+    try{
+      const template=FREE_REQUEST_TYPES.find(t=>t.id==='HABLAR_ASESOR')?.template||'Hola, necesito que mi asesor me contacte para continuar con mi prematrícula.';
+      const r=await freeStudentPost('freeUserCrearSolicitud',{tipo:'HABLAR_ASESOR',mensaje:template});
+      setOk(r.mensaje||'Solicitud enviada al asesor.');
+      setLastAction('Solicitud enviada.');
+      await load();
+      try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
+    }catch(e){setError(e.message);setLastAction('No se pudo contactar.');}
+    finally{setBusy(false);}
   };
-  const go=(id)=>{ if(onNavigate) onNavigate(id); };
 
-  return <div className="student-page premat-page premat-page-lite premat-page-clean" data-screen-label="Estudiante · Prematrícula CS17C">
-    {typeof PageHeader==='function'?<PageHeader
-      kicker="Mi Campus · Acceso anticipado"
-      title={<>Bienvenida, <em>{freeStudentFirstName(nombre)}</em></>}
-      sub="Confirmá tu acceso y practicá gratis mientras coordinás pago/matrícula."
-      right={<button type="button" className="btn btn-ghost" onClick={load} disabled={loading}>Actualizar</button>}
-    />:<div className="premat-fallback-title"><h1>Bienvenida, {freeStudentFirstName(nombre)}</h1></div>}
+  const goLab=()=>{ if(onNavigate) onNavigate('academia_play'); };
 
+  return <div className="student-page premat-page premat-page-two-actions" data-screen-label="Mi Campus · Prematrícula limpia">
     <div aria-live="polite" className="sr-only">{lastAction}</div>
     {error&&<div className="premat-alert error">{error}</div>}
     {ok&&<div className="premat-alert ok">{ok}</div>}
 
-    <section className="premat-hero premat-hero-lite premat-hero-clean">
-      <div className="premat-hero-main">
-        <span className="premat-kicker">Prematrícula</span>
-        <h2>{accesoPlay?'English LAB activado':'Confirmá tu acceso anticipado'}</h2>
-        <p>{accesoPlay?'Tu acceso gratis ya quedó solicitado. Entrá a practicar desde English LAB.':'Un botón, sin proceso largo: activás la prematrícula y el acceso a juegos gratis.'}</p>
-        <div className="premat-hero-actions">
-          {accesoPlay
-            ? <button type="button" className="btn btn-primary" onClick={()=>go('academia_play')}>Entrar a English LAB</button>
-            : <button type="button" className="btn btn-primary" disabled={busy} onClick={activarAcceso}>{busy?'Activando…':'Activar prematrícula / confirmar acceso'}</button>}
-          <button type="button" className="btn btn-ghost" onClick={()=>document.getElementById('premat-solicitud')?.scrollIntoView({behavior:'smooth',block:'center'})}>Coordinar pago</button>
-        </div>
+    <section className="premat-two-actions-card">
+      <div className="premat-two-actions-grid">
+        {accesoPlay
+          ? <button type="button" className="btn btn-primary premat-big-action" onClick={goLab}>Entrar a English LAB</button>
+          : <button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading} onClick={enviarSolicitud}>{busy?'Solicitando…':'Solicitar entrada prematrícula'}</button>}
+        <button type="button" className="btn btn-ghost premat-big-action" disabled={busy} onClick={contactarAsesor}>Contactar asesor por WhatsApp</button>
       </div>
-      <aside className="premat-status-card">
-        <span>Estado</span>
-        <strong>{accesoPlay?freeStudentEstadoLabel(estadoActual)[0]:'Por activar'}</strong>
-        <small>{pendientes.length?`${pendientes.length} gestión pendiente`:'Sin pasos extra'}</small>
-      </aside>
     </section>
-
-
-    <div className="premat-note premat-note-master">
-      <strong>Nota:</strong> acceso anticipado para practicar y coordinar matrícula. No registra notas oficiales, certificados, pagos ni matrícula automática.
-    </div>
-
-    <div className="premat-layout premat-layout-clean">
-      <PrematPanel kicker="Activación" title="Coordinar pago o matrícula">
-        <div id="premat-solicitud" className="premat-request-box premat-request-lite">
-          <div className="premat-quick-actions" role="group" aria-label="Tipo de solicitud">
-            {FREE_REQUEST_TYPES.map(t=><button type="button" key={t.id} className={`premat-quick-action ${contactoTipo===t.id?'active':''}`} onClick={()=>elegirTipo(t.id)}><strong>{t.title}</strong><small>{t.desc}</small></button>)}
-          </div>
-          <textarea value={mensaje} onChange={e=>{setMensaje(e.target.value);setCopied(false);}} rows="4" maxLength="700" aria-label="Mensaje para asesor" />
-          <div className="premat-request-actions">
-            <button type="button" className="btn btn-ghost" disabled={!mensaje.trim()} onClick={copiarMensaje}>{copied?'Copiado':'Copiar'}</button>
-            <button type="button" className="btn btn-primary" disabled={busy||!mensaje.trim()} onClick={enviar}>{busy?'Enviando…':'Enviar a mi asesor'}</button>
-          </div>
-        </div>
-      </PrematPanel>
-
-      <PrematPanel kicker="Gestiones" title="Último movimiento" compact>
-        {!solicitudes.length?<div className="premat-empty">Sin gestiones registradas.</div>:<div className="premat-requests mini">
-          {solicitudes.slice(0,3).map((s,i)=><PrematRequestRow solicitud={s} compact key={s.ID||i}/>) }
-        </div>}
-      </PrematPanel>
-    </div>
   </div>;
 }
 window.FreeProspectPortal=FreeProspectPortal;
