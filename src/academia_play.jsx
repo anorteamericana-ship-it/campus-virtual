@@ -1,5 +1,5 @@
 /* global React, Icon */
-// F98.4-Z6-CS17B · English LAB header limpio + logo oficial.
+// F98.4-Z6-CS17E · English LAB consolidado sin regresiones.
 // Lee ACADEMIA_PLAY_BANK, muestra avance 100% por unidad y no genera notas oficiales.
 
 const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect } = React;
@@ -971,20 +971,24 @@ function APSummary({ title, score, total, errors, onReset, onBack }) {
   const pct = Math.round((safeScore / safeTotal) * 100);
   const perfect = pct >= 100;
   const good = safeScore >= Math.ceil(safeTotal * 0.7);
+  const ringStyle = { '--ap-summary-pct': String(Math.max(0, Math.min(100, pct))) };
   return (
-    <div className="ap-summary ap-summary-celebrate ap-enter">
-      <div className="ap-summary-burst" aria-hidden="true">{perfect ? '🏆' : good ? '✨' : '💪'}</div>
-      <APBadge tone={perfect ? 'ok' : 'red'}>Resumen · conteo animado</APBadge>
-      <h3>{perfect ? '¡100% completado!' : good ? 'Buen trabajo' : 'Sigamos practicando'}</h3>
-      <p>Resultado de práctica: {safeScore}/{safeTotal}. No es nota oficial; solo sirve para práctica y logros visuales.</p>
-      <div className="ap-summary-grid ap-summary-grid-vivid">
-        <div className="ap-summary-count navy"><span>Correctas</span><strong>{safeScore}</strong><small>{title}</small></div>
-        <div className="ap-summary-count red"><span>Avance</span><strong>{pct}%</strong><small>{perfect ? 'listo para medalla' : 'podés repetir'}</small></div>
-        <div className="ap-summary-count gold"><span>Errores</span><strong>{Number(errors || 0)}</strong><small>sin castigo</small></div>
-      </div>
-      <div className="ap-hero-actions ap-center-actions">
-        <button type="button" className="ap-btn ap-btn-primary" onClick={onReset}>Practicar otra vez</button>
-        <button type="button" className="ap-btn ap-btn-ghost" onClick={onBack}>Volver al catálogo</button>
+    <div className="ap-summary ap-summary-lab ap-enter">
+      <div className="ap-summary-card">
+        <span className="ap-summary-kicker">Resumen del intento</span>
+        <div className="ap-summary-ring" style={ringStyle} aria-label={`Resultado ${safeScore} de ${safeTotal}`}>
+          <strong>{safeScore}</strong><span>/{safeTotal}</span><small>Aciertos</small>
+        </div>
+        <h3>{perfect ? '¡Ronda perfecta!' : good ? 'Muy bien — tu mejor ronda hasta ahora.' : 'Buen intento — seguí practicando.'}</h3>
+        <div className="ap-summary-stats">
+          <div><strong>{pct}%</strong><span>Avance</span></div>
+          <div><strong>{Number(errors || 0)}</strong><span>Para repasar</span></div>
+          <div><strong>{title}</strong><span>Juego</span></div>
+        </div>
+        <div className="ap-hero-actions ap-center-actions">
+          <button type="button" className="ap-btn ap-btn-primary" onClick={onReset}>Repetir juego</button>
+          <button type="button" className="ap-btn ap-btn-ghost" onClick={onBack}>Volver a juegos</button>
+        </div>
       </div>
     </div>
   );
@@ -1036,7 +1040,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} />;
 
   return (
-    <div className="ap-practice-card ap-enter">
+    <div className="ap-practice-card ap-choice-card ap-enter">
       <div className="ap-live-region" aria-live="assertive">{liveText}</div>
       <div className="ap-practice-top">
         <button type="button" className="ap-btn ap-btn-light" onClick={() => { apPlaySound('click', soundOn); onBack(); }}>← Juegos</button>
@@ -1105,6 +1109,12 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   function reset() {
     setPhase('intro'); setSelectedLeft(null); setFixed([]); setErrors(0); setWrong('');
   }
+  const lineData = fixed.map(id => {
+    const li = flow.pairs.findIndex(p => p.id === id);
+    const ri = rightItems.findIndex(p => p.id === id);
+    if (li < 0 || ri < 0) return null;
+    return { id, y1: 32 + li * 58, y2: 32 + ri * 58 };
+  }).filter(Boolean);
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
   if (phase === 'summary') return <APSummary title={flow.title} score={score} total={total} errors={errors} onReset={reset} onBack={onBack} />;
@@ -1125,6 +1135,9 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
       <div className="ap-match-focus">{selectedLeft ? <>Tocá el significado de <strong>{selectedLeft.en}</strong></> : 'Elegí una palabra para empezar'}</div>
       <APProgress value={Math.round((score / total) * 100)} label="Pares completados" />
       <div className="ap-match-board ap-match-board-vivid">
+        <svg className="ap-match-lines-svg" viewBox={`0 0 100 ${Math.max(total, 1) * 58}`} preserveAspectRatio="none" aria-hidden="true">
+          {lineData.map(l => <path key={l.id} d={`M 4 ${l.y1} C 34 ${l.y1} 66 ${l.y2} 96 ${l.y2}`} />)}
+        </svg>
         <div className="ap-match-col">
           <span className="ap-small-label">Inglés</span>
           {flow.pairs.map(pair => {
@@ -1267,7 +1280,7 @@ function APBankGameRunner({ game, isFreeUser, onBack, onComplete, soundOn }) {
   if (status === 'cargando') {
     return (
       <div className="ap-practice-wrap">
-        <div className="ap-practice-card ap-enter">
+        <div className="ap-practice-card ap-choice-card ap-enter">
           <button type="button" className="ap-btn ap-btn-light" onClick={onBack}>← Juegos</button>
           <APBadge tone="navy">Banco curricular</APBadge>
           <h3>Cargando juego real</h3>
@@ -1281,7 +1294,7 @@ function APBankGameRunner({ game, isFreeUser, onBack, onComplete, soundOn }) {
   if (status === 'error' || !flow) {
     return (
       <div className="ap-practice-wrap">
-        <div className="ap-practice-card ap-enter">
+        <div className="ap-practice-card ap-choice-card ap-enter">
           <button type="button" className="ap-btn ap-btn-light" onClick={onBack}>← Juegos</button>
           <APBadge tone="red">Banco curricular</APBadge>
           <h3>No se pudo abrir este juego</h3>

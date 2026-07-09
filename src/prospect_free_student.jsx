@@ -99,9 +99,9 @@ function PrematRequestRow({solicitud,compact}){
 }
 
 const FREE_REQUEST_TYPES=[
-  {id:'QUIERO_MATRICULARME',title:'Activar prematrícula',desc:'confirmar acceso',template:'Hola, quiero confirmar mi prematrícula y dejar lista la activación de mi Campus con el grupo, fecha y curso asignado.'},
+  {id:'QUIERO_MATRICULARME',title:'Activar prematrícula',desc:'confirmar acceso',template:'Hola, quiero solicitar mi entrada a prematrícula.'},
   {id:'FINANCIAMIENTO',title:'Coordinar pago',desc:'pago o CONAPE',template:'Hola, quiero coordinar el pago o financiamiento de mi matrícula. Por favor indíquenme el paso que corresponde para completar la activación.'},
-  {id:'HABLAR_ASESOR',title:'Mi asesor',desc:'consulta directa',template:'Hola, necesito que mi asesor me contacte para terminar de coordinar mi prematrícula.'},
+  {id:'HABLAR_ASESOR',title:'Mi asesor',desc:'consulta directa',template:'Hola, necesito contactar a mi asesor por WhatsApp.'},
   {id:'CORREGIR_DATOS',title:'Actualizar datos',desc:'correo/teléfono',template:'Hola, quiero corregir o confirmar mis datos antes de activar la matrícula. El dato correcto es:'},
 ];
 
@@ -120,7 +120,7 @@ function freeStudentWhatsAppLink(perfil, usuario){
     'asesor_whatsapp','asesorWhatsapp','telefono_asesor','asesor_tel','whatsapp_asesor','telefonoAsesor'
   ],''));
   const phone=freeStudentPhoneDigits(raw);
-  const msg=encodeURIComponent('Hola, necesito contactar a mi asesor para continuar con mi prematrícula.');
+  const msg=encodeURIComponent('Hola, necesito contactar a mi asesor por WhatsApp.');
   return phone?`https://wa.me/${phone}?text=${msg}`:'';
 }
 
