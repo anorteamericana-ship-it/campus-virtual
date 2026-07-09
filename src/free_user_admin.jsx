@@ -15,7 +15,7 @@ function freeAdminClean(v,fallback='—'){const s=String(v==null?'':v).trim();re
 function freeAdminUpper(v){return String(v||'').trim().toUpperCase();}
 function freeAdminDateMs(v){if(!v)return 0;const raw=String(v||'');const d=new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');return Number.isNaN(d.getTime())?0:d.getTime();}
 function freeAdminFmtDate(v){if(!v)return '—';const raw=String(v||'');const d=new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');return Number.isNaN(d.getTime())?raw:d.toLocaleString('es-CR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
-function freeAdminTipoLabel(tipo){const k=freeAdminUpper(tipo);return ({QUIERO_MATRICULARME:'Prematrícula',FINANCIAMIENTO:'Pago / CONAPE',HABLAR_ASESOR:'Asesor',CORREGIR_DATOS:'Datos',CONSULTAR_HORARIO:'Horario'})[k]||freeAdminClean(tipo,'Solicitud');}
+function freeAdminTipoLabel(tipo){const k=freeAdminUpper(tipo);return ({QUIERO_MATRICULARME:'Prematrícula',FINANCIAMIENTO:'Pago / CONAPE',HABLAR_ASESOR:'Asesor',CORREGIR_DATOS:'Datos',CONSULTAR_HORARIO:'Horario',INICIO_GRATUITO:'Inicio Gratuito'})[k]||freeAdminClean(tipo,'Solicitud');}
 function freeAdminEstadoMeta(estado){const k=freeAdminUpper(estado||'PENDIENTE');return ({PENDIENTE:['Pendiente','warn'],EN_GESTION:['En contacto','info'],RESPONDIDA:['Contactado','ok'],CONVERTIDA:['Prematrícula activa','ok'],CERRADA:['Cerrada','muted'],DESCARTADA:['Descartada','muted']})[k]||[k,'muted'];}
 function FreeAdminBadge({estado}){const [label,tone]=freeAdminEstadoMeta(estado);return <span className={`free-admin-badge ${tone}`}>{label}</span>;}
 function FreeAdminMetric({label,value,desc,tone='neutral'}){return <article className={`free-admin-metric ${tone}`}><span>{label}</span><strong>{value}</strong>{desc&&<small>{desc}</small>}</article>;}
@@ -24,7 +24,7 @@ function freeAdminNormalizeItems(items){return (Array.isArray(items)?items:[]).s
 function freeAdminAdvisor(s){return freeAdminClean(s.ASESOR||s.ASESOR_ASIGNADO||s.VENDEDOR||s.RESPONSABLE||s.ATENDIDO_POR,'Asesor asignado');}
 function freeAdminNextStep(s){
   const estado=freeAdminUpper(s.ESTADO||'PENDIENTE');
-  if(estado==='CONVERTIDA')return 'Acceso anticipado activo. La matrícula oficial se hace por el flujo normal.';
+  if(estado==='CONVERTIDA')return 'Inicio Gratuito autorizado. La matrícula oficial se hace por el flujo normal.';
   return 'El asesor del lead coordina contacto, pago y activación. Sin pasos extra para el cliente.';
 }
 function freeAdminBuildFicha(s){return [
@@ -42,14 +42,14 @@ function freeAdminBuildFicha(s){return [
   `Mensaje: ${freeAdminClean(s.MENSAJE,'Sin mensaje')}`,
   `Nota: ${freeAdminClean(s.ULTIMA_NOTA||s.RESPUESTA,'Sin nota')}`,
   '',
-  'Nota operativa: marcar Prematrícula activa no crea matrícula oficial ni escribe DATOS/ESTATUS.'
+  'Nota operativa: autorizar Inicio Gratuito no crea matrícula oficial ni escribe DATOS/ESTATUS.'
 ].join('\n');}
 
 const FREE_ADMIN_ESTADOS=['TODOS','PENDIENTE','EN_GESTION','RESPONDIDA','CONVERTIDA','CERRADA','DESCARTADA'];
 const FREE_ADMIN_FAST_STATES=[
   {estado:'EN_GESTION',label:'Contactando'},
   {estado:'RESPONDIDA',label:'Contactado'},
-  {estado:'CONVERTIDA',label:'Prematrícula activa'},
+  {estado:'CONVERTIDA',label:'Autorizar Inicio Gratuito'},
   {estado:'CERRADA',label:'Cerrar'},
 ];
 
