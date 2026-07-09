@@ -965,7 +965,23 @@ function APStartScreen({ flow, isFreeUser, onStart, onBack, soundOn }) {
   );
 }
 
-function APSummary({ title, score, total, errors, onReset, onBack }) {
+function APNextGameSplash({ game }) {
+  const tone = game?.kind === 'match' ? 'match' : game?.kind === 'order' ? 'order' : 'choice';
+  const icon = game?.kind === 'match' ? '◎' : game?.kind === 'order' ? '▦' : '✦';
+  return (
+    <div className="ap-next-splash ap-enter" aria-live="polite">
+      <div className="ap-next-splash-card">
+        <span className="ap-summary-kicker">Cargando siguiente juego</span>
+        <div className={'ap-next-icon tone-' + tone}><span>{icon}</span></div>
+        <h3>{game?.title || 'Siguiente juego'}</h3>
+        <p>Preparando la siguiente práctica para continuar tu ruta sin salir del laboratorio.</p>
+        <div className="ap-next-mini-bar"><i /></div>
+      </div>
+    </div>
+  );
+}
+
+function APSummary({ title, score, total, errors, onReset, onBack, onNext, nextLabel }) {
   const safeTotal = Math.max(Number(total || 0), 1);
   const safeScore = Number(score || 0);
   const pct = Math.round((safeScore / safeTotal) * 100);
@@ -977,7 +993,10 @@ function APSummary({ title, score, total, errors, onReset, onBack }) {
       <div className="ap-summary-card">
         <span className="ap-summary-kicker">Resumen del intento</span>
         <div className="ap-summary-ring" style={ringStyle} aria-label={`Resultado ${safeScore} de ${safeTotal}`}>
-          <strong>{safeScore}</strong><span>/{safeTotal}</span><small>Aciertos</small>
+          <div className="ap-summary-ring-center">
+            <div className="ap-summary-ring-score"><strong>{safeScore}</strong><span>/{safeTotal}</span></div>
+            <small>Aciertos</small>
+          </div>
         </div>
         <h3>{perfect ? '¡Ronda perfecta!' : good ? 'Muy bien — tu mejor ronda hasta ahora.' : 'Buen intento — seguí practicando.'}</h3>
         <div className="ap-summary-stats">
@@ -987,6 +1006,7 @@ function APSummary({ title, score, total, errors, onReset, onBack }) {
         </div>
         <div className="ap-hero-actions ap-center-actions">
           <button type="button" className="ap-btn ap-btn-primary" onClick={onReset}>Repetir juego</button>
+          {onNext && <button type="button" className="ap-btn ap-btn-light ap-btn-nextgame" onClick={onNext}>{nextLabel || 'Siguiente juego'}</button>}
           <button type="button" className="ap-btn ap-btn-ghost" onClick={onBack}>Volver a juegos</button>
         </div>
       </div>
@@ -994,7 +1014,7 @@ function APSummary({ title, score, total, errors, onReset, onBack }) {
   );
 }
 
-function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
+function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGame, nextGame }) {
   const [phase, setPhase] = apUseState('intro');
   const [qIndex, setQIndex] = apUseState(0);
   const [selected, setSelected] = apUseState(null);
@@ -1037,7 +1057,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
-  if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} />;
+  if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} onNext={onNextGame} nextLabel={nextGame ? ('Siguiente juego · ' + nextGame.title) : 'Siguiente juego'} />;
 
   return (
     <div className="ap-practice-card ap-choice-card ap-enter">
@@ -1077,7 +1097,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   );
 }
 
-function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
+function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGame, nextGame }) {
   const [phase, setPhase] = apUseState('intro');
   const [selectedLeft, setSelectedLeft] = apUseState(null);
   const [fixed, setFixed] = apUseState([]);
@@ -1117,7 +1137,7 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   }).filter(Boolean);
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
-  if (phase === 'summary') return <APSummary title={flow.title} score={score} total={total} errors={errors} onReset={reset} onBack={onBack} />;
+  if (phase === 'summary') return <APSummary title={flow.title} score={score} total={total} errors={errors} onReset={reset} onBack={onBack} onNext={onNextGame} nextLabel={nextGame ? ('Siguiente juego · ' + nextGame.title) : 'Siguiente juego'} />;
 
   return (
     <div className="ap-practice-card ap-match-card ap-enter">
@@ -1160,7 +1180,7 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   );
 }
 
-function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
+function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGame, nextGame }) {
   const [phase, setPhase] = apUseState('intro');
   const [qIndex, setQIndex] = apUseState(0);
   const [built, setBuilt] = apUseState([]);
@@ -1197,7 +1217,7 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); setResults([]); }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
-  if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} />;
+  if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} onNext={onNextGame} nextLabel={nextGame ? ('Siguiente juego · ' + nextGame.title) : 'Siguiente juego'} />;
 
   return (
     <div className="ap-practice-card ap-order-card ap-enter">
@@ -1234,21 +1254,21 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn }) {
   );
 }
 
-function APGameRunner({ gameId, isFreeUser, onBack, onComplete, soundOn }) {
+function APGameRunner({ gameId, isFreeUser, onBack, onComplete, soundOn, onNextGame, nextGame }) {
   const flow = AP_FLOWS[gameId] || AP_FLOWS.vocabulary;
   return (
     <div className="ap-practice-wrap">
       {flow.kind === 'match'
-        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />
+        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} onNextGame={onNextGame} nextGame={nextGame} />
         : flow.kind === 'order'
-          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />
-          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />}
+          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} onNextGame={onNextGame} nextGame={nextGame} />
+          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} onNextGame={onNextGame} nextGame={nextGame} />}
     </div>
   );
 }
 
 
-function APBankGameRunner({ game, isFreeUser, onBack, onComplete, soundOn }) {
+function APBankGameRunner({ game, isFreeUser, onBack, onComplete, soundOn, onNextGame, nextGame }) {
   const [status, setStatus] = apUseState('cargando');
   const [flow, setFlow] = apUseState(null);
   const [error, setError] = apUseState('');
@@ -1308,10 +1328,10 @@ function APBankGameRunner({ game, isFreeUser, onBack, onComplete, soundOn }) {
   return (
     <div className="ap-practice-wrap ap-bank-practice-wrap">
       {flow.kind === 'match'
-        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />
+        ? <APMatchRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} onNextGame={onNextGame} nextGame={nextGame} />
         : flow.kind === 'order'
-          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />
-          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} />}
+          ? <APOrderRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} onNextGame={onNextGame} nextGame={nextGame} />
+          : <APChoiceRunner flow={flow} isFreeUser={isFreeUser} onBack={onBack} onComplete={onComplete} soundOn={soundOn} onNextGame={onNextGame} nextGame={nextGame} />}
     </div>
   );
 }
@@ -1348,6 +1368,7 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
   const [screen, setScreen] = apUseState('catalog');
   const [filter, setFilter] = apUseState('Todos');
   const [activeGame, setActiveGame] = apUseState(null);
+  const [nextLoadingGame, setNextLoadingGame] = apUseState(null);
   const [playState, setPlayState] = apUseState(() => apReadState(userKey));
   const [syncState, setSyncState] = apUseState('local');
   const [celebration, setCelebration] = apUseState(null);
@@ -1458,6 +1479,26 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
     setActiveGame(game); setScreen('play');
   }
 
+
+  const nextAvailableGame = apUseMemo(() => {
+    if (!activeGame) return null;
+    const list = activeGame.source === 'bank'
+      ? (bankVisible.length ? bankVisible : bankLevelGames)
+      : AP_GAMES.filter(g => apCanOpen(g, isFreeUser));
+    const idx = list.findIndex(g => g.id === activeGame.id);
+    return idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
+  }, [activeGame, bankVisible, bankLevelGames, isFreeUser]);
+
+  function handleNextGame() {
+    if (!nextAvailableGame) return;
+    apPlaySound('click', soundOn);
+    setNextLoadingGame(nextAvailableGame);
+    window.setTimeout(() => {
+      setNextLoadingGame(null);
+      openGame(nextAvailableGame);
+    }, 1200);
+  }
+
   function handleComplete(result) {
     if (!activeGame?.id || !result) return;
     const percent = apSafePct(result.percent || 0);
@@ -1539,8 +1580,8 @@ function APStudentView({ usuario, role, rolReal, onNavigate }) {
     });
   }
 
-  if (screen === 'play') return <><APGameRunner gameId={activeGame?.id} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} soundOn={soundOn} /><APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
-  if (screen === 'bankplay') return <><APBankGameRunner game={activeGame} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} soundOn={soundOn} /><APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
+  if (screen === 'play') return <>{nextLoadingGame ? <APNextGameSplash game={nextLoadingGame} /> : <APGameRunner gameId={activeGame?.id} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} soundOn={soundOn} onNextGame={nextAvailableGame ? handleNextGame : null} nextGame={nextAvailableGame} />}<APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
+  if (screen === 'bankplay') return <>{nextLoadingGame ? <APNextGameSplash game={nextLoadingGame} /> : <APBankGameRunner game={activeGame} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onComplete={handleComplete} soundOn={soundOn} onNextGame={nextAvailableGame ? handleNextGame : null} nextGame={nextAvailableGame} />}<APCelebrationOverlay celebration={celebration} onClose={() => setCelebration(null)} /></>;
   if (screen === 'locked') return <APLockedState game={activeGame} isFreeUser={isFreeUser} onBack={() => setScreen('catalog')} onNavigate={onNavigate} soundOn={soundOn} />;
   if (screen === 'live') return <APLiveRoom onBack={() => setScreen('catalog')} />;
 

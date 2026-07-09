@@ -120,7 +120,7 @@ function freeStudentWhatsAppLink(perfil, usuario){
     'asesor_whatsapp','asesorWhatsapp','telefono_asesor','asesor_tel','whatsapp_asesor','telefonoAsesor'
   ],''));
   const phone=freeStudentPhoneDigits(raw);
-  const msg=encodeURIComponent('Hola, necesito contactar a mi asesor por WhatsApp.');
+  const msg=encodeURIComponent('Hola, ya envié mi solicitud de prematrícula desde el Campus Virtual y deseo continuar el proceso. Quedo atento(a) a la guía para activar mi ingreso a English LAB.');
   return phone?`https://wa.me/${phone}?text=${msg}`:'';
 }
 
@@ -148,8 +148,10 @@ function FreeProspectPortal({ usuario, onNavigate }){
   React.useEffect(()=>{load();},[load]);
 
   const p=perfil||{};
-  const activacion = solicitudes.find(s=>String(s.TIPO||'').toUpperCase()==='QUIERO_MATRICULARME' && !['DESCARTADA','CERRADA'].includes(String(s.ESTADO||'').toUpperCase()));
-  const accesoPlay=!!activacion;
+  const prematRequest = solicitudes.find(s=>String(s.TIPO||'').toUpperCase()==='QUIERO_MATRICULARME' && !['DESCARTADA','CERRADA'].includes(String(s.ESTADO||'').toUpperCase()));
+  const prematEstado = String(prematRequest?.ESTADO||'').toUpperCase();
+  const accesoPlay = ['APROBADA','APROBADO','ACEPTADA','ACEPTADO','ACTIVA','ACTIVO','HABILITADA','HABILITADO','PREMATRICULA','PREMATRÍCULA'].includes(prematEstado);
+  const prematPendiente = !!prematRequest && !accesoPlay;
   const asesorWa=freeStudentWhatsAppLink(p,usuario);
 
   const enviarSolicitud=async()=>{
@@ -193,7 +195,7 @@ function FreeProspectPortal({ usuario, onNavigate }){
       <div className="premat-two-actions-grid">
         {accesoPlay
           ? <button type="button" className="btn btn-primary premat-big-action" onClick={goLab}>Entrar a English LAB</button>
-          : <button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading} onClick={enviarSolicitud}>{busy?'Solicitando…':'Solicitar entrada prematrícula'}</button>}
+          : <button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading||prematPendiente} onClick={enviarSolicitud}>{busy?'Solicitando…':prematPendiente?'Solicitud enviada · esperando aprobación':'Solicitar entrada prematrícula'}</button>}
         <button type="button" className="btn btn-ghost premat-big-action" disabled={busy} onClick={contactarAsesor}>Contactar asesor por WhatsApp</button>
       </div>
     </section>
