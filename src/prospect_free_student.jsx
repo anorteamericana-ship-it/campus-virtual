@@ -1,5 +1,5 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS7B · Prematrícula simplificada.
+// F98.4-Z6-CS17C · Mi Campus limpio en móvil.
 // Cliente: acceso anticipado + juegos gratis + coordinación de pago/matrícula. No crea matrícula/código/grupo ni toca DATOS/ESTATUS.
 
 function freeStudentToken(){
@@ -174,7 +174,7 @@ function FreeProspectPortal({ usuario, onNavigate }){
   };
   const go=(id)=>{ if(onNavigate) onNavigate(id); };
 
-  return <div className="student-page premat-page premat-page-lite premat-page-clean" data-screen-label="Estudiante · Prematrícula CS7B">
+  return <div className="student-page premat-page premat-page-lite premat-page-clean" data-screen-label="Estudiante · Prematrícula CS17C">
     {typeof PageHeader==='function'?<PageHeader
       kicker="Mi Campus · Acceso anticipado"
       title={<>Bienvenida, <em>{freeStudentFirstName(nombre)}</em></>}
@@ -205,13 +205,6 @@ function FreeProspectPortal({ usuario, onNavigate }){
       </aside>
     </section>
 
-    <div className="premat-access-grid premat-access-grid-clean">
-      <PrematAccessCard label="Curso" value={freeStudentClean(programa)} icon="book" tone="info" />
-      <PrematAccessCard label="Grupo" value={freeStudentClean(grupo)} icon="groups" tone="ok" />
-      <PrematAccessCard label="Inicio" value={freeStudentClean(fechaInicio)} icon="calendar" tone="neutral" />
-      <PrematAccessCard label="Horario" value={freeStudentClean(horario)} icon="clock" tone="neutral" />
-      <PrematAccessCard label="Asesor" value={freeStudentClean(asesor)} icon="profile" tone="info" />
-    </div>
 
     <div className="premat-note premat-note-master">
       <strong>Nota:</strong> acceso anticipado para practicar y coordinar matrícula. No registra notas oficiales, certificados, pagos ni matrícula automática.
