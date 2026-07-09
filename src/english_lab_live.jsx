@@ -1,9 +1,9 @@
-// F98.4-Z6-CS20A · English LAB Live foundation
+// F98.4-Z6-CS20B · English LAB Live control de ronda
 // Práctica gamificada en vivo. No registra notas oficiales ni afecta aprobación.
 /* global React, PageHeader */
 (function(){
   const SCRIPT_URL_LIVE = window.APPS_SCRIPT_URL;
-  const VERSION = 'F98.4-Z6-CS20A';
+  const VERSION = 'F98.4-Z6-CS20B';
   const GAME_TYPES = [
     { code:'VOCAB_SPRINT', label:'Vocabulary Sprint', area:'Vocabulario', note:'Rondas rápidas de vocabulario.' },
     { code:'WORD_MATCH', label:'Word Match', area:'Vocabulario', note:'Parejas palabra / significado.' },
@@ -35,11 +35,23 @@
     if(v==='CLOSED') return 'Cerrada';
     return v || '—';
   }
+  function roundLabel(s){
+    const v=upper(s);
+    if(v==='OPEN') return 'Pregunta abierta';
+    if(v==='CLOSED') return 'Pregunta cerrada';
+    return 'Sin pregunta activa';
+  }
   function toneStatus(s){
     const v=upper(s);
     if(v==='LIVE') return {bg:'#EAF8EF', ink:'#145C38', border:'#20A15C'};
     if(v==='CLOSED') return {bg:'#F3F4F6', ink:'#4B5563', border:'#CBD5E1'};
     return {bg:'#EEF4FF', ink:'#073B7A', border:'#6AA8F6'};
+  }
+  function toneRound(s){
+    const v=upper(s);
+    if(v==='OPEN') return {bg:'#FFF7E6', ink:'#7A4B00', border:'#FFD88A'};
+    if(v==='CLOSED') return {bg:'#EEF4FF', ink:'#073B7A', border:'#B7D5FF'};
+    return {bg:'#F8FAFC', ink:'#475467', border:'#E4E7EC'};
   }
   async function postLive(fn, payload={}, timeoutMs=35000){
     const token = window.getSessionToken ? window.getSessionToken() : '';
@@ -78,8 +90,10 @@
       <div style={{fontSize:11.5,color:'#667085',marginTop:5,lineHeight:1.35}}>{game.note}</div>
     </button>;
   }
-  function RoomCard({room, onRefresh}){
+
+  function RoomCard({room, onRefresh, onOpen}){
     const t=toneStatus(room.status || room.STATUS);
+    const rt=toneRound(room.round_status || room.ROUND_STATUS);
     const code=clean(room.room_code || room.ROOM_CODE || room.room_id || room.ROOM_ID);
     const status=room.status || room.STATUS;
     return <div style={{border:'1px solid var(--line,#E4E7EC)',borderRadius:16,padding:14,background:'#FFF',boxShadow:'0 4px 14px rgba(15,23,42,.05)'}}>
@@ -93,12 +107,128 @@
       <div style={{display:'grid',gap:5,marginTop:10,fontSize:12.5,color:'#475467'}}>
         <div><b>{room.game_label || room.GAME_LABEL}</b> · {room.mode || room.MODE}</div>
         <div>{room.cod_grupo || room.COD_GRUPO} · {levelLabel(room.nivel || room.NIVEL)} · {room.question_count || room.QUESTION_COUNT} preguntas</div>
+        <div><span style={{display:'inline-flex',padding:'3px 7px',borderRadius:999,background:rt.bg,color:rt.ink,border:`1px solid ${rt.border}`,fontSize:10.5,fontWeight:900}}>{roundLabel(room.round_status || room.ROUND_STATUS)}</span></div>
         <div style={{color:'#98A2B3'}}>Creada: {clean(room.created_at || room.CREATED_AT) || '—'}</div>
       </div>
       <div style={{marginTop:12,display:'flex',gap:8,flexWrap:'wrap'}}>
         <button className="btn btn-ghost" type="button" onClick={onRefresh}>Actualizar</button>
-        <button className="btn btn-primary" type="button" disabled title="Siguiente entrega">Abrir control de ronda</button>
+        <button className="btn btn-primary" type="button" onClick={()=>onOpen && onOpen(room)}>Abrir control de ronda</button>
       </div>
+    </div>;
+  }
+
+  function QuestionCard({question, showAnswer=false}){
+    if(!question) return <Alert tone="warn">Aún no hay pregunta seleccionada.</Alert>;
+    const options = Array.isArray(question.options) ? question.options : [];
+    const correct = clean(question.correct);
+    return <div style={{border:'1px solid #D0D5DD',borderRadius:18,background:'#FFF',padding:18,boxShadow:'0 10px 24px rgba(15,23,42,.06)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',alignItems:'center',marginBottom:10}}>
+        <div style={{fontSize:11,fontWeight:950,letterSpacing:'.13em',color:'#7A1E2C',textTransform:'uppercase'}}>Pregunta {question.index || 1}</div>
+        <span style={{fontSize:10.5,fontWeight:950,padding:'5px 9px',borderRadius:999,background:'#EEF4FF',border:'1px solid #B7D5FF',color:'#073B7A'}}>{clean(question.type || 'choice')}</span>
+      </div>
+      <div style={{fontSize:24,fontWeight:950,color:'#001E47',lineHeight:1.15,marginBottom:14}}>{question.prompt}</div>
+      {question.context && <div style={{padding:'10px 12px',borderRadius:12,background:'#F8FAFC',border:'1px solid #E4E7EC',color:'#475467',fontSize:13,lineHeight:1.45,marginBottom:12}}>{question.context}</div>}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:8}}>
+        {options.map((op,i)=>{
+          const isOk = showAnswer && clean(op.value || op) === correct;
+          return <div key={i} style={{border:`1.5px solid ${isOk?'#20A15C':'#E4E7EC'}`,background:isOk?'#EAF8EF':'#FFF',borderRadius:12,padding:'10px 12px',fontSize:14,fontWeight:850,color:isOk?'#145C38':'#344054'}}>
+            <span style={{display:'inline-grid',placeItems:'center',width:22,height:22,borderRadius:999,background:isOk?'#20A15C':'#EEF4FF',color:isOk?'#FFF':'#073B7A',fontSize:11,fontWeight:950,marginRight:7}}>{String.fromCharCode(65+i)}</span>
+            {clean(op.label || op.text || op.value || op)}
+          </div>;
+        })}
+      </div>
+      {showAnswer && question.explanation && <div style={{marginTop:12,fontSize:12.5,lineHeight:1.45,color:'#145C38',background:'#EAF8EF',border:'1px solid #BDE8CD',borderRadius:12,padding:'10px 12px'}}><b>Respuesta:</b> {question.explanation}</div>}
+    </div>;
+  }
+
+  function RoomControl({roomRef, onBack, onChanged}){
+    const roomId = clean(roomRef?.room_id || roomRef?.ROOM_ID || roomRef?.room_code || roomRef?.ROOM_CODE);
+    const [loading,setLoading]=React.useState(true);
+    const [busy,setBusy]=React.useState(false);
+    const [error,setError]=React.useState('');
+    const [data,setData]=React.useState(null);
+    const room=data?.room || roomRef || {};
+    const questions=Array.isArray(data?.questions) ? data.questions : [];
+    const current=data?.current_question || null;
+    const events=Array.isArray(data?.events) ? data.events : [];
+    const status=upper(room.status || room.STATUS);
+    const round=upper(room.round_status || room.ROUND_STATUS);
+    const total=Number(room.question_count || room.QUESTION_COUNT || questions.length || 0) || questions.length;
+    const currentIndex=Number(room.current_index || room.CURRENT_INDEX || 0) || 0;
+
+    const load=React.useCallback(async()=>{
+      if(!roomId) return;
+      setLoading(true); setError('');
+      try{ const r=await postLive('englishLabLiveGetRoomControl',{room_id:roomId},45000); setData(r); }
+      catch(e){ setError(e.message || String(e)); }
+      finally{ setLoading(false); }
+    },[roomId]);
+    React.useEffect(()=>{ load(); },[load]);
+
+    async function action(fn,payload={}){
+      setBusy(true); setError('');
+      try{
+        await postLive(fn,{room_id:roomId,...payload},45000);
+        await load();
+        onChanged && onChanged();
+      }catch(e){ setError(e.message || String(e)); }
+      finally{ setBusy(false); }
+    }
+    const canOpen = status !== 'CLOSED';
+    const canStart = status === 'CREATED';
+    const canLaunch = canOpen && (round !== 'OPEN');
+    const canCloseRound = canOpen && round === 'OPEN';
+    const nextIndex = Math.min(Math.max(currentIndex + 1, 1), total || 1);
+    const closedOrStarted = status === 'LIVE' || status === 'CLOSED';
+
+    return <div style={{display:'grid',gap:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}>
+        <button className="btn btn-ghost" type="button" onClick={onBack}>← Volver a salas</button>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button className="btn btn-ghost" type="button" disabled={loading||busy} onClick={load}>Actualizar control</button>
+          <button className="btn btn-ghost" type="button" disabled={busy||status==='CLOSED'} onClick={()=>{ if(confirm('¿Cerrar esta sala live?')) action('englishLabLiveCloseRoom'); }}>Cerrar sala</button>
+        </div>
+      </div>
+      {error && <Alert tone="err">{error}</Alert>}
+      <div className="card" style={{padding:18,borderRadius:18,background:'#FFF'}}>
+        <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'flex-start',flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:950,letterSpacing:'.13em',color:'#7A1E2C',textTransform:'uppercase'}}>Control de ronda</div>
+            <div style={{fontSize:34,fontWeight:950,color:'#001E47',fontFamily:'var(--f-mono,monospace)',lineHeight:1}}>{room.room_code || room.ROOM_CODE || roomId}</div>
+            <div style={{fontSize:13,color:'#667085',marginTop:8,lineHeight:1.4}}>{room.game_label || room.GAME_LABEL} · {room.mode || room.MODE} · {room.cod_grupo || room.COD_GRUPO} · {levelLabel(room.nivel || room.NIVEL)}</div>
+          </div>
+          <div style={{display:'grid',gap:7,justifyItems:'end'}}>
+            <span style={{fontSize:11,fontWeight:950,borderRadius:999,padding:'6px 10px',background:toneStatus(status).bg,color:toneStatus(status).ink,border:`1px solid ${toneStatus(status).border}`}}>{statusLabel(status)}</span>
+            <span style={{fontSize:11,fontWeight:950,borderRadius:999,padding:'6px 10px',background:toneRound(round).bg,color:toneRound(round).ink,border:`1px solid ${toneRound(round).border}`}}>{roundLabel(round)}</span>
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginTop:18}}>
+          <div style={{padding:12,borderRadius:14,background:'#F8FAFC',border:'1px solid #E4E7EC'}}><div style={{fontSize:10,fontWeight:900,color:'#667085',textTransform:'uppercase'}}>Pregunta</div><div style={{fontSize:24,fontWeight:950,color:'#001E47'}}>{currentIndex || '—'} / {total || '—'}</div></div>
+          <div style={{padding:12,borderRadius:14,background:'#F8FAFC',border:'1px solid #E4E7EC'}}><div style={{fontSize:10,fontWeight:900,color:'#667085',textTransform:'uppercase'}}>Participantes</div><div style={{fontSize:24,fontWeight:950,color:'#001E47'}}>{data?.stats?.players || 0}</div></div>
+          <div style={{padding:12,borderRadius:14,background:'#F8FAFC',border:'1px solid #E4E7EC'}}><div style={{fontSize:10,fontWeight:900,color:'#667085',textTransform:'uppercase'}}>Respuestas ronda</div><div style={{fontSize:24,fontWeight:950,color:'#001E47'}}>{data?.stats?.answers_current || 0}</div></div>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 280px',gap:14,alignItems:'start'}} className="elive-control-grid">
+        <div style={{display:'grid',gap:12}}>
+          {loading ? <Alert>Cargando control de ronda…</Alert> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>} 
+          <div className="card" style={{padding:14,borderRadius:18,background:'#FFF'}}>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}}>
+              {canStart && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action('englishLabLiveStartRoom')}>Iniciar sala</button>}
+              {canLaunch && <button className="btn btn-primary" type="button" disabled={busy||!total} onClick={()=>action('englishLabLiveLaunchQuestion',{question_index:nextIndex})}>{closedOrStarted?'Lanzar siguiente pregunta':'Lanzar pregunta 1'}</button>}
+              {canCloseRound && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action('englishLabLiveCloseRound')}>Cerrar pregunta</button>}
+              {status==='CLOSED' && <span style={{padding:'10px 14px',borderRadius:999,background:'#F3F4F6',color:'#475467',fontWeight:900}}>Sala cerrada</span>}
+            </div>
+            <div style={{marginTop:10,textAlign:'center',fontSize:12,color:'#667085',lineHeight:1.45}}>CS20B controla la ronda docente. Las respuestas de estudiantes entran en CS20C para no montar tiempo real a medias.</div>
+          </div>
+        </div>
+        <aside className="card" style={{padding:14,borderRadius:18,background:'#FFF'}}>
+          <div style={{fontSize:11,fontWeight:950,letterSpacing:'.13em',color:'#7A1E2C',textTransform:'uppercase'}}>Bitácora</div>
+          <div style={{display:'grid',gap:8,marginTop:10,maxHeight:420,overflow:'auto'}}>
+            {events.length ? events.slice(0,18).map((ev,i)=><div key={ev.event_id || ev.EVENT_ID || i} style={{border:'1px solid #E4E7EC',borderRadius:12,padding:'8px 10px',fontSize:11.5,color:'#475467',background:'#F8FAFC'}}><b style={{color:'#001E47'}}>{ev.event_type || ev.EVENT_TYPE}</b><br/><span>{ev.created_at || ev.CREATED_AT}</span></div>) : <div style={{fontSize:12,color:'#667085'}}>Sin eventos aún.</div>}
+          </div>
+        </aside>
+      </div>
+      <style>{`@media(max-width:900px){.elive-control-grid{grid-template-columns:1fr!important}}`}</style>
     </div>;
   }
 
@@ -112,6 +242,7 @@
     const [mode,setMode]=React.useState('INDIVIDUAL');
     const [count,setCount]=React.useState(8);
     const [created,setCreated]=React.useState(null);
+    const [controlRoom,setControlRoom]=React.useState(null);
 
     const grupos = Array.isArray(data.grupos) ? data.grupos : [];
     const selectedGroup = grupos.find(g=>groupCode(g)===codGrupo) || grupos[0] || null;
@@ -135,17 +266,25 @@
       try{
         const r = await postLive('englishLabLiveCreateRoom', { cod_grupo:codGrupo, nivel:levelId(selectedGroup), game_code:selectedGame.code, question_count:Number(count)||8, mode }, 45000);
         setCreated(r.room || r);
+        setControlRoom(r.room || r);
         await load();
       }catch(e){ setError(e.message || String(e)); }
       finally{ setBusy(false); }
     }
 
+    if(controlRoom){
+      return <div style={{width:'100%',maxWidth:1180,margin:'0 auto'}}>
+        <Header title={<>English LAB <em>Live</em></>} sub="Control de ronda docente. Todavía no guarda notas oficiales ni afecta aprobación." />
+        <RoomControl roomRef={controlRoom} onBack={()=>setControlRoom(null)} onChanged={load}/>
+      </div>;
+    }
+
     const recent = Array.isArray(data.rooms) ? data.rooms : [];
     return <div style={{width:'100%',maxWidth:1180,margin:'0 auto'}}>
       <Header title={<>English LAB <em>Live</em></>} sub="Salas de práctica en vivo para juegos tipo reto. No guarda notas oficiales ni afecta aprobación académica." />
-      <div style={{display:'grid',gridTemplateColumns:'minmax(0,1.15fr) minmax(300px,.85fr)',gap:16,alignItems:'start'}}>
+      <div style={{display:'grid',gridTemplateColumns:'minmax(0,1.15fr) minmax(300px,.85fr)',gap:16,alignItems:'start'}} className="elive-main-grid">
         <div style={{display:'grid',gap:14}}>
-          <Alert tone="warn"><b>CS20A es base controlada.</b> En esta primera entrega se crean salas y códigos. Todavía no se activa respuesta de estudiantes ni ranking; eso entra en la siguiente fase para no meter un módulo en vivo medio armado.</Alert>
+          <Alert tone="warn"><b>CS20B activa control docente de ronda.</b> Ya podés iniciar sala, lanzar pregunta, cerrar pregunta y avanzar. Respuestas de estudiantes/ranking entran en CS20C.</Alert>
           <div className="card" style={{padding:18,borderRadius:18,background:'#FFF'}}>
             <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:14,flexWrap:'wrap'}}>
               <div><div style={{fontSize:11,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C',textTransform:'uppercase'}}>Crear sala</div><div style={{fontSize:22,fontWeight:950,color:'#001E47'}}>Configurar práctica live</div></div>
@@ -179,19 +318,19 @@
               </div>
             </div>
           </div>
-          {created && <Alert tone="ok"><b>Sala creada:</b> <span style={{fontFamily:'var(--f-mono,monospace)',fontWeight:950,fontSize:16}}>{created.room_code || created.ROOM_CODE}</span>. En la siguiente entrega conectamos ingreso de estudiantes y control de rondas.</Alert>}
+          {created && <Alert tone="ok"><b>Sala creada:</b> <span style={{fontFamily:'var(--f-mono,monospace)',fontWeight:950,fontSize:16}}>{created.room_code || created.ROOM_CODE}</span>. Ya podés abrir el control de ronda.</Alert>}
         </div>
         <aside style={{display:'grid',gap:12}}>
           <div className="card" style={{padding:16,borderRadius:18,background:'#FFF'}}>
             <div style={{fontSize:11,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C',textTransform:'uppercase'}}>Salas recientes</div>
             <div style={{fontSize:13,color:'#667085',marginTop:4,lineHeight:1.45}}>Solo práctica. Nada de esto se mezcla con notas oficiales, certificados o pagos.</div>
           </div>
-          {loading ? <Alert>Cargando salas…</Alert> : recent.length ? recent.slice(0,8).map(r=><RoomCard key={r.room_id || r.ROOM_ID || r.room_code || r.ROOM_CODE} room={r} onRefresh={load}/>) : <Alert>No hay salas recientes todavía.</Alert>}
+          {loading ? <Alert>Cargando salas…</Alert> : recent.length ? recent.slice(0,8).map(r=><RoomCard key={r.room_id || r.ROOM_ID || r.room_code || r.ROOM_CODE} room={r} onRefresh={load} onOpen={setControlRoom}/>) : <Alert>No hay salas recientes todavía.</Alert>}
         </aside>
       </div>
-      <style>{`@media(max-width:900px){.teacher-page-english_lab_live [style*="grid-template-columns: minmax(0px, 1.15fr)"]{grid-template-columns:1fr!important}}`}</style>
+      <style>{`@media(max-width:900px){.elive-main-grid{grid-template-columns:1fr!important}}`}</style>
     </div>;
   }
   window.EnglishLabLiveTeacherView = EnglishLabLiveTeacherView;
-  window.ENGLISH_LAB_LIVE_CS20A = { version:VERSION, games:GAME_TYPES.map(g=>g.code) };
+  window.ENGLISH_LAB_LIVE_CS20B = { version:VERSION, games:GAME_TYPES.map(g=>g.code) };
 })();
