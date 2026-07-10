@@ -1,7 +1,7 @@
 // F98.4-Z6-CS6 · Sidebar con bandeja interna de prematrículas
 // F98.4-Z6-CS2 · Sidebar prematrícula unificada
 // F98.4-Z6-P · navegación Super Admin agrupada por operación
-// F98.4-Z6-CS20B · English LAB Live en menú docente
+// F98.4-Z6-CS20H · English LAB Live en menú docente/estudiante
 // F98.4-Z6-F · menú docente reordenado y renombrado
 // F92.7_20260620_MENU_DOCENTE_SIN_CALIFICAR_LEGACY
 /* global React, Icon, getSesion, setSesion */
@@ -513,7 +513,10 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
         { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
         ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
-        ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' }] : []),
+        ...(mostrarAcademiaPlay ? [
+          { id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' },
+          { id: 'english_lab_live', label: 'English LAB Live', icon: 'english_lab', badge: 'Nuevo' },
+        ] : []),
       ],
     },
     {
