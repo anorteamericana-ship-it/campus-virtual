@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A27 · Panel Maestro: Cobranza colapsable desde el título.
+// F98.4-Z6-CS21A27A · Panel Maestro: Cobranza colapsable desde el título.
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A27';
+  const VERSION = 'F98.4-Z6-CS21A27A';
   const TITLE = 'cobros aplicados, cartera activa y morosidad';
   const STORAGE_KEY = 'an.master.cobranza.expanded.cs21a27';
   const TARGET_WORDS = [
@@ -81,10 +81,11 @@
       .an-master-cobranza-toggle:focus-visible{outline:3px solid rgba(0,47,108,.22);outline-offset:2px}
       .an-master-cobranza-toggle .an-arrow{font-size:13px;line-height:1}
       .an-master-cobranza-anchor{display:flex!important;align-items:flex-start!important;gap:12px!important;flex-wrap:wrap!important}
+      .an-master-cobranza-anchor > div:first-child{min-width:0;flex:1 1 420px}
       .an-master-cobranza-anchor > .an-master-cobranza-toggle{margin-top:2px}
       .an-master-cobranza-hidden{display:none!important}
       .an-master-cobranza-collapsed-note{
-        width:100%;margin-top:10px;padding:10px 13px;border:1px dashed #d8d0c3;border-radius:10px;
+        width:100%;margin-top:4px;padding:10px 13px;border:1px dashed #d8d0c3;border-radius:10px;
         background:#faf7f1;color:#766b5e;font:600 11px/1.45 Poppins,sans-serif;
       }
       @media(max-width:760px){
@@ -112,18 +113,15 @@
     if(!resolved || !resolved.content.length) return false;
 
     const { root, anchor, content } = resolved;
-    if(root.dataset.anCobranzaCollapseVersion === VERSION) return true;
+    const liveButton = anchor.querySelector('.an-master-cobranza-toggle');
+    if(root.dataset.anCobranzaCollapseVersion === VERSION && liveButton?.isConnected) return true;
+
+    root.removeAttribute('data-an-cobranza-collapse-version');
+    anchor.querySelectorAll('.an-master-cobranza-toggle,.an-master-cobranza-collapsed-note').forEach(node => node.remove());
 
     ensureStyle();
     root.dataset.anCobranzaCollapseVersion = VERSION;
     anchor.classList.add('an-master-cobranza-anchor');
-
-    let headerHost = title.closest('header') || title.parentElement || anchor;
-    if(headerHost !== anchor && !anchor.contains(headerHost)) headerHost = anchor;
-    headerHost.style.display = 'flex';
-    headerHost.style.alignItems = 'flex-start';
-    headerHost.style.gap = '12px';
-    headerHost.style.flexWrap = 'wrap';
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -168,7 +166,7 @@
       render();
     });
 
-    headerHost.appendChild(button);
+    anchor.appendChild(button);
     render();
     return true;
   }
