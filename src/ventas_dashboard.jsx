@@ -1,9 +1,8 @@
 /* global React, ReactDOM, window */
 /* ============================================================================
-   VENTAS — Dashboard principal (ventas_dashboard.jsx) · Fase 3
-   Panel del vendedor reorganizado para responder en 3 segundos
-   "¿qué tengo que hacer hoy?". Bloques arriba:
-     1. Mis matrículas (mes) · 2. Mi embudo (clickeable) · 3. Grupos Disponibles
+   VENTAS — Dashboard principal (ventas_dashboard.jsx) · CS21A20
+   Panel del vendedor reorganizado según prioridad operativa. Bloques:
+     1. Estudiantes · 2. Grupos Disponibles · 3. Mis matrículas · 4. Mi embudo
    Tabla + drawer existentes intactos. UNA sola llamada: getDashboardVentas.
    Sin fallback demo: con sesión real, si falla → error + Reintentar (no ceros).
    Vista previa de diseño solo con ?preview=fiorella | ?preview=roger.
@@ -213,24 +212,7 @@ function VentasApp({ sesion }) {
           <window.ResumenSkeleton />
         ) : (
           <React.Fragment>
-            {/* 1 · MIS MATRÍCULAS (mes actual, por semanas — VENTAS-DASHBOARD-002) */}
-            <div className="vx-sec vx-sec-week">
-              <window.MiMatriculasMes asesor={usuario.nombre} />
-            </div>
-
-            {/* 2 · MI EMBUDO */}
-            <div className="vx-sec">
-              <div className="vx-sec-h">Mi embudo</div>
-              <window.MiEmbudo embudo={dash.embudo} etapaActiva={filtro.etapa} onPick={pickEtapa} />
-            </div>
-
-            {/* 3 · GRUPOS DISPONIBLES */}
-            <div className="vx-sec">
-              <div className="vx-sec-h">Grupos Disponibles</div>
-              <window.MisGrupos grupos={dash.grupos_disponibles} />
-            </div>
-
-            {/* 4 · ESTUDIANTES (tabla intacta) */}
+            {/* 1 · ESTUDIANTES (tabla y reglas de permanencia intactas) */}
             <div className="vx-sec">
               <div className="vx-sec-h">Estudiantes</div>
               <window.FiltroChip etapa={filtro.etapa} onClear={() => setFiltro(f => ({ ...f, etapa: '' }))} />
@@ -254,6 +236,23 @@ function VentasApp({ sesion }) {
                   <window.ProspectoCards lista={filtered} onOpen={p => setDrawerCed(p.cedula)} />
                 </React.Fragment>
               )}
+            </div>
+
+            {/* 2 · GRUPOS DISPONIBLES */}
+            <div className="vx-sec">
+              <div className="vx-sec-h">Grupos Disponibles</div>
+              <window.MisGrupos grupos={dash.grupos_disponibles} />
+            </div>
+
+            {/* 3 · MIS MATRÍCULAS (mes actual, por semanas — VENTAS-DASHBOARD-002) */}
+            <div className="vx-sec vx-sec-week">
+              <window.MiMatriculasMes asesor={usuario.nombre} />
+            </div>
+
+            {/* 4 · MI EMBUDO */}
+            <div className="vx-sec">
+              <div className="vx-sec-h">Mi embudo</div>
+              <window.MiEmbudo embudo={dash.embudo} etapaActiva={filtro.etapa} onPick={pickEtapa} />
             </div>
           </React.Fragment>
         )}
