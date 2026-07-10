@@ -1,4 +1,4 @@
-/* F98.4-Z6-CS21A20D · Formato humano de grupos en toda la vista de Ventas.
+/* F98.4-Z6-CS21A20E · Formato humano de grupos en toda la vista de Ventas.
    SOLO cambia texto visible. Los value, payloads y códigos enviados al backend
    conservan siempre el código técnico completo, por ejemplo B1-LM18-C3-0726. */
 (function () {
@@ -17,8 +17,9 @@
     MI: 'MIE',
     JU: 'JUE',
   };
+  const DAY_CODES = Object.keys(DAY_LABELS).sort((a, b) => b.length - a.length);
 
-  const GROUP_RE = /\b(?:B1|B2|I1|I2)-([A-Z]{1,3}\d{1,4})(?:-[A-Z0-9]+)*-(\d{4})\b/gi;
+  const GROUP_RE = /\b(?:B1|B2|I1|I2)-([A-Z0-9]{2,7})(?:-[A-Z0-9]+)*-(\d{4})\b/gi;
 
   function compactHour(hour) {
     const h = Number(hour);
@@ -29,24 +30,24 @@
     return `${h - 12}pm`;
   }
 
+  function parseSchedule(schedule) {
+    const raw = String(schedule || '').toUpperCase();
+    const known = DAY_CODES.find(code => raw.startsWith(code));
+    if (known) return { dayCode: known, hourToken: raw.slice(known.length) };
+
+    const fallback = raw.match(/^([A-Z]{1,3})(\d{1,4})$/);
+    return fallback ? { dayCode: fallback[1], hourToken: fallback[2] } : null;
+  }
+
   function timeLabel(dayCode, token) {
     const raw = String(token || '').toUpperCase();
+    if (!raw) return '';
 
     // Formatos históricos conocidos del Campus.
     if (raw === '18' || raw === '69' || raw === '1821') return '6a9pm';
     if (raw === '94') return '9a4pm';
     if (raw === '912') return '9a12pm';
     if (raw === '9') return dayCode === 'SA' ? '9a4pm' : '9a12pm';
-
-    // Hora de inicio de 24 horas: las clases regulares duran 3 horas.
-    if (/^\d{1,2}$/.test(raw)) {
-      const start = Number(raw);
-      if (start >= 0 && start <= 23) {
-        if (dayCode === 'SA') return compactHour(start);
-        const end = (start + 3) % 24;
-        return `${compactHour(start).replace(/(am|pm)$/i, '')}a${compactHour(end)}`;
-      }
-    }
 
     // Rango ya codificado, por ejemplo 6A9 o 18A21.
     const range = raw.match(/^(\d{1,2})A(\d{1,2})$/);
@@ -58,18 +59,27 @@
       }
     }
 
-    return raw ? raw.toLowerCase() : '';
+    // Hora de inicio de 24 horas: las clases regulares duran 3 horas.
+    if (/^\d{1,2}$/.test(raw)) {
+      const start = Number(raw);
+      if (start >= 0 && start <= 23) {
+        if (dayCode === 'SA') return compactHour(start);
+        const end = (start + 3) % 24;
+        return `${compactHour(start).replace(/(am|pm)$/i, '')}a${compactHour(end)}`;
+      }
+    }
+
+    return raw.toLowerCase();
   }
 
   function formatGroupCode(code) {
     const original = String(code == null ? '' : code);
+    GROUP_RE.lastIndex = 0;
     return original.replace(GROUP_RE, function (full, schedule, realCode) {
-      const parsed = String(schedule).match(/^([A-Z]{1,3})(\d{1,4})$/i);
+      const parsed = parseSchedule(schedule);
       if (!parsed) return full;
-      const dayCode = parsed[1].toUpperCase();
-      const hourToken = parsed[2];
-      const day = DAY_LABELS[dayCode] || dayCode;
-      const time = timeLabel(dayCode, hourToken);
+      const day = DAY_LABELS[parsed.dayCode] || parsed.dayCode;
+      const time = timeLabel(parsed.dayCode, parsed.hourToken);
       return `${day}${time ? ` ${time}` : ''} - ${realCode}`;
     });
   }
@@ -79,6 +89,7 @@
     const parent = node.parentElement;
     if (!parent || parent.closest('script,style,textarea')) return;
     const current = node.nodeValue || '';
+    GROUP_RE.lastIndex = 0;
     if (!GROUP_RE.test(current)) {
       GROUP_RE.lastIndex = 0;
       return;
@@ -112,17 +123,16 @@
     });
   }
 
-  function processRoot() {
-    const root = document.getElementById('root') || document.body;
-    processElement(root);
+  function processPage() {
+    if (document.body) processElement(document.body);
   }
 
   window.formatGrupoVentas = formatGroupCode;
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', processRoot, { once: true });
+    document.addEventListener('DOMContentLoaded', processPage, { once: true });
   } else {
-    processRoot();
+    processPage();
   }
 
   const observer = new MutationObserver(records => {
@@ -136,8 +146,7 @@
   });
 
   const observe = () => {
-    const root = document.getElementById('root') || document.body;
-    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    if (document.body) observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observe, { once: true });
   else observe();
