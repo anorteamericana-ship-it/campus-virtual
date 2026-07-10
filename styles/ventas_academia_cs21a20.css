@@ -1,0 +1,278 @@
+/* ============================================================================
+   F98.4-Z6-CS21A20 · Ventas — estilo institucional Academia Norteamericana
+   Capa visual temporal de validación. No modifica datos, filtros ni reglas.
+   ============================================================================ */
+
+:root {
+  --v-navy: var(--an-navy, #002F6C);
+  --v-navy-d: var(--an-navy-ink, #001E47);
+  --v-red: var(--an-red, #DA291C);
+  --v-red-d: #B11F14;
+  --v-bg: var(--bg, #F3EEE6);
+  --v-surface: var(--surface, #FFFFFF);
+  --v-soft: var(--surface-2, #FAF6EE);
+  --v-ink: var(--ink, #1A1613);
+  --v-ink-2: var(--ink-2, #4A413A);
+  --v-ink-3: var(--ink-3, #6B7280);
+  --v-line: var(--line, #E5DECF);
+  --v-line-2: var(--line-2, #D4C9B6);
+  --v-ok: var(--ok, #2E7D32);
+  --v-warn: var(--warn, #C67100);
+  --v-r-sm: var(--r-xs, 6px);
+  --v-r-md: var(--r-sm, 10px);
+  --v-r-lg: var(--r-lg, 20px);
+  --v-r-pill: var(--r-pill, 999px);
+  --v-sh-1: var(--sh-1, 0 1px 2px rgba(26,22,19,.06), 0 2px 6px rgba(26,22,19,.04));
+  --v-sh-2: var(--sh-2, 0 2px 4px rgba(26,22,19,.06), 0 12px 24px -8px rgba(26,22,19,.10));
+}
+
+html { background: var(--v-bg); }
+body {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.42) 0, rgba(255,255,255,0) 220px),
+    var(--v-bg);
+  color: var(--v-ink);
+}
+
+/* Encabezado institucional */
+.vx-header {
+  background: var(--v-navy);
+  border-bottom: 4px solid var(--v-red);
+  box-shadow: 0 8px 24px rgba(0,30,71,.18);
+}
+.vx-header-in,
+.vx-wrap { max-width: 1480px; }
+.vx-header-in { min-height: 72px; }
+.vx-logo {
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(255,255,255,.82);
+  box-shadow: 0 5px 16px rgba(0,0,0,.20);
+}
+.vx-brand-t1 { font-size: 16px; font-weight: 800; }
+.vx-brand-t2 { opacity: .82; font-weight: 600; }
+.vx-user-av {
+  background: var(--v-red);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.18);
+}
+.vx-header .vx-btn-ghost {
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.28);
+  color: #fff;
+}
+.vx-header .vx-btn-ghost:hover:not(:disabled) {
+  background: #fff;
+  border-color: #fff;
+  color: var(--v-navy);
+}
+
+/* Jerarquía de secciones */
+.vx-wrap { padding-top: 8px; }
+.vx-sec { margin-top: 24px; }
+.vx-sec-h {
+  margin: 0 0 12px;
+  padding-left: 12px;
+  border-left: 4px solid var(--v-red);
+  color: var(--v-navy-d);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  text-transform: none;
+}
+
+/* Superficies coherentes con el Campus */
+.vx-tablecard,
+.vx-filters,
+.vx-grp,
+.vx-grp-empty,
+.vx-week,
+.vx-emb,
+.vx-funnel,
+.vx-error-card {
+  background: var(--v-surface);
+  border-color: var(--v-line);
+  border-radius: var(--v-r-lg);
+  box-shadow: var(--v-sh-2);
+}
+.vx-filters { padding: 14px 16px; }
+.vx-select,
+.vx-search input {
+  min-height: 40px;
+  background: var(--v-soft);
+  border-color: var(--v-line-2);
+  border-radius: var(--v-r-md);
+}
+.vx-select:focus,
+.vx-search input:focus {
+  background: #fff;
+  border-color: var(--v-navy);
+  box-shadow: 0 0 0 3px rgba(0,47,108,.12);
+}
+.vx-clear {
+  min-height: 40px;
+  border-radius: var(--v-r-md);
+  border-color: var(--v-line-2);
+}
+
+/* Tabla: una sola línea por estudiante. No se comprimen ni parten los datos. */
+.vx-tablecard { overflow: hidden; }
+.vx-tablecard .vx-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-color: var(--v-line-2) transparent;
+  scrollbar-width: thin;
+}
+.vx-tablecard .vx-table-scroll::-webkit-scrollbar { height: 10px; }
+.vx-tablecard .vx-table-scroll::-webkit-scrollbar-track { background: var(--v-soft); }
+.vx-tablecard .vx-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--v-line-2);
+  border: 2px solid var(--v-soft);
+  border-radius: 999px;
+}
+.vx-table {
+  min-width: 1480px;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.vx-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 13px 14px;
+  background: var(--v-soft);
+  color: var(--v-navy-d);
+  border-bottom: 1px solid var(--v-line-2);
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.vx-table td {
+  height: 58px;
+  padding: 11px 14px;
+  background: #fff;
+  border-bottom-color: var(--v-line);
+  color: var(--v-ink);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.vx-table tbody tr:hover td { background: var(--v-soft); }
+.vx-table tbody tr.vx-row-rojo td:first-child {
+  box-shadow: inset 4px 0 0 var(--v-red);
+}
+.vx-table th:nth-child(1), .vx-table td:nth-child(1) { min-width: 118px; }
+.vx-table th:nth-child(2), .vx-table td:nth-child(2) { min-width: 250px; }
+.vx-table th:nth-child(3), .vx-table td:nth-child(3) { min-width: 178px; }
+.vx-table th:nth-child(4), .vx-table td:nth-child(4) { min-width: 190px; }
+.vx-table th:nth-child(5), .vx-table td:nth-child(5) { min-width: 145px; }
+.vx-table th:nth-child(6), .vx-table td:nth-child(6) { min-width: 130px; }
+.vx-table th:nth-child(7), .vx-table td:nth-child(7) { min-width: 165px; }
+.vx-table th:nth-child(8), .vx-table td:nth-child(8) { min-width: 160px; }
+.vx-table th:nth-child(9), .vx-table td:nth-child(9) { min-width: 70px; text-align: center; }
+.vx-table th:nth-child(10), .vx-table td:nth-child(10) { min-width: 92px; }
+.vx-td-name,
+.vx-td-ced,
+.vx-td-prog,
+.vx-td-grupo,
+.vx-td-dias { white-space: nowrap; }
+.vx-td-name { color: var(--v-navy-d); font-weight: 700; }
+.vx-td-ced,
+.vx-td-grupo { color: var(--v-ink-2); }
+
+/* Teléfono completo + WhatsApp más claro y accionable */
+.vx-tel {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 9px;
+  min-width: max-content;
+  color: var(--v-navy-d);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vx-wa-mini {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: #25D366;
+  border: 2px solid #fff;
+  outline: 1px solid rgba(18,140,75,.28);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 6px 14px rgba(18,140,75,.24);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.vx-wa-mini svg {
+  width: 19px;
+  height: 19px;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.14));
+}
+.vx-wa-mini:hover {
+  background: #1FBE59;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 9px 18px rgba(18,140,75,.32);
+}
+.vx-wa-mini:focus-visible {
+  outline: 3px solid rgba(37,211,102,.30);
+  outline-offset: 2px;
+}
+
+/* Estados, acciones y tarjetas */
+.vx-badge,
+.vx-fin,
+.vx-estado,
+.vx-grpc-count { border-radius: var(--v-r-pill); }
+.vx-iconbtn.ver {
+  min-height: 34px;
+  border-color: var(--v-navy);
+  border-radius: var(--v-r-md);
+  color: var(--v-navy);
+  font-weight: 700;
+}
+.vx-iconbtn.ver:hover {
+  background: var(--v-navy);
+  border-color: var(--v-navy);
+  color: #fff;
+}
+.vx-card {
+  border-color: var(--v-line);
+  border-radius: var(--v-r-lg);
+  box-shadow: var(--v-sh-1);
+}
+.vx-card-name { color: var(--v-navy-d); }
+
+/* Grupos, matrículas y embudo */
+.vx-grp { padding: 6px; }
+.vx-grpc {
+  flex-wrap: nowrap;
+  border-radius: var(--v-r-md);
+  transition: background .15s ease;
+}
+.vx-grpc:hover { background: var(--v-soft); }
+.vx-grpc-horario { color: var(--v-navy-d); }
+.vx-sec-week .vx-week {
+  max-width: none;
+  width: 100%;
+  border-left-width: 5px;
+}
+.vx-mm-cell { background: var(--v-soft); border-color: var(--v-line); }
+.vx-mm-cell.vx-mm-has {
+  background: var(--v-navy);
+  border-color: var(--v-navy);
+}
+.vx-emb { padding: 10px; }
+.vx-emb-row.active {
+  background: rgba(0,47,108,.07);
+  border-color: rgba(0,47,108,.28);
+}
+.vx-emb-row:not(:disabled):hover { background: var(--v-soft); }
+
+@media (max-width: 760px) {
+  .vx-wrap { padding-top: 4px; }
+  .vx-sec-h { font-size: 16px; }
+  .vx-header-in { min-height: auto; }
+  .vx-grpc { flex-wrap: wrap; }
+  .vx-wa-mini { width: 38px; height: 38px; border-radius: 12px; }
+}
