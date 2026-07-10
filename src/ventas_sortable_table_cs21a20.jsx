@@ -1,4 +1,4 @@
-/* F98.4-Z6-CS21A20C · Tabla de leads ordenable por encabezados.
+/* F98.4-Z6-CS21A20F · Tabla de leads ordenable y buscador por teléfono.
    Mantiene el orden de prioridad recibido hasta que el usuario selecciona una columna. */
 (function(){
   const COLS = [
@@ -150,5 +150,42 @@
     );
   }
 
+  function FilterBarTelefono({ filtro, setFiltro, resultCount }) {
+    const upd = (key, value) => setFiltro(prev => ({ ...prev, [key]: value }));
+    const limpiar = () => setFiltro({ etapa:'', fin:'', q:'' });
+    const activos = filtro.etapa || filtro.fin || filtro.q;
+
+    return (
+      <div className="vx-filters">
+        <div className="vx-field">
+          <span className="vx-field-lbl">Financiamiento</span>
+          <select className="vx-select" value={filtro.fin} onChange={e => upd('fin', e.target.value)}>
+            <option value="">Todos</option>
+            <option value="CONAPE">CONAPE</option>
+            <option value="BECA">Beca 25%</option>
+            <option value="PROPIO">Pago propio</option>
+          </select>
+        </div>
+        <div className="vx-field vx-search">
+          <span className="vx-field-lbl">Buscar</span>
+          <div className="vx-search-box">
+            <window.Vico d={window.VI.search} size={15} />
+            <input
+              type="search"
+              inputMode="search"
+              placeholder="Nombre, cédula o teléfono…"
+              aria-label="Buscar por nombre, cédula o teléfono"
+              value={filtro.q}
+              onChange={e => upd('q', e.target.value)}
+            />
+          </div>
+        </div>
+        {activos ? <button className="vx-clear" onClick={limpiar}>Limpiar filtros</button> : null}
+        <div className="vx-result-count">{resultCount} prospecto{resultCount === 1 ? '' : 's'}</div>
+      </div>
+    );
+  }
+
+  window.FilterBar = FilterBarTelefono;
   window.ProspectoTable = SortableProspectoTable;
 })();
