@@ -1,6 +1,6 @@
 /* global React, ReactDOM, window */
 /* ============================================================================
-   VENTAS — Dashboard principal (ventas_dashboard.jsx) · CS21A20
+   VENTAS — Dashboard principal (ventas_dashboard.jsx) · CS21A20F
    Panel del vendedor reorganizado según prioridad operativa. Bloques:
      1. Estudiantes · 2. Grupos Disponibles · 3. Mis matrículas · 4. Mi embudo
    Tabla + drawer existentes intactos. UNA sola llamada: getDashboardVentas.
@@ -110,10 +110,24 @@ function VentasApp({ sesion }) {
   const filtered = useMemo(() => {
     if (!prospectos) return [];
     const q = filtro.q.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, '');
+    const qLocalPhone = qDigits.length === 11 && qDigits.startsWith('506') ? qDigits.slice(3) : qDigits;
+
     const base = prospectos.filter(p => {
       if (filtro.etapa && p.etapa !== filtro.etapa) return false;
       if (filtro.fin && p.financiamiento !== filtro.fin) return false;
-      if (q && !(`${p.nombre} ${p.cedula}`.toLowerCase().includes(q))) return false;
+
+      if (q) {
+        const searchableText = `${p.nombre || ''} ${p.cedula || ''} ${p.telefono || ''} ${p.whatsapp || ''}`.toLowerCase();
+        const searchableDigits = `${p.cedula || ''} ${p.telefono || ''} ${p.whatsapp || ''}`.replace(/\D/g, '');
+        const textMatch = searchableText.includes(q);
+        const digitMatch = !!qDigits && (
+          searchableDigits.includes(qDigits) ||
+          (!!qLocalPhone && searchableDigits.includes(qLocalPhone))
+        );
+        if (!textMatch && !digitMatch) return false;
+      }
+
       return true;
     });
     // VENTAS-UX-001-A: ordenar por prioridad (rojo→amarillo→verde→gris) y, dentro
