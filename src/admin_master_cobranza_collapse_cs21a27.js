@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A27A · Panel Maestro: Cobranza colapsable desde el título.
+// F98.4-Z6-CS21A27B · Panel Maestro: gráficos de Cobranza colapsables; Seguimiento inmediato siempre visible.
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A27A';
+  const VERSION = 'F98.4-Z6-CS21A27B';
   const TITLE = 'cobros aplicados, cartera activa y morosidad';
   const STORAGE_KEY = 'an.master.cobranza.expanded.cs21a27';
   const TARGET_WORDS = [
@@ -65,6 +65,17 @@
     return best;
   }
 
+  function findSeguimientoSection(root){
+    const byClass = root?.querySelector?.('.master-conape-month-card');
+    if(byClass) return byClass;
+    const sections = root?.querySelectorAll?.('section,article,.master-card') || [];
+    for(const node of sections){
+      const text = norm(node.textContent);
+      if(text.includes('seguimiento inmediato') && text.includes('movimientos conape')) return node;
+    }
+    return null;
+  }
+
   function ensureStyle(){
     if(document.getElementById('an-master-cobranza-collapse-style')) return;
     const style = document.createElement('style');
@@ -113,11 +124,25 @@
     if(!resolved || !resolved.content.length) return false;
 
     const { root, anchor, content } = resolved;
+    const seguimientoSection = findSeguimientoSection(root);
+    const seguimientoNode = seguimientoSection ? directChildContaining(root, seguimientoSection) : null;
+
+    // No se aplica el colapsado hasta localizar Seguimiento inmediato. Así nunca
+    // puede quedar oculto por una carga diferida o por el reemplazo del componente.
+    if(!seguimientoNode) return false;
+
+    const collapsibleContent = content.filter(node => node !== seguimientoNode);
+    if(!collapsibleContent.length) return false;
+
     const liveButton = anchor.querySelector('.an-master-cobranza-toggle');
     if(root.dataset.anCobranzaCollapseVersion === VERSION && liveButton?.isConnected) return true;
 
     root.removeAttribute('data-an-cobranza-collapse-version');
     anchor.querySelectorAll('.an-master-cobranza-toggle,.an-master-cobranza-collapsed-note').forEach(node => node.remove());
+
+    // Limpia cualquier ocultamiento heredado de CS21A27A sobre Seguimiento inmediato.
+    seguimientoNode.classList.remove('an-master-cobranza-hidden');
+    seguimientoNode.style.display = seguimientoNode.dataset.anCobranzaOriginalDisplay || '';
 
     ensureStyle();
     root.dataset.anCobranzaCollapseVersion = VERSION;
@@ -130,10 +155,10 @@
 
     const note = document.createElement('div');
     note.className = 'an-master-cobranza-collapsed-note';
-    note.textContent = 'Grupos, Control financiero, Recencia de pago, Cartera, Cobranza aplicada, Cobrado 2026 y los demás gráficos están ocultos.';
+    note.textContent = 'Los gráficos financieros están ocultos. Seguimiento inmediato permanece visible abajo.';
 
     const contentId = 'an-master-cobranza-content';
-    content.forEach((node, index) => {
+    collapsibleContent.forEach((node, index) => {
       node.dataset.anCobranzaOriginalDisplay = node.style.display || '';
       if(index === 0) node.id = node.id || contentId;
     });
@@ -141,7 +166,7 @@
     let expanded = readExpanded();
 
     function render(){
-      content.forEach(node => {
+      collapsibleContent.forEach(node => {
         if(expanded){
           node.classList.remove('an-master-cobranza-hidden');
           node.style.display = node.dataset.anCobranzaOriginalDisplay || '';
@@ -149,6 +174,11 @@
           node.classList.add('an-master-cobranza-hidden');
         }
       });
+
+      // Protección permanente: esta sección nunca participa del colapsado.
+      seguimientoNode.classList.remove('an-master-cobranza-hidden');
+      seguimientoNode.style.display = seguimientoNode.dataset.anCobranzaOriginalDisplay || '';
+
       button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
       button.innerHTML = expanded
         ? '<span class="an-arrow">▲</span><span>Ocultar gráficos</span>'
