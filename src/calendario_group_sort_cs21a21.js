@@ -21,15 +21,19 @@
     }
   }
 
-  function setMode(mode) {
+  function saveMode(mode) {
     try { localStorage.setItem(STORAGE_KEY, mode); } catch (_) {}
   }
 
-  // El código final NNAA significa: consecutivo NN + año AA.
-  // Ej.: 0125 = grupo 01 del 2025; 0226 = grupo 02 del 2026.
+  // El último segmento NNAA significa: consecutivo NN + año AA.
+  // Ej.: B1-LM69-C3-0125 = grupo 01 del 2025.
+  // Exigimos el formato técnico completo para no confundir códigos legacy.
   function numberKey(value) {
     const raw = String(value || '').trim().toUpperCase();
-    const match = raw.match(/(\d{2})(\d{2})$/);
+    const parts = raw.split('-').filter(Boolean);
+    if (parts.length < 4) return null;
+    const last = parts[parts.length - 1];
+    const match = last.match(/^(\d{2})(\d{2})$/);
     if (!match) return null;
     const sequence = Number(match[1]);
     const year = Number(match[2]);
@@ -55,14 +59,15 @@
     }
   }
 
-  function isSpecialOption(option) {
+  function isPinnedOption(option) {
     const value = String(option && option.value || '');
-    return !value || value === '__TODOS__' || !numberKey(value);
+    return !value || value === '__TODOS__';
   }
 
   function sortByNumber(options) {
-    const special = options.filter(isSpecialOption);
-    const groups = options.filter(option => !isSpecialOption(option));
+    const pinned = options.filter(isPinnedOption);
+    const groups = options.filter(option => !isPinnedOption(option) && !!numberKey(option.value));
+    const legacy = options.filter(option => !isPinnedOption(option) && !numberKey(option.value));
 
     groups.sort((a, b) => {
       const ka = numberKey(a.value);
@@ -72,7 +77,9 @@
       return String(a.value || '').localeCompare(String(b.value || ''), 'es', { numeric:true, sensitivity:'base' });
     });
 
-    return [...special, ...groups];
+    // “Calendario académico” queda arriba; códigos legacy quedan al final
+    // conservando el orden en que los entregó el componente original.
+    return [...pinned, ...groups, ...legacy];
   }
 
   function restoreOriginal(options, originalOrder) {
@@ -111,12 +118,21 @@
     button.classList.toggle('is-active', numberMode);
   }
 
+  function ownText(element) {
+    return Array.from(element && element.childNodes || [])
+      .filter(node => node.nodeType === Node.TEXT_NODE)
+      .map(node => String(node.nodeValue || ''))
+      .join(' ')
+      .trim()
+      .toLowerCase();
+  }
+
   function findGroupLabel(select) {
     const parent = select && select.parentElement;
     if (!parent) return null;
     return Array.from(parent.children).find(element => {
       if (element === select || element.nodeType !== 1) return false;
-      return String(element.textContent || '').trim().toLowerCase() === 'grupo';
+      return element.classList.contains('an-cg-sort-label-row') || ownText(element) === 'grupo';
     }) || null;
   }
 
@@ -175,6 +191,16 @@
     document.head.appendChild(style);
   }
 
+  function applyModeToAll(mode) {
+    document.querySelectorAll('[data-screen-label="Cronograma de grupo"] select').forEach(candidate => {
+      if (!isCalendarGroupSelect(candidate)) return;
+      reorderSelect(candidate, mode);
+      const candidateLabel = findGroupLabel(candidate);
+      const candidateButton = candidateLabel && candidateLabel.querySelector(`.${BUTTON_CLASS}`);
+      if (candidateButton) updateButton(candidateButton, mode);
+    });
+  }
+
   function patchSelect(select) {
     if (!isCalendarGroupSelect(select)) return;
     const label = findGroupLabel(select);
@@ -192,14 +218,8 @@
         event.preventDefault();
         event.stopPropagation();
         const nextMode = getMode() === MODE_NUMBER ? MODE_CHRONO : MODE_NUMBER;
-        setMode(nextMode);
-        document.querySelectorAll('[data-screen-label="Cronograma de grupo"] select').forEach(candidate => {
-          if (!isCalendarGroupSelect(candidate)) return;
-          reorderSelect(candidate, nextMode);
-          const candidateLabel = findGroupLabel(candidate);
-          const candidateButton = candidateLabel && candidateLabel.querySelector(`.${BUTTON_CLASS}`);
-          if (candidateButton) updateButton(candidateButton, nextMode);
-        });
+        saveMode(nextMode);
+        applyModeToAll(nextMode);
       });
       label.appendChild(button);
     }
@@ -244,8 +264,8 @@
     apply: patchPage,
     setMode(mode) {
       const safeMode = mode === MODE_NUMBER ? MODE_NUMBER : MODE_CHRONO;
-      setMode(safeMode);
-      patchPage();
+      saveMode(safeMode);
+      applyModeToAll(safeMode);
     },
   };
 })();
