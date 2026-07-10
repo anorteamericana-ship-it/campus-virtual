@@ -1,5 +1,5 @@
 /* ============================================================================
-   F98.4-Z6-CS21A20 · Ventas — estilo institucional Academia Norteamericana
+   F98.4-Z6-CS21A20B · Ventas — estilo institucional Academia Norteamericana
    Capa visual temporal de validación. No modifica datos, filtros ni reglas.
    ============================================================================ */
 
@@ -41,8 +41,12 @@ body {
   box-shadow: 0 8px 24px rgba(0,30,71,.18);
 }
 .vx-header-in,
-.vx-wrap { max-width: 1480px; }
-.vx-header-in { min-height: 72px; }
+.vx-wrap {
+  width: 100%;
+  max-width: none;
+}
+.vx-header-in { min-height: 72px; padding-left: 18px; padding-right: 18px; }
+.vx-wrap { padding-left: 14px; padding-right: 14px; }
 .vx-logo {
   width: 46px;
   height: 46px;
@@ -115,62 +119,67 @@ body {
   border-color: var(--v-line-2);
 }
 
-/* Tabla: una sola línea por estudiante. No se comprimen ni parten los datos. */
-.vx-tablecard { overflow: hidden; }
+/*
+ * Tabla directa en página: sin barra horizontal.
+ * Se usa todo el ancho disponible y se compactan columnas, tipografía y badges.
+ */
+.vx-tablecard { overflow: visible; }
 .vx-tablecard .vx-table-scroll {
-  overflow-x: auto;
-  overflow-y: visible;
-  scrollbar-color: var(--v-line-2) transparent;
-  scrollbar-width: thin;
+  width: 100%;
+  overflow: visible;
 }
-.vx-tablecard .vx-table-scroll::-webkit-scrollbar { height: 10px; }
-.vx-tablecard .vx-table-scroll::-webkit-scrollbar-track { background: var(--v-soft); }
-.vx-tablecard .vx-table-scroll::-webkit-scrollbar-thumb {
-  background: var(--v-line-2);
-  border: 2px solid var(--v-soft);
-  border-radius: 999px;
-}
+.vx-tablecard .vx-table-scroll::-webkit-scrollbar { display: none; }
 .vx-table {
-  min-width: 1480px;
-  table-layout: auto;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 }
+.vx-table col:nth-child(1)  { width: 8% !important; }
+.vx-table col:nth-child(2)  { width: 16% !important; }
+.vx-table col:nth-child(3)  { width: 12% !important; }
+.vx-table col:nth-child(4)  { width: 12% !important; }
+.vx-table col:nth-child(5)  { width: 9% !important; }
+.vx-table col:nth-child(6)  { width: 9% !important; }
+.vx-table col:nth-child(7)  { width: 11% !important; }
+.vx-table col:nth-child(8)  { width: 11% !important; }
+.vx-table col:nth-child(9)  { width: 4% !important; }
+.vx-table col:nth-child(10) { width: 8% !important; }
 .vx-table th {
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 13px 14px;
+  padding: 11px 7px;
   background: var(--v-soft);
   color: var(--v-navy-d);
   border-bottom: 1px solid var(--v-line-2);
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 800;
+  letter-spacing: .035em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .vx-table td {
-  height: 58px;
-  padding: 11px 14px;
+  height: 54px;
+  min-width: 0 !important;
+  padding: 9px 7px;
   background: #fff;
   border-bottom-color: var(--v-line);
   color: var(--v-ink);
+  font-size: 11.5px;
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .vx-table tbody tr:hover td { background: var(--v-soft); }
 .vx-table tbody tr.vx-row-rojo td:first-child {
   box-shadow: inset 4px 0 0 var(--v-red);
 }
-.vx-table th:nth-child(1), .vx-table td:nth-child(1) { min-width: 118px; }
-.vx-table th:nth-child(2), .vx-table td:nth-child(2) { min-width: 250px; }
-.vx-table th:nth-child(3), .vx-table td:nth-child(3) { min-width: 178px; }
-.vx-table th:nth-child(4), .vx-table td:nth-child(4) { min-width: 190px; }
-.vx-table th:nth-child(5), .vx-table td:nth-child(5) { min-width: 145px; }
-.vx-table th:nth-child(6), .vx-table td:nth-child(6) { min-width: 130px; }
-.vx-table th:nth-child(7), .vx-table td:nth-child(7) { min-width: 165px; }
-.vx-table th:nth-child(8), .vx-table td:nth-child(8) { min-width: 160px; }
-.vx-table th:nth-child(9), .vx-table td:nth-child(9) { min-width: 70px; text-align: center; }
-.vx-table th:nth-child(10), .vx-table td:nth-child(10) { min-width: 92px; }
+.vx-table th:nth-child(9),
+.vx-table td:nth-child(9) { text-align: center; }
 .vx-td-name,
 .vx-td-ced,
 .vx-td-prog,
@@ -179,40 +188,61 @@ body {
 .vx-td-name { color: var(--v-navy-d); font-weight: 700; }
 .vx-td-ced,
 .vx-td-grupo { color: var(--v-ink-2); }
+.vx-table .vx-badge,
+.vx-table .vx-fin,
+.vx-table .vx-estado {
+  max-width: 100%;
+  padding: 3px 6px;
+  gap: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vx-table .vx-badge .vx-bdot,
+.vx-table .vx-estado-dot {
+  width: 6px;
+  height: 6px;
+}
+.vx-table td .vx-estado {
+  width: auto;
+  justify-content: flex-start;
+}
 
-/* Teléfono completo + WhatsApp más claro y accionable */
+/* Teléfono completo + WhatsApp claro, compacto y sin segunda línea */
 .vx-tel {
   display: inline-flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 9px;
-  min-width: max-content;
+  gap: 6px;
+  max-width: 100%;
   color: var(--v-navy-d);
+  font-size: 11.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .vx-wa-mini {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
   background: #25D366;
   border: 2px solid #fff;
   outline: 1px solid rgba(18,140,75,.28);
   color: #fff;
   text-decoration: none;
-  box-shadow: 0 6px 14px rgba(18,140,75,.24);
+  box-shadow: 0 4px 10px rgba(18,140,75,.22);
   transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
 .vx-wa-mini svg {
-  width: 19px;
-  height: 19px;
+  width: 16px;
+  height: 16px;
   filter: drop-shadow(0 1px 1px rgba(0,0,0,.14));
 }
 .vx-wa-mini:hover {
   background: #1FBE59;
-  transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 9px 18px rgba(18,140,75,.32);
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 7px 14px rgba(18,140,75,.30);
 }
 .vx-wa-mini:focus-visible {
   outline: 3px solid rgba(37,211,102,.30);
@@ -225,11 +255,16 @@ body {
 .vx-estado,
 .vx-grpc-count { border-radius: var(--v-r-pill); }
 .vx-iconbtn.ver {
-  min-height: 34px;
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 6px;
   border-color: var(--v-navy);
   border-radius: var(--v-r-md);
   color: var(--v-navy);
+  font-size: 10px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .vx-iconbtn.ver:hover {
   background: var(--v-navy);
@@ -258,21 +293,20 @@ body {
   border-left-width: 5px;
 }
 .vx-mm-cell { background: var(--v-soft); border-color: var(--v-line); }
-.vx-mm-cell.vx-mm-has {
-  background: var(--v-navy);
-  border-color: var(--v-navy);
-}
-.vx-emb { padding: 10px; }
-.vx-emb-row.active {
-  background: rgba(0,47,108,.07);
-  border-color: rgba(0,47,108,.28);
-}
-.vx-emb-row:not(:disabled):hover { background: var(--v-soft); }
 
+@media (max-width: 1050px) {
+  .vx-table th { font-size: 8.5px; padding-left: 5px; padding-right: 5px; }
+  .vx-table td { font-size: 10.5px; padding-left: 5px; padding-right: 5px; }
+  .vx-table .vx-badge,
+  .vx-table .vx-fin,
+  .vx-table .vx-estado { font-size: 8.5px; padding-left: 4px; padding-right: 4px; }
+  .vx-wa-mini { width: 25px; height: 25px; }
+  .vx-tel { gap: 4px; font-size: 10.5px; }
+}
+
+/* En móvil se conserva la vista de tarjetas existente; no aparece tabla cortada. */
 @media (max-width: 760px) {
-  .vx-wrap { padding-top: 4px; }
-  .vx-sec-h { font-size: 16px; }
-  .vx-header-in { min-height: auto; }
+  .vx-wrap { padding-left: 12px; padding-right: 12px; }
+  .vx-sec-h { font-size: 17px; }
   .vx-grpc { flex-wrap: wrap; }
-  .vx-wa-mini { width: 38px; height: 38px; border-radius: 12px; }
 }
