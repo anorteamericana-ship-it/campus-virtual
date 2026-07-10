@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A12 · Certificado financiero sin contradicción visual
-// Frontend-only: separa pago de certificado vs emisión del documento en Consulta individual.
+// F98.4-Z6-CS21A13 · Certificado financiero sin mezclar emisión documental
+// Frontend-only: en Finanzas / comprobantes muestra estado de pago; la emisión queda en la columna Certificado.
 /* global React */
 (function(){
-  const VERSION = 'F98.4-Z6-CS21A12';
+  const VERSION = 'F98.4-Z6-CS21A13';
 
   function money(n){
     const v = Number(n || 0);
@@ -24,13 +24,13 @@
     const esCertificado = tipo === 'CERTIFICADO';
     const registroCert = norm(certificadoRegistro);
     const certEmitido = !!registroCert;
-    const certPagado = esCertificado && !certEmitido && (alDia || aplicado > 0 || comps.length > 0);
+    const certPagoAplicado = esCertificado && (aplicado > 0 || comps.length > 0 || alDia);
 
     const estadoLabel = esCertificado
-      ? (certEmitido ? 'EMITIDO' : (certPagado ? 'PAGADO · NO EMITIDO' : 'PAGO PENDIENTE'))
+      ? (certPagoAplicado ? 'PAGO APLICADO' : 'PAGO PENDIENTE')
       : (alDia ? 'AL DÍA' : money(deuda));
     const estadoColor = esCertificado
-      ? (certEmitido ? '#2E7D32' : (certPagado ? '#1565C0' : '#B42318'))
+      ? (certPagoAplicado ? '#2E7D32' : '#B42318')
       : (alDia ? '#2E7D32' : '#C62828');
 
     return <div style={{padding:'8px 9px',borderRadius:9,border:'1px solid #E2DDD6',background:'white',minWidth:0}}>
@@ -43,13 +43,15 @@
         <b style={{fontSize:10.5,fontFamily:'var(--f-mono,monospace)',color:'#14213D'}}>{money(aplicado)}</b>
       </div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:7,marginTop:2}}>
-        <span style={{fontSize:8.5,color:'#81776F'}}>{esCertificado ? 'Estado' : 'Pendiente'}</span>
+        <span style={{fontSize:8.5,color:'#81776F'}}>{esCertificado ? 'Pago' : 'Pendiente'}</span>
         <b style={{fontSize:9.5,color:estadoColor,textAlign:'right'}}>{estadoLabel}</b>
       </div>
-      {esCertificado && !certEmitido && <div style={{marginTop:2,fontSize:7.8,color:certPagado?'#244A7C':'#B42318'}}>
-        {certPagado ? 'Pago cubierto; falta emitir el documento oficial.' : `Saldo financiero: ${money(deuda)}. Documento aún no emitido.`}
+      {esCertificado && certPagoAplicado && <div style={{marginTop:2,fontSize:7.8,color:'#256B36'}}>
+        Comprobante aplicado. La emisión del certificado se controla en la columna Certificado{certEmitido ? ` · registro ${registroCert}.` : '.'}
       </div>}
-      {esCertificado && certEmitido && <div style={{marginTop:2,fontSize:7.8,color:'#2E7D32'}}>Registro oficial: {registroCert}</div>}
+      {esCertificado && !certPagoAplicado && <div style={{marginTop:2,fontSize:7.8,color:'#B42318'}}>
+        Saldo financiero: {money(deuda)}. Falta aplicar comprobante del certificado.
+      </div>}
       {!esCertificado && alDia && saldo > 0.005 && <div style={{marginTop:2,fontSize:7.8,color:'#8A6D3B'}}>Saldo contractual futuro: {money(saldo)}</div>}
       <div style={{marginTop:6,paddingTop:5,borderTop:'1px dashed #E6E0D9'}}>
         {comps.length ? comps.map((c,i)=><div key={c.id || i} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:5,fontSize:7.8,color:'#5D6673',marginTop:i?3:0}}>
