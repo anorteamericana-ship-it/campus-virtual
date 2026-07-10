@@ -1,18 +1,20 @@
-// F98.4-Z6-CS21A5 · Visor interno y descarga de documentos docentes
+// F98.4-Z6-CS21A6 · Visor interno y descarga de documentos docentes
 // Frontend-only: abre documentos dentro del Campus y agrega descarga directa cuando existe archivo Drive.
 /* global React, getSesion, MaterialesView */
 (function(){
-  const VERSION = 'F98.4-Z6-CS21A5';
+  const VERSION = 'F98.4-Z6-CS21A6';
   const BLUE = 'var(--an-navy-ink,#001E47)';
 
   function session(){ try { return (typeof getSesion === 'function' ? getSesion() : JSON.parse(sessionStorage.getItem('an_usuario') || 'null')) || {}; } catch(_) { return {}; } }
   function filePreview(id){ return 'https://drive.google.com/file/d/' + id + '/preview'; }
   function fileDownload(id){ return 'https://drive.google.com/uc?export=download&id=' + id; }
+  function fileUserDownload(id){ return 'https://drive.usercontent.google.com/download?id=' + id + '&authuser=0&acrobatPromotionSource=gdrive_chrome-list'; }
   function folderPreview(id){ return 'https://drive.google.com/embeddedfolderview?id=' + id + '#list'; }
   function folderOpen(id){ return 'https://drive.google.com/drive/folders/' + id; }
   function openDownload(doc){ window.open(doc.download || doc.url || doc.preview, '_blank', 'noopener,noreferrer'); }
 
   function fileDoc(code, title, desc, id){ return { code, title, desc, kind:'file', preview:filePreview(id), download:fileDownload(id), url:filePreview(id) }; }
+  function pdfDoc(code, title, desc, id){ return { code, title, desc, kind:'file', preview:filePreview(id), download:fileUserDownload(id), url:filePreview(id) }; }
   function folderDoc(code, title, desc, id){ return { code, title, desc, kind:'folder', preview:folderPreview(id), download:folderOpen(id), url:folderOpen(id) }; }
 
   const INFO_DOCS = [
@@ -40,7 +42,7 @@
       fileDoc('I2', 'Cronograma del módulo · Intermedio II', 'Datos y cronograma institucional del módulo Intermedio II.', '1CajioftRWZyrDXX5XmKOswIIYNB_A7ln'),
     ],
     cronograma_general: [
-      fileDoc('GEN', 'Cronograma general del programa', 'Cronograma general descargable del programa.', '1eGe2_El7uYvllAVSIUzwuj-xawTc8kRl'),
+      pdfDoc('GEN', 'Cronograma general del programa', 'Cronograma general descargable del programa.', '1cIx_oJCUN1uNE1xHij3dsm_1H49nMXZ9'),
     ],
     biblioteca: [folderDoc('TB', 'Biblioteca digital', 'Teacher Book del nivel correspondiente.', '1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH')],
     libros: [folderDoc('SB/WB', 'Libros de texto', 'Student Book y Workbook.', '1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH')],
@@ -57,8 +59,6 @@
     libros: ['Recursos Didácticos', 'Libros de texto', 'Student Book y Workbook.'],
     audios: ['Recursos Didácticos', 'Audios', 'Audios por unidad.'],
   };
-
-  const screenKeys = Object.keys(TITLES);
 
   function Header({ data }){
     return <div style={{ background:'linear-gradient(135deg,#fff 0%,#F8F4EE 100%)', border:'1px solid var(--line,#e5e0d8)', borderRadius:18, padding:'18px 20px', boxShadow:'var(--sh-1,0 6px 22px rgba(0,0,0,.06))', marginBottom:14 }}>
@@ -99,7 +99,6 @@
   }
 
   function AsistenciaPassthrough({ props }){
-    const Base = window.MaterialesView && window.MaterialesView.__cs21a4base ? window.MaterialesView.__cs21a4base : null;
     return <div style={{ padding:18, background:'#fff', border:'1px solid var(--line)', borderRadius:16 }}>
       <div style={{ fontSize:22, fontWeight:950, color:BLUE }}>Asistencia</div>
       <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>Esta sección se mantiene desde Gestión Académica. La edición sigue en Mis grupos.</div>
@@ -110,29 +109,28 @@
     </div>;
   }
 
-  function TeacherDocsHubCS21A5(props){
+  function TeacherDocsHubCS21A6(props){
     const [screen,setScreen] = React.useState(()=>sessionStorage.getItem('an_teacher_materiales_tab') || 'info');
     React.useEffect(()=>{ const h=e=>{ if(e?.detail?.tab) setScreen(e.detail.tab); }; window.addEventListener('an:teacher-material-tab', h); return()=>window.removeEventListener('an:teacher-material-tab', h); }, []);
     if (screen === 'asistencia') return <section style={{ padding:18 }}><Header data={['Gestión Académica','Asistencia','Resumen y accesos de asistencia.']} /><AsistenciaPassthrough props={props}/></section>;
     const title = TITLES[screen] || TITLES.info;
     const docs = screen === 'info' ? INFO_DOCS : (PLAN_DOCS[screen] || []);
-    return <section data-screen-label={'Docente · CS21A5 · ' + screen} style={{ padding:18 }}>
+    return <section data-screen-label={'Docente · CS21A6 · ' + screen} style={{ padding:18 }}>
       <Header data={title}/>
       <DocumentViewer docs={docs}/>
     </section>;
   }
 
   function install(){
-    if (!window.MaterialesView || window.MaterialesView.__cs21a5) return;
+    if (!window.MaterialesView || window.MaterialesView.__cs21a6) return;
     const Base = window.MaterialesView;
-    const Wrapped = function MaterialesViewCS21A5(props){
+    const Wrapped = function MaterialesViewCS21A6(props){
       const u = session();
       if (!u || u.rol !== 'teacher') return <Base {...props}/>;
-      return <TeacherDocsHubCS21A5 {...props}/>;
+      return <TeacherDocsHubCS21A6 {...props}/>;
     };
-    Wrapped.__cs21a5 = true;
+    Wrapped.__cs21a6 = true;
     Wrapped.__base = Base;
-    try { window.MaterialesView.__cs21a4base = Base.__base || Base; } catch(_) {}
     window.MaterialesView = Wrapped;
     try { MaterialesView = Wrapped; } catch(_) {}
   }
