@@ -1,0 +1,47 @@
+/* F98.4-Z6-CS21A20C · Encabezados ordenables de la tabla de leads */
+.vx-table th { padding: 0; }
+.vx-sort-head {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 9px 7px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+}
+.vx-sort-head:hover,
+.vx-sort-head:focus-visible {
+  background: rgba(0,47,108,.08);
+  color: var(--v-navy);
+  outline: none;
+}
+.vx-sort-head.active {
+  background: rgba(0,47,108,.10);
+  color: var(--v-navy);
+}
+.vx-sort-icon {
+  flex-shrink: 0;
+  min-width: 10px;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--v-ink-3);
+}
+.vx-sort-head.active .vx-sort-icon { color: var(--v-red); }
+.vx-table th:last-child {
+  padding: 11px 7px;
+  text-align: left;
+}
+@media (max-width: 1050px) {
+  .vx-sort-head { padding-left: 5px; padding-right: 5px; font-size: 8.5px; }
+  .vx-table th:last-child { padding-left: 5px; padding-right: 5px; font-size: 8.5px; }
+}
