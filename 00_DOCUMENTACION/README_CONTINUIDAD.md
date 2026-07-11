@@ -1,64 +1,80 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A36  
+**Versión integral:** F98.4-Z6-CS21A37  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** F98.4-Z6-CS21A36  
+**Frontend activo:** F98.4-Z6-CS21A37  
 **Corte documental:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · rama `main`
 
-## 1. Cambio CS21A36
+## 1. Cambio CS21A37
 
-CS21A36 modifica únicamente el frontend de **Consulta individual** para permitir aplicar pagos sin salir del expediente.
+CS21A37 modifica únicamente el frontend de **Seguimiento inmediato**.
 
 ### Archivos
 
-- `src/admin_students_inline_payment_cs21a36.jsx`
+- `src/admin_master_conape_movements_cs21a25.jsx`
 - `campus.html`
 
-### Experiencia de uso
+### Botón WA
 
-1. Expandir el nivel en Consulta individual.
-2. Presionar `Pago`.
-3. La barra de búsqueda aparece en la cabecera del intento financiero vigente.
-4. Buscar por documento, fecha o descripción.
-5. Seleccionar un comprobante con saldo disponible.
-6. Usar `− / +` dentro de Matrícula, Cuotas, Certificado y, cuando corresponda, Programa Completo o TOEIC.
-7. Seleccionar cargos especiales pendientes por su monto exacto.
-8. Revisar el resumen y confirmar.
-9. La ficha se actualiza en el mismo lugar, sin navegar a otra sección.
+El botón ahora muestra `WA Solicitar pago` y prepara el siguiente texto:
 
-Los intentos históricos permanecen de solo lectura.
+> ¡Buenas noticias [Nombre]! 🥳
+>
+> CONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.
+>
+> Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
 
-## 2. Seguridad y reglas financieras
+Antes de abrir WhatsApp:
 
-El frontend no escribe directamente en `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS`, `PAGOS_OPERACIONES` ni `BDBANCARIO`.
+1. Consulta `getEstudiante` por el código vinculado.
+2. Lee el nivel y sus rubros pendientes vigentes.
+3. Calcula el monto pendiente de Matrícula + Cuotas + Certificado.
+4. Para I2 añade Programa Completo y TOEIC cuando estén pendientes.
+5. Identifica bimestre o cuatrimestre.
+6. Agrega una línea final con nivel, tipo de periodo y monto.
 
-CS21A36 reutiliza los endpoints existentes `getEstudiante`, `getComprobantes` y `aplicarPago`. El backend CS21A34 sigue siendo la única autoridad para:
+Para B1, B2 e I1:
 
-- grupo e intento canónicos;
-- estado financiero vigente;
-- saldo bancario disponible;
-- máximo aplicable por rubro;
-- reglas de Certificado, Programa Completo y TOEIC;
-- cargos especiales por `CARGO_ID` y monto exacto;
-- generación de recibos;
-- escrituras y rollback;
-- idempotencia mediante `request_id`;
-- sincronización CONAPE.
+`El monto correspondiente a [nivel] ([bimestre/cuatrimestre]) es de ₡[monto].`
 
-El comprobante se revalida al seleccionarlo y nuevamente antes de aplicar. El backend realiza una validación final bajo bloqueo. Nunca se trasladan pagos entre niveles o intentos.
+Para I2:
 
-## 3. Patrón auditado de pagos reales
+`El monto correspondiente al último nivel, Intermedio II ([bimestre/cuatrimestre]), es de ₡[monto].`
 
-`PAGOS_OPERACIONES` confirma el flujo que debe conservarse:
+La imagen no se adjunta ni se descarga desde el Campus; el usuario la incorpora manualmente en WhatsApp.
 
-- pagos de Básico II por ₡334.200 divididos en Matrícula ₡20.000, Cuotas ₡299.200 y Certificado ₡15.000;
-- pagos de Intermedio II divididos en Matrícula, Cuotas, Certificado y TOEIC;
-- Programa Completo puede consumir posteriormente el saldo remanente del mismo comprobante.
+## 2. Protección contra cobro duplicado
 
-Por eso la interfaz usa una sola búsqueda bancaria por intento y varios selectores de rubro.
+Los movimientos ubicados en `Aplicados en sistema` ya no ofrecen un mensaje para solicitar pago. En su lugar muestran:
 
-## 4. Backend preservado CS21A34
+`Aplicado · no enviar cobro`
+
+Esto evita enviar el texto de cobro a una persona cuyo periodo ya figura con estado `NO` en la fila exacta de `7-morosidad`.
+
+## 3. Origen del monto
+
+- Fuente principal al pulsar WA: respuesta vigente de `getEstudiante`.
+- Respaldo visual: fila coincidente de `data.collections.rows` por código + nivel.
+- No se usa `appliedAmount` como costo del nivel.
+- Si no se confirma un monto positivo, el mensaje base se abre sin cifra; nunca se inventa un costo.
+- El frontend no escribe en `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS`, `PAGOS_OPERACIONES` ni `BDBANCARIO`.
+
+## 4. CS21A36 preservado
+
+Consulta individual mantiene la aplicación de pagos dentro del intento financiero vigente:
+
+- una búsqueda bancaria por intento;
+- comprobantes con saldo disponible;
+- revalidación al seleccionar y antes de aplicar;
+- controles `− / +` por rubro;
+- cargos especiales con `CARGO_ID` y monto exacto;
+- intentos históricos de solo lectura;
+- actualización de la ficha sin navegar.
+
+Nunca se trasladan pagos entre niveles o intentos.
+
+## 5. Backend preservado CS21A34
 
 No se modificó Apps Script. El backend completo vigente continúa siendo:
 
@@ -66,24 +82,24 @@ No se modificó Apps Script. El backend completo vigente continúa siendo:
 - ZIP: `Code_F98_4_Z6_CS21A34_SEGUIMIENTO_CONAPE_FUENTE_OFICIAL_COMPLETO.zip`
 - SHA-256 TXT: `c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35`
 
-## 5. Cambios anteriores preservados
+## 6. Cambios anteriores preservados
 
-- CS21A35: Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO` cuando existe `DATOS.COMENTARIO_ADMIN`.
-- CS21A34: Seguimiento inmediato lee directamente el archivo externo oficial `7-morosidad`.
-- Fuente oficial de mora: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`, pestaña `Hoja 1`.
+- CS21A36: aplicar pago dentro de Consulta individual.
+- CS21A35: Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO`.
+- CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
+- Fuente oficial: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`, pestaña `Hoja 1`.
 - Estado `NO` = aplicado; `SI` = pendiente; sin fila exacta = revisión.
 
-## 6. QA obligatorio antes de producción
+## 7. QA obligatorio
 
-1. Buscar un comprobante con saldo sin aplicar nada.
-2. Verificar que un intento histórico no muestre controles de escritura.
-3. Probar un Básico II con distribución Matrícula + Cuotas + Certificado.
-4. Probar saldo parcial y confirmar que el total no lo exceda.
-5. Probar que un comprobante agotado sea rechazado al confirmar.
-6. Confirmar las filas generadas en `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS` y `PAGOS_OPERACIONES`.
-7. Simular reintento tras demora y confirmar que no se duplique la operación.
-8. Confirmar que la Consulta individual se refresque sin abandonar la pantalla.
+1. Probar un nombre guardado en formato apellidos + nombres y confirmar el nombre de pila.
+2. Probar B2 cuatrimestral y verificar el monto pendiente real.
+3. Probar un grupo bimestral.
+4. Probar I2 con Programa Completo y TOEIC pendientes.
+5. Probar un estudiante sin monto confirmable: el texto debe abrir sin cifra.
+6. Confirmar que un movimiento aplicado muestre `Aplicado · no enviar cobro`.
+7. Confirmar que WhatsApp abra con saltos de línea y sin adjuntar imagen.
 
-## 7. Estado de despliegue
+## 8. Estado de despliegue
 
-El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A36 esté publicado en producción.
+El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A37 esté publicado en producción.
