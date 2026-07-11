@@ -1,6 +1,6 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
 
-**Versión integral de continuidad:** F98.4-Z6-CS21A30  
+**Versión integral de continuidad:** F98.4-Z6-CS21A31  
 **Corte documental:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual`  
 **Rama productiva:** `main`
@@ -19,12 +19,22 @@ Este documento es el resumen operativo vigente. Sustituye los README de continui
 ## 2. Estado de versiones
 
 - Backend vigente: **F98.4-Z6-CS21A30**.
-- Frontend vigente: línea **F98.4-Z6-CS21A29**, con controles visuales CS21A27B y navegación CS21A28.
-- El frontend no necesitó un cambio CS21A30; CS21A30 corrige el motor financiero del Apps Script.
+- Frontend vigente: línea **F98.4-Z6-CS21A31**.
+- CS21A31 es un cambio únicamente frontend: Panel Maestro abre **Cobranza y cartera** como primera sección y muestra su botón primero.
+- CS21A31 no modifica cálculos, filtros, pagos, hojas, endpoints ni Apps Script.
 - Si Apps Script cambia, se entrega y conserva siempre el `Code.gs` completo. Los parches se usan solo como explicación técnica, nunca como reemplazo de producción.
 - El TXT y ZIP completos CS21A30 están respaldados en el Drive institucional. Git registra nombre, versión, tamaño, SHA-256 e instrucciones. El conector bloqueó la carga directa del archivo de 2,8 MB; no se dejó una copia parcial.
 
-## 3. Cambios consolidados CS21A20–CS21A30
+## 3. Cambios consolidados CS21A20–CS21A31
+
+### Panel Maestro · prioridad de Cobranza
+
+- **Cobranza y cartera** ocupa la primera posición visual del selector de secciones.
+- Al abrir Panel Maestro, Cobranza y cartera se carga como sección inicial.
+- Resumen institucional queda en segundo lugar y las demás secciones se desplazan hacia la derecha.
+- La selección automática ocurre una sola vez por apertura del Panel Maestro; después el usuario puede navegar normalmente.
+- El cambio se implementa en `src/admin_master_cobranza_first.js` y se carga desde `campus.html`.
+- No se altera `src/admin_master_dashboard.jsx`, el backend ni las fuentes financieras.
 
 ### Consulta individual y progresión académica
 
@@ -70,6 +80,7 @@ Este documento es el resumen operativo vigente. Sustituye los README de continui
 ## 4. Archivos frontend recientes activos
 
 - `campus.html`
+- `src/admin_master_cobranza_first.js` — CS21A31, prioridad visual y carga inicial de Cobranza.
 - `src/aplicar_pago_comprobante_guard_cs21a23.js`
 - `src/admin_master_conape_movements_cs21a25.jsx` — comportamiento visual CS21A26.
 - `src/admin_master_cobranza_collapse_cs21a27.js` — versión activa CS21A27B.
@@ -112,11 +123,14 @@ Los archivos anteriores se cargan desde `campus.html`. No crear otra copia con s
 
 ## 8. QA prioritario de continuidad
 
-1. Estudiante con `CA → APR` y siguiente nivel en `PE`.
-2. Estudiante con `CA → APR` y siguiente nivel `SIN REGISTRO`.
-3. Nivel activo `CA` con certificado pendiente incluido en la deuda.
-4. I2 con certificado, Programa Completo y TOEIC pendientes.
-5. Comprobante agotado fuera del buscador.
-6. Factura que paga Certificado I2 y Programa Completo juntos.
-7. Movimiento CONAPE adelantado con Detalle y Consulta.
-8. Seguimiento inmediato visible con gráficos ocultos.
+1. Confirmar que Panel Maestro abre Cobranza y cartera como primera sección.
+2. Confirmar que Resumen institucional queda segundo y que las demás opciones se desplazan a la derecha.
+3. Confirmar que, después de abrir Cobranza, el usuario puede cambiar libremente a otra sección.
+4. Estudiante con `CA → APR` y siguiente nivel en `PE`.
+5. Estudiante con `CA → APR` y siguiente nivel `SIN REGISTRO`.
+6. Nivel activo `CA` con certificado pendiente incluido en la deuda.
+7. I2 con certificado, Programa Completo y TOEIC pendientes.
+8. Comprobante agotado fuera del buscador.
+9. Factura que paga Certificado I2 y Programa Completo juntos.
+10. Movimiento CONAPE adelantado con Detalle y Consulta.
+11. Seguimiento inmediato visible con gráficos ocultos.
