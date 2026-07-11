@@ -1,93 +1,102 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A41  
-**Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** F98.4-Z6-CS21A41  
+**Versión integral:** F98.4-Z6-CS21A42  
+**Backend canónico:** F98.4-Z6-CS21A42  
+**Frontend activo:** F98.4-Z6-CS21A42  
 **Corte documental:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · rama `main`
 
-## 1. Cambio CS21A41
+## 1. Cambio CS21A42
 
-CS21A41 modifica únicamente la presentación de la identidad del estudiante dentro de **Seguimiento inmediato**.
+CS21A42 corrige la consistencia de **Consulta individual** en tres frentes:
 
-### Archivos
+1. Reduce la carga inicial de cuatro solicitudes a una lectura agrupada.
+2. Después de cambiar ESTATUS, no cierra la ventana hasta obtener la ficha real posterior a la escritura.
+3. Separa claramente el pago del certificado de la emisión del documento.
 
-- `src/admin_master_conape_consulta_cs21a28.js`
-- `styles/admin_master_conape_identity_cs21a39.css`
+## 2. Archivos frontend
+
+- `src/admin_students_fast_loader_cs21a42.js`
+- `src/admin_students_status_fresh_cs21a42.jsx`
+- `src/admin_students_certificate_integrity_cs21a42.jsx`
 - `campus.html`
 
-El componente funcional `src/admin_master_conape_movements_cs21a25.jsx` continúa en CS21A40 y conserva el mensaje WhatsApp vigente. Apps Script no cambia.
+El flujo de pago CS21A36, el panel CONAPE CS21A41 y el mensaje WA CS21A40 permanecen preservados.
 
-## 2. Código primero y más grande
+## 3. Backend completo
 
-Cada fila de Seguimiento inmediato presenta ahora este orden:
+CS21A42 modifica Apps Script. La entrega válida es el `Code.gs` completo:
 
-1. Código del estudiante.
-2. Nombre completo.
-3. Cédula y botón de seguimiento.
+- TXT: `Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.txt`
+- ZIP: `Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.zip`
+- SHA-256 TXT: `80a10e117c30bd563b810e5361c71b737df2229ca1eb87341fd1542036d26b3b`
+- SHA-256 ZIP: `21be937d228f86c13881554adbae1568ba18b4455d81fc84851f4e08b7f8d7e9`
+- TXT: 2.874.656 bytes.
+- ZIP: 738.733 bytes.
+- Sintaxis backend: aprobada con `node --check`.
 
-El código:
+## 4. Carga de Consulta individual
 
-- aparece en un campo azul de solo lectura;
-- usa tamaño de referencia de 19 px en escritorio;
-- queda seleccionado completo al hacer clic;
-- puede copiarse inmediatamente con `Ctrl + C`;
-- conserva únicamente el valor del código, sin incluir la cédula.
+Nuevo endpoint:
 
-En pantallas más estrechas reduce moderadamente su tamaño para mantener toda la fila visible.
+- `getConsultaIndividualFresh`
 
-## 3. Vista compacta preservada
+Entrega en una sola respuesta:
 
-La tabla continúa con seis columnas:
+- ficha académica y financiera;
+- asistencia;
+- comentario administrativo;
+- historial de cambios.
 
-- Estudiante.
-- Movimiento.
-- Periodo / nivel.
-- Campus.
-- Detectado.
-- WA.
+El módulo `admin_students_fast_loader_cs21a42.js` comparte una sola promesa entre las cuatro solicitudes que la interfaz antigua iniciaba en paralelo. Así la pantalla recibe un conjunto coherente y reduce el costo de red.
 
-La columna `Desembolso` continúa eliminada. No debe aparecer scroll horizontal y `WA Pago` debe permanecer visible.
+## 5. Cambio de estatus
 
-## 4. Mensaje WA preservado
+Nuevo endpoint de control:
 
-- Emoticono seguro `🎉` generado mediante Unicode.
-- Negritas con un solo asterisco de WhatsApp.
-- Nombre de pila.
-- Monto pendiente confirmado por `getEstudiante`.
-- Bimestre/cuatrimestre.
-- I2 como último nivel.
-- Sin monto confirmable, no inventa una cifra.
-- Aplicados muestran `No enviar`.
+- `getEstudianteFresh`
 
-## 5. Funciones preservadas
+Después de guardar:
 
-- CS21A40: mensaje WA elegante y seguro.
-- CS21A39: identidad legible.
-- CS21A38: tabla compacta.
-- CS21A36: aplicar pago dentro de Consulta individual.
-- CS21A35: detalle persistente.
-- CS21A34: lectura directa de `7-morosidad`.
-- Nunca se trasladan pagos entre niveles o intentos.
+1. Se invalida el caché corto del estudiante.
+2. Se fuerza `SpreadsheetApp.flush()`.
+3. Se reconstruye la ficha desde las fuentes vigentes.
+4. Solo entonces se cierra la ventana y se actualiza el panel.
 
-## 6. Backend preservado CS21A34
+Si la reconstrucción falla, la ventana permanece abierta y muestra el error. No se presenta una ficha vacía ni se obliga al usuario a usar `Ctrl+R`.
 
-No se modificó Apps Script. El backend completo vigente continúa siendo:
+## 6. Certificados
 
-- TXT: `Code_F98_4_Z6_CS21A34_SEGUIMIENTO_CONAPE_FUENTE_OFICIAL_COMPLETO.txt`
-- ZIP: `Code_F98_4_Z6_CS21A34_SEGUIMIENTO_CONAPE_FUENTE_OFICIAL_COMPLETO.zip`
-- SHA-256 TXT: `c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35`
+La tarjeta de certificado separa:
 
-## 7. QA obligatorio
+- **Pago financiero**: PAGADO / PENDIENTE.
+- **Documento oficial**: EMITIDO / POR EMITIR.
 
-1. Abrir Seguimiento inmediato.
-2. Confirmar que el código aparece antes que el nombre.
-3. Hacer clic en el código y comprobar que queda seleccionado completo.
-4. Copiar con `Ctrl + C` y pegar en Consulta individual para verificar el valor.
-5. Confirmar que la cédula no forma parte del texto copiado.
-6. Confirmar ausencia de scroll horizontal.
-7. Confirmar que `WA Pago`, `Seguimiento`, `Revisado` y `Consulta` continúan funcionando.
+Un certificado pagado sin registro oficial no se muestra como deuda. El mensaje correcto es:
+
+> Pago confirmado. Documento oficial pendiente de emisión.
+
+La asignación de pagos del certificado usa `grupos_certificado_aplicados`. Otros rubros usan `grupos_pago_aplicados`. La coincidencia exacta de grupo tiene prioridad y nunca se mueve un pago entre niveles o intentos.
+
+## 7. Caso de QA obligatorio: estudiante 17110
+
+Resultado esperado:
+
+- B1: APR y certificado emitido.
+- B2: APR.
+- B2 certificado: Pago PAGADO · Documento POR EMITIR.
+- I1: CA.
+- I2: PE.
+
+Pruebas:
+
+1. Abrir Consulta individual del código 17110.
+2. Confirmar que B2 ya no aparece CA por una ficha vieja.
+3. Expandir B2 y verificar las dos líneas del certificado.
+4. Cambiar un estatus de prueba y confirmar que la ventana muestra `Reconstruyendo ficha real…`.
+5. Confirmar que la vista se actualiza sin `Ctrl+R`.
+6. Aplicar un pago controlado y verificar que el panel se refresque con el saldo real.
 
 ## 8. Estado de despliegue
 
-El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A41 esté publicado en producción.
+Código guardado en GitHub `main` y backend respaldado en Drive. Producción no está confirmada.
