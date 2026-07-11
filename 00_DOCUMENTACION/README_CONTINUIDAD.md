@@ -1,7 +1,7 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
 **Versión integral/frontend:** F98.4-Z6-CS21A54  
-**Backend completo objetivo:** CS21A46  
+**Backend completo canónico:** CS21A46  
 **Producción:** no verificada  
 **Corte:** 11-jul-2026
 
@@ -36,7 +36,23 @@ Archivos funcionales modificados:
 - `campus.html`
 - documentación canónica
 
-Apps Script no cambió.
+## Backend canónico localizado y verificado
+
+- Carpeta maestra Drive: `1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a`.
+- Archivo canónico: `Code.gs`.
+- Drive file ID: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Versión: `F98.4-Z6-CS21A46`.
+- Tamaño exacto: `2,879,996` bytes.
+- SHA-256 verificado: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`.
+- Conteo físico: `50,122` saltos de línea y línea final vacía; algunos editores muestran `50,123`.
+- Carpeta de respaldos: `00_BACKUPS_CODE_GS`, ID `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`.
+- Respaldo inicial: `Code_F98_4_Z6_CS21A46_COMPLETO_2026-07-11.gs`, ID `1sJJ9umm5tGoMGibIoQiIECGYFZ91ErCT`.
+- Manifiesto Drive: `README_BACKEND_ACTUAL.txt`, ID `179pqbUFMPiOUN6Lo3YA_Ia51lKtqtP8u`.
+- Regla futura: antes de modificar, crear copia versionada; después, reemplazar el contenido del mismo `Code.gs` canónico preservando su ID.
+- Nunca usar CS21A42 ni otro archivo de menor tamaño/hash como base.
+- Drive actualizado no significa Apps Script desplegado.
+
+Apps Script no fue modificado en esta verificación.
 
 ## Seguimiento inmediato preservado
 
@@ -48,13 +64,6 @@ Orden: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel
 - Sin scroll horizontal.
 - WA visible con `Mensaje`, `Alerta` y `Atención`.
 
-## Backend requerido
-
-- Objetivo: CS21A46.
-- Tamaño declarado: 2,879,996 bytes.
-- SHA-256 declarado: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`.
-- Despliegue no verificado.
-
 ## Pruebas obligatorias
 
 1. Confirmar que no aparece ningún panel lateral interno ni lista antigua de Drive.
@@ -62,4 +71,5 @@ Orden: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel
 3. Confirmar dos páginas enfrentadas y pantalla completa.
 4. Confirmar B1 → SB → U09 = PDF 64–65.
 5. Confirmar que cambiar unidad no recarga el documento completo.
-6. Confirmar reglas CONAPE `01` y estudiante `17110`.
+6. Resolver `Failed to fetch` mediante el backend canónico CS21A46, sin degradar reglas CONAPE.
+7. Confirmar reglas CONAPE `01` y estudiante `17110`.
