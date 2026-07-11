@@ -1,23 +1,60 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A37  
+**Versión integral:** F98.4-Z6-CS21A38  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** F98.4-Z6-CS21A37  
+**Frontend activo:** F98.4-Z6-CS21A38  
 **Corte documental:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · rama `main`
 
-## 1. Cambio CS21A37
+## 1. Cambio CS21A38
 
-CS21A37 modifica únicamente el frontend de **Seguimiento inmediato**.
+CS21A38 modifica únicamente el frontend de **Seguimiento inmediato** para eliminar el scroll horizontal y compactar cada estudiante.
 
 ### Archivos
 
 - `src/admin_master_conape_movements_cs21a25.jsx`
 - `campus.html`
 
-### Botón WA
+### Tabla compacta
 
-El botón ahora muestra `WA Solicitar pago` y prepara el siguiente texto:
+La tabla pasa de siete a seis columnas:
+
+- Estudiante.
+- Movimiento.
+- Periodo / nivel.
+- Campus.
+- Detectado.
+- WA.
+
+La columna `Desembolso` fue eliminada completamente.
+
+La tabla ahora:
+
+- usa el ancho total disponible del panel;
+- no fuerza `min-width`;
+- oculta el desbordamiento horizontal;
+- distribuye las seis columnas con `table-layout: fixed`;
+- acorta nombres, grupos y fechas solo visualmente, conservando el valor completo en tooltip;
+- reduce el alto de cada fila.
+
+## 2. Botones compactos
+
+El botón grande de detalle fue sustituido por:
+
+- `✎ Seguimiento` cuando no hay nota;
+- `✓ Revisado` cuando existe `DATOS.COMENTARIO_ADMIN`.
+
+El contenido completo continúa abriéndose en el mismo modal y sigue persistiendo entre sesiones.
+
+El botón de WhatsApp pasa de `WA Solicitar pago` a `WA Pago`, ocupa el ancho de su propia columna y no debe quedar oculto al extremo derecho.
+
+En movimientos ya aplicados se muestra `No enviar`.
+
+## 3. Texto WA preservado
+
+El botón continúa preparando solo texto; la imagen se adjunta manualmente.
+
+Texto base:
 
 > ¡Buenas noticias [Nombre]! 🥳
 >
@@ -25,54 +62,15 @@ El botón ahora muestra `WA Solicitar pago` y prepara el siguiente texto:
 >
 > Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
 
-Antes de abrir WhatsApp:
+Al pulsar WA se consulta `getEstudiante`, se identifica bimestre/cuatrimestre y se agrega el monto pendiente real del nivel. I2 se identifica como último nivel. Si no puede confirmarse una cifra, no se inventa.
 
-1. Consulta `getEstudiante` por el código vinculado.
-2. Lee el nivel y sus rubros pendientes vigentes.
-3. Calcula el monto pendiente de Matrícula + Cuotas + Certificado.
-4. Para I2 añade Programa Completo y TOEIC cuando estén pendientes.
-5. Identifica bimestre o cuatrimestre.
-6. Agrega una línea final con nivel, tipo de periodo y monto.
+## 4. Funciones preservadas
 
-Para B1, B2 e I1:
-
-`El monto correspondiente a [nivel] ([bimestre/cuatrimestre]) es de ₡[monto].`
-
-Para I2:
-
-`El monto correspondiente al último nivel, Intermedio II ([bimestre/cuatrimestre]), es de ₡[monto].`
-
-La imagen no se adjunta ni se descarga desde el Campus; el usuario la incorpora manualmente en WhatsApp.
-
-## 2. Protección contra cobro duplicado
-
-Los movimientos ubicados en `Aplicados en sistema` ya no ofrecen un mensaje para solicitar pago. En su lugar muestran:
-
-`Aplicado · no enviar cobro`
-
-Esto evita enviar el texto de cobro a una persona cuyo periodo ya figura con estado `NO` en la fila exacta de `7-morosidad`.
-
-## 3. Origen del monto
-
-- Fuente principal al pulsar WA: respuesta vigente de `getEstudiante`.
-- Respaldo visual: fila coincidente de `data.collections.rows` por código + nivel.
-- No se usa `appliedAmount` como costo del nivel.
-- Si no se confirma un monto positivo, el mensaje base se abre sin cifra; nunca se inventa un costo.
-- El frontend no escribe en `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS`, `PAGOS_OPERACIONES` ni `BDBANCARIO`.
-
-## 4. CS21A36 preservado
-
-Consulta individual mantiene la aplicación de pagos dentro del intento financiero vigente:
-
-- una búsqueda bancaria por intento;
-- comprobantes con saldo disponible;
-- revalidación al seleccionar y antes de aplicar;
-- controles `− / +` por rubro;
-- cargos especiales con `CARGO_ID` y monto exacto;
-- intentos históricos de solo lectura;
-- actualización de la ficha sin navegar.
-
-Nunca se trasladan pagos entre niveles o intentos.
+- CS21A36: aplicar pago dentro de Consulta individual.
+- CS21A35: detalle persistente de seguimiento.
+- CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
+- Estado `NO` = aplicado; `SI` = pendiente; sin fila exacta = revisión.
+- Nunca se trasladan pagos entre niveles o intentos.
 
 ## 5. Backend preservado CS21A34
 
@@ -82,24 +80,17 @@ No se modificó Apps Script. El backend completo vigente continúa siendo:
 - ZIP: `Code_F98_4_Z6_CS21A34_SEGUIMIENTO_CONAPE_FUENTE_OFICIAL_COMPLETO.zip`
 - SHA-256 TXT: `c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35`
 
-## 6. Cambios anteriores preservados
+## 6. QA obligatorio
 
-- CS21A36: aplicar pago dentro de Consulta individual.
-- CS21A35: Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO`.
-- CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
-- Fuente oficial: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`, pestaña `Hoja 1`.
-- Estado `NO` = aplicado; `SI` = pendiente; sin fila exacta = revisión.
+1. Abrir Seguimiento inmediato en el ancho normal del Panel Maestro.
+2. Confirmar que no aparece barra horizontal.
+3. Confirmar que `Desembolso` ya no existe.
+4. Verificar nombre, cédula/código, movimiento, periodo/nivel, Campus, detectado y WA en la misma vista.
+5. Verificar que `✎ Seguimiento` y `✓ Revisado` no ensanchan la fila.
+6. Confirmar que `WA Pago` siempre es visible.
+7. Abrir una nota larga y confirmar que el contenido completo sigue en el modal.
+8. Probar un movimiento aplicado y confirmar `No enviar`.
 
-## 7. QA obligatorio
+## 7. Estado de despliegue
 
-1. Probar un nombre guardado en formato apellidos + nombres y confirmar el nombre de pila.
-2. Probar B2 cuatrimestral y verificar el monto pendiente real.
-3. Probar un grupo bimestral.
-4. Probar I2 con Programa Completo y TOEIC pendientes.
-5. Probar un estudiante sin monto confirmable: el texto debe abrir sin cifra.
-6. Confirmar que un movimiento aplicado muestre `Aplicado · no enviar cobro`.
-7. Confirmar que WhatsApp abra con saltos de línea y sin adjuntar imagen.
-
-## 8. Estado de despliegue
-
-El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A37 esté publicado en producción.
+El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A38 esté publicado en producción.
