@@ -1,26 +1,30 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A55",
+  "version": "F98.4-Z6-CS21A56",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "production_deployment_confirmed": false,
   "backend": {
-    "version": "F98.4-Z6-CS21A55",
+    "version": "F98.4-Z6-CS21A56",
     "base_preserved": "F98.4-Z6-CS21A46",
+    "previous_version_preserved": "F98.4-Z6-CS21A55",
     "canonical_verified": true,
     "stored_in_github": false,
-    "canonical_location": "Drive folder and file recorded in AppsScript/README.md and README_BACKEND_ACTUAL.txt",
-    "backup_created_before_change": true,
-    "size_bytes": 2889170,
-    "sha256": "127d9bbe403fa3a91073081d8a11a2a633d32e0c5931784d393126ee2cd321df",
-    "newline_count": 50293,
-    "endpoints_added": ["teacherBooksOpenPdf", "teacherBooksReadRange"],
+    "canonical_drive_folder_id": "1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a",
+    "canonical_drive_file_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
+    "backup_drive_folder_id": "1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr",
+    "pre_change_backup_file_id": "1tkxE2BcaDEyIprmvzks9A1x_CF4punuM",
+    "size_bytes": 2889401,
+    "sha256": "eef075af1db53608b68f9a76ad0ea5ba4440c0a20bed8a545c62a99cab2d9a2c",
+    "newline_count": 50291,
+    "endpoints": ["teacherBooksOpenPdf", "teacherBooksReadRange"],
     "read_only_change": true,
+    "resolved_book_id_cache": false,
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A55",
+    "version": "F98.4-Z6-CS21A56",
     "github_saved": true,
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
@@ -29,10 +33,10 @@
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books": "14cf0c1440041945c611999a4ff0846cef4ce090",
+      "teacher_books": "bfba92897b45723aafb0c75da7700e7a478f7ebe",
       "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
       "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
-      "campus": "6c3ae4259cd4452978fce18b3cd60319cb40c6c8"
+      "campus": "8bac5a8297f37ed261d5bfaf04954d5b3016c091"
     },
     "production_deployment_confirmed": false
   },
@@ -52,8 +56,17 @@
     "direct_drive_fetch": false,
     "drive_preview_fallback": false,
     "dynamic_folder_resolution": true,
+    "force_live_resolution_on_view_entry": true,
+    "manual_refresh_control": "Actualizar desde Drive",
     "excluded_filename_markers": ["ORIGINAL", "COPIA", "COPY", "BACKUP", "RESPALDO", "OLD", "ANTIGUO"],
-    "critical_test": "B1 SB U09 renders PDF pages 64-65 without download or Failed to fetch"
+    "b1": {
+      "folder_id": "1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH",
+      "active_sb_file_id": "1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF",
+      "active_sb_file_name": "Interchange 5th intro-SB.pdf",
+      "active_sb_size_bytes": 21376936,
+      "resolution_rule": "prefer active ID only while present in official folder, otherwise latest valid PDF"
+    },
+    "critical_test": "B1 SB U09 renders PDF pages 64-65 from active file without stale ID, download or Failed to fetch"
   },
   "seguimiento_inmediato": {
     "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
