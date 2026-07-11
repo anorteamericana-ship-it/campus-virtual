@@ -1,72 +1,81 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A42",
-  "cut": "2026-07-10",
+  "version": "F98.4-Z6-CS21A43",
+  "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "backend": {
-    "version": "F98.4-Z6-CS21A42",
+    "version": "F98.4-Z6-CS21A43",
     "changed_in_this_cut": true,
     "canonical_name": "Code.gs",
-    "txt_name": "Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.txt",
-    "txt_size_bytes": 2874656,
-    "txt_sha256": "80a10e117c30bd563b810e5361c71b737df2229ca1eb87341fd1542036d26b3b",
-    "zip_name": "Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.zip",
-    "zip_size_bytes": 738733,
-    "zip_sha256": "21be937d228f86c13881554adbae1568ba18b4455d81fc84851f4e08b7f8d7e9",
+    "delivery_name": "Code_F98_4_Z6_CS21A43_SEGUIMIENTO_HISTORIAL_COMPLETO.gs",
+    "size_bytes": 2877888,
+    "sha256": "8eefafd6f8054033273c4a4451e85a55ce66735ccfeb6b141f820c290471fcca",
     "syntax_check": "node --check passed",
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A42",
+    "version": "F98.4-Z6-CS21A43",
     "changed_in_this_cut": true,
     "files": [
-      "src/admin_students_fast_loader_cs21a42.js",
-      "src/admin_students_status_fresh_cs21a42.jsx",
-      "src/admin_students_certificate_integrity_cs21a42.jsx",
+      "src/admin_master_conape_movements_cs21a25.jsx",
+      "styles/admin_master_conape_identity_cs21a39.css",
       "campus.html"
     ],
-    "git_blobs": {
-      "fast_loader": "a52417137daa4c3bdef1631db9310dec01132879",
-      "status_fresh": "06205b0ba934363d799341ace4654a8c7481f52a",
-      "certificate_integrity": "32bdc189c43ff182f8419d19e751c6ddc00c889b",
-      "campus": "8ad8bd1796b30ed3d10e759122a91649a6bc0619"
+    "local_integrity": {
+      "src/admin_master_conape_movements_cs21a25.jsx": {
+        "sha256": "c309cb082ec6b6a26ade6c10c104f471b3143f205d2cb725c46b659fb9548f34",
+        "size": 17464
+      },
+      "styles/admin_master_conape_identity_cs21a39.css": {
+        "sha256": "abd29832f6c824b1e56c51b899731bd3579f6c9c499b000164ed776660c6792a",
+        "size": 5135
+      },
+      "campus.html": {
+        "sha256": "63accd063b55aae7941269c4f1368a7c7374a9afdcd7d381a1383d2d4a4d774d",
+        "size": 5050
+      }
     },
     "github_saved": true,
-    "production_deployment_confirmed": false
+    "production_deployment_confirmed": false,
+    "git_blobs": {
+      "movements": "b1a9076baa193a2bfdecf0fa30cca6eeb3db0a11",
+      "identity_css": "fc91dc401eb22eb294c4a4ba4e1a9f69d472d14f",
+      "campus": "42f32d19393f2103feef6401e61dbd0aaa23e960"
+    }
   },
-  "consulta_individual": {
-    "bundled_endpoint": "getConsultaIndividualFresh",
-    "bundled_data": ["ficha", "asistencia", "comentario_admin", "historial"],
-    "fresh_endpoint": "getEstudianteFresh",
-    "status_modal_closes_only_after_fresh_read": true,
-    "full_page_reload_after_status_change": false,
-    "student_cache_invalidated_after_writes": true
+  "seguimiento_inmediato": {
+    "columns": [
+      "Código",
+      "Estudiante",
+      "Resumen académico",
+      "Movimiento",
+      "Periodo / nivel",
+      "Campus",
+      "WA"
+    ],
+    "removed": [
+      "CLIC + CTRL C",
+      "columna Detectado"
+    ],
+    "detected_date_location": "Periodo / nivel",
+    "horizontal_scroll": false,
+    "wa_visible": true,
+    "student_code_only_first_column": true
   },
-  "certificate_integrity": {
-    "payment_and_document_are_independent": true,
-    "certificate_attempt_group_source": "grupos_certificado_aplicados",
-    "other_rubrics_attempt_group_source": "grupos_pago_aplicados",
-    "exact_group_match_first": true,
-    "single_attempt_safe_fallback": true,
-    "never_move_payments_between_levels_or_attempts": true
-  },
-  "control_case_17110": {
-    "B1": "APR, certificado emitido",
-    "B2": "APR, certificado pagado, documento por emitir",
-    "I1": "CA",
-    "I2": "PE"
+  "academic_summary": {
+    "source_name": "6-historial",
+    "spreadsheet_id": "13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI",
+    "sheet_title": "Hoja 1",
+    "read_only": true,
+    "preserve_all_rows": true,
+    "format": "NIVEL · AAAAPTIPO · ESTATUS NOTA"
   },
   "preserved": {
-    "conape_student_code_first": "F98.4-Z6-CS21A41",
-    "conape_whatsapp_text": "F98.4-Z6-CS21A40",
-    "conape_compact_layout": "F98.4-Z6-CS21A38",
-    "inline_payment": "F98.4-Z6-CS21A36",
-    "external_morosidad_source": "F98.4-Z6-CS21A34"
-  },
-  "conape_source": {
-    "spreadsheet_id": "1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg",
-    "sheet_title": "Hoja 1",
-    "direct_external_read": true
+    "morosidad_source": "7-morosidad externo oficial",
+    "whatsapp_text": "CS21A40",
+    "inline_payment": "CS21A36",
+    "certificate_integrity": "CS21A42",
+    "never_move_payments_between_levels_or_attempts": true
   }
 }
