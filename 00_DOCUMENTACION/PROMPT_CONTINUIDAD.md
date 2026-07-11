@@ -4,99 +4,69 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde el corte **F98.4-Z6-CS21A31**.
+Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde el corte **F98.4-Z6-CS21A32**.
 
 ## Forma obligatoria de trabajo
 
-1. Respondeme en español directo y asumí que trabajo por copy/paste, no que programo.
-2. Antes de modificar, indicá si el cambio afecta frontend, Apps Script o ambos, y nombrá los archivos exactos.
-3. Si Apps Script cambia, entregame siempre el **Code.gs completo**. Nunca me des un parche como entrega de producción.
-4. Si frontend cambia, modificá únicamente los archivos necesarios del repositorio `anorteamericana-ship-it/campus-virtual`, rama `main`.
-5. No toqués pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario sin analizar el impacto.
-6. No movás pagos entre niveles o intentos para cuadrar resultados.
-7. No afirmés que algo está desplegado si únicamente fue generado, respaldado o guardado en GitHub.
-8. Actualizá siempre `00_DOCUMENTACION` y evitá crear copias versionadas redundantes.
-
-## Fuentes verdaderas
-
-- `00_DOCUMENTACION/FUENTE_VERDADERA_CAMPUS_VIRTUAL.md`
-- `00_DOCUMENTACION/README_CONTINUIDAD.md`
-- `00_DOCUMENTACION/BIBLIA_DELTA_ACTUAL.md`
-- `00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL.md`
-- `00_DOCUMENTACION/PROMPT_CONTINUIDAD.md`
-- `00_DOCUMENTACION/MANIFIESTO_ACTUAL.json`
-- Backend canónico documentado en `AppsScript/README.md`.
+1. Respondeme en español directo y asumí que trabajo por copy/paste.
+2. Antes de modificar, indicá impacto, archivos exactos y plan.
+3. Si Apps Script cambia, entregá siempre el `Code.gs` completo.
+4. Modificá solo archivos necesarios de `anorteamericana-ship-it/campus-virtual`, rama `main`.
+5. No toqués pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario sin análisis de impacto.
+6. No movás pagos entre niveles o intentos.
+7. No afirmés despliegue si solo fue generado, respaldado o guardado.
+8. Actualizá `00_DOCUMENTACION` sin crear copias redundantes.
 
 ## Estado vigente
 
-- Versión integral: **F98.4-Z6-CS21A31**.
-- Backend: **F98.4-Z6-CS21A30**.
-- Frontend: línea **CS21A31**.
-- Panel Maestro abre **Cobranza y cartera** como primera sección; Resumen institucional queda segundo y las demás opciones se desplazan hacia la derecha.
-- El control activo de ese orden es `src/admin_master_cobranza_first.js`, cargado desde `campus.html`.
-- Último motor financiero: certificado incluido siempre en la deuda del nivel activo.
-- El TXT y ZIP completos CS21A30 están respaldados en el Drive institucional con sus hashes en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
-- El conector GitHub bloqueó la carga directa del archivo de 2,8 MB; los fragmentos incompletos fueron eliminados. No afirmar que existe un Code.gs completo dentro de Git.
-- CS21A30 no está confirmado como desplegado en Apps Script; está confirmado como respaldo canónico íntegro.
+- Versión integral: **F98.4-Z6-CS21A32**.
+- Backend: **CS21A32**.
+- Frontend: **CS21A32**.
+- Panel Maestro abre Cobranza y cartera de primero.
+- Seguimiento inmediato clasifica movimientos CONAPE por estudiante, nivel, grupo/intento y morosidad.
+- “Aplicado en sistema” usa únicamente `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS`.
+- `BDBANCARIO` no participa en esa clasificación.
+- Pendientes recientes quedan arriba; aplicados quedan abajo en bloque plegable.
+- Un pago sin grupo no se atribuye si existen varios intentos del mismo nivel.
+- `7-morosidad` informa SI/NO/SIN FILA, pero no demuestra aplicación.
+- El backend completo está respaldado en Drive y documentado en `AppsScript/README.md`; no existe Code.gs completo en GitHub.
+- No afirmar que CS21A32 está desplegado hasta comprobar reemplazo y actualización de la implementación web.
 
-## Reglas académicas vigentes
+## Reglas financieras
 
-- `DATOS` es identidad maestra y `ESTATUS` es trayectoria académica.
-- Al cambiar `CA → APR`, preguntá si también se activa el siguiente nivel:
-  - Si está `PE`, cambiar `PE → CA` cuando se confirme.
-  - Si está `SIN REGISTRO`, crear la fila oficial en `ESTATUS` y dejarla en `CA` cuando se confirme.
-- La promoción y creación deben ocurrir en una sola operación protegida.
-- Solo usar la misma cohorte si `GRUPOS` tiene una fila real para el siguiente nivel.
-- No copiar evaluaciones, notas ni certificado al nivel nuevo.
-- No promover después de I2 ni cuando el resultado sea `REP` u otro estado.
-- Después de guardar, Consulta individual debe releer el expediente antes de permitir otra edición.
-
-## Reglas financieras vigentes
-
-- B1/B2/I1: deuda completa = **Matrícula + Cuotas + Certificado**.
-- I2: deuda completa = **Matrícula + Cuotas + Certificado I2 + Programa Completo + TOEIC**.
-- El certificado se cobra desde que el nivel está activo; la emisión documental es independiente.
+- B1/B2/I1: Matrícula + Cuotas + Certificado.
+- I2: Matrícula + Cuotas + Certificado I2 + Programa Completo + TOEIC.
 - `PE` y `SIN REGISTRO` no generan deuda.
-- Certificado I2 y Programa Completo pueden pagarse juntos en la misma factura.
-- TOEIC usa el monto individual de `DATOS`; si falta, el monto del grupo/nivel en `GRUPOS`.
-- Un comprobante bancario con saldo `₡0` no aparece en Buscar comprobante bancario.
-- Buscador y guardado final deben calcular el mismo saldo disponible, incluida la columna J histórica de `BDBANCARIO`.
+- Certificado I2 y Programa Completo pueden pagarse juntos.
+- TOEIC usa `DATOS` y, si falta, `GRUPOS`.
+- Comprobantes con saldo cero no aparecen.
 - Nunca mover pagos entre niveles o intentos.
 
-## Panel Maestro · Cobranza y CONAPE
+## Reglas académicas
 
-- **Cobranza y cartera** aparece primero y se carga al abrir Panel Maestro.
-- La selección automática ocurre una sola vez por apertura; después se puede navegar normalmente.
-- Seguimiento inmediato muestra todos los periodos y desembolsos adelantados.
-- Orden: Estudiante, Movimiento, Desembolso, Periodo, Campus, Detectado, Contacto.
-- Las fechas no deben mostrar objetos JavaScript crudos.
-- `Detalle` lee/escribe `DATOS.COMENTARIO_ADMIN`.
-- Debajo de Vinculado existe `Consulta`, que abre el expediente ya cargado.
-- Los gráficos financieros pueden ocultarse, pero Seguimiento inmediato queda siempre visible.
+- `DATOS` es identidad; `ESTATUS` es trayectoria.
+- `CA → APR` puede activar o crear el siguiente nivel en una operación protegida.
+- No copiar evaluaciones, notas ni certificado.
+- No promover después de I2 o con resultado distinto de APR.
+- Consulta individual relee después de una escritura.
 
-## Archivos frontend recientes activos
+## Archivos frontend activos recientes
 
 - `campus.html`
 - `src/admin_master_cobranza_first.js`
-- `src/aplicar_pago_comprobante_guard_cs21a23.js`
-- `src/admin_master_conape_movements_cs21a25.jsx`
+- `src/admin_master_conape_movements_cs21a25.jsx` — contenido CS21A32.
 - `src/admin_master_cobranza_collapse_cs21a27.js`
 - `src/admin_master_conape_consulta_cs21a28.js`
+- `src/aplicar_pago_comprobante_guard_cs21a23.js`
 - `src/admin_students_status_promotion_cs21a28.jsx`
 - `src/admin_students_status_missing_next_cs21a29.jsx`
 
-## Restricciones CONAPE y calendario
+## Primera verificación al continuar
 
-- CONAPE se actualiza manualmente; no crear triggers.
-- Un cambio pendiente de aprobación no mueve al estudiante de su grupo real.
-- No ejecutar limpiezas pesadas dentro de `getGruposActivos`, `getAdminDashboard` o `getRadiografiaGrupo`.
-- `PROTEGIDO` significa que la API externa no pudo verificarse; no maquillar el diagnóstico.
-
-## Primera tarea al iniciar
-
-1. Leé los documentos canónicos.
-2. Verificá `campus.html` y los archivos activos antes de proponer cambios.
-3. Confirmá si el Code.gs CS21A30 fue desplegado o sigue solamente respaldado.
-4. Para cualquier nueva solicitud, explicá impacto, archivos y plan antes de escribir.
+1. Leer documentos canónicos.
+2. Confirmar si CS21A32 fue desplegado o sigue solo respaldado.
+3. Probar un estudiante con intento único y pago aplicado.
+4. Probar una repetición del mismo nivel para confirmar que no hereda pagos.
+5. Probar un pago sin grupo con varios intentos: debe quedar ambiguo.
 
 ---
