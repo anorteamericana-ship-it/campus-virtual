@@ -1,6 +1,6 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A49",
+  "version": "F98.4-Z6-CS21A50",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
@@ -16,26 +16,34 @@
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A49",
+    "version": "F98.4-Z6-CS21A50",
     "github_saved": true,
     "files": [
+      "src/teacher_cs21a_order_fix.jsx",
       "src/admin_master_conape_movements_cs21a25.jsx",
       "styles/admin_master_conape_identity_cs21a39.css",
       "campus.html"
     ],
     "git_blobs": {
+      "teacher_books": "3496140c42a52c339aeefa50a52157ccee597f20",
       "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
       "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
-      "campus": "d2c75e89ee9f88c37591ba8c2f4df4e6d31a0f73"
+      "campus": "58a945180a11d22c9a24fca070f0004bab7e127a"
     },
     "production_deployment_confirmed": false
   },
-  "audit_corrections": [
-    "CS21A46 existed as delivery zip but was absent from canonical continuity",
-    "CS21A47 layout and three WA templates were not committed to the main component",
-    "CS21A48 changed CSS and cache while the component remained CS21A43",
-    "continuity prompt and skill were stale"
-  ],
+  "teacher_books": {
+    "source_spreadsheet_id": "1I5uxY88wu_wNietQLKcYMl7hw7b0-q5ABI3QorY6zI4",
+    "source_spreadsheet_title": "APOLLO_G3_LIMPIO_21-04-26",
+    "source_sheet": "DETALLE DEL PROGRAMA",
+    "source_column": "K",
+    "source_column_title": "Páginas SB",
+    "pdf_page_offset": 6,
+    "student_book_only": true,
+    "unit_start_pages_sb": [2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106],
+    "unit_start_pages_pdf": [8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112],
+    "book_type_buttons": ["SB", "TB", "WB"]
+  },
   "seguimiento_inmediato": {
     "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
     "only_academic_disbursement_number": 1,
