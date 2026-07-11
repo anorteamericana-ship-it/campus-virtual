@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A38**.
+Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A39**.
 
 ## Forma obligatoria
 
@@ -20,42 +20,39 @@ Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Cont
 ## Estado vigente
 
 - Backend: **CS21A34**.
-- Frontend: **CS21A38**.
-- Apps Script no cambió en CS21A38.
-- `campus.html` carga `src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A38`.
+- Frontend integral: **CS21A39**.
+- Apps Script no cambió en CS21A39.
+- El componente de Seguimiento inmediato continúa en `src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A38`.
+- `campus.html` agrega `styles/admin_master_conape_identity_cs21a39.css?v=F98.4Z6CS21A39`.
 
-## Seguimiento inmediato compacto
+## Identidad legible en Seguimiento inmediato
 
-- No debe existir scroll horizontal en la tabla principal.
-- La columna `Desembolso` fue eliminada.
+- Nombre del estudiante: 13.5 px, peso fuerte y color azul institucional.
+- Línea con cédula y código: 10.2 px, peso fuerte, fondo azul claro y borde visible.
+- Primera columna: 31% del ancho de la tabla.
+- Pantallas hasta 1180 px reducen moderadamente el tamaño para conservar toda la fila.
+- El ajuste es solo visual; no altera datos, vínculo, morosidad, clasificación o WhatsApp.
+
+## Seguimiento inmediato compacto preservado
+
+- No debe existir scroll horizontal.
+- La columna `Desembolso` está eliminada.
 - Columnas vigentes: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
-- La tabla usa ancho total, `table-layout: fixed` y no fuerza `min-width`.
-- Nombres y grupos largos usan elipsis con contenido completo en tooltip.
-- `✎ Seguimiento` y `✓ Revisado` son botones pequeños dentro de la celda del estudiante.
-- El botón final se llama `WA Pago` y debe permanecer visible.
+- `✎ Seguimiento` y `✓ Revisado` son botones pequeños.
+- `WA Pago` debe permanecer visible.
 - Movimientos aplicados muestran `No enviar`.
 
 ## Texto WA preservado
 
 El botón prepara solo texto. La imagen se adjunta manualmente.
 
-Texto base:
-
-> ¡Buenas noticias [Nombre]! 🥳
->
-> CONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.
->
-> Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
-
-Reglas:
-
-- Detectar el nombre de pila.
-- Consultar `getEstudiante` al pulsar WA.
-- Calcular el monto pendiente del nivel.
-- Mostrar bimestre o cuatrimestre.
-- Para I2 decir `último nivel`.
-- Si el monto no se confirma, abrir el texto base sin cifra.
-- No enviar automáticamente, no adjuntar imagen y no escribir hojas.
+- Detecta el nombre de pila.
+- Consulta `getEstudiante` al pulsar WA.
+- Calcula el monto pendiente del nivel.
+- Muestra bimestre o cuatrimestre.
+- Para I2 dice `último nivel`.
+- Si el monto no se confirma, abre el texto base sin cifra.
+- No envía automáticamente, no adjunta imagen y no escribe hojas.
 
 ## Aplicar pago dentro de Consulta individual · CS21A36 preservado
 
@@ -77,6 +74,6 @@ Reglas:
 
 ## Estado de despliegue
 
-CS21A38 está guardado en GitHub `main`, pero producción no está confirmada. Ejecutar QA visual en el Panel Maestro y confirmar ausencia de scroll, columna WA visible y botones compactos.
+CS21A39 está guardado en GitHub `main`, pero producción no está confirmada. Ejecutar QA visual confirmando nombre, código, ausencia de scroll y WA visible.
 
 ---
