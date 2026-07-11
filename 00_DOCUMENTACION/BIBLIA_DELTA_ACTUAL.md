@@ -1,87 +1,62 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A32
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A33
 
-Esta Biblia Delta fija las reglas vigentes hasta el corte del 10-jul-2026. Pagos, certificados, trayectoria académica, CONAPE y calendario son módulos críticos.
+Esta Biblia Delta complementa la Biblia histórica y fija las reglas aprobadas hasta el corte del 10-jul-2026.
 
 ## 1. Apps Script
 
-- Toda modificación backend se entrega como `Code.gs` completo.
-- Backend canónico vigente: CS21A32.
-- No instalar fragmentos, overrides sueltos ni funciones duplicadas.
-- Cada corte registra líneas, tamaño, SHA-256 y prueba de sintaxis.
-- Respaldado no significa desplegado.
+- Toda modificación de backend se entrega como `Code.gs` completo.
+- Backend canónico vigente: CS21A33.
+- No instalar fragmentos u overrides sueltos.
+- No afirmar despliegue cuando solo existe respaldo o commit.
 
 ## 2. Seguimiento inmediato CONAPE
 
-### 2.1 Identidad del movimiento
+### 2.1 Conversión de periodo
 
-- La llave principal del desembolso es cédula + número de desembolso + periodo + año.
-- Se conserva únicamente el movimiento más reciente de esa llave.
-- Los pendientes se ordenan por detección más reciente.
-- Los aplicados se mantienen al final, fuera de la cola principal, sin eliminarlos.
+`PERIODO_MES` de CONAPE se convierte así para consultar `7-morosidad`:
 
-### 2.2 Enlace académico
+- 01, 02, 03, 04 → periodo 1.
+- 05, 06, 07, 08 → periodo 2.
+- 09, 10, 11, 12 → periodo 3.
 
-- El movimiento se vincula con `DATOS`, `ESTATUS` y `GRUPOS`.
-- El nivel se resuelve por estudiante + año + periodo.
-- El grupo identifica el intento académico.
-- Los intentos repetidos del mismo nivel se mantienen separados.
-- Si no se resuelve un nivel, el movimiento queda pendiente de enlace.
+### 2.2 Llave y clasificación
 
-### 2.3 Aplicado en sistema
+La búsqueda se realiza por:
 
-- Solo puede mostrarse **Aplicado en sistema** si existe evidencia real en:
-  - `PAGOS`
-  - `OTROS PAGOS`
-  - `PAGOS_CAMPUS`
-- La evidencia debe coincidir con estudiante + nivel + grupo/intento.
-- Un pago sin grupo se acepta únicamente si existe un solo intento del nivel.
-- Con varios intentos, el pago sin grupo queda ambiguo y no se atribuye.
-- `BDBANCARIO` está excluida porque contiene movimientos crudos del banco.
-- Solicitudes de pago pendientes no son pagos aplicados.
-- La marca significa que existe pago aplicado al nivel/intento; no reescribe ni consume el movimiento CONAPE.
+`CEDULA + PERIODO_ANIO + PERIODO_CUATRIMESTRAL`
 
-### 2.4 Morosidad
+- Fila exacta con `ESTADO = NO` → **Aplicado en sistema**.
+- Fila exacta con `ESTADO = SI` → pendiente.
+- Sin fila exacta → pendiente para revisión.
+- Si existen filas duplicadas conflictivas y alguna marca `SI`, prevalece la condición conservadora `SI` y se alerta la duplicidad.
 
-- `7-morosidad` se enlaza por cédula + año + periodo.
-- Estados visuales: Moroso, No moroso, Sin fila y Sin nivel enlazado.
-- Morosidad `NO` no demuestra por sí sola que un desembolso fue aplicado.
-- Morosidad `SI` no impide mostrar una aplicación parcial existente.
-- Los duplicados de morosidad se advierten, no se corrigen automáticamente.
+### 2.3 Fuentes
 
-## 3. Finanzas vigentes
+- `7-morosidad` decide la clasificación.
+- `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son complementarias.
+- `BDBANCARIO` está excluida.
+- La función es solo de lectura; no escribe ni corrige morosidad.
 
-- B1, B2 e I1: Matrícula + Cuotas + Certificado.
-- I2: Matrícula + Cuotas + Certificado I2 + Programa Completo + TOEIC.
-- Certificado y emisión documental son conceptos separados.
-- `PE` y `SIN REGISTRO` no generan deuda.
+### 2.4 Orden visual
+
+- Pendientes primero.
+- Dentro de pendientes, detección más reciente primero.
+- Aplicados fuera de la cola principal, en bloque inferior plegable.
+
+## 3. Caso patrón
+
+Cédula `119760781`, movimiento `09/2026`:
+
+- septiembre → periodo 3;
+- `7-morosidad`: año 2026, periodo 3, estado NO;
+- resultado: **Aplicado en sistema**.
+
+## 4. Reglas críticas preservadas
+
 - No mover pagos entre niveles o intentos.
-- Certificado I2 y Programa Completo pueden pagarse juntos.
-- TOEIC usa valor individual de `DATOS` o respaldo de `GRUPOS`.
-
-## 4. Trayectoria académica
-
-- `DATOS` es identidad maestra; `ESTATUS` es trayectoria.
-- `CA → APR` puede activar `PE → CA` o crear el siguiente nivel faltante como `CA` en una operación protegida.
-- No copiar notas, evaluaciones ni certificado.
-- No promover después de I2 ni con `REP` u otro estado.
-- Consulta individual relee el expediente después de guardar.
-
-## 5. Panel Maestro
-
-- Cobranza y cartera es la primera sección y carga al abrir.
-- Resumen institucional queda segundo.
-- Seguimiento inmediato permanece visible aunque se oculten gráficos.
-- Detalle usa `DATOS.COMENTARIO_ADMIN`.
-- Consulta abre el expediente precargado.
-- CONAPE se actualiza manualmente; no crear triggers.
-
-## 6. Calendario y práctica pedagógica
-
-- No ejecutar escrituras pesadas dentro de endpoints rápidos del calendario/dashboard.
-- Academia Play y English LAB no afectan notas, aprobación, certificados ni pagos.
-
-## 7. Regla de archivos
-
-- Actualizar archivos activos cuando sea seguro.
-- No crear documentación versionada redundante.
-- El historial queda en Git.
+- No modificar `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` o `7-morosidad` desde este cruce.
+- No crear triggers automáticos para CONAPE.
+- No presentar solicitudes pendientes como pagos aplicados.
+- Pago de certificado y emisión documental siguen siendo conceptos separados.
+- B1/B2/I1: Matrícula + Cuotas + Certificado.
+- I2: Matrícula + Cuotas + Certificado I2 + Programa Completo + TOEIC.
