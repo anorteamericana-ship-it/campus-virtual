@@ -1,0 +1,64 @@
+{
+  "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
+  "version": "F98.4-Z6-CS21A30",
+  "cut": "2026-07-10",
+  "repository": "anorteamericana-ship-it/campus-virtual",
+  "branch": "main",
+  "frontend_line": "F98.4-Z6-CS21A29",
+  "backend": {
+    "version": "F98.4-Z6-CS21A30",
+    "canonical_name": "Code.gs",
+    "storage": "AppsScript/archivo_canonico/Code.gs.xz.b85.part01-part18",
+    "rebuild_script": "AppsScript/RECONSTRUIR_CODE_GS.py",
+    "source_lines": 49838,
+    "source_size_bytes": 2853627,
+    "sha256": "007f26c35e5c42015c40a238fbc9523eacf7444a45323853427111f96adc83cc",
+    "syntax_check": "node --check passed",
+    "deployment": "manual Apps Script replacement and web-app redeployment required"
+  },
+  "previous_stable_reference": {
+    "version": "F98.4-Z6-CS21A29",
+    "git_commit": "767e7ba40fe4f66019d279ec5cb781d955bb56d8",
+    "loaded_as_backend": false,
+    "note": "Referencia histórica por commit; no se conserva una segunda copia activa."
+  },
+  "canonical_documents": [
+    "00_DOCUMENTACION/FUENTE_VERDADERA_CAMPUS_VIRTUAL.md",
+    "00_DOCUMENTACION/README_CONTINUIDAD.md",
+    "00_DOCUMENTACION/BIBLIA_DELTA_ACTUAL.md",
+    "00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL.md",
+    "00_DOCUMENTACION/PROMPT_CONTINUIDAD.md",
+    "00_DOCUMENTACION/MANIFIESTO_ACTUAL.json"
+  ],
+  "active_recent_frontend_files": [
+    "campus.html",
+    "src/aplicar_pago_comprobante_guard_cs21a23.js",
+    "src/admin_master_conape_movements_cs21a25.jsx",
+    "src/admin_master_cobranza_collapse_cs21a27.js",
+    "src/admin_master_conape_consulta_cs21a28.js",
+    "src/admin_students_status_promotion_cs21a28.jsx",
+    "src/admin_students_status_missing_next_cs21a29.jsx"
+  ],
+  "financial_rules": {
+    "B1_B2_I1": ["MATRICULA", "CUOTAS", "CERTIFICADO"],
+    "I2": ["MATRICULA", "CUOTAS", "CERTIFICADO_I2", "PROGRAMA_COMPLETO", "TOEIC"],
+    "PE_generates_debt": false,
+    "missing_level_generates_debt": false,
+    "move_payments_between_levels": false,
+    "zero_balance_bank_receipt_visible": false
+  },
+  "academic_rules": {
+    "CA_to_APR_can_activate_next_PE": true,
+    "CA_to_APR_can_create_missing_next": true,
+    "atomic_promotion": true,
+    "promotion_after_I2": false,
+    "promotion_on_REP": false
+  },
+  "conape": {
+    "manual_mode": true,
+    "automatic_triggers": false,
+    "all_period_movements": true,
+    "advanced_disbursements": true,
+    "immediate_followup_always_visible": true
+  }
+}
