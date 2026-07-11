@@ -1,10 +1,10 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A40",
+  "version": "F98.4-Z6-CS21A41",
   "cut": "2026-07-10",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
-  "frontend_line": "F98.4-Z6-CS21A40",
+  "frontend_line": "F98.4-Z6-CS21A41",
   "backend": {
     "version": "F98.4-Z6-CS21A34",
     "changed_in_this_cut": false,
@@ -12,59 +12,50 @@
     "sha256": "c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35"
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A40",
+    "version": "F98.4-Z6-CS21A41",
     "changed_in_this_cut": true,
-    "control_file": "src/admin_master_conape_movements_cs21a25.jsx",
-    "control_git_blob_sha": "4ffbc5358c4cf90443eda78aa2c62ef218e819b2",
-    "control_sha256": "9e658e60ba07af5b756a2b4a7b0169666c41ec3f6f25b8e2a77887b3ff728502",
-    "control_lines": 209,
-    "control_size_bytes": 19991,
-    "campus_git_blob_sha": "63b113ad4f06505aa5010fc134281dd52f27199e",
+    "movement_component": "src/admin_master_conape_movements_cs21a25.jsx",
+    "movement_component_version": "F98.4-Z6-CS21A40",
+    "movement_component_git_blob_sha": "4ffbc5358c4cf90443eda78aa2c62ef218e819b2",
+    "conape_helper_file": "src/admin_master_conape_consulta_cs21a28.js",
+    "conape_helper_git_blob_sha": "ebce6be01aff6f5cda6cef42291b9e44bf3c7ebc",
     "identity_style_file": "styles/admin_master_conape_identity_cs21a39.css",
-    "identity_style_preserved": true,
-    "syntax_check": "TypeScript JSX parse passed",
+    "identity_style_git_blob_sha": "0227ad851d8cbe1f17df80b456c6cc613f179126",
+    "campus_git_blob_sha": "b61f86cdb01df7f0b27abae9968f4118fc11d1bf",
     "github_saved": true,
     "production_deployment_confirmed": false
   },
-  "conape_whatsapp_text": {
+  "conape_student_code_first": {
     "surface": "Seguimiento inmediato",
-    "button_label": "WA Pago",
-    "text_only": true,
-    "image_attached_by_user": true,
-    "automatic_send": false,
-    "emoji_generation": "String.fromCodePoint(0x1F389)",
-    "emoji_expected": "U+1F389",
-    "replacement_character_prevented": true,
-    "whatsapp_bold_marker": "single_asterisk",
-    "double_asterisk_disallowed": true,
-    "bold_sections": [
-      "greeting",
-      "disbursement_accredited",
-      "payment_urgency",
-      "account_current",
-      "amount"
-    ],
-    "first_name_from_institutional_name": true,
-    "amount_primary_source": "getEstudiante.pendientes.por_nivel",
-    "amount_fallback_source": "collections.rows matched by student code and level",
-    "omit_amount_when_unconfirmed": true,
-    "prevents_duplicate_payment_request": true,
-    "direct_sheet_writes": false
-  },
-  "conape_immediate_followup_identity": {
-    "version": "F98.4-Z6-CS21A39",
-    "student_name_font_px": 13.5,
-    "student_code_line_font_px": 10.2,
-    "student_column_width_percent": 31,
-    "preserved": true
+    "position": "first_item_in_student_cell",
+    "field_type": "readonly_text",
+    "desktop_font_px": 19,
+    "click_selects_full_value": true,
+    "selected_value_contains_only_student_code": true,
+    "student_name_below_code": true,
+    "student_id_below_name": true,
+    "consulta_uses_separated_code": true,
+    "changes_source_data": false,
+    "changes_payments": false,
+    "changes_conape_classification": false
   },
   "conape_immediate_followup_layout": {
-    "version": "F98.4-Z6-CS21A38",
     "horizontal_scroll": false,
     "removed_columns": ["DESEMBOLSO"],
     "visible_columns": ["ESTUDIANTE", "MOVIMIENTO", "PERIODO_NIVEL", "CAMPUS", "DETECTADO", "WA"],
-    "whatsapp_column_reserved": true,
-    "preserved": true
+    "student_column_width_percent": 31,
+    "whatsapp_column_reserved": true
+  },
+  "conape_whatsapp_text": {
+    "version": "F98.4-Z6-CS21A40",
+    "text_only": true,
+    "image_attached_by_user": true,
+    "emoji_generation": "String.fromCodePoint(0x1F389)",
+    "whatsapp_bold_marker": "single_asterisk",
+    "amount_primary_source": "getEstudiante.pendientes.por_nivel",
+    "omit_amount_when_unconfirmed": true,
+    "prevents_duplicate_payment_request": true,
+    "direct_sheet_writes": false
   },
   "inline_payment_preserved": {
     "version": "F98.4-Z6-CS21A36",
