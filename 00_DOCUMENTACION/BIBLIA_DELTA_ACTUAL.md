@@ -1,70 +1,93 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A41
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A42
 
 Esta Biblia Delta fija las reglas aprobadas hasta el corte del 10-jul-2026.
 
 ## 1. Versiones
 
-- Backend canónico: CS21A34.
-- Frontend activo: CS21A41.
+- Backend canónico: CS21A42.
+- Frontend activo: CS21A42.
 - Toda modificación de backend se entrega como `Code.gs` completo.
 - No instalar fragmentos ni afirmar despliegue sin evidencia.
 
-## 2. Código primero en Seguimiento inmediato
+## 2. Consulta individual: lectura real
 
-- El código del estudiante debe ser el primer elemento visible de cada fila.
-- Debe aparecer antes del nombre completo.
-- Tamaño de referencia en escritorio: 19 px, peso fuerte y fondo azul institucional.
-- Debe estar dentro de un campo de solo lectura.
-- Al hacer clic, el valor completo queda seleccionado para copiar con `Ctrl + C`.
-- El texto seleccionado debe contener únicamente el código, nunca la cédula.
-- Debajo se muestran el nombre, la cédula y `Seguimiento` / `Revisado`.
-- El ajuste no modifica el código registrado ni ninguna fuente de identidad.
+- `getEstudiante` puede usar un caché corto para rendimiento durante lecturas normales.
+- Después de cualquier escritura crítica debe invalidarse el caché individual.
+- `getEstudianteFresh` es la ruta obligatoria inmediatamente después de cambiar estatus, aplicar pago, emitir certificado, configurar TOEIC, cambiar grupo o revertir un cambio.
+- La ventana de Cambio de estatus no debe cerrarse hasta que la ficha real posterior a la escritura haya sido reconstruida.
+- Si la lectura fresca falla, la ventana permanece abierta y muestra el error.
+- No usar una recarga total inmediata como sustituto de la lectura real.
 
-## 3. Vista compacta preservada
+## 3. Rendimiento
 
-- La tabla debe caber completa dentro del panel de escritorio sin scroll horizontal.
-- La columna `Desembolso` no debe mostrarse.
-- Las columnas vigentes son: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
-- La primera columna conserva prioridad visual sin ocultar `WA Pago`.
-- La fecha detectada permanece compacta.
+- `getConsultaIndividualFresh` agrupa ficha, asistencia, comentario administrativo e historial en una sola respuesta.
+- Las solicitudes simultáneas de Consulta individual deben compartir la misma lectura agrupada.
+- La optimización no puede sustituir datos reales por valores vacíos ni mezclar respuestas de distintos momentos.
 
-## 4. Mensaje WhatsApp preservado
+## 4. Certificado: dos estados independientes
 
-- El botón se llama `WA Pago`.
-- Solo prepara texto; la imagen se adjunta manualmente.
-- El emoticono se genera con `String.fromCodePoint(0x1F389)`.
-- WhatsApp usa negrita con un solo asterisco: `*texto*`.
-- Usa el nombre de pila.
-- Consulta `getEstudiante` para obtener el monto pendiente vigente.
-- Identifica bimestre o cuatrimestre.
-- I2 se presenta como último nivel.
-- Si no existe monto confirmable, no inventa una cifra.
-- Un movimiento aplicado muestra `No enviar`.
+El panel debe mostrar siempre:
 
-## 5. Seguimiento y Consulta individual
+1. **Pago**: `PAGADO` o `PENDIENTE ₡...`.
+2. **Documento**: `EMITIDO` o `POR EMITIR`.
 
-- `DATOS.COMENTARIO_ADMIN` vacío → `Seguimiento`.
-- Cualquier contenido → `Revisado`.
-- El acceso `Consulta` debe continuar tomando el código correcto incluso después de separar visualmente código y cédula.
-- El botón `Pago` de Consulta individual no saca al usuario del expediente.
-- Existe una sola búsqueda de comprobante por intento.
-- Se revalida al seleccionar y antes de confirmar.
-- Los cargos especiales requieren monto exacto y `CARGO_ID`.
-- Los intentos históricos son de solo lectura.
+Reglas:
 
-El frontend no escribe directamente en hojas financieras. Apps Script conserva la autoridad sobre grupo, intento, deuda, saldo, reglas, recibos, rollback, idempotencia y sincronización CONAPE. Nunca se mueven pagos entre niveles o intentos.
+- Pago completo sin `REG_CERTIFICADOS` = `Pago PAGADO` + `Documento POR EMITIR`.
+- Registro oficial existente = `Documento EMITIDO`.
+- Saldo real = `Pago PENDIENTE`.
+- Nunca presentar `POR EMITIR` como deuda financiera.
+- El certificado puede estar pagado antes de emitirse; son procesos distintos.
 
-## 6. Fuente oficial de morosidad CONAPE
+## 5. Asignación financiera por intento
+
+- Los movimientos de certificado usan `grupos_certificado_aplicados`.
+- Matrícula, cuotas, Programa Completo y TOEIC usan `grupos_pago_aplicados`.
+- Una coincidencia exacta del grupo del movimiento con el intento tiene prioridad.
+- Si existe un único intento del nivel, se permite una asignación segura a ese intento único.
+- Si existen varios intentos y no hay evidencia suficiente, el movimiento queda sin asignar para revisión; nunca se reparte por conveniencia.
+- Nunca mover pagos entre niveles o intentos.
+
+## 6. Caso de control 17110
+
+La lectura real esperada es:
+
+- B1 APR, certificado emitido.
+- B2 APR, certificado pagado y documento por emitir.
+- I1 CA.
+- I2 PE.
+
+B2 debe mostrar `Pago PAGADO` y `Documento POR EMITIR`.
+
+## 7. Aplicar pago dentro de Consulta individual
+
+- Una sola búsqueda de comprobante por intento vigente.
+- Revalidación al seleccionar y antes de aplicar.
+- Controles por rubro.
+- Cargos especiales con `CARGO_ID` y monto exacto.
+- Intentos históricos de solo lectura.
+- El frontend no escribe directamente en hojas financieras.
+- Apps Script conserva la autoridad sobre grupo, intento, deuda, saldo, recibos, rollback, idempotencia y CONAPE.
+
+## 8. Seguimiento inmediato preservado
+
+- Código del estudiante primero y seleccionable.
+- Tabla sin scroll horizontal.
+- Columna `Desembolso` eliminada.
+- `WA Pago` visible.
+- `Seguimiento` / `Revisado` persiste en `DATOS.COMENTARIO_ADMIN`.
+- Mensaje WA con emoticono Unicode seguro y negrita de un asterisco.
+
+## 9. Fuente oficial de morosidad CONAPE
 
 - Spreadsheet ID `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`.
 - Archivo `7-morosidad`.
 - Pestaña `Hoja 1`.
+- Regla: 01–04=P1, 05–08=P2, 09–12=P3; `NO`=aplicado, `SI`=pendiente y sin fila exacta=revisión.
 
-Regla: 01–04=P1, 05–08=P2, 09–12=P3; `NO`=aplicado, `SI`=pendiente y sin fila exacta=revisión.
+## 10. Reglas críticas generales
 
-## 7. Reglas críticas generales
-
-- No modificar directamente `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` o CONAPE desde estas interfaces.
+- No modificar directamente `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` o CONAPE desde el frontend.
 - No crear triggers automáticos para CONAPE.
 - No confundir código guardado con producción desplegada.
-- Antes de producción, probar selección/copia del código, Consulta individual, ausencia de scroll y WA visible.
+- Antes de producción, probar el caso 17110, cambio de estatus sin Ctrl+R y una aplicación de pago controlada.
