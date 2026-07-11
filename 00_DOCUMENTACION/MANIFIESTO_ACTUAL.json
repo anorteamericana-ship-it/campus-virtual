@@ -8,8 +8,11 @@
   "backend": {
     "version": "F98.4-Z6-CS21A30",
     "canonical_name": "Code.gs",
-    "storage": "AppsScript/archivo_canonico/Code.gs.xz.b85.part01-part18",
-    "rebuild_script": "AppsScript/RECONSTRUIR_CODE_GS.py",
+    "full_text_backup": "Google Drive institucional · Code_F98_4_Z6_CS21A30_DEUDA_COMPLETA_CERTIFICADO_I2_COMPLETO.txt",
+    "full_zip_backup": "Google Drive institucional · Code_F98_4_Z6_CS21A30_DEUDA_COMPLETA_CERTIFICADO_I2_COMPLETO.zip",
+    "github_record": "AppsScript/README.md",
+    "github_full_copy": false,
+    "github_copy_note": "El conector bloqueó la carga del archivo de 2,8 MB y sus formas comprimidas. Se retiraron los fragmentos incompletos.",
     "source_lines": 49838,
     "source_size_bytes": 2853627,
     "sha256": "007f26c35e5c42015c40a238fbc9523eacf7444a45323853427111f96adc83cc",
@@ -28,7 +31,8 @@
     "00_DOCUMENTACION/BIBLIA_DELTA_ACTUAL.md",
     "00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL.md",
     "00_DOCUMENTACION/PROMPT_CONTINUIDAD.md",
-    "00_DOCUMENTACION/MANIFIESTO_ACTUAL.json"
+    "00_DOCUMENTACION/MANIFIESTO_ACTUAL.json",
+    "AppsScript/README.md"
   ],
   "active_recent_frontend_files": [
     "campus.html",
