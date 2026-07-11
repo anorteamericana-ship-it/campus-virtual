@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA, Costa Rica. Continúa desde F98.4-Z6-CS21A40.
+Estoy trabajando en CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA, Costa Rica. Continúa desde F98.4-Z6-CS21A41.
 
 ## Forma obligatoria
 
@@ -20,32 +20,31 @@ Estoy trabajando en CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA, Costa Rica. Continú
 ## Estado vigente
 
 - Backend: CS21A34.
-- Frontend integral: CS21A40.
+- Frontend integral: CS21A41.
 - Apps Script no cambió.
-- campus.html carga src/admin_master_conape_movements_cs21a25.jsx con versión F98.4Z6CS21A40.
-- El estilo de identidad CS21A39 permanece cargado.
+- campus.html carga el estilo de identidad y el módulo CONAPE con versión CS21A41.
+- El componente de movimientos y texto WA continúa en CS21A40.
 
-## Mensaje WA corregido
+## Seguimiento inmediato
 
-El botón WA Pago prepara solo texto. La imagen se adjunta manualmente.
+- El código del estudiante aparece como primer elemento de cada fila.
+- El código usa un campo azul grande de solo lectura.
+- Al pulsar el campo, el valor completo queda seleccionado.
+- Debajo aparecen nombre, cédula y Seguimiento/Revisado.
+- El acceso Consulta continúa usando el código separado.
+- La tabla permanece sin desplazamiento horizontal.
+- La columna WA continúa visible.
+- La columna Desembolso permanece eliminada.
 
-- El emoticono se genera con String.fromCodePoint(0x1F389) y debe verse como el icono de celebración, nunca como el carácter de reemplazo.
-- WhatsApp usa negrita con un solo asterisco a cada lado del texto.
-- No usar asteriscos dobles.
-- El saludo, la confirmación del desembolso, la prontitud, el estado al día y el monto deben resaltarse.
-- Usa el nombre de pila.
-- Consulta getEstudiante al pulsar WA.
-- No inventa monto.
+## Mensaje WA preservado
+
+- Usa emoticono seguro generado por Unicode.
+- WhatsApp usa negritas con un solo asterisco.
+- Usa nombre de pila, monto confirmado y bimestre/cuatrimestre.
+- I2 se presenta como último nivel.
+- Si no hay monto confirmable, no inventa una cifra.
 - En aplicados muestra No enviar.
 - No envía automáticamente ni escribe hojas.
-
-## Seguimiento inmediato preservado
-
-- Nombre grande y código/cédula destacados.
-- Sin scroll horizontal.
-- Columna Desembolso eliminada.
-- Columnas: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
-- Seguimiento, Revisado y WA Pago permanecen compactos.
 
 ## Aplicar pago dentro de Consulta individual preservado
 
@@ -66,6 +65,6 @@ El botón WA Pago prepara solo texto. La imagen se adjunta manualmente.
 
 ## Estado de despliegue
 
-CS21A40 está guardado en GitHub main, pero producción no está confirmada. Ejecutar QA confirmando emoticono, negritas, monto, I2 y No enviar.
+CS21A41 está guardado en GitHub main, pero producción no está confirmada. Ejecutar QA visual del código, Consulta, tabla completa y WA.
 
 ---
