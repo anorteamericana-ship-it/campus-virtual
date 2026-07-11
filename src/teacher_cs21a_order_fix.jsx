@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A11 · Orden visual + Biblioteca/Libros con visor PDF
-// Frontend-only: reordena Planificación Académica y abre Biblioteca digital / Libros de texto como PDFs por nivel dentro del Campus.
+// F98.4-Z6-CS21A50 · Orden visual + visor de libros con navegación por unidades
+// Frontend-only: mantiene Biblioteca/Libros por nivel, refuerza SB/TB/WB y agrega U01-U16 para saltar a la primera página de cada unidad del Student Book.
 /* global React, getSesion, MaterialesView */
 (function(){
-  const VERSION = 'F98.4-Z6-CS21A11';
+  const VERSION = 'F98.4-Z6-CS21A50';
   const BLUE = 'var(--an-navy-ink,#001E47)';
 
   function norm(s){
@@ -51,6 +51,7 @@
     catch(_) { return {}; }
   }
   function filePreview(id){ return 'https://drive.google.com/file/d/' + id + '/preview'; }
+  function filePreviewAtPage(id, page){ return filePreview(id) + (page ? '#page=' + page : ''); }
   function fileDownload(id){ return 'https://drive.google.com/uc?export=download&id=' + id; }
   function openDownload(doc){ window.open(doc.download || doc.preview, '_blank', 'noopener,noreferrer'); }
 
@@ -82,6 +83,19 @@
   ];
 
   const BOOK_TYPES = ['SB','TB','WB'];
+  const BOOK_TYPE_TONES = {
+    SB:{ solid:'#0B4A8B', soft:'#E8F2FC', border:'#2872B6', label:'Student Book' },
+    TB:{ solid:'#7A1E2C', soft:'#F9EDEF', border:'#A94A59', label:'Teacher Book' },
+    WB:{ solid:'#237A3B', soft:'#EAF6ED', border:'#4D9B62', label:'Workbook' },
+  };
+
+  // Fuente: APOLLO G3 · DETALLE DEL PROGRAMA · columna K “Páginas SB”.
+  // Solo se usa la primera página real de cada unidad y se suman 6 páginas por la portada/plan inicial del PDF.
+  const SB_UNIT_PAGES = [2,8,16,22,30,36,44,50,58,64,72,78,86,92,100,106].map((sbPage,index)=>({
+    unit:index + 1,
+    sbPage,
+    pdfPage:sbPage + 6,
+  }));
 
   function makeDoc(level, type){
     const entry = level[type] || level.SB;
@@ -89,6 +103,7 @@
       code: level.code + ' · ' + entry.label,
       title: (type === 'TB' && currentScreen() === 'biblioteca' ? 'Biblioteca digital' : 'Libros de texto') + ' · ' + level.name,
       desc: entry.title + ' disponible en visor interno del Campus.',
+      id: entry.id,
       preview: filePreview(entry.id),
       download: fileDownload(entry.id),
       bookTitle: entry.title,
@@ -106,7 +121,7 @@
       <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:900, lineHeight:1.5 }}>
         {isLibrary
           ? 'Seleccioná el nivel para abrir el Teacher Book dentro del Campus. Cada libro mantiene visor interno y botón de descarga.'
-          : 'Seleccioná el nivel y cambiá entre SB, TB o WB desde los botones superiores. El libro elegido se muestra dentro del Campus y se puede descargar.'}
+          : 'Seleccioná el nivel, elegí SB, TB o WB y usá U01–U16 para ir directamente al inicio de cada unidad del Student Book.'}
       </div>
     </div>;
   }
@@ -123,8 +138,69 @@
   }
 
   function BookTypeButtons({ type, setType }){
-    return <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-      {BOOK_TYPES.map(t => <button key={t} type="button" className={type === t ? 'btn btn-primary' : 'btn'} onClick={()=>setType(t)} style={{ fontWeight:950, minWidth:44 }}>{t}</button>)}
+    return <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+      {BOOK_TYPES.map(t => {
+        const tone = BOOK_TYPE_TONES[t];
+        const active = type === t;
+        return <button
+          key={t}
+          type="button"
+          className="btn"
+          aria-pressed={active}
+          title={tone.label}
+          onClick={()=>setType(t)}
+          style={{
+            minWidth:72,
+            height:48,
+            padding:'0 14px',
+            border:'2px solid ' + tone.border,
+            borderRadius:11,
+            background:active ? tone.solid : tone.soft,
+            color:active ? '#fff' : tone.solid,
+            boxShadow:active ? '0 5px 14px rgba(0,30,71,.22)' : '0 2px 6px rgba(0,0,0,.05)',
+            fontSize:15,
+            fontWeight:950,
+            letterSpacing:'.04em',
+            transform:active ? 'translateY(-1px)' : 'none',
+          }}
+        >{t}</button>;
+      })}
+    </div>;
+  }
+
+  function UnitButtons({ unit, setUnit }){
+    const current = SB_UNIT_PAGES[unit - 1] || SB_UNIT_PAGES[0];
+    return <div style={{ padding:'11px 14px 12px', borderBottom:'1px solid var(--line,#e5e0d8)', background:'linear-gradient(180deg,#FFFDF7 0%,#FFF8E4 100%)' }}>
+      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:10, flexWrap:'wrap', marginBottom:9 }}>
+        <strong style={{ color:BLUE, fontSize:12.5, fontWeight:950 }}>Ir al inicio de la unidad</strong>
+        <span style={{ color:'#6B5A35', fontSize:10.5, fontWeight:850 }}>U{String(current.unit).padStart(2,'0')} · página SB {current.sbPage} · página PDF {current.pdfPage}</span>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(8,minmax(46px,1fr))', gap:6 }}>
+        {SB_UNIT_PAGES.map(item => {
+          const active = item.unit === unit;
+          const label = 'U' + String(item.unit).padStart(2,'0');
+          return <button
+            key={item.unit}
+            type="button"
+            aria-pressed={active}
+            title={label + ' · página SB ' + item.sbPage + ' · página PDF ' + item.pdfPage}
+            onClick={()=>setUnit(item.unit)}
+            style={{
+              minHeight:36,
+              padding:'5px 4px',
+              border:active ? '2px solid #F2C94C' : '1px solid #D7B34A',
+              borderRadius:9,
+              background:active ? '#0B4A8B' : '#FFF7D6',
+              color:active ? '#fff' : '#674D00',
+              boxShadow:active ? '0 4px 10px rgba(11,74,139,.23)' : 'none',
+              fontFamily:'var(--f-mono,monospace)',
+              fontSize:11,
+              fontWeight:950,
+              cursor:'pointer',
+            }}
+          >{label}</button>;
+        })}
+      </div>
     </div>;
   }
 
@@ -132,10 +208,14 @@
     const isLibrary = mode === 'biblioteca';
     const [levelCode,setLevelCode] = React.useState('B1');
     const [type,setType] = React.useState(isLibrary ? 'TB' : 'SB');
+    const [unit,setUnit] = React.useState(1);
     const selectedLevel = BOOK_LEVELS.find(x=>x.code===levelCode) || BOOK_LEVELS[0];
     const realType = isLibrary ? 'TB' : type;
     const doc = makeDoc(selectedLevel, realType);
-    return <section data-screen-label={'Docente · CS21A11 · ' + mode + '-pdf'} style={{ padding:18 }}>
+    const unitPage = SB_UNIT_PAGES[unit - 1] || SB_UNIT_PAGES[0];
+    const preview = realType === 'SB' ? filePreviewAtPage(doc.id, unitPage.pdfPage) : doc.preview;
+    const viewerKey = [levelCode,realType,realType === 'SB' ? unit : 'book'].join('-');
+    return <section data-screen-label={'Docente · CS21A50 · ' + mode + '-pdf'} style={{ padding:18 }}>
       <HeaderBooks mode={mode} />
       <div style={{ display:'grid', gridTemplateColumns:'minmax(250px,330px) 1fr', gap:14, alignItems:'start' }}>
         <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, padding:12, display:'grid', gap:8 }}>
@@ -145,14 +225,17 @@
           <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <div>
               <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15 }}>{doc.title}</div>
-              <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{doc.bookTitle}</div>
+              <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>
+                {doc.bookTitle}{realType === 'SB' ? ' · U' + String(unit).padStart(2,'0') + ' · SB ' + unitPage.sbPage + ' / PDF ' + unitPage.pdfPage : ''}
+              </div>
             </div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+            <div style={{ display:'flex', gap:9, flexWrap:'wrap', alignItems:'center' }}>
               {!isLibrary && <BookTypeButtons type={type} setType={setType} />}
-              <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>Descargar PDF</button>
+              <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900, minHeight:48, padding:'0 18px' }}>Descargar PDF</button>
             </div>
           </div>
-          <iframe title={doc.title + ' · ' + doc.bookTitle} src={doc.preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
+          {!isLibrary && realType === 'SB' && <UnitButtons unit={unit} setUnit={setUnit} />}
+          <iframe key={viewerKey} title={doc.title + ' · ' + doc.bookTitle} src={preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
         </div>
       </div>
     </section>;
@@ -163,7 +246,7 @@
   function installBookViews(){
     if (!window.MaterialesView || window.MaterialesView.__cs21a11books) return;
     const Base = window.MaterialesView;
-    const Wrapped = function MaterialesViewCS21A11Books(props){
+    const Wrapped = function MaterialesViewCS21A50Books(props){
       const u = session();
       if (!u || u.rol !== 'teacher') return <Base {...props}/>;
       const screen = currentScreen();
