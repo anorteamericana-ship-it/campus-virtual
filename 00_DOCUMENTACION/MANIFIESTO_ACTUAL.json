@@ -1,6 +1,6 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A56",
+  "version": "F98.4-Z6-CS21A57",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
@@ -19,12 +19,12 @@
     "sha256": "eef075af1db53608b68f9a76ad0ea5ba4440c0a20bed8a545c62a99cab2d9a2c",
     "newline_count": 50291,
     "endpoints": ["teacherBooksOpenPdf", "teacherBooksReadRange"],
-    "read_only_change": true,
     "resolved_book_id_cache": false,
+    "changed_in_cs21a57": false,
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A56",
+    "version": "F98.4-Z6-CS21A57",
     "github_saved": true,
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
@@ -33,10 +33,10 @@
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books": "bfba92897b45723aafb0c75da7700e7a478f7ebe",
+      "teacher_books": "bdd26f2e6c0afab6596e22a6df779ea932ff578e",
       "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
       "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
-      "campus": "8bac5a8297f37ed261d5bfaf04954d5b3016c091"
+      "campus": "c535f3bd571a9c77b9fa3c8e7a1cd365cfce8239"
     },
     "production_deployment_confirmed": false
   },
@@ -45,10 +45,25 @@
     "source_sheet": "DETALLE DEL PROGRAMA",
     "source_column": "K",
     "source_column_title": "Páginas SB",
-    "pdf_page_offset": 6,
     "student_book_only": true,
     "unit_start_pages_sb": [2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106],
-    "unit_start_pages_pdf": [8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112],
+    "pdf_offsets_by_level": {
+      "B1": 5,
+      "B2": 20,
+      "I1": 6,
+      "I2": 8
+    },
+    "u01_pdf_page_by_level": {
+      "B1": 7,
+      "B2": 22,
+      "I1": 8,
+      "I2": 10
+    },
+    "initial_page": 1,
+    "cover_layout": "blank_left_cover_on_right",
+    "spread_sequence": ["1", "2-3", "4-5", "6-7"],
+    "unit_invitation": "U01 animated until a unit is selected",
+    "reset_to_cover_on_level_or_book_change": true,
     "book_type_buttons": ["SB", "TB", "WB"],
     "layout": "horizontal_controls_full_width_two_page_pdf",
     "viewer_mode": "pdfjs_range_transport_via_apps_script",
@@ -56,7 +71,6 @@
     "direct_drive_fetch": false,
     "drive_preview_fallback": false,
     "dynamic_folder_resolution": true,
-    "force_live_resolution_on_view_entry": true,
     "manual_refresh_control": "Actualizar desde Drive",
     "excluded_filename_markers": ["ORIGINAL", "COPIA", "COPY", "BACKUP", "RESPALDO", "OLD", "ANTIGUO"],
     "b1": {
@@ -64,9 +78,9 @@
       "active_sb_file_id": "1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF",
       "active_sb_file_name": "Interchange 5th intro-SB.pdf",
       "active_sb_size_bytes": 21376936,
-      "resolution_rule": "prefer active ID only while present in official folder, otherwise latest valid PDF"
+      "u01_spread": "6-7"
     },
-    "critical_test": "B1 SB U09 renders PDF pages 64-65 from active file without stale ID, download or Failed to fetch"
+    "critical_test": "All books open on PDF 1; B1 SB U01 renders spread 6-7 without duplicating page 2"
   },
   "seguimiento_inmediato": {
     "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
