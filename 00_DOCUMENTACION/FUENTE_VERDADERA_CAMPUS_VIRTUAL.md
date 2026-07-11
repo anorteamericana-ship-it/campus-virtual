@@ -1,8 +1,8 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A34  
+**Versión integral vigente:** F98.4-Z6-CS21A35  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** línea F98.4-Z6-CS21A33  
+**Frontend activo:** línea F98.4-Z6-CS21A35  
 **Corte:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
@@ -20,7 +20,7 @@ Respaldado no significa desplegado. La producción requiere reemplazar todo `Cod
 
 ## Fuente oficial de `7-morosidad`
 
-Seguimiento inmediato debe leer directamente el archivo externo oficial de CONAPE:
+Seguimiento inmediato lee directamente el archivo externo oficial de CONAPE:
 
 - Spreadsheet ID: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`
 - Archivo: `7-morosidad`
@@ -43,6 +43,14 @@ No debe tomar la decisión desde una pestaña local o copia espejo llamada `7-mo
 - `BDBANCARIO` queda excluida.
 - No se escribe en la hoja externa ni se mueven pagos.
 
+## Detalle revisado · CS21A35
+
+- El botón `Detalle` permanece beige cuando `DATOS.COMENTARIO_ADMIN` está vacío.
+- Cuando contiene cualquier texto, cambia inmediatamente a violeta fuerte y muestra `✓ REVISADO · CON SEGUIMIENTO`.
+- El estado visual persiste mañana, al recargar y desde otra computadora porque depende del dato guardado, no de memoria del navegador.
+- Si el detalle se elimina por completo, el botón vuelve al estado beige.
+- Este indicador visual no cambia el estado CONAPE, la morosidad, los pagos ni el orden de la tabla.
+
 ## Caso patrón verificado en vivo
 
 En `Hoja 1`, la cédula `119760781` aparece en:
@@ -54,7 +62,6 @@ Para el movimiento CONAPE `09/2026` se consulta específicamente periodo 3, fila
 
 ## Estado preservado
 
-- Frontend visual CS21A33 permanece activo sin cambios.
 - Cobranza y cartera abre primero.
 - Pendientes recientes arriba y aplicados abajo.
 - Detalle y Consulta permanecen activos.
