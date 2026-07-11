@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A36**.
+Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A37**.
 
 ## Forma obligatoria
 
@@ -20,36 +20,44 @@ Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Cont
 ## Estado vigente
 
 - Backend: **CS21A34**.
-- Frontend: **CS21A36**.
-- CS21A36 agrega Aplicar pago dentro de Consulta individual sin salir del expediente.
-- Archivo nuevo: `src/admin_students_inline_payment_cs21a36.jsx`.
-- `campus.html` carga el módulo CS21A36.
-- Apps Script no cambió.
+- Frontend: **CS21A37**.
+- Apps Script no cambió en CS21A37.
+- `campus.html` carga `src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A37`.
 
-## Aplicar pago dentro de Consulta individual
+## Seguimiento inmediato · WA
 
-- `Pago` abre una barra de búsqueda dentro del intento financiero vigente.
-- Se busca por documento, fecha o descripción.
-- Solo se muestran comprobantes con saldo disponible.
-- El comprobante se valida al seleccionarlo y antes de guardar.
-- Los rubros usan controles `− / +` dentro de Matrícula, Cuotas, Certificado, Programa Completo y TOEIC.
-- Los cargos especiales requieren `CARGO_ID` y monto exacto.
-- Los intentos históricos son solo lectura.
-- Después de aplicar, la Consulta individual se refresca sin navegar.
+El botón `WA Solicitar pago` prepara solo texto. La imagen se adjunta manualmente.
 
-## Contrato financiero obligatorio
+Texto base:
 
-El frontend no escribe directamente en hojas. Solo puede llamar:
+> ¡Buenas noticias [Nombre]! 🥳
+>
+> CONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.
+>
+> Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
 
-- `getEstudiante`
-- `getComprobantes`
-- `aplicarPago`
+Reglas:
 
-El backend vigente decide grupo, intento, deuda, máximos, saldo bancario, cuentas, recibos, idempotencia, rollback y sincronización CONAPE.
+- Detectar el nombre de pila en nombres institucionales guardados como apellidos + nombres.
+- Consultar `getEstudiante` al pulsar WA.
+- Calcular el monto pendiente del nivel con Matrícula + Cuotas + Certificado.
+- Para I2 añadir Programa Completo y TOEIC pendientes cuando correspondan.
+- Mostrar `bimestre` o `cuatrimestre`.
+- Para I2 decir `último nivel`.
+- Si el monto no se confirma, abrir el texto base sin cifra.
+- En movimientos `Aplicado en sistema`, mostrar `Aplicado · no enviar cobro` y no abrir el mensaje de solicitud.
+- No enviar automáticamente, no adjuntar imagen y no escribir hojas.
 
-Nunca crear una segunda lógica de pagos en el navegador. Nunca mover pagos entre niveles o intentos.
+## Aplicar pago dentro de Consulta individual · CS21A36 preservado
 
-Patrón real confirmado: un comprobante puede dividirse entre varios rubros. Básico II ₡334.200 se distribuye en Matrícula ₡20.000 + Cuotas ₡299.200 + Certificado ₡15.000. En I2 pueden participar Matrícula, Cuotas, Certificado, TOEIC y Programa Completo según las reglas vigentes.
+- Una búsqueda de comprobante por intento vigente.
+- Búsqueda por documento, fecha o descripción.
+- Revalidación al seleccionar y antes de aplicar.
+- Controles `− / +` por rubro.
+- Cargos especiales con `CARGO_ID` y monto exacto.
+- Intentos históricos de solo lectura.
+- El frontend solo llama `getEstudiante`, `getComprobantes` y `aplicarPago`.
+- Nunca crear una segunda lógica contable ni mover pagos entre niveles o intentos.
 
 ## Fuente oficial de morosidad CONAPE
 
@@ -60,12 +68,13 @@ Patrón real confirmado: un comprobante puede dividirse entre varios rubros. Bá
 
 ## Cambios anteriores preservados
 
-- CS21A35: botón Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO` cuando existe `DATOS.COMENTARIO_ADMIN`.
+- CS21A36: aplicar pago dentro de Consulta individual.
+- CS21A35: botón Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO`.
 - CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
 - Backend completo CS21A34 continúa en la carpeta institucional.
 
 ## Estado de despliegue
 
-CS21A36 está guardado en GitHub `main`, pero producción no está confirmada. Antes de publicar, ejecutar QA financiero con comprobante controlado, saldo parcial, intento histórico, comprobante agotado e idempotencia.
+CS21A37 está guardado en GitHub `main`, pero producción no está confirmada. Ejecutar QA con nombre de pila, B2, bimestre, cuatrimestre, I2, monto no confirmable y movimiento ya aplicado.
 
 ---
