@@ -37,18 +37,37 @@ Requieren análisis antes de escribir:
 - Si el nivel siguiente no existe, puede crearse en `ESTATUS` como `CA` solo si la cohorte tiene ese nivel configurado en `GRUPOS`.
 - No copiar notas, evaluaciones ni certificado al crear el siguiente nivel.
 - No promocionar después de I2 ni cuando el resultado sea `REP` u otro estado.
-- Después de una escritura, la Consulta individual debe releer el expediente antes de habilitar otra edición.
+- Después de una escritura, Consulta individual debe usar `getEstudianteFresh` antes de cerrar la ventana o habilitar otra edición.
+- Una recarga total del navegador no sustituye una lectura fresca del backend.
+
+## Consulta individual y rendimiento
+
+- La lectura inicial debe usar `getConsultaIndividualFresh` para devolver ficha, asistencia, comentario e historial en un solo ciclo.
+- Las solicitudes antiguas simultáneas deben compartir una sola promesa mediante `admin_students_fast_loader_cs21a42.js`.
+- No acelerar la pantalla devolviendo datos vacíos ni respuestas parciales.
+- Si falla la reconstrucción posterior a una escritura, mantener la ventana abierta y mostrar el error.
+- Invalidar el caché individual después de estatus, pagos, certificado, TOEIC, cambio de grupo o reversión.
 
 ## Reglas financieras vigentes
 
 - B1/B2/I1: deuda completa = matrícula + cuotas + certificado.
 - I2: deuda completa = matrícula + cuotas + certificado I2 + Programa Completo + TOEIC.
-- El certificado es obligación financiera desde el nivel activo; la emisión documental sigue siendo independiente.
 - `PE` y `SIN REGISTRO` no generan deuda.
 - No mover pagos entre niveles o intentos.
 - Un comprobante agotado no debe aparecer en el buscador.
 - Certificado I2 y Programa Completo pueden pagarse juntos en una misma factura.
 - TOEIC usa valor individual de `DATOS`; en ausencia, configuración del grupo/nivel.
+
+## Certificados
+
+- El pago financiero y la emisión documental son estados independientes.
+- Mostrar `Pago: PAGADO/PENDIENTE` y `Documento: EMITIDO/POR EMITIR` en líneas separadas.
+- Pago completo sin registro oficial significa `Pago confirmado. Documento oficial pendiente de emisión.`
+- No interpretar `POR EMITIR` como deuda.
+- Los pagos de certificado usan `grupos_certificado_aplicados` para asignación por intento.
+- Los demás rubros usan `grupos_pago_aplicados`.
+- Coincidencia exacta de grupo primero; único intento como fallback seguro; múltiples intentos ambiguos requieren revisión.
+- Nunca mover pagos entre niveles o intentos.
 
 ## CONAPE
 
@@ -58,18 +77,13 @@ Requieren análisis antes de escribir:
 - `Detalle` usa `DATOS.COMENTARIO_ADMIN`.
 - No crear ni administrar triggers automáticos.
 - Estado `PROTEGIDO` significa que la API externa no pudo verificarse; no significa que las hojas estén correctas o incorrectas.
-- La tabla de Seguimiento inmediato debe caber completa en el panel de escritorio sin scroll horizontal.
-- No mostrar una columna independiente de `Desembolso`.
-- Las columnas vigentes son Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
-- Usar ancho total, `table-layout: fixed` y sin `min-width` forzado.
-- Los datos largos pueden usar elipsis visual, pero deben conservar el valor completo en `title`.
-- `✎ Seguimiento` y `✓ Revisado` deben permanecer compactos dentro de la celda del estudiante.
-- El botón `WA Pago` debe disponer de una columna propia y no quedar oculto.
-- El mensaje WA prepara únicamente texto; la imagen se adjunta manualmente.
-- El mensaje usa nombre de pila, nivel, bimestre/cuatrimestre y monto pendiente confirmado por `getEstudiante`.
-- Si el monto no se confirma, no inventar una cifra.
-- Si el movimiento está `Aplicado en sistema`, no ofrecer solicitud de pago; mostrar `No enviar`.
-- El botón WA no envía automáticamente ni escribe en hojas.
+- La tabla debe caber completa en escritorio sin scroll horizontal.
+- No mostrar columna independiente `Desembolso`.
+- Columnas: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
+- El código del estudiante aparece primero y puede seleccionarse para copiar.
+- `Seguimiento`, `Revisado` y `WA Pago` permanecen compactos.
+- El mensaje WA prepara solo texto; la imagen se adjunta manualmente.
+- Si el movimiento está aplicado, mostrar `No enviar`.
 
 ## Calendario
 
@@ -89,4 +103,5 @@ Son práctica pedagógica. No afectan notas oficiales, aprobación, certificados
 5. Validar sintaxis y casos críticos.
 6. Actualizar documentación y manifiesto.
 7. Entregar solo archivos modificados, excepto cuando el usuario pida compilado completo.
-8. Si hubo backend, entregar Code.gs completo con nombre, versión y SHA-256.
+8. Si hubo backend, entregar `Code.gs` completo con nombre, versión y SHA-256.
+9. En CS21A42, probar 17110, cambio de estatus sin Ctrl+R y estados separados del certificado.
