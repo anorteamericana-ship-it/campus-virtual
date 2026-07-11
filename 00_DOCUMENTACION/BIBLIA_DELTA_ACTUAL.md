@@ -3,7 +3,7 @@
 ## Estado
 
 - Frontend guardado en `main`: CS21A54.
-- Backend completo objetivo: CS21A46.
+- Backend completo canónico: CS21A46, verificado en Drive.
 - Producción no verificada.
 
 ## CS21A54 — Recursos docentes / PDF extendido
@@ -31,7 +31,7 @@ Fuente: `APOLLO_G3_LIMPIO_21-04-26` → `DETALLE DEL PROGRAMA` → columna K `P�
 - B1 U09 abre PDF 64–65.
 - No aplicar este mapeo a TB o WB.
 
-## Fuentes Drive
+## Fuentes Drive de libros
 
 B1 usa `Interchange 5th intro-SB.pdf`, ID `1pnR7RoJGkZnx08TlfrEgxEqVRnlrCwea`. El archivo `ORIGINAL`, ID `13rMmy1ZLpto6SgjSyVyBd3MtivuU19j3`, no es fuente activa.
 
@@ -45,6 +45,22 @@ Carpetas oficiales:
 Totales SB: B1 157, B2 188, I1 158, I2 161. No fijar un total común.
 
 Los IDs siguen explícitos en frontend. Reemplazar contenido conservando el ID actualiza el visor; subir otro archivo exige actualizar el ID o crear resolución dinámica en backend.
+
+## Backend canónico CS21A46
+
+- Carpeta maestra: `1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a`.
+- Archivo canónico: `Code.gs`.
+- Drive file ID canónico: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Encabezado confirmado: `F98.4-Z6-CS21A46 · SEGUIMIENTO INMEDIATO: SOLO DESEMBOLSO ACADÉMICO 01`.
+- Tamaño: `2,879,996` bytes.
+- SHA-256: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`.
+- Conteo físico: `50,122` saltos de línea y línea final vacía; algunos editores muestran `50,123`.
+- Carpeta de respaldos: `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`.
+- Respaldo inicial: ID `1sJJ9umm5tGoMGibIoQiIECGYFZ91ErCT`.
+- Manifiesto Drive: ID `179pqbUFMPiOUN6Lo3YA_Ia51lKtqtP8u`.
+- Para cada cambio backend: respaldar primero, modificar desde el archivo canónico y reemplazar sus bytes conservando el mismo ID.
+- Nunca reconstruir desde CS21A42 ni sustituir por un archivo de menor tamaño o hash diferente.
+- Drive guardado no equivale a despliegue en Apps Script.
 
 ## Seguimiento inmediato preservado
 
@@ -62,4 +78,4 @@ Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / ni
 - Certificado pagado y documento emitido son estados distintos.
 - Consulta individual reconstruye datos frescos después de escribir.
 - Nunca mover pagos entre niveles o intentos.
-- GitHub guardado no equivale a producción publicada.
+- GitHub o Drive guardado no equivale a producción publicada.
