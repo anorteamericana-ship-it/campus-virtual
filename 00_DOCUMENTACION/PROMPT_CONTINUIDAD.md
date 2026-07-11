@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde el corte **F98.4-Z6-CS21A30**.
+Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde el corte **F98.4-Z6-CS21A31**.
 
 ## Forma obligatoria de trabajo
 
@@ -29,11 +29,15 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 
 ## Estado vigente
 
+- Versión integral: **F98.4-Z6-CS21A31**.
 - Backend: **F98.4-Z6-CS21A30**.
-- Frontend: línea **CS21A29**, con controles CS21A27B y navegación CS21A28.
+- Frontend: línea **CS21A31**.
+- Panel Maestro abre **Cobranza y cartera** como primera sección; Resumen institucional queda segundo y las demás opciones se desplazan hacia la derecha.
+- El control activo de ese orden es `src/admin_master_cobranza_first.js`, cargado desde `campus.html`.
 - Último motor financiero: certificado incluido siempre en la deuda del nivel activo.
 - El TXT y ZIP completos CS21A30 están respaldados en el Drive institucional con sus hashes en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
 - El conector GitHub bloqueó la carga directa del archivo de 2,8 MB; los fragmentos incompletos fueron eliminados. No afirmar que existe un Code.gs completo dentro de Git.
+- CS21A30 no está confirmado como desplegado en Apps Script; está confirmado como respaldo canónico íntegro.
 
 ## Reglas académicas vigentes
 
@@ -57,9 +61,12 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 - TOEIC usa el monto individual de `DATOS`; si falta, el monto del grupo/nivel en `GRUPOS`.
 - Un comprobante bancario con saldo `₡0` no aparece en Buscar comprobante bancario.
 - Buscador y guardado final deben calcular el mismo saldo disponible, incluida la columna J histórica de `BDBANCARIO`.
+- Nunca mover pagos entre niveles o intentos.
 
 ## Panel Maestro · Cobranza y CONAPE
 
+- **Cobranza y cartera** aparece primero y se carga al abrir Panel Maestro.
+- La selección automática ocurre una sola vez por apertura; después se puede navegar normalmente.
 - Seguimiento inmediato muestra todos los periodos y desembolsos adelantados.
 - Orden: Estudiante, Movimiento, Desembolso, Periodo, Campus, Detectado, Contacto.
 - Las fechas no deben mostrar objetos JavaScript crudos.
@@ -70,6 +77,7 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 ## Archivos frontend recientes activos
 
 - `campus.html`
+- `src/admin_master_cobranza_first.js`
 - `src/aplicar_pago_comprobante_guard_cs21a23.js`
 - `src/admin_master_conape_movements_cs21a25.jsx`
 - `src/admin_master_cobranza_collapse_cs21a27.js`
@@ -87,8 +95,8 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 ## Primera tarea al iniciar
 
 1. Leé los documentos canónicos.
-2. Verificá el `campus.html` y los archivos activos antes de proponer cambios.
-3. Confirmá si el Code.gs CS21A30 está desplegado o solamente respaldado.
+2. Verificá `campus.html` y los archivos activos antes de proponer cambios.
+3. Confirmá si el Code.gs CS21A30 fue desplegado o sigue solamente respaldado.
 4. Para cualquier nueva solicitud, explicá impacto, archivos y plan antes de escribir.
 
 ---
