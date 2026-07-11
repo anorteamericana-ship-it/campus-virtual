@@ -1,27 +1,28 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A51
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A52
 
 ## Estado
 
-- Frontend guardado en `main`: CS21A51.
+- Frontend guardado en `main`: CS21A52.
 - Backend completo objetivo: CS21A46.
 - Producción no verificada.
 
-## CS21A51 — Recursos docentes / navegación real del Student Book
+## CS21A52 — Recursos docentes / visor embebido restaurado
 
 Ruta: Docente → Recursos Didácticos → Libros de texto.
 
 - Componente vigente: `src/teacher_cs21a_order_fix.jsx`.
-- SB, TB y WB tienen colores propios, bordes reforzados y selección activa visible.
-- Solo SB muestra botones U01–U16.
-- Fuente oficial del salto: `APOLLO_G3_LIMPIO_21-04-26` → `DETALLE DEL PROGRAMA` → columna K `Páginas SB`.
+- SB, TB y WB conservan colores propios y selección visible.
+- Solo SB muestra U01–U16.
+- Fuente oficial: `APOLLO_G3_LIMPIO_21-04-26` → `DETALLE DEL PROGRAMA` → columna K `Páginas SB`.
 - Regla: primera página de la unidad + 6 hojas iniciales del PDF.
-- Inicio real SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
+- Inicio SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
 - Destino PDF: `8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112`.
-- El mapeo es común a B1, B2, I1 e I2 según la fuente vigente.
-- CS21A50 usaba `Drive /preview#page`, pero ese visor ignoraba el salto.
-- CS21A51 usa el PDF directo con parámetros `#page=` del visor nativo del navegador.
-- Ejemplo crítico: Básico I, U09 muestra el contenido SB 58 cargando la página PDF 64.
-- No aplicar esos saltos a TB o WB.
+- CS21A51 dejó el visor vacío porque la dirección usada fue tratada como descarga.
+- CS21A52 restaura el visor embebido de Google Drive y elimina esa dirección del `iframe`.
+- Cambiar de unidad no debe descargar el libro.
+- La apertura exacta de la página solicitada queda sujeta a prueba real del visor de Google Drive.
+- Ejemplo crítico: Básico I, U09 solicita SB 58 / PDF 64.
+- No aplicar el mapeo a TB o WB.
 - Apps Script no se modificó.
 
 ## Seguimiento inmediato preservado
@@ -32,7 +33,7 @@ Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / ni
 - Los números `02`, `03` y superiores quedan fuera del panel y no cierran el caso `01`.
 - El código aparece primero y solo contiene el número.
 - No existen columnas Desembolso ni Detectado.
-- El resumen académico se lee desde `6-historial` y muestra un nivel debajo del otro.
+- El resumen académico se lee desde `6-historial` y se muestra verticalmente.
 - La tabla no usa scroll horizontal.
 - WhatsApp ofrece `Mensaje`, `Alerta` y `Atención`.
 - Un caso cerrado no envía cobro.
