@@ -1,9 +1,9 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A55
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A56
 
 ## Estado
 
-- Frontend guardado en `main`: CS21A55.
-- Backend completo canónico: CS21A55.
+- Frontend guardado en `main`: CS21A56.
+- Backend completo canónico: CS21A56.
 - Base backend preservada: CS21A46.
 - Producción no verificada.
 
@@ -12,21 +12,22 @@
 Ruta: Docente → Recursos Didácticos → Libros de texto / Biblioteca digital.
 
 - `src/teacher_cs21a_order_fix.jsx` controla ambas vistas.
-- `campus.html` carga PDF.js 3.11.174 y fuerza CS21A55.
-- El navegador ya no intenta descargar el PDF directamente desde Drive.
-- Apps Script valida la sesión y entrega el PDF en bloques mediante:
-  - `teacherBooksOpenPdf`
-  - `teacherBooksReadRange`
-- PDF.js usa `PDFDataRangeTransport`, conserva el documento en memoria y solicita únicamente los bloques necesarios.
+- `campus.html` carga PDF.js 3.11.174 y fuerza CS21A56.
+- Apps Script valida sesión y entrega rangos mediante `teacherBooksOpenPdf` y `teacherBooksReadRange`.
+- PDF.js usa `PDFDataRangeTransport`.
 - El visor mantiene dos páginas enfrentadas, ancho completo, navegación, zoom y pantalla completa.
 - No vuelve a la lista antigua ni al visor embebido anterior.
 
-## Resolución de libros
+## Resolución Drive live
 
-- El backend busca SB, TB o WB dentro de la carpeta oficial de cada nivel.
-- Descarta archivos cuyo nombre indique ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD o ANTIGUO.
-- En Básico I selecciona el Student Book nuevo y deja fuera el archivo ORIGINAL.
-- La selección es de solo lectura y queda en caché corta.
+- La carpeta oficial B1 es `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- El Student Book activo B1 es `Interchange 5th intro-SB.pdf`, ID `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF`.
+- CS21A55 podía conservar durante cinco minutos el ID anterior en caché del script y durante la sesión en caché del navegador.
+- CS21A56 elimina la caché del ID resuelto en Apps Script.
+- El frontend fuerza una resolución nueva al entrar/cambiar nivel o tipo y añade `Actualizar desde Drive`.
+- El ID preferente solo recibe prioridad si sigue apareciendo dentro de la carpeta oficial; en caso contrario se usa el PDF válido más reciente.
+- Se descartan ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD y ANTIGUO.
+- Cambiar unidad reutiliza el documento abierto; no vuelve a descargarlo.
 
 ## Páginas Apollo G3
 
@@ -40,9 +41,9 @@ Fuente: `APOLLO_G3_LIMPIO_21-04-26` → `DETALLE DEL PROGRAMA` → columna K `P�
 
 ## Integridad del backend
 
-- CS21A55 añade solo lectura de archivos de Drive, manejo de rangos y dos rutas nuevas del dispatcher.
+- CS21A56 modifica únicamente la resolución del archivo y el refresco del visor.
 - No escribe pagos, certificados, CONAPE, calendario ni hojas académicas.
-- El `Code.gs` completo vigente y su respaldo previo permanecen en la carpeta canónica de Drive.
+- El `Code.gs` completo vigente y su respaldo previo permanecen en Drive.
 - Guardar el archivo no equivale a instalarlo ni desplegarlo.
 
 ## Seguimiento inmediato preservado
