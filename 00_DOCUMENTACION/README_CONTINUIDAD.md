@@ -1,41 +1,48 @@
-# CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
+# CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A48  
-**Backend:** CS21A43  
-**Frontend:** CS21A48  
+**Versión integral:** F98.4-Z6-CS21A49  
+**Frontend GitHub:** CS21A49  
+**Backend completo objetivo:** CS21A46  
+**Producción:** no verificada  
 **Corte:** 11-jul-2026
+
+## Auditoría corregida
+
+- CS21A46 quedó originalmente solo como ZIP y no estaba reflejado en la continuidad.
+- CS21A47 quedó como ZIP, pero el componente de GitHub continuó en CS21A43.
+- CS21A48 solo modificó CSS/cache.
+- CS21A49 consolida el componente, estilos, `campus.html` y toda la documentación.
 
 ## Seguimiento inmediato
 
-Orden oficial:
+Orden:
 
-`Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | Campus | WA`
+`Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`
 
-Cambios vigentes:
+- Solo desembolsos académicos `01`.
+- `02`, `03` y superiores quedan en auditoría y no cierran el `01`.
+- Código primero, grande y seleccionable.
+- Datos de vínculo y grupo dentro de Estudiante.
+- Sin columnas Desembolso ni Detectado.
+- Resumen desde `6-historial`, un nivel debajo del otro.
+- Sin scroll horizontal.
+- WA visible con `1 Mensaje`, `2 Alerta`, `3 Atención`.
+- Cerrados quedan en bloque inferior y no envían cobro.
 
-- código independiente, grande y seleccionable;
-- eliminado el texto auxiliar de copiado;
-- eliminada la columna Detectado;
-- fecha corta integrada en Periodo/nivel;
-- resumen de los cuatro niveles desde el archivo oficial 6-historial;
-- el Resumen académico es estrictamente vertical: un nivel por fila, nunca dos niveles lado a lado;
-- tabla fija al 100 %, sin scroll horizontal;
-- WA permanece visible.
+## Backend requerido
 
-## Backend
+CS21A46 interpreta `FECHA_ULT_DESEMBOLSO` como número/mes/año y conserva solo `01` en el panel.
 
-El backend continúa en CS21A43. El Code.gs completo lee una sola vez 6-historial, forma un índice por cédula y entrega datos estructurados al frontend. La lectura es de solo consulta.
-
-SHA-256 Code.gs: `8eefafd6f8054033273c4a4451e85a55ce66735ccfeb6b141f820c290471fcca`
+- Tamaño: 2,879,996 bytes.
+- SHA-256: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`.
+- Despliegue no verificado.
 
 ## Pruebas obligatorias
 
-1. Abrir Seguimiento inmediato.
-2. Confirmar que la primera columna contiene solo códigos.
-3. Confirmar que no existe la columna Detectado.
-4. Confirmar que Básico I, Básico II, Intermedio I e Intermedio II aparecen uno debajo del otro en Resumen académico.
-5. Validar la cédula 119960973: B1 20253C APR 100; B2 20261C APR 95; I1 20262C CA 70; I2 20263C PE.
-6. Confirmar que WA permanece visible sin scroll horizontal.
-7. Abrir Consulta desde una fila y comprobar que usa el código correcto.
-
-Producción no se considera confirmada hasta completar estas pruebas en el sitio publicado.
+1. Solo movimientos `01/MM/AAAA`.
+2. Un `02/03+` no aparece ni cierra el `01`.
+3. Cédula `119960973`: cuatro niveles verticales.
+4. Código primero; WA visible; sin scroll.
+5. Probar las tres plantillas WA.
+6. Un aplicado muestra `Cerrado`.
+7. Estudiante `17110`: lectura fresca y certificado pagado separado de documento por emitir.
