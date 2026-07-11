@@ -1,7 +1,7 @@
-// F98.4-Z6-CS21A35 · Seguimiento inmediato CONAPE con detalle revisado resaltado.
+// F98.4-Z6-CS21A37 · Seguimiento inmediato CONAPE con texto WA de desembolso y monto dinámico.
 (function(){
 'use strict';
-const BUILD='F98.4-Z6-CS21A35';
+const BUILD='F98.4-Z6-CS21A37';
 const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const LEVEL_LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 
@@ -28,7 +28,8 @@ function type(r){
   if(r.advance)return'Desembolso adelantado';
   return ({PRIMER_DESEMBOLSO:'Primer desembolso',NUEVO_DESEMBOLSO:'Nuevo desembolso',DESEMBOLSO_MES_ACTUAL:'Desembolso del periodo',DESEMBOLSO_REPORTADO:'Desembolso reportado',APROBADO_SIN_DESEMBOLSO:'Aprobado sin desembolso',DESEMBOLSO_REMOVIDO:'Desembolso retirado'}[r.type]||String(r.type||'').replaceAll('_',' '));
 }
-function levelText(r){return r.levelLabel||LEVEL_LABEL[String(r.level||'').toUpperCase()]||'Nivel sin enlazar';}
+function levelId(r){return String(r?.level||'').trim().toUpperCase();}
+function levelText(r){return r.levelLabel||LEVEL_LABEL[levelId(r)]||'Nivel sin enlazar';}
 function moraText(r){return r.moraState==='SI'?'Estado SI · pendiente':r.moraState==='NO'?'Estado NO · aplicado':r.moraState==='SIN_FILA'?'Sin fila exacta':'Sin estado';}
 function moraStyle(r){
   if(r.moraState==='SI')return{background:'#FDECEC',color:'#A12828',border:'1px solid #E8B1B1'};
@@ -42,6 +43,41 @@ async function postDetalle(fn,payload={}){
   try{data=raw?JSON.parse(raw):null;}catch(_){throw new Error('Apps Script devolvió una respuesta inválida.');}
   if(!res.ok||!data?.ok)throw new Error(data?.mensaje||data?.error||`No se pudo ejecutar ${fn}.`);
   return data;
+}
+function properToken(v){
+  return String(v||'').toLocaleLowerCase('es-CR').replace(/(^|[-'’])([a-záéíóúüñ])/g,(m,p,l)=>p+l.toLocaleUpperCase('es-CR'));
+}
+function givenName(fullName){
+  const parts=String(fullName||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length)return'Estudiante';
+  const idx=parts.length>=3?2:parts.length-1;
+  return properToken(parts[idx]||parts[0]);
+}
+function periodKind(v){
+  const x=String(v||'').trim().toUpperCase();
+  if(x==='B'||x.includes('BIMEST'))return'bimestre';
+  if(x==='C'||x.includes('CUATRIMEST'))return'cuatrimestre';
+  return'';
+}
+function pendingAmount(ficha,nivel,fallback){
+  const info=ficha?.pendientes?.por_nivel?.[nivel]||{};
+  const num=v=>{const n=Number(v||0);return Number.isFinite(n)?Math.max(0,n):0;};
+  let total=num(info.matricula_pend)+num(info.cuotas_pend)+num(info.cert_pend);
+  if(nivel==='I2')total+=num(info.programa_completo_pend??info.titulo_pend)+num(info.toeic_pend);
+  if(total<=0)total=num(fallback?.pendingTotal);
+  return Math.round(total*100)/100;
+}
+function buildWaText(row,amount,kind){
+  const name=givenName(row?.name);
+  const nivel=levelText(row);
+  const last=levelId(row)==='I2';
+  const periodLabel=kind?` (${kind})`:'';
+  const amountLine=amount>0
+    ? last
+      ? `\n\nEl monto correspondiente al último nivel, ${nivel}${periodLabel}, es de ${money(amount)}.`
+      : `\n\nEl monto correspondiente a ${nivel}${periodLabel} es de ${money(amount)}.`
+    : '';
+  return `¡Buenas noticias ${name}! 🥳\n\nCONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.\n\nLe solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.${amountLine}`;
 }
 function detalleVisible(v){const text=String(v||'').trim();if(!text)return'Sin nota registrada.';return text.length>110?text.slice(0,107)+'…':text;}
 function DetailButton({row,value,onEdit}){
@@ -93,9 +129,34 @@ function ApplicationBadge({row}){
   const pending=row.moraState==='SI'?'Pendiente · 7-morosidad estado SI':'Pendiente · sin fila exacta en 7-morosidad';
   return <><span className="master-conape-movement-badge" style={row.advance?{background:'#FFF3CD',color:'#8A5A00'}:null}>{type(row)}</span><small style={{display:'block',marginTop:6,color:'#8A4F00',fontWeight:850}}>{pending}</small><small style={{display:'block',marginTop:3,color:'#73695C'}}>{moraRef} · {levelText(row)}</small></>;
 }
-function Row({r,i,details,openDetail}){
-  const p=period(r),wa=phone(r.phone),code=String(r?.code||'').trim(),detail=code&&Object.prototype.hasOwnProperty.call(details,code)?details[code]:String(r.detail||'');
-  const txt=`Hola ${String(r.name||'').split(' ')[0]}, CONAPE reportó el desembolso #${r.disbursement||''} del periodo ${p}. Te contactamos desde Academia Norteamericana para dar seguimiento.`;
+function WaButton({row,finance}){
+  const [busy,setBusy]=React.useState(false);
+  const wa=phone(row?.phone),code=String(row?.code||'').trim(),nivel=levelId(row);
+  if(row?.appliedInSystem)return <span className="master-no-phone" title="El movimiento ya figura aplicado; no se debe volver a solicitar el pago.">Aplicado · no enviar cobro</span>;
+  if(!wa)return <span className="master-no-phone">Sin teléfono</span>;
+  async function openWa(){
+    if(busy)return;
+    setBusy(true);
+    const popup=window.open('','_blank');
+    try{if(popup)popup.opener=null;}catch(_){ }
+    try{
+      let ficha=null;
+      if(code&&nivel){try{ficha=await postDetalle('getEstudiante',{codigo:code});}catch(_){ficha=null;}}
+      const amount=pendingAmount(ficha,nivel,finance);
+      const kind=periodKind(ficha?.pendientes?.por_nivel?.[nivel]?.tipo_periodo||finance?.periodType||row?.periodType);
+      const text=buildWaText(row,amount,kind);
+      const url=`https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
+      if(popup)popup.location.href=url;else window.open(url,'_blank','noopener,noreferrer');
+    }catch(e){
+      try{if(popup)popup.close();}catch(_){ }
+      alert('No se pudo preparar el mensaje de WhatsApp: '+(e?.message||e));
+    }finally{setBusy(false);}
+  }
+  return <button type="button" className="master-wa-action" onClick={openWa} disabled={busy} title="Preparar mensaje de desembolso con el monto pendiente del nivel" style={{border:'none',cursor:busy?'wait':'pointer',fontFamily:'inherit'}}>{busy?'Preparando…':'WA Solicitar pago'}</button>;
+}
+function Row({r,i,details,openDetail,financeMap}){
+  const p=period(r),code=String(r?.code||'').trim(),detail=code&&Object.prototype.hasOwnProperty.call(details,code)?details[code]:String(r.detail||'');
+  const finance=financeMap[`${code}|${levelId(r)}`]||financeMap[code]||null;
   return <tr key={r.id||i} className={!r.appliedInSystem&&(!r.linked||r.advance||r.mora)?'has-alert':''} style={r.appliedInSystem?{opacity:.78,background:'#F7FAF7'}:null}>
     <td style={{whiteSpace:'normal',verticalAlign:'top'}}><strong>{r.name||'Sin nombre'}</strong><small>{r.cedula}{r.code?` · ${r.code}`:''}</small><DetailButton row={r} value={detail} onEdit={openDetail}/></td>
     <td style={{verticalAlign:'top'}}><ApplicationBadge row={r}/><span style={{display:'inline-block',marginTop:7,padding:'3px 7px',borderRadius:999,fontSize:9.5,fontWeight:900,...moraStyle(r)}}>{moraText(r)}</span>{r.moraRowCount>1&&<small style={{display:'block',marginTop:4,color:'#A12828',fontWeight:850}}>⚠ {r.moraRowCount} filas de morosidad</small>}</td>
@@ -103,31 +164,33 @@ function Row({r,i,details,openDetail}){
     <td style={{verticalAlign:'top',fontWeight:800}}>{p}<small style={{display:'block',marginTop:4,fontWeight:700,color:'#697384'}}>{levelText(r)}{r.academicStatus?` · ${r.academicStatus}`:''}</small></td>
     <td style={{verticalAlign:'top'}}>{r.linked?<span className="master-link-status linked">Vinculado</span>:<span className="master-link-status unlinked">Sin vínculo</span>}<small>{r.group||'Sin grupo'}</small>{r.appliedInSystem?<small style={{display:'block',marginTop:4,color:'#2F6B3B',fontWeight:800}}>Aplicación: 7-morosidad</small>:null}{r.appliedSources?.length?<small style={{display:'block',marginTop:4,color:'#6A746C'}}>Pagos complementarios: {r.appliedSources.join(' + ')}</small>:null}</td>
     <td style={{verticalAlign:'top'}}>{fmt(r.detectedAt,true)}</td>
-    <td style={{verticalAlign:'top'}}>{wa?<a className="master-wa-action" href={`https://wa.me/${wa}?text=${encodeURIComponent(txt)}`} target="_blank" rel="noreferrer">WA Dar seguimiento</a>:<span className="master-no-phone">Sin teléfono</span>}</td>
+    <td style={{verticalAlign:'top'}}><WaButton row={r} finance={finance}/></td>
   </tr>;
 }
-function Table({items,details,openDetail,empty}){
-  return <div className="master-conape-month-table-wrap"><table className="master-conape-month-table" style={{tableLayout:'fixed',minWidth:1240}}><thead><tr><th style={{width:'24%'}}>Estudiante</th><th style={{width:'20%'}}>Movimiento</th><th>Desembolso</th><th>Periodo / nivel</th><th>Campus</th><th>Detectado</th><th>Contacto</th></tr></thead><tbody>{items.map((r,i)=><Row key={r.id||i} r={r} i={i} details={details} openDetail={openDetail}/>)}</tbody></table>{!items.length&&<div style={{padding:24,textAlign:'center'}}>{empty}</div>}</div>;
+function Table({items,details,openDetail,empty,financeMap}){
+  return <div className="master-conape-month-table-wrap"><table className="master-conape-month-table" style={{tableLayout:'fixed',minWidth:1240}}><thead><tr><th style={{width:'24%'}}>Estudiante</th><th style={{width:'20%'}}>Movimiento</th><th>Desembolso</th><th>Periodo / nivel</th><th>Campus</th><th>Detectado</th><th>Contacto</th></tr></thead><tbody>{items.map((r,i)=><Row key={r.id||i} r={r} i={i} details={details} openDetail={openDetail} financeMap={financeMap}/>)}</tbody></table>{!items.length&&<div style={{padding:24,textAlign:'center'}}>{empty}</div>}</div>;
 }
-function MasterConapeMovementsTableCS21A35({data,onRefresh}){
+function MasterConapeMovementsTableCS21A37({data,onRefresh}){
   const m=data?.conape?.movements||{},all=Array.isArray(m.rows)?m.rows:[],s=m.summary||{};
   const rows=[...all].sort((a,b)=>Number(a.appliedInSystem)-Number(b.appliedInSystem)||Number(b.detectedSort||0)-Number(a.detectedSort||0));
   const pending=rows.filter(r=>!r.appliedInSystem),applied=rows.filter(r=>r.appliedInSystem);
+  const financeRows=Array.isArray(data?.collections?.rows)?data.collections.rows:[];
+  const financeMap=React.useMemo(()=>{const map={};const byCode={};financeRows.forEach(x=>{const c=String(x?.code||'').trim(),l=String(x?.level||'').trim().toUpperCase();if(!c)return;if(l)map[`${c}|${l}`]=x;(byCode[c]||(byCode[c]=[])).push(x);});Object.keys(byCode).forEach(c=>{if(byCode[c].length===1)map[c]=byCode[c][0];});return map;},[data]);
   const [busy,setBusy]=React.useState(false),[msg,setMsg]=React.useState(''),[details,setDetails]=React.useState({}),[editor,setEditor]=React.useState(null);
   React.useEffect(()=>{const next={};rows.forEach(r=>{const code=String(r?.code||'').trim();if(code)next[code]=String(r?.detail||'');});setDetails(next);},[data]);
   async function refresh(){setBusy(true);setMsg('');try{const r=await window.masterAction('actualizarPanelConapeAhora');setMsg(r.mensaje||'CONAPE actualizado.');await onRefresh?.();}catch(e){setMsg(e.message||String(e));}finally{setBusy(false);}}
   async function openDetail(row,current){const code=String(row?.code||'').trim();if(!code)return;setEditor({row,value:String(current||''),loading:true,saving:false,error:''});try{const data=await postDetalle('getComentarioAdminEstudiante',{codigo:code});setEditor(x=>x?{...x,value:String(data.comentario_admin||''),loading:false,error:''}:x);}catch(e){setEditor(x=>x?{...x,loading:false,error:e.message||String(e)}:x);}}
   async function saveDetail(){if(!editor||editor.loading||editor.saving)return;const code=String(editor.row?.code||'').trim();if(!code)return;setEditor(x=>({...x,saving:true,error:''}));try{const data=await postDetalle('guardarComentarioAdminEstudiante',{codigo:code,comentario:String(editor.value||'').trim()});const saved=String(data.comentario_admin||'');setDetails(prev=>({...prev,[code]:saved}));setMsg(saved?`Detalle de ${editor.row?.name||code} guardado y marcado como revisado.`:`Detalle de ${editor.row?.name||code} eliminado; vuelve a estado sin revisar.`);setEditor(null);}catch(e){setEditor(x=>x?{...x,saving:false,error:e.message||String(e)}:x);}}
   return <section className="master-card master-conape-month-card" data-build={BUILD}>
-    <header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · pendientes recientes primero</h3><p>“Aplicado en sistema” se determina por coincidencia exacta en 7-morosidad: misma cédula, año y periodo cuatrimestral con estado NO. Meses 01–04=P1, 05–08=P2 y 09–12=P3. Los detalles con contenido se resaltan como revisados para facilitar el seguimiento del día siguiente. BDBANCARIO queda excluida · última lectura {fmt(m.lastSync,true)}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span><button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
+    <header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · pendientes recientes primero</h3><p>“Aplicado en sistema” se determina por coincidencia exacta en 7-morosidad: misma cédula, año y periodo cuatrimestral con estado NO. Meses 01–04=P1, 05–08=P2 y 09–12=P3. El botón WA prepara el mensaje institucional con el nombre y el monto pendiente del nivel; la imagen se adjunta manualmente. BDBANCARIO queda excluida · última lectura {fmt(m.lastSync,true)}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span><button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
     <div className="master-conape-month-kpis" style={{gridTemplateColumns:'repeat(6,minmax(120px,1fr))'}}><div><b>{s.pending!=null?s.pending:pending.length}</b><span>pendientes arriba</span></div><div><b>{s.applied!=null?s.applied:applied.length}</b><span>aplicados fuera</span></div><div><b>{s.mora||0}</b><span>morosos</span></div><div><b>{s.levelLinked||0}</b><span>nivel enlazado</span></div><div><b>{s.unlinked||0}</b><span>por vincular</span></div><div><b>{s.advanced||0}</b><span>adelantados</span></div></div>
     {msg&&<div className="master-conape-month-msg">{msg}</div>}
-    <Table items={pending} details={details} openDetail={openDetail} empty="No quedan movimientos pendientes según 7-morosidad."/>
-    <details style={{marginTop:16,border:'1px solid #C9D8CC',borderRadius:12,background:'#F7FAF7',overflow:'hidden'}}><summary style={{cursor:'pointer',padding:'13px 16px',fontWeight:900,color:'#2A6338',listStyle:'none'}}>✓ Aplicados en sistema · fuera del seguimiento principal ({applied.length})</summary><div style={{borderTop:'1px solid #D7E2D9'}}><Table items={applied} details={details} openDetail={openDetail} empty="Todavía no hay movimientos con estado NO exacto en 7-morosidad."/></div></details>
+    <Table items={pending} details={details} openDetail={openDetail} financeMap={financeMap} empty="No quedan movimientos pendientes según 7-morosidad."/>
+    <details style={{marginTop:16,border:'1px solid #C9D8CC',borderRadius:12,background:'#F7FAF7',overflow:'hidden'}}><summary style={{cursor:'pointer',padding:'13px 16px',fontWeight:900,color:'#2A6338',listStyle:'none'}}>✓ Aplicados en sistema · fuera del seguimiento principal ({applied.length})</summary><div style={{borderTop:'1px solid #D7E2D9'}}><Table items={applied} details={details} openDetail={openDetail} financeMap={financeMap} empty="Todavía no hay movimientos con estado NO exacto en 7-morosidad."/></div></details>
     <DetailModal editor={editor} setEditor={setEditor} onSave={saveDetail}/>
   </section>;
 }
-function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A35;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
+function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A37;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
 window.addEventListener('an:lazy-module-loaded',e=>{if(String(e?.detail?.src||'').includes('admin_master_dashboard.jsx'))apply();});
 setTimeout(apply,0);
 })();
