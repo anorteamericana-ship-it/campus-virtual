@@ -1,12 +1,12 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A50
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A51
 
 ## Estado
 
-- Frontend guardado en `main`: CS21A50.
+- Frontend guardado en `main`: CS21A51.
 - Backend completo objetivo: CS21A46.
 - Producción no verificada.
 
-## CS21A50 — Recursos docentes / Libros de texto
+## CS21A51 — Recursos docentes / navegación real del Student Book
 
 Ruta: Docente → Recursos Didácticos → Libros de texto.
 
@@ -18,6 +18,9 @@ Ruta: Docente → Recursos Didácticos → Libros de texto.
 - Inicio real SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
 - Destino PDF: `8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112`.
 - El mapeo es común a B1, B2, I1 e I2 según la fuente vigente.
+- CS21A50 usaba `Drive /preview#page`, pero ese visor ignoraba el salto.
+- CS21A51 usa el PDF directo con parámetros `#page=` del visor nativo del navegador.
+- Ejemplo crítico: Básico I, U09 muestra el contenido SB 58 cargando la página PDF 64.
 - No aplicar esos saltos a TB o WB.
 - Apps Script no se modificó.
 
