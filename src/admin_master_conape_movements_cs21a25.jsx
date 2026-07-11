@@ -1,7 +1,7 @@
-// F98.4-Z6-CS21A32 · Seguimiento inmediato CONAPE con aplicado en sistema por nivel.
+// F98.4-Z6-CS21A33 · Seguimiento inmediato CONAPE aplicado según 7-morosidad.
 (function(){
 'use strict';
-const BUILD='F98.4-Z6-CS21A32';
+const BUILD='F98.4-Z6-CS21A33';
 const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const LEVEL_LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 
@@ -29,7 +29,7 @@ function type(r){
   return ({PRIMER_DESEMBOLSO:'Primer desembolso',NUEVO_DESEMBOLSO:'Nuevo desembolso',DESEMBOLSO_MES_ACTUAL:'Desembolso del periodo',DESEMBOLSO_REPORTADO:'Desembolso reportado',APROBADO_SIN_DESEMBOLSO:'Aprobado sin desembolso',DESEMBOLSO_REMOVIDO:'Desembolso retirado'}[r.type]||String(r.type||'').replaceAll('_',' '));
 }
 function levelText(r){return r.levelLabel||LEVEL_LABEL[String(r.level||'').toUpperCase()]||'Nivel sin enlazar';}
-function moraText(r){return r.moraState==='SI'?'Moroso':r.moraState==='NO'?'No moroso':r.moraState==='SIN_FILA'?'Sin fila de morosidad':'Sin nivel enlazado';}
+function moraText(r){return r.moraState==='SI'?'Estado SI · pendiente':r.moraState==='NO'?'Estado NO · aplicado':r.moraState==='SIN_FILA'?'Sin fila exacta':'Sin estado';}
 function moraStyle(r){
   if(r.moraState==='SI')return{background:'#FDECEC',color:'#A12828',border:'1px solid #E8B1B1'};
   if(r.moraState==='NO')return{background:'#EAF6ED',color:'#246B35',border:'1px solid #B8D9C0'};
@@ -60,8 +60,10 @@ function DetailModal({editor,setEditor,onSave}){
   </div>;
 }
 function ApplicationBadge({row}){
-  if(row.appliedInSystem)return <><span className="master-conape-movement-badge" style={{background:'#E5F5E9',color:'#1F6A32',border:'1px solid #A9D5B4'}}>✓ Aplicado en sistema</span><small style={{display:'block',marginTop:6,color:'#315D3A',fontWeight:800}}>{type(row)} · {levelText(row)}</small><small style={{display:'block',marginTop:3,color:'#5F6F63'}}>{money(row.appliedAmount)} · {Number(row.appliedCount||0)} registro(s){row.appliedLastDate?` · último ${row.appliedLastDate}`:''}</small></>;
-  return <><span className="master-conape-movement-badge" style={row.advance?{background:'#FFF3CD',color:'#8A5A00'}:null}>{type(row)}</span><small style={{display:'block',marginTop:6,color:'#8A4F00',fontWeight:850}}>{row.applicationAmbiguous?'Pago sin intento identificable':(row.levelLinked?'Pendiente de aplicar en sistema':'Pendiente de enlazar con nivel')}</small><small style={{display:'block',marginTop:3,color:'#73695C'}}>{levelText(row)}{row.applicationAmbiguous?' · no se atribuyó entre intentos':''}</small></>;
+  const moraRef=`7-morosidad · ${row.moraYear||row.year||'—'} · periodo ${row.moraPeriod||'—'}`;
+  if(row.appliedInSystem)return <><span className="master-conape-movement-badge" style={{background:'#E5F5E9',color:'#1F6A32',border:'1px solid #A9D5B4'}}>✓ Aplicado en sistema</span><small style={{display:'block',marginTop:6,color:'#315D3A',fontWeight:800}}>{type(row)} · {levelText(row)}</small><small style={{display:'block',marginTop:3,color:'#5F6F63'}}>{moraRef} · estado NO</small>{Number(row.appliedCount||0)>0?<small style={{display:'block',marginTop:3,color:'#6A746C'}}>Evidencia complementaria: {money(row.appliedAmount)} · {Number(row.appliedCount||0)} registro(s)</small>:null}</>;
+  const pending=row.moraState==='SI'?'Pendiente · 7-morosidad estado SI':'Pendiente · sin fila exacta en 7-morosidad';
+  return <><span className="master-conape-movement-badge" style={row.advance?{background:'#FFF3CD',color:'#8A5A00'}:null}>{type(row)}</span><small style={{display:'block',marginTop:6,color:'#8A4F00',fontWeight:850}}>{pending}</small><small style={{display:'block',marginTop:3,color:'#73695C'}}>{moraRef} · {levelText(row)}</small></>;
 }
 function Row({r,i,details,openDetail}){
   const p=period(r),wa=phone(r.phone),code=String(r?.code||'').trim(),detail=code&&Object.prototype.hasOwnProperty.call(details,code)?details[code]:String(r.detail||'');
@@ -71,7 +73,7 @@ function Row({r,i,details,openDetail}){
     <td style={{verticalAlign:'top'}}><ApplicationBadge row={r}/><span style={{display:'inline-block',marginTop:7,padding:'3px 7px',borderRadius:999,fontSize:9.5,fontWeight:900,...moraStyle(r)}}>{moraText(r)}</span>{r.moraRowCount>1&&<small style={{display:'block',marginTop:4,color:'#A12828',fontWeight:850}}>⚠ {r.moraRowCount} filas de morosidad</small>}</td>
     <td style={{verticalAlign:'top'}}><b>#{r.disbursement||'—'}</b><small>{fmt(r.eventDate,false)}</small></td>
     <td style={{verticalAlign:'top',fontWeight:800}}>{p}<small style={{display:'block',marginTop:4,fontWeight:700,color:'#697384'}}>{levelText(r)}{r.academicStatus?` · ${r.academicStatus}`:''}</small></td>
-    <td style={{verticalAlign:'top'}}>{r.linked?<span className="master-link-status linked">Vinculado</span>:<span className="master-link-status unlinked">Sin vínculo</span>}<small>{r.group||'Sin grupo'}</small>{r.appliedSources?.length?<small style={{display:'block',marginTop:4,color:'#48624F'}}>Fuente: {r.appliedSources.join(' + ')}</small>:null}</td>
+    <td style={{verticalAlign:'top'}}>{r.linked?<span className="master-link-status linked">Vinculado</span>:<span className="master-link-status unlinked">Sin vínculo</span>}<small>{r.group||'Sin grupo'}</small>{r.appliedInSystem?<small style={{display:'block',marginTop:4,color:'#2F6B3B',fontWeight:800}}>Aplicación: 7-morosidad</small>:null}{r.appliedSources?.length?<small style={{display:'block',marginTop:4,color:'#6A746C'}}>Pagos complementarios: {r.appliedSources.join(' + ')}</small>:null}</td>
     <td style={{verticalAlign:'top'}}>{fmt(r.detectedAt,true)}</td>
     <td style={{verticalAlign:'top'}}>{wa?<a className="master-wa-action" href={`https://wa.me/${wa}?text=${encodeURIComponent(txt)}`} target="_blank" rel="noreferrer">WA Dar seguimiento</a>:<span className="master-no-phone">Sin teléfono</span>}</td>
   </tr>;
@@ -79,7 +81,7 @@ function Row({r,i,details,openDetail}){
 function Table({items,details,openDetail,empty}){
   return <div className="master-conape-month-table-wrap"><table className="master-conape-month-table" style={{tableLayout:'fixed',minWidth:1240}}><thead><tr><th style={{width:'24%'}}>Estudiante</th><th style={{width:'20%'}}>Movimiento</th><th>Desembolso</th><th>Periodo / nivel</th><th>Campus</th><th>Detectado</th><th>Contacto</th></tr></thead><tbody>{items.map((r,i)=><Row key={r.id||i} r={r} i={i} details={details} openDetail={openDetail}/>)}</tbody></table>{!items.length&&<div style={{padding:24,textAlign:'center'}}>{empty}</div>}</div>;
 }
-function MasterConapeMovementsTableCS21A32({data,onRefresh}){
+function MasterConapeMovementsTableCS21A33({data,onRefresh}){
   const m=data?.conape?.movements||{},all=Array.isArray(m.rows)?m.rows:[],s=m.summary||{};
   const rows=[...all].sort((a,b)=>Number(a.appliedInSystem)-Number(b.appliedInSystem)||Number(b.detectedSort||0)-Number(a.detectedSort||0));
   const pending=rows.filter(r=>!r.appliedInSystem),applied=rows.filter(r=>r.appliedInSystem);
@@ -89,15 +91,15 @@ function MasterConapeMovementsTableCS21A32({data,onRefresh}){
   async function openDetail(row,current){const code=String(row?.code||'').trim();if(!code)return;setEditor({row,value:String(current||''),loading:true,saving:false,error:''});try{const data=await postDetalle('getComentarioAdminEstudiante',{codigo:code});setEditor(x=>x?{...x,value:String(data.comentario_admin||''),loading:false,error:''}:x);}catch(e){setEditor(x=>x?{...x,loading:false,error:e.message||String(e)}:x);}}
   async function saveDetail(){if(!editor||editor.loading||editor.saving)return;const code=String(editor.row?.code||'').trim();if(!code)return;setEditor(x=>({...x,saving:true,error:''}));try{const data=await postDetalle('guardarComentarioAdminEstudiante',{codigo:code,comentario:String(editor.value||'').trim()});const saved=String(data.comentario_admin||'');setDetails(prev=>({...prev,[code]:saved}));setMsg(saved?`Detalle de ${editor.row?.name||code} guardado.`:`Detalle de ${editor.row?.name||code} eliminado.`);setEditor(null);}catch(e){setEditor(x=>x?{...x,saving:false,error:e.message||String(e)}:x);}}
   return <section className="master-card master-conape-month-card" data-build={BUILD}>
-    <header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · pendientes recientes primero</h3><p>Se enlazan estudiante, periodo, nivel y morosidad. “Aplicado en sistema” usa solo PAGOS, OTROS PAGOS y PAGOS_CAMPUS; BDBANCARIO queda excluida · última lectura {fmt(m.lastSync,true)}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span><button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
+    <header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · pendientes recientes primero</h3><p>“Aplicado en sistema” se determina por coincidencia exacta en 7-morosidad: misma cédula, año y periodo cuatrimestral con estado NO. Meses 01–04=P1, 05–08=P2 y 09–12=P3. BDBANCARIO queda excluida · última lectura {fmt(m.lastSync,true)}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span><button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
     <div className="master-conape-month-kpis" style={{gridTemplateColumns:'repeat(6,minmax(120px,1fr))'}}><div><b>{s.pending!=null?s.pending:pending.length}</b><span>pendientes arriba</span></div><div><b>{s.applied!=null?s.applied:applied.length}</b><span>aplicados fuera</span></div><div><b>{s.mora||0}</b><span>morosos</span></div><div><b>{s.levelLinked||0}</b><span>nivel enlazado</span></div><div><b>{s.unlinked||0}</b><span>por vincular</span></div><div><b>{s.advanced||0}</b><span>adelantados</span></div></div>
     {msg&&<div className="master-conape-month-msg">{msg}</div>}
-    <Table items={pending} details={details} openDetail={openDetail} empty="No quedan movimientos pendientes de aplicación o enlace."/>
-    <details style={{marginTop:16,border:'1px solid #C9D8CC',borderRadius:12,background:'#F7FAF7',overflow:'hidden'}}><summary style={{cursor:'pointer',padding:'13px 16px',fontWeight:900,color:'#2A6338',listStyle:'none'}}>✓ Aplicados en sistema · fuera del seguimiento principal ({applied.length})</summary><div style={{borderTop:'1px solid #D7E2D9'}}><Table items={applied} details={details} openDetail={openDetail} empty="Todavía no hay desembolsos enlazados con pagos aplicados en el sistema."/></div></details>
+    <Table items={pending} details={details} openDetail={openDetail} empty="No quedan movimientos pendientes según 7-morosidad."/>
+    <details style={{marginTop:16,border:'1px solid #C9D8CC',borderRadius:12,background:'#F7FAF7',overflow:'hidden'}}><summary style={{cursor:'pointer',padding:'13px 16px',fontWeight:900,color:'#2A6338',listStyle:'none'}}>✓ Aplicados en sistema · fuera del seguimiento principal ({applied.length})</summary><div style={{borderTop:'1px solid #D7E2D9'}}><Table items={applied} details={details} openDetail={openDetail} empty="Todavía no hay movimientos con estado NO exacto en 7-morosidad."/></div></details>
     <DetailModal editor={editor} setEditor={setEditor} onSave={saveDetail}/>
   </section>;
 }
-function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A32;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
+function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A33;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
 window.addEventListener('an:lazy-module-loaded',e=>{if(String(e?.detail?.src||'').includes('admin_master_dashboard.jsx'))apply();});
 setTimeout(apply,0);
 })();
