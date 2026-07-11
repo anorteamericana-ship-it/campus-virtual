@@ -1,36 +1,36 @@
-# Apps Script — backend canónico
+# Apps Script — backend completo de continuidad
 
-## Versión vigente
+## Versión objetivo
 
-`F98.4-Z6-CS21A43`
+`F98.4-Z6-CS21A46`
 
-El archivo productivo es `Code.gs` y se reemplaza completo.
-
-## Cambio CS21A43
-
-- Lee directamente el archivo externo oficial `6-historial`.
-- Crea un índice por cédula con nivel, materia, año, periodo, tipo, estatus y nota.
-- Adjunta `historySummary` a los movimientos del Panel Maestro.
-- No escribe ni reconstruye `6-historial`.
-- Conserva todas las filas e intentos.
-- Usa caché `MASTER_DASH_CS21A43_V1`.
-
-Fuente:
-
-- ID `13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI`
-- Pestaña `Hoja 1`
+El archivo productivo es `Code.gs` y se reemplaza completo. El backend grande no se almacena en GitHub; este README registra su identidad.
 
 ## Integridad
 
-- Archivo: `Code_F98_4_Z6_CS21A43_SEGUIMIENTO_HISTORIAL_COMPLETO.gs`
-- Tamaño: 2,877,888 bytes
-- SHA-256: `8eefafd6f8054033273c4a4451e85a55ce66735ccfeb6b141f820c290471fcca`
-- Sintaxis: `node --check` aprobada.
+- Entrega: `ENTREGA_F98_4_Z6_CS21A46_SOLO_DESEMBOLSO_ACADEMICO_01.zip`
+- Ruta interna: `AppsScript/Code.gs`
+- Tamaño: 2,879,996 bytes
+- SHA-256: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`
+- Sintaxis: aprobada con `node --check` sobre copia `.js`
+- Producción: no verificada
 
-## Reglas preservadas
+## Cambio CS21A46
 
-- `7-morosidad` continúa como autoridad de aplicado/pendiente.
-- La ruta académica no aplica pagos.
-- No se mueven pagos entre niveles o intentos.
-- No existen triggers nuevos para CONAPE.
-- Producción no confirmada.
+- Interpreta `FECHA_ULT_DESEMBOLSO` como número de desembolso, mes y año.
+- Seguimiento inmediato usa únicamente el número `01`.
+- Los números `02`, `03` y superiores permanecen en logs para auditoría.
+- Un movimiento posterior no crea, reemplaza ni cierra el seguimiento académico `01`.
+- Usa caché `MASTER_DASH_CS21A46_V1`.
+
+## Funciones preservadas
+
+- Consulta individual fresca CS21A42.
+- Certificados reconciliados: pago separado de emisión.
+- Pagos con bloqueo, `REQUEST_ID`, journal e idempotencia.
+- Lectura directa de `7-morosidad`.
+- Resumen académico desde `6-historial`.
+- No mover pagos entre niveles o intentos.
+- No crear triggers automáticos de CONAPE.
+
+Preparado o respaldado no significa desplegado. Confirmar nueva implementación y pruebas antes de declarar producción.
