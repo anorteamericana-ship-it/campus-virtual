@@ -1,93 +1,51 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A42
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A43
 
-Esta Biblia Delta fija las reglas aprobadas hasta el corte del 10-jul-2026.
+## 1. Seguimiento inmediato
 
-## 1. Versiones
+Orden oficial:
 
-- Backend canónico: CS21A42.
-- Frontend activo: CS21A42.
-- Toda modificación de backend se entrega como `Code.gs` completo.
-- No instalar fragmentos ni afirmar despliegue sin evidencia.
+`Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | Campus | WA`
 
-## 2. Consulta individual: lectura real
+- El código se muestra solo, sin etiquetas auxiliares.
+- El nombre continúa destacado y la cédula queda debajo.
+- Detectado no existe como columna; la fecha `dd/MM` acompaña al periodo.
+- Toda la fila debe caber en el panel sin scroll horizontal.
+- WA no puede quedar oculto.
 
-- `getEstudiante` puede usar un caché corto para rendimiento durante lecturas normales.
-- Después de cualquier escritura crítica debe invalidarse el caché individual.
-- `getEstudianteFresh` es la ruta obligatoria inmediatamente después de cambiar estatus, aplicar pago, emitir certificado, configurar TOEIC, cambiar grupo o revertir un cambio.
-- La ventana de Cambio de estatus no debe cerrarse hasta que la ficha real posterior a la escritura haya sido reconstruida.
-- Si la lectura fresca falla, la ventana permanece abierta y muestra el error.
-- No usar una recarga total inmediata como sustituto de la lectura real.
+## 2. Resumen académico
 
-## 3. Rendimiento
+Fuente exclusiva: archivo externo oficial `6-historial`, ID `13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI`.
 
-- `getConsultaIndividualFresh` agrupa ficha, asistencia, comentario administrativo e historial en una sola respuesta.
-- Las solicitudes simultáneas de Consulta individual deben compartir la misma lectura agrupada.
-- La optimización no puede sustituir datos reales por valores vacíos ni mezclar respuestas de distintos momentos.
+Formato:
 
-## 4. Certificado: dos estados independientes
+`NIVEL · AAAAPTIPO · ESTATUS NOTA`
 
-El panel debe mostrar siempre:
+Ejemplos:
 
-1. **Pago**: `PAGADO` o `PENDIENTE ₡...`.
-2. **Documento**: `EMITIDO` o `POR EMITIR`.
+- `BÁSICO I · 20253C · APR 100`
+- `INTERMEDIO II · 20263C · PE`
 
 Reglas:
 
-- Pago completo sin `REG_CERTIFICADOS` = `Pago PAGADO` + `Documento POR EMITIR`.
-- Registro oficial existente = `Documento EMITIDO`.
-- Saldo real = `Pago PENDIENTE`.
-- Nunca presentar `POR EMITIR` como deuda financiera.
-- El certificado puede estar pagado antes de emitirse; son procesos distintos.
+- El código de materia determina el nivel.
+- La nota solo se muestra si existe.
+- Todas las filas de la cédula se conservan, incluso si hay intentos repetidos.
+- La tabla no corrige, fusiona ni escribe 6-historial.
+- La falta de filas se muestra como `Sin historial CONAPE`.
 
-## 5. Asignación financiera por intento
+## 3. Coherencia técnica
 
-- Los movimientos de certificado usan `grupos_certificado_aplicados`.
-- Matrícula, cuotas, Programa Completo y TOEIC usan `grupos_pago_aplicados`.
-- Una coincidencia exacta del grupo del movimiento con el intento tiene prioridad.
-- Si existe un único intento del nivel, se permite una asignación segura a ese intento único.
-- Si existen varios intentos y no hay evidencia suficiente, el movimiento queda sin asignar para revisión; nunca se reparte por conveniencia.
-- Nunca mover pagos entre niveles o intentos.
+- Apps Script lee 6-historial una vez por construcción del Panel Maestro.
+- El frontend recibe `historySummary`; no consulta el spreadsheet por estudiante.
+- Consulta individual está integrada en el componente principal.
+- El parche DOM anterior deja de cargarse.
+- El caché del Panel Maestro cambia a CS21A43.
 
-## 6. Caso de control 17110
+## 4. Reglas preservadas
 
-La lectura real esperada es:
-
-- B1 APR, certificado emitido.
-- B2 APR, certificado pagado y documento por emitir.
-- I1 CA.
-- I2 PE.
-
-B2 debe mostrar `Pago PAGADO` y `Documento POR EMITIR`.
-
-## 7. Aplicar pago dentro de Consulta individual
-
-- Una sola búsqueda de comprobante por intento vigente.
-- Revalidación al seleccionar y antes de aplicar.
-- Controles por rubro.
-- Cargos especiales con `CARGO_ID` y monto exacto.
-- Intentos históricos de solo lectura.
-- El frontend no escribe directamente en hojas financieras.
-- Apps Script conserva la autoridad sobre grupo, intento, deuda, saldo, recibos, rollback, idempotencia y CONAPE.
-
-## 8. Seguimiento inmediato preservado
-
-- Código del estudiante primero y seleccionable.
-- Tabla sin scroll horizontal.
-- Columna `Desembolso` eliminada.
-- `WA Pago` visible.
-- `Seguimiento` / `Revisado` persiste en `DATOS.COMENTARIO_ADMIN`.
-- Mensaje WA con emoticono Unicode seguro y negrita de un asterisco.
-
-## 9. Fuente oficial de morosidad CONAPE
-
-- Spreadsheet ID `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`.
-- Archivo `7-morosidad`.
-- Pestaña `Hoja 1`.
-- Regla: 01–04=P1, 05–08=P2, 09–12=P3; `NO`=aplicado, `SI`=pendiente y sin fila exacta=revisión.
-
-## 10. Reglas críticas generales
-
-- No modificar directamente `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` o CONAPE desde el frontend.
-- No crear triggers automáticos para CONAPE.
-- No confundir código guardado con producción desplegada.
-- Antes de producción, probar el caso 17110, cambio de estatus sin Ctrl+R y una aplicación de pago controlada.
+- 7-morosidad sigue definiendo aplicado o pendiente.
+- El resumen académico no determina pagos.
+- No se mueven pagos entre niveles o intentos.
+- El frontend no escribe hojas financieras ni académicas.
+- Code.gs se entrega completo.
+- Respaldado no significa desplegado.
