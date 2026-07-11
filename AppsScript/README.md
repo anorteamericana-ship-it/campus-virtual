@@ -17,8 +17,10 @@ El archivo productivo es `Code.gs` y se reemplaza completo. El backend grande no
 
 ## Frontend vigente relacionado
 
-F98.4-Z6-CS21A50 modifica únicamente el visor docente de libros y `campus.html`.
+F98.4-Z6-CS21A51 modifica únicamente el visor docente de libros y `campus.html`.
 
+- Corrige el salto U01–U16 del Student Book usando el PDF directo con el visor nativo del navegador.
+- Básico I → U09 muestra el contenido SB 58 mediante la página PDF 64.
 - No modifica Apps Script.
 - No modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
 - El backend objetivo continúa siendo CS21A46.
