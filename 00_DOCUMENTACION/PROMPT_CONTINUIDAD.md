@@ -4,76 +4,68 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A39**.
+Estoy trabajando en CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA, Costa Rica. Continúa desde F98.4-Z6-CS21A40.
 
 ## Forma obligatoria
 
-1. Respondé en español directo y asumí trabajo por copy/paste.
-2. Antes de modificar, indicá impacto y archivos exactos.
-3. Si Apps Script cambia, entregá siempre `Code.gs` completo.
-4. Modificá solo los archivos necesarios de `anorteamericana-ship-it/campus-virtual`, rama `main`.
-5. No toqués pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario sin análisis de impacto.
-6. No movás pagos entre niveles o intentos.
-7. No afirmés despliegue si solo hay respaldo o commit.
-8. Actualizá la documentación canónica sin copias redundantes.
+1. Responder en español directo y asumir trabajo por copy/paste.
+2. Antes de modificar, indicar impacto y archivos exactos.
+3. Si Apps Script cambia, entregar siempre Code.gs completo.
+4. Modificar solo los archivos necesarios de anorteamericana-ship-it/campus-virtual, rama main.
+5. No tocar pagos, certificados, DATOS, ESTATUS, GRUPOS, INTENTOS_ACADEMICOS, CONAPE o calendario sin análisis de impacto.
+6. No mover pagos entre niveles o intentos.
+7. No afirmar despliegue si solo existe respaldo o commit.
+8. Actualizar la documentación canónica sin copias redundantes.
 
 ## Estado vigente
 
-- Backend: **CS21A34**.
-- Frontend integral: **CS21A39**.
-- Apps Script no cambió en CS21A39.
-- El componente de Seguimiento inmediato continúa en `src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A38`.
-- `campus.html` agrega `styles/admin_master_conape_identity_cs21a39.css?v=F98.4Z6CS21A39`.
+- Backend: CS21A34.
+- Frontend integral: CS21A40.
+- Apps Script no cambió.
+- campus.html carga src/admin_master_conape_movements_cs21a25.jsx con versión F98.4Z6CS21A40.
+- El estilo de identidad CS21A39 permanece cargado.
 
-## Identidad legible en Seguimiento inmediato
+## Mensaje WA corregido
 
-- Nombre del estudiante: 13.5 px, peso fuerte y color azul institucional.
-- Línea con cédula y código: 10.2 px, peso fuerte, fondo azul claro y borde visible.
-- Primera columna: 31% del ancho de la tabla.
-- Pantallas hasta 1180 px reducen moderadamente el tamaño para conservar toda la fila.
-- El ajuste es solo visual; no altera datos, vínculo, morosidad, clasificación o WhatsApp.
+El botón WA Pago prepara solo texto. La imagen se adjunta manualmente.
 
-## Seguimiento inmediato compacto preservado
+- El emoticono se genera con String.fromCodePoint(0x1F389) y debe verse como el icono de celebración, nunca como el carácter de reemplazo.
+- WhatsApp usa negrita con un solo asterisco a cada lado del texto.
+- No usar asteriscos dobles.
+- El saludo, la confirmación del desembolso, la prontitud, el estado al día y el monto deben resaltarse.
+- Usa el nombre de pila.
+- Consulta getEstudiante al pulsar WA.
+- No inventa monto.
+- En aplicados muestra No enviar.
+- No envía automáticamente ni escribe hojas.
 
-- No debe existir scroll horizontal.
-- La columna `Desembolso` está eliminada.
-- Columnas vigentes: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
-- `✎ Seguimiento` y `✓ Revisado` son botones pequeños.
-- `WA Pago` debe permanecer visible.
-- Movimientos aplicados muestran `No enviar`.
+## Seguimiento inmediato preservado
 
-## Texto WA preservado
+- Nombre grande y código/cédula destacados.
+- Sin scroll horizontal.
+- Columna Desembolso eliminada.
+- Columnas: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
+- Seguimiento, Revisado y WA Pago permanecen compactos.
 
-El botón prepara solo texto. La imagen se adjunta manualmente.
-
-- Detecta el nombre de pila.
-- Consulta `getEstudiante` al pulsar WA.
-- Calcula el monto pendiente del nivel.
-- Muestra bimestre o cuatrimestre.
-- Para I2 dice `último nivel`.
-- Si el monto no se confirma, abre el texto base sin cifra.
-- No envía automáticamente, no adjunta imagen y no escribe hojas.
-
-## Aplicar pago dentro de Consulta individual · CS21A36 preservado
+## Aplicar pago dentro de Consulta individual preservado
 
 - Una búsqueda de comprobante por intento vigente.
-- Búsqueda por documento, fecha o descripción.
 - Revalidación al seleccionar y antes de aplicar.
-- Controles `− / +` por rubro.
-- Cargos especiales con `CARGO_ID` y monto exacto.
+- Controles por rubro.
+- Cargos especiales con CARGO_ID y monto exacto.
 - Intentos históricos de solo lectura.
-- El frontend solo llama `getEstudiante`, `getComprobantes` y `aplicarPago`.
+- El frontend solo llama getEstudiante, getComprobantes y aplicarPago.
 - Nunca crear una segunda lógica contable ni mover pagos entre niveles o intentos.
 
 ## Fuente oficial de morosidad CONAPE
 
-- Spreadsheet ID: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`
-- Archivo: `7-morosidad`
-- Pestaña: `Hoja 1`
-- Regla: 01–04=P1; 05–08=P2; 09–12=P3; `NO`=aplicado; `SI`=pendiente; sin fila exacta=revisión.
+- Spreadsheet ID: 1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg
+- Archivo: 7-morosidad
+- Pestaña: Hoja 1
+- Regla: 01-04=P1; 05-08=P2; 09-12=P3; NO=aplicado; SI=pendiente; sin fila exacta=revisión.
 
 ## Estado de despliegue
 
-CS21A39 está guardado en GitHub `main`, pero producción no está confirmada. Ejecutar QA visual confirmando nombre, código, ausencia de scroll y WA visible.
+CS21A40 está guardado en GitHub main, pero producción no está confirmada. Ejecutar QA confirmando emoticono, negritas, monto, I2 y No enviar.
 
 ---
