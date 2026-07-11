@@ -1,34 +1,26 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A54",
+  "version": "F98.4-Z6-CS21A55",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "production_deployment_confirmed": false,
   "backend": {
-    "target_version": "F98.4-Z6-CS21A46",
+    "version": "F98.4-Z6-CS21A55",
+    "base_preserved": "F98.4-Z6-CS21A46",
     "canonical_verified": true,
     "stored_in_github": false,
-    "canonical_drive_folder_id": "1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a",
-    "canonical_drive_file_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
-    "canonical_drive_file_name": "Code.gs",
-    "backup_drive_folder_id": "1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr",
-    "initial_backup_drive_file_id": "1sJJ9umm5tGoMGibIoQiIECGYFZ91ErCT",
-    "initial_backup_file_name": "Code_F98_4_Z6_CS21A46_COMPLETO_2026-07-11.gs",
-    "drive_manifest_file_id": "179pqbUFMPiOUN6Lo3YA_Ia51lKtqtP8u",
-    "drive_manifest_file_name": "README_BACKEND_ACTUAL.txt",
-    "delivery_zip": "ENTREGA_F98_4_Z6_CS21A46_SOLO_DESEMBOLSO_ACADEMICO_01.zip",
-    "internal_path": "AppsScript/Code.gs",
-    "size_bytes": 2879996,
-    "sha256": "6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568",
-    "newline_count": 50122,
-    "editor_line_count_possible": 50123,
-    "canonical_update_rule": "create versioned backup first, then replace bytes of the same canonical Drive file ID",
-    "never_use_as_base": ["F98.4-Z6-CS21A42", "any smaller or hash-mismatched backend"],
+    "canonical_location": "Drive folder and file recorded in AppsScript/README.md and README_BACKEND_ACTUAL.txt",
+    "backup_created_before_change": true,
+    "size_bytes": 2889170,
+    "sha256": "127d9bbe403fa3a91073081d8a11a2a633d32e0c5931784d393126ee2cd321df",
+    "newline_count": 50293,
+    "endpoints_added": ["teacherBooksOpenPdf", "teacherBooksReadRange"],
+    "read_only_change": true,
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A54",
+    "version": "F98.4-Z6-CS21A55",
     "github_saved": true,
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
@@ -37,15 +29,14 @@
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books": "98c2cdd4a1f457f6f106fb4d0a4128e789acc5fb",
+      "teacher_books": "14cf0c1440041945c611999a4ff0846cef4ce090",
       "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
       "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
-      "campus": "3e028f13c397c40a28237a8df581a1f93eb03d97"
+      "campus": "6c3ae4259cd4452978fce18b3cd60319cb40c6c8"
     },
     "production_deployment_confirmed": false
   },
   "teacher_books": {
-    "source_spreadsheet_id": "1I5uxY88wu_wNietQLKcYMl7hw7b0-q5ABI3QorY6zI4",
     "source_spreadsheet_title": "APOLLO_G3_LIMPIO_21-04-26",
     "source_sheet": "DETALLE DEL PROGRAMA",
     "source_column": "K",
@@ -55,31 +46,14 @@
     "unit_start_pages_sb": [2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106],
     "unit_start_pages_pdf": [8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112],
     "book_type_buttons": ["SB", "TB", "WB"],
-    "layout": "horizontal_controls_full_width_pdf",
-    "internal_level_sidebar": false,
-    "viewer_mode": "pdfjs_two_page_full_width",
-    "fullscreen_control": true,
+    "layout": "horizontal_controls_full_width_two_page_pdf",
+    "viewer_mode": "pdfjs_range_transport_via_apps_script",
+    "range_chunk_bytes": 524288,
+    "direct_drive_fetch": false,
     "drive_preview_fallback": false,
-    "pdf_error_behavior": "controlled_error_until_backend_proxy_is_added",
-    "pdf_cache": "one_document_promise_per_drive_file_id",
-    "global_mutation_observer_removed": true,
-    "legacy_folder_panel_rendered_in_books_routes": false,
-    "pdfjs_version": "3.11.174",
-    "drive_folder_auto_resolution": false,
-    "drive_update_rule": "replace canonical file content while preserving file ID, otherwise update source mapping",
-    "student_book_page_counts": {
-      "B1": 157,
-      "B2": 188,
-      "I1": 158,
-      "I2": 161
-    },
-    "b1_active_student_book": {
-      "folder_id": "1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH",
-      "file_id": "1pnR7RoJGkZnx08TlfrEgxEqVRnlrCwea",
-      "name": "Interchange 5th intro-SB.pdf",
-      "excluded_original_file_id": "13rMmy1ZLpto6SgjSyVyBd3MtivuU19j3"
-    },
-    "critical_test": "B1 U09 renders PDF pages 64-65 in the full-width two-page viewer without loading the legacy view"
+    "dynamic_folder_resolution": true,
+    "excluded_filename_markers": ["ORIGINAL", "COPIA", "COPY", "BACKUP", "RESPALDO", "OLD", "ANTIGUO"],
+    "critical_test": "B1 SB U09 renders PDF pages 64-65 without download or Failed to fetch"
   },
   "seguimiento_inmediato": {
     "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
