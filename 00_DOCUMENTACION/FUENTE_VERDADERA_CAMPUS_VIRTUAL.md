@@ -1,8 +1,8 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A38  
+**Versión integral vigente:** F98.4-Z6-CS21A39  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** línea F98.4-Z6-CS21A38  
+**Frontend activo:** línea F98.4-Z6-CS21A39  
 **Corte:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
@@ -10,7 +10,7 @@ Los documentos sin sufijo de versión dentro de `00_DOCUMENTACION` son los únic
 
 ## Backend canónico
 
-CS21A34 continúa como único `Code.gs` completo. El TXT y ZIP se conservan en `CAMPUS_VIRTUAL_BACKEND_CANONICO`. CS21A38 no modifica Apps Script y no requiere un nuevo respaldo backend.
+CS21A34 continúa como único `Code.gs` completo. El TXT y ZIP se conservan en `CAMPUS_VIRTUAL_BACKEND_CANONICO`. CS21A39 no modifica Apps Script ni requiere un nuevo respaldo backend.
 
 SHA-256 esperado del TXT completo CS21A34:
 
@@ -18,9 +18,28 @@ SHA-256 esperado del TXT completo CS21A34:
 
 Respaldado o guardado no significa desplegado. La producción solo se confirma con evidencia de la implementación correspondiente.
 
-## Vista compacta de Seguimiento inmediato · CS21A38
+## Identidad legible en Seguimiento inmediato · CS21A39
 
-La tabla principal debe caber completa dentro del panel de escritorio sin desplazamiento horizontal.
+CS21A39 preserva la tabla compacta de CS21A38 y refuerza únicamente la primera columna:
+
+- El nombre del estudiante aumenta a 13.5 px, peso fuerte y color azul institucional.
+- La línea que contiene cédula y código aumenta a 10.2 px, peso fuerte y fondo azul claro.
+- La primera columna pasa a 31% del ancho total.
+- Las otras cinco columnas se redistribuyen sin superar el 100%.
+- En pantallas de hasta 1180 px se aplica una reducción moderada para conservar la vista completa.
+- No reaparece el scroll horizontal.
+- No cambia el orden, los datos, la clasificación CONAPE, el detalle ni el botón WA.
+
+Archivos frontend del cambio:
+
+- `styles/admin_master_conape_identity_cs21a39.css`
+- `campus.html`
+
+El componente base continúa en:
+
+- `src/admin_master_conape_movements_cs21a25.jsx` — contenido CS21A38 preservado.
+
+## Vista compacta preservada · CS21A38
 
 Columnas visibles:
 
@@ -31,44 +50,26 @@ Columnas visibles:
 5. Detectado.
 6. WA.
 
-Reglas visuales:
+Reglas:
 
-- Se elimina por completo la columna `Desembolso`.
+- La columna `Desembolso` permanece eliminada.
 - La tabla usa ancho `100%`, distribución fija y sin `min-width` forzado.
 - El contenedor no ofrece scroll horizontal.
-- Nombre, grupo y metadatos largos usan elipsis y conservan el texto completo en `title`.
-- La fecha detectada se presenta compacta; el detalle completo queda en el tooltip.
-- El antiguo botón grande de seguimiento se convierte en una píldora pequeña: `✎ Seguimiento` o `✓ Revisado`.
-- El botón de WhatsApp se reduce a `WA Pago` y tiene una columna propia para permanecer visible.
-- Los aplicados muestran `No enviar` en lugar de una acción de cobro.
-- La cabecera, KPIs y bloque de aplicados también se compactan.
+- El botón de seguimiento permanece compacto: `✎ Seguimiento` o `✓ Revisado`.
+- El botón de WhatsApp permanece como `WA Pago` y conserva su columna propia.
+- Los aplicados muestran `No enviar`.
 
-Archivos frontend:
+## Texto WA preservado
 
-- `src/admin_master_conape_movements_cs21a25.jsx` — contenido activo CS21A38.
-- `campus.html` — carga CS21A38.
+El botón `WA Pago` prepara únicamente texto. La imagen se adjunta manualmente.
 
-## Texto WA de desembolso · CS21A37 preservado
-
-El botón `WA Pago` prepara únicamente el texto. La imagen se adjunta manualmente.
-
-Texto base obligatorio:
-
-> ¡Buenas noticias [Nombre]! 🥳
->
-> CONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.
->
-> Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
-
-Reglas dinámicas:
-
-- Usa el nombre de pila detectado desde el nombre institucional.
-- Consulta `getEstudiante` al pulsar el botón para tomar el monto pendiente vigente del nivel.
-- B1, B2 e I1 agregan nivel, bimestre/cuatrimestre y monto.
-- I2 se identifica como último nivel e incorpora los rubros pendientes permitidos.
-- Si el monto no puede confirmarse, conserva el texto base sin inventar una cifra.
+- Usa el nombre de pila.
+- Consulta `getEstudiante` al pulsar para tomar el monto pendiente vigente del nivel.
+- Identifica bimestre o cuatrimestre.
+- I2 se presenta como último nivel.
+- Si el monto no puede confirmarse, no inventa una cifra.
 - Un movimiento marcado `Aplicado en sistema` no permite solicitar cobro.
-- No envía automáticamente, no adjunta imágenes y no escribe en hojas financieras.
+- No envía automáticamente ni escribe en hojas financieras.
 
 ## Aplicar pago dentro de Consulta individual · CS21A36 preservado
 
@@ -90,4 +91,4 @@ La clasificación usa cédula + año + periodo cuatrimestral: `NO` significa apl
 - Pendientes CONAPE recientes arriba y aplicados abajo.
 - `DATOS.COMENTARIO_ADMIN` continúa determinando `✎ Seguimiento` / `✓ Revisado`.
 - CONAPE continúa manual y sin triggers automáticos.
-- Backend CS21A34 y frontend CS21A38 no están confirmados como publicados en producción.
+- Backend CS21A34 y frontend CS21A39 no están confirmados como publicados en producción.
