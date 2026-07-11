@@ -58,6 +58,11 @@ Requieren análisis antes de escribir:
 - `Detalle` usa `DATOS.COMENTARIO_ADMIN`.
 - No crear ni administrar triggers automáticos.
 - Estado `PROTEGIDO` significa que la API externa no pudo verificarse; no significa que las hojas estén correctas o incorrectas.
+- El botón `WA Solicitar pago` prepara únicamente texto; la imagen se adjunta manualmente.
+- El mensaje usa nombre de pila, nivel, bimestre/cuatrimestre y monto pendiente confirmado por `getEstudiante`.
+- Si el monto no se confirma, no inventar una cifra.
+- Si el movimiento está `Aplicado en sistema`, no ofrecer solicitud de pago; mostrar `Aplicado · no enviar cobro`.
+- El botón WA no envía automáticamente ni escribe en hojas.
 
 ## Calendario
 
