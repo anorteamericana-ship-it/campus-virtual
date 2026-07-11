@@ -1,7 +1,7 @@
-// F98.4-Z6-CS21A38 · Seguimiento inmediato CONAPE compacto, sin scroll horizontal y con WA siempre visible.
+// F98.4-Z6-CS21A40 · WhatsApp elegante con negritas reales y emoticono Unicode seguro.
 (function(){
 'use strict';
-const BUILD='F98.4-Z6-CS21A38';
+const BUILD='F98.4-Z6-CS21A40';
 const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const LEVEL_LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 
@@ -76,13 +76,14 @@ function buildWaText(row,amount,kind){
   const name=givenName(row?.name);
   const nivel=levelText(row);
   const last=levelId(row)==='I2';
+  const celebration=String.fromCodePoint(0x1F389);
   const periodLabel=kind?` (${kind})`:'';
   const amountLine=amount>0
     ? last
-      ? `\n\nEl monto correspondiente al último nivel, ${nivel}${periodLabel}, es de ${money(amount)}.`
-      : `\n\nEl monto correspondiente a ${nivel}${periodLabel} es de ${money(amount)}.`
+      ? `\n\n*Monto correspondiente al último nivel, ${nivel}${periodLabel}: ${money(amount)}.*`
+      : `\n\n*Monto correspondiente a ${nivel}${periodLabel}: ${money(amount)}.*`
     : '';
-  return `¡Buenas noticias ${name}! 🥳\n\nCONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.\n\nLe solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.${amountLine}`;
+  return `*¡Buenas noticias, ${name}! ${celebration}*\n\nCONAPE nos ha informado que el *desembolso ya fue acreditado en su cuenta.*\n\nLe solicitamos realizar el pago a la Academia *a la mayor brevedad posible*, para mantener su expediente *al día* y evitar atrasos en el desembolso del rubro de sostenimiento.${amountLine}`;
 }
 function DetailButton({row,value,onEdit}){
   const linked=!!String(row?.code||'').trim();
@@ -181,7 +182,7 @@ function Row({r,i,details,openDetail,financeMap}){
 function Table({items,details,openDetail,empty,financeMap}){
   return <div className="master-conape-month-table-wrap" style={{width:'100%',maxWidth:'100%',overflowX:'hidden'}}><table className="master-conape-month-table" style={{width:'100%',minWidth:0,tableLayout:'fixed',fontSize:10}}><colgroup><col style={{width:'27%'}}/><col style={{width:'18%'}}/><col style={{width:'19%'}}/><col style={{width:'18%'}}/><col style={{width:'8%'}}/><col style={{width:'10%'}}/></colgroup><thead><tr><th>Estudiante</th><th>Movimiento</th><th>Periodo / nivel</th><th>Campus</th><th>Detectado</th><th style={{whiteSpace:'nowrap'}}>WA</th></tr></thead><tbody>{items.map((r,i)=><Row key={r.id||i} r={r} i={i} details={details} openDetail={openDetail} financeMap={financeMap}/>)}</tbody></table>{!items.length&&<div style={{padding:18,textAlign:'center'}}>{empty}</div>}</div>;
 }
-function MasterConapeMovementsTableCS21A38({data,onRefresh}){
+function MasterConapeMovementsTableCS21A40({data,onRefresh}){
 
   const m=data?.conape?.movements||{},all=Array.isArray(m.rows)?m.rows:[],s=m.summary||{};
   const rows=[...all].sort((a,b)=>Number(a.appliedInSystem)-Number(b.appliedInSystem)||Number(b.detectedSort||0)-Number(a.detectedSort||0));
@@ -202,7 +203,7 @@ function MasterConapeMovementsTableCS21A38({data,onRefresh}){
     <DetailModal editor={editor} setEditor={setEditor} onSave={saveDetail}/>
   </section>;
 }
-function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A38;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
+function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A40;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
 window.addEventListener('an:lazy-module-loaded',e=>{if(String(e?.detail?.src||'').includes('admin_master_dashboard.jsx'))apply();});
 setTimeout(apply,0);
 })();
