@@ -1,107 +1,100 @@
-# GUÍA OPERATIVA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
-
-## Identidad
-
-Proyecto: CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA.  
-País: Costa Rica.  
-Modalidad: inglés conversacional virtual sincrónico.  
-Niveles: Básico I, Básico II, Intermedio I, Intermedio II.
+# SKILL OPERATIVA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
 ## Forma obligatoria de trabajo
 
-- Responder en español directo y explicar para una persona que trabaja por copy/paste.
-- Antes de cambiar código, indicar si el impacto es frontend, Apps Script o ambos, y nombrar los archivos.
-- Si Apps Script cambia, entregar siempre el `Code.gs` completo. Nunca usar un parche como entrega productiva.
-- Si frontend cambia, modificar únicamente los archivos necesarios y respetar rutas reales del repositorio.
-- Verificar sintaxis y diferenciar claramente: generado, guardado en GitHub, instalado y desplegado.
-- Mantener actualizados `00_DOCUMENTACION` y el manifiesto.
+- Responder en español directo para una persona que trabaja por copy/paste.
+- Antes de modificar, indicar si afecta frontend, Apps Script o ambos y nombrar archivos exactos.
+- Con acceso a GitHub, hacer los cambios directamente; no enviar al usuario a buscar y reemplazar código manualmente.
+- Si Apps Script cambia, entregar un único `Code.gs` completo.
+- Mantener `00_DOCUMENTACION` como fuente verdadera sin copias redundantes.
+- Diferenciar preparado, guardado, respaldado, instalado y desplegado.
+- No afirmar producción sin prueba real.
 
-## Módulos de alto riesgo
+## Riesgo alto
 
-Requieren análisis antes de escribir:
+Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario. Nunca mover pagos entre niveles o intentos.
 
-- Pagos y comprobantes.
-- Certificados.
-- `DATOS`.
-- `ESTATUS`.
-- `GRUPOS`.
-- `INTENTOS_ACADEMICOS`.
-- CONAPE.
-- Calendario académico.
+## Continuidad vigente
 
-## Reglas académicas vigentes
+- Versión integral/frontend: F98.4-Z6-CS21A49.
+- Backend completo objetivo: F98.4-Z6-CS21A46.
+- Producción no verificada.
+- El backend grande se entrega completo fuera de GitHub; `AppsScript/README.md` registra tamaño y hash.
 
-- `DATOS` es identidad maestra.
-- `ESTATUS` es trayectoria académica por grupo y nivel.
-- Al aprobar `CA → APR`, se puede activar el siguiente nivel `PE → CA` en la misma operación.
-- Si el nivel siguiente no existe, puede crearse en `ESTATUS` como `CA` solo si la cohorte tiene ese nivel configurado en `GRUPOS`.
-- No copiar notas, evaluaciones ni certificado al crear el siguiente nivel.
-- No promocionar después de I2 ni cuando el resultado sea `REP` u otro estado.
-- Después de una escritura, Consulta individual debe usar `getEstudianteFresh` antes de cerrar la ventana o habilitar otra edición.
-- Una recarga total del navegador no sustituye una lectura fresca del backend.
+## Seguimiento inmediato
 
-## Consulta individual y rendimiento
+Columnas:
 
-- La lectura inicial debe usar `getConsultaIndividualFresh` para devolver ficha, asistencia, comentario e historial en un solo ciclo.
-- Las solicitudes antiguas simultáneas deben compartir una sola promesa mediante `admin_students_fast_loader_cs21a42.js`.
-- No acelerar la pantalla devolviendo datos vacíos ni respuestas parciales.
-- Si falla la reconstrucción posterior a una escritura, mantener la ventana abierta y mostrar el error.
-- Invalidar el caché individual después de estatus, pagos, certificado, TOEIC, cambio de grupo o reversión.
+`Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`
 
-## Reglas financieras vigentes
+- Código primero, grande, solo número y seleccionable.
+- Estudiante incluye nombre, cédula, seguimiento/revisado, Consulta, vínculo y grupo.
+- No existen columnas Desembolso ni Detectado.
+- Resumen académico desde `6-historial`, estrictamente vertical.
+- Tabla completa sin scroll horizontal.
+- WA siempre visible.
 
-- B1/B2/I1: deuda completa = matrícula + cuotas + certificado.
-- I2: deuda completa = matrícula + cuotas + certificado I2 + Programa Completo + TOEIC.
-- `PE` y `SIN REGISTRO` no generan deuda.
-- No mover pagos entre niveles o intentos.
-- Un comprobante agotado no debe aparecer en el buscador.
-- Certificado I2 y Programa Completo pueden pagarse juntos en una misma factura.
-- TOEIC usa valor individual de `DATOS`; en ausencia, configuración del grupo/nivel.
+## FECHA_ULT_DESEMBOLSO
 
-## Certificados
+Se interpreta como `NUM_DESEMBOLSO/PERIODO_MES/PERIODO_ANIO`.
 
-- El pago financiero y la emisión documental son estados independientes.
-- Mostrar `Pago: PAGADO/PENDIENTE` y `Documento: EMITIDO/POR EMITIR` en líneas separadas.
-- Pago completo sin registro oficial significa `Pago confirmado. Documento oficial pendiente de emisión.`
-- No interpretar `POR EMITIR` como deuda.
-- Los pagos de certificado usan `grupos_certificado_aplicados` para asignación por intento.
-- Los demás rubros usan `grupos_pago_aplicados`.
-- Coincidencia exacta de grupo primero; único intento como fallback seguro; múltiples intentos ambiguos requieren revisión.
-- Nunca mover pagos entre niveles o intentos.
+- `01/MM/AAAA`: desembolso académico que se gestiona.
+- `02`, `03` y superiores: otros rubros; solo auditoría.
+- Mostrar únicamente `01` en Seguimiento inmediato.
+- Un `02/03+` no cierra ni reemplaza el `01`.
 
-## CONAPE
+## 7-morosidad
 
-- Operación manual y protegida.
-- Un cambio pendiente de aprobación no modifica el grupo académico real.
-- Seguimiento inmediato muestra todos los periodos y desembolsos adelantados.
-- `Detalle` usa `DATOS.COMENTARIO_ADMIN`.
-- No crear ni administrar triggers automáticos.
-- Estado `PROTEGIDO` significa que la API externa no pudo verificarse; no significa que las hojas estén correctas o incorrectas.
-- La tabla debe caber completa en escritorio sin scroll horizontal.
-- No mostrar columna independiente `Desembolso`.
-- Columnas: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
-- El código del estudiante aparece primero y puede seleccionarse para copiar.
-- `Seguimiento`, `Revisado` y `WA Pago` permanecen compactos.
-- El mensaje WA prepara solo texto; la imagen se adjunta manualmente.
-- Si el movimiento está aplicado, mostrar `No enviar`.
+Fuente externa oficial, pestaña `Hoja 1`.
 
-## Calendario
+- Meses 01–04 → periodo 1.
+- Meses 05–08 → periodo 2.
+- Meses 09–12 → periodo 3.
+- Coincidencia exacta por cédula + año + periodo.
+- `NO` = aplicado/cerrado.
+- `SI` = pendiente.
+- Sin fila = revisión.
 
-- No ejecutar escrituras o limpiezas pesadas dentro de `getGruposActivos`, `getAdminDashboard` o `getRadiografiaGrupo`.
-- Mantener respuestas rápidas y consistentes.
+## 6-historial
 
-## English LAB y Academia Play
+Solo lectura. Formato visual: `NIVEL · AAAAPTIPO · ESTATUS NOTA`. Conservar todas las filas e intentos; no fusionar ni corregir desde el panel.
 
-Son práctica pedagógica. No afectan notas oficiales, aprobación, certificados, pagos ni cierre académico.
+## WhatsApp
 
-## Checklist de cada entrega
+Selector:
 
-1. Confirmar la base exacta de trabajo.
-2. Identificar archivos y hojas afectadas.
-3. Analizar impacto y riesgo de duplicación.
-4. Implementar la mínima modificación necesaria.
-5. Validar sintaxis y casos críticos.
-6. Actualizar documentación y manifiesto.
-7. Entregar solo archivos modificados, excepto cuando el usuario pida compilado completo.
-8. Si hubo backend, entregar `Code.gs` completo con nombre, versión y SHA-256.
-9. En CS21A42, probar 17110, cambio de estatus sin Ctrl+R y estados separados del certificado.
+1. Mensaje.
+2. Alerta.
+3. Atención.
+
+- Abrir texto precargado; imagen manual.
+- Negrita real usa `*texto*`.
+- Emoji por Unicode.
+- Monto solo si puede confirmarse.
+- Cerrado = no enviar cobro.
+
+## Consulta individual
+
+- Usar lectura fresca para ficha, asistencia, comentario e historial.
+- Después de una escritura, reconstruir antes de cerrar la ventana.
+- No devolver datos vacíos para aparentar rapidez.
+- Invalidar caché tras estatus, pagos, certificado, TOEIC, cambio de grupo o reversión.
+
+## Pagos y certificados
+
+- B1/B2/I1: matrícula + cuotas + certificado.
+- I2: matrícula + cuotas + certificado + Programa Completo + TOEIC cuando corresponda.
+- Aplicar pago dentro de Consulta individual usa el motor oficial; el frontend no escribe hojas.
+- Mantener bloqueo, `REQUEST_ID`, journal e idempotencia.
+- Certificado pagado y documento emitido son estados independientes.
+
+## Checklist de cierre
+
+1. Confirmar base real de GitHub, no solo ZIPs o mensajes previos.
+2. Nombrar impacto y archivos.
+3. Implementar y validar sintaxis.
+4. Revisar cache-busting de `campus.html`.
+5. Actualizar Fuente verdadera, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
+6. Registrar integridad del backend completo.
+7. Entregar prompt de nuevo arranque.
+8. No declarar despliegue sin prueba.
