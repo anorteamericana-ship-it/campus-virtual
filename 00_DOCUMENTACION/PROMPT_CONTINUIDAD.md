@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A37**.
+Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A38**.
 
 ## Forma obligatoria
 
@@ -20,13 +20,24 @@ Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Cont
 ## Estado vigente
 
 - Backend: **CS21A34**.
-- Frontend: **CS21A37**.
-- Apps Script no cambió en CS21A37.
-- `campus.html` carga `src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A37`.
+- Frontend: **CS21A38**.
+- Apps Script no cambió en CS21A38.
+- `campus.html` carga `src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A38`.
 
-## Seguimiento inmediato · WA
+## Seguimiento inmediato compacto
 
-El botón `WA Solicitar pago` prepara solo texto. La imagen se adjunta manualmente.
+- No debe existir scroll horizontal en la tabla principal.
+- La columna `Desembolso` fue eliminada.
+- Columnas vigentes: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
+- La tabla usa ancho total, `table-layout: fixed` y no fuerza `min-width`.
+- Nombres y grupos largos usan elipsis con contenido completo en tooltip.
+- `✎ Seguimiento` y `✓ Revisado` son botones pequeños dentro de la celda del estudiante.
+- El botón final se llama `WA Pago` y debe permanecer visible.
+- Movimientos aplicados muestran `No enviar`.
+
+## Texto WA preservado
+
+El botón prepara solo texto. La imagen se adjunta manualmente.
 
 Texto base:
 
@@ -38,14 +49,12 @@ Texto base:
 
 Reglas:
 
-- Detectar el nombre de pila en nombres institucionales guardados como apellidos + nombres.
+- Detectar el nombre de pila.
 - Consultar `getEstudiante` al pulsar WA.
-- Calcular el monto pendiente del nivel con Matrícula + Cuotas + Certificado.
-- Para I2 añadir Programa Completo y TOEIC pendientes cuando correspondan.
-- Mostrar `bimestre` o `cuatrimestre`.
+- Calcular el monto pendiente del nivel.
+- Mostrar bimestre o cuatrimestre.
 - Para I2 decir `último nivel`.
 - Si el monto no se confirma, abrir el texto base sin cifra.
-- En movimientos `Aplicado en sistema`, mostrar `Aplicado · no enviar cobro` y no abrir el mensaje de solicitud.
 - No enviar automáticamente, no adjuntar imagen y no escribir hojas.
 
 ## Aplicar pago dentro de Consulta individual · CS21A36 preservado
@@ -66,15 +75,8 @@ Reglas:
 - Pestaña: `Hoja 1`
 - Regla: 01–04=P1; 05–08=P2; 09–12=P3; `NO`=aplicado; `SI`=pendiente; sin fila exacta=revisión.
 
-## Cambios anteriores preservados
-
-- CS21A36: aplicar pago dentro de Consulta individual.
-- CS21A35: botón Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO`.
-- CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
-- Backend completo CS21A34 continúa en la carpeta institucional.
-
 ## Estado de despliegue
 
-CS21A37 está guardado en GitHub `main`, pero producción no está confirmada. Ejecutar QA con nombre de pila, B2, bimestre, cuatrimestre, I2, monto no confirmable y movimiento ya aplicado.
+CS21A38 está guardado en GitHub `main`, pero producción no está confirmada. Ejecutar QA visual en el Panel Maestro y confirmar ausencia de scroll, columna WA visible y botones compactos.
 
 ---
