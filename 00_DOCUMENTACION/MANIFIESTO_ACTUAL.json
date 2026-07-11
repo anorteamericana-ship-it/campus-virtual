@@ -1,10 +1,10 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A34",
+  "version": "F98.4-Z6-CS21A35",
   "cut": "2026-07-10",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
-  "frontend_line": "F98.4-Z6-CS21A33",
+  "frontend_line": "F98.4-Z6-CS21A35",
   "backend": {
     "version": "F98.4-Z6-CS21A34",
     "canonical_name": "Code.gs",
@@ -23,9 +23,27 @@
     "deployment": "manual Apps Script replacement and web-app redeployment required"
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A33",
-    "changed_in_this_cut": false,
+    "version": "F98.4-Z6-CS21A35",
+    "changed_in_this_cut": true,
+    "control_file": "src/admin_master_conape_movements_cs21a25.jsx",
+    "control_sha256": "a9ed87e7d5f94532ac2320cde28905f3a91d2833d4bcdd521cbdbc55ec100e37",
+    "control_lines": 133,
+    "control_size_bytes": 15916,
+    "campus_sha256": "a51b965ac2ec822fb61dadc3448d8b2b095cacb4c185b9e41d63df0174d61032",
+    "syntax_check": "TypeScript JSX parse passed",
+    "github_saved": true,
     "production_deployment_confirmed": false
+  },
+  "detail_review_indicator": {
+    "source_field": "DATOS.COMENTARIO_ADMIN",
+    "empty_state": "beige detail button",
+    "non_empty_state": "violet button with REVISADO CON SEGUIMIENTO",
+    "updates_immediately_after_save": true,
+    "persists_across_sessions": true,
+    "browser_only_state": false,
+    "clears_when_detail_is_empty": true,
+    "changes_conape_classification": false,
+    "changes_payments": false
   },
   "conape_immediate_followup": {
     "application_source": "external official 7-morosidad spreadsheet",
