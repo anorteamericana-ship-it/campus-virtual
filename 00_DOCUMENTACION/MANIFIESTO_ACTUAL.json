@@ -1,31 +1,34 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A32",
+  "version": "F98.4-Z6-CS21A33",
   "cut": "2026-07-10",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
-  "frontend_line": "F98.4-Z6-CS21A32",
+  "frontend_line": "F98.4-Z6-CS21A33",
   "backend": {
-    "version": "F98.4-Z6-CS21A32",
+    "version": "F98.4-Z6-CS21A33",
     "canonical_name": "Code.gs",
-    "full_text_backup": "Google Drive institucional · Code_F98_4_Z6_CS21A32_SEGUIMIENTO_CONAPE_APLICADO_SISTEMA_COMPLETO.txt",
-    "full_zip_backup": "Google Drive institucional · Code_F98_4_Z6_CS21A32_SEGUIMIENTO_CONAPE_APLICADO_SISTEMA_COMPLETO.zip",
+    "full_text_backup": "Google Drive institucional · Code_F98_4_Z6_CS21A33_SEGUIMIENTO_CONAPE_7_MOROSIDAD_COMPLETO.txt",
+    "full_zip_backup": "Google Drive institucional · Code_F98_4_Z6_CS21A33_SEGUIMIENTO_CONAPE_7_MOROSIDAD_COMPLETO.zip",
+    "drive_text_id": "1FpHFcCSjrM_MHp0CUHjzmPvFABCAUwWV",
+    "drive_zip_id": "1rG_WuF3aAd4dESWi_s82N3QBL6OAOoEd",
     "github_record": "AppsScript/README.md",
     "github_full_copy": false,
-    "source_lines": 49925,
-    "source_size_bytes": 2865858,
-    "sha256": "956e71a003765b3c188f156ea24c8efa805162acbf00cedfd0134db1ada35a17",
+    "source_lines": 49935,
+    "source_size_bytes": 2866369,
+    "sha256": "65e82291e2609120437a5fbfcdc0ea95793bdb0b41403362d99d0f65c5b69aa3",
+    "zip_size_bytes": 739779,
+    "zip_sha256": "3c5bdf8793baf4231106c599f42aa76650434211981bddced83ab9e2f0e36c75",
     "syntax_check": "node --check passed",
     "deployment": "manual Apps Script replacement and web-app redeployment required"
   },
   "frontend_change": {
-    "version": "F98.4-Z6-CS21A32",
+    "version": "F98.4-Z6-CS21A33",
     "file": "src/admin_master_conape_movements_cs21a25.jsx",
-    "file_sha256": "a74a910797ceed04e8ca0621708b369997d594e95a737213806b71aa5da4331f",
-    "file_lines": 103,
-    "file_size_bytes": 14741,
-    "campus_sha256": "3d57fcf1aa6e780e70ee73410e422ee626a50ad8b762d039f2ff4d98a9ddc444",
-    "syntax_check": "TypeScript JSX parse passed",
+    "file_sha256": "e57e3a44e358217a098423bf29f1705edc3ea2b67db88a96c3dc5b6bbf93231b",
+    "file_lines": 105,
+    "file_size_bytes": 15073,
+    "campus_sha256": "7ee78a85ff79e66c232e67de5d156058cdf8208f94f998f6baf5e9022ced6547",
     "github_saved": true,
     "production_deployment_confirmed": false
   },
@@ -33,16 +36,25 @@
     "pending_first": true,
     "freshest_pending_first": true,
     "applied_outside_primary_queue": true,
-    "application_sources": ["PAGOS", "OTROS PAGOS", "PAGOS_CAMPUS"],
+    "application_source": "7-morosidad",
+    "application_key": ["cedula", "year", "four_month_period"],
+    "period_map": {"01-04": 1, "05-08": 2, "09-12": 3},
+    "state_no_means_applied": true,
+    "state_si_means_pending": true,
+    "missing_exact_row_means_pending": true,
+    "supporting_payment_sources": ["PAGOS", "OTROS PAGOS", "PAGOS_CAMPUS"],
     "excluded_application_sources": ["BDBANCARIO"],
-    "application_key": ["student", "level", "group_attempt"],
-    "morosidad_is_context_not_payment_evidence": true,
-    "payment_without_group_requires_single_attempt": true,
-    "move_payments_between_attempts": false
-  },
-  "previous_stable_reference": {
-    "version": "F98.4-Z6-CS21A31",
-    "note": "Cobranza primero. Backend anterior CS21A30; reemplazado como referencia canónica por CS21A32."
+    "writes_morosidad": false,
+    "moves_payments": false,
+    "validated_example": {
+      "cedula": "119760781",
+      "student_code": "17170",
+      "conape_period": "09/2026",
+      "morosidad_year": 2026,
+      "morosidad_period": 3,
+      "morosidad_state": "NO",
+      "expected": "APLICADO_EN_SISTEMA"
+    }
   },
   "canonical_documents": [
     "00_DOCUMENTACION/FUENTE_VERDADERA_CAMPUS_VIRTUAL.md",
@@ -52,30 +64,5 @@
     "00_DOCUMENTACION/PROMPT_CONTINUIDAD.md",
     "00_DOCUMENTACION/MANIFIESTO_ACTUAL.json",
     "AppsScript/README.md"
-  ],
-  "active_recent_frontend_files": [
-    "campus.html",
-    "src/admin_master_cobranza_first.js",
-    "src/admin_master_conape_movements_cs21a25.jsx",
-    "src/admin_master_cobranza_collapse_cs21a27.js",
-    "src/admin_master_conape_consulta_cs21a28.js",
-    "src/aplicar_pago_comprobante_guard_cs21a23.js",
-    "src/admin_students_status_promotion_cs21a28.jsx",
-    "src/admin_students_status_missing_next_cs21a29.jsx"
-  ],
-  "financial_rules": {
-    "B1_B2_I1": ["MATRICULA", "CUOTAS", "CERTIFICADO"],
-    "I2": ["MATRICULA", "CUOTAS", "CERTIFICADO_I2", "PROGRAMA_COMPLETO", "TOEIC"],
-    "PE_generates_debt": false,
-    "missing_level_generates_debt": false,
-    "move_payments_between_levels_or_attempts": false,
-    "zero_balance_bank_receipt_visible": false
-  },
-  "conape": {
-    "manual_mode": true,
-    "automatic_triggers": false,
-    "all_period_movements": true,
-    "advanced_disbursements": true,
-    "immediate_followup_always_visible": true
-  }
+  ]
 }
