@@ -1,82 +1,72 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A41",
+  "version": "F98.4-Z6-CS21A42",
   "cut": "2026-07-10",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
-  "frontend_line": "F98.4-Z6-CS21A41",
   "backend": {
-    "version": "F98.4-Z6-CS21A34",
-    "changed_in_this_cut": false,
+    "version": "F98.4-Z6-CS21A42",
+    "changed_in_this_cut": true,
     "canonical_name": "Code.gs",
-    "sha256": "c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35"
+    "txt_name": "Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.txt",
+    "txt_size_bytes": 2874656,
+    "txt_sha256": "80a10e117c30bd563b810e5361c71b737df2229ca1eb87341fd1542036d26b3b",
+    "zip_name": "Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.zip",
+    "zip_size_bytes": 738733,
+    "zip_sha256": "21be937d228f86c13881554adbae1568ba18b4455d81fc84851f4e08b7f8d7e9",
+    "syntax_check": "node --check passed",
+    "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A41",
+    "version": "F98.4-Z6-CS21A42",
     "changed_in_this_cut": true,
-    "movement_component": "src/admin_master_conape_movements_cs21a25.jsx",
-    "movement_component_version": "F98.4-Z6-CS21A40",
-    "movement_component_git_blob_sha": "4ffbc5358c4cf90443eda78aa2c62ef218e819b2",
-    "conape_helper_file": "src/admin_master_conape_consulta_cs21a28.js",
-    "conape_helper_git_blob_sha": "ebce6be01aff6f5cda6cef42291b9e44bf3c7ebc",
-    "identity_style_file": "styles/admin_master_conape_identity_cs21a39.css",
-    "identity_style_git_blob_sha": "0227ad851d8cbe1f17df80b456c6cc613f179126",
-    "campus_git_blob_sha": "b61f86cdb01df7f0b27abae9968f4118fc11d1bf",
+    "files": [
+      "src/admin_students_fast_loader_cs21a42.js",
+      "src/admin_students_status_fresh_cs21a42.jsx",
+      "src/admin_students_certificate_integrity_cs21a42.jsx",
+      "campus.html"
+    ],
+    "git_blobs": {
+      "fast_loader": "a52417137daa4c3bdef1631db9310dec01132879",
+      "status_fresh": "06205b0ba934363d799341ace4654a8c7481f52a",
+      "certificate_integrity": "32bdc189c43ff182f8419d19e751c6ddc00c889b",
+      "campus": "8ad8bd1796b30ed3d10e759122a91649a6bc0619"
+    },
     "github_saved": true,
     "production_deployment_confirmed": false
   },
-  "conape_student_code_first": {
-    "surface": "Seguimiento inmediato",
-    "position": "first_item_in_student_cell",
-    "field_type": "readonly_text",
-    "desktop_font_px": 19,
-    "click_selects_full_value": true,
-    "selected_value_contains_only_student_code": true,
-    "student_name_below_code": true,
-    "student_id_below_name": true,
-    "consulta_uses_separated_code": true,
-    "changes_source_data": false,
-    "changes_payments": false,
-    "changes_conape_classification": false
+  "consulta_individual": {
+    "bundled_endpoint": "getConsultaIndividualFresh",
+    "bundled_data": ["ficha", "asistencia", "comentario_admin", "historial"],
+    "fresh_endpoint": "getEstudianteFresh",
+    "status_modal_closes_only_after_fresh_read": true,
+    "full_page_reload_after_status_change": false,
+    "student_cache_invalidated_after_writes": true
   },
-  "conape_immediate_followup_layout": {
-    "horizontal_scroll": false,
-    "removed_columns": ["DESEMBOLSO"],
-    "visible_columns": ["ESTUDIANTE", "MOVIMIENTO", "PERIODO_NIVEL", "CAMPUS", "DETECTADO", "WA"],
-    "student_column_width_percent": 31,
-    "whatsapp_column_reserved": true
-  },
-  "conape_whatsapp_text": {
-    "version": "F98.4-Z6-CS21A40",
-    "text_only": true,
-    "image_attached_by_user": true,
-    "emoji_generation": "String.fromCodePoint(0x1F389)",
-    "whatsapp_bold_marker": "single_asterisk",
-    "amount_primary_source": "getEstudiante.pendientes.por_nivel",
-    "omit_amount_when_unconfirmed": true,
-    "prevents_duplicate_payment_request": true,
-    "direct_sheet_writes": false
-  },
-  "inline_payment_preserved": {
-    "version": "F98.4-Z6-CS21A36",
-    "surface": "Consulta individual",
-    "current_attempt_only": true,
-    "historical_attempts_read_only": true,
-    "official_endpoints": ["getEstudiante", "getComprobantes", "aplicarPago"],
+  "certificate_integrity": {
+    "payment_and_document_are_independent": true,
+    "certificate_attempt_group_source": "grupos_certificado_aplicados",
+    "other_rubrics_attempt_group_source": "grupos_pago_aplicados",
+    "exact_group_match_first": true,
+    "single_attempt_safe_fallback": true,
     "never_move_payments_between_levels_or_attempts": true
+  },
+  "control_case_17110": {
+    "B1": "APR, certificado emitido",
+    "B2": "APR, certificado pagado, documento por emitir",
+    "I1": "CA",
+    "I2": "PE"
+  },
+  "preserved": {
+    "conape_student_code_first": "F98.4-Z6-CS21A41",
+    "conape_whatsapp_text": "F98.4-Z6-CS21A40",
+    "conape_compact_layout": "F98.4-Z6-CS21A38",
+    "inline_payment": "F98.4-Z6-CS21A36",
+    "external_morosidad_source": "F98.4-Z6-CS21A34"
   },
   "conape_source": {
     "spreadsheet_id": "1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg",
     "sheet_title": "Hoja 1",
     "direct_external_read": true
-  },
-  "canonical_documents": [
-    "00_DOCUMENTACION/FUENTE_VERDADERA_CAMPUS_VIRTUAL.md",
-    "00_DOCUMENTACION/README_CONTINUIDAD.md",
-    "00_DOCUMENTACION/BIBLIA_DELTA_ACTUAL.md",
-    "00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL.md",
-    "00_DOCUMENTACION/PROMPT_CONTINUIDAD.md",
-    "00_DOCUMENTACION/MANIFIESTO_ACTUAL.json",
-    "AppsScript/README.md"
-  ]
+  }
 }
