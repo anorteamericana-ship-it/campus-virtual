@@ -1,28 +1,34 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A56
+# FUENTE VERDADERA — F98.4-Z6-CS21A57
 
-Estado canónico: frontend CS21A56 guardado en GitHub; backend completo CS21A56 guardado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A57 guardado en GitHub; backend completo CS21A56 conservado en el archivo canónico de Drive; producción no verificada.
 
 ## Componentes vigentes
 
 - `src/teacher_cs21a_order_fix.jsx`
 - `campus.html`
-- `Code.gs` completo de Drive
+- `Code.gs` completo CS21A56 de Drive, sin cambios en esta entrega
 
-## Cambio CS21A56 — Drive live sin ID obsoleto
+## Cambio CS21A57 — pliegos físicos y unidades reales
 
-- Corrige la selección persistente del PDF anterior en Docente → Recursos Didácticos → Libros de texto.
-- La carpeta oficial de Básico I continúa siendo `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
-- Student Book activo de Básico I: `Interchange 5th intro-SB.pdf`, ID `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF`.
-- El backend ya no conserva en caché durante cinco minutos el ID resuelto de SB/TB/WB.
-- B1/SB prioriza el ID canónico anterior únicamente mientras siga dentro de la carpeta oficial; si desaparece, usa el PDF válido más reciente de la carpeta.
-- El frontend fuerza una resolución nueva al entrar o cambiar nivel/tipo y ofrece `Actualizar desde Drive`.
-- Cambiar U01–U16 solo cambia las páginas renderizadas; no vuelve a descargar el libro completo.
-- U09 mantiene destino PDF 64–65, equivalente a SB 58 con el desfase +6.
-- Es un cambio de solo lectura: no modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
+- Todo SB/TB/WB inicia en la portada PDF 1.
+- La portada se muestra sola a la derecha; no se empareja con PDF 2.
+- La navegación continúa con pliegos 2–3, 4–5, 6–7, etc.
+- Esto elimina el corrimiento visual atribuido a una segunda página duplicada.
+- En Student Book, U01 parpadea hasta que el docente seleccione una unidad.
+- Al cambiar nivel o tipo de libro se vuelve a PDF 1 y se reactiva la invitación de U01.
+- Las páginas impresas de Apollo G3 se conservan, pero cada PDF usa su desfase real:
+  - B1 `+5`
+  - B2 `+20`
+  - I1 `+6`
+  - I2 `+8`
+- B1 U01 apunta a PDF 7 y se visualiza como pliego 6–7.
+- U01–U16 solo aparece en Student Book.
+- Apps Script no cambia; permanecen `teacherBooksOpenPdf` y `teacherBooksReadRange` de CS21A56.
 
-## Integridad
+## Fuente Drive vigente
 
-La identidad completa del backend, su tamaño, hash, respaldo previo y ubicación están registrados en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
+- Carpeta oficial B1: `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- Student Book B1 activo: `Interchange 5th intro-SB.pdf`, ID `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF`.
 
 ## Reglas preservadas
 
