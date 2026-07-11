@@ -1,100 +1,66 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A42  
-**Backend canónico:** F98.4-Z6-CS21A42  
-**Frontend activo:** F98.4-Z6-CS21A42  
-**Corte:** 10-jul-2026  
+**Versión integral vigente:** F98.4-Z6-CS21A43  
+**Backend canónico:** F98.4-Z6-CS21A43  
+**Frontend activo:** F98.4-Z6-CS21A43  
+**Corte:** 11-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
-Los documentos sin sufijo de versión dentro de `00_DOCUMENTACION` son los únicos canónicos. El historial anterior permanece en Git.
+## 1. Cambio CS21A43
 
-## 1. Backend canónico CS21A42
+Seguimiento inmediato se reorganiza para mostrar toda la información útil sin scroll horizontal:
 
-El único backend válido es el `Code.gs` completo respaldado como:
+1. Código del estudiante en la primera columna, solo el número y seleccionable.
+2. Estudiante con nombre, cédula, seguimiento y acceso a Consulta individual.
+3. Resumen académico leído directamente del archivo externo oficial `6-historial`.
+4. Movimiento y estado exacto de `7-morosidad`.
+5. Periodo/nivel con fecha detectada abreviada en la misma columna.
+6. Campus y botón WA siempre visibles.
 
-- TXT: `Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.txt`
-- ZIP: `Code_F98_4_Z6_CS21A42_CONSULTA_CERTIFICADOS_REFRESH_REAL_COMPLETO.zip`
-- TXT Drive ID: `1FpHFcCSjrM_MHp0CUHjzmPvFABCAUwWV`
-- ZIP Drive ID: `1rG_WuF3aAd4dESWi_s82N3QBL6OAOoEd`
-- Tamaño TXT: 2.874.656 bytes
-- SHA-256 TXT: `80a10e117c30bd563b810e5361c71b737df2229ca1eb87341fd1542036d26b3b`
-- Tamaño ZIP: 738.733 bytes
-- SHA-256 ZIP: `21be937d228f86c13881554adbae1568ba18b4455d81fc84851f4e08b7f8d7e9`
+La columna independiente `Detectado` desaparece y el texto `CLIC + CTRL C` queda eliminado.
+
+## 2. Fuente académica oficial
+
+- Archivo: `6-historial`
+- Spreadsheet ID: `13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI`
+- Pestaña: `Hoja 1`
+- Lectura: directa y de solo lectura.
+
+Cada fila se transforma sin alterar la fuente. Ejemplo:
+
+- `ING-IN-B1-01`, 2025, periodo 3, tipo C, APR, 100 → `BÁSICO I · 20253C · APR 100`
+- `ING-IN-I2-04`, 2026, periodo 3, tipo C, PE → `INTERMEDIO II · 20263C · PE`
+
+Se conservan todas las filas e intentos existentes. No se deduplican por conveniencia ni se cambian notas o estatus.
+
+## 3. Backend canónico
+
+Archivo productivo completo: `Code.gs`.
+
+- Nombre de entrega: `Code_F98_4_Z6_CS21A43_SEGUIMIENTO_HISTORIAL_COMPLETO.gs`
+- Tamaño: 2,877,888 bytes
+- SHA-256: `8eefafd6f8054033273c4a4451e85a55ce66735ccfeb6b141f820c290471fcca`
 - Validación: `node --check` aprobada.
 
-Respaldado o guardado no significa desplegado. Producción solo se confirma con evidencia de una nueva versión publicada en Apps Script.
+CS21A43 agrega el índice `_cs21a43HistoryIndex_()` y adjunta `historySummary` a cada movimiento del Panel Maestro. También usa una nueva llave de caché `MASTER_DASH_CS21A43_V1` para impedir que el navegador reciba la estructura anterior.
 
-## 2. Consulta individual: lectura rápida y coherente
+## 4. Archivos frontend
 
-CS21A42 incorpora:
-
-- `getEstudianteFresh`: elimina el caché corto del estudiante, ejecuta una lectura real y vuelve a poblar el caché con la ficha vigente.
-- `getConsultaIndividualFresh`: devuelve en una sola solicitud la ficha, asistencia, comentario administrativo e historial del mismo ciclo de lectura.
-- `src/admin_students_fast_loader_cs21a42.js`: unifica las cuatro solicitudes del panel en una sola llamada, reduciendo viajes HTTP y evitando mezclar respuestas de momentos distintos.
-- `src/admin_students_status_fresh_cs21a42.jsx`: después de cambiar ESTATUS, la ventana permanece abierta hasta reconstruir la ficha real; ya no depende de un `window.location.reload()` inmediato que pueda recuperar el caché anterior.
-
-El caché individual también se invalida después de operaciones críticas como cambio de estatus, pago, certificado, TOEIC, cambio de grupo y reversión.
-
-## 3. Certificado: pago y documento son estados diferentes
-
-La Consulta individual debe presentar dos líneas independientes:
-
-- **Pago:** `PAGADO` o `PENDIENTE ₡...`.
-- **Documento:** `EMITIDO` o `POR EMITIR`.
-
-Reglas:
-
-- Un certificado pagado sin registro en `ESTATUS.REG_CERTIFICADOS` muestra: `Pago confirmado. Documento oficial pendiente de emisión.`
-- Un registro oficial existente muestra `Documento: EMITIDO` y su número.
-- Un saldo financiero real muestra `Pago: PENDIENTE`.
-- Nunca se interpreta `POR EMITIR` como falta de pago.
-
-El backend asigna pagos de certificado por nivel e intento usando `grupos_certificado_aplicados`; los demás rubros continúan usando `grupos_pago_aplicados`. La coincidencia exacta de grupo tiene prioridad. Solo cuando existe un único intento se permite una asignación segura al intento único. Nunca se mueve un pago entre niveles o intentos.
-
-Archivo visual:
-
-- `src/admin_students_certificate_integrity_cs21a42.jsx`
-
-## 4. Caso de control 17110
-
-La lectura viva de APOLLO confirma:
-
-- B1: APR, certificado emitido.
-- B2: APR, certificado pagado por ₡15.000, documento todavía no emitido.
-- I1: CA.
-- I2: PE.
-
-Por tanto, B2 debe verse como:
-
-- Estado académico: `APR`.
-- Pago del certificado: `PAGADO`.
-- Documento: `POR EMITIR`.
-
-La captura que mostraba B2 en CA correspondía a una ficha anterior recuperada desde el caché corto.
-
-## 5. Archivos frontend CS21A42
-
-- `src/admin_students_fast_loader_cs21a42.js`
-- `src/admin_students_status_fresh_cs21a42.jsx`
-- `src/admin_students_certificate_integrity_cs21a42.jsx`
+- `src/admin_master_conape_movements_cs21a25.jsx`
+- `styles/admin_master_conape_identity_cs21a39.css`
 - `campus.html`
 
-Se preservan:
+El acceso a Consulta individual se integra dentro del componente principal. `campus.html` deja de cargar el antiguo parche DOM `admin_master_conape_consulta_cs21a28.js`.
 
-- CS21A41: código grande y seleccionable en Seguimiento inmediato.
-- CS21A40: mensaje WA con emoticono Unicode seguro y negritas reales.
-- CS21A38: tabla CONAPE compacta sin scroll horizontal.
-- CS21A36: aplicar pago dentro de Consulta individual.
-- CS21A34: lectura directa de la fuente externa oficial `7-morosidad`.
+## 5. Reglas preservadas
 
-## 6. Reglas críticas preservadas
+- La fuente oficial de aplicación continúa siendo `7-morosidad`.
+- `NO` = aplicado; `SI` = pendiente; sin fila exacta = revisión.
+- El resumen académico es informativo y no modifica `6-historial`.
+- El frontend no escribe directamente en pagos, DATOS, ESTATUS, GRUPOS, intentos ni CONAPE.
+- No se mueve dinero entre niveles o intentos.
+- WhatsApp, detalle persistente y Consulta individual permanecen activos.
 
-- El frontend no escribe directamente en `PAGOS`, `OTROS PAGOS`, `DATOS`, `ESTATUS`, `GRUPOS` o `INTENTOS_ACADEMICOS`.
-- Apps Script conserva la autoridad sobre deuda, intento, grupo, comprobantes, emisión y sincronización CONAPE.
-- No se trasladan pagos entre niveles o intentos.
-- La fuente oficial de morosidad continúa siendo `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`, pestaña `Hoja 1`.
-- CONAPE continúa manual y sin triggers automáticos.
+## 6. Estado de despliegue
 
-## 7. Estado de despliegue
-
-CS21A42 está guardado en GitHub `main` y respaldado en Drive. No existe evidencia suficiente para afirmar que el frontend ni el backend CS21A42 estén publicados en producción.
+Código preparado para entrega. Guardado o respaldado no significa publicado en producción. La publicación debe verificarse después de reemplazar `Code.gs`, crear una nueva implementación y desplegar el frontend.
