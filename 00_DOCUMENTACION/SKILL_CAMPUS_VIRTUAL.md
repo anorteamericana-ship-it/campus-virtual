@@ -16,16 +16,16 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Continuidad vigente
 
-- Frontend: F98.4-Z6-CS21A55.
-- Backend completo: F98.4-Z6-CS21A55.
+- Frontend: F98.4-Z6-CS21A56.
+- Backend completo: F98.4-Z6-CS21A56.
 - Base backend preservada: CS21A46.
 - Producción no verificada.
-- El archivo canónico y sus respaldos se mantienen en Drive; GitHub conserva código frontend, manifiesto y documentación.
+- El archivo canónico y sus respaldos se mantienen en Drive; GitHub conserva frontend, manifiesto y documentación.
 
 ## Regla para Code.gs
 
 1. Leer siempre el archivo canónico indicado en `AppsScript/README.md`.
-2. Crear una copia en `00_BACKUPS_CODE_GS` antes de modificar.
+2. Crear copia en `00_BACKUPS_CODE_GS` antes de modificar.
 3. Trabajar sobre la versión vigente, nunca sobre un respaldo anterior encontrado por nombre.
 4. Entregar el `Code.gs` completo.
 5. Recalcular tamaño y SHA-256.
@@ -36,15 +36,18 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 - Componente vigente: `src/teacher_cs21a_order_fix.jsx`.
 - `campus.html` carga PDF.js antes del componente y actualiza cache-busting.
-- El visor no debe leer `drive.google.com/uc` directamente desde PDF.js: produce CORS o descarga.
-- La lectura se realiza por Apps Script mediante `teacherBooksOpenPdf` y `teacherBooksReadRange`.
-- Usar `PDFDataRangeTransport` para solicitar bloques; no enviar el PDF completo en base64.
-- Mantener documento y bloques en caché durante la sesión.
-- El backend resuelve el archivo vigente dentro de las carpetas oficiales y descarta ORIGINAL, COPIA, BACKUP, RESPALDO, OLD y ANTIGUO.
+- La lectura se realiza mediante `teacherBooksOpenPdf` y `teacherBooksReadRange`.
+- Usar `PDFDataRangeTransport`; no enviar el PDF completo en base64.
+- Mantener el documento abierto al cambiar U01–U16.
+- No mantener en caché de Apps Script el ID resuelto de SB/TB/WB: un archivo reemplazado debe detectarse al volver a abrir o actualizar.
+- El frontend debe forzar resolución nueva al entrar/cambiar nivel o tipo.
+- Mantener botón `Actualizar desde Drive`.
+- El backend resuelve dentro de las carpetas oficiales y descarta ORIGINAL, COPIA, BACKUP, RESPALDO, OLD y ANTIGUO.
+- B1/SB activo: `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` dentro de `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- Un ID preferente solo puede usarse si el archivo sigue dentro de la carpeta oficial; de lo contrario usar el PDF válido más reciente.
 - Mantener controles horizontales y PDF a todo el ancho.
 - Visor de dos páginas con anterior/siguiente, zoom y pantalla completa.
 - No mostrar panel lateral interno ni volver a la lista antigua de Drive.
-- SB, TB y WB deben diferenciarse visualmente.
 - U01–U16 pertenece únicamente a Student Book.
 - Fuente: `APOLLO_G3_LIMPIO_21-04-26`, `DETALLE DEL PROGRAMA`, columna K.
 - Regla: primera página SB + 6 hojas iniciales del PDF.
@@ -83,7 +86,7 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Checklist de cierre
 
-1. Confirmar la base real de GitHub y el `Code.gs` canónico de Drive.
+1. Confirmar base real de GitHub y `Code.gs` canónico de Drive.
 2. Nombrar impacto y archivos.
 3. Validar sintaxis.
 4. Revisar cache-busting.
