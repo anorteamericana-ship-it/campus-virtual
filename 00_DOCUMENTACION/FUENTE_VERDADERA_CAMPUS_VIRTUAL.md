@@ -1,8 +1,8 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A36  
+**Versión integral vigente:** F98.4-Z6-CS21A37  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** línea F98.4-Z6-CS21A36  
+**Frontend activo:** línea F98.4-Z6-CS21A37  
 **Corte:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
@@ -10,7 +10,7 @@ Los documentos sin sufijo de versión dentro de `00_DOCUMENTACION` son los únic
 
 ## Backend canónico
 
-CS21A34 continúa como único `Code.gs` completo. El TXT y ZIP se conservan en `CAMPUS_VIRTUAL_BACKEND_CANONICO`. CS21A36 no modifica Apps Script y no requiere un nuevo respaldo backend.
+CS21A34 continúa como único `Code.gs` completo. El TXT y ZIP se conservan en `CAMPUS_VIRTUAL_BACKEND_CANONICO`. CS21A37 no modifica Apps Script y no requiere un nuevo respaldo backend.
 
 SHA-256 esperado del TXT completo CS21A34:
 
@@ -18,54 +18,46 @@ SHA-256 esperado del TXT completo CS21A34:
 
 Respaldado o guardado no significa desplegado. La producción solo se confirma con evidencia de la implementación correspondiente.
 
-## Aplicar pago dentro de Consulta individual · CS21A36
+## Texto WA de desembolso · CS21A37
 
-`Consulta individual` permite iniciar el mismo procedimiento oficial de pago sin navegar a otra sección:
+En **Seguimiento inmediato**, el botón `WA Solicitar pago` prepara únicamente el texto. La imagen se adjunta manualmente.
 
-- El botón `Pago` abre los controles dentro del intento financiero vigente del nivel.
-- La barra principal busca comprobantes por número de documento, fecha o descripción.
-- Solo se muestran comprobantes con saldo disponible.
-- El comprobante se valida nuevamente al seleccionarlo y justo antes de confirmar.
-- Un único comprobante puede distribuirse entre Matrícula, Cuotas, Certificado, Programa Completo, TOEIC y cargos especiales permitidos.
-- Los controles `− / +` aparecen dentro de cada tarjeta financiera, sin desbordar el panel.
-- Después de aplicar, la misma Consulta individual se vuelve a cargar con los comprobantes y saldos actualizados.
-- Los intentos históricos son únicamente de lectura.
+Texto base obligatorio:
+
+> ¡Buenas noticias [Nombre]! 🥳
+>
+> CONAPE nos ha informado que el desembolso ya fue acreditado en su cuenta.
+>
+> Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
+
+Reglas dinámicas:
+
+- Usa el nombre de pila detectado desde el nombre institucional.
+- Consulta `getEstudiante` al pulsar el botón para tomar el monto pendiente vigente del nivel.
+- Para B1, B2 e I1 agrega: `El monto correspondiente a [nivel] ([bimestre/cuatrimestre]) es de ₡[monto].`
+- Para I2 agrega: `El monto correspondiente al último nivel, Intermedio II ([bimestre/cuatrimestre]), es de ₡[monto].`
+- Si el monto no puede confirmarse, conserva el texto base sin inventar una cifra.
+- Un movimiento marcado `Aplicado en sistema` no muestra mensaje de cobro; indica `Aplicado · no enviar cobro`.
+- No envía automáticamente, no adjunta imágenes y no escribe en hojas financieras.
 
 Archivos frontend:
 
-- `src/admin_students_inline_payment_cs21a36.jsx`
-- `campus.html`
+- `src/admin_master_conape_movements_cs21a25.jsx` — contenido activo CS21A37.
+- `campus.html` — carga CS21A37.
 
-## Contrato financiero obligatorio
+## Aplicar pago dentro de Consulta individual · CS21A36 preservado
 
-CS21A36 no escribe directamente en hojas financieras ni duplica el motor de pagos. Utiliza únicamente los endpoints vigentes:
+`Consulta individual` permite iniciar el procedimiento oficial de pago sin navegar a otra sección:
 
-- `getEstudiante`
-- `getComprobantes`
-- `aplicarPago`
+- una búsqueda de comprobante por intento vigente;
+- búsqueda por documento, fecha o descripción;
+- revalidación al seleccionar y antes de confirmar;
+- distribución entre Matrícula, Cuotas, Certificado, Programa Completo, TOEIC y cargos permitidos;
+- controles `− / +` dentro de las tarjetas;
+- intentos históricos de solo lectura;
+- actualización de la misma ficha después de aplicar.
 
-Apps Script conserva la autoridad final para:
-
-- resolver el grupo e intento canónicos;
-- rechazar niveles `PE` o intentos históricos;
-- validar saldo bancario real;
-- limitar cada rubro a su deuda vigente;
-- aplicar Matrícula, Cuota, Certificado, Programa Completo, TOEIC y otros cargos según sus reglas;
-- escribir en `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS` y `PAGOS_OPERACIONES`;
-- actualizar `BDBANCARIO`;
-- impedir duplicados mediante `request_id` e idempotencia;
-- ejecutar o dejar pendiente la sincronización CONAPE.
-
-Nunca se debe mover un pago entre niveles o intentos. Un cargo especial solo puede aplicarse con su `CARGO_ID` y monto exacto.
-
-## Patrón verificado en operaciones recientes
-
-La auditoría de `PAGOS_OPERACIONES` confirma que el flujo real divide un mismo comprobante entre varios rubros:
-
-- Básico II: Matrícula ₡20.000 + Cuotas ₡299.200 + Certificado ₡15.000 = ₡334.200.
-- Intermedio II: Matrícula, Cuotas, Certificado y TOEIC pueden compartir una operación; Programa Completo puede usar el saldo restante del mismo comprobante en una operación posterior.
-
-Por esta razón existe una sola búsqueda de comprobante por intento y varios controles de distribución dentro de las tarjetas.
+El frontend usa `getEstudiante`, `getComprobantes` y `aplicarPago`. Apps Script conserva la autoridad sobre grupo, intento, deuda, saldo, reglas, recibos, escrituras, rollback, idempotencia y sincronización CONAPE. Nunca se mueve un pago entre niveles o intentos.
 
 ## Fuente oficial de `7-morosidad`
 
@@ -88,4 +80,4 @@ La clasificación usa cédula + año + periodo cuatrimestral: `NO` significa apl
 - Cobranza y cartera abre primero.
 - Pendientes CONAPE recientes arriba y aplicados abajo.
 - CONAPE continúa manual y sin triggers automáticos.
-- Backend CS21A34 y frontend CS21A36 no están confirmados como publicados en producción.
+- Backend CS21A34 y frontend CS21A37 no están confirmados como publicados en producción.
