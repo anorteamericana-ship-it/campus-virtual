@@ -16,10 +16,21 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Continuidad vigente
 
-- Versión integral/frontend: F98.4-Z6-CS21A49.
+- Versión integral/frontend: F98.4-Z6-CS21A50.
 - Backend completo objetivo: F98.4-Z6-CS21A46.
 - Producción no verificada.
-- El backend grande se entrega completo fuera de GitHub; `AppsScript/README.md` registra tamaño y hash.
+- El backend grande se entrega completo fuera de GitHub; `AppsScript/README.md` registra tamaño y hash declarados.
+
+## Docente / Recursos Didácticos / Libros de texto
+
+- El visor activo se modifica en `src/teacher_cs21a_order_fix.jsx`.
+- `campus.html` debe actualizar el cache-busting cuando cambie ese archivo.
+- SB, TB y WB deben diferenciarse visualmente; no dejar botones blancos que se pierdan en el marco.
+- La navegación U01–U16 pertenece únicamente a Student Book.
+- Fuente: `APOLLO_G3_LIMPIO_21-04-26`, pestaña `DETALLE DEL PROGRAMA`, columna K `Páginas SB`.
+- Usar la primera página de cada unidad y sumar 6 para la página PDF.
+- Destinos PDF vigentes: U01 8, U02 14, U03 22, U04 28, U05 36, U06 42, U07 50, U08 56, U09 64, U10 70, U11 78, U12 84, U13 92, U14 98, U15 106, U16 112.
+- No inventar ni reutilizar ese mapeo para TB o WB.
 
 ## Seguimiento inmediato
 
@@ -95,6 +106,6 @@ Selector:
 3. Implementar y validar sintaxis.
 4. Revisar cache-busting de `campus.html`.
 5. Actualizar Fuente verdadera, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
-6. Registrar integridad del backend completo.
-7. Entregar prompt de nuevo arranque.
+6. Registrar integridad del backend completo cuando cambie.
+7. Entregar solo los archivos solicitados por el usuario.
 8. No declarar despliegue sin prueba.
