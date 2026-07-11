@@ -1,62 +1,62 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A33
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A34
 
-Esta Biblia Delta complementa la Biblia histórica y fija las reglas aprobadas hasta el corte del 10-jul-2026.
+Esta Biblia Delta fija las reglas aprobadas hasta el corte del 10-jul-2026.
 
 ## 1. Apps Script
 
 - Toda modificación de backend se entrega como `Code.gs` completo.
-- Backend canónico vigente: CS21A33.
-- No instalar fragmentos u overrides sueltos.
-- No afirmar despliegue cuando solo existe respaldo o commit.
+- Backend canónico: CS21A34.
+- Frontend activo: CS21A33.
+- No instalar fragmentos ni afirmar despliegue sin evidencia.
 
-## 2. Seguimiento inmediato CONAPE
+## 2. Fuente oficial de morosidad CONAPE
 
-### 2.1 Conversión de periodo
+El único origen válido para clasificar Seguimiento inmediato es:
 
-`PERIODO_MES` de CONAPE se convierte así para consultar `7-morosidad`:
+- Spreadsheet ID `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`.
+- Archivo `7-morosidad`.
+- Pestaña `Hoja 1`.
 
-- 01, 02, 03, 04 → periodo 1.
-- 05, 06, 07, 08 → periodo 2.
-- 09, 10, 11, 12 → periodo 3.
+La lectura debe abrir directamente ese archivo externo. Una pestaña local, réplica, caché o copia con el mismo nombre no puede decidir la clasificación.
 
-### 2.2 Llave y clasificación
-
-La búsqueda se realiza por:
+## 3. Llave y clasificación
 
 `CEDULA + PERIODO_ANIO + PERIODO_CUATRIMESTRAL`
 
-- Fila exacta con `ESTADO = NO` → **Aplicado en sistema**.
-- Fila exacta con `ESTADO = SI` → pendiente.
-- Sin fila exacta → pendiente para revisión.
-- Si existen filas duplicadas conflictivas y alguna marca `SI`, prevalece la condición conservadora `SI` y se alerta la duplicidad.
+Conversión:
 
-### 2.3 Fuentes
+- 01–04 → P1.
+- 05–08 → P2.
+- 09–12 → P3.
 
-- `7-morosidad` decide la clasificación.
-- `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son complementarias.
+Resultado:
+
+- fila exacta con `ESTADO = NO` → **Aplicado en sistema**;
+- fila exacta con `ESTADO = SI` → pendiente;
+- sin fila exacta → pendiente para revisión;
+- duplicidad conflictiva → prevalece `SI` y se alerta.
+
+La lectura es de solo lectura. No modifica el archivo externo.
+
+## 4. Fuentes complementarias
+
+- `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son contexto complementario.
 - `BDBANCARIO` está excluida.
-- La función es solo de lectura; no escribe ni corrige morosidad.
+- Ninguna evidencia complementaria reemplaza el estado oficial de `7-morosidad`.
 
-### 2.4 Orden visual
-
-- Pendientes primero.
-- Dentro de pendientes, detección más reciente primero.
-- Aplicados fuera de la cola principal, en bloque inferior plegable.
-
-## 3. Caso patrón
+## 5. Caso patrón verificado
 
 Cédula `119760781`, movimiento `09/2026`:
 
-- septiembre → periodo 3;
-- `7-morosidad`: año 2026, periodo 3, estado NO;
-- resultado: **Aplicado en sistema**.
+- septiembre → P3;
+- hoja externa oficial, fila 297 → año 2026, periodo 3, estado `NO`;
+- resultado → **Aplicado en sistema**.
 
-## 4. Reglas críticas preservadas
+La fila de periodo 2, aunque también sea `NO`, no se usa para un movimiento de septiembre.
+
+## 6. Reglas críticas preservadas
 
 - No mover pagos entre niveles o intentos.
-- No modificar `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` o `7-morosidad` desde este cruce.
+- No modificar `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` ni la hoja externa desde este cruce.
 - No crear triggers automáticos para CONAPE.
-- No presentar solicitudes pendientes como pagos aplicados.
-- Pago de certificado y emisión documental siguen siendo conceptos separados.
-- B1/B2/I1: Matrícula + Cuotas + Certificado.
-- I2: Matrícula + Cuotas + Certificado I2 + Programa Completo + TOEIC.
+- Pendientes recientes arriba; aplicados fuera de la cola principal.
