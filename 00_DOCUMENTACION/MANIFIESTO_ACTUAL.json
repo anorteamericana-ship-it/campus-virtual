@@ -1,10 +1,10 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A36",
+  "version": "F98.4-Z6-CS21A37",
   "cut": "2026-07-10",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
-  "frontend_line": "F98.4-Z6-CS21A36",
+  "frontend_line": "F98.4-Z6-CS21A37",
   "backend": {
     "version": "F98.4-Z6-CS21A34",
     "changed_in_this_cut": false,
@@ -12,38 +12,41 @@
     "sha256": "c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35"
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A36",
+    "version": "F98.4-Z6-CS21A37",
     "changed_in_this_cut": true,
-    "module": "src/admin_students_inline_payment_cs21a36.jsx",
-    "module_git_blob_sha": "4d10e4ecc209b96b4d4a07ee1d6106a4d8252ffa",
-    "module_sha256": "244eb1dbe4a5264c625068279f44d2be85a3fc0a2714c91413681917a1ff6865",
-    "module_lines": 225,
-    "module_size_bytes": 28684,
-    "campus_git_blob_sha": "a46b8e8da21110e8a64b47a599f8e934dd036973",
+    "control_file": "src/admin_master_conape_movements_cs21a25.jsx",
+    "control_git_blob_sha": "5a1027e78d33e57fe4b5db1d1ecd972167156e2a",
+    "control_sha256": "596aa0722742e7b5ae80115d695e944062b3e6c994114c849476faf69d2c6871",
+    "control_lines": 196,
+    "control_size_bytes": 19560,
+    "campus_git_blob_sha": "cfe9d4258fa8647f126f1971cb1897fdc9dd8221",
     "syntax_check": "TypeScript JSX parse passed",
     "github_saved": true,
     "production_deployment_confirmed": false
   },
-  "inline_payment": {
+  "conape_whatsapp_text": {
+    "surface": "Seguimiento inmediato",
+    "button_label": "WA Solicitar pago",
+    "text_only": true,
+    "image_attached_by_user": true,
+    "automatic_send": false,
+    "first_name_from_institutional_name": true,
+    "amount_primary_source": "getEstudiante.pendientes.por_nivel",
+    "amount_fallback_source": "collections.rows matched by student code and level",
+    "normal_level_line": "El monto correspondiente a [nivel] ([bimestre/cuatrimestre]) es de CRC [monto].",
+    "last_level_line": "El monto correspondiente al ultimo nivel, Intermedio II ([bimestre/cuatrimestre]), es de CRC [monto].",
+    "omit_amount_when_unconfirmed": true,
+    "applied_movement_action": "Aplicado - no enviar cobro",
+    "prevents_duplicate_payment_request": true,
+    "direct_sheet_writes": false
+  },
+  "inline_payment_preserved": {
+    "version": "F98.4-Z6-CS21A36",
     "surface": "Consulta individual",
     "current_attempt_only": true,
     "historical_attempts_read_only": true,
-    "single_receipt_search_per_attempt": true,
-    "search_fields": ["document", "date", "description"],
     "official_endpoints": ["getEstudiante", "getComprobantes", "aplicarPago"],
-    "direct_financial_sheet_writes_from_frontend": false,
-    "receipt_revalidated_on_select": true,
-    "receipt_revalidated_before_apply": true,
-    "request_id_idempotency": true,
-    "rubrics": ["MATRICULA", "CUOTA", "CERTIFICADO", "PROGRAMA_COMPLETO", "TOEIC", "OTRO"],
-    "other_charge_requires_exact_amount_and_cargo_id": true,
-    "never_move_payments_between_levels_or_attempts": true,
-    "refreshes_individual_query_after_success": true
-  },
-  "audited_payment_pattern": {
-    "b2_total": 334200,
-    "b2_distribution": {"MATRICULA": 20000, "CUOTA": 299200, "CERTIFICADO": 15000},
-    "same_receipt_can_keep_remaining_balance": true
+    "never_move_payments_between_levels_or_attempts": true
   },
   "conape_source": {
     "spreadsheet_id": "1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg",
