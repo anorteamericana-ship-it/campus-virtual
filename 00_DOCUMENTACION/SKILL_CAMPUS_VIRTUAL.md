@@ -16,36 +16,38 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Continuidad vigente
 
-- Versión integral/frontend: F98.4-Z6-CS21A52.
+- Versión integral/frontend: F98.4-Z6-CS21A53.
 - Backend completo objetivo: F98.4-Z6-CS21A46.
 - Producción no verificada.
-- El backend grande se entrega completo fuera de GitHub; `AppsScript/README.md` registra tamaño y hash declarados.
+- El backend grande no está guardado en GitHub; `AppsScript/README.md` conserva su identidad declarada.
 
 ## Docente / Recursos Didácticos / Libros de texto
 
-- El visor activo se modifica en `src/teacher_cs21a_order_fix.jsx`.
-- `campus.html` debe actualizar el cache-busting cuando cambie ese archivo.
+- Componente vigente: `src/teacher_cs21a_order_fix.jsx`.
+- `campus.html` debe cargar PDF.js antes del componente y actualizar cache-busting en cada cambio.
+- Libros y Biblioteca deben quedar bajo un único componente; no renderizar la carpeta embebida anterior por debajo o antes del visor nuevo.
+- No usar un `MutationObserver` global para reinstalar la pantalla.
+- Visor principal: dos páginas enfrentadas mediante PDF.js.
+- Conservar el PDF en caché de memoria; cambiar de unidad solo cambia páginas.
+- Mantener respaldo con Drive `/preview` cuando la lectura directa falle.
 - SB, TB y WB deben diferenciarse visualmente.
-- La navegación U01–U16 pertenece únicamente a Student Book.
-- Fuente: `APOLLO_G3_LIMPIO_21-04-26`, pestaña `DETALLE DEL PROGRAMA`, columna K `Páginas SB`.
-- Usar la primera página de cada unidad y sumar 6 para la página PDF.
-- Destinos PDF vigentes: U01 8, U02 14, U03 22, U04 28, U05 36, U06 42, U07 50, U08 56, U09 64, U10 70, U11 78, U12 84, U13 92, U14 98, U15 106, U16 112.
-- No usar direcciones de descarga como origen del `iframe`; pueden vaciar el visor y descargar el archivo.
-- Mantener el libro embebido mediante Google Drive `/preview`.
-- Reconstruir el `iframe` al cambiar de unidad.
-- No afirmar que una página concreta abrió hasta probarla en el navegador real.
-- Interpretar “mostrar página SB 58” como solicitar PDF 64 por el desfase fijo de 6 hojas.
-- No reutilizar ese mapeo para TB o WB.
+- U01–U16 pertenece únicamente a Student Book.
+- Fuente pedagógica: `APOLLO_G3_LIMPIO_21-04-26`, pestaña `DETALLE DEL PROGRAMA`, columna K `Páginas SB`.
+- Usar primera página de la unidad + 6 hojas iniciales.
+- Destinos PDF: U01 8, U02 14, U03 22, U04 28, U05 36, U06 42, U07 50, U08 56, U09 64, U10 70, U11 78, U12 84, U13 92, U14 98, U15 106, U16 112.
+- B1 U09 muestra el pliego PDF 64–65.
+- Totales reales SB: B1 157, B2 188, I1 158, I2 161. No asumir un total común.
+- B1 SB activo: `1pnR7RoJGkZnx08TlfrEgxEqVRnlrCwea`; no usar el archivo `ORIGINAL` `13rMmy1ZLpto6SgjSyVyBd3MtivuU19j3`.
+- Un archivo nuevo en Drive recibe un ID nuevo. Para actualizaciones sin código, reemplazar/versionar el archivo canónico preservando su ID.
+- No prometer resolución automática por carpeta mientras no exista un endpoint backend que seleccione de forma inequívoca SB/TB/WB.
 
 ## Seguimiento inmediato
 
-Columnas:
-
-`Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`
+Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`.
 
 - Código primero, grande, solo número y seleccionable.
 - Estudiante incluye nombre, cédula, seguimiento/revisado, Consulta, vínculo y grupo.
-- No existen columnas Desembolso ni Detectado.
+- Sin columnas Desembolso ni Detectado.
 - Resumen académico desde `6-historial`, estrictamente vertical.
 - Tabla completa sin scroll horizontal.
 - WA siempre visible.
@@ -54,8 +56,8 @@ Columnas:
 
 Se interpreta como `NUM_DESEMBOLSO/PERIODO_MES/PERIODO_ANIO`.
 
-- `01/MM/AAAA`: desembolso académico que se gestiona.
-- `02`, `03` y superiores: otros rubros; solo auditoría.
+- `01/MM/AAAA`: desembolso académico gestionable.
+- `02`, `03` y superiores: solo auditoría.
 - Mostrar únicamente `01` en Seguimiento inmediato.
 - Un `02/03+` no cierra ni reemplaza el `01`.
 
@@ -73,19 +75,13 @@ Fuente externa oficial, pestaña `Hoja 1`.
 
 ## 6-historial
 
-Solo lectura. Formato visual: `NIVEL · AAAAPTIPO · ESTATUS NOTA`. Conservar todas las filas e intentos; no fusionar ni corregir desde el panel.
+Solo lectura. Conservar todas las filas e intentos; no fusionar ni corregir desde el panel.
 
 ## WhatsApp
 
-Selector:
-
-1. Mensaje.
-2. Alerta.
-3. Atención.
-
+- Selector: Mensaje, Alerta y Atención.
 - Abrir texto precargado; imagen manual.
 - Negrita real usa `*texto*`.
-- Emoji por Unicode.
 - Monto solo si puede confirmarse.
 - Cerrado = no enviar cobro.
 
@@ -106,11 +102,11 @@ Selector:
 
 ## Checklist de cierre
 
-1. Confirmar base real de GitHub, no solo ZIPs o mensajes previos.
+1. Confirmar base real de GitHub.
 2. Nombrar impacto y archivos.
 3. Implementar y validar sintaxis.
-4. Revisar cache-busting de `campus.html`.
+4. Revisar cache-busting.
 5. Actualizar Fuente verdadera, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
 6. Registrar integridad del backend completo cuando cambie.
-7. Entregar solo los archivos solicitados por el usuario.
+7. Entregar solo los archivos solicitados.
 8. No declarar despliegue sin prueba.
