@@ -1,76 +1,84 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A39  
+**Versión integral:** F98.4-Z6-CS21A40  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** F98.4-Z6-CS21A39  
+**Frontend activo:** F98.4-Z6-CS21A40  
 **Corte documental:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · rama `main`
 
-## 1. Cambio CS21A39
+## 1. Cambio CS21A40
 
-CS21A39 modifica únicamente la presentación de la identidad del estudiante dentro de **Seguimiento inmediato**.
+CS21A40 modifica únicamente el texto generado por el botón **WA Pago** de Seguimiento inmediato.
 
 ### Archivos
 
-- `styles/admin_master_conape_identity_cs21a39.css`
+- `src/admin_master_conape_movements_cs21a25.jsx`
 - `campus.html`
 
-El componente funcional `src/admin_master_conape_movements_cs21a25.jsx` permanece en CS21A38 y no cambia su lógica.
+Apps Script no cambia.
 
-### Identidad más visible
+## 2. Corrección del emoticono
 
-- Nombre del estudiante: 13.5 px, peso fuerte y color azul institucional.
-- Cédula y código: 10.2 px, peso fuerte, fondo azul claro y borde visible.
-- Primera columna: 31% del ancho total.
-- En pantallas hasta 1180 px el tamaño se reduce moderadamente para conservar toda la fila.
-- El nombre completo permanece disponible en el tooltip cuando el ancho obliga a usar elipsis.
+El carácter roto `�` se evita generando el emoticono mediante:
 
-## 2. Vista compacta preservada
+`String.fromCodePoint(0x1F389)`
 
-La tabla continúa con seis columnas:
+El resultado esperado es `🎉`.
 
-- Estudiante.
-- Movimiento.
-- Periodo / nivel.
-- Campus.
-- Detectado.
-- WA.
+No se conserva un emoji literal dentro del texto fuente del mensaje.
 
-La columna `Desembolso` continúa eliminada.
+## 3. Negritas reales de WhatsApp
 
-La tabla mantiene:
+WhatsApp usa un solo asterisco para negrita:
 
-- ancho total del panel;
-- `table-layout: fixed`;
-- ausencia de `min-width` forzado;
-- ausencia de scroll horizontal;
-- filas compactas;
-- columna WA siempre visible.
+`*texto*`
 
-## 3. Botones compactos
+No usar `**texto**`, porque puede mostrar los asteriscos en vez de aplicar formato.
 
-- `✎ Seguimiento` cuando no hay nota.
-- `✓ Revisado` cuando existe `DATOS.COMENTARIO_ADMIN`.
-- `WA Pago` para preparar el mensaje.
-- `No enviar` en movimientos ya aplicados.
+Mensaje base vigente:
 
-## 4. Texto WA preservado
+> *¡Buenas noticias, [Nombre]! 🎉*
+>
+> CONAPE nos ha informado que el *desembolso ya fue acreditado en su cuenta.*
+>
+> Le solicitamos realizar el pago a la Academia *a la mayor brevedad posible*, para mantener su expediente *al día* y evitar atrasos en el desembolso del rubro de sostenimiento.
 
-El botón continúa preparando solo texto; la imagen se adjunta manualmente.
+Cuando existe monto confirmado:
 
-Al pulsar WA se consulta `getEstudiante`, se identifica bimestre/cuatrimestre y se agrega el monto pendiente real del nivel. I2 se identifica como último nivel. Si no puede confirmarse una cifra, no se inventa.
+> *Monto correspondiente a [nivel] ([bimestre/cuatrimestre]): ₡[monto].*
 
-## 5. Funciones preservadas
+Para I2:
 
-- CS21A38: tabla compacta sin scroll horizontal.
-- CS21A37: texto WA dinámico.
+> *Monto correspondiente al último nivel, Intermedio II ([bimestre/cuatrimestre]): ₡[monto].*
+
+## 4. Reglas preservadas
+
+- Usa el nombre de pila.
+- Consulta `getEstudiante` al pulsar WA.
+- Si no existe monto confirmable, no inventa una cifra.
+- La imagen se adjunta manualmente.
+- No envía automáticamente.
+- No escribe en hojas.
+- Un movimiento aplicado muestra `No enviar`.
+
+## 5. Vista compacta e identidad preservadas
+
+- Nombre grande y código/cédula destacados.
+- Sin scroll horizontal.
+- Columna `Desembolso` eliminada.
+- Columnas vigentes: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
+- `WA Pago` permanece visible.
+
+## 6. Funciones preservadas
+
+- CS21A39: identidad legible.
+- CS21A38: tabla compacta.
 - CS21A36: aplicar pago dentro de Consulta individual.
-- CS21A35: detalle persistente de seguimiento.
-- CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
-- Estado `NO` = aplicado; `SI` = pendiente; sin fila exacta = revisión.
+- CS21A35: detalle persistente.
+- CS21A34: lectura directa de `7-morosidad`.
 - Nunca se trasladan pagos entre niveles o intentos.
 
-## 6. Backend preservado CS21A34
+## 7. Backend preservado CS21A34
 
 No se modificó Apps Script. El backend completo vigente continúa siendo:
 
@@ -78,16 +86,16 @@ No se modificó Apps Script. El backend completo vigente continúa siendo:
 - ZIP: `Code_F98_4_Z6_CS21A34_SEGUIMIENTO_CONAPE_FUENTE_OFICIAL_COMPLETO.zip`
 - SHA-256 TXT: `c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35`
 
-## 7. QA obligatorio
+## 8. QA obligatorio
 
-1. Abrir Seguimiento inmediato en el ancho normal del Panel Maestro.
-2. Confirmar que el nombre sea legible sin acercar la pantalla.
-3. Confirmar que cédula y código se vean completos en la línea azul clara.
-4. Verificar que no aparezca scroll horizontal.
-5. Confirmar que `WA Pago` continúe visible.
-6. Revisar una pantalla cercana a 1180 px y confirmar que la fila siga completa.
-7. Confirmar que detalle, estado CONAPE y WhatsApp no hayan cambiado de comportamiento.
+1. Abrir `WA Pago` para un estudiante con nombre visible.
+2. Confirmar que aparece `🎉` y no `�`.
+3. Confirmar que WhatsApp aplica negrita y no muestra asteriscos dobles.
+4. Probar un nivel normal con monto.
+5. Probar I2 como último nivel.
+6. Probar un estudiante sin monto confirmable.
+7. Confirmar que un aplicado continúe mostrando `No enviar`.
 
-## 8. Estado de despliegue
+## 9. Estado de despliegue
 
-El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A39 esté publicado en producción.
+El código y la documentación están guardados en GitHub `main`. No existe evidencia suficiente para afirmar que CS21A40 esté publicado en producción.
