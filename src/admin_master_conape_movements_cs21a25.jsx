@@ -1,7 +1,7 @@
-// F98.4-Z6-CS21A33 · Seguimiento inmediato CONAPE aplicado según 7-morosidad.
+// F98.4-Z6-CS21A35 · Seguimiento inmediato CONAPE con detalle revisado resaltado.
 (function(){
 'use strict';
-const BUILD='F98.4-Z6-CS21A33';
+const BUILD='F98.4-Z6-CS21A35';
 const MONTHS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const LEVEL_LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 
@@ -46,8 +46,36 @@ async function postDetalle(fn,payload={}){
 function detalleVisible(v){const text=String(v||'').trim();if(!text)return'Sin nota registrada.';return text.length>110?text.slice(0,107)+'…':text;}
 function DetailButton({row,value,onEdit}){
   const linked=!!String(row?.code||'').trim();
-  const label=linked?`Detalle: ${detalleVisible(value)}`:'Detalle: Sin vínculo con DATOS.';
-  return <button type="button" onClick={()=>linked&&onEdit(row,value)} disabled={!linked} title={linked?(String(value||'').trim()||'Agregar detalle del estudiante'):'Este movimiento todavía no está vinculado a un estudiante de DATOS.'} style={{width:'100%',marginTop:6,padding:'7px 9px',borderRadius:8,border:'1px solid #DED5C7',background:linked?'#F5F0E7':'#F0EEE9',color:linked?'#4D3B2B':'#8B867F',fontSize:10.5,lineHeight:1.4,whiteSpace:'normal',textAlign:'left',cursor:linked?'pointer':'not-allowed',fontFamily:'inherit'}}><b>{label}</b>{linked&&<span style={{float:'right',marginLeft:8}}>✎</span>}</button>;
+  const text=String(value||'').trim();
+  const reviewed=linked&&!!text;
+  const label=!linked
+    ?'Detalle: Sin vínculo con DATOS.'
+    :reviewed
+      ?`✓ REVISADO · CON SEGUIMIENTO — ${detalleVisible(text)}`
+      :'Detalle: Sin nota registrada.';
+  const title=!linked
+    ?'Este movimiento todavía no está vinculado a un estudiante de DATOS.'
+    :reviewed
+      ?`Expediente revisado. ${text}`
+      :'Agregar detalle del estudiante';
+  return <button
+    type="button"
+    onClick={()=>linked&&onEdit(row,value)}
+    disabled={!linked}
+    title={title}
+    data-reviewed={reviewed?'true':'false'}
+    style={{
+      width:'100%',marginTop:6,padding:reviewed?'9px 10px':'7px 9px',borderRadius:9,
+      border:reviewed?'2px solid #4338CA':'1px solid #DED5C7',
+      background:reviewed?'#4F46E5':(linked?'#F5F0E7':'#F0EEE9'),
+      color:reviewed?'#FFFFFF':(linked?'#4D3B2B':'#8B867F'),
+      boxShadow:reviewed?'0 0 0 3px rgba(79,70,229,.14)':'none',
+      fontSize:reviewed?10.8:10.5,lineHeight:1.4,whiteSpace:'normal',textAlign:'left',
+      cursor:linked?'pointer':'not-allowed',fontFamily:'inherit',fontWeight:reviewed?900:700,
+      transition:'background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease'
+    }}>
+    <b>{label}</b>{linked&&<span style={{float:'right',marginLeft:8,fontSize:reviewed?14:12}}>{reviewed?'✓':'✎'}</span>}
+  </button>;
 }
 function DetailModal({editor,setEditor,onSave}){
   if(!editor)return null;const row=editor.row||{};
@@ -81,7 +109,7 @@ function Row({r,i,details,openDetail}){
 function Table({items,details,openDetail,empty}){
   return <div className="master-conape-month-table-wrap"><table className="master-conape-month-table" style={{tableLayout:'fixed',minWidth:1240}}><thead><tr><th style={{width:'24%'}}>Estudiante</th><th style={{width:'20%'}}>Movimiento</th><th>Desembolso</th><th>Periodo / nivel</th><th>Campus</th><th>Detectado</th><th>Contacto</th></tr></thead><tbody>{items.map((r,i)=><Row key={r.id||i} r={r} i={i} details={details} openDetail={openDetail}/>)}</tbody></table>{!items.length&&<div style={{padding:24,textAlign:'center'}}>{empty}</div>}</div>;
 }
-function MasterConapeMovementsTableCS21A33({data,onRefresh}){
+function MasterConapeMovementsTableCS21A35({data,onRefresh}){
   const m=data?.conape?.movements||{},all=Array.isArray(m.rows)?m.rows:[],s=m.summary||{};
   const rows=[...all].sort((a,b)=>Number(a.appliedInSystem)-Number(b.appliedInSystem)||Number(b.detectedSort||0)-Number(a.detectedSort||0));
   const pending=rows.filter(r=>!r.appliedInSystem),applied=rows.filter(r=>r.appliedInSystem);
@@ -89,9 +117,9 @@ function MasterConapeMovementsTableCS21A33({data,onRefresh}){
   React.useEffect(()=>{const next={};rows.forEach(r=>{const code=String(r?.code||'').trim();if(code)next[code]=String(r?.detail||'');});setDetails(next);},[data]);
   async function refresh(){setBusy(true);setMsg('');try{const r=await window.masterAction('actualizarPanelConapeAhora');setMsg(r.mensaje||'CONAPE actualizado.');await onRefresh?.();}catch(e){setMsg(e.message||String(e));}finally{setBusy(false);}}
   async function openDetail(row,current){const code=String(row?.code||'').trim();if(!code)return;setEditor({row,value:String(current||''),loading:true,saving:false,error:''});try{const data=await postDetalle('getComentarioAdminEstudiante',{codigo:code});setEditor(x=>x?{...x,value:String(data.comentario_admin||''),loading:false,error:''}:x);}catch(e){setEditor(x=>x?{...x,loading:false,error:e.message||String(e)}:x);}}
-  async function saveDetail(){if(!editor||editor.loading||editor.saving)return;const code=String(editor.row?.code||'').trim();if(!code)return;setEditor(x=>({...x,saving:true,error:''}));try{const data=await postDetalle('guardarComentarioAdminEstudiante',{codigo:code,comentario:String(editor.value||'').trim()});const saved=String(data.comentario_admin||'');setDetails(prev=>({...prev,[code]:saved}));setMsg(saved?`Detalle de ${editor.row?.name||code} guardado.`:`Detalle de ${editor.row?.name||code} eliminado.`);setEditor(null);}catch(e){setEditor(x=>x?{...x,saving:false,error:e.message||String(e)}:x);}}
+  async function saveDetail(){if(!editor||editor.loading||editor.saving)return;const code=String(editor.row?.code||'').trim();if(!code)return;setEditor(x=>({...x,saving:true,error:''}));try{const data=await postDetalle('guardarComentarioAdminEstudiante',{codigo:code,comentario:String(editor.value||'').trim()});const saved=String(data.comentario_admin||'');setDetails(prev=>({...prev,[code]:saved}));setMsg(saved?`Detalle de ${editor.row?.name||code} guardado y marcado como revisado.`:`Detalle de ${editor.row?.name||code} eliminado; vuelve a estado sin revisar.`);setEditor(null);}catch(e){setEditor(x=>x?{...x,saving:false,error:e.message||String(e)}:x);}}
   return <section className="master-card master-conape-month-card" data-build={BUILD}>
-    <header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · pendientes recientes primero</h3><p>“Aplicado en sistema” se determina por coincidencia exacta en 7-morosidad: misma cédula, año y periodo cuatrimestral con estado NO. Meses 01–04=P1, 05–08=P2 y 09–12=P3. BDBANCARIO queda excluida · última lectura {fmt(m.lastSync,true)}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span><button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
+    <header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · pendientes recientes primero</h3><p>“Aplicado en sistema” se determina por coincidencia exacta en 7-morosidad: misma cédula, año y periodo cuatrimestral con estado NO. Meses 01–04=P1, 05–08=P2 y 09–12=P3. Los detalles con contenido se resaltan como revisados para facilitar el seguimiento del día siguiente. BDBANCARIO queda excluida · última lectura {fmt(m.lastSync,true)}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span><button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
     <div className="master-conape-month-kpis" style={{gridTemplateColumns:'repeat(6,minmax(120px,1fr))'}}><div><b>{s.pending!=null?s.pending:pending.length}</b><span>pendientes arriba</span></div><div><b>{s.applied!=null?s.applied:applied.length}</b><span>aplicados fuera</span></div><div><b>{s.mora||0}</b><span>morosos</span></div><div><b>{s.levelLinked||0}</b><span>nivel enlazado</span></div><div><b>{s.unlinked||0}</b><span>por vincular</span></div><div><b>{s.advanced||0}</b><span>adelantados</span></div></div>
     {msg&&<div className="master-conape-month-msg">{msg}</div>}
     <Table items={pending} details={details} openDetail={openDetail} empty="No quedan movimientos pendientes según 7-morosidad."/>
@@ -99,7 +127,7 @@ function MasterConapeMovementsTableCS21A33({data,onRefresh}){
     <DetailModal editor={editor} setEditor={setEditor} onSave={saveDetail}/>
   </section>;
 }
-function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A33;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
+function apply(){if(typeof window.MasterConapeMovementsTable!=='function')return;window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A35;window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;}
 window.addEventListener('an:lazy-module-loaded',e=>{if(String(e?.detail?.src||'').includes('admin_master_dashboard.jsx'))apply();});
 setTimeout(apply,0);
 })();
