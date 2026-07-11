@@ -15,16 +15,19 @@ Este archivo es la entrada única de continuidad. Los documentos sin sufijo de v
 - `SKILL_CAMPUS_VIRTUAL.md` — forma de trabajo y checklist.
 - `PROMPT_CONTINUIDAD.md` — texto para iniciar otro chat.
 - `MANIFIESTO_ACTUAL.json` — versión, archivos y hashes.
+- `../AppsScript/README.md` — ubicación e integridad del backend.
 
 ## Backend
 
-El backend productivo vigente es CS21A30. Debe instalarse siempre como `Code.gs` completo. Su copia canónica exacta está comprimida y dividida dentro de `AppsScript/archivo_canonico/`; `AppsScript/RECONSTRUIR_CODE_GS.py` genera nuevamente `AppsScript/Code.gs` y valida su integridad.
+El backend vigente es CS21A30 y debe instalarse siempre como `Code.gs` completo. La copia exacta fue guardada en el Drive institucional en formatos TXT y ZIP. GitHub conserva su versión, nombre, tamaño, hash, reglas e instrucciones en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
 
-SHA-256 esperado del `Code.gs` CS21A30:
+El conector disponible bloqueó la carga directa del archivo de 2,8 MB y también sus formas comprimidas. Por transparencia, no existe en `main` una copia parcial presentada como completa; los fragmentos fallidos fueron retirados.
+
+SHA-256 esperado del TXT completo CS21A30:
 
 `007f26c35e5c42015c40a238fbc9523eacf7444a45323853427111f96adc83cc`
 
-No confundir “guardado en GitHub” con “publicado en Apps Script”. La implementación web debe actualizarse manualmente después de reemplazar el código.
+No confundir “respaldado” con “publicado en Apps Script”. La implementación web debe actualizarse manualmente después de reemplazar el código.
 
 ## Estado funcional consolidado
 
