@@ -1,25 +1,39 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — ESTADO VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A34  
+**Versión integral:** F98.4-Z6-CS21A35  
 **Backend canónico:** F98.4-Z6-CS21A34  
-**Frontend activo:** F98.4-Z6-CS21A33  
+**Frontend activo:** F98.4-Z6-CS21A35  
 **Corte documental:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · rama `main`
 
-## 1. Cambio CS21A34
+## 1. Cambio CS21A35
 
-CS21A34 corrige únicamente el origen de datos del indicador **Aplicado en sistema**. CS21A33 leía una pestaña local llamada `7-morosidad`; CS21A34 abre directamente el archivo externo oficial de CONAPE.
+CS21A35 modifica únicamente el frontend de **Seguimiento inmediato** para distinguir visualmente los estudiantes que ya tienen una nota de seguimiento guardada.
 
-### Fuente exacta
+- Sin texto en `DATOS.COMENTARIO_ADMIN`: botón `Detalle` beige.
+- Con cualquier texto: botón violeta fuerte con `✓ REVISADO · CON SEGUIMIENTO`.
+- El cambio aparece inmediatamente después de guardar.
+- Si se elimina toda la nota, vuelve al estado beige.
+- La señal persiste entre sesiones y equipos porque se deriva del valor real guardado.
+- No altera aplicación CONAPE, morosidad, pagos, filas, orden ni clasificación.
+
+Archivos frontend modificados:
+
+- `src/admin_master_conape_movements_cs21a25.jsx` — contenido activo CS21A35.
+- `campus.html` — cache-busting CS21A35.
+
+## 2. Backend preservado CS21A34
+
+CS21A34 abre directamente el archivo externo oficial de CONAPE:
 
 - ID: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`
 - Nombre: `7-morosidad`
 - Pestaña: `Hoja 1`
-- Lectura: directa con `SpreadsheetApp.openById(...)`, solo lectura.
+- Lectura directa con `SpreadsheetApp.openById(...)`, solo lectura.
 
-El backend valida además que el ID configurado coincida exactamente con el contrato oficial y que existan los encabezados requeridos.
+El backend valida que el ID configurado coincida exactamente con el contrato oficial y que existan los encabezados requeridos.
 
-## 2. Regla decisiva
+## 3. Regla decisiva CONAPE
 
 1. Tomar la cédula, mes y año del movimiento CONAPE.
 2. Convertir el mes: 01–04=P1, 05–08=P2, 09–12=P3.
@@ -31,7 +45,7 @@ El backend valida además que el ID configurado coincida exactamente con el cont
 
 `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` quedan como contexto; `BDBANCARIO` no participa.
 
-## 3. Verificación real
+## 4. Verificación real
 
 Archivo `7-morosidad`, pestaña `Hoja 1`:
 
@@ -39,25 +53,6 @@ Archivo `7-morosidad`, pestaña `Hoja 1`:
 - cédula `119760781`, fila 297: 2026 / periodo 3 / `NO`.
 
 Movimiento `09/2026` → periodo 3 → fila 297 → **Aplicado en sistema**.
-
-## 4. Archivos modificados
-
-### Backend
-
-- `Code.gs` completo CS21A34.
-
-### Documentación
-
-- `00_DOCUMENTACION/FUENTE_VERDADERA_CAMPUS_VIRTUAL.md`
-- `00_DOCUMENTACION/README_CONTINUIDAD.md`
-- `00_DOCUMENTACION/BIBLIA_DELTA_ACTUAL.md`
-- `00_DOCUMENTACION/PROMPT_CONTINUIDAD.md`
-- `00_DOCUMENTACION/MANIFIESTO_ACTUAL.json`
-- `AppsScript/README.md`
-
-### Frontend
-
-No se modificó. Permanece CS21A33.
 
 ## 5. Backend completo
 
@@ -70,6 +65,6 @@ No se modificó. Permanece CS21A33.
 - SHA-256 ZIP: `1cb825af1d52adeaa48540cdf4720189d5b6cc3da8d0a5095bc505afeaa8257b`
 - Sintaxis: `node --check` aprobada.
 
-## 6. Despliegue
+## 6. Estado de despliegue
 
-No está confirmado en producción. Se requiere reemplazar todo `Code.gs`, guardar, crear versión, actualizar la implementación y validar el caso `119760781 / 09-2026 / P3 / NO`.
+Los cambios están guardados en GitHub, pero no se afirma que el frontend esté publicado en producción. CS21A34 también requiere instalación manual de `Code.gs` si aún no se ha desplegado.
