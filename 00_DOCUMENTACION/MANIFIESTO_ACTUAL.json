@@ -1,48 +1,23 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A43",
+  "version": "F98.4-Z6-CS21A48",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "backend": {
     "version": "F98.4-Z6-CS21A43",
-    "changed_in_this_cut": true,
-    "canonical_name": "Code.gs",
-    "delivery_name": "Code_F98_4_Z6_CS21A43_SEGUIMIENTO_HISTORIAL_COMPLETO.gs",
-    "size_bytes": 2877888,
-    "sha256": "8eefafd6f8054033273c4a4451e85a55ce66735ccfeb6b141f820c290471fcca",
-    "syntax_check": "node --check passed",
+    "changed_in_this_cut": false,
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A43",
+    "version": "F98.4-Z6-CS21A48",
     "changed_in_this_cut": true,
     "files": [
-      "src/admin_master_conape_movements_cs21a25.jsx",
       "styles/admin_master_conape_identity_cs21a39.css",
       "campus.html"
     ],
-    "local_integrity": {
-      "src/admin_master_conape_movements_cs21a25.jsx": {
-        "sha256": "c309cb082ec6b6a26ade6c10c104f471b3143f205d2cb725c46b659fb9548f34",
-        "size": 17464
-      },
-      "styles/admin_master_conape_identity_cs21a39.css": {
-        "sha256": "abd29832f6c824b1e56c51b899731bd3579f6c9c499b000164ed776660c6792a",
-        "size": 5135
-      },
-      "campus.html": {
-        "sha256": "63accd063b55aae7941269c4f1368a7c7374a9afdcd7d381a1383d2d4a4d774d",
-        "size": 5050
-      }
-    },
     "github_saved": true,
-    "production_deployment_confirmed": false,
-    "git_blobs": {
-      "movements": "b1a9076baa193a2bfdecf0fa30cca6eeb3db0a11",
-      "identity_css": "fc91dc401eb22eb294c4a4ba4e1a9f69d472d14f",
-      "campus": "42f32d19393f2103feef6401e61dbd0aaa23e960"
-    }
+    "production_deployment_confirmed": false
   },
   "seguimiento_inmediato": {
     "columns": [
@@ -54,28 +29,19 @@
       "Campus",
       "WA"
     ],
-    "removed": [
-      "CLIC + CTRL C",
-      "columna Detectado"
-    ],
-    "detected_date_location": "Periodo / nivel",
     "horizontal_scroll": false,
     "wa_visible": true,
-    "student_code_only_first_column": true
+    "student_code_only_first_column": true,
+    "academic_summary_layout": "vertical_one_level_per_row",
+    "levels_side_by_side": false
   },
   "academic_summary": {
     "source_name": "6-historial",
-    "spreadsheet_id": "13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI",
-    "sheet_title": "Hoja 1",
     "read_only": true,
     "preserve_all_rows": true,
     "format": "NIVEL · AAAAPTIPO · ESTATUS NOTA"
   },
   "preserved": {
-    "morosidad_source": "7-morosidad externo oficial",
-    "whatsapp_text": "CS21A40",
-    "inline_payment": "CS21A36",
-    "certificate_integrity": "CS21A42",
     "never_move_payments_between_levels_or_attempts": true
   }
 }
