@@ -2,9 +2,9 @@
 
 ## Versión canónica
 
-`F98.4-Z6-CS21A55`
+`F98.4-Z6-CS21A56`
 
-Base preservada: `F98.4-Z6-CS21A46`.
+Base preservada: `F98.4-Z6-CS21A46`. Versión anterior preservada: `F98.4-Z6-CS21A55`.
 
 El archivo productivo se reemplaza siempre completo. El backend grande se conserva en Drive y no se almacena dentro de GitHub.
 
@@ -15,45 +15,47 @@ El archivo productivo se reemplaza siempre completo. El backend grande se conser
 - Carpeta de respaldos: `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`
 - Manifiesto operativo de Drive: `README_BACKEND_ACTUAL.txt`
 
-## Integridad CS21A55
+## Integridad CS21A56
 
-- Tamaño: `2,889,170` bytes
-- SHA-256: `127d9bbe403fa3a91073081d8a11a2a633d32e0c5931784d393126ee2cd321df`
-- Saltos de línea: `50,293`
+- Tamaño: `2,889,401` bytes
+- SHA-256: `eef075af1db53608b68f9a76ad0ea5ba4440c0a20bed8a545c62a99cab2d9a2c`
+- Saltos de línea: `50,291`
 - Sintaxis: validada mediante copia JavaScript y `node --check`.
 - Producción: no verificada.
 
 ## Respaldo previo
 
-Antes de actualizar el archivo canónico se creó una copia completa de CS21A46 denominada:
+Antes de CS21A56 se creó una copia completa de CS21A55:
 
-`Code_F98_4_Z6_CS21A46_PRE_CS21A55_COMPLETO.gs`
+- Archivo: `Code_F98_4_Z6_CS21A55_COMPLETO_ANTES_CS21A56_2026-07-11.gs`
+- Drive ID: `1tkxE2BcaDEyIprmvzks9A1x_CF4punuM`
 
-## Cambio CS21A55
+## Cambio CS21A56
 
-- Añade `teacherBooksOpenPdf`.
-- Añade `teacherBooksReadRange`.
-- Resuelve SB, TB y WB dentro de las carpetas docentes oficiales.
-- Excluye archivos marcados como ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD o ANTIGUO.
+- Conserva `teacherBooksOpenPdf` y `teacherBooksReadRange`.
+- Elimina la caché de cinco minutos del ID resuelto de SB/TB/WB.
+- Resuelve el archivo en vivo dentro de la carpeta oficial en cada apertura/refresco.
+- B1/SB prioriza `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` únicamente mientras permanezca dentro de `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- Si el ID preferente desaparece, usa el PDF válido más reciente de la carpeta.
+- Continúa excluyendo ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD y ANTIGUO.
 - Entrega el primer bloque del PDF y rangos posteriores para `PDFDataRangeTransport`.
-- Elimina la dependencia de lectura directa del navegador contra Google Drive y corrige el error CORS `Failed to fetch`.
 - Es un cambio de solo lectura.
 - No modifica pagos, certificados, CONAPE, calendario, DATOS, ESTATUS, GRUPOS ni INTENTOS_ACADEMICOS.
 
 ## Frontend relacionado
 
-F98.4-Z6-CS21A55 modifica:
+F98.4-Z6-CS21A56 modifica:
 
 - `src/teacher_cs21a_order_fix.jsx`
 - `campus.html`
 
-El visor mantiene dos páginas, ancho completo, navegación, zoom, pantalla completa y U01–U16 únicamente para Student Book.
+El frontend fuerza resolución nueva al entrar/cambiar nivel o tipo, actualiza el ID de respaldo B1/SB y añade `Actualizar desde Drive`. U01–U16 conserva el PDF abierto y solo cambia páginas.
 
 ## Forma obligatoria de trabajo
 
 1. Leer el archivo canónico anterior desde Drive.
-2. Verificar su tamaño y hash.
-3. Crear una copia versionada en la carpeta de respaldos.
+2. Verificar tamaño y hash.
+3. Crear copia versionada en la carpeta de respaldos.
 4. Modificar el archivo completo.
 5. Reemplazar los bytes del mismo archivo canónico, conservando su ID.
 6. Recalcular tamaño y SHA-256.
