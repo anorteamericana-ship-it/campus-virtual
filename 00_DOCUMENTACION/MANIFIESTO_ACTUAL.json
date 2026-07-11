@@ -1,47 +1,55 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A48",
+  "version": "F98.4-Z6-CS21A49",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
+  "production_deployment_confirmed": false,
   "backend": {
-    "version": "F98.4-Z6-CS21A43",
-    "changed_in_this_cut": false,
+    "target_version": "F98.4-Z6-CS21A46",
+    "stored_in_github": false,
+    "delivery_zip": "ENTREGA_F98_4_Z6_CS21A46_SOLO_DESEMBOLSO_ACADEMICO_01.zip",
+    "internal_path": "AppsScript/Code.gs",
+    "size_bytes": 2879996,
+    "sha256": "6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568",
+    "syntax_check": "node --check passed on js copy",
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A48",
-    "changed_in_this_cut": true,
+    "version": "F98.4-Z6-CS21A49",
+    "github_saved": true,
     "files": [
+      "src/admin_master_conape_movements_cs21a25.jsx",
       "styles/admin_master_conape_identity_cs21a39.css",
       "campus.html"
     ],
-    "github_saved": true,
+    "git_blobs": {
+      "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
+      "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
+      "campus": "d2c75e89ee9f88c37591ba8c2f4df4e6d31a0f73"
+    },
     "production_deployment_confirmed": false
   },
+  "audit_corrections": [
+    "CS21A46 existed as delivery zip but was absent from canonical continuity",
+    "CS21A47 layout and three WA templates were not committed to the main component",
+    "CS21A48 changed CSS and cache while the component remained CS21A43",
+    "continuity prompt and skill were stale"
+  ],
   "seguimiento_inmediato": {
-    "columns": [
-      "Código",
-      "Estudiante",
-      "Resumen académico",
-      "Movimiento",
-      "Periodo / nivel",
-      "Campus",
-      "WA"
-    ],
-    "horizontal_scroll": false,
-    "wa_visible": true,
-    "student_code_only_first_column": true,
+    "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
+    "only_academic_disbursement_number": 1,
+    "other_disbursements_log_only": true,
     "academic_summary_layout": "vertical_one_level_per_row",
-    "levels_side_by_side": false
-  },
-  "academic_summary": {
-    "source_name": "6-historial",
-    "read_only": true,
-    "preserve_all_rows": true,
-    "format": "NIVEL · AAAAPTIPO · ESTATUS NOTA"
+    "horizontal_scroll": false,
+    "whatsapp_visible": true,
+    "whatsapp_templates": ["Mensaje", "Alerta", "Atención"]
   },
   "preserved": {
-    "never_move_payments_between_levels_or_attempts": true
+    "consulta_individual_fresh": true,
+    "certificate_payment_separate_from_document": true,
+    "inline_payment_uses_official_engine": true,
+    "never_move_payments_between_levels_or_attempts": true,
+    "no_new_conape_triggers": true
   }
 }
