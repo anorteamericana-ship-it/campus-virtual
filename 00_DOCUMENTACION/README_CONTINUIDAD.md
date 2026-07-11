@@ -1,24 +1,25 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral/frontend:** F98.4-Z6-CS21A55  
-**Backend completo:** F98.4-Z6-CS21A55  
+**Versión integral/frontend:** F98.4-Z6-CS21A56  
+**Backend completo:** F98.4-Z6-CS21A56  
+**Base backend preservada:** F98.4-Z6-CS21A46  
 **Producción:** no verificada  
 **Corte:** 11-jul-2026
 
-## Cambio vigente CS21A55
+## Cambio vigente CS21A56
 
 Ruta: Docente → Recursos Didácticos → Libros de texto / Biblioteca digital.
 
-- El visor deja de solicitar los PDF directamente a Google Drive desde el navegador.
-- Apps Script entrega metadatos y bloques de bytes autorizados mediante `teacherBooksOpenPdf` y `teacherBooksReadRange`.
-- PDF.js carga únicamente los rangos necesarios y elimina el error CORS `Failed to fetch` de la lectura directa.
-- Se conserva el visor de dos páginas, ancho completo, navegación, zoom y pantalla completa.
-- SB, TB y WB se resuelven dinámicamente dentro de las carpetas oficiales.
-- Se excluyen copias antiguas, originales de respaldo y archivos marcados como backup.
+- Apps Script continúa entregando los PDF por rangos autorizados mediante `teacherBooksOpenPdf` y `teacherBooksReadRange`.
+- Se elimina la caché del ID resuelto de SB/TB/WB que podía conservar un archivo reemplazado.
+- Básico I / SB usa como ID canónico preferente `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` dentro de la carpeta oficial `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- Si el ID preferente deja de existir en la carpeta, el backend selecciona el PDF válido más reciente y excluye ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD y ANTIGUO.
+- El frontend fuerza una nueva resolución al entrar o cambiar nivel/tipo.
+- Se añade botón `Actualizar desde Drive` para releer el libro sin reiniciar el Campus.
+- El visor conserva dos páginas enfrentadas, ancho completo, navegación, zoom y pantalla completa.
 - U01–U16 aparece exclusivamente en Libros de texto cuando está seleccionado SB.
 - B1 → SB → U09 solicita PDF 64–65, equivalente a página académica SB 58.
-- Biblioteca digital abre TB sin aplicar un mapeo falso de páginas SB.
-- El PDF se conserva en memoria y cambiar de unidad no vuelve a cargar el documento completo.
+- Cambiar de unidad no vuelve a cargar el documento completo.
 
 ## Archivos modificados
 
@@ -29,10 +30,10 @@ Ruta: Docente → Recursos Didácticos → Libros de texto / Biblioteca digital.
 
 ## Integridad backend
 
-- Base preservada: CS21A46.
-- CS21A55 agrega únicamente lectura autorizada de libros docentes y enrutamiento de los dos endpoints nuevos.
+- CS21A56 preserva CS21A46 y CS21A55.
+- Solo modifica resolución/lectura de libros docentes.
 - No modifica pagos, certificados, CONAPE, calendario, DATOS, ESTATUS, GRUPOS ni INTENTOS_ACADEMICOS.
-- El archivo completo y su respaldo están en la carpeta canónica de Drive descrita en `AppsScript/README.md`.
+- Archivo canónico y respaldos: ver `AppsScript/README.md`.
 
 ## Seguimiento inmediato preservado
 
@@ -46,10 +47,10 @@ Orden: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel
 
 ## Pruebas obligatorias
 
-1. Instalar el `Code.gs` completo CS21A55 en Apps Script y crear una nueva implementación.
+1. Instalar el `Code.gs` completo CS21A56 y crear una implementación nueva.
 2. Abrir Docente → Recursos Didácticos → Libros de texto.
-3. Confirmar que B1 SB carga sin `Failed to fetch`.
-4. Confirmar que U09 muestra PDF 64–65.
-5. Confirmar que cambiar U01–U16 no descarga ni recarga el libro completo.
-6. Confirmar que Biblioteca digital abre TB sin botonera de unidades.
+3. Confirmar que B1/SB resuelve el ID `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF`.
+4. Confirmar que `Actualizar desde Drive` relee el archivo vigente.
+5. Confirmar U09 = PDF 64–65.
+6. Confirmar que U01–U16 no recarga el PDF completo.
 7. Confirmar reglas CONAPE `01` y estudiante `17110`.
