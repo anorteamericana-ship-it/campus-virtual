@@ -1,8 +1,8 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A30  
+**Versión integral vigente:** F98.4-Z6-CS21A31  
 **Backend canónico:** F98.4-Z6-CS21A30  
-**Frontend activo:** línea F98.4-Z6-CS21A29  
+**Frontend activo:** línea F98.4-Z6-CS21A31  
 **Corte:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
@@ -31,6 +31,7 @@ No confundir “respaldado” con “publicado en Apps Script”. La implementac
 
 ## Estado funcional consolidado
 
+- Panel Maestro abre **Cobranza y cartera** como primera sección y desplaza las demás opciones hacia la derecha.
 - Aplicar Pago excluye comprobantes agotados desde el buscador.
 - Certificado I2 y Programa Completo pueden pagarse juntos.
 - La deuda incluye certificado en todos los niveles activos.
@@ -60,4 +61,4 @@ QA real de CS21A30 antes de agregar más reglas:
 2. Validar I2 con cinco rubros.
 3. Validar creación del siguiente nivel faltante.
 4. Confirmar que la nueva Consulta se carga después de una escritura.
-5. Revisar que no existan duplicados de archivos frontend activos.
+5. Confirmar que Panel Maestro abre Cobranza primero sin bloquear la navegación posterior.
