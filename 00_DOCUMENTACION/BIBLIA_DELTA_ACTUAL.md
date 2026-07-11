@@ -1,4 +1,4 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A30
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A31
 
 Esta Biblia Delta complementa la Biblia histórica del proyecto y fija las reglas aprobadas hasta el corte del 10-jul-2026. Pagos, certificados, trayectoria académica, CONAPE y calendario son módulos críticos.
 
@@ -59,6 +59,10 @@ Después de guardar un cambio académico, Consulta individual debe releer el bac
 
 ## 4. Panel Maestro y CONAPE
 
+- **Cobranza y cartera** es la primera sección visual y la vista que carga al abrir Panel Maestro.
+- **Resumen institucional** queda en segundo lugar; las demás secciones se desplazan hacia la derecha.
+- La apertura automática de Cobranza ocurre una sola vez por montaje del Panel Maestro y no bloquea la navegación posterior.
+- Este orden es únicamente frontend y no cambia cálculos, filtros, fuentes, pagos ni endpoints.
 - Seguimiento inmediato muestra movimientos de todos los periodos.
 - Los desembolsos de periodos futuros se marcan como adelantados.
 - Orden operativo: Estudiante, Movimiento, Desembolso, Periodo, Campus, Detectado, Contacto.
