@@ -1,12 +1,12 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A34
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A35
 
 Esta Biblia Delta fija las reglas aprobadas hasta el corte del 10-jul-2026.
 
-## 1. Apps Script
+## 1. Versiones
 
-- Toda modificación de backend se entrega como `Code.gs` completo.
 - Backend canónico: CS21A34.
-- Frontend activo: CS21A33.
+- Frontend activo: CS21A35.
+- Toda modificación de backend se entrega como `Code.gs` completo.
 - No instalar fragmentos ni afirmar despliegue sin evidencia.
 
 ## 2. Fuente oficial de morosidad CONAPE
@@ -23,14 +23,9 @@ La lectura debe abrir directamente ese archivo externo. Una pestaña local, rép
 
 `CEDULA + PERIODO_ANIO + PERIODO_CUATRIMESTRAL`
 
-Conversión:
-
 - 01–04 → P1.
 - 05–08 → P2.
 - 09–12 → P3.
-
-Resultado:
-
 - fila exacta con `ESTADO = NO` → **Aplicado en sistema**;
 - fila exacta con `ESTADO = SI` → pendiente;
 - sin fila exacta → pendiente para revisión;
@@ -38,13 +33,22 @@ Resultado:
 
 La lectura es de solo lectura. No modifica el archivo externo.
 
-## 4. Fuentes complementarias
+## 4. Detalle revisado
+
+- `DATOS.COMENTARIO_ADMIN` vacío → botón de detalle beige y sin marca de revisión.
+- Cualquier contenido no vacío → botón violeta con `✓ REVISADO · CON SEGUIMIENTO`.
+- La marca visual debe actualizarse inmediatamente después de guardar.
+- Al borrar completamente el detalle, debe retirarse la marca y volver el color normal.
+- La revisión visual depende exclusivamente del dato persistido; no usar `localStorage`, sesión ni una marca temporal.
+- La marca de revisión no modifica el estado CONAPE, la morosidad, pagos o clasificación.
+
+## 5. Fuentes complementarias
 
 - `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son contexto complementario.
 - `BDBANCARIO` está excluida.
 - Ninguna evidencia complementaria reemplaza el estado oficial de `7-morosidad`.
 
-## 5. Caso patrón verificado
+## 6. Caso patrón verificado
 
 Cédula `119760781`, movimiento `09/2026`:
 
@@ -54,7 +58,7 @@ Cédula `119760781`, movimiento `09/2026`:
 
 La fila de periodo 2, aunque también sea `NO`, no se usa para un movimiento de septiembre.
 
-## 6. Reglas críticas preservadas
+## 7. Reglas críticas preservadas
 
 - No mover pagos entre niveles o intentos.
 - No modificar `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` ni la hoja externa desde este cruce.
