@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A34**.
+Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A35**.
 
 ## Forma obligatoria
 
@@ -20,8 +20,11 @@ Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Cont
 ## Estado vigente
 
 - Backend: **CS21A34**.
-- Frontend: **CS21A33**.
-- Cambio CS21A34: Seguimiento inmediato lee directamente el archivo externo oficial `7-morosidad`.
+- Frontend: **CS21A35**.
+- Seguimiento inmediato lee directamente el archivo externo oficial `7-morosidad`.
+- El botón `Detalle` cambia a violeta y muestra `✓ REVISADO · CON SEGUIMIENTO` cuando `DATOS.COMENTARIO_ADMIN` contiene cualquier texto.
+- Al borrar toda la nota vuelve a beige.
+- La señal persiste entre sesiones porque depende del dato guardado, no del navegador.
 
 ## Fuente oficial obligatoria
 
@@ -44,8 +47,13 @@ No usar una pestaña local o copia espejo para decidir aplicado.
 
 Caso validado: `119760781`, movimiento `09/2026`, fila externa 297, año 2026, periodo 3, estado `NO` → aplicado.
 
+## Archivos frontend activos del último cambio
+
+- `src/admin_master_conape_movements_cs21a25.jsx` — contenido CS21A35.
+- `campus.html` — carga CS21A35.
+
 ## Respaldo backend
 
-TXT y ZIP completos CS21A34 están en la carpeta institucional. Producción no confirmada; requiere reemplazo manual y nueva implementación.
+TXT y ZIP completos CS21A34 están en la carpeta institucional. Producción no confirmada; requiere reemplazo manual y nueva implementación si aún no fue desplegado.
 
 ---
