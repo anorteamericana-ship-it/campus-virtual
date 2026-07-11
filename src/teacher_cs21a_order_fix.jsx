@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A50 · Orden visual + visor de libros con navegación por unidades
-// Frontend-only: mantiene Biblioteca/Libros por nivel, refuerza SB/TB/WB y agrega U01-U16 para saltar a la primera página de cada unidad del Student Book.
+// F98.4-Z6-CS21A51 · Navegación real del Student Book por página
+// Frontend-only: usa el PDF directo en el visor nativo del navegador para que U01-U16 abra realmente la página calculada.
 /* global React, getSesion, MaterialesView */
 (function(){
-  const VERSION = 'F98.4-Z6-CS21A50';
+  const VERSION = 'F98.4-Z6-CS21A51';
   const BLUE = 'var(--an-navy-ink,#001E47)';
 
   function norm(s){
@@ -51,7 +51,10 @@
     catch(_) { return {}; }
   }
   function filePreview(id){ return 'https://drive.google.com/file/d/' + id + '/preview'; }
-  function filePreviewAtPage(id, page){ return filePreview(id) + (page ? '#page=' + page : ''); }
+  function fileInlineAtPage(id, page){
+    const base = 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(id);
+    return base + (page ? '#page=' + page + '&zoom=page-width' : '');
+  }
   function fileDownload(id){ return 'https://drive.google.com/uc?export=download&id=' + id; }
   function openDownload(doc){ window.open(doc.download || doc.preview, '_blank', 'noopener,noreferrer'); }
 
@@ -213,9 +216,9 @@
     const realType = isLibrary ? 'TB' : type;
     const doc = makeDoc(selectedLevel, realType);
     const unitPage = SB_UNIT_PAGES[unit - 1] || SB_UNIT_PAGES[0];
-    const preview = realType === 'SB' ? filePreviewAtPage(doc.id, unitPage.pdfPage) : doc.preview;
+    const preview = realType === 'SB' ? fileInlineAtPage(doc.id, unitPage.pdfPage) : doc.preview;
     const viewerKey = [levelCode,realType,realType === 'SB' ? unit : 'book'].join('-');
-    return <section data-screen-label={'Docente · CS21A50 · ' + mode + '-pdf'} style={{ padding:18 }}>
+    return <section data-screen-label={'Docente · CS21A51 · ' + mode + '-pdf'} style={{ padding:18 }}>
       <HeaderBooks mode={mode} />
       <div style={{ display:'grid', gridTemplateColumns:'minmax(250px,330px) 1fr', gap:14, alignItems:'start' }}>
         <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, padding:12, display:'grid', gap:8 }}>
@@ -246,7 +249,7 @@
   function installBookViews(){
     if (!window.MaterialesView || window.MaterialesView.__cs21a11books) return;
     const Base = window.MaterialesView;
-    const Wrapped = function MaterialesViewCS21A50Books(props){
+    const Wrapped = function MaterialesViewCS21A51Books(props){
       const u = session();
       if (!u || u.rol !== 'teacher') return <Base {...props}/>;
       const screen = currentScreen();
