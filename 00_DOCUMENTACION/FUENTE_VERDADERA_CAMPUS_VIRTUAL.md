@@ -1,27 +1,28 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A55
+# FUENTE VERDADERA — F98.4-Z6-CS21A56
 
-Estado canónico: frontend CS21A55 guardado en GitHub; backend completo CS21A55 respaldado en la carpeta canónica de Drive; producción no verificada.
+Estado canónico: frontend CS21A56 guardado en GitHub; backend completo CS21A56 guardado en el archivo canónico de Drive; producción no verificada.
 
 ## Componentes vigentes
 
 - `src/teacher_cs21a_order_fix.jsx`
 - `campus.html`
-- `Code.gs` completo
+- `Code.gs` completo de Drive
 
-## Cambio CS21A55
+## Cambio CS21A56 — Drive live sin ID obsoleto
 
-- Apps Script entrega los libros por rangos autorizados para evitar el bloqueo CORS de Google Drive.
-- Endpoints: `teacherBooksOpenPdf` y `teacherBooksReadRange`.
-- PDF.js mantiene dos páginas enfrentadas, ancho completo, zoom, navegación y pantalla completa.
-- El backend selecciona SB, TB y WB dentro de las carpetas oficiales y excluye copias antiguas y respaldos.
-- U01–U16 aparece únicamente en Student Book.
-- U09 dirige a PDF 64–65, equivalente a SB 58 con el desfase +6.
-- Biblioteca digital y Teacher Book no usan el mapeo de páginas SB.
+- Corrige la selección persistente del PDF anterior en Docente → Recursos Didácticos → Libros de texto.
+- La carpeta oficial de Básico I continúa siendo `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- Student Book activo de Básico I: `Interchange 5th intro-SB.pdf`, ID `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF`.
+- El backend ya no conserva en caché durante cinco minutos el ID resuelto de SB/TB/WB.
+- B1/SB prioriza el ID canónico anterior únicamente mientras siga dentro de la carpeta oficial; si desaparece, usa el PDF válido más reciente de la carpeta.
+- El frontend fuerza una resolución nueva al entrar o cambiar nivel/tipo y ofrece `Actualizar desde Drive`.
+- Cambiar U01–U16 solo cambia las páginas renderizadas; no vuelve a descargar el libro completo.
+- U09 mantiene destino PDF 64–65, equivalente a SB 58 con el desfase +6.
 - Es un cambio de solo lectura: no modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
 
 ## Integridad
 
-La identidad completa del backend, su tamaño, hash y ubicación están registrados en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
+La identidad completa del backend, su tamaño, hash, respaldo previo y ubicación están registrados en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
 
 ## Reglas preservadas
 
