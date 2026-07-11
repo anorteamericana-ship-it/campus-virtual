@@ -1,8 +1,8 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A32  
-**Backend canónico:** F98.4-Z6-CS21A32  
-**Frontend activo:** línea F98.4-Z6-CS21A32  
+**Versión integral vigente:** F98.4-Z6-CS21A33  
+**Backend canónico:** F98.4-Z6-CS21A33  
+**Frontend activo:** línea F98.4-Z6-CS21A33  
 **Corte:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
@@ -19,42 +19,41 @@ Este archivo es la entrada única de continuidad. Los documentos sin sufijo de v
 
 ## Backend
 
-El backend vigente es CS21A32 y debe instalarse siempre como `Code.gs` completo. La copia completa se conserva en la carpeta institucional `CAMPUS_VIRTUAL_BACKEND_CANONICO` en TXT y ZIP. GitHub guarda versión, nombre, tamaño, hashes, reglas e instrucciones, pero no una copia parcial presentada como completa.
+El backend vigente es CS21A33 y debe instalarse siempre como `Code.gs` completo. La copia completa se conserva en la carpeta institucional `CAMPUS_VIRTUAL_BACKEND_CANONICO` en TXT y ZIP. GitHub guarda versión, nombre, tamaño, hashes, reglas e instrucciones, pero no una copia parcial presentada como completa.
 
-SHA-256 esperado del TXT completo CS21A32:
+SHA-256 esperado del TXT completo CS21A33:
 
-`956e71a003765b3c188f156ea24c8efa805162acbf00cedfd0134db1ada35a17`
+`65e82291e2609120437a5fbfcdc0ea95793bdb0b41403362d99d0f65c5b69aa3`
 
-No confundir **respaldado** con **desplegado**. CS21A32 requiere reemplazo manual de `Code.gs`, guardado, creación de versión y actualización de la implementación web.
+No confundir **respaldado** con **desplegado**. CS21A33 requiere reemplazo manual de `Code.gs`, guardado, creación de versión y actualización de la implementación web.
 
-## Estado funcional consolidado
+## Regla vigente de Seguimiento inmediato CONAPE
+
+- El periodo CONAPE mensual se convierte al periodo de `7-morosidad`:
+  - meses 01–04 → periodo 1;
+  - meses 05–08 → periodo 2;
+  - meses 09–12 → periodo 3.
+- La llave exacta es **cédula + año CONAPE + periodo cuatrimestral**.
+- `7-morosidad.ESTADO = NO` significa **Aplicado en sistema**.
+- `7-morosidad.ESTADO = SI` permanece pendiente.
+- Sin fila exacta permanece pendiente para revisión.
+- `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son evidencia complementaria, no deciden la clasificación.
+- `BDBANCARIO` queda excluida porque es una fuente bancaria cruda.
+- Los pendientes más recientes aparecen arriba; los aplicados quedan abajo, fuera de la cola principal.
+- No se escriben cambios en `7-morosidad` ni se mueven pagos entre niveles o intentos.
+
+## Caso patrón aprobado
+
+Movimiento CONAPE: cédula `119760781`, periodo `09/2026`.  
+Conversión: septiembre corresponde al periodo `3`.  
+Fila exacta en `7-morosidad`: cédula `119760781`, año `2026`, periodo `3`, estado `NO`.  
+Resultado: **Aplicado en sistema**.
+
+## Estado funcional preservado
 
 - Panel Maestro abre **Cobranza y cartera** como primera sección.
-- Seguimiento inmediato enlaza movimientos CONAPE con estudiante, nivel, grupo/intento y estado de morosidad.
-- **Aplicado en sistema** exige evidencia real en `PAGOS`, `OTROS PAGOS` o `PAGOS_CAMPUS` del mismo estudiante, nivel y grupo/intento.
-- `BDBANCARIO` no participa en la clasificación de aplicado porque es fuente bancaria cruda.
-- Los movimientos pendientes más recientes quedan arriba; los aplicados se conservan abajo, fuera de la cola principal.
-- Un pago sin grupo no se atribuye cuando existen varios intentos del mismo nivel.
-- `7-morosidad` informa Moroso / No moroso / Sin fila, pero no decide por sí sola que un desembolso fue aplicado.
-- No se mueven pagos entre niveles ni intentos.
-- Aplicar Pago excluye comprobantes agotados.
-- Certificado I2 y Programa Completo pueden pagarse juntos.
-- La deuda incluye certificado en todos los niveles activos; I2 agrega Programa Completo y TOEIC.
-- `CA → APR` puede activar o crear el siguiente nivel de forma protegida.
-
-## Fuentes críticas
-
-- Identidad y trayectoria: `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`.
-- Pagos aplicados: `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS`, `PAGOS_OPERACIONES`.
-- Banco crudo: `BDBANCARIO`, excluido del indicador “Aplicado en sistema” de CONAPE.
-- CONAPE: archivos/hojas 1–7 protegidos y actualización manual.
-
-## QA prioritario
-
-1. Movimiento CONAPE con coincidencia exacta de estudiante, periodo, nivel y grupo, con pago aplicado.
-2. Movimiento sin pago aplicado que permanece arriba como pendiente.
-3. Repetición del mismo nivel: el pago del intento anterior no debe marcar el nuevo intento.
-4. Pago sin grupo con varios intentos: debe quedar ambiguo, no aplicado.
-5. Aplicados visibles únicamente en el bloque inferior.
-6. Orden de pendientes por detección más reciente.
-7. Morosidad SI/NO/SIN FILA visible sin alterar datos.
+- Seguimiento inmediato permanece visible aunque se oculten los gráficos.
+- Detalle sigue leyendo/escribiendo `DATOS.COMENTARIO_ADMIN`.
+- Consulta sigue abriendo el expediente precargado.
+- CONAPE sigue siendo manual y sin triggers automáticos.
+- Las reglas académicas y financieras de CS21A30 se preservan.
