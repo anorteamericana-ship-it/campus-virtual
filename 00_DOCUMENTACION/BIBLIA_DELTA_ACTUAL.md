@@ -1,19 +1,43 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A37
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A38
 
 Esta Biblia Delta fija las reglas aprobadas hasta el corte del 10-jul-2026.
 
 ## 1. Versiones
 
 - Backend canónico: CS21A34.
-- Frontend activo: CS21A37.
+- Frontend activo: CS21A38.
 - Toda modificación de backend se entrega como `Code.gs` completo.
 - No instalar fragmentos ni afirmar despliegue sin evidencia.
 
-## 2. Texto WA de Seguimiento inmediato
+## 2. Vista compacta de Seguimiento inmediato
 
-- El botón se llama `WA Solicitar pago`.
+- La tabla debe caber completa dentro del panel de escritorio sin scroll horizontal.
+- La columna `Desembolso` no debe mostrarse.
+- Las columnas vigentes son: Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
+- La tabla usa ancho `100%`, `table-layout: fixed` y no fuerza `min-width`.
+- Nombres, grupos y metadatos largos se truncan visualmente con elipsis; el valor completo permanece en `title`.
+- La fecha detectada se presenta en formato compacto y conserva fecha/hora completa en tooltip.
+- Las filas deben ser bajas y densas, sin perder la identificación del estudiante.
+
+## 3. Botones de seguimiento y WA
+
+- `DATOS.COMENTARIO_ADMIN` vacío → píldora pequeña `✎ Seguimiento`.
+- Cualquier contenido → píldora violeta pequeña `✓ Revisado`.
+- La nota completa continúa en el modal y persiste entre sesiones.
+- El botón de WhatsApp se llama `WA Pago` y debe permanecer visible en su propia columna.
+- Un movimiento `Aplicado en sistema` muestra `No enviar` y no permite preparar solicitud de cobro.
+
+## 4. Texto WA preservado
+
 - Solo prepara texto; la imagen se adjunta manualmente.
-- El texto base es:
+- Usa el nombre de pila.
+- Consulta `getEstudiante` para obtener el monto pendiente del nivel.
+- Identifica bimestre o cuatrimestre.
+- I2 se presenta como último nivel.
+- Si no existe monto confirmable, no inventa una cifra.
+- No envía automáticamente ni escribe en hojas.
+
+Texto base:
 
 > ¡Buenas noticias [Nombre]! 🥳
 >
@@ -21,26 +45,7 @@ Esta Biblia Delta fija las reglas aprobadas hasta el corte del 10-jul-2026.
 >
 > Le solicitamos realizar el pago a la Academia a la mayor brevedad posible, para mantener su expediente al día y evitar atrasos en el desembolso del rubro de sostenimiento.
 
-- El nombre debe ser el nombre de pila, no el primer apellido.
-- Al pulsar WA se consulta `getEstudiante` para obtener la deuda vigente del nivel.
-- B1, B2 e I1 agregan nivel, bimestre/cuatrimestre y monto.
-- I2 se identifica como último nivel y agrega el monto vigente incluyendo los rubros pendientes que correspondan.
-- Si no existe monto confirmable, se conserva el texto base sin inventar una cifra.
-- Un movimiento `Aplicado en sistema` no puede mostrar un mensaje para solicitar pago; debe indicar `Aplicado · no enviar cobro`.
-- El botón no envía automáticamente ni modifica datos.
-
-## 3. Origen del monto WA
-
-Monto pendiente del nivel:
-
-- Matrícula pendiente.
-- Cuotas pendientes.
-- Certificado pendiente.
-- En I2: Programa Completo y TOEIC pendientes cuando correspondan.
-
-Fuente principal: `getEstudiante`. Respaldo: `collections.rows` con coincidencia por código + nivel. `appliedAmount` no representa el costo del nivel y no debe usarse para este mensaje.
-
-## 4. Aplicar pago dentro de Consulta individual · CS21A36
+## 5. Aplicar pago dentro de Consulta individual · CS21A36
 
 - El botón `Pago` no saca al usuario de Consulta individual.
 - Existe una sola búsqueda de comprobante por intento.
@@ -52,9 +57,7 @@ Fuente principal: `getEstudiante`. Respaldo: `collections.rows` con coincidencia
 
 El frontend no escribe directamente en hojas financieras. Apps Script conserva la autoridad sobre grupo, intento, deuda, saldo, reglas, recibos, rollback, idempotencia y sincronización CONAPE. Nunca se mueven pagos entre niveles o intentos.
 
-## 5. Fuente oficial de morosidad CONAPE
-
-El único origen válido para clasificar Seguimiento inmediato es:
+## 6. Fuente oficial de morosidad CONAPE
 
 - Spreadsheet ID `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`.
 - Archivo `7-morosidad`.
@@ -62,15 +65,9 @@ El único origen válido para clasificar Seguimiento inmediato es:
 
 Regla: 01–04=P1, 05–08=P2, 09–12=P3; `NO`=aplicado, `SI`=pendiente y sin fila exacta=revisión.
 
-## 6. Detalle revisado preservado
-
-- `DATOS.COMENTARIO_ADMIN` vacío: botón beige.
-- Cualquier contenido: botón violeta con `✓ REVISADO · CON SEGUIMIENTO`.
-- Esta señal no modifica pagos, mora ni clasificación CONAPE.
-
 ## 7. Reglas críticas generales
 
 - No modificar directamente `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS` o CONAPE desde estas interfaces.
 - No crear triggers automáticos para CONAPE.
 - No confundir código guardado con producción desplegada.
-- Antes de producción, ejecutar QA con nombre, monto, bimestre, cuatrimestre, I2 y movimiento ya aplicado.
+- Antes de producción, ejecutar QA visual sin scroll y confirmar que WA permanece visible.
