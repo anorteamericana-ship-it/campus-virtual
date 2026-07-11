@@ -17,9 +17,24 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 ## Continuidad vigente
 
 - Frontend: F98.4-Z6-CS21A54.
-- Backend objetivo: F98.4-Z6-CS21A46.
+- Backend canónico: F98.4-Z6-CS21A46.
 - Producción no verificada.
-- El backend grande no está en GitHub; `AppsScript/README.md` conserva su identidad declarada.
+
+## Backend canónico obligatorio
+
+- Carpeta Drive maestra: `1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a`.
+- Archivo canónico: `Code.gs`.
+- Drive file ID: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Tamaño validado: `2,879,996` bytes.
+- SHA-256 validado: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`.
+- Conteo: `50,122` saltos de línea y línea final vacía; algunos editores muestran `50,123`.
+- Carpeta de respaldos: `00_BACKUPS_CODE_GS`, ID `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`.
+- Antes de modificar backend: crear copia versionada en esa carpeta.
+- Después de modificar: reemplazar los bytes del mismo archivo canónico conservando el ID `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Registrar versión, tamaño, SHA-256 y fecha en `README_BACKEND_ACTUAL.txt`, ID `179pqbUFMPiOUN6Lo3YA_Ia51lKtqtP8u`.
+- Nunca usar CS21A42 o un archivo más pequeño como base.
+- Nunca borrar el canónico ni sus respaldos sin autorización expresa.
+- Drive actualizado no significa Apps Script desplegado.
 
 ## Docente / Recursos Didácticos / Libros de texto
 
@@ -31,7 +46,7 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 - Visor: dos páginas enfrentadas mediante PDF.js, con navegación, zoom y pantalla completa.
 - Mantener el PDF en caché de memoria; cambiar unidad solo cambia páginas.
 - No usar Drive `/preview` como respaldo visual ni volver a la vista anterior.
-- Si PDF.js falla, mostrar error controlado con `Abrir en Drive` y `Descargar PDF`.
+- Si PDF.js falla, resolver la lectura mediante el backend canónico; no ocultar el error dejando un visor vacío.
 - SB, TB y WB deben diferenciarse visualmente.
 - U01–U16 pertenece únicamente a SB.
 - Fuente: `APOLLO_G3_LIMPIO_21-04-26`, `DETALLE DEL PROGRAMA`, columna K.
@@ -90,9 +105,11 @@ Solo lectura. Conservar todas las filas e intentos.
 
 ## Checklist de cierre
 
-1. Confirmar base real de GitHub.
-2. Nombrar impacto y archivos.
-3. Validar sintaxis.
-4. Revisar cache-busting.
-5. Actualizar Fuente, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
-6. No declarar despliegue sin prueba.
+1. Confirmar base real de GitHub y backend canónico de Drive.
+2. Crear respaldo versionado antes de tocar `Code.gs`.
+3. Nombrar impacto y archivos.
+4. Validar sintaxis.
+5. Revisar cache-busting.
+6. Actualizar Fuente, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
+7. Actualizar manifiesto Drive con versión, tamaño y hash.
+8. No declarar despliegue sin prueba.
