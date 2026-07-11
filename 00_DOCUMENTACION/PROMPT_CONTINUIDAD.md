@@ -14,7 +14,7 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 4. Si frontend cambia, modificá únicamente los archivos necesarios del repositorio `anorteamericana-ship-it/campus-virtual`, rama `main`.
 5. No toqués pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario sin analizar el impacto.
 6. No movás pagos entre niveles o intentos para cuadrar resultados.
-7. No afirmés que algo está desplegado si únicamente fue generado o guardado en GitHub.
+7. No afirmés que algo está desplegado si únicamente fue generado, respaldado o guardado en GitHub.
 8. Actualizá siempre `00_DOCUMENTACION` y evitá crear copias versionadas redundantes.
 
 ## Fuentes verdaderas
@@ -32,6 +32,8 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 - Backend: **F98.4-Z6-CS21A30**.
 - Frontend: línea **CS21A29**, con controles CS21A27B y navegación CS21A28.
 - Último motor financiero: certificado incluido siempre en la deuda del nivel activo.
+- El TXT y ZIP completos CS21A30 están respaldados en el Drive institucional con sus hashes en `AppsScript/README.md` y `MANIFIESTO_ACTUAL.json`.
+- El conector GitHub bloqueó la carga directa del archivo de 2,8 MB; los fragmentos incompletos fueron eliminados. No afirmar que existe un Code.gs completo dentro de Git.
 
 ## Reglas académicas vigentes
 
@@ -86,7 +88,7 @@ Estoy trabajando en el proyecto **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Cost
 
 1. Leé los documentos canónicos.
 2. Verificá el `campus.html` y los archivos activos antes de proponer cambios.
-3. Confirmá si el Code.gs CS21A30 está desplegado o solamente almacenado.
+3. Confirmá si el Code.gs CS21A30 está desplegado o solamente respaldado.
 4. Para cualquier nueva solicitud, explicá impacto, archivos y plan antes de escribir.
 
 ---
