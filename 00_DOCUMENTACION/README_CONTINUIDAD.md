@@ -14,7 +14,7 @@ Este documento es el resumen operativo vigente. Sustituye los README de continui
 - Prompt para otro chat: `00_DOCUMENTACION/PROMPT_CONTINUIDAD.md`.
 - Guía de trabajo: `00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL.md`.
 - Manifiesto técnico: `00_DOCUMENTACION/MANIFIESTO_ACTUAL.json`.
-- Backend canónico: archivo exacto reconstruible desde `AppsScript/archivo_canonico/`, documentado en `AppsScript/README.md`.
+- Ubicación e integridad del backend: `AppsScript/README.md`.
 
 ## 2. Estado de versiones
 
@@ -22,6 +22,7 @@ Este documento es el resumen operativo vigente. Sustituye los README de continui
 - Frontend vigente: línea **F98.4-Z6-CS21A29**, con controles visuales CS21A27B y navegación CS21A28.
 - El frontend no necesitó un cambio CS21A30; CS21A30 corrige el motor financiero del Apps Script.
 - Si Apps Script cambia, se entrega y conserva siempre el `Code.gs` completo. Los parches se usan solo como explicación técnica, nunca como reemplazo de producción.
+- El TXT y ZIP completos CS21A30 están respaldados en el Drive institucional. Git registra nombre, versión, tamaño, SHA-256 e instrucciones. El conector bloqueó la carga directa del archivo de 2,8 MB; no se dejó una copia parcial.
 
 ## 3. Cambios consolidados CS21A20–CS21A30
 
@@ -97,12 +98,12 @@ Los archivos anteriores se cargan desde `campus.html`. No crear otra copia con s
 - No ejecutar limpiezas pesadas dentro de endpoints de lectura del calendario o dashboard.
 - No crear triggers automáticos para CONAPE.
 - No mezclar Academia Play o English LAB con notas oficiales, aprobación, certificados o pagos.
-- No afirmar que algo está desplegado si solo fue generado o guardado en GitHub.
+- No afirmar que algo está desplegado si solo fue generado, respaldado o guardado en GitHub.
 
 ## 7. Instalación del backend
 
-1. Reconstruir el `Code.gs` canónico CS21A30 con `python AppsScript/RECONSTRUIR_CODE_GS.py`.
-2. Validar su SHA-256 contra el manifiesto.
+1. Abrir el TXT completo CS21A30 o descargar su ZIP desde el Drive institucional.
+2. Validar su SHA-256 contra `MANIFIESTO_ACTUAL.json` cuando se haga una restauración crítica.
 3. Reemplazar completamente el `Code.gs` en Apps Script.
 4. Guardar.
 5. Crear una versión nueva de la aplicación web.
