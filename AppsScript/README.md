@@ -10,12 +10,14 @@ El archivo productivo se llama `Code.gs` y debe reemplazarse completo en Apps Sc
 
 El repositorio conserva el manifiesto, las reglas y la referencia verificable del backend en:
 
-- `AppsScript/CODE_GS_CANONICO.json`
+- `AppsScript/README.md`
 - `00_DOCUMENTACION/MANIFIESTO_ACTUAL.json`
 
 La copia exacta completa fue guardada en el Drive institucional porque el conector disponible de GitHub bloqueó por seguridad la carga de un archivo de código de 2,8 MB y también sus representaciones comprimidas. No se dejó un archivo parcial ni se presenta una copia incompleta como válida.
 
 ### Drive institucional
+
+Carpeta: `CAMPUS_VIRTUAL_BACKEND_CANONICO`
 
 - TXT completo: `1FpHFcCSjrM_MHp0CUHjzmPvFABCAUwWV`
 - ZIP completo: `1rG_WuF3aAd4dESWi_s82N3QBL6OAOoEd`
