@@ -1,59 +1,61 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión integral vigente:** F98.4-Z6-CS21A33  
-**Backend canónico:** F98.4-Z6-CS21A33  
+**Versión integral vigente:** F98.4-Z6-CS21A34  
+**Backend canónico:** F98.4-Z6-CS21A34  
 **Frontend activo:** línea F98.4-Z6-CS21A33  
 **Corte:** 10-jul-2026  
 **Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
-Este archivo es la entrada única de continuidad. Los documentos sin sufijo de versión dentro de `00_DOCUMENTACION` son los únicos canónicos; los cortes anteriores quedan en el historial de Git.
+Los documentos sin sufijo de versión dentro de `00_DOCUMENTACION` son los únicos canónicos. El historial anterior permanece en Git.
 
-## Documentos canónicos
+## Backend canónico
 
-- `README_CONTINUIDAD.md`
-- `BIBLIA_DELTA_ACTUAL.md`
-- `SKILL_CAMPUS_VIRTUAL.md`
-- `PROMPT_CONTINUIDAD.md`
-- `MANIFIESTO_ACTUAL.json`
-- `../AppsScript/README.md`
+CS21A34 debe instalarse siempre como `Code.gs` completo. El TXT y ZIP completos se conservan en la carpeta institucional `CAMPUS_VIRTUAL_BACKEND_CANONICO`; GitHub conserva las referencias, reglas y hashes, no una copia parcial.
 
-## Backend
+SHA-256 esperado del TXT completo:
 
-El backend vigente es CS21A33 y debe instalarse siempre como `Code.gs` completo. La copia completa se conserva en la carpeta institucional `CAMPUS_VIRTUAL_BACKEND_CANONICO` en TXT y ZIP. GitHub guarda versión, nombre, tamaño, hashes, reglas e instrucciones, pero no una copia parcial presentada como completa.
+`c4b4b3c18091e9413c0722d2c5ae0748b5c756927f9bf2f934c8d6dbe6c0dd35`
 
-SHA-256 esperado del TXT completo CS21A33:
+Respaldado no significa desplegado. La producción requiere reemplazar todo `Code.gs`, guardar, crear versión y actualizar la implementación web.
 
-`65e82291e2609120437a5fbfcdc0ea95793bdb0b41403362d99d0f65c5b69aa3`
+## Fuente oficial de `7-morosidad`
 
-No confundir **respaldado** con **desplegado**. CS21A33 requiere reemplazo manual de `Code.gs`, guardado, creación de versión y actualización de la implementación web.
+Seguimiento inmediato debe leer directamente el archivo externo oficial de CONAPE:
 
-## Regla vigente de Seguimiento inmediato CONAPE
+- Spreadsheet ID: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`
+- Archivo: `7-morosidad`
+- Pestaña: `Hoja 1`
+- Encabezados: `codigo_sede`, `estudiante_id`, `ano`, `periodo`, `estado`
 
-- El periodo CONAPE mensual se convierte al periodo de `7-morosidad`:
-  - meses 01–04 → periodo 1;
-  - meses 05–08 → periodo 2;
-  - meses 09–12 → periodo 3.
-- La llave exacta es **cédula + año CONAPE + periodo cuatrimestral**.
-- `7-morosidad.ESTADO = NO` significa **Aplicado en sistema**.
-- `7-morosidad.ESTADO = SI` permanece pendiente.
-- Sin fila exacta permanece pendiente para revisión.
-- `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son evidencia complementaria, no deciden la clasificación.
-- `BDBANCARIO` queda excluida porque es una fuente bancaria cruda.
-- Los pendientes más recientes aparecen arriba; los aplicados quedan abajo, fuera de la cola principal.
-- No se escriben cambios en `7-morosidad` ni se mueven pagos entre niveles o intentos.
+No debe tomar la decisión desde una pestaña local o copia espejo llamada `7-morosidad`.
 
-## Caso patrón aprobado
+## Regla de Seguimiento inmediato
 
-Movimiento CONAPE: cédula `119760781`, periodo `09/2026`.  
-Conversión: septiembre corresponde al periodo `3`.  
-Fila exacta en `7-morosidad`: cédula `119760781`, año `2026`, periodo `3`, estado `NO`.  
-Resultado: **Aplicado en sistema**.
+- Meses 01–04 → periodo 1.
+- Meses 05–08 → periodo 2.
+- Meses 09–12 → periodo 3.
+- Llave: **cédula + año CONAPE + periodo cuatrimestral**.
+- Estado `NO` → **Aplicado en sistema**.
+- Estado `SI` → pendiente.
+- Sin fila exacta → pendiente para revisión.
+- Ante filas duplicadas conflictivas, `SI` prevalece de forma conservadora.
+- `PAGOS`, `OTROS PAGOS` y `PAGOS_CAMPUS` son evidencia complementaria.
+- `BDBANCARIO` queda excluida.
+- No se escribe en la hoja externa ni se mueven pagos.
 
-## Estado funcional preservado
+## Caso patrón verificado en vivo
 
-- Panel Maestro abre **Cobranza y cartera** como primera sección.
-- Seguimiento inmediato permanece visible aunque se oculten los gráficos.
-- Detalle sigue leyendo/escribiendo `DATOS.COMENTARIO_ADMIN`.
-- Consulta sigue abriendo el expediente precargado.
-- CONAPE sigue siendo manual y sin triggers automáticos.
-- Las reglas académicas y financieras de CS21A30 se preservan.
+En `Hoja 1`, la cédula `119760781` aparece en:
+
+- fila 149: año 2026, periodo 2, estado `NO`;
+- fila 297: año 2026, periodo 3, estado `NO`.
+
+Para el movimiento CONAPE `09/2026` se consulta específicamente periodo 3, fila 297. Resultado: **Aplicado en sistema**.
+
+## Estado preservado
+
+- Frontend visual CS21A33 permanece activo sin cambios.
+- Cobranza y cartera abre primero.
+- Pendientes recientes arriba y aplicados abajo.
+- Detalle y Consulta permanecen activos.
+- CONAPE continúa manual y sin triggers automáticos.
