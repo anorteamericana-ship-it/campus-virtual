@@ -1,6 +1,6 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A52",
+  "version": "F98.4-Z6-CS21A53",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
@@ -12,11 +12,10 @@
     "internal_path": "AppsScript/Code.gs",
     "size_bytes": 2879996,
     "sha256": "6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568",
-    "syntax_check": "node --check passed on js copy",
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A52",
+    "version": "F98.4-Z6-CS21A53",
     "github_saved": true,
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
@@ -25,10 +24,10 @@
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books": "aa9679ae9d07596c4044efbce4c8f09b5b4cac2f",
+      "teacher_books": "6d9b0599ba89bed77e0d941c03d13d9fdfd6bd58",
       "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
       "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
-      "campus": "74bc376b80eee4ee815177c5cf27134c209d9e19"
+      "campus": "8a894aed7349b7f76536877c84ff75fc7640afd1"
     },
     "production_deployment_confirmed": false
   },
@@ -43,10 +42,26 @@
     "unit_start_pages_sb": [2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106],
     "unit_start_pages_pdf": [8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112],
     "book_type_buttons": ["SB", "TB", "WB"],
-    "viewer_mode_sb": "google_drive_embedded_preview",
-    "download_endpoint_used_as_iframe": false,
-    "page_jump_requires_browser_verification": true,
-    "critical_test": "B1 U09 requests SB page 58 using PDF page 64 without downloading the book"
+    "viewer_mode": "pdfjs_two_page_spread_with_drive_preview_fallback",
+    "pdf_cache": "one_document_promise_per_drive_file_id",
+    "global_mutation_observer_removed": true,
+    "legacy_folder_panel_rendered_in_books_routes": false,
+    "pdfjs_version": "3.11.174",
+    "drive_folder_auto_resolution": false,
+    "drive_update_rule": "replace canonical file content while preserving file ID, otherwise update source mapping",
+    "student_book_page_counts": {
+      "B1": 157,
+      "B2": 188,
+      "I1": 158,
+      "I2": 161
+    },
+    "b1_active_student_book": {
+      "folder_id": "1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH",
+      "file_id": "1pnR7RoJGkZnx08TlfrEgxEqVRnlrCwea",
+      "name": "Interchange 5th intro-SB.pdf",
+      "excluded_original_file_id": "13rMmy1ZLpto6SgjSyVyBd3MtivuU19j3"
+    },
+    "critical_test": "B1 U09 renders PDF pages 64-65 without reloading the complete document"
   },
   "seguimiento_inmediato": {
     "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
