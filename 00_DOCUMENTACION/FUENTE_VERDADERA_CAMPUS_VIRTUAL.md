@@ -1,101 +1,60 @@
 # FUENTE VERDADERA — CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA
 
-**Versión vigente de respaldo:** F98.4-Z6-CS20H  
-**Backend Apps Script vigente:** F98.4-Z6-CS20H backend compatible CS20G sin cambio funcional  
-**Corte:** 09-jul-2026  
+**Versión integral vigente:** F98.4-Z6-CS21A30  
+**Backend canónico:** F98.4-Z6-CS21A30  
+**Frontend activo:** línea F98.4-Z6-CS21A29  
+**Corte:** 10-jul-2026  
+**Repositorio:** `anorteamericana-ship-it/campus-virtual` · `main`
 
-Este documento queda como archivo único de continuidad dentro de `00_DOCUMENTACION`. La idea operativa es simple: en cada entrega futura se puede subir de nuevo esta carpeta y “caerle encima” a la anterior para mantener una sola fuente verdadera accesible desde GitHub.
+Este archivo es la entrada única de continuidad. Los documentos sin sufijo de versión dentro de `00_DOCUMENTACION` son los únicos canónicos; los cortes anteriores se conservan en el historial de Git, no como copias activas.
 
-## Estado validado antes de CS20H
+## Documentos canónicos
 
-La presentación docente quedó aprobada y funcionando correctamente con:
+- `README_CONTINUIDAD.md` — estado operativo completo.
+- `BIBLIA_DELTA_ACTUAL.md` — reglas aprobadas.
+- `SKILL_CAMPUS_VIRTUAL.md` — forma de trabajo y checklist.
+- `PROMPT_CONTINUIDAD.md` — texto para iniciar otro chat.
+- `MANIFIESTO_ACTUAL.json` — versión, archivos y hashes.
 
-- **CS19F** — agenda docente estable post-presentación.
-- **CS19B/CS20G backend** — agenda slots, demo Keylor y English LAB Live.
-- **Demo Keylor:** activa solo para Keylor si el switch backend de demo está encendido.
-- **Profesores reales:** ven sus grupos reales; no ven datos ficticios de Keylor.
+## Backend
 
-## Estado de English LAB Live al cierre CS20H
+El backend productivo vigente es CS21A30. Debe instalarse siempre como `Code.gs` completo. Su copia canónica exacta está comprimida y dividida dentro de `AppsScript/archivo_canonico/`; `AppsScript/RECONSTRUIR_CODE_GS.py` genera nuevamente `AppsScript/Code.gs` y valida su integridad.
 
-English LAB Live ya cuenta con flujo funcional completo para piloto controlado:
+SHA-256 esperado del `Code.gs` CS21A30:
 
-1. Docente crea sala live.
-2. Se genera código `LAB-####`.
-3. Docente inicia sala.
-4. Docente lanza pregunta.
-5. Estudiante entra con código.
-6. Estudiante responde.
-7. Panel docente cuenta participantes y respuestas.
-8. Docente cierra pregunta.
-9. Estudiante ve respuesta correcta.
-10. Docente avanza a siguiente pregunta.
-11. Ranking temporal individual y por equipos.
-12. Pantalla proyector.
-13. Resultados finales.
-14. Banco de preguntas por nivel/unidad/tipo de juego.
-15. Diagnóstico visual del banco pedagógico.
-16. CS20H agrega ingreso estudiantil pulido y mensaje listo para Zoom/WhatsApp.
+`007f26c35e5c42015c40a238fbc9523eacf7444a45323853427111f96adc83cc`
 
-## Regla institucional crítica
+No confundir “guardado en GitHub” con “publicado en Apps Script”. La implementación web debe actualizarse manualmente después de reemplazar el código.
 
-English LAB Live es **práctica gamificada**. No es evaluación oficial.
+## Estado funcional consolidado
 
-No debe:
+- Aplicar Pago excluye comprobantes agotados desde el buscador.
+- Certificado I2 y Programa Completo pueden pagarse juntos.
+- La deuda incluye certificado en todos los niveles activos.
+- I2 incluye Certificado I2, Programa Completo y TOEIC.
+- Panel Maestro muestra CONAPE de todos los periodos y desembolsos adelantados.
+- Detalle administrativo es editable desde Seguimiento inmediato.
+- Consulta se abre precargada desde CONAPE.
+- Los gráficos financieros son colapsables sin ocultar Seguimiento inmediato.
+- `CA → APR` puede activar `PE → CA` o crear el siguiente nivel faltante como `CA` en una sola operación.
+- Consulta individual se actualiza después de guardar para evitar edición sobre estados atrasados.
 
-- guardar notas oficiales;
-- afectar aprobación académica;
-- afectar certificados;
-- afectar pagos;
-- reemplazar exámenes;
-- mezclarse con cierre académico;
-- crear consecuencias administrativas para el estudiante.
+## Fuentes de datos críticas
 
-## Hojas usadas por English LAB Live
+- APOLLO: `DATOS`, `ESTATUS`, `GRUPOS`, `BDBANCARIO`, `PAGOS`, `OTROS PAGOS`, `PAGOS_CAMPUS`.
+- Campus operativo: `PLAN_ESTUDIANTE_NIVELES`, `PAGOS_CAMPUS`, `PAGOS_OPERACIONES`, `INTENTOS_ACADEMICOS` y hojas auxiliares.
+- CONAPE: siete archivos/hojas originales protegidos, sin triggers automáticos.
 
-- `ENGLISH_LAB_LIVE_ROOMS`
-- `ENGLISH_LAB_LIVE_PLAYERS`
-- `ENGLISH_LAB_LIVE_ANSWERS`
-- `ENGLISH_LAB_LIVE_EVENTS`
-- `ENGLISH_LAB_QUESTION_BANK`
+## Regla pedagógica
 
-## Archivos frontend vigentes incluidos en el respaldo CS20H
+Academia Play y English LAB son práctica. No guardan notas oficiales ni afectan evaluaciones, aprobación, certificados o pagos.
 
-- `inscripcion.html`
-- `src/app.jsx`
-- `src/sidebar.jsx`
-- `src/english_lab_live.jsx`
-- `src/academia_play.jsx`
-- `src/inscripcion.jsx`
-- `src/prospect_free_student.jsx`
-- `src/teacher_agenda_slots_cs19f.jsx`
-- `styles/academia_play.css`
-- `styles/free_student.css`
-- `styles/inscripcion.css`
-- `assets/brand/logo_academia_norteamericana_hd.png`
-- `assets/inscripcion/financia_equipo_319.png`
-- `assets/inscripcion/financia_equipo_360.png`
+## Próximo trabajo recomendado
 
-## Archivos modificados en CS20H
+QA real de CS21A30 antes de agregar más reglas:
 
-- `src/app.jsx` — actualiza caché/lazy load a `F98.4Z6CS20H`.
-- `src/sidebar.jsx` — comentario/versionado de continuidad.
-- `src/english_lab_live.jsx` — ingreso estudiante pulido, panel para compartir sala, copiar código/mensaje/enlace, lectura de `?room=LAB-####`.
-- `00_DOCUMENTACION/*` — documentación de continuidad y respaldo.
-
-## Backend en CS20H
-
-CS20H no cambia endpoints ni estructura de hojas. Se entrega `Code.gs` completo compatible con CS20G para respaldo. Si CS20G ya estaba publicado y funcionando, técnicamente no es obligatorio reemplazar Apps Script, pero el ZIP completo lo incluye para tener corte cerrado.
-
-## Siguiente bloque recomendado después de CS20H
-
-**CS20I — piloto controlado / QA Live**
-
-Objetivo: probar con 1 docente y 2–5 estudiantes reales o demo, registrando fallos antes de meter más funcionalidades. No avanzar a contenido masivo sin validar:
-
-- entrada por código;
-- contador de participantes;
-- respuesta única;
-- ranking;
-- pantalla proyector;
-- cierre de sala;
-- rendimiento con varias pestañas.
+1. Validar deuda completa en B1/B2/I1 activos.
+2. Validar I2 con cinco rubros.
+3. Validar creación del siguiente nivel faltante.
+4. Confirmar que la nueva Consulta se carga después de una escritura.
+5. Revisar que no existan duplicados de archivos frontend activos.
