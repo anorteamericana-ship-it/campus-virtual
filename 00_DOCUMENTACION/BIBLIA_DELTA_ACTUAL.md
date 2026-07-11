@@ -1,81 +1,62 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A54
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A55
 
 ## Estado
 
-- Frontend guardado en `main`: CS21A54.
-- Backend completo canónico: CS21A46, verificado en Drive.
+- Frontend guardado en `main`: CS21A55.
+- Backend completo canónico: CS21A55.
+- Base backend preservada: CS21A46.
 - Producción no verificada.
 
-## CS21A54 — Recursos docentes / PDF extendido
+## Recursos docentes — visor PDF por rangos
 
 Ruta: Docente → Recursos Didácticos → Libros de texto / Biblioteca digital.
 
-- Componente vigente: `src/teacher_cs21a_order_fix.jsx`.
-- `campus.html` carga PDF.js 3.11.174 antes del componente.
-- Se elimina el panel lateral interno de niveles y cualquier lista antigua de carpeta Drive en estas rutas.
-- Los niveles quedan en botones horizontales superiores.
-- SB/TB/WB, unidades y acciones quedan arriba; el PDF se extiende debajo a todo el ancho disponible.
-- PDF.js renderiza dos páginas enfrentadas con anterior/siguiente, zoom y pantalla completa.
-- El documento se conserva en memoria mediante `Map`; cambiar de unidad no vuelve a descargar el PDF.
-- No existe respaldo visual con `/preview` ni retorno a la vista anterior.
-- Si Drive bloquea la lectura, se muestra un error controlado con accesos externos.
-- Solo SB presenta U01–U16.
+- `src/teacher_cs21a_order_fix.jsx` controla ambas vistas.
+- `campus.html` carga PDF.js 3.11.174 y fuerza CS21A55.
+- El navegador ya no intenta descargar el PDF directamente desde Drive.
+- Apps Script valida la sesión y entrega el PDF en bloques mediante:
+  - `teacherBooksOpenPdf`
+  - `teacherBooksReadRange`
+- PDF.js usa `PDFDataRangeTransport`, conserva el documento en memoria y solicita únicamente los bloques necesarios.
+- El visor mantiene dos páginas enfrentadas, ancho completo, navegación, zoom y pantalla completa.
+- No vuelve a la lista antigua ni al visor embebido anterior.
 
-## Páginas y Apollo G3
+## Resolución de libros
+
+- El backend busca SB, TB o WB dentro de la carpeta oficial de cada nivel.
+- Descarta archivos cuyo nombre indique ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD o ANTIGUO.
+- En Básico I selecciona el Student Book nuevo y deja fuera el archivo ORIGINAL.
+- La selección es de solo lectura y queda en caché corta.
+
+## Páginas Apollo G3
 
 Fuente: `APOLLO_G3_LIMPIO_21-04-26` → `DETALLE DEL PROGRAMA` → columna K `Páginas SB`.
 
-- Primera página SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
-- Página PDF: `8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112`.
-- Regla: página SB + 6 hojas iniciales.
-- B1 U09 abre PDF 64–65.
-- No aplicar este mapeo a TB o WB.
+- Inicio SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
+- Destino PDF +6: `8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112`.
+- U01–U16 aparece únicamente en Student Book.
+- B1 U09 abre el pliego PDF 64–65.
+- No aplicar esta navegación a TB ni WB.
 
-## Fuentes Drive de libros
+## Integridad del backend
 
-B1 usa `Interchange 5th intro-SB.pdf`, ID `1pnR7RoJGkZnx08TlfrEgxEqVRnlrCwea`. El archivo `ORIGINAL`, ID `13rMmy1ZLpto6SgjSyVyBd3MtivuU19j3`, no es fuente activa.
-
-Carpetas oficiales:
-
-- B1: `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
-- B2: `1BpIzdHI1hd5ucmzOfYo9WnIc4yAtE2SJ`.
-- I1: `1h3MWODA07lGzUDepOtJV8JvxzqvLncAX`.
-- I2: `1Nco9Iwcz3P9ARMLP39HKo2AXTZJ4H3FP`.
-
-Totales SB: B1 157, B2 188, I1 158, I2 161. No fijar un total común.
-
-Los IDs siguen explícitos en frontend. Reemplazar contenido conservando el ID actualiza el visor; subir otro archivo exige actualizar el ID o crear resolución dinámica en backend.
-
-## Backend canónico CS21A46
-
-- Carpeta maestra: `1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a`.
-- Archivo canónico: `Code.gs`.
-- Drive file ID canónico: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
-- Encabezado confirmado: `F98.4-Z6-CS21A46 · SEGUIMIENTO INMEDIATO: SOLO DESEMBOLSO ACADÉMICO 01`.
-- Tamaño: `2,879,996` bytes.
-- SHA-256: `6cd638901f75ff56c4bc5f100be0203de05f82aa01a8b1f838f2c95bc7433568`.
-- Conteo físico: `50,122` saltos de línea y línea final vacía; algunos editores muestran `50,123`.
-- Carpeta de respaldos: `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`.
-- Respaldo inicial: ID `1sJJ9umm5tGoMGibIoQiIECGYFZ91ErCT`.
-- Manifiesto Drive: ID `179pqbUFMPiOUN6Lo3YA_Ia51lKtqtP8u`.
-- Para cada cambio backend: respaldar primero, modificar desde el archivo canónico y reemplazar sus bytes conservando el mismo ID.
-- Nunca reconstruir desde CS21A42 ni sustituir por un archivo de menor tamaño o hash diferente.
-- Drive guardado no equivale a despliegue en Apps Script.
+- CS21A55 añade solo lectura de archivos de Drive, manejo de rangos y dos rutas nuevas del dispatcher.
+- No escribe pagos, certificados, CONAPE, calendario ni hojas académicas.
+- El `Code.gs` completo vigente y su respaldo previo permanecen en la carpeta canónica de Drive.
+- Guardar el archivo no equivale a instalarlo ni desplegarlo.
 
 ## Seguimiento inmediato preservado
 
-Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`.
-
-- Solo desembolsos académicos `01`.
-- `02/03+` quedan fuera y no cierran el `01`.
+- Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`.
+- Solo desembolso académico `01`.
+- `02/03+` no aparecen ni cierran el `01`.
 - Resumen vertical desde `6-historial`.
 - Sin scroll horizontal.
-- WhatsApp: `Mensaje`, `Alerta`, `Atención`.
+- WhatsApp ofrece Mensaje, Alerta y Atención.
 
 ## Reglas preservadas
 
 - Aplicación por `7-morosidad`: cédula + año + periodo exactos.
-- Certificado pagado y documento emitido son estados distintos.
+- Certificado pagado y documento emitido son estados separados.
 - Consulta individual reconstruye datos frescos después de escribir.
 - Nunca mover pagos entre niveles o intentos.
-- GitHub o Drive guardado no equivale a producción publicada.
