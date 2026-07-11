@@ -1,228 +1,71 @@
-/* F98.4-Z6-CS21A48 · Seguimiento inmediato: resumen académico estrictamente vertical.
-   Mantiene toda la fila visible, sin scroll horizontal y sin texto auxiliar innecesario. */
-
-.master-conape-month-table {
-  width: 100% !important;
-  min-width: 0 !important;
-  table-layout: fixed !important;
-}
-
-.master-conape-month-table-wrap {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-.master-conape-month-table colgroup col:nth-child(1) { width: 8% !important; }
-.master-conape-month-table colgroup col:nth-child(2) { width: 19% !important; }
-.master-conape-month-table colgroup col:nth-child(3) { width: 30% !important; }
-.master-conape-month-table colgroup col:nth-child(4) { width: 13% !important; }
-.master-conape-month-table colgroup col:nth-child(5) { width: 14% !important; }
-.master-conape-month-table colgroup col:nth-child(6) { width: 10% !important; }
-.master-conape-month-table colgroup col:nth-child(7) { width: 6% !important; }
-
-.master-conape-month-table th,
-.master-conape-month-table td {
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.master-conape-code-cell {
-  padding-left: 4px !important;
-  padding-right: 4px !important;
-}
-
-.master-conape-code-input {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 7px 3px;
-  border: 1px solid #0f5f9f;
-  border-radius: 8px;
-  outline: 0;
-  background: #0d4e87;
-  color: #ffffff;
-  box-shadow: 0 2px 5px rgba(13, 78, 135, 0.18);
-  font-family: inherit;
-  font-size: 17px;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  text-align: center;
-  cursor: text;
-}
-
-.master-conape-code-input::selection {
-  background: #ffffff;
-  color: #0d4e87;
-}
-
-.master-conape-code-input:focus {
-  box-shadow: 0 0 0 3px rgba(15, 95, 159, 0.20);
-}
-
-.master-conape-code-empty {
-  color: #8c877f;
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.master-conape-student-cell {
-  padding-top: 7px !important;
-  padding-bottom: 7px !important;
-}
-
-.master-conape-student-name {
-  color: #102b50 !important;
-  font-size: 13px !important;
-  font-weight: 950 !important;
-  line-height: 1.16 !important;
-  letter-spacing: 0.004em;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-.master-conape-student-meta {
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  min-width: 0;
-  margin-top: 5px !important;
-  flex-wrap: wrap !important;
-}
-
-.master-conape-student-id {
-  display: inline-flex !important;
-  align-items: center;
-  flex: 0 0 auto;
-  padding: 2px 5px !important;
-  border: 1px solid #c3d7e8;
-  border-radius: 6px;
-  background: #edf5fb;
-  color: #315d7e !important;
-  font-size: 9px !important;
-  font-weight: 900 !important;
-  line-height: 1.15 !important;
-  white-space: nowrap !important;
-}
-
-.master-conape-consulta-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 3px 6px;
-  border: 1px solid #a9bed3;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #123f70;
-  font: 900 8.4px/1.1 Poppins, sans-serif;
-  cursor: pointer;
-}
-
-.master-conape-consulta-btn:hover {
-  background: #eef5fc;
-  border-color: #6f9bc2;
-}
-
-.master-conape-history-cell {
-  padding-top: 5px !important;
-  padding-bottom: 5px !important;
-}
-
-.master-conape-history-grid {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  grid-auto-flow: row !important;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-}
-
-.master-conape-history-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 5px;
-  width: 100%;
-  min-width: 0;
-  padding: 4px 6px;
-  border: 1px solid #d8e0e8;
-  border-radius: 7px;
-  background: #f8fafc;
-  box-sizing: border-box;
-}
-
-.master-conape-history-level {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #17385e;
-  font-size: 8.5px;
-  font-weight: 950;
-}
-
-.master-conape-history-period {
-  color: #5b6674;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 8px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.master-conape-history-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1px 4px;
-  border-radius: 999px;
-  font-size: 7.9px;
-  font-weight: 950;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.master-conape-history-empty {
-  display: inline-flex;
-  padding: 4px 6px;
-  border: 1px dashed #c9c2b8;
-  border-radius: 6px;
-  color: #7a746d;
-  font-size: 8.4px;
-  font-weight: 800;
-}
-
-.master-conape-month-table thead th:nth-child(1),
-.master-conape-month-table thead th:nth-child(2),
-.master-conape-month-table thead th:nth-child(3) {
-  color: #102b50;
-  font-weight: 950;
-}
-
-@media (max-width: 1180px) {
-  .master-conape-code-input {
-    padding: 6px 2px;
-    font-size: 15px;
-  }
-
-  .master-conape-student-name {
-    font-size: 12px !important;
-  }
-
-  .master-conape-student-id,
-  .master-conape-consulta-btn {
-    font-size: 8px !important;
-  }
-
-  .master-conape-history-item {
-    gap: 3px;
-    padding: 3px 4px;
-  }
-
-  .master-conape-history-level { font-size: 7.9px; }
-  .master-conape-history-period { font-size: 7.5px; }
-  .master-conape-history-status { font-size: 7.4px; }
+/* F98.4-Z6-CS21A49 · Seguimiento inmediato horizontal profesional + WA con 3 plantillas. */
+.master-conape-month-card{overflow:hidden}
+.master-conape-month-card>header p{margin:2px 0 0;font-size:9.5px;color:#64748b}
+.master-conape-month-table-wrap{width:100%;max-width:100%;overflow-x:hidden;border:1px solid #e3ddd3;border-radius:12px;background:#fff}
+.master-conape-month-table{width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate;border-spacing:0}
+.master-conape-month-table colgroup col:nth-child(1){width:8%!important}
+.master-conape-month-table colgroup col:nth-child(2){width:22%!important}
+.master-conape-month-table colgroup col:nth-child(3){width:29%!important}
+.master-conape-month-table colgroup col:nth-child(4){width:14%!important}
+.master-conape-month-table colgroup col:nth-child(5){width:14%!important}
+.master-conape-month-table colgroup col:nth-child(6){width:13%!important}
+.master-conape-month-table th,.master-conape-month-table td{box-sizing:border-box;min-width:0}
+.master-conape-month-table thead th{padding:8px 7px;background:#f7f3ed;border-bottom:1px solid #ddd5ca;color:#725f49;font-size:8.3px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;text-align:left;white-space:nowrap}
+.master-conape-month-table thead th:first-child{text-align:center}
+.master-conape-month-table tbody tr{position:relative;background:#fff;transition:background .15s ease,box-shadow .15s ease}
+.master-conape-month-table tbody tr+tr td{border-top:1px solid #ece7df}
+.master-conape-month-table tbody tr:hover{background:#fbfdff;box-shadow:inset 3px 0 0 #2b6ca3}
+.master-conape-month-table tbody tr.has-alert{box-shadow:inset 3px 0 0 #d59b00}
+.master-conape-month-table tbody tr[data-applied="true"]{background:#f7faf7;opacity:.83}
+.master-conape-month-table td{padding:7px 7px;vertical-align:middle}
+.master-conape-code-cell{padding-left:5px!important;padding-right:5px!important;text-align:center}
+.master-conape-code-input{display:block;width:100%;min-width:0;box-sizing:border-box;padding:10px 3px;border:1px solid #0f5f9f;border-radius:10px;outline:0;background:linear-gradient(180deg,#1262a3,#0d4e87);color:#fff;box-shadow:0 3px 8px rgba(13,78,135,.2);font-family:inherit;font-size:19px;font-weight:950;line-height:1;letter-spacing:.035em;text-align:center;cursor:text}
+.master-conape-code-input::selection{background:#fff;color:#0d4e87}
+.master-conape-code-input:focus{box-shadow:0 0 0 3px rgba(15,95,159,.2)}
+.master-conape-code-empty{color:#8c877f;font-size:16px;font-weight:900}
+.master-conape-student-box{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.master-conape-student-name{color:#102b50;font-size:13.5px;font-weight:950;line-height:1.16;letter-spacing:.003em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.master-conape-student-meta{display:flex;align-items:center;gap:4px;min-width:0;margin-top:5px;flex-wrap:wrap}
+.master-conape-student-id{display:inline-flex;align-items:center;flex:0 0 auto;padding:2px 5px;border:1px solid #c3d7e8;border-radius:6px;background:#edf5fb;color:#315d7e;font-size:9px;font-weight:900;line-height:1.15;white-space:nowrap}
+.master-conape-detail-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:3px 7px;border:1px solid #d8d0c5;border-radius:999px;background:#f5f0e7;color:#4d3b2b;font:900 8.3px/1.1 Poppins,sans-serif;white-space:nowrap;cursor:pointer}
+.master-conape-detail-btn[data-reviewed="true"]{border-color:#4338ca;background:#4f46e5;color:#fff}
+.master-conape-detail-btn:disabled{opacity:.55;cursor:not-allowed}
+.master-conape-consulta-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:3px 7px;border:1px solid #a9bed3;border-radius:999px;background:#fff;color:#123f70;font:900 8.3px/1.1 Poppins,sans-serif;cursor:pointer}
+.master-conape-consulta-btn:hover{background:#eef5fc;border-color:#6f9bc2}
+.master-conape-campus-line{display:flex;align-items:center;gap:5px;min-width:0;margin-top:5px;color:#6c7582;font-size:8.2px;font-weight:800;white-space:nowrap}
+.master-conape-campus-line>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.master-conape-campus-line .master-link-status{flex:0 0 auto;padding:2px 5px;border-radius:999px;font-size:7.6px;font-weight:950}
+.master-conape-history-cell{padding-top:5px!important;padding-bottom:5px!important}
+.master-conape-history-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-auto-flow:row!important;gap:3px;width:100%;min-width:0}
+.master-conape-history-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:5px;min-width:0;padding:3px 5px;border:1px solid #d8e0e8;border-radius:6px;background:#f8fafc}
+.master-conape-history-level{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#17385e;font-size:8.5px;font-weight:950}
+.master-conape-history-period{color:#5b6674;font-family:"JetBrains Mono",monospace;font-size:8px;font-weight:800;white-space:nowrap}
+.master-conape-history-status{display:inline-flex;align-items:center;justify-content:center;padding:1px 4px;border:1px solid;border-radius:999px;font-size:7.9px;font-weight:950;line-height:1.2;white-space:nowrap}
+.master-conape-history-empty{display:inline-flex;padding:4px 6px;border:1px dashed #c9c2b8;border-radius:6px;color:#7a746d;font-size:8.4px;font-weight:800}
+.master-conape-movement-stack{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+.master-conape-movement-badge{display:block;max-width:100%;padding:4px 7px;border:1px solid #d9d1e8;border-radius:999px;background:#eee8fb;color:#5a3d90;font-size:8.1px;font-weight:950;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.master-conape-movement-badge[data-applied="true"]{border-color:#a9d5b4;background:#e5f5e9;color:#1f6a32}
+.master-conape-mora-badge{display:inline-flex;padding:2px 6px;border:1px solid;border-radius:999px;font-size:7.8px;font-weight:950;white-space:nowrap}
+.master-conape-period-box{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.master-conape-period-box strong{color:#17385e;font-size:9.3px;font-weight:950;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.master-conape-period-box strong span{color:#6c7582;font-size:8.4px}
+.master-conape-period-box small{display:block;margin-top:5px;color:#667181;font-size:8.2px;font-weight:850;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.master-conape-wa-cell{padding:6px!important;overflow:visible!important}
+.master-wa-panel{display:flex;flex-direction:column;gap:5px;width:100%;min-width:0}
+.master-wa-picker{display:grid;grid-template-columns:24px minmax(0,1fr) 24px;align-items:center;gap:3px;width:100%}
+.master-wa-picker button{display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid #b8c9bd;border-radius:7px;background:#f4faf5;color:#1d6a39;font-size:17px;font-weight:950;line-height:1;cursor:pointer}
+.master-wa-picker button:hover{background:#e4f3e8;border-color:#75a984}
+.master-wa-picker span{display:block;min-width:0;padding:5px 3px;border:1px solid #d6e4d9;border-radius:7px;background:#f8fcf8;color:#2c5e39;font-size:8.3px;font-weight:900;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.master-wa-picker span b{color:#08762e;font-size:9.2px}
+.master-wa-action{width:100%;padding:7px 4px;border:0;border-radius:8px;background:#138a42;color:#fff;box-shadow:0 2px 5px rgba(19,138,66,.22);font:950 8.8px/1.1 Poppins,sans-serif;white-space:nowrap;cursor:pointer}
+.master-wa-action:hover{background:#0d7436}
+.master-wa-action:disabled{opacity:.65;cursor:wait}
+.master-wa-closed{display:flex;align-items:center;justify-content:center;width:100%;padding:8px 4px;border:1px solid #d3ddd5;border-radius:8px;background:#f3f6f3;color:#657168;font-size:8.4px;font-weight:900;text-align:center}
+.master-conape-month-kpis{grid-template-columns:repeat(6,minmax(82px,1fr))!important}
+.master-conape-empty{padding:18px;text-align:center;color:#6f6a63;font-size:10px;font-weight:800}
+.master-conape-applied{margin-top:10px;border:1px solid #c9d8cc;border-radius:10px;overflow:hidden}
+.master-conape-applied>summary{padding:9px 12px;font-weight:900;color:#2a6338;cursor:pointer;background:#f6faf6}
+@media(max-width:1180px){
+  .master-conape-month-table colgroup col:nth-child(1){width:8%!important}.master-conape-month-table colgroup col:nth-child(2){width:21%!important}.master-conape-month-table colgroup col:nth-child(3){width:30%!important}.master-conape-month-table colgroup col:nth-child(4){width:13%!important}.master-conape-month-table colgroup col:nth-child(5){width:14%!important}.master-conape-month-table colgroup col:nth-child(6){width:14%!important}
+  .master-conape-month-table td{padding:6px 5px}.master-conape-code-input{padding:9px 2px;font-size:16px}.master-conape-student-name{font-size:12px}.master-conape-history-level{font-size:7.8px}.master-conape-history-period{font-size:7.4px}.master-conape-history-status{font-size:7.3px}.master-wa-picker{grid-template-columns:21px minmax(0,1fr) 21px}.master-wa-picker button{width:21px;height:22px}.master-wa-picker span{font-size:7.6px}.master-wa-action{font-size:8px}
 }
