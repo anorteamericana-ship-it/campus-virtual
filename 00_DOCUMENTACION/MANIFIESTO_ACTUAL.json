@@ -1,6 +1,6 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A50",
+  "version": "F98.4-Z6-CS21A51",
   "cut": "2026-07-11",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
@@ -16,7 +16,7 @@
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A50",
+    "version": "F98.4-Z6-CS21A51",
     "github_saved": true,
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
@@ -25,10 +25,10 @@
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books": "3496140c42a52c339aeefa50a52157ccee597f20",
+      "teacher_books": "3e92a7c950eff6de8b734fdfc7a844535b69e4b3",
       "movements": "cebc86f277c13529f9b4443a8ee821a30e3bc2f8",
       "identity_css": "d51634ee36f3559fd547b93ad8c8169a1da66514",
-      "campus": "58a945180a11d22c9a24fca070f0004bab7e127a"
+      "campus": "b04ea50a9c6221152c3c5590c4daffa286e07be9"
     },
     "production_deployment_confirmed": false
   },
@@ -42,7 +42,10 @@
     "student_book_only": true,
     "unit_start_pages_sb": [2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106],
     "unit_start_pages_pdf": [8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112],
-    "book_type_buttons": ["SB", "TB", "WB"]
+    "book_type_buttons": ["SB", "TB", "WB"],
+    "viewer_mode_sb": "direct_pdf_native_browser",
+    "drive_preview_fragment_disabled_for_sb": true,
+    "critical_test": "B1 U09 shows SB page 58 using PDF page 64"
   },
   "seguimiento_inmediato": {
     "columns": ["Código", "Estudiante", "Resumen académico", "Movimiento", "Periodo / nivel", "WhatsApp"],
