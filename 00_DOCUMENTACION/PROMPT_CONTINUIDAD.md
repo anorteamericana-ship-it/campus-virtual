@@ -4,7 +4,7 @@ Copiar desde la línea siguiente al iniciar otro chat.
 
 ---
 
-Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A35**.
+Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Continúa desde **F98.4-Z6-CS21A36**.
 
 ## Forma obligatoria
 
@@ -20,40 +20,52 @@ Estoy trabajando en **CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA**, Costa Rica. Cont
 ## Estado vigente
 
 - Backend: **CS21A34**.
-- Frontend: **CS21A35**.
-- Seguimiento inmediato lee directamente el archivo externo oficial `7-morosidad`.
-- El botón `Detalle` cambia a violeta y muestra `✓ REVISADO · CON SEGUIMIENTO` cuando `DATOS.COMENTARIO_ADMIN` contiene cualquier texto.
-- Al borrar toda la nota vuelve a beige.
-- La señal persiste entre sesiones porque depende del dato guardado, no del navegador.
+- Frontend: **CS21A36**.
+- CS21A36 agrega Aplicar pago dentro de Consulta individual sin salir del expediente.
+- Archivo nuevo: `src/admin_students_inline_payment_cs21a36.jsx`.
+- `campus.html` carga el módulo CS21A36.
+- Apps Script no cambió.
 
-## Fuente oficial obligatoria
+## Aplicar pago dentro de Consulta individual
+
+- `Pago` abre una barra de búsqueda dentro del intento financiero vigente.
+- Se busca por documento, fecha o descripción.
+- Solo se muestran comprobantes con saldo disponible.
+- El comprobante se valida al seleccionarlo y antes de guardar.
+- Los rubros usan controles `− / +` dentro de Matrícula, Cuotas, Certificado, Programa Completo y TOEIC.
+- Los cargos especiales requieren `CARGO_ID` y monto exacto.
+- Los intentos históricos son solo lectura.
+- Después de aplicar, la Consulta individual se refresca sin navegar.
+
+## Contrato financiero obligatorio
+
+El frontend no escribe directamente en hojas. Solo puede llamar:
+
+- `getEstudiante`
+- `getComprobantes`
+- `aplicarPago`
+
+El backend vigente decide grupo, intento, deuda, máximos, saldo bancario, cuentas, recibos, idempotencia, rollback y sincronización CONAPE.
+
+Nunca crear una segunda lógica de pagos en el navegador. Nunca mover pagos entre niveles o intentos.
+
+Patrón real confirmado: un comprobante puede dividirse entre varios rubros. Básico II ₡334.200 se distribuye en Matrícula ₡20.000 + Cuotas ₡299.200 + Certificado ₡15.000. En I2 pueden participar Matrícula, Cuotas, Certificado, TOEIC y Programa Completo según las reglas vigentes.
+
+## Fuente oficial de morosidad CONAPE
 
 - Spreadsheet ID: `1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg`
 - Archivo: `7-morosidad`
 - Pestaña: `Hoja 1`
-- Encabezados: `codigo_sede`, `estudiante_id`, `ano`, `periodo`, `estado`
+- Regla: 01–04=P1; 05–08=P2; 09–12=P3; `NO`=aplicado; `SI`=pendiente; sin fila exacta=revisión.
 
-No usar una pestaña local o copia espejo para decidir aplicado.
+## Cambios anteriores preservados
 
-## Regla
+- CS21A35: botón Detalle violeta con `✓ REVISADO · CON SEGUIMIENTO` cuando existe `DATOS.COMENTARIO_ADMIN`.
+- CS21A34: lectura directa del archivo externo oficial `7-morosidad`.
+- Backend completo CS21A34 continúa en la carpeta institucional.
 
-- 01–04=P1; 05–08=P2; 09–12=P3.
-- Buscar por cédula + año + periodo.
-- `NO` = aplicado.
-- `SI` = pendiente.
-- Sin fila exacta = pendiente.
-- Duplicidad conflictiva: `SI` prevalece.
-- Pagos son contexto complementario; `BDBANCARIO` no participa.
+## Estado de despliegue
 
-Caso validado: `119760781`, movimiento `09/2026`, fila externa 297, año 2026, periodo 3, estado `NO` → aplicado.
-
-## Archivos frontend activos del último cambio
-
-- `src/admin_master_conape_movements_cs21a25.jsx` — contenido CS21A35.
-- `campus.html` — carga CS21A35.
-
-## Respaldo backend
-
-TXT y ZIP completos CS21A34 están en la carpeta institucional. Producción no confirmada; requiere reemplazo manual y nueva implementación si aún no fue desplegado.
+CS21A36 está guardado en GitHub `main`, pero producción no está confirmada. Antes de publicar, ejecutar QA financiero con comprobante controlado, saldo parcial, intento histórico, comprobante agotado e idempotencia.
 
 ---
