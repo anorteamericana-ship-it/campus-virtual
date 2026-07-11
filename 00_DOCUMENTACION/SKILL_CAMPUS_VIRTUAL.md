@@ -16,66 +16,53 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Continuidad vigente
 
-- Frontend: F98.4-Z6-CS21A56.
+- Frontend: F98.4-Z6-CS21A57.
 - Backend completo: F98.4-Z6-CS21A56.
 - Base backend preservada: CS21A46.
 - Producción no verificada.
-- El archivo canónico y sus respaldos se mantienen en Drive; GitHub conserva frontend, manifiesto y documentación.
+- El backend canónico y sus respaldos se mantienen en Drive; GitHub conserva frontend, manifiesto y documentación.
 
 ## Regla para Code.gs
 
 1. Leer siempre el archivo canónico indicado en `AppsScript/README.md`.
 2. Crear copia en `00_BACKUPS_CODE_GS` antes de modificar.
-3. Trabajar sobre la versión vigente, nunca sobre un respaldo anterior encontrado por nombre.
-4. Entregar el `Code.gs` completo.
+3. Trabajar sobre la versión vigente, nunca sobre un respaldo anterior.
+4. Entregar el `Code.gs` completo cuando haya cambio backend.
 5. Recalcular tamaño y SHA-256.
-6. Actualizar toda la documentación canónica.
-7. No asumir despliegue después de actualizar Drive.
+6. No asumir despliegue después de actualizar Drive.
 
 ## Docente / Recursos Didácticos / Libros de texto
 
-- Componente vigente: `src/teacher_cs21a_order_fix.jsx`.
+- Componente vigente: `src/teacher_cs21a_order_fix.jsx` CS21A57.
+- Backend lector vigente: CS21A56 con `teacherBooksOpenPdf` y `teacherBooksReadRange`.
 - `campus.html` carga PDF.js antes del componente y actualiza cache-busting.
-- La lectura se realiza mediante `teacherBooksOpenPdf` y `teacherBooksReadRange`.
-- Usar `PDFDataRangeTransport`; no enviar el PDF completo en base64.
-- Mantener el documento abierto al cambiar U01–U16.
-- No mantener en caché de Apps Script el ID resuelto de SB/TB/WB: un archivo reemplazado debe detectarse al volver a abrir o actualizar.
-- El frontend debe forzar resolución nueva al entrar/cambiar nivel o tipo.
-- Mantener botón `Actualizar desde Drive`.
-- El backend resuelve dentro de las carpetas oficiales y descarta ORIGINAL, COPIA, BACKUP, RESPALDO, OLD y ANTIGUO.
-- B1/SB activo: `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` dentro de `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
-- Un ID preferente solo puede usarse si el archivo sigue dentro de la carpeta oficial; de lo contrario usar el PDF válido más reciente.
-- Mantener controles horizontales y PDF a todo el ancho.
-- Visor de dos páginas con anterior/siguiente, zoom y pantalla completa.
-- No mostrar panel lateral interno ni volver a la lista antigua de Drive.
+- Todo libro inicia en PDF 1.
+- La portada debe mostrarse sola a la derecha; no emparejar PDF 1 con PDF 2.
+- Secuencia de pliegos: portada; 2–3; 4–5; 6–7; etc.
+- El botón U01 debe brillar mientras no exista una unidad seleccionada.
+- Cambiar nivel o SB/TB/WB vuelve a la portada y reactiva la invitación U01.
 - U01–U16 pertenece únicamente a Student Book.
-- Fuente: `APOLLO_G3_LIMPIO_21-04-26`, `DETALLE DEL PROGRAMA`, columna K.
-- Regla: primera página SB + 6 hojas iniciales del PDF.
-- Destinos: U01 8, U02 14, U03 22, U04 28, U05 36, U06 42, U07 50, U08 56, U09 64, U10 70, U11 78, U12 84, U13 92, U14 98, U15 106, U16 112.
-- B1 U09 muestra PDF 64–65.
+- Fuente impresa: Apollo G3 → `DETALLE DEL PROGRAMA` → columna K.
+- Inicios SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
+- No asumir un desfase PDF común:
+  - B1 `+5`.
+  - B2 `+20`.
+  - I1 `+6`.
+  - I2 `+8`.
+- B1 U01 apunta a PDF 7 y se muestra en pliego 6–7.
 - No aplicar el mapeo SB a TB o WB.
+- Mantener `Actualizar desde Drive`.
+- Mantener PDF a todo el ancho, dos páginas, navegación, zoom y pantalla completa.
+- No mostrar panel lateral interno ni volver a la lista antigua de Drive.
+- B1/SB activo: `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` dentro de `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
 
 ## Seguimiento inmediato
 
 - Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`.
-- Código primero, grande y seleccionable.
-- Sin columnas Desembolso ni Detectado.
-- Resumen vertical desde `6-historial`.
+- Solo desembolso académico `01`.
+- `02/03+` no cierran el `01`.
 - Sin scroll horizontal.
 - WhatsApp visible.
-
-## FECHA_ULT_DESEMBOLSO
-
-- `01/MM/AAAA`: desembolso académico gestionable.
-- `02`, `03` y superiores: solo auditoría.
-- Un `02/03+` no cierra ni reemplaza el `01`.
-
-## 7-morosidad
-
-- Coincidencia exacta por cédula + año + periodo.
-- `NO` = aplicado/cerrado.
-- `SI` = pendiente.
-- Sin fila = revisión.
 
 ## Consulta individual, pagos y certificados
 
@@ -91,6 +78,5 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 3. Validar sintaxis.
 4. Revisar cache-busting.
 5. Actualizar Fuente, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
-6. Crear respaldo previo y registrar integridad del backend.
-7. Entregar solo los archivos solicitados.
-8. No declarar despliegue sin prueba.
+6. Entregar solo los archivos modificados.
+7. No declarar despliegue sin prueba.
