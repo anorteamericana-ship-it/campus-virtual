@@ -58,10 +58,17 @@ Requieren análisis antes de escribir:
 - `Detalle` usa `DATOS.COMENTARIO_ADMIN`.
 - No crear ni administrar triggers automáticos.
 - Estado `PROTEGIDO` significa que la API externa no pudo verificarse; no significa que las hojas estén correctas o incorrectas.
-- El botón `WA Solicitar pago` prepara únicamente texto; la imagen se adjunta manualmente.
+- La tabla de Seguimiento inmediato debe caber completa en el panel de escritorio sin scroll horizontal.
+- No mostrar una columna independiente de `Desembolso`.
+- Las columnas vigentes son Estudiante, Movimiento, Periodo/nivel, Campus, Detectado y WA.
+- Usar ancho total, `table-layout: fixed` y sin `min-width` forzado.
+- Los datos largos pueden usar elipsis visual, pero deben conservar el valor completo en `title`.
+- `✎ Seguimiento` y `✓ Revisado` deben permanecer compactos dentro de la celda del estudiante.
+- El botón `WA Pago` debe disponer de una columna propia y no quedar oculto.
+- El mensaje WA prepara únicamente texto; la imagen se adjunta manualmente.
 - El mensaje usa nombre de pila, nivel, bimestre/cuatrimestre y monto pendiente confirmado por `getEstudiante`.
 - Si el monto no se confirma, no inventar una cifra.
-- Si el movimiento está `Aplicado en sistema`, no ofrecer solicitud de pago; mostrar `Aplicado · no enviar cobro`.
+- Si el movimiento está `Aplicado en sistema`, no ofrecer solicitud de pago; mostrar `No enviar`.
 - El botón WA no envía automáticamente ni escribe en hojas.
 
 ## Calendario
