@@ -1,28 +1,71 @@
-/* F98.4-Z6-CS21A41 · Código del estudiante primero, grande y seleccionable.
-   Solo cambia presentación y selección; no modifica datos ni lógica financiera. */
+/* F98.4-Z6-CS21A43 · Seguimiento inmediato: código separado + resumen 6-historial.
+   Mantiene toda la fila visible, sin scroll horizontal y sin texto auxiliar innecesario. */
 
-.master-conape-month-table colgroup col:first-child {
-  width: 31% !important;
+.master-conape-month-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
 }
 
-.master-conape-month-table colgroup col:nth-child(2) {
-  width: 17% !important;
+.master-conape-month-table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
 }
 
-.master-conape-month-table colgroup col:nth-child(3) {
-  width: 18% !important;
+.master-conape-month-table colgroup col:nth-child(1) { width: 8% !important; }
+.master-conape-month-table colgroup col:nth-child(2) { width: 19% !important; }
+.master-conape-month-table colgroup col:nth-child(3) { width: 30% !important; }
+.master-conape-month-table colgroup col:nth-child(4) { width: 13% !important; }
+.master-conape-month-table colgroup col:nth-child(5) { width: 14% !important; }
+.master-conape-month-table colgroup col:nth-child(6) { width: 10% !important; }
+.master-conape-month-table colgroup col:nth-child(7) { width: 6% !important; }
+
+.master-conape-month-table th,
+.master-conape-month-table td {
+  box-sizing: border-box;
+  min-width: 0;
 }
 
-.master-conape-month-table colgroup col:nth-child(4) {
-  width: 16% !important;
+.master-conape-code-cell {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
 }
 
-.master-conape-month-table colgroup col:nth-child(5) {
-  width: 8% !important;
+.master-conape-code-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 7px 3px;
+  border: 1px solid #0f5f9f;
+  border-radius: 8px;
+  outline: 0;
+  background: #0d4e87;
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(13, 78, 135, 0.18);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-align: center;
+  cursor: text;
 }
 
-.master-conape-month-table colgroup col:nth-child(6) {
-  width: 10% !important;
+.master-conape-code-input::selection {
+  background: #ffffff;
+  color: #0d4e87;
+}
+
+.master-conape-code-input:focus {
+  box-shadow: 0 0 0 3px rgba(15, 95, 159, 0.20);
+}
+
+.master-conape-code-empty {
+  color: #8c877f;
+  font-size: 15px;
+  font-weight: 900;
 }
 
 .master-conape-student-cell {
@@ -30,64 +73,12 @@
   padding-bottom: 7px !important;
 }
 
-.master-conape-student-code-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  max-width: 100%;
-  padding: 5px 8px;
-  border: 1px solid #0f5f9f;
-  border-radius: 8px;
-  background: #0d4e87;
-  color: #ffffff;
-  box-shadow: 0 2px 5px rgba(13, 78, 135, 0.18);
-  cursor: text;
-}
-
-.master-conape-student-code-label,
-.master-conape-student-code-action {
-  flex: 0 0 auto;
-  font-size: 7.4px;
-  font-weight: 950;
-  letter-spacing: 0.07em;
-  white-space: nowrap;
-  opacity: 0.88;
-}
-
-.master-conape-student-code-input {
-  width: 76px;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 19px;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: 0.07em;
-  text-align: center;
-  cursor: text;
-}
-
-.master-conape-student-code-input::selection {
-  background: #ffffff;
-  color: #0d4e87;
-}
-
-.master-conape-student-code-input:focus {
-  border-radius: 4px;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28);
-}
-
 .master-conape-student-name {
-  margin-top: 5px !important;
   color: #102b50 !important;
-  font-size: 13.5px !important;
+  font-size: 13px !important;
   font-weight: 950 !important;
   line-height: 1.16 !important;
-  letter-spacing: 0.005em;
+  letter-spacing: 0.004em;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -96,9 +87,9 @@
 .master-conape-student-meta {
   display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 4px !important;
   min-width: 0;
-  margin-top: 4px !important;
+  margin-top: 5px !important;
   flex-wrap: wrap !important;
 }
 
@@ -106,46 +97,128 @@
   display: inline-flex !important;
   align-items: center;
   flex: 0 0 auto;
-  max-width: 100% !important;
-  padding: 2px 6px !important;
+  padding: 2px 5px !important;
   border: 1px solid #c3d7e8;
   border-radius: 6px;
   background: #edf5fb;
   color: #315d7e !important;
-  font-size: 9.4px !important;
+  font-size: 9px !important;
   font-weight: 900 !important;
   line-height: 1.15 !important;
   white-space: nowrap !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
 }
 
-.master-conape-month-table thead th:first-child {
+.master-conape-consulta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: 1px solid #a9bed3;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #123f70;
+  font: 900 8.4px/1.1 Poppins, sans-serif;
+  cursor: pointer;
+}
+
+.master-conape-consulta-btn:hover {
+  background: #eef5fc;
+  border-color: #6f9bc2;
+}
+
+.master-conape-history-cell {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+.master-conape-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+
+.master-conape-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid #d8e0e8;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.master-conape-history-level {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #17385e;
+  font-size: 8.3px;
+  font-weight: 950;
+}
+
+.master-conape-history-period {
+  color: #5b6674;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 7.9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.master-conape-history-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  border-radius: 999px;
+  font-size: 7.8px;
+  font-weight: 950;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.master-conape-history-empty {
+  display: inline-flex;
+  padding: 4px 6px;
+  border: 1px dashed #c9c2b8;
+  border-radius: 6px;
+  color: #7a746d;
+  font-size: 8.4px;
+  font-weight: 800;
+}
+
+.master-conape-month-table thead th:nth-child(1),
+.master-conape-month-table thead th:nth-child(2),
+.master-conape-month-table thead th:nth-child(3) {
   color: #102b50;
   font-weight: 950;
 }
 
 @media (max-width: 1180px) {
-  .master-conape-student-code-wrap {
-    gap: 5px;
-    padding: 5px 7px;
-  }
-
-  .master-conape-student-code-input {
-    width: 67px;
-    font-size: 17px;
-  }
-
-  .master-conape-student-code-label,
-  .master-conape-student-code-action {
-    font-size: 6.8px;
+  .master-conape-code-input {
+    padding: 6px 2px;
+    font-size: 15px;
   }
 
   .master-conape-student-name {
-    font-size: 12.6px !important;
+    font-size: 12px !important;
   }
 
-  .master-conape-student-id {
-    font-size: 8.9px !important;
+  .master-conape-student-id,
+  .master-conape-consulta-btn {
+    font-size: 8px !important;
   }
+
+  .master-conape-history-item {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .master-conape-history-level { font-size: 7.8px; }
+  .master-conape-history-period { font-size: 7.4px; }
+  .master-conape-history-status { font-size: 7.3px; }
 }
