@@ -1,10 +1,10 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A30",
+  "version": "F98.4-Z6-CS21A31",
   "cut": "2026-07-10",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
-  "frontend_line": "F98.4-Z6-CS21A29",
+  "frontend_line": "F98.4-Z6-CS21A31",
   "backend": {
     "version": "F98.4-Z6-CS21A30",
     "canonical_name": "Code.gs",
@@ -19,11 +19,25 @@
     "syntax_check": "node --check passed",
     "deployment": "manual Apps Script replacement and web-app redeployment required"
   },
+  "frontend_change": {
+    "version": "F98.4-Z6-CS21A31",
+    "scope": "Panel Maestro navigation only",
+    "backend_changed": false,
+    "default_section": "cobranza",
+    "first_visual_section": "cobranza",
+    "summary_position": 2,
+    "control_file": "src/admin_master_cobranza_first.js",
+    "control_sha256": "53242b20b646a6a4a51a768b7ec6ae6ea31624218c1705d8c2c4988c50774c9a",
+    "control_lines": 65,
+    "control_size_bytes": 2052,
+    "syntax_check": "node --check passed",
+    "github_saved": true,
+    "production_deployment_confirmed": false
+  },
   "previous_stable_reference": {
-    "version": "F98.4-Z6-CS21A29",
-    "git_commit": "767e7ba40fe4f66019d279ec5cb781d955bb56d8",
-    "loaded_as_backend": false,
-    "note": "Referencia histórica por commit; no se conserva una segunda copia activa."
+    "version": "F98.4-Z6-CS21A30",
+    "git_commit": "b7bec48d525012a2dd410735242524d9d8902720",
+    "note": "Corte integral anterior. El backend canónico permanece en CS21A30."
   },
   "canonical_documents": [
     "00_DOCUMENTACION/FUENTE_VERDADERA_CAMPUS_VIRTUAL.md",
@@ -36,6 +50,7 @@
   ],
   "active_recent_frontend_files": [
     "campus.html",
+    "src/admin_master_cobranza_first.js",
     "src/aplicar_pago_comprobante_guard_cs21a23.js",
     "src/admin_master_conape_movements_cs21a25.jsx",
     "src/admin_master_cobranza_collapse_cs21a27.js",
