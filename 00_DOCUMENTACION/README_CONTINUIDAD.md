@@ -1,20 +1,23 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A50  
-**Frontend GitHub:** CS21A50  
+**Versión integral:** F98.4-Z6-CS21A51  
+**Frontend GitHub:** CS21A51  
 **Backend completo objetivo:** CS21A46  
 **Producción:** no verificada  
 **Corte:** 11-jul-2026
 
-## Cambio vigente CS21A50
+## Cambio vigente CS21A51
 
 Docente → Recursos Didácticos → Libros de texto:
 
-- SB, TB y WB ahora tienen botones más visibles, con colores y estados activos diferenciados.
+- SB, TB y WB mantienen botones visibles, con colores y estados activos diferenciados.
 - Student Book muestra una botonera U01–U16.
-- Cada unidad abre la primera página indicada en `APOLLO_G3_LIMPIO_21-04-26`, pestaña `DETALLE DEL PROGRAMA`, columna K `Páginas SB`.
+- Cada unidad usa la primera página indicada en `APOLLO_G3_LIMPIO_21-04-26`, pestaña `DETALLE DEL PROGRAMA`, columna K `Páginas SB`.
 - El visor suma 6 páginas a la numeración académica por las hojas iniciales adicionales del PDF.
-- Páginas PDF: `U01 8 | U02 14 | U03 22 | U04 28 | U05 36 | U06 42 | U07 50 | U08 56 | U09 64 | U10 70 | U11 78 | U12 84 | U13 92 | U14 98 | U15 106 | U16 112`.
+- Inicio SB: `U01 2 | U02 8 | U03 16 | U04 22 | U05 30 | U06 36 | U07 44 | U08 50 | U09 58 | U10 64 | U11 72 | U12 78 | U13 86 | U14 92 | U15 100 | U16 106`.
+- Destino PDF: `U01 8 | U02 14 | U03 22 | U04 28 | U05 36 | U06 42 | U07 50 | U08 56 | U09 64 | U10 70 | U11 78 | U12 84 | U13 92 | U14 98 | U15 106 | U16 112`.
+- CS21A50 cambiaba el hash del visor Google Drive, pero `Drive /preview` ignoraba `#page` y seguía abriendo la portada.
+- CS21A51 abre SB mediante la URL directa del PDF y el visor nativo del navegador, que recibe la página PDF real.
 - La botonera no se aplica a TB ni WB porque la fuente solo define páginas para SB.
 
 Archivos modificados:
@@ -56,8 +59,8 @@ CS21A46 interpreta `FECHA_ULT_DESEMBOLSO` como número/mes/año y conserva solo 
 
 ## Pruebas obligatorias
 
-1. Docente → Libros de texto: confirmar colores y selección de SB/TB/WB.
-2. En SB, U01 debe abrir página PDF 8 y U16 página PDF 112.
+1. Docente → Libros de texto → Básico I → SB → U09 debe mostrar el contenido de la página SB 58, ubicada en la página PDF 64.
+2. Confirmar U01 en contenido SB 2 / PDF 8 y U16 en contenido SB 106 / PDF 112.
 3. Confirmar los 16 saltos en B1, B2, I1 e I2.
 4. Confirmar que TB y WB no muestran una navegación de páginas SB.
 5. Solo movimientos CONAPE `01/MM/AAAA`.
