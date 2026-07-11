@@ -6,7 +6,7 @@
 
 El archivo productivo es `Code.gs` y se reemplaza completo. El backend grande no se almacena en GitHub; este README registra su identidad.
 
-## Integridad
+## Integridad declarada
 
 - Entrega: `ENTREGA_F98_4_Z6_CS21A46_SOLO_DESEMBOLSO_ACADEMICO_01.zip`
 - Ruta interna: `AppsScript/Code.gs`
@@ -15,7 +15,15 @@ El archivo productivo es `Code.gs` y se reemplaza completo. El backend grande no
 - Sintaxis: aprobada con `node --check` sobre copia `.js`
 - Producción: no verificada
 
-## Cambio CS21A46
+## Frontend vigente relacionado
+
+F98.4-Z6-CS21A50 modifica únicamente el visor docente de libros y `campus.html`.
+
+- No modifica Apps Script.
+- No modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
+- El backend objetivo continúa siendo CS21A46.
+
+## Cambio CS21A46 preservado
 
 - Interpreta `FECHA_ULT_DESEMBOLSO` como número de desembolso, mes y año.
 - Seguimiento inmediato usa únicamente el número `01`.
