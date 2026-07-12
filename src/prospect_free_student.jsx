@@ -1,6 +1,6 @@
 /* global React, PageHeader, Icon */
-// F98.4-Z6-CS17I · Mi Campus labels English LAB.
-// Cliente: solo solicitar prematrícula / entrar a English LAB y contactar asesor por WhatsApp. No muestra datos de grupo.
+// F98.4-Z6-CS21A71 · Prematrícula activa sincronizada con English LAB.
+// Cliente: solo solicitar entrada, entrar a English LAB y contactar asesor.
 
 function freeStudentToken(){
   try{return (window.getSesion&&window.getSesion()||{}).token||'';}catch(_){return'';}
@@ -26,6 +26,7 @@ function freeStudentClean(v,fallback='—'){
   const s=String(v==null?'':v).trim();
   return s||fallback;
 }
+function freeStudentBool(v){return v===true||/^(TRUE|SI|SÍ|1|YES)$/i.test(String(v==null?'':v).trim());}
 function freeStudentFirstName(nombre){
   const s=String(nombre||'').trim();
   return (s.split(/\s+/)[0]||'estudiante').toUpperCase();
@@ -111,7 +112,7 @@ function freeStudentPhoneDigits(v){
   if(d.length===8)return '506'+d;
   return d;
 }
-function freeStudentWhatsAppLink(perfil, usuario){
+function freeStudentWhatsAppLink(perfil,usuario){
   const raw=freeStudentValue(perfil||{},[
     'asesor_whatsapp','ASESOR_WHATSAPP','asesorWhatsapp','wa_asesor','WA_ASESOR',
     'telefono_asesor','TELEFONO_ASESOR','asesor_tel','ASESOR_TEL',
@@ -124,10 +125,10 @@ function freeStudentWhatsAppLink(perfil, usuario){
   return phone?`https://wa.me/${phone}?text=${msg}`:'';
 }
 
-
-function FreeProspectPortal({ usuario, onNavigate }){
+function FreeProspectPortal({usuario,onNavigate}){
   const [perfil,setPerfil]=React.useState(null);
   const [solicitudes,setSolicitudes]=React.useState([]);
+  const [labAccess,setLabAccess]=React.useState(null);
   const [loading,setLoading]=React.useState(true);
   const [error,setError]=React.useState('');
   const [ok,setOk]=React.useState('');
@@ -137,7 +138,13 @@ function FreeProspectPortal({ usuario, onNavigate }){
   const load=React.useCallback(()=>{
     setLoading(true);setError('');
     freeStudentPost('freeUserMiPerfil')
-      .then(r=>{setPerfil(r.perfil||{});setSolicitudes(freeStudentNormalizeRequests(r.solicitudes));})
+      .then(r=>{
+        setPerfil(r.perfil||{});
+        setSolicitudes(freeStudentNormalizeRequests(r.solicitudes));
+        const access=r.acceso_english_lab||r.perfil?.acceso_english_lab||null;
+        setLabAccess(access);
+        try{if(access&&window.anEnglishLabFreeAccess?.prime)window.anEnglishLabFreeAccess.prime(access);}catch(_){}
+      })
       .catch(e=>{
         setError(e.message);
         setPerfil({nombre:usuario?.nombre,cedula:usuario?.cedula,correo:usuario?.correo,telefono:usuario?.telefono,etapa:usuario?.etapa||'Prematrícula'});
@@ -147,11 +154,23 @@ function FreeProspectPortal({ usuario, onNavigate }){
   },[usuario]);
   React.useEffect(()=>{load();},[load]);
 
+  React.useEffect(()=>{
+    try{
+      const snapshot=window.anEnglishLabFreeAccess?.get?.();
+      if(snapshot?.checked)setLabAccess(snapshot);
+    }catch(_){}
+    const update=e=>setLabAccess(e?.detail||null);
+    window.addEventListener('an:english-lab-free-access',update);
+    return()=>window.removeEventListener('an:english-lab-free-access',update);
+  },[]);
+
   const p=perfil||{};
-  const prematRequest = solicitudes.find(s=>String(s.TIPO||'').toUpperCase()==='QUIERO_MATRICULARME' && !['DESCARTADA','CERRADA'].includes(String(s.ESTADO||'').toUpperCase()));
-  const prematEstado = String(prematRequest?.ESTADO||'').toUpperCase();
-  const accesoPlay = ['APROBADA','APROBADO','ACEPTADA','ACEPTADO','ACTIVA','ACTIVO','HABILITADA','HABILITADO','PREMATRICULA','PREMATRÍCULA'].includes(prematEstado);
-  const prematPendiente = !!prematRequest && !accesoPlay;
+  const prematRequest=solicitudes.find(s=>String(s.TIPO||'').toUpperCase()==='QUIERO_MATRICULARME'&&!['DESCARTADA','CERRADA'].includes(String(s.ESTADO||'').toUpperCase()));
+  const prematEstado=String(prematRequest?.ESTADO||'').toUpperCase();
+  const accessFromSession=freeStudentBool(usuario?.english_lab_gratis_autorizado||usuario?.inicio_gratuito_autorizado);
+  const accessFromProfile=labAccess?.allowed===true||labAccess?.autorizado===true;
+  const accesoPlay=accessFromSession||accessFromProfile;
+  const prematPendiente=!!prematRequest&&!accesoPlay;
   const asesorWa=freeStudentWhatsAppLink(p,usuario);
 
   const enviarSolicitud=async()=>{
@@ -162,16 +181,13 @@ function FreeProspectPortal({ usuario, onNavigate }){
       setOk(r.mensaje||'Entrada solicitada.');
       setLastAction('Entrada solicitada.');
       await load();
-      try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
+      try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){}
     }catch(e){setError(e.message);setLastAction('No se pudo solicitar.');}
     finally{setBusy(false);}
   };
 
   const contactarAsesor=async()=>{
-    if(asesorWa){
-      window.open(asesorWa,'_blank','noopener,noreferrer');
-      return;
-    }
+    if(asesorWa){window.open(asesorWa,'_blank','noopener,noreferrer');return;}
     setBusy(true);setError('');setOk('');setLastAction('Solicitando contacto…');
     try{
       const template=FREE_REQUEST_TYPES.find(t=>t.id==='HABLAR_ASESOR')?.template||'Hola, necesito que mi asesor me contacte para continuar con mi prematrícula.';
@@ -179,23 +195,22 @@ function FreeProspectPortal({ usuario, onNavigate }){
       setOk(r.mensaje||'Solicitud enviada al asesor.');
       setLastAction('Solicitud enviada.');
       await load();
-      try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
+      try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){}
     }catch(e){setError(e.message);setLastAction('No se pudo contactar.');}
     finally{setBusy(false);}
   };
 
-  const goLab=()=>{ if(onNavigate) onNavigate('academia_play'); };
+  const goLab=()=>{if(onNavigate)onNavigate('academia_play');};
 
   return <div className="student-page premat-page premat-page-two-actions" data-screen-label="Mi Campus · Prematrícula limpia">
     <div aria-live="polite" className="sr-only">{lastAction}</div>
     {error&&<div className="premat-alert error">{error}</div>}
     {ok&&<div className="premat-alert ok">{ok}</div>}
-
     <section className="premat-two-actions-card">
       <div className="premat-two-actions-grid">
         {accesoPlay
-          ? <button type="button" className="btn btn-primary premat-big-action" onClick={goLab}>Entrar a English LAB</button>
-          : <button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading||prematPendiente} onClick={enviarSolicitud}>{busy?'Solicitando…':prematPendiente?'Solicitud enviada · esperando aprobación':'Solicitar entrada English LAB'}</button>}
+          ?<button type="button" className="btn btn-primary premat-big-action" onClick={goLab}>Entrar a English LAB</button>
+          :<button type="button" className="btn btn-primary premat-big-action" disabled={busy||loading||prematPendiente} onClick={enviarSolicitud}>{busy?'Solicitando…':prematPendiente?'Solicitud enviada · esperando aprobación':'Solicitar entrada English LAB'}</button>}
         <button type="button" className="btn btn-ghost premat-big-action" disabled={busy} onClick={contactarAsesor}>Contactar asesor por WhatsApp para matricular</button>
       </div>
     </section>
