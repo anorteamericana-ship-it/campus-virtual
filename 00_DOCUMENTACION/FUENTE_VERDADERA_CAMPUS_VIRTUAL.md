@@ -1,15 +1,62 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A71
+# FUENTE VERDADERA — F98.4-Z6-CS21A72
 
-Estado: frontend CS21A71 guardado en GitHub `main`; backend canónico continúa en CS21A70; publicación de Apps Script y prueba de producción no verificadas.
+Estado: frontend CS21A71 guardado en GitHub `main`; backend canónico actualizado a CS21A72 en Drive; publicación de Apps Script y prueba de producción no verificadas.
 
-## Prematrícula activa
+## CS21A72 — Accesos estudiante de la máscara de Keylor
 
-La prematrícula sin código utiliza su Sidebar original desde el primer render. El normalizador académico de Recursos Didácticos queda fuera de esta sesión, por lo que ya no puede insertar y retirar temporalmente:
+El backend canónico incorpora tres perfiles de estudiante vinculados al grupo demo `0626`:
+
+- Mariana Solano Vargas — código `AN0626-01`.
+- Sebastián Calderón Mora — código `AN0626-02`.
+- Valeria Jiménez Arias — código `AN0626-03`.
+
+Los alias y la contraseña compartida se conservan únicamente dentro del backend canónico y no se documentan en GitHub por tratarse de un repositorio público.
+
+### Fuente de datos
+
+Estos perfiles no existen en las hojas reales. Sus datos se generan desde las funciones de la máscara docente Keylor:
+
+- roster demo;
+- grupo `0626`;
+- nivel activo `I1`;
+- historial B1/B2 aprobado e I1 en curso;
+- asistencia y ausencias demo;
+- evaluaciones y retroalimentación demo;
+- Club I CAN demo.
+
+### Seguridad y aislamiento
+
+- Sesión con rol `student` y código propio.
+- Propiedad del expediente validada por código.
+- Respuestas marcadas `demo:true` y `read_only:true`.
+- Sin filas nuevas en `USUARIOS`, `DATOS` ni `ESTATUS`.
+- Edición de datos personales bloqueada.
+- Cambio de foto bloqueado.
+- Reporte de pagos bloqueado.
+- Sin modificaciones en pagos, certificados, CONAPE, calendario o expedientes reales.
+
+### Backend canónico
+
+- Versión: F98.4-Z6-CS21A72.
+- ID Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Nombre: `Code.gs`.
+- Tamaño: `2.949.066` bytes.
+- SHA-256: `99474bf03419c615e3ec070d3ba8117bfd4afecf9c9c9e1185309ac9cbf6bf2e`.
+
+El archivo pasó validación de sintaxis JavaScript. Guardarlo en Drive no actualiza por sí solo el despliegue web de Apps Script.
+
+## Frontend vigente CS21A71
+
+No hubo cambios de frontend para CS21A72. `src/login.jsx` ya usa el endpoint POST `iniciarSesion` y conserva el usuario introducido como identidad de sesión.
+
+### Prematrícula activa
+
+La prematrícula sin código utiliza su Sidebar original desde el primer render. El normalizador académico de Recursos Didácticos queda fuera de esta sesión, evitando la aparición temporal de:
 
 - Recursos Didácticos.
 - Libros y Audios.
 - Recursos adicionales.
-- Otras rutas académicas no habilitadas.
+- Rutas académicas no habilitadas.
 
 Archivo responsable:
 
@@ -17,73 +64,45 @@ Archivo responsable:
 
 El archivo se carga desde `src/resources_panel_state_cs21a65.js` antes de `app.jsx`.
 
-## English LAB Gratis
+### English LAB Gratis
 
 El contenido vigente de `src/english_lab_free_access_cs21a66.js` corresponde a CS21A71.
 
-Reglas:
-
 - No existe verificación por `focus`.
-- No se revisa nuevamente al tocar o navegar por la pantalla.
-- La decisión se conserva 30 minutos en `sessionStorage` para la misma identidad.
-- Si la sesión ya incluye la autorización, English LAB aparece inmediatamente.
-- Durante la única revisión inicial, el botón permanece visible pero bloqueado para evitar un cambio brusco del menú.
-- Una autorización confirmada no se pierde por una falla temporal de conexión.
+- No se revisa nuevamente al tocar o navegar.
+- La decisión se conserva 30 minutos para la misma identidad.
+- La autorización incluida en sesión se usa inmediatamente.
+- Durante la única revisión inicial, el botón permanece visible pero bloqueado.
+- Una falla temporal de red no tapa English LAB cuando el acceso ya estaba autorizado.
 - La ruta directa sigue protegida cuando la prematrícula no está autorizada.
 
-`src/prospect_free_student.jsx` usa la misma decisión global que la opción lateral y la compuerta. El estado comercial de la solicitud no sustituye `INICIO_GRATUITO_AUTORIZADO`.
+`src/prospect_free_student.jsx` usa la misma decisión global que la opción lateral y la compuerta. El estado comercial no sustituye `INICIO_GRATUITO_AUTORIZADO`.
 
-## Visual de English LAB
+### Visual de English LAB
 
-### Prematrícula sin código
-
-Se ocultan únicamente:
+Para una prematrícula sin código se ocultan únicamente:
 
 - Mapa de progreso.
 - Banco curricular.
 - Áreas cognitivas demo.
 
-Se mantiene:
+Se mantienen el encabezado, bienvenida, resumen rápido, juegos gratis, logros, medallas, catálogo demo y el resto de funciones existentes.
 
-- Encabezado y bienvenida.
-- Resumen rápido.
-- Juegos gratis.
-- Línea de logros y medallas.
-- Catálogo demo.
-- El resto de funciones existentes.
+Cuando la sesión tiene código de estudiante:
 
-La ocultación se aplica antes del primer pintado para que los paneles restringidos no parpadeen.
+- el código prevalece sobre marcas antiguas de prematrícula;
+- deja de tratarse como usuario gratis;
+- el catálogo cambia al nivel académico correspondiente;
+- se muestran Mapa de progreso, Banco curricular y Áreas cognitivas.
 
-### Estudiante con código real
+## Archivos frontend vigentes
 
-La existencia del código tiene prioridad sobre marcas antiguas de prospecto o prematrícula.
-
-- Deja de tratarse como usuario gratis.
-- El título cambia a `Catálogo Básico I` o al nivel académico oficial.
-- El catálogo se coloca antes de los paneles de seguimiento.
-- Debajo se muestran Mapa de progreso, Banco curricular y Áreas cognitivas del nivel.
-
-## Archivos frontend vigentes CS21A71
-
-- `src/prematricula_english_lab_ui_cs21a71.js` — nuevo.
+- `src/prematricula_english_lab_ui_cs21a71.js`.
 - `src/english_lab_free_access_cs21a66.js` — contenido CS21A71.
-- `src/prospect_free_student.jsx` — acceso sincronizado.
+- `src/prospect_free_student.jsx`.
 - `src/resources_panel_state_cs21a65.js` — cargador CS21A71.
 
-No se modificaron:
-
-- `campus.html`.
-- `src/academia_play.jsx`.
-- `Code.gs`.
-
-## Backend canónico preservado
-
-- Versión: F98.4-Z6-CS21A70.
-- ID Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
-- Tamaño: `2.938.302` bytes.
-- SHA-256: `278cd64101c99abc6ecfc0e30ea4f6560fd3555c8c923756f7947d2e0ad26c28`.
-
-El backend ya incluye `freeUserEnglishLabAccess`, los metadatos de autorización en sesión y `freeUserMiPerfil.acceso_english_lab`.
+No se modificaron `campus.html`, `src/academia_play.jsx` ni `src/login.jsx`.
 
 ## Preservado
 
@@ -92,6 +111,6 @@ El backend ya incluye `freeUserEnglishLabAccess`, los metadatos de autorización
 - CS21A68: Recursos adicionales independiente.
 - CS21A67: árbol de recursos y carga estable.
 - Libros, audios, PDF, zoom, efecto de hojas y calibración U01–U16.
-- Pagos, certificados, calendario, DATOS, ESTATUS y fuentes externas CONAPE sin cambios.
+- Pagos, certificados, calendario, `DATOS`, `ESTATUS` y fuentes externas CONAPE sin cambios.
 
-Guardado en GitHub no significa desplegado ni probado en producción.
+Guardado en GitHub o Drive no significa desplegado ni probado en producción.
