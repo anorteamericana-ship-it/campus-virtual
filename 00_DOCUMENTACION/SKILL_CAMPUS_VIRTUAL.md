@@ -16,51 +16,68 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Continuidad vigente
 
-- Frontend: F98.4-Z6-CS21A57.
-- Backend completo: F98.4-Z6-CS21A56.
-- Base backend preservada: CS21A46.
+- Frontend: F98.4-Z6-CS21A58.
+- Backend completo: F98.4-Z6-CS21A58.
+- Base preservada: CS21A56 / CS21A46.
 - Producción no verificada.
-- El backend canónico y sus respaldos se mantienen en Drive; GitHub conserva frontend, manifiesto y documentación.
+- Backend completo y respaldos en Drive; frontend, manifiesto y documentación en GitHub.
 
 ## Regla para Code.gs
 
 1. Leer siempre el archivo canónico indicado en `AppsScript/README.md`.
-2. Crear copia en `00_BACKUPS_CODE_GS` antes de modificar.
-3. Trabajar sobre la versión vigente, nunca sobre un respaldo anterior.
-4. Entregar el `Code.gs` completo cuando haya cambio backend.
-5. Recalcular tamaño y SHA-256.
-6. No asumir despliegue después de actualizar Drive.
+2. Crear respaldo antes de modificar.
+3. Trabajar sobre la versión vigente, nunca sobre un respaldo antiguo.
+4. Entregar `Code.gs` completo.
+5. Recalcular tamaño, saltos de línea y SHA-256.
+6. Actualizar el manifiesto operativo de Drive y la documentación canónica.
+7. No asumir despliegue después de guardar en Drive.
 
-## Docente / Recursos Didácticos / Libros de texto
+## Visor de libros por imágenes
 
-- Componente vigente: `src/teacher_cs21a_order_fix.jsx` CS21A57.
-- Backend lector vigente: CS21A56 con `teacherBooksOpenPdf` y `teacherBooksReadRange`.
-- `campus.html` carga PDF.js antes del componente y actualiza cache-busting.
-- Todo libro inicia en PDF 1.
-- La portada debe mostrarse sola a la derecha; no emparejar PDF 1 con PDF 2.
-- Secuencia de pliegos: portada; 2–3; 4–5; 6–7; etc.
-- El botón U01 debe brillar mientras no exista una unidad seleccionada.
-- Cambiar nivel o SB/TB/WB vuelve a la portada y reactiva la invitación U01.
-- U01–U16 pertenece únicamente a Student Book.
-- Fuente impresa: Apollo G3 → `DETALLE DEL PROGRAMA` → columna K.
-- Inicios SB: `2, 8, 16, 22, 30, 36, 44, 50, 58, 64, 72, 78, 86, 92, 100, 106`.
-- No asumir un desfase PDF común:
-  - B1 `+5`.
-  - B2 `+20`.
-  - I1 `+6`.
-  - I2 `+8`.
-- B1 U01 apunta a PDF 7 y se muestra en pliego 6–7.
-- No aplicar el mapeo SB a TB o WB.
-- Mantener `Actualizar desde Drive`.
-- Mantener PDF a todo el ancho, dos páginas, navegación, zoom y pantalla completa.
-- No mostrar panel lateral interno ni volver a la lista antigua de Drive.
-- B1/SB activo: `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` dentro de `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
+- Componente: `src/teacher_cs21a_order_fix.jsx` CS21A58.
+- Endpoint: `teacherBooksOpenImageBook`.
+- No usar PDF.js en esta pantalla.
+- Cargar únicamente las dos hojas visibles.
+- Precargar solo las dos hojas del siguiente pliego.
+- El orden se toma de `book.json.pages[]`.
+- Nunca calcular la página siguiente a partir del número del nombre del archivo.
+- Emparejar por posiciones: `0+1`, `2+3`, `4+5`.
+- Si falta un número original, continuar por orden del arreglo.
+- Si el total es impar, mostrar hoja vacía al final.
+- Abrir cualquier libro en el primer pliego.
+- Al cambiar nivel o tipo, volver al primer pliego.
+- Mantener anterior, siguiente, zoom, pantalla completa y `Actualizar desde Drive`.
+- Mantener el PDF oficial solo para Abrir/Descargar.
+- No mostrar panel lateral interno ni la lista antigua de Drive.
+
+## Unidades
+
+- U01–U16 aparece únicamente en SB.
+- U01 brilla mientras no exista selección.
+- El mapa es provisional por nivel y se ajusta con QA visual.
+- La búsqueda usa `source_page` y después forma el pliego por posición del arreglo.
+- No aplicar el mapa SB a TB o WB.
+
+## Acceso
+
+- Docente/admin: SB, TB y WB.
+- Estudiante: SB y WB.
+- TB debe permanecer fuera de la vista estudiantil.
+- La integración estudiantil se realiza después de cerrar QA docente.
+
+## Drive
+
+- Raíz de imágenes: `1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK`.
+- Catálogo general: `1UTeCZQpLoEsdJkm3_kQRqni19uuZBTuO`.
+- Total vigente: 2.051 páginas WebP.
+- Los tres `book.json` de B1 ya están uniformados.
+- No volver a subir PDF duplicados ni `build-stamp.json` como contenido del Campus.
 
 ## Seguimiento inmediato
 
 - Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`.
-- Solo desembolso académico `01`.
-- `02/03+` no cierran el `01`.
+- Solo desembolso académico 01.
+- 02/03+ no cierran el 01.
 - Sin scroll horizontal.
 - WhatsApp visible.
 
@@ -78,5 +95,6 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 3. Validar sintaxis.
 4. Revisar cache-busting.
 5. Actualizar Fuente, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
-6. Entregar solo los archivos modificados.
-7. No declarar despliegue sin prueba.
+6. Crear respaldo previo y copia de cierre.
+7. Entregar solo los archivos modificados.
+8. No declarar despliegue sin prueba.
