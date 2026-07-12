@@ -1,82 +1,76 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A58",
+  "version": "F98.4-Z6-CS21A59",
   "cut": "2026-07-12",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "production_deployment_confirmed": false,
   "backend": {
-    "version": "F98.4-Z6-CS21A58",
-    "base_preserved": ["F98.4-Z6-CS21A56", "F98.4-Z6-CS21A46"],
-    "canonical_verified": true,
-    "stored_in_github": false,
+    "version": "F98.4-Z6-CS21A59",
+    "base_preserved": [
+      "F98.4-Z6-CS21A58",
+      "F98.4-Z6-CS21A56",
+      "F98.4-Z6-CS21A46"
+    ],
     "canonical_drive_folder_id": "1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a",
     "canonical_drive_file_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
     "backup_drive_folder_id": "1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr",
-    "pre_change_backup_file_id": "15Yq5aAbxMwvKKZo6e4Vg7kgw7axv5yra",
-    "closing_copy_file_id": "1FDjvFP3_suvo_1k2Y8xa_59kyJ_yg9yb",
-    "size_bytes": 2899463,
-    "sha256": "d3505496b8e953d4fd0849a7a5af102760a452caa43d41bc9a7055006897ca87",
-    "newline_count": 50623,
-    "new_endpoint": "teacherBooksOpenImageBook",
-    "legacy_pdf_endpoints_preserved": ["teacherBooksOpenPdf", "teacherBooksReadRange"],
-    "read_only_change": true,
+    "pre_change_backup_file_id": "1yHzOKu0o1kx5SIxI2w2bqW-pxvsMx0Ls",
+    "closing_copy_file_id": "1hT1VgtNcA3eRmw6-_HaWv0s95743PUq8",
+    "size_bytes": 2906208,
+    "sha256": "a3a4b2423c274833deb2f2d4d30859a85e7b1676779b371c395d244f4ab6773d",
+    "newline_count": 50867,
+    "new_endpoint": "adminBooksRefreshOpenBook",
+    "preserved_endpoints": [
+      "teacherBooksOpenImageBook",
+      "teacherBooksOpenPdf",
+      "teacherBooksReadRange"
+    ],
+    "write_scope": "CURRENT_OPEN_BOOK_MANIFEST_ONLY",
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A58",
-    "github_saved": true,
+    "version": "F98.4-Z6-CS21A59",
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
+      "src/admin_resources_cs21a59.jsx",
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books": "2be5ccaf3afdfacced4a76dcc920055724549ed0",
-      "campus": "9cc96358e12d4009d4813e88f2954fa93079b228"
+      "teacher_books_base": "2be5ccaf3afdfacced4a76dcc920055724549ed0",
+      "admin_resources": "4728807877e292bfe9244dbd56492d0576cf06ad",
+      "campus": "ad98b09660c386b8edfb55aceec76534a88c97b6"
     },
-    "pdfjs_loaded": false,
+    "admin_menu_section": "Recursos Didácticos",
+    "admin_tabs": ["Libros de texto", "Audios"],
+    "teacher_refresh_button_visible": false,
+    "admin_refresh_button_visible": true,
     "production_deployment_confirmed": false
+  },
+  "admin_drive_refresh": {
+    "roles": ["admin", "superadmin"],
+    "scope": "selected_level_and_book_type_only",
+    "order_rule": "WEBP_FILENAME_NATURAL_ORDER",
+    "updates_book_json_pages": true,
+    "invalidates_only_selected_book_cache": true,
+    "copies_images": false,
+    "moves_images": false,
+    "renames_images": false,
+    "deletes_images": false,
+    "modifies_pdf": false,
+    "rejects_duplicate_webp_names": true
+  },
+  "audio_folders": {
+    "B1": "1dTO0jU1cPvY69YWELAsTyd-qkQUnQbla",
+    "B2": "1VZtIb7-4qP8YUM7tqGKVTZ2CsvxXqsqT",
+    "I1": "1kjXwAfxhQTVZcXHNjYoJOtsllS5OC-7t",
+    "I2": "1_PfLqToC_QSO7OtNJLv5uY3i3Ff-YaX6"
   },
   "image_books": {
     "root_folder_id": "1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK",
-    "root_catalog_file_id": "1UTeCZQpLoEsdJkm3_kQRqni19uuZBTuO",
-    "public_link_reader": true,
-    "level_count": 4,
-    "book_count": 12,
     "total_webp_pages": 2051,
-    "removed_pages": 0,
-    "level_totals": {
-      "B1": 492,
-      "B2": 528,
-      "I1": 514,
-      "I2": 517
-    },
-    "pairing": "array_order_0_1_2_3",
-    "initial_spread": "pages[0]+pages[1]",
-    "preload_next_spread": true,
-    "source_page_numbers_may_skip": true,
-    "b1_manifests_uniformed": true,
-    "b1_book_json_ids": {
-      "SB": "1mkhO2L_jvufd4DWNNzPbkrRVKYcb5b8f",
-      "TB": "1ClT_1Pcj3mQ8UEWQtayQPdEX_Qc-o6Bd",
-      "WB": "1FE2I99ft0MUzoWU3vidMv89JfaC81bUa"
-    }
-  },
-  "unit_navigation": {
-    "status": "provisional_requires_visual_qa",
-    "student_book_only": true,
-    "u01_animated_until_selection": true,
-    "targets_by_level": {
-      "B1": [6, 12, 20, 26, 34, 40, 48, 54, 62, 68, 76, 82, 90, 96, 104, 110],
-      "B2": [22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112, 120, 126],
-      "I1": [8, 14, 22, 28, 36, 42, 50, 56, 64, 70, 78, 84, 92, 98, 106, 112],
-      "I2": [10, 16, 24, 30, 38, 44, 52, 58, 66, 72, 80, 86, 94, 100, 108, 114]
-    }
-  },
-  "access": {
-    "teacher_admin_book_types": ["SB", "TB", "WB"],
-    "student_book_types": ["SB", "WB"],
-    "student_frontend_connected": false
+    "pairing": "array_order",
+    "unit_navigation_status": "provisional_requires_visual_qa"
   },
   "preserved": {
     "consulta_individual_fresh": true,
