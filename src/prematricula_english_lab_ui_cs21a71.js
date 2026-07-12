@@ -7,6 +7,7 @@
   const FREE_MARKER = /gratis|free|prospect|prematric|lead|formulario/i;
   const LEVEL_LABELS = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
   let scheduled = false;
+  let sidebarRefreshSent = false;
 
   function clean(value) {
     return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
@@ -87,6 +88,9 @@
     const style = document.createElement('style');
     style.id = 'an-prematricula-english-lab-style-cs21a71';
     style.textContent = `
+      html[data-an-student-kind="prematricula"]:not([data-an-premat-sidebar-ready="true"]) aside.student-sb {
+        visibility:hidden !important;
+      }
       html[data-an-student-kind="prematricula"] .ap-view-student .ap-progress-map,
       html[data-an-student-kind="prematricula"] .ap-view-student .ap-bank-student-panel,
       html[data-an-student-kind="prematricula"] .ap-view-student .ap-bank-student-panel + .ap-catalog-head,
@@ -97,27 +101,50 @@
       html[data-an-student-kind="prematricula"] aside.student-sb [id^="an-additional-resources-nav-cs21a68-"] {
         display:none !important;
       }
+      html[data-an-student-kind="prematricula"] aside.student-sb button[data-nav-id="mi_curso"] .sb-label {
+        font-size:0 !important;
+      }
+      html[data-an-student-kind="prematricula"] aside.student-sb button[data-nav-id="mi_curso"] .sb-label:after {
+        content:"Mi curso";
+        font-size:13px;
+      }
     `;
     document.head.appendChild(style);
   }
 
+  function unwrapForFreeStudent(component) {
+    let current = component;
+    const seen = new Set();
+    while (current && !seen.has(current)) {
+      seen.add(current);
+      const knownWrapper = current.__cs21a65UnifiedResources || current.__cs21a69ActiveState ||
+        current.__cs21a59AdminResources || current.__cs21a60SuperResources ||
+        (current.__cs21a71PrematriculaStable && current.__cs21a71PrematriculaStable !== current);
+      if (!knownWrapper || typeof current.__base !== 'function') break;
+      current = current.__base;
+    }
+    return current || component;
+  }
+
   function installSidebarBypass() {
     const Current = window.Sidebar || (typeof Sidebar === 'function' ? Sidebar : null);
-    if (typeof Current !== 'function' || Current.__cs21a71PrematriculaStable) return false;
+    if (typeof Current !== 'function') return false;
+    if (Current.__cs21a71PrematriculaStable === Current) return true;
 
-    const academicBase = Current.__base || Current;
+    const freeBase = unwrapForFreeStudent(Current);
     const Wrapped = function SidebarCS21A71(props) {
       const user = props?.usuario || readSession();
       const role = clean(props?.rolReal || props?.role || user?.rol || user?.role).toLowerCase();
       if ((role === 'student' || role === 'estudiante') && isFreeStudent(user)) {
-        return React.createElement(academicBase, props);
+        return React.createElement(freeBase, props);
       }
       return React.createElement(Current, props);
     };
 
     try { Object.keys(Current).forEach(key => { Wrapped[key] = Current[key]; }); } catch (_) {}
-    Wrapped.__cs21a71PrematriculaStable = true;
+    Wrapped.__cs21a71PrematriculaStable = Wrapped;
     Wrapped.__base = Current;
+    Wrapped.__freeBase = freeBase;
     window.Sidebar = Wrapped;
     try { Sidebar = Wrapped; } catch (_) {}
     return true;
@@ -148,6 +175,7 @@
     Array.from(aside.querySelectorAll('.student-sb-section')).forEach(section => {
       if (clean(section.textContent) === 'Recursos Didácticos') section.remove();
     });
+    document.documentElement.setAttribute('data-an-premat-sidebar-ready', 'true');
   }
 
   function arrangeEnglishLab(user) {
@@ -195,8 +223,16 @@
     scheduled = false;
     const user = normalizeMatriculatedSession();
     publishStudentKind(user);
+    const installed = installSidebarBypass();
     cleanFreeSidebar(user);
     arrangeEnglishLab(user);
+
+    if (installed && isFreeStudent(user) && !sidebarRefreshSent) {
+      sidebarRefreshSent = true;
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event('an:session-changed')); } catch (_) {}
+      }, 0);
+    }
   }
 
   function schedule() {
@@ -213,7 +249,12 @@
   observer.observe(document.documentElement, { childList:true, subtree:true, characterData:true });
   ['an:lazy-module-loaded','an:session-changed','an:english-lab-free-access','an:free-user-solicitudes-changed','popstate','hashchange']
     .forEach(name => window.addEventListener(name, schedule));
-  window.addEventListener('an:lazy-module-loaded', () => setTimeout(installSidebarBypass, 20));
+
+  const sidebarProbe = setInterval(() => {
+    installSidebarBypass();
+    schedule();
+  }, 60);
+  setTimeout(() => clearInterval(sidebarProbe), 8000);
   schedule();
 
   window.__AN_PREMATRICULA_ENGLISH_LAB_UI_VERSION__ = VERSION;
