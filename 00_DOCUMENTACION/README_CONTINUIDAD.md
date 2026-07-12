@@ -1,85 +1,130 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral/frontend:** F98.4-Z6-CS21A69  
-**Backend canónico instalado:** F98.4-Z6-CS21A64  
-**Backend candidato completo:** F98.4-Z6-CS21A67  
-**Base preservada:** CS21A68 / CS21A67 / CS21A66 / CS21A65 / CS21A64 / CS21A63 / CS21A62 / CS21A61 / CS21A60  
+**Versión integral/frontend:** F98.4-Z6-CS21A70  
+**Backend fuente canónica en Drive:** F98.4-Z6-CS21A70  
+**Backend Apps Script publicado:** no verificado  
+**Base preservada:** CS21A69 / CS21A68 / CS21A67 / CS21A66 / CS21A65 / CS21A64  
 **Producción:** no verificada  
 **Corte:** 12-jul-2026
 
-## Cambio vigente CS21A69 — selección única del menú lateral
+## Cambio vigente CS21A70 — Panel Maestro CONAPE
 
-Se corrige la marcación azul del menú para estudiante, docente, admin y superadmin.
+Se mejora la tabla `Seguimiento inmediato · Desembolsos académicos 01` del Panel Maestro del superadmin.
 
-### Causas encontradas
+### Buscador
 
-1. El menú docente usa una sola ruta interna `materiales` para varias subpantallas: Información General, Asistencia, Syllabus, Planeamiento, Cronograma del módulo, Cronograma general y Libros y Audios. La pantalla cambiaba, pero el Sidebar no se volvía a renderizar cuando solo cambiaba la subpantalla.
-2. CS21A68 restauraba manualmente la clase `active` de `Libros y Audios`, incluso después de navegar a I CAN, Cronograma u otra pantalla.
-3. Los botones insertados dinámicamente podían conservar una clase azul anterior después de que React actualizaba la ruta principal.
+Busca sobre las filas ya cargadas por:
 
-### Solución
+- Código del estudiante.
+- Cédula.
+- Número telefónico.
+- Nombre completo.
 
-Nuevo archivo:
+La búsqueda ignora mayúsculas, tildes, espacios y formatos del teléfono.
 
-- `src/sidebar_active_state_cs21a69.js`
+### Orden y filtros
 
-Carga desde:
+Las seis columnas se pueden ordenar desde el encabezado:
 
-- `src/resources_panel_state_cs21a65.js`, cuyo contenido vigente es CS21A69.
+- Código.
+- Estudiante.
+- Resumen académico.
+- Movimiento.
+- Periodo / nivel.
+- WhatsApp.
 
-Comportamiento:
+También se agregan filtros por:
 
-- Solo puede existir un botón lateral con clase `active`.
-- El botón seleccionado recibe también `aria-current="page"`.
-- Los demás botones pierden tanto `active` como `aria-current`.
-- El clic del usuario se conserva mientras React termina de actualizar la ruta.
-- Si la navegación ocurre desde una tarjeta, desde atrás/adelante o de forma programática, se respeta la selección que devuelve la ruta real.
-- El menú docente se vuelve a renderizar al cambiar `an:teacher-material-tab`.
-- Al salir de `Recursos adicionales`, el modo vuelve a `books`, evitando que `Libros y Audios` o `Recursos adicionales` queden marcados junto con otra pantalla.
+- Movimiento.
+- Nivel, incluido `Sin nivel enlazado`.
+- Estado del resumen académico.
+- Periodo.
+- Estado de WhatsApp: disponible, sin teléfono o cerrado.
 
-### Casos cubiertos
+### Movimiento
 
-- I CAN Conversation Club no puede quedar marcado junto con Libros y Audios.
-- Cronograma general queda azul cuando es la pantalla visible.
-- Syllabus, Planeamiento y Cronograma del módulo actualizan correctamente el azul aunque compartan la ruta `materiales`.
-- Recursos adicionales y Libros y Audios se excluyen mutuamente.
-- Estudiante, docente, admin y superadmin usan el mismo control de exclusión.
-- Menús ocultos o deshabilitados no pueden convertirse en selección activa.
+- Se elimina la etiqueta visual `Sin fila`.
+- La ausencia de fila en `7-morosidad` no se presenta como problema académico.
+- Cuando corresponde, se muestra `Desembolso adelantado` como detalle visible.
+- `Mora SI` y `Mora NO` siguen apareciendo únicamente cuando existe una fila oficial que lo confirma.
 
-## Cambio preservado CS21A68
+### Periodo / nivel
 
-Estructura lateral:
+La primera línea muestra el desembolso académico principal 01 completo y la fecha en que fue detectado:
 
-- Recursos Didácticos
-  - Libros y Audios
-  - Recursos adicionales
+`01/09/2026 - D-10/07`
 
-Permisos:
+Si posteriormente aparece otro desembolso del mismo estudiante y periodo, se muestra debajo en menor tamaño:
 
-- Docente: únicamente Diccionario Word by Word.
-- Estudiante: recursos oficiales de su nivel activo.
-- Admin y superadmin: recursos completos del nivel seleccionado.
+`02/09/2026 · D-12/07`
 
-## Backend
+Regla preservada:
 
-No cambia respecto a CS21A67. No se requiere un nuevo `Code.gs` por CS21A69.
+- Solo 01 crea y cierra seguimiento académico.
+- 02, 03 y superiores son contexto visual.
+- 02+ no aplican pagos, no cierran el 01, no cambian morosidad y no alteran estados académicos.
 
-El candidato completo `Code_F98_4_Z6_CS21A67_COMPLETO.gs` continúa siendo necesario para el árbol de Recursos adicionales y para preservar la protección CS21A66 de English LAB Gratis.
+## Backend CS21A70
+
+Se modifica únicamente `_conapeAxAugmentMaster_` para adjuntar a cada fila 01 el arreglo `periodMovements` del mismo `cedula + mes + año`.
+
+Cada elemento contextual contiene:
+
+- Número de desembolso.
+- Código de dos dígitos.
+- Mes y año del periodo.
+- Fecha y orden de detección.
+- Tipo de movimiento.
+- Indicador de desembolso adelantado.
+
+Integridad:
+
+- Archivo: `Code_F98_4_Z6_CS21A70_COMPLETO.gs`
+- Tamaño: `2.938.302` bytes
+- Saltos de línea: `51.714`
+- SHA-256: `278cd64101c99abc6ecfc0e30ea4f6560fd3555c8c923756f7947d2e0ad26c28`
+- Sintaxis: validada con `node --check`.
+- Archivo canónico de Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Respaldo previo: `1LbyMht5DGmF9icVR8iUW96q85sAEI6T0`.
+- Copia de cierre: `1NoOW-dV-izB353Hkxtke9--XG5ZveauO`.
+
+La copia descargada desde Drive coincide byte por byte con el archivo local CS21A70.
+
+## Frontend CS21A70
+
+Archivo modificado:
+
+- `src/admin_master_conape_movements_cs21a25.jsx`.
+
+Su nombre histórico se conserva porque `campus.html` ya lo carga. El contenido vigente declara `BUILD = F98.4-Z6-CS21A70`.
+
+Validación:
+
+- JSX analizado sin errores mediante Tree-sitter JavaScript/JSX.
+- No se modifica `campus.html`.
+- No se modifica la visual de libros, audios ni Recursos adicionales.
+
+## Cambio preservado CS21A69
+
+Se mantiene la selección azul única del menú lateral para estudiante, docente, admin y superadmin.
 
 ## Prueba inmediata
 
-1. Actualizar frontend y hacer `Ctrl + F5`.
-2. Docente: abrir `Libros y Audios` y luego `I CAN Conversation Club`; solo I CAN debe quedar azul.
-3. Docente: abrir `Cronograma general`; debe quedar azul aunque la ruta interna siga siendo `materiales`.
-4. Docente: alternar Syllabus, Planeamiento, Cronograma del módulo, Cronograma general y Libros y Audios; exactamente uno debe quedar azul.
-5. Docente: abrir Recursos adicionales y luego Calendario académico; Recursos adicionales debe perder el azul.
-6. Estudiante: alternar Libros y Audios, Recursos adicionales, I CAN, Evaluaciones y Mi Campus.
-7. Admin y superadmin: alternar Libros y Audios, Recursos adicionales, Panel Maestro, Consulta individual y Calendario académico.
-8. En todos los casos, confirmar que nunca hay dos botones azules ni una pantalla visible sin su botón azul correspondiente.
+1. Copiar el `Code.gs` completo CS21A70 en Apps Script y publicar una nueva versión.
+2. Actualizar el frontend y hacer `Ctrl + F5`.
+3. Abrir `Panel Maestro → CONAPE`.
+4. Buscar un estudiante por nombre, código, cédula y teléfono.
+5. Ordenar desde cada uno de los seis encabezados.
+6. Probar los filtros de movimiento, nivel, estado académico, periodo y WhatsApp.
+7. Confirmar que ninguna fila muestre `Sin fila`.
+8. Confirmar que un caso adelantado muestre `Desembolso adelantado`.
+9. Confirmar el formato principal `01/MM/AAAA - D-DD/MM`.
+10. Usar un periodo que tenga 02 o superior y confirmar que aparece debajo en pequeño.
+11. Confirmar que 02+ no modifica el estado pendiente/cerrado del 01.
 
 ## Reglas preservadas
 
 - Nunca mover pagos entre niveles o intentos.
-- No tocar pagos, certificados, CONAPE, calendario ni hojas académicas.
-- No crear automatizaciones nuevas de CONAPE.
-- No declarar producción verificada sin ejecutar las pruebas anteriores.
+- No modificar `CONAPE_SYNC`, `CONAPE_MOVIMIENTOS_LOG`, DATOS, ESTATUS ni `7-morosidad` desde esta pantalla.
+- No crear automatizaciones ni triggers nuevos de CONAPE.
+- No declarar producción verificada sin realizar la prueba anterior.
