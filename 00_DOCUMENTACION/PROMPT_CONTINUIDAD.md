@@ -1,61 +1,82 @@
-# CONTINUIDAD — F98.4-Z6-CS21A59
+# CONTINUIDAD — F98.4-Z6-CS21A60
 
 Estado vigente:
 
-- Frontend CS21A59 en GitHub.
-- Backend completo CS21A59 en Drive.
+- Frontend CS21A60 guardado en GitHub `main`.
+- Backend completo CS21A60 guardado en Drive.
 - Producción no verificada.
+
+## Objetivo del cambio vigente
+
+Mantener un inicio U01–U16 configurable y persistente para cada libro, sin editar el frontend cada vez que una página de arranque resulte incorrecta.
 
 ## Archivos principales
 
-- `src/teacher_cs21a_order_fix.jsx`: visor WebP CS21A58.
-- `src/admin_resources_cs21a59.jsx`: menú y panel admin, además de permisos.
-- `campus.html`: carga CS21A59.
+- `src/admin_resources_superadmin_cs21a60.jsx`: permite que superadmin abra Recursos Didácticos.
+- `src/book_unit_starts_cs21a60.jsx`: visor y botones pequeños de calibración.
+- `campus.html`: carga los módulos CS21A60.
 - `Code.gs` canónico: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
 
 ## Comportamiento obligatorio
 
-Admin/Superadmin:
+Superadmin:
 
-- Menú `Recursos Didácticos`.
-- Subopciones `Libros de texto` y `Audios`.
-- Misma vista visual del docente.
-- Botón `Actualizar desde Drive` visible en Libros.
+- Abre Recursos Didácticos → Libros de texto.
+- Selecciona nivel y SB/TB/WB.
+- Navega hasta el pliego correcto.
+- Pulsa `Actualizar` debajo de la unidad.
+- Se guarda la hoja derecha visible.
 
 Docente:
 
-- Mantiene Libros y Audios.
-- No debe ver `Actualizar desde Drive`.
+- Abre el mismo visor.
+- Recibe los inicios guardados.
+- No puede modificar unidades ni actualizar Drive.
 
-## Sincronización
+Estudiante:
 
-- Endpoint: `adminBooksRefreshOpenBook`.
-- Solo admin/superadmin.
-- Actualiza únicamente el nivel y tipo abiertos.
-- Reconstruye `pages[]` usando los nombres WebP actuales.
-- Orden natural por número del nombre.
-- No toca los otros once libros.
-- No copia, mueve, renombra ni elimina imágenes.
-- No modifica el PDF.
+- Ve SB/WB de su nivel activo.
+- Recibe los mismos inicios guardados.
+- No ve controles administrativos.
 
-## Prueba inmediata
+Admin:
 
-1. Instalar el `Code.gs` completo CS21A59.
-2. Crear una nueva implementación.
-3. Publicar frontend y hacer Ctrl+F5.
-4. Entrar como admin.
-5. Abrir Recursos Didácticos → Libros de texto → B1 → SB.
-6. Cambiar el nombre de una imagen en Drive.
-7. Pulsar `Actualizar desde Drive`.
-8. Confirmar que solo cambia B1/SB.
-9. Entrar como docente y confirmar que el botón no aparece.
-10. Probar Audios en ambos roles.
+- Conserva sincronización del libro abierto desde Drive.
+- No puede calibrar unidades.
+
+## Fuente de verdad
+
+Cada `book.json` conserva:
+
+- `unitStarts`.
+- `unitStartsVersion`.
+- fecha y usuario de actualización.
+- `unitStartHistory`.
+
+No compartir el arreglo entre tipos de libro.
+
+## Endpoint
+
+`superadminBooksSetUnitStart`
+
+Debe validar rol, unidad, existencia de página, duplicados, orden y concurrencia.
 
 ## Integridad backend
 
-- Tamaño: `2.906.208` bytes.
-- SHA-256: `a3a4b2423c274833deb2f2d4d30859a85e7b1676779b371c395d244f4ab6773d`.
-- Respaldo previo: `1yHzOKu0o1kx5SIxI2w2bqW-pxvsMx0Ls`.
-- Copia de cierre: `1hT1VgtNcA3eRmw6-_HaWv0s95743PUq8`.
+- Tamaño: `2.915.832` bytes.
+- SHA-256: `1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56`.
+- Saltos de línea: `51.143`.
+- Respaldo previo: `1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy`.
+- Copia de cierre: `1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U`.
 
-Nunca mover pagos entre niveles o intentos. No tocar pagos, certificados, CONAPE, calendario ni hojas académicas para este módulo.
+## Siguiente acción obligatoria
+
+1. Instalar el `Code.gs` completo CS21A60.
+2. Crear nueva implementación de Apps Script.
+3. Publicar frontend.
+4. Hacer Ctrl+F5.
+5. Ejecutar QA de U01 6→8 en B1/SB con superadmin, docente y estudiante.
+
+Nunca afirmar despliegue ni funcionamiento productivo antes de esa prueba.
+
+Nunca mover pagos entre niveles o intentos. No tocar pagos, certificados, CONAPE, calendario ni hojas académicas para este cambio.
