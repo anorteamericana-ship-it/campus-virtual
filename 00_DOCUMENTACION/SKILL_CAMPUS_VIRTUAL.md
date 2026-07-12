@@ -16,85 +16,71 @@ Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTE
 
 ## Continuidad vigente
 
-- Frontend: F98.4-Z6-CS21A58.
-- Backend completo: F98.4-Z6-CS21A58.
-- Base preservada: CS21A56 / CS21A46.
+- Frontend: F98.4-Z6-CS21A59.
+- Backend completo: F98.4-Z6-CS21A59.
+- Base preservada: CS21A58 / CS21A56 / CS21A46.
 - Producción no verificada.
-- Backend completo y respaldos en Drive; frontend, manifiesto y documentación en GitHub.
+
+## Recursos Didácticos
+
+- Visor base: `src/teacher_cs21a_order_fix.jsx` CS21A58.
+- Puente admin/permisos: `src/admin_resources_cs21a59.jsx`.
+- Backend lector: `teacherBooksOpenImageBook`.
+- Backend sincronizador admin: `adminBooksRefreshOpenBook`.
+- Admin y docente deben compartir la misma vista de libros y audios.
+- No mantener dos implementaciones visuales separadas.
+
+## Permisos
+
+- Docente: lectura de libros y audios.
+- Admin/superadmin: lectura de libros y audios.
+- Solo admin/superadmin ve y puede ejecutar `Actualizar desde Drive`.
+- El backend debe validar el rol aunque el botón esté oculto.
+- Estudiante no forma parte de este cambio.
+
+## Actualizar desde Drive
+
+- Actualiza exclusivamente el libro abierto.
+- Nivel y tipo se resuelven desde la selección visible.
+- Recorre solo la carpeta `pages` de ese libro.
+- Ordena por el número actual del nombre WebP.
+- Reconstruye solo ese `book.json`.
+- No tocar los otros once libros.
+- No copiar, mover, renombrar ni eliminar imágenes.
+- No procesar ni modificar PDF.
+- Detectar y rechazar nombres duplicados.
+- Invalidar únicamente la caché del libro actualizado.
+
+## Visor WebP
+
+- Emparejar por posiciones de `pages[]`: `0+1`, `2+3`, `4+5`.
+- No calcular la siguiente imagen sumando uno al nombre.
+- Si falta un número, continuar por el orden del arreglo.
+- Cargar solo dos hojas y precargar las dos siguientes.
+- U01–U16 pertenece únicamente a SB y sigue en QA.
+- El PDF oficial se usa solo para abrir o descargar.
+
+## Audios
+
+- B1: `1dTO0jU1cPvY69YWELAsTyd-qkQUnQbla`.
+- B2: `1VZtIb7-4qP8YUM7tqGKVTZ2CsvxXqsqT`.
+- I1: `1kjXwAfxhQTVZcXHNjYoJOtsllS5OC-7t`.
+- I2: `1_PfLqToC_QSO7OtNJLv5uY3i3Ff-YaX6`.
 
 ## Regla para Code.gs
 
-1. Leer siempre el archivo canónico indicado en `AppsScript/README.md`.
-2. Crear respaldo antes de modificar.
-3. Trabajar sobre la versión vigente, nunca sobre un respaldo antiguo.
-4. Entregar `Code.gs` completo.
-5. Recalcular tamaño, saltos de línea y SHA-256.
-6. Actualizar el manifiesto operativo de Drive y la documentación canónica.
-7. No asumir despliegue después de guardar en Drive.
+1. Leer el archivo canónico de Drive.
+2. Verificar tamaño y hash.
+3. Crear respaldo antes de modificar.
+4. Trabajar sobre la versión vigente.
+5. Reemplazar el mismo archivo conservando su ID.
+6. Recalcular tamaño, líneas y SHA-256.
+7. Entregar el archivo completo.
+8. No afirmar despliegue sin prueba.
 
-## Visor de libros por imágenes
+## Reglas preservadas
 
-- Componente: `src/teacher_cs21a_order_fix.jsx` CS21A58.
-- Endpoint: `teacherBooksOpenImageBook`.
-- No usar PDF.js en esta pantalla.
-- Cargar únicamente las dos hojas visibles.
-- Precargar solo las dos hojas del siguiente pliego.
-- El orden se toma de `book.json.pages[]`.
-- Nunca calcular la página siguiente a partir del número del nombre del archivo.
-- Emparejar por posiciones: `0+1`, `2+3`, `4+5`.
-- Si falta un número original, continuar por orden del arreglo.
-- Si el total es impar, mostrar hoja vacía al final.
-- Abrir cualquier libro en el primer pliego.
-- Al cambiar nivel o tipo, volver al primer pliego.
-- Mantener anterior, siguiente, zoom, pantalla completa y `Actualizar desde Drive`.
-- Mantener el PDF oficial solo para Abrir/Descargar.
-- No mostrar panel lateral interno ni la lista antigua de Drive.
-
-## Unidades
-
-- U01–U16 aparece únicamente en SB.
-- U01 brilla mientras no exista selección.
-- El mapa es provisional por nivel y se ajusta con QA visual.
-- La búsqueda usa `source_page` y después forma el pliego por posición del arreglo.
-- No aplicar el mapa SB a TB o WB.
-
-## Acceso
-
-- Docente/admin: SB, TB y WB.
-- Estudiante: SB y WB.
-- TB debe permanecer fuera de la vista estudiantil.
-- La integración estudiantil se realiza después de cerrar QA docente.
-
-## Drive
-
-- Raíz de imágenes: `1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK`.
-- Catálogo general: `1UTeCZQpLoEsdJkm3_kQRqni19uuZBTuO`.
-- Total vigente: 2.051 páginas WebP.
-- Los tres `book.json` de B1 ya están uniformados.
-- No volver a subir PDF duplicados ni `build-stamp.json` como contenido del Campus.
-
-## Seguimiento inmediato
-
-- Columnas: `Código | Estudiante | Resumen académico | Movimiento | Periodo / nivel | WhatsApp`.
 - Solo desembolso académico 01.
 - 02/03+ no cierran el 01.
-- Sin scroll horizontal.
-- WhatsApp visible.
-
-## Consulta individual, pagos y certificados
-
-- Usar lectura fresca después de una escritura.
-- Aplicar pago usa el motor oficial; frontend no escribe hojas.
-- Mantener bloqueo, `REQUEST_ID`, journal e idempotencia.
-- Certificado pagado y documento emitido son independientes.
-
-## Checklist de cierre
-
-1. Confirmar base real de GitHub y `Code.gs` canónico de Drive.
-2. Nombrar impacto y archivos.
-3. Validar sintaxis.
-4. Revisar cache-busting.
-5. Actualizar Fuente, Readme, Biblia, Skill, Prompt, Manifiesto y AppsScript README.
-6. Crear respaldo previo y copia de cierre.
-7. Entregar solo los archivos modificados.
-8. No declarar despliegue sin prueba.
+- No mover pagos entre niveles o intentos.
+- No crear triggers nuevos de CONAPE.
