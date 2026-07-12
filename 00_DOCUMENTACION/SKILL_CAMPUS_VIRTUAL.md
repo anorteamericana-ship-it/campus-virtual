@@ -2,85 +2,64 @@
 
 ## Forma obligatoria de trabajo
 
+- Trabajar sobre F98.4-Z6-CS21A60.
 - Responder en español directo para una persona que trabaja por copy/paste.
-- Antes de modificar, indicar si afecta frontend, Apps Script o ambos y nombrar archivos exactos.
-- Con acceso a GitHub, hacer los cambios directamente.
-- Si Apps Script cambia, entregar un único `Code.gs` completo.
+- Antes de modificar, indicar si afecta frontend, Apps Script o ambos.
+- Con acceso a GitHub y Drive, aplicar los cambios directamente.
+- Si Apps Script cambia, conservar y entregar un único `Code.gs` completo.
 - Mantener `00_DOCUMENTACION` como fuente verdadera.
-- Diferenciar guardado, respaldado, instalado y desplegado.
+- Diferenciar guardado, respaldado, instalado, publicado y desplegado.
 - No afirmar producción sin prueba real.
-
-## Riesgo alto
-
-Analizar antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario. Nunca mover pagos entre niveles o intentos.
 
 ## Continuidad vigente
 
-- Frontend: F98.4-Z6-CS21A59.
-- Backend completo: F98.4-Z6-CS21A59.
-- Base preservada: CS21A58 / CS21A56 / CS21A46.
+- Frontend: F98.4-Z6-CS21A60 en GitHub `main`.
+- Backend completo: F98.4-Z6-CS21A60 en Drive.
 - Producción no verificada.
 
-## Recursos Didácticos
+## Inicios U01–U16
 
-- Visor base: `src/teacher_cs21a_order_fix.jsx` CS21A58.
-- Puente admin/permisos: `src/admin_resources_cs21a59.jsx`.
-- Backend lector: `teacherBooksOpenImageBook`.
-- Backend sincronizador admin: `adminBooksRefreshOpenBook`.
-- Admin y docente deben compartir la misma vista de libros y audios.
-- No mantener dos implementaciones visuales separadas.
+- Fuente única: `unitStarts` dentro del `book.json` de cada libro.
+- Alcance independiente: B1/B2/I1/I2 × SB/TB/WB.
+- Nunca volver a usar un solo mapa compartido por nivel para los tres tipos de libro.
+- Solo superadmin puede guardar cambios.
+- El botón pequeño `Actualizar` aparece debajo de cada unidad únicamente para superadmin.
+- Se guarda la hoja derecha del pliego visible; 7–8 guarda 8.
+- La hoja guardada debe existir en `pages[]`.
+- No permitir una misma hoja en dos unidades.
+- No permitir que una unidad quede antes de la anterior o después de la siguiente.
+- Conservar auditoría en `unitStartHistory`.
+- Invalidar solo la caché del libro modificado.
 
-## Permisos
+## Permisos del visor
 
-- Docente: lectura de libros y audios.
-- Admin/superadmin: lectura de libros y audios.
-- Solo admin/superadmin ve y puede ejecutar `Actualizar desde Drive`.
-- El backend debe validar el rol aunque el botón esté oculto.
-- Estudiante no forma parte de este cambio.
+- Superadmin: SB/TB/WB, sincronización y calibración.
+- Admin: SB/TB/WB y sincronización; sin calibración.
+- Docente: SB/TB/WB, solo lectura.
+- Estudiante: SB/WB de su nivel activo, solo lectura.
 
-## Actualizar desde Drive
+## Endpoints
 
-- Actualiza exclusivamente el libro abierto.
-- Nivel y tipo se resuelven desde la selección visible.
-- Recorre solo la carpeta `pages` de ese libro.
-- Ordena por el número actual del nombre WebP.
-- Reconstruye solo ese `book.json`.
-- No tocar los otros once libros.
-- No copiar, mover, renombrar ni eliminar imágenes.
-- No procesar ni modificar PDF.
-- Detectar y rechazar nombres duplicados.
-- Invalidar únicamente la caché del libro actualizado.
+- Lectura: `teacherBooksOpenImageBook`.
+- Sincronización de imágenes: `adminBooksRefreshOpenBook`.
+- Calibración de unidades: `superadminBooksSetUnitStart`.
 
-## Visor WebP
+## Integridad backend CS21A60
 
-- Emparejar por posiciones de `pages[]`: `0+1`, `2+3`, `4+5`.
-- No calcular la siguiente imagen sumando uno al nombre.
-- Si falta un número, continuar por el orden del arreglo.
-- Cargar solo dos hojas y precargar las dos siguientes.
-- U01–U16 pertenece únicamente a SB y sigue en QA.
-- El PDF oficial se usa solo para abrir o descargar.
+- Archivo: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Tamaño: `2.915.832` bytes.
+- SHA-256: `1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56`.
+- Saltos de línea: `51.143`.
+- Respaldo previo: `1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy`.
+- Copia de cierre: `1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U`.
 
-## Audios
+## Riesgo alto
 
-- B1: `1dTO0jU1cPvY69YWELAsTyd-qkQUnQbla`.
-- B2: `1VZtIb7-4qP8YUM7tqGKVTZ2CsvxXqsqT`.
-- I1: `1kjXwAfxhQTVZcXHNjYoJOtsllS5OC-7t`.
-- I2: `1_PfLqToC_QSO7OtNJLv5uY3i3Ff-YaX6`.
-
-## Regla para Code.gs
-
-1. Leer el archivo canónico de Drive.
-2. Verificar tamaño y hash.
-3. Crear respaldo antes de modificar.
-4. Trabajar sobre la versión vigente.
-5. Reemplazar el mismo archivo conservando su ID.
-6. Recalcular tamaño, líneas y SHA-256.
-7. Entregar el archivo completo.
-8. No afirmar despliegue sin prueba.
+Antes de tocar pagos, certificados, `DATOS`, `ESTATUS`, `GRUPOS`, `INTENTOS_ACADEMICOS`, CONAPE o calendario, analizar el impacto. Nunca mover pagos entre niveles o intentos.
 
 ## Reglas preservadas
 
-- Solo desembolso académico 01.
+- Solo desembolso académico 01 en seguimiento inmediato.
 - 02/03+ no cierran el 01.
-- No mover pagos entre niveles o intentos.
 - No crear triggers nuevos de CONAPE.
+- No procesar ni modificar PDF desde el sincronizador de imágenes.
