@@ -1,62 +1,62 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A59
+# FUENTE VERDADERA — F98.4-Z6-CS21A60
 
-Estado canónico: frontend CS21A59 guardado en GitHub; backend completo CS21A59 guardado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A60 guardado en GitHub `main`; backend completo CS21A60 guardado en el archivo canónico de Drive; producción no verificada.
 
-## Componentes vigentes
+## Cambio CS21A60 — inicios U01–U16 persistentes
 
-- `src/teacher_cs21a_order_fix.jsx` CS21A58: visor WebP compartido del docente.
-- `src/admin_resources_cs21a59.jsx`: Recursos Didácticos del admin y separación de permisos.
-- `campus.html`: carga CS21A59.
-- `Code.gs` completo CS21A59 en Drive.
-- Drive `LIBROS EN IMAGENES`: `1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK`.
+El inicio de cada unidad deja de depender exclusivamente de una tabla rígida dentro del frontend.
 
-## Cambio CS21A59 — Recursos Didácticos del admin
+- Cada libro conserva su propio arreglo `unitStarts` dentro de su `book.json`.
+- La configuración es independiente por nivel y tipo: B1/B2/I1/I2 × SB/TB/WB.
+- Solo `superadmin` puede modificar un inicio.
+- El superadmin navega al pliego correcto y usa el botón pequeño `Actualizar` debajo de U01–U16.
+- Se guarda la hoja derecha visible del pliego. Ejemplo: si se observan las hojas 7–8, se guarda 8.
+- Docentes, administradores y estudiantes reciben el mapa actualizado en la siguiente carga.
+- Al abrir un libro, el visor se posiciona en U01 cuando existe configuración.
+- SB conserva temporalmente el mapa anterior como fallback hasta que el libro sea calibrado.
+- TB y WB quedan sin inicio inventado hasta que el superadmin los configure.
 
-- El menú administrativo incorpora `Recursos Didácticos`.
-- Contiene `Libros de texto` y `Audios`.
-- La vista reutiliza la misma presentación visual del docente.
-- El docente ya no ve `Actualizar desde Drive`.
-- Admin y superadmin sí ven `Actualizar desde Drive`.
-- El botón opera exclusivamente sobre el nivel y tipo de libro abiertos.
-- No actualiza los otros once libros.
-- No copia, mueve, renombra ni elimina imágenes.
-- No procesa ni modifica PDF.
+## Accesos
 
-## Sincronización del libro abierto
+- Superadmin: ve Recursos Didácticos, puede navegar y guardar U01–U16.
+- Admin: ve Recursos Didácticos y puede actualizar el listado de imágenes desde Drive; no puede cambiar unidades.
+- Docente: consulta SB/TB/WB sin controles administrativos.
+- Estudiante: consulta SB/WB de su nivel activo; no ve controles de actualización.
 
-Endpoint: `adminBooksRefreshOpenBook`.
+## Validaciones
 
-- Recorre la carpeta `pages` del libro abierto.
-- Ordena los WebP por el número actual del nombre del archivo.
-- Reconstruye únicamente el arreglo `pages[]` de ese `book.json`.
-- `displayIndex` vuelve a quedar consecutivo.
-- `sourcePage` conserva el número detectado en el nombre.
-- Invalida solo la caché del nivel/tipo actualizado.
-- Rechaza nombres WebP duplicados.
-- Requiere rol `admin` o `superadmin`.
+Endpoint nuevo: `superadminBooksSetUnitStart`.
 
-## Audios
+- Requiere rol exacto `superadmin` en backend.
+- Verifica que la hoja exista en el `book.json` abierto.
+- Rechaza una misma hoja asignada a dos unidades.
+- Rechaza un orden incoherente respecto a las unidades anterior y siguiente.
+- Usa bloqueo para evitar escrituras simultáneas.
+- Registra historial de cambios dentro del manifiesto.
+- Invalida únicamente la caché del libro modificado.
 
-Carpetas oficiales:
+`adminBooksRefreshOpenBook` se conserva y no elimina `unitStarts`.
 
-- B1: `1dTO0jU1cPvY69YWELAsTyd-qkQUnQbla`.
-- B2: `1VZtIb7-4qP8YUM7tqGKVTZ2CsvxXqsqT`.
-- I1: `1kjXwAfxhQTVZcXHNjYoJOtsllS5OC-7t`.
-- I2: `1_PfLqToC_QSO7OtNJLv5uY3i3Ff-YaX6`.
+## Frontend vigente
 
-## Integridad backend
+- `src/teacher_cs21a_order_fix.jsx`: base visual preservada CS21A58.
+- `src/admin_resources_cs21a59.jsx`: panel administrativo preservado.
+- `src/admin_resources_superadmin_cs21a60.jsx`: acceso real de superadmin al panel.
+- `src/book_unit_starts_cs21a60.jsx`: visor compartido y calibración U01–U16.
+- `campus.html`: carga CS21A60.
 
-- Archivo canónico: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
-- Tamaño: `2.906.208` bytes.
-- SHA-256: `a3a4b2423c274833deb2f2d4d30859a85e7b1676779b371c395d244f4ab6773d`.
-- Saltos de línea: `50.867`.
-- Respaldo previo CS21A58: `1yHzOKu0o1kx5SIxI2w2bqW-pxvsMx0Ls`.
-- Copia de cierre CS21A59: `1hT1VgtNcA3eRmw6-_HaWv0s95743PUq8`.
+## Backend canónico
+
+- Archivo Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Tamaño: `2.915.832` bytes.
+- Saltos de línea: `51.143`.
+- SHA-256: `1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56`.
+- Respaldo previo CS21A59: `1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy`.
+- Copia de cierre CS21A60: `1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U`.
 
 ## Reglas preservadas
 
-- Solo desembolso académico `01` en Seguimiento inmediato.
-- `02/03+` no cierran el `01`.
-- Nunca mover pagos entre niveles o intentos.
-- No modificar pagos, certificados, CONAPE, calendario ni hojas académicas para este cambio.
-- Guardado no significa desplegado.
+- No mover pagos entre niveles o intentos.
+- No modificar pagos, certificados, CONAPE, calendario ni hojas académicas.
+- No crear triggers nuevos de CONAPE.
+- Guardado no significa instalado ni desplegado.
