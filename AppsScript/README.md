@@ -2,9 +2,9 @@
 
 ## Versión canónica
 
-`F98.4-Z6-CS21A56`
+`F98.4-Z6-CS21A58`
 
-Base preservada: `F98.4-Z6-CS21A46`. Versión anterior preservada: `F98.4-Z6-CS21A55`.
+Base preservada: `F98.4-Z6-CS21A56` y `F98.4-Z6-CS21A46`.
 
 El archivo productivo se reemplaza siempre completo. El backend grande se conserva en Drive y no se almacena dentro de GitHub.
 
@@ -15,47 +15,62 @@ El archivo productivo se reemplaza siempre completo. El backend grande se conser
 - Carpeta de respaldos: `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`
 - Manifiesto operativo de Drive: `README_BACKEND_ACTUAL.txt`
 
-## Integridad CS21A56
+## Integridad CS21A58
 
-- Tamaño: `2,889,401` bytes
-- SHA-256: `eef075af1db53608b68f9a76ad0ea5ba4440c0a20bed8a545c62a99cab2d9a2c`
-- Saltos de línea: `50,291`
+- Tamaño: `2.899.463` bytes
+- SHA-256: `d3505496b8e953d4fd0849a7a5af102760a452caa43d41bc9a7055006897ca87`
+- Saltos de línea: `50.623`
 - Sintaxis: validada mediante copia JavaScript y `node --check`.
 - Producción: no verificada.
 
-## Cambio backend CS21A56
+## Respaldos
 
-- Conserva `teacherBooksOpenPdf` y `teacherBooksReadRange`.
-- Resuelve el archivo en vivo dentro de la carpeta oficial.
-- B1/SB prioriza `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF` mientras permanezca dentro de `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
-- Continúa excluyendo ORIGINAL, COPIA, COPY, BACKUP, RESPALDO, OLD y ANTIGUO.
+- Antes del cambio: `Code_F98_4_Z6_CS21A56_COMPLETO_ANTES_CS21A58_2026-07-12.gs`
+- Drive ID: `15Yq5aAbxMwvKKZo6e4Vg7kgw7axv5yra`
+- Copia de cierre: `Code_F98_4_Z6_CS21A58_IMAGE_BOOKS_COMPLETO_2026-07-12.gs`
+- Drive ID: `1FDjvFP3_suvo_1k2Y8xa_59kyJ_yg9yb`
+
+## Cambio backend CS21A58
+
+- Añade `teacherBooksOpenImageBook`.
+- Lee el `book.json` correspondiente al nivel y tipo.
+- Recorre la carpeta `pages` y asocia cada nombre con su ID real de Drive.
+- Devuelve las páginas en el orden exacto de `pages[]`.
+- No supone numeración consecutiva.
+- Devuelve URL principal y URL alternativa por imagen.
+- Devuelve Abrir/Descargar usando el PDF oficial de la carpeta académica.
+- Usa caché temporal del manifiesto; `force=true` la invalida.
+- Docente/admin puede abrir SB, TB y WB.
+- Estudiante puede abrir SB y WB; TB queda bloqueado.
+- Conserva `teacherBooksOpenPdf` y `teacherBooksReadRange` por compatibilidad.
 - Es un cambio de solo lectura.
 - No modifica pagos, certificados, CONAPE, calendario, DATOS, ESTATUS, GRUPOS ni INTENTOS_ACADEMICOS.
 
+## Drive de imágenes
+
+- Carpeta raíz: `1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK`
+- Catálogo general: `1UTeCZQpLoEsdJkm3_kQRqni19uuZBTuO`
+- Total: `2.051` páginas WebP
+- B1: `492`; B2: `528`; I1: `514`; I2: `517`
+- B1 SB/TB/WB ya tienen el mismo esquema de manifiesto que los demás niveles.
+
 ## Frontend relacionado
 
-F98.4-Z6-CS21A57 modifica únicamente:
+F98.4-Z6-CS21A58 modifica:
 
 - `src/teacher_cs21a_order_fix.jsx`
 - `campus.html`
 
-CS21A57 no cambia Apps Script. Corrige el armado de pliegos:
-
-- todo libro inicia en PDF 1;
-- portada sola a la derecha;
-- siguientes pliegos 2–3, 4–5, 6–7;
-- U01 brilla hasta la primera selección;
-- desfases reales: B1 `+5`, B2 `+20`, I1 `+6`, I2 `+8`;
-- B1 U01 muestra pliego 6–7.
+El frontend ya no carga PDF.js. Renderiza dos imágenes, precarga las dos siguientes, empareja por orden del arreglo y conserva zoom, navegación, pantalla completa, actualización y descarga del PDF oficial.
 
 ## Forma obligatoria de trabajo
 
 1. Leer el archivo canónico anterior desde Drive.
 2. Verificar tamaño y hash.
-3. Crear copia versionada en la carpeta de respaldos antes de modificar backend.
+3. Crear respaldo antes de modificar backend.
 4. Reemplazar los bytes del mismo archivo canónico conservando su ID.
-5. Recalcular tamaño y SHA-256.
-6. Entregar un único `Code.gs` completo cuando cambie Apps Script.
+5. Recalcular tamaño, saltos de línea y SHA-256.
+6. Entregar un único `Code.gs` completo.
 7. No afirmar despliegue sin prueba real.
 
 ## Funciones preservadas
