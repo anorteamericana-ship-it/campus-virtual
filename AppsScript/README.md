@@ -2,9 +2,9 @@
 
 ## Versión canónica
 
-`F98.4-Z6-CS21A58`
+`F98.4-Z6-CS21A59`
 
-Base preservada: `F98.4-Z6-CS21A56` y `F98.4-Z6-CS21A46`.
+Base preservada: `F98.4-Z6-CS21A58`, `F98.4-Z6-CS21A56` y `F98.4-Z6-CS21A46`.
 
 El archivo productivo se reemplaza siempre completo. El backend grande se conserva en Drive y no se almacena dentro de GitHub.
 
@@ -13,62 +13,71 @@ El archivo productivo se reemplaza siempre completo. El backend grande se conser
 - Carpeta de trabajo: `1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a`
 - Archivo vigente `Code.gs`: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`
 - Carpeta de respaldos: `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`
-- Manifiesto operativo de Drive: `README_BACKEND_ACTUAL.txt`
+- Manifiesto operativo: `README_BACKEND_ACTUAL.txt`
 
-## Integridad CS21A58
+## Integridad CS21A59
 
-- Tamaño: `2.899.463` bytes
-- SHA-256: `d3505496b8e953d4fd0849a7a5af102760a452caa43d41bc9a7055006897ca87`
-- Saltos de línea: `50.623`
+- Tamaño: `2.906.208` bytes
+- SHA-256: `a3a4b2423c274833deb2f2d4d30859a85e7b1676779b371c395d244f4ab6773d`
+- Saltos de línea: `50.867`
 - Sintaxis: validada mediante copia JavaScript y `node --check`.
 - Producción: no verificada.
 
 ## Respaldos
 
-- Antes del cambio: `Code_F98_4_Z6_CS21A56_COMPLETO_ANTES_CS21A58_2026-07-12.gs`
-- Drive ID: `15Yq5aAbxMwvKKZo6e4Vg7kgw7axv5yra`
-- Copia de cierre: `Code_F98_4_Z6_CS21A58_IMAGE_BOOKS_COMPLETO_2026-07-12.gs`
-- Drive ID: `1FDjvFP3_suvo_1k2Y8xa_59kyJ_yg9yb`
+- Previo CS21A58: `1yHzOKu0o1kx5SIxI2w2bqW-pxvsMx0Ls`
+- Copia de cierre CS21A59: `1hT1VgtNcA3eRmw6-_HaWv0s95743PUq8`
 
-## Cambio backend CS21A58
+## Cambio backend CS21A59
 
-- Añade `teacherBooksOpenImageBook`.
-- Lee el `book.json` correspondiente al nivel y tipo.
-- Recorre la carpeta `pages` y asocia cada nombre con su ID real de Drive.
-- Devuelve las páginas en el orden exacto de `pages[]`.
-- No supone numeración consecutiva.
-- Devuelve URL principal y URL alternativa por imagen.
-- Devuelve Abrir/Descargar usando el PDF oficial de la carpeta académica.
-- Usa caché temporal del manifiesto; `force=true` la invalida.
-- Docente/admin puede abrir SB, TB y WB.
-- Estudiante puede abrir SB y WB; TB queda bloqueado.
-- Conserva `teacherBooksOpenPdf` y `teacherBooksReadRange` por compatibilidad.
-- Es un cambio de solo lectura.
-- No modifica pagos, certificados, CONAPE, calendario, DATOS, ESTATUS, GRUPOS ni INTENTOS_ACADEMICOS.
+Nuevo endpoint:
 
-## Drive de imágenes
+`adminBooksRefreshOpenBook`
 
-- Carpeta raíz: `1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK`
-- Catálogo general: `1UTeCZQpLoEsdJkm3_kQRqni19uuZBTuO`
-- Total: `2.051` páginas WebP
-- B1: `492`; B2: `528`; I1: `514`; I2: `517`
-- B1 SB/TB/WB ya tienen el mismo esquema de manifiesto que los demás niveles.
+Comportamiento:
+
+- Requiere rol `admin` o `superadmin`.
+- Recibe nivel y tipo del libro abierto.
+- Lee únicamente la carpeta `pages` de ese libro.
+- Ordena los WebP por el número actual del nombre del archivo.
+- Reconstruye únicamente el arreglo `pages[]` del `book.json` seleccionado.
+- Asigna `displayIndex` consecutivo.
+- Conserva en `sourcePage` el número detectado en el nombre.
+- Invalida solo la caché del nivel/tipo actualizado.
+- Devuelve el manifiesto actualizado para recargar el visor.
+- Usa bloqueo para evitar escrituras simultáneas.
+- Rechaza nombres WebP duplicados.
+
+No hace lo siguiente:
+
+- No copia imágenes.
+- No mueve imágenes.
+- No renombra imágenes.
+- No elimina imágenes.
+- No procesa ni modifica PDF.
+- No toca los otros once libros.
+- No modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
+
+## Endpoints preservados
+
+- `teacherBooksOpenImageBook`
+- `teacherBooksOpenPdf`
+- `teacherBooksReadRange`
 
 ## Frontend relacionado
 
-F98.4-Z6-CS21A58 modifica:
-
-- `src/teacher_cs21a_order_fix.jsx`
+- `src/admin_resources_cs21a59.jsx`
 - `campus.html`
+- `src/teacher_cs21a_order_fix.jsx` continúa como visor base CS21A58.
 
-El frontend ya no carga PDF.js. Renderiza dos imágenes, precarga las dos siguientes, empareja por orden del arreglo y conserva zoom, navegación, pantalla completa, actualización y descarga del PDF oficial.
+El admin recibe Recursos Didácticos con Libros de texto y Audios. Solo el admin ve el botón de sincronización. El docente mantiene la misma vista sin ese control administrativo.
 
 ## Forma obligatoria de trabajo
 
 1. Leer el archivo canónico anterior desde Drive.
 2. Verificar tamaño y hash.
-3. Crear respaldo antes de modificar backend.
-4. Reemplazar los bytes del mismo archivo canónico conservando su ID.
+3. Crear respaldo antes de modificar.
+4. Reemplazar el mismo archivo conservando su ID.
 5. Recalcular tamaño, saltos de línea y SHA-256.
 6. Entregar un único `Code.gs` completo.
 7. No afirmar despliegue sin prueba real.
