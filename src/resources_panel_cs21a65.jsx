@@ -26,7 +26,8 @@
   }
 
   function currentRole(props) {
-    return String(props?.role || currentSession()?.rol || currentSession()?.role || '').trim().toLowerCase();
+    const user = currentSession();
+    return String(user?.rol || user?.role || props?.rolReal || props?.role || '').trim().toLowerCase();
   }
 
   function normalizeStoredRoutes() {
