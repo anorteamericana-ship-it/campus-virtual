@@ -2,9 +2,9 @@
 
 ## Versión canónica
 
-`F98.4-Z6-CS21A60`
+`F98.4-Z6-CS21A64`
 
-Base preservada: `F98.4-Z6-CS21A59`, `F98.4-Z6-CS21A58`, `F98.4-Z6-CS21A56` y `F98.4-Z6-CS21A46`.
+Base preservada: `F98.4-Z6-CS21A60`, `F98.4-Z6-CS21A59`, `F98.4-Z6-CS21A58`, `F98.4-Z6-CS21A56` y `F98.4-Z6-CS21A46`.
 
 El archivo productivo se reemplaza siempre completo. El backend grande se conserva en Drive y no se almacena dentro de GitHub.
 
@@ -14,58 +14,59 @@ El archivo productivo se reemplaza siempre completo. El backend grande se conser
 - Archivo vigente `Code.gs`: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
 - Carpeta de respaldos: `1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr`.
 
-## Integridad CS21A60
+## Integridad CS21A64
 
-- Tamaño: `2.915.832` bytes.
-- SHA-256: `1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56`.
-- Saltos de línea: `51.143`.
+- Tamaño: `2.923.949` bytes.
+- SHA-256: `d5217ceb90a4716c9161284a81c242a238649ed034bb97a36657716c6593feda`.
+- Saltos de línea: `51.362`.
 - Sintaxis: validada mediante copia JavaScript y `node --check`.
+- Lógica de secuencia: validada con U01=27; 4 clics → U02=35/U03=43; 3 clics → U02=33/U03=39.
 - Producción: no verificada.
 
-## Respaldos
+## Respaldos CS21A64
 
-- Previo CS21A59: `1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy`.
-- Copia de cierre CS21A60: `1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U`.
+- Copia previa a CS21A64: `1-AbtbfF3tH04eOl33w7mD2k_L7hPhCG1`.
+- Copia de cierre CS21A64: `1GOKIBd7Z6zabkj8ElQHIIbTQ_Y9wa4DL`.
 
-## Cambio backend CS21A60
-
-Endpoint nuevo:
+## Endpoint preservado y ampliado
 
 `superadminBooksSetUnitStart`
 
-Comportamiento:
+Modo individual preservado:
 
-- Requiere rol exacto `superadmin`.
 - Recibe nivel, tipo de libro, unidad y página fuente visible.
-- Actualiza únicamente una posición de `unitStarts` en el `book.json` abierto.
-- Verifica que la página exista dentro de `pages[]`.
-- Rechaza páginas duplicadas entre unidades.
-- Rechaza un orden incoherente con las unidades anterior y siguiente.
-- Guarda fecha, usuario, rol e historial del cambio.
+- Actualiza únicamente la unidad seleccionada.
+- Se usa cuando `propagate_following` no existe o es falso.
+
+Modo de propagación CS21A64:
+
+- Requiere `propagate_following=true`.
+- Requiere `clicks_between_units` como entero mayor o igual a 1.
+- Cada clic representa dos posiciones del arreglo real de páginas.
+- Recalcula desde la unidad seleccionada hasta U16.
+- Conserva intactas las unidades anteriores.
+- Valida toda la secuencia antes de escribir.
+- Rechaza páginas inexistentes, duplicadas, fuera de orden o fuera del libro.
+- Si alguna validación falla, no escribe ningún cambio.
+- Realiza una sola escritura de `book.json` bajo bloqueo.
+- Registra cada unidad modificada en `unitStartHistory`.
 - Conserva como máximo 100 entradas de historial.
 - Invalida únicamente la caché del libro actualizado.
-- Devuelve el manifiesto actualizado para recargar el visor.
-- Usa bloqueo para evitar escrituras simultáneas.
-
-No hace lo siguiente:
-
-- No copia imágenes.
-- No mueve imágenes.
-- No renombra imágenes.
-- No elimina imágenes.
-- No procesa ni modifica PDF.
-- No toca otros libros.
-- No modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
 
 ## Regla de página guardada
 
 El frontend envía la hoja derecha del pliego visible.
 
-Ejemplo:
+Ejemplo individual:
 
 - Pliego visible: 7–8.
-- Valor guardado para U01: 8.
-- En la próxima carga, el visor busca la hoja 8 y reconstruye el mismo pliego 7–8.
+- Valor guardado: 8.
+
+Ejemplo propagado:
+
+- U01 inicia en hoja 27.
+- 4 clics de Siguiente: U02=35, U03=43.
+- 3 clics de Siguiente: U02=33, U03=39.
 
 ## Endpoints preservados
 
@@ -73,6 +74,8 @@ Ejemplo:
 - `adminBooksRefreshOpenBook`.
 - `teacherBooksOpenPdf`.
 - `teacherBooksReadRange`.
+- `getBibliotecaNivelEstudiante`.
+- `getAudioPistaEstudiante`.
 
 `adminBooksRefreshOpenBook` reconstruye únicamente `pages[]` y preserva `unitStarts` y `unitStartHistory`.
 
@@ -80,6 +83,10 @@ Ejemplo:
 
 - `src/admin_resources_superadmin_cs21a60.jsx`.
 - `src/book_unit_starts_cs21a60.jsx`.
+- `src/admin_resources_runtime_cs21a61.jsx`.
+- `src/book_page_turn_cs21a62.js`.
+- `src/book_inline_audio_cs21a63.js`.
+- `src/book_unit_propagation_cs21a64.js`.
 - `campus.html`.
 
 ## Forma obligatoria de trabajo
