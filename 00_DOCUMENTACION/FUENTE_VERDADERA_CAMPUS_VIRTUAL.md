@@ -1,8 +1,24 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A61
+# FUENTE VERDADERA — F98.4-Z6-CS21A62
 
-Estado canónico: frontend CS21A61 guardado en GitHub `main`; backend completo CS21A60 preservado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A62 guardado en GitHub `main`; backend completo CS21A60 preservado en el archivo canónico de Drive; producción no verificada.
 
-## Hotfix CS21A61 — arranque estable de Recursos Didácticos
+## Cambio CS21A62 — efecto de paso de hoja
+
+El visor compartido de libros incorpora una animación de hoja física al navegar.
+
+- `Siguiente`: gira la hoja derecha hacia la izquierda.
+- `Anterior`: gira la hoja izquierda hacia la derecha.
+- U01–U16: aplica el giro según la dirección del salto.
+- Duración aproximada: 680 ms.
+- Incluye perspectiva 3D, sombra dinámica, cara posterior tenue y pulso del lomo.
+- El efecto se dibuja fuera del árbol controlado por React para evitar interferencias con el cambio real de páginas.
+- Respeta `prefers-reduced-motion`; cuando el equipo solicita menos movimiento, la navegación continúa sin animación.
+- Funciona en superadmin, admin, docente y estudiante porque se aplica sobre el visor compartido.
+- Es exclusivamente frontend; no modifica `Code.gs`, manifiestos de libros, permisos ni configuraciones U01–U16.
+
+Archivo nuevo: `src/book_page_turn_cs21a62.js`.
+
+## Hotfix preservado CS21A61 — arranque estable de Recursos Didácticos
 
 Síntoma confirmado en superadmin: `No se pudo cargar Recursos Didácticos.`
 
@@ -63,7 +79,8 @@ Endpoint: `superadminBooksSetUnitStart`.
 - `src/admin_resources_superadmin_cs21a60.jsx`: acceso real de superadmin al panel.
 - `src/book_unit_starts_cs21a60.jsx`: visor compartido y calibración U01–U16.
 - `src/admin_resources_runtime_cs21a61.jsx`: carga diferida estable del panel.
-- `campus.html`: carga CS21A61 después de CS21A60.
+- `src/book_page_turn_cs21a62.js`: animación 3D de paso de hoja.
+- `campus.html`: carga CS21A62 después de CS21A61.
 
 ## Backend canónico preservado
 
