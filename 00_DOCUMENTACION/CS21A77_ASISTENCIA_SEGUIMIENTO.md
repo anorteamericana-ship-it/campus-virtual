@@ -22,6 +22,7 @@ No crea una segunda base ni recalcula notas oficiales.
 - selector de grupo;
 - indicadores de estudiantes, asistencia, notas y avance;
 - gráfico circular y distribución de asistencia;
+- gráfico de tendencia de presentes por clase, diferenciando curso e I CAN;
 - señales visuales informativas de seguimiento;
 - buscador por nombre, código o cédula;
 - ficha individual del estudiante;
