@@ -1,130 +1,140 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral/frontend:** F98.4-Z6-CS21A70  
+**Versión integral/frontend:** F98.4-Z6-CS21A71  
 **Backend fuente canónica en Drive:** F98.4-Z6-CS21A70  
 **Backend Apps Script publicado:** no verificado  
-**Base preservada:** CS21A69 / CS21A68 / CS21A67 / CS21A66 / CS21A65 / CS21A64  
+**Base preservada:** CS21A70 / CS21A69 / CS21A68 / CS21A67 / CS21A66 / CS21A65  
 **Producción:** no verificada  
 **Corte:** 12-jul-2026
 
-## Cambio vigente CS21A70 — Panel Maestro CONAPE
+## Cambio vigente CS21A71 — Prematrícula activa y English LAB
 
-Se mejora la tabla `Seguimiento inmediato · Desembolsos académicos 01` del Panel Maestro del superadmin.
+### Menú lateral estable
 
-### Buscador
+La prematrícula ya no pasa por el normalizador académico de Recursos Didácticos.
 
-Busca sobre las filas ya cargadas por:
+Antes, CS21A65 modificaba temporalmente el menú estudiantil, renombraba `Mi curso` como `Libros y Audios`, insertaba `Recursos Didácticos` y luego otros controles retiraban esas opciones. Esa competencia producía el parpadeo.
 
-- Código del estudiante.
-- Cédula.
-- Número telefónico.
-- Nombre completo.
+CS21A71 envuelve el Sidebar antes de montar `App` y, cuando la sesión corresponde a una prematrícula sin código, renderiza directamente el menú original de prematrícula.
 
-La búsqueda ignora mayúsculas, tildes, espacios y formatos del teléfono.
+Resultado esperado:
 
-### Orden y filtros
+- El panel izquierdo aparece una sola vez.
+- No aparecen temporalmente Libros y Audios, Recursos adicionales ni módulos académicos.
+- English LAB mantiene una posición estable.
+- Los botones bloqueados de la prematrícula permanecen sin cambios.
 
-Las seis columnas se pueden ordenar desde el encabezado:
+Archivo nuevo:
 
-- Código.
-- Estudiante.
-- Resumen académico.
-- Movimiento.
-- Periodo / nivel.
-- WhatsApp.
+- `src/prematricula_english_lab_ui_cs21a71.js`
 
-También se agregan filtros por:
+Carga desde:
 
-- Movimiento.
-- Nivel, incluido `Sin nivel enlazado`.
-- Estado del resumen académico.
-- Periodo.
-- Estado de WhatsApp: disponible, sin teléfono o cerrado.
+- `src/resources_panel_state_cs21a65.js`, cuyo contenido vigente es CS21A71.
 
-### Movimiento
+### Verificación de English LAB
 
-- Se elimina la etiqueta visual `Sin fila`.
-- La ausencia de fila en `7-morosidad` no se presenta como problema académico.
-- Cuando corresponde, se muestra `Desembolso adelantado` como detalle visible.
-- `Mora SI` y `Mora NO` siguen apareciendo únicamente cuando existe una fila oficial que lo confirma.
+`src/english_lab_free_access_cs21a66.js` conserva su ruta histórica, pero su contenido vigente es CS21A71.
 
-### Periodo / nivel
+Cambios:
 
-La primera línea muestra el desembolso académico principal 01 completo y la fecha en que fue detectado:
+- Se elimina completamente la revalidación asociada al evento `focus`.
+- No se vuelve a verificar al tocar la pantalla, navegar o regresar a la ventana.
+- El resultado se conserva 30 minutos dentro de la misma sesión.
+- Los campos de autorización incluidos en la sesión se usan inmediatamente.
+- Durante una única comprobación inicial, el botón permanece visible pero bloqueado; no desaparece y reaparece.
+- Una falla temporal de red no tapa English LAB cuando el acceso ya estaba autorizado.
+- Solo `an:session-changed` o una nueva solicitud de prematrícula pueden iniciar otra revisión legítima.
 
-`01/09/2026 - D-10/07`
+### Sincronización con Prematrícula activa
 
-Si posteriormente aparece otro desembolso del mismo estudiante y periodo, se muestra debajo en menor tamaño:
+`src/prospect_free_student.jsx` usa la misma decisión de acceso que el menú y la compuerta.
 
-`02/09/2026 · D-12/07`
+- `freeUserMiPerfil.acceso_english_lab` alimenta el control global.
+- El botón `Entrar a English LAB` y la opción lateral aparecen con la misma autorización.
+- El estado comercial `CONVERTIDA` no reemplaza la autorización real.
 
-Regla preservada:
+### Visual de English LAB
 
-- Solo 01 crea y cierra seguimiento académico.
-- 02, 03 y superiores son contexto visual.
-- 02+ no aplican pagos, no cierran el 01, no cambian morosidad y no alteran estados académicos.
+Para una prematrícula sin código se ocultan únicamente:
 
-## Backend CS21A70
+- Mapa de progreso.
+- Banco curricular.
+- Áreas cognitivas demo.
 
-Se modifica únicamente `_conapeAxAugmentMaster_` para adjuntar a cada fila 01 el arreglo `periodMovements` del mismo `cedula + mes + año`.
+Se conserva el resto del contenido y el título `Catálogo demo`.
 
-Cada elemento contextual contiene:
+La ocultación se instala antes del primer pintado mediante el atributo `data-an-student-kind="prematricula"`, evitando que esos paneles aparezcan brevemente.
 
-- Número de desembolso.
-- Código de dos dígitos.
-- Mes y año del periodo.
-- Fecha y orden de detección.
-- Tipo de movimiento.
-- Indicador de desembolso adelantado.
+Cuando la sesión ya tiene un código real de estudiante:
 
-Integridad:
+- El código tiene prioridad sobre cualquier marca antigua de prematrícula.
+- La sesión local deja de tratarse como usuario gratis.
+- El catálogo cambia a `Catálogo Básico I`, `Catálogo Básico II`, `Catálogo Intermedio I` o `Catálogo Intermedio II`, según el nivel oficial.
+- El catálogo aparece primero.
+- Debajo aparecen Mapa de progreso, Banco curricular y Áreas cognitivas del nivel.
 
-- Archivo: `Code_F98_4_Z6_CS21A70_COMPLETO.gs`
-- Tamaño: `2.938.302` bytes
-- Saltos de línea: `51.714`
-- SHA-256: `278cd64101c99abc6ecfc0e30ea4f6560fd3555c8c923756f7947d2e0ad26c28`
-- Sintaxis: validada con `node --check`.
-- Archivo canónico de Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
-- Respaldo previo: `1LbyMht5DGmF9icVR8iUW96q85sAEI6T0`.
-- Copia de cierre: `1NoOW-dV-izB353Hkxtke9--XG5ZveauO`.
+## Backend
 
-La copia descargada desde Drive coincide byte por byte con el archivo local CS21A70.
+CS21A71 es únicamente frontend. No modifica `Code.gs`.
 
-## Frontend CS21A70
+El backend canónico continúa en CS21A70:
 
-Archivo modificado:
+- Archivo de Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Tamaño: `2.938.302` bytes.
+- SHA-256: `278cd64101c99abc6ecfc0e30ea4f6560fd3555c8c923756f7947d2e0ad26c28`.
 
-- `src/admin_master_conape_movements_cs21a25.jsx`.
+Se preserva la autorización real mediante `PROSPECTOS.INICIO_GRATUITO_AUTORIZADO` y el endpoint `freeUserEnglishLabAccess` ya incluido en el backend.
 
-Su nombre histórico se conserva porque `campus.html` ya lo carga. El contenido vigente declara `BUILD = F98.4-Z6-CS21A70`.
+## Archivos frontend CS21A71
 
-Validación:
+- Nuevo: `src/prematricula_english_lab_ui_cs21a71.js`.
+- Modificado: `src/english_lab_free_access_cs21a66.js`.
+- Modificado: `src/prospect_free_student.jsx`.
+- Modificado: `src/resources_panel_state_cs21a65.js`.
 
-- JSX analizado sin errores mediante Tree-sitter JavaScript/JSX.
-- No se modifica `campus.html`.
-- No se modifica la visual de libros, audios ni Recursos adicionales.
-
-## Cambio preservado CS21A69
-
-Se mantiene la selección azul única del menú lateral para estudiante, docente, admin y superadmin.
+No se modificó `campus.html`, `academia_play.jsx` ni `Code.gs`.
 
 ## Prueba inmediata
 
-1. Copiar el `Code.gs` completo CS21A70 en Apps Script y publicar una nueva versión.
-2. Actualizar el frontend y hacer `Ctrl + F5`.
-3. Abrir `Panel Maestro → CONAPE`.
-4. Buscar un estudiante por nombre, código, cédula y teléfono.
-5. Ordenar desde cada uno de los seis encabezados.
-6. Probar los filtros de movimiento, nivel, estado académico, periodo y WhatsApp.
-7. Confirmar que ninguna fila muestre `Sin fila`.
-8. Confirmar que un caso adelantado muestre `Desembolso adelantado`.
-9. Confirmar el formato principal `01/MM/AAAA - D-DD/MM`.
-10. Usar un periodo que tenga 02 o superior y confirmar que aparece debajo en pequeño.
-11. Confirmar que 02+ no modifica el estado pendiente/cerrado del 01.
+### Prematrícula autorizada
+
+1. Cerrar sesión.
+2. Hacer `Ctrl + F5`.
+3. Entrar con una prematrícula que tenga `INICIO_GRATUITO_AUTORIZADO = SI`.
+4. Confirmar que el menú aparece estable y no muestra Recursos Didácticos temporalmente.
+5. Confirmar que English LAB aparece sin tener que usar primero el botón central.
+6. Navegar y tocar repetidamente la pantalla: no debe reaparecer `Verificando acceso`.
+7. Entrar a English LAB y confirmar que no aparecen Mapa de progreso, Banco curricular ni Áreas cognitivas demo.
+8. Confirmar que `Catálogo demo` y el resto de la experiencia siguen visibles.
+
+### Prematrícula no autorizada
+
+1. Entrar con una prematrícula sin autorización.
+2. English LAB puede mostrarse bloqueado únicamente durante la primera comprobación.
+3. Tras confirmar que no está autorizada, el acceso desaparece.
+4. Una ruta manual debe mostrar el mensaje de aprobación pendiente.
+
+### Estudiante matriculado
+
+1. Matricular a la persona y asignarle código real.
+2. Cerrar sesión y volver a entrar.
+3. Confirmar que ya recibe el panel estudiantil real.
+4. Abrir English LAB.
+5. Confirmar `Catálogo Básico I` o el nivel oficial correspondiente.
+6. Confirmar que debajo aparecen Mapa de progreso, Banco curricular y Áreas cognitivas.
+
+## Cambios preservados
+
+- CS21A70: Panel Maestro CONAPE buscable y contexto de desembolsos 01/02/03.
+- CS21A69: selección azul única del menú lateral.
+- CS21A68: Recursos adicionales como panel independiente.
+- CS21A67: árbol de Recursos adicionales y carga sin biblioteca anterior.
+- Libros y Audios, audios, PDF, zoom, paso de hoja y U01–U16.
 
 ## Reglas preservadas
 
 - Nunca mover pagos entre niveles o intentos.
-- No modificar `CONAPE_SYNC`, `CONAPE_MOVIMIENTOS_LOG`, DATOS, ESTATUS ni `7-morosidad` desde esta pantalla.
+- No modificar pagos, certificados, CONAPE, calendario, DATOS ni ESTATUS.
 - No crear automatizaciones ni triggers nuevos de CONAPE.
 - No declarar producción verificada sin realizar la prueba anterior.
