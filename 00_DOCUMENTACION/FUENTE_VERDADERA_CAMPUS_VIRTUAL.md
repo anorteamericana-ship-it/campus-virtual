@@ -1,34 +1,53 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A57
+# FUENTE VERDADERA — F98.4-Z6-CS21A58
 
-Estado canónico: frontend CS21A57 guardado en GitHub; backend completo CS21A56 conservado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A58 guardado en GitHub; backend completo CS21A58 guardado en el archivo canónico de Drive; producción no verificada.
 
 ## Componentes vigentes
 
 - `src/teacher_cs21a_order_fix.jsx`
 - `campus.html`
-- `Code.gs` completo CS21A56 de Drive, sin cambios en esta entrega
+- `Code.gs` completo CS21A58 de Drive
+- Drive `LIBROS EN IMAGENES`: `1nw_kPwqWDWdnP-5M3E9B57Q0nmyUCdDK`
+- Catálogo general: `1UTeCZQpLoEsdJkm3_kQRqni19uuZBTuO`
 
-## Cambio CS21A57 — pliegos físicos y unidades reales
+## Cambio CS21A58 — visor WebP por orden de manifiesto
 
-- Todo SB/TB/WB inicia en la portada PDF 1.
-- La portada se muestra sola a la derecha; no se empareja con PDF 2.
-- La navegación continúa con pliegos 2–3, 4–5, 6–7, etc.
-- Esto elimina el corrimiento visual atribuido a una segunda página duplicada.
-- En Student Book, U01 parpadea hasta que el docente seleccione una unidad.
-- Al cambiar nivel o tipo de libro se vuelve a PDF 1 y se reactiva la invitación de U01.
-- Las páginas impresas de Apollo G3 se conservan, pero cada PDF usa su desfase real:
-  - B1 `+5`
-  - B2 `+20`
-  - I1 `+6`
-  - I2 `+8`
-- B1 U01 apunta a PDF 7 y se visualiza como pliego 6–7.
-- U01–U16 solo aparece en Student Book.
-- Apps Script no cambia; permanecen `teacherBooksOpenPdf` y `teacherBooksReadRange` de CS21A56.
+- Sustituye el renderizado PDF.js por páginas WebP.
+- `campus.html` deja de cargar PDF.js.
+- El visor carga únicamente las dos hojas visibles y precarga las dos siguientes.
+- Los pliegos se forman por posición de `pages[]`: `0+1`, `2+3`, `4+5`, etc.
+- No se supone que los nombres de archivo sean consecutivos.
+- Todo libro inicia mostrando las primeras dos entradas del arreglo.
+- U01 brilla hasta que el docente seleccione una unidad.
+- U01–U16 aparece solamente en Student Book.
+- El mapa de unidades es provisional por nivel y debe verificarse visualmente.
+- El botón Descargar PDF continúa usando el PDF oficial de la carpeta académica original.
+- `Actualizar desde Drive` invalida el manifiesto en caché.
 
-## Fuente Drive vigente
+## Backend
 
-- Carpeta oficial B1: `1GR4mLaR5wVpoFJ78P8j5KS--DCXwWyHH`.
-- Student Book B1 activo: `Interchange 5th intro-SB.pdf`, ID `1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF`.
+- Endpoint nuevo: `teacherBooksOpenImageBook`.
+- Lee `book.json`, recorre la carpeta `pages` y devuelve los IDs/URLs de las imágenes.
+- Docente/admin: SB, TB y WB.
+- Estudiante: SB y WB; TB bloqueado.
+- Los endpoints PDF anteriores se conservan, pero el frontend CS21A58 ya no los usa.
+- Cambio de solo lectura.
+
+## Drive corregido
+
+- Total real: `2.051` páginas WebP.
+- B1: `492`; B2: `528`; I1: `514`; I2: `517`.
+- Los tres `book.json` de B1 ya incluyen `levelCode: B1` y el mismo esquema de los demás niveles.
+- La carpeta raíz está compartida como cualquier persona con el enlace, lector.
+- Los PDF duplicados fueron retirados por el usuario.
+
+## Integridad backend
+
+- Archivo canónico: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Tamaño: `2.899.463` bytes.
+- SHA-256: `d3505496b8e953d4fd0849a7a5af102760a452caa43d41bc9a7055006897ca87`.
+- Respaldo previo CS21A56: `15Yq5aAbxMwvKKZo6e4Vg7kgw7axv5yra`.
+- Copia de cierre CS21A58: `1FDjvFP3_suvo_1k2Y8xa_59kyJ_yg9yb`.
 
 ## Reglas preservadas
 
