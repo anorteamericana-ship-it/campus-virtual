@@ -36,12 +36,14 @@
       "src/book_inline_audio_cs21a63.js",
       "src/book_unit_propagation_cs21a64.js",
       "src/resources_panel_cs21a65.jsx",
+      "src/resources_panel_state_cs21a65.js",
       "campus.html"
     ],
     "git_blobs": {
       "book_inline_audio_cs21a65_content": "52ef023375abed87d0d123511790c9c7ecb3ea54",
       "resources_panel": "f6bb642cd1dcf1caf188b2a7348530818a4fe4e6",
-      "campus": "ba13ab9ac3154d7df0e28d959af215f83909b535"
+      "resources_panel_state": "pending_readback",
+      "campus": "79d7a320153275388135dedef15b8bfd9b5ed2a1"
     },
     "resources_panel": {
       "single_sidebar_section": true,
@@ -49,7 +51,8 @@
       "separate_audio_menu_removed": true,
       "legacy_wrapper_chain_stripped": true,
       "student_direct_materials_route": true,
-      "student_legacy_course_content_hidden_inside_resource_access": true
+      "student_legacy_course_content_hidden_inside_resource_access": true,
+      "clears_internal_open_state_when_leaving_resources": true
     },
     "permissions": {
       "superadmin": ["SB", "TB", "WB", "INLINE_AUDIO", "ADDITIONAL_RESOURCES", "REFRESH_DRIVE", "SET_UNIT_START", "PROPAGATE_UNIT_STARTS"],
