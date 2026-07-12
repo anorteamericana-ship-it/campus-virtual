@@ -1,12 +1,31 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral/frontend:** F98.4-Z6-CS21A60  
+**Versión integral/frontend:** F98.4-Z6-CS21A61  
 **Backend completo:** F98.4-Z6-CS21A60  
-**Base preservada:** CS21A59 / CS21A58 / CS21A56 / CS21A46  
+**Base preservada:** CS21A60 / CS21A59 / CS21A58 / CS21A56 / CS21A46  
 **Producción:** no verificada  
 **Corte:** 12-jul-2026
 
-## Cambio vigente
+## Hotfix vigente CS21A61
+
+Se corrige el mensaje del superadmin:
+
+`No se pudo cargar Recursos Didácticos.`
+
+La causa era una carrera de carga: el panel administrativo se montaba antes de que el módulo diferido `syllabus_views.jsx` y la cadena `MaterialesView` CS21A59/CS21A60 estuvieran disponibles.
+
+Nuevo comportamiento:
+
+1. Al abrir Recursos Didácticos, CS21A61 verifica las dependencias.
+2. Si faltan, usa `window.anLazyCampus` para cargar `src/syllabus_views.jsx?v=F98.4Z6G`.
+3. Espera a que CS21A59 y CS21A60 terminen de instalar sus envoltorios.
+4. Muestra `Preparando biblioteca…` durante el proceso.
+5. Si ocurre un error real, muestra el detalle y permite `Reintentar`.
+6. Solo después monta la pantalla original de libros o audios.
+
+Este hotfix es solo frontend. El `Code.gs` CS21A60 se conserva sin cambios.
+
+## Funcionalidad preservada CS21A60
 
 Recursos Didácticos permite que el superadmin calibre el inicio oficial de U01–U16 para cada libro.
 
@@ -37,9 +56,9 @@ Flujo:
 
 El frontend oculta controles, pero la protección real está en backend.
 
-## Backend
+## Backend preservado
 
-Endpoint nuevo: `superadminBooksSetUnitStart`.
+Endpoint: `superadminBooksSetUnitStart`.
 
 Validaciones:
 
@@ -60,24 +79,23 @@ Integridad:
 - Respaldo previo: `1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy`.
 - Copia de cierre: `1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U`.
 
-## Archivos frontend
+## Archivos frontend vigentes
 
 - `src/admin_resources_superadmin_cs21a60.jsx`.
 - `src/book_unit_starts_cs21a60.jsx`.
+- `src/admin_resources_runtime_cs21a61.jsx`.
 - `campus.html`.
 
-## Pruebas obligatorias
+## Prueba inmediata del hotfix
 
-1. Instalar el `Code.gs` completo CS21A60.
-2. Crear una nueva implementación de Apps Script.
-3. Publicar el frontend y hacer Ctrl+F5.
-4. Entrar como superadmin y confirmar que aparece Recursos Didácticos.
-5. Abrir B1/SB y comprobar el valor actual de U01.
-6. Navegar hasta el pliego que contiene 7–8 y pulsar `Actualizar` bajo U01.
-7. Recargar y comprobar que U01 abre nuevamente 7–8 y reporta fuente 8.
-8. Entrar como docente y verificar el mismo inicio sin botones pequeños.
-9. Entrar como estudiante B1 y verificar el mismo inicio en SB.
-10. Probar al menos una unidad de TB y WB y validar que no se mezclen configuraciones.
+1. Publicar o esperar la actualización del frontend GitHub Pages.
+2. Hacer `Ctrl + F5` en `campus.html`.
+3. Cerrar sesión y volver a entrar como superadmin.
+4. Abrir `Recursos Didácticos → Libros de texto`.
+5. Debe aparecer primero `Preparando biblioteca…` si la dependencia aún no cargó.
+6. Luego debe mostrarse el visor, no el mensaje anterior.
+7. Probar B1/SB y confirmar que aparecen U01–U16.
+8. Navegar a 7–8 y actualizar U01 para guardar 8.
 
 ## Reglas preservadas
 
