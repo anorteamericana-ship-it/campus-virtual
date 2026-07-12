@@ -1,13 +1,14 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A63",
+  "version": "F98.4-Z6-CS21A64",
   "cut": "2026-07-12",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "production_deployment_confirmed": false,
   "backend": {
-    "version": "F98.4-Z6-CS21A60",
+    "version": "F98.4-Z6-CS21A64",
     "base_preserved": [
+      "F98.4-Z6-CS21A60",
       "F98.4-Z6-CS21A59",
       "F98.4-Z6-CS21A58",
       "F98.4-Z6-CS21A56",
@@ -16,12 +17,16 @@
     "canonical_drive_folder_id": "1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a",
     "canonical_drive_file_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
     "backup_drive_folder_id": "1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr",
-    "pre_change_backup_file_id": "1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy",
-    "closing_copy_file_id": "1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U",
-    "size_bytes": 2915832,
-    "sha256": "1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56",
-    "newline_count": 51143,
-    "new_endpoint": "superadminBooksSetUnitStart",
+    "pre_change_backup_file_id": "1-AbtbfF3tH04eOl33w7mD2k_L7hPhCG1",
+    "closing_copy_file_id": "1GOKIBd7Z6zabkj8ElQHIIbTQ_Y9wa4DL",
+    "size_bytes": 2923949,
+    "sha256": "d5217ceb90a4716c9161284a81c242a238649ed034bb97a36657716c6593feda",
+    "newline_count": 51362,
+    "endpoint": "superadminBooksSetUnitStart",
+    "optional_sequence_parameters": [
+      "propagate_following",
+      "clicks_between_units"
+    ],
     "preserved_endpoints": [
       "teacherBooksOpenImageBook",
       "adminBooksRefreshOpenBook",
@@ -30,12 +35,12 @@
       "getBibliotecaNivelEstudiante",
       "getAudioPistaEstudiante"
     ],
-    "write_scope": "CURRENT_BOOK_SINGLE_UNIT_START_ONLY",
+    "write_scope": "CURRENT_BOOK_SINGLE_UNIT_OR_ATOMIC_SEQUENCE_FROM_SELECTED",
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A63",
-    "base_version": "F98.4-Z6-CS21A62",
+    "version": "F98.4-Z6-CS21A64",
+    "base_version": "F98.4-Z6-CS21A63",
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
       "src/admin_resources_cs21a59.jsx",
@@ -44,6 +49,7 @@
       "src/admin_resources_runtime_cs21a61.jsx",
       "src/book_page_turn_cs21a62.js",
       "src/book_inline_audio_cs21a63.js",
+      "src/book_unit_propagation_cs21a64.js",
       "campus.html"
     ],
     "git_blobs": {
@@ -54,40 +60,29 @@
       "resources_runtime": "bfc65e3cb7b08508c9074f08820c311003fcf364",
       "book_page_turn": "283679cc684dc9e9607404aa9806698ad2956960",
       "book_inline_audio": "4c7ad2d23e11c02df253d3e6377fd9e512379e7e",
-      "campus": "3c134fcb1bf50e628d414eda01ece41f84ea8ee5"
+      "book_unit_propagation": "536f4fd384d78306196066331d7e5e8e7315a953",
+      "campus": "bc0fc14c9e18cb5216d605382563ebf7a88ecb80"
     },
-    "resource_runtime_hotfix": {
-      "symptom": "No se pudo cargar Recursos Didácticos.",
-      "root_cause": "AdminResourcesMirror se montaba antes de que syllabus_views.jsx y la cadena MaterialesView CS21A59/CS21A60 terminaran de inicializarse.",
-      "solution": "Carga explícita del módulo diferido, espera de dependencias y pantalla de reintento sin error prematuro.",
-      "backend_changed": false
-    },
-    "page_turn_effect": {
-      "trigger_controls": ["Anterior", "Siguiente", "U01-U16"],
-      "next_direction": "RIGHT_PAGE_TO_LEFT",
-      "previous_direction": "LEFT_PAGE_TO_RIGHT",
-      "duration_ms": 680,
-      "three_dimensional": true,
-      "back_face": true,
-      "reduced_motion_respected": true,
-      "react_tree_isolated": true,
-      "backend_changed": false
+    "unit_propagation": {
+      "trigger": "SUPERADMIN_SMALL_UPDATE_BUTTON",
+      "single_save_when_first_confirmation_cancelled": true,
+      "prompt_for_next_clicks_when_accepted": true,
+      "click_equals_page_entries": 2,
+      "uses_real_manifest_page_order": true,
+      "recalculates_from_selected_unit_through_u16": true,
+      "preserves_previous_units": true,
+      "atomic_write": true,
+      "rejects_if_sequence_exceeds_book": true,
+      "backend_changed": true
     },
     "inline_audio": {
       "source_component": "src/syllabus_views.jsx",
       "catalog_endpoint": "getBibliotecaNivelEstudiante",
       "track_endpoint": "getAudioPistaEstudiante",
-      "catalog_path": "catalogo.audios_unidades",
       "filter": "REAL_FILENAME_UNIT_01_TO_16_AND_MP3",
-      "sync_dimensions": ["LEVEL", "BOOK_TYPE", "UNIT"],
       "placement": "RIGHT_SIDE_OF_LEVEL_BUTTON_BAR",
       "compact_select": true,
-      "compact_player": true,
-      "stops_previous_track_on_change": true,
-      "revokes_previous_blob_url": true,
-      "level_catalog_cache": true,
-      "separate_audio_menu_preserved": true,
-      "backend_changed": false
+      "compact_player": true
     },
     "production_deployment_confirmed": false
   },
@@ -98,17 +93,16 @@
     "units_per_book": 16,
     "write_role": "superadmin",
     "saved_visible_page": "RIGHT_PAGE_OF_OPEN_SPREAD",
-    "example": "VISIBLE_7_8_SAVES_8",
-    "legacy_sb_fallback": true,
-    "tb_wb_unconfigured_until_saved": true,
-    "rejects_duplicate_pages": true,
-    "validates_ascending_order": true,
+    "single_save_preserved": true,
+    "sequence_mode_optional": true,
+    "sequence_metric": "NEXT_BUTTON_CLICKS",
+    "sequence_page_entries_per_click": 2,
     "keeps_history": true,
     "history_limit": 100,
     "invalidates_only_selected_book_cache": true
   },
   "viewer_permissions": {
-    "superadmin": ["SB", "TB", "WB", "REFRESH_DRIVE", "SET_UNIT_START", "INLINE_AUDIO"],
+    "superadmin": ["SB", "TB", "WB", "REFRESH_DRIVE", "SET_UNIT_START", "PROPAGATE_UNIT_STARTS", "INLINE_AUDIO"],
     "admin": ["SB", "TB", "WB", "REFRESH_DRIVE", "INLINE_AUDIO"],
     "teacher": ["SB", "TB", "WB", "INLINE_AUDIO"],
     "student": ["SB", "WB_CURRENT_LEVEL"]
