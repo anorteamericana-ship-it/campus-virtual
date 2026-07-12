@@ -9,7 +9,8 @@ function useAttendance77(){
  const filtered=items.filter(x=>!A.norm(q)||A.norm([x.s.name,x.s.code,x.s.cedula].join(' ')).includes(A.norm(q))),cur=items.find(x=>x.s.code===sel)||items[0],evs=(cur?.ev||[]).filter(x=>mode==='total'||x.r===mode),active=evs.find(x=>x.k===event)||evs.find(x=>x.p===false)||evs[evs.length-1];
  React.useEffect(()=>setEvent(active?.k||''),[sel,mode,evs.length]);
  const vals=items.map(x=>x.p).filter(x=>x!=null),avg=Number.isFinite(Number(d.resumenGrupo?.promedioAsistencia))?Math.round(Number(d.resumenGrupo.promedioAsistencia)):vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0,grades=items.map(x=>x.g).filter(x=>x!=null),gavg=grades.length?Math.round(grades.reduce((a,b)=>a+b,0)/grades.length):0,closed=lessons.filter(l=>A.up(l.estado)==='CERRADA').length;
- return{d,q,setQ,sel,setSel,mode,setMode,event,setEvent,lessons,items,filtered,cur,evs,active,avg,grades,gavg,closed,C};
+ const trend=React.useMemo(()=>lessons.map(l=>{let present=0,recorded=0;(d.roster||[]).forEach(s=>{const p=A.present(A.bucket(d.asistenciaDetalle,l,s.code));if(p===true){present++;recorded++;}else if(p===false)recorded++;});return{k:A.key(l)+'|'+A.txt(l.fecha),label:A.label(l,true),date:A.txt(l.fecha).slice(0,10),rail:A.rail(l),pct:recorded?Math.round(present/recorded*100):0,recorded};}).filter(x=>x.recorded>0).slice(-12),[lessons,d.roster,d.asistenciaDetalle]);
+ return{d,q,setQ,sel,setSel,mode,setMode,event,setEvent,lessons,items,filtered,cur,evs,active,avg,grades,gavg,closed,trend,C};
 }
 A.useAttendance77=useAttendance77;
 })();
