@@ -1,14 +1,32 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral/frontend:** F98.4-Z6-CS21A61  
+**Versión integral/frontend:** F98.4-Z6-CS21A62  
 **Backend completo:** F98.4-Z6-CS21A60  
-**Base preservada:** CS21A60 / CS21A59 / CS21A58 / CS21A56 / CS21A46  
+**Base preservada:** CS21A61 / CS21A60 / CS21A59 / CS21A58 / CS21A56 / CS21A46  
 **Producción:** no verificada  
 **Corte:** 12-jul-2026
 
-## Hotfix vigente CS21A61
+## Cambio vigente CS21A62
 
-Se corrige el mensaje del superadmin:
+El visor de libros incorpora un efecto de paso de hoja tipo libro físico.
+
+Comportamiento:
+
+1. `Siguiente` gira la hoja derecha hacia la izquierda.
+2. `Anterior` gira la hoja izquierda hacia la derecha.
+3. Al pulsar U01–U16 se calcula si el salto es hacia adelante o atrás y se usa el giro correspondiente.
+4. La animación dura aproximadamente 680 ms.
+5. Incluye perspectiva 3D, sombra, cara posterior tenue y oscurecimiento momentáneo del lomo.
+6. La animación se monta fuera del árbol de React para que el cambio real de página no la corte ni interfiera con la navegación.
+7. Si el dispositivo usa `prefers-reduced-motion`, las páginas cambian sin animación.
+
+Archivo: `src/book_page_turn_cs21a62.js`.
+
+Este cambio es exclusivamente frontend. El `Code.gs` CS21A60 se conserva sin modificaciones.
+
+## Hotfix preservado CS21A61
+
+Se corrigió el mensaje del superadmin:
 
 `No se pudo cargar Recursos Didácticos.`
 
@@ -22,8 +40,6 @@ Nuevo comportamiento:
 4. Muestra `Preparando biblioteca…` durante el proceso.
 5. Si ocurre un error real, muestra el detalle y permite `Reintentar`.
 6. Solo después monta la pantalla original de libros o audios.
-
-Este hotfix es solo frontend. El `Code.gs` CS21A60 se conserva sin cambios.
 
 ## Funcionalidad preservada CS21A60
 
@@ -84,18 +100,19 @@ Integridad:
 - `src/admin_resources_superadmin_cs21a60.jsx`.
 - `src/book_unit_starts_cs21a60.jsx`.
 - `src/admin_resources_runtime_cs21a61.jsx`.
+- `src/book_page_turn_cs21a62.js`.
 - `campus.html`.
 
-## Prueba inmediata del hotfix
+## Prueba inmediata
 
-1. Publicar o esperar la actualización del frontend GitHub Pages.
+1. Publicar o esperar la actualización del frontend.
 2. Hacer `Ctrl + F5` en `campus.html`.
-3. Cerrar sesión y volver a entrar como superadmin.
-4. Abrir `Recursos Didácticos → Libros de texto`.
-5. Debe aparecer primero `Preparando biblioteca…` si la dependencia aún no cargó.
-6. Luego debe mostrarse el visor, no el mensaje anterior.
-7. Probar B1/SB y confirmar que aparecen U01–U16.
-8. Navegar a 7–8 y actualizar U01 para guardar 8.
+3. Entrar como superadmin y abrir `Recursos Didácticos → Libros de texto`.
+4. Pulsar `Siguiente`: debe girar la hoja derecha hacia la izquierda.
+5. Pulsar `Anterior`: debe girar la hoja izquierda hacia la derecha.
+6. Pulsar una unidad posterior y luego una anterior para validar ambos sentidos.
+7. Repetir con un docente y un estudiante.
+8. Confirmar que U01–U16, Actualizar desde Drive y la calibración continúan funcionando.
 
 ## Reglas preservadas
 
