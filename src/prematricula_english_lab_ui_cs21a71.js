@@ -1,4 +1,5 @@
 // F98.4-Z6-CS21A71 · Prematrícula estable + English LAB por código real
+/* global React, Sidebar */
 (function () {
   'use strict';
 
@@ -77,6 +78,28 @@
     return match ? match[1] : 'B1';
   }
 
+  function installSidebarBypass() {
+    const Current = window.Sidebar || (typeof Sidebar === 'function' ? Sidebar : null);
+    if (typeof Current !== 'function' || Current.__cs21a71PrematriculaStable) return false;
+
+    const academicBase = Current.__base || Current;
+    const Wrapped = function SidebarCS21A71(props) {
+      const user = props?.usuario || readSession();
+      const role = clean(props?.rolReal || props?.role || user?.rol || user?.role).toLowerCase();
+      if ((role === 'student' || role === 'estudiante') && isFreeStudent(user)) {
+        return React.createElement(academicBase, props);
+      }
+      return React.createElement(Current, props);
+    };
+
+    try { Object.keys(Current).forEach(key => { Wrapped[key] = Current[key]; }); } catch (_) {}
+    Wrapped.__cs21a71PrematriculaStable = true;
+    Wrapped.__base = Current;
+    window.Sidebar = Wrapped;
+    try { Sidebar = Wrapped; } catch (_) {}
+    return true;
+  }
+
   function findHeading(root, exact) {
     return Array.from(root.querySelectorAll('h1,h2,h3,h4')).find(node => clean(node.textContent).toLowerCase() === exact.toLowerCase()) || null;
   }
@@ -134,7 +157,6 @@
     if (catalogHeading) catalogHeading.textContent = `Catálogo ${levelLabel}`;
     if (areaHeading) areaHeading.textContent = `Áreas cognitivas · ${levelLabel}`;
 
-    // El catálogo oficial/visible va primero. Debajo quedan el mapa, banco y áreas.
     if (catalogHead && catalogGrid && progressMap && catalogHead.parentElement === progressMap.parentElement) {
       const parent = progressMap.parentElement;
       if (catalogHead.nextElementSibling !== catalogGrid || catalogGrid.nextElementSibling !== progressMap) {
@@ -161,10 +183,12 @@
   }
 
   normalizeMatriculatedSession();
+  installSidebarBypass();
   const observer = new MutationObserver(schedule);
   observer.observe(document.documentElement, { childList:true, subtree:true, characterData:true });
   ['an:lazy-module-loaded','an:session-changed','an:english-lab-free-access','an:free-user-solicitudes-changed','popstate','hashchange']
     .forEach(name => window.addEventListener(name, schedule));
+  window.addEventListener('an:lazy-module-loaded', () => setTimeout(installSidebarBypass, 20));
   schedule();
 
   window.__AN_PREMATRICULA_ENGLISH_LAB_UI_VERSION__ = VERSION;
