@@ -126,6 +126,7 @@
   }
 
   window.fetch = function cs21a64Fetch(input, init) {
+    if (pending && Date.now() - pending.createdAt > 8000) pending = null;
     if (!pending || !isTargetRequest(input) || !init || typeof init.body !== 'string') {
       return ORIGINAL_FETCH(input, init);
     }
