@@ -144,7 +144,8 @@
       if (label === 'Actualizar desde Drive' || label === 'Actualizar' || label === 'Guardando…') {
         button.style.display = superadmin ? '' : 'none';
         button.setAttribute('aria-hidden', superadmin ? 'false' : 'true');
-        if (!superadmin) button.tabIndex = -1;
+        if (superadmin) button.removeAttribute('tabindex');
+        else button.tabIndex = -1;
       }
     });
   }
@@ -189,6 +190,27 @@
     }
   }
 
+  function normalizeStudentCoursePage() {
+    const page = document.querySelector('.student-page-course');
+    if (!page) return;
+    const viewer = page.querySelector(VIEWER_SELECTOR);
+    const directResources = Boolean(viewer);
+    const header = page.querySelector('.student-section-header');
+    const tabs = page.querySelector('.student-tabs');
+    if (header) header.style.display = directResources ? 'none' : '';
+    if (tabs) tabs.style.display = directResources ? 'none' : '';
+
+    const panel = page.querySelector('[role="tabpanel"]');
+    if (!panel) return;
+    Array.from(panel.children).forEach(child => {
+      child.style.display = directResources && child !== viewer ? 'none' : '';
+    });
+    if (directResources) {
+      page.setAttribute('data-screen-label', 'Estudiante · Recursos Didácticos · Libros y Audios');
+      page.style.paddingTop = '18px';
+    }
+  }
+
   function cleanLegacyAdminHosts(aside) {
     aside.querySelectorAll('#an-admin-resources-nav-cs21a59, #an-superadmin-resources-cs21a60').forEach(node => node.remove());
     const current = aside.querySelector('#an-resources-nav-cs21a65');
@@ -213,6 +235,7 @@
           if (role === 'admin' || role === 'superadmin') cleanLegacyAdminHosts(aside);
         }
         document.querySelectorAll(VIEWER_SELECTOR).forEach(viewer => normalizeViewer(viewer, role));
+        if (role === 'student' || role === 'estudiante') normalizeStudentCoursePage();
       };
       const schedule = () => {
         if (scheduled) return;
@@ -244,9 +267,18 @@
     const Wrapped = function SidebarCS21A65(props) {
       const role = currentRole(props);
       const adminLike = role === 'admin' || role === 'superadmin';
+      const baseProps = (role === 'student' || role === 'estudiante')
+        ? {
+            ...props,
+            setActive: target => {
+              const resolved = target === 'mi_curso' ? 'materiales' : target;
+              if (typeof props?.setActive === 'function') props.setActive(resolved);
+            },
+          }
+        : props;
       return (
         <>
-          <Base {...props} />
+          <Base {...baseProps} />
           <RoleNormalizer role={role} />
           {adminLike && <AdminResourcesPortal active={props?.active} setActive={props?.setActive} />}
         </>
