@@ -1,11 +1,12 @@
-// F98.4-Z6-CS21A63 · Audios compactos sincronizados con libro + unidad
+// F98.4-Z6-CS21A65 · Audios y recursos adicionales compactos por nivel/unidad
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A63';
+  const VERSION = 'F98.4-Z6-CS21A65';
   const VIEWER_SELECTOR = 'section[data-screen-label*="CS21A60"][data-screen-label*="Libros"]';
-  const MOUNT_CLASS = 'an-book-inline-audio-cs21a63';
-  const CACHE = window.__AN_BOOK_AUDIO_CATALOG_CACHE__ || (window.__AN_BOOK_AUDIO_CATALOG_CACHE__ = Object.create(null));
+  const MOUNT_CLASS = 'an-book-inline-audio-cs21a65';
+  const CACHE = window.__AN_BOOK_AUDIO_CATALOG_CACHE_CS21A65__ ||
+    (window.__AN_BOOK_AUDIO_CATALOG_CACHE_CS21A65__ = Object.create(null));
   const STATES = new WeakMap();
 
   function normalizeText(value) {
@@ -22,6 +23,10 @@
     }
   }
 
+  function roleOf(user) {
+    return normalizeText(user?.rol || user?.role).toLowerCase();
+  }
+
   function sessionToken() {
     return typeof window.getSessionToken === 'function' ? window.getSessionToken() : '';
   }
@@ -36,13 +41,19 @@
     return user?.grupoActivo || user?.grupo || user?.grupos?.[0] || '';
   }
 
+  function inferLevel(user) {
+    const direct = String(user?.nivel_activo || user?.NIVEL_ACTIVO || user?.nivel || user?.NIVEL || '').toUpperCase();
+    if (['B1','B2','I1','I2'].includes(direct)) return direct;
+    const group = String(user?.grupo || user?.grupoActivo || user?.grupos?.[0] || '').toUpperCase();
+    const match = group.match(/(?:^|[-_])(B1|B2|I1|I2)(?:[-_]|$)/);
+    return match ? match[1] : 'B1';
+  }
+
   async function post(fn, payload = {}, timeout = 90000) {
     const endpoint = window.APPS_SCRIPT_URL;
     if (!endpoint) throw new Error('No está configurada la URL de Apps Script.');
-
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), timeout) : null;
-
     try {
       const response = await fetch(`${endpoint}?fn=${encodeURIComponent(fn)}`, {
         method: 'POST',
@@ -59,7 +70,7 @@
       }
       return data;
     } catch (error) {
-      if (error?.name === 'AbortError') throw new Error('La carga del audio tardó demasiado.');
+      if (error?.name === 'AbortError') throw new Error('La carga tardó demasiado.');
       throw error;
     } finally {
       if (timer) clearTimeout(timer);
@@ -71,35 +82,63 @@
     return match ? Number(match[1]) : null;
   }
 
-  function trackName(track) {
+  function rawTrackName(track) {
     return normalizeText(track?.nombre || track?.name || track?.archivo_nombre || track?.filename || '');
+  }
+
+  function cleanAudioName(name) {
+    let text = String(name || '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    const start = text.search(/\b(?:Unit|Unidad)\s*0*\d{1,2}/i);
+    if (start >= 0) text = text.slice(start);
+    text = text.replace(/\bPg\s*0*\d+\b/ig, ' ');
+    text = text.replace(/\s+/g, ' ').trim();
+    text = text.replace(/^Unidad\b/i, 'Unit');
+    text = text.replace(/\bUnit\s*0*(\d{1,2})\b/i, (_, number) => `Unit ${String(Number(number)).padStart(2, '0')}`);
+    return text || String(name || '').trim();
   }
 
   function tracksForUnit(catalog, unit) {
     const seen = new Set();
     const result = [];
-    const groups = catalog?.audios_unidades || [];
-
-    groups.forEach(group => {
+    (catalog?.audios_unidades || []).forEach(group => {
       (group?.pistas || []).forEach(track => {
-        const name = trackName(track);
-        const id = String(track?.id || name);
-        if (!name || !/\.mp3$/i.test(name) || unitFromAudioName(name) !== Number(unit) || seen.has(id)) return;
+        const originalName = rawTrackName(track);
+        const id = String(track?.id || originalName);
+        if (!originalName || !/\.mp3$/i.test(originalName) || unitFromAudioName(originalName) !== Number(unit) || seen.has(id)) return;
         seen.add(id);
-        result.push({ id, name, track });
+        result.push({ id, name: cleanAudioName(originalName), originalName, track });
       });
     });
+    return result.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric:true, sensitivity:'base' }));
+  }
 
-    return result.sort((a, b) => a.name.localeCompare(b.name, undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    }));
+  function resourceName(item) {
+    const raw = normalizeText(item?.nombre || item?.name || item?.titulo || 'Recurso adicional');
+    if (/WORD\s+BY\s+WORD\s+DICTIONARY/i.test(raw)) return 'Diccionario Word by Word';
+    return raw;
+  }
+
+  function resourcesForRole(catalog, role) {
+    const resources = Array.isArray(catalog?.recursos) ? catalog.recursos : [];
+    if (role === 'teacher' || role === 'docente') {
+      return resources.filter(item => /DICCIONARIO|DICTIONARY|WORD\s+BY\s+WORD/i.test(resourceName(item)));
+    }
+    return resources;
   }
 
   function revokeObjectUrl(state) {
     if (!state.objectUrl) return;
     try { URL.revokeObjectURL(state.objectUrl); } catch (_) {}
     state.objectUrl = '';
+  }
+
+  function clearPlayer(state) {
+    state.trackRequest += 1;
+    revokeObjectUrl(state);
+    try { state.audio.pause(); } catch (_) {}
+    state.audio.removeAttribute('src');
+    try { state.audio.load(); } catch (_) {}
+    state.audio.style.display = 'none';
   }
 
   function updateBadge(state) {
@@ -113,13 +152,32 @@
     state.audio.style.display = 'none';
   }
 
-  function clearPlayer(state) {
-    state.trackRequest += 1;
-    revokeObjectUrl(state);
-    state.audio.pause();
-    state.audio.removeAttribute('src');
-    try { state.audio.load(); } catch (_) {}
-    state.audio.style.display = 'none';
+  function renderResourceOptions(state) {
+    state.resourceSelect.innerHTML = '';
+    const resources = resourcesForRole(state.catalog, state.role);
+    state.resources = resources;
+
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = state.catalogStatus === 'loading'
+      ? 'Cargando recursos…'
+      : state.catalogStatus === 'error'
+        ? 'Recursos no disponibles'
+        : resources.length
+          ? `Recursos adicionales · ${resources.length}`
+          : (state.role === 'teacher' || state.role === 'docente' ? 'Diccionario no disponible' : 'Sin recursos adicionales');
+    state.resourceSelect.appendChild(empty);
+
+    resources.forEach((item, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = resourceName(item);
+      option.title = resourceName(item);
+      state.resourceSelect.appendChild(option);
+    });
+
+    state.resourceSelect.value = '';
+    state.resourceSelect.disabled = state.catalogStatus !== 'ready' || resources.length === 0;
   }
 
   function renderTrackOptions(state) {
@@ -146,7 +204,7 @@
       const option = document.createElement('option');
       option.value = item.id;
       option.textContent = item.name;
-      option.title = item.name;
+      option.title = item.originalName;
       state.select.appendChild(option);
     });
 
@@ -157,6 +215,8 @@
     else if (state.catalogStatus === 'error') showStatus(state, state.catalogError || 'No se pudieron cargar los audios.', 'error');
     else if (!tracks.length) showStatus(state, 'Sin pistas');
     else showStatus(state, 'Seleccioná una pista');
+
+    renderResourceOptions(state);
   }
 
   async function loadCatalog(state) {
@@ -168,21 +228,22 @@
     renderTrackOptions(state);
 
     try {
-      let catalog = CACHE[state.level] || null;
+      const user = session();
+      state.role = roleOf(user);
+      const view = state.role === 'student' || state.role === 'estudiante' ? 'estudiante' : 'docente';
+      const cacheKey = `${view}:${state.level}`;
+      let catalog = CACHE[cacheKey] || null;
       if (!catalog) {
-        const user = session();
-        const role = normalizeText(user?.rol || user?.role).toLowerCase();
         const response = await post('getBibliotecaNivelEstudiante', {
           nivel: state.level,
           codigo: user?.codigo || user?.cedula || '',
           cod_grupo: activeGroup(user),
-          vista: role === 'student' || role === 'estudiante' ? 'estudiante' : 'docente',
+          vista: view,
         });
         catalog = response?.catalogo || null;
-        if (!catalog) throw new Error('El catálogo no devolvió audios para este nivel.');
-        CACHE[state.level] = catalog;
+        if (!catalog) throw new Error('El catálogo no devolvió recursos para este nivel.');
+        CACHE[cacheKey] = catalog;
       }
-
       if (state.catalogRequest !== requestId) return;
       state.catalog = catalog;
       state.catalogStatus = 'ready';
@@ -190,7 +251,7 @@
     } catch (error) {
       if (state.catalogRequest !== requestId) return;
       state.catalogStatus = 'error';
-      state.catalogError = String(error?.message || error || 'No se pudieron cargar los audios.');
+      state.catalogError = String(error?.message || error || 'No se pudieron cargar los recursos.');
       renderTrackOptions(state);
     }
   }
@@ -221,7 +282,6 @@
         cod_grupo: activeGroup(user),
         archivo_id: selected.track.id,
       });
-
       if (state.trackRequest !== requestId) return;
       if (!response?.audio?.base64) throw new Error('La pista no devolvió contenido reproducible.');
 
@@ -230,12 +290,10 @@
       for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
       const blob = new Blob([bytes], { type: response.audio.mime || 'audio/mpeg' });
       const objectUrl = URL.createObjectURL(blob);
-
       if (state.trackRequest !== requestId) {
         URL.revokeObjectURL(objectUrl);
         return;
       }
-
       state.objectUrl = objectUrl;
       state.audio.src = objectUrl;
       state.audio.title = selected.name;
@@ -248,61 +306,40 @@
     }
   }
 
+  function openResource(state, value) {
+    if (value === '') return;
+    const item = state.resources[Number(value)];
+    state.resourceSelect.value = '';
+    if (!item?.url) return;
+    window.open(item.url, '_blank', 'noopener,noreferrer');
+  }
+
   function makeState(viewer) {
     const mount = document.createElement('div');
     mount.className = MOUNT_CLASS;
     mount.setAttribute('data-version', VERSION);
     Object.assign(mount.style, {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: '7px',
-      flex: '0 1 530px',
-      minWidth: '300px',
-      marginLeft: 'auto',
+      display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'7px',
+      flex:'1 1 650px', minWidth:'300px', marginLeft:'auto', flexWrap:'wrap',
     });
 
     const badge = document.createElement('div');
     Object.assign(badge.style, {
-      flex: '0 0 auto',
-      minHeight: '34px',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0 9px',
-      borderRadius: '9px',
-      background: '#E8F2FC',
-      border: '1px solid #9DBBDA',
-      color: '#0B4A8B',
-      fontSize: '9.5px',
-      fontWeight: '950',
-      whiteSpace: 'nowrap',
+      flex:'0 0 auto', minHeight:'34px', display:'flex', alignItems:'center', padding:'0 9px',
+      borderRadius:'9px', background:'#E8F2FC', border:'1px solid #9DBBDA', color:'#0B4A8B',
+      fontSize:'9.5px', fontWeight:'950', whiteSpace:'nowrap',
     });
 
     const select = document.createElement('select');
     select.setAttribute('aria-label', 'Audio de la unidad seleccionada');
     Object.assign(select.style, {
-      flex: '1 1 190px',
-      minWidth: '150px',
-      maxWidth: '230px',
-      height: '34px',
-      border: '1px solid #B9C5D2',
-      borderRadius: '9px',
-      background: '#fff',
-      color: '#001E47',
-      padding: '0 30px 0 9px',
-      fontSize: '10.5px',
-      fontWeight: '750',
-      outline: 'none',
+      flex:'1 1 210px', minWidth:'170px', maxWidth:'270px', height:'34px', border:'1px solid #B9C5D2',
+      borderRadius:'9px', background:'#fff', color:'#001E47', padding:'0 30px 0 9px', fontSize:'10.5px', fontWeight:'750',
     });
 
     const playerSlot = document.createElement('div');
     Object.assign(playerSlot.style, {
-      flex: '0 1 205px',
-      minWidth: '150px',
-      height: '34px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      flex:'0 1 205px', minWidth:'150px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center',
     });
 
     const audio = document.createElement('audio');
@@ -314,46 +351,37 @@
 
     const status = document.createElement('div');
     Object.assign(status.style, {
-      width: '100%',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      textAlign: 'center',
-      fontSize: '9.5px',
-      fontWeight: '800',
-      color: '#667085',
+      width:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'center',
+      fontSize:'9.5px', fontWeight:'800', color:'#667085',
+    });
+
+    const resourceSelect = document.createElement('select');
+    resourceSelect.setAttribute('aria-label', 'Recursos adicionales del nivel');
+    Object.assign(resourceSelect.style, {
+      flex:'1 1 190px', minWidth:'165px', maxWidth:'245px', height:'34px', border:'1px solid #C9B573',
+      borderRadius:'9px', background:'#FFF9E8', color:'#5E4800', padding:'0 30px 0 9px', fontSize:'10.5px', fontWeight:'800',
     });
 
     playerSlot.append(audio, status);
-    mount.append(badge, select, playerSlot);
+    mount.append(badge, select, playerSlot, resourceSelect);
 
+    const user = session();
     const state = {
-      viewer,
-      mount,
-      badge,
-      select,
-      audio,
-      status,
-      level: 'B1',
-      bookType: 'SB',
-      unit: 1,
-      catalog: null,
-      catalogStatus: 'idle',
-      catalogError: '',
-      catalogRequest: 0,
-      trackRequest: 0,
-      selectedId: '',
-      tracks: [],
-      objectUrl: '',
-      clickHandler: null,
+      viewer, mount, badge, select, audio, status, resourceSelect,
+      role:roleOf(user), level:inferLevel(user), bookType:'SB', unit:1,
+      catalog:null, catalogStatus:'idle', catalogError:'', catalogRequest:0, trackRequest:0,
+      selectedId:'', tracks:[], resources:[], objectUrl:'', clickHandler:null,
     };
 
     select.addEventListener('change', () => loadTrack(state, select.value));
+    resourceSelect.addEventListener('change', () => openResource(state, resourceSelect.value));
     audio.addEventListener('error', () => showStatus(state, 'El navegador no pudo reproducir esta pista.', 'error'));
     return state;
   }
 
   function readCurrentSelection(state) {
+    const user = session();
+    state.role = roleOf(user);
     const buttons = Array.from(state.viewer.querySelectorAll('button'));
     const levelButton = buttons.find(button =>
       /^(B1|B2|I1|I2)\s*·/.test(normalizeText(button.textContent)) && button.classList.contains('btn-primary')
@@ -361,15 +389,13 @@
     const typeButton = buttons.find(button =>
       /^(SB|TB|WB)$/.test(normalizeText(button.textContent)) && button.getAttribute('aria-pressed') === 'true'
     );
-
     const levelMatch = normalizeText(levelButton?.textContent).match(/^(B1|B2|I1|I2)/);
-    if (levelMatch) state.level = levelMatch[1];
+    state.level = levelMatch ? levelMatch[1] : inferLevel(user);
     if (typeButton) state.bookType = normalizeText(typeButton.textContent);
   }
 
   function bindViewerEvents(state) {
     if (state.clickHandler) return;
-
     state.clickHandler = event => {
       const button = event.target?.closest?.('button');
       if (!button || button.disabled) return;
@@ -400,24 +426,28 @@
 
       const unitMatch = label.match(/^U(\d{2})$/) || title.match(/\bU(\d{2})\b/);
       if (unitMatch) {
-        const nextUnit = Math.max(1, Math.min(16, Number(unitMatch[1])));
-        state.unit = nextUnit;
+        state.unit = Math.max(1, Math.min(16, Number(unitMatch[1])));
         renderTrackOptions(state);
       }
     };
-
     state.viewer.addEventListener('click', state.clickHandler, true);
   }
 
-  function attachToViewer(viewer) {
-    const levelButtons = Array.from(viewer.querySelectorAll('button')).filter(button =>
-      /^(B1|B2|I1|I2)\s*·/.test(normalizeText(button.textContent))
-    );
-    if (!levelButtons.length) return;
+  function findMountBar(viewer) {
+    const buttons = Array.from(viewer.querySelectorAll('button'));
+    const levelButtons = buttons.filter(button => /^(B1|B2|I1|I2)\s*·/.test(normalizeText(button.textContent)));
+    if (levelButtons.length) {
+      const root = levelButtons[0].parentElement;
+      return { bar:root?.parentElement, root };
+    }
+    const typeButton = buttons.find(button => /^(SB|TB|WB)$/.test(normalizeText(button.textContent)));
+    const root = typeButton?.parentElement;
+    return { bar:root?.parentElement, root };
+  }
 
-    const levelButtonsRoot = levelButtons[0].parentElement;
-    const bar = levelButtonsRoot?.parentElement;
-    if (!levelButtonsRoot || !bar) return;
+  function attachToViewer(viewer) {
+    const { bar, root } = findMountBar(viewer);
+    if (!bar || !root) return;
 
     let state = STATES.get(viewer);
     if (!state) {
@@ -431,14 +461,8 @@
       updateBadge(state);
     }
 
-    Object.assign(bar.style, {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      flexWrap: 'wrap',
-    });
-    levelButtonsRoot.style.flex = '1 1 470px';
-
+    Object.assign(bar.style, { display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' });
+    root.style.flex = root.style.flex || '1 1 470px';
     if (state.mount.parentElement !== bar) bar.appendChild(state.mount);
   }
 
@@ -453,10 +477,11 @@
   }
 
   const observer = new MutationObserver(scan);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, { childList:true, subtree:true });
   window.addEventListener('an:lazy-module-loaded', scan);
   window.addEventListener('an:teacher-material-tab', scan);
   window.addEventListener('an:admin-resource-tab', scan);
+  window.addEventListener('an:session-changed', scan);
   window.addEventListener('resize', scan);
   scan();
 
