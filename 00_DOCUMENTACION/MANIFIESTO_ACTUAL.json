@@ -1,6 +1,6 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A60",
+  "version": "F98.4-Z6-CS21A61",
   "cut": "2026-07-12",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
@@ -32,12 +32,14 @@
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A60",
+    "version": "F98.4-Z6-CS21A61",
+    "base_version": "F98.4-Z6-CS21A60",
     "files": [
       "src/teacher_cs21a_order_fix.jsx",
       "src/admin_resources_cs21a59.jsx",
       "src/admin_resources_superadmin_cs21a60.jsx",
       "src/book_unit_starts_cs21a60.jsx",
+      "src/admin_resources_runtime_cs21a61.jsx",
       "campus.html"
     ],
     "git_blobs": {
@@ -45,7 +47,14 @@
       "admin_resources_base": "4728807877e292bfe9244dbd56492d0576cf06ad",
       "superadmin_resources": "6e45df46e9f6f13192c55d2898736d954ee5f4af",
       "book_unit_starts": "68f7a39e1f245ea22901eb2b242125b9c86acbe8",
-      "campus": "a3710f87b59a891891ba08ce58998461bf365e23"
+      "resources_runtime": "bfc65e3cb7b08508c9074f08820c311003fcf364",
+      "campus": "10cd278d2fbb4794d96487d03871f49c7db5d1c7"
+    },
+    "hotfix": {
+      "symptom": "No se pudo cargar Recursos Didácticos.",
+      "root_cause": "AdminResourcesMirror se montaba antes de que syllabus_views.jsx y la cadena MaterialesView CS21A59/CS21A60 terminaran de inicializarse.",
+      "solution": "Carga explícita del módulo diferido, espera de dependencias y pantalla de reintento sin error prematuro.",
+      "backend_changed": false
     },
     "production_deployment_confirmed": false
   },
