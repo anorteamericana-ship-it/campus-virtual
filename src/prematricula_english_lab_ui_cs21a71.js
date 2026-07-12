@@ -78,6 +78,29 @@
     return match ? match[1] : 'B1';
   }
 
+  function publishStudentKind(user) {
+    document.documentElement.setAttribute('data-an-student-kind', isFreeStudent(user) ? 'prematricula' : codeOf(user) ? 'matriculado' : 'otro');
+  }
+
+  function injectEarlyStyles() {
+    if (document.getElementById('an-prematricula-english-lab-style-cs21a71')) return;
+    const style = document.createElement('style');
+    style.id = 'an-prematricula-english-lab-style-cs21a71';
+    style.textContent = `
+      html[data-an-student-kind="prematricula"] .ap-view-student .ap-progress-map,
+      html[data-an-student-kind="prematricula"] .ap-view-student .ap-bank-student-panel,
+      html[data-an-student-kind="prematricula"] .ap-view-student .ap-bank-student-panel + .ap-catalog-head,
+      html[data-an-student-kind="prematricula"] .ap-view-student .ap-bank-student-panel + .ap-catalog-head + .ap-area-grid {
+        display:none !important;
+      }
+      html[data-an-student-kind="prematricula"] aside.student-sb #an-student-resources-section-cs21a65,
+      html[data-an-student-kind="prematricula"] aside.student-sb [id^="an-additional-resources-nav-cs21a68-"] {
+        display:none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function installSidebarBypass() {
     const Current = window.Sidebar || (typeof Sidebar === 'function' ? Sidebar : null);
     if (typeof Current !== 'function' || Current.__cs21a71PrematriculaStable) return false;
@@ -171,9 +194,9 @@
   function scan() {
     scheduled = false;
     const user = normalizeMatriculatedSession();
+    publishStudentKind(user);
     cleanFreeSidebar(user);
     arrangeEnglishLab(user);
-    document.documentElement.setAttribute('data-an-student-kind', isFreeStudent(user) ? 'prematricula' : codeOf(user) ? 'matriculado' : 'otro');
   }
 
   function schedule() {
@@ -182,7 +205,9 @@
     requestAnimationFrame(scan);
   }
 
-  normalizeMatriculatedSession();
+  const initialUser = normalizeMatriculatedSession();
+  publishStudentKind(initialUser);
+  injectEarlyStyles();
   installSidebarBypass();
   const observer = new MutationObserver(schedule);
   observer.observe(document.documentElement, { childList:true, subtree:true, characterData:true });
