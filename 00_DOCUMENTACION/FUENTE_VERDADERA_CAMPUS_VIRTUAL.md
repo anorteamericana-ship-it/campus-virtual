@@ -1,96 +1,70 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A63
+# FUENTE VERDADERA — F98.4-Z6-CS21A64
 
-Estado canónico: frontend CS21A63 guardado en GitHub `main`; backend completo CS21A60 preservado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A64 guardado en GitHub `main`; backend completo CS21A64 guardado en el archivo canónico de Drive; producción no verificada.
 
-## Cambio CS21A63 — audios compactos dentro de Libros de texto
+## Cambio CS21A64 — propagación opcional por clics de Siguiente
 
-Se recupera el flujo oficial de audios que ya existía en `src/syllabus_views.jsx` y se integra dentro del visor actual sin rediseñar ni mover sus controles principales.
+Al pulsar el botón pequeño `Actualizar` debajo de U01–U15, el superadmin recibe una pregunta antes de guardar:
 
-Flujo reutilizado:
+- `Cancelar` en la primera pregunta guarda únicamente la unidad seleccionada.
+- `Aceptar` solicita cuántos clics del botón `Siguiente` deben separar cada unidad posterior.
+- Cada clic equivale a dos posiciones de página del visor.
+- Ejemplo: U01=27 con 4 clics produce U02=35, U03=43 y continúa hasta U16.
+- Ejemplo: U01=27 con 3 clics produce U02=33, U03=39 y continúa hasta U16.
+- Si se inicia desde U05, U01–U04 permanecen intactas y se recalcula U05–U16.
+- U16 conserva el guardado individual porque no tiene una unidad posterior.
 
-- Catálogo por nivel mediante `getBibliotecaNivelEstudiante`.
-- Lista agrupada en `catalogo.audios_unidades`.
-- Filtro real por nombre del archivo: `Unit 01` a `Unit 16`.
-- Solo se muestran pistas `.mp3` correspondientes a la unidad seleccionada.
-- La pista elegida se solicita mediante `getAudioPistaEstudiante`.
-- El backend entrega un Blob base64 temporal; no se exponen llaves ni rutas internas.
-- Al cambiar de nivel, libro o unidad se detiene y libera la pista anterior.
+La propagación usa el orden real de `book.json.pages`, no una suma ciega. El backend calcula todas las unidades, valida existencia, duplicados y orden ascendente, y solo entonces escribe una vez el `book.json`. Si alguna unidad excede las hojas disponibles, no se guarda ningún cambio.
 
-Montaje visual:
+Frontend nuevo: `src/book_unit_propagation_cs21a64.js`.
 
-- Archivo nuevo: `src/book_inline_audio_cs21a63.js`.
-- Se monta únicamente en la franja superior de `Libros de texto`, al lado derecho de B1/B2/I1/I2.
-- No elimina ni cambia SB/TB/WB, U01–U16, calibración, botones PDF, navegación, zoom, pantalla completa ni efecto de hojas.
-- El bloque contiene una etiqueta compacta `♪ nivel · libro · unidad`, un combo pequeño y un reproductor pequeño.
-- En pantallas estrechas puede bajar dentro de la misma franja para evitar superposiciones.
-- El catálogo se almacena temporalmente por nivel para no repetir consultas innecesarias.
-- Se aplica a superadmin, admin y docente porque esos perfiles ya están autorizados por los endpoints preservados.
-- No se retira todavía la entrada separada `Audios`; queda preservada para evitar regresiones.
+Backend:
 
-Este cambio es exclusivamente frontend. No requiere modificar ni volver a copiar `Code.gs`.
+- El endpoint preservado `superadminBooksSetUnitStart` acepta opcionalmente `propagate_following=true` y `clicks_between_units`.
+- Sin esos campos mantiene exactamente el guardado individual CS21A60.
+- Solo `superadmin` puede usar la operación.
+- Cada unidad modificada queda registrada en `unitStartHistory`, con máximo de 100 entradas.
+- Se invalida únicamente la caché del libro abierto.
 
-## Cambio preservado CS21A62 — efecto de paso de hoja
+## Cambio preservado CS21A63 — audios compactos
 
-El visor compartido de libros incorpora una animación de hoja física al navegar.
+- Usa `getBibliotecaNivelEstudiante` y `getAudioPistaEstudiante`.
+- Filtra las pistas `.mp3` por el nombre real `Unit 01` a `Unit 16`.
+- Se monta al lado de B1/B2/I1/I2 con combo y reproductor pequeños.
+- No cambia la estructura ni las posiciones del visor.
 
-- `Siguiente`: gira la hoja derecha hacia la izquierda.
-- `Anterior`: gira la hoja izquierda hacia la derecha.
-- U01–U16: aplica el giro según la dirección del salto.
-- Duración aproximada: 680 ms.
-- Incluye perspectiva 3D, sombra dinámica, cara posterior tenue y pulso del lomo.
-- Respeta `prefers-reduced-motion`.
+Archivo: `src/book_inline_audio_cs21a63.js`.
 
-Archivo: `src/book_page_turn_cs21a62.js`.
+## Cambios preservados CS21A62 / CS21A61 / CS21A60
 
-## Hotfix preservado CS21A61 — arranque estable de Recursos Didácticos
-
-- Carga explícitamente `src/syllabus_views.jsx?v=F98.4Z6G` mediante `window.anLazyCampus`.
-- Espera a que CS21A59 y CS21A60 terminen de encadenar `MaterialesView`.
-- Muestra `Preparando biblioteca…` durante la carga.
-- Si la dependencia falla, muestra el motivo real y permite `Reintentar`.
-
-Archivo: `src/admin_resources_runtime_cs21a61.jsx`.
-
-## Cambio preservado CS21A60 — inicios U01–U16 persistentes
-
-- Cada libro conserva su propio arreglo `unitStarts` dentro de su `book.json`.
-- La configuración es independiente por nivel y tipo: B1/B2/I1/I2 × SB/TB/WB.
-- Solo `superadmin` puede modificar un inicio.
-- Se guarda la hoja derecha visible del pliego.
-- Docentes, administradores y estudiantes reciben el mapa actualizado en la siguiente carga.
-- SB conserva temporalmente el mapa anterior como fallback.
-- TB y WB quedan sin inicio inventado hasta que el superadmin los configure.
-
-## Accesos
-
-- Superadmin: SB/TB/WB, actualización desde Drive, calibración U01–U16 y audio compacto.
-- Admin: SB/TB/WB, actualización desde Drive y audio compacto; sin calibración.
-- Docente: SB/TB/WB y audio compacto.
-- Estudiante: SB/WB del nivel activo; el audio compacto CS21A63 no se monta en su franja porque no utiliza el selector de cuatro niveles.
+- CS21A62: efecto 3D de paso de hoja en Anterior, Siguiente y U01–U16.
+- CS21A61: carga estable de Recursos Didácticos y botón Reintentar.
+- CS21A60: `book.json.unitStarts`, calibración independiente B1/B2/I1/I2 × SB/TB/WB y permisos por rol.
 
 ## Frontend vigente
 
-- `src/teacher_cs21a_order_fix.jsx`: base visual preservada CS21A58.
-- `src/admin_resources_cs21a59.jsx`: panel administrativo preservado.
-- `src/admin_resources_superadmin_cs21a60.jsx`: acceso real de superadmin.
-- `src/book_unit_starts_cs21a60.jsx`: visor compartido y calibración U01–U16.
-- `src/admin_resources_runtime_cs21a61.jsx`: carga diferida estable.
-- `src/book_page_turn_cs21a62.js`: animación de paso de hoja.
-- `src/book_inline_audio_cs21a63.js`: audio compacto sincronizado.
-- `campus.html`: carga CS21A63 después de CS21A62.
+- `src/teacher_cs21a_order_fix.jsx`.
+- `src/admin_resources_cs21a59.jsx`.
+- `src/admin_resources_superadmin_cs21a60.jsx`.
+- `src/book_unit_starts_cs21a60.jsx`.
+- `src/admin_resources_runtime_cs21a61.jsx`.
+- `src/book_page_turn_cs21a62.js`.
+- `src/book_inline_audio_cs21a63.js`.
+- `src/book_unit_propagation_cs21a64.js`.
+- `campus.html`.
 
-## Backend canónico preservado
+## Backend canónico CS21A64
 
-- Versión: F98.4-Z6-CS21A60.
 - Archivo Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
-- Tamaño: `2.915.832` bytes.
-- Saltos de línea: `51.143`.
-- SHA-256: `1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56`.
-- Endpoints de audio preservados: `getBibliotecaNivelEstudiante` y `getAudioPistaEstudiante`.
+- Tamaño: `2.923.949` bytes.
+- Saltos de línea: `51.362`.
+- SHA-256: `d5217ceb90a4716c9161284a81c242a238649ed034bb97a36657716c6593feda`.
+- Respaldo previo: `1-AbtbfF3tH04eOl33w7mD2k_L7hPhCG1`.
+- Copia de cierre: `1GOKIBd7Z6zabkj8ElQHIIbTQ_Y9wa4DL`.
 
 ## Reglas preservadas
 
 - No mover pagos entre niveles o intentos.
 - No modificar pagos, certificados, CONAPE, calendario ni hojas académicas.
 - No crear triggers nuevos de CONAPE.
-- Guardado no significa desplegado ni probado en producción.
+- Guardado no significa instalado, desplegado ni probado en producción.
