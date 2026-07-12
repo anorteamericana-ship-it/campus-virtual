@@ -1,71 +1,51 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A66
+# FUENTE VERDADERA — F98.4-Z6-CS21A67
 
-Estado canónico: frontend CS21A66 guardado en GitHub `main`; backend canónico instalado CS21A64 preservado en Drive; backend completo candidato CS21A66 generado y validado; producción no verificada.
+Estado: frontend CS21A67 guardado en GitHub `main`; backend instalado continúa en CS21A64; backend completo candidato CS21A67 generado y validado; producción no verificada.
 
-## Cambio CS21A66 — autorización real de English LAB Gratis
+## Cambio vigente
 
-Los usuarios de prematrícula ya no reciben acceso a English LAB por el solo hecho de tener rol `student`.
+### Carga de Libros y Audios
 
-La fuente única de permiso es:
+`src/lazy_loader.jsx` espera a que `MaterialesView.__cs21a60UnitStarts` esté activo antes de renderizar las rutas de materiales. La biblioteca histórica de carpetas y PDFs ya no debe aparecer antes del visor actual.
 
-`PROSPECTOS.INICIO_GRATUITO_AUTORIZADO`
+### 1.3.2 Recursos adicionales
 
-El estado de `SOLICITUDES_USUARIO_GRATIS` es seguimiento comercial. Valores como `CONVERTIDA`, `RESPONDIDA` o `EN_GESTION` no reemplazan la autorización explícita de PROSPECTOS.
+Nuevo archivo: `src/book_additional_resources_cs21a67.js`.
 
-### Regla por perfil
+Se agrega el botón `1.3.2 RECURSOS ADICIONALES` junto a SB/TB/WB, sin modificar la estructura del visor.
 
-- Prospecto sin código académico y autorización positiva: English LAB Gratis habilitado.
-- Prospecto sin autorización: Campus de espera disponible, English LAB oculto y bloqueado.
-- Estudiante con código académico: acceso habitual preservado.
-- Docente, admin y superadmin: acceso habitual preservado.
+- Docente: solo Diccionario Word by Word.
+- Estudiante: recursos oficiales de su nivel.
+- Admin y superadmin: recursos completos del nivel seleccionado.
 
-### Defensa en profundidad
+El combo anterior de recursos queda oculto para evitar duplicados. Los audios compactos permanecen sin cambios.
 
-Frontend:
+## Backend candidato CS21A67
 
-- `src/english_lab_free_access_cs21a66.js` consulta el endpoint de autorización.
-- El botón `English LAB` se oculta mientras la consulta está pendiente o si el acceso fue rechazado.
-- La ruta directa renderiza un mensaje institucional de aprobación pendiente.
+Preserva CS21A66 y añade un árbol seguro de carpetas y archivos para Recursos adicionales. Las carpetas internas se devuelven en `children` hasta cuatro niveles de profundidad. Para una sesión docente, `getBibliotecaNivelEstudiante` devuelve únicamente el Diccionario. Estudiantes conservan las validaciones de nivel y estado académico; admin y superadmin conservan el árbol completo.
 
-Backend candidato:
+Fuentes oficiales:
 
-- `freeUserEnglishLabAccess` consulta PROSPECTOS por la cédula de la sesión.
-- `_aplayAuth_` rechaza catálogo, juego, progreso y completados para una prematrícula no autorizada.
-- `iniciarSesion` devuelve el estado explícito de English LAB Gratis.
-- `freeUserMiPerfil` adapta el panel de espera para mostrar `Entrar a English LAB` únicamente cuando la autorización real está activa.
+- B1: `1m5OkZtGrWytYunJdUyAUipf2s4QmSOo1`
+- B2: `1n0JPcUcBAgho8kC6ofT9NuTw6fLVMITp`
+- I1: `1nkuuggEea6sF476-J-IC6KMKzUuFwAm5`
+- I2: `1npQrQgYbxMWA1KIpCjB94osOXWsOMdGb`
 
-## Integridad backend candidato CS21A66
+Integridad del backend candidato:
 
-- Archivo: `Code_F98_4_Z6_CS21A66_COMPLETO.gs`.
-- Tamaño: `2.934.064` bytes.
-- Saltos de línea: `51.625`.
-- SHA-256: `2622098888eb4c408916b084b19b75ef27a61935810d4bcb1d386686a42c20fa`.
-- Sintaxis: validada mediante copia JavaScript y `node --check`.
+- Archivo: `Code_F98_4_Z6_CS21A67_COMPLETO.gs`
+- Tamaño: `2.936.329` bytes
+- Líneas: `51.687`
+- SHA-256: `456aa5674a02c6f1c48c040dc073289bdb6f98ce96fe136b685259f98665b63b`
+- Sintaxis validada con `node --check`.
 
-El archivo canónico de Drive continúa siendo CS21A64 hasta realizar reemplazo completo de `Code.gs` y publicar una nueva implementación.
+## Preservado
 
-## Frontend vigente
+- Visual actual del libro.
+- SB/TB/WB según rol.
+- U01–U16 y propagación.
+- Audios, PDF, zoom, pantalla completa y efecto de hojas.
+- CS21A66: autorización de English LAB Gratis.
+- Pagos, certificados, CONAPE, calendario y hojas académicas sin cambios.
 
-- `src/english_lab_free_access_cs21a66.js` — autorización y mensaje de bloqueo.
-- `src/resources_panel_cs21a65.jsx` — Recursos Didácticos unificados.
-- `src/book_inline_audio_cs21a63.js` — contenido vigente CS21A65 para audio y recursos.
-- `src/book_unit_propagation_cs21a64.js` — calibración propagada.
-- `src/book_page_turn_cs21a62.js` — paso de hoja.
-- `campus.html` — carga CS21A66 antes del router.
-
-## Cambios preservados CS21A65
-
-- Una sola sección `Recursos Didácticos`.
-- `Libros y Audios` como acceso consolidado.
-- Docente sin controles administrativos.
-- Estudiante sin TB.
-- Recursos adicionales oficiales por nivel.
-- Docente con Diccionario.
-- Etiquetas de audio sin prefijos técnicos ni número de página.
-
-## Reglas preservadas
-
-- No mover pagos entre niveles o intentos.
-- No modificar pagos, certificados, CONAPE, calendario ni hojas académicas.
-- No crear triggers nuevos de CONAPE.
-- Guardado en GitHub no significa desplegado ni probado en producción.
+Guardado no significa instalado, desplegado ni probado en producción.
