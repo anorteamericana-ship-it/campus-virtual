@@ -168,11 +168,21 @@
   function syncMenu() {
     const user = session();
     const freeUser = isFreeUser(user);
-    const visible = !freeUser || state.allowed === true;
+    const checking = freeUser && !state.checked;
+    const visible = !freeUser || checking || state.allowed === true;
     englishLabMenuButtons().forEach(button => {
       button.style.display = visible ? '' : 'none';
       button.setAttribute('aria-hidden', visible ? 'false' : 'true');
-      if (!visible) button.tabIndex = -1;
+      button.setAttribute('aria-busy', checking ? 'true' : 'false');
+      button.disabled = checking;
+      if (checking) {
+        button.setAttribute('aria-disabled', 'true');
+        button.title = 'Confirmando autorización de English LAB…';
+      } else {
+        button.removeAttribute('aria-disabled');
+        button.removeAttribute('title');
+      }
+      if (!visible || checking) button.tabIndex = -1;
       else button.removeAttribute('tabindex');
     });
   }
@@ -222,9 +232,7 @@
       return state;
     }
 
-    if (state.signature !== nextSignature) {
-      state = readCache(user) || baseState(user);
-    }
+    if (state.signature !== nextSignature) state = readCache(user) || baseState(user);
 
     const fresh = state.checked && state.checkedAt && Date.now() - state.checkedAt < CACHE_TTL;
     if (!force && fresh) {
@@ -233,7 +241,6 @@
     }
     if (inFlight) return inFlight;
 
-    // Una revalidación nunca bloquea una autorización ya confirmada.
     const hadDecision = state.checked;
     state = {
       ...state,
@@ -263,7 +270,6 @@
         return state;
       })
       .catch(error => {
-        // Si ya estaba permitido, una falla temporal no expulsa ni tapa la pantalla.
         if (hadDecision && state.allowed === true) {
           state = { ...state, loading:false, refreshing:false, checked:true, estado:state.estado || 'AUTORIZADO', checkedAt:Date.now() };
         } else {
