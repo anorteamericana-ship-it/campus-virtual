@@ -7,7 +7,6 @@
   const FREE_MARKER = /gratis|free|prospect|prematric|lead|formulario/i;
   const LEVEL_LABELS = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
   let scheduled = false;
-  let sidebarRefreshSent = false;
 
   function clean(value) {
     return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
@@ -126,16 +125,19 @@
     return current || component;
   }
 
+  // 0 = no disponible, 1 = ya era la capa exterior, 2 = se instaló una capa nueva.
   function installSidebarBypass() {
     const Current = window.Sidebar || (typeof Sidebar === 'function' ? Sidebar : null);
-    if (typeof Current !== 'function') return false;
-    if (Current.__cs21a71PrematriculaStable === Current) return true;
+    if (typeof Current !== 'function') return 0;
+    if (Current.__cs21a71PrematriculaStable === Current) return 1;
 
+    const user = readSession();
+    if (isFreeStudent(user)) document.documentElement.removeAttribute('data-an-premat-sidebar-ready');
     const freeBase = unwrapForFreeStudent(Current);
     const Wrapped = function SidebarCS21A71(props) {
-      const user = props?.usuario || readSession();
-      const role = clean(props?.rolReal || props?.role || user?.rol || user?.role).toLowerCase();
-      if ((role === 'student' || role === 'estudiante') && isFreeStudent(user)) {
+      const currentUser = props?.usuario || readSession();
+      const role = clean(props?.rolReal || props?.role || currentUser?.rol || currentUser?.role).toLowerCase();
+      if ((role === 'student' || role === 'estudiante') && isFreeStudent(currentUser)) {
         return React.createElement(freeBase, props);
       }
       return React.createElement(Current, props);
@@ -147,7 +149,7 @@
     Wrapped.__freeBase = freeBase;
     window.Sidebar = Wrapped;
     try { Sidebar = Wrapped; } catch (_) {}
-    return true;
+    return 2;
   }
 
   function findHeading(root, exact) {
@@ -223,12 +225,11 @@
     scheduled = false;
     const user = normalizeMatriculatedSession();
     publishStudentKind(user);
-    const installed = installSidebarBypass();
+    const installState = installSidebarBypass();
     cleanFreeSidebar(user);
     arrangeEnglishLab(user);
 
-    if (installed && isFreeStudent(user) && !sidebarRefreshSent) {
-      sidebarRefreshSent = true;
+    if (installState === 2 && isFreeStudent(user)) {
       setTimeout(() => {
         try { window.dispatchEvent(new Event('an:session-changed')); } catch (_) {}
       }, 0);
@@ -250,10 +251,7 @@
   ['an:lazy-module-loaded','an:session-changed','an:english-lab-free-access','an:free-user-solicitudes-changed','popstate','hashchange']
     .forEach(name => window.addEventListener(name, schedule));
 
-  const sidebarProbe = setInterval(() => {
-    installSidebarBypass();
-    schedule();
-  }, 60);
+  const sidebarProbe = setInterval(schedule, 60);
   setTimeout(() => clearInterval(sidebarProbe), 8000);
   schedule();
 
