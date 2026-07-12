@@ -1,68 +1,67 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A65
+# FUENTE VERDADERA — F98.4-Z6-CS21A66
 
-Estado canónico: frontend CS21A65 guardado en GitHub `main`; backend canónico CS21A64 preservado en Drive; producción no verificada.
+Estado canónico: frontend CS21A66 guardado en GitHub `main`; backend canónico instalado CS21A64 preservado en Drive; backend completo candidato CS21A66 generado y validado; producción no verificada.
 
-## Cambio CS21A65 — Recursos Didácticos unificados
+## Cambio CS21A66 — autorización real de English LAB Gratis
 
-Se corrige la multiplicación de secciones `Recursos Didácticos` causada por los envoltorios sucesivos CS21A59/CS21A60. El nuevo archivo `src/resources_panel_cs21a65.jsx` elimina la cadena repetida y monta una única sección por rol.
+Los usuarios de prematrícula ya no reciben acceso a English LAB por el solo hecho de tener rol `student`.
 
-### Menú
+La fuente única de permiso es:
 
-- Admin y superadmin: una sola sección `Recursos Didácticos` con `Libros y Audios`.
-- Docente: conserva un solo acceso `Libros y Audios`; se ocultan `Biblioteca digital` y la entrada separada `Audios`.
-- Estudiante: `Mi curso` pasa a llamarse `Libros y Audios` y se ubica bajo una sección propia `Recursos Didácticos`.
-- Las rutas antiguas `audios` y `biblioteca` se normalizan hacia `libros`.
-- El estudiante abre directamente la pestaña Materiales; no se mezcla el cronograma ni la biblioteca antigua debajo del visor unificado.
+`PROSPECTOS.INICIO_GRATUITO_AUTORIZADO`
 
-### Permisos visuales
+El estado de `SOLICITUDES_USUARIO_GRATIS` es seguimiento comercial. Valores como `CONVERTIDA`, `RESPONDIDA` o `EN_GESTION` no reemplazan la autorización explícita de PROSPECTOS.
 
-- Superadmin: SB/TB/WB, audio, recursos adicionales, calibración U01–U16 y `Actualizar desde Drive`.
-- Admin: SB/TB/WB, audio y recursos adicionales; sin botones de edición o actualización.
-- Docente: SB/TB/WB y audio; sin botones de edición o actualización; en recursos adicionales solo ve el Diccionario.
-- Estudiante: SB/WB del nivel activo, audio y recursos adicionales del nivel; sin TB ni controles administrativos.
+### Regla por perfil
 
-La sesión real se consulta antes que el alias interno `role=admin`, evitando ocultar los controles al superadmin verdadero.
+- Prospecto sin código académico y autorización positiva: English LAB Gratis habilitado.
+- Prospecto sin autorización: Campus de espera disponible, English LAB oculto y bloqueado.
+- Estudiante con código académico: acceso habitual preservado.
+- Docente, admin y superadmin: acceso habitual preservado.
 
-## Audios y recursos adicionales
+### Defensa en profundidad
 
-`src/book_inline_audio_cs21a63.js` conserva su ruta histórica pero su contenido vigente es CS21A65.
+Frontend:
 
-- Usa los endpoints preservados `getBibliotecaNivelEstudiante` y `getAudioPistaEstudiante`.
-- Se monta también en el visor del estudiante aunque no existan botones B1/B2/I1/I2.
-- El nivel del estudiante se obtiene de su sesión o grupo activo.
-- Agrega un combo compacto `Recursos adicionales` usando `catalogo.recursos`.
-- El estudiante recibe los recursos oficiales de su nivel.
-- El docente filtra únicamente archivos identificados como Diccionario / Word by Word Dictionary.
-- Al cambiar nivel, libro o unidad se detiene el audio y se libera el Blob anterior.
+- `src/english_lab_free_access_cs21a66.js` consulta el endpoint de autorización.
+- El botón `English LAB` se oculta mientras la consulta está pendiente o si el acceso fue rechazado.
+- La ruta directa renderiza un mensaje institucional de aprobación pendiente.
 
-Limpieza de nombres:
+Backend candidato:
 
-- Antes: `IC5_L0_Unit 01 Pg 002 Ex 01 Conversation Pt A.mp3`.
-- Visible: `Unit 01 Ex 01 Conversation Pt A.mp3`.
+- `freeUserEnglishLabAccess` consulta PROSPECTOS por la cédula de la sesión.
+- `_aplayAuth_` rechaza catálogo, juego, progreso y completados para una prematrícula no autorizada.
+- `iniciarSesion` devuelve el estado explícito de English LAB Gratis.
+- `freeUserMiPerfil` adapta el panel de espera para mostrar `Entrar a English LAB` únicamente cuando la autorización real está activa.
 
-No se renombra ningún archivo en Drive; solo cambia la etiqueta mostrada en el combo.
+## Integridad backend candidato CS21A66
 
-## Archivos frontend vigentes
+- Archivo: `Code_F98_4_Z6_CS21A66_COMPLETO.gs`.
+- Tamaño: `2.934.064` bytes.
+- Saltos de línea: `51.625`.
+- SHA-256: `2622098888eb4c408916b084b19b75ef27a61935810d4bcb1d386686a42c20fa`.
+- Sintaxis: validada mediante copia JavaScript y `node --check`.
 
-- `src/admin_resources_cs21a59.jsx` — base preservada.
-- `src/admin_resources_superadmin_cs21a60.jsx` — base preservada.
-- `src/book_unit_starts_cs21a60.jsx` — visor y permisos base preservados.
-- `src/admin_resources_runtime_cs21a61.jsx` — carga diferida estable.
-- `src/book_page_turn_cs21a62.js` — efecto de paso de hoja.
-- `src/book_inline_audio_cs21a63.js` — audio y recursos adicionales CS21A65.
-- `src/book_unit_propagation_cs21a64.js` — propagación opcional UXX–U16.
-- `src/resources_panel_cs21a65.jsx` — menú, rutas y limpieza por rol.
-- `campus.html` — carga CS21A65 después de CS21A64.
+El archivo canónico de Drive continúa siendo CS21A64 hasta realizar reemplazo completo de `Code.gs` y publicar una nueva implementación.
 
-## Backend canónico preservado
+## Frontend vigente
 
-- Versión instalada/canónica: F98.4-Z6-CS21A64.
-- Archivo Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
-- Tamaño: `2.923.949` bytes.
-- SHA-256: `d5217ceb90a4716c9161284a81c242a238649ed034bb97a36657716c6593feda`.
-- Respaldo adicional previo a CS21A65: `1AzAJIIsJvyU_CiHPbYEs3PwKMBF8_xxt`.
+- `src/english_lab_free_access_cs21a66.js` — autorización y mensaje de bloqueo.
+- `src/resources_panel_cs21a65.jsx` — Recursos Didácticos unificados.
+- `src/book_inline_audio_cs21a63.js` — contenido vigente CS21A65 para audio y recursos.
+- `src/book_unit_propagation_cs21a64.js` — calibración propagada.
+- `src/book_page_turn_cs21a62.js` — paso de hoja.
+- `campus.html` — carga CS21A66 antes del router.
 
-Existe un candidato completo CS21A65 que restringe `adminBooksRefreshOpenBook` al rol exacto `superadmin`; no se considera instalado ni desplegado hasta reemplazar el proyecto Apps Script y crear una nueva implementación.
+## Cambios preservados CS21A65
+
+- Una sola sección `Recursos Didácticos`.
+- `Libros y Audios` como acceso consolidado.
+- Docente sin controles administrativos.
+- Estudiante sin TB.
+- Recursos adicionales oficiales por nivel.
+- Docente con Diccionario.
+- Etiquetas de audio sin prefijos técnicos ni número de página.
 
 ## Reglas preservadas
 
