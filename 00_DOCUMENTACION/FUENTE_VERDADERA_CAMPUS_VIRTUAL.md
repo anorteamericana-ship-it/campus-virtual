@@ -1,10 +1,29 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A60
+# FUENTE VERDADERA — F98.4-Z6-CS21A61
 
-Estado canónico: frontend CS21A60 guardado en GitHub `main`; backend completo CS21A60 guardado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A61 guardado en GitHub `main`; backend completo CS21A60 preservado en el archivo canónico de Drive; producción no verificada.
 
-## Cambio CS21A60 — inicios U01–U16 persistentes
+## Hotfix CS21A61 — arranque estable de Recursos Didácticos
 
-El inicio de cada unidad deja de depender exclusivamente de una tabla rígida dentro del frontend.
+Síntoma confirmado en superadmin: `No se pudo cargar Recursos Didácticos.`
+
+Causa real:
+
+- `AdminResourcesMirror` se renderizaba antes de que el módulo diferido `src/syllabus_views.jsx` estuviera cargado.
+- En ese instante `window.__AN_CS21A59_TEACHER_MATERIALS_BASE__` todavía no existía y CS21A59 mostraba un error definitivo.
+- No era un error del libro, del manifiesto WebP ni del backend CS21A60.
+
+Corrección:
+
+- `src/admin_resources_runtime_cs21a61.jsx` envuelve la capa administrativa CS21A59.
+- Cuando Recursos Didácticos se abre, carga explícitamente `src/syllabus_views.jsx?v=F98.4Z6G` mediante `window.anLazyCampus`.
+- Espera a que CS21A59 y CS21A60 terminen de encadenar `MaterialesView`.
+- Mientras carga muestra `Preparando biblioteca…`.
+- Si la dependencia falla, muestra el motivo real y un botón `Reintentar`.
+- Evita que CS21A59 vuelva a envolver el hotfix y restablezca el error prematuro.
+
+Este cambio es exclusivamente frontend. No requiere modificar ni volver a copiar `Code.gs`.
+
+## Cambio preservado CS21A60 — inicios U01–U16 persistentes
 
 - Cada libro conserva su propio arreglo `unitStarts` dentro de su `book.json`.
 - La configuración es independiente por nivel y tipo: B1/B2/I1/I2 × SB/TB/WB.
@@ -23,9 +42,9 @@ El inicio de cada unidad deja de depender exclusivamente de una tabla rígida de
 - Docente: consulta SB/TB/WB sin controles administrativos.
 - Estudiante: consulta SB/WB de su nivel activo; no ve controles de actualización.
 
-## Validaciones
+## Validaciones backend preservadas
 
-Endpoint nuevo: `superadminBooksSetUnitStart`.
+Endpoint: `superadminBooksSetUnitStart`.
 
 - Requiere rol exacto `superadmin` en backend.
 - Verifica que la hoja exista en el `book.json` abierto.
@@ -43,10 +62,12 @@ Endpoint nuevo: `superadminBooksSetUnitStart`.
 - `src/admin_resources_cs21a59.jsx`: panel administrativo preservado.
 - `src/admin_resources_superadmin_cs21a60.jsx`: acceso real de superadmin al panel.
 - `src/book_unit_starts_cs21a60.jsx`: visor compartido y calibración U01–U16.
-- `campus.html`: carga CS21A60.
+- `src/admin_resources_runtime_cs21a61.jsx`: carga diferida estable del panel.
+- `campus.html`: carga CS21A61 después de CS21A60.
 
-## Backend canónico
+## Backend canónico preservado
 
+- Versión: F98.4-Z6-CS21A60.
 - Archivo Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
 - Tamaño: `2.915.832` bytes.
 - Saltos de línea: `51.143`.
@@ -59,4 +80,4 @@ Endpoint nuevo: `superadminBooksSetUnitStart`.
 - No mover pagos entre niveles o intentos.
 - No modificar pagos, certificados, CONAPE, calendario ni hojas académicas.
 - No crear triggers nuevos de CONAPE.
-- Guardado no significa instalado ni desplegado.
+- Guardado no significa desplegado ni probado en producción.
