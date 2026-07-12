@@ -1,48 +1,33 @@
 {
   "project": "CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA",
-  "version": "F98.4-Z6-CS21A64",
+  "version": "F98.4-Z6-CS21A65",
   "cut": "2026-07-12",
   "repository": "anorteamericana-ship-it/campus-virtual",
   "branch": "main",
   "production_deployment_confirmed": false,
   "backend": {
-    "version": "F98.4-Z6-CS21A64",
-    "base_preserved": [
-      "F98.4-Z6-CS21A60",
-      "F98.4-Z6-CS21A59",
-      "F98.4-Z6-CS21A58",
-      "F98.4-Z6-CS21A56",
-      "F98.4-Z6-CS21A46"
-    ],
-    "canonical_drive_folder_id": "1XITxPmwGJRDqgplj0AjbhfbjzaoIvL-a",
+    "canonical_version": "F98.4-Z6-CS21A64",
     "canonical_drive_file_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
     "backup_drive_folder_id": "1OHyjrubHJfeBOxx0kfYm0cWrM5xtyOZr",
-    "pre_change_backup_file_id": "1-AbtbfF3tH04eOl33w7mD2k_L7hPhCG1",
-    "closing_copy_file_id": "1GOKIBd7Z6zabkj8ElQHIIbTQ_Y9wa4DL",
+    "pre_cs21a65_backup_file_id": "1AzAJIIsJvyU_CiHPbYEs3PwKMBF8_xxt",
     "size_bytes": 2923949,
     "sha256": "d5217ceb90a4716c9161284a81c242a238649ed034bb97a36657716c6593feda",
     "newline_count": 51362,
-    "endpoint": "superadminBooksSetUnitStart",
-    "optional_sequence_parameters": [
-      "propagate_following",
-      "clicks_between_units"
-    ],
-    "preserved_endpoints": [
-      "teacherBooksOpenImageBook",
-      "adminBooksRefreshOpenBook",
-      "teacherBooksOpenPdf",
-      "teacherBooksReadRange",
-      "getBibliotecaNivelEstudiante",
-      "getAudioPistaEstudiante"
-    ],
-    "write_scope": "CURRENT_BOOK_SINGLE_UNIT_OR_ATOMIC_SEQUENCE_FROM_SELECTED",
+    "candidate_cs21a65": {
+      "prepared": true,
+      "installed": false,
+      "deployed": false,
+      "size_bytes": 2924238,
+      "sha256": "895b473c2f118277f679021b4e76853f065e5a75c105d5aa54e8bf85f5ae9d7a",
+      "newline_count": 51366,
+      "change": "adminBooksRefreshOpenBook requires exact superadmin role"
+    },
     "production_deployment_confirmed": false
   },
   "frontend": {
-    "version": "F98.4-Z6-CS21A64",
-    "base_version": "F98.4-Z6-CS21A63",
+    "version": "F98.4-Z6-CS21A65",
+    "base_version": "F98.4-Z6-CS21A64",
     "files": [
-      "src/teacher_cs21a_order_fix.jsx",
       "src/admin_resources_cs21a59.jsx",
       "src/admin_resources_superadmin_cs21a60.jsx",
       "src/book_unit_starts_cs21a60.jsx",
@@ -50,71 +35,47 @@
       "src/book_page_turn_cs21a62.js",
       "src/book_inline_audio_cs21a63.js",
       "src/book_unit_propagation_cs21a64.js",
+      "src/resources_panel_cs21a65.jsx",
       "campus.html"
     ],
     "git_blobs": {
-      "teacher_books_base": "2be5ccaf3afdfacced4a76dcc920055724549ed0",
-      "admin_resources_base": "4728807877e292bfe9244dbd56492d0576cf06ad",
-      "superadmin_resources": "6e45df46e9f6f13192c55d2898736d954ee5f4af",
-      "book_unit_starts": "68f7a39e1f245ea22901eb2b242125b9c86acbe8",
-      "resources_runtime": "bfc65e3cb7b08508c9074f08820c311003fcf364",
-      "book_page_turn": "283679cc684dc9e9607404aa9806698ad2956960",
-      "book_inline_audio": "4c7ad2d23e11c02df253d3e6377fd9e512379e7e",
-      "book_unit_propagation": "536f4fd384d78306196066331d7e5e8e7315a953",
-      "campus": "bc0fc14c9e18cb5216d605382563ebf7a88ecb80"
+      "book_inline_audio_cs21a65_content": "52ef023375abed87d0d123511790c9c7ecb3ea54",
+      "resources_panel": "f6bb642cd1dcf1caf188b2a7348530818a4fe4e6",
+      "campus": "ba13ab9ac3154d7df0e28d959af215f83909b535"
     },
-    "unit_propagation": {
-      "trigger": "SUPERADMIN_SMALL_UPDATE_BUTTON",
-      "single_save_when_first_confirmation_cancelled": true,
-      "prompt_for_next_clicks_when_accepted": true,
-      "click_equals_page_entries": 2,
-      "uses_real_manifest_page_order": true,
-      "recalculates_from_selected_unit_through_u16": true,
-      "preserves_previous_units": true,
-      "atomic_write": true,
-      "rejects_if_sequence_exceeds_book": true,
-      "backend_changed": true
+    "resources_panel": {
+      "single_sidebar_section": true,
+      "menu_label": "Libros y Audios",
+      "separate_audio_menu_removed": true,
+      "legacy_wrapper_chain_stripped": true,
+      "student_direct_materials_route": true,
+      "student_legacy_course_content_hidden_inside_resource_access": true
     },
-    "inline_audio": {
-      "source_component": "src/syllabus_views.jsx",
-      "catalog_endpoint": "getBibliotecaNivelEstudiante",
-      "track_endpoint": "getAudioPistaEstudiante",
-      "filter": "REAL_FILENAME_UNIT_01_TO_16_AND_MP3",
-      "placement": "RIGHT_SIDE_OF_LEVEL_BUTTON_BAR",
-      "compact_select": true,
-      "compact_player": true
+    "permissions": {
+      "superadmin": ["SB", "TB", "WB", "INLINE_AUDIO", "ADDITIONAL_RESOURCES", "REFRESH_DRIVE", "SET_UNIT_START", "PROPAGATE_UNIT_STARTS"],
+      "admin": ["SB", "TB", "WB", "INLINE_AUDIO", "ADDITIONAL_RESOURCES"],
+      "teacher": ["SB", "TB", "WB", "INLINE_AUDIO", "DICTIONARY_ONLY"],
+      "student": ["SB", "WB_CURRENT_LEVEL", "INLINE_AUDIO", "LEVEL_ADDITIONAL_RESOURCES"]
+    },
+    "audio_name_display": {
+      "removes_prefix_before_unit": true,
+      "removes_page_token": true,
+      "preserves_real_file": true,
+      "example_before": "IC5_L0_Unit 01 Pg 002 Ex 01 Conversation Pt A.mp3",
+      "example_after": "Unit 01 Ex 01 Conversation Pt A.mp3"
     },
     "production_deployment_confirmed": false
   },
-  "unit_start_configuration": {
-    "storage": "book.json.unitStarts",
-    "levels": ["B1", "B2", "I1", "I2"],
-    "book_types": ["SB", "TB", "WB"],
-    "units_per_book": 16,
-    "write_role": "superadmin",
-    "saved_visible_page": "RIGHT_PAGE_OF_OPEN_SPREAD",
-    "single_save_preserved": true,
-    "sequence_mode_optional": true,
-    "sequence_metric": "NEXT_BUTTON_CLICKS",
-    "sequence_page_entries_per_click": 2,
-    "keeps_history": true,
-    "history_limit": 100,
-    "invalidates_only_selected_book_cache": true
-  },
-  "viewer_permissions": {
-    "superadmin": ["SB", "TB", "WB", "REFRESH_DRIVE", "SET_UNIT_START", "PROPAGATE_UNIT_STARTS", "INLINE_AUDIO"],
-    "admin": ["SB", "TB", "WB", "REFRESH_DRIVE", "INLINE_AUDIO"],
-    "teacher": ["SB", "TB", "WB", "INLINE_AUDIO"],
-    "student": ["SB", "WB_CURRENT_LEVEL"]
-  },
   "preserved": {
-    "consulta_individual_fresh": true,
-    "certificate_payment_separate_from_document": true,
-    "inline_payment_uses_official_engine": true,
-    "never_move_payments_between_levels_or_attempts": true,
-    "no_new_conape_triggers": true,
+    "book_visual_layout": true,
+    "page_turn_effect": true,
+    "unit_start_propagation": true,
+    "pdf_controls": true,
+    "zoom_and_fullscreen": true,
     "payments_untouched": true,
     "certificates_untouched": true,
-    "calendar_untouched": true
+    "conape_untouched": true,
+    "calendar_untouched": true,
+    "no_new_conape_triggers": true
   }
 }
