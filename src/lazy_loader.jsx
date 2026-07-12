@@ -1,10 +1,9 @@
-// F96.2-LAZY-D · Cargador diferido del Campus
-// No elimina módulos: solo cambia cuándo se cargan. Mantiene caché por sesión
-// de navegador y carga secuencial para respetar dependencias históricas.
+// F98.4-Z6-CS21A67 · Cargador diferido sin parpadeo de biblioteca legacy
+// Base preservada: F96.2-LAZY-D / F98.4-L-EVALUACIONES-RESULTADOS
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-L-EVALUACIONES-RESULTADOS';
+  const VERSION = 'F98.4-Z6-CS21A67';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){
@@ -39,6 +38,38 @@
     for (const f of (files || [])) await loadOne(f);
   }
 
+  function waitUntil(test, timeoutMs, label){
+    const started = Date.now();
+    return new Promise((resolve, reject) => {
+      const tick = () => {
+        let ready = false;
+        try { ready = !!test(); } catch(_){ ready = false; }
+        if (ready) { resolve(true); return; }
+        if (Date.now() - started >= timeoutMs) {
+          reject(new Error('No se pudo preparar ' + (label || 'la pantalla') + '.'));
+          return;
+        }
+        setTimeout(tick, 20);
+      };
+      tick();
+    });
+  }
+
+  function needsUnifiedMaterials(component){
+    return component === 'MaterialesView' || component === 'StudentCourseView';
+  }
+
+  function waitForRouteEnhancers(component){
+    if (!needsUnifiedMaterials(component)) return Promise.resolve(true);
+    // CS21A67: syllabus_views publica primero la visual histórica. El visor
+    // vigente CS21A60 la envuelve unos milisegundos después. Esperamos esa
+    // envoltura antes del primer render para que la biblioteca antigua nunca
+    // llegue a pintarse en pantalla.
+    return waitUntil(() => {
+      const current = window.MaterialesView;
+      return typeof current === 'function' && current.__cs21a60UnitStarts === true;
+    }, 5000, 'Libros y Audios');
+  }
 
   async function validateMap(map){
     const startedAt = Date.now();
@@ -62,22 +93,23 @@
     const React = window.React;
     const list = files || [];
     const depsReady = () => list.every(f => loaded.has(normalize(f)));
+    const routeReady = () => !needsUnifiedMaterials(component) ||
+      (typeof window.MaterialesView === 'function' && window.MaterialesView.__cs21a60UnitStarts === true);
     const [state, setState] = React.useState(() => ({
-      ready: typeof window[component] === 'function' && depsReady(),
+      ready: typeof window[component] === 'function' && depsReady() && routeReady(),
       error:''
     }));
     React.useEffect(() => {
       let live = true;
-      // Un componente puede existir porque otra ruta cargó student_experience,
-      // pero sus dependencias específicas todavía no. Antes se daba por listo y
-      // Resultados quedaba sin NotasView. Siempre validamos/cargamos la lista de
-      // archivos de la ruta antes de montar el componente.
-      if (!depsReady()) setState({ ready:false, error:'' });
-      loadMany(list).then(() => {
-        if(!live) return;
-        if (typeof window[component] === 'function') setState({ ready:true, error:'' });
-        else setState({ ready:false, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
-      }).catch(e => live && setState({ ready:false, error:e?.message || String(e) }));
+      if (!depsReady() || !routeReady()) setState({ ready:false, error:'' });
+      loadMany(list)
+        .then(() => waitForRouteEnhancers(component))
+        .then(() => {
+          if(!live) return;
+          if (typeof window[component] === 'function') setState({ ready:true, error:'' });
+          else setState({ ready:false, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
+        })
+        .catch(e => live && setState({ ready:false, error:e?.message || String(e) }));
       return () => { live = false; };
     }, [component, JSON.stringify(list)]);
     if (!state.ready) {
