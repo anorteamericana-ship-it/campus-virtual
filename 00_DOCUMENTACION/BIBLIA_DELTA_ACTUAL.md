@@ -1,71 +1,87 @@
-# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A59
+# BIBLIA DELTA ACTUAL — F98.4-Z6-CS21A60
 
 ## Estado
 
-- Frontend guardado en `main`: CS21A59.
-- Backend completo canónico: CS21A59.
-- Base preservada: CS21A58 / CS21A56 / CS21A46.
+- Frontend guardado en `main`: CS21A60.
+- Backend completo canónico en Drive: CS21A60.
+- Base preservada: CS21A59 / CS21A58 / CS21A56 / CS21A46.
 - Producción no verificada.
 
-## Admin — Recursos Didácticos
+## Cambio funcional
 
-El menú administrativo incorpora:
+El superadmin puede establecer el arranque oficial de U01–U16 para cada libro desde la misma vista utilizada por docentes.
 
-- `Libros de texto`.
-- `Audios`.
+El flujo no modifica código en cada clic. Cambia el `book.json` del libro abierto:
 
-La vista es la misma que usa el docente. No se crea un segundo visor independiente.
+- `unitStarts[0]` corresponde a U01.
+- `unitStarts[15]` corresponde a U16.
+- Cada nivel y tipo de libro conserva un arreglo independiente.
+- Docentes y estudiantes reciben ese arreglo al cargar el manifiesto.
 
-## Permisos
+## Regla del pliego
 
-- Docente: consulta libros y audios.
-- Admin/superadmin: consulta libros y audios.
-- Solo admin/superadmin puede ejecutar `Actualizar desde Drive`.
-- El docente no debe ver ese botón.
-- El endpoint vuelve a verificar el rol; ocultar el botón no es la única protección.
+El visor trabaja por pares en el orden de `pages[]`.
 
-## Alcance de Actualizar desde Drive
+- 0+1, 2+3, 4+5, etc.
+- Al pulsar `Actualizar`, se guarda la hoja derecha visible.
+- Si el pliego muestra 7–8, U01 queda configurada con fuente 8.
+- Al volver a abrir U01, el algoritmo encuentra la hoja 8 y reconstruye el mismo par 7–8.
 
-Endpoint: `adminBooksRefreshOpenBook`.
+## Interfaz
 
-- Actualiza solo el nivel y tipo abiertos.
-- Ejemplo: si está abierto `B1 · SB`, no toca B1/TB, B1/WB ni los otros niveles.
-- Lee únicamente la carpeta `pages` de ese libro.
-- Ordena por el número actual del nombre WebP.
-- Reconstruye `pages[]` con `displayIndex` consecutivo.
-- Mantiene `sourcePage` según el nombre actual.
-- Rechaza nombres duplicados.
-- Invalida solo la caché de ese libro.
-- No crea copias de imágenes.
-- No mueve, renombra ni elimina archivos.
-- No procesa ni modifica PDF.
+- Debajo de cada botón U01–U16 existe un botón pequeño `Actualizar` solo para superadmin.
+- El libro inicia en U01 cuando hay configuración.
+- El mensaje confirma nivel, tipo, unidad y hoja guardada.
+- Docentes y estudiantes no ven botones de escritura.
 
-## Visor
+## Separación por libro
 
-- Sigue usando WebP por orden del manifiesto.
-- Forma pliegos por posiciones `0+1`, `2+3`, `4+5`.
-- Si falta un número, continúa con la siguiente entrada.
-- U01–U16 sigue siendo provisional y exclusivo de SB.
-- El PDF oficial queda para abrir y descargar.
+No compartir el mapa entre SB, TB y WB.
 
-## Audios oficiales
+Configuraciones independientes:
 
-- B1: `1dTO0jU1cPvY69YWELAsTyd-qkQUnQbla`.
-- B2: `1VZtIb7-4qP8YUM7tqGKVTZ2CsvxXqsqT`.
-- I1: `1kjXwAfxhQTVZcXHNjYoJOtsllS5OC-7t`.
-- I2: `1_PfLqToC_QSO7OtNJLv5uY3i3Ff-YaX6`.
+- B1/SB, B1/TB, B1/WB.
+- B2/SB, B2/TB, B2/WB.
+- I1/SB, I1/TB, I1/WB.
+- I2/SB, I2/TB, I2/WB.
+
+SB conserva valores históricos como fallback. TB/WB permanecen sin inicio hasta calibración, para no inventar páginas.
+
+## Backend
+
+Endpoint: `superadminBooksSetUnitStart`.
+
+Controles:
+
+- Sesión válida y rol exacto superadmin.
+- Unidad entera 1–16.
+- Página fuente entera y existente.
+- Sin duplicados.
+- Orden ascendente entre unidades.
+- Bloqueo de escritura.
+- Historial limitado a 100 cambios.
+- Caché invalidada solo para el libro afectado.
+
+`adminBooksRefreshOpenBook` reconstruye `pages[]` sin borrar `unitStarts` ni el historial.
+
+## Archivos
+
+- `src/admin_resources_superadmin_cs21a60.jsx`.
+- `src/book_unit_starts_cs21a60.jsx`.
+- `campus.html`.
+- `Code.gs` canónico CS21A60.
 
 ## Integridad
 
-- Backend: `2.906.208` bytes.
-- SHA-256: `a3a4b2423c274833deb2f2d4d30859a85e7b1676779b371c395d244f4ab6773d`.
-- Saltos de línea: `50.867`.
-- Cambio limitado al módulo de Recursos Didácticos.
-- No modifica pagos, certificados, CONAPE, calendario ni hojas académicas.
+- Tamaño backend: `2.915.832` bytes.
+- SHA-256: `1ae938995f99407e2914f406346edcf7e64d2517c6dd0869db14b14730947a56`.
+- Saltos de línea: `51.143`.
+- Respaldo previo: `1kekb73zQj4Wy9KdhgaiiannLJhBH6tmy`.
+- Copia de cierre: `1bTuQcVrHkdWUV3HqFBWLddLfRiayB33U`.
 
 ## Reglas preservadas
 
-- Solo desembolso académico 01.
-- 02/03+ no cierran el 01.
-- Nunca mover pagos entre niveles o intentos.
+- No mover pagos entre niveles o intentos.
+- No modificar pagos, certificados, CONAPE, calendario ni hojas académicas.
+- No crear triggers nuevos de CONAPE.
 - Guardar archivos no equivale a desplegar producción.
