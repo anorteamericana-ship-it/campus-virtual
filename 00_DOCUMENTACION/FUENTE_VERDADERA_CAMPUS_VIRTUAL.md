@@ -1,70 +1,72 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A64
+# FUENTE VERDADERA — F98.4-Z6-CS21A65
 
-Estado canónico: frontend CS21A64 guardado en GitHub `main`; backend completo CS21A64 guardado en el archivo canónico de Drive; producción no verificada.
+Estado canónico: frontend CS21A65 guardado en GitHub `main`; backend canónico CS21A64 preservado en Drive; producción no verificada.
 
-## Cambio CS21A64 — propagación opcional por clics de Siguiente
+## Cambio CS21A65 — Recursos Didácticos unificados
 
-Al pulsar el botón pequeño `Actualizar` debajo de U01–U15, el superadmin recibe una pregunta antes de guardar:
+Se corrige la multiplicación de secciones `Recursos Didácticos` causada por los envoltorios sucesivos CS21A59/CS21A60. El nuevo archivo `src/resources_panel_cs21a65.jsx` elimina la cadena repetida y monta una única sección por rol.
 
-- `Cancelar` en la primera pregunta guarda únicamente la unidad seleccionada.
-- `Aceptar` solicita cuántos clics del botón `Siguiente` deben separar cada unidad posterior.
-- Cada clic equivale a dos posiciones de página del visor.
-- Ejemplo: U01=27 con 4 clics produce U02=35, U03=43 y continúa hasta U16.
-- Ejemplo: U01=27 con 3 clics produce U02=33, U03=39 y continúa hasta U16.
-- Si se inicia desde U05, U01–U04 permanecen intactas y se recalcula U05–U16.
-- U16 conserva el guardado individual porque no tiene una unidad posterior.
+### Menú
 
-La propagación usa el orden real de `book.json.pages`, no una suma ciega. El backend calcula todas las unidades, valida existencia, duplicados y orden ascendente, y solo entonces escribe una vez el `book.json`. Si alguna unidad excede las hojas disponibles, no se guarda ningún cambio.
+- Admin y superadmin: una sola sección `Recursos Didácticos` con `Libros y Audios`.
+- Docente: conserva un solo acceso `Libros y Audios`; se ocultan `Biblioteca digital` y la entrada separada `Audios`.
+- Estudiante: `Mi curso` pasa a llamarse `Libros y Audios` y se ubica bajo una sección propia `Recursos Didácticos`.
+- Las rutas antiguas `audios` y `biblioteca` se normalizan hacia `libros`.
+- El estudiante abre directamente la pestaña Materiales; no se mezcla el cronograma ni la biblioteca antigua debajo del visor unificado.
 
-Frontend nuevo: `src/book_unit_propagation_cs21a64.js`.
+### Permisos visuales
 
-Backend:
+- Superadmin: SB/TB/WB, audio, recursos adicionales, calibración U01–U16 y `Actualizar desde Drive`.
+- Admin: SB/TB/WB, audio y recursos adicionales; sin botones de edición o actualización.
+- Docente: SB/TB/WB y audio; sin botones de edición o actualización; en recursos adicionales solo ve el Diccionario.
+- Estudiante: SB/WB del nivel activo, audio y recursos adicionales del nivel; sin TB ni controles administrativos.
 
-- El endpoint preservado `superadminBooksSetUnitStart` acepta opcionalmente `propagate_following=true` y `clicks_between_units`.
-- Sin esos campos mantiene exactamente el guardado individual CS21A60.
-- Solo `superadmin` puede usar la operación.
-- Cada unidad modificada queda registrada en `unitStartHistory`, con máximo de 100 entradas.
-- Se invalida únicamente la caché del libro abierto.
+La sesión real se consulta antes que el alias interno `role=admin`, evitando ocultar los controles al superadmin verdadero.
 
-## Cambio preservado CS21A63 — audios compactos
+## Audios y recursos adicionales
 
-- Usa `getBibliotecaNivelEstudiante` y `getAudioPistaEstudiante`.
-- Filtra las pistas `.mp3` por el nombre real `Unit 01` a `Unit 16`.
-- Se monta al lado de B1/B2/I1/I2 con combo y reproductor pequeños.
-- No cambia la estructura ni las posiciones del visor.
+`src/book_inline_audio_cs21a63.js` conserva su ruta histórica pero su contenido vigente es CS21A65.
 
-Archivo: `src/book_inline_audio_cs21a63.js`.
+- Usa los endpoints preservados `getBibliotecaNivelEstudiante` y `getAudioPistaEstudiante`.
+- Se monta también en el visor del estudiante aunque no existan botones B1/B2/I1/I2.
+- El nivel del estudiante se obtiene de su sesión o grupo activo.
+- Agrega un combo compacto `Recursos adicionales` usando `catalogo.recursos`.
+- El estudiante recibe los recursos oficiales de su nivel.
+- El docente filtra únicamente archivos identificados como Diccionario / Word by Word Dictionary.
+- Al cambiar nivel, libro o unidad se detiene el audio y se libera el Blob anterior.
 
-## Cambios preservados CS21A62 / CS21A61 / CS21A60
+Limpieza de nombres:
 
-- CS21A62: efecto 3D de paso de hoja en Anterior, Siguiente y U01–U16.
-- CS21A61: carga estable de Recursos Didácticos y botón Reintentar.
-- CS21A60: `book.json.unitStarts`, calibración independiente B1/B2/I1/I2 × SB/TB/WB y permisos por rol.
+- Antes: `IC5_L0_Unit 01 Pg 002 Ex 01 Conversation Pt A.mp3`.
+- Visible: `Unit 01 Ex 01 Conversation Pt A.mp3`.
 
-## Frontend vigente
+No se renombra ningún archivo en Drive; solo cambia la etiqueta mostrada en el combo.
 
-- `src/teacher_cs21a_order_fix.jsx`.
-- `src/admin_resources_cs21a59.jsx`.
-- `src/admin_resources_superadmin_cs21a60.jsx`.
-- `src/book_unit_starts_cs21a60.jsx`.
-- `src/admin_resources_runtime_cs21a61.jsx`.
-- `src/book_page_turn_cs21a62.js`.
-- `src/book_inline_audio_cs21a63.js`.
-- `src/book_unit_propagation_cs21a64.js`.
-- `campus.html`.
+## Archivos frontend vigentes
 
-## Backend canónico CS21A64
+- `src/admin_resources_cs21a59.jsx` — base preservada.
+- `src/admin_resources_superadmin_cs21a60.jsx` — base preservada.
+- `src/book_unit_starts_cs21a60.jsx` — visor y permisos base preservados.
+- `src/admin_resources_runtime_cs21a61.jsx` — carga diferida estable.
+- `src/book_page_turn_cs21a62.js` — efecto de paso de hoja.
+- `src/book_inline_audio_cs21a63.js` — audio y recursos adicionales CS21A65.
+- `src/book_unit_propagation_cs21a64.js` — propagación opcional UXX–U16.
+- `src/resources_panel_cs21a65.jsx` — menú, rutas y limpieza por rol.
+- `campus.html` — carga CS21A65 después de CS21A64.
 
+## Backend canónico preservado
+
+- Versión instalada/canónica: F98.4-Z6-CS21A64.
 - Archivo Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
 - Tamaño: `2.923.949` bytes.
-- Saltos de línea: `51.362`.
 - SHA-256: `d5217ceb90a4716c9161284a81c242a238649ed034bb97a36657716c6593feda`.
-- Respaldo previo: `1-AbtbfF3tH04eOl33w7mD2k_L7hPhCG1`.
-- Copia de cierre: `1GOKIBd7Z6zabkj8ElQHIIbTQ_Y9wa4DL`.
+- Respaldo adicional previo a CS21A65: `1AzAJIIsJvyU_CiHPbYEs3PwKMBF8_xxt`.
+
+Existe un candidato completo CS21A65 que restringe `adminBooksRefreshOpenBook` al rol exacto `superadmin`; no se considera instalado ni desplegado hasta reemplazar el proyecto Apps Script y crear una nueva implementación.
 
 ## Reglas preservadas
 
 - No mover pagos entre niveles o intentos.
 - No modificar pagos, certificados, CONAPE, calendario ni hojas académicas.
 - No crear triggers nuevos de CONAPE.
-- Guardado no significa instalado, desplegado ni probado en producción.
+- Guardado en GitHub no significa desplegado ni probado en producción.
