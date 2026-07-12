@@ -37,7 +37,7 @@
         pointer-events: none;
         perspective: 2200px;
         transform-style: preserve-3d;
-        contain: layout paint style;
+        overflow: visible;
       }
       .an-book-turn-sheet-cs21a62 {
         position: absolute;
