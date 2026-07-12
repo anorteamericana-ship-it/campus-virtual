@@ -1,97 +1,97 @@
-# FUENTE VERDADERA — F98.4-Z6-CS21A70
+# FUENTE VERDADERA — F98.4-Z6-CS21A71
 
-Estado: frontend CS21A70 guardado en GitHub `main`; `Code.gs` canónico de Drive actualizado a CS21A70; publicación de Apps Script y prueba de producción no verificadas.
+Estado: frontend CS21A71 guardado en GitHub `main`; backend canónico continúa en CS21A70; publicación de Apps Script y prueba de producción no verificadas.
 
-## Panel Maestro · CONAPE
+## Prematrícula activa
 
-Archivo frontend vigente:
+La prematrícula sin código utiliza su Sidebar original desde el primer render. El normalizador académico de Recursos Didácticos queda fuera de esta sesión, por lo que ya no puede insertar y retirar temporalmente:
 
-- `src/admin_master_conape_movements_cs21a25.jsx`
+- Recursos Didácticos.
+- Libros y Audios.
+- Recursos adicionales.
+- Otras rutas académicas no habilitadas.
 
-Aunque conserva el nombre histórico CS21A25, su contenido vigente declara:
+Archivo responsable:
 
-`F98.4-Z6-CS21A70`
+- `src/prematricula_english_lab_ui_cs21a71.js`.
 
-### Búsqueda
+El archivo se carga desde `src/resources_panel_state_cs21a65.js` antes de `app.jsx`.
 
-La tabla permite buscar por:
+## English LAB Gratis
 
-- Código.
-- Cédula.
-- Teléfono.
-- Nombre del estudiante.
+El contenido vigente de `src/english_lab_free_access_cs21a66.js` corresponde a CS21A71.
 
-### Orden y filtros
+Reglas:
 
-Las columnas Código, Estudiante, Resumen académico, Movimiento, Periodo / nivel y WhatsApp son ordenables.
+- No existe verificación por `focus`.
+- No se revisa nuevamente al tocar o navegar por la pantalla.
+- La decisión se conserva 30 minutos en `sessionStorage` para la misma identidad.
+- Si la sesión ya incluye la autorización, English LAB aparece inmediatamente.
+- Durante la única revisión inicial, el botón permanece visible pero bloqueado para evitar un cambio brusco del menú.
+- Una autorización confirmada no se pierde por una falla temporal de conexión.
+- La ruta directa sigue protegida cuando la prematrícula no está autorizada.
 
-Filtros disponibles:
+`src/prospect_free_student.jsx` usa la misma decisión global que la opción lateral y la compuerta. El estado comercial de la solicitud no sustituye `INICIO_GRATUITO_AUTORIZADO`.
 
-- Movimiento.
-- Nivel.
-- Estado académico.
-- Periodo.
-- Estado de WhatsApp.
+## Visual de English LAB
 
-### Movimiento
+### Prematrícula sin código
 
-- La etiqueta `Sin fila` se elimina de la presentación.
-- Solo se muestran `Mora SI` o `Mora NO` cuando `7-morosidad` contiene una fila oficial.
-- La condición `Desembolso adelantado` queda visible como detalle cuando el periodo es posterior al mes de detección.
+Se ocultan únicamente:
 
-### Periodo / nivel
+- Mapa de progreso.
+- Banco curricular.
+- Áreas cognitivas demo.
 
-Formato principal:
+Se mantiene:
 
-`01/09/2026 - D-10/07`
+- Encabezado y bienvenida.
+- Resumen rápido.
+- Juegos gratis.
+- Línea de logros y medallas.
+- Catálogo demo.
+- El resto de funciones existentes.
 
-Contexto adicional del mismo periodo:
+La ocultación se aplica antes del primer pintado para que los paneles restringidos no parpadeen.
 
-`02/09/2026 · D-12/07`
+### Estudiante con código real
 
-El primer bloque de `FECHA_ULT_DESEMBOLSO` continúa interpretándose como número de desembolso y no como día del mes.
+La existencia del código tiene prioridad sobre marcas antiguas de prospecto o prematrícula.
 
-Regla de negocio:
+- Deja de tratarse como usuario gratis.
+- El título cambia a `Catálogo Básico I` o al nivel académico oficial.
+- El catálogo se coloca antes de los paneles de seguimiento.
+- Debajo se muestran Mapa de progreso, Banco curricular y Áreas cognitivas del nivel.
 
-- Solo 01 participa en el seguimiento académico.
-- 02, 03 y posteriores se muestran solo como referencia.
-- 02+ no aplican pagos, no cierran el 01 y no cambian morosidad ni estado académico.
+## Archivos frontend vigentes CS21A71
 
-## Backend canónico CS21A70
+- `src/prematricula_english_lab_ui_cs21a71.js` — nuevo.
+- `src/english_lab_free_access_cs21a66.js` — contenido CS21A71.
+- `src/prospect_free_student.jsx` — acceso sincronizado.
+- `src/resources_panel_state_cs21a65.js` — cargador CS21A71.
 
-Archivo de Drive:
+No se modificaron:
 
-- ID: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`
-- Nombre: `Code.gs`
-- Tamaño: `2.938.302` bytes
-- Saltos de línea: `51.714`
-- SHA-256: `278cd64101c99abc6ecfc0e30ea4f6560fd3555c8c923756f7947d2e0ad26c28`
+- `campus.html`.
+- `src/academia_play.jsx`.
+- `Code.gs`.
 
-Respaldo previo:
+## Backend canónico preservado
 
-- `1LbyMht5DGmF9icVR8iUW96q85sAEI6T0`
+- Versión: F98.4-Z6-CS21A70.
+- ID Drive: `1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3`.
+- Tamaño: `2.938.302` bytes.
+- SHA-256: `278cd64101c99abc6ecfc0e30ea4f6560fd3555c8c923756f7947d2e0ad26c28`.
 
-Copia de cierre:
-
-- `1NoOW-dV-izB353Hkxtke9--XG5ZveauO`
-
-El archivo descargado nuevamente desde Drive coincide byte por byte con el archivo local.
-
-Cambio backend limitado a:
-
-- Adjuntar `periodMovements` a cada movimiento académico 01.
-- Agrupar por cédula, mes y año.
-- Conservar número, periodo, fecha de detección, tipo y condición adelantada de 02+.
-- Mantener las filas principales limitadas a 01.
+El backend ya incluye `freeUserEnglishLabAccess`, los metadatos de autorización en sesión y `freeUserMiPerfil.acceso_english_lab`.
 
 ## Preservado
 
-- CS21A69: selección azul única del menú lateral.
-- CS21A68: Recursos adicionales como panel independiente.
-- CS21A67: árbol de Recursos adicionales y carga sin parpadeo.
-- CS21A66: English LAB Gratis con autorización real.
-- Visual y funcionamiento de Libros y Audios.
-- Pagos, certificados, calendario, DATOS, ESTATUS y hojas externas CONAPE sin escrituras nuevas.
-- Modo manual de actualización CONAPE y ausencia de triggers nuevos.
+- CS21A70: Panel Maestro CONAPE.
+- CS21A69: selección lateral única.
+- CS21A68: Recursos adicionales independiente.
+- CS21A67: árbol de recursos y carga estable.
+- Libros, audios, PDF, zoom, efecto de hojas y calibración U01–U16.
+- Pagos, certificados, calendario, DATOS, ESTATUS y fuentes externas CONAPE sin cambios.
 
-Guardado en GitHub y Drive no significa publicado ni probado en producción.
+Guardado en GitHub no significa desplegado ni probado en producción.
