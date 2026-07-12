@@ -1,8 +1,10 @@
-// F98.4-Z6-CS21A60 · Inicios U01–U16 persistentes por libro
+// F98.4-Z6-CS21A75 · Inicios U01–U16 + visor React reutilizable por rol
 /* global React, MaterialesView */
 (function () {
-  const VERSION = 'F98.4-Z6-CS21A60';
+  const VERSION = 'F98.4-Z6-CS21A75';
   const TAB_KEY = 'an_teacher_materiales_tab';
+  const ADMIN_OPEN_KEY = 'an_admin_resources_open';
+  const ADMIN_TAB_KEY = 'an_admin_resources_tab';
   const BLUE = 'var(--an-navy-ink,#001E47)';
 
   const LEVELS = [
@@ -275,7 +277,7 @@
     };
 
     return (
-      <section data-screen-label={`${studentMode ? 'Estudiante' : 'Recursos'} · CS21A60 · Libros`} style={{ padding: studentMode ? '0 0 18px' : '10px 12px 18px', width: '100%', boxSizing: 'border-box' }}>
+      <section data-screen-label={`${studentMode ? 'Estudiante' : 'Recursos'} · CS21A75 · Libros`} style={{ padding: studentMode ? '0 0 18px' : '10px 12px 18px', width: '100%', boxSizing: 'border-box' }}>
         <div ref={hostRef} style={{ width: '100%', background: '#fff', border: '1px solid var(--line,#e5e0d8)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 28px rgba(0,0,0,.06)' }}>
           <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderBottom: '1px solid var(--line,#e5e0d8)' }}>
             <div style={{ minWidth: 220, flex: '1 1 260px' }}>
@@ -310,19 +312,29 @@
     );
   }
 
+  window.__AN_BOOK_RESOURCES_COMPONENT__ = BookResourcesCS21A60;
+
   function installMaterialPatch() {
     const Current = window.MaterialesView || (typeof MaterialesView === 'function' ? MaterialesView : null);
-    if (!Current || Current.__cs21a60UnitStarts) return false;
+    if (!Current || Current.__cs21a75UnitStarts) return false;
+    if (Current.__cs21a60UnitStarts && !Current.__cs21a75UnitStarts) {
+      window.__AN_CS21A59_TEACHER_MATERIALS_BASE__ = Current;
+      return true;
+    }
     const Base = Current;
-    const Wrapped = function MaterialesViewCS21A60(props) {
+    const Wrapped = function MaterialesViewCS21A75(props) {
       const user = currentSession();
       const role = roleOf(user);
       const screen = sessionStorage.getItem(TAB_KEY) || 'info';
+      const adminOpen = sessionStorage.getItem(ADMIN_OPEN_KEY) === '1';
+      const adminTab = sessionStorage.getItem(ADMIN_TAB_KEY) || 'libros';
       if ((role === 'teacher' || role === 'docente') && screen === 'libros') return <BookResourcesCS21A60 initialType="SB" />;
       if ((role === 'teacher' || role === 'docente') && screen === 'biblioteca') return <BookResourcesCS21A60 initialType="TB" />;
+      if ((role === 'admin' || role === 'superadmin') && adminOpen) return <BookResourcesCS21A60 initialType={adminTab === 'audios' ? 'SB' : 'SB'} />;
       if (role === 'student' || role === 'estudiante') return <><BookResourcesCS21A60 studentMode initialType="SB" /><Base {...props} /></>;
       return <Base {...props} />;
     };
+    Wrapped.__cs21a75UnitStarts = true;
     Wrapped.__cs21a60UnitStarts = true;
     Wrapped.__base = Base;
     window.MaterialesView = Wrapped;
