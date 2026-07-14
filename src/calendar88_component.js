@@ -18,7 +18,12 @@
       core.renderTopCard(React, state),
       navigation,
       calendar,
-      core.renderSelectedLesson(React, state.selected[0], function () { state.selected[1](null); })
+      core.renderSelectedLesson(
+        React,
+        state.selected[0],
+        function () { state.selected[1](null); },
+        props && props.onNavigate
+      )
     );
   };
 })();
