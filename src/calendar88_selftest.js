@@ -5,7 +5,9 @@
   const required = [
     'enrichGroups', 'countGroups', 'sortGroups', 'openingMarkers',
     'buildWeekMap', 'monthCells', 'buildMonthMap', 'useCalendarState',
-    'renderWeekGrid', 'renderMonthGrid', 'renderTopCard', 'CalendarView'
+    'renderWeekGrid', 'renderMonthGrid', 'renderTopCard', 'CalendarView',
+    'renderControls', 'renderViewSwitch', 'renderWeekNavigation',
+    'renderMonthNavigation', 'renderSelectedLesson', 'renderReviewWarning'
   ];
   const missing = required.filter(function (name) {
     return !core || typeof core[name] !== 'function';
