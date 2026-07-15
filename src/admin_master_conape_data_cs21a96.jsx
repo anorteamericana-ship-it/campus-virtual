@@ -1,1 +1,20 @@
-// CS21A96 placeholder
+// F98.4-Z6-CS21A96 · Estado de datos del seguimiento CONAPE
+(function(){
+'use strict';
+const N=window.ANMasterConape96;if(!N)throw Error('CS21A96 core no cargado');
+const{clean,levelId,isAcademicDisbursement01,post,uniqueSorted,dedupeMovementRows,filterRows,compareRows}=N;
+function useConapePanelData(data,onRefresh){
+ const movements=data?.conape?.movements||{},all=React.useMemo(()=>dedupeMovementRows((Array.isArray(movements.rows)?movements.rows:[]).filter(isAcademicDisbursement01)),[data]),financeRows=Array.isArray(data?.collections?.rows)?data.collections.rows:[];
+ const[busy,setBusy]=React.useState(false),[msg,setMsg]=React.useState(''),[details,setDetails]=React.useState({}),[editor,setEditor]=React.useState(null),[query,setQuery]=React.useState(''),[levelFilter,setLevelFilter]=React.useState('ALL'),[statusFilter,setStatusFilter]=React.useState('ALL'),[periodFilter,setPeriodFilter]=React.useState('ALL'),[whatsappFilter,setWhatsappFilter]=React.useState('ALL'),[sort,setSort]=React.useState({key:'detected',dir:'desc'});
+ const financeMap=React.useMemo(()=>{const out={},by={};financeRows.forEach(x=>{const c=clean(x?.code),l=clean(x?.level).toUpperCase();if(!c)return;if(l)out[`${c}|${l}`]=x;(by[c]||(by[c]=[])).push(x)});Object.keys(by).forEach(c=>{if(by[c].length===1)out[c]=by[c][0]});return out},[data]);
+ React.useEffect(()=>{const next={};all.forEach(row=>{const c=clean(row?.code);if(c)next[c]=clean(row?.detail)});setDetails(next)},[all]);
+ const statusOptions=React.useMemo(()=>uniqueSorted(all.map(r=>clean(r?.academicStatus||'SIN_ESTADO').toUpperCase())),[all]),periodOptions=React.useMemo(()=>uniqueSorted(all.map(r=>`${String(r?.month||0).padStart(2,'0')}/${r?.year||0}`)),[all]);
+ const filters={query,level:levelFilter,status:statusFilter,period:periodFilter,whatsapp:whatsappFilter},visible=React.useMemo(()=>filterRows(all,filters).slice().sort((a,b)=>compareRows(a,b,sort)),[all,query,levelFilter,statusFilter,periodFilter,whatsappFilter,sort.key,sort.dir]),pending=visible.filter(r=>!r.appliedInSystem),applied=visible.filter(r=>r.appliedInSystem),originalPending=all.filter(r=>!r.appliedInSystem),originalApplied=all.filter(r=>r.appliedInSystem),hasFilters=!!query||levelFilter!=='ALL'||statusFilter!=='ALL'||periodFilter!=='ALL'||whatsappFilter!=='ALL',stats={mora:all.filter(r=>r.moraState==='SI').length,levelLinked:all.filter(r=>!!r.level).length,unlinked:all.filter(r=>!r.linked).length};
+ function onSort(key){setSort(current=>current.key===key?{key,dir:current.dir==='asc'?'desc':'asc'}:{key,dir:'asc'})}function clearFilters(){setQuery('');setLevelFilter('ALL');setStatusFilter('ALL');setPeriodFilter('ALL');setWhatsappFilter('ALL')}
+ async function refresh(){setBusy(true);setMsg('');try{const result=await window.masterAction('actualizarPanelConapeAhora');setMsg(result.mensaje||'CONAPE actualizado.');await onRefresh?.()}catch(error){setMsg(error.message||String(error))}finally{setBusy(false)}}
+ async function openDetail(row,current){const codigo=clean(row?.code);if(!codigo)return;setEditor({row,value:clean(current),loading:true,saving:false,error:''});try{const result=await post('getComentarioAdminEstudiante',{codigo});setEditor(x=>x?{...x,value:clean(result.comentario_admin),loading:false}:x)}catch(error){setEditor(x=>x?{...x,loading:false,error:error.message||String(error)}:x)}}
+ async function saveDetail(){if(!editor||editor.loading||editor.saving)return;const codigo=clean(editor.row?.code);setEditor(x=>({...x,saving:true,error:''}));try{const result=await post('guardarComentarioAdminEstudiante',{codigo,comentario:clean(editor.value)}),saved=clean(result.comentario_admin);setDetails(x=>({...x,[codigo]:saved}));setMsg(saved?'Seguimiento guardado y marcado como revisado.':'Seguimiento eliminado.');setEditor(null)}catch(error){setEditor(x=>x?{...x,saving:false,error:error.message||String(error)}:x)}}
+ return{movements,all,financeMap,busy,msg,setMsg,details,editor,setEditor,query,setQuery,levelFilter,setLevelFilter,statusFilter,setStatusFilter,periodFilter,setPeriodFilter,whatsappFilter,setWhatsappFilter,sort,setSort,statusOptions,periodOptions,visible,pending,applied,originalPending,originalApplied,hasFilters,stats,onSort,clearFilters,refresh,openDetail,saveDetail};
+}
+N.useConapePanelData=useConapePanelData;
+})();
