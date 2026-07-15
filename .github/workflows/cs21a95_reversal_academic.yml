@@ -1,5 +1,6 @@
 name: CS21A95 academic payment reversal
 
+# Second push triggers this workflow after it already exists on main.
 on:
   push:
     paths:
