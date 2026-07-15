@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A70 · Panel Maestro CONAPE buscable, ordenable y con contexto 01/02/03
+// F98.4-Z6-CS21A91 · Panel Maestro CONAPE buscable, ordenable y con nueva segunda plantilla WhatsApp
 (function(){
 'use strict';
 
-const BUILD='F98.4-Z6-CS21A70';
+const BUILD='F98.4-Z6-CS21A91';
 const LEVEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 const LEVEL_ORDER={B1:1,B2:2,I1:3,I2:4};
 const STATUS_ORDER={CA:1,APR:2,REP:3,CNV:4,RI:5,RJ:6,PE:7};
@@ -15,12 +15,17 @@ const TONE={
   CNV:['#EEEAFE','#5140A8','#CFC6F4'],
   PE:['#F3F1EC','#625E58','#D9D3CB']
 };
-const WA_TEMPLATES=[{id:1,label:'Mensaje'},{id:2,label:'Alerta'},{id:3,label:'Atención'}];
+const WA_TEMPLATES=[
+  {id:1,label:'Mensaje 1'},
+  {id:2,label:'Mensaje 2'},
+  {id:3,label:'Alerta'},
+  {id:4,label:'Atención'}
+];
 
 function injectStyles(){
-  if(document.getElementById('an-master-conape-cs21a70-styles'))return;
+  if(document.getElementById('an-master-conape-cs21a91-styles'))return;
   const style=document.createElement('style');
-  style.id='an-master-conape-cs21a70-styles';
+  style.id='an-master-conape-cs21a91-styles';
   style.textContent=`
     .master-conape-controls{display:grid;grid-template-columns:minmax(260px,1.45fr) repeat(5,minmax(132px,.72fr)) auto;gap:9px;align-items:end;margin:0 0 12px;padding:12px;border:1px solid #E4DED3;border-radius:14px;background:#FBF9F5}
     .master-conape-controls label{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -162,11 +167,14 @@ function amountLine(row,amount,kind){
 }
 function waText(row,amount,kind,templateId){
   const name=givenName(row?.name),amountText=amountLine(row,amount,kind);
-  const party=String.fromCodePoint(0x1F389),warning=String.fromCodePoint(0x26A0,0xFE0F),pin=String.fromCodePoint(0x1F4CC);
+  const party=String.fromCodePoint(0x1F389),warning=String.fromCodePoint(0x26A0,0xFE0F),pin=String.fromCodePoint(0x1F4CC),smile=String.fromCodePoint(0x1F642);
   if(templateId===2){
-    return `*Alerta de pago, ${name} ${warning}*\n\nCONAPE nos confirmó que el *desembolso académico ya fue acreditado en su cuenta.*\n\nAún *no registramos el pago correspondiente en la Academia*. Le agradecemos realizar la transferencia y enviarnos el comprobante a la mayor brevedad para mantener su expediente al día.${amountText}`;
+    return `*CONAPE nos ha solicitado información sobre tu proceso de matrícula, ya que nos informó que el desembolso correspondiente ya fue realizado a tu cuenta.*\n\nPor esta razón, te compartimos nuevamente los números de cuenta de la Academia para que puedas gestionar tu pago de inscripción a la mayor brevedad posible.\n\n*Realizar tu matrícula oportunamente te permitirá evitar atrasos en el desembolso de sostenimiento y posibles inconvenientes con los siguientes desembolsos y los beneficios de tu financiamiento.*\n\nQuedo atenta a tu comprobante de pago. ¡Con gusto te ayudaremos en lo que necesites! ${smile}`;
   }
   if(templateId===3){
+    return `*Alerta de pago, ${name} ${warning}*\n\nCONAPE nos confirmó que el *desembolso académico ya fue acreditado en su cuenta.*\n\nAún *no registramos el pago correspondiente en la Academia*. Le agradecemos realizar la transferencia y enviarnos el comprobante a la mayor brevedad para mantener su expediente al día.${amountText}`;
+  }
+  if(templateId===4){
     return `*Atención prioritaria, ${name} ${pin}*\n\nEl pago correspondiente al desembolso académico de CONAPE *continúa pendiente de aplicación en la Academia.*\n\nLe solicitamos atenderlo *hoy* o comunicarse con nosotros para revisar su caso y evitar atrasos en los próximos desembolsos.${amountText}`;
   }
   return `*¡Buenas noticias, ${name}! ${party}*\n\nCONAPE nos ha informado que el *desembolso ya fue acreditado en su cuenta.*\n\nLe solicitamos realizar el pago a la Academia *a la mayor brevedad posible*, para mantener su expediente *al día* y evitar atrasos en el desembolso del rubro de sostenimiento.${amountText}`;
