@@ -19,9 +19,11 @@ Este repositorio contiene el frontend del Campus Virtual y la documentación ope
 
 1. `00_DOCUMENTACION/ESTADO_CONSOLIDADO_F98_4_Z6_CS21A90.md`
 2. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
-3. `skills/campus-virtual/SKILL.md`
+3. `00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL_CS21A90.md`
 4. `00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO.md`
 5. `00_DOCUMENTACION/PROMPT_TRASPASO_NUEVO_CHAT.md`
+
+El archivo histórico `00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL.md` queda como referencia de etapas anteriores; la skill vigente es la de CS21A90.
 
 ## Regla principal
 
