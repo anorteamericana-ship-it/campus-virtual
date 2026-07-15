@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A91 · Panel Maestro CONAPE buscable, ordenable y con nueva segunda plantilla WhatsApp
+// F98.4-Z6-CS21A94 · CONAPE deduplicado, alerta alineada y actualización automática
 (function(){
 'use strict';
 
-const BUILD='F98.4-Z6-CS21A91';
+const BUILD='F98.4-Z6-CS21A94';
 const LEVEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 const LEVEL_ORDER={B1:1,B2:2,I1:3,I2:4};
 const STATUS_ORDER={CA:1,APR:2,REP:3,CNV:4,RI:5,RJ:6,PE:7};
@@ -23,9 +23,9 @@ const WA_TEMPLATES=[
 ];
 
 function injectStyles(){
-  if(document.getElementById('an-master-conape-cs21a91-styles'))return;
+  if(document.getElementById('an-master-conape-cs21a94-styles'))return;
   const style=document.createElement('style');
-  style.id='an-master-conape-cs21a91-styles';
+  style.id='an-master-conape-cs21a94-styles';
   style.textContent=`
     .master-conape-controls{display:grid;grid-template-columns:minmax(260px,1.45fr) repeat(5,minmax(132px,.72fr)) auto;gap:9px;align-items:end;margin:0 0 12px;padding:12px;border:1px solid #E4DED3;border-radius:14px;background:#FBF9F5}
     .master-conape-controls label{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -45,8 +45,10 @@ function injectStyles(){
     .master-conape-period-primary em{font-style:normal;color:#7A1E2C;font-size:9.5px}
     .master-conape-period-extra{display:block;margin-top:4px;padding-top:4px;border-top:1px dashed #D8D1C5;color:#5E6879;font-size:9.5px;font-weight:800;white-space:nowrap}
     .master-conape-period-level{display:block;margin-top:5px;color:#8B7460;font-size:8.8px;font-weight:800;line-height:1.35}
-    .master-conape-advance-detail{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;background:#FFF1D7;color:#8A5A00;border:1px solid #E7C77D;font-size:8.2px;font-weight:950;white-space:nowrap}
     .master-conape-movement-stack{align-items:flex-start}
+    .master-conape-history-item[data-has-alert="true"]{grid-template-columns:minmax(92px,1fr) 72px auto minmax(118px,auto)}
+    .master-conape-history-alert{display:flex;align-items:center;justify-content:flex-start;min-width:0}
+    .master-conape-history-alert .master-conape-movement-stack{margin:0}
     .master-conape-filter-empty{padding:24px 18px;text-align:center;color:#8A93A2;font-size:11px}
     @media(max-width:1480px){.master-conape-controls{grid-template-columns:minmax(240px,1.2fr) repeat(3,minmax(132px,.8fr))}.master-conape-clear{grid-column:auto}}
     @media(max-width:900px){.master-conape-controls{grid-template-columns:1fr 1fr}.master-conape-search{grid-column:1/-1}}
@@ -125,7 +127,7 @@ function periodFull(item,row){
   const year=Number(item?.year||row?.year)||'—';
   return `${number}/${month}/${year}`;
 }
-function movementCategory(row){return row?.advance?'Desembolso adelantado':movementText(row);}
+function movementCategory(row){return row?.appliedInSystem?'Aplicado':'Nuevo desembolso';}
 function rowSearch(row){
   return normalize([
     row?.code,row?.cedula,row?.phone,row?.name,row?.group,
@@ -231,24 +233,27 @@ function MovementBadge({row}){
       ?['Mora NO','#EAF6ED','#246B35','#B8D9C0']
       :null;
   return <div className="master-conape-movement-stack">
-    <span className="master-conape-movement-badge" data-applied={applied?'true':'false'} title={movementText(row)}>
-      {applied?'✓ Aplicado':movementText(row)}
+    <span className="master-conape-movement-badge" data-applied={applied?'true':'false'} title={applied?'Pago aplicado':'Nuevo desembolso detectado'}>
+      {applied?'✓ Aplicado':'Nuevo desembolso'}
     </span>
-    {row.advance&&<span className="master-conape-advance-detail" title={`Periodo ${period(row)} detectado ${fullDate(row.detectedAt)}`}>Desembolso adelantado</span>}
     {mora&&<span className="master-conape-mora-badge" title={`7-morosidad · ${row.moraYear||row.year||'—'} · periodo ${row.moraPeriod||'—'}`} style={{background:mora[1],color:mora[2],borderColor:mora[3]}}>{mora[0]}</span>}
   </div>;
 }
-function AcademicHistory({items}){
+function AcademicHistory({items,row}){
   const rows=(Array.isArray(items)?items:[]).slice().sort((a,b)=>(LEVEL_ORDER[String(a?.level||'').toUpperCase()]||99)-(LEVEL_ORDER[String(b?.level||'').toUpperCase()]||99));
-  if(!rows.length)return <span className="master-conape-history-empty">Sin historial CONAPE</span>;
+  const target=levelId(row);
+  const hasExact=rows.some(item=>String(item?.level||'').toUpperCase()===target);
+  if(!rows.length)return <div className="master-conape-history-grid"><div className="master-conape-history-item" data-has-alert="true"><span className="master-conape-history-level">{String(levelText(row)).toUpperCase()}</span><span className="master-conape-history-period">—</span><span className="master-conape-history-status">SIN REGISTRO</span><div className="master-conape-history-alert"><MovementBadge row={row}/></div></div></div>;
   return <div className="master-conape-history-grid">{rows.map((h,i)=>{
     const status=String(h.status||'SIN_REGISTRO').toUpperCase(),t=TONE[status]||['#F2F0EC','#69635B','#D8D1C7'],hasNote=String(h.note??'').trim()!=='';
-    return <div key={`${h.sourceRow||i}-${h.matter||''}`} className="master-conape-history-item" title={`6-historial · ${h.matter||''} · ${h.periodCode||''} · ${status}${hasNote?' '+h.note:''}`}>
+    const exact=String(h?.level||'').toUpperCase()===target;
+    return <div key={`${h.sourceRow||i}-${h.matter||''}`} className="master-conape-history-item" data-has-alert={exact?'true':'false'} title={`6-historial · ${h.matter||''} · ${h.periodCode||''} · ${status}${hasNote?' '+h.note:''}`}>
       <span className="master-conape-history-level">{String(h.levelLabel||LEVEL[String(h.level||'').toUpperCase()]||h.matter||'Nivel').toUpperCase()}</span>
       <span className="master-conape-history-period">{h.periodCode||`${h.year||''}${h.period||''}${h.periodType||''}`}</span>
       <span className="master-conape-history-status" style={{background:t[0],color:t[1],borderColor:t[2]}}>{status}{hasNote?` ${h.note}`:''}</span>
+      {exact&&<div className="master-conape-history-alert"><MovementBadge row={row}/></div>}
     </div>;
-  })}</div>;
+  })}{!hasExact&&<div className="master-conape-history-item" data-has-alert="true"><span className="master-conape-history-level">{String(levelText(row)).toUpperCase()}</span><span className="master-conape-history-period">—</span><span className="master-conape-history-status">NIVEL ENLAZADO</span><div className="master-conape-history-alert"><MovementBadge row={row}/></div></div>}</div>;
 }
 function WaButton({row,finance}){
   const [busy,setBusy]=React.useState(false);
@@ -316,11 +321,10 @@ function Row({row,index,details,openDetail,financeMap}){
   const detail=code&&Object.prototype.hasOwnProperty.call(details,code)?details[code]:String(row.detail||'');
   const finance=financeMap[`${code}|${levelId(row)}`]||financeMap[code]||null;
   const cell={verticalAlign:'middle',minWidth:0};
-  return <tr key={row.id||index} className={!row.appliedInSystem&&(!row.linked||row.advance||row.mora)?'has-alert':''} data-applied={row.appliedInSystem?'true':'false'}>
+  return <tr key={row.id||index} className={!row.appliedInSystem&&(!row.linked||row.mora)?'has-alert':''} data-applied={row.appliedInSystem?'true':'false'}>
     <td className="master-conape-code-cell" style={cell}><CodeCell code={code}/></td>
     <td className="master-conape-student-cell" style={cell}><StudentCell row={row} detail={detail} openDetail={openDetail} code={code}/></td>
-    <td className="master-conape-history-cell" style={cell}><AcademicHistory items={row.historySummary}/></td>
-    <td className="master-conape-movement-cell" style={cell}><MovementBadge row={row}/></td>
+    <td className="master-conape-history-cell" style={cell}><AcademicHistory items={row.historySummary} row={row}/></td>
     <td className="master-conape-period-cell" style={cell}><PeriodCell row={row}/></td>
     <td className="master-conape-wa-cell" style={cell}><WaButton row={row} finance={finance}/></td>
   </tr>;
@@ -353,13 +357,10 @@ function SortHeader({id,label,sort,onSort}){
   </button>;
 }
 function Table({items,details,openDetail,financeMap,empty,sort,onSort}){
-  const headers=[
-    ['code','Código'],['student','Estudiante'],['academic','Resumen académico'],
-    ['movement','Movimiento'],['period','Periodo / nivel'],['whatsapp','WhatsApp']
-  ];
+  const headers=[['code','Código'],['student','Estudiante'],['academic','Resumen académico'],['period','Periodo / nivel'],['whatsapp','WhatsApp']];
   return <div className="master-conape-month-table-wrap">
     <table className="master-conape-month-table">
-      <colgroup>{[8,22,29,14,14,13].map((w,i)=><col key={i} style={{width:`${w}%`}}/>)}</colgroup>
+      <colgroup>{[8,24,39,15,14].map((w,i)=><col key={i} style={{width:`${w}%`}}/>)}</colgroup>
       <thead><tr>{headers.map(([id,label])=><th key={id}><SortHeader id={id} label={label} sort={sort} onSort={onSort}/></th>)}</tr></thead>
       <tbody>{items.map((r,i)=><Row key={r.id||i} row={r} index={i} details={details} openDetail={openDetail} financeMap={financeMap}/>)}</tbody>
     </table>
@@ -369,7 +370,6 @@ function Table({items,details,openDetail,financeMap,empty,sort,onSort}){
 function filterRows(rows,filters){
   return rows.filter(row=>{
     if(!matchesSearch(row,filters.query))return false;
-    if(filters.movement!=='ALL'&&movementCategory(row)!==filters.movement)return false;
     if(filters.level==='SIN_NIVEL'&&levelId(row))return false;
     if(filters.level!=='ALL'&&filters.level!=='SIN_NIVEL'&&levelId(row)!==filters.level)return false;
     if(filters.status!=='ALL'&&String(row?.academicStatus||'SIN_ESTADO').toUpperCase()!==filters.status)return false;
@@ -383,11 +383,25 @@ function filterRows(rows,filters){
 function uniqueSorted(values){
   return Array.from(new Set(values.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true,sensitivity:'base'}));
 }
-function MasterConapeMovementsTableCS21A70({data,onRefresh}){
+function dedupeMovementRows(rows){
+  const map=new Map();
+  (rows||[]).forEach(row=>{
+    const key=[String(row?.cedula||row?.code||'').replace(/\D/g,''),Number(row?.year)||0,Number(row?.month)||0,disbursementNumber(row)||1].join('|');
+    const current=map.get(key);
+    if(!current||Number(row?.detectedSort||0)>=Number(current?.detectedSort||0)){
+      const merged={...current,...row};
+      const context=[...(current?.periodMovements||[]),...(row?.periodMovements||[])];
+      merged.periodMovements=Array.from(new Map(context.map(item=>[[item.number,item.month,item.year].join('|'),item])).values());
+      map.set(key,merged);
+    }
+  });
+  return Array.from(map.values());
+}
+function MasterConapeMovementsTableCS21A94({data,onRefresh}){
   injectStyles();
   const m=data?.conape?.movements||{};
   const source=Array.isArray(m.rows)?m.rows:[];
-  const all=source.filter(isAcademicDisbursement01);
+  const all=dedupeMovementRows(source.filter(isAcademicDisbursement01));
   const financeRows=Array.isArray(data?.collections?.rows)?data.collections.rows:[];
 
   const [busy,setBusy]=React.useState(false);
@@ -395,7 +409,6 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
   const [details,setDetails]=React.useState({});
   const [editor,setEditor]=React.useState(null);
   const [query,setQuery]=React.useState('');
-  const [movementFilter,setMovementFilter]=React.useState('ALL');
   const [levelFilter,setLevelFilter]=React.useState('ALL');
   const [statusFilter,setStatusFilter]=React.useState('ALL');
   const [periodFilter,setPeriodFilter]=React.useState('ALL');
@@ -420,13 +433,12 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
     setDetails(x);
   },[data]);
 
-  const movementOptions=React.useMemo(()=>uniqueSorted(all.map(movementCategory)),[data]);
   const statusOptions=React.useMemo(()=>uniqueSorted(all.map(r=>String(r?.academicStatus||'SIN_ESTADO').toUpperCase())),[data]);
   const periodOptions=React.useMemo(()=>uniqueSorted(all.map(r=>`${String(r?.month||0).padStart(2,'0')}/${r?.year||0}`)),[data]);
 
-  const filters={query,movement:movementFilter,level:levelFilter,status:statusFilter,period:periodFilter,whatsapp:whatsappFilter};
+  const filters={query,level:levelFilter,status:statusFilter,period:periodFilter,whatsapp:whatsappFilter};
   const visible=React.useMemo(()=>filterRows(all,filters).slice().sort((a,b)=>compareRows(a,b,sort)),[
-    data,query,movementFilter,levelFilter,statusFilter,periodFilter,whatsappFilter,sort.key,sort.dir
+    data,query,levelFilter,statusFilter,periodFilter,whatsappFilter,sort.key,sort.dir
   ]);
   const pending=visible.filter(r=>!r.appliedInSystem);
   const applied=visible.filter(r=>r.appliedInSystem);
@@ -436,16 +448,14 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
     mora:all.filter(r=>r.moraState==='SI').length,
     levelLinked:all.filter(r=>!!r.level).length,
     unlinked:all.filter(r=>!r.linked).length,
-    advanced:all.filter(r=>!!r.advance).length
   };
-  const hasFilters=!!query||movementFilter!=='ALL'||levelFilter!=='ALL'||statusFilter!=='ALL'||periodFilter!=='ALL'||whatsappFilter!=='ALL';
+  const hasFilters=!!query||levelFilter!=='ALL'||statusFilter!=='ALL'||periodFilter!=='ALL'||whatsappFilter!=='ALL';
 
   function onSort(key){
     setSort(current=>current.key===key?{key,dir:current.dir==='asc'?'desc':'asc'}:{key,dir:'asc'});
   }
   function clearFilters(){
     setQuery('');
-    setMovementFilter('ALL');
     setLevelFilter('ALL');
     setStatusFilter('ALL');
     setPeriodFilter('ALL');
@@ -498,7 +508,7 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
         <p>01 se gestiona; 02, 03 y posteriores del mismo periodo se muestran debajo como referencia · última lectura {fullDate(m.lastSync)}</p>
       </div>
       <div className="master-conape-month-actions">
-        <span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>Monitoreo CONAPE</span>
+        <span className="master-live-chip on">Actualización automática · 30 min</span>
         <button onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button>
       </div>
     </header>
@@ -509,20 +519,13 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
       <div><b>{stats.mora}</b><span>morosos</span></div>
       <div><b>{stats.levelLinked}</b><span>nivel enlazado</span></div>
       <div><b>{stats.unlinked}</b><span>por vincular</span></div>
-      <div><b>{stats.advanced}</b><span>adelantados</span></div>
+      <div><b>{Math.max(0,Number(data?.conapeAutoSync?.movimientos_registrados??data?.conapeAutoSync?.nuevos??0)||0)}</b><span>nuevos detectados</span></div>
     </div>
 
     <div className="master-conape-controls">
       <label className="master-conape-search">
         <span>Buscar estudiante</span>
         <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Código, cédula, teléfono o nombre"/>
-      </label>
-      <label>
-        <span>Movimiento</span>
-        <select value={movementFilter} onChange={e=>setMovementFilter(e.target.value)}>
-          <option value="ALL">Todos</option>
-          {movementOptions.map(value=><option key={value} value={value}>{value}</option>)}
-        </select>
       </label>
       <label>
         <span>Nivel</span>
@@ -564,7 +567,6 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
           <option value="student:asc">Estudiante A–Z</option>
           <option value="student:desc">Estudiante Z–A</option>
           <option value="academic:asc">Resumen académico</option>
-          <option value="movement:asc">Movimiento</option>
           <option value="period:asc">Periodo ascendente</option>
           <option value="period:desc">Periodo descendente</option>
           <option value="whatsapp:asc">WhatsApp disponible primero</option>
@@ -609,7 +611,7 @@ function MasterConapeMovementsTableCS21A70({data,onRefresh}){
 
 function apply(){
   if(typeof window.MasterConapeMovementsTable!=='function')return;
-  window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A70;
+  window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A94;
   window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__=BUILD;
 }
 window.addEventListener('an:lazy-module-loaded',e=>{

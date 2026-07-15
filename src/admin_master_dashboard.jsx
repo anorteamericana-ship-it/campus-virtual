@@ -1,7 +1,7 @@
-// F98.4-Z6-CR · Hotfix auditoría de release
+// F98.4-Z6-CS21A94 · Panel Maestro depurado + CONAPE automático cada 30 minutos
 /* global React, Icon, MasterFmtNumber, MasterFmtMoney, MasterSparkline, MasterBarLineChart, MasterDonut, MasterFunnel, MasterHorizontalRanking, MasterHeatmap, MasterRadar, MasterMultiLineChart */
 
-const MASTER_PANEL_BUILD = 'F98.4-Z6-CR';
+const MASTER_PANEL_BUILD = 'F98.4-Z6-CS21A94';
 const MASTER_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MASTER_LEVEL_COLORS = { B1:'#e4a924', B2:'#df3a32', I1:'#2d78b7', I2:'#3c9a62' };
 const MASTER_SECTIONS = [
@@ -72,9 +72,41 @@ function masterCsvDownload(name, rows) {
 
 function useMasterData() {
   const [state,setState]=React.useState({loading:true,error:'',data:null});
-  const load=React.useCallback((refresh=false)=>{setState(s=>({...s,loading:true,error:''}));masterPost({refresh}).then(d=>{if(!d?.ok)throw new Error(d?.mensaje||d?.error||'No se pudo cargar');setState({loading:false,error:'',data:d});}).catch(e=>setState({loading:false,error:e.message||String(e),data:null}));},[]);
-  React.useEffect(()=>load(false),[load]);
-  return {...state,refetch:()=>load(true)};
+  const runningRef=React.useRef(false);
+  const lastSyncRef=React.useRef(0);
+  const load=React.useCallback(async({refresh=false,syncConape=false,silent=false}={})=>{
+    if(runningRef.current)return;
+    runningRef.current=true;
+    if(!silent)setState(current=>({...current,loading:true,error:''}));
+    let conapeAutoSync=null;
+    try{
+      if(syncConape){
+        try{
+          const sync=await masterAction('actualizarPanelConapeAhora');
+          conapeAutoSync={...sync,error:''};
+        }catch(error){
+          conapeAutoSync={ok:false,error:error?.message||String(error),movimientos_registrados:0,nuevos:0};
+        }
+        lastSyncRef.current=Date.now();
+      }
+      const dashboard=await masterPost({refresh:refresh||syncConape});
+      if(!dashboard?.ok)throw new Error(dashboard?.mensaje||dashboard?.error||'No se pudo cargar');
+      dashboard.conapeAutoSync=conapeAutoSync||state.data?.conapeAutoSync||null;
+      setState({loading:false,error:'',data:dashboard});
+    }catch(error){
+      setState(current=>({loading:false,error:error?.message||String(error),data:current.data}));
+    }finally{
+      runningRef.current=false;
+    }
+  },[]);
+  React.useEffect(()=>{
+    load({refresh:true,syncConape:true});
+    const timer=window.setInterval(()=>load({refresh:true,syncConape:true,silent:true}),30*60*1000);
+    const onFocus=()=>{if(Date.now()-lastSyncRef.current>=30*60*1000)load({refresh:true,syncConape:true,silent:true});};
+    window.addEventListener('focus',onFocus);
+    return()=>{window.clearInterval(timer);window.removeEventListener('focus',onFocus);};
+  },[load]);
+  return {...state,refetch:()=>load({refresh:true,syncConape:true})};
 }
 
 function MasterKpi({ label, value, sub, trend, tone='#16294f', icon='chart', values=[] }) {
@@ -83,16 +115,6 @@ function MasterKpi({ label, value, sub, trend, tone='#16294f', icon='chart', val
     <div className="master-kpi-value">{value}</div>
     <div className="master-kpi-bottom"><div><strong className={trend==null?'master-trend-flat':trend>=0?'master-trend-up':'master-trend-down'}>{trend==null?'Datos reales':`${trend>=0?'+':''}${trend}%`}</strong><span>{sub}</span></div><MasterSparkline values={values} tone={tone}/></div>
   </article>;
-}
-
-function MasterAdvisorFilter({ advisors=[], selected=[], onChange }) {
-  const label=!selected.length?'Todos los asesores':selected.length===1?selected[0]:`${selected.length} asesores`;
-  const toggle=name=>onChange(selected.includes(name)?selected.filter(x=>x!==name):[...selected,name]);
-  return <details className="master-advisor-filter"><summary><Icon name="profile" size={15}/><span>{label}</span><b>⌄</b></summary><div className="master-advisor-menu"><button type="button" onClick={()=>onChange([])} className={!selected.length?'active':''}>Todos</button>{advisors.map(a=><label key={a.name}><input type="checkbox" checked={selected.includes(a.name)} onChange={()=>toggle(a.name)}/><span>{a.name}</span>{a.active&&<small>activo</small>}</label>)}</div></details>;
-}
-
-function MasterDataStatus({ coverage }) {
-  return <div className="master-data-status"><span><i/>Datos reales</span><span>Fuentes: APOLLO + CAMPUS_OPERATIVO</span>{coverage?.prospectsStart&&<span>Embudo comercial desde {coverage.prospectsStart}</span>}{coverage?.academicRows&&<span>{MasterFmtNumber(coverage.academicRows)} eventos académicos analizados</span>}{coverage?.studentRows!=null&&<span>{MasterFmtNumber(coverage.studentRows)} estudiantes activos evaluados</span>}{coverage?.paymentRows!=null&&<span>{MasterFmtNumber(coverage.paymentRows)} movimientos de pago revisados</span>}{coverage?.conapeProspects!=null&&<span>{MasterFmtNumber(coverage.conapeProspects)} prospectos CONAPE analizados</span>}{coverage?.conapeSync!=null&&<span>{MasterFmtNumber(coverage.conapeSync)} registros CONAPE sincronizados</span>}{coverage?.teacherRoster!=null&&<span>{MasterFmtNumber(coverage.teacherRoster)} docentes activos detectados</span>}{coverage?.examResults!=null&&<span>{MasterFmtNumber(coverage.examResults)} resultados de evaluación consolidados</span>}{coverage?.institutionalAlerts!=null&&<span>{MasterFmtNumber(coverage.institutionalAlerts)} alertas institucionales vigentes</span>}{coverage?.trendYears!=null&&<span>{MasterFmtNumber(coverage.trendYears)} años consolidados en Tendencias</span>}</div>;
 }
 
 function MasterResumen({ data, year, compareYear, advisors, setSection }) {
@@ -220,9 +242,6 @@ function masterAcademicAlerts(groups, year) {
     if(Number(g.exams?.pendingReview||0)>0)out.push({level:'med',title:`${g.code} · ${g.exams.pendingReview} examen${g.exams.pendingReview===1?'':'es'} por revisar`,detail:`${g.level} · revisión docente pendiente`});
   });
   return out.slice(0,16);
-}
-function MasterAcademicFilter({label,value,onChange,options,placeholder='Todos'}) {
-  return <label className="master-academic-filter"><span>{label}</span><select value={value} onChange={e=>onChange(e.target.value)}><option value="">{placeholder}</option>{options.map(x=><option key={typeof x==='string'?x:x.value} value={typeof x==='string'?x:x.value}>{typeof x==='string'?x:x.label}</option>)}</select></label>;
 }
 function MasterAcademicTable({rows=[]}) {
   return <div className="master-academic-table-wrap"><table className="master-academic-table"><thead><tr><th>Grupo</th><th>Nivel</th><th>Docente</th><th>Est.</th><th>Cierre</th><th>Asistencia</th><th>Progress Check</th><th>I CAN</th><th>Próxima lección</th></tr></thead><tbody>{rows.map(g=><tr key={masterAcademicGroupKey(g)} className={g._pastDue>0?'has-alert':''}><td><strong>{g.code}</strong><small>{g.program||'—'}</small></td><td><span className={`master-level-badge master-level-${g.level}`}>{g.level}</span></td><td>{g.teacher||'Sin docente'}</td><td>{MasterFmtNumber(g.students)}</td><td><MasterMiniMetric value={g._closurePct} detail={`${g._closed}/${g._due}`} danger={g._pastDue>0}/></td><td><MasterMiniMetric value={g._attendancePct} detail={g._attendancePct==null?'Sin registros':`${g._attendancePresent}/${g._attendanceTotal}`}/></td><td><MasterMiniMetric value={g._progressPct} detail={g._progressPct==null?'Sin vencidos':`${g._progressCompleted}/${g._progressExpected}`}/></td><td><MasterMiniMetric value={g._icanPct} detail={g._icanPct==null?'No aplica / sin vencidos':`${g._icanClosed}/${g._icanDue}`}/></td><td><strong className="master-next-lesson">{g.nextLesson||'Sin próxima fecha'}</strong><small>{g.nextLessonNum?`Lección ${g.nextLessonNum}`:'—'}</small></td></tr>)}</tbody></table>{!rows.length&&<MasterEmpty text="No hay grupos que coincidan con los filtros académicos."/>}</div>;
@@ -776,74 +795,28 @@ function AdminMasterDashboard({onNavigate}) {
   const {data,loading,error,refetch}=useMasterData();
   const [section,setSection]=React.useState('resumen');
   const trackingState=useMasterTracking(section==='seguimiento');
-  const [year,setYear]=React.useState('');
-  const [compareYear,setCompareYear]=React.useState('');
-  const [advisors,setAdvisors]=React.useState([]);
-  const [academicLevel,setAcademicLevel]=React.useState('');
-  const [academicTeacher,setAcademicTeacher]=React.useState('');
-  const [academicGroup,setAcademicGroup]=React.useState('');
-  const [studentLevel,setStudentLevel]=React.useState('');
-  const [studentTeacher,setStudentTeacher]=React.useState('');
-  const [studentGroup,setStudentGroup]=React.useState('');
-  const [studentRisk,setStudentRisk]=React.useState('');
-  const [studentSearch,setStudentSearch]=React.useState('');
-  const [trackingLevel,setTrackingLevel]=React.useState('');
-  const [trackingTeacher,setTrackingTeacher]=React.useState('');
-  const [trackingStatus,setTrackingStatus]=React.useState('');
-  const [trackingSearch,setTrackingSearch]=React.useState('');
-  const [collectionLevel,setCollectionLevel]=React.useState('');
-  const [collectionConvenio,setCollectionConvenio]=React.useState('');
-  const [collectionGroup,setCollectionGroup]=React.useState('');
-  const [collectionStatus,setCollectionStatus]=React.useState('');
-  const [collectionSearch,setCollectionSearch]=React.useState('');
-  const [conapeAdvisor,setConapeAdvisor]=React.useState('');
-  const [conapeStage,setConapeStage]=React.useState('');
-  const [conapePriority,setConapePriority]=React.useState('');
-  const [conapeLinkStatus,setConapeLinkStatus]=React.useState('');
-  const [conapeGroup,setConapeGroup]=React.useState('');
-  const [conapeSearch,setConapeSearch]=React.useState('');
-  const [teacherName,setTeacherName]=React.useState('');
-  const [teacherLevel,setTeacherLevel]=React.useState('');
-  const [teacherStatus,setTeacherStatus]=React.useState('');
-  const [teacherSearch,setTeacherSearch]=React.useState('');
-  const [examLevel,setExamLevel]=React.useState('');
-  const [examTeacher,setExamTeacher]=React.useState('');
-  const [examGroup,setExamGroup]=React.useState('');
-  const [examCategory,setExamCategory]=React.useState('');
-  const [examStatus,setExamStatus]=React.useState('');
-  const [examSearch,setExamSearch]=React.useState('');
-  const [alertLevel,setAlertLevel]=React.useState('');
-  const [alertArea,setAlertArea]=React.useState('');
-  const [alertAge,setAlertAge]=React.useState('');
-  const [alertSearch,setAlertSearch]=React.useState('');
-  React.useEffect(()=>{if(!data)return;const ys=(data.filters?.years||[]).map(String);const def=String(data.filters?.defaultYear||ys[ys.length-1]||new Date().getFullYear());setYear(y=>y||def);setCompareYear(y=>y||String(ys.includes(String(Number(def)-1))?Number(def)-1:(ys.filter(x=>x!==def).slice(-1)[0]||def)));},[data]);
-  React.useEffect(()=>{setAcademicGroup('');},[academicLevel,academicTeacher]);
-  React.useEffect(()=>{setStudentGroup('');},[studentLevel,studentTeacher]);
-  React.useEffect(()=>{setCollectionGroup('');},[collectionLevel,collectionConvenio]);
-  React.useEffect(()=>{setExamGroup('');},[examLevel,examTeacher]);
   if(loading&&!data)return <div className="master-loading"><span/><h2>Construyendo Panel Maestro…</h2><p>Agregando datos reales de APOLLO y CAMPUS_OPERATIVO.</p></div>;
-  if(error)return <div className="master-loading master-error"><h2>No se pudo cargar el Panel Maestro</h2><p>{error}</p><button onClick={refetch}>Reintentar</button></div>;
-  const years=(data?.filters?.years||[]).map(String),advisorOptions=data?.filters?.advisors||[],connected=['resumen','ventas','academica','estudiantes','seguimiento','cobranza','conape','docentes','examenes','alertas','tendencias'];
-  const academicOptions=data?.academic?.filters||{levels:[],teachers:[],groups:[]};
-  const availableGroups=(academicOptions.groups||[]).filter(g=>(!academicLevel||g.level===academicLevel)&&(!academicTeacher||g.teacher===academicTeacher));
-  const academicFilters={level:academicLevel,teacher:academicTeacher,group:academicGroup};
-  const studentOptions=data?.students?.filters||{levels:[],teachers:[],groups:[]};
-  const availableStudentGroups=(studentOptions.groups||[]).filter(g=>(!studentLevel||g.level===studentLevel)&&(!studentTeacher||g.teacher===studentTeacher));
-  const studentFilters={level:studentLevel,teacher:studentTeacher,group:studentGroup,risk:studentRisk,search:studentSearch};
-  const trackingOptions=trackingState.data?.filters||{levels:[],teachers:[],statuses:[],groups:[]};
-  const trackingFilters={level:trackingLevel,teacher:trackingTeacher,status:trackingStatus,search:trackingSearch};
-  const collectionOptions=data?.collections?.filters||{levels:[],convenios:[],groups:[]};
-  const availableCollectionGroups=Array.from(new Map((collectionOptions.groups||[]).filter(g=>(!collectionLevel||g.level===collectionLevel)&&(!collectionConvenio||g.convenio===collectionConvenio)).map(g=>[`${g.code}|${g.level}`,g])).values());
-  const collectionFilters={level:collectionLevel,convenio:collectionConvenio,group:collectionGroup,status:collectionStatus,search:collectionSearch};
-  const conapeOptions=data?.conape?.filters||{advisors:[],stages:[],priorities:[],linkStatuses:[],groups:[]};
-  const conapeFilters={advisor:conapeAdvisor,stage:conapeStage,priority:conapePriority,linkStatus:conapeLinkStatus,group:conapeGroup,search:conapeSearch};
-  const teacherOptions=data?.teachers?.filters||{teachers:[],levels:['B1','B2','I1','I2']};
-  const teacherFilters={teacher:teacherName,level:teacherLevel,status:teacherStatus,search:teacherSearch};
-  const examOptions=data?.exams?.filters||{levels:['B1','B2','I1','I2'],teachers:[],groups:[],categories:[]};
-  const availableExamGroups=(examOptions.groups||[]).filter(g=>(!examLevel||g.level===examLevel)&&(!examTeacher||g.teacher===examTeacher));
-  const examFilters={level:examLevel,teacher:examTeacher,group:examGroup,category:examCategory,status:examStatus,search:examSearch};
-  const alertOptions=data?.institutionalAlerts?.filters||{levels:['critical','medium','info'],areas:[],ageBuckets:['0-7','8-30','31-60','61+']};
-  const alertFilters={level:alertLevel,area:alertArea,age:alertAge,search:alertSearch};
+  if(error&&!data)return <div className="master-loading master-error"><h2>No se pudo cargar el Panel Maestro</h2><p>{error}</p><button onClick={refetch}>Reintentar</button></div>;
+  const yearPool=Array.from(new Set([
+    ...Object.keys(data?.sales?.enrollmentsByYear||{}),
+    ...(data?.collections?.years||[]),
+    ...(data?.exams?.years||[]),
+    ...(data?.trends?.years||[])
+  ].map(Number).filter(Number.isFinite))).sort((a,b)=>a-b);
+  const calendarYear=new Date().getFullYear();
+  const selectedYear=yearPool.includes(calendarYear)?calendarYear:(yearPool.length?yearPool[yearPool.length-1]:calendarYear);
+  const previousYears=yearPool.filter(value=>value<selectedYear);
+  const year=String(selectedYear);
+  const compareYear=String(previousYears.length?previousYears[previousYears.length-1]:selectedYear-1);
+  const advisors=[];
+  const academicFilters={};
+  const studentFilters={};
+  const trackingFilters={};
+  const collectionFilters={};
+  const conapeFilters={};
+  const teacherFilters={};
+  const examFilters={};
+  const alertFilters={};
   const exportCurrent=()=>{
     if(section==='seguimiento'){
       const rows=masterTrackingFiltered(trackingState.data,trackingFilters);
@@ -893,72 +866,17 @@ function AdminMasterDashboard({onNavigate}) {
     const p=masterBlockMonthly(data.sales?.enrollmentsByYear?.[year],advisors),c=masterBlockMonthly(data.sales?.enrollmentsByYear?.[compareYear],advisors),inc=data.sales?.incomeByYear?.[year]||[];
     masterCsvDownload(`panel_maestro_${section}_${year}.csv`,[['Mes',`Matrículas ${year}`,`Matrículas ${compareYear}`,`Cobros ${year}`],...MASTER_MONTHS.map((m,i)=>[m,p[i]||0,c[i]||0,inc[i]||0])]);
   };
-  const selectedMeta=MASTER_SECTIONS.find(x=>x.id===section)||MASTER_SECTIONS[0];
+  const selectedMeta=MASTER_SECTIONS.find(item=>item.id===section)||MASTER_SECTIONS[0];
+  const syncMeta=data?.conapeAutoSync||{};
+  const syncCount=Math.max(0,Number(syncMeta.movimientos_registrados??syncMeta.nuevos??0)||0);
+  const syncFailed=!!syncMeta.error;
+  const syncLabel=syncFailed?'CONAPE pendiente':`${syncCount} desembolso${syncCount===1?'':'s'} nuevo${syncCount===1?'':'s'}`;
+  const dashboardBusy=loading||trackingState.loading;
   return <div className="master-admin" data-build={MASTER_PANEL_BUILD}>
-    <header className="master-header"><div><div className="master-title-line"><h1>Panel Maestro Super Admin</h1><span>Datos reales · CO</span></div><p>Control institucional y analítica integral · actualizado {data.generatedAt||'—'}</p></div><div className="master-actions"><button onClick={section==='seguimiento'?trackingState.refetch:refetch} disabled={section==='seguimiento'?trackingState.loading:loading}><span aria-hidden="true">↻</span>{(section==='seguimiento'?trackingState.loading:loading)?'Sincronizando…':'Sincronizar'}</button><button onClick={exportCurrent}><Icon name="download" size={15}/>Exportar CSV</button></div></header>
-    <MasterDataStatus coverage={data.coverage}/>
-    <div className="master-filterbar">
-      {section!=='seguimiento'&&<label><span>{section==='estudiantes'?'Año de cohorte':'Año'}</span><select value={year} onChange={e=>setYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}
-      {section!=='academica'&&section!=='seguimiento'&&section!=='estudiantes'&&section!=='docentes'&&section!=='alertas'&&<label><span>Comparar con</span><select value={compareYear} onChange={e=>setCompareYear(e.target.value)}>{years.map(y=><option key={y}>{y}</option>)}</select></label>}
-      {(section==='resumen'||section==='ventas')&&<MasterAdvisorFilter advisors={advisorOptions} selected={advisors} onChange={setAdvisors}/>} 
-      {section==='academica'&&<>
-        <MasterAcademicFilter label="Nivel" value={academicLevel} onChange={setAcademicLevel} options={(academicOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
-        <MasterAcademicFilter label="Docente" value={academicTeacher} onChange={setAcademicTeacher} options={academicOptions.teachers||[]} placeholder="Todos los docentes"/>
-        <MasterAcademicFilter label="Grupo" value={academicGroup} onChange={setAcademicGroup} options={availableGroups.map(g=>({value:g.code,label:`${g.code} · ${g.level}`}))} placeholder="Todos los grupos"/>
-      </>}
-      {section==='estudiantes'&&<>
-        <MasterAcademicFilter label="Nivel actual" value={studentLevel} onChange={setStudentLevel} options={(studentOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
-        <MasterAcademicFilter label="Docente" value={studentTeacher} onChange={setStudentTeacher} options={studentOptions.teachers||[]} placeholder="Todos los docentes"/>
-        <MasterAcademicFilter label="Grupo" value={studentGroup} onChange={setStudentGroup} options={availableStudentGroups.map(g=>({value:g.code,label:`${g.code} · ${g.level}`}))} placeholder="Todos los grupos"/>
-        <MasterAcademicFilter label="Riesgo" value={studentRisk} onChange={setStudentRisk} options={[{value:'high',label:'Alto'},{value:'medium',label:'Medio'},{value:'low',label:'Bajo'}]} placeholder="Todos los riesgos"/>
-        <label className="master-student-search"><span>Buscar</span><input value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder="Nombre, código o grupo"/></label>
-      </>}
-      {section==='seguimiento'&&<>
-        <MasterAcademicFilter label="Nivel" value={trackingLevel} onChange={setTrackingLevel} options={(trackingOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
-        <MasterAcademicFilter label="Docente" value={trackingTeacher} onChange={setTrackingTeacher} options={trackingOptions.teachers||[]} placeholder="Todos los docentes"/>
-        <MasterAcademicFilter label="Estado" value={trackingStatus} onChange={setTrackingStatus} options={[{value:'CRITICO',label:'Crítico'},{value:'ATENCION',label:'Atención'},{value:'ESTABLE',label:'Estable'}]} placeholder="Todos los estados"/>
-        <label className="master-student-search"><span>Buscar</span><input value={trackingSearch} onChange={e=>setTrackingSearch(e.target.value)} placeholder="Grupo, docente o nivel"/></label>
-      </>}
-      {section==='cobranza'&&<>
-        <MasterAcademicFilter label="Nivel actual" value={collectionLevel} onChange={setCollectionLevel} options={(collectionOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
-        <MasterAcademicFilter label="Convenio" value={collectionConvenio} onChange={setCollectionConvenio} options={collectionOptions.convenios||[]} placeholder="Todos los convenios"/>
-        <MasterAcademicFilter label="Grupo" value={collectionGroup} onChange={setCollectionGroup} options={availableCollectionGroups.map(g=>({value:g.code,label:`${g.code} · ${g.level}`}))} placeholder="Todos los grupos"/>
-        <MasterAcademicFilter label="Estado financiero" value={collectionStatus} onChange={setCollectionStatus} options={[{value:'mora',label:'Con mora'},{value:'pending',label:'Con saldo pendiente'},{value:'clear',label:'Al día'},{value:'certificate',label:'Certificado bloqueado'}]} placeholder="Todos los estados"/>
-        <label className="master-student-search"><span>Buscar</span><input value={collectionSearch} onChange={e=>setCollectionSearch(e.target.value)} placeholder="Nombre, código o grupo"/></label>
-      </>}
-      {section==='conape'&&<>
-        <MasterAcademicFilter label="Asesor" value={conapeAdvisor} onChange={setConapeAdvisor} options={conapeOptions.advisors||[]} placeholder="Todos los asesores"/>
-        <MasterAcademicFilter label="Etapa" value={conapeStage} onChange={setConapeStage} options={(conapeOptions.stages||[]).map(x=>({value:x,label:({lead:'Lead',solicitud:'Solicitud',documentos:'Documentos',aprobado:'Aprobado',desembolso:'Desembolso',activo:'Activo',cancelado:'Cancelado'}[x]||x)}))} placeholder="Todas las etapas"/>
-        <MasterAcademicFilter label="Prioridad" value={conapePriority} onChange={setConapePriority} options={(conapeOptions.priorities||[]).map(x=>({value:x,label:x}))} placeholder="Todas las prioridades"/>
-        <MasterAcademicFilter label="Vinculación" value={conapeLinkStatus} onChange={setConapeLinkStatus} options={[{value:'linked',label:'Vinculado'},{value:'unlinked',label:'Sin vínculo'}]} placeholder="Todos los estados"/>
-        <MasterAcademicFilter label="Grupo" value={conapeGroup} onChange={setConapeGroup} options={conapeOptions.groups||[]} placeholder="Todos los grupos"/>
-        <label className="master-student-search"><span>Buscar</span><input value={conapeSearch} onChange={e=>setConapeSearch(e.target.value)} placeholder="Nombre, cédula, código o grupo"/></label>
-      </>}
-      {section==='docentes'&&<>
-        <MasterAcademicFilter label="Docente" value={teacherName} onChange={setTeacherName} options={teacherOptions.teachers||[]} placeholder="Todos los docentes"/>
-        <MasterAcademicFilter label="Nivel" value={teacherLevel} onChange={setTeacherLevel} options={(teacherOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
-        <MasterAcademicFilter label="Estado" value={teacherStatus} onChange={setTeacherStatus} options={[{value:'alert',label:'Con alerta'},{value:'attention',label:'Seguimiento'},{value:'ok',label:'Estable'},{value:'unassigned',label:'Sin grupo'}]} placeholder="Todos los estados"/>
-        <label className="master-student-search"><span>Buscar</span><input value={teacherSearch} onChange={e=>setTeacherSearch(e.target.value)} placeholder="Docente o grupo"/></label>
-      </>}
-      {section==='examenes'&&<>
-        <MasterAcademicFilter label="Nivel" value={examLevel} onChange={setExamLevel} options={(examOptions.levels||[]).map(x=>({value:x,label:({B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'}[x]||x)}))} placeholder="Todos los niveles"/>
-        <MasterAcademicFilter label="Docente" value={examTeacher} onChange={setExamTeacher} options={examOptions.teachers||[]} placeholder="Todos los docentes"/>
-        <MasterAcademicFilter label="Grupo" value={examGroup} onChange={setExamGroup} options={availableExamGroups.map(g=>({value:g.code,label:`${g.code} · ${g.level}`}))} placeholder="Todos los grupos"/>
-        <MasterAcademicFilter label="Tipo" value={examCategory} onChange={setExamCategory} options={[{value:'oral',label:'Oral'},{value:'written',label:'Escrita'},{value:'social',label:'Social Skill'},{value:'ican',label:'I CAN'},{value:'other',label:'Otra'}]} placeholder="Todos los tipos"/>
-        <MasterAcademicFilter label="Estado" value={examStatus} onChange={setExamStatus} options={[{value:'pending',label:'Pendiente de revisión'},{value:'graded',label:'Calificada'},{value:'passed',label:'Aprobada'},{value:'failed',label:'No aprobada'}]} placeholder="Todos los estados"/>
-        <label className="master-student-search"><span>Buscar</span><input value={examSearch} onChange={e=>setExamSearch(e.target.value)} placeholder="Estudiante, grupo o evaluación"/></label>
-      </>}
-      {section==='alertas'&&<>
-        <MasterAcademicFilter label="Prioridad" value={alertLevel} onChange={setAlertLevel} options={[{value:'critical',label:'Crítica'},{value:'medium',label:'Media'},{value:'info',label:'Informativa'}]} placeholder="Todas las prioridades"/>
-        <MasterAcademicFilter label="Área" value={alertArea} onChange={setAlertArea} options={alertOptions.areas||[]} placeholder="Todas las áreas"/>
-        <MasterAcademicFilter label="Antigüedad" value={alertAge} onChange={setAlertAge} options={[{value:'0-7',label:'0–7 días'},{value:'8-30',label:'8–30 días'},{value:'31-60',label:'31–60 días'},{value:'61+',label:'+61 días'}]} placeholder="Todas las edades"/>
-        <label className="master-student-search"><span>Buscar</span><input value={alertSearch} onChange={e=>setAlertSearch(e.target.value)} placeholder="Alerta, entidad, responsable o área"/></label>
-      </>}
-      <div className="master-filter-chip"><i style={{background:selectedMeta.color}}/>{selectedMeta.label}</div>
-      {((section==='academica'&&(academicLevel||academicTeacher||academicGroup))||(section==='estudiantes'&&(studentLevel||studentTeacher||studentGroup||studentRisk||studentSearch))||(section==='seguimiento'&&(trackingLevel||trackingTeacher||trackingStatus||trackingSearch))||(section==='cobranza'&&(collectionLevel||collectionConvenio||collectionGroup||collectionStatus||collectionSearch))||(section==='conape'&&(conapeAdvisor||conapeStage||conapePriority||conapeLinkStatus||conapeGroup||conapeSearch))||(section==='docentes'&&(teacherName||teacherLevel||teacherStatus||teacherSearch))||(section==='examenes'&&(examLevel||examTeacher||examGroup||examCategory||examStatus||examSearch))||(section==='alertas'&&(alertLevel||alertArea||alertAge||alertSearch))||((section==='resumen'||section==='ventas')&&advisors.length>0))&&<button className="master-clear-filter" onClick={()=>{setAdvisors([]);setAcademicLevel('');setAcademicTeacher('');setAcademicGroup('');setStudentLevel('');setStudentTeacher('');setStudentGroup('');setStudentRisk('');setStudentSearch('');setTrackingLevel('');setTrackingTeacher('');setTrackingStatus('');setTrackingSearch('');setCollectionLevel('');setCollectionConvenio('');setCollectionGroup('');setCollectionStatus('');setCollectionSearch('');setConapeAdvisor('');setConapeStage('');setConapePriority('');setConapeLinkStatus('');setConapeGroup('');setConapeSearch('');setTeacherName('');setTeacherLevel('');setTeacherStatus('');setTeacherSearch('');setExamLevel('');setExamTeacher('');setExamGroup('');setExamCategory('');setExamStatus('');setExamSearch('');setAlertLevel('');setAlertArea('');setAlertAge('');setAlertSearch('');}}>Limpiar filtros ×</button>}
-    </div>
-    <nav className="master-section-nav" aria-label="Secciones del Panel Maestro">{MASTER_SECTIONS.map(item=><button key={item.id} className={section===item.id?'active':''} style={{'--section-color':item.color}} onClick={()=>setSection(item.id)}><i/><Icon name={item.icon} size={16}/><span>{item.label}</span>{!connected.includes(item.id)&&<small>próxima conexión</small>}</button>)}</nav>
-    <main className="master-content"><div className="master-section-heading"><div><span>{selectedMeta.label}</span><h2>{section==='resumen'?'Visión ejecutiva de la academia':section==='ventas'?'Analítica comercial y matrículas':section==='academica'?'Control operativo académico en tiempo real':section==='estudiantes'?'Retención, asistencia y riesgo estudiantil':section==='seguimiento'?'Prioridades operativas, rescate y seguimiento humano por grupo':section==='cobranza'?'Cobros aplicados, cartera activa y morosidad':section==='conape'?'Financiamiento, desembolsos y vinculación institucional':section==='docentes'?'Carga, cumplimiento y salud operativa docente':section==='examenes'?'Aplicación, revisión y rendimiento académico':section==='alertas'?'Centro transversal de alertas y pendientes institucionales':section==='tendencias'?'Evolución multianual de la Academia':selectedMeta.label}</h2></div>{!connected.includes(section)&&<em className="master-integration-chip">Depende de integración</em>}</div>{section==='resumen'?<MasterResumen data={data} year={year} compareYear={compareYear} advisors={advisors} setSection={setSection}/>:section==='ventas'?<MasterVentas data={data} year={year} compareYear={compareYear} advisors={advisors}/>:section==='academica'?<MasterAcademica data={data} year={year} filters={academicFilters}/>:section==='estudiantes'?<MasterEstudiantes data={data} year={year} filters={studentFilters}/>:section==='seguimiento'?<MasterSeguimiento state={trackingState} filters={trackingFilters} onRefresh={trackingState.refetch} onNavigate={onNavigate}/>:section==='cobranza'?<MasterCobranza data={data} year={year} compareYear={compareYear} filters={collectionFilters} onRefresh={refetch}/>:section==='conape'?<MasterConape data={data} year={year} compareYear={compareYear} filters={conapeFilters}/>:section==='docentes'?<MasterDocentes data={data} year={year} filters={teacherFilters}/>:section==='examenes'?<MasterExamenes data={data} year={year} compareYear={compareYear} filters={examFilters}/>:section==='alertas'?<MasterAlertas data={data} year={year} filters={alertFilters} setSection={setSection}/>:section==='tendencias'?<MasterTendencias data={data} year={year} compareYear={compareYear}/>:<MasterPendingSection section={section}/>}</main>
+    <header className="master-header"><div><div className="master-title-line"><h1>Panel Maestro Super Admin</h1><span>Datos reales · CO</span></div><p>Control institucional y analítica integral · actualizado {data.generatedAt||'—'}</p></div><div className="master-actions"><span className={`master-conape-auto-chip ${syncFailed?'warn':'ok'}`} title={syncFailed?syncMeta.error:'CONAPE se consulta al entrar y cada 30 minutos.'}>{syncLabel}</span><button onClick={()=>{refetch();if(section==='seguimiento')trackingState.refetch();}} disabled={dashboardBusy}><span aria-hidden="true">↻</span>{dashboardBusy?'Sincronizando…':'Sincronizar'}</button><button onClick={exportCurrent}><Icon name="download" size={15}/>Exportar CSV</button></div></header>
+    {error&&data&&<div className="master-inline-warning">Última actualización incompleta: {error}</div>}
+    <nav className="master-section-nav" aria-label="Secciones del Panel Maestro">{MASTER_SECTIONS.map(item=><button key={item.id} className={section===item.id?'active':''} style={{'--section-color':item.color}} onClick={()=>setSection(item.id)}><i/><Icon name={item.icon} size={16}/><span>{item.label}</span></button>)}</nav>
+    <main className="master-content"><div className="master-section-heading"><div><span>{selectedMeta.label}</span><h2>{section==='resumen'?'Visión ejecutiva de la academia':section==='ventas'?'Analítica comercial y matrículas':section==='academica'?'Control operativo académico en tiempo real':section==='estudiantes'?'Retención, asistencia y riesgo estudiantil':section==='seguimiento'?'Prioridades operativas, rescate y seguimiento humano por grupo':section==='cobranza'?'Cobros aplicados, cartera activa y morosidad':section==='conape'?'Financiamiento, desembolsos y vinculación institucional':section==='docentes'?'Carga, cumplimiento y salud operativa docente':section==='examenes'?'Aplicación, revisión y rendimiento académico':section==='alertas'?'Centro transversal de alertas y pendientes institucionales':section==='tendencias'?'Evolución multianual de la Academia':selectedMeta.label}</h2></div></div>{section==='resumen'?<MasterResumen data={data} year={year} compareYear={compareYear} advisors={advisors} setSection={setSection}/>:section==='ventas'?<MasterVentas data={data} year={year} compareYear={compareYear} advisors={advisors}/>:section==='academica'?<MasterAcademica data={data} year={year} filters={academicFilters}/>:section==='estudiantes'?<MasterEstudiantes data={data} year={year} filters={studentFilters}/>:section==='seguimiento'?<MasterSeguimiento state={trackingState} filters={trackingFilters} onRefresh={trackingState.refetch} onNavigate={onNavigate}/>:section==='cobranza'?<MasterCobranza data={data} year={year} compareYear={compareYear} filters={collectionFilters} onRefresh={refetch}/>:section==='conape'?<MasterConape data={data} year={year} compareYear={compareYear} filters={conapeFilters}/>:section==='docentes'?<MasterDocentes data={data} year={year} filters={teacherFilters}/>:section==='examenes'?<MasterExamenes data={data} year={year} compareYear={compareYear} filters={examFilters}/>:section==='alertas'?<MasterAlertas data={data} year={year} filters={alertFilters} setSection={setSection}/>:section==='tendencias'?<MasterTendencias data={data} year={year} compareYear={compareYear}/>:<MasterPendingSection section={section}/>}</main>
   </div>;
 }
 
