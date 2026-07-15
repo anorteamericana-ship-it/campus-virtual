@@ -1,5 +1,6 @@
 name: CS21A96 CONAPE review traffic light
 
+# Trigger after workflow exists on main.
 on:
   push:
     paths:
