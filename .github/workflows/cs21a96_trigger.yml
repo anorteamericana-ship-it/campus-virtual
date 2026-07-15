@@ -1,0 +1,39 @@
+name: CS21A96 controlled trigger
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Execute validated patch
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re, textwrap, subprocess
+          source=Path('.github/workflows/cs21a96_conape_review.yml').read_text(encoding='utf-8')
+          match=re.search(r"python <<'PY'\n(.*?)\n\s*PY\n",source,re.S)
+          if not match: raise SystemExit('No se encontró el parche CS21A96')
+          script=textwrap.dedent(match.group(1))
+          Path('/tmp/cs21a96_patch.py').write_text(script,encoding='utf-8')
+          subprocess.run(['python','/tmp/cs21a96_patch.py'],check=True)
+          PY
+          grep -q "F98.4-Z6-CS21A96" src/admin_master_conape_movements_cs21a25.jsx
+          grep -q "setConapeRevisionSemaforo" src/admin_master_conape_movements_cs21a25.jsx
+          grep -q "F98.4Z6CS21A96" campus.html
+          git diff --check
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/admin_master_conape_movements_cs21a25.jsx campus.html
+          git commit -m "CS21A96 agrega semáforo de revisión por desembolso"
+          git push origin main
