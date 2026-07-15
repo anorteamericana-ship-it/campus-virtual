@@ -1,8 +1,8 @@
 name: CS21A96 controlled trigger
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches: [cs21a96-trigger]
 
 permissions:
   contents: write
