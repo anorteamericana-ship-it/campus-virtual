@@ -1,0 +1,107 @@
+name: CS21A96 CONAPE review traffic light
+
+on:
+  push:
+    paths:
+      - '.github/workflows/cs21a96_conape_review.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply CS21A96
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path=Path('src/admin_master_conape_movements_cs21a25.jsx')
+          s=path.read_text(encoding='utf-8')
+          original=s
+          s=s.replace('// F98.4-Z6-CS21A94 · CONAPE deduplicado, alerta alineada y actualización automática','// F98.4-Z6-CS21A96 · Semáforo acumulativo por desembolso, persistencia y reinicio al cierre',1)
+          s=s.replace("const BUILD='F98.4-Z6-CS21A94';","const BUILD='F98.4-Z6-CS21A96';",1)
+          s=s.replace('an-master-conape-cs21a94-styles','an-master-conape-cs21a96-styles')
+
+          css_anchor='    .master-conape-history-alert .master-conape-movement-stack{margin:0}\n'
+          css='''    .master-review-wrap{margin-top:8px;display:flex;align-items:center;gap:9px;min-height:24px}\n    .master-review-rail{display:flex;align-items:center;gap:0}\n    .master-review-segment{width:12px;height:2px;background:#D8DEE7;transition:background .18s ease,box-shadow .18s ease}\n    .master-review-segment.active{background:linear-gradient(90deg,#EAB308,#7A1E2C);box-shadow:0 0 7px rgba(122,30,44,.16)}\n    .master-review-dot{--review-color:#7A1E2C;width:20px;height:20px;border-radius:50%;border:2px solid #C9D1DC;background:#fff;color:#7B8492;display:inline-grid;place-items:center;padding:0;font:900 8px/1 inherit;cursor:pointer;box-shadow:0 2px 6px rgba(0,30,71,.08);transition:transform .14s ease,background .14s ease,border-color .14s ease,color .14s ease,box-shadow .14s ease}\n    .master-review-dot:hover:not(:disabled){transform:translateY(-1px) scale(1.07);border-color:var(--review-color);box-shadow:0 4px 12px color-mix(in srgb,var(--review-color) 26%,transparent)}\n    .master-review-dot.active{background:var(--review-color);border-color:var(--review-color);color:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--review-color) 15%,transparent),0 4px 12px color-mix(in srgb,var(--review-color) 24%,transparent)}\n    .master-review-dot:disabled{cursor:default;opacity:.72}\n    .master-review-label{font-size:8px;font-weight:900;letter-spacing:.035em;color:#697386;white-space:nowrap}\n    .master-review-wrap[data-closed="true"] .master-review-label{color:#58725F}\n    .master-review-wrap[data-busy="true"]{opacity:.62;pointer-events:none}\n'''
+          if css_anchor not in s: raise SystemExit('CSS anchor missing')
+          s=s.replace(css_anchor,css_anchor+css,1)
+
+          component='''\nconst REVIEW_COLORS={1:'#EAB308',2:'#F28C28',3:'#D94848',4:'#7A1E2C'};\nfunction reviewStepValue(value){const n=Math.floor(Number(value)||0);return Math.max(0,Math.min(4,n));}\nfunction ReviewTrafficLight({row,step,onChange,busy}){\n  const closed=!!row?.appliedInSystem,current=closed?0:reviewStepValue(step),disabled=closed||busy||!row?.id;\n  const label=closed?'Ciclo cerrado · reiniciado':current?`Revisión ${current} de 4`:'Sin revisar';\n  return <div className="master-review-wrap" data-closed={closed?'true':'false'} data-busy={busy?'true':'false'} title={closed?'El desembolso 01 está cerrado. El próximo ciclo iniciará desde cero.':`${label}. Seleccioná la revisión alcanzada.`}>\n    <div className="master-review-rail" role="group" aria-label={`Seguimiento manual de ${row?.name||'estudiante'}`}>\n      {[1,2,3,4].map(n=><React.Fragment key={n}>{n>1&&<span className={`master-review-segment ${n<=current?'active':''}`}/>}<button type="button" className={`master-review-dot ${n<=current?'active':''}`} style={{'--review-color':REVIEW_COLORS[n]}} disabled={disabled} aria-label={`Marcar revisión ${n}`} aria-pressed={n<=current?'true':'false'} onClick={()=>onChange?.(row,n)}>{n}</button></React.Fragment>)}\n    </div>\n    <span className="master-review-label">{busy?'Guardando…':label}</span>\n  </div>;\n}\n'''
+          anchor='function AcademicHistory({items,row}){'
+          if anchor not in s: raise SystemExit('component anchor missing')
+          s=s.replace(anchor,component+'\n'+anchor,1)
+
+          s=s.replace('function StudentCell({row,detail,openDetail,code}){','function StudentCell({row,detail,openDetail,code,reviewStep,onReview,reviewBusy}){',1)
+          student_anchor='''    <div className="master-conape-campus-line">\n      <span className={`master-link-status ${row.linked?'linked':'unlinked'}`}>{row.linked?'Vinculado':'Sin vínculo'}</span>\n      <span title={row.group||'Sin grupo'}>{row.group||'Sin grupo'}</span>\n    </div>'''
+          student_new=student_anchor+'''\n    <ReviewTrafficLight row={row} step={reviewStep} onChange={onReview} busy={reviewBusy}/>'''
+          if student_anchor not in s: raise SystemExit('student anchor missing')
+          s=s.replace(student_anchor,student_new,1)
+
+          s=s.replace('function Row({row,index,details,openDetail,financeMap}){','function Row({row,index,details,openDetail,financeMap,reviewSteps,onReview,reviewBusy}){',1)
+          old='<td className="master-conape-student-cell" style={cell}><StudentCell row={row} detail={detail} openDetail={openDetail} code={code}/></td>'
+          new='<td className="master-conape-student-cell" style={cell}><StudentCell row={row} detail={detail} openDetail={openDetail} code={code} reviewStep={reviewSteps?.[row.id]??row.reviewStep??0} onReview={onReview} reviewBusy={reviewBusy===row.id}/></td>'
+          if old not in s: raise SystemExit('row student anchor missing')
+          s=s.replace(old,new,1)
+
+          s=s.replace('function Table({items,details,openDetail,financeMap,empty,sort,onSort}){','function Table({items,details,openDetail,financeMap,empty,sort,onSort,reviewSteps,onReview,reviewBusy}){',1)
+          old='<tbody>{items.map((r,i)=><Row key={r.id||i} row={r} index={i} details={details} openDetail={openDetail} financeMap={financeMap}/>)}</tbody>'
+          new='<tbody>{items.map((r,i)=><Row key={r.id||i} row={r} index={i} details={details} openDetail={openDetail} financeMap={financeMap} reviewSteps={reviewSteps} onReview={onReview} reviewBusy={reviewBusy}/>)}</tbody>'
+          if old not in s: raise SystemExit('table row anchor missing')
+          s=s.replace(old,new,1)
+
+          s=s.replace('function MasterConapeMovementsTableCS21A94({data,onRefresh}){','function MasterConapeMovementsTableCS21A96({data,onRefresh}){',1)
+          state_anchor="  const [sort,setSort]=React.useState({key:'detected',dir:'desc'});\n"
+          state_new=state_anchor+"  const [reviewSteps,setReviewSteps]=React.useState({});\n  const [reviewBusy,setReviewBusy]=React.useState('');\n"
+          if state_anchor not in s: raise SystemExit('state anchor missing')
+          s=s.replace(state_anchor,state_new,1)
+
+          effect_anchor="""  React.useEffect(()=>{\n    const x={};\n    all.forEach(r=>{const c=String(r?.code||'').trim();if(c)x[c]=String(r?.detail||'');});\n    setDetails(x);\n  },[data]);\n"""
+          effect_new=effect_anchor+"""\n  React.useEffect(()=>{\n    const next={};\n    all.forEach(row=>{if(row?.id)next[row.id]=row.appliedInSystem?0:reviewStepValue(row.reviewStep);});\n    setReviewSteps(next);\n  },[data]);\n"""
+          if effect_anchor not in s: raise SystemExit('effect anchor missing')
+          s=s.replace(effect_anchor,effect_new,1)
+
+          refresh_anchor='  async function refresh(){\n'
+          save_review='''  async function saveReview(row,step){\n    const id=String(row?.id||'').trim();\n    if(!id||row?.appliedInSystem||reviewBusy)return;\n    const next=reviewStepValue(step);\n    setReviewBusy(id);setMsg('');\n    try{\n      const result=await post('setConapeRevisionSemaforo',{movimiento_id:id,paso:next});\n      setReviewSteps(current=>({...current,[id]:reviewStepValue(result.paso)}));\n      setMsg(next===4?'Revisión final marcada. El seguimiento permanecerá así hasta que el desembolso pase a cerrados.':next?`Revisión ${next} de 4 guardada.`:'Seguimiento reiniciado.');\n    }catch(error){\n      if(String(error?.message||'').toLowerCase().includes('cerrado'))setReviewSteps(current=>({...current,[id]:0}));\n      setMsg(error?.message||String(error));\n    }finally{setReviewBusy('');}\n  }\n'''
+          if refresh_anchor not in s: raise SystemExit('refresh anchor missing')
+          s=s.replace(refresh_anchor,save_review+refresh_anchor,1)
+
+          table_props='''      onSort={onSort}\n    />'''
+          table_new='''      onSort={onSort}\n      reviewSteps={reviewSteps}\n      onReview={saveReview}\n      reviewBusy={reviewBusy}\n    />'''
+          if s.count(table_props)<2: raise SystemExit('table props anchors missing')
+          s=s.replace(table_props,table_new,2)
+
+          s=s.replace('window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A94;','window.MasterConapeMovementsTable=MasterConapeMovementsTableCS21A96;',1)
+
+          required=['MasterConapeMovementsTableCS21A96','setConapeRevisionSemaforo','master-review-dot','Ciclo cerrado · reiniciado',"const BUILD='F98.4-Z6-CS21A96'"]
+          for token in required:
+            if token not in s: raise SystemExit('missing '+token)
+          if s==original: raise SystemExit('no frontend changes')
+          path.write_text(s,encoding='utf-8')
+
+          campus=Path('campus.html')
+          html=campus.read_text(encoding='utf-8')
+          old='src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A94'
+          new='src/admin_master_conape_movements_cs21a25.jsx?v=F98.4Z6CS21A96'
+          if old not in html: raise SystemExit('campus version anchor missing')
+          campus.write_text(html.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Validate patch
+        run: |
+          grep -q "F98.4-Z6-CS21A96" src/admin_master_conape_movements_cs21a25.jsx
+          grep -q "setConapeRevisionSemaforo" src/admin_master_conape_movements_cs21a25.jsx
+          grep -q "F98.4Z6CS21A96" campus.html
+          git diff --check
+      - name: Commit CS21A96
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/admin_master_conape_movements_cs21a25.jsx campus.html
+          git commit -m "CS21A96 agrega semáforo de revisión por desembolso"
+          git push origin main
