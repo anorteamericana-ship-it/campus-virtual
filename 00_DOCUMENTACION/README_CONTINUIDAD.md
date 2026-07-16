@@ -1,52 +1,46 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión frontend:** F98.4-Z6-CS21A102  
-**Backend integral vigente:** F98.4-Z6-CS21A101  
-**Backend Apps Script publicado:** CS21A101 validado por el usuario  
+**Versión frontend:** F98.4-Z6-CS21A103  
+**Backend integral vigente:** F98.4-Z6-CS21A103  
+**Backend Apps Script publicado:** no verificado  
 **Corte:** 16-jul-2026
 
-## Cambio vigente CS21A102
+## Cambio vigente CS21A103
 
-Se corrigió una regresión de montaje en Consulta individual.
+El Panel Maestro verifica `Mora SI/NO` directamente en el archivo externo oficial `7-morosidad` sin reconstruir todo el dashboard.
 
-El asistente `Poner al día` se cargaba antes que `admin_students.jsx`. El módulo diferido publicaba posteriormente el modal antiguo, mientras el instalador se retiraba al encontrar una marca de versión aunque la función activa fuera incorrecta.
+### Lectura en vivo
 
-La corrección:
+- al abrir Seguimiento inmediato;
+- cada 20 segundos con la pestaña visible;
+- al recuperar foco;
+- después de `Actualizar CONAPE ahora`.
 
-- compara la función realmente activa;
-- reinstala `ANQuickUpdate99.QuickModal` después de cargar `admin_students.jsx` o `buscador.jsx`;
-- repite la comprobación durante los siguientes 800 ms;
-- expone `__AN_QUICK_UPDATE_ACTIVE__` y `__AN_QUICK_UPDATE_BUILD__` para diagnóstico.
+La respuesta actualiza solamente:
 
-## Recuperación de expedientes APR + siguiente PE
+- `moraState`;
+- condición pendiente/cerrado del desembolso académico 01;
+- reinicio visual del semáforo cuando el estado es `NO`.
 
-CS21A102 permite continuar cuando el nivel actual ya está `APR` y el siguiente permanece `PE`:
+## Caché
 
-1. confirma el nivel aprobado sin reaprobarlo;
-2. activa el siguiente nivel en `CA` usando el endpoint idempotente vigente;
-3. consolida un solo intento activo;
-4. abre el pago del nuevo nivel;
-5. pregunta CONAPE al final.
+Las correcciones manuales de morosidad invalidan ahora:
 
-## Caso 17079
+- `MASTER_DASH_CS21A98_FRESH`;
+- `MASTER_DASH_CS21A98_STALE`.
 
-La acción realizada con el modal antiguo no completó la puesta al día:
+`campus.html` también fuerza las versiones correctas A101, A102 y A103. Esto evita que el navegador vuelva a servir el modal antiguo o etiquetas anteriores del Panel Maestro.
 
-- B1 APR 96;
-- B2 APR 97;
-- I1 APR 96;
-- I2 PE;
-- sin intento I2 activo;
-- sin operación en `PAGOS_OPERACIONES`;
-- sin movimientos en `PAGOS_CAMPUS`;
-- CONAPE externo conserva I2 en PE.
+## Caso auditado
 
-No se modificaron sus datos durante la auditoría.
+Se confirmó un caso donde la pantalla mostraba `Mora SI`, aunque la fuente oficial tenía `NO` para los periodos vigentes. No se repararon datos porque la base ya estaba correcta; se corrigió la lectura y la invalidación de caché.
 
 ## Funciones preservadas
 
-- Seguimiento CONAPE solo para desembolso 01.
-- Semáforo colaborativo.
+- Poner al día en tres pasos.
+- Montaje robusto A102.
+- Seguimiento solo para desembolso 01.
+- Movimientos 02/03 informativos.
 - Pago local separado de CONAPE.
 - Cierre CONAPE idempotente.
 - Journal y reversión.
@@ -54,22 +48,29 @@ No se modificaron sus datos durante la auditoría.
 
 ## Backend
 
-Continúa vigente:
+Usar únicamente:
 
-`Code_F98_4_Z6_CS21A101_COMPLETO.gs`
+`Code_F98_4_Z6_CS21A103_COMPLETO.gs`
 
-No se requiere reemplazar Apps Script para esta corrección frontend.
+Test de solo lectura:
 
-## Prueba visual
+`Test_CS21A103.gs` → `test_cs21a103_all`
 
-1. recargar el Campus con `Ctrl + F5`;
-2. abrir Consulta individual;
-3. abrir Estado en 17079, nivel I1;
-4. comprobar que aparece `Poner al día`, no `Cambiar estatus — I1`;
-5. comprobar en consola:
-   - `window.__AN_QUICK_UPDATE_BUILD__ === 'F98.4-Z6-CS21A102'`;
-   - `window.__AN_QUICK_UPDATE_ACTIVE__ === true`.
+## Publicación
+
+1. reemplazar Code.gs por A103;
+2. agregar temporalmente el test;
+3. ejecutar `test_cs21a103_all`;
+4. retirar el test;
+5. actualizar el deployment existente;
+6. recargar el Campus con `Ctrl + F5`;
+7. abrir Seguimiento inmediato;
+8. comprobar que una fila oficial `NO` aparece como aplicada/cerrada y no como `Mora SI`.
+
+## Protección
+
+La MÁSCARA de Keylor conserva las 69 funciones `_demoKeylor*` sin cambios.
 
 ## Documentación vigente
 
-Leer `README_F98_4_Z6_CS21A102.md` antes de continuar el desarrollo.
+Leer `INDICE_VIGENTE_CS21A103.md` antes de continuar.
