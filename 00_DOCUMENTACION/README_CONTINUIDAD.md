@@ -1,76 +1,85 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión frontend:** F98.4-Z6-CS21A103  
+**Versión frontend:** F98.4-Z6-CS21A104  
 **Backend integral vigente:** F98.4-Z6-CS21A103  
-**Backend Apps Script publicado:** no verificado  
+**Backend Apps Script publicado:** CS21A103 validado por el usuario  
 **Corte:** 16-jul-2026
 
-## Cambio vigente CS21A103
+## Cambio vigente CS21A104
 
-El Panel Maestro verifica `Mora SI/NO` directamente en el archivo externo oficial `7-morosidad` sin reconstruir todo el dashboard.
+El Panel Maestro agrupa los desembolsos académicos 01 por estudiante dentro de cada sección.
 
-### Lectura en vivo
+### Presentación
 
-- al abrir Seguimiento inmediato;
-- cada 20 segundos con la pestaña visible;
-- al recuperar foco;
-- después de `Actualizar CONAPE ahora`.
+- una sola ficha para código, nombre, vínculo, grupo, consulta y seguimiento;
+- cada movimiento conserva su `MOVIMIENTO_ID` y su estado independiente;
+- el movimiento se muestra en el mismo renglón del nivel académico correspondiente;
+- `Periodo / nivel`, `Detectado` y `WhatsApp` comparten la alineación del resumen académico;
+- los movimientos 02/03 permanecen como contexto dentro del periodo correspondiente.
 
-La respuesta actualiza solamente:
+### Columna Detectado
 
-- `moraState`;
-- condición pendiente/cerrado del desembolso académico 01;
-- reinicio visual del semáforo cuando el estado es `NO`.
+`D-10/7` dejó de formar parte del texto de Periodo. Ahora tiene una columna propia llamada **Detectado**.
 
-## Caché
+Puede ordenarse:
 
-Las correcciones manuales de morosidad invalidan ahora:
+- desde el encabezado Detectado;
+- `Detectado más reciente`;
+- `Detectado más antiguo`.
 
-- `MASTER_DASH_CS21A98_FRESH`;
-- `MASTER_DASH_CS21A98_STALE`.
+El orden agrupa por estudiante usando el movimiento detectado que aparezca primero según el sentido seleccionado.
 
-`campus.html` también fuerza las versiones correctas A101, A102 y A103. Esto evita que el navegador vuelva a servir el modal antiguo o etiquetas anteriores del Panel Maestro.
+## Conteos
 
-## Caso auditado
+La cabecera diferencia:
 
-Se confirmó un caso donde la pantalla mostraba `Mora SI`, aunque la fuente oficial tenía `NO` para los periodos vigentes. No se repararon datos porque la base ya estaba correcta; se corrigió la lectura y la invalidación de caché.
+- estudiantes visibles;
+- movimientos académicos 01 visibles.
+
+En cerrados, el resumen indica cantidad de estudiantes y cantidad de movimientos. Dos periodos de un mismo estudiante ya no se cuentan como dos estudiantes.
+
+## Caso visual de referencia
+
+Para 17186:
+
+- una ficha de estudiante;
+- B1 alineado con `01/05/2026` y su fecha detectada;
+- B2 alineado con `01/09/2026` y su fecha detectada;
+- ambos movimientos continúan cerrados e independientes;
+- un solo bloque común de identidad y seguimiento cerrado.
 
 ## Funciones preservadas
 
-- Poner al día en tres pasos.
-- Montaje robusto A102.
-- Seguimiento solo para desembolso 01.
-- Movimientos 02/03 informativos.
-- Pago local separado de CONAPE.
-- Cierre CONAPE idempotente.
-- Journal y reversión.
+- Morosidad oficial en vivo A103.
+- Seguimiento exclusivo del desembolso 01.
+- Semáforo por movimiento.
+- WhatsApp por movimiento y nivel.
+- Contexto informativo 02/03.
+- Poner al día A102.
+- Journal, pagos y reversión.
 - MÁSCARA de Keylor.
 
 ## Backend
 
-Usar únicamente:
+No cambia. Continúa vigente:
 
 `Code_F98_4_Z6_CS21A103_COMPLETO.gs`
 
-Test de solo lectura:
-
-`Test_CS21A103.gs` → `test_cs21a103_all`
+No se requiere reemplazar Apps Script ni ejecutar un nuevo test backend para CS21A104.
 
 ## Publicación
 
-1. reemplazar Code.gs por A103;
-2. agregar temporalmente el test;
-3. ejecutar `test_cs21a103_all`;
-4. retirar el test;
-5. actualizar el deployment existente;
-6. recargar el Campus con `Ctrl + F5`;
-7. abrir Seguimiento inmediato;
-8. comprobar que una fila oficial `NO` aparece como aplicada/cerrada y no como `Mora SI`.
+1. esperar que GitHub Pages publique `main`;
+2. recargar el Campus con `Ctrl + F5`;
+3. buscar 17186;
+4. confirmar una sola ficha con dos movimientos alineados;
+5. pulsar Detectado y comprobar el cambio de orden;
+6. verificar que el semáforo y WhatsApp siguen actuando sobre el movimiento correcto.
 
 ## Protección
 
-La MÁSCARA de Keylor conserva las 69 funciones `_demoKeylor*` sin cambios.
+La MÁSCARA de Keylor no fue modificada.
 
 ## Documentación vigente
 
-Leer `INDICE_VIGENTE_CS21A103.md` antes de continuar.
+Leer `INDICE_VIGENTE_CS21A104.md` antes de continuar.
