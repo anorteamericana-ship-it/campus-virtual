@@ -2,42 +2,45 @@
 
 ## Estado consolidado actual
 
-Base vigente de continuidad: **F98.4-Z6-CS21A99**.
+Base vigente de continuidad: **F98.4-Z6-CS21A100**.
 
 Este repositorio contiene el frontend del Campus Virtual y la documentación operativa necesaria para continuar el proyecto sin reconstruir contexto.
 
 ### Versiones vigentes
 
 - **Frontend global:** rama `main`.
-- **Consulta individual · Poner al día:** `F98.4-Z6-CS21A99`.
+- **Consulta individual · Poner al día:** `F98.4-Z6-CS21A100`.
 - **Panel Maestro CONAPE:** `F98.4-Z6-CS21A98`.
 - **Calendario académico Superadmin:** `F98.4-Z6-CS21A88`.
-- **Backend integral entregado:** `F98.4-Z6-CS21A99`.
+- **Backend integral entregado:** `F98.4-Z6-CS21A100`.
 - **Semáforo CONAPE:** acumulativo por desembolso, colaborativo entre operadores y reiniciado al cerrar el ciclo.
 - **Filtro de grupos:** docente, días, horario y consecutivo desde la hoja oficial `GRUPOS`.
 - **MÁSCARA de Keylor:** protegida, sin cambios y separada de expedientes reales.
-- **Deployment público de CS21A99:** no confirmado; no asumir que está publicado hasta actualizar Apps Script y verificar producción.
+- **Deployment público de CS21A100:** no confirmado; no asumir que está publicado hasta actualizar Apps Script y verificar producción.
 
 ## Leer primero
 
-1. `00_DOCUMENTACION/INDICE_VIGENTE_CS21A99.md`
-2. `00_DOCUMENTACION/ESTADO_CONSOLIDADO_F98_4_Z6_CS21A99.md`
-3. `00_DOCUMENTACION/AUDITORIA_FLUJO_PUESTA_AL_DIA_CS21A99.md`
-4. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
-5. `00_DOCUMENTACION/HANDOFF_NUEVO_CHAT_CS21A99.md`
+1. `00_DOCUMENTACION/INDICE_VIGENTE_CS21A100.md`
+2. `00_DOCUMENTACION/README_F98_4_Z6_CS21A100.md`
+3. `00_DOCUMENTACION/AUDITORIA_17048_CS21A100.md`
+4. `00_DOCUMENTACION/VALIDACION_CS21A100.md`
+5. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
 6. `00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO.md`
 
 Los documentos con numeraciones anteriores se conservan como historial técnico; no representan la versión vigente.
 
-## Cambio principal CS21A99
+## Cambio principal CS21A100
 
-El flujo administrativo para actualizar un estudiante pasó a un asistente de tres pasos:
+El cierre del asistente `Poner al día` ya no refresca la pantalla mientras el modal sigue abierto.
 
-1. aprobar el nivel y activar el siguiente localmente;
-2. aplicar el comprobante con detalle de precios, cuotas, total bancario y saldo restante;
-3. decidir si se sincroniza CONAPE una sola vez.
+El orden vigente es:
 
-Los antiguos parches superpuestos de estatus A28, A29 y A95 ya no se cargan desde `campus.html`. Sus archivos históricos se conservan temporalmente para trazabilidad. El módulo de pago inline A36 permanece disponible como respaldo.
+1. sincronizar CONAPE como máximo una vez;
+2. consultar nuevamente el mismo estudiante hasta confirmar APR/CA;
+3. cerrar el modal;
+4. refrescar la ficha visible del mismo estudiante.
+
+El backend revisa `PAGOS_OPERACIONES.CONAPE_SYNC`. Cuando una operación ya está en `OK`, responde de forma idempotente y no vuelve a reescribir los archivos externos.
 
 ## Regla principal
 
@@ -53,4 +56,4 @@ Antes de modificar cualquier pantalla o endpoint:
 
 ## Próxima numeración
 
-La próxima entrega funcional debe usar **F98.4-Z6-CS21A100**.
+La próxima entrega funcional debe usar **F98.4-Z6-CS21A101**.
