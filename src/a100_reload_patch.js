@@ -1,2 +1,27 @@
-// F98.4-Z6-CS21A100 · Instalación final sin bucles.
-(function(){'use strict';const N=window.ANQuickUpdate99;if(!N)return;const{h,LABEL,injectStyles,useQuickUpdate,AcademicView,PaymentView,ConapeView,ReloadingView,DoneView}=N;function QuickModal(props){injectStyles();const s=useQuickUpdate(props),head=h('div',{className:'a99-head'},h('small',null,'Consulta individual · flujo rápido'),h('h3',null,'Poner al día'),h('p',null,`${s.estudiante.display||s.estudiante.nombre||s.codigo} · ${LABEL[s.nivel]||s.nivel} · grupo ${s.grupo||'—'}`)),view=s.step==='ACADEMIC'?h(AcademicView,{s}):s.step==='PAYMENT'?h(PaymentView,{s}):s.step==='CONAPE'?h(ConapeView,{s}):s.step==='RELOADING'?h(ReloadingView,{s}):h(DoneView,{s});return h('div',{className:'a99-backdrop',role:'dialog','aria-modal':'true',onMouseDown:e=>{if(e.target===e.currentTarget&&!s.busy&&s.step!=='RELOADING')s.onClose?.()}},h('div',{className:'a99-modal'},head,h('div',{className:'a99-body'},view)))}N.BUILD='F98.4-Z6-CS21A100';N.QuickModal=QuickModal;window.ModalEstatus=QuickModal;try{ModalEstatus=QuickModal}catch(_){}window.__AN_QUICK_UPDATE_BUILD__=N.BUILD})();
+// F98.4-Z6-CS21A102 · Guardia de montaje posterior a módulos diferidos.
+(function(){
+'use strict';
+const BUILD='F98.4-Z6-CS21A102';
+function install(){
+  const N=window.ANQuickUpdate99;
+  if(!N||typeof N.QuickModal!=='function')return false;
+  let current=null;
+  try{current=window.ModalEstatus||ModalEstatus}catch(_){current=window.ModalEstatus}
+  if(typeof current!=='function')return false;
+  if(current!==N.QuickModal){
+    window.ModalEstatus=N.QuickModal;
+    try{ModalEstatus=N.QuickModal}catch(_){}
+  }
+  window.__AN_QUICK_UPDATE_BUILD__=BUILD;
+  window.__AN_QUICK_UPDATE_ACTIVE__=window.ModalEstatus===N.QuickModal;
+  return window.__AN_QUICK_UPDATE_ACTIVE__;
+}
+function reinforce(){[0,50,200,800].forEach(ms=>setTimeout(install,ms))}
+window.addEventListener('an:lazy-module-loaded',event=>{
+  const src=String(event?.detail?.src||'');
+  if(src.includes('admin_students.jsx')||src.includes('buscador.jsx'))reinforce();
+});
+window.addEventListener('focus',install);
+window.__AN_QUICK_UPDATE_REINSTALL__=reinforce;
+reinforce();
+})();
