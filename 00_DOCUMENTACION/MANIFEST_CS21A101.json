@@ -1,0 +1,23 @@
+{
+  "version": "F98.4-Z6-CS21A101",
+  "frontend_commit": "99244ecdea95745513fc151d5bc93f76f119b644",
+  "frontend_base": "b572a84db07186f6579aeb192eda5bedb3d7adca",
+  "frontend_files": [
+    "src/admin_master_conape_history_cs21a96.jsx",
+    "src/admin_master_conape_table_cs21a96.jsx",
+    "src/admin_master_conape_review_state_cs21a96.jsx",
+    "src/admin_master_conape_panel_cs21a96.jsx"
+  ],
+  "backend_file": "Code_F98_4_Z6_CS21A101_COMPLETO.gs",
+  "backend_sha256": "4d3d083bf02ff8b08ba6c5b099a4c1ad745a23ee4a03816ca80dee55bed5667b",
+  "test_file": "Test_CS21A101.gs",
+  "test_sha256": "d760c796345b2773b23b90392d10b914c8ce941a17b45a2d8e8d9d54c47a0fc5",
+  "followup_disbursements": [1],
+  "informational_disbursements": {
+    "2": "SOSTENIMIENTO",
+    "3": "EQUIPO_ELECTRONICO",
+    "4+": "OTRO_INFORMATIVO"
+  },
+  "business_data_modified": false,
+  "apps_script_deployed": false
+}
