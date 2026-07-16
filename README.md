@@ -2,42 +2,45 @@
 
 ## Estado consolidado actual
 
-Base vigente de continuidad: **F98.4-Z6-CS21A106**.
+Base vigente de continuidad: **F98.4-Z6-CS21A107**.
 
 ### Versiones vigentes
 
 - **Frontend global:** rama `main`.
 - **Consulta individual · Poner al día:** `F98.4-Z6-CS21A102`.
-- **Panel Maestro CONAPE:** `F98.4-Z6-CS21A106`.
+- **Panel Maestro CONAPE:** `F98.4-Z6-CS21A107`.
 - **Backend integral vigente:** `F98.4-Z6-CS21A103`.
 - **Tabla agrupada y columna Detectado:** `F98.4-Z6-CS21A104`.
 - **Semáforo estable:** `F98.4-Z6-CS21A105`.
 - **Enlace académico de movimientos:** `F98.4-Z6-CS21A106`.
+- **Montaje final estable del panel completo:** `F98.4-Z6-CS21A107`.
 - **MÁSCARA de Keylor:** protegida y sin cambios.
 
 ## Leer primero
 
-1. `00_DOCUMENTACION/README_F98_4_Z6_CS21A106.md`
-2. `00_DOCUMENTACION/VALIDACION_CS21A106.md`
-3. `00_DOCUMENTACION/README_F98_4_Z6_CS21A105.md`
-4. `00_DOCUMENTACION/README_F98_4_Z6_CS21A104.md`
+1. `00_DOCUMENTACION/README_F98_4_Z6_CS21A107.md`
+2. `00_DOCUMENTACION/README_F98_4_Z6_CS21A106.md`
+3. `00_DOCUMENTACION/VALIDACION_CS21A106.md`
+4. `00_DOCUMENTACION/README_F98_4_Z6_CS21A105.md`
 5. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
 
-## Cambio principal CS21A106
+## Cambio principal CS21A107
 
-`Seguimiento inmediato` ya no depende exclusivamente del nivel calculado a partir del grupo futuro.
+El Panel Maestro ya no depende de que un único reemplazo ocurra en el momento exacto de la carga diferida.
 
-Cada desembolso académico 01 se enlaza primero con `6-historial` mediante:
+A107 restaura y protege:
 
-```text
-cédula + año + periodo cuatrimestral
-```
+- buscador de estudiante;
+- filtros y combo de grupos;
+- cuadrícula académica agrupada;
+- columna Detectado;
+- semáforo colaborativo;
+- desembolsos académicos 01 cerrados;
+- enlace por `6-historial` para movimientos futuros.
 
-Esto restaura `Periodo / nivel`, `Detectado` y `WhatsApp` para movimientos que existían en CONAPE pero aparecían vacíos en la tabla agrupada.
+La tabla básica histórica permanece únicamente como respaldo interno. El instalador A107 reintenta y verifica que el componente activo sea el panel completo. La envoltura histórica A78 fue retirada para que no compita por el mismo componente.
 
-Cuando no exista una coincidencia segura, el movimiento se muestra como **Nivel por confirmar** en lugar de desaparecer.
-
-CS21A106 es una corrección frontend. No modifica Apps Script, pagos, expedientes, hojas CONAPE ni la MÁSCARA de Keylor.
+CS21A107 es una corrección frontend. No modifica Apps Script, pagos, expedientes, hojas CONAPE ni la MÁSCARA de Keylor.
 
 ## Regla principal
 
@@ -53,4 +56,4 @@ Antes de modificar cualquier pantalla o endpoint:
 
 ## Próxima numeración
 
-La próxima entrega funcional debe usar **F98.4-Z6-CS21A107**.
+La próxima entrega funcional debe usar **F98.4-Z6-CS21A108**.
