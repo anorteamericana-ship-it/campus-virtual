@@ -1,74 +1,75 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión integral:** F98.4-Z6-CS21A101  
-**Frontend vigente en GitHub:** F98.4-Z6-CS21A101  
-**Backend integral entregado:** F98.4-Z6-CS21A101  
-**Backend Apps Script publicado:** no verificado  
-**Producción:** no verificada  
+**Versión frontend:** F98.4-Z6-CS21A102  
+**Backend integral vigente:** F98.4-Z6-CS21A101  
+**Backend Apps Script publicado:** CS21A101 validado por el usuario  
 **Corte:** 16-jul-2026
 
-## Cambio vigente CS21A101
+## Cambio vigente CS21A102
 
-`Seguimiento inmediato` gestiona exclusivamente el primer desembolso de cada periodo:
+Se corrigió una regresión de montaje en Consulta individual.
 
-- `01`: desembolso académico; seguimiento, semáforo, WhatsApp y cierre de la Academia.
-- `02`: sostenimiento; visible como información, sin seguimiento.
-- `03`: equipo electrónico; visible como información, sin seguimiento.
-- `04+`: informativo mientras no exista una definición expresa distinta.
+El asistente `Poner al día` se cargaba antes que `admin_students.jsx`. El módulo diferido publicaba posteriormente el modal antiguo, mientras el instalador se retiraba al encontrar una marca de versión aunque la función activa fuera incorrecta.
 
-Los movimientos informativos permanecen en la cronología del periodo y conservan su fecha de detección, pero no crean fila independiente ni aparecen como `Nuevo desembolso`.
+La corrección:
 
-## Protección backend
+- compara la función realmente activa;
+- reinstala `ANQuickUpdate99.QuickModal` después de cargar `admin_students.jsx` o `buscador.jsx`;
+- repite la comprobación durante los siguientes 800 ms;
+- expone `__AN_QUICK_UPDATE_ACTIVE__` y `__AN_QUICK_UPDATE_BUILD__` para diagnóstico.
 
-- `setConapeRevisionSemaforo` rechaza movimientos cuyo `NUM_DESEMBOLSO` no sea 1.
-- `getConapeRevisionSemaforos` y `getConapeRevisionChanges` excluyen 02/03 del canal colaborativo.
-- La fotografía del Panel Maestro marca cada contexto como académico o informativo.
-- No se reescribe `CONAPE_MOVIMIENTOS_LOG` ni ninguno de los siete archivos CONAPE.
+## Recuperación de expedientes APR + siguiente PE
 
-## Caso real auditado
+CS21A102 permite continuar cuando el nivel actual ya está `APR` y el siguiente permanece `PE`:
 
-Estudiante 17187 · AMPIE ARRIETA MELISSA MARIA:
+1. confirma el nivel aprobado sin reaprobarlo;
+2. activa el siguiente nivel en `CA` usando el endpoint idempotente vigente;
+3. consolida un solo intento activo;
+4. abre el pago del nuevo nivel;
+5. pregunta CONAPE al final.
 
-- D1 `01/07/2026`: movimiento académico gestionable; conserva revisión 1.
-- D2 `02/07/2026`: sostenimiento informativo; sin revisión guardada.
+## Caso 17079
 
-No fue necesario reparar datos.
+La acción realizada con el modal antiguo no completó la puesta al día:
 
-## Funciones preservadas de CS21A100
+- B1 APR 96;
+- B2 APR 97;
+- I1 APR 96;
+- I2 PE;
+- sin intento I2 activo;
+- sin operación en `PAGOS_OPERACIONES`;
+- sin movimientos en `PAGOS_CAMPUS`;
+- CONAPE externo conserva I2 en PE.
 
-- Flujo `Poner al día` en tres pasos.
+No se modificaron sus datos durante la auditoría.
+
+## Funciones preservadas
+
+- Seguimiento CONAPE solo para desembolso 01.
+- Semáforo colaborativo.
 - Pago local separado de CONAPE.
 - Cierre CONAPE idempotente.
-- Recarga del mismo estudiante después de la actualización.
-- Journal, reversión y guardias contra duplicados.
+- Journal y reversión.
+- MÁSCARA de Keylor.
 
 ## Backend
 
-Usar únicamente:
+Continúa vigente:
 
 `Code_F98_4_Z6_CS21A101_COMPLETO.gs`
 
-Test de solo lectura:
+No se requiere reemplazar Apps Script para esta corrección frontend.
 
-`Test_CS21A101.gs` → `test_cs21a101_all`
+## Prueba visual
 
-## MÁSCARA de Keylor · PROTEGIDA
-
-La comparación A100→A101 conserva las 69 funciones `_demoKeylor*`. No se modifican perfiles demo, pagos, certificados ni CONAPE desde esas cuentas.
-
-## Publicación y prueba
-
-1. copiar el backend integral A101 al proyecto Apps Script;
-2. agregar temporalmente `Test_CS21A101.gs`;
-3. ejecutar `test_cs21a101_all`;
-4. retirar el test;
-5. actualizar el deployment existente;
-6. recargar el Campus con `Ctrl + F5`;
-7. revisar 17187;
-8. confirmar que 01 mantiene el semáforo;
-9. confirmar que 02 aparece como `Sostenimiento · solo informativo` y no como pendiente nuevo;
-10. confirmar que la MÁSCARA de Keylor continúa en modo de solo lectura.
+1. recargar el Campus con `Ctrl + F5`;
+2. abrir Consulta individual;
+3. abrir Estado en 17079, nivel I1;
+4. comprobar que aparece `Poner al día`, no `Cambiar estatus — I1`;
+5. comprobar en consola:
+   - `window.__AN_QUICK_UPDATE_BUILD__ === 'F98.4-Z6-CS21A102'`;
+   - `window.__AN_QUICK_UPDATE_ACTIVE__ === true`.
 
 ## Documentación vigente
 
-Leer `INDICE_VIGENTE_CS21A101.md` antes de continuar el desarrollo.
+Leer `README_F98_4_Z6_CS21A102.md` antes de continuar el desarrollo.
