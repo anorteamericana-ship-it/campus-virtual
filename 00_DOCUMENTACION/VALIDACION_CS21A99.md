@@ -26,7 +26,9 @@
 
 ## Git
 
-Comparación A98→A99 verificada desde `b08c97605d8bc47aba9c84697c19294491a88d4c` hasta `7973bfb83a4343fe03e1e392ca4773a3c0074e9e`.
+Comparación A98→A99 verificada desde `b08c97605d8bc47aba9c84697c19294491a88d4c` hasta el cierre documental `2d68236394e811b9cf7881ff1e081ff1cf827cc4`.
+
+Los commits documentales posteriores no alteraron el frontend ni el backend entregado.
 
 ## Límites de la validación
 
