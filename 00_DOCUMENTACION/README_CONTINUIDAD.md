@@ -1,34 +1,38 @@
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
-**Versión frontend:** F98.4-Z6-CS21A105  
+**Versión frontend:** F98.4-Z6-CS21A106  
 **Backend integral vigente:** F98.4-Z6-CS21A103  
 **Backend Apps Script publicado:** CS21A103 validado por el usuario  
 **Corte:** 16-jul-2026
 
-## Cambio vigente CS21A105
+## Cambio vigente CS21A106
 
-Se corrigió el borrado visual del semáforo del Panel Maestro.
+Se corrigieron las filas vacías de `Seguimiento inmediato` después de la agrupación A104.
 
 ### Diagnóstico
 
-La lectura de morosidad A103 reconstruía periódicamente el arreglo de movimientos. El efecto anterior del semáforo volvía a inicializar todos los pasos desde `row.reviewStep`, que podía provenir de una fotografía anterior del dashboard. Además, el canal colaborativo aplicaba cualquier valor remoto recibido aunque acabara de confirmarse una escritura local.
+El movimiento CONAPE sí existía, pero algunos desembolsos futuros no recibían un `level` porque el grupo futuro todavía no estaba completamente enlazado. La tabla agrupada solo colocaba `Periodo / nivel`, `Detectado` y `WhatsApp` cuando ese campo venía resuelto.
 
-La auditoría de `CONAPE_MOVIMIENTOS_LOG` demostró que los clics sí se guardaban. Algunos historiales contienen pasos repetidos porque el operador volvió a presionar después de que la pantalla apagó el punto. Esos registros no se eliminan.
+### Resolución vigente
 
-### Regla vigente
+1. buscar el movimiento en `6-historial` por cédula, año y periodo cuatrimestral;
+2. usar el nivel exacto y su estado académico;
+3. utilizar el nivel anterior del backend solo como respaldo;
+4. mostrar `Nivel por confirmar` cuando no exista una coincidencia segura;
+5. nunca ocultar período, fecha detectada, semáforo o WhatsApp por falta de enlace.
 
-1. el clic se refleja inmediatamente;
-2. `setConapeRevisionSemaforo` confirma la escritura;
-3. el valor confirmado se protege durante 18 segundos;
-4. una fotografía anterior o un delta anterior no pueden reducirlo;
-5. el canal colaborativo consulta deltas cada 4 segundos;
-6. se hace reconciliación completa cada 20 segundos y al recuperar foco;
-7. únicamente `CERRADO_REINICIADO` o `appliedInSystem=true` apagan el semáforo.
+### Casos auditados
+
+- 17190 → septiembre 2026 corresponde a B2 PE.
+- 17158 → septiembre 2026 corresponde a B2 CA.
+- 17124 → septiembre 2026 corresponde a I1 PE.
+- 17043 → septiembre 2026 corresponde a I2 PE.
 
 ## Funciones preservadas
 
 - Una ficha por estudiante A104.
 - Columna Detectado ordenable.
+- Semáforo estable A105.
 - Morosidad oficial en vivo A103.
 - Seguimiento exclusivo del desembolso académico 01.
 - WhatsApp por movimiento y nivel.
@@ -43,27 +47,27 @@ No cambia. Continúa vigente:
 
 `Code_F98_4_Z6_CS21A103_COMPLETO.gs`
 
-No se requiere reemplazar Apps Script ni ejecutar un nuevo test backend para CS21A105.
+No se requiere reemplazar Apps Script ni ejecutar una prueba backend para CS21A106.
 
-## Prueba frontend
+## Diagnóstico en navegador
 
-`tests/Test_CS21A105_review_guard.js`
+```javascript
+window.__AN_MASTER_CONAPE_MOVEMENTS_BUILD__
+// F98.4-Z6-CS21A106
 
-Resultado esperado:
-
-```json
-{"ok":true,"tests":4,"guard_ms":18000}
+window.__AN_CONAPE_LEVEL_LINK_AUDIT__
 ```
+
+El segundo valor muestra movimientos resueltos por historial, por respaldo y todavía pendientes de confirmar.
 
 ## Publicación
 
 1. esperar que GitHub Pages publique `main`;
-2. recargar el Campus con `Ctrl + F5`;
-3. abrir un movimiento académico 01 pendiente;
-4. marcar revisión 1, 2, 3 o 4;
-5. esperar al menos 25 segundos;
-6. confirmar que el paso permanece;
-7. comprobar desde la otra computadora que el cambio aparece mediante el canal colaborativo.
+2. hacer `Ctrl + F5`;
+3. buscar 17190;
+4. confirmar B2 alineado con `01/09/2026`;
+5. revisar otros estudiantes que antes aparecían vacíos;
+6. confirmar que el semáforo A105 permanece guardado.
 
 ## Protección
 
@@ -71,4 +75,4 @@ La MÁSCARA de Keylor no fue modificada.
 
 ## Documentación vigente
 
-Leer `README_F98_4_Z6_CS21A105.md` antes de continuar.
+Leer `README_F98_4_Z6_CS21A106.md` y `VALIDACION_CS21A106.md` antes de continuar.
