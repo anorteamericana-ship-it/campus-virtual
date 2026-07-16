@@ -2,37 +2,44 @@
 
 ## Estado consolidado actual
 
-Base vigente de continuidad: **F98.4-Z6-CS21A104**.
+Base vigente de continuidad: **F98.4-Z6-CS21A105**.
 
 ### Versiones vigentes
 
 - **Frontend global:** rama `main`.
 - **Consulta individual · Poner al día:** `F98.4-Z6-CS21A102`.
-- **Panel Maestro CONAPE:** `F98.4-Z6-CS21A104`.
+- **Panel Maestro CONAPE:** `F98.4-Z6-CS21A105`.
 - **Calendario académico Superadmin:** `F98.4-Z6-CS21A88`.
 - **Backend integral vigente:** `F98.4-Z6-CS21A103`.
-- **Semáforo CONAPE:** exclusivo del desembolso académico 01.
+- **Tabla agrupada y columna Detectado:** `F98.4-Z6-CS21A104`.
+- **Semáforo CONAPE:** estable, colaborativo y exclusivo del desembolso académico 01.
 - **Movimientos 02/03:** visibles como contexto, sin seguimiento de la Academia.
 - **Morosidad:** verificada en vivo contra `7-morosidad`.
 - **MÁSCARA de Keylor:** protegida y sin cambios.
 
 ## Leer primero
 
-1. `00_DOCUMENTACION/INDICE_VIGENTE_CS21A104.md`
-2. `00_DOCUMENTACION/README_F98_4_Z6_CS21A104.md`
-3. `00_DOCUMENTACION/VALIDACION_CS21A104.md`
+1. `00_DOCUMENTACION/README_F98_4_Z6_CS21A105.md`
+2. `00_DOCUMENTACION/INDICE_VIGENTE_CS21A104.md`
+3. `00_DOCUMENTACION/README_F98_4_Z6_CS21A104.md`
 4. `00_DOCUMENTACION/README_F98_4_Z6_CS21A103.md`
 5. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
 
-## Cambio principal CS21A104
+## Cambio principal CS21A105
 
-`Seguimiento inmediato` presenta una sola ficha por estudiante dentro de cada sección pendiente o cerrada.
+El semáforo ya no puede ser borrado por una fotografía anterior del dashboard ni por la reconstrucción periódica de morosidad en vivo.
 
-Los distintos desembolsos académicos 01 se conservan como movimientos independientes, pero quedan alineados con el nivel correspondiente dentro de la misma ficha. La tabla incorpora una columna separada **Detectado**, con valores como `D-10/7`, ordenable desde el encabezado o desde el selector de orden.
+Al hacer clic:
 
-El conteo visible diferencia estudiantes y movimientos, evitando mostrar dos movimientos como si fueran dos estudiantes.
+1. el punto se refleja inmediatamente;
+2. Apps Script confirma la escritura;
+3. el valor confirmado queda protegido durante la propagación;
+4. el canal colaborativo continúa consultando cambios;
+5. solo un cierre oficial reinicia el ciclo a cero.
 
-CS21A104 es una corrección frontend. No modifica Apps Script, pagos, expedientes, hojas CONAPE ni la MÁSCARA de Keylor.
+La auditoría confirmó que los clics anteriores sí quedaron guardados en `CONAPE_MOVIMIENTOS_LOG`; el fallo era visual.
+
+CS21A105 es una corrección frontend. No modifica Apps Script, pagos, expedientes, hojas CONAPE ni la MÁSCARA de Keylor.
 
 ## Regla principal
 
@@ -48,4 +55,4 @@ Antes de modificar cualquier pantalla o endpoint:
 
 ## Próxima numeración
 
-La próxima entrega funcional debe usar **F98.4-Z6-CS21A105**.
+La próxima entrega funcional debe usar **F98.4-Z6-CS21A106**.
