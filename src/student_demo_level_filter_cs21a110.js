@@ -160,3 +160,26 @@
     document.head.appendChild(script);
   }
 })();
+
+// CS21A122 · inscripción semanal, participación y listado docente de Club I CAN.
+(function () {
+  'use strict';
+  const CSS_ID = 'an-ican-participation-cs21a122-css';
+  const JS_ID = 'an-ican-participation-cs21a122-js';
+
+  if (!document.getElementById(CSS_ID)) {
+    const link = document.createElement('link');
+    link.id = CSS_ID;
+    link.rel = 'stylesheet';
+    link.href = 'styles/ican_participation_cs21a122.css?v=F98.4Z6CS21A122';
+    document.head.appendChild(link);
+  }
+
+  if (!document.getElementById(JS_ID)) {
+    const script = document.createElement('script');
+    script.id = JS_ID;
+    script.src = 'src/ican_participation_cs21a122.js?v=F98.4Z6CS21A122';
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+})();
