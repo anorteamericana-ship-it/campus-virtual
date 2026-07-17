@@ -1,4 +1,4 @@
-// F98.4-Z6-CS21A119 · Información General del Programa compartida por docentes y estudiantes.
+// F98.4-Z6-CS21A121 · Información General del Programa compartida y adaptable.
 /* global React */
 (function(){
   'use strict';
@@ -36,8 +36,8 @@
 
   function ProgramInfoDocButtonCS21A119({ doc, selected, onClick }){
     return <button type="button" onClick={onClick} className={selected ? 'btn btn-primary' : 'btn'} style={{ textAlign:'left', justifyContent:'flex-start', padding:'10px 11px', height:'auto', whiteSpace:'normal' }}>
-      <span style={{ fontFamily:'var(--f-mono,monospace)', fontSize:10, fontWeight:950, marginRight:8 }}>{doc.code}</span>
-      <span style={{ fontWeight:900 }}>{doc.title}</span>
+      <span style={{ fontFamily:'var(--f-mono,monospace)', fontSize:10, fontWeight:950, marginRight:8, flexShrink:0 }}>{doc.code}</span>
+      <span style={{ fontWeight:900, minWidth:0 }}>{doc.title}</span>
     </button>;
   }
 
@@ -53,9 +53,9 @@
         {list.map((d,i)=><ProgramInfoDocButtonCS21A119 key={d.code + d.title} doc={d} selected={i===selected} onClick={()=>setSelected(i)} />)}
       </div>
       <div className="pi119-preview" style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, overflow:'hidden', minHeight:590 }}>
-        <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <div>
-            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15 }}>{doc.title}</div>
+        <div className="pi119-preview-head" style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15, overflowWrap:'anywhere' }}>{doc.title}</div>
             <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{doc.desc}</div>
           </div>
           <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>Descargar</button>
@@ -66,7 +66,7 @@
   }
 
   function ProgramInfoSharedCS21A119(){
-    return <section className="pi119-page" data-screen-label="Información General del Programa · CS21A119" style={{ padding:18 }}>
+    return <section className="pi119-page" data-screen-label="Información General del Programa · CS21A121" style={{ padding:18 }}>
       <ProgramInfoHeaderCS21A119 />
       <ProgramInfoViewerCS21A119 docs={INFO_DOCS_CS21A119} />
     </section>;
@@ -74,5 +74,5 @@
 
   window.ProgramInfoSharedCS21A119 = ProgramInfoSharedCS21A119;
   window.INFO_DOCS_CS21A119 = INFO_DOCS_CS21A119;
-  window.CS21A119_PROGRAM_INFO_SHARED = 'F98.4-Z6-CS21A119';
+  window.CS21A119_PROGRAM_INFO_SHARED = 'F98.4-Z6-CS21A121';
 })();
