@@ -1,4 +1,4 @@
-/* F98.4-Z6-CS21A117 · A institucional + material obligatorio docente. */
+/* F98.4-Z6-CS21A119 · A institucional + material obligatorio + programa compartido. */
 
 /* La marca de agua de ambas tarjetas usa solo la A institucional. */
 #panel-actualizar-datos.st116-entry-card::after {
@@ -125,8 +125,32 @@
   letter-spacing: .05em;
 }
 
+/* La vista estudiantil sustituye por completo Documentos y ayuda. */
+.an-student-program-info-open .app > .main:not(.an-program-info-host) {
+  display: none !important;
+}
+
+.app > .an-program-info-host {
+  grid-column: 2;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.student-sb [data-nav-id="info_programa"].active {
+  background: var(--an-granate, #7A1E2C);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: var(--sh-1, 0 6px 22px rgba(0,0,0,.08));
+}
+
 @media (max-width: 1100px) {
   .tp117-required-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .app > .an-program-info-host {
+    grid-column: 1;
+  }
 }
 
 @media (max-width: 720px) {
@@ -139,4 +163,29 @@
   .tp76-cover-mark::after { font-size: 130px; }
   .tp117-required-grid { grid-template-columns: 1fr; }
   .tp117-required-card { min-height: 0; }
+
+  .pi119-page {
+    padding: 12px !important;
+  }
+
+  .pi119-header {
+    padding: 15px 16px !important;
+  }
+
+  .pi119-viewer {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pi119-list {
+    max-height: none !important;
+  }
+
+  .pi119-preview {
+    min-height: 460px !important;
+  }
+
+  .pi119-preview iframe {
+    min-height: 420px !important;
+    height: 64vh !important;
+  }
 }
