@@ -60,8 +60,7 @@
   if (!install()) setTimeout(install, 0);
 })();
 
-// CS21A111 · bootstrap temporal de navegación móvil. Se carga desde este archivo
-// ya enlazado por campus.html para evitar tocar el router o el backend.
+// CS21A111 · bootstrap temporal de navegación móvil.
 (function () {
   'use strict';
   const CSS_ID = 'an-mobile-navigation-cs21a111-css';
@@ -139,24 +138,24 @@
   }
 })();
 
-// CS21A119 · A institucional, material obligatorio docente y vista compartida del programa.
+// CS21A120 · marca institucional y material obligatorio docente.
 (function () {
   'use strict';
-  const CSS_ID = 'an-campus-brand-material-cs21a119-css';
-  const JS_ID = 'an-campus-brand-material-cs21a119-js';
+  const CSS_ID = 'an-campus-brand-material-cs21a120-css';
+  const JS_ID = 'an-campus-brand-material-cs21a120-js';
 
   if (!document.getElementById(CSS_ID)) {
     const link = document.createElement('link');
     link.id = CSS_ID;
     link.rel = 'stylesheet';
-    link.href = 'styles/campus_brand_material_cs21a117.css?v=F98.4Z6CS21A119';
+    link.href = 'styles/campus_brand_material_cs21a117.css?v=F98.4Z6CS21A120';
     document.head.appendChild(link);
   }
 
   if (!document.getElementById(JS_ID)) {
     const script = document.createElement('script');
     script.id = JS_ID;
-    script.src = 'src/campus_brand_material_cs21a117.js?v=F98.4Z6CS21A119';
+    script.src = 'src/campus_brand_material_cs21a117.js?v=F98.4Z6CS21A120';
     script.defer = true;
     document.head.appendChild(script);
   }
