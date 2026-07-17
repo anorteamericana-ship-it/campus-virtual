@@ -1,9 +1,10 @@
-// F98.4-Z6-CS21A117 · A institucional, material docente y acceso estudiantil.
+// F98.4-Z6-CS21A119 · A institucional, material docente y programa compartido.
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A117';
+  const VERSION = 'F98.4-Z6-CS21A119';
   let queued = false;
+  let studentRoot = null;
 
   const MATERIALS = [
     {
@@ -81,49 +82,133 @@
     hero.insertAdjacentElement('afterend', teacherMaterialBlock());
   }
 
-  function openStudentProgramInfo() {
-    const existing = document.querySelector('.student-sb [data-nav-id="documentos_ayuda"]');
-    if (existing && typeof existing.click === 'function') existing.click();
+  function studentSessionActive() {
+    try {
+      const current = typeof window.getSesion === 'function'
+        ? window.getSesion()
+        : JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
+      return String(current && current.rol || '').toLowerCase() === 'student';
+    } catch (_) {
+      return false;
+    }
+  }
 
-    let attempts = 0;
-    const timer = window.setInterval(function () {
-      attempts += 1;
-      const target = Array.from(document.querySelectorAll('main button, main [role="tab"], .main button, .main [role="tab"]')).find(function (node) {
-        return !node.closest('.student-sb') && /información general del programa|informacion general del programa/i.test(String(node.textContent || '').trim());
-      });
-      if (target && typeof target.click === 'function') {
-        target.click();
-        window.clearInterval(timer);
-        return;
-      }
-      if (attempts >= 12) window.clearInterval(timer);
-    }, 180);
+  function closeMobileMenu() {
+    document.body.classList.remove('an-mobile-nav-open');
+  }
+
+  function programInfoHost() {
+    let host = document.getElementById('an-program-info-host');
+    if (host) return host;
+    const app = document.querySelector('.app');
+    if (!app) return null;
+    host = document.createElement('main');
+    host.id = 'an-program-info-host';
+    host.className = 'main an-program-info-host';
+    host.setAttribute('aria-live', 'polite');
+    const currentMain = app.querySelector(':scope > .main:not(.an-program-info-host)');
+    if (currentMain) currentMain.insertAdjacentElement('afterend', host);
+    else app.appendChild(host);
+    return host;
+  }
+
+  function markProgramMenuActive() {
+    const sidebar = document.querySelector('.student-sb');
+    if (!sidebar) return;
+    sidebar.querySelectorAll('.sb-item.active').forEach(function (item) {
+      item.classList.remove('active');
+    });
+    const button = sidebar.querySelector('[data-nav-id="info_programa"]');
+    if (button) button.classList.add('active');
+  }
+
+  function closeStudentProgramInfo(keepHistory) {
+    document.body.classList.remove('an-student-program-info-open');
+    if (studentRoot) {
+      try { studentRoot.unmount(); } catch (_) {}
+      studentRoot = null;
+    }
+    const host = document.getElementById('an-program-info-host');
+    if (host) host.remove();
+    if (!keepHistory && (location.hash === '#info_programa' || location.hash === '#documentos_ayuda')) {
+      try { history.replaceState({}, '', '#dashboard'); } catch (_) {}
+    }
+  }
+
+  function openStudentProgramInfo(pushHistory) {
+    if (!studentSessionActive()) return;
+    const Component = window.ProgramInfoSharedCS21A119;
+    if (typeof Component !== 'function' || !window.React || !window.ReactDOM) return;
+
+    const host = programInfoHost();
+    if (!host) return;
+
+    document.body.classList.add('an-student-program-info-open');
+    markProgramMenuActive();
+    closeMobileMenu();
+
+    if (!studentRoot) studentRoot = ReactDOM.createRoot(host);
+    studentRoot.render(React.createElement(Component));
+
+    if (pushHistory && location.hash !== '#info_programa') {
+      try { history.pushState({ anProgramInfo:true }, '', '#info_programa'); } catch (_) { location.hash = 'info_programa'; }
+    } else if (location.hash === '#documentos_ayuda') {
+      try { history.replaceState({ anProgramInfo:true }, '', '#info_programa'); } catch (_) {}
+    }
+
+    try { window.scrollTo({ top:0, left:0, behavior:'auto' }); } catch (_) { window.scrollTo(0,0); }
+  }
+
+  function removeDocumentsHelpMenu(sidebar) {
+    sidebar.querySelectorAll('[data-nav-id="documentos_ayuda"]').forEach(function (item) {
+      item.remove();
+    });
+    sidebar.querySelectorAll('.sb-item').forEach(function (item) {
+      const label = String(item.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (label === 'documentos y ayuda' || label === 'materiales bloqueado') item.remove();
+    });
   }
 
   function patchStudentMenu() {
     const sidebar = document.querySelector('.student-sb');
-    if (!sidebar || !sidebar.querySelector('[data-nav-id="mi_curso"]')) return;
-    if (sidebar.querySelector('[data-nav-id="info_programa_cs21a117"]')) return;
+    if (!sidebar) return;
 
-    const home = sidebar.querySelector('[data-nav-id="dashboard"]');
-    if (!home || !home.parentNode) return;
+    removeDocumentsHelpMenu(sidebar);
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'sb-item student-sb-item';
-    button.dataset.navId = 'info_programa_cs21a117';
-    button.innerHTML = '<svg class="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg><span class="sb-label">Información General del Programa</span>';
-    button.addEventListener('click', function () {
-      openStudentProgramInfo();
+    sidebar.querySelectorAll('[data-nav-id="info_programa_cs21a117"]').forEach(function (item) {
+      item.remove();
     });
 
-    home.parentNode.insertBefore(button, home.nextSibling);
+    let button = sidebar.querySelector('[data-nav-id="info_programa"]');
+    if (!button) {
+      const home = sidebar.querySelector('[data-nav-id="dashboard"]');
+      if (!home || !home.parentNode) return;
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sb-item student-sb-item';
+      button.dataset.navId = 'info_programa';
+      button.innerHTML = '<svg class="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg><span class="sb-label">Información General del Programa</span>';
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openStudentProgramInfo(true);
+      });
+      home.parentNode.insertBefore(button, home.nextSibling);
+    }
+
+    if (document.body.classList.contains('an-student-program-info-open')) markProgramMenuActive();
+
+    if (location.hash === '#documentos_ayuda') {
+      openStudentProgramInfo(false);
+    } else if (location.hash === '#info_programa' && !document.body.classList.contains('an-student-program-info-open')) {
+      openStudentProgramInfo(false);
+    }
   }
 
   function patch() {
     patchTeacherProfile();
     patchStudentMenu();
-    window.CS21A117_CAMPUS_BRAND_MATERIAL = VERSION;
+    window.CS21A119_CAMPUS_BRAND_MATERIAL = VERSION;
   }
 
   function queuePatch() {
@@ -135,9 +220,29 @@
     });
   }
 
+  document.addEventListener('click', function (event) {
+    const item = event.target && event.target.closest
+      ? event.target.closest('.student-sb .sb-item')
+      : null;
+    if (!item || item.dataset.navId === 'info_programa') return;
+    if (document.body.classList.contains('an-student-program-info-open')) {
+      closeStudentProgramInfo(true);
+    }
+  }, true);
+
+  window.addEventListener('popstate', function () {
+    if (location.hash === '#info_programa' || location.hash === '#documentos_ayuda') {
+      openStudentProgramInfo(false);
+    } else if (document.body.classList.contains('an-student-program-info-open')) {
+      closeStudentProgramInfo(true);
+    }
+  });
+
   window.addEventListener('an:lazy-module-loaded', queuePatch);
-  window.addEventListener('an:session-changed', queuePatch);
-  window.addEventListener('popstate', queuePatch);
+  window.addEventListener('an:session-changed', function () {
+    closeStudentProgramInfo(true);
+    queuePatch();
+  });
 
   new MutationObserver(queuePatch).observe(document.documentElement, {
     childList: true,
