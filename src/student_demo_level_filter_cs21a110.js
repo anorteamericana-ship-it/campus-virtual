@@ -65,6 +65,7 @@
 (function () {
   'use strict';
   const CSS_ID = 'an-mobile-navigation-cs21a111-css';
+  const FIX_ID = 'an-mobile-navigation-cs21a111-fix';
   const JS_ID = 'an-mobile-navigation-cs21a111-js';
 
   if (!document.getElementById(CSS_ID)) {
@@ -73,6 +74,13 @@
     link.rel = 'stylesheet';
     link.href = 'styles/mobile_navigation_cs21a111.css?v=F98.4Z6CS21A111';
     document.head.appendChild(link);
+  }
+
+  if (!document.getElementById(FIX_ID)) {
+    const style = document.createElement('style');
+    style.id = FIX_ID;
+    style.textContent = '@media(max-width:900px){.an-mobile-nav-close{position:fixed!important;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}body.an-mobile-nav-open .an-mobile-nav-close{opacity:1;visibility:visible;pointer-events:auto}}';
+    document.head.appendChild(style);
   }
 
   if (!document.getElementById(JS_ID)) {
