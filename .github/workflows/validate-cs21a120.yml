@@ -17,9 +17,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Install parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
       - name: Parse CS21A120 JSX
         run: |
-          npx --yes -p @babel/parser@7.28.4 node <<'NODE'
+          node <<'NODE'
           const fs = require('fs');
           const parser = require('@babel/parser');
           const path = 'src/student_menu_academic_cs21a120.jsx';
