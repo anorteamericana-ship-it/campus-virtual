@@ -1,24 +1,32 @@
-// F98.4-Z6-CS21A107 · Guardia de montaje del Panel CONAPE completo.
+// F98.4-Z6-CS21A109 · Guardia de montaje y recuperación ordenada del Panel CONAPE.
 (function(){
 'use strict';
-const VERSION='F98.4-Z6-CS21A107',RECOVERY_URL='src/admin_master_conape_panel_cs21a96.jsx?v=F98.4Z6CS21A107R';
+const VERSION='F98.4-Z6-CS21A109';
+const URLS={
+ sort:'src/admin_master_conape_multisort_cs21a109.jsx?v=F98.4Z6CS21A109R',
+ data:'src/admin_master_conape_data_cs21a96.jsx?v=F98.4Z6CS21A109R',
+ panel:'src/admin_master_conape_panel_cs21a96.jsx?v=F98.4Z6CS21A109R'
+};
 let loading=null;
-function depsReady(N){return N&&typeof N.PanelView==='function'&&typeof N.useConapeReview==='function'&&typeof N.useConapePanelData==='function'}
+async function load(url){if(!window.anLazyCampus?.loadOne)return false;await window.anLazyCampus.loadOne(url);return true}
 async function ensure(){
  window.__AN_MASTER_COBRANZA_GROUP_FILTER_VERSION__=VERSION;
  window.__AN_MASTER_COBRANZA_GROUP_FILTER_RETIRED__=true;
- const N=window.ANMasterConape96;
- if(!depsReady(N))return false;
- if(typeof N.installMasterConapePanelCS21A107!=='function'&&window.anLazyCampus?.loadOne){
-  if(!loading)loading=window.anLazyCampus.loadOne(RECOVERY_URL).catch(error=>{window.__AN_MASTER_CONAPE_RECOVERY_ERROR__=error?.message||String(error);loading=null;return false});
-  await loading;
- }
- if(typeof N.installMasterConapePanelCS21A107==='function'){
-  const ok=N.installMasterConapePanelCS21A107();
-  window.__AN_MASTER_CONAPE_RECOVERY_OK__=!!ok;
-  return !!ok;
- }
- return false;
+ if(loading)return loading;
+ loading=(async()=>{
+  try{
+   let N=window.ANMasterConape96;if(!N)return false;
+   if(typeof N.compareRowsMulti!=='function'||typeof N.normalizeSortStack!=='function')await load(URLS.sort);
+   N=window.ANMasterConape96;if(typeof N.periodForType!=='function'||typeof N.historyPeriodCandidates!=='function')await load(URLS.data);
+   N=window.ANMasterConape96;if(typeof N.installMasterConapePanelCS21A109!=='function')await load(URLS.panel);
+   N=window.ANMasterConape96;const install=N?.installMasterConapePanelCS21A109;
+   const ok=typeof install==='function'?install():false;
+   window.__AN_MASTER_CONAPE_RECOVERY_OK__=!!ok;
+   return !!ok;
+  }catch(error){window.__AN_MASTER_CONAPE_RECOVERY_ERROR__=error?.message||String(error);return false}
+  finally{loading=null}
+ })();
+ return loading;
 }
 function burst(){[0,40,120,300,700,1500,3000].forEach(delay=>setTimeout(ensure,delay))}
 window.addEventListener('an:lazy-module-loaded',burst);
