@@ -1,0 +1,40 @@
+/* F98.4-Z6-CS21A121 · Corrección móvil global para todos los roles. */
+@media(max-width:900px){
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+*,*::before,*::after{box-sizing:border-box}
+.app,.main,.main>*{min-width:0;max-width:100%}
+.main{width:100%;overflow-x:hidden}
+.main>section,section[data-screen-label],.pi119-page,.tdv6-page,.sa120-page{width:100%;max-width:100%;min-width:0}
+iframe,video,img,canvas,svg{max-width:100%}
+.an-mobile-nav-bar{width:100%;max-width:100%;overflow:hidden;grid-template-columns:46px minmax(0,1fr) 38px}
+.an-mobile-nav-brand{width:100%;min-width:0;overflow:hidden}
+.an-mobile-nav-copy{display:block;flex:1 1 auto;width:auto;min-width:0;max-width:100%;overflow:hidden}
+.an-mobile-nav-kicker,.an-mobile-nav-title{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi119-viewer,.tdv6-viewer{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;max-width:100%!important;min-width:0!important;gap:12px!important}
+.pi119-list,.tdv6-list{width:100%!important;max-width:100%!important;min-width:0!important;max-height:none!important;overflow-x:hidden!important}
+.pi119-list .btn,.tdv6-list .btn{width:100%!important;min-width:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere}
+.pi119-preview,.tdv6-preview,.sa120-doc,.sa120-card,.sa120-lessons{width:100%!important;max-width:100%!important;min-width:0!important}
+.pi119-preview,.tdv6-preview{min-height:0!important}
+.pi119-preview iframe,.tdv6-preview iframe,.sa120-doc iframe{display:block;width:100%!important;max-width:100%!important;min-width:0!important;height:68dvh!important;min-height:420px!important;border:0}
+.pi119-header,.tdv6-header,.sa120-header{width:100%;max-width:100%;min-width:0}
+.card,.student-page-course,.student-section-header,.student-tabs,.tp76-page,.campus-d-root,[role="tabpanel"]{min-width:0;max-width:100%}
+}
+@media(max-width:600px){
+:root{--an-mobile-nav-height:62px}
+.an-mobile-nav-bar{grid-template-columns:46px minmax(0,1fr)!important;gap:9px;padding-left:10px;padding-right:10px}
+.an-mobile-nav-current-icon{display:none!important}
+.an-mobile-nav-logo-wrap{width:42px!important;height:36px!important;padding:4px!important}
+.an-mobile-nav-brand{gap:8px!important}
+.an-mobile-nav-kicker{font-size:8px!important;letter-spacing:.11em!important}
+.an-mobile-nav-title{margin-top:2px!important;font-size:12.5px!important;line-height:1.2!important}
+.pi119-page,.tdv6-page,.sa120-page,.main>section,section[data-screen-label]{padding-left:10px!important;padding-right:10px!important}
+.pi119-header,.tdv6-header,.sa120-header{padding:14px 15px!important;border-radius:16px!important}
+.pi119-header>div:nth-child(2),.tdv6-header>div:nth-child(2),.sa120-header h1{font-size:clamp(27px,9vw,34px)!important;line-height:1.06!important;overflow-wrap:anywhere}
+.pi119-list,.tdv6-list{padding:9px!important;border-radius:14px!important}
+.pi119-list .btn,.tdv6-list .btn{min-height:48px;padding:10px 12px!important;align-items:flex-start;line-height:1.35}
+.pi119-preview-head,.tdv6-preview-head,.sa120-doc-head{align-items:stretch!important;flex-direction:column!important}
+.pi119-preview-head .btn,.tdv6-preview-head .btn,.sa120-doc-head .btn{width:100%;justify-content:center}
+.pi119-preview iframe,.tdv6-preview iframe,.sa120-doc iframe{height:62dvh!important;min-height:390px!important}
+.sa120-lesson-body{grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:360px){.an-mobile-nav-kicker{display:none!important}.an-mobile-nav-title{margin-top:0!important}}
