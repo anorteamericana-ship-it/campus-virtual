@@ -1,0 +1,29 @@
+name: Validate CS21A122 Club I CAN
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/ican_participation_cs21a122.js'
+      - 'styles/ican_participation_cs21a122.css'
+      - 'src/student_demo_level_filter_cs21a110.js'
+      - '.github/workflows/validate-cs21a122.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/ican_participation_cs21a122.js
+          node --check src/student_demo_level_filter_cs21a110.js
+      - name: Verify Club I CAN assets
+        run: |
+          test -s styles/ican_participation_cs21a122.css
+          grep -q "ican_participation_cs21a122.js" src/student_demo_level_filter_cs21a110.js
+          grep -q "getICANPortalEstudiante" src/ican_participation_cs21a122.js
