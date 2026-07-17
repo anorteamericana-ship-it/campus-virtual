@@ -1,6 +1,8 @@
 /* F98.4-Z6-CS21A120 · Menú estudiante con diseño docente. */
 .teacher-menu-layout .teacher-sb-section.student-sb-section{color:var(--an-navy-ink,#001E47)}
 .teacher-menu-layout .teacher-sb-item.student-sb-item{min-height:42px}
+.teacher-menu-layout [data-nav-id="recursos_adicionales"] .sb-icon{display:none}
+.teacher-menu-layout [data-nav-id="recursos_adicionales"]::before{content:"▤";width:18px;flex:0 0 18px;text-align:center;font-size:16px;font-weight:950;line-height:1}
 .an-student-academic-route-open .app>.main:not(.an-student-academic-host-cs21a120){display:none!important}
 .app>.an-student-academic-host-cs21a120{grid-column:2;min-width:0;overflow-x:hidden}
 .sa120-page{width:100%;max-width:1320px;margin:0 auto;padding:18px 22px 58px}
