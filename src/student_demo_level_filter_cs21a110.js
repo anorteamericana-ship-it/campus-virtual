@@ -115,3 +115,26 @@
   link.href = 'styles/shared_brand_header_cs21a115.css?v=F98.4Z6CS21A115';
   document.head.appendChild(link);
 })();
+
+// CS21A116 · reemplaza la entrada anterior de Mi Campus por la tarjeta del perfil docente.
+(function () {
+  'use strict';
+  const CSS_ID = 'an-student-entry-card-cs21a116-css';
+  const JS_ID = 'an-student-entry-card-cs21a116-js';
+
+  if (!document.getElementById(CSS_ID)) {
+    const link = document.createElement('link');
+    link.id = CSS_ID;
+    link.rel = 'stylesheet';
+    link.href = 'styles/student_entry_card_cs21a116.css?v=F98.4Z6CS21A116';
+    document.head.appendChild(link);
+  }
+
+  if (!document.getElementById(JS_ID)) {
+    const script = document.createElement('script');
+    script.id = JS_ID;
+    script.src = 'src/student_entry_card_cs21a116.js?v=F98.4Z6CS21A116';
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+})();
