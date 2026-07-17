@@ -1,0 +1,66 @@
+/* F98.4-Z6-CS21A115 · Logo institucional limpio en Mi Perfil y Mi Campus. */
+
+/* Docente: sustituye el encabezado textual de Mi Perfil por el logo transparente. */
+.tp76-page > .tp76-heading {
+  min-height: 92px;
+  margin: 0 0 18px;
+  padding: 6px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.tp76-page > .tp76-heading > * {
+  display: none !important;
+}
+
+.tp76-page > .tp76-heading::before {
+  content: "";
+  display: block;
+  width: min(390px, 72vw);
+  height: 76px;
+  background: url("../assets/logo_oficial_transparent.png") center / contain no-repeat;
+}
+
+/* Estudiante: conserva el mismo logo, pero elimina caja, patrón, borde y fondo. */
+.campus-d-root > .campus-d-header {
+  min-height: 92px;
+  margin: 0 0 18px;
+  padding: 6px 0 10px;
+  justify-content: center;
+  overflow: visible;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.campus-d-root > .campus-d-header::before,
+.campus-d-root > .campus-d-header::after {
+  display: none !important;
+}
+
+.campus-d-root > .campus-d-header .campus-d-header-logo {
+  width: min(390px, 72vw);
+  height: 76px;
+  max-width: none;
+  object-fit: contain;
+}
+
+@media (max-width: 620px) {
+  .tp76-page > .tp76-heading,
+  .campus-d-root > .campus-d-header {
+    min-height: 72px;
+    margin-bottom: 12px;
+    padding: 4px 0 8px;
+  }
+
+  .tp76-page > .tp76-heading::before,
+  .campus-d-root > .campus-d-header .campus-d-header-logo {
+    width: min(260px, 78vw);
+    height: 58px;
+  }
+}
