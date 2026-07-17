@@ -59,3 +59,27 @@
 
   if (!install()) setTimeout(install, 0);
 })();
+
+// CS21A111 · bootstrap temporal de navegación móvil. Se carga desde este archivo
+// ya enlazado por campus.html para evitar tocar el router o el backend.
+(function () {
+  'use strict';
+  const CSS_ID = 'an-mobile-navigation-cs21a111-css';
+  const JS_ID = 'an-mobile-navigation-cs21a111-js';
+
+  if (!document.getElementById(CSS_ID)) {
+    const link = document.createElement('link');
+    link.id = CSS_ID;
+    link.rel = 'stylesheet';
+    link.href = 'styles/mobile_navigation_cs21a111.css?v=F98.4Z6CS21A111';
+    document.head.appendChild(link);
+  }
+
+  if (!document.getElementById(JS_ID)) {
+    const script = document.createElement('script');
+    script.id = JS_ID;
+    script.src = 'src/mobile_navigation_cs21a111.js?v=F98.4Z6CS21A111';
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+})();
