@@ -103,3 +103,15 @@
   link.href = 'styles/student_objective_mobile_cs21a112.css?v=F98.4Z6CS21A112';
   document.head.appendChild(link);
 })();
+
+// CS21A115 · unifica el logo limpio de Mi Perfil y Mi Campus.
+(function () {
+  'use strict';
+  const CSS_ID = 'an-shared-brand-header-cs21a115-css';
+  if (document.getElementById(CSS_ID)) return;
+  const link = document.createElement('link');
+  link.id = CSS_ID;
+  link.rel = 'stylesheet';
+  link.href = 'styles/shared_brand_header_cs21a115.css?v=F98.4Z6CS21A115';
+  document.head.appendChild(link);
+})();
