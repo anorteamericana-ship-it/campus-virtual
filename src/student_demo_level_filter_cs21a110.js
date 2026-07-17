@@ -138,3 +138,26 @@
     document.head.appendChild(script);
   }
 })();
+
+// CS21A117 · A institucional, material obligatorio docente y acceso de programa en estudiantes.
+(function () {
+  'use strict';
+  const CSS_ID = 'an-campus-brand-material-cs21a117-css';
+  const JS_ID = 'an-campus-brand-material-cs21a117-js';
+
+  if (!document.getElementById(CSS_ID)) {
+    const link = document.createElement('link');
+    link.id = CSS_ID;
+    link.rel = 'stylesheet';
+    link.href = 'styles/campus_brand_material_cs21a117.css?v=F98.4Z6CS21A117';
+    document.head.appendChild(link);
+  }
+
+  if (!document.getElementById(JS_ID)) {
+    const script = document.createElement('script');
+    script.id = JS_ID;
+    script.src = 'src/campus_brand_material_cs21a117.js?v=F98.4Z6CS21A117';
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+})();
