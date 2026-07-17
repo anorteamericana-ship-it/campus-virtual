@@ -10,14 +10,15 @@ iframe,video,img,canvas,svg{max-width:100%}
 .an-mobile-nav-brand{width:100%;min-width:0;overflow:hidden}
 .an-mobile-nav-copy{display:block;flex:1 1 auto;width:auto;min-width:0;max-width:100%;overflow:hidden}
 .an-mobile-nav-kicker,.an-mobile-nav-title{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pi119-viewer,.tdv6-viewer{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;max-width:100%!important;min-width:0!important;gap:12px!important}
-.pi119-list,.tdv6-list{width:100%!important;max-width:100%!important;min-width:0!important;max-height:none!important;overflow-x:hidden!important}
-.pi119-list .btn,.tdv6-list .btn{width:100%!important;min-width:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere}
-.pi119-preview,.tdv6-preview,.sa120-doc,.sa120-card,.sa120-lessons{width:100%!important;max-width:100%!important;min-width:0!important}
-.pi119-preview,.tdv6-preview{min-height:0!important}
-.pi119-preview iframe,.tdv6-preview iframe,.sa120-doc iframe{display:block;width:100%!important;max-width:100%!important;min-width:0!important;height:68dvh!important;min-height:420px!important;border:0}
+.pi119-viewer,.tdv6-viewer,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2),.main [style*="grid-template-columns: minmax(250px"],.main [style*="grid-template-columns: minmax(260px"],.main [style*="grid-template-columns: 280px"]{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;max-width:100%!important;min-width:0!important;gap:12px!important}
+.pi119-list,.tdv6-list,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:first-child{width:100%!important;max-width:100%!important;min-width:0!important;max-height:none!important;overflow-x:hidden!important}
+.pi119-list .btn,.tdv6-list .btn,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:first-child .btn{width:100%!important;min-width:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere}
+.pi119-preview,.tdv6-preview,.sa120-doc,.sa120-card,.sa120-lessons,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:last-child{width:100%!important;max-width:100%!important;min-width:0!important}
+.pi119-preview,.tdv6-preview,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:last-child{min-height:0!important}
+.pi119-preview iframe,.tdv6-preview iframe,.sa120-doc iframe,section[data-screen-label^="Docente · CS21A6"] iframe{display:block;width:100%!important;max-width:100%!important;min-width:0!important;height:68dvh!important;min-height:420px!important;border:0}
 .pi119-header,.tdv6-header,.sa120-header{width:100%;max-width:100%;min-width:0}
 .card,.student-page-course,.student-section-header,.student-tabs,.tp76-page,.campus-d-root,[role="tabpanel"]{min-width:0;max-width:100%}
+.main [style*="grid-template-columns"]>*{min-width:0}
 }
 @media(max-width:600px){
 :root{--an-mobile-nav-height:62px}
@@ -28,13 +29,13 @@ iframe,video,img,canvas,svg{max-width:100%}
 .an-mobile-nav-kicker{font-size:8px!important;letter-spacing:.11em!important}
 .an-mobile-nav-title{margin-top:2px!important;font-size:12.5px!important;line-height:1.2!important}
 .pi119-page,.tdv6-page,.sa120-page,.main>section,section[data-screen-label]{padding-left:10px!important;padding-right:10px!important}
-.pi119-header,.tdv6-header,.sa120-header{padding:14px 15px!important;border-radius:16px!important}
-.pi119-header>div:nth-child(2),.tdv6-header>div:nth-child(2),.sa120-header h1{font-size:clamp(27px,9vw,34px)!important;line-height:1.06!important;overflow-wrap:anywhere}
-.pi119-list,.tdv6-list{padding:9px!important;border-radius:14px!important}
-.pi119-list .btn,.tdv6-list .btn{min-height:48px;padding:10px 12px!important;align-items:flex-start;line-height:1.35}
-.pi119-preview-head,.tdv6-preview-head,.sa120-doc-head{align-items:stretch!important;flex-direction:column!important}
-.pi119-preview-head .btn,.tdv6-preview-head .btn,.sa120-doc-head .btn{width:100%;justify-content:center}
-.pi119-preview iframe,.tdv6-preview iframe,.sa120-doc iframe{height:62dvh!important;min-height:390px!important}
+.pi119-header,.tdv6-header,.sa120-header,section[data-screen-label^="Docente · CS21A6"]>div:first-child{padding:14px 15px!important;border-radius:16px!important}
+.pi119-header>div:nth-child(2),.tdv6-header>div:nth-child(2),.sa120-header h1,section[data-screen-label^="Docente · CS21A6"]>div:first-child>div:nth-child(2){font-size:clamp(27px,9vw,34px)!important;line-height:1.06!important;overflow-wrap:anywhere}
+.pi119-list,.tdv6-list,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:first-child{padding:9px!important;border-radius:14px!important}
+.pi119-list .btn,.tdv6-list .btn,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:first-child .btn{min-height:48px;padding:10px 12px!important;align-items:flex-start;line-height:1.35}
+.pi119-preview-head,.tdv6-preview-head,.sa120-doc-head,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:last-child>div:first-child{align-items:stretch!important;flex-direction:column!important}
+.pi119-preview-head .btn,.tdv6-preview-head .btn,.sa120-doc-head .btn,section[data-screen-label^="Docente · CS21A6"]>div:nth-child(2)>div:last-child>div:first-child .btn{width:100%;justify-content:center}
+.pi119-preview iframe,.tdv6-preview iframe,.sa120-doc iframe,section[data-screen-label^="Docente · CS21A6"] iframe{height:62dvh!important;min-height:390px!important}
 .sa120-lesson-body{grid-template-columns:minmax(0,1fr)!important}
 }
 @media(max-width:360px){.an-mobile-nav-kicker{display:none!important}.an-mobile-nav-title{margin-top:0!important}}
