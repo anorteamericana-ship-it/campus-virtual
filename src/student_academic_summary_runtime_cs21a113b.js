@@ -22,3 +22,14 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensure,{once:true});else ensure();
   window.CS21A113_ACADEMIC_SUMMARY_RUNTIME={version:'F98.4-Z6-CS21A113B',open:()=>open(true),close:()=>close(false),refresh:ensure};
 })();
+
+// F98.4-Z6-CS21A114 · carga la corrección del importador BCR.
+(function(){
+  'use strict';
+  if(document.getElementById('an-importador-banco-loader-cs21a114'))return;
+  const script=document.createElement('script');
+  script.id='an-importador-banco-loader-cs21a114';
+  script.src='src/importador_banco_loader_cs21a114.js?v=F98.4Z6CS21A114';
+  script.defer=true;
+  document.head.appendChild(script);
+})();
