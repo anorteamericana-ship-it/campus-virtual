@@ -88,8 +88,8 @@
     let attempts = 0;
     const timer = window.setInterval(function () {
       attempts += 1;
-      const target = Array.from(document.querySelectorAll('button, [role="tab"]')).find(function (node) {
-        return /información general del programa|informacion general del programa/i.test(String(node.textContent || '').trim());
+      const target = Array.from(document.querySelectorAll('main button, main [role="tab"], .main button, .main [role="tab"]')).find(function (node) {
+        return !node.closest('.student-sb') && /información general del programa|informacion general del programa/i.test(String(node.textContent || '').trim());
       });
       if (target && typeof target.click === 'function') {
         target.click();
