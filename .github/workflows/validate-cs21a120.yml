@@ -1,0 +1,32 @@
+name: Validate CS21A120 frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'styles/student_menu_academic_cs21a120.css'
+      - 'campus.html'
+      - '.github/workflows/validate-cs21a120.yml'
+  workflow_dispatch:
+
+jobs:
+  parse-jsx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Parse CS21A120 JSX
+        run: |
+          npx --yes -p @babel/parser@7.28.4 node <<'NODE'
+          const fs = require('fs');
+          const parser = require('@babel/parser');
+          const path = 'src/student_menu_academic_cs21a120.jsx';
+          const source = fs.readFileSync(path, 'utf8');
+          parser.parse(source, {
+            sourceType: 'script',
+            plugins: ['jsx', 'optionalChaining', 'nullishCoalescingOperator'],
+          });
+          console.log(`OK: ${path} (${source.split('\n').length} lines)`);
+          NODE
