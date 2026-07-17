@@ -91,3 +91,15 @@
     document.head.appendChild(script);
   }
 })();
+
+// CS21A112 · carga el ajuste móvil del objetivo general de Mi Campus.
+(function () {
+  'use strict';
+  const CSS_ID = 'an-student-objective-mobile-cs21a112-css';
+  if (document.getElementById(CSS_ID)) return;
+  const link = document.createElement('link');
+  link.id = CSS_ID;
+  link.rel = 'stylesheet';
+  link.href = 'styles/student_objective_mobile_cs21a112.css?v=F98.4Z6CS21A112';
+  document.head.appendChild(link);
+})();
