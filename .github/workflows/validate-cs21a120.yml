@@ -1,25 +1,29 @@
-name: Validate CS21A120 frontend
+name: Validate campus responsive frontend
 
 on:
   push:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
+      - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
       - '.github/workflows/validate-cs21a120.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
+      - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
-      - '00_DOCUMENTACION/QA_CS21A120_TRIGGER.md'
+      - '00_DOCUMENTACION/QA_CS21A121_TRIGGER.md'
       - '.github/workflows/validate-cs21a120.yml'
   workflow_dispatch:
 
 jobs:
-  parse-jsx:
+  validate-frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -27,16 +31,25 @@ jobs:
         uses: actions/checkout@v4
       - name: Install parser
         run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
-      - name: Parse CS21A120 JSX
+      - name: Parse JSX files
         run: |
           node <<'NODE'
           const fs = require('fs');
           const parser = require('@babel/parser');
-          const path = 'src/student_menu_academic_cs21a120.jsx';
-          const source = fs.readFileSync(path, 'utf8');
-          parser.parse(source, {
-            sourceType: 'script',
-            plugins: ['jsx', 'optionalChaining', 'nullishCoalescingOperator'],
-          });
-          console.log(`OK: ${path} (${source.split('\n').length} lines)`);
+          const files = [
+            'src/student_menu_academic_cs21a120.jsx',
+            'src/program_info_shared_cs21a119.jsx',
+          ];
+          for (const path of files) {
+            const source = fs.readFileSync(path, 'utf8');
+            parser.parse(source, {
+              sourceType: 'script',
+              plugins: ['jsx', 'optionalChaining', 'nullishCoalescingOperator'],
+            });
+            console.log(`OK: ${path} (${source.split('\n').length} lines)`);
+          }
           NODE
+      - name: Verify responsive stylesheet is published
+        run: |
+          grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
+          grep -q 'program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121' campus.html
