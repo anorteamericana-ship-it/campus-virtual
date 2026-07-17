@@ -1,0 +1,373 @@
+/* F98.4-Z6-CS21A116 · La entrada de Mi Campus usa la misma tarjeta visual de Mi Perfil docente. */
+
+/* Reordena solo los hijos directos: logo, tarjeta de identidad y luego el resto del Campus. */
+.campus-d-root {
+  display: flex;
+  flex-direction: column;
+}
+.campus-d-root > * { order: 3; }
+.campus-d-root > .campus-d-header { order: 0; }
+.campus-d-root > #panel-actualizar-datos.st116-entry-card { order: 1; }
+
+/* Tarjeta principal: misma estructura visual del perfil docente. */
+.campus-d-root > #panel-actualizar-datos.st116-entry-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 0 18px;
+  padding: 190px 0 0;
+  border: 1px solid var(--line, #e4ddd3);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(0, 30, 71, .10);
+}
+
+.campus-d-root > #panel-actualizar-datos.st116-entry-card::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto;
+  height: 190px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 26px, rgba(255,255,255,.025) 26px 28px),
+    radial-gradient(circle at 77% 20%, rgba(255,255,255,.18) 0 8%, transparent 9%),
+    radial-gradient(circle at 15% 80%, rgba(218,41,28,.22) 0 18%, transparent 19%),
+    linear-gradient(118deg, #001E47 0%, #0B4A8B 52%, #B21E2B 100%);
+}
+
+.campus-d-root > #panel-actualizar-datos.st116-entry-card::after {
+  content: "AN";
+  position: absolute;
+  z-index: 1;
+  right: 42px;
+  top: 34px;
+  color: rgba(255,255,255,.09);
+  font-family: var(--f-serif, Georgia, serif);
+  font-size: 190px;
+  font-weight: 700;
+  line-height: .8;
+  pointer-events: none;
+}
+
+/* Marca institucional sobre la portada. */
+#panel-actualizar-datos.st116-entry-card > .campus-d-intro {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 22px;
+  align-items: end;
+  margin: -62px 0 0;
+  padding: 0 28px 20px;
+}
+
+#panel-actualizar-datos.st116-entry-card > .campus-d-intro::before {
+  content: "ACADEMIA NORTEAMERICANA";
+  position: absolute;
+  left: 30px;
+  top: -116px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .18em;
+  pointer-events: none;
+}
+
+#panel-actualizar-datos.st116-entry-card > .campus-d-intro::after {
+  content: "Campus Virtual";
+  position: absolute;
+  left: 30px;
+  top: -94px;
+  color: #fff;
+  font-family: var(--f-serif, Georgia, serif);
+  font-size: 26px;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* Fotografía redonda, con el mismo tratamiento del perfil docente. */
+#panel-actualizar-datos.st116-entry-card .campus-d-profile-card {
+  width: 172px;
+  min-width: 172px;
+  height: 172px;
+  padding: 0;
+  display: block;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-photo-button {
+  width: 172px;
+  min-width: 172px;
+  height: 172px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 6px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #001E47, #DA291C);
+  box-shadow: 0 12px 34px rgba(0,0,0,.24);
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-photo-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-photo-button img.is-placeholder {
+  padding: 24px;
+  object-fit: contain;
+  background: #eef2f7;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-photo-overlay {
+  position: absolute;
+  right: 5px;
+  bottom: 8px;
+  left: auto;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: #001E47;
+  color: transparent;
+  box-shadow: 0 5px 16px rgba(0,0,0,.24);
+  font-size: 0;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-photo-overlay::before {
+  content: "✦";
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+/* Identidad del estudiante en el mismo lugar y proporción que la del docente. */
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-card {
+  min-width: 0;
+  min-height: 172px;
+  padding: 0 0 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-progress-ring,
+#panel-actualizar-datos.st116-entry-card .campus-d-a-accent {
+  display: none !important;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-copy {
+  min-width: 0;
+  text-align: left;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-kicker {
+  width: max-content;
+  margin: 0;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  background: #EAF6ED;
+  color: transparent;
+  font-size: 0;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-kicker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #28A453;
+  box-shadow: 0 0 0 4px rgba(40,164,83,.14);
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-kicker::after {
+  content: "ESTUDIANTE ACTIVO";
+  color: #1E6C37;
+  font-size: 10px;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-name {
+  margin: 7px 0 4px;
+  color: #001E47 !important;
+  font-family: var(--f-serif, Georgia, serif) !important;
+  font-size: 31px;
+  font-weight: 600 !important;
+  line-height: 1.05;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-welcome-copy::after {
+  content: "Estudiante de Inglés Conversacional";
+  display: block;
+  color: var(--ink-3, #6f6a63);
+  font-size: 13px;
+}
+
+/* Franja inferior: correo, teléfono, cédula y código. */
+#panel-actualizar-datos.st116-entry-card .campus-d-contact-strip {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line, #e4ddd3);
+  background: linear-gradient(180deg, #FCFBF8, #F7F3ED);
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-contact-item,
+#panel-actualizar-datos.st116-entry-card .campus-d-actions {
+  min-width: 0;
+  padding: 15px 20px;
+  display: block;
+  border-right: 1px solid var(--line, #e4ddd3);
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-actions {
+  border-right: 0;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-actions > * {
+  display: none !important;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-contact-label,
+#panel-actualizar-datos.st116-entry-card .campus-d-actions::before {
+  content: "CÓDIGO";
+  display: block;
+  margin-bottom: 5px;
+  color: #7B7369;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-contact-value,
+#panel-actualizar-datos.st116-entry-card .campus-d-actions::after {
+  content: attr(data-st116-code);
+  display: block;
+  overflow: hidden;
+  color: #1F2E41;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ya no se muestran los dos paneles desplegables de la entrada anterior. */
+#panel-actualizar-datos.st116-entry-card > .campus-d-panel {
+  display: none !important;
+}
+
+#panel-actualizar-datos.st116-entry-card .campus-d-photo-message {
+  position: relative;
+  z-index: 5;
+  margin: 0 18px 14px;
+}
+
+@media (max-width: 900px) {
+  #panel-actualizar-datos.st116-entry-card .campus-d-contact-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #panel-actualizar-datos.st116-entry-card .campus-d-contact-item:nth-child(2) {
+    border-right: 0;
+  }
+  #panel-actualizar-datos.st116-entry-card .campus-d-contact-item:nth-child(-n+2) {
+    border-bottom: 1px solid var(--line, #e4ddd3);
+  }
+  #panel-actualizar-datos.st116-entry-card .campus-d-actions {
+    border-top: 1px solid var(--line, #e4ddd3);
+  }
+}
+
+@media (max-width: 650px) {
+  .campus-d-root > #panel-actualizar-datos.st116-entry-card {
+    padding-top: 150px;
+    border-radius: 20px;
+  }
+
+  .campus-d-root > #panel-actualizar-datos.st116-entry-card::before {
+    height: 150px;
+  }
+
+  .campus-d-root > #panel-actualizar-datos.st116-entry-card::after {
+    right: 8px;
+    top: 42px;
+    font-size: 118px;
+  }
+
+  #panel-actualizar-datos.st116-entry-card > .campus-d-intro {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    margin-top: -58px;
+    padding: 0 18px 18px;
+    text-align: center;
+  }
+
+  #panel-actualizar-datos.st116-entry-card > .campus-d-intro::before {
+    left: 20px;
+    top: -80px;
+    font-size: 9px;
+  }
+
+  #panel-actualizar-datos.st116-entry-card > .campus-d-intro::after {
+    left: 20px;
+    top: -61px;
+    font-size: 22px;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-profile-card,
+  #panel-actualizar-datos.st116-entry-card .campus-d-photo-button {
+    width: 148px;
+    min-width: 148px;
+    height: 148px;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-welcome-card {
+    min-height: auto;
+    padding: 0;
+    justify-content: center;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-welcome-copy {
+    text-align: center;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-welcome-kicker {
+    margin-inline: auto;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-welcome-name {
+    font-size: 26px;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-contact-strip {
+    grid-template-columns: 1fr;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-contact-item,
+  #panel-actualizar-datos.st116-entry-card .campus-d-actions {
+    border-right: 0;
+    border-bottom: 1px solid var(--line, #e4ddd3) !important;
+  }
+
+  #panel-actualizar-datos.st116-entry-card .campus-d-actions {
+    border-bottom: 0 !important;
+  }
+}
