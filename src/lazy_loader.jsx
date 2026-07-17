@@ -1,9 +1,9 @@
-// F98.4-Z6-CS21A67 · Cargador diferido sin parpadeo de biblioteca legacy
-// Base preservada: F96.2-LAZY-D / F98.4-L-EVALUACIONES-RESULTADOS
+// F98.4-Z6-CS21A122 · Cargador diferido con espera explícita de Club I CAN.
+// Base preservada: F98.4-Z6-CS21A67.
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A67';
+  const VERSION = 'F98.4-Z6-CS21A122';
   const normalize = (src) => String(src || '').trim();
 
   function loadOne(src){
@@ -59,16 +59,27 @@
     return component === 'MaterialesView' || component === 'StudentCourseView';
   }
 
+  function needsClubICANEnhancer(component){
+    return component === 'ICANViewNew' || component === 'ClubICANDocenteView';
+  }
+
+  function routeEnhancerReady(component){
+    if (needsUnifiedMaterials(component)) {
+      return typeof window.MaterialesView === 'function' && window.MaterialesView.__cs21a60UnitStarts === true;
+    }
+    if (component === 'ICANViewNew') {
+      return typeof window.ICANViewNew === 'function' && window.ICANViewNew.__cs21a122 === true;
+    }
+    if (component === 'ClubICANDocenteView') {
+      return typeof window.ClubICANDocenteView === 'function' && window.ClubICANDocenteView.__cs21a122 === true;
+    }
+    return true;
+  }
+
   function waitForRouteEnhancers(component){
-    if (!needsUnifiedMaterials(component)) return Promise.resolve(true);
-    // CS21A67: syllabus_views publica primero la visual histórica. El visor
-    // vigente CS21A60 la envuelve unos milisegundos después. Esperamos esa
-    // envoltura antes del primer render para que la biblioteca antigua nunca
-    // llegue a pintarse en pantalla.
-    return waitUntil(() => {
-      const current = window.MaterialesView;
-      return typeof current === 'function' && current.__cs21a60UnitStarts === true;
-    }, 5000, 'Libros y Audios');
+    if (!needsUnifiedMaterials(component) && !needsClubICANEnhancer(component)) return Promise.resolve(true);
+    return waitUntil(() => routeEnhancerReady(component), 5000,
+      needsClubICANEnhancer(component) ? 'Club I CAN' : 'Libros y Audios');
   }
 
   async function validateMap(map){
@@ -93,8 +104,7 @@
     const React = window.React;
     const list = files || [];
     const depsReady = () => list.every(f => loaded.has(normalize(f)));
-    const routeReady = () => !needsUnifiedMaterials(component) ||
-      (typeof window.MaterialesView === 'function' && window.MaterialesView.__cs21a60UnitStarts === true);
+    const routeReady = () => routeEnhancerReady(component);
     const [state, setState] = React.useState(() => ({
       ready: typeof window[component] === 'function' && depsReady() && routeReady(),
       error:''
