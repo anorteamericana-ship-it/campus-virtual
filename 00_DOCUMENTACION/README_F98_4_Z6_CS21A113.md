@@ -8,11 +8,13 @@ La referencia funcional fue el registro académico presentado al INA: datos del 
 
 ## Integración frontend
 
-Archivos nuevos:
+Archivos vigentes:
 
-- `src/student_academic_summary_cs21a113.jsx`
+- `src/student_academic_summary_core_cs21a113.js`
+- `src/student_academic_summary_dom_cs21a113.js`
+- `src/student_academic_summary_runtime_cs21a113b.js`
 - `styles/student_academic_summary_cs21a113.css`
-- `src/student_academic_summary_runtime_cs21a113.js`
+- `campus.html`
 
 El runtime agrega `Resumen Académico` después de `Mi Campus` para estudiantes con matrícula académica. No se muestra a usuarios de prematrícula.
 
