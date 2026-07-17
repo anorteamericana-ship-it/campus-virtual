@@ -1,1 +1,0 @@
-QA CS21A122 · ejecutar validación frontend
