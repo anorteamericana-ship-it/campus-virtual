@@ -8,6 +8,14 @@ on:
       - 'styles/student_menu_academic_cs21a120.css'
       - 'campus.html'
       - '.github/workflows/validate-cs21a120.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'styles/student_menu_academic_cs21a120.css'
+      - 'campus.html'
+      - '00_DOCUMENTACION/QA_CS21A120_TRIGGER.md'
+      - '.github/workflows/validate-cs21a120.yml'
   workflow_dispatch:
 
 jobs:
