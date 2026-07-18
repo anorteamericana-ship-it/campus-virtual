@@ -1,0 +1,40 @@
+name: Validate teacher books CS21A134
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'src/teacher_books_unit_guard_cs21a134.js'
+      - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+      - '.github/workflows/validate-teacher-books-cs21a134.yml'
+      - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A134.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'src/teacher_books_unit_guard_cs21a134.js'
+      - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+      - '.github/workflows/validate-teacher-books-cs21a134.yml'
+      - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A134.md'
+  workflow_dispatch:
+
+jobs:
+  validate-teacher-books:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check JavaScript and unit maps
+        run: |
+          node --check src/teacher_books_unit_guard_cs21a134.js
+          node scripts/test_teacher_books_unit_guard_cs21a134.mjs
+      - name: Verify publication and role isolation
+        run: |
+          grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A134' campus.html
+          grep -q "role === 'TEACHER' || role === 'DOCENTE'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'B1|TB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'B1|WB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'I2|TB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'I2|WB'" src/teacher_books_unit_guard_cs21a134.js
