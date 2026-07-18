@@ -5,6 +5,7 @@
   const VERSION = 'F98.4-Z6-CS21A135';
   const BUTTON_SELECTOR = '.an-book-unit-button-cs21a135';
   const LEGACY_SELECTOR = '[data-cs21a135-legacy-unit-strip]';
+  const LEGACY_SECTION_SELECTOR = 'section[data-screen-label*="CS21A58"]';
   let queued = false;
 
   function inlineActive(button){
@@ -27,8 +28,22 @@
     }
   }
 
+  function nativeUnitHeading(section, legacy){
+    return Array.from(section.querySelectorAll('strong')).find(node => {
+      if (legacy && legacy.contains(node)) return false;
+      return /inicio oficial por unidad|selecciona la unidad para ubicar el libro/i.test(String(node.textContent || '').replace(/\s+/g, ' ').trim());
+    }) || null;
+  }
+
+  function removeLegacyDuplicate(section){
+    const legacy = section.querySelector(LEGACY_SELECTOR);
+    if (!legacy || !nativeUnitHeading(section, legacy)) return;
+    legacy.remove();
+  }
+
   function syncAll(){
     queued = false;
+    document.querySelectorAll(LEGACY_SECTION_SELECTOR).forEach(removeLegacyDuplicate);
     document.querySelectorAll(BUTTON_SELECTOR).forEach(syncButton);
   }
 
@@ -53,5 +68,9 @@
   });
 
   window.addEventListener('pagehide', () => observer.disconnect(), { once:true });
-  window.__AN_TEACHER_BOOK_VISUAL_STATE_CS21A135 = { version:VERSION, syncAll };
+  window.__AN_TEACHER_BOOK_VISUAL_STATE_CS21A135 = {
+    version:VERSION,
+    syncAll,
+    removeLegacyDuplicate,
+  };
 })();
