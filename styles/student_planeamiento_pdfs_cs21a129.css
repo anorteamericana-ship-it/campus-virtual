@@ -1,0 +1,23 @@
+/* F98.4-Z6-CS21A129 · Planeamiento PDF estudiantil */
+.ca129-planeamiento{margin-top:14px;border:1px solid var(--line,#e5e0d8);border-radius:18px;background:#fff;box-shadow:var(--sh-1,0 8px 26px rgba(0,0,0,.05));overflow:hidden}
+.ca129-planeamiento-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 20px;border-bottom:1px solid var(--line,#e5e0d8);background:linear-gradient(135deg,#fff,#faf7f2)}
+.ca129-planeamiento-head h2{margin:0;color:#001e47;font-size:clamp(20px,3vw,28px)}
+.ca129-planeamiento-head p{margin:5px 0 0;color:#6f6a63;font-size:12px}
+.ca129-planeamiento-count{display:inline-flex;align-items:center;min-height:32px;padding:6px 11px;border-radius:999px;background:#eaf1f8;color:#002f6c;font-size:11px;font-weight:900}
+.ca129-lesson-grid{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:7px;padding:16px 18px;border-bottom:1px solid var(--line,#e5e0d8);background:#fbfaf8}
+.ca129-lesson-btn{min-width:0;min-height:58px;padding:7px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1px solid #dcd6cd;border-radius:10px;background:#fff;color:#243044;cursor:pointer;transition:border-color .16s,background .16s,transform .16s,box-shadow .16s}
+.ca129-lesson-btn:hover{border-color:#8aa1bb;transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,47,108,.08)}
+.ca129-lesson-btn span{font-size:7px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:#7a1e2c}
+.ca129-lesson-btn strong{font-family:var(--f-mono,monospace);font-size:15px;color:#001e47}
+.ca129-lesson-btn.active{border-color:#002f6c;background:#002f6c;box-shadow:0 7px 18px rgba(0,47,108,.2)}
+.ca129-lesson-btn.active span,.ca129-lesson-btn.active strong{color:#fff}
+.ca129-pdf-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:15px 18px;border-bottom:1px solid var(--line,#e5e0d8)}
+.ca129-pdf-title small{display:block;margin-bottom:3px;color:#7a1e2c;font-size:9px;font-weight:950;letter-spacing:.11em;text-transform:uppercase}
+.ca129-pdf-title strong{display:block;color:#001e47;font-size:20px}
+.ca129-pdf-title span{display:block;margin-top:3px;color:#6f6a63;font-size:11px}
+.ca129-pdf-actions{display:flex;gap:8px;flex-wrap:wrap}
+.ca129-pdf-actions a{text-decoration:none}
+.ca129-planeamiento iframe{width:100%;height:74vh;min-height:560px;border:0;display:block;background:#f5f2ed}
+.ca129-planeamiento-missing{margin:18px;padding:24px;border:1px dashed #d2c9bd;border-radius:13px;background:#fbf8f4;text-align:center;color:#6f6a63}
+@media(max-width:1180px){.ca129-lesson-grid{grid-template-columns:repeat(8,minmax(0,1fr))}}
+@media(max-width:680px){.ca129-planeamiento-head,.ca129-pdf-head{padding:14px}.ca129-lesson-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:12px}.ca129-lesson-btn{min-height:54px}.ca129-pdf-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.ca129-pdf-actions a{justify-content:center}.ca129-planeamiento iframe{height:66vh;min-height:430px}}
