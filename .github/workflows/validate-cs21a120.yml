@@ -6,9 +6,14 @@ on:
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_content_access_cs21a125.jsx'
+      - 'src/student_books_proxy_cs21a126.jsx'
+      - 'src/student_tasks_menu_cs21a126.js'
+      - 'src/student_calendar_cleanup_cs21a126.js'
       - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
       - 'styles/student_content_access_cs21a125.css'
+      - 'styles/student_books_audios_cs21a126.css'
+      - 'styles/student_tasks_menu_cs21a126.css'
       - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
       - '.github/workflows/validate-cs21a120.yml'
@@ -17,9 +22,14 @@ on:
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_content_access_cs21a125.jsx'
+      - 'src/student_books_proxy_cs21a126.jsx'
+      - 'src/student_tasks_menu_cs21a126.js'
+      - 'src/student_calendar_cleanup_cs21a126.js'
       - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
       - 'styles/student_content_access_cs21a125.css'
+      - 'styles/student_books_audios_cs21a126.css'
+      - 'styles/student_tasks_menu_cs21a126.css'
       - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
       - '00_DOCUMENTACION/QA_CS21A121_TRIGGER.md'
@@ -43,6 +53,7 @@ jobs:
           const files = [
             'src/student_menu_academic_cs21a120.jsx',
             'src/student_content_access_cs21a125.jsx',
+            'src/student_books_proxy_cs21a126.jsx',
             'src/program_info_shared_cs21a119.jsx',
           ];
           for (const path of files) {
@@ -54,8 +65,16 @@ jobs:
             console.log(`OK: ${path} (${source.split('\n').length} lines)`);
           }
           NODE
-      - name: Verify responsive stylesheet is published
+      - name: Check JavaScript files
+        run: |
+          node --check src/student_tasks_menu_cs21a126.js
+          node --check src/student_calendar_cleanup_cs21a126.js
+          node --check src/student_menu_academic_guard_cs21a120.js
+      - name: Verify published resources
         run: |
           grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
           grep -q 'program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121' campus.html
+          grep -q 'student_menu_academic_guard_cs21a120.js?v=F98.4Z6CS21A126' campus.html
           test -f styles/student_content_access_cs21a125.css
+          test -f styles/student_books_audios_cs21a126.css
+          test -f styles/student_tasks_menu_cs21a126.css
