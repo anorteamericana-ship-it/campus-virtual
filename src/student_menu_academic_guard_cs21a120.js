@@ -1,4 +1,4 @@
-// F98.4-Z6-CS21A129 · Conserva el menú final y carga recursos académicos del estudiante.
+// F98.4-Z6-CS21A130 · Conserva el menú final y carga recursos académicos del estudiante.
 (function(){
   'use strict';
   let attempts=0;
@@ -25,11 +25,11 @@
     }
     loadCss();
     loader.loadOne('src/student_books_proxy_cs21a126.jsx?v=F98.4Z6CS21A127')
-      .then(()=>loader.loadOne('src/student_planeamiento_pdf_catalog_cs21a129.js?v=F98.4Z6CS21A129'))
+      .then(()=>loader.loadOne('src/student_planeamiento_pdf_catalog_cs21a129.js?v=F98.4Z6CS21A130'))
       .then(()=>loader.loadOne('src/student_content_access_cs21a125.jsx?v=F98.4Z6CS21A129'))
       .then(()=>loader.loadOne('src/student_tasks_menu_cs21a126.js?v=F98.4Z6CS21A127'))
       .then(()=>loader.loadOne('src/student_calendar_cleanup_cs21a126.js?v=F98.4Z6CS21A127'))
-      .catch(error=>console.error('CS21A129',error));
+      .catch(error=>console.error('CS21A130',error));
   }
 
   function markFinalSidebar(){
@@ -41,7 +41,7 @@
       Current.__cs21a60SuperResources=true;
       Current.__cs21a69ActiveState=true;
       Current.__cs21a120StudentMenu=true;
-      window.CS21A120_STUDENT_MENU_GUARD='F98.4-Z6-CS21A129';
+      window.CS21A120_STUDENT_MENU_GUARD='F98.4-Z6-CS21A130';
       loadStudentModules();
       return;
     }
