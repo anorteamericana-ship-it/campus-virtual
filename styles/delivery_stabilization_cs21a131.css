@@ -1,0 +1,34 @@
+/* F98.4-Z6-CS21A131 · Estabilización visual previa a entrega.
+   Esta capa es deliberadamente pequeña: corrige conflictos comprobados sin
+   reescribir los temas heredados de estudiante, docente o superadmin. */
+
+/*
+ * Mi Campus estaba pintando dos veces el mismo sistema decorativo:
+ * 1) student_unified.css sobre .main;
+ * 2) campus_d_compact.css sobre .campus-d-root.
+ *
+ * En el dashboard dejamos un único fondo neutro institucional en el shell y
+ * anulamos únicamente el segundo fondo anidado. No afecta otras rutas ni roles.
+ */
+.app:has(.student-sb) .main:has(.campus-d-root)::before {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.12)),
+    linear-gradient(120deg, #f3eee5 0%, #eee7dc 100%) !important;
+  opacity: 1 !important;
+}
+
+.app:has(.student-sb) .main:has(.campus-d-root)::after {
+  background: url('../assets/virtual_pattern.svg') left top / 220px 74px repeat !important;
+  opacity: .07 !important;
+}
+
+.app:has(.student-sb) .campus-d-root {
+  background: transparent !important;
+}
+
+.app:has(.student-sb) .campus-d-root::before,
+.app:has(.student-sb) .campus-d-root::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
