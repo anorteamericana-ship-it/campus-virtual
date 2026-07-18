@@ -53,7 +53,7 @@
         transform-origin: left center;
         animation: anBookTurnNextCS21A62 680ms cubic-bezier(.22,.72,.16,1) both;
       }
-      .an-book-turn-sheet-cs21A62[data-direction="previous"] {
+      .an-book-turn-sheet-cs21a62[data-direction="previous"] {
         transform-origin: right center;
         animation: anBookTurnPreviousCS21A62 680ms cubic-bezier(.22,.72,.16,1) both;
       }
