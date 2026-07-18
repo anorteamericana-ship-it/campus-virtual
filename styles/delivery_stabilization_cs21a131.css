@@ -1,25 +1,28 @@
-/* F98.4-Z6-CS21A131 · Estabilización visual previa a entrega.
-   Esta capa es deliberadamente pequeña: corrige conflictos comprobados sin
-   reescribir los temas heredados de estudiante, docente o superadmin. */
+/* F98.4-Z6-CS21A132 · Estabilización visual previa a entrega.
+   Conserva un único fondo institucional en Mi Campus y elimina solamente
+   la segunda composición anidada que producía el efecto duplicado. */
 
 /*
- * Mi Campus estaba pintando dos veces el mismo sistema decorativo:
- * 1) student_unified.css sobre .main;
- * 2) campus_d_compact.css sobre .campus-d-root.
+ * Fuente conservada:
+ * - student_unified.css / shell principal (.main)
  *
- * En el dashboard dejamos un único fondo neutro institucional en el shell y
- * anulamos únicamente el segundo fondo anidado. No afecta otras rutas ni roles.
+ * Fuente anulada:
+ * - campus_d_compact.css / contenedor interno (.campus-d-root)
+ *
+ * El resultado mantiene campus_bg_art.svg visible una sola vez.
  */
 .app:has(.student-sb) .main:has(.campus-d-root)::before {
   background:
-    linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.12)),
-    linear-gradient(120deg, #f3eee5 0%, #eee7dc 100%) !important;
-  opacity: 1 !important;
+    url('../assets/campus_bg_art.svg') center top / 100% auto repeat-y,
+    linear-gradient(180deg, #f3eee5 0%, #eee7dc 100%) !important;
+  opacity: .72 !important;
 }
 
 .app:has(.student-sb) .main:has(.campus-d-root)::after {
-  background: url('../assets/virtual_pattern.svg') left top / 220px 74px repeat !important;
-  opacity: .07 !important;
+  background:
+    url('../assets/virtual_pattern.svg') left top / 220px 74px repeat,
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08)) !important;
+  opacity: .08 !important;
 }
 
 .app:has(.student-sb) .campus-d-root {
