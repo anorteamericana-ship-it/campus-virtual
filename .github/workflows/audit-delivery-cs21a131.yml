@@ -1,0 +1,77 @@
+name: Audit delivery surface CS21A131
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'src/**'
+      - 'styles/**'
+      - 'scripts/audit_delivery_surface.mjs'
+      - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
+      - '00_DOCUMENTACION/MATRIZ_ENTREGA_ROLES_CS21A131.md'
+      - '.github/workflows/audit-delivery-cs21a131.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'src/**'
+      - 'styles/**'
+      - 'scripts/audit_delivery_surface.mjs'
+      - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
+      - '00_DOCUMENTACION/MATRIZ_ENTREGA_ROLES_CS21A131.md'
+      - '.github/workflows/audit-delivery-cs21a131.yml'
+  workflow_dispatch:
+
+jobs:
+  audit-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Audit static, lazy and role contracts
+        id: delivery_audit
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/audit_delivery_surface.mjs 2>&1 | tee audit-delivery.log
+      - name: Upload audit diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-delivery-cs21a131
+          path: audit-delivery.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Stop on audit failure
+        if: steps.delivery_audit.outcome == 'failure'
+        run: exit 1
+      - name: Parse critical JSX
+        run: |
+          npm install --no-save --ignore-scripts @babel/parser@7.28.4
+          node <<'NODE'
+          const fs = require('fs');
+          const parser = require('@babel/parser');
+          const files = [
+            'src/app.jsx',
+            'src/sidebar.jsx',
+            'src/student_dashboard.jsx',
+            'src/student_menu_academic_cs21a120.jsx',
+            'src/student_content_access_cs21a125.jsx',
+            'src/teacher_views.jsx',
+            'src/admin_views.jsx',
+          ];
+          for (const file of files) {
+            parser.parse(fs.readFileSync(file, 'utf8'), {
+              sourceType: 'script',
+              plugins: ['jsx', 'optionalChaining', 'nullishCoalescingOperator'],
+            });
+            console.log('OK:', file);
+          }
+          NODE
+      - name: Verify stabilization publication
+        run: |
+          grep -q 'delivery_stabilization_cs21a131.css?v=F98.4Z6CS21A131' campus.html
+          grep -q 'main:has(.campus-d-root)::before' styles/delivery_stabilization_cs21a131.css
+          grep -q 'campus-d-root::before' styles/delivery_stabilization_cs21a131.css
