@@ -1,10 +1,16 @@
-// F98.4-Z6-CS21A122 · Cargador diferido con espera explícita de Club I CAN.
-// Base preservada: F98.4-Z6-CS21A67.
+// F98.4-Z6-CS21A124 · Cargador diferido con versión canónica del importador BCR.
+// Base preservada: F98.4-Z6-CS21A122.
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A122';
-  const normalize = (src) => String(src || '').trim();
+  const VERSION = 'F98.4-Z6-CS21A124';
+  const normalize = (src) => {
+    const value = String(src || '').trim();
+    if (/^src\/importador_banco\.jsx(?:\?.*)?$/i.test(value)) {
+      return 'src/importador_banco.jsx?v=F98.4Z6CS21A124';
+    }
+    return value;
+  };
 
   function loadOne(src){
     src = normalize(src);
@@ -86,7 +92,7 @@
     const startedAt = Date.now();
     const groups = map || window.F96_LAZY_MAP || {};
     const files = [];
-    Object.keys(groups).forEach(k => (groups[k] || []).forEach(f => { if(files.indexOf(f) < 0) files.push(f); }));
+    Object.keys(groups).forEach(k => (groups[k] || []).forEach(f => { const normalized = normalize(f); if(files.indexOf(normalized) < 0) files.push(normalized); }));
     const ok = [];
     const errors = [];
     for (const f of files) {
@@ -102,8 +108,8 @@
 
   function LazyModuleView({ files, component, props, title }){
     const React = window.React;
-    const list = files || [];
-    const depsReady = () => list.every(f => loaded.has(normalize(f)));
+    const list = (files || []).map(normalize);
+    const depsReady = () => list.every(f => loaded.has(f));
     const routeReady = () => routeEnhancerReady(component);
     const [state, setState] = React.useState(() => ({
       ready: typeof window[component] === 'function' && depsReady() && routeReady(),
