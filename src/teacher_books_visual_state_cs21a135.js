@@ -6,7 +6,23 @@
   const BUTTON_SELECTOR = '.an-book-unit-button-cs21a135';
   const LEGACY_SELECTOR = '[data-cs21a135-legacy-unit-strip]';
   const LEGACY_SECTION_SELECTOR = 'section[data-screen-label*="CS21A58"]';
+  const LAYOUT_STYLE_ID = 'an-book-unit-layout-cs21a135';
   let queued = false;
+
+  function installLayoutFix(){
+    if (document.getElementById(LAYOUT_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = LAYOUT_STYLE_ID;
+    style.textContent = `
+      .an-book-unit-grid-cs21a135 > div {
+        display:grid !important;
+        grid-template-rows:52px auto !important;
+        gap:5px !important;
+        align-content:start !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   function inlineActive(button){
     const color = String(button?.style?.color || '').trim().toLowerCase();
@@ -54,6 +70,7 @@
     else setTimeout(syncAll, 16);
   }
 
+  installLayoutFix();
   queue();
   ['an:lazy-module-loaded','an:teacher-material-tab','an:admin-resource-tab'].forEach(name => {
     window.addEventListener(name, () => setTimeout(queue, 90));
@@ -72,5 +89,6 @@
     version:VERSION,
     syncAll,
     removeLegacyDuplicate,
+    layoutStyleId:LAYOUT_STYLE_ID,
   };
 })();
