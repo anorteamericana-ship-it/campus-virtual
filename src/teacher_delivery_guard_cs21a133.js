@@ -73,6 +73,10 @@
     ].indexOf(text(fn)) >= 0;
   }
 
+  function releaseFlight(key,tracked){
+    if (singleFlight.get(key) === tracked) singleFlight.delete(key);
+  }
+
   function install(){
     var patched = [];
 
@@ -108,9 +112,12 @@
         var key = operationKey(fn,payload);
         if (singleFlight.has(key)) return singleFlight.get(key);
         var task = Promise.resolve().then(function(){ return postBase(fn,payload,timeoutMs); });
-        singleFlight.set(key, task);
-        task.finally(function(){ if (singleFlight.get(key) === task) singleFlight.delete(key); });
-        return task;
+        var tracked = task.then(
+          function(value){ releaseFlight(key,tracked); return value; },
+          function(error){ releaseFlight(key,tracked); throw error; }
+        );
+        singleFlight.set(key,tracked);
+        return tracked;
       };
       postWrapped.__cs21a133 = true;
       postWrapped.__base = postBase;
