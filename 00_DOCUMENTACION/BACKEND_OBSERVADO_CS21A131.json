@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-07-18",
+  "drive_file_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
+  "drive_title": "Code.gs",
+  "header_version": "F98.4-Z6-CS21A79",
+  "modified_time": "2026-07-13T20:10:59.490Z",
+  "raw_size_bytes": 2969236,
+  "sha256": "f6aa22cbd42c47990a5d72c5cf8d6e5af6bc72ebca356c23aa1058968088e487",
+  "line_count": 52495,
+  "deployment_confirmed": false,
+  "verified_present": [
+    "getEstudiante",
+    "getMaterialLeccion",
+    "getBibliotecaNivelEstudiante",
+    "getAudioPistaEstudiante",
+    "getICANEstudiante",
+    "getEvaluacionesEstudiante",
+    "getSesionClaseEstudiante"
+  ],
+  "verified_missing": [
+    "getAccesoContenidoEstudiante",
+    "getICANPortalEstudiante",
+    "reservarICANSesionEstudiante",
+    "cancelarReservaICANEstudiante",
+    "getICANDocenteReservas"
+  ],
+  "notes": [
+    "La ausencia se verificó contra el archivo canónico observado en Drive; no demuestra qué versión está desplegada en la URL web.",
+    "Club I CAN CS21A122 funciona actualmente por compatibilidad con getICANEstudiante, pero no puede reservar horarios hasta incorporar y publicar sus endpoints nuevos.",
+    "El acceso acumulativo del contenido estudiantil cae al fallback del frontend mientras getAccesoContenidoEstudiante no exista en el backend."
+  ]
+}
