@@ -23,6 +23,7 @@ on:
       - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
       - '00_DOCUMENTACION/QA_CS21A121_TRIGGER.md'
+      - '00_DOCUMENTACION/CS21A125_VALIDACION.md'
       - '.github/workflows/validate-cs21a120.yml'
   workflow_dispatch:
 
