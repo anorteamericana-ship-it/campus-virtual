@@ -103,7 +103,7 @@ jobs:
         run: |
           grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
           grep -q 'program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121' campus.html
-          grep -q 'student_menu_academic_guard_cs21a120.js?v=F98.4Z6CS21A126' campus.html
+          grep -q 'student_menu_academic_guard_cs21a120.js?v=F98.4Z6CS21A127' campus.html
           test -f styles/student_content_access_cs21a125.css
           test -f styles/student_books_audios_cs21a126.css
           test -f styles/student_tasks_menu_cs21a126.css
