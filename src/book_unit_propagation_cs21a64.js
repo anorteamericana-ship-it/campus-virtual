@@ -1,23 +1,30 @@
-// F98.4-Z6-CS21A134 · Propagación opcional UXX–U16 + guard docente de unidades
+// F98.4-Z6-CS21A135 · Propagación UXX–U16 + autoridad del visor docente
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A134';
-  const VIEWER_SELECTOR = 'section[data-screen-label*="Libros y Audios"]';
+  const VERSION = 'F98.4-Z6-CS21A135';
+  const VIEWER_SELECTOR = [
+    'section[data-book-viewer="institutional"]',
+    'section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]',
+    'section[data-screen-label*="CS21A58"][data-screen-label*="libros"]',
+  ].join(',');
   const ENDPOINT = 'superadminBooksSetUnitStart';
   const ORIGINAL_FETCH = window.fetch.bind(window);
   let pending = null;
   let lastSuccess = null;
 
   function loadTeacherUnitGuard() {
-    if (window.__AN_TEACHER_BOOK_UNIT_GUARD_CS21A134) return;
-    const src = 'src/teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A134';
+    if (window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135) {
+      window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135.reinstall?.();
+      return;
+    }
+    const src = 'src/teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A135';
     if (document.querySelector(`script[src="${src}"]`)) return;
     const script = document.createElement('script');
     script.src = src;
     script.async = false;
-    script.dataset.cs21a134 = 'teacher-book-units';
-    script.onerror = () => console.error('CS21A134: no se pudo cargar el guard de unidades docentes.');
+    script.dataset.cs21a135 = 'teacher-book-navigation';
+    script.onerror = () => console.error('CS21A135: no se pudo cargar la autoridad del visor docente.');
     document.head.appendChild(script);
   }
   loadTeacherUnitGuard();
@@ -138,7 +145,7 @@
     node.textContent = lastSuccess.message;
   }
 
-  window.fetch = function cs21a134Fetch(input, init) {
+  window.fetch = function cs21a135Fetch(input, init) {
     if (pending && Date.now() - pending.createdAt > 8000) pending = null;
     if (!pending || !isTargetRequest(input) || !init || typeof init.body !== 'string') {
       return ORIGINAL_FETCH(input, init);
