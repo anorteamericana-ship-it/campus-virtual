@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A126 · Reutiliza el visor visual del docente para estudiantes.
+// F98.4-Z6-CS21A127 · Reutiliza el visor visual del docente para estudiantes.
 /* global React */
 (function(){
   'use strict';
-  const VERSION='F98.4-Z6-CS21A126';
+  const VERSION='F98.4-Z6-CS21A127';
   const FILES={
     B1:{SB:'1zVPOGcCca5Ti8M8LtCpEO65-bO0m2_oF',WB:'1J8TAHdFbZudX-VXjMCR6-dPRNyXOEA2d'},
     B2:{SB:'1uU5ta9FVEVIw7YvxtmT08NIbSHfA73e2',WB:'1gb4ks-D66QW9d9EuL8yB8GDRezOMCOpp'},
@@ -28,15 +28,23 @@
     }
   }
 
+  function BookAction({type,label,id}){
+    return <article data-book-type={type}>
+      <b>{type}</b><span>{label}</span>
+      <a className="btn" href={view(id)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir PDF ${label}`}>Abrir PDF</a>
+      <a className="btn btn-primary" href={download(id)} target="_blank" rel="noopener noreferrer" aria-label={`Descargar PDF ${label}`}>Descargar PDF</a>
+    </article>;
+  }
+
   function StudentBooksProxyCS21A126({level}){
     const safe=FILES[level]?level:'B1';
     const files=FILES[safe];
-    return <div className="sb126-wrap">
+    return <div className="sb126-wrap" data-student-book-types="SB,WB">
       <div className="sb126-downloads">
         <div><strong>{safe} · {NAMES[safe]}</strong><span>Los libros se muestran como páginas e imágenes, igual que en la vista docente.</span></div>
         <div className="sb126-download-grid">
-          <article><b>SB</b><span>Student Book</span><a className="btn" href={view(files.SB)} target="_blank" rel="noreferrer">Abrir</a><a className="btn btn-primary" href={download(files.SB)} target="_blank" rel="noreferrer">Descargar</a></article>
-          <article><b>WB</b><span>Workbook</span><a className="btn" href={view(files.WB)} target="_blank" rel="noreferrer">Abrir</a><a className="btn btn-primary" href={download(files.WB)} target="_blank" rel="noreferrer">Descargar</a></article>
+          <BookAction type="SB" label="Student Book" id={files.SB}/>
+          <BookAction type="WB" label="Workbook" id={files.WB}/>
         </div>
       </div>
       <div className="sb126-visual"><VisualProxy key={safe} level={safe}/></div>

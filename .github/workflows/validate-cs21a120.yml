@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/student_content_access_cs21a125.jsx'
       - 'src/student_books_proxy_cs21a126.jsx'
       - 'src/student_tasks_menu_cs21a126.js'
@@ -21,6 +22,7 @@ on:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/student_content_access_cs21a125.jsx'
       - 'src/student_books_proxy_cs21a126.jsx'
       - 'src/student_tasks_menu_cs21a126.js'
@@ -70,6 +72,33 @@ jobs:
           node --check src/student_tasks_menu_cs21a126.js
           node --check src/student_calendar_cleanup_cs21a126.js
           node --check src/student_menu_academic_guard_cs21a120.js
+      - name: Verify student academic contract
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const read = path => fs.readFileSync(path, 'utf8');
+          const proxy = read('src/student_books_proxy_cs21a126.jsx');
+          const viewer = read('src/book_unit_starts_cs21a60.jsx');
+          const tasks = read('src/student_tasks_menu_cs21a126.js');
+          const calendar = read('src/student_calendar_cleanup_cs21a126.js');
+          const access = read('src/student_content_access_cs21a125.jsx');
+          const css = read('styles/student_books_audios_cs21a126.css');
+
+          const checks = [
+            [proxy.includes('data-student-book-types="SB,WB"'), 'El proxy declara únicamente SB y WB.'],
+            [!/(?:^|[,\s{])TB\s*:/.test(proxy), 'El proxy estudiantil no publica archivos TB.'],
+            [proxy.includes('Abrir PDF') && proxy.includes('Descargar PDF'), 'Los botones PDF están etiquetados explícitamente.'],
+            [viewer.includes("studentMode ? ['SB', 'WB']"), 'El visor compartido restringe el modo estudiante a SB/WB.'],
+            [tasks.includes("evaluations.insertAdjacentElement('afterend',button)"), 'Tareas se inserta inmediatamente después de Evaluaciones.'],
+            [calendar.includes('if(tabs)tabs.remove()'), 'Calendario académico elimina las pestañas heredadas.'],
+            [access.includes("['CA','APR','CNV']") && access.includes('LEVELS.slice(0,i+1)'), 'El fallback conserva acceso acumulativo CA/APR/CNV.'],
+            [css.includes('min-width:0!important;width:100%!important'), 'El libro abierto cabe completo en móvil.'],
+          ];
+          for (const [ok, message] of checks) {
+            if (!ok) throw new Error(message);
+            console.log('OK:', message);
+          }
+          NODE
       - name: Verify published resources
         run: |
           grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
