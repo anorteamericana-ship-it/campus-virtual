@@ -1,7 +1,7 @@
 // F98.4-Z6-CS21A134 · Botonera U01–U16 estable para libros del docente.
 // Corrige únicamente la respuesta de lectura del visor cuando el backend no
 // entrega una secuencia completa, y restaura la secuencia histórica válida de
-// B1 · SB si aparece la calibración conocida que desplaza cada unidad.
+// B1 · SB si aparece una calibración conocida que desplaza cada unidad.
 (function(){
   'use strict';
 
@@ -21,7 +21,10 @@
     'I2|WB': [5,11,17,23,29,35,41,47,53,59,65,71,77,83,89,95]
   };
 
-  var KNOWN_BAD_B1_SB = [9,15,23,29,37,43,51,57,65,71,79,85,93,99,107,113];
+  var KNOWN_BAD_B1_SB = [
+    [9,15,23,29,37,43,51,57,65,71,79,85,93,99,107,113],
+    [6,12,20,26,34,40,48,54,62,68,76,82,90,96,104,110]
+  ];
 
   function text(value){ return String(value == null ? '' : value).trim(); }
   function upper(value){ return text(value).toUpperCase(); }
@@ -63,7 +66,7 @@
     if (!fallback) return data;
 
     var raw = Array.isArray(data.unit_starts) ? data.unit_starts : [];
-    var shouldRepairKnownB1 = key === 'B1|SB' && same(raw, KNOWN_BAD_B1_SB);
+    var shouldRepairKnownB1 = key === 'B1|SB' && KNOWN_BAD_B1_SB.some(function(sequence){ return same(raw, sequence); });
     var shouldFillMissing = !complete(raw);
     if (!shouldRepairKnownB1 && !shouldFillMissing) return data;
 
