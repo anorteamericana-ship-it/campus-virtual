@@ -7,12 +7,14 @@ on:
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/student_content_access_cs21a125.jsx'
+      - 'src/student_planeamiento_pdf_catalog_cs21a129.js'
       - 'src/student_books_proxy_cs21a126.jsx'
       - 'src/student_tasks_menu_cs21a126.js'
       - 'src/student_calendar_cleanup_cs21a126.js'
       - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
       - 'styles/student_content_access_cs21a125.css'
+      - 'styles/student_planeamiento_pdfs_cs21a129.css'
       - 'styles/student_books_audios_cs21a126.css'
       - 'styles/student_tasks_menu_cs21a126.css'
       - 'styles/mobile_responsive_global_cs21a121.css'
@@ -24,12 +26,14 @@ on:
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/student_content_access_cs21a125.jsx'
+      - 'src/student_planeamiento_pdf_catalog_cs21a129.js'
       - 'src/student_books_proxy_cs21a126.jsx'
       - 'src/student_tasks_menu_cs21a126.js'
       - 'src/student_calendar_cleanup_cs21a126.js'
       - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
       - 'styles/student_content_access_cs21a125.css'
+      - 'styles/student_planeamiento_pdfs_cs21a129.css'
       - 'styles/student_books_audios_cs21a126.css'
       - 'styles/student_tasks_menu_cs21a126.css'
       - 'styles/mobile_responsive_global_cs21a121.css'
@@ -72,6 +76,7 @@ jobs:
           node --check src/student_tasks_menu_cs21a126.js
           node --check src/student_calendar_cleanup_cs21a126.js
           node --check src/student_menu_academic_guard_cs21a120.js
+          node --check src/student_planeamiento_pdf_catalog_cs21a129.js
       - name: Verify student academic contract
         run: |
           node <<'NODE'
@@ -82,18 +87,44 @@ jobs:
           const tasks = read('src/student_tasks_menu_cs21a126.js');
           const calendar = read('src/student_calendar_cleanup_cs21a126.js');
           const access = read('src/student_content_access_cs21a125.jsx');
-          const css = read('styles/student_books_audios_cs21a126.css');
+          const booksCss = read('styles/student_books_audios_cs21a126.css');
+          const lessonCss = read('styles/student_planeamiento_pdfs_cs21a129.css');
+          const lessonCatalogSource = read('src/student_planeamiento_pdf_catalog_cs21a129.js');
+          const teacherPlanningSource = read('src/teacher_cs21a_planeamiento_grouped.jsx');
+          const guard = read('src/student_menu_academic_guard_cs21a120.js');
+
+          function extractObject(source, name) {
+            const re = new RegExp(`const\\s+${name}\\s*=\\s*(\\{[\\s\\S]*?\\});`);
+            const match = source.match(re);
+            if (!match) throw new Error(`No se pudo extraer ${name}.`);
+            return Function(`"use strict";return (${match[1]});`)();
+          }
+
+          const studentLessons = extractObject(lessonCatalogSource, 'catalog');
+          const teacherLessons = extractObject(teacherPlanningSource, 'LESSON_IDS');
+          const levels = ['B1','B2','I1','I2'];
 
           const checks = [
             [proxy.includes('data-student-book-types="SB,WB"'), 'El proxy declara únicamente SB y WB.'],
             [!/(?:^|[,\s{])TB\s*:/.test(proxy), 'El proxy estudiantil no publica archivos TB.'],
-            [proxy.includes('Abrir PDF') && proxy.includes('Descargar PDF'), 'Los botones PDF están etiquetados explícitamente.'],
+            [proxy.includes('Abrir PDF') && proxy.includes('Descargar PDF'), 'Los botones PDF de libros están etiquetados explícitamente.'],
             [viewer.includes("studentMode ? ['SB', 'WB']"), 'El visor compartido restringe el modo estudiante a SB/WB.'],
             [tasks.includes("evaluations.insertAdjacentElement('afterend',button)"), 'Tareas se inserta inmediatamente después de Evaluaciones.'],
             [calendar.includes('if(tabs)tabs.remove()'), 'Calendario académico elimina las pestañas heredadas.'],
             [access.includes("['CA','APR','CNV']") && access.includes('LEVELS.slice(0,i+1)'), 'El fallback conserva acceso acumulativo CA/APR/CNV.'],
-            [css.includes('min-width:0!important;width:100%!important'), 'El libro abierto cabe completo en móvil.'],
+            [booksCss.includes('min-width:0!important;width:100%!important'), 'El libro abierto cabe completo en móvil.'],
+            [access.includes('__AN_STUDENT_PLANEAMIENTO_PDFS_CS21A129__'), 'Planeamiento consume el catálogo de PDFs estudiantil.'],
+            [access.includes('data-lesson-count') && access.includes('Abrir PDF') && access.includes('Descargar PDF'), 'Planeamiento ofrece selector, apertura y descarga del PDF.'],
+            [lessonCss.includes('grid-template-columns:repeat(16,minmax(0,1fr))'), 'La botonera de escritorio tiene 16 columnas: dos filas para 32 lecciones.'],
+            [lessonCss.includes('repeat(8,minmax(0,1fr))') && lessonCss.includes('repeat(4,minmax(0,1fr))'), 'La botonera se adapta en tableta y móvil.'],
+            [guard.indexOf('student_planeamiento_pdf_catalog_cs21a129.js') < guard.indexOf('student_content_access_cs21a125.jsx'), 'El catálogo carga antes que la vista estudiantil.'],
           ];
+
+          for (const level of levels) {
+            checks.push([Array.isArray(studentLessons[level]) && studentLessons[level].length === 32, `${level} publica exactamente 32 PDFs.`]);
+            checks.push([JSON.stringify(studentLessons[level]) === JSON.stringify(teacherLessons[level]), `${level} coincide con el catálogo docente de Drive.`]);
+          }
+
           for (const [ok, message] of checks) {
             if (!ok) throw new Error(message);
             console.log('OK:', message);
@@ -103,7 +134,9 @@ jobs:
         run: |
           grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
           grep -q 'program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121' campus.html
-          grep -q 'student_menu_academic_guard_cs21a120.js?v=F98.4Z6CS21A127' campus.html
+          grep -q 'student_menu_academic_guard_cs21a120.js?v=F98.4Z6CS21A129' campus.html
+          test -f src/student_planeamiento_pdf_catalog_cs21a129.js
+          test -f styles/student_planeamiento_pdfs_cs21a129.css
           test -f styles/student_content_access_cs21a125.css
           test -f styles/student_books_audios_cs21a126.css
           test -f styles/student_tasks_menu_cs21a126.css
