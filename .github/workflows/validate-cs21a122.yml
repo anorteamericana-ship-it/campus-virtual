@@ -7,11 +7,22 @@ on:
       - 'src/ican_participation_cs21a122.js'
       - 'styles/ican_participation_cs21a122.css'
       - 'src/student_demo_level_filter_cs21a110.js'
-      - '00_DOCUMENTACION/QA_CS21A122*.txt'
       - '.github/workflows/validate-cs21a122.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/ican_participation_cs21a122.js'
+      - 'styles/ican_participation_cs21a122.css'
+      - 'src/student_demo_level_filter_cs21a110.js'
+      - '.github/workflows/validate-cs21a122.yml'
   workflow_dispatch:
+
+concurrency:
+  group: validate-cs21a122-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   validate-frontend:
