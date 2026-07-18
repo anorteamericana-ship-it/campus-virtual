@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A125 · Contenido académico acumulativo por nivel autorizado.
+// F98.4-Z6-CS21A129 · Contenido académico acumulativo y planeamiento PDF por lección.
 /* global React, ReactDOM */
 (function(){
   'use strict';
-  const VERSION='F98.4-Z6-CS21A126';
+  const VERSION='F98.4-Z6-CS21A129';
   const LEVELS=['B1','B2','I1','I2'];
   const NAMES={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
   const BOOKS={B1:'Interchange Intro',B2:'Interchange 1',I1:'Interchange 2',I2:'Interchange 3'};
@@ -12,6 +12,9 @@
   let root=null,currentRoute='';
 
   const clean=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
+  const pad=n=>String(n).padStart(2,'0');
+  const previewUrl=id=>`https://drive.google.com/file/d/${id}/preview`;
+  const downloadUrl=id=>`https://drive.google.com/uc?export=download&id=${id}`;
   function session(){try{return (typeof window.getSesion==='function'?window.getSesion():JSON.parse(sessionStorage.getItem('an_usuario')||'null'))||{};}catch(_){return{};}}
   function token(){return typeof window.getSessionToken==='function'?window.getSessionToken():'';}
   async function post(fn,payload={}){const r=await fetch(`${window.APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token:token(),...payload})});const raw=await r.text();let data;try{data=raw?JSON.parse(raw):null;}catch(_){throw new Error('El servidor devolvió una respuesta inválida.');}if(!r.ok||!data?.ok)throw new Error(data?.mensaje||data?.motivo||data?.error||`HTTP ${r.status}`);return data;}
@@ -28,9 +31,34 @@
   function useAccess(){const[state,setState]=React.useState({loading:true,error:'',access:null});const load=React.useCallback((force=false)=>{setState({loading:true,error:'',access:null});loadAccess(force).then(access=>setState({loading:false,error:access.acceso?'':(access.diagnostico||'No hay niveles académicos habilitados.'),access})).catch(e=>setState({loading:false,error:e.message,access:null}));},[]);React.useEffect(()=>load(false),[load]);return{...state,reload:()=>load(true)};}
   function useCatalog(level){const u=session(),codigo=clean(u.codigo||u.CODIGO||u.cedula||u.CEDULA),group=clean(u.grupoActivo||u.grupo||u.grupos?.[0]);const[state,setState]=React.useState({loading:true,error:'',catalog:null});const load=React.useCallback(()=>{if(!level)return;setState({loading:true,error:'',catalog:null});post('getBibliotecaNivelEstudiante',{nivel:level,codigo,cod_grupo:group,vista:'estudiante'}).then(r=>{if(r.acceso===false)throw new Error(r.motivo||'Contenido no habilitado.');if(!r.catalogo)throw new Error('El catálogo del nivel no respondió.');setState({loading:false,error:'',catalog:r.catalogo});}).catch(e=>setState({loading:false,error:e.message,catalog:null}));},[level,codigo,group]);React.useEffect(load,[load]);return{...state,reload:load,codigo,group};}
   function ContentAccessRoute({route}){const a=useAccess();const[level,setLevel]=React.useState('');React.useEffect(()=>{if(a.access?.nivel_maximo&&!level)setLevel(a.access.nivel_maximo);},[a.access,level]);if(a.loading)return <State>Cargando niveles autorizados…</State>;if(a.error||!a.access?.acceso)return <State error onRetry={a.reload}>{a.error||'Sin acceso académico.'}</State>;if(route==='plan_estudio_estudiante')return <PlanView access={a.access} level={level} setLevel={setLevel}/>;if(route==='planeamiento_estudiante')return <PlaneamientoView access={a.access} level={level} setLevel={setLevel}/>;if(route==='libros_audios_estudiante')return <BooksView access={a.access} level={level} setLevel={setLevel}/>;return <ResourcesView access={a.access} level={level} setLevel={setLevel}/>;}
-  function PlanView({access,level,setLevel}){const id=PLAN_DOCS[level];return <section className="ca125-page"><Header title="Plan de Estudio" desc="Consulta el plan del nivel actual y de todos los niveles anteriores autorizados." {...{access,level,setLevel}}/><div className="ca125-doc"><div><strong>{NAMES[level]}</strong><span>{BOOKS[level]}</span><button className="btn btn-primary" onClick={()=>window.open(`https://drive.google.com/uc?export=download&id=${id}`,'_blank')}>Descargar</button></div><iframe title={`Plan ${level}`} src={`https://drive.google.com/file/d/${id}/preview`}/></div></section>;}
-  function PlaneamientoView({access,level,setLevel}){const d=useCatalog(level),[unit,setUnit]=React.useState('');React.useEffect(()=>setUnit(''),[level]);if(d.loading)return <State>Cargando planeamiento…</State>;if(d.error)return <State error onRetry={d.reload}>{d.error}</State>;const units=d.catalog?.planeamiento_unidades||[],selected=units.find(x=>String(x.key)===unit);return <section className="ca125-page"><Header title="Planeamiento por lección" desc="Versión estudiantil del planeamiento oficial, disponible por nivel alcanzado." {...{access,level,setLevel}}/><div className="ca125-card"><label>Unidad</label><select value={unit} onChange={e=>setUnit(e.target.value)}><option value="">Seleccioná una unidad</option>{units.map(x=><option key={x.key} value={x.key}>{x.label}{x.titulo_unidad?` · ${x.titulo_unidad}`:''}</option>)}</select></div>{selected&&<div className="ca125-lessons">{(selected.lecciones||[]).map(l=><details key={l.leccion}><summary><span>Lección {String(l.leccion).padStart(2,'0')}</span><strong>{l.titulo_unidad||selected.titulo_unidad}</strong></summary><div><Field l="Tema / objetivo" v={l.tema_objetivo_general}/><Field l="Speaking" v={l.speaking}/><Field l="Grammar" v={l.grammar}/><Field l="Pronunciation / Listening" v={l.pronunciation_listening}/><Field l="Writing / Reading" v={l.writing_reading}/></div></details>)}</div>}</section>;}
-  const Field=({l,v})=>clean(v)?<article className="ca125-field"><span>{l}</span><p>{v}</p></article>:null;
+  function PlanView({access,level,setLevel}){const id=PLAN_DOCS[level];return <section className="ca125-page"><Header title="Plan de Estudio" desc="Consulta el plan del nivel actual y de todos los niveles anteriores autorizados." {...{access,level,setLevel}}/><div className="ca125-doc"><div><strong>{NAMES[level]}</strong><span>{BOOKS[level]}</span><button className="btn btn-primary" onClick={()=>window.open(downloadUrl(id),'_blank','noopener,noreferrer')}>Descargar</button></div><iframe title={`Plan ${level}`} src={previewUrl(id)}/></div></section>;}
+  function PlaneamientoView({access,level,setLevel}){
+    const[lesson,setLesson]=React.useState(1);
+    React.useEffect(()=>setLesson(1),[level]);
+    const ids=window.__AN_STUDENT_PLANEAMIENTO_PDFS_CS21A129__?.[level]||[];
+    const id=ids[lesson-1]||'';
+    const title=`Lección ${pad(lesson)} · ${NAMES[level]||level}`;
+    return <section className="ca125-page" data-planeamiento-level={level}>
+      <Header title="Planeamiento por lección" desc="Consulta el PDF oficial de cada lección del nivel actual y de todos los niveles anteriores autorizados." {...{access,level,setLevel}}/>
+      <div className="ca129-planeamiento">
+        <div className="ca129-planeamiento-head">
+          <div><h2>Planeamiento · {NAMES[level]}</h2><p>Seleccioná una lección para verla directamente desde Drive.</p></div>
+          <span className="ca129-planeamiento-count">{ids.length} de 32 PDFs</span>
+        </div>
+        {ids.length===32?<div className="ca129-lesson-grid" data-lesson-count={ids.length}>{ids.map((fileId,index)=>{const number=index+1;return <button key={fileId} type="button" className={'ca129-lesson-btn '+(lesson===number?'active':'')} aria-pressed={lesson===number} aria-label={`Mostrar lección ${pad(number)}`} onClick={()=>setLesson(number)}><span>Lección</span><strong>{pad(number)}</strong></button>;})}</div>:<div className="ca129-planeamiento-missing">No se encontró el catálogo completo de 32 lecciones para este nivel.</div>}
+        {id&&<div className="ca129-pdf-view">
+          <div className="ca129-pdf-head">
+            <div className="ca129-pdf-title"><small>PDF seleccionado</small><strong>{title}</strong><span>Planeamiento estudiantil oficial del nivel {level}.</span></div>
+            <div className="ca129-pdf-actions">
+              <a className="btn" href={previewUrl(id)} target="_blank" rel="noopener noreferrer">Abrir PDF</a>
+              <a className="btn btn-primary" href={downloadUrl(id)} target="_blank" rel="noopener noreferrer">Descargar PDF</a>
+            </div>
+          </div>
+          <iframe key={`${level}-${lesson}`} title={title} src={previewUrl(id)} allow="autoplay"/>
+        </div>}
+      </div>
+    </section>;
+  }
   function BooksView({access,level,setLevel}){const d=useCatalog(level),[unit,setUnit]=React.useState(''),[track,setTrack]=React.useState(null);React.useEffect(()=>{setUnit('');setTrack(null);},[level]);if(d.loading)return <State>Cargando libros y audios…</State>;if(d.error)return <State error onRetry={d.reload}>{d.error}</State>;const Proxy=window.StudentBooksProxyCS21A126,units=d.catalog?.audios_unidades||[],u=units.find((x,i)=>String(x.key??i)===unit),total=units.reduce((sum,x)=>sum+((x?.pistas||[]).length),0);return <section className="ca125-page"><Header title="Libros y Audios" desc="Visor visual de libros y audios del nivel actual y de todos los niveles anteriores autorizados." {...{access,level,setLevel}}/>{typeof Proxy==='function'?<Proxy key={level} level={level}/>:<State error>El visor visual de libros no está disponible.</State>}<div className="ca125-card"><div className="ca125-card-head"><div><h2>Audios de {NAMES[level]}</h2><p>Seleccioná una unidad y reproducí las pistas oficiales del nivel.</p></div><div className="ca125-mini-stats"><span>{units.length} unidad(es)</span><span>{total} pista(s)</span></div></div><label>Unidad</label><select value={unit} onChange={e=>{setUnit(e.target.value);setTrack(null);}}><option value="">Seleccioná una unidad</option>{units.map((x,i)=><option key={x.key??i} value={String(x.key??i)}>{x.label||`Unidad ${i+1}`}</option>)}</select>{u&&<div className="ca125-tracks">{(u.pistas||[]).map(x=><div key={x.id}><button onClick={()=>setTrack(track?.id===x.id?null:x)}><span>▶</span><strong>{x.nombre}</strong><small>{u.label||'Audio de unidad'}</small></button>{track?.id===x.id&&<Audio track={x} level={level} codigo={d.codigo} group={d.group}/>}</div>)}</div>}{!u&&<div className="ca125-empty">Elegí una unidad para mostrar sus audios.</div>}</div></section>;}
   function Audio({track,level,codigo,group}){const[state,setState]=React.useState({loading:true,error:'',src:''});React.useEffect(()=>{let live=true,url='';post('getAudioPistaEstudiante',{nivel,codigo,cod_grupo:group,archivo_id:track.id}).then(r=>{const bin=atob(r.audio.base64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);url=URL.createObjectURL(new Blob([bytes],{type:r.audio.mime||'audio/mpeg'}));if(live)setState({loading:false,error:'',src:url});}).catch(e=>live&&setState({loading:false,error:e.message,src:''}));return()=>{live=false;if(url)URL.revokeObjectURL(url);};},[track.id,level,codigo,group]);if(state.loading)return <small>Cargando pista…</small>;if(state.error)return <small className="error">{state.error}</small>;return <audio controls src={state.src}/>;}
   function ResourcesView({access,level,setLevel}){const d=useCatalog(level);if(d.loading)return <State>Cargando recursos…</State>;if(d.error)return <State error onRetry={d.reload}>{d.error}</State>;return <section className="ca125-page"><Header title="Recursos adicionales" desc="Material complementario oficial del nivel seleccionado." {...{access,level,setLevel}}/><div className="ca125-card"><ResourceList items={d.catalog?.recursos||[]}/>{!(d.catalog?.recursos||[]).length&&<div className="ca125-empty">No hay recursos publicados para este nivel.</div>}</div></section>;}
