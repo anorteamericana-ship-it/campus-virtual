@@ -1,22 +1,26 @@
-name: Validate teacher books CS21A134
+name: Validate teacher books CS21A135
 
 on:
   push:
     branches: [main]
     paths:
       - 'src/book_unit_propagation_cs21a64.js'
+      - 'src/book_page_turn_cs21a62.js'
       - 'src/teacher_books_unit_guard_cs21a134.js'
+      - 'src/teacher_books_visual_state_cs21a135.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
-      - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A134.md'
+      - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A135.md'
   pull_request:
     branches: [main]
     paths:
       - 'src/book_unit_propagation_cs21a64.js'
+      - 'src/book_page_turn_cs21a62.js'
       - 'src/teacher_books_unit_guard_cs21a134.js'
+      - 'src/teacher_books_visual_state_cs21a135.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
-      - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A134.md'
+      - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A135.md'
   workflow_dispatch:
 
 jobs:
@@ -29,14 +33,32 @@ jobs:
       - name: Check JavaScript and unit maps
         run: |
           node --check src/book_unit_propagation_cs21a64.js
+          node --check src/book_page_turn_cs21a62.js
           node --check src/teacher_books_unit_guard_cs21a134.js
+          node --check src/teacher_books_visual_state_cs21a135.js
           node scripts/test_teacher_books_unit_guard_cs21a134.mjs
-      - name: Verify publication and role isolation
+      - name: Verify viewer authority and visual contract
         run: |
-          grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A134' src/book_unit_propagation_cs21a64.js
-          grep -q 'section\[data-screen-label\*="Libros y Audios"\]' src/book_unit_propagation_cs21a64.js
-          grep -q "role === 'TEACHER' || role === 'DOCENTE'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A135' src/book_unit_propagation_cs21a64.js
+          grep -q 'teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A135' src/book_unit_propagation_cs21a64.js
+          grep -q 'data-book-viewer="institutional"' src/book_unit_propagation_cs21a64.js
+          grep -q 'data-book-viewer="institutional"' src/book_page_turn_cs21a62.js
+          grep -q 'Wrapped.__cs21a58books = true' src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'Wrapped.__cs21a135BookAuthority = true' src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'data-cs21a135-legacy-unit-strip' src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'B1|SB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|TB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|WB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'B2|SB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'B2|TB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'B2|WB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'I1|SB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'I1|TB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'I1|WB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q "'I2|SB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'I2|TB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'I2|WB'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'an-book-unit-button-cs21a135' src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'Saltos oficiales del libro' src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'inlineActive' src/teacher_books_visual_state_cs21a135.js
+          ! grep -q 'an-book-turn-sheet-cs21A62' src/book_page_turn_cs21a62.js

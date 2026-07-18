@@ -1,10 +1,14 @@
-// F98.4-Z6-CS21A62 · Efecto visual de paso de hoja para el visor de libros
+// F98.4-Z6-CS21A135 · Efecto visual de paso de hoja para el visor institucional
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A62';
+  const VERSION = 'F98.4-Z6-CS21A135';
   const STYLE_ID = 'an-book-page-turn-cs21a62';
-  const VIEWER_SELECTOR = 'section[data-screen-label*="CS21A60"][data-screen-label*="Libros"]';
+  const VIEWER_SELECTOR = [
+    'section[data-book-viewer="institutional"]',
+    'section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]',
+    'section[data-screen-label*="CS21A58"][data-screen-label*="libros"]',
+  ].join(',');
   const LOCK_MS = 760;
 
   function installStyles() {
@@ -132,7 +136,7 @@
     if (label === 'Anterior') return 'previous';
     if (!/^U\d{2}$/.test(label)) return null;
 
-    const targetMatch = String(button.getAttribute('title') || '').match(/hoja\s+(\d+)/i);
+    const targetMatch = String(button.getAttribute('title') || '').match(/(?:hoja|página(?:\s+fuente)?(?:\s+provisional)?)\s+(\d+)/i);
     const target = targetMatch ? Number(targetMatch[1]) : null;
     const sources = images.map(sourceFromImage).filter(Number.isFinite);
     const current = sources.length ? Math.max(...sources) : null;
