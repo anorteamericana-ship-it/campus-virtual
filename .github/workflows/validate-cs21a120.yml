@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_content_access_cs21a125.jsx'
       - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
+      - 'styles/student_content_access_cs21a125.css'
       - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
       - '.github/workflows/validate-cs21a120.yml'
@@ -14,8 +16,10 @@ on:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_content_access_cs21a125.jsx'
       - 'src/program_info_shared_cs21a119.jsx'
       - 'styles/student_menu_academic_cs21a120.css'
+      - 'styles/student_content_access_cs21a125.css'
       - 'styles/mobile_responsive_global_cs21a121.css'
       - 'campus.html'
       - '00_DOCUMENTACION/QA_CS21A121_TRIGGER.md'
@@ -38,6 +42,7 @@ jobs:
           const parser = require('@babel/parser');
           const files = [
             'src/student_menu_academic_cs21a120.jsx',
+            'src/student_content_access_cs21a125.jsx',
             'src/program_info_shared_cs21a119.jsx',
           ];
           for (const path of files) {
@@ -53,3 +58,4 @@ jobs:
         run: |
           grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
           grep -q 'program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121' campus.html
+          test -f styles/student_content_access_cs21a125.css
