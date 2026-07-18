@@ -1,4 +1,4 @@
-// F98.4-Z6-CS21A126 · Conserva el menú final y carga recursos académicos del estudiante.
+// F98.4-Z6-CS21A127 · Conserva el menú final y carga recursos académicos del estudiante.
 (function(){
   'use strict';
   let attempts=0;
@@ -8,7 +8,7 @@
     const link=document.createElement('link');
     link.id='an-student-books-audios-cs21a126-css';
     link.rel='stylesheet';
-    link.href='styles/student_books_audios_cs21a126.css?v=F98.4Z6CS21A126';
+    link.href='styles/student_books_audios_cs21a126.css?v=F98.4Z6CS21A127';
     document.head.appendChild(link);
   }
 
@@ -19,11 +19,11 @@
       return;
     }
     loadCss();
-    loader.loadOne('src/student_books_proxy_cs21a126.jsx?v=F98.4Z6CS21A126')
-      .then(()=>loader.loadOne('src/student_content_access_cs21a125.jsx?v=F98.4Z6CS21A126'))
-      .then(()=>loader.loadOne('src/student_tasks_menu_cs21a126.js?v=F98.4Z6CS21A126'))
-      .then(()=>loader.loadOne('src/student_calendar_cleanup_cs21a126.js?v=F98.4Z6CS21A126'))
-      .catch(error=>console.error('CS21A126',error));
+    loader.loadOne('src/student_books_proxy_cs21a126.jsx?v=F98.4Z6CS21A127')
+      .then(()=>loader.loadOne('src/student_content_access_cs21a125.jsx?v=F98.4Z6CS21A127'))
+      .then(()=>loader.loadOne('src/student_tasks_menu_cs21a126.js?v=F98.4Z6CS21A127'))
+      .then(()=>loader.loadOne('src/student_calendar_cleanup_cs21a126.js?v=F98.4Z6CS21A127'))
+      .catch(error=>console.error('CS21A127',error));
   }
 
   function markFinalSidebar(){
@@ -35,7 +35,7 @@
       Current.__cs21a60SuperResources=true;
       Current.__cs21a69ActiveState=true;
       Current.__cs21a120StudentMenu=true;
-      window.CS21A120_STUDENT_MENU_GUARD='F98.4-Z6-CS21A126';
+      window.CS21A120_STUDENT_MENU_GUARD='F98.4-Z6-CS21A127';
       loadStudentModules();
       return;
     }
