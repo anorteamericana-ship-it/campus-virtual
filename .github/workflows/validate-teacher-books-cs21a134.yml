@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'campus.html'
+      - 'src/book_unit_propagation_cs21a64.js'
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
@@ -12,7 +12,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'campus.html'
+      - 'src/book_unit_propagation_cs21a64.js'
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
@@ -28,11 +28,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Check JavaScript and unit maps
         run: |
+          node --check src/book_unit_propagation_cs21a64.js
           node --check src/teacher_books_unit_guard_cs21a134.js
           node scripts/test_teacher_books_unit_guard_cs21a134.mjs
       - name: Verify publication and role isolation
         run: |
-          grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A134' campus.html
+          grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A134' src/book_unit_propagation_cs21a64.js
+          grep -q 'section\[data-screen-label\*="Libros y Audios"\]' src/book_unit_propagation_cs21a64.js
           grep -q "role === 'TEACHER' || role === 'DOCENTE'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|TB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|WB'" src/teacher_books_unit_guard_cs21a134.js
