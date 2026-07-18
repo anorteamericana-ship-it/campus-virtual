@@ -13,21 +13,39 @@
   let pending = null;
   let lastSuccess = null;
 
+  function loadScriptOnce(src, marker, errorMessage) {
+    if (window[marker]) return;
+    if (document.querySelector(`script[src="${src}"]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.dataset.cs21a135 = marker;
+    script.onerror = () => console.error(errorMessage);
+    document.head.appendChild(script);
+  }
+
   function loadTeacherUnitGuard() {
     if (window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135) {
       window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135.reinstall?.();
       return;
     }
-    const src = 'src/teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A135';
-    if (document.querySelector(`script[src="${src}"]`)) return;
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = false;
-    script.dataset.cs21a135 = 'teacher-book-navigation';
-    script.onerror = () => console.error('CS21A135: no se pudo cargar la autoridad del visor docente.');
-    document.head.appendChild(script);
+    loadScriptOnce(
+      'src/teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A135',
+      '__AN_TEACHER_BOOK_NAVIGATION_CS21A135',
+      'CS21A135: no se pudo cargar la autoridad del visor docente.'
+    );
   }
+
+  function loadVisualState() {
+    loadScriptOnce(
+      'src/teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A135',
+      '__AN_TEACHER_BOOK_VISUAL_STATE_CS21A135',
+      'CS21A135: no se pudo cargar el sincronizador visual de unidades.'
+    );
+  }
+
   loadTeacherUnitGuard();
+  loadVisualState();
 
   function textOf(node) {
     return String(node?.textContent || '').replace(/\s+/g, ' ').trim();
