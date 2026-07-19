@@ -1,0 +1,109 @@
+name: Real QA Staging CS21A138
+
+on:
+  workflow_dispatch:
+    inputs:
+      authenticated:
+        description: 'Ejecutar sesiones reales contra Apps Script staging'
+        required: true
+        type: boolean
+        default: false
+      execute_writes:
+        description: 'Ejecutar pago, nota y asistencia SOLO en staging'
+        required: true
+        type: boolean
+        default: false
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/data.jsx'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'scripts/real_qa_*_cs21a138.mjs'
+      - 'qa/**'
+      - '.github/workflows/real-qa-staging-cs21a138.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-qa-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate script
+        run: node --check scripts/real_qa_readonly_cs21a138.mjs
+      - name: Real Apps Script and Drive reads
+        run: node scripts/real_qa_readonly_cs21a138.mjs
+      - name: Publish summary
+        if: always()
+        run: cat qa-output-real/real-readonly-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload real read evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-qa-readonly-${{ github.run_number }}
+          path: qa-output-real/
+          if-no-files-found: error
+          retention-days: 14
+
+  authenticated-staging:
+    if: github.event_name == 'workflow_dispatch' && inputs.authenticated == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
+      QA_STUDENT_USER: ${{ secrets.QA_STUDENT_USER }}
+      QA_STUDENT_PASS: ${{ secrets.QA_STUDENT_PASS }}
+      QA_TEACHER_USER: ${{ secrets.QA_TEACHER_USER }}
+      QA_TEACHER_PASS: ${{ secrets.QA_TEACHER_PASS }}
+      QA_SUPERADMIN_USER: ${{ secrets.QA_SUPERADMIN_USER }}
+      QA_SUPERADMIN_PASS: ${{ secrets.QA_SUPERADMIN_PASS }}
+      QA_STUDENT_CODE: ${{ secrets.QA_STUDENT_CODE }}
+      QA_GROUP_CODE: ${{ secrets.QA_GROUP_CODE }}
+      QA_BANK_DOCUMENT: ${{ secrets.QA_BANK_DOCUMENT }}
+      QA_EXECUTE_WRITES: ${{ inputs.execute_writes && 'CS21A138_STAGING_ONLY' || 'NO' }}
+      QA_CAMPUS_BASE_URL: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse incomplete secret set
+        shell: bash
+        run: |
+          required=(QA_STAGING_APPS_SCRIPT_URL QA_STUDENT_USER QA_STUDENT_PASS QA_TEACHER_USER QA_TEACHER_PASS QA_SUPERADMIN_USER QA_SUPERADMIN_PASS QA_STUDENT_CODE QA_GROUP_CODE QA_BANK_DOCUMENT)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
+          done
+      - name: Validate authenticated script
+        run: node --check scripts/real_qa_authenticated_cs21a138.mjs
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated Campus frontend
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > qa-real-server.log 2>&1 &
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat qa-real-server.log
+          exit 1
+      - name: Authenticated staging review
+        run: node scripts/real_qa_authenticated_cs21a138.mjs
+      - name: Publish authenticated summary
+        if: always()
+        run: cat qa-output-real-auth/authenticated-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload authenticated evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-qa-authenticated-${{ github.run_number }}
+          path: |
+            qa-output-real-auth/
+            qa-real-server.log
+          if-no-files-found: error
+          retention-days: 14
