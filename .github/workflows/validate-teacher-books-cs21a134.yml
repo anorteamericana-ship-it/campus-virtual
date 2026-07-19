@@ -1,4 +1,4 @@
-name: Validate teacher books CS21A135
+name: Validate teacher books CS21A136
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - 'src/book_page_turn_cs21a62.js'
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'src/teacher_books_visual_state_cs21a135.js'
+      - 'src/teacher_books_toolbar_cs21a136.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
       - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A135.md'
@@ -18,6 +19,7 @@ on:
       - 'src/book_page_turn_cs21a62.js'
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'src/teacher_books_visual_state_cs21a135.js'
+      - 'src/teacher_books_toolbar_cs21a136.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
       - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A135.md'
@@ -36,16 +38,15 @@ jobs:
           node --check src/book_page_turn_cs21a62.js
           node --check src/teacher_books_unit_guard_cs21a134.js
           node --check src/teacher_books_visual_state_cs21a135.js
+          node --check src/teacher_books_toolbar_cs21a136.js
           node scripts/test_teacher_books_unit_guard_cs21a134.mjs
-      - name: Verify viewer authority and visual contract
+      - name: Verify viewer authority and toolbar contract
         run: |
           grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A135' src/book_unit_propagation_cs21a64.js
-          grep -q 'teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A135' src/book_unit_propagation_cs21a64.js
-          grep -q 'data-book-viewer="institutional"' src/book_unit_propagation_cs21a64.js
-          grep -q 'data-book-viewer="institutional"' src/book_page_turn_cs21a62.js
+          grep -q 'teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A136' src/book_unit_propagation_cs21a64.js
+          grep -q 'teacher_books_toolbar_cs21a136.js?v=F98.4Z6CS21A136' src/teacher_books_visual_state_cs21a135.js
           grep -q 'Wrapped.__cs21a58books = true' src/teacher_books_unit_guard_cs21a134.js
           grep -q 'Wrapped.__cs21a135BookAuthority = true' src/teacher_books_unit_guard_cs21a134.js
-          grep -q 'data-cs21a135-legacy-unit-strip' src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|SB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|TB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|WB'" src/teacher_books_unit_guard_cs21a134.js
@@ -58,7 +59,11 @@ jobs:
           grep -q "'I2|SB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'I2|TB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'I2|WB'" src/teacher_books_unit_guard_cs21a134.js
-          grep -q 'an-book-unit-button-cs21a135' src/teacher_books_unit_guard_cs21a134.js
-          grep -q 'Saltos oficiales del libro' src/teacher_books_unit_guard_cs21a134.js
-          grep -q 'inlineActive' src/teacher_books_visual_state_cs21a135.js
+          grep -q 'an-book-level-button-cs21a136' src/teacher_books_toolbar_cs21a136.js
+          grep -q 'an-book-type-button-cs21a136' src/teacher_books_toolbar_cs21a136.js
+          grep -q 'an-book-open-pdf-cs21a136' src/teacher_books_toolbar_cs21a136.js
+          grep -q 'an-book-download-pdf-cs21a136' src/teacher_books_toolbar_cs21a136.js
+          grep -q 'an-book-unit-header-cs21a135 { display:none' src/teacher_books_toolbar_cs21a136.js
+          grep -q 'scrollbar-width:none' src/teacher_books_toolbar_cs21a136.js
+          grep -q 'content:none' src/teacher_books_toolbar_cs21a136.js
           ! grep -q 'an-book-turn-sheet-cs21A62' src/book_page_turn_cs21a62.js
