@@ -20,7 +20,10 @@ function readJson(file) {
   }
 }
 
-const sources = [readJson('static-report.json'), readJson('browser-report.json')].filter(Boolean);
+const expectedReports = ['static-report.json', 'browser-report.json'];
+const reports = expectedReports.map(file => ({ file, report: readJson(file) }));
+const sources = reports.filter(item => item.report).map(item => item.report);
+const missingReports = reports.filter(item => !item.report).map(item => item.file);
 const unique = new Map();
 for (const source of sources) {
   for (const item of source.findings || []) {
@@ -33,9 +36,9 @@ const counts = { P0: 0, P1: 0, P2: 0, P3: 0 };
 for (const finding of findings) counts[finding.severity] = (counts[finding.severity] || 0) + 1;
 
 let verdict = 'APTO';
-if (counts.P0 || counts.P1) verdict = 'BLOQUEADO';
+if (missingReports.length) verdict = 'INDETERMINADO';
+else if (counts.P0 || counts.P1) verdict = 'BLOQUEADO';
 else if (counts.P2) verdict = 'APTO CON RESERVAS';
-if (!sources.length) verdict = 'INDETERMINADO';
 
 const manual = [
   'Prueba autenticada con una cuenta controlada de estudiante, docente y superadmin.',
@@ -49,6 +52,8 @@ const report = {
   verdict,
   counts,
   source_reports: sources.length,
+  expected_reports: expectedReports.length,
+  missing_reports: missingReports,
   findings,
   manual_tests_required: manual,
   policy: 'El equipo virtual informa; no corrige, no hace push y no fusiona.',
@@ -62,12 +67,14 @@ const lines = [
   `- Fecha: ${report.generated_at}`,
   `- Veredicto: **${verdict}**`,
   `- Hallazgos: P0 ${counts.P0} · P1 ${counts.P1} · P2 ${counts.P2} · P3 ${counts.P3}`,
-  `- Informes recibidos: ${sources.length}/2`,
+  `- Informes recibidos: ${sources.length}/${expectedReports.length}`,
   `- Política: ${report.policy}`,
   '',
-  '## Hallazgos consolidados',
-  '',
 ];
+if (missingReports.length) {
+  lines.push('## Cobertura incompleta', '', `Faltan informes obligatorios: ${missingReports.join(', ')}.`, '');
+}
+lines.push('## Hallazgos consolidados', '');
 if (!findings.length) lines.push('No se detectaron hallazgos consolidados.', '');
 for (const item of findings) {
   const block = [
@@ -82,4 +89,4 @@ for (const item of findings) {
 }
 lines.push('## Pruebas manuales todavía requeridas', '', ...manual.map(value => `- ${value}`), '');
 fs.writeFileSync(path.join(outDir, 'supervisor-report.md'), lines.join('\n'));
-console.log(`SUPERVISOR: ${verdict}; P0=${counts.P0} P1=${counts.P1} P2=${counts.P2} P3=${counts.P3}`);
+console.log(`SUPERVISOR: ${verdict}; informes=${sources.length}/${expectedReports.length}; P0=${counts.P0} P1=${counts.P1} P2=${counts.P2} P3=${counts.P3}`);
