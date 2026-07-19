@@ -1,0 +1,120 @@
+name: Virtual Campus Review CS21A137
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '*.html'
+      - 'src/**'
+      - 'styles/**'
+      - 'assets/**'
+      - 'vendor/**'
+      - 'modulos/**'
+      - 'scripts/virtual_review_*.mjs'
+      - 'skills/**'
+      - 'AGENTS.md'
+      - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
+      - '.github/workflows/virtual-campus-review-cs21a137.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: virtual-campus-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  virtual-review-team:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Static engineer and logic auditor
+        id: static_review
+        continue-on-error: true
+        run: node scripts/virtual_review_static.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start isolated campus server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
+          echo $! > qa-server.pid
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat qa-server.log
+          exit 1
+
+      - name: Browser engineer
+        id: browser_review
+        continue-on-error: true
+        env:
+          QA_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/virtual_review_browser.mjs
+
+      - name: Release supervisor
+        if: always()
+        run: node scripts/virtual_review_supervisor.mjs
+
+      - name: Publish workflow summary
+        if: always()
+        run: cat qa-output/supervisor-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtual-campus-review-${{ github.run_number }}
+          path: |
+            qa-output/
+            qa-server.log
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Update rolling QA issue
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const title = 'QA virtual · vigilancia continua del Campus';
+            let body = fs.readFileSync('qa-output/supervisor-report.md', 'utf8');
+            body += `\n\n---\nEjecución: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const current = issues.find(issue => !issue.pull_request && issue.title === title);
+            if (current) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: current.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Enforce supervisor verdict
+        if: always()
+        run: |
+          node -e "const r=require('./qa-output/supervisor-report.json'); if(r.verdict==='BLOQUEADO'||r.verdict==='INDETERMINADO') process.exit(1)"
