@@ -9,7 +9,7 @@ fs.mkdirSync(shotsDir, { recursive: true });
 
 const scenarios = [
   { role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 } },
-  { role: 'student', route: 'libros_audios_estudiante', viewport: { width: 1440, height: 900 } },
+  { role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 } },
   { role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 } },
@@ -19,10 +19,10 @@ const scenarios = [
 function syntheticSession(role) {
   const base = {
     rol: role,
-    role,
     nombre: `QA ${role}`,
     cedula: `QA-${role}`,
     token: 'qa-readonly-token',
+    expira: '2099-12-31T23:59:59.000Z',
   };
   if (role === 'student') return {
     ...base,
@@ -30,11 +30,46 @@ function syntheticSession(role) {
     grupo: 'SJ01-B1-LM69-QA',
     cod_grupo: 'SJ01-B1-LM69-QA',
     nivel_activo: 'B1',
+    estatus_activo: 'CA',
     niveles_estatus: { B1: 'CA', B2: '', I1: '', I2: '' },
     tipoUsuario: 'estudiante',
   };
-  if (role === 'teacher') return { ...base, cod_docente: 'QA-TEACHER', tipoUsuario: 'docente' };
+  if (role === 'teacher') return {
+    ...base,
+    cod_docente: 'QA-TEACHER',
+    grupo: 'SJ01-B1-LM69-QA',
+    grupoActivo: 'SJ01-B1-LM69-QA',
+    grupos: ['SJ01-B1-LM69-QA'],
+    tipoUsuario: 'docente',
+  };
   return { ...base, tipoUsuario: 'superadmin', permisos: ['*'] };
+}
+
+function mockPayload(fn, session) {
+  const common = {
+    ok: true,
+    qa: true,
+    rows: [],
+    items: [],
+    data: [],
+    grupos: [],
+    estudiantes: [],
+    sesiones: [],
+    pendientes: [],
+  };
+  if (fn === 'validarSesion') return { ok: true, rol: session.rol, qa: true };
+  if (fn === 'getDocenteSesionActivaF87') return { ok: true, sesion: null, qa: true };
+  if (fn === 'getEstudiante') return {
+    ok: true,
+    estudiante: { ...session, NOMBRE: session.nombre, CODIGO: session.codigo },
+    niveles: { B1: { estatus: 'CA' }, B2: {}, I1: {}, I2: {} },
+    grupo: { COD_GRUPO: session.grupo || '', NIVEL: 'B1' },
+    pendientes: {},
+    qa: true,
+  };
+  if (/grupos/i.test(fn)) return { ...common, grupos: [], qa: true };
+  if (/biblioteca|book|audio|material/i.test(fn)) return { ...common, nivel: 'B1', book_type: 'SB', unit_starts: [], qa: true };
+  return common;
 }
 
 const findings = [];
@@ -52,15 +87,14 @@ for (const scenario of scenarios) {
   const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
   const context = await browser.newContext({ viewport: scenario.viewport, ignoreHTTPSErrors: true });
   const session = syntheticSession(scenario.role);
-  await context.addInitScript(({ session }) => {
-    const raw = JSON.stringify(session);
-    for (const key of ['an_usuario', 'an_session', 'campus_session', 'session']) {
-      sessionStorage.setItem(key, raw);
-      localStorage.setItem(key, raw);
-    }
-    sessionStorage.setItem('an_token', session.token);
-    localStorage.setItem('an_token', session.token);
-  }, { session });
+  await context.addInitScript(({ session, route }) => {
+    sessionStorage.setItem('an_usuario', JSON.stringify(session));
+    sessionStorage.removeItem('an_just_logged_in');
+    const uiRole = session.rol === 'superadmin' || session.rol === 'admin' ? 'admin' : session.rol;
+    localStorage.setItem('an_role', uiRole);
+    localStorage.setItem(`an_active_${uiRole}`, route);
+    localStorage.setItem('an_active', route);
+  }, { session, route: scenario.role === 'student' ? 'dashboard' : scenario.route });
 
   const page = await context.newPage();
   const consoleErrors = [];
@@ -72,19 +106,27 @@ for (const scenario of scenarios) {
   });
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('requestfailed', request => {
-    if (request.url().startsWith(baseURL)) localFailures.push(`${request.url()} · ${request.failure()?.errorText || 'falló'}`);
+    const failure = request.failure()?.errorText || '';
+    if (request.url().startsWith(baseURL) && !/ERR_ABORTED/i.test(failure)) {
+      localFailures.push(`${request.url()} · ${failure || 'falló'}`);
+    }
   });
   page.on('response', response => {
     if (response.url().startsWith(baseURL) && response.status() >= 400) localFailures.push(`${response.status()} · ${response.url()}`);
   });
 
   await page.route('**/*', async route => {
-    const url = route.request().url();
+    const request = route.request();
+    const url = request.url();
     if (/script\.google\.com\/macros|script\.googleusercontent\.com/i.test(url)) {
+      let payload = {};
+      try { payload = JSON.parse(request.postData() || '{}'); } catch (_) {}
+      let fn = String(payload.fn || '');
+      try { fn = fn || new URL(url).searchParams.get('fn') || ''; } catch (_) {}
       await route.fulfill({
         status: 200,
         contentType: 'application/json; charset=utf-8',
-        body: JSON.stringify({ ok: false, error: 'qa_readonly_mock', qa: true }),
+        body: JSON.stringify(mockPayload(fn, session)),
       });
       return;
     }
@@ -92,22 +134,40 @@ for (const scenario of scenarios) {
   });
 
   try {
-    await page.goto(`${baseURL}/campus.html#${scenario.route}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(5000);
+    await page.goto(`${baseURL}/campus.html`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(4500);
+
+    if (scenario.clickLabel) {
+      const locator = page.getByText(scenario.clickLabel, { exact: true }).last();
+      if (await locator.count()) {
+        await locator.click({ timeout: 5000 });
+        await page.waitForTimeout(3000);
+      } else {
+        add('P2', key, 'No se encontró el control de navegación esperado', scenario.clickLabel);
+      }
+    }
+
     const state = await page.evaluate(() => ({
       bodyText: document.body?.innerText?.trim() || '',
       rootHtml: document.getElementById('root')?.innerHTML || '',
       labels: Array.from(document.querySelectorAll('[data-screen-label]')).map(node => node.getAttribute('data-screen-label')).filter(Boolean).slice(0, 8),
       overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
       hash: location.hash,
+      path: location.pathname,
+      appMounted: Boolean(document.querySelector('.app')),
     }));
 
-    if (state.bodyText.length < 20 || state.rootHtml.length < 20) add('P1', key, 'Pantalla vacía o aplicación no montada', `body=${state.bodyText.length}, root=${state.rootHtml.length}, hash=${state.hash}`);
+    if (/login\.html$/i.test(state.path)) add('P1', key, 'La sesión sintética fue rechazada', state.path);
+    if (state.bodyText.length < 20 || state.rootHtml.length < 20) add('P1', key, 'Pantalla vacía o aplicación no montada', `body=${state.bodyText.length}, root=${state.rootHtml.length}`);
+    if (!state.appMounted) add('P1', key, 'El árbol principal del Campus no fue montado', `path=${state.path}, hash=${state.hash}`);
     if (state.overflow > 24) add('P2', key, 'Desbordamiento horizontal', `${state.overflow}px fuera del viewport.`);
-    if (!state.labels.length) add('P3', key, 'Pantalla sin etiqueta de diagnóstico', `No se encontró data-screen-label en ${state.hash}.`);
+    if (!state.labels.length) add('P3', key, 'Pantalla sin etiqueta de diagnóstico', `path=${state.path}, hash=${state.hash}`);
     for (const error of pageErrors) add('P1', key, 'Excepción no controlada en navegador', error);
     for (const failure of [...new Set(localFailures)]) add('P1', key, 'Recurso local no disponible', failure);
-    for (const error of [...new Set(consoleErrors)].slice(0, 10)) add('P2', key, 'Error de consola', error);
+    for (const error of [...new Set(consoleErrors)].slice(0, 10)) {
+      const severity = /^Warning:/i.test(error) ? 'P3' : 'P2';
+      add(severity, key, severity === 'P3' ? 'Advertencia de React' : 'Error de consola', error);
+    }
 
     await page.screenshot({ path: path.join(shotsDir, `${key}.png`), fullPage: true });
   } catch (error) {
@@ -128,9 +188,9 @@ const report = {
   verdict,
   counts,
   scenarios,
-  safety: 'Apps Script fue sustituido por una respuesta sintética de solo lectura.',
+  safety: 'Todas las llamadas a Apps Script fueron respondidas localmente; no hubo escrituras reales.',
   limitations: [
-    'Las sesiones son sintéticas y pueden no cubrir todas las variantes del login real.',
+    'Las sesiones son sintéticas y no sustituyen una cuenta controlada real.',
     'No verifica permisos reales de Drive ni datos productivos.',
     'No ejecuta operaciones de escritura.',
   ],
