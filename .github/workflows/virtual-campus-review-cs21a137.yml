@@ -7,13 +7,16 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'campus.html'
+      - '*.html'
       - 'src/**'
       - 'styles/**'
+      - 'assets/**'
+      - 'vendor/**'
       - 'modulos/**'
       - 'scripts/virtual_review_*.mjs'
       - 'skills/**'
       - 'AGENTS.md'
+      - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
       - '.github/workflows/virtual-campus-review-cs21a137.yml'
 
 permissions:
