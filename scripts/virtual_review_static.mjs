@@ -26,12 +26,12 @@ function walk(dir) {
   return output;
 }
 
-function extractAssets(html) {
+function extractAssets(html, source) {
   const refs = [];
   for (const match of html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/gi)) {
     const raw = match[1];
     if (/^(?:https?:|data:|\/\/)/i.test(raw)) continue;
-    refs.push({ raw, file: cleanRef(raw), source: 'campus.html' });
+    refs.push({ raw, file: cleanRef(raw), source });
   }
   return refs;
 }
@@ -70,13 +70,16 @@ function endpointNames(source) {
   return found;
 }
 
-const campus = read('campus.html');
+const rootHtmlFiles = fs.readdirSync(root, { withFileTypes: true })
+  .filter(entry => entry.isFile() && /\.html$/i.test(entry.name))
+  .map(entry => entry.name);
+const moduleHtmlFiles = walk('modulos').filter(file => /\.html$/i.test(file));
+const htmlFiles = [...new Set([...rootHtmlFiles, ...moduleHtmlFiles])];
 const app = read('src/app.jsx');
 const sourceFiles = walk('src').filter(file => /\.(?:js|jsx)$/i.test(file));
 const styleFiles = walk('styles').filter(file => /\.css$/i.test(file));
 const allSources = sourceFiles.map(file => ({ file, text: read(file) }));
-const staticAssets = extractAssets(campus);
-const cssAssets = extractCssAssets(styleFiles);
+const staticAssets = htmlFiles.flatMap(file => extractAssets(read(file), file));
 
 let lazyAssets = [];
 try {
@@ -90,6 +93,12 @@ try {
   add('P1', 'entrega', 'No se pudo auditar el cargador diferido', error.message);
 }
 
+const reachableStyleFiles = [...new Set(
+  [...staticAssets, ...lazyAssets]
+    .map(ref => ref.file)
+    .filter(file => /\.css$/i.test(file) && exists(file))
+)];
+const cssAssets = extractCssAssets(reachableStyleFiles);
 const allAssetRefs = [...staticAssets, ...lazyAssets, ...cssAssets];
 for (const ref of allAssetRefs) {
   if (!exists(ref.file)) add('P1', 'entrega', 'Recurso local inexistente', `${ref.file} · referencia ${ref.raw} en ${ref.source}.`);
@@ -155,17 +164,19 @@ const report = {
   verdict,
   counts,
   coverage: {
+    html_surfaces: htmlFiles.length,
     static_assets: staticAssets.length,
     lazy_assets: lazyAssets.length,
+    reachable_styles: reachableStyleFiles.length,
     css_assets: cssAssets.length,
     source_files: sourceFiles.length,
-    style_files: styleFiles.length,
     endpoints_detected: endpointFiles.size,
   },
   limitations: [
     'No prueba permisos reales de Drive.',
     'No confirma cuál versión de Apps Script está desplegada.',
     'No usa estudiantes, docentes, pagos ni notas reales.',
+    'Los archivos no alcanzables desde HTML o F96_LAZY no bloquean la entrega.',
   ],
   findings,
 };
@@ -177,7 +188,7 @@ const lines = [
   `- Commit: ${report.commit}`,
   `- Veredicto: **${verdict}**`,
   `- Hallazgos: P0 ${counts.P0} · P1 ${counts.P1} · P2 ${counts.P2} · P3 ${counts.P3}`,
-  `- Cobertura: ${staticAssets.length} recursos publicados, ${lazyAssets.length} diferidos, ${cssAssets.length} recursos CSS, ${sourceFiles.length} archivos JS/JSX y ${endpointFiles.size} endpoints.`,
+  `- Cobertura: ${htmlFiles.length} superficies HTML, ${staticAssets.length} recursos publicados, ${lazyAssets.length} diferidos, ${reachableStyleFiles.length} CSS alcanzables y ${endpointFiles.size} endpoints.`,
   '',
   '## Hallazgos',
   '',
