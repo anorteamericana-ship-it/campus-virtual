@@ -8,7 +8,16 @@ function readJson(file) {
   const full = path.join(outDir, file);
   if (!fs.existsSync(full)) return null;
   try { return JSON.parse(fs.readFileSync(full, 'utf8')); }
-  catch (error) { return { findings: [{ severity: 'P1', title: `Informe ilegible: ${file}`, evidence: error.message, type: 'supervisión' }] }; }
+  catch (error) {
+    return {
+      findings: [{
+        severity: 'P1',
+        title: `Informe ilegible: ${file}`,
+        evidence: error.message,
+        type: 'supervisión',
+      }],
+    };
+  }
 }
 
 const sources = [readJson('static-report.json'), readJson('browser-report.json')].filter(Boolean);
@@ -61,7 +70,15 @@ const lines = [
 ];
 if (!findings.length) lines.push('No se detectaron hallazgos consolidados.', '');
 for (const item of findings) {
-  lines.push(`### ${item.severity} · ${item.title}`, '', `- Tipo: ${item.type || 'no indicado'}`, item.scenario ? `- Escenario: ${item.scenario}` : '', `- Evidencia: ${item.evidence}`, '').filter(Boolean);
+  const block = [
+    `### ${item.severity} · ${item.title}`,
+    '',
+    `- Tipo: ${item.type || 'no indicado'}`,
+    item.scenario ? `- Escenario: ${item.scenario}` : '',
+    `- Evidencia: ${item.evidence}`,
+    '',
+  ].filter(Boolean);
+  lines.push(...block);
 }
 lines.push('## Pruebas manuales todavía requeridas', '', ...manual.map(value => `- ${value}`), '');
 fs.writeFileSync(path.join(outDir, 'supervisor-report.md'), lines.join('\n'));
