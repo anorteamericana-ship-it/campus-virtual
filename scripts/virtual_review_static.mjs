@@ -31,7 +31,30 @@ function extractAssets(html) {
   for (const match of html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/gi)) {
     const raw = match[1];
     if (/^(?:https?:|data:|\/\/)/i.test(raw)) continue;
-    refs.push({ raw, file: cleanRef(raw) });
+    refs.push({ raw, file: cleanRef(raw), source: 'campus.html' });
+  }
+  return refs;
+}
+
+function extractLazyMap(source) {
+  const match = source.match(/const\s+F96_LAZY\s*=\s*(\{[\s\S]*?\n\};)/);
+  if (!match) throw new Error('No se pudo extraer F96_LAZY de src/app.jsx.');
+  return Function(`"use strict";return (${match[1].replace(/;\s*$/, '')});`)();
+}
+
+function extractCssAssets(styleFiles) {
+  const refs = [];
+  for (const file of styleFiles) {
+    const directory = path.posix.dirname(file);
+    for (const match of read(file).matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi)) {
+      const raw = String(match[2] || '').trim();
+      if (!raw || /^(?:https?:|data:|blob:|\/\/|#|var\()/i.test(raw)) continue;
+      const cleaned = cleanRef(raw);
+      const resolved = cleaned.startsWith('/')
+        ? cleaned.replace(/^\/+/, '')
+        : path.posix.normalize(path.posix.join(directory, cleaned));
+      refs.push({ raw, file: resolved, source: file });
+    }
   }
   return refs;
 }
@@ -48,17 +71,32 @@ function endpointNames(source) {
 }
 
 const campus = read('campus.html');
+const app = read('src/app.jsx');
 const sourceFiles = walk('src').filter(file => /\.(?:js|jsx)$/i.test(file));
 const styleFiles = walk('styles').filter(file => /\.css$/i.test(file));
 const allSources = sourceFiles.map(file => ({ file, text: read(file) }));
-const assets = extractAssets(campus);
+const staticAssets = extractAssets(campus);
+const cssAssets = extractCssAssets(styleFiles);
 
-for (const ref of assets) {
-  if (!exists(ref.file)) add('P1', 'entrega', 'Recurso publicado inexistente', `${ref.raw} en campus.html no existe.`);
+let lazyAssets = [];
+try {
+  const lazyMap = extractLazyMap(app);
+  lazyAssets = [...new Set(Object.values(lazyMap).flat())].map(raw => ({
+    raw,
+    file: cleanRef(raw),
+    source: 'src/app.jsx · F96_LAZY',
+  }));
+} catch (error) {
+  add('P1', 'entrega', 'No se pudo auditar el cargador diferido', error.message);
+}
+
+const allAssetRefs = [...staticAssets, ...lazyAssets, ...cssAssets];
+for (const ref of allAssetRefs) {
+  if (!exists(ref.file)) add('P1', 'entrega', 'Recurso local inexistente', `${ref.file} · referencia ${ref.raw} en ${ref.source}.`);
 }
 
 const refsByFile = new Map();
-for (const ref of assets) {
+for (const ref of [...staticAssets, ...lazyAssets]) {
   if (!refsByFile.has(ref.file)) refsByFile.set(ref.file, new Set());
   refsByFile.get(ref.file).add(ref.raw);
 }
@@ -98,7 +136,6 @@ if (fetchOverrides.length > 3) add('P2', 'arquitectura', 'Múltiples capas susti
 if (componentOverrides.length > 2) add('P2', 'arquitectura', 'Múltiples módulos sustituyen MaterialesView', `${componentOverrides.length} archivos: ${componentOverrides.join(', ')}`, 'alta');
 if (silentCatches.length) add('P3', 'diagnóstico', 'Errores potencialmente silenciados', silentCatches.join(', '), 'media');
 
-const app = read('src/app.jsx');
 const placeholders = [...app.matchAll(/Próximamente|aún no está conectado/gi)].length;
 if (placeholders) add('P3', 'alcance', 'Módulos administrativos todavía no conectados', `${placeholders} referencias explícitas en src/app.jsx.`);
 
@@ -118,7 +155,9 @@ const report = {
   verdict,
   counts,
   coverage: {
-    static_assets: assets.length,
+    static_assets: staticAssets.length,
+    lazy_assets: lazyAssets.length,
+    css_assets: cssAssets.length,
     source_files: sourceFiles.length,
     style_files: styleFiles.length,
     endpoints_detected: endpointFiles.size,
@@ -138,7 +177,7 @@ const lines = [
   `- Commit: ${report.commit}`,
   `- Veredicto: **${verdict}**`,
   `- Hallazgos: P0 ${counts.P0} · P1 ${counts.P1} · P2 ${counts.P2} · P3 ${counts.P3}`,
-  `- Cobertura: ${assets.length} recursos, ${sourceFiles.length} archivos JS/JSX, ${endpointFiles.size} endpoints detectados.`,
+  `- Cobertura: ${staticAssets.length} recursos publicados, ${lazyAssets.length} diferidos, ${cssAssets.length} recursos CSS, ${sourceFiles.length} archivos JS/JSX y ${endpointFiles.size} endpoints.`,
   '',
   '## Hallazgos',
   '',
