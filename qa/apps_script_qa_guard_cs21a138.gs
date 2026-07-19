@@ -36,6 +36,19 @@ function _qaRequireWriteCS21A138_(body, options) {
   return { ok:true, status:status };
 }
 
+function _qaValidateStudentListCS21A138_(lista) {
+  if (!Array.isArray(lista) || !lista.length) {
+    return { ok:false, error:'La lista de asistencia QA está vacía o es inválida.', qa_blocked:true };
+  }
+  for (var i = 0; i < lista.length; i++) {
+    var code = String(lista[i] && (lista[i].cod_estudiante || lista[i].codigo || lista[i].code) || '').trim().toUpperCase();
+    if (code.indexOf('QA-') !== 0) {
+      return { ok:false, error:'La asistencia contiene un estudiante que no tiene prefijo QA-.', qa_blocked:true };
+    }
+  }
+  return { ok:true };
+}
+
 // El marcador viaja en una lectura pública ya existente, evitando modificar routers.
 try {
   var _qaGetInfoGeneralBaseCS21A138_ = getInfoGeneral;
@@ -79,7 +92,9 @@ try {
   var _qaRegistrarAsistenciaBaseCS21A138_ = registrarAsistencia;
   registrarAsistencia = function(body) {
     var guard = _qaRequireWriteCS21A138_(body, { student:false, group:true });
-    return guard.ok ? _qaRegistrarAsistenciaBaseCS21A138_(body) : guard;
+    if (!guard.ok) return guard;
+    var listGuard = _qaValidateStudentListCS21A138_(body && body.lista);
+    return listGuard.ok ? _qaRegistrarAsistenciaBaseCS21A138_(body) : listGuard;
   };
 } catch (_) {}
 
