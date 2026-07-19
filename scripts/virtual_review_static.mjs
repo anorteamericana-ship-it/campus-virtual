@@ -26,12 +26,18 @@ function walk(dir) {
   return output;
 }
 
+function resolveLocalRef(raw, source) {
+  const cleaned = cleanRef(raw);
+  if (cleaned.startsWith('/')) return cleaned.replace(/^\/+/, '');
+  return path.posix.normalize(path.posix.join(path.posix.dirname(source), cleaned));
+}
+
 function extractAssets(html, source) {
   const refs = [];
   for (const match of html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/gi)) {
     const raw = match[1];
     if (/^(?:https?:|data:|\/\/)/i.test(raw)) continue;
-    refs.push({ raw, file: cleanRef(raw), source });
+    refs.push({ raw, file: resolveLocalRef(raw, source), source });
   }
   return refs;
 }
@@ -45,15 +51,10 @@ function extractLazyMap(source) {
 function extractCssAssets(styleFiles) {
   const refs = [];
   for (const file of styleFiles) {
-    const directory = path.posix.dirname(file);
     for (const match of read(file).matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi)) {
       const raw = String(match[2] || '').trim();
       if (!raw || /^(?:https?:|data:|blob:|\/\/|#|var\()/i.test(raw)) continue;
-      const cleaned = cleanRef(raw);
-      const resolved = cleaned.startsWith('/')
-        ? cleaned.replace(/^\/+/, '')
-        : path.posix.normalize(path.posix.join(directory, cleaned));
-      refs.push({ raw, file: resolved, source: file });
+      refs.push({ raw, file: resolveLocalRef(raw, file), source: file });
     }
   }
   return refs;
@@ -70,23 +71,22 @@ function endpointNames(source) {
   return found;
 }
 
-const rootHtmlFiles = fs.readdirSync(root, { withFileTypes: true })
-  .filter(entry => entry.isFile() && /\.html$/i.test(entry.name))
-  .map(entry => entry.name);
-const moduleHtmlFiles = walk('modulos').filter(file => /\.html$/i.test(file));
-const htmlFiles = [...new Set([...rootHtmlFiles, ...moduleHtmlFiles])];
+const deliveryHtmlFiles = [
+  'campus.html',
+  'login.html',
+  ...walk('modulos').filter(file => /\.html$/i.test(file)),
+].filter(exists);
 const app = read('src/app.jsx');
 const sourceFiles = walk('src').filter(file => /\.(?:js|jsx)$/i.test(file));
-const styleFiles = walk('styles').filter(file => /\.css$/i.test(file));
 const allSources = sourceFiles.map(file => ({ file, text: read(file) }));
-const staticAssets = htmlFiles.flatMap(file => extractAssets(read(file), file));
+const staticAssets = deliveryHtmlFiles.flatMap(file => extractAssets(read(file), file));
 
 let lazyAssets = [];
 try {
   const lazyMap = extractLazyMap(app);
   lazyAssets = [...new Set(Object.values(lazyMap).flat())].map(raw => ({
     raw,
-    file: cleanRef(raw),
+    file: resolveLocalRef(raw, 'campus.html'),
     source: 'src/app.jsx · F96_LAZY',
   }));
 } catch (error) {
@@ -104,13 +104,14 @@ for (const ref of allAssetRefs) {
   if (!exists(ref.file)) add('P1', 'entrega', 'Recurso local inexistente', `${ref.file} · referencia ${ref.raw} en ${ref.source}.`);
 }
 
-const refsByFile = new Map();
+const refsBySurfaceAndFile = new Map();
 for (const ref of [...staticAssets, ...lazyAssets]) {
-  if (!refsByFile.has(ref.file)) refsByFile.set(ref.file, new Set());
-  refsByFile.get(ref.file).add(ref.raw);
+  const key = `${ref.source}::${ref.file}`;
+  if (!refsBySurfaceAndFile.has(key)) refsBySurfaceAndFile.set(key, { source: ref.source, file: ref.file, refs: new Set() });
+  refsBySurfaceAndFile.get(key).refs.add(ref.raw);
 }
-for (const [file, refs] of refsByFile) {
-  if (refs.size > 1) add('P2', 'caché', 'Un mismo archivo se publica con versiones distintas', `${file}: ${[...refs].join(' | ')}`);
+for (const { source, file, refs } of refsBySurfaceAndFile.values()) {
+  if (refs.size > 1) add('P2', 'caché', 'Un archivo usa versiones distintas en la misma superficie', `${file} en ${source}: ${[...refs].join(' | ')}`);
 }
 
 const endpointFiles = new Map();
@@ -164,7 +165,7 @@ const report = {
   verdict,
   counts,
   coverage: {
-    html_surfaces: htmlFiles.length,
+    html_surfaces: deliveryHtmlFiles.length,
     static_assets: staticAssets.length,
     lazy_assets: lazyAssets.length,
     reachable_styles: reachableStyleFiles.length,
@@ -172,11 +173,12 @@ const report = {
     source_files: sourceFiles.length,
     endpoints_detected: endpointFiles.size,
   },
+  scope: 'Estudiante, Docente y Superadmin; login y módulos embebidos. Ventas queda fuera de esta entrega.',
   limitations: [
     'No prueba permisos reales de Drive.',
     'No confirma cuál versión de Apps Script está desplegada.',
     'No usa estudiantes, docentes, pagos ni notas reales.',
-    'Los archivos no alcanzables desde HTML o F96_LAZY no bloquean la entrega.',
+    'Los archivos no alcanzables desde las superficies de entrega o F96_LAZY no bloquean.',
   ],
   findings,
 };
@@ -187,8 +189,9 @@ const lines = [
   '',
   `- Commit: ${report.commit}`,
   `- Veredicto: **${verdict}**`,
+  `- Alcance: ${report.scope}`,
   `- Hallazgos: P0 ${counts.P0} · P1 ${counts.P1} · P2 ${counts.P2} · P3 ${counts.P3}`,
-  `- Cobertura: ${htmlFiles.length} superficies HTML, ${staticAssets.length} recursos publicados, ${lazyAssets.length} diferidos, ${reachableStyleFiles.length} CSS alcanzables y ${endpointFiles.size} endpoints.`,
+  `- Cobertura: ${deliveryHtmlFiles.length} superficies HTML, ${staticAssets.length} recursos publicados, ${lazyAssets.length} diferidos, ${reachableStyleFiles.length} CSS alcanzables y ${endpointFiles.size} endpoints.`,
   '',
   '## Hallazgos',
   '',
