@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A135 · Propagación UXX–U16 + autoridad del visor docente
+// F98.4-Z6-CS21A136 · Propagación UXX–U16 + autoridad y barra del visor docente
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A135';
+  const VERSION = 'F98.4-Z6-CS21A136';
   const VIEWER_SELECTOR = [
     'section[data-book-viewer="institutional"]',
     'section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]',
@@ -19,7 +19,7 @@
     const script = document.createElement('script');
     script.src = src;
     script.async = false;
-    script.dataset.cs21a135 = marker;
+    script.dataset.cs21a136 = marker;
     script.onerror = () => console.error(errorMessage);
     document.head.appendChild(script);
   }
@@ -38,9 +38,9 @@
 
   function loadVisualState() {
     loadScriptOnce(
-      'src/teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A135',
+      'src/teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A136',
       '__AN_TEACHER_BOOK_VISUAL_STATE_CS21A135',
-      'CS21A135: no se pudo cargar el sincronizador visual de unidades.'
+      'CS21A136: no se pudo cargar el sincronizador visual de libros.'
     );
   }
 
@@ -163,7 +163,7 @@
     node.textContent = lastSuccess.message;
   }
 
-  window.fetch = function cs21a135Fetch(input, init) {
+  window.fetch = function cs21a136Fetch(input, init) {
     if (pending && Date.now() - pending.createdAt > 8000) pending = null;
     if (!pending || !isTargetRequest(input) || !init || typeof init.body !== 'string') {
       return ORIGINAL_FETCH(input, init);

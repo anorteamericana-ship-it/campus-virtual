@@ -1,27 +1,26 @@
-// F98.4-Z6-CS21A135 · Sincroniza el resaltado visual U01–U16 con React.
+// F98.4-Z6-CS21A136 · Sincroniza U01–U16 y carga la barra superior refinada.
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A135';
+  const VERSION = 'F98.4-Z6-CS21A136';
   const BUTTON_SELECTOR = '.an-book-unit-button-cs21a135';
   const LEGACY_SELECTOR = '[data-cs21a135-legacy-unit-strip]';
   const LEGACY_SECTION_SELECTOR = 'section[data-screen-label*="CS21A58"]';
-  const LAYOUT_STYLE_ID = 'an-book-unit-layout-cs21a135';
   let queued = false;
 
-  function installLayoutFix(){
-    if (document.getElementById(LAYOUT_STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = LAYOUT_STYLE_ID;
-    style.textContent = `
-      .an-book-unit-grid-cs21a135 > div {
-        display:grid !important;
-        grid-template-rows:52px auto !important;
-        gap:5px !important;
-        align-content:start !important;
-      }
-    `;
-    document.head.appendChild(style);
+  function loadToolbar(){
+    if (window.__AN_TEACHER_BOOK_TOOLBAR_CS21A136) {
+      window.__AN_TEACHER_BOOK_TOOLBAR_CS21A136.refresh?.();
+      return;
+    }
+    const src = 'src/teacher_books_toolbar_cs21a136.js?v=F98.4Z6CS21A136';
+    if (document.querySelector(`script[src="${src}"]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.dataset.cs21a136 = 'teacher-book-toolbar';
+    script.onerror = () => console.error('CS21A136: no se pudo cargar el diseño superior de libros.');
+    document.head.appendChild(script);
   }
 
   function inlineActive(button){
@@ -61,6 +60,7 @@
     queued = false;
     document.querySelectorAll(LEGACY_SECTION_SELECTOR).forEach(removeLegacyDuplicate);
     document.querySelectorAll(BUTTON_SELECTOR).forEach(syncButton);
+    window.__AN_TEACHER_BOOK_TOOLBAR_CS21A136?.refresh?.();
   }
 
   function queue(){
@@ -70,7 +70,7 @@
     else setTimeout(syncAll, 16);
   }
 
-  installLayoutFix();
+  loadToolbar();
   queue();
   ['an:lazy-module-loaded','an:teacher-material-tab','an:admin-resource-tab'].forEach(name => {
     window.addEventListener(name, () => setTimeout(queue, 90));
@@ -81,7 +81,7 @@
     childList:true,
     subtree:true,
     attributes:true,
-    attributeFilter:['style','aria-pressed','disabled'],
+    attributeFilter:['style','class','aria-pressed','disabled'],
   });
 
   window.addEventListener('pagehide', () => observer.disconnect(), { once:true });
@@ -89,6 +89,6 @@
     version:VERSION,
     syncAll,
     removeLegacyDuplicate,
-    layoutStyleId:LAYOUT_STYLE_ID,
+    loadToolbar,
   };
 })();
