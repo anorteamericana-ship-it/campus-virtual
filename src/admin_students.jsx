@@ -153,6 +153,62 @@ function useRadiografia(codGrupo, refreshKey) {
   return { data, loading, error };
 }
 
+
+function parseFechaDesembolsoConape(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  let m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  m = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function claveConape(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function useUltimosDesembolsosConape() {
+  const [porEstudiante, setPorEstudiante] = React.useState({});
+  React.useEffect(() => {
+    let activo = true;
+    postAdminStudents('getSuperAdminMasterDashboard')
+      .then(resp => {
+        if (!activo || !resp?.ok) return;
+        const movimientos = resp?.conape?.movements?.rows || [];
+        const sincronizados = resp?.conape?.sync || [];
+        const mapa = {};
+        [...movimientos, ...sincronizados].forEach(row => {
+          const fechaRaw = row.eventDate || row.date || row.detectedAt || '';
+          const fecha = parseFechaDesembolsoConape(fechaRaw);
+          if (!fecha) return;
+          const item = {
+            fecha: fechaRaw,
+            fechaSort: fecha.getTime(),
+            numero: row.disbursement || row.numDisbursement || row.disbursementNumber || '',
+          };
+          [row.code, row.codigo, row.cedula].map(claveConape).filter(Boolean).forEach(key => {
+            const actual = mapa[key];
+            if (!actual || item.fechaSort > actual.fechaSort ||
+                (item.fechaSort === actual.fechaSort && Number(item.numero || 0) > Number(actual.numero || 0))) {
+              mapa[key] = item;
+            }
+          });
+        });
+        setPorEstudiante(mapa);
+      })
+      .catch(() => {});
+    return () => { activo = false; };
+  }, []);
+  return porEstudiante;
+}
+
+function formatoFechaDesembolsoConape(item) {
+  const fecha = parseFechaDesembolsoConape(item?.fecha);
+  return fecha ? fecha.toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '';
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // MODAL CAMBIAR ESTATUS
 // ─────────────────────────────────────────────────────────────────────────
@@ -1621,7 +1677,7 @@ function rowAccent(estatus) {
   return 'transparent';
 }
 
-function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, filtroOperativo }) {
+function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, filtroOperativo, ultimosDesembolsosConape }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
   const [modalCambio, setModalCambio] = React.useState(null);
@@ -1797,6 +1853,9 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const nombre    = e.display || e.nombre || '—';
               const edad      = edadEstudiante(e);
               const convenio  = e.convenio || '';
+              const ultimoDesembolsoConape = [codigo, e.codigo, e.rec_m, cedula, e.cedula, e.identificacion]
+                .map(claveConape).filter(Boolean).map(key => ultimosDesembolsosConape?.[key]).filter(Boolean)
+                .sort((a, b) => b.fechaSort - a.fechaSort || Number(b.numero || 0) - Number(a.numero || 0))[0] || null;
               const estatus   = e.estatus || e.status_actual || 'PE';
               const mora = typeof e.mora !== 'undefined' ? !!e.mora : (e.morosidad === 'SI' || e.morosidad === true);
               const matricula    = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
@@ -1868,13 +1927,20 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                   </td>
                   <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
                     {convenio ? (
-                      <span style={{
-                        background: convenio==='CONAPE' ? '#E3F2FD' : convenio.toString().toUpperCase().includes('BECA') ? '#E8F5E9' : 'var(--surface, #F5F5F5)',
-                        color: convenio==='CONAPE' ? '#1565C0' : convenio.toString().toUpperCase().includes('BECA') ? '#2E7D32' : 'var(--ink-3, #888)',
-                        padding:'3px 9px', borderRadius:999, fontSize:10, fontWeight:900, letterSpacing:'0.04em', whiteSpace:'nowrap',
-                      }}>
-                        {String(convenio).toUpperCase().includes('BECA') ? 'BECA' : convenio}
-                      </span>
+                      <div>
+                        <span style={{
+                          background: convenio==='CONAPE' ? '#E3F2FD' : convenio.toString().toUpperCase().includes('BECA') ? '#E8F5E9' : 'var(--surface, #F5F5F5)',
+                          color: convenio==='CONAPE' ? '#1565C0' : convenio.toString().toUpperCase().includes('BECA') ? '#2E7D32' : 'var(--ink-3, #888)',
+                          padding:'3px 9px', borderRadius:999, fontSize:10, fontWeight:900, letterSpacing:'0.04em', whiteSpace:'nowrap',
+                        }}>
+                          {String(convenio).toUpperCase().includes('BECA') ? 'BECA' : convenio}
+                        </span>
+                        {conapeEstudiante(e) && ultimoDesembolsoConape && (
+                          <div title="Fecha del desembolso más reciente detectado en Seguimiento inmediato" style={{ marginTop:5, color:'#244A7C', fontSize:9.5, fontWeight:800, lineHeight:1.25, whiteSpace:'nowrap' }}>
+                            Últ. desembolso: {formatoFechaDesembolsoConape(ultimoDesembolsoConape)}
+                          </div>
+                        )}
+                      </div>
                     ) : <span style={{ color:'var(--ink-3, #999)', fontSize:11 }}>Regular</span>}
                   </td>
                   <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
@@ -2393,6 +2459,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
   };
 
   const { data, loading: loadingRad, error: errorRad } = useRadiografia(grupoSel, refreshKey);
+  const ultimosDesembolsosConape = useUltimosDesembolsosConape();
   const grupoInfoDetalle = useGrupoInfo(grupoSel);
 
   // Estado de ordenamiento (compartido entre tablas de niveles)
@@ -2767,6 +2834,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                   generarCertificadosNivel={handleGenerarCertificadosNivel}
                   regenerarCertificadosNivel={handleRegenerarCertificadosNivel}
                   filtroOperativo={filtroOperativo}
+                  ultimosDesembolsosConape={ultimosDesembolsosConape}
                 />
               ))}
             </React.Fragment>
