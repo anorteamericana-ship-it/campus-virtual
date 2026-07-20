@@ -1,3 +1,4 @@
+// F98.4-Z6-CS21A140 · Proyección manual segura del siguiente nivel desde Estudiantes
 // F98.4-Z6-CD · Consulta individual: comentario externo, alerta de historial y certificado documental
 // Base preservada: F98.4-Z6-CB
 // APR histórico usa cédula + año + periodo del evento concreto; evita que
@@ -389,6 +390,7 @@ const NIVEL_CONFIG = {
 };
 
 const ORDEN_NIVELES = ['B1','B2','I1','I2'];
+const NIVEL_SIGUIENTE_PROYECCION = { B1:'B2', B2:'I1', I1:'I2' };
 
 function nivelToId(nivelTexto) {
   const map = {
@@ -1683,7 +1685,54 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
   const [modalCambio, setModalCambio] = React.useState(null);
   const [resyncEst, setResyncEst] = React.useState(null);
   const [pdfTrasladoBusy, setPdfTrasladoBusy] = React.useState('');
-  // { codigo, loading, ok?, error? }
+  const [proyeccionBusy, setProyeccionBusy] = React.useState('');
+
+  async function proyectarSiguienteNivel(estudiante, nivelActual) {
+    const nivelSiguiente = NIVEL_SIGUIENTE_PROYECCION[nivelActual];
+    const codigo = String(estudiante?.codigo || estudiante?.rec_m || '').trim();
+    const nombre = estudiante?.display || estudiante?.nombre || codigo;
+    const grupo = String(estudiante?.grupo || estudiante?.GRUPO || '').trim();
+    if (!codigo || !nivelSiguiente) return;
+    const confirmar = window.confirm(
+      `¿Proyectar a ${nombre} al nivel ${nivelSiguiente}?\n\n` +
+      `Se creará únicamente ${nivelSiguiente} con estado PE (Proyectado). ` +
+      'No se aprobará el nivel actual ni se aplicarán pagos.'
+    );
+    if (!confirmar) return;
+
+    setProyeccionBusy(codigo + '|' + nivelActual);
+    try {
+      const ficha = await postAdminStudents('getEstudiante', { codigo });
+      if (!ficha?.ok) throw new Error(ficha?.error || 'No se pudo verificar el expediente.');
+
+      const nivelExistente = ficha?.niveles?.[nivelSiguiente] || null;
+      const estadoExistente = String(nivelExistente?.estatus || nivelExistente?.status || '').trim().toUpperCase();
+      if (estadoExistente === 'PE') {
+        alert(`${nombre} ya está proyectado en ${nivelSiguiente}.`);
+        if (onRefresh) onRefresh();
+        return;
+      }
+      if (estadoExistente) {
+        throw new Error(`${nivelSiguiente} ya existe con estado ${estadoExistente}; no se modificó.`);
+      }
+
+      const resp = await postAdminStudents('actualizarEstatus', {
+        cod_estudiante: codigo,
+        nivel: nivelSiguiente,
+        estatus: 'PE',
+        nota: 0,
+        grupo,
+      });
+      if (!resp?.ok) throw new Error(resp?.error || 'No se pudo crear la proyección.');
+      alert(`${nombre} quedó proyectado en ${nivelSiguiente}.`);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert('No se creó la proyección: ' + (err?.message || err));
+    } finally {
+      setProyeccionBusy('');
+    }
+  }
+
   if (!estudiantes.length) return null;
   const subtitulo = calcularSubtitulo(estudiantes);
 
@@ -1857,6 +1906,8 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                 .map(claveConape).filter(Boolean).map(key => ultimosDesembolsosConape?.[key]).filter(Boolean)
                 .sort((a, b) => b.fechaSort - a.fechaSort || Number(b.numero || 0) - Number(a.numero || 0))[0] || null;
               const estatus   = e.estatus || e.status_actual || 'PE';
+              const nivelSiguiente = NIVEL_SIGUIENTE_PROYECCION[nivelKey] || '';
+              const proyeccionEnCurso = proyeccionBusy === codigo + '|' + nivelKey;
               const mora = typeof e.mora !== 'undefined' ? !!e.mora : (e.morosidad === 'SI' || e.morosidad === true);
               const matricula    = e.matricula_pagada ?? e.matricula ?? e.mat ?? false;
               const cuotasPagadas = typeof e.cuotas_pagadas === 'number' ? e.cuotas_pagadas : null;
@@ -1944,7 +1995,28 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                     ) : <span style={{ color:'var(--ink-3, #999)', fontSize:11 }}>Regular</span>}
                   </td>
                   <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
-                    <EstadoBadge estado={estatus} />
+                    <div style={{display:'inline-flex',alignItems:'center',gap:6}}>
+                      <EstadoBadge estado={estatus} />
+                      {String(estatus).toUpperCase() === 'CA' && nivelSiguiente && (
+                        <button
+                          type="button"
+                          onClick={() => proyectarSiguienteNivel(e, nivelKey)}
+                          disabled={proyeccionEnCurso}
+                          title={`Proyectar manualmente a ${nivelSiguiente}`}
+                          aria-label={`Proyectar a ${nombre} al nivel ${nivelSiguiente}`}
+                          style={{
+                            width:24,height:24,borderRadius:999,
+                            border:'1px solid #9DBCE2',
+                            background:proyeccionEnCurso?'#E7ECF3':'#FFFFFF',
+                            color:'#174E8C',fontSize:17,fontWeight:900,lineHeight:1,
+                            display:'inline-flex',alignItems:'center',justifyContent:'center',
+                            cursor:proyeccionEnCurso?'wait':'pointer',
+                            boxShadow:'0 2px 7px rgba(23,78,140,.14)',
+                            flexShrink:0,
+                          }}
+                        >{proyeccionEnCurso ? '…' : '+'}</button>
+                      )}
+                    </div>
                     {periodoTexto && (
                       <div style={{ fontSize:9.5, color:'var(--ink-3, #999)', marginTop:4, fontWeight:600, letterSpacing:'0.01em', whiteSpace:'nowrap' }}>
                         {periodoTexto}
