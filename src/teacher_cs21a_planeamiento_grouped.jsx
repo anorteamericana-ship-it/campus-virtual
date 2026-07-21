@@ -1,8 +1,8 @@
-// F98.4-Z6-CS21A9 · Planeamiento por lección agrupado por nivel
-// Frontend-only: reemplaza solo la vista Planeamiento por lección para mostrar niveles a la izquierda y PDFs por nivel a la derecha.
+// F98.4-Z6-CS21A140 · Planeamiento por lección con navegación 2 x 16
+// Frontend-only: mantiene los PDFs vigentes y ordena niveles, lecciones y visor en una sola columna.
 /* global React, getSesion, MaterialesView */
 (function(){
-  const VERSION = 'F98.4-Z6-CS21A9';
+  const VERSION = 'F98.4-Z6-CS21A140';
   const BLUE = 'var(--an-navy-ink,#001E47)';
 
   function session(){ try { return (typeof getSesion === 'function' ? getSesion() : JSON.parse(sessionStorage.getItem('an_usuario') || 'null')) || {}; } catch(_) { return {}; } }
@@ -40,24 +40,21 @@
     return <div style={{ background:'linear-gradient(135deg,#fff 0%,#F8F4EE 100%)', border:'1px solid var(--line,#e5e0d8)', borderRadius:18, padding:'18px 20px', boxShadow:'var(--sh-1,0 6px 22px rgba(0,0,0,.06))', marginBottom:14 }}>
       <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate,#7A1E2C)' }}>Planificación Académica</div>
       <div style={{ fontSize:31, fontWeight:950, lineHeight:1.08, color:BLUE, marginTop:4 }}>Planeamiento por lección</div>
-      <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:900, lineHeight:1.5 }}>Seleccioná primero el nivel en la columna izquierda y luego abrí o descargá el PDF de la lección correspondiente.</div>
+      <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:900, lineHeight:1.5 }}>Seleccioná un nivel y una lección. El PDF elegido se mostrará debajo de la botonera.</div>
     </div>;
   }
 
   function LevelButton({ level, active, onClick }){
-    return <button type="button" onClick={onClick} className={active ? 'btn btn-primary' : 'btn'} style={{ textAlign:'left', justifyContent:'flex-start', padding:'13px 14px', height:'auto', whiteSpace:'normal' }}>
-      <span style={{ display:'inline-block', width:11, height:11, borderRadius:99, background:level.color, marginRight:9, flex:'0 0 auto' }}></span>
-      <span>
-        <span style={{ display:'block', fontFamily:'var(--f-mono,monospace)', fontSize:11, fontWeight:950 }}>{level.code}</span>
-        <span style={{ display:'block', fontWeight:950, marginTop:2 }}>Planeamiento por lección · {level.name}</span>
-      </span>
+    return <button type="button" onClick={onClick} aria-pressed={active} title={level.code + ' · ' + level.name} className={active ? 'btn btn-primary' : 'btn'} style={{ minHeight:42, padding:'0 12px', borderRadius:10, border:active ? '2px solid ' + level.color : '1px solid #CCD6E2', background:active ? BLUE : '#fff', color:active ? '#fff' : BLUE, fontWeight:950, whiteSpace:'nowrap' }}>
+      <span style={{ display:'inline-block', width:10, height:10, borderRadius:99, background:level.color, marginRight:8, flex:'0 0 auto', boxShadow:active ? '0 0 0 2px rgba(255,255,255,.45)' : 'none' }}></span>
+      <span>{level.code} · {level.name}</span>
     </button>;
   }
 
   function LessonButton({ doc, active, onClick }){
-    return <button type="button" onClick={onClick} className={active ? 'btn btn-primary' : 'btn'} style={{ padding:'10px 11px', height:'auto', textAlign:'left', justifyContent:'flex-start', whiteSpace:'normal' }}>
-      <span style={{ fontFamily:'var(--f-mono,monospace)', fontWeight:950, fontSize:11, marginRight:7 }}>{doc.code}</span>
-      <span style={{ fontWeight:850 }}>Lección {doc.code.slice(-2)}</span>
+    const number = doc.code.slice(-2);
+    return <button type="button" onClick={onClick} aria-label={'Lección ' + number} aria-pressed={active} title={'Lección ' + number} style={{ minWidth:52, height:38, padding:'4px 3px', border:active ? '2px solid #F2C94C' : '1px solid #D7B34A', borderRadius:8, background:active ? '#0B4A8B' : '#FFF7D6', color:active ? '#fff' : '#674D00', boxShadow:active ? '0 4px 10px rgba(11,74,139,.24)' : 'none', fontFamily:'var(--f-mono,monospace)', fontWeight:950, fontSize:10.5, cursor:'pointer' }}>
+      <span>L{number}</span>
     </button>;
   }
 
@@ -68,31 +65,31 @@
     const docs = (LESSON_IDS[level.code] || []).map((id,i)=>lessonDoc(level,i,id));
     const doc = docs[lessonIndex] || docs[0];
     function chooseLevel(code){ setLevelCode(code); setLessonIndex(0); }
-    return <section data-screen-label="Docente · CS21A9 · planeamiento" style={{ padding:18 }}>
+    return <section data-screen-label="Docente · CS21A140 · planeamiento" style={{ padding:18 }}>
       <Header />
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(250px,320px) 1fr', gap:14, alignItems:'start' }}>
-        <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, padding:12, display:'grid', gap:8, position:'sticky', top:12 }}>
+      <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, overflow:'hidden' }}>
+        <div data-planeamiento-levels="top" style={{ padding:'11px 14px', borderBottom:'1px solid var(--line,#e5e0d8)', background:'var(--surface-2,#FAF8F4)', display:'flex', gap:7, flexWrap:'wrap', alignItems:'center' }}>
           {LEVELS.map(l=><LevelButton key={l.code} level={l} active={l.code===level.code} onClick={()=>chooseLevel(l.code)} />)}
         </div>
-        <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, overflow:'hidden' }}>
-          <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)' }}>
-            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15 }}>Planeamiento por lección · {level.name}</div>
-            <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{docs.length} PDFs disponibles para este nivel.</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(118px,1fr))', gap:8, marginTop:12 }}>
+        <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)' }}>
+          <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15 }}>Planeamiento por lección · {level.name}</div>
+          <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{docs.length} PDFs disponibles para este nivel.</div>
+          <div data-planeamiento-lessons="2x16" style={{ overflowX:'auto', marginTop:12, paddingBottom:2 }}>
+            <div data-lesson-grid="2x16" style={{ display:'grid', gridTemplateColumns:'repeat(16,minmax(52px,1fr))', gap:5, minWidth:907 }}>
               {docs.map((d,i)=><LessonButton key={d.code} doc={d} active={i===lessonIndex} onClick={()=>setLessonIndex(i)} />)}
             </div>
           </div>
-          {doc && <div>
-            <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
-              <div>
-                <div style={{ fontSize:20, fontWeight:950, color:BLUE }}>{doc.title}</div>
-                <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{doc.desc}</div>
-              </div>
-              <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>Descargar PDF</button>
-            </div>
-            <iframe title={doc.title} src={doc.preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
-          </div>}
         </div>
+        {doc && <div data-planeamiento-pdf="selected">
+          <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
+            <div>
+              <div style={{ fontSize:20, fontWeight:950, color:BLUE }}>{doc.title}</div>
+              <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{doc.desc}</div>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>Descargar PDF</button>
+          </div>
+          <iframe title={doc.title} src={doc.preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
+        </div>}
       </div>
     </section>;
   }
