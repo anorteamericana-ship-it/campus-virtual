@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
+      - 'src/teacher_cs21a_planeamiento_grouped.jsx'
       - 'src/student_content_access_cs21a125.jsx'
       - 'src/student_planeamiento_pdf_catalog_cs21a129.js'
       - 'src/student_books_proxy_cs21a126.jsx'
@@ -25,6 +26,7 @@ on:
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
+      - 'src/teacher_cs21a_planeamiento_grouped.jsx'
       - 'src/student_content_access_cs21a125.jsx'
       - 'src/student_planeamiento_pdf_catalog_cs21a129.js'
       - 'src/student_books_proxy_cs21a126.jsx'
@@ -62,6 +64,7 @@ jobs:
             'src/student_content_access_cs21a125.jsx',
             'src/student_books_proxy_cs21a126.jsx',
             'src/program_info_shared_cs21a119.jsx',
+            'src/teacher_cs21a_planeamiento_grouped.jsx',
           ];
           for (const path of files) {
             const source = fs.readFileSync(path, 'utf8');
@@ -93,6 +96,7 @@ jobs:
           const lessonCatalogSource = read('src/student_planeamiento_pdf_catalog_cs21a129.js');
           const teacherPlanningSource = read('src/teacher_cs21a_planeamiento_grouped.jsx');
           const guard = read('src/student_menu_academic_guard_cs21a120.js');
+          const campus = read('campus.html');
 
           function extractObject(source, name) {
             const re = new RegExp(`const\\s+${name}\\s*=\\s*(\\{[\\s\\S]*?\\});`);
@@ -132,6 +136,10 @@ jobs:
             [studentIds.length === 128 && new Set(studentIds).size === 128, 'El catálogo estudiantil contiene 128 PDFs únicos.'],
             [studentIds.every(id => !teacherIds.has(id)), 'Ningún PDF estudiantil pertenece al catálogo docente.'],
             [!studentIds.includes('1r3PFPc9WlTwN4AWc1JmaIztvaHcpAB4_'), 'El PDF combinado de I2 no sustituye las 32 lecciones individuales.'],
+            [teacherPlanningSource.includes("gridTemplateColumns:'repeat(16,minmax(52px,1fr))'"), 'Planeamiento docente conserva 16 columnas: dos filas para 32 lecciones.'],
+            [teacherPlanningSource.includes('data-planeamiento-levels="top"') && teacherPlanningSource.indexOf('data-planeamiento-levels="top"') < teacherPlanningSource.indexOf('data-planeamiento-lessons="2x16"'), 'Los niveles aparecen antes de las lecciones.'],
+            [teacherPlanningSource.indexOf('data-planeamiento-lessons="2x16"') < teacherPlanningSource.indexOf('data-planeamiento-pdf="selected"'), 'El PDF seleccionado aparece debajo de la botonera.'],
+            [campus.includes('teacher_cs21a_planeamiento_grouped.jsx?v=F98.4Z6CS21A140'), 'El punto de entrada publica la versión CS21A140.'],
           ];
 
           for (const level of levels) {
@@ -150,6 +158,7 @@ jobs:
           grep -q 'mobile_responsive_global_cs21a121.css?v=F98.4Z6CS21A121' campus.html
           grep -q 'program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121' campus.html
           grep -q 'student_menu_academic_guard_cs21a120.js?v=F98.4Z6CS21A130' campus.html
+          grep -q 'teacher_cs21a_planeamiento_grouped.jsx?v=F98.4Z6CS21A140' campus.html
           test -f src/student_planeamiento_pdf_catalog_cs21a129.js
           test -f styles/student_planeamiento_pdfs_cs21a129.css
           test -f styles/student_content_access_cs21a125.css
