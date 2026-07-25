@@ -1,59 +1,58 @@
 # Campus Virtual · Academia Norteamericana
 
-## Estado consolidado actual
+## Estado operativo vigente
 
-Base vigente de continuidad: **F98.4-Z6-CS21A107**.
+Baseline productivo verificado antes de la actualización documental CS21A143:
 
-### Versiones vigentes
+- Rama: `main`.
+- Commit: `67108928e953fbf044dbcd916dc34a5dd5f1e570`.
+- Mensaje: `CS21A142 corrige Ver en Libro para la lección docente (#26)`.
+- No se identificaron commits posteriores al corte del 25 de julio de 2026.
 
-- **Frontend global:** rama `main`.
-- **Consulta individual · Poner al día:** `F98.4-Z6-CS21A102`.
-- **Panel Maestro CONAPE:** `F98.4-Z6-CS21A107`.
-- **Backend integral vigente:** `F98.4-Z6-CS21A103`.
-- **Tabla agrupada y columna Detectado:** `F98.4-Z6-CS21A104`.
-- **Semáforo estable:** `F98.4-Z6-CS21A105`.
-- **Enlace académico de movimientos:** `F98.4-Z6-CS21A106`.
-- **Montaje final estable del panel completo:** `F98.4-Z6-CS21A107`.
-- **MÁSCARA de Keylor:** protegida y sin cambios.
+La numeración de archivos individuales no sustituye el commit real de `main`. El backend observado en Drive no debe asumirse como desplegado: `00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json` mantiene `deployment_confirmed: false`.
 
 ## Leer primero
 
-1. `00_DOCUMENTACION/README_F98_4_Z6_CS21A107.md`
-2. `00_DOCUMENTACION/README_F98_4_Z6_CS21A106.md`
-3. `00_DOCUMENTACION/VALIDACION_CS21A106.md`
-4. `00_DOCUMENTACION/README_F98_4_Z6_CS21A105.md`
-5. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
+1. `AGENTS.md`.
+2. `00_DOCUMENTACION/HANDOFF_CHAT_CS21A143_2026-07-25.md`.
+3. `00_DOCUMENTACION/BIBLIA_OPERATIVA_CS21A143.md`.
+4. `00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL_CS21A143.md`.
+5. `00_DOCUMENTACION/MATRIZ_ENTREGA_ROLES_CS21A131.md`.
+6. `00_DOCUMENTACION/EQUIPO_VIRTUAL_QA_CS21A137.md`.
+7. `00_DOCUMENTACION/QA_REAL_STAGING_CS21A138.md`.
+8. `00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json`.
 
-## Cambio principal CS21A107
+Los documentos CS21A60, CS21A90, CS21A99, CS21A106 y CS21A107 se conservan como historial. No prevalecen sobre `main` ni sobre los punteros CS21A143.
 
-El Panel Maestro ya no depende de que un único reemplazo ocurra en el momento exacto de la carga diferida.
+## Estado de entrega
 
-A107 restaura y protege:
+Último supervisor virtual observado sobre `67108928...`:
 
-- buscador de estudiante;
-- filtros y combo de grupos;
-- cuadrícula académica agrupada;
-- columna Detectado;
-- semáforo colaborativo;
-- desembolsos académicos 01 cerrados;
-- enlace por `6-historial` para movimientos futuros.
+- Veredicto sintético: **APTO CON RESERVAS**.
+- P0: 0.
+- P1: 0.
+- P2: 6.
+- P3: 3.
 
-La tabla básica histórica permanece únicamente como respaldo interno. El instalador A107 reintenta y verifica que el componente activo sea el panel completo. La envoltura histórica A78 fue retirada para que no compita por el mismo componente.
+Además, la revisión documental CS21A143 confirmó cuatro riesgos P2 todavía aplicables en código:
 
-CS21A107 es una corrección frontend. No modifica Apps Script, pagos, expedientes, hojas CONAPE ni la MÁSCARA de Keylor.
+- último desembolso puede quedar obsoleto dentro de la misma vista;
+- proyección manual no revalida que el nivel origen continúe en `CA`;
+- proyección puede ocultar `conape_sync === false`;
+- Ver en Libro puede conservar y repetir la solicitud contextual porque el botón activo no publica el atributo esperado.
 
-## Regla principal
+Por tanto:
 
-Antes de modificar cualquier pantalla o endpoint:
+- revisión estática/sintética: **APTO CON RESERVAS**;
+- piloto autenticado completo: **INDETERMINADO** hasta verificar backend desplegado, cuentas controladas, permisos de Drive y persistencia en staging.
 
-1. identificar la fuente de verdad;
-2. auditar el flujo real existente;
-3. preservar funciones y rutas vigentes;
-4. eliminar código sustituido en lugar de ocultarlo;
-5. ejecutar pruebas antes de entregar;
-6. distinguir entre guardado, validado, publicado y probado en producción;
-7. no modificar la MÁSCARA de Keylor salvo autorización expresa.
+## Reglas de trabajo
 
-## Próxima numeración
-
-La próxima entrega funcional debe usar **F98.4-Z6-CS21A108**.
+- Consultar GitHub antes de modificar.
+- Crear una rama pequeña por causa raíz.
+- No cambiar producción directamente.
+- No modificar Apps Script sin solicitud expresa, respaldo, staging y mapa de dependencias.
+- No probar pagos, notas, asistencia o CONAPE en producción.
+- Distinguir código presente, validación estática, prueba sintética, prueba autenticada, deployment confirmado y escritura persistida.
+- Revisar `campus.html`, `F96_LAZY`, imports, workflows, eventos y globals antes de retirar archivos.
+- Esperar CI y revisar comentarios automáticos antes de fusionar.
