@@ -28,6 +28,7 @@
   - actualiza la versión de caché del guard.
 - `apps_script_patches/english_lab_access_cs21a144.gs`
   - parche append-only para staging/entrega backend autorizada;
+  - usa `getEstudianteFresh` cuando está disponible para no decidir desde una ficha financiera obsoleta;
   - no reemplaza `Code.gs` ni se despliega automáticamente.
 - `scripts/test_english_lab_access_cs21a144.js`
   - valida estáticamente el contrato frontend/backend.
@@ -41,16 +42,28 @@ node --check /tmp/english_lab_access_cs21a144.js
 node scripts/test_english_lab_access_cs21a144.js
 ```
 
-Resultado local: 18 comprobaciones aprobadas.
+Resultado local: 19 comprobaciones aprobadas.
+
+## Preparación aislada de staging
+
+En la carpeta privada `QA_STAGING_CAMPUS_2026-07-19` se preparó, sin modificar producción:
+
+- una copia intacta del backend fuente;
+- `Code_QA_STAGING_CS21A144_COMPLETO.gs`, generado con los dos IDs principales reemplazados por las hojas QA;
+- una guardia final que exige las Script Properties `QA_STAGING_MASTER_ID` y `QA_STAGING_OPERATIVO_ID` y bloquea operaciones administrativas ajenas a English LAB;
+- un manifiesto con tamaño, hash SHA-256 y comprobación de cero referencias a los dos IDs productivos principales.
+
+El archivo completo de staging pasó validación de sintaxis, pero todavía no ha sido instalado ni desplegado en Google Apps Script.
 
 ## Límites
 
-- La prueba es estática; no demuestra el Apps Script desplegado.
-- El parche backend debe anexarse primero en un entorno aislado y publicarse como nueva versión de staging.
+- La prueba automatizada es estática; no demuestra el Apps Script desplegado.
+- El proyecto Apps Script independiente debe crearse y publicarse manualmente.
 - La definición “al día” usa la fuente financiera canónica actual: `mora_calculada`, `moroso`, `mora_exigible`/`deuda_exigible` y `estado_financiero`.
 - Falta QA autenticado con, como mínimo:
   - estudiante activo al día;
   - estudiante activo con mora;
   - estudiante sin matrícula activa;
   - dos estudiantes de grupos distintos entrando a la misma sala;
-  - varios participantes de Club I CAN entrando con el mismo código.
+  - varios participantes de Club I CAN entrando con el mismo código;
+  - intento de suplantar `player_id` y `player_name` desde el navegador.
