@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..');
 const frontend = fs.readFileSync(path.join(root, 'src/english_lab_free_access_cs21a66.js'), 'utf8');
 const backend = fs.readFileSync(path.join(root, 'apps_script_patches/english_lab_access_cs21a144.gs'), 'utf8');
 const campus = fs.readFileSync(path.join(root, 'campus.html'), 'utf8');
+const live = fs.readFileSync(path.join(root, 'src/english_lab_live.jsx'), 'utf8');
 
 const checks = [
   ['frontend publica CS21A144', frontend.includes("F98.4-Z6-CS21A144")],
@@ -16,7 +17,7 @@ const checks = [
   ['frontend protege AcademiaPlayView', frontend.includes('installAcademiaPlayGate')],
   ['frontend protege EnglishLabLiveStudentView', frontend.includes('installLiveGate')],
   ['flujo carga sala dentro de LAB', frontend.includes("anLazyCampus.loadOne(LIVE_FILE)")],
-  ['flujo acepta código LAB-####', frontend.includes('/^LAB-\\d{4}$/')],
+  ['flujo abre pantalla de código', frontend.includes('Ingresar con código') && live.includes('Código de sala') && live.includes('LAB-5937')],
   ['identidad visible no se solicita', frontend.includes('simplifyLiveJoin')],
   ['prematrícula no promete acceso', frontend.includes('syncLegacyProspectPanel') && frontend.includes('requiere matrícula al día')],
   ['backend exige sesión', backend.includes("error:'sesion_requerida'")],
