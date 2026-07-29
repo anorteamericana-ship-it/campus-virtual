@@ -173,6 +173,12 @@ function _cs21a144AccessBySession_(body) {
 function englishLabAccessStatus(body) {
   return _cs21a144PublicAccess_(_cs21a144AccessBySession_(body));
 }
+function _cs21a144Denied_(access) {
+  var out = _cs21a144PublicAccess_(access || {});
+  out.ok = false;
+  out.error = out.error || 'english_lab_access_denied';
+  return out;
+}
 
 // Compatibilidad con el endpoint anterior: ya no existe acceso gratuito por
 // aprobación de prematrícula. La autoridad única es matrícula activa + cuenta al día.
@@ -184,7 +190,7 @@ try {
 
 function _cs21a144RequireLab_(body) {
   var access = _cs21a144AccessBySession_(body || {});
-  if (access.ok !== true || access.allowed !== true) return _cs21a144PublicAccess_(access);
+  if (access.ok !== true || access.allowed !== true) return _cs21a144Denied_(access);
   return access;
 }
 function _cs21a144LiveBody_(body, access) {
@@ -216,7 +222,7 @@ try {
     Object.keys(body || {}).forEach(function(key) { nextBody[key] = body[key]; });
     nextBody._auth_session = sesion;
     var access = _cs21a144AccessBySession_(nextBody);
-    if (access.allowed !== true) return _cs21a144PublicAccess_(access);
+    if (access.allowed !== true) return _cs21a144Denied_(access);
     return sesion;
   };
 } catch (_) {}
