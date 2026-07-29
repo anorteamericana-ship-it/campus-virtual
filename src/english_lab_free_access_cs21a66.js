@@ -52,13 +52,6 @@
     return [roleOf(user), clean(user?.cedula || user?.CEDULA || user?.usuario), codeOf(user)].join('|');
   }
 
-  function normalizeRoomCode(value) {
-    let code = clean(value).toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12);
-    if (/^\d{4}$/.test(code)) code = 'LAB-' + code;
-    if (/^LAB\d{4}$/.test(code)) code = 'LAB-' + code.slice(3);
-    return code;
-  }
-
   function emptyState(user) {
     const staff = isStaff(user);
     return {
@@ -147,7 +140,7 @@
     if (!isStudent(user)) return;
     const checking = state.loading === true;
     const unresolved = !state.checked && !checking;
-    const visible = unresolved || checking || state.allowed === true;
+    const visible = true;
     englishLabMenuButtons().forEach(button => {
       button.style.display = visible ? '' : 'none';
       button.disabled = checking;
@@ -163,7 +156,9 @@
         button.removeAttribute('tabindex');
       } else {
         button.removeAttribute('aria-disabled');
-        button.removeAttribute('title');
+        button.title = state.checked && state.allowed !== true
+          ? 'English LAB requiere matrícula activa y cuenta al día.'
+          : '';
         button.removeAttribute('tabindex');
       }
     });
@@ -327,27 +322,17 @@
   }
 
   function LiveRoomEntryPanel({ onOpen }) {
-    const [roomCode, setRoomCode] = React.useState(() => {
-      try { return normalizeRoomCode(localStorage.getItem('elive_last_room') || ''); }
-      catch (_) { return ''; }
-    });
     const [error, setError] = React.useState('');
     const [busy, setBusy] = React.useState(false);
 
     const enter = async () => {
-      const code = normalizeRoomCode(roomCode);
-      if (!/^LAB-\d{4}$/.test(code)) {
-        setError('Escribí un código válido, por ejemplo LAB-5937.');
-        return;
-      }
       setBusy(true);
       setError('');
       try {
-        localStorage.setItem('elive_last_room', code);
         if (!window.anLazyCampus?.loadOne) throw new Error('El cargador de English LAB Live no está disponible.');
         await window.anLazyCampus.loadOne(LIVE_FILE);
         if (typeof window.EnglishLabLiveStudentView !== 'function') throw new Error('English LAB Live no publicó la pantalla del estudiante.');
-        onOpen(code);
+        onOpen();
       } catch (e) {
         setError(clean(e?.message || e || 'No se pudo abrir la sala.'));
       } finally {
@@ -361,19 +346,9 @@
     },
       React.createElement('div', { style:{ fontSize:11, fontWeight:950, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A1E2C' } }, 'Sala en vivo'),
       React.createElement('h2', { style:{ margin:'6px 0 5px', color:'#001E47', fontSize:26 } }, 'Entrar con el código del docente'),
-      React.createElement('p', { style:{ margin:'0 0 14px', color:'#5F6875', fontSize:13.5, lineHeight:1.55 } }, 'Podés entrar a cualquier sala válida, aunque reúna estudiantes de distintos grupos o del Club I CAN. Tu identidad se toma de la sesión del Campus.'),
+      React.createElement('p', { style:{ margin:'0 0 14px', color:'#5F6875', fontSize:13.5, lineHeight:1.55 } }, 'Abrí la sala y escribí el código LAB-####. Podés entrar aunque reúna estudiantes de otros grupos o del Club I CAN; tu identidad se toma de la sesión del Campus.'),
       error ? React.createElement('div', { style:{ marginBottom:12, padding:'10px 12px', borderRadius:12, background:'#FDECEA', color:'#8B1F1F', fontSize:12.5, fontWeight:700 } }, error) : null,
-      React.createElement('div', { style:{ display:'grid', gridTemplateColumns:'minmax(180px,320px) auto', gap:10, alignItems:'center' } },
-        React.createElement('input', {
-          value:roomCode,
-          onChange:event => setRoomCode(normalizeRoomCode(event.target.value)),
-          onKeyDown:event => { if (event.key === 'Enter') enter(); },
-          placeholder:'LAB-5937',
-          'aria-label':'Código de sala English LAB Live',
-          style:{ height:50, border:'1px solid #B7C7DA', borderRadius:14, padding:'0 14px', fontSize:22, fontWeight:950, fontFamily:'var(--f-mono,monospace)', color:'#001E47', letterSpacing:'.04em', textTransform:'uppercase' },
-        }),
-        React.createElement('button', { type:'button', className:'btn btn-primary', disabled:busy, onClick:enter, style:{ height:50, padding:'0 20px' } }, busy ? 'Abriendo…' : 'Entrar a sala')
-      )
+      React.createElement('button', { type:'button', className:'btn btn-primary', disabled:busy, onClick:enter, style:{ minHeight:48, padding:'0 22px' } }, busy ? 'Abriendo…' : 'Ingresar con código')
     );
   }
 
