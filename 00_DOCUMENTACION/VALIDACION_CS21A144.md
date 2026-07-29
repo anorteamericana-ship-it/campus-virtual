@@ -41,7 +41,7 @@ node --check /tmp/english_lab_access_cs21a144.js
 node scripts/test_english_lab_access_cs21a144.js
 ```
 
-Resultado local: 16 comprobaciones aprobadas.
+Resultado local: 18 comprobaciones aprobadas.
 
 ## Límites
 
