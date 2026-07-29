@@ -27,7 +27,7 @@ const checks = [
   ['backend usa mora canónica', backend.includes('mora_calculada') && backend.includes('mora_exigible')],
   ['backend fuerza lectura financiera fresca', backend.includes("typeof getEstudianteFresh === 'function'") && backend.includes('getEstudianteFresh({ codigo:codigo })')],
   ['backend fija identidad desde sesión', backend.includes('out.player_id = codigo') && backend.includes('out.player_name = nombre')],
-  ['backend no restringe grupo de estudiante', backend.includes('DELIBERADAMENTE NO se compara COD_GRUPO')],
+  ['backend preserva salas mixtas', backend.includes('no se compara el grupo de la sala') && !/sesion\s*\.\s*(grupo|cod_grupo)/i.test(backend)],
   ['backend envuelve join/state/answer', ['englishLabLiveJoinRoom','englishLabLiveGetPlayerState','englishLabLiveSubmitAnswer'].every(name => backend.includes(name + ' = function'))],
   ['campus rompe caché CS21A144', campus.includes('english_lab_free_access_cs21a66.js?v=F98.4Z6CS21A144')],
 ];
