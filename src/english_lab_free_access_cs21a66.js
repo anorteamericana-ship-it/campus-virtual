@@ -190,6 +190,19 @@
     });
   }
 
+  function syncLegacyProspectPanel() {
+    const user = session();
+    if (!isStudent(user) || codeOf(user)) return;
+    document.querySelectorAll('.premat-big-action').forEach(button => {
+      const text = clean(button.textContent).toLowerCase();
+      if (!text.includes('english lab')) return;
+      button.disabled = true;
+      button.textContent = 'English LAB · requiere matrícula al día';
+      button.title = 'El acceso gratuito por prematrícula ya no habilita English LAB.';
+      button.setAttribute('aria-disabled', 'true');
+    });
+  }
+
   function publish() {
     persist();
     try { window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail:{ ...state } })); } catch (_) {}
@@ -450,6 +463,7 @@
       installLiveGate();
       hideLegacyLiveDemo();
       simplifyLiveJoin();
+      syncLegacyProspectPanel();
     });
   }
 
