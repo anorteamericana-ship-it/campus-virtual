@@ -7,12 +7,15 @@ on:
       - 'campus.html'
       - 'src/**'
       - 'styles/**'
+      - 'apps_script_patches/english_lab_access_cs21a144.gs'
       - 'scripts/audit_delivery_surface.mjs'
       - 'scripts/test_teacher_delivery_guard_cs21a133.mjs'
       - 'scripts/test_teacher_lesson_book_link_cs21a142.mjs'
+      - 'scripts/test_english_lab_access_cs21a144.js'
       - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
       - '00_DOCUMENTACION/MATRIZ_ENTREGA_ROLES_CS21A131.md'
       - '00_DOCUMENTACION/QA_DOCENTE_MIS_GRUPOS_CS21A133.md'
+      - '00_DOCUMENTACION/VALIDACION_CS21A144.md'
       - '.github/workflows/audit-delivery-cs21a131.yml'
   pull_request:
     branches: [main]
@@ -20,12 +23,15 @@ on:
       - 'campus.html'
       - 'src/**'
       - 'styles/**'
+      - 'apps_script_patches/english_lab_access_cs21a144.gs'
       - 'scripts/audit_delivery_surface.mjs'
       - 'scripts/test_teacher_delivery_guard_cs21a133.mjs'
       - 'scripts/test_teacher_lesson_book_link_cs21a142.mjs'
+      - 'scripts/test_english_lab_access_cs21a144.js'
       - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
       - '00_DOCUMENTACION/MATRIZ_ENTREGA_ROLES_CS21A131.md'
       - '00_DOCUMENTACION/QA_DOCENTE_MIS_GRUPOS_CS21A133.md'
+      - '00_DOCUMENTACION/VALIDACION_CS21A144.md'
       - '.github/workflows/audit-delivery-cs21a131.yml'
   workflow_dispatch:
 
@@ -61,6 +67,12 @@ jobs:
         run: |
           node --check src/teacher_lesson_book_link_cs21a142.js
           node scripts/test_teacher_lesson_book_link_cs21a142.mjs
+      - name: Verify English LAB access and mixed rooms
+        run: |
+          node --check src/english_lab_free_access_cs21a66.js
+          cp apps_script_patches/english_lab_access_cs21a144.gs /tmp/english_lab_access_cs21a144.js
+          node --check /tmp/english_lab_access_cs21a144.js
+          node scripts/test_english_lab_access_cs21a144.js
       - name: Parse critical JSX
         run: |
           npm install --no-save --ignore-scripts @babel/parser@7.28.4
