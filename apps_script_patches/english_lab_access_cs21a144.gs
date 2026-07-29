@@ -138,7 +138,9 @@ function _cs21a144AccessBySession_(body) {
 
   var access;
   try {
-    var ficha = getEstudiante(codigo) || {};
+    var ficha = (typeof getEstudianteFresh === 'function'
+      ? getEstudianteFresh({ codigo:codigo })
+      : getEstudiante(codigo)) || {};
     if (ficha.ok === false) {
       access = { ok:true, allowed:false, estado:'EXPEDIENTE_NO_DISPONIBLE', mensaje:'No fue posible confirmar tu expediente académico.', _session:sesion };
     } else {
@@ -180,8 +182,6 @@ function _cs21a144Denied_(access) {
   return out;
 }
 
-// Compatibilidad con el endpoint anterior: ya no existe acceso gratuito por
-// aprobación de prematrícula. La autoridad única es matrícula activa + cuenta al día.
 try {
   freeUserEnglishLabAccess = function(body) {
     return englishLabAccessStatus(body);
@@ -210,8 +210,6 @@ function _cs21a144LiveBody_(body, access) {
   return out;
 }
 
-// English LAB individual: todos los endpoints que ya usan _aplayAuth_ heredan
-// la validación financiera. Staff conserva acceso por rol.
 try {
   var _cs21a144AplayAuthBase_ = _aplayAuth_;
   _aplayAuth_ = function(body) {
@@ -227,9 +225,6 @@ try {
   };
 } catch (_) {}
 
-// Salas live: se valida la cuenta y se fija la identidad desde la sesión.
-// DELIBERADAMENTE NO se compara COD_GRUPO: el código correcto permite unir
-// estudiantes de distintos grupos y sesiones Club I CAN en la misma sala.
 try {
   var _cs21a144JoinRoomBase_ = englishLabLiveJoinRoom;
   englishLabLiveJoinRoom = function(body) {
