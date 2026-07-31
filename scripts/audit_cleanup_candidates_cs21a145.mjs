@@ -14,6 +14,11 @@ const candidates = [
     reason: 'Preview local con backend mock y datos demostrativos.',
   },
   {
+    file: 'campus_test.html',
+    canonical: null,
+    reason: 'Harness histórico con sesión, backend y personas simuladas.',
+  },
+  {
     file: 'src/login_v1.jsx',
     canonical: 'src/login.jsx',
     reason: 'Versión histórica; login.html carga src/login.jsx.',
@@ -27,6 +32,11 @@ const candidates = [
     file: 'src/ADMIN_~4.JSX',
     canonical: 'src/admin_master_dashboard.jsx',
     reason: 'Nombre corto DOS/Windows y versión anterior del Panel Maestro.',
+  },
+  {
+    file: 'src/syllabus_views (1).jsx',
+    canonical: 'src/syllabus_views.jsx',
+    reason: 'Copia numerada no cargada; el bundle usa src/syllabus_views.jsx.',
   },
 ];
 
@@ -150,7 +160,16 @@ const studentMenu = read('src/student_menu_academic_cs21a120.jsx');
 const staticRefs = extractHtmlRefs(campus);
 const loginRefs = extractHtmlRefs(login);
 const lazyRefs = extractLazyRefs(app);
-const loadedRefs = new Set([...staticRefs, ...loginRefs, ...lazyRefs]);
+
+const htmlEntrypoints = ['campus.html', 'login.html', 'ventas.html', 'inscripcion.html']
+  .filter(exists);
+const entrypointRefs = Object.fromEntries(
+  htmlEntrypoints.map(file => [file, extractHtmlRefs(read(file))]),
+);
+const loadedRefs = new Set([
+  ...Object.values(entrypointRefs).flat(),
+  ...lazyRefs,
+]);
 
 for (const file of [...loadedRefs]) {
   if (!exists(file)) errors.push(`Una entrada publicada referencia un archivo inexistente: ${file}`);
@@ -195,11 +214,13 @@ const deliveryFiles = allFiles.filter(file =>
   !file.startsWith('00_DOCUMENTACION/') &&
   !file.startsWith('skills/')
 );
+const runtimeFiles = deliveryFiles.filter(file => !file.startsWith('.github/workflows/'));
+const workflowFiles = deliveryFiles.filter(file => file.startsWith('.github/workflows/'));
 
-function referencesTo(candidate) {
+function referencesTo(candidate, files) {
   const names = new Set([candidate.file, path.posix.basename(candidate.file)]);
   const found = [];
-  for (const file of deliveryFiles) {
+  for (const file of files) {
     if (file === candidate.file) continue;
     const source = read(file);
     if ([...names].some(name => source.includes(name))) found.push(file);
@@ -209,13 +230,14 @@ function referencesTo(candidate) {
 
 const candidateReport = [];
 for (const candidate of candidates) {
-  const references = referencesTo(candidate);
+  const references = referencesTo(candidate, runtimeFiles);
+  const workflowReferences = referencesTo(candidate, workflowFiles);
   const loaded = loadedRefs.has(candidate.file);
   const present = exists(candidate.file);
 
   if (loaded) errors.push(`Candidato de limpieza todavía cargado por una entrada: ${candidate.file}`);
   if (references.length) {
-    errors.push(`Candidato ${candidate.file} todavía tiene referencias: ${references.join(', ')}`);
+    errors.push(`Candidato ${candidate.file} todavía tiene referencias de ejecución: ${references.join(', ')}`);
   }
   if (candidate.canonical && !exists(candidate.canonical)) {
     errors.push(`No existe el reemplazo canónico de ${candidate.file}: ${candidate.canonical}`);
@@ -226,6 +248,7 @@ for (const candidate of candidates) {
     present,
     loaded,
     references,
+    workflowReferences,
     reason: candidate.reason,
     current: present ? fileInfo(candidate.file) : null,
     canonical: candidate.canonical
@@ -237,7 +260,7 @@ for (const candidate of candidates) {
 
 const endpointUrlPattern = /https:\/\/script\.google\.com\/macros\/s\/[^'"\s<)]+\/exec/g;
 const hardcodedBackendFiles = [];
-for (const file of deliveryFiles) {
+for (const file of runtimeFiles) {
   const matches = [...read(file).matchAll(endpointUrlPattern)].map(match => match[0]);
   if (matches.length) hardcodedBackendFiles.push({ file, urls: [...new Set(matches)] });
 }
@@ -245,27 +268,32 @@ if (hardcodedBackendFiles.length > 1) {
   warnings.push(`La URL de Apps Script sigue repetida en ${hardcodedBackendFiles.length} archivos de entrega.`);
 }
 
-const demoMarkers = [
-  "window.APPS_SCRIPT_URL='mock'",
-  '127.0.0.1:8765',
-  'Santiago',
+const demoSignatures = [
+  { marker: "window.APPS_SCRIPT_URL='mock'", type: 'backend_mock' },
+  { marker: '127.0.0.1:8765', type: 'localhost' },
+  { marker: 'const DEMO_GROUP =', type: 'grupo_demo' },
+  { marker: 'const DEMO_SUSPENSIONS =', type: 'suspensiones_demo' },
+  { marker: "const ASESORES = ['Asesora Demo", type: 'asesores_demo' },
+  { marker: 'const DEMO_GRUPOS =', type: 'grupos_demo' },
 ];
 const liveDemoHits = [];
-for (const file of deliveryFiles) {
+for (const file of runtimeFiles) {
   if (candidates.some(candidate => candidate.file === file)) continue;
   const source = read(file);
-  const markers = demoMarkers.filter(marker => source.includes(marker));
-  if (markers.length) liveDemoHits.push({ file, markers });
+  const signatures = demoSignatures
+    .filter(item => source.includes(item.marker))
+    .map(item => item.type);
+  if (signatures.length) liveDemoHits.push({ file, signatures });
 }
 if (liveDemoHits.length) {
-  warnings.push(`Marcadores de demo localizados fuera de candidatos retirables: ${JSON.stringify(liveDemoHits)}`);
+  warnings.push(`Código de demostración localizado en archivos fuera de la primera ola: ${JSON.stringify(liveDemoHits)}`);
 }
 
 const report = {
   audit: 'CS21A145',
   entrypoints: {
+    files: entrypointRefs,
     campusStaticRefs: staticRefs.length,
-    loginRefs,
     lazyRefs: lazyRefs.length,
   },
   routes: {
