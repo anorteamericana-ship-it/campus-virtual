@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'campus.html'
+      - 'campus_test.html'
       - 'login.html'
       - 'master_preview_temp.html'
       - 'src/**'
@@ -21,6 +22,7 @@ on:
     branches: [main]
     paths:
       - 'campus.html'
+      - 'campus_test.html'
       - 'login.html'
       - 'master_preview_temp.html'
       - 'src/**'
@@ -49,13 +51,55 @@ jobs:
           set -o pipefail
           node scripts/audit_delivery_surface.mjs 2>&1 | tee audit-delivery.log
       - name: Audit cleanup candidates and student core
-        run: node scripts/audit_cleanup_candidates_cs21a145.mjs
+        run: |
+          set -o pipefail
+          node scripts/audit_cleanup_candidates_cs21a145.mjs 2>&1 | tee audit-cleanup-cs21a145.log
+      - name: Prepare exact cleanup backup
+        run: |
+          set -euo pipefail
+          mkdir -p cleanup-backup-cs21a145
+          files=(
+            'master_preview_temp.html'
+            'campus_test.html'
+            'src/login_v1.jsx'
+            'src/SOLICI~2.JSX'
+            'src/ADMIN_~4.JSX'
+            'src/syllabus_views (1).jsx'
+          )
+          for file in "${files[@]}"; do
+            if [[ -f "$file" ]]; then
+              mkdir -p "cleanup-backup-cs21a145/$(dirname "$file")"
+              cp "$file" "cleanup-backup-cs21a145/$file"
+            fi
+          done
+          {
+            echo 'CAMPUS VIRTUAL · RESPALDO PREVIO A LIMPIEZA CS21A145'
+            echo "commit=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+            echo "generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo 'source=anorteamericana-ship-it/campus-virtual'
+          } > cleanup-backup-cs21a145/MANIFEST.txt
+          (
+            cd cleanup-backup-cs21a145
+            find . -type f ! -name SHA256SUMS.txt -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+      - name: Upload exact cleanup backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-candidates-cs21a145
+          path: cleanup-backup-cs21a145
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload audit diagnosis
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: audit-delivery-cs21a131
-          path: audit-delivery.log
+          path: |
+            audit-delivery.log
+            audit-cleanup-cs21a145.log
           if-no-files-found: error
           retention-days: 7
       - name: Stop on audit failure
