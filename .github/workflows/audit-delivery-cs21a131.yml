@@ -5,9 +5,12 @@ on:
     branches: [main]
     paths:
       - 'campus.html'
+      - 'login.html'
+      - 'master_preview_temp.html'
       - 'src/**'
       - 'styles/**'
       - 'scripts/audit_delivery_surface.mjs'
+      - 'scripts/audit_cleanup_candidates_cs21a145.mjs'
       - 'scripts/test_teacher_delivery_guard_cs21a133.mjs'
       - 'scripts/test_teacher_lesson_book_link_cs21a142.mjs'
       - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
@@ -18,9 +21,12 @@ on:
     branches: [main]
     paths:
       - 'campus.html'
+      - 'login.html'
+      - 'master_preview_temp.html'
       - 'src/**'
       - 'styles/**'
       - 'scripts/audit_delivery_surface.mjs'
+      - 'scripts/audit_cleanup_candidates_cs21a145.mjs'
       - 'scripts/test_teacher_delivery_guard_cs21a133.mjs'
       - 'scripts/test_teacher_lesson_book_link_cs21a142.mjs'
       - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
@@ -42,6 +48,8 @@ jobs:
         run: |
           set -o pipefail
           node scripts/audit_delivery_surface.mjs 2>&1 | tee audit-delivery.log
+      - name: Audit cleanup candidates and student core
+        run: node scripts/audit_cleanup_candidates_cs21a145.mjs
       - name: Upload audit diagnosis
         if: always()
         uses: actions/upload-artifact@v4
