@@ -7,34 +7,40 @@ const self = path.relative(root, new URL(import.meta.url).pathname).replace(/^\/
 const errors = [];
 const warnings = [];
 
-const candidates = [
+const retiredFiles = [
   {
     file: 'master_preview_temp.html',
+    archivedSha256: '86f9e2b064531df36c5f640f08044e6d7a90d363cd775670bd82620d7de207b1',
     canonical: null,
     reason: 'Preview local con backend mock y datos demostrativos.',
   },
   {
     file: 'campus_test.html',
+    archivedSha256: 'd31071f998e3f6ef9caf15d3c9ec82179ccd8c39d1df04f02ba32157dc0b2ad0',
     canonical: null,
     reason: 'Harness histórico con sesión, backend y personas simuladas.',
   },
   {
     file: 'src/login_v1.jsx',
+    archivedSha256: 'd8a52baae27344132ce0b1cd62a696c2313a505c755f95dbc5cf3bb2b92db329',
     canonical: 'src/login.jsx',
     reason: 'Versión histórica; login.html carga src/login.jsx.',
   },
   {
     file: 'src/SOLICI~2.JSX',
+    archivedSha256: '1228998b9fbf59f02843feefb98f653fea292b65faf37e909aa7294ece10277c',
     canonical: 'src/solicitudes_unificadas.jsx',
     reason: 'Nombre corto DOS/Windows y versión histórica del módulo de solicitudes.',
   },
   {
     file: 'src/ADMIN_~4.JSX',
+    archivedSha256: '4f084862f931fd2e8c434431ab693651d97eb1775edd12af8501a619bdd40c30',
     canonical: 'src/admin_master_dashboard.jsx',
     reason: 'Nombre corto DOS/Windows y versión anterior del Panel Maestro.',
   },
   {
     file: 'src/syllabus_views (1).jsx',
+    archivedSha256: 'e66c2e99392cdaf73253ff13c82fcb091dac21b17fb5ae1a20973abbe3cd8597',
     canonical: 'src/syllabus_views.jsx',
     reason: 'Copia numerada no cargada; el bundle usa src/syllabus_views.jsx.',
   },
@@ -217,44 +223,45 @@ const deliveryFiles = allFiles.filter(file =>
 const runtimeFiles = deliveryFiles.filter(file => !file.startsWith('.github/workflows/'));
 const workflowFiles = deliveryFiles.filter(file => file.startsWith('.github/workflows/'));
 
-function referencesTo(candidate, files) {
-  const names = new Set([candidate.file, path.posix.basename(candidate.file)]);
+function referencesTo(retired, files) {
+  const names = new Set([retired.file, path.posix.basename(retired.file)]);
   const found = [];
   for (const file of files) {
-    if (file === candidate.file) continue;
+    if (file === retired.file) continue;
     const source = read(file);
     if ([...names].some(name => source.includes(name))) found.push(file);
   }
   return found;
 }
 
-const candidateReport = [];
-for (const candidate of candidates) {
-  const references = referencesTo(candidate, runtimeFiles);
-  const workflowReferences = referencesTo(candidate, workflowFiles);
-  const loaded = loadedRefs.has(candidate.file);
-  const present = exists(candidate.file);
+const retiredReport = [];
+for (const retired of retiredFiles) {
+  const references = referencesTo(retired, runtimeFiles);
+  const workflowReferences = referencesTo(retired, workflowFiles);
+  const loaded = loadedRefs.has(retired.file);
+  const present = exists(retired.file);
 
-  if (loaded) errors.push(`Candidato de limpieza todavía cargado por una entrada: ${candidate.file}`);
+  if (present) errors.push(`Archivo retirado reapareció en el repositorio: ${retired.file}`);
+  if (loaded) errors.push(`Archivo retirado volvió a cargarse desde una entrada: ${retired.file}`);
   if (references.length) {
-    errors.push(`Candidato ${candidate.file} todavía tiene referencias de ejecución: ${references.join(', ')}`);
+    errors.push(`Archivo retirado ${retired.file} tiene referencias de ejecución: ${references.join(', ')}`);
   }
-  if (candidate.canonical && !exists(candidate.canonical)) {
-    errors.push(`No existe el reemplazo canónico de ${candidate.file}: ${candidate.canonical}`);
+  if (retired.canonical && !exists(retired.canonical)) {
+    errors.push(`No existe el reemplazo canónico de ${retired.file}: ${retired.canonical}`);
   }
 
-  candidateReport.push({
-    file: candidate.file,
+  retiredReport.push({
+    file: retired.file,
     present,
     loaded,
     references,
     workflowReferences,
-    reason: candidate.reason,
-    current: present ? fileInfo(candidate.file) : null,
-    canonical: candidate.canonical
-      ? { file: candidate.canonical, ...fileInfo(candidate.canonical) }
+    reason: retired.reason,
+    archivedSha256: retired.archivedSha256,
+    canonical: retired.canonical
+      ? { file: retired.canonical, ...fileInfo(retired.canonical) }
       : null,
-    decision: present ? 'RESPALDAR_Y_RETIRAR' : 'RETIRADO',
+    decision: 'RETIRADO_Y_RESPALDADO_EN_DRIVE',
   });
 }
 
@@ -278,7 +285,6 @@ const demoSignatures = [
 ];
 const liveDemoHits = [];
 for (const file of runtimeFiles) {
-  if (candidates.some(candidate => candidate.file === file)) continue;
   const source = read(file);
   const signatures = demoSignatures
     .filter(item => source.includes(item.marker))
@@ -286,11 +292,15 @@ for (const file of runtimeFiles) {
   if (signatures.length) liveDemoHits.push({ file, signatures });
 }
 if (liveDemoHits.length) {
-  warnings.push(`Código de demostración localizado en archivos fuera de la primera ola: ${JSON.stringify(liveDemoHits)}`);
+  warnings.push(`Código de demostración localizado fuera de los archivos retirados: ${JSON.stringify(liveDemoHits)}`);
 }
 
 const report = {
   audit: 'CS21A145',
+  backup: {
+    driveFolder: 'CS21A145_PRIMERA_LIMPIEZA_GITHUB',
+    zipSha256: '125291798b3179bf173af1b9aa1942d31ebec8ae3872e6188a6304b69ae9a937',
+  },
   entrypoints: {
     files: entrypointRefs,
     campusStaticRefs: staticRefs.length,
@@ -300,7 +310,7 @@ const report = {
     studentStandard: studentStandardRoutes,
     studentCustom: studentCustomRoutes,
   },
-  candidates: candidateReport,
+  retiredFiles: retiredReport,
   hardcodedBackendFiles,
   liveDemoHits,
   warnings,
@@ -313,4 +323,4 @@ if (errors.length) {
   for (const error of errors) console.error(`ERROR: ${error}`);
   process.exit(1);
 }
-console.log('AUDIT OK: núcleo, rutas estudiantiles y candidatos de limpieza verificados.');
+console.log('AUDIT OK: núcleo, rutas estudiantiles y archivos retirados verificados.');
