@@ -1,0 +1,68 @@
+name: QA staging frontend CS21A148
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'login.html'
+      - 'ventas.html'
+      - 'inscripcion.html'
+      - 'src/**'
+      - 'styles/**'
+      - 'vendor/**'
+      - 'assets/**'
+      - 'modulos/**'
+      - 'scripts/build_qa_staging_frontend_cs21a148.mjs'
+      - 'scripts/audit_qa_staging_frontend_cs21a148.mjs'
+      - '.github/workflows/qa-staging-frontend-cs21a148.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-qa-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check staging scripts
+        run: |
+          node --check scripts/build_qa_staging_frontend_cs21a148.mjs
+          node --check scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Build current frontend for isolated QA
+        run: node scripts/build_qa_staging_frontend_cs21a148.mjs
+
+      - name: Audit generated delivery surface
+        run: node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Smoke test local staging server
+        shell: bash
+        run: |
+          node dist/qa-staging/serve.mjs > /tmp/campus-qa-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:4173/qa-setup.html > /dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          curl --fail --silent http://127.0.0.1:4173/index.html | grep -q 'qa-bootstrap.js?v=CS21A148'
+          curl --fail --silent http://127.0.0.1:4173/src/runtime_config.js | grep -q 'CAMPUS_RUNTIME_CONFIG'
+          curl --fail --silent http://127.0.0.1:4173/login.html | grep -q 'qa-bootstrap.js?v=CS21A148'
+
+      - name: Upload isolated QA frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: campus-qa-staging-cs21a148-${{ github.sha }}
+          path: dist/qa-staging
+          if-no-files-found: error
+          retention-days: 14
