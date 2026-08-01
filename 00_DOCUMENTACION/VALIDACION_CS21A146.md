@@ -22,9 +22,11 @@ Producción continúa siendo el valor predeterminado. QA o staging puede declara
 
 Las cuatro entradas cargan `src/runtime_config.js` antes del código funcional. Se retiró de `login.html`, `ventas.html` e `inscripcion.html` la asignación inline de la URL productiva.
 
-## Compatibilidad
+## Compatibilidad y seguridad
 
 El wrapper transitorio de `fetch` reescribe exclusivamente solicitudes dirigidas al despliegue productivo conocido cuando existe un override QA válido. No modifica otras solicitudes.
+
+Una intención QA/staging inválida, incompleta o apuntando a producción queda marcada como `invalid` y bloquea `fetch`. No existe fallback silencioso hacia producción.
 
 ## Fuera de alcance
 
@@ -39,7 +41,9 @@ El wrapper transitorio de `fetch` reescribe exclusivamente solicitudes dirigidas
 - sintaxis de `src/runtime_config.js`;
 - producción como valor predeterminado;
 - override QA explícito;
-- rechazo de URLs no válidas;
+- rechazo y bloqueo de URLs no válidas;
+- bloqueo de entorno QA sin URL;
+- bloqueo de entorno QA apuntando al despliegue productivo;
 - compatibilidad con `window.APPS_SCRIPT_URL` preexistente;
 - reescritura limitada del URL productivo;
 - orden correcto de carga en las cuatro entradas;
