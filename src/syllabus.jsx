@@ -169,26 +169,6 @@ function buildGroupSchedule(levelId, group, suspensions = []) {
   return items;
 }
 
-// ── Demo group + suspensions ─────────────────────────────────────────────
-// Santiago está en G0001-2026 · Básico I · Lun/Mié 6–9pm · inicio 5 may 2026
-// El prototipo asume "hoy" = 18 abr 2026 según contexto del sistema, pero como
-// el grupo inicia en mayo, mejor usar fechas que reflejen un grupo "en curso":
-// Lo movemos un ciclo atrás visualmente → inicio real 2 feb 2026 para que
-// hoy (18 abr 2026) caiga ~lección 21 y existan lecciones pasadas/futuras visibles.
-const DEMO_GROUP = {
-  code: 'G0001-2026',
-  levelId: 'b1',
-  scheduleDays: 'Lun/Mié 6–9pm',
-  startDate: '2026-02-02',
-  teacher: 'Ricardo Arias',
-};
-
-const DEMO_SUSPENSIONS = [
-  { lessonN: 8,  action:'rescheduled', newDate:'2026-02-28', reason:'Enfermedad del profesor', by:'teacher', byName:'Ricardo Arias', detail:'Gripe — reprogramado vía consenso en WhatsApp al sábado.', approvedBy:'Admin', approvedDate:'2026-02-24' },
-  { lessonN: 12, action:'suspended',   reason:'Feriado oficial',          by:'system', byName:'Sistema', detail:'11 Abril — Día de Juan Santamaría. Cascada aplicada.' },
-];
-
-
 // ── Format helpers ───────────────────────────────────────────────────────
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DAYS_ES_SHORT = ['dom','lun','mar','mié','jue','vie','sáb'];
@@ -210,7 +190,6 @@ Object.assign(window, {
   PRIORITY_BLOCK,
   SYLLABUS_BY_LEVEL, SYLLABUS_BASICO_I,
   ICAN_SLOTS_AFTER,
-  DEMO_GROUP, DEMO_SUSPENSIONS,
   buildGroupSchedule, parseScheduleDays,
   fmtDate, fmtDateLong, MONTHS_ES, DAYS_ES_SHORT, DAYS_ES_LONG,
 });
