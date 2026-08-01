@@ -27,11 +27,13 @@ window.__CAMPUS_RUNTIME_CONFIG__ = {
 <script src="src/runtime_config.js?v=F98.4Z6CS21A146"></script>
 ```
 
-El URL debe usar HTTPS, host `script.google.com` y ruta `/macros/s/.../exec` o `/dev`. Un valor inválido no se utiliza.
+El URL debe usar HTTPS, host `script.google.com` y ruta `/macros/s/.../exec` o `/dev`.
+
+Una intención no productiva inválida o incompleta no cae silenciosamente al backend productivo. El estado queda como `environment: 'invalid'`, `valid: false` y los `fetch` se bloquean con `CAMPUS_RUNTIME_CONFIG_INVALID`.
 
 ## Compatibilidad transitoria
 
-Varios módulos antiguos todavía guardan la URL productiva en constantes locales. Para permitir QA sin modificar simultáneamente todos esos módulos, `runtime_config.js` envuelve `window.fetch` y reescribe únicamente las solicitudes dirigidas exactamente al despliegue productivo conocido. Solicitudes a otros dominios o rutas no se modifican.
+Varios módulos antiguos todavía guardan la URL productiva en constantes locales. Para permitir QA sin modificar simultáneamente todos esos módulos, `runtime_config.js` envuelve `window.fetch` y reescribe únicamente las solicitudes dirigidas exactamente al despliegue productivo conocido. Solicitudes a otros dominios o rutas no se modifican cuando la configuración es válida.
 
 Esta capa es temporal. Las siguientes fases retirarán gradualmente las constantes repetidas y harán que cada módulo lea solamente `window.APPS_SCRIPT_URL`.
 
@@ -51,7 +53,8 @@ Esta capa es temporal. Las siguientes fases retirarán gradualmente las constant
 - No despliega Apps Script.
 - No acepta URLs arbitrarias como backend.
 - No persiste la URL QA en almacenamiento del navegador.
-- QA requiere una declaración explícita antes del arranque.
+- QA requiere una declaración explícita y válida antes del arranque.
+- Una configuración QA inválida bloquea red en lugar de consultar producción.
 
 ## Validación
 
