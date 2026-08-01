@@ -6,6 +6,15 @@ const root = process.cwd();
 const outDir = path.join(root, 'dist', 'qa-staging');
 const entrypoints = ['campus.html', 'login.html', 'ventas.html', 'inscripcion.html'];
 const deliveryDirs = ['assets', 'vendor', 'styles', 'src', 'modulos'];
+const excludedLegacyFiles = [
+  'master_preview_temp.html',
+  'campus_test.html',
+  'src/login_v1.jsx',
+  'src/SOLICI~2.JSX',
+  'src/ADMIN_~4.JSX',
+  'src/syllabus_views (1).jsx',
+];
+const excludedLegacySet = new Set(excludedLegacyFiles);
 const runtimeTagPattern = /<script\s+src=["']src\/runtime_config\.js[^"']*["']><\/script>/i;
 const buildId = process.env.GITHUB_SHA || 'local';
 const builtAt = new Date().toISOString();
@@ -20,12 +29,19 @@ function write(relative, content) {
   fs.writeFileSync(target, content, 'utf8');
 }
 
+function repositoryRelative(sourcePath) {
+  return path.relative(root, sourcePath).split(path.sep).join('/');
+}
+
 function copyDirectory(relative) {
   const source = path.join(root, relative);
   if (!fs.existsSync(source)) return;
   fs.cpSync(source, path.join(outDir, relative), {
     recursive: true,
     force: true,
+    filter(sourcePath) {
+      return !excludedLegacySet.has(repositoryRelative(sourcePath));
+    },
   });
 }
 
@@ -187,7 +203,7 @@ const port = Number(process.env.PORT || 4173);
 const mime = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
-  '.jsx': 'text/plain; charset=utf-8',
+  '.jsx': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -249,6 +265,7 @@ const manifest = {
   builtAt,
   entrypoints: [...entrypoints, 'index.html', 'qa-setup.html'],
   directories: deliveryDirs.filter(dir => fs.existsSync(path.join(root, dir))),
+  excludedLegacyFiles,
   backendUrlEmbedded: false,
   backendStorage: 'sessionStorage',
   productionDeploymentAllowed: false,
