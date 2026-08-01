@@ -1,0 +1,44 @@
+name: Runtime config CS21A146
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'login.html'
+      - 'ventas.html'
+      - 'inscripcion.html'
+      - 'src/runtime_config.js'
+      - 'scripts/test_runtime_config_cs21a146.mjs'
+      - '00_DOCUMENTACION/RUNTIME_CONFIG_CS21A146.md'
+      - '00_DOCUMENTACION/VALIDACION_CS21A146.md'
+      - '.github/workflows/runtime-config-cs21a146.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'login.html'
+      - 'ventas.html'
+      - 'inscripcion.html'
+      - 'src/runtime_config.js'
+      - 'scripts/test_runtime_config_cs21a146.mjs'
+      - '00_DOCUMENTACION/RUNTIME_CONFIG_CS21A146.md'
+      - '00_DOCUMENTACION/VALIDACION_CS21A146.md'
+      - '.github/workflows/runtime-config-cs21a146.yml'
+  workflow_dispatch:
+
+jobs:
+  runtime-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Verify runtime config syntax
+        run: node --check src/runtime_config.js
+      - name: Test production default and QA override
+        run: node scripts/test_runtime_config_cs21a146.mjs
+      - name: Verify no production URL is repeated in entrypoints
+        run: |
+          ! grep -n "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ" \
+            campus.html login.html ventas.html inscripcion.html
