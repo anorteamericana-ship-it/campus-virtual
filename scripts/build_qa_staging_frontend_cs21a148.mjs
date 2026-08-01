@@ -13,6 +13,11 @@ const excludedLegacyFiles = [
   'src/SOLICI~2.JSX',
   'src/ADMIN_~4.JSX',
   'src/syllabus_views (1).jsx',
+  'src/MATRIC~3.JSX',
+  'src/PANEL_~1.JSX',
+  'src/inscripcion_v1.jsx',
+  'styles/ADMIN_~2.CSS',
+  'styles/login_v1.css',
 ];
 const excludedLegacySet = new Set(excludedLegacyFiles);
 const runtimeTagPattern = /<script\s+src=["']src\/runtime_config\.js[^"']*["']><\/script>/i;
