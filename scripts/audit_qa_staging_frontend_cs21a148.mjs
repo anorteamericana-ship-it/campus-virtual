@@ -8,6 +8,21 @@ const read = relative => fs.readFileSync(path.join(outDir, relative), 'utf8');
 const exists = relative => fs.existsSync(path.join(outDir, relative));
 const cleanRef = value => String(value || '').split('#')[0].split('?')[0];
 
+const forbiddenFiles = [
+  'campus_standalone.html',
+  'master_preview_temp.html',
+  'campus_test.html',
+  'src/login_v1.jsx',
+  'src/SOLICI~2.JSX',
+  'src/ADMIN_~4.JSX',
+  'src/syllabus_views (1).jsx',
+  'src/MATRIC~3.JSX',
+  'src/PANEL_~1.JSX',
+  'src/inscripcion_v1.jsx',
+  'styles/ADMIN_~2.CSS',
+  'styles/login_v1.css',
+];
+
 assert.equal(fs.existsSync(outDir), true, 'Debe ejecutarse primero el constructor CS21A148.');
 
 const manifest = JSON.parse(read('QA_STAGING_BUILD.json'));
@@ -15,6 +30,7 @@ assert.equal(manifest.marker, 'QA_STAGING_FRONTEND_CS21A148');
 assert.equal(manifest.backendUrlEmbedded, false);
 assert.equal(manifest.backendStorage, 'sessionStorage');
 assert.equal(manifest.productionDeploymentAllowed, false);
+assert.deepEqual(manifest.excludedLegacyFiles, forbiddenFiles.slice(1));
 
 const entrypoints = ['campus.html', 'index.html', 'login.html', 'ventas.html', 'inscripcion.html'];
 for (const entrypoint of entrypoints) {
@@ -55,15 +71,7 @@ for (const token of ['DEMO_GROUP', 'DEMO_SUSPENSIONS', 'G0001-2026', 'Santiago e
   assert.equal(syllabus.includes(token), false, `El artefacto conserva dato demo: ${token}`);
 }
 
-for (const forbiddenFile of [
-  'campus_standalone.html',
-  'master_preview_temp.html',
-  'campus_test.html',
-  'src/login_v1.jsx',
-  'src/SOLICI~2.JSX',
-  'src/ADMIN_~4.JSX',
-  'src/syllabus_views (1).jsx',
-]) {
+for (const forbiddenFile of forbiddenFiles) {
   assert.equal(exists(forbiddenFile), false, `El artefacto contiene legado: ${forbiddenFile}`);
 }
 
