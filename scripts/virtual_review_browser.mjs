@@ -8,12 +8,30 @@ const shotsDir = path.join(outDir, 'screens');
 fs.mkdirSync(shotsDir, { recursive: true });
 
 const scenarios = [
-  { role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 } },
-  { role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
-  { role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 } },
-  { role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 } },
-  { role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 } },
-  { role: 'superadmin', route: 'banco', viewport: { width: 390, height: 844 } },
+  {
+    role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 },
+    navigation: ['Calendario académico', 'Evaluaciones', 'Resumen Académico'],
+  },
+  {
+    role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 },
+    navigation: ['Evaluaciones', 'Libros y Audios'],
+  },
+  {
+    role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 },
+    navigation: ['Calendario académico', 'Mis grupos'],
+  },
+  {
+    role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 },
+    navigation: ['Libros de texto', 'Mis grupos', 'Libros de texto'],
+  },
+  {
+    role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 },
+    navigation: ['Estudiantes', 'Panel Maestro'],
+  },
+  {
+    role: 'superadmin', route: 'banco', viewport: { width: 390, height: 844 },
+    navigation: ['Estudiantes', 'Importar banco'],
+  },
 ];
 
 function syntheticSession(role) {
@@ -73,6 +91,7 @@ function mockPayload(fn, session) {
 }
 
 const findings = [];
+const coverage = [];
 const add = (severity, scenario, title, evidence) => findings.push({
   id: `BQA-${String(findings.length + 1).padStart(3, '0')}`,
   severity,
@@ -81,6 +100,95 @@ const add = (severity, scenario, title, evidence) => findings.push({
   title,
   evidence,
 });
+
+async function snapshot(page) {
+  return page.evaluate(() => ({
+    bodyText: document.body?.innerText?.trim() || '',
+    rootHtml: document.getElementById('root')?.innerHTML || '',
+    labels: Array.from(document.querySelectorAll('[data-screen-label]')).map(node => node.getAttribute('data-screen-label')).filter(Boolean).slice(0, 8),
+    overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
+    hash: location.hash,
+    path: location.pathname,
+    href: location.href,
+    historyLength: history.length,
+    appMounted: Boolean(document.querySelector('.app')),
+  }));
+}
+
+function validateState(state, key, phase) {
+  const prefix = phase ? `${phase}: ` : '';
+  if (/login\.html$/i.test(state.path)) add('P1', key, `${prefix}La sesión sintética fue rechazada`, state.path);
+  if (state.bodyText.length < 20 || state.rootHtml.length < 20) add('P1', key, `${prefix}Pantalla vacía o aplicación no montada`, `body=${state.bodyText.length}, root=${state.rootHtml.length}`);
+  if (!state.appMounted) add('P1', key, `${prefix}El árbol principal del Campus no fue montado`, `path=${state.path}, hash=${state.hash}`);
+  if (state.overflow > 24) add('P2', key, `${prefix}Desbordamiento horizontal`, `${state.overflow}px fuera del viewport.`);
+  if (!state.labels.length) add('P3', key, `${prefix}Pantalla sin etiqueta de diagnóstico`, `path=${state.path}, hash=${state.hash}`);
+}
+
+async function findNavigationControl(page, label) {
+  const exact = page.getByText(label, { exact: true });
+  if (await exact.count()) return exact.last();
+  const candidates = page.locator('button, a, [role="button"]').filter({ hasText: label });
+  return (await candidates.count()) ? candidates.last() : null;
+}
+
+async function exerciseNavigation(page, scenario, key) {
+  const labels = scenario.navigation || [];
+  if (!labels.length) return;
+
+  const initial = await snapshot(page);
+  let successfulClicks = 0;
+  for (let cycle = 0; cycle < 2; cycle += 1) {
+    for (const label of labels) {
+      const control = await findNavigationControl(page, label);
+      if (!control) {
+        add('P2', key, 'No se encontró el control de navegación esperado', `${label} · ciclo ${cycle + 1}`);
+        continue;
+      }
+      try {
+        await control.click({ timeout: 5000 });
+        await page.waitForTimeout(700);
+        const state = await snapshot(page);
+        validateState(state, key, `alternancia ${label}`);
+        successfulClicks += 1;
+      } catch (error) {
+        add('P1', key, 'La alternancia repetida de menús falló', `${label} · ciclo ${cycle + 1} · ${error.message}`);
+      }
+    }
+  }
+  coverage.push({ scenario: key, check: 'alternancia_repetida', attempted: labels.length * 2, successful: successfulClicks });
+
+  const beforeReload = await snapshot(page);
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(2500);
+    const afterReload = await snapshot(page);
+    validateState(afterReload, key, 'recarga directa');
+    coverage.push({
+      scenario: key,
+      check: 'recarga_directa',
+      before: { path: beforeReload.path, hash: beforeReload.hash },
+      after: { path: afterReload.path, hash: afterReload.hash },
+      mounted: afterReload.appMounted,
+    });
+  } catch (error) {
+    add('P1', key, 'La recarga directa no terminó', error.message || String(error));
+  }
+
+  const afterReload = await snapshot(page);
+  if (afterReload.historyLength > initial.historyLength || afterReload.hash !== initial.hash || afterReload.href !== initial.href) {
+    try {
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 10000 });
+      await page.waitForTimeout(1500);
+      const afterBack = await snapshot(page);
+      validateState(afterBack, key, 'navegación Atrás');
+      coverage.push({ scenario: key, check: 'atras', exercised: true, mounted: afterBack.appMounted, hash: afterBack.hash });
+    } catch (error) {
+      add('P2', key, 'La navegación Atrás no se recuperó correctamente', error.message || String(error));
+    }
+  } else {
+    coverage.push({ scenario: key, check: 'atras', exercised: false, reason: 'La navegación interna no creó una entrada observable en el historial.' });
+  }
+}
 
 const browser = await chromium.launch({ headless: true });
 for (const scenario of scenarios) {
@@ -138,30 +246,19 @@ for (const scenario of scenarios) {
     await page.waitForTimeout(4500);
 
     if (scenario.clickLabel) {
-      const locator = page.getByText(scenario.clickLabel, { exact: true }).last();
-      if (await locator.count()) {
-        await locator.click({ timeout: 5000 });
+      const control = await findNavigationControl(page, scenario.clickLabel);
+      if (control) {
+        await control.click({ timeout: 5000 });
         await page.waitForTimeout(3000);
       } else {
         add('P2', key, 'No se encontró el control de navegación esperado', scenario.clickLabel);
       }
     }
 
-    const state = await page.evaluate(() => ({
-      bodyText: document.body?.innerText?.trim() || '',
-      rootHtml: document.getElementById('root')?.innerHTML || '',
-      labels: Array.from(document.querySelectorAll('[data-screen-label]')).map(node => node.getAttribute('data-screen-label')).filter(Boolean).slice(0, 8),
-      overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
-      hash: location.hash,
-      path: location.pathname,
-      appMounted: Boolean(document.querySelector('.app')),
-    }));
+    const state = await snapshot(page);
+    validateState(state, key, 'carga inicial');
+    await exerciseNavigation(page, scenario, key);
 
-    if (/login\.html$/i.test(state.path)) add('P1', key, 'La sesión sintética fue rechazada', state.path);
-    if (state.bodyText.length < 20 || state.rootHtml.length < 20) add('P1', key, 'Pantalla vacía o aplicación no montada', `body=${state.bodyText.length}, root=${state.rootHtml.length}`);
-    if (!state.appMounted) add('P1', key, 'El árbol principal del Campus no fue montado', `path=${state.path}, hash=${state.hash}`);
-    if (state.overflow > 24) add('P2', key, 'Desbordamiento horizontal', `${state.overflow}px fuera del viewport.`);
-    if (!state.labels.length) add('P3', key, 'Pantalla sin etiqueta de diagnóstico', `path=${state.path}, hash=${state.hash}`);
     for (const error of pageErrors) add('P1', key, 'Excepción no controlada en navegador', error);
     for (const failure of [...new Set(localFailures)]) add('P1', key, 'Recurso local no disponible', failure);
     for (const error of [...new Set(consoleErrors)].slice(0, 10)) {
@@ -188,11 +285,13 @@ const report = {
   verdict,
   counts,
   scenarios,
+  navigation_coverage: coverage,
   safety: 'Todas las llamadas a Apps Script fueron respondidas localmente; no hubo escrituras reales.',
   limitations: [
     'Las sesiones son sintéticas y no sustituyen una cuenta controlada real.',
     'No verifica permisos reales de Drive ni datos productivos.',
     'No ejecuta operaciones de escritura.',
+    'La prueba Atrás solo puede ejercerse cuando la navegación interna crea una entrada observable en el historial del navegador.',
   ],
   findings,
 };
@@ -205,6 +304,10 @@ const markdown = [
   `- Escenarios: ${scenarios.length}`,
   `- Hallazgos: P0 ${counts.P0} · P1 ${counts.P1} · P2 ${counts.P2} · P3 ${counts.P3}`,
   `- Seguridad: ${report.safety}`,
+  '',
+  '## Cobertura de navegación',
+  '',
+  ...coverage.map(item => `- ${item.scenario} · ${item.check}: ${item.exercised === false ? item.reason : 'ejecutado'}`),
   '',
   '## Hallazgos',
   '',
