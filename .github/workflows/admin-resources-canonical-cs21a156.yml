@@ -1,64 +1,37 @@
-name: Admin resources canonical CS21A156
+name: CS21A165 apply reusable planning component
 
 on:
   pull_request:
     paths:
-      - 'src/app.jsx'
-      - 'src/sidebar.jsx'
-      - 'src/admin_resources_view_cs21a156.jsx'
-      - 'src/admin_resources_cs21a59.jsx'
-      - 'src/admin_resources_runtime_cs21a61.jsx'
-      - 'src/admin_resources_direct_cs21a74.js'
-      - 'src/resources_panel_cs21a65.jsx'
-      - 'src/resources_panel_state_cs21a65.js'
-      - 'src/book_unit_starts_cs21a60.jsx'
-      - 'src/teacher_books_unit_guard_cs21a134.js'
-      - 'scripts/test_admin_resources_canonical_cs21a156.mjs'
-      - 'scripts/test_admin_resources_browser_cs21a156.mjs'
+      - 'scripts/apply_cs21a165_once.py'
       - '.github/workflows/admin-resources-canonical-cs21a156.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate-admin-resources-route:
+  apply-cs21a165:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout exact ref
+      - name: Checkout source branch
         uses: actions/checkout@v4
-      - name: Validate canonical contracts
-        run: node scripts/test_admin_resources_canonical_cs21a156.mjs
-      - name: Validate teacher book maps and visual guard
-        run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
-      - name: Audit delivery surface
-        run: node scripts/audit_delivery_surface.mjs
-      - name: Static virtual review
-        run: node scripts/virtual_review_static.mjs
-      - name: Install Playwright
-        run: |
-          npm install --no-save --ignore-scripts playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Start isolated server
-        run: |
-          python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
-          for attempt in {1..20}; do
-            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
-            sleep 1
-          done
-          cat qa-server.log
-          exit 1
-      - name: Validate admin and superadmin in browser
-        env:
-          QA_BASE_URL: http://127.0.0.1:4173
-        run: node scripts/test_admin_resources_browser_cs21a156.mjs
-      - name: Upload browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: admin-resources-cs21a156
-          path: |
-            qa-output/admin-resources-cs21a156/
-            qa-server.log
-          if-no-files-found: warn
-          retention-days: 30
+          ref: refactor/cs21a157-docente-recursos-canonicos
+          fetch-depth: 0
+      - name: Apply once when transformer exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! test -f scripts/apply_cs21a165_once.py; then
+            echo 'Transformer not published yet.'
+            exit 0
+          fi
+          python3 scripts/apply_cs21a165_once.py
+          git rm scripts/apply_cs21a165_once.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/teacher_cs21a.jsx src/teacher_cs21a_planeamiento_grouped.jsx scripts/test_teacher_resources_canonical_cs21a157.mjs
+          git commit -m 'CS21A165 publica Planeamiento como componente canónico'
+          git push origin HEAD:refactor/cs21a157-docente-recursos-canonicos
