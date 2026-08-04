@@ -1,0 +1,28 @@
+name: Superadmin sidebar cleanup CS21A155
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/app.jsx'
+      - 'src/admin_resources_superadmin_cs21a60.jsx'
+      - 'src/resources_panel_cs21a65.jsx'
+      - 'scripts/test_superadmin_sidebar_cleanup_cs21a155.mjs'
+      - '.github/workflows/superadmin-sidebar-cleanup-cs21a155.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-superadmin-sidebar:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Validate inert wrapper cleanup
+        run: node scripts/test_superadmin_sidebar_cleanup_cs21a155.mjs
+      - name: Audit delivery surface
+        run: node scripts/audit_delivery_surface.mjs
+      - name: Static virtual review
+        run: node scripts/virtual_review_static.mjs
