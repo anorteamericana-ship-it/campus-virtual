@@ -21,6 +21,9 @@ assert.match(teacher, /const\s+\[intent,\s*setIntent\]\s*=\s*React\.useState\(\(
 assert.match(teacher, /window\.addEventListener\(['"]an:teacher-material-tab['"],\s*syncIntent\)/);
 assert.match(teacher, /window\.removeEventListener\(['"]an:teacher-material-tab['"],\s*syncIntent\)/);
 assert.match(teacher, /if\(item\.intent\)\s*\{\s*setIntent\(item\.intent\);\s*setHubScreen\(item\.intent\);\s*\}/);
+assert.match(teacher, /const\s+BookResources\s*=\s*window\.__AN_BOOK_RESOURCES_COMPONENT__/);
+assert.match(teacher, /screen\s*===\s*['"]libros['"][\s\S]{0,220}?<BookResources\s+initialType=['"]SB['"]\s*\/>/);
+assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'\]/);
 
 assert.match(compatibility, /F98\.4-Z6-CS21A157/);
 assert.match(compatibility, /__AN_RESOURCES_PANEL_COMPATIBILITY__/);
@@ -46,6 +49,9 @@ assert.match(viewer, /function\s+TypeButtons\s*\(\{\s*type,\s*setType,\s*allowed
 assert.match(viewer, /allowedTypes\.map\(key\s*=>/);
 assert.match(viewer, /const\s+allowedTypes\s*=\s*studentMode\s*\?\s*\[['"]SB['"],\s*['"]WB['"]\]\s*:\s*\[['"]SB['"],\s*['"]TB['"],\s*['"]WB['"]\]/);
 assert.match(viewer, /<TypeButtons\s+type=\{bookType\}\s+setType=\{setBookType\}\s+allowedTypes=\{allowedTypes\}\s*\/>/);
+assert.doesNotMatch(viewer, /an_teacher_materiales_tab/);
+assert.doesNotMatch(viewer, /role\s*===\s*['"]teacher['"][\s\S]{0,180}?BookResourcesCS21A60/);
+assert.doesNotMatch(viewer, /role\s*===\s*['"]docente['"][\s\S]{0,180}?BookResourcesCS21A60/);
 
 const order = [
   'src/book_unit_starts_cs21a60.jsx',

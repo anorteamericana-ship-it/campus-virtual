@@ -2,7 +2,6 @@
 /* global React, MaterialesView */
 (function () {
   const VERSION = 'F98.4-Z6-CS21A75';
-  const TAB_KEY = 'an_teacher_materiales_tab';
   const ADMIN_OPEN_KEY = 'an_admin_resources_open';
   const ADMIN_TAB_KEY = 'an_admin_resources_tab';
   const BLUE = 'var(--an-navy-ink,#001E47)';
@@ -325,11 +324,8 @@
     const Wrapped = function MaterialesViewCS21A75(props) {
       const user = currentSession();
       const role = roleOf(user);
-      const screen = sessionStorage.getItem(TAB_KEY) || 'info';
       const adminOpen = sessionStorage.getItem(ADMIN_OPEN_KEY) === '1';
       const adminTab = sessionStorage.getItem(ADMIN_TAB_KEY) || 'libros';
-      if ((role === 'teacher' || role === 'docente') && screen === 'libros') return <BookResourcesCS21A60 initialType="SB" />;
-      if ((role === 'teacher' || role === 'docente') && screen === 'biblioteca') return <BookResourcesCS21A60 initialType="TB" />;
       if ((role === 'admin' || role === 'superadmin') && adminOpen) return <BookResourcesCS21A60 initialType={adminTab === 'audios' ? 'SB' : 'SB'} />;
       if (role === 'student' || role === 'estudiante') return <><BookResourcesCS21A60 studentMode initialType="SB" /><Base {...props} /></>;
       return <Base {...props} />;

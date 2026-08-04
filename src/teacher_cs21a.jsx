@@ -212,6 +212,7 @@
   function TeacherHubCS21A(props){
     const [screen, setScreenState] = React.useState(()=>sessionStorage.getItem('an_teacher_materiales_tab') || 'info');
     React.useEffect(()=>{ const h=e=>{ if(e?.detail?.tab) setScreenState(e.detail.tab); }; window.addEventListener('an:teacher-material-tab', h); return()=>window.removeEventListener('an:teacher-material-tab', h); }, []);
+    const BookResources = window.__AN_BOOK_RESOURCES_COMPONENT__;
     const titles = {
       info:['Principal','Información General del Programa','Documentos institucionales del programa. Únicamente se muestran los recursos indicados.'],
       asistencia:['Gestión Académica','Asistencia','Resumen general de asistencia, notas y comentarios por grupo.'],
@@ -226,7 +227,8 @@
       <Header eyebrow={t[0]} title={t[1]} desc={t[2]} />
       {screen === 'info' && <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12 }}>{INFO_ITEMS.map(x=><CS21Card key={x.code} item={x}/>)}</div>}
       {screen === 'asistencia' && <AsistenciaResumenCS21A onNavigate={props.onNavigate}/>} 
-      {['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'].includes(screen) && <LevelCards type={screen} onNavigate={props.onNavigate}/>} 
+      {['syllabus','planeamiento','cronograma_modulo','cronograma_general'].includes(screen) && <LevelCards type={screen} onNavigate={props.onNavigate}/>} 
+      {screen === 'libros' && (typeof BookResources === 'function' ? <BookResources initialType="SB" /> : <div role="status" style={{ padding:18, border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>Preparando Libros y Audios…</div>)}
     </section>;
   }
 
