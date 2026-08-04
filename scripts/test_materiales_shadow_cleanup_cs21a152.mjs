@@ -46,7 +46,8 @@ assert.match(teacher, /screen\s*===\s*['"]libros['"][\s\S]{0,220}?<BookResources
 assert.match(propagation, /teacher_books_unit_guard_cs21a134\.js/);
 assert.match(propagation, /loadTeacherUnitGuard\(\)/);
 assert.match(guard, /F98\.4-Z6-CS21A162/);
-assert.match(guard, /authorityMode:['"]TEACHER_PORTAL_OWNS_VIEWER['"]/);
+assert.match(guard, /const\s+AUTHORITY_MODE\s*=\s*['"]TEACHER_PORTAL_OWNS_VIEWER['"]/);
+assert.match(guard, /authorityMode:\s*AUTHORITY_MODE/);
 assert.match(guard, /window\.__AN_BOOK_RESOURCES_COMPONENT__/);
 assert.doesNotMatch(guard, /(?:window\.)?MaterialesView\s*=|__cs21a135BookAuthority|setInterval\s*\(/);
 
