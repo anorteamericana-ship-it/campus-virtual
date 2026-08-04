@@ -1,3 +1,4 @@
+# Activación controlada con workflow previamente publicado.
 from pathlib import Path
 
 
