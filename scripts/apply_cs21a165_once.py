@@ -1,4 +1,4 @@
-# Activación controlada con workflow previamente publicado.
+# Transformación única con cierre real del módulo CS21A140.
 from pathlib import Path
 
 
@@ -13,12 +13,11 @@ def replace_once(path: Path, old: str, new: str, label: str) -> None:
 planning = Path('src/teacher_cs21a_planeamiento_grouped.jsx')
 source = planning.read_text(encoding='utf-8')
 start_marker = '  function getScreen(){'
-end_marker = '  setTimeout(install, 0);\n})();'
 start = source.find(start_marker)
-end = source.find(end_marker, start)
-if start < 0 or end < 0:
+end = source.rfind('})();')
+if start < 0 or end < start:
     raise SystemExit(f'No se localizaron límites del wrapper CS21A9: start={start}, end={end}')
-end += len(end_marker)
+end += len('})();')
 replacement = """  window.PlaneamientoGroupedViewCS21A140 = PlaneamientoGroupedView;
   window.__AN_TEACHER_PLANNING_GROUPED_VERSION__ = VERSION;
 })();"""
