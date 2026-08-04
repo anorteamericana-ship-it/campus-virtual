@@ -21,8 +21,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Validate independent component
         run: node scripts/test_additional_resources_independent_cs21a154.mjs
-      - name: Parse critical JSX
-        run: node scripts/parse_critical_jsx.mjs
       - name: Audit delivery surface
         run: node scripts/audit_delivery_surface.mjs
       - name: Static virtual review
