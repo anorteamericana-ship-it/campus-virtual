@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const read = file => fs.readFileSync(file, 'utf8');
 const teacher = read('src/teacher_cs21a.jsx');
 const compatibility = read('src/resources_panel_cs21a65.jsx');
+const additionalResources = read('src/additional_resources_panel_cs21a68.jsx');
 const guard = read('src/student_menu_academic_guard_cs21a120.js');
 const inlineAudio = read('src/book_inline_audio_cs21a63.js');
 const viewer = read('src/book_unit_starts_cs21a60.jsx');
@@ -29,6 +30,11 @@ assert.match(compatibility, /F98\.4-Z6-CS21A157/);
 assert.match(compatibility, /__AN_RESOURCES_PANEL_COMPATIBILITY__/);
 assert.doesNotMatch(compatibility, /(?:window\.)?Sidebar\s*=/);
 assert.doesNotMatch(compatibility, /__base\s*=|MutationObserver|requestAnimationFrame|an:lazy-module-loaded|an:teacher-material-tab/);
+
+assert.match(additionalResources, /F98\.4-Z6-CS21A154/);
+assert.match(additionalResources, /window\.AdditionalResourcesPanel\s*=\s*AdditionalResourcesPanel/);
+assert.doesNotMatch(additionalResources, /(?:window\.)?MaterialesView\s*=/);
+assert.doesNotMatch(additionalResources, /__base\s*=|MutationObserver|requestAnimationFrame|MODE_KEY|MODE_EVENT|BUTTON_ID_PREFIX/);
 
 assert.doesNotMatch(guard, /__cs21a65UnifiedResources|__cs21a59AdminResources|__cs21a60SuperResources/);
 assert.match(guard, /__cs21a69ActiveState/);
@@ -57,11 +63,12 @@ const order = [
   'src/book_unit_starts_cs21a60.jsx',
   'src/book_inline_audio_cs21a63.js',
   'src/resources_panel_cs21a65.jsx',
+  'src/additional_resources_panel_cs21a68.jsx',
 ].map(file => {
   const index = campus.indexOf(file);
   assert.notEqual(index, -1, `${file} debe estar publicado.`);
   return index;
 });
-assert.ok(order[0] < order[1] && order[1] < order[2], 'El visor debe publicarse antes del audio y la compatibilidad inerte.');
+assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3], 'El visor debe publicarse antes de sus extensiones independientes.');
 
-console.log('OK CS21A161: el portal docente conserva la subruta activa y es el único propietario de Libros y Audios.');
+console.log('OK CS21A163: TeacherHub es propietario de Libros y Audios y Recursos adicionales permanece independiente.');
