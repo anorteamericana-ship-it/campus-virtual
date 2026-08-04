@@ -1,0 +1,34 @@
+name: CS21A160 apply teacher material intent
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cs21a160-apply-teacher-intent.yml'
+      - '.github/patches/cs21a160-teacher-intent.patch.b64'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-teacher-intent:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/cs21a157-docente-recursos-canonicos
+          fetch-depth: 0
+      - name: Apply exact intent patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/patches/cs21a160-teacher-intent.patch.b64 > /tmp/cs21a160.patch
+          git apply --check /tmp/cs21a160.patch
+          git apply /tmp/cs21a160.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/teacher_cs21a.jsx
+          git commit -m 'CS21A160 sincroniza subruta activa docente'
+          git push origin HEAD:refactor/cs21a157-docente-recursos-canonicos
