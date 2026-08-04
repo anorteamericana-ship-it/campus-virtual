@@ -4,7 +4,6 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync('src/teacher_books_unit_guard_cs21a134.js', 'utf8');
 let role = 'teacher';
-let activeTab = 'libros';
 let backendPayload = { ok:true, level:'B1', book_type:'TB', unit_starts:[] };
 let backendCalls = 0;
 
@@ -21,6 +20,7 @@ const documentStub = {
       dataset:{},
       classList:{ add(){} },
       setAttribute(){},
+      removeAttribute(){},
       appendChild(){},
       append(){},
       querySelectorAll(){ return []; },
@@ -56,22 +56,15 @@ const context = {
 context.window = context;
 context.window.location = { href:'https://example.test/campus.html' };
 context.window.getSesion = () => ({ rol:role });
-context.window.getComputedStyle = () => ({ color:'rgb(0, 0, 0)', backgroundColor:'rgb(255, 255, 255)' });
 context.window.addEventListener = () => {};
-context.window.setInterval = () => 1;
-context.window.clearInterval = () => {};
 context.window.setTimeout = callback => { callback(); return 1; };
 context.window.requestAnimationFrame = callback => { callback(); return 1; };
-context.window.React = {
-  createElement(type, props){ return { type, props:props || {} }; },
-};
 context.window.__AN_BOOK_RESOURCES_COMPONENT__ = Viewer;
 context.window.MaterialesView = BaseMateriales;
 context.MaterialesView = BaseMateriales;
 context.sessionStorage = {
   getItem(key){
     if (key === 'an_usuario') return JSON.stringify({ rol:role });
-    if (key === 'an_teacher_materiales_tab') return activeTab;
     return null;
   },
 };
@@ -88,7 +81,8 @@ vm.runInContext(source, context, { filename:'teacher_books_unit_guard_cs21a134.j
 
 const guard = context.window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135;
 const correctedB1 = [8,14,22,28,36,42,50,56,64,70,78,84,92,98,106,112];
-assert.equal(guard.version, 'F98.4-Z6-CS21A135');
+assert.equal(guard.version, 'F98.4-Z6-CS21A162');
+assert.equal(guard.authorityMode, 'TEACHER_PORTAL_OWNS_VIEWER');
 assert.equal(Object.keys(guard.maps).length, 12, 'Deben existir SB, TB y WB para los cuatro niveles.');
 assert.equal(guard.knownBad['B1|SB'].length, 2);
 for (const [key, values] of Object.entries(guard.maps)) {
@@ -100,22 +94,22 @@ for (const sequence of [
   [9,15,23,29,37,43,51,57,65,71,79,85,93,99,107,113],
   [6,12,20,26,34,40,48,54,62,68,76,82,90,96,104,110],
 ]) {
-  const repairedB1 = guard.repairPayload({
+  const repaired = guard.repairPayload({
     ok:true,
     level:'B1',
     book_type:'SB',
     unit_starts:sequence,
     unit_starts_source:'BOOK_JSON',
   });
-  assert.deepEqual(Array.from(repairedB1.unit_starts), correctedB1);
-  assert.equal(repairedB1.unit_starts_repaired_frontend, true);
+  assert.deepEqual(Array.from(repaired.unit_starts), correctedB1);
+  assert.equal(repaired.unit_starts_repaired_frontend, true);
+  assert.equal(repaired.unit_starts_repair_version, 'F98.4-Z6-CS21A162');
 }
 
 const missingB2SB = guard.repairPayload({ ok:true, level:'B2', book_type:'SB', unit_starts:[] });
 assert.deepEqual(
   Array.from(missingB2SB.unit_starts),
   [22,28,36,42,50,56,64,70,78,84,92,98,106,112,120,126],
-  'B2 SB debe conservar respaldo porque su manifiesto no trae unit_starts.'
 );
 
 const partialI2WB = guard.repairPayload({ ok:true, level:'I2', book_type:'WB', unit_starts:[5,11,null] });
@@ -132,29 +126,18 @@ const studentPayload = {
   book_type:'SB',
   unit_starts:[9,15,23,29,37,43,51,57,65,71,79,85,93,99,107,113],
 };
-assert.equal(guard.repairPayload(studentPayload), studentPayload, 'El guard no debe cambiar la respuesta del estudiante.');
+assert.equal(guard.repairPayload(studentPayload), studentPayload, 'El guard no debe alterar respuestas del estudiante.');
 
 role = 'teacher';
-assert.equal(context.window.MaterialesView.__cs21a135BookAuthority, true);
-assert.equal(context.window.MaterialesView.__cs21a58books, true, 'La marca debe bloquear el regreso del visor antiguo.');
-let rendered = context.window.MaterialesView({ sample:1 });
-assert.equal(rendered.type, Viewer, 'Libros del docente deben usar el visor institucional.');
-assert.equal(rendered.props.initialType, 'SB');
-
-activeTab = 'biblioteca';
-rendered = context.window.MaterialesView({ sample:2 });
-assert.equal(rendered.type, Viewer);
-assert.equal(rendered.props.initialType, 'TB');
-
-context.window.MaterialesView = function LegacyCS21A58(){};
+assert.equal(context.window.MaterialesView, BaseMateriales, 'El guard no debe envolver MaterialesView.');
+assert.equal(guard.installAuthority(), true, 'El visor reutilizable debe estar publicado.');
+const LegacyMateriales = function LegacyMateriales(){};
+context.window.MaterialesView = LegacyMateriales;
 assert.equal(guard.installAuthority(), true);
-assert.equal(context.window.MaterialesView.__cs21a135BookAuthority, true, 'La autoridad debe recuperarse después de una reinstalación tardía del legado.');
-assert.equal(context.window.MaterialesView.__cs21a58books, true);
+assert.equal(context.window.MaterialesView, LegacyMateriales, 'El verificador no debe sustituir una vista montada.');
 
 backendPayload = { ok:true, level:'B2', book_type:'WB', unit_starts:[] };
-const response = await context.window.fetch('https://script.google.test/exec?fn=teacherBooksOpenImageBook', {
-  method:'POST',
-});
+const response = await context.window.fetch('https://script.google.test/exec?fn=teacherBooksOpenImageBook', { method:'POST' });
 const body = await response.json();
 assert.deepEqual(Array.from(body.unit_starts), [6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96]);
 assert.equal(backendCalls, 1);
@@ -165,4 +148,11 @@ assert.deepEqual(await untouchedResponse.json(), backendPayload);
 assert.equal(backendCalls, 2);
 
 assert.equal(appended.some(node => node.tagName === 'STYLE'), true, 'Debe instalarse el acabado visual de la botonera.');
-console.log('OK: 12 mapas, autoridad del visor, TB/WB persistentes y diseño CS21A135 validados.');
+assert.doesNotMatch(source, /an_teacher_materiales_tab/);
+assert.doesNotMatch(source, /MaterialesView\s*=/);
+assert.doesNotMatch(source, /__cs21a135BookAuthority|__cs21a58books/);
+assert.doesNotMatch(source, /setInterval\s*\(/);
+assert.match(source, /TEACHER_PORTAL_OWNS_VIEWER/);
+assert.match(source, /MutationObserver/);
+
+console.log('OK CS21A162: 12 mapas, reparación TB\/WB y diseño validados sin envolver MaterialesView.');
