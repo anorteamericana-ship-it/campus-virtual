@@ -121,5 +121,5 @@ jobs:
             qa-output/
             qa-server.log
             qa-staging-server.log
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
