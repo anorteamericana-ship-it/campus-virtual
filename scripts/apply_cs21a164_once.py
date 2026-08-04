@@ -1,3 +1,4 @@
+# Activación controlada: el workflow CS21A164 ya existía antes de este commit.
 from pathlib import Path
 
 
