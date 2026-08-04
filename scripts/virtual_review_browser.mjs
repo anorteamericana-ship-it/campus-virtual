@@ -141,9 +141,7 @@ async function snapshot(page) {
     const rootText = root?.innerText?.trim() || '';
     const loginDetected = /login\.html$/i.test(location.pathname)
       || Boolean(document.querySelector('form[action*="login" i], .login-page, [data-screen-label*="login" i]'));
-    const mountedSurface = Boolean(
-      document.querySelector('.app, .sb, main, [data-screen-label], #root > *')
-    );
+    const mountedSurface = Boolean(document.querySelector('.app, .sb, main, [data-screen-label], #root > *'));
     return {
       bodyText,
       rootHtml,
@@ -297,8 +295,7 @@ async function exerciseNavigation(page, scenario, key) {
   }
 
   const afterReload = await snapshot(page);
-  const historyChanged = afterReload.historyLength > initial.historyLength
-    || afterReload.href !== initial.href;
+  const historyChanged = afterReload.historyLength > initial.historyLength || afterReload.href !== initial.href;
   if (historyChanged) {
     try {
       await page.goBack({ waitUntil: 'domcontentloaded', timeout: 10000 });
