@@ -2,8 +2,6 @@
 /* global React, MaterialesView */
 (function () {
   const VERSION = 'F98.4-Z6-CS21A75';
-  const ADMIN_OPEN_KEY = 'an_admin_resources_open';
-  const ADMIN_TAB_KEY = 'an_admin_resources_tab';
   const BLUE = 'var(--an-navy-ink,#001E47)';
 
   const LEVELS = [
@@ -314,37 +312,14 @@
   window.__AN_BOOK_RESOURCES_COMPONENT__ = BookResourcesCS21A60;
 
   function installMaterialPatch() {
-    const Current = window.MaterialesView || (typeof MaterialesView === 'function' ? MaterialesView : null);
-    if (!Current || Current.__cs21a75UnitStarts) return false;
-    if (Current.__cs21a60UnitStarts && !Current.__cs21a75UnitStarts) {
-      window.__AN_CS21A59_TEACHER_MATERIALS_BASE__ = Current;
-      return true;
-    }
-    const Base = Current;
-    const Wrapped = function MaterialesViewCS21A75(props) {
-      const user = currentSession();
-      const role = roleOf(user);
-      const adminOpen = sessionStorage.getItem(ADMIN_OPEN_KEY) === '1';
-      const adminTab = sessionStorage.getItem(ADMIN_TAB_KEY) || 'libros';
-      if ((role === 'admin' || role === 'superadmin') && adminOpen) return <BookResourcesCS21A60 initialType={adminTab === 'audios' ? 'SB' : 'SB'} />;
-      if (role === 'student' || role === 'estudiante') return <><BookResourcesCS21A60 studentMode initialType="SB" /><Base {...props} /></>;
-      return <Base {...props} />;
-    };
-    Wrapped.__cs21a75UnitStarts = true;
-    Wrapped.__cs21a60UnitStarts = true;
-    Wrapped.__base = Base;
-    window.MaterialesView = Wrapped;
-    window.__AN_CS21A59_TEACHER_MATERIALS_BASE__ = Wrapped;
-    try { MaterialesView = Wrapped; } catch (_) {}
-    return true;
+    // Compatibilidad de API. Las rutas estudiante, docente y administración
+    // consumen BookResourcesCS21A60 de forma explícita y este módulo no captura
+    // ni sustituye MaterialesView.
+    return typeof window.__AN_BOOK_RESOURCES_COMPONENT__ === 'function';
   }
 
-  function install() { installMaterialPatch(); }
+  function install() { return installMaterialPatch(); }
   install();
-  window.addEventListener('an:lazy-module-loaded', () => setTimeout(install, 20));
-  window.addEventListener('an:teacher-material-tab', () => setTimeout(install, 20));
-  window.addEventListener('an:admin-resource-tab', () => setTimeout(install, 20));
-  const probe = setInterval(() => { if (installMaterialPatch()) clearInterval(probe); }, 250);
-  setTimeout(() => clearInterval(probe), 20000);
   window.__AN_BOOK_UNIT_STARTS_VERSION__ = VERSION;
+  window.__AN_BOOK_UNIT_STARTS_MODE__ = 'REUSABLE_COMPONENT_ONLY';
 })();

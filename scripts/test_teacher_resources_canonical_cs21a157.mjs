@@ -64,6 +64,9 @@ assert.match(viewer, /<TypeButtons\s+type=\{bookType\}\s+setType=\{setBookType\}
 assert.doesNotMatch(viewer, /an_teacher_materiales_tab/);
 assert.doesNotMatch(viewer, /role\s*===\s*['"]teacher['"][\s\S]{0,180}?BookResourcesCS21A60/);
 assert.doesNotMatch(viewer, /role\s*===\s*['"]docente['"][\s\S]{0,180}?BookResourcesCS21A60/);
+assert.doesNotMatch(viewer, /MaterialesViewCS21A75|window\.MaterialesView\s*=|__base\s*=|__AN_CS21A59_TEACHER_MATERIALS_BASE__/);
+assert.doesNotMatch(viewer, /setInterval\s*\(|an:teacher-material-tab|an:admin-resource-tab/);
+assert.match(viewer, /__AN_BOOK_UNIT_STARTS_MODE__\s*=\s*['"]REUSABLE_COMPONENT_ONLY['"]/);
 
 const order = [
   'src/teacher_cs21a_order_fix.jsx',
