@@ -4,6 +4,8 @@ import fs from 'node:fs';
 const read = file => fs.readFileSync(file, 'utf8');
 const teacher = read('src/teacher_cs21a.jsx');
 const planning = read('src/teacher_cs21a_planeamiento_grouped.jsx');
+const legacyPlanning = read('src/teacher_cs21a_planeamiento32.jsx');
+const legacyLibrary = read('src/teacher_cs21a_biblioteca_pdf.jsx');
 const orderFix = read('src/teacher_cs21a_order_fix.jsx');
 const compatibility = read('src/resources_panel_cs21a65.jsx');
 const additionalResources = read('src/additional_resources_panel_cs21a68.jsx');
@@ -34,6 +36,15 @@ assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','c
 assert.match(planning, /window\.PlaneamientoGroupedViewCS21A140\s*=\s*PlaneamientoGroupedView/);
 assert.match(planning, /__AN_TEACHER_PLANNING_GROUPED_VERSION__/);
 assert.doesNotMatch(planning, /(?:window\.)?MaterialesView\s*=|MaterialesViewCS21A9|__base\s*=|__cs21a9|an:lazy-module-loaded|setTimeout\(install/);
+
+for (const [name, source, marker] of [
+  ['CS21A6', legacyPlanning, '__AN_TEACHER_PLANEAMIENTO32_COMPATIBILITY__'],
+  ['CS21A10', legacyLibrary, '__AN_TEACHER_BIBLIOTECA_PDF_COMPATIBILITY__'],
+]) {
+  assert.match(source, /F98\.4-Z6-CS21A153/, `${name} debe conservar su tombstone documentado.`);
+  assert.match(source, new RegExp(marker));
+  assert.doesNotMatch(source, /(?:window\.)?MaterialesView\s*=|MaterialesViewCS21A|__base\s*=|React|fetch\s*\(|addEventListener|setInterval|MutationObserver/);
+}
 
 assert.match(orderFix, /F98\.4-Z6-CS21A152/);
 assert.match(orderFix, /__AN_TEACHER_ORDER_FIX_COMPATIBILITY__/);
@@ -89,4 +100,4 @@ const order = [
 });
 assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3] && order[3] < order[4], 'Las compatibilidades inertes deben cargar antes del visor y sus extensiones independientes.');
 
-console.log('OK CS21A165: TeacherHub es propietario de Libros, Audios y Planeamiento; los módulos reutilizables no envuelven MaterialesView.');
+console.log('OK CS21A166: TeacherHub es propietario de Libros, Audios y Planeamiento; CS21A6/9/10/58/68 no envuelven MaterialesView.');
