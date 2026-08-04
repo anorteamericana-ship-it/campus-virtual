@@ -1,0 +1,34 @@
+name: CS21A159 apply QA teacher route
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cs21a159-apply-qa-teacher-route.yml'
+      - '.github/patches/cs21a159-qa-teacher-route.patch.b64'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-qa-route:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/cs21a158-manual-review-20260804
+          fetch-depth: 0
+      - name: Apply exact QA route patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/patches/cs21a159-qa-teacher-route.patch.b64 > /tmp/cs21a159-qa.patch
+          git apply --check /tmp/cs21a159-qa.patch
+          git apply /tmp/cs21a159-qa.patch
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/virtual_review_browser.mjs
+          git commit -m 'CS21A159 alinea QA con Libros y Audios docente'
+          git push origin HEAD:integration/cs21a158-manual-review-20260804
