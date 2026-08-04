@@ -220,7 +220,14 @@ const deliveryFiles = allFiles.filter(file =>
   !file.startsWith('00_DOCUMENTACION/') &&
   !file.startsWith('skills/')
 );
-const runtimeFiles = deliveryFiles.filter(file => !file.startsWith('.github/workflows/'));
+// scripts/ contiene constructores, auditorías y pruebas. Sus menciones a rutas
+// retiradas pueden ser listas de exclusión o aserciones de seguridad; no son
+// por sí mismas referencias ejecutables del Campus.
+const controlFiles = deliveryFiles.filter(file => file.startsWith('scripts/'));
+const executionFiles = deliveryFiles.filter(file =>
+  !file.startsWith('.github/workflows/') &&
+  !file.startsWith('scripts/')
+);
 const workflowFiles = deliveryFiles.filter(file => file.startsWith('.github/workflows/'));
 
 function referencesTo(retired, files) {
@@ -236,7 +243,8 @@ function referencesTo(retired, files) {
 
 const retiredReport = [];
 for (const retired of retiredFiles) {
-  const references = referencesTo(retired, runtimeFiles);
+  const references = referencesTo(retired, executionFiles);
+  const controlReferences = referencesTo(retired, controlFiles);
   const workflowReferences = referencesTo(retired, workflowFiles);
   const loaded = loadedRefs.has(retired.file);
   const present = exists(retired.file);
@@ -255,6 +263,7 @@ for (const retired of retiredFiles) {
     present,
     loaded,
     references,
+    controlReferences,
     workflowReferences,
     reason: retired.reason,
     archivedSha256: retired.archivedSha256,
@@ -267,7 +276,7 @@ for (const retired of retiredFiles) {
 
 const endpointUrlPattern = /https:\/\/script\.google\.com\/macros\/s\/[^'"\s<)]+\/exec/g;
 const hardcodedBackendFiles = [];
-for (const file of runtimeFiles) {
+for (const file of executionFiles) {
   const matches = [...read(file).matchAll(endpointUrlPattern)].map(match => match[0]);
   if (matches.length) hardcodedBackendFiles.push({ file, urls: [...new Set(matches)] });
 }
@@ -284,7 +293,7 @@ const demoSignatures = [
   { marker: 'const DEMO_GRUPOS =', type: 'grupos_demo' },
 ];
 const liveDemoHits = [];
-for (const file of runtimeFiles) {
+for (const file of executionFiles) {
   const source = read(file);
   const signatures = demoSignatures
     .filter(item => source.includes(item.marker))
