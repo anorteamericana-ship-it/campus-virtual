@@ -1,0 +1,63 @@
+name: Admin resources canonical CS21A156
+
+on:
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'src/sidebar.jsx'
+      - 'src/admin_resources_view_cs21a156.jsx'
+      - 'src/admin_resources_cs21a59.jsx'
+      - 'src/admin_resources_runtime_cs21a61.jsx'
+      - 'src/admin_resources_direct_cs21a74.js'
+      - 'src/resources_panel_cs21a65.jsx'
+      - 'src/resources_panel_state_cs21a65.js'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'scripts/test_admin_resources_canonical_cs21a156.mjs'
+      - 'scripts/test_admin_resources_browser_cs21a156.mjs'
+      - '.github/workflows/admin-resources-canonical-cs21a156.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-admin-resources-route:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Validate canonical contracts
+        run: node scripts/test_admin_resources_canonical_cs21a156.mjs
+      - name: Validate teacher book authority
+        run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
+      - name: Audit delivery surface
+        run: node scripts/audit_delivery_surface.mjs
+      - name: Static virtual review
+        run: node scripts/virtual_review_static.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat qa-server.log
+          exit 1
+      - name: Validate admin and superadmin in browser
+        env:
+          QA_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/test_admin_resources_browser_cs21a156.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-resources-cs21a156
+          path: |
+            qa-output/admin-resources-cs21a156/
+            qa-server.log
+          if-no-files-found: warn
+          retention-days: 30
