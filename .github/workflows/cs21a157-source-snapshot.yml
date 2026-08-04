@@ -1,0 +1,24 @@
+name: CS21A157 source snapshot
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cs21a157-source-snapshot.yml'
+      - 'src/teacher_cs21a.jsx'
+      - 'src/resources_panel_cs21a65.jsx'
+      - 'src/student_menu_academic_guard_cs21a120.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cs21a157-source-snapshot
+          path: src/teacher_cs21a.jsx
+          retention-days: 2
