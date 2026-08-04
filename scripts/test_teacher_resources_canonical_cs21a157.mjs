@@ -37,7 +37,10 @@ assert.match(inlineAudio, /getAudioPistaEstudiante/);
 
 assert.match(viewer, /data-screen-label=\{`\$\{studentMode \? ['"]Estudiante['"] : ['"]Recursos['"]\} · CS21A75 · Libros`\}/);
 assert.match(viewer, /window\.__AN_BOOK_RESOURCES_COMPONENT__\s*=\s*BookResourcesCS21A60/);
-assert.match(viewer, /\['SB','TB','WB'\]/);
+assert.match(viewer, /const\s+TONES\s*=\s*\{[\s\S]*?SB:\s*\{[\s\S]*?TB:\s*\{[\s\S]*?WB:\s*\{/);
+assert.match(viewer, /function\s+TypeButtons\s*\(\{\s*type,\s*setType,\s*allowedTypes\s*\}\)/);
+assert.match(viewer, /allowedTypes\.map\(key\s*=>/);
+assert.match(viewer, /allowedTypes=\{studentMode\s*\?\s*\[['"]SB['"]\]\s*:\s*\[['"]SB['"],\s*['"]TB['"],\s*['"]WB['"]\]\}/);
 
 const order = [
   'src/book_unit_starts_cs21a60.jsx',
