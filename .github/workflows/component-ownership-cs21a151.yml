@@ -1,0 +1,31 @@
+name: Component ownership CS21A151
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/**'
+      - 'scripts/audit_component_ownership_cs21a151.mjs'
+      - '.github/workflows/component-ownership-cs21a151.yml'
+      - '00_DOCUMENTACION/MAPA_PROPIEDAD_COMPONENTES_CS21A151.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-component-ownership:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Audit component ownership
+        run: node scripts/audit_component_ownership_cs21a151.mjs
+      - name: Publish summary
+        run: cat qa-output/component-ownership-cs21a151/component-ownership.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload ownership evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-ownership-cs21a151
+          path: qa-output/component-ownership-cs21a151/
+          retention-days: 30
