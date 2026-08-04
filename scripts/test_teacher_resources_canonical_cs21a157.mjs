@@ -26,6 +26,13 @@ assert.match(teacher, /if\(item\.intent\)\s*\{\s*setIntent\(item\.intent\);\s*se
 assert.match(teacher, /const\s+BookResources\s*=\s*window\.__AN_BOOK_RESOURCES_COMPONENT__/);
 assert.match(teacher, /screen\s*===\s*['"]libros['"][\s\S]{0,220}?<BookResources\s+initialType=['"]SB['"]\s*\/>/);
 assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'\]/);
+assert.match(teacher, /const\s+PlanningView\s*=\s*window\.PlaneamientoGroupedViewCS21A140/);
+assert.match(teacher, /screen\s*===\s*['"]planeamiento['"][\s\S]{0,220}?<PlanningView\s*\/>/);
+assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','cronograma_general'\]/);
+
+assert.match(planning, /window\.PlaneamientoGroupedViewCS21A140\s*=\s*PlaneamientoGroupedView/);
+assert.match(planning, /__AN_TEACHER_PLANNING_GROUPED_VERSION__/);
+assert.doesNotMatch(planning, /(?:window\.)?MaterialesView\s*=|MaterialesViewCS21A9|__base\s*=|__cs21a9|an:lazy-module-loaded|setTimeout\(install/);
 
 assert.match(orderFix, /F98\.4-Z6-CS21A152/);
 assert.match(orderFix, /__AN_TEACHER_ORDER_FIX_COMPATIBILITY__/);
