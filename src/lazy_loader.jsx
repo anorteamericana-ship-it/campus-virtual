@@ -1,9 +1,9 @@
-// F98.4-Z6-CS21A124 · Cargador diferido con versión canónica del importador BCR.
-// Base preservada: F98.4-Z6-CS21A122.
+// F98.4-Z6-CS21A168 · Cargador diferido con contrato canónico de materiales reutilizables.
+// Base preservada: F98.4-Z6-CS21A124.
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A124';
+  const VERSION = 'F98.4-Z6-CS21A168';
   const normalize = (src) => {
     const value = String(src || '').trim();
     if (/^src\/importador_banco\.jsx(?:\?.*)?$/i.test(value)) {
@@ -69,10 +69,14 @@
     return component === 'ICANViewNew' || component === 'ClubICANDocenteView';
   }
 
+  function unifiedMaterialsReady(){
+    return typeof window.MaterialesView === 'function' &&
+      typeof window.__AN_BOOK_RESOURCES_COMPONENT__ === 'function' &&
+      window.__AN_BOOK_UNIT_STARTS_MODE__ === 'REUSABLE_COMPONENT_ONLY';
+  }
+
   function routeEnhancerReady(component){
-    if (needsUnifiedMaterials(component)) {
-      return typeof window.MaterialesView === 'function' && window.MaterialesView.__cs21a60UnitStarts === true;
-    }
+    if (needsUnifiedMaterials(component)) return unifiedMaterialsReady();
     if (component === 'ICANViewNew') {
       return typeof window.ICANViewNew === 'function' && window.ICANViewNew.__cs21a122 === true;
     }
