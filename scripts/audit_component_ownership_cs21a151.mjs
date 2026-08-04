@@ -6,7 +6,6 @@ const outputDir = path.join(root, 'qa-output', 'component-ownership-cs21a151');
 fs.mkdirSync(outputDir, { recursive: true });
 
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-const exists = file => fs.existsSync(path.join(root, file));
 const normalizeRef = value => String(value || '').split('#')[0].split('?')[0].replace(/^\.\//, '');
 
 const CRITICAL_GLOBALS = [
@@ -67,12 +66,11 @@ function scanGlobal(file, source, globalName) {
   const escaped = globalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const patterns = [
     { kind: 'declaration', regex: new RegExp(`\\bfunction\\s+${escaped}\\s*\\(`, 'g') },
-    { kind: 'declaration', regex: new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=`, 'g') },
-    { kind: 'window-assignment', regex: new RegExp(`\\bwindow\\.${escaped}\\s*=`, 'g') },
-    { kind: 'bare-assignment', regex: new RegExp(`(?<![.\\w$])${escaped}\\s*=`, 'g') },
+    { kind: 'declaration', regex: new RegExp(`\\b(?:const|let|var)\\s+${escaped}\\s*=(?!=)`, 'g') },
+    { kind: 'window-assignment', regex: new RegExp(`\\bwindow\\.${escaped}\\s*=(?!=)`, 'g') },
+    { kind: 'bare-assignment', regex: new RegExp(`(?<![.\\w$])${escaped}\\s*=(?!=)`, 'g') },
     { kind: 'object-publish', regex: new RegExp(`Object\\.assign\\(\\s*window\\s*,\\s*\\{[\\s\\S]{0,500}?\\b${escaped}\\b`, 'g') },
     { kind: 'base-capture', regex: new RegExp(`\\b(?:Base|Previous|Old|Original|Current)[A-Za-z0-9_$]*\\s*=\\s*(?:window\\.)?${escaped}\\b`, 'g') },
-    { kind: 'wrapper-marker', regex: new RegExp(`__base\\s*=|__cs21a[A-Za-z0-9_$]*\\s*=`, 'g') },
   ];
 
   for (const { kind, regex } of patterns) {
@@ -115,8 +113,7 @@ const inventory = {};
 for (const globalName of CRITICAL_GLOBALS) {
   const records = [];
   for (const [file, source] of sourceMap) {
-    const matches = scanGlobal(file, source, globalName);
-    for (const match of matches) {
+    for (const match of scanGlobal(file, source, globalName)) {
       records.push({
         ...match,
         directOrder: directOrder.get(file) || null,
@@ -138,13 +135,23 @@ for (const globalName of CRITICAL_GLOBALS) {
   const records = inventory[globalName] || [];
   const reachable = records.filter(item => item.reachable);
   const declarations = reachable.filter(item => item.kind === 'declaration');
-  const assignments = reachable.filter(item => item.kind === 'window-assignment' || item.kind === 'bare-assignment' || item.kind === 'object-publish');
-  const wrapperFiles = [...new Set(reachable.filter(item => item.kind === 'base-capture' || item.kind === 'wrapper-marker').map(item => item.file))];
-  if (!declarations.length && !assignments.length) {
+  const publications = reachable.filter(item => ['window-assignment', 'bare-assignment', 'object-publish'].includes(item.kind));
+  const publicationFiles = [...new Set(publications.map(item => item.file))];
+  const baseCaptureFiles = [...new Set(reachable.filter(item => item.kind === 'base-capture').map(item => item.file))];
+  const wrapperFiles = [...new Set([
+    ...baseCaptureFiles,
+    ...publicationFiles.filter(file => /__base\s*=/.test(sourceMap.get(file) || '')),
+  ])];
+
+  if (!declarations.length && !publications.length) {
     add('P2', `Global crítico sin propietario alcanzable: ${globalName}`, 'No se encontró declaración ni publicación en campus.html o F96_LAZY.');
   }
-  if (assignments.length > 1 || wrapperFiles.length > 1) {
-    add('P2', `Propiedad múltiple de ${globalName}`, `${assignments.length} publicaciones/asignaciones y ${wrapperFiles.length} archivos con patrón de wrapper: ${wrapperFiles.join(', ') || '—'}.`);
+  if (publicationFiles.length > 1 || wrapperFiles.length > 1) {
+    add(
+      'P2',
+      `Propiedad múltiple de ${globalName}`,
+      `${publicationFiles.length} archivos publican el global y ${wrapperFiles.length} lo envuelven: ${wrapperFiles.join(', ') || '—'}.`
+    );
   }
 }
 
