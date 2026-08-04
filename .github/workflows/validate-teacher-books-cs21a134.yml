@@ -1,4 +1,4 @@
-name: Validate teacher books CS21A136
+name: Validate teacher books CS21A169
 
 on:
   push:
@@ -6,10 +6,13 @@ on:
     paths:
       - 'src/book_unit_propagation_cs21a64.js'
       - 'src/book_page_turn_cs21a62.js'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'src/lazy_loader.jsx'
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'src/teacher_books_visual_state_cs21a135.js'
       - 'src/teacher_books_toolbar_cs21a136.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+      - 'scripts/test_lazy_materials_contract_cs21a168.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
       - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A135.md'
   pull_request:
@@ -17,10 +20,13 @@ on:
     paths:
       - 'src/book_unit_propagation_cs21a64.js'
       - 'src/book_page_turn_cs21a62.js'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'src/lazy_loader.jsx'
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'src/teacher_books_visual_state_cs21a135.js'
       - 'src/teacher_books_toolbar_cs21a136.js'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+      - 'scripts/test_lazy_materials_contract_cs21a168.mjs'
       - '.github/workflows/validate-teacher-books-cs21a134.yml'
       - '00_DOCUMENTACION/QA_DOCENTE_LIBROS_CS21A135.md'
   workflow_dispatch:
@@ -32,7 +38,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Check JavaScript and unit maps
+      - name: Check JavaScript, unit maps and lazy contract
         run: |
           node --check src/book_unit_propagation_cs21a64.js
           node --check src/book_page_turn_cs21a62.js
@@ -40,13 +46,22 @@ jobs:
           node --check src/teacher_books_visual_state_cs21a135.js
           node --check src/teacher_books_toolbar_cs21a136.js
           node scripts/test_teacher_books_unit_guard_cs21a134.mjs
-      - name: Verify viewer authority and toolbar contract
+          node scripts/test_lazy_materials_contract_cs21a168.mjs
+      - name: Verify reusable viewer, maps and toolbar contract
+        shell: bash
         run: |
+          set -euo pipefail
           grep -q 'teacher_books_unit_guard_cs21a134.js?v=F98.4Z6CS21A135' src/book_unit_propagation_cs21a64.js
           grep -q 'teacher_books_visual_state_cs21a135.js?v=F98.4Z6CS21A136' src/book_unit_propagation_cs21a64.js
           grep -q 'teacher_books_toolbar_cs21a136.js?v=F98.4Z6CS21A136' src/teacher_books_visual_state_cs21a135.js
-          grep -q 'Wrapped.__cs21a58books = true' src/teacher_books_unit_guard_cs21a134.js
-          grep -q 'Wrapped.__cs21a135BookAuthority = true' src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'window.__AN_BOOK_RESOURCES_COMPONENT__ = BookResourcesCS21A60' src/book_unit_starts_cs21a60.jsx
+          grep -q "window.__AN_BOOK_UNIT_STARTS_MODE__ = 'REUSABLE_COMPONENT_ONLY'" src/book_unit_starts_cs21a60.jsx
+          grep -q "const AUTHORITY_MODE = 'TEACHER_PORTAL_OWNS_VIEWER'" src/teacher_books_unit_guard_cs21a134.js
+          grep -q 'authorityMode: AUTHORITY_MODE' src/teacher_books_unit_guard_cs21a134.js
+          ! grep -q 'Wrapped.__cs21a58books' src/teacher_books_unit_guard_cs21a134.js
+          ! grep -q 'Wrapped.__cs21a135BookAuthority' src/teacher_books_unit_guard_cs21a134.js
+          ! grep -q 'window.MaterialesView =' src/teacher_books_unit_guard_cs21a134.js
+          ! grep -q 'MaterialesViewCS21A75' src/book_unit_starts_cs21a60.jsx
           grep -q "'B1|SB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|TB'" src/teacher_books_unit_guard_cs21a134.js
           grep -q "'B1|WB'" src/teacher_books_unit_guard_cs21a134.js
