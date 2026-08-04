@@ -241,7 +241,16 @@
   const OldSidebar = window.Sidebar || (typeof Sidebar === 'function' ? Sidebar : null);
   function setHubScreen(tab){ sessionStorage.setItem('an_teacher_materiales_tab', tab); try { window.dispatchEvent(new CustomEvent('an:teacher-material-tab', { detail:{ tab } })); } catch(_) {} }
   function TeacherSidebarCS21A({ active, setActive, usuario, onLogout }){
-    const usr = usuario || session() || {}; const name = usr.nombre || '—'; const init = name.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'AN'; const intent = sessionStorage.getItem('an_teacher_materiales_tab') || 'info';
+    const usr = usuario || session() || {}; const name = usr.nombre || '—'; const init = name.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'AN';
+    const [intent, setIntent] = React.useState(() => sessionStorage.getItem('an_teacher_materiales_tab') || 'info');
+    React.useEffect(() => {
+      const syncIntent = event => {
+        const next = String(event?.detail?.tab || sessionStorage.getItem('an_teacher_materiales_tab') || 'info');
+        setIntent(next);
+      };
+      window.addEventListener('an:teacher-material-tab', syncIntent);
+      return () => window.removeEventListener('an:teacher-material-tab', syncIntent);
+    }, []);
     const nav = [
       { section:'Principal', items:[
         { id:'perfil', label:'Mi Perfil', icon:'profile' },
@@ -272,7 +281,7 @@
       ]},
     ];
     const isActive = item => item.target === 'materiales' ? (active === 'materiales' && intent === item.intent) : active === item.id;
-    const go = item => { if(item.intent) setHubScreen(item.intent); if(setActive) setActive(item.target || item.id); };
+    const go = item => { if(item.intent) { setIntent(item.intent); setHubScreen(item.intent); } if(setActive) setActive(item.target || item.id); };
     return <aside className="sb teacher-sb" data-role="teacher" data-version={VERSION}>
       <div className="sb-brand"><div className="sb-logo"/><div className="sb-brand-text"><div className="sb-brand-t1">Norteamericana</div><div className="sb-brand-t2">Campus Virtual</div></div></div>
       {nav.map(group=><React.Fragment key={group.section || 'main-actions'}>{group.section && <div className="sb-section teacher-sb-section" style={sectionStyle}>{group.section}</div>}{group.items.map(item=><button key={item.id} data-nav-id={item.id} aria-current={isActive(item) ? 'page' : undefined} className={'sb-item teacher-sb-item ' + (isActive(item) ? 'active' : '')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{ fontSize:13, fontWeight:850 }}>{item.label}</span>{item.badge && <span className="sb-badge">{item.badge}</span>}</button>)}</React.Fragment>)}
