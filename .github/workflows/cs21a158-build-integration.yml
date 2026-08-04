@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  merge-latest-teacher-resources:
+  sync-latest-teacher-resources:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
@@ -20,17 +20,35 @@ jobs:
         with:
           ref: integration/cs21a158-manual-review-20260804
           fetch-depth: 0
-      - name: Merge latest verified teacher resources without workflow mutations
+      - name: Copy exact verified files from PR 43
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          start="$(git rev-parse HEAD)"
           git fetch origin refactor/cs21a157-docente-recursos-canonicos:refs/remotes/origin/refactor/cs21a157-docente-recursos-canonicos
-          git merge --no-ff --no-edit origin/refactor/cs21a157-docente-recursos-canonicos
-          git reset --soft "$start"
-          git restore --source="$start" --staged --worktree .github/workflows
+          files=(
+            scripts/test_admin_resources_canonical_cs21a156.mjs
+            scripts/test_lazy_materials_contract_cs21a168.mjs
+            scripts/test_teacher_books_unit_guard_cs21a134.mjs
+            scripts/test_teacher_resources_browser_cs21a157.mjs
+            scripts/test_teacher_resources_canonical_cs21a157.mjs
+            src/additional_resources_panel_cs21a68.jsx
+            src/book_inline_audio_cs21a63.js
+            src/book_unit_starts_cs21a60.jsx
+            src/lazy_loader.jsx
+            src/resources_panel_cs21a65.jsx
+            src/student_menu_academic_guard_cs21a120.js
+            src/teacher_books_unit_guard_cs21a134.js
+            src/teacher_cs21a.jsx
+            src/teacher_cs21a_biblioteca_pdf.jsx
+            src/teacher_cs21a_docs_viewer.jsx
+            src/teacher_cs21a_order_fix.jsx
+            src/teacher_cs21a_planeamiento32.jsx
+            src/teacher_cs21a_planeamiento_grouped.jsx
+          )
+          git checkout origin/refactor/cs21a157-docente-recursos-canonicos -- "${files[@]}"
           if test -f scripts/cs21a169_trigger.txt; then git rm scripts/cs21a169_trigger.txt; fi
-          git commit -m 'CS21A169 integra Recursos docente canónicos al candidato QA'
+          git add "${files[@]}"
+          git commit -m 'CS21A169 sincroniza Recursos docente canónicos en candidato QA'
           git push origin HEAD:integration/cs21a158-manual-review-20260804
