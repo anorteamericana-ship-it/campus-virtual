@@ -19,12 +19,13 @@ jobs:
         with:
           ref: integration/cs21a158-manual-review-20260804
           fetch-depth: 0
-      - name: Merge verified branches in dependency order
+      - name: Build one integration commit without workflow mutations
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          start="$(git rev-parse HEAD)"
 
           branches=(
             agent/cs21a143-documentacion-operativa
@@ -45,6 +46,11 @@ jobs:
             git merge --no-ff --no-edit "origin/${branch}"
           done
 
-          git rm .github/workflows/cs21a158-build-integration.yml
-          git commit -m 'CS21A158 completa rama de revisión integral'
+          # GitHub Actions no puede empujar cambios de workflows con este token.
+          # Se compacta todo en un único commit y se restaura exactamente la
+          # carpeta de workflows del punto inicial. La validación se conecta
+          # después mediante la API de GitHub.
+          git reset --soft "$start"
+          git restore --source="$start" --staged --worktree .github/workflows
+          git commit -m 'CS21A158 integra candidato de revisión manual'
           git push origin HEAD:integration/cs21a158-manual-review-20260804
