@@ -46,18 +46,25 @@ jobs:
       - name: Smoke test local staging server
         shell: bash
         run: |
+          set -euo pipefail
           node dist/qa-staging/serve.mjs > /tmp/campus-qa-server.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=0
           for attempt in {1..20}; do
             if curl --fail --silent http://127.0.0.1:4173/qa-setup.html > /dev/null; then
+              ready=1
               break
             fi
             sleep 0.5
           done
-          curl --fail --silent http://127.0.0.1:4173/index.html | grep -q 'qa-bootstrap.js?v=CS21A148'
-          curl --fail --silent http://127.0.0.1:4173/src/runtime_config.js | grep -q 'CAMPUS_RUNTIME_CONFIG'
-          curl --fail --silent http://127.0.0.1:4173/login.html | grep -q 'qa-bootstrap.js?v=CS21A148'
+          test "$ready" -eq 1 || { cat /tmp/campus-qa-server.log; exit 1; }
+          curl --fail --silent --output /tmp/qa-index.html http://127.0.0.1:4173/index.html
+          curl --fail --silent --output /tmp/qa-runtime-config.js http://127.0.0.1:4173/src/runtime_config.js
+          curl --fail --silent --output /tmp/qa-login.html http://127.0.0.1:4173/login.html
+          grep -q 'qa-bootstrap.js?v=CS21A148' /tmp/qa-index.html
+          grep -q 'CAMPUS_RUNTIME_CONFIG' /tmp/qa-runtime-config.js
+          grep -q 'qa-bootstrap.js?v=CS21A148' /tmp/qa-login.html
 
       - name: Upload isolated QA frontend
         uses: actions/upload-artifact@v4
