@@ -1,6 +1,6 @@
 // F98.4-Z6-CS21A140 · Planeamiento por lección con navegación 2 x 16
 // Frontend-only: mantiene los PDFs vigentes y ordena niveles, lecciones y visor en una sola columna.
-/* global React, getSesion, MaterialesView */
+/* global React */
 (function(){
   const VERSION = 'F98.4-Z6-CS21A140';
   const BLUE = 'var(--an-navy-ink,#001E47)';
@@ -94,31 +94,6 @@
     </section>;
   }
 
-  function getScreen(){ return sessionStorage.getItem('an_teacher_materiales_tab') || 'info'; }
-
-  function install(){
-    if (!window.MaterialesView || window.MaterialesView.__cs21a9) return;
-    const Base = window.MaterialesView;
-    const Wrapped = function MaterialesViewCS21A9(props){
-      const u = session();
-      if (!u || u.rol !== 'teacher') return <Base {...props}/>;
-      const [screen, setScreen] = React.useState(getScreen());
-      React.useEffect(()=>{
-        const h = e => { if(e?.detail?.tab) setScreen(e.detail.tab); else setScreen(getScreen()); };
-        window.addEventListener('an:teacher-material-tab', h);
-        window.addEventListener('storage', h);
-        return ()=>{ window.removeEventListener('an:teacher-material-tab', h); window.removeEventListener('storage', h); };
-      }, []);
-      if (screen === 'planeamiento') return <PlaneamientoGroupedView />;
-      return <Base {...props}/>;
-    };
-    Wrapped.__cs21a9 = true;
-    Wrapped.__base = Base;
-    window.MaterialesView = Wrapped;
-    try { MaterialesView = Wrapped; } catch(_) {}
-  }
-
-  window.addEventListener('an:lazy-module-loaded', install);
-  setTimeout(install, 0);
-  window.__AN_TEACHER_PLANEAMIENTO_GROUPED_VERSION__ = VERSION;
+  window.PlaneamientoGroupedViewCS21A140 = PlaneamientoGroupedView;
+  window.__AN_TEACHER_PLANNING_GROUPED_VERSION__ = VERSION;
 })();

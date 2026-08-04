@@ -1,305 +1,184 @@
-// F98.4-Z6-CS21A135 · Autoridad del visor docente + saltos U01–U16 + acabado visual.
-// Mantiene el visor institucional por encima del legado CS21A58, completa los
-// mapas de los 12 libros y recupera incluso una pantalla antigua ya montada.
-(function(){
+// F98.4-Z6-CS21A162 · Mapas U01–U16, reparación de respuestas y acabado visual.
+// La navegación docente pertenece a TeacherHubCS21A. Este módulo no redefine
+// MaterialesView ni decide qué subpantalla debe renderizarse.
+(function () {
   'use strict';
 
-  var VERSION = 'F98.4-Z6-CS21A135';
-  var ENDPOINT = 'teacherBooksOpenImageBook';
-  var TAB_KEY = 'an_teacher_materiales_tab';
-  var STYLE_ID = 'an-teacher-book-navigation-cs21a135';
-  var LEGACY_STRIP = 'data-cs21a135-legacy-unit-strip';
+  const VERSION = 'F98.4-Z6-CS21A162';
+  const ENDPOINT = 'teacherBooksOpenImageBook';
+  const STYLE_ID = 'an-teacher-book-navigation-cs21a135';
+  const AUTHORITY_MODE = 'TEACHER_PORTAL_OWNS_VIEWER';
 
   if (window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135) {
     try { window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135.reinstall(); } catch (_) {}
     return;
   }
 
-  var UNIT_STARTS = {
-    'B1|SB': [8,14,22,28,36,42,50,56,64,70,78,84,92,98,106,112],
-    'B1|TB': [25,33,43,51,61,69,79,87,97,105,115,123,133,141,151,159],
-    'B1|WB': [5,11,17,23,29,35,41,47,53,59,65,71,77,83,89,95],
-    'B2|SB': [22,28,36,42,50,56,64,70,78,84,92,98,106,112,120,126],
-    'B2|TB': [27,35,45,53,63,71,81,89,99,107,117,125,135,143,153,161],
-    'B2|WB': [6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96],
-    'I1|SB': [8,14,22,28,36,42,50,56,64,70,78,84,92,98,106,112],
-    'I1|TB': [27,35,45,53,63,71,81,89,99,107,117,125,135,143,153,161],
-    'I1|WB': [6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96],
-    'I2|SB': [10,16,24,30,38,44,52,58,66,72,80,86,94,100,108,114],
-    'I2|TB': [27,35,45,53,63,71,81,89,99,107,117,125,135,143,153,161],
-    'I2|WB': [5,11,17,23,29,35,41,47,53,59,65,71,77,83,89,95]
-  };
+  const UNIT_STARTS = Object.freeze({
+    'B1|SB': Object.freeze([8,14,22,28,36,42,50,56,64,70,78,84,92,98,106,112]),
+    'B1|TB': Object.freeze([25,33,43,51,61,69,79,87,97,105,115,123,133,141,151,159]),
+    'B1|WB': Object.freeze([5,11,17,23,29,35,41,47,53,59,65,71,77,83,89,95]),
+    'B2|SB': Object.freeze([22,28,36,42,50,56,64,70,78,84,92,98,106,112,120,126]),
+    'B2|TB': Object.freeze([27,35,45,53,63,71,81,89,99,107,117,125,135,143,153,161]),
+    'B2|WB': Object.freeze([6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96]),
+    'I1|SB': Object.freeze([8,14,22,28,36,42,50,56,64,70,78,84,92,98,106,112]),
+    'I1|TB': Object.freeze([27,35,45,53,63,71,81,89,99,107,117,125,135,143,153,161]),
+    'I1|WB': Object.freeze([6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96]),
+    'I2|SB': Object.freeze([10,16,24,30,38,44,52,58,66,72,80,86,94,100,108,114]),
+    'I2|TB': Object.freeze([27,35,45,53,63,71,81,89,99,107,117,125,135,143,153,161]),
+    'I2|WB': Object.freeze([5,11,17,23,29,35,41,47,53,59,65,71,77,83,89,95]),
+  });
 
-  var KNOWN_BAD = {
-    'B1|SB': [
-      [9,15,23,29,37,43,51,57,65,71,79,85,93,99,107,113],
-      [6,12,20,26,34,40,48,54,62,68,76,82,90,96,104,110]
-    ]
-  };
+  const KNOWN_BAD = Object.freeze({
+    'B1|SB': Object.freeze([
+      Object.freeze([9,15,23,29,37,43,51,57,65,71,79,85,93,99,107,113]),
+      Object.freeze([6,12,20,26,34,40,48,54,62,68,76,82,90,96,104,110]),
+    ]),
+  });
 
-  var ORIGINAL_FETCH = window.fetch.bind(window);
-  var observer = null;
-  var authorityTimer = null;
-  var enhancementQueued = false;
+  let observer = null;
+  let enhancementQueued = false;
 
-  function text(value){ return String(value == null ? '' : value).trim(); }
-  function compact(value){ return text(value).replace(/\s+/g, ' '); }
-  function upper(value){ return compact(value).toUpperCase(); }
-  function validPage(value){
-    var number = Number(value);
+  function text(value) { return String(value == null ? '' : value).trim(); }
+  function compact(value) { return text(value).replace(/\s+/g, ' '); }
+  function upper(value) { return compact(value).toUpperCase(); }
+  function validPage(value) {
+    const number = Number(value);
     return Number.isFinite(number) && number > 0 ? number : null;
   }
-  function normalized(values){
-    return Array.from({ length:16 }, function(_, index){ return validPage(values && values[index]); });
+  function normalized(values) {
+    return Array.from({ length: 16 }, (_, index) => validPage(values && values[index]));
   }
-  function complete(values){
-    return Array.isArray(values) && values.length >= 16 && normalized(values).every(function(value){ return value != null; });
+  function complete(values) {
+    return Array.isArray(values) && values.length >= 16 && normalized(values).every(value => value != null);
   }
-  function same(values, expected){
-    var left = normalized(values);
-    var right = normalized(expected);
-    return left.every(function(value, index){ return value === right[index]; });
+  function same(values, expected) {
+    const left = normalized(values);
+    const right = normalized(expected);
+    return left.every((value, index) => value === right[index]);
   }
-  function currentSession(){
+  function currentRole() {
     try {
-      return (typeof window.getSesion === 'function'
+      const session = (typeof window.getSesion === 'function'
         ? window.getSesion()
         : JSON.parse(sessionStorage.getItem('an_usuario') || 'null')) || {};
-    } catch (_) { return {}; }
+      return upper(session.rol || session.role);
+    } catch (_) {
+      return '';
+    }
   }
-  function currentRole(){
-    var session = currentSession();
-    return upper(session && (session.rol || session.role));
+  function resourceRole() {
+    return ['TEACHER', 'DOCENTE', 'ADMIN', 'SUPERADMIN'].includes(currentRole());
   }
-  function teacherRole(){
-    var role = currentRole();
-    return role === 'TEACHER' || role === 'DOCENTE';
+  function keyOf(data) {
+    return `${upper(data && (data.level || data.nivel))}|${upper(data && (data.book_type || data.type || data.tipo))}`;
   }
-  function resourceRole(){
-    var role = currentRole();
-    return role === 'TEACHER' || role === 'DOCENTE' || role === 'ADMIN' || role === 'SUPERADMIN';
-  }
-  function keyOf(data){
-    return upper(data && (data.level || data.nivel)) + '|' + upper(data && (data.book_type || data.type || data.tipo));
-  }
-  function isKnownBad(key, values){
-    return (KNOWN_BAD[key] || []).some(function(sequence){ return same(values, sequence); });
+  function isKnownBad(key, values) {
+    return (KNOWN_BAD[key] || []).some(sequence => same(values, sequence));
   }
 
-  function repairPayload(data){
+  function repairPayload(data) {
     if (!data || data.ok !== true || !resourceRole()) return data;
-    var key = keyOf(data);
-    var fallback = UNIT_STARTS[key];
+    const key = keyOf(data);
+    const fallback = UNIT_STARTS[key];
     if (!fallback) return data;
 
-    var raw = Array.isArray(data.unit_starts) ? data.unit_starts : [];
-    var replaceKnownBad = isKnownBad(key, raw);
-    var fillMissing = !complete(raw);
+    const raw = Array.isArray(data.unit_starts) ? data.unit_starts : [];
+    const replaceKnownBad = isKnownBad(key, raw);
+    const fillMissing = !complete(raw);
     if (!replaceKnownBad && !fillMissing) return data;
 
-    var next = replaceKnownBad
-      ? fallback.slice()
-      : fallback.map(function(value, index){ return validPage(raw[index]) || value; });
+    const next = replaceKnownBad
+      ? [...fallback]
+      : fallback.map((value, index) => validPage(raw[index]) || value);
 
-    return Object.assign({}, data, {
+    return {
+      ...data,
       unit_starts: next,
       unit_starts_configured: 16,
       unit_starts_source: text(data.unit_starts_source)
-        ? data.unit_starts_source + '|CS21A135_NAVIGATION_REPAIR'
-        : 'CS21A135_NAVIGATION_REPAIR',
+        ? `${data.unit_starts_source}|CS21A162_NAVIGATION_REPAIR`
+        : 'CS21A162_NAVIGATION_REPAIR',
       unit_starts_repaired_frontend: true,
-      unit_starts_repair_version: VERSION
-    });
+      unit_starts_repair_version: VERSION,
+    };
   }
 
-  function isTarget(input){
-    var url = typeof input === 'string' ? input : text(input && input.url);
+  function isTarget(input) {
+    const raw = typeof input === 'string' ? input : text(input && input.url);
     try {
-      var parsed = new URL(url, window.location.href);
+      const parsed = new URL(raw, window.location.href);
       return upper(parsed.searchParams.get('fn')) === upper(ENDPOINT);
     } catch (_) {
-      return url.toLowerCase().indexOf('fn=' + ENDPOINT.toLowerCase()) >= 0;
+      return raw.toLowerCase().includes(`fn=${ENDPOINT.toLowerCase()}`);
     }
   }
 
-  function rebuiltResponse(response, data){
-    if (typeof Response !== 'function' || typeof Headers !== 'function') return response;
-    var headers = new Headers(response.headers || undefined);
-    headers.delete('content-length');
-    headers.delete('content-encoding');
-    if (!headers.has('content-type')) headers.set('content-type', 'application/json;charset=utf-8');
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      statusText: response.statusText,
-      headers: headers
-    });
-  }
-
-  function guardedFetch(input, init){
-    return ORIGINAL_FETCH(input, init).then(function(response){
-      if (!isTarget(input) || !response || !response.ok || typeof response.clone !== 'function') return response;
-      return response.clone().json().then(function(data){
-        var repaired = repairPayload(data);
-        return repaired === data ? response : rebuiltResponse(response, repaired);
-      }).catch(function(){ return response; });
-    });
-  }
-  guardedFetch.__cs21a135 = true;
-  guardedFetch.__base = ORIGINAL_FETCH;
-  window.fetch = guardedFetch;
-
-  function activeScreen(){
-    try { return sessionStorage.getItem(TAB_KEY) || 'info'; }
-    catch (_) { return 'info'; }
-  }
-
-  function installAuthority(){
-    var Current = window.MaterialesView;
-    if (typeof Current !== 'function' || !window.React || typeof window.React.createElement !== 'function') return false;
-    if (Current.__cs21a135BookAuthority) return true;
-
-    var Base = Current;
-    var Wrapped = function MaterialesViewCS21A135(props){
-      var screen = activeScreen();
-      var Viewer = window.__AN_BOOK_RESOURCES_COMPONENT__;
-      if (teacherRole() && (screen === 'libros' || screen === 'biblioteca') && typeof Viewer === 'function') {
-        return window.React.createElement(Viewer, Object.assign({}, props || {}, {
-          initialType: screen === 'biblioteca' ? 'TB' : 'SB',
-          navigationVersion: VERSION
-        }));
-      }
-      return window.React.createElement(Base, props || {});
+  function installFetchGuard() {
+    if (typeof window.fetch !== 'function' || window.fetch.__cs21a162BookRepair) return;
+    const baseFetch = window.fetch.bind(window);
+    const guardedFetch = function guardedBookFetch(input, init) {
+      return baseFetch(input, init).then(response => {
+        if (!isTarget(input) || !response || !response.ok || typeof response.clone !== 'function') return response;
+        return response.clone().json().then(data => {
+          const repaired = repairPayload(data);
+          if (repaired === data || typeof Response !== 'function' || typeof Headers !== 'function') return response;
+          const headers = new Headers(response.headers || undefined);
+          headers.delete('content-length');
+          headers.delete('content-encoding');
+          if (!headers.has('content-type')) headers.set('content-type', 'application/json;charset=utf-8');
+          return new Response(JSON.stringify(repaired), {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+          });
+        }).catch(() => response);
+      });
     };
-
-    Wrapped.__cs21a135BookAuthority = true;
-    Wrapped.__cs21a75UnitStarts = true;
-    Wrapped.__cs21a60UnitStarts = true;
-    Wrapped.__cs21a58books = true;
-    Wrapped.__base = Base;
-    window.MaterialesView = Wrapped;
-    window.__AN_CS21A59_TEACHER_MATERIALS_BASE__ = Wrapped;
-    try { MaterialesView = Wrapped; } catch (_) {}
-    return true;
+    guardedFetch.__cs21a162BookRepair = true;
+    guardedFetch.__base = baseFetch;
+    window.fetch = guardedFetch;
   }
 
-  function installStyles(){
+  function installStyles() {
     if (!document || document.getElementById(STYLE_ID)) return;
-    var style = document.createElement('style');
+    const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
-      .an-book-unit-strip-cs21a135 {
-        --book-unit-accent:#0B4A8B;
-        --book-unit-accent-dark:#002F6C;
-        --book-unit-soft:#EDF5FD;
-        position:relative;
-        padding:14px 16px 16px !important;
-        border-top:0 !important;
-        border-bottom:1px solid rgba(0,47,108,.16) !important;
-        background:radial-gradient(circle at 8% 0%,rgba(242,201,76,.22),transparent 32%),linear-gradient(180deg,#FFFFFF 0%,#F3F7FB 100%) !important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 9px 24px rgba(0,31,71,.06);
-      }
-      .an-book-unit-strip-cs21a135[data-book-type="TB"] { --book-unit-accent:#7A1E2C; --book-unit-accent-dark:#59131F; --book-unit-soft:#F9EDEF; }
-      .an-book-unit-strip-cs21a135[data-book-type="WB"] { --book-unit-accent:#237A3B; --book-unit-accent-dark:#145A2A; --book-unit-soft:#EAF6ED; }
-      .an-book-unit-header-cs21a135 { display:flex !important; align-items:center !important; justify-content:space-between !important; gap:12px !important; margin-bottom:11px !important; }
-      .an-book-unit-heading-wrap-cs21a135 { display:flex; align-items:center; gap:10px; min-width:0; }
-      .an-book-unit-emblem-cs21a135 {
-        width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:11px;
-        background:linear-gradient(145deg,var(--book-unit-accent),var(--book-unit-accent-dark)); color:#fff;
-        box-shadow:0 7px 16px color-mix(in srgb,var(--book-unit-accent) 28%,transparent),inset 0 1px 0 rgba(255,255,255,.24);
-        font-size:11px; font-weight:950; letter-spacing:-.04em;
-      }
-      .an-book-unit-copy-cs21a135 { min-width:0; }
-      .an-book-unit-kicker-cs21a135 { display:block; color:var(--book-unit-accent); font-size:8.5px; font-weight:950; letter-spacing:.16em; text-transform:uppercase; line-height:1.1; }
-      .an-book-unit-strip-cs21a135 strong { display:block; margin-top:2px; color:#001E47 !important; font-size:14px !important; font-weight:950 !important; letter-spacing:-.015em; }
-      .an-book-unit-status-cs21a135 {
-        max-width:520px; padding:6px 10px; border:1px solid color-mix(in srgb,var(--book-unit-accent) 18%,#D9E0E8);
-        border-radius:999px; background:rgba(255,255,255,.86); color:#526174 !important; font-size:9.5px !important;
-        font-weight:800 !important; line-height:1.25; box-shadow:0 3px 10px rgba(0,31,71,.04);
-      }
-      .an-book-unit-grid-cs21a135 {
-        display:grid !important; grid-template-columns:repeat(16,minmax(66px,1fr)) !important; gap:8px !important;
-        overflow-x:auto !important; padding:3px 2px 9px !important; overscroll-behavior-x:contain;
-        scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--book-unit-accent) 45%,#C9D2DD) transparent;
-      }
-      .an-book-unit-grid-cs21a135::-webkit-scrollbar { height:8px; }
-      .an-book-unit-grid-cs21a135::-webkit-scrollbar-track { background:transparent; }
-      .an-book-unit-grid-cs21a135::-webkit-scrollbar-thumb { border-radius:999px; background:color-mix(in srgb,var(--book-unit-accent) 42%,#CBD4DE); }
-      .an-book-unit-grid-cs21a135 > div { min-width:66px !important; }
-      .an-book-unit-button-cs21a135 {
-        position:relative !important; width:100% !important; min-width:66px !important; height:52px !important; min-height:52px !important;
-        padding:20px 5px 5px !important; border:1px solid color-mix(in srgb,var(--book-unit-accent) 34%,#D3DBE5) !important;
-        border-radius:13px !important; background:linear-gradient(180deg,#FFFFFF 0%,var(--book-unit-soft) 100%) !important;
-        color:var(--book-unit-accent-dark) !important; box-shadow:inset 0 3px 0 var(--book-unit-accent),0 5px 12px rgba(0,31,71,.08) !important;
-        font-size:12px !important; font-weight:950 !important; letter-spacing:.035em !important; cursor:pointer !important;
-        opacity:1 !important; transform:translateY(0); transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,filter .16s ease !important;
-      }
-      .an-book-unit-button-cs21a135::before { content:'UNIDAD'; position:absolute; top:6px; left:7px; color:color-mix(in srgb,var(--book-unit-accent) 72%,#53657A); font-size:6.5px; font-weight:950; letter-spacing:.13em; }
-      .an-book-unit-button-cs21a135::after { content:'p. ' attr(data-page); position:absolute; top:5px; right:6px; min-width:21px; padding:2px 4px; border-radius:999px; background:color-mix(in srgb,var(--book-unit-accent) 10%,white); color:var(--book-unit-accent); font-size:6.5px; font-weight:950; line-height:1; }
-      .an-book-unit-button-cs21a135:hover:not(:disabled) { transform:translateY(-2px); border-color:var(--book-unit-accent) !important; box-shadow:inset 0 3px 0 var(--book-unit-accent),0 10px 20px color-mix(in srgb,var(--book-unit-accent) 17%,transparent) !important; filter:saturate(1.08); }
-      .an-book-unit-button-cs21a135[data-active="true"] { border:2px solid #F2C94C !important; background:linear-gradient(145deg,var(--book-unit-accent),var(--book-unit-accent-dark)) !important; color:#fff !important; box-shadow:0 0 0 3px rgba(242,201,76,.22),0 12px 24px color-mix(in srgb,var(--book-unit-accent) 30%,transparent) !important; transform:translateY(-2px); }
-      .an-book-unit-button-cs21a135[data-active="true"]::before { color:rgba(255,255,255,.72); }
-      .an-book-unit-button-cs21a135[data-active="true"]::after { background:rgba(255,255,255,.17); color:#fff; }
-      .an-book-unit-button-cs21a135[data-mapped="false"] { border-color:#D8DDE4 !important; background:#F2F3F5 !important; color:#8A929E !important; box-shadow:none !important; cursor:not-allowed !important; }
-      .an-book-unit-button-cs21a135:disabled { opacity:.68 !important; cursor:wait !important; }
-      .an-book-unit-update-cs21a135 { min-height:22px !important; border-radius:7px !important; border-color:color-mix(in srgb,var(--book-unit-accent) 25%,#A6B1BF) !important; color:var(--book-unit-accent-dark) !important; font-size:7.5px !important; font-weight:900 !important; }
-      @media (max-width:760px) {
-        .an-book-unit-strip-cs21a135 { padding:12px 11px 14px !important; }
-        .an-book-unit-header-cs21a135 { align-items:flex-start !important; flex-direction:column; }
-        .an-book-unit-status-cs21a135 { max-width:100%; border-radius:10px; }
-        .an-book-unit-grid-cs21a135 { grid-template-columns:repeat(16,minmax(62px,62px)) !important; }
-        .an-book-unit-button-cs21a135 { min-width:62px !important; }
-      }
+      .an-book-unit-strip-cs21a135{--book-accent:#0B4A8B;padding:14px 16px 16px!important;border-bottom:1px solid rgba(0,47,108,.16)!important;background:linear-gradient(180deg,#fff 0%,#f3f7fb 100%)!important;box-shadow:0 9px 24px rgba(0,31,71,.06)}
+      .an-book-unit-strip-cs21a135[data-book-type="TB"]{--book-accent:#7A1E2C}.an-book-unit-strip-cs21a135[data-book-type="WB"]{--book-accent:#237A3B}
+      .an-book-unit-header-cs21a135{display:flex!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap;margin-bottom:11px!important}
+      .an-book-unit-grid-cs21a135{display:grid!important;grid-template-columns:repeat(16,minmax(66px,1fr))!important;gap:8px!important;overflow-x:auto!important;padding:3px 2px 9px!important}
+      .an-book-unit-button-cs21a135{position:relative!important;min-width:66px!important;height:52px!important;padding:20px 5px 5px!important;border:1px solid color-mix(in srgb,var(--book-accent) 35%,#d3dbe5)!important;border-radius:13px!important;background:#fff!important;color:var(--book-accent)!important;font-size:12px!important;font-weight:950!important;box-shadow:inset 0 3px 0 var(--book-accent),0 5px 12px rgba(0,31,71,.08)!important}
+      .an-book-unit-button-cs21a135::before{content:'UNIDAD';position:absolute;top:6px;left:7px;font-size:6.5px;letter-spacing:.13em}.an-book-unit-button-cs21a135::after{content:'p. ' attr(data-page);position:absolute;top:5px;right:6px;font-size:6.5px}
+      .an-book-unit-button-cs21a135[data-active="true"]{border:2px solid #F2C94C!important;background:var(--book-accent)!important;color:#fff!important;transform:translateY(-2px)}
+      .an-book-unit-button-cs21a135[data-mapped="false"]{opacity:.55!important;cursor:not-allowed!important}.an-book-unit-update-cs21a135{font-size:7.5px!important;font-weight:900!important}
+      @media(max-width:760px){.an-book-unit-strip-cs21a135{padding:12px 11px 14px!important}.an-book-unit-grid-cs21a135{grid-template-columns:repeat(16,minmax(62px,62px))!important}.an-book-unit-button-cs21a135{min-width:62px!important}}
     `;
     document.head.appendChild(style);
   }
 
-  function activeBookType(section){
-    var pressed = Array.from(section.querySelectorAll('button[aria-pressed="true"]')).find(function(button){
-      return /^(SB|TB|WB)$/.test(compact(button.textContent));
-    });
-    if (pressed) return compact(pressed.textContent);
-    var subtitle = Array.from(section.querySelectorAll('div')).map(function(node){ return compact(node.textContent); }).find(function(value){ return /Interchange.+-(SB|TB|WB)\b/i.test(value); });
-    var match = text(subtitle).match(/-(SB|TB|WB)\b/i);
-    return match ? upper(match[1]) : 'SB';
+  function activeBookType(section) {
+    const pressed = Array.from(section.querySelectorAll('button[aria-pressed="true"]'))
+      .find(button => /^(SB|TB|WB)$/.test(compact(button.textContent)));
+    return pressed ? compact(pressed.textContent) : 'SB';
   }
-
-  function activeLevel(section){
-    var active = Array.from(section.querySelectorAll('button')).find(function(button){
-      return /^(B1|B2|I1|I2)\s*·/.test(compact(button.textContent)) && button.classList.contains('btn-primary');
-    });
-    var match = compact(active && active.textContent).match(/^(B1|B2|I1|I2)/);
-    if (match) return match[1];
-    var title = upper(section.textContent);
-    if (title.indexOf('BÁSICO II') >= 0) return 'B2';
-    if (title.indexOf('INTERMEDIO I') >= 0 && title.indexOf('INTERMEDIO II') < 0) return 'I1';
-    if (title.indexOf('INTERMEDIO II') >= 0) return 'I2';
-    return 'B1';
-  }
-
-  function isActiveUnit(button){
-    if (button.getAttribute('aria-current') === 'page' || button.getAttribute('data-active') === 'true') return true;
-    var inlineColor = upper(button.style && button.style.color);
-    if (inlineColor === '#FFF' || inlineColor === '#FFFFFF' || inlineColor.indexOf('255, 255, 255') >= 0) return true;
-    if (inlineColor) return false;
-    try {
-      var style = window.getComputedStyle ? window.getComputedStyle(button) : null;
-      return Boolean(style && style.color === 'rgb(255, 255, 255)' && style.backgroundColor !== 'rgba(0, 0, 0, 0)');
-    } catch (_) { return false; }
-  }
-
-  function unitPage(button){
-    var title = text(button.getAttribute('title'));
-    var match = title.match(/(?:hoja|página(?:\s+fuente)?(?:\s+provisional)?)\s+(\d+)/i);
+  function unitPage(button) {
+    const match = text(button.getAttribute('title')).match(/(?:hoja|página(?:\s+fuente)?)\s+(\d+)/i);
     return match ? match[1] : '—';
   }
-
-  function decorateButtons(grid){
+  function isActiveUnit(button) {
+    if (button.getAttribute('aria-current') === 'page' || button.getAttribute('data-active') === 'true') return true;
+    const inline = upper(button.style && button.style.color);
+    return inline === '#FFF' || inline === '#FFFFFF' || inline.includes('255, 255, 255');
+  }
+  function decorateButtons(grid) {
     if (!grid) return;
-    Array.from(grid.querySelectorAll('button')).forEach(function(button){
-      var label = compact(button.textContent);
+    Array.from(grid.querySelectorAll('button')).forEach(button => {
+      const label = compact(button.textContent);
       if (/^U\d{2}$/.test(label)) {
-        var page = unitPage(button);
-        var active = isActiveUnit(button);
+        const page = unitPage(button);
+        const active = isActiveUnit(button);
         button.classList.add('an-book-unit-button-cs21a135');
         button.setAttribute('data-page', page);
         button.setAttribute('data-mapped', page === '—' ? 'false' : 'true');
@@ -312,237 +191,85 @@
     });
   }
 
-  function buildHeading(header, heading){
-    var wrap = header.querySelector('.an-book-unit-heading-wrap-cs21a135');
-    if (wrap) {
-      if (heading) heading.textContent = 'Navegación por unidad';
-      return;
-    }
-    wrap = document.createElement('div');
-    wrap.className = 'an-book-unit-heading-wrap-cs21a135';
-    var emblem = document.createElement('span');
-    emblem.className = 'an-book-unit-emblem-cs21a135';
-    emblem.textContent = 'U16';
-    var copy = document.createElement('span');
-    copy.className = 'an-book-unit-copy-cs21a135';
-    var kicker = document.createElement('span');
-    kicker.className = 'an-book-unit-kicker-cs21a135';
-    kicker.textContent = 'Saltos oficiales del libro';
-    header.insertBefore(wrap, header.firstChild);
-    wrap.appendChild(emblem);
-    wrap.appendChild(copy);
-    copy.appendChild(kicker);
-    if (heading) {
-      heading.textContent = 'Navegación por unidad';
-      copy.appendChild(heading);
-    } else {
-      var strong = document.createElement('strong');
-      strong.textContent = 'Navegación por unidad';
-      copy.appendChild(strong);
-    }
-  }
-
-  function styleExistingStrip(section){
-    var strip = section.querySelector('.an-book-unit-strip-cs21a135');
-    if (strip) {
-      strip.setAttribute('data-book-type', activeBookType(section));
-      var existingGrid = strip.querySelector('.an-book-unit-grid-cs21a135');
-      decorateButtons(existingGrid);
-      return true;
-    }
-
-    var heading = Array.from(section.querySelectorAll('strong')).find(function(node){
-      return /inicio oficial por unidad|selecciona la unidad para ubicar el libro/i.test(compact(node.textContent));
-    });
+  function enhanceSection(section) {
+    if (!section || /ESTUDIANTE/i.test(text(section.getAttribute('data-screen-label')))) return false;
+    const heading = Array.from(section.querySelectorAll('strong'))
+      .find(node => /inicio oficial por unidad|navegación por unidad/i.test(compact(node.textContent)));
     if (!heading || !heading.parentElement || !heading.parentElement.parentElement) return false;
-
-    var header = heading.parentElement;
-    strip = header.parentElement;
-    var grid = strip.children && strip.children[1];
-    if (!grid || !strip.contains(grid)) return false;
-
+    const header = heading.parentElement;
+    const strip = header.parentElement;
+    const grid = strip.children && strip.children[1];
+    if (!grid) return false;
     section.setAttribute('data-book-viewer', 'institutional');
     strip.classList.add('an-book-unit-strip-cs21a135');
     strip.setAttribute('data-book-type', activeBookType(section));
     header.classList.add('an-book-unit-header-cs21a135');
     grid.classList.add('an-book-unit-grid-cs21a135');
-    buildHeading(header, heading);
-
-    var wrap = header.querySelector('.an-book-unit-heading-wrap-cs21a135');
-    Array.from(header.children).forEach(function(node){
-      if (node !== wrap) node.classList.add('an-book-unit-status-cs21a135');
-    });
+    heading.textContent = 'Navegación por unidad';
     decorateButtons(grid);
     return true;
   }
 
-  function buttonByText(root, label){
-    return Array.from(root.querySelectorAll('button')).find(function(button){ return compact(button.textContent) === label; }) || null;
+  function ensureLegacyStrip() {
+    // Las rutas CS21A58 están retiradas. Se conserva la firma para los módulos
+    // que consultan la API del guard, sin volver a fabricar interfaz histórica.
+    return false;
   }
 
-  function currentSources(section){
-    return Array.from(section.querySelectorAll('img[alt^="Página "]')).map(function(image){
-      var match = text(image.getAttribute('alt')).match(/Página\s+(\d+)/i);
-      return match ? Number(match[1]) : null;
-    }).filter(Number.isFinite);
-  }
-
-  function navigateLegacy(section, target, button, attempt){
-    if (!section || !section.isConnected || attempt > 90) return;
-    var sources = currentSources(section);
-    if (!sources.length) {
-      window.setTimeout(function(){ navigateLegacy(section, target, button, attempt + 1); }, 120);
-      return;
-    }
-    var minimum = Math.min.apply(Math, sources);
-    var maximum = Math.max.apply(Math, sources);
-    if ((target >= minimum && target <= maximum) || Math.abs(target - minimum) <= 1) return;
-    var nav = buttonByText(section, target > maximum ? 'Siguiente' : 'Anterior');
-    if (!nav || nav.disabled) return;
-    nav.click();
-    window.setTimeout(function(){ navigateLegacy(section, target, button, attempt + 1); }, 120);
-  }
-
-  function legacyInsertionPoint(section){
-    var previous = buttonByText(section, 'Anterior');
-    if (!previous) return null;
-    var card = section.firstElementChild;
-    if (!card) return null;
-    var node = previous;
-    while (node.parentElement && node.parentElement !== card) node = node.parentElement;
-    return node.parentElement === card ? { card:card, before:node } : null;
-  }
-
-  function ensureLegacyStrip(section){
-    if (!/CS21A58/i.test(text(section.getAttribute('data-screen-label')))) return false;
-    var level = activeLevel(section);
-    var bookType = activeBookType(section);
-    var starts = UNIT_STARTS[level + '|' + bookType];
-    if (!starts) return false;
-
-    var strip = section.querySelector('[' + LEGACY_STRIP + ']');
-    if (!strip) {
-      var point = legacyInsertionPoint(section);
-      if (!point) return false;
-      strip = document.createElement('div');
-      strip.setAttribute(LEGACY_STRIP, '1');
-      strip.className = 'an-book-unit-strip-cs21a135';
-
-      var header = document.createElement('div');
-      header.className = 'an-book-unit-header-cs21a135';
-      var status = document.createElement('span');
-      status.className = 'an-book-unit-status-cs21a135';
-      status.textContent = 'Los saltos se mantienen visibles al cambiar SB, TB y WB';
-      strip.appendChild(header);
-      header.appendChild(status);
-      buildHeading(header, null);
-
-      var grid = document.createElement('div');
-      grid.className = 'an-book-unit-grid-cs21a135';
-      strip.appendChild(grid);
-      point.card.insertBefore(strip, point.before);
-    }
-
-    strip.setAttribute('data-book-type', bookType);
-    strip.setAttribute('data-book-key', level + '|' + bookType);
-    var gridNode = strip.querySelector('.an-book-unit-grid-cs21a135');
-    if (!gridNode) return false;
-
-    if (gridNode.getAttribute('data-book-key') !== level + '|' + bookType) {
-      gridNode.textContent = '';
-      gridNode.setAttribute('data-book-key', level + '|' + bookType);
-      starts.forEach(function(page, index){
-        var cell = document.createElement('div');
-        var button = document.createElement('button');
-        var unit = index + 1;
-        button.type = 'button';
-        button.textContent = 'U' + String(unit).padStart(2, '0');
-        button.title = button.textContent + ' · hoja ' + page;
-        button.className = 'an-book-unit-button-cs21a135';
-        button.setAttribute('data-page', String(page));
-        button.setAttribute('data-mapped', 'true');
-        button.setAttribute('data-active', unit === 1 ? 'true' : 'false');
-        button.addEventListener('click', function(){
-          Array.from(gridNode.querySelectorAll('.an-book-unit-button-cs21a135')).forEach(function(item){
-            item.setAttribute('data-active', item === button ? 'true' : 'false');
-            if (item === button) item.setAttribute('aria-current', 'page');
-            else item.removeAttribute('aria-current');
-          });
-          navigateLegacy(section, page, button, 0);
-        });
-        cell.appendChild(button);
-        gridNode.appendChild(cell);
-      });
-    }
-    section.setAttribute('data-book-viewer', 'institutional');
-    return true;
-  }
-
-  function enhanceSection(section){
-    if (!section || /ESTUDIANTE/i.test(text(section.getAttribute('data-screen-label')))) return;
-    if (!styleExistingStrip(section)) ensureLegacyStrip(section);
-  }
-
-  function enhanceAll(){
+  function enhanceAll() {
     if (!document || typeof document.querySelectorAll !== 'function') return;
     Array.from(document.querySelectorAll(
       'section[data-screen-label*="Libros"],section[data-screen-label*="libros"],section[data-screen-label*="biblioteca"]'
     )).forEach(enhanceSection);
   }
-
-  function queueEnhancement(){
+  function queueEnhancement() {
     if (enhancementQueued) return;
     enhancementQueued = true;
-    var run = function(){ enhancementQueued = false; enhanceAll(); };
+    const run = () => {
+      enhancementQueued = false;
+      enhanceAll();
+    };
     if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(run);
     else window.setTimeout(run, 16);
   }
-
-  function reinstall(){
+  function installAuthority() {
+    return typeof window.__AN_BOOK_RESOURCES_COMPONENT__ === 'function';
+  }
+  function reinstall() {
+    installFetchGuard();
     installStyles();
-    installAuthority();
     queueEnhancement();
   }
 
-  installStyles();
-  installAuthority();
-  queueEnhancement();
-
-  ['an:lazy-module-loaded','an:teacher-material-tab','an:admin-resource-tab'].forEach(function(eventName){
-    window.addEventListener(eventName, function(){ window.setTimeout(reinstall, 80); });
+  reinstall();
+  ['an:lazy-module-loaded', 'an:teacher-material-tab', 'an:admin-resource-tab'].forEach(eventName => {
+    window.addEventListener(eventName, () => window.setTimeout(queueEnhancement, 40));
   });
-
-  authorityTimer = window.setInterval(function(){
-    installAuthority();
-    queueEnhancement();
-  }, 600);
 
   if (typeof MutationObserver === 'function' && document && document.documentElement) {
     observer = new MutationObserver(queueEnhancement);
     observer.observe(document.documentElement, {
-      childList:true,
-      subtree:true,
-      attributes:true,
-      attributeFilter:['style','aria-pressed','disabled']
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-pressed', 'disabled'],
     });
   }
+  window.addEventListener('pagehide', () => observer && observer.disconnect(), { once: true });
 
-  window.addEventListener('pagehide', function(){
-    if (authorityTimer) window.clearInterval(authorityTimer);
-    if (observer) observer.disconnect();
-  }, { once:true });
-
-  window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135 = {
-    version:VERSION,
-    endpoint:ENDPOINT,
-    maps:UNIT_STARTS,
-    knownBad:KNOWN_BAD,
-    repairPayload:repairPayload,
-    complete:complete,
-    installAuthority:installAuthority,
-    enhanceAll:enhanceAll,
-    ensureLegacyStrip:ensureLegacyStrip,
-    reinstall:reinstall,
-    styleId:STYLE_ID
-  };
+  window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135 = Object.freeze({
+    version: VERSION,
+    endpoint: ENDPOINT,
+    maps: UNIT_STARTS,
+    knownBad: KNOWN_BAD,
+    repairPayload,
+    complete,
+    installAuthority,
+    authorityMode: AUTHORITY_MODE,
+    enhanceAll,
+    enhanceSection,
+    ensureLegacyStrip,
+    reinstall,
+    styleId: STYLE_ID,
+  });
 })();

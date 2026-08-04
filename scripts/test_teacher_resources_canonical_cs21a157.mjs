@@ -3,7 +3,13 @@ import fs from 'node:fs';
 
 const read = file => fs.readFileSync(file, 'utf8');
 const teacher = read('src/teacher_cs21a.jsx');
+const planning = read('src/teacher_cs21a_planeamiento_grouped.jsx');
+const legacyPlanning = read('src/teacher_cs21a_planeamiento32.jsx');
+const legacyLibrary = read('src/teacher_cs21a_biblioteca_pdf.jsx');
+const docsViewer = read('src/teacher_cs21a_docs_viewer.jsx');
+const orderFix = read('src/teacher_cs21a_order_fix.jsx');
 const compatibility = read('src/resources_panel_cs21a65.jsx');
+const additionalResources = read('src/additional_resources_panel_cs21a68.jsx');
 const guard = read('src/student_menu_academic_guard_cs21a120.js');
 const inlineAudio = read('src/book_inline_audio_cs21a63.js');
 const viewer = read('src/book_unit_starts_cs21a60.jsx');
@@ -21,11 +27,46 @@ assert.match(teacher, /const\s+\[intent,\s*setIntent\]\s*=\s*React\.useState\(\(
 assert.match(teacher, /window\.addEventListener\(['"]an:teacher-material-tab['"],\s*syncIntent\)/);
 assert.match(teacher, /window\.removeEventListener\(['"]an:teacher-material-tab['"],\s*syncIntent\)/);
 assert.match(teacher, /if\(item\.intent\)\s*\{\s*setIntent\(item\.intent\);\s*setHubScreen\(item\.intent\);\s*\}/);
+assert.match(teacher, /const\s+BookResources\s*=\s*window\.__AN_BOOK_RESOURCES_COMPONENT__/);
+assert.match(teacher, /screen\s*===\s*['"]libros['"][\s\S]{0,220}?<BookResources\s+initialType=['"]SB['"]\s*\/>/);
+assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'\]/);
+assert.match(teacher, /const\s+PlanningView\s*=\s*window\.PlaneamientoGroupedViewCS21A140/);
+assert.match(teacher, /screen\s*===\s*['"]planeamiento['"][\s\S]{0,220}?<PlanningView\s*\/>/);
+assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','cronograma_general'\]/);
+
+assert.match(planning, /window\.PlaneamientoGroupedViewCS21A140\s*=\s*PlaneamientoGroupedView/);
+assert.match(planning, /__AN_TEACHER_PLANNING_GROUPED_VERSION__/);
+assert.doesNotMatch(planning, /(?:window\.)?MaterialesView\s*=|MaterialesViewCS21A9|__base\s*=|__cs21a9|an:lazy-module-loaded|setTimeout\(install/);
+
+for (const [name, source, marker] of [
+  ['CS21A6 planeamiento', legacyPlanning, '__AN_TEACHER_PLANEAMIENTO32_COMPATIBILITY__'],
+  ['CS21A10 biblioteca', legacyLibrary, '__AN_TEACHER_BIBLIOTECA_PDF_COMPATIBILITY__'],
+]) {
+  assert.match(source, /F98\.4-Z6-CS21A153/, `${name} debe conservar su tombstone documentado.`);
+  assert.match(source, new RegExp(marker));
+  assert.doesNotMatch(source, /(?:window\.)?MaterialesView\s*=|MaterialesViewCS21A|__base\s*=|React|fetch\s*\(|addEventListener|setInterval|MutationObserver/);
+}
+
+assert.match(docsViewer, /F98\.4-Z6-CS21A167/);
+assert.match(docsViewer, /__AN_TEACHER_DOCS_VIEWER_COMPATIBILITY__/);
+assert.match(docsViewer, /TeacherHubCS21A/);
+assert.match(docsViewer, /PlaneamientoGroupedViewCS21A140/);
+assert.doesNotMatch(docsViewer, /(?:window\.)?MaterialesView\s*=|MaterialesViewCS21A6|__base\s*=|React|fetch\s*\(|addEventListener|setInterval|MutationObserver/);
+
+assert.match(orderFix, /F98\.4-Z6-CS21A152/);
+assert.match(orderFix, /__AN_TEACHER_ORDER_FIX_COMPATIBILITY__/);
+assert.doesNotMatch(orderFix, /(?:window\.)?MaterialesView\s*=/);
+assert.doesNotMatch(orderFix, /__base\s*=|__cs21a58books|React|fetch\s*\(|addEventListener|setInterval|MutationObserver/);
 
 assert.match(compatibility, /F98\.4-Z6-CS21A157/);
 assert.match(compatibility, /__AN_RESOURCES_PANEL_COMPATIBILITY__/);
 assert.doesNotMatch(compatibility, /(?:window\.)?Sidebar\s*=/);
 assert.doesNotMatch(compatibility, /__base\s*=|MutationObserver|requestAnimationFrame|an:lazy-module-loaded|an:teacher-material-tab/);
+
+assert.match(additionalResources, /F98\.4-Z6-CS21A154/);
+assert.match(additionalResources, /window\.AdditionalResourcesPanel\s*=\s*AdditionalResourcesPanel/);
+assert.doesNotMatch(additionalResources, /(?:window\.)?MaterialesView\s*=/);
+assert.doesNotMatch(additionalResources, /__base\s*=|MutationObserver|requestAnimationFrame|MODE_KEY|MODE_EVENT|BUTTON_ID_PREFIX/);
 
 assert.doesNotMatch(guard, /__cs21a65UnifiedResources|__cs21a59AdminResources|__cs21a60SuperResources/);
 assert.match(guard, /__cs21a69ActiveState/);
@@ -46,16 +87,24 @@ assert.match(viewer, /function\s+TypeButtons\s*\(\{\s*type,\s*setType,\s*allowed
 assert.match(viewer, /allowedTypes\.map\(key\s*=>/);
 assert.match(viewer, /const\s+allowedTypes\s*=\s*studentMode\s*\?\s*\[['"]SB['"],\s*['"]WB['"]\]\s*:\s*\[['"]SB['"],\s*['"]TB['"],\s*['"]WB['"]\]/);
 assert.match(viewer, /<TypeButtons\s+type=\{bookType\}\s+setType=\{setBookType\}\s+allowedTypes=\{allowedTypes\}\s*\/>/);
+assert.doesNotMatch(viewer, /an_teacher_materiales_tab/);
+assert.doesNotMatch(viewer, /role\s*===\s*['"]teacher['"][\s\S]{0,180}?BookResourcesCS21A60/);
+assert.doesNotMatch(viewer, /role\s*===\s*['"]docente['"][\s\S]{0,180}?BookResourcesCS21A60/);
+assert.doesNotMatch(viewer, /MaterialesViewCS21A75|window\.MaterialesView\s*=|__base\s*=|__AN_CS21A59_TEACHER_MATERIALS_BASE__/);
+assert.doesNotMatch(viewer, /setInterval\s*\(|an:teacher-material-tab|an:admin-resource-tab/);
+assert.match(viewer, /__AN_BOOK_UNIT_STARTS_MODE__\s*=\s*['"]REUSABLE_COMPONENT_ONLY['"]/);
 
 const order = [
+  'src/teacher_cs21a_order_fix.jsx',
   'src/book_unit_starts_cs21a60.jsx',
   'src/book_inline_audio_cs21a63.js',
   'src/resources_panel_cs21a65.jsx',
+  'src/additional_resources_panel_cs21a68.jsx',
 ].map(file => {
   const index = campus.indexOf(file);
   assert.notEqual(index, -1, `${file} debe estar publicado.`);
   return index;
 });
-assert.ok(order[0] < order[1] && order[1] < order[2], 'El visor debe publicarse antes del audio y la compatibilidad inerte.');
+assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3] && order[3] < order[4], 'Las compatibilidades inertes deben cargar antes del visor y sus extensiones independientes.');
 
-console.log('OK: el docente usa una sola ruta Libros y Audios y sincroniza su subruta activa sin depender de un cambio del router principal.');
+console.log('OK CS21A167: TeacherHub es propietario de Libros, Audios, Información y Planeamiento; los módulos históricos no envuelven MaterialesView.');
