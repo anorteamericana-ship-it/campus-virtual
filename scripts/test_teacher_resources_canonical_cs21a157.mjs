@@ -64,4 +64,4 @@ const order = [
 });
 assert.ok(order[0] < order[1] && order[1] < order[2], 'El visor debe publicarse antes del audio y la compatibilidad inerte.');
 
-console.log('OK: el docente usa una sola ruta Libros y Audios y sincroniza su subruta activa sin depender de un cambio del router principal.');
+console.log('OK CS21A161: el portal docente conserva la subruta activa y es el único propietario de Libros y Audios.');
