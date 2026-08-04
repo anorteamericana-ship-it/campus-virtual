@@ -1,0 +1,29 @@
+name: Additional resources independent CS21A154
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/additional_resources_panel_cs21a68.jsx'
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'scripts/test_additional_resources_independent_cs21a154.mjs'
+      - '.github/workflows/additional-resources-independent-cs21a154.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-independent-panel:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Validate independent component
+        run: node scripts/test_additional_resources_independent_cs21a154.mjs
+      - name: Parse critical JSX
+        run: node scripts/parse_critical_jsx.mjs
+      - name: Audit delivery surface
+        run: node scripts/audit_delivery_surface.mjs
+      - name: Static virtual review
+        run: node scripts/virtual_review_static.mjs
