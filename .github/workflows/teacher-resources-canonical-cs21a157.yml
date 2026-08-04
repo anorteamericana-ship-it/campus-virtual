@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/teacher_cs21a.jsx'
+      - 'src/teacher_cs21a_planeamiento_grouped.jsx'
       - 'src/resources_panel_cs21a65.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/book_inline_audio_cs21a63.js'
