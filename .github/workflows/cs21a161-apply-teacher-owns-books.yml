@@ -1,0 +1,36 @@
+name: CS21A161 apply teacher-owned books
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cs21a161-apply-teacher-owns-books.yml'
+      - '.github/patches/cs21a161-teacher-owns-books.patch.b64'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-teacher-owned-books:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/cs21a157-docente-recursos-canonicos
+          fetch-depth: 0
+      - name: Apply exact ownership patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/patches/cs21a161-teacher-owns-books.patch.b64 > /tmp/cs21a161.patch
+          git apply --check /tmp/cs21a161.patch
+          git apply /tmp/cs21a161.patch
+          git rm .github/patches/cs21a161-teacher-owns-books.patch.b64
+          git rm .github/workflows/cs21a161-apply-teacher-owns-books.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/teacher_cs21a.jsx src/book_unit_starts_cs21a60.jsx scripts/test_teacher_resources_canonical_cs21a157.mjs
+          git commit -m 'CS21A161 deja Libros y Audios bajo el portal docente'
+          git push origin HEAD:refactor/cs21a157-docente-recursos-canonicos
