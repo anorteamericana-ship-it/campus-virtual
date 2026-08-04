@@ -1,9 +1,9 @@
-// F98.4-Z6-CS21A65 · Audios y recursos adicionales compactos por nivel/unidad
+// F98.4-Z6-CS21A157 · Audios y recursos adicionales dentro del visor canónico CS21A75
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A65';
-  const VIEWER_SELECTOR = 'section[data-screen-label*="CS21A60"][data-screen-label*="Libros"]';
+  const VERSION = 'F98.4-Z6-CS21A157';
+  const VIEWER_SELECTOR = 'section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]';
   const MOUNT_CLASS = 'an-book-inline-audio-cs21a65';
   const CACHE = window.__AN_BOOK_AUDIO_CATALOG_CACHE_CS21A65__ ||
     (window.__AN_BOOK_AUDIO_CATALOG_CACHE_CS21A65__ = Object.create(null));

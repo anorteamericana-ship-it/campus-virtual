@@ -568,6 +568,12 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       ],
     },
     {
+      label: 'Recursos didácticos',
+      items: [
+        { id: 'recursos_didacticos', label: 'Libros y Audios', icon: 'materials' },
+      ],
+    },
+    {
       label: 'Operación administrativa',
       items: [
         ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
@@ -678,6 +684,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                     <button
                       key={item.id}
                       type="button"
+                      data-nav-id={item.id}
                       disabled
                       aria-disabled="true"
                       title="En construcción — lo conectamos pronto"
@@ -691,7 +698,9 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                 return (
                   <button
                     key={item.id}
+                    data-nav-id={item.id}
                     className={`sb-item admin-sb-item ${active===item.id?'active':''}`}
+                    aria-current={active===item.id ? 'page' : undefined}
                     onClick={() => setActive(item.id)}>
                     <SidebarMenuIcon name={item.icon} size={18} />
                     <span className="sb-label">{item.label}</span>

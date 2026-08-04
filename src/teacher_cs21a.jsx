@@ -219,16 +219,14 @@
       planeamiento:['Planificación Académica','Planeamiento didáctico','Acceso al planeamiento didáctico del nivel correspondiente.'],
       cronograma_modulo:['Planificación Académica','Cronograma del módulo','Acceso al cronograma institucional del módulo.'],
       cronograma_general:['Planificación Académica','Cronograma general','Acceso al cronograma general del grupo activo.'],
-      biblioteca:['Recursos Didácticos','Biblioteca digital','Acceso al Teacher Book del nivel correspondiente.'],
-      libros:['Recursos Didácticos','Libros de texto','Acceso a Student Book y Workbook del nivel correspondiente.'],
-      audios:['Recursos Didácticos','Audios','Acceso a audios por unidad del nivel correspondiente.'],
+      libros:['Recursos Didácticos','Libros y Audios','Acceso a Student Book, Teacher Book, Workbook y audios por unidad del nivel correspondiente.'],
     };
     const t = titles[screen] || titles.info;
     return <section data-screen-label={'Docente · CS21A4 · ' + screen} style={{ padding:18 }}>
       <Header eyebrow={t[0]} title={t[1]} desc={t[2]} />
       {screen === 'info' && <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12 }}>{INFO_ITEMS.map(x=><CS21Card key={x.code} item={x}/>)}</div>}
       {screen === 'asistencia' && <AsistenciaResumenCS21A onNavigate={props.onNavigate}/>} 
-      {['syllabus','planeamiento','cronograma_modulo','cronograma_general','biblioteca','libros','audios'].includes(screen) && <LevelCards type={screen} onNavigate={props.onNavigate}/>} 
+      {['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'].includes(screen) && <LevelCards type={screen} onNavigate={props.onNavigate}/>} 
     </section>;
   }
 
@@ -261,9 +259,7 @@
         { id:'cronograma_general_docente', target:'materiales', intent:'cronograma_general', label:'Cronograma general', icon:'calendar' },
       ]},
       { section:'Recursos Didácticos', items:[
-        { id:'biblioteca_docente', target:'materiales', intent:'biblioteca', label:'Biblioteca digital', icon:'materials' },
-        { id:'libros_docente', target:'materiales', intent:'libros', label:'Libros de texto', icon:'materials' },
-        { id:'audios_docente', target:'materiales', intent:'audios', label:'Audios', icon:'materials' },
+        { id:'libros_docente', target:'materiales', intent:'libros', label:'Libros y Audios', icon:'materials' },
       ]},
       { section:'', items:[
         { id:'ican', label:'I CAN Conversation Club', icon:'ican' },
@@ -279,7 +275,7 @@
     const go = item => { if(item.intent) setHubScreen(item.intent); if(setActive) setActive(item.target || item.id); };
     return <aside className="sb teacher-sb" data-role="teacher" data-version={VERSION}>
       <div className="sb-brand"><div className="sb-logo"/><div className="sb-brand-text"><div className="sb-brand-t1">Norteamericana</div><div className="sb-brand-t2">Campus Virtual</div></div></div>
-      {nav.map(group=><React.Fragment key={group.section || 'main-actions'}>{group.section && <div className="sb-section teacher-sb-section" style={sectionStyle}>{group.section}</div>}{group.items.map(item=><button key={item.id} className={'sb-item teacher-sb-item ' + (isActive(item) ? 'active' : '')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{ fontSize:13, fontWeight:850 }}>{item.label}</span>{item.badge && <span className="sb-badge">{item.badge}</span>}</button>)}</React.Fragment>)}
+      {nav.map(group=><React.Fragment key={group.section || 'main-actions'}>{group.section && <div className="sb-section teacher-sb-section" style={sectionStyle}>{group.section}</div>}{group.items.map(item=><button key={item.id} data-nav-id={item.id} aria-current={isActive(item) ? 'page' : undefined} className={'sb-item teacher-sb-item ' + (isActive(item) ? 'active' : '')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{ fontSize:13, fontWeight:850 }}>{item.label}</span>{item.badge && <span className="sb-badge">{item.badge}</span>}</button>)}</React.Fragment>)}
       <div className="sb-user"><div className="sb-avatar">{init}</div><div style={{ flex:1, minWidth:0 }}><div className="sb-user-t1">{name}</div><div className="sb-user-t2">Docente · CS21A4</div></div><button title="Cerrar sesión" onClick={async()=>{ try { if(typeof window.cerrarSesionServidor==='function') await window.cerrarSesionServidor(); else sessionStorage.removeItem('an_usuario'); } catch(_){} if(onLogout) onLogout(); else window.location.href='login.html'; }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-3)', padding:4 }}>⎋</button></div>
     </aside>;
   }

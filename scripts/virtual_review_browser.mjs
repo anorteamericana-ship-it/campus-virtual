@@ -8,12 +8,51 @@ const shotsDir = path.join(outDir, 'screens');
 fs.mkdirSync(shotsDir, { recursive: true });
 
 const scenarios = [
-  { role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 } },
-  { role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
-  { role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 } },
-  { role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 } },
-  { role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 } },
-  { role: 'superadmin', route: 'banco', viewport: { width: 390, height: 844 } },
+  {
+    role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 },
+    navigation: [
+      { id: 'calendario_academico', label: 'Calendario académico' },
+      { id: 'evaluaciones', label: 'Evaluaciones' },
+      { id: 'resumen_academico', label: 'Resumen Académico' },
+    ],
+  },
+  {
+    role: 'student', route: 'libros_audios_estudiante', viewport: { width: 1440, height: 900 },
+    navigation: [
+      { id: 'evaluaciones', label: 'Evaluaciones' },
+      { id: 'libros_audios_estudiante', label: 'Libros y Audios' },
+      { id: 'resumen_academico', label: 'Resumen Académico' },
+    ],
+  },
+  {
+    role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 },
+    navigation: [
+      { label: 'Calendario académico' },
+      { label: 'Mis grupos' },
+    ],
+  },
+  {
+    role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 },
+    navigation: [
+      { label: 'Libros de texto' },
+      { label: 'Mis grupos' },
+      { label: 'Información General del Programa' },
+    ],
+  },
+  {
+    role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 },
+    navigation: [
+      { label: 'Estudiantes' },
+      { label: 'Panel Maestro' },
+    ],
+  },
+  {
+    role: 'superadmin', route: 'banco', viewport: { width: 390, height: 844 },
+    navigation: [
+      { label: 'Estudiantes' },
+      { label: 'Importar banco' },
+    ],
+  },
 ];
 
 function syntheticSession(role) {
@@ -47,15 +86,9 @@ function syntheticSession(role) {
 
 function mockPayload(fn, session) {
   const common = {
-    ok: true,
-    qa: true,
-    rows: [],
-    items: [],
-    data: [],
-    grupos: [],
-    estudiantes: [],
-    sesiones: [],
-    pendientes: [],
+    ok: true, qa: true,
+    rows: [], items: [], data: [], grupos: [], estudiantes: [],
+    sesiones: [], pendientes: [],
   };
   if (fn === 'validarSesion') return { ok: true, rol: session.rol, qa: true };
   if (fn === 'getDocenteSesionActivaF87') return { ok: true, sesion: null, qa: true };
@@ -64,29 +97,254 @@ function mockPayload(fn, session) {
     estudiante: { ...session, NOMBRE: session.nombre, CODIGO: session.codigo },
     niveles: { B1: { estatus: 'CA' }, B2: {}, I1: {}, I2: {} },
     grupo: { COD_GRUPO: session.grupo || '', NIVEL: 'B1' },
-    pendientes: {},
-    qa: true,
+    pendientes: {}, qa: true,
   };
   if (/grupos/i.test(fn)) return { ...common, grupos: [], qa: true };
-  if (/biblioteca|book|audio|material/i.test(fn)) return { ...common, nivel: 'B1', book_type: 'SB', unit_starts: [], qa: true };
+  if (/biblioteca|book|audio|material/i.test(fn)) {
+    return { ...common, nivel: 'B1', book_type: 'SB', unit_starts: [], qa: true };
+  }
   return common;
 }
 
 const findings = [];
-const add = (severity, scenario, title, evidence) => findings.push({
-  id: `BQA-${String(findings.length + 1).padStart(3, '0')}`,
-  severity,
-  type: 'sintética',
-  scenario,
-  title,
-  evidence,
-});
+const coverage = [];
+const findingKeys = new Set();
+
+function add(severity, scenario, title, evidence) {
+  const normalized = String(evidence || '').replace(/\s+/g, ' ').trim();
+  const dedupeKey = [severity, scenario, title, normalized].join('|');
+  if (findingKeys.has(dedupeKey)) return;
+  findingKeys.add(dedupeKey);
+  findings.push({
+    id: `BQA-${String(findings.length + 1).padStart(3, '0')}`,
+    severity,
+    type: 'sintética',
+    scenario,
+    title,
+    evidence: String(evidence || ''),
+  });
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function sidebarRole(role) {
+  return role === 'superadmin' ? 'admin' : role;
+}
+
+async function snapshot(page) {
+  return page.evaluate(() => {
+    const root = document.getElementById('root');
+    const rootHtml = root?.innerHTML || '';
+    const rootText = root?.innerText?.trim() || '';
+    const bodyText = document.body?.innerText?.trim() || '';
+    const loginDetected = /login\.html$/i.test(location.pathname)
+      || Boolean(document.querySelector('form[action*="login" i], .login-page, [data-screen-label*="login" i]'));
+    const mountedSurface = Boolean(document.querySelector('.app, .sb, main, [data-screen-label], #root > *'));
+    const activeNav = Array.from(document.querySelectorAll('.sb-item.active'))
+      .find(node => node.getClientRects().length > 0)
+      ?.textContent?.replace(/\s+/g, ' ').trim() || '';
+    const headings = Array.from(document.querySelectorAll('h1, h2'))
+      .filter(node => node.getClientRects().length > 0)
+      .map(node => node.textContent?.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    return {
+      bodyText,
+      rootHtml,
+      rootText,
+      rootChildren: root?.children?.length || 0,
+      labels: Array.from(document.querySelectorAll('[data-screen-label]'))
+        .map(node => node.getAttribute('data-screen-label'))
+        .filter(Boolean)
+        .slice(0, 12),
+      activeNav,
+      headings,
+      overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
+      hash: location.hash,
+      path: location.pathname,
+      href: location.href,
+      historyLength: history.length,
+      loginDetected,
+      appMounted: !loginDetected && mountedSurface && rootHtml.length > 20 && rootText.length > 5,
+      sidebarMounted: Boolean(document.querySelector('.sb')),
+    };
+  });
+}
+
+function validateState(state, key, phase, options = {}) {
+  const prefix = phase ? `${phase}: ` : '';
+  if (state.loginDetected) add('P1', key, `${prefix}La sesión sintética fue rechazada`, state.path);
+  if (state.bodyText.length < 20 || state.rootHtml.length < 20 || state.rootChildren < 1) {
+    add('P1', key, `${prefix}Pantalla vacía o raíz sin contenido`,
+      `body=${state.bodyText.length}, root=${state.rootHtml.length}, children=${state.rootChildren}`);
+  } else if (!state.appMounted) {
+    add('P2', key, `${prefix}No se reconoció una superficie montada estable`,
+      `path=${state.path}, hash=${state.hash}, sidebar=${state.sidebarMounted}`);
+  }
+  if (state.overflow > 24) {
+    add('P2', key, `${prefix}Desbordamiento horizontal`, `${state.overflow}px fuera del viewport.`);
+  }
+  if (options.requireDiagnosticLabel && !state.labels.length) {
+    add('P3', key, `${prefix}Pantalla sin etiqueta de diagnóstico`,
+      `path=${state.path}, hash=${state.hash}, active=${state.activeNav || '—'}`);
+  }
+}
+
+async function waitForCampusReady(page, timeout = 15000) {
+  await page.waitForFunction(() => {
+    const root = document.getElementById('root');
+    const text = root?.innerText?.trim() || '';
+    return Boolean(root && root.children.length && root.innerHTML.length > 20 && text.length > 5);
+  }, null, { timeout });
+  await page.waitForTimeout(450);
+}
+
+async function ensureMobileMenuOpen(page) {
+  const isMobile = await page.evaluate(() => window.matchMedia('(max-width: 900px)').matches);
+  if (!isMobile) return;
+  const open = await page.evaluate(() => document.body.classList.contains('an-mobile-nav-open'));
+  if (open) return;
+  const toggle = page.locator('.an-mobile-nav-toggle:visible').first();
+  if (!(await toggle.count())) throw new Error('No se encontró el botón visible para abrir el menú móvil.');
+  await toggle.click({ timeout: 5000 });
+  await page.waitForFunction(() => document.body.classList.contains('an-mobile-nav-open'), null, { timeout: 5000 });
+  await page.waitForTimeout(200);
+}
+
+async function firstVisible(locator) {
+  const count = await locator.count();
+  for (let index = 0; index < count; index += 1) {
+    const candidate = locator.nth(index);
+    if (await candidate.isVisible().catch(() => false)) return candidate;
+  }
+  return null;
+}
+
+async function findNavigationControl(page, scenario, target) {
+  await ensureMobileMenuOpen(page);
+  const role = sidebarRole(scenario.role);
+  const sidebar = page.locator(`aside.sb[data-role="${role}"]:visible`).first();
+  if (!(await sidebar.count())) return null;
+
+  if (target.id) {
+    const byId = await firstVisible(sidebar.locator(`.sb-item[data-nav-id="${target.id}"]:not([disabled])`));
+    if (byId) return byId;
+  }
+
+  const label = String(target.label || '').trim();
+  if (!label) return null;
+  const exact = new RegExp(`^\\s*${escapeRegex(label)}\\s*$`, 'i');
+  const byButtonName = await firstVisible(sidebar.getByRole('button', { name: exact }));
+  if (byButtonName) return byButtonName;
+  return await firstVisible(sidebar.locator('.sb-item:not([disabled])').filter({ hasText: exact }));
+}
+
+async function clickNavigation(page, scenario, target, key, cycle) {
+  const label = target.label || target.id || 'ruta';
+  let control;
+  try {
+    control = await findNavigationControl(page, scenario, target);
+  } catch (error) {
+    add('P1', key, 'No se pudo preparar el menú para navegar', `${label} · ciclo ${cycle} · ${error.message}`);
+    return false;
+  }
+  if (!control) {
+    add('P2', key, 'No se encontró un control de navegación del rol', `${label} · ciclo ${cycle}`);
+    return false;
+  }
+
+  const before = await snapshot(page);
+  try {
+    await control.click({ timeout: 7000 });
+    await waitForCampusReady(page);
+    const after = await snapshot(page);
+    const changed = before.hash !== after.hash
+      || before.activeNav !== after.activeNav
+      || JSON.stringify(before.headings) !== JSON.stringify(after.headings);
+    if (!changed) {
+      add('P2', key, 'La navegación no produjo un cambio observable',
+        `${label} · ciclo ${cycle} · active=${after.activeNav || '—'} · hash=${after.hash || '—'}`);
+    }
+    return true;
+  } catch (error) {
+    add('P1', key, 'Falló un control visible del menú del rol',
+      `${label} · ciclo ${cycle} · ${error.message}`);
+    return false;
+  }
+}
+
+async function exerciseNavigation(page, scenario, key) {
+  const targets = scenario.navigation || [];
+  const initial = await snapshot(page);
+  let successful = 0;
+
+  for (let cycle = 1; cycle <= 2; cycle += 1) {
+    for (const target of targets) {
+      const clicked = await clickNavigation(page, scenario, target, key, cycle);
+      if (!clicked) continue;
+      const state = await snapshot(page);
+      validateState(state, key, `alternancia ${target.label || target.id}`);
+      successful += 1;
+    }
+  }
+  coverage.push({
+    scenario: key,
+    check: 'alternancia_repetida',
+    attempted: targets.length * 2,
+    successful,
+  });
+
+  const beforeReload = await snapshot(page);
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await waitForCampusReady(page, 20000);
+    const afterReload = await snapshot(page);
+    validateState(afterReload, key, 'recarga directa', { requireDiagnosticLabel: true });
+    coverage.push({
+      scenario: key,
+      check: 'recarga_directa',
+      before: { path: beforeReload.path, hash: beforeReload.hash, active: beforeReload.activeNav },
+      after: { path: afterReload.path, hash: afterReload.hash, active: afterReload.activeNav },
+      mounted: afterReload.appMounted,
+    });
+  } catch (error) {
+    add('P1', key, 'La recarga directa no terminó', error.message || String(error));
+  }
+
+  const afterReload = await snapshot(page);
+  const historyChanged = afterReload.historyLength > initial.historyLength || afterReload.href !== initial.href;
+  if (!historyChanged) {
+    coverage.push({
+      scenario: key,
+      check: 'atras',
+      exercised: false,
+      reason: 'La navegación no creó una entrada observable en el historial; no se clasifica como defecto.',
+    });
+    return;
+  }
+
+  try {
+    await page.goBack({ waitUntil: 'domcontentloaded', timeout: 10000 });
+    await waitForCampusReady(page, 15000);
+    const afterBack = await snapshot(page);
+    validateState(afterBack, key, 'navegación Atrás');
+    coverage.push({
+      scenario: key, check: 'atras', exercised: true,
+      mounted: afterBack.appMounted, hash: afterBack.hash, active: afterBack.activeNav,
+    });
+  } catch (error) {
+    add('P2', key, 'La navegación Atrás no se recuperó correctamente', error.message || String(error));
+  }
+}
 
 const browser = await chromium.launch({ headless: true });
 for (const scenario of scenarios) {
   const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
   const context = await browser.newContext({ viewport: scenario.viewport, ignoreHTTPSErrors: true });
   const session = syntheticSession(scenario.role);
+
   await context.addInitScript(({ session, route }) => {
     sessionStorage.setItem('an_usuario', JSON.stringify(session));
     sessionStorage.removeItem('an_just_logged_in');
@@ -100,6 +358,7 @@ for (const scenario of scenarios) {
   const consoleErrors = [];
   const pageErrors = [];
   const localFailures = [];
+  const externalFailures = [];
 
   page.on('console', message => {
     if (message.type() === 'error') consoleErrors.push(message.text());
@@ -107,12 +366,16 @@ for (const scenario of scenarios) {
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('requestfailed', request => {
     const failure = request.failure()?.errorText || '';
-    if (request.url().startsWith(baseURL) && !/ERR_ABORTED/i.test(failure)) {
-      localFailures.push(`${request.url()} · ${failure || 'falló'}`);
-    }
+    if (/ERR_ABORTED/i.test(failure)) return;
+    const item = `${request.url()} · ${failure || 'falló'}`;
+    if (request.url().startsWith(baseURL)) localFailures.push(item);
+    else externalFailures.push(item);
   });
   page.on('response', response => {
-    if (response.url().startsWith(baseURL) && response.status() >= 400) localFailures.push(`${response.status()} · ${response.url()}`);
+    if (response.status() < 400) return;
+    const item = `${response.status()} · ${response.url()}`;
+    if (response.url().startsWith(baseURL)) localFailures.push(item);
+    else if (!/script\.google(?:usercontent)?\.com/i.test(response.url())) externalFailures.push(item);
   });
 
   await page.route('**/*', async route => {
@@ -135,36 +398,22 @@ for (const scenario of scenarios) {
 
   try {
     await page.goto(`${baseURL}/campus.html`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(4500);
+    await waitForCampusReady(page, 20000);
+    const initial = await snapshot(page);
+    validateState(initial, key, 'carga inicial', { requireDiagnosticLabel: true });
+    await exerciseNavigation(page, scenario, key);
 
-    if (scenario.clickLabel) {
-      const locator = page.getByText(scenario.clickLabel, { exact: true }).last();
-      if (await locator.count()) {
-        await locator.click({ timeout: 5000 });
-        await page.waitForTimeout(3000);
-      } else {
-        add('P2', key, 'No se encontró el control de navegación esperado', scenario.clickLabel);
-      }
+    for (const error of [...new Set(pageErrors)]) {
+      add('P1', key, 'Excepción no controlada en navegador', error);
     }
-
-    const state = await page.evaluate(() => ({
-      bodyText: document.body?.innerText?.trim() || '',
-      rootHtml: document.getElementById('root')?.innerHTML || '',
-      labels: Array.from(document.querySelectorAll('[data-screen-label]')).map(node => node.getAttribute('data-screen-label')).filter(Boolean).slice(0, 8),
-      overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
-      hash: location.hash,
-      path: location.pathname,
-      appMounted: Boolean(document.querySelector('.app')),
-    }));
-
-    if (/login\.html$/i.test(state.path)) add('P1', key, 'La sesión sintética fue rechazada', state.path);
-    if (state.bodyText.length < 20 || state.rootHtml.length < 20) add('P1', key, 'Pantalla vacía o aplicación no montada', `body=${state.bodyText.length}, root=${state.rootHtml.length}`);
-    if (!state.appMounted) add('P1', key, 'El árbol principal del Campus no fue montado', `path=${state.path}, hash=${state.hash}`);
-    if (state.overflow > 24) add('P2', key, 'Desbordamiento horizontal', `${state.overflow}px fuera del viewport.`);
-    if (!state.labels.length) add('P3', key, 'Pantalla sin etiqueta de diagnóstico', `path=${state.path}, hash=${state.hash}`);
-    for (const error of pageErrors) add('P1', key, 'Excepción no controlada en navegador', error);
-    for (const failure of [...new Set(localFailures)]) add('P1', key, 'Recurso local no disponible', failure);
+    for (const failure of [...new Set(localFailures)]) {
+      add('P1', key, 'Recurso local no disponible', failure);
+    }
+    for (const failure of [...new Set(externalFailures)]) {
+      add('P3', key, 'Recurso externo no disponible', failure);
+    }
     for (const error of [...new Set(consoleErrors)].slice(0, 10)) {
+      if (/Failed to load resource/i.test(error) && (localFailures.length || externalFailures.length)) continue;
       const severity = /^Warning:/i.test(error) ? 'P3' : 'P2';
       add(severity, key, severity === 'P3' ? 'Advertencia de React' : 'Error de consola', error);
     }
@@ -188,15 +437,19 @@ const report = {
   verdict,
   counts,
   scenarios,
+  navigation_coverage: coverage,
   safety: 'Todas las llamadas a Apps Script fueron respondidas localmente; no hubo escrituras reales.',
   limitations: [
     'Las sesiones son sintéticas y no sustituyen una cuenta controlada real.',
     'No verifica permisos reales de Drive ni datos productivos.',
     'No ejecuta operaciones de escritura.',
+    'La prueba Atrás solo se ejecuta cuando la aplicación crea una entrada observable en el historial.',
+    'Un recurso externo fallido se reporta como P3 salvo que impida montar la aplicación.',
   ],
   findings,
 };
 fs.writeFileSync(path.join(outDir, 'browser-report.json'), JSON.stringify(report, null, 2));
+
 const markdown = [
   '# Informe del equipo virtual · Navegador',
   '',
@@ -206,14 +459,31 @@ const markdown = [
   `- Hallazgos: P0 ${counts.P0} · P1 ${counts.P1} · P2 ${counts.P2} · P3 ${counts.P3}`,
   `- Seguridad: ${report.safety}`,
   '',
+  '## Cobertura de navegación',
+  '',
+  ...coverage.map(item => {
+    if (item.check === 'alternancia_repetida') {
+      return `- ${item.scenario} · alternancia: ${item.successful}/${item.attempted}`;
+    }
+    if (item.exercised === false) return `- ${item.scenario} · ${item.check}: ${item.reason}`;
+    return `- ${item.scenario} · ${item.check}: ejecutado`;
+  }),
+  '',
   '## Hallazgos',
   '',
-  ...(findings.length ? findings.flatMap(item => [`### ${item.id} · ${item.severity} · ${item.title}`, '', `- Escenario: ${item.scenario}`, `- Evidencia: ${item.evidence}`, '']) : ['No se detectaron hallazgos en los escenarios sintéticos.', '']),
+  ...(findings.length ? findings.flatMap(item => [
+    `### ${item.id} · ${item.severity} · ${item.title}`,
+    '',
+    `- Escenario: ${item.scenario}`,
+    `- Evidencia: ${item.evidence}`,
+    '',
+  ]) : ['No se detectaron hallazgos en los escenarios sintéticos.', '']),
   '## Limitaciones',
   '',
   ...report.limitations.map(value => `- ${value}`),
   '',
 ].join('\n');
 fs.writeFileSync(path.join(outDir, 'browser-report.md'), markdown);
+
 console.log(`BROWSER QA: ${verdict}; P0=${counts.P0} P1=${counts.P1} P2=${counts.P2} P3=${counts.P3}`);
-if (counts.P0 || counts.P1) process.exit(1);
+if (counts.P0 || counts.P1) process.exitCode = 1;

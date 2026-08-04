@@ -2,58 +2,92 @@
 
 ## Estado consolidado actual
 
-Base vigente de continuidad: **F98.4-Z6-CS21A107**.
+Rama productiva: `main`  
+Baseline frontend verificado al 2026-07-25:
 
-### Versiones vigentes
+`67108928e953fbf044dbcd916dc34a5dd5f1e570`  
+`CS21A142 corrige Ver en Libro para la lección docente (#26)`
 
-- **Frontend global:** rama `main`.
-- **Consulta individual · Poner al día:** `F98.4-Z6-CS21A102`.
-- **Panel Maestro CONAPE:** `F98.4-Z6-CS21A107`.
-- **Backend integral vigente:** `F98.4-Z6-CS21A103`.
-- **Tabla agrupada y columna Detectado:** `F98.4-Z6-CS21A104`.
-- **Semáforo estable:** `F98.4-Z6-CS21A105`.
-- **Enlace académico de movimientos:** `F98.4-Z6-CS21A106`.
-- **Montaje final estable del panel completo:** `F98.4-Z6-CS21A107`.
-- **MÁSCARA de Keylor:** protegida y sin cambios.
+CS21A143 corresponde a consolidación documental. No modifica frontend, Apps Script ni datos.
+
+## Fuente de verdad
+
+La fuente oficial del frontend es el contenido vigente de `main`. Los documentos históricos se conservan para contexto, pero no prevalecen sobre los archivos actuales.
+
+Guardar en GitHub, validar sintaxis, probar localmente, publicar Apps Script y comprobar producción son estados distintos.
 
 ## Leer primero
 
-1. `00_DOCUMENTACION/README_F98_4_Z6_CS21A107.md`
-2. `00_DOCUMENTACION/README_F98_4_Z6_CS21A106.md`
-3. `00_DOCUMENTACION/VALIDACION_CS21A106.md`
-4. `00_DOCUMENTACION/README_F98_4_Z6_CS21A105.md`
-5. `00_DOCUMENTACION/FUENTES_DE_VERDAD_Y_CONTRATOS.md`
+1. `AGENTS.md`.
+2. `00_DOCUMENTACION/HANDOFF_CHAT_CS21A143_2026-07-25.md`.
+3. `00_DOCUMENTACION/BIBLIA_OPERATIVA_CS21A143.md`.
+4. `00_DOCUMENTACION/SKILL_CAMPUS_VIRTUAL_CS21A143.md`.
+5. `00_DOCUMENTACION/MATRIZ_ENTREGA_ROLES_CS21A131.md`.
+6. `00_DOCUMENTACION/EQUIPO_VIRTUAL_QA_CS21A137.md`.
+7. `00_DOCUMENTACION/QA_REAL_STAGING_CS21A138.md`.
+8. `00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json`.
+9. Los archivos vigentes del módulo que se vaya a trabajar.
 
-## Cambio principal CS21A107
+## Cambios productivos recientes identificados
 
-El Panel Maestro ya no depende de que un único reemplazo ocurra en el momento exacto de la carga diferida.
+- CS21A139: último desembolso CONAPE en Superadmin → Estudiantes.
+- CS21A140: proyección manual segura del siguiente nivel como `PE`.
+- CS21A140: Planeamiento docente con niveles arriba, 32 lecciones en dos filas de 16 y PDF debajo.
+- CS21A142: `Ver en Libro` abre nivel, `SB` y unidad correctos y luego libera la navegación.
 
-A107 restaura y protege:
+Estos cambios fueron frontend y no modificaron Apps Script.
 
-- buscador de estudiante;
-- filtros y combo de grupos;
-- cuadrícula académica agrupada;
-- columna Detectado;
-- semáforo colaborativo;
-- desembolsos académicos 01 cerrados;
-- enlace por `6-historial` para movimientos futuros.
+## Estado funcional que debe preservarse
 
-La tabla básica histórica permanece únicamente como respaldo interno. El instalador A107 reintenta y verifica que el componente activo sea el panel completo. La envoltura histórica A78 fue retirada para que no compita por el mismo componente.
+### Estudiante
 
-CS21A107 es una corrección frontend. No modifica Apps Script, pagos, expedientes, hojas CONAPE ni la MÁSCARA de Keylor.
+- Calendario académico muestra solo Cronograma.
+- Tareas está debajo de Evaluaciones y sigue como placeholder honesto.
+- Libros y Audios permite `SB` y `WB`; nunca `TB`.
+- Acceso acumulativo únicamente con `CA`, `APR` y `CNV`.
+- Planeamiento usa PDFs estudiantiles.
 
-## Regla principal
+### Docente
 
-Antes de modificar cualquier pantalla o endpoint:
+- Libros permite `SB`, `TB` y `WB`.
+- Se conservan U01–U16.
+- Planeamiento muestra 32 lecciones.
+- `Ver en Libro` usa contexto explícito y no debe bloquear la navegación posterior.
+- Falta validar con staging el flujo completo de iniciar clase, asistencia, cierre, notas y persistencia.
 
-1. identificar la fuente de verdad;
-2. auditar el flujo real existente;
-3. preservar funciones y rutas vigentes;
-4. eliminar código sustituido en lugar de ocultarlo;
-5. ejecutar pruebas antes de entregar;
-6. distinguir entre guardado, validado, publicado y probado en producción;
-7. no modificar la MÁSCARA de Keylor salvo autorización expresa.
+### Superadmin
 
-## Próxima numeración
+Continúan como `Próximamente`:
 
-La próxima entrega funcional debe usar **F98.4-Z6-CS21A108**.
+- Finanzas.
+- Docentes.
+- Horas docentes.
+- Club I CAN administrativo.
+- Configuración.
+
+No presentarlas como terminadas ni eliminarlas sin auditar dependencias.
+
+## Backend y staging
+
+La copia de backend observada el 2026-07-18 tenía encabezado `F98.4-Z6-CS21A79`, 52.495 líneas y deployment no confirmado. No debe asumirse que coincide con la aplicación web desplegada.
+
+El staging CS21A138 tiene copias QA preparadas, pero todavía requiere crear y publicar un Apps Script independiente y registrar `QA_STAGING_APPS_SCRIPT_URL`.
+
+Nunca probar pagos, notas, asistencia, cierres o CONAPE contra producción.
+
+## Método de trabajo
+
+1. Confirmar el SHA actual de `main`.
+2. Leer la documentación vigente.
+3. Auditar rutas, lazy loading, wrappers, endpoints y caché.
+4. Definir una rama pequeña.
+5. No mezclar auditoría con corrección.
+6. Ejecutar validaciones específicas.
+7. Abrir PR.
+8. Esperar CI y revisar comentarios automáticos.
+9. No fusionar ni desplegar automáticamente.
+10. Reportar por separado lectura estática, prueba sintética, sesión autenticada, backend desplegado y escritura confirmada.
+
+## Próximo objetivo
+
+Preparar un piloto controlado mediante auditoría lógica, QA virtual y pruebas autenticadas de solo lectura. Las escrituras deben ejecutarse únicamente en staging autorizado después de verificar su marcador y aislamiento.
