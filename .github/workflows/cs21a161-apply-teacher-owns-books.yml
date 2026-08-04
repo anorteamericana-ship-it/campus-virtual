@@ -20,13 +20,54 @@ jobs:
         with:
           ref: refactor/cs21a157-docente-recursos-canonicos
           fetch-depth: 0
-      - name: Apply exact ownership patch
+      - name: Apply validated source transformations
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d .github/patches/cs21a161-teacher-owns-books.patch.b64 > /tmp/cs21a161.patch
-          git apply --check /tmp/cs21a161.patch
-          git apply /tmp/cs21a161.patch
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              source = path.read_text(encoding='utf-8')
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: se esperó 1 coincidencia y se encontraron {count}')
+              path.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          teacher = Path('src/teacher_cs21a.jsx')
+          replace_once(
+              teacher,
+              "    const titles = {\n",
+              "    const BookResources = window.__AN_BOOK_RESOURCES_COMPONENT__;\n    const titles = {\n",
+              'TeacherHub publica BookResources',
+          )
+          replace_once(
+              teacher,
+              "      {['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'].includes(screen) && <LevelCards type={screen} onNavigate={props.onNavigate}/>} \n",
+              "      {['syllabus','planeamiento','cronograma_modulo','cronograma_general'].includes(screen) && <LevelCards type={screen} onNavigate={props.onNavigate}/>} \n      {screen === 'libros' && (typeof BookResources === 'function' ? <BookResources initialType=\"SB\" /> : <div role=\"status\" style={{ padding:18, border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>Preparando Libros y Audios…</div>)}\n",
+              'TeacherHub renderiza Libros y Audios',
+          )
+
+          viewer = Path('src/book_unit_starts_cs21a60.jsx')
+          replace_once(viewer, "  const TAB_KEY = 'an_teacher_materiales_tab';\n", "", 'Retiro TAB_KEY docente')
+          replace_once(viewer, "      const screen = sessionStorage.getItem(TAB_KEY) || 'info';\n", "", 'Retiro lectura de subruta docente')
+          replace_once(viewer, "      if ((role === 'teacher' || role === 'docente') && screen === 'libros') return <BookResourcesCS21A60 initialType=\"SB\" />;\n", "", 'Retiro interceptación libros docente')
+          replace_once(viewer, "      if ((role === 'teacher' || role === 'docente') && screen === 'biblioteca') return <BookResourcesCS21A60 initialType=\"TB\" />;\n", "", 'Retiro interceptación biblioteca docente')
+
+          test = Path('scripts/test_teacher_resources_canonical_cs21a157.mjs')
+          replace_once(
+              test,
+              "assert.match(teacher, /if\\(item\\.intent\\)\\s*\\{\\s*setIntent\\(item\\.intent\\);\\s*setHubScreen\\(item\\.intent\\);\\s*\\}/);\n",
+              "assert.match(teacher, /if\\(item\\.intent\\)\\s*\\{\\s*setIntent\\(item\\.intent\\);\\s*setHubScreen\\(item\\.intent\\);\\s*\\}/);\nassert.match(teacher, /const\\s+BookResources\\s*=\\s*window\\.__AN_BOOK_RESOURCES_COMPONENT__/);\nassert.match(teacher, /screen\\s*===\\s*['\"]libros['\"][\\s\\S]{0,220}?<BookResources\\s+initialType=['\"]SB['\"]\\s*\\/>/);\nassert.doesNotMatch(teacher, /\\['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'\\]/);\n",
+              'Contrato de propiedad docente',
+          )
+          replace_once(
+              test,
+              "assert.match(viewer, /<TypeButtons\\s+type=\\{bookType\\}\\s+setType=\\{setBookType\\}\\s+allowedTypes=\\{allowedTypes\\}\\s*\\/>/);\n",
+              "assert.match(viewer, /<TypeButtons\\s+type=\\{bookType\\}\\s+setType=\\{setBookType\\}\\s+allowedTypes=\\{allowedTypes\\}\\s*\\/>/);\nassert.doesNotMatch(viewer, /an_teacher_materiales_tab/);\nassert.doesNotMatch(viewer, /role\\s*===\\s*['\"]teacher['\"][\\s\\S]{0,180}?BookResourcesCS21A60/);\nassert.doesNotMatch(viewer, /role\\s*===\\s*['\"]docente['\"][\\s\\S]{0,180}?BookResourcesCS21A60/);\n",
+              'Contrato sin interceptación docente',
+          )
+          PY
           git rm .github/patches/cs21a161-teacher-owns-books.patch.b64
           git rm .github/workflows/cs21a161-apply-teacher-owns-books.yml
           git config user.name 'github-actions[bot]'
