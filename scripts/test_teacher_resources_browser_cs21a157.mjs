@@ -71,6 +71,24 @@ async function assertActive(nav, expected, label) {
   assert.equal(await nav.evaluate(node => node.classList.contains('active')), expected, `${label}: clase active incorrecta.`);
 }
 
+async function teacherDiagnostic(page, pageErrors) {
+  return page.evaluate(errors => {
+    const outer = document.querySelector('section[data-screen-label^="Docente · CS21A4"]');
+    const viewer = document.querySelector('section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]');
+    return {
+      storedIntent:sessionStorage.getItem('an_teacher_materiales_tab') || '',
+      bookResourceType:typeof window.__AN_BOOK_RESOURCES_COMPONENT__,
+      materialViewName:window.MaterialesView?.name || '',
+      materialMarkers:Object.keys(window.MaterialesView || {}).filter(key => key.startsWith('__')),
+      outerLabel:outer?.getAttribute('data-screen-label') || '',
+      outerText:String(outer?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 500),
+      viewerPresent:Boolean(viewer),
+      rootText:String(document.getElementById('root')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 800),
+      pageErrors:errors,
+    };
+  }, [...pageErrors]);
+}
+
 const results = [];
 const browser = await chromium.launch({ headless:true });
 
@@ -116,6 +134,16 @@ for (const viewport of [{ width:1440, height:900 }, { width:390, height:844 }]) 
   await assertActive(canonicalNav, false, 'Estado inicial Libros y Audios');
 
   await canonicalNav.click();
+  await page.waitForTimeout(700);
+  const diagnostic = await teacherDiagnostic(page, pageErrors);
+  console.log(`CS21A163_DIAGNOSTIC_${viewport.width}: ${JSON.stringify(diagnostic)}`);
+  fs.writeFileSync(path.join(outDir, `diagnostic-${viewport.width}.json`), JSON.stringify(diagnostic, null, 2));
+  await page.screenshot({ path:path.join(outDir, `diagnostic-${viewport.width}.png`), fullPage:true });
+  assert.equal(diagnostic.storedIntent, 'libros', 'El clic debe publicar la subruta libros.');
+  assert.equal(diagnostic.bookResourceType, 'function', 'El componente reutilizable de libros debe estar publicado.');
+  assert.equal(diagnostic.outerLabel, 'Docente · CS21A4 · libros', 'TeacherHub debe conservar el control de la subruta libros.');
+  assert.deepEqual(diagnostic.pageErrors, [], `Errores de página al montar libros: ${diagnostic.pageErrors.join(' | ')}`);
+
   const viewer = page.locator('section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]');
   await viewer.waitFor({ state:'visible', timeout:20000 });
   await assertActive(infoNav, false, 'Después de abrir Libros y Audios');
@@ -159,16 +187,18 @@ for (const viewport of [{ width:1440, height:900 }, { width:390, height:844 }]) 
     compatibility:window.__AN_RESOURCES_PANEL_COMPATIBILITY__?.version || '',
     inlineVersion:window.__AN_BOOK_INLINE_AUDIO_VERSION__ || '',
     storedIntent:sessionStorage.getItem('an_teacher_materiales_tab') || '',
+    guardMode:window.__AN_TEACHER_BOOK_NAVIGATION_CS21A135?.authorityMode || '',
   }));
   assert.equal(markers.oldNormalizer, false);
   assert.equal(markers.oldUnified, false);
   assert.match(markers.compatibility, /CS21A157/);
   assert.equal(markers.storedIntent, 'libros');
+  assert.equal(markers.guardMode, 'TEACHER_PORTAL_OWNS_VIEWER');
 
   assert.deepEqual(pageErrors, []);
   const name = viewport.width <= 900 ? 'teacher-mobile.png' : 'teacher-desktop.png';
   await page.screenshot({ path:path.join(outDir, name), fullPage:true });
-  results.push({ viewport, markers, inlineVisible:await isVisible(inline), sameRouteAlternation:true });
+  results.push({ viewport, diagnostic, markers, inlineVisible:await isVisible(inline), sameRouteAlternation:true });
   await context.close();
 }
 
