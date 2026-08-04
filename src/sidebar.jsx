@@ -700,6 +700,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                     key={item.id}
                     data-nav-id={item.id}
                     className={`sb-item admin-sb-item ${active===item.id?'active':''}`}
+                    aria-current={active===item.id ? 'page' : undefined}
                     onClick={() => setActive(item.id)}>
                     <SidebarMenuIcon name={item.icon} size={18} />
                     <span className="sb-label">{item.label}</span>
