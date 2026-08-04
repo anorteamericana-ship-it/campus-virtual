@@ -86,6 +86,7 @@ jobs:
       - name: Smoke test generated staging package
         shell: bash
         run: |
+          set -euo pipefail
           if test -f qa-server.pid; then
             kill "$(cat qa-server.pid)" 2>/dev/null || true
             rm -f qa-server.pid
@@ -102,8 +103,12 @@ jobs:
             sleep 0.5
           done
           test "$ready" -eq 1 || { cat qa-staging-server.log; exit 1; }
-          curl --fail --silent http://127.0.0.1:4173/index.html | grep -q 'qa-bootstrap.js?v=CS21A148'
-          curl --fail --silent http://127.0.0.1:4173/src/runtime_config.js | grep -q 'CAMPUS_RUNTIME_CONFIG'
+          curl --fail --silent --output /tmp/integration-index.html http://127.0.0.1:4173/index.html
+          curl --fail --silent --output /tmp/integration-runtime-config.js http://127.0.0.1:4173/src/runtime_config.js
+          curl --fail --silent --output /tmp/integration-login.html http://127.0.0.1:4173/login.html
+          grep -q 'qa-bootstrap.js?v=CS21A148' /tmp/integration-index.html
+          grep -q 'CAMPUS_RUNTIME_CONFIG' /tmp/integration-runtime-config.js
+          grep -q 'qa-bootstrap.js?v=CS21A148' /tmp/integration-login.html
 
       - name: Publish supervisor summary
         if: always()
