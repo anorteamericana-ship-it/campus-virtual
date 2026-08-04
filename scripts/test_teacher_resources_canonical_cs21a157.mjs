@@ -17,6 +17,10 @@ assert.doesNotMatch(teacher, /label:['"]Biblioteca digital['"]|label:['"]Libros 
 assert.match(teacher, /libros:\[['"]Recursos Didácticos['"],['"]Libros y Audios['"]/);
 assert.match(teacher, /data-nav-id=\{item\.id\}/);
 assert.match(teacher, /aria-current=\{isActive\(item\) \? ['"]page['"] : undefined\}/);
+assert.match(teacher, /const\s+\[intent,\s*setIntent\]\s*=\s*React\.useState\(\(\)\s*=>\s*sessionStorage\.getItem\(['"]an_teacher_materiales_tab['"]\)\s*\|\|\s*['"]info['"]\)/);
+assert.match(teacher, /window\.addEventListener\(['"]an:teacher-material-tab['"],\s*syncIntent\)/);
+assert.match(teacher, /window\.removeEventListener\(['"]an:teacher-material-tab['"],\s*syncIntent\)/);
+assert.match(teacher, /if\(item\.intent\)\s*\{\s*setIntent\(item\.intent\);\s*setHubScreen\(item\.intent\);\s*\}/);
 
 assert.match(compatibility, /F98\.4-Z6-CS21A157/);
 assert.match(compatibility, /__AN_RESOURCES_PANEL_COMPATIBILITY__/);
@@ -54,4 +58,4 @@ const order = [
 });
 assert.ok(order[0] < order[1] && order[1] < order[2], 'El visor debe publicarse antes del audio y la compatibilidad inerte.');
 
-console.log('OK: el docente usa una sola ruta Libros y Audios con visor, pistas y recursos canónicos.');
+console.log('OK: el docente usa una sola ruta Libros y Audios y sincroniza su subruta activa sin depender de un cambio del router principal.');
