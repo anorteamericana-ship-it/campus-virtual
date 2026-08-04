@@ -1,0 +1,1 @@
+Activación única para incorporar el head validado de Recursos docente al candidato QA.
