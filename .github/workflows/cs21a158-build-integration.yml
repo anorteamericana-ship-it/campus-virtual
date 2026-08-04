@@ -1,130 +1,36 @@
-name: CS21A158 validate manual-review candidate
+name: CS21A169 update manual-review candidate
 
 on:
   pull_request:
     paths:
       - '.github/workflows/cs21a158-build-integration.yml'
+      - 'scripts/cs21a169_trigger.txt'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate-integration:
+  merge-latest-teacher-resources:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
     steps:
-      - name: Checkout exact ref
+      - name: Checkout integration branch
         uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: '22'
-
-      - name: Validate environment and clean delivery surface
-        run: |
-          node --check src/runtime_config.js
-          node scripts/test_runtime_config_cs21a146.mjs
-          node scripts/test_syllabus_no_demo_cs21a147.mjs
-          node scripts/audit_cleanup_candidates_cs21a145.mjs
-          node scripts/audit_cleanup_candidates_cs21a149.mjs
-          node scripts/audit_delivery_surface.mjs
-
-      - name: Validate canonical component architecture
-        run: |
-          node scripts/audit_component_ownership_cs21a151.mjs
-          node scripts/test_materiales_shadow_cleanup_cs21a152.mjs
-          node scripts/test_materiales_historical_tombstones_cs21a153.mjs
-          node scripts/test_additional_resources_independent_cs21a154.mjs
-          node scripts/test_superadmin_sidebar_cleanup_cs21a155.mjs
-          node scripts/test_admin_resources_canonical_cs21a156.mjs
-          node scripts/test_teacher_resources_canonical_cs21a157.mjs
-          node scripts/test_teacher_books_unit_guard_cs21a134.mjs
-          node scripts/test_english_lab_access_cs21a144.js
-
-      - name: Build isolated QA frontend
-        run: |
-          node --check scripts/build_qa_staging_frontend_cs21a148.mjs
-          node --check scripts/audit_qa_staging_frontend_cs21a148.mjs
-          node scripts/build_qa_staging_frontend_cs21a148.mjs
-          node scripts/audit_qa_staging_frontend_cs21a148.mjs
-
-      - name: Install Playwright
-        run: |
-          npm install --no-save --ignore-scripts playwright@1.55.0
-          npx playwright install --with-deps chromium
-
-      - name: Start isolated campus server
-        shell: bash
-        run: |
-          python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
-          echo $! > qa-server.pid
-          for attempt in {1..20}; do
-            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
-            sleep 1
-          done
-          cat qa-server.log
-          exit 1
-
-      - name: Validate canonical routes in browser
-        env:
-          QA_BASE_URL: http://127.0.0.1:4173
-        run: |
-          node scripts/test_admin_resources_browser_cs21a156.mjs
-          node scripts/test_teacher_resources_browser_cs21a157.mjs
-
-      - name: Run integrated virtual review team
-        env:
-          QA_BASE_URL: http://127.0.0.1:4173
-        run: |
-          node scripts/virtual_review_static.mjs
-          node scripts/virtual_review_browser.mjs
-          node scripts/virtual_review_supervisor.mjs
-          node -e "const r=require('./qa-output/supervisor-report.json'); if(r.verdict==='BLOQUEADO'||r.verdict==='INDETERMINADO') process.exit(1)"
-
-      - name: Smoke test generated staging package
+          ref: integration/cs21a158-manual-review-20260804
+          fetch-depth: 0
+      - name: Merge latest verified teacher resources without workflow mutations
         shell: bash
         run: |
           set -euo pipefail
-          if test -f qa-server.pid; then
-            kill "$(cat qa-server.pid)" 2>/dev/null || true
-            rm -f qa-server.pid
-          fi
-          node dist/qa-staging/serve.mjs > qa-staging-server.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          ready=0
-          for attempt in {1..20}; do
-            if curl --fail --silent http://127.0.0.1:4173/qa-setup.html > /dev/null; then
-              ready=1
-              break
-            fi
-            sleep 0.5
-          done
-          test "$ready" -eq 1 || { cat qa-staging-server.log; exit 1; }
-          curl --fail --silent --output /tmp/integration-index.html http://127.0.0.1:4173/index.html
-          curl --fail --silent --output /tmp/integration-runtime-config.js http://127.0.0.1:4173/src/runtime_config.js
-          curl --fail --silent --output /tmp/integration-login.html http://127.0.0.1:4173/login.html
-          grep -q 'qa-bootstrap.js?v=CS21A148' /tmp/integration-index.html
-          grep -q 'CAMPUS_RUNTIME_CONFIG' /tmp/integration-runtime-config.js
-          grep -q 'qa-bootstrap.js?v=CS21A148' /tmp/integration-login.html
-
-      - name: Publish supervisor summary
-        if: always()
-        shell: bash
-        run: |
-          test -f qa-output/supervisor-report.md && cat qa-output/supervisor-report.md >> "$GITHUB_STEP_SUMMARY" || true
-
-      - name: Upload integrated evidence and staging frontend
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: campus-manual-review-cs21a158-${{ github.sha }}
-          path: |
-            dist/qa-staging/
-            qa-output/
-            qa-server.log
-            qa-staging-server.log
-          if-no-files-found: warn
-          retention-days: 30
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          start="$(git rev-parse HEAD)"
+          git fetch origin refactor/cs21a157-docente-recursos-canonicos:refs/remotes/origin/refactor/cs21a157-docente-recursos-canonicos
+          git merge --no-ff --no-edit origin/refactor/cs21a157-docente-recursos-canonicos
+          git reset --soft "$start"
+          git restore --source="$start" --staged --worktree .github/workflows
+          if test -f scripts/cs21a169_trigger.txt; then git rm scripts/cs21a169_trigger.txt; fi
+          git commit -m 'CS21A169 integra Recursos docente canónicos al candidato QA'
+          git push origin HEAD:integration/cs21a158-manual-review-20260804
