@@ -3,185 +3,59 @@ name: Teacher resources canonical CS21A157
 on:
   pull_request:
     paths:
+      - 'src/teacher_cs21a.jsx'
+      - 'src/resources_panel_cs21a65.jsx'
+      - 'src/student_menu_academic_guard_cs21a120.js'
+      - 'src/book_inline_audio_cs21a63.js'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'src/teacher_books_unit_guard_cs21a134.js'
+      - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+      - 'scripts/test_teacher_resources_canonical_cs21a157.mjs'
+      - 'scripts/test_teacher_resources_browser_cs21a157.mjs'
       - '.github/workflows/teacher-resources-canonical-cs21a157.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-cs21a162:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+  validate-teacher-resources:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout source branch
+      - name: Checkout exact ref
         uses: actions/checkout@v4
-        with:
-          ref: refactor/cs21a157-docente-recursos-canonicos
-          fetch-depth: 0
-      - name: Remove final teacher book wrapper and restore validation workflow
-        shell: bash
+      - name: Validate canonical contracts
+        run: node scripts/test_teacher_resources_canonical_cs21a157.mjs
+      - name: Validate teacher book maps and visual guard
+        run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
+      - name: Audit delivery surface
+        run: node scripts/audit_delivery_surface.mjs
+      - name: Static virtual review
+        run: node scripts/virtual_review_static.mjs
+      - name: Install Playwright
         run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(path, old, new, label):
-              source = path.read_text(encoding='utf-8')
-              count = source.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: se esperó 1 coincidencia y se encontraron {count}')
-              path.write_text(source.replace(old, new, 1), encoding='utf-8')
-
-          source_path = Path('src/teacher_books_unit_guard_cs21a134.js')
-          replace_once(source_path, "  var TAB_KEY = 'an_teacher_materiales_tab';\n", "", 'Retiro TAB_KEY')
-          replace_once(source_path, "  var authorityTimer = null;\n", "", 'Retiro authorityTimer')
-          replace_once(source_path, "  function teacherRole(){\n    var role = currentRole();\n    return role === 'TEACHER' || role === 'DOCENTE';\n  }\n", "", 'Retiro teacherRole')
-          replace_once(source_path, "  function activeScreen(){\n    try { return sessionStorage.getItem(TAB_KEY) || 'info'; }\n    catch (_) { return 'info'; }\n  }\n\n", "", 'Retiro activeScreen')
-          old_authority = """  function installAuthority(){
-    var Current = window.MaterialesView;
-    if (typeof Current !== 'function' || !window.React || typeof window.React.createElement !== 'function') return false;
-    if (Current.__cs21a135BookAuthority) return true;
-
-    var Base = Current;
-    var Wrapped = function MaterialesViewCS21A135(props){
-      var screen = activeScreen();
-      var Viewer = window.__AN_BOOK_RESOURCES_COMPONENT__;
-      if (teacherRole() && (screen === 'libros' || screen === 'biblioteca') && typeof Viewer === 'function') {
-        return window.React.createElement(Viewer, Object.assign({}, props || {}, {
-          initialType: screen === 'biblioteca' ? 'TB' : 'SB',
-          navigationVersion: VERSION
-        }));
-      }
-      return window.React.createElement(Base, props || {});
-    };
-
-    Wrapped.__cs21a135BookAuthority = true;
-    Wrapped.__cs21a75UnitStarts = true;
-    Wrapped.__cs21a60UnitStarts = true;
-    Wrapped.__cs21a58books = true;
-    Wrapped.__base = Base;
-    window.MaterialesView = Wrapped;
-    window.__AN_CS21A59_TEACHER_MATERIALS_BASE__ = Wrapped;
-    try { MaterialesView = Wrapped; } catch (_) {}
-    return true;
-  }
-"""
-          new_authority = """  function installAuthority(){
-    // Compatibilidad de API: desde CS21A162 la autoridad visual pertenece a
-    // TeacherHubCS21A. Este guard confirma la publicación del visor y nunca
-    // redefine MaterialesView.
-    return typeof window.__AN_BOOK_RESOURCES_COMPONENT__ === 'function';
-  }
-"""
-          replace_once(source_path, old_authority, new_authority, 'Retiro wrapper CS21A135')
-          replace_once(source_path, "  function reinstall(){\n    installStyles();\n    installAuthority();\n    queueEnhancement();\n  }\n\n  installStyles();\n  installAuthority();\n  queueEnhancement();\n", "  function reinstall(){\n    installStyles();\n    queueEnhancement();\n  }\n\n  installStyles();\n  queueEnhancement();\n", 'Reinstall sin wrapper')
-          replace_once(source_path, "  authorityTimer = window.setInterval(function(){\n    installAuthority();\n    queueEnhancement();\n  }, 600);\n\n", "", 'Retiro sondeo')
-          replace_once(source_path, "  window.addEventListener('pagehide', function(){\n    if (authorityTimer) window.clearInterval(authorityTimer);\n    if (observer) observer.disconnect();\n  }, { once:true });\n", "  window.addEventListener('pagehide', function(){\n    if (observer) observer.disconnect();\n  }, { once:true });\n", 'Limpieza pagehide')
-          replace_once(source_path, "    installAuthority:installAuthority,\n    enhanceAll:enhanceAll,\n", "    installAuthority:installAuthority,\n    authorityMode:'TEACHER_PORTAL_OWNS_VIEWER',\n    enhanceAll:enhanceAll,\n", 'Marca de autoridad')
-
-          test_path = Path('scripts/test_teacher_books_unit_guard_cs21a134.mjs')
-          replace_once(test_path, "let activeTab = 'libros';\n", "", 'Retiro activeTab')
-          replace_once(test_path, "    if (key === 'an_teacher_materiales_tab') return activeTab;\n", "", 'Retiro almacenamiento de subruta')
-          old_test = """role = 'teacher';
-assert.equal(context.window.MaterialesView.__cs21a135BookAuthority, true);
-assert.equal(context.window.MaterialesView.__cs21a58books, true, 'La marca debe bloquear el regreso del visor antiguo.');
-let rendered = context.window.MaterialesView({ sample:1 });
-assert.equal(rendered.type, Viewer, 'Libros del docente deben usar el visor institucional.');
-assert.equal(rendered.props.initialType, 'SB');
-
-activeTab = 'biblioteca';
-rendered = context.window.MaterialesView({ sample:2 });
-assert.equal(rendered.type, Viewer);
-assert.equal(rendered.props.initialType, 'TB');
-
-context.window.MaterialesView = function LegacyCS21A58(){};
-assert.equal(guard.installAuthority(), true);
-assert.equal(context.window.MaterialesView.__cs21a135BookAuthority, true, 'La autoridad debe recuperarse después de una reinstalación tardía del legado.');
-assert.equal(context.window.MaterialesView.__cs21a58books, true);
-"""
-          new_test = """role = 'teacher';
-assert.equal(context.window.MaterialesView, BaseMateriales, 'El guard no debe envolver MaterialesView.');
-assert.equal(guard.authorityMode, 'TEACHER_PORTAL_OWNS_VIEWER');
-assert.equal(guard.installAuthority(), true, 'El visor reutilizable debe estar publicado.');
-
-const LegacyCS21A58 = function LegacyCS21A58(){};
-context.window.MaterialesView = LegacyCS21A58;
-assert.equal(guard.installAuthority(), true);
-assert.equal(context.window.MaterialesView, LegacyCS21A58, 'El verificador no debe reemplazar una vista montada.');
-"""
-          replace_once(test_path, old_test, new_test, 'Contrato sin wrapper')
-          replace_once(test_path, "console.log('OK: 12 mapas, autoridad del visor, TB/WB persistentes y diseño CS21A135 validados.');\n", "console.log('OK CS21A162: 12 mapas, reparación TB/WB y diseño CS21A135 validados sin envolver MaterialesView.');\n", 'Mensaje del test')
-          PY
-
-          rm -f .github/workflows/cs21a162-retire-book-authority-wrapper.yml
-          cat > .github/workflows/teacher-resources-canonical-cs21a157.yml <<'YAML'
-          name: Teacher resources canonical CS21A157
-
-          on:
-            pull_request:
-              paths:
-                - 'src/teacher_cs21a.jsx'
-                - 'src/resources_panel_cs21a65.jsx'
-                - 'src/student_menu_academic_guard_cs21a120.js'
-                - 'src/book_inline_audio_cs21a63.js'
-                - 'src/book_unit_starts_cs21a60.jsx'
-                - 'src/teacher_books_unit_guard_cs21a134.js'
-                - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
-                - 'scripts/test_teacher_resources_canonical_cs21a157.mjs'
-                - 'scripts/test_teacher_resources_browser_cs21a157.mjs'
-                - '.github/workflows/teacher-resources-canonical-cs21a157.yml'
-            workflow_dispatch:
-
-          permissions:
-            contents: read
-
-          jobs:
-            validate-teacher-resources:
-              runs-on: ubuntu-24.04
-              steps:
-                - name: Checkout exact ref
-                  uses: actions/checkout@v4
-                - name: Validate canonical contracts
-                  run: node scripts/test_teacher_resources_canonical_cs21a157.mjs
-                - name: Validate teacher book maps and visual guard
-                  run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
-                - name: Audit delivery surface
-                  run: node scripts/audit_delivery_surface.mjs
-                - name: Static virtual review
-                  run: node scripts/virtual_review_static.mjs
-                - name: Install Playwright
-                  run: |
-                    npm install --no-save --ignore-scripts playwright@1.55.0
-                    npx playwright install --with-deps chromium
-                - name: Start isolated server
-                  run: |
-                    python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
-                    for attempt in {1..20}; do
-                      curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
-                      sleep 1
-                    done
-                    cat qa-server.log
-                    exit 1
-                - name: Validate desktop and mobile teacher resources
-                  env:
-                    QA_BASE_URL: http://127.0.0.1:4173
-                  run: node scripts/test_teacher_resources_browser_cs21a157.mjs
-                - name: Upload browser evidence
-                  if: always()
-                  uses: actions/upload-artifact@v4
-                  with:
-                    name: teacher-resources-cs21a157
-                    path: |
-                      qa-output/teacher-resources-cs21a157/
-                      qa-server.log
-                    if-no-files-found: warn
-                    retention-days: 30
-          YAML
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/teacher_books_unit_guard_cs21a134.js scripts/test_teacher_books_unit_guard_cs21a134.mjs .github/workflows/teacher-resources-canonical-cs21a157.yml
-          git add -u .github/workflows/cs21a162-retire-book-authority-wrapper.yml
-          git commit -m 'CS21A162 retira wrapper de autoridad del libro docente'
-          git push origin HEAD:refactor/cs21a157-docente-recursos-canonicos
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat qa-server.log
+          exit 1
+      - name: Validate desktop and mobile teacher resources
+        env:
+          QA_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/test_teacher_resources_browser_cs21a157.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teacher-resources-cs21a157
+          path: |
+            qa-output/teacher-resources-cs21a157/
+            qa-server.log
+          if-no-files-found: warn
+          retention-days: 30
