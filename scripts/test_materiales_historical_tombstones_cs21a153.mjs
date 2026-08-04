@@ -48,7 +48,9 @@ assert.match(canonicalBooks, /window\.__AN_BOOK_RESOURCES_COMPONENT__\s*=\s*Book
 assert.match(canonicalBooks, /screen\s*===\s*['"]biblioteca['"]/);
 
 assert.match(campus, /src\/teacher_cs21a_planeamiento_grouped\.jsx/);
-assert.match(canonicalPlanning, /screen\s*!==\s*['"]planeamiento['"]/);
-assert.match(canonicalPlanning, /MaterialesViewCS21A140/);
+assert.match(canonicalPlanning, /function\s+PlaneamientoGroupedView\s*\(/);
+assert.match(canonicalPlanning, /screen\s*===\s*['"]planeamiento['"]/);
+assert.match(canonicalPlanning, /function\s+MaterialesViewCS21A9\s*\(/);
+assert.match(canonicalPlanning, /__AN_TEACHER_PLANEAMIENTO_GROUPED_VERSION__/);
 
 console.log('OK: biblioteca CS21A10 y planeamiento CS21A6 quedaron como rutas históricas inertes con reemplazos publicados.');
