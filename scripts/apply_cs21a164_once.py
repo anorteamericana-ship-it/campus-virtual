@@ -1,4 +1,4 @@
-# Activación controlada: el workflow CS21A164 ya existía antes de este commit.
+# Segunda activación controlada: el workflow administrativo ya está publicado.
 from pathlib import Path
 
 
