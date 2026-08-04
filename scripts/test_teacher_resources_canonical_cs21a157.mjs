@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const read = file => fs.readFileSync(file, 'utf8');
 const teacher = read('src/teacher_cs21a.jsx');
+const planning = read('src/teacher_cs21a_planeamiento_grouped.jsx');
 const orderFix = read('src/teacher_cs21a_order_fix.jsx');
 const compatibility = read('src/resources_panel_cs21a65.jsx');
 const additionalResources = read('src/additional_resources_panel_cs21a68.jsx');
@@ -88,4 +89,4 @@ const order = [
 });
 assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3] && order[3] < order[4], 'Las compatibilidades inertes deben cargar antes del visor y sus extensiones independientes.');
 
-console.log('OK CS21A163: TeacherHub es propietario de Libros y Audios; CS21A58 y CS21A68 no envuelven MaterialesView.');
+console.log('OK CS21A165: TeacherHub es propietario de Libros, Audios y Planeamiento; los módulos reutilizables no envuelven MaterialesView.');
