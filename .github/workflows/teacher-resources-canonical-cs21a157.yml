@@ -15,8 +15,10 @@ on:
       - 'src/teacher_books_unit_guard_cs21a134.js'
       - 'src/additional_resources_panel_cs21a68.jsx'
       - 'src/teacher_cs21a_order_fix.jsx'
+      - 'src/lazy_loader.jsx'
       - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
       - 'scripts/test_teacher_resources_canonical_cs21a157.mjs'
+      - 'scripts/test_lazy_materials_contract_cs21a168.mjs'
       - 'scripts/test_teacher_resources_browser_cs21a157.mjs'
       - '.github/workflows/teacher-resources-canonical-cs21a157.yml'
   workflow_dispatch:
@@ -32,6 +34,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Validate canonical contracts
         run: node scripts/test_teacher_resources_canonical_cs21a157.mjs
+      - name: Validate lazy materials contract
+        run: node scripts/test_lazy_materials_contract_cs21a168.mjs
       - name: Validate teacher book maps and visual guard
         run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
       - name: Audit delivery surface
