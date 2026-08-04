@@ -16,6 +16,8 @@ assert.match(app, /admin_resources:\s*\[\s*['"]src\/book_unit_starts_cs21a60\.js
 assert.match(app, /recursos_didacticos:\s*<LazyRoute[^>]*component=['"]AdminResourcesView['"][^>]*files=\{F96_LAZY\.admin_resources\}/);
 assert.match(sidebar, /id:\s*['"]recursos_didacticos['"]\s*,\s*label:\s*['"]Libros y Audios['"]/);
 assert.match(sidebar, /label:\s*['"]Recursos didácticos['"]/);
+assert.match(sidebar, /key=\{item\.id\}[\s\S]{0,120}?data-nav-id=\{item\.id\}[\s\S]{0,160}?className=\{`sb-item admin-sb-item/);
+assert.match(sidebar, /key=\{item\.id\}[\s\S]{0,120}?type=['"]button['"][\s\S]{0,120}?data-nav-id=\{item\.id\}[\s\S]{0,120}?disabled/);
 
 assert.match(view, /function\s+AdminResourcesView\s*\(/);
 assert.match(view, /window\.__AN_BOOK_RESOURCES_COMPONENT__/);
