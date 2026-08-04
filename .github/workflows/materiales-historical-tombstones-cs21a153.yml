@@ -1,0 +1,30 @@
+name: Materiales historical tombstones CS21A153
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/app.jsx'
+      - 'src/teacher_cs21a_biblioteca_pdf.jsx'
+      - 'src/teacher_cs21a_planeamiento32.jsx'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'src/teacher_cs21a_planeamiento_grouped.jsx'
+      - 'scripts/test_materiales_historical_tombstones_cs21a153.mjs'
+      - '.github/workflows/materiales-historical-tombstones-cs21a153.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-historical-tombstones:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Validate historical replacements
+        run: node scripts/test_materiales_historical_tombstones_cs21a153.mjs
+      - name: Audit delivery surface
+        run: node scripts/audit_delivery_surface.mjs
+      - name: Static virtual review
+        run: node scripts/virtual_review_static.mjs
