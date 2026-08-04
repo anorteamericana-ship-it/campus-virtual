@@ -11,32 +11,32 @@ const scenarios = [
   {
     role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 },
     navigation: [
-      { id: 'mi_curso', label: 'Mi curso' },
+      { id: 'calendario_academico', label: 'Calendario académico' },
       { id: 'evaluaciones', label: 'Evaluaciones' },
-      { id: 'dashboard', label: 'Mi Campus' },
+      { id: 'resumen_academico', label: 'Resumen Académico' },
     ],
   },
   {
-    role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 },
+    role: 'student', route: 'libros_audios_estudiante', viewport: { width: 1440, height: 900 },
     navigation: [
       { id: 'evaluaciones', label: 'Evaluaciones' },
-      { id: 'mi_curso', label: 'Mi curso' },
-      { id: 'dashboard', label: 'Mi Campus' },
+      { id: 'libros_audios_estudiante', label: 'Libros y Audios' },
+      { id: 'resumen_academico', label: 'Resumen Académico' },
     ],
   },
   {
     role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 },
     navigation: [
-      { label: 'Cronograma Inglés Conversacional' },
-      { label: 'Mis Grupos' },
+      { label: 'Calendario académico' },
+      { label: 'Mis grupos' },
     ],
   },
   {
     role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 },
     navigation: [
-      { label: 'Biblioteca del Programa' },
-      { label: 'Mis Grupos' },
-      { label: 'Biblioteca del Programa' },
+      { label: 'Libros de texto' },
+      { label: 'Mis grupos' },
+      { label: 'Información General del Programa' },
     ],
   },
   {
@@ -86,15 +86,9 @@ function syntheticSession(role) {
 
 function mockPayload(fn, session) {
   const common = {
-    ok: true,
-    qa: true,
-    rows: [],
-    items: [],
-    data: [],
-    grupos: [],
-    estudiantes: [],
-    sesiones: [],
-    pendientes: [],
+    ok: true, qa: true,
+    rows: [], items: [], data: [], grupos: [], estudiantes: [],
+    sesiones: [], pendientes: [],
   };
   if (fn === 'validarSesion') return { ok: true, rol: session.rol, qa: true };
   if (fn === 'getDocenteSesionActivaF87') return { ok: true, sesion: null, qa: true };
@@ -103,22 +97,24 @@ function mockPayload(fn, session) {
     estudiante: { ...session, NOMBRE: session.nombre, CODIGO: session.codigo },
     niveles: { B1: { estatus: 'CA' }, B2: {}, I1: {}, I2: {} },
     grupo: { COD_GRUPO: session.grupo || '', NIVEL: 'B1' },
-    pendientes: {},
-    qa: true,
+    pendientes: {}, qa: true,
   };
   if (/grupos/i.test(fn)) return { ...common, grupos: [], qa: true };
-  if (/biblioteca|book|audio|material/i.test(fn)) return { ...common, nivel: 'B1', book_type: 'SB', unit_starts: [], qa: true };
+  if (/biblioteca|book|audio|material/i.test(fn)) {
+    return { ...common, nivel: 'B1', book_type: 'SB', unit_starts: [], qa: true };
+  }
   return common;
 }
 
 const findings = [];
 const coverage = [];
 const findingKeys = new Set();
-const add = (severity, scenario, title, evidence) => {
-  const normalizedEvidence = String(evidence || '').replace(/\s+/g, ' ').trim();
-  const key = [severity, scenario, title, normalizedEvidence].join('|');
-  if (findingKeys.has(key)) return;
-  findingKeys.add(key);
+
+function add(severity, scenario, title, evidence) {
+  const normalized = String(evidence || '').replace(/\s+/g, ' ').trim();
+  const dedupeKey = [severity, scenario, title, normalized].join('|');
+  if (findingKeys.has(dedupeKey)) return;
+  findingKeys.add(dedupeKey);
   findings.push({
     id: `BQA-${String(findings.length + 1).padStart(3, '0')}`,
     severity,
@@ -127,21 +123,33 @@ const add = (severity, scenario, title, evidence) => {
     title,
     evidence: String(evidence || ''),
   });
-};
+}
 
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function sidebarRole(role) {
+  return role === 'superadmin' ? 'admin' : role;
+}
+
 async function snapshot(page) {
   return page.evaluate(() => {
     const root = document.getElementById('root');
-    const bodyText = document.body?.innerText?.trim() || '';
     const rootHtml = root?.innerHTML || '';
     const rootText = root?.innerText?.trim() || '';
+    const bodyText = document.body?.innerText?.trim() || '';
     const loginDetected = /login\.html$/i.test(location.pathname)
       || Boolean(document.querySelector('form[action*="login" i], .login-page, [data-screen-label*="login" i]'));
     const mountedSurface = Boolean(document.querySelector('.app, .sb, main, [data-screen-label], #root > *'));
+    const activeNav = Array.from(document.querySelectorAll('.sb-item.active'))
+      .find(node => node.getClientRects().length > 0)
+      ?.textContent?.replace(/\s+/g, ' ').trim() || '';
+    const headings = Array.from(document.querySelectorAll('h1, h2'))
+      .filter(node => node.getClientRects().length > 0)
+      .map(node => node.textContent?.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .slice(0, 4);
     return {
       bodyText,
       rootHtml,
@@ -151,6 +159,8 @@ async function snapshot(page) {
         .map(node => node.getAttribute('data-screen-label'))
         .filter(Boolean)
         .slice(0, 12),
+      activeNav,
+      headings,
       overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
       hash: location.hash,
       path: location.pathname,
@@ -159,7 +169,6 @@ async function snapshot(page) {
       loginDetected,
       appMounted: !loginDetected && mountedSurface && rootHtml.length > 20 && rootText.length > 5,
       sidebarMounted: Boolean(document.querySelector('.sb')),
-      mobileMenuOpen: document.body.classList.contains('an-mobile-nav-open'),
     };
   });
 }
@@ -168,13 +177,18 @@ function validateState(state, key, phase, options = {}) {
   const prefix = phase ? `${phase}: ` : '';
   if (state.loginDetected) add('P1', key, `${prefix}La sesión sintética fue rechazada`, state.path);
   if (state.bodyText.length < 20 || state.rootHtml.length < 20 || state.rootChildren < 1) {
-    add('P1', key, `${prefix}Pantalla vacía o raíz sin contenido`, `body=${state.bodyText.length}, root=${state.rootHtml.length}, children=${state.rootChildren}`);
+    add('P1', key, `${prefix}Pantalla vacía o raíz sin contenido`,
+      `body=${state.bodyText.length}, root=${state.rootHtml.length}, children=${state.rootChildren}`);
   } else if (!state.appMounted) {
-    add('P2', key, `${prefix}No se reconoció una superficie montada estable`, `path=${state.path}, hash=${state.hash}, sidebar=${state.sidebarMounted}`);
+    add('P2', key, `${prefix}No se reconoció una superficie montada estable`,
+      `path=${state.path}, hash=${state.hash}, sidebar=${state.sidebarMounted}`);
   }
-  if (state.overflow > 24) add('P2', key, `${prefix}Desbordamiento horizontal`, `${state.overflow}px fuera del viewport.`);
+  if (state.overflow > 24) {
+    add('P2', key, `${prefix}Desbordamiento horizontal`, `${state.overflow}px fuera del viewport.`);
+  }
   if (options.requireDiagnosticLabel && !state.labels.length) {
-    add('P3', key, `${prefix}Pantalla sin etiqueta de diagnóstico`, `path=${state.path}, hash=${state.hash}`);
+    add('P3', key, `${prefix}Pantalla sin etiqueta de diagnóstico`,
+      `path=${state.path}, hash=${state.hash}, active=${state.activeNav || '—'}`);
   }
 }
 
@@ -184,23 +198,19 @@ async function waitForCampusReady(page, timeout = 15000) {
     const text = root?.innerText?.trim() || '';
     return Boolean(root && root.children.length && root.innerHTML.length > 20 && text.length > 5);
   }, null, { timeout });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(450);
 }
 
 async function ensureMobileMenuOpen(page) {
   const isMobile = await page.evaluate(() => window.matchMedia('(max-width: 900px)').matches);
   if (!isMobile) return;
-  const state = await page.evaluate(() => ({
-    open: document.body.classList.contains('an-mobile-nav-open'),
-    sidebarHidden: document.querySelector('.sb')?.getAttribute('aria-hidden') === 'true',
-  }));
-  if (state.open && !state.sidebarHidden) return;
+  const open = await page.evaluate(() => document.body.classList.contains('an-mobile-nav-open'));
+  if (open) return;
   const toggle = page.locator('.an-mobile-nav-toggle:visible').first();
-  if (await toggle.count()) {
-    await toggle.click({ timeout: 5000 });
-    await page.waitForFunction(() => document.body.classList.contains('an-mobile-nav-open'), null, { timeout: 5000 });
-    await page.waitForTimeout(150);
-  }
+  if (!(await toggle.count())) throw new Error('No se encontró el botón visible para abrir el menú móvil.');
+  await toggle.click({ timeout: 5000 });
+  await page.waitForFunction(() => document.body.classList.contains('an-mobile-nav-open'), null, { timeout: 5000 });
+  await page.waitForTimeout(200);
 }
 
 async function firstVisible(locator) {
@@ -212,69 +222,78 @@ async function firstVisible(locator) {
   return null;
 }
 
-async function findNavigationControl(page, target) {
+async function findNavigationControl(page, scenario, target) {
   await ensureMobileMenuOpen(page);
+  const role = sidebarRole(scenario.role);
+  const sidebar = page.locator(`aside.sb[data-role="${role}"]:visible`).first();
+  if (!(await sidebar.count())) return null;
 
   if (target.id) {
-    const byId = await firstVisible(page.locator(`.sb-item[data-nav-id="${target.id}"]:not([disabled])`));
+    const byId = await firstVisible(sidebar.locator(`.sb-item[data-nav-id="${target.id}"]:not([disabled])`));
     if (byId) return byId;
   }
 
-  const label = String(target.label || target).trim();
+  const label = String(target.label || '').trim();
+  if (!label) return null;
   const exact = new RegExp(`^\\s*${escapeRegex(label)}\\s*$`, 'i');
-  const preferred = page.locator('.sb-item:not([disabled]):visible').filter({ hasText: exact });
-  const preferredVisible = await firstVisible(preferred);
-  if (preferredVisible) return preferredVisible;
-
-  const roleButton = page.getByRole('button', { name: exact });
-  const roleButtonVisible = await firstVisible(roleButton);
-  if (roleButtonVisible) return roleButtonVisible;
-
-  const roleLink = page.getByRole('link', { name: exact });
-  const roleLinkVisible = await firstVisible(roleLink);
-  if (roleLinkVisible) return roleLinkVisible;
-
-  const generic = page.locator('button:visible, a:visible, [role="button"]:visible').filter({ hasText: label });
-  return await firstVisible(generic);
+  const byButtonName = await firstVisible(sidebar.getByRole('button', { name: exact }));
+  if (byButtonName) return byButtonName;
+  return await firstVisible(sidebar.locator('.sb-item:not([disabled])').filter({ hasText: exact }));
 }
 
-async function clickNavigation(page, target, key, cycle) {
-  const label = target.label || target.id || String(target);
-  const control = await findNavigationControl(page, target);
-  if (!control) {
-    add('P2', key, 'No se encontró un control de navegación visible', `${label} · ciclo ${cycle}`);
+async function clickNavigation(page, scenario, target, key, cycle) {
+  const label = target.label || target.id || 'ruta';
+  let control;
+  try {
+    control = await findNavigationControl(page, scenario, target);
+  } catch (error) {
+    add('P1', key, 'No se pudo preparar el menú para navegar', `${label} · ciclo ${cycle} · ${error.message}`);
     return false;
   }
+  if (!control) {
+    add('P2', key, 'No se encontró un control de navegación del rol', `${label} · ciclo ${cycle}`);
+    return false;
+  }
+
+  const before = await snapshot(page);
   try {
     await control.click({ timeout: 7000 });
     await waitForCampusReady(page);
+    const after = await snapshot(page);
+    const changed = before.hash !== after.hash
+      || before.activeNav !== after.activeNav
+      || JSON.stringify(before.headings) !== JSON.stringify(after.headings);
+    if (!changed) {
+      add('P2', key, 'La navegación no produjo un cambio observable',
+        `${label} · ciclo ${cycle} · active=${after.activeNav || '—'} · hash=${after.hash || '—'}`);
+    }
     return true;
   } catch (error) {
-    add('P1', key, 'Falló un control de navegación visible', `${label} · ciclo ${cycle} · ${error.message}`);
+    add('P1', key, 'Falló un control visible del menú del rol',
+      `${label} · ciclo ${cycle} · ${error.message}`);
     return false;
   }
 }
 
 async function exerciseNavigation(page, scenario, key) {
   const targets = scenario.navigation || [];
-  if (!targets.length) return;
-
   const initial = await snapshot(page);
-  let successfulClicks = 0;
+  let successful = 0;
+
   for (let cycle = 1; cycle <= 2; cycle += 1) {
     for (const target of targets) {
-      const clicked = await clickNavigation(page, target, key, cycle);
+      const clicked = await clickNavigation(page, scenario, target, key, cycle);
       if (!clicked) continue;
       const state = await snapshot(page);
       validateState(state, key, `alternancia ${target.label || target.id}`);
-      successfulClicks += 1;
+      successful += 1;
     }
   }
   coverage.push({
     scenario: key,
     check: 'alternancia_repetida',
     attempted: targets.length * 2,
-    successful: successfulClicks,
+    successful,
   });
 
   const beforeReload = await snapshot(page);
@@ -286,8 +305,8 @@ async function exerciseNavigation(page, scenario, key) {
     coverage.push({
       scenario: key,
       check: 'recarga_directa',
-      before: { path: beforeReload.path, hash: beforeReload.hash },
-      after: { path: afterReload.path, hash: afterReload.hash },
+      before: { path: beforeReload.path, hash: beforeReload.hash, active: beforeReload.activeNav },
+      after: { path: afterReload.path, hash: afterReload.hash, active: afterReload.activeNav },
       mounted: afterReload.appMounted,
     });
   } catch (error) {
@@ -296,23 +315,27 @@ async function exerciseNavigation(page, scenario, key) {
 
   const afterReload = await snapshot(page);
   const historyChanged = afterReload.historyLength > initial.historyLength || afterReload.href !== initial.href;
-  if (historyChanged) {
-    try {
-      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 10000 });
-      await waitForCampusReady(page, 15000);
-      const afterBack = await snapshot(page);
-      validateState(afterBack, key, 'navegación Atrás');
-      coverage.push({ scenario: key, check: 'atras', exercised: true, mounted: afterBack.appMounted, hash: afterBack.hash });
-    } catch (error) {
-      add('P2', key, 'La navegación Atrás no se recuperó correctamente', error.message || String(error));
-    }
-  } else {
+  if (!historyChanged) {
     coverage.push({
       scenario: key,
       check: 'atras',
       exercised: false,
-      reason: 'La navegación interna no creó una entrada observable en el historial; no se clasifica como defecto.',
+      reason: 'La navegación no creó una entrada observable en el historial; no se clasifica como defecto.',
     });
+    return;
+  }
+
+  try {
+    await page.goBack({ waitUntil: 'domcontentloaded', timeout: 10000 });
+    await waitForCampusReady(page, 15000);
+    const afterBack = await snapshot(page);
+    validateState(afterBack, key, 'navegación Atrás');
+    coverage.push({
+      scenario: key, check: 'atras', exercised: true,
+      mounted: afterBack.appMounted, hash: afterBack.hash, active: afterBack.activeNav,
+    });
+  } catch (error) {
+    add('P2', key, 'La navegación Atrás no se recuperó correctamente', error.message || String(error));
   }
 }
 
@@ -321,6 +344,7 @@ for (const scenario of scenarios) {
   const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
   const context = await browser.newContext({ viewport: scenario.viewport, ignoreHTTPSErrors: true });
   const session = syntheticSession(scenario.role);
+
   await context.addInitScript(({ session, route }) => {
     sessionStorage.setItem('an_usuario', JSON.stringify(session));
     sessionStorage.removeItem('an_just_logged_in');
@@ -375,24 +399,19 @@ for (const scenario of scenarios) {
   try {
     await page.goto(`${baseURL}/campus.html`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await waitForCampusReady(page, 20000);
-
-    if (scenario.clickLabel) {
-      const control = await findNavigationControl(page, { label: scenario.clickLabel });
-      if (control) {
-        await control.click({ timeout: 7000 });
-        await waitForCampusReady(page, 15000);
-      } else {
-        add('P2', key, 'No se encontró el control inicial visible', scenario.clickLabel);
-      }
-    }
-
-    const state = await snapshot(page);
-    validateState(state, key, 'carga inicial', { requireDiagnosticLabel: true });
+    const initial = await snapshot(page);
+    validateState(initial, key, 'carga inicial', { requireDiagnosticLabel: true });
     await exerciseNavigation(page, scenario, key);
 
-    for (const error of [...new Set(pageErrors)]) add('P1', key, 'Excepción no controlada en navegador', error);
-    for (const failure of [...new Set(localFailures)]) add('P1', key, 'Recurso local no disponible', failure);
-    for (const failure of [...new Set(externalFailures)]) add('P3', key, 'Recurso externo no disponible', failure);
+    for (const error of [...new Set(pageErrors)]) {
+      add('P1', key, 'Excepción no controlada en navegador', error);
+    }
+    for (const failure of [...new Set(localFailures)]) {
+      add('P1', key, 'Recurso local no disponible', failure);
+    }
+    for (const failure of [...new Set(externalFailures)]) {
+      add('P3', key, 'Recurso externo no disponible', failure);
+    }
     for (const error of [...new Set(consoleErrors)].slice(0, 10)) {
       if (/Failed to load resource/i.test(error) && (localFailures.length || externalFailures.length)) continue;
       const severity = /^Warning:/i.test(error) ? 'P3' : 'P2';
@@ -430,6 +449,7 @@ const report = {
   findings,
 };
 fs.writeFileSync(path.join(outDir, 'browser-report.json'), JSON.stringify(report, null, 2));
+
 const markdown = [
   '# Informe del equipo virtual · Navegador',
   '',
@@ -442,7 +462,9 @@ const markdown = [
   '## Cobertura de navegación',
   '',
   ...coverage.map(item => {
-    if (item.check === 'alternancia_repetida') return `- ${item.scenario} · alternancia: ${item.successful}/${item.attempted}`;
+    if (item.check === 'alternancia_repetida') {
+      return `- ${item.scenario} · alternancia: ${item.successful}/${item.attempted}`;
+    }
     if (item.exercised === false) return `- ${item.scenario} · ${item.check}: ${item.reason}`;
     return `- ${item.scenario} · ${item.check}: ejecutado`;
   }),
