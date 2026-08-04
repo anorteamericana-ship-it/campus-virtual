@@ -1,0 +1,1 @@
+Segunda activación: sincronización exacta de archivos verificados del PR #43.
