@@ -34,7 +34,7 @@ const scenarios = [
   {
     role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 },
     navigation: [
-      { label: 'Libros de texto' },
+      { id: 'libros_docente', label: 'Libros y Audios' },
       { label: 'Mis grupos' },
       { label: 'Información General del Programa' },
     ],
