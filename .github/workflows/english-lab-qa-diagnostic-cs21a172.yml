@@ -1,0 +1,54 @@
+name: English LAB QA diagnostic CS21A172
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/diagnose_english_lab_qa_cs21a172.mjs'
+      - 'apps_script_patches/96_English_LAB_CS21A171_AUTOINSTALABLE.gs'
+      - 'apps_script_patches/english_lab_access_financial_priority_cs21a171.gs'
+      - '.github/workflows/english-lab-qa-diagnostic-cs21a172.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: english-lab-qa-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
+      QA_STUDENT_USER: ${{ secrets.QA_STUDENT_USER }}
+      QA_STUDENT_PASS: ${{ secrets.QA_STUDENT_PASS }}
+      QA_STUDENT_CODE: ${{ secrets.QA_STUDENT_CODE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse incomplete QA secret set
+        shell: bash
+        run: |
+          required=(QA_STAGING_APPS_SCRIPT_URL QA_STUDENT_USER QA_STUDENT_PASS QA_STUDENT_CODE)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
+          done
+      - name: Validate diagnostic script
+        run: node --check scripts/diagnose_english_lab_qa_cs21a172.mjs
+      - name: Diagnose deployed English LAB
+        run: node scripts/diagnose_english_lab_qa_cs21a172.mjs
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f qa-output-english-lab/diagnostic.md ]; then
+            cat qa-output-english-lab/diagnostic.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload sanitized diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: english-lab-qa-diagnostic-${{ github.run_number }}
+          path: qa-output-english-lab/
+          if-no-files-found: warn
+          retention-days: 7
