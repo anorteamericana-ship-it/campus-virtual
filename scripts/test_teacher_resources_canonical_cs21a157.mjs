@@ -40,7 +40,8 @@ assert.match(viewer, /window\.__AN_BOOK_RESOURCES_COMPONENT__\s*=\s*BookResource
 assert.match(viewer, /const\s+TONES\s*=\s*\{[\s\S]*?SB:\s*\{[\s\S]*?TB:\s*\{[\s\S]*?WB:\s*\{/);
 assert.match(viewer, /function\s+TypeButtons\s*\(\{\s*type,\s*setType,\s*allowedTypes\s*\}\)/);
 assert.match(viewer, /allowedTypes\.map\(key\s*=>/);
-assert.match(viewer, /allowedTypes=\{studentMode\s*\?\s*\[['"]SB['"]\]\s*:\s*\[['"]SB['"],\s*['"]TB['"],\s*['"]WB['"]\]\}/);
+assert.match(viewer, /const\s+allowedTypes\s*=\s*studentMode\s*\?\s*\[['"]SB['"],\s*['"]WB['"]\]\s*:\s*\[['"]SB['"],\s*['"]TB['"],\s*['"]WB['"]\]/);
+assert.match(viewer, /<TypeButtons\s+type=\{bookType\}\s+setType=\{setBookType\}\s+allowedTypes=\{allowedTypes\}\s*\/>/);
 
 const order = [
   'src/book_unit_starts_cs21a60.jsx',
