@@ -36,11 +36,13 @@ for (const [name, source] of [['CS21A59', cs59], ['CS21A61', cs61], ['CS21A75 di
   assert.doesNotMatch(source, /an_admin_resources_open|an_admin_resources_tab/, `${name} no debe manejar estado de ruta.`);
 }
 
-assert.match(panel, /teacherResourcesNormalizerCS21A156/);
-assert.match(panel, /TeacherResourcesNormalizer/);
-assert.doesNotMatch(panel, /AdminResourcesPortal|AdminResourcesMirror|AdminMasterDashboard/);
+assert.match(panel, /F98\.4-Z6-CS21A157/);
+assert.match(panel, /__AN_RESOURCES_PANEL_COMPATIBILITY__/);
+assert.match(panel, /TeacherSidebarCS21A \+ BookResourcesCS21A60/);
+assert.doesNotMatch(panel, /TeacherResourcesNormalizer|AdminResourcesPortal|AdminResourcesMirror|AdminMasterDashboard/);
+assert.doesNotMatch(panel, /(?:window\.)?Sidebar\s*=|(?:window\.)?MaterialesView\s*=/);
 assert.doesNotMatch(panel, /recursos_didacticos|an_admin_resources_open|an_admin_resources_tab/);
-assert.doesNotMatch(panel, /ReactDOM|createPortal/);
+assert.doesNotMatch(panel, /ReactDOM|createPortal|MutationObserver|requestAnimationFrame|setInterval/);
 assert.doesNotMatch(panel, /role === ['"]admin['"]|role === ['"]superadmin['"]/);
 
 assert.match(state, /resourcesSupportLoaderCS21A156/);
@@ -52,4 +54,4 @@ assert.match(viewer, /const canCalibrate = storedRole === ['"]superadmin['"]/);
 assert.match(viewer, /const canRefreshDrive = storedRole === ['"]admin['"] \|\| storedRole === ['"]superadmin['"]/);
 assert.match(viewer, /window\.__AN_BOOK_RESOURCES_COMPONENT__\s*=\s*BookResourcesCS21A60/);
 
-console.log('OK: Recursos Didácticos admin usa ruta, menú y componente canónicos sin envolver Panel Maestro.');
+console.log('OK: Recursos Didácticos admin usa ruta, menú y componente canónicos; CS21A157 retira el normalizador docente transitorio.');
