@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const read = file => fs.readFileSync(file, 'utf8');
 const teacher = read('src/teacher_cs21a.jsx');
+const orderFix = read('src/teacher_cs21a_order_fix.jsx');
 const compatibility = read('src/resources_panel_cs21a65.jsx');
 const additionalResources = read('src/additional_resources_panel_cs21a68.jsx');
 const guard = read('src/student_menu_academic_guard_cs21a120.js');
@@ -25,6 +26,11 @@ assert.match(teacher, /if\(item\.intent\)\s*\{\s*setIntent\(item\.intent\);\s*se
 assert.match(teacher, /const\s+BookResources\s*=\s*window\.__AN_BOOK_RESOURCES_COMPONENT__/);
 assert.match(teacher, /screen\s*===\s*['"]libros['"][\s\S]{0,220}?<BookResources\s+initialType=['"]SB['"]\s*\/>/);
 assert.doesNotMatch(teacher, /\['syllabus','planeamiento','cronograma_modulo','cronograma_general','libros'\]/);
+
+assert.match(orderFix, /F98\.4-Z6-CS21A152/);
+assert.match(orderFix, /__AN_TEACHER_ORDER_FIX_COMPATIBILITY__/);
+assert.doesNotMatch(orderFix, /(?:window\.)?MaterialesView\s*=/);
+assert.doesNotMatch(orderFix, /__base\s*=|__cs21a58books|React|fetch\s*\(|addEventListener|setInterval|MutationObserver/);
 
 assert.match(compatibility, /F98\.4-Z6-CS21A157/);
 assert.match(compatibility, /__AN_RESOURCES_PANEL_COMPATIBILITY__/);
@@ -60,6 +66,7 @@ assert.doesNotMatch(viewer, /role\s*===\s*['"]teacher['"][\s\S]{0,180}?BookResou
 assert.doesNotMatch(viewer, /role\s*===\s*['"]docente['"][\s\S]{0,180}?BookResourcesCS21A60/);
 
 const order = [
+  'src/teacher_cs21a_order_fix.jsx',
   'src/book_unit_starts_cs21a60.jsx',
   'src/book_inline_audio_cs21a63.js',
   'src/resources_panel_cs21a65.jsx',
@@ -69,6 +76,6 @@ const order = [
   assert.notEqual(index, -1, `${file} debe estar publicado.`);
   return index;
 });
-assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3], 'El visor debe publicarse antes de sus extensiones independientes.');
+assert.ok(order[0] < order[1] && order[1] < order[2] && order[2] < order[3] && order[3] < order[4], 'Las compatibilidades inertes deben cargar antes del visor y sus extensiones independientes.');
 
-console.log('OK CS21A163: TeacherHub es propietario de Libros y Audios y Recursos adicionales permanece independiente.');
+console.log('OK CS21A163: TeacherHub es propietario de Libros y Audios; CS21A58 y CS21A68 no envuelven MaterialesView.');
