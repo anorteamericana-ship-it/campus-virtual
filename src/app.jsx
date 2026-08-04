@@ -22,7 +22,7 @@
    CronogramaModulo, CronogramaGrupo, BuscadorEstudiantes, ImportadorBancario, AplicarPago,
    VistaDocente, PanelAdminSupervision, PanelSuspensiones, SolicitudesPagoView,
    AuditoriaAcademicaView, DiagnosticoInternoView, DocenteOperativoView, ConapeCobranzaView, ReportesAdminView,
-   SolicitudesUnificadasView, SolicitudesEstudianteView, AcademiaPlayView, FreeProspectPortal, LazyModuleView */
+   SolicitudesUnificadasView, SolicitudesEstudianteView, AcademiaPlayView, FreeProspectPortal, AdminResourcesView, LazyModuleView */
 
 // ── Placeholder para ítems del menú admin marcados "Próximamente" ──────
 // (Bloque 2: docentes / horas / ican / finanzas / reportes / config no
@@ -77,6 +77,7 @@ const F96_LAZY = {
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6CS19F'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94'],
+  admin_resources: ['src/book_unit_starts_cs21a60.jsx?v=F98.4Z6CS21A75','src/admin_resources_view_cs21a156.jsx?v=F98.4Z6CS21A156'],
   admin_students: ['src/admin_students.jsx?v=F98.4Z6CS21A140'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
@@ -975,6 +976,7 @@ function App() {
       perfil:       <LazyRoute title="Mi Perfil" component="AdminPerfilView" files={F96_LAZY.admin_views} />,
       matriculas:   <LazyRoute title="Matrículas" component="MatriculasView" files={F96_LAZY.matriculas} onNavigate={navigateTo} />,
       dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} onNavigate={navigateTo} />,
+      recursos_didacticos: <LazyRoute title="Recursos Didácticos" component="AdminResourcesView" files={F96_LAZY.admin_resources} rolReal={rolReal} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
       calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,

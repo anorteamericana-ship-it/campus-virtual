@@ -568,6 +568,12 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       ],
     },
     {
+      label: 'Recursos didácticos',
+      items: [
+        { id: 'recursos_didacticos', label: 'Libros y Audios', icon: 'materials' },
+      ],
+    },
+    {
       label: 'Operación administrativa',
       items: [
         ...(esSuperadmin ? [{ id: 'inscripcion_admin', label: 'Inscripción pública', icon: 'settings' }] : []),
