@@ -1,0 +1,33 @@
+name: Materiales shadow cleanup CS21A152
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/teacher_cs21a_order_fix.jsx'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'src/book_unit_propagation_cs21a64.js'
+      - 'src/teacher_books_unit_guard_cs21a134.js'
+      - 'src/lazy_loader.jsx'
+      - 'scripts/test_materiales_shadow_cleanup_cs21a152.mjs'
+      - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+      - '.github/workflows/materiales-shadow-cleanup-cs21a152.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-materiales-authority:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Validate shadow cleanup
+        run: node scripts/test_materiales_shadow_cleanup_cs21a152.mjs
+      - name: Validate teacher book authority
+        run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
+      - name: Audit delivery surface
+        run: node scripts/audit_delivery_surface.mjs
+      - name: Static virtual review
+        run: node scripts/virtual_review_static.mjs
