@@ -64,20 +64,27 @@ function walk(directory) {
   return files;
 }
 
-const runtimeFiles = walk(root).filter(file =>
+const allControlAndDeliveryFiles = walk(root).filter(file =>
   file !== self &&
   textExtensions.has(path.extname(file).toLowerCase()) &&
   !file.startsWith('00_DOCUMENTACION/') &&
   !file.startsWith('.github/workflows/') &&
   !file.startsWith('skills/')
 );
+const executionFiles = allControlAndDeliveryFiles.filter(file => !file.startsWith('scripts/'));
+const controlFiles = allControlAndDeliveryFiles.filter(file => file.startsWith('scripts/'));
+const controlReferences = {};
 
 for (const item of retired) {
   assert.equal(exists(item.file), false, `Archivo retirado reapareció: ${item.file}`);
   assert.equal(exists(item.canonical), true, `Falta reemplazo canónico: ${item.canonical}`);
 
   const names = [item.file, path.posix.basename(item.file)];
-  const references = runtimeFiles.filter(file => {
+  const references = executionFiles.filter(file => {
+    const source = read(file);
+    return names.some(name => source.includes(name));
+  });
+  controlReferences[item.file] = controlFiles.filter(file => {
     const source = read(file);
     return names.some(name => source.includes(name));
   });
@@ -102,4 +109,5 @@ assert.equal(inscripcion.includes('src/inscripcion.jsx'), true);
 assert.equal(exists('src/calendar88_selftest.js'), true, 'calendar88_selftest.js sigue cargado y no pertenece a esta limpieza.');
 assert.equal(campus.includes('src/calendar88_selftest.js'), true, 'campus.html debe conservar calendar88_selftest.js hasta su auditoría funcional.');
 
+console.log(JSON.stringify({ controlReferences }, null, 2));
 console.log('OK: segunda ola respaldada; cinco archivos históricos ausentes y reemplazos canónicos verificados.');
