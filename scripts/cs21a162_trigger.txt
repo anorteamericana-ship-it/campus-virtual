@@ -1,1 +1,0 @@
-Activación única del ejecutor CS21A162. Este archivo se elimina después de verificar la transformación.
