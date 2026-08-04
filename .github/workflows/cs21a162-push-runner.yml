@@ -1,0 +1,98 @@
+name: CS21A162 one-time push runner
+
+on:
+  push:
+    branches:
+      - refactor/cs21a157-docente-recursos-canonicos
+
+permissions:
+  contents: write
+
+jobs:
+  apply-once:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/cs21a157-docente-recursos-canonicos
+          fetch-depth: 0
+      - name: Apply CS21A162 and restore normal validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/apply_cs21a162_once.py
+
+          rm -f scripts/apply_cs21a162_once.py
+          rm -f .github/workflows/cs21a162-push-runner.yml
+          rm -f .github/workflows/cs21a162-retire-book-authority-wrapper.yml
+
+          cat > .github/workflows/teacher-resources-canonical-cs21a157.yml <<'YAML'
+          name: Teacher resources canonical CS21A157
+
+          on:
+            pull_request:
+              paths:
+                - 'src/teacher_cs21a.jsx'
+                - 'src/resources_panel_cs21a65.jsx'
+                - 'src/student_menu_academic_guard_cs21a120.js'
+                - 'src/book_inline_audio_cs21a63.js'
+                - 'src/book_unit_starts_cs21a60.jsx'
+                - 'src/teacher_books_unit_guard_cs21a134.js'
+                - 'scripts/test_teacher_books_unit_guard_cs21a134.mjs'
+                - 'scripts/test_teacher_resources_canonical_cs21a157.mjs'
+                - 'scripts/test_teacher_resources_browser_cs21a157.mjs'
+                - '.github/workflows/teacher-resources-canonical-cs21a157.yml'
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+
+          jobs:
+            validate-teacher-resources:
+              runs-on: ubuntu-24.04
+              steps:
+                - name: Checkout exact ref
+                  uses: actions/checkout@v4
+                - name: Validate canonical contracts
+                  run: node scripts/test_teacher_resources_canonical_cs21a157.mjs
+                - name: Validate teacher book maps and visual guard
+                  run: node scripts/test_teacher_books_unit_guard_cs21a134.mjs
+                - name: Audit delivery surface
+                  run: node scripts/audit_delivery_surface.mjs
+                - name: Static virtual review
+                  run: node scripts/virtual_review_static.mjs
+                - name: Install Playwright
+                  run: |
+                    npm install --no-save --ignore-scripts playwright@1.55.0
+                    npx playwright install --with-deps chromium
+                - name: Start isolated server
+                  run: |
+                    python3 -m http.server 4173 --bind 127.0.0.1 > qa-server.log 2>&1 &
+                    for attempt in {1..20}; do
+                      curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+                      sleep 1
+                    done
+                    cat qa-server.log
+                    exit 1
+                - name: Validate desktop and mobile teacher resources
+                  env:
+                    QA_BASE_URL: http://127.0.0.1:4173
+                  run: node scripts/test_teacher_resources_browser_cs21a157.mjs
+                - name: Upload browser evidence
+                  if: always()
+                  uses: actions/upload-artifact@v4
+                  with:
+                    name: teacher-resources-cs21a157
+                    path: |
+                      qa-output/teacher-resources-cs21a157/
+                      qa-server.log
+                    if-no-files-found: warn
+                    retention-days: 30
+          YAML
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'CS21A162 retira wrapper de autoridad del libro docente'
+          git push origin HEAD:refactor/cs21a157-docente-recursos-canonicos
