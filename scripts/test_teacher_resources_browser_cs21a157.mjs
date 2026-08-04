@@ -57,6 +57,20 @@ async function isVisible(locator) {
   return locator.isVisible().catch(() => false);
 }
 
+async function ensureTeacherMenuOpen(page, viewport) {
+  if (viewport.width > 900) return;
+  const open = await page.evaluate(() => document.body.classList.contains('an-mobile-nav-open'));
+  if (open) return;
+  const toggle = page.locator('.an-mobile-nav-toggle:visible').first();
+  await toggle.click();
+  await page.waitForFunction(() => document.body.classList.contains('an-mobile-nav-open'), null, { timeout:5000 });
+}
+
+async function assertActive(nav, expected, label) {
+  assert.equal(await nav.getAttribute('aria-current'), expected ? 'page' : null, `${label}: aria-current incorrecto.`);
+  assert.equal(await nav.evaluate(node => node.classList.contains('active')), expected, `${label}: clase active incorrecta.`);
+}
+
 const results = [];
 const browser = await chromium.launch({ headless:true });
 
@@ -67,8 +81,8 @@ for (const viewport of [{ width:1440, height:900 }, { width:390, height:844 }]) 
     sessionStorage.removeItem('an_just_logged_in');
     sessionStorage.setItem('an_teacher_materiales_tab', 'info');
     localStorage.setItem('an_role', 'teacher');
-    localStorage.setItem('an_active_teacher', 'perfil');
-    localStorage.setItem('an_active', 'perfil');
+    localStorage.setItem('an_active_teacher', 'materiales');
+    localStorage.setItem('an_active', 'materiales');
   }, { user:teacherSession });
 
   const page = await context.newPage();
@@ -88,23 +102,38 @@ for (const viewport of [{ width:1440, height:900 }, { width:390, height:844 }]) 
   await page.goto(`${baseURL}/campus.html`, { waitUntil:'domcontentloaded', timeout:30000 });
   await page.waitForFunction(() => document.querySelector('aside.teacher-sb') && document.getElementById('root')?.innerText?.trim().length > 20, null, { timeout:20000 });
 
-  if (viewport.width <= 900) {
-    const toggle = page.locator('.an-mobile-nav-toggle:visible').first();
-    await toggle.click();
-    await page.waitForFunction(() => document.body.classList.contains('an-mobile-nav-open'), null, { timeout:5000 });
-  }
-
+  await ensureTeacherMenuOpen(page, viewport);
   const menu = page.locator('aside.teacher-sb');
+  const infoNav = menu.locator('.sb-item[data-nav-id="info_programa_docente"]');
   const canonicalNav = menu.locator('.sb-item[data-nav-id="libros_docente"]');
+  await infoNav.waitFor({ state:'visible', timeout:10000 });
   await canonicalNav.waitFor({ state:'visible', timeout:10000 });
   assert.equal(await menu.getByText('Libros y Audios', { exact:true }).count(), 1, 'Debe existir una única opción Libros y Audios.');
   assert.equal(await menu.getByText('Biblioteca digital', { exact:true }).count(), 0);
   assert.equal(await menu.getByText('Libros de texto', { exact:true }).count(), 0);
   assert.equal(await menu.getByText('Audios', { exact:true }).count(), 0);
+  await assertActive(infoNav, true, 'Estado inicial Información General');
+  await assertActive(canonicalNav, false, 'Estado inicial Libros y Audios');
 
   await canonicalNav.click();
   const viewer = page.locator('section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]');
   await viewer.waitFor({ state:'visible', timeout:20000 });
+  await assertActive(infoNav, false, 'Después de abrir Libros y Audios');
+  await assertActive(canonicalNav, true, 'Después de abrir Libros y Audios');
+
+  await ensureTeacherMenuOpen(page, viewport);
+  await infoNav.click();
+  const infoScreen = page.locator('section[data-screen-label="Docente · CS21A4 · info"]');
+  await infoScreen.waitFor({ state:'visible', timeout:15000 });
+  await assertActive(infoNav, true, 'Después de volver a Información General');
+  await assertActive(canonicalNav, false, 'Después de volver a Información General');
+
+  await ensureTeacherMenuOpen(page, viewport);
+  await canonicalNav.click();
+  await viewer.waitFor({ state:'visible', timeout:20000 });
+  await assertActive(infoNav, false, 'Segunda apertura de Libros y Audios');
+  await assertActive(canonicalNav, true, 'Segunda apertura de Libros y Audios');
+
   await page.getByRole('button', { name:'SB', exact:true }).waitFor({ state:'visible', timeout:10000 });
   await page.getByRole('button', { name:'TB', exact:true }).waitFor({ state:'visible', timeout:10000 });
   await page.getByRole('button', { name:'WB', exact:true }).waitFor({ state:'visible', timeout:10000 });
@@ -123,26 +152,26 @@ for (const viewport of [{ width:1440, height:900 }, { width:390, height:844 }]) 
 
   assert.match(await audioSelect.locator('option').nth(1).textContent(), /Unit 01 Track 01/i);
   assert.match(await resourceSelect.locator('option').nth(1).textContent(), /Diccionario Word by Word/i);
-  assert.equal(await canonicalNav.getAttribute('aria-current'), 'page');
-  assert.equal(await canonicalNav.evaluate(node => node.classList.contains('active')), true);
 
   const markers = await page.evaluate(() => ({
     oldNormalizer:Boolean(window.Sidebar?.__cs21a156TeacherResources),
     oldUnified:Boolean(window.Sidebar?.__cs21a65UnifiedResources),
     compatibility:window.__AN_RESOURCES_PANEL_COMPATIBILITY__?.version || '',
     inlineVersion:window.__AN_BOOK_INLINE_AUDIO_VERSION__ || '',
+    storedIntent:sessionStorage.getItem('an_teacher_materiales_tab') || '',
   }));
   assert.equal(markers.oldNormalizer, false);
   assert.equal(markers.oldUnified, false);
   assert.match(markers.compatibility, /CS21A157/);
+  assert.equal(markers.storedIntent, 'libros');
 
   assert.deepEqual(pageErrors, []);
   const name = viewport.width <= 900 ? 'teacher-mobile.png' : 'teacher-desktop.png';
   await page.screenshot({ path:path.join(outDir, name), fullPage:true });
-  results.push({ viewport, markers, inlineVisible:await isVisible(inline) });
+  results.push({ viewport, markers, inlineVisible:await isVisible(inline), sameRouteAlternation:true });
   await context.close();
 }
 
 await browser.close();
 fs.writeFileSync(path.join(outDir, 'result.json'), JSON.stringify({ ok:true, results }, null, 2));
-console.log('OK: Libros y Audios docente validado en escritorio y móvil con pistas y recursos integrados.');
+console.log('OK: Libros y Audios docente alterna dentro de materiales en escritorio y móvil, con pistas y recursos integrados.');
