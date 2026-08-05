@@ -65,6 +65,13 @@ const requiredAdapter = [
   'english_lab_memory_match_cs21a173.css?v=CS21A174',
   'ensureStyles',
   'global.EnglishLabMemoryMatchLiveCS21A174 = api',
+  'EnglishLabTurnEngineCS21A176',
+  'english_lab_turn_engine_cs21a176.js?v=CS21A176',
+  'READ_ONLY_POLL_MS = 4000',
+  'ENDPOINTS.getRoomControl',
+  'global.setInterval(poll, READ_ONLY_POLL_MS)',
+  'pollingRef.current',
+  'setLiveState(result)',
 ];
 for (const token of requiredAdapter) {
   if (!adapter.includes(token)) fail(`adapter sin contrato: ${token}`);
@@ -82,6 +89,10 @@ if (!/function isMemoryMatchRoom\(room\)[\s\S]*roomGameId\(room\) === GAME_ID/.t
 if (!/createElement\('link'\)[\s\S]*rel\s*=\s*'stylesheet'[\s\S]*appendChild/.test(adapter)) {
   fail('el adaptador no instala la hoja visual de forma diferida');
 } else ok('estilos visuales cargados únicamente con el adaptador Live');
+
+if (!/if \(!readOnly \|\| typeof postLive !== 'function' \|\| !code\) return undefined;/.test(adapter)) {
+  fail('polling silencioso no está restringido a docente/proyector readOnly');
+} else ok('polling silencioso limitado a vistas de control');
 
 const backendContext = {
   console,
