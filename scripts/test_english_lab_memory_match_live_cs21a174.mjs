@@ -6,6 +6,7 @@ import vm from 'node:vm';
 const root = process.cwd();
 const backendPath = path.join(root, 'apps_script_patches/english_lab_memory_match_live_cs21a174.gs');
 const adapterPath = path.join(root, 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx');
+const guardPath = path.join(root, 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js');
 
 function fail(message) {
   console.error(`CS21A174 FAIL: ${message}`);
@@ -13,7 +14,7 @@ function fail(message) {
 }
 function ok(message) { console.log(`CS21A174 OK: ${message}`); }
 
-for (const file of [backendPath, adapterPath]) {
+for (const file of [backendPath, adapterPath, guardPath]) {
   if (!fs.existsSync(file)) fail(`falta ${path.relative(root, file)}`);
   else ok(`existe ${path.relative(root, file)}`);
 }
@@ -21,12 +22,13 @@ if (process.exitCode) process.exit(process.exitCode);
 
 const backend = fs.readFileSync(backendPath, 'utf8');
 const adapter = fs.readFileSync(adapterPath, 'utf8');
+const guard = fs.readFileSync(guardPath, 'utf8');
 
 const pedagogicalSamples = [
   'apple', 'bicycle', 'notebook', 'phone number',
   'manzana', 'bicicleta', 'cuaderno', 'profesor/a', 'número de teléfono'
 ];
-for (const [label, source] of [['backend', backend], ['adapter', adapter]]) {
+for (const [label, source] of [['backend', backend], ['adapter', adapter], ['guard', guard]]) {
   for (const sample of pedagogicalSamples) {
     if (source.toLowerCase().includes(sample.toLowerCase())) fail(`${label} contiene contenido pedagógico hardcodeado: ${sample}`);
   }
@@ -62,11 +64,16 @@ const requiredAdapter = [
   'packageFromLiveState',
   'MemoryMatchGameCS21A173',
   "const GAME_ID = 'MEMORY_MATCH'",
+  "const GAME_LABEL = 'MEMORY MATCH'",
+  "const VERSION = 'CS21A177'",
   'english_lab_memory_match_cs21a173.css?v=CS21A174',
   'ensureStyles',
   'global.EnglishLabMemoryMatchLiveCS21A174 = api',
   'EnglishLabTurnEngineCS21A176',
   'english_lab_turn_engine_cs21a176.js?v=CS21A176',
+  'english_lab_live_sync_guard_cs21a177.js?v=CS21A177',
+  'EnglishLabLiveSyncCS21A177',
+  'ensureSyncGuard',
   'READ_ONLY_POLL_MS = 4000',
   'ENDPOINTS.getRoomControl',
   'global.setInterval(poll, READ_ONLY_POLL_MS)',
@@ -76,15 +83,33 @@ const requiredAdapter = [
 for (const token of requiredAdapter) {
   if (!adapter.includes(token)) fail(`adapter sin contrato: ${token}`);
 }
-if (/\bfetch\s*\(|SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(adapter)) {
-  fail('el adaptador frontend consulta red o conoce Sheets/configuración.');
-} else ok('adaptador frontend sin fetch, Sheets ni ID de base');
+if (/\bfetch\s*\(|global\.fetch\s*=|SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(adapter)) {
+  fail('el adaptador mezcla transporte directo o conoce Sheets/configuración.');
+} else ok('adaptador sin transporte directo, Sheets ni ID de base');
 
-if (!/function isMemoryMatchRoom\(room\)[\s\S]*roomGameId\(room\) === GAME_ID/.test(adapter)) {
-  fail('detección de sala Memory Match no está ligada exclusivamente a GAME_ID');
+const detectionContract = /function isMemoryMatchRoom\(room\)[\s\S]*roomGameId\(room\) === GAME_ID[\s\S]*roomGameLabel\(room\) === GAME_LABEL/;
+if (!detectionContract.test(adapter) || !adapter.includes('room.memory_match === true')) {
+  fail('detección Memory Match no acepta bandera, código y etiqueta normalizada');
 } else if (/GAME_ID\s*=\s*'VOCAB_SPRINT'/.test(adapter)) {
   fail('adapter captura juegos existentes');
-} else ok('adapter queda limitado a MEMORY_MATCH');
+} else ok('adapter reconoce respuestas históricas sin capturar otros juegos');
+
+const requiredGuard = [
+  "endpoint.indexOf('englishLab') !== 0",
+  'return originalFetch(input, init)',
+  'englishLabLiveJoinRoom',
+  'englishLabMemoryMatchGetPlayerState',
+  'READ_ENDPOINTS',
+  'inFlightReads',
+  'join_upgrade:true',
+  'global.EnglishLabLiveSyncCS21A177 = api',
+];
+for (const token of requiredGuard) {
+  if (!guard.includes(token)) fail(`guard CS21A177 sin contrato: ${token}`);
+}
+if (/SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(guard)) {
+  fail('guard frontend conoce Sheets/configuración.');
+} else ok('guard limitado a transporte English LAB');
 
 if (!/createElement\('link'\)[\s\S]*rel\s*=\s*'stylesheet'[\s\S]*appendChild/.test(adapter)) {
   fail('el adaptador no instala la hoja visual de forma diferida');
@@ -137,4 +162,4 @@ if ((backend.match(/ELMM174_QA_DB_ID/g) || []).length > 3) fail('el ID QA se usa
 else ok('ID QA limitado a configuración del instalador');
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log('CS21A174 MEMORY MATCH LIVE CONTRACT: APTO');
+console.log('CS21A174/CS21A177 MEMORY MATCH LIVE CONTRACT: APTO');

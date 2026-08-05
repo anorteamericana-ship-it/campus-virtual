@@ -142,6 +142,15 @@
     if (!response.ok || !isMemoryMatchPayload(data)) return response;
 
     const payload = parseBody(init);
+    const joinedPlayer = data.player && typeof data.player === 'object' ? data.player : {};
+    const joinedId = clean(
+      joinedPlayer.cod_estudiante || joinedPlayer.player_id ||
+      joinedPlayer.codigo_estudiante || joinedPlayer.id
+    );
+    if (joinedId) {
+      payload.player_id = joinedId;
+      if (!clean(payload.cod_estudiante)) payload.cod_estudiante = joinedId;
+    }
     payload.fn = MEMORY_PLAYER_ENDPOINT;
     const nextInit = {...(init || {}), body:JSON.stringify(payload)};
     const nextInput = replaceEndpoint(input, MEMORY_PLAYER_ENDPOINT);
