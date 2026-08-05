@@ -1,0 +1,65 @@
+name: CS21A174 package backend QA installer
+
+on:
+  push:
+    branches:
+      - feature/cs21a174-memory-match-live-backend-2
+    paths:
+      - 'apps_script_patches/english_lab_memory_match_live_cs21a174.gs'
+      - '00_DOCUMENTACION/INSTALAR_BACKEND_QA_MEMORY_MATCH_CS21A174.txt'
+      - '.github/workflows/cs21a174-backend-installer-artifact.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package-backend-installer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cs21a174-memory-match-live-backend-2
+
+      - name: Validate source and safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          module='apps_script_patches/english_lab_memory_match_live_cs21a174.gs'
+          guide='00_DOCUMENTACION/INSTALAR_BACKEND_QA_MEMORY_MATCH_CS21A174.txt'
+          test -s "$module"
+          test -s "$guide"
+          grep -q 'function instalarEnglishLabMemoryMatchCS21A174' "$module"
+          grep -q 'function verificarEnglishLabMemoryMatchCS21A174' "$module"
+          grep -q 'englishLabMemoryMatchCreateRoom' "$module"
+          grep -q 'englishLabMemoryMatchSubmitPair' "$module"
+          grep -q 'return _elmm174DoPostBase_(e)' "$module"
+          ! grep -q 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ' "$module"
+          ! grep -q 'script.google.com/macros' "$module"
+          node scripts/test_english_lab_memory_match_live_cs21a174.mjs
+
+      - name: Build one-folder installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/instalador-backend-qa-cs21a174
+          cp apps_script_patches/english_lab_memory_match_live_cs21a174.gs \
+            dist/instalador-backend-qa-cs21a174/96_English_LAB_Memory_Match_Live_CS21A174.gs
+          cp 00_DOCUMENTACION/INSTALAR_BACKEND_QA_MEMORY_MATCH_CS21A174.txt \
+            dist/instalador-backend-qa-cs21a174/LEEME_PRIMERO.txt
+          printf 'PR=46\nHEAD=%s\nGENERATED_UTC=%s\n' "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > dist/instalador-backend-qa-cs21a174/VERSION.txt
+          cd dist/instalador-backend-qa-cs21a174
+          sha256sum 96_English_LAB_Memory_Match_Live_CS21A174.gs LEEME_PRIMERO.txt VERSION.txt > SHA256SUMS.txt
+          grep -q 'instalarEnglishLabMemoryMatchCS21A174' 96_English_LAB_Memory_Match_Live_CS21A174.gs
+          grep -q 'verificarEnglishLabMemoryMatchCS21A174' 96_English_LAB_Memory_Match_Live_CS21A174.gs
+
+      - name: Upload verified QA installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-backend-qa-memory-match-cs21a174-${{ github.sha }}
+          path: dist/instalador-backend-qa-cs21a174/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
