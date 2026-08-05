@@ -1,0 +1,122 @@
+name: CS21A178 validate and package audited student sync
+
+on:
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'src/english_lab_live.jsx'
+      - 'src/english_lab_games/**'
+      - 'scripts/audit_cleanup_candidates_cs21a149.mjs'
+      - 'scripts/test_english_lab_live_loader_cs21a178.mjs'
+      - 'scripts/test_english_lab_student_browser_cs21a178.mjs'
+      - 'scripts/build_qa_package_cs21a178.mjs'
+      - '00_DOCUMENTACION/AUDITORIA_INTEGRAL_Y_ENTREGA_CS21A178.md'
+      - '.github/workflows/cs21a178-audited-student-sync-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate delivery and live contracts
+        run: |
+          set -euo pipefail
+          node scripts/audit_cleanup_candidates_cs21a149.mjs
+          node scripts/audit_delivery_surface.mjs
+          node scripts/test_english_lab_live_loader_cs21a178.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_memory_match_live_cs21a174.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+
+      - name: Build and audit isolated QA frontend
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start isolated QA server
+        shell: bash
+        run: |
+          python3 -m http.server 4176 --bind 127.0.0.1 > cs21a178-server.log 2>&1 &
+          echo $! > cs21a178-server.pid
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4176/src/english_lab_games/memory_match_student_sync_preview_cs21a178.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat cs21a178-server.log
+          exit 1
+
+      - name: Validate actual student view in two browsers
+        env:
+          QA_BASE_URL: http://127.0.0.1:4176
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_memory_match_browser_cs21a173.mjs
+          node scripts/test_english_lab_turn_browser_cs21a176.mjs
+          node scripts/test_english_lab_student_browser_cs21a178.mjs
+
+      - name: Build and verify candidate package
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_MERGE_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_package_cs21a178.mjs
+          node scripts/build_qa_package_cs21a178.mjs --verify
+          cd dist
+          zip -X -q -r CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES.zip CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES
+          sha256sum CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES.zip > CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES.zip.sha256
+
+      - name: Smoke packaged frontend on port 4176
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f cs21a178-server.pid; then
+            kill "$(cat cs21a178-server.pid)" 2>/dev/null || true
+          fi
+          package='dist/CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES'
+          PORT=4176 node "$package/serve.mjs" > cs21a178-package-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:4176/qa-setup.html >/dev/null; then
+              curl --fail --silent http://127.0.0.1:4176/src/english_lab_games/english_lab_live_sync_guard_cs21a177.js >/dev/null
+              curl --fail --silent http://127.0.0.1:4176/src/english_lab_games/memory_match_student_sync_preview_cs21a178.html >/dev/null
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat cs21a178-package-server.log
+          exit 1
+
+      - name: Upload candidate package and synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES
+          path: |
+            dist/CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES.zip
+            dist/CAMPUS_QA_CS21A178_CANDIDATO_DOS_ESTUDIANTES.zip.sha256
+            qa-output/cs21a178-student-sync/
+            cs21a178-server.log
+            cs21a178-package-server.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -69,7 +69,14 @@ const studentCustomRoutes = [
   'recursos_adicionales',
 ];
 
-const ignoredDirectories = new Set(['.git', 'node_modules']);
+const ignoredDirectories = new Set([
+  '.git',
+  '.npm-cache',
+  '.playwright-browsers',
+  'dist',
+  'node_modules',
+  'qa-output',
+]);
 const textExtensions = new Set([
   '.css', '.csv', '.html', '.js', '.jsx', '.json', '.md', '.mjs', '.txt', '.yml', '.yaml',
 ]);

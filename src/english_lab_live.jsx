@@ -3,7 +3,7 @@
 /* global React, PageHeader */
 (function(){
   const SCRIPT_URL_LIVE = window.APPS_SCRIPT_URL;
-  const VERSION = 'F98.4-Z6-CS21A174';
+  const VERSION = 'F98.4-Z6-CS21A178';
   const GAME_TYPES = [
     { code:'MEMORY_MATCH', label:'Memory Match', area:'Vocabulario visual', note:'Tarjetas palabra, imagen o audio; individual o por equipos.' },
     { code:'VOCAB_SPRINT', label:'Vocabulary Sprint', area:'Vocabulario', note:'Rondas rápidas de vocabulario.' },
@@ -654,7 +654,7 @@
           <div style={{padding:12,borderRadius:14,background:'#F8FAFC',border:'1px solid #E4E7EC'}}><div style={{fontSize:10,fontWeight:900,color:'#667085',textTransform:'uppercase'}}>Respuestas</div><div style={{fontSize:24,fontWeight:950,color:'#001E47'}}>{state?.stats?.answers_current || 0}</div></div>
         </div>
       </div>
-      {(myRank || leaderboard.length || teamLeaderboard.length) && <div className="card" style={{padding:16,borderRadius:18,background:'#FFF',marginBottom:14}}>
+      {Boolean(myRank || leaderboard.length || teamLeaderboard.length) && <div className="card" style={{padding:16,borderRadius:18,background:'#FFF',marginBottom:14}}>
         <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:10}}>
           <div><div style={{fontSize:11,fontWeight:950,letterSpacing:'.13em',color:'#7A1E2C',textTransform:'uppercase'}}>Ranking temporal</div><div style={{fontSize:13,color:'#667085'}}>Solo práctica. No es nota oficial.</div></div>
           {myRank && <span style={{fontSize:12,fontWeight:950,borderRadius:999,padding:'7px 10px',background:'#EEF4FF',border:'1px solid #B7D5FF',color:'#073B7A'}}>Tu posición: #{myRank.rank} · {myRank.points||0} pts</span>}

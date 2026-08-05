@@ -40,6 +40,14 @@ const retired = [
 ];
 
 const textExtensions = new Set(['.css', '.html', '.js', '.jsx', '.json', '.md', '.mjs', '.txt', '.yml', '.yaml']);
+const ignoredDirectories = new Set([
+  '.git',
+  '.npm-cache',
+  '.playwright-browsers',
+  'dist',
+  'node_modules',
+  'qa-output',
+]);
 
 function exists(relative) {
   return fs.existsSync(path.join(root, relative));
@@ -50,13 +58,18 @@ function read(relative) {
 }
 
 function sha256(relative) {
-  return crypto.createHash('sha256').update(fs.readFileSync(path.join(root, relative))).digest('hex');
+  // Los hashes de retiro fueron calculados sobre los blobs LF de Git. Normalizar
+  // el texto evita falsos negativos cuando el checkout de Windows usa CRLF.
+  const normalized = fs
+    .readFileSync(path.join(root, relative), 'utf8')
+    .replace(/\r\n/g, '\n');
+  return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
 }
 
 function walk(directory) {
   const files = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'node_modules') continue;
+    if (ignoredDirectories.has(entry.name)) continue;
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...walk(absolute));
     else files.push(path.relative(root, absolute).replace(/\\/g, '/'));
