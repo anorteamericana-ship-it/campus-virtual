@@ -1,0 +1,44 @@
+name: CS21A174 package backend QA
+
+on:
+  push:
+    branches:
+      - delivery/cs21a174-memory-match-live-qa
+    paths:
+      - '.github/workflows/cs21a174-package-backend-qa.yml'
+      - 'apps_script_patches/english_lab_memory_match_live_cs21a174.gs'
+      - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_LIVE_CS21A174.md'
+      - 'delivery/CS21A174/LEEME_INSTALACION_QA.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout delivery branch
+        uses: actions/checkout@v4
+
+      - name: Assemble QA-only package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          cp apps_script_patches/english_lab_memory_match_live_cs21a174.gs package/
+          cp 00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_LIVE_CS21A174.md package/
+          cp delivery/CS21A174/LEEME_INSTALACION_QA.txt package/
+          sha256sum package/* > package/SHA256SUMS.txt
+          grep -q 'instalarEnglishLabMemoryMatchCS21A174' package/english_lab_memory_match_live_cs21a174.gs
+          grep -q 'verificarEnglishLabMemoryMatchCS21A174' package/english_lab_memory_match_live_cs21a174.gs
+          ! grep -Eq 'AKfycb|script\.google\.com/macros' package/english_lab_memory_match_live_cs21a174.gs
+
+      - name: Upload backend QA package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ENGLISH_LAB_MEMORY_MATCH_BACKEND_QA_CS21A174
+          path: package/
+          if-no-files-found: error
+          retention-days: 30
