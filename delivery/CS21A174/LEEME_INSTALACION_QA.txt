@@ -1,0 +1,31 @@
+ENGLISH LAB MEMORY MATCH LIVE · CS21A174
+ENTREGA EXCLUSIVA PARA QA
+
+CONTENIDO
+1. english_lab_memory_match_live_cs21a174.gs
+2. ENGLISH_LAB_MEMORY_MATCH_LIVE_CS21A174.md
+
+REGLA DE SEGURIDAD
+- No reemplazar archivos existentes.
+- No instalar en producción.
+- Agregar el .gs como módulo nuevo en CAMPUS_QA_MODULAR_CS21A144_20260729_180204.
+
+NOMBRE SUGERIDO DEL ARCHIVO EN APPS SCRIPT
+96_English_LAB_Memory_Match_Live_CS21A174
+
+DESPUÉS DE PEGAR Y GUARDAR
+1. Ejecutar instalarEnglishLabMemoryMatchCS21A174.
+2. Confirmar que la ejecución termine sin errores.
+3. Ejecutar verificarEnglishLabMemoryMatchCS21A174.
+4. El registro debe indicar ok=true y b1_u01_pairs igual o mayor que 6.
+5. Publicar una nueva versión únicamente del deployment QA.
+6. Mantener la misma URL /exec QA.
+
+NO HACER
+- No editar ni borrar los módulos 46, 95, 96 anteriores, 98 o 99.
+- No cambiar la URL productiva.
+- No fusionar PR #45 o #46 todavía.
+
+VALIDACIÓN DE CÓDIGO
+Head: 0c6809bf78489bb41794aadfdbcab5d92fa51da2
+PR: https://github.com/anorteamericana-ship-it/campus-virtual/pull/46
