@@ -211,6 +211,7 @@
     const [announcement, setAnnouncement] = React.useState('');
     const timeoutSentRef = React.useRef(false);
     const completionSentRef = React.useRef('');
+    const readySentRef = React.useRef('');
     const roundStartedLocalRef = React.useRef(Date.now());
 
     const configuredPhase = normalized.state.phase;
@@ -241,6 +242,7 @@
       setAnnouncement('');
       timeoutSentRef.current = false;
       completionSentRef.current = '';
+      readySentRef.current = '';
       roundStartedLocalRef.current = Date.now();
     }, [normalized.round.roundId]);
 
@@ -271,16 +273,18 @@
     }, [remainingMs, phase, isMyTurn, normalized.room.roomCode, normalized.round.roundId, props, turnNumber]);
 
     React.useEffect(() => {
-      if (props && typeof props.onReady === 'function') {
-        props.onReady({
-          version: VERSION,
-          gameId: 'MEMORY_MATCH',
-          cardCount: cards.length,
-          pairCount: cards.length / 2,
-          turnControlled: hasTurnControl,
-        });
-      }
-    }, [cards.length, hasTurnControl, props]);
+      if (!props || typeof props.onReady !== 'function') return;
+      const readyKey = `${normalized.round.roundId}|${cards.length}|${hasTurnControl?'TURN':'FREE'}`;
+      if (readySentRef.current === readyKey) return;
+      readySentRef.current = readyKey;
+      props.onReady({
+        version: VERSION,
+        gameId: 'MEMORY_MATCH',
+        cardCount: cards.length,
+        pairCount: cards.length / 2,
+        turnControlled: hasTurnControl,
+      });
+    }, [cards.length, hasTurnControl, normalized.round.roundId, props]);
 
     const submitPair = React.useCallback(async (first, second, correct) => {
       if (!props || typeof props.onSubmit !== 'function') return {ok:true,accepted:true,correct};
