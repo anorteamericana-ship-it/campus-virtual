@@ -97,6 +97,10 @@ vm.runInNewContext(runtimeSource, {
 const runtime = runtimeWindow.EnglishLabRuntimeCS21A173;
 if (!runtime) fail('runtime no exportado');
 else {
+  if (!runtimeSource.includes('server_now') || !runtimeSource.includes('server_offset_ms')) {
+    fail('runtime no declara sincronización por timestamps del servidor');
+  } else ok('contrato de sincronización server_now/server_offset_ms presente');
+
   const clock = runtime.createServerClock({server_now: 20000, received_at_ms: 15000});
   if (clock.now(16000) !== 21000) fail('reloj no aplica offset del servidor');
   else ok('reloj sincronizado por timestamp del servidor');
@@ -120,7 +124,6 @@ const requiredEngineTokens = [
   'EnglishLabGameRegistryCS21A173',
   'aria-live="polite"',
   'role="grid"',
-  'server',
   'onTimeout',
   'onSubmit',
 ];
