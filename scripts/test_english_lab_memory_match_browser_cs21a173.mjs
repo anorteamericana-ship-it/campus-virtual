@@ -61,13 +61,18 @@ try {
     }
   }
 
+  await page.waitForFunction(
+    () => String(document.querySelector('#log')?.textContent || '').includes('COMPLETE'),
+    null,
+    { timeout: 5000 },
+  );
   const eventLog = await page.locator('#log').textContent();
   if (!String(eventLog || '').includes('COMPLETE')) throw new Error('No se emitió el cierre COMPLETE del tablero.');
   await page.waitForFunction(() => document.body.textContent.includes('Tablero completado'), null, { timeout: 5000 });
-  await page.waitForFunction(() => document.body.textContent.includes('COMPLETE'), null, { timeout: 5000 });
 
   await page.locator('#modeBtn').click();
   await page.waitForFunction(() => document.body.textContent.includes('Seleccioná dos tarjetas que formen un par.'), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelectorAll('.elmm-card.is-matched').length === 0, null, { timeout: 5000 });
   const resetMatched = await page.locator('.elmm-card.is-matched').count();
   if (resetMatched !== 0) throw new Error(`El cambio de modo conservó ${resetMatched} tarjetas encontradas.`);
 
