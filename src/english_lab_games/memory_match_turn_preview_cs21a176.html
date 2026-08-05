@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QA · Turnos Memory Match CS21A176</title>
+  <link rel="stylesheet" href="../../styles/tokens.css">
+  <link rel="stylesheet" href="../../styles/english_lab_memory_match_cs21a173.css?v=CS21A174">
+  <style>
+    body{margin:0;background:#EAF0F7;padding:18px;box-sizing:border-box;font-family:system-ui,sans-serif}
+    h1{margin:0 0 6px;color:#001E47}.qa-note{color:#475467;margin-bottom:16px}
+    .qa-views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+    .qa-view{min-width:0}.qa-view-label{font-weight:950;color:#001E47;margin:0 0 7px;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+    .qa-log{margin-top:14px;padding:12px;border-radius:12px;background:#001E47;color:#FFF;font:12px/1.45 monospace;white-space:pre-wrap}
+    @media(max-width:1100px){.qa-views{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <h1>CS21A176 · Turnos compartidos</h1>
+  <div class="qa-note">Tres vistas consumen el mismo paquete: jugador activo, jugador en espera y docente.</div>
+  <div id="root"></div>
+  <pre id="log" class="qa-log">Cargando fixture…</pre>
+
+  <script src="../../vendor/react.js"></script>
+  <script src="../../vendor/react-dom.js"></script>
+  <script src="../../vendor/babel.js"></script>
+  <script src="./english_lab_runtime_cs21a173.js?v=CS21A173"></script>
+  <script src="./english_lab_turn_engine_cs21a176.js?v=CS21A176"></script>
+  <script type="text/babel" src="./memory_match_engine_cs21a173.jsx?v=CS21A176"></script>
+  <script type="text/babel">
+    const log = document.getElementById('log');
+    const players = [
+      {player_id:'QA-P1',name:'Ana QA',team_id:'Sin equipo'},
+      {player_id:'QA-P2',name:'Carlos QA',team_id:'Sin equipo'}
+    ];
+    let sourcePackage = null;
+
+    function writeLog(value){ log.textContent=typeof value==='string'?value:JSON.stringify(value,null,2); }
+
+    function initialPackage(){
+      const now=Date.now();
+      const pkg=JSON.parse(JSON.stringify(sourcePackage));
+      pkg.server_now=now;
+      pkg.received_at_ms=now;
+      pkg.room.mode='INDIVIDUAL';
+      pkg.state={...pkg.state,phase:'OPEN',started_at:now,ends_at:now+45000,active_player_id:'QA-P1',active_team_id:''};
+      pkg.players=players;
+      pkg.turn_state={
+        version:'CS21A176',participation_policy:'RANDOM_PLAYER',
+        player_order:['QA-P1','QA-P2'],player_cursor:0,
+        team_order:[],team_cursor:0,team_player_orders:{},team_player_cursors:{},
+        active_player_id:'QA-P1',active_team_id:'',turn_number:1,
+        turn_started_at:new Date(now).toISOString(),turn_ends_at:new Date(now+45000).toISOString(),
+        last_player_id:'',last_team_id:'',reason:'ROUND_STARTED'
+      };
+      pkg.shared_state={version:'CS21A176',board_version:1,matched_pair_ids:[],completed:false,last_action_key:''};
+      return pkg;
+    }
+
+    function App(){
+      const [pkg,setPkg]=React.useState(initialPackage());
+
+      async function submit(data){
+        const answer=data?.answer_value || {};
+        const correct=!!answer.correct;
+        const playerId=data?.player_id || '';
+        setPkg(current=>{
+          const matched=new Set(current.shared_state?.matched_pair_ids || []);
+          if(correct && answer.pair_id) matched.add(answer.pair_id);
+          const currentIndex=current.turn_state.player_order.indexOf(playerId);
+          const nextIndex=(Math.max(0,currentIndex)+1)%current.turn_state.player_order.length;
+          const nextPlayer=current.turn_state.player_order[nextIndex];
+          const now=Date.now();
+          return {
+            ...current,
+            server_now:now,
+            received_at_ms:now,
+            state:{...current.state,phase:'OPEN',started_at:now,ends_at:now+45000,active_player_id:nextPlayer},
+            turn_state:{
+              ...current.turn_state,
+              player_cursor:nextIndex,
+              active_player_id:nextPlayer,
+              turn_number:Number(current.turn_state.turn_number||1)+1,
+              turn_started_at:new Date(now).toISOString(),
+              turn_ends_at:new Date(now+45000).toISOString(),
+              last_player_id:playerId,
+              reason:correct?'PAIR_CORRECT':'PAIR_INCORRECT'
+            },
+            shared_state:{
+              ...current.shared_state,
+              board_version:Number(current.shared_state?.board_version||1)+1,
+              matched_pair_ids:Array.from(matched),
+              completed:matched.size>=6
+            }
+          };
+        });
+        writeLog({event:'ACCEPTED',player_id:playerId,correct,next_player:playerId==='QA-P1'?'QA-P2':'QA-P1'});
+        return {ok:true,accepted:true,correct,points:correct?100:0};
+      }
+
+      return <div className="qa-views">
+        <section className="qa-view" data-view="student-1">
+          <div className="qa-view-label">Estudiante 1</div>
+          <MemoryMatchGameCS21A173 roomPackage={pkg} player={players[0]} turnEngine={window.EnglishLabTurnEngineCS21A176} onSubmit={submit}/>
+        </section>
+        <section className="qa-view" data-view="student-2">
+          <div className="qa-view-label">Estudiante 2</div>
+          <MemoryMatchGameCS21A173 roomPackage={pkg} player={players[1]} turnEngine={window.EnglishLabTurnEngineCS21A176} onSubmit={submit}/>
+        </section>
+        <section className="qa-view" data-view="teacher">
+          <div className="qa-view-label">Docente / proyector</div>
+          <MemoryMatchGameCS21A173 roomPackage={pkg} turnEngine={window.EnglishLabTurnEngineCS21A176} readOnly={true}/>
+        </section>
+      </div>;
+    }
+
+    fetch('../../assets/english_lab/qa/memory_match_room_cs21a173.json',{cache:'no-store'})
+      .then(response=>{if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.json();})
+      .then(data=>{sourcePackage=data;ReactDOM.createRoot(document.getElementById('root')).render(<App/>);})
+      .catch(error=>writeLog(`ERROR: ${error.message}`));
+  </script>
+</body>
+</html>
