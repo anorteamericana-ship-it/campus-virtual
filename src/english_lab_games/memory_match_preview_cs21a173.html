@@ -26,7 +26,7 @@
   <script src="../../vendor/react-dom.js"></script>
   <script src="../../vendor/babel.js"></script>
   <script src="./english_lab_runtime_cs21a173.js?v=CS21A173"></script>
-  <script type="text/babel" src="./memory_match_engine_cs21a173.jsx?v=CS21A173"></script>
+  <script type="text/babel" src="./memory_match_engine_cs21a173.jsx?v=CS21A176"></script>
   <script type="text/babel">
     const log = document.getElementById('log');
     let sourcePackage = null;
@@ -69,12 +69,18 @@
         writeLog({event:eventName,...data});
       }
 
+      function acceptPair(data){
+        const correct = !!(data && data.answer_value && data.answer_value.correct);
+        writeLog({event:'PAIR_SUBMITTED',payload:data,accepted:true,correct});
+        return Promise.resolve({ok:true,accepted:true,correct,points:correct?100:0});
+      }
+
       return <MemoryMatchGameCS21A173
         key={pkg.round.round_id}
         roomPackage={pkg}
         player={pkg.player}
         onReady={data=>writeLog({event:'READY',...data})}
-        onSubmit={data=>writeLog({event:'PAIR_SUBMITTED',payload:data})}
+        onSubmit={acceptPair}
         onTimeout={data=>finishRound('TIMEOUT',data)}
         onComplete={data=>finishRound('COMPLETE',data)}/>;
     }
