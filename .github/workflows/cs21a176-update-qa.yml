@@ -1,0 +1,28 @@
+name: CS21A176 validate reusable QA update
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/97_ACTUALIZACION_QA.gs'
+      - 'scripts/test_english_lab_update_qa_cs21a176.mjs'
+      - '.github/workflows/cs21a176-update-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-update-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate reusable QA update
+        run: node scripts/test_english_lab_update_qa_cs21a176.mjs
