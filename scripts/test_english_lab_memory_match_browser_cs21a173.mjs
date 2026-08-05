@@ -34,15 +34,25 @@ try {
   const nextTimer = await page.locator('.elmm-timer-copy strong').textContent();
   if (initialTimer === nextTimer) throw new Error('El temporizador visual no avanzó.');
 
-  await cards.nth(0).click();
-  await cards.nth(1).click();
-  await page.waitForFunction(() => document.querySelectorAll('.elmm-card.is-matched').length === 2, null, { timeout: 5000 });
+  for (let index = 0; index < cardCount; index += 2) {
+    await cards.nth(index).click();
+    await cards.nth(index + 1).click();
+    await page.waitForFunction(
+      expected => document.querySelectorAll('.elmm-card.is-matched').length === expected,
+      index + 2,
+      { timeout: 5000 },
+    );
+  }
 
   const eventLog = await page.locator('#log').textContent();
-  if (!String(eventLog || '').includes('PAIR_SUBMITTED')) throw new Error('No se emitió el submission compacto del par.');
+  if (!String(eventLog || '').includes('COMPLETE')) throw new Error('No se emitió el cierre COMPLETE del tablero.');
+  await page.waitForFunction(() => document.body.textContent.includes('Tablero completado'), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.body.textContent.includes('COMPLETE'), null, { timeout: 5000 });
 
   await page.locator('#modeBtn').click();
   await page.waitForFunction(() => document.body.textContent.includes('Seleccioná dos tarjetas que formen un par.'), null, { timeout: 5000 });
+  const resetMatched = await page.locator('.elmm-card.is-matched').count();
+  if (resetMatched !== 0) throw new Error(`El cambio de modo conservó ${resetMatched} tarjetas encontradas.`);
 
   const forbiddenRequests = requests.filter(url => /script\.google\.com|spreadsheets|ACADEMIA_PLAY_BANK/i.test(url));
   if (forbiddenRequests.length) throw new Error(`El preview hizo solicitudes prohibidas: ${forbiddenRequests.join(', ')}`);
@@ -71,6 +81,8 @@ try {
     verdict: 'APTO',
     cardCount,
     timerChanged: initialTimer !== nextTimer,
+    completeState: true,
+    resetClearsMatches: resetMatched === 0,
     compactJsonRequests: jsonRequests,
     forbiddenRequests,
     screenshots: ['memory-match-desktop.png', 'memory-match-mobile.png'],
