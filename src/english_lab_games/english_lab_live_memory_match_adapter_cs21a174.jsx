@@ -1,4 +1,5 @@
 // CS21A174 · Adaptador canónico entre English LAB Live y el motor Memory Match.
+// Confirmación de integración: solo se activa para GAME_ID = MEMORY_MATCH.
 // No contiene contenido pedagógico ni consulta Sheets.
 /* global React, MemoryMatchGameCS21A173 */
 (function (global) {
