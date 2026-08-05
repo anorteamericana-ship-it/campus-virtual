@@ -54,19 +54,21 @@ El ID se documenta aquí para QA y migración. No se incrusta en el motor visual
 
 ## Preview QA
 
+El constructor de staging ya copia `src`, `assets`, `styles` y `vendor`. Por eso la vista y el fixture viven dentro de esas carpetas y entran automáticamente en el próximo ZIP.
+
 URL esperada después de construir el staging de esta rama:
 
 ```text
-http://127.0.0.1:4173/qa/memory_match_cs21a173.html
+http://127.0.0.1:4173/src/english_lab_games/memory_match_preview_cs21a173.html
 ```
 
-La vista usa:
+La vista usa una única fuente QA separada:
 
 ```text
-qa/fixtures/memory_match_room_cs21a173.json
+assets/english_lab/qa/memory_match_room_cs21a173.json
 ```
 
-El fixture es exclusivamente QA y demuestra que el contenido está separado del motor.
+El fixture es exclusivamente QA y demuestra que el contenido está separado del motor. No es cargado por `campus.html` ni por una sala real.
 
 ## Flujo automático previsto
 
