@@ -10,6 +10,7 @@
   const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A174';
   const TURN_ENGINE_ID = 'english-lab-turn-engine-cs21a176';
   const TURN_ENGINE_SRC = 'src/english_lab_games/english_lab_turn_engine_cs21a176.js?v=CS21A176';
+  const READ_ONLY_POLL_MS = 4000;
   const ENDPOINTS = Object.freeze({
     createRoom: 'englishLabMemoryMatchCreateRoom',
     startRoom: 'englishLabMemoryMatchStartRoom',
@@ -122,16 +123,26 @@
 
   function MemoryMatchLiveRoundCS21A174(props) {
     ensureStyles();
-    const state = props && props.state || {};
-    const room = state.room || props.room || {};
-    const player = state.player || props.player || null;
-    const pkg = packageFromLiveState(state) || props.roomPackage || null;
+    const incomingState = props && props.state || {};
     const postLive = props && props.postLive;
     const onRefresh = props && props.onRefresh;
+    const readOnly = !!(props && props.readOnly);
+    const [liveState, setLiveState] = React.useState(incomingState);
     const [error, setError] = React.useState('');
     const [busy, setBusy] = React.useState(false);
     const [lastResult, setLastResult] = React.useState(null);
     const [turnReady, setTurnReady] = React.useState(!!global.EnglishLabTurnEngineCS21A176);
+    const pollingRef = React.useRef(false);
+
+    React.useEffect(() => {
+      setLiveState(incomingState);
+    }, [incomingState]);
+
+    const state = liveState && typeof liveState === 'object' ? liveState : incomingState;
+    const room = state.room || props.room || {};
+    const player = state.player || props.player || null;
+    const pkg = packageFromLiveState(state) || props.roomPackage || null;
+    const code = roomCode(room, pkg);
 
     React.useEffect(() => {
       let active = true;
@@ -142,6 +153,31 @@
       });
       return () => { active = false; };
     }, []);
+
+    React.useEffect(() => {
+      if (!readOnly || typeof postLive !== 'function' || !code) return undefined;
+      let disposed = false;
+      async function poll() {
+        if (disposed || pollingRef.current) return;
+        pollingRef.current = true;
+        try {
+          const result = await postLive(ENDPOINTS.getRoomControl, {room_id:code, room_code:code}, 45000);
+          if (!disposed && result && result.ok !== false) {
+            setLiveState(result);
+            setError('');
+          }
+        } catch (err) {
+          if (!disposed) setError(err && err.message ? err.message : String(err));
+        } finally {
+          pollingRef.current = false;
+        }
+      }
+      const timer = global.setInterval(poll, READ_ONLY_POLL_MS);
+      return () => {
+        disposed = true;
+        global.clearInterval(timer);
+      };
+    }, [readOnly, postLive, code]);
 
     if (!pkg) {
       return <div role="status" style={{padding:16,border:'1px solid #FFD88A',background:'#FFF7E6',borderRadius:14,color:'#7A4B00',fontWeight:800}}>
@@ -161,10 +197,20 @@
 
     async function handleSubmit(submission) {
       if (typeof postLive !== 'function') throw new Error('postLive no está disponible.');
-      setBusy(true); setError('');
+      setBusy(true);
+      setError('');
       try {
         const result = await postLive(ENDPOINTS.submitPair, submitPayload(submission, room, pkg, player), 45000);
         setLastResult(result || null);
+        if (result && result.room_package) {
+          setLiveState(current => ({
+            ...(current || state),
+            ...result,
+            room: result.room || room,
+            player,
+            room_package: result.room_package,
+          }));
+        }
         if (typeof onRefresh === 'function') await onRefresh();
         return result;
       } catch (err) {
@@ -180,7 +226,7 @@
       {error && <div role="alert" style={{padding:'10px 12px',border:'1px solid #F5B5B5',background:'#FDECEA',borderRadius:12,color:'#8B1F1F',fontWeight:800}}>{error}</div>}
       {busy && <div role="status" style={{fontSize:12,fontWeight:900,color:'#073B7A'}}>Guardando intento…</div>}
       {lastResult && <div aria-live="polite" style={{fontSize:12,fontWeight:900,color:lastResult.correct?'#145C38':'#7A4B00'}}>
-        {lastResult.correct ? `Par correcto · ${Number(lastResult.points || 0)} puntos` : lastResult.message || 'No forman un par'}
+        {lastResult.correct ? `Par correcto · ${Number(lastResult.points || 0)} puntos` : lastResult.message || lastResult.mensaje || 'No forman un par'}
       </div>}
       <MemoryMatchGameCS21A173
         roomPackage={pkg}
@@ -190,7 +236,7 @@
         onSubmit={handleSubmit}
         onTimeout={props.onTimeout}
         onComplete={props.onComplete}
-        readOnly={!!props.readOnly}/>
+        readOnly={readOnly}/>
     </div>;
   }
 
@@ -200,6 +246,7 @@
     ENDPOINTS,
     STYLE_HREF,
     TURN_ENGINE_SRC,
+    READ_ONLY_POLL_MS,
     ensureStyles,
     ensureTurnEngine,
     isMemoryMatchRoom,
