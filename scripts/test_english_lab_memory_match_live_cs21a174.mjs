@@ -62,6 +62,8 @@ const requiredAdapter = [
   'packageFromLiveState',
   'MemoryMatchGameCS21A173',
   "const GAME_ID = 'MEMORY_MATCH'",
+  'english_lab_memory_match_cs21a173.css?v=CS21A174',
+  'ensureStyles',
   'global.EnglishLabMemoryMatchLiveCS21A174 = api',
 ];
 for (const token of requiredAdapter) {
@@ -69,13 +71,17 @@ for (const token of requiredAdapter) {
 }
 if (/\bfetch\s*\(|SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(adapter)) {
   fail('el adaptador frontend consulta red o conoce Sheets/configuración.');
-} else ok('adaptador frontend sin red, Sheets ni ID de base');
+} else ok('adaptador frontend sin fetch, Sheets ni ID de base');
 
 if (!/function isMemoryMatchRoom\(room\)[\s\S]*roomGameId\(room\) === GAME_ID/.test(adapter)) {
   fail('detección de sala Memory Match no está ligada exclusivamente a GAME_ID');
 } else if (/GAME_ID\s*=\s*'VOCAB_SPRINT'/.test(adapter)) {
   fail('adapter captura juegos existentes');
 } else ok('adapter queda limitado a MEMORY_MATCH');
+
+if (!/createElement\('link'\)[\s\S]*rel\s*=\s*'stylesheet'[\s\S]*appendChild/.test(adapter)) {
+  fail('el adaptador no instala la hoja visual de forma diferida');
+} else ok('estilos visuales cargados únicamente con el adaptador Live');
 
 const backendContext = {
   console,
