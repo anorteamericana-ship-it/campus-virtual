@@ -37,11 +37,28 @@ try {
   for (let index = 0; index < cardCount; index += 2) {
     await cards.nth(index).click();
     await cards.nth(index + 1).click();
-    await page.waitForFunction(
-      expected => document.querySelectorAll('.elmm-card.is-matched').length === expected,
-      index + 2,
-      { timeout: 5000 },
-    );
+    try {
+      await page.waitForFunction(
+        expected => document.querySelectorAll('.elmm-card.is-matched').length === expected,
+        index + 2,
+        { timeout: 5000 },
+      );
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        matched: document.querySelectorAll('.elmm-card.is-matched').length,
+        disabled: Array.from(document.querySelectorAll('.elmm-card')).filter(card => card.disabled).length,
+        open: document.querySelectorAll('.elmm-card.is-open').length,
+        announcement: document.querySelector('.elmm-live-announcement')?.textContent || '',
+        status: document.querySelector('.elmm-status-row')?.textContent || '',
+        log: document.querySelector('#log')?.textContent || '',
+      }));
+      console.error(`PAIR DIAGNOSTIC index=${index}: ${JSON.stringify(diagnostic)}`);
+      await page.screenshot({
+        path: path.join(outputDir, `memory-match-failure-pair-${index}.png`),
+        fullPage: true,
+      });
+      throw error;
+    }
   }
 
   const eventLog = await page.locator('#log').textContent();
