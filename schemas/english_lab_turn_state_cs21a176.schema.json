@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anorteamericana.test/schemas/english_lab_turn_state_cs21a176.schema.json",
+  "title": "English LAB Live Turn State CS21A176",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "participation_policy",
+    "player_order",
+    "team_order",
+    "team_player_orders",
+    "active_player_id",
+    "active_team_id",
+    "turn_number",
+    "turn_started_at",
+    "turn_ends_at"
+  ],
+  "properties": {
+    "version": {"const": "CS21A176"},
+    "participation_policy": {
+      "enum": ["EVERYONE", "ROUND_ROBIN", "RANDOM_PLAYER", "TEAM_ALTERNATING"]
+    },
+    "player_order": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "player_cursor": {"type": "integer", "minimum": 0},
+    "team_order": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "team_cursor": {"type": "integer", "minimum": 0},
+    "team_player_orders": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {"type": "string", "minLength": 1}
+      }
+    },
+    "team_player_cursors": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "active_player_id": {"type": "string"},
+    "active_team_id": {"type": "string"},
+    "turn_number": {"type": "integer", "minimum": 1},
+    "turn_started_at": {"type": "string", "format": "date-time"},
+    "turn_ends_at": {"type": "string", "format": "date-time"},
+    "last_player_id": {"type": "string"},
+    "last_team_id": {"type": "string"},
+    "reason": {"type": "string"}
+  }
+}
