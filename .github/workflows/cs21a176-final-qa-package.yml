@@ -1,0 +1,211 @@
+name: CS21A176 build final QA package
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'login.html'
+      - 'ventas.html'
+      - 'inscripcion.html'
+      - 'src/**'
+      - 'styles/**'
+      - 'vendor/**'
+      - 'assets/**'
+      - 'modulos/**'
+      - 'apps_script_patches/97_ACTUALIZACION_QA.gs'
+      - 'scripts/build_qa_staging_frontend_cs21a148.mjs'
+      - 'scripts/audit_qa_staging_frontend_cs21a148.mjs'
+      - '.github/workflows/cs21a176-final-qa-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build and audit isolated frontend
+        run: |
+          set -euo pipefail
+          node --check scripts/build_qa_staging_frontend_cs21a148.mjs
+          node --check scripts/audit_qa_staging_frontend_cs21a148.mjs
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Assemble one clean CS21A176 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A176_TURNOS_MEMORY_MATCH_FINAL'
+          rm -rf "$package"
+          mkdir -p "$package/BACKEND_QA"
+          cp -a dist/qa-staging/. "$package/"
+          cp apps_script_patches/97_ACTUALIZACION_QA.gs "$package/BACKEND_QA/97_ACTUALIZACION_QA.gs"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          package = Path('dist/CAMPUS_QA_CS21A176_TURNOS_MEMORY_MATCH_FINAL')
+          old_launcher = package / 'INICIAR_QA_STAGING.cmd'
+          new_launcher = package / 'ABRIR_CAMPUS_QA_CS21A176.cmd'
+          launcher = old_launcher.read_text(encoding='utf-8-sig')
+          launcher = launcher.replace('127.0.0.1:4173', '127.0.0.1:4174')
+          launcher = launcher.replace('node serve.mjs', 'set PORT=4174\r\nnode serve.mjs')
+          new_launcher.write_text(launcher, encoding='utf-8-sig', newline='')
+          old_launcher.unlink()
+
+          server = package / 'serve.mjs'
+          server_text = server.read_text(encoding='utf-8')
+          server_text = server_text.replace("process.env.PORT || 4173", "process.env.PORT || 4174")
+          server_text = server_text.replace("process.env.PORT || '4173'", "process.env.PORT || '4174'")
+          server.write_text(server_text, encoding='utf-8')
+          PY
+
+          cat > "$package/LEEME_PRIMERO_CS21A176.txt" <<'EOF'
+          CAMPUS QA CS21A176 · MEMORY MATCH CON TURNOS
+          ==================================================
+
+          IMPORTANTE
+          - Este paquete es exclusivamente QA.
+          - No usar producción.
+          - No crear otro archivo de hotfix en Apps Script.
+          - No reutilizar las salas LAB-3961 ni LAB-1774.
+
+          A. ACTUALIZAR EL BACKEND QA
+          1. Abra el proyecto Apps Script QA.
+          2. Use un solo archivo temporal llamado: 97_ACTUALIZACION_QA.gs
+          3. Si todavía existe 97_English_LAB_Memory_Match_Hotfix_CS21A175.gs,
+             renómbrelo a 97_ACTUALIZACION_QA.gs.
+          4. Abra BACKEND_QA\97_ACTUALIZACION_QA.gs de este paquete.
+          5. Copie TODO su contenido.
+          6. En Apps Script, seleccione TODO el contenido del archivo
+             97_ACTUALIZACION_QA.gs y reemplácelo completamente.
+          7. Guarde y ejecute: verificarActualizacionQA
+
+          El resultado debe incluir:
+          - ok: true
+          - version: CS21A176
+          - normalize_u1: U01
+          - b1_u1_pairs: 6
+          - b1_u01_pairs: 6
+          - planned_teams: dos equipos
+          - team_active distinto de team_next
+          - timeout_policy: ADVANCE_TURN_NOT_CLOSE_ROUND
+
+          8. Vaya a Implementar > Gestionar implementaciones.
+          9. Edite LA MISMA implementación QA.
+          10. Seleccione Nueva versión y pulse Implementar.
+              La descripción es opcional y puede quedar vacía.
+
+          B. ABRIR EL FRONTEND QA
+          1. Extraiga TODO este ZIP en una carpeta nueva.
+          2. Ejecute: ABRIR_CAMPUS_QA_CS21A176.cmd
+          3. Mantenga abierta la ventana negra.
+          4. Debe abrirse:
+             http://127.0.0.1:4174/qa-setup.html
+          5. Pegue esta URL del Apps Script QA:
+             https://script.google.com/macros/s/AKfycbzzsmmHVRGlgltcUJf7Yi9R0z__vsu58Hw9Gq9rNn5pYVrgY5iZ0-xEEL-8wqL4uPVbaw/exec
+
+          C. PRUEBA
+          - Entre como docente QA.
+          - Cree una SALA NUEVA Memory Match.
+          - Unidad 1, 6 pares.
+          - Primero pruebe Individual.
+          - Los estudiantes deben entrar ANTES de iniciar la ronda.
+          - Solo el estudiante activo podrá tocar tarjetas.
+          - Los demás verán "Esperando turno".
+          - El docente/proyector será solo lectura.
+          - Cada intento, correcto o incorrecto, rotará el turno.
+          - Una pareja encontrada se conservará en todas las pantallas.
+          - En Equipos, el sistema asignará equipos balanceados cuando TEAM esté vacío.
+          EOF
+
+          cat > "$package/VERSION.txt" <<EOF
+          VERSION=CS21A176
+          PURPOSE=English LAB Live shared rounds and turns; Memory Match first consumer
+          SOURCE_BRANCH=feature/cs21a176-live-round-turn-engine
+          SOURCE_SHA=${GITHUB_SHA}
+          QA_PORT=4174
+          APPS_SCRIPT_TEMP_FILE=97_ACTUALIZACION_QA.gs
+          PRODUCTION_TOUCHED=NO
+          EOF
+
+          cat > "$package/EVIDENCIA_CI.txt" <<'EOF'
+          VALIDACIONES OBLIGATORIAS
+          - Motor compartido de turnos: aprobado.
+          - Actualización QA reutilizable: aprobada.
+          - Contrato Memory Match Live: aprobado.
+          - Frontend staging: aprobado.
+          - Memory Match Chromium: aprobado.
+          - Tres vistas simultáneas y rotación: aprobado.
+          - Revisión general candidata: aprobada.
+
+          La validación real autenticada en Apps Script QA todavía debe ejecutarse
+          después de instalar este paquete. El PR permanece en borrador.
+          EOF
+
+          (
+            cd "$package"
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+
+      - name: Audit final package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A176_TURNOS_MEMORY_MATCH_FINAL'
+          test -f "$package/ABRIR_CAMPUS_QA_CS21A176.cmd"
+          test ! -e "$package/INICIAR_QA_STAGING.cmd"
+          test -f "$package/BACKEND_QA/97_ACTUALIZACION_QA.gs"
+          test -f "$package/LEEME_PRIMERO_CS21A176.txt"
+          test -f "$package/VERSION.txt"
+          test -f "$package/SHA256SUMS.txt"
+          test -f "$package/src/english_lab_games/english_lab_turn_engine_cs21a176.js"
+          test -f "$package/src/english_lab_games/memory_match_engine_cs21a173.jsx"
+          test -f "$package/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx"
+          grep -q '127.0.0.1:4174/qa-setup.html' "$package/ABRIR_CAMPUS_QA_CS21A176.cmd"
+          grep -q 'set PORT=4174' "$package/ABRIR_CAMPUS_QA_CS21A176.cmd"
+          grep -q 'CS21A176' "$package/BACKEND_QA/97_ACTUALIZACION_QA.gs"
+          grep -q 'verificarActualizacionQA' "$package/BACKEND_QA/97_ACTUALIZACION_QA.gs"
+          ! grep -q '127.0.0.1:4173/qa-setup.html' "$package/ABRIR_CAMPUS_QA_CS21A176.cmd"
+          (
+            cd "$package"
+            sha256sum --check SHA256SUMS.txt
+          )
+
+      - name: Smoke final package on port 4174
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A176_TURNOS_MEMORY_MATCH_FINAL'
+          PORT=4174 node "$package/serve.mjs" > /tmp/campus-cs21a176.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:4174/qa-setup.html >/dev/null; then
+              curl --fail --silent http://127.0.0.1:4174/src/english_lab_games/english_lab_turn_engine_cs21a176.js >/dev/null
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/campus-cs21a176.log
+          exit 1
+
+      - name: Upload one final QA package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A176_TURNOS_MEMORY_MATCH_FINAL
+          path: dist/CAMPUS_QA_CS21A176_TURNOS_MEMORY_MATCH_FINAL
+          if-no-files-found: error
+          retention-days: 30
