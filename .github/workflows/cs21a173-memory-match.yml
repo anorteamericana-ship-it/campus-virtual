@@ -8,6 +8,7 @@ on:
       - 'styles/english_lab_memory_match_cs21a173.css'
       - 'schemas/english_lab_room_package_cs21a173.schema.json'
       - 'scripts/test_english_lab_memory_match_cs21a173.mjs'
+      - 'scripts/test_english_lab_memory_match_browser_cs21a173.mjs'
       - '.github/workflows/cs21a173-memory-match.yml'
   workflow_dispatch:
 
@@ -16,8 +17,8 @@ permissions:
 
 jobs:
   validate-memory-match:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,3 +30,36 @@ jobs:
 
       - name: Validate canonical engine contract
         run: node scripts/test_english_lab_memory_match_cs21a173.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start static QA server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > cs21a173-server.log 2>&1 &
+          echo $! > cs21a173-server.pid
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/src/english_lab_games/memory_match_preview_cs21a173.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat cs21a173-server.log
+          exit 1
+
+      - name: Validate Memory Match in Chromium
+        env:
+          QA_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/test_english_lab_memory_match_browser_cs21a173.mjs
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cs21a173-memory-match-${{ github.sha }}
+          path: |
+            qa-output/cs21a173-memory-match/
+            cs21a173-server.log
+          if-no-files-found: warn
+          retention-days: 30
