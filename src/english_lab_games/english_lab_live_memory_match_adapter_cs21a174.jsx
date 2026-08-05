@@ -1,16 +1,18 @@
-// CS21A174/CS21A176 · Adaptador canónico entre English LAB Live, Memory Match y turnos compartidos.
+// CS21A174/CS21A176/CS21A177 · Adaptador canónico entre English LAB Live, Memory Match y turnos compartidos.
 // Solo se activa para GAME_ID = MEMORY_MATCH. No contiene contenido pedagógico.
 /* global React, MemoryMatchGameCS21A173 */
 (function (global) {
   'use strict';
 
-  const VERSION = 'CS21A176';
+  const VERSION = 'CS21A177';
   const GAME_ID = 'MEMORY_MATCH';
+  const GAME_LABEL = 'MEMORY MATCH';
   const STYLE_ID = 'english-lab-memory-match-cs21a174';
   const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A174';
   const TURN_ENGINE_ID = 'english-lab-turn-engine-cs21a176';
   const TURN_ENGINE_SRC = 'src/english_lab_games/english_lab_turn_engine_cs21a176.js?v=CS21A176';
   const READ_ONLY_POLL_MS = 4000;
+  const MAX_METRICS = 100;
   const ENDPOINTS = Object.freeze({
     createRoom: 'englishLabMemoryMatchCreateRoom',
     startRoom: 'englishLabMemoryMatchStartRoom',
@@ -19,8 +21,22 @@
     getRoomControl: 'englishLabMemoryMatchGetRoomControl',
     closeRound: 'englishLabMemoryMatchCloseRound',
   });
+  const COALESCED_READ_ENDPOINTS = Object.freeze([
+    ENDPOINTS.getPlayerState,
+    ENDPOINTS.getRoomControl,
+  ]);
 
   let turnEnginePromise = null;
+  let transportInstalled = false;
+  const inFlightReads = new Map();
+
+  function clean(value) {
+    return String(value == null ? '' : value).trim();
+  }
+
+  function upper(value) {
+    return clean(value).toUpperCase();
+  }
 
   function ensureStyles() {
     const doc = global.document;
@@ -59,20 +75,132 @@
     return turnEnginePromise;
   }
 
-  function clean(value) {
-    return String(value == null ? '' : value).trim();
-  }
-
-  function upper(value) {
-    return clean(value).toUpperCase();
-  }
-
   function roomGameId(room) {
-    return upper(room && (room.game_id || room.gameId || room.game_code || room.gameCode || room.GAME_CODE));
+    return upper(room && (
+      room.game_id || room.gameId || room.game_code || room.gameCode ||
+      room.GAME_ID || room.GAME_CODE
+    ));
+  }
+
+  function roomGameLabel(room) {
+    return upper(room && (
+      room.game_label || room.gameLabel || room.GAME_LABEL || room.label
+    ));
   }
 
   function isMemoryMatchRoom(room) {
-    return roomGameId(room) === GAME_ID;
+    if (!room || typeof room !== 'object') return false;
+    if (room.memory_match === true || room.memoryMatch === true) return true;
+    if (roomGameId(room) === GAME_ID) return true;
+    if (roomGameLabel(room) === GAME_LABEL) return true;
+    if (room.room && room.room !== room && isMemoryMatchRoom(room.room)) return true;
+    if (room.room_package && room.room_package.room && isMemoryMatchRoom(room.room_package.room)) return true;
+    return false;
+  }
+
+  function endpointFromRequest(input) {
+    try {
+      const raw = typeof input === 'string' ? input : input && input.url;
+      if (!raw) return '';
+      const base = global.location && global.location.href || 'https://local.invalid/';
+      return clean(new URL(raw, base).searchParams.get('fn'));
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function metricsStore() {
+    if (!Array.isArray(global.__ENGLISH_LAB_LIVE_METRICS__)) {
+      global.__ENGLISH_LAB_LIVE_METRICS__ = [];
+    }
+    return global.__ENGLISH_LAB_LIVE_METRICS__;
+  }
+
+  function recordMetric(metric) {
+    const store = metricsStore();
+    store.push(Object.freeze({...metric, version:VERSION}));
+    if (store.length > MAX_METRICS) store.splice(0, store.length - MAX_METRICS);
+    try {
+      if (typeof global.CustomEvent === 'function' && typeof global.dispatchEvent === 'function') {
+        global.dispatchEvent(new global.CustomEvent('english-lab-live-metric', {detail:metric}));
+      }
+    } catch (_) {}
+  }
+
+  async function responseSnapshot(response) {
+    const copy = response.clone();
+    const body = await copy.text();
+    const headers = [];
+    try { response.headers.forEach((value, name) => headers.push([name, value])); } catch (_) {}
+    return {
+      body,
+      status:response.status,
+      statusText:response.statusText,
+      headers,
+    };
+  }
+
+  function responseFromSnapshot(snapshot) {
+    return new global.Response(snapshot.body, {
+      status:snapshot.status,
+      statusText:snapshot.statusText,
+      headers:snapshot.headers,
+    });
+  }
+
+  function installTransportGuard() {
+    if (transportInstalled || typeof global.fetch !== 'function' || typeof global.Response !== 'function') return false;
+    transportInstalled = true;
+    const originalFetch = global.fetch.bind(global);
+    global.fetch = async function englishLabLiveFetchCS21A177(input, init) {
+      const endpoint = endpointFromRequest(input);
+      const method = upper(init && init.method || 'GET');
+      const isEnglishLab = endpoint.indexOf('englishLab') === 0;
+      const canCoalesce = method === 'POST' && COALESCED_READ_ENDPOINTS.indexOf(endpoint) >= 0;
+      const body = clean(init && init.body);
+      const key = endpoint + '|' + body;
+      const startedAt = Date.now();
+      let shared = false;
+      let task = canCoalesce ? inFlightReads.get(key) : null;
+
+      if (task) {
+        shared = true;
+      } else {
+        task = originalFetch(input, init).then(responseSnapshot);
+        if (canCoalesce) inFlightReads.set(key, task);
+      }
+
+      try {
+        const snapshot = await task;
+        if (isEnglishLab) {
+          recordMetric({
+            endpoint,
+            elapsed_ms:Math.max(0, Date.now() - startedAt),
+            status:snapshot.status,
+            ok:snapshot.status >= 200 && snapshot.status < 400,
+            coalesced:shared,
+            recorded_at:new Date().toISOString(),
+          });
+        }
+        return responseFromSnapshot(snapshot);
+      } catch (error) {
+        if (isEnglishLab) {
+          recordMetric({
+            endpoint,
+            elapsed_ms:Math.max(0, Date.now() - startedAt),
+            status:0,
+            ok:false,
+            coalesced:shared,
+            error:clean(error && error.message || error),
+            recorded_at:new Date().toISOString(),
+          });
+        }
+        throw error;
+      } finally {
+        if (canCoalesce && !shared && inFlightReads.get(key) === task) inFlightReads.delete(key);
+      }
+    };
+    return true;
   }
 
   function roomCode(room, roomPackage) {
@@ -240,6 +368,8 @@
     </div>;
   }
 
+  installTransportGuard();
+
   const api = Object.freeze({
     VERSION,
     GAME_ID,
@@ -247,13 +377,17 @@
     STYLE_HREF,
     TURN_ENGINE_SRC,
     READ_ONLY_POLL_MS,
+    COALESCED_READ_ENDPOINTS,
     ensureStyles,
     ensureTurnEngine,
     isMemoryMatchRoom,
     roomGameId,
+    roomGameLabel,
     packageFromLiveState,
     gameDescriptor,
     submitPayload,
+    installTransportGuard,
+    getMetrics:() => metricsStore().slice(),
     component: MemoryMatchLiveRoundCS21A174,
   });
 
