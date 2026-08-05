@@ -1,0 +1,201 @@
+name: CS21A177 build student sync QA package
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'login.html'
+      - 'ventas.html'
+      - 'inscripcion.html'
+      - 'src/**'
+      - 'styles/**'
+      - 'vendor/**'
+      - 'assets/**'
+      - 'modulos/**'
+      - 'scripts/build_qa_staging_frontend_cs21a148.mjs'
+      - 'scripts/audit_qa_staging_frontend_cs21a148.mjs'
+      - '.github/workflows/cs21a177-final-qa-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build and audit isolated frontend
+        run: |
+          set -euo pipefail
+          node --check scripts/build_qa_staging_frontend_cs21a148.mjs
+          node --check scripts/audit_qa_staging_frontend_cs21a148.mjs
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Assemble clean CS21A177 package
+        shell: bash
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE'
+          rm -rf "$package"
+          mkdir -p "$package"
+          cp -a dist/qa-staging/. "$package/"
+          rm -f "$package/.nojekyll"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          package = Path('dist/CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE')
+          old_launcher = package / 'INICIAR_QA_STAGING.cmd'
+          new_launcher = package / 'ABRIR_CAMPUS_QA_CS21A177.cmd'
+          launcher = old_launcher.read_text(encoding='utf-8-sig')
+          launcher = launcher.replace('127.0.0.1:4173', '127.0.0.1:4175')
+          launcher = launcher.replace('node serve.mjs', 'set PORT=4175\r\nnode serve.mjs')
+          new_launcher.write_text(launcher, encoding='utf-8-sig', newline='')
+          old_launcher.unlink()
+
+          server = package / 'serve.mjs'
+          server_text = server.read_text(encoding='utf-8')
+          server_text = server_text.replace("process.env.PORT || 4173", "process.env.PORT || 4175")
+          server_text = server_text.replace("process.env.PORT || '4173'", "process.env.PORT || '4175'")
+          server.write_text(server_text, encoding='utf-8')
+          PY
+
+          cat > "$package/LEEME_PRIMERO_CS21A177.txt" <<'EOF'
+          CAMPUS QA CS21A177 · SINCRONIZACION DEL ESTUDIANTE
+          ==================================================
+
+          OBJETIVO
+          - Corregir el caso en que el docente ve Memory Match pero el estudiante
+            conserva la pantalla antigua de Pregunta / Enviar respuesta.
+          - Reducir lecturas simultaneas duplicadas del mismo navegador.
+          - Registrar tiempos de los endpoints English LAB en el navegador.
+
+          BACKEND QA
+          - Este corte NO modifica Apps Script.
+          - Mantenga la implementacion QA actual que ya verifico CS21A176 con ok:true.
+          - No reemplace 97_ACTUALIZACION_QA.gs para esta prueba.
+          - No use produccion.
+
+          ABRIR EL FRONTEND
+          1. Extraiga TODO este ZIP en una carpeta nueva.
+          2. Ejecute ABRIR_CAMPUS_QA_CS21A177.cmd.
+          3. Mantenga abierta la ventana negra.
+          4. Debe abrirse http://127.0.0.1:4175/qa-setup.html
+          5. Pegue manualmente la URL /exec de la implementacion Apps Script QA.
+
+          PRUEBA OBLIGATORIA
+          1. Entre como docente QA.
+          2. Cree una SALA NUEVA Memory Match, U01, 6 pares.
+          3. Entre con dos estudiantes ANTES de iniciar.
+          4. Ambos estudiantes deben ver el tablero Memory Match; nunca la tarjeta
+             antigua de Pregunta / Elegir una opcion / Enviar respuesta.
+          5. Solo el estudiante activo puede tocar tarjetas.
+          6. Docente y proyector permanecen en lectura.
+          7. Cada intento rota el turno y las parejas quedan sincronizadas.
+
+          DIAGNOSTICO
+          - En la consola del navegador puede consultar:
+            window.__ENGLISH_LAB_LIVE_METRICS__
+          - Cada registro muestra endpoint, elapsed_ms, status y si una lectura
+            simultanea fue reutilizada.
+
+          LIMITE
+          - Este paquete corrige sincronizacion del cliente.
+          - No demuestra todavia capacidad para una clase completa.
+          - Despues de dos estudiantes deben medirse 5, 10 y 25 clientes.
+          EOF
+
+          cat > "$package/VERSION.txt" <<EOF
+          VERSION=CS21A177
+          PURPOSE=Memory Match student detection, immediate specialized state, coalesced reads and latency metrics
+          BASE_BACKEND_VERSION=CS21A176
+          SOURCE_BRANCH=${SOURCE_BRANCH}
+          SOURCE_HEAD_SHA=${SOURCE_HEAD_SHA}
+          TEST_MERGE_SHA=${GITHUB_SHA}
+          QA_PORT=4175
+          APPS_SCRIPT_CHANGE=NO
+          PRODUCTION_TOUCHED=NO
+          EOF
+
+          cat > "$package/EVIDENCIA_CI.txt" <<'EOF'
+          VALIDACIONES AUTOMATICAS REQUERIDAS
+          - Deteccion Memory Match por bandera, codigo o etiqueta.
+          - Ingreso asciende inmediatamente al estado especializado.
+          - Lecturas identicas simultaneas comparten una llamada.
+          - Fetch ajeno a English LAB pasa sin alteracion.
+          - Contrato Memory Match Live preservado.
+          - Frontend staging construido y auditado.
+          - Paquete servido en puerto 4175.
+
+          La prueba autenticada con dos estudiantes continua siendo obligatoria.
+          El PR permanece en borrador y no debe fusionarse ni desplegarse.
+          EOF
+
+          (
+            cd "$package"
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+
+      - name: Audit downloaded-package contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE'
+          test -f "$package/ABRIR_CAMPUS_QA_CS21A177.cmd"
+          test ! -e "$package/INICIAR_QA_STAGING.cmd"
+          test -f "$package/LEEME_PRIMERO_CS21A177.txt"
+          test -f "$package/VERSION.txt"
+          test -f "$package/SHA256SUMS.txt"
+          test -f "$package/src/english_lab_games/english_lab_live_sync_guard_cs21a177.js"
+          test -f "$package/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx"
+          grep -q '127.0.0.1:4175/qa-setup.html' "$package/ABRIR_CAMPUS_QA_CS21A177.cmd"
+          grep -q 'set PORT=4175' "$package/ABRIR_CAMPUS_QA_CS21A177.cmd"
+          grep -q 'VERSION=CS21A177' "$package/VERSION.txt"
+          grep -q "const VERSION = 'CS21A177'" "$package/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx"
+          ! grep -R -q 'AKfycb' "$package/LEEME_PRIMERO_CS21A177.txt" "$package/VERSION.txt"
+          ! grep -q './.nojekyll' "$package/SHA256SUMS.txt"
+          (
+            cd "$package"
+            sha256sum --check SHA256SUMS.txt
+          )
+
+      - name: Smoke package on port 4175
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE'
+          PORT=4175 node "$package/serve.mjs" > /tmp/campus-cs21a177.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:4175/qa-setup.html >/dev/null; then
+              curl --fail --silent http://127.0.0.1:4175/src/english_lab_games/english_lab_live_sync_guard_cs21a177.js >/dev/null
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/campus-cs21a177.log
+          exit 1
+
+      - name: Upload CS21A177 QA package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE
+          path: dist/CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
