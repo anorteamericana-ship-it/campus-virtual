@@ -1,0 +1,34 @@
+name: CS21A177 validate Memory Match student sync
+
+on:
+  pull_request:
+    paths:
+      - 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx'
+      - 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js'
+      - 'src/english_lab_live.jsx'
+      - 'scripts/test_english_lab_live_sync_cs21a177.mjs'
+      - 'scripts/test_english_lab_memory_match_live_cs21a174.mjs'
+      - '.github/workflows/cs21a177-memory-match-student-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-student-sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate student detection and synchronized transport
+        run: node scripts/test_english_lab_live_sync_cs21a177.mjs
+
+      - name: Preserve Memory Match Live contract
+        run: node scripts/test_english_lab_memory_match_live_cs21a174.mjs
