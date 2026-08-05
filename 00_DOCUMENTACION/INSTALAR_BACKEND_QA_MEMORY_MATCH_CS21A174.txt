@@ -1,0 +1,68 @@
+INSTALADOR BACKEND QA · ENGLISH LAB MEMORY MATCH · CS21A174
+==========================================================
+
+USO EXCLUSIVO
+- Proyecto Apps Script QA: CAMPUS_QA_MODULAR_CS21A144_20260729_180204
+- Script ID QA conocido: 1GMHihGwnX_-sIS101rRlUoYpAH2HSKyms8lx6L9z7bjb_45YDn-ph6WD
+- No usar en producción.
+- No borrar, sustituir ni modificar módulos existentes.
+
+ARCHIVO QUE DEBE AGREGARSE COMO MÓDULO NUEVO
+96_English_LAB_Memory_Match_Live_CS21A174
+
+CONTENIDO DEL MÓDULO
+apps_script_patches/english_lab_memory_match_live_cs21a174.gs
+
+PROCEDIMIENTO
+1. Abrir exclusivamente el proyecto Apps Script QA indicado arriba.
+2. Crear un archivo nuevo de tipo Secuencia de comandos llamado:
+   96_English_LAB_Memory_Match_Live_CS21A174
+3. Copiar el archivo .gs completo, sin alterar ninguna línea.
+4. Guardar.
+5. Seleccionar y ejecutar:
+   instalarEnglishLabMemoryMatchCS21A174
+6. Autorizar únicamente dentro del proyecto QA cuando Google lo solicite.
+7. Seleccionar y ejecutar:
+   verificarEnglishLabMemoryMatchCS21A174
+8. El registro debe mostrar un JSON equivalente a:
+   {"ok":true,"version":"CS21A174","database":"ENGLISH_LAB_GAME_DB_CS21A173","b1_u01_pairs":6}
+   El número de pares puede ser mayor, pero nunca menor de 6.
+9. Ir a Implementar > Gestionar implementaciones.
+10. Editar únicamente la Aplicación web QA y crear una Nueva versión.
+11. Descripción sugerida:
+    CS21A174 Memory Match Live QA
+12. Confirmar que la URL /exec QA sea distinta de la URL productiva.
+
+BLOQUEO DE SEGURIDAD
+La URL productiva conocida termina en el deployment:
+AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ
+No usar ni actualizar ese deployment durante esta prueba.
+
+BASE MAESTRA DE CONTENIDO
+Nombre: ENGLISH_LAB_GAME_DB_CS21A173
+Spreadsheet ID: 1MhPACxXkx3C9D9VvXcor8UUsGOGfBzCOI8rQf3jl8Mc
+Hojas requeridas: QUESTION_BANK y ROUND_RULES
+
+VALIDACIONES PREVIAS
+- El módulo es append-only.
+- No contiene vocabulario ni preguntas incrustadas.
+- No contiene una URL /exec.
+- Delega todos los endpoints Live anteriores.
+- No escribe notas oficiales, pagos, certificados ni aprobación.
+- Los cuatro workflows del candidato terminaron SUCCESS antes de preparar esta entrega.
+
+PR DE TRAZABILIDAD
+https://github.com/anorteamericana-ship-it/campus-virtual/pull/46
+
+PRUEBA DESPUÉS DEL DEPLOYMENT
+1. Iniciar el frontend QA CS21A174.
+2. Entrar como QA DOCENTE CONTROLADO.
+3. Abrir #english_lab_live.
+4. Elegir grupo 9926, Memory Match, Unidad 1, modo Individual y 6 pares.
+5. Crear la sala LAB-####.
+6. Iniciar la sala.
+7. Entrar en incógnito con QA ESTUDIANTE AL DÍA.
+8. Validar cuenta regresiva, pares correctos/incorrectos, ranking, proyector y cierre.
+9. Crear después una sala Vocabulary Sprint para confirmar el fallback existente.
+
+No marcar el PR como Ready ni fusionar hasta completar esta prueba manual QA.
