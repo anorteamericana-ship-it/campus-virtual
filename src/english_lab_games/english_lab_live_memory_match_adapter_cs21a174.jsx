@@ -11,8 +11,9 @@
   const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A174';
   const TURN_ENGINE_ID = 'english-lab-turn-engine-cs21a176';
   const TURN_ENGINE_SRC = 'src/english_lab_games/english_lab_turn_engine_cs21a176.js?v=CS21A176';
+  const SYNC_GUARD_ID = 'english-lab-live-sync-cs21a177';
+  const SYNC_GUARD_SRC = 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A177';
   const READ_ONLY_POLL_MS = 4000;
-  const MAX_METRICS = 100;
   const ENDPOINTS = Object.freeze({
     createRoom: 'englishLabMemoryMatchCreateRoom',
     startRoom: 'englishLabMemoryMatchStartRoom',
@@ -21,14 +22,9 @@
     getRoomControl: 'englishLabMemoryMatchGetRoomControl',
     closeRound: 'englishLabMemoryMatchCloseRound',
   });
-  const COALESCED_READ_ENDPOINTS = Object.freeze([
-    ENDPOINTS.getPlayerState,
-    ENDPOINTS.getRoomControl,
-  ]);
 
   let turnEnginePromise = null;
-  let transportInstalled = false;
-  const inFlightReads = new Map();
+  let syncGuardPromise = null;
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -48,31 +44,60 @@
     doc.head.appendChild(link);
   }
 
+  function loadScript(id, src, readyCheck, errorMessage) {
+    const doc = global.document;
+    if (readyCheck()) return Promise.resolve(readyCheck());
+    if (!doc || !doc.head) return Promise.reject(new Error(errorMessage));
+    return new Promise((resolve, reject) => {
+      const existing = doc.getElementById(id);
+      const script = existing || doc.createElement('script');
+      function ready() {
+        const value = readyCheck();
+        if (value) resolve(value);
+        else reject(new Error(errorMessage));
+      }
+      script.addEventListener('load', ready, {once:true});
+      script.addEventListener('error', () => reject(new Error(errorMessage)), {once:true});
+      if (!existing) {
+        script.id = id;
+        script.src = src;
+        script.async = true;
+        doc.head.appendChild(script);
+      } else {
+        const value = readyCheck();
+        if (value) resolve(value);
+      }
+    });
+  }
+
   function ensureTurnEngine() {
     if (global.EnglishLabTurnEngineCS21A176) return Promise.resolve(global.EnglishLabTurnEngineCS21A176);
     if (turnEnginePromise) return turnEnginePromise;
-    const doc = global.document;
-    if (!doc || !doc.head) return Promise.reject(new Error('No se puede cargar el motor de turnos.'));
-    turnEnginePromise = new Promise((resolve, reject) => {
-      const existing = doc.getElementById(TURN_ENGINE_ID);
-      const script = existing || doc.createElement('script');
-      function ready() {
-        if (global.EnglishLabTurnEngineCS21A176) resolve(global.EnglishLabTurnEngineCS21A176);
-        else reject(new Error('El motor de turnos no terminó de cargar.'));
-      }
-      script.addEventListener('load', ready, {once:true});
-      script.addEventListener('error', () => reject(new Error('No se pudo cargar el motor de turnos.')), {once:true});
-      if (!existing) {
-        script.id = TURN_ENGINE_ID;
-        script.src = TURN_ENGINE_SRC;
-        script.async = true;
-        doc.head.appendChild(script);
-      } else if (global.EnglishLabTurnEngineCS21A176) ready();
-    }).catch((error) => {
+    turnEnginePromise = loadScript(
+      TURN_ENGINE_ID,
+      TURN_ENGINE_SRC,
+      () => global.EnglishLabTurnEngineCS21A176 || null,
+      'No se pudo cargar el motor de turnos.'
+    ).catch((error) => {
       turnEnginePromise = null;
       throw error;
     });
     return turnEnginePromise;
+  }
+
+  function ensureSyncGuard() {
+    if (global.EnglishLabLiveSyncCS21A177) return Promise.resolve(global.EnglishLabLiveSyncCS21A177);
+    if (syncGuardPromise) return syncGuardPromise;
+    syncGuardPromise = loadScript(
+      SYNC_GUARD_ID,
+      SYNC_GUARD_SRC,
+      () => global.EnglishLabLiveSyncCS21A177 || null,
+      'No se pudo cargar la protección de sincronización.'
+    ).catch((error) => {
+      syncGuardPromise = null;
+      throw error;
+    });
+    return syncGuardPromise;
   }
 
   function roomGameId(room) {
@@ -96,111 +121,6 @@
     if (room.room && room.room !== room && isMemoryMatchRoom(room.room)) return true;
     if (room.room_package && room.room_package.room && isMemoryMatchRoom(room.room_package.room)) return true;
     return false;
-  }
-
-  function endpointFromRequest(input) {
-    try {
-      const raw = typeof input === 'string' ? input : input && input.url;
-      if (!raw) return '';
-      const base = global.location && global.location.href || 'https://local.invalid/';
-      return clean(new URL(raw, base).searchParams.get('fn'));
-    } catch (_) {
-      return '';
-    }
-  }
-
-  function metricsStore() {
-    if (!Array.isArray(global.__ENGLISH_LAB_LIVE_METRICS__)) {
-      global.__ENGLISH_LAB_LIVE_METRICS__ = [];
-    }
-    return global.__ENGLISH_LAB_LIVE_METRICS__;
-  }
-
-  function recordMetric(metric) {
-    const store = metricsStore();
-    store.push(Object.freeze({...metric, version:VERSION}));
-    if (store.length > MAX_METRICS) store.splice(0, store.length - MAX_METRICS);
-    try {
-      if (typeof global.CustomEvent === 'function' && typeof global.dispatchEvent === 'function') {
-        global.dispatchEvent(new global.CustomEvent('english-lab-live-metric', {detail:metric}));
-      }
-    } catch (_) {}
-  }
-
-  async function responseSnapshot(response) {
-    const copy = response.clone();
-    const body = await copy.text();
-    const headers = [];
-    try { response.headers.forEach((value, name) => headers.push([name, value])); } catch (_) {}
-    return {
-      body,
-      status:response.status,
-      statusText:response.statusText,
-      headers,
-    };
-  }
-
-  function responseFromSnapshot(snapshot) {
-    return new global.Response(snapshot.body, {
-      status:snapshot.status,
-      statusText:snapshot.statusText,
-      headers:snapshot.headers,
-    });
-  }
-
-  function installTransportGuard() {
-    if (transportInstalled || typeof global.fetch !== 'function' || typeof global.Response !== 'function') return false;
-    transportInstalled = true;
-    const originalFetch = global.fetch.bind(global);
-    global.fetch = async function englishLabLiveFetchCS21A177(input, init) {
-      const endpoint = endpointFromRequest(input);
-      const method = upper(init && init.method || 'GET');
-      const isEnglishLab = endpoint.indexOf('englishLab') === 0;
-      const canCoalesce = method === 'POST' && COALESCED_READ_ENDPOINTS.indexOf(endpoint) >= 0;
-      const body = clean(init && init.body);
-      const key = endpoint + '|' + body;
-      const startedAt = Date.now();
-      let shared = false;
-      let task = canCoalesce ? inFlightReads.get(key) : null;
-
-      if (task) {
-        shared = true;
-      } else {
-        task = originalFetch(input, init).then(responseSnapshot);
-        if (canCoalesce) inFlightReads.set(key, task);
-      }
-
-      try {
-        const snapshot = await task;
-        if (isEnglishLab) {
-          recordMetric({
-            endpoint,
-            elapsed_ms:Math.max(0, Date.now() - startedAt),
-            status:snapshot.status,
-            ok:snapshot.status >= 200 && snapshot.status < 400,
-            coalesced:shared,
-            recorded_at:new Date().toISOString(),
-          });
-        }
-        return responseFromSnapshot(snapshot);
-      } catch (error) {
-        if (isEnglishLab) {
-          recordMetric({
-            endpoint,
-            elapsed_ms:Math.max(0, Date.now() - startedAt),
-            status:0,
-            ok:false,
-            coalesced:shared,
-            error:clean(error && error.message || error),
-            recorded_at:new Date().toISOString(),
-          });
-        }
-        throw error;
-      } finally {
-        if (canCoalesce && !shared && inFlightReads.get(key) === task) inFlightReads.delete(key);
-      }
-    };
-    return true;
   }
 
   function roomCode(room, roomPackage) {
@@ -233,6 +153,7 @@
       note: 'Tarjetas palabra, imagen o audio; individual o por equipos.',
       engine: 'MemoryMatchGameCS21A173',
       turnEngine: 'EnglishLabTurnEngineCS21A176',
+      syncGuard: 'EnglishLabLiveSyncCS21A177',
       participationPolicies: ['RANDOM_PLAYER', 'TEAM_ALTERNATING'],
       createEndpoint: ENDPOINTS.createRoom,
       startEndpoint: ENDPOINTS.startRoom,
@@ -274,7 +195,7 @@
 
     React.useEffect(() => {
       let active = true;
-      ensureTurnEngine().then(() => {
+      Promise.all([ensureTurnEngine(), ensureSyncGuard()]).then(() => {
         if (active) setTurnReady(true);
       }).catch((err) => {
         if (active) setError(err && err.message ? err.message : String(err));
@@ -368,7 +289,7 @@
     </div>;
   }
 
-  installTransportGuard();
+  ensureSyncGuard().catch(() => {});
 
   const api = Object.freeze({
     VERSION,
@@ -376,18 +297,17 @@
     ENDPOINTS,
     STYLE_HREF,
     TURN_ENGINE_SRC,
+    SYNC_GUARD_SRC,
     READ_ONLY_POLL_MS,
-    COALESCED_READ_ENDPOINTS,
     ensureStyles,
     ensureTurnEngine,
+    ensureSyncGuard,
     isMemoryMatchRoom,
     roomGameId,
     roomGameLabel,
     packageFromLiveState,
     gameDescriptor,
     submitPayload,
-    installTransportGuard,
-    getMetrics:() => metricsStore().slice(),
     component: MemoryMatchLiveRoundCS21A174,
   });
 
