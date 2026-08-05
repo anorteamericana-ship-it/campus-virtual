@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/english_lab_games/**'
+      - 'assets/english_lab/qa/**'
       - 'styles/english_lab_memory_match_cs21a173.css'
       - 'schemas/english_lab_room_package_cs21a173.schema.json'
       - 'scripts/test_english_lab_memory_match_cs21a173.mjs'
