@@ -60,12 +60,22 @@
 
       function finishRound(eventName, data){
         const now = Date.now();
-        setPkg(current=>({
-          ...current,
-          server_now: now,
-          received_at_ms: now,
-          state:{...current.state,phase:'COMPLETE',ends_at:now}
-        }));
+        setPkg(current=>{
+          const matchedPairIds = Array.from(new Set((current.round?.cards || []).map(card=>card.pair_id).filter(Boolean)));
+          return {
+            ...current,
+            server_now: now,
+            received_at_ms: now,
+            state:{...current.state,phase:'COMPLETE',ends_at:now},
+            shared_state:{
+              ...(current.shared_state || {}),
+              version:'CS21A176',
+              board_version:Number(current.shared_state?.board_version || 0)+1,
+              matched_pair_ids:matchedPairIds,
+              completed:true
+            }
+          };
+        });
         writeLog({event:eventName,...data});
       }
 
