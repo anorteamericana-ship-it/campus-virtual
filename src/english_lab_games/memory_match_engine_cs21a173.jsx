@@ -210,6 +210,7 @@
     const [locked, setLocked] = React.useState(false);
     const [announcement, setAnnouncement] = React.useState('');
     const timeoutSentRef = React.useRef(false);
+    const completionSentRef = React.useRef('');
     const roundStartedLocalRef = React.useRef(Date.now());
 
     const configuredPhase = normalized.state.phase;
@@ -239,6 +240,7 @@
       setLocked(false);
       setAnnouncement('');
       timeoutSentRef.current = false;
+      completionSentRef.current = '';
       roundStartedLocalRef.current = Date.now();
     }, [normalized.round.roundId]);
 
@@ -340,6 +342,9 @@
     const completed = matchedIds.length === cards.length || sharedState.completed === true;
     React.useEffect(() => {
       if (!completed || (props && props.readOnly)) return;
+      const completionKey = normalized.round.roundId || `${normalized.room.roomCode}|COMPLETE`;
+      if (completionSentRef.current === completionKey) return;
+      completionSentRef.current = completionKey;
       setAnnouncement('¡Tablero completado!');
       if (props && typeof props.onComplete === 'function') {
         props.onComplete({
