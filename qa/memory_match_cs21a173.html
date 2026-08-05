@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QA · Memory Match CS21A173</title>
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="../styles/english_lab_memory_match_cs21a173.css?v=CS21A173">
+  <style>
+    body{margin:0;min-height:100vh;background:#EAF0F7;padding:20px;box-sizing:border-box}
+    .qa-toolbar{width:min(1180px,100%);margin:0 auto 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-family:system-ui,sans-serif}
+    .qa-toolbar strong{color:#001E47}.qa-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .qa-actions button{border:1px solid #C7D3E0;background:white;border-radius:10px;padding:8px 12px;font-weight:800;cursor:pointer;color:#001E47}
+    .qa-log{width:min(1180px,100%);margin:12px auto 0;padding:12px;border-radius:12px;background:#001E47;color:white;font:12px/1.5 monospace;white-space:pre-wrap;box-sizing:border-box}
+  </style>
+</head>
+<body>
+  <div class="qa-toolbar">
+    <div><strong>CS21A173 · Preview QA externo</strong><div>El contenido se carga desde un JSON separado; no está dentro del motor.</div></div>
+    <div class="qa-actions"><button id="resetBtn">Reiniciar ronda</button><button id="modeBtn">Cambiar modo</button></div>
+  </div>
+  <div id="root"></div>
+  <pre id="log" class="qa-log">Cargando fixture…</pre>
+
+  <script src="../vendor/react.js"></script>
+  <script src="../vendor/react-dom.js"></script>
+  <script src="../vendor/babel.js"></script>
+  <script src="../src/english_lab_games/english_lab_runtime_cs21a173.js?v=CS21A173"></script>
+  <script type="text/babel" src="../src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A173"></script>
+  <script type="text/babel">
+    const log = document.getElementById('log');
+    let sourcePackage = null;
+    let mode = 'TEAMS';
+    let revision = 0;
+
+    function writeLog(value){ log.textContent = typeof value === 'string' ? value : JSON.stringify(value,null,2); }
+
+    function freshPackage(){
+      const now = Date.now();
+      const copy = JSON.parse(JSON.stringify(sourcePackage));
+      copy.received_at_ms = now;
+      copy.server_now = now;
+      copy.room.mode = mode;
+      copy.state.phase = 'OPEN';
+      copy.state.started_at = now;
+      copy.state.ends_at = now + Number(copy.rules.round_duration_ms || 45000);
+      copy.round.round_id = `QA-R${revision}`;
+      return copy;
+    }
+
+    function App(){
+      const [pkg,setPkg] = React.useState(freshPackage());
+      React.useEffect(()=>{
+        const reset=()=>{ revision += 1; setPkg(freshPackage()); writeLog('Ronda reiniciada.'); };
+        const toggle=()=>{ mode = mode === 'TEAMS' ? 'INDIVIDUAL' : 'TEAMS'; revision += 1; setPkg(freshPackage()); writeLog(`Modo: ${mode}`); };
+        document.getElementById('resetBtn').onclick=reset;
+        document.getElementById('modeBtn').onclick=toggle;
+      },[]);
+      return <MemoryMatchGameCS21A173
+        key={pkg.round.round_id}
+        roomPackage={pkg}
+        player={pkg.player}
+        onReady={data=>writeLog({event:'READY',...data})}
+        onSubmit={data=>writeLog({event:'PAIR_SUBMITTED',payload:data})}
+        onTimeout={data=>writeLog({event:'TIMEOUT',...data})}
+        onComplete={data=>writeLog({event:'COMPLETE',...data})}/>;
+    }
+
+    fetch('./fixtures/memory_match_room_cs21a173.json',{cache:'no-store'})
+      .then(res=>{if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();})
+      .then(data=>{sourcePackage=data;ReactDOM.createRoot(document.getElementById('root')).render(<App/>);})
+      .catch(error=>writeLog(`ERROR: ${error.message}`));
+  </script>
+</body>
+</html>
