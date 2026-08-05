@@ -1,0 +1,29 @@
+name: CS21A176 validate English LAB turn engine
+
+on:
+  pull_request:
+    paths:
+      - 'src/english_lab_games/english_lab_turn_engine_cs21a176.js'
+      - 'schemas/english_lab_turn_state_cs21a176.schema.json'
+      - 'scripts/test_english_lab_turn_engine_cs21a176.mjs'
+      - '.github/workflows/cs21a176-live-turn-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-turn-engine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate shared turn engine contract
+        run: node scripts/test_english_lab_turn_engine_cs21a176.mjs
