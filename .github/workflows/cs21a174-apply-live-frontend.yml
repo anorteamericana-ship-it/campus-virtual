@@ -39,7 +39,7 @@ jobs:
           node scripts/test_english_lab_memory_match_cs21a173.mjs
           node scripts/test_english_lab_memory_match_live_cs21a174.mjs
           git diff --check
-          grep -q "english_lab_memory_match_adapter_cs21a174" src/app.jsx
+          grep -q "english_lab_live_memory_match_adapter_cs21a174" src/app.jsx
           grep -q "englishLabMemoryMatchCreateRoom" src/english_lab_live.jsx
           grep -q "MemoryMatchLiveRoundCS21A174" src/english_lab_live.jsx
 
