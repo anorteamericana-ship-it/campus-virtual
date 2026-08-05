@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>QA · Memory Match CS21A173</title>
   <link rel="stylesheet" href="../../styles/tokens.css">
-  <link rel="stylesheet" href="../../styles/english_lab_memory_match_cs21a173.css?v=CS21A173">
+  <link rel="stylesheet" href="../../styles/english_lab_memory_match_cs21a173.css?v=CS21A173B">
   <style>
     body{margin:0;min-height:100vh;background:#EAF0F7;padding:20px;box-sizing:border-box}
     .qa-toolbar{width:min(1180px,100%);margin:0 auto 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-family:system-ui,sans-serif}
@@ -38,12 +38,13 @@
     function freshPackage(){
       const now = Date.now();
       const copy = JSON.parse(JSON.stringify(sourcePackage));
+      const duration = Math.max(1000, Number(copy.rules.round_duration_ms || 45000));
       copy.received_at_ms = now;
       copy.server_now = now;
       copy.room.mode = mode;
       copy.state.phase = 'OPEN';
       copy.state.started_at = now;
-      copy.state.ends_at = now + Number(copy.rules.round_duration_ms || 45000);
+      copy.state.ends_at = now + duration;
       copy.round.round_id = `QA-R${revision}`;
       return copy;
     }
@@ -56,14 +57,26 @@
         document.getElementById('resetBtn').onclick=reset;
         document.getElementById('modeBtn').onclick=toggle;
       },[]);
+
+      function finishRound(eventName, data){
+        const now = Date.now();
+        setPkg(current=>({
+          ...current,
+          server_now: now,
+          received_at_ms: now,
+          state:{...current.state,phase:'COMPLETE',ends_at:now}
+        }));
+        writeLog({event:eventName,...data});
+      }
+
       return <MemoryMatchGameCS21A173
         key={pkg.round.round_id}
         roomPackage={pkg}
         player={pkg.player}
         onReady={data=>writeLog({event:'READY',...data})}
         onSubmit={data=>writeLog({event:'PAIR_SUBMITTED',payload:data})}
-        onTimeout={data=>writeLog({event:'TIMEOUT',...data})}
-        onComplete={data=>writeLog({event:'COMPLETE',...data})}/>;
+        onTimeout={data=>finishRound('TIMEOUT',data)}
+        onComplete={data=>finishRound('COMPLETE',data)}/>;
     }
 
     fetch('../../assets/english_lab/qa/memory_match_room_cs21a173.json',{cache:'no-store'})
