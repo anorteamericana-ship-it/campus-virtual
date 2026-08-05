@@ -6,6 +6,8 @@ import vm from 'node:vm';
 const root = process.cwd();
 const runtimePath = path.join(root, 'src/english_lab_games/english_lab_runtime_cs21a173.js');
 const enginePath = path.join(root, 'src/english_lab_games/memory_match_engine_cs21a173.jsx');
+const previewPath = path.join(root, 'src/english_lab_games/memory_match_preview_cs21a173.html');
+const fixturePath = path.join(root, 'assets/english_lab/qa/memory_match_room_cs21a173.json');
 const cssPath = path.join(root, 'styles/english_lab_memory_match_cs21a173.css');
 const schemaPath = path.join(root, 'schemas/english_lab_room_package_cs21a173.schema.json');
 
@@ -18,16 +20,25 @@ function ok(message) {
   console.log(`CS21A173 OK: ${message}`);
 }
 
-for (const file of [runtimePath, enginePath, cssPath, schemaPath]) {
+for (const file of [runtimePath, enginePath, previewPath, fixturePath, cssPath, schemaPath]) {
   if (!fs.existsSync(file)) fail(`falta ${path.relative(root, file)}`);
   else ok(`existe ${path.relative(root, file)}`);
+}
+
+for (const duplicate of [
+  path.join(root, 'qa/memory_match_cs21a173.html'),
+  path.join(root, 'qa/fixtures/memory_match_room_cs21a173.json'),
+]) {
+  if (fs.existsSync(duplicate)) fail(`fuente duplicada no permitida: ${path.relative(root, duplicate)}`);
 }
 
 if (process.exitCode) process.exit(process.exitCode);
 
 const runtimeSource = fs.readFileSync(runtimePath, 'utf8');
 const engineSource = fs.readFileSync(enginePath, 'utf8');
+const previewSource = fs.readFileSync(previewPath, 'utf8');
 const cssSource = fs.readFileSync(cssPath, 'utf8');
+const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
 
 const forbiddenRuntime = [
@@ -59,6 +70,16 @@ for (const sample of pedagogicalSamples) {
   }
 }
 if (!process.exitCode) ok('sin preguntas ni vocabulario incrustados');
+
+if (!previewSource.includes("fetch('../../assets/english_lab/qa/memory_match_room_cs21a173.json'")) {
+  fail('preview no carga el fixture externo canónico');
+} else if (previewSource.includes('"apple"') || previewSource.includes('"bicycle"')) {
+  fail('preview contiene contenido duplicado');
+} else ok('preview consume una fuente externa única');
+
+if (fixture?.room?.game_id !== 'MEMORY_MATCH' || !Array.isArray(fixture?.round?.cards) || fixture.round.cards.length < 4) {
+  fail('fixture QA no cumple el contrato mínimo');
+} else ok(`fixture QA externo con ${fixture.round.cards.length} tarjetas`);
 
 const runtimeWindow = {};
 vm.runInNewContext(runtimeSource, {
