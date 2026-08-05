@@ -9,6 +9,7 @@ on:
       - 'schemas/english_lab_room_package_cs21a173.schema.json'
       - 'scripts/test_english_lab_memory_match_cs21a173.mjs'
       - 'scripts/test_english_lab_memory_match_browser_cs21a173.mjs'
+      - 'scripts/test_english_lab_turn_browser_cs21a176.mjs'
       - '.github/workflows/cs21a173-memory-match.yml'
   workflow_dispatch:
 
@@ -53,6 +54,11 @@ jobs:
           QA_BASE_URL: http://127.0.0.1:4173
         run: node scripts/test_english_lab_memory_match_browser_cs21a173.mjs
 
+      - name: Validate shared turns in Chromium
+        env:
+          QA_BASE_URL: http://127.0.0.1:4173
+        run: node scripts/test_english_lab_turn_browser_cs21a176.mjs
+
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,6 +66,7 @@ jobs:
           name: cs21a173-memory-match-${{ github.sha }}
           path: |
             qa-output/cs21a173-memory-match/
+            qa-output/cs21a176-live-turns/
             cs21a173-server.log
           if-no-files-found: warn
           retention-days: 30
