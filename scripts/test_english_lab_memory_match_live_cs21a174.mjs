@@ -22,8 +22,12 @@ if (process.exitCode) process.exit(process.exitCode);
 const backend = fs.readFileSync(backendPath, 'utf8');
 const adapter = fs.readFileSync(adapterPath, 'utf8');
 
+const pedagogicalSamples = [
+  'apple', 'bicycle', 'notebook', 'phone number',
+  'manzana', 'bicicleta', 'cuaderno', 'profesor/a', 'número de teléfono'
+];
 for (const [label, source] of [['backend', backend], ['adapter', adapter]]) {
-  for (const sample of ['apple', 'bicycle', 'teacher', 'student', 'notebook', 'phone number', 'manzana', 'bicicleta', 'cuaderno']) {
+  for (const sample of pedagogicalSamples) {
     if (source.toLowerCase().includes(sample.toLowerCase())) fail(`${label} contiene contenido pedagógico hardcodeado: ${sample}`);
   }
   if (/AKfycb|script\.google\.com\/macros/i.test(source)) fail(`${label} contiene deployment de Apps Script.`);
@@ -69,11 +73,10 @@ if (/\bfetch\s*\(|SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(ad
 
 if (!/function isMemoryMatchRoom\(room\)[\s\S]*roomGameId\(room\) === GAME_ID/.test(adapter)) {
   fail('detección de sala Memory Match no está ligada exclusivamente a GAME_ID');
-} else if (!/target|VOCAB_SPRINT/.test(adapter) && /GAME_ID\s*=\s*'VOCAB_SPRINT'/.test(adapter)) {
+} else if (/GAME_ID\s*=\s*'VOCAB_SPRINT'/.test(adapter)) {
   fail('adapter captura juegos existentes');
 } else ok('adapter queda limitado a MEMORY_MATCH');
 
-// Compilación del Apps Script con stubs mínimos.
 const backendContext = {
   console,
   JSON,
