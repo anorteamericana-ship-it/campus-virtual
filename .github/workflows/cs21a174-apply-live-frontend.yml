@@ -6,6 +6,7 @@ on:
       - feature/cs21a174-memory-match-live-backend-2
     paths:
       - 'scripts/apply_cs21a174_live_frontend.mjs'
+      - 'scripts/test_english_lab_memory_match_live_cs21a174.mjs'
       - '.github/workflows/cs21a174-apply-live-frontend.yml'
 
 permissions:
