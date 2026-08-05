@@ -1,0 +1,50 @@
+{
+  "version": "CS21A173-QA",
+  "server_now": "2026-08-05T00:30:00.000Z",
+  "room": {
+    "room_code": "LAB-QA173",
+    "game_id": "MEMORY_MATCH",
+    "mode": "TEAMS",
+    "level_id": "B1"
+  },
+  "round": {
+    "round_id": "QA-R1",
+    "index": 1,
+    "title": "Vocabulario visual · Unidad 1",
+    "cards": [
+      {"card_id":"c1","pair_id":"p1","face_type":"TEXT","label":"apple"},
+      {"card_id":"c2","pair_id":"p1","face_type":"TEXT","label":"manzana"},
+      {"card_id":"c3","pair_id":"p2","face_type":"TEXT","label":"bicycle"},
+      {"card_id":"c4","pair_id":"p2","face_type":"TEXT","label":"bicicleta"},
+      {"card_id":"c5","pair_id":"p3","face_type":"TEXT","label":"teacher"},
+      {"card_id":"c6","pair_id":"p3","face_type":"TEXT","label":"profesor/a"},
+      {"card_id":"c7","pair_id":"p4","face_type":"TEXT","label":"student"},
+      {"card_id":"c8","pair_id":"p4","face_type":"TEXT","label":"estudiante"},
+      {"card_id":"c9","pair_id":"p5","face_type":"TEXT","label":"notebook"},
+      {"card_id":"c10","pair_id":"p5","face_type":"TEXT","label":"cuaderno"},
+      {"card_id":"c11","pair_id":"p6","face_type":"TEXT","label":"phone number"},
+      {"card_id":"c12","pair_id":"p6","face_type":"TEXT","label":"número de teléfono"}
+    ]
+  },
+  "rules": {
+    "auto_start_delay_ms": 5000,
+    "round_duration_ms": 45000,
+    "reveal_duration_ms": 3000,
+    "auto_next_delay_ms": 2000,
+    "discussion_duration_ms": 10000,
+    "team_size": 5,
+    "pause_allowed": true,
+    "teacher_override": true
+  },
+  "state": {
+    "phase": "OPEN",
+    "started_at": "2026-08-05T00:30:00.000Z",
+    "ends_at": "2099-08-05T00:30:45.000Z",
+    "active_team_id": "team-blue"
+  },
+  "teams": [
+    {"team_id":"team-blue","name":"Equipo Azul","points":0,"members":["Ana","Carlos","Sofía","Daniel","María"]},
+    {"team_id":"team-red","name":"Equipo Rojo","points":0,"members":["Luis","Camila","José","Valeria","Mateo"]}
+  ],
+  "player": {"player_id":"QA-STU-001","team_id":"team-blue"}
+}
