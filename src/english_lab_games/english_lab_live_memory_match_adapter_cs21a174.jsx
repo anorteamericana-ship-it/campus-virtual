@@ -7,6 +7,8 @@
 
   const VERSION = 'CS21A174';
   const GAME_ID = 'MEMORY_MATCH';
+  const STYLE_ID = 'english-lab-memory-match-cs21a174';
+  const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A174';
   const ENDPOINTS = Object.freeze({
     createRoom: 'englishLabMemoryMatchCreateRoom',
     startRoom: 'englishLabMemoryMatchStartRoom',
@@ -15,6 +17,16 @@
     getRoomControl: 'englishLabMemoryMatchGetRoomControl',
     closeRound: 'englishLabMemoryMatchCloseRound',
   });
+
+  function ensureStyles() {
+    const doc = global.document;
+    if (!doc || !doc.head || doc.getElementById(STYLE_ID)) return;
+    const link = doc.createElement('link');
+    link.id = STYLE_ID;
+    link.rel = 'stylesheet';
+    link.href = STYLE_HREF;
+    doc.head.appendChild(link);
+  }
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -77,6 +89,7 @@
   }
 
   function MemoryMatchLiveRoundCS21A174(props) {
+    ensureStyles();
     const state = props && props.state || {};
     const room = state.room || props.room || {};
     const player = state.player || props.player || null;
@@ -136,6 +149,8 @@
     VERSION,
     GAME_ID,
     ENDPOINTS,
+    STYLE_HREF,
+    ensureStyles,
     isMemoryMatchRoom,
     roomGameId,
     packageFromLiveState,
