@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anorteamerican.com/schemas/english_lab_room_package_cs21a173.schema.json",
+  "title": "English LAB Room Package CS21A173",
+  "description": "Contrato compacto enviado al navegador. No incluye bancos completos ni datos académicos ajenos a la sala.",
+  "type": "object",
+  "required": ["version", "room", "round", "rules", "state"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "server_now": {"type": ["string", "number"]},
+    "received_at_ms": {"type": "number"},
+    "room": {
+      "type": "object",
+      "required": ["room_code", "game_id", "mode", "level_id"],
+      "additionalProperties": true,
+      "properties": {
+        "room_code": {"type": "string", "pattern": "^LAB-[0-9]{4,8}$"},
+        "game_id": {"const": "MEMORY_MATCH"},
+        "mode": {"enum": ["INDIVIDUAL", "TEAMS", "WHOLE_CLASS"]},
+        "level_id": {"enum": ["B1", "B2", "I1", "I2"]}
+      }
+    },
+    "round": {
+      "type": "object",
+      "required": ["round_id", "index", "cards"],
+      "additionalProperties": true,
+      "properties": {
+        "round_id": {"type": "string", "minLength": 1},
+        "index": {"type": "integer", "minimum": 0},
+        "title": {"type": "string"},
+        "cards": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "required": ["card_id", "pair_id", "face_type"],
+            "additionalProperties": true,
+            "properties": {
+              "card_id": {"type": "string", "minLength": 1},
+              "pair_id": {"type": "string", "minLength": 1},
+              "face_type": {"enum": ["TEXT", "IMAGE", "AUDIO"]},
+              "label": {"type": "string"},
+              "image_url": {"type": "string"},
+              "audio_url": {"type": "string"},
+              "alt": {"type": "string"}
+            },
+            "allOf": [
+              {
+                "if": {"properties": {"face_type": {"const": "IMAGE"}}},
+                "then": {"required": ["image_url", "alt"]}
+              },
+              {
+                "if": {"properties": {"face_type": {"const": "AUDIO"}}},
+                "then": {"required": ["audio_url"]}
+              }
+            ]
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "required": ["round_duration_ms"],
+      "additionalProperties": true,
+      "properties": {
+        "auto_start_delay_ms": {"type": "integer", "minimum": 0, "maximum": 60000},
+        "round_duration_ms": {"type": "integer", "minimum": 1000, "maximum": 300000},
+        "reveal_duration_ms": {"type": "integer", "minimum": 0, "maximum": 60000},
+        "auto_next_delay_ms": {"type": "integer", "minimum": 0, "maximum": 60000},
+        "discussion_duration_ms": {"type": "integer", "minimum": 0, "maximum": 120000},
+        "team_size": {"type": "integer", "minimum": 1, "maximum": 99},
+        "pause_allowed": {"type": ["boolean", "string"]},
+        "teacher_override": {"type": ["boolean", "string"]}
+      }
+    },
+    "state": {
+      "type": "object",
+      "required": ["phase", "ends_at"],
+      "additionalProperties": true,
+      "properties": {
+        "phase": {"enum": ["LOBBY", "COUNTDOWN", "OPEN", "REVEAL", "COMPLETE", "PAUSED"]},
+        "started_at": {"type": ["string", "number"]},
+        "ends_at": {"type": ["string", "number"]},
+        "active_team_id": {"type": "string"}
+      }
+    },
+    "teams": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["team_id", "name"],
+        "additionalProperties": true,
+        "properties": {
+          "team_id": {"type": "string"},
+          "name": {"type": "string"},
+          "points": {"type": "number"},
+          "members": {"type": "array", "maxItems": 20}
+        }
+      }
+    },
+    "player": {"type": ["object", "null"]}
+  }
+}
