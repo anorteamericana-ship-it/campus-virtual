@@ -73,7 +73,12 @@ const F96_LAZY = {
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/teacher_views.jsx?v=F98.4Z6CS21A142','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS19F'],
-  english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20H'],
+  english_lab_live: [
+    'src/english_lab_games/english_lab_runtime_cs21a173.js?v=CS21A173',
+    'src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A174',
+    'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A174',
+    'src/english_lab_live.jsx?v=F98.4Z6CS21A174'
+  ],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6CS19F'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],
   admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94'],

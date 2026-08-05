@@ -151,12 +151,17 @@
     const timeoutSentRef = React.useRef(false);
     const roundStartedLocalRef = React.useRef(Date.now());
 
-    const phase = normalized.state.phase;
+    const configuredPhase = normalized.state.phase;
+    const countdownRemainingMs = configuredPhase === 'COUNTDOWN'
+      ? normalized.clock.remainingMs(normalized.state.startedAt)
+      : 0;
+    const phase = configuredPhase === 'COUNTDOWN' && countdownRemainingMs <= 0 ? 'OPEN' : configuredPhase;
+    const timerTarget = phase === 'COUNTDOWN' ? normalized.state.startedAt : normalized.state.endsAt;
     const active = phase === 'OPEN' || phase === 'COUNTDOWN';
-    const remainingMs = useServerTimer(normalized.clock, normalized.state.endsAt, active);
+    const remainingMs = useServerTimer(normalized.clock, timerTarget, active);
     const isTeamMode = normalized.room.mode === 'TEAMS';
     const currentPlayer = props && props.player || normalized.player || null;
-    const canPlay = phase === 'OPEN' && !locked && remainingMs > 0;
+    const canPlay = phase === 'OPEN' && !(props && props.readOnly) && !locked && remainingMs > 0;
 
     React.useEffect(() => {
       setOpenIds([]);
@@ -259,7 +264,7 @@
         <div className="elmm-room-chip">{normalized.room.roomCode || 'SALA'}</div>
       </header>
 
-      <TimerBar remainingMs={remainingMs} durationMs={normalized.rules.roundDurationMs}/>
+      <TimerBar remainingMs={remainingMs} durationMs={phase==='COUNTDOWN'?normalized.rules.autoStartDelayMs:normalized.rules.roundDurationMs}/>
       <TeamPanel teams={normalized.teams} activeTeamId={normalized.state.activeTeamId} player={currentPlayer}/>
 
       <div className="elmm-status-row">

@@ -126,7 +126,8 @@
         onReady={props.onReady}
         onSubmit={handleSubmit}
         onTimeout={props.onTimeout}
-        onComplete={props.onComplete}/>
+        onComplete={props.onComplete}
+        readOnly={!!props.readOnly}/>
     </div>;
   }
 

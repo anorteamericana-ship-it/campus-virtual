@@ -3,8 +3,9 @@
 /* global React, PageHeader */
 (function(){
   const SCRIPT_URL_LIVE = window.APPS_SCRIPT_URL;
-  const VERSION = 'F98.4-Z6-CS20H';
+  const VERSION = 'F98.4-Z6-CS21A174';
   const GAME_TYPES = [
+    { code:'MEMORY_MATCH', label:'Memory Match', area:'Vocabulario visual', note:'Tarjetas palabra, imagen o audio; individual o por equipos.' },
     { code:'VOCAB_SPRINT', label:'Vocabulary Sprint', area:'Vocabulario', note:'Rondas rápidas de vocabulario.' },
     { code:'WORD_MATCH', label:'Word Match', area:'Vocabulario', note:'Parejas palabra / significado.' },
     { code:'PHRASE_BUILDER', label:'Phrase Builder', area:'Speaking', note:'Construcción guiada de frases.' },
@@ -355,14 +356,20 @@
     const round=upper(room.round_status || room.ROUND_STATUS);
     const total=Number(room.question_count || room.QUESTION_COUNT || questions.length || 0) || questions.length;
     const currentIndex=Number(room.current_index || room.CURRENT_INDEX || 0) || 0;
+    const memoryMatch = !!(window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(room));
+    const memoryPackage = data?.room_package || null;
 
     const load=React.useCallback(async()=>{
       if(!roomId) return;
       setLoading(true); setError('');
-      try{ const r=await postLive('englishLabLiveGetRoomControl',{room_id:roomId},45000); setData(r); }
+      try{
+        const endpoint = memoryMatch ? 'englishLabMemoryMatchGetRoomControl' : 'englishLabLiveGetRoomControl';
+        const r=await postLive(endpoint,{room_id:roomId},45000);
+        setData(r);
+      }
       catch(e){ setError(e.message || String(e)); }
       finally{ setLoading(false); }
-    },[roomId]);
+    },[roomId,memoryMatch]);
     React.useEffect(()=>{ load(); },[load]);
 
     async function action(fn,payload={}){
@@ -382,6 +389,15 @@
     const closedOrStarted = status === 'LIVE' || status === 'CLOSED';
 
     if(projector){
+      if(memoryMatch && memoryPackage && typeof MemoryMatchLiveRoundCS21A174 === 'function'){
+        return <div style={{minHeight:'calc(100vh - 40px)',padding:18,background:'#EAF0F7',borderRadius:24}}>
+          <div style={{display:'flex',justifyContent:'space-between',gap:10,marginBottom:12,flexWrap:'wrap'}}>
+            <button className="btn btn-primary" type="button" onClick={()=>setProjector(false)}>Volver al control</button>
+            <button className="btn btn-ghost" type="button" onClick={load}>Actualizar</button>
+          </div>
+          <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/>
+        </div>;
+      }
       return <LiveProjectionView room={room} question={current || questions[Math.max(0,nextIndex-1)]} leaderboard={leaderboard} teamLeaderboard={teamLeaderboard} stats={data?.stats || {}} onExit={()=>setProjector(false)} onRefresh={load} loading={loading}/>;
     }
 
@@ -416,17 +432,17 @@
       <ShareRoomPanel room={room}/>
       <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 280px',gap:14,alignItems:'start'}} className="elive-control-grid">
         <div style={{display:'grid',gap:12}}>
-          {loading ? <Alert>Cargando control de ronda…</Alert> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>} 
+          {loading ? <Alert>Cargando control de ronda…</Alert> : memoryMatch && memoryPackage && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>}
           <div className="card" style={{padding:14,borderRadius:18,background:'#FFF'}}>
             <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}}>
-              {canStart && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action('englishLabLiveStartRoom')}>Iniciar sala</button>}
-              {canLaunch && <button className="btn btn-primary" type="button" disabled={busy||!total} onClick={()=>action('englishLabLiveLaunchQuestion',{question_index:nextIndex})}>{closedOrStarted?'Lanzar siguiente pregunta':'Lanzar pregunta 1'}</button>}
-              {canCloseRound && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action('englishLabLiveCloseRound')}>Cerrar pregunta</button>}
+              {canStart && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action(memoryMatch?'englishLabMemoryMatchStartRoom':'englishLabLiveStartRoom')}>{memoryMatch?'Iniciar Memory Match':'Iniciar sala'}</button>}
+              {!memoryMatch && canLaunch && <button className="btn btn-primary" type="button" disabled={busy||!total} onClick={()=>action('englishLabLiveLaunchQuestion',{question_index:nextIndex})}>{closedOrStarted?'Lanzar siguiente pregunta':'Lanzar pregunta 1'}</button>}
+              {canCloseRound && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action(memoryMatch?'englishLabMemoryMatchCloseRound':'englishLabLiveCloseRound')}>{memoryMatch?'Cerrar ronda':'Cerrar pregunta'}</button>}
               {status==='CLOSED' && <span style={{padding:'10px 14px',borderRadius:999,background:'#F3F4F6',color:'#475467',fontWeight:900}}>Sala cerrada</span>}
             </div>
             <div style={{marginTop:10,textAlign:'center',fontSize:12,color:'#667085',lineHeight:1.45}}>CS20H agrega ingreso estudiantil pulido y mensaje listo para compartir. Sigue siendo solo práctica, no nota oficial.</div>
           </div>
-          {status==='CLOSED' && <FinalResultsCard room={room} rows={leaderboard} teams={teamLeaderboard} compact={true}/>} 
+          {status==='CLOSED' && <FinalResultsCard room={room} rows={leaderboard} teams={teamLeaderboard} compact={true}/>}
         </div>
         <aside style={{display:'grid',gap:12}}>
           <div className="card" style={{padding:14,borderRadius:18,background:'#FFF'}}>
@@ -522,6 +538,7 @@
     const teamLeaderboard=Array.isArray(state?.team_leaderboard) ? state.team_leaderboard : [];
     const myRank=state?.my_rank || null;
     const qIndex=Number(question?.index || room.current_index || 0) || 0;
+    const isMemoryMatch=!!(window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(room));
 
     React.useEffect(()=>{ setSelected(''); setQuestionStartedAt(Date.now()); },[qIndex, answer?.answer_value]);
     const loadState=React.useCallback(async(pid=playerId, code=roomCode)=>{
@@ -529,12 +546,16 @@
       if(!rc) return;
       setLoading(true); setError('');
       try{
-        const r=await postLive('englishLabLiveGetPlayerState',{room_code:rc, player_id:pid || '', player_name:playerName || '', cod_estudiante:studentCode || ''},35000);
+        const payload={room_code:rc, player_id:pid || '', player_name:playerName || '', cod_estudiante:studentCode || ''};
+        let r=await postLive(isMemoryMatch?'englishLabMemoryMatchGetPlayerState':'englishLabLiveGetPlayerState',payload,35000);
+        if(!isMemoryMatch && window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(r?.room)){
+          r=await postLive('englishLabMemoryMatchGetPlayerState',payload,35000);
+        }
         setState(r); setJoined(!!(r.player && r.player.cod_estudiante));
         if(r.player && r.player.cod_estudiante){ setPlayerId(r.player.cod_estudiante); try{ localStorage.setItem('elive_player_'+rc, r.player.cod_estudiante); }catch(_){} }
       }catch(e){ setError(e.message || String(e)); }
       finally{ setLoading(false); }
-    },[playerId,roomCode,playerName,studentCode]);
+    },[playerId,roomCode,playerName,studentCode,isMemoryMatch]);
 
     React.useEffect(()=>{
       const rc=publicCode(roomCode);
@@ -640,8 +661,8 @@
         </div>
         <LiveLeaderboard rows={leaderboard} teams={teamLeaderboard} compact={true}/>
       </div>}
-      {upper(room.status)==='CLOSED' ? <FinalResultsCard room={room} rows={leaderboard} teams={teamLeaderboard} myRank={myRank} compact={false}/> : !question ? <Alert tone="warn">Esperando que el docente lance una pregunta…</Alert> : <PlayerQuestionCard question={question} answer={answer} selected={selected} onSelect={setSelected} onSubmit={submitAnswer} busy={busy} reveal={reveal} />}
-      {question && !canAnswer && !answer && upper(room.round_status)==='OPEN' && <div style={{marginTop:12}}><Alert tone="warn">Esta pregunta ya no acepta respuestas para tu usuario o está siendo actualizada.</Alert></div>}
+      {upper(room.status)==='CLOSED' ? <FinalResultsCard room={room} rows={leaderboard} teams={teamLeaderboard} myRank={myRank} compact={false}/> : isMemoryMatch && state?.room_package && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={state} postLive={postLive} onRefresh={()=>loadState()} /> : !question ? <Alert tone="warn">Esperando que el docente lance una pregunta…</Alert> : <PlayerQuestionCard question={question} answer={answer} selected={selected} onSelect={setSelected} onSubmit={submitAnswer} busy={busy} reveal={reveal} />}
+      {!isMemoryMatch && question && !canAnswer && !answer && upper(room.round_status)==='OPEN' && <div style={{marginTop:12}}><Alert tone="warn">Esta pregunta ya no acepta respuestas para tu usuario o está siendo actualizada.</Alert></div>}
     </div>;
   }
 
@@ -678,7 +699,9 @@
       if(!selectedGroup) { setError('No hay grupo seleccionado.'); return; }
       setBusy(true); setError(''); setCreated(null);
       try{
-        const r = await postLive('englishLabLiveCreateRoom', { cod_grupo:codGrupo, nivel:levelId(selectedGroup), game_code:selectedGame.code, question_count:Number(count)||8, mode, unit }, 45000);
+        const endpoint = selectedGame.code==='MEMORY_MATCH' ? 'englishLabMemoryMatchCreateRoom' : 'englishLabLiveCreateRoom';
+        const payload = { cod_grupo:codGrupo, nivel:levelId(selectedGroup), game_code:selectedGame.code, question_count:selectedGame.code==='MEMORY_MATCH'?1:(Number(count)||8), pair_count:selectedGame.code==='MEMORY_MATCH'?(Number(count)||6):undefined, mode, unit };
+        const r = await postLive(endpoint, payload, 45000);
         setCreated(r.room || r);
         setControlRoom(r.room || r);
         await load();
@@ -725,9 +748,9 @@
                     {MODES.map(m=><option key={m.code} value={m.code}>{m.label}</option>)}
                   </select>
                 </label>
-                <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>Cantidad de preguntas
+                <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>{selectedGame.code==='MEMORY_MATCH'?'Cantidad de pares':'Cantidad de preguntas'}
                   <select value={count} onChange={e=>setCount(Number(e.target.value)||8)} style={{height:42,border:'1px solid var(--line,#D0D5DD)',borderRadius:12,padding:'0 12px',fontWeight:800,background:'#FFF'}}>
-                    {[5,8,10,12,15].map(n=><option key={n} value={n}>{n} preguntas</option>)}
+                    {(selectedGame.code==='MEMORY_MATCH'?[3,4,6,8,10,12]:[5,8,10,12,15]).map(n=><option key={n} value={n}>{n} {selectedGame.code==='MEMORY_MATCH'?'pares':'preguntas'}</option>)}
                   </select>
                 </label>
               </div>
