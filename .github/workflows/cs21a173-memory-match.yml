@@ -1,0 +1,30 @@
+name: CS21A173 validate Memory Match engine
+
+on:
+  pull_request:
+    paths:
+      - 'src/english_lab_games/**'
+      - 'styles/english_lab_memory_match_cs21a173.css'
+      - 'schemas/english_lab_room_package_cs21a173.schema.json'
+      - 'scripts/test_english_lab_memory_match_cs21a173.mjs'
+      - '.github/workflows/cs21a173-memory-match.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-memory-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate canonical engine contract
+        run: node scripts/test_english_lab_memory_match_cs21a173.mjs
