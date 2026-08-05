@@ -1,0 +1,29 @@
+name: CS21A174 validate Memory Match Live contract
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/english_lab_memory_match_live_cs21a174.gs'
+      - 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx'
+      - 'scripts/test_english_lab_memory_match_live_cs21a174.mjs'
+      - '.github/workflows/cs21a174-memory-match-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-memory-match-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate backend and frontend adapter
+        run: node scripts/test_english_lab_memory_match_live_cs21a174.mjs
