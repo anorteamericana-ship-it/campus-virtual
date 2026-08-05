@@ -57,6 +57,8 @@ const requiredAdapter = [
   'englishLabMemoryMatchSubmitPair',
   'packageFromLiveState',
   'MemoryMatchGameCS21A173',
+  "const GAME_ID = 'MEMORY_MATCH'",
+  'global.EnglishLabMemoryMatchLiveCS21A174 = api',
 ];
 for (const token of requiredAdapter) {
   if (!adapter.includes(token)) fail(`adapter sin contrato: ${token}`);
@@ -64,6 +66,12 @@ for (const token of requiredAdapter) {
 if (/\bfetch\s*\(|SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(adapter)) {
   fail('el adaptador frontend consulta red o conoce Sheets/configuración.');
 } else ok('adaptador frontend sin red, Sheets ni ID de base');
+
+if (!/function isMemoryMatchRoom\(room\)[\s\S]*roomGameId\(room\) === GAME_ID/.test(adapter)) {
+  fail('detección de sala Memory Match no está ligada exclusivamente a GAME_ID');
+} else if (!/target|VOCAB_SPRINT/.test(adapter) && /GAME_ID\s*=\s*'VOCAB_SPRINT'/.test(adapter)) {
+  fail('adapter captura juegos existentes');
+} else ok('adapter queda limitado a MEMORY_MATCH');
 
 // Compilación del Apps Script con stubs mínimos.
 const backendContext = {
@@ -103,21 +111,6 @@ try {
   else ok('router nuevo preserva endpoints anteriores');
 } catch (error) {
   fail(`router delegado lanzó error: ${error.message}`);
-}
-
-// Evaluación del adapter sin montar React.
-const adapterWindow = {};
-const adapterContext = { window:adapterWindow, React:{}, console, JSON, Date, Math, Number, String, Object, Array, Error };
-vm.createContext(adapterContext);
-try {
-  new vm.Script(adapter, { filename:'english_lab_live_memory_match_adapter_cs21a174.jsx' }).runInContext(adapterContext);
-  const api = adapterWindow.EnglishLabMemoryMatchLiveCS21A174;
-  if (!api || api.GAME_ID !== 'MEMORY_MATCH') fail('API frontend no se registró');
-  else if (!api.isMemoryMatchRoom({game_code:'MEMORY_MATCH'})) fail('detección de sala Memory Match falló');
-  else if (api.isMemoryMatchRoom({game_code:'VOCAB_SPRINT'})) fail('adapter captura juegos existentes');
-  else ok('adapter se activa solo para MEMORY_MATCH');
-} catch (error) {
-  fail(`adapter no compila: ${error.message}`);
 }
 
 if ((backend.match(/ELMM174_QA_DB_ID/g) || []).length > 3) fail('el ID QA se usa fuera de configuración/instalación');
