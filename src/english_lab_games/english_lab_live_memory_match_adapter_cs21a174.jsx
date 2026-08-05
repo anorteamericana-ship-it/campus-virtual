@@ -7,7 +7,7 @@
   const VERSION = 'CS21A176';
   const GAME_ID = 'MEMORY_MATCH';
   const STYLE_ID = 'english-lab-memory-match-cs21a174';
-  const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A176';
+  const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A174';
   const TURN_ENGINE_ID = 'english-lab-turn-engine-cs21a176';
   const TURN_ENGINE_SRC = 'src/english_lab_games/english_lab_turn_engine_cs21a176.js?v=CS21A176';
   const ENDPOINTS = Object.freeze({
