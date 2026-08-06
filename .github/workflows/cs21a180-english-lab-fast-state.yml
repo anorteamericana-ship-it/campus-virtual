@@ -1,26 +1,31 @@
-name: CS21A180-CS21A182 English LAB candidate
+name: CS21A180-CS21A183 English LAB candidate
 
 on:
   pull_request:
     paths:
       - 'apps_script_patches/97_ACTUALIZACION_QA.gs'
       - 'apps_script_patches/98_ACTUALIZACION_QA_CS21A181.gs'
+      - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
       - 'src/app.jsx'
       - 'src/runtime_config.js'
       - 'src/english_lab_live.jsx'
       - 'src/english_lab_ux_cs21a181.js'
       - 'src/english_lab_visual_cleanup_cs21a182.js'
+      - 'src/english_lab_sentence_order_cs21a183.js'
       - 'scripts/test_english_lab_update_qa_cs21a176.mjs'
       - 'scripts/test_english_lab_live_loader_cs21a178.mjs'
       - 'scripts/test_english_lab_fast_state_cs21a180.mjs'
       - 'scripts/test_english_lab_ux_words_cs21a181.mjs'
       - 'scripts/test_english_lab_visual_cleanup_cs21a182.mjs'
+      - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a180.mjs'
       - 'scripts/build_qa_package_cs21a181.mjs'
       - 'scripts/build_qa_package_cs21a182.mjs'
+      - 'scripts/build_qa_package_cs21a183.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_ESTADO_RAPIDO_CS21A180.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_UX_CS21A181.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_LIMPIEZA_VISUAL_CS21A182.md'
+      - '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_CS21A183.md'
       - '.github/workflows/cs21a180-english-lab-fast-state.yml'
   workflow_dispatch:
 
@@ -30,7 +35,7 @@ permissions:
 jobs:
   validate-package:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout exact ref
         uses: actions/checkout@v4
@@ -40,13 +45,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate backend, synchronization and visual contracts
+      - name: Validate backend, synchronization, visual and game contracts
         run: |
           set -euo pipefail
           node scripts/test_english_lab_update_qa_cs21a176.mjs
           node scripts/test_english_lab_fast_state_cs21a180.mjs
           node scripts/test_english_lab_ux_words_cs21a181.mjs
           node scripts/test_english_lab_visual_cleanup_cs21a182.mjs
+          node scripts/test_english_lab_sentence_order_cs21a183.mjs
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
           node scripts/test_english_lab_live_loader_cs21a178.mjs
@@ -68,13 +74,13 @@ jobs:
       - name: Start isolated QA server
         shell: bash
         run: |
-          python3 -m http.server 4178 --bind 127.0.0.1 > cs21a182-server.log 2>&1 &
-          echo $! > cs21a182-server.pid
+          python3 -m http.server 4178 --bind 127.0.0.1 > cs21a183-server.log 2>&1 &
+          echo $! > cs21a183-server.pid
           for attempt in {1..30}; do
             curl -fsS http://127.0.0.1:4178/campus.html >/dev/null && exit 0
             sleep 0.5
           done
-          cat cs21a182-server.log
+          cat cs21a183-server.log
           exit 1
 
       - name: Validate Memory Match boards and student synchronization
@@ -85,57 +91,58 @@ jobs:
           node scripts/test_english_lab_turn_browser_cs21a176.mjs
           node scripts/test_english_lab_student_browser_cs21a178.mjs
 
-      - name: Build and verify CS21A182 candidate package
+      - name: Build and verify CS21A183 candidate package
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TEST_MERGE_SHA: ${{ github.sha }}
           SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          node scripts/build_qa_package_cs21a182.mjs
-          node scripts/build_qa_package_cs21a182.mjs --verify
+          node scripts/build_qa_package_cs21a183.mjs
+          node scripts/build_qa_package_cs21a183.mjs --verify
           cd dist
-          zip -X -q -r CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL.zip CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL
-          sha256sum CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL.zip > CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL.zip.sha256
+          zip -X -q -r CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
+          sha256sum CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip > CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
 
-      - name: Smoke packaged frontend on port 4180
+      - name: Smoke packaged frontend on port 4181
         shell: bash
         run: |
           set -euo pipefail
-          if test -f cs21a182-server.pid; then kill "$(cat cs21a182-server.pid)" 2>/dev/null || true; fi
-          package='dist/CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL'
-          PORT=4180 node "$package/serve.mjs" > cs21a182-package-server.log 2>&1 &
+          if test -f cs21a183-server.pid; then kill "$(cat cs21a183-server.pid)" 2>/dev/null || true; fi
+          package='dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE'
+          PORT=4181 node "$package/serve.mjs" > cs21a183-package-server.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4180/qa-setup.html >/dev/null; then
-              curl --fail --silent --output /tmp/cs21a182-runtime.js http://127.0.0.1:4180/src/runtime_config.js
-              curl --fail --silent --output /tmp/cs21a182-cleanup.js http://127.0.0.1:4180/src/english_lab_visual_cleanup_cs21a182.js
-              curl --fail --silent --output /tmp/cs21a182-ux.js http://127.0.0.1:4180/src/english_lab_ux_cs21a181.js
-              grep -q 'english_lab_visual_cleanup_cs21a182.js?v=F98.4Z6CS21A182' /tmp/cs21a182-runtime.js
-              grep -q 'Banco pedagógico' /tmp/cs21a182-cleanup.js
-              grep -q 'La sala docente está en English LAB Live' /tmp/cs21a182-cleanup.js
-              grep -q 'href="#english_lab_live"' /tmp/cs21a182-cleanup.js
-              grep -q 'enforceAdminMode' /tmp/cs21a182-cleanup.js
-              grep -q 'Palabras sugeridas' /tmp/cs21a182-ux.js
+            if curl --fail --silent http://127.0.0.1:4181/qa-setup.html >/dev/null; then
+              curl --fail --silent --output /tmp/cs21a183-runtime.js http://127.0.0.1:4181/src/runtime_config.js
+              curl --fail --silent --output /tmp/cs21a183-game.js http://127.0.0.1:4181/src/english_lab_sentence_order_cs21a183.js
+              curl --fail --silent --output /tmp/cs21a183-backend.gs http://127.0.0.1:4181/BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs
+              curl --fail --silent --output /tmp/cs21a183-cleanup.js http://127.0.0.1:4181/src/english_lab_visual_cleanup_cs21a182.js
+              grep -q 'english_lab_sentence_order_cs21a183.js?v=F98.4Z6CS21A183' /tmp/cs21a183-runtime.js
+              grep -q 'Ordena la oración' /tmp/cs21a183-game.js
+              grep -q 'englishLabSentenceOrderSubmit' /tmp/cs21a183-game.js
+              grep -q "ELSO183_VERSION = 'CS21A183'" /tmp/cs21a183-backend.gs
+              grep -q 'sentence_order_live_supported:true' /tmp/cs21a183-backend.gs
+              grep -q 'La sala docente está en English LAB Live' /tmp/cs21a183-cleanup.js
               exit 0
             fi
             sleep 0.5
           done
-          cat cs21a182-package-server.log
+          cat cs21a183-package-server.log
           exit 1
 
-      - name: Upload CS21A182 candidate package and evidence
+      - name: Upload CS21A183 candidate package and evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL
+          name: CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
           path: |
-            dist/CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL.zip
-            dist/CAMPUS_QA_CS21A182_CANDIDATO_ENGLISH_LAB_LIMPIEZA_VISUAL.zip.sha256
+            dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip
+            dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
             qa-output/cs21a176-live-turns/
             qa-output/cs21a178-student-sync/
-            cs21a182-server.log
-            cs21a182-package-server.log
+            cs21a183-server.log
+            cs21a183-package-server.log
           if-no-files-found: warn
           retention-days: 30
