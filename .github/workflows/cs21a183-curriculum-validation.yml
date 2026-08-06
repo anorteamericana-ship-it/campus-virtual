@@ -1,0 +1,115 @@
+name: CS21A183 Apollo curriculum validation
+
+on:
+  push:
+    branches:
+      - 'feat/cs21a183-sentence-order-live'
+    paths:
+      - 'src/runtime_config.js'
+      - 'src/english_lab_sentence_order_cs21a183.js'
+      - 'src/english_lab_sentence_order_curriculum_guard_cs21a183.js'
+      - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
+      - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
+      - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
+      - 'scripts/test_english_lab_curriculum_guard_cs21a183.mjs'
+      - 'scripts/build_qa_package_cs21a183.mjs'
+      - 'scripts/build_qa_package_cs21a183_curriculum.mjs'
+      - '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_CS21A183.md'
+      - '00_DOCUMENTACION/ENGLISH_LAB_VALIDACION_CURRICULAR_CS21A183.md'
+      - '.github/workflows/cs21a183-curriculum-validation.yml'
+  pull_request:
+    paths:
+      - 'src/runtime_config.js'
+      - 'src/english_lab_sentence_order_cs21a183.js'
+      - 'src/english_lab_sentence_order_curriculum_guard_cs21a183.js'
+      - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
+      - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
+      - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
+      - 'scripts/test_english_lab_curriculum_guard_cs21a183.mjs'
+      - 'scripts/build_qa_package_cs21a183.mjs'
+      - 'scripts/build_qa_package_cs21a183_curriculum.mjs'
+      - '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_CS21A183.md'
+      - '00_DOCUMENTACION/ENGLISH_LAB_VALIDACION_CURRICULAR_CS21A183.md'
+      - '.github/workflows/cs21a183-curriculum-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-curriculum-chain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate CS21A181 to CS21A183 contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_fast_state_cs21a180.mjs
+          node scripts/test_english_lab_ux_words_cs21a181.mjs
+          node scripts/test_english_lab_visual_cleanup_cs21a182.mjs
+          node scripts/test_english_lab_sentence_order_cs21a183.mjs
+          node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_live_loader_cs21a178.mjs
+          node scripts/test_atomic_lazy_routes_cs21a179.mjs
+          node scripts/audit_delivery_surface.mjs
+          node scripts/audit_component_ownership_cs21a151.mjs
+
+      - name: Build and verify curriculum-guarded QA package
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_MERGE_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_package_cs21a183_curriculum.mjs
+          node scripts/build_qa_package_cs21a183_curriculum.mjs --verify
+          cd dist
+          zip -X -q -r CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
+          sha256sum CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip > CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
+
+      - name: Smoke curriculum files in packaged frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE'
+          PORT=4181 node "$package/serve.mjs" > cs21a183-curriculum-package.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4181/qa-setup.html >/dev/null; then
+              curl --fail --silent --output /tmp/runtime.js http://127.0.0.1:4181/src/runtime_config.js
+              curl --fail --silent --output /tmp/guard.js http://127.0.0.1:4181/src/english_lab_sentence_order_curriculum_guard_cs21a183.js
+              grep -q 'english_lab_sentence_order_curriculum_guard_cs21a183.js?v=F98.4Z6CS21A183CURRICULUM' /tmp/runtime.js
+              grep -q 'Tema oficial de la unidad' /tmp/guard.js
+              grep -q 'curriculum_source_required' /tmp/guard.js
+              test -f "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
+              grep -q 'curriculum_units:units.length' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
+              grep -q 'active_gram_02_items:rows.length' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat cs21a183-curriculum-package.log
+          exit 1
+
+      - name: Upload guarded candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE_CURRICULUM
+          path: |
+            dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip
+            dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
+            cs21a183-curriculum-package.log
+          if-no-files-found: warn
+          retention-days: 30
