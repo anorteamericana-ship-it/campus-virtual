@@ -1,0 +1,57 @@
+name: CS21A181 apply English LAB UX and editable pairs
+
+on:
+  push:
+    branches:
+      - fix/cs21a181-english-lab-ux-words
+    paths:
+      - 'scripts/apply_cs21a181.mjs'
+      - 'scripts/test_english_lab_ux_words_cs21a181.mjs'
+      - '.github/workflows/apply-cs21a181-english-lab-ux.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout CS21A181 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/cs21a181-english-lab-ux-words
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Apply exact CS21A181 transformations
+        run: node scripts/apply_cs21a181.mjs
+
+      - name: Validate CS21A181 contract
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_ux_words_cs21a181.mjs
+          node scripts/test_english_lab_fast_state_cs21a180.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_live_loader_cs21a178.mjs
+          node scripts/test_atomic_lazy_routes_cs21a179.mjs
+
+      - name: Commit generated source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No source changes were necessary.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/english_lab_live.jsx src/app.jsx apps_script_patches/97_ACTUALIZACION_QA.gs scripts/test_english_lab_fast_state_cs21a180.mjs
+          git commit -m 'CS21A181 aplica carga visible y parejas editables'
+          git push origin HEAD:fix/cs21a181-english-lab-ux-words
