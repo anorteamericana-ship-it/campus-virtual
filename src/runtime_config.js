@@ -193,3 +193,17 @@
   script.setAttribute('data-campus-module', 'english-lab-sentence-curriculum-guard-cs21a183');
   (doc.head || doc.documentElement).appendChild(script);
 })(window, document);
+
+// CS21A183 · Pulido visual mínimo de la tarjeta final.
+// Se limita a normalizar una clase CSS dentro del contenedor Sentence Order.
+(function loadEnglishLabSentenceOrderPolishCS21A183(global, doc) {
+  'use strict';
+  if (!global || !doc || global.__ENGLISH_LAB_SENTENCE_ORDER_POLISH_CS21A183_LOADER__) return;
+  global.__ENGLISH_LAB_SENTENCE_ORDER_POLISH_CS21A183_LOADER__ = true;
+  var script = doc.createElement('script');
+  script.src = 'src/english_lab_sentence_order_polish_cs21a183.js?v=F98.4Z6CS21A183POLISH';
+  script.async = false;
+  script.defer = false;
+  script.setAttribute('data-campus-module', 'english-lab-sentence-order-polish-cs21a183');
+  (doc.head || doc.documentElement).appendChild(script);
+})(window, document);
