@@ -57,16 +57,20 @@ function build() {
   copy(path.join(root, 'src', 'english_lab_sentence_order_polish_cs21a183.js'), 'src/english_lab_sentence_order_polish_cs21a183.js');
   copy(path.join(root, 'apps_script_patches', '99B_VALIDACION_CURRICULAR_CS21A183.gs'), 'BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs');
   copy(path.join(root, '00_DOCUMENTACION', 'ENGLISH_LAB_VALIDACION_CURRICULAR_CS21A183.md'), 'INFORME_VALIDACION_CURRICULAR_CS21A183.md');
+  copy(path.join(root, '00_DOCUMENTACION', 'INSTALACION_APPS_SCRIPT_QA_CS21A183.md'), 'INSTALACION_APPS_SCRIPT_QA_CS21A183.md');
 
-  appendOnce('LEEME_PRIMERO_CS21A183.txt', 'GUARDIA CURRICULAR APOLLO', `GUARDIA CURRICULAR APOLLO
--------------------------
-8. Cree después un archivo nuevo: 99B_VALIDACION_CURRICULAR_CS21A183.gs.
-9. Copie BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs completo.
-10. Ejecute nuevamente verificarActualizacionQA().
-11. Además de version=CS21A183, debe devolver curriculum_guard=true, curriculum_units=64, active_gram_02_items=320 y five_items_per_unit=true.
-12. En el frontend, cargue sugerencias y confirme el tema oficial antes de crear la sala.
-13. La cantidad válida por unidad es de 3 a 5 oraciones.
-14. Un reintento duplicado debe conservar tablero, respuesta y ranking completos.`);
+  appendOnce('LEEME_PRIMERO_CS21A183.txt', 'INSTALACIÓN APPS SCRIPT EN ARCHIVO ÚNICO', `INSTALACIÓN APPS SCRIPT EN ARCHIVO ÚNICO
+------------------------------------------
+8. Lea primero INSTALACION_APPS_SCRIPT_QA_CS21A183.md.
+9. En Apps Script QA cree UN SOLO archivo llamado 99_CS21A183_SENTENCE_ORDER_COMPLETO.
+10. Pegue completo BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs.
+11. Inmediatamente debajo pegue completo BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs.
+12. Coloque ese archivo después de 98_ACTUALIZACION_QA_CS21A181.
+13. No cree 99 y 99B como dos archivos separados dentro de Apps Script.
+14. Ejecute verificarActualizacionQA().
+15. Debe devolver curriculum_guard=true, curriculum_units=64, active_gram_02_items=320, five_items_per_unit=true y duplicate_response_preserves_state=true.
+16. En el frontend, cargue sugerencias y confirme el tema oficial antes de crear la sala.
+17. La cantidad válida por unidad es de 3 a 5 oraciones.`);
 
   appendOnce('REGISTRO_PRUEBA_AUTENTICADA_CS21A183.txt', 'VALIDACIÓN CURRICULAR APOLLO', `VALIDACIÓN CURRICULAR APOLLO
 [ ] Apollo reporta 64 unidades activas.
@@ -83,7 +87,8 @@ function build() {
 [ ] El selector no ofrece más de 5 oraciones.
 [ ] La sala guarda curriculum_verified=true y source_game_id.
 [ ] Un doble envío conserva el estado completo y se marca duplicate=true.
-[ ] La tarjeta de respuesta final conserva el estilo elso183-card.`);
+[ ] La tarjeta de respuesta final conserva el estilo elso183-card.
+[ ] 99 y 99B fueron pegados dentro de un único archivo Apps Script después de 98.`);
 
   appendOnce('VERSION.txt', 'CURRICULUM_GUARD=', `CURRICULUM_GUARD=CS21A183-CURRICULUM
 CURRICULUM_UNITS_REQUIRED=64
@@ -92,6 +97,7 @@ GRAM_02_ITEMS_PER_UNIT=5
 SENTENCE_COUNT_LIMITS=3-5
 DUPLICATE_RESPONSE_PRESERVES_STATE=YES
 VISUAL_POLISH=F98.4-Z6-CS21A183-POLISH
+APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98
 CURRICULUM_QA_STATUS=PENDING`);
 
   writeManifest();
@@ -107,6 +113,7 @@ function verify() {
     'BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs',
     'INFORME_CAMBIOS_CS21A183.md',
     'INFORME_VALIDACION_CURRICULAR_CS21A183.md',
+    'INSTALACION_APPS_SCRIPT_QA_CS21A183.md',
     'LEEME_PRIMERO_CS21A183.txt',
     'REGISTRO_PRUEBA_AUTENTICADA_CS21A183.txt',
     'VERSION.txt',
@@ -117,6 +124,8 @@ function verify() {
   const guard = fs.readFileSync(path.join(target, 'src', 'english_lab_sentence_order_curriculum_guard_cs21a183.js'), 'utf8');
   const polish = fs.readFileSync(path.join(target, 'src', 'english_lab_sentence_order_polish_cs21a183.js'), 'utf8');
   const backend = fs.readFileSync(path.join(target, 'BACKEND_QA', '99B_VALIDACION_CURRICULAR_CS21A183.gs'), 'utf8');
+  const install = fs.readFileSync(path.join(target, 'INSTALACION_APPS_SCRIPT_QA_CS21A183.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(target, 'LEEME_PRIMERO_CS21A183.txt'), 'utf8');
   const version = fs.readFileSync(path.join(target, 'VERSION.txt'), 'utf8');
   assert.match(runtime, /english_lab_sentence_order_curriculum_guard_cs21a183\.js\?v=F98\.4Z6CS21A183CURRICULUM/);
   assert.match(runtime, /english_lab_sentence_order_polish_cs21a183\.js\?v=F98\.4Z6CS21A183POLISH/);
@@ -128,10 +137,14 @@ function verify() {
   assert.match(backend, /active_gram_02_items:rows\.length/);
   assert.match(backend, /five_items_per_unit:exactFive/);
   assert.match(backend, /duplicate_response_preserves_state:true/);
+  assert.match(install, /un solo archivo Apps Script/i);
+  assert.match(install, /99_CS21A183_SENTENCE_ORDER_COMPLETO/);
+  assert.match(readme, /No cree 99 y 99B como dos archivos separados/);
   assert.match(version, /CURRICULUM_UNITS_REQUIRED=64/);
   assert.match(version, /GRAM_02_ITEMS_REQUIRED=320/);
   assert.match(version, /SENTENCE_COUNT_LIMITS=3-5/);
   assert.match(version, /DUPLICATE_RESPONSE_PRESERVES_STATE=YES/);
+  assert.match(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98/);
 
   const manifest = new Map();
   for (const line of fs.readFileSync(path.join(target, 'SHA256SUMS.txt'), 'utf8').trim().split(/\r?\n/)) {
@@ -156,6 +169,7 @@ function verify() {
     sentenceCountLimits:'3-5',
     duplicateResponsePreservesState:true,
     visualPolish:'F98.4-Z6-CS21A183-POLISH',
+    appsScriptInstallMode:'SINGLE_FILE_99_THEN_99B_AFTER_98',
     authenticatedQa:'PENDING',
   }, null, 2));
 }
