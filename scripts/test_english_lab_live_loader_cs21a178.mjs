@@ -18,8 +18,8 @@ assert.ok(adapterIndex > guardIndex, 'El adaptador debe cargar después del guar
 assert.ok(viewIndex > adapterIndex, 'La vista debe cargar después del guard y del adaptador.');
 assert.match(files[guardIndex], /[?&]v=CS21A178(?:$|&)/);
 assert.match(files[adapterIndex], /[?&]v=CS21A178(?:$|&)/);
-assert.match(files[viewIndex], /[?&]v=F98\.4Z6CS21A178(?:$|&)/);
-assert.match(live, /const VERSION = 'F98\.4-Z6-CS21A178'/);
+assert.match(files[viewIndex], /[?&]v=F98\.4Z6CS21A180(?:$|&)/);
+assert.match(live, /const VERSION = 'F98\.4-Z6-CS21A180'/);
 assert.match(live, /Boolean\(myRank \|\| leaderboard\.length \|\| teamLeaderboard\.length\)/);
 
 console.log(JSON.stringify({
@@ -27,5 +27,5 @@ console.log(JSON.stringify({
   order: files,
   guardBeforeAdapter: true,
   guardBeforeStudentView: true,
-  cacheVersion: 'CS21A178',
+  cacheVersion: 'CS21A180',
 }, null, 2));

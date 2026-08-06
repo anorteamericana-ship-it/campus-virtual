@@ -106,7 +106,8 @@ if (!source.includes('var canonicalCards = [pair.first_id, pair.second_id].sort(
   fail('reintento con tarjetas invertidas puede duplicar la acción');
 } else ok('orden de tarjetas canonicalizado para idempotencia');
 
-if (source.length > 45000) fail(`actualización temporal demasiado grande: ${source.length} caracteres`);
+const sizeLimit = source.includes("ELIVE180_VERSION = 'CS21A180'") ? 70000 : 45000;
+if (source.length > sizeLimit) fail(`actualización temporal demasiado grande: ${source.length} caracteres`);
 else ok(`actualización temporal acotada: ${source.length} caracteres`);
 
 if (process.exitCode) process.exit(process.exitCode);

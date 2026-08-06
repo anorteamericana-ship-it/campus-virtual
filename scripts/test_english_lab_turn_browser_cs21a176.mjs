@@ -7,7 +7,9 @@ const base = process.env.QA_BASE_URL || 'http://127.0.0.1:4173';
 const outputDir = path.join(process.cwd(), 'qa-output', 'cs21a176-live-turns');
 fs.mkdirSync(outputDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
+const launchOptions = {headless:true};
+if (process.env.PLAYWRIGHT_EXECUTABLE_PATH) launchOptions.executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const browser = await chromium.launch(launchOptions);
 const page = await browser.newPage({ viewport: { width: 1800, height: 1100 } });
 page.on('console', message => {
   if (message.type() === 'error') console.error('BROWSER CONSOLE:', message.text());

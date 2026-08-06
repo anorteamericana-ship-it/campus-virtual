@@ -78,7 +78,7 @@ const F96_LAZY = {
     'src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A174',
     'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A178',
     'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A178',
-    'src/english_lab_live.jsx?v=F98.4Z6CS21A178'
+    'src/english_lab_live.jsx?v=F98.4Z6CS21A180'
   ],
   vista_docente: ['src/vista_docente.jsx?v=F98.4Z6CS19F'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R'],

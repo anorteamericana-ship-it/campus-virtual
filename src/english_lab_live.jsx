@@ -3,7 +3,7 @@
 /* global React, PageHeader */
 (function(){
   const SCRIPT_URL_LIVE = window.APPS_SCRIPT_URL;
-  const VERSION = 'F98.4-Z6-CS21A178';
+  const VERSION = 'F98.4-Z6-CS21A180';
   const GAME_TYPES = [
     { code:'MEMORY_MATCH', label:'Memory Match', area:'Vocabulario visual', note:'Tarjetas palabra, imagen o audio; individual o por equipos.' },
     { code:'VOCAB_SPRINT', label:'Vocabulary Sprint', area:'Vocabulario', note:'Rondas rápidas de vocabulario.' },
@@ -356,7 +356,7 @@
     const round=upper(room.round_status || room.ROUND_STATUS);
     const total=Number(room.question_count || room.QUESTION_COUNT || questions.length || 0) || questions.length;
     const currentIndex=Number(room.current_index || room.CURRENT_INDEX || 0) || 0;
-    const memoryMatch = !!(window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(room));
+    const memoryMatch = !!(data?.memory_match || (window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(room)));
     const memoryPackage = data?.room_package || null;
 
     const load=React.useCallback(async()=>{
@@ -398,7 +398,7 @@
           <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/>
         </div>;
       }
-      return <LiveProjectionView room={room} question={current || questions[Math.max(0,nextIndex-1)]} leaderboard={leaderboard} teamLeaderboard={teamLeaderboard} stats={data?.stats || {}} onExit={()=>setProjector(false)} onRefresh={load} loading={loading}/>;
+      return <LiveProjectionView room={room} question={memoryMatch ? null : (current || questions[Math.max(0,nextIndex-1)])} leaderboard={leaderboard} teamLeaderboard={teamLeaderboard} stats={data?.stats || {}} onExit={()=>setProjector(false)} onRefresh={load} loading={loading}/>;
     }
 
     return <div style={{display:'grid',gap:14}}>
@@ -432,7 +432,7 @@
       <ShareRoomPanel room={room}/>
       <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 280px',gap:14,alignItems:'start'}} className="elive-control-grid">
         <div style={{display:'grid',gap:12}}>
-          {loading ? <Alert>Cargando control de ronda…</Alert> : memoryMatch && memoryPackage && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>}
+          {loading ? <Alert>Cargando control de ronda…</Alert> : memoryMatch && memoryPackage && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/> : memoryMatch ? <Alert tone="warn">Memory Match esta listo. Inicie la sala para cargar el tablero compartido.</Alert> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>}
           <div className="card" style={{padding:14,borderRadius:18,background:'#FFF'}}>
             <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}}>
               {canStart && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action(memoryMatch?'englishLabMemoryMatchStartRoom':'englishLabLiveStartRoom')}>{memoryMatch?'Iniciar Memory Match':'Iniciar sala'}</button>}

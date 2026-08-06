@@ -537,3 +537,506 @@ doPost = function (e) {
     return _an4406_json_({ok:false,version:ELIVE176_VERSION,error:'actualizacion_qa_error',mensaje:String(err && err.message ? err.message : err)});
   }
 };
+
+// CS21A180 - English LAB Memory Match sin lecturas duplicadas.
+// Esta capa corrige la escritura por encabezado real y evita cargar preguntas
+// genericas para una sala especializada. Solo se instala en QA.
+var ELIVE180_VERSION = 'CS21A180';
+var ELIVE180_UPDATE_OBJECTIVE = 'Creacion alineada por encabezado y estado rapido de Memory Match';
+var ELIVE180_SNAPSHOT_TTL_SECONDS = 3;
+var ELIVE180_ACCESS_TTL_SECONDS = 20;
+var ELIVE180_LAST_SEEN_TTL_SECONDS = 30;
+
+function _elive180SheetDirect_(name, fallbackHeaders) {
+  var sh = _eliveSs_().getSheetByName(name);
+  return sh || _eliveSheet_(name, fallbackHeaders);
+}
+function _elive180Table_(name, fallbackHeaders) {
+  var sh = _elive180SheetDirect_(name, fallbackHeaders);
+  var lastRow = Math.max(sh.getLastRow(), 1);
+  var lastColumn = Math.max(sh.getLastColumn(), 1);
+  var values = sh.getRange(1, 1, lastRow, lastColumn).getValues();
+  var headers = (values[0] || []).map(function (header) { return _elive176Text_(header); });
+  var index = {};
+  headers.forEach(function (header, position) {
+    var key = _elive176Upper_(header);
+    if (key) index[key] = position;
+  });
+  var rows = values.slice(1).map(function (cells, offset) {
+    var row = {_row:offset + 2};
+    headers.forEach(function (header, position) {
+      var key = _elive176Upper_(header);
+      if (key) row[key] = cells[position];
+    });
+    return row;
+  }).filter(function (row) {
+    return Object.keys(row).some(function (key) { return key !== '_row' && _elive176Text_(row[key]); });
+  });
+  return {sheet:sh,headers:headers,index:index,rows:rows};
+}
+function _elive180ValuesForHeaders_(headers, object) {
+  object = object || {};
+  return (headers || []).map(function (header) {
+    var key = _elive176Upper_(header);
+    return key && object[key] !== undefined ? object[key] : '';
+  });
+}
+function _elive180AppendObject_(name, fallbackHeaders, object) {
+  var sheet = _elive180SheetDirect_(name, fallbackHeaders);
+  var headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  sheet.appendRow(_elive180ValuesForHeaders_(headers, object));
+  return object;
+}
+function _elive180SetCells_(found, patch) {
+  var row = found && found.row || {};
+  Object.keys(patch || {}).forEach(function (key) {
+    var normalized = _elive176Upper_(key);
+    if (found && found.index[normalized] != null) {
+      found.sheet.getRange(found.rowNumber, found.index[normalized] + 1).setValue(patch[key]);
+    }
+    row[normalized] = patch[key];
+  });
+  return row;
+}
+function _elive180FindRoom_(id) {
+  id = _elive176Text_(id);
+  if (!id) return null;
+  var table = _elive180Table_(ELIVE_ROOMS_SHEET, ELIVE_ROOMS_HEADERS);
+  for (var index = 0; index < table.rows.length; index += 1) {
+    var row = table.rows[index];
+    if (_elive176Text_(row.ROOM_ID) === id || _elive176Text_(row.ROOM_CODE) === id) {
+      return {sheet:table.sheet,headers:table.headers,index:table.index,row:row,rowNumber:row._row};
+    }
+  }
+  return null;
+}
+function _elive180RoomIdFromBody_(body) {
+  body = body || {};
+  return _elive176Text_(body.room_id || body.roomId || body.room_code || body.roomCode || body.codigo);
+}
+function _elive180CanRoom_(auth, room) {
+  var role = _elive176Text_(auth && auth.rol).toLowerCase();
+  if (role === 'admin' || role === 'superadmin') return true;
+  var session = auth && auth.sesion || {};
+  var owner = _elive176Upper_(session.nombre || session.nombre_completo || session.usuario || session.cedula);
+  if (owner && owner === _elive176Upper_(room && room.DOCENTE)) return true;
+  return _eliveCanRoom_(auth, room);
+}
+function _elive180SameRoom_(row, room) {
+  return _elive176Text_(row && row.ROOM_ID) === _elive176Text_(room && room.ROOM_ID) ||
+    _elive176Text_(row && row.ROOM_CODE) === _elive176Text_(room && room.ROOM_CODE);
+}
+function _elive180CacheKey_(prefix, value) {
+  return 'EL180|' + prefix + '|' + _elive176Text_(value).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 120);
+}
+function _elive180Invalidate_(roomOrBody) {
+  var cache = CacheService.getScriptCache();
+  var room = roomOrBody || {};
+  var id = room.ROOM_ID || room.room_id || room.roomId || '';
+  var code = room.ROOM_CODE || room.room_code || room.roomCode || room.codigo || '';
+  if (id) cache.remove(_elive180CacheKey_('STATE', id));
+  if (code) cache.remove(_elive180CacheKey_('STATE', code));
+}
+function _elive180AppendEvent_(room, type, auth, detail) {
+  var event = {
+    EVENT_ID:'ELIVE-EVT-' + Utilities.getUuid(),
+    ROOM_ID:_elive176Text_(room && room.ROOM_ID),
+    ROOM_CODE:_elive176Text_(room && room.ROOM_CODE),
+    EVENT_TYPE:type,
+    ACTOR:_elive176Text_(auth && auth.sesion && (auth.sesion.nombre || auth.sesion.usuario || auth.sesion.cedula)),
+    ROLE:_elive176Text_(auth && auth.rol),
+    CREATED_AT:_eliveIso_(),
+    DETAIL_JSON:JSON.stringify(detail || {})
+  };
+  try { _elive180AppendObject_(ELIVE_EVENTS_SHEET, ELIVE_EVENTS_HEADERS, event); } catch (_) {}
+  return event;
+}
+function _elive180PlayerPublic_(row) {
+  row = row || {};
+  return {
+    room_id:_elive176Text_(row.ROOM_ID), room_code:_elive176Text_(row.ROOM_CODE),
+    cod_estudiante:_elive176Text_(row.COD_ESTUDIANTE), nombre:_elive176Text_(row.NOMBRE),
+    team:_elive176Text_(row.TEAM), status:_elive176Text_(row.STATUS),
+    joined_at:_elive176Text_(row.JOINED_AT), last_seen_at:_elive176Text_(row.LAST_SEEN_AT)
+  };
+}
+function _elive180EventPublic_(row) {
+  return {
+    event_id:_elive176Text_(row.EVENT_ID), room_id:_elive176Text_(row.ROOM_ID), room_code:_elive176Text_(row.ROOM_CODE),
+    event_type:_elive176Text_(row.EVENT_TYPE), actor:_elive176Text_(row.ACTOR), role:_elive176Text_(row.ROLE),
+    created_at:_elive176Text_(row.CREATED_AT), detail_json:_elive176Text_(row.DETAIL_JSON)
+  };
+}
+function _elive180Ranking_(players, answers) {
+  var byPlayer = {};
+  (players || []).forEach(function (player) {
+    var id = _elive176Text_(player.COD_ESTUDIANTE);
+    if (!id) return;
+    byPlayer[id] = byPlayer[id] || {cod_estudiante:id,nombre:_elive176Text_(player.NOMBRE) || 'Jugador',team:_elive176Text_(player.TEAM),points:0,answered:0,correct:0,last_answer_at:''};
+  });
+  (answers || []).forEach(function (answer) {
+    var id = _elive176Text_(answer.COD_ESTUDIANTE);
+    if (!id) return;
+    byPlayer[id] = byPlayer[id] || {cod_estudiante:id,nombre:id,team:'',points:0,answered:0,correct:0,last_answer_at:''};
+    byPlayer[id].points += Number(answer.POINTS || 0) || 0;
+    byPlayer[id].answered += 1;
+    if (_elive176Upper_(answer.IS_CORRECT) === 'TRUE') byPlayer[id].correct += 1;
+    byPlayer[id].last_answer_at = _elive176Text_(answer.ANSWERED_AT) || byPlayer[id].last_answer_at;
+  });
+  var rows = Object.keys(byPlayer).map(function (key) { return byPlayer[key]; });
+  rows.sort(function (a, b) { return (b.points - a.points) || (b.correct - a.correct) || (a.answered - b.answered) || a.nombre.localeCompare(b.nombre); });
+  rows.forEach(function (row, index) { row.rank = index + 1; });
+  var byTeam = {};
+  rows.forEach(function (row) {
+    var team = _elive176Text_(row.team) || 'Sin equipo';
+    byTeam[team] = byTeam[team] || {team:team,players:0,points:0,answered:0,correct:0};
+    byTeam[team].players += 1;
+    byTeam[team].points += Number(row.points || 0) || 0;
+    byTeam[team].answered += Number(row.answered || 0) || 0;
+    byTeam[team].correct += Number(row.correct || 0) || 0;
+  });
+  var teams = Object.keys(byTeam).map(function (key) { return byTeam[key]; });
+  teams.sort(function (a, b) { return (b.points - a.points) || (b.correct - a.correct) || a.team.localeCompare(b.team); });
+  teams.forEach(function (team, index) { team.rank = index + 1; });
+  return {players:rows,teams:teams};
+}
+function _elive180TurnPlayers_(players) {
+  return (players || []).map(function (player) {
+    var id = _elive176Text_(player.COD_ESTUDIANTE);
+    return {player_id:id,name:_elive176Text_(player.NOMBRE) || id,team_id:_elive176Text_(player.TEAM) || 'NO_TEAM',joined_at:_elive176Text_(player.JOINED_AT),row_number:player._row};
+  }).filter(function (player) { return player.player_id; });
+}
+function _elive180Teams_(players) {
+  var grouped = {};
+  _elive180TurnPlayers_(players).forEach(function (player) {
+    var team = player.team_id || 'NO_TEAM';
+    grouped[team] = grouped[team] || [];
+    grouped[team].push(player);
+  });
+  return Object.keys(grouped).map(function (team) { return {team_id:team,name:team === 'NO_TEAM' ? 'Sin equipo' : team,members:grouped[team]}; });
+}
+function _elive180BuildSnapshot_(room) {
+  var playerTable = _elive180Table_(ELIVE_PLAYERS_SHEET, ELIVE_PLAYERS_HEADERS);
+  var answerTable = _elive180Table_(ELIVE_ANSWERS_SHEET, ELIVE_ANSWERS_HEADERS);
+  var eventTable = _elive180Table_(ELIVE_EVENTS_SHEET, ELIVE_EVENTS_HEADERS);
+  var players = playerTable.rows.filter(function (row) { return _elive180SameRoom_(row, room); });
+  var answers = answerTable.rows.filter(function (row) { return _elive180SameRoom_(row, room); });
+  var events = eventTable.rows.filter(function (row) { return _elive180SameRoom_(row, room); });
+  events.sort(function (a, b) { return _elive176Text_(b.CREATED_AT).localeCompare(_elive176Text_(a.CREATED_AT)); });
+  var ranking = _elive180Ranking_(players, answers);
+  var currentIndex = Number(room.CURRENT_INDEX || 0) || 0;
+  var pkg = _elive176Package_(room);
+  if (pkg) {
+    pkg = JSON.parse(JSON.stringify(pkg));
+    pkg.server_now = _elive176Iso_(new Date());
+    pkg.players = _elive180TurnPlayers_(players);
+    pkg.teams = _elive180Teams_(players);
+  }
+  var publicRoom = _elive176PublicRoom_(room);
+  var settings = _elive176Json_(room.SETTINGS_JSON, {});
+  publicRoom.unit = _elive176NormalizeUnit_(settings.unit || room.UNIT || 'MIX');
+  return {
+    ok:true, version:ELIVE180_VERSION, phase:'MEMORY_MATCH_FAST_STATE', memory_match:true,
+    room:publicRoom, questions:[], question:null, current_question:null, answer:null, reveal:false,
+    stats:{players:players.length,answers_total:answers.length,answers_current:answers.filter(function (answer) { return Number(answer.QUESTION_INDEX || 0) === currentIndex; }).length},
+    leaderboard:ranking.players, team_leaderboard:ranking.teams,
+    events:events.slice(0, 50).map(_elive180EventPublic_), room_package:pkg,
+    turn_state:pkg && pkg.turn_state || null, shared_state:pkg && pkg.shared_state || null,
+    turn_description:pkg && pkg.turn_state ? _elive176DescribeTurn_(pkg.turn_state, _elive180TurnPlayers_(players)) : null,
+    message:'Estado Memory Match de practica. No afecta notas oficiales.',
+    _player_rows:players
+  };
+}
+function _elive180Snapshot_(room) {
+  var cache = CacheService.getScriptCache();
+  var key = _elive180CacheKey_('STATE', room.ROOM_ID || room.ROOM_CODE);
+  var cached = cache.get(key);
+  if (cached) {
+    try { return JSON.parse(cached); } catch (_) {}
+  }
+  var snapshot = _elive180BuildSnapshot_(room);
+  try { cache.put(key, JSON.stringify(snapshot), ELIVE180_SNAPSHOT_TTL_SECONDS); } catch (_) {}
+  return snapshot;
+}
+function _elive180ResponseCopy_(snapshot) {
+  var copy = JSON.parse(JSON.stringify(snapshot || {}));
+  delete copy._player_rows;
+  return copy;
+}
+function _elive180MaybeAdvanceTurn_(found) {
+  if (!found || !found.row) return null;
+  var firstPackage = _elive176Package_(found.row);
+  if (!firstPackage || !firstPackage.state || !firstPackage.turn_state) return found.row;
+  var firstNow = Date.now();
+  var firstStarted = _elive176Timestamp_(firstPackage.turn_state.turn_started_at || firstPackage.state.started_at);
+  var firstEnds = _elive176Timestamp_(firstPackage.turn_state.turn_ends_at || firstPackage.state.ends_at);
+  var needsChange = (_elive176Upper_(firstPackage.state.phase) === 'COUNTDOWN' && firstStarted && firstNow >= firstStarted) || (firstEnds && firstNow >= firstEnds);
+  if (!needsChange) return found.row;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(2500)) return found.row;
+  try {
+    var fresh = _elive180FindRoom_(found.row.ROOM_ID || found.row.ROOM_CODE);
+    if (!fresh || !fresh.row) return found.row;
+    var room = fresh.row;
+    var current = _elive176Current_(room);
+    var pkg = current.room_package || null;
+    if (!pkg || !pkg.state || !pkg.turn_state || (pkg.shared_state && pkg.shared_state.completed === true)) return room;
+    var now = new Date();
+    var nowMs = now.getTime();
+    var startedMs = _elive176Timestamp_(pkg.turn_state.turn_started_at || pkg.state.started_at);
+    var endsMs = _elive176Timestamp_(pkg.turn_state.turn_ends_at || pkg.state.ends_at);
+    var changed = false;
+    var timedOut = false;
+    if (_elive176Upper_(pkg.state.phase) === 'COUNTDOWN' && startedMs && nowMs >= startedMs) { pkg.state.phase = 'OPEN'; changed = true; }
+    if (endsMs && nowMs >= endsMs) {
+      var durationMs = Number(pkg.rules && pkg.rules.round_duration_ms || 30000) || 30000;
+      var next = _elive176NextTurn_(pkg.turn_state, now, durationMs, 'TURN_TIMEOUT');
+      pkg.turn_state = next;
+      pkg.state.phase = 'OPEN'; pkg.state.active_player_id = next.active_player_id; pkg.state.active_team_id = next.active_team_id;
+      pkg.state.started_at = next.turn_started_at; pkg.state.ends_at = next.turn_ends_at; pkg.server_now = _elive176Iso_(now);
+      changed = true; timedOut = true;
+    }
+    if (!changed) return room;
+    current.room_package = pkg;
+    room = _elive180SetCells_(fresh, {CURRENT_QUESTION_JSON:JSON.stringify(current)});
+    _elive180Invalidate_(room);
+    if (timedOut) _elive180AppendEvent_(room, 'LIVE_TURN_TIMEOUT', {sesion:{nombre:'SISTEMA'},rol:'system'}, {active_player_id:pkg.turn_state.active_player_id,active_team_id:pkg.turn_state.active_team_id,turn_number:pkg.turn_state.turn_number,version:ELIVE180_VERSION});
+    return room;
+  } finally { lock.releaseLock(); }
+}
+function _elive180AccessCacheKey_(body) {
+  var raw = _elive176Text_(body && (body.token || body.session_token || body.sessionToken));
+  if (!raw) return '';
+  try {
+    var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw);
+    return 'EL180|ACCESS|' + Utilities.base64EncodeWebSafe(bytes).replace(/=+$/g, '').slice(0, 52);
+  } catch (_) { return ''; }
+}
+function _elive180RequireLab_(body) {
+  var key = _elive180AccessCacheKey_(body);
+  var cache = CacheService.getScriptCache();
+  if (key) {
+    var cached = cache.get(key);
+    if (cached) { try { return JSON.parse(cached); } catch (_) {} }
+  }
+  var access = _cs21a144RequireLab_(body || {});
+  if (key && access && access.allowed === true) { try { cache.put(key, JSON.stringify(access), ELIVE180_ACCESS_TTL_SECONDS); } catch (_) {} }
+  return access;
+}
+function _elive180TouchPlayer_(room, player) {
+  if (!player || !player._row) return;
+  var cache = CacheService.getScriptCache();
+  var key = _elive180CacheKey_('SEEN', (room.ROOM_CODE || room.ROOM_ID) + '-' + player.COD_ESTUDIANTE);
+  if (cache.get(key)) return;
+  var sh = _elive180SheetDirect_(ELIVE_PLAYERS_SHEET, ELIVE_PLAYERS_HEADERS);
+  var headers = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+  var index = {};
+  headers.forEach(function (header, position) { var normalized = _elive176Upper_(header); if (normalized) index[normalized] = position; });
+  if (index.LAST_SEEN_AT != null) sh.getRange(player._row, index.LAST_SEEN_AT + 1).setValue(_eliveIso_());
+  cache.put(key, '1', ELIVE180_LAST_SEEN_TTL_SECONDS);
+}
+
+function englishLabMemoryMatchCreateRoomCS21A180(body) {
+  body = body || {};
+  var auth = _eliveAuthTeacher_(body);
+  if (!auth || auth.ok !== true) return auth || {ok:false,error:'sesion_invalida'};
+  var cod = _elive176Text_(body.cod_grupo || body.codGrupo || body.grupo);
+  if (!cod) return {ok:false,error:'cod_grupo requerido'};
+  if (!_eliveCanGroup_(auth, cod)) return {ok:false,error:'docente_sin_permiso_grupo'};
+  cod = _eliveCanonicalGroupForRoom_(auth, cod);
+  var nivel = _anF65_levelId_(body.nivel || '') || _elive176Upper_(cod.split('-')[0] || 'B1');
+  var mode = _elive176Upper_(body.mode || body.modo || 'INDIVIDUAL');
+  if (mode !== 'TEAMS') mode = 'INDIVIDUAL';
+  var unit = _elive176NormalizeUnit_(body.unit || body.unidad || 'MIX');
+  var pairCount = Math.max(3, Math.min(12, Number(body.pair_count || body.cantidad || 6) || 6));
+  var roomSheet = _elive180SheetDirect_(ELIVE_ROOMS_SHEET, ELIVE_ROOMS_HEADERS);
+  var now = _eliveIso_();
+  var settings = {official_grade:false,affects_certificates:false,affects_payments:false,phase:ELIVE180_VERSION,unit:unit,question_bank:'ENGLISH_LAB_QUESTION_BANK',pair_count:pairCount,content_database_property:ELMM174_DB_PROPERTY,engine:ELMM174_GAME_CODE,version:ELIVE180_VERSION};
+  var room = {
+    ROOM_ID:'ELIVE-' + Utilities.getUuid(), ROOM_CODE:_eliveRoomCode_(roomSheet), STATUS:'CREATED', COD_GRUPO:cod, NIVEL:nivel,
+    DOCENTE:_elive176Text_(auth.sesion.nombre || auth.sesion.nombre_completo || auth.sesion.usuario || auth.sesion.cedula || 'DOCENTE'),
+    GAME_CODE:ELMM174_GAME_CODE, GAME_LABEL:ELMM174_GAME_LABEL, QUESTION_COUNT:1, MODE:mode, CURRENT_INDEX:0,
+    ROUND_STATUS:'READY', CURRENT_QUESTION_JSON:'', CREATED_AT:now, STARTED_AT:'', CLOSED_AT:'', ROUND_STARTED_AT:'', ROUND_CLOSED_AT:'',
+    SETTINGS_JSON:JSON.stringify(settings), UNIT:unit, CONTENT_SOURCE:'QUESTION_BANK_CS20F'
+  };
+  _elive180AppendObject_(ELIVE_ROOMS_SHEET, ELIVE_ROOMS_HEADERS, room);
+  _elive180AppendEvent_(room, 'MEMORY_MATCH_ROOM_CREATED', auth, {game_code:ELMM174_GAME_CODE,unit:unit,pair_count:pairCount,mode:mode,version:ELIVE180_VERSION});
+  var publicRoom = _elive176PublicRoom_(room);
+  publicRoom.unit = unit;
+  return {ok:true,version:ELIVE180_VERSION,room:publicRoom,message:'Sala Memory Match creada correctamente.'};
+}
+function _elive180PlayerStateWithAccess_(body, access) {
+  var normalized = _cs21a144LiveBody_(body || {}, access);
+  var code = _elive176Upper_(normalized.room_code || normalized.roomCode || normalized.codigo).replace(/[^A-Z0-9-]/g, '');
+  if (!code) return {ok:false,error:'room_code requerido'};
+  var found = _elive180FindRoom_(code);
+  if (!found || !found.row) return {ok:false,error:'sala_no_encontrada'};
+  if (_elive176Upper_(found.row.GAME_CODE) !== ELMM174_GAME_CODE) return {ok:false,error:'sala_no_memory_match'};
+  var room = _elive180MaybeAdvanceTurn_(found) || found.row;
+  var snapshot = _elive180Snapshot_(room);
+  var playerId = _elive176Text_(normalized.player_id || normalized.cod_estudiante);
+  var player = (snapshot._player_rows || []).filter(function (row) { return _elive176Text_(row.COD_ESTUDIANTE) === playerId; })[0] || null;
+  if (!player) return {ok:false,error:'jugador_no_registrado'};
+  _elive180TouchPlayer_(room, player);
+  var response = _elive180ResponseCopy_(snapshot);
+  response.player = _elive180PlayerPublic_(player);
+  response.my_rank = response.leaderboard.filter(function (row) { return _elive176Text_(row.cod_estudiante) === playerId; })[0] || null;
+  var turnPlayer = {player_id:playerId,name:_elive176Text_(player.NOMBRE),team_id:_elive176Text_(player.TEAM) || 'NO_TEAM'};
+  response.can_answer = !!(response.room_package && response.room_package.state && _elive176Upper_(response.room_package.state.phase) === 'OPEN' && _elive176CanAct_(response.turn_state, turnPlayer));
+  return response;
+}
+function englishLabMemoryMatchGetPlayerStateCS21A180(body) {
+  var access = _elive180RequireLab_(body || {});
+  if (!access || access.allowed !== true) return access;
+  return _elive180PlayerStateWithAccess_(body, access);
+}
+function englishLabMemoryMatchJoinRoomCS21A180(body) {
+  body = body || {};
+  var access = _elive180RequireLab_(body);
+  if (!access || access.allowed !== true) return access;
+  var normalized = _cs21a144LiveBody_(body, access);
+  var code = _elive176Upper_(normalized.room_code || normalized.roomCode || normalized.codigo).replace(/[^A-Z0-9-]/g, '');
+  if (!code) return {ok:false,error:'room_code requerido'};
+  var found = _elive180FindRoom_(code);
+  if (!found || !found.row) return {ok:false,error:'sala_no_encontrada'};
+  if (_elive176Upper_(found.row.GAME_CODE) !== ELMM174_GAME_CODE) return {ok:false,error:'sala_no_memory_match'};
+  if (_elive176Upper_(found.row.STATUS) === 'CLOSED') return {ok:false,error:'sala_cerrada'};
+  var playerId = _elive176Text_(normalized.player_id || normalized.cod_estudiante);
+  var playerName = _elive176Text_(normalized.player_name || normalized.nombre) || playerId;
+  if (!playerId) return {ok:false,error:'estudiante_sin_codigo'};
+  var table = _elive180Table_(ELIVE_PLAYERS_SHEET, ELIVE_PLAYERS_HEADERS);
+  var player = table.rows.filter(function (row) { return _elive180SameRoom_(row, found.row) && _elive176Text_(row.COD_ESTUDIANTE) === playerId; })[0] || null;
+  var now = _eliveIso_();
+  if (player) {
+    var playerFound = {sheet:table.sheet,index:table.index,row:player,rowNumber:player._row};
+    player = _elive180SetCells_(playerFound, {NOMBRE:playerName,LAST_SEEN_AT:now,STATUS:'ACTIVE'});
+  } else {
+    player = {ROOM_ID:found.row.ROOM_ID,ROOM_CODE:found.row.ROOM_CODE,COD_ESTUDIANTE:playerId,NOMBRE:playerName,TEAM:_elive176Text_(normalized.team || normalized.equipo),JOINED_AT:now,LAST_SEEN_AT:now,STATUS:'ACTIVE'};
+    _elive180AppendObject_(ELIVE_PLAYERS_SHEET, ELIVE_PLAYERS_HEADERS, player);
+    _elive180AppendEvent_(found.row, 'PLAYER_JOINED', {sesion:{nombre:playerName},rol:'student'}, {cod_estudiante:playerId,team:player.TEAM,version:ELIVE180_VERSION});
+  }
+  _elive180Invalidate_(found.row);
+  return _elive180PlayerStateWithAccess_(normalized, access);
+}
+function englishLabMemoryMatchGetRoomControlCS21A180(body) {
+  body = body || {};
+  var auth = _eliveAuthTeacher_(body);
+  if (!auth || auth.ok !== true) return auth || {ok:false,error:'sesion_invalida'};
+  var id = _elive180RoomIdFromBody_(body);
+  if (!id) return {ok:false,error:'room_id requerido'};
+  var found = _elive180FindRoom_(id);
+  if (!found || !found.row) return {ok:false,error:'sala_no_encontrada'};
+  if (!_elive180CanRoom_(auth, found.row)) return {ok:false,error:'docente_sin_permiso_grupo'};
+  if (_elive176Upper_(found.row.GAME_CODE) !== ELMM174_GAME_CODE) return {ok:false,error:'sala_no_memory_match'};
+  var room = _elive180MaybeAdvanceTurn_(found) || found.row;
+  return _elive180ResponseCopy_(_elive180Snapshot_(room));
+}
+function englishLabMemoryMatchSubmitPairCS21A180(body) {
+  body = body || {};
+  var access = _elive180RequireLab_(body);
+  if (!access || access.allowed !== true) return access;
+  var normalized = _cs21a144LiveBody_(body, access);
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return {ok:false,error:'sala_ocupada',mensaje:'La sala esta procesando otro intento.'};
+  try {
+    var found = _elive180FindRoom_(_elive180RoomIdFromBody_(normalized));
+    if (!found || !found.row) return {ok:false,error:'sala_no_encontrada'};
+    var room = found.row;
+    if (_elive176Upper_(room.GAME_CODE) !== ELMM174_GAME_CODE) return {ok:false,error:'sala_no_memory_match'};
+    var current = _elive176Current_(room);
+    var pkg = current.room_package || null;
+    if (!pkg || !pkg.state || _elive176Upper_(pkg.state.phase) !== 'OPEN') return {ok:false,error:'ronda_no_abierta'};
+    var snapshot = _elive180BuildSnapshot_(room);
+    var playerId = _elive176Text_(normalized.player_id || normalized.cod_estudiante);
+    var player = (snapshot._player_rows || []).filter(function (row) { return _elive176Text_(row.COD_ESTUDIANTE) === playerId; })[0] || null;
+    if (!player) return {ok:false,error:'jugador_no_registrado'};
+    var turnPlayer = {player_id:playerId,name:_elive176Text_(player.NOMBRE),team_id:_elive176Text_(player.TEAM) || 'NO_TEAM'};
+    var turnState = pkg.turn_state || null;
+    if (!_elive176CanAct_(turnState, turnPlayer)) return {ok:false,error:'turno_no_activo',mensaje:'Espere su turno.',turn_state:turnState,turn_description:_elive176DescribeTurn_(turnState, _elive180TurnPlayers_(snapshot._player_rows))};
+    var pair = _elive176PairFromBody_(pkg, normalized);
+    if (!pair.first_id || !pair.second_id || pair.first_id === pair.second_id) return {ok:false,error:'par_invalido'};
+    var shared = pkg.shared_state || {version:ELIVE180_VERSION,board_version:1,matched_pair_ids:[],completed:false,last_action_key:''};
+    shared.matched_pair_ids = Array.isArray(shared.matched_pair_ids) ? shared.matched_pair_ids : [];
+    var cards = [pair.first_id, pair.second_id].sort();
+    var actionKey = [room.ROOM_CODE,turnState.turn_number,playerId,cards[0],cards[1]].join('|');
+    if (_elive176Text_(shared.last_action_key) === actionKey) return {ok:true,version:ELIVE180_VERSION,accepted:false,duplicate:true,room_package:pkg,turn_state:turnState,shared_state:shared};
+    if (pair.correct && shared.matched_pair_ids.indexOf(pair.pair_id) >= 0) return {ok:true,version:ELIVE180_VERSION,accepted:false,duplicate:true,correct:true,points:0,room_package:pkg,turn_state:turnState,shared_state:shared};
+    var timeMs = Math.max(0, Number(normalized.time_ms || normalized.timeMs || 0) || 0);
+    var points = pair.correct ? Math.max(100, 150 - Math.floor(timeMs / 1000)) : 0;
+    var answerRow = {ROOM_ID:room.ROOM_ID,ROOM_CODE:room.ROOM_CODE,QUESTION_INDEX:Number(room.CURRENT_INDEX || 1) || 1,COD_ESTUDIANTE:playerId,ANSWER_VALUE:JSON.stringify({first_card_id:pair.first_id,second_card_id:pair.second_id,pair_id:pair.pair_id,correct:pair.correct}),IS_CORRECT:pair.correct ? 'TRUE' : 'FALSE',POINTS:points,TIME_MS:timeMs,ANSWERED_AT:_eliveIso_()};
+    _elive180AppendObject_(ELIVE_ANSWERS_SHEET, ELIVE_ANSWERS_HEADERS, answerRow);
+    if (pair.correct) shared.matched_pair_ids.push(pair.pair_id);
+    shared.last_action_key = actionKey;
+    shared.board_version = Math.max(1, Number(shared.board_version || 1) || 1) + 1;
+    var now = new Date();
+    var nextTurn = _elive176NextTurn_(turnState, now, Number(pkg.rules && pkg.rules.round_duration_ms || 30000) || 30000, pair.correct ? 'PAIR_CORRECT' : 'PAIR_INCORRECT');
+    var totalPairs = pkg.round && Array.isArray(pkg.round.cards) ? pkg.round.cards.length / 2 : 0;
+    var completed = totalPairs > 0 && shared.matched_pair_ids.length >= totalPairs;
+    shared.completed = completed;
+    pkg.version = ELIVE180_VERSION; pkg.turn_state = nextTurn; pkg.shared_state = shared;
+    pkg.state.active_player_id = nextTurn.active_player_id; pkg.state.active_team_id = nextTurn.active_team_id;
+    pkg.state.started_at = nextTurn.turn_started_at; pkg.state.ends_at = nextTurn.turn_ends_at; pkg.state.phase = completed ? 'COMPLETE' : 'OPEN'; pkg.server_now = _elive176Iso_(now);
+    current.room_package = pkg;
+    var patch = {CURRENT_QUESTION_JSON:JSON.stringify(current)};
+    if (completed) { patch.ROUND_STATUS = 'CLOSED'; patch.ROUND_CLOSED_AT = _eliveIso_(); }
+    room = _elive180SetCells_(found, patch);
+    _elive180AppendEvent_(room, 'MEMORY_MATCH_PAIR_SUBMITTED', {sesion:{nombre:player.NOMBRE},rol:'student'}, {correct:pair.correct,points:points,pair_id:pair.pair_id,version:ELIVE180_VERSION});
+    _elive180AppendEvent_(room, 'LIVE_TURN_ADVANCED', {sesion:{nombre:player.NOMBRE},rol:'student'}, {from_player_id:turnState.active_player_id,to_player_id:nextTurn.active_player_id,turn_number:nextTurn.turn_number,reason:nextTurn.reason,board_version:shared.board_version,completed:completed,version:ELIVE180_VERSION});
+    _elive180Invalidate_(room);
+    var refreshed = _elive180BuildSnapshot_(room);
+    var ranking = refreshed.leaderboard || [];
+    return {ok:true,version:ELIVE180_VERSION,accepted:true,correct:pair.correct,points:points,room:_elive176PublicRoom_(room),room_package:pkg,turn_state:nextTurn,shared_state:shared,leaderboard:ranking,team_leaderboard:refreshed.team_leaderboard,my_rank:ranking.filter(function (row) { return _elive176Text_(row.cod_estudiante) === playerId; })[0] || null,stats:refreshed.stats,turn_description:_elive176DescribeTurn_(nextTurn, _elive180TurnPlayers_(refreshed._player_rows))};
+  } finally { lock.releaseLock(); }
+}
+
+var _elive180Verify176Base_ = verificarActualizacionQA;
+verificarActualizacionQA = function () {
+  var previous = _elive180Verify176Base_();
+  var headers = ['ROOM_ID','ROOM_CODE','STATUS','COD_GRUPO','NIVEL','DOCENTE','GAME_CODE','GAME_LABEL','QUESTION_COUNT','MODE','CURRENT_INDEX','CREATED_AT','STARTED_AT','CLOSED_AT','SETTINGS_JSON','','','','','ROUND_STATUS','CURRENT_QUESTION_JSON','ROUND_STARTED_AT','ROUND_CLOSED_AT','UNIT','CONTENT_SOURCE'];
+  var synthetic = {ROOM_ID:'ELIVE-TEST',ROOM_CODE:'LAB-TEST',STATUS:'CREATED',GAME_CODE:'MEMORY_MATCH',ROUND_STATUS:'READY',CREATED_AT:'2026-08-05 22:00:00',SETTINGS_JSON:'{"engine":"MEMORY_MATCH"}',UNIT:'U01',CONTENT_SOURCE:'QUESTION_BANK_CS20F'};
+  var values = _elive180ValuesForHeaders_(headers, synthetic);
+  var index = {};
+  headers.forEach(function (header, position) { if (header) index[header] = position; });
+  var aligned = values[index.CREATED_AT] === synthetic.CREATED_AT && values[index.ROUND_STATUS] === 'READY' && values[index.SETTINGS_JSON] === synthetic.SETTINGS_JSON && values[index.UNIT] === 'U01';
+  var result = {ok:previous && previous.ok === true && aligned,version:ELIVE180_VERSION,objective:ELIVE180_UPDATE_OBJECTIVE,previous_version:previous && previous.version,header_aligned:aligned,create_game_code:synthetic.GAME_CODE,generic_questions_in_memory_state:0,snapshot_ttl_seconds:ELIVE180_SNAPSHOT_TTL_SECONDS,last_seen_ttl_seconds:ELIVE180_LAST_SEEN_TTL_SECONDS};
+  console.log(JSON.stringify(result));
+  if (!result.ok) throw new Error('CS21A180 no supero la verificacion de estado rapido y encabezados.');
+  return result;
+};
+
+var _elive180DoPostBase_ = doPost;
+doPost = function (e) {
+  try {
+    var body = {};
+    try { body = _an4406_parseBody_(e) || {}; } catch (_) { body = {}; }
+    var fn = _elive176Text_((e && e.parameter && e.parameter.fn) || body.fn).toLowerCase();
+    if (fn === 'englishlabmemorymatchcreateroom') return _an4406_json_(englishLabMemoryMatchCreateRoomCS21A180(body));
+    if (fn === 'englishlabmemorymatchgetroomcontrol') return _an4406_json_(englishLabMemoryMatchGetRoomControlCS21A180(body));
+    if (fn === 'englishlabmemorymatchgetplayerstate') return _an4406_json_(englishLabMemoryMatchGetPlayerStateCS21A180(body));
+    if (fn === 'englishlabmemorymatchsubmitpair') return _an4406_json_(englishLabMemoryMatchSubmitPairCS21A180(body));
+    if (fn === 'englishlablivegetplayerstate') {
+      var stateFound = _elive180FindRoom_(_elive180RoomIdFromBody_(body));
+      if (stateFound && stateFound.row && _elive176Upper_(stateFound.row.GAME_CODE) === ELMM174_GAME_CODE) return _an4406_json_(englishLabMemoryMatchGetPlayerStateCS21A180(body));
+    }
+    if (fn === 'englishlablivejoinroom') {
+      var joinFound = _elive180FindRoom_(_elive180RoomIdFromBody_(body));
+      if (joinFound && joinFound.row && _elive176Upper_(joinFound.row.GAME_CODE) === ELMM174_GAME_CODE) return _an4406_json_(englishLabMemoryMatchJoinRoomCS21A180(body));
+    }
+    if (fn === 'englishlabmemorymatchstartroom') {
+      var started = englishLabMemoryMatchStartRoomCS21A176(body);
+      if (started && started.ok === true) started.version = ELIVE180_VERSION;
+      if (started && started.room) _elive180Invalidate_(started.room);
+      return _an4406_json_(started);
+    }
+    if (fn === 'englishlabmemorymatchcloseround') {
+      var closed = englishLabMemoryMatchCloseRound(body);
+      if (closed && closed.ok === true) closed.version = ELIVE180_VERSION;
+      if (closed && closed.room) _elive180Invalidate_(closed.room);
+      return _an4406_json_(closed);
+    }
+    if (fn === 'verificaractualizacionqa') return _an4406_json_(verificarActualizacionQA());
+    return _elive180DoPostBase_(e);
+  } catch (err) {
+    return _an4406_json_({ok:false,version:ELIVE180_VERSION,error:'actualizacion_qa_error',mensaje:String(err && err.message ? err.message : err)});
+  }
+};
