@@ -1,0 +1,123 @@
+name: CS21A179 atomic canonical routes
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/app.jsx'
+      - 'src/lazy_loader.jsx'
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_modules.jsx'
+      - 'scripts/test_atomic_lazy_routes_cs21a179.mjs'
+      - 'scripts/test_atomic_route_loading_browser_cs21a179.mjs'
+      - 'scripts/build_qa_package_cs21a179.mjs'
+      - '00_DOCUMENTACION/CARGA_ATOMICA_RUTAS_CS21A179.md'
+      - '.github/workflows/cs21a179-atomic-canonical-routes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate atomic loader and existing contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_atomic_lazy_routes_cs21a179.mjs
+          node scripts/test_lazy_materials_contract_cs21a168.mjs
+          node scripts/audit_delivery_surface.mjs
+          node scripts/audit_component_ownership_cs21a151.mjs
+          node scripts/test_runtime_config_cs21a146.mjs
+          node scripts/test_teacher_resources_canonical_cs21a157.mjs
+          node scripts/test_english_lab_live_loader_cs21a178.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+
+      - name: Build and audit isolated QA frontend
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start isolated QA server
+        shell: bash
+        run: |
+          python3 -m http.server 4177 --bind 127.0.0.1 > cs21a179-server.log 2>&1 &
+          echo $! > cs21a179-server.pid
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:4177/campus.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat cs21a179-server.log
+          exit 1
+
+      - name: Sweep every visible menu and both profile viewports
+        env:
+          QA_BASE_URL: http://127.0.0.1:4177
+        run: |
+          set -euo pipefail
+          node scripts/test_atomic_route_loading_browser_cs21a179.mjs
+
+      - name: Build and verify candidate package
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_MERGE_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_package_cs21a179.mjs
+          node scripts/build_qa_package_cs21a179.mjs --verify
+          cd dist
+          zip -X -q -r CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS.zip CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS
+          sha256sum CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS.zip > CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS.zip.sha256
+
+      - name: Smoke packaged frontend on port 4177
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f cs21a179-server.pid; then kill "$(cat cs21a179-server.pid)" 2>/dev/null || true; fi
+          package='dist/CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS'
+          PORT=4177 node "$package/serve.mjs" > cs21a179-package-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4177/qa-setup.html >/dev/null; then
+              curl --fail --silent --output /tmp/cs21a179-lazy-loader.jsx http://127.0.0.1:4177/src/lazy_loader.jsx
+              curl --fail --silent --output /tmp/cs21a179-student-modules.jsx http://127.0.0.1:4177/src/student_modules.jsx
+              grep -q 'F98.4-Z6-CS21A179' /tmp/cs21a179-lazy-loader.jsx
+              grep -q 'Información personal y académica' /tmp/cs21a179-student-modules.jsx
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat cs21a179-package-server.log
+          exit 1
+
+      - name: Upload candidate package and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS
+          path: |
+            dist/CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS.zip
+            dist/CAMPUS_QA_CS21A179_CANDIDATO_CARGA_CANONICA_MENUS.zip.sha256
+            qa-output/atomic-route-loading-cs21a179/
+            cs21a179-server.log
+            cs21a179-package-server.log
+          if-no-files-found: warn
+          retention-days: 30

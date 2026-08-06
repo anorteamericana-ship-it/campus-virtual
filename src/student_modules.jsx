@@ -987,14 +987,12 @@ function CertificadoEstadoCardF984({ row }) {
 // ──────────────────────────────────────────────────────────────────────────
 function PerfilView({ onNavigate } = {}) {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
-  const rolPerfil = String(usr?.rol || usr?.role || '').toLowerCase();
-  const esTeacherPerfil = rolPerfil === 'teacher' || rolPerfil === 'docente';
   return (
     <div>
       <PageHeader
         kicker="Mi cuenta"
         title={<>Mi <em>Perfil</em></>}
-        sub={esTeacherPerfil ? 'Información profesional del docente' : 'Información personal y académica'}
+        sub="Información personal y académica"
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -1013,8 +1011,6 @@ function PerfilContenido({ usr, data, onNavigate }) {
   const est     = data?.estudiante || {};
   const grupo   = data?.grupo      || {};
   const niveles = data?.niveles    || {};
-  const rolPerfil = String(usr?.rol || usr?.role || '').toLowerCase();
-  const esTeacherPerfil = rolPerfil === 'teacher' || rolPerfil === 'docente';
 
   const nivelActivo = calcularNivelActivoSM(niveles, usr?.nivel_activo);
   const nombre   = est.NOMBRE || usr?.nombre || '—';
@@ -1045,114 +1041,76 @@ function PerfilContenido({ usr, data, onNavigate }) {
           {nombre}
         </div>
         <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4, fontFamily:'var(--f-mono)' }}>
-          {esTeacherPerfil ? 'Docente' : 'Código'} {esTeacherPerfil ? '' : codigo}
+          Código {codigo}
         </div>
 
         <div style={{ display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap', marginTop:14 }}>
-          <Chip tone="granate">{esTeacherPerfil ? 'Docente activo' : 'Estudiante activo'}</Chip>
-          {!esTeacherPerfil && grupo.CODIGO_GRUPO && <Chip tone="navy">{grupo.CODIGO_GRUPO}</Chip>}
+          <Chip tone="granate">Estudiante activo</Chip>
+          {grupo.CODIGO_GRUPO && <Chip tone="navy">{grupo.CODIGO_GRUPO}</Chip>}
         </div>
 
         <div style={{ marginTop:22, textAlign:'left', borderTop:'1px solid var(--line)', paddingTop:16 }}>
-          {(esTeacherPerfil
-            ? [
-                ['Correo', correo],
-                ['Teléfono', telefono],
-                ['Cédula', cedula],
-              ]
-            : [
-                ['Correo', correo],
-                ['Teléfono', telefono],
-                ['Cédula', cedula],
-                ['Nivel actual', nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'],
-                ['Libro', nivelActivo ? NIVEL_LIBRO_SM[nivelActivo] : '—'],
-                ['Docente', docente],
-                ['Horario', horario],
-              ]
-          ).map(([k, v], i, arr) => (
+          {[
+            ['Correo', correo],
+            ['Teléfono', telefono],
+            ['Cédula', cedula],
+            ['Nivel actual', nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'],
+            ['Libro', nivelActivo ? NIVEL_LIBRO_SM[nivelActivo] : '—'],
+            ['Docente', docente],
+            ['Horario', horario],
+          ].map(([k, v], i, arr) => (
             <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'7px 0', borderBottom: i < arr.length-1 ? '1px solid var(--line)' : 'none' }}>
               <span style={{ color:'var(--ink-3)', fontWeight:600 }}>{k}</span>
               <span style={{ color:'var(--ink)', fontWeight:500, textAlign:'right', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis' }}>{v}</span>
             </div>
           ))}
-          {esTeacherPerfil && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:16 }}>
-              <button type="button" className="btn btn-primary" style={{ justifyContent:'center', padding:'10px 12px', fontSize:12 }}
-                onClick={() => alert('Curriculum pendiente de configurar por administración.')}>
-                CURRICULUM
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ justifyContent:'center', padding:'10px 12px', fontSize:12 }}
-                onClick={() => alert('Aval INA pendiente de configurar por administración.')}>
-                AVAL INA
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Camino / Configuración */}
       <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-        {!esTeacherPerfil && <ReposicionStudentCardF92 onNavigate={onNavigate} />}
-        {!esTeacherPerfil && (
-          <div className="card">
-            <div className="card-h">
-              <div className="card-title">Mi camino</div>
-              {nivelActivo && <Chip tone="granate" dot>En {NIVEL_NOMBRE_SM[nivelActivo]}</Chip>}
-            </div>
+        <ReposicionStudentCardF92 onNavigate={onNavigate} />
+        <div className="card">
+          <div className="card-h">
+            <div className="card-title">Mi camino</div>
+            {nivelActivo && <Chip tone="granate" dot>En {NIVEL_NOMBRE_SM[nivelActivo]}</Chip>}
+          </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
-              {ORDEN.map((n, i) => {
-                const estatus = estatusDe(niveles, n);
-                const esActivo = n === nivelActivo;
-                const aprobado = estatus === 'APR' || estatus === 'CNV';
-                const c = NIVEL_COLOR_SM[n];
-                return (
-                  <div key={n} style={{
-                    padding:'14px 12px', borderRadius:'var(--r-md)',
-                    background: esActivo
-                      ? `color-mix(in srgb, ${c} 10%, white)`
-                      : aprobado
-                        ? 'color-mix(in srgb, var(--ok) 8%, white)'
-                        : 'var(--surface-2)',
-                    border: esActivo ? `2px solid ${c}` : '1px solid var(--line)',
-                  }}>
-                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color: esActivo ? c : 'var(--ink-3)' }}>
-                      {n}
-                    </div>
-                    <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, marginTop:3, color:'var(--ink)' }}>
-                      {NIVEL_NOMBRE_SM[n]}
-                    </div>
-                    <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
-                      {NIVEL_LIBRO_SM[n]}
-                    </div>
-                    <div style={{ marginTop:8, fontSize:11, fontWeight:700, color: esActivo ? c : aprobado ? 'var(--ok)' : 'var(--ink-3)' }}>
-                      {esActivo ? '● Cursando' : aprobado ? '✓ ' + ESTATUS_LABEL_SM[estatus] : (ESTATUS_LABEL_SM[estatus] || 'Pendiente')}
-                    </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
+            {ORDEN.map((n, i) => {
+              const estatus = estatusDe(niveles, n);
+              const esActivo = n === nivelActivo;
+              const aprobado = estatus === 'APR' || estatus === 'CNV';
+              const c = NIVEL_COLOR_SM[n];
+              return (
+                <div key={n} style={{
+                  padding:'14px 12px', borderRadius:'var(--r-md)',
+                  background: esActivo
+                    ? `color-mix(in srgb, ${c} 10%, white)`
+                    : aprobado
+                      ? 'color-mix(in srgb, var(--ok) 8%, white)'
+                      : 'var(--surface-2)',
+                  border: esActivo ? `2px solid ${c}` : '1px solid var(--line)',
+                }}>
+                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color: esActivo ? c : 'var(--ink-3)' }}>
+                    {n}
                   </div>
-                );
-              })}
-            </div>
+                  <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, marginTop:3, color:'var(--ink)' }}>
+                    {NIVEL_NOMBRE_SM[n]}
+                  </div>
+                  <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
+                    {NIVEL_LIBRO_SM[n]}
+                  </div>
+                  <div style={{ marginTop:8, fontSize:11, fontWeight:700, color: esActivo ? c : aprobado ? 'var(--ok)' : 'var(--ink-3)' }}>
+                    {esActivo ? '● Cursando' : aprobado ? '✓ ' + ESTATUS_LABEL_SM[estatus] : (ESTATUS_LABEL_SM[estatus] || 'Pendiente')}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
-        {esTeacherPerfil ? (
-          <div className="card">
-            <div className="card-h">
-              <div className="card-title">Documentos del docente</div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 }}>
-              <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface-2)' }}>
-                <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Curriculum</div>
-                <div style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.45, marginTop:6 }}>Vista disponible para el docente. La edición, reemplazo o descarga oficial corresponde a administración.</div>
-              </div>
-              <div style={{ padding:16, border:'1px solid var(--line)', borderRadius:14, background:'var(--surface-2)' }}>
-                <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Aval INA</div>
-                <div style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.45, marginTop:6 }}>Documento visible para consulta docente. El control documental queda reservado para administración.</div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="card">
+        <div className="card">
             <div className="card-h">
               <div className="card-title">Configuración</div>
             </div>
@@ -1184,8 +1142,7 @@ function PerfilContenido({ usr, data, onNavigate }) {
                 );
               })}
             </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

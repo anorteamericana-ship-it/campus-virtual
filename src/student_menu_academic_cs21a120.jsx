@@ -1,9 +1,10 @@
-// F98.4-Z6-CS21A120 · Menú estudiante con diseño docente y rutas académicas reales.
+// F98.4-Z6-CS21A179 · Menú estudiante con rutas diferidas atómicas.
+// Base preservada: F98.4-Z6-CS21A120.
 /* global React, ReactDOM, Sidebar, Icon */
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A120';
+  const VERSION = 'F98.4-Z6-CS21A179';
   const CUSTOM_ROUTES = new Set([
     'perfil_estudiante',
     'info_programa',
@@ -182,25 +183,28 @@
   }
 
   function AsyncComponentRoute({ files, component, props={} }){
-    const [state,setState] = React.useState({ loading:true, error:'' });
+    const [state,setState] = React.useState({ View:null, error:'' });
     const load = React.useCallback(()=>{
-      setState({loading:true,error:''});
+      setState({View:null,error:''});
       const loader = window.anLazyCampus;
-      if (!loader?.loadMany) { setState({loading:false,error:'El cargador del Campus no está disponible.'}); return; }
-      loader.loadMany(files || []).then(()=>{
-        if (typeof window[component] !== 'function') throw new Error('No se encontró el componente '+component+'.');
-        setState({loading:false,error:''});
-      }).catch(error=>setState({loading:false,error:error?.message||String(error)}));
+      if (!loader?.resolveRoute) { setState({View:null,error:'El cargador atómico del Campus no está disponible.'}); return; }
+      loader.resolveRoute(files || [], component)
+        .then(View=>setState({View,error:''}))
+        .catch(error=>setState({View:null,error:error?.message||String(error)}));
     },[component,JSON.stringify(files||[])]);
     React.useEffect(load,[load]);
-    if (state.loading) return <LoadingCard/>;
+    if (!state.View && !state.error) return <LoadingCard/>;
     if (state.error) return <ErrorCard text={state.error} onRetry={load}/>;
-    const Component = window[component];
-    return <Component {...props}/>;
+    return React.createElement(state.View, props);
   }
 
   function StudentProfileRouteCS21A120({ onNavigate }){
-    return <section className="sa120-page"><AsyncComponentRoute files={['src/student_modules.jsx?v=F98.4Z6G']} component="PerfilView" props={{onNavigate}}/></section>;
+    return <section className="sa120-page"><AsyncComponentRoute files={[
+      'src/panel_suspensiones.jsx?v=F98.4A',
+      'src/solicitudes_pago.jsx?v=F98.4A',
+      'src/solicitudes_unificadas.jsx?v=F98.4A',
+      'src/student_modules.jsx?v=F98.4Z6CS21A179',
+    ]} component="PerfilView" props={{onNavigate}}/></section>;
   }
 
   function StudentSummaryRouteCS21A120({ onNavigate }){

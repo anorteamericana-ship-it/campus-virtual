@@ -1,9 +1,11 @@
-// F98.4-Z6-CS21A168 · Cargador diferido con contrato canónico de materiales reutilizables.
-// Base preservada: F98.4-Z6-CS21A124.
+// F98.4-Z6-CS21A179 · Cargador diferido con montaje atómico de rutas canónicas.
+// Base preservada: F98.4-Z6-CS21A168.
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A168';
+  const VERSION = 'F98.4-Z6-CS21A179';
+  const ROUTE_STABLE_MS = 64;
+  const ROUTE_TIMEOUT_MS = 5000;
   const normalize = (src) => {
     const value = String(src || '').trim();
     if (/^src\/importador_banco\.jsx(?:\?.*)?$/i.test(value)) {
@@ -44,23 +46,6 @@
     for (const f of (files || [])) await loadOne(f);
   }
 
-  function waitUntil(test, timeoutMs, label){
-    const started = Date.now();
-    return new Promise((resolve, reject) => {
-      const tick = () => {
-        let ready = false;
-        try { ready = !!test(); } catch(_){ ready = false; }
-        if (ready) { resolve(true); return; }
-        if (Date.now() - started >= timeoutMs) {
-          reject(new Error('No se pudo preparar ' + (label || 'la pantalla') + '.'));
-          return;
-        }
-        setTimeout(tick, 20);
-      };
-      tick();
-    });
-  }
-
   function needsUnifiedMaterials(component){
     return component === 'MaterialesView' || component === 'StudentCourseView';
   }
@@ -76,20 +61,66 @@
   }
 
   function routeEnhancerReady(component){
+    const candidate = window[component];
+    if (typeof candidate !== 'function') return false;
     if (needsUnifiedMaterials(component)) return unifiedMaterialsReady();
     if (component === 'ICANViewNew') {
-      return typeof window.ICANViewNew === 'function' && window.ICANViewNew.__cs21a122 === true;
+      return candidate.__cs21a122 === true;
     }
     if (component === 'ClubICANDocenteView') {
-      return typeof window.ClubICANDocenteView === 'function' && window.ClubICANDocenteView.__cs21a122 === true;
+      return candidate.__cs21a122 === true;
     }
+    if (component === 'PerfilView') return candidate.__cs21a76TeacherProfile === true;
+    if (component === 'AcademiaPlayView' || component === 'EnglishLabLiveStudentView') {
+      return candidate.__cs21a144AccessGate === true;
+    }
+    if (component === 'AdminGruposView') return candidate.__cs21a20AperturasWrapper === true;
+    if (component === 'CronogramaGrupo') return candidate.__a77 === true;
     return true;
   }
 
-  function waitForRouteEnhancers(component){
-    if (!needsUnifiedMaterials(component) && !needsClubICANEnhancer(component)) return Promise.resolve(true);
-    return waitUntil(() => routeEnhancerReady(component), 5000,
-      needsClubICANEnhancer(component) ? 'Club I CAN' : 'Libros y Audios');
+  function routeLabel(component){
+    if (needsClubICANEnhancer(component)) return 'Club I CAN';
+    if (needsUnifiedMaterials(component)) return 'Libros y Audios';
+    if (component === 'PerfilView') return 'Mi Perfil';
+    if (component === 'AcademiaPlayView' || component === 'EnglishLabLiveStudentView') return 'English LAB';
+    if (component === 'AdminGruposView') return 'Grupos';
+    if (component === 'CronogramaGrupo') return 'Cronograma';
+    return component;
+  }
+
+  function waitForCanonicalRoute(component){
+    const started = Date.now();
+    let candidate = null;
+    let stableSince = 0;
+    return new Promise((resolve, reject) => {
+      const tick = () => {
+        const current = window[component];
+        const ready = typeof current === 'function' && routeEnhancerReady(component);
+        if (!ready) {
+          candidate = null;
+          stableSince = 0;
+        } else if (current !== candidate) {
+          candidate = current;
+          stableSince = Date.now();
+        } else if (Date.now() - stableSince >= ROUTE_STABLE_MS) {
+          resolve(current);
+          return;
+        }
+        if (Date.now() - started >= ROUTE_TIMEOUT_MS) {
+          reject(new Error('No se pudo preparar ' + routeLabel(component) + '.'));
+          return;
+        }
+        setTimeout(tick, 16);
+      };
+      tick();
+    });
+  }
+
+  async function resolveRoute(files, component){
+    const list = (files || []).map(normalize);
+    await loadMany(list);
+    return waitForCanonicalRoute(component);
   }
 
   async function validateMap(map){
@@ -113,37 +144,46 @@
   function LazyModuleView({ files, component, props, title }){
     const React = window.React;
     const list = (files || []).map(normalize);
+    const routeKey = component + '|' + JSON.stringify(list);
     const depsReady = () => list.every(f => loaded.has(f));
     const routeReady = () => routeEnhancerReady(component);
     const [state, setState] = React.useState(() => ({
-      ready: typeof window[component] === 'function' && depsReady() && routeReady(),
+      routeKey,
+      View: typeof window[component] === 'function' && depsReady() && routeReady() ? window[component] : null,
       error:''
     }));
     React.useEffect(() => {
       let live = true;
-      if (!depsReady() || !routeReady()) setState({ ready:false, error:'' });
-      loadMany(list)
-        .then(() => waitForRouteEnhancers(component))
-        .then(() => {
+      setState({ routeKey, View:null, error:'' });
+      resolveRoute(list, component)
+        .then(View => {
           if(!live) return;
-          if (typeof window[component] === 'function') setState({ ready:true, error:'' });
-          else setState({ ready:false, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
+          if (typeof View === 'function') {
+            setState({ routeKey, View, error:'' });
+            try {
+              window.dispatchEvent(new CustomEvent('an:lazy-route-committed', {
+                detail:{ component, routeKey, view:View.name || 'anonymous', version:VERSION }
+              }));
+            } catch(_) {}
+          }
+          else setState({ routeKey, View:null, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
         })
-        .catch(e => live && setState({ ready:false, error:e?.message || String(e) }));
+        .catch(e => live && setState({ routeKey, View:null, error:e?.message || String(e) }));
       return () => { live = false; };
     }, [component, JSON.stringify(list)]);
-    if (!state.ready) {
-      return React.createElement('div', { style:{ maxWidth:680, margin:'56px auto', padding:'26px 28px', border:'1px solid var(--line)', borderRadius:18, background:'var(--surface)', boxShadow:'var(--sh-1)', fontFamily:'var(--f-sans)', textAlign:'center' } },
+    const View = state.routeKey === routeKey ? state.View : null;
+    const error = state.routeKey === routeKey ? state.error : '';
+    if (!View) {
+      return React.createElement('div', { 'data-lazy-route-state':'loading', 'data-lazy-route-component':component, style:{ maxWidth:680, margin:'56px auto', padding:'26px 28px', border:'1px solid var(--line)', borderRadius:18, background:'var(--surface)', boxShadow:'var(--sh-1)', fontFamily:'var(--f-sans)', textAlign:'center' } },
         React.createElement('div', { style:{ fontSize:11, fontWeight:900, letterSpacing:'.14em', color:'var(--an-granate)', textTransform:'uppercase' } }, 'Cargando módulo'),
         React.createElement('div', { style:{ marginTop:8, fontFamily:'var(--f-serif)', fontSize:26, color:'var(--an-navy-ink)' } }, title || component),
-        state.error ? React.createElement('div', { style:{ marginTop:10, color:'#C0392B', fontSize:13, lineHeight:1.5 } }, state.error) : React.createElement('div', { style:{ marginTop:10, color:'var(--ink-3)', fontSize:13 } }, 'Preparando pantalla…'),
-        state.error ? React.createElement('button', { type:'button', className:'btn btn-primary', style:{ marginTop:16 }, onClick:() => window.location.reload() }, 'Recargar') : null
+        error ? React.createElement('div', { style:{ marginTop:10, color:'#C0392B', fontSize:13, lineHeight:1.5 } }, error) : React.createElement('div', { style:{ marginTop:10, color:'var(--ink-3)', fontSize:13 } }, 'Preparando pantalla…'),
+        error ? React.createElement('button', { type:'button', className:'btn btn-primary', style:{ marginTop:16 }, onClick:() => window.location.reload() }, 'Recargar') : null
       );
     }
-    const C = window[component];
-    return React.createElement(C, props || {});
+    return React.createElement(View, props || {});
   }
 
-  window.anLazyCampus = { loadOne, loadMany, validateMap, loaded, VERSION, getStatus };
+  window.anLazyCampus = { loadOne, loadMany, resolveRoute, validateMap, loaded, VERSION, getStatus };
   window.LazyModuleView = LazyModuleView;
 })();

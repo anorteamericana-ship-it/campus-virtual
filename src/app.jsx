@@ -70,7 +70,7 @@ const F96_LAZY = {
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6G'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6CS21A179'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/teacher_views.jsx?v=F98.4Z6CS21A142','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS19F'],
   english_lab_live: [
@@ -108,10 +108,10 @@ const F96_LAZY = {
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
+    'src/student_modules.jsx?v=F98.4Z6CS21A179','src/student_experience.jsx?v=F98.4N'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4Z6G','src/student_modules.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F98.4Z6G','src/student_modules.jsx?v=F98.4Z6CS21A179','src/student_experience.jsx?v=F98.4N'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
