@@ -8,7 +8,7 @@
 
   var VERSION = 'F98.4-Z6-CS21A182';
   var scheduled = false;
-  var lastAudit = {roots:0,replaced:0,hidden:0,technical:0,studentInternal:0,demoCards:0};
+  var lastAudit = {roots:0,replaced:0,hidden:0,technical:0,studentInternal:0,demoCards:0,teacherDemo:0,adminModes:0};
 
   var exactText = {
     'Pantalla del estudiante. Respondé cuando el docente abra la pregunta.':'Respondé cuando el docente abra la pregunta.',
@@ -43,7 +43,26 @@
     'Práctica demo':'Práctica',
     'Práctica visual: sin notas oficiales.':'Practicá a tu ritmo.',
     'Respuesta inválida del backend.':'No se pudo cargar la información.',
-    'El backend tardó demasiado en responder.':'La respuesta está tardando más de lo esperado. Intentá de nuevo.'
+    'El backend tardó demasiado en responder.':'La respuesta está tardando más de lo esperado. Intentá de nuevo.',
+    'ACADEMIA_PLAY_BANK':'Banco de juegos',
+    'CS14 Importador':'Importador',
+    'Actualizar banco':'Actualizar juegos',
+    'Importar banco por nivel':'Importar juegos por nivel',
+    'Importar al banco':'Importar juegos',
+    'GAME_ID únicos':'juegos únicos',
+    'Templates':'Tipos de juego',
+    'Sin templates todavía.':'Sin tipos de juego todavía.',
+    'Contenido listo para motor por nivel, unidad, área y template.':'Contenido organizado por nivel, unidad, área y tipo de juego.',
+    'Progreso real separado de notas oficiales.':'Seguimiento de práctica y participación.',
+    'Nota admin':'Resumen',
+    'Hoja separada':'Seguimiento de práctica',
+    'Este panel lee ACADEMIA_PLAY_PROGRESS. La ficha por estudiante ayuda a ventas/admin sin tocar notas oficiales.':'Consultá el avance por estudiante y detectá quién necesita apoyo.',
+    'en hoja separada':'registrados',
+    'separado de notas':'promedio de práctica',
+    'sincronizado':'Actualizado',
+    'SIN_TIPO':'Sin tipo',
+    'PREMATRICULA':'Prematrícula',
+    'ESTUDIANTE':'Estudiante'
   };
 
   function clean(value) {
@@ -104,7 +123,8 @@
       '[data-cs21a182-clean="true"] .ap-card-tags,[data-cs21a182-clean="true"] .ap-area-stats{display:none!important}',
       '.elive-cs182-live-redirect{margin-top:16px;padding:22px;border:1px solid #B7D5FF;border-radius:20px;background:linear-gradient(135deg,#EEF4FF 0%,#FFFFFF 75%);box-shadow:0 12px 30px rgba(7,59,122,.08)}',
       '.elive-cs182-live-redirect h2{margin:0;color:#001E47;font-size:24px}.elive-cs182-live-redirect p{margin:8px 0 0;color:#475467;line-height:1.55}',
-      '@media(max-width:760px){[data-cs21a182-clean="true"] h1{font-size:30px!important;line-height:1.05!important}[data-cs21a182-clean="true"] .card{border-radius:16px!important}[data-cs21a182-clean="true"] .elive-main-grid,[data-cs21a182-clean="true"] .elive-join-grid{gap:12px!important}[data-cs21a182-clean="true"] .elive-main-grid .btn,[data-cs21a182-clean="true"] .elive-join-grid .btn,[data-cs21a182-clean="true"] .ap-hero-actions>.ap-btn,[data-cs21a182-clean="true"] .ap-center-actions>.ap-btn{width:100%;justify-content:center}[data-cs21a182-clean="true"] .ap-area-dots{display:none!important}}'
+      '.elive-cs182-live-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;margin-top:14px;padding:10px 16px;border-radius:12px;background:#073B7A;color:#FFF!important;font-weight:900;text-decoration:none}',
+      '@media(max-width:760px){[data-cs21a182-clean="true"] h1{font-size:30px!important;line-height:1.05!important}[data-cs21a182-clean="true"] .card{border-radius:16px!important}[data-cs21a182-clean="true"] .elive-main-grid,[data-cs21a182-clean="true"] .elive-join-grid{gap:12px!important}[data-cs21a182-clean="true"] .elive-main-grid .btn,[data-cs21a182-clean="true"] .elive-join-grid .btn,[data-cs21a182-clean="true"] .ap-hero-actions>.ap-btn,[data-cs21a182-clean="true"] .ap-center-actions>.ap-btn{width:100%;justify-content:center}[data-cs21a182-clean="true"] .ap-area-dots{display:none!important}.elive-cs182-live-link{width:100%;box-sizing:border-box}}'
     ].join('');
     (doc.head || doc.documentElement).appendChild(style);
   }
@@ -134,9 +154,7 @@
       }
       if (/\b(?:CS20H|CS14|F98\.4-Z6-CS21A\d+|ACADEMIA_PLAY_BANK|GAME_ID)\b/.test(normalized)) {
         var parent = node.parentElement;
-        if (parent && parent.children.length === 0) {
-          hideNode(parent, audit, 'technical');
-        }
+        if (parent && parent.children.length === 0) hideNode(parent, audit, 'technical');
       }
     }
   }
@@ -176,19 +194,51 @@
     });
   }
 
+  function liveNotice(title, copy) {
+    var notice = doc.createElement('section');
+    notice.className = 'elive-cs182-live-redirect';
+    notice.setAttribute('role', 'status');
+    notice.innerHTML = '<h2>' + title + '</h2><p>' + copy + '</p><a class="elive-cs182-live-link" href="#english_lab_live">Abrir English LAB Live</a>';
+    return notice;
+  }
+
   function replaceLegacyLiveDemo(root, audit) {
     var room = root.classList && root.classList.contains('ap-live-room') ? root : root.querySelector('.ap-live-room');
     if (!room) return;
     var main = room.querySelector('.ap-live-main');
     if (main) hideNode(main, audit, 'demoCards');
     if (room.querySelector('.elive-cs182-live-redirect')) return;
-    var notice = doc.createElement('section');
-    notice.className = 'elive-cs182-live-redirect';
-    notice.setAttribute('role', 'status');
-    notice.innerHTML = '<h2>Las actividades en vivo están en English LAB Live</h2><p>Volvé al Campus y abrí English LAB Live para crear o ingresar a una sala real. Esta vista de demostración fue retirada.</p>';
+    var notice = liveNotice('Las actividades en vivo están en English LAB Live', 'Usá la sala real para crear o ingresar a una actividad. La demostración con datos ficticios fue retirada.');
     var back = room.querySelector('button');
     if (back && back.nextSibling) room.insertBefore(notice, back.nextSibling);
     else room.appendChild(notice);
+  }
+
+  function replaceLegacyTeacherDemo(root, audit) {
+    var teacher = root.classList && root.classList.contains('ap-view-teacher') ? root : root.querySelector('.ap-view-teacher');
+    if (!teacher) return;
+    Array.prototype.forEach.call(Array.prototype.slice.call(teacher.children), function (child) {
+      if (!child.classList.contains('elive-cs182-live-redirect')) hideNode(child, audit, 'teacherDemo');
+    });
+    if (!teacher.querySelector('.elive-cs182-live-redirect')) {
+      teacher.appendChild(liveNotice('La sala docente está en English LAB Live', 'Creá salas reales, compartí el código y controlá la actividad desde el módulo Live. La maqueta docente anterior fue retirada.'));
+    }
+  }
+
+  function enforceAdminMode(root, audit) {
+    var shell = root.classList && root.classList.contains('aplay-shell') ? root : root.closest('.aplay-shell') || root.querySelector('.aplay-shell');
+    if (!shell) return;
+    var tabs = shell.querySelector('.ap-mode-tabs');
+    if (!tabs) return;
+    var buttons = Array.prototype.slice.call(tabs.querySelectorAll('button'));
+    if (buttons.length < 3) return;
+    var admin = buttons.find(function (button) { return clean(button.textContent) === 'Admin'; });
+    if (!admin) return;
+    if (admin.getAttribute('aria-selected') !== 'true' && shell.getAttribute('data-cs21a182-admin-forced') !== 'true') {
+      shell.setAttribute('data-cs21a182-admin-forced', 'true');
+      try { admin.click(); } catch (_) {}
+    }
+    hideNode(tabs, audit, 'adminModes');
   }
 
   function improveHierarchy(root) {
@@ -207,7 +257,7 @@
     scheduled = false;
     if (!routeLooksRelevant()) return;
     injectStyles();
-    var audit = {roots:0,replaced:0,hidden:0,technical:0,studentInternal:0,demoCards:0};
+    var audit = {roots:0,replaced:0,hidden:0,technical:0,studentInternal:0,demoCards:0,teacherDemo:0,adminModes:0};
     roots().forEach(function (root) {
       audit.roots += 1;
       root.setAttribute('data-cs21a182-clean', 'true');
@@ -217,6 +267,8 @@
       hideMessagePreview(root, audit);
       hideStudentInternalPanels(root, audit);
       replaceLegacyLiveDemo(root, audit);
+      replaceLegacyTeacherDemo(root, audit);
+      enforceAdminMode(root, audit);
       improveHierarchy(root);
     });
     lastAudit = audit;
