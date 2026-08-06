@@ -198,6 +198,21 @@ englishLabSentenceOrderGetRoomControlCS21A183 = function (body) {
   return response;
 };
 
+// Un reintento o doble clic no debe sustituir el tablero por una respuesta mínima.
+// Ante duplicado se devuelve el estado completo del jugador con la marca duplicate.
+var _elso183CurriculumSubmitBase_ = englishLabSentenceOrderSubmitCS21A183;
+englishLabSentenceOrderSubmitCS21A183 = function (body) {
+  body = body || {};
+  var response = _elso183CurriculumSubmitBase_(body);
+  if (!response || response.ok !== true || response.duplicate !== true || response.sentence_order === true) return response;
+  var state = englishLabSentenceOrderGetPlayerStateCS21A183(body);
+  if (!state || state.ok !== true) return response;
+  state.accepted = false;
+  state.duplicate = true;
+  state.message = response.message || 'Respuesta ya procesada.';
+  return state;
+};
+
 var _elso183CurriculumVerifyBase_ = verificarActualizacionQA;
 verificarActualizacionQA = function () {
   var previous = _elso183CurriculumVerifyBase_();
@@ -232,6 +247,7 @@ verificarActualizacionQA = function () {
     curriculum_rows_complete:completeRows,
     curriculum_source_required:true,
     curriculum_acknowledgement_required:true,
+    duplicate_response_preserves_state:true,
     sentence_count_limits:'3-5'
   };
   console.log(JSON.stringify(result));
