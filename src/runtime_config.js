@@ -136,3 +136,18 @@
     }
   } catch (_) {}
 })(window);
+
+// CS21A181 · Capa aditiva exclusiva de English LAB.
+// Se carga como JavaScript plano y se instala antes de que el módulo lazy publique
+// sus vistas; no sustituye el motor CS21A180 ni altera otras rutas del Campus.
+(function loadEnglishLabUxCS21A181(global, doc) {
+  'use strict';
+  if (!global || !doc || global.__ENGLISH_LAB_UX_CS21A181_LOADER__) return;
+  global.__ENGLISH_LAB_UX_CS21A181_LOADER__ = true;
+  var script = doc.createElement('script');
+  script.src = 'src/english_lab_ux_cs21a181.js?v=F98.4Z6CS21A181';
+  script.async = false;
+  script.defer = false;
+  script.setAttribute('data-campus-module', 'english-lab-ux-cs21a181');
+  (doc.head || doc.documentElement).appendChild(script);
+})(window, document);
