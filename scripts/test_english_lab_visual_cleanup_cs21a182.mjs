@@ -67,4 +67,4 @@ if (failures.length) {
   console.error(JSON.stringify({ok:false, version:'CS21A182', failures}, null, 2));
   process.exit(1);
 }
-console.log(JSON.stringify({ok:true, version:'CS21A182', checks:28}));
+console.log(JSON.stringify({ok:true, version:'CS21A182', checks:29}));
