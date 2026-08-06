@@ -151,3 +151,17 @@
   script.setAttribute('data-campus-module', 'english-lab-ux-cs21a181');
   (doc.head || doc.documentElement).appendChild(script);
 })(window, document);
+
+// CS21A182 · Limpieza visual aditiva de las vistas English LAB.
+// No intercepta solicitudes ni cambia reglas de acceso; solo simplifica la presentación.
+(function loadEnglishLabVisualCleanupCS21A182(global, doc) {
+  'use strict';
+  if (!global || !doc || global.__ENGLISH_LAB_VISUAL_CLEANUP_CS21A182_LOADER__) return;
+  global.__ENGLISH_LAB_VISUAL_CLEANUP_CS21A182_LOADER__ = true;
+  var script = doc.createElement('script');
+  script.src = 'src/english_lab_visual_cleanup_cs21a182.js?v=F98.4Z6CS21A182';
+  script.async = false;
+  script.defer = false;
+  script.setAttribute('data-campus-module', 'english-lab-visual-cleanup-cs21a182');
+  (doc.head || doc.documentElement).appendChild(script);
+})(window, document);
