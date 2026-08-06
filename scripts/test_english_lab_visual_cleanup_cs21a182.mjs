@@ -38,6 +38,7 @@ try {
 check(cleanup.includes('F98.4-Z6-CS21A182'), 'la capa está versionada CS21A182');
 check(cleanup.includes('routeLooksRelevant'), 'la limpieza se limita a rutas English LAB');
 check(cleanup.includes('.elive-main-grid,.elive-join-grid,.aplay-shell,.ap-view,.ap-practice-wrap,.ap-live-room'), 'cubre creación, sala activa, práctica individual y demo heredada');
+check(!cleanup.includes("doc.querySelector('main,[role=\"main\"],#root')"), 'no usa el root global como respaldo durante la carga');
 check(cleanup.includes("hideClosestCardByLabel(root, 'Banco pedagógico'"), 'oculta el diagnóstico interno del banco docente Live');
 check(cleanup.includes('hideMessagePreview(root, audit)'), 'retira la vista previa redundante del mensaje');
 check(cleanup.includes('Controlá la actividad y el avance del grupo.'), 'simplifica el encabezado docente Live');
@@ -74,4 +75,4 @@ if (failures.length) {
   console.error(JSON.stringify({ok:false, version:'CS21A182', failures}, null, 2));
   process.exit(1);
 }
-console.log(JSON.stringify({ok:true, version:'CS21A182', checks:36}));
+console.log(JSON.stringify({ok:true, version:'CS21A182', checks:37}));
