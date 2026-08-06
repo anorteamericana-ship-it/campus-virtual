@@ -11,10 +11,13 @@ on:
       - 'src/english_lab_sentence_order_polish_cs21a183.js'
       - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
+      - 'apps_script_patches/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs'
       - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
       - 'scripts/test_english_lab_curriculum_guard_cs21a183.mjs'
+      - 'scripts/test_english_lab_apollo_qa_source_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183_curriculum.mjs'
+      - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_CS21A183.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_VALIDACION_CURRICULAR_CS21A183.md'
       - '.github/workflows/cs21a183-curriculum-validation.yml'
@@ -26,10 +29,13 @@ on:
       - 'src/english_lab_sentence_order_polish_cs21a183.js'
       - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
+      - 'apps_script_patches/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs'
       - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
       - 'scripts/test_english_lab_curriculum_guard_cs21a183.mjs'
+      - 'scripts/test_english_lab_apollo_qa_source_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183_curriculum.mjs'
+      - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_CS21A183.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_VALIDACION_CURRICULAR_CS21A183.md'
       - '.github/workflows/cs21a183-curriculum-validation.yml'
@@ -59,6 +65,7 @@ jobs:
           node scripts/test_english_lab_visual_cleanup_cs21a182.mjs
           node scripts/test_english_lab_sentence_order_cs21a183.mjs
           node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
+          node scripts/test_english_lab_apollo_qa_source_cs21a183.mjs
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
           node scripts/test_english_lab_live_loader_cs21a178.mjs
@@ -66,15 +73,21 @@ jobs:
           node scripts/audit_delivery_surface.mjs
           node scripts/audit_component_ownership_cs21a151.mjs
 
-      - name: Build and verify curriculum-guarded QA package
+      - name: Build and audit isolated QA frontend
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Build and verify Apollo QA guarded package
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TEST_MERGE_SHA: ${{ github.sha }}
           SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          node scripts/build_qa_package_cs21a183_curriculum.mjs
-          node scripts/build_qa_package_cs21a183_curriculum.mjs --verify
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
           cd dist
           zip -X -q -r CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
           sha256sum CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip > CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
@@ -98,9 +111,12 @@ jobs:
               grep -q 'curriculum_source_required' /tmp/guard.js
               grep -q "node.classList.add('elso183-card')" /tmp/polish.js
               test -f "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
+              test -f "$package/BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs"
               grep -q 'curriculum_units:units.length' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
               grep -q 'active_gram_02_items:rows.length' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
               grep -q 'duplicate_response_preserves_state:true' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
+              grep -q 'CS21A183-APOLLO-QA-FIX' "$package/BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs"
+              grep -q 'QA_STAGING_MASTER_ID' "$package/BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs"
               exit 0
             fi
             sleep 0.5
