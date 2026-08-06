@@ -165,3 +165,17 @@
   script.setAttribute('data-campus-module', 'english-lab-visual-cleanup-cs21a182');
   (doc.head || doc.documentElement).appendChild(script);
 })(window, document);
+
+// CS21A183 · Ordena la oración en English LAB Live.
+// Se instala después de la UX y limpieza anteriores; reutiliza las vistas lazy oficiales.
+(function loadEnglishLabSentenceOrderCS21A183(global, doc) {
+  'use strict';
+  if (!global || !doc || global.__ENGLISH_LAB_SENTENCE_ORDER_CS21A183_LOADER__) return;
+  global.__ENGLISH_LAB_SENTENCE_ORDER_CS21A183_LOADER__ = true;
+  var script = doc.createElement('script');
+  script.src = 'src/english_lab_sentence_order_cs21a183.js?v=F98.4Z6CS21A183';
+  script.async = false;
+  script.defer = false;
+  script.setAttribute('data-campus-module', 'english-lab-sentence-order-cs21a183');
+  (doc.head || doc.documentElement).appendChild(script);
+})(window, document);
