@@ -38,6 +38,25 @@ Ejemplo verificado:
 - juego: `B1-U01-GRAM-02`;
 - cinco oraciones activas, entre ellas `My name is Ana.`, `What is your name?` y `I'm a student.`.
 
+## Preflight de la base QA
+
+También se revisó directamente `QA_APOLLO_G3_STAGING_2026-07-19`, ID:
+
+`1dud749W7dJaYkD7l2C3-CKmbrCx5mG_pahTOYrHLsvE`
+
+Resultado del preflight de datos:
+
+- `CONFIG_UNIDADES`: 16 filas B1 + 16 B2 + 16 I1 + 16 I2;
+- total: 64 unidades activas;
+- `ACADEMIA_PLAY_BANK`: 320 coincidencias `GRAM_02`;
+- `B1-U01-GRAM-02`: cinco filas completas con `PLAY_ITEM_ID`, `WORDS_TO_ORDER`, `CORRECT_SENTENCE`, explicación, dificultad, alcance y estado;
+- `I2-U15-GRAM-02`: cinco filas completas con la misma estructura;
+- los contenidos de los extremos revisados coinciden con la base Apollo principal.
+
+**Preflight curricular de datos QA: PASS.**
+
+Este PASS confirma que la base staging tiene los datos necesarios para ejecutar el verificador 99B. No sustituye la instalación de Apps Script, CI ni la prueba autenticada.
+
 ## Hallazgo corregido
 
 La primera versión de CS21A183 permitía seleccionar entre 3 y 8 oraciones. Apollo dispone actualmente de exactamente 5 ítems `GRAM_02` por unidad.
@@ -150,7 +169,9 @@ En cada prueba:
 ## Estado
 
 - Código preparado en rama y PR borrador.
+- Preflight de datos en Apollo principal: PASS.
+- Preflight de datos en QA Apollo staging: PASS.
 - No modifica `main` ni producción.
 - No se instaló Apps Script QA todavía.
-- GitHub Actions continúa sin asignar runner.
+- GitHub Actions no creó workflow runs ni check runs para la rama.
 - QA autenticada sigue pendiente.
