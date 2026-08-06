@@ -6,26 +6,32 @@ on:
       - 'apps_script_patches/97_ACTUALIZACION_QA.gs'
       - 'apps_script_patches/98_ACTUALIZACION_QA_CS21A181.gs'
       - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
+      - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
       - 'src/app.jsx'
       - 'src/runtime_config.js'
       - 'src/english_lab_live.jsx'
       - 'src/english_lab_ux_cs21a181.js'
       - 'src/english_lab_visual_cleanup_cs21a182.js'
       - 'src/english_lab_sentence_order_cs21a183.js'
+      - 'src/english_lab_sentence_order_curriculum_guard_cs21a183.js'
+      - 'src/english_lab_sentence_order_polish_cs21a183.js'
       - 'scripts/test_english_lab_update_qa_cs21a176.mjs'
       - 'scripts/test_english_lab_live_loader_cs21a178.mjs'
       - 'scripts/test_english_lab_fast_state_cs21a180.mjs'
       - 'scripts/test_english_lab_ux_words_cs21a181.mjs'
       - 'scripts/test_english_lab_visual_cleanup_cs21a182.mjs'
       - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
+      - 'scripts/test_english_lab_curriculum_guard_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a180.mjs'
       - 'scripts/build_qa_package_cs21a181.mjs'
       - 'scripts/build_qa_package_cs21a182.mjs'
       - 'scripts/build_qa_package_cs21a183.mjs'
+      - 'scripts/build_qa_package_cs21a183_curriculum.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_ESTADO_RAPIDO_CS21A180.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_UX_CS21A181.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_LIMPIEZA_VISUAL_CS21A182.md'
       - '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_CS21A183.md'
+      - '00_DOCUMENTACION/ENGLISH_LAB_VALIDACION_CURRICULAR_CS21A183.md'
       - '.github/workflows/cs21a180-english-lab-fast-state.yml'
   workflow_dispatch:
 
@@ -45,7 +51,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate backend, synchronization, visual and game contracts
+      - name: Validate backend, synchronization, visual, game and curriculum contracts
         run: |
           set -euo pipefail
           node scripts/test_english_lab_update_qa_cs21a176.mjs
@@ -53,6 +59,7 @@ jobs:
           node scripts/test_english_lab_ux_words_cs21a181.mjs
           node scripts/test_english_lab_visual_cleanup_cs21a182.mjs
           node scripts/test_english_lab_sentence_order_cs21a183.mjs
+          node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
           node scripts/test_english_lab_live_loader_cs21a178.mjs
@@ -91,15 +98,15 @@ jobs:
           node scripts/test_english_lab_turn_browser_cs21a176.mjs
           node scripts/test_english_lab_student_browser_cs21a178.mjs
 
-      - name: Build and verify CS21A183 candidate package
+      - name: Build and verify guarded CS21A183 candidate package
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TEST_MERGE_SHA: ${{ github.sha }}
           SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          node scripts/build_qa_package_cs21a183.mjs
-          node scripts/build_qa_package_cs21a183.mjs --verify
+          node scripts/build_qa_package_cs21a183_curriculum.mjs
+          node scripts/build_qa_package_cs21a183_curriculum.mjs --verify
           cd dist
           zip -X -q -r CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
           sha256sum CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip > CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
@@ -117,13 +124,23 @@ jobs:
             if curl --fail --silent http://127.0.0.1:4181/qa-setup.html >/dev/null; then
               curl --fail --silent --output /tmp/cs21a183-runtime.js http://127.0.0.1:4181/src/runtime_config.js
               curl --fail --silent --output /tmp/cs21a183-game.js http://127.0.0.1:4181/src/english_lab_sentence_order_cs21a183.js
+              curl --fail --silent --output /tmp/cs21a183-guard.js http://127.0.0.1:4181/src/english_lab_sentence_order_curriculum_guard_cs21a183.js
+              curl --fail --silent --output /tmp/cs21a183-polish.js http://127.0.0.1:4181/src/english_lab_sentence_order_polish_cs21a183.js
               curl --fail --silent --output /tmp/cs21a183-backend.gs http://127.0.0.1:4181/BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs
+              curl --fail --silent --output /tmp/cs21a183-curriculum.gs http://127.0.0.1:4181/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs
               curl --fail --silent --output /tmp/cs21a183-cleanup.js http://127.0.0.1:4181/src/english_lab_visual_cleanup_cs21a182.js
               grep -q 'english_lab_sentence_order_cs21a183.js?v=F98.4Z6CS21A183' /tmp/cs21a183-runtime.js
+              grep -q 'english_lab_sentence_order_curriculum_guard_cs21a183.js?v=F98.4Z6CS21A183CURRICULUM' /tmp/cs21a183-runtime.js
+              grep -q 'english_lab_sentence_order_polish_cs21a183.js?v=F98.4Z6CS21A183POLISH' /tmp/cs21a183-runtime.js
               grep -q 'Ordena la oración' /tmp/cs21a183-game.js
               grep -q 'englishLabSentenceOrderSubmit' /tmp/cs21a183-game.js
+              grep -q 'Tema oficial de la unidad' /tmp/cs21a183-guard.js
+              grep -q "node.classList.add('elso183-card')" /tmp/cs21a183-polish.js
               grep -q "ELSO183_VERSION = 'CS21A183'" /tmp/cs21a183-backend.gs
               grep -q 'sentence_order_live_supported:true' /tmp/cs21a183-backend.gs
+              grep -q 'curriculum_units:units.length' /tmp/cs21a183-curriculum.gs
+              grep -q 'active_gram_02_items:rows.length' /tmp/cs21a183-curriculum.gs
+              grep -q 'duplicate_response_preserves_state:true' /tmp/cs21a183-curriculum.gs
               grep -q 'La sala docente está en English LAB Live' /tmp/cs21a183-cleanup.js
               exit 0
             fi
