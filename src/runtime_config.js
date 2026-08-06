@@ -179,3 +179,17 @@
   script.setAttribute('data-campus-module', 'english-lab-sentence-order-cs21a183');
   (doc.head || doc.documentElement).appendChild(script);
 })(window, document);
+
+// CS21A183 · Guardia curricular de nivel, unidad y fuente Apollo.
+// Se carga después del juego y bloquea la creación sin evidencia GRAM_02 coincidente.
+(function loadEnglishLabSentenceCurriculumGuardCS21A183(global, doc) {
+  'use strict';
+  if (!global || !doc || global.__ENGLISH_LAB_SENTENCE_CURRICULUM_GUARD_CS21A183_LOADER__) return;
+  global.__ENGLISH_LAB_SENTENCE_CURRICULUM_GUARD_CS21A183_LOADER__ = true;
+  var script = doc.createElement('script');
+  script.src = 'src/english_lab_sentence_order_curriculum_guard_cs21a183.js?v=F98.4Z6CS21A183CURRICULUM';
+  script.async = false;
+  script.defer = false;
+  script.setAttribute('data-campus-module', 'english-lab-sentence-curriculum-guard-cs21a183');
+  (doc.head || doc.documentElement).appendChild(script);
+})(window, document);
