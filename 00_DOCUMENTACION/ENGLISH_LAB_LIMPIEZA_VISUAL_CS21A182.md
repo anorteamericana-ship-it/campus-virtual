@@ -6,7 +6,7 @@ Base: CS21A181 (`0a55111c15024ef432e0dc65828176c534e3c75d`)
 
 ## Objetivo
 
-Reducir ruido visual y textos técnicos en English LAB sin cambiar juegos, endpoints, permisos, acceso financiero ni datos académicos.
+Reducir ruido visual, textos técnicos y demostraciones heredadas en English LAB sin cambiar juegos reales, endpoints, permisos, acceso financiero ni datos académicos.
 
 ## Hallazgos
 
@@ -17,16 +17,26 @@ Reducir ruido visual y textos técnicos en English LAB sin cambiar juegos, endpo
 - La explicación de que la actividad no afecta notas aparecía repetida en encabezados y tarjetas.
 - La vista previa `Mensaje listo` duplicaba el código, el enlace y los botones de copiado.
 
-### Estudiante
+### Estudiante · English LAB Live
 
 - El encabezado decía `Pantalla del estudiante`, texto que no ayuda a realizar la actividad.
 - Los estados de espera y respuesta eran más largos de lo necesario.
 - El mensaje de pregunta actualizada podía interpretarse como un bloqueo individual.
 
-### Catálogo individual
+### Estudiante · catálogo individual
 
-- `No genera nota oficial` aparecía repetido en introducciones, instrucciones y mapa de progreso.
-- El acceso restringido usaba lenguaje de piloto y backend que no corresponde a una pantalla final.
+La segunda pasada encontró contenido que no debe formar parte de una experiencia estudiantil final:
+
+- tarjeta para actualizar el banco curricular;
+- métricas `Banco total`, cantidad esperada, estado local/sincronizado y guardado técnico;
+- identificadores de unidad y resúmenes internos de importación;
+- instrucciones para ir a `Admin → Banco curricular`;
+- etiquetas `demo`, `banco` y nombres internos como `ACADEMIA_PLAY_BANK`;
+- tarjetas `Próximamente` que ocupaban espacio sin permitir una acción;
+- una tarjeta `Live Trivia` que abría una sala demo con código y participantes ficticios;
+- dos visualizaciones distintas para los mismos logros iniciales.
+
+La sala demo heredada contradice la regla del repositorio de no presentar estudiantes, salas o actividad inventada como experiencia operativa. English LAB Live ya dispone de su ruta real y separada.
 
 ## Implementación
 
@@ -35,11 +45,18 @@ Se agrega `src/english_lab_visual_cleanup_cs21a182.js` como capa aditiva cargada
 La capa:
 
 - actúa únicamente cuando detecta rutas o contenedores de English LAB;
+- cubre creación docente, control de sala, ingreso, sala activa, prácticas individuales y la vista demo heredada;
 - reemplaza textos exactos por instrucciones breves orientadas a la acción;
 - oculta el panel interno `Banco pedagógico` de la vista docente;
 - oculta la vista previa redundante `Mensaje listo` sin retirar los botones de copiar;
-- conserva el código de sala, enlace, controles y salas recientes;
-- aplica ajustes móviles y limita párrafos secundarios extensos;
+- conserva código de sala, enlace, controles, participantes reales y salas recientes;
+- retira de la vista estudiantil controles de banco, métricas de sincronización y resúmenes internos;
+- cambia `Banco curricular` por `Juegos por unidad` y elimina nombres internos de carga;
+- oculta tarjetas `Próximamente` y la entrada `Live Trivia` ficticia;
+- sustituye la sala demo heredada por una indicación para usar la ruta real English LAB Live;
+- conserva una sola línea principal de logros y elimina la estantería duplicada;
+- reduce etiquetas secundarias de tarjetas y áreas;
+- aplica ajustes móviles sin forzar ancho completo sobre fichas, palabras o tarjetas de juego;
 - observa renders diferidos para limpiar vistas que aparecen después de una solicitud;
 - expone `window.__ENGLISH_LAB_VISUAL_CLEANUP_CS21A182__.getLastAudit()` para evidencia QA.
 
@@ -62,31 +79,42 @@ La capa:
 4. Confirmar que salas recientes siguen disponibles.
 5. Abrir una sala y comprobar controles, lista de participantes y resultados.
 
-### Estudiante
+### Estudiante · Live
 
 1. Entrar sin código y revisar la pantalla inicial.
 2. Entrar a una sala activa.
 3. Confirmar estados breves de espera, respuesta recibida y actualización.
 4. Confirmar que cambiar sala y actualizar siguen funcionando.
 
-### Catálogo individual
+### Estudiante · catálogo individual
 
 1. Abrir English LAB.
-2. Confirmar que el mapa de progreso no repite `No genera nota oficial`.
-3. Abrir un juego del banco y confirmar instrucciones breves.
-4. Revisar acceso restringido con un perfil no habilitado.
+2. Confirmar que no aparecen actualización del banco, conteos esperados, estados de sincronización ni instrucciones administrativas.
+3. Confirmar que el mapa de progreso conserva nivel, unidades y avance.
+4. Confirmar que `Juegos por unidad` permite filtrar y abrir actividades reales.
+5. Confirmar que no aparecen tarjetas `Próximamente` ni `Live Trivia` demo.
+6. Abrir un juego del banco y comprobar que no se muestra `ACADEMIA_PLAY_BANK`, `GAME_ID` o `CS14`.
+7. Confirmar que la línea de logros permanece y que no aparece una segunda estantería duplicada.
+8. Revisar acceso restringido con un perfil no habilitado.
+
+### Sala demo heredada
+
+1. Forzar la vista histórica únicamente en QA.
+2. Confirmar que no aparecen `PLAY-4821` ni nombres ficticios.
+3. Confirmar que se muestra la guía para regresar y abrir English LAB Live real.
 
 ### Móvil
 
-Repetir las tres vistas a 390 px de ancho. Botones y tarjetas deben permanecer utilizables sin desbordamiento horizontal.
+Repetir las vistas a 390 px de ancho. Los botones de acción pueden ocupar el ancho disponible, pero las fichas de palabras, tarjetas y controles del juego deben conservar su cuadrícula y no convertirse en bloques de ancho completo.
 
 ## Criterio de aceptación
 
 CS21A182 se considera aprobado cuando:
 
 - no se muestran códigos internos o diagnósticos del banco al docente;
+- el estudiante no ve controles administrativos, métricas técnicas ni datos ficticios;
 - no se pierde ningún control funcional;
 - no aparecen cambios fuera de English LAB;
 - CS21A181 mantiene indicador de carga y parejas editables;
 - CS21A180 mantiene turnos y sincronización;
-- QA autenticada completa pasa en docente y estudiante.
+- QA autenticada completa pasa en docente, estudiante y móvil.
