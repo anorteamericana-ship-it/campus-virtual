@@ -137,7 +137,7 @@ function verify() {
   assert.match(backend, /active_gram_02_items:rows\.length/);
   assert.match(backend, /five_items_per_unit:exactFive/);
   assert.match(backend, /duplicate_response_preserves_state:true/);
-  assert.match(install, /un solo archivo Apps Script/i);
+  assert.match(install, /un (?:solo|único) archivo Apps Script/i);
   assert.match(install, /99_CS21A183_SENTENCE_ORDER_COMPLETO/);
   assert.match(readme, /No cree 99 y 99B como dos archivos separados/);
   assert.match(version, /CURRICULUM_UNITS_REQUIRED=64/);
