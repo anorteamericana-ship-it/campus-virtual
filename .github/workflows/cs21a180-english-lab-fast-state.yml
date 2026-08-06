@@ -114,6 +114,9 @@ jobs:
               curl --fail --silent --output /tmp/cs21a182-ux.js http://127.0.0.1:4180/src/english_lab_ux_cs21a181.js
               grep -q 'english_lab_visual_cleanup_cs21a182.js?v=F98.4Z6CS21A182' /tmp/cs21a182-runtime.js
               grep -q 'Banco pedagógico' /tmp/cs21a182-cleanup.js
+              grep -q 'La sala docente está en English LAB Live' /tmp/cs21a182-cleanup.js
+              grep -q 'href="#english_lab_live"' /tmp/cs21a182-cleanup.js
+              grep -q 'enforceAdminMode' /tmp/cs21a182-cleanup.js
               grep -q 'Palabras sugeridas' /tmp/cs21a182-ux.js
               exit 0
             fi
