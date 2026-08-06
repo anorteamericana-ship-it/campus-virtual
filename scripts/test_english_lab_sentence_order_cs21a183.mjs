@@ -50,9 +50,14 @@ check(frontend.includes('correct_sentence || item.CORRECT_SENTENCE'), 'lee la or
 check(frontend.includes('Una oración por línea'), 'editor explica el formato al docente');
 check(frontend.includes('3 a 18 palabras') || frontend.includes('3 y 18 palabras'), 'editor documenta límites de longitud');
 check(frontend.includes("post('englishLabSentenceOrderCreateRoom'"), 'docente crea sala especializada');
-check(frontend.includes("post('englishLabSentenceOrderStartRoom'"), 'docente inicia la actividad');
-check(frontend.includes("post('englishLabSentenceOrderNextSentence'"), 'docente avanza a la siguiente oración');
-check(frontend.includes("post('englishLabSentenceOrderCloseRoom'"), 'docente cierra la sala');
+check(
+  frontend.includes("roomAction('englishLabSentenceOrderStartRoom')") &&
+  frontend.includes('async function roomAction(fn)') &&
+  frontend.includes("post(fn, {room_id:roomCode(control.room)}"),
+  'docente inicia la actividad mediante el helper de control'
+);
+check(frontend.includes("roomAction('englishLabSentenceOrderNextSentence')"), 'docente avanza a la siguiente oración');
+check(frontend.includes("roomAction('englishLabSentenceOrderCloseRoom')"), 'docente cierra la sala');
 check(frontend.includes("post('englishLabSentenceOrderSubmit'"), 'estudiante envía el orden construido');
 check(frontend.includes('ordered_token_ids'), 'la respuesta usa identificadores de token y no texto ambiguo');
 check(frontend.includes('moveToAnswer') && frontend.includes('moveToPool'), 'las palabras se pueden agregar y retirar');
