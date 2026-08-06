@@ -43,6 +43,17 @@
 
   function roots() {
     var nodes = Array.prototype.slice.call(doc.querySelectorAll('.elive-main-grid,.elive-join-grid,.aplay-shell,[data-screen-label*="English LAB"]'));
+    if (!nodes.length && routeLooksRelevant()) {
+      Array.prototype.forEach.call(doc.querySelectorAll('h1,h2'), function (heading) {
+        if (clean(heading.textContent).toLowerCase().indexOf('english lab') < 0) return;
+        var candidate = heading.closest('[data-screen-label]') || heading.parentElement;
+        if (candidate) nodes.push(candidate);
+      });
+    }
+    if (!nodes.length && routeLooksRelevant()) {
+      var fallback = doc.querySelector('main,[role="main"],#root');
+      if (fallback) nodes.push(fallback);
+    }
     var unique = [];
     nodes.forEach(function (node) {
       var root = node;
