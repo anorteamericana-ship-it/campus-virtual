@@ -11,6 +11,7 @@ const INVALID = 'about:blank#campus-backend-invalid';
 
 function boot({ override, legacyUrl } = {}) {
   const calls = [];
+  const injectedScripts = [];
   const window = {
     __CAMPUS_RUNTIME_CONFIG__: override,
     APPS_SCRIPT_URL: legacyUrl,
@@ -20,7 +21,19 @@ function boot({ override, legacyUrl } = {}) {
     },
     dispatchEvent() {},
   };
-  const document = { documentElement: { dataset: {} } };
+  const appendScript = node => injectedScripts.push(node);
+  const document = {
+    documentElement: { dataset: {}, appendChild: appendScript },
+    head: { appendChild: appendScript },
+    createElement(tagName) {
+      return {
+        tagName: String(tagName || '').toUpperCase(),
+        setAttribute(name, value) {
+          this[String(name)] = String(value);
+        },
+      };
+    },
+  };
   const context = {
     window,
     document,
@@ -40,17 +53,18 @@ function boot({ override, legacyUrl } = {}) {
     console,
   };
   vm.runInNewContext(source, context, { filename: 'src/runtime_config.js' });
-  return { window, document, calls };
+  return { window, document, calls, injectedScripts };
 }
 
 {
-  const { window, document } = boot();
+  const { window, document, injectedScripts } = boot();
   assert.equal(window.APPS_SCRIPT_URL, PROD);
   assert.equal(window.CAMPUS_RUNTIME_CONFIG.environment, 'production');
   assert.equal(window.CAMPUS_RUNTIME_CONFIG.isProduction, true);
   assert.equal(window.CAMPUS_RUNTIME_CONFIG.valid, true);
   assert.equal(window.CAMPUS_RUNTIME_CONFIG.error, '');
   assert.equal(document.documentElement.dataset.campusEnvironment, 'production');
+  assert.equal(injectedScripts.length >= 1, true, 'runtime_config debe poder registrar módulos aditivos en un DOM mínimo');
 }
 
 {
@@ -110,4 +124,4 @@ for (const entrypoint of ['campus.html', 'login.html', 'ventas.html', 'inscripci
   assert.equal(runtimeIndex < Math.min(...appIndexes), true, `${entrypoint} debe cargar runtime_config antes del código de aplicación`);
 }
 
-console.log('OK: CS21A146 runtime config central, override QA y bloqueo seguro verificados.');
+console.log('OK: CS21A146 runtime config central, override QA, carga aditiva y bloqueo seguro verificados.');
