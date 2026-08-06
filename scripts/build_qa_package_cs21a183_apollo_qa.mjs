@@ -39,6 +39,28 @@ function writeManifest() {
   ).join('\n') + '\n', 'utf8');
 }
 
+function normalizeReleaseInstructions() {
+  const readmePath = path.join(target, 'LEEME_PRIMERO_CS21A183.txt');
+  let readme = fs.readFileSync(readmePath, 'utf8');
+  readme = readme.replace(
+    /APPS SCRIPT QA\n[\s\S]*?\n\nFRONTEND QA/,
+    `APPS SCRIPT QA\n1. El backend QA ya fue validado y desplegado el 2026-08-06.\n2. La composición validada es un único archivo 99_CS21A183_SENTENCE_ORDER_COMPLETO después de 98.\n3. Dentro de ese archivo el orden obligatorio es: 99 + 99B + 99C.\n4. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n5. verificarActualizacionQA() ya devolvió PASS con 64 unidades y 320 ítems GRAM_02.\n6. No vuelva a modificar ni desplegar Apps Script para la prueba frontend salvo que aparezca un defecto real de backend.\n\nFRONTEND QA`
+  );
+  readme = readme.replace(
+    /INSTALACIÓN APPS SCRIPT EN ARCHIVO ÚNICO\n[-]+\n[\s\S]*?(?=\n\nHOTFIX APOLLO QA VALIDADO|$)/,
+    `INSTALACIÓN APPS SCRIPT QA VALIDADA\n-------------------------------------\n- Archivo: 99_CS21A183_SENTENCE_ORDER_COMPLETO.\n- Orden interno validado: BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs + BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs + BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs.\n- Ubicación: después de 98_ACTUALIZACION_QA_CS21A181.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- Verificador ejecutado: PASS_2026-08-06.\n- No usar estos módulos QA en producción.`
+  );
+  readme = readme.replace(/\n\nHOTFIX APOLLO QA VALIDADO\n[-]+\n[\s\S]*$/, '');
+  fs.writeFileSync(readmePath, readme.replace(/\s*$/, '') + '\n', 'utf8');
+
+  const versionPath = path.join(target, 'VERSION.txt');
+  let version = fs.readFileSync(versionPath, 'utf8');
+  version = version
+    .replace('APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98', 'APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98')
+    .replace('CURRICULUM_QA_STATUS=PENDING', 'CURRICULUM_QA_STATUS=PASS_2026-08-06');
+  fs.writeFileSync(versionPath, version.replace(/\s*$/, '') + '\n', 'utf8');
+}
+
 function build() {
   const base = spawnSync(process.execPath, ['scripts/build_qa_package_cs21a183_curriculum.mjs'], {
     cwd:root,
@@ -54,9 +76,9 @@ function build() {
   fs.mkdirSync(path.dirname(destination), {recursive:true});
   fs.copyFileSync(source, destination);
 
-  appendOnce('LEEME_PRIMERO_CS21A183.txt', 'HOTFIX APOLLO QA VALIDADO', `HOTFIX APOLLO QA VALIDADO\n--------------------------\n18. Después de 99 y 99B, pegue también BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs al final del MISMO archivo 99_CS21A183_SENTENCE_ORDER_COMPLETO.\n19. 99C obliga a leer CONFIG_UNIDADES y ACADEMIA_PLAY_BANK desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n20. El verificador final debe reportar curriculum_source=QA_STAGING_MASTER_ID y curriculum_source_fix=CS21A183-APOLLO-QA-FIX.\n21. Esta composición 99 + 99B + 99C es la misma validada manualmente en Apps Script QA el 2026-08-06.`);
+  normalizeReleaseInstructions();
 
-  appendOnce('VERSION.txt', 'APOLLO_QA_SOURCE_FIX=', `APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX\nCURRICULUM_SOURCE=QA_STAGING_MASTER_ID\nAPPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98\nAPPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06`);
+  appendOnce('VERSION.txt', 'APOLLO_QA_SOURCE_FIX=', `APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX\nCURRICULUM_SOURCE=QA_STAGING_MASTER_ID\nAPPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06`);
 
   writeManifest();
 }
@@ -81,10 +103,14 @@ function verify() {
   assert.match(fix, /_elso183ApolloRows_\('CONFIG_UNIDADES'\)/);
   assert.match(fix, /_elso183ApolloRows_\('ACADEMIA_PLAY_BANK'\)/);
   assert.match(fix, /curriculum_source:'QA_STAGING_MASTER_ID'/);
-  assert.match(readme, /99 \+ 99B \+ 99C/);
+  assert.match(readme, /orden obligatorio es: 99 \+ 99B \+ 99C/i);
+  assert.match(readme, /Verificador ejecutado: PASS_2026-08-06/);
+  assert.doesNotMatch(readme, /Cree un archivo nuevo: 99_ACTUALIZACION_QA_CS21A183/i);
   assert.match(version, /APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX/);
   assert.match(version, /CURRICULUM_SOURCE=QA_STAGING_MASTER_ID/);
-  assert.match(version, /SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98/);
+  assert.match(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98/);
+  assert.doesNotMatch(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98/);
+  assert.match(version, /CURRICULUM_QA_STATUS=PASS_2026-08-06/);
   assert.match(version, /APPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06/);
 
   const manifest = new Map();
