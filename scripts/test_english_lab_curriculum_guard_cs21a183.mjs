@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const frontend = fs.readFileSync(path.join(root, 'src', 'english_lab_sentence_order_curriculum_guard_cs21a183.js'), 'utf8');
+const polish = fs.readFileSync(path.join(root, 'src', 'english_lab_sentence_order_polish_cs21a183.js'), 'utf8');
 const backend = fs.readFileSync(path.join(root, 'apps_script_patches', '99B_VALIDACION_CURRICULAR_CS21A183.gs'), 'utf8');
 const runtime = fs.readFileSync(path.join(root, 'src', 'runtime_config.js'), 'utf8');
 const baseFrontend = fs.readFileSync(path.join(root, 'src', 'english_lab_sentence_order_cs21a183.js'), 'utf8');
@@ -18,23 +19,18 @@ function check(condition, message) {
   }
 }
 
-try {
-  new Function(frontend);
-  check(true, 'la guardia frontend compila como JavaScript plano');
-} catch (error) {
-  check(false, `la guardia frontend compila: ${error.message}`);
-}
-try {
-  new Function(backend);
-  check(true, 'la guardia Apps Script conserva sintaxis JavaScript válida');
-} catch (error) {
-  check(false, `la guardia Apps Script compila: ${error.message}`);
-}
-try {
-  new Function(runtime);
-  check(true, 'runtime_config conserva sintaxis válida');
-} catch (error) {
-  check(false, `runtime_config conserva sintaxis válida: ${error.message}`);
+for (const [name, source] of [
+  ['guardia frontend', frontend],
+  ['pulido visual', polish],
+  ['guardia Apps Script', backend],
+  ['runtime_config', runtime],
+]) {
+  try {
+    new Function(source);
+    check(true, `${name} conserva sintaxis JavaScript válida`);
+  } catch (error) {
+    check(false, `${name} compila: ${error.message}`);
+  }
 }
 
 check(frontend.includes('F98.4-Z6-CS21A183-CURRICULUM'), 'frontend está versionado como guardia curricular');
@@ -50,6 +46,11 @@ check(frontend.includes("name === 'academiaplaybankgetgame'"), 'captura la fuent
 check(frontend.includes("name === 'englishlabsentenceorderteacherdata'"), 'recibe la matriz curricular oficial');
 check(!frontend.includes('QA-STU-') && !frontend.includes('120180140'), 'no contiene excepciones por estudiante');
 
+check(polish.includes('F98.4-Z6-CS21A183-POLISH'), 'pulido visual está versionado');
+check(polish.includes("doc.querySelectorAll('.elso183-shell .elso-card')"), 'pulido se limita al contenedor Sentence Order');
+check(polish.includes("node.classList.add('elso183-card')"), 'normaliza la clase final al estilo oficial');
+check(!polish.includes('fetch') && !polish.includes('APPS_SCRIPT_URL'), 'pulido no modifica solicitudes ni backend');
+
 check(backend.includes("_elive176Rows_('CONFIG_UNIDADES')"), 'backend lee las unidades oficiales de Apollo');
 check(backend.includes("_elive176Rows_('ACADEMIA_PLAY_BANK')"), 'backend valida el banco real de juegos');
 check(backend.includes("_elso183Upper_(row.TEMPLATE_ID) === 'GRAM_02'"), 'backend limita la fuente a GRAM_02');
@@ -61,11 +62,16 @@ check(backend.includes('five_items_per_unit:exactFive'), 'verificador reporta co
 check(backend.includes("CONTENT_SOURCE:'CONFIG_UNIDADES|ACADEMIA_PLAY_BANK|GRAM_02'"), 'la sala conserva trazabilidad de la fuente');
 check(backend.includes('SENTENCE_ORDER_CURRICULUM_VERIFIED'), 'registra evidencia curricular en la bitácora Live');
 check(backend.includes('curriculum_acknowledgement_required:true'), 'verificador confirma la revisión docente');
+check(backend.includes('_elso183CurriculumSubmitBase_'), 'envuelve el envío base para reintentos seguros');
+check(backend.includes('duplicate_response_preserves_state:true'), 'verificador declara estado completo ante duplicado');
+check(backend.includes('englishLabSentenceOrderGetPlayerStateCS21A183(body)'), 'duplicado reconstruye el estado completo del jugador');
 check(!backend.includes('QA-STU-') && !backend.includes('120180140'), 'backend no contiene excepciones por usuario');
 
 check(runtime.includes('english_lab_sentence_order_cs21a183.js?v=F98.4Z6CS21A183'), 'runtime mantiene el juego base');
-check(runtime.includes('english_lab_sentence_order_curriculum_guard_cs21a183.js?v=F98.4Z6CS21A183CURRICULUM'), 'runtime carga la guardia después del juego');
+check(runtime.includes('english_lab_sentence_order_curriculum_guard_cs21a183.js?v=F98.4Z6CS21A183CURRICULUM'), 'runtime carga la guardia curricular');
+check(runtime.includes('english_lab_sentence_order_polish_cs21a183.js?v=F98.4Z6CS21A183POLISH'), 'runtime carga el pulido visual');
 check(runtime.indexOf('english_lab_sentence_order_curriculum_guard_cs21a183.js') > runtime.indexOf('english_lab_sentence_order_cs21a183.js'), 'orden de carga conserva juego antes de guardia');
+check(runtime.indexOf('english_lab_sentence_order_polish_cs21a183.js') > runtime.indexOf('english_lab_sentence_order_curriculum_guard_cs21a183.js'), 'pulido carga después de la guardia');
 check(baseFrontend.includes("var GAME_CODE = 'SENTENCE_ORDER'"), 'el juego base permanece separado de la guardia');
 check(baseBackend.includes("var ELSO183_GAME_CODE = 'SENTENCE_ORDER'"), 'el backend base permanece intacto');
 
@@ -76,9 +82,11 @@ if (failures.length) {
 console.log(JSON.stringify({
   ok:true,
   version:'CS21A183-CURRICULUM',
-  checks:32,
+  checks:42,
   curriculum_units_required:64,
   gram_02_items_required:320,
   items_per_unit_required:5,
-  sentence_count_limits:'3-5'
+  sentence_count_limits:'3-5',
+  duplicate_response_preserves_state:true,
+  visual_polish:'F98.4-Z6-CS21A183-POLISH'
 }, null, 2));
