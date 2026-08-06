@@ -8,6 +8,7 @@ on:
       - 'src/runtime_config.js'
       - 'src/english_lab_sentence_order_cs21a183.js'
       - 'src/english_lab_sentence_order_curriculum_guard_cs21a183.js'
+      - 'src/english_lab_sentence_order_polish_cs21a183.js'
       - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
       - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
@@ -22,6 +23,7 @@ on:
       - 'src/runtime_config.js'
       - 'src/english_lab_sentence_order_cs21a183.js'
       - 'src/english_lab_sentence_order_curriculum_guard_cs21a183.js'
+      - 'src/english_lab_sentence_order_polish_cs21a183.js'
       - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
       - 'scripts/test_english_lab_sentence_order_cs21a183.mjs'
@@ -89,12 +91,16 @@ jobs:
             if curl --fail --silent http://127.0.0.1:4181/qa-setup.html >/dev/null; then
               curl --fail --silent --output /tmp/runtime.js http://127.0.0.1:4181/src/runtime_config.js
               curl --fail --silent --output /tmp/guard.js http://127.0.0.1:4181/src/english_lab_sentence_order_curriculum_guard_cs21a183.js
+              curl --fail --silent --output /tmp/polish.js http://127.0.0.1:4181/src/english_lab_sentence_order_polish_cs21a183.js
               grep -q 'english_lab_sentence_order_curriculum_guard_cs21a183.js?v=F98.4Z6CS21A183CURRICULUM' /tmp/runtime.js
+              grep -q 'english_lab_sentence_order_polish_cs21a183.js?v=F98.4Z6CS21A183POLISH' /tmp/runtime.js
               grep -q 'Tema oficial de la unidad' /tmp/guard.js
               grep -q 'curriculum_source_required' /tmp/guard.js
+              grep -q "node.classList.add('elso183-card')" /tmp/polish.js
               test -f "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
               grep -q 'curriculum_units:units.length' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
               grep -q 'active_gram_02_items:rows.length' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
+              grep -q 'duplicate_response_preserves_state:true' "$package/BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs"
               exit 0
             fi
             sleep 0.5
