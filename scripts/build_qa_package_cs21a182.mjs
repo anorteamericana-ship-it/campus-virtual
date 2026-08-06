@@ -87,11 +87,13 @@ ESTADO REAL
 - Candidato QA apilado sobre CS21A181.
 - No modifica main ni producción.
 - Mantiene el motor Live CS21A180 y parejas editables CS21A181.
-- Simplifica textos en catálogo, estudiante y docente.
-- Oculta diagnósticos internos del banco en la vista docente.
+- Simplifica textos en catálogo, estudiante, docente y administración.
+- Oculta diagnósticos internos del banco en la vista docente Live.
 - Retira del estudiante controles de importación, métricas de sincronización y nombres internos.
 - Oculta tarjetas Próximamente y la entrada Live Trivia con sala ficticia.
-- La vista demo heredada dirige a la ruta real English LAB Live.
+- Retira la maqueta docente con grupo, sala y estudiantes inventados.
+- Docente usa un acceso directo a English LAB Live real.
+- Admin abre directamente su panel real y no las maquetas de estudiante/docente.
 - No modifica backend ni reglas de acceso.
 
 FRONTEND QA
@@ -101,11 +103,16 @@ FRONTEND QA
 4. Se abrirá http://127.0.0.1:4180/qa-setup.html
 5. Use la misma URL /exec QA de CS21A181.
 
-PRUEBA DOCENTE
+PRUEBA DOCENTE LIVE
 1. Entre como Profe y abra English LAB Live.
 2. Confirme ausencia de CS20H, versiones y Banco pedagógico.
 3. Cree una sala y pruebe copiar código, mensaje y enlace.
 4. Abra el control y confirme participantes, botones y resultados.
+
+PRUEBA DOCENTE INDIVIDUAL
+1. Abra English LAB desde el menú docente.
+2. Confirme que no aparecen B1-LM18-C3-0726, PLAY-4821 ni estudiantes ficticios.
+3. Confirme que aparece Abrir English LAB Live y que navega al módulo real.
 
 PRUEBA ESTUDIANTE LIVE
 1. Entre con Naty o leo.
@@ -120,6 +127,12 @@ PRUEBA ESTUDIANTE INDIVIDUAL
 5. Abra un juego real y confirme ausencia de ACADEMIA_PLAY_BANK, GAME_ID y CS14.
 6. Revise escritorio y móvil a 390 px.
 
+PRUEBA ADMIN
+1. Abra English LAB como admin o superadmin.
+2. Confirme que abre directamente el panel Admin y no muestra tabs de maquetas.
+3. Confirme importar, validar, actualizar, métricas y fichas.
+4. Confirme etiquetas Banco de juegos, Importador y Seguimiento de práctica.
+
 NO FUSIONAR NI PASAR A PRODUCCIÓN SIN PASS AUTENTICADO.
 `);
 
@@ -131,23 +144,28 @@ Fecha:
 URL /exec QA confirmada: SI / NO
 Docente:
 Estudiante:
+Admin:
 Código de sala:
 
 [ ] No aparece CS20H ni versión interna.
-[ ] No aparece Banco pedagógico al docente.
+[ ] No aparece Banco pedagógico al docente Live.
 [ ] Crear sala funciona.
 [ ] Copiar código funciona.
 [ ] Copiar mensaje funciona.
 [ ] Copiar enlace funciona.
 [ ] Salas recientes siguen visibles.
 [ ] El control de ronda conserva todos los botones.
+[ ] English LAB docente individual no muestra grupo, sala o estudiantes ficticios.
+[ ] El botón Abrir English LAB Live navega al módulo real.
 [ ] El estudiante Live ve estados breves y claros.
 [ ] No aparecen controles de importación ni métricas de sincronización al estudiante.
-[ ] No aparecen Banco total, 768 esperados, ACADEMIA_PLAY_BANK, GAME_ID o CS14.
+[ ] No aparecen Banco total, 768 esperados, ACADEMIA_PLAY_BANK, GAME_ID o CS14 al estudiante.
 [ ] Juegos por unidad, mapa y filtros siguen operativos.
 [ ] No aparecen tarjetas Próximamente ni Live Trivia demo.
 [ ] La sala demo heredada no muestra código o participantes ficticios.
 [ ] La línea de logros no está duplicada.
+[ ] Admin abre directamente el panel administrativo real.
+[ ] Admin conserva importar, validar, actualizar, métricas y fichas.
 [ ] Vista móvil usable a 390 px sin ensanchar fichas de juego.
 [ ] CS21A181 conserva carga y parejas editables.
 [ ] CS21A180 conserva turnos y sincronización.
@@ -198,6 +216,9 @@ function verify() {
   const cleanup = fs.readFileSync(path.join(target, 'src', 'english_lab_visual_cleanup_cs21a182.js'), 'utf8');
   assert.match(cleanup, /Banco pedagógico/);
   assert.match(cleanup, /Las actividades en vivo están en English LAB Live/);
+  assert.match(cleanup, /La sala docente está en English LAB Live/);
+  assert.match(cleanup, /href="#english_lab_live"/);
+  assert.match(cleanup, /enforceAdminMode/);
   assert.match(cleanup, /\.ap-live-preview,\.ap-stats-grid,\.ap-medal-shelf,\.ap-bank-unit-summary/);
   assert.match(cleanup, /Próximamente\|Live Trivia/);
   assert.match(fs.readFileSync(path.join(target, 'VERSION.txt'), 'utf8'), /APPS_SCRIPT_CHANGE=NO/);
