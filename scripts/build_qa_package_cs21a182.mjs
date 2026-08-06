@@ -89,6 +89,9 @@ ESTADO REAL
 - Mantiene el motor Live CS21A180 y parejas editables CS21A181.
 - Simplifica textos en catálogo, estudiante y docente.
 - Oculta diagnósticos internos del banco en la vista docente.
+- Retira del estudiante controles de importación, métricas de sincronización y nombres internos.
+- Oculta tarjetas Próximamente y la entrada Live Trivia con sala ficticia.
+- La vista demo heredada dirige a la ruta real English LAB Live.
 - No modifica backend ni reglas de acceso.
 
 FRONTEND QA
@@ -104,11 +107,18 @@ PRUEBA DOCENTE
 3. Cree una sala y pruebe copiar código, mensaje y enlace.
 4. Abra el control y confirme participantes, botones y resultados.
 
-PRUEBA ESTUDIANTE
+PRUEBA ESTUDIANTE LIVE
 1. Entre con Naty o leo.
 2. Abra English LAB Live e ingrese a la sala.
 3. Confirme textos breves de espera, respuesta y actualización.
-4. Revise English LAB individual y el mapa de progreso.
+
+PRUEBA ESTUDIANTE INDIVIDUAL
+1. Abra English LAB.
+2. Confirme que no aparecen Banco total, 768 esperados, estado local/sincronizado ni controles de importación.
+3. Confirme que Juegos por unidad, mapa de progreso y filtros siguen funcionando.
+4. Confirme ausencia de tarjetas Próximamente y Live Trivia demo.
+5. Abra un juego real y confirme ausencia de ACADEMIA_PLAY_BANK, GAME_ID y CS14.
+6. Revise escritorio y móvil a 390 px.
 
 NO FUSIONAR NI PASAR A PRODUCCIÓN SIN PASS AUTENTICADO.
 `);
@@ -131,9 +141,14 @@ Código de sala:
 [ ] Copiar enlace funciona.
 [ ] Salas recientes siguen visibles.
 [ ] El control de ronda conserva todos los botones.
-[ ] El estudiante ve estados breves y claros.
-[ ] El catálogo individual no repite No genera nota oficial.
-[ ] Vista móvil usable a 390 px.
+[ ] El estudiante Live ve estados breves y claros.
+[ ] No aparecen controles de importación ni métricas de sincronización al estudiante.
+[ ] No aparecen Banco total, 768 esperados, ACADEMIA_PLAY_BANK, GAME_ID o CS14.
+[ ] Juegos por unidad, mapa y filtros siguen operativos.
+[ ] No aparecen tarjetas Próximamente ni Live Trivia demo.
+[ ] La sala demo heredada no muestra código o participantes ficticios.
+[ ] La línea de logros no está duplicada.
+[ ] Vista móvil usable a 390 px sin ensanchar fichas de juego.
 [ ] CS21A181 conserva carga y parejas editables.
 [ ] CS21A180 conserva turnos y sincronización.
 
@@ -180,7 +195,11 @@ function verify() {
   assert.equal(fs.existsSync(path.join(target, 'ABRIR_CAMPUS_QA_CS21A181.cmd')), false);
   assert.match(fs.readFileSync(path.join(target, 'ABRIR_CAMPUS_QA_CS21A182.cmd'), 'utf8'), /127\.0\.0\.1:4180\/qa-setup\.html[\s\S]*PORT=4180/);
   assert.match(fs.readFileSync(path.join(target, 'src', 'runtime_config.js'), 'utf8'), /english_lab_visual_cleanup_cs21a182\.js\?v=F98\.4Z6CS21A182/);
-  assert.match(fs.readFileSync(path.join(target, 'src', 'english_lab_visual_cleanup_cs21a182.js'), 'utf8'), /Banco pedagógico/);
+  const cleanup = fs.readFileSync(path.join(target, 'src', 'english_lab_visual_cleanup_cs21a182.js'), 'utf8');
+  assert.match(cleanup, /Banco pedagógico/);
+  assert.match(cleanup, /Las actividades en vivo están en English LAB Live/);
+  assert.match(cleanup, /\.ap-live-preview,\.ap-stats-grid,\.ap-medal-shelf,\.ap-bank-unit-summary/);
+  assert.match(cleanup, /Próximamente\|Live Trivia/);
   assert.match(fs.readFileSync(path.join(target, 'VERSION.txt'), 'utf8'), /APPS_SCRIPT_CHANGE=NO/);
   assert.match(fs.readFileSync(path.join(target, 'VERSION.txt'), 'utf8'), /PRODUCTION_TOUCHED=NO/);
 
