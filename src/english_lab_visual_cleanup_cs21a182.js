@@ -94,10 +94,6 @@
         if (candidate) nodes.push(candidate);
       });
     }
-    if (!nodes.length && routeLooksRelevant()) {
-      var fallback = doc.querySelector('main,[role="main"],#root');
-      if (fallback) nodes.push(fallback);
-    }
     var unique = [];
     nodes.forEach(function (node) {
       var root = node;
