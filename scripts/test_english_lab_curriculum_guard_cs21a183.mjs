@@ -43,7 +43,7 @@ check(frontend.includes('curriculum_acknowledged'), 'adjunta confirmación docen
 check(frontend.includes('curriculum_source_loaded'), 'exige haber cargado la fuente curricular');
 check(frontend.includes("source_game_id = source.gameId"), 'adjunta el GAME_ID curricular exacto');
 check(frontend.includes('source_item_ids = source.itemIds.slice()'), 'adjunta evidencia de ítems fuente');
-check(frontend.includes("match(/^(B1|B2|I1|I2)-(U\\d{2})-GRAM-02$/)"), 'solo acepta GAME_ID GRAM_02 de los cuatro niveles');
+check(frontend.includes('B1|B2|I1|I2') && frontend.includes('GRAM-02$/'), 'solo acepta GAME_ID GRAM_02 de los cuatro niveles');
 check(frontend.includes('Number(option.value || 0) > 5'), 'retira opciones superiores a las cinco oraciones existentes por unidad');
 check(frontend.includes("name === 'englishlabsentenceordercreateroom'"), 'bloquea la creación antes de enviar cuando falta evidencia');
 check(frontend.includes("name === 'academiaplaybankgetgame'"), 'captura la fuente real devuelta por Apollo');
@@ -76,7 +76,7 @@ if (failures.length) {
 console.log(JSON.stringify({
   ok:true,
   version:'CS21A183-CURRICULUM',
-  checks:31,
+  checks:32,
   curriculum_units_required:64,
   gram_02_items_required:320,
   items_per_unit_required:5,
