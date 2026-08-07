@@ -55,6 +55,24 @@
 .elmm-audio-face span:first-child{font-size:42px}
 .elmm-live-announcement{min-height:22px;margin-top:12px;text-align:center;font-size:13px;font-weight:900;color:var(--elmm-navy)}
 .elmm-complete{margin-top:6px;padding:13px 16px;border-radius:16px;text-align:center;background:#EAF8EF;border:1px solid #BDE8CD;color:#145C38;font-size:18px;font-weight:1000}
+
+/* CS21A188 · Shared Discovery */
+.elmm-shared-discovery .elmm-card-front{align-content:center;gap:10px;padding:16px 12px 44px}
+.elmm-card.is-discovered .elmm-card-front{border-color:#8AB8EE;background:linear-gradient(145deg,#FFF,#F1F7FF)}
+.elmm-card.is-selected .elmm-card-front{border-color:#E3A900;box-shadow:0 0 0 4px rgba(242,201,76,.28),0 14px 30px rgba(0,30,71,.16)}
+.elmm-card.is-claimed .elmm-card-front{border-color:#20A15C;background:linear-gradient(145deg,#FFF,#EAF8EF);box-shadow:0 12px 26px rgba(20,92,56,.16)}
+.elmm-card-badge{position:absolute;left:9px;right:9px;bottom:9px;display:block;padding:6px 8px;border-radius:10px;font-size:10px;line-height:1.15;font-weight:950;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.elmm-card-badge.is-discovered-badge{background:#EAF3FF;border:1px solid #B7D5FF;color:#073B7A}
+.elmm-card-badge.is-claimed-badge{background:#EAF8EF;border:1px solid #BDE8CD;color:#145C38}
+.elmm-shared-turn{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 12px;padding:13px 14px;border:1px solid #B7D5FF;border-radius:16px;background:linear-gradient(135deg,#EEF4FF,#FFF)}
+.elmm-shared-turn>div{display:grid;gap:2px}
+.elmm-shared-turn span{font-size:10px;font-weight:950;letter-spacing:.12em;text-transform:uppercase;color:#7A1E2C}
+.elmm-shared-turn strong{font-size:18px;color:#001E47}
+.elmm-shared-turn small{font-size:11px;color:#667085;font-weight:750}
+.elmm-shared-turn>b{padding:7px 10px;border-radius:999px;background:#FFF7E6;border:1px solid #FFD88A;color:#7A4B00;font-size:11px}
+.elmm-shared-discovery [data-card-state="DISCOVERED"]:not(:disabled){cursor:pointer}
+.elmm-shared-discovery [data-card-state="DISCOVERED"]:not(:disabled):hover .elmm-card-front{transform:translateZ(0);box-shadow:0 0 0 3px rgba(11,79,156,.12),0 14px 28px rgba(0,30,71,.14)}
+
 @media(max-width:900px){
   .elmm-shell{padding:15px;border-radius:22px}
   .elmm-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
@@ -66,6 +84,8 @@
   .elmm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .elmm-card{min-height:128px}
   .elmm-room-chip{font-size:12px}
+  .elmm-card-badge{font-size:9px;padding:5px 6px}
+  .elmm-shared-turn strong{font-size:15px}
 }
 @media(prefers-reduced-motion:reduce){
   .elmm-card-inner,.elmm-team,.elmm-timer-fill{transition:none!important}
