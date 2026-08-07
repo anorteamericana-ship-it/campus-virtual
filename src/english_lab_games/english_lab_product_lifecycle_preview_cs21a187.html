@@ -69,7 +69,8 @@
       return response({ok:false,error:'QA endpoint no simulado: '+fn},400);
     };
     document.getElementById('qa-close-a').addEventListener('click',()=>{window.__QA_ROOM_STATUS__['LAB-A']='CLOSED';window.__QA_TRACK_STALE_A__=true;});
-    new MutationObserver(()=>{ if(window.__QA_TRACK_STALE_A__ && document.body.innerText.includes('LAB-A')) window.__QA_STALE_A_SEEN__=true; }).observe(document.documentElement,{subtree:true,childList:true,characterData:true});
+    const qaAppRoot=document.getElementById('root');
+    new MutationObserver(()=>{ if(window.__QA_TRACK_STALE_A__ && qaAppRoot.innerText.includes('LAB-A')) window.__QA_STALE_A_SEEN__=true; }).observe(qaAppRoot,{subtree:true,childList:true,characterData:true});
   </script>
   <script src="../english_lab_live_product_guard_cs21a187.js?v=F98.4Z6CS21A187"></script>
   <script src="./english_lab_runtime_cs21a173.js?v=CS21A187"></script>
