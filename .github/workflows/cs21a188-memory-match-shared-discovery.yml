@@ -11,6 +11,7 @@ on:
       - 'scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs'
       - 'scripts/patch_qa_package_cs21a187.mjs'
       - 'src/english_lab_live_product_guard_cs21a187.js'
+      - 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx'
       - 'src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx'
       - 'src/english_lab_games/memory_match_shared_discovery_preview_cs21a188.html'
       - 'styles/english_lab_memory_match_cs21a173.css'
