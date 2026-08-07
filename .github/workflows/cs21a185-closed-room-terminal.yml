@@ -1,0 +1,35 @@
+name: CS21A185 closed room terminal
+
+on:
+  push:
+    branches:
+      - feat/cs21a183-sentence-order-live
+    paths:
+      - 'apps_script_patches/99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'src/english_lab_live_student_dependency_guard_cs21a184.js'
+      - 'scripts/test_english_lab_closed_room_cs21a185.mjs'
+      - '.github/workflows/cs21a185-closed-room-terminal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  closed-room-terminal:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild exact complete Apps Script locally
+        run: node scripts/assemble_apps_script_cs21a183_complete.mjs
+      - name: Reproduce closed-room regression
+        run: node scripts/test_english_lab_closed_room_cs21a185.mjs
+      - name: Assert no manual patch instructions in complete file
+        run: |
+          set -euo pipefail
+          grep -q '99F CLOSED FIX' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q 'No agregar parches manuales' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
