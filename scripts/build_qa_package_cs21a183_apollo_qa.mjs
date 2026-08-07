@@ -44,11 +44,11 @@ function normalizeReleaseInstructions() {
   let readme = fs.readFileSync(readmePath, 'utf8');
   readme = readme.replace(
     /APPS SCRIPT QA\n[\s\S]*?\n\nFRONTEND QA/,
-    `APPS SCRIPT QA\n1. El backend QA ya fue validado y desplegado el 2026-08-06.\n2. La composición validada es un único archivo 99_CS21A183_SENTENCE_ORDER_COMPLETO después de 98.\n3. Dentro de ese archivo el orden obligatorio es: 99 + 99B + 99C.\n4. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n5. verificarActualizacionQA() ya devolvió PASS con 64 unidades y 320 ítems GRAM_02.\n6. No vuelva a modificar ni desplegar Apps Script para la prueba frontend salvo que aparezca un defecto real de backend.\n\nFRONTEND QA`
+    `APPS SCRIPT QA\n1. El backend QA base fue validado y desplegado el 2026-08-06.\n2. Durante QA autenticada se detectó un defecto real al iniciar Memory Match y se añadió 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs.\n3. La composición QA actual es un único archivo 99_CS21A183_SENTENCE_ORDER_COMPLETO después de 98, con orden interno obligatorio: 99 + 99B + 99C + 99D.\n4. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n5. 99D blinda SETTINGS_JSON en salas CREATED y solo se habilita cuando QA_STAGING_MASTER_ID y QA_STAGING_OPERATIVO_ID demuestran QA/STAGING.\n6. Antes de continuar la QA autenticada se debe ejecutar verificarActualizacionQA() y confirmar memory_match_start_guard=true.\n7. No usar estos módulos QA en producción.\n\nFRONTEND QA`
   );
   readme = readme.replace(
-    /INSTALACIÓN APPS SCRIPT EN ARCHIVO ÚNICO\n[-]+\n[\s\S]*?(?=\n\nHOTFIX APOLLO QA VALIDADO|$)/,
-    `INSTALACIÓN APPS SCRIPT QA VALIDADA\n-------------------------------------\n- Archivo: 99_CS21A183_SENTENCE_ORDER_COMPLETO.\n- Orden interno validado: BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs + BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs + BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs.\n- Ubicación: después de 98_ACTUALIZACION_QA_CS21A181.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- Verificador ejecutado: PASS_2026-08-06.\n- No usar estos módulos QA en producción.`
+    /INSTALACIÓN APPS SCRIPT QA VALIDADA\n[-]+\n[\s\S]*?(?=\n\nHOTFIX APOLLO QA VALIDADO|$)/,
+    `INSTALACIÓN APPS SCRIPT QA ACTUAL\n-----------------------------------\n- Archivo Apps Script: 99_CS21A183_SENTENCE_ORDER_COMPLETO.\n- Orden interno: BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs + BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs + BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs + BACKEND_QA/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs.\n- Ubicación: después de 98_ACTUALIZACION_QA_CS21A181.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- 99D es exclusivo QA y falla cerrado fuera de QA/STAGING.\n- Ejecutar verificarActualizacionQA() después de añadir 99D.\n- No usar estos módulos QA en producción.`
   );
   readme = readme.replace(/\n\nHOTFIX APOLLO QA VALIDADO\n[-]+\n[\s\S]*$/, '');
   fs.writeFileSync(readmePath, readme.replace(/\s*$/, '') + '\n', 'utf8');
@@ -56,7 +56,8 @@ function normalizeReleaseInstructions() {
   const versionPath = path.join(target, 'VERSION.txt');
   let version = fs.readFileSync(versionPath, 'utf8');
   version = version
-    .replace('APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98', 'APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98')
+    .replace('APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98', 'APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_THEN_99D_AFTER_98')
+    .replace('APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98', 'APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_THEN_99D_AFTER_98')
     .replace('CURRICULUM_QA_STATUS=PENDING', 'CURRICULUM_QA_STATUS=PASS_2026-08-06');
   fs.writeFileSync(versionPath, version.replace(/\s*$/, '') + '\n', 'utf8');
 }
@@ -70,15 +71,21 @@ function build() {
   assert.equal(base.status, 0, 'No se pudo construir el paquete curricular CS21A183.');
   assert.equal(fs.existsSync(target), true, 'Falta el paquete base CS21A183.');
 
-  const source = path.join(root, 'apps_script_patches', '99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs');
-  const destination = path.join(target, 'BACKEND_QA', '99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs');
-  assert.equal(fs.existsSync(source), true, 'Falta 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs');
-  fs.mkdirSync(path.dirname(destination), {recursive:true});
-  fs.copyFileSync(source, destination);
+  for (const name of [
+    '99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs',
+    '99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs',
+  ]) {
+    const source = path.join(root, 'apps_script_patches', name);
+    const destination = path.join(target, 'BACKEND_QA', name);
+    assert.equal(fs.existsSync(source), true, `Falta ${name}`);
+    fs.mkdirSync(path.dirname(destination), {recursive:true});
+    fs.copyFileSync(source, destination);
+  }
 
   normalizeReleaseInstructions();
 
   appendOnce('VERSION.txt', 'APOLLO_QA_SOURCE_FIX=', `APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX\nCURRICULUM_SOURCE=QA_STAGING_MASTER_ID\nAPPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06`);
+  appendOnce('VERSION.txt', 'MEMORY_MATCH_START_FIX=', `MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX\nMEMORY_MATCH_START_QA=REQUIRES_VERIFIER_AFTER_99D`);
 
   writeManifest();
 }
@@ -88,12 +95,14 @@ function verify() {
     'BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs',
     'BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs',
     'BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs',
+    'BACKEND_QA/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs',
     'LEEME_PRIMERO_CS21A183.txt',
     'VERSION.txt',
     'SHA256SUMS.txt',
   ]) assert.equal(fs.existsSync(path.join(target, relative)), true, `Falta ${relative}`);
 
   const fix = fs.readFileSync(path.join(target, 'BACKEND_QA', '99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs'), 'utf8');
+  const startFix = fs.readFileSync(path.join(target, 'BACKEND_QA', '99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs'), 'utf8');
   const readme = fs.readFileSync(path.join(target, 'LEEME_PRIMERO_CS21A183.txt'), 'utf8');
   const version = fs.readFileSync(path.join(target, 'VERSION.txt'), 'utf8');
 
@@ -103,15 +112,24 @@ function verify() {
   assert.match(fix, /_elso183ApolloRows_\('CONFIG_UNIDADES'\)/);
   assert.match(fix, /_elso183ApolloRows_\('ACADEMIA_PLAY_BANK'\)/);
   assert.match(fix, /curriculum_source:'QA_STAGING_MASTER_ID'/);
-  assert.match(readme, /orden obligatorio es: 99 \+ 99B \+ 99C/i);
-  assert.match(readme, /Verificador ejecutado: PASS_2026-08-06/);
+
+  assert.match(startFix, /CS21A183-MM-START-FIX/);
+  assert.match(startFix, /var raw = room && room\.SETTINGS_JSON/);
+  assert.match(startFix, /englishLabMemoryMatchStartRoomCS21A176 = function\(body\)/);
+  assert.match(startFix, /getProperty\('QA_STAGING_OPERATIVO_ID'\)/);
+  assert.match(startFix, /memory_match_start_guard_error/);
+
+  assert.match(readme, /99 \+ 99B \+ 99C \+ 99D/i);
+  assert.match(readme, /memory_match_start_guard=true/i);
   assert.doesNotMatch(readme, /Cree un archivo nuevo: 99_ACTUALIZACION_QA_CS21A183/i);
   assert.match(version, /APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX/);
   assert.match(version, /CURRICULUM_SOURCE=QA_STAGING_MASTER_ID/);
-  assert.match(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98/);
-  assert.doesNotMatch(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_AFTER_98/);
+  assert.match(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_THEN_99D_AFTER_98/);
+  assert.doesNotMatch(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98\s*$/m);
   assert.match(version, /CURRICULUM_QA_STATUS=PASS_2026-08-06/);
   assert.match(version, /APPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06/);
+  assert.match(version, /MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX/);
+  assert.match(version, /MEMORY_MATCH_START_QA=REQUIRES_VERIFIER_AFTER_99D/);
 
   const manifest = new Map();
   for (const line of fs.readFileSync(path.join(target, 'SHA256SUMS.txt'), 'utf8').trim().split(/\r?\n/)) {
@@ -129,11 +147,12 @@ function verify() {
   console.log(JSON.stringify({
     verdict:'APTO_CON_RESERVAS',
     package:packageName,
-    appsScriptQaVerifier:'PASS_2026-08-06',
-    appsScriptComposition:'99+99B+99C',
+    appsScriptQaVerifier:'REQUIRES_99D_VERIFIER',
+    appsScriptComposition:'99+99B+99C+99D',
     curriculumSource:'QA_STAGING_MASTER_ID',
     apolloQaSourceFix:'CS21A183-APOLLO-QA-FIX',
-    authenticatedFrontendQa:'PENDING',
+    memoryMatchStartFix:'CS21A183-MM-START-FIX',
+    authenticatedFrontendQa:'IN_PROGRESS',
   }, null, 2));
 }
 
