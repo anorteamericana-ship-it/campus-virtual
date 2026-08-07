@@ -4,11 +4,18 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source = fs.readFileSync('apps_script_patches/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs', 'utf8');
-const now = Date.parse('2026-08-07T03:30:00.000Z');
+const now = globalThis.Date.parse('2026-08-07T03:30:00.000Z');
+const RealDate = globalThis.Date;
+class FixedDate extends RealDate {
+  constructor(...args) { super(...(args.length ? args : [now])); }
+  static now() { return now; }
+  static parse(value) { return RealDate.parse(value); }
+  static UTC(...args) { return RealDate.UTC(...args); }
+}
 
 const context = {
   console,
-  Date,
+  Date:FixedDate,
   JSON,
   Math,
   Number,
@@ -25,8 +32,8 @@ context.ELIVE_PLAYERS_HEADERS = [];
 context._elive176Text_ = value => String(value == null ? '' : value).trim();
 context._elive176Upper_ = value => context._elive176Text_(value).toUpperCase();
 context._elive176Timestamp_ = value => {
-  if (value instanceof Date) return value.getTime();
-  const parsed = Date.parse(context._elive176Text_(value));
+  if (value instanceof FixedDate || value instanceof RealDate) return value.getTime();
+  const parsed = RealDate.parse(context._elive176Text_(value));
   return Number.isFinite(parsed) ? parsed : 0;
 };
 context._elive180PlayerPublic_ = row => ({cod_estudiante:row.COD_ESTUDIANTE, nombre:row.NOMBRE});
@@ -37,7 +44,7 @@ let rows = [];
 context._elive180Table_ = () => ({rows});
 
 function row(code, ageSeconds, status='ACTIVE', useJoined=false) {
-  const seen = new Date(now - ageSeconds * 1000).toISOString();
+  const seen = new RealDate(now - ageSeconds * 1000).toISOString();
   return {
     ROOM_ID:'ROOM-1',
     ROOM_CODE:'LAB-TEST',
@@ -81,6 +88,7 @@ assert.deepEqual(afterClose.map(item => item.COD_ESTUDIANTE), ['PRESENT']);
 console.log(JSON.stringify({
   ok:true,
   contract:'CS21A183_MEMORY_MATCH_REAL_PRESENCE_RUNTIME',
+  fixed_clock:true,
   ttl_seconds:60,
   boundary_59s:true,
   boundary_60s:true,
