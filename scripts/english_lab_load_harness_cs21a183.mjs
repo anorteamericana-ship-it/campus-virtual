@@ -12,6 +12,19 @@ const valueOf = (name, fallback='') => {
   return found ? found.slice(prefix.length) : fallback;
 };
 
+const SHARED_DISCOVERY_PHASES = Object.freeze([2,5,10,15,25]);
+const BASE_STUDENT_POLL_MS = 4000;
+const READ_CACHE_MS = 750;
+
+function livePollMsForPlayers(count) {
+  const players = Math.max(1,Number(count || 0) || 1);
+  if (players <= 5) return 1500;
+  if (players <= 10) return 1800;
+  if (players <= 15) return 2500;
+  if (players <= 25) return 3500;
+  return 4000;
+}
+
 function percentile(values, p) {
   if (!values.length) return 0;
   const sorted = values.slice().sort((a,b)=>a-b);
@@ -42,6 +55,52 @@ function summarize(samples) {
       p99:Math.round(percentile(latency,99)),
       max:latency.length ? Math.round(Math.max(...latency)) : 0,
     },
+  };
+}
+
+// Modela el navegador real: polling base 4s + polling Shared Discovery adaptativo.
+// El microcaché de 750 ms evita que ambos canales golpeen Apps Script cuando caen
+// próximos. Se barre el desfase del polling base para obtener el peor caso/minuto.
+function modeledPhysicalReadsPerMinute(players, stepMs=50) {
+  const fastMs = livePollMsForPlayers(players);
+  const durationMs = 60000;
+  function countForOffset(baseOffset) {
+    const events = [];
+    for (let t=0;t<durationMs;t+=fastMs) events.push(t);
+    for (let t=baseOffset;t<durationMs;t+=BASE_STUDENT_POLL_MS) events.push(t);
+    events.sort((a,b)=>a-b);
+    let lastPhysical = -Infinity;
+    let physical = 0;
+    for (const at of events) {
+      if (at - lastPhysical >= READ_CACHE_MS) {
+        physical += 1;
+        lastPhysical = at;
+      }
+    }
+    return physical;
+  }
+  let min = Infinity;
+  let max = 0;
+  let sum = 0;
+  let samples = 0;
+  for (let offset=0; offset<BASE_STUDENT_POLL_MS; offset+=stepMs) {
+    const value = countForOffset(offset);
+    min = Math.min(min,value);
+    max = Math.max(max,value);
+    sum += value;
+    samples += 1;
+  }
+  const teacherPerMinute = Math.ceil(durationMs / fastMs);
+  return {
+    players,
+    shared_poll_ms:fastMs,
+    base_poll_ms:BASE_STUDENT_POLL_MS,
+    read_cache_ms:READ_CACHE_MS,
+    student_physical_reads_per_minute:{min,max,avg:Number((sum/samples).toFixed(2))},
+    teacher_physical_reads_per_minute:teacherPerMinute,
+    worst_total_reads_per_minute:max*players + teacherPerMinute,
+    worst_requests_per_second:Number(((max*players + teacherPerMinute)/60).toFixed(2)),
+    stress_interval_ms:Math.max(500,Math.floor(60000/max)),
   };
 }
 
@@ -175,9 +234,12 @@ async function runTeacher(config, durationMs, intervalMs, timeoutMs) {
 }
 
 async function runPhase(config, clients, options) {
+  const model = modeledPhysicalReadsPerMinute(clients.length);
+  const clientIntervalMs = options.explicitIntervalMs || model.stress_interval_ms;
+  const teacherIntervalMs = options.explicitIntervalMs || model.shared_poll_ms;
   const startedAt = new Date().toISOString();
-  const clientTasks = clients.map(client => runClient(client,config,options.durationMs,options.intervalMs,options.timeoutMs));
-  const teacherTask = runTeacher(config,options.durationMs,options.intervalMs,options.timeoutMs);
+  const clientTasks = clients.map(client => runClient(client,config,options.durationMs,clientIntervalMs,options.timeoutMs));
+  const teacherTask = runTeacher(config,options.durationMs,teacherIntervalMs,options.timeoutMs);
   const [clientResults, teacherSamples] = await Promise.all([Promise.all(clientTasks),teacherTask]);
   const studentSamples = clientResults.flat();
   const all = studentSamples.concat(teacherSamples);
@@ -190,7 +252,10 @@ async function runPhase(config, clients, options) {
     credential_mode:options.reuse ? 'REUSED_TRANSPORT_ONLY' : 'UNIQUE_STUDENTS',
     teacher_polling:teacherSamples.length > 0,
     duration_seconds:options.durationMs/1000,
-    interval_ms:options.intervalMs,
+    shared_discovery_poll_ms:model.shared_poll_ms,
+    load_student_interval_ms:clientIntervalMs,
+    load_teacher_interval_ms:teacherIntervalMs,
+    browser_network_model:model,
     timeout_ms:options.timeoutMs,
     thresholds:{max_error_rate:options.maxErrorRate,max_p95_ms:options.maxP95Ms},
     stats,
@@ -205,10 +270,21 @@ async function selfTest() {
     requests:4,ok:2,errors:2,error_rate:0.5,network_errors:1,http_errors:0,api_errors:1,
     latency_ms:{min:100,p50:200,p95:400,p99:400,max:400},
   });
-  const qa = assertQaUrl('https://script.google.com/macros/s/QA_TEST_CS21A183/exec?x=1');
-  assert.equal(qa,'https://script.google.com/macros/s/QA_TEST_CS21A183/exec');
+  const qa = assertQaUrl('https://script.google.com/macros/s/QA_TEST_CS21A188/exec?x=1');
+  assert.equal(qa,'https://script.google.com/macros/s/QA_TEST_CS21A188/exec');
   assert.throws(()=>assertQaUrl(productionAppsScriptUrl()),/LOAD_QA_REFUSED_PRODUCTION_URL/);
   assert.throws(()=>assertQaUrl('https://example.com/api'),/LOAD_QA_URL_INVALID/);
+
+  assert.equal(livePollMsForPlayers(2),1500);
+  assert.equal(livePollMsForPlayers(5),1500);
+  assert.equal(livePollMsForPlayers(10),1800);
+  assert.equal(livePollMsForPlayers(15),2500);
+  assert.equal(livePollMsForPlayers(25),3500);
+  const models = SHARED_DISCOVERY_PHASES.map(modeledPhysicalReadsPerMinute);
+  for (const model of models) {
+    assert.ok(model.student_physical_reads_per_minute.max < 55,'El microcaché debe mejorar el doble polling histórico.');
+    assert.ok(model.worst_requests_per_second < 20,'El modelo Shared Discovery no debe superar 20 req/s hasta 25 estudiantes.');
+  }
 
   const config = {roomCode:'LAB-TEST',roomId:'ELIVE-TEST',teacherToken:'TEACHER-TOKEN'};
   const client = {student:{token:'STUDENT-TOKEN',playerId:'QA-STU-005',codEstudiante:'QA-STU-005'}};
@@ -227,10 +303,15 @@ async function selfTest() {
 
   console.log(JSON.stringify({
     ok:true,
-    contract:'CS21A183_ENGLISH_LAB_LOAD_HARNESS',
+    contract:'CS21A188_ENGLISH_LAB_LOAD_HARNESS',
     production_fail_closed:true,
     dry_run_default:true,
-    phases:[2,5,10,25],
+    phases:SHARED_DISCOVERY_PHASES,
+    adaptive_shared_discovery_polling:true,
+    poll_tiers_ms:{'2-5':1500,'6-10':1800,'11-15':2500,'16-25':3500},
+    base_student_poll_ms:BASE_STUDENT_POLL_MS,
+    read_cache_ms:READ_CACHE_MS,
+    modeled_browser_network:models,
     unique_credentials_default:true,
     transport_reuse_requires_flag:true,
     exact_frontend_session_contract:true,
@@ -245,10 +326,11 @@ if (has('--self-test')) {
   process.exit(0);
 }
 
-const phases = valueOf('phases','2,5,10,25').split(',').map(Number).filter(value=>[2,5,10,25].includes(value));
-if (!phases.length) throw new Error('Use --phases=2,5,10,25 o un subconjunto.');
+const phases = valueOf('phases',SHARED_DISCOVERY_PHASES.join(',')).split(',').map(Number).filter(value=>SHARED_DISCOVERY_PHASES.includes(value));
+if (!phases.length) throw new Error('Use --phases=2,5,10,15,25 o un subconjunto.');
 const durationMs = Math.max(5000, Number(valueOf('duration-seconds','15')) * 1000);
-const intervalMs = Math.max(500, Number(valueOf('interval-ms','1000')));
+const explicitIntervalRaw = valueOf('interval-ms','');
+const explicitIntervalMs = explicitIntervalRaw ? Math.max(500,Number(explicitIntervalRaw)||0) : 0;
 const timeoutMs = Math.max(1000, Number(valueOf('timeout-ms','8000')));
 const maxErrorRate = Math.max(0, Number(valueOf('max-error-rate','0.02')));
 const maxP95Ms = Math.max(250, Number(valueOf('max-p95-ms','3000')));
@@ -262,7 +344,8 @@ if (!execute) {
     message:'No se envió tráfico. Agregue --execute únicamente durante QA autenticada.',
     phases,
     duration_seconds:durationMs/1000,
-    interval_ms:intervalMs,
+    explicit_interval_ms:explicitIntervalMs || null,
+    adaptive_models:phases.map(modeledPhysicalReadsPerMinute),
     timeout_ms:timeoutMs,
     max_error_rate:maxErrorRate,
     max_p95_ms:maxP95Ms,
@@ -274,14 +357,14 @@ if (!execute) {
 
 if (!fs.existsSync(configPath)) throw new Error(`Falta archivo local de credenciales QA: ${configPath}`);
 const config = loadConfig(configPath);
-const options = {durationMs,intervalMs,timeoutMs,maxErrorRate,maxP95Ms,reuse};
+const options = {durationMs,explicitIntervalMs,timeoutMs,maxErrorRate,maxP95Ms,reuse};
 const results = [];
 for (const phase of phases) {
   const clients = clientPool(config,phase,reuse);
   console.error(`[QA LOAD] fase ${phase} iniciando...`);
   const result = await runPhase(config,clients,options);
   results.push(result);
-  console.error(`[QA LOAD] fase ${phase}: ${result.verdict} p95=${result.stats.latency_ms.p95}ms error_rate=${(result.stats.error_rate*100).toFixed(2)}%`);
+  console.error(`[QA LOAD] fase ${phase}: ${result.verdict} p95=${result.stats.latency_ms.p95}ms error_rate=${(result.stats.error_rate*100).toFixed(2)}% modelo=${result.browser_network_model.worst_requests_per_second}req/s`);
   if (result.verdict !== 'PASS') break;
   await sleep(1500);
 }
@@ -289,14 +372,14 @@ for (const phase of phases) {
 const overall = results.length === phases.length && results.every(item=>item.verdict==='PASS') ? 'PASS' : 'FAIL';
 const report = {
   verdict:overall,
-  tool:'CS21A183_ENGLISH_LAB_LOAD_HARNESS',
+  tool:'CS21A188_ENGLISH_LAB_LOAD_HARNESS',
   safety:'QA_ONLY_READ_ENDPOINTS',
   room_code:config.roomCode,
   phases_requested:phases,
   phases_completed:results.map(item=>item.phase_clients),
   results,
 };
-const outputDir = path.resolve('qa-output/cs21a183-load');
+const outputDir = path.resolve('qa-output/cs21a188-load');
 fs.mkdirSync(outputDir,{recursive:true});
 const outputFile = path.join(outputDir,`load-${Date.now()}.json`);
 fs.writeFileSync(outputFile,JSON.stringify(report,null,2)+'\n','utf8');
