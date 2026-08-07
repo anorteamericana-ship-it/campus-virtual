@@ -1,0 +1,40 @@
+name: CS21A186 Memory Match rules
+
+on:
+  push:
+    branches:
+      - feat/cs21a183-sentence-order-live
+    paths:
+      - 'src/english_lab_games/english_lab_runtime_cs21a173.js'
+      - 'apps_script_patches/99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs'
+      - 'scripts/test_memory_match_rules_cs21a186.mjs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - '.github/workflows/cs21a186-memory-match-rules.yml'
+  pull_request:
+    paths:
+      - 'src/english_lab_games/english_lab_runtime_cs21a173.js'
+      - 'apps_script_patches/99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs'
+      - 'scripts/test_memory_match_rules_cs21a186.mjs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - '.github/workflows/cs21a186-memory-match-rules.yml'
+  workflow_dispatch:
+
+jobs:
+  memory-match-rules:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify canonical clock and turn rules
+        run: node scripts/test_memory_match_rules_cs21a186.mjs
+      - name: Rebuild and verify single complete Apps Script
+        run: |
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          grep -F "CS21A186_MM_RULES_FIX_VERSION = 'CS21A186-MM-RULES-FIX1'" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -F "correct_pair_points:1" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -F "correct_pair_keeps_player:true" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -F "incorrect_pair_rotates_turn:true" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
