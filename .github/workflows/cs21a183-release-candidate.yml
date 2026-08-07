@@ -21,6 +21,7 @@ on:
       - 'scripts/test_memory_match_start_guard_cs21a183.mjs'
       - 'scripts/test_memory_match_presence_runtime_cs21a183.mjs'
       - 'scripts/test_english_lab_fetch_resilience_cs21a183.mjs'
+      - 'scripts/english_lab_load_harness_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
       - '.github/workflows/cs21a183-release-candidate.yml'
 
@@ -53,6 +54,7 @@ jobs:
           node scripts/test_memory_match_start_guard_cs21a183.mjs
           node scripts/test_memory_match_presence_runtime_cs21a183.mjs
           node scripts/test_english_lab_fetch_resilience_cs21a183.mjs
+          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
           node scripts/test_english_lab_live_loader_cs21a178.mjs
