@@ -23,7 +23,7 @@
 </head>
 <body>
   <div class="qa-head">
-    <strong>CS21A188 · Un tablero canónico / tres vistas</strong>
+    <strong>CS21A188 · servidor canónico / tres clientes independientes</strong>
     <span id="qa-state" class="qa-state">HIDDEN</span>
   </div>
   <div id="root"></div>
@@ -33,8 +33,10 @@
   <script src="../../vendor/babel.js"></script>
   <script src="./english_lab_runtime_cs21a173.js?v=CS21A188"></script>
   <script src="./english_lab_turn_engine_cs21a176.js?v=CS21A176"></script>
+  <script src="./english_lab_live_sync_guard_cs21a177.js?v=CS21A188"></script>
   <script type="text/babel" src="./memory_match_engine_cs21a173.jsx?v=CS21A188"></script>
   <script type="text/babel" src="./memory_match_shared_discovery_cs21a188.jsx?v=CS21A188"></script>
+  <script type="text/babel" src="./english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A188"></script>
   <script type="text/babel">
     const PLAYERS = [
       {player_id:'P1',cod_estudiante:'P1',name:'Chu',team_id:'Equipo Azul'},
@@ -48,6 +50,8 @@
     ];
 
     function iso(ms){ return new Date(ms).toISOString(); }
+    function clone(value){ return JSON.parse(JSON.stringify(value)); }
+    function playerById(id){ return PLAYERS.find(p=>p.player_id===id)||null; }
     function freshTurn(activePlayer,activeTeam,number,reason){
       const now=Date.now();
       return {
@@ -61,108 +65,119 @@
       };
     }
     function initialCanonical(){
+      return {boardVersion:1,discovered:{},claimed:{},matched:[],points:{P1:0,P2:0},turn:freshTurn('P1','Equipo Azul',1,'ROUND_STARTED')};
+    }
+    const canonical=initialCanonical();
+    window.__QA_SHARED_DISCOVERY_STATE__=canonical;
+    window.__QA_POLL_CALLS__=[];
+    window.__QA_ACTION_TIMES__={};
+
+    function publicShared(){
       return {
-        boardVersion:1,
-        discovered:{},
-        claimed:{},
-        matched:[],
-        points:{P1:0,P2:0},
-        turn:freshTurn('P1','Equipo Azul',1,'ROUND_STARTED'),
+        version:'CS21A188-MM-SHARED-DISCOVERY-1',board_version:canonical.boardVersion,
+        discovered_cards:clone(canonical.discovered),claimed_pairs:clone(canonical.claimed),
+        matched_pair_ids:canonical.matched.slice(),completed:canonical.matched.length===2,last_action_key:''
       };
     }
-    function clone(value){ return JSON.parse(JSON.stringify(value)); }
-    function publicShared(state){
-      return {
-        version:'CS21A188-MM-SHARED-DISCOVERY-1',
-        board_version:state.boardVersion,
-        discovered_cards:clone(state.discovered),
-        claimed_pairs:clone(state.claimed),
-        matched_pair_ids:state.matched.slice(),
-        completed:state.matched.length===2,
-        last_action_key:''
-      };
-    }
-    function packageFor(state,viewer){
+    function packageFor(viewer){
       const now=Date.now();
       return {
-        version:'CS21A188-MM-SHARED-DISCOVERY-1',
-        server_now:iso(now),client_received_at_ms:now,
+        version:'CS21A188-MM-SHARED-DISCOVERY-1',server_now:iso(now),client_received_at_ms:now,
         room:{room_code:'LAB-SD88',game_id:'MEMORY_MATCH',mode:'TEAMS',level_id:'B1'},
         round:{round_id:'LAB-SD88-R1',index:1,title:'Memory Match · U01',cards:CARDS},
         rules:{round_duration_ms:30000,auto_start_delay_ms:0,reveal_duration_ms:0,team_size:1},
-        state:{phase:state.matched.length===2?'COMPLETE':'OPEN',started_at:state.turn.turn_started_at,ends_at:state.turn.turn_ends_at,active_player_id:state.turn.active_player_id,active_team_id:state.turn.active_team_id},
+        state:{phase:canonical.matched.length===2?'COMPLETE':'OPEN',started_at:canonical.turn.turn_started_at,ends_at:canonical.turn.turn_ends_at,active_player_id:canonical.turn.active_player_id,active_team_id:canonical.turn.active_team_id},
         players:PLAYERS,
         teams:[
-          {team_id:'Equipo Azul',name:'Equipo Azul',points:state.points.P1,members:[PLAYERS[0]]},
-          {team_id:'Equipo Rojo',name:'Equipo Rojo',points:state.points.P2,members:[PLAYERS[1]]},
+          {team_id:'Equipo Azul',name:'Equipo Azul',points:canonical.points.P1,members:[PLAYERS[0]]},
+          {team_id:'Equipo Rojo',name:'Equipo Rojo',points:canonical.points.P2,members:[PLAYERS[1]]},
         ],
-        player:viewer||null,
-        turn_state:clone(state.turn),
-        shared_state:publicShared(state),
+        player:viewer||null,turn_state:clone(canonical.turn),shared_state:publicShared(),
       };
+    }
+    function room(){return {room_code:'LAB-SD88',room_id:'ROOM-SD88',game_code:'MEMORY_MATCH',game_id:'MEMORY_MATCH',game_label:'Memory Match',status:'LIVE',round_status:'OPEN',mode:'TEAMS',unit:'U01',nivel:'B1'};}
+    function stateFor(viewer){
+      return {
+        ok:true,memory_match:true,room:room(),player:viewer||null,room_package:packageFor(viewer),
+        stats:{players:2,answers_current:canonical.matched.length},
+        leaderboard:[
+          {rank:canonical.points.P1>=canonical.points.P2?1:2,cod_estudiante:'P1',nombre:'Chu',team:'Equipo Azul',points:canonical.points.P1,correct:canonical.points.P1},
+          {rank:canonical.points.P2>canonical.points.P1?1:2,cod_estudiante:'P2',nombre:'Naty',team:'Equipo Rojo',points:canonical.points.P2,correct:canonical.points.P2},
+        ],
+        team_leaderboard:[],can_answer:true
+      };
+    }
+    function updateQaState(){
+      window.__QA_SHARED_DISCOVERY_STATE__=canonical;
+      document.getElementById('qa-state').textContent=`v${canonical.boardVersion} · turno ${canonical.turn.turn_number} · ${canonical.turn.active_player_id}`;
+    }
+    function discover(cardId,actor,actorPlayer){
+      const card=CARDS.find(item=>item.card_id===cardId);
+      if(!card||canonical.claimed[card.pair_id]||canonical.discovered[cardId]) return false;
+      canonical.discovered[cardId]={card_id:cardId,pair_id:card.pair_id,discovered_by:actor,discovered_name:actorPlayer.name,team_id:actorPlayer.team_id,turn_number:canonical.turn.turn_number};
+      return true;
+    }
+    async function postLive(fn,payload){
+      const at=performance.now();
+      window.__QA_POLL_CALLS__.push({fn,player_id:payload&&payload.player_id||'',at});
+      if(fn==='englishLabMemoryMatchGetPlayerState') return stateFor(playerById(payload&&payload.player_id));
+      if(fn==='englishLabMemoryMatchGetRoomControl') return stateFor(null);
+      if(fn!=='englishLabMemoryMatchSubmitPair') return {ok:false,error:'endpoint_no_simulado'};
+
+      const answer=payload&&payload.answer_value||{};
+      const action=String(answer.action||'SUBMIT_PAIR').toUpperCase();
+      const actor=String(payload&&payload.player_id||'');
+      const actorPlayer=playerById(actor);
+      if(!actorPlayer) return {ok:false,error:'jugador_no_registrado'};
+      if(canonical.turn.active_player_id!==actor) return {ok:false,error:'turno_no_activo',mensaje:'Espere su turno.'};
+      window.__QA_ACTION_TIMES__[`${action}:${actor}`]=performance.now();
+
+      if(action==='DISCOVER_CARD'){
+        const changed=discover(answer.card_id,actor,actorPlayer);
+        if(changed) canonical.boardVersion+=1;
+        updateQaState();
+        return {ok:true,accepted:changed,action,room:room(),room_package:packageFor(actorPlayer)};
+      }
+
+      const first=CARDS.find(item=>item.card_id===answer.first_card_id);
+      const second=CARDS.find(item=>item.card_id===answer.second_card_id);
+      if(!first||!second||first.card_id===second.card_id) return {ok:false,error:'par_invalido'};
+      if(canonical.claimed[first.pair_id]||canonical.claimed[second.pair_id]) return {ok:false,error:'par_reclamado'};
+      discover(first.card_id,actor,actorPlayer); discover(second.card_id,actor,actorPlayer);
+      const correct=first.pair_id===second.pair_id;
+      canonical.boardVersion+=1;
+      const nextNumber=canonical.turn.turn_number+1;
+      if(correct){
+        canonical.claimed[first.pair_id]={pair_id:first.pair_id,card_ids:[first.card_id,second.card_id],claimed_by:actor,claimed_name:actorPlayer.name,team_id:actorPlayer.team_id,points:1,turn_number:canonical.turn.turn_number};
+        if(!canonical.matched.includes(first.pair_id)) canonical.matched.push(first.pair_id);
+        canonical.points[actor]+=1;
+        canonical.turn=freshTurn(actor,actorPlayer.team_id,nextNumber,'PAIR_CLAIMED_CONTINUE');
+      }else{
+        const other=actor==='P1'?PLAYERS[1]:PLAYERS[0];
+        canonical.turn=freshTurn(other.player_id,other.team_id,nextNumber,'PAIR_INCORRECT');
+      }
+      updateQaState();
+      return {ok:true,accepted:true,action,correct,points:correct?1:0,room:room(),room_package:packageFor(actorPlayer)};
     }
 
     function App(){
-      const [canonical,setCanonical]=React.useState(initialCanonical);
-      const stateRef=React.useRef(canonical);
-      React.useEffect(()=>{ stateRef.current=canonical; window.__QA_SHARED_DISCOVERY_STATE__=clone(canonical); document.getElementById('qa-state').textContent=`v${canonical.boardVersion} · turno ${canonical.turn.turn_number} · ${canonical.turn.active_player_id}`; },[canonical]);
-
-      async function serverAction(submission){
-        const current=clone(stateRef.current);
-        const answer=submission && submission.answer_value || {};
-        const action=String(answer.action||'SUBMIT_PAIR').toUpperCase();
-        const actor=String(submission.player_id||'');
-        const actorPlayer=PLAYERS.find(p=>p.player_id===actor);
-        if(!actorPlayer) return {ok:false,error:'jugador_no_registrado'};
-        if(current.turn.active_player_id!==actor) return {ok:false,error:'turno_no_activo',mensaje:'Espere su turno.'};
-        const byId=Object.fromEntries(CARDS.map(card=>[card.card_id,card]));
-        function discover(cardId){
-          const card=byId[cardId];
-          if(!card || current.claimed[card.pair_id] || current.discovered[cardId]) return false;
-          current.discovered[cardId]={card_id:cardId,pair_id:card.pair_id,discovered_by:actor,discovered_name:actorPlayer.name,team_id:actorPlayer.team_id,turn_number:current.turn.turn_number};
-          return true;
-        }
-        if(action==='DISCOVER_CARD'){
-          const changed=discover(answer.card_id);
-          if(changed) current.boardVersion+=1;
-          stateRef.current=current; setCanonical(current);
-          return {ok:true,accepted:changed,action,room_package:packageFor(current,actorPlayer)};
-        }
-        const first=byId[answer.first_card_id];
-        const second=byId[answer.second_card_id];
-        if(!first||!second||first.card_id===second.card_id) return {ok:false,error:'par_invalido'};
-        if(current.claimed[first.pair_id]||current.claimed[second.pair_id]) return {ok:false,error:'par_reclamado'};
-        discover(first.card_id); discover(second.card_id);
-        const correct=first.pair_id===second.pair_id;
-        current.boardVersion+=1;
-        const nextNumber=current.turn.turn_number+1;
-        if(correct){
-          current.claimed[first.pair_id]={pair_id:first.pair_id,card_ids:[first.card_id,second.card_id],claimed_by:actor,claimed_name:actorPlayer.name,team_id:actorPlayer.team_id,points:1,turn_number:current.turn.turn_number};
-          if(!current.matched.includes(first.pair_id)) current.matched.push(first.pair_id);
-          current.points[actor]+=1;
-          current.turn=freshTurn(actor,actorPlayer.team_id,nextNumber,'PAIR_CLAIMED_CONTINUE');
-        }else{
-          const other=actor==='P1'?PLAYERS[1]:PLAYERS[0];
-          current.turn=freshTurn(other.player_id,other.team_id,nextNumber,'PAIR_INCORRECT');
-        }
-        stateRef.current=current; setCanonical(current);
-        return {ok:true,accepted:true,action,correct,points:correct?1:0,room_package:packageFor(current,actorPlayer)};
-      }
-
-      const Engine=window.MemoryMatchGameCS21A173;
-      const Turn=window.EnglishLabTurnEngineCS21A176;
-      if(typeof Engine!=='function') return <div>ERROR: no cargó Shared Discovery.</div>;
-      const chu=PLAYERS[0], naty=PLAYERS[1];
-      const panel=(id,title,viewer,readOnly)=><section className="qa-panel" data-panel={id}><h3 className="qa-panel-title">{title}</h3><Engine roomPackage={packageFor(canonical,viewer)} player={viewer} turnEngine={Turn} onSubmit={serverAction} readOnly={readOnly}/></section>;
+      const Adapter=window.MemoryMatchLiveRoundCS21A174;
+      if(typeof Adapter!=='function') return <div>ERROR: no cargó el adaptador Live CS21A188.</div>;
+      const initialChu=React.useMemo(()=>stateFor(PLAYERS[0]),[]);
+      const initialNaty=React.useMemo(()=>stateFor(PLAYERS[1]),[]);
+      const initialTeacher=React.useMemo(()=>stateFor(null),[]);
+      const panel=(id,title,state,readOnly)=><section className="qa-panel" data-panel={id}><h3 className="qa-panel-title">{title}</h3><Adapter state={state} postLive={postLive} readOnly={readOnly}/></section>;
       return <div className="qa-grid">
-        {panel('chu','Estudiante · Chu',chu,false)}
-        {panel('naty','Estudiante · Naty',naty,false)}
-        {panel('teacher','Docente · vista compartida',null,true)}
+        {panel('chu','Estudiante · Chu',initialChu,false)}
+        {panel('naty','Estudiante · Naty',initialNaty,false)}
+        {panel('teacher','Docente · vista compartida',initialTeacher,true)}
       </div>;
     }
 
     (async function(){
-      for(let i=0;i<120 && !(window.MemoryMatchSharedDiscoveryCS21A188&&window.MemoryMatchGameCS21A173&&window.MemoryMatchGameCS21A173.__cs21a188SharedDiscovery);i++) await new Promise(r=>setTimeout(r,25));
+      for(let i=0;i<160 && !(window.MemoryMatchSharedDiscoveryCS21A188&&window.MemoryMatchLiveRoundCS21A174&&window.EnglishLabMemoryMatchLiveCS21A174?.LIVE_POLL_MS===1500);i++) await new Promise(r=>setTimeout(r,25));
+      if(!window.MemoryMatchLiveRoundCS21A174) throw new Error('No cargó MemoryMatchLiveRoundCS21A174');
+      updateQaState();
       ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     })().catch(error=>document.getElementById('root').textContent='ERROR QA: '+error.message);
   </script>
