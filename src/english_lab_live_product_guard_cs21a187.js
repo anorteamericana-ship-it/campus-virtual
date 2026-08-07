@@ -30,6 +30,7 @@
   let fetchInstalled = false;
   let clickInstalled = false;
   let lazyInstalled = false;
+  let initialResidueCleared = false;
   let observer = null;
 
   function clean(value){ return String(value == null ? '' : value).trim(); }
@@ -54,6 +55,11 @@
     try { store.removeItem(LAST_ROOM_KEY); } catch(_) {}
     if(previous){ try { store.removeItem(PLAYER_PREFIX + previous); } catch(_) {} }
     return previous;
+  }
+  function clearInitialResidue(){
+    if(initialResidueCleared) return '';
+    initialResidueCleared = true;
+    return clearLastRoom();
   }
   function clearRoomPersistence(code){
     const store = storage();
@@ -247,7 +253,7 @@
 
     async function loadOneCS21A187(src){
       if(!LIVE_FILE_RE.test(clean(src))) return ordinaryLoadOne(src);
-      clearLastRoom();
+      clearInitialResidue();
       await api.loadMany(PREREQUISITES);
       const result = await rawLiveLoadOne(src);
       if(!stackReady()) throw new Error('English LAB Live no cargó el stack CS21A187 completo.');
@@ -263,8 +269,9 @@
   }
 
   function install(){
-    // La última sala nunca se restaura sola. Un enlace explícito ?room= sigue funcionando.
-    clearLastRoom();
+    // Limpia solamente el residuo heredado al entrar. Una sala nueva sí puede
+    // persistir durante su sesión hasta Cambiar sala o CLOSED.
+    clearInitialResidue();
     installFetchGuard();
     installClickGuard();
     installDomGuard();
@@ -279,6 +286,7 @@
     prerequisites:PREREQUISITES.slice(),
     install,
     clearLastRoom,
+    clearInitialResidue,
     clearRoomPersistence,
     clearRoomUrl,
     detachRoom,
