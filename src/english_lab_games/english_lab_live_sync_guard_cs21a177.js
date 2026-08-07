@@ -1,11 +1,13 @@
-// CS21A177 · Protección acotada de sincronización y diagnóstico para English LAB Live.
+// CS21A177 + CS21A188 · Protección de sincronización, microcaché e instrumentación English LAB Live.
 // No contiene contenido pedagógico ni URLs de deployment.
 (function (global) {
   'use strict';
 
   const VERSION = 'CS21A177';
+  const READ_CACHE_FIX_VERSION = 'CS21A188';
   const METRIC_EVENT = 'english-lab-live-metric';
   const MAX_METRICS = 120;
+  const READ_CACHE_MS = 750;
   const MEMORY_GAME_ID = 'MEMORY_MATCH';
   const MEMORY_GAME_LABEL = 'MEMORY MATCH';
   const JOIN_ENDPOINT = 'englishLabLiveJoinRoom';
@@ -18,6 +20,8 @@
   ]);
 
   const inFlightReads = new Map();
+  const recentReads = new Map();
+  let cacheGeneration = 1;
   let installed = false;
   let originalFetch = null;
 
@@ -69,6 +73,38 @@
     }
   }
 
+  function readKey(endpoint, init) {
+    const body = parseBody(init);
+    // Las lecturas base y especializadas pueden traer campos inocuos distintos
+    // (p.ej. player_name). La identidad canónica evita duplicar la misma consulta.
+    return [
+      endpoint,
+      clean(body.token),
+      upper(body.room_code || body.roomCode),
+      clean(body.room_id || body.roomId),
+      clean(body.player_id || body.playerId || body.cod_estudiante),
+    ].join('|');
+  }
+
+  function invalidateReadCache(reason) {
+    cacheGeneration += 1;
+    recentReads.clear();
+    // Una lectura en vuelo anterior a la jugada no debe coalescer una lectura nueva.
+    inFlightReads.clear();
+    recordMetric({
+      endpoint:'CACHE_INVALIDATE',
+      elapsed_ms:0,
+      status:0,
+      ok:true,
+      cached:false,
+      coalesced:false,
+      reason:clean(reason || 'MUTATION'),
+      cache_generation:cacheGeneration,
+      recorded_at:new Date().toISOString(),
+    });
+    return cacheGeneration;
+  }
+
   function isMemoryMatchPayload(data) {
     if (!data || typeof data !== 'object') return false;
     if (data.memory_match === true || data.memoryMatch === true) return true;
@@ -91,7 +127,7 @@
   }
 
   function recordMetric(metric) {
-    const detail = Object.freeze({...metric, version:VERSION});
+    const detail = Object.freeze({...metric, version:VERSION, cache_fix_version:READ_CACHE_FIX_VERSION});
     const store = metricsStore();
     store.push(detail);
     if (store.length > MAX_METRICS) store.splice(0, store.length - MAX_METRICS);
@@ -136,7 +172,7 @@
   }
 
   async function upgradeJoinIfNeeded(input, init, response, startedAt) {
-    metric(JOIN_ENDPOINT, startedAt, response, {coalesced:false});
+    metric(JOIN_ENDPOINT, startedAt, response, {coalesced:false,cached:false});
     let data = null;
     try { data = await response.clone().json(); } catch (_) { return response; }
     if (!response.ok || !isMemoryMatchPayload(data)) return response;
@@ -160,6 +196,7 @@
       const upgraded = await originalFetch(nextInput, nextInit);
       metric(MEMORY_PLAYER_ENDPOINT, upgradeStartedAt, upgraded, {
         coalesced:false,
+        cached:false,
         join_upgrade:true,
       });
       return upgraded.ok ? upgraded : response;
@@ -170,6 +207,7 @@
         status:0,
         ok:false,
         coalesced:false,
+        cached:false,
         join_upgrade:true,
         error:clean(error && error.message || error),
         recorded_at:new Date().toISOString(),
@@ -179,21 +217,32 @@
   }
 
   async function runCoalescedRead(input, init, endpoint) {
-    const key = endpoint + '|' + bodyText(init);
+    const key = readKey(endpoint, init);
     const startedAt = nowMs();
-    let shared = true;
-    let task = inFlightReads.get(key);
+    const recent = recentReads.get(key);
+    if (recent && recent.generation === cacheGeneration && startedAt - recent.stored_at_ms <= READ_CACHE_MS) {
+      const response = responseFromSnapshot(recent.snapshot);
+      metric(endpoint, startedAt, response, {coalesced:false,cached:true,cache_age_ms:Math.max(0,Math.round(startedAt-recent.stored_at_ms))});
+      return response;
+    }
 
-    if (!task) {
+    let shared = true;
+    let entry = inFlightReads.get(key);
+    if (!entry) {
       shared = false;
-      task = originalFetch(input, init).then(responseSnapshot);
-      inFlightReads.set(key, task);
+      const generation = cacheGeneration;
+      const task = originalFetch(input, init).then(responseSnapshot);
+      entry = {task,generation};
+      inFlightReads.set(key, entry);
     }
 
     try {
-      const snapshot = await task;
+      const snapshot = await entry.task;
+      if (!shared && entry.generation === cacheGeneration) {
+        recentReads.set(key, {snapshot,generation:entry.generation,stored_at_ms:nowMs()});
+      }
       const response = responseFromSnapshot(snapshot);
-      metric(endpoint, startedAt, response, {coalesced:shared});
+      metric(endpoint, startedAt, response, {coalesced:shared,cached:false,cache_generation:entry.generation});
       return response;
     } catch (error) {
       recordMetric({
@@ -202,12 +251,13 @@
         status:0,
         ok:false,
         coalesced:shared,
+        cached:false,
         error:clean(error && error.message || error),
         recorded_at:new Date().toISOString(),
       });
       throw error;
     } finally {
-      if (!shared && inFlightReads.get(key) === task) inFlightReads.delete(key);
+      if (!shared && inFlightReads.get(key) === entry) inFlightReads.delete(key);
     }
   }
 
@@ -215,7 +265,7 @@
     const startedAt = nowMs();
     try {
       const response = await originalFetch(input, init);
-      metric(endpoint, startedAt, response, {coalesced:false});
+      metric(endpoint, startedAt, response, {coalesced:false,cached:false});
       return response;
     } catch (error) {
       recordMetric({
@@ -224,6 +274,7 @@
         status:0,
         ok:false,
         coalesced:false,
+        cached:false,
         error:clean(error && error.message || error),
         recorded_at:new Date().toISOString(),
       });
@@ -236,7 +287,7 @@
     if (typeof global.fetch !== 'function' || typeof global.Response !== 'function') return false;
 
     originalFetch = global.fetch.bind(global);
-    global.fetch = function englishLabLiveFetchCS21A177(input, init) {
+    global.fetch = function englishLabLiveFetchCS21A188(input, init) {
       const endpoint = endpointFromRequest(input);
       if (endpoint.indexOf('englishLab') !== 0) {
         return originalFetch(input, init);
@@ -244,6 +295,7 @@
 
       const method = upper(init && init.method || 'GET');
       if (method === 'POST' && endpoint === JOIN_ENDPOINT) {
+        invalidateReadCache('JOIN_ROOM');
         const startedAt = nowMs();
         return originalFetch(input, init)
           .then(response => upgradeJoinIfNeeded(input, init, response, startedAt));
@@ -253,6 +305,7 @@
         return runCoalescedRead(input, init, endpoint);
       }
 
+      if (method === 'POST') invalidateReadCache(endpoint || 'ENGLISH_LAB_MUTATION');
       return runMeasured(input, init, endpoint);
     };
     installed = true;
@@ -261,12 +314,16 @@
 
   const api = Object.freeze({
     VERSION,
+    READ_CACHE_FIX_VERSION,
+    READ_CACHE_MS,
     JOIN_ENDPOINT,
     MEMORY_PLAYER_ENDPOINT,
     READ_ENDPOINTS,
     install,
     endpointFromRequest,
     isMemoryMatchPayload,
+    readKey,
+    invalidateReadCache,
     getMetrics:() => metricsStore().slice(),
     isInstalled:() => installed,
   });
