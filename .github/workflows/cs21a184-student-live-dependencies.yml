@@ -1,0 +1,27 @@
+name: CS21A184 student Live dependencies
+
+on:
+  push:
+    branches:
+      - feat/cs21a183-sentence-order-live
+    paths:
+      - 'src/english_lab_live_student_dependency_guard_cs21a184.js'
+      - 'src/english_lab_free_access_cs21a66.js'
+      - 'src/english_lab_live.jsx'
+      - 'src/english_lab_games/**'
+      - 'src/lazy_loader.jsx'
+      - 'campus.html'
+      - 'scripts/test_english_lab_student_live_dependencies_cs21a184.mjs'
+      - '.github/workflows/cs21a184-student-live-dependencies.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-student-live-dependencies:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Academia Play student entry loads full Live stack
+        run: node scripts/test_english_lab_student_live_dependencies_cs21a184.mjs
