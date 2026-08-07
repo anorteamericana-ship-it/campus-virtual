@@ -28,38 +28,56 @@ async function states(id){return panel(id).locator('.elmm-card').evaluateAll(nod
 try{
   await page.goto(`${base}/src/english_lab_games/memory_match_shared_discovery_preview_cs21a188.html`,{waitUntil:'networkidle'});
   await page.locator('[data-shared-discovery="true"]').first().waitFor({state:'visible',timeout:15000});
-  assert.equal(await page.locator('[data-shared-discovery="true"]').count(),3,'Deben existir Chu, Naty y docente sobre el mismo tablero.');
+  assert.equal(await page.locator('[data-shared-discovery="true"]').count(),3,'Deben existir Chu, Naty y docente como clientes independientes.');
   for(const id of ['chu','naty','teacher']) assert.deepEqual(await states(id),['HIDDEN','HIDDEN','HIDDEN','HIDDEN']);
+  const pollEpoch=await page.locator('[data-live-game="MEMORY_MATCH"]').first().getAttribute('data-live-poll-ms');
+  assert.equal(pollEpoch,'1500');
 
-  // Chu descubre bicycle. Debe quedar público en las tres vistas, sin dueño final.
+  // Chu descubre bicycle. Chu adopta la respuesta autoritativa de inmediato;
+  // Naty y docente deben converger por polling real del adaptador.
+  const discoverStarted=Date.now();
   await card('chu',0).click();
-  for(const id of ['chu','naty','teacher']) await expectState(id,0,'DISCOVERED');
+  await expectState('chu',0,'DISCOVERED');
+  await expectState('naty',0,'DISCOVERED');
+  await expectState('teacher',0,'DISCOVERED');
+  const remoteDiscoveryLatencyMs=Date.now()-discoverStarted;
+  assert.ok(remoteDiscoveryLatencyMs<=3500,`Descubrimiento remoto tardó ${remoteDiscoveryLatencyMs} ms.`);
   for(const id of ['chu','naty','teacher']) assert.match(await card(id,0).innerText(),/Descubierta por Chu/i);
   let canonical=await page.evaluate(()=>window.__QA_SHARED_DISCOVERY_STATE__);
   assert.equal(canonical.discovered['P1-L'].discovered_by,'P1');
   assert.equal(canonical.claimed['PAIR-1'],undefined);
 
   // Chu falla bicycle + teacher. Las dos quedan públicas y el turno pasa a Naty.
+  const mismatchStarted=Date.now();
   await card('chu',1).click();
   await page.waitForFunction(()=>window.__QA_SHARED_DISCOVERY_STATE__?.turn?.active_player_id==='P2',{timeout:8000});
-  for(const id of ['chu','naty','teacher']){
-    await expectState(id,0,'DISCOVERED');
-    await expectState(id,1,'DISCOVERED');
-  }
+  await expectState('chu',1,'DISCOVERED');
+  await expectState('naty',1,'DISCOVERED');
+  await expectState('teacher',1,'DISCOVERED');
+  await panel('naty').getByText(/Tu turno: Naty/i).waitFor({state:'visible',timeout:8000});
+  const turnConvergenceLatencyMs=Date.now()-mismatchStarted;
+  assert.ok(turnConvergenceLatencyMs<=3500,`Cambio de turno remoto tardó ${turnConvergenceLatencyMs} ms.`);
   canonical=await page.evaluate(()=>window.__QA_SHARED_DISCOVERY_STATE__);
   assert.equal(canonical.discovered['P1-L'].discovered_by,'P1');
   assert.equal(canonical.discovered['P2-L'].discovered_by,'P1');
   assert.equal(canonical.turn.active_player_id,'P2');
   assert.equal(canonical.points.P1,0);
-  await panel('naty').getByText(/Tu turno: Naty/i).waitFor({state:'visible',timeout:8000});
 
-  // Naty aprovecha bicycle ya descubierto y encuentra bicicleta.
+  // Naty aprovecha bicycle ya descubierto y encuentra bicicleta. Naty recibe
+  // el claim inmediatamente; Chu y docente convergen por polling.
   await card('naty',0).click();
+  const claimStarted=Date.now();
   await card('naty',2).click();
   await page.waitForFunction(()=>window.__QA_SHARED_DISCOVERY_STATE__?.claimed?.['PAIR-1']?.claimed_by==='P2',{timeout:8000});
+  await expectState('naty',0,'CLAIMED');
+  await expectState('naty',2,'CLAIMED');
+  await expectState('chu',0,'CLAIMED');
+  await expectState('chu',2,'CLAIMED');
+  await expectState('teacher',0,'CLAIMED');
+  await expectState('teacher',2,'CLAIMED');
+  const remoteClaimLatencyMs=Date.now()-claimStarted;
+  assert.ok(remoteClaimLatencyMs<=3500,`Claim remoto tardó ${remoteClaimLatencyMs} ms.`);
   for(const id of ['chu','naty','teacher']){
-    await expectState(id,0,'CLAIMED');
-    await expectState(id,2,'CLAIMED');
     assert.match(await card(id,0).innerText(),/Naty.*\+1/i);
     assert.match(await card(id,2).innerText(),/Naty.*\+1/i);
   }
@@ -75,13 +93,17 @@ try{
   assert.equal(await card('naty',2).isDisabled(),true,'La segunda carta reclamada ya no puede reutilizarse.');
   await panel('naty').getByText(/Tu turno: Naty/i).waitFor({state:'visible',timeout:8000});
 
-  // Las tres pantallas deben derivar exactamente los mismos estados del tablero.
   const chuStates=await states('chu');
   const natyStates=await states('naty');
   const teacherStates=await states('teacher');
   assert.deepEqual(chuStates,natyStates);
   assert.deepEqual(chuStates,teacherStates);
   assert.deepEqual(chuStates,['CLAIMED','DISCOVERED','CLAIMED','HIDDEN']);
+
+  const pollCalls=await page.evaluate(()=>window.__QA_POLL_CALLS__||[]);
+  assert.ok(pollCalls.some(call=>call.fn==='englishLabMemoryMatchGetPlayerState'&&call.player_id==='P1'),'Chu debe tener polling Live especializado.');
+  assert.ok(pollCalls.some(call=>call.fn==='englishLabMemoryMatchGetPlayerState'&&call.player_id==='P2'),'Naty debe tener polling Live especializado.');
+  assert.ok(pollCalls.some(call=>call.fn==='englishLabMemoryMatchGetRoomControl'),'Docente debe tener polling de control especializado.');
   assert.deepEqual(errors,[],`Errores de navegador: ${errors.join(' | ')}`);
 
   const timerText=await panel('naty').locator('[role="timer"]').innerText();
@@ -90,7 +112,11 @@ try{
   await page.screenshot({path:path.join(output,'shared-discovery-pass.png'),fullPage:true});
   const result={
     verdict:'PASS_BROWSER_CS21A188',
-    viewers:3,
+    independent_clients:3,
+    live_poll_ms:1500,
+    remote_discovery_latency_ms:remoteDiscoveryLatencyMs,
+    remote_turn_latency_ms:turnConvergenceLatencyMs,
+    remote_claim_latency_ms:remoteClaimLatencyMs,
     hidden_to_discovered_global:true,
     discoverer_preserved:true,
     mismatch_keeps_cards_public:true,
@@ -102,6 +128,8 @@ try{
     correct_pair_points:1,
     correct_pair_keeps_turn:true,
     all_views_identical:true,
+    actor_uses_authoritative_write_response:true,
+    remote_views_use_specialized_polling:true,
     timer_resets_after_claim:true,
   };
   fs.writeFileSync(path.join(output,'result.json'),JSON.stringify(result,null,2)+'\n');
