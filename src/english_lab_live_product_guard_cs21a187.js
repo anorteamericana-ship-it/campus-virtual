@@ -83,10 +83,43 @@
 
   function inspectPayload(data){
     const room = roomFromPayload(data);
-    if(!room) return;
+    if(!room) return {closed:false,code:''};
     const code = roomCode(room);
     if(code) activeRoomCode = code;
-    if(code && roomStatus(room) === 'CLOSED') detachRoom(code,'ROOM_CLOSED');
+    const closed = !!(code && roomStatus(room) === 'CLOSED');
+    if(closed) detachRoom(code,'ROOM_CLOSED');
+    return {closed,code};
+  }
+
+  // Una respuesta CLOSED puede llegar a una instancia React que está siendo
+  // desmontada. Si conserva player, ese loadState antiguo vuelve a escribir
+  // elive_player_<sala> después de que detachRoom ya lo borró. Se entrega al
+  // componente una copia sin jugador activo para que CLOSED sea terminal también
+  // frente a requests que ya estaban en vuelo.
+  function sanitizeClosedPayload(data){
+    const source = data && typeof data === 'object' ? data : {};
+    const sanitized = {...source,player:null,can_answer:false,joined:false};
+    if(source.room_package && typeof source.room_package === 'object'){
+      sanitized.room_package = {...source.room_package,player:null};
+    }
+    return sanitized;
+  }
+
+  function closedResponse(response, data){
+    if(typeof global.Response !== 'function') return response;
+    try{
+      const headers = typeof global.Headers === 'function' ? new global.Headers(response.headers) : {'content-type':'application/json; charset=utf-8'};
+      if(headers && typeof headers.set === 'function') headers.set('content-type','application/json; charset=utf-8');
+      if(headers && typeof headers.delete === 'function'){
+        headers.delete('content-length');
+        headers.delete('content-encoding');
+      }
+      return new global.Response(JSON.stringify(sanitizeClosedPayload(data)),{
+        status:response.status,
+        statusText:response.statusText,
+        headers,
+      });
+    }catch(_){ return response; }
   }
 
   function installFetchGuard(){
@@ -96,7 +129,11 @@
       const response = await baseFetch(input, init);
       const endpoint = endpointFromRequest(input);
       if(STATE_ENDPOINTS.indexOf(endpoint) >= 0){
-        try { inspectPayload(await response.clone().json()); } catch(_) {}
+        try {
+          const data = await response.clone().json();
+          const inspection = inspectPayload(data);
+          if(inspection.closed) return closedResponse(response,data);
+        } catch(_) {}
       }
       return response;
     };
@@ -246,6 +283,7 @@
     clearRoomUrl,
     detachRoom,
     inspectPayload,
+    sanitizeClosedPayload,
     enforcePairSelect,
     stackReady,
     getActiveRoomCode:()=>activeRoomCode,
