@@ -44,14 +44,16 @@ function normalizeReleaseInstructions() {
   let readme = fs.readFileSync(readmePath, 'utf8');
   readme = readme.replace(
     /APPS SCRIPT QA\n[\s\S]*?\n\nFRONTEND QA/,
-    `APPS SCRIPT QA\n1. Usar únicamente el archivo completo 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs después de 98. No pegar parches manuales.\n2. Su orden interno obligatorio es 99 + 99B + 99C + 99D.\n3. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n4. 99D FIX3 corrige el inicio real de Memory Match sin delegar a wrappers históricos.\n5. 99D FIX3 separa jugadores registrados de conectados usando LAST_SEEN_AT con TTL de 60 segundos.\n6. Para equipos exige al menos dos estudiantes presentes en los últimos 60 segundos.\n7. Antes de desplegar QA ejecutar verificarActualizacionQA() y confirmar 64 unidades/320 ítems; luego verificarMemoryMatchStartFixCS21A183() y confirmar FIX3, direct_start_no_legacy_delegate=true, presence_ttl_seconds=60 y preserves_curriculum_verifier=true.\n8. No usar estos módulos QA en producción.\n\nFRONTEND QA`
+    `APPS SCRIPT QA\n1. Usar únicamente el archivo completo 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs después de 98. No pegar parches manuales.\n2. Su orden interno obligatorio es 99 + 99B + 99C + 99D FIX3.\n3. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n4. 99D FIX3 corrige el inicio real de Memory Match sin delegar a wrappers históricos.\n5. 99D FIX3 separa jugadores registrados de conectados usando LAST_SEEN_AT con TTL de 60 segundos.\n6. Para equipos exige al menos dos estudiantes presentes en los últimos 60 segundos.\n7. Antes de desplegar QA ejecutar verificarActualizacionQA() y confirmar 64 unidades/320 ítems; luego verificarMemoryMatchStartFixCS21A183() y confirmar FIX3, direct_start_no_legacy_delegate=true, presence_ttl_seconds=60 y preserves_curriculum_verifier=true.\n8. No usar estos módulos QA en producción.\n\nFRONTEND QA`
   );
-  readme = readme.replace(
-    /INSTALACIÓN APPS SCRIPT QA (?:VALIDADA|ACTUAL)\n[-]+\n[\s\S]*?(?=\n\nHOTFIX APOLLO QA VALIDADO|$)/,
-    `INSTALACIÓN APPS SCRIPT QA ACTUAL\n-----------------------------------\n- Archivo único: 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs.\n- Reemplazar todo el contenido; no agregar bloques debajo.\n- Orden interno: 99 + 99B + 99C + 99D FIX3.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- Presencia Memory Match: LAST_SEEN_AT, TTL 60 s.\n- Inicio Memory Match: directo, sin delegado histórico.\n- Ejecutar primero verificarActualizacionQA() y luego verificarMemoryMatchStartFixCS21A183().\n- No usar estos módulos QA en producción.`
-  );
+
+  // Borra cualquier bloque heredado que todavía instruya pegar piezas debajo de otras.
+  readme = readme.replace(/\n\nINSTALACIÓN APPS SCRIPT EN ARCHIVO ÚNICO\n[-]+\n[\s\S]*$/, '');
+  readme = readme.replace(/\n\nINSTALACIÓN APPS SCRIPT QA (?:VALIDADA|ACTUAL)\n[-]+\n[\s\S]*$/, '');
   readme = readme.replace(/\n\nHOTFIX APOLLO QA VALIDADO\n[-]+\n[\s\S]*$/, '');
-  fs.writeFileSync(readmePath, readme.replace(/\s*$/, '') + '\n', 'utf8');
+
+  readme = readme.replace(/\s*$/, '') + `\n\nINSTALACIÓN APPS SCRIPT QA ACTUAL\n-----------------------------------\n- Archivo único: 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs.\n- Reemplazar TODO el contenido del archivo existente.\n- No pegar bloques debajo ni combinar código manualmente.\n- Orden interno ya integrado: 99 + 99B + 99C + 99D FIX3.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- Presencia Memory Match: LAST_SEEN_AT, TTL 60 s.\n- Inicio Memory Match: directo, sin delegado histórico.\n- Ejecutar primero verificarActualizacionQA() y luego verificarMemoryMatchStartFixCS21A183().\n- No usar estos módulos QA en producción.\n`;
+  fs.writeFileSync(readmePath, readme, 'utf8');
 
   const versionPath = path.join(target, 'VERSION.txt');
   let version = fs.readFileSync(versionPath, 'utf8');
@@ -128,9 +130,13 @@ function verify() {
   assert.match(startFix, /preserves_curriculum_verifier:true/);
 
   assert.match(readme, /99 \+ 99B \+ 99C \+ 99D FIX3/i);
-  assert.match(readme, /TTL de 60 segundos/i);
+  assert.match(readme, /TTL (?:de )?60 segundos/i);
   assert.match(readme, /verificarMemoryMatchStartFixCS21A183/);
+  assert.match(readme, /Reemplazar TODO el contenido/i);
+  assert.doesNotMatch(readme, /Inmediatamente debajo/i);
+  assert.doesNotMatch(readme, /Pegue completo BACKEND_QA/i);
   assert.doesNotMatch(readme, /Cree un archivo nuevo: 99_ACTUALIZACION_QA_CS21A183/i);
+
   assert.match(version, /APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX/);
   assert.match(version, /CURRICULUM_SOURCE=QA_STAGING_MASTER_ID/);
   assert.match(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_THEN_99D_AFTER_98/);
