@@ -44,11 +44,11 @@ function normalizeReleaseInstructions() {
   let readme = fs.readFileSync(readmePath, 'utf8');
   readme = readme.replace(
     /APPS SCRIPT QA\n[\s\S]*?\n\nFRONTEND QA/,
-    `APPS SCRIPT QA\n1. El backend QA base fue validado y desplegado el 2026-08-06.\n2. Durante QA autenticada se detectó un defecto real al iniciar Memory Match y se añadió 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs.\n3. La composición QA actual es un único archivo 99_CS21A183_SENTENCE_ORDER_COMPLETO después de 98, con orden interno obligatorio: 99 + 99B + 99C + 99D.\n4. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n5. 99D blinda SETTINGS_JSON en salas CREATED y solo se habilita cuando QA_STAGING_MASTER_ID y QA_STAGING_OPERATIVO_ID demuestran QA/STAGING.\n6. Antes de continuar la QA autenticada se debe ejecutar verificarActualizacionQA() y confirmar memory_match_start_guard=true.\n7. No usar estos módulos QA en producción.\n\nFRONTEND QA`
+    `APPS SCRIPT QA\n1. El backend QA base fue validado y desplegado el 2026-08-06.\n2. Durante QA autenticada se detectó un defecto real al iniciar Memory Match y se añadió 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs.\n3. La composición QA actual es un único archivo 99_CS21A183_SENTENCE_ORDER_COMPLETO después de 98, con orden interno obligatorio: 99 + 99B + 99C + 99D.\n4. 99C lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente desde QA_STAGING_MASTER_ID y falla cerrado si no coincide con SHEET_ID.\n5. 99D FIX2 blinda SETTINGS_JSON en salas CREATED y solo se habilita cuando QA_STAGING_MASTER_ID y QA_STAGING_OPERATIVO_ID demuestran QA/STAGING.\n6. 99D FIX2 NO reemplaza verificarActualizacionQA(); conserva el verificador curricular de 99C y expone verificarMemoryMatchStartFixCS21A183().\n7. Antes de continuar la QA autenticada ejecute verificarActualizacionQA() y confirme 64 unidades/320 ítems, luego ejecute verificarMemoryMatchStartFixCS21A183() y confirme preserves_curriculum_verifier=true.\n8. No usar estos módulos QA en producción.\n\nFRONTEND QA`
   );
   readme = readme.replace(
-    /INSTALACIÓN APPS SCRIPT QA VALIDADA\n[-]+\n[\s\S]*?(?=\n\nHOTFIX APOLLO QA VALIDADO|$)/,
-    `INSTALACIÓN APPS SCRIPT QA ACTUAL\n-----------------------------------\n- Archivo Apps Script: 99_CS21A183_SENTENCE_ORDER_COMPLETO.\n- Orden interno: BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs + BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs + BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs + BACKEND_QA/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs.\n- Ubicación: después de 98_ACTUALIZACION_QA_CS21A181.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- 99D es exclusivo QA y falla cerrado fuera de QA/STAGING.\n- Ejecutar verificarActualizacionQA() después de añadir 99D.\n- No usar estos módulos QA en producción.`
+    /INSTALACIÓN APPS SCRIPT QA (?:VALIDADA|ACTUAL)\n[-]+\n[\s\S]*?(?=\n\nHOTFIX APOLLO QA VALIDADO|$)/,
+    `INSTALACIÓN APPS SCRIPT QA ACTUAL\n-----------------------------------\n- Archivo Apps Script: 99_CS21A183_SENTENCE_ORDER_COMPLETO.\n- Orden interno: BACKEND_QA/99_ACTUALIZACION_QA_CS21A183.gs + BACKEND_QA/99B_VALIDACION_CURRICULAR_CS21A183.gs + BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs + BACKEND_QA/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs.\n- Ubicación: después de 98_ACTUALIZACION_QA_CS21A181.\n- Fuente curricular: QA_STAGING_MASTER_ID.\n- 99D FIX2 es exclusivo QA, falla cerrado fuera de QA/STAGING y conserva verificarActualizacionQA() de 99C.\n- Ejecutar primero verificarActualizacionQA() y luego verificarMemoryMatchStartFixCS21A183().\n- No usar estos módulos QA en producción.`
   );
   readme = readme.replace(/\n\nHOTFIX APOLLO QA VALIDADO\n[-]+\n[\s\S]*$/, '');
   fs.writeFileSync(readmePath, readme.replace(/\s*$/, '') + '\n', 'utf8');
@@ -85,7 +85,7 @@ function build() {
   normalizeReleaseInstructions();
 
   appendOnce('VERSION.txt', 'APOLLO_QA_SOURCE_FIX=', `APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX\nCURRICULUM_SOURCE=QA_STAGING_MASTER_ID\nAPPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06`);
-  appendOnce('VERSION.txt', 'MEMORY_MATCH_START_FIX=', `MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX\nMEMORY_MATCH_START_QA=REQUIRES_VERIFIER_AFTER_99D`);
+  appendOnce('VERSION.txt', 'MEMORY_MATCH_START_FIX=', `MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX2\nMEMORY_MATCH_START_QA=SEPARATE_VERIFIER\nMEMORY_MATCH_START_VERIFIER=verificarMemoryMatchStartFixCS21A183`);
 
   writeManifest();
 }
@@ -113,14 +113,17 @@ function verify() {
   assert.match(fix, /_elso183ApolloRows_\('ACADEMIA_PLAY_BANK'\)/);
   assert.match(fix, /curriculum_source:'QA_STAGING_MASTER_ID'/);
 
-  assert.match(startFix, /CS21A183-MM-START-FIX/);
+  assert.match(startFix, /CS21A183-MM-START-FIX2/);
   assert.match(startFix, /var raw = room && room\.SETTINGS_JSON/);
   assert.match(startFix, /englishLabMemoryMatchStartRoomCS21A176 = function\(body\)/);
   assert.match(startFix, /getProperty\('QA_STAGING_OPERATIVO_ID'\)/);
   assert.match(startFix, /memory_match_start_guard_error/);
+  assert.match(startFix, /function verificarMemoryMatchStartFixCS21A183\(\)/);
+  assert.doesNotMatch(startFix, /verificarActualizacionQA\s*=\s*function/);
+  assert.match(startFix, /preserves_curriculum_verifier:true/);
 
   assert.match(readme, /99 \+ 99B \+ 99C \+ 99D/i);
-  assert.match(readme, /memory_match_start_guard=true/i);
+  assert.match(readme, /verificarMemoryMatchStartFixCS21A183/);
   assert.doesNotMatch(readme, /Cree un archivo nuevo: 99_ACTUALIZACION_QA_CS21A183/i);
   assert.match(version, /APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX/);
   assert.match(version, /CURRICULUM_SOURCE=QA_STAGING_MASTER_ID/);
@@ -128,8 +131,9 @@ function verify() {
   assert.doesNotMatch(version, /APPS_SCRIPT_INSTALL_MODE=SINGLE_FILE_99_THEN_99B_THEN_99C_AFTER_98\s*$/m);
   assert.match(version, /CURRICULUM_QA_STATUS=PASS_2026-08-06/);
   assert.match(version, /APPS_SCRIPT_QA_VERIFIER=PASS_2026-08-06/);
-  assert.match(version, /MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX/);
-  assert.match(version, /MEMORY_MATCH_START_QA=REQUIRES_VERIFIER_AFTER_99D/);
+  assert.match(version, /MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX2/);
+  assert.match(version, /MEMORY_MATCH_START_QA=SEPARATE_VERIFIER/);
+  assert.match(version, /MEMORY_MATCH_START_VERIFIER=verificarMemoryMatchStartFixCS21A183/);
 
   const manifest = new Map();
   for (const line of fs.readFileSync(path.join(target, 'SHA256SUMS.txt'), 'utf8').trim().split(/\r?\n/)) {
@@ -147,11 +151,12 @@ function verify() {
   console.log(JSON.stringify({
     verdict:'APTO_CON_RESERVAS',
     package:packageName,
-    appsScriptQaVerifier:'REQUIRES_99D_VERIFIER',
+    appsScriptQaVerifier:'CURRICULUM_AND_99D_SEPARATE',
     appsScriptComposition:'99+99B+99C+99D',
     curriculumSource:'QA_STAGING_MASTER_ID',
     apolloQaSourceFix:'CS21A183-APOLLO-QA-FIX',
-    memoryMatchStartFix:'CS21A183-MM-START-FIX',
+    memoryMatchStartFix:'CS21A183-MM-START-FIX2',
+    memoryMatchStartVerifier:'verificarMemoryMatchStartFixCS21A183',
     authenticatedFrontendQa:'IN_PROGRESS',
   }, null, 2));
 }
