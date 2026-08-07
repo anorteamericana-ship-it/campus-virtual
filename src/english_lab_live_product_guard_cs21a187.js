@@ -110,11 +110,12 @@
       if(text.indexOf('cantidad de pares') < 0) return;
       const select = label.querySelector('select');
       if(!select) return;
+      const originalValue = Number(select.value || 0) || 0;
       Array.from(select.options || []).forEach(option=>{
         const value = Number(option.value || 0) || 0;
         if(value > MAX_MEMORY_PAIRS){ option.remove(); changed += 1; }
       });
-      if((Number(select.value || 0) || 0) > MAX_MEMORY_PAIRS){
+      if(originalValue > MAX_MEMORY_PAIRS || (Number(select.value || 0) || 0) > MAX_MEMORY_PAIRS){
         select.value = String(MAX_MEMORY_PAIRS);
         try { select.dispatchEvent(new global.Event('change',{bubbles:true})); } catch(_) {}
       }
