@@ -1,59 +1,105 @@
 # CS21A183 · Release Candidate QA exacto
 
-## Estado validado el 2026-08-06
+## Estado al 2026-08-06
 
 - Apollo principal: PASS de preflight curricular.
 - Apollo QA staging: PASS de preflight curricular.
-- Apps Script QA: PASS manual.
-- Cadena verificada: CS21A176 → CS21A180 → CS21A181 → CS21A183 → CS21A183-APOLLO-QA-FIX.
-- Fuente curricular QA: `QA_STAGING_MASTER_ID`.
 - `CONFIG_UNIDADES`: 64 unidades activas.
 - `ACADEMIA_PLAY_BANK`: 320 ítems `GRAM_02` activos de tipo `ORDER`.
 - Cinco ítems completos por unidad: PASS.
-- Límite válido por sala: 3–5 oraciones.
-- Deployment Apps Script QA: actualizado después del PASS manual.
-- QA autenticada docente + dos estudiantes + móvil: pendiente.
+- Límite Sentence Order por sala: 3–5 oraciones.
+- Fuente curricular QA: `QA_STAGING_MASTER_ID`.
+- QA autenticada: **NO PASS todavía**.
 
-## Composición Apps Script QA validada
+## Defectos encontrados en QA autenticada
 
-En un único archivo `99_CS21A183_SENTENCE_ORDER_COMPLETO` se instaló en este orden:
+Sala diagnóstica `LAB-7698`:
+
+1. el inicio de Memory Match fallaba antes de escribir `MEMORY_MATCH_STARTED` con `Cannot read properties of undefined (reading 'SETTINGS_JSON')`;
+2. el docente contaba filas históricas `ACTIVE` como participantes aunque el navegador ya no estuviera presente;
+3. se observó `Failed to fetch` en el frontend durante lecturas/acciones; debe seguir vigilándose en la siguiente prueba limpia.
+
+La sala `LAB-7698` queda como evidencia diagnóstica y **no se reutiliza para el PASS final**.
+
+## FIX3 de Memory Match
+
+`99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs` versión `CS21A183-MM-START-FIX3`:
+
+- no delega el inicio a wrappers históricos;
+- relee la sala real y procesa etapas `QA_GUARD → AUTH → ROOM_LOOKUP → ROOM_PERMISSION → SETTINGS → RULES → PRESENCE → TEAMS → CARDS → PACKAGE → WRITE_ROOM → EVENT → RESPONSE`;
+- si falla devuelve la etapa exacta;
+- separa `players_registered` de `players_online`;
+- presencia válida por `LAST_SEEN_AT` con TTL de 60 segundos;
+- excluye jugadores stale/inactivos del contador y del inicio;
+- modo `TEAMS` requiere al menos dos estudiantes presentes;
+- conserva parejas editables CS21A181;
+- no reemplaza `verificarActualizacionQA()` curricular;
+- expone `verificarMemoryMatchStartFixCS21A183()` separado;
+- falla cerrado fuera de QA/STAGING.
+
+## Regla de instalación Apps Script
+
+El usuario recibe **un único archivo completo**:
+
+`apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs`
+
+Se reemplaza todo su contenido en Apps Script. No se agregan parches manuales.
+
+Composición interna obligatoria:
 
 1. `99_ACTUALIZACION_QA_CS21A183.gs`
 2. `99B_VALIDACION_CURRICULAR_CS21A183.gs`
 3. `99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs`
+4. `99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs` — FIX3
 
-El archivo está después de `98_ACTUALIZACION_QA_CS21A181`.
+El ensamblador se ejecuta cuando cambia cualquiera de esas cuatro fuentes.
 
-## Resultado final del verificador
+## Verificadores requeridos antes de desplegar QA
+
+`verificarActualizacionQA()` debe mantener:
 
 ```text
 ok=true
-version=CS21A183
-sentence_order_live_supported=true
-curriculum_guard=true
 curriculum_units=64
 active_gram_02_items=320
 five_items_per_unit=true
 curriculum_rows_complete=true
-curriculum_source_required=true
-curriculum_acknowledgement_required=true
-duplicate_response_preserves_state=true
 sentence_count_limits=3-5
 curriculum_source=QA_STAGING_MASTER_ID
 curriculum_source_fix=CS21A183-APOLLO-QA-FIX
 ```
 
-## Workflow canónico
+`verificarMemoryMatchStartFixCS21A183()` debe reportar como mínimo:
 
-`.github/workflows/cs21a183-release-candidate.yml`
+```text
+ok=true
+version=CS21A183-MM-START-FIX3
+memory_match_start_guard=true
+direct_start_no_legacy_delegate=true
+settings_undefined_safe=true
+created_room_package_safe=true
+presence_ttl_seconds=60
+stale_players_excluded=true
+start_function_installed=true
+control_presence_installed=true
+preserves_curriculum_verifier=true
+```
 
-Este workflow valida exactamente la composición desplegada en QA: contratos acumulados, hotfix 99C fail-closed, frontend aislado, Playwright, paquete con 99 + 99B + 99C, manifiesto SHA-256 y smoke en puerto 4181.
+## Siguiente QA limpia
+
+1. Desplegar una nueva versión del Apps Script QA solo después de ambos verificadores verdes y CI verde.
+2. Crear una sala Memory Match **nueva**.
+3. Entrar con dos estudiantes y mantener sus pestañas abiertas.
+4. Confirmar `players_online=2`.
+5. Iniciar y verificar evento `MEMORY_MATCH_STARTED`, sala `LIVE`, tablero sincronizado y equipos.
+6. Cerrar una pestaña, esperar más de 60 s y confirmar que `players_online` baja sin borrar el registro histórico.
+7. Vigilar `Failed to fetch`; si persiste, se trata como defecto frontend separado y no se declara PASS.
 
 ## Regla de liberación
 
 No fusionar ni desplegar producción hasta obtener:
 
-1. Release Candidate CI verde.
+1. Release Candidate CI verde del head exacto.
 2. QA autenticada docente + dos estudiantes para Memory Match y Sentence Order.
 3. Validación móvil.
 4. Prueba progresiva 2 → 5 → 10 → 25 clientes.
