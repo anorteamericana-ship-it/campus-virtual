@@ -10,6 +10,7 @@ on:
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
       - 'apps_script_patches/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs'
       - 'apps_script_patches/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs'
+      - 'apps_script_patches/99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs'
   workflow_dispatch:
 
 permissions:
@@ -38,5 +39,5 @@ jobs:
             echo 'No changes to commit.'
             exit 0
           fi
-          git commit -m 'CS21A183 actualiza Apps Script QA completo 99-99D'
+          git commit -m 'CS21A183 actualiza Apps Script QA completo 99-99E'
           git push origin HEAD:feat/cs21a183-sentence-order-live
