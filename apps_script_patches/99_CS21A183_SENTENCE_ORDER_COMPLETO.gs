@@ -1,3 +1,15 @@
+// =============================================================================
+// CS21A183 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO
+// Composición exacta: 99 + 99B + 99C + 99D FIX2
+// Reemplaza por completo el contenido del archivo Apps Script
+// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.
+// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.
+// =============================================================================
+
+
+// =============================================================================
+// BLOQUE 1/4: 99_ACTUALIZACION_QA_CS21A183.gs
+// =============================================================================
 // CS21A183 · CAPA ADITIVA QA PARA ENGLISH LAB LIVE
 // Instalar despues de 98_ACTUALIZACION_QA_CS21A181.gs. No usar en produccion.
 // Agrega Ordena la oracion con contenido editable, sala real, respuestas y ranking.
@@ -499,11 +511,13 @@ doPost = function (e) {
   }
 };
 
-// -----------------------------------------------------------------------------
+
+// =============================================================================
+// BLOQUE 2/4: 99B_VALIDACION_CURRICULAR_CS21A183.gs
+// =============================================================================
 // CS21A183 · GUARDIA CURRICULAR ADITIVA QA
 // Instalar despues de 99_ACTUALIZACION_QA_CS21A183.gs. No usar en produccion.
 // Valida CONFIG_UNIDADES y ACADEMIA_PLAY_BANK antes de crear una sala Sentence Order.
-// -----------------------------------------------------------------------------
 
 var ELSO183_CURRICULUM_VERSION = 'CS21A183-CURRICULUM';
 var ELSO183_CURRICULUM_OBJECTIVE = 'Nivel, unidad, tema y fuente GRAM_02 verificados contra Apollo antes de crear la sala';
@@ -757,3 +771,285 @@ verificarActualizacionQA = function () {
   if (!result.ok) throw new Error('CS21A183 no supero la validacion curricular Apollo.');
   return result;
 };
+
+
+// =============================================================================
+// BLOQUE 3/4: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
+// =============================================================================
+// CS21A183 · HOTFIX QA · FUENTE CURRICULAR APOLLO
+// Agregar AL FINAL de 99_CS21A183_SENTENCE_ORDER_COMPLETO en Apps Script QA.
+// No usar en produccion. Lee CONFIG_UNIDADES y ACADEMIA_PLAY_BANK exclusivamente
+// desde QA_STAGING_MASTER_ID y falla cerrado si la configuracion QA no coincide.
+
+var ELSO183_APOLLO_SOURCE_FIX_VERSION = 'CS21A183-APOLLO-QA-FIX';
+
+function _elso183ApolloRows_(sheetName) {
+  var props = PropertiesService.getScriptProperties();
+  var masterId = _elso183Text_(props.getProperty('QA_STAGING_MASTER_ID'));
+  if (!masterId) throw new Error('Falta la propiedad QA_STAGING_MASTER_ID.');
+  if (typeof SHEET_ID !== 'undefined' && _elso183Text_(SHEET_ID) && _elso183Text_(SHEET_ID) !== masterId) {
+    throw new Error('QA_STAGING_MASTER_ID no coincide con SHEET_ID del staging.');
+  }
+  var cache = CacheService.getScriptCache();
+  var key = 'ELSO183_APOLLO_QA|' + masterId + '|' + _elso183Upper_(sheetName);
+  var cached = cache.get(key);
+  if (cached) {
+    try { return JSON.parse(cached); } catch (_) {}
+  }
+  var sh = SpreadsheetApp.openById(masterId).getSheetByName(sheetName);
+  if (!sh) throw new Error('Falta la hoja ' + sheetName + ' en Apollo QA staging.');
+  var lastRow = sh.getLastRow();
+  var lastColumn = sh.getLastColumn();
+  if (lastRow < 2 || lastColumn < 1) return [];
+  var values = sh.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
+  var headers = values[0].map(function (header) { return _elso183Upper_(header); });
+  var rows = values.slice(1).filter(function (row) {
+    return row.some(function (cell) { return _elso183Text_(cell); });
+  }).map(function (row) {
+    var out = {};
+    headers.forEach(function (header, index) { out[header] = row[index]; });
+    return out;
+  });
+  try { cache.put(key, JSON.stringify(rows), 300); } catch (_) {}
+  return rows;
+}
+
+// Sustituye solo las lecturas curriculares; el banco QUESTION_BANK de Memory Match
+// continua usando _elive176Rows_ y ENGLISH_LAB_GAME_DB_ID.
+_elso183CurriculumUnits_ = function () {
+  var order = {B1:1,B2:2,I1:3,I2:4};
+  var seen = {};
+  return _elso183ApolloRows_('CONFIG_UNIDADES').map(function (row) {
+    var level = _elso183Upper_(row.LEVEL_ID);
+    var unitId = _elso183Upper_(row.UNIT_ID);
+    var status = _elso183Upper_(row.STATUS || 'ACTIVE');
+    if (!order[level] || !/^\w\d-U\d{2}$/.test(unitId) || status !== 'ACTIVE' || seen[unitId]) return null;
+    seen[unitId] = true;
+    return {
+      level_id:level,
+      unit_number:Number(row.UNIT_NUMBER || unitId.slice(-2)) || 0,
+      unit_id:unitId,
+      unit_name:_elso183Text_(row.UNIT_NAME),
+      unit_objective_es:_elso183Text_(row.UNIT_OBJECTIVE_ES),
+      program_topic:_elso183Text_(row.PROGRAM_TOPIC),
+      source_reference:_elso183Text_(row.SOURCE_REFERENCE),
+      difficulty_1_10:Number(row.DIFFICULTY_1_10 || 0) || 0,
+      status:status
+    };
+  }).filter(function (item) { return !!item; }).sort(function (a, b) {
+    return (order[a.level_id] - order[b.level_id]) || (a.unit_number - b.unit_number);
+  });
+};
+
+_elso183CurriculumSourceRows_ = function (level, unit, gameId) {
+  var wantedLevel = _elso183Upper_(level);
+  var wantedUnit = wantedLevel + '-' + _elive176NormalizeUnit_(unit || '');
+  var wantedGame = _elso183Upper_(gameId);
+  return _elso183ApolloRows_('ACADEMIA_PLAY_BANK').filter(function (row) {
+    return _elso183Upper_(row.LEVEL_ID) === wantedLevel &&
+      _elso183Upper_(row.UNIT_ID) === wantedUnit &&
+      _elso183Upper_(row.TEMPLATE_ID) === 'GRAM_02' &&
+      _elso183Upper_(row.GAME_ID) === wantedGame &&
+      _elso183Upper_(row.ITEM_TYPE) === 'ORDER' &&
+      _elso183Upper_(row.STATUS || 'ACTIVE') === 'ACTIVE' &&
+      _elso183Text_(row.PLAY_ITEM_ID) &&
+      _elso183Text_(row.WORDS_TO_ORDER) &&
+      _elso183Text_(row.CORRECT_SENTENCE);
+  });
+};
+
+// El verificador final anterior intentaba leer ACADEMIA_PLAY_BANK desde la DB de juegos.
+// Se reemplaza por el mismo contrato, pero usando Apollo QA de forma explicita.
+verificarActualizacionQA = function () {
+  var previous = _elso183CurriculumVerifyBase_();
+  var units = _elso183CurriculumUnits_();
+  var unitMap = {};
+  units.forEach(function (unit) { unitMap[unit.unit_id] = unit; });
+  var rows = _elso183ApolloRows_('ACADEMIA_PLAY_BANK').filter(function (row) {
+    return _elso183Upper_(row.TEMPLATE_ID) === 'GRAM_02' &&
+      _elso183Upper_(row.ITEM_TYPE) === 'ORDER' &&
+      _elso183Upper_(row.STATUS || 'ACTIVE') === 'ACTIVE';
+  });
+  var byUnit = {};
+  var completeRows = true;
+  rows.forEach(function (row) {
+    var unitId = _elso183Upper_(row.UNIT_ID);
+    byUnit[unitId] = (byUnit[unitId] || 0) + 1;
+    if (!unitMap[unitId] || !_elso183Text_(row.PLAY_ITEM_ID) || !_elso183Text_(row.GAME_ID) ||
+        !_elso183Text_(row.WORDS_TO_ORDER) || !_elso183Text_(row.CORRECT_SENTENCE)) completeRows = false;
+  });
+  var exactFive = units.length === 64 && units.every(function (unit) { return byUnit[unit.unit_id] === 5; });
+  var valid = previous && previous.ok === true && units.length === 64 && rows.length === 320 && exactFive && completeRows;
+  var result = {
+    ok:valid,
+    version:ELSO183_VERSION,
+    objective:ELSO183_CURRICULUM_OBJECTIVE,
+    previous_version:previous && previous.version,
+    sentence_order_live_supported:previous && previous.sentence_order_live_supported === true,
+    curriculum_guard:true,
+    curriculum_units:units.length,
+    active_gram_02_items:rows.length,
+    five_items_per_unit:exactFive,
+    curriculum_rows_complete:completeRows,
+    curriculum_source_required:true,
+    curriculum_acknowledgement_required:true,
+    duplicate_response_preserves_state:true,
+    sentence_count_limits:'3-5',
+    curriculum_source:'QA_STAGING_MASTER_ID',
+    curriculum_source_fix:ELSO183_APOLLO_SOURCE_FIX_VERSION
+  };
+  console.log(JSON.stringify(result));
+  if (!result.ok) throw new Error('CS21A183 no supero la validacion curricular Apollo QA.');
+  return result;
+};
+
+
+// =============================================================================
+// BLOQUE 4/4: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
+// =============================================================================
+// CS21A183 · hotfix QA Memory Match start
+// APPEND-ONLY. No usar en producción.
+// Corrige compatibilidad con helpers históricos que pueden leer SETTINGS_JSON
+// sobre un room indefinido y añade diagnóstico por etapa al iniciar la sala.
+// FIX2: no reemplaza verificarActualizacionQA(); usa un verificador propio.
+
+var CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2';
+
+function _cs21a183MmStartText_(value) {
+  return String(value == null ? '' : value).trim();
+}
+
+function _cs21a183MmStartQaGuard_() {
+  var props = PropertiesService.getScriptProperties();
+  var masterId = _cs21a183MmStartText_(props.getProperty('QA_STAGING_MASTER_ID'));
+  var operationalId = _cs21a183MmStartText_(props.getProperty('QA_STAGING_OPERATIVO_ID'));
+  if (!masterId || !operationalId) {
+    throw new Error('BLOQUEADO: faltan QA_STAGING_MASTER_ID o QA_STAGING_OPERATIVO_ID.');
+  }
+  var masterName = SpreadsheetApp.openById(masterId).getName();
+  var operationalName = SpreadsheetApp.openById(operationalId).getName();
+  if (!/QA|STAGING/i.test(masterName) || !/QA|STAGING/i.test(operationalName)) {
+    throw new Error('BLOQUEADO: CS21A183 Memory Match start fix solo puede ejecutarse en QA/STAGING.');
+  }
+  return { master:masterName, operational:operationalName };
+}
+
+function _elmm174Settings_(room) {
+  var raw = room && room.SETTINGS_JSON;
+  try {
+    if (typeof _elmm174Json_ === 'function') return _elmm174Json_(raw, {});
+  } catch (_) {}
+  try {
+    if (typeof _elive176Json_ === 'function') return _elive176Json_(raw, {});
+  } catch (_) {}
+  try { return raw ? JSON.parse(String(raw)) : {}; }
+  catch (_) { return {}; }
+}
+
+function _elmm174Package_(room, cards, rules, now) {
+  room = room || {};
+  rules = rules || {};
+  cards = Array.isArray(cards) ? cards : [];
+  now = now instanceof Date ? now : new Date();
+  var settings = _elmm174Settings_(room);
+  var autoStart = Math.max(0, Number(rules.auto_start_delay_ms || 0) || 0);
+  var duration = Math.max(5000, Number(rules.round_duration_ms || 30000) || 30000);
+  var startAt = new Date(now.getTime() + autoStart);
+  var endAt = new Date(startAt.getTime() + duration);
+  var iso = typeof _elmm174Iso_ === 'function'
+    ? _elmm174Iso_
+    : function(date) { return (date instanceof Date ? date : new Date()).toISOString(); };
+  var text = typeof _elmm174Text_ === 'function'
+    ? _elmm174Text_
+    : function(value) { return String(value == null ? '' : value).trim(); };
+  var upper = typeof _elmm174Upper_ === 'function'
+    ? _elmm174Upper_
+    : function(value) { return text(value).toUpperCase(); };
+  var teams = [];
+  try {
+    teams = typeof _elmm174Teams_ === 'function' ? (_elmm174Teams_(room) || []) : [];
+  } catch (_) { teams = []; }
+  return {
+    version:typeof ELMM174_VERSION !== 'undefined' ? ELMM174_VERSION : CS21A183_MM_START_FIX_VERSION,
+    server_now:iso(now),
+    received_at_ms:now.getTime(),
+    room:{
+      room_code:text(room.ROOM_CODE),
+      game_id:typeof ELMM174_GAME_CODE !== 'undefined' ? ELMM174_GAME_CODE : 'MEMORY_MATCH',
+      mode:upper(room.MODE || 'INDIVIDUAL'),
+      level_id:upper(room.NIVEL || 'B1')
+    },
+    round:{
+      round_id:text(room.ROOM_CODE) + '-R1',
+      index:1,
+      title:(typeof ELMM174_GAME_LABEL !== 'undefined' ? ELMM174_GAME_LABEL : 'Memory Match') + ' · ' + upper(settings.unit || 'MIX'),
+      cards:cards
+    },
+    rules:rules,
+    state:{
+      phase:autoStart > 0 ? 'COUNTDOWN' : 'OPEN',
+      started_at:iso(startAt),
+      ends_at:iso(endAt),
+      active_team_id:''
+    },
+    teams:teams
+  };
+}
+
+var _cs21a183MmStartBase_ = typeof englishLabMemoryMatchStartRoomCS21A176 === 'function'
+  ? englishLabMemoryMatchStartRoomCS21A176
+  : null;
+
+if (_cs21a183MmStartBase_) {
+  englishLabMemoryMatchStartRoomCS21A176 = function(body) {
+    _cs21a183MmStartQaGuard_();
+    var stage = 'START';
+    try {
+      stage = 'BASE_START';
+      var result = _cs21a183MmStartBase_(body || {});
+      if (result && result.ok === true) {
+        result.memory_match_start_fix = CS21A183_MM_START_FIX_VERSION;
+      }
+      return result;
+    } catch (error) {
+      return {
+        ok:false,
+        version:CS21A183_MM_START_FIX_VERSION,
+        error:'memory_match_start_guard_error',
+        stage:stage,
+        mensaje:String(error && error.message ? error.message : error)
+      };
+    }
+  };
+}
+
+function verificarMemoryMatchStartFixCS21A183() {
+  var qa = _cs21a183MmStartQaGuard_();
+  var undefinedSettings = _elmm174Settings_(undefined);
+  var createdRoom = {
+    ROOM_CODE:'LAB-TEST-CS21A183D',
+    STATUS:'CREATED',
+    GAME_CODE:'MEMORY_MATCH',
+    NIVEL:'B1',
+    MODE:'TEAMS',
+    SETTINGS_JSON:'{"unit":"U01","pair_count":4}'
+  };
+  var createdSettings = _elmm174Settings_(createdRoom);
+  var syntheticRules = {auto_start_delay_ms:0,round_duration_ms:30000};
+  var syntheticPackage = _elmm174Package_(createdRoom, [], syntheticRules, new Date());
+  var result = {
+    ok:!!(undefinedSettings && createdSettings.unit === 'U01' && syntheticPackage && syntheticPackage.room && syntheticPackage.room.room_code === createdRoom.ROOM_CODE && _cs21a183MmStartBase_),
+    version:CS21A183_MM_START_FIX_VERSION,
+    memory_match_start_guard:true,
+    settings_undefined_safe:!!undefinedSettings,
+    created_room_settings_safe:createdSettings.unit === 'U01',
+    created_room_package_safe:!!(syntheticPackage && syntheticPackage.room && syntheticPackage.room.room_code === createdRoom.ROOM_CODE),
+    start_wrapper_installed:!!_cs21a183MmStartBase_,
+    preserves_curriculum_verifier:true,
+    qa_master:qa.master,
+    qa_operational:qa.operational
+  };
+  console.log(JSON.stringify(result));
+  if (!result.ok) throw new Error('CS21A183 Memory Match start fix no superó la verificación QA.');
+  return result;
+}
