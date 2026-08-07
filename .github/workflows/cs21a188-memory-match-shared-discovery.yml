@@ -8,9 +8,11 @@ on:
       - 'apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'
       - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
       - 'scripts/test_memory_match_shared_discovery_cs21a188.mjs'
+      - 'scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs'
       - 'scripts/patch_qa_package_cs21a187.mjs'
       - 'src/english_lab_live_product_guard_cs21a187.js'
       - 'src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx'
+      - 'src/english_lab_games/memory_match_shared_discovery_preview_cs21a188.html'
       - 'styles/english_lab_memory_match_cs21a173.css'
       - '.github/workflows/cs21a188-memory-match-shared-discovery.yml'
   workflow_dispatch:
@@ -21,7 +23,7 @@ permissions:
 jobs:
   shared-discovery:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,6 +44,26 @@ jobs:
           grep -q "CS21A188_MM_SHARED_DISCOVERY_VERSION = 'CS21A188-MM-SHARED-DISCOVERY-1'" "$complete"
           grep -q 'discoverer_does_not_own:true' "$complete"
           grep -q 'claim_owner_is_matcher:true' "$complete"
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start QA browser server
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4178 --bind 127.0.0.1 > cs21a188-server.log 2>&1 &
+          echo $! > cs21a188-server.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:4178/src/english_lab_games/memory_match_shared_discovery_preview_cs21a188.html >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat cs21a188-server.log
+          exit 1
+      - name: Verify one canonical board across Chu Naty and teacher
+        env:
+          QA_BASE_URL: http://127.0.0.1:4178
+        run: node scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs
       - name: Commit exact combined file
         run: |
           set -euo pipefail
@@ -54,3 +76,13 @@ jobs:
           fi
           git commit -m 'CS21A188 actualiza Apps Script QA completo 99-99I'
           git push origin HEAD:feat/cs21a188-memory-match-shared-discovery
+      - name: Upload Shared Discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A188_SHARED_DISCOVERY_EVIDENCE
+          path: |
+            qa-output/cs21a188-shared-discovery/
+            cs21a188-server.log
+          if-no-files-found: warn
+          retention-days: 30
