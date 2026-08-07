@@ -1,0 +1,56 @@
+name: CS21A188 Memory Match Shared Discovery
+
+on:
+  push:
+    branches:
+      - feat/cs21a188-memory-match-shared-discovery
+    paths:
+      - 'apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'scripts/test_memory_match_shared_discovery_cs21a188.mjs'
+      - 'scripts/patch_qa_package_cs21a187.mjs'
+      - 'src/english_lab_live_product_guard_cs21a187.js'
+      - 'src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx'
+      - 'styles/english_lab_memory_match_cs21a173.css'
+      - '.github/workflows/cs21a188-memory-match-shared-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shared-discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/cs21a188-memory-match-shared-discovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Shared Discovery contract
+        run: node scripts/test_memory_match_shared_discovery_cs21a188.mjs
+      - name: Rebuild exact complete Apps Script
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+          grep -q 'CS21A183-CS21A188 · APPS SCRIPT QA COMPLETO' "$complete"
+          grep -q '99I SHARED DISCOVERY' "$complete"
+          grep -q "CS21A188_MM_SHARED_DISCOVERY_VERSION = 'CS21A188-MM-SHARED-DISCOVERY-1'" "$complete"
+          grep -q 'discoverer_does_not_own:true' "$complete"
+          grep -q 'claim_owner_is_matcher:true' "$complete"
+      - name: Commit exact combined file
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git commit -m 'CS21A188 actualiza Apps Script QA completo 99-99I'
+          git push origin HEAD:feat/cs21a188-memory-match-shared-discovery
