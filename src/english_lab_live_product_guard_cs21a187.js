@@ -94,6 +94,7 @@
     if(code) activeRoomCode = code;
     const closed = !!(code && roomStatus(room) === 'CLOSED');
     if(closed) detachRoom(code,'ROOM_CLOSED');
+    else if(code) emit('an:english-lab-room-active',{room_code:code});
     return {closed,code};
   }
 
@@ -214,8 +215,13 @@
           setNotice(reason === 'ROOM_CLOSED' ? 'La sala terminó. Ya podés ingresar otro código.' : 'Listo. Ingresá el nuevo código de sala.');
           setEpoch(value=>value+1);
         }
+        function onActive(){ setNotice(''); }
         global.addEventListener('an:english-lab-detach-room',onDetach);
-        return ()=>global.removeEventListener('an:english-lab-detach-room',onDetach);
+        global.addEventListener('an:english-lab-room-active',onActive);
+        return ()=>{
+          global.removeEventListener('an:english-lab-detach-room',onDetach);
+          global.removeEventListener('an:english-lab-room-active',onActive);
+        };
       },[]);
       return ReactRef.createElement(ReactRef.Fragment,null,
         notice ? ReactRef.createElement('div',{style:{maxWidth:900,margin:'0 auto 12px',padding:'11px 14px',borderRadius:14,background:'#EEF4FF',border:'1px solid #B7D5FF',color:'#073B7A',fontSize:12.5,fontWeight:850}},notice) : null,
