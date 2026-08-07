@@ -1,0 +1,47 @@
+name: CS21A183 Memory Match FIX4
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs'
+      - 'apps_script_patches/99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'scripts/test_memory_match_start_guard_cs21a183.mjs'
+      - 'scripts/test_memory_match_presence_runtime_cs21a183.mjs'
+      - 'scripts/test_memory_match_pair_metadata_cs21a183.mjs'
+      - '.github/workflows/cs21a183-memory-match-fix4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-fix4:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild complete Apps Script candidate locally
+        run: node scripts/assemble_apps_script_cs21a183_complete.mjs
+      - name: Validate FIX3 plus FIX4 contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_start_guard_cs21a183.mjs
+          node scripts/test_memory_match_presence_runtime_cs21a183.mjs
+          node scripts/test_memory_match_pair_metadata_cs21a183.mjs
+          node scripts/test_english_lab_ux_words_cs21a181.mjs
+      - name: Validate complete single-file source
+        run: |
+          set -euo pipefail
+          complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+          grep -q '99 + 99B + 99C + 99D FIX3 + 99E FIX4' "$complete"
+          grep -q "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX3'" "$complete"
+          grep -q "CS21A183_MM_PAIR_METADATA_FIX_VERSION = 'CS21A183-MM-PAIR-METADATA-FIX4'" "$complete"
+          grep -q 'control_pair_metadata:true' "$complete"
+          grep -q 'canonical_pair_count_from_room:true' "$complete"
+          grep -q 'stale_default_six_blocked:true' "$complete"
