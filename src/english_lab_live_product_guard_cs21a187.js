@@ -194,19 +194,27 @@
     const api = global.anLazyCampus;
     if(!api || typeof api.loadOne !== 'function' || typeof api.loadMany !== 'function') return false;
     if(api.loadOne.__cs21a187ProductGuard) return true;
-    const previousLoadOne = api.loadOne.bind(api);
+
+    const currentLoadOne = api.loadOne;
+    const ordinaryLoadOne = currentLoadOne.bind(api);
+    // CS21A184 podía cargar dependencias con URLs viejas. Para English LAB Live
+    // saltamos ese wrapper y vamos a su loader base después de cargar CS21A187.
+    const rawLiveLoadOne = currentLoadOne.__cs21a184StudentDependencies && typeof currentLoadOne.__base === 'function'
+      ? currentLoadOne.__base
+      : ordinaryLoadOne;
+
     async function loadOneCS21A187(src){
-      if(!LIVE_FILE_RE.test(clean(src))) return previousLoadOne(src);
+      if(!LIVE_FILE_RE.test(clean(src))) return ordinaryLoadOne(src);
       clearLastRoom();
       await api.loadMany(PREREQUISITES);
-      const result = await previousLoadOne(src);
+      const result = await rawLiveLoadOne(src);
       if(!stackReady()) throw new Error('English LAB Live no cargó el stack CS21A187 completo.');
       installStudentWrapper();
       enforcePairSelect();
       return result;
     }
     loadOneCS21A187.__cs21a187ProductGuard = true;
-    loadOneCS21A187.__base = previousLoadOne;
+    loadOneCS21A187.__base = rawLiveLoadOne;
     api.loadOne = loadOneCS21A187;
     lazyInstalled = true;
     return true;
