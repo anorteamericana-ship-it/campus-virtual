@@ -2,8 +2,9 @@
 // APPEND-ONLY. No usar en producción.
 // Corrige compatibilidad con helpers históricos que pueden leer SETTINGS_JSON
 // sobre un room indefinido y añade diagnóstico por etapa al iniciar la sala.
+// FIX2: no reemplaza verificarActualizacionQA(); usa un verificador propio.
 
-var CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX';
+var CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2';
 
 function _cs21a183MmStartText_(value) {
   return String(value == null ? '' : value).trim();
@@ -24,8 +25,6 @@ function _cs21a183MmStartQaGuard_() {
   return { master:masterName, operational:operationalName };
 }
 
-// Sobrescribe el helper global con una variante null-safe. 97/CS21A176 usa
-// este nombre dinámicamente al iniciar Memory Match.
 function _elmm174Settings_(room) {
   var raw = room && room.SETTINGS_JSON;
   try {
@@ -38,8 +37,6 @@ function _elmm174Settings_(room) {
   catch (_) { return {}; }
 }
 
-// Reemplazo compatible del package builder. Evita depender de una versión
-// histórica de CS21A174 que pudiera hacer room.SETTINGS_JSON sin guardia.
 function _elmm174Package_(room, cards, rules, now) {
   room = room || {};
   rules = rules || {};
@@ -117,40 +114,33 @@ if (_cs21a183MmStartBase_) {
   };
 }
 
-var _cs21a183MmVerifyBase_ = typeof verificarActualizacionQA === 'function'
-  ? verificarActualizacionQA
-  : null;
-
-if (_cs21a183MmVerifyBase_) {
-  verificarActualizacionQA = function() {
-    var previous = _cs21a183MmVerifyBase_();
-    var qa = _cs21a183MmStartQaGuard_();
-    var undefinedSettings = _elmm174Settings_(undefined);
-    var createdRoom = {
-      ROOM_CODE:'LAB-TEST-CS21A183D',
-      STATUS:'CREATED',
-      GAME_CODE:'MEMORY_MATCH',
-      NIVEL:'B1',
-      MODE:'TEAMS',
-      SETTINGS_JSON:'{"unit":"U01","pair_count":4}'
-    };
-    var createdSettings = _elmm174Settings_(createdRoom);
-    var syntheticRules = {auto_start_delay_ms:0,round_duration_ms:30000};
-    var syntheticPackage = _elmm174Package_(createdRoom, [], syntheticRules, new Date());
-    var result = {
-      ok:!!(previous && previous.ok === true && undefinedSettings && createdSettings.unit === 'U01' && syntheticPackage && syntheticPackage.room && syntheticPackage.room.room_code === createdRoom.ROOM_CODE && _cs21a183MmStartBase_),
-      version:CS21A183_MM_START_FIX_VERSION,
-      previous_version:previous && previous.version,
-      memory_match_start_guard:true,
-      settings_undefined_safe:!!undefinedSettings,
-      created_room_settings_safe:createdSettings.unit === 'U01',
-      created_room_package_safe:!!(syntheticPackage && syntheticPackage.room && syntheticPackage.room.room_code === createdRoom.ROOM_CODE),
-      start_wrapper_installed:!!_cs21a183MmStartBase_,
-      qa_master:qa.master,
-      qa_operational:qa.operational
-    };
-    console.log(JSON.stringify(result));
-    if (!result.ok) throw new Error('CS21A183 Memory Match start fix no superó la verificación QA.');
-    return result;
+function verificarMemoryMatchStartFixCS21A183() {
+  var qa = _cs21a183MmStartQaGuard_();
+  var undefinedSettings = _elmm174Settings_(undefined);
+  var createdRoom = {
+    ROOM_CODE:'LAB-TEST-CS21A183D',
+    STATUS:'CREATED',
+    GAME_CODE:'MEMORY_MATCH',
+    NIVEL:'B1',
+    MODE:'TEAMS',
+    SETTINGS_JSON:'{"unit":"U01","pair_count":4}'
   };
+  var createdSettings = _elmm174Settings_(createdRoom);
+  var syntheticRules = {auto_start_delay_ms:0,round_duration_ms:30000};
+  var syntheticPackage = _elmm174Package_(createdRoom, [], syntheticRules, new Date());
+  var result = {
+    ok:!!(undefinedSettings && createdSettings.unit === 'U01' && syntheticPackage && syntheticPackage.room && syntheticPackage.room.room_code === createdRoom.ROOM_CODE && _cs21a183MmStartBase_),
+    version:CS21A183_MM_START_FIX_VERSION,
+    memory_match_start_guard:true,
+    settings_undefined_safe:!!undefinedSettings,
+    created_room_settings_safe:createdSettings.unit === 'U01',
+    created_room_package_safe:!!(syntheticPackage && syntheticPackage.room && syntheticPackage.room.room_code === createdRoom.ROOM_CODE),
+    start_wrapper_installed:!!_cs21a183MmStartBase_,
+    preserves_curriculum_verifier:true,
+    qa_master:qa.master,
+    qa_operational:qa.operational
+  };
+  console.log(JSON.stringify(result));
+  if (!result.ok) throw new Error('CS21A183 Memory Match start fix no superó la verificación QA.');
+  return result;
 }
