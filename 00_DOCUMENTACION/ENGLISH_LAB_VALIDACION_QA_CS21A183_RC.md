@@ -9,7 +9,7 @@
 - Cinco ítems completos por unidad: PASS.
 - Límite Sentence Order por sala: 3–5 oraciones.
 - Fuente curricular QA: `QA_STAGING_MASTER_ID`.
-- QA autenticada: **NO PASS todavía**.
+- QA autenticada: **NO PASS todavía**; requiere retest limpio con FIX3.
 
 ## Defectos encontrados en QA autenticada
 
@@ -54,6 +54,22 @@ Composición interna obligatoria:
 
 El ensamblador se ejecuta cuando cambia cualquiera de esas cuatro fuentes.
 
+## CI exacto FIX3
+
+Head validado: `e2eb9bc6078f1daf8e63a6f0e4565a7ce286a991`.
+
+7/7 workflows asociados al head: `success`.
+
+- QA staging frontend CS21A148 — `31143875875`.
+- CS21A177 build student sync QA package — `31143875861`.
+- CS21A183 Apollo curriculum validation — `31143875835`.
+- CS21A176 build final QA package — `31143875833`.
+- CS21A183 Release Candidate QA — `31143875837`.
+- CS21A180-CS21A183 English LAB candidate — `31143875848`.
+- CS21A158 validate manual-review candidate — `31143875866`.
+
+El Release Candidate valida explícitamente el archivo completo, FIX3, presencia TTL 60 s, navegador, sincronización, construcción exacta y smoke del paquete.
+
 ## Verificadores requeridos antes de desplegar QA
 
 `verificarActualizacionQA()` debe mantener:
@@ -87,20 +103,21 @@ preserves_curriculum_verifier=true
 
 ## Siguiente QA limpia
 
-1. Desplegar una nueva versión del Apps Script QA solo después de ambos verificadores verdes y CI verde.
-2. Crear una sala Memory Match **nueva**.
-3. Entrar con dos estudiantes y mantener sus pestañas abiertas.
-4. Confirmar `players_online=2`.
-5. Iniciar y verificar evento `MEMORY_MATCH_STARTED`, sala `LIVE`, tablero sincronizado y equipos.
-6. Cerrar una pestaña, esperar más de 60 s y confirmar que `players_online` baja sin borrar el registro histórico.
-7. Vigilar `Failed to fetch`; si persiste, se trata como defecto frontend separado y no se declara PASS.
+1. Reemplazar todo el archivo Apps Script 99 por el archivo completo FIX3.
+2. Ejecutar ambos verificadores.
+3. Desplegar una nueva versión del Apps Script QA solo después de ambos verificadores verdes.
+4. Crear una sala Memory Match **nueva**.
+5. Entrar con dos estudiantes y mantener sus pestañas abiertas.
+6. Confirmar `players_online=2`.
+7. Iniciar y verificar evento `MEMORY_MATCH_STARTED`, sala `LIVE`, tablero sincronizado y equipos.
+8. Cerrar una pestaña, esperar más de 60 s y confirmar que `players_online` baja sin borrar el registro histórico.
+9. Vigilar `Failed to fetch`; si persiste, se trata como defecto frontend separado y no se declara PASS.
 
 ## Regla de liberación
 
 No fusionar ni desplegar producción hasta obtener:
 
-1. Release Candidate CI verde del head exacto.
-2. QA autenticada docente + dos estudiantes para Memory Match y Sentence Order.
-3. Validación móvil.
-4. Prueba progresiva 2 → 5 → 10 → 25 clientes.
-5. Release PR único contra `main` con rollback documentado.
+1. QA autenticada docente + dos estudiantes para Memory Match y Sentence Order.
+2. Validación móvil.
+3. Prueba progresiva 2 → 5 → 10 → 25 clientes.
+4. Release PR único contra `main` con rollback documentado.
