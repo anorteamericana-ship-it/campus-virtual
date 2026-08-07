@@ -29,6 +29,7 @@ on:
       - 'scripts/test_memory_match_start_guard_cs21a183.mjs'
       - 'scripts/test_memory_match_presence_runtime_cs21a183.mjs'
       - 'scripts/test_english_lab_fetch_resilience_cs21a183.mjs'
+      - 'scripts/english_lab_load_harness_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a180.mjs'
       - 'scripts/build_qa_package_cs21a181.mjs'
       - 'scripts/build_qa_package_cs21a182.mjs'
@@ -59,7 +60,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate backend, synchronization, visual, game, presence and network contracts
+      - name: Validate backend, synchronization, visual, game, presence, network and load contracts
         run: |
           set -euo pipefail
           node scripts/test_english_lab_update_qa_cs21a176.mjs
@@ -72,6 +73,7 @@ jobs:
           node scripts/test_memory_match_start_guard_cs21a183.mjs
           node scripts/test_memory_match_presence_runtime_cs21a183.mjs
           node scripts/test_english_lab_fetch_resilience_cs21a183.mjs
+          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
           node scripts/test_english_lab_live_loader_cs21a178.mjs
