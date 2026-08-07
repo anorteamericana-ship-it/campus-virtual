@@ -1,22 +1,23 @@
-// F98.4-Z6-CS21A187 · English LAB Live product guard.
+// F98.4-Z6-CS21A188 · English LAB Live product guard + Shared Discovery.
 // QA/frontend: evita mezcla de runtimes cacheados, elimina salas residuales,
-// expulsa al estudiante al lobby cuando la sala cierra y limita Memory Match
-// a la capacidad visible actual del banco (máximo 6 pares).
-(function installEnglishLabLiveProductGuardCS21A187(global){
+// expulsa al estudiante al lobby cuando la sala cierra y fuerza el motor
+// Memory Match Shared Discovery como estado visual canónico.
+(function installEnglishLabLiveProductGuardCS21A188(global){
   'use strict';
 
-  if (!global || global.__ENGLISH_LAB_PRODUCT_GUARD_CS21A187__) return;
+  if (!global || global.__ENGLISH_LAB_PRODUCT_GUARD_CS21A188__) return;
 
-  const VERSION = 'F98.4-Z6-CS21A187';
+  const VERSION = 'F98.4-Z6-CS21A188';
   const LIVE_FILE_RE = /^src\/english_lab_live\.jsx(?:\?.*)?$/i;
   const LAST_ROOM_KEY = 'elive_last_room';
   const PLAYER_PREFIX = 'elive_player_';
   const MAX_MEMORY_PAIRS = 6;
   const PREREQUISITES = Object.freeze([
-    'src/english_lab_games/english_lab_runtime_cs21a173.js?v=CS21A187',
-    'src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A187',
-    'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A187',
-    'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A187',
+    'src/english_lab_games/english_lab_runtime_cs21a173.js?v=CS21A188',
+    'src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A188',
+    'src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx?v=CS21A188',
+    'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A188',
+    'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A188',
   ]);
   const STATE_ENDPOINTS = Object.freeze([
     'englishLabLiveGetPlayerState',
@@ -98,17 +99,10 @@
     return {closed,code};
   }
 
-  // Una respuesta CLOSED puede llegar a una instancia React que está siendo
-  // desmontada. Si conserva player, ese loadState antiguo vuelve a escribir
-  // elive_player_<sala> después de que detachRoom ya lo borró. Se entrega al
-  // componente una copia sin jugador activo para que CLOSED sea terminal también
-  // frente a requests que ya estaban en vuelo.
   function sanitizeClosedPayload(data){
     const source = data && typeof data === 'object' ? data : {};
     const sanitized = {...source,player:null,can_answer:false,joined:false};
-    if(source.room_package && typeof source.room_package === 'object'){
-      sanitized.room_package = {...source.room_package,player:null};
-    }
+    if(source.room_package && typeof source.room_package === 'object') sanitized.room_package = {...source.room_package,player:null};
     return sanitized;
   }
 
@@ -121,18 +115,14 @@
         headers.delete('content-length');
         headers.delete('content-encoding');
       }
-      return new global.Response(JSON.stringify(sanitizeClosedPayload(data)),{
-        status:response.status,
-        statusText:response.statusText,
-        headers,
-      });
+      return new global.Response(JSON.stringify(sanitizeClosedPayload(data)),{status:response.status,statusText:response.statusText,headers});
     }catch(_){ return response; }
   }
 
   function installFetchGuard(){
     if(fetchInstalled || typeof global.fetch !== 'function') return fetchInstalled;
     baseFetch = global.fetch.bind(global);
-    global.fetch = async function englishLabProductFetchCS21A187(input, init){
+    global.fetch = async function englishLabProductFetchCS21A188(input, init){
       const response = await baseFetch(input, init);
       const endpoint = endpointFromRequest(input);
       if(STATE_ENDPOINTS.indexOf(endpoint) >= 0){
@@ -144,7 +134,7 @@
       }
       return response;
     };
-    global.fetch.__cs21a187ProductGuard = true;
+    global.fetch.__cs21a188ProductGuard = true;
     fetchInstalled = true;
     return true;
   }
@@ -237,7 +227,9 @@
   function stackReady(){
     return !!(
       global.EnglishLabRuntimeCS21A173 &&
+      global.MemoryMatchSharedDiscoveryCS21A188 &&
       typeof global.MemoryMatchGameCS21A173 === 'function' &&
+      global.MemoryMatchGameCS21A173.__cs21a188SharedDiscovery === true &&
       global.EnglishLabLiveSyncCS21A177 &&
       global.EnglishLabMemoryMatchLiveCS21A174 &&
       typeof global.MemoryMatchLiveRoundCS21A174 === 'function'
@@ -247,36 +239,32 @@
   function patchLazyLoader(){
     const api = global.anLazyCampus;
     if(!api || typeof api.loadOne !== 'function' || typeof api.loadMany !== 'function') return false;
-    if(api.loadOne.__cs21a187ProductGuard) return true;
+    if(api.loadOne.__cs21a188ProductGuard) return true;
 
     const currentLoadOne = api.loadOne;
     const ordinaryLoadOne = currentLoadOne.bind(api);
-    // CS21A184 podía cargar dependencias con URLs viejas. Para English LAB Live
-    // saltamos ese wrapper y vamos a su loader base después de cargar CS21A187.
     const rawLiveLoadOne = currentLoadOne.__cs21a184StudentDependencies && typeof currentLoadOne.__base === 'function'
       ? currentLoadOne.__base
       : ordinaryLoadOne;
 
-    async function loadOneCS21A187(src){
+    async function loadOneCS21A188(src){
       if(!LIVE_FILE_RE.test(clean(src))) return ordinaryLoadOne(src);
       clearInitialResidue();
       await api.loadMany(PREREQUISITES);
       const result = await rawLiveLoadOne(src);
-      if(!stackReady()) throw new Error('English LAB Live no cargó el stack CS21A187 completo.');
+      if(!stackReady()) throw new Error('English LAB Live no cargó el stack CS21A188 Shared Discovery completo.');
       installStudentWrapper();
       enforcePairSelect();
       return result;
     }
-    loadOneCS21A187.__cs21a187ProductGuard = true;
-    loadOneCS21A187.__base = rawLiveLoadOne;
-    api.loadOne = loadOneCS21A187;
+    loadOneCS21A188.__cs21a188ProductGuard = true;
+    loadOneCS21A188.__base = rawLiveLoadOne;
+    api.loadOne = loadOneCS21A188;
     lazyInstalled = true;
     return true;
   }
 
   function install(){
-    // Limpia solamente el residuo heredado al entrar. Una sala nueva sí puede
-    // persistir durante su sesión hasta Cambiar sala o CLOSED.
     clearInitialResidue();
     installFetchGuard();
     installClickGuard();
@@ -286,8 +274,9 @@
     return true;
   }
 
-  global.__ENGLISH_LAB_PRODUCT_GUARD_CS21A187__ = Object.freeze({
+  const api = Object.freeze({
     version:VERSION,
+    sharedDiscovery:true,
     maxMemoryPairs:MAX_MEMORY_PAIRS,
     prerequisites:PREREQUISITES.slice(),
     install,
@@ -302,6 +291,8 @@
     stackReady,
     getActiveRoomCode:()=>activeRoomCode,
   });
+  global.__ENGLISH_LAB_PRODUCT_GUARD_CS21A188__ = api;
+  if(!global.__ENGLISH_LAB_PRODUCT_GUARD_CS21A187__) global.__ENGLISH_LAB_PRODUCT_GUARD_CS21A187__ = api;
 
   install();
   let attempts = 0;
