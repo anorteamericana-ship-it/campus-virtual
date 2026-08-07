@@ -14,6 +14,12 @@
   const SYNC_GUARD_ID = 'english-lab-live-sync-cs21a177';
   const SYNC_GUARD_SRC = 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A188';
   const LIVE_POLL_MS = 1500;
+  const POLL_TIERS = Object.freeze([
+    Object.freeze({maxPlayers:5,ms:1500}),
+    Object.freeze({maxPlayers:10,ms:1800}),
+    Object.freeze({maxPlayers:15,ms:2500}),
+    Object.freeze({maxPlayers:25,ms:3500}),
+  ]);
   const ENDPOINTS = Object.freeze({
     createRoom: 'englishLabMemoryMatchCreateRoom',
     startRoom: 'englishLabMemoryMatchStartRoom',
@@ -165,6 +171,22 @@
     };
   }
 
+  function participantCount(state, pkg) {
+    const statsCount = Number(state && state.stats && state.stats.players || 0) || 0;
+    if (statsCount > 0) return statsCount;
+    const packagePlayers = pkg && Array.isArray(pkg.players) ? pkg.players.length : 0;
+    if (packagePlayers > 0) return packagePlayers;
+    return 1;
+  }
+
+  function livePollMsForPlayers(count) {
+    const players = Math.max(1, Number(count || 0) || 1);
+    for (const tier of POLL_TIERS) {
+      if (players <= tier.maxPlayers) return tier.ms;
+    }
+    return 4000;
+  }
+
   function gameDescriptor() {
     return Object.freeze({
       code: GAME_ID,
@@ -223,6 +245,8 @@
     const code = roomCode(room, pkg);
     const status = roomStatus(room);
     const pid = playerId(player);
+    const playersOnline = participantCount(state, pkg);
+    const pollMs = livePollMsForPlayers(playersOnline);
 
     React.useEffect(() => {
       let active = true;
@@ -234,9 +258,10 @@
       return () => { active = false; };
     }, []);
 
-    // Shared Discovery necesita convergencia visible rápida, pero solo dentro de
-    // Memory Match. Este polling es silencioso, no se superpone y se pausa cuando
-    // la pestaña queda oculta. El flujo base del Campus permanece intacto.
+    // Shared Discovery necesita convergencia visible rápida, pero Apps Script no es
+    // un servidor WebSocket. Se usa un polling adaptativo por tamaño de sala:
+    // 1-5: 1.5s, 6-10: 1.8s, 11-15: 2.5s, 16-25: 3.5s.
+    // Es silencioso, no se superpone y se pausa cuando la pestaña queda oculta.
     React.useEffect(() => {
       if (typeof postLive !== 'function' || !code || status === 'CLOSED') return undefined;
       if (!readOnly && !pid) return undefined;
@@ -261,12 +286,12 @@
           pollingRef.current = false;
         }
       }
-      const timer = global.setInterval(poll, LIVE_POLL_MS);
+      const timer = global.setInterval(poll, pollMs);
       return () => {
         disposed = true;
         global.clearInterval(timer);
       };
-    }, [readOnly, postLive, code, status, pid]);
+    }, [readOnly, postLive, code, status, pid, pollMs]);
 
     if (!pkg) {
       return <div role="status" style={{padding:16,border:'1px solid #FFD88A',background:'#FFF7E6',borderRadius:14,color:'#7A4B00',fontWeight:800}}>
@@ -308,7 +333,7 @@
       }
     }
 
-    return <div data-live-game="MEMORY_MATCH" data-version={VERSION} data-live-poll-ms={LIVE_POLL_MS} style={{display:'grid',gap:12}}>
+    return <div data-live-game="MEMORY_MATCH" data-version={VERSION} data-live-poll-ms={pollMs} data-live-players={playersOnline} style={{display:'grid',gap:12}}>
       {error && <div role="alert" style={{padding:'10px 12px',border:'1px solid #F5B5B5',background:'#FDECEA',borderRadius:12,color:'#8B1F1F',fontWeight:800}}>{error}</div>}
       {busy && <div role="status" style={{fontSize:12,fontWeight:900,color:'#073B7A'}}>Sincronizando jugada…</div>}
       {lastResult && resultLabel(lastResult) && <div aria-live="polite" style={{fontSize:12,fontWeight:900,color:lastResult.correct?'#145C38':'#073B7A'}}>{resultLabel(lastResult)}</div>}
@@ -334,7 +359,10 @@
     TURN_ENGINE_SRC,
     SYNC_GUARD_SRC,
     LIVE_POLL_MS,
+    POLL_TIERS,
     READ_ONLY_POLL_MS:LIVE_POLL_MS,
+    livePollMsForPlayers,
+    participantCount,
     ensureStyles,
     ensureTurnEngine,
     ensureSyncGuard,
