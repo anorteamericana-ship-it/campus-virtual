@@ -8,6 +8,7 @@ const sources = [
   'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs',
   'apps_script_patches/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs',
   'apps_script_patches/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs',
+  'apps_script_patches/99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs',
 ];
 const target = path.join(root, 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs');
 
@@ -16,7 +17,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -31,9 +32,12 @@ const required = [
   "ELSO183_CURRICULUM_VERSION = 'CS21A183-CURRICULUM'",
   "ELSO183_APOLLO_SOURCE_FIX_VERSION = 'CS21A183-APOLLO-QA-FIX'",
   "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX3'",
+  "CS21A183_MM_PAIR_METADATA_FIX_VERSION = 'CS21A183-MM-PAIR-METADATA-FIX4'",
   'CS21A183_MM_PRESENCE_TTL_MS = 60000',
   'function verificarMemoryMatchStartFixCS21A183()',
   'direct_start_no_legacy_delegate:true',
+  'control_pair_metadata:true',
+  'canonical_pair_count_from_room:true',
   'players_online',
   'players_registered',
 ];
@@ -46,4 +50,4 @@ if ((check.match(/verificarActualizacionQA = function/g) || []).length < 3) {
 if (check.includes("CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'")) {
   throw new Error('El archivo completo conserva FIX2 obsoleto.');
 }
-console.log(JSON.stringify({ok:true,target,path:target,sources,fix:'CS21A183-MM-START-FIX3',presenceTtlSeconds:60,bytes:Buffer.byteLength(check,'utf8')}, null, 2));
+console.log(JSON.stringify({ok:true,target,path:target,sources,fix:'CS21A183-MM-PAIR-METADATA-FIX4',presenceTtlSeconds:60,bytes:Buffer.byteLength(check,'utf8')}, null, 2));
