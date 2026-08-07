@@ -16,7 +16,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX2\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -30,8 +30,12 @@ const required = [
   "var ELSO183_VERSION = 'CS21A183'",
   "ELSO183_CURRICULUM_VERSION = 'CS21A183-CURRICULUM'",
   "ELSO183_APOLLO_SOURCE_FIX_VERSION = 'CS21A183-APOLLO-QA-FIX'",
-  "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'",
+  "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX3'",
+  'CS21A183_MM_PRESENCE_TTL_MS = 60000',
   'function verificarMemoryMatchStartFixCS21A183()',
+  'direct_start_no_legacy_delegate:true',
+  'players_online',
+  'players_registered',
 ];
 for (const marker of required) {
   if (!check.includes(marker)) throw new Error(`Archivo completo no contiene: ${marker}`);
@@ -39,4 +43,7 @@ for (const marker of required) {
 if ((check.match(/verificarActualizacionQA = function/g) || []).length < 3) {
   throw new Error('La cadena de verificación curricular no quedó completa.');
 }
-console.log(JSON.stringify({ok:true,target,path:target,sources,bytes:Buffer.byteLength(check,'utf8')}, null, 2));
+if (check.includes("CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'")) {
+  throw new Error('El archivo completo conserva FIX2 obsoleto.');
+}
+console.log(JSON.stringify({ok:true,target,path:target,sources,fix:'CS21A183-MM-START-FIX3',presenceTtlSeconds:60,bytes:Buffer.byteLength(check,'utf8')}, null, 2));
