@@ -1,19 +1,19 @@
-// CS21A174/CS21A176/CS21A177 · Adaptador canónico entre English LAB Live, Memory Match y turnos compartidos.
+// CS21A174-CS21A188 · Adaptador canónico entre English LAB Live, Shared Discovery y turnos compartidos.
 // Solo se activa para GAME_ID = MEMORY_MATCH. No contiene contenido pedagógico.
 /* global React, MemoryMatchGameCS21A173 */
 (function (global) {
   'use strict';
 
-  const VERSION = 'CS21A177';
+  const VERSION = 'CS21A188';
   const GAME_ID = 'MEMORY_MATCH';
   const GAME_LABEL = 'MEMORY MATCH';
   const STYLE_ID = 'english-lab-memory-match-cs21a174';
-  const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A174';
+  const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188';
   const TURN_ENGINE_ID = 'english-lab-turn-engine-cs21a176';
   const TURN_ENGINE_SRC = 'src/english_lab_games/english_lab_turn_engine_cs21a176.js?v=CS21A176';
   const SYNC_GUARD_ID = 'english-lab-live-sync-cs21a177';
-  const SYNC_GUARD_SRC = 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A177';
-  const READ_ONLY_POLL_MS = 4000;
+  const SYNC_GUARD_SRC = 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A188';
+  const LIVE_POLL_MS = 1500;
   const ENDPOINTS = Object.freeze({
     createRoom: 'englishLabMemoryMatchCreateRoom',
     startRoom: 'englishLabMemoryMatchStartRoom',
@@ -36,7 +36,12 @@
 
   function ensureStyles() {
     const doc = global.document;
-    if (!doc || !doc.head || doc.getElementById(STYLE_ID)) return;
+    if (!doc || !doc.head) return;
+    const existing = doc.getElementById(STYLE_ID);
+    if (existing) {
+      if (existing.getAttribute('href') !== STYLE_HREF) existing.setAttribute('href', STYLE_HREF);
+      return;
+    }
     const link = doc.createElement('link');
     link.id = STYLE_ID;
     link.rel = 'stylesheet';
@@ -130,6 +135,10 @@
     ).toUpperCase();
   }
 
+  function roomStatus(room) {
+    return upper(room && (room.status || room.STATUS));
+  }
+
   function playerId(player) {
     return clean(player && (
       player.player_id || player.playerId || player.cod_estudiante ||
@@ -143,6 +152,17 @@
     const question = state.question || state.current_question || null;
     if (question && question.room_package && typeof question.room_package === 'object') return question.room_package;
     return null;
+  }
+
+  function mergeLiveState(current, result, room, player) {
+    if (!result || typeof result !== 'object') return current;
+    return {
+      ...(current || {}),
+      ...result,
+      room: result.room || room || (current && current.room) || {},
+      player: result.player || player || (current && current.player) || null,
+      room_package: result.room_package || (current && current.room_package) || null,
+    };
   }
 
   function gameDescriptor() {
@@ -170,6 +190,15 @@
     });
   }
 
+  function resultLabel(result) {
+    if (!result || typeof result !== 'object') return '';
+    const action = upper(result.action || result.answer_type);
+    if (action === 'DISCOVER_CARD') return result.accepted === false ? 'Carta ya visible para la sala.' : 'Carta compartida con toda la sala.';
+    if (result.correct === true) return `Pareja reclamada · +${Number(result.points || 0)} · seguís jugando`;
+    if (result.correct === false) return result.message || result.mensaje || 'No coinciden · quedan descubiertas';
+    return result.message || result.mensaje || '';
+  }
+
   function MemoryMatchLiveRoundCS21A174(props) {
     ensureStyles();
     const incomingState = props && props.state || {};
@@ -192,6 +221,8 @@
     const player = state.player || props.player || null;
     const pkg = packageFromLiveState(state) || props.roomPackage || null;
     const code = roomCode(room, pkg);
+    const status = roomStatus(room);
+    const pid = playerId(player);
 
     React.useEffect(() => {
       let active = true;
@@ -203,16 +234,25 @@
       return () => { active = false; };
     }, []);
 
+    // Shared Discovery necesita convergencia visible rápida, pero solo dentro de
+    // Memory Match. Este polling es silencioso, no se superpone y se pausa cuando
+    // la pestaña queda oculta. El flujo base del Campus permanece intacto.
     React.useEffect(() => {
-      if (!readOnly || typeof postLive !== 'function' || !code) return undefined;
+      if (typeof postLive !== 'function' || !code || status === 'CLOSED') return undefined;
+      if (!readOnly && !pid) return undefined;
       let disposed = false;
       async function poll() {
         if (disposed || pollingRef.current) return;
+        if (global.document && global.document.visibilityState === 'hidden') return;
         pollingRef.current = true;
         try {
-          const result = await postLive(ENDPOINTS.getRoomControl, {room_id:code, room_code:code}, 45000);
+          const endpoint = readOnly ? ENDPOINTS.getRoomControl : ENDPOINTS.getPlayerState;
+          const payload = readOnly
+            ? {room_id:code, room_code:code}
+            : {room_code:code, player_id:pid, cod_estudiante:pid};
+          const result = await postLive(endpoint, payload, 45000);
           if (!disposed && result && result.ok !== false) {
-            setLiveState(result);
+            setLiveState(current => mergeLiveState(current, result, room, player));
             setError('');
           }
         } catch (err) {
@@ -221,12 +261,12 @@
           pollingRef.current = false;
         }
       }
-      const timer = global.setInterval(poll, READ_ONLY_POLL_MS);
+      const timer = global.setInterval(poll, LIVE_POLL_MS);
       return () => {
         disposed = true;
         global.clearInterval(timer);
       };
-    }, [readOnly, postLive, code]);
+    }, [readOnly, postLive, code, status, pid]);
 
     if (!pkg) {
       return <div role="status" style={{padding:16,border:'1px solid #FFD88A',background:'#FFF7E6',borderRadius:14,color:'#7A4B00',fontWeight:800}}>
@@ -252,15 +292,12 @@
         const result = await postLive(ENDPOINTS.submitPair, submitPayload(submission, room, pkg, player), 45000);
         setLastResult(result || null);
         if (result && result.room_package) {
-          setLiveState(current => ({
-            ...(current || state),
-            ...result,
-            room: result.room || room,
-            player,
-            room_package: result.room_package,
-          }));
+          // La pantalla que ejecutó la acción adopta el estado autoritativo devuelto
+          // de inmediato. No abre un spinner ni fuerza otra lectura de red.
+          setLiveState(current => mergeLiveState(current, result, room, player));
+        } else if (typeof onRefresh === 'function') {
+          await onRefresh();
         }
-        if (typeof onRefresh === 'function') await onRefresh();
         return result;
       } catch (err) {
         const message = err && err.message ? err.message : String(err);
@@ -271,12 +308,10 @@
       }
     }
 
-    return <div data-live-game="MEMORY_MATCH" data-version={VERSION} style={{display:'grid',gap:12}}>
+    return <div data-live-game="MEMORY_MATCH" data-version={VERSION} data-live-poll-ms={LIVE_POLL_MS} style={{display:'grid',gap:12}}>
       {error && <div role="alert" style={{padding:'10px 12px',border:'1px solid #F5B5B5',background:'#FDECEA',borderRadius:12,color:'#8B1F1F',fontWeight:800}}>{error}</div>}
-      {busy && <div role="status" style={{fontSize:12,fontWeight:900,color:'#073B7A'}}>Guardando intento…</div>}
-      {lastResult && <div aria-live="polite" style={{fontSize:12,fontWeight:900,color:lastResult.correct?'#145C38':'#7A4B00'}}>
-        {lastResult.correct ? `Par correcto · ${Number(lastResult.points || 0)} puntos` : lastResult.message || lastResult.mensaje || 'No forman un par'}
-      </div>}
+      {busy && <div role="status" style={{fontSize:12,fontWeight:900,color:'#073B7A'}}>Sincronizando jugada…</div>}
+      {lastResult && resultLabel(lastResult) && <div aria-live="polite" style={{fontSize:12,fontWeight:900,color:lastResult.correct?'#145C38':'#073B7A'}}>{resultLabel(lastResult)}</div>}
       <MemoryMatchGameCS21A173
         roomPackage={pkg}
         player={player}
@@ -298,7 +333,8 @@
     STYLE_HREF,
     TURN_ENGINE_SRC,
     SYNC_GUARD_SRC,
-    READ_ONLY_POLL_MS,
+    LIVE_POLL_MS,
+    READ_ONLY_POLL_MS:LIVE_POLL_MS,
     ensureStyles,
     ensureTurnEngine,
     ensureSyncGuard,
@@ -306,8 +342,10 @@
     roomGameId,
     roomGameLabel,
     packageFromLiveState,
+    mergeLiveState,
     gameDescriptor,
     submitPayload,
+    resultLabel,
     component: MemoryMatchLiveRoundCS21A174,
   });
 
