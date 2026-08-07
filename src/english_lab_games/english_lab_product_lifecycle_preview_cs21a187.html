@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QA · English LAB Lifecycle CS21A187</title>
+  <link rel="stylesheet" href="../../styles/tokens.css">
+  <link rel="stylesheet" href="../../styles/english_lab_memory_match_cs21a173.css?v=CS21A187">
+  <style>body{margin:0;background:#EAF0F7;padding:18px;font-family:system-ui,sans-serif}#qa-tools{max-width:980px;margin:0 auto 10px;display:flex;gap:8px}</style>
+</head>
+<body>
+  <div id="qa-tools"><button id="qa-close-a" type="button">Cerrar LAB-A en backend QA</button><span id="qa-version">CS21A187</span></div>
+  <div id="root"></div>
+  <script src="../../vendor/react.js"></script>
+  <script src="../../vendor/react-dom.js"></script>
+  <script src="../../vendor/babel.js"></script>
+  <script>
+    window.APPS_SCRIPT_URL = location.origin + '/mock-exec';
+    window.getSessionToken = ()=>'qa-session';
+    window.__QA_NATIVE_FETCH__ = window.fetch.bind(window);
+    window.__QA_CALLS__ = [];
+    window.__QA_ROOM_STATUS__ = {'LAB-A':'LIVE','LAB-B':'LIVE'};
+    window.__QA_MATCHED__ = {'LAB-A':[],'LAB-B':[]};
+    window.__QA_STALE_A_SEEN__ = false;
+    window.__QA_TRACK_STALE_A__ = false;
+    localStorage.setItem('elive_last_room','LAB-OLD');
+    localStorage.setItem('elive_player_LAB-OLD','QA-P1');
+
+    function cards(){ return [
+      {card_id:'P1-L',pair_id:'P1',face_type:'TEXT',label:'teacher'},
+      {card_id:'P1-R',pair_id:'P1',face_type:'TEXT',label:'profesor/a'},
+      {card_id:'P2-L',pair_id:'P2',face_type:'TEXT',label:'apple'},
+      {card_id:'P2-R',pair_id:'P2',face_type:'TEXT',label:'manzana'}
+    ]; }
+    function stateFor(code){
+      const now=Date.now();
+      const status=window.__QA_ROOM_STATUS__[code] || 'LIVE';
+      const matched=window.__QA_MATCHED__[code] || [];
+      const pkg={
+        version:'CS21A186-MM-RULES-FIX1',server_now:new Date(now).toISOString(),received_at_ms:now-600000,
+        room:{room_code:code,game_id:'MEMORY_MATCH',mode:'TEAMS',level_id:'B1'},
+        round:{round_id:code+'-R1',index:1,title:'Memory Match · U01',cards:cards()},
+        rules:{round_duration_ms:30000,auto_start_delay_ms:0,reveal_duration_ms:900,team_size:1},
+        state:{phase:status==='CLOSED'?'COMPLETE':'OPEN',started_at:new Date(now).toISOString(),ends_at:new Date(now+30000).toISOString(),active_player_id:'QA-P1',active_team_id:'Equipo Rojo'},
+        players:[{player_id:'QA-P1',cod_estudiante:'QA-P1',name:'Chu QA',team_id:'Equipo Rojo'}],
+        teams:[{team_id:'Equipo Rojo',name:'Equipo Rojo',points:matched.length,members:[{player_id:'QA-P1',name:'Chu QA'}]}],
+        player:{player_id:'QA-P1',cod_estudiante:'QA-P1',name:'Chu QA',team_id:'Equipo Rojo'},
+        turn_state:{version:'CS21A176',participation_policy:'TEAM_ALTERNATING',player_order:['QA-P1'],player_cursor:0,team_order:['Equipo Rojo'],team_cursor:0,team_player_orders:{'Equipo Rojo':['QA-P1']},team_player_cursors:{'Equipo Rojo':0},active_player_id:'QA-P1',active_team_id:'Equipo Rojo',turn_number:1,turn_started_at:new Date(now).toISOString(),turn_ends_at:new Date(now+30000).toISOString(),last_player_id:'',last_team_id:'',reason:'ROUND_STARTED'},
+        shared_state:{version:'CS21A186-MM-RULES-FIX1',board_version:1+matched.length,matched_pair_ids:matched.slice(),completed:matched.length===2,last_action_key:''}
+      };
+      return {ok:true,memory_match:true,room:{room_code:code,game_code:'MEMORY_MATCH',game_id:'MEMORY_MATCH',game_label:'Memory Match',status,round_status:status==='CLOSED'?'CLOSED':'OPEN',current_index:1,question_count:1,mode:'TEAMS',unit:'U01',nivel:'B1'},player:pkg.player,room_package:pkg,stats:{players:1,answers_current:matched.length},leaderboard:[{rank:1,cod_estudiante:'QA-P1',nombre:'Chu QA',team:'Equipo Rojo',points:matched.length,correct:matched.length}],team_leaderboard:[{rank:1,team:'Equipo Rojo',players:1,points:matched.length,correct:matched.length}],can_answer:status!=='CLOSED'};
+    }
+    function response(data,status=200){ return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}}); }
+    window.fetch = async function(input,init){
+      const url=new URL(String(input),location.href);
+      if(url.pathname!=='/mock-exec') return window.__QA_NATIVE_FETCH__(input,init);
+      const body=JSON.parse(String(init&&init.body||'{}'));
+      const fn=url.searchParams.get('fn')||body.fn||'';
+      const code=String(body.room_code||body.roomCode||'LAB-A').toUpperCase();
+      window.__QA_CALLS__.push({fn,code});
+      if(fn==='englishLabLiveJoinRoom' || fn==='englishLabMemoryMatchJoinRoom') return response(stateFor(code));
+      if(fn==='englishLabLiveGetPlayerState' || fn==='englishLabMemoryMatchGetPlayerState') return response(stateFor(code));
+      if(fn==='englishLabMemoryMatchSubmitPair'){
+        const answer=body.answer_value||{};
+        const correct=(answer.first_card_id==='P1-L'&&answer.second_card_id==='P1-R')||(answer.first_card_id==='P1-R'&&answer.second_card_id==='P1-L');
+        if(correct && !window.__QA_MATCHED__[code].includes('P1')) window.__QA_MATCHED__[code].push('P1');
+        return response({...stateFor(code),accepted:true,correct,points:correct?1:0});
+      }
+      return response({ok:false,error:'QA endpoint no simulado: '+fn},400);
+    };
+    document.getElementById('qa-close-a').addEventListener('click',()=>{window.__QA_ROOM_STATUS__['LAB-A']='CLOSED';window.__QA_TRACK_STALE_A__=true;});
+    new MutationObserver(()=>{ if(window.__QA_TRACK_STALE_A__ && document.body.innerText.includes('LAB-A')) window.__QA_STALE_A_SEEN__=true; }).observe(document.documentElement,{subtree:true,childList:true,characterData:true});
+  </script>
+  <script src="../english_lab_live_product_guard_cs21a187.js?v=F98.4Z6CS21A187"></script>
+  <script src="./english_lab_runtime_cs21a173.js?v=CS21A187"></script>
+  <script src="./english_lab_turn_engine_cs21a176.js?v=CS21A176"></script>
+  <script src="./english_lab_live_sync_guard_cs21a177.js?v=CS21A187"></script>
+  <script type="text/babel" src="./memory_match_engine_cs21a173.jsx?v=CS21A187"></script>
+  <script type="text/babel" src="./english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A187"></script>
+  <script type="text/babel" src="../english_lab_live.jsx?v=F98.4Z6CS21A187"></script>
+  <script type="text/babel">
+    (async function(){
+      for(let i=0;i<100 && !(window.EnglishLabLiveStudentView&&window.EnglishLabLiveStudentView.__cs21a187LifecycleWrapper);i++) await new Promise(r=>setTimeout(r,25));
+      if(!window.EnglishLabLiveStudentView) throw new Error('No cargó EnglishLabLiveStudentView');
+      const usuario={codigo:'QA-P1',nombre:'Chu QA'};
+      ReactDOM.createRoot(document.getElementById('root')).render(<EnglishLabLiveStudentView usuario={usuario}/>);
+    })().catch(error=>document.getElementById('root').textContent='ERROR QA: '+error.message);
+  </script>
+</body>
+</html>
