@@ -10,6 +10,7 @@ on:
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
       - 'apps_script_patches/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs'
       - 'apps_script_patches/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
       - 'src/runtime_config.js'
       - 'src/english_lab_ux_cs21a181.js'
       - 'src/english_lab_visual_cleanup_cs21a182.js'
@@ -54,6 +55,23 @@ jobs:
           node scripts/test_atomic_lazy_routes_cs21a179.mjs
           node scripts/audit_delivery_surface.mjs
           node scripts/audit_component_ownership_cs21a151.mjs
+
+      - name: Validate complete Apps Script source
+        run: |
+          set -euo pipefail
+          complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+          test -f "$complete"
+          grep -q 'APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO' "$complete"
+          grep -q '99 + 99B + 99C + 99D FIX3' "$complete"
+          grep -q "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX3'" "$complete"
+          grep -q 'CS21A183_MM_PRESENCE_TTL_MS = 60000' "$complete"
+          grep -q 'direct_start_no_legacy_delegate:true' "$complete"
+          grep -q 'players_online' "$complete"
+          grep -q 'players_registered' "$complete"
+          if grep -q "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'" "$complete"; then
+            echo 'ERROR: el archivo completo conserva FIX2.'
+            exit 1
+          fi
 
       - name: Build and audit isolated QA frontend
         run: |
@@ -121,11 +139,16 @@ jobs:
               grep -q 'Tema oficial de la unidad' /tmp/guard.js
               grep -q 'CS21A183-APOLLO-QA-FIX' /tmp/fix.gs
               grep -q "getProperty('QA_STAGING_MASTER_ID')" /tmp/fix.gs
-              grep -q 'CS21A183-MM-START-FIX' /tmp/start-fix.gs
-              grep -q 'memory_match_start_guard_error' /tmp/start-fix.gs
+              grep -q 'CS21A183-MM-START-FIX3' /tmp/start-fix.gs
+              grep -q 'memory_match_start_fix3_error' /tmp/start-fix.gs
+              grep -q 'CS21A183_MM_PRESENCE_TTL_MS = 60000' /tmp/start-fix.gs
+              grep -q 'players_online' /tmp/start-fix.gs
+              grep -q 'players_registered' /tmp/start-fix.gs
               grep -q "getProperty('QA_STAGING_OPERATIVO_ID')" /tmp/start-fix.gs
               grep -q 'APOLLO_QA_SOURCE_FIX=CS21A183-APOLLO-QA-FIX' /tmp/version.txt
-              grep -q 'MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_START_FIX=CS21A183-MM-START-FIX3' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_DIRECT_START=true' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_PRESENCE_TTL_SECONDS=60' /tmp/version.txt
               exit 0
             fi
             sleep 0.5
