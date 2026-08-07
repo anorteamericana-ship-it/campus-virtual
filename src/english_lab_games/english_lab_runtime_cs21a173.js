@@ -1,9 +1,10 @@
-// CS21A173 · Runtime liviano y determinista para English LAB.
+// CS21A173/CS21A186 · Runtime liviano y determinista para English LAB.
 // No contiene contenido pedagógico, no consulta Sheets y no realiza fetch.
 (function (global) {
   'use strict';
 
   const VERSION = 'CS21A173';
+  const CLOCK_FIX_VERSION = 'CS21A186-MEMORY-CLOCK-FIX1';
   const PHASES = Object.freeze(['LOBBY', 'COUNTDOWN', 'OPEN', 'REVEAL', 'COMPLETE', 'PAUSED']);
 
   function clean(value) {
@@ -71,9 +72,18 @@
     const round = source.round || {};
     const state = source.state || {};
     const rules = normalizeRules(source.rules || {});
+
+    // CS21A186: received_at_ms histórico viene serializado por Apps Script desde
+    // el inicio de la sala y queda obsoleto en cada polling. Para sincronizar el
+    // reloj usamos el instante real en que ESTE paquete se normaliza en el cliente.
+    // client_received_at_ms queda disponible únicamente para pruebas deterministas.
+    const clientReceivedAtMs = number(
+      source.client_received_at_ms || source.clientReceivedAtMs,
+      Date.now()
+    );
     const clock = createServerClock({
       server_now: source.server_now || state.server_now,
-      received_at_ms: source.received_at_ms || Date.now(),
+      received_at_ms: clientReceivedAtMs,
       server_offset_ms: source.server_offset_ms || state.server_offset_ms,
     });
 
@@ -119,6 +129,7 @@
 
   global.EnglishLabRuntimeCS21A173 = Object.freeze({
     VERSION,
+    CLOCK_FIX_VERSION,
     PHASES,
     clean,
     timestamp,
