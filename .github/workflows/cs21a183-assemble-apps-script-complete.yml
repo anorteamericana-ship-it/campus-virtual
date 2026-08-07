@@ -1,0 +1,38 @@
+name: CS21A183 assemble complete Apps Script
+
+on:
+  push:
+    branches:
+      - feat/cs21a183-sentence-order-live
+    paths:
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/cs21a183-sentence-order-live
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build single complete Apps Script file
+        run: node scripts/assemble_apps_script_cs21a183_complete.mjs
+      - name: Commit exact combined file
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git commit -m 'CS21A183 actualiza Apps Script QA completo 99-99D'
+          git push origin HEAD:feat/cs21a183-sentence-order-live
