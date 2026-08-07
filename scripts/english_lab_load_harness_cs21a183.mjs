@@ -67,28 +67,47 @@ function normalizeUrl(raw) {
 
 function assertQaUrl(raw) {
   const normalized = normalizeUrl(raw);
-  if (normalized === productionAppsScriptUrl()) {
-    throw new Error('LOAD_QA_REFUSED_PRODUCTION_URL');
-  }
+  if (normalized === productionAppsScriptUrl()) throw new Error('LOAD_QA_REFUSED_PRODUCTION_URL');
   return normalized;
+}
+
+function normalizeStudent(item, index) {
+  return {
+    label:String(item && item.label || `student-${index+1}`),
+    token:String(item && (item.token || item.session_token || item.student_token) || '').trim(),
+    codEstudiante:String(item && (item.cod_estudiante || item.student_code) || '').trim(),
+    playerId:String(item && (item.player_id || item.cod_estudiante || item.student_code) || '').trim(),
+  };
 }
 
 function loadConfig(configPath) {
   const raw = JSON.parse(fs.readFileSync(configPath,'utf8'));
   const baseUrl = assertQaUrl(raw.base_url || process.env.QA_BASE_URL || '');
   const roomCode = String(raw.room_code || process.env.QA_ROOM_CODE || '').trim().toUpperCase();
+  const roomId = String(raw.room_id || raw.room_code || process.env.QA_ROOM_ID || roomCode).trim();
   if (!/^LAB-[A-Z0-9-]+$/.test(roomCode)) throw new Error('QA room_code inválido.');
-  const students = Array.isArray(raw.students) ? raw.students.map((item,index)=>({
-    label:String(item.label || `student-${index+1}`),
-    token:String(item.student_token || '').trim(),
-  })).filter(item=>item.token) : [];
-  if (!students.length) throw new Error('El archivo QA debe contener al menos un student_token.');
+  if (!roomId) throw new Error('QA room_id requerido para polling docente.');
+  const students = Array.isArray(raw.students) ? raw.students.map(normalizeStudent).filter(item=>item.token) : [];
+  if (!students.length) throw new Error('El archivo QA debe contener al menos un token de sesión estudiantil.');
+  const teacher = raw.teacher && typeof raw.teacher === 'object' ? raw.teacher : {};
+  const teacherToken = String(teacher.token || teacher.session_token || raw.teacher_token || '').trim();
+  return {baseUrl,roomCode,roomId,teacherToken,students};
+}
+
+function studentPayload(client, config) {
+  const fn = 'englishLabMemoryMatchGetPlayerState';
   return {
-    baseUrl,
-    roomCode,
-    teacherToken:String(raw.teacher_token || '').trim(),
-    students,
+    fn,
+    token:client.student.token,
+    room_code:config.roomCode,
+    player_id:client.student.playerId,
+    cod_estudiante:client.student.codEstudiante,
   };
+}
+
+function teacherPayload(config) {
+  const fn = 'englishLabMemoryMatchGetRoomControl';
+  return {fn,token:config.teacherToken,room_id:config.roomId};
 }
 
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -132,10 +151,8 @@ async function runClient(client, config, durationMs, intervalMs, timeoutMs) {
   const samples = [];
   const deadline = performance.now() + durationMs;
   while (performance.now() < deadline) {
-    samples.push(await postJson(config.baseUrl,'englishLabMemoryMatchGetPlayerState',{
-      student_token:client.student.token,
-      room_code:config.roomCode,
-    },timeoutMs));
+    const fn = 'englishLabMemoryMatchGetPlayerState';
+    samples.push(await postJson(config.baseUrl,fn,studentPayload(client,config),timeoutMs));
     const remaining = deadline - performance.now();
     if (remaining <= 0) break;
     await sleep(Math.min(intervalMs, remaining));
@@ -148,10 +165,8 @@ async function runTeacher(config, durationMs, intervalMs, timeoutMs) {
   const samples = [];
   const deadline = performance.now() + durationMs;
   while (performance.now() < deadline) {
-    samples.push(await postJson(config.baseUrl,'englishLabMemoryMatchGetRoomControl',{
-      teacher_token:config.teacherToken,
-      room_code:config.roomCode,
-    },timeoutMs));
+    const fn = 'englishLabMemoryMatchGetRoomControl';
+    samples.push(await postJson(config.baseUrl,fn,teacherPayload(config),timeoutMs));
     const remaining = deadline - performance.now();
     if (remaining <= 0) break;
     await sleep(Math.min(intervalMs, remaining));
@@ -194,6 +209,22 @@ async function selfTest() {
   assert.equal(qa,'https://script.google.com/macros/s/QA_TEST_CS21A183/exec');
   assert.throws(()=>assertQaUrl(productionAppsScriptUrl()),/LOAD_QA_REFUSED_PRODUCTION_URL/);
   assert.throws(()=>assertQaUrl('https://example.com/api'),/LOAD_QA_URL_INVALID/);
+
+  const config = {roomCode:'LAB-TEST',roomId:'ELIVE-TEST',teacherToken:'TEACHER-TOKEN'};
+  const client = {student:{token:'STUDENT-TOKEN',playerId:'QA-STU-005',codEstudiante:'QA-STU-005'}};
+  assert.deepEqual(studentPayload(client,config),{
+    fn:'englishLabMemoryMatchGetPlayerState',
+    token:'STUDENT-TOKEN',
+    room_code:'LAB-TEST',
+    player_id:'QA-STU-005',
+    cod_estudiante:'QA-STU-005',
+  });
+  assert.deepEqual(teacherPayload(config),{
+    fn:'englishLabMemoryMatchGetRoomControl',
+    token:'TEACHER-TOKEN',
+    room_id:'ELIVE-TEST',
+  });
+
   console.log(JSON.stringify({
     ok:true,
     contract:'CS21A183_ENGLISH_LAB_LOAD_HARNESS',
@@ -202,6 +233,9 @@ async function selfTest() {
     phases:[2,5,10,25],
     unique_credentials_default:true,
     transport_reuse_requires_flag:true,
+    exact_frontend_session_contract:true,
+    student_payload:'fn+token+room_code+player_id+cod_estudiante',
+    teacher_payload:'fn+token+room_id',
     write_endpoints:false,
   },null,2));
 }
