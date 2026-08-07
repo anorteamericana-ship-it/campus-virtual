@@ -19,6 +19,8 @@ on:
       - 'src/english_lab_sentence_order_polish_cs21a183.js'
       - 'scripts/test_english_lab_apollo_qa_source_cs21a183.mjs'
       - 'scripts/test_memory_match_start_guard_cs21a183.mjs'
+      - 'scripts/test_memory_match_presence_runtime_cs21a183.mjs'
+      - 'scripts/test_english_lab_fetch_resilience_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
       - '.github/workflows/cs21a183-release-candidate.yml'
 
@@ -49,6 +51,8 @@ jobs:
           node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
           node scripts/test_english_lab_apollo_qa_source_cs21a183.mjs
           node scripts/test_memory_match_start_guard_cs21a183.mjs
+          node scripts/test_memory_match_presence_runtime_cs21a183.mjs
+          node scripts/test_english_lab_fetch_resilience_cs21a183.mjs
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
           node scripts/test_english_lab_live_loader_cs21a178.mjs
@@ -135,6 +139,9 @@ jobs:
               curl --fail --silent --output /tmp/start-fix.gs http://127.0.0.1:4181/BACKEND_QA/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
               curl --fail --silent --output /tmp/version.txt http://127.0.0.1:4181/VERSION.txt
               grep -q 'english_lab_sentence_order_cs21a183.js?v=F98.4Z6CS21A183' /tmp/runtime.js
+              grep -q 'englishlabmemorymatchgetroomcontrol:true' /tmp/runtime.js
+              grep -q 'englishlabmemorymatchstartroom:true' /tmp/runtime.js
+              grep -q 'ENGLISH_LAB_FETCH_FAILED' /tmp/runtime.js
               grep -q 'Ordena la oración' /tmp/game.js
               grep -q 'Tema oficial de la unidad' /tmp/guard.js
               grep -q 'CS21A183-APOLLO-QA-FIX' /tmp/fix.gs
