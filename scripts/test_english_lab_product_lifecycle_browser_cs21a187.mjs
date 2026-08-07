@@ -70,9 +70,13 @@ try{
     playerB:localStorage.getItem('elive_player_LAB-B'),
     calls:window.__QA_CALLS__||[],
   }));
+  const afterB = await page.locator('#root').innerText();
   assert.equal(transition.staleA,false,'LAB-A reapareció durante la entrada a LAB-B.');
   assert.equal(transition.last,'LAB-B');
   assert.equal(transition.playerB,'QA-P1');
+  assert.equal(afterB.includes('La sala terminó.'),false,'El aviso de la sala cerrada quedó pegado sobre la sala nueva.');
+  assert.equal(afterB.includes('LAB-A'),false,'La sala anterior sigue visible después de entrar a LAB-B.');
+  assert.ok(afterB.includes('LAB-B'));
   assert.ok(transition.calls.some(call=>call.code==='LAB-A'));
   assert.ok(transition.calls.some(call=>call.code==='LAB-B'));
   assert.deepEqual(errors,[],`Errores de navegador: ${errors.join(' | ')}`);
@@ -88,6 +92,7 @@ try{
     closed_room_returns_to_lobby:true,
     closed_room_storage_removed:true,
     next_room_has_no_previous_room_flash:true,
+    closed_room_notice_cleared_on_next_room:true,
   };
   fs.writeFileSync(path.join(output,'result.json'),JSON.stringify(result,null,2)+'\n');
   console.log(JSON.stringify(result,null,2));
