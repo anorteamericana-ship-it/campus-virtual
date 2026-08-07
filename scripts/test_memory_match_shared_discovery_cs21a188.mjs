@@ -6,6 +6,7 @@ import vm from 'node:vm';
 const backend = fs.readFileSync('apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs','utf8');
 const frontend = fs.readFileSync('src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx','utf8');
 const adapter = fs.readFileSync('src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx','utf8');
+const syncGuard = fs.readFileSync('src/english_lab_games/english_lab_live_sync_guard_cs21a177.js','utf8');
 const guard = fs.readFileSync('src/english_lab_live_product_guard_cs21a187.js','utf8');
 const css = fs.readFileSync('styles/english_lab_memory_match_cs21a173.css','utf8');
 const assembler = fs.readFileSync('scripts/assemble_apps_script_cs21a183_complete.mjs','utf8');
@@ -68,7 +69,12 @@ for (const marker of [
 for (const marker of [
   "const VERSION = 'CS21A188'",
   'const LIVE_POLL_MS = 1500',
-  'global.document.visibilityState === \'hidden\'',
+  'Object.freeze({maxPlayers:5,ms:1500})',
+  'Object.freeze({maxPlayers:10,ms:1800})',
+  'Object.freeze({maxPlayers:15,ms:2500})',
+  'Object.freeze({maxPlayers:25,ms:3500})',
+  'livePollMsForPlayers',
+  "global.document.visibilityState === 'hidden'",
   'pollingRef.current',
   'ENDPOINTS.getRoomControl : ENDPOINTS.getPlayerState',
   'setLiveState(current => mergeLiveState(current, result, room, player))',
@@ -76,10 +82,19 @@ for (const marker of [
   'Carta compartida con toda la sala.',
   'Sincronizando jugada…',
 ]) assert.ok(adapter.includes(marker), `Adaptador Live no contiene ${marker}`);
-assert.ok(!adapter.includes('const READ_ONLY_POLL_MS = 4000'),'El adaptador no puede conservar el polling docente antiguo de 4 segundos.');
+assert.ok(!adapter.includes('const READ_ONLY_POLL_MS = 4000'),'El adaptador no puede conservar el polling docente antiguo fijo de 4 segundos.');
 const immediateMerge=adapter.indexOf('if (result && result.room_package)');
 const fallbackRefresh=adapter.indexOf("else if (typeof onRefresh === 'function')");
 assert.ok(immediateMerge>=0 && fallbackRefresh>immediateMerge,'La respuesta autoritativa debe adoptarse antes de cualquier refresh de respaldo.');
+
+for (const marker of [
+  "READ_CACHE_FIX_VERSION = 'CS21A188'",
+  'READ_CACHE_MS = 750',
+  'recentReads',
+  'cacheGeneration',
+  'invalidateReadCache',
+  'entry.generation === cacheGeneration',
+]) assert.ok(syncGuard.includes(marker), `Sync guard no contiene ${marker}`);
 
 const baseIndex=guard.indexOf('memory_match_engine_cs21a173.jsx?v=CS21A188');
 const sharedIndex=guard.indexOf('memory_match_shared_discovery_cs21a188.jsx?v=CS21A188');
@@ -101,9 +116,11 @@ console.log(JSON.stringify({
   matcher_can_differ_from_discoverer:true,
   correct_pair_points:1,
   shared_discovery_loaded_before_live_adapter:true,
-  live_poll_ms:1500,
+  adaptive_poll_ms:{'1-5':1500,'6-10':1800,'11-15':2500,'16-25':3500},
+  read_cache_ms:750,
   hidden_tab_poll_paused:true,
   overlapping_polls_blocked:true,
+  stale_inflight_cache_generation_guard:true,
   actor_adopts_authoritative_write_immediately:true,
   visual_states_present:true,
 },null,2));
