@@ -79,6 +79,30 @@
   // silenciosa hacia producción.
   if (typeof global.fetch === 'function' && !global.__AN_RUNTIME_FETCH_ROUTER__) {
     var nativeFetch = global.fetch.bind(global);
+    var englishLabRetryDelayMs = 350;
+    var englishLabReadFns = {
+      englishlabaccessstatus:true,
+      englishlabmemorymatchgetroomcontrol:true,
+      englishlabmemorymatchgetplayerstate:true,
+      englishlablivegetroomcontrol:true,
+      englishlablivegetplayerstate:true,
+      englishlabsentenceordergetroomcontrol:true,
+      englishlabsentenceordergetplayerstate:true,
+      englishlabsentenceorderteacherdata:true,
+    };
+    // FIX3 hace StartRoom idempotente: si el primer request alcanzó el backend
+    // pero la respuesta se perdió, el segundo devuelve la sala ya iniciada.
+    // Se habilita solo fuera de producción hasta cerrar QA autenticada.
+    var englishLabQaIdempotentFns = {
+      englishlabmemorymatchstartroom:true,
+    };
+    var fetchMetrics = {
+      retries:0,
+      recovered:0,
+      failures:0,
+      last_fn:'',
+      last_at:'',
+    };
 
     function rewriteUrl(rawUrl) {
       var value = String(rawUrl || '');
@@ -88,6 +112,55 @@
         return appsScriptUrl + value.slice(productionAppsScriptUrl.length);
       }
       return value;
+    }
+
+    function requestUrl(input) {
+      try {
+        if (typeof input === 'string') return input;
+        if (typeof URL !== 'undefined' && input instanceof URL) return input.href;
+        if (typeof Request !== 'undefined' && input instanceof Request) return input.url;
+      } catch (_) {}
+      return '';
+    }
+
+    function englishLabFn(input) {
+      var value = requestUrl(input);
+      if (!value || value.indexOf('script.google.com') < 0) return '';
+      try {
+        return String(new URL(value).searchParams.get('fn') || '').trim().toLowerCase();
+      } catch (_) {
+        var match = value.match(/[?&]fn=([^&#]+)/i);
+        try { return match ? decodeURIComponent(match[1]).trim().toLowerCase() : ''; }
+        catch (_) { return match ? String(match[1]).trim().toLowerCase() : ''; }
+      }
+    }
+
+    function isRetryableEnglishLabRequest(input) {
+      // El frontend actual usa string + init. No reintentamos Request objects con
+      // body potencialmente consumible.
+      if (typeof input !== 'string') return false;
+      var fn = englishLabFn(input);
+      if (!fn) return false;
+      if (englishLabReadFns[fn]) return true;
+      return environment !== 'production' && englishLabQaIdempotentFns[fn] === true;
+    }
+
+    function isNetworkFetchError(error) {
+      var message = String(error && error.message || error || '');
+      return !!(error && error.name === 'TypeError') || /failed to fetch|networkerror|network request failed|load failed/i.test(message);
+    }
+
+    function wait(ms) {
+      return new Promise(function(resolve) { setTimeout(resolve, ms); });
+    }
+
+    function friendlyFetchError(error, fn) {
+      var wrapped = new Error('No se pudo conectar con English LAB. Verificá la conexión y reintentá.');
+      wrapped.name = 'EnglishLabNetworkError';
+      wrapped.code = 'ENGLISH_LAB_FETCH_FAILED';
+      wrapped.fn = fn || '';
+      try { wrapped.cause = error; } catch (_) {}
+      return wrapped;
     }
 
     global.fetch = function campusRuntimeFetch(input, init) {
@@ -109,8 +182,32 @@
       } catch (_) {
         nextInput = input;
       }
-      return nativeFetch(nextInput, init);
+
+      var retryable = isRetryableEnglishLabRequest(nextInput);
+      var fn = englishLabFn(nextInput);
+      return nativeFetch(nextInput, init).catch(function(firstError) {
+        if (!retryable || !isNetworkFetchError(firstError)) throw firstError;
+        fetchMetrics.retries += 1;
+        fetchMetrics.last_fn = fn;
+        fetchMetrics.last_at = new Date().toISOString();
+        return wait(englishLabRetryDelayMs).then(function() {
+          return nativeFetch(nextInput, init);
+        }).then(function(response) {
+          fetchMetrics.recovered += 1;
+          return response;
+        }).catch(function(secondError) {
+          fetchMetrics.failures += 1;
+          throw friendlyFetchError(secondError, fn);
+        });
+      });
     };
+
+    Object.defineProperty(global, '__AN_ENGLISH_LAB_FETCH_METRICS__', {
+      value: fetchMetrics,
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
 
     Object.defineProperty(global, '__AN_RUNTIME_FETCH_ROUTER__', {
       value: true,
