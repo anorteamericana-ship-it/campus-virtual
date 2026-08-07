@@ -12,6 +12,7 @@ on:
       - 'apps_script_patches/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs'
       - 'apps_script_patches/99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs'
       - 'apps_script_patches/99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs'
+      - 'apps_script_patches/99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs'
   workflow_dispatch:
 
 permissions:
@@ -40,5 +41,5 @@ jobs:
             echo 'No changes to commit.'
             exit 0
           fi
-          git commit -m 'CS21A185 actualiza Apps Script QA completo 99-99F'
+          git commit -m 'CS21A186 actualiza Apps Script QA completo 99-99G'
           git push origin HEAD:feat/cs21a183-sentence-order-live
