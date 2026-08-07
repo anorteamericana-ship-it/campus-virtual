@@ -36,12 +36,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify Shared Discovery sync and load contracts
-        run: |
-          set -euo pipefail
-          node scripts/test_memory_match_shared_discovery_cs21a188.mjs
-          node scripts/test_english_lab_live_sync_cs21a177.mjs
-          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
+      - name: Verify Shared Discovery contract
+        run: timeout 30s node scripts/test_memory_match_shared_discovery_cs21a188.mjs
+      - name: Verify Live sync cache contract
+        run: timeout 30s node scripts/test_english_lab_live_sync_cs21a177.mjs
+      - name: Verify adaptive load model
+        run: timeout 30s node scripts/english_lab_load_harness_cs21a183.mjs --self-test
       - name: Rebuild exact complete Apps Script
         run: |
           set -euo pipefail
@@ -71,7 +71,7 @@ jobs:
       - name: Verify one canonical board across Chu Naty and teacher
         env:
           QA_BASE_URL: http://127.0.0.1:4178
-        run: node scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs
+        run: timeout 60s node scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs
       - name: Commit exact combined file
         run: |
           set -euo pipefail
