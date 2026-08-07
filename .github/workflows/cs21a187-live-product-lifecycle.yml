@@ -8,10 +8,12 @@ on:
       - 'src/english_lab_live_product_guard_cs21a187.js'
       - 'src/english_lab_games/english_lab_runtime_cs21a173.js'
       - 'src/english_lab_games/memory_match_engine_cs21a173.jsx'
+      - 'src/english_lab_games/english_lab_product_lifecycle_preview_cs21a187.html'
       - 'apps_script_patches/99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs'
       - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
       - 'scripts/patch_qa_package_cs21a187.mjs'
       - 'scripts/test_english_lab_product_lifecycle_cs21a187.mjs'
+      - 'scripts/test_english_lab_product_lifecycle_browser_cs21a187.mjs'
       - '.github/workflows/cs21a187-live-product-lifecycle.yml'
   workflow_dispatch:
 
@@ -21,7 +23,7 @@ permissions:
 jobs:
   lifecycle:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,3 +37,31 @@ jobs:
           grep -q '99H LIFECYCLE FIX' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q 'CS21A187-LIVE-LIFECYCLE-FIX1' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q 'pair_count_8_blocked_before_room_creation:true' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start QA browser server
+        run: |
+          python3 -m http.server 4178 --bind 127.0.0.1 > cs21a187-browser-server.log 2>&1 &
+          echo $! > cs21a187-browser-server.pid
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:4178/src/english_lab_games/english_lab_product_lifecycle_preview_cs21a187.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat cs21a187-browser-server.log
+          exit 1
+      - name: Enter play close exit and enter next room
+        env:
+          QA_BASE_URL: http://127.0.0.1:4178
+        run: node scripts/test_english_lab_product_lifecycle_browser_cs21a187.mjs
+      - name: Upload lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A187_LIVE_PRODUCT_LIFECYCLE_EVIDENCE
+          path: |
+            qa-output/cs21a187-product-lifecycle/
+            cs21a187-browser-server.log
+          if-no-files-found: warn
+          retention-days: 30
