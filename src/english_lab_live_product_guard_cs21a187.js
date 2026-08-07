@@ -48,8 +48,12 @@
 
   function clearLastRoom(){
     const store = storage();
-    if(!store) return;
+    if(!store) return '';
+    let previous = '';
+    try { previous = publicCode(store.getItem(LAST_ROOM_KEY) || ''); } catch(_) {}
     try { store.removeItem(LAST_ROOM_KEY); } catch(_) {}
+    if(previous){ try { store.removeItem(PLAYER_PREFIX + previous); } catch(_) {} }
+    return previous;
   }
   function clearRoomPersistence(code){
     const store = storage();
