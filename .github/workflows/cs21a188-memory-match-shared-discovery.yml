@@ -9,8 +9,11 @@ on:
       - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
       - 'scripts/test_memory_match_shared_discovery_cs21a188.mjs'
       - 'scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs'
+      - 'scripts/test_english_lab_live_sync_cs21a177.mjs'
+      - 'scripts/english_lab_load_harness_cs21a183.mjs'
       - 'scripts/patch_qa_package_cs21a187.mjs'
       - 'src/english_lab_live_product_guard_cs21a187.js'
+      - 'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js'
       - 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx'
       - 'src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx'
       - 'src/english_lab_games/memory_match_shared_discovery_preview_cs21a188.html'
@@ -33,8 +36,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify Shared Discovery contract
-        run: node scripts/test_memory_match_shared_discovery_cs21a188.mjs
+      - name: Verify Shared Discovery sync and load contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_shared_discovery_cs21a188.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
       - name: Rebuild exact complete Apps Script
         run: |
           set -euo pipefail
