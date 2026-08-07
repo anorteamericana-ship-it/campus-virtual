@@ -46,6 +46,8 @@ version = version
   .replace(/^ENGLISH_LAB_PRODUCT_GUARD=.*$/gm,'')
   .replace(/^MEMORY_MATCH_CACHE_EPOCH=.*$/gm,'')
   .replace(/^MEMORY_MATCH_SHARED_DISCOVERY=.*$/gm,'')
+  .replace(/^MEMORY_MATCH_POLL_TIERS_MS=.*$/gm,'')
+  .replace(/^MEMORY_MATCH_READ_CACHE_MS=.*$/gm,'')
   .replace(/\n{3,}/g,'\n\n')
   .replace(/\s*$/,'');
 const lines = [
@@ -56,6 +58,8 @@ const lines = [
   'MEMORY_MATCH_SHARED_DISCOVERY=HIDDEN>DISCOVERED>CLAIMED',
   'MEMORY_MATCH_DISCOVERER_DOES_NOT_OWN=true',
   'MEMORY_MATCH_MATCHER_CLAIMS_PAIR=true',
+  'MEMORY_MATCH_POLL_TIERS_MS=5:1500,10:1800,15:2500,25:3500',
+  'MEMORY_MATCH_READ_CACHE_MS=750',
   'MEMORY_MATCH_MAX_CANONICAL_PAIRS=6',
   'RECENT_LIVE_ROOMS=true',
 ];
@@ -70,6 +74,12 @@ const checks = [
   ['src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx','data-shared-discovery="true"'],
   ['src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx','DISCOVER_CARD'],
   ['src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx','SUBMIT_PAIR'],
+  ['src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx','Object.freeze({maxPlayers:5,ms:1500})'],
+  ['src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx','Object.freeze({maxPlayers:25,ms:3500})'],
+  ['src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx','livePollMsForPlayers'],
+  ['src/english_lab_games/english_lab_live_sync_guard_cs21a177.js',"READ_CACHE_FIX_VERSION = 'CS21A188'"],
+  ['src/english_lab_games/english_lab_live_sync_guard_cs21a177.js','READ_CACHE_MS = 750'],
+  ['src/english_lab_games/english_lab_live_sync_guard_cs21a177.js','entry.generation === cacheGeneration'],
   ['src/english_lab_games/english_lab_runtime_cs21a173.js','CS21A186-MEMORY-CLOCK-FIX1'],
   ['apps_script_patches/99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs','CS21A187-LIVE-LIFECYCLE-FIX1'],
   ['apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs','CS21A188-MM-SHARED-DISCOVERY-1'],
@@ -84,5 +94,8 @@ console.log(JSON.stringify({
   ok:true,target,version:'CS21A188',cacheEpoch:'CS21A188',maxPairs:6,
   sharedDiscovery:true,states:['HIDDEN','DISCOVERED','CLAIMED'],
   discovererDoesNotOwn:true,matcherClaimsPair:true,
+  adaptivePollMs:{5:1500,10:1800,15:2500,25:3500},
+  readCacheMs:750,
+  staleInflightCacheGuard:true,
   closedRoomAutoExit:true,noStaleRestore:true
 },null,2));
