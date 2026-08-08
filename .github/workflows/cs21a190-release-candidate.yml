@@ -51,13 +51,13 @@ jobs:
           node scripts/audit_delivery_surface.mjs
           node scripts/audit_component_ownership_cs21a151.mjs
 
-      - name: Validate exact complete Apps Script 99 through 99L
+      - name: Validate complete Apps Script preserving CS21A190
         run: |
           set -euo pipefail
           complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
           node scripts/assemble_apps_script_cs21a183_complete.mjs
           test -f "$complete"
-          grep -q 'CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO' "$complete"
+          grep -Eq 'CS21A183-CS21A19(0|1) · APPS SCRIPT QA COMPLETO' "$complete"
           grep -q '99L TIMEOUT CLEANUP' "$complete"
           grep -q "CS21A189_MM_CLASSIC_SYNC_VERSION = 'CS21A189-MM-CLASSIC-SYNC-1'" "$complete"
           grep -q "CS21A190_MM_TIMEOUT_CLEANUP_VERSION = 'CS21A190-MM-TIMEOUT-CLEANUP-1'" "$complete"
