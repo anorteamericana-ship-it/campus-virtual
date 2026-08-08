@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Este contrato también ancla el RC después de regenerar el archivo Apps Script completo 99–99K.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
