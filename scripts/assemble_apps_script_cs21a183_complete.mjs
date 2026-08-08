@@ -15,6 +15,7 @@ const sources = [
   'apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs',
   'apps_script_patches/99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs',
   'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs',
+  'apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs',
 ];
 const target = path.join(root, 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs');
 
@@ -23,7 +24,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -45,6 +46,7 @@ const required = [
   "CS21A188_MM_SHARED_DISCOVERY_VERSION = 'CS21A188-MM-SHARED-DISCOVERY-1'",
   "CS21A188_MM_RULES_COMPAT_VERSION = 'CS21A188-MM-RULES-COMPAT-1'",
   "CS21A189_MM_CLASSIC_SYNC_VERSION = 'CS21A189-MM-CLASSIC-SYNC-1'",
+  "CS21A190_MM_TIMEOUT_CLEANUP_VERSION = 'CS21A190-MM-TIMEOUT-CLEANUP-1'",
   'CS21A189_MM_MISMATCH_REVEAL_MS = 2200',
   'CS21A183_MM_PRESENCE_TTL_MS = 60000',
   'function verificarMemoryMatchStartFixCS21A183()',
@@ -66,11 +68,14 @@ const required = [
   'mismatch_flip_back:true',
   'persistent_discovery:false',
   'matched_pair_stays_face_up:true',
+  'timeout_clears_first_reveal:true',
+  'stale_snapshot_sanitized:true',
   '__cs21a185ClosedTerminal',
   '__cs21a186CanonicalRules',
   '__cs21a187PairLimit',
   '__cs21a188SharedDiscovery',
   '__cs21a189ClassicSync',
+  '__cs21a190TransientCleanup',
   'players_online',
   'players_registered',
 ];
@@ -88,7 +93,7 @@ console.log(JSON.stringify({
   target,
   path:target,
   sources,
-  fix:'CS21A189-MM-CLASSIC-SYNC-1',
+  fix:'CS21A190-MM-TIMEOUT-CLEANUP-1',
   rulesCompatibility:'CS21A188-MM-RULES-COMPAT-1',
   presenceTtlSeconds:60,
   closedRoomTerminal:true,
@@ -100,6 +105,8 @@ console.log(JSON.stringify({
   mismatchRevealMs:2200,
   persistentDiscovery:false,
   matchedPairStaysFaceUp:true,
+  timeoutClearsFirstReveal:true,
+  staleSnapshotSanitized:true,
   recentRooms:true,
   maxCanonicalPairs:6,
   bytes:Buffer.byteLength(check,'utf8')
