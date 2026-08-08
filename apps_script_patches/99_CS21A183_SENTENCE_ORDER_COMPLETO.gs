@@ -1,6 +1,6 @@
 // =============================================================================
-// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO
-// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC
+// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO
+// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP
 // Reemplaza por completo el contenido del archivo Apps Script
 // 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.
 // QA/STAGING solamente. NO USAR EN PRODUCCIÓN.
@@ -8,7 +8,7 @@
 
 
 // =============================================================================
-// BLOQUE 1/11: 99_ACTUALIZACION_QA_CS21A183.gs
+// BLOQUE 1/12: 99_ACTUALIZACION_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · CAPA ADITIVA QA PARA ENGLISH LAB LIVE
 // Instalar despues de 98_ACTUALIZACION_QA_CS21A181.gs. No usar en produccion.
@@ -513,7 +513,7 @@ doPost = function (e) {
 
 
 // =============================================================================
-// BLOQUE 2/11: 99B_VALIDACION_CURRICULAR_CS21A183.gs
+// BLOQUE 2/12: 99B_VALIDACION_CURRICULAR_CS21A183.gs
 // =============================================================================
 // CS21A183 · GUARDIA CURRICULAR ADITIVA QA
 // Instalar despues de 99_ACTUALIZACION_QA_CS21A183.gs. No usar en produccion.
@@ -774,7 +774,7 @@ verificarActualizacionQA = function () {
 
 
 // =============================================================================
-// BLOQUE 3/11: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
+// BLOQUE 3/12: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · HOTFIX QA · FUENTE CURRICULAR APOLLO
 // Agregar AL FINAL de 99_CS21A183_SENTENCE_ORDER_COMPLETO en Apps Script QA.
@@ -905,7 +905,7 @@ verificarActualizacionQA = function () {
 
 
 // =============================================================================
-// BLOQUE 4/11: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
+// BLOQUE 4/12: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · FIX3 QA · Memory Match inicio + presencia real
 // APPEND-ONLY en el repositorio, pero el usuario recibe SIEMPRE el archivo 99 completo ensamblado.
@@ -1272,7 +1272,7 @@ function verificarMemoryMatchStartFixCS21A183() {
 
 
 // =============================================================================
-// BLOQUE 5/11: 99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs
+// BLOQUE 5/12: 99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · FIX4 QA · metadatos canónicos del editor Memory Match
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1363,7 +1363,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 6/11: 99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs
+// BLOQUE 6/12: 99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs
 // =============================================================================
 // CS21A185 · QA · sala cerrada terminal + presencia detenida
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1498,7 +1498,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 7/11: 99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs
+// BLOQUE 7/12: 99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs
 // =============================================================================
 // CS21A186 · QA · reglas canónicas de Memory Match
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1750,7 +1750,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 8/11: 99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
+// BLOQUE 8/12: 99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
 // =============================================================================
 // CS21A187 · QA · ciclo de vida de salas Live + recientes + límite coherente Memory Match.
 // APPEND-ONLY en repositorio; el usuario recibe SIEMPRE 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs completo.
@@ -1865,7 +1865,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 9/11: 99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
+// BLOQUE 9/12: 99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
 // =============================================================================
 // CS21A188 · QA · Memory Match Shared Discovery.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -2181,7 +2181,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 10/11: 99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs
+// BLOQUE 10/12: 99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs
 // =============================================================================
 // CS21A188 · QA · compatibilidad de metadatos CS21A186 con Shared Discovery.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -2202,7 +2202,7 @@ if (typeof englishLabMemoryMatchSubmitPairCS21A180 === 'function') {
 
 
 // =============================================================================
-// BLOQUE 11/11: 99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs
+// BLOQUE 11/12: 99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs
 // =============================================================================
 // CS21A189 · QA · Memory Match clásico sincronizado.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -2530,5 +2530,148 @@ verificarMemoryMatchStartFixCS21A183 = function () {
   };
   console.log(JSON.stringify(result));
   if (!result.ok) throw new Error('CS21A189 no superó la verificación Memory Match clásico sincronizado.');
+  return result;
+};
+
+
+// =============================================================================
+// BLOQUE 12/12: 99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs
+// =============================================================================
+// CS21A190 · QA · limpieza autoritativa de reveal temporal al vencer/cambiar turno.
+// APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
+// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.
+
+var CS21A190_MM_TIMEOUT_CLEANUP_VERSION = 'CS21A190-MM-TIMEOUT-CLEANUP-1';
+
+function _cs21a190NormalizeTransientPackage_(pkg, now) {
+  if (!pkg || !pkg.turn_state || !pkg.shared_state) return {changed:false,pkg:pkg,cleared:null};
+  var shared = _cs21a189ClassicShared_(pkg);
+  var cleared = shared.active_attempt ? JSON.parse(JSON.stringify(shared.active_attempt)) : null;
+  var changed = _cs21a189NormalizeAttempt_(shared, pkg.turn_state, now instanceof Date ? now : new Date());
+  if (!changed) return {changed:false,pkg:pkg,cleared:null};
+  shared.board_version = Math.max(1, Number(shared.board_version || 1) || 1) + 1;
+  pkg.shared_state = shared;
+  pkg.server_now = _elive176Iso_(now instanceof Date ? now : new Date());
+  return {changed:true,pkg:pkg,cleared:cleared};
+}
+
+function _cs21a190SanitizeStateResponse_(response) {
+  response = response || {};
+  var pkg = response.room_package || null;
+  if (!pkg || !pkg.turn_state || !pkg.shared_state) return response;
+  var normalized = _cs21a190NormalizeTransientPackage_(pkg, new Date());
+  if (!normalized.changed) return response;
+  response.room_package = normalized.pkg;
+  response.shared_state = normalized.pkg.shared_state;
+  response.transient_reveal_cleared = true;
+  response.transient_reveal_cleanup_version = CS21A190_MM_TIMEOUT_CLEANUP_VERSION;
+  return response;
+}
+
+// CS21A185 sigue siendo quien avanza turnos. CS21A190 normaliza inmediatamente
+// el intento temporal DESPUÉS de ese avance, bajo un segundo lock corto y refetch.
+var _cs21a190MaybeAdvanceBase_ = _elive180MaybeAdvanceTurn_;
+_elive180MaybeAdvanceTurn_ = function (found) {
+  var room = _cs21a190MaybeAdvanceBase_(found);
+  if (!room || _cs21a185MmRoomClosed_(room)) return room;
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(2500)) return room;
+  try {
+    var fresh = _elive180FindRoom_(room.ROOM_ID || room.ROOM_CODE);
+    if (!fresh || !fresh.row || _cs21a185MmRoomClosed_(fresh.row)) return fresh && fresh.row ? fresh.row : room;
+
+    var current = _elive176Current_(fresh.row);
+    var pkg = current.room_package || null;
+    var normalized = _cs21a190NormalizeTransientPackage_(pkg, new Date());
+    if (!normalized.changed) return fresh.row;
+
+    current.room_package = normalized.pkg;
+    var updated = _elive180SetCells_(fresh, {CURRENT_QUESTION_JSON:JSON.stringify(current)});
+    _elive180Invalidate_(updated);
+    _elive180AppendEvent_(updated, 'MEMORY_MATCH_TRANSIENT_REVEAL_CLEARED', {sesion:{nombre:'SISTEMA'},rol:'system'}, {
+      previous_phase:_cs21a189AttemptPhase_(normalized.cleared),
+      previous_turn_number:Number(normalized.cleared && normalized.cleared.turn_number || 0) || 0,
+      active_turn_number:Number(normalized.pkg.turn_state && normalized.pkg.turn_state.turn_number || 0) || 0,
+      reason:'TURN_CHANGE_OR_REVEAL_EXPIRED',
+      board_version:Number(normalized.pkg.shared_state && normalized.pkg.shared_state.board_version || 0) || 0,
+      version:CS21A190_MM_TIMEOUT_CLEANUP_VERSION
+    });
+    return updated;
+  } finally {
+    lock.releaseLock();
+  }
+};
+_elive180MaybeAdvanceTurn_.__cs21a185ClosedTerminal = true;
+_elive180MaybeAdvanceTurn_.__cs21a190TransientCleanup = true;
+
+// Defensa de respuesta: aunque un snapshot viejo alcance a salir por una carrera,
+// ningún cliente vuelve a pintar un reveal perteneciente a otro turno.
+var _cs21a190PlayerStateBase_ = englishLabMemoryMatchGetPlayerStateCS21A180;
+englishLabMemoryMatchGetPlayerStateCS21A180 = function (body) {
+  return _cs21a190SanitizeStateResponse_(_cs21a190PlayerStateBase_(body));
+};
+englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a190TransientCleanup = true;
+
+var _cs21a190RoomControlBase_ = englishLabMemoryMatchGetRoomControlCS21A180;
+englishLabMemoryMatchGetRoomControlCS21A180 = function (body) {
+  return _cs21a190SanitizeStateResponse_(_cs21a190RoomControlBase_(body));
+};
+englishLabMemoryMatchGetRoomControlCS21A180.__cs21a190TransientCleanup = true;
+
+var _cs21a190VerifyBase_ = verificarMemoryMatchStartFixCS21A183;
+verificarMemoryMatchStartFixCS21A183 = function () {
+  var previous = _cs21a190VerifyBase_();
+  var now = new Date('2026-08-08T03:10:00.000Z');
+  var staleFirstPkg = {
+    turn_state:{turn_number:2},
+    shared_state:{
+      version:CS21A189_MM_CLASSIC_SYNC_VERSION,
+      board_version:4,
+      matched_pair_ids:[],claimed_pairs:{},discovered_cards:{},completed:false,
+      active_attempt:{phase:'FIRST_REVEALED',player_id:'P1',turn_number:1,first_card_id:'CARD-A',second_card_id:'',revealed_at:'2026-08-08T03:09:20.000Z',reveal_until:''}
+    }
+  };
+  var staleMismatchPkg = {
+    turn_state:{turn_number:3},
+    shared_state:{
+      version:CS21A189_MM_CLASSIC_SYNC_VERSION,
+      board_version:8,
+      matched_pair_ids:[],claimed_pairs:{},discovered_cards:{},completed:false,
+      active_attempt:{phase:'MISMATCH_REVEAL',player_id:'P2',turn_number:2,first_card_id:'CARD-B',second_card_id:'CARD-C',revealed_at:'2026-08-08T03:09:50.000Z',reveal_until:'2026-08-08T03:09:52.200Z'}
+    }
+  };
+  var firstResult = _cs21a190NormalizeTransientPackage_(staleFirstPkg, now);
+  var mismatchResult = _cs21a190NormalizeTransientPackage_(staleMismatchPkg, now);
+  var valid = !!(
+    previous && previous.ok === true &&
+    firstResult.changed === true && firstResult.pkg.shared_state.active_attempt === null &&
+    mismatchResult.changed === true && mismatchResult.pkg.shared_state.active_attempt === null &&
+    Number(firstResult.pkg.shared_state.board_version) === 5 &&
+    Number(mismatchResult.pkg.shared_state.board_version) === 9 &&
+    _elive180MaybeAdvanceTurn_.__cs21a190TransientCleanup === true &&
+    englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a190TransientCleanup === true &&
+    englishLabMemoryMatchGetRoomControlCS21A180.__cs21a190TransientCleanup === true
+  );
+  var result = {
+    ok:valid,
+    version:CS21A190_MM_TIMEOUT_CLEANUP_VERSION,
+    previous_version:previous && previous.version,
+    classic_memory:true,
+    timeout_clears_first_reveal:true,
+    timeout_clears_stale_attempt:true,
+    expired_mismatch_cleanup:true,
+    stale_snapshot_sanitized:true,
+    board_version_advances_on_cleanup:true,
+    closed_room_terminal:previous && previous.closed_room_terminal === true,
+    synchronized_reveal:previous && previous.synchronized_reveal === true,
+    mismatch_flip_back:previous && previous.mismatch_flip_back === true,
+    matched_pair_stays_face_up:previous && previous.matched_pair_stays_face_up === true,
+    correct_pair_keeps_player:previous && previous.correct_pair_keeps_player === true,
+    qa_master:previous && previous.qa_master,
+    qa_operational:previous && previous.qa_operational
+  };
+  console.log(JSON.stringify(result));
+  if (!result.ok) throw new Error('CS21A190 no superó la verificación de limpieza temporal al cambiar turno.');
   return result;
 };
