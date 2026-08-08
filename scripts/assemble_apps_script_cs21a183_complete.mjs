@@ -17,6 +17,7 @@ const sources = [
   'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs',
   'apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs',
   'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs',
+  'apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs',
 ];
 const target = path.join(root, 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs');
 
@@ -25,7 +26,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -50,10 +51,12 @@ const required = [
   "CS21A190_MM_TIMEOUT_CLEANUP_VERSION = 'CS21A190-MM-TIMEOUT-CLEANUP-1'",
   "ELHANG191_VERSION = 'CS21A191-HANGMAN-1'",
   "ELHANG191_GAME_CODE = 'HANGMAN'",
+  "ELHANG191_ROBUSTNESS_VERSION = 'CS21A191-HANGMAN-ROBUSTNESS-1'",
   'CS21A189_MM_MISMATCH_REVEAL_MS = 2200',
   'CS21A183_MM_PRESENCE_TTL_MS = 60000',
   'function verificarMemoryMatchStartFixCS21A183()',
   'function verificarHangmanCS21A191()',
+  'function verificarHangmanRobustnessCS21A191()',
   'direct_start_no_legacy_delegate:true',
   'control_pair_metadata:true',
   'canonical_pair_count_from_room:true',
@@ -81,6 +84,10 @@ const required = [
   'correct_letter_keeps_turn:true',
   'wrong_letter_rotates_turn:true',
   'individual_and_teams:true',
+  'source_id_shuffle_safe',
+  'memory_match_flag_removed_from_hangman_state',
+  'generic_sync_misclassification_guard',
+  'delete response.memory_match',
   "fn === 'englishlablivejoinroom' && _elh191IsRoom_(body)",
   "fn === 'englishlablivegetplayerstate' && _elh191IsRoom_(body)",
   '__cs21a185ClosedTerminal',
@@ -95,7 +102,7 @@ const required = [
 for (const marker of required) {
   if (!check.includes(marker)) throw new Error(`Archivo completo no contiene: ${marker}`);
 }
-if ((check.match(/verificarActualizacionQA = function/g) || []).length < 4) {
+if ((check.match(/verificarActualizacionQA = function/g) || []).length < 5) {
   throw new Error('La cadena de verificación curricular/Hangman no quedó completa.');
 }
 if (check.includes("CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'")) {
@@ -107,6 +114,7 @@ console.log(JSON.stringify({
   path:target,
   sources,
   fix:'CS21A191-HANGMAN-1',
+  hangmanRobustness:'CS21A191-HANGMAN-ROBUSTNESS-1',
   memoryTimeoutCleanup:'CS21A190-MM-TIMEOUT-CLEANUP-1',
   rulesCompatibility:'CS21A188-MM-RULES-COMPAT-1',
   presenceTtlSeconds:60,
@@ -123,6 +131,8 @@ console.log(JSON.stringify({
   staleSnapshotSanitized:true,
   hangman:true,
   hangmanServerAuthoritative:true,
+  hangmanSourceIdShuffleSafe:true,
+  hangmanMemoryFlagSanitized:true,
   hangmanRounds:'3-5',
   hangmanDefaultErrors:6,
   hangmanDefaultTurnSeconds:15,
