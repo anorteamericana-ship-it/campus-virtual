@@ -24,6 +24,7 @@ on:
       - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
       - 'apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs'
       - 'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs'
+      - 'apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs'
   workflow_dispatch:
 
 permissions:
