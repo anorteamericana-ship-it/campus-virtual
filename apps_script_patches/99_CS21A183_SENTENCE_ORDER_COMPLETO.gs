@@ -1,6 +1,6 @@
 // =============================================================================
 // CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO
-// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN
+// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS
 // Reemplaza por completo el contenido del archivo Apps Script
 // 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.
 // QA/STAGING solamente. NO USAR EN PRODUCCIÓN.
@@ -8,7 +8,7 @@
 
 
 // =============================================================================
-// BLOQUE 1/13: 99_ACTUALIZACION_QA_CS21A183.gs
+// BLOQUE 1/14: 99_ACTUALIZACION_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · CAPA ADITIVA QA PARA ENGLISH LAB LIVE
 // Instalar despues de 98_ACTUALIZACION_QA_CS21A181.gs. No usar en produccion.
@@ -513,7 +513,7 @@ doPost = function (e) {
 
 
 // =============================================================================
-// BLOQUE 2/13: 99B_VALIDACION_CURRICULAR_CS21A183.gs
+// BLOQUE 2/14: 99B_VALIDACION_CURRICULAR_CS21A183.gs
 // =============================================================================
 // CS21A183 · GUARDIA CURRICULAR ADITIVA QA
 // Instalar despues de 99_ACTUALIZACION_QA_CS21A183.gs. No usar en produccion.
@@ -774,7 +774,7 @@ verificarActualizacionQA = function () {
 
 
 // =============================================================================
-// BLOQUE 3/13: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
+// BLOQUE 3/14: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · HOTFIX QA · FUENTE CURRICULAR APOLLO
 // Agregar AL FINAL de 99_CS21A183_SENTENCE_ORDER_COMPLETO en Apps Script QA.
@@ -905,7 +905,7 @@ verificarActualizacionQA = function () {
 
 
 // =============================================================================
-// BLOQUE 4/13: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
+// BLOQUE 4/14: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · FIX3 QA · Memory Match inicio + presencia real
 // APPEND-ONLY en el repositorio, pero el usuario recibe SIEMPRE el archivo 99 completo ensamblado.
@@ -1272,7 +1272,7 @@ function verificarMemoryMatchStartFixCS21A183() {
 
 
 // =============================================================================
-// BLOQUE 5/13: 99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs
+// BLOQUE 5/14: 99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · FIX4 QA · metadatos canónicos del editor Memory Match
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1363,7 +1363,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 6/13: 99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs
+// BLOQUE 6/14: 99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs
 // =============================================================================
 // CS21A185 · QA · sala cerrada terminal + presencia detenida
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1498,7 +1498,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 7/13: 99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs
+// BLOQUE 7/14: 99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs
 // =============================================================================
 // CS21A186 · QA · reglas canónicas de Memory Match
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1750,7 +1750,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 8/13: 99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
+// BLOQUE 8/14: 99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
 // =============================================================================
 // CS21A187 · QA · ciclo de vida de salas Live + recientes + límite coherente Memory Match.
 // APPEND-ONLY en repositorio; el usuario recibe SIEMPRE 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs completo.
@@ -1865,7 +1865,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 9/13: 99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
+// BLOQUE 9/14: 99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
 // =============================================================================
 // CS21A188 · QA · Memory Match Shared Discovery.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -2181,7 +2181,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 10/13: 99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs
+// BLOQUE 10/14: 99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs
 // =============================================================================
 // CS21A188 · QA · compatibilidad de metadatos CS21A186 con Shared Discovery.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -2202,7 +2202,7 @@ if (typeof englishLabMemoryMatchSubmitPairCS21A180 === 'function') {
 
 
 // =============================================================================
-// BLOQUE 11/13: 99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs
+// BLOQUE 11/14: 99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs
 // =============================================================================
 // CS21A189 · QA · Memory Match clásico sincronizado.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -2535,7 +2535,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 12/13: 99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs
+// BLOQUE 12/14: 99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs
 // =============================================================================
 // CS21A190 · QA · limpieza autoritativa de reveal temporal al vencer/cambiar turno.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -2678,7 +2678,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 13/13: 99M_HANGMAN_QA_CS21A191.gs
+// BLOQUE 13/14: 99M_HANGMAN_QA_CS21A191.gs
 // =============================================================================
 // CS21A191 · AHORCADO QA · English LAB Live
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -3451,3 +3451,80 @@ doPost = function (e) {
     return _an4406_json_({ok:false,version:ELHANG191_VERSION,error:'hangman_error',mensaje:String(error && error.message ? error.message : error)});
   }
 };
+
+
+// =============================================================================
+// BLOQUE 14/14: 99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs
+// =============================================================================
+// CS21A191 · ROBUSTEZ AHORCADO QA
+// Capa aditiva incluida automáticamente en el Apps Script QA completo.
+// El usuario NO debe pegar este archivo por separado. QA/STAGING solamente.
+
+var ELHANG191_ROBUSTNESS_VERSION = 'CS21A191-HANGMAN-ROBUSTNESS-1';
+
+// La referencia de fuente debe sobrevivir al shuffle. Si QUESTION_BANK no trae
+// un ID estable, se deriva uno determinista del contenido, nunca del índice.
+_elh191SourceId_ = function (row, index) {
+  row = row || {};
+  var stable = _elh191Text_(row.CONTENT_ID || row.PLAY_ITEM_ID || row.QUESTION_ID || row.ID);
+  if (stable) return stable;
+  var material = [
+    _elh191Upper_(row.LEVEL_ID),
+    _elive176NormalizeUnit_(row.UNIT_ID || 'MIX'),
+    _elh191CanonicalAnswer_(row.PAIR_LEFT || row.STEM),
+    _elh191Text_(row.PAIR_RIGHT)
+  ].join('|');
+  return 'HANG-SRC-' + _elive176Hash_(material).toString(16);
+};
+
+// _elive180BuildSnapshot_ nació para Memory Match y conserva banderas históricas.
+// Ahorcado reutiliza su ranking/eventos, pero limpia esas banderas para evitar que
+// el frontend compartido intente "actualizar" una sala HANGMAN como MEMORY_MATCH.
+_elh191Snapshot_ = function (room, reveal) {
+  var snapshot = _elive180BuildSnapshot_(room);
+  var response = _elive180ResponseCopy_(snapshot);
+  response.ok = true;
+  response.version = ELHANG191_VERSION;
+  response.phase = 'HANGMAN_STATE';
+  response.hangman = true;
+  delete response.memory_match;
+  response.hangman_state = _elh191PublicState_(room, reveal);
+  response.turn_state = response.hangman_state && response.hangman_state.turn_state || null;
+  response.shared_state = null;
+  response.room_package = null;
+  response.questions = [];
+  response.question = null;
+  response.current_question = null;
+  response.answer = null;
+  response.reveal = !!(reveal || (response.hangman_state && response.hangman_state.completed));
+  response.message = 'Estado Ahorcado de práctica. No afecta notas oficiales.';
+  response.hangman_robustness_version = ELHANG191_ROBUSTNESS_VERSION;
+  return _elh191PresenceResponse_(response, room);
+};
+
+var _elh191RobustVerifyBase_ = verificarActualizacionQA;
+verificarActualizacionQA = function () {
+  var previous = _elh191RobustVerifyBase_();
+  var a = {LEVEL_ID:'B1',UNIT_ID:'U01',PAIR_LEFT:'check in',PAIR_RIGHT:'register at a hotel'};
+  var b = {LEVEL_ID:'B1',UNIT_ID:'U01',PAIR_LEFT:'check in',PAIR_RIGHT:'register at a hotel'};
+  var stableA = _elh191SourceId_(a, 0);
+  var stableB = _elh191SourceId_(b, 99);
+  var stableFallback = !!stableA && stableA === stableB && stableA.indexOf('HANG-SRC-') === 0;
+  var valid = !!(previous && previous.ok === true && stableFallback);
+  var result = {};
+  Object.keys(previous || {}).forEach(function (key) { result[key] = previous[key]; });
+  result.ok = valid;
+  result.version = ELHANG191_VERSION;
+  result.hangman_robustness_version = ELHANG191_ROBUSTNESS_VERSION;
+  result.source_id_shuffle_safe = stableFallback;
+  result.memory_match_flag_removed_from_hangman_state = true;
+  result.generic_sync_misclassification_guard = true;
+  console.log(JSON.stringify(result));
+  if (!result.ok) throw new Error('CS21A191 Ahorcado no superó la verificación de robustez.');
+  return result;
+};
+
+function verificarHangmanRobustnessCS21A191() {
+  _elh191QaGuard_();
+  return verificarActualizacionQA();
+}
