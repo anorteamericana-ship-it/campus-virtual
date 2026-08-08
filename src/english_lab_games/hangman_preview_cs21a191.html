@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CS21A191 · Ahorcado Preview</title>
+<link rel="stylesheet" href="../../styles/english_lab_hangman_cs21a191.css?v=CS21A191">
+<style>body{margin:0;padding:24px;background:#F5F7FA;font-family:Arial,sans-serif}.preview{max-width:980px;margin:0 auto}.note{font-size:12px;color:#667085;margin-bottom:12px}</style>
+</head>
+<body>
+<div class="preview">
+  <div class="note">Preview sintético CS21A191. No usa Apps Script, no escribe datos y no sustituye QA autenticada.</div>
+  <div class="elh191-shell">
+    <div><div class="elh191-kicker">English LAB Live</div><div class="elh191-title">Ahorcado</div><div class="elh191-sub">Básico I · Unidad 1 · Equipo Azul</div></div>
+    <div class="elh191-grid">
+      <main class="elh191-board">
+        <div class="elh191-card">
+          <div class="elh191-clue"><strong>Pista</strong>Two words used when you arrive and register at a hotel.</div>
+          <div id="pattern" class="elh191-pattern"></div>
+          <div id="lives" class="elh191-lives"></div>
+        </div>
+        <div class="elh191-card">
+          <div class="elh191-turn"><b>Equipo Azul · turno de Chu</b><span>Elegí una letra. Preview sin cronómetro real.</span><div class="elh191-timer"><i style="width:72%"></i></div></div>
+          <div id="keyboard" class="elh191-keyboard" style="margin-top:14px"></div>
+          <div class="elh191-solve" style="margin-top:14px"><input id="solve" placeholder="Resolver palabra o frase completa"><button id="solveBtn" class="elh191-btn" type="button">Resolver</button></div>
+        </div>
+        <div id="message"></div>
+      </main>
+      <aside class="elh191-card"><div class="elh191-kicker">Ranking temporal</div><div class="elh191-ranking" style="margin-top:10px"><div class="elh191-rank"><i>1</i><strong>Equipo Azul</strong><span id="score">0 pts</span></div><div class="elh191-rank"><i>2</i><strong>Equipo Rojo</strong><span>0 pts</span></div></div></aside>
+    </div>
+  </div>
+</div>
+<script src="english_lab_game_registry_cs21a191.js?v=CS21A191"></script>
+<script src="hangman_engine_cs21a191.js?v=CS21A191"></script>
+<script>
+(function(){
+  const h=window.EnglishLabHangmanEngineCS21A191;
+  const answer='CHECK IN'; let guesses=[]; let wrong=[]; let errors=0; let points=0; const maxErrors=6;
+  const pattern=document.getElementById('pattern'), keyboard=document.getElementById('keyboard'), lives=document.getElementById('lives'), message=document.getElementById('message'), score=document.getElementById('score');
+  function render(){
+    const mask=h.buildMask(answer,guesses); pattern.innerHTML=''; mask.cells.forEach(cell=>{const span=document.createElement('span');span.className='elh191-letter-slot '+(cell.kind==='SPACE'?'is-space':cell.kind==='PUNCTUATION'?'is-punctuation':'');span.textContent=cell.kind==='LETTER'?(cell.value||''):cell.value;pattern.appendChild(span);});
+    keyboard.innerHTML=''; h.LETTERS.forEach(letter=>{const b=document.createElement('button');b.type='button';b.className='elh191-key '+(guesses.includes(letter)?'is-used ':'')+(wrong.includes(letter)?'is-wrong':'');b.textContent=letter;b.disabled=guesses.includes(letter)||errors>=maxErrors;b.onclick=()=>guess(letter);keyboard.appendChild(b);});
+    lives.innerHTML='';for(let i=0;i<maxErrors;i++){const s=document.createElement('span');s.className='elh191-life '+(i<errors?'is-lost':'');s.textContent=i<errors?'×':'✓';lives.appendChild(s);}score.textContent=points+' pts';
+  }
+  function notice(text,tone='info'){message.className='elh191-message '+tone;message.textContent=text;}
+  function guess(letter){if(guesses.includes(letter)){notice('Letra repetida: sin castigo.','warn');return;}guesses.push(letter);const n=h.countOccurrences(answer,letter);if(n){points+=n*10;notice('Correcta: +'+(n*10)+' pts. Conservás el turno.','ok');}else{wrong.push(letter);errors++;notice('No aparece. Se pierde una vida y cambia el turno.','err');}if(h.solvedByLetters(answer,guesses))notice('¡Palabra completada! '+answer,'ok');else if(errors>=maxErrors)notice('Sin vidas. Respuesta: '+answer,'err');render();}
+  document.getElementById('solveBtn').onclick=()=>{const value=h.canonicalSolve(document.getElementById('solve').value);if(!value)return;if(value===answer){points+=h.scoreSolve(maxErrors,errors);notice('¡Resuelto! '+answer,'ok');}else{errors++;notice('Solución incorrecta: se pierde una vida.','err');}render();};
+  render();
+})();
+</script>
+</body>
+</html>
