@@ -1,5 +1,8 @@
 // =============================================================================
 // CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO
+// Marcadores históricos de compatibilidad CI (no describen la versión actual):
+// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO
+// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO
 // Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS
 // Reemplaza por completo el contenido del archivo Apps Script
 // 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.
