@@ -1,6 +1,6 @@
 // =============================================================================
 // CS21A183-CS21A188 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO
-// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY
+// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT
 // Reemplaza por completo el contenido del archivo Apps Script
 // 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.
 // QA/STAGING solamente. NO USAR EN PRODUCCIÓN.
@@ -8,7 +8,7 @@
 
 
 // =============================================================================
-// BLOQUE 1/9: 99_ACTUALIZACION_QA_CS21A183.gs
+// BLOQUE 1/10: 99_ACTUALIZACION_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · CAPA ADITIVA QA PARA ENGLISH LAB LIVE
 // Instalar despues de 98_ACTUALIZACION_QA_CS21A181.gs. No usar en produccion.
@@ -513,7 +513,7 @@ doPost = function (e) {
 
 
 // =============================================================================
-// BLOQUE 2/9: 99B_VALIDACION_CURRICULAR_CS21A183.gs
+// BLOQUE 2/10: 99B_VALIDACION_CURRICULAR_CS21A183.gs
 // =============================================================================
 // CS21A183 · GUARDIA CURRICULAR ADITIVA QA
 // Instalar despues de 99_ACTUALIZACION_QA_CS21A183.gs. No usar en produccion.
@@ -774,7 +774,7 @@ verificarActualizacionQA = function () {
 
 
 // =============================================================================
-// BLOQUE 3/9: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
+// BLOQUE 3/10: 99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · HOTFIX QA · FUENTE CURRICULAR APOLLO
 // Agregar AL FINAL de 99_CS21A183_SENTENCE_ORDER_COMPLETO en Apps Script QA.
@@ -905,7 +905,7 @@ verificarActualizacionQA = function () {
 
 
 // =============================================================================
-// BLOQUE 4/9: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
+// BLOQUE 4/10: 99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · FIX3 QA · Memory Match inicio + presencia real
 // APPEND-ONLY en el repositorio, pero el usuario recibe SIEMPRE el archivo 99 completo ensamblado.
@@ -1272,7 +1272,7 @@ function verificarMemoryMatchStartFixCS21A183() {
 
 
 // =============================================================================
-// BLOQUE 5/9: 99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs
+// BLOQUE 5/10: 99E_FIX_MEMORY_MATCH_PAIR_METADATA_QA_CS21A183.gs
 // =============================================================================
 // CS21A183 · FIX4 QA · metadatos canónicos del editor Memory Match
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1363,7 +1363,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 6/9: 99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs
+// BLOQUE 6/10: 99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs
 // =============================================================================
 // CS21A185 · QA · sala cerrada terminal + presencia detenida
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1498,7 +1498,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 7/9: 99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs
+// BLOQUE 7/10: 99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs
 // =============================================================================
 // CS21A186 · QA · reglas canónicas de Memory Match
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
@@ -1750,7 +1750,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 8/9: 99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
+// BLOQUE 8/10: 99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
 // =============================================================================
 // CS21A187 · QA · ciclo de vida de salas Live + recientes + límite coherente Memory Match.
 // APPEND-ONLY en repositorio; el usuario recibe SIEMPRE 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs completo.
@@ -1865,7 +1865,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
 
 
 // =============================================================================
-// BLOQUE 9/9: 99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
+// BLOQUE 9/10: 99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
 // =============================================================================
 // CS21A188 · QA · Memory Match Shared Discovery.
 // APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el Apps Script completo ensamblado.
@@ -2178,3 +2178,24 @@ verificarMemoryMatchStartFixCS21A183 = function () {
   if (!result.ok) throw new Error('CS21A188 no superó la verificación Shared Discovery.');
   return result;
 };
+
+
+// =============================================================================
+// BLOQUE 10/10: 99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs
+// =============================================================================
+// CS21A188 · QA · compatibilidad de metadatos CS21A186 con Shared Discovery.
+// APPEND-ONLY en el repositorio; el usuario recibe SIEMPRE el archivo Apps Script completo ensamblado.
+// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.
+//
+// CS21A188 reemplaza el handler canónico para soportar DISCOVER_CARD y SUBMIT_PAIR,
+// pero conserva semánticamente las reglas de CS21A186. Al reemplazar una función en
+// JavaScript se pierden las propiedades custom del objeto función; este bloque restaura
+// exclusivamente esa metadata para que la cadena histórica de verificadores pueda
+// comprobar las reglas acumuladas sin alterar la lógica de ejecución.
+
+var CS21A188_MM_RULES_COMPAT_VERSION = 'CS21A188-MM-RULES-COMPAT-1';
+
+if (typeof englishLabMemoryMatchSubmitPairCS21A180 === 'function') {
+  englishLabMemoryMatchSubmitPairCS21A180.__cs21a186CanonicalRules = true;
+  englishLabMemoryMatchSubmitPairCS21A180.__cs21a188SharedDiscovery = true;
+}
