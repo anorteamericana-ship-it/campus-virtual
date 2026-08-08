@@ -1,0 +1,131 @@
+name: CS21A191 Hangman Release Candidate QA
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs'
+      - 'apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'src/english_lab_games/english_lab_game_registry_cs21a191.js'
+      - 'src/english_lab_games/hangman_engine_cs21a191.js'
+      - 'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx'
+      - 'src/english_lab_games/hangman_preview_cs21a191.html'
+      - 'src/english_lab_live_student_dependency_guard_cs21a184.js'
+      - 'styles/english_lab_hangman_cs21a191.css'
+      - 'schemas/english_lab_game_package_cs21a191.schema.json'
+      - 'scripts/patch_qa_package_cs21a191.mjs'
+      - 'scripts/test_english_lab_hangman_engine_cs21a191.mjs'
+      - 'scripts/test_english_lab_hangman_contract_cs21a191.mjs'
+      - 'scripts/test_english_lab_hangman_browser_cs21a191.mjs'
+      - 'scripts/test_english_lab_hangman_package_browser_cs21a191.mjs'
+      - '.github/workflows/cs21a191-release-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hangman-release-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Hangman and inherited Memory Match contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+          node scripts/test_english_lab_hangman_browser_cs21a191.mjs
+          node scripts/test_memory_match_timeout_style_cs21a190.mjs
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+
+      - name: Build exact CS21A191 QA package
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_MERGE_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
+          node scripts/patch_qa_package_cs21a187.mjs
+          node scripts/patch_qa_package_cs21a189.mjs
+          node scripts/patch_qa_package_cs21a190.mjs
+          node scripts/patch_qa_package_cs21a191.mjs
+          node scripts/patch_qa_package_cs21a191.mjs --verify
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start exact CS21A191 package server
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE'
+          PORT=4191 node "$package/serve.mjs" > cs21a191-package-server.log 2>&1 &
+          echo $! > cs21a191-package-server.pid
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:4191/qa-setup.html >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat cs21a191-package-server.log
+          exit 1
+
+      - name: Smoke packaged Hangman files
+        run: |
+          set -euo pipefail
+          base='http://127.0.0.1:4191'
+          curl -fsS "$base/campus.html" -o /tmp/campus191.html
+          curl -fsS "$base/src/english_lab_games/english_lab_game_registry_cs21a191.js" -o /tmp/registry191.js
+          curl -fsS "$base/src/english_lab_games/hangman_engine_cs21a191.js" -o /tmp/engine191.js
+          curl -fsS "$base/src/english_lab_games/english_lab_hangman_live_cs21a191.jsx" -o /tmp/live191.jsx
+          curl -fsS "$base/src/english_lab_live_student_dependency_guard_cs21a184.js" -o /tmp/deps191.js
+          curl -fsS "$base/styles/english_lab_hangman_cs21a191.css" -o /tmp/hangman191.css
+          curl -fsS "$base/BACKEND_QA/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs" -o /tmp/complete191.gs
+          curl -fsS "$base/VERSION.txt" -o /tmp/version191.txt
+          grep -q 'english_lab_hangman_cs21a191.css?v=CS21A191' /tmp/campus191.html
+          grep -q "id:'HANGMAN'" /tmp/registry191.js
+          grep -q "GAME_ID = 'HANGMAN'" /tmp/engine191.js
+          grep -q 'HangmanTeacherView' /tmp/live191.jsx
+          grep -q 'english_lab_hangman_live_cs21a191.jsx?v=CS21A191' /tmp/deps191.js
+          grep -q '@media(max-width:390px)' /tmp/hangman191.css
+          grep -q 'CS21A191-HANGMAN-ROBUSTNESS-1' /tmp/complete191.gs
+          grep -q 'delete response.memory_match' /tmp/complete191.gs
+          grep -q 'VERSION=CS21A191' /tmp/version191.txt
+          grep -q 'HANGMAN_SERVER_AUTHORITATIVE=true' /tmp/version191.txt
+
+      - name: Validate packaged preview at 390 px
+        env:
+          QA_BASE_URL: http://127.0.0.1:4191
+        run: node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
+
+      - name: Zip exact candidate
+        run: |
+          set -euo pipefail
+          cd dist
+          zip -X -q -r CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE
+          sha256sum CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip > CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip.sha256
+
+      - name: Upload exact CS21A191 release candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE
+          path: |
+            dist/CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip
+            dist/CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip.sha256
+            qa-output/cs21a191-hangman/
+            cs21a191-package-server.log
+          if-no-files-found: warn
+          retention-days: 30
