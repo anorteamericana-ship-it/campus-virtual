@@ -54,6 +54,8 @@ for (const token of requiredBackend) {
 }
 if (!process.exitCode) ok('contrato backend y delegación doPost presentes');
 
+// Este archivo nació en CS21A174/177, pero hoy es una superficie acumulada.
+// Validamos capacidades estables, no números de versión ni cadencias históricas.
 const requiredAdapter = [
   'EnglishLabMemoryMatchLiveCS21A174',
   'MemoryMatchLiveRoundCS21A174',
@@ -61,28 +63,34 @@ const requiredAdapter = [
   'englishLabMemoryMatchStartRoom',
   'englishLabMemoryMatchGetPlayerState',
   'englishLabMemoryMatchSubmitPair',
+  'englishLabMemoryMatchGetRoomControl',
   'packageFromLiveState',
+  'mergeLiveState',
   'MemoryMatchGameCS21A173',
   "const GAME_ID = 'MEMORY_MATCH'",
   "const GAME_LABEL = 'MEMORY MATCH'",
-  "const VERSION = 'CS21A177'",
-  'english_lab_memory_match_cs21a173.css?v=CS21A174',
+  'english_lab_memory_match_cs21a173.css',
   'ensureStyles',
   'global.EnglishLabMemoryMatchLiveCS21A174 = api',
   'EnglishLabTurnEngineCS21A176',
   'english_lab_turn_engine_cs21a176.js?v=CS21A176',
-  'english_lab_live_sync_guard_cs21a177.js?v=CS21A177',
+  'english_lab_live_sync_guard_cs21a177.js',
   'EnglishLabLiveSyncCS21A177',
   'ensureSyncGuard',
-  'READ_ONLY_POLL_MS = 4000',
   'ENDPOINTS.getRoomControl',
-  'global.setInterval(poll, READ_ONLY_POLL_MS)',
+  'ENDPOINTS.getPlayerState',
   'pollingRef.current',
-  'setLiveState(result)',
+  'global.document.visibilityState',
+  'setLiveState(current => mergeLiveState(current, result, room, player))',
 ];
 for (const token of requiredAdapter) {
-  if (!adapter.includes(token)) fail(`adapter sin contrato: ${token}`);
+  if (!adapter.includes(token)) fail(`adapter sin contrato acumulado: ${token}`);
 }
+
+const versionMatch = adapter.match(/const VERSION = '(CS21A\d+)'/);
+if (!versionMatch) fail('adapter no declara una versión CS21A reconocible');
+else ok(`adaptador acumulado detectado: ${versionMatch[1]}`);
+
 if (/\bfetch\s*\(|global\.fetch\s*=|SpreadsheetApp|PropertiesService|ENGLISH_LAB_GAME_DB/i.test(adapter)) {
   fail('el adaptador mezcla transporte directo o conoce Sheets/configuración.');
 } else ok('adaptador sin transporte directo, Sheets ni ID de base');
@@ -115,9 +123,17 @@ if (!/createElement\('link'\)[\s\S]*rel\s*=\s*'stylesheet'[\s\S]*appendChild/.te
   fail('el adaptador no instala la hoja visual de forma diferida');
 } else ok('estilos visuales cargados únicamente con el adaptador Live');
 
-if (!/if \(!readOnly \|\| typeof postLive !== 'function' \|\| !code\) return undefined;/.test(adapter)) {
-  fail('polling silencioso no está restringido a docente/proyector readOnly');
-} else ok('polling silencioso limitado a vistas de control');
+// Desde CS21A188 el polling también cubre estudiantes para convergencia del tablero.
+// Debe seguir siendo silencioso, adaptativo, sin solapamiento y con endpoint por rol.
+const adaptivePolling =
+  adapter.includes('function livePollMsForPlayers(count)') &&
+  adapter.includes('const POLL_TIERS = Object.freeze([') &&
+  adapter.includes('const endpoint = readOnly ? ENDPOINTS.getRoomControl : ENDPOINTS.getPlayerState;') &&
+  adapter.includes('if (disposed || pollingRef.current) return;') &&
+  adapter.includes("global.document.visibilityState === 'hidden'") &&
+  adapter.includes('global.setInterval(poll, pollMs)');
+if (!adaptivePolling) fail('polling acumulado no conserva adaptación, pausa oculta, endpoint por rol y exclusión de solapamiento');
+else ok('polling silencioso acumulado válido para estudiante y docente');
 
 const backendContext = {
   console,
@@ -162,4 +178,4 @@ if ((backend.match(/ELMM174_QA_DB_ID/g) || []).length > 3) fail('el ID QA se usa
 else ok('ID QA limitado a configuración del instalador');
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log('CS21A174/CS21A177 MEMORY MATCH LIVE CONTRACT: APTO');
+console.log('CS21A174+ MEMORY MATCH LIVE ACCUMULATED CONTRACT: APTO');
