@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - feat/cs21a183-sentence-order-live
+      - feat/cs21a188-memory-match-shared-discovery
+      - feat/cs21a189-memory-match-classic-sync
     paths:
+      - '.github/workflows/cs21a183-assemble-apps-script-complete.yml'
       - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
       - 'apps_script_patches/99_ACTUALIZACION_QA_CS21A183.gs'
       - 'apps_script_patches/99B_VALIDACION_CURRICULAR_CS21A183.gs'
@@ -14,6 +17,9 @@ on:
       - 'apps_script_patches/99F_FIX_MEMORY_MATCH_CLOSED_ROOM_QA_CS21A185.gs'
       - 'apps_script_patches/99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs'
       - 'apps_script_patches/99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs'
+      - 'apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'
+      - 'apps_script_patches/99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs'
+      - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
   workflow_dispatch:
 
 permissions:
@@ -22,10 +28,11 @@ permissions:
 jobs:
   assemble:
     runs-on: ubuntu-24.04
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feat/cs21a183-sentence-order-live
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -42,5 +49,5 @@ jobs:
             echo 'No changes to commit.'
             exit 0
           fi
-          git commit -m 'CS21A187 actualiza Apps Script QA completo 99-99H'
-          git push origin HEAD:feat/cs21a183-sentence-order-live
+          git commit -m 'Actualiza Apps Script QA completo acumulado'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
