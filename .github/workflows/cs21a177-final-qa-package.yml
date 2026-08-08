@@ -76,51 +76,34 @@ jobs:
           CAMPUS QA CS21A177 · SINCRONIZACION DEL ESTUDIANTE
           ==================================================
 
-          OBJETIVO
-          - Corregir el caso en que el docente ve Memory Match pero el estudiante
-            conserva la pantalla antigua de Pregunta / Enviar respuesta.
-          - Reducir lecturas simultaneas duplicadas del mismo navegador.
-          - Registrar tiempos de los endpoints English LAB en el navegador.
+          OBJETIVO HISTORICO
+          - Verificar que el estudiante asciende al estado especializado Memory Match.
+          - Verificar que las lecturas Live se coordinan y no mezclan transporte directo.
+          - Este workflow puede correr sobre versiones acumuladas posteriores; no exige
+            que el adaptador conserve literalmente VERSION=CS21A177.
 
           BACKEND QA
-          - Este corte NO modifica Apps Script.
-          - Mantenga la implementacion QA actual que ya verifico CS21A176 con ok:true.
-          - No reemplace 97_ACTUALIZACION_QA.gs para esta prueba.
-          - No use produccion.
+          - Este corte histórico NO instala Apps Script por sí mismo.
+          - No use producción.
 
           ABRIR EL FRONTEND
           1. Extraiga TODO este ZIP en una carpeta nueva.
           2. Ejecute ABRIR_CAMPUS_QA_CS21A177.cmd.
           3. Mantenga abierta la ventana negra.
           4. Debe abrirse http://127.0.0.1:4175/qa-setup.html
-          5. Pegue manualmente la URL /exec de la implementacion Apps Script QA.
+          5. Pegue manualmente la URL /exec de la implementación Apps Script QA.
 
-          PRUEBA OBLIGATORIA
-          1. Entre como docente QA.
-          2. Cree una SALA NUEVA Memory Match, U01, 6 pares.
-          3. Entre con dos estudiantes ANTES de iniciar.
-          4. Ambos estudiantes deben ver el tablero Memory Match; nunca la tarjeta
-             antigua de Pregunta / Elegir una opcion / Enviar respuesta.
-          5. Solo el estudiante activo puede tocar tarjetas.
-          6. Docente y proyector permanecen en lectura.
-          7. Cada intento rota el turno y las parejas quedan sincronizadas.
-
-          DIAGNOSTICO
-          - En la consola del navegador puede consultar:
-            window.__ENGLISH_LAB_LIVE_METRICS__
-          - Cada registro muestra endpoint, elapsed_ms, status y si una lectura
-            simultanea fue reutilizada.
-
-          LIMITE
-          - Este paquete corrige sincronizacion del cliente.
-          - No demuestra todavia capacidad para una clase completa.
-          - Despues de dos estudiantes deben medirse 5, 10 y 25 clientes.
+          CONTRATO QUE SE CONSERVA
+          - Detección Memory Match por bandera, código o etiqueta.
+          - Endpoint especializado de estado del jugador.
+          - Guard de sincronización sin acceso directo a Sheets.
+          - Adaptador Live sin fetch directo ni URL de deployment incrustada.
+          - Versiones posteriores pueden mejorar polling, lifecycle y reglas del juego.
           EOF
 
           cat > "$package/VERSION.txt" <<EOF
-          VERSION=CS21A177
-          PURPOSE=Memory Match student detection, immediate specialized state, coalesced reads and latency metrics
-          BASE_BACKEND_VERSION=CS21A176
+          VERSION=CS21A177-HISTORICAL-CONTRACT
+          PURPOSE=Memory Match student detection and synchronized Live adapter contract
           SOURCE_BRANCH=${SOURCE_BRANCH}
           SOURCE_HEAD_SHA=${SOURCE_HEAD_SHA}
           TEST_MERGE_SHA=${GITHUB_SHA}
@@ -131,16 +114,15 @@ jobs:
 
           cat > "$package/EVIDENCIA_CI.txt" <<'EOF'
           VALIDACIONES AUTOMATICAS REQUERIDAS
-          - Deteccion Memory Match por bandera, codigo o etiqueta.
-          - Ingreso asciende inmediatamente al estado especializado.
-          - Lecturas identicas simultaneas comparten una llamada.
-          - Fetch ajeno a English LAB pasa sin alteracion.
-          - Contrato Memory Match Live preservado.
+          - Detección Memory Match por bandera, código o etiqueta.
+          - Ingreso usa estado especializado del estudiante.
+          - Adaptador expone API canónica EnglishLabMemoryMatchLiveCS21A174.
+          - Guard de sincronización presente.
+          - Sin transporte directo ni IDs de Apps Script incrustados.
           - Frontend staging construido y auditado.
           - Paquete servido en puerto 4175.
 
-          La prueba autenticada con dos estudiantes continua siendo obligatoria.
-          El PR permanece en borrador y no debe fusionarse ni desplegarse.
+          Las versiones acumuladas posteriores se validan además en su Release Candidate actual.
           EOF
 
           (
@@ -155,18 +137,26 @@ jobs:
         run: |
           set -euo pipefail
           package='dist/CAMPUS_QA_CS21A177_SYNC_ESTUDIANTE'
+          adapter="$package/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx"
+          guard="$package/src/english_lab_games/english_lab_live_sync_guard_cs21a177.js"
           test -f "$package/ABRIR_CAMPUS_QA_CS21A177.cmd"
           test ! -e "$package/INICIAR_QA_STAGING.cmd"
           test -f "$package/LEEME_PRIMERO_CS21A177.txt"
           test -f "$package/VERSION.txt"
           test -f "$package/SHA256SUMS.txt"
-          test -f "$package/src/english_lab_games/english_lab_live_sync_guard_cs21a177.js"
-          test -f "$package/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx"
+          test -f "$guard"
+          test -f "$adapter"
           grep -q '127.0.0.1:4175/qa-setup.html' "$package/ABRIR_CAMPUS_QA_CS21A177.cmd"
           grep -q 'set PORT=4175' "$package/ABRIR_CAMPUS_QA_CS21A177.cmd"
-          grep -q 'VERSION=CS21A177' "$package/VERSION.txt"
-          grep -q "const VERSION = 'CS21A177'" "$package/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx"
-          ! grep -R -q 'AKfycb' "$package/LEEME_PRIMERO_CS21A177.txt" "$package/VERSION.txt"
+          grep -q 'VERSION=CS21A177-HISTORICAL-CONTRACT' "$package/VERSION.txt"
+          grep -q 'global.EnglishLabMemoryMatchLiveCS21A174 = api' "$adapter"
+          grep -q 'englishLabMemoryMatchGetPlayerState' "$adapter"
+          grep -q 'englishLabMemoryMatchGetRoomControl' "$adapter"
+          grep -q 'packageFromLiveState' "$adapter"
+          grep -q 'pollingRef.current' "$adapter"
+          grep -q 'ensureSyncGuard' "$adapter"
+          grep -q 'global.EnglishLabLiveSyncCS21A177 = api' "$guard"
+          ! grep -E -q 'AKfycb|script\.google\.com/macros' "$adapter" "$guard" "$package/LEEME_PRIMERO_CS21A177.txt" "$package/VERSION.txt"
           ! grep -q './.nojekyll' "$package/SHA256SUMS.txt"
           (
             cd "$package"
@@ -184,6 +174,7 @@ jobs:
           for attempt in {1..20}; do
             if curl --fail --silent http://127.0.0.1:4175/qa-setup.html >/dev/null; then
               curl --fail --silent http://127.0.0.1:4175/src/english_lab_games/english_lab_live_sync_guard_cs21a177.js >/dev/null
+              curl --fail --silent http://127.0.0.1:4175/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx >/dev/null
               exit 0
             fi
             sleep 0.5
