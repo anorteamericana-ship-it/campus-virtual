@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const read = path => fs.readFileSync(path, 'utf8');
 const backend = read('apps_script_patches/99M_HANGMAN_QA_CS21A191.gs');
+const robustness = read('apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs');
 const integration = read('src/english_lab_games/english_lab_hangman_live_cs21a191.jsx');
 const registry = read('src/english_lab_games/english_lab_game_registry_cs21a191.js');
 const guard = read('src/english_lab_live_student_dependency_guard_cs21a184.js');
@@ -41,6 +42,18 @@ assert.ok(backend.includes("message:'El turno terminó; la vida del equipo no se
 assert.ok(backend.includes("return _elh191PlayerStateResponse_(room, player, {accepted:false,repeated:true,message:'La letra "), 'letra repetida sin castigo');
 
 for (const marker of [
+  "ELHANG191_ROBUSTNESS_VERSION = 'CS21A191-HANGMAN-ROBUSTNESS-1'",
+  "return 'HANG-SRC-' + _elive176Hash_(material).toString(16)",
+  "response.phase = 'HANGMAN_STATE'",
+  'delete response.memory_match',
+  'response.room_package = null',
+  'source_id_shuffle_safe',
+  'generic_sync_misclassification_guard',
+  'function verificarHangmanRobustnessCS21A191()'
+]) assert.ok(robustness.includes(marker), `robustness marker: ${marker}`);
+assert.ok(!robustness.includes("('MM-SOURCE-' + (Number(index || 0) + 1))"), 'fallback robusto no depende del índice');
+
+for (const marker of [
   'HangmanBoard', 'HangmanTeacherView', 'HangmanStudentSession',
   'englishLabHangmanSuggestions', 'englishLabHangmanCreateRoom',
   'englishLabHangmanAction', 'englishLabHangmanGetPlayerState',
@@ -73,6 +86,9 @@ console.log(JSON.stringify({
   keyboard_accessible:true,
   mobile_390:true,
   curriculum_traceability:true,
+  source_id_shuffle_safe:true,
+  hangman_memory_flag_sanitized:true,
+  generic_sync_misclassification_guard:true,
   timeout_no_life_penalty:true,
   duplicate_action_guard:true
 }, null, 2));
