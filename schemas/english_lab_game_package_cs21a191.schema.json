@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anorteamerican.com/schemas/english_lab_game_package_cs21a191.schema.json",
+  "title": "English LAB Generic Game Package CS21A191",
+  "description": "Contrato genérico para juegos English LAB. No obliga a usar cards ni expone respuestas canónicas durante una ronda abierta.",
+  "type": "object",
+  "required": ["version", "game_id", "room", "state"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "game_id": {"type": "string", "minLength": 1},
+    "server_now": {"type": ["string", "number", "null"]},
+    "room": {
+      "type": "object",
+      "required": ["room_code"],
+      "additionalProperties": true,
+      "properties": {
+        "room_code": {"type": "string", "pattern": "^LAB-[0-9]{4,8}$"},
+        "game_id": {"type": "string"},
+        "mode": {"enum": ["INDIVIDUAL", "TEAMS", "WHOLE_CLASS"]},
+        "level_id": {"enum": ["B1", "B2", "I1", "I2"]}
+      }
+    },
+    "state": {
+      "type": "object",
+      "required": ["phase"],
+      "additionalProperties": true,
+      "properties": {
+        "phase": {"enum": ["READY", "LOBBY", "COUNTDOWN", "OPEN", "REVEAL", "COMPLETE", "PAUSED", "CLOSED"]},
+        "turn_state": {"type": ["object", "null"]}
+      }
+    },
+    "game_payload": {
+      "type": ["object", "null"],
+      "description": "Estado público específico del juego. Nunca debe contener la respuesta canónica mientras state.phase sea OPEN."
+    },
+    "teams": {"type": "array"},
+    "player": {"type": ["object", "null"]}
+  }
+}
