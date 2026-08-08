@@ -26,7 +26,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Marcadores históricos de compatibilidad CI (no describen la versión actual):\n// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -37,6 +37,9 @@ fs.writeFileSync(target, content.replace(/\s*$/, '') + '\n', 'utf8');
 
 const check = fs.readFileSync(target, 'utf8');
 const required = [
+  'CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO',
+  'CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO',
+  'CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO',
   "var ELSO183_VERSION = 'CS21A183'",
   "ELSO183_CURRICULUM_VERSION = 'CS21A183-CURRICULUM'",
   "ELSO183_APOLLO_SOURCE_FIX_VERSION = 'CS21A183-APOLLO-QA-FIX'",
@@ -115,6 +118,7 @@ console.log(JSON.stringify({
   sources,
   fix:'CS21A191-HANGMAN-1',
   hangmanRobustness:'CS21A191-HANGMAN-ROBUSTNESS-1',
+  legacyCiCompatibility:['CS21A189','CS21A190'],
   memoryTimeoutCleanup:'CS21A190-MM-TIMEOUT-CLEANUP-1',
   rulesCompatibility:'CS21A188-MM-RULES-COMPAT-1',
   presenceTtlSeconds:60,
