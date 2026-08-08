@@ -1,6 +1,7 @@
-// F98.4-Z6-CS21A184/CS21A185 · Dependencias canónicas + sala cerrada no restaurable.
+// F98.4-Z6-CS21A184/CS21A185/CS21A191 · Dependencias canónicas + sala cerrada + Ahorcado.
 // CS21A184 corrige la entrada desde #academia_play cargando el stack Memory Match completo.
 // CS21A185 evita que una sala CLOSED quede pegada en localStorage o se restaure al volver al Campus.
+// CS21A191 añade el registro, motor e integración Ahorcado sin sustituir los juegos históricos.
 (function installEnglishLabStudentDependencyGuardCS21A184(global) {
   'use strict';
 
@@ -8,18 +9,24 @@
 
   const VERSION = 'F98.4-Z6-CS21A184';
   const CLOSED_ROOM_VERSION = 'F98.4-Z6-CS21A185';
+  const HANGMAN_DEP_VERSION = 'F98.4-Z6-CS21A191';
   const LIVE_FILE_RE = /^src\/english_lab_live\.jsx(?:\?.*)?$/i;
   const PREREQUISITES = Object.freeze([
     'src/english_lab_games/english_lab_runtime_cs21a173.js?v=CS21A173',
     'src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A174',
     'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A178',
     'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A178',
+    'src/english_lab_games/english_lab_game_registry_cs21a191.js?v=CS21A191',
+    'src/english_lab_games/hangman_engine_cs21a191.js?v=CS21A191',
+    'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx?v=CS21A191',
   ]);
   const STATE_ENDPOINTS = Object.freeze([
     'englishLabLiveGetPlayerState',
     'englishLabMemoryMatchGetPlayerState',
+    'englishLabHangmanGetPlayerState',
     'englishLabLiveJoinRoom',
     'englishLabMemoryMatchJoinRoom',
+    'englishLabHangmanJoinRoom',
   ]);
   const LAST_ROOM_KEY = 'elive_last_room';
   const PLAYER_PREFIX = 'elive_player_';
@@ -46,6 +53,15 @@
     return !!(
       global.EnglishLabMemoryMatchLiveCS21A174 &&
       typeof global.MemoryMatchLiveRoundCS21A174 === 'function'
+    );
+  }
+
+  function hangmanRuntimeReady() {
+    return !!(
+      global.EnglishLabGameRegistryCS21A191 &&
+      global.EnglishLabHangmanEngineCS21A191 &&
+      global.EnglishLabHangmanCS21A191 &&
+      typeof global.EnglishLabHangmanCS21A191.install === 'function'
     );
   }
 
@@ -194,10 +210,15 @@
       if (!memoryRuntimeReady()) {
         throw new Error('English LAB Live no terminó de cargar el adaptador Memory Match para el estudiante.');
       }
+      if (!hangmanRuntimeReady()) {
+        throw new Error('English LAB Live no terminó de cargar el motor Ahorcado CS21A191.');
+      }
+      try { global.EnglishLabHangmanCS21A191.install(); } catch (_) {}
       return result;
     }
 
     loadOneWithEnglishLabDependencies.__cs21a184StudentDependencies = true;
+    loadOneWithEnglishLabDependencies.__cs21a191HangmanDependencies = true;
     loadOneWithEnglishLabDependencies.__base = baseLoadOne;
     api.loadOne = loadOneWithEnglishLabDependencies;
     return true;
@@ -220,10 +241,12 @@
   global.__ENGLISH_LAB_STUDENT_DEP_GUARD_CS21A184__ = Object.freeze({
     version:VERSION,
     closedRoomVersion:CLOSED_ROOM_VERSION,
+    hangmanDependencyVersion:HANGMAN_DEP_VERSION,
     prerequisites:PREREQUISITES.slice(),
     stateEndpoints:STATE_ENDPOINTS.slice(),
     isLiveFile,
     memoryRuntimeReady,
+    hangmanRuntimeReady,
     install:ensureInstalled,
     clearRoomPersistence,
     markClosedRoom,
