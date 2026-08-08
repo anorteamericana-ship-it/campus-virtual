@@ -90,8 +90,10 @@ function build(){
     .replace(/^STATUS=.*$/m,'STATUS=QA_CANDIDATE_NOT_FINAL')
     .replace(/^QA_PORT=.*$/m,'QA_PORT=4191')
     .replace(/^SOURCE_BRANCH=.*$/m,`SOURCE_BRANCH=${sourceBranch}`)
-    .replace(/^SOURCE_HEAD_SHA=.*$/m,`SOURCE_HEAD_SHA=${sourceHeadSha}`);
+    .replace(/^SOURCE_HEAD_SHA=.*$/m,`SOURCE_HEAD_SHA=${sourceHeadSha}`)
+    .replace(/^APPS_SCRIPT_INSTALL_MODE=.*$/gm,'');
   const additions=[
+    'APPS_SCRIPT_INSTALL_MODE=SINGLE_COMPLETE_FILE_99_THROUGH_99N_AFTER_98',
     'HANGMAN_VERSION=CS21A191-HANGMAN-1',
     'HANGMAN_ROBUSTNESS=CS21A191-HANGMAN-ROBUSTNESS-1',
     'HANGMAN_GAME_ID=HANGMAN',
@@ -145,6 +147,8 @@ function verify(){
   const version=text('VERSION.txt');
   assert.match(version,/VERSION=CS21A191/);
   assert.match(version,/QA_PORT=4191/);
+  assert.match(version,/APPS_SCRIPT_INSTALL_MODE=SINGLE_COMPLETE_FILE_99_THROUGH_99N_AFTER_98/);
+  assert.doesNotMatch(version,/APPS_SCRIPT_INSTALL_MODE=.*99D/);
   assert.match(version,/HANGMAN_SERVER_AUTHORITATIVE=true/);
   assert.match(version,/HANGMAN_AUTHENTICATED_QA_STATUS=PENDING/);
 
@@ -155,7 +159,7 @@ function verify(){
   const all=files();assert.equal(manifest.size,all.length,'El manifiesto debe cubrir cada archivo exactamente una vez.');
   for(const file of all){const relative=path.relative(target,file).split(path.sep).join('/');assert.equal(manifest.get(relative),sha256(file),`Hash inválido: ${relative}`);}
 
-  console.log(JSON.stringify({ok:true,package:packageName,version:'CS21A191',port:4191,hangman:true,serverAuthoritative:true,sourceIdShuffleSafe:true,memoryFlagSanitized:true,appsScriptSingleCompleteFile:true,authenticatedQa:'PENDING',files:all.length},null,2));
+  console.log(JSON.stringify({ok:true,package:packageName,version:'CS21A191',port:4191,hangman:true,serverAuthoritative:true,sourceIdShuffleSafe:true,memoryFlagSanitized:true,appsScriptSingleCompleteFile:true,appsScriptInstallMode:'SINGLE_COMPLETE_FILE_99_THROUGH_99N_AFTER_98',authenticatedQa:'PENDING',files:all.length},null,2));
 }
 
 if(!verifyOnly)build();
