@@ -108,6 +108,13 @@ englishLabMemoryMatchSubmitPairCS21A180 = function (body) {
 
     var now = new Date();
     var turnState = pkg.turn_state || null;
+    // CS21A192 instala este guard de forma acumulativa. Se ejecuta despues del
+    // refetch canonico y bajo el mismo ScriptLock del submit, antes de tocar el
+    // intento, el tablero, los puntos o el turno. En paquetes anteriores es no-op.
+    if (typeof _cs21a192ExpectedStateConflict_ === 'function') {
+      var stateConflict = _cs21a192ExpectedStateConflict_(normalized, pkg, turnState);
+      if (stateConflict) return stateConflict;
+    }
     var shared = _cs21a189ClassicShared_(pkg);
     var normalizedAttempt = _cs21a189NormalizeAttempt_(shared, turnState, now);
 

@@ -18,6 +18,7 @@ const sources = [
   'apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs',
   'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs',
   'apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs',
+  'apps_script_patches/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs',
 ];
 const target = path.join(root, 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs');
 
@@ -26,7 +27,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Marcadores históricos de compatibilidad CI (no describen la versión actual):\n// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183-CS21A192 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Marcadores históricos de compatibilidad CI (no describen la versión actual):\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS + 99O MEMORY MATCH CONSISTENCY\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -37,6 +38,7 @@ fs.writeFileSync(target, content.replace(/\s*$/, '') + '\n', 'utf8');
 
 const check = fs.readFileSync(target, 'utf8');
 const required = [
+  'CS21A183-CS21A192 · APPS SCRIPT QA COMPLETO',
   'CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO',
   'CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO',
   'CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO',
@@ -55,6 +57,8 @@ const required = [
   "ELHANG191_VERSION = 'CS21A191-HANGMAN-1'",
   "ELHANG191_GAME_CODE = 'HANGMAN'",
   "ELHANG191_ROBUSTNESS_VERSION = 'CS21A191-HANGMAN-ROBUSTNESS-1'",
+  "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-1'",
+  'CS21A192_MM_MISMATCH_REVEAL_MS = CS21A192_MM_MAX_POLL_MS +',
   'CS21A189_MM_MISMATCH_REVEAL_MS = 2200',
   'CS21A183_MM_PRESENCE_TTL_MS = 60000',
   'function verificarMemoryMatchStartFixCS21A183()',
@@ -99,6 +103,21 @@ const required = [
   '__cs21a188SharedDiscovery',
   '__cs21a189ClassicSync',
   '__cs21a190TransientCleanup',
+  '__cs21a192AtomicTransition',
+  '__cs21a192RevisionKeyed',
+  '__cs21a192RevisionCache',
+  '__cs21a192CanonicalSnapshot',
+  '__cs21a192RevisionedResponses',
+  '__cs21a192RevisionedClose',
+  '__cs21a192MemoryOnlyClose',
+  'atomic_timeout_cleanup:true',
+  'stale_snapshot_resurrection_blocked:true',
+  'monotonic_state_revision:true',
+  'fresh_server_now_outside_cache:true',
+  'timeout_event_cache_invalidated:true',
+  'mismatch_reveal_ms:CS21A192_MM_MISMATCH_REVEAL_MS',
+  'revisioned_round_close:true',
+  'revisioned_room_close:true',
   'players_online',
   'players_registered',
 ];
@@ -116,7 +135,7 @@ console.log(JSON.stringify({
   target,
   path:target,
   sources,
-  fix:'CS21A191-HANGMAN-1',
+  fix:'CS21A192-MM-CONSISTENCY-1',
   hangmanRobustness:'CS21A191-HANGMAN-ROBUSTNESS-1',
   legacyCiCompatibility:['CS21A189','CS21A190'],
   memoryTimeoutCleanup:'CS21A190-MM-TIMEOUT-CLEANUP-1',
@@ -128,11 +147,16 @@ console.log(JSON.stringify({
   classicMemory:true,
   synchronizedReveal:true,
   mismatchFlipBack:true,
-  mismatchRevealMs:2200,
   persistentDiscovery:false,
   matchedPairStaysFaceUp:true,
   timeoutClearsFirstReveal:true,
   staleSnapshotSanitized:true,
+  atomicTimeoutCleanup:true,
+  staleSnapshotResurrectionBlocked:true,
+  monotonicStateRevision:true,
+  freshServerNowOutsideCache:true,
+  timeoutEventCacheInvalidated:true,
+  mismatchRevealMs:6000,
   hangman:true,
   hangmanServerAuthoritative:true,
   hangmanSourceIdShuffleSafe:true,

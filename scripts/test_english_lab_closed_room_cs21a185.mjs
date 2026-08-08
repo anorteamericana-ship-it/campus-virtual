@@ -91,6 +91,12 @@ assert.equal(api.isKnownClosedRoom('LAB-3386'), false);
 // CS21A184 sigue intacto: al cargar Live se deben cargar antes las 4 dependencias.
 window.EnglishLabMemoryMatchLiveCS21A174 = {};
 window.MemoryMatchLiveRoundCS21A174 = function () {};
+// Desde CS21A191 el mismo guard también exige el stack de Ahorcado. El lazy
+// loader simulado registra los archivos, pero no los evalúa; estos dobles
+// representan exactamente las tres globals que esos archivos instalarían.
+window.EnglishLabGameRegistryCS21A191 = {};
+window.EnglishLabHangmanEngineCS21A191 = {};
+window.EnglishLabHangmanCS21A191 = { install() {} };
 await window.anLazyCampus.loadOne('src/english_lab_live.jsx?v=F98.4Z6CS20H');
 for (const required of api.prerequisites) assert.equal(loaded.includes(required), true, `Falta dependencia ${required}`);
 assert.equal(loaded.some(item => /english_lab_live\.jsx/.test(item)), true);

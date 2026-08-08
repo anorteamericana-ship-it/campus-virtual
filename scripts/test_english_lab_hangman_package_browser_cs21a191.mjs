@@ -8,7 +8,9 @@ const base=(process.env.QA_BASE_URL||'http://127.0.0.1:4191').replace(/\/$/,'');
 const out=path.resolve('qa-output/cs21a191-hangman');
 fs.mkdirSync(out,{recursive:true});
 
-const browser=await chromium.launch({headless:true});
+const launchOptions={headless:true};
+if(process.env.PLAYWRIGHT_EXECUTABLE_PATH)launchOptions.executablePath=process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const browser=await chromium.launch(launchOptions);
 try{
   const page=await browser.newPage({viewport:{width:390,height:844}});
   const response=await page.goto(`${base}/src/english_lab_games/hangman_preview_cs21a191.html`,{waitUntil:'networkidle'});

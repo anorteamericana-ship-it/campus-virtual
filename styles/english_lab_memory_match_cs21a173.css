@@ -7,7 +7,10 @@
   --elmm-surface:#FFFFFF;
   --elmm-line:#D7E0EA;
   --elmm-ink:#243447;
+  box-sizing:border-box;
   width:min(1180px,100%);
+  max-width:100%;
+  min-width:0;
   margin:0 auto;
   padding:20px;
   border:1px solid var(--elmm-line);

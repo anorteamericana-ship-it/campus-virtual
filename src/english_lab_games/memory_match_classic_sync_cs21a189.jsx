@@ -85,7 +85,15 @@
       const currentTurn = Number(turnState && turnState.turn_number || 0) || 0;
       const attemptTurn = Number(attempt.turn_number || 0) || 0;
       if (currentTurn && attemptTurn && currentTurn !== attemptTurn) return {active:false,phase,ids:new Set(),transition:false};
-      return {active:true,phase,ids:new Set([clean(attempt.first_card_id)]),transition:false};
+      // El snapshot puede tardar en persistir la limpieza del timeout. La carta
+      // temporal nunca debe sobrevivir localmente al deadline autoritativo del
+      // turno, aunque un poll vuelva a traer FIRST_REVEALED por unos segundos.
+      const turnEndsAt = clean(turnState && (turnState.turn_ends_at || turnState.turnEndsAt) || attempt.turn_ends_at || attempt.turnEndsAt);
+      const remaining = turnEndsAt && clock && typeof clock.remainingMs === 'function'
+        ? clock.remainingMs(turnEndsAt)
+        : turnEndsAt ? Math.max(0, Date.parse(turnEndsAt) - Date.now()) : null;
+      if (remaining !== null && remaining <= 0) return {active:false,phase,ids:new Set(),transition:false,remainingMs:0};
+      return {active:true,phase,ids:new Set([clean(attempt.first_card_id)]),transition:false,remainingMs:remaining};
     }
     if (phase === 'MISMATCH_REVEAL') {
       const until = clean(attempt.reveal_until);
@@ -145,17 +153,18 @@
     return remainingMs;
   }
 
-  function Timer({remainingMs,durationMs,waiting}) {
+  function Timer({remainingMs,durationMs,waiting,syncingTurn}) {
     const duration=Math.max(1,Number(durationMs)||1);
     const pct=Math.max(0,Math.min(100,(remainingMs/duration)*100));
     const seconds=Math.max(0,Math.ceil(remainingMs/1000));
-    return <div className={`elmm-timer ${waiting?'is-transition':''}`} role="timer" aria-label={waiting?'Cambio de turno':`${seconds} segundos restantes`}>
-      <div className="elmm-timer-copy"><span>{waiting?'Cambio de turno':'Tiempo'}</span><strong>{waiting?'…':`${seconds}s`}</strong></div>
-      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:waiting?'100%':`${pct}%`}}/></div>
+    const label=syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
+    return <div className={`elmm-timer ${(waiting||syncingTurn)?'is-transition':''}`} role="timer" aria-label={syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':`${seconds} segundos restantes`}>
+      <div className="elmm-timer-copy"><span>{label}</span><strong>{(waiting||syncingTurn)?'…':`${seconds}s`}</strong></div>
+      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:syncingTurn?'0%':waiting?'100%':`${pct}%`}}/></div>
     </div>;
   }
 
-  function TurnPanel({turnState,players,currentPlayer,turnEngine,readOnly,waiting}) {
+  function TurnPanel({turnState,players,currentPlayer,turnEngine,readOnly,waiting,syncingTurn}) {
     if (!turnState) return null;
     const activeId=clean(turnState.active_player_id || turnState.activePlayerId);
     const mine=playerId(currentPlayer);
@@ -170,10 +179,10 @@
         nextName=clean(d.next_player && d.next_player.name)||nextName;
       }
     } catch(_) {}
-    const heading = waiting ? 'Memorizá las dos cartas' : readOnly ? 'Jugando ahora' : activeId===mine ? 'Tu turno' : 'Esperando turno';
-    return <section className={`elmm-shared-turn ${waiting?'is-transition':''}`} aria-label="Turno actual">
-      <div><span>Turno {Number(turnState.turn_number||1)||1}</span><strong>{heading}: {activeName}</strong><small>{waiting?'Se cerrarán juntas antes del próximo turno.':`Siguiente: ${nextName}`}</small></div>
-      <b>{waiting?'Tablero bloqueado':readOnly?'Vista de control':activeId===mine?'Podés jugar':'Observando'}</b>
+    const heading = syncingTurn ? 'Sincronizando cambio' : waiting ? 'Memorizá las dos cartas' : readOnly ? 'Jugando ahora' : activeId===mine ? 'Tu turno' : 'Esperando turno';
+    return <section className={`elmm-shared-turn ${(waiting||syncingTurn)?'is-transition':''}`} aria-label="Turno actual">
+      <div><span>Turno {Number(turnState.turn_number||1)||1}</span><strong>{heading}: {activeName}</strong><small>{syncingTurn?'El servidor confirmará el siguiente turno.':waiting?'Se cerrarán juntas antes del próximo turno.':`Siguiente: ${nextName}`}</small></div>
+      <b>{syncingTurn?'Esperando servidor':waiting?'Tablero bloqueado':readOnly?'Vista de control':activeId===mine?'Podés jugar':'Observando'}</b>
     </section>;
   }
 
@@ -191,12 +200,14 @@
     const currentId=playerId(currentPlayer);
     const activeId=clean(turnState && (turnState.active_player_id || turnState.activePlayerId));
     const phase=upper(normalized.state.phase);
-    const remainingMs=useServerTimer(normalized.clock, normalized.state.endsAt, phase==='OPEN');
+    const activeClock=props && props.authoritativeClock || normalized.clock;
+    const remainingMs=useServerTimer(activeClock, normalized.state.endsAt, phase==='OPEN');
     useClockTick(!!shared.attempt);
-    const reveal=attemptVisible(shared, normalized.clock, turnState);
-    const turnStartsIn=turnState && clean(turnState.turn_started_at) && normalized.clock && typeof normalized.clock.remainingMs==='function'
-      ? normalized.clock.remainingMs(turnState.turn_started_at) : 0;
+    const reveal=attemptVisible(shared, activeClock, turnState);
+    const turnStartsIn=turnState && clean(turnState.turn_started_at) && activeClock && typeof activeClock.remainingMs==='function'
+      ? activeClock.remainingMs(turnState.turn_started_at) : 0;
     const waitingForFlipback=reveal.phase==='MISMATCH_REVEAL' && reveal.active;
+    const syncingTurn=phase==='OPEN' && remainingMs<=0 && !waitingForFlipback;
     const turnReady=turnStartsIn<=0 && !waitingForFlipback;
     const isMyTurn=turnState && turnEngine && typeof turnEngine.canPlayerAct==='function'
       ? turnEngine.canPlayerAct(turnState,currentPlayer,{readOnly:!!(props&&props.readOnly)})
@@ -206,6 +217,7 @@
     const [optimistic,setOptimistic]=React.useState([]);
     const [syncing,setSyncing]=React.useState(false);
     const [announcement,setAnnouncement]=React.useState('');
+    const authoritativeOnly=!!(props&&props.authoritativeOnly);
     const revealPromiseRef=React.useRef(Promise.resolve());
     const localStartRef=React.useRef(Date.now());
 
@@ -244,7 +256,7 @@
     const selectCard=React.useCallback(card=>{
       if(!canPlay || syncing || isClaimed(shared,card) || waitingForFlipback) return;
       if(!localFirstId){
-        setOptimistic([card.id]);
+        if(!authoritativeOnly) setOptimistic([card.id]);
         setSyncing(true);
         setAnnouncement('Primera carta abierta para toda la sala. Elegí una segunda.');
         const promise=Promise.resolve(send(buildAction('DISCOVER_CARD',{card_id:card.id})))
@@ -265,7 +277,7 @@
       if(card.id===localFirstId) return;
       const first=cards.find(item=>item.id===localFirstId);
       if(!first) { setOptimistic([]); return; }
-      setOptimistic([first.id,card.id]);
+      if(!authoritativeOnly) setOptimistic([first.id,card.id]);
       setSyncing(true);
       const correct=first.pairId===card.pairId;
       setAnnouncement(correct?'Comprobando pareja…':'Comparando cartas…');
@@ -282,7 +294,7 @@
           setOptimistic([]);
         })
         .finally(()=>setSyncing(false));
-    },[canPlay,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction]);
+    },[canPlay,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction,authoritativeOnly]);
 
     const claimedCount=Object.keys(shared.claimed).length || shared.matchedPairs.size;
     const completed=shared.completed || claimedCount>=cards.length/2;
@@ -294,8 +306,8 @@
         <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Volteá dos cartas. Si coinciden, ganás el par y seguís jugando. Si no coinciden, todos las ven un momento y vuelven a taparse.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
       </header>
-      <Timer remainingMs={remainingMs} durationMs={normalized.rules.roundDurationMs} waiting={waitingForFlipback || turnStartsIn>0}/>
-      <TurnPanel turnState={turnState} players={players} currentPlayer={currentPlayer} turnEngine={turnEngine} readOnly={!!(props&&props.readOnly)} waiting={waitingForFlipback}/>
+      <Timer remainingMs={remainingMs} durationMs={normalized.rules.roundDurationMs} waiting={waitingForFlipback || turnStartsIn>0} syncingTurn={syncingTurn}/>
+      <TurnPanel turnState={turnState} players={players} currentPlayer={currentPlayer} turnEngine={turnEngine} readOnly={!!(props&&props.readOnly)} waiting={waitingForFlipback} syncingTurn={syncingTurn}/>
       {transitionText && <div className="elmm-flipback-banner" role="status">{transitionText}</div>}
       <div className="elmm-status-row"><span>{claimedCount} / {cards.length/2} parejas ganadas</span><span>{completed?'Completado':waitingForFlipback?'Cerrando cartas…':canPlay?'Tu jugada':activeId?`Turno de ${clean((players.find(p=>playerId(p)===activeId)||{}).name)||activeId}`:'Esperando'}</span></div>
       <div className={`elmm-grid elmm-grid-${Math.min(cards.length,16)}`} role="grid" aria-label="Tablero único sincronizado de Memory Match">

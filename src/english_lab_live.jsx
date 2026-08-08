@@ -83,6 +83,15 @@
       throw e;
     } finally { if(timer) clearTimeout(timer); }
   }
+  function freshestLiveState(current,candidate){
+    const sync=window.EnglishLabMemoryMatchAuthoritativeSyncCS21A192;
+    if(!sync || typeof sync.chooseFreshestState!=='function') return candidate;
+    const memory=!!(
+      candidate?.memory_match || current?.memory_match ||
+      (typeof sync.isMemoryMatchRoom==='function' && (sync.isMemoryMatchRoom(candidate?.room) || sync.isMemoryMatchRoom(current?.room)))
+    );
+    return memory ? sync.chooseFreshestState(current,candidate) : candidate;
+  }
 
   function Header({title, sub}){
     if(typeof PageHeader === 'function') return <PageHeader kicker="English LAB Live" title={title} sub={sub}/>;
@@ -365,7 +374,7 @@
       try{
         const endpoint = memoryMatch ? 'englishLabMemoryMatchGetRoomControl' : 'englishLabLiveGetRoomControl';
         const r=await postLive(endpoint,{room_id:roomId},45000);
-        setData(r);
+        setData(currentState=>freshestLiveState(currentState,r));
       }
       catch(e){ setError(e.message || String(e)); }
       finally{ setLoading(false); }
@@ -395,7 +404,7 @@
             <button className="btn btn-primary" type="button" onClick={()=>setProjector(false)}>Volver al control</button>
             <button className="btn btn-ghost" type="button" onClick={load}>Actualizar</button>
           </div>
-          <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/>
+          <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} onStateChange={next=>setData(currentState=>freshestLiveState(currentState,next))} readOnly={true}/>
         </div>;
       }
       return <LiveProjectionView room={room} question={memoryMatch ? null : (current || questions[Math.max(0,nextIndex-1)])} leaderboard={leaderboard} teamLeaderboard={teamLeaderboard} stats={data?.stats || {}} onExit={()=>setProjector(false)} onRefresh={load} loading={loading}/>;
@@ -432,7 +441,7 @@
       <ShareRoomPanel room={room}/>
       <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 280px',gap:14,alignItems:'start'}} className="elive-control-grid">
         <div style={{display:'grid',gap:12}}>
-          {loading ? <Alert>Cargando control de ronda…</Alert> : memoryMatch && memoryPackage && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} readOnly={true}/> : memoryMatch ? <Alert tone="warn">Memory Match esta listo. Inicie la sala para cargar el tablero compartido.</Alert> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>}
+          {loading ? <Alert>Cargando control de ronda…</Alert> : memoryMatch && memoryPackage && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={{...data,room,room_package:memoryPackage}} postLive={postLive} onRefresh={load} onStateChange={next=>setData(currentState=>freshestLiveState(currentState,next))} readOnly={true}/> : memoryMatch ? <Alert tone="warn">Memory Match esta listo. Inicie la sala para cargar el tablero compartido.</Alert> : <QuestionCard question={current || questions[Math.max(0,nextIndex-1)]} showAnswer={round==='CLOSED' || status==='CLOSED'}/>}
           <div className="card" style={{padding:14,borderRadius:18,background:'#FFF'}}>
             <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}}>
               {canStart && <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>action(memoryMatch?'englishLabMemoryMatchStartRoom':'englishLabLiveStartRoom')}>{memoryMatch?'Iniciar Memory Match':'Iniciar sala'}</button>}
@@ -551,7 +560,7 @@
         if(!isMemoryMatch && window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(r?.room)){
           r=await postLive('englishLabMemoryMatchGetPlayerState',payload,35000);
         }
-        setState(r); setJoined(!!(r.player && r.player.cod_estudiante));
+        setState(currentState=>freshestLiveState(currentState,r)); setJoined(!!(r.player && r.player.cod_estudiante));
         if(r.player && r.player.cod_estudiante){ setPlayerId(r.player.cod_estudiante); try{ localStorage.setItem('elive_player_'+rc, r.player.cod_estudiante); }catch(_){} }
       }catch(e){ setError(e.message || String(e)); }
       finally{ setLoading(false); }
@@ -563,10 +572,12 @@
       try{ const saved=localStorage.getItem('elive_player_'+rc) || ''; if(saved) { setPlayerId(saved); setJoined(true); loadState(saved, rc); } }catch(_){}
     },[roomCode,playerId,loadState]);
     React.useEffect(()=>{
-      if(!joined || !roomCode) return;
+      // Memory Match CS21A192 tiene un solo dueño de polling dentro del adaptador.
+      // Este ciclo histórico queda únicamente para los demás juegos live.
+      if(!joined || !roomCode || isMemoryMatch) return;
       const id=setInterval(()=>loadState(),4000);
       return ()=>clearInterval(id);
-    },[joined,roomCode,loadState]);
+    },[joined,roomCode,isMemoryMatch,loadState]);
 
     async function joinRoom(){
       const rc=publicCode(roomCode);
@@ -576,7 +587,7 @@
       try{
         const saved = (()=>{ try{return localStorage.getItem('elive_player_'+rc)||'';}catch(_){return '';} })();
         const r=await postLive('englishLabLiveJoinRoom',{room_code:rc, player_name:playerName, cod_estudiante:studentCode, player_id:saved || playerId},35000);
-        setRoomCode(rc); setState(r); setJoined(true);
+        setRoomCode(rc); setState(currentState=>freshestLiveState(currentState,r)); setJoined(true);
         const pid=clean(r.player?.cod_estudiante || saved || playerId);
         if(pid){ setPlayerId(pid); try{ localStorage.setItem('elive_player_'+rc,pid); localStorage.setItem('elive_last_room',rc); }catch(_){} }
       }catch(e){ setError(e.message || String(e)); }
@@ -661,7 +672,7 @@
         </div>
         <LiveLeaderboard rows={leaderboard} teams={teamLeaderboard} compact={true}/>
       </div>}
-      {upper(room.status)==='CLOSED' ? <FinalResultsCard room={room} rows={leaderboard} teams={teamLeaderboard} myRank={myRank} compact={false}/> : isMemoryMatch && state?.room_package && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={state} postLive={postLive} onRefresh={()=>loadState()} /> : !question ? <Alert tone="warn">Esperando que el docente lance una pregunta…</Alert> : <PlayerQuestionCard question={question} answer={answer} selected={selected} onSelect={setSelected} onSubmit={submitAnswer} busy={busy} reveal={reveal} />}
+      {upper(room.status)==='CLOSED' ? <FinalResultsCard room={room} rows={leaderboard} teams={teamLeaderboard} myRank={myRank} compact={false}/> : isMemoryMatch && state?.room_package && typeof MemoryMatchLiveRoundCS21A174 === 'function' ? <MemoryMatchLiveRoundCS21A174 state={state} postLive={postLive} onRefresh={()=>loadState()} onStateChange={next=>setState(currentState=>freshestLiveState(currentState,next))} /> : !question ? <Alert tone="warn">Esperando que el docente lance una pregunta…</Alert> : <PlayerQuestionCard question={question} answer={answer} selected={selected} onSelect={setSelected} onSubmit={submitAnswer} busy={busy} reveal={reveal} />}
       {!isMemoryMatch && question && !canAnswer && !answer && upper(room.round_status)==='OPEN' && <div style={{marginTop:12}}><Alert tone="warn">Esta pregunta ya no acepta respuestas para tu usuario o está siendo actualizada.</Alert></div>}
     </div>;
   }
