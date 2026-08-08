@@ -1,0 +1,19 @@
+/* CS21A189 · Memory Match clásico sincronizado. Se apoya en CS21A173. */
+.elmm-classic-sync .elmm-card-front{align-content:center;gap:10px;padding:16px 12px 42px}
+.elmm-classic-sync .elmm-card.is-selected .elmm-card-front{border-color:#E3A900;box-shadow:0 0 0 4px rgba(242,201,76,.28),0 14px 30px rgba(0,30,71,.16)}
+.elmm-classic-sync .elmm-card.is-mismatch .elmm-card-front{border-color:#E89B48;background:linear-gradient(145deg,#FFF,#FFF5E8);box-shadow:0 0 0 4px rgba(232,155,72,.16),0 14px 30px rgba(0,30,71,.14)}
+.elmm-classic-sync .elmm-card.is-claimed .elmm-card-front{border-color:#20A15C;background:linear-gradient(145deg,#FFF,#EAF8EF);box-shadow:0 12px 26px rgba(20,92,56,.16)}
+.elmm-classic-sync .elmm-card-badge{position:absolute;left:9px;right:9px;bottom:9px;display:block;padding:6px 8px;border-radius:10px;font-size:10px;line-height:1.15;font-weight:950;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.elmm-classic-sync .is-claimed-badge{background:#EAF8EF;border:1px solid #BDE8CD;color:#145C38}
+.elmm-classic-sync .elmm-reveal-badge{background:#EEF4FF;border:1px solid #B7D5FF;color:#073B7A}
+.elmm-classic-sync .elmm-mismatch-badge{background:#FFF0DC;border:1px solid #F3C98D;color:#7B4500}
+.elmm-classic-sync .elmm-card[data-face-up="false"]:not(:disabled):hover .elmm-card-inner{transform:translateY(-3px);filter:brightness(1.04)}
+.elmm-classic-sync .elmm-card[data-face-up="true"] .elmm-card-inner{transform:rotateY(180deg)}
+.elmm-classic-sync .elmm-card.is-mismatch .elmm-card-inner{animation:elmmMismatchPulse .7s ease-in-out infinite alternate}
+.elmm-flipback-banner{margin:0 0 12px;padding:10px 14px;border:1px solid #F3C98D;border-radius:14px;background:linear-gradient(90deg,#FFF8EC,#FFF);color:#704000;font-size:12px;font-weight:950;text-align:center}
+.elmm-classic-sync .elmm-timer.is-transition .elmm-timer-fill{background:linear-gradient(90deg,#E89B48,#F2C94C);animation:elmmTransitionSweep .75s ease-in-out infinite alternate}
+.elmm-classic-sync .elmm-shared-turn.is-transition{border-color:#F3C98D;background:linear-gradient(135deg,#FFF7E8,#FFF)}
+@keyframes elmmMismatchPulse{from{filter:saturate(1)}to{filter:saturate(1.15) brightness(1.035)}}
+@keyframes elmmTransitionSweep{from{opacity:.55}to{opacity:1}}
+@media(max-width:620px){.elmm-classic-sync .elmm-card-badge{font-size:9px;padding:5px 6px}.elmm-flipback-banner{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.elmm-classic-sync .elmm-card.is-mismatch .elmm-card-inner,.elmm-classic-sync .elmm-timer.is-transition .elmm-timer-fill{animation:none!important}}
