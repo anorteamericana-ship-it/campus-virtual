@@ -1,0 +1,55 @@
+name: CS21A191 English LAB Hangman
+
+on:
+  push:
+    branches:
+      - feat/cs21a191-hangman-live
+    paths:
+      - '.github/workflows/cs21a191-hangman.yml'
+      - 'src/english_lab_games/english_lab_game_registry_cs21a191.js'
+      - 'src/english_lab_games/hangman_engine_cs21a191.js'
+      - 'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx'
+      - 'src/english_lab_live_student_dependency_guard_cs21a184.js'
+      - 'styles/english_lab_hangman_cs21a191.css'
+      - 'schemas/english_lab_game_package_cs21a191.schema.json'
+      - 'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'scripts/test_english_lab_hangman_engine_cs21a191.mjs'
+      - 'scripts/test_english_lab_hangman_contract_cs21a191.mjs'
+      - 'scripts/test_english_lab_hangman_browser_cs21a191.mjs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hangman:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pure Hangman engine
+        run: node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+      - name: Backend and integration contract
+        run: node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+      - name: Browser JSX and Apps Script syntax
+        run: node scripts/test_english_lab_hangman_browser_cs21a191.mjs
+      - name: Complete Apps Script assembly
+        run: node scripts/assemble_apps_script_cs21a183_complete.mjs
+      - name: Verify assembled markers
+        run: |
+          set -euo pipefail
+          grep -q "CS21A191-HANGMAN-1" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "verificarHangmanCS21A191" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "server_authoritative_answer_hidden:true" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+      - name: Confirm main was not modified by this workflow
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "feat/cs21a191-hangman-live"
+          echo "QA branch only: ${GITHUB_SHA}"
