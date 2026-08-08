@@ -6,6 +6,7 @@ on:
       - feat/cs21a183-sentence-order-live
       - feat/cs21a188-memory-match-shared-discovery
       - feat/cs21a189-memory-match-classic-sync
+      - feat/cs21a190-memory-match-timeout-style-sync
     paths:
       - '.github/workflows/cs21a183-assemble-apps-script-complete.yml'
       - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
@@ -20,6 +21,7 @@ on:
       - 'apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'
       - 'apps_script_patches/99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs'
       - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
+      - 'apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs'
   workflow_dispatch:
 
 permissions:
