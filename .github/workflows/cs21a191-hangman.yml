@@ -13,6 +13,7 @@ on:
       - 'styles/english_lab_hangman_cs21a191.css'
       - 'schemas/english_lab_game_package_cs21a191.schema.json'
       - 'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs'
+      - 'apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs'
       - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
       - 'scripts/test_english_lab_hangman_engine_cs21a191.mjs'
       - 'scripts/test_english_lab_hangman_contract_cs21a191.mjs'
@@ -46,8 +47,12 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "CS21A191-HANGMAN-1" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "CS21A191-HANGMAN-ROBUSTNESS-1" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q "verificarHangmanCS21A191" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "verificarHangmanRobustnessCS21A191" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q "server_authoritative_answer_hidden:true" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "delete response.memory_match" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "source_id_shuffle_safe" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
       - name: Confirm main was not modified by this workflow
         run: |
           set -euo pipefail
