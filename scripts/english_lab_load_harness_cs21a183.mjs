@@ -62,6 +62,11 @@ function summarize(samples) {
 // El microcaché de 750 ms evita que ambos canales golpeen Apps Script cuando caen
 // próximos. Se barre el desfase del polling base para obtener el peor caso/minuto.
 function modeledPhysicalReadsPerMinute(players, stepMs=50) {
+  // Defensa importante: Array.map pasa (value,index,array). Si esta función se usa
+  // accidentalmente como callback directo, el índice 0 no puede convertirse en
+  // stepMs=0 y dejar el gate de carga en un bucle infinito.
+  stepMs = Number(stepMs);
+  if (!Number.isFinite(stepMs) || stepMs < 10) stepMs = 50;
   const fastMs = livePollMsForPlayers(players);
   const durationMs = 60000;
   function countForOffset(baseOffset) {
@@ -280,7 +285,7 @@ async function selfTest() {
   assert.equal(livePollMsForPlayers(10),1800);
   assert.equal(livePollMsForPlayers(15),2500);
   assert.equal(livePollMsForPlayers(25),3500);
-  const models = SHARED_DISCOVERY_PHASES.map(modeledPhysicalReadsPerMinute);
+  const models = SHARED_DISCOVERY_PHASES.map(players => modeledPhysicalReadsPerMinute(players));
   for (const model of models) {
     assert.ok(model.student_physical_reads_per_minute.max < 55,'El microcaché debe mejorar el doble polling histórico.');
     assert.ok(model.worst_requests_per_second < 20,'El modelo Shared Discovery no debe superar 20 req/s hasta 25 estudiantes.');
@@ -345,7 +350,7 @@ if (!execute) {
     phases,
     duration_seconds:durationMs/1000,
     explicit_interval_ms:explicitIntervalMs || null,
-    adaptive_models:phases.map(modeledPhysicalReadsPerMinute),
+    adaptive_models:phases.map(players => modeledPhysicalReadsPerMinute(players)),
     timeout_ms:timeoutMs,
     max_error_rate:maxErrorRate,
     max_p95_ms:maxP95Ms,
