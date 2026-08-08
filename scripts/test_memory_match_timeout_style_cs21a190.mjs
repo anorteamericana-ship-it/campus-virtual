@@ -31,7 +31,7 @@ for(const marker of [
 ]) assert.ok(patcher.includes(marker),`Patcher CS21A190 no contiene ${marker}`);
 
 assert.ok(assembler.includes('99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs'));
-assert.ok(assembler.includes('CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO'));
+assert.match(assembler,/CS21A183-CS21A19(?:0|1) · APPS SCRIPT QA COMPLETO/);
 assert.ok(assembler.includes('99L TIMEOUT CLEANUP'));
 
 console.log(JSON.stringify({
@@ -41,5 +41,6 @@ console.log(JSON.stringify({
   stale_snapshot_sanitized:true,
   base_style_guaranteed:true,
   classic_style_guaranteed:true,
+  accumulated_assembler_compatible:true,
   cache_epoch:'CS21A190'
 },null,2));
