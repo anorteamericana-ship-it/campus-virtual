@@ -1,0 +1,176 @@
+name: CS21A190 Release Candidate QA
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'src/english_lab_live_timeout_style_guard_cs21a190.js'
+      - 'src/english_lab_games/memory_match_style_guard_preview_cs21a190.html'
+      - 'styles/english_lab_memory_match_cs21a173.css'
+      - 'styles/english_lab_memory_match_classic_sync_cs21a189.css'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'scripts/test_memory_match_timeout_style_cs21a190.mjs'
+      - 'scripts/test_memory_match_timeout_style_browser_cs21a190.mjs'
+      - 'scripts/patch_qa_package_cs21a190.mjs'
+      - '.github/workflows/cs21a190-release-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate accumulated English LAB contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_update_qa_cs21a176.mjs
+          node scripts/test_memory_match_start_guard_cs21a183.mjs
+          node scripts/test_memory_match_presence_runtime_cs21a183.mjs
+          node scripts/test_english_lab_fetch_resilience_cs21a183.mjs
+          node scripts/test_english_lab_product_lifecycle_cs21a187.mjs
+          node scripts/test_memory_match_shared_discovery_cs21a188.mjs
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_cs21a190.mjs
+          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_live_loader_cs21a178.mjs
+          node scripts/test_atomic_lazy_routes_cs21a179.mjs
+          node scripts/audit_delivery_surface.mjs
+          node scripts/audit_component_ownership_cs21a151.mjs
+
+      - name: Validate exact complete Apps Script 99 through 99L
+        run: |
+          set -euo pipefail
+          complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          test -f "$complete"
+          grep -q 'CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO' "$complete"
+          grep -q '99L TIMEOUT CLEANUP' "$complete"
+          grep -q "CS21A189_MM_CLASSIC_SYNC_VERSION = 'CS21A189-MM-CLASSIC-SYNC-1'" "$complete"
+          grep -q "CS21A190_MM_TIMEOUT_CLEANUP_VERSION = 'CS21A190-MM-TIMEOUT-CLEANUP-1'" "$complete"
+          grep -q 'classic_memory:true' "$complete"
+          grep -q 'mismatch_flip_back:true' "$complete"
+          grep -q 'persistent_discovery:false' "$complete"
+          grep -q 'timeout_clears_first_reveal:true' "$complete"
+          grep -q 'stale_snapshot_sanitized:true' "$complete"
+          grep -q '__cs21a190TransientCleanup' "$complete"
+          if grep -q "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'" "$complete"; then
+            echo 'ERROR: el archivo completo conserva FIX2.'
+            exit 1
+          fi
+
+      - name: Build and audit isolated QA frontend
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start isolated QA server
+        shell: bash
+        run: |
+          python3 -m http.server 4179 --bind 127.0.0.1 > cs21a190-rc-server.log 2>&1 &
+          echo $! > cs21a190-rc-server.pid
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:4179/campus.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat cs21a190-rc-server.log
+          exit 1
+
+      - name: Validate browser lifecycle Classic Sync timeout and styles
+        env:
+          QA_BASE_URL: http://127.0.0.1:4179
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_turn_browser_cs21a176.mjs
+          node scripts/test_english_lab_student_browser_cs21a178.mjs
+          node scripts/test_english_lab_product_lifecycle_browser_cs21a187.mjs
+          node scripts/test_memory_match_classic_sync_browser_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_browser_cs21a190.mjs
+
+      - name: Build exact CS21A190 QA release candidate
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_MERGE_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
+          node scripts/patch_qa_package_cs21a187.mjs
+          node scripts/patch_qa_package_cs21a189.mjs
+          node scripts/patch_qa_package_cs21a190.mjs
+          cd dist
+          zip -X -q -r CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
+          sha256sum CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip > CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
+
+      - name: Smoke exact packaged candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f cs21a190-rc-server.pid; then kill "$(cat cs21a190-rc-server.pid)" 2>/dev/null || true; fi
+          package='dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE'
+          PORT=4181 node "$package/serve.mjs" > cs21a190-rc-package-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4181/qa-setup.html >/dev/null; then
+              curl --fail --silent --output /tmp/campus.html http://127.0.0.1:4181/campus.html
+              curl --fail --silent --output /tmp/base.css http://127.0.0.1:4181/styles/english_lab_memory_match_cs21a173.css
+              curl --fail --silent --output /tmp/classic.css http://127.0.0.1:4181/styles/english_lab_memory_match_classic_sync_cs21a189.css
+              curl --fail --silent --output /tmp/style-guard.js http://127.0.0.1:4181/src/english_lab_live_timeout_style_guard_cs21a190.js
+              curl --fail --silent --output /tmp/timeout-backend.gs http://127.0.0.1:4181/apps_script_patches/99L_FIX_MEMORY_MATCH_TIMEOUT_CLEANUP_QA_CS21A190.gs
+              curl --fail --silent --output /tmp/complete.gs http://127.0.0.1:4181/apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+              curl --fail --silent --output /tmp/version.txt http://127.0.0.1:4181/VERSION.txt
+              grep -q 'english_lab_memory_match_cs21a173.css?v=CS21A190' /tmp/campus.html
+              grep -q 'english_lab_memory_match_classic_sync_cs21a189.css?v=CS21A190' /tmp/campus.html
+              grep -q 'english_lab_live_timeout_style_guard_cs21a190.js?v=F98.4Z6CS21A190' /tmp/campus.html
+              grep -q 'BASE_STYLE_HREF' /tmp/style-guard.js
+              grep -q 'CLASSIC_STYLE_HREF' /tmp/style-guard.js
+              grep -q 'CS21A190-MM-TIMEOUT-CLEANUP-1' /tmp/timeout-backend.gs
+              grep -q 'timeout_clears_first_reveal:true' /tmp/timeout-backend.gs
+              grep -q '99L TIMEOUT CLEANUP' /tmp/complete.gs
+              grep -q 'MEMORY_MATCH_CACHE_EPOCH=CS21A190' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_TIMEOUT_FIRST_REVEAL_CLEAR=true' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_STYLE_BASE=english_lab_memory_match_cs21a173.css' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_STYLE_CLASSIC=english_lab_memory_match_classic_sync_cs21a189.css' /tmp/version.txt
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat cs21a190-rc-package-server.log
+          exit 1
+
+      - name: Upload exact CS21A190 release candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A190_MEMORY_MATCH_TIMEOUT_STYLE_SYNC
+          path: |
+            dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip
+            dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
+            qa-output/cs21a187-product-lifecycle/
+            qa-output/cs21a189-classic-sync/
+            qa-output/cs21a190-timeout-style/
+            cs21a190-rc-server.log
+            cs21a190-rc-package-server.log
+          if-no-files-found: warn
+          retention-days: 30
