@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           node scripts/test_memory_match_timeout_style_cs21a190.mjs
           node scripts/assemble_apps_script_cs21a183_complete.mjs
-          grep -q 'CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -Eq 'CS21A183-CS21A19(0|1) · APPS SCRIPT QA COMPLETO' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q '99L TIMEOUT CLEANUP' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q "CS21A190_MM_TIMEOUT_CLEANUP_VERSION = 'CS21A190-MM-TIMEOUT-CLEANUP-1'" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
           grep -q 'timeout_clears_first_reveal:true' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
