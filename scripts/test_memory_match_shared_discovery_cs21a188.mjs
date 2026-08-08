@@ -57,6 +57,7 @@ assert.notEqual(shared.discovered_cards['CARD-A'].discovered_by,claim.claimed_by
 
 for (const marker of [
   "const VERSION = 'CS21A188'",
+  "const STYLE_HREF = '/styles/english_lab_memory_match_cs21a173.css?v=CS21A188'",
   "data-card-state={claimed?'CLAIMED':visible?'DISCOVERED':'HIDDEN'}",
   "buildAction('DISCOVER_CARD'",
   "buildAction('SUBMIT_PAIR'",
@@ -65,9 +66,11 @@ for (const marker of [
   'No coinciden. Ambas quedan descubiertas para la sala.',
   'MemoryMatchGameCS21A173=MemoryMatchSharedDiscoveryCS21A188',
 ]) assert.ok(frontend.includes(marker), `Frontend no contiene ${marker}`);
+assert.ok(!frontend.includes("const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188'"),'Shared Discovery no puede depender de una ruta CSS relativa al documento actual.');
 
 for (const marker of [
   "const VERSION = 'CS21A188'",
+  "const STYLE_HREF = '/styles/english_lab_memory_match_cs21a173.css?v=CS21A188'",
   'const LIVE_POLL_MS = 1500',
   'Object.freeze({maxPlayers:5,ms:1500})',
   'Object.freeze({maxPlayers:10,ms:1800})',
@@ -82,6 +85,7 @@ for (const marker of [
   'Carta compartida con toda la sala.',
   'Sincronizando jugada…',
 ]) assert.ok(adapter.includes(marker), `Adaptador Live no contiene ${marker}`);
+assert.ok(!adapter.includes("const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188'"),'El adaptador Live no puede resolver CSS relativamente desde previews/rutas anidadas.');
 assert.ok(!adapter.includes('const READ_ONLY_POLL_MS = 4000'),'El adaptador no puede conservar el polling docente antiguo fijo de 4 segundos.');
 const immediateMerge=adapter.indexOf('if (result && result.room_package)');
 const fallbackRefresh=adapter.indexOf("else if (typeof onRefresh === 'function')");
@@ -116,6 +120,7 @@ console.log(JSON.stringify({
   matcher_can_differ_from_discoverer:true,
   correct_pair_points:1,
   shared_discovery_loaded_before_live_adapter:true,
+  absolute_css_route:true,
   adaptive_poll_ms:{'1-5':1500,'6-10':1800,'11-15':2500,'16-25':3500},
   read_cache_ms:750,
   hidden_tab_poll_paused:true,
