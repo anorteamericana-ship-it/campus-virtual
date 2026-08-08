@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QA · Memory Match Style Guard CS21A190</title>
+</head>
+<body>
+  <main id="state">cargando</main>
+  <script src="../english_lab_live_timeout_style_guard_cs21a190.js?v=F98.4Z6CS21A190"></script>
+  <script>
+    (async function(){
+      const guard=window.__ENGLISH_LAB_TIMEOUT_STYLE_GUARD_CS21A190__;
+      if(!guard) throw new Error('No cargó guard CS21A190.');
+      guard.install();
+      const base=document.getElementById('english-lab-memory-match-base-cs21a190');
+      const classic=document.getElementById('english-lab-memory-match-classic-cs21a190');
+      const result={
+        guard:true,
+        base:!!base,
+        classic:!!classic,
+        baseHref:base&&base.getAttribute('href'),
+        classicHref:classic&&classic.getAttribute('href')
+      };
+      window.__QA_CS21A190_STYLE__=result;
+      document.getElementById('state').textContent=JSON.stringify(result);
+    })().catch(error=>{
+      window.__QA_CS21A190_STYLE_ERROR__=error.message;
+      document.getElementById('state').textContent='ERROR: '+error.message;
+    });
+  </script>
+</body>
+</html>
