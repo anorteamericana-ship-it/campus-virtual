@@ -14,6 +14,7 @@ on:
       - 'styles/english_lab_hangman_cs21a191.css'
       - 'schemas/english_lab_game_package_cs21a191.schema.json'
       - 'scripts/patch_qa_package_cs21a191.mjs'
+      - 'scripts/finalize_qa_package_cs21a191.mjs'
       - 'scripts/test_english_lab_hangman_engine_cs21a191.mjs'
       - 'scripts/test_english_lab_hangman_contract_cs21a191.mjs'
       - 'scripts/test_english_lab_hangman_browser_cs21a191.mjs'
@@ -76,6 +77,9 @@ jobs:
       - name: Patch Hangman CS21A191 into isolated QA package
         run: node scripts/patch_qa_package_cs21a191.mjs
 
+      - name: Normalize final CS21A191 package metadata
+        run: node scripts/finalize_qa_package_cs21a191.mjs
+
       - name: Verify exact Hangman CS21A191 QA package
         run: node scripts/patch_qa_package_cs21a191.mjs --verify
 
@@ -119,6 +123,8 @@ jobs:
           grep -q 'CS21A191-HANGMAN-ROBUSTNESS-1' /tmp/complete191.gs
           grep -q 'delete response.memory_match' /tmp/complete191.gs
           grep -q 'VERSION=CS21A191' /tmp/version191.txt
+          grep -q 'PURPOSE=English LAB Live Hangman server-authoritative QA candidate' /tmp/version191.txt
+          grep -q 'APPS_SCRIPT_CHANGE=YES_QA_ONLY_REPLACE_COMPLETE_99_AFTER_98' /tmp/version191.txt
           grep -q 'APPS_SCRIPT_INSTALL_MODE=SINGLE_COMPLETE_FILE_99_THROUGH_99N_AFTER_98' /tmp/version191.txt
           grep -q 'HANGMAN_SERVER_AUTHORITATIVE=true' /tmp/version191.txt
 
