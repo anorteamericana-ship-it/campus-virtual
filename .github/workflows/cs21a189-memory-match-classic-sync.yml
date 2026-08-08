@@ -1,0 +1,87 @@
+name: CS21A189 Memory Match Classic Sync
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'src/english_lab_live_classic_sync_guard_cs21a189.js'
+      - 'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'
+      - 'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx'
+      - 'src/english_lab_games/memory_match_classic_sync_preview_cs21a189.html'
+      - 'styles/english_lab_memory_match_classic_sync_cs21a189.css'
+      - 'scripts/test_memory_match_classic_sync_cs21a189.mjs'
+      - 'scripts/test_memory_match_classic_sync_browser_cs21a189.mjs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - '.github/workflows/cs21a189-memory-match-classic-sync.yml'
+  pull_request:
+    paths:
+      - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'src/english_lab_live_classic_sync_guard_cs21a189.js'
+      - 'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'
+      - 'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx'
+      - 'src/english_lab_games/memory_match_classic_sync_preview_cs21a189.html'
+      - 'styles/english_lab_memory_match_classic_sync_cs21a189.css'
+      - 'scripts/test_memory_match_classic_sync_cs21a189.mjs'
+      - 'scripts/test_memory_match_classic_sync_browser_cs21a189.mjs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - '.github/workflows/cs21a189-memory-match-classic-sync.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  classic-sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify classic Memory contract
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+      - name: Rebuild exact complete Apps Script
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+          grep -q 'CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO' "$complete"
+          grep -q '99K CLASSIC SYNC' "$complete"
+          grep -q "CS21A189_MM_CLASSIC_SYNC_VERSION = 'CS21A189-MM-CLASSIC-SYNC-1'" "$complete"
+          grep -q 'mismatch_flip_back:true' "$complete"
+          grep -q 'persistent_discovery:false' "$complete"
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start browser server
+        run: |
+          python3 -m http.server 4178 --bind 127.0.0.1 > cs21a189-server.log 2>&1 &
+          echo $! > cs21a189-server.pid
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:4178/src/english_lab_games/memory_match_classic_sync_preview_cs21a189.html >/dev/null && exit 0
+            sleep 0.5
+          done
+          cat cs21a189-server.log
+          exit 1
+      - name: Verify one classic board across Chu Naty and teacher
+        env:
+          QA_BASE_URL: http://127.0.0.1:4178
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_classic_sync_browser_cs21a189.mjs
+      - name: Upload Classic Sync evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A189_MEMORY_MATCH_CLASSIC_SYNC_EVIDENCE
+          path: |
+            qa-output/cs21a189-classic-sync/
+            cs21a189-server.log
+          if-no-files-found: warn
+          retention-days: 30
