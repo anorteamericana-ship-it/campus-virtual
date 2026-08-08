@@ -15,16 +15,23 @@ on:
       - 'apps_script_patches/99G_FIX_MEMORY_MATCH_RULES_QA_CS21A186.gs'
       - 'apps_script_patches/99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs'
       - 'apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'
+      - 'apps_script_patches/99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs'
+      - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
       - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
       - 'src/runtime_config.js'
       - 'src/english_lab_live_product_guard_cs21a187.js'
+      - 'src/english_lab_live_classic_sync_guard_cs21a189.js'
       - 'src/english_lab_games/english_lab_runtime_cs21a173.js'
       - 'src/english_lab_games/memory_match_engine_cs21a173.jsx'
       - 'src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx'
+      - 'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'
       - 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx'
+      - 'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx'
+      - 'src/english_lab_games/memory_match_classic_sync_preview_cs21a189.html'
       - 'src/english_lab_games/english_lab_product_lifecycle_preview_cs21a187.html'
       - 'src/english_lab_games/memory_match_shared_discovery_preview_cs21a188.html'
       - 'styles/english_lab_memory_match_cs21a173.css'
+      - 'styles/english_lab_memory_match_classic_sync_cs21a189.css'
       - 'src/english_lab_ux_cs21a181.js'
       - 'src/english_lab_visual_cleanup_cs21a182.js'
       - 'src/english_lab_sentence_order_cs21a183.js'
@@ -39,7 +46,10 @@ on:
       - 'scripts/test_english_lab_product_lifecycle_browser_cs21a187.mjs'
       - 'scripts/test_memory_match_shared_discovery_cs21a188.mjs'
       - 'scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs'
+      - 'scripts/test_memory_match_classic_sync_cs21a189.mjs'
+      - 'scripts/test_memory_match_classic_sync_browser_cs21a189.mjs'
       - 'scripts/patch_qa_package_cs21a187.mjs'
+      - 'scripts/patch_qa_package_cs21a189.mjs'
       - 'scripts/english_lab_load_harness_cs21a183.mjs'
       - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
       - '.github/workflows/cs21a183-release-candidate.yml'
@@ -75,6 +85,7 @@ jobs:
           node scripts/test_english_lab_fetch_resilience_cs21a183.mjs
           node scripts/test_english_lab_product_lifecycle_cs21a187.mjs
           node scripts/test_memory_match_shared_discovery_cs21a188.mjs
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
           node scripts/english_lab_load_harness_cs21a183.mjs --self-test
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/test_english_lab_live_sync_cs21a177.mjs
@@ -89,19 +100,21 @@ jobs:
           complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
           node scripts/assemble_apps_script_cs21a183_complete.mjs
           test -f "$complete"
-          grep -q 'CS21A183-CS21A188 · APPS SCRIPT QA COMPLETO' "$complete"
-          grep -q '99I SHARED DISCOVERY' "$complete"
+          grep -q 'CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO' "$complete"
+          grep -q '99K CLASSIC SYNC' "$complete"
           grep -q "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX3'" "$complete"
           grep -q "CS21A187_LIVE_LIFECYCLE_FIX_VERSION = 'CS21A187-LIVE-LIFECYCLE-FIX1'" "$complete"
           grep -q "CS21A188_MM_SHARED_DISCOVERY_VERSION = 'CS21A188-MM-SHARED-DISCOVERY-1'" "$complete"
-          grep -q 'CS21A183_MM_PRESENCE_TTL_MS = 60000' "$complete"
+          grep -q "CS21A189_MM_CLASSIC_SYNC_VERSION = 'CS21A189-MM-CLASSIC-SYNC-1'" "$complete"
+          grep -q 'CS21A189_MM_MISMATCH_REVEAL_MS = 2200' "$complete"
           grep -q 'direct_start_no_legacy_delegate:true' "$complete"
           grep -q 'correct_pair_keeps_player:true' "$complete"
           grep -q 'recent_rooms_restored:true' "$complete"
-          grep -q 'pair_count_8_blocked_before_room_creation:true' "$complete"
-          grep -q 'shared_discovery:true' "$complete"
-          grep -q 'discoverer_does_not_own:true' "$complete"
-          grep -q 'claim_owner_is_matcher:true' "$complete"
+          grep -q 'classic_memory:true' "$complete"
+          grep -q 'synchronized_reveal:true' "$complete"
+          grep -q 'mismatch_flip_back:true' "$complete"
+          grep -q 'persistent_discovery:false' "$complete"
+          grep -q 'matched_pair_stays_face_up:true' "$complete"
           grep -q 'players_online' "$complete"
           grep -q 'players_registered' "$complete"
           if grep -q "CS21A183_MM_START_FIX_VERSION = 'CS21A183-MM-START-FIX2'" "$complete"; then
@@ -132,7 +145,7 @@ jobs:
           cat cs21a183-rc-server.log
           exit 1
 
-      - name: Validate Memory Match boards student synchronization lifecycle and Shared Discovery
+      - name: Validate Memory Match boards lifecycle Shared Discovery and Classic Sync
         env:
           QA_BASE_URL: http://127.0.0.1:4178
         run: |
@@ -141,6 +154,7 @@ jobs:
           node scripts/test_english_lab_student_browser_cs21a178.mjs
           node scripts/test_english_lab_product_lifecycle_browser_cs21a187.mjs
           node scripts/test_memory_match_shared_discovery_browser_cs21a188.mjs
+          node scripts/test_memory_match_classic_sync_browser_cs21a189.mjs
 
       - name: Build exact QA release candidate
         env:
@@ -152,6 +166,7 @@ jobs:
           node scripts/build_qa_package_cs21a183_apollo_qa.mjs
           node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
           node scripts/patch_qa_package_cs21a187.mjs
+          node scripts/patch_qa_package_cs21a189.mjs
           cd dist
           zip -X -q -r CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE
           sha256sum CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip > CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
@@ -168,47 +183,38 @@ jobs:
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4181/qa-setup.html >/dev/null; then
               curl --fail --silent --output /tmp/runtime.js http://127.0.0.1:4181/src/runtime_config.js
-              curl --fail --silent --output /tmp/game.js http://127.0.0.1:4181/src/english_lab_sentence_order_cs21a183.js
-              curl --fail --silent --output /tmp/guard.js http://127.0.0.1:4181/src/english_lab_sentence_order_curriculum_guard_cs21a183.js
               curl --fail --silent --output /tmp/product-guard.js http://127.0.0.1:4181/src/english_lab_live_product_guard_cs21a187.js
-              curl --fail --silent --output /tmp/memory-runtime.js http://127.0.0.1:4181/src/english_lab_games/english_lab_runtime_cs21a173.js
-              curl --fail --silent --output /tmp/shared.js http://127.0.0.1:4181/src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx
-              curl --fail --silent --output /tmp/adapter.js http://127.0.0.1:4181/src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx
+              curl --fail --silent --output /tmp/classic-guard.js http://127.0.0.1:4181/src/english_lab_live_classic_sync_guard_cs21a189.js
+              curl --fail --silent --output /tmp/classic-engine.jsx http://127.0.0.1:4181/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+              curl --fail --silent --output /tmp/classic-adapter.jsx http://127.0.0.1:4181/src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx
+              curl --fail --silent --output /tmp/classic.css http://127.0.0.1:4181/styles/english_lab_memory_match_classic_sync_cs21a189.css
               curl --fail --silent --output /tmp/campus.html http://127.0.0.1:4181/campus.html
-              curl --fail --silent --output /tmp/fix.gs http://127.0.0.1:4181/BACKEND_QA/99C_FIX_FUENTE_APOLLO_QA_CS21A183.gs
-              curl --fail --silent --output /tmp/start-fix.gs http://127.0.0.1:4181/BACKEND_QA/99D_FIX_MEMORY_MATCH_START_QA_CS21A183.gs
-              curl --fail --silent --output /tmp/lifecycle.gs http://127.0.0.1:4181/apps_script_patches/99H_FIX_ENGLISH_LAB_LIFECYCLE_QA_CS21A187.gs
-              curl --fail --silent --output /tmp/shared-backend.gs http://127.0.0.1:4181/apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs
+              curl --fail --silent --output /tmp/classic-backend.gs http://127.0.0.1:4181/apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs
               curl --fail --silent --output /tmp/complete.gs http://127.0.0.1:4181/apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
               curl --fail --silent --output /tmp/version.txt http://127.0.0.1:4181/VERSION.txt
-              grep -q 'english_lab_sentence_order_cs21a183.js?v=F98.4Z6CS21A183' /tmp/runtime.js
               grep -q 'englishlabmemorymatchgetroomcontrol:true' /tmp/runtime.js
               grep -q 'ENGLISH_LAB_FETCH_FAILED' /tmp/runtime.js
-              grep -q 'Ordena la oración' /tmp/game.js
-              grep -q 'Tema oficial de la unidad' /tmp/guard.js
               grep -q 'F98.4-Z6-CS21A188' /tmp/product-guard.js
-              grep -q 'memory_match_shared_discovery_cs21a188.jsx?v=CS21A188' /tmp/product-guard.js
-              grep -q 'an:english-lab-detach-room' /tmp/product-guard.js
-              grep -q 'MAX_MEMORY_PAIRS = 6' /tmp/product-guard.js
-              grep -q 'CS21A186-MEMORY-CLOCK-FIX1' /tmp/memory-runtime.js
-              grep -q 'data-shared-discovery="true"' /tmp/shared.js
-              grep -q "buildAction('DISCOVER_CARD'" /tmp/shared.js
-              grep -q 'const LIVE_POLL_MS = 1500' /tmp/adapter.js
-              grep -q 'englishLabMemoryMatchGetPlayerState' /tmp/adapter.js
-              grep -q 'english_lab_live_product_guard_cs21a187.js?v=F98.4Z6CS21A188' /tmp/campus.html
-              grep -q 'CS21A183-APOLLO-QA-FIX' /tmp/fix.gs
-              grep -q 'CS21A183-MM-START-FIX3' /tmp/start-fix.gs
-              grep -q 'CS21A187-LIVE-LIFECYCLE-FIX1' /tmp/lifecycle.gs
-              grep -q 'pair_count_8_blocked_before_room_creation:true' /tmp/lifecycle.gs
-              grep -q 'CS21A188-MM-SHARED-DISCOVERY-1' /tmp/shared-backend.gs
-              grep -q 'discoverer_does_not_own:true' /tmp/shared-backend.gs
-              grep -q '99I SHARED DISCOVERY' /tmp/complete.gs
-              grep -q 'ENGLISH_LAB_PRODUCT_GUARD=F98.4-Z6-CS21A188' /tmp/version.txt
-              grep -q 'ENGLISH_LAB_CLOSED_ROOM_AUTO_EXIT=true' /tmp/version.txt
-              grep -q 'MEMORY_MATCH_CACHE_EPOCH=CS21A188' /tmp/version.txt
-              grep -q 'MEMORY_MATCH_SHARED_DISCOVERY=HIDDEN>DISCOVERED>CLAIMED' /tmp/version.txt
-              grep -q 'MEMORY_MATCH_DISCOVERER_DOES_NOT_OWN=true' /tmp/version.txt
-              grep -q 'MEMORY_MATCH_MATCHER_CLAIMS_PAIR=true' /tmp/version.txt
+              grep -q 'F98.4-Z6-CS21A189' /tmp/classic-guard.js
+              grep -q 'memory_match_classic_sync_cs21a189.jsx?v=CS21A189' /tmp/classic-guard.js
+              grep -q 'data-classic-sync="true"' /tmp/classic-engine.jsx
+              grep -q 'MISMATCH_REVEAL' /tmp/classic-engine.jsx
+              grep -q 'Object.freeze({maxPlayers:5,ms:550})' /tmp/classic-adapter.jsx
+              grep -q 'data-classic-sync-adapter="true"' /tmp/classic-adapter.jsx
+              grep -q '.elmm-card.is-mismatch' /tmp/classic.css
+              grep -q 'english_lab_live_classic_sync_guard_cs21a189.js?v=F98.4Z6CS21A189' /tmp/campus.html
+              grep -q 'CS21A189-MM-CLASSIC-SYNC-1' /tmp/classic-backend.gs
+              grep -q 'persistent_discovery:false' /tmp/classic-backend.gs
+              grep -q '99K CLASSIC SYNC' /tmp/complete.gs
+              grep -q 'MEMORY_MATCH_CACHE_EPOCH=CS21A189' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_MODE=CLASSIC_SYNC' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_MISMATCH_REVEAL_MS=2200' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_PERSISTENT_DISCOVERY=false' /tmp/version.txt
+              grep -q 'MEMORY_MATCH_POLL_TIERS_MS=5:550,10:900,15:1400,25:2200' /tmp/version.txt
+              if grep -q 'MEMORY_MATCH_SHARED_DISCOVERY=HIDDEN>DISCOVERED>CLAIMED' /tmp/version.txt; then
+                echo 'ERROR: el paquete todavía declara Shared Discovery como modo vigente.'
+                exit 1
+              fi
               exit 0
             fi
             sleep 0.5
@@ -216,11 +222,11 @@ jobs:
           cat cs21a183-rc-package-server.log
           exit 1
 
-      - name: Upload exact CS21A188 release candidate
+      - name: Upload exact CS21A189 release candidate
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CAMPUS_QA_CS21A188_SHARED_DISCOVERY
+          name: CAMPUS_QA_CS21A189_MEMORY_MATCH_CLASSIC_SYNC
           path: |
             dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip
             dist/CAMPUS_QA_CS21A183_CANDIDATO_SENTENCE_ORDER_LIVE.zip.sha256
@@ -228,6 +234,7 @@ jobs:
             qa-output/cs21a178-student-sync/
             qa-output/cs21a187-product-lifecycle/
             qa-output/cs21a188-shared-discovery/
+            qa-output/cs21a189-classic-sync/
             cs21a183-rc-server.log
             cs21a183-rc-package-server.log
           if-no-files-found: warn
