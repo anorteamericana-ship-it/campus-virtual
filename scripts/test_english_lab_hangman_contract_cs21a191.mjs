@@ -9,6 +9,7 @@ const integration = read('src/english_lab_games/english_lab_hangman_live_cs21a19
 const registry = read('src/english_lab_games/english_lab_game_registry_cs21a191.js');
 const guard = read('src/english_lab_live_student_dependency_guard_cs21a184.js');
 const css = read('styles/english_lab_hangman_cs21a191.css');
+const assembler = read('scripts/assemble_apps_script_cs21a183_complete.mjs');
 const schema = JSON.parse(read('schemas/english_lab_game_package_cs21a191.schema.json'));
 
 for (const marker of [
@@ -71,6 +72,14 @@ assert.ok(guard.includes('hangmanRuntimeReady'));
 assert.ok(css.includes('@media(max-width:390px)'));
 assert.ok(css.includes('min-height:44px'));
 
+// El archivo completo actual es CS21A191, pero conserva marcadores históricos
+// explícitamente etiquetados como compatibilidad CI para no romper regresiones
+// CS21A189/190 que validan el mismo stack acumulado.
+assert.ok(assembler.includes('CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO'));
+assert.ok(assembler.includes('CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO'));
+assert.ok(assembler.includes('CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO'));
+assert.ok(assembler.includes('Marcadores históricos de compatibilidad CI'));
+
 assert.equal(schema.properties.game_id.type, 'string');
 assert.ok(!JSON.stringify(schema).includes('"const":"MEMORY_MATCH"'), 'contrato genérico no está amarrado a Memory Match');
 assert.ok(schema.properties.game_payload.description.includes('Nunca'));
@@ -89,6 +98,7 @@ console.log(JSON.stringify({
   source_id_shuffle_safe:true,
   hangman_memory_flag_sanitized:true,
   generic_sync_misclassification_guard:true,
+  accumulated_ci_compatibility:['CS21A189','CS21A190'],
   timeout_no_life_penalty:true,
   duplicate_action_guard:true
 }, null, 2));
