@@ -28,6 +28,10 @@ jobs:
   hangman-release-candidate:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TEST_MERGE_SHA: ${{ github.sha }}
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout exact ref
         uses: actions/checkout@v4
@@ -48,20 +52,26 @@ jobs:
           node scripts/test_english_lab_turn_engine_cs21a176.mjs
           node scripts/assemble_apps_script_cs21a183_complete.mjs
 
-      - name: Build exact CS21A191 QA package
-        env:
-          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          TEST_MERGE_SHA: ${{ github.sha }}
-          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: |
-          set -euo pipefail
-          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
-          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
-          node scripts/patch_qa_package_cs21a187.mjs
-          node scripts/patch_qa_package_cs21a189.mjs
-          node scripts/patch_qa_package_cs21a190.mjs
-          node scripts/patch_qa_package_cs21a191.mjs
-          node scripts/patch_qa_package_cs21a191.mjs --verify
+      - name: Build accumulated CS21A183 Apollo QA base
+        run: node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+
+      - name: Verify accumulated CS21A183 Apollo QA base
+        run: node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
+
+      - name: Patch lifecycle CS21A187 into QA base
+        run: node scripts/patch_qa_package_cs21a187.mjs
+
+      - name: Patch classic sync CS21A189 into QA base
+        run: node scripts/patch_qa_package_cs21a189.mjs
+
+      - name: Patch timeout style CS21A190 into QA base
+        run: node scripts/patch_qa_package_cs21a190.mjs
+
+      - name: Patch Hangman CS21A191 into isolated QA package
+        run: node scripts/patch_qa_package_cs21a191.mjs
+
+      - name: Verify exact Hangman CS21A191 QA package
+        run: node scripts/patch_qa_package_cs21a191.mjs --verify
 
       - name: Install Playwright
         run: |
@@ -103,6 +113,7 @@ jobs:
           grep -q 'CS21A191-HANGMAN-ROBUSTNESS-1' /tmp/complete191.gs
           grep -q 'delete response.memory_match' /tmp/complete191.gs
           grep -q 'VERSION=CS21A191' /tmp/version191.txt
+          grep -q 'APPS_SCRIPT_INSTALL_MODE=SINGLE_COMPLETE_FILE_99_THROUGH_99N_AFTER_98' /tmp/version191.txt
           grep -q 'HANGMAN_SERVER_AUTHORITATIVE=true' /tmp/version191.txt
 
       - name: Validate packaged preview at 390 px
@@ -110,20 +121,28 @@ jobs:
           QA_BASE_URL: http://127.0.0.1:4191
         run: node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
 
-      - name: Zip exact candidate
+      - name: Zip exact candidate for checksum evidence
         run: |
           set -euo pipefail
           cd dist
           zip -X -q -r CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE
           sha256sum CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip > CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip.sha256
 
-      - name: Upload exact CS21A191 release candidate
-        if: always()
+      - name: Upload directly usable CS21A191 package
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE
+          path: dist/CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload CS21A191 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A191_HANGMAN_EVIDENCE
           path: |
-            dist/CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip
             dist/CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE.zip.sha256
             qa-output/cs21a191-hangman/
             cs21a191-package-server.log
