@@ -8,7 +8,7 @@
   const VERSION = 'CS21A188';
   const Runtime = global.EnglishLabRuntimeCS21A173;
   const STYLE_ID = 'english-lab-memory-match-cs21a174';
-  const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188';
+  const STYLE_HREF = '/styles/english_lab_memory_match_cs21a173.css?v=CS21A188';
 
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function upper(value) { return clean(value).toUpperCase(); }
