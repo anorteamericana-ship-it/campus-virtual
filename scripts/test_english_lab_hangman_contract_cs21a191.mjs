@@ -37,7 +37,7 @@ assert.ok(backend.includes("delete output.answer"), 'respuesta se elimina en est
 assert.ok(backend.includes("if (reveal || output.completed === true"), 'respuesta solo se revela tras cierre/completado');
 assert.ok(backend.includes("state.turn_state = _elh191KeepTurn_"), 'acierto conserva turno');
 assert.ok(backend.includes("state.turn_state = _elive176NextTurn_"), 'error rota turno');
-assert.ok(backend.includes("mensaje:'El turno terminó; la vida del equipo no se reduce.'"), 'timeout no consume vida');
+assert.ok(backend.includes("message:'El turno terminó; la vida del equipo no se reduce.'"), 'timeout no consume vida');
 assert.ok(backend.includes("return _elh191PlayerStateResponse_(room, player, {accepted:false,repeated:true,message:'La letra "), 'letra repetida sin castigo');
 
 for (const marker of [
