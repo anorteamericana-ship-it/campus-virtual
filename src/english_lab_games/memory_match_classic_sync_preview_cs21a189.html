@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QA · Memory Match Classic Sync CS21A189</title>
+  <link rel="stylesheet" href="../../styles/tokens.css">
+  <link rel="stylesheet" href="../../styles/english_lab_memory_match_cs21a173.css?v=CS21A189">
+  <link rel="stylesheet" href="../../styles/english_lab_memory_match_classic_sync_cs21a189.css?v=CS21A189">
+  <style>
+    body{margin:0;padding:18px;background:#EAF0F7;font-family:system-ui,sans-serif;color:#001E47}
+    .qa-head{max-width:1500px;margin:0 auto 14px;padding:12px 14px;background:#fff;border:1px solid #cfd9e6;border-radius:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .qa-grid{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+    .qa-panel{min-width:0}.qa-panel-title{margin:0 0 7px;padding:8px 10px;border-radius:10px;background:#001E47;color:#fff;font-size:13px;font-weight:900}
+    .qa-panel .elmm-shell{padding:12px;border-radius:18px}.qa-panel .elmm-header h2{font-size:27px}.qa-panel .elmm-header p{font-size:11px}.qa-panel .elmm-card{min-height:112px}.qa-panel .elmm-text-face{font-size:18px}
+    .qa-state{font-family:monospace;font-size:12px}@media(max-width:1100px){.qa-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="qa-head"><strong>CS21A189 · Memory clásico / servidor canónico / tres clientes independientes</strong><span id="qa-state" class="qa-state">HIDDEN</span></div>
+  <div id="root"></div>
+
+  <script src="../../vendor/react.js"></script>
+  <script src="../../vendor/react-dom.js"></script>
+  <script src="../../vendor/babel.js"></script>
+  <script src="./english_lab_runtime_cs21a173.js?v=CS21A189"></script>
+  <script src="./english_lab_turn_engine_cs21a176.js?v=CS21A176"></script>
+  <script src="./english_lab_live_sync_guard_cs21a177.js?v=CS21A188"></script>
+  <script type="text/babel" src="./memory_match_engine_cs21a173.jsx?v=CS21A188"></script>
+  <script type="text/babel" src="./memory_match_shared_discovery_cs21a188.jsx?v=CS21A188"></script>
+  <script type="text/babel" src="./memory_match_classic_sync_cs21a189.jsx?v=CS21A189"></script>
+  <script type="text/babel" src="./english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A188"></script>
+  <script type="text/babel" src="./english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx?v=CS21A189"></script>
+  <script type="text/babel">
+    const REVEAL_MS=2200;
+    const PLAYERS=[
+      {player_id:'P1',cod_estudiante:'P1',name:'Chu',team_id:'Equipo Azul'},
+      {player_id:'P2',cod_estudiante:'P2',name:'Naty',team_id:'Equipo Rojo'},
+    ];
+    const CARDS=[
+      {card_id:'P1-L',pair_id:'PAIR-1',face_type:'TEXT',label:'bicycle'},
+      {card_id:'P2-L',pair_id:'PAIR-2',face_type:'TEXT',label:'teacher'},
+      {card_id:'P1-R',pair_id:'PAIR-1',face_type:'TEXT',label:'bicicleta'},
+      {card_id:'P2-R',pair_id:'PAIR-2',face_type:'TEXT',label:'profesor/a'},
+    ];
+    function iso(ms){return new Date(ms).toISOString();}
+    function clone(value){return JSON.parse(JSON.stringify(value));}
+    function playerById(id){return PLAYERS.find(p=>p.player_id===id)||null;}
+    function freshTurn(activePlayer,activeTeam,number,reason,startMs=Date.now()){
+      return {version:'CS21A176',participation_policy:'TEAM_ALTERNATING',player_order:['P1','P2'],player_cursor:activePlayer==='P1'?0:1,team_order:['Equipo Azul','Equipo Rojo'],team_cursor:activeTeam==='Equipo Azul'?0:1,team_player_orders:{'Equipo Azul':['P1'],'Equipo Rojo':['P2']},team_player_cursors:{'Equipo Azul':0,'Equipo Rojo':0},active_player_id:activePlayer,active_team_id:activeTeam,turn_number:number,turn_started_at:iso(startMs),turn_ends_at:iso(startMs+30000),last_player_id:'',last_team_id:'',reason:reason||'ROUND_STARTED'};
+    }
+    const canonical={boardVersion:1,claimed:{},matched:[],activeAttempt:null,points:{P1:0,P2:0},turn:freshTurn('P1','Equipo Azul',1,'ROUND_STARTED')};
+    window.__QA_CLASSIC_SYNC_STATE__=canonical; window.__QA_POLL_CALLS__=[];
+    function normalizeAttempt(){
+      const a=canonical.activeAttempt;if(!a)return;
+      if(a.phase==='FIRST_REVEALED'&&Number(a.turn_number)!==Number(canonical.turn.turn_number))canonical.activeAttempt=null;
+      if(a.phase==='MISMATCH_REVEAL'&&Date.now()>=Date.parse(a.reveal_until))canonical.activeAttempt=null;
+    }
+    function publicShared(){normalizeAttempt();return {version:'CS21A189-MM-CLASSIC-SYNC-1',board_version:canonical.boardVersion,discovered_cards:{},claimed_pairs:clone(canonical.claimed),matched_pair_ids:canonical.matched.slice(),active_attempt:clone(canonical.activeAttempt),completed:canonical.matched.length===2,last_action_key:''};}
+    function packageFor(viewer){const now=Date.now();return {version:'CS21A189-MM-CLASSIC-SYNC-1',server_now:iso(now),client_received_at_ms:now,room:{room_code:'LAB-CL89',game_id:'MEMORY_MATCH',mode:'TEAMS',level_id:'B1'},round:{round_id:'LAB-CL89-R1',index:1,title:'Memory Match · U01',cards:CARDS},rules:{round_duration_ms:30000,auto_start_delay_ms:0,reveal_duration_ms:REVEAL_MS,team_size:1},state:{phase:canonical.matched.length===2?'COMPLETE':'OPEN',started_at:canonical.turn.turn_started_at,ends_at:canonical.turn.turn_ends_at,active_player_id:canonical.turn.active_player_id,active_team_id:canonical.turn.active_team_id},players:PLAYERS,teams:[{team_id:'Equipo Azul',name:'Equipo Azul',points:canonical.points.P1,members:[PLAYERS[0]]},{team_id:'Equipo Rojo',name:'Equipo Rojo',points:canonical.points.P2,members:[PLAYERS[1]]}],player:viewer||null,turn_state:clone(canonical.turn),shared_state:publicShared()};}
+    function room(){return {room_code:'LAB-CL89',room_id:'ROOM-CL89',game_code:'MEMORY_MATCH',game_id:'MEMORY_MATCH',game_label:'Memory Match',status:'LIVE',round_status:'OPEN',mode:'TEAMS',unit:'U01',nivel:'B1'};}
+    function stateFor(viewer){return {ok:true,memory_match:true,room:room(),player:viewer||null,room_package:packageFor(viewer),stats:{players:2,answers_current:canonical.matched.length},leaderboard:[{rank:canonical.points.P1>=canonical.points.P2?1:2,cod_estudiante:'P1',nombre:'Chu',team:'Equipo Azul',points:canonical.points.P1,correct:canonical.points.P1},{rank:canonical.points.P2>canonical.points.P1?1:2,cod_estudiante:'P2',nombre:'Naty',team:'Equipo Rojo',points:canonical.points.P2,correct:canonical.points.P2}],team_leaderboard:[],can_answer:true};}
+    function updateQaState(){window.__QA_CLASSIC_SYNC_STATE__=canonical;document.getElementById('qa-state').textContent=`v${canonical.boardVersion} · turno ${canonical.turn.turn_number} · ${canonical.turn.active_player_id} · ${canonical.activeAttempt?.phase||'HIDDEN'}`;}
+    async function postLive(fn,payload){
+      window.__QA_POLL_CALLS__.push({fn,player_id:payload&&payload.player_id||'',at:performance.now()});
+      if(fn==='englishLabMemoryMatchGetPlayerState')return stateFor(playerById(payload&&payload.player_id));
+      if(fn==='englishLabMemoryMatchGetRoomControl')return stateFor(null);
+      if(fn!=='englishLabMemoryMatchSubmitPair')return {ok:false,error:'endpoint_no_simulado'};
+      normalizeAttempt();
+      const answer=payload&&payload.answer_value||{};const action=String(answer.action||'SUBMIT_PAIR').toUpperCase();const actor=String(payload&&payload.player_id||'');const actorPlayer=playerById(actor);
+      if(!actorPlayer)return {ok:false,error:'jugador_no_registrado'};
+      if(Date.now()<Date.parse(canonical.turn.turn_started_at))return {ok:false,error:'cambio_de_turno',mensaje:'Las cartas se están cerrando.'};
+      if(canonical.turn.active_player_id!==actor)return {ok:false,error:'turno_no_activo',mensaje:'Espere su turno.'};
+      if(action==='DISCOVER_CARD'){
+        if(canonical.activeAttempt)return {ok:false,error:'primera_carta_ya_abierta'};
+        const card=CARDS.find(x=>x.card_id===answer.card_id);if(!card)return {ok:false,error:'carta_no_encontrada'};
+        canonical.activeAttempt={phase:'FIRST_REVEALED',player_id:actor,player_name:actorPlayer.name,team_id:actorPlayer.team_id,turn_number:canonical.turn.turn_number,first_card_id:card.card_id,second_card_id:'',revealed_at:iso(Date.now()),reveal_until:''};canonical.boardVersion+=1;updateQaState();
+        return {ok:true,accepted:true,action,room:room(),room_package:packageFor(actorPlayer)};
+      }
+      const first=CARDS.find(x=>x.card_id===answer.first_card_id);const second=CARDS.find(x=>x.card_id===answer.second_card_id);if(!first||!second||first.card_id===second.card_id)return {ok:false,error:'par_invalido'};
+      if(!canonical.activeAttempt||canonical.activeAttempt.phase!=='FIRST_REVEALED'||canonical.activeAttempt.first_card_id!==first.card_id)return {ok:false,error:'primera_carta_no_sincronizada'};
+      const correct=first.pair_id===second.pair_id;canonical.boardVersion+=1;const nextNumber=canonical.turn.turn_number+1;
+      if(correct){canonical.claimed[first.pair_id]={pair_id:first.pair_id,card_ids:[first.card_id,second.card_id],claimed_by:actor,claimed_name:actorPlayer.name,team_id:actorPlayer.team_id,points:1};if(!canonical.matched.includes(first.pair_id))canonical.matched.push(first.pair_id);canonical.points[actor]+=1;canonical.activeAttempt=null;canonical.turn=freshTurn(actor,actorPlayer.team_id,nextNumber,'PAIR_MATCHED_CONTINUE');}
+      else{const now=Date.now();const until=now+REVEAL_MS;canonical.activeAttempt={phase:'MISMATCH_REVEAL',player_id:actor,player_name:actorPlayer.name,team_id:actorPlayer.team_id,turn_number:canonical.turn.turn_number,first_card_id:first.card_id,second_card_id:second.card_id,revealed_at:iso(now),reveal_until:iso(until)};const other=actor==='P1'?PLAYERS[1]:PLAYERS[0];canonical.turn=freshTurn(other.player_id,other.team_id,nextNumber,'PAIR_MISMATCH_AFTER_FLIPBACK',until);}
+      updateQaState();return {ok:true,accepted:true,action,correct,points:correct?1:0,room:room(),room_package:packageFor(actorPlayer)};
+    }
+    function App(){const Adapter=window.MemoryMatchLiveRoundCS21A174;if(typeof Adapter!=='function')return <div>ERROR: no cargó adaptador CS21A189.</div>;const a=React.useMemo(()=>stateFor(PLAYERS[0]),[]);const b=React.useMemo(()=>stateFor(PLAYERS[1]),[]);const t=React.useMemo(()=>stateFor(null),[]);const panel=(id,title,state,readOnly)=><section className="qa-panel" data-panel={id}><h3 className="qa-panel-title">{title}</h3><Adapter state={state} postLive={postLive} readOnly={readOnly}/></section>;return <div className="qa-grid">{panel('chu','Estudiante · Chu',a,false)}{panel('naty','Estudiante · Naty',b,false)}{panel('teacher','Docente · tablero canónico',t,true)}</div>;}
+    (async function(){for(let i=0;i<200&&!(window.EnglishLabMemoryMatchClassicSyncCS21A189&&window.EnglishLabMemoryMatchClassicSyncAdapterCS21A189&&window.MemoryMatchLiveRoundCS21A174?.__cs21a189ClassicSyncAdapter);i++)await new Promise(r=>setTimeout(r,25));if(!window.MemoryMatchLiveRoundCS21A174)throw new Error('No cargó MemoryMatchLiveRoundCS21A174');updateQaState();ReactDOM.createRoot(document.getElementById('root')).render(<App/>);})().catch(error=>document.getElementById('root').textContent='ERROR QA: '+error.message);
+  </script>
+</body>
+</html>
