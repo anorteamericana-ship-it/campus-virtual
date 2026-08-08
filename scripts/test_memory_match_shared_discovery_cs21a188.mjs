@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const backend = fs.readFileSync('apps_script_patches/99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs','utf8');
+const compat = fs.readFileSync('apps_script_patches/99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs','utf8');
 const frontend = fs.readFileSync('src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx','utf8');
 const adapter = fs.readFileSync('src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx','utf8');
 const syncGuard = fs.readFileSync('src/english_lab_games/english_lab_live_sync_guard_cs21a177.js','utf8');
@@ -22,6 +23,12 @@ for (const marker of [
   'claim_owner_is_matcher:true',
 ]) assert.ok(backend.includes(marker), `Backend no contiene ${marker}`);
 
+for (const marker of [
+  "CS21A188_MM_RULES_COMPAT_VERSION = 'CS21A188-MM-RULES-COMPAT-1'",
+  'englishLabMemoryMatchSubmitPairCS21A180.__cs21a186CanonicalRules = true',
+  'englishLabMemoryMatchSubmitPairCS21A180.__cs21a188SharedDiscovery = true',
+]) assert.ok(compat.includes(marker), `Compatibilidad no contiene ${marker}`);
+
 const context = {
   console:{log(){}},
   verificarMemoryMatchStartFixCS21A183:()=>({
@@ -34,6 +41,11 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(backend,context,{filename:'99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'});
+assert.equal(context.englishLabMemoryMatchSubmitPairCS21A180.__cs21a188SharedDiscovery,true,'CS21A188 debe marcar el handler Shared Discovery.');
+assert.notEqual(context.englishLabMemoryMatchSubmitPairCS21A180.__cs21a186CanonicalRules,true,'La prueba debe reproducir la pérdida de metadata antes del shim.');
+vm.runInContext(compat,context,{filename:'99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs'});
+assert.equal(context.englishLabMemoryMatchSubmitPairCS21A180.__cs21a186CanonicalRules,true,'99J debe restaurar la metadata canónica CS21A186.');
+assert.equal(context.englishLabMemoryMatchSubmitPairCS21A180.__cs21a188SharedDiscovery,true,'99J debe preservar la metadata Shared Discovery.');
 
 const pkg={shared_state:{board_version:1,matched_pair_ids:[]}};
 const shared=context._cs21a188MmShared_(pkg);
@@ -66,7 +78,7 @@ for (const marker of [
   'No coinciden. Ambas quedan descubiertas para la sala.',
   'MemoryMatchGameCS21A173=MemoryMatchSharedDiscoveryCS21A188',
 ]) assert.ok(frontend.includes(marker), `Frontend no contiene ${marker}`);
-assert.ok(!frontend.includes("const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188'"),'Shared Discovery no puede depender de una ruta CSS relativa al documento actual.');
+assert.ok(!frontend.includes("const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188'"),'El motor Shared Discovery no puede usar CSS relativo.');
 
 for (const marker of [
   "const VERSION = 'CS21A188'",
@@ -85,7 +97,7 @@ for (const marker of [
   'Carta compartida con toda la sala.',
   'Sincronizando jugada…',
 ]) assert.ok(adapter.includes(marker), `Adaptador Live no contiene ${marker}`);
-assert.ok(!adapter.includes("const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188'"),'El adaptador Live no puede resolver CSS relativamente desde previews/rutas anidadas.');
+assert.ok(!adapter.includes("const STYLE_HREF = 'styles/english_lab_memory_match_cs21a173.css?v=CS21A188'"),'El adaptador Live no puede usar CSS relativo.');
 assert.ok(!adapter.includes('const READ_ONLY_POLL_MS = 4000'),'El adaptador no puede conservar el polling docente antiguo fijo de 4 segundos.');
 const immediateMerge=adapter.indexOf('if (result && result.room_package)');
 const fallbackRefresh=adapter.indexOf("else if (typeof onRefresh === 'function')");
@@ -109,6 +121,8 @@ assert.ok(css.includes('.elmm-card.is-discovered'));
 assert.ok(css.includes('.elmm-card.is-claimed'));
 assert.ok(css.includes('.elmm-card.is-selected'));
 assert.ok(assembler.includes('99I_MEMORY_MATCH_SHARED_DISCOVERY_QA_CS21A188.gs'));
+assert.ok(assembler.includes('99J_FIX_MEMORY_MATCH_RULES_COMPAT_QA_CS21A188.gs'));
+assert.ok(assembler.includes("CS21A188_MM_RULES_COMPAT_VERSION = 'CS21A188-MM-RULES-COMPAT-1'"));
 
 console.log(JSON.stringify({
   ok:true,
@@ -119,8 +133,8 @@ console.log(JSON.stringify({
   matcher_claims_pair:true,
   matcher_can_differ_from_discoverer:true,
   correct_pair_points:1,
+  cs21a186_rules_metadata_restored_after_shared_discovery:true,
   shared_discovery_loaded_before_live_adapter:true,
-  absolute_css_route:true,
   adaptive_poll_ms:{'1-5':1500,'6-10':1800,'11-15':2500,'16-25':3500},
   read_cache_ms:750,
   hidden_tab_poll_paused:true,
