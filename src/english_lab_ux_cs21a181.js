@@ -267,7 +267,7 @@
       // CS21A192: el polling autoritativo es mantenimiento silencioso. Mostrar el
       // overlay global en cada lectura bloqueaba las cartas y lo dejaba visible
       // casi permanentemente cuando Apps Script tardaba más de 260 ms.
-      var silentPoll = !!(info.body && (info.body.silent_poll === true || clean(info.body.sync_policy) === 'CS21A192-MM-CONSISTENCY-1'));
+      var silentPoll = !!(info.body && (info.body.silent_poll === true || clean(info.body.sync_policy) === 'CS21A192-MM-CONSISTENCY-2'));
       var loadingId = silentPoll ? '' : beginLoading(info.fn);
       try {
         var response = await baseFetch(input, nextInit);

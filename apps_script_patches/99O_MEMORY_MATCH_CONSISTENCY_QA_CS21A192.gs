@@ -2,7 +2,7 @@
 // Capa acumulativa: se carga despues de 99N. QA/STAGING solamente.
 // No modifica rutas ni endpoints de Ahorcado.
 
-var CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-1';
+var CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-2';
 var CS21A192_MM_SNAPSHOT_TTL_SECONDS = 3;
 var CS21A192_MM_TRANSITION_LOCK_MS = 2500;
 var CS21A192_MM_MAX_POLL_MS = 2200;
@@ -437,8 +437,13 @@ function _cs21a192PlayerState_(body) {
 }
 
 englishLabMemoryMatchGetRoomControlCS21A180 = _cs21a192ControlState_;
+// CS21A190 comprueba este marcador en tiempo de ejecucion. Aunque CS21A192
+// sustituye la implementacion por un snapshot canonico (que ya normaliza los
+// intentos transitorios), debe conservar el contrato acumulativo del wrapper.
+englishLabMemoryMatchGetRoomControlCS21A180.__cs21a190TransientCleanup = true;
 englishLabMemoryMatchGetRoomControlCS21A180.__cs21a192CanonicalSnapshot = true;
 englishLabMemoryMatchGetPlayerStateCS21A180 = _cs21a192PlayerState_;
+englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a190TransientCleanup = true;
 englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a192CanonicalSnapshot = true;
 
 // El submit CS21A189 conserva reglas e idempotencia. El wrapper garantiza que
@@ -583,6 +588,8 @@ verificarMemoryMatchStartFixCS21A183 = function () {
     CS21A189_MM_MISMATCH_REVEAL_MS === CS21A192_MM_MISMATCH_REVEAL_MS &&
     _elive180MaybeAdvanceTurn_.__cs21a192AtomicTransition === true &&
     _elive180Snapshot_.__cs21a192RevisionKeyed === true &&
+    englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a190TransientCleanup === true &&
+    englishLabMemoryMatchGetRoomControlCS21A180.__cs21a190TransientCleanup === true &&
     englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a192CanonicalSnapshot === true &&
     englishLabMemoryMatchGetRoomControlCS21A180.__cs21a192CanonicalSnapshot === true &&
     englishLabMemoryMatchSubmitPairCS21A180.__cs21a192RevisionedResponses === true &&
@@ -605,6 +612,7 @@ verificarMemoryMatchStartFixCS21A183 = function () {
     fresh_server_now_outside_cache:true,
     lock_failure_returns_retry:true,
     teacher_student_same_snapshot_path:true,
+    cs21a190_transient_cleanup_markers_preserved:true,
     expected_state_revision_guard:true,
     expected_turn_number_guard:true,
     preconditions_checked_under_submit_lock:true,

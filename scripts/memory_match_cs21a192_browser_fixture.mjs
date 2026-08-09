@@ -67,7 +67,7 @@ export function responseFor(options={}){
   const shared={version:'CS21A192',state_revision:revision,board_version:boardVersion,claimed_pairs:{},matched_pair_ids:[],active_attempt:attempt,completed};
   const room={room_id:'ROOM-192-LIVE',room_code:'LAB-192',game_code:'MEMORY_MATCH',game_id:'MEMORY_MATCH',game_label:'Memory Match',status,round_status:roundStatus,mode:'INDIVIDUAL',unit:'U01',nivel:'B1'};
   const pkg={
-    version:'CS21A192',sync_version:'CS21A192-MM-CONSISTENCY-1',state_revision:revision,
+    version:'CS21A192',sync_version:'CS21A192-MM-CONSISTENCY-2',state_revision:revision,
     room:{room_code:'LAB-192',game_id:'MEMORY_MATCH',mode:'INDIVIDUAL',level_id:'B1',status,round_status:roundStatus},
     round:{round_id:'LAB-192-R1',index:1,title:'Memory Match - U01',cards},
     rules:{round_duration_ms:30000,auto_start_delay_ms:0,reveal_duration_ms:6000,team_size:1},
@@ -75,7 +75,7 @@ export function responseFor(options={}){
     players,teams:[],player,turn_state:turn,shared_state:shared,
   };
   return {
-    ok:true,sync_version:'CS21A192-MM-CONSISTENCY-1',state_revision:revision,
+    ok:true,sync_version:'CS21A192-MM-CONSISTENCY-2',state_revision:revision,
     server_now:new Date(now).toISOString(),server_now_ms:now,turn_remaining_ms:Math.max(0,turnEndsAt-now),
     memory_match:true,room,player,room_package:pkg,turn_state:turn,shared_state:shared,
     stats:{players:participantCount,answers_current:attempt?1:0},leaderboard:[],team_leaderboard:[],events:[],

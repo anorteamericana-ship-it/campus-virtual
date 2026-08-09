@@ -13,7 +13,7 @@ const assembler=fs.readFileSync(assemblerPath,'utf8');
 const complete=fs.readFileSync(completePath,'utf8');
 
 for(const marker of [
-  "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-1'",
+  "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-2'",
   '_cs21a192AdvanceAndNormalize_',
   '_cs21a192CanonicalSnapshot_',
   '_cs21a192SnapshotKeys_',
@@ -188,6 +188,7 @@ assert.equal(verifier.preconditions_checked_under_submit_lock,true);
 assert.equal(verifier.stale_action_rejected_without_mutation,true);
 assert.equal(verifier.state_conflict_returns_current_package,true);
 assert.equal(verifier.timeout_event_cache_invalidated,true);
+assert.equal(verifier.cs21a190_transient_cleanup_markers_preserved,true);
 
 // Ejecuta el submit real de 99K con 99O cargado encima. El helper se instrumenta
 // para demostrar que revision y turno se comparan mientras el ScriptLock sigue

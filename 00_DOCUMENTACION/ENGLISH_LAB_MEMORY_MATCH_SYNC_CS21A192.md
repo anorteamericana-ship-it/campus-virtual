@@ -5,6 +5,22 @@ Sala observada: `LAB-9317`
 Estado: **candidato de desarrollo para QA/STAGING**
 Producción y `main`: **sin cambios autorizados**
 
+## Revisión 2 del candidato
+
+La primera instalación QA confirmó que CS21A192 estaba cargado —el verificador
+CS21A189 ya publicó `mismatch_reveal_ms:6000`—, pero la cadena se detuvo en
+CS21A190. La causa fue de compatibilidad del verificador: al sustituir los
+endpoints docente y estudiante, CS21A192 no conservó en los nuevos objetos
+función los dos marcadores `__cs21a190TransientCleanup` que el wrapper histórico
+consulta en tiempo de ejecución.
+
+REV2 conserva ambos marcadores sin cambiar las reglas ni el algoritmo de
+sincronización. También agrega una regresión que carga las nueve fuentes reales,
+ejecuta toda la cadena CS21A183→190→192 y exige que todos los bloques terminen en
+`ok:true`. El contrato final inequívoco de esta revisión es
+`CS21A192-MM-CONSISTENCY-2` y el paquete se denomina
+`CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip`.
+
 ## Veredicto
 
 La prueba autenticada de `LAB-9317` confirma un defecto funcional de sincronización, no un problema cosmético. Docente, Chu y Naty recibieron estados distintos de la misma sala: diferentes cartas abiertas, diferentes tiempos y, durante la transición, diferentes representaciones del turno.
@@ -263,7 +279,7 @@ El último JSON debe contener, como mínimo:
 ```json
 {
   "ok": true,
-  "version": "CS21A192-MM-CONSISTENCY-1",
+  "version": "CS21A192-MM-CONSISTENCY-2",
   "atomic_timeout_cleanup": true,
   "one_state_write_per_timeout": true,
   "stale_snapshot_resurrection_blocked": true,
@@ -272,6 +288,7 @@ El último JSON debe contener, como mínimo:
   "fresh_server_now_outside_cache": true,
   "lock_failure_returns_retry": true,
   "teacher_student_same_snapshot_path": true,
+  "cs21a190_transient_cleanup_markers_preserved": true,
   "expected_state_revision_guard": true,
   "expected_turn_number_guard": true,
   "preconditions_checked_under_submit_lock": true,
@@ -346,7 +363,7 @@ Requiere simultáneamente:
 
 - ensamblado exacto del archivo completo 99;
 - sintaxis Apps Script/V8 aprobada;
-- último verificador `CS21A192-MM-CONSISTENCY-1` con todos los flags esperados;
+- último verificador `CS21A192-MM-CONSISTENCY-2` con todos los flags esperados;
 - pruebas unitarias, de contrato y navegador CS21A192 aprobadas;
 - regresiones acumuladas CS21A176–191 aprobadas;
 - artefacto construido y verificado por manifiesto;

@@ -1,8 +1,16 @@
-name: CS21A192 Memory Match Authoritative Sync QA
+name: CS21A192 REV2 Memory Match Authoritative Sync QA
 
 on:
   pull_request:
     paths:
+      - 'apps_script_patches/english_lab_access_cs21a144.gs'
+      - 'apps_script_patches/english_lab_access_cached_read_cs21a170.gs'
+      - 'apps_script_patches/english_lab_access_financial_priority_cs21a171.gs'
+      - 'apps_script_patches/96_English_LAB_CS21A171_AUTOINSTALABLE.gs'
+      - 'apps_script_patches/english_lab_memory_match_live_cs21a174.gs'
+      - 'apps_script_patches/english_lab_memory_match_hotfix_cs21a175.gs'
+      - 'apps_script_patches/97_ACTUALIZACION_QA.gs'
+      - 'apps_script_patches/98_ACTUALIZACION_QA_CS21A181.gs'
       - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
       - 'apps_script_patches/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs'
       - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
@@ -15,6 +23,7 @@ on:
       - 'src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html'
       - 'styles/english_lab_memory_match_cs21a173.css'
       - 'scripts/test_memory_match_sync_consistency_cs21a192.mjs'
+      - 'scripts/test_apps_script_cumulative_verifier_cs21a192.mjs'
       - 'scripts/test_memory_match_authoritative_sync_browser_cs21a192.mjs'
       - 'scripts/memory_match_cs21a192_browser_fixture.mjs'
       - 'scripts/test_memory_match_first_reveal_deadline_browser_cs21a192.mjs'
@@ -57,9 +66,10 @@ jobs:
           complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
           grep -q 'CS21A183-CS21A192 · APPS SCRIPT QA COMPLETO' "$complete"
           grep -q 'BLOQUE 15/15: 99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs' "$complete"
-          grep -q "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-1'" "$complete"
+          grep -q "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-2'" "$complete"
           grep -q 'monotonic_state_revision:true' "$complete"
           grep -q 'teacher_student_same_snapshot_path:true' "$complete"
+          grep -q 'cs21a190_transient_cleanup_markers_preserved:true' "$complete"
           grep -q 'timeout_event_cache_invalidated:true' "$complete"
           grep -q 'mismatch_reveal_ms:CS21A192_MM_MISMATCH_REVEAL_MS' "$complete"
           grep -q '_cs21a192ExpectedStateConflict_(normalized, pkg, turnState)' "$complete"
@@ -67,6 +77,9 @@ jobs:
 
       - name: Validate new CS21A192 backend consistency contract
         run: node scripts/test_memory_match_sync_consistency_cs21a192.mjs
+
+      - name: Execute the real accumulated Apps Script verifier chain
+        run: node scripts/test_apps_script_cumulative_verifier_cs21a192.mjs
 
       - name: Validate CS21A192 single-poll load budget
         run: node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
@@ -129,7 +142,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package='dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC'
+          package='dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2'
           PORT=4192 node "$package/serve.mjs" > cs21a192-package-server.log 2>&1 &
           echo $! > cs21a192-package-server.pid
           for attempt in {1..40}; do
@@ -156,14 +169,16 @@ jobs:
           curl -fsS "$base/BACKEND_QA/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs" -o /tmp/internal192.gs
           curl -fsS "$base/BACKEND_QA/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs" -o /tmp/complete192.gs
           curl -fsS "$base/VERSION.txt" -o /tmp/version192.txt
-          grep -q 'english_lab_live_authoritative_sync_guard_cs21a192.js?v=F98.4Z6CS21A192' /tmp/campus192.html
-          grep -q 'english_lab_memory_match_cs21a173.css?v=CS21A192' /tmp/campus192.html
-          grep -q 'english_lab_live.jsx?v=F98.4Z6CS21A192' /tmp/app192.jsx
-          grep -q 'english_lab_ux_cs21a181.js?v=F98.4Z6CS21A192' /tmp/runtime192.js
-          grep -q 'memory_match_classic_sync_cs21a189.jsx?v=CS21A192' /tmp/classic-guard192.js
+          grep -q 'english_lab_live_authoritative_sync_guard_cs21a192.js?v=F98.4Z6CS21A192R2' /tmp/campus192.html
+          grep -q 'english_lab_memory_match_cs21a173.css?v=CS21A192R2' /tmp/campus192.html
+          grep -q 'src/runtime_config.js?v=F98.4Z6CS21A192R2' /tmp/campus192.html
+          grep -q 'src/app.jsx?v=F98.4Z6CS21A192R2' /tmp/campus192.html
+          grep -q 'english_lab_live.jsx?v=F98.4Z6CS21A192R2' /tmp/app192.jsx
+          grep -q 'english_lab_ux_cs21a181.js?v=F98.4Z6CS21A192R2' /tmp/runtime192.js
+          grep -q 'memory_match_classic_sync_cs21a189.jsx?v=CS21A192R2' /tmp/classic-guard192.js
           grep -q 'EnglishLabMemoryMatchAuthoritativeSyncCS21A192' /tmp/live192.jsx
           grep -q 'silent_poll' /tmp/ux192.js
-          grep -q 'english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A192' /tmp/sync-guard192.js
+          grep -q 'english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A192R2' /tmp/sync-guard192.js
           grep -q 'data-authoritative-sync="true"' /tmp/adapter192.jsx
           grep -q 'const POLL_TIMEOUT_MS=8000;' /tmp/adapter192.jsx
           grep -q 'expected_state_revision:currentRevision.stateRevision' /tmp/adapter192.jsx
@@ -173,7 +188,8 @@ jobs:
           grep -q 'box-sizing:border-box' /tmp/memory192.css
           grep -q 'min-width:0' /tmp/memory192.css
           grep -q '_cs21a192ExpectedStateConflict_(normalized, pkg, turnState)' /tmp/classic-backend192.gs
-          grep -q 'CS21A192-MM-CONSISTENCY-1' /tmp/internal192.gs
+          grep -q 'CS21A192-MM-CONSISTENCY-2' /tmp/internal192.gs
+          grep -q 'cs21a190_transient_cleanup_markers_preserved:true' /tmp/internal192.gs
           grep -q 'var CS21A192_MM_MAX_POLL_MS = 2200;' /tmp/internal192.gs
           grep -q 'var CS21A192_MM_TESTED_LATENCY_MS = 2500;' /tmp/internal192.gs
           grep -q 'var CS21A192_MM_REVEAL_MARGIN_MS = 1300;' /tmp/internal192.gs
@@ -183,6 +199,7 @@ jobs:
           grep -q 'mismatch_reveal_ms:CS21A192_MM_MISMATCH_REVEAL_MS' /tmp/complete192.gs
           grep -q '_cs21a192ExpectedStateConflict_(normalized, pkg, turnState)' /tmp/complete192.gs
           grep -q 'VERSION=CS21A192' /tmp/version192.txt
+          grep -q 'PACKAGE_REVISION=2' /tmp/version192.txt
           grep -q 'PACKAGE_BASE=CS21A191_FINALIZED' /tmp/version192.txt
           grep -q 'QA_PORT=4192' /tmp/version192.txt
           grep -q 'MEMORY_MATCH_READ_CACHE_MS=0' /tmp/version192.txt
@@ -273,16 +290,16 @@ jobs:
         run: |
           set -euo pipefail
           cd dist
-          zip -X -q -r CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC.zip CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC
-          sha256sum CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC.zip > CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC.zip.sha256
-          sha256sum -c CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC.zip.sha256
+          zip -X -q -r CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2
+          sha256sum CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip > CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip.sha256
+          sha256sum -c CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip.sha256
 
       - name: Upload directly usable CS21A192 package
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC
-          path: dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC/
+          name: CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2
+          path: dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2/
           if-no-files-found: error
           retention-days: 30
 
@@ -290,10 +307,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CS21A192_MEMORY_MATCH_AUTHORITATIVE_SYNC_EVIDENCE
+          name: CS21A192_REV2_MEMORY_MATCH_AUTHORITATIVE_SYNC_EVIDENCE
           path: |
-            dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC.zip
-            dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC.zip.sha256
+            dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip
+            dist/CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2.zip.sha256
             qa-output/cs21a192-authoritative-sync/
             qa-output/cs21a192-load-budget/
             qa-output/cs21a190-timeout-style/

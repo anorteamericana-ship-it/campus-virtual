@@ -8,7 +8,7 @@
   if(!base) throw new Error('Falta EnglishLabMemoryMatchLiveCS21A174 antes de CS21A192.');
 
   const VERSION='CS21A192';
-  const SYNC_VERSION='CS21A192-MM-CONSISTENCY-1';
+  const SYNC_VERSION='CS21A192-MM-CONSISTENCY-2';
   const POLL_TIMEOUT_MS=8000;
   const MUTATION_TIMEOUT_MS=45000;
   const POLL_BACKOFF_CAP_MS=8000;

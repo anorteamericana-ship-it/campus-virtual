@@ -1,11 +1,11 @@
-// F98.4-Z6-CS21A192 · carga final del adaptador autoritativo Memory Match.
+// F98.4-Z6-CS21A192-R2 · carga final del adaptador autoritativo Memory Match.
 // Se instala después de CS21A190 para que CS21A192 sea el último dueño del polling.
 (function installEnglishLabAuthoritativeSyncGuardCS21A192(global){
   'use strict';
   if(!global||global.__ENGLISH_LAB_AUTHORITATIVE_SYNC_GUARD_CS21A192__)return;
 
-  const VERSION='F98.4-Z6-CS21A192';
-  const ADAPTER='src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A192';
+  const VERSION='F98.4-Z6-CS21A192-R2';
+  const ADAPTER='src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A192R2';
   const BASE_ADAPTER_TOKEN='english_lab_live_memory_match_adapter_cs21a174.jsx';
   let installed=false;
 
@@ -43,7 +43,7 @@
 
   const guard=Object.freeze({
     version:VERSION,
-    cacheEpoch:'CS21A192',
+    cacheEpoch:'CS21A192R2',
     adapter:ADAPTER,
     singlePollOwner:true,
     rejectsOutOfOrder:true,

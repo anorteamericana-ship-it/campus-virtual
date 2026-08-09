@@ -6,14 +6,14 @@ import path from 'node:path';
 
 const root=process.cwd();
 const base=path.join(root,'dist','CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE');
-const packageName='CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC';
+const packageName='CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2';
 const target=path.join(root,'dist',packageName);
 const sourceHeadSha=process.env.SOURCE_HEAD_SHA||process.env.GITHUB_SHA||'local-uncommitted';
 const sourceBranch=process.env.SOURCE_BRANCH||process.env.GITHUB_HEAD_REF||'fix/cs21a192-memory-match-authoritative-sync';
 const verifyOnly=process.argv.includes('--verify');
 
 const CS190_GUARD='<script src="src/english_lab_live_timeout_style_guard_cs21a190.js?v=F98.4Z6CS21A190"></script>';
-const CS192_GUARD='<script src="src/english_lab_live_authoritative_sync_guard_cs21a192.js?v=F98.4Z6CS21A192"></script>';
+const CS192_GUARD='<script src="src/english_lab_live_authoritative_sync_guard_cs21a192.js?v=F98.4Z6CS21A192R2"></script>';
 
 function sha256(file){return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');}
 function copy(relative,destinationRelative=relative){
@@ -91,8 +91,20 @@ function build(){
   campus=replaceRequired(
     campus,
     /styles\/english_lab_memory_match_cs21a173\.css\?v=[^"]+/,
-    'styles/english_lab_memory_match_cs21a173.css?v=CS21A192',
+    'styles/english_lab_memory_match_cs21a173.css?v=CS21A192R2',
     'la hoja base Memory Match',
+  );
+  campus=replaceRequired(
+    campus,
+    /src\/runtime_config\.js\?v=[^"]+/,
+    'src/runtime_config.js?v=F98.4Z6CS21A192R2',
+    'el cargador padre runtime_config.js',
+  );
+  campus=replaceRequired(
+    campus,
+    /src\/app\.jsx\?v=[^"]+/,
+    'src/app.jsx?v=F98.4Z6CS21A192R2',
+    'el cargador padre app.jsx',
   );
   write('campus.html',campus);
 
@@ -100,7 +112,7 @@ function build(){
   app=replaceRequired(
     app,
     /src\/english_lab_live\.jsx\?v=[^'"\s]+/,
-    'src/english_lab_live.jsx?v=F98.4Z6CS21A192',
+    'src/english_lab_live.jsx?v=F98.4Z6CS21A192R2',
     'la referencia lazy de english_lab_live.jsx',
   );
   write('src/app.jsx',app);
@@ -109,7 +121,7 @@ function build(){
   runtime=replaceRequired(
     runtime,
     /src\/english_lab_ux_cs21a181\.js\?v=[^'"\s]+/,
-    'src/english_lab_ux_cs21a181.js?v=F98.4Z6CS21A192',
+    'src/english_lab_ux_cs21a181.js?v=F98.4Z6CS21A192R2',
     'la referencia de english_lab_ux_cs21a181.js',
   );
   write('src/runtime_config.js',runtime);
@@ -118,7 +130,7 @@ function build(){
   classicGuard=replaceRequired(
     classicGuard,
     /src\/english_lab_games\/memory_match_classic_sync_cs21a189\.jsx\?v=[^'"\s]+/,
-    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A192',
+    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A192R2',
     'el motor clásico Memory Match en su guard',
   );
   write('src/english_lab_live_classic_sync_guard_cs21a189.js',classicGuard);
@@ -133,8 +145,8 @@ function build(){
   serve=serve.replaceAll('4191','4192');
   write('serve.mjs',serve);
 
-  write('LEEME_PRIMERO_CS21A192.txt',`CAMPUS QA CS21A192 - MEMORY MATCH SINCRONIZACIÓN AUTORITATIVA
-================================================================
+  write('LEEME_PRIMERO_CS21A192.txt',`CAMPUS QA CS21A192 REV2 - MEMORY MATCH SINCRONIZACIÓN AUTORITATIVA
+=====================================================================
 
 ESTADO REAL
 - Candidato QA aislado. NO producción y NO main.
@@ -142,6 +154,7 @@ ESTADO REAL
 - Rama: ${sourceBranch}
 - SHA fuente: ${sourceHeadSha}
 - Corrige la divergencia observada en LAB-9317 entre docente, Chu y Naty.
+- REV2 conserva los marcadores acumulativos CS21A190 exigidos por el verificador real.
 - El estado se ordena por state_revision y los tres paneles consumen el mismo snapshot canónico.
 - Las jugadas nacidas de una revisión o turno anterior se rechazan sin mutar la sala.
 - El polling de estado tiene un único dueño, timeout de 8 segundos y se detiene al cerrar la ronda.
@@ -155,7 +168,7 @@ APPS SCRIPT QA - REGLA OBLIGATORIA
 4. Use Ctrl+A y elimine TODO el contenido anterior.
 5. Pegue TODO BACKEND_QA/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs una sola vez.
 6. Guarde y ejecute verificarMemoryMatchStartFixCS21A183().
-7. El último bloque debe ser CS21A192-MM-CONSISTENCY-1 con ok=true.
+7. El último bloque debe ser CS21A192-MM-CONSISTENCY-2 con ok=true.
 8. Actualice una nueva versión del mismo deployment QA y conserve la misma URL /exec.
 9. NO cambie Code.gs, producción ni el deployment productivo.
 
@@ -179,8 +192,8 @@ PRUEBA OBLIGATORIA
 NO FUSIONAR NI PASAR A PRODUCCIÓN SIN PASS AUTENTICADO.
 `);
 
-  write('REGISTRO_PRUEBA_AUTENTICADA_CS21A192.txt',`REGISTRO QA CS21A192 - MEMORY MATCH SYNC
-==========================================
+  write('REGISTRO_PRUEBA_AUTENTICADA_CS21A192.txt',`REGISTRO QA CS21A192 REV2 - MEMORY MATCH SYNC
+===============================================
 Estado inicial: PENDIENTE
 Fecha:
 Sala nueva:
@@ -189,7 +202,8 @@ Docente:
 Estudiante 1 (Chu):
 Estudiante 2 (Naty):
 
-[ ] verificarMemoryMatchStartFixCS21A183() termina en CS21A192-MM-CONSISTENCY-1 y ok=true.
+[ ] verificarMemoryMatchStartFixCS21A183() termina en CS21A192-MM-CONSISTENCY-2 y ok=true.
+[ ] cs21a190_transient_cleanup_markers_preserved=true.
 [ ] atomic_timeout_cleanup=true.
 [ ] one_state_write_per_timeout=true.
 [ ] stale_snapshot_resurrection_blocked=true.
@@ -232,26 +246,27 @@ Evidencia (capturas, registro Apps Script y métricas):
   let version=text('VERSION.txt');
   for(const [key,value] of [
     ['VERSION','CS21A192'],
+    ['PACKAGE_REVISION','2'],
     ['STATUS','QA_CANDIDATE_NOT_FINAL'],
     ['PURPOSE','English LAB Memory Match authoritative synchronization QA candidate'],
     ['PACKAGE_BASE','CS21A191_FINALIZED'],
     ['QA_PORT','4192'],
     ['SOURCE_BRANCH',sourceBranch],
     ['SOURCE_HEAD_SHA',sourceHeadSha],
-    ['FRONTEND_LAYER','F98.4-Z6-CS21A192'],
-    ['BACKEND_LAYER','CS21A192-MM-CONSISTENCY-1'],
+    ['FRONTEND_LAYER','F98.4-Z6-CS21A192-R2'],
+    ['BACKEND_LAYER','CS21A192-MM-CONSISTENCY-2'],
     ['APPS_SCRIPT_CHANGE','YES_QA_ONLY_REPLACE_COMPLETE_99_AFTER_98'],
     ['APPS_SCRIPT_INSTALL_MODE','SINGLE_COMPLETE_FILE_99_THROUGH_99O_AFTER_98'],
     ['APPS_SCRIPT_COMPLETE_FILE','BACKEND_QA/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'],
     ['APPS_SCRIPT_INTERNAL_LAYER','BACKEND_QA/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs'],
-    ['MEMORY_MATCH_SYNC_VERSION','CS21A192-MM-CONSISTENCY-1'],
+    ['MEMORY_MATCH_SYNC_VERSION','CS21A192-MM-CONSISTENCY-2'],
     ['MEMORY_MATCH_STATE_REVISION','MONOTONIC'],
     ['MEMORY_MATCH_POLL_OWNER','SINGLE_RECURSIVE'],
     ['MEMORY_MATCH_READ_CACHE_MS','0'],
     ['MEMORY_MATCH_RECENT_STATE_CACHE','DISABLED'],
-    ['MEMORY_MATCH_CACHE_EPOCH','CS21A192'],
-    ['MEMORY_MATCH_BROWSER_CACHE_EPOCH','CS21A192'],
-    ['MEMORY_MATCH_STYLE_CACHE_EPOCH','CS21A192'],
+    ['MEMORY_MATCH_CACHE_EPOCH','CS21A192R2'],
+    ['MEMORY_MATCH_BROWSER_CACHE_EPOCH','CS21A192R2'],
+    ['MEMORY_MATCH_STYLE_CACHE_EPOCH','CS21A192R2'],
     ['MEMORY_MATCH_AUTHORITATIVE_ONLY','true'],
     ['MEMORY_MATCH_MISMATCH_REVEAL_MS','6000'],
     ['MEMORY_MATCH_POLL_TIMEOUT_MS','8000'],
@@ -288,14 +303,16 @@ function verify(){
   ]) assert.equal(fs.existsSync(path.join(target,relative)),true,`Falta ${relative}`);
 
   const campus=text('campus.html');
-  assert.match(campus,/english_lab_live_authoritative_sync_guard_cs21a192\.js\?v=F98\.4Z6CS21A192/);
-  assert.match(campus,/english_lab_memory_match_cs21a173\.css\?v=CS21A192/);
+  assert.match(campus,/english_lab_live_authoritative_sync_guard_cs21a192\.js\?v=F98\.4Z6CS21A192R2/);
+  assert.match(campus,/english_lab_memory_match_cs21a173\.css\?v=CS21A192R2/);
+  assert.match(campus,/src\/runtime_config\.js\?v=F98\.4Z6CS21A192R2/);
+  assert.match(campus,/src\/app\.jsx\?v=F98\.4Z6CS21A192R2/);
   assert.ok(campus.indexOf(CS192_GUARD)>campus.indexOf(CS190_GUARD),'El guard CS21A192 debe quedar después de CS21A190.');
   assert.equal((campus.match(/english_lab_live_authoritative_sync_guard_cs21a192\.js/g)||[]).length,1,'El guard CS21A192 debe aparecer una sola vez.');
 
-  assert.match(text('src/app.jsx'),/english_lab_live\.jsx\?v=F98\.4Z6CS21A192/);
-  assert.match(text('src/runtime_config.js'),/english_lab_ux_cs21a181\.js\?v=F98\.4Z6CS21A192/);
-  assert.match(text('src/english_lab_live_classic_sync_guard_cs21a189.js'),/memory_match_classic_sync_cs21a189\.jsx\?v=CS21A192/);
+  assert.match(text('src/app.jsx'),/english_lab_live\.jsx\?v=F98\.4Z6CS21A192R2/);
+  assert.match(text('src/runtime_config.js'),/english_lab_ux_cs21a181\.js\?v=F98\.4Z6CS21A192R2/);
+  assert.match(text('src/english_lab_live_classic_sync_guard_cs21a189.js'),/memory_match_classic_sync_cs21a189\.jsx\?v=CS21A192R2/);
   assert.match(text('src/english_lab_live.jsx'),/EnglishLabMemoryMatchAuthoritativeSyncCS21A192/);
   assert.match(text('src/english_lab_ux_cs21a181.js'),/CS21A192/);
   assert.match(text('src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'),/authoritativeOnly/);
@@ -306,7 +323,7 @@ function verify(){
   assert.match(adapter,/expected_turn_number:currentRevision\.turnNumber/);
   assert.match(adapter,/if\(!disposed&&!isTerminalState\(stateRef\.current\)\)\{/);
   assert.match(adapter,/data-live-terminal=\{isTerminalState\(state\)\?'true':'false'\}/);
-  assert.match(text('src/english_lab_live_authoritative_sync_guard_cs21a192.js'),/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192\.jsx\?v=CS21A192/);
+  assert.match(text('src/english_lab_live_authoritative_sync_guard_cs21a192.js'),/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192\.jsx\?v=CS21A192R2/);
   assert.match(text('styles/english_lab_memory_match_cs21a173.css'),/box-sizing:border-box/);
   assert.match(text('styles/english_lab_memory_match_cs21a173.css'),/min-width:0/);
 
@@ -314,7 +331,8 @@ function verify(){
   const internal=text('BACKEND_QA/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs');
   const complete=text('BACKEND_QA/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs');
   assert.match(classicBackend,/_cs21a192ExpectedStateConflict_\(normalized, pkg, turnState\)/);
-  assert.match(internal,/CS21A192-MM-CONSISTENCY-1/);
+  assert.match(internal,/CS21A192-MM-CONSISTENCY-2/);
+  assert.match(internal,/cs21a190_transient_cleanup_markers_preserved:true/);
   assert.match(internal,/state_transition_busy/);
   assert.match(internal,/var CS21A192_MM_MAX_POLL_MS = 2200;/);
   assert.match(internal,/var CS21A192_MM_TESTED_LATENCY_MS = 2500;/);
@@ -322,7 +340,8 @@ function verify(){
   assert.match(internal,/expected_state_revision_guard:true/);
   assert.match(internal,/timeout_event_cache_invalidated:true/);
   assert.match(complete,/BLOQUE 15\/15: 99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192\.gs/);
-  assert.match(complete,/CS21A192-MM-CONSISTENCY-1/);
+  assert.match(complete,/CS21A192-MM-CONSISTENCY-2/);
+  assert.match(complete,/__cs21a190TransientCleanup = true/);
   assert.match(complete,/_cs21a192ExpectedStateConflict_\(normalized, pkg, turnState\)/);
   assert.match(complete,/mismatch_reveal_ms:CS21A192_MM_MISMATCH_REVEAL_MS/);
   assert.equal(sha256(path.join(root,'apps_script_patches','99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs')),sha256(path.join(target,'apps_script_patches','99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs')),'99K modificado no coincide con la fuente empaquetada.');
@@ -341,13 +360,13 @@ function verify(){
 
   const version=text('VERSION.txt');
   for(const marker of [
-    'VERSION=CS21A192','STATUS=QA_CANDIDATE_NOT_FINAL','PACKAGE_BASE=CS21A191_FINALIZED','QA_PORT=4192',
+    'VERSION=CS21A192','PACKAGE_REVISION=2','STATUS=QA_CANDIDATE_NOT_FINAL','PACKAGE_BASE=CS21A191_FINALIZED','QA_PORT=4192',
     'APPS_SCRIPT_INSTALL_MODE=SINGLE_COMPLETE_FILE_99_THROUGH_99O_AFTER_98',
     'APPS_SCRIPT_COMPLETE_FILE=BACKEND_QA/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs',
-    'MEMORY_MATCH_SYNC_VERSION=CS21A192-MM-CONSISTENCY-1','MEMORY_MATCH_STATE_REVISION=MONOTONIC',
+    'MEMORY_MATCH_SYNC_VERSION=CS21A192-MM-CONSISTENCY-2','MEMORY_MATCH_STATE_REVISION=MONOTONIC',
     'MEMORY_MATCH_POLL_OWNER=SINGLE_RECURSIVE','MEMORY_MATCH_READ_CACHE_MS=0',
-    'MEMORY_MATCH_RECENT_STATE_CACHE=DISABLED','MEMORY_MATCH_BROWSER_CACHE_EPOCH=CS21A192',
-    'MEMORY_MATCH_STYLE_CACHE_EPOCH=CS21A192',
+    'MEMORY_MATCH_RECENT_STATE_CACHE=DISABLED','MEMORY_MATCH_BROWSER_CACHE_EPOCH=CS21A192R2',
+    'MEMORY_MATCH_STYLE_CACHE_EPOCH=CS21A192R2',
     'MEMORY_MATCH_MISMATCH_REVEAL_MS=6000','MEMORY_MATCH_POLL_TIMEOUT_MS=8000',
     'MEMORY_MATCH_EXPECTED_STATE_GUARD=true','MEMORY_MATCH_FIRST_REVEAL_DEADLINE=AUTHORITATIVE',
     'MEMORY_MATCH_TERMINAL_POLL_STOP=true','MEMORY_MATCH_LOAD_MODEL_MAX_PLAYERS=25',
@@ -378,6 +397,7 @@ function verify(){
     package:packageName,
     base:'CAMPUS_QA_CS21A191_CANDIDATO_HANGMAN_LIVE',
     version:'CS21A192',
+    revision:2,
     port:4192,
     authoritativeSync:true,
     stateRevision:'MONOTONIC',
