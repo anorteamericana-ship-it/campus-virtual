@@ -1,11 +1,13 @@
 // CS21A189 · Memory Match clásico sincronizado para English LAB Live.
 // Un solo tablero autoritativo para docente y estudiantes.
 // Primera carta pública temporal -> segunda pública -> MATCH queda abierto / MISMATCH vuelve a ocultarse.
+// CS21A194 conserva el contrato autoritativo y evita que la latencia del primer ACK bloquee la segunda selección.
 /* global React */
 (function (global) {
   'use strict';
 
   const VERSION = 'CS21A189';
+  const LATENCY_SAFE_VERSION = 'CS21A194';
   const Runtime = global.EnglishLabRuntimeCS21A173;
   const STYLE_ID = 'english-lab-memory-match-cs21a189';
   const STYLE_HREF = '/styles/english_lab_memory_match_classic_sync_cs21a189.css?v=CS21A189';
@@ -217,15 +219,20 @@
     const [optimistic,setOptimistic]=React.useState([]);
     const [syncing,setSyncing]=React.useState(false);
     const [announcement,setAnnouncement]=React.useState('');
-    const authoritativeOnly=!!(props&&props.authoritativeOnly);
     const revealPromiseRef=React.useRef(Promise.resolve());
+    const localFirstRef=React.useRef('');
+    const pairPendingRef=React.useRef(false);
+    const interactionEpochRef=React.useRef(0);
     const localStartRef=React.useRef(Date.now());
 
     React.useEffect(()=>{
+      interactionEpochRef.current += 1;
       setOptimistic([]);
       setSyncing(false);
       setAnnouncement('');
       revealPromiseRef.current=Promise.resolve();
+      localFirstRef.current='';
+      pairPendingRef.current=false;
       localStartRef.current=Date.now();
     },[turnNumber, normalized.round.roundId]);
     React.useEffect(()=>{
@@ -251,33 +258,40 @@
     },[props]);
 
     const serverFirstId = reveal.phase==='FIRST_REVEALED' && reveal.active ? clean(shared.attempt && shared.attempt.first_card_id) : '';
-    const localFirstId = serverFirstId || optimistic[0] || '';
+    const localFirstId = serverFirstId || localFirstRef.current || optimistic[0] || '';
 
     const selectCard=React.useCallback(card=>{
-      if(!canPlay || syncing || isClaimed(shared,card) || waitingForFlipback) return;
+      if(!canPlay || pairPendingRef.current || syncing || isClaimed(shared,card) || waitingForFlipback) return;
       if(!localFirstId){
-        if(!authoritativeOnly) setOptimistic([card.id]);
-        setSyncing(true);
-        setAnnouncement('Primera carta abierta para toda la sala. Elegí una segunda.');
+        const interactionEpoch=interactionEpochRef.current;
+        localFirstRef.current=card.id;
+        setOptimistic([card.id]);
+        setAnnouncement('Primera carta abierta. Elegí la segunda mientras sincronizamos.');
         const promise=Promise.resolve(send(buildAction('DISCOVER_CARD',{card_id:card.id})))
           .then(result=>{
             if(result && result.ok===false) throw new Error(result.mensaje||result.message||result.error||'No se pudo abrir la carta.');
-            setOptimistic([]);
             return result;
           })
           .catch(error=>{
-            setAnnouncement(error&&error.message?error.message:'No se pudo sincronizar la carta.');
-            setOptimistic([]);
+            if(interactionEpochRef.current===interactionEpoch){
+              localFirstRef.current='';
+              setAnnouncement(error&&error.message?error.message:'No se pudo sincronizar la carta.');
+              setOptimistic([]);
+            }
             throw error;
-          })
-          .finally(()=>setSyncing(false));
-        revealPromiseRef.current=promise.catch(()=>null);
+          });
+        // Conserva la promesa original para que la segunda carta espere el ACK real.
+        // El catch paralelo evita un unhandled rejection cuando el usuario nunca elige segunda.
+        promise.catch(()=>null);
+        revealPromiseRef.current=promise;
         return;
       }
       if(card.id===localFirstId) return;
       const first=cards.find(item=>item.id===localFirstId);
-      if(!first) { setOptimistic([]); return; }
-      if(!authoritativeOnly) setOptimistic([first.id,card.id]);
+      if(!first) { localFirstRef.current=''; setOptimistic([]); return; }
+      const interactionEpoch=interactionEpochRef.current;
+      pairPendingRef.current=true;
+      setOptimistic([first.id,card.id]);
       setSyncing(true);
       const correct=first.pairId===card.pairId;
       setAnnouncement(correct?'Comprobando pareja…':'Comparando cartas…');
@@ -285,23 +299,32 @@
         .then(()=>send(buildAction('SUBMIT_PAIR',{first_card_id:first.id,second_card_id:card.id,pair_id:correct?first.pairId:'',correct})))
         .then(result=>{
           if(result && result.ok===false) throw new Error(result.mensaje||result.message||result.error||'El intento no fue aceptado.');
-          setOptimistic([]);
-          setAnnouncement(correct?'¡Pareja correcta! +1 · seguís jugando.':'No coinciden. Miralas bien: se volverán a tapar y cambia el turno.');
+          if(interactionEpochRef.current===interactionEpoch){
+            localFirstRef.current='';
+            setOptimistic([]);
+            setAnnouncement(correct?'¡Pareja correcta! +1 · seguís jugando.':'No coinciden. Miralas bien: se volverán a tapar y cambia el turno.');
+          }
           return result;
         })
         .catch(error=>{
-          setAnnouncement(error&&error.message?error.message:'No se pudo guardar el intento.');
-          setOptimistic([]);
+          if(interactionEpochRef.current===interactionEpoch){
+            localFirstRef.current='';
+            setAnnouncement(error&&error.message?error.message:'No se pudo guardar el intento.');
+            setOptimistic([]);
+          }
         })
-        .finally(()=>setSyncing(false));
-    },[canPlay,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction,authoritativeOnly]);
+        .finally(()=>{
+          if(interactionEpochRef.current===interactionEpoch) setSyncing(false);
+          pairPendingRef.current=false;
+        });
+    },[canPlay,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction]);
 
     const claimedCount=Object.keys(shared.claimed).length || shared.matchedPairs.size;
     const completed=shared.completed || claimedCount>=cards.length/2;
     const visibleIds=new Set([...reveal.ids,...optimistic]);
     const transitionText=waitingForFlipback ? 'No coinciden · memorízalas antes de que se cierren' : '';
 
-    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION}>
+    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION}>
       <header className="elmm-header">
         <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Volteá dos cartas. Si coinciden, ganás el par y seguís jugando. Si no coinciden, todos las ven un momento y vuelven a taparse.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
@@ -320,16 +343,19 @@
           return <ClassicCard key={card.id} card={card} index={index} visible={visible} selected={selected} claimed={claimed} mismatch={waitingForFlipback && temporary} claim={claim} disabled={!canPlay||syncing||waitingForFlipback||(serverFirstId===card.id)} onSelect={selectCard}/>;
         })}
       </div>
-      <div className="elmm-live-announcement" role="status" aria-live="polite">{syncing?'Sincronizando jugada…':announcement}</div>
+      <div className="elmm-live-announcement" role="status" aria-live="polite">{syncing?'Sincronizando pareja…':announcement}</div>
       {completed && <div className="elmm-complete">¡Tablero completado!</div>}
     </section>;
   }
 
   MemoryMatchClassicSyncCS21A189.__cs21a189ClassicSync=true;
+  MemoryMatchClassicSyncCS21A189.__cs21a194LatencySafe=true;
   MemoryMatchClassicSyncCS21A189.__version=VERSION;
+  MemoryMatchClassicSyncCS21A189.__latencySafeVersion=LATENCY_SAFE_VERSION;
   global.MemoryMatchGameCS21A173=MemoryMatchClassicSyncCS21A189;
   global.EnglishLabMemoryMatchClassicSyncCS21A189={
     version:VERSION,
+    latencySafeVersion:LATENCY_SAFE_VERSION,
     Component:MemoryMatchClassicSyncCS21A189,
     attemptVisible,
     sharedState,
