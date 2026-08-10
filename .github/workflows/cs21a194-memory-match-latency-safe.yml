@@ -1,0 +1,191 @@
+name: CS21A194 Memory Match Latency Safe QA
+
+on:
+  pull_request:
+    paths:
+      - 'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'
+      - 'src/english_lab_live_canonical_loader_cs21a193.js'
+      - 'apps_script_patches/99P_MEMORY_MATCH_LATENCY_SAFE_QA_CS21A194.gs'
+      - 'scripts/assemble_apps_script_cs21a194_complete.mjs'
+      - 'scripts/test_apps_script_cumulative_verifier_cs21a194.mjs'
+      - 'scripts/test_memory_match_latency_safe_browser_cs21a194.mjs'
+      - 'scripts/patch_qa_package_cs21a194.mjs'
+      - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_LATENCY_CS21A194.md'
+      - '.github/workflows/cs21a194-memory-match-latency-safe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latency-safe-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TEST_MERGE_SHA: ${{ github.sha }}
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      CS21A193_BASE_SHA: c1c28bcd72bbccb9373bdd159eccbb4d6a61bdcc
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify historical CS21A192 backend remains reproducible
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          node scripts/test_memory_match_sync_consistency_cs21a192.mjs
+          node scripts/test_apps_script_cumulative_verifier_cs21a192.mjs
+          grep -q 'BLOQUE 15/15: 99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          grep -q "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-2'" apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+          ! grep -q 'CS21A194_MM_LATENCY_SAFE_VERSION' apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs
+
+      - name: Assemble and execute CS21A194 backend contract
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a194_complete.mjs
+          node scripts/test_apps_script_cumulative_verifier_cs21a194.mjs
+          complete='apps_script_patches/99_CS21A194_MEMORY_MATCH_LATENCY_SAFE_COMPLETO.gs'
+          grep -q 'BLOQUE 16/16: 99P_MEMORY_MATCH_LATENCY_SAFE_QA_CS21A194.gs' "$complete"
+          grep -q "CS21A194_MM_LATENCY_SAFE_VERSION = 'CS21A194-MM-LATENCY-SAFE-1'" "$complete"
+          grep -q 'CS21A194_MM_MIN_SECOND_PICK_MS = 30000' "$complete"
+          grep -q 'first_reveal_deadline_extended_atomically:true' "$complete"
+          grep -q 'first_reveal_deadline_extension_idempotent:true' "$complete"
+
+      - name: Run accumulated non-browser regressions
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_cs21a190.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_closed_room_cs21a185.mjs
+          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+
+      - name: Reconstruct exact CS21A193 base in isolated worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add /tmp/cs21a193-base "$CS21A193_BASE_SHA"
+          cd /tmp/cs21a193-base
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
+          node scripts/patch_qa_package_cs21a187.mjs
+          node scripts/patch_qa_package_cs21a189.mjs
+          node scripts/patch_qa_package_cs21a190.mjs
+          node scripts/patch_qa_package_cs21a191.mjs
+          node scripts/finalize_qa_package_cs21a191.mjs
+          node scripts/patch_qa_package_cs21a191.mjs --verify
+          node scripts/patch_qa_package_cs21a192.mjs
+          node scripts/patch_qa_package_cs21a192.mjs --verify
+          node scripts/patch_qa_package_cs21a193.mjs
+          node scripts/patch_qa_package_cs21a193.mjs --verify
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          cp -a dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE "$GITHUB_WORKSPACE/dist/"
+
+      - name: Patch and verify isolated CS21A194 package
+        run: |
+          set -euo pipefail
+          node scripts/patch_qa_package_cs21a194.mjs
+          node scripts/patch_qa_package_cs21a194.mjs --verify
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start exact CS21A194 package server
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A194_CANDIDATO_MEMORY_MATCH_LATENCY_SAFE'
+          PORT=4194 node "$package/serve.mjs" > cs21a194-package-server.log 2>&1 &
+          echo $! > cs21a194-package-server.pid
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:4194/qa-setup.html >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat cs21a194-package-server.log
+          exit 1
+
+      - name: Smoke CS21A194 served package
+        run: |
+          set -euo pipefail
+          base='http://127.0.0.1:4194'
+          curl -fsS "$base/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx" -o /tmp/mm194.jsx
+          curl -fsS "$base/src/english_lab_live_canonical_loader_cs21a193.js" -o /tmp/loader194.js
+          curl -fsS "$base/BACKEND_QA/99_CS21A194_MEMORY_MATCH_LATENCY_SAFE_COMPLETO.gs" -o /tmp/backend194.gs
+          curl -fsS "$base/VERSION.txt" -o /tmp/version194.txt
+          grep -q 'data-latency-safe-version={LATENCY_SAFE_VERSION}' /tmp/mm194.jsx
+          grep -q 'Elegí la segunda mientras sincronizamos' /tmp/mm194.jsx
+          grep -q 'memory_match_classic_sync_cs21a189.jsx?v=CS21A194' /tmp/loader194.js
+          grep -q '__cs21a194LatencySafe' /tmp/loader194.js
+          grep -q 'CS21A194_MM_MIN_SECOND_PICK_MS = 30000' /tmp/backend194.gs
+          grep -q 'VERSION=CS21A194' /tmp/version194.txt
+          grep -q 'QA_PORT=4194' /tmp/version194.txt
+          grep -q 'BACKEND_LAYER=CS21A194-MM-LATENCY-SAFE-1' /tmp/version194.txt
+          grep -q 'MEMORY_MATCH_MIN_SECOND_PICK_MS=30000' /tmp/version194.txt
+
+      - name: Reproduce slow first ACK and queued second card
+        env:
+          QA_BASE_URL: http://127.0.0.1:4194
+        run: node scripts/test_memory_match_latency_safe_browser_cs21a194.mjs
+
+      - name: Run authoritative Memory Match regressions on CS21A194 package
+        env:
+          QA_BASE_URL: http://127.0.0.1:4194
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_authoritative_sync_browser_cs21a192.mjs
+          node scripts/test_memory_match_first_reveal_deadline_browser_cs21a192.mjs
+          node scripts/test_memory_match_poll_recovery_browser_cs21a192.mjs
+          node scripts/test_memory_match_terminal_poll_stop_browser_cs21a192.mjs
+          node scripts/test_memory_match_classic_sync_browser_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_browser_cs21a190.mjs
+          node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
+
+      - name: Reverify package manifest
+        run: node scripts/patch_qa_package_cs21a194.mjs --verify
+
+      - name: Zip and hash exact candidate
+        run: |
+          set -euo pipefail
+          cd dist
+          package='CAMPUS_QA_CS21A194_CANDIDATO_MEMORY_MATCH_LATENCY_SAFE'
+          zip -X -q -r "$package.zip" "$package"
+          sha256sum "$package.zip" > "$package.zip.sha256"
+          sha256sum -c "$package.zip.sha256"
+
+      - name: Upload directly usable CS21A194 folder
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A194_CANDIDATO_MEMORY_MATCH_LATENCY_SAFE
+          path: dist/CAMPUS_QA_CS21A194_CANDIDATO_MEMORY_MATCH_LATENCY_SAFE/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload ZIP, hash and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A194_MEMORY_MATCH_LATENCY_SAFE_EVIDENCE
+          path: |
+            dist/CAMPUS_QA_CS21A194_CANDIDATO_MEMORY_MATCH_LATENCY_SAFE.zip
+            dist/CAMPUS_QA_CS21A194_CANDIDATO_MEMORY_MATCH_LATENCY_SAFE.zip.sha256
+            qa-output/cs21a192-authoritative-sync/
+            cs21a194-package-server.log
+          if-no-files-found: warn
+          retention-days: 30
