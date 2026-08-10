@@ -3,10 +3,6 @@ name: CS21A196 Memory Match Conflict Reconciliation QA
 on:
   pull_request:
     paths:
-      - 'src/english_lab_live.jsx'
-      - 'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx'
-      - 'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'
-      - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
       - 'apps_script_patches/99R_MEMORY_MATCH_CONFLICT_RECONCILIATION_QA_CS21A196.gs'
       - 'scripts/assemble_apps_script_cs21a196_complete.mjs'
       - 'scripts/test_apps_script_cumulative_verifier_cs21a196.mjs'
@@ -28,7 +24,7 @@ jobs:
       SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       TEST_MERGE_SHA: ${{ github.sha }}
       SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
-      CS21A195_BASE_SHA: f395641baede3cb3be8febbca117f1f18d972e1f
+      CS21A193_BASE_SHA: c1c28bcd72bbccb9373bdd159eccbb4d6a61bdcc
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
@@ -59,12 +55,12 @@ jobs:
           node scripts/test_english_lab_hangman_contract_cs21a191.mjs
           node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
 
-      - name: Reconstruct exact CS21A195 base in isolated worktree
+      - name: Reconstruct exact CS21A193 base in isolated worktree
         shell: bash
         run: |
           set -euo pipefail
-          git worktree add /tmp/cs21a195-base "$CS21A195_BASE_SHA"
-          cd /tmp/cs21a195-base
+          git worktree add /tmp/cs21a193-base "$CS21A193_BASE_SHA"
+          cd /tmp/cs21a193-base
           node scripts/assemble_apps_script_cs21a183_complete.mjs
           node scripts/build_qa_staging_frontend_cs21a148.mjs
           node scripts/audit_qa_staging_frontend_cs21a148.mjs
@@ -80,12 +76,21 @@ jobs:
           node scripts/patch_qa_package_cs21a192.mjs --verify
           node scripts/patch_qa_package_cs21a193.mjs
           node scripts/patch_qa_package_cs21a193.mjs --verify
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          rm -rf "$GITHUB_WORKSPACE/dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE"
+          cp -a dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE "$GITHUB_WORKSPACE/dist/"
+
+      - name: Patch and verify exact CS21A194 base
+        run: |
+          set -euo pipefail
           node scripts/patch_qa_package_cs21a194.mjs
           node scripts/patch_qa_package_cs21a194.mjs --verify
+
+      - name: Patch and verify exact CS21A195 base
+        run: |
+          set -euo pipefail
           node scripts/patch_qa_package_cs21a195.mjs
           node scripts/patch_qa_package_cs21a195.mjs --verify
-          mkdir -p "$GITHUB_WORKSPACE/dist"
-          cp -a dist/CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE "$GITHUB_WORKSPACE/dist/"
 
       - name: Patch and verify isolated CS21A196 package
         run: |
@@ -111,6 +116,17 @@ jobs:
           done
           cat cs21a196-package-server.log
           exit 1
+
+      - name: Smoke exact CS21A196 package identity
+        run: |
+          set -euo pipefail
+          base='http://127.0.0.1:4196'
+          curl -fsS "$base/VERSION.txt" -o /tmp/version196.txt
+          curl -fsS "$base/BACKEND_QA/99_CS21A196_MEMORY_MATCH_CONFLICT_RECONCILIATION_COMPLETO.gs" -o /tmp/backend196.gs
+          grep -q 'VERSION=CS21A196' /tmp/version196.txt
+          grep -q 'QA_PORT=4196' /tmp/version196.txt
+          grep -q 'BACKEND_LAYER=CS21A196-MM-CONFLICT-RECONCILIATION-1' /tmp/version196.txt
+          grep -q "CS21A196_MM_RECONCILIATION_VERSION = 'CS21A196-MM-CONFLICT-RECONCILIATION-1'" /tmp/backend196.gs
 
       - name: Reproduce conflict and prove third card stays blocked
         env:
