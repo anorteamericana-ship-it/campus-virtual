@@ -29,6 +29,7 @@ on:
       - 'scripts/audit_cleanup_candidates_cs21a145.mjs'
       - 'scripts/virtual_review_static.mjs'
       - 'scripts/f96_lazy_map_parser_cs21a193.mjs'
+      - 'scripts/build_qa_package_cs21a179.mjs'
       - 'scripts/build_qa_package_cs21a180.mjs'
       - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
       - 'scripts/patch_qa_package_cs21a187.mjs'

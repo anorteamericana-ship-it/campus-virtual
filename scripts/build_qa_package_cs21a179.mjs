@@ -28,6 +28,16 @@ function build(){
   fs.cpSync(source,target,{recursive:true});
   fs.rmSync(path.join(target,'.nojekyll'),{force:true});
 
+  // El staging vigente puede estar varias capas por delante. Este builder debe
+  // reconstruir su artefacto histórico sin modificar las fuentes actuales.
+  const campusPath=path.join(target,'campus.html');
+  fs.writeFileSync(campusPath,fs.readFileSync(campusPath,'utf8')
+    .replace(/src\/lazy_loader\.jsx\?v=F98\.4Z6CS21A\d+/g,'src/lazy_loader.jsx?v=F98.4Z6CS21A179'),'utf8');
+  const lazyPath=path.join(target,'src','lazy_loader.jsx');
+  fs.writeFileSync(lazyPath,fs.readFileSync(lazyPath,'utf8')
+    .replace(/^\/\/ F98\.4-Z6-CS21A\d+[^\r\n]*/m,'// F98.4-Z6-CS21A179 · artefacto histórico de carga atómica.')
+    .replace(/const VERSION = 'F98\.4-Z6-CS21A\d+';/,"const VERSION = 'F98.4-Z6-CS21A179';"),'utf8');
+
   const oldLauncher=path.join(target,'INICIAR_QA_STAGING.cmd');
   const newLauncher=path.join(target,'ABRIR_CAMPUS_QA_CS21A179.cmd');
   const launcher=fs.readFileSync(oldLauncher,'utf8').replace(/^\uFEFF/,'')
