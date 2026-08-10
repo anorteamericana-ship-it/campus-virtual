@@ -74,7 +74,7 @@ const context = {
 };
 
 vm.createContext(context);
-new vm.Script(source, {filename:'CS21A144-CS21A192-QA-CUMULATIVE.gs'}).runInContext(context);
+new vm.Script(source, {filename:'CS21A144-CS21A194-QA-CUMULATIVE.gs'}).runInContext(context);
 
 const result = context.verificarMemoryMatchStartFixCS21A183();
 const verifierResults = logLines
@@ -95,6 +95,7 @@ const expectedVersions = [
   'CS21A190-MM-TIMEOUT-CLEANUP-1',
   context.CS21A192_MM_SYNC_VERSION,
 ];
+if (context.CS21A194_MM_LATENCY_SAFE_VERSION) expectedVersions.push(context.CS21A194_MM_LATENCY_SAFE_VERSION);
 
 assert.deepEqual(
   verifierResults.map(entry => entry.version),
@@ -104,9 +105,20 @@ assert.deepEqual(
 for (const entry of verifierResults) {
   assert.equal(entry.ok, true, `${entry.version} devolvio ok=false en la cadena real.`);
 }
-assert.match(result.version, /^CS21A192-MM-CONSISTENCY-\d+$/);
-assert.equal(result.version, context.CS21A192_MM_SYNC_VERSION);
-assert.equal(result.previous_version, 'CS21A190-MM-TIMEOUT-CLEANUP-1');
+
+if (context.CS21A194_MM_LATENCY_SAFE_VERSION) {
+  assert.equal(result.version, context.CS21A194_MM_LATENCY_SAFE_VERSION);
+  assert.equal(result.previous_version, context.CS21A192_MM_SYNC_VERSION);
+  assert.equal(result.second_pick_min_window_ms, 30000);
+  assert.equal(result.first_reveal_deadline_extended_atomically, true);
+  assert.equal(result.first_reveal_deadline_extension_idempotent, true);
+  assert.equal(context._cs21a189WritePackage_.__cs21a194LatencySafe, true);
+} else {
+  assert.match(result.version, /^CS21A192-MM-CONSISTENCY-\d+$/);
+  assert.equal(result.version, context.CS21A192_MM_SYNC_VERSION);
+  assert.equal(result.previous_version, 'CS21A190-MM-TIMEOUT-CLEANUP-1');
+}
+
 assert.equal(
   context.englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a190TransientCleanup,
   true,
@@ -122,9 +134,12 @@ assert.equal(context.englishLabMemoryMatchGetRoomControlCS21A180.__cs21a192Canon
 
 console.log(JSON.stringify({
   ok:true,
-  contract:'CS21A192_APPS_SCRIPT_CUMULATIVE_RUNTIME_VERIFIER',
+  contract:context.CS21A194_MM_LATENCY_SAFE_VERSION
+    ? 'CS21A194_APPS_SCRIPT_CUMULATIVE_RUNTIME_VERIFIER'
+    : 'CS21A192_APPS_SCRIPT_CUMULATIVE_RUNTIME_VERIFIER',
   sources:sourceFiles.length,
   versions:expectedVersions,
   cs21a190_transient_cleanup_preserved:true,
   final_version:result.version,
+  min_second_pick_ms:context.CS21A194_MM_MIN_SECOND_PICK_MS || null,
 }, null, 2));
