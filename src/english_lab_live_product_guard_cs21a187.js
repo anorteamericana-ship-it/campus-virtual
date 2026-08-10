@@ -237,6 +237,11 @@
   }
 
   function patchLazyLoader(){
+    const canonical = global.EnglishLabLiveCanonicalLoaderCS21A193 || global.EnglishLabCanonicalLoaderCS21A193;
+    if(canonical && typeof canonical.install === 'function'){
+      lazyInstalled = canonical.install() === true;
+      return lazyInstalled;
+    }
     const api = global.anLazyCampus;
     if(!api || typeof api.loadOne !== 'function' || typeof api.loadMany !== 'function') return false;
     if(api.loadOne.__cs21a188ProductGuard) return true;
@@ -301,5 +306,4 @@
     install();
     if(lazyInstalled || attempts > 300) global.clearInterval(timer);
   },50);
-  global.addEventListener && global.addEventListener('an:lazy-module-loaded',install);
 })(window);

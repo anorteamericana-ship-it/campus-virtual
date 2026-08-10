@@ -1,9 +1,9 @@
-// F98.4-Z6-CS21A179 · Cargador diferido con montaje atómico de rutas canónicas.
+// F98.4-Z6-CS21A193 · Cargador diferido con owner dinámico para rutas canónicas.
 // Base preservada: F98.4-Z6-CS21A168.
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A179';
+  const VERSION = 'F98.4-Z6-CS21A193';
   const ROUTE_STABLE_MS = 64;
   const ROUTE_TIMEOUT_MS = 5000;
   const normalize = (src) => {
@@ -119,7 +119,10 @@
 
   async function resolveRoute(files, component){
     const list = (files || []).map(normalize);
-    await loadMany(list);
+    const activeLoadMany = window.anLazyCampus && typeof window.anLazyCampus.loadMany === 'function'
+      ? window.anLazyCampus.loadMany
+      : loadMany;
+    await activeLoadMany(list);
     return waitForCanonicalRoute(component);
   }
 
@@ -185,5 +188,9 @@
   }
 
   window.anLazyCampus = { loadOne, loadMany, resolveRoute, validateMap, loaded, VERSION, getStatus };
+  try {
+    const canonical = window.EnglishLabLiveCanonicalLoaderCS21A193;
+    if (canonical && typeof canonical.install === 'function') canonical.install();
+  } catch(_) {}
   window.LazyModuleView = LazyModuleView;
 })();

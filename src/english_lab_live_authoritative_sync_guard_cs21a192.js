@@ -19,10 +19,17 @@
     );
   }
   function install(){
+    const canonical=global.EnglishLabLiveCanonicalLoaderCS21A193||global.EnglishLabCanonicalLoaderCS21A193;
+    if(canonical&&typeof canonical.install==='function'){
+      installed=canonical.install()===true;
+      if(compatibility()&&typeof canonical.reassertAuthoritativeOwner==='function')canonical.reassertAuthoritativeOwner();
+      return installed;
+    }
     const api=global.anLazyCampus;
     if(!api||typeof api.loadMany!=='function')return false;
     if(api.loadMany.__cs21a192AuthoritativeSyncGuard){installed=true;return true;}
-    const baseLoadMany=api.loadMany.bind(api);
+    const currentLoadMany=api.loadMany;
+    const baseLoadMany=currentLoadMany.bind(api);
     async function loadManyCS21A192(values){
       const source=Array.isArray(values)?values.slice():[];
       const result=await baseLoadMany(source);
@@ -35,7 +42,7 @@
       return result;
     }
     loadManyCS21A192.__cs21a192AuthoritativeSyncGuard=true;
-    loadManyCS21A192.__base=baseLoadMany;
+    loadManyCS21A192.__base=currentLoadMany;
     api.loadMany=loadManyCS21A192;
     installed=true;
     return true;
@@ -58,5 +65,4 @@
     attempts+=1;
     if(install()||attempts>300)global.clearInterval(timer);
   },50);
-  global.addEventListener&&global.addEventListener('an:lazy-module-loaded',install);
 })(window);

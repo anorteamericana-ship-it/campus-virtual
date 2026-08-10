@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { extractF96LazyMapCS21A193 } from './f96_lazy_map_parser_cs21a193.mjs';
 
 const root = process.cwd();
 const outputDir = path.join(root, 'qa-output', 'component-ownership-cs21a151');
@@ -51,10 +52,11 @@ function extractDirectScripts() {
 
 function extractLazyMap() {
   const app = read('src/app.jsx');
-  const match = app.match(/const\s+F96_LAZY\s*=\s*(\{[\s\S]*?\n\};)/);
-  if (!match) return { map: {}, error: 'No se pudo extraer F96_LAZY de src/app.jsx.' };
   try {
-    const map = Function(`"use strict"; return (${match[1].replace(/;\s*$/, '')});`)();
+    const canonicalLoader = fs.existsSync(path.join(root, 'src/english_lab_live_canonical_loader_cs21a193.js'))
+      ? read('src/english_lab_live_canonical_loader_cs21a193.js')
+      : '';
+    const map = extractF96LazyMapCS21A193(app, canonicalLoader);
     return { map, error: '' };
   } catch (error) {
     return { map: {}, error: error?.message || String(error) };

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { extractF96LazyMapCS21A193 } from './f96_lazy_map_parser_cs21a193.mjs';
 
 const root = process.cwd();
 const self = path.relative(root, new URL(import.meta.url).pathname).replace(/^\//, '').replace(/\\/g, '/');
@@ -132,13 +133,16 @@ function extractHtmlRefs(source) {
 }
 
 function extractLazyRefs(source) {
-  const match = source.match(/const\s+F96_LAZY\s*=\s*(\{[\s\S]*?\n\};)/);
-  if (!match) {
-    errors.push('No se pudo extraer F96_LAZY de src/app.jsx.');
+  try {
+    const canonicalLoader = fs.existsSync(path.join(root, 'src/english_lab_live_canonical_loader_cs21a193.js'))
+      ? fs.readFileSync(path.join(root, 'src/english_lab_live_canonical_loader_cs21a193.js'), 'utf8')
+      : '';
+    const map = extractF96LazyMapCS21A193(source, canonicalLoader);
+    return [...new Set(Object.values(map).flat().map(cleanRef))];
+  } catch (error) {
+    errors.push(error?.message || String(error));
     return [];
   }
-  const map = Function(`"use strict";return (${match[1].replace(/;\s*$/, '')});`)();
-  return [...new Set(Object.values(map).flat().map(cleanRef))];
 }
 
 function containsRoute(source, route) {

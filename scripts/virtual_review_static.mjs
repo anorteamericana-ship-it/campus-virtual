@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { extractF96LazyMapCS21A193 } from './f96_lazy_map_parser_cs21a193.mjs';
 
 const root = process.cwd();
 const outDir = path.join(root, 'qa-output');
@@ -42,12 +43,6 @@ function extractAssets(html, source) {
   return refs;
 }
 
-function extractLazyMap(source) {
-  const match = source.match(/const\s+F96_LAZY\s*=\s*(\{[\s\S]*?\n\};)/);
-  if (!match) throw new Error('No se pudo extraer F96_LAZY de src/app.jsx.');
-  return Function(`"use strict";return (${match[1].replace(/;\s*$/, '')});`)();
-}
-
 function extractCssAssets(styleFiles) {
   const refs = [];
   for (const file of styleFiles) {
@@ -83,7 +78,10 @@ const staticAssets = deliveryHtmlFiles.flatMap(file => extractAssets(read(file),
 
 let lazyAssets = [];
 try {
-  const lazyMap = extractLazyMap(app);
+  const canonicalLoader = exists('src/english_lab_live_canonical_loader_cs21a193.js')
+    ? read('src/english_lab_live_canonical_loader_cs21a193.js')
+    : '';
+  const lazyMap = extractF96LazyMapCS21A193(app, canonicalLoader);
   lazyAssets = [...new Set(Object.values(lazyMap).flat())].map(raw => ({
     raw,
     file: resolveLocalRef(raw, 'campus.html'),

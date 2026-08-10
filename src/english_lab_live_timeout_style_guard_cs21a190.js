@@ -11,17 +11,35 @@
   const BASE_STYLE_HREF='/styles/english_lab_memory_match_cs21a173.css?v=CS21A190';
   const CLASSIC_STYLE_HREF='/styles/english_lab_memory_match_classic_sync_cs21a189.css?v=CS21A190';
 
+  function stylePath(doc,href){
+    try { return new global.URL(href,doc.baseURI || global.location?.href || '/').pathname; }
+    catch(_) { return String(href || '').split('?')[0].replace(/^\.?\//,'/'); }
+  }
+
+  function findLinkByPath(doc,href){
+    const target=stylePath(doc,href);
+    return Array.from(doc.querySelectorAll('link[rel~="stylesheet"][href]'))
+      .find(link=>stylePath(doc,link.getAttribute('href'))===target) || null;
+  }
+
   function ensureLink(id,href){
     const doc=global.document;
     if(!doc || !doc.head) return false;
     let link=doc.getElementById(id);
     if(!link){
+      link=findLinkByPath(doc,href);
+      if(link) link.id=id;
+    }
+    if(!link){
       link=doc.createElement('link');
       link.id=id;
       link.rel='stylesheet';
+      link.setAttribute('href',href);
       doc.head.appendChild(link);
     }
-    if(link.getAttribute('href')!==href) link.setAttribute('href',href);
+    // Preserve the active package epoch when the same stylesheet was preloaded.
+    // The CS21A190 URL remains only as a backward-compatible fallback.
+    if(stylePath(doc,link.getAttribute('href'))!==stylePath(doc,href)) link.setAttribute('href',href);
     return true;
   }
 

@@ -41,7 +41,16 @@
 
   function ensureStyle() {
     if (!global.document || global.document.getElementById(STYLE_ID)) return;
-    const link=global.document.createElement('link'); link.id=STYLE_ID; link.rel='stylesheet'; link.href=STYLE_HREF; global.document.head.appendChild(link);
+    const doc=global.document;
+    let expectedPath='';
+    try { expectedPath=new global.URL(STYLE_HREF,doc.baseURI || global.location?.href || '/').pathname; }
+    catch (_) { expectedPath=STYLE_HREF.split('?')[0].replace(/^\.?\//,'/'); }
+    const existing=Array.from(doc.querySelectorAll('link[rel~="stylesheet"][href]')).find(link=>{
+      try { return new global.URL(link.getAttribute('href'),doc.baseURI || global.location?.href || '/').pathname===expectedPath; }
+      catch (_) { return link.getAttribute('href').split('?')[0].replace(/^\.?\//,'/')===expectedPath; }
+    });
+    if(existing){ existing.id=STYLE_ID; return; }
+    const link=doc.createElement('link'); link.id=STYLE_ID; link.rel='stylesheet'; link.href=STYLE_HREF; doc.head.appendChild(link);
   }
   ensureStyle();
 

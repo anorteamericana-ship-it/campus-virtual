@@ -197,11 +197,15 @@
   }
 
   function patchLazyLoader() {
+    const canonical = global.EnglishLabLiveCanonicalLoaderCS21A193 || global.EnglishLabCanonicalLoaderCS21A193;
+    if (canonical && typeof canonical.install === 'function') return canonical.install() === true;
+
     const api = global.anLazyCampus;
     if (!api || typeof api.loadOne !== 'function' || typeof api.loadMany !== 'function') return false;
     if (api.loadOne.__cs21a184StudentDependencies === true) return true;
 
-    const baseLoadOne = api.loadOne.bind(api);
+    const currentLoadOne = api.loadOne;
+    const baseLoadOne = currentLoadOne.bind(api);
     async function loadOneWithEnglishLabDependencies(src) {
       if (!isLiveFile(src)) return baseLoadOne(src);
 
@@ -219,7 +223,7 @@
 
     loadOneWithEnglishLabDependencies.__cs21a184StudentDependencies = true;
     loadOneWithEnglishLabDependencies.__cs21a191HangmanDependencies = true;
-    loadOneWithEnglishLabDependencies.__base = baseLoadOne;
+    loadOneWithEnglishLabDependencies.__base = currentLoadOne;
     api.loadOne = loadOneWithEnglishLabDependencies;
     return true;
   }
@@ -266,7 +270,4 @@
     }, 15000);
   }
 
-  if (typeof global.addEventListener === 'function') {
-    global.addEventListener('an:lazy-module-loaded', ensureInstalled);
-  }
 })(window);

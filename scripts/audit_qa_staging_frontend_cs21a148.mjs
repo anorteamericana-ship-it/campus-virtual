@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { extractF96LazyMapCS21A193 } from './f96_lazy_map_parser_cs21a193.mjs';
 
 const root = process.cwd();
 const outDir = path.join(root, 'dist', 'qa-staging');
@@ -76,9 +77,10 @@ for (const forbiddenFile of forbiddenFiles) {
 }
 
 const app = read('src/app.jsx');
-const lazyMatch = app.match(/const\s+F96_LAZY\s*=\s*(\{[\s\S]*?\n\};)/);
-assert.ok(lazyMatch, 'No se pudo extraer F96_LAZY del artefacto.');
-const lazyMap = Function(`"use strict";return (${lazyMatch[1].replace(/;\s*$/, '')});`)();
+const canonicalLoader = exists('src/english_lab_live_canonical_loader_cs21a193.js')
+  ? read('src/english_lab_live_canonical_loader_cs21a193.js')
+  : '';
+const lazyMap = extractF96LazyMapCS21A193(app, canonicalLoader);
 for (const raw of Object.values(lazyMap).flat()) {
   const local = cleanRef(raw);
   assert.equal(exists(local), true, `F96_LAZY referencia un archivo ausente: ${raw}`);

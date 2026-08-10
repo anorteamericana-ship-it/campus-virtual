@@ -1,0 +1,271 @@
+name: CS21A193 English LAB Canonical Live Entry QA
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/lazy_loader.jsx'
+      - 'src/runtime_config.js'
+      - 'src/app.jsx'
+      - 'src/english_lab_free_access_cs21a66.js'
+      - 'src/english_lab_live_canonical_loader_cs21a193.js'
+      - 'src/english_lab_live_product_guard_cs21a187.js'
+      - 'src/english_lab_live_classic_sync_guard_cs21a189.js'
+      - 'src/english_lab_live_timeout_style_guard_cs21a190.js'
+      - 'src/english_lab_live_authoritative_sync_guard_cs21a192.js'
+      - 'src/english_lab_live_student_dependency_guard_cs21a184.js'
+      - 'src/english_lab_live.jsx'
+      - 'src/english_lab_ux_cs21a181.js'
+      - 'src/english_lab_games/**'
+      - 'styles/english_lab_*.css'
+      - 'apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs'
+      - 'apps_script_patches/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs'
+      - 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+      - 'scripts/assemble_apps_script_cs21a183_complete.mjs'
+      - 'scripts/build_qa_staging_frontend_cs21a148.mjs'
+      - 'scripts/audit_qa_staging_frontend_cs21a148.mjs'
+      - 'scripts/audit_delivery_surface.mjs'
+      - 'scripts/audit_component_ownership_cs21a151.mjs'
+      - 'scripts/audit_cleanup_candidates_cs21a145.mjs'
+      - 'scripts/virtual_review_static.mjs'
+      - 'scripts/f96_lazy_map_parser_cs21a193.mjs'
+      - 'scripts/build_qa_package_cs21a180.mjs'
+      - 'scripts/build_qa_package_cs21a183_apollo_qa.mjs'
+      - 'scripts/patch_qa_package_cs21a187.mjs'
+      - 'scripts/patch_qa_package_cs21a189.mjs'
+      - 'scripts/patch_qa_package_cs21a190.mjs'
+      - 'scripts/patch_qa_package_cs21a191.mjs'
+      - 'scripts/finalize_qa_package_cs21a191.mjs'
+      - 'scripts/patch_qa_package_cs21a192.mjs'
+      - 'scripts/test_english_lab_access_cs21a144.js'
+      - 'scripts/test_english_lab_access_transient_retry_cs21a193.mjs'
+      - 'scripts/test_english_lab_canonical_loader_browser_cs21a193.mjs'
+      - 'scripts/test_english_lab_package_entry_browser_cs21a193.mjs'
+      - 'scripts/test_english_lab_student_live_dependencies_cs21a184.mjs'
+      - 'scripts/patch_qa_package_cs21a193.mjs'
+      - '00_DOCUMENTACION/ENGLISH_LAB_ENTRADA_CANONICA_CS21A193.md'
+      - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_SYNC_CS21A192.md'
+      - '.github/workflows/cs21a193-english-lab-live-entry.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-live-entry-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TEST_MERGE_SHA: ${{ github.sha }}
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Preserve and verify the accumulated CS21A192 backend
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
+          node scripts/test_memory_match_sync_consistency_cs21a192.mjs
+          node scripts/test_apps_script_cumulative_verifier_cs21a192.mjs
+          complete='apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs'
+          grep -q 'BLOQUE 15/15: 99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs' "$complete"
+          grep -q "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-2'" "$complete"
+          grep -q 'cs21a190_transient_cleanup_markers_preserved:true' "$complete"
+          grep -q 'hangman_router_untouched:true' "$complete"
+
+      - name: Validate access and accumulated English LAB contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_access_cs21a144.js
+          node scripts/test_memory_match_timeout_style_cs21a190.mjs
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+          node scripts/test_english_lab_product_lifecycle_cs21a187.mjs
+          node scripts/test_english_lab_closed_room_cs21a185.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_live_loader_cs21a178.mjs
+          node scripts/test_english_lab_student_live_dependencies_cs21a184.mjs
+          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
+          node scripts/audit_delivery_surface.mjs
+          node scripts/audit_component_ownership_cs21a151.mjs
+
+      - name: Reconstruct exact package chain 148 through 192 REV2
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
+          node scripts/patch_qa_package_cs21a187.mjs
+          node scripts/patch_qa_package_cs21a189.mjs
+          node scripts/patch_qa_package_cs21a190.mjs
+          node scripts/patch_qa_package_cs21a191.mjs
+          node scripts/finalize_qa_package_cs21a191.mjs
+          node scripts/patch_qa_package_cs21a191.mjs --verify
+          node scripts/patch_qa_package_cs21a192.mjs
+          node scripts/patch_qa_package_cs21a192.mjs --verify
+
+      - name: Patch and verify isolated CS21A193 package
+        run: |
+          set -euo pipefail
+          node scripts/patch_qa_package_cs21a193.mjs
+          node scripts/patch_qa_package_cs21a193.mjs --verify
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start exact CS21A193 package server
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE'
+          PORT=4193 node "$package/serve.mjs" > cs21a193-package-server.log 2>&1 &
+          echo $! > cs21a193-package-server.pid
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:4193/qa-setup.html >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat cs21a193-package-server.log
+          exit 1
+
+      - name: Smoke exact routes, order, epochs and backend identity
+        run: |
+          set -euo pipefail
+          base='http://127.0.0.1:4193'
+          curl -fsS "$base/campus.html" -o /tmp/campus193.html
+          curl -fsS "$base/index.html" -o /tmp/index193.html
+          curl -fsS "$base/src/app.jsx" -o /tmp/app193.jsx
+          curl -fsS "$base/src/lazy_loader.jsx" -o /tmp/lazy193.jsx
+          curl -fsS "$base/src/runtime_config.js" -o /tmp/runtime193.js
+          curl -fsS "$base/src/english_lab_free_access_cs21a66.js" -o /tmp/access193.js
+          curl -fsS "$base/src/english_lab_live_canonical_loader_cs21a193.js" -o /tmp/canonical193.js
+          curl -fsS "$base/VERSION.txt" -o /tmp/version193.txt
+          curl -fsS "$base/SHA256SUMS.txt" -o /tmp/manifest193.txt
+          for route in \
+            src/english_lab_games/english_lab_runtime_cs21a173.js \
+            src/english_lab_games/memory_match_engine_cs21a173.jsx \
+            src/english_lab_games/memory_match_shared_discovery_cs21a188.jsx \
+            src/english_lab_games/english_lab_live_sync_guard_cs21a177.js \
+            src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx \
+            src/english_lab_games/english_lab_game_registry_cs21a191.js \
+            src/english_lab_games/hangman_engine_cs21a191.js \
+            src/english_lab_games/english_lab_hangman_live_cs21a191.jsx \
+            src/english_lab_games/memory_match_classic_sync_cs21a189.jsx \
+            src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx \
+            src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx \
+            src/english_lab_live.jsx
+          do
+            curl -fsS "$base/$route?v=CS21A193" >/dev/null
+          done
+          grep -q 'src/english_lab_live_canonical_loader_cs21a193.js?v=F98.4Z6CS21A193' /tmp/campus193.html
+          cmp /tmp/campus193.html /tmp/index193.html
+          grep -q 'src/lazy_loader.jsx?v=F98.4Z6CS21A193' /tmp/campus193.html
+          grep -q 'src/app.jsx?v=F98.4Z6CS21A193' /tmp/campus193.html
+          grep -q "const VERSION = 'F98.4-Z6-CS21A193'" /tmp/lazy193.jsx
+          grep -q 'const activeLoadMany = window.anLazyCampus' /tmp/lazy193.jsx
+          grep -q 'await activeLoadMany(list)' /tmp/lazy193.jsx
+          ! grep -q 'await loadMany(list);' /tmp/lazy193.jsx
+          grep -q 'F96_ENGLISH_LAB_LIVE_CS21A193' /tmp/app193.jsx
+          grep -q 'src/english_lab_ux_cs21a181.js?v=F98.4Z6CS21A193' /tmp/runtime193.js
+          test "$(grep -o '?v=CS21A193' /tmp/canonical193.js | wc -l)" -eq 12
+          ! grep -Eq '\?v=CS21A(17[3-9]|18[0-9]|19[0-2])' /tmp/canonical193.js
+          grep -q 'EnglishLabLiveCanonicalLoaderCS21A193' /tmp/access193.js
+          grep -q 'an_english_lab_access_cs21a193' /tmp/access193.js
+          grep -q 'DEFAULT_ACCESS_TIMEOUT_MS = 60000' /tmp/access193.js
+          grep -q 'CONCLUSIVE_DENIAL_STATES' /tmp/access193.js
+          grep -q 'loader.loadStudent()' /tmp/access193.js
+          ! grep -q 'F98.4Z6CS20H' /tmp/access193.js
+          grep -q 'VERSION=CS21A193' /tmp/version193.txt
+          grep -q 'PACKAGE_BASE=CAMPUS_QA_CS21A192_CANDIDATO_MEMORY_MATCH_SYNC_REV2' /tmp/version193.txt
+          grep -q 'QA_PORT=4193' /tmp/version193.txt
+          grep -Fq "SOURCE_HEAD_SHA=$SOURCE_HEAD_SHA" /tmp/version193.txt
+          grep -Fq "TEST_MERGE_SHA=$TEST_MERGE_SHA" /tmp/version193.txt
+          grep -q 'BACKEND_LAYER=CS21A192-MM-CONSISTENCY-2' /tmp/version193.txt
+          grep -q 'APPS_SCRIPT_ACTION=DO_NOT_MODIFY' /tmp/version193.txt
+          grep -q 'ENGLISH_LAB_CANONICAL_MANIFEST_COUNT=12' /tmp/version193.txt
+          grep -q 'MEMORY_MATCH_BROWSER_CACHE_EPOCH=CS21A193' /tmp/version193.txt
+          grep -q 'MEMORY_MATCH_STYLE_CACHE_EPOCH=F98.4Z6CS21A193' /tmp/version193.txt
+          grep -q 'ENGLISH_LAB_AUTHENTICATED_QA_STATUS=PENDING' /tmp/version193.txt
+          test -s /tmp/manifest193.txt
+
+      - name: Test real Campus entry and canonical loader ownership
+        env:
+          QA_BASE_URL: http://127.0.0.1:4193
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_canonical_loader_browser_cs21a193.mjs
+          node scripts/test_english_lab_package_entry_browser_cs21a193.mjs
+
+      - name: Test transient access failure and successful retry
+        run: |
+          set -euo pipefail
+          mkdir -p qa-output/cs21a193-access-retry
+          node scripts/test_english_lab_access_transient_retry_cs21a193.mjs | tee qa-output/cs21a193-access-retry/result.json
+
+      - name: Run CS21A192 and CS21A191 packaged browser regressions
+        env:
+          QA_BASE_URL: http://127.0.0.1:4193
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_authoritative_sync_browser_cs21a192.mjs
+          node scripts/test_memory_match_first_reveal_deadline_browser_cs21a192.mjs
+          node scripts/test_memory_match_poll_recovery_browser_cs21a192.mjs
+          node scripts/test_memory_match_terminal_poll_stop_browser_cs21a192.mjs
+          node scripts/test_memory_match_classic_sync_browser_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_browser_cs21a190.mjs
+          node scripts/test_english_lab_hangman_browser_cs21a191.mjs
+          node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
+          node scripts/test_english_lab_student_browser_cs21a178.mjs
+
+      - name: Reverify complete manifest after browser tests
+        run: node scripts/patch_qa_package_cs21a193.mjs --verify
+
+      - name: Zip and hash exact candidate
+        run: |
+          set -euo pipefail
+          cd dist
+          package='CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE'
+          zip -X -q -r "$package.zip" "$package"
+          sha256sum "$package.zip" > "$package.zip.sha256"
+          sha256sum -c "$package.zip.sha256"
+
+      - name: Upload directly usable CS21A193 folder
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE
+          path: dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload ZIP, hash and QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A193_ENGLISH_LAB_CANONICAL_ENTRY_EVIDENCE
+          path: |
+            dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE.zip
+            dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE.zip.sha256
+            qa-output/cs21a193-canonical-loader/
+            qa-output/cs21a193-package-entry/
+            qa-output/cs21a193-access-retry/
+            qa-output/cs21a192-authoritative-sync/
+            qa-output/cs21a191-hangman/
+            qa-output/cs21a190-timeout-style/
+            qa-output/cs21a189-classic-sync/
+            qa-output/cs21a178-student-sync/
+            cs21a193-package-server.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,13 +1,36 @@
-// F98.4-Z6-CS21A144 · English LAB exclusivo para estudiantes al día
+// F98.4-Z6-CS21A193 · English LAB: acceso confirmado y recuperación honesta.
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A144';
+  const VERSION = 'F98.4-Z6-CS21A193';
   const EVENT_NAME = 'an:english-lab-free-access';
   const ENDPOINT = 'englishLabAccessStatus';
-  const CACHE_KEY = 'an_english_lab_access_cs21a144';
+  const CACHE_KEY = 'an_english_lab_access_cs21a193';
   const CACHE_TTL = 2 * 60 * 1000;
-  const LIVE_FILE = 'src/english_lab_live.jsx?v=F98.4Z6CS20H';
+  const DEFAULT_ACCESS_TIMEOUT_MS = 60000;
+  // Hook exclusivo de pruebas: solo puede acortar una espera que siempre termina
+  // denegando de forma temporal. Nunca cambia allowed ni sustituye al backend.
+  const TEST_TIMEOUT_MS = Number(window.__CAMPUS_TEST_HOOKS__?.englishLabAccessTimeoutMs);
+  const ACCESS_TIMEOUT_MS = Number.isFinite(TEST_TIMEOUT_MS) && TEST_TIMEOUT_MS > 0
+    ? Math.min(DEFAULT_ACCESS_TIMEOUT_MS, Math.max(1, TEST_TIMEOUT_MS))
+    : DEFAULT_ACCESS_TIMEOUT_MS;
+  const TEMPORARY_MESSAGE = 'No pudimos confirmar tu acceso a English LAB en este momento. Revisá la conexión y volvé a intentarlo.';
+  const TIMEOUT_MESSAGE = 'La verificación de English LAB tardó más de lo esperado. Volvé a intentarlo.';
+  const TRANSIENT_STATES = Object.freeze([
+    'NO_CONFIRMADO',
+    'EXPEDIENTE_NO_DISPONIBLE',
+    'ESTADO_FINANCIERO_NO_CONFIRMADO',
+    'ERROR_VERIFICACION',
+    'VERIFICANDO',
+  ]);
+  const CONCLUSIVE_DENIAL_STATES = Object.freeze([
+    'SESION_REQUERIDA',
+    'NO_AUTORIZADO',
+    'MATRICULA_REQUERIDA',
+    'MATRICULA_NO_ACTIVA',
+    'CUENTA_PENDIENTE',
+  ]);
+  const LIVE_LOADER_API = 'EnglishLabLiveCanonicalLoaderCS21A193';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -52,6 +75,55 @@
     return [roleOf(user), clean(user?.cedula || user?.CEDULA || user?.usuario), codeOf(user)].join('|');
   }
 
+  function upper(value) {
+    return clean(value).toUpperCase();
+  }
+
+  function isTransientState(value) {
+    return TRANSIENT_STATES.includes(upper(value));
+  }
+
+  function isConclusiveDenial(value) {
+    return CONCLUSIVE_DENIAL_STATES.includes(upper(value));
+  }
+
+  function isConclusiveAccess(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    if (source.checked !== true) return false;
+    if (source.allowed === true) return true;
+    return isConclusiveDenial(source.estado);
+  }
+
+  function isAbortError(error) {
+    const name = upper(error?.name);
+    const code = upper(error?.code);
+    const message = clean(error?.message || error);
+    return name === 'ABORTERROR' || name === 'TIMEOUTERROR' ||
+      code === 'ENGLISH_LAB_ACCESS_TIMEOUT' ||
+      /signal is aborted|operation was aborted|aborterror/i.test(message);
+  }
+
+  function temporaryMessage(error) {
+    return isAbortError(error) ? TIMEOUT_MESSAGE : TEMPORARY_MESSAGE;
+  }
+
+  function transientState(user, error, estado) {
+    return {
+      loading:false,
+      refreshing:false,
+      checked:false,
+      allowed:false,
+      retryable:true,
+      estado:isTransientState(estado) ? upper(estado) : 'NO_CONFIRMADO',
+      message:temporaryMessage(error),
+      errorCode:clean(error?.code || (isAbortError(error) ? 'ENGLISH_LAB_ACCESS_TIMEOUT' : 'ENGLISH_LAB_ACCESS_UNAVAILABLE')),
+      signature:signature(user),
+      checkedAt:0,
+      failedAt:Date.now(),
+      version:VERSION,
+    };
+  }
+
   function emptyState(user) {
     const staff = isStaff(user);
     return {
@@ -61,6 +133,8 @@
       allowed:staff,
       estado:staff ? 'ROL_AUTORIZADO' : 'SIN_VERIFICAR',
       message:'',
+      retryable:false,
+      errorCode:'',
       signature:signature(user),
       checkedAt:staff ? Date.now() : 0,
       version:VERSION,
@@ -71,6 +145,10 @@
     try {
       const parsed = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
       if (!parsed || parsed.signature !== signature(user)) return null;
+      if (!isConclusiveAccess(parsed)) {
+        sessionStorage.removeItem(CACHE_KEY);
+        return null;
+      }
       if (!Number(parsed.checkedAt) || Date.now() - Number(parsed.checkedAt) > CACHE_TTL) return null;
       return {
         loading:false,
@@ -79,6 +157,8 @@
         allowed:parsed.allowed === true,
         estado:clean(parsed.estado),
         message:clean(parsed.message),
+        retryable:false,
+        errorCode:'',
         signature:signature(user),
         checkedAt:Number(parsed.checkedAt),
         version:VERSION,
@@ -90,26 +170,36 @@
 
   let state = readCache(session()) || emptyState(session());
   let inFlight = null;
+  let inFlightSignature = '';
+  let requestGeneration = 0;
 
   function persist() {
     try {
-      if (!state.checked) return;
+      if (!isConclusiveAccess(state)) {
+        sessionStorage.removeItem(CACHE_KEY);
+        return;
+      }
       sessionStorage.setItem(CACHE_KEY, JSON.stringify({
         checked:state.checked,
         allowed:state.allowed,
         estado:state.estado,
         message:state.message,
+        version:VERSION,
         signature:state.signature,
         checkedAt:state.checkedAt,
       }));
     } catch (_) {}
   }
 
-  async function post(fn, payload = {}, timeout = 45000) {
+  async function post(fn, payload = {}, timeout = ACCESS_TIMEOUT_MS) {
     const endpoint = window.APPS_SCRIPT_URL;
     if (!endpoint) throw new Error('No está configurada la URL de Apps Script.');
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), timeout) : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeout) : null;
     try {
       const response = await fetch(`${endpoint}?fn=${encodeURIComponent(fn)}`, {
         method:'POST',
@@ -125,6 +215,15 @@
         throw new Error(data?.mensaje || data?.error || `HTTP ${response.status}`);
       }
       return data;
+    } catch (error) {
+      if (timedOut || isAbortError(error)) {
+        const timeoutError = new Error(TIMEOUT_MESSAGE);
+        timeoutError.name = 'EnglishLabAccessTimeoutError';
+        timeoutError.code = 'ENGLISH_LAB_ACCESS_TIMEOUT';
+        timeoutError.temporary = true;
+        throw timeoutError;
+      }
+      throw error;
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -229,28 +328,54 @@
       publish();
       return state;
     }
+    if (inFlight && inFlightSignature !== nextSignature) {
+      requestGeneration += 1;
+      inFlight = null;
+      inFlightSignature = '';
+    }
     if (inFlight) return inFlight;
 
     state = {
       ...state,
-      loading:!state.checked,
+      loading:true,
       refreshing:state.checked,
+      checked:false,
       allowed:false,
       estado:'VERIFICANDO',
       message:'Confirmando que la cuenta esté al día…',
+      retryable:false,
+      errorCode:'',
       signature:nextSignature,
     };
     publish();
 
-    inFlight = post(ENDPOINT, { force:force === true })
+    const generation = ++requestGeneration;
+    const requestIsCurrent = () => generation === requestGeneration && signature(session()) === nextSignature;
+    let requestPromise = null;
+    requestPromise = post(ENDPOINT, { force:force === true })
       .then(response => {
+        if (!requestIsCurrent()) return accessSnapshot();
+        const responseState = upper(response.estado);
+        if (isTransientState(responseState)) {
+          state = transientState(user, { code:'ENGLISH_LAB_ACCESS_UNAVAILABLE' }, responseState);
+          publish();
+          return state;
+        }
+        const allowed = response.allowed === true || response.autorizado === true;
+        if (!allowed && !isConclusiveDenial(responseState)) {
+          state = transientState(user, { code:'ENGLISH_LAB_ACCESS_UNAVAILABLE' }, responseState);
+          publish();
+          return state;
+        }
         state = {
           loading:false,
           refreshing:false,
           checked:true,
-          allowed:response.allowed === true || response.autorizado === true,
-          estado:clean(response.estado || ''),
+          allowed,
+          estado:responseState,
           message:clean(response.mensaje || ''),
+          retryable:false,
+          errorCode:'',
           signature:nextSignature,
           checkedAt:Date.now(),
           version:clean(response.version || VERSION),
@@ -260,23 +385,21 @@
         return state;
       })
       .catch(error => {
-        state = {
-          loading:false,
-          refreshing:false,
-          checked:true,
-          allowed:false,
-          estado:'NO_CONFIRMADO',
-          message:clean(error?.message || error || 'No fue posible confirmar que la cuenta esté al día.'),
-          signature:nextSignature,
-          checkedAt:Date.now(),
-          version:VERSION,
-        };
+        if (!requestIsCurrent()) return accessSnapshot();
+        state = transientState(user, error, 'NO_CONFIRMADO');
         publish();
         return state;
       })
-      .finally(() => { inFlight = null; });
+      .finally(() => {
+        if (inFlight !== requestPromise) return;
+        inFlight = null;
+        inFlightSignature = '';
+        if (requestIsCurrent()) publish();
+      });
 
-    return inFlight;
+    inFlight = requestPromise;
+    inFlightSignature = nextSignature;
+    return requestPromise;
   }
 
   function accessSnapshot() {
@@ -292,10 +415,16 @@
 
   function AccessMessage({ loading }) {
     const current = accessSnapshot();
-    const title = loading ? 'Verificando acceso' : 'English LAB no disponible';
-    const body = loading
+    const checking = loading === true || current.loading === true || current.refreshing === true;
+    const temporary = current.retryable === true || isTransientState(current.estado);
+    const title = checking
+      ? 'Verificando acceso'
+      : (temporary ? 'No pudimos confirmar tu acceso' : 'English LAB no disponible');
+    const body = checking
       ? 'Estamos confirmando que tu cuenta académica esté al día.'
-      : (current.message || 'English LAB está disponible únicamente para estudiantes con matrícula activa y cuenta al día.');
+      : (temporary
+        ? (current.message || TEMPORARY_MESSAGE)
+        : (current.message || 'English LAB está disponible únicamente para estudiantes con matrícula activa y cuenta al día.'));
 
     const goBack = () => {
       try {
@@ -308,14 +437,14 @@
     };
 
     return React.createElement('section', {
-      'data-screen-label':`English LAB · ${loading ? 'verificando' : 'restringido'}`,
+      'data-screen-label':`English LAB · ${checking ? 'verificando' : (temporary ? 'reintento' : 'restringido')}`,
       style:{ maxWidth:700, margin:'56px auto', padding:'30px 32px', border:'1px solid #E5D5A8', borderRadius:18, background:'#FFFDF6', boxShadow:'0 10px 32px rgba(0,0,0,.07)', textAlign:'center' },
     },
       React.createElement('div', { style:{ fontSize:11, fontWeight:950, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A1E2C' } }, 'Acceso financiero'),
       React.createElement('h1', { style:{ margin:'9px 0 8px', fontFamily:'var(--f-serif,Georgia,serif)', fontSize:30, color:'#001E47' } }, title),
       React.createElement('p', { style:{ margin:'0 auto', maxWidth:570, fontSize:13.5, lineHeight:1.65, color:'#5F6875' } }, body),
-      !loading && React.createElement('div', { style:{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', marginTop:18 } },
-        React.createElement('button', { type:'button', className:'btn btn-primary', onClick:() => checkAccess(true) }, 'Verificar de nuevo'),
+      !checking && React.createElement('div', { style:{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', marginTop:18 } },
+        React.createElement('button', { type:'button', className:'btn btn-primary', disabled:inFlight != null, onClick:() => checkAccess(true) }, 'Verificar de nuevo'),
         React.createElement('button', { type:'button', className:'btn btn-ghost', onClick:goBack }, 'Volver a Mi Campus')
       )
     );
@@ -329,9 +458,12 @@
       setBusy(true);
       setError('');
       try {
-        if (!window.anLazyCampus?.loadOne) throw new Error('El cargador de English LAB Live no está disponible.');
-        await window.anLazyCampus.loadOne(LIVE_FILE);
-        if (typeof window.EnglishLabLiveStudentView !== 'function') throw new Error('English LAB Live no publicó la pantalla del estudiante.');
+        const loader = window[LIVE_LOADER_API] || window.EnglishLabCanonicalLoaderCS21A193;
+        if (!loader || typeof loader.loadStudent !== 'function') throw new Error('El cargador canónico de English LAB Live no está disponible.');
+        const StudentView = await loader.loadStudent();
+        if (typeof StudentView !== 'function' || typeof window.EnglishLabLiveStudentView !== 'function') {
+          throw new Error('English LAB Live no publicó la pantalla canónica del estudiante.');
+        }
         onOpen();
       } catch (e) {
         setError(clean(e?.message || e || 'No se pudo abrir la sala.'));
@@ -367,8 +499,8 @@
         return () => window.removeEventListener(EVENT_NAME, update);
       }, []);
 
-      if (isStudent(session()) && access.allowed !== true) {
-        return React.createElement(AccessMessage, { loading:access.loading || !access.checked });
+      if (isStudent(session()) && (access.allowed !== true || access.signature !== signature(session()))) {
+        return React.createElement(AccessMessage, { loading:access.loading || access.refreshing || (!access.checked && !access.retryable) });
       }
 
       if (liveOpen && typeof window.EnglishLabLiveStudentView === 'function') {
@@ -409,8 +541,8 @@
         return () => window.removeEventListener(EVENT_NAME, update);
       }, []);
 
-      if (isStudent(session()) && access.allowed !== true) {
-        return React.createElement(AccessMessage, { loading:access.loading || !access.checked });
+      if (isStudent(session()) && (access.allowed !== true || access.signature !== signature(session()))) {
+        return React.createElement(AccessMessage, { loading:access.loading || access.refreshing || (!access.checked && !access.retryable) });
       }
 
       const user = session();
@@ -448,6 +580,9 @@
   window.addEventListener('an:lazy-module-loaded', scheduleSync);
   window.addEventListener('an:session-changed', () => {
     try { sessionStorage.removeItem(CACHE_KEY); } catch (_) {}
+    requestGeneration += 1;
+    inFlight = null;
+    inFlightSignature = '';
     state = emptyState(session());
     publish();
   });
@@ -466,6 +601,13 @@
 
   window.__AN_ENGLISH_LAB_FREE_ACCESS_VERSION__ = VERSION;
   window.__AN_ENGLISH_LAB_ACCESS_VERSION__ = VERSION;
-  window.anEnglishLabFreeAccess = { check:checkAccess, get:accessSnapshot, prime:primeAccess };
+  window.anEnglishLabFreeAccess = {
+    check:checkAccess,
+    get:accessSnapshot,
+    prime:primeAccess,
+    timeoutMs:ACCESS_TIMEOUT_MS,
+    transientStates:TRANSIENT_STATES.slice(),
+    conclusiveDenialStates:CONCLUSIVE_DENIAL_STATES.slice(),
+  };
   window.anEnglishLabAccess = window.anEnglishLabFreeAccess;
 })();

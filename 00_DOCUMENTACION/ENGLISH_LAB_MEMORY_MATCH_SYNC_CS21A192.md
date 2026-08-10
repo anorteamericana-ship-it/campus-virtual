@@ -1,3 +1,5 @@
+> **QA autenticada: FAIL (2026-08-10).** En la sala nueva `LAB-4632`, Naty no cargó el adaptador autoritativo CS21A192, Chu recibió `signal is aborted without reason` antes de entrar y el control docente permaneció con 0 participantes. CS21A192 queda supersedido para entrega frontend por CS21A193. El backend QA conserva la capa verificada `CS21A192-MM-CONSISTENCY-2`; CS21A193 no requiere modificarla. El origen externo del aborto de Chu —red, latencia o endpoint— no quedó determinado por esa captura.
+
 # English LAB Memory Match · sincronización autoritativa CS21A192
 
 Fecha del incidente: 2026-08-08

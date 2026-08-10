@@ -38,6 +38,24 @@ function build() {
   fs.cpSync(source, target, {recursive:true});
   fs.rmSync(path.join(target, '.nojekyll'), {force:true});
 
+  // Compatibilidad de reconstrucción: el source vigente usa el manifiesto único
+  // CS21A193, pero este artefacto intermedio debe conservar la lista histórica
+  // que las capas CS21A181-CS21A192 esperan parchear. No modifica app.jsx fuente.
+  const appPath = path.join(target, 'src', 'app.jsx');
+  let appSource = fs.readFileSync(appPath, 'utf8');
+  if (appSource.includes('english_lab_live: F96_ENGLISH_LAB_LIVE_CS21A193')) {
+    appSource = appSource
+      .replace(/const F96_ENGLISH_LAB_LIVE_CS21A193 = window\.EnglishLabLiveCanonicalLoaderCS21A193 &&[\s\S]*?\s: \[\];\r?\n/, '')
+      .replace('  english_lab_live: F96_ENGLISH_LAB_LIVE_CS21A193,', `  english_lab_live: [
+    'src/english_lab_games/english_lab_runtime_cs21a173.js?v=CS21A173',
+    'src/english_lab_games/memory_match_engine_cs21a173.jsx?v=CS21A174',
+    'src/english_lab_games/english_lab_live_sync_guard_cs21a177.js?v=CS21A178',
+    'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx?v=CS21A178',
+    'src/english_lab_live.jsx?v=F98.4Z6CS21A180'
+  ],`);
+    fs.writeFileSync(appPath, appSource, 'utf8');
+  }
+
   const oldLauncher = path.join(target, 'INICIAR_QA_STAGING.cmd');
   const newLauncher = path.join(target, 'ABRIR_CAMPUS_QA_CS21A180.cmd');
   const launcher = fs.readFileSync(oldLauncher, 'utf8').replace(/^\uFEFF/, '')
