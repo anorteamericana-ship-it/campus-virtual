@@ -193,6 +193,7 @@ function build(){
 
   patchFrontend();
   for(const relative of ['apps_script_patches/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs','BACKEND_QA/99K_MEMORY_MATCH_CLASSIC_SYNC_QA_CS21A189.gs']){
+    if(!fs.existsSync(path.join(target,relative))) continue;
     replaceExact(relative,K_DISCOVER_OLD,K_DISCOVER_NEW,'99K DISCOVER response revision');
     replaceExact(relative,K_PAIR_OLD,K_PAIR_NEW,'99K PAIR response revision');
   }
