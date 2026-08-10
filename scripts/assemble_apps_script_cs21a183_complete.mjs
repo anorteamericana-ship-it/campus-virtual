@@ -19,6 +19,7 @@ const sources = [
   'apps_script_patches/99M_HANGMAN_QA_CS21A191.gs',
   'apps_script_patches/99N_HANGMAN_ROBUSTNESS_QA_CS21A191.gs',
   'apps_script_patches/99O_MEMORY_MATCH_CONSISTENCY_QA_CS21A192.gs',
+  'apps_script_patches/99P_MEMORY_MATCH_LATENCY_SAFE_QA_CS21A194.gs',
 ];
 const target = path.join(root, 'apps_script_patches/99_CS21A183_SENTENCE_ORDER_COMPLETO.gs');
 
@@ -27,7 +28,7 @@ for (const relative of sources) {
   if (!fs.existsSync(absolute)) throw new Error(`Falta ${relative}`);
 }
 
-const header = `// =============================================================================\n// CS21A183-CS21A192 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Marcadores históricos de compatibilidad CI (no describen la versión actual):\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS + 99O MEMORY MATCH CONSISTENCY\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
+const header = `// =============================================================================\n// CS21A183-CS21A194 · APPS SCRIPT QA COMPLETO · COPIAR Y PEGAR TODO\n// Marcadores históricos de compatibilidad CI (no describen la versión actual):\n// CS21A183-CS21A192 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO\n// CS21A183-CS21A189 · APPS SCRIPT QA COMPLETO\n// Composición exacta: 99 + 99B + 99C + 99D FIX3 + 99E FIX4 + 99F CLOSED FIX + 99G RULES FIX + 99H LIFECYCLE FIX + 99I SHARED DISCOVERY + 99J RULES COMPAT + 99K CLASSIC SYNC + 99L TIMEOUT CLEANUP + 99M HANGMAN + 99N HANGMAN ROBUSTNESS + 99O MEMORY MATCH CONSISTENCY + 99P MEMORY MATCH LATENCY SAFE\n// Reemplaza por completo el contenido del archivo Apps Script\n// 99_CS21A183_SENTENCE_ORDER_COMPLETO. No agregar parches manuales.\n// QA/STAGING solamente. NO USAR EN PRODUCCIÓN.\n// =============================================================================\n`;
 
 const content = [header, ...sources.map((relative, index) => {
   const body = fs.readFileSync(path.join(root, relative), 'utf8').replace(/^\uFEFF/, '').trimEnd();
@@ -38,6 +39,7 @@ fs.writeFileSync(target, content.replace(/\s*$/, '') + '\n', 'utf8');
 
 const check = fs.readFileSync(target, 'utf8');
 const required = [
+  'CS21A183-CS21A194 · APPS SCRIPT QA COMPLETO',
   'CS21A183-CS21A192 · APPS SCRIPT QA COMPLETO',
   'CS21A183-CS21A191 · APPS SCRIPT QA COMPLETO',
   'CS21A183-CS21A190 · APPS SCRIPT QA COMPLETO',
@@ -58,12 +60,12 @@ const required = [
   "ELHANG191_GAME_CODE = 'HANGMAN'",
   "ELHANG191_ROBUSTNESS_VERSION = 'CS21A191-HANGMAN-ROBUSTNESS-1'",
   "CS21A192_MM_SYNC_VERSION = 'CS21A192-MM-CONSISTENCY-2'",
+  "CS21A194_MM_LATENCY_SAFE_VERSION = 'CS21A194-MM-LATENCY-SAFE-1'",
+  'CS21A194_MM_MIN_SECOND_PICK_MS = 30000',
   'CS21A192_MM_MISMATCH_REVEAL_MS = CS21A192_MM_MAX_POLL_MS +',
   'CS21A189_MM_MISMATCH_REVEAL_MS = 2200',
   'CS21A183_MM_PRESENCE_TTL_MS = 60000',
   'function verificarMemoryMatchStartFixCS21A183()',
-  'function verificarHangmanCS21A191()',
-  'function verificarHangmanRobustnessCS21A191()',
   'direct_start_no_legacy_delegate:true',
   'control_pair_metadata:true',
   'canonical_pair_count_from_room:true',
@@ -110,6 +112,10 @@ const required = [
   '__cs21a192RevisionedResponses',
   '__cs21a192RevisionedClose',
   '__cs21a192MemoryOnlyClose',
+  '__cs21a194LatencySafe',
+  'first_reveal_deadline_extended_atomically:true',
+  'first_reveal_deadline_extension_idempotent:true',
+  'second_pick_min_window_ms:CS21A194_MM_MIN_SECOND_PICK_MS',
   'atomic_timeout_cleanup:true',
   'stale_snapshot_resurrection_blocked:true',
   'monotonic_state_revision:true',
@@ -135,9 +141,10 @@ console.log(JSON.stringify({
   target,
   path:target,
   sources,
-  fix:'CS21A192-MM-CONSISTENCY-2',
+  fix:'CS21A194-MM-LATENCY-SAFE-1',
+  previousMemoryConsistency:'CS21A192-MM-CONSISTENCY-2',
   hangmanRobustness:'CS21A191-HANGMAN-ROBUSTNESS-1',
-  legacyCiCompatibility:['CS21A189','CS21A190'],
+  legacyCiCompatibility:['CS21A189','CS21A190','CS21A192'],
   memoryTimeoutCleanup:'CS21A190-MM-TIMEOUT-CLEANUP-1',
   rulesCompatibility:'CS21A188-MM-RULES-COMPAT-1',
   presenceTtlSeconds:60,
@@ -157,6 +164,8 @@ console.log(JSON.stringify({
   freshServerNowOutsideCache:true,
   timeoutEventCacheInvalidated:true,
   mismatchRevealMs:6000,
+  firstRevealMinSecondPickMs:30000,
+  latencySafeFirstCard:true,
   hangman:true,
   hangmanServerAuthoritative:true,
   hangmanSourceIdShuffleSafe:true,
