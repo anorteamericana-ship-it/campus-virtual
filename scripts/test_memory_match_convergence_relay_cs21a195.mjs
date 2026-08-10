@@ -20,8 +20,18 @@ const questionRows=Array.from({length:6},(_,i)=>({GAME_ID:'MEMORY_MATCH',STATUS:
 const map=new Map();
 const cache={get:key=>key==='ELIVE176|QA-DB|QUESTION_BANK'?JSON.stringify(questionRows):(map.get(String(key))||null),put:(k,v)=>map.set(String(k),String(v)),remove:k=>map.delete(String(k))};
 const noop=()=>({ok:true});
+const publicRoom=room=>({
+  room_id:String(room?.ROOM_ID||room?.room_id||''),
+  room_code:String(room?.ROOM_CODE||room?.room_code||''),
+  game_code:String(room?.GAME_CODE||room?.game_code||''),
+  status:String(room?.STATUS||room?.status||''),
+  round_status:String(room?.ROUND_STATUS||room?.round_status||''),
+  mode:String(room?.MODE||room?.mode||''),
+  nivel:String(room?.NIVEL||room?.nivel||''),
+});
 const context={console:{log(){}},Date,JSON,Object,Math,String,Number,Array,Error,RegExp,Boolean,isFinite,parseInt,parseFloat,
   verificarActualizacionQA:noop,doPost:noop,_aplayAuth_:noop,getEstudiante:noop,
+  _eliveRoomPublic_:publicRoom,
   englishLabLiveCloseRoom:noop,englishLabLiveGetLeaderboard:noop,englishLabLiveGetPlayerState:noop,englishLabLiveGetTeacherData:noop,englishLabLiveJoinRoom:noop,englishLabLiveSubmitAnswer:noop,
   PropertiesService:{getScriptProperties:()=>({getProperty:key=>({QA_STAGING_MASTER_ID:'QA-MASTER',QA_STAGING_OPERATIVO_ID:'QA-OPER',ENGLISH_LAB_GAME_DB_ID:'QA-DB'}[key]||'')})},
   SpreadsheetApp:{openById:id=>({getName:()=>id==='QA-MASTER'?'QA_APOLLO_G3_STAGING_2026-07-19':'QA_CAMPUS_OPERATIVO_STAGING_2026-07-19'})},
