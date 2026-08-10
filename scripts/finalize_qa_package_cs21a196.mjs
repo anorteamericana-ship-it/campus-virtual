@@ -65,6 +65,10 @@ function finalize(){
   version=setVersion(version,'PACKAGE_REVISION','2');
   version=setVersion(version,'FIRST_ACK_SECOND_PICK_PRESERVED','YES');
   version=setVersion(version,'PAIR_PENDING_LOCK_THROUGH_RETRY','YES');
+  // El paquete base CS193 heredaba NOT_REQUIRED_BACKEND_UNCHANGED. CS196 sí
+  // cambia Apps Script QA y debe impedir cualquier instrucción contradictoria.
+  version=setVersion(version,'APPS_SCRIPT_INSTALL_MODE','SINGLE_COMPLETE_FILE_99_THROUGH_99R_AFTER_98_QA_ONLY');
+  version=setVersion(version,'APPS_SCRIPT_INSTALL_REQUIRED','YES_QA_ONLY');
   fs.writeFileSync(path.join(target,'VERSION.txt'),version.replace(/\s*$/,'')+'\n','utf8');
   writeManifest();
 }
@@ -80,6 +84,9 @@ function verify(){
   assert.match(version,/PACKAGE_REVISION=2/);
   assert.match(version,/FIRST_ACK_SECOND_PICK_PRESERVED=YES/);
   assert.match(version,/PAIR_PENDING_LOCK_THROUGH_RETRY=YES/);
+  assert.match(version,/APPS_SCRIPT_INSTALL_MODE=SINGLE_COMPLETE_FILE_99_THROUGH_99R_AFTER_98_QA_ONLY/);
+  assert.match(version,/APPS_SCRIPT_INSTALL_REQUIRED=YES_QA_ONLY/);
+  assert.doesNotMatch(version,/APPS_SCRIPT_INSTALL_MODE=NOT_REQUIRED_BACKEND_UNCHANGED/);
   const manifest=fs.readFileSync(path.join(target,'SHA256SUMS.txt'),'utf8').trim().split(/\r?\n/);
   for(const line of manifest){
     const match=line.match(/^([a-f0-9]{64})\s+\.\/(.+)$/);assert.ok(match,`Manifest inválido: ${line}`);
@@ -88,6 +95,7 @@ function verify(){
   console.log(JSON.stringify({
     ok:true,packageName,revision:2,files:manifest.length,
     firstAckSecondPickPreserved:true,pairPendingLockThroughRetry:true,
+    appsScriptInstallMode:'SINGLE_COMPLETE_FILE_99_THROUGH_99R_AFTER_98_QA_ONLY',
   },null,2));
 }
 
