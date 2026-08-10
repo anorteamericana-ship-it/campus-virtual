@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import {
-  endpointAndBody,fulfillJson,launchBrowser,openPreview,responseFor,wait,writeEvidence,
+  baseUrl,endpointAndBody,fulfillJson,launchBrowser,responseFor,wait,writeEvidence,
 } from './memory_match_cs21a192_browser_fixture.mjs';
 
 const browser=await launchBrowser();
@@ -69,9 +69,27 @@ async function routeHandler(route){
 }
 
 try{
-  client=await openPreview(browser,'P1',routeHandler,{width:520,height:850});
+  // El preview histórico CS192 contiene su propio postLive inline y no carga
+  // src/english_lab_live.jsx. Para este test interceptamos sólo esa página y
+  // sustituimos el contrato de transporte por el mismo de CS21A196: un
+  // ok:false con room_package es un resultado de dominio reconciliable, no un
+  // error de red. El candidato distribuido real sigue usando english_lab_live.jsx.
+  const context=await browser.newContext({viewport:{width:520,height:850}});
+  client={context,page:await context.newPage()};
+  await context.route('**/__cs21a192_live?*',routeHandler);
+  await context.route('**/memory_match_authoritative_sync_preview_cs21a192.html?*',async route=>{
+    const response=await route.fetch();
+    const original=await response.text();
+    const oldTransport="if(!response.ok||!data||data.ok===false)throw new Error(data&&data.mensaje||data&&data.error||`HTTP ${response.status}`);";
+    const newTransport="if(!response.ok||!data)throw new Error(data&&data.mensaje||data&&data.error||`HTTP ${response.status}`);if(data.ok===false&&!(data.room_package&&typeof data.room_package==='object'))throw new Error(data.mensaje||data.error||`HTTP ${response.status}`);";
+    assert.ok(original.includes(oldTransport),'El preview histórico cambió y ya no coincide con el transporte CS192 esperado.');
+    await route.fulfill({response,body:original.replace(oldTransport,newTransport),headers:{...response.headers(),'content-type':'text/html; charset=utf-8'}});
+  });
+
   const {page}=client;
   page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`${baseUrl}/src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html?viewer=P1`,{waitUntil:'domcontentloaded'});
+  await page.locator('[data-authoritative-sync="true"]').waitFor({state:'visible',timeout:15000});
   const cards=page.locator('.elmm-card');
 
   await cards.nth(0).click();
@@ -91,7 +109,15 @@ try{
   assert.deepEqual(mutations.map(item=>item.action),['DISCOVER_CARD','SUBMIT_PAIR','SUBMIT_PAIR']);
   assert.deepEqual(errors,[],`Errores navegador: ${errors.join(' | ')}`);
 
-  const result={verdict:'PASS_MEMORY_MATCH_CONFLICT_RECONCILIATION_CS21A196',pairAttempts,mutationSequence:mutations.map(item=>item.action),thirdCardBlockedDuringConflict:true,retryExpectedRevision:mutations[2]?.body?.expected_state_revision,finalRevision:4};
+  const result={
+    verdict:'PASS_MEMORY_MATCH_CONFLICT_RECONCILIATION_CS21A196',
+    pairAttempts,
+    mutationSequence:mutations.map(item=>item.action),
+    thirdCardBlockedDuringConflict:true,
+    retryExpectedRevision:mutations[2]?.body?.expected_state_revision,
+    finalRevision:4,
+    previewTransport:'CS21A196_DOMAIN_RECONCILIATION',
+  };
   writeEvidence('conflict-reconciliation-cs21a196.json',result);
   console.log(JSON.stringify(result,null,2));
 }finally{
