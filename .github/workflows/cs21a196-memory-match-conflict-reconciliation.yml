@@ -9,6 +9,7 @@ on:
       - 'scripts/test_memory_match_conflict_reconciliation_cs21a196.mjs'
       - 'scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs'
       - 'scripts/patch_qa_package_cs21a196.mjs'
+      - 'scripts/finalize_qa_package_cs21a196.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_CONFLICT_RECONCILIATION_CS21A196.md'
       - '.github/workflows/cs21a196-memory-match-conflict-reconciliation.yml'
   workflow_dispatch:
@@ -92,11 +93,13 @@ jobs:
           node scripts/patch_qa_package_cs21a195.mjs
           node scripts/patch_qa_package_cs21a195.mjs --verify
 
-      - name: Patch and verify isolated CS21A196 package
+      - name: Patch and finalize isolated CS21A196 package
         run: |
           set -euo pipefail
           node scripts/patch_qa_package_cs21a196.mjs
           node scripts/patch_qa_package_cs21a196.mjs --verify
+          node scripts/finalize_qa_package_cs21a196.mjs
+          node scripts/finalize_qa_package_cs21a196.mjs --verify
 
       - name: Install Playwright Chromium
         run: |
@@ -124,7 +127,10 @@ jobs:
           curl -fsS "$base/VERSION.txt" -o /tmp/version196.txt
           curl -fsS "$base/BACKEND_QA/99_CS21A196_MEMORY_MATCH_CONFLICT_RECONCILIATION_COMPLETO.gs" -o /tmp/backend196.gs
           grep -q 'VERSION=CS21A196' /tmp/version196.txt
+          grep -q 'PACKAGE_REVISION=2' /tmp/version196.txt
           grep -q 'QA_PORT=4196' /tmp/version196.txt
+          grep -q 'FIRST_ACK_SECOND_PICK_PRESERVED=YES' /tmp/version196.txt
+          grep -q 'PAIR_PENDING_LOCK_THROUGH_RETRY=YES' /tmp/version196.txt
           grep -q 'BACKEND_LAYER=CS21A196-MM-CONFLICT-RECONCILIATION-1' /tmp/version196.txt
           grep -q "CS21A196_MM_RECONCILIATION_VERSION = 'CS21A196-MM-CONFLICT-RECONCILIATION-1'" /tmp/backend196.gs
 
@@ -147,8 +153,8 @@ jobs:
           node scripts/test_memory_match_timeout_style_browser_cs21a190.mjs
           node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
 
-      - name: Reverify package manifest
-        run: node scripts/patch_qa_package_cs21a196.mjs --verify
+      - name: Reverify final package manifest
+        run: node scripts/finalize_qa_package_cs21a196.mjs --verify
 
       - name: Zip and hash exact candidate
         run: |
