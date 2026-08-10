@@ -1,0 +1,154 @@
+name: CS21A195 Memory Match Convergence QA
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/99Q_MEMORY_MATCH_CONVERGENCE_RELAY_QA_CS21A195.gs'
+      - 'apps_script_patches/99_CS21A195_MEMORY_MATCH_CONVERGENCE_COMPLETO.gs'
+      - 'scripts/assemble_apps_script_cs21a195_complete.mjs'
+      - 'scripts/test_apps_script_cumulative_verifier_cs21a195.mjs'
+      - 'scripts/test_memory_match_convergence_relay_cs21a195.mjs'
+      - 'scripts/patch_qa_package_cs21a195.mjs'
+      - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_CONVERGENCE_CS21A195.md'
+      - '.github/workflows/cs21a195-memory-match-convergence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  convergence-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TEST_MERGE_SHA: ${{ github.sha }}
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Assemble CS21A195 complete backend
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a195_complete.mjs
+          grep -q "CS21A195_MM_CONVERGENCE_VERSION = 'CS21A195-MM-CONVERGENCE-RELAY-1'" apps_script_patches/99_CS21A195_MEMORY_MATCH_CONVERGENCE_COMPLETO.gs
+          grep -q '_cs21a192CanonicalSnapshot_.__cs21a195StaleReadShield = true' apps_script_patches/99_CS21A195_MEMORY_MATCH_CONVERGENCE_COMPLETO.gs
+          grep -q 'englishLabMemoryMatchGetPlayerStateCS21A180.__cs21a195FastRelay = true' apps_script_patches/99_CS21A195_MEMORY_MATCH_CONVERGENCE_COMPLETO.gs
+
+      - name: Execute accumulated backend contract through CS21A195
+        run: |
+          set -euo pipefail
+          node scripts/test_apps_script_cumulative_verifier_cs21a195.mjs
+          node scripts/test_memory_match_convergence_relay_cs21a195.mjs
+
+      - name: Run accumulated non-browser regressions
+        run: |
+          set -euo pipefail
+          node scripts/test_english_lab_access_cs21a144.js
+          node scripts/test_memory_match_sync_consistency_cs21a192.mjs
+          node scripts/test_memory_match_timeout_style_cs21a190.mjs
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+          node scripts/test_english_lab_turn_engine_cs21a176.mjs
+          node scripts/test_english_lab_live_sync_cs21a177.mjs
+          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+
+      - name: Reconstruct exact package chain through CS21A194
+        run: |
+          set -euo pipefail
+          node scripts/build_qa_staging_frontend_cs21a148.mjs
+          node scripts/audit_qa_staging_frontend_cs21a148.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs
+          node scripts/build_qa_package_cs21a183_apollo_qa.mjs --verify
+          node scripts/patch_qa_package_cs21a187.mjs
+          node scripts/patch_qa_package_cs21a189.mjs
+          node scripts/patch_qa_package_cs21a190.mjs
+          node scripts/patch_qa_package_cs21a191.mjs
+          node scripts/finalize_qa_package_cs21a191.mjs
+          node scripts/patch_qa_package_cs21a191.mjs --verify
+          node scripts/patch_qa_package_cs21a192.mjs
+          node scripts/patch_qa_package_cs21a192.mjs --verify
+          node scripts/patch_qa_package_cs21a193.mjs
+          node scripts/patch_qa_package_cs21a193.mjs --verify
+          node scripts/patch_qa_package_cs21a194.mjs
+          node scripts/patch_qa_package_cs21a194.mjs --verify
+
+      - name: Patch and verify isolated CS21A195 package
+        run: |
+          set -euo pipefail
+          node scripts/patch_qa_package_cs21a195.mjs
+          node scripts/patch_qa_package_cs21a195.mjs --verify
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start exact CS21A195 package server
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='dist/CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE'
+          PORT=4195 node "$package/serve.mjs" > cs21a195-package-server.log 2>&1 &
+          echo $! > cs21a195-package-server.pid
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:4195/qa-setup.html >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat cs21a195-package-server.log
+          exit 1
+
+      - name: Run packaged browser regressions from CS21A194 frontend
+        env:
+          QA_BASE_URL: http://127.0.0.1:4195
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_latency_safe_browser_cs21a194.mjs
+          node scripts/test_memory_match_authoritative_sync_browser_cs21a192.mjs
+          node scripts/test_memory_match_first_reveal_deadline_browser_cs21a192.mjs
+          node scripts/test_memory_match_poll_recovery_browser_cs21a192.mjs
+          node scripts/test_memory_match_terminal_poll_stop_browser_cs21a192.mjs
+          node scripts/test_memory_match_classic_sync_browser_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_browser_cs21a190.mjs
+          node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
+
+      - name: Reverify package manifest
+        run: node scripts/patch_qa_package_cs21a195.mjs --verify
+
+      - name: Zip and hash exact candidate
+        run: |
+          set -euo pipefail
+          cd dist
+          package='CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE'
+          zip -X -q -r "$package.zip" "$package"
+          sha256sum "$package.zip" > "$package.zip.sha256"
+          sha256sum -c "$package.zip.sha256"
+
+      - name: Upload directly usable CS21A195 folder
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE
+          path: dist/CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload ZIP hash and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A195_MEMORY_MATCH_CONVERGENCE_EVIDENCE
+          path: |
+            dist/CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE.zip
+            dist/CAMPUS_QA_CS21A195_CANDIDATO_MEMORY_MATCH_CONVERGENCE.zip.sha256
+            qa-output/
+            cs21a195-package-server.log
+          if-no-files-found: warn
+          retention-days: 30
