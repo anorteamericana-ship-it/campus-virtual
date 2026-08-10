@@ -1,4 +1,5 @@
 // F98.4-Z6-CS21A193 - canonical, single-owner loader for English LAB Live.
+// CS21A194 mantiene el dueño canónico CS21A193 y cambia únicamente el epoch de la capa Memory Match modificada.
 (function installEnglishLabCanonicalLoaderCS21A193(global) {
   'use strict';
 
@@ -6,6 +7,7 @@
 
   const VERSION = 'F98.4-Z6-CS21A193';
   const CACHE_EPOCH = 'CS21A193';
+  const LATENCY_SAFE_EPOCH = 'CS21A194';
   const LIVE_PATH = 'src/english_lab_live.jsx';
   const BASE_ADAPTER_PATH = 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx';
   const MANIFEST = Object.freeze([
@@ -17,7 +19,7 @@
     'src/english_lab_games/english_lab_game_registry_cs21a191.js?v=CS21A193',
     'src/english_lab_games/hangman_engine_cs21a191.js?v=CS21A193',
     'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx?v=CS21A193',
-    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A193',
+    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A194',
     'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx?v=CS21A193',
     'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A193',
     'src/english_lab_live.jsx?v=CS21A193',
@@ -105,6 +107,7 @@
     return !!(
       global.EnglishLabRuntimeCS21A173 &&
       typeof global.MemoryMatchGameCS21A173 === 'function' &&
+      global.MemoryMatchGameCS21A173.__cs21a194LatencySafe === true &&
       global.MemoryMatchSharedDiscoveryCS21A188 &&
       global.EnglishLabLiveSyncCS21A177 &&
       global.EnglishLabMemoryMatchLiveCS21A174 &&
@@ -112,6 +115,7 @@
       global.EnglishLabHangmanEngineCS21A191 &&
       global.EnglishLabHangmanCS21A191 &&
       global.EnglishLabMemoryMatchClassicSyncCS21A189 &&
+      global.EnglishLabMemoryMatchClassicSyncCS21A189.latencySafeVersion === LATENCY_SAFE_EPOCH &&
       global.EnglishLabMemoryMatchClassicSyncAdapterCS21A189 &&
       global.EnglishLabMemoryMatchAuthoritativeSyncCS21A192 &&
       typeof global.MemoryMatchLiveRoundCS21A174 === 'function' &&
@@ -148,7 +152,7 @@
     loadPromise = (async () => {
       for (const source of MANIFEST) await rawLoadOne(source);
       if (!finalizeStack()) {
-        throw new Error('English LAB Live no cargo el stack canonico CS21A193 completo.');
+        throw new Error('English LAB Live no cargo el stack canonico CS21A193/CS21A194 completo.');
       }
       return api;
     })().catch(error => {
@@ -222,6 +226,7 @@
   const api = Object.freeze({
     version:VERSION,
     cacheEpoch:CACHE_EPOCH,
+    latencySafeEpoch:LATENCY_SAFE_EPOCH,
     manifest:MANIFEST,
     liveFile:MANIFEST[MANIFEST.length - 1],
     singleManifest:true,
