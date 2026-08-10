@@ -19,6 +19,15 @@ for(const file of sourceFiles) assert.equal(fs.existsSync(file),true,`Falta fuen
 const source=sourceFiles.map(file=>fs.readFileSync(file,'utf8')).join('\n');
 const logLines=[];
 const noop=()=>({ok:true});
+const publicRoom=room=>({
+  room_id:String(room?.ROOM_ID||room?.room_id||''),
+  room_code:String(room?.ROOM_CODE||room?.room_code||''),
+  game_code:String(room?.GAME_CODE||room?.game_code||''),
+  status:String(room?.STATUS||room?.status||''),
+  round_status:String(room?.ROUND_STATUS||room?.round_status||''),
+  mode:String(room?.MODE||room?.mode||''),
+  nivel:String(room?.NIVEL||room?.nivel||''),
+});
 const properties={QA_STAGING_MASTER_ID:'QA-MASTER',QA_STAGING_OPERATIVO_ID:'QA-OPER',ENGLISH_LAB_GAME_DB_ID:'QA-DB'};
 const questionRows=Array.from({length:6},(_,index)=>({GAME_ID:'MEMORY_MATCH',STATUS:'ACTIVE',LEVEL_ID:'B1',UNIT_ID:'U01',CONTENT_ID:`PAIR-${index+1}`,PAIR_LEFT:`word-${index+1}`,PAIR_RIGHT:`meaning-${index+1}`}));
 const cacheMap=new Map();
@@ -34,6 +43,7 @@ const context={
   console:{log:value=>logLines.push(String(value))},
   Date,JSON,Object,Math,String,Number,Array,Error,RegExp,Boolean,isFinite,parseInt,parseFloat,
   verificarActualizacionQA:noop,doPost:noop,_aplayAuth_:noop,getEstudiante:noop,
+  _eliveRoomPublic_:publicRoom,
   englishLabLiveCloseRoom:noop,englishLabLiveGetLeaderboard:noop,englishLabLiveGetPlayerState:noop,
   englishLabLiveGetTeacherData:noop,englishLabLiveJoinRoom:noop,englishLabLiveSubmitAnswer:noop,
   PropertiesService:{getScriptProperties:()=>({getProperty:key=>properties[key]||''})},
