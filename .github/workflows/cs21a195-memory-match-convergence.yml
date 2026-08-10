@@ -24,9 +24,12 @@ jobs:
       SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       TEST_MERGE_SHA: ${{ github.sha }}
       SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      CS21A193_BASE_SHA: c1c28bcd72bbccb9373bdd159eccbb4d6a61bdcc
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -60,9 +63,13 @@ jobs:
           node scripts/test_english_lab_hangman_contract_cs21a191.mjs
           node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
 
-      - name: Reconstruct exact package chain through CS21A194
+      - name: Reconstruct exact CS21A193 base in isolated worktree
+        shell: bash
         run: |
           set -euo pipefail
+          git worktree add /tmp/cs21a193-base "$CS21A193_BASE_SHA"
+          cd /tmp/cs21a193-base
+          node scripts/assemble_apps_script_cs21a183_complete.mjs
           node scripts/build_qa_staging_frontend_cs21a148.mjs
           node scripts/audit_qa_staging_frontend_cs21a148.mjs
           node scripts/build_qa_package_cs21a183_apollo_qa.mjs
@@ -77,6 +84,13 @@ jobs:
           node scripts/patch_qa_package_cs21a192.mjs --verify
           node scripts/patch_qa_package_cs21a193.mjs
           node scripts/patch_qa_package_cs21a193.mjs --verify
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          rm -rf "$GITHUB_WORKSPACE/dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE"
+          cp -a dist/CAMPUS_QA_CS21A193_CANDIDATO_ENGLISH_LAB_CARGA_ESTABLE "$GITHUB_WORKSPACE/dist/"
+
+      - name: Patch and verify exact CS21A194 base
+        run: |
+          set -euo pipefail
           node scripts/patch_qa_package_cs21a194.mjs
           node scripts/patch_qa_package_cs21a194.mjs --verify
 
@@ -104,6 +118,18 @@ jobs:
           done
           cat cs21a195-package-server.log
           exit 1
+
+      - name: Smoke exact CS21A195 package identity
+        run: |
+          set -euo pipefail
+          base='http://127.0.0.1:4195'
+          curl -fsS "$base/VERSION.txt" -o /tmp/version195.txt
+          curl -fsS "$base/BACKEND_QA/99_CS21A195_MEMORY_MATCH_CONVERGENCE_COMPLETO.gs" -o /tmp/backend195.gs
+          grep -q 'VERSION=CS21A195' /tmp/version195.txt
+          grep -q 'QA_PORT=4195' /tmp/version195.txt
+          grep -q 'BACKEND_LAYER=CS21A195-MM-CONVERGENCE-RELAY-1' /tmp/version195.txt
+          grep -q "CS21A195_MM_CONVERGENCE_VERSION = 'CS21A195-MM-CONVERGENCE-RELAY-1'" /tmp/backend195.gs
+          grep -q '_cs21a192CanonicalSnapshot_.__cs21a195StaleReadShield = true' /tmp/backend195.gs
 
       - name: Run packaged browser regressions from CS21A194 frontend
         env:
