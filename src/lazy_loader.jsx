@@ -1,5 +1,6 @@
 // F98.4-Z6-CS21A193 · Cargador diferido con owner dinámico para rutas canónicas.
 // Base preservada: F98.4-Z6-CS21A168.
+// Contrato preservado: F98.4-Z6-CS21A179 · montaje atómico de rutas canónicas.
 (function(){
   const loaded = new Set();
   const loading = new Map();
