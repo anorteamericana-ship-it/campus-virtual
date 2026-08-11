@@ -9,11 +9,17 @@ on:
       - 'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js'
       - 'src/english_lab_games/english_lab_quiz_engine_cs21a198.js'
       - 'src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx'
+      - 'src/english_lab_games/english_lab_quiz_time_gateway_cs21a198.jsx'
+      - 'src/english_lab_games/english_lab_quiz_time_style_cs21a198.js'
       - 'src/english_lab_games/english_lab_quiz_time_preview_cs21a198.html'
+      - 'src/english_lab_live_canonical_loader_cs21a193.js'
       - 'styles/english_lab_quiz_time_cs21a198.css'
+      - 'styles/english_lab_quiz_time_gateway_cs21a198.css'
       - 'apps_script_patches/99T_QUIZ_TIME_CURRICULAR_QA_CS21A198.gs'
       - 'scripts/qa_cs21a198_quiz_curriculum_core.mjs'
       - 'scripts/qa_cs21a198_quiz_backend_contract.mjs'
+      - 'scripts/qa_cs21a198_quiz_live_integration.mjs'
+      - 'scripts/assemble_apps_script_cs21a198_complete.mjs'
       - '00_DOCUMENTACION/CS21A198_QUIZ_TIME_B1U01_CURRICULUM.md'
       - '.github/workflows/qa-cs21a198-quiz-curriculum-core.yml'
 
@@ -23,7 +29,7 @@ permissions:
 jobs:
   quiz-curriculum-core:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,10 +43,14 @@ jobs:
         run: node scripts/qa_cs21a198_quiz_curriculum_core.mjs
       - name: Validate Apps Script Quiz Time contract
         run: node scripts/qa_cs21a198_quiz_backend_contract.mjs
-      - name: Syntax-check Apps Script patch as JavaScript
+      - name: Validate canonical Live integration
+        run: node scripts/qa_cs21a198_quiz_live_integration.mjs
+      - name: Assemble cumulative Apps Script CS198
+        run: node scripts/assemble_apps_script_cs21a198_complete.mjs
+      - name: Syntax-check Apps Script cumulative build
         run: |
-          cp apps_script_patches/99T_QUIZ_TIME_CURRICULAR_QA_CS21A198.gs /tmp/quiz-cs198.js
-          node --check /tmp/quiz-cs198.js
+          cp apps_script_patches/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO.gs /tmp/quiz-cs198-complete.js
+          node --check /tmp/quiz-cs198-complete.js
       - name: Verify no correct answer is embedded in public curriculum contract
         run: |
           ! grep -Eiq "correct[_-]?(option|answer)[[:space:]]*[:=][[:space:]]*['\"][A-D]" src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js
@@ -68,6 +78,75 @@ jobs:
           "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=1800 --window-size=390,844 --screenshot=/tmp/quiz-time-mobile.png http://127.0.0.1:4198/src/english_lab_games/english_lab_quiz_time_preview_cs21a198.html
           test "$(stat -c%s /tmp/quiz-time-desktop.png)" -gt 20000
           test "$(stat -c%s /tmp/quiz-time-mobile.png)" -gt 10000
+      - name: Build authenticated QA candidate package
+        run: |
+          pkg=/tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA"
+          cp apps_script_patches/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO.gs"
+          cat > "$pkg/qa-bootstrap-cs198.js" <<'EOF'
+          (function(){
+            var url=''; try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01')
+          for name in ('campus.html','index.html'):
+              p=root/name
+              if not p.exists():
+                  continue
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s:
+                  raise SystemExit(f'No runtime marker in {name}')
+              s=s.replace(marker,'<script src="qa-bootstrap-cs198.js?v=CS21A198"></script>\n'+marker,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A198 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:760px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A198 · Quiz Time QA</h1><p>Use el mismo Apps Script <b>/exec de QA</b>. No use producción.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html?quiz=1#english_lab_live'};</script></body></html>
+          EOF
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A198.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A198 disponible en http://127.0.0.1:4198/qa-setup.html
+          start "" http://127.0.0.1:4198/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4198 --bind 127.0.0.1 && exit /b
+          python -m http.server 4198 --bind 127.0.0.1
+          EOF
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A198
+          PACKAGE_REVISION=1
+          STATUS=QA_CANDIDATE_NOT_FINAL
+          QA_PORT=4198
+          SOURCE_BRANCH=feat/cs21a198-quiz-time-b1u01-curricular-core
+          SOURCE_HEAD_SHA=${GITHUB_SHA}
+          BACKEND_LAYER=CS21A198-QUIZ-TIME-B1U01-1
+          BACKEND_COMPLETE=BACKEND_QA/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO.gs
+          ENABLED_UNIT=B1-U01
+          QUESTION_COUNT=10
+          AUTH_QA=PENDING
+          PRODUCTION_ACTION=DO_NOT_MODIFY
+          EOF
+          cat > "$pkg/LEEME_PRIMERO_CS21A198.txt" <<'EOF'
+          CS21A198 · QUIZ TIME B1-U01 · QA CANDIDATE
+          1. Cierre servidores QA anteriores (4192/4193/etc.).
+          2. Extraiga este ZIP en una carpeta NUEVA. No mezcle con candidatos anteriores.
+          3. Apps Script QA: use BACKEND_QA/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO.gs solo cuando se autorice la prueba backend CS198.
+          4. Mantenga el mismo deployment /exec QA; no cree uno productivo ni cambie producción.
+          5. Ejecute ABRIR_CAMPUS_QA_CS21A198.cmd. Debe mostrar puerto 4198.
+          6. En qa-setup.html configure el mismo /exec QA verificado.
+          7. Docente: English LAB Live > Quiz Time B1-U01 > crear sala. No iniciar hasta tener a Naty y Chu dentro.
+          8. Estudiantes: abrir enlace Quiz Time o pestaña Quiz Time e ingresar el código.
+          9. Docente debe ver exactamente 2 participantes antes de iniciar.
+          10. Validar 10 preguntas: 2 Vocabulary, 2 Grammar, 2 Communication, 2 Listening, 2 Reading; misma pregunta/reloj/reveal/ranking para todos.
+          11. Confirmar que correct_option NO aparece al estudiante antes de REVEAL.
+          12. Luego hacer regresión rápida de Memory Match, Sentence Order y Hangman.
+          EOF
+          (cd /tmp && zip -qr CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01.zip CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01)
+          test -s /tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01.zip
       - name: Upload Quiz Time preview evidence
         uses: actions/upload-artifact@v4
         with:
@@ -76,3 +155,9 @@ jobs:
             /tmp/quiz-time-desktop.png
             /tmp/quiz-time-mobile.png
           retention-days: 14
+      - name: Upload CS198 authenticated QA candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01
+          path: /tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01.zip
+          retention-days: 30
