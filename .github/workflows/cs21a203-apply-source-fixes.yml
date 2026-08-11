@@ -1,0 +1,53 @@
+name: CS21A203 Apply Memory Live Source Fixes
+
+on:
+  push:
+    branches:
+      - fix/cs21a203-memory-match-live-start-presence-rejoin
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cs21a203-source-apply-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apply-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply CS21A203 directly to source
+        run: node scripts/apply_cs21a203_memory_match_live_fixes.mjs
+      - name: Assert recovered source invariants
+        run: |
+          set -euo pipefail
+          grep -q "CS21A203: antes de existir room_package" src/english_lab_live.jsx
+          grep -q "memoryPackageReady" src/english_lab_live.jsx
+          grep -q "livePlayerId" src/english_lab_live.jsx
+          grep -q "localStorage.setItem('elive_last_room',rc)" src/english_lab_live.jsx
+          grep -q "blockingBusy" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "submissionAction!=='DISCOVER_CARD'" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "data-start-countdown" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "La ronda inicia al mismo tiempo para todos" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+      - name: Commit source changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/; then
+            echo "No source diff to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/english_lab_live.jsx \
+            src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx \
+            src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          git commit -m "CS21A203 sincroniza lobby inicio rejoin y segunda carta"
+          git push origin HEAD:${GITHUB_REF_NAME}
