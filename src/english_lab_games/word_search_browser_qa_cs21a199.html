@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS199 R2 Browser QA</title><link rel="stylesheet" href="../../styles/word_search_cs21a199.css?v=CS21A199R2"></head>
+<body data-qa-status="RUNNING"><div id="root"></div><pre id="qa-log"></pre>
+<script src="../../vendor/react.js"></script><script src="../../vendor/react-dom.js"></script><script src="../../vendor/babel.js"></script>
+<script src="word_search_curriculum_contract_cs21a199.js?v=CS21A199R2"></script><script src="word_search_engine_cs21a199.js?v=CS21A199R2"></script><script type="text/babel" src="word_search_game_cs21a199.jsx?v=CS21A199R2"></script>
+<script type="text/babel">
+const log=[];function fail(message){document.body.dataset.qaStatus='FAIL';log.push('FAIL '+message);document.getElementById('qa-log').textContent=log.join('\n');throw new Error(message);}function ok(cond,message){if(!cond)fail(message);log.push('PASS '+message);document.getElementById('qa-log').textContent=log.join('\n');}
+window.addEventListener('error',e=>{if(document.body.dataset.qaStatus!=='FAIL')document.body.dataset.qaStatus='ERROR';document.body.dataset.qaError=String(e.message||'error').slice(0,180);});window.addEventListener('unhandledrejection',e=>{document.body.dataset.qaStatus='ERROR';document.body.dataset.qaError=String(e.reason?.message||e.reason||'rejection').slice(0,180);});
+const fixture=[['001','hello','hola'],['002','goodbye','adiós'],['003','name','nombre'],['004','teacher','profesor/a'],['005','student','estudiante']].map(([id,word,hint])=>({LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_01',ITEM_TYPE:'MCQ',STATUS:'ACTIVE',PLAY_ITEM_ID:`P1-${id}`,SOURCE_ITEM_ID:`VOC-B1-U01-${id}`,STEM:word,OPTION_A:hint,CORRECT_OPTION:'A'})).concat([['006','phone number','número de teléfono'],['007','email','correo electrónico'],['008','zero','cero'],['009','please','por favor'],['010','thanks','gracias']].map(([id,word,hint])=>({LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_02',ITEM_TYPE:'MATCH',STATUS:'ACTIVE',PLAY_ITEM_ID:`P2-${id}`,SOURCE_ITEM_ID:`VOC-B1-U01-${id}`,MATCH_LEFT:word,MATCH_RIGHT:hint})));
+const C=EnglishLabWordSearchCurriculumCS21A199,E=EnglishLabWordSearchEngineCS21A199,G=EnglishLabWordSearchGameCS21A199.WordSearchGameCS21A199;
+const vocab=C.vocabularyFromRows(fixture),secret=E.buildPuzzle(vocab,'BROWSER-QA'),pub=E.publicPuzzle(secret),root=ReactDOM.createRoot(document.getElementById('root'));let claims=[],state={phase:'OPEN',round_id:'ROUND-QA-199',claimed_words:[],round_ends_at:new Date(Date.now()+8000).toISOString(),server_now:new Date().toISOString()};
+function render(readOnly=false){root.render(<G publicPuzzle={pub} authoritativeState={state} roundId="ROUND-QA-199" readOnly={readOnly} onClaim={(action)=>{claims.push(action);return new Promise(()=>{});}}/>);}
+function cell(c){return document.querySelector(`[data-row="${c.row}"][data-col="${c.col}"]`);}function metricText(){return document.querySelector('.ws199-metrics')?.textContent||'';}
+async function run(){
+  render(false);await new Promise(r=>setTimeout(r,350));ok(document.querySelectorAll('[data-ws199-cell]').length===196,'renderiza 14x14');ok(metricText().includes('0/10'),'inicio 0/10');
+  const target=secret.words[0],solution=secret.solutions[target.wordId];cell(solution.cells[0]).click();await new Promise(r=>setTimeout(r,20));cell(solution.cells[solution.cells.length-1]).click();await new Promise(r=>setTimeout(r,150));
+  ok(claims.length===1,'envía un único CLAIM_WORD');ok(claims[0].round_id==='ROUND-QA-199','claim conserva round_id');ok(metricText().includes('0/10'),'claim pendiente no se convierte en punto local');
+  const disabled=[...document.querySelectorAll('[data-ws199-cell]')].every(el=>el.disabled);ok(disabled,'tablero bloqueado mientras hay claim pendiente');
+  state={...state,claimed_words:[{word_id:target.wordId,cells:solution.cells,player_id:'QA-STU-001',claimed_at:new Date().toISOString()}]};render(false);await new Promise(r=>setTimeout(r,250));ok(metricText().includes('1/10'),'sólo snapshot autoritativo confirma palabra');
+  state={...state,round_ends_at:new Date(Date.now()+1800).toISOString(),server_now:new Date().toISOString()};render(true);await new Promise(r=>setTimeout(r,300));const before=metricText();await new Promise(r=>setTimeout(r,1200));const after=metricText();ok(before!==after,'reloj autoritativo avanza en readOnly/proyector');
+  document.body.dataset.qaStatus='PASS';log.push('DONE CS21A199-R2');document.getElementById('qa-log').textContent=log.join('\n');
+}
+setTimeout(()=>run().catch(e=>fail(e.message||String(e))),300);
+</script></body></html>
