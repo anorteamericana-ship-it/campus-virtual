@@ -1,0 +1,186 @@
+name: CS21A202 Final Source of Truth Candidate QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a202-english-lab-source-of-truth-recovery
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a202-final-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-truth-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Audit source-of-truth invariants
+        run: node scripts/qa_cs21a202_source_truth.mjs
+
+      - name: Install Playwright for real browser gates
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static QA server
+        run: |
+          python3 -m http.server 4192 --bind 127.0.0.1 >/tmp/cs202-http.log 2>&1 &
+          echo $! >/tmp/cs202-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4192/src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs202-http.log
+          exit 1
+
+      - name: Browser actor conflict reconciliation without runtime patch
+        env:
+          QA_BASE_URL: http://127.0.0.1:4192
+        run: node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: Browser spectator reveal regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4192
+        run: node scripts/test_memory_match_spectator_reveal_browser_cs21a197.mjs
+
+      - name: Assert conflict test never rewrites served code
+        run: |
+          set -euo pipefail
+          ! grep -q "original.replace(oldTransport,newTransport)" scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+          ! grep -q "oldTransport=" scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+          ! grep -q "newTransport=" scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: Regression Quiz Time curriculum and backend contract
+        run: |
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+
+      - name: Regression Word Search R2 and Live contract
+        run: |
+          node scripts/qa_cs21a199_word_search_engine.mjs
+          node scripts/qa_cs21a200_word_search_backend_contract.mjs
+          node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+
+      - name: Assemble unchanged unified CS201 backend
+        run: node scripts/assemble_apps_script_cs21a201_unified.mjs
+
+      - name: Syntax-check unified backend
+        run: node --check apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs
+
+      - name: Build CS202 candidate strictly from checkout
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH
+          zipfile=/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH.zip
+          rm -rf "$pkg" "$zipfile" "$zipfile.sha256"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          cp -r qa-output/cs21a192-authoritative-sync "$pkg/EVIDENCIA_AUTOMATICA/" || true
+          cp -r qa-output/cs21a197-spectator-reveal "$pkg/EVIDENCIA_AUTOMATICA/" || true
+
+          cat > "$pkg/qa-bootstrap-cs202.js" <<'EOF'
+          (function(){
+            var url=''; try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH')
+          for name in ('campus.html','index.html'):
+              p=root/name
+              if not p.exists(): continue
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s: raise SystemExit(f'No runtime marker in {name}')
+              boot='<script src="qa-bootstrap-cs202.js?v=CS21A202"></script>\n'
+              if 'qa-bootstrap-cs202.js' not in s: s=s.replace(marker,boot+marker,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A202 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A202 · English LAB Source of Truth</h1><p>Use el mismo Apps Script <b>/exec de QA</b>. Este candidato recupera en src real los fixes de Memory Match CS196 y conserva backend CS201.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html#english_lab_live'};</script></body></html>
+          EOF
+
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A202.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A202 disponible en http://127.0.0.1:4202/qa-setup.html
+          start "" http://127.0.0.1:4202/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4202 --bind 127.0.0.1 && exit /b
+          python -m http.server 4202 --bind 127.0.0.1
+          EOF
+
+          source_head="$(git rev-parse HEAD)"
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A202
+          STATUS=QA_CANDIDATE_NOT_FINAL
+          PURPOSE=English LAB source-of-truth recovery after CS196 packaging regression
+          QA_PORT=4202
+          SOURCE_BRANCH=${GITHUB_REF_NAME}
+          SOURCE_HEAD_SHA=${source_head}
+          BACKEND_VERSION=CS21A201
+          FRONTEND_SOURCE_OF_TRUTH=src
+          RUNTIME_SOURCE_PATCHING=FORBIDDEN
+          EOF
+
+          cat > "$pkg/LEEME_PRIMERO_CS21A202.txt" <<'EOF'
+          CAMPUS QA CS21A202 - SOURCE OF TRUTH RECOVERY
+          ============================================================
+          - NO PRODUCCION. NO MERGE.
+          - Frontend Memory Match recuperado directamente en src/.
+          - El test de conflicto ya NO reemplaza HTML/codigo en runtime.
+          - Backend incluido: CS21A201 unificado, sin cambios funcionales CS202.
+          - Si Apps Script QA ya contiene CS201 guardado, no reemplazarlo por otro backend distinto.
+          - Versionar el MISMO deployment QA solo cuando se autorice la prueba autenticada.
+          - Ejecutar ABRIR_CAMPUS_QA_CS21A202.cmd (puerto 4202).
+          - Reproducir LAB-6254 con docente + Naty + Chu: tercera carta debe permanecer bloqueada durante state_conflict/retry.
+          EOF
+
+          (
+            cd "$pkg"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          (
+            cd /tmp
+            zip -qr "$zipfile" "$(basename "$pkg")"
+          )
+          sha256sum "$zipfile" > "$zipfile.sha256"
+
+      - name: Inspect exact packaged source for recovered fixes
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH
+          grep -q "CS21A202: un rechazo de dominio con room_package" "$pkg/src/english_lab_live.jsx"
+          grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "authoritativeBusy" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          ! grep -q "original.replace(oldTransport,newTransport)" "$pkg/scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs"
+          sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH/#' "$pkg/SHA256SUMS.txt")
+
+      - name: Upload CS202 candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH
+          path: |
+            /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH.zip
+            /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
