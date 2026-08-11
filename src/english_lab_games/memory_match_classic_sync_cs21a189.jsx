@@ -214,7 +214,8 @@
     const isMyTurn=turnState && turnEngine && typeof turnEngine.canPlayerAct==='function'
       ? turnEngine.canPlayerAct(turnState,currentPlayer,{readOnly:!!(props&&props.readOnly)})
       : !(props&&props.readOnly);
-    const canPlay=phase==='OPEN' && isMyTurn && remainingMs>0 && turnReady && !(props&&props.readOnly);
+    const authoritativeBusy=!!(props&&props.mutationBusy);
+    const canPlay=phase==='OPEN' && isMyTurn && remainingMs>0 && turnReady && !authoritativeBusy && !(props&&props.readOnly);
     const turnNumber=Number(turnState && turnState.turn_number || 0)||0;
     const [optimistic,setOptimistic]=React.useState([]);
     const [syncing,setSyncing]=React.useState(false);
@@ -261,7 +262,7 @@
     const localFirstId = serverFirstId || localFirstRef.current || optimistic[0] || '';
 
     const selectCard=React.useCallback(card=>{
-      if(!canPlay || pairPendingRef.current || syncing || isClaimed(shared,card) || waitingForFlipback) return;
+      if(!canPlay || authoritativeBusy || pairPendingRef.current || syncing || isClaimed(shared,card) || waitingForFlipback) return;
       if(!localFirstId){
         const interactionEpoch=interactionEpochRef.current;
         localFirstRef.current=card.id;
@@ -314,10 +315,12 @@
           }
         })
         .finally(()=>{
-          if(interactionEpochRef.current===interactionEpoch) setSyncing(false);
-          pairPendingRef.current=false;
+          if(interactionEpochRef.current===interactionEpoch){
+            setSyncing(false);
+            pairPendingRef.current=false;
+          }
         });
-    },[canPlay,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction]);
+    },[canPlay,authoritativeBusy,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction]);
 
     const claimedCount=Object.keys(shared.claimed).length || shared.matchedPairs.size;
     const completed=shared.completed || claimedCount>=cards.length/2;
@@ -340,7 +343,7 @@
           const temporary=visibleIds.has(card.id);
           const visible=claimed || temporary;
           const selected=temporary && !waitingForFlipback;
-          return <ClassicCard key={card.id} card={card} index={index} visible={visible} selected={selected} claimed={claimed} mismatch={waitingForFlipback && temporary} claim={claim} disabled={!canPlay||syncing||waitingForFlipback||(serverFirstId===card.id)} onSelect={selectCard}/>;
+          return <ClassicCard key={card.id} card={card} index={index} visible={visible} selected={selected} claimed={claimed} mismatch={waitingForFlipback && temporary} claim={claim} disabled={!canPlay||authoritativeBusy||syncing||waitingForFlipback||(serverFirstId===card.id)} onSelect={selectCard}/>;
         })}
       </div>
       <div className="elmm-live-announcement" role="status" aria-live="polite">{syncing?'Sincronizando pareja…':announcement}</div>

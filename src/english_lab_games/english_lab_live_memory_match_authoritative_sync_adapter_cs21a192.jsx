@@ -204,20 +204,26 @@
     const clock=React.useMemo(()=>authoritativeClock(state,pkg),[pkg,state&&state.state_revision,state&&state.server_now_ms,state&&state.turn_remaining_ms,state&&state.__cs21a192_received_monotonic_ms]);
 
     const applyCandidate=React.useCallback((candidate,meta)=>{
-      if(!candidate||typeof candidate!=='object'||candidate.ok===false) return {accepted:false,reason:'INVALID'};
+      if(!candidate||typeof candidate!=='object') return {accepted:false,reason:'INVALID'};
+      if(candidate.ok===false&&!(candidate.room_package&&typeof candidate.room_package==='object')) return {accepted:false,reason:'INVALID'};
+      const stateCandidate=candidate.ok===false?(()=>{
+        const copy={...candidate,ok:true};
+        delete copy.error;delete copy.mensaje;delete copy.retry_after_ms;
+        return copy;
+      })():candidate;
       const details=meta||{};
       if(details.source==='poll'&&finite(details.issuedMutationEpoch,0)<mutationEpochRef.current){
         return {accepted:false,reason:'PREDATES_MUTATION'};
       }
       const current=stateRef.current||{};
-      const compared=compareRevision(candidate,current);
+      const compared=compareRevision(stateCandidate,current);
       if(compared<0) return {accepted:false,reason:'STALE_REVISION'};
       const seq=Math.max(0,finite(details.requestSeq,0));
       if(compared===0&&seq<appliedSeqRef.current) return {accepted:false,reason:'STALE_REQUEST'};
-      if(compared===0&&serverStamp(candidate)&&serverStamp(current)&&serverStamp(candidate)<serverStamp(current)){
+      if(compared===0&&serverStamp(stateCandidate)&&serverStamp(current)&&serverStamp(stateCandidate)<serverStamp(current)){
         return {accepted:false,reason:'STALE_SERVER_TIME'};
       }
-      const merged=mergeState(current,candidate);
+      const merged=mergeState(current,stateCandidate);
       stateRef.current=merged;
       appliedSeqRef.current=Math.max(appliedSeqRef.current,seq);
       setLiveState(merged);
@@ -327,24 +333,42 @@
       setBusy(true);setError('');
       const mutationEpoch=mutationEpochRef.current+1;
       mutationEpochRef.current=mutationEpoch;
-      const requestSeq=++requestSeqRef.current;
+      const initialSeq=++requestSeqRef.current;
       const currentRevision=revisionOf(stateRef.current);
-      const actionId=`MM-${code}-${pid}-${currentRevision.turnNumber}-${requestSeq}-${Date.now()}`;
-      try{
+      const actionId=`MM-${code}-${pid}-${currentRevision.turnNumber}-${initialSeq}-${Date.now()}`;
+      const initialPayload={
+        ...base.submitPayload(submission,room,pkg,player),
+        action_id:actionId,
+        client_request_id:actionId,
+        expected_state_revision:currentRevision.stateRevision,
+        expected_turn_number:currentRevision.turnNumber,
+        sync_policy:SYNC_VERSION,
+      };
+      async function executeMutation(payload,requestSeq){
         invalidateClientReadCache('CS21A192_AUTHORITATIVE_MUTATION');
-        const payload={
-          ...base.submitPayload(submission,room,pkg,player),
-          action_id:actionId,
-          client_request_id:actionId,
-          expected_state_revision:currentRevision.stateRevision,
-          expected_turn_number:currentRevision.turnNumber,
-          sync_policy:SYNC_VERSION,
-        };
         const startedMono=monoNow();
         const result=await postLive(ENDPOINTS.submitPair,payload,MUTATION_TIMEOUT_MS);
         const received=decorateResponse(result,{startedMono,receivedMono:monoNow(),receivedWall:Date.now()});
-        setLastResult(received||null);
         applyCandidate(received,{source:'mutation',requestSeq,issuedMutationEpoch:mutationEpoch});
+        return received;
+      }
+      try{
+        let received=await executeMutation(initialPayload,initialSeq);
+        if(received&&received.ok===false&&upper(received.error)==='STATE_CONFLICT'&&received.room_package){
+          const fresh=revisionOf(received);
+          if(fresh.stateRevision>0){
+            const retrySeq=++requestSeqRef.current;
+            received=await executeMutation({
+              ...initialPayload,
+              client_request_id:`${actionId}-R1`,
+              expected_state_revision:fresh.stateRevision,
+              expected_turn_number:fresh.turnNumber,
+            },retrySeq);
+          }
+        }
+        setLastResult(received||null);
+        if(received&&received.ok===false)setError(received.mensaje||received.message||received.error||'La jugada no fue aceptada.');
+        else setError('');
         wakePollRef.current();
         return received;
       }catch(err){
@@ -375,6 +399,7 @@
         turnEngine={global.EnglishLabTurnEngineCS21A176||null}
         authoritativeClock={clock}
         authoritativeOnly={true}
+        mutationBusy={busy}
         onReady={props.onReady}
         onSubmit={handleSubmit}
         onTimeout={props.onTimeout}

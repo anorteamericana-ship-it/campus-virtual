@@ -76,7 +76,11 @@
       const text = await res.text();
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch(_) { throw new Error('Respuesta inválida del backend.'); }
-      if(!res.ok || !data || data.ok === false) throw new Error((data && (data.mensaje || data.error)) || `HTTP ${res.status}`);
+      if(!res.ok || !data) throw new Error((data && (data.mensaje || data.error)) || `HTTP ${res.status}`);
+      // CS21A202: un rechazo de dominio con room_package es reconciliación autoritativa, no error de transporte.
+      if(data.ok === false && !(data.room_package && typeof data.room_package === 'object')){
+        throw new Error(data.mensaje || data.error || `HTTP ${res.status}`);
+      }
       return data;
     } catch(e){
       if(e && e.name === 'AbortError') throw new Error('El backend tardó demasiado en responder.');
