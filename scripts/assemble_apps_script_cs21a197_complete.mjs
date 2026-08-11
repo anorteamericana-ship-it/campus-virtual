@@ -21,8 +21,13 @@ const timingNew=`    });\n\n    // CS21A197: el reloj del resultado empieza DESP
 assert.ok(previous.includes(timingOld),'No se encontro el punto de commit temporal de SUBMIT_PAIR CS189.');
 previous=previous.replace(timingOld,timingNew);
 
+const revealOld=`      revealUntil = new Date(now.getTime() + CS21A189_MM_MISMATCH_REVEAL_MS);`;
+const revealNew=`      revealUntil = new Date(now.getTime() + Math.max(\n        Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) || 0,\n        Number(CS21A197_MM_SPECTATOR_REVEAL_MS || 0) || 0\n      ));`;
+assert.ok(previous.includes(revealOld),'No se encontro el calculo historico de revealUntil.');
+previous=previous.replace(revealOld,revealNew);
+
 const rulesOld=`    pkg.version = CS21A189_MM_CLASSIC_SYNC_VERSION;\n    pkg.turn_state = nextTurn;`;
-const rulesNew=`    pkg.version = CS21A189_MM_CLASSIC_SYNC_VERSION;\n    pkg.rules = pkg.rules && typeof pkg.rules === 'object' ? pkg.rules : {};\n    pkg.rules.mismatch_reveal_ms = Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) || 0;\n    pkg.rules.spectator_reveal_ms = pkg.rules.mismatch_reveal_ms;\n    pkg.turn_state = nextTurn;`;
+const rulesNew=`    pkg.version = CS21A189_MM_CLASSIC_SYNC_VERSION;\n    pkg.rules = pkg.rules && typeof pkg.rules === 'object' ? pkg.rules : {};\n    pkg.rules.mismatch_reveal_ms = Math.max(\n      Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) || 0,\n      Number(CS21A197_MM_SPECTATOR_REVEAL_MS || 0) || 0\n    );\n    pkg.rules.spectator_reveal_ms = pkg.rules.mismatch_reveal_ms;\n    pkg.turn_state = nextTurn;`;
 assert.ok(previous.includes(rulesOld),'No se encontro el contrato rules del paquete Memory Match.');
 previous=previous.replace(rulesOld,rulesNew);
 
@@ -37,10 +42,12 @@ for(const marker of [
   "CS21A196_MM_RECONCILIATION_VERSION = 'CS21A196-MM-CONFLICT-RECONCILIATION-1'",
   'BLOQUE 19/19: 99S_MEMORY_MATCH_SPECTATOR_REVEAL_QA_CS21A197.gs',
   "CS21A197_MM_SPECTATOR_REVEAL_VERSION = 'CS21A197-MM-SPECTATOR-REVEAL-1'",
+  'CS21A197_MM_SPECTATOR_REVEAL_MS || 0',
   'now = new Date();',
   'pkg.rules.spectator_reveal_ms = pkg.rules.mismatch_reveal_ms;'
 ]) assert.ok(check.includes(marker),`Falta marcador CS21A197: ${marker}`);
 assert.ok(check.indexOf('now = new Date();') < check.indexOf('var durationMs = Number(pkg.rules && pkg.rules.round_duration_ms || 30000) || 30000;'),'El refresh temporal debe ocurrir antes de calcular el turno/reveal.');
+assert.match(check,/revealUntil = new Date\(now\.getTime\(\) \+ Math\.max\([\s\S]*CS21A197_MM_SPECTATOR_REVEAL_MS/,'El mismatch runtime debe usar el max historico/CS197.');
 
 console.log(JSON.stringify({
   ok:true,
@@ -48,7 +55,9 @@ console.log(JSON.stringify({
   base:'CS21A196-MM-CONFLICT-RECONCILIATION-1',
   target:path.relative(root,target),
   blocks:19,
+  historical_reveal_ms:6000,
   spectator_reveal_ms:8500,
+  historical_contract_preserved:true,
   reveal_deadline_commit_aligned:true,
   bytes:Buffer.byteLength(check,'utf8'),
 },null,2));
