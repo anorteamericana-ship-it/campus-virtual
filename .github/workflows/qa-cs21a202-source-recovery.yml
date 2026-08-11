@@ -29,8 +29,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Apply CS21A202 recovery to real src
+      - name: Apply CS196 recovery to real src
         run: node scripts/apply_cs21a202_source_recovery.mjs
+
+      - name: Apply CS197 spectator recovery to real src
+        run: node scripts/apply_cs21a202_cs197_source_recovery.mjs
 
       - name: Remove runtime code patch from conflict test
         run: node scripts/apply_cs21a202_test_recovery.mjs
@@ -45,12 +48,17 @@ jobs:
           ! grep -q "!res.ok || !data || data.ok === false" src/english_lab_live.jsx
           grep -q "const stateCandidate=candidate.ok===false" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "mutationBusy={busy}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "function pollMsForState(state)" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "data-live-current-poll-ms={currentPollMs}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "authoritativeBusy" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "data-spectator-reveal-ms={revealRuleMs}" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "se cierran en \\${revealSeconds}s" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "transition:transform .20s" styles/english_lab_memory_match_classic_sync_cs21a189.css
           grep -q "CS21A202 fixture: el mismo contrato de reconciliación" src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html
           ! grep -q "original.replace(oldTransport,newTransport)" scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
           git diff --check
 
-      - name: Verify clean checkout packaging preserves the fix
+      - name: Verify clean checkout packaging preserves the fixes
         run: |
           set -euo pipefail
           pkg=/tmp/cs21a202-clean-package
@@ -60,7 +68,9 @@ jobs:
           grep -q "CS21A202: un rechazo de dominio con room_package" "$pkg/src/english_lab_live.jsx"
           grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
-          grep -q "authoritativeBusy" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          grep -q "data-live-current-poll-ms={currentPollMs}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "data-spectator-reveal-ms={revealRuleMs}" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          grep -q "transition:transform .20s" "$pkg/styles/english_lab_memory_match_classic_sync_cs21a189.css"
           ! grep -q "original.replace(oldTransport,newTransport)" "$pkg/scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs"
 
       - name: Commit recovered source and tests if needed
@@ -72,6 +82,7 @@ jobs:
             src/english_lab_live.jsx
             src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
             src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+            styles/english_lab_memory_match_classic_sync_cs21a189.css
             src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html
             scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
           )
@@ -83,7 +94,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "${paths[@]}"
-          git commit -m "CS21A202 elimina parche runtime y fija source-of-truth"
+          git commit -m "CS21A202 recupera CS196 y CS197 en source-of-truth"
           git push origin HEAD:${{ github.ref_name }}
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
