@@ -8,6 +8,9 @@ on:
     paths:
       - 'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js'
       - 'src/english_lab_games/english_lab_quiz_engine_cs21a198.js'
+      - 'src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx'
+      - 'src/english_lab_games/english_lab_quiz_time_preview_cs21a198.html'
+      - 'styles/english_lab_quiz_time_cs21a198.css'
       - 'apps_script_patches/99T_QUIZ_TIME_CURRICULAR_QA_CS21A198.gs'
       - 'scripts/qa_cs21a198_quiz_curriculum_core.mjs'
       - 'scripts/qa_cs21a198_quiz_backend_contract.mjs'
@@ -20,7 +23,7 @@ permissions:
 jobs:
   quiz-curriculum-core:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,3 +53,26 @@ jobs:
             echo 'CS21A198 modificó una implementación histórica de juego.' >&2
             exit 1
           fi
+      - name: Render isolated Quiz Time preview
+        run: |
+          python3 -m http.server 4198 --bind 127.0.0.1 >/tmp/qt198-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid || true' EXIT
+          for n in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4198/src/english_lab_games/english_lab_quiz_time_preview_cs21a198.html >/dev/null; then break; fi
+            sleep .2
+          done
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=1800 --window-size=1440,900 --screenshot=/tmp/quiz-time-desktop.png http://127.0.0.1:4198/src/english_lab_games/english_lab_quiz_time_preview_cs21a198.html
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=1800 --window-size=390,844 --screenshot=/tmp/quiz-time-mobile.png http://127.0.0.1:4198/src/english_lab_games/english_lab_quiz_time_preview_cs21a198.html
+          test "$(stat -c%s /tmp/quiz-time-desktop.png)" -gt 20000
+          test "$(stat -c%s /tmp/quiz-time-mobile.png)" -gt 10000
+      - name: Upload Quiz Time preview evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A198_QUIZ_TIME_VISUAL_PREVIEW
+          path: |
+            /tmp/quiz-time-desktop.png
+            /tmp/quiz-time-mobile.png
+          retention-days: 14
