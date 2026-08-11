@@ -1,0 +1,95 @@
+name: CS21A200 Word Search Live Unified QA
+
+on:
+  push:
+    branches:
+      - feat/cs21a200-word-search-live-unified
+  pull_request:
+    paths:
+      - 'apps_script_unified/english_lab_word_search_module_cs21a200.gs'
+      - 'scripts/assemble_apps_script_cs21a200_unified.mjs'
+      - 'scripts/qa_cs21a200_*'
+      - 'src/english_lab_games/english_lab_word_search_*cs21a200*'
+      - 'src/english_lab_live_canonical_loader_cs21a193.js'
+      - 'styles/english_lab_word_search_live_cs21a200.css'
+      - '.github/workflows/qa-cs21a200-word-search-live-unified.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  word-search-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate hardened Word Search R2 engine
+        run: node scripts/qa_cs21a199_word_search.mjs
+      - name: Validate backend pure contract
+        run: node scripts/qa_cs21a200_word_search_backend_contract.mjs
+      - name: Validate first-claim-wins endpoint
+        run: node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+      - name: Validate canonical live integration
+        run: node scripts/qa_cs21a200_word_search_live_integration.mjs
+      - name: Assemble one complete Apps Script QA file
+        run: node scripts/assemble_apps_script_cs21a200_unified.mjs
+      - name: Syntax check assembled backend
+        run: |
+          cp apps_script_patches/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs200-backend.js
+          node --check /tmp/cs200-backend.js
+          grep -q "CS21A200-WORD-SEARCH-LIVE-1" /tmp/cs200-backend.js
+          grep -q "CS21A198-QUIZ-TIME-B1U01-2" /tmp/cs200-backend.js
+      - name: Guard isolated scope
+        run: |
+          git fetch origin fix/cs21a199r2-word-search-hardening --depth=1
+          base="$(git merge-base HEAD origin/fix/cs21a199r2-word-search-hardening)"
+          git diff --name-only "$base"..HEAD | tee /tmp/cs200-changed.txt
+          if grep -Eq '^src/english_lab_games/(memory_match|english_lab_live_memory_match|english_lab_hangman|hangman_engine|sentence_order|english_lab_quiz_)' /tmp/cs200-changed.txt; then
+            echo 'CS21A200 no debe reescribir motores anteriores.' >&2
+            exit 1
+          fi
+          if grep -Eq '^apps_script_patches/99[ABCDEFGHIJKLMNOPQRSTU]_' /tmp/cs200-changed.txt; then
+            echo 'CS21A200 no debe reescribir parches históricos.' >&2
+            exit 1
+          fi
+      - name: Start local HTTP server
+        run: |
+          python3 -m http.server 4200 --bind 127.0.0.1 >/tmp/ws200-http.log 2>&1 &
+          echo $! >/tmp/ws200-http.pid
+          for n in $(seq 1 40); do curl -fsS http://127.0.0.1:4200/src/english_lab_games/word_search_live_browser_qa_cs21a200.html >/dev/null && exit 0; sleep .2; done
+          cat /tmp/ws200-http.log
+          exit 1
+      - name: Browser functional QA hardened R2
+        run: |
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=7000 --dump-dom http://127.0.0.1:4200/src/english_lab_games/word_search_browser_qa_cs21a199.html > /tmp/ws199-r2-dom.html
+          grep -q 'data-qa-status="PASS"' /tmp/ws199-r2-dom.html || { cat /tmp/ws199-r2-dom.html; exit 1; }
+      - name: Browser functional QA Live CS200
+        run: |
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=7000 --dump-dom http://127.0.0.1:4200/src/english_lab_games/word_search_live_browser_qa_cs21a200.html > /tmp/ws200-live-dom.html
+          grep -q 'data-qa-status="PASS"' /tmp/ws200-live-dom.html || { cat /tmp/ws200-live-dom.html; exit 1; }
+          ! grep -q 'data-qa-status="FAIL"' /tmp/ws200-live-dom.html
+          ! grep -q 'data-qa-status="ERROR"' /tmp/ws200-live-dom.html
+      - name: Upload unified backend and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A200_WORD_SEARCH_LIVE_UNIFIED_QA
+          path: |
+            apps_script_patches/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs
+            /tmp/ws199-r2-dom.html
+            /tmp/ws200-live-dom.html
+            /tmp/ws200-http.log
+            /tmp/cs200-changed.txt
+          if-no-files-found: ignore
+          retention-days: 14
