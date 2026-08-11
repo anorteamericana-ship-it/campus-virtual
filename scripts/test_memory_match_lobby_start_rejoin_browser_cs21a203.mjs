@@ -5,6 +5,7 @@ import {baseUrl,endpointAndBody,fulfillJson,launchBrowser,wait,writeEvidence} fr
 const browser=await launchBrowser();
 const contexts=[];
 const errors=[];
+const endpointLog=[];
 const ROOM_CODE='LAB-203';
 const ROOM_ID='ROOM-203';
 const GROUP='B1-LM69-C3-9926';
@@ -45,15 +46,12 @@ function lobbyState(count,viewer='QA-STU-005'){
 
 async function routeHandler(route){
   const {endpoint,body}=endpointAndBody(route);
+  endpointLog.push({endpoint,at:Date.now(),teacherStarted});
   if(endpoint==='englishLabLiveJoinRoom'){
-    // A propósito sólo player_id: valida que CS203 no dependa de cod_estudiante.
     await fulfillJson(route,{...lobbyState(1),player:{player_id:'QA-STU-005',name:'Chu'}});
     return;
   }
   if(endpoint==='englishLabLiveGetPlayerState'){
-    // Antes del primer snapshot el frontend aún no sabe que la sala es Memory Match.
-    // Esta lectura genérica descubre game_code y loadState encadena de inmediato
-    // el endpoint especializado. Es parte de la ruta real, especialmente tras F5.
     genericStudentReads+=1;
     const viewer=String(body.player_id||body.cod_estudiante||'QA-STU-005');
     await fulfillJson(route,lobbyState(1,viewer));
@@ -90,7 +88,6 @@ function participantNumber(page){
 }
 
 try{
-  // -------- Student: join -> persist -> F5 -> presence 1->2 -> auto start --------
   const studentContext=await browser.newContext({viewport:{width:520,height:880}});
   contexts.push(studentContext);
   await studentContext.route('**/__cs21a203_live?*',routeHandler);
@@ -104,7 +101,6 @@ try{
   assert.equal(stored.player,'QA-STU-005','Join no persistió player_id alternativo.');
   assert.equal(stored.room,ROOM_CODE,'Join no persistió la sala activa.');
 
-  // F5 real: no debe volver al formulario de ingreso.
   await student.reload({waitUntil:'domcontentloaded'});
   await student.getByRole('button',{name:'← Cambiar sala'}).waitFor({state:'visible',timeout:6000});
   assert.equal(await student.getByRole('button',{name:'Entrar a sala'}).count(),0,'F5 devolvió al selector de sala.');
@@ -119,7 +115,6 @@ try{
   const studentCountdown=Number(await student.locator('[data-start-countdown="true"] strong').textContent());
   assert.ok(studentCountdown>=1&&studentCountdown<=5,`Countdown estudiante inválido: ${studentCountdown}`);
 
-  // -------- Teacher: participant count updates without clicking Actualizar --------
   teacherReads=0;teacherStarted=false;startAtMs=0;
   const teacherContext=await browser.newContext({viewport:{width:1200,height:900}});
   contexts.push(teacherContext);
@@ -138,6 +133,17 @@ try{
 
   const startClickAt=Date.now();
   await teacher.getByRole('button',{name:'Iniciar Memory Match'}).click();
+  await wait(300);
+  const teacherAfterStart=await teacher.evaluate(()=>({
+    bodyText:(document.body&&document.body.innerText||'').slice(0,6000),
+    authoritative:!!document.querySelector('[data-authoritative-sync="true"]'),
+    countdown:document.querySelector('[data-start-countdown="true"] strong')?.textContent||'',
+    memoryGlobal:typeof window.MemoryMatchLiveRoundCS21A174,
+    authoritativeApi:!!window.EnglishLabMemoryMatchAuthoritativeSyncCS21A192,
+    engine:typeof window.MemoryMatchGameCS21A173,
+  }));
+  console.log('CS21A203_TEACHER_AFTER_START '+JSON.stringify(teacherAfterStart));
+  console.log('CS21A203_ENDPOINT_LOG '+JSON.stringify(endpointLog.slice(-30)));
   await teacher.locator('[data-authoritative-sync="true"]').waitFor({state:'visible',timeout:2500});
   await teacher.locator('[data-start-countdown="true"]').waitFor({state:'visible',timeout:2500});
   const startVisibleDelayMs=Date.now()-startClickAt;
@@ -147,21 +153,7 @@ try{
 
   assert.ok(genericStudentReads>=1,'El fixture no ejercitó la detección genérica inicial de Memory Match.');
   assert.deepEqual(errors,[],`Errores navegador: ${errors.join(' | ')}`);
-  const result={
-    verdict:'PASS_MEMORY_MATCH_LOBBY_START_REJOIN_CS21A203',
-    studentF5Rejoined:true,
-    genericDiscoveryAfterReload:true,
-    studentPresenceReached2WithoutManualRefresh:true,
-    studentDetectedStartAutomatically:true,
-    teacherPresenceReached2WithoutManualRefresh:true,
-    authoritativeCountdown:true,
-    studentCountdown,
-    teacherCountdown,
-    teacherStartVisibleDelayMs:startVisibleDelayMs,
-    genericStudentStateReads:genericStudentReads,
-    studentStateReads:studentReads,
-    teacherControlReads:teacherReads,
-  };
+  const result={verdict:'PASS_MEMORY_MATCH_LOBBY_START_REJOIN_CS21A203',studentF5Rejoined:true,genericDiscoveryAfterReload:true,studentPresenceReached2WithoutManualRefresh:true,studentDetectedStartAutomatically:true,teacherPresenceReached2WithoutManualRefresh:true,authoritativeCountdown:true,studentCountdown,teacherCountdown,teacherStartVisibleDelayMs:startVisibleDelayMs,genericStudentStateReads:genericStudentReads,studentStateReads:studentReads,teacherControlReads:teacherReads};
   writeEvidence('lobby-start-rejoin-cs21a203.json',result);
   console.log(JSON.stringify(result,null,2));
 }finally{
