@@ -220,6 +220,15 @@
     state.status = nextStatus || state.status;
     state.roomCode = roomCode || state.roomCode;
     state.pairCount = count;
+
+    // CS21A203: un borrador pertenece únicamente a la sala que lo originó.
+    // Un cambio de sala sin suggested_pairs debe volver al banco curricular y
+    // jamás reutilizar custom_pairs de una sala anterior.
+    if (changedRoom) {
+      state.suggestedPairs = [];
+      state.draft = '';
+      state.dirty = false;
+    }
     if (suggestions.length) {
       state.suggestedPairs = suggestions.map(function (pair) {
         return {left:clean(pair && (pair.left || pair.PAIR_LEFT)),right:clean(pair && (pair.right || pair.PAIR_RIGHT))};
@@ -253,15 +262,22 @@
 
       var nextInit = init ? Object.assign({}, init) : {};
       if (clean(info.fn).toLowerCase() === 'englishlabmemorymatchstartroom') {
-        var parsed = parsePairs(state.draft);
-        if (parsed.invalid.length) {
-          return invalidPairResponse('Revisá las líneas ' + parsed.invalid.join(', ') + ': cada línea debe tener palabra = significado.');
+        // CS21A203: la sala curricular normal no debe convertirse en una sala de
+        // parejas personalizadas sólo porque el editor CS21A181 está instalado.
+        // Validamos/injectamos custom_pairs únicamente cuando el backend expuso
+        // suggested_pairs para ESA sala; si no hay editor, Start pasa intacto.
+        var hasEditablePairs = Array.isArray(state.suggestedPairs) && state.suggestedPairs.length > 0;
+        if (hasEditablePairs) {
+          var parsed = parsePairs(state.draft);
+          if (parsed.invalid.length) {
+            return invalidPairResponse('Revisá las líneas ' + parsed.invalid.join(', ') + ': cada línea debe tener palabra = significado.');
+          }
+          if (parsed.pairs.length !== Number(state.pairCount || 0)) {
+            return invalidPairResponse('La sala requiere exactamente ' + state.pairCount + ' parejas.');
+          }
+          var body = Object.assign({}, info.body || {}, {custom_pairs:parsed.pairs});
+          nextInit.body = JSON.stringify(body);
         }
-        if (parsed.pairs.length !== Number(state.pairCount || 0)) {
-          return invalidPairResponse('La sala requiere exactamente ' + state.pairCount + ' parejas.');
-        }
-        var body = Object.assign({}, info.body || {}, {custom_pairs:parsed.pairs});
-        nextInit.body = JSON.stringify(body);
       }
 
       // CS21A192: el polling autoritativo es mantenimiento silencioso. Mostrar el
