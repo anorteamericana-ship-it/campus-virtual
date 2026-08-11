@@ -37,10 +37,11 @@ const timerNew=`  function Timer({remainingMs,durationMs,waiting,syncingTurn,rev
     const transition=!!(waiting||syncingTurn||revealWaiting);
     const label=revealWaiting?'Cartas':syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
     const aria=revealWaiting?\`Pareja visible, \${seconds} segundos para memorizar\`:syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':\`\${seconds} segundos restantes\`;
-    const value=(syncingTurn||waiting)?'…':\`\${seconds}s\`;
+    const value=revealWaiting?\`\${seconds}s\`:(syncingTurn||waiting)?'…':\`\${seconds}s\`;
+    const fillWidth=syncingTurn?'0%':revealWaiting?\`\${pct}%\`:waiting?'100%':\`\${pct}%\`;
     return <div className={\`elmm-timer \${transition?'is-transition':''}\`} role="timer" aria-label={aria} data-reveal-waiting={revealWaiting?'true':'false'}>
       <div className="elmm-timer-copy"><span>{label}</span><strong>{value}</strong></div>
-      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:syncingTurn?'0%':waiting?'100%':\`\${pct}%\`}}/></div>
+      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:fillWidth}}/></div>
     </div>;
   }`;
 const timerCallOld=`      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={waitingForFlipback || turnStartsIn>0} syncingTurn={syncingTurn}/>`;
@@ -85,6 +86,8 @@ function verify(){
   const classic=fs.readFileSync(path.join(target,'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx'),'utf8');
   assert.match(classic,/function Timer\(\{remainingMs,durationMs,waiting,syncingTurn,revealWaiting\}\)/);
   assert.match(classic,/const label=revealWaiting\?'Cartas'/);
+  assert.match(classic,/const value=revealWaiting\?`\$\{seconds\}s`/);
+  assert.match(classic,/const fillWidth=syncingTurn\?'0%'\:revealWaiting\?/);
   assert.match(classic,/data-reveal-waiting=\{revealWaiting\?'true':'false'\}/);
   assert.match(classic,/revealWaiting=\{waitingForFlipback\}/);
   const version=fs.readFileSync(path.join(target,'VERSION.txt'),'utf8');
@@ -92,7 +95,7 @@ function verify(){
   assert.match(version,/APPS_SCRIPT_INSTALL_MODE=REPLACE_QA_COMPLETE_FILE_AND_VERSION_SAME_DEPLOYMENT/);
   const manifest=fs.readFileSync(path.join(target,'SHA256SUMS.txt'),'utf8').trim().split(/\r?\n/);
   for(const line of manifest){const match=line.match(/^([a-f0-9]{64})\s+\.\/(.+)$/);assert.ok(match,`Manifest invalido: ${line}`);assert.equal(sha256(path.join(target,match[2])),match[1],`Hash invalido: ${match[2]}`);}
-  console.log(JSON.stringify({ok:true,packageName,files:manifest.length,historicalRevealMs:6000,spectatorRevealMs:8500,historicalContractPreserved:true,revealCountdownVisible:true},null,2));
+  console.log(JSON.stringify({ok:true,packageName,files:manifest.length,historicalRevealMs:6000,spectatorRevealMs:8500,historicalContractPreserved:true,revealCountdownVisible:true,revealCountdownOverridesTurnWait:true},null,2));
 }
 
 if(!verifyOnly)finalize();
