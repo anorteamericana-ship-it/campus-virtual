@@ -16,9 +16,10 @@ Estado: **QA_CANDIDATE_NOT_FINAL**
 - Backend acumulativo: `99_CS21A198_QUIZ_TIME_B1U01_COMPLETO.gs`.
 - Puerto QA: `4198`.
 
-## CI
+## CI validado para el paquete entregable
 
 Run: `31455655377`
+Head validado: `b3de43e67bcbca2b0b6e8d52584377e96c4ade9a`
 Conclusión: **success**.
 
 Gates superados:
@@ -35,6 +36,8 @@ Artifact oficial: `CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01`
 Artifact SHA-256: `60daa6aff811882c59959782bd9e691c5d5312573eea8d342a94070566ed543e`
 
 ZIP interno SHA-256 verificado tras descarga: `4782967771f9a1df8a8b7d86448a120faf8765855ca6fd80c00aaa20d42d2c99`
+
+Los commits posteriores a ese head son únicamente documentación de QA y no forman parte del ZIP ya validado.
 
 ## QA autenticada pendiente
 
