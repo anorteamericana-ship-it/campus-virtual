@@ -99,6 +99,16 @@ jobs:
           cat /tmp/cs204-http.log
           exit 1
 
+      - name: Hangman package real browser 390x844
+        env:
+          QA_BASE_URL: http://127.0.0.1:4204
+        run: node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
+
+      - name: Quiz and Word Search real browser smoke
+        env:
+          QA_BASE_URL: http://127.0.0.1:4204
+        run: node scripts/qa_cs21a204_quiz_word_search_browser_smoke.mjs
+
       - name: Memory Match real browser regression CS196 conflict
         env:
           QA_BASE_URL: http://127.0.0.1:4204
@@ -130,6 +140,8 @@ jobs:
           mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
           cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
           cp -r qa-output/cs21a204-load-budget "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
+          cp -r qa-output/cs21a191-hangman "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
+          cp -r qa-output/cs21a204-browser-smoke "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
 
           cat > "$pkg/qa-bootstrap-cs204.js" <<'EOF'
           (function(){
@@ -182,6 +194,10 @@ jobs:
           APPS_SCRIPT_CHANGE=NO
           INCLUDED_GAMES=MEMORY_MATCH|SENTENCE_ORDER|HANGMAN|QUIZ_TIME|WORD_SEARCH
           MEMORY_AUTHENTICATED_QA=PASS_PROFE_CHU_NATY
+          HANGMAN_BROWSER_SMOKE=REQUIRED_PASS
+          QUIZ_BROWSER_SMOKE=REQUIRED_PASS
+          WORD_SEARCH_BROWSER_SMOKE=REQUIRED_PASS
+          SENTENCE_ORDER_AUTHENTICATED_SMOKE=PENDING
           INTEGRATED_AUTOMATIC_SMOKE=REQUIRED_PASS
           LOAD_MODEL_2_5_10_15_25=AUTOMATED_MODEL_ONLY
           AUTH_LOAD_5_10_15_25=PENDING_UNIQUE_SESSIONS
@@ -195,7 +211,8 @@ jobs:
           - Backend: conserva exactamente CS21A201.
           - Incluye 5 juegos: Memory Match, Sentence Order, Hangman, Quiz Time y Word Search.
           - Memory Match ya tiene PASS autenticado Profe + Chu + Naty sobre la base CS203.
-          - CI ejecuta regresiones integradas de los cinco juegos.
+          - Hangman, Quiz y Word Search tienen smoke de navegador real dentro del gate integral.
+          - Sentence Order conserva contrato/curriculo automatico y requiere smoke autenticado manual del RC.
           - La fase 2/5/10/15/25 incluida en CI es MODELO/SELF-TEST, no carga autenticada real.
           - La carga real 5/10/15/25 queda pendiente hasta disponer de sesiones QA unicas suficientes.
           - Ejecutar ABRIR_CAMPUS_QA_CS21A204.cmd (puerto 4204).
@@ -215,12 +232,18 @@ jobs:
           grep -q 'VERSION=CS21A204' "$pkg/VERSION.txt"
           grep -q 'AUTH_LOAD_5_10_15_25=PENDING_UNIQUE_SESSIONS' "$pkg/VERSION.txt"
           grep -q 'APPS_SCRIPT_CHANGE=NO' "$pkg/VERSION.txt"
+          grep -q 'HANGMAN_BROWSER_SMOKE=REQUIRED_PASS' "$pkg/VERSION.txt"
+          grep -q 'QUIZ_BROWSER_SMOKE=REQUIRED_PASS' "$pkg/VERSION.txt"
+          grep -q 'WORD_SEARCH_BROWSER_SMOKE=REQUIRED_PASS' "$pkg/VERSION.txt"
+          grep -q 'SENTENCE_ORDER_AUTHENTICATED_SMOKE=PENDING' "$pkg/VERSION.txt"
           grep -q 'qa-bootstrap-cs204.js' "$pkg/login.html"
           grep -q 'qa-bootstrap-cs204.js' "$pkg/campus.html"
           grep -q 'memoryPackageReady' "$pkg/src/english_lab_live.jsx"
           grep -q 'blockingBusy' "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q 'CS21A201-CURRICULUM-SOURCE-1' "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
           test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a204-load-budget/result.json"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a191-hangman/browser_result.json"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a204-browser-smoke/result.json"
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE/#' "$pkg/SHA256SUMS.txt")
 
       - name: Upload CS204 release candidate
