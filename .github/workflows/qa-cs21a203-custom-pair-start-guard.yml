@@ -1,0 +1,29 @@
+name: CS21A203 Memory Custom Pair Start Guard
+
+on:
+  push:
+    branches:
+      - fix/cs21a203-memory-match-live-start-presence-rejoin
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  custom-pair-start-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify curricular passthrough and custom pair validation
+        run: node scripts/qa_cs21a203_custom_pair_start_guard.mjs
+      - name: Verify source markers
+        run: |
+          set -euo pipefail
+          grep -q "hasEditablePairs" src/english_lab_ux_cs21a181.js
+          grep -q "Start pasa intacto" src/english_lab_ux_cs21a181.js
+          grep -q "un borrador pertenece únicamente a la sala" src/english_lab_ux_cs21a181.js
