@@ -116,7 +116,7 @@ jobs:
           PY
 
           cat > "$pkg/qa-setup.html" <<'EOF'
-          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A202 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A202 · English LAB Source of Truth</h1><p>Use el mismo Apps Script <b>/exec de QA</b>. Este candidato recupera en src real los fixes de Memory Match CS196 y conserva backend CS201.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html#english_lab_live'};</script></body></html>
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A202 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A202 · English LAB Source of Truth</h1><p>Use el mismo Apps Script <b>/exec de QA</b>. Este candidato recupera en src real los fixes de Memory Match CS196 y CS197 y conserva backend CS201.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html#english_lab_live'};</script></body></html>
           EOF
 
           cat > "$pkg/ABRIR_CAMPUS_QA_CS21A202.cmd" <<'EOF'
@@ -132,12 +132,14 @@ jobs:
           cat > "$pkg/VERSION.txt" <<EOF
           VERSION=CS21A202
           STATUS=QA_CANDIDATE_NOT_FINAL
-          PURPOSE=English LAB source-of-truth recovery after CS196 packaging regression
+          PURPOSE=English LAB source-of-truth recovery after CS196-CS197 packaging regressions
           QA_PORT=4202
           SOURCE_BRANCH=${GITHUB_REF_NAME}
           SOURCE_HEAD_SHA=${source_head}
           BACKEND_VERSION=CS21A201
           FRONTEND_SOURCE_OF_TRUTH=src
+          CS196_SOURCE_RECOVERED=YES
+          CS197_SOURCE_RECOVERED=YES
           RUNTIME_SOURCE_PATCHING=FORBIDDEN
           EOF
 
@@ -145,8 +147,9 @@ jobs:
           CAMPUS QA CS21A202 - SOURCE OF TRUTH RECOVERY
           ============================================================
           - NO PRODUCCION. NO MERGE.
-          - Frontend Memory Match recuperado directamente en src/.
+          - Frontend Memory Match CS196 y CS197 recuperado directamente en src/.
           - El test de conflicto ya NO reemplaza HTML/codigo en runtime.
+          - Se recuperan bloqueo/reconciliacion, poll transitorio, countdown spectator y giro 200 ms.
           - Backend incluido: CS21A201 unificado, sin cambios funcionales CS202.
           - Si Apps Script QA ya contiene CS201 guardado, no reemplazarlo por otro backend distinto.
           - Versionar el MISMO deployment QA solo cuando se autorice la prueba autenticada.
@@ -172,6 +175,11 @@ jobs:
           grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "authoritativeBusy" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          grep -q "function pollMsForState(state)" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "data-live-current-poll-ms={currentPollMs}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "data-spectator-reveal-ms={revealRuleMs}" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          grep -q "remainingMs={timerRemainingMs}" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          grep -q "transition:transform .20s" "$pkg/styles/english_lab_memory_match_classic_sync_cs21a189.css"
           ! grep -q "original.replace(oldTransport,newTransport)" "$pkg/scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs"
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH/#' "$pkg/SHA256SUMS.txt")
 
