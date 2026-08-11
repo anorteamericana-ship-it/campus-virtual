@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/cs21a199-word-search-b1u01
+      - fix/cs21a199r2-word-search-hardening
   pull_request:
     paths:
       - 'src/english_lab_games/word_search_*cs21a199*'
@@ -18,7 +19,7 @@ permissions:
 jobs:
   word-search:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,35 +31,52 @@ jobs:
           node-version: '24'
       - name: Validate deterministic Word Search engine
         run: node scripts/qa_cs21a199_word_search.mjs
-      - name: Verify CS199 is frontend-only
+      - name: Verify CS199/R2 remains frontend-only and isolated
         run: |
-          changed="$(git diff --name-only dedff5a2222382b4391ea105ad65ab0fb6261b98..HEAD)"
+          git fetch origin feat/cs21a199-word-search-b1u01 --depth=1
+          base="$(git merge-base HEAD origin/feat/cs21a199-word-search-b1u01)"
+          changed="$(git diff --name-only "$base"..HEAD)"
           echo "$changed"
-          if echo "$changed" | grep -Eq '^apps_script_patches/'; then
-            echo 'CS21A199 no debe crear Apps Script todavía.' >&2
+          if echo "$changed" | grep -Eq '^apps_script_patches/|BACKEND_QA/'; then
+            echo 'CS21A199 R2 no debe crear Apps Script todavía.' >&2
             exit 1
           fi
           if echo "$changed" | grep -Eq '^src/english_lab_games/(memory_match|english_lab_live_memory_match|english_lab_hangman|hangman_engine|sentence_order|english_lab_quiz_)'; then
-            echo 'CS21A199 reescribió un juego anterior.' >&2
+            echo 'CS21A199 R2 reescribió un juego anterior.' >&2
             exit 1
           fi
-      - name: Render desktop and mobile preview
+      - name: Start local HTTP server
         run: |
           python3 -m http.server 4199 --bind 127.0.0.1 >/tmp/ws199-http.log 2>&1 &
-          pid=$!
-          trap 'kill $pid || true' EXIT
-          for n in $(seq 1 30); do curl -fsS http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html >/dev/null && break; sleep .2; done
+          echo $! > /tmp/ws199-http.pid
+          for n in $(seq 1 40); do curl -fsS http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html >/dev/null && exit 0; sleep .2; done
+          cat /tmp/ws199-http.log
+          exit 1
+      - name: Browser functional QA
+        run: |
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=5000 --dump-dom http://127.0.0.1:4199/src/english_lab_games/word_search_browser_qa_cs21a199.html > /tmp/ws199-dom.html
+          grep -q 'data-qa-status="PASS"' /tmp/ws199-dom.html || { cat /tmp/ws199-dom.html; exit 1; }
+          ! grep -q 'data-qa-status="FAIL"' /tmp/ws199-dom.html
+          ! grep -q 'data-qa-status="ERROR"' /tmp/ws199-dom.html
+      - name: Render desktop and mobile preview
+        run: |
           chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$chrome"
           "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=2200 --window-size=1440,900 --screenshot=/tmp/word-search-desktop.png http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html
           "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=2200 --window-size=390,844 --screenshot=/tmp/word-search-mobile.png http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html
           test "$(stat -c%s /tmp/word-search-desktop.png)" -gt 25000
           test "$(stat -c%s /tmp/word-search-mobile.png)" -gt 15000
-      - name: Upload visual evidence
+      - name: Upload visual and DOM evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CS21A199_WORD_SEARCH_VISUAL_PREVIEW
+          name: CS21A199_R2_WORD_SEARCH_QA_EVIDENCE
           path: |
             /tmp/word-search-desktop.png
             /tmp/word-search-mobile.png
+            /tmp/ws199-dom.html
+            /tmp/ws199-http.log
+          if-no-files-found: ignore
           retention-days: 14
