@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CS21A199 · Word Search Preview</title>
+  <link rel="stylesheet" href="../../styles/word_search_cs21a199.css?v=CS21A199" />
+  <style>body{margin:0;background:#edf3f8}.preview-tools{max-width:1180px;margin:0 auto;padding:14px 18px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:600 12px Inter,system-ui;color:#60758b}.preview-tools button{padding:8px 11px;border:1px solid #cad9e7;border-radius:9px;background:#fff;color:#173d64;font-weight:800;cursor:pointer}.preview-phone{max-width:390px;margin:0 auto}</style>
+</head>
+<body>
+  <div class="preview-tools"><button id="newPuzzle">Nueva cuadrícula</button><button id="desktop">Desktop</button><button id="mobile">390 px</button><span>Preview curricular B1-U01 · frontend-only · sin Apps Script.</span></div>
+  <div id="frame"><div id="root"></div></div>
+  <script src="../../vendor/react.js"></script>
+  <script src="../../vendor/react-dom.js"></script>
+  <script src="../../vendor/babel.js"></script>
+  <script src="word_search_curriculum_contract_cs21a199.js?v=CS21A199"></script>
+  <script src="word_search_engine_cs21a199.js?v=CS21A199"></script>
+  <script type="text/babel" src="word_search_game_cs21a199.jsx?v=CS21A199"></script>
+  <script type="text/babel">
+    const fixture=[
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_01',ITEM_TYPE:'MCQ',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-01-001',SOURCE_ITEM_ID:'VOC-B1-U01-001',STEM:'hello',OPTION_A:'hola',CORRECT_OPTION:'A'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_01',ITEM_TYPE:'MCQ',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-01-002',SOURCE_ITEM_ID:'VOC-B1-U01-002',STEM:'goodbye',OPTION_A:'adiós',CORRECT_OPTION:'A'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_01',ITEM_TYPE:'MCQ',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-01-003',SOURCE_ITEM_ID:'VOC-B1-U01-003',STEM:'name',OPTION_A:'nombre',CORRECT_OPTION:'A'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_01',ITEM_TYPE:'MCQ',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-01-004',SOURCE_ITEM_ID:'VOC-B1-U01-004',STEM:'teacher',OPTION_A:'profesor/a',CORRECT_OPTION:'A'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_01',ITEM_TYPE:'MCQ',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-01-005',SOURCE_ITEM_ID:'VOC-B1-U01-005',STEM:'student',OPTION_A:'estudiante',CORRECT_OPTION:'A'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_02',ITEM_TYPE:'MATCH',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-02-001',SOURCE_ITEM_ID:'VOC-B1-U01-006',MATCH_LEFT:'phone number',MATCH_RIGHT:'número de teléfono'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_02',ITEM_TYPE:'MATCH',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-02-002',SOURCE_ITEM_ID:'VOC-B1-U01-007',MATCH_LEFT:'email',MATCH_RIGHT:'correo electrónico'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_02',ITEM_TYPE:'MATCH',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-02-003',SOURCE_ITEM_ID:'VOC-B1-U01-008',MATCH_LEFT:'zero',MATCH_RIGHT:'cero'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_02',ITEM_TYPE:'MATCH',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-02-004',SOURCE_ITEM_ID:'VOC-B1-U01-009',MATCH_LEFT:'please',MATCH_RIGHT:'por favor'},
+      {LEVEL_ID:'B1',UNIT_ID:'B1-U01',AREA_ID:'VOCAB',TEMPLATE_ID:'VOCAB_02',ITEM_TYPE:'MATCH',STATUS:'ACTIVE',PLAY_ITEM_ID:'PLAY-B1-U01-VOCAB-02-005',SOURCE_ITEM_ID:'VOC-B1-U01-010',MATCH_LEFT:'thanks',MATCH_RIGHT:'gracias'}
+    ];
+    const root=ReactDOM.createRoot(document.getElementById('root'));let seed=1,mobile=false;
+    function render(){document.getElementById('frame').className=mobile?'preview-phone':'';root.render(<EnglishLabWordSearchGameCS21A199.WordSearchGameCS21A199 rows={fixture} seed={'B1-U01-PREVIEW-'+seed} durationSeconds={180}/>);}
+    document.getElementById('newPuzzle').onclick=()=>{seed+=1;render();};document.getElementById('desktop').onclick=()=>{mobile=false;render();};document.getElementById('mobile').onclick=()=>{mobile=true;render();};setTimeout(render,250);
+  </script>
+</body>
+</html>
