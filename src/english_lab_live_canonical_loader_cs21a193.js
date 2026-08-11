@@ -1,12 +1,12 @@
-// F98.4-Z6-CS21A193 - canonical, single-owner loader for English LAB Live.
-// CS21A194 mantiene el dueño canónico CS21A193 y cambia únicamente el epoch de la capa Memory Match modificada.
+// F98.4-Z6-CS21A198 - canonical, single-owner loader for English LAB Live.
+// CS21A198 conserva el dueño autoritativo de Memory Match y agrega Quiz Time B1-U01 de forma aditiva.
 (function installEnglishLabCanonicalLoaderCS21A193(global) {
   'use strict';
 
   if (!global || global.EnglishLabCanonicalLoaderCS21A193) return;
 
-  const VERSION = 'F98.4-Z6-CS21A193';
-  const CACHE_EPOCH = 'CS21A193';
+  const VERSION = 'F98.4-Z6-CS21A198';
+  const CACHE_EPOCH = 'CS21A198';
   const LATENCY_SAFE_EPOCH = 'CS21A194';
   const LIVE_PATH = 'src/english_lab_live.jsx';
   const BASE_ADAPTER_PATH = 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx';
@@ -22,7 +22,12 @@
     'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A194',
     'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx?v=CS21A193',
     'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A193',
-    'src/english_lab_live.jsx?v=CS21A193',
+    'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js?v=CS21A198',
+    'src/english_lab_games/english_lab_quiz_engine_cs21a198.js?v=CS21A198',
+    'src/english_lab_games/english_lab_quiz_time_style_cs21a198.js?v=CS21A198',
+    'src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx?v=CS21A198',
+    'src/english_lab_live.jsx?v=CS21A198',
+    'src/english_lab_games/english_lab_quiz_time_gateway_cs21a198.jsx?v=CS21A198',
   ]);
   const MANIFEST_BY_PATH = new Map(MANIFEST.map(src => [pathOf(src), src]));
   const LEGACY_LOAD_ONE_MARKERS = Object.freeze([
@@ -121,6 +126,10 @@
       typeof global.MemoryMatchLiveRoundCS21A174 === 'function' &&
       global.MemoryMatchLiveRoundCS21A174.__cs21a192AuthoritativeSyncAdapter === true &&
       global.EnglishLabMemoryMatchLiveCS21A174 === global.EnglishLabMemoryMatchAuthoritativeSyncCS21A192 &&
+      global.EnglishLabQuizCurriculumContractCS21A198 &&
+      global.EnglishLabQuizEngineCS21A198 &&
+      global.EnglishLabQuizTimeCS21A198 &&
+      global.EnglishLabQuizTimeGatewayCS21A198 &&
       typeof global.EnglishLabLiveStudentView === 'function' &&
       typeof global.EnglishLabLiveTeacherView === 'function'
     );
@@ -147,12 +156,12 @@
     }
     if (loadPromise) return loadPromise;
     if (typeof rawLoadOne !== 'function') {
-      return Promise.reject(new Error('El cargador canonico CS21A193 no esta instalado.'));
+      return Promise.reject(new Error('El cargador canonico CS21A198 no esta instalado.'));
     }
     loadPromise = (async () => {
       for (const source of MANIFEST) await rawLoadOne(source);
       if (!finalizeStack()) {
-        throw new Error('English LAB Live no cargo el stack canonico CS21A193/CS21A194 completo.');
+        throw new Error('English LAB Live no cargo el stack canonico CS21A198 completo.');
       }
       return api;
     })().catch(error => {
@@ -228,7 +237,9 @@
     cacheEpoch:CACHE_EPOCH,
     latencySafeEpoch:LATENCY_SAFE_EPOCH,
     manifest:MANIFEST,
-    liveFile:MANIFEST[MANIFEST.length - 1],
+    liveFile:MANIFEST_BY_PATH.get(LIVE_PATH),
+    quizTime:true,
+    quizTimeEpoch:'CS21A198',
     singleManifest:true,
     singlePollOwner:true,
     install,
