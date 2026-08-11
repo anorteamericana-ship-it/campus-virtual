@@ -155,14 +155,18 @@
     return remainingMs;
   }
 
-  function Timer({remainingMs,durationMs,waiting,syncingTurn}) {
+  function Timer({remainingMs,durationMs,waiting,syncingTurn,revealWaiting}) {
     const duration=Math.max(1,Number(durationMs)||1);
     const pct=Math.max(0,Math.min(100,(remainingMs/duration)*100));
     const seconds=Math.max(0,Math.ceil(remainingMs/1000));
-    const label=syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
-    return <div className={`elmm-timer ${(waiting||syncingTurn)?'is-transition':''}`} role="timer" aria-label={syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':`${seconds} segundos restantes`}>
-      <div className="elmm-timer-copy"><span>{label}</span><strong>{(waiting||syncingTurn)?'…':`${seconds}s`}</strong></div>
-      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:syncingTurn?'0%':waiting?'100%':`${pct}%`}}/></div>
+    const transition=!!(waiting||syncingTurn||revealWaiting);
+    const label=revealWaiting?'Cartas':syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
+    const aria=revealWaiting?`Pareja visible, ${seconds} segundos para memorizar`:syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':`${seconds} segundos restantes`;
+    const value=revealWaiting?`${seconds}s`:(syncingTurn||waiting)?'…':`${seconds}s`;
+    const fillWidth=syncingTurn?'0%':revealWaiting?`${pct}%`:waiting?'100%':`${pct}%`;
+    return <div className={`elmm-timer ${transition?'is-transition':''}`} role="timer" aria-label={aria} data-reveal-waiting={revealWaiting?'true':'false'}>
+      <div className="elmm-timer-copy"><span>{label}</span><strong>{value}</strong></div>
+      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:fillWidth}}/></div>
     </div>;
   }
 
@@ -336,7 +340,7 @@
         <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Volteá dos cartas. Si coinciden, ganás el par y seguís jugando. Si no coinciden, todos las ven un momento y vuelven a taparse.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
       </header>
-      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={waitingForFlipback || turnStartsIn>0} syncingTurn={syncingTurn}/>
+      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={turnStartsIn>0} revealWaiting={waitingForFlipback} syncingTurn={syncingTurn}/>
       <TurnPanel turnState={turnState} players={players} currentPlayer={currentPlayer} turnEngine={turnEngine} readOnly={!!(props&&props.readOnly)} waiting={waitingForFlipback} syncingTurn={syncingTurn}/>
       {transitionText && <div className="elmm-flipback-banner" role="status">{transitionText}</div>}
       <div className="elmm-status-row"><span>{claimedCount} / {cards.length/2} parejas ganadas</span><span>{completed?'Completado':waitingForFlipback?'Cerrando cartas…':canPlay?'Tu jugada':activeId?`Turno de ${clean((players.find(p=>playerId(p)===activeId)||{}).name)||activeId}`:'Esperando'}</span></div>
