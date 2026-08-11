@@ -8,7 +8,9 @@ on:
     paths:
       - 'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js'
       - 'src/english_lab_games/english_lab_quiz_engine_cs21a198.js'
+      - 'apps_script_patches/99T_QUIZ_TIME_CURRICULAR_QA_CS21A198.gs'
       - 'scripts/qa_cs21a198_quiz_curriculum_core.mjs'
+      - 'scripts/qa_cs21a198_quiz_backend_contract.mjs'
       - '00_DOCUMENTACION/CS21A198_QUIZ_TIME_B1U01_CURRICULUM.md'
       - '.github/workflows/qa-cs21a198-quiz-curriculum-core.yml'
 
@@ -22,16 +24,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
       - name: Validate B1-U01 curriculum contract and public-state secrecy
         run: node scripts/qa_cs21a198_quiz_curriculum_core.mjs
-      - name: Verify no correct answer is embedded in curriculum contract
+      - name: Validate Apps Script Quiz Time contract
+        run: node scripts/qa_cs21a198_quiz_backend_contract.mjs
+      - name: Syntax-check Apps Script patch as JavaScript
+        run: |
+          cp apps_script_patches/99T_QUIZ_TIME_CURRICULAR_QA_CS21A198.gs /tmp/quiz-cs198.js
+          node --check /tmp/quiz-cs198.js
+      - name: Verify no correct answer is embedded in public curriculum contract
         run: |
           ! grep -Eiq "correct[_-]?(option|answer)[[:space:]]*[:=][[:space:]]*['\"][A-D]" src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js
-      - name: Verify CS198 stays additive
+      - name: Verify CS198 does not modify existing game implementations
+        if: github.event_name == 'pull_request'
         run: |
-          git diff --exit-code HEAD^ -- src/english_lab_games/memory_match_classic_sync_cs21a189.jsx || true
-          test -f src/english_lab_games/english_lab_game_registry_cs21a191.js
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          echo "$changed"
+          if echo "$changed" | grep -Eq '^src/english_lab_games/(memory_match|english_lab_live_memory_match|english_lab_hangman|hangman_engine|sentence_order)|^apps_script_patches/99[A-S]_.*(MEMORY|HANGMAN|SENTENCE)'; then
+            echo 'CS21A198 modificó una implementación histórica de juego.' >&2
+            exit 1
+          fi
