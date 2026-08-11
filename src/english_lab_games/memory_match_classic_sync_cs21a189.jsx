@@ -155,16 +155,18 @@
     return remainingMs;
   }
 
-  function Timer({remainingMs,durationMs,waiting,syncingTurn,revealWaiting}) {
-    const duration=Math.max(1,Number(durationMs)||1);
-    const pct=Math.max(0,Math.min(100,(remainingMs/duration)*100));
-    const seconds=Math.max(0,Math.ceil(remainingMs/1000));
+  function Timer({remainingMs,durationMs,waiting,syncingTurn,revealWaiting,countdownMs=0,countdownDurationMs=0}) {
+    const countdown=!!(waiting&&Number(countdownMs)>0&&!revealWaiting&&!syncingTurn);
+    const displayMs=countdown?Math.max(0,Number(countdownMs)||0):Math.max(0,Number(remainingMs)||0);
+    const duration=countdown?Math.max(1,Number(countdownDurationMs)||displayMs||1):Math.max(1,Number(durationMs)||1);
+    const pct=Math.max(0,Math.min(100,(displayMs/duration)*100));
+    const seconds=Math.max(0,Math.ceil(displayMs/1000));
     const transition=!!(waiting||syncingTurn||revealWaiting);
-    const label=revealWaiting?'Cartas':syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
-    const aria=revealWaiting?`Pareja visible, ${seconds} segundos para memorizar`:syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':`${seconds} segundos restantes`;
-    const value=revealWaiting?`${seconds}s`:(syncingTurn||waiting)?'…':`${seconds}s`;
-    const fillWidth=syncingTurn?'0%':revealWaiting?`${pct}%`:waiting?'100%':`${pct}%`;
-    return <div className={`elmm-timer ${transition?'is-transition':''}`} role="timer" aria-label={aria} data-reveal-waiting={revealWaiting?'true':'false'}>
+    const label=countdown?'Empieza en':revealWaiting?'Cartas':syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
+    const aria=countdown?`La ronda inicia en ${seconds} segundos`:revealWaiting?`Pareja visible, ${seconds} segundos para memorizar`:syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':`${seconds} segundos restantes`;
+    const value=countdown?String(seconds):revealWaiting?`${seconds}s`:(syncingTurn||waiting)?'…':`${seconds}s`;
+    const fillWidth=syncingTurn?'0%':countdown||revealWaiting?`${pct}%`:waiting?'100%':`${pct}%`;
+    return <div className={`elmm-timer ${transition?'is-transition':''}`} role="timer" aria-label={aria} data-start-countdown={countdown?'true':'false'} data-reveal-waiting={revealWaiting?'true':'false'}>
       <div className="elmm-timer-copy"><span>{label}</span><strong>{value}</strong></div>
       <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:fillWidth}}/></div>
     </div>;
@@ -208,7 +210,7 @@
     const phase=upper(normalized.state.phase);
     const activeClock=props && props.authoritativeClock || normalized.clock;
     const remainingMs=useServerTimer(activeClock, normalized.state.endsAt, phase==='OPEN');
-    useClockTick(!!shared.attempt);
+    useClockTick(phase==='COUNTDOWN'||!!shared.attempt);
     const reveal=attemptVisible(shared, activeClock, turnState);
     const turnStartsIn=turnState && clean(turnState.turn_started_at) && activeClock && typeof activeClock.remainingMs==='function'
       ? activeClock.remainingMs(turnState.turn_started_at) : 0;
@@ -340,7 +342,8 @@
         <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Volteá dos cartas. Si coinciden, ganás el par y seguís jugando. Si no coinciden, todos las ven un momento y vuelven a taparse.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
       </header>
-      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={turnStartsIn>0} revealWaiting={waitingForFlipback} syncingTurn={syncingTurn}/>
+      {phase==='COUNTDOWN'&&turnStartsIn>0&&<div className="elmm-start-countdown" role="status" aria-live="polite" style={{display:'grid',placeItems:'center',gap:4,padding:'14px 18px',borderRadius:18,background:'linear-gradient(135deg,#001E47,#073B7A)',color:'#fff',boxShadow:'0 14px 30px rgba(0,30,71,.18)'}}><span style={{fontSize:11,fontWeight:950,letterSpacing:'.15em',textTransform:'uppercase'}}>Todos listos</span><strong style={{fontSize:54,lineHeight:1,fontWeight:950}}>{Math.max(1,Math.ceil(turnStartsIn/1000))}</strong><small style={{fontWeight:800,opacity:.9}}>La ronda inicia al mismo tiempo para todos</small></div>}
+      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={turnStartsIn>0} countdownMs={turnStartsIn} countdownDurationMs={normalized.rules.autoStartDelayMs} revealWaiting={waitingForFlipback} syncingTurn={syncingTurn}/>
       <TurnPanel turnState={turnState} players={players} currentPlayer={currentPlayer} turnEngine={turnEngine} readOnly={!!(props&&props.readOnly)} waiting={waitingForFlipback} syncingTurn={syncingTurn}/>
       {transitionText && <div className="elmm-flipback-banner" role="status">{transitionText}</div>}
       <div className="elmm-status-row"><span>{claimedCount} / {cards.length/2} parejas ganadas</span><span>{completed?'Completado':waitingForFlipback?'Cerrando cartas…':canPlay?'Tu jugada':activeId?`Turno de ${clean((players.find(p=>playerId(p)===activeId)||{}).name)||activeId}`:'Esperando'}</span></div>

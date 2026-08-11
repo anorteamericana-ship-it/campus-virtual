@@ -194,6 +194,7 @@
     const [liveState,setLiveState]=React.useState(incomingState);
     const [error,setError]=React.useState('');
     const [busy,setBusy]=React.useState(false);
+    const [blockingBusy,setBlockingBusy]=React.useState(false);
     const [lastResult,setLastResult]=React.useState(null);
     const [turnReady,setTurnReady]=React.useState(!!global.EnglishLabTurnEngineCS21A176);
     const stateRef=React.useRef(incomingState);
@@ -344,7 +345,10 @@
 
     async function handleSubmit(submission){
       if(typeof postLive!=='function')throw new Error('postLive no está disponible.');
-      setBusy(true);setError('');
+      const answerValue=submission&&submission.answer_value&&typeof submission.answer_value==='object'?submission.answer_value:{};
+      const submissionAction=upper(answerValue.action||submission&&submission.action);
+      const blocksInteraction=submissionAction!=='DISCOVER_CARD';
+      setBusy(true);if(blocksInteraction)setBlockingBusy(true);setError('');
       const mutationEpoch=mutationEpochRef.current+1;
       mutationEpochRef.current=mutationEpoch;
       const initialSeq=++requestSeqRef.current;
@@ -388,7 +392,7 @@
       }catch(err){
         const message=err&&err.message?err.message:String(err);
         setError(message);wakePollRef.current();throw err;
-      }finally{setBusy(false);}
+      }finally{setBusy(false);if(blocksInteraction)setBlockingBusy(false);}
     }
 
     return <div
@@ -414,7 +418,7 @@
         turnEngine={global.EnglishLabTurnEngineCS21A176||null}
         authoritativeClock={clock}
         authoritativeOnly={true}
-        mutationBusy={busy}
+        mutationBusy={blockingBusy}
         onReady={props.onReady}
         onSubmit={handleSubmit}
         onTimeout={props.onTimeout}

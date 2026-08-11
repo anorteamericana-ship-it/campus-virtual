@@ -372,24 +372,47 @@
     const memoryMatch = !!(data?.memory_match || (window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(room)));
     const memoryPackage = data?.room_package || null;
 
-    const load=React.useCallback(async()=>{
+    const load=React.useCallback(async(options={})=>{
       if(!roomId) return;
-      setLoading(true); setError('');
+      const silent=!!(options && options.silent===true);
+      if(!silent){ setLoading(true); setError(''); }
       try{
         const endpoint = memoryMatch ? 'englishLabMemoryMatchGetRoomControl' : 'englishLabLiveGetRoomControl';
-        const r=await postLive(endpoint,{room_id:roomId},45000);
+        const r=await postLive(endpoint,{room_id:roomId,silent_poll:silent},45000);
         setData(currentState=>freshestLiveState(currentState,r));
+        return r;
       }
-      catch(e){ setError(e.message || String(e)); }
-      finally{ setLoading(false); }
+      catch(e){ if(!silent) setError(e.message || String(e)); return null; }
+      finally{ if(!silent) setLoading(false); }
     },[roomId,memoryMatch]);
     React.useEffect(()=>{ load(); },[load]);
+    React.useEffect(()=>{
+      // CS21A203: antes de existir room_package también debe haber un dueño de
+      // presencia. Al aparecer el paquete, el adaptador CS192 toma el polling.
+      if(!memoryMatch || memoryPackage || status!=='CREATED') return undefined;
+      let disposed=false;
+      let inFlight=false;
+      async function pollLobby(){
+        if(disposed || inFlight) return;
+        inFlight=true;
+        try{ await load({silent:true}); } finally{ inFlight=false; }
+      }
+      pollLobby();
+      const id=setInterval(pollLobby,1000);
+      return ()=>{ disposed=true; clearInterval(id); };
+    },[memoryMatch,memoryPackage,status,load]);
 
     async function action(fn,payload={}){
       setBusy(true); setError('');
       try{
-        await postLive(fn,{room_id:roomId,...payload},45000);
-        await load();
+        const r=await postLive(fn,{room_id:roomId,...payload},45000);
+        // StartRoom ya devuelve el paquete COUNTDOWN autoritativo. Adoptarlo
+        // de inmediato conserva la mayor parte posible del 5-4-3-2-1.
+        if(memoryMatch && r && r.room_package){
+          setData(currentState=>freshestLiveState(currentState,r));
+        }else{
+          await load();
+        }
         onChanged && onChanged();
       }catch(e){ setError(e.message || String(e)); }
       finally{ setBusy(false); }
@@ -487,6 +510,9 @@
     const u = liveSessionUser(usuario);
     return clean(u.codigo || u.CODIGO || u.cod_estudiante || u.COD_ESTUDIANTE || u.cedula || u.CEDULA || u.identificacion || '');
   }
+  function livePlayerId(player){
+    return clean(player && (player.cod_estudiante || player.player_id || player.playerId || player.codigo_estudiante || player.COD_ESTUDIANTE || player.id));
+  }
   function publicCode(v){ return upper(v).replace(/[^A-Z0-9-]/g,'').slice(0,12); }
   function optionText(op){ return clean(op?.label || op?.text || op?.value || op); }
   function optionValue(op){ return clean(op?.value || op?.label || op?.text || op); }
@@ -554,34 +580,56 @@
     const isMemoryMatch=!!(window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(room));
 
     React.useEffect(()=>{ setSelected(''); setQuestionStartedAt(Date.now()); },[qIndex, answer?.answer_value]);
-    const loadState=React.useCallback(async(pid=playerId, code=roomCode)=>{
+    const loadState=React.useCallback(async(pid=playerId, code=roomCode, options={})=>{
       const rc=publicCode(code);
-      if(!rc) return;
-      setLoading(true); setError('');
+      if(!rc) return null;
+      const silent=!!(options && options.silent===true);
+      if(!silent){ setLoading(true); setError(''); }
       try{
-        const payload={room_code:rc, player_id:pid || '', player_name:playerName || '', cod_estudiante:studentCode || ''};
+        const payload={room_code:rc, player_id:pid || '', player_name:playerName || '', cod_estudiante:studentCode || '', silent_poll:silent};
         let r=await postLive(isMemoryMatch?'englishLabMemoryMatchGetPlayerState':'englishLabLiveGetPlayerState',payload,35000);
         if(!isMemoryMatch && window.EnglishLabMemoryMatchLiveCS21A174 && window.EnglishLabMemoryMatchLiveCS21A174.isMemoryMatchRoom(r?.room)){
           r=await postLive('englishLabMemoryMatchGetPlayerState',payload,35000);
         }
-        setState(currentState=>freshestLiveState(currentState,r)); setJoined(!!(r.player && r.player.cod_estudiante));
-        if(r.player && r.player.cod_estudiante){ setPlayerId(r.player.cod_estudiante); try{ localStorage.setItem('elive_player_'+rc, r.player.cod_estudiante); }catch(_){} }
-      }catch(e){ setError(e.message || String(e)); }
-      finally{ setLoading(false); }
+        setState(currentState=>freshestLiveState(currentState,r));
+        const responsePid=livePlayerId(r && r.player);
+        if(responsePid){
+          setJoined(true); setPlayerId(responsePid);
+          try{
+            localStorage.setItem('elive_player_'+rc,responsePid);
+            localStorage.setItem('elive_last_room',rc);
+          }catch(_){}
+        }
+        return r;
+      }catch(e){ if(!silent) setError(e.message || String(e)); return null; }
+      finally{ if(!silent) setLoading(false); }
     },[playerId,roomCode,playerName,studentCode,isMemoryMatch]);
 
     React.useEffect(()=>{
       const rc=publicCode(roomCode);
       if(!rc || playerId) return;
-      try{ const saved=localStorage.getItem('elive_player_'+rc) || ''; if(saved) { setPlayerId(saved); setJoined(true); loadState(saved, rc); } }catch(_){}
+      try{
+        const saved=localStorage.getItem('elive_player_'+rc) || '';
+        if(saved){ setPlayerId(saved); setJoined(true); loadState(saved,rc); }
+      }catch(_){}
     },[roomCode,playerId,loadState]);
     React.useEffect(()=>{
-      // Memory Match CS21A192 tiene un solo dueño de polling dentro del adaptador.
-      // Este ciclo histórico queda únicamente para los demás juegos live.
-      if(!joined || !roomCode || isMemoryMatch) return;
-      const id=setInterval(()=>loadState(),4000);
-      return ()=>clearInterval(id);
-    },[joined,roomCode,isMemoryMatch,loadState]);
+      if(!joined || !roomCode) return undefined;
+      const memoryPackageReady=!!(isMemoryMatch && state?.room_package);
+      // CS192 es dueño único una vez existe room_package. Antes de StartRoom,
+      // este lobby poll mantiene presencia y detecta automáticamente el inicio.
+      if(memoryPackageReady) return undefined;
+      let disposed=false;
+      let inFlight=false;
+      async function pollLobby(){
+        if(disposed || inFlight) return;
+        inFlight=true;
+        try{ await loadState(playerId,roomCode,{silent:true}); } finally{ inFlight=false; }
+      }
+      if(isMemoryMatch) pollLobby();
+      const id=setInterval(pollLobby,isMemoryMatch?1200:4000);
+      return ()=>{ disposed=true; clearInterval(id); };
+    },[joined,roomCode,isMemoryMatch,state?.room_package,playerId,loadState]);
 
     async function joinRoom(){
       const rc=publicCode(roomCode);
@@ -591,9 +639,13 @@
       try{
         const saved = (()=>{ try{return localStorage.getItem('elive_player_'+rc)||'';}catch(_){return '';} })();
         const r=await postLive('englishLabLiveJoinRoom',{room_code:rc, player_name:playerName, cod_estudiante:studentCode, player_id:saved || playerId},35000);
-        setRoomCode(rc); setState(currentState=>freshestLiveState(currentState,r)); setJoined(true);
-        const pid=clean(r.player?.cod_estudiante || saved || playerId);
-        if(pid){ setPlayerId(pid); try{ localStorage.setItem('elive_player_'+rc,pid); localStorage.setItem('elive_last_room',rc); }catch(_){} }
+        setRoomCode(rc); setState(currentState=>freshestLiveState(currentState,r));
+        const pid=livePlayerId(r && r.player) || clean(saved || playerId || studentCode);
+        setJoined(!!pid);
+        if(pid){
+          setPlayerId(pid);
+          try{ localStorage.setItem('elive_player_'+rc,pid); localStorage.setItem('elive_last_room',rc); }catch(_){}
+        }
       }catch(e){ setError(e.message || String(e)); }
       finally{ setBusy(false); }
     }
