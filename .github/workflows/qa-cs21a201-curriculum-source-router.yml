@@ -1,0 +1,109 @@
+name: CS21A201 English LAB Curriculum Source QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a201-english-lab-curriculum-source-router
+  pull_request:
+    paths:
+      - 'apps_script_patches/99V_ENGLISH_LAB_CURRICULUM_SOURCE_QA_CS21A201.gs'
+      - 'scripts/qa_cs21a201_curriculum_source_router.mjs'
+      - 'scripts/assemble_apps_script_cs21a201_unified.mjs'
+      - '.github/workflows/qa-cs21a201-curriculum-source-router.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  curriculum-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify source identity
+        run: |
+          expected='${{ github.event.pull_request.head.sha || github.sha }}'
+          actual="$(git rev-parse HEAD)"
+          echo "expected=$expected"
+          echo "actual=$actual"
+          test "$actual" = "$expected"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Reproduce authenticated missing-sheet failure and validate source router
+        run: node scripts/qa_cs21a201_curriculum_source_router.mjs
+
+      - name: Regression Quiz Time curricular core
+        run: |
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+          node scripts/qa_cs21a198_quiz_option_balance.mjs
+
+      - name: Regression Word Search R2 and Live backend
+        run: |
+          node scripts/qa_cs21a199_word_search.mjs
+          node scripts/qa_cs21a200_word_search_backend_contract.mjs
+          node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Assemble one complete Apps Script CS201
+        run: node scripts/assemble_apps_script_cs21a201_unified.mjs
+
+      - name: Syntax-check complete Apps Script
+        run: |
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201-complete.js
+          node --check /tmp/cs201-complete.js
+
+      - name: Verify CS201 remains a narrow append-only source fix
+        run: |
+          set -euo pipefail
+          patch='apps_script_patches/99V_ENGLISH_LAB_CURRICULUM_SOURCE_QA_CS21A201.gs'
+          grep -q "_elso183ApolloRows_" "$patch"
+          grep -q "QA_STAGING_MASTER_ID" "$patch"
+          ! grep -q "SpreadsheetApp.openById" "$patch"
+          ! grep -q "PropertiesService.getScriptProperties" "$patch"
+          ! grep -q "_elive180RequireLab_ =" "$patch"
+          ! grep -q "_eliveAuthTeacher_ =" "$patch"
+          ! grep -q "doPost =" "$patch"
+
+      - name: Build auditable backend artifact
+        run: |
+          set -euo pipefail
+          out=/tmp/CS21A201_CURRICULUM_SOURCE_QA
+          rm -rf "$out"
+          mkdir -p "$out"
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$out/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          sha256sum "$out/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs" > "$out/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs.sha256"
+          cat > "$out/VERSION.txt" <<EOF
+          VERSION=CS21A201-CURRICULUM-SOURCE-1
+          SOURCE_HEAD_SHA=$(git rev-parse HEAD)
+          BASE_CS200_HEAD=fd5846dd83b2a2114ac2f999db1ebb892286b543
+          INSTALL_MODE=ONE_COMPLETE_APPS_SCRIPT_QA_FILE
+          CURRICULUM_SOURCE=QA_STAGING_MASTER_ID
+          REUSED_READER=_elso183ApolloRows_
+          AUTHENTICATED_FAILURE_REPRODUCED=CONFIG_UNIDADES_MISSING_IN_OPERATIONAL_WORKBOOK
+          PRODUCTION_ACTION=DO_NOT_MODIFY
+          EOF
+          cat > "$out/LEEME.txt" <<'EOF'
+          CS21A201 corrige exclusivamente la ruta curricular de Quiz Time y Word Search.
+          Reemplazar el contenido completo del backend Apps Script QA por el archivo .gs de este artefacto.
+          Guardar y ejecutar verificarQuizTimeCS21A198() y verificarWordSearchCS21A200().
+          Ambos deben terminar con version CS21A201-CURRICULUM-SOURCE-1 y ok:true.
+          NO versionar el deployment si alguno falla. No tocar produccion.
+          EOF
+          (cd "$out" && sha256sum -c 99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs.sha256)
+
+      - name: Upload CS201 backend candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A201_CURRICULUM_SOURCE_QA
+          path: /tmp/CS21A201_CURRICULUM_SOURCE_QA
+          retention-days: 30
