@@ -75,7 +75,7 @@ for(const marker of [
   "retryable:true",
   "first_claim_wins:true",
   "public_puzzle_hides_solutions:noLeak",
-  "question_index:1"
+  "QUESTION_INDEX:1"
 ]) assert.ok(source.includes(marker),`falta marcador: ${marker}`);
 
 console.log(JSON.stringify({
