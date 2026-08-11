@@ -57,6 +57,34 @@
     }
     return current;
   }
+  function chainContainsMarker(component,marker){
+    let current=component;
+    const seen=new Set();
+    for(let i=0;i<16 && typeof current==='function' && !seen.has(current);i+=1){
+      seen.add(current);
+      if(current[marker]===true) return true;
+      if(typeof current.__cs21a183Base==='function'){current=current.__cs21a183Base;continue;}
+      if(typeof current.__base==='function'){current=current.__base;continue;}
+      break;
+    }
+    return false;
+  }
+  function reconcileStudentRouteMarker(){
+    const current=global.EnglishLabLiveStudentView;
+    if(typeof current!=='function' || current.__cs21a144AccessGate===true) return false;
+    // Nunca fabricamos autorización: únicamente reflejamos el marcador en la
+    // envoltura exterior cuando un guard real CS21A144 existe dentro de la
+    // cadena __cs21a183Base/__base que será la que React ejecutará.
+    if(!chainContainsMarker(current,'__cs21a144AccessGate')) return false;
+    current.__cs21a144AccessGate=true;
+    return true;
+  }
+  function scheduleRouteMarkerReconcile(){
+    const raf=typeof global.requestAnimationFrame==='function'
+      ? global.requestAnimationFrame.bind(global)
+      : callback=>global.setTimeout(callback,0);
+    raf(()=>raf(reconcileStudentRouteMarker));
+  }
 
   ensureStyle();
 
@@ -183,11 +211,15 @@
 
   global.EnglishLabLiveTeacherView=EnglishLabLiveTeacherViewCS21A205;
   global.EnglishLabLiveStudentView=EnglishLabLiveStudentViewCS21A205;
+  global.addEventListener('an:lazy-module-loaded',scheduleRouteMarkerReconcile);
+  scheduleRouteMarkerReconcile();
   global.EnglishLabUnifiedShellCS21A205=Object.freeze({
     VERSION,
     games:GAMES,
     requestedGame,
     writeGameToUrl,
+    chainContainsMarker,
+    reconcileStudentRouteMarker,
     TeacherView:EnglishLabLiveTeacherViewCS21A205,
     StudentView:EnglishLabLiveStudentViewCS21A205,
     legacyTeacher:LegacyTeacherCurrent,
