@@ -29,7 +29,7 @@ jobs:
       - name: Source-of-truth and scope guards
         run: |
           set -euo pipefail
-          node scripts/qa_cs21a202_source_truth.mjs
+          node scripts/qa_cs21a203_live_sync.mjs
           grep -q "CS21A203: antes de existir room_package" src/english_lab_live.jsx
           grep -q "memoryPackageReady" src/english_lab_live.jsx
           grep -q "blockingBusy" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
