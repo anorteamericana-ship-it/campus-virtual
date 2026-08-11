@@ -52,7 +52,7 @@ jobs:
           grep -q "data-live-current-poll-ms={currentPollMs}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "authoritativeBusy" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
           grep -q "data-spectator-reveal-ms={revealRuleMs}" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
-          grep -q "se cierran en \\${revealSeconds}s" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -Fq 'se cierran en ${revealSeconds}s' src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
           grep -q "transition:transform .20s" styles/english_lab_memory_match_classic_sync_cs21a189.css
           grep -q "CS21A202 fixture: el mismo contrato de reconciliación" src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html
           ! grep -q "original.replace(oldTransport,newTransport)" scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
