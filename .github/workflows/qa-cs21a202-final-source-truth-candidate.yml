@@ -110,15 +110,24 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           root=Path('/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH')
-          for name in ('campus.html','index.html'):
-              p=root/name
-              if not p.exists(): continue
+          marker='<script src="src/runtime_config.js'
+          boot='<script src="qa-bootstrap-cs202.js?v=CS21A202"></script>\n'
+          runtime_pages=[]
+          for p in sorted(root.glob('*.html')):
               s=p.read_text(encoding='utf-8')
-              marker='<script src="src/runtime_config.js'
-              if marker not in s: raise SystemExit(f'No runtime marker in {name}')
-              boot='<script src="qa-bootstrap-cs202.js?v=CS21A202"></script>\n'
-              if 'qa-bootstrap-cs202.js' not in s: s=s.replace(marker,boot+marker,1)
+              if marker not in s:
+                  continue
+              runtime_pages.append(p.name)
+              if 'qa-bootstrap-cs202.js' not in s:
+                  s=s.replace(marker,boot+marker,1)
+              if s.find('qa-bootstrap-cs202.js') < 0 or s.find('qa-bootstrap-cs202.js') > s.find('src/runtime_config.js'):
+                  raise SystemExit(f'Bootstrap QA debe cargar antes de runtime_config.js en {p.name}')
               p.write_text(s,encoding='utf-8')
+          required={'campus.html','login.html','inscripcion.html','ventas.html'}
+          missing=sorted(required-set(runtime_pages))
+          if missing:
+              raise SystemExit('Páginas requeridas sin runtime_config.js: '+', '.join(missing))
+          print('QA bootstrap aplicado antes de runtime_config.js en: '+', '.join(runtime_pages))
           PY
 
           cat > "$pkg/qa-setup.html" <<'EOF'
@@ -136,9 +145,9 @@ jobs:
 
           source_head="$(git rev-parse HEAD)"
           cat > "$pkg/VERSION.txt" <<EOF
-          VERSION=CS21A202
+          VERSION=CS21A202-R2
           STATUS=QA_CANDIDATE_NOT_FINAL
-          PURPOSE=English LAB source-of-truth recovery after CS196-CS197 packaging regressions
+          PURPOSE=English LAB source-of-truth recovery plus QA auth-entry routing fix
           QA_PORT=4202
           SOURCE_BRANCH=${GITHUB_REF_NAME}
           SOURCE_HEAD_SHA=${source_head}
@@ -146,19 +155,20 @@ jobs:
           FRONTEND_SOURCE_OF_TRUTH=src
           CS196_SOURCE_RECOVERED=YES
           CS197_SOURCE_RECOVERED=YES
+          QA_LOGIN_ROUTING_FIXED=YES
           RUNTIME_SOURCE_PATCHING=FORBIDDEN
           EOF
 
           cat > "$pkg/LEEME_PRIMERO_CS21A202.txt" <<'EOF'
-          CAMPUS QA CS21A202 - SOURCE OF TRUTH RECOVERY
+          CAMPUS QA CS21A202 R2 - SOURCE OF TRUTH + QA LOGIN ROUTING
           ============================================================
           - NO PRODUCCION. NO MERGE.
           - Frontend Memory Match CS196 y CS197 recuperado directamente en src/.
           - El test de conflicto ya NO reemplaza HTML/codigo en runtime.
           - Se recuperan bloqueo/reconciliacion, poll transitorio, countdown spectator y giro 200 ms.
+          - Login, inscripcion, ventas y Campus cargan el mismo /exec QA guardado antes de runtime_config.js.
           - Backend incluido: CS21A201 unificado, sin cambios funcionales CS202.
           - Si Apps Script QA ya contiene CS201 guardado, no reemplazarlo por otro backend distinto.
-          - Versionar el MISMO deployment QA solo cuando se autorice la prueba autenticada.
           - Ejecutar ABRIR_CAMPUS_QA_CS21A202.cmd (puerto 4202).
           - Reproducir LAB-6254 con docente + Naty + Chu: tercera carta debe permanecer bloqueada durante state_conflict/retry.
           EOF
@@ -172,6 +182,34 @@ jobs:
             zip -qr "$zipfile" "$(basename "$pkg")"
           )
           sha256sum "$zipfile" > "$zipfile.sha256"
+
+      - name: Browser QA login uses saved QA Apps Script URL
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH
+          python3 -m http.server 4202 --bind 127.0.0.1 --directory "$pkg" >/tmp/cs202-package-http.log 2>&1 &
+          echo $! >/tmp/cs202-package-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4202/login.html >/dev/null && break
+            sleep 1
+          done
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const qaUrl='https://script.google.com/macros/s/CS21A202_QA_ROUTING_TEST/exec';
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage();
+            await page.goto('http://127.0.0.1:4202/qa-setup.html',{waitUntil:'domcontentloaded'});
+            await page.evaluate((url)=>localStorage.setItem('AN_QA_APPS_SCRIPT_URL',url),qaUrl);
+            await page.goto('http://127.0.0.1:4202/login.html',{waitUntil:'domcontentloaded'});
+            const cfg=await page.evaluate(()=>window.CAMPUS_RUNTIME_CONFIG);
+            if(!cfg || cfg.environment!=='qa' || cfg.appsScriptUrl!==qaUrl || cfg.valid!==true || cfg.isProduction!==false){
+              throw new Error('Login QA routing inválido: '+JSON.stringify(cfg));
+            }
+            console.log(JSON.stringify({ok:true,login_qa_routing:true,environment:cfg.environment,appsScriptUrl:cfg.appsScriptUrl,isProduction:cfg.isProduction},null,2));
+            await browser.close();
+          })().catch(err=>{console.error(err);process.exit(1)});
+          NODE
 
       - name: Inspect exact packaged source for recovered fixes
         run: |
@@ -187,12 +225,23 @@ jobs:
           grep -q "remainingMs={timerRemainingMs}" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
           grep -q "transition:transform .20s" "$pkg/styles/english_lab_memory_match_classic_sync_cs21a189.css"
           ! grep -q "original.replace(oldTransport,newTransport)" "$pkg/scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs"
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH')
+          for name in ('campus.html','login.html','inscripcion.html','ventas.html'):
+              s=(root/name).read_text(encoding='utf-8')
+              boot=s.find('qa-bootstrap-cs202.js')
+              runtime=s.find('src/runtime_config.js')
+              if not (0 <= boot < runtime):
+                  raise SystemExit(f'Orden QA inválido en {name}: bootstrap={boot}, runtime={runtime}')
+          print('Orden QA correcto en campus/login/inscripcion/ventas')
+          PY
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH/#' "$pkg/SHA256SUMS.txt")
 
       - name: Upload CS202 candidate
         uses: actions/upload-artifact@v4
         with:
-          name: CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH
+          name: CAMPUS_QA_CS21A202_R2_CANDIDATO_SOURCE_OF_TRUTH
           path: |
             /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH.zip
             /tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH.zip.sha256
