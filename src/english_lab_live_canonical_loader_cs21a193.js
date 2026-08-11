@@ -1,12 +1,12 @@
-// F98.4-Z6-CS21A198 - canonical, single-owner loader for English LAB Live.
-// CS21A198 conserva el dueño autoritativo de Memory Match y agrega Quiz Time B1-U01 de forma aditiva.
+// F98.4-Z6-CS21A200 - canonical, single-owner loader for English LAB Live.
+// CS21A200 conserva Memory Match autoritativo, Quiz Time B1-U01 y agrega Word Search Live autoritativo.
 (function installEnglishLabCanonicalLoaderCS21A193(global) {
   'use strict';
 
   if (!global || global.EnglishLabCanonicalLoaderCS21A193) return;
 
-  const VERSION = 'F98.4-Z6-CS21A198';
-  const CACHE_EPOCH = 'CS21A198';
+  const VERSION = 'F98.4-Z6-CS21A200';
+  const CACHE_EPOCH = 'CS21A200';
   const LATENCY_SAFE_EPOCH = 'CS21A194';
   const LIVE_PATH = 'src/english_lab_live.jsx';
   const BASE_ADAPTER_PATH = 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx';
@@ -26,8 +26,14 @@
     'src/english_lab_games/english_lab_quiz_engine_cs21a198.js?v=CS21A198',
     'src/english_lab_games/english_lab_quiz_time_style_cs21a198.js?v=CS21A198',
     'src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx?v=CS21A198',
-    'src/english_lab_live.jsx?v=CS21A198',
+    'src/english_lab_games/word_search_curriculum_contract_cs21a199.js?v=CS21A200',
+    'src/english_lab_games/word_search_engine_cs21a199.js?v=CS21A200',
+    'src/english_lab_games/word_search_game_cs21a199.jsx?v=CS21A200',
+    'src/english_lab_games/english_lab_word_search_style_cs21a200.js?v=CS21A200',
+    'src/english_lab_games/english_lab_word_search_live_cs21a200.jsx?v=CS21A200',
+    'src/english_lab_live.jsx?v=CS21A200',
     'src/english_lab_games/english_lab_quiz_time_gateway_cs21a198.jsx?v=CS21A198',
+    'src/english_lab_games/english_lab_word_search_gateway_cs21a200.jsx?v=CS21A200',
   ]);
   const MANIFEST_BY_PATH = new Map(MANIFEST.map(src => [pathOf(src), src]));
   const LEGACY_LOAD_ONE_MARKERS = Object.freeze([
@@ -130,6 +136,12 @@
       global.EnglishLabQuizEngineCS21A198 &&
       global.EnglishLabQuizTimeCS21A198 &&
       global.EnglishLabQuizTimeGatewayCS21A198 &&
+      global.EnglishLabWordSearchCurriculumCS21A199 &&
+      global.EnglishLabWordSearchEngineCS21A199 &&
+      global.EnglishLabWordSearchGameCS21A199 &&
+      global.EnglishLabWordSearchStyleCS21A200 &&
+      global.EnglishLabWordSearchLiveCS21A200 &&
+      global.EnglishLabWordSearchGatewayCS21A200 &&
       typeof global.EnglishLabLiveStudentView === 'function' &&
       typeof global.EnglishLabLiveTeacherView === 'function'
     );
@@ -156,12 +168,12 @@
     }
     if (loadPromise) return loadPromise;
     if (typeof rawLoadOne !== 'function') {
-      return Promise.reject(new Error('El cargador canonico CS21A198 no esta instalado.'));
+      return Promise.reject(new Error('El cargador canonico CS21A200 no esta instalado.'));
     }
     loadPromise = (async () => {
       for (const source of MANIFEST) await rawLoadOne(source);
       if (!finalizeStack()) {
-        throw new Error('English LAB Live no cargo el stack canonico CS21A198 completo.');
+        throw new Error('English LAB Live no cargo el stack canonico CS21A200 completo.');
       }
       return api;
     })().catch(error => {
@@ -240,6 +252,8 @@
     liveFile:MANIFEST_BY_PATH.get(LIVE_PATH),
     quizTime:true,
     quizTimeEpoch:'CS21A198',
+    wordSearch:true,
+    wordSearchEpoch:'CS21A200',
     singleManifest:true,
     singlePollOwner:true,
     install,
