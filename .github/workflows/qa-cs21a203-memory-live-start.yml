@@ -1,0 +1,206 @@
+name: CS21A203 Memory Live Start Presence Rejoin QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a203-memory-match-live-start-presence-rejoin
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a203-final-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memory-live-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact CS203 head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Source-of-truth and scope guards
+        run: |
+          set -euo pipefail
+          node scripts/qa_cs21a202_source_truth.mjs
+          grep -q "CS21A203: antes de existir room_package" src/english_lab_live.jsx
+          grep -q "memoryPackageReady" src/english_lab_live.jsx
+          grep -q "blockingBusy" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "submissionAction!=='DISCOVER_CARD'" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "data-start-countdown" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "La ronda inicia al mismo tiempo para todos" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          if git diff --name-only 127dc3ca4c23cc3590af8c91ffd33dd350601080...HEAD | grep -q '^apps_script_patches/'; then
+            echo "CS21A203 no debe modificar Apps Script." >&2
+            exit 1
+          fi
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static QA server
+        run: |
+          python3 -m http.server 4203 --bind 127.0.0.1 >/tmp/cs203-http.log 2>&1 &
+          echo $! >/tmp/cs203-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4203/src/english_lab_games/memory_match_live_lobby_preview_cs21a203.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs203-http.log
+          exit 1
+
+      - name: Regression CS196 actor conflict
+        env:
+          QA_BASE_URL: http://127.0.0.1:4203
+        run: node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: Regression CS197 spectator reveal
+        env:
+          QA_BASE_URL: http://127.0.0.1:4203
+        run: node scripts/test_memory_match_spectator_reveal_browser_cs21a197.mjs
+
+      - name: CS203 second card remains immediate with 4s first ACK
+        env:
+          QA_BASE_URL: http://127.0.0.1:4203
+        run: node scripts/test_memory_match_second_card_latency_browser_cs21a203.mjs
+
+      - name: CS203 lobby presence F5 start and countdown
+        env:
+          QA_BASE_URL: http://127.0.0.1:4203
+        run: node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs
+
+      - name: Regression Quiz Time
+        run: |
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+
+      - name: Regression Word Search
+        run: |
+          node scripts/qa_cs21a199_word_search.mjs
+          node scripts/qa_cs21a200_word_search_backend_contract.mjs
+          node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Assemble unchanged CS201 backend
+        run: |
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201.js
+          node --check /tmp/cs201.js
+          grep -q "CS21A201-CURRICULUM-SOURCE-1" /tmp/cs201.js
+
+      - name: Build CS203 candidate from checkout only
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START
+          zipfile=/tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START.zip
+          rm -rf "$pkg" "$zipfile" "$zipfile.sha256"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          cp -r qa-output/cs21a192-authoritative-sync "$pkg/EVIDENCIA_AUTOMATICA/" || true
+
+          cat > "$pkg/qa-bootstrap-cs203.js" <<'EOF'
+          (function(){
+            var url='';try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START')
+          matched=[]
+          for p in root.glob('*.html'):
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s: continue
+              boot='<script src="qa-bootstrap-cs203.js?v=CS21A203"></script>\n'
+              if 'qa-bootstrap-cs203.js' not in s:
+                  s=s.replace(marker,boot+marker,1)
+                  p.write_text(s,encoding='utf-8')
+              matched.append(p.name)
+          required={'campus.html','login.html','inscripcion.html','ventas.html'}
+          if not required.issubset(set(matched)):
+              raise SystemExit(f'Entradas QA incompletas: {matched}')
+          PY
+
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A203 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A203 · Memory Match Live Sync</h1><p>Use el mismo Apps Script /exec de QA. Esta versión corrige presencia pre-start, inicio automático con countdown autoritativo, reingreso tras F5 y segunda carta inmediata.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html#english_lab_live'};</script></body></html>
+          EOF
+
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A203.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A203 disponible en http://127.0.0.1:4203/qa-setup.html
+          start "" http://127.0.0.1:4203/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4203 --bind 127.0.0.1 && exit /b
+          python -m http.server 4203 --bind 127.0.0.1
+          EOF
+
+          head_sha="$(git rev-parse HEAD)"
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A203
+          STATUS=QA_CANDIDATE_NOT_FINAL
+          PURPOSE=Memory Match live presence start countdown rejoin and second-card latency
+          QA_PORT=4203
+          SOURCE_BRANCH=${GITHUB_REF_NAME}
+          SOURCE_HEAD_SHA=${head_sha}
+          BACKEND_VERSION=CS21A201
+          APPS_SCRIPT_CHANGE=NO
+          LOBBY_POLL=YES
+          AUTHORITATIVE_COUNTDOWN=YES
+          F5_REJOIN=YES
+          SECOND_CARD_LATENCY_SAFE=YES
+          THIRD_CARD_GUARD=YES
+          EOF
+
+          cat > "$pkg/LEEME_PRIMERO_CS21A203.txt" <<'EOF'
+          CAMPUS QA CS21A203 - MEMORY MATCH LIVE START
+          ============================================================
+          - NO PRODUCCION. NO MERGE.
+          - Backend: conserva exactamente CS21A201; no hay nuevo Apps Script.
+          - Corrige presencia antes del start, deteccion automatica de StartRoom,
+            countdown 5-4-3 autoritativo, restauracion de sala tras F5 y segunda
+            carta inmediata aun con ACK lento de la primera.
+          - La tercera carta sigue bloqueada desde la segunda seleccion local.
+          - Ejecutar ABRIR_CAMPUS_QA_CS21A203.cmd (puerto 4203).
+          - QA manual: Profe + Chu + Naty, todos deben ver 2 participantes sin
+            Actualizar; Start debe aparecer solo; F5 estudiante debe restaurar sala.
+          EOF
+
+          (
+            cd "$pkg"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          (cd /tmp && zip -qr "$zipfile" "$(basename "$pkg")")
+          sha256sum "$zipfile" > "$zipfile.sha256"
+
+      - name: Inspect exact CS203 package
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START
+          grep -q "memoryPackageReady" "$pkg/src/english_lab_live.jsx"
+          grep -q "blockingBusy" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "data-start-countdown" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          grep -q 'qa-bootstrap-cs203.js' "$pkg/login.html"
+          grep -q 'qa-bootstrap-cs203.js' "$pkg/campus.html"
+          sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START/#' "$pkg/SHA256SUMS.txt")
+
+      - name: Upload CS203 candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START
+          path: |
+            /tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START.zip
+            /tmp/CAMPUS_QA_CS21A203_CANDIDATO_MEMORY_LIVE_START.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
