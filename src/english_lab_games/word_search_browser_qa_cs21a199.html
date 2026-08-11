@@ -15,6 +15,7 @@ function render(readOnly=false){root.render(<G publicPuzzle={pub} authoritativeS
 function cell(c){return document.querySelector(`[data-row="${c.row}"][data-col="${c.col}"]`);}function metricText(){return document.querySelector('.ws199-metrics')?.textContent||'';}const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function run(){
   render(false);await wait(350);ok(document.querySelectorAll('[data-ws199-cell]').length===196,'renderiza 14x14');ok(metricText().includes('0/10'),'inicio 0/10');
+  const cells=[...document.querySelectorAll('[data-ws199-cell]')];ok(cells.filter(el=>el.tabIndex===0).length===1,'grid usa un solo tab stop');const firstCell=document.querySelector('[data-row="0"][data-col="0"]');firstCell.focus();firstCell.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await wait(50);ok(document.activeElement?.getAttribute('data-row')==='0'&&document.activeElement?.getAttribute('data-col')==='1','ArrowRight mueve foco una celda');
   const target=secret.words[0],solution=secret.solutions[target.wordId];cell(solution.cells[0]).click();await wait(20);cell(solution.cells[solution.cells.length-1]).click();await wait(180);
   ok(claims.length===1,'envía un único CLAIM_WORD inicial');ok(claims[0].round_id==='ROUND-QA-199','claim conserva round_id');ok(metricText().includes('0/10'),'error de red no concede punto local');
   ok([...document.querySelectorAll('[data-ws199-cell]')].every(el=>el.disabled),'tablero bloqueado mientras claim requiere reconciliación');
