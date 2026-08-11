@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import {baseUrl,endpointAndBody,fulfillJson,launchBrowser,wait,writeEvidence} from './memory_match_cs21a192_browser_fixture.mjs';
+import {baseUrl,endpointAndBody,fulfillJson,launchBrowser,writeEvidence} from './memory_match_cs21a192_browser_fixture.mjs';
 
 const browser=await launchBrowser();
 const contexts=[];
@@ -25,6 +25,14 @@ const cards=[
   {card_id:'P1-R',pair_id:'PAIR-1',face_type:'TEXT',label:'profesor/a'},
   {card_id:'P2-R',pair_id:'PAIR-2',face_type:'TEXT',label:'estudiante'},
 ];
+const suggestedPairs=[
+  {left:'teacher',right:'profesor/a'},
+  {left:'student',right:'estudiante'},
+  {left:'hello',right:'hola'},
+  {left:'goodbye',right:'adiós'},
+  {left:'name',right:'nombre'},
+  {left:'thanks',right:'gracias'},
+];
 
 function room(status='CREATED'){
   return {room_id:ROOM_ID,room_code:ROOM_CODE,game_code:'MEMORY_MATCH',game_id:'MEMORY_MATCH',game_label:'Memory Match',status,round_status:status==='LIVE'?'OPEN':'',mode:'INDIVIDUAL',unit:'U01',nivel:'B1',cod_grupo:GROUP,question_count:1,current_index:status==='LIVE'?1:0,created_at:new Date().toISOString()};
@@ -41,7 +49,7 @@ function livePackage(viewer='QA-STU-005'){
   return {ok:true,memory_match:true,sync_version:'CS21A192-MM-CONSISTENCY-2',state_revision:1,server_now:new Date(now).toISOString(),server_now_ms:now,turn_remaining_ms:Math.max(0,endAt-now),room:room('LIVE'),player,room_package:pkg,turn_state:turn,shared_state:shared,stats:{players:2,answers_current:0},leaderboard:[{rank:1,cod_estudiante:'QA-STU-005',nombre:'Chu',points:0},{rank:2,cod_estudiante:'QA-STU-007',nombre:'Naty',points:0}],team_leaderboard:[],events:[],questions:[]};
 }
 function lobbyState(count,viewer='QA-STU-005'){
-  return {ok:true,memory_match:true,room:room('CREATED'),player:players.find(p=>p.player_id===viewer)||players[0],stats:{players:count,answers_current:0},leaderboard:players.slice(0,count).map((p,i)=>({rank:i+1,cod_estudiante:p.player_id,nombre:p.name,points:0})),team_leaderboard:[],events:[],questions:[]};
+  return {ok:true,memory_match:true,room:room('CREATED'),player:players.find(p=>p.player_id===viewer)||players[0],pair_count:6,settings:{unit:'U01',pair_count:6},suggested_pairs:suggestedPairs,stats:{players:count,answers_current:0},leaderboard:players.slice(0,count).map((p,i)=>({rank:i+1,cod_estudiante:p.player_id,nombre:p.name,points:0})),team_leaderboard:[],events:[],questions:[]};
 }
 
 async function routeHandler(route){
@@ -54,14 +62,14 @@ async function routeHandler(route){
   if(endpoint==='englishLabLiveGetPlayerState'){
     genericStudentReads+=1;
     const viewer=String(body.player_id||body.cod_estudiante||'QA-STU-005');
-    await fulfillJson(route,lobbyState(1,viewer));
+    await fulfillJson(route,teacherStarted?livePackage(viewer):lobbyState(1,viewer));
     return;
   }
   if(endpoint==='englishLabMemoryMatchGetPlayerState'){
     studentReads+=1;
     const viewer=String(body.player_id||body.cod_estudiante||'QA-STU-005');
-    if(studentReads<3){await fulfillJson(route,lobbyState(studentReads>=2?2:1,viewer));return;}
-    await fulfillJson(route,livePackage(viewer));
+    if(teacherStarted){await fulfillJson(route,livePackage(viewer));return;}
+    await fulfillJson(route,lobbyState(studentReads>=2?2:1,viewer));
     return;
   }
   if(endpoint==='englishLabLiveGetTeacherData'){
@@ -83,11 +91,8 @@ async function routeHandler(route){
   throw new Error(`Endpoint inesperado CS203: ${endpoint}`);
 }
 
-function participantNumber(page){
-  return page.getByText('Participantes',{exact:true}).first().locator('..').locator('div').nth(1);
-}
-
 try{
+  // -------- Chu: join -> F5 -> presencia 1->2, pero sigue esperando Start --------
   const studentContext=await browser.newContext({viewport:{width:520,height:880}});
   contexts.push(studentContext);
   await studentContext.route('**/__cs21a203_live?*',routeHandler);
@@ -104,18 +109,14 @@ try{
   await student.reload({waitUntil:'domcontentloaded'});
   await student.getByRole('button',{name:'← Cambiar sala'}).waitFor({state:'visible',timeout:6000});
   assert.equal(await student.getByRole('button',{name:'Entrar a sala'}).count(),0,'F5 devolvió al selector de sala.');
-
-  await participantNumber(student).waitFor({state:'visible',timeout:5000});
   await student.waitForFunction(()=>{
     const label=[...document.querySelectorAll('div')].find(el=>el.textContent==='Participantes');
     return label&&label.parentElement&&label.parentElement.children[1]&&label.parentElement.children[1].textContent==='2';
   },null,{timeout:5000});
-  await student.locator('[data-authoritative-sync="true"]').waitFor({state:'visible',timeout:7000});
-  await student.locator('[data-start-countdown="true"]').waitFor({state:'visible',timeout:3000});
-  const studentCountdown=Number(await student.locator('[data-start-countdown="true"] strong').textContent());
-  assert.ok(studentCountdown>=1&&studentCountdown<=5,`Countdown estudiante inválido: ${studentCountdown}`);
+  assert.equal(await student.locator('[data-authoritative-sync="true"]').count(),0,'El estudiante inició antes que el docente.');
 
-  teacherReads=0;teacherStarted=false;startAtMs=0;
+  // -------- Profe: ve 2 sin Actualizar y ejecuta el único Start real --------
+  teacherReads=0;
   const teacherContext=await browser.newContext({viewport:{width:1200,height:900}});
   contexts.push(teacherContext);
   await teacherContext.route('**/__cs21a203_live?*',routeHandler);
@@ -133,27 +134,42 @@ try{
 
   const startClickAt=Date.now();
   await teacher.getByRole('button',{name:'Iniciar Memory Match'}).click();
-  await wait(300);
-  const teacherAfterStart=await teacher.evaluate(()=>({
-    bodyText:(document.body&&document.body.innerText||'').slice(0,6000),
-    authoritative:!!document.querySelector('[data-authoritative-sync="true"]'),
-    countdown:document.querySelector('[data-start-countdown="true"] strong')?.textContent||'',
-    memoryGlobal:typeof window.MemoryMatchLiveRoundCS21A174,
-    authoritativeApi:!!window.EnglishLabMemoryMatchAuthoritativeSyncCS21A192,
-    engine:typeof window.MemoryMatchGameCS21A173,
-  }));
-  console.log('CS21A203_TEACHER_AFTER_START '+JSON.stringify(teacherAfterStart));
-  console.log('CS21A203_ENDPOINT_LOG '+JSON.stringify(endpointLog.slice(-30)));
   await teacher.locator('[data-authoritative-sync="true"]').waitFor({state:'visible',timeout:2500});
   await teacher.locator('[data-start-countdown="true"]').waitFor({state:'visible',timeout:2500});
-  const startVisibleDelayMs=Date.now()-startClickAt;
-  assert.ok(startVisibleDelayMs<1800,`El Start tardó ${startVisibleDelayMs} ms en reflejar el countdown.`);
+  const teacherStartVisibleDelayMs=Date.now()-startClickAt;
+  assert.ok(teacherStartVisibleDelayMs<1800,`El Start docente tardó ${teacherStartVisibleDelayMs} ms en reflejar el countdown.`);
   const teacherCountdown=Number(await teacher.locator('[data-start-countdown="true"] strong').textContent());
   assert.ok(teacherCountdown>=1&&teacherCountdown<=5,`Countdown docente inválido: ${teacherCountdown}`);
 
-  assert.ok(genericStudentReads>=1,'El fixture no ejercitó la detección genérica inicial de Memory Match.');
+  // -------- Chu detecta exactamente ese Start por polling, sin F5 --------
+  await student.locator('[data-authoritative-sync="true"]').waitFor({state:'visible',timeout:3500});
+  await student.locator('[data-start-countdown="true"]').waitFor({state:'visible',timeout:2500});
+  const studentDetectedStartDelayMs=Date.now()-startClickAt;
+  assert.ok(studentDetectedStartDelayMs<3200,`El estudiante tardó ${studentDetectedStartDelayMs} ms en detectar StartRoom.`);
+  const studentCountdown=Number(await student.locator('[data-start-countdown="true"] strong').textContent());
+  assert.ok(studentCountdown>=1&&studentCountdown<=5,`Countdown estudiante inválido: ${studentCountdown}`);
+
+  assert.ok(endpointLog.some(x=>x.endpoint==='englishLabMemoryMatchStartRoom'),'El gate nunca ejercitó StartRoom real.');
+  assert.ok(genericStudentReads>=1,'El gate no ejercitó detección genérica tras F5.');
   assert.deepEqual(errors,[],`Errores navegador: ${errors.join(' | ')}`);
-  const result={verdict:'PASS_MEMORY_MATCH_LOBBY_START_REJOIN_CS21A203',studentF5Rejoined:true,genericDiscoveryAfterReload:true,studentPresenceReached2WithoutManualRefresh:true,studentDetectedStartAutomatically:true,teacherPresenceReached2WithoutManualRefresh:true,authoritativeCountdown:true,studentCountdown,teacherCountdown,teacherStartVisibleDelayMs:startVisibleDelayMs,genericStudentStateReads:genericStudentReads,studentStateReads:studentReads,teacherControlReads:teacherReads};
+
+  const result={
+    verdict:'PASS_MEMORY_MATCH_LOBBY_START_REJOIN_CS21A203',
+    studentF5Rejoined:true,
+    genericDiscoveryAfterReload:true,
+    studentPresenceReached2WithoutManualRefresh:true,
+    teacherPresenceReached2WithoutManualRefresh:true,
+    studentStayedWaitingUntilTeacherStart:true,
+    teacherStartEndpointExercised:true,
+    teacherCountdown,
+    studentCountdown,
+    teacherStartVisibleDelayMs,
+    studentDetectedStartDelayMs,
+    authoritativeCountdown:true,
+    genericStudentStateReads:genericStudentReads,
+    studentStateReads:studentReads,
+    teacherControlReads:teacherReads,
+  };
   writeEvidence('lobby-start-rejoin-cs21a203.json',result);
   console.log(JSON.stringify(result,null,2));
 }finally{
