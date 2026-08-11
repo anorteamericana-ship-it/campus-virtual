@@ -1,0 +1,233 @@
+name: CS21A204 English LAB Release Candidate QA
+
+on:
+  push:
+    branches:
+      - release/cs21a204-english-lab-rc
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a204-english-lab-rc-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  english-lab-release-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact CS204 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Confirm release base and source truth
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor a67da85037a3c2c92069bf555871200f520450a5 HEAD
+          node scripts/qa_cs21a203_live_sync.mjs
+          node scripts/qa_cs21a203_custom_pair_start_guard.mjs
+          grep -q "memoryPackageReady" src/english_lab_live.jsx
+          grep -q "blockingBusy" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "data-start-countdown" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "hasEditablePairs" src/english_lab_ux_cs21a181.js
+
+      - name: Curriculum source regression CS201
+        run: node scripts/qa_cs21a201_curriculum_source_router.mjs
+
+      - name: Sentence Order regression
+        run: |
+          node scripts/test_english_lab_sentence_order_cs21a183.mjs
+          node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
+
+      - name: Hangman engine contract and source browser gates
+        run: |
+          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+          node scripts/test_english_lab_hangman_browser_cs21a191.mjs
+
+      - name: Quiz Time full regression
+        run: |
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+          node scripts/qa_cs21a198_quiz_option_balance.mjs
+          node scripts/qa_cs21a198_quiz_live_integration.mjs
+
+      - name: Word Search full regression
+        run: |
+          node scripts/qa_cs21a199_word_search.mjs
+          node scripts/qa_cs21a200_word_search_backend_contract.mjs
+          node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Assemble exact unchanged CS201 backend
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201-unified.js
+          node --check /tmp/cs201-unified.js
+          grep -q "CS21A201-CURRICULUM-SOURCE-1" /tmp/cs201-unified.js
+          grep -q "CS21A200-WORD-SEARCH-LIVE-1" /tmp/cs201-unified.js
+          grep -q "CS21A198-QUIZ-TIME-B1U01-2" /tmp/cs201-unified.js
+          grep -q "CS21A197-MM-SPECTATOR-REVEAL-1" /tmp/cs201-unified.js
+
+      - name: Load models only — not authenticated load
+        run: |
+          set -euo pipefail
+          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+          node scripts/english_lab_load_harness_cs21a183.mjs --self-test
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static release-candidate server
+        run: |
+          python3 -m http.server 4204 --bind 127.0.0.1 >/tmp/cs204-http.log 2>&1 &
+          echo $! >/tmp/cs204-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4204/src/english_lab_games/memory_match_live_lobby_preview_cs21a203.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs204-http.log
+          exit 1
+
+      - name: Memory Match real browser regression CS196 conflict
+        env:
+          QA_BASE_URL: http://127.0.0.1:4204
+        run: node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: Memory Match real browser regression CS197 spectator
+        env:
+          QA_BASE_URL: http://127.0.0.1:4204
+        run: node scripts/test_memory_match_spectator_reveal_browser_cs21a197.mjs
+
+      - name: Memory Match CS203 second-card latency
+        env:
+          QA_BASE_URL: http://127.0.0.1:4204
+        run: node scripts/test_memory_match_second_card_latency_browser_cs21a203.mjs
+
+      - name: Memory Match CS203 lobby F5 Start countdown
+        env:
+          QA_BASE_URL: http://127.0.0.1:4204
+        run: node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs
+
+      - name: Build clean CS204 release candidate
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE
+          zipfile=/tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE.zip
+          rm -rf "$pkg" "$zipfile" "$zipfile.sha256"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          cp -r qa-output/cs21a192-load-budget "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
+
+          cat > "$pkg/qa-bootstrap-cs204.js" <<'EOF'
+          (function(){
+            var url='';try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE')
+          matched=[]
+          for p in root.glob('*.html'):
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s:
+                  continue
+              boot='<script src="qa-bootstrap-cs204.js?v=CS21A204"></script>\n'
+              if 'qa-bootstrap-cs204.js' not in s:
+                  s=s.replace(marker,boot+marker,1)
+                  p.write_text(s,encoding='utf-8')
+              matched.append(p.name)
+          required={'campus.html','login.html','inscripcion.html','ventas.html'}
+          if not required.issubset(set(matched)):
+              raise SystemExit(f'Entradas QA incompletas: {matched}')
+          PY
+
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A204 · English LAB RC</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A204 · English LAB Release Candidate</h1><p>Candidato QA integrado: Memory Match, Sentence Order, Hangman, Quiz Time y Word Search. Usa el mismo Apps Script /exec QA CS21A201.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html#english_lab_live'};</script></body></html>
+          EOF
+
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A204.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A204 disponible en http://127.0.0.1:4204/qa-setup.html
+          start "" http://127.0.0.1:4204/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4204 --bind 127.0.0.1 && exit /b
+          python -m http.server 4204 --bind 127.0.0.1
+          EOF
+
+          head_sha="$(git rev-parse HEAD)"
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A204
+          STATUS=RELEASE_CANDIDATE_QA_ONLY
+          QA_PORT=4204
+          SOURCE_BRANCH=${GITHUB_REF_NAME}
+          SOURCE_HEAD_SHA=${head_sha}
+          BASE_AUTHENTICATED_MEMORY_SHA=a67da85037a3c2c92069bf555871200f520450a5
+          BACKEND_VERSION=CS21A201
+          APPS_SCRIPT_CHANGE=NO
+          INCLUDED_GAMES=MEMORY_MATCH|SENTENCE_ORDER|HANGMAN|QUIZ_TIME|WORD_SEARCH
+          MEMORY_AUTHENTICATED_QA=PASS_PROFE_CHU_NATY
+          INTEGRATED_AUTOMATIC_SMOKE=REQUIRED_PASS
+          LOAD_MODEL_2_5_10_15_25=AUTOMATED_MODEL_ONLY
+          AUTH_LOAD_5_10_15_25=PENDING_UNIQUE_SESSIONS
+          PRODUCTION_ACTION=DO_NOT_MODIFY
+          EOF
+
+          cat > "$pkg/LEEME_PRIMERO_CS21A204.txt" <<'EOF'
+          CAMPUS QA CS21A204 - ENGLISH LAB RELEASE CANDIDATE
+          ============================================================
+          - QA ONLY. NO PRODUCCION. NO MERGE AUTOMATICO.
+          - Backend: conserva exactamente CS21A201.
+          - Incluye 5 juegos: Memory Match, Sentence Order, Hangman, Quiz Time y Word Search.
+          - Memory Match ya tiene PASS autenticado Profe + Chu + Naty sobre la base CS203.
+          - CI ejecuta regresiones integradas de los cinco juegos.
+          - La fase 2/5/10/15/25 incluida en CI es MODELO/SELF-TEST, no carga autenticada real.
+          - La carga real 5/10/15/25 queda pendiente hasta disponer de sesiones QA unicas suficientes.
+          - Ejecutar ABRIR_CAMPUS_QA_CS21A204.cmd (puerto 4204).
+          EOF
+
+          (
+            cd "$pkg"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          (cd /tmp && zip -qr "$zipfile" "$(basename "$pkg")")
+          sha256sum "$zipfile" > "$zipfile.sha256"
+
+      - name: Inspect exact CS204 package
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE
+          grep -q 'VERSION=CS21A204' "$pkg/VERSION.txt"
+          grep -q 'AUTH_LOAD_5_10_15_25=PENDING_UNIQUE_SESSIONS' "$pkg/VERSION.txt"
+          grep -q 'APPS_SCRIPT_CHANGE=NO' "$pkg/VERSION.txt"
+          grep -q 'qa-bootstrap-cs204.js' "$pkg/login.html"
+          grep -q 'qa-bootstrap-cs204.js' "$pkg/campus.html"
+          grep -q 'memoryPackageReady' "$pkg/src/english_lab_live.jsx"
+          grep -q 'blockingBusy' "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE/#' "$pkg/SHA256SUMS.txt")
+
+      - name: Upload CS204 release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE
+          path: |
+            /tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE.zip
+            /tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
