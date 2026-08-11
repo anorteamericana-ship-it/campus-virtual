@@ -17,3 +17,5 @@
 @keyframes elmmTransitionSweep{from{opacity:.55}to{opacity:1}}
 @media(max-width:620px){.elmm-classic-sync .elmm-card-badge{font-size:9px;padding:5px 6px}.elmm-flipback-banner{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.elmm-classic-sync .elmm-card.is-mismatch .elmm-card-inner,.elmm-classic-sync .elmm-timer.is-transition .elmm-timer-fill{animation:none!important}}
+/* CS21A202 recovery · CS21A197 giro visual rápido. */
+.elmm-classic-sync .elmm-card-inner{transition:transform .20s cubic-bezier(.2,.75,.25,1)}

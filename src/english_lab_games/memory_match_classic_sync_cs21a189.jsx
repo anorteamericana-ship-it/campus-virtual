@@ -325,14 +325,18 @@
     const claimedCount=Object.keys(shared.claimed).length || shared.matchedPairs.size;
     const completed=shared.completed || claimedCount>=cards.length/2;
     const visibleIds=new Set([...reveal.ids,...optimistic]);
-    const transitionText=waitingForFlipback ? 'No coinciden · memorízalas antes de que se cierren' : '';
+    const revealSeconds=waitingForFlipback?Math.max(1,Math.ceil(Number(reveal.remainingMs||0)/1000)):0;
+    const revealRuleMs=Math.max(1,Number(packageInput&&packageInput.rules&&(packageInput.rules.spectator_reveal_ms||packageInput.rules.mismatch_reveal_ms)||8500)||8500);
+    const timerRemainingMs=waitingForFlipback?Math.max(0,Number(reveal.remainingMs||0)):remainingMs;
+    const timerDurationMs=waitingForFlipback?revealRuleMs:normalized.rules.roundDurationMs;
+    const transitionText=waitingForFlipback ? `No coinciden · memorízalas · se cierran en ${revealSeconds}s` : '';
 
-    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION}>
+    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION} data-spectator-reveal-ms={revealRuleMs}>
       <header className="elmm-header">
         <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Volteá dos cartas. Si coinciden, ganás el par y seguís jugando. Si no coinciden, todos las ven un momento y vuelven a taparse.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
       </header>
-      <Timer remainingMs={remainingMs} durationMs={normalized.rules.roundDurationMs} waiting={waitingForFlipback || turnStartsIn>0} syncingTurn={syncingTurn}/>
+      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={waitingForFlipback || turnStartsIn>0} syncingTurn={syncingTurn}/>
       <TurnPanel turnState={turnState} players={players} currentPlayer={currentPlayer} turnEngine={turnEngine} readOnly={!!(props&&props.readOnly)} waiting={waitingForFlipback} syncingTurn={syncingTurn}/>
       {transitionText && <div className="elmm-flipback-banner" role="status">{transitionText}</div>}
       <div className="elmm-status-row"><span>{claimedCount} / {cards.length/2} parejas ganadas</span><span>{completed?'Completado':waitingForFlipback?'Cerrando cartas…':canPlay?'Tu jugada':activeId?`Turno de ${clean((players.find(p=>playerId(p)===activeId)||{}).name)||activeId}`:'Esperando'}</span></div>

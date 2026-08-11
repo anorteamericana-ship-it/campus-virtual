@@ -48,6 +48,19 @@
     for(const tier of POLL_TIERS) if(players<=tier.maxPlayers) return tier.ms;
     return 3000;
   }
+  function transientAttemptPhase(state){
+    const source=state&&typeof state==='object'?state:{};
+    const pkg=packageFrom(source)||{};
+    const attempt=pkg.shared_state&&pkg.shared_state.active_attempt||source.shared_state&&source.shared_state.active_attempt||null;
+    return upper(attempt&&attempt.phase);
+  }
+  function pollMsForState(state){
+    const source=state&&typeof state==='object'?state:{};
+    const normal=pollMsForPlayers(base.participantCount(source,packageFrom(source)));
+    const phase=transientAttemptPhase(source);
+    if(phase==='FIRST_REVEALED'||phase==='MISMATCH_REVEAL') return Math.max(250,Math.round(normal/2));
+    return normal;
+  }
   function pollBackoffMs(baseMs,failures){
     const baseDelay=Math.max(1,finite(baseMs,550));
     const count=Math.max(0,Math.floor(finite(failures,0)));
@@ -200,6 +213,7 @@
     const pid=playerId(player);
     const playersOnline=base.participantCount(state,pkg);
     const pollMs=pollMsForPlayers(playersOnline);
+    const currentPollMs=pollMsForState(state);
     const rev=revisionOf(state);
     const clock=React.useMemo(()=>authoritativeClock(state,pkg),[pkg,state&&state.state_revision,state&&state.server_now_ms,state&&state.turn_remaining_ms,state&&state.__cs21a192_received_monotonic_ms]);
 
@@ -260,7 +274,7 @@
       let consecutiveFailures=0;
 
       function clearTimer(){if(timer){global.clearTimeout(timer);timer=0;}}
-      function delayForCurrent(){const current=stateRef.current||{};return pollMsForPlayers(base.participantCount(current,packageFrom(current)));}
+      function delayForCurrent(){const current=stateRef.current||{};return pollMsForState(current);}
       function schedule(delay){
         if(disposed||isTerminalState(stateRef.current)) return;
         clearTimer();
@@ -385,6 +399,7 @@
       data-turn-number={rev.turnNumber}
       data-board-version={rev.boardVersion}
       data-live-poll-ms={pollMs}
+      data-live-current-poll-ms={currentPollMs}
       data-live-poll-timeout-ms={POLL_TIMEOUT_MS}
       data-live-players={playersOnline}
       data-live-terminal={isTerminalState(state)?'true':'false'}
@@ -421,6 +436,7 @@
     LIVE_POLL_MS:550,
     READ_ONLY_POLL_MS:550,
     livePollMsForPlayers:pollMsForPlayers,
+    livePollMsForState:pollMsForState,
     pollBackoffMs,
     isTerminalState,
     stateRevision,
