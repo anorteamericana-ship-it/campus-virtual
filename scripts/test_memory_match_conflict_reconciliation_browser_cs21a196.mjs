@@ -69,22 +69,13 @@ async function routeHandler(route){
 }
 
 try{
-  // El preview histórico CS192 contiene su propio postLive inline y no carga
-  // src/english_lab_live.jsx. Para este test interceptamos sólo esa página y
-  // sustituimos el contrato de transporte por el mismo de CS21A196: un
-  // ok:false con room_package es un resultado de dominio reconciliable, no un
-  // error de red. El candidato distribuido real sigue usando english_lab_live.jsx.
+  // CS21A202: NO se modifica HTML ni código del producto en tiempo de ejecución.
+  // El fixture declara explícitamente el contrato de reconciliación y el gate
+  // source-of-truth verifica por separado que src/english_lab_live.jsx tenga
+  // exactamente la semántica autoritativa recuperada.
   const context=await browser.newContext({viewport:{width:520,height:850}});
   client={context,page:await context.newPage()};
   await context.route('**/__cs21a192_live?*',routeHandler);
-  await context.route('**/memory_match_authoritative_sync_preview_cs21a192.html?*',async route=>{
-    const response=await route.fetch();
-    const original=await response.text();
-    const oldTransport="if(!response.ok||!data||data.ok===false)throw new Error(data&&data.mensaje||data&&data.error||`HTTP ${response.status}`);";
-    const newTransport="if(!response.ok||!data)throw new Error(data&&data.mensaje||data&&data.error||`HTTP ${response.status}`);if(data.ok===false&&!(data.room_package&&typeof data.room_package==='object'))throw new Error(data.mensaje||data.error||`HTTP ${response.status}`);";
-    assert.ok(original.includes(oldTransport),'El preview histórico cambió y ya no coincide con el transporte CS192 esperado.');
-    await route.fulfill({response,body:original.replace(oldTransport,newTransport),headers:{...response.headers(),'content-type':'text/html; charset=utf-8'}});
-  });
 
   const {page}=client;
   page.on('pageerror',error=>errors.push(error.message));
@@ -116,7 +107,7 @@ try{
     thirdCardBlockedDuringConflict:true,
     retryExpectedRevision:mutations[2]?.body?.expected_state_revision,
     finalRevision:4,
-    previewTransport:'CS21A196_DOMAIN_RECONCILIATION',
+    previewTransport:'CS21A202_SOURCE_FIXTURE_NO_RUNTIME_PATCH',
   };
   writeEvidence('conflict-reconciliation-cs21a196.json',result);
   console.log(JSON.stringify(result,null,2));

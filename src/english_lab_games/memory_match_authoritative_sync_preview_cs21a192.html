@@ -56,7 +56,9 @@
       try{
         const response=await fetch(`/__cs21a192_live?fn=${encodeURIComponent(fn)}`,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,...payload}),signal:controller?controller.signal:undefined});
         const data=await response.json();
-        if(!response.ok||!data||data.ok===false)throw new Error(data&&data.mensaje||data&&data.error||`HTTP ${response.status}`);
+        if(!response.ok||!data)throw new Error(data&&data.mensaje||data&&data.error||`HTTP ${response.status}`);
+        // CS21A202 fixture: el mismo contrato de reconciliación que src/english_lab_live.jsx, sin parche runtime del test.
+        if(data.ok===false&&!(data.room_package&&typeof data.room_package==='object'))throw new Error(data.mensaje||data.error||`HTTP ${response.status}`);
         return data;
       }catch(error){
         if(error&&error.name==='AbortError')throw new Error(`La lectura excedio ${timeoutMs} ms.`);
