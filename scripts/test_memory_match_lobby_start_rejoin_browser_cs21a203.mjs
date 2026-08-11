@@ -9,6 +9,7 @@ const ROOM_CODE='LAB-203';
 const ROOM_ID='ROOM-203';
 const GROUP='B1-LM69-C3-9926';
 let studentReads=0;
+let genericStudentReads=0;
 let teacherReads=0;
 let teacherStarted=false;
 let startAtMs=0;
@@ -47,6 +48,15 @@ async function routeHandler(route){
   if(endpoint==='englishLabLiveJoinRoom'){
     // A propósito sólo player_id: valida que CS203 no dependa de cod_estudiante.
     await fulfillJson(route,{...lobbyState(1),player:{player_id:'QA-STU-005',name:'Chu'}});
+    return;
+  }
+  if(endpoint==='englishLabLiveGetPlayerState'){
+    // Antes del primer snapshot el frontend aún no sabe que la sala es Memory Match.
+    // Esta lectura genérica descubre game_code y loadState encadena de inmediato
+    // el endpoint especializado. Es parte de la ruta real, especialmente tras F5.
+    genericStudentReads+=1;
+    const viewer=String(body.player_id||body.cod_estudiante||'QA-STU-005');
+    await fulfillJson(route,lobbyState(1,viewer));
     return;
   }
   if(endpoint==='englishLabMemoryMatchGetPlayerState'){
@@ -135,10 +145,12 @@ try{
   const teacherCountdown=Number(await teacher.locator('[data-start-countdown="true"] strong').textContent());
   assert.ok(teacherCountdown>=1&&teacherCountdown<=5,`Countdown docente inválido: ${teacherCountdown}`);
 
+  assert.ok(genericStudentReads>=1,'El fixture no ejercitó la detección genérica inicial de Memory Match.');
   assert.deepEqual(errors,[],`Errores navegador: ${errors.join(' | ')}`);
   const result={
     verdict:'PASS_MEMORY_MATCH_LOBBY_START_REJOIN_CS21A203',
     studentF5Rejoined:true,
+    genericDiscoveryAfterReload:true,
     studentPresenceReached2WithoutManualRefresh:true,
     studentDetectedStartAutomatically:true,
     teacherPresenceReached2WithoutManualRefresh:true,
@@ -146,6 +158,7 @@ try{
     studentCountdown,
     teacherCountdown,
     teacherStartVisibleDelayMs:startVisibleDelayMs,
+    genericStudentStateReads:genericStudentReads,
     studentStateReads:studentReads,
     teacherControlReads:teacherReads,
   };
