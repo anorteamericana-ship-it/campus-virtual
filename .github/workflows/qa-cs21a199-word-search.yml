@@ -1,0 +1,62 @@
+name: CS21A199 Word Search Frontend QA
+
+on:
+  push:
+    branches:
+      - feat/cs21a199-word-search-b1u01
+  pull_request:
+    paths:
+      - 'src/english_lab_games/word_search_*cs21a199*'
+      - 'styles/word_search_cs21a199.css'
+      - 'scripts/qa_cs21a199_word_search.mjs'
+      - '00_DOCUMENTACION/CS21A199_WORD_SEARCH_B1U01.md'
+      - '.github/workflows/qa-cs21a199-word-search.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  word-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate deterministic Word Search engine
+        run: node scripts/qa_cs21a199_word_search.mjs
+      - name: Verify CS199 is frontend-only
+        run: |
+          changed="$(git diff --name-only dedff5a2222382b4391ea105ad65ab0fb6261b98..HEAD)"
+          echo "$changed"
+          if echo "$changed" | grep -Eq '^apps_script_patches/'; then
+            echo 'CS21A199 no debe crear Apps Script todavía.' >&2
+            exit 1
+          fi
+          if echo "$changed" | grep -Eq '^src/english_lab_games/(memory_match|english_lab_live_memory_match|english_lab_hangman|hangman_engine|sentence_order|english_lab_quiz_)'; then
+            echo 'CS21A199 reescribió un juego anterior.' >&2
+            exit 1
+          fi
+      - name: Render desktop and mobile preview
+        run: |
+          python3 -m http.server 4199 --bind 127.0.0.1 >/tmp/ws199-http.log 2>&1 &
+          pid=$!
+          trap 'kill $pid || true' EXIT
+          for n in $(seq 1 30); do curl -fsS http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html >/dev/null && break; sleep .2; done
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=2200 --window-size=1440,900 --screenshot=/tmp/word-search-desktop.png http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html
+          "$chrome" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=2200 --window-size=390,844 --screenshot=/tmp/word-search-mobile.png http://127.0.0.1:4199/src/english_lab_games/word_search_preview_cs21a199.html
+          test "$(stat -c%s /tmp/word-search-desktop.png)" -gt 25000
+          test "$(stat -c%s /tmp/word-search-mobile.png)" -gt 15000
+      - name: Upload visual evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A199_WORD_SEARCH_VISUAL_PREVIEW
+          path: |
+            /tmp/word-search-desktop.png
+            /tmp/word-search-mobile.png
+          retention-days: 14
