@@ -80,7 +80,12 @@ jobs:
         run: node scripts/assemble_apps_script_cs21a201_unified.mjs
 
       - name: Syntax-check unified backend
-        run: node --check apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs
+        run: |
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201-unified-backend.js
+          node --check /tmp/cs201-unified-backend.js
+          grep -q "CS21A201-CURRICULUM-SOURCE-1" /tmp/cs201-unified-backend.js
+          grep -q "CS21A200-WORD-SEARCH-LIVE-1" /tmp/cs201-unified-backend.js
+          grep -q "CS21A198-QUIZ-TIME-B1U01-2" /tmp/cs201-unified-backend.js
 
       - name: Build CS202 candidate strictly from checkout
         run: |
