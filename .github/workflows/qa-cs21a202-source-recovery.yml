@@ -1,0 +1,79 @@
+name: CS21A202 English LAB Source of Truth Recovery
+
+on:
+  push:
+    branches:
+      - fix/cs21a202-english-lab-source-of-truth-recovery
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cs21a202-source-recovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  recover-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Apply CS21A202 recovery to real src
+        run: node scripts/apply_cs21a202_source_recovery.mjs
+
+      - name: Verify source markers
+        run: |
+          set -euo pipefail
+          grep -q "CS21A202: un rechazo de dominio con room_package" src/english_lab_live.jsx
+          ! grep -q "!res.ok || !data || data.ok === false" src/english_lab_live.jsx
+          grep -q "const stateCandidate=candidate.ok===false" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "mutationBusy={busy}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "authoritativeBusy" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "pairPendingRef.current=false" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          git diff --check
+
+      - name: Verify a clean checkout package would preserve the fix
+        run: |
+          set -euo pipefail
+          pkg=/tmp/cs21a202-clean-package
+          rm -rf "$pkg"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude 'node_modules' ./ "$pkg/"
+          grep -q "CS21A202: un rechazo de dominio con room_package" "$pkg/src/english_lab_live.jsx"
+          grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "authoritativeBusy" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+
+      - name: Commit recovered source if needed
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/english_lab_live.jsx src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx src/english_lab_games/memory_match_classic_sync_cs21a189.jsx; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Source already recovered."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/english_lab_live.jsx \
+                  src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx \
+                  src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          git commit -m "CS21A202 recupera Memory Match CS196 en src real"
+          git push origin HEAD:${{ github.ref_name }}
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "CS21A202 source recovery complete. auto_commit=${{ steps.commit.outputs.changed }}"
