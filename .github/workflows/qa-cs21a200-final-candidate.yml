@@ -1,0 +1,218 @@
+name: CS21A200 Final Unified Candidate QA
+
+on:
+  push:
+    branches:
+      - feat/cs21a200-word-search-live-unified
+  pull_request:
+    paths:
+      - 'apps_script_unified/english_lab_word_search_module_cs21a200.gs'
+      - 'scripts/assemble_apps_script_cs21a200_unified.mjs'
+      - 'scripts/qa_cs21a200_*'
+      - 'src/english_lab_games/english_lab_word_search_*cs21a200*'
+      - 'src/english_lab_games/word_search_*cs21a199*'
+      - 'src/english_lab_live_canonical_loader_cs21a193.js'
+      - 'styles/english_lab_word_search_live_cs21a200.css'
+      - 'styles/word_search_cs21a199.css'
+      - '.github/workflows/qa-cs21a200-final-candidate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  final-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify source identity
+        run: |
+          expected='${{ github.event.pull_request.head.sha || github.sha }}'
+          actual="$(git rev-parse HEAD)"
+          echo "expected=$expected"
+          echo "actual=$actual"
+          test "$actual" = "$expected"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate Word Search R2
+        run: node scripts/qa_cs21a199_word_search.mjs
+
+      - name: Validate Word Search backend contract
+        run: node scripts/qa_cs21a200_word_search_backend_contract.mjs
+
+      - name: Validate first-claim-wins endpoint
+        run: node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+
+      - name: Validate canonical live integration
+        run: node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Assemble unified Apps Script
+        run: node scripts/assemble_apps_script_cs21a200_unified.mjs
+
+      - name: Syntax-check unified Apps Script
+        run: |
+          cp apps_script_patches/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs200-unified.js
+          node --check /tmp/cs200-unified.js
+          grep -q "CS21A200-WORD-SEARCH-LIVE-1" /tmp/cs200-unified.js
+          grep -q "CS21A198-QUIZ-TIME-B1U01-2" /tmp/cs200-unified.js
+          grep -q "CS21A197-MM-SPECTATOR-REVEAL-1" /tmp/cs200-unified.js
+
+      - name: Start integration server
+        run: |
+          python3 -m http.server 4200 --bind 127.0.0.1 >/tmp/cs200-http.log 2>&1 &
+          echo $! >/tmp/cs200-http.pid
+          for n in $(seq 1 40); do curl -fsS http://127.0.0.1:4200/src/english_lab_games/word_search_live_browser_qa_cs21a200.html >/dev/null && exit 0; sleep .2; done
+          cat /tmp/cs200-http.log
+          exit 1
+
+      - name: Browser QA Word Search R2
+        run: |
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=7000 --dump-dom http://127.0.0.1:4200/src/english_lab_games/word_search_browser_qa_cs21a199.html > /tmp/cs200-r2-dom.html
+          grep -q 'data-qa-status="PASS"' /tmp/cs200-r2-dom.html || { cat /tmp/cs200-r2-dom.html; exit 1; }
+          ! grep -q 'data-qa-status="FAIL"' /tmp/cs200-r2-dom.html
+          ! grep -q 'data-qa-status="ERROR"' /tmp/cs200-r2-dom.html
+
+      - name: Browser QA Word Search Live
+        run: |
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=7000 --dump-dom http://127.0.0.1:4200/src/english_lab_games/word_search_live_browser_qa_cs21a200.html > /tmp/cs200-live-dom.html
+          grep -q 'data-qa-status="PASS"' /tmp/cs200-live-dom.html || { cat /tmp/cs200-live-dom.html; exit 1; }
+          ! grep -q 'data-qa-status="FAIL"' /tmp/cs200-live-dom.html
+          ! grep -q 'data-qa-status="ERROR"' /tmp/cs200-live-dom.html
+
+      - name: Build audited unified QA package
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A200_CANDIDATO_ENGLISH_LAB_UNIFIED
+          zipfile=/tmp/CAMPUS_QA_CS21A200_CANDIDATO_ENGLISH_LAB_UNIFIED.zip
+          rm -rf "$pkg" "$zipfile" "$zipfile.sha256"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA"
+          cp apps_script_patches/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+
+          cat > "$pkg/qa-bootstrap-cs200.js" <<'EOF'
+          (function(){
+            var url=''; try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A200_CANDIDATO_ENGLISH_LAB_UNIFIED')
+          for name in ('campus.html','index.html'):
+              p=root/name
+              if not p.exists():
+                  continue
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s:
+                  raise SystemExit(f'No runtime marker in {name}')
+              boot='<script src="qa-bootstrap-cs200.js?v=CS21A200"></script>\n'
+              if 'qa-bootstrap-cs200.js' not in s:
+                  s=s.replace(marker,boot+marker,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A200 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A200 · English LAB QA unificado</h1><p>Configure el mismo Apps Script <b>/exec de QA</b>. Este candidato incluye Memory Match, Sentence Order, Hangman, Quiz Time y Word Search.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Word Search</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec invalida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html?game=WORD_SEARCH#english_lab_live'};</script></body></html>
+          EOF
+
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A200.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A200 disponible en http://127.0.0.1:4200/qa-setup.html
+          start "" http://127.0.0.1:4200/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4200 --bind 127.0.0.1 && exit /b
+          python -m http.server 4200 --bind 127.0.0.1
+          EOF
+
+          source_head="$(git rev-parse HEAD)"
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A200
+          PACKAGE_REVISION=1
+          STATUS=QA_CANDIDATE_NOT_FINAL
+          QA_PORT=4200
+          SOURCE_BRANCH=feat/cs21a200-word-search-live-unified
+          SOURCE_HEAD_SHA=$source_head
+          CI_EVENT_SHA=${GITHUB_SHA}
+          BACKEND_LAYER=CS21A200-WORD-SEARCH-LIVE-1
+          BACKEND_COMPLETE=BACKEND_QA/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs
+          APPS_SCRIPT_INSTALL_MODE=ONE_COMPLETE_QA_FILE
+          INCLUDED_GAMES=MEMORY_MATCH|SENTENCE_ORDER|HANGMAN|QUIZ_TIME|WORD_SEARCH
+          WORD_SEARCH_UNIT=B1-U01
+          WORD_SEARCH_GRID=14x14
+          WORD_SEARCH_WORDS=10
+          WORD_SEARCH_DURATION_SECONDS=180
+          WORD_SEARCH_FIRST_CLAIM_WINS=true
+          WORD_SEARCH_PUBLIC_SOLUTIONS=false
+          QUIZ_TIME_UNIT=B1-U01
+          AUTH_QA=PENDING_CS21A200
+          PRODUCTION_ACTION=DO_NOT_MODIFY
+          EOF
+
+          cat > "$pkg/LEEME_PRIMERO_CS21A200.txt" <<'EOF'
+          CS21A200 · ENGLISH LAB QA UNIFICADO
+
+          1. QA solamente. No producción.
+          2. Este paquete usa UN SOLO Apps Script acumulativo: BACKEND_QA/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs
+          3. El backend contiene Memory Match + Sentence Order + Hangman + Quiz Time + Word Search.
+          4. Antes de versionar el deployment QA, ejecutar verificarMemoryMatchStartFixCS21A183(), verificarQuizTimeCS21A198() y verificarWordSearchCS21A200().
+          5. Conservar la MISMA implementación /exec QA. No crear una implementación nueva.
+          6. Cerrar servidores QA anteriores y extraer este ZIP en carpeta nueva.
+          7. Ejecutar ABRIR_CAMPUS_QA_CS21A200.cmd. Puerto esperado: 4200.
+          8. Configurar el mismo /exec QA en qa-setup.html.
+          9. Docente crea Word Search B1-U01 y espera exactamente 2 participantes.
+          10. Naty y Chu deben ver el mismo puzzle 14x14.
+          11. Probar claim normal y luego claim casi simultáneo de la misma palabra: un solo ganador.
+          12. El perdedor debe reconciliar al snapshot sin sumar punto local.
+          13. Repetir/F5 no debe duplicar un claim ni un puntaje.
+          14. Al terminar, regresión rápida de Quiz Time, Memory Match, Hangman y Sentence Order.
+          EOF
+
+          cat > "$pkg/REVISION_CS21A200.txt" <<'EOF'
+          CS21A200 integra Word Search B1-U01 al backend Live unificado.
+          - Curriculum: CONFIG_UNIDADES + ACADEMIA_PLAY_BANK.
+          - 10 palabras, grid 14x14, 180s, práctica formativa.
+          - Puzzle secreto permanece en SETTINGS_JSON; el navegador no recibe solutions.
+          - CLAIM_WORD exige action_id, round_id, puzzle_id, word_id y coordenadas start/end.
+          - First-claim-wins bajo LockService y refetch de sala.
+          - Replay del mismo action_id es idempotente.
+          - Cliente sólo concede palabra por claimed_words del snapshot autoritativo.
+          - Memory Match conserva dueño autoritativo CS192 y latency-safe CS194.
+          EOF
+
+          (cd "$pkg" && find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+          (cd "$pkg" && sha256sum -c SHA256SUMS.txt)
+          grep -qx "SOURCE_HEAD_SHA=$source_head" "$pkg/VERSION.txt"
+          grep -qx 'APPS_SCRIPT_INSTALL_MODE=ONE_COMPLETE_QA_FILE' "$pkg/VERSION.txt"
+          grep -qx 'BACKEND_LAYER=CS21A200-WORD-SEARCH-LIVE-1' "$pkg/VERSION.txt"
+          grep -q 'CS21A200-WORD-SEARCH-LIVE-1' "$pkg/BACKEND_QA/99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+
+          (cd /tmp && zip -qr "$(basename "$zipfile")" "$(basename "$pkg")")
+          unzip -t "$zipfile"
+          sha256sum "$zipfile" > "$zipfile.sha256"
+          test -s "$zipfile"
+          cat "$zipfile.sha256"
+
+      - name: Upload audited CS200 unified candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A200_CANDIDATO_ENGLISH_LAB_UNIFIED
+          path: |
+            /tmp/CAMPUS_QA_CS21A200_CANDIDATO_ENGLISH_LAB_UNIFIED.zip
+            /tmp/CAMPUS_QA_CS21A200_CANDIDATO_ENGLISH_LAB_UNIFIED.zip.sha256
+          retention-days: 30
