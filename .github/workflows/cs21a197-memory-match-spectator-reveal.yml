@@ -8,6 +8,7 @@ on:
       - 'scripts/test_apps_script_cumulative_verifier_cs21a197.mjs'
       - 'scripts/test_memory_match_spectator_reveal_browser_cs21a197.mjs'
       - 'scripts/patch_qa_package_cs21a197.mjs'
+      - 'scripts/finalize_qa_package_cs21a197.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_SPECTATOR_REVEAL_CS21A197.md'
       - '.github/workflows/cs21a197-memory-match-spectator-reveal.yml'
   workflow_dispatch:
@@ -98,11 +99,13 @@ jobs:
           node scripts/finalize_qa_package_cs21a196.mjs
           node scripts/finalize_qa_package_cs21a196.mjs --verify
 
-      - name: Patch and verify isolated CS21A197 package
+      - name: Patch and finalize isolated CS21A197 package
         run: |
           set -euo pipefail
           node scripts/patch_qa_package_cs21a197.mjs
           node scripts/patch_qa_package_cs21a197.mjs --verify
+          node scripts/finalize_qa_package_cs21a197.mjs
+          node scripts/finalize_qa_package_cs21a197.mjs --verify
 
       - name: Install Playwright Chromium
         run: |
@@ -160,7 +163,9 @@ jobs:
           node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
 
       - name: Reverify final package manifest
-        run: node scripts/patch_qa_package_cs21a197.mjs --verify
+        run: |
+          set -euo pipefail
+          node scripts/finalize_qa_package_cs21a197.mjs --verify
 
       - name: Zip and hash exact candidate
         run: |
