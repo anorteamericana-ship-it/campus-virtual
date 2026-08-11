@@ -117,7 +117,7 @@
     </div>;
   }
 
-  function useScopedCleanup(ref,gameId){
+  function useScopedCleanup(ref,gameId,role){
     React.useEffect(()=>{
       const root=ref.current;
       if(!root) return undefined;
@@ -134,7 +134,11 @@
             if(text.includes('BANCO PEDAGÓGICO')) card.style.display='none';
           });
         }
-        if(gameId==='SENTENCE_ORDER'){
+        // El wrapper docente de CS21A183 renderiza consola + base como hermanos.
+        // En estudiante esa misma técnica ocultaría el ingreso genérico antes de
+        // que el wrapper detecte una sala Sentence Order, por eso solo se aplica
+        // a la composición docente.
+        if(role==='teacher' && gameId==='SENTENCE_ORDER'){
           Array.from(root.children).forEach(child=>{
             const isSentence=child.classList?.contains('elso183-shell');
             child.style.display=isSentence?'':'none';
@@ -145,12 +149,12 @@
       const observer=typeof MutationObserver!=='undefined'?new MutationObserver(cleanLegacy):null;
       if(observer) observer.observe(root,{childList:true,subtree:true});
       return ()=>observer?.disconnect();
-    },[gameId]);
+    },[gameId,role]);
   }
 
   function GameHost({role,gameId,props}){
     const ref=React.useRef(null);
-    useScopedCleanup(ref,gameId);
+    useScopedCleanup(ref,gameId,role);
     const Component=(role==='teacher'?TeacherComponents:StudentComponents)[gameId] || missing(gameId);
     return <div ref={ref} className={'el205-game-host el205-host-'+gameId.toLowerCase()} data-game={gameId}><Component key={gameId} {...(props||{})}/></div>;
   }
