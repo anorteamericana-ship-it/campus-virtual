@@ -106,7 +106,7 @@
       stateRevision:Math.max(0, int(source.state_revision || source.stateRevision, 0)),
       question:question ? sanitizePublicQuestion(question) : null,
       reveal:normalizeReveal(source.reveal || source.answer_reveal),
-      turn:normalizeTurn(source.turn_state || source.turnState),
+      turn:normalizeTurn(source.turn_state || source.turnState || source.turn),
       answeredPlayerIds:Object.freeze((Array.isArray(source.answered_player_ids || source.answeredPlayerIds) ? (source.answered_player_ids || source.answeredPlayerIds) : []).map(clean).filter(Boolean)),
       questionIndex:Math.max(0, int(source.question_index || source.questionIndex, 0)),
       questionTotal:Math.max(0, int(source.question_total || source.questionTotal, 10)),
