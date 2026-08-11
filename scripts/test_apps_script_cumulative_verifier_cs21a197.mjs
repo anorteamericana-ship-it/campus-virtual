@@ -63,13 +63,15 @@ assert.deepEqual(versions.map(item=>item.version),expected);
 for(const item of versions) assert.equal(item.ok,true,`${item.version} devolvio ok=false.`);
 assert.equal(result.version,'CS21A197-MM-SPECTATOR-REVEAL-1');
 assert.equal(result.previous_version,'CS21A196-MM-CONFLICT-RECONCILIATION-1');
+assert.equal(result.historical_mismatch_reveal_ms,6000);
 assert.equal(result.spectator_reveal_ms,8500);
+assert.equal(result.historical_contract_preserved,true);
 assert.equal(result.reveal_deadline_commit_aligned,true);
 assert.equal(result.transient_poll_floor_ms,250);
 assert.equal(result.flip_animation_ms,200);
 assert.equal(result.second_card_public_during_mismatch,true);
 assert.equal(result.next_turn_waits_for_reveal_deadline,true);
-assert.equal(context.CS21A189_MM_MISMATCH_REVEAL_MS,8500);
+assert.equal(context.CS21A189_MM_MISMATCH_REVEAL_MS,6000);
 
 console.log(JSON.stringify({
   ok:true,
@@ -77,6 +79,8 @@ console.log(JSON.stringify({
   sources:sourceFiles.length,
   versions:expected,
   final_version:result.version,
+  historical_mismatch_reveal_ms:result.historical_mismatch_reveal_ms,
   spectator_reveal_ms:result.spectator_reveal_ms,
+  historical_contract_preserved:true,
   reveal_deadline_commit_aligned:true,
 },null,2));
