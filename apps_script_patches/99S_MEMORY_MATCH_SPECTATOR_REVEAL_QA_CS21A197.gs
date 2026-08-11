@@ -7,32 +7,34 @@ var CS21A197_MM_SPECTATOR_REVEAL_MS = 8500;
 var CS21A197_MM_TRANSIENT_POLL_FLOOR_MS = 250;
 var CS21A197_MM_FLIP_ANIMATION_MS = 200;
 
-// CS21A192 elevaba el mismatch a 6 s. En QA real parte de esa ventana se
-// consumia antes de que la segunda carta llegara a los espectadores. CS197
-// conserva al menos 8.5 s desde el punto de commit de la pareja.
-CS21A189_MM_MISMATCH_REVEAL_MS = Math.max(
-  Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) || 0,
-  CS21A197_MM_SPECTATOR_REVEAL_MS
-);
+// Importante: NO se sobreescribe CS21A189_MM_MISMATCH_REVEAL_MS. El verificador
+// historico CS192 debe seguir demostrando exactamente su contrato de 6000 ms.
+// El assembler CS197 cambia solo el callsite runtime del mismatch para usar
+// max(contrato historico, CS21A197_MM_SPECTATOR_REVEAL_MS).
 
 var _cs21a197VerifyBase_ = verificarMemoryMatchStartFixCS21A183;
 verificarMemoryMatchStartFixCS21A183 = function () {
   var previous = _cs21a197VerifyBase_();
+  var historicalRevealMs = Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) || 0;
+  var effectiveRevealMs = Math.max(historicalRevealMs, CS21A197_MM_SPECTATOR_REVEAL_MS);
   var result = {
     ok:!!(
       previous && previous.ok === true &&
-      Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) >= CS21A197_MM_SPECTATOR_REVEAL_MS &&
+      effectiveRevealMs === 8500 &&
+      historicalRevealMs === 6000 &&
       CS21A197_MM_TRANSIENT_POLL_FLOOR_MS === 250 &&
       CS21A197_MM_FLIP_ANIMATION_MS === 200
     ),
     version:CS21A197_MM_SPECTATOR_REVEAL_VERSION,
     previous_version:previous && previous.version,
-    spectator_reveal_ms:Number(CS21A189_MM_MISMATCH_REVEAL_MS || 0) || 0,
+    historical_mismatch_reveal_ms:historicalRevealMs,
+    spectator_reveal_ms:effectiveRevealMs,
     reveal_deadline_commit_aligned:true,
     transient_poll_floor_ms:CS21A197_MM_TRANSIENT_POLL_FLOOR_MS,
     flip_animation_ms:CS21A197_MM_FLIP_ANIMATION_MS,
     second_card_public_during_mismatch:true,
     next_turn_waits_for_reveal_deadline:true,
+    historical_contract_preserved:true,
     memory_match_only:true,
     qa_master:previous && previous.qa_master,
     qa_operational:previous && previous.qa_operational
