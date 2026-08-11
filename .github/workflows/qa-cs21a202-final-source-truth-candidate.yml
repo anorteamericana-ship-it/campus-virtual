@@ -71,9 +71,10 @@ jobs:
 
       - name: Regression Word Search R2 and Live contract
         run: |
-          node scripts/qa_cs21a199_word_search_engine.mjs
+          node scripts/qa_cs21a199_word_search.mjs
           node scripts/qa_cs21a200_word_search_backend_contract.mjs
           node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
 
       - name: Assemble unchanged unified CS201 backend
         run: node scripts/assemble_apps_script_cs21a201_unified.mjs
