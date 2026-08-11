@@ -1,0 +1,157 @@
+name: CS21A205 English LAB Unified Shell QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a205-english-lab-shell-cleanup
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a205-english-lab-shell-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unified-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact CS205 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce CS205 frontend-only perimeter
+        run: |
+          set -euo pipefail
+          BASE=61193892081a08281eb83cb0037a943a9f25a2bc
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs205-changed.txt
+          if grep -E '(^apps_script_patches/|\.gs$)' /tmp/cs205-changed.txt; then
+            echo 'CS21A205 no permite cambios Apps Script/backend.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+              '.github/workflows/qa-cs21a205-english-lab-shell.yml',
+              'scripts/qa_cs21a205_english_lab_shell.mjs',
+              'scripts/test_english_lab_unified_shell_browser_cs21a205.mjs',
+              'src/english_lab_live_canonical_loader_cs21a193.js',
+              'src/english_lab_games/english_lab_unified_shell_cs21a205.jsx',
+              'src/english_lab_games/english_lab_unified_shell_preview_cs21a205.html',
+              'styles/english_lab_unified_shell_cs21a205.css',
+          }
+          changed={line.strip() for line in Path('/tmp/cs205-changed.txt').read_text().splitlines() if line.strip()}
+          unexpected=sorted(changed-allowed)
+          if unexpected:
+              raise SystemExit('Archivos fuera del perímetro CS205: '+', '.join(unexpected))
+          required={
+              'src/english_lab_live_canonical_loader_cs21a193.js',
+              'src/english_lab_games/english_lab_unified_shell_cs21a205.jsx',
+              'styles/english_lab_unified_shell_cs21a205.css',
+          }
+          missing=sorted(required-changed)
+          if missing:
+              raise SystemExit('Faltan cambios esperados CS205: '+', '.join(missing))
+          print('CS21A205 perimeter OK:', *sorted(changed), sep='\n- ')
+          PY
+
+      - name: Static unified-shell contract
+        run: node scripts/qa_cs21a205_english_lab_shell.mjs
+
+      - name: Sentence Order regression
+        run: |
+          node scripts/test_english_lab_sentence_order_cs21a183.mjs
+          node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
+
+      - name: Hangman engine and contract regression
+        run: |
+          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
+          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
+
+      - name: Quiz Time regression
+        run: |
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+          node scripts/qa_cs21a198_quiz_option_balance.mjs
+          node scripts/qa_cs21a204_quiz_live_compatibility.mjs
+
+      - name: Word Search regression
+        run: |
+          node scripts/qa_cs21a199_word_search.mjs
+          node scripts/qa_cs21a200_word_search_backend_contract.mjs
+          node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Verify unchanged CS201 cumulative backend
+        run: |
+          set -euo pipefail
+          BASE=61193892081a08281eb83cb0037a943a9f25a2bc
+          git diff --exit-code "$BASE"...HEAD -- apps_script_patches/
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201-unified.js
+          node --check /tmp/cs201-unified.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs201-unified.js
+          grep -q 'CS21A200-WORD-SEARCH-LIVE-1' /tmp/cs201-unified.js
+          grep -q 'CS21A198-QUIZ-TIME-B1U01-2' /tmp/cs201-unified.js
+          grep -q 'CS21A197-MM-SPECTATOR-REVEAL-1' /tmp/cs201-unified.js
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static CS205 server
+        run: |
+          python3 -m http.server 4205 --bind 127.0.0.1 >/tmp/cs205-http.log 2>&1 &
+          echo $! >/tmp/cs205-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4205/src/english_lab_games/english_lab_unified_shell_preview_cs21a205.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs205-http.log
+          exit 1
+
+      - name: Unified shell browser gate teacher and student
+        env:
+          QA_BASE_URL: http://127.0.0.1:4205
+        run: node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+
+      - name: Canonical loader browser regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4205
+        run: node scripts/test_english_lab_canonical_loader_browser_cs21a193.mjs
+
+      - name: Hangman real browser regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4205
+        run: node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
+
+      - name: Quiz and Word Search real browser regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4205
+        run: node scripts/qa_cs21a204_quiz_word_search_browser_smoke.mjs
+
+      - name: Memory Match conflict and spectator regressions
+        env:
+          QA_BASE_URL: http://127.0.0.1:4205
+        run: |
+          node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+          node scripts/test_memory_match_spectator_reveal_browser_cs21a197.mjs
+          node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs
+
+      - name: Upload CS205 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A205_ENGLISH_LAB_UNIFIED_SHELL_QA
+          path: qa-output/
+          if-no-files-found: warn
+          retention-days: 30
