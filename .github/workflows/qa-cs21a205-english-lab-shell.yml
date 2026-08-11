@@ -149,6 +149,148 @@ jobs:
           node scripts/test_memory_match_spectator_reveal_browser_cs21a197.mjs
           node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs
 
+      - name: Build exact CS205 QA candidate
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE
+          zipfile=/tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE.zip
+          rm -rf "$pkg" "$zipfile" "$zipfile.sha256"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          for d in cs21a205-unified-shell cs21a205-canonical-loader cs21a191-hangman cs21a204-browser-smoke; do
+            test -d "qa-output/$d" && cp -r "qa-output/$d" "$pkg/EVIDENCIA_AUTOMATICA/" || true
+          done
+
+          cat > "$pkg/qa-bootstrap-cs205.js" <<'EOF'
+          (function(){
+            var url='';try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE')
+          matched=[]
+          for p in root.glob('*.html'):
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s:
+                  continue
+              boot='<script src="qa-bootstrap-cs205.js?v=CS21A205"></script>\n'
+              if 'qa-bootstrap-cs205.js' not in s:
+                  s=s.replace(marker,boot+marker,1)
+                  p.write_text(s,encoding='utf-8')
+              matched.append(p.name)
+          required={'campus.html','login.html','inscripcion.html','ventas.html'}
+          if not required.issubset(set(matched)):
+              raise SystemExit(f'Entradas QA incompletas: {matched}')
+          PY
+
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A205 · English LAB Shell QA</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:780px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A205 · English LAB Shell QA</h1><p>Candidato frontend con menú unificado para Memory Match, Sentence Order, Hangman, Quiz Time y Word Search. Conserva el mismo Apps Script /exec QA CS21A201.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec inválida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html#english_lab_live'};</script></body></html>
+          EOF
+
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A205.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A205 disponible en http://127.0.0.1:4205/qa-setup.html
+          start "" http://127.0.0.1:4205/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4205 --bind 127.0.0.1 && exit /b
+          python -m http.server 4205 --bind 127.0.0.1
+          EOF
+
+          head_sha="$(git rev-parse HEAD)"
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A205
+          STATUS=QA_CANDIDATE_UNIFIED_SHELL
+          QA_PORT=4205
+          SOURCE_BRANCH=${GITHUB_REF_NAME}
+          SOURCE_HEAD_SHA=${head_sha}
+          BASE_RC_SHA=61193892081a08281eb83cb0037a943a9f25a2bc
+          BACKEND_VERSION=CS21A201
+          APPS_SCRIPT_CHANGE=NO
+          INCLUDED_GAMES=MEMORY_MATCH|SENTENCE_ORDER|HANGMAN|QUIZ_TIME|WORD_SEARCH
+          UNIFIED_SHELL_BROWSER=REQUIRED_PASS
+          CANONICAL_LOADER_BROWSER=REQUIRED_PASS
+          LEGACY_LIVE_SWITCHERS=HIDDEN_NOT_DELETED
+          LEGACY_SOURCE_CODE=PRESERVED
+          MEMORY_AUTHENTICATED_QA=PASS_PROFE_CHU_NATY_CS203
+          PRODUCTION_ACTION=DO_NOT_MODIFY
+          EOF
+
+          cat > "$pkg/LEEME_PRIMERO_CS21A205.txt" <<'EOF'
+          CAMPUS QA CS21A205 - ENGLISH LAB SHELL CLEANUP
+          ============================================================
+          - QA ONLY. NO PRODUCCION. NO MERGE AUTOMATICO.
+          - Backend: conserva exactamente CS21A201.
+          - El shell muestra una sola entrada visual para los 5 juegos vigentes.
+          - Los switchers y tarjetas Live heredados se ocultan en esta superficie, pero su codigo fuente NO se borra.
+          - Memory Match conserva el PASS autenticado Profe + Chu + Naty de CS203.
+          - CI vuelve a ejecutar regresiones de Sentence Order, Hangman, Quiz, Word Search y Memory Match.
+          - Ejecutar ABRIR_CAMPUS_QA_CS21A205.cmd (puerto 4205).
+          EOF
+
+          (
+            cd "$pkg"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          (cd /tmp && zip -qr "$zipfile" "$(basename "$pkg")")
+          sha256sum "$zipfile" > "$zipfile.sha256"
+
+      - name: Inspect exact CS205 package
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE
+          head_sha="$(git rev-parse HEAD)"
+          grep -q 'VERSION=CS21A205' "$pkg/VERSION.txt"
+          grep -q "SOURCE_HEAD_SHA=${head_sha}" "$pkg/VERSION.txt"
+          grep -q 'BACKEND_VERSION=CS21A201' "$pkg/VERSION.txt"
+          grep -q 'APPS_SCRIPT_CHANGE=NO' "$pkg/VERSION.txt"
+          grep -q 'UNIFIED_SHELL_BROWSER=REQUIRED_PASS' "$pkg/VERSION.txt"
+          grep -q 'CANONICAL_LOADER_BROWSER=REQUIRED_PASS' "$pkg/VERSION.txt"
+          grep -q 'qa-bootstrap-cs205.js' "$pkg/login.html"
+          grep -q 'qa-bootstrap-cs205.js' "$pkg/campus.html"
+          grep -q 'CS21A205' "$pkg/src/english_lab_games/english_lab_unified_shell_cs21a205.jsx"
+          grep -q 'english_lab_unified_shell_cs21a205.jsx?v=CS21A205' "$pkg/src/english_lab_live_canonical_loader_cs21a193.js"
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a205-unified-shell/teacher-desktop.png"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a205-unified-shell/student-mobile.png"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a205-canonical-loader/result.json"
+          sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE/#' "$pkg/SHA256SUMS.txt")
+
+      - name: Start exact CS205 package server
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE
+          python3 -m http.server 4215 --bind 127.0.0.1 --directory "$pkg" >/tmp/cs205-package-http.log 2>&1 &
+          echo $! >/tmp/cs205-package-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4215/src/english_lab_games/english_lab_unified_shell_preview_cs21a205.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs205-package-http.log
+          exit 1
+
+      - name: Exact package browser gate
+        env:
+          QA_BASE_URL: http://127.0.0.1:4215
+        run: |
+          node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+          node scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs
+
+      - name: Upload CS205 QA candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE
+          path: |
+            /tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE.zip
+            /tmp/CAMPUS_QA_CS21A205_ENGLISH_LAB_SHELL_CANDIDATE.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload CS205 browser evidence
         if: always()
         uses: actions/upload-artifact@v4
