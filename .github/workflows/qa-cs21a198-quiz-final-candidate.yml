@@ -1,0 +1,193 @@
+name: CS21A198 Quiz Time Final Candidate QA
+
+on:
+  push:
+    branches:
+      - feat/cs21a198-quiz-time-b1u01-curricular-core
+  pull_request:
+    paths:
+      - 'src/english_lab_games/english_lab_quiz_*'
+      - 'src/english_lab_live_canonical_loader_cs21a193.js'
+      - 'styles/english_lab_quiz_time_*'
+      - 'apps_script_patches/99T_QUIZ_TIME_CURRICULAR_QA_CS21A198.gs'
+      - 'apps_script_patches/99U_QUIZ_TIME_OPTION_BALANCE_QA_CS21A198.gs'
+      - 'scripts/qa_cs21a198_quiz_*'
+      - 'scripts/assemble_apps_script_cs21a198*'
+      - '.github/workflows/qa-cs21a198-quiz-final-candidate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  final-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify source identity
+        run: |
+          expected='${{ github.event.pull_request.head.sha || github.sha }}'
+          actual="$(git rev-parse HEAD)"
+          echo "expected=$expected"
+          echo "actual=$actual"
+          test "$actual" = "$expected"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate curriculum core
+        run: node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+
+      - name: Validate backend contract
+        run: node scripts/qa_cs21a198_quiz_backend_contract.mjs
+
+      - name: Validate option balance against all-A source fixture
+        run: node scripts/qa_cs21a198_quiz_option_balance.mjs
+
+      - name: Validate canonical Live integration
+        run: node scripts/qa_cs21a198_quiz_live_integration.mjs
+
+      - name: Assemble hardened cumulative Apps Script
+        run: node scripts/assemble_apps_script_cs21a198_hardened_complete.mjs
+
+      - name: Syntax-check hardened Apps Script
+        run: |
+          cp apps_script_patches/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO_FINAL.gs /tmp/quiz-cs198-final.js
+          node --check /tmp/quiz-cs198-final.js
+
+      - name: Verify PR does not rewrite historical game implementations
+        if: github.event_name == 'pull_request'
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          changed="$(git diff --name-only "$base" HEAD)"
+          echo "$changed"
+          if echo "$changed" | grep -Eq '^src/english_lab_games/(memory_match|english_lab_live_memory_match|english_lab_hangman|hangman_engine|sentence_order)|^apps_script_patches/99[A-S]_.*(MEMORY|HANGMAN|SENTENCE)'; then
+            echo 'CS21A198 modifico una implementacion historica de juego.' >&2
+            exit 1
+          fi
+
+      - name: Build audited QA package revision 2
+        run: |
+          set -euo pipefail
+          pkg=/tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01_R2
+          zipfile=/tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01_R2.zip
+          rm -rf "$pkg" "$zipfile" "$zipfile.sha256"
+          mkdir -p "$pkg"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ "$pkg/"
+          mkdir -p "$pkg/BACKEND_QA"
+          cp apps_script_patches/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO_FINAL.gs "$pkg/BACKEND_QA/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO_FINAL.gs"
+
+          cat > "$pkg/qa-bootstrap-cs198.js" <<'EOF'
+          (function(){
+            var url=''; try{url=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||'';}catch(_){}
+            window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+          })();
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('/tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01_R2')
+          for name in ('campus.html','index.html'):
+              p=root/name
+              if not p.exists():
+                  continue
+              s=p.read_text(encoding='utf-8')
+              marker='<script src="src/runtime_config.js'
+              if marker not in s:
+                  raise SystemExit(f'No runtime marker in {name}')
+              boot='<script src="qa-bootstrap-cs198.js?v=CS21A198-R2"></script>\n'
+              if 'qa-bootstrap-cs198.js' not in s:
+                  s=s.replace(marker,boot+marker,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+
+          cat > "$pkg/qa-setup.html" <<'EOF'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CS21A198 R2 · QA Setup</title><body style="font-family:system-ui;background:#eef4fb;color:#052c59;padding:40px"><main style="max-width:760px;margin:auto;background:white;padding:28px;border-radius:22px"><h1>CS21A198 R2 · Quiz Time QA</h1><p>Use el mismo Apps Script <b>/exec de QA</b>. No use produccion.</p><input id="u" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd9e8;border-radius:12px" placeholder="https://script.google.com/macros/s/.../exec"><button id="s" style="margin-top:12px;padding:12px 18px;border:0;border-radius:12px;background:#052c59;color:white;font-weight:800">Guardar y abrir Campus</button><p id="m"></p></main><script>const u=document.getElementById('u'),m=document.getElementById('m');try{u.value=localStorage.getItem('AN_QA_APPS_SCRIPT_URL')||''}catch(_){}document.getElementById('s').onclick=()=>{const v=u.value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\/?$/.test(v)){m.textContent='URL /exec invalida.';return}localStorage.setItem('AN_QA_APPS_SCRIPT_URL',v.replace(/\/$/,''));location.href='campus.html?quiz=1#english_lab_live'};</script></body></html>
+          EOF
+
+          cat > "$pkg/ABRIR_CAMPUS_QA_CS21A198_R2.cmd" <<'EOF'
+          @echo off
+          cd /d "%~dp0"
+          echo Campus QA CS21A198 R2 disponible en http://127.0.0.1:4198/qa-setup.html
+          start "" http://127.0.0.1:4198/qa-setup.html
+          where py >nul 2>nul && py -m http.server 4198 --bind 127.0.0.1 && exit /b
+          python -m http.server 4198 --bind 127.0.0.1
+          EOF
+
+          source_head="$(git rev-parse HEAD)"
+          cat > "$pkg/VERSION.txt" <<EOF
+          VERSION=CS21A198
+          PACKAGE_REVISION=2
+          STATUS=QA_CANDIDATE_NOT_FINAL
+          QA_PORT=4198
+          SOURCE_BRANCH=feat/cs21a198-quiz-time-b1u01-curricular-core
+          SOURCE_HEAD_SHA=$source_head
+          CI_EVENT_SHA=${GITHUB_SHA}
+          BACKEND_LAYER=CS21A198-QUIZ-TIME-B1U01-2
+          BACKEND_COMPLETE=BACKEND_QA/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO_FINAL.gs
+          ENABLED_UNIT=B1-U01
+          QUESTION_COUNT=10
+          QUESTION_BALANCE=2xVOCAB+2xGRAM+2xSPEAK+2xLISTEN+2xREAD
+          OPTION_ORDER=SERVER_DETERMINISTIC_BALANCED
+          LISTENING_DELIVERY_MODE=DIALOGUE_TEXT_QA
+          TRUE_AUDIO_LISTENING=PENDING
+          AUTH_QA=PENDING
+          PRODUCTION_ACTION=DO_NOT_MODIFY
+          EOF
+
+          cat > "$pkg/REVISION_CS21A198_R2.txt" <<'EOF'
+          REVISION CS21A198 R2
+          - B1-U01 es la unica unidad habilitada.
+          - Fuente curricular: CONFIG_UNIDADES + ACADEMIA_PLAY_BANK.
+          - 25 items canonicos; cada ronda usa 10, dos por cada una de 5 areas.
+          - Hallazgo de auditoria: las 25 fuentes canonicas actuales almacenan CORRECT_OPTION=A.
+          - Correccion: el servidor redistribuye opciones por sala/pregunta y remapea la clave correcta; NO modifica la hoja fuente.
+          - Listening B1-U01 actual es DIALOGUE_TEXT_QA (la propia base indica Listen/read). Audio autentico queda pendiente y no se declara implementado.
+          - Respuesta correcta permanece fuera del objeto publico hasta REVEAL.
+          - No toca Memory Match, Hangman ni Sentence Order.
+          - No es produccion ni nota oficial.
+          EOF
+
+          cat > "$pkg/LEEME_PRIMERO_CS21A198_R2.txt" <<'EOF'
+          CS21A198 R2 · QUIZ TIME B1-U01 · QA CANDIDATE
+          1. No usar el candidato R1 anterior. Este R2 corrige trazabilidad e implementa balance de opciones.
+          2. Cierre servidores QA anteriores y extraiga este ZIP en una carpeta NUEVA.
+          3. Apps Script QA: reemplazar el backend QA por BACKEND_QA/99_CS21A198_QUIZ_TIME_B1U01_COMPLETO_FINAL.gs solo cuando se autorice.
+          4. Ejecutar verificarQuizTimeCS21A198() antes de versionar el deployment.
+          5. Mantener la misma implementacion /exec QA. No crear ni modificar produccion.
+          6. Ejecutar ABRIR_CAMPUS_QA_CS21A198_R2.cmd. Puerto esperado: 4198.
+          7. Configurar el mismo /exec QA en qa-setup.html.
+          8. Docente crea Quiz Time B1-U01 y espera exactamente 2 participantes antes de iniciar.
+          9. Validar 10 preguntas: 2 Vocabulary, 2 Grammar, 2 Communication, 2 Listening/Dialogue y 2 Reading.
+          10. Confirmar que las respuestas correctas NO siguen un patron fijo A y que no se exponen antes de REVEAL.
+          11. Hacer regresion rapida de Memory Match, Sentence Order y Hangman al terminar.
+          EOF
+
+          (cd "$pkg" && find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+          (cd "$pkg" && sha256sum -c SHA256SUMS.txt)
+          grep -qx "SOURCE_HEAD_SHA=$source_head" "$pkg/VERSION.txt"
+          grep -qx 'PACKAGE_REVISION=2' "$pkg/VERSION.txt"
+          grep -qx 'BACKEND_LAYER=CS21A198-QUIZ-TIME-B1U01-2' "$pkg/VERSION.txt"
+          grep -qx 'LISTENING_DELIVERY_MODE=DIALOGUE_TEXT_QA' "$pkg/VERSION.txt"
+
+          (cd /tmp && zip -qr "$(basename "$zipfile")" "$(basename "$pkg")")
+          unzip -t "$zipfile"
+          sha256sum "$zipfile" > "$zipfile.sha256"
+          test -s "$zipfile"
+          cat "$zipfile.sha256"
+
+      - name: Upload audited CS198 R2 candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01_R2
+          path: |
+            /tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01_R2.zip
+            /tmp/CAMPUS_QA_CS21A198_CANDIDATO_QUIZ_TIME_B1U01_R2.zip.sha256
+          retention-days: 30
