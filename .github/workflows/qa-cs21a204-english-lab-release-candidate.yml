@@ -80,7 +80,7 @@ jobs:
       - name: Load models only — not authenticated load
         run: |
           set -euo pipefail
-          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+          node scripts/qa_cs21a204_load_budget.mjs
           node scripts/english_lab_load_harness_cs21a183.mjs --self-test
 
       - name: Install Playwright Chromium
@@ -129,7 +129,7 @@ jobs:
           rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
           mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
           cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
-          cp -r qa-output/cs21a192-load-budget "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
+          cp -r qa-output/cs21a204-load-budget "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
 
           cat > "$pkg/qa-bootstrap-cs204.js" <<'EOF'
           (function(){
@@ -220,6 +220,7 @@ jobs:
           grep -q 'memoryPackageReady' "$pkg/src/english_lab_live.jsx"
           grep -q 'blockingBusy' "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q 'CS21A201-CURRICULUM-SOURCE-1' "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a204-load-budget/result.json"
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE/#' "$pkg/SHA256SUMS.txt")
 
       - name: Upload CS204 release candidate
