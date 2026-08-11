@@ -43,6 +43,7 @@ jobs:
               '.github/workflows/qa-cs21a205-english-lab-shell.yml',
               'scripts/qa_cs21a205_english_lab_shell.mjs',
               'scripts/test_english_lab_unified_shell_browser_cs21a205.mjs',
+              'scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs',
               'src/english_lab_live_canonical_loader_cs21a193.js',
               'src/english_lab_games/english_lab_unified_shell_cs21a205.jsx',
               'src/english_lab_games/english_lab_unified_shell_preview_cs21a205.html',
@@ -56,6 +57,7 @@ jobs:
               'src/english_lab_live_canonical_loader_cs21a193.js',
               'src/english_lab_games/english_lab_unified_shell_cs21a205.jsx',
               'styles/english_lab_unified_shell_cs21a205.css',
+              'scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs',
           }
           missing=sorted(required-changed)
           if missing:
@@ -124,10 +126,10 @@ jobs:
           QA_BASE_URL: http://127.0.0.1:4205
         run: node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
 
-      - name: Canonical loader browser regression
+      - name: Canonical loader CS205 browser regression
         env:
           QA_BASE_URL: http://127.0.0.1:4205
-        run: node scripts/test_english_lab_canonical_loader_browser_cs21a193.mjs
+        run: node scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs
 
       - name: Hangman real browser regression
         env:
