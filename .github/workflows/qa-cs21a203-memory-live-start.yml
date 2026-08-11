@@ -75,7 +75,24 @@ jobs:
       - name: CS203 lobby presence F5 start and countdown
         env:
           QA_BASE_URL: http://127.0.0.1:4203
-        run: node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs
+        run: |
+          set +e
+          node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs > /tmp/cs203-lobby.log 2>&1
+          code=$?
+          cat /tmp/cs203-lobby.log
+          exit $code
+
+      - name: Upload lobby failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A203_LOBBY_FAILURE_DIAGNOSTICS
+          path: |
+            /tmp/cs203-lobby.log
+            /tmp/cs203-http.log
+            qa-output/**
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Regression Quiz Time
         run: |
