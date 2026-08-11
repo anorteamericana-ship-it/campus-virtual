@@ -32,6 +32,12 @@ jobs:
       - name: Apply CS21A202 recovery to real src
         run: node scripts/apply_cs21a202_source_recovery.mjs
 
+      - name: Remove runtime code patch from conflict test
+        run: node scripts/apply_cs21a202_test_recovery.mjs
+
+      - name: Audit source-of-truth contract
+        run: node scripts/qa_cs21a202_source_truth.mjs
+
       - name: Verify source markers
         run: |
           set -euo pipefail
@@ -40,10 +46,11 @@ jobs:
           grep -q "const stateCandidate=candidate.ok===false" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "mutationBusy={busy}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "authoritativeBusy" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
-          grep -q "pairPendingRef.current=false" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+          grep -q "CS21A202 fixture: el mismo contrato de reconciliación" src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html
+          ! grep -q "original.replace(oldTransport,newTransport)" scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
           git diff --check
 
-      - name: Verify a clean checkout package would preserve the fix
+      - name: Verify clean checkout packaging preserves the fix
         run: |
           set -euo pipefail
           pkg=/tmp/cs21a202-clean-package
@@ -54,26 +61,31 @@ jobs:
           grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "authoritativeBusy" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
+          ! grep -q "original.replace(oldTransport,newTransport)" "$pkg/scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs"
 
-      - name: Commit recovered source if needed
+      - name: Commit recovered source and tests if needed
         id: commit
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- src/english_lab_live.jsx src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx src/english_lab_games/memory_match_classic_sync_cs21a189.jsx; then
+          paths=(
+            src/english_lab_live.jsx
+            src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+            src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
+            src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html
+            scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+          )
+          if git diff --quiet -- "${paths[@]}"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Source already recovered."
+            echo "Source and tests already recovered."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/english_lab_live.jsx \
-                  src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx \
-                  src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
-          git commit -m "CS21A202 recupera Memory Match CS196 en src real"
+          git add "${paths[@]}"
+          git commit -m "CS21A202 elimina parche runtime y fija source-of-truth"
           git push origin HEAD:${{ github.ref_name }}
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Summary
-        run: |
-          echo "CS21A202 source recovery complete. auto_commit=${{ steps.commit.outputs.changed }}"
+        run: echo "CS21A202 source recovery complete. auto_commit=${{ steps.commit.outputs.changed }}"
