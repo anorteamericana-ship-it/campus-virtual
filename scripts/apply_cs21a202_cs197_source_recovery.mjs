@@ -68,6 +68,37 @@ changed=replaceExact(classic,
 `    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION}>`,
 `    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION} data-spectator-reveal-ms={revealRuleMs}>`,'CS197 spectator reveal data')||changed;
 
+// CS197 tenía una segunda mutación de dist/ en finalize_qa_package_cs21a197.mjs.
+// CS21A202 la convierte en source real: mismatch muestra "Cartas Xs" en vez de "…".
+const timerOld=`  function Timer({remainingMs,durationMs,waiting,syncingTurn}) {
+    const duration=Math.max(1,Number(durationMs)||1);
+    const pct=Math.max(0,Math.min(100,(remainingMs/duration)*100));
+    const seconds=Math.max(0,Math.ceil(remainingMs/1000));
+    const label=syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
+    return <div className={\`elmm-timer \${(waiting||syncingTurn)?'is-transition':''}\`} role="timer" aria-label={syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':\`\${seconds} segundos restantes\`}>
+      <div className="elmm-timer-copy"><span>{label}</span><strong>{(waiting||syncingTurn)?'…':\`\${seconds}s\`}</strong></div>
+      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:syncingTurn?'0%':waiting?'100%':\`\${pct}%\`}}/></div>
+    </div>;
+  }`;
+const timerNew=`  function Timer({remainingMs,durationMs,waiting,syncingTurn,revealWaiting}) {
+    const duration=Math.max(1,Number(durationMs)||1);
+    const pct=Math.max(0,Math.min(100,(remainingMs/duration)*100));
+    const seconds=Math.max(0,Math.ceil(remainingMs/1000));
+    const transition=!!(waiting||syncingTurn||revealWaiting);
+    const label=revealWaiting?'Cartas':syncingTurn?'Sincronizando turno':waiting?'Cambio de turno':'Tiempo';
+    const aria=revealWaiting?\`Pareja visible, \${seconds} segundos para memorizar\`:syncingTurn?'Sincronizando cambio de turno':waiting?'Cambio de turno':\`\${seconds} segundos restantes\`;
+    const value=revealWaiting?\`\${seconds}s\`:(syncingTurn||waiting)?'…':\`\${seconds}s\`;
+    const fillWidth=syncingTurn?'0%':revealWaiting?\`\${pct}%\`:waiting?'100%':\`\${pct}%\`;
+    return <div className={\`elmm-timer \${transition?'is-transition':''}\`} role="timer" aria-label={aria} data-reveal-waiting={revealWaiting?'true':'false'}>
+      <div className="elmm-timer-copy"><span>{label}</span><strong>{value}</strong></div>
+      <div className="elmm-timer-track"><div className="elmm-timer-fill" style={{width:fillWidth}}/></div>
+    </div>;
+  }`;
+changed=replaceExact(classic,timerOld,timerNew,'CS197 finalized reveal Timer')||changed;
+changed=replaceExact(classic,
+`      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={waitingForFlipback || turnStartsIn>0} syncingTurn={syncingTurn}/>`,
+`      <Timer remainingMs={timerRemainingMs} durationMs={timerDurationMs} waiting={turnStartsIn>0} revealWaiting={waitingForFlipback} syncingTurn={syncingTurn}/>`,'CS197 finalized reveal Timer call')||changed;
+
 const css='styles/english_lab_memory_match_classic_sync_cs21a189.css';
 let cssSource=read(css);
 const cssMarker='/* CS21A202 recovery · CS21A197 giro visual rápido. */';
@@ -85,6 +116,9 @@ assert.match(adapterSource,/data-live-current-poll-ms=\{currentPollMs\}/);
 assert.match(adapterSource,/livePollMsForState:pollMsForState/);
 assert.match(classicSource,/data-spectator-reveal-ms=\{revealRuleMs\}/);
 assert.match(classicSource,/se cierran en \$\{revealSeconds\}s/);
-assert.match(classicSource,/remainingMs=\{timerRemainingMs\}/);
+assert.match(classicSource,/function Timer\(\{remainingMs,durationMs,waiting,syncingTurn,revealWaiting\}\)/);
+assert.match(classicSource,/const label=revealWaiting\?'Cartas'/);
+assert.match(classicSource,/data-reveal-waiting=\{revealWaiting\?'true':'false'\}/);
+assert.match(classicSource,/waiting=\{turnStartsIn>0\} revealWaiting=\{waitingForFlipback\}/);
 assert.match(finalCss,/transition:transform \.20s cubic-bezier\(\.2,\.75,\.25,1\)/);
-console.log(JSON.stringify({ok:true,version:'CS21A202-CS197-SOURCE-RECOVERY-1',changed,transient_poll_floor_ms:250,spectator_reveal_ms:8500,flip_animation_ms:200},null,2));
+console.log(JSON.stringify({ok:true,version:'CS21A202-CS197-SOURCE-RECOVERY-2',changed,transient_poll_floor_ms:250,spectator_reveal_ms:8500,reveal_timer_visible:true,flip_animation_ms:200},null,2));
