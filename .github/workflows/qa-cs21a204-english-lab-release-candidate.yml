@@ -57,7 +57,7 @@ jobs:
           node scripts/qa_cs21a198_quiz_curriculum_core.mjs
           node scripts/qa_cs21a198_quiz_backend_contract.mjs
           node scripts/qa_cs21a198_quiz_option_balance.mjs
-          node scripts/qa_cs21a198_quiz_live_integration.mjs
+          node scripts/qa_cs21a204_quiz_live_compatibility.mjs
 
       - name: Word Search full regression
         run: |
