@@ -92,8 +92,20 @@ try{
     await page.goto(`${base}${preview}?role=student`,{waitUntil:'networkidle'});
     await page.locator('.el205-shell[data-version="CS21A205"]').waitFor({state:'visible',timeout:10000});
 
-    assert.equal(await page.locator('button[role="tab"]').count(),5,'Estudiante debe ver exactamente cinco juegos.');
+    const cards=page.locator('button[role="tab"]');
+    assert.equal(await cards.count(),5,'Estudiante debe ver exactamente cinco juegos.');
     assert.deepEqual(await gameLabels(page),expected,'Las etiquetas estudiante deben coincidir con el catálogo vigente.');
+    assert.equal(await page.locator('.el205-game-copy em:visible').count(),0,'En móvil las descripciones largas deben colapsarse para priorizar el ingreso a sala.');
+    const firstBox=await cards.nth(0).boundingBox();
+    const secondBox=await cards.nth(1).boundingBox();
+    const fifthBox=await cards.nth(4).boundingBox();
+    const stageBox=await page.locator('.el205-stage-head').boundingBox();
+    assert.ok(firstBox&&secondBox&&fifthBox&&stageBox,'No se pudo medir el layout móvil CS205.');
+    assert.ok(Math.abs(firstBox.y-secondBox.y)<4,'Los dos primeros juegos deben compartir fila en móvil.');
+    assert.ok(secondBox.x>firstBox.x+firstBox.width*.7,'La segunda tarjeta debe ocupar la segunda columna móvil.');
+    assert.ok(fifthBox.width>firstBox.width*1.7,'La quinta tarjeta debe cerrar el selector ocupando ambas columnas.');
+    assert.ok(stageBox.y<760,`El ingreso Live quedó demasiado abajo en móvil (${stageBox.y}px).`);
+
     await page.locator('[data-mock="Ingreso por código"]').waitFor({state:'visible'});
     assert.equal(await page.locator('.ws200-gateway:visible,.qt198-gateway:visible,.elh191-tabs:visible').count(),0,'El ingreso legacy no debe reintroducir switchers históricos.');
 
@@ -108,7 +120,14 @@ try{
     await page.locator('[data-mock="Word Search student"]').waitFor({state:'visible'});
     assert.match(page.url(),/[?&]role=student(?:&|$)|[?&]game=WORD_SEARCH(?:&|$)/,'La navegación no debe perder el modo estudiante.');
 
-    results.student={games:await gameLabels(page),legacyEntryPreserved:true,directQuiz:true,directWordSearch:true};
+    results.student={
+      games:await gameLabels(page),
+      legacyEntryPreserved:true,
+      directQuiz:true,
+      directWordSearch:true,
+      compactTwoColumnMobile:true,
+      stageTopPx:Math.round(stageBox.y),
+    };
     await page.screenshot({path:path.join(output,'student-mobile.png'),fullPage:true});
     await context.close();
   }
