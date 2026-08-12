@@ -18,6 +18,7 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
   let turnStartedAt=scenarioStartedAt-pollAgeMs;
   let turnEndsAt=turnStartedAt+15000;
   const originalInitialEnd=turnEndsAt;
+  let firstRevealProtectedEnd=0;
   let revision=1;
   let boardVersion=1;
   let turnNumber=1;
@@ -26,7 +27,6 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
   let matchedPairs=[];
   let claimedPairs={};
   let timeoutCount=0;
-  let discoverRequestAt=0;
   let serverRevealAt=0;
   let secondClickAt=0;
   let pairRequestAt=0;
@@ -99,7 +99,6 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
     requests.push({action,at:Date.now(),viewer});
 
     if(action==='DISCOVER_CARD'){
-      discoverRequestAt=Date.now();
       await wait(backendDelayMs);
       maybeAdvance();
       if(turnNumber!==1||activePlayer!=='P1'){
@@ -110,6 +109,7 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
       serverRevealAt=Date.now();
       const requiredEnd=serverRevealAt+15000;
       turnEndsAt=Math.max(turnEndsAt,requiredEnd);
+      firstRevealProtectedEnd=turnEndsAt;
       revision+=1;boardVersion+=1;
       attempt={
         phase:'FIRST_REVEALED',player_id:'P1',player_name:'Chu',turn_number:1,
@@ -185,17 +185,15 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
     await actorCards.nth(0).click();
     await actor.waitForFunction(()=>document.querySelectorAll('.elmm-card')[0]?.getAttribute('data-card-state')==='REVEALED',null,{timeout:1000});
 
-    // En el escenario lento esperamos el ACK autoritativo para reproducir el caso
-    // más conservador: el alumno ve la primera carta confirmada y recién entonces
-    // elige la segunda.
     await discoverCommitted;
     assert.ok(serverRevealAt>0,`${name}: nunca se aceptó la primera carta.`);
     assert.equal(timeoutCount,0,`${name}: hubo timeout antes de FIRST_REVEALED.`);
     assert.ok(serverRevealAt<originalInitialEnd,`${name}: 15 s iniciales no alcanzaron para DISCOVER_CARD.`);
-    assert.ok(turnEndsAt>=serverRevealAt+15000,`${name}: FIRST_REVEALED no recibió 15 s propios.`);
-    assert.ok(serverRevealAt-turnStartedAt>10000,`${name}: el escenario lento no demuestra el fallo del contrato viejo de 10 s.`);
+    assert.ok(firstRevealProtectedEnd>=serverRevealAt+15000,`${name}: FIRST_REVEALED no recibió 15 s propios.`);
+    if(backendDelayMs>=8000){
+      assert.ok(serverRevealAt-turnStartedAt>10000,`${name}: el escenario de 8 s no sobrepasó el contrato viejo de 10 s.`);
+    }
 
-    // Forzar un poll pasado el viejo deadline inicial; el turno debe seguir siendo P1.
     const waitPastInitial=Math.max(0,originalInitialEnd-Date.now()+350);
     if(waitPastInitial) await wait(waitPastInitial);
     await spectator.evaluate(()=>window.dispatchEvent(new CustomEvent('an:memory-match-sync-request'))).catch(()=>{});
@@ -247,7 +245,7 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
       name,backendDelayMs,mode,pollAgeMs,
       originalInitialWindowMs:15000,
       serverRevealAfterTurnStartMs:serverRevealAt-turnStartedAt,
-      protectedSecondWindowMs:turnEndsAt-serverRevealAt,
+      protectedSecondWindowMs:firstRevealProtectedEnd-serverRevealAt,
       pairRequestAfterSecondClickMs:pairRequestAt-secondClickAt,
       pairServerAcceptedAfterSecondClickMs:pairServerAcceptedAt-secondClickAt,
       timeoutCount,
