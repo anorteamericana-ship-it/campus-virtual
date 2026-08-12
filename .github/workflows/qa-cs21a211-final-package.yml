@@ -57,21 +57,36 @@ jobs:
 
       - name: Other four games static regression
         run: |
-          set -euo pipefail
-          node scripts/test_english_lab_sentence_order_cs21a183.mjs
-          node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
-          node scripts/test_english_lab_hangman_engine_cs21a191.mjs
-          node scripts/test_english_lab_hangman_contract_cs21a191.mjs
-          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
-          node scripts/qa_cs21a198_quiz_live_integration.mjs
-          node scripts/qa_cs21a198_quiz_backend_contract.mjs
-          node scripts/qa_cs21a204_quiz_live_compatibility.mjs
-          node scripts/qa_cs21a199_word_search.mjs
-          node scripts/qa_cs21a200_word_search_backend_contract.mjs
-          node scripts/qa_cs21a200_word_search_live_integration.mjs
-          node scripts/qa_cs21a205_english_lab_shell.mjs
-          node scripts/qa_cs21a207_english_lab_navigation.mjs
-          node scripts/qa_cs21a208_english_lab_legacy_routes.mjs
+          set -u
+          mkdir -p qa-output/cs211-final-static-logs
+          failed=0
+          for script in \
+            scripts/test_english_lab_sentence_order_cs21a183.mjs \
+            scripts/test_english_lab_curriculum_guard_cs21a183.mjs \
+            scripts/test_english_lab_hangman_engine_cs21a191.mjs \
+            scripts/test_english_lab_hangman_contract_cs21a191.mjs \
+            scripts/qa_cs21a198_quiz_curriculum_core.mjs \
+            scripts/qa_cs21a198_quiz_live_integration.mjs \
+            scripts/qa_cs21a198_quiz_backend_contract.mjs \
+            scripts/qa_cs21a204_quiz_live_compatibility.mjs \
+            scripts/qa_cs21a199_word_search.mjs \
+            scripts/qa_cs21a200_word_search_backend_contract.mjs \
+            scripts/qa_cs21a200_word_search_live_integration.mjs \
+            scripts/qa_cs21a205_english_lab_shell.mjs \
+            scripts/qa_cs21a207_english_lab_navigation.mjs \
+            scripts/qa_cs21a208_english_lab_legacy_routes.mjs
+          do
+            name="$(basename "$script" .mjs)"
+            echo "===== $script ====="
+            if node "$script" >"qa-output/cs211-final-static-logs/${name}.log" 2>&1; then
+              cat "qa-output/cs211-final-static-logs/${name}.log"
+            else
+              cat "qa-output/cs211-final-static-logs/${name}.log"
+              echo "FAIL: $script" | tee -a qa-output/cs211-final-static-logs/FAILURES.txt
+              failed=1
+            fi
+          done
+          test "$failed" -eq 0
 
       - name: Assemble exact CS211 QA backend
         run: |
