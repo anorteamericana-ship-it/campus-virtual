@@ -8,12 +8,18 @@ const base=(process.env.QA_BASE_URL||'http://127.0.0.1:4209').replace(/\/$/,'');
 const out=path.resolve('qa-output/cs21a209-sentence-order');
 fs.mkdirSync(out,{recursive:true});
 
+function commandEscape(value){
+  return String(value||'').replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');
+}
+
 const launchOptions={headless:true};
 if(process.env.PLAYWRIGHT_EXECUTABLE_PATH) launchOptions.executablePath=process.env.PLAYWRIGHT_EXECUTABLE_PATH;
 const browser=await chromium.launch(launchOptions);
+let student=null;
+let teacher=null;
 
 try{
-  const student=await browser.newPage({viewport:{width:390,height:844}});
+  student=await browser.newPage({viewport:{width:390,height:844}});
   let response=await student.goto(`${base}/src/english_lab_games/sentence_order_preview_cs21a209.html?role=student`,{waitUntil:'networkidle'});
   assert.ok(response&&response.ok(),'preview estudiante cargó');
   await student.locator('#qaJoin').click();
@@ -48,7 +54,7 @@ try{
   assert.ok(overflow.scroll<=overflow.client+2,`sin overflow horizontal a 390 px: ${JSON.stringify(overflow)}`);
   await student.screenshot({path:path.join(out,'student-390.png'),fullPage:true});
 
-  const teacher=await browser.newPage({viewport:{width:1366,height:900}});
+  teacher=await browser.newPage({viewport:{width:1366,height:900}});
   response=await teacher.goto(`${base}/src/english_lab_games/sentence_order_preview_cs21a209.html?role=teacher`,{waitUntil:'networkidle'});
   assert.ok(response&&response.ok(),'preview docente cargó');
   await teacher.waitForSelector('.elso183-shell');
@@ -71,6 +77,13 @@ try{
   };
   fs.writeFileSync(path.join(out,'browser_result.json'),JSON.stringify(result,null,2)+'\n');
   console.log(JSON.stringify(result,null,2));
+}catch(error){
+  const detail=String(error&&error.stack||error);
+  fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify({ok:false,version:'CS21A209',error:detail},null,2)+'\n');
+  if(student){try{await student.screenshot({path:path.join(out,'failure-student.png'),fullPage:true});}catch(_){}}
+  if(teacher){try{await teacher.screenshot({path:path.join(out,'failure-teacher.png'),fullPage:true});}catch(_){}}
+  console.error(`::error title=CS21A209 Sentence Order browser::${commandEscape(detail)}`);
+  throw error;
 }finally{
   await browser.close();
 }
