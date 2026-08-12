@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - 'scripts/test_memory_match_classic_sync_cs21a189.mjs'
+      - 'scripts/english_lab_memory_match_load_harness_cs21a192.mjs'
       - 'scripts/qa_cs21a198_quiz_live_integration.mjs'
       - '.github/workflows/cs21a194-memory-match-latency-safe.yml'
       - '.github/workflows/qa-cs21a200-word-search-live-unified.yml'
