@@ -1,9 +1,6 @@
-name: CS21A202 English LAB Source of Truth Recovery
+name: CS21A202 Historical English LAB Source Recovery
 
 on:
-  push:
-    branches:
-      - fix/cs21a202-english-lab-source-of-truth-recovery
   workflow_dispatch:
 
 permissions:
@@ -47,7 +44,8 @@ jobs:
           grep -q "CS21A202: un rechazo de dominio con room_package" src/english_lab_live.jsx
           ! grep -q "!res.ok || !data || data.ok === false" src/english_lab_live.jsx
           grep -q "const stateCandidate=candidate.ok===false" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
-          grep -q "mutationBusy={busy}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "const blocksInteraction=submissionAction!='DISCOVER_CARD'\|const blocksInteraction=submissionAction!=='DISCOVER_CARD'" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
+          grep -q "mutationBusy={blockingBusy}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "function pollMsForState(state)" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "data-live-current-poll-ms={currentPollMs}" src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx
           grep -q "authoritativeBusy" src/english_lab_games/memory_match_classic_sync_cs21a189.jsx
@@ -67,7 +65,7 @@ jobs:
           rsync -a --exclude '.git' --exclude 'node_modules' ./ "$pkg/"
           grep -q "CS21A202: un rechazo de dominio con room_package" "$pkg/src/english_lab_live.jsx"
           grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
-          grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "mutationBusy={blockingBusy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "data-live-current-poll-ms={currentPollMs}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "data-spectator-reveal-ms={revealRuleMs}" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
           grep -q "transition:transform .20s" "$pkg/styles/english_lab_memory_match_classic_sync_cs21a189.css"
@@ -99,4 +97,4 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Summary
-        run: echo "CS21A202 source recovery complete. auto_commit=${{ steps.commit.outputs.changed }}"
+        run: echo "Historical CS21A202 source recovery complete. auto_commit=${{ steps.commit.outputs.changed }}"
