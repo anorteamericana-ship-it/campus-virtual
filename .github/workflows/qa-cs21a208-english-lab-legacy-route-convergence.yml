@@ -1,0 +1,65 @@
+name: CS21A208 English LAB Legacy Route Convergence QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a208-english-lab-legacy-route-convergence
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/qa_cs21a208_english_lab_legacy_routes.mjs'
+      - '.github/workflows/qa-cs21a208-english-lab-legacy-route-convergence.yml'
+      - '00_DOCUMENTACION/ENGLISH_LAB_LEGACY_ROUTE_CONVERGENCE_CS21A208.md'
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-route-convergence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Guard isolated scope
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PR_BASE_SHA:-}" ]; then base="$PR_BASE_SHA"; else base="HEAD^"; fi
+          git diff --name-only "$base"..HEAD | tee /tmp/cs208-changed.txt
+          if grep -Ev '^(src/app\.jsx|scripts/qa_cs21a208_english_lab_legacy_routes\.mjs|\.github/workflows/qa-cs21a208-english-lab-legacy-route-convergence\.yml|00_DOCUMENTACION/ENGLISH_LAB_LEGACY_ROUTE_CONVERGENCE_CS21A208\.md)$' /tmp/cs208-changed.txt | grep -q .; then
+            echo 'CS21A208 sólo puede modificar routing de app, su QA y documentación.' >&2
+            exit 1
+          fi
+          ! grep -Eq '^(apps_script_patches/|apps_script_unified/|src/academia_play\.jsx|src/english_lab_games/)' /tmp/cs208-changed.txt
+
+      - name: Validate legacy route convergence
+        run: node scripts/qa_cs21a208_english_lab_legacy_routes.mjs
+
+      - name: Preserve CS207 canonical visible navigation
+        run: node scripts/qa_cs21a207_english_lab_navigation.mjs
+
+      - name: Preserve CS205 five-game shell
+        run: node scripts/qa_cs21a205_english_lab_shell.mjs
+
+      - name: Preserve Memory Quiz and Word Search contracts
+        run: |
+          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+          node scripts/qa_cs21a198_quiz_live_integration.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Confirm backend remains CS201 without changes
+        run: |
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201.js
+          node --check /tmp/cs201.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs201.js
