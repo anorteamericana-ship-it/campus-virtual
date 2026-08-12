@@ -46,6 +46,7 @@ jobs:
             'scripts/test_memory_match_fast_turn_browser_cs21a211.mjs',
             'scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs',
             '.github/workflows/qa-cs21a211-memory-match-fast-turn.yml',
+            '.github/workflows/qa-cs21a211-final-package.yml',
           }
           changed={x.strip() for x in Path('/tmp/cs211-delta.txt').read_text().splitlines() if x.strip()}
           unexpected=changed-allowed
