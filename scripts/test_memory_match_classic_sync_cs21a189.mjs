@@ -41,7 +41,8 @@ for(const marker of [
 // El texto visible evolucionó en CS197 para incluir un countdown real. El contrato
 // importante no es una frase literal, sino que el mismatch siga identificándose,
 // permanezca visible hasta reveal_until y bloquee el siguiente turno hasta flipback.
-assert.match(engine,/No coinciden[^\n<]*memoriz/i,'El mismatch debe seguir comunicándose como no coincidente y memorizable.');
+assert.ok(engine.includes('No coinciden'),'El mismatch debe seguir identificándose como no coincidente.');
+assert.ok(engine.includes('memorízalas') || engine.includes('memorizar'),'El mismatch debe indicar que las cartas pueden memorizarse durante el reveal.');
 assert.match(engine,/turnReady\s*=\s*turnStartsIn\s*<=\s*0\s*&&\s*!waitingForFlipback/,'El siguiente turno no puede habilitarse durante el reveal.');
 assert.ok(engine.includes('data-spectator-reveal-ms'),'El motor debe exponer el reveal vigente para espectadores.');
 
