@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CS21A210 · Quiz Time Browser QA</title>
+  <link rel="stylesheet" href="../../styles/english_lab_quiz_time_cs21a198.css?v=CS21A198" />
+  <style>
+    html,body{margin:0;min-height:100%;background:#e9eff6;font-family:Inter,system-ui,sans-serif}
+    .qa210-wrap{max-width:1440px;margin:0 auto;padding:12px}
+    .qa210-note{margin:0 0 10px;padding:8px 10px;border-radius:10px;background:#fff;font-size:12px;color:#52677f}
+  </style>
+</head>
+<body>
+  <div class="qa210-wrap">
+    <p class="qa210-note">CS21A210 · StudentSession sintético. Endpoint local interceptado por Playwright; no usa Apps Script.</p>
+    <div id="root"></div>
+  </div>
+
+  <script src="../../vendor/react.js"></script>
+  <script src="../../vendor/react-dom.js"></script>
+  <script src="../../vendor/babel.js"></script>
+  <script src="english_lab_quiz_curriculum_contract_cs21a198.js?v=CS21A198"></script>
+  <script src="english_lab_quiz_engine_cs21a198.js?v=CS21A198"></script>
+  <script>
+    window.APPS_SCRIPT_URL='/__cs21a210_quiz_mock__';
+    window.getSessionToken=()=> 'QA-CS21A210';
+    window.CS21A210_INITIAL_RESPONSE=(function(){
+      const now=Date.now();
+      return {
+        ok:true,
+        quiz_time:true,
+        answer_count:0,
+        room:{room_code:'QT-210',status:'LIVE'},
+        player:{cod_estudiante:'QA-STU-007',player_id:'QA-STU-007',nombre:'Naty'},
+        can_answer:true,
+        my_answer:null,
+        leaderboard:[{rank:1,cod_estudiante:'QA-STU-007',nombre:'Naty',points:0,correct:0}],
+        quiz_state:{
+          version:'CS21A198',
+          room_code:'QT-210',
+          phase:'OPEN',
+          state_revision:210,
+          question_index:1,
+          question_total:10,
+          question:{
+            question_id:'QT-QA-210-1',
+            source_item_id:'GRAM-B1-U01-QA210',
+            level_id:'B1',
+            unit_id:'B1-U01',
+            area_id:'GRAM',
+            template_id:'GRAM_01',
+            item_type:'MCQ',
+            prompt_es:'Elegí una respuesta para probar el bloqueo de doble envío.',
+            stem:'Complete: “___ name is Ana.”',
+            options:[{id:'A',label:'My'},{id:'B',label:'Your'},{id:'C',label:'His'},{id:'D',label:'Her'}],
+            difficulty_1_10:1,
+            position:1,
+            total:10
+          },
+          reveal:{visible:false},
+          turn_state:{
+            participation_policy:'EVERYONE',
+            turn_number:1,
+            turn_started_at:new Date(now-2000).toISOString(),
+            turn_ends_at:new Date(now+60000).toISOString()
+          },
+          answered_player_ids:[]
+        },
+        curriculum:{unit_name:"What's your name?",unit_objective_es:'Presentarse y compartir información personal básica.'}
+      };
+    })();
+  </script>
+  <script type="text/babel" src="english_lab_quiz_time_live_cs21a198.jsx?v=CS21A210"></script>
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <EnglishLabQuizTimeCS21A198.StudentSession
+        initial={window.CS21A210_INITIAL_RESPONSE}
+        props={{usuario:{codigo:'QA-STU-007',nombre:'Naty'}}}
+      />
+    );
+  </script>
+</body>
+</html>
