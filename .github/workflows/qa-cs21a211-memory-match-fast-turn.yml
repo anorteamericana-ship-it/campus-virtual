@@ -39,9 +39,11 @@ jobs:
             'scripts/assemble_apps_script_cs21a211_unified.mjs',
             'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx',
             'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx',
+            'src/english_lab_live_canonical_loader_cs21a193.js',
             'scripts/qa_cs21a202_source_truth.mjs',
             'scripts/qa_cs21a203_live_sync.mjs',
             'scripts/qa_cs21a204_network_budget_model.mjs',
+            'scripts/qa_cs21a205_english_lab_shell.mjs',
             'scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs',
             'scripts/test_memory_match_fast_turn_browser_cs21a211.mjs',
             'scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs',
@@ -64,10 +66,11 @@ jobs:
       - name: Static network model only
         run: node scripts/qa_cs21a204_network_budget_model.mjs
 
-      - name: Existing Memory Match source contracts
+      - name: Existing Memory Match and shell contracts
         run: |
           node scripts/qa_cs21a203_live_sync.mjs
           node scripts/qa_cs21a203_custom_pair_start_guard.mjs
+          node scripts/qa_cs21a205_english_lab_shell.mjs
 
       - name: Install Chromium
         run: |
