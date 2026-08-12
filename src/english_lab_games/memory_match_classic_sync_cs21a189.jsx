@@ -1,13 +1,13 @@
 // CS21A189 · Memory Match clásico sincronizado para English LAB Live.
 // Un solo tablero autoritativo para docente y estudiantes.
 // Primera carta pública temporal -> segunda pública -> MATCH queda abierto / MISMATCH vuelve a ocultarse.
-// CS21A194 conserva el contrato autoritativo y evita que la latencia del primer ACK bloquee la segunda selección.
+// CS21A211 conserva el bloqueo de tercera carta pero envía la segunda sin esperar el ACK de la primera.
 /* global React */
 (function (global) {
   'use strict';
 
   const VERSION = 'CS21A189';
-  const LATENCY_SAFE_VERSION = 'CS21A194';
+  const LATENCY_SAFE_VERSION = 'CS21A211';
   const Runtime = global.EnglishLabRuntimeCS21A173;
   const STYLE_ID = 'english-lab-memory-match-cs21a189';
   const STYLE_HREF = '/styles/english_lab_memory_match_classic_sync_cs21a189.css?v=CS21A189';
@@ -87,9 +87,6 @@
       const currentTurn = Number(turnState && turnState.turn_number || 0) || 0;
       const attemptTurn = Number(attempt.turn_number || 0) || 0;
       if (currentTurn && attemptTurn && currentTurn !== attemptTurn) return {active:false,phase,ids:new Set(),transition:false};
-      // El snapshot puede tardar en persistir la limpieza del timeout. La carta
-      // temporal nunca debe sobrevivir localmente al deadline autoritativo del
-      // turno, aunque un poll vuelva a traer FIRST_REVEALED por unos segundos.
       const turnEndsAt = clean(turnState && (turnState.turn_ends_at || turnState.turnEndsAt) || attempt.turn_ends_at || attempt.turnEndsAt);
       const remaining = turnEndsAt && clock && typeof clock.remainingMs === 'function'
         ? clock.remainingMs(turnEndsAt)
@@ -287,8 +284,8 @@
             }
             throw error;
           });
-        // Conserva la promesa original para que la segunda carta espere el ACK real.
-        // El catch paralelo evita un unhandled rejection cuando el usuario nunca elige segunda.
+        // La segunda carta NO espera este ACK. La promesa se conserva sólo como
+        // fallback si el backend recibe SUBMIT_PAIR antes de persistir DISCOVER_CARD.
         promise.catch(()=>null);
         revealPromiseRef.current=promise;
         return;
@@ -301,15 +298,21 @@
       setOptimistic([first.id,card.id]);
       setSyncing(true);
       const correct=first.pairId===card.pairId;
-      setAnnouncement(correct?'Comprobando pareja…':'Comparando cartas…');
-      Promise.resolve(revealPromiseRef.current)
-        .then(()=>send(buildAction('SUBMIT_PAIR',{first_card_id:first.id,second_card_id:card.id,pair_id:correct?first.pairId:'',correct})))
+      setAnnouncement(correct?'¡Pareja encontrada! Sincronizando…':'Memorizá las dos cartas…');
+      const pairSubmission=()=>send(buildAction('SUBMIT_PAIR',{first_card_id:first.id,second_card_id:card.id,pair_id:correct?first.pairId:'',correct}));
+      Promise.resolve(pairSubmission())
+        .then(result=>{
+          if(result && result.ok===false && upper(result.error)==='PRIMERA_CARTA_NO_SINCRONIZADA'){
+            return Promise.resolve(revealPromiseRef.current).then(()=>pairSubmission());
+          }
+          return result;
+        })
         .then(result=>{
           if(result && result.ok===false) throw new Error(result.mensaje||result.message||result.error||'El intento no fue aceptado.');
           if(interactionEpochRef.current===interactionEpoch){
             localFirstRef.current='';
             setOptimistic([]);
-            setAnnouncement(correct?'¡Pareja correcta! +1 · seguís jugando.':'No coinciden. Miralas bien: se volverán a tapar y cambia el turno.');
+            setAnnouncement(correct?'¡Pareja correcta! +1 · tenés 10 segundos nuevos.':'No coinciden. Se ocultan al terminar los 3 segundos y sigue el siguiente jugador.');
           }
           return result;
         })
@@ -332,14 +335,14 @@
     const completed=shared.completed || claimedCount>=cards.length/2;
     const visibleIds=new Set([...reveal.ids,...optimistic]);
     const revealSeconds=waitingForFlipback?Math.max(1,Math.ceil(Number(reveal.remainingMs||0)/1000)):0;
-    const revealRuleMs=Math.max(1,Number(packageInput&&packageInput.rules&&(packageInput.rules.spectator_reveal_ms||packageInput.rules.mismatch_reveal_ms)||8500)||8500);
+    const revealRuleMs=Math.max(1,Number(packageInput&&packageInput.rules&&(packageInput.rules.pair_reveal_ms||packageInput.rules.spectator_reveal_ms||packageInput.rules.mismatch_reveal_ms)||3000)||3000);
     const timerRemainingMs=waitingForFlipback?Math.max(0,Number(reveal.remainingMs||0)):remainingMs;
     const timerDurationMs=waitingForFlipback?revealRuleMs:normalized.rules.roundDurationMs;
     const transitionText=waitingForFlipback ? `No coinciden · memorízalas · se cierran en ${revealSeconds}s` : '';
 
-    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION} data-spectator-reveal-ms={revealRuleMs}>
+    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION} data-spectator-reveal-ms={revealRuleMs} data-turn-selection-ms={Number(packageInput&&packageInput.rules&&packageInput.rules.turn_selection_ms||10000)}>
       <header className="elmm-header">
-        <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Volteá dos cartas. Si coinciden, ganás el par y seguís jugando. Si no coinciden, todos las ven un momento y vuelven a taparse.</p></div>
+        <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Tenés 10 segundos para escoger dos cartas. La primera y la segunda se comparten de inmediato; si no coinciden, quedan visibles 3 segundos y cambia el turno.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
       </header>
       {phase==='COUNTDOWN'&&turnStartsIn>0&&<div className="elmm-start-countdown" role="status" aria-live="polite" style={{display:'grid',placeItems:'center',gap:4,padding:'14px 18px',borderRadius:18,background:'linear-gradient(135deg,#001E47,#073B7A)',color:'#fff',boxShadow:'0 14px 30px rgba(0,30,71,.18)'}}><span style={{fontSize:11,fontWeight:950,letterSpacing:'.15em',textTransform:'uppercase'}}>Todos listos</span><strong style={{fontSize:54,lineHeight:1,fontWeight:950}}>{Math.max(1,Math.ceil(turnStartsIn/1000))}</strong><small style={{fontWeight:800,opacity:.9}}>La ronda inicia al mismo tiempo para todos</small></div>}
@@ -364,6 +367,7 @@
 
   MemoryMatchClassicSyncCS21A189.__cs21a189ClassicSync=true;
   MemoryMatchClassicSyncCS21A189.__cs21a194LatencySafe=true;
+  MemoryMatchClassicSyncCS21A189.__cs21a211FastTurn=true;
   MemoryMatchClassicSyncCS21A189.__version=VERSION;
   MemoryMatchClassicSyncCS21A189.__latencySafeVersion=LATENCY_SAFE_VERSION;
   global.MemoryMatchGameCS21A173=MemoryMatchClassicSyncCS21A189;
