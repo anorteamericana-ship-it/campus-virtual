@@ -1,0 +1,63 @@
+name: CS21A209 Apply Sentence Order Submit Lock
+
+on:
+  push:
+    branches:
+      - test/cs21a209-sentence-order-browser-smoke
+
+permissions:
+  contents: write
+
+jobs:
+  apply-lock:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Apply exact CS209 frontend lock
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/english_lab_sentence_order_cs21a183.js')
+          s=p.read_text(encoding='utf-8')
+          if 'var submitLockRef = ReactRef.useRef(false);' in s:
+              print('CS209 lock already present; no change required.')
+              raise SystemExit(0)
+          old1="""    var busyPair = ReactRef.useState(false);\n    var busy = busyPair[0], setBusy = busyPair[1];\n    var errorPair = ReactRef.useState('');"""
+          new1="""    var busyPair = ReactRef.useState(false);\n    var busy = busyPair[0], setBusy = busyPair[1];\n    // CS21A209: lock inmediato por instancia; React state no bloquea dos clicks en el mismo tick.\n    var submitLockRef = ReactRef.useRef(false);\n    var errorPair = ReactRef.useState('');"""
+          old2="""    ReactRef.useEffect(function () {\n      setPool(round && Array.isArray(round.tokens) ? round.tokens.slice() : []);\n      setAnswer([]);\n      setError('');\n      setStartedAt(Date.now());\n    }, [roundKey]);"""
+          new2="""    ReactRef.useEffect(function () {\n      submitLockRef.current = false;\n      setPool(round && Array.isArray(round.tokens) ? round.tokens.slice() : []);\n      setAnswer([]);\n      setError('');\n      setStartedAt(Date.now());\n    }, [roundKey]);"""
+          old3="""    async function submit() {\n      if (!round || answer.length !== (round.tokens || []).length) { setError('Usá todas las palabras antes de enviar.'); return; }\n      setBusy(true); setError('');\n      try {"""
+          new3="""    async function submit() {\n      if (submitLockRef.current) return;\n      if (!round || answer.length !== (round.tokens || []).length) { setError('Usá todas las palabras antes de enviar.'); return; }\n      submitLockRef.current = true;\n      setBusy(true); setError('');\n      try {"""
+          old4="""      } catch (submitError) { setError(submitError.message || String(submitError)); }\n      finally { setBusy(false); }\n    }"""
+          new4="""      } catch (submitError) { setError(submitError.message || String(submitError)); }\n      finally { submitLockRef.current = false; setBusy(false); }\n    }"""
+          for label,old in [('state',old1),('round reset',old2),('submit entry',old3),('submit finally',old4)]:
+              count=s.count(old)
+              if count != 1:
+                  raise SystemExit(f'CS209 patrón {label} esperado 1 vez, encontrado {count}')
+              repl={'state':new1,'round reset':new2,'submit entry':new3,'submit finally':new4}[label]
+              s=s.replace(old,repl,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node scripts/test_english_lab_sentence_order_cs21a183.mjs
+          grep -q 'var submitLockRef = ReactRef.useRef(false);' src/english_lab_sentence_order_cs21a183.js
+          grep -q 'if (submitLockRef.current) return;' src/english_lab_sentence_order_cs21a183.js
+          git diff -- src/english_lab_sentence_order_cs21a183.js
+      - name: Commit source-only fix
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/english_lab_sentence_order_cs21a183.js; then
+            echo 'No source change to commit.'
+            exit 0
+          fi
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = 'src/english_lab_sentence_order_cs21a183.js'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/english_lab_sentence_order_cs21a183.js
+          git commit -m 'CS21A209 prevent same-tick Sentence Order double submit'
+          git push origin HEAD:${{ github.ref_name }}
