@@ -8,6 +8,7 @@ on:
       - 'apps_script_patches/99P_MEMORY_MATCH_LATENCY_SAFE_QA_CS21A194.gs'
       - 'scripts/assemble_apps_script_cs21a194_complete.mjs'
       - 'scripts/test_apps_script_cumulative_verifier_cs21a194.mjs'
+      - 'scripts/test_memory_match_classic_sync_cs21a189.mjs'
       - 'scripts/test_memory_match_latency_safe_browser_cs21a194.mjs'
       - 'scripts/patch_qa_package_cs21a194.mjs'
       - '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_LATENCY_CS21A194.md'
