@@ -1,0 +1,64 @@
+name: CS21A207 English LAB Canonical Navigation QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a207-english-lab-canonical-navigation
+  pull_request:
+    paths:
+      - 'src/sidebar.jsx'
+      - 'scripts/qa_cs21a207_english_lab_navigation.mjs'
+      - '.github/workflows/qa-cs21a207-english-lab-canonical-navigation.yml'
+      - '00_DOCUMENTACION/ENGLISH_LAB_CANONICAL_NAVIGATION_CS21A207.md'
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Guard isolated scope
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PR_BASE_SHA:-}" ]; then base="$PR_BASE_SHA"; else base="HEAD^"; fi
+          git diff --name-only "$base"..HEAD | tee /tmp/cs207-changed.txt
+          if grep -Ev '^(src/sidebar\.jsx|scripts/qa_cs21a207_english_lab_navigation\.mjs|\.github/workflows/qa-cs21a207-english-lab-canonical-navigation\.yml|00_DOCUMENTACION/ENGLISH_LAB_CANONICAL_NAVIGATION_CS21A207\.md)$' /tmp/cs207-changed.txt | grep -q .; then
+            echo 'CS21A207 sólo puede modificar navegación, su QA y documentación.' >&2
+            exit 1
+          fi
+          ! grep -Eq '^(apps_script_patches/|apps_script_unified/)' /tmp/cs207-changed.txt
+
+      - name: Validate canonical visible navigation
+        run: node scripts/qa_cs21a207_english_lab_navigation.mjs
+
+      - name: Preserve CS205 five-game shell contract
+        run: node scripts/qa_cs21a205_english_lab_shell.mjs
+
+      - name: Preserve Memory polling handoff contract
+        run: node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+
+      - name: Preserve Quiz and Word Search Live integration contracts
+        run: |
+          node scripts/qa_cs21a198_quiz_live_integration.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Confirm backend remains CS201 without changes
+        run: |
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201.js
+          node --check /tmp/cs201.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs201.js
