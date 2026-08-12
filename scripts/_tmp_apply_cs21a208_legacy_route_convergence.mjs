@@ -28,10 +28,14 @@ updated = replaceExactlyOnce(updated, teacherOld, teacherNew, 'teacher legacy/li
 if (!updated.includes("!['dashboard','academia_play'].includes(active)")) {
   throw new Error('CS21A208 debe preservar el guard cerrado del prospecto gratis.');
 }
+if (!updated.includes(`academia_play: esProspectoGratis
+        ? <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play}`)) {
+  throw new Error('CS21A208 debe preservar AcademiaPlayView únicamente en la rama gratis del estudiante.');
+}
 const adminLegacy = `academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />`;
 const adminLegacyCount = updated.split(adminLegacy).length - 1;
-if (adminLegacyCount !== 2) {
-  throw new Error(`CS21A208 esperaba 2 usos legacy AcademiaPlayView restantes (prospecto condicional + admin); encontró ${adminLegacyCount}.`);
+if (adminLegacyCount !== 1) {
+  throw new Error(`CS21A208 esperaba 1 ruta legacy administrativa AcademiaPlayView; encontró ${adminLegacyCount}.`);
 }
 if (!updated.includes(`academia_play: <LazyRoute title="English LAB" component="EnglishLabLiveTeacherView" files={F96_LAZY.english_lab_live}`)) {
   throw new Error('CS21A208 debe converger la ruta legacy docente hacia Live.');
