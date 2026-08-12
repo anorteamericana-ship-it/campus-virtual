@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CS21A209 · Sentence Order browser preview</title>
+  <link rel="stylesheet" href="../../styles/tokens.css">
+  <script src="../../vendor/react.js"></script>
+  <script src="../../vendor/react-dom.js"></script>
+</head>
+<body style="margin:0;padding:20px;background:#f4f7fb"><div id="root"></div>
+<script>
+(function(){
+  'use strict';
+  var params=new URLSearchParams(location.search);
+  var role=params.get('role')==='teacher'?'teacher':'student';
+  window.APPS_SCRIPT_URL='/__sentence_order_mock__';
+  window.getSessionToken=function(){return 'QA-CS21A209';};
+  window.__sentenceQa={submitCalls:0,calls:[],lastSubmit:null};
+
+  function json(data){return Promise.resolve(new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json;charset=utf-8'}}));}
+  function activeState(extra){
+    return Object.assign({
+      ok:true,
+      sentence_order:true,
+      room:{room_code:'SO-209',room_id:'SO-209',game_code:'SENTENCE_ORDER',status:'ACTIVE'},
+      player:{cod_estudiante:'QA-STU-209',nombre:'Estudiante QA'},
+      sentence_round:{
+        index:1,total:1,prompt:'Ordená las palabras.',hint:'Present simple',
+        tokens:[
+          {token_id:'tok-2',label:'am'},
+          {token_id:'tok-1',label:'I'},
+          {token_id:'tok-3',label:'ready'}
+        ],
+        correct_sentence:'I am ready'
+      },
+      can_answer:true,
+      my_answer:null,
+      ranking:[]
+    },extra||{});
+  }
+
+  window.fetch=async function(input,init){
+    var body={};
+    try{body=init&&typeof init.body==='string'?JSON.parse(init.body):{};}catch(_){}
+    var fn=String(body.fn||'');
+    if(!fn){try{fn=new URL(String(input),location.href).searchParams.get('fn')||'';}catch(_){}}
+    window.__sentenceQa.calls.push(fn);
+    var key=fn.toLowerCase();
+
+    if(key==='englishlablivejoinroom') return json(activeState());
+    if(key==='englishlablivegetplayerstate') return json(activeState());
+    if(key==='englishlabsentenceordersubmit'){
+      window.__sentenceQa.submitCalls+=1;
+      window.__sentenceQa.lastSubmit=body;
+      await new Promise(function(resolve){setTimeout(resolve,180);});
+      var ordered=Array.isArray(body.ordered_token_ids)?body.ordered_token_ids:[];
+      var correct=JSON.stringify(ordered)===JSON.stringify(['tok-1','tok-2','tok-3']);
+      return json(activeState({
+        can_answer:false,
+        my_answer:{correct:correct,points:correct?100:0},
+        ranking:[{cod_estudiante:'QA-STU-209',nombre:'Estudiante QA',points:correct?100:0}]
+      }));
+    }
+    if(key==='englishlablivegetteacherdata'){
+      return json({ok:true,grupos:[{code:'B1-QA-209',nivelId:'B1',dias_label:'LM',hora_i:'18:00',hora_f:'21:00'}],rooms:[]});
+    }
+    if(key==='academiaplaybankcatalog') return json({ok:true,games:[]});
+    return json({ok:true,grupos:[{code:'B1-QA-209',nivelId:'B1'}],rooms:[]});
+  };
+
+  function BaseStudent(){
+    var h=React.createElement;
+    async function join(){
+      await window.fetch(window.APPS_SCRIPT_URL+'?fn=englishLabLiveJoinRoom',{
+        method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({fn:'englishLabLiveJoinRoom',token:window.getSessionToken(),room_code:'SO-209'})
+      });
+    }
+    return h('main',{'data-base-student':'true'},
+      h('h1',null,'English LAB Live'),
+      h('button',{id:'qaJoin',type:'button',onClick:join},'Ingresar a SO-209')
+    );
+  }
+  function BaseTeacher(){
+    return React.createElement('main',{'data-base-teacher':'true'},React.createElement('h1',null,'English LAB Live docente'));
+  }
+  window.EnglishLabLiveStudentView=BaseStudent;
+  window.EnglishLabLiveTeacherView=BaseTeacher;
+  window.__sentenceQaRole=role;
+})();
+</script>
+<script src="../english_lab_sentence_order_cs21a183.js?v=CS21A209"></script>
+<script>
+(function(){
+  var role=window.__sentenceQaRole;
+  var View=role==='teacher'?window.EnglishLabLiveTeacherView:window.EnglishLabLiveStudentView;
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(View,{usuario:{nombre:'QA',codigo:'QA-209'}}));
+})();
+</script>
+</body>
+</html>
