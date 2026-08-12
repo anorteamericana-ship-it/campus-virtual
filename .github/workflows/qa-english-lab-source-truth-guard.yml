@@ -1,14 +1,9 @@
 name: English LAB Source Truth Guard
 
 on:
+  # Debe correr en TODO PR para poder configurarse como required check sin
+  # dejar PRs no relacionados eternamente en estado Expected/Pending.
   pull_request:
-    paths:
-      - 'src/english_lab**'
-      - 'src/english_lab_games/**'
-      - 'styles/english_lab**'
-      - 'scripts/**browser**.mjs'
-      - 'scripts/qa_cs21a202_source_truth.mjs'
-      - '.github/workflows/qa-english-lab-source-truth-guard.yml'
   push:
     branches:
       - main
