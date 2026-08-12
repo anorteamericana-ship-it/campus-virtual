@@ -2,18 +2,18 @@
 // Capa acumulativa sobre CS21A211. QA/STAGING solamente. NO PRODUCCION.
 //
 // Contrato corregido:
-// - 10 s iniciales para que el jugador actúe/abra la primera carta;
-// - cuando el servidor acepta FIRST_REVEALED, garantiza 10 s adicionales
+// - 15 s iniciales para que el jugador actúe/abra la primera carta;
+// - cuando el servidor acepta FIRST_REVEALED, garantiza 15 s adicionales
 //   desde revealed_at para completar la segunda carta;
-// - el deadline NUNCA se reduce: Math.max(deadline actual, revealed_at + 10 s);
+// - el deadline NUNCA se reduce: Math.max(deadline actual, revealed_at + 15 s);
 // - la protección solo aplica a FIRST_REVEALED del turno/jugador vigentes;
-// - MATCH: conserva jugador y recibe un turno nuevo de 10 s;
+// - MATCH: conserva jugador y recibe un turno nuevo de 15 s;
 // - MISMATCH: ambas cartas 3 s y luego rota inmediatamente;
 // - si vence la ventana vigente, el timeout sí rota y limpia el intento.
 
-var CS21A212_MM_VERSION = 'CS21A212-MM-LATENCY-SAFE-10S-ACK-1';
-var CS21A212_MM_INITIAL_TURN_MS = 10000;
-var CS21A212_MM_MIN_SECOND_PICK_MS = 10000;
+var CS21A212_MM_VERSION = 'CS21A212-MM-LATENCY-SAFE-15S-ACK-1';
+var CS21A212_MM_INITIAL_TURN_MS = 15000;
+var CS21A212_MM_MIN_SECOND_PICK_MS = 15000;
 var CS21A212_MM_PAIR_REVEAL_MS = 3000;
 
 function _cs21a212Rules_(rules) {
@@ -30,7 +30,7 @@ function _cs21a212Rules_(rules) {
   return rules;
 }
 
-// Las salas nuevas conservan 10 s iniciales y 3 s de mismatch.
+// Las salas nuevas conservan 15 s iniciales y 3 s de mismatch.
 var _cs21a212RulesBase_ = _elmm174Rules_;
 _elmm174Rules_ = function (level, mode) {
   return _cs21a212Rules_(_cs21a212RulesBase_(level, mode));
@@ -128,7 +128,7 @@ _cs21a192TransitionNeeded_.__base = _cs21a212TransitionNeededBase_;
 function verificarMemoryMatchFastTurnCS21A212() {
   var start = new Date('2026-08-12T12:00:00.000Z');
   var startMs = start.getTime();
-  var revealedMs = startMs + 8000;
+  var revealedMs = startMs + 10000;
   var initialEndMs = startMs + CS21A212_MM_INITIAL_TURN_MS;
   var synthetic = {
     rules:{round_duration_ms:CS21A212_MM_INITIAL_TURN_MS},
@@ -157,8 +157,8 @@ function verificarMemoryMatchFastTurnCS21A212() {
     protectedBefore === false &&
     transitionAfter === true &&
     mismatchBefore.reason === 'NO_FIRST_REVEAL' &&
-    synthetic.rules.round_duration_ms === 10000 &&
-    synthetic.rules.first_reveal_min_second_ms === 10000 &&
+    synthetic.rules.round_duration_ms === 15000 &&
+    synthetic.rules.first_reveal_min_second_ms === 15000 &&
     synthetic.rules.mismatch_reveal_ms === 3000 &&
     _cs21a194FirstRevealWindow_.__cs21a212LatencySafe === true &&
     _cs21a192TransitionNeeded_.__cs21a212FirstRevealProtected === true
@@ -170,7 +170,7 @@ function verificarMemoryMatchFastTurnCS21A212() {
     initial_turn_ms:CS21A212_MM_INITIAL_TURN_MS,
     second_pick_window_from_server_reveal_ms:CS21A212_MM_MIN_SECOND_PICK_MS,
     mismatch_reveal_ms:CS21A212_MM_PAIR_REVEAL_MS,
-    simulated_first_server_ack_ms:8000,
+    simulated_first_server_ack_ms:10000,
     deadline_never_reduced:true,
     first_reveal_only:true,
     first_reveal_protected_from_timeout:true,
