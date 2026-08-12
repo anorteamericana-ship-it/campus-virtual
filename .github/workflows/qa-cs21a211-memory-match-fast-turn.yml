@@ -42,6 +42,7 @@ jobs:
             'scripts/qa_cs21a202_source_truth.mjs',
             'scripts/qa_cs21a203_live_sync.mjs',
             'scripts/qa_cs21a204_network_budget_model.mjs',
+            'scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs',
             'scripts/test_memory_match_fast_turn_browser_cs21a211.mjs',
             'scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs',
             '.github/workflows/qa-cs21a211-memory-match-fast-turn.yml',
