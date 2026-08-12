@@ -10,7 +10,7 @@ No cambia Apps Script, `/exec`, scoring, currículo, routing ni el contrato de p
 
 ## Riesgo observado por lectura de flujo
 
-`StudentSession.answer()` usa `busy` y `localSelected` como guardas React. Dos eventos `click` despachados en el mismo tick pueden entrar antes del rerender y alcanzar `englishLabQuizTimeAnswer` dos veces. `actionsRef` sí es síncrono, por lo que ambos intentos pueden reutilizar el mismo `action_id`.
+`StudentSession.answer()` usaba `busy` y `localSelected` como guardas React. Dos eventos `click` despachados en el mismo tick podían entrar antes del rerender y alcanzar `englishLabQuizTimeAnswer` dos veces. `actionsRef` sí era síncrono, por lo que ambos intentos reutilizaban el mismo `action_id`.
 
 La prueba CS210 no asume que el backend dedupe. Su contrato es más estricto: **el navegador debe emitir un solo submit por pregunta ante doble interacción síncrona**.
 
@@ -31,18 +31,56 @@ Secuencia:
 7. Verifica `action`, `room_code`, `player_id`, `question_id`, `option_id`, `expected_state_revision` y `action_id`.
 8. Verifica estado bloqueado posterior y ausencia de overflow horizontal a 390 px.
 
-## Criterio rojo → verde
+## Evidencia rojo → verde
 
-Antes del arreglo, esta prueba debe poder demostrar el defecto si existen dos solicitudes. El fix solo será aceptado cuando la misma prueba pase sin cambiar el backend ni relajar las aserciones.
+### Rojo reproducido
 
-## Perímetro permitido
+Workflow run **31563768227**, head `63c8696b1e2d112c6a681a4f496648f7a51e0952`:
+
+- Chromium emitió **2** `englishLabQuizTimeAnswer` en el mismo tick.
+- Ambos payloads reutilizaron el mismo `action_id`.
+- El primer payload llevó `option_id: A` y el segundo `option_id: B`.
+- `question_id` y `expected_state_revision: 210` fueron iguales en ambos.
+- El gate falló exactamente en `observado=2`.
+
+Esto confirmó el defecto del cliente antes de cambiar `StudentSession`.
+
+### Fix mínimo
+
+`StudentSession` incorpora `submitQuestionRef`, un candado síncrono por `questionId`:
+
+- se toma antes del primer `await`;
+- bloquea un segundo submit para la misma pregunta aunque React todavía no haya rerenderizado;
+- se reinicia al cambiar de pregunta;
+- se libera en error solamente cuando el backend no devuelve una respuesta canónica ya aceptada;
+- no cambia `Engine.buildAnswerAction`, payload, scoring, polling ni backend.
+
+### Verde
+
+Workflow run **31564077870**, head `9e07328ac4ef5876d2518074fe6574a25fbc31fa`:
+
+- Quiz Time Chromium smoke: PASS;
+- doble clic síncrono: **1 submit**;
+- primer toque A preservado;
+- contrato de payload preservado;
+- vista 390×844 sin overflow;
+- shell browser regression: PASS;
+- contratos estáticos Quiz Time: PASS;
+- navegación/shell actuales: PASS;
+- backend CS201 sin cambios y ensamblable: PASS.
+
+La corrida intermedia **31563955514** ya confirmó `answerCalls: 1`; falló únicamente porque el preview aislado no replicaba el `* { box-sizing: border-box; }` global de `styles/campus.css`. Se corrigió solo el preview QA para reflejar el entorno real del Campus; no se tocó el CSS del producto.
+
+## Perímetro permitido y realizado
 
 - `.github/workflows/qa-cs21a210-quiz-time-browser-smoke.yml`
 - `00_DOCUMENTACION/ENGLISH_LAB_QUIZ_TIME_BROWSER_SMOKE_CS21A210.md`
 - `scripts/test_english_lab_quiz_time_browser_cs21a210.mjs`
 - `src/english_lab_games/quiz_time_preview_cs21a210.html`
-- `src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx` únicamente si la reproducción roja confirma el defecto.
+- `src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx`
+
+Diff del producto en Quiz Time: **6 adiciones / 4 eliminaciones** dentro de `StudentSession`; no hay otros archivos productivos modificados por CS210.
 
 ## Backend
 
-CS21A210 exige `git diff --exit-code` sobre `apps_script_patches/` y vuelve a ensamblar CS201 como evidencia de que el backend permanece intacto.
+CS21A210 exige `git diff --exit-code` sobre `apps_script_patches/` y vuelve a ensamblar CS201 como evidencia de que el backend permanece intacto. No hay nuevo deployment ni cambio de `/exec`.
