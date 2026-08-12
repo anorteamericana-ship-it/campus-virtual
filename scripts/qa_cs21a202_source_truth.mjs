@@ -5,6 +5,7 @@ import path from 'node:path';
 
 const root=process.cwd();
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
+const exists=relative=>fs.existsSync(path.join(root,relative));
 
 const live=read('src/english_lab_live.jsx');
 const adapter=read('src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx');
@@ -15,12 +16,20 @@ const conflictTest=read('scripts/test_memory_match_conflict_reconciliation_brows
 const historical196Patch=read('scripts/patch_qa_package_cs21a196.mjs');
 const historical197Patch=read('scripts/patch_qa_package_cs21a197.mjs');
 const historical197Finalize=read('scripts/finalize_qa_package_cs21a197.mjs');
-const currentPackageWorkflow=read('.github/workflows/qa-cs21a200-final-candidate.yml');
+const currentPackageWorkflowPath='.github/workflows/qa-cs21a200-final-candidate.yml';
+const currentPackageWorkflow=exists(currentPackageWorkflowPath)?read(currentPackageWorkflowPath):'';
 
 assert.match(live,/CS21A202: un rechazo de dominio con room_package/,'postLive real debe conservar room_package en rechazos de dominio');
 assert.doesNotMatch(live,/!res\.ok \|\| !data \|\| data\.ok === false/,'postLive real no puede convertir todo ok:false en error de transporte');
 assert.match(adapter,/const stateCandidate=candidate\.ok===false/,'adaptador debe normalizar envelope reconciliable');
-assert.match(adapter,/mutationBusy=\{busy\}/,'busy autoritativo debe llegar al juego');
+
+// No fijar el gate a un nombre histórico de variable. La semántica vigente es:
+// DISCOVER_CARD puede seguir interactuando; SUBMIT_PAIR y demás mutaciones autoritativas bloquean.
+assert.match(adapter,/const blocksInteraction=submissionAction!=='DISCOVER_CARD';/,'el adaptador debe distinguir discovery de mutaciones bloqueantes');
+assert.match(adapter,/setBusy\(true\);if\(blocksInteraction\)setBlockingBusy\(true\);/,'una mutación bloqueante debe activar busy autoritativo síncronamente');
+assert.match(adapter,/finally\{setBusy\(false\);if\(blocksInteraction\)setBlockingBusy\(false\);\}/,'busy autoritativo debe liberarse sólo al terminar la mutación bloqueante');
+assert.match(adapter,/mutationBusy=\{blockingBusy\}/,'el hijo debe recibir el busy autoritativo semántico, no el busy genérico');
+
 assert.match(adapter,/client_request_id:`\$\{actionId\}-R1`/,'retry de conflicto debe conservar action_id y variar solo client_request_id');
 assert.match(classic,/const authoritativeBusy=!!\(props&&props\.mutationBusy\)/,'Memory Match debe bloquear por mutación autoritativa');
 assert.match(classic,/if\(interactionEpochRef\.current===interactionEpoch\)\{\s*setSyncing\(false\);\s*pairPendingRef\.current=false;/s,'pairPendingRef sólo puede liberarse en el epoch vigente');
@@ -46,7 +55,19 @@ assert.doesNotMatch(conflictTest,/newTransport=/,'el test no puede conservar tra
 assert.match(historical196Patch,/function patchFrontend\(\)/,'CS196 histórico se conserva como evidencia de cómo nació el fix');
 assert.match(historical197Patch,/function patchFrontend\(\)/,'CS197 patch histórico se conserva como evidencia');
 assert.match(historical197Finalize,/const timerNew=/,'CS197 finalizer histórico conserva evidencia del Timer que antes sólo vivía en dist');
-assert.match(currentPackageWorkflow,/rsync -a --exclude '.git'/,'el candidato moderno se construye desde checkout limpio');
+
+// En checkout Git validamos también el workflow de empaquetado. En el ZIP final .github se excluye
+// deliberadamente, por lo que el gate debe seguir siendo ejecutable y verificar el source real.
+let modernPackageFromCleanCheckout='NOT_AVAILABLE_IN_PACKAGE';
+if(currentPackageWorkflow){
+  assert.match(currentPackageWorkflow,/rsync -a --exclude '.git'/,'el candidato moderno se construye desde checkout limpio');
+  modernPackageFromCleanCheckout=true;
+} else if(exists('VERSION.txt')) {
+  const packagedVersion=read('VERSION.txt');
+  assert.match(packagedVersion,/BACKEND_VERSION=CS21A201/,'el paquete debe declarar backend CS201');
+  assert.match(packagedVersion,/APPS_SCRIPT_CHANGE=NO/,'el paquete no puede declarar cambios Apps Script');
+  modernPackageFromCleanCheckout='WORKFLOW_EXCLUDED_PACKAGE_METADATA_OK';
+}
 
 const browserFiles=[];
 function walk(dir){
@@ -68,11 +89,12 @@ assert.deepEqual(runtimePatchCandidates,[],'Ningún browser test debe reemplazar
 
 console.log(JSON.stringify({
   ok:true,
-  version:'CS21A202-SOURCE-TRUTH-QA-3',
+  version:'CS21A202-SOURCE-TRUTH-QA-4',
   source_of_truth:'src',
   transport_domain_reconciliation:true,
   adapter_state_candidate:true,
   mutation_busy_authoritative:true,
+  mutation_busy_semantics:'DISCOVER_CARD_NON_BLOCKING__SUBMIT_PAIR_BLOCKING',
   epoch_scoped_pending_release:true,
   cs197_transient_poll_recovered:true,
   cs197_spectator_countdown_recovered:true,
@@ -83,5 +105,5 @@ console.log(JSON.stringify({
   historical_cs196_patch_preserved_as_evidence:true,
   historical_cs197_patch_preserved_as_evidence:true,
   historical_cs197_finalize_preserved_as_evidence:true,
-  modern_package_from_clean_checkout:true
+  modern_package_from_clean_checkout:modernPackageFromCleanCheckout
 },null,2));
