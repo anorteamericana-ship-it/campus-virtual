@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - 'src/app.jsx'
+      - 'scripts/qa_cs21a207_english_lab_navigation.mjs'
       - 'scripts/qa_cs21a208_english_lab_legacy_routes.mjs'
       - '.github/workflows/qa-cs21a208-english-lab-legacy-route-convergence.yml'
       - '00_DOCUMENTACION/ENGLISH_LAB_LEGACY_ROUTE_CONVERGENCE_CS21A208.md'
@@ -36,8 +37,8 @@ jobs:
           set -euo pipefail
           if [ -n "${PR_BASE_SHA:-}" ]; then base="$PR_BASE_SHA"; else base="HEAD^"; fi
           git diff --name-only "$base"..HEAD | tee /tmp/cs208-changed.txt
-          if grep -Ev '^(src/app\.jsx|scripts/qa_cs21a208_english_lab_legacy_routes\.mjs|\.github/workflows/qa-cs21a208-english-lab-legacy-route-convergence\.yml|00_DOCUMENTACION/ENGLISH_LAB_LEGACY_ROUTE_CONVERGENCE_CS21A208\.md)$' /tmp/cs208-changed.txt | grep -q .; then
-            echo 'CS21A208 sólo puede modificar routing de app, su QA y documentación.' >&2
+          if grep -Ev '^(src/app\.jsx|scripts/qa_cs21a207_english_lab_navigation\.mjs|scripts/qa_cs21a208_english_lab_legacy_routes\.mjs|\.github/workflows/qa-cs21a208-english-lab-legacy-route-convergence\.yml|00_DOCUMENTACION/ENGLISH_LAB_LEGACY_ROUTE_CONVERGENCE_CS21A208\.md)$' /tmp/cs208-changed.txt | grep -q .; then
+            echo 'CS21A208 sólo puede modificar routing de app, contratos QA de navegación y documentación.' >&2
             exit 1
           fi
           ! grep -Eq '^(apps_script_patches/|apps_script_unified/|src/academia_play\.jsx|src/english_lab_games/)' /tmp/cs208-changed.txt
