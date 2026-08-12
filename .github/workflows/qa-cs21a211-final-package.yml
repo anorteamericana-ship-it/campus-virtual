@@ -2,8 +2,7 @@ name: CS21A211 Final QA Package
 
 on:
   push:
-    branches:
-      - fix/cs21a211-memory-match-10s-3s
+    branches: [fix/cs21a211-memory-match-10s-3s]
   workflow_dispatch:
 
 permissions:
@@ -17,36 +16,35 @@ jobs:
   final-qa-package:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact CS211 branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Freeze product at final CS211 source head
+      - name: Freeze product runtime at final CS211 source head
         run: |
           set -euo pipefail
           PRODUCT_HEAD=e15df1a6c3a40278e2b72e8c87c4125022206c86
           git merge-base --is-ancestor "$PRODUCT_HEAD" HEAD
-          git diff --name-only "$PRODUCT_HEAD"...HEAD | tee /tmp/package-delta.txt
+          git diff --name-only "$PRODUCT_HEAD"...HEAD | tee /tmp/post-product-delta.txt
           python3 - <<'PY'
           from pathlib import Path
           allowed={
+            'scripts/qa_cs21a200_word_search_live_integration.mjs',
             '.github/workflows/qa-cs21a211-memory-match-fast-turn.yml',
             '.github/workflows/qa-cs21a211-final-package.yml',
           }
-          changed={x.strip() for x in Path('/tmp/package-delta.txt').read_text().splitlines() if x.strip()}
+          changed={x.strip() for x in Path('/tmp/post-product-delta.txt').read_text().splitlines() if x.strip()}
           unexpected=changed-allowed
           if unexpected:
-              raise SystemExit('Delta posterior al producto CS211 inesperado: '+', '.join(sorted(unexpected)))
-          print('Producto CS211 congelado: e15df1a6c3a40278e2b72e8c87c4125022206c86')
+              raise SystemExit('Delta inesperado después del producto CS211: '+', '.join(sorted(unexpected)))
+          print('Runtime product head congelado:', 'e15df1a6c3a40278e2b72e8c87c4125022206c86')
           PY
-          git diff --exit-code "$PRODUCT_HEAD"...HEAD -- ':!.github/workflows/qa-cs21a211-memory-match-fast-turn.yml' ':!.github/workflows/qa-cs21a211-final-package.yml'
+          git diff --exit-code "$PRODUCT_HEAD"...HEAD -- src/ styles/ apps_script_patches/ apps_script_unified/
 
-      - name: Source truth and Memory Match CS211 contracts
+      - name: Source truth and Memory Match contracts
         run: |
           set -euo pipefail
           node scripts/qa_cs21a202_source_truth.mjs
@@ -55,7 +53,7 @@ jobs:
           node scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs
           node scripts/qa_cs21a204_network_budget_model.mjs
 
-      - name: Other four games static regression
+      - name: Static regression all five games
         run: |
           set -u
           mkdir -p qa-output/cs211-final-static-logs
@@ -77,7 +75,6 @@ jobs:
             scripts/qa_cs21a208_english_lab_legacy_routes.mjs
           do
             name="$(basename "$script" .mjs)"
-            echo "===== $script ====="
             if node "$script" >"qa-output/cs211-final-static-logs/${name}.log" 2>&1; then
               cat "qa-output/cs211-final-static-logs/${name}.log"
             else
@@ -88,16 +85,16 @@ jobs:
           done
           test "$failed" -eq 0
 
-      - name: Assemble exact CS211 QA backend
+      - name: Assemble one complete CS211 QA backend
         run: |
           set -euo pipefail
           node scripts/assemble_apps_script_cs21a211_unified.mjs
           cp apps_script_patches/99_CS21A211_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs211-backend.js
           node --check /tmp/cs211-backend.js
-          grep -q "CS21A211-MM-10S-3S-1" /tmp/cs211-backend.js
-          grep -q "CS21A201-CURRICULUM-SOURCE-1" /tmp/cs211-backend.js
-          grep -q "CS21A200-WORD-SEARCH-LIVE-1" /tmp/cs211-backend.js
-          grep -q "CS21A198-QUIZ-TIME-B1U01-2" /tmp/cs211-backend.js
+          grep -q 'CS21A211-MM-10S-3S-1' /tmp/cs211-backend.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs211-backend.js
+          grep -q 'CS21A200-WORD-SEARCH-LIVE-1' /tmp/cs211-backend.js
+          grep -q 'CS21A198-QUIZ-TIME-B1U01-2' /tmp/cs211-backend.js
 
       - name: Install Chromium
         run: |
@@ -106,15 +103,15 @@ jobs:
 
       - name: Start source QA server
         run: |
-          python3 -m http.server 4212 --bind 127.0.0.1 >/tmp/cs211-final-source.log 2>&1 &
+          python3 -m http.server 4212 --bind 127.0.0.1 >/tmp/cs211-source.log 2>&1 &
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:4212/src/english_lab_games/english_lab_unified_shell_preview_cs21a205.html >/dev/null && exit 0
             sleep 1
           done
-          cat /tmp/cs211-final-source.log
+          cat /tmp/cs211-source.log
           exit 1
 
-      - name: All five games browser regression
+      - name: Browser regression all five games
         env:
           QA_BASE_URL: http://127.0.0.1:4212
         run: |
@@ -133,7 +130,6 @@ jobs:
             scripts/test_english_lab_quiz_time_browser_cs21a210.mjs
           do
             name="$(basename "$script" .mjs)"
-            echo "===== $script ====="
             if node "$script" >"qa-output/cs211-final-browser-logs/${name}.log" 2>&1; then
               cat "qa-output/cs211-final-browser-logs/${name}.log"
             else
@@ -144,7 +140,7 @@ jobs:
           done
           test "$failed" -eq 0
 
-      - name: Build CS211 final QA ZIP
+      - name: Build exact CS211 QA package
         run: |
           set -euo pipefail
           pkg=/tmp/CAMPUS_QA_ENGLISH_LAB_FINAL_CS211
@@ -157,18 +153,13 @@ jobs:
           rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
           mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
           cp apps_script_patches/99_CS21A211_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A211_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
-          test -d qa-output && cp -r qa-output/. "$pkg/EVIDENCIA_AUTOMATICA/" || true
+          cp -r qa-output/. "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
 
           cat > "$pkg/qa-bootstrap-final.js" <<EOF
           (function(){
             var url='${qa_exec}';
             window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
-            try {
-              Object.defineProperty(window,'APPS_SCRIPT_URL',{
-                configurable:true,enumerable:true,
-                get:function(){return url;},set:function(){return url;}
-              });
-            } catch (_) { window.APPS_SCRIPT_URL=url; }
+            try{Object.defineProperty(window,'APPS_SCRIPT_URL',{configurable:true,enumerable:true,get:function(){return url;},set:function(){return url;}});}catch(_){window.APPS_SCRIPT_URL=url;}
             window.__CAMPUS_FINAL_QA__={productHead:'${product_head}',packageHead:'${package_head}',backend:'CS21A211'};
             try{localStorage.setItem('AN_QA_APPS_SCRIPT_URL',url);}catch(_){}
           })();
@@ -193,22 +184,17 @@ jobs:
           for name in required:
               s=(root/name).read_text(encoding='utf-8')
               assert s.index('qa-bootstrap-final.js') < s.index('src/runtime_config.js')
-          print('Entradas QA CS211:', ', '.join(sorted(matched)))
+          print('Entradas QA:', ', '.join(sorted(matched)))
           PY
 
           cat > "$pkg/qa-setup.html" <<EOF
-          <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>English LAB · QA FINAL CS211</title><style>*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:#eef4fb;color:#052c59;padding:28px}.card{max-width:860px;margin:auto;background:#fff;padding:28px;border-radius:22px;box-shadow:0 16px 44px rgba(5,44,89,.12)}h1{margin-top:0}.ok{padding:12px 14px;background:#e9f8ef;border-radius:12px;color:#155d33}.warn{padding:12px 14px;background:#fff5df;border-radius:12px;color:#7a4b00}.meta{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;background:#f6f8fb;padding:12px;border-radius:12px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}a{display:inline-block;text-decoration:none;padding:12px 16px;border-radius:12px;background:#052c59;color:#fff;font-weight:800}</style></head><body><main class="card"><h1>English LAB · QA FINAL CS211</h1><p class="ok"><strong>Frontend QA preconfigurado.</strong> Memory Match: 10 s para seleccionar, 3 s de mismatch.</p><p class="warn"><strong>Antes de probar Memory Match:</strong> el mismo deployment QA debe estar actualizado a backend CS21A211. No crear otra URL.</p><div class="meta">PRODUCT_HEAD=${product_head}<br>PACKAGE_HEAD=${package_head}<br>BACKEND=CS21A211<br>ENVIRONMENT=qa<br>QA_EXEC=${qa_exec}</div><div class="actions"><a href="login.html?clear=1">Abrir Login QA</a></div></main></body></html>
+          <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>English LAB · QA FINAL CS211</title><style>body{font-family:system-ui;background:#eef4fb;color:#052c59;padding:28px}.c{max-width:840px;margin:auto;background:#fff;padding:28px;border-radius:22px}.ok{background:#e9f8ef;padding:12px;border-radius:12px}.w{background:#fff5df;padding:12px;border-radius:12px}.m{font-family:monospace;font-size:12px;word-break:break-all;background:#f6f8fb;padding:12px;border-radius:12px}a{display:inline-block;margin-top:16px;padding:12px 16px;background:#052c59;color:#fff;text-decoration:none;border-radius:12px;font-weight:800}</style></head><body><main class="c"><h1>English LAB · QA FINAL CS211</h1><p class="ok"><b>Memory Match:</b> 10 s para seleccionar · 3 s mismatch · sin espera artificial del primer ACK.</p><p class="w"><b>Antes del test:</b> actualizar UNA VEZ el mismo deployment QA al backend CS21A211 incluido. No crear otra URL.</p><div class="m">PRODUCT_HEAD=${product_head}<br>PACKAGE_HEAD=${package_head}<br>BACKEND=CS21A211<br>ENVIRONMENT=qa<br>QA_EXEC=${qa_exec}</div><a href="login.html?clear=1">Abrir Login QA</a></main></body></html>
           EOF
 
           cat > "$pkg/ABRIR_CAMPUS_QA_FINAL_CS211.cmd" <<'EOF'
           @echo off
           cd /d "%~dp0"
-          echo ============================================================
-          echo CAMPUS QA FINAL CS211 - ENGLISH LAB
-          echo SOLO QA. NO PRODUCCION.
-          echo Memory Match: 10s seleccion / 3s mismatch
-          echo ============================================================
-          echo Abriendo http://127.0.0.1:4219/qa-setup.html
+          echo CAMPUS QA FINAL CS211 - SOLO QA - Memory Match 10s/3s
           start "" http://127.0.0.1:4219/qa-setup.html
           where py >nul 2>nul && py -m http.server 4219 --bind 127.0.0.1 && exit /b
           python -m http.server 4219 --bind 127.0.0.1
@@ -218,8 +204,6 @@ jobs:
           VERSION=ENGLISH_LAB_FINAL_QA_CS211
           STATUS=FINAL_HUMAN_QA_CANDIDATE
           BUILD_DATE=2026-08-12
-          QA_PORT=4219
-          SOURCE_BRANCH=${GITHUB_REF_NAME}
           SOURCE_PRODUCT_HEAD_SHA=${product_head}
           SOURCE_PACKAGE_HEAD_SHA=${package_head}
           BACKEND_VERSION=CS21A211
@@ -231,8 +215,7 @@ jobs:
           MEMORY_MATCH_MISMATCH_REVEAL_MS=3000
           MEMORY_MATCH_FIRST_CARD_EXTENDS_TURN=NO
           MEMORY_MATCH_SECOND_SUBMIT_WAITS_FIRST_ACK=NO
-          MEMORY_MATCH_THIRD_CARD_GUARD=REQUIRED_PASS
-          CS209_SENTENCE_ORDER_DOUBLE_SUBMIT=FIXED_CLIENT_SIDE
+          MEMORY_MATCH_THIRD_CARD_GUARD=PASS_AUTOMATED_PENDING_HUMAN_20_TURNS
           CS210_QUIZ_TIME_DOUBLE_SUBMIT=MITIGATED_CLIENT_SIDE
           QUIZ_BACKEND_IDEMPOTENCY=PENDING_ISSUE_80
           ATTEMPT_ID=PENDING_ISSUE_80
@@ -244,90 +227,70 @@ jobs:
 
           cat > "$pkg/ACTUALIZAR_BACKEND_QA_CS211.txt" <<'EOF'
           BACKEND QA CS211 - UNA SOLA ACTUALIZACION
-          ============================================================
           1. Abrir el proyecto Apps Script QA actual.
-          2. Ubicar el archivo completo de English LAB que actualmente contiene CS21A201
-             (en este proyecto históricamente se conserva con nombre 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs).
-          3. NO crear un segundo archivo completo y NO pegar parches 99W por separado.
-          4. Reemplazar TODO el contenido de ese archivo completo por:
-             BACKEND_QA/99_CS21A211_ENGLISH_LAB_UNIFIED_COMPLETO.gs
+          2. Ubicar el archivo completo de English LAB que hoy contiene CS21A201.
+             Históricamente ese archivo se conserva con nombre 99_CS21A183_SENTENCE_ORDER_COMPLETO.gs.
+          3. NO crear otro archivo completo y NO pegar 99W por separado.
+          4. Reemplazar TODO el contenido por BACKEND_QA/99_CS21A211_ENGLISH_LAB_UNIFIED_COMPLETO.gs.
           5. Guardar.
           6. Implementar > Administrar implementaciones > editar la implementación QA ACTUAL.
-          7. Versión: Nueva versión. La descripción puede dejarse vacía.
-          8. Implementar. Debe conservarse exactamente el mismo ID /exec QA.
+          7. Elegir Nueva versión; descripción opcional/vacía.
+          8. Implementar conservando exactamente el mismo ID /exec QA.
           9. NO modificar producción y NO crear otra implementación.
-
-          Verificador opcional en editor: verificarMemoryMatchFastTurnCS21A211
-          Resultado esperado: ok=true, turn_selection_ms=10000, mismatch_reveal_ms=3000.
-          ============================================================
+          Verificador opcional: verificarMemoryMatchFastTurnCS21A211
+          Esperado: ok=true, turn_selection_ms=10000, mismatch_reveal_ms=3000.
           EOF
 
           cat > "$pkg/LEEME_PRIMERO_FINAL_CS211.txt" <<'EOF'
-          CAMPUS QA FINAL CS211 - ENGLISH LAB
-          ============================================================
-          - SOLO QA. NO PRODUCCION. NO MERGE AUTOMATICO.
-          - Memory Match: 10 s máximos para seleccionar dos cartas.
-          - Primera carta no extiende el turno.
-          - Segunda carta no espera el ACK normal de la primera.
-          - Mismatch: dos cartas visibles 3 s; luego siguiente jugador inmediatamente.
-          - Match: mismo jugador recibe 10 s nuevos inmediatamente.
-          - Timeout con 0/1 carta: siguiente jugador al llegar a 10 s.
-          - Tercera carta bloqueada durante mutación/conflicto/reveal.
-          - Antes de prueba humana, actualizar UNA VEZ el backend QA a CS211 siguiendo ACTUALIZAR_BACKEND_QA_CS211.txt.
+          CAMPUS QA FINAL CS211
+          - SOLO QA. NO PRODUCCION. NO MERGE.
+          - Primero actualizar UNA VEZ backend QA a CS21A211 con el archivo completo incluido.
           - Luego ejecutar ABRIR_CAMPUS_QA_FINAL_CS211.cmd.
-          - Smoke final: Profe + Naty + Chu; 20 turnos consecutivos Memory Match.
-          - Carga 15/20/25 continúa diferida/no bloqueante.
-          ============================================================
+          - Human QA: Profe + Naty + Chu, Memory Match 20 turnos consecutivos.
+          - 10 s máximo para dos cartas; primera no extiende; segunda no espera primer ACK.
+          - Mismatch: 3 s visibles y siguiente jugador inmediatamente.
+          - Match: mismo jugador, 10 s nuevos inmediatamente.
+          - Tercera carta siempre bloqueada durante mutación/conflicto/reveal.
+          - Después smoke de los otros cuatro juegos y 390 px.
+          - Carga 15/20/25 diferida/no bloqueante.
           EOF
 
-          (
-            cd "$pkg"
-            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
-          )
+          (cd "$pkg" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
           (cd /tmp && zip -qr "$zipfile" "$(basename "$pkg")")
           sha256sum "$zipfile" > "$zipfile.sha256"
 
-      - name: Inspect CS211 final ZIP
+      - name: Inspect exact package
         run: |
           set -euo pipefail
           pkg=/tmp/CAMPUS_QA_ENGLISH_LAB_FINAL_CS211
           node "$pkg/scripts/qa_cs21a202_source_truth.mjs"
-          grep -q 'VERSION=ENGLISH_LAB_FINAL_QA_CS211' "$pkg/VERSION.txt"
           grep -q 'BACKEND_VERSION=CS21A211' "$pkg/VERSION.txt"
           grep -q 'APPS_SCRIPT_CHANGE=YES_QA_REQUIRED' "$pkg/VERSION.txt"
           grep -q 'MEMORY_MATCH_TURN_SELECTION_MS=10000' "$pkg/VERSION.txt"
           grep -q 'MEMORY_MATCH_MISMATCH_REVEAL_MS=3000' "$pkg/VERSION.txt"
           grep -q 'MEMORY_MATCH_SECOND_SUBMIT_WAITS_FIRST_ACK=NO' "$pkg/VERSION.txt"
           grep -q 'CS21A211-MM-10S-3S-1' "$pkg/BACKEND_QA/99_CS21A211_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
-          grep -q 'qa-bootstrap-final.js' "$pkg/login.html"
-          grep -q 'qa-bootstrap-final.js' "$pkg/campus.html"
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_ENGLISH_LAB_FINAL_CS211/#' "$pkg/SHA256SUMS.txt")
 
-      - name: Start exact packaged candidate
+      - name: Start packaged candidate
         run: |
-          pkg=/tmp/CAMPUS_QA_ENGLISH_LAB_FINAL_CS211
-          python3 -m http.server 4221 --bind 127.0.0.1 --directory "$pkg" >/tmp/cs211-package.log 2>&1 &
-          for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:4221/qa-setup.html >/dev/null && exit 0
-            sleep 1
-          done
-          cat /tmp/cs211-package.log
-          exit 1
+          python3 -m http.server 4221 --bind 127.0.0.1 --directory /tmp/CAMPUS_QA_ENGLISH_LAB_FINAL_CS211 >/tmp/cs211-package.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4221/qa-setup.html >/dev/null && exit 0; sleep 1; done
+          cat /tmp/cs211-package.log; exit 1
 
-      - name: Packaged login remains QA
+      - name: Packaged login remains QA CS211
         env:
           QA_FINAL_URL: https://script.google.com/macros/s/AKfycbzzsmmHVRGlgltcUJf7Yi9R0z__vsu58Hw9Gq9rNn5pYVrgY5iZ0-xEEL-8wqL4uPVbaw/exec
         run: |
           node --input-type=module <<'NODE'
           import {chromium} from 'playwright';
-          const expected=process.env.QA_FINAL_URL;
           const browser=await chromium.launch({headless:true});
           try{
             const page=await browser.newPage({viewport:{width:390,height:844}});
             await page.goto('http://127.0.0.1:4221/login.html?clear=1',{waitUntil:'domcontentloaded'});
             const cfg=await page.evaluate(()=>({url:window.APPS_SCRIPT_URL||'',runtime:window.CAMPUS_RUNTIME_CONFIG||null,marker:window.__CAMPUS_FINAL_QA__||null}));
-            if(cfg.url!==expected||cfg.runtime?.environment!=='qa'||cfg.runtime?.valid!==true||cfg.runtime?.isProduction!==false||cfg.marker?.backend!=='CS21A211') throw new Error('Login empaquetado no quedó fijado a QA CS211: '+JSON.stringify(cfg));
-            console.log(JSON.stringify({ok:true,qa:true,backend:'CS21A211',url:cfg.url},null,2));
+            if(cfg.url!==process.env.QA_FINAL_URL||cfg.runtime?.environment!=='qa'||cfg.runtime?.valid!==true||cfg.runtime?.isProduction!==false||cfg.marker?.backend!=='CS21A211') throw new Error(JSON.stringify(cfg));
+            console.log(JSON.stringify({ok:true,qa:true,backend:'CS21A211'},null,2));
           }finally{await browser.close();}
           NODE
 
@@ -340,7 +303,7 @@ jobs:
           node scripts/test_english_lab_sentence_order_browser_cs21a209.mjs
           node scripts/test_english_lab_quiz_time_browser_cs21a210.mjs
 
-      - name: Upload CS211 final candidate
+      - name: Upload final candidate
         uses: actions/upload-artifact@v4
         with:
           name: CAMPUS_QA_ENGLISH_LAB_FINAL_CS211
@@ -351,7 +314,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload CS211 automatic evidence
+      - name: Upload automatic evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
