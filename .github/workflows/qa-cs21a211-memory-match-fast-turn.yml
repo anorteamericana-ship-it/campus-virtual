@@ -1,0 +1,106 @@
+name: CS21A211 Memory Match 10s 3s QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a211-memory-match-10s-3s
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a211-memory-match-fast-turn-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memory-match-fast-turn:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout CS211
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Confirm exact base and limited scope
+        run: |
+          set -euo pipefail
+          BASE=6379739f502c820e52d32f2ebae84c20c4ae078c
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs211-delta.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+            'apps_script_patches/99W_MEMORY_MATCH_FAST_TURN_QA_CS21A211.gs',
+            'scripts/assemble_apps_script_cs21a211_unified.mjs',
+            'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx',
+            'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx',
+            'scripts/qa_cs21a202_source_truth.mjs',
+            'scripts/qa_cs21a204_network_budget_model.mjs',
+            'scripts/test_memory_match_fast_turn_browser_cs21a211.mjs',
+            'scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs',
+            '.github/workflows/qa-cs21a211-memory-match-fast-turn.yml',
+          }
+          changed={x.strip() for x in Path('/tmp/cs211-delta.txt').read_text().splitlines() if x.strip()}
+          unexpected=changed-allowed
+          if unexpected:
+              raise SystemExit('CS211 tocó archivos fuera de alcance: '+', '.join(sorted(unexpected)))
+          print('Scope CS211:', ', '.join(sorted(changed)))
+          PY
+
+      - name: Source truth guard
+        run: node scripts/qa_cs21a202_source_truth.mjs
+
+      - name: Backend 10s 3s contract and syntax
+        run: node scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs
+
+      - name: Static network model only
+        run: node scripts/qa_cs21a204_network_budget_model.mjs
+
+      - name: Existing Memory Match source contracts
+        run: |
+          node scripts/qa_cs21a203_live_sync.mjs
+          node scripts/qa_cs21a203_custom_pair_start_guard.mjs
+
+      - name: Install Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static QA server
+        run: |
+          python3 -m http.server 4211 --bind 127.0.0.1 >/tmp/cs211-http.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4211/src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs211-http.log
+          exit 1
+
+      - name: Conflict and third-card regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4211
+        run: node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: CS211 fast-turn browser contract
+        env:
+          QA_BASE_URL: http://127.0.0.1:4211
+        run: node scripts/test_memory_match_fast_turn_browser_cs21a211.mjs
+
+      - name: 390px shell sanity
+        env:
+          QA_BASE_URL: http://127.0.0.1:4211
+        run: node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+
+      - name: Upload CS211 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A211_MEMORY_MATCH_FAST_TURN_EVIDENCE
+          path: qa-output/
+          if-no-files-found: warn
+          retention-days: 30
