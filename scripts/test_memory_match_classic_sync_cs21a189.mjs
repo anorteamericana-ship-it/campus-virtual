@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Este contrato también ancla el RC después de regenerar el archivo Apps Script completo 99–99K.
+// CS21A206: valida invariantes funcionales del reveal clásico y no copy histórico exacto.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
@@ -30,10 +31,19 @@ for(const marker of [
   'data-classic-sync="true"',
   "phase === 'FIRST_REVEALED'",
   "phase === 'MISMATCH_REVEAL'",
-  'No coinciden · memorízalas antes de que se cierren',
+  'attempt.reveal_until',
+  'waitingForFlipback',
+  'data-reveal-waiting',
   'Volteá dos cartas',
   'data-face-up',
 ]) assert.ok(engine.includes(marker),`Motor visual no contiene ${marker}`);
+
+// El texto visible evolucionó en CS197 para incluir un countdown real. El contrato
+// importante no es una frase literal, sino que el mismatch siga identificándose,
+// permanezca visible hasta reveal_until y bloquee el siguiente turno hasta flipback.
+assert.match(engine,/No coinciden[^\n<]*memoriz/i,'El mismatch debe seguir comunicándose como no coincidente y memorizable.');
+assert.match(engine,/turnReady\s*=\s*turnStartsIn\s*<=\s*0\s*&&\s*!waitingForFlipback/,'El siguiente turno no puede habilitarse durante el reveal.');
+assert.ok(engine.includes('data-spectator-reveal-ms'),'El motor debe exponer el reveal vigente para espectadores.');
 
 for(const marker of [
   'Object.freeze({maxPlayers:5,ms:550})',
@@ -53,11 +63,15 @@ assert.ok(css.includes('.elmm-flipback-banner'));
 
 const result={
   verdict:'PASS_CONTRACT_CS21A189',
+  contract_revision:'CS21A206-INVARIANT-GUARD',
   classic_memory:true,
   first_reveal_global:true,
   mismatch_reveal_global:true,
   mismatch_flip_back:true,
-  mismatch_reveal_ms:2200,
+  historical_backend_mismatch_reveal_ms:2200,
+  runtime_reveal_deadline_required:true,
+  next_turn_blocked_during_reveal:true,
+  spectator_reveal_metadata_required:true,
   persistent_discovery:false,
   correct_pair_stays_face_up:true,
   correct_pair_keeps_turn:true,
