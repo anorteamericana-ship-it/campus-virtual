@@ -54,6 +54,20 @@ CS21A206 mantiene el guard de seguridad, pero en eventos `pull_request` calcula 
 
 No se cambia Word Search.
 
+## Hallazgo 4 · Ownership de polling Memory CS192/CS203
+
+El modelo histórico CS192 exigía que el polling exterior estuviera apagado siempre para Memory Match. CS203 cambió correctamente esa arquitectura para resolver presencia e inicio sin F5:
+
+- antes de `room_package`, el docente refresca el lobby/presencia cada 1000 ms;
+- antes de `room_package`, el estudiante refresca el lobby cada 1200 ms;
+- ambos usan guard `inFlight` para impedir solicitudes superpuestas;
+- en cuanto aparece `room_package`, esos effects retornan y dejan de programar lobby polls;
+- desde COUNTDOWN/LIVE el adaptador CS192 vuelve a ser dueño único del polling autoritativo.
+
+CS21A206 actualiza el harness para exigir ese handoff explícito. El presupuesto sintético `2/5/10/15/25` se refiere únicamente a la fase activa con `room_package`, no al breve lobby previo.
+
+No se cambia producto ni polling runtime.
+
 ## Artifact CS205 · 642 vs 643
 
 La discrepancia de conteo quedó explicada sin cambiar el paquete:
@@ -79,7 +93,7 @@ Se conserva el modelo sintético `2/5/10/15/25` únicamente como guard de ingeni
 El workflow `CS21A206 QA Contract Hygiene` exige:
 
 1. diff sin producto, estilos, HTML ni Apps Script;
-2. invariantes Memory Match;
+2. invariantes Memory Match y handoff lobby→CS192;
 3. currículo/backend/balance/integración de Quiz;
 4. motor/backend/first-claim/integración de Word Search;
 5. contrato estático del shell CS205;
