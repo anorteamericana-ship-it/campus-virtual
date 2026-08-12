@@ -122,6 +122,16 @@ jobs:
           (function(){
             var url='${qa_exec}';
             window.__CAMPUS_RUNTIME_CONFIG__={environment:'qa',appsScriptUrl:url};
+            try {
+              Object.defineProperty(window,'APPS_SCRIPT_URL',{
+                configurable:true,
+                enumerable:true,
+                get:function(){ return url; },
+                set:function(value){ return url; }
+              });
+            } catch (_) {
+              window.APPS_SCRIPT_URL=url;
+            }
             window.__CAMPUS_FINAL_QA__={productHead:'${product_head}',packageHead:'${package_head}',backend:'CS21A201'};
             try{localStorage.setItem('AN_QA_APPS_SCRIPT_URL',url);}catch(_){}
           })();
@@ -227,6 +237,7 @@ jobs:
           assert 'APPS_SCRIPT_CHANGE=NO' in version
           assert qa in version and qa in boot
           assert "environment:'qa'" in boot
+          assert "Object.defineProperty(window,'APPS_SCRIPT_URL'" in boot
           assert 'submitQuestionRef' in quiz
           assert (root/'ABRIR_CAMPUS_QA_FINAL.cmd').is_file()
           assert (root/'qa-setup.html').is_file()
