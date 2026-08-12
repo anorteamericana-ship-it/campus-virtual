@@ -40,6 +40,7 @@ jobs:
             'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx',
             'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx',
             'scripts/qa_cs21a202_source_truth.mjs',
+            'scripts/qa_cs21a203_live_sync.mjs',
             'scripts/qa_cs21a204_network_budget_model.mjs',
             'scripts/test_memory_match_fast_turn_browser_cs21a211.mjs',
             'scripts/qa_cs21a211_memory_match_fast_turn_backend.mjs',
