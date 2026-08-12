@@ -1,9 +1,6 @@
-name: CS21A202 Final Source of Truth Candidate QA
+name: CS21A202 Historical Final Source of Truth Candidate QA
 
 on:
-  push:
-    branches:
-      - fix/cs21a202-english-lab-source-of-truth-recovery
   workflow_dispatch:
 
 permissions:
@@ -162,15 +159,13 @@ jobs:
           cat > "$pkg/LEEME_PRIMERO_CS21A202.txt" <<'EOF'
           CAMPUS QA CS21A202 R2 - SOURCE OF TRUTH + QA LOGIN ROUTING
           ============================================================
-          - NO PRODUCCION. NO MERGE.
+          - HISTORICAL/MANUAL ONLY. NO PRODUCCION. NO MERGE.
           - Frontend Memory Match CS196 y CS197 recuperado directamente en src/.
           - El test de conflicto ya NO reemplaza HTML/codigo en runtime.
           - Se recuperan bloqueo/reconciliacion, poll transitorio, countdown spectator y giro 200 ms.
           - Login, inscripcion, ventas y Campus cargan el mismo /exec QA guardado antes de runtime_config.js.
           - Backend incluido: CS21A201 unificado, sin cambios funcionales CS202.
-          - Si Apps Script QA ya contiene CS201 guardado, no reemplazarlo por otro backend distinto.
-          - Ejecutar ABRIR_CAMPUS_QA_CS21A202.cmd (puerto 4202).
-          - Reproducir LAB-6254 con docente + Naty + Chu: tercera carta debe permanecer bloqueada durante state_conflict/retry.
+          - El gate permanente vigente es English LAB Source Truth Guard.
           EOF
 
           (
@@ -217,7 +212,7 @@ jobs:
           pkg=/tmp/CAMPUS_QA_CS21A202_CANDIDATO_SOURCE_OF_TRUTH
           grep -q "CS21A202: un rechazo de dominio con room_package" "$pkg/src/english_lab_live.jsx"
           grep -q "const stateCandidate=candidate.ok===false" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
-          grep -q "mutationBusy={busy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
+          grep -q "mutationBusy={blockingBusy}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "authoritativeBusy" "$pkg/src/english_lab_games/memory_match_classic_sync_cs21a189.jsx"
           grep -q "function pollMsForState(state)" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q "data-live-current-poll-ms={currentPollMs}" "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
