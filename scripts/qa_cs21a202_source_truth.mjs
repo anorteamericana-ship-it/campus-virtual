@@ -23,8 +23,8 @@ assert.match(live,/CS21A202: un rechazo de dominio con room_package/,'postLive r
 assert.doesNotMatch(live,/!res\.ok \|\| !data \|\| data\.ok === false/,'postLive real no puede convertir todo ok:false en error de transporte');
 assert.match(adapter,/const stateCandidate=candidate\.ok===false/,'adaptador debe normalizar envelope reconciliable');
 
-// No fijar el gate a un nombre histórico de variable. La semántica vigente es:
-// DISCOVER_CARD puede seguir interactuando; SUBMIT_PAIR y demás mutaciones autoritativas bloquean.
+// Semántica vigente: DISCOVER_CARD puede continuar; SUBMIT_PAIR y demás mutaciones autoritativas bloquean.
+// El gate no depende de que la variable se llame "busy" ni de una firma histórica de componente.
 assert.match(adapter,/const blocksInteraction=submissionAction!=='DISCOVER_CARD';/,'el adaptador debe distinguir discovery de mutaciones bloqueantes');
 assert.match(adapter,/setBusy\(true\);if\(blocksInteraction\)setBlockingBusy\(true\);/,'una mutación bloqueante debe activar busy autoritativo síncronamente');
 assert.match(adapter,/finally\{setBusy\(false\);if\(blocksInteraction\)setBlockingBusy\(false\);\}/,'busy autoritativo debe liberarse sólo al terminar la mutación bloqueante');
@@ -41,11 +41,13 @@ assert.match(adapter,/data-live-current-poll-ms=\{currentPollMs\}/,'métrica de 
 assert.match(adapter,/livePollMsForState:pollMsForState/,'API de poll por estado debe estar exportada');
 assert.match(classic,/data-spectator-reveal-ms=\{revealRuleMs\}/,'duración spectator debe estar expuesta por la UI real');
 assert.match(classic,/se cierran en \$\{revealSeconds\}s/,'countdown de mismatch debe vivir en src');
-assert.match(classic,/function Timer\(\{remainingMs,durationMs,waiting,syncingTurn,revealWaiting\}\)/,'Timer final CS197 debe existir en src');
-assert.match(classic,/const label=revealWaiting\?'Cartas'/,'Timer de reveal debe mostrar Cartas');
-assert.match(classic,/const value=revealWaiting\?`\$\{seconds\}s`/,'Timer de reveal debe mostrar segundos, no elipsis');
+assert.match(classic,/function Timer\(\{[^}]*remainingMs[^}]*durationMs[^}]*revealWaiting[^}]*\}\)/,'Timer debe recibir tiempo y estado de reveal aunque agregue parámetros nuevos');
+assert.match(classic,/revealWaiting\?'Cartas'/,'Timer de reveal debe mostrar Cartas');
+assert.match(classic,/revealWaiting\?`\$\{seconds\}s`/,'Timer de reveal debe mostrar segundos, no elipsis');
 assert.match(classic,/data-reveal-waiting=\{revealWaiting\?'true':'false'\}/,'Timer debe exponer modo reveal');
-assert.match(classic,/waiting=\{turnStartsIn>0\} revealWaiting=\{waitingForFlipback\}/,'mismatch y cambio de turno deben ser estados visuales distintos');
+assert.match(classic,/waiting=\{turnStartsIn>0\}/,'Timer debe recibir el estado de espera del turno');
+assert.match(classic,/revealWaiting=\{waitingForFlipback\}/,'Timer debe separar reveal de mismatch del cambio de turno');
+assert.match(classic,/countdownMs=\{turnStartsIn\}/,'countdown añadido por CS203 debe conservar fuente autoritativa');
 assert.match(classicCss,/transition:transform \.20s cubic-bezier\(\.2,\.75,\.25,1\)/,'giro CS197 de 200 ms debe vivir en CSS source');
 
 assert.match(preview,/CS21A202 fixture: el mismo contrato de reconciliación/,'fixture debe declarar contrato sin parche runtime');
@@ -89,7 +91,7 @@ assert.deepEqual(runtimePatchCandidates,[],'Ningún browser test debe reemplazar
 
 console.log(JSON.stringify({
   ok:true,
-  version:'CS21A202-SOURCE-TRUTH-QA-4',
+  version:'CS21A202-SOURCE-TRUTH-QA-5',
   source_of_truth:'src',
   transport_domain_reconciliation:true,
   adapter_state_candidate:true,
@@ -99,6 +101,7 @@ console.log(JSON.stringify({
   cs197_transient_poll_recovered:true,
   cs197_spectator_countdown_recovered:true,
   cs197_reveal_timer_recovered:true,
+  cs203_authoritative_start_countdown_preserved:true,
   cs197_flip_animation_recovered:true,
   browser_runtime_code_patch:false,
   browser_tests_scanned:browserFiles.length,
