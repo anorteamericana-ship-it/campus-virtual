@@ -77,10 +77,10 @@ jobs:
           grep -q "CS21A198-QUIZ-TIME-B1U01-2" /tmp/cs201-unified.js
           grep -q "CS21A197-MM-SPECTATOR-REVEAL-1" /tmp/cs201-unified.js
 
-      - name: Load models only — not authenticated load
+      - name: Network budget model only — not authenticated load
         run: |
           set -euo pipefail
-          node scripts/qa_cs21a204_load_budget.mjs
+          node scripts/qa_cs21a204_network_budget_model.mjs
           node scripts/english_lab_load_harness_cs21a183.mjs --self-test
 
       - name: Install Playwright Chromium
@@ -139,7 +139,7 @@ jobs:
           rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'qa-output' ./ "$pkg/"
           mkdir -p "$pkg/BACKEND_QA" "$pkg/EVIDENCIA_AUTOMATICA"
           cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
-          cp -r qa-output/cs21a204-load-budget "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
+          cp -r qa-output/cs21a204-network-budget-model "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
           cp -r qa-output/cs21a191-hangman "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
           cp -r qa-output/cs21a204-browser-smoke "$pkg/EVIDENCIA_AUTOMATICA/" 2>/dev/null || true
 
@@ -199,7 +199,7 @@ jobs:
           WORD_SEARCH_BROWSER_SMOKE=REQUIRED_PASS
           SENTENCE_ORDER_AUTHENTICATED_SMOKE=PENDING
           INTEGRATED_AUTOMATIC_SMOKE=REQUIRED_PASS
-          LOAD_MODEL_2_5_10_15_25=AUTOMATED_MODEL_ONLY
+          NETWORK_BUDGET_MODEL_2_5_10_15_25=AUTOMATED_MODEL_ONLY
           AUTH_LOAD_5_10_15_25=PENDING_UNIQUE_SESSIONS
           PRODUCTION_ACTION=DO_NOT_MODIFY
           EOF
@@ -213,7 +213,8 @@ jobs:
           - Memory Match ya tiene PASS autenticado Profe + Chu + Naty sobre la base CS203.
           - Hangman, Quiz y Word Search tienen smoke de navegador real dentro del gate integral.
           - Sentence Order conserva contrato/curriculo automatico y requiere smoke autenticado manual del RC.
-          - La fase 2/5/10/15/25 incluida en CI es MODELO/SELF-TEST, no carga autenticada real.
+          - La fase 2/5/10/15/25 incluida en CI es un MODELO ESTATICO DE TRAFICO DE RED, no una prueba de carga.
+          - No mide cuota de Apps Script, ScriptLock, lecturas de Sheets ni concurrencia autenticada real.
           - La carga real 5/10/15/25 queda pendiente hasta disponer de sesiones QA unicas suficientes.
           - Ejecutar ABRIR_CAMPUS_QA_CS21A204.cmd (puerto 4204).
           EOF
@@ -231,6 +232,7 @@ jobs:
           pkg=/tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE
           grep -q 'VERSION=CS21A204' "$pkg/VERSION.txt"
           grep -q 'AUTH_LOAD_5_10_15_25=PENDING_UNIQUE_SESSIONS' "$pkg/VERSION.txt"
+          grep -q 'NETWORK_BUDGET_MODEL_2_5_10_15_25=AUTOMATED_MODEL_ONLY' "$pkg/VERSION.txt"
           grep -q 'APPS_SCRIPT_CHANGE=NO' "$pkg/VERSION.txt"
           grep -q 'HANGMAN_BROWSER_SMOKE=REQUIRED_PASS' "$pkg/VERSION.txt"
           grep -q 'QUIZ_BROWSER_SMOKE=REQUIRED_PASS' "$pkg/VERSION.txt"
@@ -241,7 +243,7 @@ jobs:
           grep -q 'memoryPackageReady' "$pkg/src/english_lab_live.jsx"
           grep -q 'blockingBusy' "$pkg/src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx"
           grep -q 'CS21A201-CURRICULUM-SOURCE-1' "$pkg/BACKEND_QA/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs"
-          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a204-load-budget/result.json"
+          test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a204-network-budget-model/result.json"
           test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a191-hangman/browser_result.json"
           test -f "$pkg/EVIDENCIA_AUTOMATICA/cs21a204-browser-smoke/result.json"
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_CS21A204_ENGLISH_LAB_RELEASE_CANDIDATE/#' "$pkg/SHA256SUMS.txt")
