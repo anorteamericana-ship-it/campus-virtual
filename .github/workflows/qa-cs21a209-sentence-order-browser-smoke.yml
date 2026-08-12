@@ -1,0 +1,118 @@
+name: CS21A209 Sentence Order Browser Smoke QA
+
+on:
+  push:
+    branches:
+      - test/cs21a209-sentence-order-browser-smoke
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a209-sentence-order-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sentence-order-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact CS209 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce CS209 perimeter and unchanged Apps Script
+        run: |
+          set -euo pipefail
+          BASE=b3c67a9ef157150fafe03b054d774c702d64ce7d
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs209-changed.txt
+          if grep -E '(^apps_script_patches/|\.gs$)' /tmp/cs209-changed.txt; then
+            echo 'CS21A209 no permite cambios Apps Script/backend.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+              '.github/workflows/qa-cs21a209-sentence-order-browser-smoke.yml',
+              '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_BROWSER_SMOKE_CS21A209.md',
+              'scripts/test_english_lab_sentence_order_browser_cs21a209.mjs',
+              'src/english_lab_games/sentence_order_preview_cs21a209.html',
+              'src/english_lab_sentence_order_cs21a183.js',
+          }
+          changed={line.strip() for line in Path('/tmp/cs209-changed.txt').read_text().splitlines() if line.strip()}
+          unexpected=sorted(changed-allowed)
+          if unexpected:
+              raise SystemExit('Archivos fuera del perímetro CS209: '+', '.join(unexpected))
+          required={
+              '.github/workflows/qa-cs21a209-sentence-order-browser-smoke.yml',
+              '00_DOCUMENTACION/ENGLISH_LAB_SENTENCE_ORDER_BROWSER_SMOKE_CS21A209.md',
+              'scripts/test_english_lab_sentence_order_browser_cs21a209.mjs',
+              'src/english_lab_games/sentence_order_preview_cs21a209.html',
+          }
+          missing=sorted(required-changed)
+          if missing:
+              raise SystemExit('Faltan archivos QA CS209: '+', '.join(missing))
+          print('CS21A209 perimeter OK:', *sorted(changed), sep='\n- ')
+          PY
+
+      - name: Sentence Order static regression
+        run: |
+          node scripts/test_english_lab_sentence_order_cs21a183.mjs
+          node scripts/test_english_lab_curriculum_guard_cs21a183.mjs
+
+      - name: Current English LAB shell and routing contracts
+        run: |
+          node scripts/qa_cs21a205_english_lab_shell.mjs
+          node scripts/qa_cs21a207_english_lab_navigation.mjs
+          node scripts/qa_cs21a208_english_lab_legacy_routes.mjs
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static CS209 server
+        run: |
+          python3 -m http.server 4209 --bind 127.0.0.1 >/tmp/cs209-http.log 2>&1 &
+          echo $! >/tmp/cs209-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4209/src/english_lab_games/sentence_order_preview_cs21a209.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs209-http.log
+          exit 1
+
+      - name: Sentence Order real Chromium smoke
+        env:
+          QA_BASE_URL: http://127.0.0.1:4209
+        run: node scripts/test_english_lab_sentence_order_browser_cs21a209.mjs
+
+      - name: Unified shell browser regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4209
+        run: node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+
+      - name: Verify unchanged CS201 backend remains assemblable
+        run: |
+          set -euo pipefail
+          BASE=b3c67a9ef157150fafe03b054d774c702d64ce7d
+          git diff --exit-code "$BASE"...HEAD -- apps_script_patches/
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201-unified.js
+          node --check /tmp/cs201-unified.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs201-unified.js
+
+      - name: Upload CS209 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cs21a209-sentence-order-browser-evidence
+          path: qa-output/cs21a209-sentence-order/
+          if-no-files-found: warn
