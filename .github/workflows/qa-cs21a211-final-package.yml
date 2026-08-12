@@ -99,16 +99,31 @@ jobs:
         env:
           QA_BASE_URL: http://127.0.0.1:4212
         run: |
-          set -euo pipefail
-          node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
-          node scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs
-          node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
-          node scripts/test_memory_match_fast_turn_browser_cs21a211.mjs
-          node scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs
-          node scripts/test_english_lab_hangman_package_browser_cs21a191.mjs
-          node scripts/qa_cs21a204_quiz_word_search_browser_smoke.mjs
-          node scripts/test_english_lab_sentence_order_browser_cs21a209.mjs
-          node scripts/test_english_lab_quiz_time_browser_cs21a210.mjs
+          set -u
+          mkdir -p qa-output/cs211-final-browser-logs
+          failed=0
+          for script in \
+            scripts/test_english_lab_unified_shell_browser_cs21a205.mjs \
+            scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs \
+            scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs \
+            scripts/test_memory_match_fast_turn_browser_cs21a211.mjs \
+            scripts/test_memory_match_lobby_start_rejoin_browser_cs21a203.mjs \
+            scripts/test_english_lab_hangman_package_browser_cs21a191.mjs \
+            scripts/qa_cs21a204_quiz_word_search_browser_smoke.mjs \
+            scripts/test_english_lab_sentence_order_browser_cs21a209.mjs \
+            scripts/test_english_lab_quiz_time_browser_cs21a210.mjs
+          do
+            name="$(basename "$script" .mjs)"
+            echo "===== $script ====="
+            if node "$script" >"qa-output/cs211-final-browser-logs/${name}.log" 2>&1; then
+              cat "qa-output/cs211-final-browser-logs/${name}.log"
+            else
+              cat "qa-output/cs211-final-browser-logs/${name}.log"
+              echo "FAIL: $script" | tee -a qa-output/cs211-final-browser-logs/FAILURES.txt
+              failed=1
+            fi
+          done
+          test "$failed" -eq 0
 
       - name: Build CS211 final QA ZIP
         run: |
