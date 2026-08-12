@@ -513,10 +513,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
         { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
         ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
-        ...(mostrarAcademiaPlay ? [
-          { id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' },
-          { id: 'english_lab_live', label: 'English LAB Live', icon: 'english_lab', badge: 'Nuevo' },
-        ] : []),
+        ...(mostrarAcademiaPlay ? [{ id: 'english_lab_live', label: 'English LAB', icon: 'english_lab', badge: 'Nuevo' }] : []),
       ],
     },
     {
@@ -535,10 +532,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'perfil', label: 'Mi Perfil', icon: 'profile' },
     { id: 'grupos', label: 'Mis Grupos', icon: 'roster' },
     { id: 'materiales', label: 'Biblioteca del Programa', icon: 'materials' },
-    ...(mostrarAcademiaPlay ? [
-      { id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' },
-      { id: 'english_lab_live', label: 'English LAB Live', icon: 'english_lab', badge: 'Nuevo' },
-    ] : []),
+    ...(mostrarAcademiaPlay ? [{ id: 'english_lab_live', label: 'English LAB', icon: 'english_lab', badge: 'Nuevo' }] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'cronograma_grupo', label: 'Cronograma Inglés Conversacional', icon: 'calendar' },
     { id: 'ican', label: 'Club I CAN', icon: 'ican' },
