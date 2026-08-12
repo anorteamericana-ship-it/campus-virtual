@@ -40,6 +40,7 @@ jobs:
             'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx',
             'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx',
             'src/english_lab_live_canonical_loader_cs21a193.js',
+            'scripts/qa_cs21a200_word_search_live_integration.mjs',
             'scripts/qa_cs21a202_source_truth.mjs',
             'scripts/qa_cs21a203_live_sync.mjs',
             'scripts/qa_cs21a204_network_budget_model.mjs',
@@ -71,6 +72,7 @@ jobs:
           node scripts/qa_cs21a203_live_sync.mjs
           node scripts/qa_cs21a203_custom_pair_start_guard.mjs
           node scripts/qa_cs21a205_english_lab_shell.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
 
       - name: Install Chromium
         run: |
