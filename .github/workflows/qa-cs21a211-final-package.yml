@@ -29,18 +29,18 @@ jobs:
       - name: Freeze product at green CS211 head
         run: |
           set -euo pipefail
-          PRODUCT_HEAD=889458a05a232242fb128bf82b3b0437dc7f2a57
-          git merge-base --is-ancestor "$PRODUCT_HEAD" HEAD
-          git diff --name-only "$PRODUCT_HEAD"...HEAD | tee /tmp/package-delta.txt
+          PACKAGE_BASE=808b09af49e1a56627ac8ff72facf93f1bccd663
+          git merge-base --is-ancestor "$PACKAGE_BASE" HEAD
+          git diff --name-only "$PACKAGE_BASE"...HEAD | tee /tmp/package-delta.txt
           python3 - <<'PY'
           from pathlib import Path
           allowed={'.github/workflows/qa-cs21a211-final-package.yml'}
           changed={x.strip() for x in Path('/tmp/package-delta.txt').read_text().splitlines() if x.strip()}
           if changed != allowed:
-              raise SystemExit('Delta posterior al producto CS211 inesperado: '+', '.join(sorted(changed)))
+              raise SystemExit('Delta posterior a la base de empaquetado CS211 inesperado: '+', '.join(sorted(changed)))
           print('Producto CS211 congelado: 889458a05a232242fb128bf82b3b0437dc7f2a57')
           PY
-          git diff --exit-code "$PRODUCT_HEAD"...HEAD -- ':!.github/workflows/qa-cs21a211-final-package.yml'
+          git diff --exit-code "$PACKAGE_BASE"...HEAD -- ':!.github/workflows/qa-cs21a211-final-package.yml'
 
       - name: Source truth and Memory Match CS211 contracts
         run: |
