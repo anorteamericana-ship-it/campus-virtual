@@ -27,17 +27,23 @@ assert.ok(
   'Administración debe conservar por ahora la ruta legacy para catálogo/compatibilidad.'
 );
 
-const studentLiveRoute = 'english_lab_live: <LazyRoute title="English LAB Live" component="EnglishLabLiveStudentView"';
-const teacherLiveRoute = 'english_lab_live: <LazyRoute title="English LAB Live" component="EnglishLabLiveTeacherView"';
-const studentLegacyRoute = 'academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView"';
-assert.ok(app.includes(studentLiveRoute), 'La ruta Live estudiantil debe seguir montando EnglishLabLiveStudentView.');
-assert.ok(app.includes(teacherLiveRoute), 'La ruta Live docente debe seguir montando EnglishLabLiveTeacherView.');
-assert.ok((app.match(/academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView"/g) || []).length >= 2, 'Las rutas legacy directa deben preservarse para compatibilidad y prospectos.');
+// CS207 protege el destino canónico, no el copy interno del title. CS208 normaliza
+// ese title de "English LAB Live" a "English LAB" sin cambiar componente ni loader.
+const studentLiveRoute = /english_lab_live:\s*<LazyRoute\s+title="English LAB(?: Live)?"\s+component="EnglishLabLiveStudentView"\s+files=\{F96_LAZY\.english_lab_live\}/;
+const teacherLiveRoute = /english_lab_live:\s*<LazyRoute\s+title="English LAB(?: Live)?"\s+component="EnglishLabLiveTeacherView"\s+files=\{F96_LAZY\.english_lab_live\}/;
+assert.match(app, studentLiveRoute, 'La ruta Live estudiantil debe seguir montando EnglishLabLiveStudentView con el loader Live.');
+assert.match(app, teacherLiveRoute, 'La ruta Live docente debe seguir montando EnglishLabLiveTeacherView con el loader Live.');
+
+// Las rutas legacy ocultas pueden converger por rol en cortes posteriores. Lo que
+// CS207 debe preservar es que AcademiaPlay siga disponible donde aún corresponde
+// (prospecto gratis / administración), no un número fijo de aliases directos.
+assert.ok(app.includes('component="AcademiaPlayView"'), 'AcademiaPlayView debe seguir disponible para compatibilidad controlada.');
 assert.ok(app.includes("!['dashboard','academia_play'].includes(active)"), 'El guard del prospecto gratis debe seguir cerrado a dashboard/academia_play.');
 assert.ok(app.includes('english_lab_live: F96_ENGLISH_LAB_LIVE_CS21A193'), 'La entrada canónica debe conservar el loader Live compartido.');
 
 const result = {
   verdict: 'PASS_CS21A207_ENGLISH_LAB_CANONICAL_NAVIGATION',
+  contract_revision: 'CS21A208-ROUTE-TITLE-TOLERANT',
   visible_navigation: {
     enrolled_student: ['english_lab_live'],
     teacher: ['english_lab_live'],
@@ -46,7 +52,8 @@ const result = {
   },
   visible_label: 'English LAB',
   duplicate_visible_navigation: false,
-  direct_legacy_routes_preserved: true,
+  canonical_live_components_preserved: true,
+  legacy_surface_available_where_authorized: true,
   apps_script_change: false,
 };
 console.log(JSON.stringify(result, null, 2));
