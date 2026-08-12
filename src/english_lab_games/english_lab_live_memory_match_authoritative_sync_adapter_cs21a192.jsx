@@ -1,5 +1,5 @@
 // CS21A192 · Adaptador autoritativo de sincronización para Memory Match Live.
-// Debe cargarse después del stack clásico CS21A189 y del guard visual CS21A190.
+// CS21A211 mantiene un solo request en vuelo pero elimina pausa añadida durante reveals.
 /* global React */
 (function installMemoryMatchAuthoritativeSyncCS21A192(global){
   'use strict';
@@ -7,14 +7,15 @@
   const base=global.EnglishLabMemoryMatchLiveCS21A174;
   if(!base) throw new Error('Falta EnglishLabMemoryMatchLiveCS21A174 antes de CS21A192.');
 
-  const VERSION='CS21A192';
+  const VERSION='CS21A211';
   const SYNC_VERSION='CS21A192-MM-CONSISTENCY-2';
   const POLL_TIMEOUT_MS=8000;
   const MUTATION_TIMEOUT_MS=45000;
   const POLL_BACKOFF_CAP_MS=8000;
+  const TRANSIENT_SETTLE_MS=0;
   const ENDPOINTS=base.ENDPOINTS;
   const POLL_TIERS=Object.freeze([
-    Object.freeze({maxPlayers:5,ms:550}),
+    Object.freeze({maxPlayers:5,ms:250}),
     Object.freeze({maxPlayers:10,ms:900}),
     Object.freeze({maxPlayers:15,ms:1400}),
     Object.freeze({maxPlayers:25,ms:2200}),
@@ -58,14 +59,17 @@
     const source=state&&typeof state==='object'?state:{};
     const normal=pollMsForPlayers(base.participantCount(source,packageFrom(source)));
     const phase=transientAttemptPhase(source);
-    if(phase==='FIRST_REVEALED'||phase==='MISMATCH_REVEAL') return Math.max(250,Math.round(normal/2));
+    // Una vez conocida una carta/reveal transitorio no añadimos espera cliente:
+    // el siguiente poll sale apenas termina el request anterior. inFlight sigue
+    // garantizando que nunca haya dos lecturas simultáneas por cliente.
+    if(phase==='FIRST_REVEALED'||phase==='MISMATCH_REVEAL') return TRANSIENT_SETTLE_MS;
     return normal;
   }
   function pollBackoffMs(baseMs,failures){
-    const baseDelay=Math.max(1,finite(baseMs,550));
+    const baseDelay=Math.max(0,finite(baseMs,250));
     const count=Math.max(0,Math.floor(finite(failures,0)));
     if(!count) return baseDelay;
-    return Math.min(POLL_BACKOFF_CAP_MS,baseDelay*Math.pow(2,Math.min(4,count-1)));
+    return Math.min(POLL_BACKOFF_CAP_MS,Math.max(250,baseDelay||250)*Math.pow(2,Math.min(4,count-1)));
   }
   function withDeadline(factory,timeoutMs,label){
     const limit=Math.max(1,finite(timeoutMs,POLL_TIMEOUT_MS));
@@ -95,7 +99,6 @@
     const pkg=packageFrom(source)||{};
     const turn=pkg.turn_state||source.turn_state||{};
     const shared=pkg.shared_state||source.shared_state||{};
-    const room=source.room||pkg.room||{};
     return Object.freeze({
       stateRevision:stateRevision(source),
       turnNumber:Math.max(0,finite(turn.turn_number||turn.turnNumber,0)),
@@ -150,9 +153,6 @@
     const receivedMono=finite(source.__cs21a192_received_monotonic_ms,monoNow());
     const startedMono=finite(source.__cs21a192_request_started_monotonic_ms,receivedMono);
     const roundTripMs=Math.max(0,receivedMono-startedMono);
-    // Con una sola marca del servidor no existe T2/T3 completo. RTT/2 es la
-    // mejor aproximación disponible y se acota para que una ejecución lenta de
-    // Apps Script no se confunda con latencia de regreso.
     const returnPathEstimateMs=Math.min(750,roundTripMs/2);
     const freshContract=clean(source.sync_version||roomPackage.sync_version)===SYNC_VERSION||stateRevision(source)>0;
     const rootServerNow=finite(source.server_now_ms,0)||timestamp(source.server_now);
@@ -182,8 +182,8 @@
     if(!result||typeof result!=='object') return '';
     const action=upper(result.action||result.answer_type);
     if(action==='DISCOVER_CARD') return result.accepted===false?'Primera carta ya sincronizada.':'Primera carta abierta para toda la sala.';
-    if(result.correct===true) return `¡Pareja correcta! +${Number(result.points||0)} · seguís jugando`;
-    if(result.correct===false) return 'No coinciden · se muestran un momento, se vuelven a tapar y cambia el turno.';
+    if(result.correct===true) return `¡Pareja correcta! +${Number(result.points||0)} · 10 segundos nuevos`;
+    if(result.correct===false) return 'No coinciden · 3 segundos visibles y cambia el turno.';
     return result.message||result.mensaje||'';
   }
 
@@ -210,7 +210,6 @@
     const player=state.player||props.player||null;
     const pkg=packageFrom(state)||props.roomPackage||null;
     const code=roomCode(room,pkg);
-    const status=roomStatus(room);
     const pid=playerId(player);
     const playersOnline=base.participantCount(state,pkg);
     const pollMs=pollMsForPlayers(playersOnline);
@@ -309,9 +308,6 @@
             setError('');
           }
         }catch(err){
-          // Una lectura silenciosa fallida no ensucia la vista ni convierte un
-          // snapshot anterior en nuevo. El siguiente intento usa backoff y la
-          // mutacion/manual conserva su error visible independiente.
           if(!disposed)consecutiveFailures+=1;
         }finally{
           inFlight=false;
@@ -429,6 +425,7 @@
 
   MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a189ClassicSyncAdapter=true;
   MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a192AuthoritativeSyncAdapter=true;
+  MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a211FastSync=true;
   const api=Object.freeze({
     ...base,
     VERSION,
@@ -437,8 +434,9 @@
     POLL_TIMEOUT_MS,
     MUTATION_TIMEOUT_MS,
     POLL_BACKOFF_CAP_MS,
-    LIVE_POLL_MS:550,
-    READ_ONLY_POLL_MS:550,
+    TRANSIENT_SETTLE_MS,
+    LIVE_POLL_MS:250,
+    READ_ONLY_POLL_MS:250,
     livePollMsForPlayers:pollMsForPlayers,
     livePollMsForState:pollMsForState,
     pollBackoffMs,
