@@ -1,0 +1,59 @@
+name: English LAB Source Truth Guard
+
+on:
+  pull_request:
+    paths:
+      - 'src/english_lab**'
+      - 'src/english_lab_games/**'
+      - 'styles/english_lab**'
+      - 'scripts/**browser**.mjs'
+      - 'scripts/qa_cs21a202_source_truth.mjs'
+      - '.github/workflows/qa-english-lab-source-truth-guard.yml'
+  push:
+    branches:
+      - main
+      - 'release/**'
+    paths:
+      - 'src/english_lab**'
+      - 'src/english_lab_games/**'
+      - 'styles/english_lab**'
+      - 'scripts/**browser**.mjs'
+      - 'scripts/qa_cs21a202_source_truth.mjs'
+      - '.github/workflows/qa-english-lab-source-truth-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: english-lab-source-truth-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-truth-guard:
+    name: source-truth-guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce English LAB source of truth
+        run: node scripts/qa_cs21a202_source_truth.mjs
+
+      - name: Guard against browser runtime source patching
+        run: |
+          set -euo pipefail
+          if grep -RInE 'route\.fulfill.*replace\(|body[[:space:]]*:[^,]*\.replace\(' scripts --include='*browser*.mjs'; then
+            echo 'Browser tests no pueden reemplazar HTML/código servido para fabricar el comportamiento bajo prueba.' >&2
+            exit 1
+          fi
+
+      - name: Summary
+        run: echo 'English LAB source-truth guard PASS'
