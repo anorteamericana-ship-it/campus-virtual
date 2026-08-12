@@ -1,0 +1,121 @@
+name: CS21A210 Quiz Time Browser Smoke QA
+
+on:
+  push:
+    branches:
+      - test/cs21a210-quiz-time-browser-smoke
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a210-quiz-time-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quiz-time-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact CS210 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce CS210 perimeter and unchanged Apps Script
+        run: |
+          set -euo pipefail
+          BASE=7a20207444c47c7b64471b637626be502d10b5c6
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs210-changed.txt
+          if grep -E '(^apps_script_patches/|\.gs$)' /tmp/cs210-changed.txt; then
+            echo 'CS21A210 no permite cambios Apps Script/backend.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+              '.github/workflows/qa-cs21a210-quiz-time-browser-smoke.yml',
+              '00_DOCUMENTACION/ENGLISH_LAB_QUIZ_TIME_BROWSER_SMOKE_CS21A210.md',
+              'scripts/test_english_lab_quiz_time_browser_cs21a210.mjs',
+              'src/english_lab_games/quiz_time_preview_cs21a210.html',
+              'src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx',
+          }
+          changed={line.strip() for line in Path('/tmp/cs210-changed.txt').read_text().splitlines() if line.strip()}
+          unexpected=sorted(changed-allowed)
+          if unexpected:
+              raise SystemExit('Archivos fuera del perímetro CS210: '+', '.join(unexpected))
+          required={
+              '.github/workflows/qa-cs21a210-quiz-time-browser-smoke.yml',
+              '00_DOCUMENTACION/ENGLISH_LAB_QUIZ_TIME_BROWSER_SMOKE_CS21A210.md',
+              'scripts/test_english_lab_quiz_time_browser_cs21a210.mjs',
+              'src/english_lab_games/quiz_time_preview_cs21a210.html',
+          }
+          missing=sorted(required-changed)
+          if missing:
+              raise SystemExit('Faltan archivos QA CS210: '+', '.join(missing))
+          print('CS21A210 perimeter OK:', *sorted(changed), sep='\n- ')
+          PY
+
+      - name: Quiz Time static contracts
+        run: |
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_live_integration.mjs
+          node scripts/qa_cs21a198_quiz_option_balance.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+          node scripts/qa_cs21a204_quiz_live_compatibility.mjs
+
+      - name: Current English LAB shell and routing contracts
+        run: |
+          node scripts/qa_cs21a205_english_lab_shell.mjs
+          node scripts/qa_cs21a207_english_lab_navigation.mjs
+          node scripts/qa_cs21a208_english_lab_legacy_routes.mjs
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static CS210 server
+        run: |
+          python3 -m http.server 4210 --bind 127.0.0.1 >/tmp/cs210-http.log 2>&1 &
+          echo $! >/tmp/cs210-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4210/src/english_lab_games/quiz_time_preview_cs21a210.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs210-http.log
+          exit 1
+
+      - name: Quiz Time real Chromium smoke
+        env:
+          QA_BASE_URL: http://127.0.0.1:4210
+        run: node scripts/test_english_lab_quiz_time_browser_cs21a210.mjs
+
+      - name: Unified shell browser regression
+        env:
+          QA_BASE_URL: http://127.0.0.1:4210
+        run: node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+
+      - name: Verify unchanged CS201 backend remains assemblable
+        run: |
+          set -euo pipefail
+          BASE=7a20207444c47c7b64471b637626be502d10b5c6
+          git diff --exit-code "$BASE"...HEAD -- apps_script_patches/
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201-unified.js
+          node --check /tmp/cs201-unified.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs201-unified.js
+
+      - name: Upload CS210 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cs21a210-quiz-time-browser-evidence
+          path: qa-output/cs21a210-quiz-time/
+          if-no-files-found: warn
