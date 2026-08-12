@@ -192,17 +192,19 @@
     const state=normalizedState(response||{});
     const lastQuestionRef=React.useRef('');
     const actionsRef=React.useRef({});
+    const submitQuestionRef=React.useRef('');
     const inFlight=React.useRef(false);
 
-    React.useEffect(()=>{const q=state.question?.questionId||'';if(q!==lastQuestionRef.current){lastQuestionRef.current=q;setLocalSelected(response?.my_answer?.option_id||'');setError('');}},[state.question?.questionId]);
+    React.useEffect(()=>{const q=state.question?.questionId||'';if(q!==lastQuestionRef.current){lastQuestionRef.current=q;submitQuestionRef.current='';setLocalSelected(response?.my_answer?.option_id||'');setError('');}},[state.question?.questionId]);
     React.useEffect(()=>{if(response?.my_answer?.option_id)setLocalSelected(response.my_answer.option_id);},[response?.my_answer?.option_id]);
 
     const load=React.useCallback(async()=>{if(inFlight.current||!roomCode||!playerId)return;inFlight.current=true;try{const next=await post(ENDPOINTS.state,{room_code:roomCode,player_id:playerId},25000);setResponse(next);setError('');}catch(err){setError(err.message||String(err));}finally{inFlight.current=false;}},[roomCode,playerId]);
     useSerialPoll(load,React.useCallback(()=>state.phase==='REVEAL'?750:1200,[state.phase]));
 
     const answer=React.useCallback(async(optionId)=>{
-      if(busy||localSelected||!state.question?.questionId)return;
-      const qid=state.question.questionId;
+      const qid=state.question?.questionId||'';
+      if(busy||localSelected||!qid||submitQuestionRef.current===qid)return;
+      submitQuestionRef.current=qid;
       const actionId=actionsRef.current[qid] || `QT198-${qid}-${playerId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
       actionsRef.current[qid]=actionId; setLocalSelected(optionId); setBusy(true); setError('');
       try{
@@ -211,7 +213,7 @@
       }catch(err){
         const canonical=err?.data?.room_state||null;
         if(canonical)setResponse(canonical);
-        if(!canonical?.my_answer)setLocalSelected('');
+        if(!canonical?.my_answer){setLocalSelected('');submitQuestionRef.current='';}
         setError(err.message||String(err));
       }finally{setBusy(false);}
     },[busy,localSelected,state,playerId]);
