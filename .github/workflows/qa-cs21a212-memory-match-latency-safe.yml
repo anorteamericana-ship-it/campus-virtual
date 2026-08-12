@@ -1,0 +1,101 @@
+name: CS21A212 Memory Match Latency Safe QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a212-memory-match-latency-safe-fast-turn
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a212-memory-match-latency-safe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  latency-safe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Confirm CS212 scope
+        run: |
+          set -euo pipefail
+          BASE=45ade3f06dbe4ccace0f7ac5a7a1acade07a80a0
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs212-delta.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+            'apps_script_patches/99X_MEMORY_MATCH_LATENCY_SAFE_FAST_TURN_QA_CS21A212.gs',
+            'scripts/assemble_apps_script_cs21a212_unified.mjs',
+            'scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs',
+            'scripts/test_memory_match_latency_safe_browser_cs21a212.mjs',
+            '.github/workflows/qa-cs21a212-memory-match-latency-safe.yml',
+          }
+          changed={x.strip() for x in Path('/tmp/cs212-delta.txt').read_text().splitlines() if x.strip()}
+          unexpected=changed-allowed
+          if unexpected:
+              raise SystemExit('CS212 tocó archivos fuera de alcance: '+', '.join(sorted(unexpected)))
+          print('Scope CS212:', ', '.join(sorted(changed)))
+          PY
+
+      - name: Backend latency-safe contract and syntax
+        run: node scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs
+
+      - name: Existing synchronization contracts
+        run: |
+          node scripts/qa_cs21a203_live_sync.mjs
+          node scripts/qa_cs21a203_custom_pair_start_guard.mjs
+          node scripts/qa_cs21a205_english_lab_shell.mjs
+
+      - name: Install Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static QA server
+        run: |
+          python3 -m http.server 4213 --bind 127.0.0.1 >/tmp/cs212-http.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4213/src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs212-http.log
+          exit 1
+
+      - name: Preserve no-ACK second-card behavior
+        env:
+          QA_BASE_URL: http://127.0.0.1:4213
+        run: node scripts/test_memory_match_fast_turn_browser_cs21a211.mjs
+
+      - name: Preserve conflict retry and third-card guard
+        env:
+          QA_BASE_URL: http://127.0.0.1:4213
+        run: node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: CS212 real-latency browser contract 3s and 8s
+        env:
+          QA_BASE_URL: http://127.0.0.1:4213
+        run: node scripts/test_memory_match_latency_safe_browser_cs21a212.mjs
+
+      - name: 390px shell sanity
+        env:
+          QA_BASE_URL: http://127.0.0.1:4213
+        run: node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+
+      - name: Upload CS212 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A212_MEMORY_MATCH_LATENCY_SAFE_EVIDENCE
+          path: qa-output/
+          if-no-files-found: warn
+          retention-days: 30
