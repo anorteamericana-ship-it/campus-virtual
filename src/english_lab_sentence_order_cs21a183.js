@@ -493,6 +493,8 @@
     var answer = answerPair[0], setAnswer = answerPair[1];
     var busyPair = ReactRef.useState(false);
     var busy = busyPair[0], setBusy = busyPair[1];
+    // CS21A209: lock inmediato por instancia; React state no bloquea dos clicks en el mismo tick.
+    var submitLockRef = ReactRef.useRef(false);
     var errorPair = ReactRef.useState('');
     var error = errorPair[0], setError = errorPair[1];
     var startedPair = ReactRef.useState(Date.now());
@@ -500,6 +502,7 @@
     var roundKey = round ? String(round.sentence_id || round.index) + '|' + String(round.started_at || '') : '';
 
     ReactRef.useEffect(function () {
+      submitLockRef.current = false;
       setPool(round && Array.isArray(round.tokens) ? round.tokens.slice() : []);
       setAnswer([]);
       setError('');
@@ -528,7 +531,9 @@
       setPool(pool.concat([item]));
     }
     async function submit() {
+      if (submitLockRef.current) return;
       if (!round || answer.length !== (round.tokens || []).length) { setError('Usá todas las palabras antes de enviar.'); return; }
+      submitLockRef.current = true;
       setBusy(true); setError('');
       try {
         var response = await post('englishLabSentenceOrderSubmit', {
@@ -538,7 +543,7 @@
         }, 45000);
         publishPlayer({active:true,data:response,roomCode:store.roomCode});
       } catch (submitError) { setError(submitError.message || String(submitError)); }
-      finally { setBusy(false); }
+      finally { submitLockRef.current = false; setBusy(false); }
     }
     function leave() {
       publishPlayer({active:false,data:null,roomCode:''});
