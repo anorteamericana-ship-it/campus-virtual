@@ -35,13 +35,29 @@ jobs:
           git diff --name-only "$PRODUCT_HEAD"...HEAD | tee /tmp/final-package-delta.txt
           python3 - <<'PY'
           from pathlib import Path
-          allowed={'.github/workflows/qa-english-lab-final-package.yml'}
+          allowed={
+            '.github/workflows/qa-cs21a202-final-source-truth-candidate.yml',
+            '.github/workflows/qa-cs21a202-source-recovery.yml',
+            '.github/workflows/qa-cs21a204-english-lab-release-candidate.yml',
+            '.github/workflows/qa-english-lab-final-package.yml',
+            '.github/workflows/qa-english-lab-source-truth-guard.yml',
+            'scripts/qa_cs21a202_source_truth.mjs',
+            'scripts/qa_cs21a204_network_budget_model.mjs',
+          }
           changed={x.strip() for x in Path('/tmp/final-package-delta.txt').read_text().splitlines() if x.strip()}
-          if changed != allowed:
-              raise SystemExit('Delta final inesperado: '+', '.join(sorted(changed)))
-          print('Producto congelado:', '6e0c364828d065ce8bc06d920a94c8d895ef8217')
+          unexpected=sorted(changed-allowed)
+          missing=sorted(allowed-changed)
+          if unexpected:
+              raise SystemExit('Delta final fuera del hardening autorizado: '+', '.join(unexpected))
+          if missing:
+              raise SystemExit('Falta parte del hardening esperado: '+', '.join(missing))
+          print('Producto congelado en CS210; delta posterior limitado a QA/CI/documentación ejecutable.')
+          print('\n'.join(sorted(changed)))
           PY
-          git diff --exit-code "$PRODUCT_HEAD"...HEAD -- ':!.github/workflows/qa-english-lab-final-package.yml'
+          git diff --exit-code "$PRODUCT_HEAD"...HEAD -- src/ styles/ apps_script_patches/ campus.html login.html inscripcion.html ventas.html
+
+      - name: Permanent source-truth gate
+        run: node scripts/qa_cs21a202_source_truth.mjs
 
       - name: Canonical static contracts
         run: |
@@ -59,6 +75,9 @@ jobs:
           node scripts/qa_cs21a199_word_search.mjs
           node scripts/qa_cs21a200_word_search_backend_contract.mjs
           node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Static network budget model — explicitly not a load test
+        run: node scripts/qa_cs21a204_network_budget_model.mjs
 
       - name: Backend CS201 unchanged and assemblable
         run: |
@@ -180,7 +199,7 @@ jobs:
           cat > "$pkg/VERSION.txt" <<EOF
           VERSION=ENGLISH_LAB_FINAL_QA
           STATUS=FINAL_HUMAN_QA_CANDIDATE
-          BUILD_DATE=2026-08-11
+          BUILD_DATE=2026-08-12
           QA_PORT=4219
           SOURCE_BRANCH=${GITHUB_REF_NAME}
           SOURCE_PRODUCT_HEAD_SHA=${product_head}
@@ -191,7 +210,12 @@ jobs:
           QA_EXEC=${qa_exec}
           INCLUDED_GAMES=MEMORY_MATCH|SENTENCE_ORDER|HANGMAN|QUIZ_TIME|WORD_SEARCH
           CS209_SENTENCE_ORDER_DOUBLE_SUBMIT=FIXED
-          CS210_QUIZ_TIME_DOUBLE_SUBMIT=FIXED
+          CS210_QUIZ_TIME_DOUBLE_SUBMIT=MITIGATED_CLIENT_SIDE
+          QUIZ_BACKEND_IDEMPOTENCY=PENDING_ISSUE_80
+          ATTEMPT_ID=PENDING_ISSUE_80
+          SOURCE_TRUTH_GATE=ENGLISH_LAB_SOURCE_TRUTH_GUARD
+          SOURCE_TRUTH_SELF_CHECK=node scripts/qa_cs21a202_source_truth.mjs
+          NETWORK_BUDGET_MODEL=STATIC_NOT_LOAD_TEST
           FINAL_HUMAN_QA=PENDING_PROFE_NATY_CHU
           LOAD_TEST_15_20_25=DEFERRED_NON_BLOCKING
           PRODUCTION_ACTION=DO_NOT_MODIFY
@@ -207,6 +231,12 @@ jobs:
           - Smoke final: Profe + Naty + Chu.
           - Probar Memory Match, Sentence Order, Hangman, Quiz Time y Word Search.
           - Revisar una sesión estudiante a 390 px.
+          - Memory Match CS196/CS197 se valida desde src real; browser tests no pueden reescribir el producto servido.
+          - Si Node.js está disponible, este mismo ZIP puede auto-verificar source truth con:
+              node scripts/qa_cs21a202_source_truth.mjs
+          - CS210 mitiga double-submit del cliente en el mismo tick. NO resuelve todavía idempotencia concurrente del backend.
+          - Pendiente backend: issue #80 (attempt_id / deduplicacion atomica / evidencia sin filas duplicadas).
+          - El network budget es un MODELO ESTATICO; NO es prueba de carga y no mide cuota Apps Script, ScriptLock ni capacidad de Sheets.
           - BACKEND_QA contiene CS21A201 solo como referencia: NO instalar ni desplegar.
           - Carga 15/20/25 estudiantes queda diferida y NO bloquea este cierre.
           ============================================================
@@ -229,18 +259,30 @@ jobs:
           qa='https://script.google.com/macros/s/AKfycbzzsmmHVRGlgltcUJf7Yi9R0z__vsu58Hw9Gq9rNn5pYVrgY5iZ0-xEEL-8wqL4uPVbaw/exec'
           product='6e0c364828d065ce8bc06d920a94c8d895ef8217'
           version=(root/'VERSION.txt').read_text()
+          readme=(root/'LEEME_PRIMERO_FINAL.txt').read_text()
           boot=(root/'qa-bootstrap-final.js').read_text()
           quiz=(root/'src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx').read_text()
           assert 'VERSION=ENGLISH_LAB_FINAL_QA' in version
           assert f'SOURCE_PRODUCT_HEAD_SHA={product}' in version
           assert 'BACKEND_VERSION=CS21A201' in version
           assert 'APPS_SCRIPT_CHANGE=NO' in version
+          assert 'CS210_QUIZ_TIME_DOUBLE_SUBMIT=MITIGATED_CLIENT_SIDE' in version
+          assert 'QUIZ_BACKEND_IDEMPOTENCY=PENDING_ISSUE_80' in version
+          assert 'ATTEMPT_ID=PENDING_ISSUE_80' in version
+          assert 'SOURCE_TRUTH_GATE=ENGLISH_LAB_SOURCE_TRUTH_GUARD' in version
+          assert 'NETWORK_BUDGET_MODEL=STATIC_NOT_LOAD_TEST' in version
+          assert 'LOAD_TEST_15_20_25=DEFERRED_NON_BLOCKING' in version
+          assert 'issue #80' in readme
+          assert 'MODELO ESTATICO' in readme
           assert qa in version and qa in boot
           assert "environment:'qa'" in boot
           assert "Object.defineProperty(window,'APPS_SCRIPT_URL'" in boot
           assert 'submitQuestionRef' in quiz
           assert (root/'ABRIR_CAMPUS_QA_FINAL.cmd').is_file()
           assert (root/'qa-setup.html').is_file()
+          assert (root/'scripts/qa_cs21a202_source_truth.mjs').is_file()
+          assert (root/'scripts/qa_cs21a204_network_budget_model.mjs').is_file()
+          assert not (root/'scripts/qa_cs21a204_load_budget.mjs').exists()
           for name in ['login.html','campus.html','inscripcion.html','ventas.html']:
               s=(root/name).read_text()
               assert 'qa-bootstrap-final.js' in s
@@ -249,6 +291,7 @@ jobs:
           assert 'CS21A201-CURRICULUM-SOURCE-1' in backend
           print('Inspección estructural del paquete: PASS')
           PY
+          (cd "$pkg" && node scripts/qa_cs21a202_source_truth.mjs)
           sha256sum -c <(sed 's#  \./#  /tmp/CAMPUS_QA_ENGLISH_LAB_FINAL/#' "$pkg/SHA256SUMS.txt")
 
       - name: Start exact package server
