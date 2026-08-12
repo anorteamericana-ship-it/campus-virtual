@@ -1,5 +1,5 @@
 // F98.4-Z6-CS21A205 - canonical, single-owner loader for English LAB Live.
-// CS21A211 conserva el shell de cinco juegos y actualiza únicamente los epochs Memory Match vigentes.
+// CS21A211 conserva el shell de cinco juegos y actualiza únicamente la compatibilidad Memory Match vigente.
 (function installEnglishLabCanonicalLoaderCS21A193(global) {
   'use strict';
 
@@ -19,9 +19,9 @@
     'src/english_lab_games/english_lab_game_registry_cs21a191.js?v=CS21A193',
     'src/english_lab_games/hangman_engine_cs21a191.js?v=CS21A193',
     'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx?v=CS21A193',
-    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A211',
+    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A194',
     'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx?v=CS21A193',
-    'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A211',
+    'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A193',
     'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js?v=CS21A198',
     'src/english_lab_games/english_lab_quiz_engine_cs21a198.js?v=CS21A198',
     'src/english_lab_games/english_lab_quiz_time_style_cs21a198.js?v=CS21A198',
