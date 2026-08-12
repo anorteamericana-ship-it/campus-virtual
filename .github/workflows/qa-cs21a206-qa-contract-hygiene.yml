@@ -1,0 +1,77 @@
+name: CS21A206 QA Contract Hygiene
+
+on:
+  push:
+    branches:
+      - chore/cs21a206-qa-contract-hygiene
+  pull_request:
+    paths:
+      - 'scripts/test_memory_match_classic_sync_cs21a189.mjs'
+      - 'scripts/qa_cs21a198_quiz_live_integration.mjs'
+      - '.github/workflows/cs21a194-memory-match-latency-safe.yml'
+      - '.github/workflows/qa-cs21a200-word-search-live-unified.yml'
+      - '.github/workflows/qa-cs21a206-qa-contract-hygiene.yml'
+      - '00_DOCUMENTACION/ENGLISH_LAB_QA_CONTRACT_HYGIENE_CS21A206.md'
+
+permissions:
+  contents: read
+
+jobs:
+  qa-contract-hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Guard non-product scope
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          base='${{ github.event.pull_request.base.sha }}'
+          git diff --name-only "$base"..HEAD | tee /tmp/cs206-changed.txt
+          if grep -Eq '^(src/|styles/|apps_script_patches/|apps_script_unified/|campus\.html$|login\.html$|inscripcion\.html$|ventas\.html$)' /tmp/cs206-changed.txt; then
+            echo 'CS21A206 es higiene QA: no puede modificar producto, estilos, HTML ni Apps Script.' >&2
+            exit 1
+          fi
+
+      - name: Validate Memory Match invariant contracts
+        run: |
+          set -euo pipefail
+          node scripts/test_memory_match_classic_sync_cs21a189.mjs
+          node scripts/test_memory_match_timeout_style_cs21a190.mjs
+          node scripts/english_lab_memory_match_load_harness_cs21a192.mjs
+
+      - name: Validate Quiz Time current integration contract
+        run: |
+          set -euo pipefail
+          node scripts/qa_cs21a198_quiz_curriculum_core.mjs
+          node scripts/qa_cs21a198_quiz_backend_contract.mjs
+          node scripts/qa_cs21a198_quiz_option_balance.mjs
+          node scripts/qa_cs21a198_quiz_live_integration.mjs
+
+      - name: Validate Word Search current integration contract
+        run: |
+          set -euo pipefail
+          node scripts/qa_cs21a199_word_search.mjs
+          node scripts/qa_cs21a200_word_search_backend_contract.mjs
+          node scripts/qa_cs21a200_word_search_claim_endpoint.mjs
+          node scripts/qa_cs21a200_word_search_live_integration.mjs
+
+      - name: Validate CS205 unified shell static contract
+        run: node scripts/qa_cs21a205_english_lab_shell.mjs
+
+      - name: Confirm Apps Script backend identity remains CS201
+        run: |
+          set -euo pipefail
+          node scripts/assemble_apps_script_cs21a201_unified.mjs
+          cp apps_script_patches/99_CS21A201_ENGLISH_LAB_UNIFIED_COMPLETO.gs /tmp/cs201.js
+          node --check /tmp/cs201.js
+          grep -q 'CS21A201-CURRICULUM-SOURCE-1' /tmp/cs201.js
