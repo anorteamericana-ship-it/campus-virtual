@@ -35,8 +35,10 @@ jobs:
           from pathlib import Path
           allowed={
             'apps_script_patches/99X_MEMORY_MATCH_LATENCY_SAFE_FAST_TURN_QA_CS21A212.gs',
+            'apps_script_patches/99Y_MEMORY_MATCH_CS211_ROOM_MIGRATION_QA_CS21A212.gs',
             'scripts/assemble_apps_script_cs21a212_unified.mjs',
             'scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs',
+            'scripts/qa_cs21a212_memory_match_room_migration.mjs',
             'scripts/test_memory_match_latency_safe_browser_cs21a212.mjs',
             '.github/workflows/qa-cs21a212-memory-match-latency-safe.yml',
           }
@@ -48,7 +50,9 @@ jobs:
           PY
 
       - name: Backend latency-safe contract and syntax
-        run: node scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs
+        run: |
+          node scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs
+          node scripts/qa_cs21a212_memory_match_room_migration.mjs
 
       - name: Existing synchronization contracts
         run: |
