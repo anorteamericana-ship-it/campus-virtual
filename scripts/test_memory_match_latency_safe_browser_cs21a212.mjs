@@ -15,7 +15,8 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
   const requests=[];
   const pollAgeMs=2200;
   const scenarioStartedAt=Date.now();
-  let turnStartedAt=scenarioStartedAt-pollAgeMs;
+  const originalTurnStartedAt=scenarioStartedAt-pollAgeMs;
+  let turnStartedAt=originalTurnStartedAt;
   let turnEndsAt=turnStartedAt+15000;
   const originalInitialEnd=turnEndsAt;
   let firstRevealProtectedEnd=0;
@@ -190,8 +191,9 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
     assert.equal(timeoutCount,0,`${name}: hubo timeout antes de FIRST_REVEALED.`);
     assert.ok(serverRevealAt<originalInitialEnd,`${name}: 15 s iniciales no alcanzaron para DISCOVER_CARD.`);
     assert.ok(firstRevealProtectedEnd>=serverRevealAt+15000,`${name}: FIRST_REVEALED no recibió 15 s propios.`);
+    const serverRevealAfterTurnStartMs=serverRevealAt-originalTurnStartedAt;
     if(backendDelayMs>=8000){
-      assert.ok(serverRevealAt-turnStartedAt>10000,`${name}: el escenario de 8 s no sobrepasó el contrato viejo de 10 s.`);
+      assert.ok(serverRevealAfterTurnStartMs>10000,`${name}: el escenario de 8 s no sobrepasó el contrato viejo de 10 s.`);
     }
 
     const waitPastInitial=Math.max(0,originalInitialEnd-Date.now()+350);
@@ -244,7 +246,7 @@ async function runScenario(browser,{name,backendDelayMs,mode}){
     return {
       name,backendDelayMs,mode,pollAgeMs,
       originalInitialWindowMs:15000,
-      serverRevealAfterTurnStartMs:serverRevealAt-turnStartedAt,
+      serverRevealAfterTurnStartMs,
       protectedSecondWindowMs:firstRevealProtectedEnd-serverRevealAt,
       pairRequestAfterSecondClickMs:pairRequestAt-secondClickAt,
       pairServerAcceptedAfterSecondClickMs:pairServerAcceptedAt-secondClickAt,
