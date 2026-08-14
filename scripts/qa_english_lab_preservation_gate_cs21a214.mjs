@@ -82,11 +82,11 @@ for (const [id, label] of LIVE_GAMES) {
 }
 expect('unified live shell still exposes all five canonical game IDs', LIVE_GAMES.every(([id]) => has(shell, id)));
 
-expect('free prospect still routes to AcademiaPlayView', /academia_play:\s*esProspectoGratis[\s\S]{0,260}?AcademiaPlayView/.test(app));
-expect('matriculated student still routes to EnglishLabLiveStudentView', /academia_play:\s*esProspectoGratis[\s\S]{0,520}?EnglishLabLiveStudentView/.test(app));
+expect('free prospect still routes to English LAB practice', /academia_play:\s*esProspectoGratis[\s\S]{0,260}?AcademiaPlayView/.test(app));
+expect('matriculated student still routes to English LAB class shell', /academia_play:\s*esProspectoGratis[\s\S]{0,520}?EnglishLabLiveStudentView/.test(app));
 expect('direct english_lab_live route preserved', /english_lab_live:\s*<LazyRoute[\s\S]{0,180}?EnglishLabLiveStudentView/.test(app));
-expect('Academia Play lazy source preserved', has(app, "academia_play: ['src/academia_play.jsx"));
-expect('English LAB canonical live loader preserved', has(app, 'F96_ENGLISH_LAB_LIVE_CS21A193'));
+expect('English LAB practice lazy source preserved', has(app, "academia_play: ['src/academia_play.jsx"));
+expect('English LAB canonical loader preserved', has(app, 'F96_ENGLISH_LAB_LIVE_CS21A193'));
 
 console.log('English LAB preservation gate CS21A214');
 console.log(`PASS ${passes.length}`);
