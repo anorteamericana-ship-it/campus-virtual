@@ -1,4 +1,4 @@
-# Sonidos Academia Play
+# Sonidos English LAB
 
 Cuando estén listos, colocar aquí estos archivos exactos:
 
@@ -13,8 +13,8 @@ Cuando estén listos, colocar aquí estos archivos exactos:
 
 Recomendación: MP3, 0.2–1.5 segundos, menos de 80 KB por archivo, licencia libre para uso comercial.
 
-Si un archivo no existe, Academia Play usa un fallback de sonido generado en navegador y no rompe la vista.
+Si un archivo no existe, English LAB usa un fallback de sonido generado en navegador y no rompe la vista.
 
 
 ## CS9A
-Audios reales integrados en esta carpeta. Mantener nombres exactos para que Academia Play los cargue automáticamente.
+Audios reales integrados en esta carpeta. Mantener nombres exactos para que English LAB los cargue automáticamente.
