@@ -88,7 +88,7 @@ Después de aceptar CS21A88: densidad, responsive, accesibilidad de estados y na
 
 Preservar acceso directo Superadmin, páginas/unidades, audio inline y navegación de libro. Unificar visualmente con el resto del Campus.
 
-### Academia Play admin
+### English LAB admin
 
 Preservar dashboard y ficha por estudiante. Mejorar filtros, progreso, estados vacíos y navegación.
 
