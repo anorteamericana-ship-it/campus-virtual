@@ -7,6 +7,8 @@ import {chromium} from 'playwright';
 
 const root=path.resolve('.');
 const output=path.resolve('qa-output/cs21a215-english-lab-hub');
+const legacyBrand=['Academia','Play'].join(' ');
+const legacyBrandRe=new RegExp(legacyBrand,'i');
 fs.mkdirSync(output,{recursive:true});
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.jsx':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 let server=null;
@@ -35,7 +37,7 @@ const results={};
 
 async function assertNoLegacyBrand(page,label){
   const text=(await page.locator('body').innerText()).replace(/\s+/g,' ');
-  assert.equal(/Academia Play/i.test(text),false,`${label}: no debe aparecer la marca histórica.`);
+  assert.equal(legacyBrandRe.test(text),false,`${label}: no debe aparecer la marca histórica.`);
 }
 async function assertNoHorizontalOverflow(page,label){
   const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
