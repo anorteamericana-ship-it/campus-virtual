@@ -1,12 +1,12 @@
-// F98.4-Z6-CS21A205 - canonical, single-owner loader for English LAB Live.
-// CS21A205 conserva los motores vigentes y añade un shell único para los cinco juegos del RC.
+// F98.4-Z6-CS21A215 - canonical, single-owner loader for English LAB.
+// CS21A215 conserva los cinco motores Live, suma la práctica curricular y monta un hub único.
 (function installEnglishLabCanonicalLoaderCS21A193(global) {
   'use strict';
 
   if (!global || global.EnglishLabCanonicalLoaderCS21A193) return;
 
-  const VERSION = 'F98.4-Z6-CS21A205';
-  const CACHE_EPOCH = 'CS21A205';
+  const VERSION = 'F98.4-Z6-CS21A215';
+  const CACHE_EPOCH = 'CS21A215';
   const LATENCY_SAFE_EPOCH = 'CS21A194';
   const LIVE_PATH = 'src/english_lab_live.jsx';
   const BASE_ADAPTER_PATH = 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx';
@@ -36,6 +36,9 @@
     'src/english_lab_games/english_lab_quiz_time_gateway_cs21a198.jsx?v=CS21A198',
     'src/english_lab_games/english_lab_word_search_gateway_cs21a200.jsx?v=CS21A200',
     'src/english_lab_games/english_lab_unified_shell_cs21a205.jsx?v=CS21A205',
+    'src/academia_play.jsx?v=CS21A215',
+    'src/english_lab_hub_style_cs21a215.js?v=CS21A215',
+    'src/english_lab_hub_cs21a215.jsx?v=CS21A215',
   ]);
   const MANIFEST_BY_PATH = new Map(MANIFEST.map(src => [pathOf(src), src]));
   const LEGACY_LOAD_ONE_MARKERS = Object.freeze([
@@ -146,8 +149,12 @@
       global.EnglishLabWordSearchLiveCS21A200 &&
       global.EnglishLabWordSearchGatewayCS21A200 &&
       global.EnglishLabUnifiedShellCS21A205 &&
+      global.EnglishLabHubStyleCS21A215 &&
+      global.EnglishLabHubCS21A215 &&
       typeof global.EnglishLabLiveStudentView === 'function' &&
-      typeof global.EnglishLabLiveTeacherView === 'function'
+      global.EnglishLabLiveStudentView.__cs21a215EnglishLabHub === true &&
+      typeof global.EnglishLabLiveTeacherView === 'function' &&
+      global.EnglishLabLiveTeacherView.__cs21a215EnglishLabHub === true
     );
   }
 
@@ -172,12 +179,12 @@
     }
     if (loadPromise) return loadPromise;
     if (typeof rawLoadOne !== 'function') {
-      return Promise.reject(new Error('El cargador canonico CS21A205 no esta instalado.'));
+      return Promise.reject(new Error('El cargador canónico CS21A215 no está instalado.'));
     }
     loadPromise = (async () => {
       for (const source of MANIFEST) await rawLoadOne(source);
       if (!finalizeStack()) {
-        throw new Error('English LAB Live no cargo el stack canonico CS21A205 completo.');
+        throw new Error('English LAB no cargó el stack canónico CS21A215 completo.');
       }
       return api;
     })().catch(error => {
@@ -191,7 +198,7 @@
   async function loadStudent() {
     await ensureCanonicalStack();
     if (typeof global.EnglishLabLiveStudentView !== 'function') {
-      throw new Error('English LAB Live no publico la pantalla del estudiante.');
+      throw new Error('English LAB no publicó la pantalla del estudiante.');
     }
     return global.EnglishLabLiveStudentView;
   }
@@ -199,7 +206,7 @@
   async function loadTeacher() {
     await ensureCanonicalStack();
     if (typeof global.EnglishLabLiveTeacherView !== 'function') {
-      throw new Error('English LAB Live no publico la pantalla docente.');
+      throw new Error('English LAB no publicó la pantalla docente.');
     }
     return global.EnglishLabLiveTeacherView;
   }
@@ -262,6 +269,8 @@
     sentenceOrderEpoch:'CS21A183',
     unifiedShell:true,
     unifiedShellEpoch:'CS21A205',
+    renewalHub:true,
+    renewalHubEpoch:'CS21A215',
     singleManifest:true,
     singlePollOwner:true,
     install,
