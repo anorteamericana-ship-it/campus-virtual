@@ -1,0 +1,60 @@
+name: CS21A215 English LAB Renewal Shell
+
+on:
+  push:
+    branches:
+      - feat/english-lab-renewal-shell-cs21a215
+  pull_request:
+    branches:
+      - chore/english-lab-renewal-preservation-gate
+
+permissions:
+  contents: read
+
+jobs:
+  english-lab-renewal-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node version
+        run: node --version
+
+      - name: Syntax check JS
+        run: |
+          node --check src/english_lab_hub_style_cs21a215.js
+          node --check src/english_lab_live_canonical_loader_cs21a193.js
+          node --check scripts/qa_english_lab_preservation_gate_cs21a214.mjs
+          node --check scripts/qa_english_lab_renewal_shell_cs21a215.mjs
+
+      - name: No-loss contract
+        run: node scripts/qa_english_lab_preservation_gate_cs21a214.mjs
+
+      - name: Renewal shell contract
+        run: node scripts/qa_english_lab_renewal_shell_cs21a215.mjs
+
+      - name: Source truth guard
+        run: node scripts/qa_cs21a202_source_truth.mjs
+
+      - name: Scope guard · shell only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="1ff25793cea600939779f641869434c21273a737"
+          fi
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs21a215_changed.txt
+          if grep -E '(^|/)(memory_match|english_lab_live_memory_match|99.*MEMORY|apps_script_patches/).*' /tmp/cs21a215_changed.txt | grep -q .; then
+            echo 'ERROR: CS21A215 no puede modificar implementación de Memory Match.' >&2
+            exit 1
+          fi
+          if grep -Ev '^(src/english_lab_hub_cs21a215\.jsx|src/english_lab_hub_style_cs21a215\.js|src/english_lab_live_canonical_loader_cs21a193\.js|src/english_lab_games/english_lab_unified_shell_cs21a205\.jsx|scripts/qa_english_lab_preservation_gate_cs21a214\.mjs|scripts/qa_english_lab_renewal_shell_cs21a215\.mjs|\.github/workflows/qa-cs21a215-english-lab-renewal-shell\.yml|assets/sounds/README_SONIDOS\.md|00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_SHELL_CS21A215\.md)$' /tmp/cs21a215_changed.txt | grep -q .; then
+            echo 'ERROR: archivo fuera del perímetro CS21A215.' >&2
+            exit 1
+          fi
+          echo 'Scope PASS: hub/shell/documentation only; no Memory backend/product implementation touched.'
