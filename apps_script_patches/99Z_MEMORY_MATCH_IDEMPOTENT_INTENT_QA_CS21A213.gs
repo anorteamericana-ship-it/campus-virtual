@@ -162,6 +162,51 @@ function _cs21a213UpdateRanking_(response, player, correct, points) {
   return response;
 }
 
+// Recupera una escritura parcial: Apps Script no ofrece una transaccion comun
+// entre Answers y Rooms. Antes de insertar, buscamos el attempt_id persistente
+// en ANSWER_VALUE para que un retry posterior a un fallo de Rooms no duplique
+// la respuesta ni los puntos estadisticos.
+function _cs21a213FindAnswerAttempt_(room, playerId, attemptId) {
+  attemptId = _elive176Text_(attemptId);
+  playerId = _elive176Text_(playerId);
+  if (!attemptId || !playerId) return null;
+
+  var sheet = _elive180SheetDirect_(ELIVE_ANSWERS_SHEET, ELIVE_ANSWERS_HEADERS);
+  var lastRow = Math.max(Number(sheet.getLastRow() || 0) || 0, 0);
+  var lastColumn = Math.max(Number(sheet.getLastColumn() || 0) || 0, 1);
+  if (lastRow < 2) return null;
+
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  var index = {};
+  headers.forEach(function (header, position) {
+    var key = _elive176Upper_(header);
+    if (key) index[key] = position;
+  });
+  if (index.ANSWER_VALUE == null) throw new Error('Answers sin encabezado ANSWER_VALUE.');
+
+  var matches = sheet.getRange(2, index.ANSWER_VALUE + 1, lastRow - 1, 1)
+    .createTextFinder(attemptId)
+    .matchCase(true)
+    .matchEntireCell(false)
+    .findAll();
+  for (var matchIndex = matches.length - 1; matchIndex >= 0; matchIndex -= 1) {
+    var rowNumber = matches[matchIndex].getRow();
+    var cells = sheet.getRange(rowNumber, 1, 1, lastColumn).getValues()[0];
+    var row = {};
+    headers.forEach(function (header, position) {
+      var key = _elive176Upper_(header);
+      if (key) row[key] = cells[position];
+    });
+    var value = _elive176Json_(row.ANSWER_VALUE, {});
+    var sameRoom = _elive176Text_(row.ROOM_ID) === _elive176Text_(room && room.ROOM_ID) ||
+      _elive176Text_(row.ROOM_CODE) === _elive176Text_(room && room.ROOM_CODE);
+    if (sameRoom && _elive176Text_(row.COD_ESTUDIANTE) === playerId &&
+        _elive176Text_(value.attempt_id || value.attemptId) === attemptId &&
+        _elive176Upper_(value.action) === 'SUBMIT_PAIR') return row;
+  }
+  return null;
+}
+
 function _cs21a213Event_(room, type, player, detail) {
   return {
     EVENT_ID:'ELIVE-EVT-' + Utilities.getUuid(),
@@ -329,12 +374,14 @@ function _cs21a213TryFastSubmit_(body) {
 
       var timeMs = Math.max(0, Number(normalized.time_ms || normalized.timeMs || 0) || 0);
       var points = _cs21a186MmPoints_(pair.correct);
-      _elive180AppendObject_(ELIVE_ANSWERS_SHEET, ELIVE_ANSWERS_HEADERS, {
-        ROOM_ID:room.ROOM_ID,ROOM_CODE:room.ROOM_CODE,QUESTION_INDEX:Number(room.CURRENT_INDEX || 1) || 1,
-        COD_ESTUDIANTE:playerId,
-        ANSWER_VALUE:JSON.stringify({action:'SUBMIT_PAIR',attempt_id:attemptId,first_card_id:pair.first_id,second_card_id:pair.second_id,pair_id:pair.pair_id,correct:pair.correct}),
-        IS_CORRECT:pair.correct ? 'TRUE' : 'FALSE',POINTS:points,TIME_MS:timeMs,ANSWERED_AT:_eliveIso_()
-      });
+      if (!_cs21a213FindAnswerAttempt_(room, playerId, attemptId)) {
+        _elive180AppendObject_(ELIVE_ANSWERS_SHEET, ELIVE_ANSWERS_HEADERS, {
+          ROOM_ID:room.ROOM_ID,ROOM_CODE:room.ROOM_CODE,QUESTION_INDEX:Number(room.CURRENT_INDEX || 1) || 1,
+          COD_ESTUDIANTE:playerId,
+          ANSWER_VALUE:JSON.stringify({action:'SUBMIT_PAIR',attempt_id:attemptId,first_card_id:pair.first_id,second_card_id:pair.second_id,pair_id:pair.pair_id,correct:pair.correct}),
+          IS_CORRECT:pair.correct ? 'TRUE' : 'FALSE',POINTS:points,TIME_MS:timeMs,ANSWERED_AT:_eliveIso_()
+        });
+      }
 
       var durationMs = Number(pkg.rules && pkg.rules.round_duration_ms || CS21A212_MM_INITIAL_TURN_MS) || CS21A212_MM_INITIAL_TURN_MS;
       var nextTurn = null;

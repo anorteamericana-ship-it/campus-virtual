@@ -20,6 +20,7 @@ assert.match(adapter,/attempt_id:clean\(answerValue\.attempt_id\|\|answerValue\.
 assert.match(patch,/var lock = LockService\.getScriptLock\(\)/,'La ruta rápida debe conservar ScriptLock.');
 assert.doesNotMatch(patch,/function _cs21a213TryFastSubmit_[\s\S]*?_elive180BuildSnapshot_\(/,'La ruta rápida no puede construir un snapshot completo.');
 assert.match(patch,/_elive180AppendObject_\(ELIVE_ANSWERS_SHEET/,'La respuesta debe persistirse en Answers.');
+assert.match(patch,/_cs21a213FindAnswerAttempt_\(room, playerId, attemptId\)/,'La ruta debe reconciliar una Answer persistida antes de reintentar Rooms.');
 assert.match(patch,/sheet\.getRange\(sheet\.getLastRow\(\) \+ 1, 1, rows\.length, headers\.length\)\.setValues\(rows\)/,'Los eventos deben persistirse en lote.');
 
 function clone(value){return JSON.parse(JSON.stringify(value));}
@@ -33,6 +34,7 @@ function createHarness(){
   let answerRows=[];
   let eventRows=[];
   let relay=null;
+  let failNextRoomWrite=false;
   const lock={tryLock(){counters.lockAttempts+=1;return true;},releaseLock(){}};
   const room={
     _row:2,ROOM_ID:'ROOM-213',ROOM_CODE:'LAB-213',GAME_CODE:'MEMORY_MATCH',STATUS:'LIVE',ROUND_STATUS:'OPEN',CURRENT_INDEX:1,
@@ -80,6 +82,7 @@ function createHarness(){
   }
   function reset(revision=12){
     answerRows=[];eventRows=[];
+    failNextRoomWrite=false;
     counters.answers=0;counters.roomWrites=0;counters.eventWrites=0;counters.snapshots=0;
     setPackage(freshPackage(revision));
   }
@@ -133,6 +136,7 @@ function createHarness(){
     _elive176PublicRoom_:source=>({room_id:source.ROOM_ID,room_code:source.ROOM_CODE,status:source.STATUS,game_code:source.GAME_CODE}),
     _elive180PlayerPublic_:row=>({cod_estudiante:row.COD_ESTUDIANTE,nombre:row.NOMBRE,team:row.TEAM,player_id:row.COD_ESTUDIANTE,name:row.NOMBRE,team_id:row.TEAM}),
     _elive180SetCells_(found,values){
+      if(failNextRoomWrite){failNextRoomWrite=false;throw new Error('INJECTED_ROOM_WRITE_FAILURE');}
       const parsed=JSON.parse(values.CURRENT_QUESTION_JSON);const next=parsed.room_package;
       const revision=Math.max(Number(next.state_revision||0),Number(next.shared_state?.state_revision||0))+1;
       next.state_revision=revision;next.shared_state.state_revision=revision;parsed.state_revision=revision;
@@ -173,13 +177,25 @@ function createHarness(){
     _cs21a212Rules_(rules){return {...rules,round_duration_ms:15000,first_reveal_min_second_ms:15000,mismatch_reveal_ms:3000,latency_safe_version:'CS21A212-MM-LATENCY-SAFE-15S-ACK-1'};},
     _elive180AppendObject_(sheet,headers,value){if(sheet==='Answers'){answerRows.push(clone(value));counters.answers+=1;}else eventRows.push(clone(value));return value;},
     _elive180ValuesForHeaders_:(headers,value)=>headers.map(header=>value[header]??''),
-    _elive180SheetDirect_(){return {
-      getLastColumn:()=>8,getLastRow:()=>eventRows.length+1,
-      getRange(row,column,rowCount,columnCount){return {
-        getValues:()=>[['EVENT_ID','ROOM_ID','ROOM_CODE','EVENT_TYPE','ACTOR','ROLE','CREATED_AT','DETAIL_JSON']],
-        setValues(rows){rows.forEach(cells=>eventRows.push(Object.fromEntries(['EVENT_ID','ROOM_ID','ROOM_CODE','EVENT_TYPE','ACTOR','ROLE','CREATED_AT','DETAIL_JSON'].map((header,index)=>[header,cells[index]]))));counters.eventWrites+=1;}
-      };}
-    };},
+    _elive180SheetDirect_(name){
+      const answers=name==='Answers';
+      const headers=answers?context.ELIVE_ANSWERS_HEADERS:context.ELIVE_EVENTS_HEADERS;
+      const rows=answers?answerRows:eventRows;
+      return {
+        getLastColumn:()=>headers.length,getLastRow:()=>rows.length+1,
+        getRange(row,column,rowCount,columnCount){return {
+          getValues(){
+            if(row===1)return [headers.slice(column-1,column-1+columnCount)];
+            return rows.slice(row-2,row-2+rowCount).map(value=>headers.slice(column-1,column-1+columnCount).map(header=>value[header]??''));
+          },
+          createTextFinder(needle){return {
+            matchCase(){return this;},matchEntireCell(){return this;},
+            findAll(){return rows.map((value,index)=>({value,index})).filter(item=>String(item.value[headers[column-1]]??'').includes(String(needle))).map(item=>({getRow:()=>item.index+2}));}
+          };},
+          setValues(values){values.forEach(cells=>rows.push(Object.fromEntries(headers.map((header,index)=>[header,cells[index]]))));counters.eventWrites+=1;}
+        };}
+      };
+    },
     _elive180BuildSnapshot_(){counters.snapshots+=1;throw new Error('La ruta rápida llamó un snapshot completo.');},
   };
   vm.createContext(context);
@@ -189,7 +205,7 @@ function createHarness(){
     return {token:'TOKEN-P1',room_code:'LAB-213',player_id:'P1',cod_estudiante:'P1',expected_state_revision:revision,expected_turn_number:7,
       answer_value:{action,attempt_id:attemptId,card_id:first,first_card_id:first,second_card_id:second},time_ms:250};
   }
-  return {context,counters,reset,body,pkg:()=>clone(pkg()),answers:()=>clone(answerRows),events:()=>clone(eventRows)};
+  return {context,counters,reset,body,pkg:()=>clone(pkg()),answers:()=>clone(answerRows),events:()=>clone(eventRows),failNextRoomWrite:()=>{failNextRoomWrite=true;}};
 }
 
 const h=createHarness();
@@ -238,6 +254,18 @@ const revealMs=Date.parse(mismatch.reveal_until)-mismatchStart;
 assert.ok(revealMs>=2900&&revealMs<=3200,`Mismatch fuera de 3 s: ${revealMs} ms`);
 assert.equal(mismatch.turn_state.active_player_id,'P2');assert.equal(h.answers().length,1);
 
+// Recuperacion transaccional: Answer puede persistir aunque falle Rooms; el retry
+// debe reutilizarla y completar el ledger sin crear una segunda respuesta.
+h.reset(40);
+const partialAttempt='ATTEMPT-CS213-PARTIAL-FAIL';
+h.failNextRoomWrite();
+assert.throws(()=>h.context.englishLabMemoryMatchSubmitPairCS21A180(h.body('SUBMIT_PAIR',partialAttempt,40)),/INJECTED_ROOM_WRITE_FAILURE/);
+assert.equal(h.answers().length,1);
+const partialRetry=h.context.englishLabMemoryMatchSubmitPairCS21A180(h.body('SUBMIT_PAIR',partialAttempt,40));
+assert.equal(partialRetry.ok,true);assert.equal(partialRetry.accepted,true);assert.equal(h.answers().length,1);
+const partialDuplicate=h.context.englishLabMemoryMatchSubmitPairCS21A180(h.body('SUBMIT_PAIR',partialAttempt,40));
+assert.equal(partialDuplicate.duplicate,true);assert.equal(h.answers().length,1);
+
 // Compatibilidad: sin attempt_id la capa CS213 delega íntegramente al contrato CS212.
 const legacy=h.context.englishLabMemoryMatchSubmitPairCS21A180({token:'TOKEN-P1',room_code:'LAB-213',player_id:'P1',answer_value:{action:'DISCOVER_CARD',card_id:'C1'}});
 assert.equal(legacy.legacy,true);assert.equal(h.counters.legacy,1);
@@ -247,7 +275,7 @@ assert.equal(h.counters.snapshots,0);
 
 console.log(JSON.stringify({
   ok:true,version:'CS21A213-MM-IDEMPOTENT-INTENT-1',
-  cases:{discover_first:true,submit_first:true,late_discover_duplicate:true,repeat_submit_duplicate:true,persistent_recent_attempt_ledger:true,legitimate_stale_conflict:true,mismatch_3000ms:true,legacy_fallback:true},
+  cases:{discover_first:true,submit_first:true,late_discover_duplicate:true,repeat_submit_duplicate:true,persistent_recent_attempt_ledger:true,partial_write_retry_recovered:true,legitimate_stale_conflict:true,mismatch_3000ms:true,legacy_fallback:true},
   invariants:{answers_per_attempt:1,points_per_match:1,turn_transitions_per_attempt:1,script_lock:true,persistent_events:true,fast_path_full_snapshot_reads:h.counters.snapshots},
   frontend:{shared_attempt_id:true,separate_http_action_ids:true},
 },null,2));
