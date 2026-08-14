@@ -1,0 +1,62 @@
+name: CS21A215 one-time English LAB brand cleanup
+
+on:
+  push:
+    branches:
+      - feat/english-lab-renewal-shell-cs21a215
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup-brand:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace historical visible brand everywhere in tracked text
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+          old = 'Academia' + ' ' + 'Play'
+          pattern = re.compile(re.escape(old), re.IGNORECASE)
+          changed = []
+          skip_parts = {'.git', 'node_modules', 'qa-output'}
+
+          for p in root.rglob('*'):
+              if not p.is_file() or any(part in skip_parts for part in p.parts):
+                  continue
+              try:
+                  raw = p.read_bytes()
+                  text = raw.decode('utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              updated, count = pattern.subn('English LAB', text)
+              if count:
+                  p.write_text(updated, encoding='utf-8', newline='')
+                  changed.append((str(p), count))
+
+          print('CHANGED_FILES=', len(changed))
+          for name, count in changed:
+              print(f'{name}: {count}')
+          PY
+
+      - name: Commit cleanup if needed
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No historical visible brand remains.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'CS21A215 normaliza marca visible a English LAB'
+          git push origin HEAD:feat/english-lab-renewal-shell-cs21a215
