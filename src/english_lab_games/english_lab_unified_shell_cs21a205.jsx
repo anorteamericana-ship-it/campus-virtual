@@ -1,5 +1,5 @@
 /* global React */
-// CS21A205 · Shell visual único para los cinco juegos vigentes de English LAB Live.
+// CS21A205 · Shell visual único para los cinco juegos vigentes de English LAB.
 // Frontend solamente: no cambia endpoints, scoring, permisos ni Apps Script.
 (function installEnglishLabUnifiedShellCS21A205(global){
   'use strict';
@@ -138,7 +138,7 @@
     return <div className="el205-head">
       <div>
         <span className="el205-kicker">Academia Norteamericana · English LAB</span>
-        <h1>{role==='teacher'?'Juegos Live para tu clase':'Práctica Live con tu grupo'}</h1>
+        <h1>{role==='teacher'?'Juegos para tu clase':'Práctica con tu grupo'}</h1>
         <p>{role==='teacher'?'Elegí un juego. Cada motor conserva sus reglas, fuente curricular y control de sala actuales.':'Elegí el juego indicado por tu docente y usá el código de sala. Los resultados son formativos y no modifican la nota oficial.'}</p>
       </div>
       <div className="el205-current"><span>Seleccionado</span><strong>{game.label}</strong><small>{VERSION}</small></div>
