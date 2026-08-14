@@ -39,6 +39,7 @@ jobs:
             'apps_script_patches/99Z_MEMORY_MATCH_IDEMPOTENT_INTENT_QA_CS21A213.gs',
             'scripts/assemble_apps_script_cs21a196_complete.mjs',
             'scripts/assemble_apps_script_cs21a213_unified.mjs',
+            'scripts/qa_cs21a202_source_truth.mjs',
             'scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs',
             'scripts/qa_cs21a212_memory_match_room_migration.mjs',
             'scripts/qa_cs21a213_memory_match_phase1.mjs',
@@ -66,6 +67,7 @@ jobs:
 
       - name: Preserve CS212 and live-sync contracts
         run: |
+          node scripts/qa_cs21a202_source_truth.mjs
           node scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs
           node scripts/qa_cs21a212_memory_match_room_migration.mjs
           node scripts/qa_cs21a203_live_sync.mjs
