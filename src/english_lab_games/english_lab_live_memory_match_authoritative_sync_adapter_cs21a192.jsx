@@ -1,5 +1,6 @@
 // CS21A192 · Adaptador autoritativo de sincronización para Memory Match Live.
-// CS21A211 mantiene un solo request en vuelo pero elimina pausa añadida durante reveals.
+// CS21A213 conserva requests HTTP distintos pero transporta el mismo attempt_id
+// lógico en DISCOVER_CARD y SUBMIT_PAIR.
 /* global React */
 (function installMemoryMatchAuthoritativeSyncCS21A192(global){
   'use strict';
@@ -7,7 +8,7 @@
   const base=global.EnglishLabMemoryMatchLiveCS21A174;
   if(!base) throw new Error('Falta EnglishLabMemoryMatchLiveCS21A174 antes de CS21A192.');
 
-  const VERSION='CS21A211';
+  const VERSION='CS21A213';
   const SYNC_VERSION='CS21A192-MM-CONSISTENCY-2';
   const POLL_TIMEOUT_MS=8000;
   const MUTATION_TIMEOUT_MS=45000;
@@ -182,7 +183,7 @@
     if(!result||typeof result!=='object') return '';
     const action=upper(result.action||result.answer_type);
     if(action==='DISCOVER_CARD') return result.accepted===false?'Primera carta ya sincronizada.':'Primera carta abierta para toda la sala.';
-    if(result.correct===true) return `¡Pareja correcta! +${Number(result.points||0)} · 10 segundos nuevos`;
+    if(result.correct===true) return `¡Pareja correcta! +${Number(result.points||0)} · turno nuevo`;
     if(result.correct===false) return 'No coinciden · 3 segundos visibles y cambia el turno.';
     return result.message||result.mensaje||'';
   }
@@ -352,6 +353,7 @@
       const actionId=`MM-${code}-${pid}-${currentRevision.turnNumber}-${initialSeq}-${Date.now()}`;
       const initialPayload={
         ...base.submitPayload(submission,room,pkg,player),
+        attempt_id:clean(answerValue.attempt_id||answerValue.attemptId),
         action_id:actionId,
         client_request_id:actionId,
         expected_state_revision:currentRevision.stateRevision,
@@ -426,6 +428,7 @@
   MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a189ClassicSyncAdapter=true;
   MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a192AuthoritativeSyncAdapter=true;
   MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a211FastSync=true;
+  MemoryMatchAuthoritativeLiveRoundCS21A192.__cs21a213SharedIntent=true;
   const api=Object.freeze({
     ...base,
     VERSION,

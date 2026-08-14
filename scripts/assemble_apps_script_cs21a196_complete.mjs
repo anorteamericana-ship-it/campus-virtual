@@ -14,7 +14,10 @@ for(const file of [previousAssembler,patch]) assert.equal(fs.existsSync(file),tr
 execFileSync(process.execPath,[previousAssembler],{cwd:root,stdio:'inherit'});
 assert.equal(fs.existsSync(previousTarget),true,'No se generó el completo CS21A195.');
 
-let previous=fs.readFileSync(previousTarget,'utf8').replace(/^\uFEFF/,'').trimEnd();
+// Los bloques históricos pueden conservar CRLF al ensamblarse en Windows.
+// Normalizar antes de buscar los dos callsites hace el ensamblador reproducible
+// sin alterar el Apps Script resultante.
+let previous=fs.readFileSync(previousTarget,'utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').trimEnd();
 
 const discoverOld=`      room = _cs21a189WritePackage_(found, room, current, pkg);\n\n      _elive180AppendEvent_`;
 const discoverNew=`      room = _cs21a189WritePackage_(found, room, current, pkg);\n      // CS21A196: adoptar la revisión realmente escrita por 99O antes de responder.\n      if (typeof _cs21a196AlignWrittenPackage_ === 'function') {\n        pkg = _cs21a196AlignWrittenPackage_(room, pkg);\n        shared = pkg && pkg.shared_state || shared;\n        turnState = pkg && pkg.turn_state || turnState;\n      }\n\n      _elive180AppendEvent_`;

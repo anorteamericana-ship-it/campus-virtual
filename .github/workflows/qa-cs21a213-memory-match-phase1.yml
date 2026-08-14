@@ -1,0 +1,112 @@
+name: CS21A213 Memory Match Phase 1 QA
+
+on:
+  push:
+    branches:
+      - fix/cs21a213-memory-match-phase1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs21a213-memory-match-phase1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phase1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Confirm exact CS212 base and isolated scope
+        run: |
+          set -euo pipefail
+          BASE=16bdcf71a038d3929f7b56a76d780d05dfa5589b
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs213-delta.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          allowed={
+            '.github/workflows/qa-cs21a213-memory-match-phase1.yml',
+            '00_DOCUMENTACION/ENGLISH_LAB_MEMORY_MATCH_PHASE1_CS21A213.md',
+            'apps_script_patches/99Z_MEMORY_MATCH_IDEMPOTENT_INTENT_QA_CS21A213.gs',
+            'scripts/assemble_apps_script_cs21a196_complete.mjs',
+            'scripts/assemble_apps_script_cs21a213_unified.mjs',
+            'scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs',
+            'scripts/qa_cs21a212_memory_match_room_migration.mjs',
+            'scripts/qa_cs21a213_memory_match_phase1.mjs',
+            'scripts/qa_cs21a205_english_lab_shell.mjs',
+            'scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs',
+            'scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs',
+            'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx',
+            'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx',
+            'src/english_lab_live_canonical_loader_cs21a193.js',
+          }
+          changed={x.strip() for x in Path('/tmp/cs213-delta.txt').read_text().splitlines() if x.strip()}
+          unexpected=changed-allowed
+          if unexpected:
+              raise SystemExit('CS213 tocó archivos fuera de alcance: '+', '.join(sorted(unexpected)))
+          print('Scope CS213:', ', '.join(sorted(changed)))
+          PY
+
+      - name: Syntax, assembly and idempotency regression
+        run: |
+          node --check scripts/assemble_apps_script_cs21a196_complete.mjs
+          node --check scripts/assemble_apps_script_cs21a213_unified.mjs
+          node --check scripts/qa_cs21a213_memory_match_phase1.mjs
+          node scripts/assemble_apps_script_cs21a213_unified.mjs
+          node scripts/qa_cs21a213_memory_match_phase1.mjs
+
+      - name: Preserve CS212 and live-sync contracts
+        run: |
+          node scripts/qa_cs21a212_memory_match_latency_safe_backend.mjs
+          node scripts/qa_cs21a212_memory_match_room_migration.mjs
+          node scripts/qa_cs21a203_live_sync.mjs
+          node scripts/qa_cs21a203_custom_pair_start_guard.mjs
+          node scripts/qa_cs21a205_english_lab_shell.mjs
+
+      - name: Install Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start static QA server
+        run: |
+          python3 -m http.server 4214 --bind 127.0.0.1 >/tmp/cs213-http.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4214/src/english_lab_games/memory_match_authoritative_sync_preview_cs21a192.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/cs213-http.log
+          exit 1
+
+      - name: Shared intent and conflict reconciliation
+        env:
+          QA_BASE_URL: http://127.0.0.1:4214
+        run: node scripts/test_memory_match_conflict_reconciliation_browser_cs21a196.mjs
+
+      - name: Preserve fast turn and latency-safe browser contracts
+        env:
+          QA_BASE_URL: http://127.0.0.1:4214
+        run: |
+          node scripts/test_memory_match_fast_turn_browser_cs21a211.mjs
+          node scripts/test_memory_match_latency_safe_browser_cs21a212.mjs
+          node scripts/test_memory_match_authoritative_sync_browser_cs21a192.mjs
+          node scripts/test_english_lab_canonical_loader_browser_cs21a205.mjs
+          node scripts/test_english_lab_unified_shell_browser_cs21a205.mjs
+
+      - name: Upload CS213 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A213_MEMORY_MATCH_PHASE1_EVIDENCE
+          path: qa-output/
+          if-no-files-found: warn
+          retention-days: 30

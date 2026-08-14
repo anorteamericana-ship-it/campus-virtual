@@ -1,5 +1,5 @@
 // F98.4-Z6-CS21A205 - canonical, single-owner loader for English LAB Live.
-// CS21A211 conserva el shell de cinco juegos y actualiza únicamente la compatibilidad Memory Match vigente.
+// CS21A213 conserva el shell de cinco juegos y carga el intento idempotente Memory Match vigente.
 (function installEnglishLabCanonicalLoaderCS21A193(global) {
   'use strict';
 
@@ -8,6 +8,7 @@
   const VERSION = 'F98.4-Z6-CS21A205';
   const CACHE_EPOCH = 'CS21A205';
   const LATENCY_SAFE_EPOCH = 'CS21A211';
+  const INTENT_EPOCH = 'CS21A213';
   const LIVE_PATH = 'src/english_lab_live.jsx';
   const BASE_ADAPTER_PATH = 'src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx';
   const MANIFEST = Object.freeze([
@@ -19,9 +20,9 @@
     'src/english_lab_games/english_lab_game_registry_cs21a191.js?v=CS21A193',
     'src/english_lab_games/hangman_engine_cs21a191.js?v=CS21A193',
     'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx?v=CS21A193',
-    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A194',
+    'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A213',
     'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx?v=CS21A193',
-    'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A193',
+    'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A213',
     'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js?v=CS21A198',
     'src/english_lab_games/english_lab_quiz_engine_cs21a198.js?v=CS21A198',
     'src/english_lab_games/english_lab_quiz_time_style_cs21a198.js?v=CS21A198',
@@ -129,10 +130,12 @@
       global.EnglishLabHangmanCS21A191 &&
       global.EnglishLabMemoryMatchClassicSyncCS21A189 &&
       global.EnglishLabMemoryMatchClassicSyncCS21A189.latencySafeVersion === LATENCY_SAFE_EPOCH &&
+      global.EnglishLabMemoryMatchClassicSyncCS21A189.intentVersion === INTENT_EPOCH &&
       global.EnglishLabMemoryMatchClassicSyncAdapterCS21A189 &&
       global.EnglishLabMemoryMatchAuthoritativeSyncCS21A192 &&
       typeof global.MemoryMatchLiveRoundCS21A174 === 'function' &&
       global.MemoryMatchLiveRoundCS21A174.__cs21a192AuthoritativeSyncAdapter === true &&
+      global.MemoryMatchLiveRoundCS21A174.__cs21a213SharedIntent === true &&
       global.EnglishLabMemoryMatchLiveCS21A174 === global.EnglishLabMemoryMatchAuthoritativeSyncCS21A192 &&
       global.EnglishLabSentenceOrderCS21A183 &&
       global.EnglishLabQuizCurriculumContractCS21A198 &&
@@ -252,6 +255,7 @@
     version:VERSION,
     cacheEpoch:CACHE_EPOCH,
     latencySafeEpoch:LATENCY_SAFE_EPOCH,
+    intentEpoch:INTENT_EPOCH,
     manifest:MANIFEST,
     liveFile:MANIFEST_BY_PATH.get(LIVE_PATH),
     quizTime:true,

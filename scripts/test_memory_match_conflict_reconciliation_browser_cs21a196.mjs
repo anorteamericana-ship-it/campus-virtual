@@ -101,6 +101,10 @@ try{
   await page.locator('[data-authoritative-sync="true"][data-state-revision="3"]').waitFor({state:'visible',timeout:7000});
   assert.equal(pairAttempts,2,'Debe existir un submit original y un único retry.');
   assert.deepEqual(mutations.map(item=>item.action),['DISCOVER_CARD','SUBMIT_PAIR','SUBMIT_PAIR']);
+  const attemptIds=mutations.map(item=>String(item.body.attempt_id||''));
+  assert.ok(attemptIds.every(Boolean),'CS213 exige attempt_id no vacío en cada request.');
+  assert.equal(new Set(attemptIds).size,1,'DISCOVER, SUBMIT y su retry deben compartir un único attempt_id.');
+  assert.notEqual(String(mutations[0].body.action_id||''),String(mutations[1].body.action_id||''),'Los requests físicos conservan action_id distintos.');
   assert.deepEqual(errors,[],`Errores navegador: ${errors.join(' | ')}`);
 
   const result={
@@ -111,6 +115,8 @@ try{
     firstSubmitExpectedRevision:mutations[1]?.body?.expected_state_revision,
     retryExpectedRevision:mutations[2]?.body?.expected_state_revision,
     sameActionIdAcrossRetry:String(mutations[1]?.body?.action_id||'')===String(mutations[2]?.body?.action_id||''),
+    sharedAttemptIdAcrossDiscoverSubmitRetry:new Set(attemptIds).size===1,
+    distinctPhysicalActionIds:String(mutations[0]?.body?.action_id||'')!==String(mutations[1]?.body?.action_id||''),
     thirdCardBlockedDuringConflict:true,
     finalRevision:3,
     mismatchRevealMs:3000,

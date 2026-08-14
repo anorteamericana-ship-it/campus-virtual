@@ -1,19 +1,29 @@
 // CS21A189 · Memory Match clásico sincronizado para English LAB Live.
 // Un solo tablero autoritativo para docente y estudiantes.
 // Primera carta pública temporal -> segunda pública -> MATCH queda abierto / MISMATCH vuelve a ocultarse.
-// CS21A211 conserva el bloqueo de tercera carta pero envía la segunda sin esperar el ACK de la primera.
+// CS21A213 conserva el bloqueo de tercera carta, envía la segunda sin esperar el
+// ACK de la primera y comparte un attempt_id estable entre ambos requests.
 /* global React */
 (function (global) {
   'use strict';
 
   const VERSION = 'CS21A189';
   const LATENCY_SAFE_VERSION = 'CS21A211';
+  const INTENT_VERSION = 'CS21A213';
   const Runtime = global.EnglishLabRuntimeCS21A173;
   const STYLE_ID = 'english-lab-memory-match-cs21a189';
   const STYLE_HREF = '/styles/english_lab_memory_match_classic_sync_cs21a189.css?v=CS21A189';
 
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function upper(value) { return clean(value).toUpperCase(); }
+  function createAttemptId(roomCode,player,turnNumber) {
+    const crypto=global.crypto;
+    const nonce=crypto&&typeof crypto.randomUUID==='function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `MMI-${clean(roomCode)}-${clean(player)}-T${Number(turnNumber||0)||0}-${nonce}`
+      .replace(/[^A-Za-z0-9._:-]/g,'').slice(0,160);
+  }
   function playerId(player) {
     return clean(player && (player.player_id || player.playerId || player.cod_estudiante || player.codigo_estudiante || player.COD_ESTUDIANTE || player.id));
   }
@@ -225,6 +235,7 @@
     const [announcement,setAnnouncement]=React.useState('');
     const revealPromiseRef=React.useRef(Promise.resolve());
     const localFirstRef=React.useRef('');
+    const attemptIdRef=React.useRef('');
     const pairPendingRef=React.useRef(false);
     const interactionEpochRef=React.useRef(0);
     const localStartRef=React.useRef(Date.now());
@@ -236,6 +247,7 @@
       setAnnouncement('');
       revealPromiseRef.current=Promise.resolve();
       localFirstRef.current='';
+      attemptIdRef.current='';
       pairPendingRef.current=false;
       localStartRef.current=Date.now();
     },[turnNumber, normalized.round.roundId]);
@@ -262,16 +274,19 @@
     },[props]);
 
     const serverFirstId = reveal.phase==='FIRST_REVEALED' && reveal.active ? clean(shared.attempt && shared.attempt.first_card_id) : '';
+    const serverAttemptId = reveal.phase==='FIRST_REVEALED' && reveal.active ? clean(shared.attempt && shared.attempt.attempt_id) : '';
     const localFirstId = serverFirstId || localFirstRef.current || optimistic[0] || '';
 
     const selectCard=React.useCallback(card=>{
       if(!canPlay || authoritativeBusy || pairPendingRef.current || syncing || isClaimed(shared,card) || waitingForFlipback) return;
       if(!localFirstId){
         const interactionEpoch=interactionEpochRef.current;
+        const currentAttemptId=createAttemptId(normalized.room.roomCode,currentId,turnNumber);
         localFirstRef.current=card.id;
+        attemptIdRef.current=currentAttemptId;
         setOptimistic([card.id]);
         setAnnouncement('Primera carta abierta. Elegí la segunda mientras sincronizamos.');
-        const promise=Promise.resolve(send(buildAction('DISCOVER_CARD',{card_id:card.id})))
+        const promise=Promise.resolve(send(buildAction('DISCOVER_CARD',{card_id:card.id,attempt_id:currentAttemptId})))
           .then(result=>{
             if(result && result.ok===false) throw new Error(result.mensaje||result.message||result.error||'No se pudo abrir la carta.');
             return result;
@@ -279,6 +294,7 @@
           .catch(error=>{
             if(interactionEpochRef.current===interactionEpoch){
               localFirstRef.current='';
+              attemptIdRef.current='';
               setAnnouncement(error&&error.message?error.message:'No se pudo sincronizar la carta.');
               setOptimistic([]);
             }
@@ -299,7 +315,9 @@
       setSyncing(true);
       const correct=first.pairId===card.pairId;
       setAnnouncement(correct?'¡Pareja encontrada! Sincronizando…':'Memorizá las dos cartas…');
-      const pairSubmission=()=>send(buildAction('SUBMIT_PAIR',{first_card_id:first.id,second_card_id:card.id,pair_id:correct?first.pairId:'',correct}));
+      const currentAttemptId=attemptIdRef.current||serverAttemptId||createAttemptId(normalized.room.roomCode,currentId,turnNumber);
+      attemptIdRef.current=currentAttemptId;
+      const pairSubmission=()=>send(buildAction('SUBMIT_PAIR',{attempt_id:currentAttemptId,first_card_id:first.id,second_card_id:card.id,pair_id:correct?first.pairId:'',correct}));
       Promise.resolve(pairSubmission())
         .then(result=>{
           if(result && result.ok===false && upper(result.error)==='PRIMERA_CARTA_NO_SINCRONIZADA'){
@@ -311,14 +329,16 @@
           if(result && result.ok===false) throw new Error(result.mensaje||result.message||result.error||'El intento no fue aceptado.');
           if(interactionEpochRef.current===interactionEpoch){
             localFirstRef.current='';
+            attemptIdRef.current='';
             setOptimistic([]);
-            setAnnouncement(correct?'¡Pareja correcta! +1 · tenés 10 segundos nuevos.':'No coinciden. Se ocultan al terminar los 3 segundos y sigue el siguiente jugador.');
+            setAnnouncement(correct?'¡Pareja correcta! +1 · recibís un turno nuevo.':'No coinciden. Se ocultan al terminar los 3 segundos y sigue el siguiente jugador.');
           }
           return result;
         })
         .catch(error=>{
           if(interactionEpochRef.current===interactionEpoch){
             localFirstRef.current='';
+            attemptIdRef.current='';
             setAnnouncement(error&&error.message?error.message:'No se pudo guardar el intento.');
             setOptimistic([]);
           }
@@ -329,20 +349,22 @@
             pairPendingRef.current=false;
           }
         });
-    },[canPlay,authoritativeBusy,syncing,waitingForFlipback,localFirstId,cards,shared,send,buildAction]);
+    },[canPlay,authoritativeBusy,syncing,waitingForFlipback,localFirstId,serverAttemptId,cards,shared,send,buildAction,normalized.room.roomCode,currentId,turnNumber]);
 
     const claimedCount=Object.keys(shared.claimed).length || shared.matchedPairs.size;
     const completed=shared.completed || claimedCount>=cards.length/2;
     const visibleIds=new Set([...reveal.ids,...optimistic]);
     const revealSeconds=waitingForFlipback?Math.max(1,Math.ceil(Number(reveal.remainingMs||0)/1000)):0;
     const revealRuleMs=Math.max(1,Number(packageInput&&packageInput.rules&&(packageInput.rules.pair_reveal_ms||packageInput.rules.spectator_reveal_ms||packageInput.rules.mismatch_reveal_ms)||3000)||3000);
+    const turnSelectionMs=Math.max(1,Number(packageInput&&packageInput.rules&&(packageInput.rules.turn_selection_ms||packageInput.rules.round_duration_ms)||15000)||15000);
+    const turnSelectionSeconds=Math.max(1,Math.round(turnSelectionMs/1000));
     const timerRemainingMs=waitingForFlipback?Math.max(0,Number(reveal.remainingMs||0)):remainingMs;
     const timerDurationMs=waitingForFlipback?revealRuleMs:normalized.rules.roundDurationMs;
     const transitionText=waitingForFlipback ? `No coinciden · memorízalas · se cierran en ${revealSeconds}s` : '';
 
-    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION} data-spectator-reveal-ms={revealRuleMs} data-turn-selection-ms={Number(packageInput&&packageInput.rules&&packageInput.rules.turn_selection_ms||10000)}>
+    return <section className="elmm-shell elmm-classic-sync" data-game-engine="MEMORY_MATCH" data-classic-sync="true" data-version={VERSION} data-latency-safe-version={LATENCY_SAFE_VERSION} data-intent-version={INTENT_VERSION} data-spectator-reveal-ms={revealRuleMs} data-turn-selection-ms={turnSelectionMs}>
       <header className="elmm-header">
-        <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Tenés 10 segundos para escoger dos cartas. La primera y la segunda se comparten de inmediato; si no coinciden, quedan visibles 3 segundos y cambia el turno.</p></div>
+        <div><div className="elmm-kicker">English LAB · Memory Match Live</div><h2>{clean(packageInput && packageInput.round && packageInput.round.title)||'Memory Match'}</h2><p>Tenés {turnSelectionSeconds} segundos para escoger dos cartas. La primera y la segunda se comparten de inmediato; si no coinciden, quedan visibles 3 segundos y cambia el turno.</p></div>
         <div className="elmm-room-chip">{normalized.room.roomCode||'SALA'}</div>
       </header>
       {phase==='COUNTDOWN'&&turnStartsIn>0&&<div className="elmm-start-countdown" role="status" aria-live="polite" style={{display:'grid',placeItems:'center',gap:4,padding:'14px 18px',borderRadius:18,background:'linear-gradient(135deg,#001E47,#073B7A)',color:'#fff',boxShadow:'0 14px 30px rgba(0,30,71,.18)'}}><span style={{fontSize:11,fontWeight:950,letterSpacing:'.15em',textTransform:'uppercase'}}>Todos listos</span><strong style={{fontSize:54,lineHeight:1,fontWeight:950}}>{Math.max(1,Math.ceil(turnStartsIn/1000))}</strong><small style={{fontWeight:800,opacity:.9}}>La ronda inicia al mismo tiempo para todos</small></div>}
@@ -368,12 +390,14 @@
   MemoryMatchClassicSyncCS21A189.__cs21a189ClassicSync=true;
   MemoryMatchClassicSyncCS21A189.__cs21a194LatencySafe=true;
   MemoryMatchClassicSyncCS21A189.__cs21a211FastTurn=true;
+  MemoryMatchClassicSyncCS21A189.__cs21a213SharedIntent=true;
   MemoryMatchClassicSyncCS21A189.__version=VERSION;
   MemoryMatchClassicSyncCS21A189.__latencySafeVersion=LATENCY_SAFE_VERSION;
   global.MemoryMatchGameCS21A173=MemoryMatchClassicSyncCS21A189;
   global.EnglishLabMemoryMatchClassicSyncCS21A189={
     version:VERSION,
     latencySafeVersion:LATENCY_SAFE_VERSION,
+    intentVersion:INTENT_VERSION,
     Component:MemoryMatchClassicSyncCS21A189,
     attemptVisible,
     sharedState,

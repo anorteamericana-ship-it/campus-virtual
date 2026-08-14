@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const root=process.cwd();
@@ -63,7 +64,7 @@ for(const marker of [
   'function englishLabQuizTimeAnswerCS21A198'
 ]) assert.ok(backend.includes(marker),`CS212 perdió componente del stack: ${marker}`);
 
-const tmp='/tmp/cs21a212-backend-check.js';
+const tmp=path.join(os.tmpdir(),'cs21a212-backend-check.js');
 fs.writeFileSync(tmp,backend,'utf8');
 execFileSync(process.execPath,['--check',tmp],{stdio:'inherit'});
 

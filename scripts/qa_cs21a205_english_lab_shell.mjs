@@ -69,7 +69,9 @@ assert.ok(loader.indexOf(wordGateway)<loader.indexOf(unified),'El shell final de
 assert.match(loader,/const VERSION = 'F98\.4-Z6-CS21A205'/,'El loader debe identificar la convergencia CS21A205.');
 assert.match(loader,/const CACHE_EPOCH = 'CS21A205'/,'El cache epoch del shell sigue siendo CS21A205.');
 assert.match(loader,/const LATENCY_SAFE_EPOCH = 'CS21A211'/,'El loader debe aceptar el Memory Match latency-safe vigente CS21A211.');
+assert.match(loader,/const INTENT_EPOCH = 'CS21A213'/,'El loader debe exigir el intento idempotente vigente CS21A213.');
 assert.match(loader,/global\.EnglishLabMemoryMatchClassicSyncCS21A189\.latencySafeVersion === LATENCY_SAFE_EPOCH/,'compatibility() debe comprobar el epoch Memory Match vigente.');
+assert.match(loader,/global\.EnglishLabMemoryMatchClassicSyncCS21A189\.intentVersion === INTENT_EPOCH/,'compatibility() debe comprobar el intento idempotente vigente.');
 assert.match(loader,/global\.EnglishLabSentenceOrderCS21A183/,'compatibility() debe exigir Sentence Order.');
 assert.match(loader,/global\.EnglishLabUnifiedShellCS21A205/,'compatibility() debe exigir el shell final.');
 assert.match(loader,/sentenceOrder:true/,'La API del loader debe declarar Sentence Order.');
@@ -83,6 +85,7 @@ const report={
   sentence_before_quiz_gateway:true,
   shell_after_word_search_gateway:true,
   memory_latency_safe_epoch:'CS21A211',
+  memory_intent_epoch:'CS21A213',
   canonical_manifest_preserved:true,
   network_path_added:false,
   apps_script_logic_added:false,

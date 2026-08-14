@@ -18,9 +18,9 @@ const EXPECTED_MANIFEST=Object.freeze([
   'src/english_lab_games/english_lab_game_registry_cs21a191.js?v=CS21A193',
   'src/english_lab_games/hangman_engine_cs21a191.js?v=CS21A193',
   'src/english_lab_games/english_lab_hangman_live_cs21a191.jsx?v=CS21A193',
-  'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A194',
+  'src/english_lab_games/memory_match_classic_sync_cs21a189.jsx?v=CS21A213',
   'src/english_lab_games/english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx?v=CS21A193',
-  'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A193',
+  'src/english_lab_games/english_lab_live_memory_match_authoritative_sync_adapter_cs21a192.jsx?v=CS21A213',
   'src/english_lab_games/english_lab_quiz_curriculum_contract_cs21a198.js?v=CS21A198',
   'src/english_lab_games/english_lab_quiz_engine_cs21a198.js?v=CS21A198',
   'src/english_lab_games/english_lab_quiz_time_style_cs21a198.js?v=CS21A198',
@@ -36,7 +36,7 @@ const EXPECTED_MANIFEST=Object.freeze([
   'src/english_lab_games/english_lab_word_search_gateway_cs21a200.jsx?v=CS21A200',
   'src/english_lab_games/english_lab_unified_shell_cs21a205.jsx?v=CS21A205',
 ]);
-const EXPECTED_EPOCH_COUNTS=Object.freeze({CS21A193:10,CS21A194:1,CS21A198:5,CS21A200:7,CS21A205:2});
+const EXPECTED_EPOCH_COUNTS=Object.freeze({CS21A193:9,CS21A213:2,CS21A198:5,CS21A200:7,CS21A205:2});
 assert.equal(EXPECTED_MANIFEST.length,25);
 assert.equal(new Set(EXPECTED_MANIFEST.map(source=>new URL(source,'http://local/').pathname)).size,25,'El contrato esperado no puede repetir rutas.');
 

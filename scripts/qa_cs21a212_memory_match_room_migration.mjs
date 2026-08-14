@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const root=process.cwd();
@@ -29,7 +30,7 @@ const migrationPos=code.lastIndexOf("CS21A212_MM_ROOM_MIGRATION_VERSION = 'CS21A
 const latencyPos=code.lastIndexOf("CS21A212_MM_VERSION = 'CS21A212-MM-LATENCY-SAFE-15S-ACK-1'");
 assert.ok(migrationPos>latencyPos,'La migración debe ensamblarse después de la capa latency-safe.');
 
-const tmp='/tmp/cs21a212-room-migration-check.js';
+const tmp=path.join(os.tmpdir(),'cs21a212-room-migration-check.js');
 fs.writeFileSync(tmp,code,'utf8');
 execFileSync(process.execPath,['--check',tmp],{stdio:'inherit'});
 
