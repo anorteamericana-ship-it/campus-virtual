@@ -13,7 +13,7 @@ Este corte **no cambia UI, CSS, motores, endpoints, Apps Script, deployment, mai
 
 ## 2. Superficies que deben sobrevivir a la renovación
 
-### 2.1 Juegos gratuitos existentes en Academia Play
+### 2.1 Juegos gratuitos existentes en English LAB
 
 Deben conservarse como mínimo:
 
@@ -23,7 +23,7 @@ Deben conservarse como mínimo:
 4. `phrase_builder` · Phrase Builder
 5. `survival_english` · Survival English
 
-El acceso del prospecto/usuario gratis sigue pasando por `AcademiaPlayView`. La renovación podrá cambiar la presentación, pero no debe borrar esta puerta de entrada ni convertirla en una dependencia del shell Live.
+El acceso del prospecto/usuario gratis sigue pasando por la superficie práctica legacy `AcademiaPlayView` como alias técnico interno. La renovación podrá cambiar la presentación, pero no debe borrar esta puerta de entrada ni convertirla en una dependencia del shell de clase.
 
 ### 2.2 Catálogo curricular por unidad
 
@@ -74,9 +74,9 @@ Equivalencia esperada del banco actual:
 
 Este conteo es **evidencia operacional**, no se hardcodea como condición estática de GitHub: el contenido vive fuera del repo y su auditoría de datos debe mantenerse separada del guard de código.
 
-## 3. Juegos Live existentes
+## 3. Juegos de clase existentes
 
-El shell Live actual debe conservar los cinco IDs/motores existentes:
+El shell actual debe conservar los cinco IDs/motores existentes:
 
 1. `MEMORY_MATCH` · Memory Match
 2. `SENTENCE_ORDER` · Sentence Order
@@ -156,7 +156,7 @@ Siguen existiendo ideas o slots históricos que no deben sobredeclararse:
 - Spin & Learn · no está incluido en el release candidate actual;
 - Crossword · no está incluido en el release candidate actual.
 
-No borrar referencias útiles, pero tampoco presentarlas como motores Live terminados.
+No borrar referencias útiles, pero tampoco presentarlas como motores de clase terminados.
 
 ## 6. Contrato automatizado CS21A214
 
@@ -174,9 +174,9 @@ Debe fallar si desaparece cualquiera de estas invariantes estáticas:
 - adaptadores `match/order/choice`;
 - IDs curriculares;
 - progreso por unidad;
-- cinco juegos Live;
-- routing gratis → Academia Play;
-- routing matriculado → English LAB Live;
+- cinco juegos de clase;
+- routing gratis → práctica English LAB;
+- routing matriculado → shell English LAB;
 - lazy loaders de ambas superficies.
 
 Workflow:
