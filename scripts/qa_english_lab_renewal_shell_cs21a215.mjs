@@ -12,6 +12,8 @@ const app=read('src/app.jsx');
 const sounds=read('assets/sounds/README_SONIDOS.md');
 const roadmap=read('00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO.md');
 const inventory=read('00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214.md');
+const legacyBrand=['Academia','Play'].join(' ');
+const legacyBrandRe=new RegExp(legacyBrand,'i');
 
 const failures=[];
 const passes=[];
@@ -20,11 +22,6 @@ function expect(label,condition,detail=''){
   else failures.push(`${label}${detail?` · ${detail}`:''}`);
 }
 function has(text,needle){return text.includes(needle);}
-function stripJsComments(text){
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g,'')
-    .replace(/^\s*\/\/.*$/gm,'');
-}
 
 expect('hub version CS21A215',has(hub,"const VERSION='CS21A215'"));
 for(const label of ['Practicar & Competir','Jugar en equipos','Clase en vivo']){
@@ -72,11 +69,11 @@ expect('16 units preserved',/Array\.from\(\{\s*length\s*:\s*16\s*\}/.test(practi
 expect('bank endpoint preserved',has(practice,"apPost('academiaPlayBankCatalog'"));
 expect('curricular IDs preserved',['GAME_ID','UNIT_ID','PLAY_ITEM_ID'].every(key=>practice.toUpperCase().includes(key)));
 
-// Marca actual: el texto histórico no puede reaparecer en strings/render actual.
-const visibleJs=[stripJsComments(app),stripJsComments(practice),stripJsComments(shell),stripJsComments(hub),stripJsComments(hubStyle),stripJsComments(loader)].join('\n');
-expect('legacy two-word brand absent from rendered/current JS',!/Academia Play/i.test(visibleJs));
-for(const [name,text] of [['sounds README',sounds],['visual roadmap',roadmap],['renewal inventory',inventory]]){
-  expect(`legacy two-word brand absent from ${name}`,!/Academia Play/i.test(text));
+for(const [name,text] of [
+  ['app',app],['practice',practice],['class shell',shell],['hub',hub],['hub style',hubStyle],['loader',loader],
+  ['sounds README',sounds],['visual roadmap',roadmap],['renewal inventory',inventory],
+]){
+  expect(`legacy visible brand absent from ${name}`,!legacyBrandRe.test(text));
 }
 expect('official product name present',/English LAB/.test(hub) && /English LAB/.test(practice));
 
