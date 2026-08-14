@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Replace historical visible brand everywhere in tracked text
+      - name: Replace historical visible brand in tracked non-workflow text
         shell: bash
         run: |
           python - <<'PY'
@@ -32,6 +32,8 @@ jobs:
 
           for p in root.rglob('*'):
               if not p.is_file() or any(part in skip_parts for part in p.parts):
+                  continue
+              if p.parts[:2] == ('.github', 'workflows'):
                   continue
               try:
                   raw = p.read_bytes()
@@ -52,7 +54,7 @@ jobs:
         shell: bash
         run: |
           if git diff --quiet; then
-            echo 'No historical visible brand remains.'
+            echo 'No historical visible brand remains outside workflows.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
