@@ -1,0 +1,46 @@
+name: CS21A214 English LAB Preservation Gate
+
+on:
+  push:
+    branches:
+      - chore/english-lab-renewal-preservation-gate
+  pull_request:
+    branches:
+      - release/english-lab-final-qa
+
+permissions:
+  contents: read
+
+jobs:
+  english-lab-preservation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node version
+        run: node --version
+
+      - name: Syntax check
+        run: node --check scripts/qa_english_lab_preservation_gate_cs21a214.mjs
+
+      - name: No-loss contract
+        run: node scripts/qa_english_lab_preservation_gate_cs21a214.mjs
+
+      - name: Scope guard · inventory only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="6379739f502c820e52d32f2ebae84c20c4ae078c"
+          fi
+          git diff --name-only "$BASE"...HEAD | tee /tmp/cs21a214_changed.txt
+          if grep -Ev '^(scripts/qa_english_lab_preservation_gate_cs21a214\.mjs|\.github/workflows/qa-cs21a214-english-lab-preservation\.yml|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214\.md)$' /tmp/cs21a214_changed.txt | grep -q .; then
+            echo 'ERROR: CS21A214 sólo permite documentación + gate + workflow.' >&2
+            exit 1
+          fi
+          echo 'Scope PASS: no product files changed.'
