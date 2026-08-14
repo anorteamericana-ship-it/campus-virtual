@@ -34,6 +34,7 @@ jobs:
           node --check scripts/qa_english_lab_preservation_gate_cs21a214.mjs
           node --check scripts/qa_english_lab_renewal_shell_cs21a215.mjs
           node --check scripts/test_english_lab_hub_browser_cs21a215.mjs
+          node --check scripts/qa_english_lab_authenticated_cs21a215.mjs
 
       - name: No-loss contract
         run: node scripts/qa_english_lab_preservation_gate_cs21a214.mjs
@@ -69,11 +70,11 @@ jobs:
             echo 'ERROR: CS21A215 no puede modificar implementación de Memory Match.' >&2
             exit 1
           fi
-          if grep -Ev '^(src/english_lab_hub_cs21a215\.jsx|src/english_lab_hub_style_cs21a215\.js|src/english_lab_hub_preview_cs21a215\.html|src/english_lab_live_canonical_loader_cs21a193\.js|src/english_lab_games/english_lab_unified_shell_cs21a205\.jsx|src/app\.jsx|styles/academia_play\.css|scripts/qa_english_lab_preservation_gate_cs21a214\.mjs|scripts/qa_english_lab_renewal_shell_cs21a215\.mjs|scripts/test_english_lab_hub_browser_cs21a215\.mjs|scripts/test_english_lab_package_entry_browser_cs21a193\.mjs|scripts/test_english_lab_canonical_loader_browser_cs21a193\.mjs|scripts/test_english_lab_canonical_loader_browser_cs21a205\.mjs|scripts/qa_cs21a207_english_lab_navigation\.mjs|\.github/workflows/qa-cs21a215-english-lab-renewal-shell\.yml|\.github/workflows/cs21a184-student-live-dependencies\.yml|assets/sounds/README_SONIDOS\.md|00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_SHELL_CS21A215\.md|00_DOCUMENTACION/ENGLISH_LAB_HANGMAN_CS21A191\.md)$' /tmp/cs21a215_changed.txt | grep -q .; then
+          if grep -Ev '^(src/english_lab_hub_cs21a215\.jsx|src/english_lab_hub_style_cs21a215\.js|src/english_lab_hub_preview_cs21a215\.html|src/english_lab_live_canonical_loader_cs21a193\.js|src/english_lab_games/english_lab_unified_shell_cs21a205\.jsx|src/app\.jsx|styles/academia_play\.css|scripts/qa_english_lab_preservation_gate_cs21a214\.mjs|scripts/qa_english_lab_renewal_shell_cs21a215\.mjs|scripts/test_english_lab_hub_browser_cs21a215\.mjs|scripts/qa_english_lab_authenticated_cs21a215\.mjs|scripts/test_english_lab_package_entry_browser_cs21a193\.mjs|scripts/test_english_lab_canonical_loader_browser_cs21a193\.mjs|scripts/test_english_lab_canonical_loader_browser_cs21a205\.mjs|scripts/qa_cs21a207_english_lab_navigation\.mjs|\.github/workflows/qa-cs21a215-english-lab-renewal-shell\.yml|\.github/workflows/cs21a184-student-live-dependencies\.yml|assets/sounds/README_SONIDOS\.md|00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_SHELL_CS21A215\.md|00_DOCUMENTACION/ENGLISH_LAB_HANGMAN_CS21A191\.md)$' /tmp/cs21a215_changed.txt | grep -q .; then
             echo 'ERROR: archivo fuera del perímetro CS21A215.' >&2
             exit 1
           fi
-          echo 'Scope PASS: hub/shell/branding only; no Memory backend/product implementation touched.'
+          echo 'Scope PASS: hub/shell/branding/QA only; no Memory backend/product implementation touched.'
 
       - name: Install Playwright Chromium
         run: |
@@ -90,3 +91,89 @@ jobs:
           name: CS21A215_ENGLISH_LAB_HUB_BROWSER_QA
           path: qa-output/cs21a215-english-lab-hub/
           if-no-files-found: warn
+
+  english-lab-authenticated-qa:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
+      QA_STUDENT_USER: ${{ secrets.QA_STUDENT_USER }}
+      QA_STUDENT_PASS: ${{ secrets.QA_STUDENT_PASS }}
+      QA_TEACHER_USER: ${{ secrets.QA_TEACHER_USER }}
+      QA_TEACHER_PASS: ${{ secrets.QA_TEACHER_PASS }}
+      QA_FREE_USER: ${{ secrets.QA_FREE_USER }}
+      QA_FREE_PASS: ${{ secrets.QA_FREE_PASS }}
+      QA_CAMPUS_BASE_URL: http://127.0.0.1:4173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect authenticated QA secrets
+        id: secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for key in QA_STAGING_APPS_SCRIPT_URL QA_STUDENT_USER QA_STUDENT_PASS QA_TEACHER_USER QA_TEACHER_PASS; do
+            if [ -z "${!key:-}" ]; then
+              echo "Falta $key para QA autenticada." >> "$GITHUB_STEP_SUMMARY"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo 'QA autenticada no se ejecutó; secretos requeridos no configurados.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: '22'
+
+      - name: Validate authenticated QA script
+        if: steps.secrets.outputs.ready == 'true'
+        run: node --check scripts/qa_english_lab_authenticated_cs21a215.mjs
+
+      - name: Install Playwright Chromium
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start isolated Campus frontend
+        if: steps.secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > qa-cs21a215-auth-server.log 2>&1 &
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat qa-cs21a215-auth-server.log
+          exit 1
+
+      - name: Authenticated English LAB QA · student teacher and optional free prospect
+        if: steps.secrets.outputs.ready == 'true'
+        run: node scripts/qa_english_lab_authenticated_cs21a215.mjs
+
+      - name: Publish authenticated summary
+        if: always() && steps.secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          if [ -f qa-output/cs21a215-authenticated/summary.md ]; then
+            cat qa-output/cs21a215-authenticated/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload authenticated evidence
+        if: always() && steps.secrets.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A215_ENGLISH_LAB_AUTHENTICATED_QA
+          path: |
+            qa-output/cs21a215-authenticated/
+            qa-cs21a215-auth-server.log
+          if-no-files-found: warn
+          retention-days: 14
