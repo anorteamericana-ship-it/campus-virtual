@@ -50,7 +50,9 @@ assert.match(adapter,/data-live-current-poll-ms=\{currentPollMs\}/,'métrica de 
 assert.match(adapter,/livePollMsForState:pollMsForState/,'API de poll por estado debe estar exportada');
 
 assert.match(classic,/data-spectator-reveal-ms=\{revealRuleMs\}/,'duración spectator debe estar expuesta por la UI real');
-assert.match(classic,/data-turn-selection-ms=\{Number\([^}]*10000\)\}/,'la UI debe exponer el contrato de selección de 10 s');
+assert.match(classic,/const turnSelectionMs=.*turn_selection_ms\|\|packageInput\.rules\.round_duration_ms.*\|\|15000/,'la UI debe resolver el turno desde el contrato autoritativo con fallback seguro de 15 s');
+assert.match(classic,/data-turn-selection-ms=\{turnSelectionMs\}/,'la UI debe exponer la duración autoritativa realmente usada');
+assert.match(classic,/Tenés \{turnSelectionSeconds\} segundos para escoger dos cartas/,'la explicación visible debe reflejar la duración autoritativa y no un literal obsoleto');
 assert.match(classic,/pair_reveal_ms\|\|packageInput\.rules\.spectator_reveal_ms/,'la UI debe preferir el reveal canónico CS211');
 assert.match(classic,/\|\|3000\)\|\|3000\)/,'fallback de reveal no puede volver a 8.5 s');
 assert.match(classic,/se cierran en \$\{revealSeconds\}s/,'countdown de mismatch debe vivir en src');
@@ -109,7 +111,7 @@ assert.deepEqual(runtimePatchCandidates,[],'Ningún browser test debe reemplazar
 
 console.log(JSON.stringify({
   ok:true,
-  version:'CS21A202-SOURCE-TRUTH-QA-6',
+  version:'CS21A213-SOURCE-TRUTH-QA-1',
   source_of_truth:'src',
   transport_domain_reconciliation:true,
   adapter_state_candidate:true,
@@ -122,6 +124,8 @@ console.log(JSON.stringify({
   cs211_turn_selection_ms:10000,
   cs211_mismatch_reveal_ms:3000,
   cs211_first_card_extends_deadline:false,
+  cs213_turn_selection_dynamic:true,
+  cs213_turn_selection_fallback_ms:15000,
   browser_runtime_code_patch:false,
   browser_tests_scanned:browserFiles.length,
   historical_cs196_patch_preserved_as_evidence:true,
