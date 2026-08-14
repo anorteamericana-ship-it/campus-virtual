@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CS21A215 · English LAB hub preview</title>
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <script src="../vendor/react.js"></script>
+  <script src="../vendor/react-dom.js"></script>
+  <script src="../vendor/babel.js"></script>
+</head>
+<body style="margin:0;background:#f4f7fb"><div id="root"></div>
+<script type="text/babel">
+  function PracticeMock(){
+    return <section data-mock="practice" style={{padding:20,background:'#fff',border:'1px solid #ddd',borderRadius:18}}>
+      <strong>Práctica curricular English LAB</strong>
+      <div data-mock="free-games">5 juegos gratis</div>
+      <div data-mock="units">B1 · 16 unidades · 12 juegos por unidad</div>
+    </section>;
+  }
+  PracticeMock.__cs21a214Preserved=true;
+  function StudentClassMock(){
+    const game=new URLSearchParams(location.search).get('game')||'NONE';
+    return <section data-mock="student-class" data-game={game} style={{padding:20,background:'#fff',border:'1px solid #ddd',borderRadius:18}}>Clase estudiante · {game}</section>;
+  }
+  StudentClassMock.__cs21a144AccessGate=true;
+  StudentClassMock.__cs21a183SentenceWrapped=true;
+  StudentClassMock.__cs21a205UnifiedShell=true;
+  function TeacherClassMock(){
+    const game=new URLSearchParams(location.search).get('game')||'NONE';
+    return <section data-mock="teacher-class" data-game={game} style={{padding:20,background:'#fff',border:'1px solid #ddd',borderRadius:18}}>Clase docente · {game}</section>;
+  }
+  TeacherClassMock.__cs21a183SentenceWrapped=true;
+  TeacherClassMock.__cs21a205UnifiedShell=true;
+  window.AcademiaPlayView=PracticeMock;
+  window.EnglishLabLiveStudentView=StudentClassMock;
+  window.EnglishLabLiveTeacherView=TeacherClassMock;
+</script>
+<script src="english_lab_hub_style_cs21a215.js?v=CS21A215"></script>
+<script type="text/babel" src="english_lab_hub_cs21a215.jsx?v=CS21A215"></script>
+<script type="text/babel">
+  const params=new URLSearchParams(location.search);
+  const role=params.get('role')==='teacher'?'teacher':'student';
+  const View=role==='teacher'?window.EnglishLabLiveTeacherView:window.EnglishLabLiveStudentView;
+  ReactDOM.createRoot(document.getElementById('root')).render(<View usuario={{nombre:role==='teacher'?'Profe QA':'Naty QA',codigo:'QA-1'}} role={role} rolReal={role}/>);
+</script>
+</body>
+</html>
