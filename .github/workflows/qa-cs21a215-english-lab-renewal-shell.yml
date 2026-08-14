@@ -20,6 +20,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Node version
         run: node --version
 
@@ -29,6 +33,7 @@ jobs:
           node --check src/english_lab_live_canonical_loader_cs21a193.js
           node --check scripts/qa_english_lab_preservation_gate_cs21a214.mjs
           node --check scripts/qa_english_lab_renewal_shell_cs21a215.mjs
+          node --check scripts/test_english_lab_hub_browser_cs21a215.mjs
 
       - name: No-loss contract
         run: node scripts/qa_english_lab_preservation_gate_cs21a214.mjs
@@ -53,8 +58,24 @@ jobs:
             echo 'ERROR: CS21A215 no puede modificar implementación de Memory Match.' >&2
             exit 1
           fi
-          if grep -Ev '^(src/english_lab_hub_cs21a215\.jsx|src/english_lab_hub_style_cs21a215\.js|src/english_lab_live_canonical_loader_cs21a193\.js|src/english_lab_games/english_lab_unified_shell_cs21a205\.jsx|scripts/qa_english_lab_preservation_gate_cs21a214\.mjs|scripts/qa_english_lab_renewal_shell_cs21a215\.mjs|\.github/workflows/qa-cs21a215-english-lab-renewal-shell\.yml|assets/sounds/README_SONIDOS\.md|00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_SHELL_CS21A215\.md)$' /tmp/cs21a215_changed.txt | grep -q .; then
+          if grep -Ev '^(src/english_lab_hub_cs21a215\.jsx|src/english_lab_hub_style_cs21a215\.js|src/english_lab_hub_preview_cs21a215\.html|src/english_lab_live_canonical_loader_cs21a193\.js|src/english_lab_games/english_lab_unified_shell_cs21a205\.jsx|scripts/qa_english_lab_preservation_gate_cs21a214\.mjs|scripts/qa_english_lab_renewal_shell_cs21a215\.mjs|scripts/test_english_lab_hub_browser_cs21a215\.mjs|\.github/workflows/qa-cs21a215-english-lab-renewal-shell\.yml|assets/sounds/README_SONIDOS\.md|00_DOCUMENTACION/ROADMAP_VISUAL_PRIORIZADO\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_INVENTORY_CS21A214\.md|00_DOCUMENTACION/ENGLISH_LAB_RENEWAL_SHELL_CS21A215\.md)$' /tmp/cs21a215_changed.txt | grep -q .; then
             echo 'ERROR: archivo fuera del perímetro CS21A215.' >&2
             exit 1
           fi
           echo 'Scope PASS: hub/shell/documentation only; no Memory backend/product implementation touched.'
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Browser smoke · student teacher and 390px
+        run: node scripts/test_english_lab_hub_browser_cs21a215.mjs
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS21A215_ENGLISH_LAB_HUB_BROWSER_QA
+          path: qa-output/cs21a215-english-lab-hub/
+          if-no-files-found: warn
