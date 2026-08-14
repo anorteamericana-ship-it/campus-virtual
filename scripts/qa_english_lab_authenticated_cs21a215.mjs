@@ -1,18 +1,25 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const required = [
-  'QA_STAGING_APPS_SCRIPT_URL',
-  'QA_STUDENT_USER', 'QA_STUDENT_PASS',
-  'QA_TEACHER_USER', 'QA_TEACHER_PASS',
-];
-const missing = required.filter(name => !String(process.env[name] || '').trim());
-if (missing.length) throw new Error(`Faltan variables de QA autenticada: ${missing.join(', ')}`);
+const stagingUrl = String(process.env.QA_STAGING_APPS_SCRIPT_URL || '').trim();
+if (!stagingUrl) throw new Error('Falta QA_STAGING_APPS_SCRIPT_URL.');
 
-const stagingUrl = process.env.QA_STAGING_APPS_SCRIPT_URL.trim();
-const campusBase = String(process.env.QA_CAMPUS_BASE_URL || 'http://127.0.0.1:4173').replace(/\/$/, '');
+function hasPair(a, b) {
+  return !!String(process.env[a] || '').trim() && !!String(process.env[b] || '').trim();
+}
+function hasSession(name) {
+  return !!String(process.env[name] || '').trim();
+}
+if (!hasSession('QA_STUDENT_SESSION_JSON') && !hasPair('QA_STUDENT_USER', 'QA_STUDENT_PASS')) {
+  throw new Error('Falta sesión QA_STUDENT_SESSION_JSON o credenciales QA_STUDENT_USER / QA_STUDENT_PASS.');
+}
+if (!hasSession('QA_TEACHER_SESSION_JSON') && !hasPair('QA_TEACHER_USER', 'QA_TEACHER_PASS')) {
+  throw new Error('Falta sesión QA_TEACHER_SESSION_JSON o credenciales QA_TEACHER_USER / QA_TEACHER_PASS.');
+}
+
 const productionSource = fs.readFileSync('src/data.jsx', 'utf8');
 const prodMatch = productionSource.match(/const\s+APPS_SCRIPT_URL\s*=\s*['"]([^'"]+)['"]/);
 if (!prodMatch) throw new Error('No se encontró la URL productiva para aplicar el bloqueo.');
@@ -69,6 +76,19 @@ assert.equal(qa?.writes_guarded, true, 'QA debe mantener escrituras protegidas.'
 report.qa_backend_verified = true;
 report.qa_marker = qa?.marker || null;
 
+function parseSession(label, envName, expectedRole) {
+  const raw = String(process.env[envName] || '').trim();
+  if (!raw) return null;
+  let session;
+  try { session = JSON.parse(raw); }
+  catch (_) { throw new Error(`${envName} no contiene JSON válido.`); }
+  assert.ok(session?.token, `${label}: la sesión existente debe contener token.`);
+  const role = String(session?.rol || session?.role || '').toLowerCase();
+  assert.equal(role, expectedRole, `${label}: rol inesperado ${role}.`);
+  report.actors[label] = { authenticated: true, role, source: 'existing_session' };
+  return session;
+}
+
 async function login(label, user, pass, expectedRole) {
   const result = await post('iniciarSesion', { usuario: user, clave: pass });
   assert.equal(result.response.ok, true, `${label}: login HTTP debe ser OK.`);
@@ -76,18 +96,59 @@ async function login(label, user, pass, expectedRole) {
   assert.ok(result.data?.token, `${label}: login debe devolver token.`);
   const role = String(result.data?.rol || '').toLowerCase();
   assert.equal(role, expectedRole, `${label}: rol inesperado ${role}.`);
-  report.actors[label] = { authenticated: true, role };
+  report.actors[label] = { authenticated: true, role, source: 'fresh_login' };
   return result.data;
 }
 
-const student = await login('student', process.env.QA_STUDENT_USER, process.env.QA_STUDENT_PASS, 'student');
-const teacher = await login('teacher', process.env.QA_TEACHER_USER, process.env.QA_TEACHER_PASS, 'teacher');
+const student = parseSession('student', 'QA_STUDENT_SESSION_JSON', 'student') ||
+  await login('student', process.env.QA_STUDENT_USER, process.env.QA_STUDENT_PASS, 'student');
+const teacher = parseSession('teacher', 'QA_TEACHER_SESSION_JSON', 'teacher') ||
+  await login('teacher', process.env.QA_TEACHER_USER, process.env.QA_TEACHER_PASS, 'teacher');
 
-let freeStudent = null;
-if (String(process.env.QA_FREE_USER || '').trim() && String(process.env.QA_FREE_PASS || '').trim()) {
+let freeStudent = parseSession('free_student', 'QA_FREE_SESSION_JSON', 'student');
+if (!freeStudent && hasPair('QA_FREE_USER', 'QA_FREE_PASS')) {
   freeStudent = await login('free_student', process.env.QA_FREE_USER, process.env.QA_FREE_PASS, 'student');
-} else {
-  report.actors.free_student = { authenticated: false, skipped: true, reason: 'No hay secretos QA_FREE_USER / QA_FREE_PASS configurados.' };
+}
+if (!freeStudent) {
+  report.actors.free_student = { authenticated: false, skipped: true, reason: 'Actor autenticado gratuito no configurado.' };
+}
+
+let staticServer = null;
+let campusBase = String(process.env.QA_CAMPUS_BASE_URL || '').trim().replace(/\/$/, '');
+if (!campusBase) {
+  const root = path.resolve('.');
+  const mime = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.jsx': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+  };
+  staticServer = http.createServer((request, response) => {
+    const url = new URL(request.url, 'http://127.0.0.1');
+    const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    const file = path.resolve(root, relative || 'campus.html');
+    if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+      response.end('not found');
+      return;
+    }
+    response.writeHead(200, {
+      'content-type': mime[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      'cache-control': 'no-store',
+    });
+    fs.createReadStream(file).pipe(response);
+  });
+  await new Promise(resolve => staticServer.listen(0, '127.0.0.1', resolve));
+  campusBase = `http://127.0.0.1:${staticServer.address().port}`;
+  report.notes.push('Frontend servido localmente por el propio runner.');
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -98,7 +159,7 @@ async function openCampus(session, route = 'academia_play', viewport = { width: 
   await context.addInitScript(({ session, route }) => {
     sessionStorage.setItem('an_usuario', JSON.stringify(session));
     localStorage.setItem('an_active', route);
-    const role = String(session?.rol || '').toLowerCase();
+    const role = String(session?.rol || session?.role || '').toLowerCase();
     localStorage.setItem(`an_active_${role === 'superadmin' ? 'admin' : role}`, route);
   }, { session, route });
 
@@ -237,6 +298,7 @@ try {
   report.ok = true;
 } finally {
   await browser.close();
+  if (staticServer) await new Promise(resolve => staticServer.close(resolve));
   fs.writeFileSync(path.join(outDir, 'result.json'), JSON.stringify(report, null, 2));
   const lines = [
     '# CS21A215 · QA autenticada English LAB',
