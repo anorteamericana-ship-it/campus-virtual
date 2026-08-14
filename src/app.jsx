@@ -4,7 +4,7 @@
 // F98.4-Z6-CS19D · Agenda docente modo Club I CAN aislado + slots visuales
 // F98.4-Z6-CS19A · Agenda docente slots visuales generales para todos los profes
 // F98.4-Z6-CS7B · Conexión ventas/admisiones para prematrículas
-// F98.4-Z6-CS3 · Academia Play V1.7 catálogo móvil
+// F98.4-Z6-CS3 · English LAB V1.7 catálogo móvil
 // F98.4-Z6-CR · Hotfix guardado de evidencia técnica
 // F98.4-Z6-BD · Consulta individual financiera segura + auditoría manual morosidad
 // F98.4-Z6-BB · Preflight CONAPE para PRIMARY/FK + verificación de destino
@@ -944,7 +944,7 @@ function App() {
         : <LazyRoute title="English LAB" component="EnglishLabLiveStudentView" files={F96_LAZY.english_lab_live} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
       english_lab_live: <LazyRoute title="English LAB" component="EnglishLabLiveStudentView" files={F96_LAZY.english_lab_live} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
-    // CS3: usuario gratis solo puede montar Mi Campus prematrícula y Academia Play.
+    // CS3: usuario gratis solo puede montar Mi Campus prematrícula y English LAB.
     // Esto evita que una ruta vieja o hash manual cargue módulos que consultan datos académicos reales.
     content = esProspectoGratis && !['dashboard','academia_play'].includes(active)
       ? map.dashboard

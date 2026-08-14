@@ -90,7 +90,7 @@ function harness(mode){
       window.getSessionToken=()=> 'QA-TOKEN';
       window.APPS_SCRIPT_URL='/__cs21a205_backend';
       window.PageHeader=function PageHeader(){return React.createElement('div',null);};
-      window.AcademiaPlayView=function AcademiaPlayView(){return React.createElement('div',{'data-academia-play-base':'true'},'Academia Play');};
+      window.AcademiaPlayView=function AcademiaPlayView(){return React.createElement('div',{'data-academia-play-base':'true'},'English LAB');};
     </script>
     <script src="src/english_lab_free_access_cs21a66.js?v=CS21A193"></script>
     <script src="src/lazy_loader.jsx?v=CS21A193"></script>

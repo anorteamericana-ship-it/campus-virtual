@@ -16,7 +16,7 @@ assert.equal(
 );
 
 const duplicateBlock = /mostrarAcademiaPlay \? \[\s*\{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' \},\s*\{ id: 'english_lab_live'/g;
-assert.equal((sidebar.match(duplicateBlock) || []).length, 0, 'No debe quedar el bloque doble Academia Play + Live para docente/estudiante matriculado.');
+assert.equal((sidebar.match(duplicateBlock) || []).length, 0, 'No debe quedar el bloque doble English LAB + Live para docente/estudiante matriculado.');
 
 assert.ok(
   sidebar.includes("{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Gratis' }"),

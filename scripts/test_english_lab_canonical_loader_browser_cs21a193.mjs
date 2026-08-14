@@ -115,7 +115,7 @@ function harness(mode){
       window.getSessionToken=()=> 'QA-TOKEN';
       window.APPS_SCRIPT_URL='/__cs21a193_backend';
       window.PageHeader=function PageHeader(){return React.createElement('div',null);};
-      window.AcademiaPlayView=function AcademiaPlayView(){return React.createElement('div',{'data-academia-play-base':'true'},'Academia Play');};
+      window.AcademiaPlayView=function AcademiaPlayView(){return React.createElement('div',{'data-academia-play-base':'true'},'English LAB');};
     </script>
     <script src="src/english_lab_free_access_cs21a66.js?v=CS21A193"></script>` : '';
   return `<!doctype html><html><head><meta charset="utf-8"><title>${mode}</title>${scripts(common)}</head><body><div id="root"></div>

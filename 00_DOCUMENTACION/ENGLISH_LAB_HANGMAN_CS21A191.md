@@ -66,7 +66,7 @@ Antes de cargar `english_lab_live.jsx` agrega:
 - motor Ahorcado CS21A191;
 - integración Ahorcado CS21A191.
 
-Esto cubre tanto la ruta normal como la entrada desde Academia Play que históricamente cargaba `english_lab_live.jsx` directamente.
+Esto cubre tanto la ruta normal como la entrada desde English LAB que históricamente cargaba `english_lab_live.jsx` directamente.
 
 ### Backend QA
 

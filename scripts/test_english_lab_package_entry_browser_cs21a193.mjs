@@ -170,8 +170,8 @@ try{
     await page.locator('button').filter({hasText:'Ingresar con c'}).first().click();
     await page.locator('input[placeholder="LAB-5937"]').waitFor({state:'visible',timeout:30000});
     const snapshot=await packageSnapshot(page);
-    assertCanonical(snapshot,'student/Academia Play');
-    assertSingleStyleRequest(observed.requests,'student/Academia Play');
+    assertCanonical(snapshot,'student/English LAB');
+    assertSingleStyleRequest(observed.requests,'student/English LAB');
     assert.deepEqual(observed.errors,[],observed.errors.join(' | '));
     await page.screenshot({path:path.join(output,'student-academia-play-mobile390.png'),fullPage:true});
     details.student={snapshot,requests:observed.requests.filter(url=>/english_lab/i.test(url))};
