@@ -23,5 +23,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate Academia Play student entry loads full Live stack
+      - name: Validate English LAB student entry loads full Live stack
         run: node scripts/test_english_lab_student_live_dependencies_cs21a184.mjs
