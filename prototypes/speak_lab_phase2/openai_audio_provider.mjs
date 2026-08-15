@@ -11,6 +11,9 @@ const ALLOWED_TTS_FORMATS = new Set(['mp3','opus','aac','flac','wav','pcm']);
 const MIME_BY_TTS_FORMAT = Object.freeze({
   mp3:'audio/mpeg', opus:'audio/ogg', aac:'audio/aac', flac:'audio/flac', wav:'audio/wav', pcm:'audio/pcm',
 });
+const SAFE_ERROR_PARAMS = new Set([
+  'model', 'input', 'voice', 'response_format', 'speed', 'instructions', 'file', 'language',
+]);
 
 function clean(value) {
   return String(value ?? '').trim();
@@ -38,21 +41,51 @@ function supportsTtsInstructions(model) {
   return !/^tts-1(?:-hd)?(?:$|-)/.test(normalized);
 }
 
-function safeProviderError(status, requestId, detail = '') {
-  const safeDetail = clean(detail).slice(0, 240).replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED]');
+function safeStructuredToken(value, maxLength = 120) {
+  const normalized = clean(value);
+  return normalized && normalized.length <= maxLength && /^[A-Za-z0-9._:-]+$/.test(normalized)
+    ? normalized
+    : null;
+}
+
+function safeStructuredParam(value) {
+  const normalized = clean(value);
+  return SAFE_ERROR_PARAMS.has(normalized) ? normalized : null;
+}
+
+function safeProviderError(status, requestId, detail = {}) {
+  const safeDetail = clean(detail?.message).slice(0, 240).replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED]');
   return new SpeakLabContractError(
     'OPENAI_AUDIO_HTTP_ERROR',
     `OpenAI Audio respondió HTTP ${status}${safeDetail ? `: ${safeDetail}` : ''}.`,
-    { status, requestId:clean(requestId) },
+    {
+      status,
+      requestId:clean(requestId),
+      upstreamType:safeStructuredToken(detail?.type),
+      upstreamCode:safeStructuredToken(detail?.code),
+      upstreamParam:safeStructuredParam(detail?.param),
+    },
   );
 }
 
 async function readErrorDetail(response) {
   try {
     const data = await response.clone().json();
-    return clean(data?.error?.message || data?.error || data?.message);
+    const errorObject = data?.error && typeof data.error === 'object' && !Array.isArray(data.error)
+      ? data.error
+      : {};
+    return {
+      message:clean(errorObject?.message || (typeof data?.error === 'string' ? data.error : '') || data?.message),
+      type:safeStructuredToken(errorObject?.type),
+      code:safeStructuredToken(errorObject?.code),
+      param:safeStructuredParam(errorObject?.param),
+    };
   } catch (_) {
-    try { return clean(await response.clone().text()); } catch (_) { return ''; }
+    try {
+      return { message:clean(await response.clone().text()), type:null, code:null, param:null };
+    } catch (_) {
+      return { message:'', type:null, code:null, param:null };
+    }
   }
 }
 
