@@ -1,0 +1,45 @@
+name: Validate SPEAK LAB Voice Gateway Protocol
+
+on:
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase1/gateway_protocol.js'
+      - 'prototypes/speak_lab_phase1/voice_gateway_client.js'
+      - 'prototypes/speak_lab_phase1/mock_voice_gateway.mjs'
+      - 'scripts/validate_speak_lab_gateway_protocol.mjs'
+      - '00_DOCUMENTACION/SPEAK_LAB_VOICE_GATEWAY_PROTOCOL_2026-08-14.md'
+      - '.github/workflows/validate-speak-lab-gateway-protocol.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: speak-lab-gateway-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-gateway-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax
+        run: |
+          node --check prototypes/speak_lab_phase1/gateway_protocol.js
+          node --check prototypes/speak_lab_phase1/voice_gateway_client.js
+          node --check prototypes/speak_lab_phase1/mock_voice_gateway.mjs
+          node --check scripts/validate_speak_lab_gateway_protocol.mjs
+
+      - name: Recheck Phase 1 contracts
+        run: node scripts/validate_speak_lab_phase1_contracts.mjs
+
+      - name: Gateway adversarial gate
+        run: node scripts/validate_speak_lab_gateway_protocol.mjs
