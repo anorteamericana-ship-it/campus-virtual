@@ -147,7 +147,11 @@ for (const forbidden of [
   assert(!forbidden.test(source), `contracts.js contiene dependencia/red/secreto prohibido: ${forbidden}`);
 }
 
-assert(doc.includes('STT primario **no puede recibir la frase objetivo'), 'Documento perdió regla anti-sesgo STT');
+assert(doc.includes('## Regla anti-sesgo'), 'Documento perdió sección anti-sesgo STT');
+assert(doc.includes('no puede recibir la frase objetivo ni la respuesta correcta'), 'Documento perdió la prohibición de target leakage');
+for (const key of SPEAK_LAB_CONTRACTS.sttForbiddenTargetKeys) {
+  assert(doc.includes(`\`${key}\``), `Documento perdió la clave STT prohibida ${key}`);
+}
 assert(doc.includes('Browser → API externa usando OPENAI_API_KEY'), 'Documento debe advertir contra API key en browser');
 assert(doc.includes('Apps Script no debe asumirse como transporte de voz'), 'Documento perdió decisión sobre Apps Script');
 assert(doc.includes('Work está desarrollando CS21A215 en PR #85'), 'Documento debe registrar coordinación con trabajo paralelo');
