@@ -50,11 +50,20 @@ jobs:
             cat qa-output/speak-lab-phase0/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload SPEAK LAB evidence
+      - name: Upload SPEAK LAB browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: SPEAK_LAB_PHASE0_BROWSER_QA
           path: qa-output/speak-lab-phase0/
           if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload exact Phase 0 candidate
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPEAK_LAB_PHASE0_CANDIDATE
+          path: prototypes/speak_lab_phase0/
+          if-no-files-found: error
           retention-days: 14
