@@ -81,7 +81,7 @@ export class VoiceGatewayClient {
     if (!response.ok) throw await responseError(response);
 
     const audio = await response.blob();
-    return validateTtsResult({
+    const validated = validateTtsResult({
       audio,
       mimeType:response.headers.get('content-type') || audio.type || 'audio/wav',
       syntheticVoice:true,
@@ -92,6 +92,10 @@ export class VoiceGatewayClient {
       },
       cacheKey:response.headers.get('x-speaklab-cache-key') || '',
     });
+    if (response.headers.get('x-speaklab-mock') === 'true') {
+      return Object.freeze({ ...validated, mock:true });
+    }
+    return validated;
   }
 
   async transcribe(input, { durationMs } = {}) {
