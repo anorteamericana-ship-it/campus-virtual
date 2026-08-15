@@ -1,0 +1,8 @@
+# SPEAK LAB / Cloudflare local secrets and local runtime state
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+!.dev.vars.example
+.wrangler/
