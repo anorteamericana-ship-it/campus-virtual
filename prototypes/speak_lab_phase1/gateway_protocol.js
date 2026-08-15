@@ -15,6 +15,7 @@ export const VOICE_GATEWAY_LIMITS = Object.freeze({
   maxAudioDurationMs: 30_000,
   maxTtsCharacters: 4096,
   maxVocabularyHints: 32,
+  maxVocabularyHintCharacters: 32,
 });
 
 const ALLOWED_SCOPES = new Set(Object.values(VOICE_GATEWAY_SCOPES));
@@ -82,14 +83,27 @@ export function validateGatewayTtsEnvelope(input) {
   const text = clean(input.text);
   invariant(text, 'EMPTY_TTS_TEXT', 'TTS requiere texto.');
   invariant(text.length <= VOICE_GATEWAY_LIMITS.maxTtsCharacters, 'TTS_TEXT_TOO_LONG', 'TTS excede límite del gateway.');
+  const speakingRate = Number.isFinite(Number(input.speakingRate)) ? Number(input.speakingRate) : 1;
+  invariant(speakingRate >= 0.5 && speakingRate <= 1.5, 'INVALID_SPEAKING_RATE', 'speakingRate debe estar entre 0.5 y 1.5.');
   return Object.freeze({
     text,
     language:clean(input.language || 'en-US'),
     voiceProfile:clean(input.voiceProfile || 'default'),
-    speakingRate:Number.isFinite(Number(input.speakingRate)) ? Number(input.speakingRate) : 1,
+    speakingRate,
     style:clean(input.style),
     cachePolicy:input.cachePolicy === 'no-store' ? 'no-store' : 'cache-static',
   });
+}
+
+function normalizeVocabularyHints(input) {
+  const hints = Array.isArray(input)
+    ? input.map(clean).filter(Boolean).slice(0, VOICE_GATEWAY_LIMITS.maxVocabularyHints)
+    : [];
+  for (const hint of hints) {
+    invariant(hint.length <= VOICE_GATEWAY_LIMITS.maxVocabularyHintCharacters, 'STT_HINT_TOO_LONG', 'Vocabulary hint excede longitud máxima.');
+    invariant(/^[A-Za-z][A-Za-z'’-]*$/.test(hint), 'STT_HINT_MUST_BE_LEXEME', 'Vocabulary hints deben ser lexemas individuales, no frases objetivo.');
+  }
+  return Object.freeze(hints);
 }
 
 export function validateGatewaySttMetadata(input) {
@@ -108,16 +122,12 @@ export function validateGatewaySttMetadata(input) {
   const mimeType = clean(input.mimeType).toLowerCase();
   invariant(/^audio\/(webm|mp4|mpeg|wav|x-wav|ogg)(?:;|$)/.test(mimeType), 'UNSUPPORTED_AUDIO_TYPE', `Tipo de audio no soportado: ${mimeType}`);
 
-  const hints = Array.isArray(input.vocabularyHints)
-    ? input.vocabularyHints.map(clean).filter(Boolean).slice(0, VOICE_GATEWAY_LIMITS.maxVocabularyHints)
-    : [];
-
   return Object.freeze({
     byteLength,
     durationMs,
     mimeType,
     language:clean(input.language || 'en'),
-    vocabularyHints:Object.freeze(hints),
+    vocabularyHints:normalizeVocabularyHints(input.vocabularyHints),
   });
 }
 
