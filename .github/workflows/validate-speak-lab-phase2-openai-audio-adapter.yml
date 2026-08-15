@@ -1,0 +1,41 @@
+name: Validate SPEAK LAB Phase 2 OpenAI Audio Adapter
+
+on:
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase2/openai_audio_provider.mjs'
+      - 'scripts/validate_speak_lab_openai_audio_provider.mjs'
+      - '00_DOCUMENTACION/SPEAK_LAB_PHASE2_OPENAI_AUDIO_ADAPTER_2026-08-14.md'
+      - '.github/workflows/validate-speak-lab-phase2-openai-audio-adapter.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: speak-lab-phase2-audio-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-openai-audio-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax
+        run: |
+          node --check prototypes/speak_lab_phase2/openai_audio_provider.mjs
+          node --check scripts/validate_speak_lab_openai_audio_provider.mjs
+
+      - name: Recheck gateway protocol
+        run: node scripts/validate_speak_lab_gateway_protocol.mjs
+
+      - name: OpenAI audio adapter gate · fake network only
+        run: node scripts/validate_speak_lab_openai_audio_provider.mjs
