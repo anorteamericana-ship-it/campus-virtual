@@ -5,6 +5,7 @@ on:
     paths:
       - 'prototypes/speak_lab_phase0/**'
       - 'scripts/validate_speak_lab_phase0.mjs'
+      - 'scripts/test_speak_lab_phase0_browser.mjs'
       - '00_DOCUMENTACION/PLAN_MAESTRO_SPEAK_LAB_2026-08-14.md'
       - '.github/workflows/validate-speak-lab-phase0.yml'
   workflow_dispatch:
@@ -13,15 +14,47 @@ concurrency:
   group: speak-lab-phase0-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   validate-speak-lab-phase0:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Run SPEAK LAB Phase 0 gate
-        run: node scripts/validate_speak_lab_phase0.mjs
+          node-version: '22'
+
+      - name: Static gate
+        run: |
+          node --check scripts/test_speak_lab_phase0_browser.mjs
+          node scripts/validate_speak_lab_phase0.mjs
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Browser smoke · microphone, playback, retry and 390px
+        run: node scripts/test_speak_lab_phase0_browser.mjs
+
+      - name: Publish browser summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f qa-output/speak-lab-phase0/summary.md ]; then
+            cat qa-output/speak-lab-phase0/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload SPEAK LAB evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPEAK_LAB_PHASE0_BROWSER_QA
+          path: qa-output/speak-lab-phase0/
+          if-no-files-found: warn
+          retention-days: 14
