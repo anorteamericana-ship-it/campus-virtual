@@ -10,27 +10,46 @@ const output=path.resolve('qa-output/cs21a193-canonical-loader');
 fs.mkdirSync(output,{recursive:true});
 
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.jsx':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
+const upstreamBase=(process.env.QA_BASE_URL||'').replace(/\/$/,'');
 let server=null;
-let base=process.env.QA_BASE_URL||'';
-if(!base){
-  server=http.createServer((request,response)=>{
+let base='';
+server=http.createServer(async(request,response)=>{
     const url=new URL(request.url,'http://127.0.0.1');
+    if(url.pathname==='/__cs21a193_harness'){
+      response.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});
+      response.end(harness(url.searchParams.get('mode')||'new'));
+      return;
+    }
     if(url.pathname==='/__cs21a193_backend'){
       response.writeHead(200,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});
       response.end(JSON.stringify({ok:true,allowed:true,autorizado:true,estado:'AL_DIA'}));
       return;
     }
     const relative=decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    if(upstreamBase){
+      try{
+        const upstream=await fetch(`${upstreamBase}/${relative}${url.search}`);
+        const body=Buffer.from(await upstream.arrayBuffer());
+        response.writeHead(upstream.status,{
+          'content-type':upstream.headers.get('content-type')||types[path.extname(relative).toLowerCase()]||'application/octet-stream',
+          'cache-control':'no-store',
+        });
+        response.end(body);
+      }catch(error){
+        response.writeHead(502,{'content-type':'text/plain; charset=utf-8'});
+        response.end(`upstream error: ${error.message}`);
+      }
+      return;
+    }
     const file=path.resolve(root,relative);
     if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){
       response.writeHead(404,{'content-type':'text/plain; charset=utf-8'});response.end('not found');return;
     }
     response.writeHead(200,{'content-type':types[path.extname(file).toLowerCase()]||'application/octet-stream','cache-control':'no-store'});
     fs.createReadStream(file).pipe(response);
-  });
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  base=`http://127.0.0.1:${server.address().port}`;
-}
+});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+base=`http://127.0.0.1:${server.address().port}`;
 
 function scripts(values){return values.map(src=>`<script src="${src}"></script>`).join('\n');}
 
@@ -144,7 +163,6 @@ try{
   const legacyErrors=[];
   legacyPage.on('request',request=>legacyRequests.push(request.url()));
   legacyPage.on('pageerror',error=>legacyErrors.push(error.message));
-  await legacyPage.route('**/__cs21a193_harness?mode=legacy',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:harness('legacy')}));
   await legacyPage.goto(`${base}/__cs21a193_harness?mode=legacy`,{waitUntil:'domcontentloaded'});
   await legacyPage.waitForFunction(()=>window.__HARNESS_READY__===true);
   results.legacy=await legacyPage.evaluate(async()=>{
@@ -183,7 +201,6 @@ try{
     const racePage=await raceContext.newPage();
     const raceErrors=[];
     racePage.on('pageerror',error=>raceErrors.push(error.message));
-    await racePage.route('**/__cs21a193_harness?mode=canonical-before-lazy',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:harness('canonical-before-lazy')}));
     await racePage.goto(`${base}/__cs21a193_harness?mode=canonical-before-lazy`,{waitUntil:'domcontentloaded'});
     await racePage.waitForFunction(()=>window.__HARNESS_READY__===true);
     results.canonicalBeforeLazy=await racePage.evaluate(async()=>{
@@ -220,7 +237,6 @@ try{
     page.on('request',request=>requests.push(request.url()));
     page.on('pageerror',error=>errors.push(`${viewport.name} pageerror: ${error.message}`));
     page.on('response',response=>{if(response.status()>=400)errors.push(`${viewport.name} HTTP ${response.status()} ${response.url()}`);});
-    await page.route('**/__cs21a193_harness?mode=new',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:harness('new')}));
     await page.goto(`${base}/__cs21a193_harness?mode=new`,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>window.__HARNESS_READY__===true);
     await page.locator('button').filter({hasText:'Ingresar con c'}).first().waitFor({state:'visible',timeout:5000});
