@@ -10,6 +10,8 @@ const files = {
   app: path.join(dir, 'app.js'),
   phrases: path.join(dir, 'phrases.js'),
   readme: path.join(dir, 'README.md'),
+  launcher: path.join(dir, 'ABRIR_SPEAK_LAB_PHASE0.cmd'),
+  browser: path.join(root, 'scripts', 'test_speak_lab_phase0_browser.mjs'),
   plan: path.join(root, '00_DOCUMENTACION', 'PLAN_MAESTRO_SPEAK_LAB_2026-08-14.md'),
 };
 
@@ -28,9 +30,10 @@ const css = fs.readFileSync(files.css, 'utf8');
 const app = fs.readFileSync(files.app, 'utf8');
 const phrases = fs.readFileSync(files.phrases, 'utf8');
 const readme = fs.readFileSync(files.readme, 'utf8');
+const launcher = fs.readFileSync(files.launcher, 'utf8');
 const plan = fs.readFileSync(files.plan, 'utf8');
 
-for (const file of [files.app, files.phrases]) {
+for (const file of [files.app, files.phrases, files.browser]) {
   const result = spawnSync(process.execPath, ['--check', file], { encoding:'utf8' });
   if (result.status !== 0) fail(`sintaxis JS inválida en ${path.relative(root, file)}: ${result.stderr || result.stdout}`);
 }
@@ -70,6 +73,9 @@ if (/https?:\/\//i.test(html)) fail('index.html contiene recursos HTTP externos;
 if (!css.includes('@media(max-width:420px)')) fail('falta gate responsive de 420 px');
 if (!css.includes('@media(max-width:780px)')) fail('falta gate responsive de 780 px');
 if (!readme.includes('No usa `SpeechRecognition`')) fail('README no documenta exclusión de SpeechRecognition');
+if (!launcher.includes('127.0.0.1')) fail('launcher Windows no está fijado a localhost');
+if (!launcher.includes('http.server')) fail('launcher Windows no levanta servidor estático local');
+if (/script\.google\.com|openai\.com|api\./i.test(launcher)) fail('launcher Windows contiene un destino externo no permitido');
 if (!plan.includes('M50 | AI Exercise Generator')) fail('plan maestro no contiene el backlog M01–M50 completo');
 if (!plan.includes('Una transcripción correcta NO demuestra pronunciación correcta')) fail('plan maestro perdió la regla académica principal');
 
@@ -78,4 +84,5 @@ if (!process.exitCode) {
   console.log(`frases=${phraseIds.length}`);
   console.log('audio_network_requests=0 (static guard)');
   console.log('speech_recognition=forbidden_phase0');
+  console.log('windows_launcher=localhost_only');
 }
