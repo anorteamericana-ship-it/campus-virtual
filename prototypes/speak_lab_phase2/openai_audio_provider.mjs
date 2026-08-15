@@ -33,6 +33,11 @@ function normalizeBaseUrl(value) {
   return `${url.origin}${url.pathname.replace(/\/$/, '')}`;
 }
 
+function supportsTtsInstructions(model) {
+  const normalized = clean(model).toLowerCase();
+  return !/^tts-1(?:-hd)?(?:$|-)/.test(normalized);
+}
+
 function safeProviderError(status, requestId, detail = '') {
   const safeDetail = clean(detail).slice(0, 240).replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED]');
   return new SpeakLabContractError(
@@ -121,7 +126,9 @@ export class OpenAIAudioProvider {
       response_format:this.ttsFormat,
       speed:request.speakingRate,
     };
-    if (request.style) body.instructions = request.style;
+    // La API de Audio no admite `instructions` para tts-1 / tts-1-hd.
+    // El modelo es configurable, así que no debemos romper el request si se usa un fallback legacy.
+    if (request.style && supportsTtsInstructions(this.ttsModel)) body.instructions = request.style;
 
     const response = await this.request('/audio/speech', {
       method:'POST',
