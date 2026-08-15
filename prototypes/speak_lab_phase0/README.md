@@ -37,10 +37,49 @@ La transcripción y el análisis automático quedan explícitamente fuera de est
 - `phrases.js`: banco inicial de 10 frases.
 - `styles.css`: estilos responsive.
 - `app.js`: TTS provisional, permisos de micrófono, grabación local y reproducción.
+- `ABRIR_SPEAK_LAB_PHASE0.cmd`: launcher Windows para abrir la carpeta por `localhost`.
+- `../../scripts/test_speak_lab_phase0_browser.mjs`: smoke Chromium automatizado.
 
-## Uso
+## Uso en Windows
 
-Servir esta carpeta por HTTP local; por ejemplo con cualquier servidor estático. El acceso a micrófono suele requerir `https://` o `localhost` según el navegador.
+1. Extraer la carpeta completa del candidato.
+2. Abrir `ABRIR_SPEAK_LAB_PHASE0.cmd`.
+3. Mantener abierta la ventana del servidor local durante la prueba.
+4. El navegador abre `http://127.0.0.1:4174/index.html`.
+5. Aceptar el permiso de micrófono cuando el navegador lo solicite.
+
+El uso de `localhost` es deliberado: los navegadores suelen exigir un contexto seguro para `getUserMedia`; abrir `index.html` directamente como `file://` puede bloquear el micrófono.
+
+## QA automático
+
+El workflow `Validate SPEAK LAB Phase 0` ejecuta dos capas:
+
+### Gate estático
+
+- sintaxis JS;
+- exactamente 10 frases e IDs únicos;
+- DOM requerido;
+- responsive 420/780 px;
+- ausencia de `fetch`, XHR, WebSocket, Apps Script y SpeechRecognition en el prototipo;
+- presencia del plan maestro M01–M50.
+
+### Browser smoke Chromium
+
+Con micrófono sintético del navegador valida:
+
+- página real servida por `localhost`;
+- `getUserMedia` + `MediaRecorder` disponibles;
+- `Record` inicia captura;
+- navegación se bloquea durante la grabación;
+- `Stop` genera un `blob:` local;
+- aparece playback;
+- `Retry` limpia el intento;
+- navegación entre frases funciona;
+- viewport `390×844` sin overflow horizontal;
+- cero requests externos;
+- cero errores de consola.
+
+La prueba automatizada demuestra el flujo técnico del navegador, no calidad acústica ni pronunciación.
 
 ## Criterios de aceptación
 
@@ -52,9 +91,13 @@ Servir esta carpeta por HTTP local; por ejemplo con cualquier servidor estático
 6. `Try again` limpia el intento sin perder la frase.
 7. La interfaz deja claro que todavía no existe calificación automática.
 8. La UI sigue siendo utilizable cerca de 390 px.
-9. No existen requests de red de audio provocados por el prototipo.
+9. No existen requests externos provocados por el prototipo.
 10. Un navegador sin `MediaRecorder` recibe un mensaje honesto y no una falsa calificación.
+
+## Coordinación con English LAB renovado
+
+SPEAK LAB permanece separado de los juegos de English LAB. Mientras Work desarrolla el hub CS21A215 en paralelo, esta fase no modifica `src/app.jsx`, loaders, menú ni shell. La futura integración visible deberá hacerse contra el hub que resulte canónico después de esa renovación, no contra rutas anteriores por intuición.
 
 ## Próximo gate
 
-Después de QA humana en iPhone, Android y PC se decidirá si el flujo de interacción es suficientemente claro para conectar proveedores reales de TTS/STT bajo interfaces desacopladas. Solo después se diseña un evaluador de pronunciación independiente del reconocimiento de texto.
+Después de QA humana en PC y posteriormente en iPhone/Android mediante una superficie HTTPS controlada, se decidirá si el flujo de interacción es suficientemente claro para conectar proveedores reales de TTS/STT bajo interfaces desacopladas. Solo después se diseña un evaluador de pronunciación independiente del reconocimiento de texto.
