@@ -229,6 +229,13 @@ function providerStatus(error) {
   return null;
 }
 
+function safeStructuredToken(value, maxLength = 120) {
+  const normalized = clean(value);
+  return normalized && normalized.length <= maxLength && /^[A-Za-z0-9._:-]+$/.test(normalized)
+    ? normalized
+    : null;
+}
+
 function safeParamFromProviderMessage(message) {
   const normalized = clean(message).toLowerCase();
   let selected = null;
@@ -256,22 +263,45 @@ function safeCategoryFromProviderMessage(message) {
   return 'UNKNOWN';
 }
 
+function safeCategoryFromStructured(type, code, param, message) {
+  const normalized = `${clean(type)} ${clean(code)}`.toLowerCase();
+  if (/permission|forbidden|unauthorized/.test(normalized)) return 'PERMISSION_DENIED';
+  if (/model.*access|model_not_found|unsupported_model|model_unavailable/.test(normalized)) return 'MODEL_ACCESS';
+  if (/verification|required_verification/.test(normalized)) return 'ORGANIZATION_VERIFICATION_REQUIRED';
+  if (/quota|billing|credit|payment/.test(normalized)) return 'BILLING_OR_QUOTA';
+  if (/unsupported_parameter|unknown_parameter|unrecognized_parameter|invalid_parameter/.test(normalized)) return 'INVALID_PARAMETER';
+  if (/invalid_value|unsupported_value/.test(normalized)) return 'INVALID_VALUE';
+  if (/content_policy|safety|policy/.test(normalized)) return 'POLICY_REJECTED';
+  if (param && /invalid_request_error/.test(normalized)) return 'INVALID_PARAMETER';
+  return safeCategoryFromProviderMessage(message);
+}
+
 function safeUpstreamDiagnostics(error) {
   if (error?.code !== 'OPENAI_AUDIO_HTTP_ERROR') {
     return {
       upstreamStatus:null,
       upstreamRequestId:null,
+      upstreamType:null,
+      upstreamCode:null,
       upstreamCategory:null,
       upstreamParam:null,
     };
   }
   const status = Number(error?.details?.status);
   const requestId = clean(error?.details?.requestId);
+  const upstreamType = safeStructuredToken(error?.details?.upstreamType);
+  const upstreamCode = safeStructuredToken(error?.details?.upstreamCode);
+  const structuredParam = clean(error?.details?.upstreamParam);
+  const upstreamParam = SAFE_UPSTREAM_PARAMS.includes(structuredParam)
+    ? structuredParam
+    : safeParamFromProviderMessage(error?.message);
   return {
     upstreamStatus:Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
     upstreamRequestId:/^[A-Za-z0-9._:-]{1,160}$/.test(requestId) ? requestId : null,
-    upstreamCategory:safeCategoryFromProviderMessage(error?.message),
-    upstreamParam:safeParamFromProviderMessage(error?.message),
+    upstreamType,
+    upstreamCode,
+    upstreamCategory:safeCategoryFromStructured(upstreamType, upstreamCode, upstreamParam, error?.message),
+    upstreamParam,
   };
 }
 
@@ -301,6 +331,8 @@ function technicalLog(logger, entry) {
     errorClass:entry.errorClass || null,
     upstreamStatus:entry.upstreamStatus || null,
     upstreamRequestId:entry.upstreamRequestId || null,
+    upstreamType:entry.upstreamType || null,
+    upstreamCode:entry.upstreamCode || null,
     upstreamCategory:entry.upstreamCategory || null,
     upstreamParam:entry.upstreamParam || null,
   };
@@ -337,6 +369,8 @@ export function createSpeakLabCloudflareWorker({
         errorClass:null,
         upstreamStatus:null,
         upstreamRequestId:null,
+        upstreamType:null,
+        upstreamCode:null,
         upstreamCategory:null,
         upstreamParam:null,
       };
@@ -417,6 +451,8 @@ export function createSpeakLabCloudflareWorker({
         const diagnostics = safeUpstreamDiagnostics(rawError);
         logEntry.upstreamStatus = diagnostics.upstreamStatus;
         logEntry.upstreamRequestId = diagnostics.upstreamRequestId;
+        logEntry.upstreamType = diagnostics.upstreamType;
+        logEntry.upstreamCode = diagnostics.upstreamCode;
         logEntry.upstreamCategory = diagnostics.upstreamCategory;
         logEntry.upstreamParam = diagnostics.upstreamParam;
         const error = normalizeError(rawError);
