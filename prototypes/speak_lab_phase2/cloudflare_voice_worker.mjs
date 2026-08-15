@@ -226,6 +226,18 @@ function providerStatus(error) {
   return null;
 }
 
+function safeUpstreamDiagnostics(error) {
+  if (error?.code !== 'OPENAI_AUDIO_HTTP_ERROR') {
+    return { upstreamStatus:null, upstreamRequestId:null };
+  }
+  const status = Number(error?.details?.status);
+  const requestId = clean(error?.details?.requestId);
+  return {
+    upstreamStatus:Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
+    upstreamRequestId:/^[A-Za-z0-9._:-]{1,160}$/.test(requestId) ? requestId : null,
+  };
+}
+
 function normalizeError(error) {
   if (error instanceof GatewayHttpError) return error;
   const upstreamStatus = providerStatus(error);
@@ -250,6 +262,8 @@ function technicalLog(logger, entry) {
     bytes:entry.bytes || 0,
     latencyMs:entry.latencyMs,
     errorClass:entry.errorClass || null,
+    upstreamStatus:entry.upstreamStatus || null,
+    upstreamRequestId:entry.upstreamRequestId || null,
   };
   logger?.log?.(JSON.stringify(safe));
 }
@@ -282,6 +296,8 @@ export function createSpeakLabCloudflareWorker({
         bytes:0,
         latencyMs:0,
         errorClass:null,
+        upstreamStatus:null,
+        upstreamRequestId:null,
       };
       let origin = '';
 
@@ -357,6 +373,9 @@ export function createSpeakLabCloudflareWorker({
 
         throw new GatewayHttpError(404, 'NOT_FOUND', 'Ruta no encontrada.');
       } catch (rawError) {
+        const diagnostics = safeUpstreamDiagnostics(rawError);
+        logEntry.upstreamStatus = diagnostics.upstreamStatus;
+        logEntry.upstreamRequestId = diagnostics.upstreamRequestId;
         const error = normalizeError(rawError);
         logEntry.status = error.status;
         logEntry.errorClass = error.code;
