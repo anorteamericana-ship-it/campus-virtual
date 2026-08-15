@@ -45,14 +45,15 @@ const worker = createSpeakLabCloudflareWorker({
     assert.equal(payload.input, EXPECTED_TEXT);
     return new Response(JSON.stringify({
       error:{
-        message:`permission denied for ${OPENAI_TEST_KEY}; input=${EXPECTED_TEXT}`,
+        message:`Unsupported parameter: 'instructions'. debug=${OPENAI_TEST_KEY}; input=${EXPECTED_TEXT}`,
         type:'invalid_request_error',
+        code:'unsupported_parameter',
+        param:'instructions',
       },
     }), {
-      status:403,
+      status:400,
       headers:{
         'Content-Type':'application/json',
-        'x-request-id':'req_diag_openai_403',
       },
     });
   },
@@ -89,24 +90,30 @@ assert.equal(publicBody.error, 'OPENAI_AUDIO_HTTP_ERROR');
 assert.equal(publicBody.message, 'Proveedor de voz temporalmente no disponible.');
 assert.equal(publicBody.upstreamStatus, undefined);
 assert.equal(publicBody.upstreamRequestId, undefined);
-assert.doesNotMatch(JSON.stringify(publicBody), /permission denied|sk-test-only|What's your name/i);
+assert.equal(publicBody.upstreamCategory, undefined);
+assert.equal(publicBody.upstreamParam, undefined);
+assert.doesNotMatch(JSON.stringify(publicBody), /Unsupported parameter|unsupported_parameter|instructions|sk-test-only|What's your name/i);
 
 assert.equal(logs.length, 1);
 const technical = JSON.parse(logs[0]);
 assert.equal(technical.errorClass, 'OPENAI_AUDIO_HTTP_ERROR');
 assert.equal(technical.status, 502);
-assert.equal(technical.upstreamStatus, 403);
-assert.equal(technical.upstreamRequestId, 'req_diag_openai_403');
+assert.equal(technical.upstreamStatus, 400);
+assert.equal(technical.upstreamRequestId, null);
+assert.equal(technical.upstreamCategory, 'INVALID_PARAMETER');
+assert.equal(technical.upstreamParam, 'instructions');
 assert.equal(technical.requestId, 'cf_diag_request_1');
-assert.doesNotMatch(JSON.stringify(technical), /permission denied|sk-test-only|What's your name/i);
-assert.doesNotMatch(JSON.stringify(technical), /input=/i);
+assert.doesNotMatch(JSON.stringify(technical), /Unsupported parameter|unsupported_parameter|sk-test-only|What's your name/i);
+assert.doesNotMatch(JSON.stringify(technical), /debug=|input=/i);
 
 console.log(JSON.stringify({
   ok:true,
-  diagnostic:'upstream-status-and-request-id-only',
+  diagnostic:'upstream-safe-category-and-param-only',
   public_response_redacted:true,
   upstream_status_logged:technical.upstreamStatus,
   upstream_request_id_logged:technical.upstreamRequestId,
+  upstream_category_logged:technical.upstreamCategory,
+  upstream_param_logged:technical.upstreamParam,
   network_calls_real:0,
   secrets_real:0,
 }, null, 2));
