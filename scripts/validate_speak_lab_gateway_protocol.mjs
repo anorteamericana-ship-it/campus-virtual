@@ -10,7 +10,6 @@ import {
   startMockVoiceGateway,
   verifyMockVoiceGrant,
 } from '../prototypes/speak_lab_phase1/mock_voice_gateway.mjs';
-import { SpeakLabContractError } from '../prototypes/speak_lab_phase1/contracts.js';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -50,6 +49,11 @@ await expectError(() => validateGatewaySttMetadata({
   byteLength:1200, durationMs:1200, mimeType:'audio/webm', language:'en',
   expectedText:"What's your name?",
 }), 'STT_TARGET_LEAKAGE');
+
+await expectError(() => validateGatewaySttMetadata({
+  byteLength:1200, durationMs:1200, mimeType:'audio/webm', language:'en',
+  vocabularyHints:["What's your name"],
+}), 'STT_HINT_MUST_BE_LEXEME');
 
 await expectError(() => validateGatewaySttMetadata({
   byteLength:VOICE_GATEWAY_LIMITS.maxAudioBytes + 1,
@@ -111,7 +115,7 @@ try {
   });
   assert(wrongScope.status === 403, `Scope incorrecto debía dar 403, dio ${wrongScope.status}`);
 
-  const leakedTarget = await fetch(`${gateway.baseUrl}/v1/stt`, {
+  const leakedTargetHeader = await fetch(`${gateway.baseUrl}/v1/stt`, {
     method:'POST',
     headers:{
       Authorization:`Bearer ${sttGrant}`,
@@ -122,8 +126,35 @@ try {
     },
     body:learnerAudio,
   });
-  const leakedTargetBody = await leakedTarget.json();
-  assert(leakedTarget.status === 400 && leakedTargetBody.error === 'STT_TARGET_LEAKAGE', 'Gateway no bloqueó target leakage por header');
+  const leakedTargetHeaderBody = await leakedTargetHeader.json();
+  assert(leakedTargetHeader.status === 400 && leakedTargetHeaderBody.error === 'STT_TARGET_LEAKAGE', 'Gateway no bloqueó target leakage por header');
+
+  const leakedTargetQuery = await fetch(`${gateway.baseUrl}/v1/stt?expectedText=${encodeURIComponent("What's your name?")}`, {
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${sttGrant}`,
+      'Content-Type':'audio/webm',
+      'X-SpeakLab-Duration-Ms':'1000',
+      'X-SpeakLab-Language':'en',
+    },
+    body:learnerAudio,
+  });
+  const leakedTargetQueryBody = await leakedTargetQuery.json();
+  assert(leakedTargetQuery.status === 400 && leakedTargetQueryBody.error === 'STT_TARGET_LEAKAGE', 'Gateway no bloqueó target leakage por query');
+
+  const leakedHint = await fetch(`${gateway.baseUrl}/v1/stt`, {
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${sttGrant}`,
+      'Content-Type':'audio/webm',
+      'X-SpeakLab-Duration-Ms':'1000',
+      'X-SpeakLab-Language':'en',
+      'X-SpeakLab-Vocabulary-Hints':encodeURIComponent(JSON.stringify(["What's your name"])),
+    },
+    body:learnerAudio,
+  });
+  const leakedHintBody = await leakedHint.json();
+  assert(leakedHint.status === 400 && leakedHintBody.error === 'STT_HINT_MUST_BE_LEXEME', 'Gateway permitió una frase objetivo como vocabulary hint');
 
   const expired = createMockVoiceGrant({
     secret:gateway.secret,
@@ -162,7 +193,7 @@ try {
   console.log('provider_calls=0');
   console.log('mock_tts=explicit');
   console.log('mock_stt=explicit');
-  console.log('target_leakage=blocked');
+  console.log('target_leakage=headers+query+hints_blocked');
   console.log('provider_secrets=blocked');
 } finally {
   await gateway.close();
