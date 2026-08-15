@@ -1,0 +1,37 @@
+name: Validate SPEAK LAB Phase 1 Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase1/**'
+      - 'scripts/validate_speak_lab_phase1_contracts.mjs'
+      - '00_DOCUMENTACION/SPEAK_LAB_PHASE1_PROVIDER_CONTRACTS_2026-08-14.md'
+      - '.github/workflows/validate-speak-lab-phase1-contracts.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: speak-lab-phase1-contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax
+        run: |
+          node --check prototypes/speak_lab_phase1/contracts.js
+          node --check scripts/validate_speak_lab_phase1_contracts.mjs
+
+      - name: Contract gate
+        run: node scripts/validate_speak_lab_phase1_contracts.mjs
