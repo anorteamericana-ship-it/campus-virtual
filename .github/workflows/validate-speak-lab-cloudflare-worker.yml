@@ -6,6 +6,7 @@ on:
       - 'prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs'
       - 'prototypes/speak_lab_phase2/wrangler.qa.template.jsonc'
       - 'scripts/validate_speak_lab_cloudflare_worker.mjs'
+      - 'scripts/validate_speak_lab_cloudflare_upstream_diagnostics.mjs'
       - '00_DOCUMENTACION/SPEAK_LAB_CLOUDFLARE_WORKER_QA_2026-08-15.md'
       - '.github/workflows/validate-speak-lab-cloudflare-worker.yml'
       - '.gitignore'
@@ -35,6 +36,7 @@ jobs:
         run: |
           node --check prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs
           node --check scripts/validate_speak_lab_cloudflare_worker.mjs
+          node --check scripts/validate_speak_lab_cloudflare_upstream_diagnostics.mjs
 
       - name: Worker runtime scope guard
         run: |
@@ -63,3 +65,6 @@ jobs:
 
       - name: Cloudflare Worker gate · fake network only
         run: node scripts/validate_speak_lab_cloudflare_worker.mjs
+
+      - name: Cloudflare upstream diagnostics · redacted fake network only
+        run: node scripts/validate_speak_lab_cloudflare_upstream_diagnostics.mjs
