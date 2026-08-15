@@ -90,9 +90,11 @@ assert.equal(publicBody.error, 'OPENAI_AUDIO_HTTP_ERROR');
 assert.equal(publicBody.message, 'Proveedor de voz temporalmente no disponible.');
 assert.equal(publicBody.upstreamStatus, undefined);
 assert.equal(publicBody.upstreamRequestId, undefined);
+assert.equal(publicBody.upstreamType, undefined);
+assert.equal(publicBody.upstreamCode, undefined);
 assert.equal(publicBody.upstreamCategory, undefined);
 assert.equal(publicBody.upstreamParam, undefined);
-assert.doesNotMatch(JSON.stringify(publicBody), /Unsupported parameter|unsupported_parameter|instructions|sk-test-only|What's your name/i);
+assert.doesNotMatch(JSON.stringify(publicBody), /Unsupported parameter|unsupported_parameter|invalid_request_error|instructions|sk-test-only|What's your name/i);
 
 assert.equal(logs.length, 1);
 const technical = JSON.parse(logs[0]);
@@ -100,18 +102,22 @@ assert.equal(technical.errorClass, 'OPENAI_AUDIO_HTTP_ERROR');
 assert.equal(technical.status, 502);
 assert.equal(technical.upstreamStatus, 400);
 assert.equal(technical.upstreamRequestId, null);
+assert.equal(technical.upstreamType, 'invalid_request_error');
+assert.equal(technical.upstreamCode, 'unsupported_parameter');
 assert.equal(technical.upstreamCategory, 'INVALID_PARAMETER');
 assert.equal(technical.upstreamParam, 'instructions');
 assert.equal(technical.requestId, 'cf_diag_request_1');
-assert.doesNotMatch(JSON.stringify(technical), /Unsupported parameter|unsupported_parameter|sk-test-only|What's your name/i);
+assert.doesNotMatch(JSON.stringify(technical), /Unsupported parameter|sk-test-only|What's your name/i);
 assert.doesNotMatch(JSON.stringify(technical), /debug=|input=/i);
 
 console.log(JSON.stringify({
   ok:true,
-  diagnostic:'upstream-safe-category-and-param-only',
+  diagnostic:'upstream-structured-fields-redacted',
   public_response_redacted:true,
   upstream_status_logged:technical.upstreamStatus,
   upstream_request_id_logged:technical.upstreamRequestId,
+  upstream_type_logged:technical.upstreamType,
+  upstream_code_logged:technical.upstreamCode,
   upstream_category_logged:technical.upstreamCategory,
   upstream_param_logged:technical.upstreamParam,
   network_calls_real:0,
