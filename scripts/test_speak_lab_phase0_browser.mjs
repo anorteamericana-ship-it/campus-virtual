@@ -108,7 +108,7 @@ try {
     const audio = document.getElementById('playback');
     const box = document.getElementById('playbackBox');
     return !!audio?.src?.startsWith('blob:') && box && !box.hidden;
-  }, { timeout:10000 });
+  }, null, { timeout:10000 });
 
   const playback = await page.evaluate(() => ({
     src: document.getElementById('playback')?.src || '',
@@ -145,9 +145,17 @@ try {
   assert(mobile.bodyScrollWidth <= mobile.innerWidth + 1, `Overflow body horizontal: ${mobile.bodyScrollWidth} > ${mobile.innerWidth}`);
   evidence.checks.mobile = mobile;
 
-  const externalRequests = evidence.requests.filter(url => !url.startsWith(origin));
+  // Las URLs blob: son memoria local creada por URL.createObjectURL para reproducir
+  // la captura. No son tráfico de red y deben permitirse; HTTP(S) fuera del origen no.
+  const externalRequests = evidence.requests.filter(url => {
+    if (url.startsWith('blob:')) return false;
+    return !url.startsWith(origin);
+  });
+  const blobRequests = evidence.requests.filter(url => url.startsWith('blob:'));
+  assert(blobRequests.length >= 1, 'No se observó la lectura del blob local de playback');
   assert(externalRequests.length === 0, `Se observaron requests externos: ${externalRequests.join(', ')}`);
-  evidence.checks.externalRequests = 0;
+  evidence.checks.localBlobPlaybackRequests = blobRequests.length;
+  evidence.checks.externalNetworkRequests = 0;
 
   assert(evidence.consoleErrors.length === 0, `Errores de consola: ${evidence.consoleErrors.join(' | ')}`);
 
@@ -167,7 +175,8 @@ try {
     '- Retry: PASS',
     '- Navegación entre 10 frases: PASS',
     '- Viewport 390×844 sin overflow horizontal: PASS',
-    '- Requests externos: 0',
+    `- Lecturas blob locales de playback: ${blobRequests.length}`,
+    '- Requests de red externos: 0',
     '- Errores de consola: 0',
   ].join('\n'));
 
