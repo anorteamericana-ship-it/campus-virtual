@@ -260,7 +260,7 @@ function requestIdFrom(factory) {
 }
 
 export function createSpeakLabCloudflareWorker({
-  fetchImpl = globalThis.fetch,
+  fetchImpl = (...args) => globalThis.fetch(...args),
   nowMs = () => Date.now(),
   requestIdFactory = () => crypto.randomUUID(),
   logger = console,
