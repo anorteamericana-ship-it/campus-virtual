@@ -1,0 +1,27 @@
+name: Validate SPEAK LAB Phase 0
+
+on:
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase0/**'
+      - 'scripts/validate_speak_lab_phase0.mjs'
+      - '00_DOCUMENTACION/PLAN_MAESTRO_SPEAK_LAB_2026-08-14.md'
+      - '.github/workflows/validate-speak-lab-phase0.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: speak-lab-phase0-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-speak-lab-phase0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run SPEAK LAB Phase 0 gate
+        run: node scripts/validate_speak_lab_phase0.mjs
