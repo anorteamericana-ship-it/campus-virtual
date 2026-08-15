@@ -97,3 +97,18 @@ Pendiente después de CI:
 - docente;
 - prospecto gratis sigue entrando a práctica English LAB;
 - no deployment ni producción en este corte.
+
+## Higiene de CI cruzado
+
+En el head `3a34b7423023fd28334d3dca5178b1e4802e6d42` se auditaron diez checks rojos de cortes anteriores. Ocho compartían un único supuesto congelado: el manifiesto canónico debía contener exactamente las 12 dependencias de CS21A193, aunque la arquitectura acumulativa vigente contiene 28 entradas versionadas. Los otros dos aplicaban los guardas de alcance exclusivos de CS21A207/CS21A208 al diff completo de CS21A215.
+
+La corrección conserva cobertura funcional:
+
+- las 12 rutas base CS21A193 siguen siendo obligatorias, únicas y ordenadas;
+- las extensiones posteriores del manifiesto se permiten sólo con epoch `CS21A*` explícito y sin rutas duplicadas;
+- el contrato CS205 valida que su shell y sus cinco juegos siguen presentes aunque el loader tenga una versión posterior;
+- CS207/CS208 ejecutan sus regresiones funcionales en cortes posteriores, pero sus guardas de perímetro sólo bloquean sus ramas originales;
+- el constructor exacto del candidato CS21A193 sólo corre en su rama histórica o por ejecución manual, para no generar un artefacto rotulado CS21A193 desde fuentes CS21A215.
+- el preflight autenticado acepta tanto el contrato QA anidado histórico como el contrato plano desplegado (`qa_staging`, `qa_ids_ok`, `qa_properties_configured`, `qa_marker`) y puede ejecutarse con `--preflight-only`, sin sesiones ni escrituras.
+
+No se agregó `continue-on-error`, no se modificó producto para satisfacer literales históricos y no se tocó Apps Script.

@@ -33,8 +33,13 @@ jobs:
       - name: Guard isolated scope
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${PR_HEAD_REF:-}" != "fix/cs21a208-english-lab-legacy-route-convergence" ]; then
+            echo 'Scope guard CS21A208 no aplica a un corte posterior; se conservan las pruebas funcionales.'
+            exit 0
+          fi
           if [ -n "${PR_BASE_SHA:-}" ]; then base="$PR_BASE_SHA"; else base="HEAD^"; fi
           git diff --name-only "$base"..HEAD | tee /tmp/cs208-changed.txt
           if grep -Ev '^(src/app\.jsx|scripts/qa_cs21a207_english_lab_navigation\.mjs|scripts/qa_cs21a208_english_lab_legacy_routes\.mjs|\.github/workflows/qa-cs21a208-english-lab-legacy-route-convergence\.yml|00_DOCUMENTACION/ENGLISH_LAB_LEGACY_ROUTE_CONVERGENCE_CS21A208\.md)$' /tmp/cs208-changed.txt | grep -q .; then

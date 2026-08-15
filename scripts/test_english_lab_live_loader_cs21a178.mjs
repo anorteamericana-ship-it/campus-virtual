@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {
+  CS21A193_CORE_PATHS,
+  validateEnglishLabCanonicalManifestCS21A193,
+} from './f96_lazy_map_parser_cs21a193.mjs';
 
 const app = fs.readFileSync('src/app.jsx', 'utf8');
 const live = fs.readFileSync('src/english_lab_live.jsx', 'utf8');
@@ -12,8 +16,8 @@ assert.match(app,/english_lab_live:\s*F96_ENGLISH_LAB_LIVE_CS21A193/,
 const block = canonical.match(/const\s+MANIFEST\s*=\s*Object\.freeze\((\[[\s\S]*?\])\);/);
 assert.ok(block, 'No se encontró el manifiesto canónico de English LAB Live.');
 
-const files = [...block[1].matchAll(/['"]([^'"]+)['"]/g)].map(match => match[1]);
-assert.equal(files.length,12,'El manifiesto CS21A193 debe contener 12 archivos.');
+const files = Function(`"use strict";return (${block[1]});`)();
+validateEnglishLabCanonicalManifestCS21A193(files);
 const guardIndex = files.findIndex(file => file.includes('english_lab_live_sync_guard_cs21a177.js'));
 const adapterIndex = files.findIndex(file => file.includes('english_lab_live_memory_match_adapter_cs21a174.jsx'));
 const classicIndex = files.findIndex(file => file.includes('english_lab_live_memory_match_classic_sync_adapter_cs21a189.jsx'));
@@ -24,9 +28,7 @@ assert.ok(guardIndex >= 0, 'El guard de sincronización debe estar en la carga d
 assert.ok(adapterIndex > guardIndex, 'El adaptador debe cargar después del guard.');
 assert.ok(classicIndex > adapterIndex, 'El adaptador clásico debe cargar después del base.');
 assert.ok(authoritativeIndex > classicIndex, 'CS21A192 debe quedar después del adaptador clásico.');
-assert.equal(viewIndex,files.length-1,'La vista debe ser la última entrada del manifiesto.');
-assert.ok(files.every(file=>new URL(file,'https://qa.invalid/').searchParams.get('v')==='CS21A193'),
-  'Todas las dependencias deben compartir el epoch CS21A193.');
+assert.ok(viewIndex>authoritativeIndex,'La vista Live debe cargar después del adaptador autoritativo.');
 assert.match(lazy,/const\s+activeLoadMany\s*=\s*window\.anLazyCampus/,
   'resolveRoute debe consultar el owner loadMany instalado en tiempo de ejecución.');
 assert.match(lazy,/await\s+activeLoadMany\(list\)/,
@@ -41,8 +43,11 @@ console.log(JSON.stringify({
   order: files,
   guardBeforeAdapter: true,
   authoritativeAdapterLast: true,
-  viewLast: true,
+  baseContractEntries: CS21A193_CORE_PATHS.length,
+  manifestEntries: files.length,
+  extensionEntries: files.length-CS21A193_CORE_PATHS.length,
+  viewAfterAuthoritativeAdapter: true,
   dynamicLoadManyOwner: true,
   synchronousCanonicalHandoff: true,
-  cacheVersion: 'CS21A193',
+  epochs: [...new Set(files.map(file=>new URL(file,'https://qa.invalid/').searchParams.get('v')))],
 }, null, 2));

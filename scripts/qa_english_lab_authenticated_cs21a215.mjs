@@ -4,6 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
+const preflightOnly = process.argv.includes('--preflight-only');
 const stagingUrl = String(process.env.QA_STAGING_APPS_SCRIPT_URL || '').trim();
 if (!stagingUrl) throw new Error('Falta QA_STAGING_APPS_SCRIPT_URL.');
 
@@ -13,10 +14,10 @@ function hasPair(a, b) {
 function hasSession(name) {
   return !!String(process.env[name] || '').trim();
 }
-if (!hasSession('QA_STUDENT_SESSION_JSON') && !hasPair('QA_STUDENT_USER', 'QA_STUDENT_PASS')) {
+if (!preflightOnly && !hasSession('QA_STUDENT_SESSION_JSON') && !hasPair('QA_STUDENT_USER', 'QA_STUDENT_PASS')) {
   throw new Error('Falta sesión QA_STUDENT_SESSION_JSON o credenciales QA_STUDENT_USER / QA_STUDENT_PASS.');
 }
-if (!hasSession('QA_TEACHER_SESSION_JSON') && !hasPair('QA_TEACHER_USER', 'QA_TEACHER_PASS')) {
+if (!preflightOnly && !hasSession('QA_TEACHER_SESSION_JSON') && !hasPair('QA_TEACHER_USER', 'QA_TEACHER_PASS')) {
   throw new Error('Falta sesión QA_TEACHER_SESSION_JSON o credenciales QA_TEACHER_USER / QA_TEACHER_PASS.');
 }
 
@@ -66,15 +67,38 @@ async function get(fn, params = {}) {
 }
 
 const status = await get('getInfoGeneral');
-const qa = status.data?.qa;
+const nestedQa = status.data?.qa && typeof status.data.qa === 'object' ? status.data.qa : null;
+const qa = nestedQa || {
+  marker: status.data?.qa_marker,
+  qa_staging: status.data?.qa_staging,
+  master_match: status.data?.qa_ids_ok,
+  operational_match: status.data?.qa_ids_ok,
+  writes_guarded: status.data?.qa_properties_configured,
+};
+const qaContractShape = nestedQa ? 'nested_guard' : 'flat_deployed_guard';
 assert.equal(status.response.ok, true, 'getInfoGeneral debe responder HTTP OK.');
 assert.equal(status.data?.ok, true, 'getInfoGeneral debe responder ok=true.');
 assert.equal(qa?.qa_staging, true, 'La URL debe identificarse como QA staging.');
-assert.equal(qa?.master_match, true, 'QA debe demostrar master_match.');
-assert.equal(qa?.operational_match, true, 'QA debe demostrar operational_match.');
-assert.equal(qa?.writes_guarded, true, 'QA debe mantener escrituras protegidas.');
+assert.equal(qa?.master_match, true, 'QA debe demostrar que el ID master coincide.');
+assert.equal(qa?.operational_match, true, 'QA debe demostrar que el ID operativo coincide.');
+assert.equal(qa?.writes_guarded, true, 'QA debe demostrar que las propiedades del guard están configuradas.');
+assert.match(String(qa?.marker || ''), /^QA_STAGING_CS21A\d+$/, 'QA debe publicar un marcador de staging versionado.');
 report.qa_backend_verified = true;
 report.qa_marker = qa?.marker || null;
+report.qa_contract_shape = qaContractShape;
+
+if (preflightOnly) {
+  console.log(JSON.stringify({
+    ok: true,
+    version: report.version,
+    qa_backend_verified: report.qa_backend_verified,
+    qa_marker: report.qa_marker,
+    qa_contract_shape: report.qa_contract_shape,
+    writes_attempted: false,
+    authenticated_navigation_attempted: false,
+  }, null, 2));
+  process.exit(0);
+}
 
 function parseSession(label, envName, expectedRole) {
   const raw = String(process.env[envName] || '').trim();

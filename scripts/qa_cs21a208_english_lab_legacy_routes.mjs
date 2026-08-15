@@ -6,12 +6,11 @@ const app = fs.readFileSync('src/app.jsx', 'utf8');
 const sidebar = fs.readFileSync('src/sidebar.jsx', 'utf8');
 
 assert.ok(
-  app.includes(`academia_play: esProspectoGratis
-        ? <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play}`),
+  /academia_play:\s*esProspectoGratis\s*\?\s*<LazyRoute title="English LAB" component="AcademiaPlayView" files=\{F96_LAZY\.academia_play\}/.test(app),
   'La ruta legacy estudiantil debe conservar AcademiaPlayView únicamente para prospectos gratis.'
 );
 assert.ok(
-  app.includes(`: <LazyRoute title="English LAB" component="EnglishLabLiveStudentView" files={F96_LAZY.english_lab_live}`),
+  /:\s*<LazyRoute title="English LAB" component="EnglishLabLiveStudentView" files=\{F96_LAZY\.english_lab_live\}/.test(app),
   'El estudiante matriculado que entra por academia_play debe converger a EnglishLabLiveStudentView.'
 );
 assert.ok(

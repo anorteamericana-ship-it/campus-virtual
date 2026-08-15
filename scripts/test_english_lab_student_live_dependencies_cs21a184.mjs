@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { validateEnglishLabCanonicalManifestCS21A193 } from './f96_lazy_map_parser_cs21a193.mjs';
 
 const guardFile = 'src/english_lab_live_student_dependency_guard_cs21a184.js';
 const canonicalFile = 'src/english_lab_live_canonical_loader_cs21a193.js';
@@ -40,8 +41,10 @@ assert.match(access, /loadStudent\(\)/,
   'La entrada #academia_play debe solicitar la vista estudiante al API canónico.');
 assert.doesNotMatch(access, /anLazyCampus\.loadOne\(LIVE_FILE\)/,
   'La entrada #academia_play no debe volver al archivo live histórico.');
-const canonicalManifest = [...canonical.matchAll(/'((?:src\/)[^']+\?v=CS21A193)'/g)].map(match=>match[1]);
-assert.equal(canonicalManifest.length, 12, 'El manifiesto canónico debe tener 12 entradas con un solo epoch.');
+const manifestBlock = canonical.match(/const\s+MANIFEST\s*=\s*Object\.freeze\((\[[\s\S]*?\])\);/);
+assert.ok(manifestBlock, 'No se encontró el manifiesto canónico de English LAB.');
+const canonicalManifest = Function(`"use strict";return (${manifestBlock[1]});`)();
+validateEnglishLabCanonicalManifestCS21A193(canonicalManifest);
 
 const lazyIndex = campus.indexOf('src/lazy_loader.jsx');
 const canonicalIndex = campus.indexOf(canonicalFile);

@@ -54,6 +54,7 @@ permissions:
 
 jobs:
   canonical-live-entry-candidate:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/cs21a193-english-lab-live-loader-access'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:

@@ -66,8 +66,11 @@ for(const source of [sentence,quizGateway,wordGateway,unified]){
 assert.ok(loader.indexOf(sentence)<loader.indexOf(quizGateway),'Sentence Order debe instalarse antes del gateway Quiz para que LegacyTeacher/LegacyStudent capturen el wrapper correcto.');
 assert.ok(loader.indexOf(quizGateway)<loader.indexOf(wordGateway),'Quiz gateway debe preceder Word Search gateway.');
 assert.ok(loader.indexOf(wordGateway)<loader.indexOf(unified),'El shell final debe instalarse después de los gateways directos.');
-assert.match(loader,/const VERSION = 'F98\.4-Z6-CS21A205'/,'El loader debe identificar la convergencia CS21A205.');
-assert.match(loader,/const CACHE_EPOCH = 'CS21A205'/,'El cache epoch debe invalidar el stack visual previo.');
+const loaderVersion=loader.match(/const VERSION = 'F98\.4-Z6-(CS21A\d+)'/)?.[1]||'';
+const cacheEpoch=loader.match(/const CACHE_EPOCH = '(CS21A\d+)'/)?.[1]||'';
+const loaderCut=Number(loaderVersion.replace('CS21A',''));
+assert.ok(Number.isInteger(loaderCut)&&loaderCut>=205,'El loader debe conservar o extender la convergencia CS21A205.');
+assert.equal(cacheEpoch,loaderVersion,'El cache epoch debe acompañar la versión vigente del loader.');
 assert.match(loader,/const LATENCY_SAFE_EPOCH = 'CS21A194'/,'No se debe alterar el contrato latency-safe de Memory Match.');
 assert.match(loader,/global\.EnglishLabSentenceOrderCS21A183/,'compatibility() debe exigir Sentence Order.');
 assert.match(loader,/global\.EnglishLabUnifiedShellCS21A205/,'compatibility() debe exigir el shell final.');
@@ -77,6 +80,7 @@ assert.match(loader,/unifiedShell:true/,'La API del loader debe declarar el shel
 const report={
   ok:true,
   version:'CS21A205',
+  current_loader_version:loaderVersion,
   games:ids,
   sentence_before_quiz_gateway:true,
   shell_after_word_search_gateway:true,

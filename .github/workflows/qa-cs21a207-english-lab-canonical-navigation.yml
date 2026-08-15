@@ -32,8 +32,13 @@ jobs:
       - name: Guard isolated scope
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${PR_HEAD_REF:-}" != "fix/cs21a207-english-lab-canonical-navigation" ]; then
+            echo 'Scope guard CS21A207 no aplica a un corte posterior; se conservan las pruebas funcionales.'
+            exit 0
+          fi
           if [ -n "${PR_BASE_SHA:-}" ]; then base="$PR_BASE_SHA"; else base="HEAD^"; fi
           git diff --name-only "$base"..HEAD | tee /tmp/cs207-changed.txt
           if grep -Ev '^(src/sidebar\.jsx|scripts/qa_cs21a207_english_lab_navigation\.mjs|\.github/workflows/qa-cs21a207-english-lab-canonical-navigation\.yml|00_DOCUMENTACION/ENGLISH_LAB_CANONICAL_NAVIGATION_CS21A207\.md)$' /tmp/cs207-changed.txt | grep -q .; then
