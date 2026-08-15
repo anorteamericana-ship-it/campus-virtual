@@ -75,7 +75,28 @@ assert(ttsBody.input === "What's your name?", 'TTS body input incorrecto');
 assert(ttsBody.voice === 'marin', 'TTS voice default incorrecta');
 assert(ttsBody.response_format === 'mp3', 'TTS formato default incorrecto');
 assert(ttsBody.speed === 0.9, 'TTS speed no respetó contrato');
-assert(ttsBody.instructions.includes('English learner'), 'TTS instructions no llegaron al proveedor');
+assert(ttsBody.instructions.includes('English learner'), 'TTS instructions no llegaron al proveedor compatible');
+
+for (const legacyModel of ['tts-1','tts-1-hd','tts-1-legacy-snapshot']) {
+  const callStart = calls.length;
+  const legacyProvider = new OpenAIAudioProvider({
+    env:{
+      OPENAI_API_KEY:TEST_SECRET,
+      SPEAK_LAB_TTS_MODEL:legacyModel,
+    },
+    fetchImpl:fakeFetch,
+  });
+  await legacyProvider.synthesize({
+    text:'Legacy compatibility check',
+    language:'en-US',
+    style:'This instruction must not be sent to legacy TTS.',
+  });
+  const legacyCall = calls.slice(callStart).find(call => call.url.endsWith('/audio/speech'));
+  assert(legacyCall, `No se observó request TTS legacy para ${legacyModel}`);
+  const legacyBody = JSON.parse(legacyCall.init.body);
+  assert(legacyBody.model === legacyModel, `Modelo legacy no llegó correctamente: ${legacyModel}`);
+  assert(!Object.prototype.hasOwnProperty.call(legacyBody, 'instructions'), `${legacyModel} no admite instructions y el adaptador las envió`);
+}
 
 const learnerAudio = new Blob(['fake-learner-audio'], { type:'audio/webm' });
 const stt = await provider.transcribe({
@@ -156,4 +177,5 @@ console.log(`network_calls_real=0`);
 console.log(`fake_fetch_calls=${calls.length}`);
 console.log('api_key_source=server_env_only');
 console.log('stt_prompt=absent');
+console.log('legacy_tts_instructions=blocked');
 console.log('pronunciation_score=not_implemented');
