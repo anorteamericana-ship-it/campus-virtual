@@ -1,0 +1,37 @@
+{
+  // TEMPLATE INTENCIONALMENTE NO DESPLEGABLE hasta reemplazar los placeholders.
+  // No contiene account_id, database_id, bucket, token, API key ni secreto real.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "speak-lab-voice-gateway",
+  "main": "./cloudflare_voice_worker.mjs",
+  "compatibility_date": "2026-08-15",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1.0
+  },
+  "env": {
+    "qa": {
+      "vars": {
+        "ENVIRONMENT": "qa",
+        "ALLOWED_ORIGINS": "__SET_EXACT_QA_ORIGIN__"
+      },
+      "secrets": {
+        "required": [
+          "OPENAI_API_KEY",
+          "VOICE_GRANT_SIGNING_SECRET"
+        ]
+      },
+      "ratelimits": [
+        {
+          "name": "VOICE_RATE_LIMITER",
+          "namespace_id": "__SET_UNIQUE_POSITIVE_INTEGER_NAMESPACE_ID__",
+          "simple": {
+            "limit": 30,
+            "period": 60
+          }
+        }
+      ]
+    }
+  }
+}
