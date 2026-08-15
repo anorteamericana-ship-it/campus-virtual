@@ -1,0 +1,37 @@
+name: Validate SPEAK LAB Phase 3 Pronunciation Adapter Offline
+
+on:
+  push:
+    branches:
+      - feature/speak-lab-phase3-pronunciation-evaluator-qa
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase3/**'
+      - 'prototypes/speak_lab_phase1/contracts.js'
+      - 'scripts/validate_speak_lab_phase3_pronunciation.mjs'
+      - '.github/workflows/validate-speak-lab-phase3-pronunciation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-pronunciation-adapter-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Syntax check Azure pronunciation adapter
+        run: node --check prototypes/speak_lab_phase3/azure_pronunciation_provider.mjs
+
+      - name: Syntax check Phase 3 QA
+        run: node --check scripts/validate_speak_lab_phase3_pronunciation.mjs
+
+      - name: Validate provider contract with fake network only
+        run: node scripts/validate_speak_lab_phase3_pronunciation.mjs
