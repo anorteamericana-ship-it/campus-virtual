@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#001e47">
+  <title>SPEAK LAB · Fase 0</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="sl-shell">
+    <header class="sl-topbar">
+      <div class="sl-brand">
+        <div class="sl-mark" aria-hidden="true">🎙️</div>
+        <div>
+          <strong>Academia Norteamericana · SPEAK LAB</strong>
+          <span>Prototipo Fase 0 · voz local · sin nota automática</span>
+        </div>
+      </div>
+      <div id="support" class="sl-support">Comprobando micrófono…</div>
+    </header>
+
+    <section class="sl-hero">
+      <div>
+        <div class="sl-eyebrow">Práctica oral experimental</div>
+        <h1>Escuchá. Hablá. Escuchate.</h1>
+        <p>Este primer gate valida la experiencia básica antes de conectar IA: escuchar un modelo provisional, grabar tu voz localmente, compararla por oído y repetir.</p>
+      </div>
+      <aside class="sl-hero-note">
+        <strong>Importante</strong>
+        <span>Que un sistema entienda una frase no significa que la pronunciación sea correcta. Por eso esta fase todavía no inventa porcentajes ni notas.</span>
+      </aside>
+    </section>
+
+    <section class="sl-grid">
+      <article class="sl-card sl-practice" aria-live="polite">
+        <div class="sl-meta">
+          <span id="phraseId" class="sl-chip dark">SL01</span>
+          <span id="phraseLevel" class="sl-chip">B1</span>
+          <span id="phraseFocus" class="sl-chip">Introductions</span>
+          <span id="phraseCounter" class="sl-counter">1 / 10</span>
+        </div>
+
+        <div class="sl-label">Frase objetivo</div>
+        <h2 id="phraseText" class="sl-phrase">What's your name?</h2>
+        <p id="phraseHint" class="sl-hint">Escuchá la frase completa y repetila con ritmo natural.</p>
+
+        <div class="sl-actions">
+          <button id="listenBtn" class="sl-btn secondary" type="button">🔊 Listen</button>
+          <button id="recordBtn" class="sl-btn record" type="button">🎙️ Record</button>
+          <button id="stopBtn" class="sl-btn stop" type="button" disabled>■ Stop</button>
+          <button id="retryBtn" class="sl-btn primary" type="button" disabled>↻ Try again</button>
+        </div>
+
+        <div id="status" class="sl-status neutral">Listo para practicar.</div>
+
+        <div id="recordingBox" class="sl-recording" hidden>
+          <div><span class="sl-dot"></span>Grabando localmente</div>
+          <span id="recordingTime">00:00</span>
+        </div>
+
+        <div id="playbackBox" class="sl-playback" hidden>
+          <strong>🎧 Tu grabación</strong>
+          <audio id="playback" controls preload="metadata"></audio>
+        </div>
+
+        <nav class="sl-nav" aria-label="Navegación de frases">
+          <button id="previousBtn" class="sl-btn secondary" type="button">← Anterior</button>
+          <button id="nextBtn" class="sl-btn secondary" type="button">Siguiente →</button>
+        </nav>
+      </article>
+
+      <aside class="sl-card sl-side">
+        <div>
+          <div class="sl-eyebrow" style="color:#637083;opacity:1">Flujo Fase 0</div>
+          <h2>Qué estamos comprobando</h2>
+        </div>
+
+        <div class="sl-steps">
+          <div class="sl-step"><b>1</b><div><strong>Listen</strong><span>Escuchás una voz modelo provisional del navegador.</span></div></div>
+          <div class="sl-step"><b>2</b><div><strong>Record</strong><span>El sitio pide permiso de micrófono antes de capturar nada.</span></div></div>
+          <div class="sl-step"><b>3</b><div><strong>Replay</strong><span>Escuchás exactamente lo que grabaste durante esta sesión.</span></div></div>
+          <div class="sl-step"><b>4</b><div><strong>Retry</strong><span>Repetís hasta sentir que te acercás al modelo.</span></div></div>
+        </div>
+
+        <div id="privacyNote" class="sl-privacy">Preparando nota de privacidad…</div>
+
+        <div class="sl-warning">
+          <strong>Lo que todavía NO medimos:</strong><br>
+          fonemas, acento, stress, ritmo, entonación, fluidez ni inteligibilidad automática. Eso se agregará solo con un motor validado.
+        </div>
+      </aside>
+    </section>
+
+    <footer class="sl-footer">SPEAK LAB · prototipo aislado · Issue #86 · no conectado a producción</footer>
+  </main>
+
+  <script src="phrases.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
