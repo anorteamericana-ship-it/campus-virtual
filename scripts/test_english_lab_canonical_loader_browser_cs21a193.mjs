@@ -237,11 +237,47 @@ try{
         'EnglishLabLiveStudentView',
       ).then(View=>View===window.EnglishLabLiveStudentView);
     });
-    await page.locator('input[placeholder="LAB-5937"]').waitFor({state:'visible',timeout:20000});
+    try{
+      await page.locator('.el215-shell[data-el215-mode="home"]').waitFor({state:'visible',timeout:20000});
+    }catch(error){
+      const visible=(await page.locator('body').innerText()).replace(/\s+/g,' ').slice(0,500);
+      const diagnostics=await page.evaluate(()=>{
+        const chain=(component,marker)=>{
+          const seen=new Set();let current=component;
+          while(typeof current==='function'&&!seen.has(current)){
+            if(current[marker]===true)return true;
+            seen.add(current);
+            current=typeof current.__cs21a183Base==='function'?current.__cs21a183Base:current.__base;
+          }
+          return false;
+        };
+        const loader=window.EnglishLabLiveCanonicalLoaderCS21A193;
+        return {
+          compatibility:loader?.compatibility?.()===true,
+          ready:loader?.isReady?.()===true,
+          sharedDiscovery:!!window.MemoryMatchSharedDiscoveryCS21A188,
+          hub:!!window.EnglishLabHubCS21A215,
+          studentHubInChain:chain(window.EnglishLabLiveStudentView,'__cs21a215EnglishLabHub'),
+          teacherHubInChain:chain(window.EnglishLabLiveTeacherView,'__cs21a215EnglishLabHub'),
+          studentDepth:(()=>{let depth=0,current=window.EnglishLabLiveStudentView;const seen=new Set();while(typeof current==='function'&&!seen.has(current)){seen.add(current);current=typeof current.__cs21a183Base==='function'?current.__cs21a183Base:current.__base;depth+=1;}return depth;})(),
+        };
+      });
+      throw new Error(`${viewport.name}: el hub CS21A215 no apareció · ${visible} · ${JSON.stringify(diagnostics)}`,{cause:error});
+    }
     assert.equal(await page.evaluate(()=>window.__F96_ROUTE_RESULT__),true,`${viewport.name}: la ruta F96 no resolvió la vista final.`);
 
     const snapshot=await page.evaluate(async()=>{
       const loader=window.EnglishLabLiveCanonicalLoaderCS21A193;
+      const chainHasMarker=(component,marker)=>{
+        const seen=new Set();
+        let current=component;
+        while(typeof current==='function'&&!seen.has(current)){
+          if(current[marker]===true)return true;
+          seen.add(current);
+          current=typeof current.__cs21a183Base==='function'?current.__cs21a183Base:current.__base;
+        }
+        return false;
+      };
       const firstOwner=loader.getOwner();
       const firstComponent=window.MemoryMatchLiveRoundCS21A174;
       window.MemoryMatchLiveRoundCS21A174=window.EnglishLabMemoryMatchClassicSyncAdapterCS21A189.component;
@@ -267,6 +303,8 @@ try{
         ownerStable:firstOwner===loader.getOwner()&&firstComponent===window.MemoryMatchLiveRoundCS21A174,
         ownerAuthoritative:window.EnglishLabMemoryMatchLiveCS21A174===window.EnglishLabMemoryMatchAuthoritativeSyncCS21A192,
         componentAuthoritative:window.MemoryMatchLiveRoundCS21A174.__cs21a192AuthoritativeSyncAdapter===true,
+        studentHubInChain:chainHasMarker(window.EnglishLabLiveStudentView,'__cs21a215EnglishLabHub'),
+        teacherHubInChain:chainHasMarker(window.EnglishLabLiveTeacherView,'__cs21a215EnglishLabHub'),
         loaded:window.anLazyCampus.getStatus().loaded,
         horizontalOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+1,
       };
@@ -278,20 +316,26 @@ try{
     assert.equal(snapshot.ownerStable,true,`${viewport.name}: CS21A192 no fue reafirmado como dueño estable.`);
     assert.equal(snapshot.ownerAuthoritative,true);
     assert.equal(snapshot.componentAuthoritative,true);
+    assert.equal(snapshot.studentHubInChain,true,`${viewport.name}: el guard histórico ocultó el marcador del hub estudiante.`);
+    assert.equal(snapshot.teacherHubInChain,true,`${viewport.name}: el guard histórico ocultó el marcador del hub docente.`);
     assert.equal(snapshot.horizontalOverflow,false);
-    assert.equal(snapshot.manifest.length,12);
-    assert.ok(snapshot.manifest.every(source=>new URL(source,'http://local/').searchParams.get('v')==='CS21A193'),'Cada entrada del manifiesto debe usar exactamente CS21A193.');
+    assert.equal(snapshot.version,'F98.4-Z6-CS21A215');
+    assert.equal(snapshot.epoch,'CS21A215');
+    assert.equal(snapshot.manifest.length,28);
     assert.deepEqual(snapshot.loaded.filter(source=>snapshot.manifest.includes(source)),snapshot.manifest,'El loader debe ejecutar el manifiesto una vez y en orden.');
     assert.equal(await page.evaluate(()=>window.__CS193_LOADER_ONE_BEFORE__===window.anLazyCampus.loadOne&&window.__CS193_LOADER_MANY_BEFORE__===window.anLazyCampus.loadMany),true);
 
-    const manifestPaths=new Set(snapshot.manifest.map(source=>new URL(source,'http://local/').pathname));
-    const manifestRequests=requests.filter(url=>manifestPaths.has(new URL(url).pathname));
+    const manifestByPath=new Map(snapshot.manifest.map(source=>{
+      const parsed=new URL(source,'http://local/');
+      return [parsed.pathname,parsed.searchParams.get('v')];
+    }));
+    const manifestRequests=requests.filter(url=>manifestByPath.has(new URL(url).pathname));
     const requestCounts={};
     for(const url of manifestRequests){
       const parsed=new URL(url);const key=parsed.pathname;requestCounts[key]=(requestCounts[key]||0)+1;
-      assert.equal(parsed.searchParams.get('v'),'CS21A193',`${viewport.name}: epoch mezclado en ${url}`);
+      assert.equal(parsed.searchParams.get('v'),manifestByPath.get(key),`${viewport.name}: epoch incorrecto en ${url}`);
     }
-    assert.equal(Object.keys(requestCounts).length,12,`${viewport.name}: faltan recursos del manifiesto.`);
+    assert.equal(Object.keys(requestCounts).length,snapshot.manifest.length,`${viewport.name}: faltan recursos del manifiesto.`);
     assert.ok(Object.values(requestCounts).every(count=>count===1),`${viewport.name}: hubo cargas duplicadas ${JSON.stringify(requestCounts)}.`);
     results[viewport.name]={...snapshot,requestCounts};
     await page.screenshot({path:path.join(output,`${viewport.name}-canonical.png`),fullPage:true});
@@ -305,8 +349,9 @@ try{
     legacyEpochs:results.legacy.epochs,
     directAcademiaPlay:true,
     f96Route:true,
-    singleEpoch:'CS21A193',
-    manifestEntries:12,
+    loaderVersion:'F98.4-Z6-CS21A215',
+    cacheEpoch:'CS21A215',
+    manifestEntries:28,
     authoritativeOwner:'CS21A192',
     loaderIdentityStable:true,
     canonicalBeforeLazyRace:true,

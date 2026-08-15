@@ -119,6 +119,21 @@
     return true;
   }
 
+  function chainHasMarker(component, marker) {
+    let current = component;
+    const seen = new Set();
+    while (typeof current === 'function' && !seen.has(current)) {
+      if (current[marker] === true) return true;
+      seen.add(current);
+      if (typeof current.__cs21a183Base === 'function') {
+        current = current.__cs21a183Base;
+        continue;
+      }
+      current = current.__base;
+    }
+    return false;
+  }
+
   function compatibility() {
     return !!(
       global.EnglishLabRuntimeCS21A173 &&
@@ -152,9 +167,9 @@
       global.EnglishLabHubStyleCS21A215 &&
       global.EnglishLabHubCS21A215 &&
       typeof global.EnglishLabLiveStudentView === 'function' &&
-      global.EnglishLabLiveStudentView.__cs21a215EnglishLabHub === true &&
+      chainHasMarker(global.EnglishLabLiveStudentView, '__cs21a215EnglishLabHub') &&
       typeof global.EnglishLabLiveTeacherView === 'function' &&
-      global.EnglishLabLiveTeacherView.__cs21a215EnglishLabHub === true
+      chainHasMarker(global.EnglishLabLiveTeacherView, '__cs21a215EnglishLabHub')
     );
   }
 

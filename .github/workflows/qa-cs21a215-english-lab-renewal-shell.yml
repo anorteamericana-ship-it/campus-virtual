@@ -97,8 +97,10 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.54.2
           npx playwright install --with-deps chromium
 
-      - name: Browser smoke · student teacher and 390px
-        run: node scripts/test_english_lab_hub_browser_cs21a215.mjs
+      - name: Browser smoke · canonical stack, student teacher and 390px
+        run: |
+          node scripts/test_english_lab_canonical_loader_browser_cs21a193.mjs
+          node scripts/test_english_lab_hub_browser_cs21a215.mjs
 
       - name: Upload browser evidence
         if: always()

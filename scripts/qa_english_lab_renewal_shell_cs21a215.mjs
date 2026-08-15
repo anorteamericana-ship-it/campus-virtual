@@ -52,7 +52,8 @@ expect('loader keeps existing class shell before renewal hub',pShell>=0 && pShel
 expect('loader adds curricular practice before hub',pPractice>pShell && pPractice<pStyle);
 expect('loader adds hub style before hub component',pStyle>pPractice && pStyle<pHub);
 expect('renewal hub is last manifest entry',/english_lab_hub_cs21a215\.jsx\?v=CS21A215',\s*\n\s*\]\);/.test(loader));
-expect('loader compatibility requires CS21A215 wrappers',has(loader,"global.EnglishLabLiveStudentView.__cs21a215EnglishLabHub === true") && has(loader,"global.EnglishLabLiveTeacherView.__cs21a215EnglishLabHub === true"));
+expect('loader compatibility follows legitimate CS21A215 wrapper chains',has(loader,"chainHasMarker(global.EnglishLabLiveStudentView, '__cs21a215EnglishLabHub')") && has(loader,"chainHasMarker(global.EnglishLabLiveTeacherView, '__cs21a215EnglishLabHub')"));
+expect('loader compatibility follows the historical Sentence Order base',has(loader,"typeof current.__cs21a183Base === 'function'") && has(loader,'current = current.__cs21a183Base'));
 expect('loader publishes renewal hub epoch',has(loader,"renewalHubEpoch:'CS21A215'"));
 
 const LIVE_GAMES=['MEMORY_MATCH','SENTENCE_ORDER','HANGMAN','QUIZ_TIME','WORD_SEARCH'];
