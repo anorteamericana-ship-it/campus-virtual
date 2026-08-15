@@ -1,0 +1,65 @@
+name: Validate SPEAK LAB Cloudflare Worker Offline
+
+on:
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs'
+      - 'prototypes/speak_lab_phase2/wrangler.qa.template.jsonc'
+      - 'scripts/validate_speak_lab_cloudflare_worker.mjs'
+      - '00_DOCUMENTACION/SPEAK_LAB_CLOUDFLARE_WORKER_QA_2026-08-15.md'
+      - '.github/workflows/validate-speak-lab-cloudflare-worker.yml'
+      - '.gitignore'
+  workflow_dispatch:
+
+concurrency:
+  group: speak-lab-cloudflare-offline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-cloudflare-worker-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax
+        run: |
+          node --check prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs
+          node --check scripts/validate_speak_lab_cloudflare_worker.mjs
+
+      - name: Worker runtime scope guard
+        run: |
+          if grep -Eq "from ['\"]node:|require\(['\"]node:" prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs; then
+            echo 'Cloudflare Worker runtime must not depend on node:* modules.'
+            exit 1
+          fi
+          if grep -Eq 'd1_databases|r2_buckets' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc; then
+            echo 'D1/R2 are intentionally out of scope for first Voice Gateway.'
+            exit 1
+          fi
+          grep -q '__SET_EXACT_QA_ORIGIN__' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          grep -q '__SET_UNIQUE_POSITIVE_INTEGER_NAMESPACE_ID__' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          grep -q 'OPENAI_API_KEY' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          grep -q 'VOICE_GRANT_SIGNING_SECRET' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          if grep -Eq 'sk-[A-Za-z0-9_-]{12,}' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc; then
+            echo 'Wrangler template must not contain provider keys.'
+            exit 1
+          fi
+
+      - name: Recheck Voice Gateway protocol
+        run: node scripts/validate_speak_lab_gateway_protocol.mjs
+
+      - name: Recheck OpenAI adapter with fake network
+        run: node scripts/validate_speak_lab_openai_audio_provider.mjs
+
+      - name: Cloudflare Worker gate · fake network only
+        run: node scripts/validate_speak_lab_cloudflare_worker.mjs
