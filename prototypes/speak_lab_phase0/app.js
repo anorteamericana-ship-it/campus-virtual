@@ -90,11 +90,13 @@
     }
   }
 
+  function syncNavigation(){
+    els.previous.disabled = index === 0;
+    els.next.disabled = index >= phrases.length - 1;
+  }
+
   function resetAttempt(message){
     cleanupTimer();
-    if (recorder && recorder.state !== 'inactive') {
-      try { recorder.stop(); } catch (_) {}
-    }
     recorder = null;
     stopStream();
     chunks = [];
@@ -105,6 +107,7 @@
     els.stop.disabled = true;
     els.retry.disabled = true;
     els.recordingTime.textContent = '00:00';
+    syncNavigation();
     setStatus('neutral', message || 'Listo para practicar.');
   }
 
@@ -126,8 +129,7 @@
     els.phraseText.textContent = phrase.text || '';
     els.phraseHint.textContent = phrase.hint || '';
     els.phraseCounter.textContent = `${index + 1} / ${phrases.length}`;
-    els.previous.disabled = index === 0;
-    els.next.disabled = index >= phrases.length - 1;
+    syncNavigation();
     els.listen.disabled = !(window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function');
     els.record.disabled = !mediaSupport();
   }
@@ -172,6 +174,8 @@
 
     resetAttempt('Solicitando permiso de micrófono…');
     els.record.disabled = true;
+    els.previous.disabled = true;
+    els.next.disabled = true;
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -185,18 +189,21 @@
 
       const mimeType = preferredMimeType();
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const activeRecorder = recorder;
       chunks = [];
 
-      recorder.addEventListener('dataavailable', (event) => {
+      activeRecorder.addEventListener('dataavailable', (event) => {
         if (event.data && event.data.size > 0) chunks.push(event.data);
       });
 
-      recorder.addEventListener('start', () => {
+      activeRecorder.addEventListener('start', () => {
         startedAt = Date.now();
         els.recordingBox.hidden = false;
         els.playbackBox.hidden = true;
         els.stop.disabled = false;
-        els.retry.disabled = false;
+        els.retry.disabled = true;
+        els.previous.disabled = true;
+        els.next.disabled = true;
         setStatus('recording', 'Grabando localmente…');
         cleanupTimer();
         timer = setInterval(() => {
@@ -204,20 +211,21 @@
         }, 250);
       });
 
-      recorder.addEventListener('stop', () => {
+      activeRecorder.addEventListener('stop', () => {
         cleanupTimer();
         stopStream();
         els.stop.disabled = true;
         els.record.disabled = false;
         els.retry.disabled = false;
         els.recordingBox.hidden = true;
+        syncNavigation();
 
         if (!chunks.length) {
           setStatus('warning', 'La grabación quedó vacía. Probá de nuevo.');
           return;
         }
 
-        const blobType = recorder && recorder.mimeType ? recorder.mimeType : (mimeType || 'audio/webm');
+        const blobType = activeRecorder.mimeType || mimeType || 'audio/webm';
         const blob = new Blob(chunks, { type: blobType });
         revokeAudio();
         audioUrl = URL.createObjectURL(blob);
@@ -226,19 +234,24 @@
         setStatus('success', 'Grabación local lista. Escuchate y compará con el modelo.');
       });
 
-      recorder.addEventListener('error', () => {
+      activeRecorder.addEventListener('error', () => {
         cleanupTimer();
         stopStream();
         els.record.disabled = false;
         els.stop.disabled = true;
+        els.retry.disabled = false;
+        syncNavigation();
         setStatus('error', 'Ocurrió un error al grabar. El audio no fue enviado a ningún backend.');
       });
 
-      recorder.start(250);
+      activeRecorder.start(250);
     } catch (error) {
       stopStream();
+      recorder = null;
       els.record.disabled = false;
       els.stop.disabled = true;
+      els.retry.disabled = true;
+      syncNavigation();
       const name = String(error && error.name || '');
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
         setStatus('error', 'El permiso de micrófono fue rechazado. Activá el permiso del sitio para continuar.');
@@ -255,18 +268,22 @@
   function stopRecording(){
     if (!recorder || recorder.state === 'inactive') return;
     try {
+      els.stop.disabled = true;
       recorder.stop();
       setStatus('active', 'Preparando tu grabación…');
     } catch (_) {
+      syncNavigation();
       setStatus('error', 'No se pudo detener la grabación correctamente.');
     }
   }
 
   function retry(){
+    if (recorder && recorder.state !== 'inactive') return;
     resetAttempt('Intento limpio. Escuchá el modelo o grabate otra vez.');
   }
 
   function move(delta){
+    if (recorder && recorder.state !== 'inactive') return;
     const next = Math.min(Math.max(index + delta, 0), Math.max(phrases.length - 1, 0));
     if (next === index) return;
     index = next;
@@ -298,6 +315,9 @@
 
     window.addEventListener('beforeunload', () => {
       cleanupTimer();
+      if (recorder && recorder.state !== 'inactive') {
+        try { recorder.stop(); } catch (_) {}
+      }
       stopStream();
       revokeAudio();
       try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (_) {}
