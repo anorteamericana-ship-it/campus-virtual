@@ -6,7 +6,9 @@ Prototipo aislado para validar el flujo humano antes de integrar APIs de voz o c
 
 Validar en navegador el ciclo:
 
-`LISTEN → RECORD → REPLAY → TRANSCRIBE (si existe soporte) → COMPARE → RETRY`
+`LISTEN → RECORD → REPLAY → RETRY`
+
+La transcripción y el análisis automático quedan explícitamente fuera de este primer gate hasta definir un proveedor y flujo de datos auditables.
 
 ## Qué sí hace
 
@@ -15,27 +17,26 @@ Validar en navegador el ciclo:
 - Solicita acceso al micrófono de forma explícita.
 - Graba audio localmente con `MediaRecorder` cuando el navegador lo soporta.
 - Permite escuchar la grabación del estudiante.
-- Intenta transcripción mediante `SpeechRecognition`/`webkitSpeechRecognition` cuando el navegador lo soporta.
-- Calcula un `intelligibility proxy` simple comparando palabras esperadas vs. transcritas.
 - Permite repetir sin recargar.
-- No envía audio a backend ni a terceros.
+- Mantiene el audio dentro de la sesión del navegador; el código del Campus no lo sube a backend ni invoca un servicio de reconocimiento.
 
 ## Qué NO hace
 
 - No genera MP3 de producción.
 - No usa OpenAI ni otro proveedor externo.
-- No evalúa fonemas.
-- No evalúa acento, ritmo, stress o entonación.
+- No usa `SpeechRecognition`/`webkitSpeechRecognition`; algunos navegadores pueden procesar esa voz mediante servicios del proveedor y no queremos introducir ese flujo silenciosamente.
+- No transcribe automáticamente.
+- No calcula una supuesta nota de pronunciación.
+- No evalúa fonemas, acento, ritmo, stress o entonación.
 - No produce nota oficial.
 - No guarda audios de forma persistente.
-- No debe confundirse una transcripción correcta con una pronunciación correcta.
 
 ## Archivos
 
 - `index.html`: interfaz del prototipo.
 - `phrases.js`: banco inicial de 10 frases.
 - `styles.css`: estilos responsive.
-- `app.js`: TTS, micrófono, grabación, transcripción opcional y proxy de inteligibilidad.
+- `app.js`: TTS provisional, permisos de micrófono, grabación local y reproducción.
 
 ## Uso
 
@@ -48,12 +49,12 @@ Servir esta carpeta por HTTP local; por ejemplo con cualquier servidor estático
 3. `Record` solicita micrófono de manera visible.
 4. `Stop` finaliza la captura.
 5. La grabación puede reproducirse.
-6. Si el navegador soporta reconocimiento de voz, aparece la transcripción.
-7. El resultado se etiqueta como proxy de inteligibilidad, nunca como pronunciación.
-8. `Try again` limpia el intento sin perder la frase.
-9. La UI sigue siendo utilizable cerca de 390 px.
-10. No existen requests de red de audio en el prototipo.
+6. `Try again` limpia el intento sin perder la frase.
+7. La interfaz deja claro que todavía no existe calificación automática.
+8. La UI sigue siendo utilizable cerca de 390 px.
+9. No existen requests de red de audio provocados por el prototipo.
+10. Un navegador sin `MediaRecorder` recibe un mensaje honesto y no una falsa calificación.
 
 ## Próximo gate
 
-Después de QA humana en iPhone, Android y PC se decidirá si el flujo de interacción es suficientemente claro para conectar proveedores reales de TTS/STT. Solo después se diseña un evaluador de pronunciación independiente.
+Después de QA humana en iPhone, Android y PC se decidirá si el flujo de interacción es suficientemente claro para conectar proveedores reales de TTS/STT bajo interfaces desacopladas. Solo después se diseña un evaluador de pronunciación independiente del reconocimiento de texto.
