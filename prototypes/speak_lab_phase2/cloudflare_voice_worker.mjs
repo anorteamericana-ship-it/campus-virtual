@@ -231,10 +231,16 @@ function providerStatus(error) {
 
 function safeParamFromProviderMessage(message) {
   const normalized = clean(message).toLowerCase();
-  return SAFE_UPSTREAM_PARAMS.find(param => {
-    const escaped = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`(?:^|[^a-z0-9_])${escaped}(?:[^a-z0-9_]|$)`, 'i').test(normalized);
-  }) || null;
+  let selected = null;
+  let selectedIndex = Number.POSITIVE_INFINITY;
+  for (const param of SAFE_UPSTREAM_PARAMS) {
+    const match = new RegExp(`(?:^|[^a-z0-9_])${param}(?:[^a-z0-9_]|$)`, 'i').exec(normalized);
+    if (match && match.index < selectedIndex) {
+      selected = param;
+      selectedIndex = match.index;
+    }
+  }
+  return selected;
 }
 
 function safeCategoryFromProviderMessage(message) {
