@@ -147,6 +147,9 @@ const TARGET_HEADERS = Object.freeze([
   'x-speaklab-answer-text',
   'x-speaklab-correct-answer',
 ]);
+const TARGET_QUERY_KEYS = Object.freeze([
+  'expectedText', 'referenceText', 'targetText', 'answerText', 'correctAnswer',
+]);
 
 export async function startMockVoiceGateway({ port = 0, host = '127.0.0.1', secret = 'TEST_ONLY_SPEAK_LAB_GATEWAY_SECRET' } = {}) {
   const requestLog = [];
@@ -193,7 +196,10 @@ export async function startMockVoiceGateway({ port = 0, host = '127.0.0.1', secr
         entry.scope = VOICE_GATEWAY_SCOPES.STT_WRITE;
 
         const leakedHeader = TARGET_HEADERS.find(name => String(req.headers[name] || '').trim());
-        if (leakedHeader) return sendError(res, 400, 'STT_TARGET_LEAKAGE', `Header prohibido: ${leakedHeader}`);
+        const leakedQuery = TARGET_QUERY_KEYS.find(name => String(url.searchParams.get(name) || '').trim());
+        if (leakedHeader || leakedQuery) {
+          return sendError(res, 400, 'STT_TARGET_LEAKAGE', leakedHeader ? `Header prohibido: ${leakedHeader}` : `Query prohibido: ${leakedQuery}`);
+        }
 
         const raw = await readBody(req, VOICE_GATEWAY_LIMITS.maxAudioBytes + 1);
         entry.bytes = raw.length;
