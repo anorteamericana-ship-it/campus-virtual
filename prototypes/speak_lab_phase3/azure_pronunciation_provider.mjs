@@ -4,7 +4,7 @@ import {
   validatePronunciationResult,
 } from '../speak_lab_phase1/contracts.js';
 
-const DEFAULT_EVALUATOR_VERSION = 'azure-pronunciation-rest-v0.2-live-shape-unvalidated';
+const DEFAULT_EVALUATOR_VERSION = 'azure-pronunciation-rest-v0.3-wav-ogg-unvalidated';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const AZURE_REGION_PATTERN = /^[a-z0-9-]{2,40}$/;
 
@@ -60,9 +60,17 @@ function normalizeAudioContentType(blob) {
   if (type === 'audio/ogg' || type === 'audio/ogg; codecs=opus' || type === 'audio/ogg;codecs=opus') {
     return 'audio/ogg; codecs=opus';
   }
+  if (
+    type === 'audio/wav' ||
+    type === 'audio/x-wav' ||
+    type.startsWith('audio/wav;') ||
+    type.startsWith('audio/x-wav;')
+  ) {
+    return 'audio/wav; codecs=audio/pcm; samplerate=16000';
+  }
   throw new SpeakLabContractError(
     'AZURE_PRONUNCIATION_AUDIO_TYPE_UNSUPPORTED',
-    `El adaptador QA inicial de pronunciación requiere OGG/Opus; recibido: ${type || 'sin MIME'}.`,
+    `El adaptador de pronunciación requiere OGG/Opus o WAV PCM 16 kHz mono; recibido: ${type || 'sin MIME'}.`,
   );
 }
 
@@ -244,7 +252,10 @@ export class AzurePronunciationProvider {
 
 export const AZURE_PRONUNCIATION_PROVIDER_DEFAULTS = Object.freeze({
   evaluatorVersion:DEFAULT_EVALUATOR_VERSION,
-  supportedInput:'audio/ogg; codecs=opus',
+  supportedInput:Object.freeze([
+    'audio/ogg; codecs=opus',
+    'audio/wav; codecs=audio/pcm; samplerate=16000',
+  ]),
   granularity:'Phoneme',
   dimension:'Comprehensive',
   calibrated:false,
