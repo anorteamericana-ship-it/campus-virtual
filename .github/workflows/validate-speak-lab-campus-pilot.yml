@@ -18,6 +18,7 @@ on:
       - 'scripts/validate_speak_lab_phase3_gateway_pronunciation.mjs'
       - 'scripts/validate_speak_lab_campus_pilot_gateway.mjs'
       - 'scripts/validate_speak_lab_campus_pilot_static.mjs'
+      - 'scripts/test_speak_lab_campus_pilot_integration.mjs'
       - '00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216.md'
       - '.github/workflows/validate-speak-lab-campus-pilot.yml'
 
@@ -51,10 +52,13 @@ jobs:
           node --check scripts/validate_speak_lab_phase3_gateway_pronunciation.mjs
           node --check scripts/validate_speak_lab_campus_pilot_gateway.mjs
           node --check scripts/validate_speak_lab_campus_pilot_static.mjs
+          node --check scripts/test_speak_lab_campus_pilot_integration.mjs
+
+      - name: Install QA parser and DOM runtime
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4 jsdom@26.1.0
 
       - name: Parse Speak LAB JSX
         run: |
-          npm install --no-save --ignore-scripts @babel/parser@7.28.4
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import { parse } from '@babel/parser';
@@ -62,6 +66,9 @@ jobs:
           parse(source, { sourceType:'script', plugins:['jsx'] });
           console.log('Speak LAB pilot JSX parse: PASS');
           NODE
+
+      - name: Sidebar and overlay DOM smoke
+        run: node scripts/test_speak_lab_campus_pilot_integration.mjs
 
       - name: Azure pronunciation OGG + WAV offline
         run: node scripts/validate_speak_lab_phase3_pronunciation.mjs
@@ -101,7 +108,7 @@ jobs:
             echo 'ERROR: CS21A216 debe permanecer aislado de app.jsx/campus.html/English LAB.' >&2
             exit 1
           fi
-          if grep -Ev '^(prototypes/speak_lab_phase1/gateway_protocol\.js|prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot\.mjs|prototypes/speak_lab_phase2/wrangler\.qa\.template\.jsonc|prototypes/speak_lab_phase3/azure_pronunciation_provider\.mjs|src/speak_lab_pilot_runtime_cs21a216\.js|src/speak_lab_pilot_view_cs21a216\.jsx|src/speak_lab_pilot_integration_cs21a216\.js|src/student_menu_academic_guard_cs21a120\.js|scripts/validate_speak_lab_phase3_pronunciation\.mjs|scripts/validate_speak_lab_phase3_gateway_pronunciation\.mjs|scripts/validate_speak_lab_campus_pilot_gateway\.mjs|scripts/validate_speak_lab_campus_pilot_static\.mjs|00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216\.md|\.github/workflows/validate-speak-lab-campus-pilot\.yml)$' /tmp/speaklab216-files.txt | grep -q .; then
+          if grep -Ev '^(prototypes/speak_lab_phase1/gateway_protocol\.js|prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot\.mjs|prototypes/speak_lab_phase2/wrangler\.qa\.template\.jsonc|prototypes/speak_lab_phase3/azure_pronunciation_provider\.mjs|src/speak_lab_pilot_runtime_cs21a216\.js|src/speak_lab_pilot_view_cs21a216\.jsx|src/speak_lab_pilot_integration_cs21a216\.js|src/student_menu_academic_guard_cs21a120\.js|scripts/validate_speak_lab_phase3_pronunciation\.mjs|scripts/validate_speak_lab_phase3_gateway_pronunciation\.mjs|scripts/validate_speak_lab_campus_pilot_gateway\.mjs|scripts/validate_speak_lab_campus_pilot_static\.mjs|scripts/test_speak_lab_campus_pilot_integration\.mjs|00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216\.md|\.github/workflows/validate-speak-lab-campus-pilot\.yml)$' /tmp/speaklab216-files.txt | grep -q .; then
             echo 'ERROR: archivo fuera del perímetro CS21A216.' >&2
             exit 1
           fi
