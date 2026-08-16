@@ -1,4 +1,5 @@
-// F98.4-Z6-CS21A157 · Conserva el menú final y carga recursos académicos del estudiante.
+// F98.4-Z6-CS21A216 · Conserva menú final y carga integración aislada SPEAK LAB piloto.
+// Base preservada: F98.4-Z6-CS21A157.
 (function(){
   'use strict';
   let attempts=0;
@@ -32,19 +33,35 @@
       .catch(error=>console.error('CS21A157',error));
   }
 
+  function loadSpeakLabPilot(){
+    if(window.SpeakLabPilotIntegrationCS21A216 || document.querySelector('script[data-campus-module="speak-lab-pilot-cs21a216"]'))return;
+    const script=document.createElement('script');
+    script.src='src/speak_lab_pilot_integration_cs21a216.js?v=F98.4Z6CS21A216';
+    script.async=false;
+    script.defer=false;
+    script.setAttribute('data-campus-module','speak-lab-pilot-cs21a216');
+    script.onerror=()=>console.error('CS21A216','No se pudo cargar integración SPEAK LAB piloto.');
+    document.head.appendChild(script);
+  }
+
   function markFinalSidebar(){
     const Current=window.Sidebar;
     const installed=!!window.CS21A120_STUDENT_MENU;
     if(installed&&typeof Current==='function'){
       Current.__cs21a69ActiveState=true;
       Current.__cs21a120StudentMenu=true;
-      window.CS21A120_STUDENT_MENU_GUARD='F98.4-Z6-CS21A157';
+      window.CS21A120_STUDENT_MENU_GUARD='F98.4-Z6-CS21A216';
       loadStudentModules();
+      loadSpeakLabPilot();
       return;
     }
     attempts+=1;
     if(attempts<240)window.setTimeout(markFinalSidebar,25);
   }
 
+  // El loader es aditivo y no depende del rol; la integración decide si la
+  // sesión teacher/student es elegible. Se intenta también aquí para no quedar
+  // atados al orden de wrappers del sidebar.
+  loadSpeakLabPilot();
   markFinalSidebar();
 })();
