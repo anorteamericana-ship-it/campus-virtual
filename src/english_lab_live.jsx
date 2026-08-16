@@ -558,8 +558,8 @@
       return publicCode(q.get('room') || q.get('codigo') || q.get('lab') || hq.get('room') || hq.get('codigo') || localStorage.getItem('elive_last_room') || '');
     } catch(_) { return ''; } })();
     const [roomCode,setRoomCode]=React.useState(initialCode);
-    const [playerName,setPlayerName]=React.useState(liveStudentName(u));
-    const [studentCode,setStudentCode]=React.useState(liveStudentCode(u));
+    const playerName=liveStudentName(u);
+    const studentCode=liveStudentCode(u);
     const [playerId,setPlayerId]=React.useState('');
     const [joined,setJoined]=React.useState(false);
     const [state,setState]=React.useState(null);
@@ -634,7 +634,8 @@
     async function joinRoom(){
       const rc=publicCode(roomCode);
       if(!rc){ setError('Escribí el código de sala.'); return; }
-      if(!clean(playerName)){ setError('Escribí tu nombre para entrar.'); return; }
+      if(!clean(playerName)){ setError('La sesión del Campus no tiene un nombre de estudiante válido.'); return; }
+      if(!clean(studentCode)){ setError('Necesitás ingresar al Campus con una cuenta de estudiante matriculado para entrar a Clase en vivo.'); return; }
       setBusy(true); setError('');
       try{
         const saved = (()=>{ try{return localStorage.getItem('elive_player_'+rc)||'';}catch(_){return '';} })();
@@ -680,11 +681,11 @@
             <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>Código de sala
               <input value={roomCode} onChange={e=>setRoomCode(publicCode(e.target.value))} placeholder="LAB-5937" autoFocus style={{height:56,border:'1px solid #D0D5DD',borderRadius:16,padding:'0 15px',fontSize:24,fontWeight:950,fontFamily:'var(--f-mono,monospace)',color:'#001E47',textTransform:'uppercase',letterSpacing:'.03em',background:'#F8FAFC'}} />
             </label>
-            <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>Nombre del jugador
-              <input value={playerName} onChange={e=>setPlayerName(e.target.value)} placeholder="Nombre del estudiante" style={{height:46,border:'1px solid #D0D5DD',borderRadius:13,padding:'0 12px',fontWeight:800}} />
+            <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>Estudiante de la sesión
+              <input value={playerName} readOnly aria-readonly="true" style={{height:46,border:'1px solid #D0D5DD',borderRadius:13,padding:'0 12px',fontWeight:800,background:'#F8FAFC',color:'#475467'}} />
             </label>
-            <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>Código / cédula estudiante <span style={{fontWeight:600,color:'#98A2B3'}}>(opcional para demo)</span>
-              <input value={studentCode} onChange={e=>setStudentCode(e.target.value)} placeholder="Se toma de la sesión si existe" style={{height:42,border:'1px solid #D0D5DD',borderRadius:12,padding:'0 12px',fontWeight:700}} />
+            <label style={{display:'grid',gap:6,fontSize:12,fontWeight:850,color:'#344054'}}>Código de estudiante <span style={{fontWeight:600,color:'#98A2B3'}}>(tomado de tu sesión del Campus)</span>
+              <input value={studentCode} readOnly aria-readonly="true" style={{height:42,border:'1px solid #D0D5DD',borderRadius:12,padding:'0 12px',fontWeight:700,background:'#F8FAFC',color:'#475467'}} />
             </label>
             <button className="btn btn-primary" type="button" disabled={busy} onClick={joinRoom} style={{height:48,fontSize:15,fontWeight:950}}>{busy?'Entrando…':'Entrar a sala'}</button>
             {previewRoom && <div style={{fontSize:11.5,color:'#667085',lineHeight:1.45}}>Enlace cargado: <span style={{fontFamily:'var(--f-mono,monospace)',fontWeight:900,color:'#073B7A'}}>{roomCode}</span></div>}
