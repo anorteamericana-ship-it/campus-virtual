@@ -246,7 +246,7 @@ const sttGrant = await grant({
   assert.equal(data.calibrated, false);
   assert.equal(data.official, false);
   assert.equal(data.confidence, null);
-  assert.equal(data.evaluatorVersion, 'azure-pronunciation-rest-v0.2-live-shape-unvalidated');
+  assert.equal(data.evaluatorVersion, 'azure-pronunciation-rest-v0.3-wav-ogg-unvalidated');
   assert.deepEqual(data.issues, []);
   const publicRaw = JSON.stringify(data);
   assert.doesNotMatch(publicRaw, /PronScore|ProsodyScore|Phonemes|CompletenessScore/);
@@ -295,7 +295,7 @@ const sttGrant = await grant({
   assert.equal(providerCalls.length, before);
 }
 
-// Pronunciación V0 solo acepta OGG/Opus.
+// Pronunciación admite OGG/WAV canónicos y sigue rechazando WebM directo.
 {
   const before = providerCalls.length;
   const response = await worker.fetch(request('/v1/pronunciation', {
