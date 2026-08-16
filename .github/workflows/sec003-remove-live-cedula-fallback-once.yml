@@ -1,0 +1,49 @@
+name: SEC003 remove Live cedula fallback once
+
+on:
+  push:
+    branches:
+      - fix/sec003-english-lab-live-auth
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec003-english-lab-live-auth
+          fetch-depth: 0
+      - name: Apply exact helper replacement
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('src/english_lab_live.jsx')
+          s=p.read_text(encoding='utf-8')
+          old="    return clean(u.codigo || u.CODIGO || u.cod_estudiante || u.COD_ESTUDIANTE || u.cedula || u.CEDULA || u.identificacion || '');"
+          new="    return clean(u.codigo || u.CODIGO || u.cod_estudiante || u.COD_ESTUDIANTE || '');"
+          count=s.count(old)
+          if count != 1:
+            raise SystemExit(f'FAIL-CLOSED expected one liveStudentCode preimage, got {count}')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+      - name: Run SEC003 frontend gate
+        run: node scripts/qa_sec003_english_lab_live_frontend.mjs
+      - name: Scope check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only)" = "src/english_lab_live.jsx"
+          ! git diff -- src/english_lab_live.jsx | grep -E '^[+-].*(Memory Match|MEMORY_MATCH|englishLabMemoryMatch)' || { echo 'SEC003 must not touch Memory Match'; exit 1; }
+      - name: Commit exact helper change
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/english_lab_live.jsx
+          git commit -m "SEC003 require enrolled Campus code for Live"
+          git push origin HEAD:fix/sec003-english-lab-live-auth
