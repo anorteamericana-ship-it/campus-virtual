@@ -1,0 +1,52 @@
+{
+  "id": "SEC-001",
+  "version": 1,
+  "status": "remediation_in_progress",
+  "scope": [
+    "public_enrollment_password_creation",
+    "campus_login_password_verification",
+    "credential_storage",
+    "login_abuse_protection",
+    "credential_migration"
+  ],
+  "password_policy": {
+    "minimum_length_single_factor": 15,
+    "maximum_length_supported_at_least": 64,
+    "arbitrary_composition_rules": false,
+    "block_common_or_compromised_passwords": true,
+    "allow_password_managers_and_paste": true
+  },
+  "storage": {
+    "plaintext_allowed": false,
+    "fast_unsalted_hash_allowed": false,
+    "adaptive_or_managed_verifier_required": true,
+    "original_password_must_not_be_logged_or_returned": true
+  },
+  "login": {
+    "uniform_invalid_credential_response": true,
+    "rate_limiting_required": true,
+    "progressive_or_equivalent_abuse_control_required": true,
+    "session_tokens_remain_separate_from_password_credentials": true
+  },
+  "migration": {
+    "existing_plaintext_credentials_must_not_remain_indefinitely": true,
+    "force_reset_or_verified_migration_required": true,
+    "legacy_fallback_must_have_expiry_and_audit": true
+  },
+  "evidence_required_to_close": [
+    "frontend rejects passwords shorter than policy",
+    "QA backend never stores a new readable password",
+    "QA login verifies only the managed/adaptive credential representation",
+    "negative tests cover wrong password, unknown account and inactive account without account enumeration",
+    "rate-limit test demonstrates bounded repeated attempts",
+    "migration report shows no readable active credentials remain",
+    "production deployment is separately authorized and verified"
+  ],
+  "non_goals_for_this_foundation_commit": [
+    "deploying Apps Script",
+    "changing production data",
+    "editing Memory Match",
+    "editing English LAB PR 85",
+    "editing Speak LAB PR 104"
+  ]
+}
