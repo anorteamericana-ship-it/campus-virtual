@@ -1,0 +1,100 @@
+{
+  "id": "SEC-002",
+  "version": 1,
+  "status": "remediation_in_progress",
+  "principle": "sensitive Campus documents are private at rest and are never made world-readable merely to obtain a usable URL",
+  "private_by_default": true,
+  "sensitive_classes": [
+    "student_identity_document",
+    "student_profile_or_passport_photo",
+    "academic_title_or_prior_study_document",
+    "signed_enrollment_document",
+    "payment_or_bank_proof",
+    "student_extra_document",
+    "student_certificate",
+    "commercial_proforma_with_personal_data",
+    "teacher_curriculum",
+    "teacher_accreditation_or_aval",
+    "teacher_private_document"
+  ],
+  "explicit_public_asset_classes": [
+    "public_enrollment_marketing_or_ui_asset"
+  ],
+  "known_storage_roots": {
+    "DOCUMENTOS_ESTUDIANTES": {
+      "required_visibility": "private",
+      "reason": "contains per-student and per-group academic and identity documents"
+    },
+    "CAMPUS_VIRTUAL_DESIGN": {
+      "required_visibility": "private_or_explicit_subtree_policy",
+      "reason": "mixed operational root; public exposure must be limited to intentionally public assets only"
+    },
+    "INSCRIPCION_PUBLICA": {
+      "required_visibility": "public_assets_only",
+      "reason": "explicitly public enrollment UI/media subtree; must never receive identity, financial or academic records"
+    }
+  },
+  "prohibited_patterns": [
+    "DriveApp.Access.ANYONE_WITH_LINK on a sensitive file",
+    "DriveApp.Access.ANYONE on a sensitive file",
+    "world-readable permission on DOCUMENTOS_ESTUDIANTES",
+    "returning a public Drive URL as the authorization mechanism",
+    "client-selected file ownership without server-side authorization"
+  ],
+  "authenticated_delivery": {
+    "request_requires_campus_session": true,
+    "authorization_must_be_server_side": true,
+    "authorization_dimensions": [
+      "authenticated subject",
+      "role",
+      "document ownership or permitted scope",
+      "document class",
+      "document lifecycle state"
+    ],
+    "grant": {
+      "opaque_or_signed": true,
+      "single_document": true,
+      "single_subject": true,
+      "ttl_seconds_max": 120,
+      "replay_protection_required_for_high_sensitivity": true
+    },
+    "delivery": {
+      "binary_stream_or_equivalent": true,
+      "must_not_require_world_readable_source": true,
+      "content_type_from_trusted_metadata": true,
+      "content_disposition_controlled": true,
+      "cache_control_private": true,
+      "rate_limit_required": true,
+      "audit_event_without_document_contents": true
+    }
+  },
+  "migration_order": [
+    "inventory current permissions and consumers",
+    "build authenticated delivery in QA",
+    "switch one document class in QA",
+    "verify student/admin/ventas journeys and rollback",
+    "remove explicit public sharing for that class",
+    "remove inherited world-readable permission at the source folder only after all dependent classes are migrated",
+    "scan and remediate existing files",
+    "repeat by document class"
+  ],
+  "do_not_do": [
+    "remove the public permission from DOCUMENTOS_ESTUDIANTES before replacement delivery exists",
+    "make every Drive folder private without classifying intentional public assets",
+    "reuse Speak LAB credentials or Worker by default",
+    "move all documents to a new provider without a migration and rollback plan",
+    "declare SEC-002 closed from source-code changes alone"
+  ],
+  "evidence_required_to_close": [
+    "DOCUMENTOS_ESTUDIANTES has no anyone permission",
+    "sample and automated permission scan finds zero sensitive world-readable files",
+    "new uploads are private server-side",
+    "student certificate download works through authenticated delivery without public Drive ACL",
+    "student identity and signed enrollment documents are accessible only to authorized roles/owner",
+    "teacher private documents are not world-readable",
+    "financial proofs are not world-readable",
+    "public enrollment assets continue to work from an explicitly isolated public subtree",
+    "negative authorization and expired-grant tests pass",
+    "production permission migration has rollback evidence"
+  ]
+}
