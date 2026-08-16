@@ -1,0 +1,150 @@
+{
+  "id": "SEC-004",
+  "version": 1,
+  "status": "qa_candidate_not_deployed",
+  "principle": "demo sessions may never mutate or expose real Campus business data; unknown routes fail closed",
+  "backend_base_sha256": "d24fc63c59e60ba92808d4d870f4eb95e35bb6f1c158a130229b187a66e35d37",
+  "candidate_sha256": "b4775e8d615d2e59409a1b9eb1587b0f325767e4e54b7ef7384447fcbe75904f",
+  "candidate_drive_id": "1wwXtROufx5ZMj1A9yYIsgF29vaff-_7X",
+  "session_policy": {
+    "persist_new_demo_columns_in_SESIONES": false,
+    "derive_demo_identity_server_side_on_every_validation": true,
+    "teacher_demo_detector": "canonical synthetic teacher marker",
+    "student_demo_detector": "canonical synthetic student code",
+    "validated_demo_session_fields": [
+      "demo=true",
+      "read_only=true",
+      "demo_kind",
+      "demo_policy_version"
+    ],
+    "real_sessions_remain_unchanged": true
+  },
+  "credential_policy": {
+    "literal_demo_secrets_in_source_allowed": false,
+    "student_script_property": "SEC004_DEMO_STUDENT_SECRET",
+    "teacher_script_property": "SEC004_DEMO_TEACHER_SECRET",
+    "minimum_configured_secret_length": 20,
+    "missing_or_short_secret_behavior": "demo login disabled fail-closed",
+    "reuse_of_previous_literal_demo_secrets": false,
+    "rotation_required_before_qa": true
+  },
+  "global_post_guard": {
+    "must_be_absolute_last_doPost_wrapper": true,
+    "public_requests_without_session_token": "delegate unchanged",
+    "non_demo_valid_sessions": "delegate unchanged",
+    "demo_unknown_or_unclassified_route": "deny demo_read_only",
+    "demo_scope_mismatch": "deny demo_read_only",
+    "logout": "allowed as session bookkeeping",
+    "teacher_demo_simulated_writes": "allowed only through the existing synthetic interceptor after scope validation; must not persist business data"
+  },
+  "safe_reads": {
+    "shared": [
+      "validarSesion",
+      "getInfoGeneral"
+    ],
+    "teacher_session_synthetic": [
+      "getDocenteGruposActuales",
+      "getGruposDocenteActuales",
+      "getDocenteSesionActivaF87"
+    ],
+    "teacher_group_synthetic": [
+      "getDocenteGrupoPanelF80",
+      "getDocenteGrupoPanelF79",
+      "getAsistenciaDetalleGrupoF77",
+      "getDocenteSesionClaseF77",
+      "getEstudiantesParaCierre",
+      "getLeccionCerradaDetalle",
+      "getGrupoInfo",
+      "getGrupoEstudiantes",
+      "getAsistenciaGrupoCompleta"
+    ],
+    "teacher_identity_synthetic": [
+      "getCalendarioDocente",
+      "getTareasPendientesDocente"
+    ],
+    "teacher_student_synthetic": [
+      "getEvaluacionesEstudiante",
+      "getRetroalimentacionEstudiante"
+    ],
+    "student_synthetic": [
+      "getPortalEstudianteCompleto",
+      "getEstudiante",
+      "getAsistenciaEstudiante",
+      "getICANEstudiante",
+      "getFechasGrupo"
+    ]
+  },
+  "scope_policy": {
+    "demo_student": {
+      "student_codes": "must equal the validated session codigo",
+      "cedulas": "must equal the validated session cedula",
+      "groups": "must equal the synthetic group derived from the session codigo",
+      "required_identifiers": {
+        "getPortalEstudianteCompleto": "own student code",
+        "getEstudiante": "own student code",
+        "getAsistenciaEstudiante": "own student code",
+        "getICANEstudiante": "own student code",
+        "getFechasGrupo": "own synthetic group"
+      }
+    },
+    "demo_teacher": {
+      "groups": "synthetic demo groups only",
+      "student_codes": "synthetic demo students only",
+      "student_cedulas": "synthetic demo student cedulas only",
+      "teacher_identity": "canonical demo teacher identity only",
+      "missing_required_scope": "deny fail-closed"
+    }
+  },
+  "synthetic_student_portal": {
+    "calls_real_portal_before_demo_check": false,
+    "exam_live_panel_called": false,
+    "exam_sheet_setup_called": false,
+    "exams": "explicitly disabled in demo",
+    "sources": [
+      "synthetic student ficha",
+      "synthetic attendance",
+      "synthetic evaluations",
+      "synthetic feedback",
+      "synthetic I CAN",
+      "synthetic lesson dates"
+    ]
+  },
+  "intentionally_blocked_read_like_routes": {
+    "getPerfilDocenteCS21A76": "can create teacher folders/write metadata",
+    "examReviewInbox": "can initialize exam sheets",
+    "getMisCertificadosEstado": "certificate lookup has read-side effects until SEC-002 candidate is integrated",
+    "getSesionClaseEstudiante": "can ensure/create session sheet structures",
+    "getEstudianteFresh": "no synthetic short-circuit",
+    "getComprobantes": "real financial data surface",
+    "getEstadoConape": "real CONAPE data surface",
+    "academiaPlayGetProgress": "ensures progress sheet",
+    "academiaPlayBankGetGame": "can ensure bank headers/sheets",
+    "academiaPlayCompletionSummary": "can ensure completion headers/sheets",
+    "getBibliotecaNivelEstudiante": "no proven synthetic-only adapter",
+    "getAudioPistaEstudiante": "no proven synthetic-only adapter",
+    "oralGetPanelDocente": "can fall through to exam/oral setup",
+    "oralGetResumenGrupo": "can fall through to exam/oral setup",
+    "oralGetEvaluacion": "can fall through to exam/oral setup"
+  },
+  "non_goals": [
+    "editing Memory Match",
+    "changing production data",
+    "changing Apps Script deployment",
+    "making all demo features available immediately",
+    "treating frontend-disabled buttons as the security boundary"
+  ],
+  "evidence_required_to_close": [
+    "new rotated demo secrets are configured only in QA Script Properties",
+    "demo login fails when a secret property is absent or too short",
+    "validated demo sessions are re-annotated read_only on every request",
+    "global guard is the final doPost wrapper in the installed QA source",
+    "every unknown or mutating demo POST returns demo_read_only",
+    "scope-forged demo reads cannot reach real groups, students, cedulas or teachers",
+    "synthetic portal performs zero real exam initialization",
+    "simulated teacher demo writes are proven non-persistent",
+    "real student/teacher/admin sessions continue to operate normally",
+    "public enrollment routes without a token remain unchanged",
+    "QA endpoint matrix and representative UI regression pass",
+    "production promotion is separately authorized"
+  ]
+}
