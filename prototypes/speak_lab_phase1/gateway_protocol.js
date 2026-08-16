@@ -144,7 +144,11 @@ export function validateGatewayPronunciationMetadata(input) {
   invariant(durationMs <= VOICE_GATEWAY_LIMITS.maxAudioDurationMs, 'AUDIO_TOO_LONG', 'Audio excede duración máxima del gateway.');
 
   const mimeType = clean(input.mimeType).toLowerCase();
-  invariant(/^audio\/ogg(?:;|$)/.test(mimeType), 'UNSUPPORTED_PRONUNCIATION_AUDIO_TYPE', 'Pronunciación QA requiere audio OGG/Opus.');
+  invariant(
+    /^audio\/ogg(?:;|$)/.test(mimeType) || /^audio\/(wav|x-wav)(?:;|$)/.test(mimeType),
+    'UNSUPPORTED_PRONUNCIATION_AUDIO_TYPE',
+    'Pronunciación requiere OGG/Opus o WAV PCM canónico.',
+  );
 
   const referenceText = clean(input.referenceText);
   invariant(referenceText, 'MISSING_REFERENCE_TEXT', 'Pronunciación requiere referenceText.');
