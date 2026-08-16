@@ -1,6 +1,6 @@
 {
   "id": "SEC-002",
-  "version": 1,
+  "version": 2,
   "status": "remediation_in_progress",
   "principle": "sensitive Campus documents are private at rest and are never made world-readable merely to obtain a usable URL",
   "private_by_default": true,
@@ -39,7 +39,8 @@
     "DriveApp.Access.ANYONE on a sensitive file",
     "world-readable permission on DOCUMENTOS_ESTUDIANTES",
     "returning a public Drive URL as the authorization mechanism",
-    "client-selected file ownership without server-side authorization"
+    "client-selected file ownership without server-side authorization",
+    "read-only document status endpoints deleting or trashing files as a side effect"
   ],
   "authenticated_delivery": {
     "request_requires_campus_session": true,
@@ -51,19 +52,32 @@
       "document class",
       "document lifecycle state"
     ],
-    "grant": {
-      "opaque_or_signed": true,
-      "single_document": true,
-      "single_subject": true,
-      "ttl_seconds_max": 120,
-      "replay_protection_required_for_high_sensitivity": true
+    "modes": {
+      "direct_one_shot_small_file": {
+        "preferred_when": "the bounded document is small enough for a single authenticated response",
+        "single_response": true,
+        "storage_url_returned": false,
+        "size_limit_required": true,
+        "trusted_mime_allowlist_required": true,
+        "integrity_digest_recommended": true,
+        "rate_limit_required": true,
+        "reusable_grant_required": false
+      },
+      "short_lived_grant_gateway": {
+        "preferred_when": "binary streaming, larger objects or cross-service delivery is required",
+        "opaque_or_signed_grant": true,
+        "single_document": true,
+        "single_subject": true,
+        "ttl_seconds_max": 120,
+        "replay_protection_required_for_high_sensitivity": true
+      }
     },
     "delivery": {
       "binary_stream_or_equivalent": true,
       "must_not_require_world_readable_source": true,
       "content_type_from_trusted_metadata": true,
-      "content_disposition_controlled": true,
-      "cache_control_private": true,
+      "content_disposition_controlled_where_supported": true,
+      "cache_control_private_where_supported": true,
       "rate_limit_required": true,
       "audit_event_without_document_contents": true
     }
@@ -94,7 +108,7 @@
     "teacher private documents are not world-readable",
     "financial proofs are not world-readable",
     "public enrollment assets continue to work from an explicitly isolated public subtree",
-    "negative authorization and expired-grant tests pass",
+    "negative authorization plus applicable size, rate-limit, expiry or replay tests pass",
     "production permission migration has rollback evidence"
   ]
 }
