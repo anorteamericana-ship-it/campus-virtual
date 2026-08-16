@@ -4,7 +4,7 @@ import {
   validatePronunciationResult,
 } from '../speak_lab_phase1/contracts.js';
 
-const DEFAULT_EVALUATOR_VERSION = 'azure-pronunciation-rest-v0.1-unvalidated';
+const DEFAULT_EVALUATOR_VERSION = 'azure-pronunciation-rest-v0.2-live-shape-unvalidated';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const AZURE_REGION_PATTERN = /^[a-z0-9-]{2,40}$/;
 
@@ -29,6 +29,30 @@ function normalizeRegion(value) {
   invariant(region, 'AZURE_SPEECH_REGION_REQUIRED', 'AZURE_SPEECH_REGION es obligatorio en servidor.');
   invariant(AZURE_REGION_PATTERN.test(region), 'INVALID_AZURE_SPEECH_REGION', 'AZURE_SPEECH_REGION inválida.');
   return region;
+}
+
+function normalizeEndpoint(value) {
+  const raw = clean(value);
+  invariant(raw, 'AZURE_SPEECH_ENDPOINT_REQUIRED', 'AZURE_SPEECH_ENDPOINT es obligatorio en servidor.');
+
+  let url;
+  try { url = new URL(raw); }
+  catch (_) { throw new SpeakLabContractError('INVALID_AZURE_SPEECH_ENDPOINT', 'AZURE_SPEECH_ENDPOINT inválido.'); }
+
+  invariant(url.protocol === 'https:', 'INVALID_AZURE_SPEECH_ENDPOINT', 'AZURE_SPEECH_ENDPOINT debe usar HTTPS.');
+  invariant(
+    url.hostname.endsWith('.cognitiveservices.azure.com'),
+    'INVALID_AZURE_SPEECH_ENDPOINT',
+    'AZURE_SPEECH_ENDPOINT debe pertenecer a cognitiveservices.azure.com.',
+  );
+  invariant(
+    url.pathname === '/' || url.pathname === '',
+    'INVALID_AZURE_SPEECH_ENDPOINT',
+    'AZURE_SPEECH_ENDPOINT debe ser la raíz del recurso Azure.',
+  );
+  invariant(!url.username && !url.password && !url.search && !url.hash, 'INVALID_AZURE_SPEECH_ENDPOINT', 'AZURE_SPEECH_ENDPOINT no puede contener credenciales, query ni hash.');
+
+  return url.origin;
 }
 
 function normalizeAudioContentType(blob) {
@@ -88,10 +112,14 @@ function issueMessage(errorType, target) {
   return '';
 }
 
+function wordErrorType(word) {
+  return clean(word?.ErrorType || word?.PronunciationAssessment?.ErrorType);
+}
+
 function issuesFromAzure(best) {
   const issues = [];
   for (const word of Array.isArray(best?.Words) ? best.Words : []) {
-    const errorType = clean(word?.PronunciationAssessment?.ErrorType);
+    const errorType = wordErrorType(word);
     if (!errorType || errorType === 'None') continue;
     const target = clean(word?.Word || word?.DisplayText || 'segmento');
     const message = issueMessage(errorType, target);
@@ -119,24 +147,18 @@ function mapAzureResult(data) {
   const best = Array.isArray(data?.NBest) ? data.NBest[0] : null;
   invariant(best && typeof best === 'object', 'AZURE_PRONUNCIATION_NBEST_MISSING', 'Azure Pronunciation no devolvió NBest[0].');
 
-  const assessment = best?.PronunciationAssessment;
-  invariant(
-    assessment && typeof assessment === 'object',
-    'AZURE_PRONUNCIATION_ASSESSMENT_MISSING',
-    'Azure Pronunciation no devolvió PronunciationAssessment.',
-  );
-
-  // Mapeo V0 deliberadamente conservador:
-  // AccuracyScore es señal directa de precisión fonética/segmental y FluencyScore de fluidez.
-  // ProsodyScore combina estrés, entonación, velocidad y ritmo; NO se reparte artificialmente
-  // entre dimensiones contractuales hasta tener calibración humana y evidencia suficiente.
+  // Forma REST verificada en QA real 2026-08-15:
+  // AccuracyScore / FluencyScore / CompletenessScore / ProsodyScore / PronScore viven en NBest[0].
+  // Words[].AccuracyScore / ErrorType / Phonemes[] también son campos directos.
+  // El contrato SPEAK LAB V0 solo mapea señales suficientemente directas.
+  // ProsodyScore combina estrés, entonación, velocidad y ritmo; NO se reparte artificialmente.
   return validatePronunciationResult({
     dimensions:{
       intelligibility:null,
-      segmentalAccuracy:finiteScore(assessment.AccuracyScore),
+      segmentalAccuracy:finiteScore(best.AccuracyScore),
       wordStress:null,
       rhythm:null,
-      fluency:finiteScore(assessment.FluencyScore),
+      fluency:finiteScore(best.FluencyScore),
       intonation:null,
     },
     issues:issuesFromAzure(best),
@@ -160,6 +182,7 @@ export class AzurePronunciationProvider {
 
     this.apiKey = apiKey;
     this.region = normalizeRegion(env?.AZURE_SPEECH_REGION);
+    this.endpoint = normalizeEndpoint(env?.AZURE_SPEECH_ENDPOINT);
     this.fetchImpl = fetchImpl;
     this.timeoutMs = Math.min(Math.max(Number(timeoutMs) || DEFAULT_TIMEOUT_MS, 1_000), 120_000);
   }
@@ -178,7 +201,7 @@ export class AzurePronunciationProvider {
       EnableProsodyAssessment:'True',
     };
 
-    const url = new URL(`https://${this.region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1`);
+    const url = new URL('/stt/speech/recognition/conversation/cognitiveservices/v1', `${this.endpoint}/`);
     url.searchParams.set('language', locale);
     url.searchParams.set('format', 'detailed');
 

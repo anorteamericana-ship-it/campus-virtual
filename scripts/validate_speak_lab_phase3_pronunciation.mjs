@@ -6,33 +6,48 @@ import {
 
 const calls = [];
 
+// Fake basado en la forma REST observada en QA real 2026-08-15.
 const fakeAzureResponse = {
   RecognitionStatus:'Success',
   Offset:0,
   Duration:28200000,
+  DisplayText:"What's your name?",
   NBest:[{
     Confidence:0.92,
     Lexical:"what's your name",
     Display:"What's your name?",
-    PronunciationAssessment:{
-      AccuracyScore:84.5,
-      FluencyScore:78,
-      CompletenessScore:100,
-      PronScore:82,
-      ProsodyScore:73,
-    },
+    AccuracyScore:84.5,
+    FluencyScore:78,
+    CompletenessScore:100,
+    PronScore:82,
+    ProsodyScore:73,
     Words:[
       {
-        Word:"What's",
-        PronunciationAssessment:{ AccuracyScore:91, ErrorType:'None' },
+        Word:"what's",
+        AccuracyScore:91,
+        ErrorType:'None',
+        Phonemes:[
+          { Phoneme:'w', AccuracyScore:90 },
+          { Phoneme:'ao', AccuracyScore:93 },
+        ],
       },
       {
         Word:'your',
-        PronunciationAssessment:{ AccuracyScore:88, ErrorType:'None' },
+        AccuracyScore:88,
+        ErrorType:'None',
+        Phonemes:[
+          { Phoneme:'y', AccuracyScore:89 },
+        ],
       },
       {
         Word:'name',
-        PronunciationAssessment:{ AccuracyScore:58, ErrorType:'Mispronunciation' },
+        AccuracyScore:58,
+        ErrorType:'Mispronunciation',
+        Phonemes:[
+          { Phoneme:'n', AccuracyScore:61 },
+          { Phoneme:'ey', AccuracyScore:54 },
+          { Phoneme:'m', AccuracyScore:59 },
+        ],
       },
     ],
   }],
@@ -49,11 +64,14 @@ const fakeFetch = async (url, init) => {
   });
 };
 
+const env = {
+  AZURE_SPEECH_KEY:'qa-placeholder-key-not-secret',
+  AZURE_SPEECH_REGION:'eastus',
+  AZURE_SPEECH_ENDPOINT:'https://speak-lab-speech-qa.cognitiveservices.azure.com',
+};
+
 const provider = new AzurePronunciationProvider({
-  env:{
-    AZURE_SPEECH_KEY:'qa-placeholder-key-not-secret',
-    AZURE_SPEECH_REGION:'eastus',
-  },
+  env,
   fetchImpl:fakeFetch,
 });
 
@@ -72,8 +90,8 @@ assert.equal(calls.length, 1);
 const request = calls[0];
 const url = new URL(request.url);
 assert.equal(url.protocol, 'https:');
-assert.equal(url.hostname, 'eastus.stt.speech.microsoft.com');
-assert.equal(url.pathname, '/speech/recognition/conversation/cognitiveservices/v1');
+assert.equal(url.hostname, 'speak-lab-speech-qa.cognitiveservices.azure.com');
+assert.equal(url.pathname, '/stt/speech/recognition/conversation/cognitiveservices/v1');
 assert.equal(url.searchParams.get('language'), 'en-US');
 assert.equal(url.searchParams.get('format'), 'detailed');
 assert.equal(request.init.method, 'POST');
@@ -103,7 +121,7 @@ assert.equal(result.dimensions.intonation, null);
 assert.equal(result.calibrated, false);
 assert.equal(result.official, false);
 assert.equal(result.confidence, null);
-assert.equal(result.evaluatorVersion, 'azure-pronunciation-rest-v0.1-unvalidated');
+assert.equal(result.evaluatorVersion, 'azure-pronunciation-rest-v0.2-live-shape-unvalidated');
 assert.equal(result.issues.length, 1);
 assert.equal(result.issues[0].code, 'AZURE_MISPRONUNCIATION');
 assert.equal(result.issues[0].target, 'name');
@@ -114,7 +132,10 @@ assert.equal(Object.prototype.hasOwnProperty.call(result, 'finalGrade'), false);
 
 assert.throws(
   () => new AzurePronunciationProvider({
-    env:{ AZURE_SPEECH_REGION:'eastus' },
+    env:{
+      AZURE_SPEECH_REGION:'eastus',
+      AZURE_SPEECH_ENDPOINT:'https://speak-lab-speech-qa.cognitiveservices.azure.com',
+    },
     fetchImpl:fakeFetch,
   }),
   error => error?.code === 'AZURE_SPEECH_KEY_REQUIRED',
@@ -125,10 +146,34 @@ assert.throws(
     env:{
       AZURE_SPEECH_KEY:'qa-placeholder-key-not-secret',
       AZURE_SPEECH_REGION:'eastus.evil.example',
+      AZURE_SPEECH_ENDPOINT:'https://speak-lab-speech-qa.cognitiveservices.azure.com',
     },
     fetchImpl:fakeFetch,
   }),
   error => error?.code === 'INVALID_AZURE_SPEECH_REGION',
+);
+
+assert.throws(
+  () => new AzurePronunciationProvider({
+    env:{
+      AZURE_SPEECH_KEY:'qa-placeholder-key-not-secret',
+      AZURE_SPEECH_REGION:'eastus',
+      AZURE_SPEECH_ENDPOINT:'https://evil.example.com',
+    },
+    fetchImpl:fakeFetch,
+  }),
+  error => error?.code === 'INVALID_AZURE_SPEECH_ENDPOINT',
+);
+
+assert.throws(
+  () => new AzurePronunciationProvider({
+    env:{
+      AZURE_SPEECH_KEY:'qa-placeholder-key-not-secret',
+      AZURE_SPEECH_REGION:'eastus',
+    },
+    fetchImpl:fakeFetch,
+  }),
+  error => error?.code === 'AZURE_SPEECH_ENDPOINT_REQUIRED',
 );
 
 await assert.rejects(
@@ -145,6 +190,7 @@ const failingProvider = new AzurePronunciationProvider({
   env:{
     AZURE_SPEECH_KEY:secretMarker,
     AZURE_SPEECH_REGION:'eastus',
+    AZURE_SPEECH_ENDPOINT:'https://speak-lab-speech-qa.cognitiveservices.azure.com',
   },
   fetchImpl:async () => new Response(
     JSON.stringify({ error:{ message:`invalid key ${secretMarker}` } }),
@@ -179,6 +225,8 @@ console.log(JSON.stringify({
   ok:true,
   phase:'speak-lab-phase3-pronunciation-offline',
   provider:'azure-pronunciation-rest',
+  response_shape:'verified-against-real-qa-2026-08-15',
+  endpoint_mode:'resource-cognitiveservices',
   mapped_dimensions:['segmentalAccuracy','fluency'],
   intentionally_null_dimensions:['intelligibility','wordStress','rhythm','intonation'],
   target_reference_used_only_by_pronunciation_evaluator:true,
