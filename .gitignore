@@ -6,3 +6,4 @@
 !.env.example
 !.dev.vars.example
 .wrangler/
+.speak-lab-calibration-local/

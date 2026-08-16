@@ -1,0 +1,50 @@
+name: Validate SPEAK LAB PC8 Calibration Harness
+
+on:
+  push:
+    branches:
+      - feature/speak-lab-pc8-calibration-harness-qa
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase3/pronunciation_calibration_harness.mjs'
+      - 'scripts/run_speak_lab_phase3_calibration_local.mjs'
+      - 'scripts/validate_speak_lab_phase3_calibration_harness.mjs'
+      - '00_DOCUMENTACION/SPEAK_LAB_PRONUNCIATION_CALIBRATION_PC8_2026-08-15.md'
+      - '.github/workflows/validate-speak-lab-phase3-calibration.yml'
+      - '.gitignore'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-calibration-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Syntax checks
+        run: |
+          node --check prototypes/speak_lab_phase3/pronunciation_calibration_harness.mjs
+          node --check scripts/run_speak_lab_phase3_calibration_local.mjs
+          node --check scripts/validate_speak_lab_phase3_calibration_harness.mjs
+
+      - name: PC8 fake and adversarial calibration gate
+        run: node scripts/validate_speak_lab_phase3_calibration_harness.mjs
+
+      - name: Recheck Phase 3 pronunciation provider
+        run: node scripts/validate_speak_lab_phase3_pronunciation.mjs
+
+      - name: Scope guard
+        run: |
+          if grep -Eq 'fetch\(|https://|AZURE_SPEECH_KEY|OPENAI_API_KEY|VOICE_GRANT_SIGNING_SECRET' prototypes/speak_lab_phase3/pronunciation_calibration_harness.mjs scripts/run_speak_lab_phase3_calibration_local.mjs scripts/validate_speak_lab_phase3_calibration_harness.mjs; then
+            echo 'PC8 calibration harness must stay offline and secret-free.'
+            exit 1
+          fi
+          grep -q '^\.speak-lab-calibration-local/$' .gitignore
