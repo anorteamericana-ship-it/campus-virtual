@@ -55,7 +55,8 @@ assert.match(integration, /anLazyCampus\.loadMany/);
 assert.match(guard, /speak_lab_pilot_integration_cs21a216\.js/);
 
 // Gateway y Azure aceptan WAV canónico además del OGG legado.
-assert.match(protocol, /audio\\\/(wav\|x-wav)/);
+assert.ok(protocol.includes('wav|x-wav'), 'El protocolo debe admitir WAV/X-WAV para pronunciación.');
+assert.match(protocol, /UNSUPPORTED_PRONUNCIATION_AUDIO_TYPE/);
 assert.match(azure, /audio\/wav; codecs=audio\/pcm; samplerate=16000/);
 assert.match(azure, /azure-pronunciation-rest-v0\.3-wav-ogg-unvalidated/);
 
