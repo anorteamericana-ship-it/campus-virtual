@@ -1,0 +1,43 @@
+name: REL001 build English LAB endpoint manifest once
+
+on:
+  push:
+    branches:
+      - fix/rel001-english-lab-backend-contract
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/rel001-english-lab-backend-contract
+          fetch-depth: 0
+      - name: Verify exact PR85 ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "fix/rel001-english-lab-backend-contract"
+          git merge-base --is-ancestor 49eb9fb8b9286d7de238ba46a0fcf9d07d7d7d8d HEAD
+      - name: Extract runtime source endpoint literals
+        run: node scripts/rel001_extract_english_lab_endpoints.mjs
+      - name: Sanity check manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "const m=require('./qa/rel001_english_lab_frontend_endpoints.json'); if(!m.literal_endpoint_count || !Array.isArray(m.endpoints)) process.exit(1); console.log(m.literal_endpoint_count,m.runtime_likely_count)"
+          git diff --check
+          test "$(git diff --name-only)" = "qa/rel001_english_lab_frontend_endpoints.json"
+      - name: Commit generated manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add qa/rel001_english_lab_frontend_endpoints.json
+          git commit -m "REL001 snapshot English LAB frontend endpoint contract"
+          git push origin HEAD:fix/rel001-english-lab-backend-contract
