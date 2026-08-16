@@ -13,6 +13,11 @@ expect(/if\(!clean\(studentCode\)\)/.test(source), 'join does not fail closed wh
 expect(/<input\s+value=\{playerName\}\s+readOnly/.test(source), 'player identity field is not read-only');
 expect(/<input\s+value=\{studentCode\}\s+readOnly/.test(source), 'student code field is not read-only');
 
+const codeHelper = source.match(/function\s+liveStudentCode\(usuario\)\{[\s\S]*?\n\s*\}/)?.[0] || '';
+expect(!!codeHelper, 'liveStudentCode helper not found');
+expect(!/cedula|identificacion/i.test(codeHelper), 'Live student code still falls back to cédula/identification instead of enrolled Campus codigo');
+expect(/u\.codigo|u\.CODIGO|u\.cod_estudiante|u\.COD_ESTUDIANTE/.test(codeHelper), 'Live student code no longer reads enrolled Campus codigo');
+
 // Player UI may know the answer only after backend reveal. This source still
 // reads question.correct to render the closed-round reveal, so the security
 // boundary must remain server-side and is tested separately against Code.gs.
@@ -25,5 +30,5 @@ if (failures.length) {
 }
 console.log('SEC003 ENGLISH LAB LIVE FRONTEND: PASS');
 console.log('- player name/code are session-derived and read-only');
-console.log('- demo-without-enrolled-code UI removed');
+console.log('- Live requires enrolled Campus codigo; no cédula/demo fallback');
 console.log('- closed-round reveal renderer preserved');
