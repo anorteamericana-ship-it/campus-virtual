@@ -7,8 +7,14 @@ on:
   pull_request:
     paths:
       - 'prototypes/speak_lab_phase3/**'
+      - 'prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs'
+      - 'prototypes/speak_lab_phase2/wrangler.qa.template.jsonc'
       - 'prototypes/speak_lab_phase1/contracts.js'
+      - 'prototypes/speak_lab_phase1/gateway_protocol.js'
       - 'scripts/validate_speak_lab_phase3_pronunciation.mjs'
+      - 'scripts/validate_speak_lab_phase3_gateway_pronunciation.mjs'
+      - 'scripts/validate_speak_lab_cloudflare_worker.mjs'
+      - 'scripts/validate_speak_lab_gateway_protocol.mjs'
       - '.github/workflows/validate-speak-lab-phase3-pronunciation.yml'
 
 permissions:
@@ -17,7 +23,7 @@ permissions:
 jobs:
   validate-pronunciation-adapter-offline:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,11 +33,32 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Syntax check Azure pronunciation adapter
-        run: node --check prototypes/speak_lab_phase3/azure_pronunciation_provider.mjs
+      - name: Syntax checks
+        run: |
+          node --check prototypes/speak_lab_phase3/azure_pronunciation_provider.mjs
+          node --check prototypes/speak_lab_phase2/cloudflare_voice_worker.mjs
+          node --check prototypes/speak_lab_phase1/gateway_protocol.js
+          node --check scripts/validate_speak_lab_phase3_pronunciation.mjs
+          node --check scripts/validate_speak_lab_phase3_gateway_pronunciation.mjs
 
-      - name: Syntax check Phase 3 QA
-        run: node --check scripts/validate_speak_lab_phase3_pronunciation.mjs
+      - name: Recheck Voice Gateway protocol
+        run: node scripts/validate_speak_lab_gateway_protocol.mjs
 
-      - name: Validate provider contract with fake network only
+      - name: Recheck Phase 2 Cloudflare Worker regressions
+        run: node scripts/validate_speak_lab_cloudflare_worker.mjs
+
+      - name: Validate Azure provider contract with fake network only
         run: node scripts/validate_speak_lab_phase3_pronunciation.mjs
+
+      - name: Validate pronunciation route with fake Azure network only
+        run: node scripts/validate_speak_lab_phase3_gateway_pronunciation.mjs
+
+      - name: Assert no real secrets or deploy config
+        run: |
+          grep -q '__SET_AZURE_SPEECH_REGION__' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          grep -q '__SET_AZURE_SPEECH_ENDPOINT__' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          grep -q 'AZURE_SPEECH_KEY' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc
+          if grep -Eq 'speak-lab-speech-qa\.cognitiveservices\.azure\.com|AZURE_TEST_ONLY_KEY_NEVER_REAL' prototypes/speak_lab_phase2/wrangler.qa.template.jsonc; then
+            echo 'Wrangler template must keep Azure QA endpoint/key as placeholders only.'
+            exit 1
+          fi

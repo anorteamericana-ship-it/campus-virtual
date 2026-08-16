@@ -16,6 +16,8 @@ export const VOICE_GATEWAY_LIMITS = Object.freeze({
   maxTtsCharacters: 4096,
   maxVocabularyHints: 32,
   maxVocabularyHintCharacters: 32,
+  maxPronunciationReferenceCharacters: 4096,
+  maxRubricVersionCharacters: 120,
 });
 
 const ALLOWED_SCOPES = new Set(Object.values(VOICE_GATEWAY_SCOPES));
@@ -128,6 +130,44 @@ export function validateGatewaySttMetadata(input) {
     mimeType,
     language:clean(input.language || 'en'),
     vocabularyHints:normalizeVocabularyHints(input.vocabularyHints),
+  });
+}
+
+export function validateGatewayPronunciationMetadata(input) {
+  invariant(isObject(input), 'INVALID_GATEWAY_PRONUNCIATION', 'Metadata de pronunciación inválida.');
+
+  const byteLength = Number(input.byteLength);
+  const durationMs = Number(input.durationMs);
+  invariant(Number.isInteger(byteLength) && byteLength > 0, 'INVALID_AUDIO_SIZE', 'Pronunciación requiere byteLength positivo.');
+  invariant(byteLength <= VOICE_GATEWAY_LIMITS.maxAudioBytes, 'AUDIO_TOO_LARGE', 'Audio excede tamaño máximo del gateway.');
+  invariant(Number.isFinite(durationMs) && durationMs > 0, 'INVALID_AUDIO_DURATION', 'Pronunciación requiere duración positiva.');
+  invariant(durationMs <= VOICE_GATEWAY_LIMITS.maxAudioDurationMs, 'AUDIO_TOO_LONG', 'Audio excede duración máxima del gateway.');
+
+  const mimeType = clean(input.mimeType).toLowerCase();
+  invariant(/^audio\/ogg(?:;|$)/.test(mimeType), 'UNSUPPORTED_PRONUNCIATION_AUDIO_TYPE', 'Pronunciación QA requiere audio OGG/Opus.');
+
+  const referenceText = clean(input.referenceText);
+  invariant(referenceText, 'MISSING_REFERENCE_TEXT', 'Pronunciación requiere referenceText.');
+  invariant(
+    referenceText.length <= VOICE_GATEWAY_LIMITS.maxPronunciationReferenceCharacters,
+    'PRONUNCIATION_REFERENCE_TOO_LONG',
+    'referenceText excede el límite del gateway.',
+  );
+
+  const rubricVersion = clean(input.rubricVersion || 'speaklab-pronunciation-v0');
+  invariant(
+    rubricVersion.length <= VOICE_GATEWAY_LIMITS.maxRubricVersionCharacters,
+    'RUBRIC_VERSION_TOO_LONG',
+    'rubricVersion excede el límite del gateway.',
+  );
+
+  return Object.freeze({
+    byteLength,
+    durationMs,
+    mimeType,
+    language:clean(input.language || 'en-US'),
+    referenceText,
+    rubricVersion,
   });
 }
 

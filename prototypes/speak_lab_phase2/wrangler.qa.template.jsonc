@@ -14,12 +14,15 @@
     "qa": {
       "vars": {
         "ENVIRONMENT": "qa",
-        "ALLOWED_ORIGINS": "__SET_EXACT_QA_ORIGIN__"
+        "ALLOWED_ORIGINS": "__SET_EXACT_QA_ORIGIN__",
+        "AZURE_SPEECH_REGION": "__SET_AZURE_SPEECH_REGION__",
+        "AZURE_SPEECH_ENDPOINT": "__SET_AZURE_SPEECH_ENDPOINT__"
       },
       "secrets": {
         "required": [
           "OPENAI_API_KEY",
-          "VOICE_GRANT_SIGNING_SECRET"
+          "VOICE_GRANT_SIGNING_SECRET",
+          "AZURE_SPEECH_KEY"
         ]
       },
       "ratelimits": [

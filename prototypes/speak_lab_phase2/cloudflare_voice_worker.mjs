@@ -5,11 +5,13 @@ import {
   VOICE_GATEWAY_SCOPES,
   assertNoProviderSecrets,
   requireVoiceScope,
+  validateGatewayPronunciationMetadata,
   validateGatewaySttMetadata,
   validateGatewayTtsEnvelope,
   validateVoiceGrantClaims,
 } from '../speak_lab_phase1/gateway_protocol.js';
 import { OpenAIAudioProvider } from './openai_audio_provider.mjs';
+import { AzurePronunciationProvider } from '../speak_lab_phase3/azure_pronunciation_provider.mjs';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -31,6 +33,8 @@ const ALLOWED_CORS_HEADERS = Object.freeze([
   'X-SpeakLab-Language',
   'X-SpeakLab-Duration-Ms',
   'X-SpeakLab-Vocabulary-Hints',
+  'X-SpeakLab-Reference-Text',
+  'X-SpeakLab-Rubric-Version',
 ]);
 const SAFE_UPSTREAM_PARAMS = Object.freeze([
   'model', 'input', 'voice', 'response_format', 'speed', 'instructions', 'file', 'language',
@@ -185,6 +189,13 @@ function parseVocabularyHints(value) {
   }
 }
 
+function decodeMetadataHeader(value, code, message) {
+  const raw = clean(value);
+  if (!raw) return '';
+  try { return decodeURIComponent(raw); }
+  catch (_) { throw new GatewayHttpError(400, code, message); }
+}
+
 async function parseTtsBody(request) {
   const declared = Number(request.headers.get('Content-Length'));
   if (Number.isFinite(declared) && declared > MAX_TTS_BODY_BYTES) {
@@ -218,14 +229,57 @@ async function parseSttRequest(request) {
   return { audio, metadata };
 }
 
+async function parsePronunciationRequest(request) {
+  const declared = Number(request.headers.get('Content-Length'));
+  if (Number.isFinite(declared) && declared > VOICE_GATEWAY_LIMITS.maxAudioBytes) {
+    throw new GatewayHttpError(413, 'AUDIO_TOO_LARGE', 'Audio excede tamaño máximo del gateway.');
+  }
+  const audio = await request.blob();
+  const metadata = validateGatewayPronunciationMetadata({
+    byteLength:audio.size,
+    durationMs:Number(request.headers.get('X-SpeakLab-Duration-Ms')),
+    mimeType:clean(request.headers.get('Content-Type')),
+    language:clean(request.headers.get('X-SpeakLab-Language') || 'en-US'),
+    referenceText:decodeMetadataHeader(
+      request.headers.get('X-SpeakLab-Reference-Text'),
+      'INVALID_REFERENCE_TEXT_ENCODING',
+      'referenceText tiene encoding inválido.',
+    ),
+    rubricVersion:decodeMetadataHeader(
+      request.headers.get('X-SpeakLab-Rubric-Version') || 'speaklab-pronunciation-v0',
+      'INVALID_RUBRIC_VERSION_ENCODING',
+      'rubricVersion tiene encoding inválido.',
+    ),
+  });
+  return { audio, metadata };
+}
+
 function providerFor(env, fetchImpl) {
   return new OpenAIAudioProvider({ env, fetchImpl });
 }
 
+function pronunciationProviderFor(env, fetchImpl) {
+  return new AzurePronunciationProvider({ env, fetchImpl });
+}
+
 function providerStatus(error) {
-  if (error?.code === 'OPENAI_AUDIO_TIMEOUT') return 504;
+  if (error?.code === 'OPENAI_AUDIO_TIMEOUT' || error?.code === 'AZURE_PRONUNCIATION_TIMEOUT') return 504;
   if (['OPENAI_AUDIO_HTTP_ERROR','OPENAI_AUDIO_NETWORK_ERROR','OPENAI_STT_INVALID_JSON','OPENAI_TTS_EMPTY_AUDIO'].includes(error?.code)) return 502;
+  if ([
+    'AZURE_PRONUNCIATION_HTTP_ERROR',
+    'AZURE_PRONUNCIATION_NETWORK_ERROR',
+    'AZURE_PRONUNCIATION_INVALID_JSON',
+    'AZURE_PRONUNCIATION_RECOGNITION_FAILED',
+    'AZURE_PRONUNCIATION_NBEST_MISSING',
+  ].includes(error?.code)) return 502;
   if (error?.code === 'OPENAI_API_KEY_REQUIRED') return 503;
+  if ([
+    'AZURE_SPEECH_KEY_REQUIRED',
+    'AZURE_SPEECH_REGION_REQUIRED',
+    'AZURE_SPEECH_ENDPOINT_REQUIRED',
+    'INVALID_AZURE_SPEECH_REGION',
+    'INVALID_AZURE_SPEECH_ENDPOINT',
+  ].includes(error?.code)) return 503;
   return null;
 }
 
@@ -276,7 +330,27 @@ function safeCategoryFromStructured(type, code, param, message) {
   return safeCategoryFromProviderMessage(message);
 }
 
+function safeAzureCategory(status) {
+  if (status === 401 || status === 403) return 'PERMISSION_DENIED';
+  if (status === 429) return 'BILLING_OR_QUOTA';
+  return null;
+}
+
 function safeUpstreamDiagnostics(error) {
+  if (error?.code === 'AZURE_PRONUNCIATION_HTTP_ERROR') {
+    const status = Number(error?.details?.status);
+    const requestId = clean(error?.details?.requestId);
+    const safeStatus = Number.isInteger(status) && status >= 100 && status <= 599 ? status : null;
+    return {
+      upstreamStatus:safeStatus,
+      upstreamRequestId:/^[A-Za-z0-9._:-]{1,160}$/.test(requestId) ? requestId : null,
+      upstreamType:null,
+      upstreamCode:null,
+      upstreamCategory:safeAzureCategory(safeStatus),
+      upstreamParam:null,
+    };
+  }
+
   if (error?.code !== 'OPENAI_AUDIO_HTTP_ERROR') {
     return {
       upstreamStatus:null,
@@ -309,7 +383,12 @@ function normalizeError(error) {
   if (error instanceof GatewayHttpError) return error;
   const upstreamStatus = providerStatus(error);
   if (upstreamStatus) {
-    return new GatewayHttpError(upstreamStatus, error.code, 'Proveedor de voz temporalmente no disponible.');
+    const pronunciation = clean(error?.code).startsWith('AZURE_');
+    return new GatewayHttpError(
+      upstreamStatus,
+      error.code,
+      pronunciation ? 'Proveedor de pronunciación temporalmente no disponible.' : 'Proveedor de voz temporalmente no disponible.',
+    );
   }
   if (error instanceof SpeakLabContractError || clean(error?.code)) {
     return new GatewayHttpError(400, clean(error.code || 'VOICE_GATEWAY_CONTRACT_ERROR'), clean(error.message || 'Solicitud inválida.'));
@@ -442,8 +521,33 @@ export function createSpeakLabCloudflareWorker({
           }, { origin, requestId });
         }
 
+        if (request.method === 'POST' && url.pathname === '/v1/pronunciation') {
+          const claims = await authorize(request, env, VOICE_GATEWAY_SCOPES.PRONUNCIATION_WRITE, Math.floor(nowMs() / 1000));
+          logEntry.sub = claims.sub;
+          logEntry.scope = VOICE_GATEWAY_SCOPES.PRONUNCIATION_WRITE;
+          await enforceRateLimit(env, claims, VOICE_GATEWAY_SCOPES.PRONUNCIATION_WRITE);
+          const { audio, metadata } = await parsePronunciationRequest(request);
+          logEntry.bytes = metadata.byteLength;
+
+          const result = await pronunciationProviderFor(env, fetchImpl).evaluate({
+            audio,
+            referenceText:metadata.referenceText,
+            language:metadata.language,
+            rubricVersion:metadata.rubricVersion,
+          });
+          logEntry.status = 200;
+          return jsonResponse(200, {
+            dimensions:result.dimensions,
+            issues:result.issues,
+            evaluatorVersion:result.evaluatorVersion,
+            confidence:result.confidence,
+            calibrated:result.calibrated,
+            official:result.official,
+          }, { origin, requestId });
+        }
+
         if (url.pathname.startsWith('/v1/pronunciation') || url.pathname.startsWith('/v1/realtime')) {
-          throw new GatewayHttpError(501, 'NOT_IMPLEMENTED', 'Pronunciación y Realtime no están habilitados en este corte.');
+          throw new GatewayHttpError(501, 'NOT_IMPLEMENTED', 'Método/ruta no habilitado en este corte.');
         }
 
         throw new GatewayHttpError(404, 'NOT_FOUND', 'Ruta no encontrada.');
