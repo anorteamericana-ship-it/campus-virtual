@@ -1,0 +1,84 @@
+{
+  "id": "SEC-001-VERIFIER-PROTOCOL",
+  "version": 1,
+  "status": "candidate_contract_not_deployed",
+  "principle": "password verification is separated from Campus authorization and session issuance",
+  "browser_to_verifier": {
+    "transport": "HTTPS only",
+    "request": {
+      "username": "normalized Campus login identifier",
+      "password": "subscriber password"
+    },
+    "success_response": {
+      "assertion": "short-lived signed assertion",
+      "expires_in_seconds_max": 60
+    },
+    "failure_response": {
+      "uniform": true,
+      "must_not_reveal": [
+        "account existence",
+        "active/inactive state",
+        "password correctness reason"
+      ]
+    }
+  },
+  "verifier_storage": {
+    "raw_username_required_at_rest": false,
+    "account_lookup_key": "keyed one-way identifier derived from normalized username",
+    "raw_password_at_rest": false,
+    "password_verifier": "salted adaptive verifier with version and cost factor",
+    "salt_unique_per_account": true,
+    "pepper_or_equivalent_secret_separate_from_database": true
+  },
+  "assertion": {
+    "must_be_signed": true,
+    "claims": [
+      "issuer",
+      "audience",
+      "normalized_username",
+      "issued_at",
+      "expires_at",
+      "unique_id"
+    ],
+    "must_not_include": [
+      "password",
+      "password_hash",
+      "Campus role",
+      "group authorization",
+      "financial state",
+      "academic state"
+    ],
+    "audience": "campus-apps-script",
+    "ttl_seconds_max": 60,
+    "replay_protection_required": true,
+    "key_rotation_required": true
+  },
+  "apps_script_after_assertion": {
+    "verify_assertion_signature_and_time": true,
+    "derive_role_and_account_state_from_Campus_source": true,
+    "issue_existing_Campus_session_token_after_authorization": true,
+    "password_must_not_be_received": true,
+    "password_must_not_be_stored": true
+  },
+  "rate_limiting": {
+    "required_before_expensive_password_verification": true,
+    "signals": [
+      "keyed account identifier",
+      "network or device signal where appropriate"
+    ],
+    "must_avoid_easy_account_lockout_DOS": true
+  },
+  "migration": {
+    "batch_export_of_plaintext_passwords": "not preferred",
+    "preferred_options": [
+      "forced password reset into the new verifier",
+      "explicit one-time verified migration with bounded expiry if forced reset is operationally impossible"
+    ],
+    "legacy_plaintext_fallback_must_be_removed": true
+  },
+  "provider_neutral": true,
+  "current_candidates": [
+    "managed identity provider that satisfies username and migration requirements",
+    "dedicated verifier runtime with modern Web Crypto and isolated credential store"
+  ]
+}
