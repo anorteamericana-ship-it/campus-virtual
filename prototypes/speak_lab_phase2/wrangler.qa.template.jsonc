@@ -3,7 +3,7 @@
   // No contiene account_id, database_id, bucket, token, API key ni secreto real.
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "speak-lab-voice-gateway",
-  "main": "./cloudflare_voice_worker.mjs",
+  "main": "./cloudflare_voice_worker_pilot.mjs",
   "compatibility_date": "2026-08-15",
   "workers_dev": true,
   "observability": {
@@ -15,6 +15,7 @@
       "vars": {
         "ENVIRONMENT": "qa",
         "ALLOWED_ORIGINS": "__SET_EXACT_QA_ORIGIN__",
+        "CAMPUS_AUTH_URL": "__SET_CAMPUS_AUTH_EXEC_URL__",
         "AZURE_SPEECH_REGION": "__SET_AZURE_SPEECH_REGION__",
         "AZURE_SPEECH_ENDPOINT": "__SET_AZURE_SPEECH_ENDPOINT__"
       },
