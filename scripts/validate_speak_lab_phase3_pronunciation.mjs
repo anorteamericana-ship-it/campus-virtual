@@ -70,37 +70,34 @@ const env = {
   AZURE_SPEECH_ENDPOINT:'https://speak-lab-speech-qa.cognitiveservices.azure.com',
 };
 
-const provider = new AzurePronunciationProvider({
-  env,
-  fetchImpl:fakeFetch,
-});
+const provider = new AzurePronunciationProvider({ env, fetchImpl:fakeFetch });
 
-const audio = new Blob([
+const oggAudio = new Blob([
   new Uint8Array([0x4f,0x67,0x67,0x53,0x00,0x02,0x03,0x04]),
 ], { type:'audio/ogg' });
 
-const result = await provider.evaluate({
-  audio,
+const oggResult = await provider.evaluate({
+  audio:oggAudio,
   referenceText:"What's your name?",
   language:'en-US',
   rubricVersion:'speaklab-pronunciation-v0',
 });
 
 assert.equal(calls.length, 1);
-const request = calls[0];
-const url = new URL(request.url);
-assert.equal(url.protocol, 'https:');
-assert.equal(url.hostname, 'speak-lab-speech-qa.cognitiveservices.azure.com');
-assert.equal(url.pathname, '/stt/speech/recognition/conversation/cognitiveservices/v1');
-assert.equal(url.searchParams.get('language'), 'en-US');
-assert.equal(url.searchParams.get('format'), 'detailed');
-assert.equal(request.init.method, 'POST');
-assert.equal(request.init.headers['Content-Type'], 'audio/ogg; codecs=opus');
-assert.equal(request.init.headers.Accept, 'application/json');
-assert.equal(request.init.headers['Ocp-Apim-Subscription-Key'], 'qa-placeholder-key-not-secret');
-assert.equal(request.init.body, audio);
+const oggRequest = calls[0];
+const oggUrl = new URL(oggRequest.url);
+assert.equal(oggUrl.protocol, 'https:');
+assert.equal(oggUrl.hostname, 'speak-lab-speech-qa.cognitiveservices.azure.com');
+assert.equal(oggUrl.pathname, '/stt/speech/recognition/conversation/cognitiveservices/v1');
+assert.equal(oggUrl.searchParams.get('language'), 'en-US');
+assert.equal(oggUrl.searchParams.get('format'), 'detailed');
+assert.equal(oggRequest.init.method, 'POST');
+assert.equal(oggRequest.init.headers['Content-Type'], 'audio/ogg; codecs=opus');
+assert.equal(oggRequest.init.headers.Accept, 'application/json');
+assert.equal(oggRequest.init.headers['Ocp-Apim-Subscription-Key'], 'qa-placeholder-key-not-secret');
+assert.equal(oggRequest.init.body, oggAudio);
 
-const assessmentHeader = request.init.headers['Pronunciation-Assessment'];
+const assessmentHeader = oggRequest.init.headers['Pronunciation-Assessment'];
 assert.ok(assessmentHeader);
 const assessmentConfig = JSON.parse(Buffer.from(assessmentHeader, 'base64').toString('utf8'));
 assert.deepEqual(assessmentConfig, {
@@ -112,23 +109,47 @@ assert.deepEqual(assessmentConfig, {
   EnableProsodyAssessment:'True',
 });
 
-assert.equal(result.dimensions.segmentalAccuracy, 84.5);
-assert.equal(result.dimensions.fluency, 78);
-assert.equal(result.dimensions.intelligibility, null);
-assert.equal(result.dimensions.wordStress, null);
-assert.equal(result.dimensions.rhythm, null);
-assert.equal(result.dimensions.intonation, null);
-assert.equal(result.calibrated, false);
-assert.equal(result.official, false);
-assert.equal(result.confidence, null);
-assert.equal(result.evaluatorVersion, 'azure-pronunciation-rest-v0.2-live-shape-unvalidated');
-assert.equal(result.issues.length, 1);
-assert.equal(result.issues[0].code, 'AZURE_MISPRONUNCIATION');
-assert.equal(result.issues[0].target, 'name');
-assert.equal(result.issues[0].severity, 'practice');
-assert.match(result.issues[0].message, /name/);
-assert.equal(Object.prototype.hasOwnProperty.call(result, 'officialGrade'), false);
-assert.equal(Object.prototype.hasOwnProperty.call(result, 'finalGrade'), false);
+assert.equal(oggResult.dimensions.segmentalAccuracy, 84.5);
+assert.equal(oggResult.dimensions.fluency, 78);
+assert.equal(oggResult.dimensions.intelligibility, null);
+assert.equal(oggResult.dimensions.wordStress, null);
+assert.equal(oggResult.dimensions.rhythm, null);
+assert.equal(oggResult.dimensions.intonation, null);
+assert.equal(oggResult.calibrated, false);
+assert.equal(oggResult.official, false);
+assert.equal(oggResult.confidence, null);
+assert.equal(oggResult.evaluatorVersion, 'azure-pronunciation-rest-v0.3-wav-ogg-unvalidated');
+assert.equal(oggResult.issues.length, 1);
+assert.equal(oggResult.issues[0].code, 'AZURE_MISPRONUNCIATION');
+assert.equal(oggResult.issues[0].target, 'name');
+assert.equal(oggResult.issues[0].severity, 'practice');
+assert.match(oggResult.issues[0].message, /name/);
+assert.equal(Object.prototype.hasOwnProperty.call(oggResult, 'officialGrade'), false);
+assert.equal(Object.prototype.hasOwnProperty.call(oggResult, 'finalGrade'), false);
+
+// PC9/piloto Campus: WAV PCM 16 kHz mono es la forma canónica del navegador.
+const wavAudio = new Blob([
+  new Uint8Array([
+    0x52,0x49,0x46,0x46, 0x24,0x00,0x00,0x00, 0x57,0x41,0x56,0x45,
+    0x66,0x6d,0x74,0x20, 0x10,0x00,0x00,0x00, 0x01,0x00,0x01,0x00,
+    0x80,0x3e,0x00,0x00, 0x00,0x7d,0x00,0x00, 0x02,0x00,0x10,0x00,
+    0x64,0x61,0x74,0x61, 0x00,0x00,0x00,0x00,
+  ]),
+], { type:'audio/wav' });
+
+const wavResult = await provider.evaluate({
+  audio:wavAudio,
+  referenceText:"What's your name?",
+  language:'en-US',
+  rubricVersion:'speaklab-pronunciation-v0',
+});
+assert.equal(calls.length, 2);
+const wavRequest = calls[1];
+assert.equal(wavRequest.init.body, wavAudio);
+assert.equal(wavRequest.init.headers['Content-Type'], 'audio/wav; codecs=audio/pcm; samplerate=16000');
+assert.equal(wavResult.evaluatorVersion, 'azure-pronunciation-rest-v0.3-wav-ogg-unvalidated');
+assert.equal(wavResult.official, false);
+assert.equal(wavResult.calibrated, false);
 
 assert.throws(
   () => new AzurePronunciationProvider({
@@ -203,7 +224,7 @@ const failingProvider = new AzurePronunciationProvider({
 
 await assert.rejects(
   failingProvider.evaluate({
-    audio,
+    audio:oggAudio,
     referenceText:"What's your name?",
     language:'en-US',
   }),
@@ -219,7 +240,10 @@ await assert.rejects(
 
 assert.equal(AZURE_PRONUNCIATION_PROVIDER_DEFAULTS.calibrated, false);
 assert.equal(AZURE_PRONUNCIATION_PROVIDER_DEFAULTS.official, false);
-assert.equal(AZURE_PRONUNCIATION_PROVIDER_DEFAULTS.supportedInput, 'audio/ogg; codecs=opus');
+assert.deepEqual(AZURE_PRONUNCIATION_PROVIDER_DEFAULTS.supportedInput, [
+  'audio/ogg; codecs=opus',
+  'audio/wav; codecs=audio/pcm; samplerate=16000',
+]);
 
 console.log(JSON.stringify({
   ok:true,
@@ -227,6 +251,7 @@ console.log(JSON.stringify({
   provider:'azure-pronunciation-rest',
   response_shape:'verified-against-real-qa-2026-08-15',
   endpoint_mode:'resource-cognitiveservices',
+  supported_input:['ogg-opus','wav-pcm-16khz-mono'],
   mapped_dimensions:['segmentalAccuracy','fluency'],
   intentionally_null_dimensions:['intelligibility','wordStress','rhythm','intonation'],
   target_reference_used_only_by_pronunciation_evaluator:true,
