@@ -1,0 +1,1043 @@
+{
+  "schema": "REL001_FRONTEND_ENDPOINTS_V1",
+  "source_ref": "ceb786b724257463a34e11101cb29a3e585b74f2",
+  "scanned_root": "src",
+  "file_count": 230,
+  "literal_endpoint_count": 53,
+  "runtime_likely_count": 28,
+  "endpoints": [
+    {
+      "name": "englishLabAccessStatus",
+      "callsites": [
+        {
+          "file": "src/english_lab_free_access_cs21a66.js",
+          "line": 7,
+          "kind": "endpoint_param"
+        }
+      ],
+      "kinds": [
+        "endpoint_param"
+      ]
+    },
+    {
+      "name": "englishLabHangmanAction",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 106,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 17,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 243,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanCloseRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 107,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 19,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 273,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanCloseRound",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 107,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 19,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 276,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanCreateRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 103,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 19,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 290,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanGetPlayerState",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 105,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 17,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 223,
+          "kind": "direct_call"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 315,
+          "kind": "direct_call"
+        },
+        {
+          "file": "src/english_lab_live_student_dependency_guard_cs21a184.js",
+          "line": 26,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanGetRoomControl",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 104,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 18,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 267,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanJoinRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 105,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 17,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live_student_dependency_guard_cs21a184.js",
+          "line": 29,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanNextRound",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 106,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 18,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 276,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanStartRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 104,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 18,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 276,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabHangmanSuggestions",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 103,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 288,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveCloseRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 446,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveCloseRound",
+      "callsites": [
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 476,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveCreateRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 769,
+          "kind": "endpoint_param"
+        }
+      ],
+      "kinds": [
+        "endpoint_param"
+      ]
+    },
+    {
+      "name": "englishLabLiveGetPlayerState",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 16,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_sync_guard_cs21a177.js",
+          "line": 16,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_live_product_guard_cs21a187.js",
+          "line": 23,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live_student_dependency_guard_cs21a184.js",
+          "line": 24,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 590,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveGetRoomControl",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_live_sync_guard_cs21a177.js",
+          "line": 17,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 380,
+          "kind": "endpoint_param"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveGetTeacherData",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 285,
+          "kind": "direct_call"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 756,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call"
+      ]
+    },
+    {
+      "name": "englishLabLiveJoinRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_hangman_live_cs21a191.jsx",
+          "line": 16,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_sync_guard_cs21a177.js",
+          "line": 13,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_live_product_guard_cs21a187.js",
+          "line": 25,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live_student_dependency_guard_cs21a184.js",
+          "line": 27,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 641,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveLaunchQuestion",
+      "callsites": [
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 475,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveStartRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 474,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabLiveSubmitAnswer",
+      "callsites": [
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 656,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchCloseRound",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 87,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx",
+          "line": 29,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 476,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchCreateRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 85,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx",
+          "line": 24,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 769,
+          "kind": "endpoint_param"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchGetPlayerState",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 86,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx",
+          "line": 26,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_sync_guard_cs21a177.js",
+          "line": 14,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_live_product_guard_cs21a187.js",
+          "line": 24,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live_student_dependency_guard_cs21a184.js",
+          "line": 25,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 590,
+          "kind": "direct_call"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 592,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchGetRoomControl",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 86,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx",
+          "line": 28,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_sync_guard_cs21a177.js",
+          "line": 19,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 380,
+          "kind": "endpoint_param"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchJoinRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_live_product_guard_cs21a187.js",
+          "line": 26,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live_student_dependency_guard_cs21a184.js",
+          "line": 28,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchStartRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 85,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx",
+          "line": 25,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_live.jsx",
+          "line": 474,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabMemoryMatchSubmitPair",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 87,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_games/english_lab_live_memory_match_adapter_cs21a174.jsx",
+          "line": 27,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeAnswer",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 26,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeCloseRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 27,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeCreateRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 21,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeGetPlayerState",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 25,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeGetRoomControl",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 23,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeJoinRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 24,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeStartRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 22,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabQuizTimeTeacherData",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_quiz_time_live_cs21a198.jsx",
+          "line": 20,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderCloseRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 97,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 461,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderCreateRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 93,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 344,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderGetPlayerState",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 95,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 516,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderGetRoomControl",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 94,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 304,
+          "kind": "direct_call"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 361,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderJoinRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 95,
+          "kind": "endpoint_param"
+        }
+      ],
+      "kinds": [
+        "endpoint_param"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderNextSentence",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 96,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 460,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "endpoint_param",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderStartRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 94,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 459,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderSubmit",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 96,
+          "kind": "endpoint_param"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 539,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "endpoint_param"
+      ]
+    },
+    {
+      "name": "englishLabSentenceOrderTeacherData",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_game_registry_cs21a191.js",
+          "line": 93,
+          "kind": "literal_reference"
+        },
+        {
+          "file": "src/english_lab_sentence_order_cs21a183.js",
+          "line": 291,
+          "kind": "direct_call"
+        }
+      ],
+      "kinds": [
+        "direct_call",
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchClaimWord",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchCloseRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchCreateRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchGetPlayerState",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchGetRoomControl",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchJoinRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchStartRoom",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    },
+    {
+      "name": "englishLabWordSearchTeacherData",
+      "callsites": [
+        {
+          "file": "src/english_lab_games/english_lab_word_search_live_cs21a200.jsx",
+          "line": 13,
+          "kind": "literal_reference"
+        }
+      ],
+      "kinds": [
+        "literal_reference"
+      ]
+    }
+  ],
+  "runtime_likely": [
+    "englishLabAccessStatus",
+    "englishLabHangmanAction",
+    "englishLabHangmanCloseRound",
+    "englishLabHangmanCreateRoom",
+    "englishLabHangmanGetPlayerState",
+    "englishLabHangmanGetRoomControl",
+    "englishLabHangmanJoinRoom",
+    "englishLabHangmanNextRound",
+    "englishLabHangmanSuggestions",
+    "englishLabLiveCreateRoom",
+    "englishLabLiveGetPlayerState",
+    "englishLabLiveGetRoomControl",
+    "englishLabLiveGetTeacherData",
+    "englishLabLiveJoinRoom",
+    "englishLabLiveSubmitAnswer",
+    "englishLabMemoryMatchCloseRound",
+    "englishLabMemoryMatchCreateRoom",
+    "englishLabMemoryMatchGetPlayerState",
+    "englishLabMemoryMatchGetRoomControl",
+    "englishLabMemoryMatchSubmitPair",
+    "englishLabSentenceOrderCloseRoom",
+    "englishLabSentenceOrderCreateRoom",
+    "englishLabSentenceOrderGetPlayerState",
+    "englishLabSentenceOrderGetRoomControl",
+    "englishLabSentenceOrderJoinRoom",
+    "englishLabSentenceOrderNextSentence",
+    "englishLabSentenceOrderSubmit",
+    "englishLabSentenceOrderTeacherData"
+  ]
+}
