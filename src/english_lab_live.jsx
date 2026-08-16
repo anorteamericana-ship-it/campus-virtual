@@ -508,7 +508,7 @@
   }
   function liveStudentCode(usuario){
     const u = liveSessionUser(usuario);
-    return clean(u.codigo || u.CODIGO || u.cod_estudiante || u.COD_ESTUDIANTE || u.cedula || u.CEDULA || u.identificacion || '');
+    return clean(u.codigo || u.CODIGO || u.cod_estudiante || u.COD_ESTUDIANTE || '');
   }
   function livePlayerId(player){
     return clean(player && (player.cod_estudiante || player.player_id || player.playerId || player.codigo_estudiante || player.COD_ESTUDIANTE || player.id));
