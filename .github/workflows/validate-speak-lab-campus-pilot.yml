@@ -19,6 +19,7 @@ on:
       - 'scripts/validate_speak_lab_campus_pilot_gateway.mjs'
       - 'scripts/validate_speak_lab_campus_pilot_static.mjs'
       - 'scripts/test_speak_lab_campus_pilot_integration.mjs'
+      - 'scripts/run_speak_lab_campus_pilot_qa.ps1'
       - '00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216.md'
       - '.github/workflows/validate-speak-lab-campus-pilot.yml'
 
@@ -53,6 +54,22 @@ jobs:
           node --check scripts/validate_speak_lab_campus_pilot_gateway.mjs
           node --check scripts/validate_speak_lab_campus_pilot_static.mjs
           node --check scripts/test_speak_lab_campus_pilot_integration.mjs
+
+      - name: PowerShell launcher syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/run_speak_lab_campus_pilot_qa.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'Speak LAB pilot QA launcher syntax: PASS'
 
       - name: Install QA parser and DOM runtime
         run: npm install --no-save --ignore-scripts @babel/parser@7.28.4 jsdom@26.1.0
@@ -108,7 +125,7 @@ jobs:
             echo 'ERROR: CS21A216 debe permanecer aislado de app.jsx/campus.html/English LAB.' >&2
             exit 1
           fi
-          if grep -Ev '^(prototypes/speak_lab_phase1/gateway_protocol\.js|prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot\.mjs|prototypes/speak_lab_phase2/wrangler\.qa\.template\.jsonc|prototypes/speak_lab_phase3/azure_pronunciation_provider\.mjs|src/speak_lab_pilot_runtime_cs21a216\.js|src/speak_lab_pilot_view_cs21a216\.jsx|src/speak_lab_pilot_integration_cs21a216\.js|src/student_menu_academic_guard_cs21a120\.js|scripts/validate_speak_lab_phase3_pronunciation\.mjs|scripts/validate_speak_lab_phase3_gateway_pronunciation\.mjs|scripts/validate_speak_lab_campus_pilot_gateway\.mjs|scripts/validate_speak_lab_campus_pilot_static\.mjs|scripts/test_speak_lab_campus_pilot_integration\.mjs|00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216\.md|\.github/workflows/validate-speak-lab-campus-pilot\.yml)$' /tmp/speaklab216-files.txt | grep -q .; then
+          if grep -Ev '^(prototypes/speak_lab_phase1/gateway_protocol\.js|prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot\.mjs|prototypes/speak_lab_phase2/wrangler\.qa\.template\.jsonc|prototypes/speak_lab_phase3/azure_pronunciation_provider\.mjs|src/speak_lab_pilot_runtime_cs21a216\.js|src/speak_lab_pilot_view_cs21a216\.jsx|src/speak_lab_pilot_integration_cs21a216\.js|src/student_menu_academic_guard_cs21a120\.js|scripts/validate_speak_lab_phase3_pronunciation\.mjs|scripts/validate_speak_lab_phase3_gateway_pronunciation\.mjs|scripts/validate_speak_lab_campus_pilot_gateway\.mjs|scripts/validate_speak_lab_campus_pilot_static\.mjs|scripts/test_speak_lab_campus_pilot_integration\.mjs|scripts/run_speak_lab_campus_pilot_qa\.ps1|00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216\.md|\.github/workflows/validate-speak-lab-campus-pilot\.yml)$' /tmp/speaklab216-files.txt | grep -q .; then
             echo 'ERROR: archivo fuera del perímetro CS21A216.' >&2
             exit 1
           fi
