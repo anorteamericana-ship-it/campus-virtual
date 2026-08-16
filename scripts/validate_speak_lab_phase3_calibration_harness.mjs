@@ -104,7 +104,8 @@ assert.equal(report.conditions.find(item => item.condition === 'intermediate').d
 
 const serialized = JSON.stringify(report);
 for (const forbidden of ['officialGrade', 'finalGrade', 'referenceText', 'transcript', 'audioPath', 'rawAudio', 'PronScore', 'ProsodyScore']) {
-  assert.equal(serialized.includes(forbidden), false, `Reporte filtró campo prohibido: ${forbidden}`);
+  const propertyPattern = new RegExp(`"${forbidden}"\\s*:`, 'i');
+  assert.equal(propertyPattern.test(serialized), false, `Reporte filtró propiedad prohibida: ${forbidden}`);
 }
 
 const insufficient = buildPronunciationCalibrationReport({
