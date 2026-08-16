@@ -1,0 +1,119 @@
+name: Validate SPEAK LAB Campus Pilot
+
+on:
+  push:
+    branches:
+      - feature/speak-lab-campus-pilot
+  pull_request:
+    paths:
+      - 'prototypes/speak_lab_phase1/gateway_protocol.js'
+      - 'prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot.mjs'
+      - 'prototypes/speak_lab_phase2/wrangler.qa.template.jsonc'
+      - 'prototypes/speak_lab_phase3/azure_pronunciation_provider.mjs'
+      - 'src/speak_lab_pilot_runtime_cs21a216.js'
+      - 'src/speak_lab_pilot_view_cs21a216.jsx'
+      - 'src/speak_lab_pilot_integration_cs21a216.js'
+      - 'src/student_menu_academic_guard_cs21a120.js'
+      - 'scripts/validate_speak_lab_phase3_pronunciation.mjs'
+      - 'scripts/validate_speak_lab_campus_pilot_gateway.mjs'
+      - 'scripts/validate_speak_lab_campus_pilot_static.mjs'
+      - '00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216.md'
+      - '.github/workflows/validate-speak-lab-campus-pilot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-campus-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Syntax checks
+        run: |
+          node --check prototypes/speak_lab_phase1/gateway_protocol.js
+          node --check prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot.mjs
+          node --check prototypes/speak_lab_phase3/azure_pronunciation_provider.mjs
+          node --check src/speak_lab_pilot_runtime_cs21a216.js
+          node --check src/speak_lab_pilot_integration_cs21a216.js
+          node --check src/student_menu_academic_guard_cs21a120.js
+          node --check scripts/validate_speak_lab_phase3_pronunciation.mjs
+          node --check scripts/validate_speak_lab_campus_pilot_gateway.mjs
+          node --check scripts/validate_speak_lab_campus_pilot_static.mjs
+
+      - name: Parse Speak LAB JSX
+        run: |
+          npm install --no-save --ignore-scripts @babel/parser@7.28.4
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { parse } from '@babel/parser';
+          const source = fs.readFileSync('src/speak_lab_pilot_view_cs21a216.jsx', 'utf8');
+          parse(source, { sourceType:'script', plugins:['jsx'] });
+          console.log('Speak LAB pilot JSX parse: PASS');
+          NODE
+
+      - name: Azure pronunciation OGG + WAV offline
+        run: node scripts/validate_speak_lab_phase3_pronunciation.mjs
+
+      - name: Campus session broker adversarial QA
+        run: node scripts/validate_speak_lab_campus_pilot_gateway.mjs
+
+      - name: Product privacy and academic guards
+        run: node scripts/validate_speak_lab_campus_pilot_static.mjs
+
+      - name: Phase 3 gateway regression
+        run: node scripts/validate_speak_lab_phase3_gateway_pronunciation.mjs
+
+      - name: Phase 2 Worker regression
+        run: node scripts/validate_speak_lab_phase2_worker.mjs
+
+      - name: Voice Gateway protocol regression
+        run: node scripts/validate_voice_gateway_protocol.mjs
+
+      - name: Scope guard
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PR_BASE_SHA:-}" ]; then
+            BASE="$PR_BASE_SHA"
+          else
+            BASE="0a57b99afa273c5194e17fe1c8dc301fd5273dc0"
+          fi
+          git diff --name-only "$BASE"...HEAD | tee /tmp/speaklab216-files.txt
+          if grep -Ei '(^|/)(memory_match|apps_script_patches|Code\.gs)' /tmp/speaklab216-files.txt | grep -q .; then
+            echo 'ERROR: CS21A216 no puede modificar Memory Match ni Apps Script.' >&2
+            exit 1
+          fi
+          if grep -E '^(src/app\.jsx|campus\.html|src/english_lab_)' /tmp/speaklab216-files.txt | grep -q .; then
+            echo 'ERROR: CS21A216 debe permanecer aislado de app.jsx/campus.html/English LAB.' >&2
+            exit 1
+          fi
+          if grep -Ev '^(prototypes/speak_lab_phase1/gateway_protocol\.js|prototypes/speak_lab_phase2/cloudflare_voice_worker_pilot\.mjs|prototypes/speak_lab_phase2/wrangler\.qa\.template\.jsonc|prototypes/speak_lab_phase3/azure_pronunciation_provider\.mjs|src/speak_lab_pilot_runtime_cs21a216\.js|src/speak_lab_pilot_view_cs21a216\.jsx|src/speak_lab_pilot_integration_cs21a216\.js|src/student_menu_academic_guard_cs21a120\.js|scripts/validate_speak_lab_phase3_pronunciation\.mjs|scripts/validate_speak_lab_campus_pilot_gateway\.mjs|scripts/validate_speak_lab_campus_pilot_static\.mjs|00_DOCUMENTACION/SPEAK_LAB_CAMPUS_PILOT_CS21A216\.md|\.github/workflows/validate-speak-lab-campus-pilot\.yml)$' /tmp/speaklab216-files.txt | grep -q .; then
+            echo 'ERROR: archivo fuera del perímetro CS21A216.' >&2
+            exit 1
+          fi
+          echo 'Scope guard CS21A216: PASS'
+
+      - name: Browser secret guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -En 'OPENAI_API_KEY|AZURE_SPEECH_KEY|VOICE_GRANT_SIGNING_SECRET|Ocp-Apim-Subscription-Key|sk-[A-Za-z0-9_-]{12,}' \
+            src/speak_lab_pilot_runtime_cs21a216.js \
+            src/speak_lab_pilot_view_cs21a216.jsx \
+            src/speak_lab_pilot_integration_cs21a216.js; then
+            echo 'ERROR: secreto/provider credential visible en código navegador.' >&2
+            exit 1
+          fi
+          echo 'Browser secret guard: PASS'
