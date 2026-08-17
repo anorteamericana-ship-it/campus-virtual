@@ -1,0 +1,31 @@
+name: SEC001 identity mapping one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec001-auth-policy-foundation
+    paths:
+      - .github/workflows/sec001_identity_mapping_once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec001-auth-policy-foundation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run SEC-001 identity gates
+        run: |
+          node scripts/qa_sec001_password_policy.mjs
+          node scripts/qa_sec001_auth0_poc_contract.mjs
+          node scripts/qa_sec001_auth_provider_adapter.mjs
+          node scripts/qa_sec001_oidc_bridge_contract.mjs
+          node scripts/qa_sec001_identity_mapping.mjs
+          git diff --check HEAD~1 HEAD
