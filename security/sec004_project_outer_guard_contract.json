@@ -1,0 +1,106 @@
+{
+  "id": "SEC-004",
+  "version": 2,
+  "date": "2026-08-16",
+  "status": "source_design_corrected_project_order_runtime_pending",
+  "principle": "demo sessions may never mutate or expose real Campus business data; unknown routes fail closed at the outermost project dispatcher",
+  "supersedes_installation_assumption": "a final wrapper inside Code.gs is not sufficient in the multi-file QA project",
+  "canonical_codegs_base": {
+    "sha256": "d24fc63c59e60ba92808d4d870f4eb95e35bb6f1c158a130229b187a66e35d37"
+  },
+  "full_reference_candidate": {
+    "drive_id": "1wwXtROufx5ZMj1A9yYIsgF29vaff-_7X",
+    "sha256": "b4775e8d615d2e59409a1b9eb1587b0f325767e4e54b7ef7384447fcbe75904f",
+    "role": "reference_and_reproduction_only",
+    "install_wholesale": false,
+    "reason": "the current QA project contains later separate .gs layers including CS21A201"
+  },
+  "codegs_demo_core": {
+    "artifact": "qa/sec004_codegs_demo_core_delta.patch",
+    "hunks": 5,
+    "result_sha256_when_applied_to_exact_canonical_base": "ad3c673faacd58742b9195e44392b3a3db3eccffad1cd715dcd82fc6ac851d8b",
+    "responsibilities": [
+      "load student demo secret from SEC004_DEMO_STUDENT_SECRET Script Property",
+      "load teacher demo secret from SEC004_DEMO_TEACHER_SECRET Script Property",
+      "disable demo login fail-closed when secret is absent or shorter than 20 characters",
+      "return a fully synthetic student demo portal before the productive portal",
+      "disable exam initialization in the synthetic demo portal"
+    ],
+    "must_not_contain": [
+      "a doPost wrapper",
+      "English LAB engine edits",
+      "Memory Match engine edits"
+    ]
+  },
+  "project_outer_guard": {
+    "artifact": "apps_script_patches/ZZ_SEC004_DEMO_READONLY_OUTER_GUARD.gs",
+    "must_be_effective_outermost_doPost": true,
+    "file_name_is_not_order_proof": true,
+    "requires_manual_project_order_verification": true,
+    "wraps": ["validarSesion", "iniciarSesion", "doPost"],
+    "safe_read_count": 23,
+    "demo_unknown_or_unclassified_route": "deny demo_read_only",
+    "demo_scope_mismatch": "deny demo_read_only",
+    "logout": "allowed as session bookkeeping",
+    "teacher_demo_simulated_writes": "allowed only through the existing synthetic interceptor after scope validation",
+    "public_requests_without_session_token": "delegate unchanged",
+    "non_demo_valid_sessions": "delegate unchanged"
+  },
+  "accumulated_layer_evidence": {
+    "cs200_drive_id": "1SsIcNpNGnhycZnLXnbFYYWZNQJ1Jr9Tw",
+    "cs200_sha256": "fb869d8915bb59ef772c0ac775a10d66291bfa78f5a3f8bc67f102c8a64e55a0",
+    "cs200_size_bytes": 311614,
+    "doPost_wrapper_families_observed": [
+      "Sentence Order",
+      "Hangman",
+      "Quiz Time",
+      "Word Search"
+    ],
+    "conclusion": "project-level order matters; Code.gs tail alone cannot establish an outer security boundary"
+  },
+  "credential_policy": {
+    "literal_demo_secrets_in_source_allowed": false,
+    "student_script_property": "SEC004_DEMO_STUDENT_SECRET",
+    "teacher_script_property": "SEC004_DEMO_TEACHER_SECRET",
+    "minimum_configured_secret_length": 20,
+    "missing_or_short_secret_behavior": "demo login disabled fail-closed",
+    "reuse_previous_literal_secrets": false,
+    "rotation_required_before_qa": true
+  },
+  "memory_match_boundary": {
+    "mode": "read_only_for_chatgpt",
+    "outer_guard_may_wrap_requests_without_editing_engine": true,
+    "engine_files_or_endpoints_may_be_modified": false
+  },
+  "static_qa": {
+    "script": "scripts/qa_sec004_project_outer_guard.mjs",
+    "sentinel_route": "englishLabWordSearchCreateRoom",
+    "sentinel_expected_for_demo": {
+      "ok": false,
+      "error": "demo_read_only",
+      "version": "SEC004-DEMO-READONLY-1",
+      "base_dispatcher_calls": 0
+    }
+  },
+  "runtime_close_gate": [
+    "export/back up the entire current Apps Script QA project",
+    "enumerate every .gs file and every effective doPost reassignment",
+    "port the five demo-core hunks to the current QA Code.gs only if preimages match",
+    "install the outer guard as a separate file after all doPost layers",
+    "prove there is no later doPost wrapper",
+    "configure new rotated QA demo secrets in Script Properties",
+    "preserve the existing QA deployment ID and URL",
+    "demo teacher calling englishLabWordSearchCreateRoom is denied by SEC004 before the CS200/CS201 dispatcher",
+    "demo base mutation and an invented future route are denied",
+    "scope-forged demo reads cannot reach real data",
+    "real authenticated sessions continue delegating normally",
+    "public no-token enrollment remains unchanged",
+    "zero real business rows, sheets, folders or documents are created by demo smoke",
+    "no Memory Match engine diff"
+  ],
+  "deployment": {
+    "installed_in_qa": false,
+    "qa_runtime_verified": false,
+    "production_changed": false
+  }
+}
