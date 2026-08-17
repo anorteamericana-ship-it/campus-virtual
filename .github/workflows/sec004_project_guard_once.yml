@@ -1,0 +1,39 @@
+name: SEC-004 project outer guard verifier
+
+on:
+  push:
+    branches:
+      - fix/sec004-demo-readonly-foundation
+    paths:
+      - .github/workflows/sec004_project_guard_once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SEC-004 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/sec004-demo-readonly-foundation
+          fetch-depth: 0
+
+      - name: Verify exact main ancestry
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 67108928e953fbf044dbcd916dc34a5dd5f1e570 HEAD
+
+      - name: Run project outer guard QA
+        run: node scripts/qa_sec004_project_outer_guard.mjs
+
+      - name: Diff hygiene for corrected SEC-004 artifacts
+        run: |
+          set -euo pipefail
+          git diff --check 67108928e953fbf044dbcd916dc34a5dd5f1e570...HEAD -- \
+            qa/sec004_codegs_demo_core_delta.patch \
+            apps_script_patches/ZZ_SEC004_DEMO_READONLY_OUTER_GUARD.gs \
+            scripts/qa_sec004_project_outer_guard.mjs \
+            security/sec004_project_outer_guard_contract.json \
+            00_DOCUMENTACION/SEC004_PROJECT_OUTER_GUARD_2026-08-16.md
