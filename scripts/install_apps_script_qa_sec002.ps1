@@ -97,10 +97,15 @@ if (-not $NpxExe) { Fail 'npx no esta instalado o no esta en PATH.' }
 
 $PatchExe = Find-CommandPath @('patch.exe','patch')
 if (-not $PatchExe) {
-  $patchCandidates = @(
-    (Join-Path $env:ProgramFiles 'Git\usr\bin\patch.exe'),
-    (Join-Path ${env:ProgramFiles(x86)} 'Git\usr\bin\patch.exe')
-  ) | Where-Object { $_ -and (Test-Path $_) }
+  $patchCandidates = @()
+  if ($env:ProgramFiles) {
+    $patchCandidates += (Join-Path $env:ProgramFiles 'Git\usr\bin\patch.exe')
+  }
+  $programFilesX86 = ${env:ProgramFiles(x86)}
+  if ($programFilesX86) {
+    $patchCandidates += (Join-Path $programFilesX86 'Git\usr\bin\patch.exe')
+  }
+  $patchCandidates = @($patchCandidates | Where-Object { $_ -and (Test-Path $_) })
   if ($patchCandidates.Count -gt 0) { $PatchExe = $patchCandidates[0] }
 }
 if (-not $PatchExe) {
@@ -159,9 +164,9 @@ function Compare-SourceMaps {
 }
 
 function Find-CodeFile([string]$Root) {
-  $matches = Get-ChildItem -LiteralPath $Root -Recurse -File | Where-Object {
+  $matches = @(Get-ChildItem -LiteralPath $Root -Recurse -File | Where-Object {
     [IO.Path]::GetFileNameWithoutExtension($_.Name) -eq 'Code' -and $_.Extension.ToLowerInvariant() -in @('.js','.gs')
-  }
+  })
   if ($matches.Count -ne 1) {
     Fail "Esperaba exactamente un Code.js/Code.gs despues de clasp clone; encontre $($matches.Count)."
   }
@@ -209,7 +214,7 @@ function Build-Sec002Bundle {
   foreach ($item in ($manifest.ordered_deltas | Sort-Object order)) {
     $patchPath = Join-Path $RepoRoot ($item.path -replace '/', '\')
     if (-not (Test-Path $patchPath)) { Fail "Falta patch: $patchPath" }
-    $hunks = (Select-String -LiteralPath $patchPath -Pattern '^@@ ' -AllMatches).Count
+    $hunks = @(Select-String -LiteralPath $patchPath -Pattern '^@@ ' -AllMatches).Count
     if ($hunks -ne [int]$item.expected_hunks) {
       Fail "Hunks inesperados en $($item.path): expected=$($item.expected_hunks) observed=$hunks"
     }
@@ -269,7 +274,7 @@ function Test-QaRoutes {
       $failures += "$fn :: $($_.Exception.Message)"
     }
   }
-  if ($failures.Count -gt 0) {
+  if (@($failures).Count -gt 0) {
     Fail ("Smoke QA fallo: " + ($failures -join ' | '))
   }
 }
@@ -364,7 +369,7 @@ try {
   Copy-Item -LiteralPath $CandidatePath -Destination $CodePath -Force
 
   $afterLocalMap = Get-AppsSourceMap $AppsDir
-  $unexpectedLocal = Compare-SourceMaps -Before $beforeMap -After $afterLocalMap -AllowedChangedBasenames @('Code')
+  $unexpectedLocal = @(Compare-SourceMaps -Before $beforeMap -After $afterLocalMap -AllowedChangedBasenames @('Code'))
   if ($unexpectedLocal.Count -gt 0) {
     $unexpectedLocal | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $BackupDir 'unexpected-local-changes.json') -Encoding UTF8
     Fail 'El bundle intento cambiar archivos distintos de Code. Abortado antes de push.'
@@ -390,7 +395,7 @@ try {
     Fail "Verificacion remota Code fallo expected=$ExpectedBundleSha observed=$verifyCodeSha"
   }
   $verifyMap = Get-AppsSourceMap $VerifyDir
-  $unexpectedRemote = Compare-SourceMaps -Before $beforeMap -After $verifyMap -AllowedChangedBasenames @('Code')
+  $unexpectedRemote = @(Compare-SourceMaps -Before $beforeMap -After $verifyMap -AllowedChangedBasenames @('Code'))
   if ($unexpectedRemote.Count -gt 0) {
     $unexpectedRemote | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $BackupDir 'unexpected-remote-changes.json') -Encoding UTF8
     Fail 'El remoto cambio archivos distintos de Code; se requiere rollback.'
