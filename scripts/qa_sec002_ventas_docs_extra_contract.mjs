@@ -21,8 +21,9 @@ if (!fn.includes('docs_extra: docsExtra')) throw new Error('getProspectoDetalle 
 const helperStart = src.indexOf('function normalizarDocsExtraVentas');
 if (helperStart < 0 || helperStart > start) throw new Error('normalizarDocsExtraVentas debe existir antes del wrapper');
 const helper = src.slice(helperStart, start);
-if (!/doc\.nombre_archivo\s*\|\|\s*doc\.nombre/.test(helper)) throw new Error('No normaliza nombre -> nombre_archivo');
+if (!/\.nombre_archivo\s*\|\|\s*[a-zA-Z_$][\w$]*\.nombre/.test(helper)) throw new Error('No normaliza nombre -> nombre_archivo');
 if (!/application\/pdf/.test(helper)) throw new Error('No deriva MIME PDF cuando falta mime_type');
 if (!/Array\.isArray/.test(helper)) throw new Error('Helper docs_extra no fail-safe para arrays');
+if (!/webViewLink/.test(helper)) throw new Error('No conserva compatibilidad con webViewLink legacy');
 
 console.log('PASS SEC-002 ventas docs_extra contract');
