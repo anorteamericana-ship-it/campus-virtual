@@ -1,7 +1,9 @@
 name: SEC001 identity architecture one-shot
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - fix/sec001-auth-policy-foundation
 
 permissions:
   contents: read
