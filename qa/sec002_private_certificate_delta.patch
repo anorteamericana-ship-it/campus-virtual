@@ -1,0 +1,196 @@
+--- Code.gs
++++ Code.gs.sec002
+@@ -2738,6 +2738,7 @@
+     actualizarDatosPersonalesEstudiante: ['student', 'admin', 'superadmin'],
+     uploadFotoPerfilEstudiante: ['student', 'admin', 'superadmin'],
+     getMisCertificadosEstado: estudianteCampus,
++    descargarMiCertificadoPrivado: ['student', 'admin', 'superadmin'],
+     getPortalEstudianteCompleto: estudianteCampus,
+     getComprobantes: adminSuper,
+     getGruposActivos: adminSuper,
+@@ -2887,6 +2888,7 @@
+       actualizarDatosPersonalesEstudiante: true,
+       uploadFotoPerfilEstudiante: true,
+       getMisCertificadosEstado: true,
++      descargarMiCertificadoPrivado: true,
+       getPortalEstudianteCompleto: true,
+       getRetroalimentacionEstudiante: true,
+       getAsistenciaEstudiante: true,
+@@ -3780,6 +3782,7 @@
+     else if (fn === 'actualizarDatosPersonalesEstudiante') { body._auth_session = auth && auth.sesion ? auth.sesion : body._auth_session; result = actualizarDatosPersonalesEstudiante(body); }
+     else if (fn === 'uploadFotoPerfilEstudiante') { body._auth_session = auth && auth.sesion ? auth.sesion : body._auth_session; result = uploadFotoPerfilEstudiante(body); }
+     else if (fn === 'getMisCertificadosEstado')    result = getMisCertificadosEstado(body);
++    else if (fn === 'descargarMiCertificadoPrivado') result = descargarMiCertificadoPrivado(body);
+     else if (fn === 'getPortalEstudianteCompleto') result = getPortalEstudianteCompleto(body);
+     else if (fn === 'getComprobantes')            result = getComprobantes(body);
+     else if (fn === 'getGruposActivos')           result = getGruposActivos(body);
+@@ -23264,10 +23267,10 @@
+     };
+   }
+ 
+-  // Si existen varias copias dentro de la raíz oficial, se conserva únicamente
+-  // la más reciente y las demás se envían a la papelera.
+-  var duplicadosEliminadosIds = _certF984TEliminarDuplicadosOficiales_(encontrados, elegido.getId());
+-  var duplicadosEliminados = duplicadosEliminadosIds.length;
++  // SEC-002: una consulta no puede mutar Drive. Si existen varias copias,
++  // se elige la más reciente y se reportan las demás; la limpieza queda como
++  // acción administrativa/generación explícita, nunca como efecto colateral de lectura.
++  var duplicadosDetectados = Math.max(0, encontrados.length - 1);
+   var info = _certF25ArchivoInfo_(elegido);
+   var nombreUp = String(info.nombre || '').toUpperCase();
+   var firmadoProbable = nombreUp.indexOf('FIRM') > -1 || nombreUp.indexOf('SELL') > -1 || nombreUp.indexOf('SELLO') > -1;
+@@ -23292,14 +23295,151 @@
+     folder_url:refFolderOk ? refFolderOk.getUrl() : '',
+     ubicacion:'DOCUMENTOS_ESTUDIANTES',
+     duplicados:1,
+-    duplicados_eliminados:duplicadosEliminados,
++    duplicados_detectados:duplicadosDetectados,
++    duplicados_eliminados:0,
+     firmado_probable:firmadoProbable,
+-    mensaje:duplicadosEliminados > 0
+-      ? 'PDF oficial localizado. Se conservaron una sola copia y se eliminaron ' + duplicadosEliminados + ' duplicados de DOCUMENTOS_ESTUDIANTES.'
++    mensaje:duplicadosDetectados > 0
++      ? 'PDF oficial localizado. Se detectaron ' + duplicadosDetectados + ' copias adicionales; esta consulta no eliminó archivos.'
+       : 'PDF oficial localizado en DOCUMENTOS_ESTUDIANTES.'
+   };
+ }
+ 
++// ============================================================
++// SEC-002 CERT PRIVATE PILOT · descarga autenticada one-shot
++// Mantiene el PDF privado en Drive y lo entrega dentro de la respuesta
++// autenticada del Campus. Limitado a PDFs pequeños; no es un gateway general.
++// ============================================================
++var SEC002_CERT_PRIVATE_MAX_BYTES = 2 * 1024 * 1024;
++var SEC002_CERT_PRIVATE_RATE_MAX = 5;
++var SEC002_CERT_PRIVATE_RATE_SECONDS = 60;
++
++function _sec002HexBytes_(bytes) {
++  return (bytes || []).map(function(b) {
++    var n = b < 0 ? b + 256 : b;
++    return ('0' + n.toString(16)).slice(-2);
++  }).join('');
++}
++
++function _sec002HashText_(value) {
++  var digest = Utilities.computeDigest(
++    Utilities.DigestAlgorithm.SHA_256,
++    String(value == null ? '' : value),
++    Utilities.Charset.UTF_8
++  );
++  return _sec002HexBytes_(digest);
++}
++
++function _sec002CertRateLimit_(sesion, codigo) {
++  sesion = sesion || {};
++  var sujeto = String(sesion.usuario || sesion.codigo || sesion.cedula || codigo || '').trim();
++  if (!sujeto) return { ok:false, error:'sujeto_descarga_no_disponible' };
++  var key = 'sec002-cert:' + _sec002HashText_(sujeto).slice(0, 32);
++  var lock = LockService.getScriptLock();
++  if (!lock.tryLock(1500)) return { ok:false, error:'descarga_ocupada', mensaje:'Intente de nuevo en unos segundos.' };
++  try {
++    var cache = CacheService.getScriptCache();
++    var count = Number(cache.get(key) || 0);
++    if (count >= SEC002_CERT_PRIVATE_RATE_MAX) {
++      return { ok:false, error:'limite_descarga', retry_after_seconds:SEC002_CERT_PRIVATE_RATE_SECONDS };
++    }
++    cache.put(key, String(count + 1), SEC002_CERT_PRIVATE_RATE_SECONDS);
++    return { ok:true, remaining:Math.max(0, SEC002_CERT_PRIVATE_RATE_MAX - count - 1) };
++  } catch (err) {
++    return { ok:false, error:'rate_limit_no_disponible', mensaje:'No se pudo validar temporalmente el límite de descargas.' };
++  } finally {
++    try { lock.releaseLock(); } catch (_) {}
++  }
++}
++
++function descargarMiCertificadoPrivado(data) {
++  data = data || {};
++  var sesion = data._auth_session || null;
++  if (!sesion || sesion.ok !== true) return { ok:false, error:'sesion_requerida' };
++
++  var rol = String(sesion.rol || '').trim().toLowerCase();
++  if (['student','admin','superadmin'].indexOf(rol) < 0) {
++    return { ok:false, error:'no_autorizado', mensaje:'Este rol no puede descargar certificados por esta ruta.' };
++  }
++
++  var codigo = String(data.codigo || data.cod_estudiante || data.code || data.rec_m || '').trim();
++  var nivel = String(data.nivel || '').trim().toUpperCase();
++  if (!codigo || ['B1','B2','I1','I2'].indexOf(nivel) < 0) {
++    return { ok:false, error:'codigo_nivel_requeridos' };
++  }
++
++  if (rol === 'student') {
++    var propio = _sec006cCodigoProp_(sesion.codigo);
++    var solicitado = _sec006cCodigoProp_(codigo);
++    if (!propio || !solicitado || propio !== solicitado) {
++      return { ok:false, error:'no_autorizado', mensaje:'No tiene permiso para descargar certificados de otro expediente.' };
++    }
++  }
++
++  var rate = _sec002CertRateLimit_(sesion, codigo);
++  if (!rate || rate.ok !== true) return rate || { ok:false, error:'limite_descarga_no_disponible' };
++
++  var encontrado = buscarCertificadoExistente({
++    codigo: codigo,
++    nivel: nivel,
++    grupo: data.grupo || data.cod_grupo || '',
++    registro: data.registro || data.reg_certificados || ''
++  });
++  if (!encontrado || encontrado.ok !== true || !encontrado.file_id) {
++    return encontrado || { ok:false, error:'certificado_no_encontrado' };
++  }
++
++  var file;
++  try {
++    file = DriveApp.getFileById(String(encontrado.file_id));
++  } catch (err) {
++    return { ok:false, error:'certificado_no_disponible', mensaje:'No se pudo abrir el PDF privado.' };
++  }
++
++  var mime = String(file.getMimeType ? file.getMimeType() : '').trim().toLowerCase();
++  var size = Number(file.getSize ? file.getSize() : 0);
++  if (mime !== 'application/pdf') {
++    return { ok:false, error:'tipo_archivo_no_permitido', mime_type:mime };
++  }
++  if (!size || size > SEC002_CERT_PRIVATE_MAX_BYTES) {
++    return {
++      ok:false,
++      error:'certificado_excede_limite_privado',
++      size_bytes:size,
++      max_bytes:SEC002_CERT_PRIVATE_MAX_BYTES,
++      mensaje:'El PDF excede el límite del piloto de descarga privada.'
++    };
++  }
++
++  var blob;
++  var bytes;
++  try {
++    blob = file.getBlob();
++    bytes = blob.getBytes();
++  } catch (err2) {
++    return { ok:false, error:'lectura_pdf_privado_fallida', mensaje:'No se pudo leer el PDF privado.' };
++  }
++  if (!bytes || !bytes.length || bytes.length > SEC002_CERT_PRIVATE_MAX_BYTES) {
++    return { ok:false, error:'contenido_pdf_invalido_o_grande', size_bytes:bytes ? bytes.length : 0 };
++  }
++
++  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
++  return {
++    ok:true,
++    version:'SEC002-CERT-PRIVATE-1',
++    private_delivery:true,
++    codigo:codigo,
++    nivel:nivel,
++    registro:String(encontrado.registro || ''),
++    nombre:String(file.getName ? file.getName() : encontrado.nombre || 'certificado.pdf'),
++    mime_type:'application/pdf',
++    size_bytes:bytes.length,
++    sha256:_sec002HexBytes_(digest),
++    data_base64:Utilities.base64Encode(bytes),
++    duplicados_detectados:Number(encontrado.duplicados_detectados || 0),
++    rate_remaining:rate.remaining
++  };
++}
++
+ 
+ // Override seguro de generarCertificado.
+ // Si existe REG_CERTIFICADOS, NO regenera: busca el PDF existente.
