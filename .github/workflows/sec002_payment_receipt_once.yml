@@ -1,0 +1,47 @@
+name: SEC002 payment receipt private one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec002-private-document-foundation
+    paths:
+      - .github/workflows/sec002_payment_receipt_once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec002-private-document-foundation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch private payment receipt frontend
+        run: python scripts/apply_sec002_payment_receipt_frontend.py
+      - name: Verify accumulated SEC-002 guards
+        run: |
+          node scripts/qa_sec002_private_certificate_delta_portable.mjs
+          node scripts/qa_sec002_student_private_cert.mjs
+          node scripts/qa_sec002_ventas_docs_extra_contract.mjs
+          node scripts/qa_sec002_ventas_extra_private_delta.mjs
+          node scripts/qa_sec002_ventas_extra_private_frontend.mjs
+          node scripts/qa_sec002_payment_receipt_private_delta.mjs
+          node scripts/qa_sec002_payment_receipt_frontend.mjs
+          git diff --check
+      - name: Commit verified payment receipt migration
+        shell: bash
+        run: |
+          if git diff --quiet -- src/data.jsx src/solicitudes_pago.jsx; then
+            echo 'No source change produced' >&2
+            exit 1
+          fi
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add src/data.jsx src/solicitudes_pago.jsx
+          git commit -m 'fix: entrega comprobantes de pago por canal privado SEC-002'
+          git push origin HEAD:fix/sec002-private-document-foundation
