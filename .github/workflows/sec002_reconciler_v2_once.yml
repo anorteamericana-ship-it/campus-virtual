@@ -1,0 +1,40 @@
+name: SEC002 reconciler V2 one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec002-private-document-foundation
+    paths:
+      - .github/workflows/sec002_reconciler_v2_once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec002-private-document-foundation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        shell: powershell
+        run: |
+          node --check scripts/apply_sec002_modular_exact.mjs
+          node --check scripts/qa_sec002_modular_installer.mjs
+      - name: Guard
+        shell: powershell
+        run: node scripts/qa_sec002_modular_installer.mjs
+      - name: Special resolver static contract
+        shell: powershell
+        run: |
+          $src = Get-Content -Raw scripts/apply_sec002_modular_exact.mjs
+          if (($src | Select-String -Pattern "reason: 'post_" -AllMatches).Matches.Count -ne 2) { throw 'expected exactly two special POST resolutions' }
+          if ($src -notmatch '_an4406_rolesPorEndpoint_') { throw 'missing POST role target' }
+          if ($src -notmatch '_an4406_validarPropiedadPost_') { throw 'missing POST ownership target' }
+          if ($src -notmatch 'EXACT_HUNKS=') { throw 'missing exact count output' }
+          if ($src -notmatch 'SPECIAL_POST_LAYER_HUNKS=') { throw 'missing special count output' }
+          Write-Host 'PASS reconciler V2 static contract'
