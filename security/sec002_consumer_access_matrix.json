@@ -1,0 +1,130 @@
+{
+  "id": "SEC-002-CONSUMER-MATRIX",
+  "version": 1,
+  "base": "main@67108928e953fbf044dbcd916dc34a5dd5f1e570",
+  "status": "source_reconciliation_complete_runtime_pending",
+  "no_acl_change": true,
+  "classes": [
+    {
+      "class": "student_certificate",
+      "publisher": "certificate finder/status path",
+      "consumer": "src/student_modules.jsx::CertificadoEstadoCardF984",
+      "current_delivery": "row.url -> direct anchor",
+      "target_delivery": "descargarMiCertificadoPrivado -> authenticated base64 -> Blob/ObjectURL",
+      "authorization": ["session", "role", "student_owns_codigo_or_staff_scope", "nivel"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "install/test endpoint in Apps Script QA before frontend change",
+      "evidence": "E0/E1"
+    },
+    {
+      "class": "student_profile_photo",
+      "publisher": "uploadFotoPerfilEstudiante",
+      "consumer": "src/student_dashboard.jsx::DatosAcademicosInicio",
+      "current_delivery": "FOTO_PERFIL_URL/foto_url -> img src",
+      "target_delivery": "authenticated own-profile image -> Blob/ObjectURL",
+      "authorization": ["session", "student_owns_profile_or_explicit_staff_scope"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "image endpoint QA with MIME/size limits and mobile render",
+      "evidence": "E0"
+    },
+    {
+      "class": "student_identity_and_title_images",
+      "publisher": "_guardarFotoProspecto",
+      "consumer": "src/matriculas_admin.jsx::Documentos adjuntos",
+      "current_delivery": "FOTO_CED_FRENTE/FOTO_CED_DORSO/FOTO_TITULO -> Drive/lh3 image candidates",
+      "target_delivery": "staff-authorized expediente+document_type -> Blob/ObjectURL",
+      "authorization": ["session", "staff_role", "allowed_scope", "expediente", "document_type"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "staff positive/negative QA and private-copy render",
+      "evidence": "E0"
+    },
+    {
+      "class": "signed_enrollment",
+      "publisher": "signed-enrollment Ventas helpers",
+      "consumer": "src/ventas_drawer.jsx plus campus/email/WhatsApp delivery",
+      "current_delivery": "signedDoc.url/public Drive URL",
+      "target_delivery": "authenticated document read; email Blob attachment; logical campus alert reference; manual WhatsApp attachment or future short grant",
+      "authorization": ["session", "role", "student_or_sales_scope", "document_state"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "QA all four delivery paths without public ACL",
+      "evidence": "E0/E1"
+    },
+    {
+      "class": "student_extra_document",
+      "publisher": "subirDocumentoExtra",
+      "consumer": "src/ventas_drawer.jsx",
+      "current_delivery": "docs_extra[].url -> direct anchor; immediate upload uses local data URI",
+      "target_delivery": "normalized logical DTO + authenticated expediente document read",
+      "authorization": ["session", "sales_or_admin_role", "allowed_scope", "expediente"],
+      "contract_bug": "getProspectoDetalle returns docs_extra as sibling but drawer keeps d.prospecto; backend emits nombre while UI expects nombre_archivo",
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "fix DTO first; then QA upload->reload->list->open plus negative authorization",
+      "evidence": "E0"
+    },
+    {
+      "class": "payment_or_bank_proof",
+      "publisher": "_subirComprobanteADrive via reportarPago",
+      "consumer": "src/solicitudes_pago.jsx",
+      "current_delivery": "SOLICITUDES_PAGO.URL_COMPROBANTE -> window.open/img/anchor",
+      "target_delivery": "authenticated solicitud_id -> evidence Blob/ObjectURL",
+      "authorization": ["session", "finance_or_admin_role", "solicitud_scope"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "QA image+PDF render, negative role test, existing-row lookup",
+      "evidence": "E0"
+    },
+    {
+      "class": "commercial_proforma",
+      "publisher": "_exportarHojaComoPDF",
+      "consumer": "src/matriculas_admin.jsx::PFCard",
+      "current_delivery": "public Drive URL -> staff download and embedded WhatsApp message",
+      "target_delivery": "authenticated staff download; WhatsApp manual attachment during P1 transition or future short-lived grant",
+      "authorization": ["session", "staff_role", "prospect_or_student_scope", "proforma_type"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "QA staff download private; verify operational WhatsApp replacement",
+      "evidence": "E0"
+    },
+    {
+      "class": "generated_sales_student_document",
+      "publisher": "_ventasDocBuscarExistente_/_ventasDocPublicarSiSePuede_",
+      "consumer": "DocsEstudianteVentas",
+      "current_delivery": "r.url -> window.open",
+      "target_delivery": "authenticated sales/admin scoped document response or short grant",
+      "authorization": ["session", "role", "sales_scope", "student", "document_type"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "QA scope and direct-url removal",
+      "evidence": "E0"
+    },
+    {
+      "class": "teacher_profile_and_private_documents",
+      "publisher": "_cs21a76PublicFile_",
+      "consumer": "src/teacher_profile_cs21a76.jsx",
+      "current_delivery": "foto.url/curriculum.vista_url/aval_ina.vista_url -> img/window.open",
+      "target_delivery": "authenticated teacher identity or authorized staff -> Blob/ObjectURL",
+      "authorization": ["session", "teacher_owns_profile_or_explicit_staff_scope", "document_type"],
+      "existing_objects_must_migrate": true,
+      "runtime_gate": "QA photo+PDF positive/negative tests",
+      "evidence": "E0"
+    },
+    {
+      "class": "public_enrollment_marketing_or_ui_asset",
+      "publisher": "uploadInscripcionAdminImage",
+      "consumer": "public enrollment UI",
+      "current_delivery": "public asset URL",
+      "target_delivery": "remain deliberately public in isolated subtree",
+      "authorization": [],
+      "existing_objects_must_migrate": false,
+      "runtime_gate": "regression test after sensitive-root ACL cleanup",
+      "evidence": "E0"
+    }
+  ],
+  "global_order": [
+    "authenticated delivery exists in QA",
+    "consumer is switched in QA",
+    "private-copy ACL test passes",
+    "negative authorization passes",
+    "existing-object migration mapping exists",
+    "class-specific public sharing is removed",
+    "residual anyone permissions are scanned",
+    "root inherited public ACL is removed only after dependent classes are migrated"
+  ]
+}
