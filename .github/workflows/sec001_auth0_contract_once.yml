@@ -1,0 +1,52 @@
+name: SEC001 Auth0 contract one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec001-auth-policy-foundation
+    paths:
+      - .github/workflows/sec001_auth0_contract_once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec001-auth-policy-foundation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Correct identity baseline in ADR
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('00_DOCUMENTACION/SEC001_AUTH_VERIFIER_ADR_2026-08-16.md')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('- 18 cuentas activas en `USUARIOS`;', '- 19 cuentas activas en `USUARIOS`;')
+          s=s.replace('- solamente 1 de esas 18 filas contiene un valor de correo con `@`;', '- solamente 1 de esas 19 filas contiene un valor de correo con `@`;')
+          needle='- `PROSPECTOS.CLAVE` es además una estación temporal del password elegido durante inscripción antes de activación.\n'
+          extra=('- la normalización de identidad detectó 2 cuentas activas sin `usuario`, 1 username con espacios y 1 username duplicado entre dos cuentas activas;\n'
+                 '- por lo anterior, cualquier importación real queda bloqueada hasta resolver identificadores de forma explícita.\n')
+          if extra not in s:
+              if needle not in s:
+                  raise SystemExit('ADR insertion marker missing')
+              s=s.replace(needle, needle+extra, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Run SEC-001 guards
+        run: |
+          node scripts/qa_sec001_password_policy.mjs
+          node scripts/qa_sec001_auth0_poc_contract.mjs
+          git diff --check
+      - name: Commit ADR correction
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 00_DOCUMENTACION/SEC001_AUTH_VERIFIER_ADR_2026-08-16.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'SEC-001: corrige baseline de identidad para PoC'
+          git push origin HEAD:fix/sec001-auth-policy-foundation
