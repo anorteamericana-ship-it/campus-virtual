@@ -1,0 +1,63 @@
+{
+  "schema": "REL002_SALES_AUTH_SCOPE_V1",
+  "date": "2026-08-16",
+  "base_main_sha": "67108928e953fbf044dbcd916dc34a5dd5f1e570",
+  "status": "SOURCE_FIXED_RUNTIME_NOT_PROVEN",
+  "frontend": {
+    "session_roles_allowed_to_open_sales_page": ["superadmin", "admin", "ventas"],
+    "authenticated_post_helper": "postVentas",
+    "token_source": "window.getSessionToken()",
+    "token_override_policy": "current session token wins over caller payload",
+    "mutations_previously_missing_token": [
+      "agregarNotaProspecto",
+      "subirDocumentoExtra",
+      "marcarEtapaProspecto",
+      "cobrarMatriculaProspecto",
+      "activarEstudiante",
+      "aprobarBecaProspecto"
+    ],
+    "scope_rule": "getDashboardVentas, MiMatriculasMes and ProspectoDrawer must receive the same scopeAsesor",
+    "legacy_activation_ui": {
+      "component_present": true,
+      "accessible_setModal_trigger_observed": false,
+      "policy": "do not expose activation to role ventas"
+    }
+  },
+  "canonical_backend_observed": {
+    "auth_guard": "_an4406AutorizarPost_",
+    "protected_route_requires_body_token": true,
+    "sales_owned_routes": {
+      "getDashboardVentas": ["ventas", "admin", "superadmin"],
+      "getProspectosAsesor": ["ventas", "admin", "superadmin"],
+      "getProspectoDetalle": ["ventas", "admin", "superadmin"],
+      "getResumenVentas": ["ventas", "admin", "superadmin"],
+      "getCalendarioMatriculas": ["ventas", "admin", "superadmin"],
+      "reportarPago": ["ventas", "admin", "superadmin"],
+      "cancelarProspecto": ["ventas", "admin", "superadmin"],
+      "agregarNotaProspecto": ["ventas", "admin", "superadmin"],
+      "cobrarMatriculaProspecto": ["ventas", "admin", "superadmin"],
+      "subirDocumentoExtra": ["ventas", "admin", "superadmin"],
+      "marcarEtapaProspecto": ["ventas", "admin", "superadmin"],
+      "aprobarBecaProspecto": ["ventas", "admin", "superadmin"]
+    },
+    "activation": {
+      "activarEstudiante": ["admin", "superadmin"],
+      "generarMatricula": ["admin", "superadmin"],
+      "decision": "role ventas reports/advances the commercial flow; administration applies activation/enrollment"
+    },
+    "sales_scope": "for authenticated role ventas, server derives advisor from session and overwrites client advisor filters before ownership checks"
+  },
+  "runtime_close_gate": [
+    "authenticated QA with role ventas proves each permitted mutation no longer returns sesion_requerida",
+    "negative QA proves ventas cannot invoke activarEstudiante",
+    "admin/superadmin Ver como asesor proves dashboard, monthly enrollments and drawer share one advisor scope",
+    "negative ownership QA proves a sales session cannot operate on another advisor's prospect"
+  ],
+  "excluded_from_this_fix": [
+    "Apps Script deployment changes",
+    "backend role widening",
+    "scholarship product-role redesign",
+    "advisor selector data-source redesign",
+    "production writes"
+  ]
+}
