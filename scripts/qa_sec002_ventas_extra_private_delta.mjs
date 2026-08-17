@@ -41,9 +41,14 @@ check('rate limiter is present and fail-closed', added.includes('SEC002_EXTRA_PR
 check('private payload includes base64 + SHA-256 integrity', added.includes('data_base64:Utilities.base64Encode(bytes)') && added.includes('sha256:_sec002ExtraHexBytes_(digest)'));
 
 const responseStart = added.indexOf("version:'SEC002-EXTRA-PRIVATE-1'");
-const responseTail = responseStart >= 0 ? added.slice(responseStart, added.indexOf('\n }', responseStart) >= 0 ? added.indexOf('\n }', responseStart) : undefined) : '';
-check('private download success payload exposes no Drive URL', responseStart >= 0 && !/\burl\s*:|drive_url\s*:|folder_url\s*:/.test(responseTail));
-check('private download success payload exposes no file_id', responseStart >= 0 && !/file_id\s*:/.test(responseTail));
+const responseEndMarker = 'rate_remaining:rate.remaining';
+const responseEnd = responseStart >= 0 ? added.indexOf(responseEndMarker, responseStart) : -1;
+const responseTail = responseStart >= 0 && responseEnd >= responseStart
+  ? added.slice(responseStart, responseEnd + responseEndMarker.length)
+  : '';
+check('private download success payload is isolated by marker', !!responseTail);
+check('private download success payload exposes no Drive URL', !!responseTail && !/\burl\s*:|drive_url\s*:|folder_url\s*:/.test(responseTail));
+check('private download success payload exposes no file_id', !!responseTail && !/file_id\s*:/.test(responseTail));
 
 check('transition does not remove existing public sharing yet', !/ANYONE_WITH_LINK|setSharing\s*\(/.test(removed));
 check('delta does not edit LAB/Memory engine symbols', !/englishLabMemoryMatch|MEMORY_MATCH|memory_match|englishLabWordSearch|englishLabQuizTime|englishLabSentenceOrder|englishLabHangman/.test(added));
