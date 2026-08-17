@@ -25,7 +25,7 @@ jobs:
         run: python scripts/apply_sec002_student_private_cert_patch.py
       - name: Verify SEC-002 certificate migration
         run: |
-          node scripts/qa_sec002_private_cert_delta_portable.mjs
+          node scripts/qa_sec002_private_certificate_delta_portable.mjs
           node scripts/qa_sec002_student_private_cert.mjs
           git diff --check
       - name: Commit verified migration
