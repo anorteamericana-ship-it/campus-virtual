@@ -1,4 +1,5 @@
 name: SEC002 signed enrollment private one-shot
+# retry after signed-folder enumeration guard correction
 
 on:
   push:
