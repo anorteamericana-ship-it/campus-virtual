@@ -31,16 +31,18 @@ check('rollback uses full backup and same deployment', ps.includes("@('push','--
 check('no Drive ACL revocation in installer', !/DriveApp\.Access\.PRIVATE|removeViewer|removeEditor|revokePermissions/.test(ps));
 check('persistent reports are written', ps.includes('source-before-hashes.json') && ps.includes('modular-rebase-report.json') && ps.includes('install-report.json'));
 
-const provenModules=['01_Router','02_Auth_Sesiones_Usuarios','10_Estudiantes','14_Notas_Cierre_Certificados'];
-check('rebaser restricts to four modules proven by 33-file diagnostic', provenModules.every(x=>rebaser.includes(`'${x}'`)) && !rebaser.includes("'20_Inscripcion_Ventas_Matricula',\n  '21_Pagos_Banco_CONAPE'"));
+check('rebaser restricts to four modules proven by 33-file diagnostic', ['01_Router','02_Auth_Sesiones_Usuarios','10_Estudiantes','14_Notas_Cierre_Certificados'].every(x=>rebaser.includes(x)) && !rebaser.includes("  '20_Inscripcion_Ventas_Matricula',") && !rebaser.includes("  '21_Pagos_Banco_CONAPE',"));
 check('rebaser forbids LAB and Memory targets', rebaser.includes("'ENGLISH_LAB'") && rebaser.includes("'MEMORY_MATCH'"));
 check('normal hunks still require exact single preimage', rebaser.includes('if (exactTotal !== 1)'));
-check('exactly two closed-form special resolvers declared', (rebaser.match(/reason: 'post_/g)||[]).length === 2 && rebaser.includes('SPECIAL_RESOLVERS'));
+check('exactly three closed-form special resolvers declared', (rebaser.match(/reason:\s*'post_/g)||[]).length === 3);
 check('certificate special role resolver targets active POST role matrix', rebaser.includes("functionName: '_an4406_rolesPorEndpoint_'") && rebaser.includes("reason: 'post_role_matrix_only'"));
-check('certificate special ownership resolver targets active POST ownership guard', rebaser.includes("functionName: '_an4406_validarPropiedadPost_'") && rebaser.includes("reason: 'post_student_ownership_guard_only'"));
-check('special resolver requires unique function and anchor and absent insertion', rebaser.includes('starts.length !== 1') && rebaser.includes('anchorCount !== 1 || insertCount !== 0'));
+check('certificate special ownership resolver targets active POST ownership guard', rebaser.includes("reason: 'post_student_ownership_guard_only'"));
+check('payment overlap resolver targets active POST ownership guard', rebaser.includes("qa/sec002_payment_receipt_private_delta.patch#4") && rebaser.includes("reason: 'post_payment_ownership_after_docs_extra_overlap'") && rebaser.includes("position: 'before'"));
+check('payment overlap resolver anchors on docs_extra expanded ownership condition', rebaser.includes("getProspectoDetalle' || fn === 'subirDocumentoExtra' || fn === 'descargarDocumentoExtraPrivado'"));
+check('special resolver requires unique function and anchor and absent insertion', rebaser.includes('anchorCount !== 1 || forbiddenCount !== 0') && rebaser.includes('Expected exactly one function'));
 check('rebaser verifies certificate POST-layer invariants', rebaser.includes('certificate_post_role_matrix_invariant_failed') && rebaser.includes('certificate_post_ownership_invariant_failed'));
-check('rebaser uses manifest patch order', rebaser.includes("manifest.ordered_deltas") && rebaser.includes('sort((a,b)=>Number(a.order)-Number(b.order))'));
+check('rebaser verifies payment POST ownership invariant', rebaser.includes('payment_post_ownership_invariant_failed') && rebaser.includes("body.origen = 'VENDEDOR';"));
+check('rebaser uses manifest patch order', rebaser.includes('manifest.ordered_deltas') && rebaser.includes('sort((a,b)=>Number(a.order)-Number(b.order))'));
 check('rebaser requires four endpoint definitions exactly once', ['descargarMiCertificadoPrivado','descargarDocumentoExtraPrivado','descargarComprobantePagoPrivado','descargarMatriculaFirmadaPrivada'].every(x=>rebaser.includes(x)) && rebaser.includes('some(n=>n!==1)'));
 check('rebaser reports exact and special hunk counts', rebaser.includes('EXACT_HUNKS=') && rebaser.includes('SPECIAL_POST_LAYER_HUNKS='));
 check('rebaser has no process execution/import of child_process', !/child_process|spawnSync|execFileSync|execSync/.test(rebaser));
