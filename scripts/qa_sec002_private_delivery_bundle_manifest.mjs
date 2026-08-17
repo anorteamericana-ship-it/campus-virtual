@@ -16,13 +16,18 @@ check('bundle expects 23 canonical diff hunks', manifest.canonical_bundle?.expec
 check('bundle expects 24 ordered patch hunks', manifest.canonical_bundle?.expected_ordered_patch_hunks === 24);
 check('bundle expects +687/-57 canonical diff', manifest.canonical_bundle?.expected_additions === 687 && manifest.canonical_bundle?.expected_deletions === 57);
 check('bundle keeps 11 transition public-share calls', manifest.canonical_bundle?.expected_anyone_with_link_calls === 11);
-check('Memory Match declared unchanged', manifest.canonical_bundle?.memory_match_changed_lines === 0 && manifest.install_gate?.memory_match_read_only === true);
+check('SEC002 leaves unrelated Memory Match unchanged without global read-only policy',
+  manifest.canonical_bundle?.memory_match_changed_lines === 0 &&
+  manifest.install_gate?.preserve_unrelated_memory_match_during_sec002_install === true &&
+  !Object.prototype.hasOwnProperty.call(manifest.install_gate || {}, 'memory_match_read_only') &&
+  String(manifest.install_gate?.memory_match_policy_note || '').includes('levantó la restricción global'));
 check('English LAB declared unchanged', manifest.canonical_bundle?.english_lab_changed_lines === 0);
 check('project files preserved', manifest.install_gate?.never_replace_full_project === true && manifest.install_gate?.preserve_other_apps_script_files === true && manifest.install_gate?.preserve_cs21a201_and_later_files === true);
 check('same QA deployment required', manifest.install_gate?.keep_existing_qa_deployment_id === true);
 check('ACL removal forbidden during bundle install', manifest.install_gate?.remove_public_acl_during_bundle_install === false);
 check('mismatched current Code.gs must stop', manifest.install_gate?.if_current_code_sha_differs === 'STOP_AND_RECONCILE_CURRENT_QA_CODE');
 check('fuzzy application is forbidden', manifest.install_gate?.automatic_fuzzy_patch_application === false);
+check('runtime gate uses normal Memory Match regression smoke', (manifest.runtime_gate_after_install || []).includes('unrelated_memory_match_regression_smoke') && !(manifest.runtime_gate_after_install || []).includes('memory_match_regression_read_only'));
 
 const expectedPaths = [
   'qa/sec002_private_certificate_delta.patch',
@@ -54,7 +59,7 @@ check('individual ordered patch hunk total is 24', totalHunks === 24, `observed=
 for (const fn of ['descargarMiCertificadoPrivado','descargarDocumentoExtraPrivado','descargarComprobantePagoPrivado','descargarMatriculaFirmadaPrivada']) {
   check(`bundle sources declare ${fn}`, allAdded.includes(`function ${fn}`));
 }
-check('bundle sources do not edit Memory Match', !/englishLabMemoryMatch|MEMORY_MATCH|memory_match/.test(allAdded));
+check('bundle sources do not edit Memory Match because SEC002 scope is isolated', !/englishLabMemoryMatch|MEMORY_MATCH|memory_match/.test(allAdded));
 check('bundle sources do not edit English LAB games', !/englishLabLive|englishLabQuizTime|englishLabWordSearch|englishLabHangman|englishLabSentenceOrder/.test(allAdded));
 
 // The signed-enrollment reconciliation intentionally removes two setSharing calls
