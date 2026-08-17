@@ -26,7 +26,6 @@ jobs:
       - name: Verify contract
         run: |
           node scripts/qa_sec002_ventas_docs_extra_contract.mjs
-          node --check <(sed 's/^export //g' /dev/null) 2>/dev/null || true
           git diff --check
       - name: Commit verified source change
         shell: bash
