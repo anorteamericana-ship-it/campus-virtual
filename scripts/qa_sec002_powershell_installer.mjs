@@ -36,6 +36,19 @@ check('installer reruns all accumulated SEC002 guards', [
   'qa_sec002_private_delivery_bundle_manifest.mjs',
 ].every(x => text.includes(x)));
 
+check('strict-mode patch candidates are materialized as an array',
+  text.includes('$patchCandidates = @($patchCandidates | Where-Object'));
+check('strict-mode Code matches are materialized as an array',
+  text.includes('$matches = @(Get-ChildItem'));
+check('strict-mode patch hunk matches are materialized as an array',
+  text.includes("$hunks = @(Select-String -LiteralPath $patchPath -Pattern '^@@ ' -AllMatches).Count"));
+check('strict-mode local diff result is materialized as an array',
+  text.includes('$unexpectedLocal = @(Compare-SourceMaps'));
+check('strict-mode remote diff result is materialized as an array',
+  text.includes('$unexpectedRemote = @(Compare-SourceMaps'));
+check('strict-mode smoke failures count is array-safe',
+  text.includes('if (@($failures).Count -gt 0)'));
+
 const cloneFnStart = text.indexOf('function Clone-AppsScriptProject');
 const cloneFnEnd = text.indexOf('function Test-QaRoutes', cloneFnStart);
 const cloneFn = cloneFnStart >= 0 && cloneFnEnd > cloneFnStart ? text.slice(cloneFnStart, cloneFnEnd) : '';
