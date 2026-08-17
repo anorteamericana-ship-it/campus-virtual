@@ -571,7 +571,7 @@ async function postVentasData(fn, payload = {}) {
   return await res.json();
 }
 const agregarNotaProspecto    = (cedula, asesor, texto)               => { ventasDashCacheClear(); return postVentas({ fn:'agregarNotaProspecto', cedula, asesor, texto }); };
-const subirDocumentoExtra     = (cedula, nombre_archivo, mime_type, base64) => { ventasDashCacheClear(); return postVentas({ fn:'subirDocumentoExtra', cedula, nombre_archivo, mime_type, base64 }); };
+const subirDocumentoExtra     = (cedula, nombre_archivo, mime_type, base64) => { ventasDashCacheClear(); return postVentasData('subirDocumentoExtra', { cedula, nombre_archivo, mime_type, base64 }); };
 const marcarEtapaProspecto    = (cedula, etapa, asesor)               => { ventasDashCacheClear(); return postVentas({ fn:'marcarEtapaProspecto', cedula, etapa, asesor }); };
 const cobrarMatriculaProspecto= (cedula, grupo, monto, comprobante, asesor) => { ventasDashCacheClear(); return postVentas({ fn:'cobrarMatriculaProspecto', cedula, grupo, monto, comprobante, asesor }); };
 const activarEstudiante       = (cedula, grupo, asesor)               => { ventasDashCacheClear(); return postVentas({ fn:'activarEstudiante', cedula, grupo, asesor }); };

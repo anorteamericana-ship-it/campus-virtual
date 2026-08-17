@@ -844,7 +844,14 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
         if (docKey) {
           setDetalle(d => ({ ...d, [docKey]: base64 }));
         } else {
-          const nuevo = { nombre_archivo: file.name, mime_type: file.type, url: base64, fecha: window.HOY };
+          const nuevo = {
+            nombre_archivo: r.nombre || file.name,
+            mime_type: r.mime_type || file.type,
+            file_id: r.file_id || '',
+            size_bytes: Number(r.size_bytes || file.size || 0),
+            url: r.url || '',
+            fecha: window.HOY,
+          };
           setDetalle(d => ({ ...d, docs_extra: [nuevo, ...(d.docs_extra || [])] }));
         }
         onToast({ tipo: 'ok', msg: 'Documento subido' });
