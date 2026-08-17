@@ -1,0 +1,105 @@
+name: SEC002 fix clasp context one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec002-private-document-foundation
+    paths:
+      - .github/workflows/sec002_fix_clasp_context_once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec002-private-document-foundation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch clasp project context
+        shell: pwsh
+        run: |
+          $p = 'scripts/install_apps_script_qa_sec002.ps1'
+          $t = Get-Content -LiteralPath $p -Raw -Encoding UTF8
+
+          $oldClone = @'
+          function Clone-AppsScriptProject([string]$Destination) {
+            if (Test-Path $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force }
+            New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+            Invoke-Clasp -Arguments @('clone-script', $QaScriptId, '--rootDir', $Destination) -WorkingDirectory $WorkRoot | Out-Null
+          }
+          '@
+          $newClone = @'
+          function Clone-AppsScriptProject([string]$Destination) {
+            if (Test-Path $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force }
+            New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+            # Ejecutar clone DENTRO del destino mantiene .clasp.json + source juntos.
+            Invoke-Clasp -Arguments @('clone-script', $QaScriptId) -WorkingDirectory $Destination | Out-Null
+          }
+          '@
+          if (-not $t.Contains($oldClone)) { throw 'Preimagen Clone-AppsScriptProject no coincide' }
+          $t = $t.Replace($oldClone, $newClone)
+
+          $oldBefore = "Invoke-Clasp -Arguments @('list-deployments',`$QaScriptId) -WorkingDirectory `$WorkRoot | Set-Content -LiteralPath (Join-Path `$BackupDir 'deployments-before.txt') -Encoding UTF8"
+          $newBefore = "Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory `$AppsDir | Set-Content -LiteralPath (Join-Path `$BackupDir 'deployments-before.txt') -Encoding UTF8"
+          if (-not $t.Contains($oldBefore)) { throw 'Preimagen list-deployments before no coincide' }
+          $t = $t.Replace($oldBefore, $newBefore)
+
+          $oldAfter = "`$deployListAfter = Invoke-Clasp -Arguments @('list-deployments',`$QaScriptId) -WorkingDirectory `$AppsDir"
+          $newAfter = "`$deployListAfter = Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory `$AppsDir"
+          if (-not $t.Contains($oldAfter)) { throw 'Preimagen list-deployments after no coincide' }
+          $t = $t.Replace($oldAfter, $newAfter)
+
+          $anchorApps = "  Clone-AppsScriptProject -Destination `$AppsDir`n  `$CodePath = Find-CodeFile `$AppsDir"
+          $replacementApps = "  Clone-AppsScriptProject -Destination `$AppsDir`n  if (-not (Test-Path (Join-Path `$AppsDir '.clasp.json'))) { Fail 'Clone QA incompleto: falta .clasp.json en AppsDir.' }`n  `$CodePath = Find-CodeFile `$AppsDir"
+          if (-not $t.Contains($anchorApps)) { throw 'Anchor AppsDir no coincide' }
+          $t = $t.Replace($anchorApps, $replacementApps)
+
+          $anchorBackup = "  Copy-Item -LiteralPath `$AppsDir -Destination `$BackupSource -Recurse -Force`n  `$hashRows = foreach"
+          $replacementBackup = "  Copy-Item -LiteralPath `$AppsDir -Destination `$BackupSource -Recurse -Force`n  if (-not (Test-Path (Join-Path `$BackupSource '.clasp.json'))) { Fail 'Backup QA incompleto: falta .clasp.json.' }`n  `$hashRows = foreach"
+          if (-not $t.Contains($anchorBackup)) { throw 'Anchor backup no coincide' }
+          $t = $t.Replace($anchorBackup, $replacementBackup)
+
+          $anchorVerify = "  Clone-AppsScriptProject -Destination `$VerifyDir`n  `$verifyCode = Find-CodeFile `$VerifyDir"
+          $replacementVerify = "  Clone-AppsScriptProject -Destination `$VerifyDir`n  if (-not (Test-Path (Join-Path `$VerifyDir '.clasp.json'))) { Fail 'Reclone QA incompleto: falta .clasp.json en VerifyDir.' }`n  `$verifyCode = Find-CodeFile `$VerifyDir"
+          if (-not $t.Contains($anchorVerify)) { throw 'Anchor VerifyDir no coincide' }
+          $t = $t.Replace($anchorVerify, $replacementVerify)
+
+          Set-Content -LiteralPath $p -Value $t -Encoding UTF8 -NoNewline
+      - name: Verify strengthened installer contract
+        run: node scripts/qa_sec002_powershell_installer.mjs
+      - name: PowerShell parser
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            'scripts/install_apps_script_qa_sec002.ps1',
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'PASS PowerShell syntax parser'
+      - name: Bundle policy still passes
+        run: node scripts/qa_sec002_private_delivery_bundle_manifest.mjs
+      - name: Commit verified installer correction
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add scripts/install_apps_script_qa_sec002.ps1
+          if git diff --cached --quiet; then
+            echo 'No installer change produced' >&2
+            exit 1
+          fi
+          git commit -m 'fix: aisla contexto clasp por clon en instalador QA'
+          git push origin HEAD:fix/sec002-private-document-foundation
