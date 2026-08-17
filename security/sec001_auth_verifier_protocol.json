@@ -1,84 +1,124 @@
 {
   "id": "SEC-001-VERIFIER-PROTOCOL",
-  "version": 1,
-  "status": "candidate_contract_not_deployed",
-  "principle": "password verification is separated from Campus authorization and session issuance",
-  "browser_to_verifier": {
-    "transport": "HTTPS only",
-    "request": {
-      "username": "normalized Campus login identifier",
-      "password": "subscriber password"
+  "version": 2,
+  "status": "managed_idp_target_not_deployed",
+  "principle": "identity proof is separated from Campus authorization and session issuance",
+  "preferred_poc_provider": "Auth0 Essentials",
+  "steady_state": {
+    "browser_to_idp": {
+      "transport": "HTTPS",
+      "login_surface": "Universal Login",
+      "identifier": "Campus usuario",
+      "password_destination": "IdP only",
+      "mfa_destination": "IdP only",
+      "apps_script_receives_password": false
     },
-    "success_response": {
-      "assertion": "short-lived signed assertion",
-      "expires_in_seconds_max": 60
-    },
-    "failure_response": {
-      "uniform": true,
-      "must_not_reveal": [
-        "account existence",
-        "active/inactive state",
-        "password correctness reason"
+    "browser_to_campus": {
+      "request": "OIDC/OAuth identity proof from successful IdP authentication",
+      "must_not_include": [
+        "password",
+        "password_hash",
+        "TOTP secret",
+        "TOTP verification code after IdP completion"
       ]
+    },
+    "identity_validation": {
+      "required": true,
+      "preferred_for_poc": "remote OIDC/UserInfo validation over HTTPS",
+      "reason": "avoid implementing JWT verification cryptography from scratch inside the Apps Script monolith",
+      "required_identity_fields": [
+        "issuer",
+        "subject",
+        "audience_or_client_binding",
+        "authenticated_username_or_stable_mapping"
+      ],
+      "reject_expired_or_wrong_issuer": true
+    },
+    "apps_script_after_identity": {
+      "lookup_local_account": true,
+      "derive_role_from_local_source": true,
+      "derive_groups_from_local_source": true,
+      "derive_active_state_from_local_source": true,
+      "issue_existing_campus_session_token": true,
+      "idp_role_claims_are_authoritative": false
     }
   },
-  "verifier_storage": {
-    "raw_username_required_at_rest": false,
-    "account_lookup_key": "keyed one-way identifier derived from normalized username",
-    "raw_password_at_rest": false,
-    "password_verifier": "salted adaptive verifier with version and cost factor",
-    "salt_unique_per_account": true,
-    "pepper_or_equivalent_secret_separate_from_database": true
+  "campus_session": {
+    "unchanged_initial_target": true,
+    "password_credentials_are_not_session_credentials": true,
+    "existing_validarSesion_contract_preserved": true
   },
-  "assertion": {
-    "must_be_signed": true,
-    "claims": [
-      "issuer",
-      "audience",
-      "normalized_username",
-      "issued_at",
-      "expires_at",
-      "unique_id"
+  "failure_behavior": {
+    "uniform_external_invalid_identity_response": true,
+    "must_not_reveal": [
+      "account existence",
+      "local active/inactive state before authentication is complete",
+      "password correctness reason",
+      "whether a username is present only in a legacy store"
+    ]
+  },
+  "password_policy": {
+    "minimum_length": 15,
+    "maximum_ui_length": 128,
+    "arbitrary_composition_rules": false,
+    "common_password_dictionary": true,
+    "block_personal_data_after_qa": true
+  },
+  "mfa": {
+    "provider_managed": true,
+    "preferred_factor": "TOTP",
+    "required_for_staff_target": true,
+    "campus_does_not_store_totp_secret": true,
+    "campus_does_not_verify_totp": true
+  },
+  "temporary_migration_bridge": {
+    "steady_state_component": false,
+    "purpose": "move one legacy account to the managed IdP without bulk plaintext export",
+    "legacy_password_may_reach_apps_script_during_bridge": true,
+    "legacy_password_may_be_logged": false,
+    "legacy_password_may_be_returned": false,
+    "new_password_required": true,
+    "new_password_min_length": 15,
+    "new_password_must_not_be_read_from_sheet_for_copy": true,
+    "rate_limit_required_before_legacy_verification": true,
+    "anti_automation_required": true,
+    "successful_sequence": [
+      "verify legacy credential once",
+      "create managed IdP identity with username and new password",
+      "persist AUTH_SUB/provider/migration state only",
+      "neutralize readable password from every applicable legacy store",
+      "issue Campus session",
+      "route future logins only to IdP"
     ],
-    "must_not_include": [
+    "failed_idp_creation": [
+      "do not mark migrated",
+      "do not clear legacy credential",
+      "record non-secret technical event"
+    ],
+    "migrated_account_plaintext_fallback_allowed": false,
+    "retirement_required": true
+  },
+  "legacy_stores_in_scope": [
+    "USUARIOS.clave",
+    "DATOS.clave",
+    "PROSPECTOS.CLAVE and equivalent pending-account credential paths"
+  ],
+  "new_account_target": {
+    "password_persisted_in_sheets": false,
+    "identity_created_only_after_authorized_account_establishment": true,
+    "campus_persists": [
+      "AUTH_PROVIDER",
+      "AUTH_SUB",
+      "AUTH_STATE",
+      "AUTH_MIGRATED_AT",
+      "AUTH_MIGRATION_VERSION"
+    ],
+    "campus_must_not_persist": [
       "password",
-      "password_hash",
-      "Campus role",
-      "group authorization",
-      "financial state",
-      "academic state"
-    ],
-    "audience": "campus-apps-script",
-    "ttl_seconds_max": 60,
-    "replay_protection_required": true,
-    "key_rotation_required": true
+      "IdP access token",
+      "IdP refresh token",
+      "TOTP secret"
+    ]
   },
-  "apps_script_after_assertion": {
-    "verify_assertion_signature_and_time": true,
-    "derive_role_and_account_state_from_Campus_source": true,
-    "issue_existing_Campus_session_token_after_authorization": true,
-    "password_must_not_be_received": true,
-    "password_must_not_be_stored": true
-  },
-  "rate_limiting": {
-    "required_before_expensive_password_verification": true,
-    "signals": [
-      "keyed account identifier",
-      "network or device signal where appropriate"
-    ],
-    "must_avoid_easy_account_lockout_DOS": true
-  },
-  "migration": {
-    "batch_export_of_plaintext_passwords": "not preferred",
-    "preferred_options": [
-      "forced password reset into the new verifier",
-      "explicit one-time verified migration with bounded expiry if forced reset is operationally impossible"
-    ],
-    "legacy_plaintext_fallback_must_be_removed": true
-  },
-  "provider_neutral": true,
-  "current_candidates": [
-    "managed identity provider that satisfies username and migration requirements",
-    "dedicated verifier runtime with modern Web Crypto and isolated credential store"
-  ]
+  "production_authorized": false
 }
