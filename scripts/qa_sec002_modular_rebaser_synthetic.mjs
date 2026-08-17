@@ -4,8 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const helper = path.resolve('scripts/apply_sec002_modular_exact.mjs');
-const endpoints = `
-function descargarMiCertificadoPrivado() {}
+const endpoints = `function descargarMiCertificadoPrivado() {}
 function descargarDocumentoExtraPrivado() {}
 function descargarComprobantePagoPrivado() {}
 function descargarMatriculaFirmadaPrivada() {}
