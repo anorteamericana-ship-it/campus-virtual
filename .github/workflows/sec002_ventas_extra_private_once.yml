@@ -1,5 +1,5 @@
 name: SEC002 ventas extra private one-shot
-# retry after response-scope guard correction
+# final upload-auth metadata gate
 
 on:
   push:
@@ -22,8 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Patch private docs_extra frontend
-        run: python scripts/apply_sec002_ventas_extra_private_frontend.py
+      - name: Patch upload auth and metadata
+        run: python scripts/apply_sec002_ventas_extra_upload_auth_patch.py
       - name: Verify SEC-002 guards
         run: |
           node scripts/qa_sec002_private_certificate_delta_portable.mjs
@@ -32,7 +32,7 @@ jobs:
           node scripts/qa_sec002_ventas_extra_private_delta.mjs
           node scripts/qa_sec002_ventas_extra_private_frontend.mjs
           git diff --check
-      - name: Commit verified source migration
+      - name: Commit verified source hardening
         shell: bash
         run: |
           if git diff --quiet -- src/ventas_data.jsx src/ventas_drawer.jsx; then
@@ -42,5 +42,5 @@ jobs:
           git config user.name 'anorteamericana-ship-it'
           git config user.email 'anorteamericana@gmail.com'
           git add src/ventas_data.jsx src/ventas_drawer.jsx
-          git commit -m 'fix: entrega privada documentos extra de ventas SEC-002'
+          git commit -m 'fix: autentica upload y conserva file id docs extra SEC-002'
           git push origin HEAD:fix/sec002-private-document-foundation
