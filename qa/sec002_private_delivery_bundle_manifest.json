@@ -1,0 +1,62 @@
+{
+  "id": "SEC002-PRIVATE-DELIVERY-BUNDLE-1",
+  "status": "SOURCE_PREPARED_RUNTIME_PENDING",
+  "installation_target": "QA_APPS_SCRIPT_CODE_GS_ONLY",
+  "production_allowed": false,
+  "canonical_code_sha256": "d24fc63c59e60ba92808d4d870f4eb95e35bb6f1c158a130229b187a66e35d37",
+  "ordered_deltas": [
+    {
+      "order": 1,
+      "path": "qa/sec002_private_certificate_delta.patch",
+      "expected_hunks": 5,
+      "scope": "student_private_certificate"
+    },
+    {
+      "order": 2,
+      "path": "qa/sec002_ventas_extra_private_delta.patch",
+      "expected_hunks": 6,
+      "scope": "ventas_extra_documents_private_delivery_and_ownership"
+    },
+    {
+      "order": 3,
+      "path": "qa/sec002_payment_receipt_private_delta.patch",
+      "expected_hunks": 7,
+      "scope": "payment_receipt_private_delivery_and_actor_ownership"
+    }
+  ],
+  "canonical_bundle": {
+    "expected_sha256": "4cd23d409e1c09881b214df9c75be36be7413790b3a13d2ddbaefa3c1a359abe",
+    "expected_size_bytes": 2991930,
+    "expected_diff_hunks": 18,
+    "expected_additions": 512,
+    "expected_deletions": 21,
+    "expected_anyone_with_link_calls": 13,
+    "expected_private_endpoint_definitions": {
+      "descargarMiCertificadoPrivado": 1,
+      "descargarDocumentoExtraPrivado": 1,
+      "descargarComprobantePagoPrivado": 1
+    },
+    "memory_match_changed_lines": 0,
+    "english_lab_changed_lines": 0
+  },
+  "install_gate": {
+    "if_current_code_sha_matches_canonical": "apply_ordered_deltas_and_require_expected_bundle_sha",
+    "if_current_code_sha_differs": "STOP_AND_RECONCILE_CURRENT_QA_CODE",
+    "never_replace_full_project": true,
+    "preserve_other_apps_script_files": true,
+    "preserve_cs21a201_and_later_files": true,
+    "memory_match_read_only": true,
+    "keep_existing_qa_deployment_id": true,
+    "remove_public_acl_during_bundle_install": false
+  },
+  "runtime_gate_after_install": [
+    "authenticated_certificate_positive_negative",
+    "ventas_docs_extra_own_prospect_positive_other_prospect_deny",
+    "payment_receipt_admin_positive_non_admin_deny",
+    "actor_spoof_attempt_ignored",
+    "mime_size_sha256_integrity",
+    "frontend_blob_object_url_smoke",
+    "memory_match_regression_read_only",
+    "same_qa_exec_url"
+  ]
+}
