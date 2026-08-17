@@ -1,0 +1,67 @@
+name: SEC002 fix smoke URI one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec002-private-document-foundation
+    paths:
+      - .github/workflows/sec002_fix_smoke_uri_once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec002-private-document-foundation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact PowerShell interpolation fix and guard
+        shell: powershell
+        run: |
+          $psPath = 'scripts/install_apps_script_qa_sec002_modular.ps1'
+          $guardPath = 'scripts/qa_sec002_modular_installer.mjs'
+          $ps = Get-Content -LiteralPath $psPath -Raw
+          $old = '$uri = "$QaExecUrl?fn=$([Uri]::EscapeDataString($fn))"'
+          $new = '$uri = "${QaExecUrl}?fn=$([Uri]::EscapeDataString($fn))"'
+          $oldCount = ([regex]::Matches($ps, [regex]::Escape($old))).Count
+          $newCount = ([regex]::Matches($ps, [regex]::Escape($new))).Count
+          if ($oldCount -ne 1 -or $newCount -ne 0) { throw "unexpected URI precondition old=$oldCount new=$newCount" }
+          $ps = $ps.Replace($old, $new)
+          Set-Content -LiteralPath $psPath -Value $ps -Encoding UTF8
+
+          $guard = Get-Content -LiteralPath $guardPath -Raw
+          $anchor = "check('smokes all four private routes', ['descargarMiCertificadoPrivado','descargarDocumentoExtraPrivado','descargarComprobantePagoPrivado','descargarMatriculaFirmadaPrivada'].every(x=>ps.includes(x)));"
+          $insert = @"
+          $anchor
+          check('smoke URI braces QA exec variable before query string', ps.includes('`${QaExecUrl}?fn=`$([Uri]::EscapeDataString(`$fn))') && !ps.includes('`$QaExecUrl?fn='));
+          "@.Trim()
+          if (([regex]::Matches($guard, [regex]::Escape($anchor))).Count -ne 1) { throw 'guard anchor not unique' }
+          if ($guard -match 'smoke URI braces QA exec variable before query string') { throw 'guard already patched unexpectedly' }
+          $guard = $guard.Replace($anchor, $insert)
+          Set-Content -LiteralPath $guardPath -Value $guard -Encoding UTF8
+      - name: Windows PowerShell parser
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/install_apps_script_qa_sec002_modular.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Host; throw "PowerShell parser errors=$($errors.Count)" }
+          Write-Host 'PASS Windows PowerShell parser'
+      - name: SEC002 installer guard
+        shell: powershell
+        run: node scripts/qa_sec002_modular_installer.mjs
+      - name: Commit exact fix
+        shell: powershell
+        run: |
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add scripts/install_apps_script_qa_sec002_modular.ps1 scripts/qa_sec002_modular_installer.mjs
+          $changed = git diff --cached --name-only
+          if (($changed | Measure-Object).Count -ne 2) { throw "expected exactly 2 changed files, got: $($changed -join ', ')" }
+          git commit -m 'SEC002 corrige interpolación URI del smoke QA'
+          git push origin HEAD:fix/sec002-private-document-foundation
