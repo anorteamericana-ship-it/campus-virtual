@@ -1,0 +1,265 @@
+--- Code.gs
++++ Code.gs.sec002pago
+@@ -2216,27 +2216,184 @@
+ // params: { asesor: 'Fiorella Salazar' } o { cedula: '402110915' }
+ 
+ 
++var SEC002_PAGO_PRIVATE_MAX_BYTES = 5 * 1024 * 1024;
++var SEC002_PAGO_PRIVATE_RATE_MAX = 20;
++var SEC002_PAGO_PRIVATE_RATE_SECONDS = 60;
++var SEC002_PAGO_ALLOWED_MIME = {
++  'image/jpeg':'jpg',
++  'image/png':'png',
++  'application/pdf':'pdf'
++};
++
++function _sec002PagoHexBytes_(bytes) {
++  return (bytes || []).map(function(b) {
++    var n = b < 0 ? b + 256 : b;
++    return ('0' + n.toString(16)).slice(-2);
++  }).join('');
++}
++
++function _sec002PagoHashText_(value) {
++  return _sec002PagoHexBytes_(Utilities.computeDigest(
++    Utilities.DigestAlgorithm.SHA_256,
++    String(value == null ? '' : value),
++    Utilities.Charset.UTF_8
++  ));
++}
++
++function _sec002PagoRateLimit_(sesion, solicitudId) {
++  sesion = sesion || {};
++  var sujeto = String(sesion.usuario || sesion.cedula || sesion.nombre || '').trim();
++  if (!sujeto) return { ok:false, error:'sujeto_descarga_no_disponible' };
++  var key = 'sec002-pago:' + _sec002PagoHashText_(sujeto + '|' + String(solicitudId || '')).slice(0, 32);
++  var lock = LockService.getScriptLock();
++  if (!lock.tryLock(1500)) return { ok:false, error:'descarga_ocupada', mensaje:'Intente de nuevo en unos segundos.' };
++  try {
++    var cache = CacheService.getScriptCache();
++    var count = Number(cache.get(key) || 0);
++    if (count >= SEC002_PAGO_PRIVATE_RATE_MAX) {
++      return { ok:false, error:'limite_descarga', retry_after_seconds:SEC002_PAGO_PRIVATE_RATE_SECONDS };
++    }
++    cache.put(key, String(count + 1), SEC002_PAGO_PRIVATE_RATE_SECONDS);
++    return { ok:true, remaining:Math.max(0, SEC002_PAGO_PRIVATE_RATE_MAX - count - 1) };
++  } catch (err) {
++    return { ok:false, error:'rate_limit_no_disponible', mensaje:'No se pudo validar temporalmente el límite de descargas.' };
++  } finally {
++    try { lock.releaseLock(); } catch (_) {}
++  }
++}
++
++function _sec002PagoDriveIdFromUrl_(value) {
++  var raw = String(value || '').trim();
++  var m = raw.match(/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{10,})/);
++  return m ? String(m[1] || '') : '';
++}
++
++function _sec002PagoExistingFolder_() {
++  var root = DriveApp.getFolderById(DOCUMENTOS_FOLDER_ID);
++  var it = root.getFoldersByName('SOLICITUDES_PAGO');
++  return it.hasNext() ? it.next() : null;
++}
++
++function _sec002PagoFindImmediateFile_(fileId, solicitudId) {
++  var wanted = String(fileId || '').trim();
++  var reqId = String(solicitudId || '').trim();
++  if (!wanted || !reqId) return null;
++  var folder = _sec002PagoExistingFolder_();
++  if (!folder) return null;
++  var it = folder.getFiles();
++  while (it.hasNext()) {
++    var f = it.next();
++    if (String(f.getId()) !== wanted) continue;
++    if (String(f.getName() || '').indexOf(reqId + '.') !== 0) return null;
++    return f;
++  }
++  return null;
++}
++
++function _sec002PagoSolicitudPorId_(solicitudId) {
++  var wanted = String(solicitudId || '').trim();
++  if (!wanted) return { ok:false, error:'solicitud_id_requerido' };
++  var ss = SpreadsheetApp.openById(SHEET_ID);
++  var ws = ss.getSheetByName('SOLICITUDES_PAGO');
++  if (!ws || ws.getLastRow() < 2) return { ok:false, error:'solicitud_no_encontrada' };
++  var rows = _f983ReadValues_(ws, 'SEC002_PAGO_PRIVATE:lookup');
++  var h = rows[0] || [];
++  var iId = h.indexOf('ID');
++  var iUrl = h.indexOf('URL_COMPROBANTE');
++  if (iId < 0 || iUrl < 0) return { ok:false, error:'solicitudes_pago_schema_invalido' };
++  var match = null;
++  for (var i = 1; i < rows.length; i++) {
++    if (String(rows[i][iId] || '').trim() !== wanted) continue;
++    if (match) return { ok:false, error:'solicitud_id_ambiguo' };
++    match = { id:wanted, url:String(rows[i][iUrl] || '').trim() };
++  }
++  return match ? { ok:true, solicitud:match } : { ok:false, error:'solicitud_no_encontrada' };
++}
++
+ function _subirComprobanteADrive(base64Data, mimeType, solicitudId) {
+   if (!base64Data) return '';
+   try {
++    var mime = String(mimeType || '').trim().toLowerCase();
++    var ext = SEC002_PAGO_ALLOWED_MIME[mime] || '';
++    if (!ext) return '';
++
++    var raw = String(base64Data || '').replace(/^data:[^;]+;base64,/, '');
++    var bytes = Utilities.base64Decode(raw);
++    if (!bytes || !bytes.length || bytes.length > SEC002_PAGO_PRIVATE_MAX_BYTES) return '';
++
+     var raizFolder = DriveApp.getFolderById(DOCUMENTOS_FOLDER_ID);
+     var subFolders = raizFolder.getFoldersByName('SOLICITUDES_PAGO');
+     var subFolder = subFolders.hasNext() ? subFolders.next()
+                   : raizFolder.createFolder('SOLICITUDES_PAGO');
+ 
+-    var ext = 'jpg';
+-    if (mimeType && mimeType.indexOf('png') >= 0) ext = 'png';
+-    else if (mimeType && mimeType.indexOf('pdf') >= 0) ext = 'pdf';
+-
+-    var fileName = solicitudId + '.' + ext;
+-    var blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType || 'image/jpeg', fileName);
++    var fileName = String(solicitudId || '').trim() + '.' + ext;
++    var blob = Utilities.newBlob(bytes, mime, fileName);
+     var file = subFolder.createFile(blob);
++
++    // Transición SEC-002: el sharing público permanece hasta que el consumidor
++    // privado pase QA end-to-end. No retirar ACL en este delta.
+     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+     return 'https://lh3.googleusercontent.com/d/' + file.getId();
+   } catch (e) {
+     Logger.log('Error subiendo comprobante: ' + e.message);
+     return '';
+   }
++}
++
++function descargarComprobantePagoPrivado(body) {
++  body = body || {};
++  var sesion = body._auth_session || null;
++  if (!sesion || sesion.ok !== true) return { ok:false, error:'sesion_requerida' };
++  var rol = String(sesion.rol || '').trim().toLowerCase();
++  if (['admin','superadmin'].indexOf(rol) < 0) {
++    return { ok:false, error:'no_autorizado', mensaje:'Solo administración puede abrir comprobantes de pago.' };
++  }
++
++  var solicitudId = String(body.id || body.solicitud_id || '').trim();
++  if (!solicitudId) return { ok:false, error:'solicitud_id_requerido' };
++
++  var rate = _sec002PagoRateLimit_(sesion, solicitudId);
++  if (!rate || rate.ok !== true) return rate || { ok:false, error:'limite_descarga_no_disponible' };
++
++  var found = _sec002PagoSolicitudPorId_(solicitudId);
++  if (!found.ok) return found;
++  var fileId = _sec002PagoDriveIdFromUrl_(found.solicitud.url);
++  if (!fileId) return { ok:false, error:'comprobante_sin_archivo_privado' };
++
++  var file = _sec002PagoFindImmediateFile_(fileId, solicitudId);
++  if (!file) return { ok:false, error:'comprobante_no_encontrado', mensaje:'El archivo no corresponde a esta solicitud.' };
++
++  var size = Number(file.getSize ? file.getSize() : 0);
++  if (!size || size > SEC002_PAGO_PRIVATE_MAX_BYTES) {
++    return { ok:false, error:'comprobante_excede_limite_privado', size_bytes:size, max_bytes:SEC002_PAGO_PRIVATE_MAX_BYTES };
++  }
++
++  var blob;
++  var bytes;
++  try {
++    blob = file.getBlob();
++    bytes = blob.getBytes();
++  } catch (err2) {
++    return { ok:false, error:'lectura_comprobante_privado_fallida' };
++  }
++  if (!bytes || !bytes.length || bytes.length > SEC002_PAGO_PRIVATE_MAX_BYTES) {
++    return { ok:false, error:'contenido_comprobante_invalido_o_grande', size_bytes:bytes ? bytes.length : 0 };
++  }
++
++  var mime = String(blob.getContentType() || file.getMimeType() || '').trim().toLowerCase();
++  if (!SEC002_PAGO_ALLOWED_MIME[mime]) return { ok:false, error:'mime_comprobante_no_permitido' };
++  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
++  return {
++    ok:true,
++    version:'SEC002-PAGO-PRIVATE-1',
++    private_delivery:true,
++    nombre:String(file.getName() || ('comprobante-' + solicitudId)),
++    mime_type:mime,
++    size_bytes:bytes.length,
++    sha256:_sec002PagoHexBytes_(digest),
++    data_base64:Utilities.base64Encode(bytes),
++    rate_remaining:rate.remaining
++  };
+ }
+ 
+ // ── ENDPOINT: reportarPago(body) ────────────────────────────
+@@ -2300,6 +2457,8 @@
+       });
+ 
+       var estado = String(solicitud.estado || '').toUpperCase();
++      solicitud.tiene_comprobante = !!String(solicitud.url_comprobante || '').trim();
++      solicitud.url_comprobante = '';
+       if (estado === 'PENDIENTE') pendientes++;
+ 
+       // Aplicar filtros
+@@ -2668,6 +2827,7 @@
+     estadoCalendario0425AV: ['superadmin'],
+     aplicarCorreccionCalendario0425AV: ['superadmin'],
+     getSolicitudesPago: adminSuper,
++    descargarComprobantePagoPrivado: adminSuper,
+     marcarSolicitudAplicada: adminSuper,
+     rechazarSolicitudPago: adminSuper,
+     actualizarMoraCache: adminSuper,
+@@ -3046,6 +3206,16 @@
+       body.asesor_filtro = asesorSesion;
+       body.cedula = '';
+       if (fn === 'getCalendarioMatriculas') body.con_tendencia = false;
++    }
++
++    if (fn === 'reportarPago') {
++      var pagoCed = _sec006cProspectoPorCedula_(body.estudiante_cedula);
++      if (!pagoCed.ok || !_sec006cVentasPuedeProspecto_(sesion, pagoCed.prospecto)) {
++        return _an4406_noAutorizado_('El estudiante/prospecto no pertenece a este asesor.');
++      }
++      body.usuario_reporta = String(sesion.cedula || sesion.usuario || '').trim();
++      body.nombre_reporta = String(sesion.nombre || sesion.usuario || '').trim();
++      body.origen = 'VENDEDOR';
+     }
+ 
+     if (fn === 'getProspectoDetalle') {
+@@ -3846,6 +4016,7 @@
+     else if (fn === 'getResumenVentas')           result = getResumenVentas(body);
+     else if (fn === 'reportarPago')               result = reportarPago(body);
+     else if (fn === 'getSolicitudesPago')         result = getSolicitudesPago(body);
++    else if (fn === 'descargarComprobantePagoPrivado') result = descargarComprobantePagoPrivado(body);
+     else if (fn === 'marcarSolicitudAplicada')    result = marcarSolicitudAplicada(body);
+     else if (fn === 'rechazarSolicitudPago')      result = rechazarSolicitudPago(body);
+     else if (fn === 'cancelarProspecto')          result = cancelarProspecto(body);
+@@ -13126,7 +13297,14 @@
+ 
+ function reportarPago(body) {
+   if (!body) return { ok: false, error: 'Body vacío' };
+-  if (!body.usuario_reporta) return { ok: false, error: 'Falta usuario_reporta' };
++  var sesionPago = body._auth_session || null;
++  if (!sesionPago || sesionPago.ok !== true) return { ok:false, error:'sesion_requerida' };
++  var rolPago = String(sesionPago.rol || '').trim().toLowerCase();
++  if (['ventas','admin','superadmin'].indexOf(rolPago) < 0) return { ok:false, error:'no_autorizado' };
++  body.usuario_reporta = String(sesionPago.cedula || sesionPago.usuario || '').trim();
++  body.nombre_reporta = String(sesionPago.nombre || sesionPago.usuario || '').trim();
++  if (rolPago === 'ventas') body.origen = 'VENDEDOR';
++  if (!body.usuario_reporta) return { ok: false, error: 'actor_sesion_no_disponible' };
+   if (!body.estudiante_cedula) return { ok: false, error: 'Falta estudiante_cedula' };
+   if (!body.numero_comprobante) return { ok: false, error: 'Falta numero_comprobante (clave para cruzar con BDBANCARIO)' };
+   if (!body.tipo_pago) return { ok: false, error: 'Falta tipo_pago' };
+@@ -13167,6 +13345,13 @@
+     var urlComp = '';
+     if (body.foto_base64) {
+       urlComp = _subirComprobanteADrive(body.foto_base64, body.foto_mime, id);
++      if (!urlComp) {
++        return {
++          ok:false,
++          error:'comprobante_invalido',
++          mensaje:'El comprobante debe ser JPG, PNG o PDF y no superar 5 MB.'
++        };
++      }
+     }
+ 
+     var fila = [
