@@ -17,7 +17,10 @@ check('production deployment only used as negative gate', ps.includes(prodDeploy
 check('clasp version pinned', ps.includes("$ClaspVersion   = '3.3.0'"));
 check('clone runs inside destination project context', ps.includes("@('clone-script', $QaScriptId) -WorkingDirectory $Destination"));
 check('requires modular mode with no Code file', ps.includes('Este instalador es solo modular'));
-check('backup happens before rebase and push', ps.indexOf('Copy-Item -LiteralPath $AppsDir -Destination $BackupSource') < ps.indexOf('apply_sec002_modular_exact.mjs') && ps.indexOf('Copy-Item -LiteralPath $AppsDir -Destination $BackupSource') < ps.indexOf("@('push','--force')"));
+const backupPos = ps.indexOf('Copy-Item -LiteralPath $AppsDir -Destination $BackupSource');
+const rebasePos = ps.indexOf('scripts/apply_sec002_modular_exact.mjs');
+const mainPushStepPos = ps.indexOf("Write-Step '7/11 · Push controlado del proyecto modular QA'");
+check('backup happens before rebase and main remote push', backupPos >= 0 && rebasePos > backupPos && mainPushStepPos > rebasePos);
 check('exact modular rebaser is invoked', ps.includes('scripts/apply_sec002_modular_exact.mjs'));
 check('requires 24/24 hunks', ps.includes('[int]$rebaseObj.applied_hunks -ne 24'));
 check('declared changed files must equal observed source-map diff', ps.includes('Archivos cambiados no coinciden con reporte modular'));
