@@ -29,6 +29,15 @@ jobs:
       - name: Modular rebaser synthetic QA
         shell: powershell
         run: node scripts/qa_sec002_modular_rebaser_synthetic.mjs
+      - name: StrictMode hashtable key collection behavior
+        shell: powershell
+        run: |
+          Set-StrictMode -Version Latest
+          $a = @{ one = '1'; shared = 'x' }
+          $b = @{ two = '2'; shared = 'x' }
+          $all = @($a.Keys + $b.Keys | Sort-Object -Unique)
+          if (@($all).Count -ne 3) { throw "Unexpected key union count: $(@($all).Count)" }
+          Write-Host 'PASS StrictMode hashtable key union behavior'
       - name: Parse modular installer with Windows PowerShell 5.1
         shell: powershell
         run: |
