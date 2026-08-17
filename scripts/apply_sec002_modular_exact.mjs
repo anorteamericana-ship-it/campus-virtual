@@ -262,6 +262,14 @@ for (const item of ordered) {
 
 if (!failures.length && applied.length !== totalExpected) failures.push({error:'applied_hunk_total_mismatch',expected:totalExpected,observed:applied.length});
 
+const specialApplied = applied.filter(x=>x.resolution==='SPECIAL_POST_LAYER_INSERT');
+const exactApplied = applied.filter(x=>x.resolution==='EXACT_SINGLE_PREIMAGE');
+const specialKeysApplied = new Set(specialApplied.map(x=>`${x.patch}#${x.hunk}`));
+const allDeclaredSpecialsApplied = [...SPECIAL_RESOLVERS.keys()].every(k=>specialKeysApplied.has(k));
+if (!failures.length && specialApplied.length > 0 && !allDeclaredSpecialsApplied) {
+  failures.push({error:'special_resolver_set_incomplete',expected:[...SPECIAL_RESOLVERS.keys()],observed:[...specialKeysApplied]});
+}
+
 const changed = [];
 if (!failures.length) {
   for (const f of files) {
@@ -282,8 +290,10 @@ if (!failures.length) {
   if (Object.values(endpointCounts).some(n=>n!==1)) failures.push({error:'private_endpoint_definition_count',counts:endpointCounts});
 }
 
-// Closed-form authorization invariants for the reconciled POST-layer hunks.
-if (!failures.length) {
+// Closed-form authorization invariants are Campus-specific and are required
+// whenever the SEC-002 special resolver set participates. Generic synthetic
+// exact-only fixtures intentionally contain none of these resolvers.
+if (!failures.length && allDeclaredSpecialsApplied) {
   try {
     const router = text.get(findFileByBase(files,'01_Router'));
     const rolesSeg = functionSegment(router,'_an4406_rolesPorEndpoint_').text;
@@ -315,8 +325,6 @@ if (!failures.length) {
   }
 }
 
-const specialApplied = applied.filter(x=>x.resolution==='SPECIAL_POST_LAYER_INSERT');
-const exactApplied = applied.filter(x=>x.resolution==='EXACT_SINGLE_PREIMAGE');
 const report = {
   ok: !failures.length,
   mode: 'SEC002_MODULAR_EXACT_REBASE_V3_ORDERED_OVERLAPS_RECONCILED',
