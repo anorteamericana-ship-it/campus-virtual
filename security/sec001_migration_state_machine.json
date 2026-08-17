@@ -1,6 +1,6 @@
 {
   "id": "SEC-001-MIGRATION-STATE-MACHINE",
-  "version": 1,
+  "version": 2,
   "status": "design_only_not_deployed",
   "principle": "a partial migration may leave cleanup work, but must never leave a migrated or IdP-bound account able to fall back to a legacy credential",
   "account_states": [
@@ -55,7 +55,7 @@
   "new_account_states": [
     {
       "state": "ACCOUNT_ESTABLISHMENT_PENDING",
-      "meaning": "academic/prospect activation is authorized but no reusable Campus password exists",
+      "meaning": "academic/prospect activation or matriculation is authorized but no reusable Campus password exists",
       "password_in_sheets_allowed": false,
       "campus_session_allowed": false
     },
@@ -128,7 +128,8 @@
         "PROSPECTOS plaintext neutralized if applicable",
         "DATOS.clave duplicate neutralized if applicable",
         "cédula+CODIGO fallback cannot authenticate this account",
-        "activation-generated fallback does not exist",
+        "activarEstudiante generated-password fallback does not exist",
+        "generarMatricula CODIGO-as-password fallback does not exist",
         "read-only verification reports no applicable active legacy credential"
       ]
     },
@@ -183,8 +184,10 @@
     "PROSPECTOS.CLAVE",
     "DATOS.clave when duplicating CODIGO or other reusable secret",
     "NUM_CEDULA + CODIGO authentication branch",
-    "activarEstudiante generated an#### or equivalent fallback"
+    "activarEstudiante generated an#### or equivalent fallback",
+    "generarMatricula codigoEst-as-password fallback"
   ],
+  "new_account_provisioning_invariant": "activarEstudiante, generarMatricula, cobrarMatriculaProspecto and any _crearFilaEnUsuariosV2 caller must not create/copy a password; they may only establish local academic state plus managed-identity establishment state",
   "login_routing_invariant": "AUTH_STATE and AUTH_SUB are checked before any legacy verifier; IDP_BOUND_CLEANUP_PENDING, MIGRATED, RESET_REQUIRED and LOCKED must fail closed on all legacy branches",
   "production_authorized": false
 }
