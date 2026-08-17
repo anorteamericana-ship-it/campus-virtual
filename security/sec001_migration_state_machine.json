@@ -1,0 +1,190 @@
+{
+  "id": "SEC-001-MIGRATION-STATE-MACHINE",
+  "version": 1,
+  "status": "design_only_not_deployed",
+  "principle": "a partial migration may leave cleanup work, but must never leave a migrated or IdP-bound account able to fall back to a legacy credential",
+  "account_states": [
+    {
+      "state": "LEGACY",
+      "meaning": "account still authenticates only through an explicitly allowed legacy path during the temporary migration window",
+      "legacy_auth_allowed": true,
+      "idp_auth_allowed": false,
+      "required_fields": [],
+      "forbidden_fields": ["AUTH_SUB"]
+    },
+    {
+      "state": "MIGRATION_PENDING",
+      "meaning": "migration transaction has been reserved locally before creating/binding an external identity",
+      "legacy_auth_allowed": true,
+      "idp_auth_allowed": false,
+      "required_fields": ["AUTH_MIGRATION_TX_ID", "AUTH_MIGRATION_STARTED_AT", "AUTH_MIGRATION_VERSION"],
+      "notes": "legacy auth remains temporarily possible only until an IdP identity is bound; rate limits and a short transaction TTL are mandatory"
+    },
+    {
+      "state": "IDP_BOUND_CLEANUP_PENDING",
+      "meaning": "AUTH_SUB is known locally and the account must authenticate only through IdP; readable legacy material may still require idempotent cleanup",
+      "legacy_auth_allowed": false,
+      "idp_auth_allowed": true,
+      "required_fields": ["AUTH_PROVIDER", "AUTH_SUB", "AUTH_MIGRATION_TX_ID", "AUTH_IDP_BOUND_AT", "AUTH_MIGRATION_VERSION"],
+      "security_rule": "all legacy verifier branches must fail closed for this account before cleanup begins"
+    },
+    {
+      "state": "MIGRATED",
+      "meaning": "IdP identity is bound and all applicable readable/reusable legacy credential surfaces have been neutralized and verified",
+      "legacy_auth_allowed": false,
+      "idp_auth_allowed": true,
+      "required_fields": ["AUTH_PROVIDER", "AUTH_SUB", "AUTH_MIGRATED_AT", "AUTH_MIGRATION_VERSION"],
+      "cleanup_verified": true
+    },
+    {
+      "state": "RESET_REQUIRED",
+      "meaning": "identity mapping exists or migration cannot safely continue without an explicit recovery/reset flow",
+      "legacy_auth_allowed": false,
+      "idp_auth_allowed": false,
+      "required_fields": ["AUTH_STATE_REASON"],
+      "security_rule": "never recover by re-enabling plaintext/CODIGO/an#### fallback"
+    },
+    {
+      "state": "LOCKED",
+      "meaning": "account is administratively/security locked",
+      "legacy_auth_allowed": false,
+      "idp_auth_allowed": false,
+      "required_fields": ["AUTH_STATE_REASON"]
+    }
+  ],
+  "new_account_states": [
+    {
+      "state": "ACCOUNT_ESTABLISHMENT_PENDING",
+      "meaning": "academic/prospect activation is authorized but no reusable Campus password exists",
+      "password_in_sheets_allowed": false,
+      "campus_session_allowed": false
+    },
+    {
+      "state": "IDP_ESTABLISHED_PENDING_LOCAL_ACTIVATION",
+      "meaning": "IdP identity exists and is mapped, but local academic/account activation has not committed",
+      "password_in_sheets_allowed": false,
+      "campus_session_allowed": false
+    },
+    {
+      "state": "MIGRATED",
+      "meaning": "managed identity and local account are both active; no legacy credential exists",
+      "password_in_sheets_allowed": false,
+      "campus_session_allowed": true
+    }
+  ],
+  "migration_transaction": {
+    "idempotency_key": "AUTH_MIGRATION_TX_ID",
+    "must_be_created_before_external_identity_call": true,
+    "may_contain_password": false,
+    "may_contain_totp_secret": false,
+    "may_contain_idp_access_token": false,
+    "journal_required": true,
+    "journal_events": [
+      "migration_started",
+      "legacy_credential_verified",
+      "idp_identity_created_or_reconciled",
+      "local_idp_binding_committed",
+      "legacy_surface_neutralized",
+      "cleanup_verified",
+      "migration_completed",
+      "migration_failed_or_reset_required"
+    ],
+    "journal_must_not_log": [
+      "legacy_password",
+      "new_password",
+      "TOTP secret",
+      "TOTP code",
+      "IdP access token",
+      "Campus session token"
+    ]
+  },
+  "transition_rules": [
+    {
+      "from": "LEGACY",
+      "to": "MIGRATION_PENDING",
+      "preconditions": [
+        "account is in migration cohort",
+        "migration window is enabled",
+        "rate/abuse checks pass",
+        "unique migration transaction id is persisted"
+      ]
+    },
+    {
+      "from": "MIGRATION_PENDING",
+      "to": "IDP_BOUND_CLEANUP_PENDING",
+      "preconditions": [
+        "legacy credential was verified once within bounded transaction",
+        "user established a new IdP password rather than copying stored plaintext",
+        "IdP identity was created or reconciled idempotently",
+        "AUTH_SUB and provider mapping were committed locally"
+      ],
+      "atomic_security_effect": "legacy verifier must deny this account from this point forward"
+    },
+    {
+      "from": "IDP_BOUND_CLEANUP_PENDING",
+      "to": "MIGRATED",
+      "preconditions": [
+        "USUARIOS plaintext neutralized if applicable",
+        "PROSPECTOS plaintext neutralized if applicable",
+        "DATOS.clave duplicate neutralized if applicable",
+        "cédula+CODIGO fallback cannot authenticate this account",
+        "activation-generated fallback does not exist",
+        "read-only verification reports no applicable active legacy credential"
+      ]
+    },
+    {
+      "from": "MIGRATION_PENDING",
+      "to": "LEGACY",
+      "allowed_only_if": [
+        "no IdP identity was created or bound",
+        "no AUTH_SUB exists locally",
+        "transaction is explicitly cancelled/expired"
+      ],
+      "reason": "safe pre-binding rollback"
+    },
+    {
+      "from": "IDP_BOUND_CLEANUP_PENDING",
+      "to": "LEGACY",
+      "allowed": false,
+      "reason": "once IdP is bound, plaintext fallback cannot be re-enabled"
+    },
+    {
+      "from": "MIGRATED",
+      "to": "LEGACY",
+      "allowed": false,
+      "reason": "recovery/reset must use managed identity processes"
+    }
+  ],
+  "crash_recovery": [
+    {
+      "point": "after MIGRATION_PENDING persisted but before IdP create",
+      "safe_action": "expire/cancel transaction back to LEGACY if no external identity exists"
+    },
+    {
+      "point": "after IdP create but before local AUTH_SUB commit",
+      "safe_action": "reconcile external identity by deterministic username/transaction metadata; do not create a second identity; legacy remains the pre-existing path until local binding commits",
+      "note": "this is not a security improvement yet, but must not worsen current exposure"
+    },
+    {
+      "point": "after local AUTH_SUB commit but before legacy cleanup",
+      "safe_action": "remain IDP_BOUND_CLEANUP_PENDING; deny all legacy auth; resume idempotent cleanup"
+    },
+    {
+      "point": "after partial cleanup across multiple legacy stores",
+      "safe_action": "remain IDP_BOUND_CLEANUP_PENDING; do not restore cleaned credentials; resume remaining idempotent cleanup"
+    },
+    {
+      "point": "IdP unavailable after binding",
+      "safe_action": "use IdP recovery/reset or RESET_REQUIRED; never reactivate legacy password/CODIGO fallback"
+    }
+  ],
+  "legacy_cleanup_surfaces": [
+    "USUARIOS.clave",
+    "PROSPECTOS.CLAVE",
+    "DATOS.clave when duplicating CODIGO or other reusable secret",
+    "NUM_CEDULA + CODIGO authentication branch",
+    "activarEstudiante generated an#### or equivalent fallback"
+  ],
+  "login_routing_invariant": "AUTH_STATE and AUTH_SUB are checked before any legacy verifier; IDP_BOUND_CLEANUP_PENDING, MIGRATED, RESET_REQUIRED and LOCKED must fail closed on all legacy branches",
+  "production_authorized": false
+}
