@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/qa_sec002_runtime_discovery.mjs
       - .github/workflows/sec002_runtime_discovery_once.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/qa_sec002_runtime_discovery.mjs
+      - .github/workflows/sec002_runtime_discovery_once.yml
 
 permissions:
   contents: read
