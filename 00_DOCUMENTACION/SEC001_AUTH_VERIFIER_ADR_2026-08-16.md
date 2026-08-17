@@ -32,11 +32,13 @@ El identificador visible de acceso es `usuario`, no el correo.
 
 Una inspección read-only y privacy-preserving del 2026-08-16 encontró:
 
-- 18 cuentas activas en `USUARIOS`;
-- solamente 1 de esas 18 filas contiene un valor de correo con `@`;
+- 19 cuentas activas en `USUARIOS`;
+- solamente 1 de esas 19 filas contiene un valor de correo con `@`;
 - `DATOS` también contiene columnas `email` y `clave`;
 - 160 filas de `DATOS` contienen un valor email-like con `@` — esto **no significa 160 estudiantes totales**, solo 160 filas con correo aparente;
 - `PROSPECTOS.CLAVE` es además una estación temporal del password elegido durante inscripción antes de activación.
+- la normalización de identidad detectó 2 cuentas activas sin `usuario`, 1 username con espacios y 1 username duplicado entre dos cuentas activas;
+- por lo anterior, cualquier importación real queda bloqueada hasta resolver identificadores de forma explícita.
 
 No se copiaron direcciones ni contraseñas a la documentación.
 
