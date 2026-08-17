@@ -1,0 +1,62 @@
+{
+  "id": "SEC-001-AUTH-IDENTITIES",
+  "version": 1,
+  "status": "schema_only_no_sheet_created",
+  "sheet_name": "AUTH_IDENTIDADES",
+  "purpose": "map a stable managed-identity subject to exactly one stable Campus principal without using username as authorization",
+  "columns": [
+    {"name":"IDENTITY_ID","required":true,"unique":true,"description":"Campus-generated UUID for the identity mapping row"},
+    {"name":"PROVIDER","required":true,"allowed":["auth0"]},
+    {"name":"PROVIDER_SUB","required":true,"unique_with":["PROVIDER"],"sensitive":true},
+    {"name":"LOCAL_SOURCE","required":true,"allowed":["USUARIOS","DATOS"]},
+    {"name":"LOCAL_KEY_TYPE","required":true,"allowed":["CEDULA","CODIGO","AUTH_PRINCIPAL_ID"]},
+    {"name":"LOCAL_KEY","required":true,"sensitive":true},
+    {"name":"USERNAME_CANONICO","required":false,"authorization_key":false},
+    {"name":"MIGRATION_STATUS","required":true,"allowed":["PENDING","RESET_REQUIRED","MIGRATED","DISABLED","REVOKED"]},
+    {"name":"CREATED_AT","required":true},
+    {"name":"MIGRATED_AT","required":false},
+    {"name":"LEGACY_CLEARED_AT","required":false},
+    {"name":"LAST_AUTH_AT","required":false},
+    {"name":"NOTES_CODE","required":false,"pii_forbidden":true}
+  ],
+  "uniqueness": [
+    "PROVIDER+PROVIDER_SUB resolves to exactly one row",
+    "one MIGRATED row may not share the same PROVIDER+PROVIDER_SUB with any other row",
+    "one active provider identity may not map to multiple LOCAL_SOURCE+LOCAL_KEY_TYPE+LOCAL_KEY principals"
+  ],
+  "lookup_rules": {
+    "username_only_lookup_allowed": false,
+    "row_number_as_local_key_allowed": false,
+    "case_insensitive_provider": true,
+    "provider_sub_case_sensitive": true,
+    "local_key_normalization_depends_on_type": true,
+    "authorization_requires_status": "MIGRATED"
+  },
+  "local_principal_rules": {
+    "USUARIOS": {
+      "preferred_key_types": ["AUTH_PRINCIPAL_ID","CEDULA","CODIGO"],
+      "username_fallback_allowed": false
+    },
+    "DATOS": {
+      "preferred_key_types": ["AUTH_PRINCIPAL_ID","CODIGO","CEDULA"],
+      "username_fallback_allowed": false,
+      "legacy_only_target": true
+    }
+  },
+  "state_transitions": {
+    "PENDING": ["RESET_REQUIRED","MIGRATED","REVOKED"],
+    "RESET_REQUIRED": ["MIGRATED","REVOKED"],
+    "MIGRATED": ["DISABLED","REVOKED"],
+    "DISABLED": ["MIGRATED","REVOKED"],
+    "REVOKED": []
+  },
+  "migration_invariants": [
+    "MIGRATED requires provider identity confirmation",
+    "MIGRATED requires exactly one local principal",
+    "MIGRATED requires legacy reusable secret cleared or an explicit atomic cleanup step in the same controlled migration",
+    "LEGACY_CLEARED_AT must be populated before a migrated account is declared SEC-001 compliant",
+    "provider subject/token/password are never written to audit logs beyond the required mapping subject itself",
+    "NOTES_CODE uses controlled codes, never free-text PII"
+  ],
+  "production_authorized": false
+}
