@@ -35,7 +35,22 @@ check('installer reruns all accumulated SEC002 guards', [
   'qa_sec002_signed_enrollment_frontend.mjs',
   'qa_sec002_private_delivery_bundle_manifest.mjs',
 ].every(x => text.includes(x)));
-check('installer clones full Apps Script project before backup', text.includes("clone-script', $QaScriptId") && text.includes("Copy-Item -LiteralPath $AppsDir -Destination $BackupSource -Recurse -Force"));
+
+const cloneFnStart = text.indexOf('function Clone-AppsScriptProject');
+const cloneFnEnd = text.indexOf('function Test-QaRoutes', cloneFnStart);
+const cloneFn = cloneFnStart >= 0 && cloneFnEnd > cloneFnStart ? text.slice(cloneFnStart, cloneFnEnd) : '';
+check('clone helper exists', !!cloneFn);
+check('each clasp clone executes inside its destination directory', cloneFn.includes("Invoke-Clasp -Arguments @('clone-script', $QaScriptId) -WorkingDirectory $Destination"));
+check('clone helper never uses --rootDir', !cloneFn.includes('--rootDir'));
+check('clone helper does not reuse WorkRoot project context', !cloneFn.includes('-WorkingDirectory $WorkRoot'));
+check('installer clones full Apps Script project before backup', cloneFn.includes("clone-script', $QaScriptId") && text.includes("Copy-Item -LiteralPath $AppsDir -Destination $BackupSource -Recurse -Force"));
+check('cloned project must contain .clasp.json before backup', text.includes("if (-not (Test-Path (Join-Path $AppsDir '.clasp.json')))"));
+check('backup explicitly verifies .clasp.json', text.includes("if (-not (Test-Path (Join-Path $BackupSource '.clasp.json')))"));
+check('verify clone explicitly has isolated .clasp.json', text.includes("if (-not (Test-Path (Join-Path $VerifyDir '.clasp.json')))"));
+check('deployment listing before install runs in AppsDir project context', text.includes("Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory $AppsDir"));
+check('deployment listing never receives QA Script ID as positional argument', !text.includes("@('list-deployments',$QaScriptId)"));
+check('deployment listing never runs from WorkRoot', !text.includes("@('list-deployments') -WorkingDirectory $WorkRoot"));
+
 check('backup happens before remote push', text.indexOf('Copy-Item -LiteralPath $AppsDir -Destination $BackupSource') < text.indexOf("Invoke-Clasp -Arguments @('push','--force') -WorkingDirectory $AppsDir"));
 check('mismatched live Code stops before write', text.includes('STOP_AND_RECONCILE_CURRENT_QA_CODE') && text.indexOf('STOP_AND_RECONCILE_CURRENT_QA_CODE') < text.indexOf("Invoke-Clasp -Arguments @('push','--force') -WorkingDirectory $AppsDir"));
 check('patching is fuzz zero', text.includes('--fuzz=0'));
@@ -50,6 +65,7 @@ check('installer smokes all four private endpoints', [
   'descargarMatriculaFirmadaPrivada',
 ].every(x => text.includes(x)));
 check('installer implements rollback after remote mutation', text.includes('function Restore-BackupAndRedeploy') && text.includes('if ($Apply -and $RemoteChanged)') && text.includes("Invoke-Clasp -Arguments @('push','--force') -WorkingDirectory $BackupSource"));
+check('rollback requires project metadata in backup', text.includes("Test-Path (Join-Path $BackupSource '.clasp.json')"));
 check('rollback also reuses same deployment ID', text.includes("'create-deployment','--deploymentId',$QaDeploymentId,'--description',\"ROLLBACK SEC002 $Stamp\""));
 check('installer does not revoke Drive ACL', !/DriveApp\.Access\.PRIVATE|revokePermissions|removeViewer|removeEditor/.test(text));
 check('installer writes persistent install report', text.includes('install-report.json') && text.includes('source-before-hashes.json'));
