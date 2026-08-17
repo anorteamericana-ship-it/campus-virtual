@@ -1,0 +1,32 @@
+name: SEC001 migration state recheck one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec001-auth-policy-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec001-auth-policy-foundation
+          fetch-depth: 0
+      - name: Verify exact ancestry
+        run: |
+          git merge-base --is-ancestor 67108928e953fbf044dbcd916dc34a5dd5f1e570 HEAD
+          test "$(git rev-parse 67108928e953fbf044dbcd916dc34a5dd5f1e570)" = "67108928e953fbf044dbcd916dc34a5dd5f1e570"
+      - name: Run SEC-001 password policy guard
+        run: node scripts/qa_sec001_password_policy.mjs
+      - name: Run SEC-001 identity and migration guard
+        run: node scripts/qa_sec001_identity_architecture.mjs
+      - name: JSON parse guards
+        run: |
+          node -e "for (const f of ['security/sec001_auth_contract.json','security/sec001_identity_provider_decision.json','security/sec001_auth_verifier_protocol.json','security/sec001_legacy_credential_surface.json','security/sec001_migration_state_machine.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('PASS: JSON parse')"
+      - name: Diff hygiene excluding workflow itself
+        run: |
+          git diff --check 67108928e953fbf044dbcd916dc34a5dd5f1e570..HEAD -- . ':!.github/workflows/sec001_migration_state_recheck_once.yml'
