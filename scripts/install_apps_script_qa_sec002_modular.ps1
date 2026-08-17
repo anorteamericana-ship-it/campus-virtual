@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
   [switch]$Apply,
   [switch]$KeepWorkDir,
@@ -133,7 +133,7 @@ function Test-QaRoutes {
       if (-not $text.Trim().StartsWith('{')) { throw 'respuesta no JSON' }
       $obj = $text | ConvertFrom-Json
       $joined = (($obj | ConvertTo-Json -Compress -Depth 8) + '').ToLowerInvariant()
-      if ($joined -match 'funci[oÃ³]n post no reconocida|function.*not.*recognized|unknown.*function') { throw 'ruta no reconocida' }
+      if ($joined -match 'funci[oó]n post no reconocida|function.*not.*recognized|unknown.*function') { throw 'ruta no reconocida' }
       Write-Host "PASS route smoke $fn -> JSON/rechazo autenticado"
     } catch { $failures += "$fn :: $($_.Exception.Message)" }
   }
@@ -158,7 +158,7 @@ $report = [ordered]@{
 }
 
 try {
-  Write-Step '1/11 Â· Obtener rama SEC-002 y ejecutar guards'
+  Write-Step '1/11 · Obtener rama SEC-002 y ejecutar guards'
   $cloneRepo = Invoke-Native -FilePath $GitExe -Arguments @('clone','--quiet','--depth','1','--branch',$RepoRef,$RepoUrl,$RepoDir) -WorkingDirectory $WorkRoot
   $head = Invoke-Native -FilePath $GitExe -Arguments @('rev-parse','HEAD') -WorkingDirectory $RepoDir
   $report.repo_head = $head.Text.Trim()
@@ -179,7 +179,7 @@ try {
     $g = Invoke-Native -FilePath $NodeExe -Arguments @($guard) -WorkingDirectory $RepoDir
   }
 
-  Write-Step '2/11 Â· Verificar autenticacion clasp'
+  Write-Step '2/11 · Verificar autenticacion clasp'
   $auth = Invoke-Clasp -Arguments @('show-authorized-user','--json') -WorkingDirectory $WorkRoot -AllowFailure
   if ($auth.Code -ne 0) {
     Write-Host 'No hay sesion clasp valida. Se abrira el login oficial de Google una sola vez.' -ForegroundColor Yellow
@@ -187,7 +187,7 @@ try {
     Invoke-Clasp -Arguments @('show-authorized-user','--json') -WorkingDirectory $WorkRoot | Out-Null
   }
 
-  Write-Step '3/11 Â· Clonar proyecto Apps Script QA modular completo'
+  Write-Step '3/11 · Clonar proyecto Apps Script QA modular completo'
   Clone-AppsScriptProject -Destination $AppsDir
   $codeMatches = @(Get-ChildItem -LiteralPath $AppsDir -Recurse -File | Where-Object {
     [IO.Path]::GetFileNameWithoutExtension($_.Name) -eq 'Code' -and $_.Extension.ToLowerInvariant() -in @('.js','.gs')
@@ -197,14 +197,14 @@ try {
   $report.source_files_before = $beforeMap.Count
   if ($beforeMap.Count -lt 30) { Fail "Proyecto modular inesperadamente pequeno: $($beforeMap.Count) archivos fuente." }
 
-  Write-Step '4/11 Â· Crear backup persistente ANTES de cambios locales'
+  Write-Step '4/11 · Crear backup persistente ANTES de cambios locales'
   Copy-Item -LiteralPath $AppsDir -Destination $BackupSource -Recurse -Force
   if (-not (Test-Path (Join-Path $BackupSource '.clasp.json'))) { Fail 'Backup QA incompleto: falta .clasp.json.' }
   $beforeRows = foreach ($key in ($beforeMap.Keys | Sort-Object)) { [pscustomobject]@{path=$key;sha256=$beforeMap[$key]} }
   $beforeRows | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $BackupDir 'source-before-hashes.json') -Encoding UTF8
   (Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory $AppsDir).Text | Set-Content -LiteralPath (Join-Path $BackupDir 'deployments-before.txt') -Encoding UTF8
 
-  Write-Step '5/11 Â· Rebase exacto de 24 hunks sobre modulos actuales (sin fuzz)'
+  Write-Step '5/11 · Rebase exacto de 24 hunks sobre modulos actuales (sin fuzz)'
   $rebase = Invoke-Native -FilePath $NodeExe -Arguments @(
     'scripts/apply_sec002_modular_exact.mjs','--apps-dir',$AppsDir,'--repo-root',$RepoDir,'--report',$RebaseReport
   ) -WorkingDirectory $RepoDir -AllowFailure
@@ -235,18 +235,18 @@ try {
     Fail "Archivos cambiados no coinciden con reporte modular. declared=$($declared -join ',') observed=$($observed -join ',')"
   }
 
-  Write-Step '6/11 Â· Gate de no-escritura / autorizacion Apply'
+  Write-Step '6/11 · Gate de no-escritura / autorizacion Apply'
   if (-not $Apply) {
     $report.result = 'PLAN_PASS_NO_REMOTE_WRITE'
-    Write-Host 'PLAN PASS Â· rebase modular exacto 24/24; no se escribio Apps Script porque falta -Apply.' -ForegroundColor Green
+    Write-Host 'PLAN PASS · rebase modular exacto 24/24; no se escribio Apps Script porque falta -Apply.' -ForegroundColor Green
     return
   }
 
-  Write-Step '7/11 Â· Push controlado del proyecto modular QA'
+  Write-Step '7/11 · Push controlado del proyecto modular QA'
   $RemoteChanged = $true
   Invoke-Clasp -Arguments @('push','--force') -WorkingDirectory $AppsDir | Out-Null
 
-  Write-Step '8/11 Â· Releer remoto y exigir mapa byte-exacto completo'
+  Write-Step '8/11 · Releer remoto y exigir mapa byte-exacto completo'
   Clone-AppsScriptProject -Destination $VerifyDir
   $verifyMap = Get-ProjectSourceMap $VerifyDir
   $remoteDiff = Compare-MapExact -Expected $candidateMap -Observed $verifyMap
@@ -255,8 +255,8 @@ try {
     Fail "Reclone remoto no coincide byte a byte con candidato local ($(@($remoteDiff).Count) diferencias)."
   }
 
-  Write-Step '9/11 Â· Actualizar la MISMA deploymentId QA'
-  if ($QaDeploymentId -eq $ProdDeploymentId) { Fail 'Gate critico: deployment QA coincide con producciÃ³n.' }
+  Write-Step '9/11 · Actualizar la MISMA deploymentId QA'
+  if ($QaDeploymentId -eq $ProdDeploymentId) { Fail 'Gate critico: deployment QA coincide con producción.' }
   $desc = "SEC002 modular private delivery QA $Stamp"
   $dep = Invoke-Clasp -Arguments @('create-deployment','--deploymentId',$QaDeploymentId,'--description',$desc) -WorkingDirectory $AppsDir
   $dep.Text | Set-Content -LiteralPath (Join-Path $BackupDir 'deployment-update.txt') -Encoding UTF8
@@ -264,7 +264,7 @@ try {
   $listAfter.Text | Set-Content -LiteralPath (Join-Path $BackupDir 'deployments-after.txt') -Encoding UTF8
   if ($listAfter.Text -notmatch [Regex]::Escape($QaDeploymentId)) { Fail 'La deploymentId QA conocida no aparece despues del redeploy.' }
 
-  Write-Step '10/11 Â· Smoke negativo de las cuatro rutas privadas'
+  Write-Step '10/11 · Smoke negativo de las cuatro rutas privadas'
   $smokeOk = $false
   for ($attempt=1; $attempt -le 6; $attempt++) {
     try { Test-QaRoutes; $smokeOk=$true; break }
@@ -273,9 +273,9 @@ try {
   if (-not $smokeOk) { Fail 'Smoke QA no confirmado.' }
   $report.smoke = 'PASS_NEGATIVE_AUTH_ROUTE_SMOKE'
 
-  Write-Step '11/11 Â· Resultado'
+  Write-Step '11/11 · Resultado'
   $report.result = 'QA_MODULAR_INSTALL_PASS'
-  Write-Host 'PASS Â· SEC-002 instalado sobre Apps Script QA modular y misma /exec QA actualizada.' -ForegroundColor Green
+  Write-Host 'PASS · SEC-002 instalado sobre Apps Script QA modular y misma /exec QA actualizada.' -ForegroundColor Green
   Write-Host "Backup: $BackupDir"
   Write-Host "Changed files: $($report.changed_files -join ', ')"
   Write-Host "QA /exec: $QaExecUrl"
@@ -296,4 +296,3 @@ finally {
   if (-not $KeepWorkDir) { try { Remove-Item -LiteralPath $WorkRoot -Recurse -Force -ErrorAction SilentlyContinue } catch {} }
   else { Write-Host "WorkDir conservado: $WorkRoot" }
 }
-
