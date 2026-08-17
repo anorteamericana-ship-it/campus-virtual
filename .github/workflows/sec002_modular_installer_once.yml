@@ -53,3 +53,5 @@ jobs:
             throw "PowerShell parser found $(@($errors).Count) error(s)."
           }
           Write-Host 'PASS modular installer Windows PowerShell parser'
+
+# rerun after exact-context synthetic fixture correction
