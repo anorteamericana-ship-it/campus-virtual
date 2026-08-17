@@ -1,0 +1,30 @@
+{
+  "id": "SEC-001-IDENTITY-NORMALIZATION",
+  "version": 1,
+  "observed_at": "2026-08-17",
+  "source": "APOLLO_G3_LIMPIO_21-04-26 / USUARIOS",
+  "privacy": "counts_only_no_passwords_no_raw_usernames_in_repo",
+  "active_account_count": 19,
+  "active_account_findings": {
+    "blank_username_count": 2,
+    "username_with_space_count": 1,
+    "duplicate_username_groups": 1,
+    "accounts_in_duplicate_username_group": 2
+  },
+  "auth0_username_constraints_relevant_to_poc": {
+    "must_be_unique_within_connection": true,
+    "spaces_allowed": false,
+    "case_normalization_must_be_tested": true
+  },
+  "migration_gate": {
+    "bulk_import_allowed_now": false,
+    "requirements_before_import": [
+      "every active Campus account has one non-empty login identifier",
+      "every target Auth0 username is unique after provider normalization",
+      "every target username uses provider-supported characters",
+      "duplicate-role identities are resolved explicitly rather than auto-merged",
+      "AUTH_SUB mapping strategy is defined before any real account migration"
+    ]
+  },
+  "production_authorized": false
+}
