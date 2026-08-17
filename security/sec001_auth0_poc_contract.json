@@ -1,0 +1,89 @@
+{
+  "id": "SEC-001-AUTH0-POC",
+  "version": 1,
+  "status": "source_contract_ready_external_tenant_pending",
+  "provider": "Auth0 Essentials",
+  "environment": "DEV/QA only",
+  "tenant": {
+    "production_tenant_allowed": false,
+    "universal_login_required": true,
+    "database_connection_store": "Auth0 hosted user store",
+    "self_service_signup": false
+  },
+  "identifier": {
+    "primary": "username",
+    "email_required_as_login": false,
+    "campus_visible_login_must_not_be_silently_changed": true,
+    "provider_mapping_field": "AUTH_SUB",
+    "legacy_username_may_be_preserved_only_if_unique_and_provider_compatible": true,
+    "ambiguous_or_invalid_legacy_identifiers_require_explicit_resolution": true
+  },
+  "password": {
+    "minimum_characters_product_decision": 6,
+    "composition_rules_required": false,
+    "common_password_dictionary_required": true,
+    "block_personal_data_target": true,
+    "provider_max_bytes_observed": 72,
+    "ui_must_not_assume_128_characters_are_provider_safe": true,
+    "paste_and_password_managers_allowed": true
+  },
+  "attack_protection": {
+    "suspicious_ip_throttling_required": true,
+    "brute_force_protection_required": true,
+    "uniform_failure_experience_required": true,
+    "campus_must_not_reintroduce_unthrottled_plaintext_fallback": true
+  },
+  "mfa": {
+    "required_for_staff_target": true,
+    "preferred_factor": "TOTP",
+    "students_default_mfa_required": false,
+    "recovery_flow_required_before_rollout": true
+  },
+  "browser_flow": {
+    "application_type": "SPA/public client",
+    "authorization_flow": "Authorization Code with PKCE via Universal Login",
+    "client_secret_in_browser_allowed": false,
+    "steady_state_password_sent_to_apps_script": false
+  },
+  "campus_bridge": {
+    "steady_state_input": "OIDC/OAuth identity proof, never password",
+    "poc_verification_preference": "server-side call to provider UserInfo/introspection-equivalent supported endpoint rather than custom JWT crypto in Apps Script",
+    "local_authorization_source_of_truth": true,
+    "local_fields_rederived_after_identity": [
+      "rol",
+      "activo",
+      "codigo",
+      "cedula",
+      "grupo",
+      "grupos",
+      "programa",
+      "ventas_scope"
+    ],
+    "campus_session_token_preserved": true,
+    "provider_roles_may_grant_campus_access": false
+  },
+  "migration": {
+    "bulk_plaintext_export_allowed": false,
+    "legacy_password_copy_to_provider_allowed": false,
+    "mode": "explicit per-account verified migration or assisted reset",
+    "new_secret_required": true,
+    "migrated_account_plaintext_fallback_allowed": false,
+    "clear_legacy_secret_only_after_AUTH_SUB_mapping_confirmed": true,
+    "legacy_bridge_must_have_expiry": true
+  },
+  "identity_normalization_gate": "security/sec001_identity_normalization_report.json",
+  "poc_acceptance": [
+    "DEV tenant and DB connection exist",
+    "username identifier works without making email the login",
+    "minimum 6 password policy is enforced by provider",
+    "common-password blocking is demonstrated",
+    "suspicious-IP/brute-force protection is enabled and tested",
+    "staff TOTP enrollment and sign-in work",
+    "browser PKCE login returns identity proof without a client secret",
+    "Apps Script QA exchanges/verifies identity proof without receiving a password",
+    "Campus denies inactive or unauthorized local account even when provider authentication succeeds",
+    "one fictitious legacy account migrates and cannot use plaintext fallback afterward",
+    "no real user or production tenant is touched during PoC"
+  ],
+  "production_authorized": false
+}
