@@ -1,5 +1,5 @@
 name: SEC002 ventas extra private one-shot
-# final upload-auth metadata gate
+# retry after wrapper-extraction guard correction
 
 on:
   push:
