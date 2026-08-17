@@ -239,7 +239,8 @@ function Build-Sec002Bundle {
 function Clone-AppsScriptProject([string]$Destination) {
   if (Test-Path $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force }
   New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-  Invoke-Clasp -Arguments @('clone-script', $QaScriptId, '--rootDir', $Destination) -WorkingDirectory $WorkRoot | Out-Null
+  # Ejecutar clone DENTRO del destino mantiene .clasp.json + source juntos.
+  Invoke-Clasp -Arguments @('clone-script', $QaScriptId) -WorkingDirectory $Destination | Out-Null
 }
 
 function Test-QaRoutes {
@@ -339,6 +340,7 @@ try {
 
   Write-Step '3/10 · Clonar proyecto Apps Script QA completo'
   Clone-AppsScriptProject -Destination $AppsDir
+  if (-not (Test-Path (Join-Path $AppsDir '.clasp.json'))) { Fail 'Clone QA incompleto: falta .clasp.json en AppsDir.' }
   $CodePath = Find-CodeFile $AppsDir
   $beforeMap = Get-AppsSourceMap $AppsDir
   $beforeCodeSha = Get-Sha256 $CodePath
@@ -349,11 +351,12 @@ try {
 
   Write-Step '4/10 · Crear backup persistente antes de cualquier escritura'
   Copy-Item -LiteralPath $AppsDir -Destination $BackupSource -Recurse -Force
+  if (-not (Test-Path (Join-Path $BackupSource '.clasp.json'))) { Fail 'Backup QA incompleto: falta .clasp.json.' }
   $hashRows = foreach ($key in ($beforeMap.Keys | Sort-Object)) {
     [pscustomobject]@{ path=$key; sha256=$beforeMap[$key] }
   }
   $hashRows | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $BackupDir 'source-before-hashes.json') -Encoding UTF8
-  Invoke-Clasp -Arguments @('list-deployments',$QaScriptId) -WorkingDirectory $WorkRoot | Set-Content -LiteralPath (Join-Path $BackupDir 'deployments-before.txt') -Encoding UTF8
+  Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory $AppsDir | Set-Content -LiteralPath (Join-Path $BackupDir 'deployments-before.txt') -Encoding UTF8
 
   Write-Step '5/10 · Construir bundle SEC-002 exacto'
   $manifest = Build-Sec002Bundle -SourceCode $CodePath -RepoRoot $RepoDir -OutputFile $CandidatePath
@@ -379,6 +382,7 @@ try {
 
   Write-Step '7/10 · Releer remoto y comprobar que solo Code cambio'
   Clone-AppsScriptProject -Destination $VerifyDir
+  if (-not (Test-Path (Join-Path $VerifyDir '.clasp.json'))) { Fail 'Reclone QA incompleto: falta .clasp.json en VerifyDir.' }
   $verifyCode = Find-CodeFile $VerifyDir
   $verifyCodeSha = Get-Sha256 $verifyCode
   $report.source_after_sha256 = $verifyCodeSha
@@ -398,7 +402,7 @@ try {
   $DeploymentUpdated = $true
   $report.deployment_updated = $true
   $deployOutput | Set-Content -LiteralPath (Join-Path $BackupDir 'deployment-update.txt') -Encoding UTF8
-  $deployListAfter = Invoke-Clasp -Arguments @('list-deployments',$QaScriptId) -WorkingDirectory $AppsDir
+  $deployListAfter = Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory $AppsDir
   $deployListAfter | Set-Content -LiteralPath (Join-Path $BackupDir 'deployments-after.txt') -Encoding UTF8
   if ($deployListAfter -notmatch [Regex]::Escape($QaDeploymentId)) {
     Fail 'La deploymentId QA conocida no aparece despues del redeploy.'
