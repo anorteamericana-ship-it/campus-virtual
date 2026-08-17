@@ -1,8 +1,8 @@
 # SEC-001 · Remediación de autenticación
 
-**Fecha:** 2026-08-16  
-**Base Git:** `main@67108928e953fbf044dbcd916dc34a5dd5f1e570`  
-**Rama:** `fix/sec001-auth-policy-foundation`  
+**Fecha:** 2026-08-16
+**Base Git:** `main@67108928e953fbf044dbcd916dc34a5dd5f1e570`
+**Rama:** `fix/sec001-auth-policy-foundation`
 **Estado:** `EN PROGRESO · NO CERRADO · NO DEPLOY`
 
 ## 1. Objetivo
