@@ -28,11 +28,13 @@ jobs:
       - name: Run project outer guard QA
         run: node scripts/qa_sec004_project_outer_guard.mjs
 
-      - name: Diff hygiene for corrected SEC-004 artifacts
+      - name: Diff hygiene for non-patch SEC-004 artifacts
         run: |
           set -euo pipefail
+          # The unified .patch intentionally contains single-space blank context
+          # lines; git diff --check would misclassify those structural markers as
+          # trailing whitespace. Its structure is validated by the Node guard.
           git diff --check 67108928e953fbf044dbcd916dc34a5dd5f1e570...HEAD -- \
-            qa/sec004_codegs_demo_core_delta.patch \
             apps_script_patches/ZZ_SEC004_DEMO_READONLY_OUTER_GUARD.gs \
             scripts/qa_sec004_project_outer_guard.mjs \
             security/sec004_project_outer_guard_contract.json \
