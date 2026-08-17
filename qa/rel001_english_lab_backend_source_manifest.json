@@ -1,0 +1,138 @@
+{
+  "schema": "REL001_ENGLISH_LAB_BACKEND_SOURCE_RECONCILIATION_V1",
+  "generated_date": "2026-08-16",
+  "scope": "static source reconciliation only; no deployed /exec claim",
+  "main_sha": "67108928e953fbf044dbcd916dc34a5dd5f1e570",
+  "reference_frontend": {
+    "analysis_branch": "fix/rel001-english-lab-backend-contract",
+    "manifest_source_ref": "ceb786b724257463a34e11101cb29a3e585b74f2",
+    "literal_endpoint_count": 53,
+    "runtime_likely_count": 28
+  },
+  "source_evidence": [
+    {
+      "kind": "canonical_backend",
+      "drive_id": "1j9ps9kzNg1cGioytJyy8ohAzrnOis9f3",
+      "title": "Code.gs",
+      "modified": "2026-07-21T16:12:53.556Z",
+      "size_bytes": 2971957,
+      "sha256": "d24fc63c59e60ba92808d4d870f4eb95e35bb6f1c158a130229b187a66e35d37",
+      "frontend_live_routes_observed": 10
+    },
+    {
+      "kind": "access_patch",
+      "repo_path": "apps_script_patches/english_lab_access_cs21a144.gs",
+      "explicit_endpoint": "englishLabAccessStatus"
+    },
+    {
+      "kind": "memory_match_reference_read_only",
+      "repo_path": "apps_script_patches/english_lab_memory_match_live_cs21a174.gs",
+      "explicit_frontend_routes_observed": 6,
+      "note": "Reference/audit only. ChatGPT must not modify Memory Match per Issue #78."
+    },
+    {
+      "kind": "cumulative_english_lab_module",
+      "drive_id": "1SsIcNpNGnhycZnLXnbFYYWZNQJ1Jr9Tw",
+      "title": "99_CS21A200_ENGLISH_LAB_UNIFIED_COMPLETO.gs",
+      "created": "2026-08-11T16:46:00.268Z",
+      "size_bytes": 311614,
+      "sha256": "fb869d8915bb59ef772c0ac775a10d66291bfa78f5a3f8bc67f102c8a64e55a0",
+      "frontend_names_observed": 45
+    },
+    {
+      "kind": "cs201_assembler",
+      "repo_path": "scripts/assemble_apps_script_cs21a201_unified.mjs",
+      "note": "CS21A201 composes CS21A200 plus the curriculum-source router. Source availability does not prove the deployed web-app version."
+    }
+  ],
+  "frontend_groups": {
+    "access": [
+      "englishLabAccessStatus"
+    ],
+    "hangman": [
+      "englishLabHangmanAction",
+      "englishLabHangmanCloseRoom",
+      "englishLabHangmanCloseRound",
+      "englishLabHangmanCreateRoom",
+      "englishLabHangmanGetPlayerState",
+      "englishLabHangmanGetRoomControl",
+      "englishLabHangmanJoinRoom",
+      "englishLabHangmanNextRound",
+      "englishLabHangmanStartRoom",
+      "englishLabHangmanSuggestions"
+    ],
+    "live_legacy": [
+      "englishLabLiveCloseRoom",
+      "englishLabLiveCloseRound",
+      "englishLabLiveCreateRoom",
+      "englishLabLiveGetPlayerState",
+      "englishLabLiveGetRoomControl",
+      "englishLabLiveGetTeacherData",
+      "englishLabLiveJoinRoom",
+      "englishLabLiveLaunchQuestion",
+      "englishLabLiveStartRoom",
+      "englishLabLiveSubmitAnswer"
+    ],
+    "memory_match_read_only": [
+      "englishLabMemoryMatchCloseRound",
+      "englishLabMemoryMatchCreateRoom",
+      "englishLabMemoryMatchGetPlayerState",
+      "englishLabMemoryMatchGetRoomControl",
+      "englishLabMemoryMatchJoinRoom",
+      "englishLabMemoryMatchStartRoom",
+      "englishLabMemoryMatchSubmitPair"
+    ],
+    "quiz_time": [
+      "englishLabQuizTimeAnswer",
+      "englishLabQuizTimeCloseRoom",
+      "englishLabQuizTimeCreateRoom",
+      "englishLabQuizTimeGetPlayerState",
+      "englishLabQuizTimeGetRoomControl",
+      "englishLabQuizTimeJoinRoom",
+      "englishLabQuizTimeStartRoom",
+      "englishLabQuizTimeTeacherData"
+    ],
+    "sentence_order": [
+      "englishLabSentenceOrderCloseRoom",
+      "englishLabSentenceOrderCreateRoom",
+      "englishLabSentenceOrderGetPlayerState",
+      "englishLabSentenceOrderGetRoomControl",
+      "englishLabSentenceOrderJoinRoom",
+      "englishLabSentenceOrderNextSentence",
+      "englishLabSentenceOrderStartRoom",
+      "englishLabSentenceOrderSubmit",
+      "englishLabSentenceOrderTeacherData"
+    ],
+    "word_search": [
+      "englishLabWordSearchClaimWord",
+      "englishLabWordSearchCloseRoom",
+      "englishLabWordSearchCreateRoom",
+      "englishLabWordSearchGetPlayerState",
+      "englishLabWordSearchGetRoomControl",
+      "englishLabWordSearchJoinRoom",
+      "englishLabWordSearchStartRoom",
+      "englishLabWordSearchTeacherData"
+    ]
+  },
+  "coverage": {
+    "literal_frontend_names": 53,
+    "explicit_source_coverage": 52,
+    "compatibility_delegate_only": 1,
+    "unmapped": 0,
+    "runtime_likely_names": 28,
+    "runtime_likely_static_source_coverage": 28,
+    "deployment_coverage": "UNKNOWN_NOT_PROVEN",
+    "compatibility_delegate": {
+      "frontend_name": "englishLabMemoryMatchJoinRoom",
+      "independent_route_observed": false,
+      "delegates_to": "englishLabLiveJoinRoom",
+      "action": "document only; do not add a new Memory Match endpoint from ChatGPT"
+    }
+  },
+  "independent_blockers": [
+    "Do not infer deployed QA /exec compatibility from project source or Drive artifacts.",
+    "Issue #80 remains open: Quiz Time backend idempotence/attempt_id is not fixed by endpoint presence.",
+    "SEC-003 authentication and identity hardening remains independent from endpoint presence.",
+    "Memory Match remains read-only for ChatGPT per Issue #78."
+  ]
+}
