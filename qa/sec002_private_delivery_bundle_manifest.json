@@ -55,7 +55,8 @@
     "never_replace_full_project": true,
     "preserve_other_apps_script_files": true,
     "preserve_cs21a201_and_later_files": true,
-    "memory_match_read_only": true,
+    "preserve_unrelated_memory_match_during_sec002_install": true,
+    "memory_match_policy_note": "El propietario levantó la restricción global de solo lectura el 2026-08-17. Este bundle SEC-002 conserva Memory Match sin cambios porque está fuera del alcance SEC-002, no porque esté prohibido editarlo.",
     "keep_existing_qa_deployment_id": true,
     "remove_public_acl_during_bundle_install": false,
     "automatic_fuzzy_patch_application": false
@@ -72,7 +73,7 @@
     "signed_enrollment_campus_alert_no_public_url",
     "mime_size_sha256_integrity",
     "frontend_blob_object_url_smoke",
-    "memory_match_regression_read_only",
+    "unrelated_memory_match_regression_smoke",
     "same_qa_exec_url"
   ]
 }
