@@ -33,7 +33,7 @@ check('rebaser forbids LAB and Memory targets', rebaser.includes("'ENGLISH_LAB'"
 check('rebaser requires exact single preimage', rebaser.includes('if (exactTotal !== 1)'));
 check('rebaser uses manifest patch order', rebaser.includes("manifest.ordered_deltas") && rebaser.includes('sort((a,b)=>Number(a.order)-Number(b.order))'));
 check('rebaser requires four endpoint definitions exactly once', ['descargarMiCertificadoPrivado','descargarDocumentoExtraPrivado','descargarComprobantePagoPrivado','descargarMatriculaFirmadaPrivada'].every(x=>rebaser.includes(x)) && rebaser.includes('some(n=>n!==1)'));
-check('rebaser never calls clasp', !/\bclasp\b/.test(rebaser));
+check('rebaser has no process execution/import of child_process', !/child_process|spawnSync|execFileSync|execSync/.test(rebaser));
 
 if(failures.length){ console.error(`SEC002 MODULAR INSTALLER GUARD: FAIL (${failures.length})`); process.exit(1); }
 console.log('SEC002 MODULAR INSTALLER GUARD: PASS');
