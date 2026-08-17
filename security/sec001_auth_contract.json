@@ -1,6 +1,6 @@
 {
   "id": "SEC-001",
-  "version": 2,
+  "version": 3,
   "status": "remediation_in_progress_managed_idp_poc_pending",
   "preferred_poc_provider": "Auth0 Essentials",
   "scope": [
@@ -10,7 +10,8 @@
     "login_abuse_protection",
     "credential_migration",
     "staff_mfa",
-    "legacy_non_password_fields_used_as_credentials"
+    "legacy_non_password_fields_used_as_credentials",
+    "student_activation_credential_provisioning"
   ],
   "password_policy": {
     "minimum_length_single_factor": 15,
@@ -48,7 +49,8 @@
     "USUARIOS_clave": "remove authentication/storage after migration",
     "PROSPECTOS_CLAVE": "remove pending-account password storage",
     "DATOS_NUM_CEDULA_plus_CODIGO": "remove authentication meaning from CODIGO",
-    "DATOS_clave": "inventory actual use/non-empty values and eliminate readable password-like storage",
+    "DATOS_clave_equals_CODIGO": "stop duplicating CODIGO into a password-like field and neutralize legacy values after fallback removal",
+    "activation_an_four_digit_fallback": "remove generated password fallback and replace activation with managed IdP account establishment",
     "demo_credentials": "handled separately under SEC-004 and must not gain production authority"
   },
   "migration": {
@@ -60,6 +62,15 @@
     "legacy_fallback_must_have_expiry_and_audit": true,
     "migrated_account_may_fallback_to_legacy": false,
     "clear_legacy_only_after_identity_creation_mapping_confirmed": true
+  },
+  "activation": {
+    "campus_generated_reusable_password_allowed": false,
+    "default_or_short_temporary_password_allowed": false,
+    "password_may_be_communicated_by_staff_or_whatsapp": false,
+    "password_may_be_copied_from_PROSPECTOS_into_USUARIOS": false,
+    "DATOS_clave_may_be_set_to_CODIGO": false,
+    "target": "authorized activation creates managed IdP account-establishment state; user establishes secret directly with IdP; Campus stores identity mapping/state only",
+    "failure_behavior": "activation must not silently fall back to a generated Campus password if IdP establishment cannot be completed"
   },
   "new_accounts": {
     "password_may_be_persisted_in_PROSPECTOS": false,
@@ -79,7 +90,11 @@
     "USUARIOS readable active credentials are removed",
     "PROSPECTOS readable credential path is removed",
     "DATOS cédula+CODIGO login fallback is removed for all accounts",
-    "DATOS password-like storage is inventoried and neutralized",
+    "DATOS.clave no longer duplicates CODIGO and legacy password-like values are neutralized",
+    "activation contains no an#### or equivalent generated reusable password fallback",
+    "activation does not copy PROSPECTOS.CLAVE to USUARIOS.clave",
+    "activation failure cannot fall back to a Campus-generated password",
+    "new activation is demonstrated through managed IdP establishment without staff learning the password",
     "negative tests cover wrong password/unknown account/inactive account without enumeration",
     "migration report shows no readable active credentials remain",
     "temporary migration bridge is disabled/removed",
