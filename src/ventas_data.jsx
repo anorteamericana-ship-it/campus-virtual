@@ -449,6 +449,23 @@ async function getProspectosAsesor(asesor) {
   if (d && Array.isArray(d.prospectos)) d.prospectos = d.prospectos.map(normalizarProspecto);
   return d;
 }
+function normalizarDocsExtraVentas(docs) {
+  if (!Array.isArray(docs)) return [];
+  return docs.map((doc, index) => {
+    const d = doc && typeof doc === 'object' ? doc : {};
+    const nombre = String(d.nombre_archivo || d.nombre || d.name || `Documento ${index + 1}`).trim();
+    const mime = String(d.mime_type || d.mime || d.tipo || '').trim().toLowerCase()
+      || (/\.pdf$/i.test(nombre) ? 'application/pdf' : '');
+    return {
+      ...d,
+      nombre_archivo:nombre,
+      mime_type:mime,
+      url:String(d.url || d.webViewLink || '').trim(),
+      fecha:d.fecha || d.created_at || d.fecha_subida || '',
+    };
+  });
+}
+
 async function getProspectoDetalle(cedula) {
   // FIX-VENTAS-DOC-001: ahora va por POST text/plain (mismo patrón que postVentas),
   // NO por GET con query string. El backend v4.39.6 soporta getProspectoDetalle por
@@ -461,7 +478,10 @@ async function getProspectoDetalle(cedula) {
   });
   const p = d && (d.prospecto || (d.ok !== false ? d : null));
   if (p && typeof p === 'object') {
-    const norm = normalizarProspecto(p);
+    const docsExtra = normalizarDocsExtraVentas(
+      Array.isArray(d?.docs_extra) ? d.docs_extra : p.docs_extra
+    );
+    const norm = { ...normalizarProspecto(p), docs_extra: docsExtra };
     if (d.prospecto) { d.prospecto = norm; return d; }
     return { ...d, ok: d.ok !== false, prospecto: norm };
   }
