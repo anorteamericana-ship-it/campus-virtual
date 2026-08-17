@@ -260,7 +260,7 @@ function VentasApp({ sesion }) {
 
             {/* 3 · MIS MATRÍCULAS (mes actual, por semanas — VENTAS-DASHBOARD-002) */}
             <div className="vx-sec vx-sec-week">
-              <window.MiMatriculasMes asesor={usuario.nombre} />
+              <window.MiMatriculasMes asesor={scopeAsesor} />
             </div>
 
             {/* 4 · MI EMBUDO */}
@@ -278,7 +278,7 @@ function VentasApp({ sesion }) {
         <window.ProspectoDrawer
           cedula={drawerCed}
           seed={prospectos ? prospectos.find(p => p.cedula === drawerCed) : null}
-          asesor={usuario.nombre}
+          asesor={scopeAsesor}
           usuario={usuario}
           demo={!!previewKey}
           esSuperadmin={rolReal === 'superadmin'}
