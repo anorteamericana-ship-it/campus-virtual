@@ -20,8 +20,11 @@ check('helper constructs local Blob only', helper.includes('blob:new Blob([bytes
 check('helper does not return data_base64', !/data_base64\s*:/.test(helper));
 check('helper is exported to window', /getProspectoDetalle,\s*descargarDocumentoExtraPrivado,\s*getResumenVentas/.test(data));
 
+const uploadWrapper = data.match(/const subirDocumentoExtra\s*=([^;]+);/s)?.[0] || '';
+check('upload wrapper uses authenticated postVentasData', uploadWrapper.includes("postVentasData('subirDocumentoExtra'"));
+check('upload wrapper does not use legacy unauthenticated postVentas', !/return\s+postVentas\s*\(/.test(uploadWrapper));
+
 const pStart = drawer.indexOf('function ProspectoDrawer(');
-const pEnd = drawer.indexOf('// ──', pStart + 40);
 const docsBlockAt = drawer.indexOf('Sin documentos adicionales.', pStart);
 const docsTail = docsBlockAt >= 0 ? drawer.slice(Math.max(pStart, docsBlockAt - 1800), docsBlockAt + 1600) : '';
 check('drawer has private open handler', drawer.includes('const abrirDocumentoExtraPrivado = async (doc) =>'));
@@ -32,6 +35,12 @@ check('drawer uses ObjectURL and revokes it', drawer.includes('URL.createObjectU
 check('inline whitelist excludes SVG/HTML', drawer.includes("/^(application\\/pdf|image\\/(jpeg|png|gif|webp))$/i") && !/image\\\/svg|text\\\/html/.test(drawer.slice(drawer.indexOf('const inlineSeguro'), drawer.indexOf('const inlineSeguro') + 300)));
 check('non-inline files force browser download', drawer.includes("a.download = r.nombre || 'documento';"));
 check('missing file_id has no public fallback', drawer.includes('privado pendiente') && !/doc\.url\s*&&\s*doc\.url/.test(docsTail));
+
+const uploadSuccessAt = drawer.indexOf('const nuevo = {', drawer.indexOf('const onFilePicked'));
+const uploadSuccess = uploadSuccessAt >= 0 ? drawer.slice(uploadSuccessAt, uploadSuccessAt + 500) : '';
+check('new upload preserves backend file_id', uploadSuccess.includes("file_id: r.file_id || ''"));
+check('new upload preserves backend MIME and size', uploadSuccess.includes('mime_type: r.mime_type || file.type') && uploadSuccess.includes('size_bytes: Number(r.size_bytes || file.size || 0)'));
+check('new upload no longer stores base64 as document URL', !/url:\s*base64/.test(uploadSuccess));
 
 if (failures.length) {
   console.error(`SEC002 VENTAS EXTRA PRIVATE FRONTEND: FAIL (${failures.length})`);
