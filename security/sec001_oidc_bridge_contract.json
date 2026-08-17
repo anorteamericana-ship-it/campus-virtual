@@ -1,0 +1,107 @@
+{
+  "id": "SEC-001-OIDC-BRIDGE",
+  "version": 1,
+  "status": "design_ready_not_routed_not_deployed",
+  "future_endpoint": "iniciarSesionOidc",
+  "campus_session_reuse": {
+    "reuse_existing_session_issuer": true,
+    "reuse_normalization_shape": true,
+    "reuse_token_hashing_and_SESIONES_storage": true,
+    "reuse_validarSesion_and_cerrarSesion": true,
+    "rewrite_authenticated_consumers": false
+  },
+  "request": {
+    "requires_existing_campus_token": false,
+    "provider_proof_field": "provider_access_token",
+    "password_or_clave_allowed": false,
+    "username_claim_from_browser_trusted": false,
+    "role_claim_from_browser_or_provider_trusted": false
+  },
+  "provider_verification": {
+    "provider": "auth0",
+    "verification_mode_for_poc": "server_to_server_userinfo",
+    "userinfo_url_source": "server-side Script Properties allowlisted tenant domain",
+    "userinfo_url_from_request_allowed": false,
+    "bearer_token_logged_or_persisted": false,
+    "success_requires_http_200": true,
+    "success_requires_nonempty_sub": true,
+    "stable_identity_key": "provider + sub",
+    "provider_profile_may_not_grant_campus_role": true
+  },
+  "identity_mapping": {
+    "mapping_store_target": "AUTH_IDENTIDADES",
+    "mapping_key": ["PROVIDER", "PROVIDER_SUB"],
+    "mapping_must_resolve_exactly_one_local_principal": true,
+    "local_principal_reference_must_not_depend_only_on_username": true,
+    "blank_ambiguous_or_duplicate_mapping": "deny",
+    "migration_status_required": "MIGRATED",
+    "suggested_columns": [
+      "IDENTITY_ID",
+      "PROVIDER",
+      "PROVIDER_SUB",
+      "LOCAL_SOURCE",
+      "LOCAL_KEY_TYPE",
+      "LOCAL_KEY",
+      "USERNAME_CANONICO",
+      "MIGRATION_STATUS",
+      "CREATED_AT",
+      "MIGRATED_AT",
+      "LEGACY_CLEARED_AT"
+    ]
+  },
+  "local_authorization_after_identity": {
+    "must_re_read_local_account": true,
+    "must_require_active_account": true,
+    "must_rederive": [
+      "rol",
+      "nombre",
+      "codigo",
+      "cedula",
+      "grupo",
+      "grupos",
+      "programa",
+      "ventas_scope"
+    ],
+    "provider_claims_cannot_override_local_fields": true,
+    "inactive_local_account_with_valid_idp_identity": "deny",
+    "missing_local_account_with_valid_idp_identity": "deny"
+  },
+  "proof_replay_and_abuse": {
+    "provider_password_attack_protection_remains_at_idp": true,
+    "successful_exchange_proof_should_be_one_time_or_short_reuse_window": true,
+    "raw_proof_cache_key_allowed": false,
+    "proof_digest_for_replay_marker_allowed": true,
+    "replay_marker_ttl_seconds_max": 300,
+    "endpoint_rate_limit_required": true,
+    "failure_response_uniform_for_mapping_account_state": true
+  },
+  "response": {
+    "shape_target": "same successful Campus login/session DTO used by finishLogin",
+    "includes_campus_token": true,
+    "includes_provider_access_token": false,
+    "includes_password": false,
+    "includes_provider_roles": false
+  },
+  "migration_rules": {
+    "real_account_mapping_before_identity_normalization": false,
+    "bulk_plaintext_copy": false,
+    "migrated_account_plaintext_fallback": false,
+    "clear_legacy_secret_only_after_mapping_and_new_identity_confirmed": true
+  },
+  "routing_gate": {
+    "doPost_route_may_be_added_before_tenant_exists": false,
+    "adapter_may_be_loaded_by_login_html_before_backend_QA_pass": false,
+    "real_accounts_may_be_migrated_before_fictitious_QA_pass": false
+  },
+  "negative_tests_required": [
+    "missing provider proof",
+    "invalid or expired provider proof",
+    "valid provider identity with no mapping",
+    "valid provider identity with ambiguous mapping",
+    "valid provider identity mapped to inactive Campus account",
+    "browser tries to supply role/admin fields",
+    "replayed exchanged proof",
+    "legacy password fallback attempted after MIGRATED"
+  ],
+  "production_authorized": false
+}
