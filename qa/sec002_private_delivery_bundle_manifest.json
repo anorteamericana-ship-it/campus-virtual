@@ -1,5 +1,5 @@
 {
-  "id": "SEC002-PRIVATE-DELIVERY-BUNDLE-1",
+  "id": "SEC002-PRIVATE-DELIVERY-BUNDLE-2",
   "status": "SOURCE_PREPARED_RUNTIME_PENDING",
   "installation_target": "QA_APPS_SCRIPT_CODE_GS_ONLY",
   "production_allowed": false,
@@ -22,38 +22,54 @@
       "path": "qa/sec002_payment_receipt_private_delta.patch",
       "expected_hunks": 7,
       "scope": "payment_receipt_private_delivery_and_actor_ownership"
+    },
+    {
+      "order": 4,
+      "path": "qa/sec002_signed_enrollment_on_bundle_delta.patch",
+      "expected_hunks": 6,
+      "scope": "signed_enrollment_private_delivery_reconciled_on_three_delta_bundle",
+      "reconciled_base_sha256": "4cd23d409e1c09881b214df9c75be36be7413790b3a13d2ddbaefa3c1a359abe",
+      "fuzz_allowed": false
     }
   ],
   "canonical_bundle": {
-    "expected_sha256": "4cd23d409e1c09881b214df9c75be36be7413790b3a13d2ddbaefa3c1a359abe",
-    "expected_size_bytes": 2991930,
-    "expected_diff_hunks": 18,
-    "expected_additions": 512,
-    "expected_deletions": 21,
-    "expected_anyone_with_link_calls": 13,
+    "expected_sha256": "da81ffbd44341dba884c2ff647f721cbd1b53b447b39c6e11cf2d67c8ac6df06",
+    "expected_size_bytes": 2997898,
+    "expected_diff_hunks": 23,
+    "expected_ordered_patch_hunks": 24,
+    "expected_additions": 687,
+    "expected_deletions": 57,
+    "expected_anyone_with_link_calls": 11,
     "expected_private_endpoint_definitions": {
       "descargarMiCertificadoPrivado": 1,
       "descargarDocumentoExtraPrivado": 1,
-      "descargarComprobantePagoPrivado": 1
+      "descargarComprobantePagoPrivado": 1,
+      "descargarMatriculaFirmadaPrivada": 1
     },
     "memory_match_changed_lines": 0,
     "english_lab_changed_lines": 0
   },
   "install_gate": {
-    "if_current_code_sha_matches_canonical": "apply_ordered_deltas_and_require_expected_bundle_sha",
+    "if_current_code_sha_matches_canonical": "apply_ordered_deltas_with_fuzz_zero_and_require_expected_bundle_sha",
     "if_current_code_sha_differs": "STOP_AND_RECONCILE_CURRENT_QA_CODE",
     "never_replace_full_project": true,
     "preserve_other_apps_script_files": true,
     "preserve_cs21a201_and_later_files": true,
     "memory_match_read_only": true,
     "keep_existing_qa_deployment_id": true,
-    "remove_public_acl_during_bundle_install": false
+    "remove_public_acl_during_bundle_install": false,
+    "automatic_fuzzy_patch_application": false
   },
   "runtime_gate_after_install": [
     "authenticated_certificate_positive_negative",
     "ventas_docs_extra_own_prospect_positive_other_prospect_deny",
     "payment_receipt_admin_positive_non_admin_deny",
-    "actor_spoof_attempt_ignored",
+    "payment_report_actor_spoof_attempt_ignored",
+    "signed_enrollment_student_own_latest_positive",
+    "signed_enrollment_staff_own_prospect_positive_other_prospect_deny",
+    "signed_enrollment_forged_file_id_deny",
+    "signed_enrollment_email_attachment_no_public_link",
+    "signed_enrollment_campus_alert_no_public_url",
     "mime_size_sha256_integrity",
     "frontend_blob_object_url_smoke",
     "memory_match_regression_read_only",
