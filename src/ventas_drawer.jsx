@@ -722,6 +722,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   const [error, setError] = vUseState('');
   const [nota, setNota] = vUseState('');
   const [savingNota, setSavingNota] = vUseState(false);
+  const [docPrivadoAbriendo, setDocPrivadoAbriendo] = vUseState('');
   const [modal, setModal] = vUseState(null);   // 'cobrar' | 'activar' | 'cancelar' | { tipo:'success', result }
   const [actLoading, setActLoading] = vUseState('');
   const [loadingProforma, setLoadingProforma] = vUseState('');
@@ -778,6 +779,52 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
       } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo agregar la nota' });
     } catch (_) { onToast({ tipo: 'err', msg: 'Error de conexión' }); }
     finally { setSavingNota(false); }
+  };
+
+  const abrirDocumentoExtraPrivado = async (doc) => {
+    const fileId = String(doc?.file_id || '').trim();
+    if (!fileId || docPrivadoAbriendo) {
+      if (!fileId) onToast({ tipo:'err', msg:'Este documento todavía no tiene identificador privado. Recargá el expediente después de actualizar el backend QA.' });
+      return;
+    }
+
+    const key = fileId;
+    setDocPrivadoAbriendo(key);
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Abriendo documento…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando documento…</p>';
+      } catch (_) {}
+    }
+
+    try {
+      const r = await window.descargarDocumentoExtraPrivado(cedula, fileId);
+      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el documento.');
+      const objectUrl = URL.createObjectURL(r.blob);
+      const inlineSeguro = /^(application\/pdf|image\/(jpeg|png|gif|webp))$/i.test(r.mime_type || '');
+
+      if (inlineSeguro && preview && !preview.closed) {
+        preview.location.replace(objectUrl);
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+      } else {
+        try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = r.nombre || 'documento';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      }
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      onToast({ tipo:'err', msg:e?.message || 'No se pudo abrir el documento.' });
+    } finally {
+      setDocPrivadoAbriendo('');
+    }
   };
 
   // ── Subir documento (extra o manual de los 3) ──
@@ -1078,7 +1125,12 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                       <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.nombre_archivo}</div>
                       <div style={{ fontSize: 10.5, color: 'var(--v-ink-3)' }}>{window.fmtFechaCorta(doc.fecha)}</div>
                     </div>
-                    {doc.url && doc.url !== '#' ? <a className="vx-copy" href={doc.url} target="_blank" rel="noopener">ver</a> : null}
+                    {doc.file_id ? (
+                      <button type="button" className="vx-copy" disabled={!!docPrivadoAbriendo}
+                        onClick={() => abrirDocumentoExtraPrivado(doc)}>
+                        {docPrivadoAbriendo === String(doc.file_id) ? 'abriendo…' : 'ver'}
+                      </button>
+                    ) : <span style={{ fontSize:10.5, color:'var(--v-ink-3)' }}>privado pendiente</span>}
                   </div>
                 )) : <div style={{ fontSize: 12.5, color: 'var(--v-ink-3)', fontStyle: 'italic', marginBottom: 4 }}>Sin documentos adicionales.</div>}
                 <button className="vx-mini-btn" style={{ width: 'auto', marginTop: 8, padding: '7px 14px' }} onClick={() => triggerUpload(null)}>

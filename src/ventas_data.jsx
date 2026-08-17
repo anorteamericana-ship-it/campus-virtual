@@ -487,6 +487,57 @@ async function getProspectoDetalle(cedula) {
   }
   return d;
 }
+function _ventasPrivateDocSafeName(name) {
+  const clean = String(name || 'documento').trim().replace(/[\\/:*?"<>|]+/g, '_');
+  return clean || 'documento';
+}
+
+async function _ventasPrivateDocSha256Hex(bytes) {
+  if (!window.crypto?.subtle || !bytes) return '';
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function descargarDocumentoExtraPrivado(cedula, fileId) {
+  const ced = String(cedula || '').trim();
+  const id = String(fileId || '').trim();
+  if (!ced || !id) return { ok:false, error:'cedula_file_id_requeridos' };
+
+  const r = await postVentasData('descargarDocumentoExtraPrivado', { cedula:ced, file_id:id });
+  if (!r?.ok) return r || { ok:false, error:'respuesta_vacia' };
+
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) return { ok:false, error:'documento_sin_contenido' };
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { return { ok:false, error:'documento_base64_invalido' }; }
+
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes.length || bytes.length > 5 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'documento_incompleto_o_grande' };
+  }
+
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await _ventasPrivateDocSha256Hex(bytes);
+    if (!digestHex || digestHex !== expectedHash) return { ok:false, error:'integridad_documento_invalida' };
+  }
+
+  const mime = String(r.mime_type || 'application/octet-stream').trim().toLowerCase() || 'application/octet-stream';
+  const nombre = _ventasPrivateDocSafeName(r.nombre || 'documento');
+  return {
+    ok:true,
+    private_delivery:true,
+    nombre,
+    mime_type:mime,
+    size_bytes:bytes.length,
+    sha256:expectedHash,
+    blob:new Blob([bytes], { type:mime }),
+  };
+}
+
 async function getResumenVentas(asesor) {
   // FIX-VENTAS-DATA-POST-001: POST text/plain (postVentasData), sin token ni
   // datos en la URL. token + asesor viajan en el body JSON; ?fn= solo enruta.
@@ -872,7 +923,7 @@ Object.assign(window, {
   formatHorarioGrupo, fmtFechaLarga, diasParaIniciar, diasCompletos,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,
-  getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas, ventasDashCacheClear,
+  getProspectosAsesor, getProspectoDetalle, descargarDocumentoExtraPrivado, getResumenVentas, getGruposVentas, ventasDashCacheClear,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
   generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro,
