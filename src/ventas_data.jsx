@@ -620,6 +620,42 @@ async function notificarMatriculaFirmadaVentasSeguro({ cedula, codigo, canal, fi
   });
 }
 
+async function descargarMatriculaFirmadaPrivadaVentasSeguro({ cedula, codigo, file_id = '', preview_test = false }) {
+  const r = await postVentasData('descargarMatriculaFirmadaPrivada', {
+    cedula: cedula || '',
+    codigo: codigo || '',
+    file_id,
+    preview_test,
+  });
+  if (!r?.ok) return r || { ok:false, error:'respuesta_vacia' };
+  if (String(r.mime_type || '').toLowerCase() !== 'application/pdf') return { ok:false, error:'matricula_firmada_mime_invalido' };
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) return { ok:false, error:'matricula_firmada_sin_contenido' };
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { return { ok:false, error:'matricula_firmada_base64_invalido' }; }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes.length || bytes.length > 9 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'matricula_firmada_incompleta_o_grande' };
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+    const digestHex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (digestHex !== expectedHash) return { ok:false, error:'integridad_matricula_firmada_invalida' };
+  }
+  return {
+    ok:true,
+    private_delivery:true,
+    nombre:String(r.nombre || 'matricula_firmada.pdf'),
+    mime_type:'application/pdf',
+    size_bytes:bytes.length,
+    blob:new Blob([bytes], { type:'application/pdf' }),
+  };
+}
+
 // ── ENDPOINTS v4.27.1 (becas + proformas CONAPE) ───────────────────────────
 async function getBecasDisponiblesV() {
   const res = await fetch(`${SCRIPT_URL_V}?fn=getBecasDisponibles`);
@@ -926,7 +962,7 @@ Object.assign(window, {
   getProspectosAsesor, getProspectoDetalle, descargarDocumentoExtraPrivado, getResumenVentas, getGruposVentas, ventasDashCacheClear,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
-  generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro,
+  generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro, descargarMatriculaFirmadaPrivadaVentasSeguro,
   getBecasDisponiblesV, generarProformaProspecto, aprobarBecaProspecto,
   docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, DEMO_DASHBOARD, calcResumen, HOY,
 });

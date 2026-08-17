@@ -25,6 +25,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   const [busy, setBusy] = vUseState('');     // '' | 'CERTIFICADO' | 'CARTA' | upload/notificaciones
   const [err, setErr] = vUseState('');
   const [signedDoc, setSignedDoc] = vUseState(null);
+  const [openingSigned, setOpeningSigned] = vUseState(false);
   const signedFileRef = React.useRef(null);
   const d = detalle || {};
   const est = window.calcularEstadoEstudianteVentas(d);
@@ -99,13 +100,50 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
     } finally { setBusy(''); }
   };
 
+  const openSignedPrivate = async () => {
+    if (openingSigned || !(signedDoc && signedDoc.file_id)) return;
+    if (demo) {
+      onToast && onToast({ tipo:'ok', msg:'Vista previa: el documento firmado privado se abre únicamente contra backend QA real.' });
+      return;
+    }
+    setOpeningSigned(true); setErr('');
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando matrícula firmada…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando matrícula firmada…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarMatriculaFirmadaPrivadaVentasSeguro({
+        cedula: cedulaDoc,
+        codigo,
+        file_id: signedDoc.file_id,
+        preview_test: previewMatriculaCR,
+      });
+      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir la matrícula firmada.');
+      const objectUrl = URL.createObjectURL(r.blob);
+      if (preview && !preview.closed) preview.location.replace(objectUrl);
+      else {
+        const a = document.createElement('a');
+        a.href = objectUrl; a.download = r.nombre || 'matricula_firmada.pdf';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      const m = e?.message || 'No se pudo abrir la matrícula firmada.';
+      setErr(m); onToast && onToast({ tipo:'err', msg:m });
+    } finally { setOpeningSigned(false); }
+  };
+
   const notifySigned = async (canal) => {
     if (!puedeSubirFirmada) return;
     if (canal === 'whatsapp') {
-      const url = signedDoc && signedDoc.url ? signedDoc.url : '';
-      if (!url) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado para obtener el enlace.' }); return; }
+      if (!(signedDoc && signedDoc.file_id)) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado al expediente.' }); return; }
       if (!waNumDoc) { onToast && onToast({ tipo:'err', msg:'Este estudiante no tiene WhatsApp/teléfono registrado.' }); return; }
-      const msg = `Hola, te compartimos tu documento de matrícula firmado de Academia Norteamericana: ${url}`;
+      const msg = 'Hola. Tu documento de matrícula firmado de Academia Norteamericana ya está disponible de forma privada en el Campus Virtual, en Documentos y ayuda. También podemos enviártelo adjunto por correo.';
       window.open(`https://wa.me/${waNumDoc}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
       return;
     }
@@ -143,13 +181,13 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         <button className="vx-btn vx-btn-navy" disabled={!!busy || !puedeSubirFirmada} onClick={pickSigned}>
           {busy === 'UPLOAD_SIGNED' ? <><span className="vx-spin" /> Subiendo…</> : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
         </button>
-        {signedDoc && signedDoc.url ? (
-          <a className="vx-btn vx-btn-ghost" href={signedDoc.url} target="_blank" rel="noopener" style={{ textDecoration:'none', justifyContent:'center' }}>
-            <window.Vico d={window.VI.doc} size={14} /> Ver firmado
-          </a>
+        {signedDoc && signedDoc.file_id ? (
+          <button type="button" className="vx-btn vx-btn-ghost" disabled={openingSigned} onClick={openSignedPrivate} style={{ justifyContent:'center' }}>
+            {openingSigned ? <><span className="vx-spin dark" /> Verificando…</> : <><window.Vico d={window.VI.doc} size={14} /> Ver firmado</>}
+          </button>
         ) : null}
       </div>
-      {signedDoc && signedDoc.url ? (
+      {signedDoc && signedDoc.file_id ? (
         <div className="vx-docest-btns" style={{ marginTop: 8 }}>
           <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('correo')}>
             {busy === 'EMAIL_SIGNED' ? <><span className="vx-spin dark" /> Enviando…</> : <>Enviar correo</>}
