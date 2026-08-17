@@ -168,11 +168,15 @@ Objetivo de cierre SEC-001:
 
 La lista exacta de roles MFA se congela después del PoC y de revisar impactos operativos.
 
+## Enmienda de política · 2026-08-17
+
+Por decisión explícita de producto, el mínimo del Campus se fija en **6 caracteres**. Esto se documenta como una excepción consciente respecto de la guía NIST vigente para contraseñas centralmente verificadas. La compensación obligatoria del diseño es: verificador administrado, bloqueo de contraseñas comunes, protección contra intentos repetidos/enumeração y MFA para personal. No se añaden reglas arbitrarias de composición.
+
 ## Política de contraseña objetivo
 
 Conservar el contrato SEC-001:
 
-- mínimo 15 caracteres;
+- mínimo 6 caracteres (decisión de producto del 2026-08-17);
 - aceptar passphrases;
 - máximo de UI actual 128;
 - no exigir composición arbitraria;
@@ -182,7 +186,7 @@ Conservar el contrato SEC-001:
 
 En Auth0 esto corresponde conceptualmente a:
 
-- strength `Low` con longitud 15;
+- strength `Low` con longitud 6;
 - Password dictionary ON;
 - Block personal data ON después de QA de usernames reales;
 - Password history opcional, no requisito para cerrar el P1.
@@ -221,7 +225,7 @@ Para una cuenta legacy:
 1. el usuario entra por una pantalla de migración claramente separada;
 2. se aplican rate limit y anti-automation antes de verificar legado;
 3. el usuario prueba su credencial legacy actual **una sola vez**;
-4. si la prueba es válida, el flujo exige establecer una **nueva** passphrase >=15 para Auth0; no reutiliza silenciosamente la contraseña almacenada;
+4. si la prueba es válida, el flujo exige establecer una **nueva** passphrase >=6 para Auth0; no reutiliza silenciosamente la contraseña almacenada;
 5. un backend autorizado crea la identidad Auth0 con `username` y la nueva contraseña;
 6. se registra `AUTH_SUB` y estado `MIGRATED`;
 7. se neutraliza/elimina la credencial legible de todas las ubicaciones legacy aplicables solo después de confirmar creación;
@@ -278,7 +282,7 @@ Antes de aceptar Auth0 Essentials como decisión de producción:
 1. tenant DEV separado;
 2. DB connection con `username` como identificador;
 3. crear usuario QA sin depender de un email como identificador;
-4. policy >=15 sin composición obligatoria + dictionary;
+4. policy >=6 sin composición obligatoria + dictionary;
 5. Universal Login branding mínimo;
 6. login username/password positivo/negativo;
 7. respuesta no enumera cuenta;

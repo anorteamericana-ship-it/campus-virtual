@@ -21,8 +21,8 @@ const numericLengthChecks = [...source.matchAll(/(?:clean\(form\.clave\)|form\.c
 
 if (!numericLengthChecks.length) {
   failures.push('no explicit enrollment password minimum-length check found');
-} else if (Math.max(...numericLengthChecks) < 15) {
-  failures.push(`enrollment password minimum remains below 15: ${numericLengthChecks.join(', ')}`);
+} else if (Math.max(...numericLengthChecks) < 6) {
+  failures.push(`enrollment password minimum remains below 6: ${numericLengthChecks.join(', ')}`);
 }
 
 const passwordInputWindow = source.match(/<TextInput\s+type="password"[\s\S]{0,500}?\/>/i)?.[0] || '';
@@ -30,8 +30,8 @@ if (!passwordInputWindow) {
   failures.push('enrollment password input not found');
 } else {
   const directMin = passwordInputWindow.match(/minLength=\{?(\d+)\}?/i);
-  if (!directMin || Number(directMin[1]) < 15) {
-    failures.push('password input does not declare a browser minimum length of at least 15');
+  if (!directMin || Number(directMin[1]) < 6) {
+    failures.push('password input does not declare a browser minimum length of at least 6');
   }
   if (!/autoComplete="new-password"/i.test(passwordInputWindow)) {
     failures.push('password input must preserve autocomplete=new-password for password-manager compatibility');
@@ -45,6 +45,6 @@ if (failures.length) {
 }
 
 console.log('SEC-001 PASSWORD POLICY: PASS');
-console.log('- enrollment minimum length >= 15');
-console.log('- browser input minimum length >= 15');
+console.log('- enrollment minimum length >= 6');
+console.log('- browser input minimum length >= 6');
 console.log('- password-manager autocomplete preserved');

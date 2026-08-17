@@ -1,6 +1,6 @@
 {
   "id": "SEC-001",
-  "version": 4,
+  "version": 5,
   "status": "remediation_in_progress_managed_idp_poc_pending",
   "preferred_poc_provider": "Auth0 Essentials",
   "scope": [
@@ -14,12 +14,13 @@
     "student_activation_and_matriculation_credential_provisioning"
   ],
   "password_policy": {
-    "minimum_length_single_factor": 15,
+    "minimum_length_single_factor": 6,
     "maximum_ui_length": 128,
     "arbitrary_composition_rules": false,
     "block_common_passwords": true,
     "block_personal_data_after_qa": true,
-    "allow_password_managers_and_paste": true
+    "allow_password_managers_and_paste": true,
+    "standards_exception": "Product decision 2026-08-17: 6-character minimum is below current NIST SP 800-63B guidance; compensate with managed verifier, common-password blocking, abuse controls, and staff MFA."
   },
   "storage": {
     "plaintext_allowed": false,
@@ -96,7 +97,7 @@
   "evidence_required_to_close": [
     "frontend no longer creates/stores a password through public enrollment before managed account establishment",
     "DEV/QA managed IdP accepts Campus username identifier",
-    "15-character length-only password policy and common-password blocking are demonstrated",
+    "6-character product password policy and common-password blocking are demonstrated",
     "TOTP MFA enrollment/sign-in/recovery is demonstrated for staff QA",
     "OIDC identity proof is validated by Apps Script QA without receiving a steady-state password",
     "valid IdP identity with inactive/wrong local authorization is denied by Campus",
