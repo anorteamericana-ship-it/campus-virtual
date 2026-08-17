@@ -1,0 +1,46 @@
+name: SEC002 modular installer one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec002-private-document-foundation
+    paths:
+      - .github/workflows/sec002_modular_installer_once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/sec002-private-document-foundation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing SEC002 bundle guard
+        shell: powershell
+        run: node scripts/qa_sec002_private_delivery_bundle_manifest.mjs
+      - name: Modular installer static guard
+        shell: powershell
+        run: node scripts/qa_sec002_modular_installer.mjs
+      - name: Modular rebaser synthetic QA
+        shell: powershell
+        run: node scripts/qa_sec002_modular_rebaser_synthetic.mjs
+      - name: Parse modular installer with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/install_apps_script_qa_sec002_modular.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if (@($errors).Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "PowerShell parser found $(@($errors).Count) error(s)."
+          }
+          Write-Host 'PASS modular installer Windows PowerShell parser'
