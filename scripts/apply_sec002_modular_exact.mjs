@@ -19,16 +19,20 @@ const PRIVATE_ENDPOINTS = [
   'descargarMatriculaFirmadaPrivada',
 ];
 
-// Two certificate hunks became structurally ambiguous after modularization:
-// the router contains both legacy GET and active POST authorization layers.
-// SEC-002 private delivery is POST, so these two closed-form resolutions target
-// only the active POST matrix/ownership guard. Every other hunk remains exact 1/1.
+// Three hunks need closed-form reconciliation on the current modular QA:
+// 1-2) certificate authorization is duplicated across legacy GET and active POST
+//      layers, so private delivery must target only the active POST layer.
+// 3) docs_extra extends the getProspectoDetalle ownership condition before the
+//    payment delta reaches the same block; reportarPago must therefore be inserted
+//    against the already-reconciled POST ownership guard.
+// Every other hunk remains exact 1/1 after prior ordered deltas are applied.
 const SPECIAL_RESOLVERS = new Map([
   ['qa/sec002_private_certificate_delta.patch#1', {
     fileBase: '01_Router',
     functionName: '_an4406_rolesPorEndpoint_',
     anchor: '    getMisCertificadosEstado: estudianteCampus,',
     insert: "    descargarMiCertificadoPrivado: ['student', 'admin', 'superadmin'],",
+    position: 'after',
     reason: 'post_role_matrix_only',
   }],
   ['qa/sec002_private_certificate_delta.patch#2', {
@@ -36,7 +40,28 @@ const SPECIAL_RESOLVERS = new Map([
     functionName: '_an4406_validarPropiedadPost_',
     anchor: '      getMisCertificadosEstado: true,',
     insert: '      descargarMiCertificadoPrivado: true,',
+    position: 'after',
     reason: 'post_student_ownership_guard_only',
+  }],
+  ['qa/sec002_payment_receipt_private_delta.patch#4', {
+    fileBase: '01_Router',
+    functionName: '_an4406_validarPropiedadPost_',
+    anchor: "    if (fn === 'getProspectoDetalle' || fn === 'subirDocumentoExtra' || fn === 'descargarDocumentoExtraPrivado') {",
+    forbid: "    if (fn === 'reportarPago') {",
+    insert: [
+      "    if (fn === 'reportarPago') {",
+      "      var pagoCed = _sec006cProspectoPorCedula_(body.estudiante_cedula);",
+      "      if (!pagoCed.ok || !_sec006cVentasPuedeProspecto_(sesion, pagoCed.prospecto)) {",
+      "        return _an4406_noAutorizado_('El estudiante/prospecto no pertenece a este asesor.');",
+      "      }",
+      "      body.usuario_reporta = String(sesion.cedula || sesion.usuario || '').trim();",
+      "      body.nombre_reporta = String(sesion.nombre || sesion.usuario || '').trim();",
+      "      body.origen = 'VENDEDOR';",
+      "    }",
+      "",
+    ].join('\n'),
+    position: 'before',
+    reason: 'post_payment_ownership_after_docs_extra_overlap',
   }],
 ]);
 
@@ -131,13 +156,23 @@ function applySpecialResolver({rule, files, text, appsDir, patch, hunk, header})
   const source = text.get(target);
   const seg = functionSegment(source, rule.functionName);
   const anchorCount = countOccurrences(seg.text, rule.anchor);
-  const insertCount = countOccurrences(seg.text, rule.insert);
-  if (anchorCount !== 1 || insertCount !== 0) {
-    throw new Error(`Special resolver precondition failed ${patch}#${hunk}: function=${rule.functionName} anchor_count=${anchorCount} insert_count=${insertCount}`);
+  const forbiddenNeedle = rule.forbid || rule.insert;
+  const forbiddenCount = countOccurrences(seg.text, forbiddenNeedle);
+  if (anchorCount !== 1 || forbiddenCount !== 0) {
+    throw new Error(`Special resolver precondition failed ${patch}#${hunk}: function=${rule.functionName} anchor_count=${anchorCount} forbidden_count=${forbiddenCount}`);
   }
   const localPos = seg.text.indexOf(rule.anchor);
-  const globalPos = seg.start + localPos + rule.anchor.length;
-  const updated = source.slice(0, globalPos) + '\n' + rule.insert + source.slice(globalPos);
+  const anchorStart = seg.start + localPos;
+  const position = rule.position || 'after';
+  let updated;
+  if (position === 'before') {
+    updated = source.slice(0, anchorStart) + rule.insert + source.slice(anchorStart);
+  } else if (position === 'after') {
+    const anchorEnd = anchorStart + rule.anchor.length;
+    updated = source.slice(0, anchorEnd) + '\n' + rule.insert + source.slice(anchorEnd);
+  } else {
+    throw new Error(`Unknown special resolver position: ${position}`);
+  }
   text.set(target, updated);
   return {
     patch, hunk, header,
@@ -145,6 +180,7 @@ function applySpecialResolver({rule, files, text, appsDir, patch, hunk, header})
     resolution: 'SPECIAL_POST_LAYER_INSERT',
     function: rule.functionName,
     reason: rule.reason,
+    position,
     anchor: rule.anchor,
     inserted: rule.insert,
   };
@@ -246,7 +282,7 @@ if (!failures.length) {
   if (Object.values(endpointCounts).some(n=>n!==1)) failures.push({error:'private_endpoint_definition_count',counts:endpointCounts});
 }
 
-// Closed-form authorization invariants for the two reconciled certificate hunks.
+// Closed-form authorization invariants for the reconciled POST-layer hunks.
 if (!failures.length) {
   try {
     const router = text.get(findFileByBase(files,'01_Router'));
@@ -258,8 +294,13 @@ if (!failures.length) {
     if (countOccurrences(ownerSeg, 'descargarMiCertificadoPrivado: true,') !== 1) {
       failures.push({error:'certificate_post_ownership_invariant_failed'});
     }
+    if (countOccurrences(ownerSeg, "if (fn === 'reportarPago') {") !== 1 ||
+        countOccurrences(ownerSeg, "body.origen = 'VENDEDOR';") !== 1 ||
+        countOccurrences(ownerSeg, "body.usuario_reporta = String(sesion.cedula || sesion.usuario || '').trim();") !== 1) {
+      failures.push({error:'payment_post_ownership_invariant_failed'});
+    }
   } catch (err) {
-    failures.push({error:'certificate_post_layer_invariant_exception',message:String(err && err.message || err)});
+    failures.push({error:'post_layer_invariant_exception',message:String(err && err.message || err)});
   }
 }
 
@@ -278,7 +319,7 @@ const specialApplied = applied.filter(x=>x.resolution==='SPECIAL_POST_LAYER_INSE
 const exactApplied = applied.filter(x=>x.resolution==='EXACT_SINGLE_PREIMAGE');
 const report = {
   ok: !failures.length,
-  mode: 'SEC002_MODULAR_EXACT_REBASE_V2_POST_LAYER_RECONCILED',
+  mode: 'SEC002_MODULAR_EXACT_REBASE_V3_ORDERED_OVERLAPS_RECONCILED',
   apps_dir: appsDir,
   manifest: manifestPath,
   total_expected_hunks: totalExpected,
