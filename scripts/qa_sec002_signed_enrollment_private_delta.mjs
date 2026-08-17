@@ -20,7 +20,7 @@ check('private endpoint requires injected session', added.includes("if (!sesion 
 check('student context comes from session', added.includes('var own = _sec002MatfStudentContext_(sesion)') && added.includes('cedula = own.cedula'));
 check('student does not accept client file id', added.includes('// El estudiante siempre recibe la versión más reciente de su propio expediente.'));
 check('staff reuses canonical prospect ownership auth', added.includes('var ctx = _matFirmadaAuth_(body)'));
-check('authorized file is enumerated from signed folder', added.includes('function _matFirmadaFindAuthorizedFile_') && added.includes("getFoldersByName('01_MATRICULA_FIRMADA')") && added.includes('var it = folder.getFiles();'));
+check('authorized file is enumerated from signed folder', added.includes('function _matFirmadaFindAuthorizedFile_') && added.includes("getFoldersByName('01_MATRICULA_FIRMADA')") && patch.includes('var it = folder.getFiles();'));
 check('signed authorization no longer trusts DriveApp.getFileById', !/DriveApp\.getFileById/.test(added));
 check('notify removes legacy getFileById', /DriveApp\.getFileById/.test(removed));
 
