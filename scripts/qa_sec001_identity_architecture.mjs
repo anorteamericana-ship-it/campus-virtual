@@ -1,0 +1,63 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const readJson = (p) => JSON.parse(fs.readFileSync(path.join(root, p), 'utf8'));
+const assert = (cond, msg) => {
+  if (!cond) {
+    console.error(`FAIL: ${msg}`);
+    process.exitCode = 1;
+  }
+};
+
+const contract = readJson('security/sec001_auth_contract.json');
+const decision = readJson('security/sec001_identity_provider_decision.json');
+const protocol = readJson('security/sec001_auth_verifier_protocol.json');
+const legacy = readJson('security/sec001_legacy_credential_surface.json');
+
+assert(contract.version >= 2, 'SEC-001 closure contract must be version 2+');
+assert(contract.storage?.plaintext_allowed === false, 'plaintext must remain forbidden');
+assert(contract.storage?.fast_unsalted_hash_allowed === false, 'fast unsalted hashes must remain forbidden');
+assert(contract.password_policy?.minimum_length_single_factor >= 15, 'password minimum must remain >= 15');
+assert(contract.password_policy?.arbitrary_composition_rules === false, 'forced composition must remain disabled');
+assert(contract.login?.session_tokens_remain_separate_from_identity_credentials === true, 'Campus session must remain separate from IdP credentials');
+assert(contract.login?.idp_role_claims_must_not_grant_campus_access === true, 'IdP roles must never grant Campus authorization');
+assert(contract.migration?.bulk_export_of_plaintext_credentials_allowed === false, 'bulk plaintext export must remain forbidden');
+assert(contract.migration?.silently_copy_stored_legacy_password_to_idp_allowed === false, 'stored legacy passwords must not be silently copied');
+assert(contract.migration?.migrated_account_may_fallback_to_legacy === false, 'migrated accounts must not fall back to legacy credentials');
+assert(contract.new_accounts?.password_may_be_persisted_in_PROSPECTOS === false, 'new prospect passwords must not be persisted');
+assert(contract.new_accounts?.password_may_be_persisted_in_USUARIOS === false, 'new USUARIOS passwords must not be persisted');
+assert(contract.new_accounts?.password_may_be_persisted_in_DATOS === false, 'new DATOS passwords must not be persisted');
+
+assert(decision.preferred_provider?.provider === 'Auth0', 'preferred PoC provider must remain explicit');
+assert(decision.preferred_provider?.plan === 'Essentials', 'PoC must not silently drift to Auth0 Professional');
+assert(decision.production_authorized === false, 'architecture branch must never authorize production');
+assert(decision.steady_state?.browser_authenticates_directly_with_idp === true, 'steady-state browser must authenticate directly with IdP');
+assert(decision.steady_state?.password_received_by_apps_script === false, 'steady-state Apps Script must not receive password');
+assert(decision.steady_state?.campus_authorization_source_remains_local === true, 'Campus must remain authorization source');
+
+assert(protocol.version >= 2, 'verifier protocol must be version 2+');
+assert(protocol.steady_state?.browser_to_idp?.apps_script_receives_password === false, 'steady-state Apps Script password receipt forbidden');
+assert(protocol.mfa?.campus_does_not_store_totp_secret === true, 'Campus must not store TOTP secrets');
+assert(protocol.mfa?.campus_does_not_verify_totp === true, 'Campus must not become TOTP verifier');
+assert(protocol.temporary_migration_bridge?.retirement_required === true, 'migration bridge must be temporary');
+assert(protocol.temporary_migration_bridge?.migrated_account_plaintext_fallback_allowed === false, 'migration bridge must not re-enable fallback');
+
+const ids = new Set((legacy.surfaces || []).map((s) => s.id));
+for (const required of [
+  'USUARIOS_PLAINTEXT_PASSWORD',
+  'PROSPECTOS_PLAINTEXT_PASSWORD',
+  'DATOS_CODE_AS_PASSWORD',
+  'DATOS_CLAVE_COLUMN',
+  'DEMO_CREDENTIALS'
+]) {
+  assert(ids.has(required), `legacy credential surface missing: ${required}`);
+}
+
+const datosCode = (legacy.surfaces || []).find((s) => s.id === 'DATOS_CODE_AS_PASSWORD');
+assert(datosCode?.target?.includes('remove authentication meaning from CODIGO'), 'CODIGO must be demoted to non-secret identifier');
+assert(legacy.production_authorized === false, 'legacy inventory must not authorize production');
+
+if (!process.exitCode) {
+  console.log('PASS: SEC-001 identity architecture contracts are internally consistent.');
+}
