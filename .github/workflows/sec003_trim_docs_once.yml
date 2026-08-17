@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           node scripts/qa_sec003_backend_delta_portable.mjs
           node scripts/qa_sec003_english_lab_live_frontend.mjs
-          git diff --check 49eb9fb8b9286d7de238ba46a0fcf9d07d7d7d8d...HEAD
+          git diff --check 49eb9fb8b9286d7de238ba46a0fcf9d07d7d7d8d
           git diff --check
 
       - name: Verify only documentation changed
