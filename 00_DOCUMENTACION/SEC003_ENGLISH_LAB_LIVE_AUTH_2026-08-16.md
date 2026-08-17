@@ -1,8 +1,8 @@
 # SEC-003 · English LAB Live · sesión, identidad y secreto de respuesta
 
-**Fecha:** 2026-08-16  
-**Rama frontend:** `fix/sec003-english-lab-live-auth`  
-**Base exacta:** PR #85 head `49eb9fb8b9286d7de238ba46a0fcf9d07d7d7d8d`  
+**Fecha:** 2026-08-16
+**Rama frontend:** `fix/sec003-english-lab-live-auth`
+**Base exacta:** PR #85 head `49eb9fb8b9286d7de238ba46a0fcf9d07d7d7d8d`
 **Estado:** `CANDIDATO QA · BACKEND NO INSTALADO · NO PROD`
 
 ## 1. Límite de alcance

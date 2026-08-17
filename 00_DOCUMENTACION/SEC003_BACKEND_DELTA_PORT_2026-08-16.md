@@ -1,6 +1,6 @@
 # SEC-003 · Port seguro del delta backend sobre QA acumulado
 
-Fecha: 2026-08-16  
+Fecha: 2026-08-16
 Estado: **DELTA EXTRAÍDO Y VERIFICADO · NO INSTALADO**
 
 ## Por qué existe este documento
