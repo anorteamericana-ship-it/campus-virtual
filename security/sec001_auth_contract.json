@@ -1,52 +1,98 @@
 {
   "id": "SEC-001",
-  "version": 1,
-  "status": "remediation_in_progress",
+  "version": 2,
+  "status": "remediation_in_progress_managed_idp_poc_pending",
+  "preferred_poc_provider": "Auth0 Essentials",
   "scope": [
     "public_enrollment_password_creation",
-    "campus_login_password_verification",
+    "campus_login_identity_verification",
     "credential_storage",
     "login_abuse_protection",
-    "credential_migration"
+    "credential_migration",
+    "staff_mfa",
+    "legacy_non_password_fields_used_as_credentials"
   ],
   "password_policy": {
     "minimum_length_single_factor": 15,
-    "maximum_length_supported_at_least": 64,
+    "maximum_ui_length": 128,
     "arbitrary_composition_rules": false,
-    "block_common_or_compromised_passwords": true,
+    "block_common_passwords": true,
+    "block_personal_data_after_qa": true,
     "allow_password_managers_and_paste": true
   },
   "storage": {
     "plaintext_allowed": false,
     "fast_unsalted_hash_allowed": false,
-    "adaptive_or_managed_verifier_required": true,
-    "original_password_must_not_be_logged_or_returned": true
+    "managed_or_adaptive_verifier_required": true,
+    "original_password_must_not_be_logged_or_returned": true,
+    "campus_target_after_migration": "identity mapping only; no password verifier",
+    "idp_access_or_refresh_tokens_in_sheets_allowed": false,
+    "totp_secret_in_sheets_allowed": false
   },
   "login": {
+    "steady_state_password_destination": "managed identity provider only",
     "uniform_invalid_credential_response": true,
     "rate_limiting_required": true,
     "progressive_or_equivalent_abuse_control_required": true,
-    "session_tokens_remain_separate_from_password_credentials": true
+    "session_tokens_remain_separate_from identity_credentials": true,
+    "campus_role_must_be_rederived_locally_after_identity": true,
+    "idp_role_claims_must_not_grant_campus_access": true
+  },
+  "mfa": {
+    "required_for_staff_target": true,
+    "preferred_factor": "TOTP",
+    "provider_managed": true,
+    "rollout_requires_recovery_procedure": true
+  },
+  "legacy_surfaces": {
+    "USUARIOS_clave": "remove authentication/storage after migration",
+    "PROSPECTOS_CLAVE": "remove pending-account password storage",
+    "DATOS_NUM_CEDULA_plus_CODIGO": "remove authentication meaning from CODIGO",
+    "DATOS_clave": "inventory actual use/non-empty values and eliminate readable password-like storage",
+    "demo_credentials": "handled separately under SEC-004 and must not gain production authority"
   },
   "migration": {
+    "bulk_export_of_plaintext_credentials_allowed": false,
     "existing_plaintext_credentials_must_not_remain_indefinitely": true,
-    "force_reset_or_verified_migration_required": true,
-    "legacy_fallback_must_have_expiry_and_audit": true
+    "force_reset_or_explicit_verified_per_account_migration_required": true,
+    "new_password_required_during_migration": true,
+    "silently_copy_stored_legacy_password_to_idp_allowed": false,
+    "legacy_fallback_must_have_expiry_and_audit": true,
+    "migrated_account_may_fallback_to_legacy": false,
+    "clear_legacy_only_after_identity_creation_mapping_confirmed": true
+  },
+  "new_accounts": {
+    "password_may_be_persisted_in_PROSPECTOS": false,
+    "password_may_be_persisted_in_USUARIOS": false,
+    "password_may_be_persisted_in_DATOS": false,
+    "target": "authorized one-time IdP account establishment then store AUTH_SUB/provider/state only"
   },
   "evidence_required_to_close": [
-    "frontend rejects passwords shorter than policy",
-    "QA backend never stores a new readable password",
-    "QA login verifies only the managed/adaptive credential representation",
-    "negative tests cover wrong password, unknown account and inactive account without account enumeration",
-    "rate-limit test demonstrates bounded repeated attempts",
+    "frontend no longer creates/stores a password through public enrollment before managed account establishment",
+    "DEV/QA managed IdP accepts Campus username identifier",
+    "15-character length-only password policy and common-password blocking are demonstrated",
+    "TOTP MFA enrollment/sign-in/recovery is demonstrated for staff QA",
+    "OIDC identity proof is validated by Apps Script QA without receiving a steady-state password",
+    "valid IdP identity with inactive/wrong local authorization is denied by Campus",
+    "rate/attack-protection test demonstrates bounded repeated attempts",
+    "one fictitious legacy account migrates transactionally and cannot fall back to plaintext",
+    "USUARIOS readable active credentials are removed",
+    "PROSPECTOS readable credential path is removed",
+    "DATOS cédula+CODIGO login fallback is removed for all accounts",
+    "DATOS password-like storage is inventoried and neutralized",
+    "negative tests cover wrong password/unknown account/inactive account without enumeration",
     "migration report shows no readable active credentials remain",
+    "temporary migration bridge is disabled/removed",
     "production deployment is separately authorized and verified"
   ],
-  "non_goals_for_this_foundation_commit": [
+  "non_goals_for_this_foundation_branch": [
+    "creating a production IdP tenant",
+    "copying real users to an IdP",
     "deploying Apps Script",
     "changing production data",
     "editing Memory Match",
     "editing English LAB PR 85",
     "editing Speak LAB PR 104"
-  ]
+  ],
+  "production_authorized": false
 }
