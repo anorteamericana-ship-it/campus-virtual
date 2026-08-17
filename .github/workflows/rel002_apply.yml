@@ -1,0 +1,97 @@
+name: REL-002 guarded sales auth patch
+
+on:
+  push:
+    branches:
+      - fix/rel002-ventas-auth-scope
+    paths:
+      - .github/workflows/rel002_apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact remediation branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/rel002-ventas-auth-scope
+          fetch-depth: 0
+
+      - name: Verify ancestry
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "fix/rel002-ventas-auth-scope"
+          git merge-base --is-ancestor 67108928e953fbf044dbcd916dc34a5dd5f1e570 HEAD
+
+      - name: Apply exact guarded replacements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          data_path = Path('src/ventas_data.jsx')
+          data = data_path.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r"async function postVentas\(payload\) \{\n"
+              r"  const res = await fetch\(SCRIPT_URL_V, \{\n"
+              r"    method: 'POST',\n"
+              r"    headers: \{ 'Content-Type': 'text/plain;charset=utf-8' \},\n"
+              r"    body: JSON\.stringify\(payload\),\n"
+              r"  \}\);\n"
+              r"  return await res\.json\(\);\n"
+              r"\}"
+          )
+          replacement = """async function postVentas(payload = {}) {
+            const token = window.getSessionToken ? window.getSessionToken() : '';
+            const res = await fetch(SCRIPT_URL_V, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ ...payload, token }),
+            });
+            return await res.json();
+          }"""
+          data, count = pattern.subn(replacement, data)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one postVentas preimage, found {count}')
+          data_path.write_text(data, encoding='utf-8')
+
+          dash_path = Path('src/ventas_dashboard.jsx')
+          dash = dash_path.read_text(encoding='utf-8')
+          old_month = '<window.MiMatriculasMes asesor={usuario.nombre} />'
+          new_month = '<window.MiMatriculasMes asesor={scopeAsesor} />'
+          if dash.count(old_month) != 1:
+              raise SystemExit(f'Expected one monthly scope preimage, found {dash.count(old_month)}')
+          dash = dash.replace(old_month, new_month, 1)
+
+          old_drawer = '          asesor={usuario.nombre}\n          usuario={usuario}'
+          new_drawer = '          asesor={scopeAsesor}\n          usuario={usuario}'
+          if dash.count(old_drawer) != 1:
+              raise SystemExit(f'Expected one drawer scope preimage, found {dash.count(old_drawer)}')
+          dash = dash.replace(old_drawer, new_drawer, 1)
+          dash_path.write_text(dash, encoding='utf-8')
+          PY
+
+      - name: Run REL-002 static guard
+        run: node scripts/qa_rel002_sales_auth.mjs
+
+      - name: Validate diff
+        run: |
+          set -euo pipefail
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' src/ventas_dashboard.jsx src/ventas_data.jsx | sort)"
+          test "$changed" = "$expected"
+          git diff --stat
+          git diff -- src/ventas_data.jsx src/ventas_dashboard.jsx
+
+      - name: Commit guarded source patch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ventas_data.jsx src/ventas_dashboard.jsx
+          git commit -m "fix: authenticate Ventas writes and unify advisor scope"
+          git push origin HEAD:fix/rel002-ventas-auth-scope
