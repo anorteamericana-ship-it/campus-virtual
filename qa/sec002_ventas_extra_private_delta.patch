@@ -1,0 +1,233 @@
+--- Code.gs
++++ Code.gs.sec002extra
+@@ -2783,6 +2783,7 @@
+     agregarNotaProspecto: ventasAdminSuper,
+     cobrarMatriculaProspecto: ventasAdminSuper,
+     subirDocumentoExtra: ventasAdminSuper,
++    descargarDocumentoExtraPrivado: ventasAdminSuper,
+     marcarEtapaProspecto: ventasAdminSuper,
+ 
+     // CONAPE / sincronización
+@@ -3048,7 +3049,7 @@
+       if (fn === 'getCalendarioMatriculas') body.con_tendencia = false;
+     }
+ 
+-    if (fn === 'getProspectoDetalle') {
++    if (fn === 'getProspectoDetalle' || fn === 'subirDocumentoExtra' || fn === 'descargarDocumentoExtraPrivado') {
+       var pCed = _sec006cProspectoPorCedula_(body.cedula);
+       if (!pCed.ok || !_sec006cVentasPuedeProspecto_(sesion, pCed.prospecto)) {
+         return _an4406_noAutorizado_('El prospecto no pertenece a este asesor.');
+@@ -3859,6 +3860,7 @@
+     else if (fn === 'agregarNotaProspecto')       result = agregarNotaProspecto(body);
+     else if (fn === 'cobrarMatriculaProspecto')   result = cobrarMatriculaProspecto(body);
+     else if (fn === 'subirDocumentoExtra')        result = subirDocumentoExtra(body);
++    else if (fn === 'descargarDocumentoExtraPrivado') result = descargarDocumentoExtraPrivado(body);
+     else if (fn === 'subirMatriculaFirmadaVentas') result = subirMatriculaFirmadaVentas(body);
+     else if (fn === 'notificarMatriculaFirmadaVentas') result = notificarMatriculaFirmadaVentas(body);
+     else if (fn === 'freeUserMiPerfil')           result = freeUserMiPerfil(body);
+@@ -10302,6 +10304,83 @@
+ // ============================================================
+ 
+ 
++var SEC002_EXTRA_PRIVATE_MAX_BYTES = 5 * 1024 * 1024;
++var SEC002_EXTRA_PRIVATE_RATE_MAX = 10;
++var SEC002_EXTRA_PRIVATE_RATE_SECONDS = 60;
++
++function _sec002ExtraHexBytes_(bytes) {
++  return (bytes || []).map(function(b) {
++    var n = b < 0 ? b + 256 : b;
++    return ('0' + n.toString(16)).slice(-2);
++  }).join('');
++}
++
++function _sec002ExtraHashText_(value) {
++  var digest = Utilities.computeDigest(
++    Utilities.DigestAlgorithm.SHA_256,
++    String(value == null ? '' : value),
++    Utilities.Charset.UTF_8
++  );
++  return _sec002ExtraHexBytes_(digest);
++}
++
++function _sec002ExtraRateLimit_(sesion, cedula) {
++  sesion = sesion || {};
++  var sujeto = String(sesion.usuario || sesion.codigo || sesion.cedula || sesion.nombre || '').trim();
++  if (!sujeto) return { ok:false, error:'sujeto_descarga_no_disponible' };
++  var key = 'sec002-extra:' + _sec002ExtraHashText_(sujeto + '|' + String(cedula || '')).slice(0, 32);
++  var lock = LockService.getScriptLock();
++  if (!lock.tryLock(1500)) return { ok:false, error:'descarga_ocupada', mensaje:'Intente de nuevo en unos segundos.' };
++  try {
++    var cache = CacheService.getScriptCache();
++    var count = Number(cache.get(key) || 0);
++    if (count >= SEC002_EXTRA_PRIVATE_RATE_MAX) {
++      return { ok:false, error:'limite_descarga', retry_after_seconds:SEC002_EXTRA_PRIVATE_RATE_SECONDS };
++    }
++    cache.put(key, String(count + 1), SEC002_EXTRA_PRIVATE_RATE_SECONDS);
++    return { ok:true, remaining:Math.max(0, SEC002_EXTRA_PRIVATE_RATE_MAX - count - 1) };
++  } catch (err) {
++    return { ok:false, error:'rate_limit_no_disponible', mensaje:'No se pudo validar temporalmente el límite de descargas.' };
++  } finally {
++    try { lock.releaseLock(); } catch (_) {}
++  }
++}
++
++function _sec002ExtraExistingFolder_(cedula) {
++  var clean = _f89CleanCedula_(cedula);
++  if (!clean || clean.length < 7) return null;
++  var projectRoot = DriveApp.getFolderById(DOCUMENTOS_FOLDER_ID);
++  var studentFolder = null;
++  var roots = projectRoot.getFoldersByName(F89_EXPEDIENTES_ROOT_NAME);
++  if (roots.hasNext()) {
++    var root = roots.next();
++    var current = root.getFoldersByName(clean);
++    if (current.hasNext()) studentFolder = current.next();
++  }
++  if (!studentFolder) {
++    var legacyStudent = projectRoot.getFoldersByName(clean);
++    if (legacyStudent.hasNext()) studentFolder = legacyStudent.next();
++  }
++  if (!studentFolder) return null;
++
++  var docs = studentFolder.getFoldersByName('02_DOCUMENTOS');
++  if (!docs.hasNext()) docs = studentFolder.getFoldersByName('DOCUMENTOS_EXTRA');
++  return docs.hasNext() ? docs.next() : null;
++}
++
++function _sec002ExtraFindImmediateFile_(cedula, fileId) {
++  var wanted = String(fileId || '').trim();
++  if (!wanted) return null;
++  var folder = _sec002ExtraExistingFolder_(cedula);
++  if (!folder) return null;
++  var it = folder.getFiles();
++  while (it.hasNext()) {
++    var f = it.next();
++    if (String(f.getId()) === wanted) return f;
++  }
++  return null;
++}
++
+ function subirDocumentoExtra(body) {
+   if (!body.cedula || !body.base64 || !body.nombre_archivo) {
+     return { ok: false, error: 'Faltan: cedula, nombre_archivo, base64' };
+@@ -10313,21 +10392,105 @@
+     var coma = raw.indexOf(',');
+     if (coma >= 0 && raw.substring(0, 5) === 'data:') raw = raw.substring(coma + 1);
+ 
++    var bytes = Utilities.base64Decode(raw);
++    if (!bytes || !bytes.length) return { ok:false, error:'archivo_vacio' };
++    if (bytes.length > SEC002_EXTRA_PRIVATE_MAX_BYTES) {
++      return {
++        ok:false,
++        error:'archivo_excede_limite',
++        size_bytes:bytes.length,
++        max_bytes:SEC002_EXTRA_PRIVATE_MAX_BYTES
++      };
++    }
++
+     var extraFolder = _f89StudentSubfolder_(cedLimpia, ['02_DOCUMENTOS']);
+-
+-    var bytes = Utilities.base64Decode(raw);
+-    var blob  = Utilities.newBlob(bytes, body.mime_type || 'application/octet-stream', body.nombre_archivo);
++    var mime = String(body.mime_type || 'application/octet-stream').trim() || 'application/octet-stream';
++    var blob  = Utilities.newBlob(bytes, mime, body.nombre_archivo);
+     var file  = extraFolder.createFile(blob);
++
++    // Transición SEC-002: conservar ACL pública hasta que todos los consumidores
++    // hayan migrado y QA privada pase. No retirar este sharing en este delta.
+     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+ 
+     return {
+-      ok:     true,
+-      url:    'https://drive.google.com/file/d/' + file.getId() + '/view',
+-      nombre: file.getName()
++      ok:true,
++      url:'https://drive.google.com/file/d/' + file.getId() + '/view',
++      nombre:file.getName(),
++      file_id:file.getId(),
++      mime_type:String(file.getMimeType() || mime),
++      size_bytes:Number(file.getSize ? file.getSize() : bytes.length)
+     };
+   } catch (err) {
+     return { ok: false, error: 'Error subiendo: ' + err.message };
+   }
++}
++
++function descargarDocumentoExtraPrivado(body) {
++  body = body || {};
++  var sesion = body._auth_session || null;
++  if (!sesion || sesion.ok !== true) return { ok:false, error:'sesion_requerida' };
++
++  var rol = String(sesion.rol || '').trim().toLowerCase();
++  if (['ventas','admin','superadmin'].indexOf(rol) < 0) {
++    return { ok:false, error:'no_autorizado', mensaje:'Este rol no puede abrir documentos de Ventas.' };
++  }
++
++  var cedula = _sec006cCedulaProp_(body.cedula);
++  var fileId = String(body.file_id || body.id || '').trim();
++  if (!cedula || !fileId) return { ok:false, error:'cedula_file_id_requeridos' };
++
++  // Defensa en profundidad: el router ya valida propiedad para ventas,
++  // pero esta función también la revalida si se invoca desde otra ruta interna.
++  if (rol === 'ventas') {
++    var pCed = _sec006cProspectoPorCedula_(cedula);
++    if (!pCed.ok || !_sec006cVentasPuedeProspecto_(sesion, pCed.prospecto)) {
++      return { ok:false, error:'no_autorizado_recurso', mensaje:'El prospecto no pertenece a este asesor.' };
++    }
++  }
++
++  var rate = _sec002ExtraRateLimit_(sesion, cedula);
++  if (!rate || rate.ok !== true) return rate || { ok:false, error:'limite_descarga_no_disponible' };
++
++  var file = _sec002ExtraFindImmediateFile_(cedula, fileId);
++  if (!file) {
++    return { ok:false, error:'documento_no_encontrado', mensaje:'El archivo no pertenece a los documentos adicionales de este prospecto.' };
++  }
++
++  var size = Number(file.getSize ? file.getSize() : 0);
++  if (!size || size > SEC002_EXTRA_PRIVATE_MAX_BYTES) {
++    return {
++      ok:false,
++      error:'documento_excede_limite_privado',
++      size_bytes:size,
++      max_bytes:SEC002_EXTRA_PRIVATE_MAX_BYTES
++    };
++  }
++
++  var blob;
++  var bytes;
++  try {
++    blob = file.getBlob();
++    bytes = blob.getBytes();
++  } catch (err2) {
++    return { ok:false, error:'lectura_documento_privado_fallida', mensaje:'No se pudo leer el archivo privado.' };
++  }
++  if (!bytes || !bytes.length || bytes.length > SEC002_EXTRA_PRIVATE_MAX_BYTES) {
++    return { ok:false, error:'contenido_documento_invalido_o_grande', size_bytes:bytes ? bytes.length : 0 };
++  }
++
++  var mime = String(blob.getContentType() || file.getMimeType() || 'application/octet-stream').trim().toLowerCase();
++  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
++  return {
++    ok:true,
++    version:'SEC002-EXTRA-PRIVATE-1',
++    private_delivery:true,
++    nombre:String(file.getName() || 'documento'),
++    mime_type:mime,
++    size_bytes:bytes.length,
++    sha256:_sec002ExtraHexBytes_(digest),
++    data_base64:Utilities.base64Encode(bytes),
++    rate_remaining:rate.remaining
++  };
+ }
+ 
+ 
+@@ -32058,6 +32221,9 @@
+         docsExtra.push({
+           nombre: f.getName(),
+           url:    'https://drive.google.com/file/d/' + f.getId() + '/view',
++          file_id:f.getId(),
++          mime_type:String(f.getMimeType ? f.getMimeType() : ''),
++          size_bytes:Number(f.getSize ? f.getSize() : 0),
+           fecha:  Utilities.formatDate(f.getDateCreated(), 'America/Costa_Rica', 'yyyy-MM-dd HH:mm')
+         });
+       }
