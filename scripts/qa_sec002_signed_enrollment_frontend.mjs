@@ -16,7 +16,7 @@ check('ventas private signed helper exists', !!ventasHelper);
 check('ventas helper uses authenticated postVentasData', ventasHelper.includes("postVentasData('descargarMatriculaFirmadaPrivada'"));
 check('ventas helper validates PDF MIME', ventasHelper.includes("!== 'application/pdf'"));
 check('ventas helper validates 9 MiB and backend size', ventasHelper.includes('bytes.length > 9 * 1024 * 1024') && ventasHelper.includes('expectedSize !== bytes.length'));
-check('ventas helper validates SHA-256', ventasHelper.includes("window.crypto?.subtle.digest('SHA-256', bytes)") && ventasHelper.includes('digestHex !== expectedHash'));
+check('ventas helper validates SHA-256', ventasHelper.includes('window.crypto?.subtle') && ventasHelper.includes("window.crypto.subtle.digest('SHA-256', bytes)") && ventasHelper.includes('digestHex !== expectedHash'));
 check('ventas helper returns Blob not base64', ventasHelper.includes("blob:new Blob([bytes], { type:'application/pdf' })") && !/data_base64\s*:/.test(ventasHelper));
 check('ventas helper exported', data.includes('notificarMatriculaFirmadaVentasSeguro, descargarMatriculaFirmadaPrivadaVentasSeguro,'));
 
@@ -38,7 +38,7 @@ const studentPrivate = sStart >= 0 && sEnd > sStart ? student.slice(sStart,sEnd)
 check('student private signed helper/card exists', !!studentPrivate && studentPrivate.includes('function StudentSignedEnrollmentPrivateF984'));
 check('student request sends only endpoint + token identity', studentPrivate.includes("body:JSON.stringify({ fn:'descargarMatriculaFirmadaPrivada', token })"));
 check('student request does not send cedula/codigo/file id', !/JSON\.stringify\([^\n]*(cedula|codigo|file_id)/.test(studentPrivate));
-check('student validates PDF/size/hash', studentPrivate.includes("!== 'application/pdf'") && studentPrivate.includes('bytes.length > 9 * 1024 * 1024') && studentPrivate.includes("window.crypto?.subtle.digest('SHA-256', bytes)"));
+check('student validates PDF/size/hash', studentPrivate.includes("!== 'application/pdf'") && studentPrivate.includes('bytes.length > 9 * 1024 * 1024') && studentPrivate.includes('window.crypto?.subtle') && studentPrivate.includes("window.crypto.subtle.digest('SHA-256', bytes)"));
 check('student uses/revokes ObjectURL', studentPrivate.includes('URL.createObjectURL(r.blob)') && studentPrivate.includes('URL.revokeObjectURL(objectUrl)'));
 check('student Program/Documents tab includes private signed card', student.includes('<StudentSignedEnrollmentPrivateF984 />'));
 check('student private card has no Drive URL fallback', !/drive\.google\.com|lh3\.googleusercontent\.com/.test(studentPrivate));
