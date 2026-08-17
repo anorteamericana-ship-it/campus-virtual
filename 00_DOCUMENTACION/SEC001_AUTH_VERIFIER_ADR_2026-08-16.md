@@ -40,6 +40,17 @@ Una inspección read-only y privacy-preserving del 2026-08-16 encontró:
 
 No se copiaron direcciones ni contraseñas a la documentación.
 
+### Superficies legacy adicionales confirmadas en source
+
+La auditoría del alta/activación confirmó que la superficie de credenciales es más amplia que las columnas llamadas `clave`:
+
+- `getUsuarioEstudiante` usa **cédula + CODIGO** como credencial legacy;
+- `_crearFilaEnDatosV2` escribe `DATOS.clave = codigoEst`, duplicando el mismo `CODIGO` en un campo password-like;
+- `activarEstudiante` copia `PROSPECTOS.CLAVE` hacia `USUARIOS.clave`;
+- si `PROSPECTOS.CLAVE` no existe, `activarEstudiante` genera un fallback corto de forma `an####`, lo guarda en `USUARIOS.clave` y el comentario operativo indica que el administrador debe comunicarlo por WhatsApp.
+
+Por tanto, SEC-001 no se cierra eliminando una sola columna ni fortaleciendo únicamente el formulario. El cierre debe retirar también el significado de autenticación de `CODIGO`, dejar de duplicarlo en `DATOS.clave` y eliminar por completo la generación/comunicación de contraseñas durante activación.
+
 ## Decisión
 
 ### Proveedor preferido para PoC: Auth0 Essentials
@@ -218,6 +229,8 @@ Para una cuenta legacy:
 9. el siguiente login normal ocurre exclusivamente por Auth0;
 10. el puente tiene fecha de retiro y no permanece como fallback indefinido.
 
+Para estudiantes legacy que hoy podrían entrar con `NUM_CEDULA + CODIGO`, el paso 3 puede validar esa credencial únicamente mientras el puente esté habilitado; después de migrar, `CODIGO` queda como identificador académico no secreto y nunca puede volver a autorizar una sesión.
+
 ### Rollback
 
 No borrar la credencial legible antes de confirmar la identidad Auth0 y el mapping local.
@@ -231,16 +244,20 @@ Si falla la creación Auth0:
 
 Una cuenta marcada `MIGRATED` **no debe volver a autenticar contra plaintext** aunque luego falle Auth0; el incidente se resuelve por recovery/reset.
 
-## Nuevas altas
+## Nuevas altas y activación
 
-El diseño objetivo elimina `PROSPECTOS.CLAVE` como almacén temporal.
+El diseño objetivo elimina `PROSPECTOS.CLAVE` como almacén temporal y elimina el fallback `an####` de activación.
 
 Para nuevas inscripciones:
 
 1. la inscripción pública recopila datos de solicitud, no una contraseña que vaya a persistirse en Sheets;
-2. cuando la cuenta puede activarse, se emite un flujo de establecimiento de acceso de un solo uso;
-3. el usuario crea la contraseña directamente para el IdP mediante el backend/flujo seguro de provisioning;
-4. el Campus almacena únicamente `AUTH_SUB`/estado de identidad, nunca la contraseña.
+2. mientras el prospecto no esté autorizado para una cuenta Campus, no existe contraseña Campus que guardar/copiar;
+3. cuando la cuenta puede activarse, `activarEstudiante` deja de leer/copiar `PROSPECTOS.CLAVE` y **no genera ninguna contraseña temporal**;
+4. la activación crea un estado de establecimiento de identidad gestionada y la referencia necesaria para iniciar ese flujo;
+5. el estudiante establece su secreto directamente con el IdP; el personal de la Academia no lo conoce ni lo comunica por WhatsApp;
+6. después de confirmar identidad, el Campus guarda únicamente `AUTH_PROVIDER`, `AUTH_SUB`, estado/versión de migración y datos académicos/autorización;
+7. `DATOS.CODIGO` se conserva como identificador académico, pero `DATOS.clave` no se rellena con ese código ni con ninguna credencial reusable;
+8. si falla el establecimiento en el IdP, la activación queda pendiente/reset-required: **no puede caer a `an####`, código estudiantil ni otra contraseña generada por Campus**.
 
 Esto requiere un cambio funcional posterior y no forma parte del commit de decisión arquitectónica.
 
@@ -270,9 +287,11 @@ Antes de aceptar Auth0 Essentials como decisión de producción:
 10. prueba OIDC -> Apps Script QA -> sesión Campus existente;
 11. prueba de rol incorrecto/inactivo aunque Auth0 autentique;
 12. migración de una cuenta ficticia LEGACY -> MIGRATED -> plaintext eliminado;
-13. rollback antes de eliminación y recovery después de migración;
-14. medir costo/MAU y límites reales del tenant;
-15. confirmar que ninguna pantalla LAB/Memory/Speak depende del cambio.
+13. migración ficticia de estudiante legacy demuestra que cédula+CODIGO deja de autenticar después del commit;
+14. activación ficticia nueva demuestra que no existe `an####`, no se copia `PROSPECTOS.CLAVE`, no se rellena `DATOS.clave = CODIGO` y el personal nunca recibe la contraseña;
+15. rollback antes de eliminación y recovery después de migración;
+16. medir costo/MAU y límites reales del tenant;
+17. confirmar que ninguna pantalla LAB/Memory/Speak depende del cambio.
 
 ## Criterio de cambio de proveedor
 
