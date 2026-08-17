@@ -1,4 +1,5 @@
 name: SEC002 ventas extra private one-shot
+# retry after response-scope guard correction
 
 on:
   push:
