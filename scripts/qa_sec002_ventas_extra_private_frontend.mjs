@@ -20,7 +20,10 @@ check('helper constructs local Blob only', helper.includes('blob:new Blob([bytes
 check('helper does not return data_base64', !/data_base64\s*:/.test(helper));
 check('helper is exported to window', /getProspectoDetalle,\s*descargarDocumentoExtraPrivado,\s*getResumenVentas/.test(data));
 
-const uploadWrapper = data.match(/const subirDocumentoExtra\s*=([^;]+);/s)?.[0] || '';
+const uploadStart = data.indexOf('const subirDocumentoExtra');
+const uploadEnd = uploadStart >= 0 ? data.indexOf('\nconst marcarEtapaProspecto', uploadStart) : -1;
+const uploadWrapper = uploadStart >= 0 && uploadEnd > uploadStart ? data.slice(uploadStart, uploadEnd) : '';
+check('upload wrapper is isolated', !!uploadWrapper);
 check('upload wrapper uses authenticated postVentasData', uploadWrapper.includes("postVentasData('subirDocumentoExtra'"));
 check('upload wrapper does not use legacy unauthenticated postVentas', !/return\s+postVentas\s*\(/.test(uploadWrapper));
 
