@@ -34,7 +34,7 @@
     "uniform_invalid_credential_response": true,
     "rate_limiting_required": true,
     "progressive_or_equivalent_abuse_control_required": true,
-    "session_tokens_remain_separate_from identity_credentials": true,
+    "session_tokens_remain_separate_from_identity_credentials": true,
     "campus_role_must_be_rederived_locally_after_identity": true,
     "idp_role_claims_must_not_grant_campus_access": true
   },
