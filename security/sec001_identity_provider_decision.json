@@ -1,0 +1,95 @@
+{
+  "id": "SEC-001-IDP-DECISION",
+  "version": 1,
+  "status": "preferred_for_poc_not_authorized_for_production",
+  "preferred_provider": {
+    "provider": "Auth0",
+    "plan": "Essentials",
+    "pricing_observed_usd_month_for_500_mau": 35,
+    "pricing_observed_date": "2026-08-16",
+    "selection_reasons": [
+      "native username identifier matches Campus login model",
+      "managed password store removes Campus plaintext verifier ownership",
+      "Pro MFA is included in Essentials",
+      "TOTP is supported as an independent MFA factor",
+      "basic attack protection is provided by the IdP",
+      "password policy can require length without forced composition",
+      "separate development and production environments are included"
+    ],
+    "excluded_capability": "Custom Database Connections / automatic legacy-store login migration",
+    "excluded_reason": "requires Professional pricing observed at USD 240/month for 500 MAU; transition is finite and will be tested with an explicit migration bridge instead"
+  },
+  "fallbacks": [
+    {
+      "provider": "Google Identity Platform",
+      "status": "economic_managed_fallback",
+      "strengths": [
+        "first 50000 tier-1 MAU at zero platform charge",
+        "managed password policy",
+        "email enumeration protection",
+        "TOTP MFA",
+        "mature REST/Admin APIs"
+      ],
+      "blocking_fit_issue": "password authentication is email-centric and TOTP MFA requires verified email while only 1 of 18 active USUARIOS rows currently has an email-like value"
+    },
+    {
+      "provider": "Cloudflare Worker dedicated verifier",
+      "status": "last_resort_custom_fallback",
+      "blocking_fit_issue": "would make Campus responsible for KDF, credential store, secrets, abuse controls, MFA, recovery and incident response"
+    }
+  ],
+  "steady_state": {
+    "browser_authenticates_directly_with_idp": true,
+    "visible_login_identifier": "Campus usuario",
+    "password_received_by_apps_script": false,
+    "mfa_handled_by_idp": true,
+    "idp_token_is_identity_only": true,
+    "campus_authorization_source_remains_local": true,
+    "apps_script_issues_existing_campus_session_after_identity_validation": true,
+    "preferred_poc_token_validation": "OIDC/UserInfo remote validation rather than custom JWT cryptography in Apps Script"
+  },
+  "password_policy": {
+    "min_length": 15,
+    "max_ui_length": 128,
+    "forced_composition": false,
+    "dictionary_block": true,
+    "block_personal_data_after_qa": true,
+    "password_managers_and_paste": true
+  },
+  "mfa": {
+    "target_factor": "TOTP",
+    "target_population": "staff roles with internal-data or write access",
+    "campus_roles_must_not_be_trusted_from_idp_claims": true,
+    "rollout_order": [
+      "superadmin/admin/cobros/direccion/supervision",
+      "teacher/ventas and remaining staff"
+    ]
+  },
+  "migration": {
+    "bulk_plaintext_export_allowed": false,
+    "automatic_custom_database_migration_planned": false,
+    "strategy": "temporary explicit per-account migration bridge",
+    "legacy_password_may_be_verified_once": true,
+    "new_password_required_during_migration": true,
+    "new_password_must_not_be_silently_copied_from_sheet": true,
+    "clear_legacy_plaintext_only_after_idp_creation_and_mapping_confirmed": true,
+    "migrated_account_may_fallback_to_plaintext": false,
+    "bridge_must_have_retirement_date": true
+  },
+  "new_accounts": {
+    "target": "do not persist password in PROSPECTOS, DATOS or USUARIOS",
+    "activation": "one-time account-establishment flow creates IdP credential and stores only identity mapping"
+  },
+  "required_poc_evidence": [
+    "username-primary DEV connection works",
+    "15-character length-only policy and dictionary work",
+    "TOTP staff enrollment and sign-in work",
+    "attack protection behavior is observed",
+    "OIDC identity can be validated by Apps Script QA and mapped to a local Campus account",
+    "inactive/wrong-role local account remains denied after valid IdP authentication",
+    "one fictitious legacy account migrates and loses plaintext safely",
+    "rollback before migration commit and recovery after migration are demonstrated",
+    "actual tenant pricing/limits fit expected MAU"
+  ],
+  "production_authorized": false
+}
