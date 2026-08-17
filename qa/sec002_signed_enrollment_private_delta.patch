@@ -1,0 +1,317 @@
+--- Code.gs
++++ Code.gs.sec002matf
+@@ -2689,6 +2689,7 @@
+     generarDocumentoVentas: ventasAdminSuper,
+     subirMatriculaFirmadaVentas: ventasAdminSuper,
+     notificarMatriculaFirmadaVentas: ventasAdminSuper,
++    descargarMatriculaFirmadaPrivada: ['student', 'ventas', 'admin', 'superadmin'],
+     freeUserMiPerfil: ['student', 'admin', 'superadmin'],
+     freeUserCrearSolicitud: ['student'],
+     freeUserListarSolicitudes: ventasAdminSuper,
+@@ -3861,6 +3862,7 @@
+     else if (fn === 'subirDocumentoExtra')        result = subirDocumentoExtra(body);
+     else if (fn === 'subirMatriculaFirmadaVentas') result = subirMatriculaFirmadaVentas(body);
+     else if (fn === 'notificarMatriculaFirmadaVentas') result = notificarMatriculaFirmadaVentas(body);
++    else if (fn === 'descargarMatriculaFirmadaPrivada') result = descargarMatriculaFirmadaPrivada(body);
+     else if (fn === 'freeUserMiPerfil')           result = freeUserMiPerfil(body);
+     else if (fn === 'freeUserCrearSolicitud')     result = freeUserCrearSolicitud(body);
+     else if (fn === 'freeUserListarSolicitudes')  result = freeUserListarSolicitudes(body);
+@@ -10411,39 +10413,67 @@
+   return sh;
+ }
+ 
+-function _matFirmadaAddCampusAlert_(ctx, url, actor) {
++function _matFirmadaAddCampusAlert_(ctx, actor) {
+   var sh = _matFirmadaAlertSheet_();
+   var now = new Date();
+   var nombre = _matFirmadaNombre_(ctx.prospecto, ctx.codigo);
+   var id = 'MATF-' + Utilities.formatDate(now, 'America/Costa_Rica', 'yyyyMMddHHmmss') + '-' + Math.floor(Math.random()*9000+1000);
+   var titulo = 'Documento de matrícula firmado disponible';
+-  var msg = 'Tu documento de matrícula firmado fue adjuntado al expediente. Podés abrirlo desde este aviso o solicitarlo a Admisiones.';
+-  sh.appendRow([id, ctx.codigo, ctx.cedula, nombre, 'MATRICULA_FIRMADA', titulo, msg, url || '', 'PENDIENTE', now, actor || '', '']);
+-  return { id:id, titulo:titulo };
+-}
+-
+-function _matFirmadaFindLatestFile_(ctx) {
+-  var folder = _f89StudentSubfolder_(ctx.cedula, ['02_DOCUMENTOS','01_MATRICULA_FIRMADA']);
++  var msg = 'Tu documento de matrícula firmado fue adjuntado al expediente. Podés abrirlo desde Documentos y ayuda dentro del Campus.';
++  // SEC-002: no persistir un enlace público de Drive en alertas nuevas.
++  sh.appendRow([id, ctx.codigo, ctx.cedula, nombre, 'MATRICULA_FIRMADA', titulo, msg, '', 'PENDIENTE', now, actor || '', '']);
++  return { id:id, titulo:titulo, recurso:'MATRICULA_FIRMADA' };
++}
++
++function _matFirmadaExistingFolder_(cedula) {
++  var clean = _f89CleanCedula_(cedula);
++  if (!clean || clean.length < 7) return null;
++  var projectRoot = DriveApp.getFolderById(DOCUMENTOS_FOLDER_ID);
++  var studentFolder = null;
++  var roots = projectRoot.getFoldersByName(F89_EXPEDIENTES_ROOT_NAME);
++  if (roots.hasNext()) {
++    var root = roots.next();
++    var current = root.getFoldersByName(clean);
++    if (current.hasNext()) studentFolder = current.next();
++  }
++  if (!studentFolder) {
++    var legacyStudent = projectRoot.getFoldersByName(clean);
++    if (legacyStudent.hasNext()) studentFolder = legacyStudent.next();
++  }
++  if (!studentFolder) return null;
++  var docs = studentFolder.getFoldersByName('02_DOCUMENTOS');
++  if (!docs.hasNext()) return null;
++  var docsFolder = docs.next();
++  var signed = docsFolder.getFoldersByName('01_MATRICULA_FIRMADA');
++  return signed.hasNext() ? signed.next() : null;
++}
++
++function _matFirmadaFindAuthorizedFile_(cedula, fileId) {
++  var folder = _matFirmadaExistingFolder_(cedula);
++  if (!folder) return null;
++  var wanted = String(fileId || '').trim();
+   var it = folder.getFiles();
+   var best = null;
+   while (it.hasNext()) {
+     var f = it.next();
+     if (String(f.getMimeType()).toLowerCase() !== 'application/pdf') continue;
+-    if (!best || f.getDateCreated() > best.getDateCreated()) best = f;
++    if (wanted && String(f.getId()) === wanted) return f;
++    if (!wanted && (!best || f.getDateCreated() > best.getDateCreated())) best = f;
+   }
+-  if (!best) return null;
+-  try { best.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (_) {}
+-  return best;
++  return wanted ? null : best;
++}
++
++function _matFirmadaFindLatestFile_(ctx) {
++  return _matFirmadaFindAuthorizedFile_(ctx && ctx.cedula, '');
+ }
+ 
+-function _matFirmadaSendEmail_(ctx, file, url, emailDestino) {
++function _matFirmadaSendEmail_(ctx, file, emailDestino) {
+   var email = String(emailDestino || '').trim() || _matFirmadaEmail_(ctx.prospecto);
+   if (!email || email.indexOf('@') < 0) return { ok:false, error:'sin_correo', mensaje:'No hay correo válido para enviar el documento.' };
+   var nombre = _matFirmadaNombre_(ctx.prospecto, ctx.codigo) || 'estudiante';
+   var subject = 'Documento de matrícula firmado - Academia Norteamericana';
+   var html = '<p>Hola ' + _matHtml_(nombre.split(' ')[0] || nombre) + ',</p>' +
+-    '<p>Adjuntamos tu documento de matrícula firmado y dejamos también el enlace de consulta:</p>' +
+-    '<p><a href="' + _matHtml_(url) + '">Abrir documento</a></p>' +
++    '<p>Adjuntamos tu documento de matrícula firmado. También queda disponible dentro de Documentos y ayuda en el Campus.</p>' +
+     '<p>Academia Norteamericana</p>';
+   var opt = { to: email, subject: subject, htmlBody: html };
+   try { opt.attachments = [file.getBlob().setName(file.getName())]; } catch (_) {}
+@@ -10477,43 +10507,153 @@
+   } catch (_) {}
+ }
+ 
++var SEC002_MATF_PRIVATE_MAX_BYTES = 9 * 1024 * 1024;
++var SEC002_MATF_PRIVATE_RATE_MAX = 10;
++var SEC002_MATF_PRIVATE_RATE_SECONDS = 60;
++
++function _sec002MatfHexBytes_(bytes) {
++  return (bytes || []).map(function(b) {
++    var n = b < 0 ? b + 256 : b;
++    return ('0' + n.toString(16)).slice(-2);
++  }).join('');
++}
++
++function _sec002MatfHashText_(value) {
++  return _sec002MatfHexBytes_(Utilities.computeDigest(
++    Utilities.DigestAlgorithm.SHA_256,
++    String(value == null ? '' : value),
++    Utilities.Charset.UTF_8
++  ));
++}
++
++function _sec002MatfRateLimit_(sesion) {
++  sesion = sesion || {};
++  var sujeto = String(sesion.usuario || sesion.codigo || sesion.cedula || sesion.nombre || '').trim();
++  if (!sujeto) return { ok:false, error:'sujeto_descarga_no_disponible' };
++  var key = 'sec002-matf:' + _sec002MatfHashText_(sujeto).slice(0, 32);
++  var lock = LockService.getScriptLock();
++  if (!lock.tryLock(1500)) return { ok:false, error:'descarga_ocupada', mensaje:'Intente de nuevo en unos segundos.' };
++  try {
++    var cache = CacheService.getScriptCache();
++    var count = Number(cache.get(key) || 0);
++    if (count >= SEC002_MATF_PRIVATE_RATE_MAX) return { ok:false, error:'limite_descarga', retry_after_seconds:SEC002_MATF_PRIVATE_RATE_SECONDS };
++    cache.put(key, String(count + 1), SEC002_MATF_PRIVATE_RATE_SECONDS);
++    return { ok:true, remaining:Math.max(0, SEC002_MATF_PRIVATE_RATE_MAX - count - 1) };
++  } catch (err) {
++    return { ok:false, error:'rate_limit_no_disponible' };
++  } finally {
++    try { lock.releaseLock(); } catch (_) {}
++  }
++}
++
++function _sec002MatfIsPdfBytes_(bytes) {
++  return !!(bytes && bytes.length >= 5 && bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45);
++}
++
++function _sec002MatfStudentContext_(sesion) {
++  var codigo = String((sesion && sesion.codigo) || '').trim();
++  var cedula = _sec006cCedulaProp_(sesion && sesion.cedula);
++  if (!cedula && codigo) {
++    try {
++      var est = getEstudiante(codigo);
++      if (est && est.ok) cedula = _sec006cCedulaProp_(est.estudiante && (est.estudiante.CEDULA || est.estudiante.cedula));
++    } catch (_) {}
++  }
++  return { codigo:codigo, cedula:cedula };
++}
++
++function descargarMatriculaFirmadaPrivada(body) {
++  body = body || {};
++  var sesion = body._auth_session || null;
++  if (!sesion || sesion.ok !== true) return { ok:false, error:'sesion_requerida' };
++  var rol = String(sesion.rol || '').trim().toLowerCase();
++  if (['student','ventas','admin','superadmin'].indexOf(rol) < 0) return { ok:false, error:'no_autorizado' };
++
++  var cedula = '';
++  var codigo = '';
++  var fileId = '';
++  if (rol === 'student') {
++    var own = _sec002MatfStudentContext_(sesion);
++    codigo = own.codigo;
++    cedula = own.cedula;
++    if (!cedula) return { ok:false, error:'identidad_estudiante_incompleta' };
++    // El estudiante siempre recibe la versión más reciente de su propio expediente.
++  } else {
++    var ctx = _matFirmadaAuth_(body);
++    if (!ctx.ok) return ctx;
++    cedula = ctx.cedula;
++    codigo = ctx.codigo;
++    fileId = String(body.file_id || '').trim();
++  }
++
++  var rate = _sec002MatfRateLimit_(sesion);
++  if (!rate || rate.ok !== true) return rate || { ok:false, error:'limite_descarga_no_disponible' };
++  var file = _matFirmadaFindAuthorizedFile_(cedula, fileId);
++  if (!file) return { ok:false, error:'sin_pdf_firmado', mensaje:'No se encontró una matrícula firmada autorizada en el expediente.' };
++
++  var size = Number(file.getSize ? file.getSize() : 0);
++  if (!size || size > SEC002_MATF_PRIVATE_MAX_BYTES) return { ok:false, error:'matricula_firmada_excede_limite', size_bytes:size, max_bytes:SEC002_MATF_PRIVATE_MAX_BYTES };
++  var blob;
++  var bytes;
++  try {
++    blob = file.getBlob();
++    bytes = blob.getBytes();
++  } catch (_) {
++    return { ok:false, error:'lectura_matricula_firmada_fallida' };
++  }
++  if (!_sec002MatfIsPdfBytes_(bytes) || bytes.length > SEC002_MATF_PRIVATE_MAX_BYTES) return { ok:false, error:'contenido_pdf_firmado_invalido' };
++  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
++  return {
++    ok:true,
++    version:'SEC002-MATF-PRIVATE-1',
++    private_delivery:true,
++    nombre:String(file.getName() || 'matricula_firmada.pdf'),
++    mime_type:'application/pdf',
++    size_bytes:bytes.length,
++    sha256:_sec002MatfHexBytes_(digest),
++    data_base64:Utilities.base64Encode(bytes),
++    rate_remaining:rate.remaining
++  };
++}
++
+ function subirMatriculaFirmadaVentas(body) {
+   body = body || {};
+   var ctx = _matFirmadaAuth_(body);
+   if (!ctx.ok) return ctx;
+   var raw = String(body.base64 || '');
+   var nombreArchivo = String(body.nombre_archivo || 'matricula_firmada.pdf').trim();
+-  var mime = String(body.mime_type || 'application/pdf').trim() || 'application/pdf';
++  var mime = String(body.mime_type || 'application/pdf').trim().toLowerCase() || 'application/pdf';
+   if (!raw) return { ok:false, error:'archivo_requerido' };
+-  if (mime.toLowerCase().indexOf('pdf') < 0 && !/\.pdf$/i.test(nombreArchivo)) {
++  if (mime !== 'application/pdf' || !/\.pdf$/i.test(nombreArchivo)) {
+     return { ok:false, error:'solo_pdf', mensaje:'Solo se permite subir PDF firmado.' };
+   }
+   var comma = raw.indexOf(',');
+   if (comma >= 0 && raw.substring(0,5) === 'data:') raw = raw.substring(comma + 1);
+-  // límite preventivo aproximado: 9 MB en base64 antes de decodificar
+   if (raw.length > 12582912) return { ok:false, error:'archivo_muy_grande', mensaje:'El PDF supera el tamaño permitido. Reducí el archivo e intentá de nuevo.' };
+ 
+   try {
+     var bytes = Utilities.base64Decode(raw);
++    if (!bytes || !bytes.length || bytes.length > SEC002_MATF_PRIVATE_MAX_BYTES) return { ok:false, error:'archivo_muy_grande', mensaje:'El PDF supera el tamaño permitido.' };
++    if (!_sec002MatfIsPdfBytes_(bytes)) return { ok:false, error:'pdf_invalido', mensaje:'El archivo no contiene un PDF válido.' };
+     var folder = _f89StudentSubfolder_(ctx.cedula, ['02_DOCUMENTOS','01_MATRICULA_FIRMADA']);
+     var ts = Utilities.formatDate(new Date(), 'America/Costa_Rica', 'yyyyMMdd_HHmmss');
+     var nombre = (ctx.preview_test ? 'PREVIEW_MATRICULA_FIRMADA_' : 'MATRICULA_FIRMADA_') + ctx.codigo + '_' + ctx.cedula + '_' + ts + '.pdf';
+     var blob = Utilities.newBlob(bytes, 'application/pdf', nombre);
+     var file = folder.createFile(blob);
++    // Transición SEC-002: mantener ACL actual hasta QA end-to-end y migración de históricos.
+     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+-    var url = 'https://drive.google.com/file/d/' + file.getId() + '/view';
+     var actor = String((ctx.sesion && (ctx.sesion.nombre || ctx.sesion.usuario || ctx.sesion.email)) || ctx.rol || '').trim();
+-    _matFirmadaNotaProspecto_(ctx, (ctx.preview_test ? 'PRUEBA: ' : '') + 'Matrícula firmada adjuntada por ' + (actor || ctx.rol) + ': ' + url);
++    _matFirmadaNotaProspecto_(ctx, (ctx.preview_test ? 'PRUEBA: ' : '') + 'Matrícula firmada adjuntada por ' + (actor || ctx.rol) + '.');
+ 
+     var emailResp = null;
+     if (body.enviar_correo === true || String(body.enviar_correo || '').toUpperCase() === 'TRUE') {
+-      emailResp = _matFirmadaSendEmail_(ctx, file, url, body.email || '');
++      emailResp = _matFirmadaSendEmail_(ctx, file, body.email || '');
+     }
+     var alertaResp = null;
+     if (body.crear_alerta === true || String(body.crear_alerta || '').toUpperCase() === 'TRUE') {
+-      alertaResp = _matFirmadaAddCampusAlert_(ctx, url, actor || ctx.rol);
++      alertaResp = _matFirmadaAddCampusAlert_(ctx, actor || ctx.rol);
+     }
+-    return { ok:true, url:url, file_id:file.getId(), nombre:file.getName(), codigo:ctx.codigo, cedula:ctx.cedula, folder_url:folder.getUrl(), correo:emailResp, alerta:alertaResp };
++    return { ok:true, private_delivery_ready:true, file_id:file.getId(), nombre:file.getName(), codigo:ctx.codigo, cedula:ctx.cedula, correo:emailResp, alerta:alertaResp };
+   } catch (err) {
+     return { ok:false, error:'error_subiendo_matricula_firmada', mensaje:String(err && err.message || err) };
+   }
+@@ -10523,27 +10663,21 @@
+   body = body || {};
+   var ctx = _matFirmadaAuth_(body);
+   if (!ctx.ok) return ctx;
+-  var file = null;
+-  if (body.file_id) {
+-    try { file = DriveApp.getFileById(String(body.file_id)); } catch (_) {}
+-  }
+-  if (!file) file = _matFirmadaFindLatestFile_(ctx);
+-  if (!file) return { ok:false, error:'sin_pdf_firmado', mensaje:'No se encontró una matrícula firmada en el expediente.' };
+-  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (_) {}
+-  var url = 'https://drive.google.com/file/d/' + file.getId() + '/view';
++  var file = _matFirmadaFindAuthorizedFile_(ctx.cedula, String(body.file_id || '').trim());
++  if (!file) return { ok:false, error:'sin_pdf_firmado', mensaje:'No se encontró una matrícula firmada autorizada en el expediente.' };
+   var canal = String(body.canal || '').trim().toLowerCase();
+   var actor = String((ctx.sesion && (ctx.sesion.nombre || ctx.sesion.usuario || ctx.sesion.email)) || ctx.rol || '').trim();
+   if (canal === 'correo' || canal === 'email') {
+-    var emailResp = _matFirmadaSendEmail_(ctx, file, url, body.email || '');
++    var emailResp = _matFirmadaSendEmail_(ctx, file, body.email || '');
+     if (emailResp.ok) _matFirmadaNotaProspecto_(ctx, (ctx.preview_test ? 'PRUEBA: ' : '') + 'Matrícula firmada enviada por correo a ' + emailResp.email + ' por ' + (actor || ctx.rol) + '.');
+-    return emailResp.ok ? { ok:true, canal:'correo', email:emailResp.email, url:url } : emailResp;
++    return emailResp.ok ? { ok:true, canal:'correo', email:emailResp.email } : emailResp;
+   }
+   if (canal === 'campus' || canal === 'alerta') {
+-    var alertaResp = _matFirmadaAddCampusAlert_(ctx, url, actor || ctx.rol);
++    var alertaResp = _matFirmadaAddCampusAlert_(ctx, actor || ctx.rol);
+     _matFirmadaNotaProspecto_(ctx, (ctx.preview_test ? 'PRUEBA: ' : '') + 'Alerta de campus creada para matrícula firmada por ' + (actor || ctx.rol) + '.');
+-    return { ok:true, canal:'campus', alerta:alertaResp, url:url };
++    return { ok:true, canal:'campus', alerta:alertaResp };
+   }
+-  return { ok:false, error:'canal_no_soportado', mensaje:'Canal permitido: correo o campus. WhatsApp se abre desde el navegador con enlace.' };
++  return { ok:false, error:'canal_no_soportado', mensaje:'Canal permitido en backend: correo o campus. WhatsApp se gestiona desde el navegador sin enlace público al archivo.' };
+ }
+ 
+ function _matFirmadaAlertasEstudiante_(codigo, cedula) {
+@@ -10562,11 +10696,16 @@
+       var r=rows[i];
+       var match = (cod && String(r[iCod]||'').trim() === cod) || (ced && _sec006cCedulaProp_(r[iCed]) === ced);
+       if (!match) continue;
++      var tipoAlerta = iTipo>=0 ? String(r[iTipo] || '') : 'AVISO';
++      var esMatFirmada = tipoAlerta === 'MATRICULA_FIRMADA';
+       out.push({
+-        tipo: iTipo>=0 ? r[iTipo] : 'AVISO',
++        tipo: tipoAlerta,
+         titulo: iTit>=0 ? r[iTit] : 'Aviso del campus',
+         mensaje: iMsg>=0 ? r[iMsg] : '',
+-        url: iUrl>=0 ? r[iUrl] : '',
++        // SEC-002: nunca reexponer URLs históricas de Drive para matrícula firmada.
++        url: esMatFirmada ? '' : (iUrl>=0 ? r[iUrl] : ''),
++        recurso: esMatFirmada ? 'MATRICULA_FIRMADA' : '',
++        tiene_documento: esMatFirmada,
+         estado: iEstado>=0 ? r[iEstado] : '',
+         fecha: iFecha>=0 ? r[iFecha] : ''
+       });
