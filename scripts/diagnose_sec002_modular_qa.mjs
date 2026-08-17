@@ -1,12 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ALLOWED = new Set([
-  '01_Router',
-  '14_Notas_Cierre_Certificados',
-  '20_Inscripcion_Ventas_Matricula',
-  '21_Pagos_Banco_CONAPE',
-]);
+const FORBIDDEN_TARGET_MARKERS = ['ENGLISH_LAB', 'MEMORY_MATCH'];
 
 function argValue(name) {
   const i = process.argv.indexOf(name);
@@ -14,7 +9,6 @@ function argValue(name) {
   return process.argv[i + 1];
 }
 function normalize(s) { return String(s).replace(/\r\n/g, '\n').replace(/\r/g, '\n'); }
-function baseNoExt(file) { return path.basename(file).replace(/\.(?:js|gs)$/i, ''); }
 function rel(root, file) { return path.relative(root, file).replaceAll('\\', '/'); }
 function countOccurrences(text, needle) {
   if (!needle) return 0;
@@ -30,7 +24,7 @@ function walk(dir) {
   for (const ent of fs.readdirSync(dir, {withFileTypes:true})) {
     const p = path.join(dir, ent.name);
     if (ent.isDirectory()) out.push(...walk(p));
-    else if (ent.isFile() && /\.(?:js|gs)$/i.test(ent.name) && ALLOWED.has(baseNoExt(ent.name))) out.push(p);
+    else if (ent.isFile() && /\.(?:js|gs)$/i.test(ent.name)) out.push(p);
   }
   return out.sort();
 }
@@ -92,6 +86,10 @@ function scoreCandidate(fileText, infoLines) {
   }
   return {matched, total:infoLines.length, weighted, matchedLines};
 }
+function forbiddenTarget(file) {
+  const up = path.basename(file).toUpperCase();
+  return FORBIDDEN_TARGET_MARKERS.some(x => up.includes(x));
+}
 
 const appsDir = path.resolve(argValue('--apps-dir'));
 const repoRoot = path.resolve(argValue('--repo-root'));
@@ -100,7 +98,7 @@ const manifestPath = path.join(repoRoot, 'qa', 'sec002_private_delivery_bundle_m
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const ordered = [...manifest.ordered_deltas].sort((a,b)=>Number(a.order)-Number(b.order));
 const files = walk(appsDir);
-if (files.length !== 4) throw new Error(`Expected 4 SEC002 core modules, found ${files.length}: ${files.map(f=>rel(appsDir,f)).join(', ')}`);
+if (!files.length) throw new Error('No server .js/.gs files found in Apps Script snapshot');
 
 const fileData = new Map();
 for (const f of files) {
@@ -118,7 +116,7 @@ for (const item of ordered) {
     const exact = [];
     for (const f of files) {
       const n = countOccurrences(fileData.get(f).text, oldText);
-      if (n) exact.push({file:rel(appsDir,f), count:n});
+      if (n) exact.push({file:rel(appsDir,f), count:n, forbidden_target:forbiddenTarget(f)});
     }
     const info = informative(h.oldLines);
     const candidates = files.map(f => {
@@ -128,9 +126,15 @@ for (const item of ordered) {
       const anchors = [];
       for (const a of anchorChoices) {
         const hits = lineHits(d.lines, a);
-        anchors.push({text:a, line_hits:hits.slice(0,8), contexts:hits.slice(0,3).map(n=>context(d.lines,n,3))});
+        anchors.push({text:a, line_hits:hits.slice(0,12), contexts:hits.slice(0,4).map(n=>context(d.lines,n,3))});
       }
-      return {file:rel(appsDir,f), ...s, coverage:info.length ? Number((s.matched/info.length).toFixed(4)) : 0, anchors};
+      return {
+        file:rel(appsDir,f),
+        forbidden_target:forbiddenTarget(f),
+        ...s,
+        coverage:info.length ? Number((s.matched/info.length).toFixed(4)) : 0,
+        anchors
+      };
     }).sort((a,b)=> b.weighted-a.weighted || b.matched-a.matched || a.file.localeCompare(b.file));
     results.push({
       patch:h.patch,
@@ -139,7 +143,7 @@ for (const item of ordered) {
       exact_match_count:exact.reduce((n,x)=>n+x.count,0),
       exact_matches:exact,
       informative_line_count:info.length,
-      top_candidates:candidates.slice(0,2),
+      top_candidates:candidates.slice(0,5),
     });
   }
 }
@@ -148,22 +152,24 @@ const expected = ordered.reduce((n,x)=>n+Number(x.expected_hunks),0);
 if (results.length !== expected) throw new Error(`Expected ${expected} hunks, diagnosed ${results.length}`);
 const report = {
   ok:true,
-  mode:'SEC002_MODULAR_DIAGNOSTIC_READONLY_V1',
+  mode:'SEC002_MODULAR_DIAGNOSTIC_READONLY_V2_ALL_SERVER_FILES',
   apps_dir:appsDir,
   expected_hunks:expected,
   diagnosed_hunks:results.length,
-  source_files:files.map(f=>rel(appsDir,f)),
+  source_file_count:files.length,
+  source_files:files.map(f=>({file:rel(appsDir,f), forbidden_target:forbiddenTarget(f)})),
   results,
 };
 fs.mkdirSync(path.dirname(reportPath),{recursive:true});
 fs.writeFileSync(reportPath, JSON.stringify(report,null,2), 'utf8');
 
-console.log('SEC002_MODULAR_DIAGNOSTIC_READONLY: PASS');
+console.log('SEC002_MODULAR_DIAGNOSTIC_READONLY_V2: PASS');
+console.log(`SERVER_FILES_SCANNED=${files.length}`);
 console.log(`DIAGNOSED_HUNKS=${results.length}`);
 for (const r of results) {
   const c = r.top_candidates[0];
-  const alt = r.top_candidates[1];
-  console.log(`${r.patch}#${r.hunk} exact=${r.exact_match_count} best=${c.file} score=${c.weighted} coverage=${c.matched}/${c.total}` + (alt ? ` alt=${alt.file}:${alt.weighted}` : ''));
+  const alts = r.top_candidates.slice(1,4).map(x=>`${x.file}:${x.weighted}${x.forbidden_target?'!FORBIDDEN':''}`).join(',');
+  console.log(`${r.patch}#${r.hunk} exact=${r.exact_match_count} best=${c.file} score=${c.weighted} coverage=${c.matched}/${c.total}${c.forbidden_target?' !FORBIDDEN_TARGET':''}` + (alts ? ` alt=${alts}` : ''));
   for (const a of c.anchors.slice(0,2)) console.log(`  anchor lines=${a.line_hits.join(',') || '-'} :: ${a.text.slice(0,180)}`);
 }
 console.log(`REPORT=${reportPath}`);
