@@ -1,0 +1,112 @@
+--- Code.gs
++++ Code.gs.sec004core
+@@ -51754,14 +51754,26 @@
+ //   Mariana   -> AN0626-01
+ //   Sebastián -> AN0626-02
+ //   Valeria   -> AN0626-03
+-// Contraseña común: Demo2026
++// Credencial demo gestionada fuera del código; ver Script Property SEC004_DEMO_STUDENT_SECRET.
+ //
+ // Los accesos generan una sesión student normal para probar la vista del otro
+ // lado del campus, pero su expediente se construye únicamente desde la máscara
+ // demo de Keylor. No crea estudiantes ni modifica hojas académicas reales.
+ // ============================================================================
++// SEC-004 · credenciales demo fuera del source.
++function _sec004DemoSecret_(key) {
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty(String(key || '')) || '');
++  } catch (_) {
++    return '';
++  }
++}
++function _sec004DemoCredentialConfigured_(value) {
++  return String(value || '').length >= 20;
++}
++
+ var CS21A72_KEYLOR_STUDENT_DEMO_VERSION = 'F98.4-Z6-CS21A72';
+-var DEMO_KEYLOR_STUDENT_PASSWORD = 'Demo2026';
++var DEMO_KEYLOR_STUDENT_PASSWORD = _sec004DemoSecret_('SEC004_DEMO_STUDENT_SECRET');
+ var DEMO_KEYLOR_STUDENT_USERS = {
+   'MARIANA': 1,
+   'SEBASTIAN': 2,
+@@ -51789,7 +51801,8 @@
+ }
+ 
+ function _demoKeylorStudentLoginCS21A72_(usuario, clave) {
+-  if (String(clave == null ? '' : clave) !== DEMO_KEYLOR_STUDENT_PASSWORD) return null;
++  if (!_sec004DemoCredentialConfigured_(DEMO_KEYLOR_STUDENT_PASSWORD)) return null;
++  if (String(clave == null ? '' : clave) !== String(DEMO_KEYLOR_STUDENT_PASSWORD)) return null;
+   var student = _demoKeylorStudentByUserCS21A72_(usuario);
+   if (!student) return null;
+   return {
+@@ -52009,20 +52022,42 @@
+   };
+ } catch (_) {}
+ 
++function _sec004DemoStudentPortal_(code) {
++  var ficha = _demoKeylorStudentFichaCS21A72_(code);
++  if (!ficha || ficha.ok !== true) return null;
++  var est = ficha.estudiante || {};
++  var niveles = ficha.niveles || {};
++  var grupo = String(est.GRUPO || (ficha.grupo && (ficha.grupo.CODIGO_GRUPO || ficha.grupo.cod_grupo)) || _demoKeylorStudentGroup_(code) || '');
++  var nivel = _demoKeylorDefaultNivel_(grupo);
++  var evals = _demoKeylorEvaluacionesEstudiante_(code, nivel) || {ok:true,evaluaciones:[]};
++  var fechas = _demoKeylorFechasGrupo_(grupo, nivel, 'curso') || {ok:true,lecciones:[]};
++  return {
++    ok:true, version:CS21A72_KEYLOR_STUDENT_DEMO_VERSION, demo:true, read_only:true,
++    codigo:code, cedula:est.CEDULA || '', cod_grupo:grupo, nivel_activo:nivel, programa:'INA',
++    estudiante:est, grupo:ficha.grupo || _demoKeylorGrupoInfo_(grupo), niveles:niveles,
++    pendientes:ficha.pendientes || {}, pagos:ficha.pagos || [], otrosPagos:ficha.otrosPagos || [],
++    asistencia:_demoKeylorAsistenciaEstudiante_(code) || {ok:true,asistencia:[]},
++    evaluaciones:evals.evaluaciones || [], evaluaciones_raw:evals,
++    retroalimentacion:_demoKeylorRetroEstudiante_(code) || {ok:true,retroalimentacion:[]},
++    ican:getICANEstudiante(code),
++    lecciones:fechas.lecciones || [], fechas_raw:fechas,
++    conape:{ok:false,aplica:false,demo:true}, alertas_campus:[],
++    examenes:{ok:true,enabled:false,assigned:false,demo:true,read_only:true,mensaje:'Exámenes deshabilitados en cuenta demo de solo lectura.'},
++    notas_oficiales:{ok:true,demo:true,read_only:true,nota_total:Number(evals.nota_final || 0),evaluaciones:evals.evaluaciones || []},
++    mascara_docente:DEMO_KEYLOR_DOCENTE,
++    mensaje_demo:'Vista del estudiante construida únicamente con datos sintéticos; no inicializa hojas de examen reales.',
++    generado_en:new Date().toISOString()
++  };
++}
++
+ try {
+   var _cs21a72PortalBase_ = getPortalEstudianteCompleto;
+   getPortalEstudianteCompleto = function(params) {
+     params = params || {};
+     var code = String(params.codigo || params.cod_estudiante || params.code || params.rec_m || '').trim();
+-    var out = _cs21a72PortalBase_(params);
+-    if (out && out.ok === true && _demoKeylorStudentByCodeCS21A72_(code)) {
+-      out.version = CS21A72_KEYLOR_STUDENT_DEMO_VERSION;
+-      out.demo = true;
+-      out.read_only = true;
+-      out.mascara_docente = DEMO_KEYLOR_DOCENTE;
+-      out.mensaje_demo = 'Vista del estudiante sincronizada con la máscara docente de Keylor.';
+-    }
+-    return out;
++    var demo = _sec004DemoStudentPortal_(code);
++    if (demo) return demo;
++    return _cs21a72PortalBase_(params);
+   };
+ } catch (_) {}
+ 
+@@ -52505,8 +52540,8 @@
+ var DEMO_OLDE_TEACHER_NAME = 'OLDEMAR';
+ var DEMO_OLDE_TEACHER_MARKER = 'DEMO-OLDE';
+ 
+-// Reutiliza exactamente la contraseÃ±a comÃºn de las cuentas demo existentes.
+-var DEMO_OLDE_TEACHER_PASSWORD = 'profe2026';
++// Credencial separada del código. Sin Script Property, el login demo queda deshabilitado.
++var DEMO_OLDE_TEACHER_PASSWORD = _sec004DemoSecret_('SEC004_DEMO_TEACHER_SECRET');
+ 
+ // Todos los payloads sintÃ©ticos existentes seguirÃ¡n siendo los mismos, pero
+ // mostrarÃ¡n Oldemar como docente.
+@@ -52514,6 +52549,7 @@
+ 
+ function _demoOldeTeacherLoginCS21A139_(usuario, clave) {
+   if (!DEMO_KEYLOR_MASK_ENABLED) return null;
++  if (!_sec004DemoCredentialConfigured_(DEMO_OLDE_TEACHER_PASSWORD)) return null;
+   var demoUser = _demoKeylorNorm_(usuario);
+   if (demoUser !== DEMO_OLDE_TEACHER_USER && demoUser !== DEMO_OLDE_TEACHER_NAME) return null;
+   if (String(clave == null ? '' : clave) !== String(DEMO_OLDE_TEACHER_PASSWORD)) return null;
