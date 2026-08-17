@@ -1,6 +1,6 @@
 # SEC-001 · Candidato backend QA · política de alta
 
-**Fecha:** 2026-08-16  
+**Fecha:** 2026-08-16
 **Estado:** `CANDIDATO QA NO INSTALADO · NO DEPLOY · SEC-001 SIGUE ABIERTO`
 
 ## Fuente
