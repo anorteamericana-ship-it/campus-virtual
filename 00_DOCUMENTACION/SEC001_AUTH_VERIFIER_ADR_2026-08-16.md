@@ -1,6 +1,6 @@
 # ADR · SEC-001 · Proveedor de identidad y frontera de autenticación
 
-**Fecha:** 2026-08-16  
+**Fecha:** 2026-08-16
 **Estado:** `PROVEEDOR PREFERIDO PARA POC · AUTH0 ESSENTIALS · NO DEPLOY · NO PROD`
 
 ## Contexto
