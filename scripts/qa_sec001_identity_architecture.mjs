@@ -14,6 +14,7 @@ const contract = readJson('security/sec001_auth_contract.json');
 const decision = readJson('security/sec001_identity_provider_decision.json');
 const protocol = readJson('security/sec001_auth_verifier_protocol.json');
 const legacy = readJson('security/sec001_legacy_credential_surface.json');
+const machine = readJson('security/sec001_migration_state_machine.json');
 
 assert(contract.version >= 3, 'SEC-001 closure contract must be version 3+');
 assert(contract.storage?.plaintext_allowed === false, 'plaintext must remain forbidden');
@@ -72,9 +73,33 @@ assert(datosClave?.target?.includes('must not store CODIGO'), 'DATOS.clave targe
 const activationFallback = (legacy.surfaces || []).find((s) => s.id === 'ACTIVATION_WEAK_PASSWORD_FALLBACK');
 assert(activationFallback?.source_behavior?.includes("'an' + random four digits"), 'activation weak fallback evidence must remain explicit');
 assert(activationFallback?.target?.includes('never generates or communicates a reusable password'), 'activation target must forbid generated/communicated passwords');
-
 assert(legacy.production_authorized === false, 'legacy inventory must not authorize production');
 
+assert(machine.version >= 1, 'migration state machine must exist');
+assert(machine.production_authorized === false, 'migration state machine must not authorize production');
+assert(machine.migration_transaction?.must_be_created_before_external_identity_call === true, 'migration transaction must be persisted before external IdP call');
+assert(machine.migration_transaction?.may_contain_password === false, 'migration journal must never contain password');
+assert(machine.migration_transaction?.journal_required === true, 'migration journal must remain required');
+
+const states = new Map((machine.account_states || []).map((s) => [s.state, s]));
+for (const required of ['LEGACY', 'MIGRATION_PENDING', 'IDP_BOUND_CLEANUP_PENDING', 'MIGRATED', 'RESET_REQUIRED', 'LOCKED']) {
+  assert(states.has(required), `migration state missing: ${required}`);
+}
+assert(states.get('LEGACY')?.legacy_auth_allowed === true, 'only legacy state may keep bounded legacy authentication');
+assert(states.get('IDP_BOUND_CLEANUP_PENDING')?.legacy_auth_allowed === false, 'IdP-bound cleanup state must deny legacy authentication');
+assert(states.get('MIGRATED')?.legacy_auth_allowed === false, 'migrated state must deny legacy authentication');
+assert(states.get('RESET_REQUIRED')?.legacy_auth_allowed === false, 'reset-required state must deny legacy authentication');
+assert(states.get('LOCKED')?.legacy_auth_allowed === false, 'locked state must deny legacy authentication');
+
+const transitions = machine.transition_rules || [];
+const noBoundRollback = transitions.find((t) => t.from === 'IDP_BOUND_CLEANUP_PENDING' && t.to === 'LEGACY');
+const noMigratedRollback = transitions.find((t) => t.from === 'MIGRATED' && t.to === 'LEGACY');
+assert(noBoundRollback?.allowed === false, 'IdP-bound account must never roll back to legacy auth');
+assert(noMigratedRollback?.allowed === false, 'migrated account must never roll back to legacy auth');
+assert(String(machine.login_routing_invariant || '').includes('checked before any legacy verifier'), 'AUTH_STATE/AUTH_SUB must be checked before legacy verifiers');
+assert((machine.legacy_cleanup_surfaces || []).some((x) => x.includes('NUM_CEDULA + CODIGO')), 'state machine must clean up cédula+CODIGO auth');
+assert((machine.legacy_cleanup_surfaces || []).some((x) => x.includes('an####')), 'state machine must clean up activation fallback');
+
 if (!process.exitCode) {
-  console.log('PASS: SEC-001 identity architecture contracts are internally consistent, including activation and DATOS legacy credential surfaces.');
+  console.log('PASS: SEC-001 identity architecture and migration state machine are internally consistent.');
 }
