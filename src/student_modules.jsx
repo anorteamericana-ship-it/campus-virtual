@@ -896,13 +896,13 @@ function CertificadosView() {
         title={<>Mis <em>Certificados</em></>}
       />
       <GuardSesion usr={usr}>
-        {loading && !data ? <SkeletonGrid /> : error ? <ErrorState message={error} onRetry={reload} /> : <CertificadosContenido data={data} />}
+        {loading && !data ? <SkeletonGrid /> : error ? <ErrorState message={error} onRetry={reload} /> : <CertificadosContenido data={data} codigo={codigo} />}
       </GuardSesion>
     </div>
   );
 }
 
-function CertificadosContenido({ data }) {
+function CertificadosContenido({ data, codigo }) {
   const rows = Array.isArray(data?.certificados) ? data.certificados : [];
   if (!rows.length) {
     return <EmptyState icon="🎖️" title="Sin niveles para consultar" subtitle="No fue posible relacionar niveles académicos con tu expediente." />;
@@ -926,7 +926,7 @@ function CertificadosContenido({ data }) {
         }
       `}</style>
       <div className="certificados-grid-f984u">
-        {rows.map(row => <CertificadoEstadoCardF984 key={row.nivel} row={row} />)}
+        {rows.map(row => <CertificadoEstadoCardF984 key={row.nivel} row={row} codigo={codigo} />)}
       </div>
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
@@ -945,7 +945,58 @@ function CertificadosContenido({ data }) {
   );
 }
 
-function CertificadoEstadoCardF984({ row }) {
+async function _smSha256HexF984(bytes) {
+  if (!window.crypto?.subtle || !bytes) return '';
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function _smCertificadoPrivadoBlobF984(codigo, row) {
+  const nivel = String(row?.nivel || '').trim().toUpperCase();
+  const codigoLimpio = String(codigo || '').trim();
+  if (!codigoLimpio || !['B1','B2','I1','I2'].includes(nivel)) {
+    throw new Error('No se pudo identificar el expediente o nivel del certificado.');
+  }
+
+  const r = await postStudentModules('descargarMiCertificadoPrivado', {
+    codigo:codigoLimpio,
+    nivel,
+    registro:row?.registro || '',
+    grupo:row?.grupo || row?.cod_grupo || '',
+  });
+  if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el certificado privado.');
+
+  const mime = String(r.mime_type || '').trim().toLowerCase();
+  if (mime !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido.');
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) throw new Error('El certificado llegó sin contenido.');
+
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { throw new Error('El certificado llegó con contenido inválido.'); }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes.length || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    throw new Error('El certificado llegó incompleto. Intentá de nuevo.');
+  }
+
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await _smSha256HexF984(bytes);
+    if (!digestHex || digestHex !== expectedHash) {
+      throw new Error('No se pudo verificar la integridad del certificado.');
+    }
+  }
+
+  return {
+    blob:new Blob([bytes], { type:'application/pdf' }),
+    nombre:String(r.nombre || `certificado-${nivel}.pdf`),
+  };
+}
+
+function CertificadoEstadoCardF984({ row, codigo }) {
   const estatusAcademico = String(row.estatus || '').trim().toUpperCase();
   const meta = row.estado === 'NO_ELEGIBLE' && estatusAcademico === 'CA'
     ? CERT_ESTADO_UI_F984.CURSANDO_ACTUALMENTE
@@ -958,6 +1009,42 @@ function CertificadoEstadoCardF984({ row }) {
     ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
     ['Número oficial', row.registro || 'Sin asignar'],
   ];
+  const [abriendo, setAbriendo] = React.useState(false);
+  const [certError, setCertError] = React.useState('');
+  const disponible = row.estado === 'DISPONIBLE_DESCARGA' || !!row.url;
+
+  const abrirPrivado = async () => {
+    if (abriendo) return;
+    setCertError('');
+    setAbriendo(true);
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Abriendo certificado…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando certificado…</p>';
+      } catch (_) {}
+    }
+    try {
+      const archivo = await _smCertificadoPrivadoBlobF984(codigo, row);
+      const objectUrl = URL.createObjectURL(archivo.blob);
+      if (preview && !preview.closed) {
+        preview.location.replace(objectUrl);
+      } else {
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.click();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      setCertError(e?.message || 'No se pudo abrir el certificado.');
+    } finally {
+      setAbriendo(false);
+    }
+  };
   return (
     <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${NIVEL_COLOR_SM[row.nivel] || 'var(--an-navy)'}` }}>
       <div style={{ padding:'18px 20px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg,#fff,#FBF8F2)' }}>
@@ -972,10 +1059,13 @@ function CertificadoEstadoCardF984({ row }) {
       </div>
       <div style={{ padding:'14px 20px' }}>
         {checks.map(([label,value]) => <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'7px 0', borderBottom:'1px solid var(--line)', fontSize:11.5 }}><span style={{ color:'var(--ink-3)' }}>{label}</span><strong style={{ color:'var(--ink)', textAlign:'right' }}>{value}</strong></div>)}
-        {row.url ? (
-          <a className="btn btn-primary" href={row.url} target="_blank" rel="noreferrer" style={{ marginTop:14, width:'100%', justifyContent:'center' }}>
-            <Icon name="download" size={14} className="" /> Abrir Certificado
-          </a>
+        {disponible ? (
+          <>
+            <button type="button" className="btn btn-primary" disabled={abriendo} onClick={abrirPrivado} style={{ marginTop:14, width:'100%', justifyContent:'center' }}>
+              <Icon name="download" size={14} className="" /> {abriendo ? 'Verificando…' : 'Abrir Certificado'}
+            </button>
+            {certError ? <div role="alert" style={{ marginTop:8, fontSize:11, lineHeight:1.4, color:'var(--danger)' }}>{certError}</div> : null}
+          </>
         ) : null}
       </div>
     </article>
