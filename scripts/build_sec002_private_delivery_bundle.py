@@ -59,15 +59,25 @@ def main() -> int:
             hunk_count = sum(1 for line in patch_path.read_text(encoding='utf-8').splitlines() if line.startswith('@@ '))
             if hunk_count != int(item['expected_hunks']):
                 raise RuntimeError(f'unexpected hunk count for {patch_path}: {hunk_count}')
+
+            reconciled_base_sha = str(item.get('reconciled_base_sha256') or '').strip()
+            if reconciled_base_sha:
+                current_sha = sha256_file(output)
+                if current_sha != reconciled_base_sha:
+                    raise RuntimeError(
+                        f'reconciled base SHA mismatch before {patch_path}: '
+                        f'expected={reconciled_base_sha} observed={current_sha}'
+                    )
+
             proc = subprocess.run(
-                ['patch', '--batch', '--forward', str(output)],
+                ['patch', '--batch', '--forward', '--fuzz=0', str(output)],
                 stdin=patch_path.open('rb'),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 check=False,
             )
             if proc.returncode != 0:
-                raise RuntimeError(f'patch failed: {patch_path}\n{proc.stdout.decode(errors="replace")}')
+                raise RuntimeError(f'patch failed with fuzz=0: {patch_path}\n{proc.stdout.decode(errors="replace")}')
 
         expected = manifest['canonical_bundle']
         final_sha = sha256_file(output)
