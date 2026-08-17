@@ -1,0 +1,78 @@
+{
+  "id": "SEC-001-LOGIN-LIFECYCLE",
+  "version": 1,
+  "observed_base": "main@67108928e953fbf044dbcd916dc34a5dd5f1e570",
+  "observed_branch": "fix/sec001-auth-policy-foundation",
+  "status": "source_mapped_no_runtime_change",
+  "entrypoint": {
+    "file": "login.html",
+    "load_order": [
+      "vendor/react.js",
+      "vendor/react-dom.js",
+      "vendor/babel.js",
+      "src/data.jsx",
+      "src/login.jsx"
+    ],
+    "managed_auth_adapter_loaded": false
+  },
+  "legacy_credentialing": {
+    "file": "src/login.jsx",
+    "function": "App.submit",
+    "transport": "POST text/plain -> Apps Script",
+    "payload": ["fn=iniciarSesion", "usuario", "clave"],
+    "password_reaches_apps_script": true,
+    "target_state": "remove password from Apps Script steady-state credentialing"
+  },
+  "session_issue_and_storage": {
+    "login_success_function": "finishLogin",
+    "setter": "src/data.jsx::setSesion",
+    "storage": "sessionStorage.an_usuario",
+    "fields_include": [
+      "rol",
+      "nombre",
+      "grupo",
+      "grupos",
+      "grupoActivo",
+      "codigo",
+      "cedula",
+      "programa",
+      "token",
+      "expira"
+    ],
+    "token_stored_separately_in_localstorage": false,
+    "authorization_depends_on_localstorage_role": false
+  },
+  "authenticated_requests": {
+    "token_reader": "src/data.jsx::getSessionToken",
+    "token_source": "getSesion().token",
+    "backend_session_validation": "src/data.jsx::validarSesionServidor",
+    "backend_logout": "src/data.jsx::cerrarSesionServidor"
+  },
+  "campus_mount_guard": {
+    "file": "src/app.jsx",
+    "requires_local_session": true,
+    "requires_campus_token": true,
+    "validates_with_server_before_mount": true,
+    "allowed_roles": ["superadmin", "admin", "teacher", "student"],
+    "ventas_redirects_to": "ventas.html",
+    "unknown_role_default_admin": false
+  },
+  "target_managed_identity_flow": [
+    "browser -> Auth0 Universal Login + Authorization Code with PKCE",
+    "browser receives provider identity proof/access token without client secret",
+    "browser -> future Apps Script iniciarSesionOidc with provider proof, never password",
+    "Apps Script verifies provider identity and stable subject",
+    "Apps Script maps exactly one local Campus account",
+    "Apps Script re-derives local activo/rol/groups/scopes from Campus sources",
+    "Apps Script emits the existing Campus session token shape",
+    "existing finishLogin/setSesion/getSessionToken/validarSesionServidor flow continues"
+  ],
+  "invariants": [
+    "IdP roles never grant Campus authorization",
+    "no password is stored in Campus steady-state after migration",
+    "no client secret exists in browser source",
+    "managed auth can be introduced without rewriting authenticated API consumers",
+    "adapter remains unloaded and inert until DEV/QA tenant configuration is explicitly supplied"
+  ],
+  "production_authorized": false
+}
