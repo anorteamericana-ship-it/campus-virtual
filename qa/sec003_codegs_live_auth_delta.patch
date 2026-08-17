@@ -1,0 +1,175 @@
+--- Code.gs
++++ Code.gs.sec003
+@@ -48153,34 +48153,89 @@
+   if (!reveal) { delete copy.correct; delete copy.explanation; }
+   return copy;
+ }
++// SEC-003 · player-facing projection/auth. Never trust player identity from the browser.
++function _eliveRoomForPlayer_(room){
++  var out = _eliveRoomPublic_(room || {});
++  out.current_question = _eliveQuestionForPlayer_(room || {});
++  return out;
++}
++function _eliveAuthStudent_(body){
++  body = body || {};
++  var token = _eliveText_(body.token || body.session_token || '');
++  var ses = validarSesion(token);
++  if (!ses || ses.ok !== true) return {ok:false,error:'sesion_invalida'};
++  var rol = _eliveText_(ses.rol).toLowerCase();
++  if (rol !== 'student') return {ok:false,error:'no_autorizado'};
++  var codigo = _eliveText_(ses.codigo || '');
++  if (!codigo) return {ok:false,error:'estudiante_no_matriculado'};
++  return {ok:true,rol:rol,sesion:ses,codigo:codigo,nombre:_eliveSafePlayerName_(ses.nombre || 'Estudiante')};
++}
++function _eliveStudentCanRoom_(auth, room){
++  if (!auth || auth.ok !== true || !room) return false;
++  return _eliveSessionOwnsGroupLoose_(auth.sesion || {}, room.COD_GRUPO || room.cod_grupo || '');
++}
++function _elivePlayerBodyFromSession_(body, auth){
++  body = body || {};
++  return {
++    player_id:auth.codigo,
++    cod_estudiante:auth.codigo,
++    player_name:auth.nombre,
++    // Team assignment is not accepted from the browser in this security cut.
++    // Existing server-side team is preserved by _eliveUpsertPlayer_; new joins start unassigned.
++    team:''
++  };
++}
++function _eliveAuthRoomViewer_(body, room){
++  body = body || {};
++  var token = _eliveText_(body.token || body.session_token || '');
++  var ses = validarSesion(token);
++  if (!ses || ses.ok !== true) return {ok:false,error:'sesion_invalida'};
++  var rol = _eliveText_(ses.rol).toLowerCase();
++  var auth = {ok:true,rol:rol,sesion:ses};
++  if (rol === 'student') {
++    var codigo = _eliveText_(ses.codigo || '');
++    if (!codigo) return {ok:false,error:'estudiante_no_matriculado'};
++    auth.codigo = codigo;
++    auth.nombre = _eliveSafePlayerName_(ses.nombre || 'Estudiante');
++    if (!_eliveStudentCanRoom_(auth, room)) return {ok:false,error:'sala_no_disponible'};
++    return auth;
++  }
++  if (rol === 'teacher' || rol === 'admin' || rol === 'superadmin') {
++    if (!_eliveCanRoom_(auth, room)) return {ok:false,error:'sala_no_disponible'};
++    return auth;
++  }
++  return {ok:false,error:'no_autorizado'};
++}
+ function _elivePlayerState_(room, player){
+   var reveal = _eliveUpper_(room.ROUND_STATUS) === 'CLOSED' || _eliveUpper_(room.STATUS) === 'CLOSED';
+   var current = _eliveCurrentQuestion_(room);
+   var qIndex = Number(room.CURRENT_INDEX || (current && current.index) || 0) || 0;
+   var ans = player && qIndex ? _eliveFindAnswer_(room, qIndex, player.COD_ESTUDIANTE).row : null;
+   var can = _eliveUpper_(room.STATUS) === 'LIVE' && _eliveUpper_(room.ROUND_STATUS) === 'OPEN' && !!current && !!player && !ans;
+-  return { ok:true, version:ELIVE_CS20B_VERSION, phase:'PLAYER_JOIN_ANSWER', room:_eliveRoomPublic_(room), player:player ? _elivePlayerPublic_(player) : null, question:_eliveQuestionForPlayer_(room), answer:_eliveAnswerPublic_(ans, reveal), can_answer:can, reveal:reveal, stats:_eliveStats_(room), message:'Práctica English LAB Live. No afecta notas oficiales.' };
++  return { ok:true, version:ELIVE_CS20B_VERSION, phase:'PLAYER_JOIN_ANSWER', room:_eliveRoomForPlayer_(room), player:player ? _elivePlayerPublic_(player) : null, question:_eliveQuestionForPlayer_(room), answer:_eliveAnswerPublic_(ans, reveal), can_answer:can, reveal:reveal, stats:_eliveStats_(room), message:'Práctica English LAB Live. No afecta notas oficiales.' };
+ }
+ function englishLabLiveJoinRoom(body){
+   body = body || {};
+-  _eliveEnsureSheets_();
++  var auth = _eliveAuthStudent_(body); if (!auth.ok) return auth;
+   var code = _eliveUpper_(body.room_code || body.roomCode || body.codigo || '').replace(/[^A-Z0-9-]/g,'');
+   if (!code) return {ok:false,error:'room_code requerido'};
++  _eliveEnsureSheets_();
+   var found = _eliveFindRoom_(code);
+-  if (!found.row) return {ok:false,error:'sala_no_encontrada'};
++  if (!found.row || !_eliveStudentCanRoom_(auth, found.row)) return {ok:false,error:'sala_no_disponible'};
+   if (_eliveUpper_(found.row.STATUS) === 'CLOSED') return {ok:false,error:'sala_cerrada'};
+-  var player = _eliveUpsertPlayer_(found.row, body);
++  var player = _eliveUpsertPlayer_(found.row, _elivePlayerBodyFromSession_(body, auth));
+   return _elivePlayerState_(found.row, player);
+ }
+ function englishLabLiveGetPlayerState(body){
+   body = body || {};
+-  _eliveEnsureSheets_();
++  var auth = _eliveAuthStudent_(body); if (!auth.ok) return auth;
+   var code = _eliveUpper_(body.room_code || body.roomCode || body.codigo || '').replace(/[^A-Z0-9-]/g,'');
+   if (!code) return {ok:false,error:'room_code requerido'};
++  _eliveEnsureSheets_();
+   var found = _eliveFindRoom_(code);
+-  if (!found.row) return {ok:false,error:'sala_no_encontrada'};
+-  var pid = _eliveText_(body.player_id || body.playerId || body.cod_estudiante || body.codigo_estudiante || '');
+-  var player = pid ? _eliveFindPlayer_(found.row, pid).row : null;
++  if (!found.row || !_eliveStudentCanRoom_(auth, found.row)) return {ok:false,error:'sala_no_disponible'};
++  var pid = auth.codigo;
++  var player = _eliveFindPlayer_(found.row, pid).row;
+   if (player) {
+     var now = _eliveIso_(), pf = _eliveFindPlayer_(found.row, pid);
+     if (pf.row && pf.idx.LAST_SEEN_AT != null) { pf.sh.getRange(pf.rowN, pf.idx.LAST_SEEN_AT+1).setValue(now); pf.row.LAST_SEEN_AT = now; player = pf.row; }
+@@ -48189,11 +48244,12 @@
+ }
+ function englishLabLiveSubmitAnswer(body){
+   body = body || {};
+-  _eliveEnsureSheets_();
++  var auth = _eliveAuthStudent_(body); if (!auth.ok) return auth;
+   var code = _eliveUpper_(body.room_code || body.roomCode || body.codigo || '').replace(/[^A-Z0-9-]/g,'');
+   if (!code) return {ok:false,error:'room_code requerido'};
++  _eliveEnsureSheets_();
+   var found = _eliveFindRoom_(code);
+-  if (!found.row) return {ok:false,error:'sala_no_encontrada'};
++  if (!found.row || !_eliveStudentCanRoom_(auth, found.row)) return {ok:false,error:'sala_no_disponible'};
+   var room = found.row;
+   if (_eliveUpper_(room.STATUS) !== 'LIVE') return {ok:false,error:'sala_no_activa'};
+   if (_eliveUpper_(room.ROUND_STATUS) !== 'OPEN') return {ok:false,error:'pregunta_no_abierta'};
+@@ -48201,7 +48257,7 @@
+   if (!current) return {ok:false,error:'sin_pregunta_activa'};
+   var qIndex = Number(body.question_index || body.questionIndex || current.index || room.CURRENT_INDEX || 0) || 0;
+   if (qIndex !== Number(room.CURRENT_INDEX || 0)) return {ok:false,error:'pregunta_no_coincide'};
+-  var player = _eliveUpsertPlayer_(room, body);
++  var player = _eliveUpsertPlayer_(room, _elivePlayerBodyFromSession_(body, auth));
+   var existing = _eliveFindAnswer_(room, qIndex, player.COD_ESTUDIANTE).row;
+   if (existing) return {ok:true, version:ELIVE_CS20B_VERSION, already_answered:true, answer:_eliveAnswerPublic_(existing, false), stats:_eliveStats_(room), message:'Ya habías respondido esta pregunta.'};
+   var ans = _eliveText_(body.answer_value || body.answer || body.respuesta || '');
+@@ -48333,11 +48389,12 @@
+ // CS20D: redefine el guardado de respuestas para usar puntaje con rapidez.
+ englishLabLiveSubmitAnswer = function(body){
+   body = body || {};
+-  _eliveEnsureSheets_();
++  var auth = _eliveAuthStudent_(body); if (!auth.ok) return auth;
+   var code = _eliveUpper_(body.room_code || body.roomCode || body.codigo || '').replace(/[^A-Z0-9-]/g,'');
+   if (!code) return {ok:false,error:'room_code requerido'};
++  _eliveEnsureSheets_();
+   var found = _eliveFindRoom_(code);
+-  if (!found.row) return {ok:false,error:'sala_no_encontrada'};
++  if (!found.row || !_eliveStudentCanRoom_(auth, found.row)) return {ok:false,error:'sala_no_disponible'};
+   var room = found.row;
+   if (_eliveUpper_(room.STATUS) !== 'LIVE') return {ok:false,error:'sala_no_activa'};
+   if (_eliveUpper_(room.ROUND_STATUS) !== 'OPEN') return {ok:false,error:'pregunta_no_abierta'};
+@@ -48345,7 +48402,7 @@
+   if (!current) return {ok:false,error:'sin_pregunta_activa'};
+   var qIndex = Number(body.question_index || body.questionIndex || current.index || room.CURRENT_INDEX || 0) || 0;
+   if (qIndex !== Number(room.CURRENT_INDEX || 0)) return {ok:false,error:'pregunta_no_coincide'};
+-  var player = _eliveUpsertPlayer_(room, body);
++  var player = _eliveUpsertPlayer_(room, _elivePlayerBodyFromSession_(body, auth));
+   var existing = _eliveFindAnswer_(room, qIndex, player.COD_ESTUDIANTE).row;
+   if (existing) {
+     var lb0 = _eliveCs20dLeaderboard_(room);
+@@ -48367,13 +48424,14 @@
+ };
+ function englishLabLiveGetLeaderboard(body){
+   body = body || {};
+-  _eliveEnsureSheets_();
+   var id = _eliveText_(body.room_id || body.roomId || body.room_code || body.roomCode || body.codigo || body.room_code);
+   if (!id) return {ok:false,error:'room_id requerido'};
++  _eliveEnsureSheets_();
+   var found = _eliveFindRoom_(id);
+-  if (!found.row) return {ok:false,error:'sala_no_encontrada'};
++  if (!found.row) return {ok:false,error:'sala_no_disponible'};
++  var auth = _eliveAuthRoomViewer_(body, found.row); if (!auth.ok) return auth;
+   var lb = _eliveCs20dLeaderboard_(found.row);
+-  return {ok:true, version:ELIVE_CS20D_VERSION, room:_eliveRoomPublic_(found.row), leaderboard:lb.players, team_leaderboard:lb.teams, stats:_eliveStats_(found.row)};
++  return {ok:true, version:ELIVE_CS20D_VERSION, room:_eliveRoomForPlayer_(found.row), leaderboard:lb.players, team_leaderboard:lb.teams, stats:_eliveStats_(found.row)};
+ }
+ var _cs20dDoPostBase_ = doPost;
+ doPost = function(e) {
+@@ -48517,6 +48575,8 @@
+   return idx > 0 ? qs[idx-1] : null;
+ };
+ function englishLabLiveGetQuestionBankMeta(body){
++  body = body || {};
++  var auth = _eliveAuthTeacher_(body); if (!auth.ok) return auth;
+   _eliveEnsureSheets_(); _eliveCs20fSeedIfEmpty_();
+   var rows = _eliveRows_(_eliveCs20fQuestionBankSheet_()).filter(function(r){ return _eliveUpper_(r.ACTIVE || 'SI') !== 'NO'; });
+   var counts = {}, units = {};
