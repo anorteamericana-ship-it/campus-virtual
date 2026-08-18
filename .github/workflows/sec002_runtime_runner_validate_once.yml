@@ -1,0 +1,51 @@
+name: SEC002 runtime runner validate one-shot
+
+on:
+  push:
+    branches:
+      - fix/sec002-private-document-foundation
+    paths:
+      - scripts/run_sec002_runtime_positive_qa.ps1
+      - .github/workflows/sec002_runtime_runner_validate_once.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/run_sec002_runtime_positive_qa.ps1
+      - .github/workflows/sec002_runtime_runner_validate_once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Windows PowerShell 5.1 parser
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/run_sec002_runtime_positive_qa.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Host; throw "PowerShell parser errors=$($errors.Count)" }
+          Write-Host 'PASS Windows PowerShell 5.1 parser'
+      - name: Static safety contract
+        shell: powershell
+        run: |
+          $p = Get-Content -LiteralPath 'scripts/run_sec002_runtime_positive_qa.ps1' -Raw
+          $checks = [ordered]@{
+            qaDeployment = $p.Contains('AKfycbzzsmmHVRGlgltcUJf7Yi9R0z__vsu58Hw9Gq9rNn5pYVrgY5iZ0-xEEL-8wqL4uPVbaw')
+            prodBlocked = $p.Contains('AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ') -and $p.Contains('URL productiva detectada')
+            securePrompts = ([regex]::Matches($p,'Read-PlainSecret')).Count -ge 4 -and $p.Contains('-AsSecureString')
+            noLiteralPasswords = -not ($p -match '(?i)(studentPass|teacherPass|adminPass)\s*=\s*["''][^"'']+["'']')
+            certificate = $p.Contains('certificate_student_own') -and $p.Contains('certificate_foreign_code_denied') -and $p.Contains('certificate_teacher_denied')
+            docs = $p.Contains('docs_extra_superadmin_positive') -and $p.Contains('docs_extra_student_denied') -and $p.Contains('docs_extra_cross_resource_denied')
+            payment = $p.Contains('payment_superadmin_positive') -and $p.Contains('payment_student_denied')
+            signed = $p.Contains('signed_student_own') -and $p.Contains('signed_student_client_identity_ignored') -and $p.Contains('signed_superadmin_positive') -and $p.Contains('signed_teacher_denied')
+            integrity = $p.Contains('FromBase64String') -and $p.Contains('SHA256') -and $p.Contains("'%PDF-'")
+            noLeak = $p.Contains("@('url','file_id','folder_url','url_comprobante')")
+            logoutFinally = $p.Contains("Invoke-QaPost 'cerrarSesion'") -and $p.Contains('finally')
+          }
+          $bad=@($checks.GetEnumerator() | Where-Object { -not $_.Value })
+          $checks.GetEnumerator() | ForEach-Object { Write-Host ((if($_.Value){'PASS'}else{'FAIL'}) + ' ' + $_.Key) }
+          if ($bad.Count -gt 0) { throw "Static safety contract failed: $($bad.Name -join ', ')" }
