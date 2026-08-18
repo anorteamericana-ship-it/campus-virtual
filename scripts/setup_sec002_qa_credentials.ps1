@@ -15,7 +15,7 @@ $ProgressPreference = 'SilentlyContinue'
 
 $ExpectedDeployment = 'AKfycbzzsmmHVRGlgltcUJf7Yi9R0z__vsu58Hw9Gq9rNn5pYVrgY5iZ0-xEEL-8wqL4uPVbaw'
 $ProdDeployment = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ'
-if ($QaExecUrl -notmatch [regex]::Escape($ExpectedDeployment)) { throw 'BLOQUEADO: URL no es la deployment QA canónica.' }
+if ($QaExecUrl -notmatch [regex]::Escape($ExpectedDeployment)) { throw 'BLOQUEADO: URL no es la deployment QA canonica.' }
 if ($QaExecUrl -match [regex]::Escape($ProdDeployment)) { throw 'BLOQUEADO: URL productiva detectada.' }
 if ($PSVersionTable.PSVersion.Major -ge 6) {
   if (-not $IsWindows) { throw 'Este bootstrap usa DPAPI y debe ejecutarse en Windows.' }
@@ -29,7 +29,7 @@ function Invoke-QaPost([string]$Fn, [hashtable]$Payload, [string]$Token = '') {
   $uri = "${QaExecUrl}?fn=$([Uri]::EscapeDataString($Fn))"
   $json = $body | ConvertTo-Json -Compress -Depth 10
   $raw = Invoke-WebRequest -UseBasicParsing -Method Post -Uri $uri -ContentType 'text/plain;charset=utf-8' -Body $json -TimeoutSec 45
-  if (-not ([string]$raw.Content).Trim().StartsWith('{')) { throw "$Fn devolvió respuesta no JSON." }
+  if (-not ([string]$raw.Content).Trim().StartsWith('{')) { throw "$Fn devolvio respuesta no JSON." }
   return ([string]$raw.Content | ConvertFrom-Json)
 }
 
@@ -46,11 +46,11 @@ function Verify-And-Protect([string]$User, [string]$ExpectedRole, [string]$Promp
   try {
     $login = Invoke-QaPost 'iniciarSesion' @{ usuario=$User; clave=$plain }
     if ($login.ok -ne $true -or [string]::IsNullOrWhiteSpace([string]$login.token)) {
-      throw "Login QA falló para $User: $($login.error) $($login.mensaje)"
+      throw "Login QA fallo para ${User}: $($login.error) $($login.mensaje)"
     }
     $role = ([string]$login.rol).Trim().ToLowerInvariant()
     if ($role -ne $ExpectedRole.ToLowerInvariant()) {
-      throw "Rol inesperado para $User: $role; esperado: $ExpectedRole."
+      throw "Rol inesperado para ${User}: $role; esperado: $ExpectedRole."
     }
     $token = [string]$login.token
     Write-Host "PASS credencial verificada: $User ($role)" -ForegroundColor Green
@@ -71,7 +71,7 @@ function Verify-And-Protect([string]$User, [string]$ExpectedRole, [string]$Promp
 
 Write-Host '=== Bootstrap credenciales SEC-002 QA ===' -ForegroundColor Cyan
 Write-Host 'Las claves se leen ocultas, se verifican contra QA y se guardan cifradas con DPAPI para este usuario de Windows.'
-Write-Host 'No se escriben contraseñas en GitHub, logs ni archivos en texto plano.'
+Write-Host 'No se escriben contrasenas en GitHub, logs ni archivos en texto plano.'
 
 $accounts = [ordered]@{}
 $accounts['student'] = Verify-And-Protect $StudentUser 'student' "Clave QA de $StudentUser"
@@ -95,6 +95,6 @@ $store = [ordered]@{
 $jsonOut = $store | ConvertTo-Json -Depth 8
 [IO.File]::WriteAllText($CredentialStorePath, $jsonOut, (New-Object Text.UTF8Encoding($false)))
 
-Write-Host "`nPASS · credenciales QA cifradas y verificadas." -ForegroundColor Green
+Write-Host "`nPASS - credenciales QA cifradas y verificadas." -ForegroundColor Green
 Write-Host "Store local: $CredentialStorePath"
-Write-Host 'A partir de ahora run_sec002_runtime_positive_qa.ps1 puede ejecutarse sin pedir contraseñas.'
+Write-Host 'A partir de ahora run_sec002_runtime_positive_qa.ps1 puede ejecutarse sin pedir contrasenas.'
