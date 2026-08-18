@@ -8,7 +8,7 @@ on:
       - .github/workflows/sec002_runtime_positive_authed_once.yml
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
@@ -28,6 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/sec002-private-document-foundation
+          fetch-depth: 0
       - name: Refuse incomplete secret set
         shell: bash
         run: |
@@ -39,6 +40,30 @@ jobs:
         run: node --check scripts/qa_sec002_runtime_discovery.mjs
       - name: SEC002 authenticated positive runtime
         run: node scripts/qa_sec002_runtime_discovery.mjs
+      - name: Secret leakage guard and publish sanitized evidence
+        shell: bash
+        run: |
+          src=qa-output-sec002-runtime/runtime-discovery.json
+          dst=qa/sec002_runtime_positive_latest.json
+          test -f "$src"
+          for key in QA_STAGING_APPS_SCRIPT_URL QA_STUDENT_USER QA_STUDENT_PASS QA_TEACHER_USER QA_TEACHER_PASS QA_SUPERADMIN_USER QA_SUPERADMIN_PASS QA_STUDENT_CODE; do
+            value="${!key}"
+            if [ -n "$value" ] && grep -Fq -- "$value" "$src"; then
+              echo "BLOQUEADO: la evidencia contiene el valor de $key"
+              exit 3
+            fi
+          done
+          cp "$src" "$dst"
+          node -e "const r=require('./$dst'); if(r.version!=='SEC002-RUNTIME-DISCOVERY-1'||!r.fixture_summary||!Array.isArray(r.checks)||r.hard_failures.length) process.exit(1); console.log('PASS sanitized evidence schema')"
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add "$dst"
+          if git diff --cached --quiet; then
+            echo 'Evidencia sin cambios; no se crea commit.'
+          else
+            git commit -m 'SEC002 registra runtime autenticado positivo sanitizado'
+            git push origin HEAD:fix/sec002-private-document-foundation
+          fi
       - name: Upload sanitized evidence
         if: always()
         uses: actions/upload-artifact@v4
