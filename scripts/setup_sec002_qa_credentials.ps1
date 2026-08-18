@@ -17,7 +17,9 @@ $ExpectedDeployment = 'AKfycbzzsmmHVRGlgltcUJf7Yi9R0z__vsu58Hw9Gq9rNn5pYVrgY5iZ0
 $ProdDeployment = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ'
 if ($QaExecUrl -notmatch [regex]::Escape($ExpectedDeployment)) { throw 'BLOQUEADO: URL no es la deployment QA canónica.' }
 if ($QaExecUrl -match [regex]::Escape($ProdDeployment)) { throw 'BLOQUEADO: URL productiva detectada.' }
-if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) { throw 'Este bootstrap usa DPAPI y debe ejecutarse en Windows.' }
+if ($PSVersionTable.PSVersion.Major -ge 6) {
+  if (-not $IsWindows) { throw 'Este bootstrap usa DPAPI y debe ejecutarse en Windows.' }
+}
 
 function Invoke-QaPost([string]$Fn, [hashtable]$Payload, [string]$Token = '') {
   $body = @{}
