@@ -6,7 +6,7 @@ param(
   [string]$SuperadminUser = 'qa_superadmin',
   [string]$StudentCode = 'QA-STU-001',
   [string]$FixtureCedula = '999999991',
-  [string]$DocsExtraFileId = '1USgRDTjzzIpyYhh_YKnrctWyriBM9jKB',
+  [string]$DocsExtraFileId = '1opyraEWX2qITYPZqz3GACwqX3JYsehux',
   [string]$PaymentRequestId = 'QA-SEC002-PAY-20260817-01'
 )
 
