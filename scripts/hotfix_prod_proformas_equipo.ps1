@@ -42,6 +42,34 @@ function Get-DeploymentState {
   finally { Remove-Item -LiteralPath $probe -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+function Read-Utf8TextStrict {
+  param([string]$Path)
+  $bytes = [System.IO.File]::ReadAllBytes($Path)
+  $offset = 0
+  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+    $offset = 3
+  }
+  $enc = [System.Text.UTF8Encoding]::new($false, $true)
+  return $enc.GetString($bytes, $offset, $bytes.Length - $offset)
+}
+
+function Write-Utf8TextPreserveBom {
+  param([string]$Path, [string]$Text)
+  $existing = [System.IO.File]::ReadAllBytes($Path)
+  $hasBom = $existing.Length -ge 3 -and $existing[0] -eq 0xEF -and $existing[1] -eq 0xBB -and $existing[2] -eq 0xBF
+  $enc = [System.Text.UTF8Encoding]::new($false, $true)
+  $body = $enc.GetBytes($Text)
+  if ($hasBom) {
+    $out = New-Object byte[] ($body.Length + 3)
+    $out[0] = 0xEF; $out[1] = 0xBB; $out[2] = 0xBF
+    [System.Buffer]::BlockCopy($body, 0, $out, 3, $body.Length)
+    [System.IO.File]::WriteAllBytes($Path, $out)
+  }
+  else {
+    [System.IO.File]::WriteAllBytes($Path, $body)
+  }
+}
+
 function Get-ProjectHashes {
   param([string]$Root)
   $allowed = @('.gs','.js','.html','.json')
@@ -50,7 +78,7 @@ function Get-ProjectHashes {
     if ($_.Name -eq '.clasp.json') { return }
     if ($allowed -notcontains $_.Extension.ToLowerInvariant()) { return }
     $rel = $_.FullName.Substring($Root.Length).TrimStart('\','/')
-    $text = Get-Content -LiteralPath $_.FullName -Raw
+    $text = Read-Utf8TextStrict -Path $_.FullName
     $norm = $text.Replace("`r`n","`n")
     $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($norm)
     $sha = [System.Security.Cryptography.SHA256]::Create()
@@ -80,7 +108,7 @@ function Find-EquipoHelperFile {
   param([string]$Root)
   $targets = @()
   Get-ChildItem -LiteralPath $Root -File -Recurse | Where-Object { $_.Extension -in @('.gs','.js') } | ForEach-Object {
-    $txt = Get-Content -LiteralPath $_.FullName -Raw
+    $txt = Read-Utf8TextStrict -Path $_.FullName
     if ($txt.Contains('function _decidirPlantillaEquipo')) { $targets += $_.FullName }
   }
   if ($targets.Count -ne 1) { throw "Esperaba exactamente 1 archivo con _decidirPlantillaEquipo y encontre $($targets.Count)." }
@@ -118,7 +146,7 @@ New-Item -ItemType Directory -Force -Path $headOriginal,$deployedBase | Out-Null
 
 $backupRoot = Join-Path $env:USERPROFILE 'Documents\CampusVirtual\AppsScriptPROD\Backups'
 $backup = Join-Path $backupRoot ('PROD_PROFORMA_EQUIPO_FROM_DEPLOYED_' + $stamp)
-$pushedPatched = $false
+$pushAttempted = $false
 $deploymentChanged = $false
 $headRestored = $false
 $success = $false
@@ -156,7 +184,7 @@ function _decidirPlantillaEquipo(equipo) {
 "@
 
   $target = Find-EquipoHelperFile -Root $patchedWork
-  $src = Get-Content -LiteralPath $target -Raw
+  $src = Read-Utf8TextStrict -Path $target
   $srcNorm = $src.Replace("`r`n","`n")
   $oldNorm = $old.Trim().Replace("`r`n","`n")
   $newNorm = $new.Trim().Replace("`r`n","`n")
@@ -169,9 +197,9 @@ function _decidirPlantillaEquipo(equipo) {
   $newline = if ($src.Contains("`r`n")) { "`r`n" } else { "`n" }
   $patchedNorm = $srcNorm.Replace($oldNorm,$newNorm)
   $patched = if ($newline -eq "`r`n") { $patchedNorm.Replace("`n","`r`n") } else { $patchedNorm }
-  [System.IO.File]::WriteAllText($target,$patched,[System.Text.UTF8Encoding]::new($false))
+  Write-Utf8TextPreserveBom -Path $target -Text $patched
 
-  $verifyLocal = Get-Content -LiteralPath $target -Raw
+  $verifyLocal = Read-Utf8TextStrict -Path $target
   if (-not ($verifyLocal.Contains("e === 'LAPTOP_360'") -and $verifyLocal.Contains("e === 'LAPTOP_319'"))) { throw 'Verificacion local del parche fallo.' }
 
   $baseHashes = Get-ProjectHashes -Root $deployedBase
@@ -187,8 +215,9 @@ function _decidirPlantillaEquipo(equipo) {
   Write-Host 'PASS mapping: LAPTOP_319 -> PLAN BASICO'
 
   # Ventana controlada: subir base desplegada + parche, versionar y redeployar.
+  # Marcar intento ANTES del push: un fallo del cliente podria ocurrir despues de una escritura parcial.
+  $pushAttempted = $true
   Invoke-ClaspCommand -CommandArgs @('push','--force') -WorkDir $patchedWork | Out-Null
-  $pushedPatched = $true
   Write-Host 'PASS push temporal desde PROD desplegado + parche'
 
   $desc = 'HOTFIX proformas equipo LAPTOP_319/LAPTOP_360 ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
@@ -208,7 +237,7 @@ function _decidirPlantillaEquipo(equipo) {
   Invoke-ClaspCommand -CommandArgs @('clone-script',$ProdScriptId,[string]$newVersion) -WorkDir $verifyVersion | Out-Null
   Assert-ProjectParity -LeftRoot $patchedWork -RightRoot $verifyVersion -Label ('Version remota @' + $newVersion)
   $verifyTarget = Find-EquipoHelperFile -Root $verifyVersion
-  $remoteText = Get-Content -LiteralPath $verifyTarget -Raw
+  $remoteText = Read-Utf8TextStrict -Path $verifyTarget
   if (-not ($remoteText.Contains("e === 'LAPTOP_360'") -and $remoteText.Contains("e === 'LAPTOP_319'"))) { throw 'La version remota no contiene ambos aliases.' }
   Write-Host ('PASS verificacion remota @' + $newVersion)
 
@@ -238,7 +267,7 @@ catch {
   $original = $_
   Write-Host ('ERROR: ' + $original.Exception.Message)
 
-  if ($pushedPatched -and -not $success) {
+  if ($pushAttempted -and -not $success) {
     Write-Host 'Iniciando recuperacion preventiva...'
 
     try {
@@ -249,16 +278,29 @@ catch {
         if ($rolled.Version -ne $deployedVersion) { throw "Rollback no confirmado; observado @$($rolled.Version)." }
         Write-Host ('PASS rollback deployment -> @' + $deployedVersion)
       }
+      else {
+        Write-Host ('PASS deployment sigue en @' + $deployedVersion)
+      }
     }
     catch { Write-Host ('ALERTA rollback deployment: ' + $_.Exception.Message) }
 
     try {
-      Invoke-ClaspCommand -CommandArgs @('push','--force') -WorkDir $headOriginal | Out-Null
-      $restoreCheck = Join-Path $root 'RESTORE_CHECK'
-      New-Item -ItemType Directory -Force -Path $restoreCheck | Out-Null
-      Invoke-ClaspCommand -CommandArgs @('clone-script',$ProdScriptId) -WorkDir $restoreCheck | Out-Null
-      Assert-ProjectParity -LeftRoot $headOriginal -RightRoot $restoreCheck -Label 'Restore HEAD de emergencia'
-      Write-Host 'PASS restore HEAD original de emergencia'
+      $recoveryCheck = Join-Path $root 'RECOVERY_HEAD_CHECK'
+      New-Item -ItemType Directory -Force -Path $recoveryCheck | Out-Null
+      Invoke-ClaspCommand -CommandArgs @('clone-script',$ProdScriptId) -WorkDir $recoveryCheck | Out-Null
+      try {
+        Assert-ProjectParity -LeftRoot $headOriginal -RightRoot $recoveryCheck -Label 'HEAD tras push fallido'
+        Write-Host 'PASS HEAD remoto no cambio tras el push fallido'
+      }
+      catch {
+        Write-Host 'HEAD remoto difiere; restaurando HEAD original...'
+        Invoke-ClaspCommand -CommandArgs @('push','--force') -WorkDir $headOriginal | Out-Null
+        $restoreCheck = Join-Path $root 'RESTORE_CHECK'
+        New-Item -ItemType Directory -Force -Path $restoreCheck | Out-Null
+        Invoke-ClaspCommand -CommandArgs @('clone-script',$ProdScriptId) -WorkDir $restoreCheck | Out-Null
+        Assert-ProjectParity -LeftRoot $headOriginal -RightRoot $restoreCheck -Label 'Restore HEAD de emergencia'
+        Write-Host 'PASS restore HEAD original de emergencia'
+      }
     }
     catch { Write-Host ('ALERTA restore HEAD: ' + $_.Exception.Message) }
   }
