@@ -101,12 +101,19 @@ $meta = [ordered]@{
   deploymentId = $deploymentId
   sourceVersion = $remoteVersion
   label = $safeLabel
+  candidateDir = $candidate
   rule = 'Editar este candidato; no editar HEAD remoto para preparar un cambio productivo.'
 }
-$meta | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $candidate 'CANDIDATE_META.json') -Encoding UTF8
+$metaPath = $candidate + '.meta.json'
+[System.IO.File]::WriteAllText(
+  $metaPath,
+  ($meta | ConvertTo-Json -Depth 4),
+  [System.Text.UTF8Encoding]::new($false)
+)
 
 Write-Host '=== CANDIDATO APPS SCRIPT ==='
 Write-Host ('PASS deployment verificado @' + $remoteVersion)
 Write-Host ('CandidateDir: ' + $candidate)
+Write-Host ('Metadata: ' + $metaPath)
 Write-Host 'Base: versión inmutable actualmente desplegada, no HEAD remoto.'
 Write-Host 'Siguiente paso: hacer únicamente el delta requerido y ejecutar scripts\release_apps_script.ps1 primero sin -ConfirmProduction.'
