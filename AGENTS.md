@@ -8,6 +8,17 @@ Estas instrucciones aplican a todo el repositorio.
 - Leer los handoffs y matrices actuales de `00_DOCUMENTACION/` antes de concluir que un archivo está obsoleto.
 - No confiar en copias locales antiguas ni en recuerdos de conversaciones anteriores.
 
+## Cambios en vivo
+
+Antes de modificar o publicar cualquier parte de la plataforma viva:
+
+- leer `00_DOCUMENTACION/PRODUCTION_STATE.md`;
+- leer `00_DOCUMENTACION/LIVE_CHANGE_RUNBOOK.md`;
+- consultar `config/apps-script-production.json` cuando el cambio toque Apps Script;
+- confirmar el SHA vigente de `main` y trabajar en una rama pequeña;
+- considerar como runtime de Apps Script únicamente el Deployment ID estable apuntando a una versión numérica verificada; el HEAD remoto no equivale necesariamente a producción;
+- registrar una nueva versión productiva solo después de verificación remota y prueba funcional cuando aplique.
+
 ## Seguridad de entrega
 
 - Nunca hacer cambios directos en producción durante una auditoría.
