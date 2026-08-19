@@ -1,6 +1,6 @@
 param(
   [string]$ProdDeploymentId = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ',
-  [string]$ProdScriptId = ''
+  [string]$ProdScriptId = '1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,7 +55,13 @@ if (-not (Get-Command clasp -ErrorAction SilentlyContinue)) {
   throw 'clasp no esta disponible en PATH.'
 }
 
-# 1) Resolver Script ID sin tocar ningun proyecto local.
+# 1) Verificar identidad de produccion. Si el ID conocido deja de coincidir,
+# se intenta autodeteccion local y luego desde la lista de proyectos clasp.
+if ($ProdScriptId -and -not (Probe-ScriptDeployment -ScriptId $ProdScriptId -DeploymentId $ProdDeploymentId)) {
+  Write-Host 'El Script ID PROD conocido no coincide con el deployment esperado; intentando autodeteccion...'
+  $ProdScriptId = ''
+}
+
 if (-not $ProdScriptId) {
   $roots = @(
     (Join-Path $env:USERPROFILE 'Documents\CampusVirtual'),
@@ -75,7 +81,6 @@ if (-not $ProdScriptId) {
   }
 }
 
-# Si no habia clone local, revisar los proyectos visibles para la sesion clasp.
 if (-not $ProdScriptId) {
   try {
     $listText = Try-ClaspCommand -Primary @('list') -Fallback @('list-scripts') -WorkDir $env:TEMP
@@ -90,10 +95,10 @@ if (-not $ProdScriptId) {
 }
 
 if (-not $ProdScriptId) {
-  throw 'No pude autodetectar el Script ID de produccion. Ejecuta de nuevo con -ProdScriptId <ID>.'
+  throw 'No pude verificar el Script ID de produccion contra el deployment PROD. No se toca produccion.'
 }
 
-Write-Host ('Script ID PROD detectado: ' + $ProdScriptId)
+Write-Host ('PASS identidad PROD · Script ID: ' + $ProdScriptId)
 
 # 2) Clonar remoto en carpeta temporal aislada.
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
@@ -158,8 +163,8 @@ function _decidirPlantillaEquipo(equipo) {
   $newNorm = $new.Trim().Replace("`r`n", "`n")
 
   if ($srcNorm.Contains("e === 'LAPTOP_360'") -and $srcNorm.Contains("e === 'LAPTOP_319'")) {
-    Write-Host 'El remoto ya contiene el hotfix 319/360. No se modifica ni despliega.'
-    exit 0
+    Write-Host 'PASS - el remoto ya contiene el hotfix 319/360. No se modifica ni despliega.'
+    return
   }
   if (-not $srcNorm.Contains($oldNorm)) {
     throw 'La preimagen exacta del helper no coincide. No se toca produccion.'
