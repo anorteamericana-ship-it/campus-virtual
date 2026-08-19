@@ -3,13 +3,14 @@
   "scriptId": "1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2",
   "deploymentId": "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ",
   "deployedVersion": 417,
-  "lastVerifiedAt": "2026-08-19T10:14:00-06:00",
+  "lastVerifiedAt": "2026-08-18T22:33:55-06:00",
   "lastVerifiedBy": "authenticated-clasp-runtime",
   "lastChange": {
     "summary": "HOTFIX proformas equipo LAPTOP_319/LAPTOP_360",
     "sourcePr": 114,
     "previousVersion": 416,
-    "runtimeVerified": true
+    "runtimeVerified": true,
+    "functionalVerified": true
   },
   "notes": [
     "Script ID y Deployment ID no son secretos; no guardar tokens ni credenciales aquí.",
