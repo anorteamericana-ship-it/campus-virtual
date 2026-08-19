@@ -40,7 +40,8 @@ function Probe-ScriptDeployment([string]$ScriptId, [string]$DeploymentId) {
   $probe = Join-Path $env:TEMP ('campus-prod-probe-' + [guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Force -Path $probe | Out-Null
   try {
-    @{ scriptId = $ScriptId } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $probe '.clasp.json') -Encoding UTF8
+    $json = @{ scriptId = $ScriptId } | ConvertTo-Json
+    [System.IO.File]::WriteAllText((Join-Path $probe '.clasp.json'), $json, [System.Text.UTF8Encoding]::new($false))
     $d = Get-DeploymentsText $probe
     return $d -match [regex]::Escape($DeploymentId)
   } catch { return $false }
@@ -74,6 +75,20 @@ if (-not $ProdScriptId) {
   }
 }
 
+# Si no habia clone local, revisar los proyectos visibles para la sesion clasp.
+if (-not $ProdScriptId) {
+  try {
+    $listText = Try-ClaspCommand -Primary @('list') -Fallback @('list-scripts') -WorkDir $env:TEMP
+    $candidateIds = [regex]::Matches($listText, '[A-Za-z0-9_-]{40,}') | ForEach-Object Value | Select-Object -Unique
+    foreach ($sid in $candidateIds) {
+      if (Probe-ScriptDeployment -ScriptId $sid -DeploymentId $ProdDeploymentId) {
+        $ProdScriptId = $sid
+        break
+      }
+    }
+  } catch {}
+}
+
 if (-not $ProdScriptId) {
   throw 'No pude autodetectar el Script ID de produccion. Ejecuta de nuevo con -ProdScriptId <ID>.'
 }
@@ -88,8 +103,13 @@ New-Item -ItemType Directory -Force -Path $work | Out-Null
 try {
   Push-Location $work
   try {
-    try { $cloneOut = & clasp clone $ProdScriptId 2>&1; if ($LASTEXITCODE -ne 0) { throw ($cloneOut | Out-String) } }
-    catch { $cloneOut = & clasp clone-script $ProdScriptId 2>&1; if ($LASTEXITCODE -ne 0) { throw ($cloneOut | Out-String) } }
+    try {
+      $cloneOut = & clasp clone $ProdScriptId 2>&1
+      if ($LASTEXITCODE -ne 0) { throw ($cloneOut | Out-String) }
+    } catch {
+      $cloneOut = & clasp clone-script $ProdScriptId 2>&1
+      if ($LASTEXITCODE -ne 0) { throw ($cloneOut | Out-String) }
+    }
   } finally { Pop-Location }
 
   $deps = Get-DeploymentsText $work
@@ -133,15 +153,19 @@ function _decidirPlantillaEquipo(equipo) {
 
   $target = $targets[0]
   $src = Get-Content -LiteralPath $target -Raw
-  if ($src.Contains("e === 'LAPTOP_360'") -and $src.Contains("e === 'LAPTOP_319'")) {
+  $srcNorm = $src.Replace("`r`n", "`n")
+  $oldNorm = $old.Trim().Replace("`r`n", "`n")
+  $newNorm = $new.Trim().Replace("`r`n", "`n")
+
+  if ($srcNorm.Contains("e === 'LAPTOP_360'") -and $srcNorm.Contains("e === 'LAPTOP_319'")) {
     Write-Host 'El remoto ya contiene el hotfix 319/360. No se modifica ni despliega.'
     exit 0
   }
-  if (-not $src.Contains($old.Trim())) {
+  if (-not $srcNorm.Contains($oldNorm)) {
     throw 'La preimagen exacta del helper no coincide. No se toca produccion.'
   }
 
-  $patched = $src.Replace($old.Trim(), $new.Trim())
+  $patched = $srcNorm.Replace($oldNorm, $newNorm)
   [System.IO.File]::WriteAllText($target, $patched, [System.Text.UTF8Encoding]::new($false))
 
   $verify = Get-Content -LiteralPath $target -Raw
@@ -163,10 +187,7 @@ function _decidirPlantillaEquipo(equipo) {
   $version = $m.Groups[1].Value
   Write-Host ('Version nueva: ' + $version)
 
-  $deployOut = Try-ClaspCommand \
-    -Primary @('deploy','--versionNumber',$version,'--description',$desc,'--deploymentId',$ProdDeploymentId) \
-    -Fallback @('create-deployment','--versionNumber',$version,'--description',$desc,'--deploymentId',$ProdDeploymentId) \
-    -WorkDir $work
+  $deployOut = Try-ClaspCommand -Primary @('deploy','--versionNumber',$version,'--description',$desc,'--deploymentId',$ProdDeploymentId) -Fallback @('create-deployment','--versionNumber',$version,'--description',$desc,'--deploymentId',$ProdDeploymentId) -WorkDir $work
 
   if ($deployOut -notmatch [regex]::Escape($ProdDeploymentId)) {
     throw "El redeploy no devolvio el deployment esperado:`n$deployOut"
