@@ -13,6 +13,7 @@ if (-not (Test-Path -LiteralPath $ventasHtmlPath -PathType Leaf)) { throw "No ex
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 $drawer = [System.IO.File]::ReadAllText($drawerPath, [System.Text.Encoding]::UTF8)
 $ventasHtml = [System.IO.File]::ReadAllText($ventasHtmlPath, [System.Text.Encoding]::UTF8)
+$drawerNl = if ($drawer.Contains("`r`n")) { "`r`n" } else { "`n" }
 
 $oldInfo = @'
                 <dl className="vx-kv">
@@ -42,6 +43,12 @@ $newFooter = @'
                   <window.Vico d={window.VI.wa} size={16} fill="currentColor" /> Abrir WhatsApp
                 </button>
 '@
+
+# Las here-strings se normalizan al mismo salto de línea del archivo checkout.
+$oldInfo = $oldInfo.Replace("`r`n", "`n").Replace("`n", $drawerNl)
+$newInfo = $newInfo.Replace("`r`n", "`n").Replace("`n", $drawerNl)
+$oldFooter = $oldFooter.Replace("`r`n", "`n").Replace("`n", $drawerNl)
+$newFooter = $newFooter.Replace("`r`n", "`n").Replace("`n", $drawerNl)
 
 function Replace-ExactlyOnce {
   param([string]$Text, [string]$Old, [string]$New, [string]$Label)
