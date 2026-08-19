@@ -1,6 +1,6 @@
 # CAMPUS VIRTUAL · Estado de producción
 
-Última verificación autenticada: **2026-08-19 10:14 -06:00**.
+Última verificación autenticada del deployment: **2026-08-18 22:33:55 -06:00**.
 
 ## Apps Script PROD
 
@@ -9,7 +9,7 @@
 - Versión desplegada: **@417**
 - Versión anterior: @416
 - Último cambio: compatibilidad de proformas `LAPTOP_319` / `LAPTOP_360`
-- Evidencia funcional: generación real de proforma de equipo `LAPTOP_360` por ₡360.000 completada correctamente.
+- Evidencia funcional posterior al deploy: generación real de proforma de equipo `LAPTOP_360` por ₡360.000 completada correctamente.
 
 La copia machine-readable vive en `config/apps-script-production.json`.
 
