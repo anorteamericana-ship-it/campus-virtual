@@ -7,130 +7,203 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 function Invoke-ClaspCommand {
-  param([string[]]$Args, [string]$WorkDir)
+  param(
+    [string[]]$CommandArgs,
+    [string]$WorkDir
+  )
+
   Push-Location $WorkDir
   try {
-    $out = & clasp @Args 2>&1
+    $out = & clasp @CommandArgs 2>&1
     $code = $LASTEXITCODE
     $text = ($out | Out-String).TrimEnd()
-    if ($code -ne 0) { throw "clasp $($Args -join ' ') fallo ($code):`n$text" }
+    if ($code -ne 0) {
+      throw "clasp $($CommandArgs -join ' ') fallo ($code):`n$text"
+    }
     return $text
-  } finally { Pop-Location }
+  }
+  finally {
+    Pop-Location
+  }
 }
 
-function Try-ClaspCommand {
-  param([string[]]$Primary, [string[]]$Fallback, [string]$WorkDir)
-  try { return Invoke-ClaspCommand -Args $Primary -WorkDir $WorkDir }
-  catch { return Invoke-ClaspCommand -Args $Fallback -WorkDir $WorkDir }
-}
+function New-ClaspProbe {
+  param([string]$ScriptId)
 
-function Get-DeploymentsText([string]$Dir) {
-  return Try-ClaspCommand -Primary @('deployments') -Fallback @('list-deployments') -WorkDir $Dir
-}
-
-function Get-ScriptIdFromClaspJson([string]$Path) {
-  try {
-    $j = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-    return [string]$j.scriptId
-  } catch { return '' }
-}
-
-function Probe-ScriptDeployment([string]$ScriptId, [string]$DeploymentId) {
-  if (-not $ScriptId) { return $false }
   $probe = Join-Path $env:TEMP ('campus-prod-probe-' + [guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Force -Path $probe | Out-Null
-  try {
-    $json = @{ scriptId = $ScriptId } | ConvertTo-Json
-    [System.IO.File]::WriteAllText((Join-Path $probe '.clasp.json'), $json, [System.Text.UTF8Encoding]::new($false))
-    $d = Get-DeploymentsText $probe
-    return $d -match [regex]::Escape($DeploymentId)
-  } catch { return $false }
-  finally { Remove-Item -LiteralPath $probe -Recurse -Force -ErrorAction SilentlyContinue }
+  $json = @{ scriptId = $ScriptId } | ConvertTo-Json
+  [System.IO.File]::WriteAllText(
+    (Join-Path $probe '.clasp.json'),
+    $json,
+    [System.Text.UTF8Encoding]::new($false)
+  )
+  return $probe
 }
 
-Write-Host '=== HOTFIX PROD · PROFORMAS EQUIPO 319/360 ==='
+function Get-DeploymentState {
+  param(
+    [string]$ScriptId,
+    [string]$DeploymentId
+  )
+
+  $probe = New-ClaspProbe -ScriptId $ScriptId
+  try {
+    # clasp 3.3.x: usar el comando canonico actual, sin autodeteccion ni alias.
+    $text = Invoke-ClaspCommand -CommandArgs @('list-deployments') -WorkDir $probe
+    $line = ($text -split "`r?`n" | Where-Object {
+      $_ -match [regex]::Escape($DeploymentId)
+    } | Select-Object -First 1)
+
+    if (-not $line) {
+      throw "El Script ID no contiene el deployment PROD esperado.`n$text"
+    }
+
+    $versionMatch = [regex]::Match($line, '@(\d+)\b')
+    if (-not $versionMatch.Success) {
+      throw "El deployment PROD no apunta a una version numerica inmutable: $line"
+    }
+
+    return [pscustomobject]@{
+      Text = $text
+      Line = $line
+      Version = [int]$versionMatch.Groups[1].Value
+    }
+  }
+  finally {
+    Remove-Item -LiteralPath $probe -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Get-ProjectHashes {
+  param([string]$Root)
+
+  $allowed = @('.gs', '.js', '.html', '.json')
+  $map = @{}
+
+  Get-ChildItem -LiteralPath $Root -File -Recurse | ForEach-Object {
+    if ($_.Name -eq '.clasp.json') { return }
+    if ($allowed -notcontains $_.Extension.ToLowerInvariant()) { return }
+
+    $relative = $_.FullName.Substring($Root.Length).TrimStart('\', '/')
+    $text = Get-Content -LiteralPath $_.FullName -Raw
+    $normalized = $text.Replace("`r`n", "`n")
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($normalized)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+      $hashBytes = $sha.ComputeHash($bytes)
+      $hash = ([System.BitConverter]::ToString($hashBytes)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+      $sha.Dispose()
+    }
+    $map[$relative] = $hash
+  }
+
+  return $map
+}
+
+function Assert-ProjectParity {
+  param(
+    [string]$HeadRoot,
+    [string]$DeployedRoot,
+    [int]$DeployedVersion
+  )
+
+  $head = Get-ProjectHashes -Root $HeadRoot
+  $deployed = Get-ProjectHashes -Root $DeployedRoot
+  $keys = @($head.Keys + $deployed.Keys | Sort-Object -Unique)
+  $diffs = @()
+
+  foreach ($key in $keys) {
+    if (-not $head.ContainsKey($key)) {
+      $diffs += "solo deployed@$DeployedVersion : $key"
+      continue
+    }
+    if (-not $deployed.ContainsKey($key)) {
+      $diffs += "solo HEAD : $key"
+      continue
+    }
+    if ($head[$key] -ne $deployed[$key]) {
+      $diffs += "contenido distinto : $key"
+    }
+  }
+
+  if ($diffs.Count -gt 0) {
+    $detail = ($diffs | Select-Object -First 30) -join "`n"
+    throw "HEAD difiere del deployment PROD @$DeployedVersion. No es seguro hacer push/redeploy automatico.`n$detail"
+  }
+}
+
+function Find-EquipoHelperFile {
+  param([string]$Root)
+
+  $targets = @()
+  Get-ChildItem -LiteralPath $Root -File -Recurse | Where-Object {
+    $_.Extension -in @('.gs', '.js')
+  } | ForEach-Object {
+    $txt = Get-Content -LiteralPath $_.FullName -Raw
+    if ($txt.Contains('function _decidirPlantillaEquipo')) {
+      $targets += $_.FullName
+    }
+  }
+
+  if ($targets.Count -ne 1) {
+    throw "Esperaba exactamente 1 archivo con _decidirPlantillaEquipo y encontre $($targets.Count)."
+  }
+
+  return $targets[0]
+}
+
+Write-Host '=== HOTFIX PROD - PROFORMAS EQUIPO 319/360 ==='
+Write-Host ('Script PROD: ' + $ProdScriptId)
 Write-Host ('Deployment PROD: ' + $ProdDeploymentId)
 
 if (-not (Get-Command clasp -ErrorAction SilentlyContinue)) {
   throw 'clasp no esta disponible en PATH.'
 }
 
-# 1) Verificar identidad de produccion. Si el ID conocido deja de coincidir,
-# se intenta autodeteccion local y luego desde la lista de proyectos clasp.
-if ($ProdScriptId -and -not (Probe-ScriptDeployment -ScriptId $ProdScriptId -DeploymentId $ProdDeploymentId)) {
-  Write-Host 'El Script ID PROD conocido no coincide con el deployment esperado; intentando autodeteccion...'
-  $ProdScriptId = ''
+$claspVersion = (& clasp --version 2>&1 | Out-String).Trim()
+if ($LASTEXITCODE -ne 0) {
+  throw 'No pude leer la version de clasp.'
 }
+Write-Host ('clasp: ' + $claspVersion)
 
-if (-not $ProdScriptId) {
-  $roots = @(
-    (Join-Path $env:USERPROFILE 'Documents\CampusVirtual'),
-    (Resolve-Path (Join-Path $PSScriptRoot '..') -ErrorAction SilentlyContinue | ForEach-Object Path)
-  ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+# 1) Identidad PROD + version desplegada actual.
+$before = Get-DeploymentState -ScriptId $ProdScriptId -DeploymentId $ProdDeploymentId
+$deployedVersion = $before.Version
+Write-Host ('PASS identidad PROD - deployment actual @' + $deployedVersion)
 
-  foreach ($root in $roots) {
-    $claspFiles = Get-ChildItem -Path $root -Filter '.clasp.json' -File -Recurse -ErrorAction SilentlyContinue
-    foreach ($cf in $claspFiles) {
-      $sid = Get-ScriptIdFromClaspJson $cf.FullName
-      if ($sid -and (Probe-ScriptDeployment -ScriptId $sid -DeploymentId $ProdDeploymentId)) {
-        $ProdScriptId = $sid
-        break
-      }
-    }
-    if ($ProdScriptId) { break }
-  }
-}
-
-if (-not $ProdScriptId) {
-  try {
-    $listText = Try-ClaspCommand -Primary @('list') -Fallback @('list-scripts') -WorkDir $env:TEMP
-    $candidateIds = [regex]::Matches($listText, '[A-Za-z0-9_-]{40,}') | ForEach-Object Value | Select-Object -Unique
-    foreach ($sid in $candidateIds) {
-      if (Probe-ScriptDeployment -ScriptId $sid -DeploymentId $ProdDeploymentId) {
-        $ProdScriptId = $sid
-        break
-      }
-    }
-  } catch {}
-}
-
-if (-not $ProdScriptId) {
-  throw 'No pude verificar el Script ID de produccion contra el deployment PROD. No se toca produccion.'
-}
-
-Write-Host ('PASS identidad PROD · Script ID: ' + $ProdScriptId)
-
-# 2) Clonar remoto en carpeta temporal aislada.
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-$work = Join-Path $env:TEMP ('campus-prod-proforma-hotfix-' + $stamp)
-New-Item -ItemType Directory -Force -Path $work | Out-Null
+$workRoot = Join-Path $env:TEMP ('campus-prod-proforma-hotfix-' + $stamp)
+$headDir = Join-Path $workRoot 'HEAD'
+$deployedDir = Join-Path $workRoot ('DEPLOYED_' + $deployedVersion)
+$verifyDir = Join-Path $workRoot 'VERIFY'
+New-Item -ItemType Directory -Force -Path $headDir, $deployedDir | Out-Null
+
+$backup = $null
+$pushed = $false
+$deploymentChanged = $false
+$success = $false
+$newVersion = $null
 
 try {
-  Push-Location $work
-  try {
-    try {
-      $cloneOut = & clasp clone $ProdScriptId 2>&1
-      if ($LASTEXITCODE -ne 0) { throw ($cloneOut | Out-String) }
-    } catch {
-      $cloneOut = & clasp clone-script $ProdScriptId 2>&1
-      if ($LASTEXITCODE -ne 0) { throw ($cloneOut | Out-String) }
-    }
-  } finally { Pop-Location }
+  # 2) Clonar HEAD y la version realmente desplegada. Si difieren, abortar.
+  Invoke-ClaspCommand -CommandArgs @('clone-script', $ProdScriptId) -WorkDir $headDir | Out-Null
+  Invoke-ClaspCommand -CommandArgs @('clone-script', $ProdScriptId, [string]$deployedVersion) -WorkDir $deployedDir | Out-Null
 
-  $deps = Get-DeploymentsText $work
-  if ($deps -notmatch [regex]::Escape($ProdDeploymentId)) {
-    throw 'El Script ID encontrado no contiene el deployment PROD esperado. Abortando.'
-  }
-
-  # 3) Backup completo del remoto antes de modificar.
+  # Backup completo de HEAD antes de cualquier escritura remota.
   $backupRoot = Join-Path $env:USERPROFILE 'Documents\CampusVirtual\AppsScriptPROD\Backups'
   $backup = Join-Path $backupRoot ('PROD_PROFORMA_EQUIPO_' + $stamp)
   New-Item -ItemType Directory -Force -Path $backup | Out-Null
-  Copy-Item -Path (Join-Path $work '*') -Destination $backup -Recurse -Force
-  Copy-Item -LiteralPath (Join-Path $work '.clasp.json') -Destination $backup -Force -ErrorAction SilentlyContinue
-  Write-Host ('Backup PROD: ' + $backup)
+  Copy-Item -Path (Join-Path $headDir '*') -Destination $backup -Recurse -Force
+  Copy-Item -LiteralPath (Join-Path $headDir '.clasp.json') -Destination $backup -Force
+  Write-Host ('Backup PROD HEAD: ' + $backup)
 
-  # 4) Parche fail-closed: exactamente una funcion objetivo.
+  Assert-ProjectParity -HeadRoot $headDir -DeployedRoot $deployedDir -DeployedVersion $deployedVersion
+  Write-Host ('PASS paridad: HEAD == deployment @' + $deployedVersion)
+
+  # 3) Parche fail-closed sobre una unica funcion.
   $old = @"
 function _decidirPlantillaEquipo(equipo) {
   var e = String(equipo).toUpperCase().trim();
@@ -149,61 +222,127 @@ function _decidirPlantillaEquipo(equipo) {
 }
 "@
 
-  $targets = @()
-  Get-ChildItem -Path $work -Filter '*.gs' -File -Recurse | ForEach-Object {
-    $txt = Get-Content -LiteralPath $_.FullName -Raw
-    if ($txt.Contains('function _decidirPlantillaEquipo')) { $targets += $_.FullName }
-  }
-  if ($targets.Count -ne 1) { throw "Esperaba 1 archivo con _decidirPlantillaEquipo y encontre $($targets.Count)." }
-
-  $target = $targets[0]
+  $target = Find-EquipoHelperFile -Root $headDir
   $src = Get-Content -LiteralPath $target -Raw
   $srcNorm = $src.Replace("`r`n", "`n")
   $oldNorm = $old.Trim().Replace("`r`n", "`n")
   $newNorm = $new.Trim().Replace("`r`n", "`n")
 
   if ($srcNorm.Contains("e === 'LAPTOP_360'") -and $srcNorm.Contains("e === 'LAPTOP_319'")) {
-    Write-Host 'PASS - el remoto ya contiene el hotfix 319/360. No se modifica ni despliega.'
-    return
+    throw "El deployment PROD @$deployedVersion ya contiene ambos aliases. No se despliega nada: el error de runtime tiene otra causa."
   }
+
   if (-not $srcNorm.Contains($oldNorm)) {
     throw 'La preimagen exacta del helper no coincide. No se toca produccion.'
   }
 
-  $patched = $srcNorm.Replace($oldNorm, $newNorm)
+  $newline = if ($src.Contains("`r`n")) { "`r`n" } else { "`n" }
+  $patchedNorm = $srcNorm.Replace($oldNorm, $newNorm)
+  $patched = if ($newline -eq "`r`n") { $patchedNorm.Replace("`n", "`r`n") } else { $patchedNorm }
   [System.IO.File]::WriteAllText($target, $patched, [System.Text.UTF8Encoding]::new($false))
 
-  $verify = Get-Content -LiteralPath $target -Raw
-  if (-not ($verify.Contains("e === 'LAPTOP_360'") -and $verify.Contains("e === 'LAPTOP_319'"))) {
-    throw 'Verificacion estatica del parche fallo.'
+  $verifyLocal = Get-Content -LiteralPath $target -Raw
+  if (-not ($verifyLocal.Contains("e === 'LAPTOP_360'") -and $verifyLocal.Contains("e === 'LAPTOP_319'"))) {
+    throw 'Verificacion estatica local del parche fallo.'
   }
+
   Write-Host ('PASS patch: ' + [System.IO.Path]::GetFileName($target))
   Write-Host 'PASS mapping: LAPTOP_360 -> PLAN PREMIUM'
   Write-Host 'PASS mapping: LAPTOP_319 -> PLAN BASICO'
 
-  # 5) Push + version + redeploy sobre EL MISMO deployment.
-  $push = Invoke-ClaspCommand -Args @('push','--force') -WorkDir $work
+  # 4) Push de HEAD clonado y verificado. clasp push reemplaza el proyecto completo,
+  # por eso la compuerta de paridad anterior es obligatoria.
+  Invoke-ClaspCommand -CommandArgs @('push', '--force') -WorkDir $headDir | Out-Null
+  $pushed = $true
   Write-Host 'PASS clasp push --force'
 
+  # 5) Crear version inmutable y actualizar EL MISMO deployment.
   $desc = 'HOTFIX proformas equipo LAPTOP_319/LAPTOP_360 ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-  $versionOut = Try-ClaspCommand -Primary @('version',$desc) -Fallback @('create-version',$desc) -WorkDir $work
-  $m = [regex]::Match($versionOut, '(?i)version\D+(\d+)')
-  if (-not $m.Success) { throw "No pude extraer version creada:`n$versionOut" }
-  $version = $m.Groups[1].Value
-  Write-Host ('Version nueva: ' + $version)
-
-  $deployOut = Try-ClaspCommand -Primary @('deploy','--versionNumber',$version,'--description',$desc,'--deploymentId',$ProdDeploymentId) -Fallback @('create-deployment','--versionNumber',$version,'--description',$desc,'--deploymentId',$ProdDeploymentId) -WorkDir $work
-
-  if ($deployOut -notmatch [regex]::Escape($ProdDeploymentId)) {
-    throw "El redeploy no devolvio el deployment esperado:`n$deployOut"
+  $versionOut = Invoke-ClaspCommand -CommandArgs @('create-version', $desc) -WorkDir $headDir
+  $vm = [regex]::Match($versionOut, '(?i)version\D+(\d+)\b')
+  if (-not $vm.Success) {
+    throw "No pude extraer la version creada:`n$versionOut"
   }
+  $newVersion = [int]$vm.Groups[1].Value
+  Write-Host ('Version nueva: ' + $newVersion)
 
+  $deployOut = Invoke-ClaspCommand -CommandArgs @(
+    'create-deployment',
+    '--versionNumber', [string]$newVersion,
+    '--description', $desc,
+    '--deploymentId', $ProdDeploymentId
+  ) -WorkDir $headDir
+
+  # No confiamos solo en el texto del comando: releemos el estado remoto.
+  $after = Get-DeploymentState -ScriptId $ProdScriptId -DeploymentId $ProdDeploymentId
+  if ($after.Version -ne $newVersion) {
+    throw "El deployment no quedo en la nueva version. Esperado @$newVersion; observado @$($after.Version).`n$deployOut"
+  }
+  $deploymentChanged = $true
+  Write-Host ('PASS redeploy mismo ID -> @' + $newVersion)
+
+  # 6) Verificacion remota de la version que acabamos de desplegar.
+  New-Item -ItemType Directory -Force -Path $verifyDir | Out-Null
+  Invoke-ClaspCommand -CommandArgs @('clone-script', $ProdScriptId, [string]$newVersion) -WorkDir $verifyDir | Out-Null
+  $verifyTarget = Find-EquipoHelperFile -Root $verifyDir
+  $verifyRemote = Get-Content -LiteralPath $verifyTarget -Raw
+  if (-not ($verifyRemote.Contains("e === 'LAPTOP_360'") -and $verifyRemote.Contains("e === 'LAPTOP_319'"))) {
+    throw 'La version desplegada no contiene ambos aliases esperados.'
+  }
+  Write-Host ('PASS verificacion remota version @' + $newVersion)
+
+  $success = $true
   Write-Host '=== RESULTADO ==='
   Write-Host 'PASS - backend PROD actualizado sobre el mismo deployment.'
   Write-Host ('Deployment: ' + $ProdDeploymentId)
-  Write-Host ('Version: ' + $version)
+  Write-Host ('Version anterior: ' + $deployedVersion)
+  Write-Host ('Version nueva: ' + $newVersion)
   Write-Host 'Siguiente prueba: abrir Marchena y generar Proforma del Equipo LAPTOP_360.'
 }
+catch {
+  $originalError = $_
+  Write-Host ('ERROR: ' + $originalError.Exception.Message)
+
+  if ($pushed -and -not $success) {
+    Write-Host 'Iniciando rollback preventivo...'
+
+    try {
+      $stateNow = Get-DeploymentState -ScriptId $ProdScriptId -DeploymentId $ProdDeploymentId
+      if ($stateNow.Version -ne $deployedVersion) {
+        $rollbackDesc = 'ROLLBACK hotfix proformas equipo ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+        Invoke-ClaspCommand -CommandArgs @(
+          'create-deployment',
+          '--versionNumber', [string]$deployedVersion,
+          '--description', $rollbackDesc,
+          '--deploymentId', $ProdDeploymentId
+        ) -WorkDir $headDir | Out-Null
+
+        $rolled = Get-DeploymentState -ScriptId $ProdScriptId -DeploymentId $ProdDeploymentId
+        if ($rolled.Version -ne $deployedVersion) {
+          throw "Rollback de deployment no confirmado: observado @$($rolled.Version)."
+        }
+        Write-Host ('PASS rollback deployment -> @' + $deployedVersion)
+      }
+    }
+    catch {
+      Write-Host ('ALERTA: fallo rollback deployment: ' + $_.Exception.Message)
+    }
+
+    if ($backup -and (Test-Path $backup)) {
+      try {
+        Invoke-ClaspCommand -CommandArgs @('push', '--force') -WorkDir $backup | Out-Null
+        Write-Host 'PASS rollback HEAD desde backup.'
+      }
+      catch {
+        Write-Host ('ALERTA: fallo rollback HEAD: ' + $_.Exception.Message)
+      }
+    }
+  }
+
+  throw $originalError
+}
 finally {
-  if (Test-Path $work) { Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path $workRoot) {
+    Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
 }
