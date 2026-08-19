@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, '..');
 const drawerPath = path.join(root, 'src', 'ventas_drawer.jsx');
 const ventasHtmlPath = path.join(root, 'ventas.html');
-const drawer = fs.readFileSync(drawerPath, 'utf8');
-const ventasHtml = fs.readFileSync(ventasHtmlPath, 'utf8');
+const drawer = fs.readFileSync(drawerPath, 'utf8').replace(/\r\n/g, '\n');
+const ventasHtml = fs.readFileSync(ventasHtmlPath, 'utf8').replace(/\r\n/g, '\n');
 
 function ok(condition, message) {
   if (!condition) {
