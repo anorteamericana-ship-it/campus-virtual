@@ -939,8 +939,9 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
               <section className="vx-block">
                 <div className="vx-block-h"><window.Vico d={window.VI.phone} size={13} /> Información personal</div>
                 <dl className="vx-kv">
-                  <dt>Correo</dt><dd>{d.correo || '—'} <button className="vx-copy" onClick={() => copy(d.correo)}>copiar</button></dd>
+                  <dt>Cédula</dt><dd>{String(d.cedula || '').replace(/\D/g, '') || '—'} <button className="vx-copy" onClick={() => copy(String(d.cedula || '').replace(/\D/g, ''))}>copiar</button></dd>
                   <dt>Teléfono</dt><dd>{window.fmtTelV(d.telefono)} <button className="vx-copy" onClick={() => copy(d.telefono)}>copiar</button></dd>
+                  <dt>Correo</dt><dd>{d.correo || '—'} <button className="vx-copy" onClick={() => copy(d.correo)}>copiar</button></dd>
                   <dt>WhatsApp</dt><dd>
                     <window.WaLink tel={d.whatsapp || d.telefono} className="vx-copy" >abrir chat</window.WaLink>
                     <button className="vx-copy" onClick={() => copy(d.whatsapp || d.telefono)}>copiar</button>
@@ -1103,8 +1104,10 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                   title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
                   <window.Vico d={window.VI.wa} size={15} fill="currentColor" /> Llamar
                 </button>
-                <button className="vx-btn vx-btn-ghost" style={{ flex: 1 }} onClick={() => setModal('nota')}>
-                  <window.Vico d={window.VI.doc} size={14} /> Agregar nota
+                <button className="vx-btn vx-btn-ghost" style={{ flex: 1.25 }}
+                  onClick={llamarWhatsApp} disabled={!waNum}
+                  title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
+                  <window.Vico d={window.VI.wa} size={16} fill="currentColor" /> Abrir WhatsApp
                 </button>
               </div>
               <button className="vx-btn vx-btn-red vx-btn-block vx-btn-lg" onClick={() => setModal('reportar')}>
