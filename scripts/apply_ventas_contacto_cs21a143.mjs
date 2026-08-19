@@ -51,11 +51,16 @@ ventasHtml = replaceExactlyOnce(
   'cache-buster ventas_drawer'
 );
 
-if ((drawer.match(/<dt>Cédula<\/dt>/g) || []).length !== 1) throw new Error('Debe existir exactamente una fila Cédula nueva.');
-if (!drawer.includes("String(d.cedula || '').replace(/\\D/g, '')")) throw new Error('La cédula no quedó normalizada sin guiones.');
-if (!drawer.includes('> Abrir WhatsApp')) throw new Error('No quedó el botón Abrir WhatsApp.');
-if (drawer.includes('<window.Vico d={window.VI.doc} size={14} /> Agregar nota\n                </button>')) throw new Error('El botón duplicado Agregar nota sigue en el footer.');
-if (!drawer.includes("{savingNota ? <><span className=\"vx-spin\" /> Guardando…</> : 'Agregar nota'}")) throw new Error('Se perdió el formulario real de notas.');
+const normalized = drawer.replace(/\r\n/g, '\n');
+const infoBlock = normalized.match(/<div className="vx-block-h"><window\.Vico d=\{window\.VI\.phone\} size=\{13\} \/> Información personal<\/div>[\s\S]*?<\/dl>/)?.[0] || '';
+
+if (!infoBlock) throw new Error('No pude localizar el bloque Información personal después del cambio.');
+if ((infoBlock.match(/<dt>Cédula<\/dt>/g) || []).length !== 1) throw new Error('Debe existir exactamente una fila Cédula dentro de Información personal.');
+if (!infoBlock.includes("String(d.cedula || '').replace(/\\D/g, '')")) throw new Error('La cédula no quedó normalizada sin guiones.');
+if (!infoBlock.includes("copy(String(d.cedula || '').replace(/\\D/g, ''))")) throw new Error('La cédula no quedó con botón copiar.');
+if (!normalized.includes('> Abrir WhatsApp\n                </button>')) throw new Error('No quedó el botón Abrir WhatsApp.');
+if (normalized.includes('<window.Vico d={window.VI.doc} size={14} /> Agregar nota\n                </button>')) throw new Error('El botón duplicado Agregar nota sigue en el footer.');
+if (!normalized.includes("{savingNota ? <><span className=\"vx-spin\" /> Guardando…</> : 'Agregar nota'}")) throw new Error('Se perdió el formulario real de notas.');
 
 fs.writeFileSync(drawerPath, drawer, 'utf8');
 fs.writeFileSync(ventasHtmlPath, ventasHtml, 'utf8');
