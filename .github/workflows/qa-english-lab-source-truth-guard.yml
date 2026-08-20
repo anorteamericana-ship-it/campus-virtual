@@ -1,0 +1,82 @@
+name: English LAB Source Truth Guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: english-lab-source-truth-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-truth-guard:
+    name: source-truth-guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve changed files
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$BASE" ]; then
+            BASE="${{ github.event.before }}"
+          fi
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            git diff --name-only "$BASE"...HEAD | tee /tmp/source-truth-changed.txt
+          else
+            git diff-tree --no-commit-id --name-only -r HEAD | tee /tmp/source-truth-changed.txt
+          fi
+
+      - name: Generic repository integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -f AGENTS.md
+          test -f README.md
+
+      - name: Enforce English LAB source of truth when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f scripts/qa_cs21a202_source_truth.mjs ]; then
+            node scripts/qa_cs21a202_source_truth.mjs
+            exit 0
+          fi
+
+          if grep -Eq '^(src/english_lab|styles/english_lab|scripts/.*browser.*\.mjs)' /tmp/source-truth-changed.txt; then
+            echo 'English LAB/browser surface changed but the strict source-truth gate script is not present on this base. Refusing to approve.' >&2
+            exit 1
+          fi
+
+          echo 'Strict English LAB gate not yet present on main; PR does not modify English LAB/browser runtime surface.'
+
+      - name: Guard against browser runtime source patching
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d scripts ] && grep -RInE 'route\.fulfill.*replace\(|body[[:space:]]*:[^,]*\.replace\(' scripts --include='*browser*.mjs'; then
+            echo 'Browser tests no pueden reemplazar HTML/código servido para fabricar el comportamiento bajo prueba.' >&2
+            exit 1
+          fi
+
+      - name: Summary
+        run: echo 'source-truth-guard PASS'
