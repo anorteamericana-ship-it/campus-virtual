@@ -23,7 +23,7 @@ let src=fs.readFileSync(target,'utf8');
 const nl=src.includes('\r\n')?'\r\n':'\n';
 const withNl=s=>s.replace(/\n/g,nl);
 
-if(src.includes('function _ins144GuardarPdfIdentidad_')) throw new Error('CS21A144 backend ya parece aplicado.');
+if(src.includes('function _ins144CrearPdfIdentidadDesdeFotos_')) throw new Error('CS21A144 backend ya parece aplicado.');
 
 function replaceOnce(text,oldText,newText,label){
   const i=text.indexOf(oldText);
@@ -32,7 +32,6 @@ function replaceOnce(text,oldText,newText,label){
   return text.slice(0,i)+newText+text.slice(i+oldText.length);
 }
 
-// Insertar helpers inmediatamente después del helper legacy de fotos.
 const helperStart=src.indexOf('function _guardarFotoProspecto(cedula, tipo, base64Data) {');
 if(helperStart<0) throw new Error('No encontré _guardarFotoProspecto.');
 const helperReturn="  return 'https://lh3.googleusercontent.com/d/' + file.getId();";
@@ -44,7 +43,7 @@ const insertAt=helperClose+(nl+'}').length;
 
 const helpers=withNl(`
 
-// CS21A144 · Documento de identidad CONAPE: PDF privado de una página.
+// CS21A144 · PDF adicional para CONAPE generado desde las dos imágenes originales.
 function _ins144DataBlob_(data, fallbackMime, name) {
   var text = String(data || '');
   var mime = String(fallbackMime || 'application/octet-stream');
@@ -67,17 +66,6 @@ function _ins144ReplaceNamedFile_(folder, name, blob) {
   while (existing.hasNext()) existing.next().setTrashed(true);
   blob.setName(name);
   return folder.createFile(blob);
-}
-
-function _ins144GuardarPdfIdentidad_(cedula, base64Data) {
-  var parsed = _ins144DataBlob_(base64Data, 'application/pdf', 'documento_identidad_solicitante.pdf');
-  if (parsed.mime !== 'application/pdf') throw new Error('documento_identidad_pdf_mime_invalido');
-  if (!parsed.bytes.length) throw new Error('documento_identidad_pdf_vacio');
-  if (parsed.bytes.length > 6 * 1024 * 1024) throw new Error('documento_identidad_pdf_muy_grande');
-  var folder = _ins144IdentityFolder_(cedula);
-  var file = _ins144ReplaceNamedFile_(folder, 'documento_identidad_solicitante.pdf', parsed.blob);
-  // PRIVADO POR DEFECTO: no usar ANYONE_WITH_LINK para el PDF combinado nuevo.
-  return file.getId();
 }
 
 function _ins144AppendIdentityImage_(body, data, name) {
@@ -109,7 +97,7 @@ function _ins144CrearPdfIdentidadDesdeFotos_(cedula, frenteData, dorsoData) {
     var pdfBlob = DriveApp.getFileById(tempId).getAs(MimeType.PDF);
     var folder = _ins144IdentityFolder_(cedula);
     var file = _ins144ReplaceNamedFile_(folder, 'documento_identidad_solicitante.pdf', pdfBlob);
-    // PRIVADO POR DEFECTO: no usar ANYONE_WITH_LINK para el PDF combinado nuevo.
+    // PRIVADO POR DEFECTO: el PDF adicional no hereda ANYONE_WITH_LINK.
     return file.getId();
   } finally {
     try { DriveApp.getFileById(tempId).setTrashed(true); } catch (_) {}
@@ -127,10 +115,10 @@ const newVars=withNl(`  var urlFotoCedFrente = '';
   var urlFotoCedDorso  = '';
   var urlFotoTitulo    = '';
   var documentoIdentidadPdfId = '';
-  var requiereDocumentoIdentidadConape = body.documento_identidad_conape === true || String(body.documento_identidad_conape || '').toUpperCase() === 'TRUE';
+  var generarPdfIdentidadConape = body.generar_pdf_identidad_conape === true || String(body.generar_pdf_identidad_conape || '').toUpperCase() === 'TRUE';
 
-  if (requiereDocumentoIdentidadConape && !body.documento_identidad_pdf && !(body.foto_ced_frente && body.foto_ced_dorso)) {
-    return { ok:false, error:'documento_identidad_requerido', mensaje:'Adjuntá un PDF con ambas caras o cargá frente y dorso del documento de identidad.' };
+  if (generarPdfIdentidadConape && !(body.foto_ced_frente && body.foto_ced_dorso)) {
+    return { ok:false, error:'documento_identidad_dos_caras_requeridas', mensaje:'Adjuntá el frente y el dorso del documento de identidad.' };
   }
 
   try {`);
@@ -146,30 +134,28 @@ const oldTail=withNl(`    if (body.foto_titulo) {
 const newTail=withNl(`    if (body.foto_titulo) {
       urlFotoTitulo = _guardarFotoProspecto(cedLimpia, 'titulo', body.foto_titulo);
     }
-    if (requiereDocumentoIdentidadConape) {
-      documentoIdentidadPdfId = body.documento_identidad_pdf
-        ? _ins144GuardarPdfIdentidad_(cedLimpia, body.documento_identidad_pdf)
-        : _ins144CrearPdfIdentidadDesdeFotos_(cedLimpia, body.foto_ced_frente, body.foto_ced_dorso);
+    if (generarPdfIdentidadConape) {
+      documentoIdentidadPdfId = _ins144CrearPdfIdentidadDesdeFotos_(cedLimpia, body.foto_ced_frente, body.foto_ced_dorso);
       if (!documentoIdentidadPdfId) throw new Error('documento_identidad_pdf_no_creado');
     }
   } catch (errFoto) {
     Logger.log('Error guardando documentos para ' + cedLimpia + ': ' + errFoto.message);
-    if (requiereDocumentoIdentidadConape) {
-      return { ok:false, error:'documento_identidad_no_guardado', mensaje:'No se pudo preparar el documento de identidad. Revisá los archivos e intentá nuevamente.' };
+    if (generarPdfIdentidadConape) {
+      return { ok:false, error:'documento_identidad_no_guardado', mensaje:'No se pudo preparar el PDF de identidad. Revisá las dos imágenes e intentá nuevamente.' };
     }
   }`);
 src=replaceOnce(src,oldTail,newTail,'guardar/generar PDF identidad');
 
-if((src.match(/function _ins144GuardarPdfIdentidad_/g)||[]).length!==1) throw new Error('Helper PDF no quedó único.');
 if((src.match(/function _ins144CrearPdfIdentidadDesdeFotos_/g)||[]).length!==1) throw new Error('Helper generación no quedó único.');
-if(!src.includes('PRIVADO POR DEFECTO: no usar ANYONE_WITH_LINK para el PDF combinado nuevo.')) throw new Error('Falta guard de privacidad documental.');
-if(!src.includes("error:'documento_identidad_requerido'")) throw new Error('Falta validación backend del documento.');
+if(src.includes('function _ins144GuardarPdfIdentidad_')) throw new Error('No debe existir ruta de PDF manual en este corte.');
+if(!src.includes('PRIVADO POR DEFECTO: el PDF adicional no hereda ANYONE_WITH_LINK.')) throw new Error('Falta guard de privacidad documental.');
+if(!src.includes("error:'documento_identidad_dos_caras_requeridas'")) throw new Error('Falta validación backend de ambas caras.');
 if(!src.includes("error:'documento_identidad_no_guardado'")) throw new Error('Falta error fail-closed del PDF.');
 
 fs.writeFileSync(target,src,'utf8');
 console.log('=== CS21A144 · PATCH APPS SCRIPT ===');
 console.log('Target: ' + path.basename(target));
-console.log('PASS PDF existente -> archivo privado');
-console.log('PASS frente+dorso -> un PDF privado de una página');
-console.log('PASS clientes legacy sin documento_identidad_conape no cambian de contrato');
-console.log('PASS fotos legacy preservadas para compatibilidad de Ventas');
+console.log('PASS JPG/imágenes frente+dorso se conservan con el flujo legacy');
+console.log('PASS frente+dorso -> PDF adicional privado de una página');
+console.log('PASS no existe ruta de PDF manual que sustituya las imágenes');
+console.log('PASS clientes legacy sin generar_pdf_identidad_conape no cambian de contrato');
