@@ -72,15 +72,15 @@ try{
   }
   const out=fs.readFileSync(target,'utf8');
   const checks=[
-    [out.includes('function _ins144GuardarPdfIdentidad_'), 'helper PDF listo'],
-    [out.includes('function _ins144CrearPdfIdentidadDesdeFotos_'), 'helper dos caras -> PDF'],
+    [out.includes('function _ins144CrearPdfIdentidadDesdeFotos_'), 'helper dos imágenes -> PDF'],
+    [!out.includes('function _ins144GuardarPdfIdentidad_'), 'sin ruta de PDF manual'],
     [out.includes("file = _ins144ReplaceNamedFile_(folder, 'documento_identidad_solicitante.pdf'"), 'nombre estable PDF'],
-    [out.includes('PRIVADO POR DEFECTO: no usar ANYONE_WITH_LINK para el PDF combinado nuevo.'), 'PDF nuevo privado'],
-    [out.includes("error:'documento_identidad_requerido'"), 'backend exige PDF o dos caras para contrato nuevo'],
-    [out.includes('body.documento_identidad_pdf\n        ? _ins144GuardarPdfIdentidad_'), 'PDF existente tiene prioridad'],
-    [out.includes(': _ins144CrearPdfIdentidadDesdeFotos_'), 'fallback genera desde fotos'],
-    [out.includes('if (requiereDocumentoIdentidadConape)'), 'contrato legacy preservado'],
-    [out.includes("file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);"), 'fotos legacy no se rompen en este corte'],
+    [out.includes('PRIVADO POR DEFECTO: el PDF adicional no hereda ANYONE_WITH_LINK.'), 'PDF adicional privado'],
+    [out.includes("error:'documento_identidad_dos_caras_requeridas'"), 'backend exige frente y dorso para contrato nuevo'],
+    [out.includes('_ins144CrearPdfIdentidadDesdeFotos_(cedLimpia, body.foto_ced_frente, body.foto_ced_dorso)'), 'genera PDF desde las dos imágenes'],
+    [out.includes('if (generarPdfIdentidadConape)'), 'contrato nuevo aislado'],
+    [out.includes("file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);"), 'JPG/imágenes legacy preservadas en este corte'],
+    [out.includes("var generarPdfIdentidadConape = body.generar_pdf_identidad_conape"), 'flag backend correcto'],
   ];
   let fail=false;
   for(const [condition,label] of checks){
