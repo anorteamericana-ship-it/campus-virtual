@@ -2,7 +2,7 @@
 // F98.4-Z6-IP3J · descripciones públicas de beca
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3J';
+const INS_VERSION = 'F98.4-Z6-IP4A';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
 
 function insUrl(){
@@ -390,11 +390,14 @@ function FilePhoto({label, value, onChange, hint}){
   const [busy,setBusy]=React.useState(false);
   const [name,setName]=React.useState('');
   const [err,setErr]=React.useState('');
+  const cameraRef=React.useRef(null);
+  const fileRef=React.useRef(null);
   async function handleFile(file){
     setErr(''); setName('');
-    if(!file){ onChange(''); return; }
-    if(!/^image\//.test(file.type || '')){ setErr('Subí una imagen JPG o PNG tomada con el celular.'); return; }
-    if(file.size > 7 * 1024 * 1024){ setErr('La imagen pesa demasiado. Tomá una foto más liviana.'); return; }
+    if(!file) return;
+    const mime = String(file.type || '').toLowerCase();
+    if(!/^image\//.test(mime)){ setErr('Subí una imagen JPG, PNG, GIF o WebP.'); return; }
+    if(file.size > 7 * 1024 * 1024){ setErr('La imagen supera 7 MB.'); return; }
     setBusy(true);
     try{
       const data = await resizeImage(file, 1400, .78);
@@ -402,13 +405,19 @@ function FilePhoto({label, value, onChange, hint}){
     }catch(e){ setErr(e.message || 'No se pudo procesar la imagen.'); }
     finally{ setBusy(false); }
   }
+  function clear(){ onChange(''); setName(''); setErr(''); }
   return <div className={`ins-upload ${value?'has-file':''}`}>
-    <label>
-      <input type="file" accept="image/*" capture="environment" onChange={e=>handleFile(e.target.files && e.target.files[0])} />
+    <div className="ins-upload-body">
       <span>{value ? 'Documento cargado' : label}</span>
-      <small>{busy?'Procesando imagen…':(name || hint || 'JPG/PNG desde el celular')}</small>
-    </label>
-    {value && <button type="button" onClick={()=>{onChange('');setName('');}}>Quitar</button>}
+      <small>{busy?'Procesando imagen…':(name || hint || 'JPG/PNG/GIF/WebP')}</small>
+      {!value && <div className="ins-upload-choices">
+        <button type="button" className="ins-upload-choice" onClick={()=>cameraRef.current?.click()} disabled={busy}>📷 Tomar foto</button>
+        <button type="button" className="ins-upload-choice" onClick={()=>fileRef.current?.click()} disabled={busy}>📁 Subir archivo</button>
+      </div>}
+    </div>
+    <input ref={cameraRef} className="ins-file-hidden" type="file" accept="image/*" capture="environment" onChange={e=>{handleFile(e.target.files && e.target.files[0]); e.target.value='';}} />
+    <input ref={fileRef} className="ins-file-hidden" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={e=>{handleFile(e.target.files && e.target.files[0]); e.target.value='';}} />
+    {value && <button type="button" className="ins-upload-remove" onClick={clear}>Quitar</button>}
     {err && <em>{err}</em>}
   </div>;
 }
@@ -561,13 +570,6 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
     <div className="ins-card-head"><span>Paso 2</span><h2>Elegí tu curso y tu horario</h2><p>Primero elegí el tipo de curso. Después te mostramos únicamente los horarios disponibles para esa opción.</p></div>
     <div className="ins-course-grid">
       {COURSE_TYPES.map(type=><CourseTypeCard key={type.key} type={type} selected={courseType===type.key} count={counts[type.key]} onSelect={chooseCourseType} />)}
-    </div>
-    <div className="ins-group-toolbar">
-      <div>
-        <strong>{courseType ? COURSE_TYPES.find(t=>t.key===courseType)?.title : 'Seleccioná una modalidad'}</strong>
-        <small>{courseType ? 'Ahora escogé uno de los horarios disponibles.' : 'Te recomendamos iniciar por aquí para encontrar el grupo correcto más rápido.'}</small>
-      </div>
-      <button type="button" className="ins-btn ghost compact" onClick={reloadGroups}>Actualizar horarios</button>
     </div>
     {loading && <div className="ins-skeleton-list"><span></span><span></span><span></span></div>}
     {error && <Alert type="error">{error}</Alert>}
@@ -818,13 +820,21 @@ function DocsStep({form,setForm,setStep}){
     setErr(''); setStep(5);
   }
   return <section className="ins-card ins-step-card">
-    <div className="ins-card-head"><span>Paso 5</span><h2>Documentación importante</h2><p>Para completar la solicitud, cargá los documentos requeridos. Esta pantalla no permite continuar si falta alguno.</p></div>
-    <div className="ins-upload-grid">
-      <FilePhoto label="Foto cédula frente" value={form.foto_ced_frente} onChange={v=>setForm({foto_ced_frente:v})} hint="Documento obligatorio" />
-      <FilePhoto label="Foto cédula dorso" value={form.foto_ced_dorso} onChange={v=>setForm({foto_ced_dorso:v})} hint="Documento obligatorio" />
-      <FilePhoto label="Foto título / último grado" value={form.foto_titulo} onChange={v=>setForm({foto_titulo:v})} hint="Documento obligatorio" />
+    <div className="ins-card-head"><span>Paso 5</span><h2>Documentación importante</h2><p>Podés tomar las fotos en el momento o elegir imágenes que ya tengas guardadas en el teléfono.</p></div>
+    <div className="ins-doc-panel">
+      <div className="ins-doc-panel-head"><span>Documento de identidad del solicitante</span><strong>{form.foto_ced_frente && form.foto_ced_dorso ? '✓ Listo' : 'Obligatorio'}</strong></div>
+      <p>Conservamos las imágenes originales del frente y dorso. Cuando estén las dos, el sistema generará además un único PDF de una página para CONAPE.</p>
+      <div className="ins-id-sides">
+        <FilePhoto label="Cédula · frente" value={form.foto_ced_frente} onChange={v=>setForm({foto_ced_frente:v})} hint="Tomá una foto o elegí un JPG/PNG guardado" />
+        <FilePhoto label="Cédula · dorso" value={form.foto_ced_dorso} onChange={v=>setForm({foto_ced_dorso:v})} hint="Tomá una foto o elegí un JPG/PNG guardado" />
+      </div>
     </div>
-    <Alert>Las tres cargas son obligatorias para enviar la solicitud correctamente.</Alert>
+    <div className="ins-doc-panel">
+      <div className="ins-doc-panel-head"><span>Título / último grado</span><strong>{form.foto_titulo ? '✓ Listo' : 'Obligatorio'}</strong></div>
+      <p>Podés tomar una foto o elegir una imagen guardada.</p>
+      <FilePhoto label="Título / último grado" value={form.foto_titulo} onChange={v=>setForm({foto_titulo:v})} hint="Tomá una foto o elegí una imagen" />
+    </div>
+    <Alert>Las fotos JPG/PNG siguen siendo los documentos originales. El PDF de identidad será un archivo adicional generado automáticamente con frente + dorso.</Alert>
     {err && <Alert type="error">{err}</Alert>}
     <div className="ins-actions"><button type="button" className="ins-btn ghost" onClick={()=>setStep(3)}>Atrás</button><button type="button" className="ins-btn primary" onClick={next}>Ver resumen</button></div>
   </section>;
@@ -1023,7 +1033,8 @@ function InscripcionApp(){
         conape_equipo_paquete: conapeEquipoLabel(form.conape_equipo),
         conape_sostenimiento_monto: Number(form.conape_sostenimiento || 0) || 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3J',
+        origen_web: 'INSCRIPCION_PUBLICA_IP4A',
+        generar_pdf_identidad_conape: true,
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);

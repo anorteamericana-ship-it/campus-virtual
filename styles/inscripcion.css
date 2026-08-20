@@ -1036,3 +1036,23 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
 .ins-beca-card:not(.mujer).selected .ins-beca-top b{
   color:#C68D14;
 }
+
+
+/* CS21A144 · selector cámara/archivo + PDF identidad generado */
+.ins-doc-panel{margin:14px 0 18px;padding:18px;border:1px solid var(--line);border-radius:24px;background:var(--surface-2)}
+.ins-doc-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.ins-doc-panel-head span{font-size:16px;font-weight:800;color:var(--an-navy-ink)}
+.ins-doc-panel-head strong{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--an-navy);background:var(--info-bg);padding:6px 9px;border-radius:999px}
+.ins-doc-panel>p{margin:0 0 14px;color:var(--ink-3);font-size:13px;line-height:1.55}
+.ins-id-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ins-upload{padding:18px;min-height:154px;gap:10px}
+.ins-upload-body{display:flex;flex:1;flex-direction:column;justify-content:center;align-items:center;gap:8px;text-align:center}
+.ins-upload-body:before{content:"📄";font-size:30px}
+.ins-upload-body>span{font-weight:800;color:var(--an-navy-ink)}
+.ins-upload-body>small{color:var(--ink-3);line-height:1.45}
+.ins-upload-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;margin-top:6px}
+.ins-upload .ins-upload-choice{border:1px solid var(--line-2);background:#fff;color:var(--an-navy-ink);border-radius:13px;padding:10px 9px;font-size:12px;font-weight:800}
+.ins-upload .ins-upload-choice:hover{border-color:rgba(0,47,108,.4);background:var(--info-bg)}
+.ins-upload .ins-upload-remove{border:0;border-radius:12px;background:rgba(0,0,0,.06);padding:9px;font-weight:800;color:var(--ink-2)}
+.ins-file-hidden{display:none!important}
+@media (max-width:760px){.ins-id-sides{grid-template-columns:1fr}.ins-upload-choices{grid-template-columns:1fr}.ins-doc-panel{padding:14px}.ins-doc-panel-head{align-items:flex-start}}
