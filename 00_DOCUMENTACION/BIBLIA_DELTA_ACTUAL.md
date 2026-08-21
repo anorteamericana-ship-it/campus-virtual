@@ -272,3 +272,25 @@ En este orden:
 7. Auditoría independiente CS21A148 como evidencia de apoyo, no como reemplazo del código real.
 
 Si existe contradicción entre recuerdos/chat y GitHub/working tree, manda GitHub + working tree verificado.
+
+
+---
+
+## 11. Cierre CS21A149 y QA integrado CS21A150
+
+**Corte: 2026-08-21 Costa Rica**
+
+- **CS21A149 cerrado:** scanner manual nativo sin OpenCV alcanzable en el flujo final; rotación manual, reinicio de esquinas, geometría convexa, guardias no finitas/denominador, lupa 3x, benchmark y QA matemática real.
+- Pruebas visuales CS21A149 aprobadas: cédula frente, dorso, título/certificado, 90 grados, 180 grados, cruces y geometría casi degenerada.
+- **CS21A150 integrado realmente en Paso 5** mediante `DocumentCapture` dentro de `src/inscripcion.jsx`.
+- Flujo del prospecto: Tomar foto/Subir archivo -> ajustar 4 esquinas -> revisar foto -> confirmar -> guardar solo imagen final.
+- La foto fuente permanece temporalmente en memoria del navegador y se descarta al confirmar. `form.foto_ced_frente`, `form.foto_ced_dorso` y `form.foto_titulo` contienen solo la imagen final confirmada.
+- La interfaz pública no muestra calidad experimental, resolución, tiempos, memoria, long tasks, OpenCV, homografía ni diagnóstico interno.
+- QA integrado aprobado por el usuario en desktop 1440x900 y mobile 390x844 usando backend simulado local; no hubo escritura en Apps Script, Drive ni PROD.
+- `localStorage` usa allowlist explícita. Contraseña, identificación, nombre, correo, teléfonos, dirección, datos de tutor y documentos quedan fuera del borrador persistente; la llave legacy IP3 se elimina.
+- Formatos del scanner integrado: JPG, PNG y WebP; límite unificado de 10 MB.
+- `generar_pdf_identidad_conape: true` se conserva para la etapa interna frente+dorso -> PDF.
+- **Estado CS21A150 frontend: QA local verde, todavía NO producción.** Falta validar compatibilidad definitiva del backend documental, privacidad del PDF y runtime desplegado antes de publicar.
+- Apps Script PROD permanece estable en **@417**. No merge, no deploy, no movimiento del deployment.
+- La falla de `Real QA Staging CS21A138` observada durante este corte es preexistente y ajena al scanner/document capture.
+- Continuación: guardar CS21A150 en la misma rama/PR #118 y luego validar backend PDF/privacidad en QA desechable antes de cualquier release.
