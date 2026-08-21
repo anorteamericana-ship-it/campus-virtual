@@ -22,10 +22,10 @@ const html=`<!doctype html>
 <div class="intro">
 <strong>Contrato CS21A147:</strong> el prospecto toma o selecciona una foto, ajusta las cuatro esquinas, revisa el recorte final y solo entonces pulsa <b>Subir esta foto</b>. La foto fuente se usa únicamente en memoria para editar y se descarta al confirmar. En producción se envía una sola imagen final por documento. El PDF de identidad se genera después, internamente, uniendo frente + dorso; el prospecto no necesita verlo ni generarlo.
 </div>
-<div id="engine" class="result warn">Preparando motor de recorte…</div>
+<div id="engine" class="result pass">Motor de recorte manual listo · sin carga pesada.</div>
 <div id="labs" class="grid"></div>
 </main>
-<script src="../src/document-scanner.js?v=CS21A147-1"></script>
+<script src="../src/document-scanner.js?v=CS21A148-1"></script>
 <script>
 const defs=[
   {id:'front',title:'1 · Cédula frente',kind:'identity'},
@@ -50,10 +50,8 @@ async function loadFile(def,file){
   out.innerHTML='<div class="result warn">Leyendo foto y buscando bordes…</div>';st.textContent='Ajustando';st.className='status';
   try{
     const source=await window.ANDocumentScanner.readFileDataUrl(file);
-    let suggestion={detected:false,points:null};
-    try{suggestion=await window.ANDocumentScanner.detectCorners(source,def.kind)}catch(_){}
-    states[def.id]={source,finalImage:'',points:suggestion.points||defaults(),kind:def.kind,confirmed:false};
-    renderEditor(def,suggestion.detected?'Esquinas sugeridas automáticamente. Revisalas antes de aplicar.':'Mové los 4 puntos hasta las esquinas reales del documento.');
+    states[def.id]={source,finalImage:'',points:defaults(),kind:def.kind,confirmed:false};
+    renderEditor(def,'Mové los 4 puntos hasta las esquinas reales del documento. El recorte manual funciona sin esperar OpenCV.');
   }catch(e){out.innerHTML='<div class="result fail">'+esc(e.message||e)+'</div>';st.textContent='Error';st.className='status bad'}
 }
 
@@ -81,7 +79,7 @@ async function applyCrop(def){
     document.getElementById('adjust_'+def.id).onclick=()=>renderEditor(def,'Ajustá de nuevo los puntos y conservá todos los bordes.');
     document.getElementById('retake_'+def.id).onclick=()=>document.getElementById('file_'+def.id).click();
     document.getElementById('confirm_'+def.id).onclick=()=>confirmFinal(def);
-  }catch(e){out.innerHTML='<div class="result fail"><strong>No se pudo recortar.</strong><br>'+esc(e.message||e)+'<br><span class="small">Recargá la página si el motor OpenCV aún se estaba iniciando.</span></div>';st.textContent='Error';st.className='status bad'}
+  }catch(e){out.innerHTML='<div class="result fail"><strong>No se pudo recortar.</strong><br>'+esc(e.message||e)+'<br><span class="small">El recorte manual no depende de OpenCV. Si falla, elegí nuevamente la foto.</span></div>';st.textContent='Error';st.className='status bad'}
 }
 
 function confirmFinal(def){
@@ -94,11 +92,6 @@ function confirmFinal(def){
   document.getElementById('replace_'+def.id).onclick=()=>{card.classList.remove('confirmed');document.getElementById('file_'+def.id).click()};
 }
 
-(async()=>{
-  const engine=document.getElementById('engine');
-  try{await window.ANDocumentScanner.ensureCv();engine.className='result pass';engine.textContent='Motor de recorte listo.'}
-  catch(e){engine.className='result fail';engine.textContent='No pudimos cargar el motor de recorte: '+(e.message||e)+'. Revisá la conexión y recargá.'}
-})();
 </script>
 </body></html>`;
 
