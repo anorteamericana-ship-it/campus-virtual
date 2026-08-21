@@ -11,16 +11,16 @@ const productFiles=[
   path.join(root,'inscripcion.html'),
   path.join(root,'src','document-scanner.js')
 ];
-const scripts=[
-  path.join(root,'scripts','run_document_scanner_cs21a145_windows_safe.mjs'),
-  path.join(root,'scripts','patch_document_scanner_manual_cs21a146.mjs'),
-  path.join(root,'scripts','qa_document_scanner_cs21a145.mjs'),
-  path.join(root,'scripts','qa_document_scanner_manual_cs21a146.mjs'),
-  path.join(root,'scripts','qa_apps_script_documentos_cs21a145.mjs'),
-  path.join(root,'scripts','write_document_scanner_lab_cs21a146.mjs')
-];
+const scripts={
+  apply145:path.join(root,'scripts','run_document_scanner_cs21a145_windows_safe.mjs'),
+  patch146:path.join(root,'scripts','patch_document_scanner_manual_cs21a146.mjs'),
+  qa145:path.join(root,'scripts','qa_document_scanner_cs21a145.mjs'),
+  qa146:path.join(root,'scripts','qa_document_scanner_manual_cs21a146.mjs'),
+  qaBackend:path.join(root,'scripts','qa_apps_script_documentos_cs21a145.mjs'),
+  lab:path.join(root,'scripts','write_document_scanner_lab_cs21a146.mjs')
+};
 
-for(const p of [...productFiles,...scripts]) if(!fs.existsSync(p)) throw new Error('Falta archivo requerido: '+p);
+for(const p of [...productFiles,...Object.values(scripts)]) if(!fs.existsSync(p)) throw new Error('Falta archivo requerido: '+p);
 
 const backups=new Map(productFiles.map(p=>[p,fs.readFileSync(p)]));
 function restore(){for(const [p,bytes] of backups) fs.writeFileSync(p,bytes)}
@@ -34,12 +34,20 @@ function run(script){
 try{
   console.log('=== CS21A146 · WINDOWS SAFE RUNNER ===');
   console.log('PASS backup byte a byte de frontend + scanner');
-  run(scripts[0]);
-  run(scripts[1]);
-  run(scripts[2]);
-  run(scripts[3]);
-  run(scripts[4]);
-  run(scripts[5]);
+
+  const jsxNow=fs.readFileSync(path.join(root,'src','inscripcion.jsx'),'utf8');
+  const already145=jsxNow.includes("const INS_VERSION = 'F98.4-Z6-IP4B';");
+  if(already145){
+    console.log('INFO CS21A145/IP4B ya estaba aplicado localmente; se reutiliza y se revalida.');
+  }else{
+    run(scripts.apply145);
+  }
+
+  run(scripts.patch146);
+  run(scripts.qa145);
+  run(scripts.qa146);
+  run(scripts.qaBackend);
+  run(scripts.lab);
 
   const diff=spawnSync('git',['diff','--check'],{cwd:root,encoding:'utf8',shell:false});
   if(diff.stdout) process.stdout.write(diff.stdout);
