@@ -14,6 +14,25 @@ const html=fs.readFileSync(files.html,'utf8');
 const css=fs.readFileSync(files.css,'utf8');
 const scanner=fs.readFileSync(files.scanner,'utf8');
 
+// CS21A145 QA: no buscar la palabra "OCR" de forma literal porque el propio
+// comentario de seguridad "No OCR" provocaba un falso FAIL. En cambio se
+// bloquean motores/APIs OCR concretos y cualquier salida de red desde scanner.
+const ocrSurface=(scanner+'\n'+html).toLowerCase();
+const forbiddenOcrPatterns=[
+  /tesseract(?:\.js)?/,
+  /ocrad(?:\.js)?/,
+  /ocr\.space/,
+  /vision\.googleapis\.com/,
+  /cloudvision/,
+  /google[\s_-]*vision/,
+  /mlkit/,
+  /text[\s_-]*recognizer/,
+  /recognize[\s_-]*text/,
+  /paddleocr/,
+  /easyocr/
+];
+const hasOcrEngine=forbiddenOcrPatterns.some(re=>re.test(ocrSurface));
+
 const checks=[
   [jsx.includes("const INS_VERSION = 'F98.4-Z6-IP4B';"),'frontend IP4B'],
   [jsx.includes('foto_ced_frente_original'),'frente original en estado'],
@@ -33,7 +52,7 @@ const checks=[
   [scanner.includes('cv.getPerspectiveTransform'),'corrección perspectiva local'],
   [scanner.includes('cv.findContours'),'detección de bordes local'],
   [scanner.includes('requiresRetake: score < 60'),'calidad baja fuerza repetición'],
-  [!scanner.toLowerCase().includes('ocr'),'scanner no incorpora OCR'],
+  [!hasOcrEngine,'scanner no incorpora motor/API OCR'],
   [!scanner.includes('fetch('),'scanner no envía documentos a red'],
   [!scanner.includes('XMLHttpRequest'),'scanner no usa XHR'],
 ];
