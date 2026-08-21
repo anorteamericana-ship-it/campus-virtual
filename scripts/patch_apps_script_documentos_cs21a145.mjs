@@ -20,6 +20,7 @@ if(candidates.length!==1) throw new Error(`Esperaba exactamente 1 archivo backen
 
 const target=candidates[0];
 let src=fs.readFileSync(target,'utf8');
+const anyoneBefore=(src.match(/DriveApp\.Access\.ANYONE_WITH_LINK/g)||[]).length;
 const nl=src.includes('\r\n')?'\r\n':'\n';
 const withNl=s=>s.replace(/\n/g,nl);
 
@@ -155,12 +156,16 @@ src=src.slice(0,insertAt)+helpers+src.slice(insertAt);
 // El helper legacy de documentos deja de publicar archivos nuevos.
 const publicSharing="  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);";
 const legacyEnd=insertAt;
-if(src.indexOf(publicSharing,helperStart)>=0 && src.indexOf(publicSharing,helperStart)<legacyEnd){
-  src=src.slice(0,helperStart)+src.slice(helperStart,legacyEnd).replace(
-    publicSharing,
-    "  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);"
-  )+src.slice(legacyEnd);
+const publicSharingPos=src.indexOf(publicSharing,helperStart);
+
+if(publicSharingPos<0 || publicSharingPos>=legacyEnd){
+  throw new Error('No encontre ANYONE_WITH_LINK esperado dentro de _guardarFotoProspecto.');
 }
+
+src=src.slice(0,helperStart)+src.slice(helperStart,legacyEnd).replace(
+  publicSharing,
+  "  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);"
+)+src.slice(legacyEnd);
 
 src=replaceOnce(
   src,
@@ -275,14 +280,51 @@ const guards=[
 for(const [label,token] of guards){
   if(!src.includes(token)) throw new Error('Falta guard ' + label);
 }
-if(src.includes('DriveApp.Access.ANYONE_WITH_LINK')) throw new Error('CS21A150 no permite ANYONE_WITH_LINK en el backend candidato.');
+const anyoneAfter=(src.match(/DriveApp\.Access\.ANYONE_WITH_LINK/g)||[]).length;
+
+if(anyoneAfter!==anyoneBefore-1){
+  throw new Error(
+    'El patch documental debe eliminar exactamente 1 ANYONE_WITH_LINK. Antes=' +
+    anyoneBefore + ' despues=' + anyoneAfter
+  );
+}
+
+const helperAfterStart=src.indexOf(
+  'function _guardarFotoProspecto(cedula, tipo, base64Data) {'
+);
+const helperAfterEnd=src.indexOf(nl+'function ',helperAfterStart+1);
+const helperAfterBlock=src.slice(
+  helperAfterStart,
+  helperAfterEnd>helperAfterStart ? helperAfterEnd : src.length
+);
+
+const createAfterStart=src.indexOf(
+  'function crearUsuarioEstudiante(body)'
+);
+const createAfterEnd=src.indexOf(nl+'function ',createAfterStart+1);
+const createAfterBlock=src.slice(
+  createAfterStart,
+  createAfterEnd>createAfterStart ? createAfterEnd : src.length
+);
+
+if(helperAfterBlock.includes('DriveApp.Access.ANYONE_WITH_LINK')){
+  throw new Error('_guardarFotoProspecto sigue publicando documentos.');
+}
+
+if(createAfterBlock.includes('DriveApp.Access.ANYONE_WITH_LINK')){
+  throw new Error('crearUsuarioEstudiante contiene publicacion documental.');
+}
+
+if(createAfterBlock.includes('_guardarFotoProspecto(')){
+  throw new Error('crearUsuarioEstudiante sigue llamando al helper legacy.');
+}
 
 fs.writeFileSync(target,src,'utf8');
-console.log('=== CS21A150 · PATCH APPS SCRIPT DOCUMENTOS PRIVADOS ===');
+console.log('=== CS21A152 ? PATCH APPS SCRIPT DOCUMENTOS PRIVADOS SCOPED ===');
 console.log('Target: ' + path.basename(target));
 console.log('PASS solo imagen final o PDF passthrough; no fuentes duplicadas');
 console.log('PASS frente/dorso/titulo finales privados');
 console.log('PASS frente+dorso -> documento_identidad_solicitante.pdf privado');
 console.log('PASS legacy FOTO_* queda vacio para nuevas altas; se persisten FILE_ID privados');
-console.log('PASS no ANYONE_WITH_LINK');
+console.log('PASS privacidad documental scoped; ANYONE ajenos preservados: ' + anyoneAfter);
 console.log('PASS baseline esperado @417; este script NO despliega produccion');

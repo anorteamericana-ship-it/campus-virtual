@@ -15,6 +15,11 @@ const fixture=`var PROSPECTOS_HEADERS = [
 function getOrCreateProspectos(){ return {}; }
 function _f89StudentSubfolder_(){ return {}; }
 function _prospectosFilaPorHeadersF984X_(){ return []; }
+function _qaLegacyPublicAsset_(file) {
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
+}
+
 function _guardarFotoProspecto(cedula, tipo, base64Data) {
   if (!base64Data) return '';
   var raw = String(base64Data);
@@ -84,11 +89,29 @@ try{
   const createBlock=createStart>=0?out.slice(createStart):'';
   const legacyCalls=(out.match(/_guardarFotoProspecto\s*\(/g)||[]).length;
 
+  const anyoneCount=(out.match(/DriveApp\.Access\.ANYONE_WITH_LINK/g)||[]).length;
+
+  const helperStart=out.indexOf(
+    'function _guardarFotoProspecto(cedula, tipo, base64Data) {'
+  );
+
+  const helperNext=out.indexOf('\nfunction ',helperStart+1);
+
+  const helperBlock=helperStart>=0
+    ? out.slice(
+        helperStart,
+        helperNext>helperStart ? helperNext : out.length
+      )
+    : '';
+
   const checks=[
     [out.includes('function _ins150CrearPdfIdentidadDesdeFotos_'),'helper final -> PDF'],
     [out.includes('function _ins150AssertPrivate_'),'guard privacidad runtime'],
     [out.includes('DriveApp.Access.PRIVATE'),'sharing privado explicito'],
-    [!out.includes('DriveApp.Access.ANYONE_WITH_LINK'),'sin ANYONE_WITH_LINK'],
+    [anyoneCount===1,'ANYONE_WITH_LINK ajeno preservado'],
+    [out.includes('function _qaLegacyPublicAsset_'),'ruta publica ajena preservada'],
+    [!helperBlock.includes('DriveApp.Access.ANYONE_WITH_LINK'),'helper documental sin publicacion'],
+    [!createBlock.includes('DriveApp.Access.ANYONE_WITH_LINK'),'crearUsuarioEstudiante sin publicacion documental'],
     [legacyCalls===1,'sin llamadas activas al helper legacy'],
     [!createBlock.includes('_guardarFotoProspecto(cedLimpia'),'crearUsuarioEstudiante no publica documentos'],
     [out.includes('documentos_fuente_no_admitidos'),'fuentes/originales rechazados'],
@@ -122,7 +145,7 @@ try{
   }
 
   if(fail) process.exit(1);
-  console.log('CS21A151 Apps Script synthetic privacy QA PASS');
+  console.log('CS21A152 Apps Script scoped privacy QA PASS');
 } finally {
   fs.rmSync(tmp,{recursive:true,force:true});
 }

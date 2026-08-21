@@ -310,3 +310,87 @@ Si existe contradicción entre recuerdos/chat y GitHub/working tree, manda GitHu
 - `Real QA Staging CS21A138` continúa con sus P1 preexistentes y ajenos a DocumentCapture/backend documental.
 
 - Continuación: probar payload fotográfico real y flujo end-to-end contra el backend QA desechable; después evaluar preparación de release en la misma rama/PR #118.
+
+
+---
+
+## 12. CS21A152 ? privacidad scoped + payload representativo
+
+**Corte: 2026-08-21 Costa Rica**
+
+> **Este apartado supersede cualquier referencia anterior de este mismo archivo que indique que todav?a falta probar un payload fotogr?fico grande/representativo.** A partir de CS21A152 ese punto est? cerrado. Lo que sigue pendiente es el transporte HTTP y recorrido end-to-end desde la inscripci?n p?blica.
+
+### Privacidad scoped contra baseline real @417
+
+- Se detect? una limitaci?n de cobertura en CS21A151: el guard del patcher prohib?a globalmente `ANYONE_WITH_LINK`, aunque el backend real @417 contiene publicaciones legacy ajenas al flujo documental.
+- Baseline @417 verificado: SHA-256 `76BD69570631BD98DC90F968A7478B063941EC4F7B10DB2548E26D479DAD46E0`.
+- El baseline contiene **13** ocurrencias de `DriveApp.Access.ANYONE_WITH_LINK`.
+- El patch CS21A152 elimina exactamente la publicaci?n perteneciente a `_guardarFotoProspecto`.
+- El candidato resultante conserva exactamente las otras **12** publicaciones legacy ajenas al flujo documental.
+- Las 12 rutas restantes coinciden exactamente con las existentes en el baseline, excluyendo `_guardarFotoProspecto`.
+- Esas 12 rutas se registran para auditor?a separada. No se modifican dentro de este corte para evitar mezclar superficies y romper compatibilidad.
+- QA sint?tica scoped: **PASS**. El fixture contiene deliberadamente una publicaci?n p?blica ajena al flujo y comprueba que permanezca intacta.
+- Patch contra el backend real @417: **PASS**.
+- Sin acumulaci?n CS21A144/CS21A145.
+- `_ins150CrearPdfIdentidadDesdeFotos_` queda una sola vez.
+- `crearUsuarioEstudiante` no llama a `_guardarFotoProspecto` para este flujo.
+- Frente, dorso, t?tulo y PDF documental permanecen privados.
+
+### Aislamiento de infraestructura QA
+
+- Se comprob? que `_f89StudentFolder_` termina resolviendo mediante `DOCUMENTOS_FOLDER_ID` del Campus real.
+- Por esa raz?n, el runtime representativo NO ejecut? `_ins150IdentityFolder_`, `_f89StudentSubfolder_` ni `_f89StudentFolder_`.
+- El laboratorio utiliz? exclusivamente `qaGetFolder_()`.
+- Storage isolation QA: **PASS**.
+- Proyecto QA desechable reutilizado: `QA_CS21A144_DOCUMENTOS_CONAPE_20260820_1814`.
+- Script ID QA: `1tlNgSBabYYToK7EA1CYDSCF4lQUUAiJtRUmBECrg0Rd3OUP1i0ckm5p-`.
+- Apps Script PROD permaneci? en **@417** y no se utiliz? como laboratorio.
+
+### Payload representativo
+
+Se probaron tres JPEG sint?ticos sin datos personales reales:
+
+- frente: **1,235,559 bytes**;
+- dorso: **1,208,087 bytes**;
+- t?tulo: **1,200,454 bytes**;
+- total binario: **3,644,100 bytes**;
+- total base64: **4,858,804 caracteres**.
+
+Resultado runtime:
+
+- `ok=true`;
+- carpeta QA: `PRIVATE`;
+- frente: `PRIVATE`, `image/jpeg`, **1,235,559 bytes**;
+- dorso: `PRIVATE`, `image/jpeg`, **1,208,087 bytes**;
+- t?tulo: `PRIVATE`, `image/jpeg`, **1,200,454 bytes**;
+- PDF: `PRIVATE`, `application/pdf`, **1,347,978 bytes**;
+- documento temporal: enviado correctamente a papelera.
+
+Tiempos medidos:
+
+- frente: **3,289 ms**;
+- dorso: **3,109 ms**;
+- t?tulo: **3,254 ms**;
+- generaci?n PDF: **6,445 ms**;
+- total interno: **18,909 ms**;
+- wrapper: **18,911 ms**.
+
+### Alcance de la evidencia
+
+CS21A152 demuestra procesamiento real de payload de tama?o representativo mediante los helpers reales de decode, Drive privado, DocumentApp y PDF dentro del entorno QA.
+
+Todav?a **NO** demuestra:
+
+- transporte HTTP real desde el formulario p?blico;
+- recorrido completo `inscripci?n p?blica -> backend QA -> Drive privado -> PDF`;
+- concurrencia;
+- memoria m?xima del runtime.
+
+### Estado de release
+
+- PR #118 permanece **DRAFT**.
+- No merge.
+- No deploy productivo.
+- No nueva versi?n productiva.
+- No movimiento del deployment PROD.
+- Pr?ximo bloqueador: **HTTP end-to-end en QA**.
