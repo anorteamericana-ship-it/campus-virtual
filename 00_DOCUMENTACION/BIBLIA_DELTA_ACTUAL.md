@@ -5,7 +5,8 @@
 **Rama de trabajo:** `feature/inscripcion-documentos-conape`  
 **PR:** #118 · DRAFT · abierto · no mergeado  
 **main vigente al corte:** `54f7c483bfef83d42911a4b25beb48769bf7d5dc`  
-**head remoto PR #118 al iniciar este corte:** `97b22afca25d35fda38fc289f52987c4162f54d4`
+**head remoto PR #118 antes de este checkpoint documental:** `97b22afca25d35fda38fc289f52987c4162f54d4`  
+**commit de este checkpoint documental:** `d9bb1288825e6ec23c37f96cdf37d06bf94ec4d8`
 
 > **ÚNICO HANDOFF CANÓNICO DE ESTE CORTE.** No crear copias nuevas de handoffs/checkpoints para este trabajo. Si el estado cambia, actualizar este mismo archivo y el PR #118. Los scripts/QA/skill siguen siendo artefactos técnicos del módulo, no handoffs paralelos.
 
