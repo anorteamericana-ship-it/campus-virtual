@@ -173,7 +173,7 @@ scanner=replaceBlock(
   scanner,
   '  async function normalizeWithCorners(sourceDataUrl,normalizedPoints,kind=\'identity\'){',
   '  async function normalizeImage(sourceDataUrl,kind=\'identity\'){',
-  nativeBlock+'  async function normalizeImage(sourceDataUrl,kind=\'identity\'){',
+  nativeBlock,
   'normalizeWithCorners nativo'
 );
 
