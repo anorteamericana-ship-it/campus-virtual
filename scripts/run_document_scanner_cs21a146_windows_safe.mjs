@@ -14,6 +14,7 @@ const productFiles=[
 const scripts={
   apply145:path.join(root,'scripts','run_document_scanner_cs21a145_windows_safe.mjs'),
   patch146:path.join(root,'scripts','patch_document_scanner_manual_cs21a146.mjs'),
+  fixWhitespace:path.join(root,'scripts','fix_document_scanner_whitespace_cs21a146.mjs'),
   qa145:path.join(root,'scripts','qa_document_scanner_cs21a145.mjs'),
   qa146:path.join(root,'scripts','qa_document_scanner_manual_cs21a146.mjs'),
   qaBackend:path.join(root,'scripts','qa_apps_script_documentos_cs21a145.mjs'),
@@ -44,6 +45,7 @@ try{
   }
 
   run(scripts.patch146);
+  run(scripts.fixWhitespace);
   run(scripts.qa145);
   run(scripts.qa146);
   run(scripts.qaBackend);
