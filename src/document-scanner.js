@@ -8,6 +8,7 @@
   const MAX_FILE_BYTES = 10 * 1024 * 1024;
   const MAX_OUTPUT_SIDE = 1800;
   const JPEG_QUALITY = 0.9;
+  const ID_ASPECT = 85.60 / 53.98; // ISO/IEC 7810 ID-1 ≈ 1.586
 
   function readFileDataUrl(file){
     return new Promise((resolve,reject)=>{
@@ -60,6 +61,147 @@
     };
   }
 
+  function quadArea(points){
+    const q = orderQuad(points);
+    const p = [q.tl,q.tr,q.br,q.bl];
+    let area = 0;
+    for(let i=0;i<4;i++){
+      const a=p[i], b=p[(i+1)%4];
+      area += a.x*b.y - b.x*a.y;
+    }
+    return Math.abs(area)/2;
+  }
+
+  function quadMetrics(points, cols, rows){
+    const q = orderQuad(points);
+    const width = Math.max(dist(q.tl,q.tr),dist(q.bl,q.br));
+    const height = Math.max(dist(q.tl,q.bl),dist(q.tr,q.br));
+    const longSide = Math.max(width,height);
+    const shortSide = Math.max(1,Math.min(width,height));
+    const aspect = longSide/shortSide;
+    const cx = (q.tl.x+q.tr.x+q.br.x+q.bl.x)/4;
+    const cy = (q.tl.y+q.tr.y+q.br.y+q.bl.y)/4;
+    const dx = Math.abs(cx-cols/2)/(cols/2);
+    const dy = Math.abs(cy-rows/2)/(rows/2);
+    const centerScore = Math.max(0,1-Math.sqrt(dx*dx+dy*dy)/1.2);
+    return {q,width,height,aspect,centerScore,area:quadArea(points)};
+  }
+
+  function scoreQuad(points, cols, rows, kind){
+    const m = quadMetrics(points,cols,rows);
+    const imageArea = cols*rows;
+    const areaRatio = m.area/imageArea;
+    if(areaRatio < 0.035 || areaRatio > 0.90) return -Infinity;
+    if(m.aspect < 1.08 || m.aspect > 2.7) return -Infinity;
+
+    const areaScore = Math.min(1,areaRatio/0.20);
+    let aspectScore = 0.65;
+    if(kind === 'identity'){
+      aspectScore = Math.max(0,1-Math.abs(m.aspect-ID_ASPECT)/0.85);
+      if(m.aspect < 1.25 || m.aspect > 2.15) aspectScore *= 0.25;
+    }else{
+      const commonPaper = 1.414;
+      aspectScore = Math.max(0.25,1-Math.abs(m.aspect-commonPaper)/1.2);
+    }
+    return areaScore*4 + aspectScore*3 + m.centerScore*1.5;
+  }
+
+  function pointsFromApprox(approx){
+    const pts=[];
+    const d=approx.data32S || [];
+    if(d.length >= 8){
+      for(let r=0;r<4;r++) pts.push({x:Number(d[r*2]),y:Number(d[r*2+1])});
+      return pts;
+    }
+    for(let r=0;r<4;r++) pts.push({x:approx.intAt(r,0),y:approx.intAt(r,1)});
+    return pts;
+  }
+
+  function bestQuadFromMask(cv, mask, src, kind, method){
+    const contours = new cv.MatVector();
+    const hierarchy = new cv.Mat();
+    let best=null;
+    let bestScore=-Infinity;
+    try{
+      cv.findContours(mask,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
+      const imageArea=src.cols*src.rows;
+      const epsilons=[0.012,0.018,0.025,0.035,0.05,0.07];
+      for(let i=0;i<contours.size();i++){
+        const contour=contours.get(i);
+        try{
+          const area=Math.abs(cv.contourArea(contour,false));
+          if(area < imageArea*0.03 || area > imageArea*0.93) continue;
+          const peri=cv.arcLength(contour,true);
+          for(const eps of epsilons){
+            const approx=new cv.Mat();
+            try{
+              cv.approxPolyDP(contour,approx,eps*peri,true);
+              if(approx.rows!==4 || !cv.isContourConvex(approx)) continue;
+              const pts=pointsFromApprox(approx);
+              const score=scoreQuad(pts,src.cols,src.rows,kind);
+              if(score>bestScore){
+                bestScore=score;
+                best={points:pts,score,method};
+              }
+            } finally { approx.delete(); }
+          }
+        } finally { contour.delete(); }
+      }
+      return best;
+    } finally {
+      contours.delete(); hierarchy.delete();
+    }
+  }
+
+  function detectDocumentQuad(cv, src, kind){
+    const gray=new cv.Mat();
+    const blur=new cv.Mat();
+    const edges=new cv.Mat();
+    const expanded=new cv.Mat();
+    const closed=new cv.Mat();
+    const binary=new cv.Mat();
+    const binaryInv=new cv.Mat();
+    const smallKernel=cv.Mat.ones(3,3,cv.CV_8U);
+    const closeKernel=cv.Mat.ones(9,9,cv.CV_8U);
+    let best=null;
+
+    function keep(candidate){
+      if(candidate && (!best || candidate.score>best.score)) best=candidate;
+    }
+
+    try{
+      cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY,0);
+      cv.GaussianBlur(gray,blur,new cv.Size(5,5),0,0,cv.BORDER_DEFAULT);
+
+      // Varias sensibilidades Canny: fotos reales pueden tener piel, estampados,
+      // sombras y bordes redondeados que fragmentan un único contorno.
+      const cannyPasses=[[25,85],[40,125],[55,165],[75,215],[95,245]];
+      for(const pair of cannyPasses){
+        cv.Canny(blur,edges,pair[0],pair[1],3,false);
+        cv.dilate(edges,expanded,smallKernel);
+        cv.morphologyEx(expanded,closed,cv.MORPH_CLOSE,closeKernel);
+        keep(bestQuadFromMask(cv,closed,src,kind,'canny_'+pair[0]+'_'+pair[1]));
+      }
+
+      // Segunda familia de pases: separa documentos claros contra fondos
+      // complejos. Otsu + cierre ayuda cuando la arista física no forma un
+      // contorno continuo (por ejemplo una cédula sostenida con la mano).
+      cv.threshold(blur,binary,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU);
+      cv.morphologyEx(binary,closed,cv.MORPH_CLOSE,closeKernel);
+      keep(bestQuadFromMask(cv,closed,src,kind,'otsu_light'));
+
+      cv.bitwise_not(binary,binaryInv);
+      cv.morphologyEx(binaryInv,closed,cv.MORPH_CLOSE,closeKernel);
+      keep(bestQuadFromMask(cv,closed,src,kind,'otsu_dark'));
+
+      if(best && best.score>=3.5) return best;
+      return null;
+    } finally {
+      gray.delete(); blur.delete(); edges.delete(); expanded.delete(); closed.delete();
+      binary.delete(); binaryInv.delete(); smallKernel.delete(); closeKernel.delete();
+    }
+  }
+
   function canvasToJpeg(canvas, quality=JPEG_QUALITY){
     return canvas.toDataURL('image/jpeg', quality);
   }
@@ -79,9 +221,10 @@
       width: canvas.width,
       height: canvas.height,
       detected: false,
+      detectionMethod:'none',
       score: 45,
       requiresRetake: true,
-      warnings: ['No pudimos detectar con seguridad los cuatro bordes. Tomá otra foto sobre un fondo contrastante.']
+      warnings: ['No pudimos detectar con seguridad los cuatro bordes. La vista de la derecha aún no está recortada; tomá otra foto sobre un fondo contrastante.']
     };
   }
 
@@ -108,44 +251,6 @@
       return {brightness, sharpness, score:Math.max(0,Math.min(100,Math.round(score))), warnings};
     } finally {
       gray.delete(); lap.delete(); mean.delete(); std.delete();
-    }
-  }
-
-  function detectLargestQuad(cv, src){
-    const gray = new cv.Mat();
-    const blur = new cv.Mat();
-    const edges = new cv.Mat();
-    const closed = new cv.Mat();
-    const contours = new cv.MatVector();
-    const hierarchy = new cv.Mat();
-    const kernel = cv.Mat.ones(5,5,cv.CV_8U);
-    let best = null;
-    let bestArea = 0;
-    try{
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-      cv.GaussianBlur(gray, blur, new cv.Size(5,5), 0, 0, cv.BORDER_DEFAULT);
-      cv.Canny(blur, edges, 55, 165, 3, false);
-      cv.morphologyEx(edges, closed, cv.MORPH_CLOSE, kernel);
-      cv.findContours(closed, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-      const imageArea = src.cols * src.rows;
-      for(let i=0;i<contours.size();i++){
-        const contour = contours.get(i);
-        const area = Math.abs(cv.contourArea(contour, false));
-        if(area < imageArea * 0.12 || area <= bestArea){ contour.delete(); continue; }
-        const peri = cv.arcLength(contour, true);
-        const approx = new cv.Mat();
-        cv.approxPolyDP(contour, approx, 0.02 * peri, true);
-        if(approx.rows === 4 && cv.isContourConvex(approx)){
-          const pts=[];
-          for(let r=0;r<4;r++) pts.push({x:approx.intAt(r,0), y:approx.intAt(r,1)});
-          best = pts;
-          bestArea = area;
-        }
-        approx.delete(); contour.delete();
-      }
-      return best;
-    } finally {
-      gray.delete(); blur.delete(); edges.delete(); closed.delete(); contours.delete(); hierarchy.delete(); kernel.delete();
     }
   }
 
@@ -204,25 +309,36 @@
     const ratio = Math.min(1, 1600 / Math.max(naturalW,naturalH));
     staging.width = Math.max(1,Math.round(naturalW*ratio));
     staging.height = Math.max(1,Math.round(naturalH*ratio));
-    staging.getContext('2d',{alpha:false}).drawImage(img,0,0,staging.width,staging.height);
+    const ctx=staging.getContext('2d',{alpha:false});
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,staging.width,staging.height);
+    ctx.drawImage(img,0,0,staging.width,staging.height);
 
     const src = cv.imread(staging);
     let warped = null;
     try{
-      const quad = detectLargestQuad(cv,src);
-      if(!quad) return fallbackNormalize(originalDataUrl);
-      warped = warpQuad(cv,src,quad,kind);
+      const detection = detectDocumentQuad(cv,src,kind);
+      if(!detection) return fallbackNormalize(originalDataUrl);
+      warped = warpQuad(cv,src,detection.points,kind);
       const quality = qualityFromMat(cv,warped);
       const rendered = matToJpeg(cv,warped);
       const sizeOk = rendered.width >= 640 && rendered.height >= 360;
-      const score = Math.max(0, quality.score - (sizeOk ? 0 : 25));
+      const ratioMeasured = Math.max(rendered.width,rendered.height)/Math.max(1,Math.min(rendered.width,rendered.height));
+      let geometryPenalty=0;
       const warnings = quality.warnings.slice();
+      if(kind==='identity' && (ratioMeasured<1.30 || ratioMeasured>2.05)){
+        geometryPenalty=20;
+        warnings.push('El recorte detectado no conserva una proporción típica de documento de identidad. Repetí la foto si ves contenido fuera del borde.');
+      }
+      const score = Math.max(0, quality.score - (sizeOk ? 0 : 25) - geometryPenalty);
       if(!sizeOk) warnings.push('La resolución útil del documento es baja.');
       return {
         normalized: rendered.dataUrl,
         width: rendered.width,
         height: rendered.height,
         detected: true,
+        detectionMethod:detection.method,
+        detectionScore:Math.round(detection.score*100)/100,
         score,
         requiresRetake: score < 60,
         warnings,
@@ -268,6 +384,8 @@
       width:normalized.width,
       height:normalized.height,
       detected:normalized.detected,
+      detectionMethod:normalized.detectionMethod || 'none',
+      detectionScore:normalized.detectionScore || 0,
       score:normalized.score,
       requiresRetake:normalized.requiresRetake,
       warnings:normalized.warnings || [],
@@ -277,7 +395,7 @@
   }
 
   global.ANDocumentScanner = Object.freeze({
-    version:'CS21A145-1',
+    version:'CS21A145-2',
     processFile,
     normalizeImage,
     readFileDataUrl
