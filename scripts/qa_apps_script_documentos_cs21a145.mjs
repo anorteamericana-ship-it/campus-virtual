@@ -3,8 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cs21a145-apps-'));
-const target=path.join(tmp,'Código.js');
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cs21a150-apps-'));
+const target=path.join(tmp,'Codigo.js');
 const patcher=path.resolve('scripts/patch_apps_script_documentos_cs21a145.mjs');
 
 const fixture=`var PROSPECTOS_HEADERS = [
@@ -74,37 +74,55 @@ fs.writeFileSync(target,fixture,'utf8');
 try{
   const run=spawnSync(process.execPath,[patcher,tmp],{encoding:'utf8'});
   if(run.status!==0){
-    console.error(run.stdout); console.error(run.stderr);
-    process.exit(run.status || 1);
+    console.error(run.stdout);
+    console.error(run.stderr);
+    process.exit(run.status||1);
   }
+
   const out=fs.readFileSync(target,'utf8');
+  const createStart=out.indexOf('function crearUsuarioEstudiante(body)');
+  const createBlock=createStart>=0?out.slice(createStart):'';
+  const legacyCalls=(out.match(/_guardarFotoProspecto\s*\(/g)||[]).length;
+
   const checks=[
-    [out.includes('function _ins145CrearPdfIdentidadDesdeFotos_'), 'helper normalizados -> PDF'],
-    [out.includes('documento_identidad_original'), 'PDF identidad original passthrough'],
-    [out.includes("_ins145SavePrivateOriginal_(cedLimpia, 'titulo_original', tituloPdfOriginal, 'pdf')"), 'PDF título original passthrough'],
-    [out.includes('cedula_frente_original'), 'original frente separado'],
-    [out.includes('cedula_dorso_original'), 'original dorso separado'],
-    [out.includes('foto_titulo_original'), 'original título separado'],
-    [out.includes('PRIVADO POR DEFECTO'), 'nuevos originales/derivados privados'],
-    [out.includes("'DOC_IDENTIDAD_FILE_ID','TITULO_FILE_ID','DOC_IDENTIDAD_MODO','TITULO_MODO'"), 'columnas prospectos nuevas'],
-    [out.includes('DOC_IDENTIDAD_FILE_ID: documentoIdentidadFileId'), 'file id identidad persistido'],
-    [out.includes('TITULO_FILE_ID: tituloFileId'), 'file id título persistido'],
-    [out.includes("DOC_IDENTIDAD_MODO: identidadModo"), 'modo identidad persistido'],
-    [out.includes("TITULO_MODO: tituloModo"), 'modo título persistido'],
-    [out.includes('_ins145CrearPdfIdentidadDesdeFotos_(cedLimpia, body.foto_ced_frente, body.foto_ced_dorso)'), 'generador usa copias normalizadas'],
-    [out.includes("file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);"), 'legacy normalizados conservan compatibilidad actual'],
-    [!out.includes('function _ins144CrearPdfIdentidadDesdeFotos_'), 'sin CS21A144 acumulado'],
+    [out.includes('function _ins150CrearPdfIdentidadDesdeFotos_'),'helper final -> PDF'],
+    [out.includes('function _ins150AssertPrivate_'),'guard privacidad runtime'],
+    [out.includes('DriveApp.Access.PRIVATE'),'sharing privado explicito'],
+    [!out.includes('DriveApp.Access.ANYONE_WITH_LINK'),'sin ANYONE_WITH_LINK'],
+    [legacyCalls===1,'sin llamadas activas al helper legacy'],
+    [!createBlock.includes('_guardarFotoProspecto(cedLimpia'),'crearUsuarioEstudiante no publica documentos'],
+    [out.includes('documentos_fuente_no_admitidos'),'fuentes/originales rechazados'],
+    [!out.includes('_ins145SavePrivateOriginal_'),'sin guardado de copias originales'],
+    [out.includes("_ins150SavePrivateFinalImage_(cedLimpia, 'cedula_frente.jpg'"),'frente final unico'],
+    [out.includes("_ins150SavePrivateFinalImage_(cedLimpia, 'cedula_dorso.jpg'"),'dorso final unico'],
+    [out.includes("_ins150SavePrivateFinalImage_(cedLimpia, 'titulo.jpg'"),'titulo final unico'],
+    [out.includes("'documento_identidad_solicitante.pdf'"),'PDF identidad canonico'],
+    [out.includes('CED_FRENTE_FILE_ID: cedFrenteFileId'),'ID frente persistido'],
+    [out.includes('CED_DORSO_FILE_ID: cedDorsoFileId'),'ID dorso persistido'],
+    [out.includes('DOC_IDENTIDAD_FILE_ID: documentoIdentidadFileId'),'ID PDF persistido'],
+    [out.includes('TITULO_FILE_ID: tituloFileId'),'ID titulo persistido'],
+    [out.includes("DOC_IDENTIDAD_MODO: identidadModo"),'modo identidad persistido'],
+    [out.includes("TITULO_MODO: tituloModo"),'modo titulo persistido'],
+    [out.includes("FOTO_CED_FRENTE: urlFotoCedFrente"),'columnas legacy preservadas pero vacias'],
+    [!out.includes('function _ins145CrearPdfIdentidadDesdeFotos_'),'sin CS21A145 acumulado'],
+    [!out.includes('function _ins144CrearPdfIdentidadDesdeFotos_'),'sin CS21A144 acumulado']
   ];
+
   let fail=false;
   for(const [condition,label] of checks){
     console.log((condition?'PASS ':'FAIL ')+label);
     if(!condition) fail=true;
   }
+
   const syntax=spawnSync(process.execPath,['--check',target],{encoding:'utf8'});
   console.log((syntax.status===0?'PASS ':'FAIL ')+'sintaxis JS fixture parcheado');
-  if(syntax.status!==0){ console.error(syntax.stderr); fail=true; }
+  if(syntax.status!==0){
+    console.error(syntax.stderr);
+    fail=true;
+  }
+
   if(fail) process.exit(1);
-  console.log('CS21A145 Apps Script synthetic QA PASS');
+  console.log('CS21A151 Apps Script synthetic privacy QA PASS');
 } finally {
   fs.rmSync(tmp,{recursive:true,force:true});
 }

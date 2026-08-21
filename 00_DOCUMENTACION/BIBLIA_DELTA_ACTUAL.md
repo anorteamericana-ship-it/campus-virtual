@@ -276,7 +276,7 @@ Si existe contradicción entre recuerdos/chat y GitHub/working tree, manda GitHu
 
 ---
 
-## 11. Cierre CS21A149 y QA integrado CS21A150
+## 11. Cierre CS21A149, QA integrado CS21A150 y backend privado CS21A151
 
 **Corte: 2026-08-21 Costa Rica**
 
@@ -290,7 +290,23 @@ Si existe contradicción entre recuerdos/chat y GitHub/working tree, manda GitHu
 - `localStorage` usa allowlist explícita. Contraseña, identificación, nombre, correo, teléfonos, dirección, datos de tutor y documentos quedan fuera del borrador persistente; la llave legacy IP3 se elimina.
 - Formatos del scanner integrado: JPG, PNG y WebP; límite unificado de 10 MB.
 - `generar_pdf_identidad_conape: true` se conserva para la etapa interna frente+dorso -> PDF.
-- **Estado CS21A150 frontend: QA local verde, todavía NO producción.** Falta validar compatibilidad definitiva del backend documental, privacidad del PDF y runtime desplegado antes de publicar.
+- **Estado CS21A150 frontend: QA local verde, todavía NO producción.** La compatibilidad documental y privacidad base del backend ya pasaron QA sintética y runtime real en el Apps Script desechable; siguen pendientes payload fotográfico real/grande y validación end-to-end antes de publicar.
 - Apps Script PROD permanece estable en **@417**. No merge, no deploy, no movimiento del deployment.
 - La falla de `Real QA Staging CS21A138` observada durante este corte es preexistente y ajena al scanner/document capture.
-- Continuación: guardar CS21A150 en la misma rama/PR #118 y luego validar backend PDF/privacidad en QA desechable antes de cualquier release.
+
+### CS21A151 · backend documental privado y runtime real
+
+- Se endurecieron los mismos scripts existentes `scripts/patch_apps_script_documentos_cs21a145.mjs` y `scripts/qa_apps_script_documentos_cs21a145.mjs`; no se creó otro patch, rama, ZIP ni handoff paralelo.
+- El candidato backend documental deja de usar la ruta legacy pública para estos documentos: no llama a `_guardarFotoProspecto`, no utiliza `ANYONE_WITH_LINK` y rechaza campos `*_original`.
+- El contrato backend queda alineado con el frontend: recibe solamente `foto_ced_frente`, `foto_ced_dorso` y `foto_titulo` finales confirmadas. La foto fuente no se conserva.
+- Frente, dorso y título finales se guardan privados. El backend genera internamente `documento_identidad_solicitante.pdf` a partir de frente+dorso y persiste IDs/modos internos; las columnas legacy se conservan por compatibilidad pero quedan vacías en este flujo.
+- QA sintética de privacidad: **PASS**. Verificó ausencia de publicación, ausencia de llamadas activas al helper legacy, rechazo de originales, nombres canónicos, IDs internos, modos documentales y sintaxis.
+- Apps Script QA desechable: `QA_CS21A144_DOCUMENTOS_CONAPE_20260820_1814`, Script ID `1tlNgSBabYYToK7EA1CYDSCF4lQUUAiJtRUmBECrg0Rd3OUP1i0ckm5p-`.
+- Runtime real `qaRuntimePrivacidadDocumentos`: **PASS 18/18**.
+- El runtime confirmó: carpeta privada; frente privado; dorso privado; título privado; PDF privado; MIME `application/pdf`; PDF con bytes; documento temporal enviado a papelera; frente/dorso/título/PDF recuperables por `fileId`; ningún archivo público; ningún `original`; y nombres canónicos `cedula_frente.jpg`, `cedula_dorso.jpg`, `titulo.jpg` y `documento_identidad_solicitante.pdf`.
+- Después del PASS se ejecutó `qaLimpiarEntorno` en el laboratorio desechable.
+- **Límite de la evidencia:** el runtime utilizó una imagen sintética mínima. Todavía falta probar fotografías reales de tamaño representativo, payload/base64 real, tiempo/memoria y el recorrido completo inscripción pública -> backend QA -> Drive/PDF.
+- Apps Script PROD permanece estable en **@417**. No hubo deploy, nueva versión productiva, movimiento del deployment ni merge.
+- `Real QA Staging CS21A138` continúa con sus P1 preexistentes y ajenos a DocumentCapture/backend documental.
+
+- Continuación: probar payload fotográfico real y flujo end-to-end contra el backend QA desechable; después evaluar preparación de release en la misma rama/PR #118.
