@@ -394,3 +394,100 @@ Todav?a **NO** demuestra:
 - No nueva versi?n productiva.
 - No movimiento del deployment PROD.
 - Pr?ximo bloqueador: **HTTP end-to-end en QA**.
+
+
+---
+
+## 13. CS21A153 ? HTTP end-to-end representativo en QA
+
+**Corte: 2026-08-21 16:41 Costa Rica**
+
+### Objetivo
+
+Cerrar el bloqueador HTTP dejado por CS21A152 sin utilizar Apps Script PROD ni permitir que el Web App QA pudiera caer accidentalmente en rutas productivas de inscripci?n, Sheets o Drive.
+
+### Firewall HTTP QA
+
+- Se reutiliz? el mismo proyecto desechable QA_CS21A144_DOCUMENTOS_CONAPE_20260820_1814.
+- Script ID QA: 1tlNgSBabYYToK7EA1CYDSCF4lQUUAiJtRUmBECrg0Rd3OUP1i0ckm5p-.
+- Se confirm? que el router productivo real s? puede terminar en crearUsuarioEstudiante y que crearInscripcionPublica reutiliza esa funci?n.
+- Por seguridad, solamente dentro de la copia DisposableQA se deshabilitaron los nombres p?blicos originales doPost/doGet y se instal? un gate HTTP exclusivo CS21A153.
+- El proyecto QA qued? con exactamente un doPost y un doGet p?blicos.
+- doGet expone ?nicamente health HTTP_GATE_ONLY.
+- doPost acepta ?nicamente fn=qa153DocumentosHttp.
+- Cualquier otra ruta queda bloqueada con QA153_ROUTE_DENIED.
+- El gate no contiene crearUsuarioEstudiante, crearInscripcionPublica, _guardarFotoProspecto, _ins150IdentityFolder_, _f89StudentSubfolder_, _f89StudentFolder_, DOCUMENTOS_FOLDER_ID, DOCUMENTOS_ESTUDIANTES_FOLDER_ID, CONAPE_DRIVE_FOLDER_ID ni fallthrough a doPost_F91_FINAL.
+- El procesador documental utiliza qa152ProcesarPayloadAislado_ y ?ste utiliza qaGetFolder_ como ra?z de almacenamiento.
+- CS21A153 HTTP FIREWALL STATIC ISOLATION PASS.
+- El contrato HTTP fue alineado con el frontend real: acepta text/plain;charset=utf-8 con cuerpo JSON, adem?s de application/json.
+- CS21A153 FRONTEND HTTP CONTRACT PASS.
+
+### Deployment Web App QA
+
+- Se cre?, con autorizaci?n expl?cita del usuario, el primer deployment Web App de este DisposableQA.
+- Deployment ID: AKfycbwl8N88rcNtCk9ujEF5UKnLxF7Iczn9vv-gde9fPRXdSNE9k6bppMPFW5O_c0orrsiE.
+- Versi?n QA: 1.
+- Este deployment es distinto del deployment PROD.
+- GET HTTP real: ok=true, qa=CS21A153, mode=HTTP_GATE_ONLY.
+- Intento HTTP real con fn=crearUsuarioEstudiante: bloqueado correctamente con QA153_ROUTE_DENIED.
+- El POST documental exige QA153_HTTP_TOKEN almacenado en Script Properties.
+- Un probe con token v?lido avanz? hasta la siguiente validaci?n y respondi? QA153_MISSING_FRENTE, demostrando autenticaci?n correcta antes del payload grande.
+
+### HTTP E2E representativo
+
+Payload sint?tico sin PII real:
+
+- cedula_frente.jpg: 1,235,559 bytes.
+- cedula_dorso.jpg: 1,208,087 bytes.
+- titulo.jpg: 1,200,454 bytes.
+- JSON enviado por HTTP: 4,859,034 caracteres, aproximadamente 4.634 MiB.
+
+Resultado:
+
+- CS21A153 HTTP E2E REPRESENTATIVE PAYLOAD PASS.
+- ok=true.
+- frente PRIVATE, image/jpeg, 1,235,559 bytes en Drive.
+- dorso PRIVATE, image/jpeg, 1,208,087 bytes en Drive.
+- titulo PRIVATE, image/jpeg, 1,200,454 bytes en Drive.
+- PDF PRIVATE, application/pdf, 1,347,978 bytes.
+- Todos los checks de privacidad, MIME y bytes quedaron true.
+- tempTrashed=true.
+- No se guardaron fuentes/originales permanentes.
+
+Tiempos internos:
+
+- frente: 3,470 ms.
+- dorso: 3,595 ms.
+- t?tulo: 3,444 ms.
+- PDF: 6,589 ms.
+- total interno: 20,184 ms.
+
+Tiempo del recorrido HTTP completo medido desde PowerShell:
+
+- 24,935 ms.
+
+Esto demuestra transporte real de un payload representativo por Internet hacia el Web App QA, procesamiento Apps Script, escritura privada en Drive QA y generaci?n PDF privada.
+
+### Limpieza y cierre de seguridad
+
+Despu?s del PASS:
+
+- qaLimpiarEntorno: completado.
+- qa153BorrarHttpToken: completado.
+- Un POST externo posterior confirm? QA153_TOKEN_NOT_CONFIGURED.
+- Por tanto, el deployment QA permanece temporalmente disponible para reutilizaci?n, pero el procesamiento documental queda inutilizable hasta generar deliberadamente un nuevo token.
+- El token usado durante la prueba fue rotado y posteriormente eliminado.
+- Apps Script PROD permanece en @417 y no fue utilizado como laboratorio.
+- No hubo deploy, versi?n ni movimiento del deployment PROD.
+- No merge.
+
+### Alcance pendiente
+
+CS21A153 todav?a NO demuestra:
+
+- interacci?n completa desde el formulario visual real del navegador hasta el gate QA;
+- concurrencia;
+- memoria m?xima del runtime.
+
+El siguiente corte debe validar el flujo de navegador real DocumentCapture -> fetch HTTP QA -> Drive QA privado -> PDF, manteniendo bloqueadas todas las rutas productivas.
+
