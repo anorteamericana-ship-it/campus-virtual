@@ -1,117 +1,93 @@
 # Skill · Document Scanner Academia
 
 ## Objetivo
-Normalizar fotografías de documentos desde el navegador antes de enviarlas al backend, conservando siempre el archivo original sin modificaciones.
+Obtener desde el primer contacto **una sola imagen documental final, limpia y utilizable**, antes de enviarla al backend.
 
 Aplica a:
 - documento de identidad · frente;
 - documento de identidad · dorso;
-- título / último grado.
+- título / certificado / último grado.
 
-Los PDF se aceptan como archivos originales y **no se recortan, reescriben ni convierten**. Quedan sujetos a revisión del asesor.
+## Regla canónica CS21A147
+`FOTO FUENTE EN MEMORIA -> AJUSTE DE 4 ESQUINAS -> VISTA FINAL -> CONFIRMACIÓN DEL PROSPECTO -> SUBIR SOLO LA IMAGEN FINAL`
 
-## Regla de evidencia
-`ORIGINAL INMUTABLE -> COPIA NORMALIZADA -> QA VISUAL -> USO OPERATIVO`
-
-Nunca reemplazar, sobrescribir ni borrar el original para producir una versión más presentable.
+La foto fuente sirve únicamente para editar dentro del navegador. No se sube ni se guarda como un segundo archivo cuando el prospecto confirma el resultado.
 
 ## Flujo para imágenes
-1. El estudiante elige `Tomar foto` o `Subir imagen`.
-2. Si el navegador permite cámara guiada, mostrar marco del documento antes de capturar.
-3. Guardar el archivo original en memoria sin recomprimirlo.
-4. Analizar localmente en el navegador; la imagen no debe enviarse a servicios externos de IA/OCR.
-5. Detectar los cuatro bordes del documento cuando sea posible.
-6. Corregir orientación y perspectiva de manera conservadora.
-7. Recortar solamente fondo externo evidente.
-8. Evaluar calidad mínima: documento completo, nitidez, iluminación y resolución.
-9. Mostrar una vista previa de la copia normalizada.
-10. El estudiante confirma o repite la toma.
-11. Enviar al backend tanto el original como la copia normalizada.
-
-## Flujo para PDF
-1. Aceptar un PDF cargado por el estudiante.
-2. Conservarlo byte a byte como archivo original.
-3. No ejecutar recorte, OCR, corrección de perspectiva, mejora generativa ni reconstrucción.
-4. Marcarlo como `PDF_ORIGINAL_REQUIERE_REVISION_ASESOR`.
-5. El asesor decide si es suficiente o si solicita nuevas fotografías/documentos.
+1. El prospecto elige `Tomar foto` o `Subir imagen`.
+2. El navegador conserva temporalmente la foto fuente solo en memoria.
+3. El scanner intenta sugerir automáticamente las cuatro esquinas.
+4. El prospecto entra al ajuste de cuatro esquinas y puede moverlas manualmente.
+5. El recorte aplica corrección de perspectiva conservadora y un pequeño margen de seguridad exterior para no rasurar ningún borde físico del documento.
+6. Se muestra **la fotografía final exacta que se enviará**.
+7. Se evalúan nitidez, iluminación y resolución.
+8. Si la calidad es insuficiente, no se permite confirmar; se pide otra foto o reajustar esquinas.
+9. Si el prospecto pulsa `Subir esta foto`, se descarta la foto fuente del estado de la aplicación y se envía únicamente la imagen final.
 
 ## Documento de identidad
-### Opción A · fotografías
-- frente original;
-- frente normalizado;
-- dorso original;
-- dorso normalizado;
-- cuando ambas copias normalizadas pasan QA, el generador produce `documento_identidad_solicitante.pdf` de una sola página;
-- el PDF generado usa **las copias normalizadas**, nunca modifica ni sustituye los originales.
+- resultado operativo: `cedula_frente.jpg` + `cedula_dorso.jpg`;
+- ambas imágenes ya llegan recortadas, enderezadas y confirmadas por el prospecto;
+- después, en backend/operación, se genera `documento_identidad_solicitante.pdf` uniendo frente + dorso;
+- el prospecto **no necesita generar, ver ni manipular ese PDF** durante la inscripción;
+- el PDF es un artefacto posterior para el asesor/CONAPE.
 
-### Opción B · PDF original
-- un PDF puede sustituir la carga de frente+dorso para la inscripción;
-- se conserva sin modificación;
-- no se genera un segundo PDF automáticamente;
-- queda a criterio del asesor aceptar el archivo o solicitar frente+dorso en imágenes.
+## Título / certificado
+- el mismo ajuste de cuatro esquinas se aplica a la imagen del título/certificado;
+- se conserva únicamente la imagen final confirmada;
+- no se generan copias `original` + `normalizada` innecesarias.
 
-## Título / último grado
-### Si es imagen
-- conservar `titulo_original`;
-- generar `titulo_normalizado` con recorte, orientación y perspectiva conservadores;
-- el original permanece disponible para auditoría/revisión.
+## PDF aportado por el prospecto
+Si más adelante se mantiene una ruta excepcional de PDF ya preparado:
+- no recortar ni convertir;
+- conservarlo tal cual;
+- revisión del asesor;
+- esta ruta es independiente del flujo fotográfico CS21A147 y no sustituye la necesidad de que la ruta de cámara produzca buenas imágenes.
 
-### Si es PDF
-- conservar `titulo_original.pdf` sin modificación;
-- no convertir a imagen;
-- revisión final a criterio del asesor.
-
-## Nombres recomendados
-- `cedula_frente_original.<ext>`
-- `cedula_frente_normalizada.jpg`
-- `cedula_dorso_original.<ext>`
-- `cedula_dorso_normalizada.jpg`
-- `documento_identidad_solicitante.pdf`
-- `documento_identidad_original.pdf` cuando el estudiante aporta PDF
-- `titulo_original.<ext>`
-- `titulo_normalizado.jpg`
-- `titulo_original.pdf` cuando el estudiante aporta PDF
-
-## Tratamientos permitidos sobre copias derivadas
-- rotación 90°/180°;
+## Tratamientos permitidos antes de confirmar
+- rotación/orientación;
 - corrección de perspectiva;
-- recorte del fondo externo;
+- recorte de fondo externo;
 - reescalado conservador;
-- mejora leve de iluminación/contraste para legibilidad;
-- nitidez leve sin reconstruir texto.
+- mejora leve de iluminación/contraste;
+- nitidez leve sin reconstruir texto;
+- margen exterior de seguridad para conservar íntegro el borde físico.
 
 ## Prohibiciones
 - no OCR para reconstruir texto;
 - no IA generativa para rehacer documentos;
-- no corregir nombres, números, firmas, fechas, códigos o fotografía;
-- no borrar marcas que pertenecen al documento;
+- no cambiar nombres, números, firmas, fechas, códigos o fotografía;
 - no inventar zonas faltantes;
-- no recortar bordes útiles del documento;
-- no enviar documentos personales a servicios externos para procesarlos;
-- no hacer público un original o una copia nueva por defecto.
+- no recortar ningún borde útil del documento;
+- no enviar la foto fuente a servicios externos;
+- no subir automáticamente la foto antes de que el prospecto revise el recorte final;
+- no crear dos archivos de imagen cuando una sola imagen final es suficiente.
 
 ## QA de calidad
-Para aprobar una imagen normalizada:
-- documento completo y cuatro esquinas visibles o inferidas con alta confianza;
-- texto principal no borroso;
-- sin reflejo que oculte datos esenciales;
+Para permitir `Subir esta foto`:
+- las cuatro esquinas están correctamente delimitadas;
+- el borde físico completo sigue visible;
+- no hay datos cortados;
 - orientación legible;
-- proporción preservada;
-- resolución suficiente;
-- recorte no elimina contenido útil.
+- nitidez suficiente;
+- iluminación suficiente;
+- resolución útil suficiente;
+- proporción razonable del documento.
 
-Si la calidad es insuficiente, el sistema debe solicitar repetir la foto en vez de inventar o reconstruir contenido.
+Si falla cualquiera de estos puntos, pedir reajuste o nueva toma.
 
-## UX recomendada
-Mostrar al estudiante:
-- guía antes de tomar la foto;
-- vista previa `Original -> Ajustado`;
-- estado de calidad;
-- `Usar esta foto` o `Tomar otra`;
-- para PDF: `PDF recibido · será revisado por un asesor`.
+## UX obligatoria
+La pantalla debe seguir este orden:
+1. `Tomar foto` / `Subir imagen`;
+2. `Ajustá las 4 esquinas`;
+3. `Ver recorte final`;
+4. vista grande de **Fotografía final que se enviará**;
+5. `Volver a ajustar esquinas` / `Tomar otra` / `Subir esta foto`.
 
-## Seguridad
-- procesamiento de imágenes preferiblemente local en el navegador;
-- originales y derivados privados por defecto;
-- producción no se modifica durante QA;
-- probar primero en un entorno desechable separado.
+No mostrar al prospecto conceptos internos como `copia normalizada`, `PDF CONAPE generado` o duplicados de archivo.
+
+## Seguridad y despliegue
+- procesamiento local en navegador;
+- solo la imagen final confirmada cruza al backend;
+- archivos backend privados por defecto;
+- PROD no se usa como laboratorio;
+- validar primero en QA desechable separado.
