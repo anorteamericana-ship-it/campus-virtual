@@ -2,8 +2,24 @@
 // F98.4-Z6-IP3J · descripciones públicas de beca
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP3J';
-const INS_STORAGE_KEY = 'anorteam_inscripcion_ip3_draft';
+const INS_VERSION = 'F98.4-Z6-IP5A';
+const INS_STORAGE_KEY = 'anorteam_inscripcion_ip5_draft';
+const INS_LEGACY_STORAGE_KEYS = Object.freeze(['anorteam_inscripcion_ip3_draft']);
+const INS_DRAFT_FIELDS = Object.freeze([
+  'programa','modalidad','financiamiento','beca','beca_propio',
+  'grupo_tentativo','conape_equipo','conape_toeic','conape_toeic_monto',
+  'toeic_monto','conape_sostenimiento','como_entero','asesor_ref',
+  'conocimientos_previos','aceptar_lista_espera'
+]);
+
+function pickDraftFields(value){
+  const source=value && typeof value==='object' ? value : {};
+  const out={};
+  INS_DRAFT_FIELDS.forEach(key=>{
+    if(Object.prototype.hasOwnProperty.call(source,key)) out[key]=source[key];
+  });
+  return out;
+}
 
 function insUrl(){
   const u = window.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
@@ -323,25 +339,42 @@ function normalizeGroup(g){
 }
 
 function useDraft(initial){
-  const [form,setFormRaw] = React.useState(()=>{
+  const [form,setFormRaw]=React.useState(()=>{
     try{
-      const saved = JSON.parse(localStorage.getItem(INS_STORAGE_KEY) || '{}');
-      return {...initial, ...saved, foto_ced_frente:'', foto_ced_dorso:'', foto_titulo:''};
-    }catch(_){ return initial; }
+      INS_LEGACY_STORAGE_KEYS.forEach(key=>{
+        try{ localStorage.removeItem(key); }catch(_){}
+      });
+      const saved=JSON.parse(localStorage.getItem(INS_STORAGE_KEY)||'{}');
+      return {
+        ...initial,
+        ...pickDraftFields(saved),
+        clave:'',
+        foto_ced_frente:'',
+        foto_ced_dorso:'',
+        foto_titulo:''
+      };
+    }catch(_){
+      return {...initial};
+    }
   });
-  const setForm = React.useCallback((patch)=>{
+
+  const setForm=React.useCallback((patch)=>{
     setFormRaw(prev=>{
-      const next = typeof patch === 'function' ? patch(prev) : {...prev, ...patch};
+      const next=typeof patch==='function' ? patch(prev) : {...prev,...patch};
       try{
-        const safe = {...next};
-        delete safe.foto_ced_frente; delete safe.foto_ced_dorso; delete safe.foto_titulo;
-        localStorage.setItem(INS_STORAGE_KEY, JSON.stringify(safe));
-      }catch(_){ }
+        localStorage.setItem(
+          INS_STORAGE_KEY,
+          JSON.stringify(pickDraftFields(next))
+        );
+      }catch(_){}
       return next;
     });
   },[]);
+
   return [form,setForm];
 }
+
+
 
 const INITIAL_FORM = {
   tipo_id:'CEDULA_NACIONAL', cedula:'', nombre:'', clave:'', correo:'', whatsapp:'', telefono:'',
@@ -386,54 +419,411 @@ function TextInput({value,onChange, ...props}){ return <input {...props} value={
 function SelectInput({value,onChange,children,...props}){ return <select {...props} value={value || ''} onChange={e=>onChange(e.target.value)}>{children}</select>; }
 function TextArea({value,onChange,...props}){ return <textarea {...props} value={value || ''} onChange={e=>onChange(e.target.value)} />; }
 
-function FilePhoto({label, value, onChange, hint}){
+function captureDefaultPoints(kind){
+  return kind==='title'
+    ? [{x:.14,y:.08},{x:.86,y:.08},{x:.86,y:.92},{x:.14,y:.92}]
+    : [{x:.10,y:.18},{x:.90,y:.18},{x:.90,y:.82},{x:.10,y:.82}];
+}
+
+function captureErrorMessage(code){
+  const map={
+    scanner_puntos_cruzados:'Mantené cada punto en su esquina sin cruzar las líneas.',
+    scanner_cuadrilatero_no_convexo:'Revisá la posición de las cuatro esquinas.',
+    scanner_geometria_degenerada:'Separá un poco más las esquinas.',
+    scanner_puntos_duplicados:'Dos esquinas están demasiado juntas.',
+    scanner_esquina_fuera_rango:'Mantené las esquinas dentro de la foto.',
+    scanner_coordenada_no_finita:'Reiniciá las esquinas e intentá nuevamente.',
+    scanner_geometria_invalida:'Reiniciá las esquinas e intentá nuevamente.'
+  };
+  return map[String(code||'')] ||
+    'No pudimos preparar esta foto. Revisá las esquinas e intentá nuevamente.';
+}
+
+function DocumentCapture({label,value,onChange,kind='identity'}){
+  const [mode,setMode]=React.useState(value?'confirmed':'empty');
+  const [source,setSource]=React.useState('');
+  const [points,setPointsState]=React.useState(()=>captureDefaultPoints(kind));
+  const [preview,setPreview]=React.useState(null);
   const [busy,setBusy]=React.useState(false);
-  const [name,setName]=React.useState('');
   const [err,setErr]=React.useState('');
-  async function handleFile(file){
-    setErr(''); setName('');
-    if(!file){ onChange(''); return; }
-    if(!/^image\//.test(file.type || '')){ setErr('Subí una imagen JPG o PNG tomada con el celular.'); return; }
-    if(file.size > 7 * 1024 * 1024){ setErr('La imagen pesa demasiado. Tomá una foto más liviana.'); return; }
-    setBusy(true);
-    try{
-      const data = await resizeImage(file, 1400, .78);
-      onChange(data); setName(file.name || 'foto lista');
-    }catch(e){ setErr(e.message || 'No se pudo procesar la imagen.'); }
-    finally{ setBusy(false); }
+  const [magnifier,setMagnifier]=React.useState(null);
+
+  const cameraRef=React.useRef(null);
+  const fileRef=React.useRef(null);
+  const stageRef=React.useRef(null);
+  const draggingRef=React.useRef(-1);
+  const pointsRef=React.useRef(points);
+
+  function setPoints(next){
+    pointsRef.current=next;
+    setPointsState(next);
   }
-  return <div className={`ins-upload ${value?'has-file':''}`}>
-    <label>
-      <input type="file" accept="image/*" capture="environment" onChange={e=>handleFile(e.target.files && e.target.files[0])} />
-      <span>{value ? 'Documento cargado' : label}</span>
-      <small>{busy?'Procesando imagen…':(name || hint || 'JPG/PNG desde el celular')}</small>
-    </label>
-    {value && <button type="button" onClick={()=>{onChange('');setName('');}}>Quitar</button>}
-    {err && <em>{err}</em>}
+
+  function scanner(){
+    if(!window.ANDocumentScanner){
+      throw new Error('El editor de documentos no está disponible. Recargá la página.');
+    }
+    return window.ANDocumentScanner;
+  }
+
+  function reset(){
+    setPoints(captureDefaultPoints(kind));
+    setMagnifier(null);
+    setErr('');
+  }
+
+  async function handleFile(file){
+    if(!file) return;
+    setBusy(true);
+    setErr('');
+    try{
+      const data=await scanner().readFileDataUrl(file);
+      onChange('');
+      setSource(data);
+      setPreview(null);
+      setPoints(captureDefaultPoints(kind));
+      setMagnifier(null);
+      setMode('editor');
+    }catch(e){
+      setErr(String(e&&e.message||'No se pudo abrir la foto.'));
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  function pointerPosition(e){
+    const stage=stageRef.current;
+    if(!stage) return null;
+    const r=stage.getBoundingClientRect();
+    return {
+      x:Math.max(0,Math.min(1,(e.clientX-r.left)/Math.max(1,r.width))),
+      y:Math.max(0,Math.min(1,(e.clientY-r.top)/Math.max(1,r.height)))
+    };
+  }
+
+  function showMagnifier(point){
+    const stage=stageRef.current;
+    if(!stage || !source) return;
+    const r=stage.getBoundingClientRect();
+    const zoom=3;
+    const size=112;
+    setMagnifier({
+      backgroundImage:'url("' + source.replace(/"/g,'%22') + '")',
+      backgroundSize:(r.width*zoom)+'px '+(r.height*zoom)+'px',
+      backgroundPosition:
+        (size/2-point.x*r.width*zoom)+'px '+
+        (size/2-point.y*r.height*zoom)+'px'
+    });
+  }
+
+  function tryMove(index,next){
+    const current=pointsRef.current;
+    const candidate=current.map((p,i)=>i===index?next:p);
+    const result=scanner().validateQuad(candidate,kind);
+
+    if(!result.valid){
+      setErr(captureErrorMessage(result.code));
+      return false;
+    }
+
+    setErr('');
+    setPoints(candidate);
+    showMagnifier(next);
+    return true;
+  }
+
+  function pointerDown(index,e){
+    e.preventDefault();
+    draggingRef.current=index;
+    showMagnifier(pointsRef.current[index]);
+    try{ stageRef.current.setPointerCapture(e.pointerId); }catch(_){}
+  }
+
+  function pointerMove(e){
+    if(draggingRef.current<0) return;
+    const next=pointerPosition(e);
+    if(next) tryMove(draggingRef.current,next);
+  }
+
+  function pointerEnd(){
+    draggingRef.current=-1;
+    setMagnifier(null);
+  }
+
+  function keyboardMove(index,e){
+    const dirs={
+      ArrowLeft:[-1,0],
+      ArrowRight:[1,0],
+      ArrowUp:[0,-1],
+      ArrowDown:[0,1]
+    };
+    const d=dirs[e.key];
+    if(!d) return;
+
+    e.preventDefault();
+    const step=e.shiftKey?.02:.005;
+    const p=pointsRef.current[index];
+
+    tryMove(index,{
+      x:Math.max(0,Math.min(1,p.x+d[0]*step)),
+      y:Math.max(0,Math.min(1,p.y+d[1]*step))
+    });
+  }
+
+  async function rotate(){
+    setBusy(true);
+    setErr('');
+    try{
+      const r=await scanner().rotateSource90(source);
+      setSource(r.dataUrl);
+      setPreview(null);
+      setPoints(captureDefaultPoints(kind));
+      setMagnifier(null);
+    }catch(e){
+      setErr(captureErrorMessage(e&&e.message));
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  async function makePreview(){
+    const geometry=scanner().validateQuad(pointsRef.current,kind);
+    if(!geometry.valid){
+      setErr(captureErrorMessage(geometry.code));
+      return;
+    }
+
+    setBusy(true);
+    setErr('');
+
+    try{
+      const r=await scanner().normalizeWithCorners(
+        source,
+        pointsRef.current,
+        kind
+      );
+
+      setPreview(r);
+      setMode('preview');
+
+      if(r.requiresRetake){
+        setErr('La foto quedó demasiado pequeña. Tomá otra más cerca del documento.');
+      }
+    }catch(e){
+      setErr(captureErrorMessage(e&&e.message));
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  function confirm(){
+    if(!preview || !preview.finalImage || preview.requiresRetake) return;
+
+    onChange(preview.finalImage);
+
+    setSource('');
+    setPreview(null);
+    setPoints(captureDefaultPoints(kind));
+    setMagnifier(null);
+    setErr('');
+    setMode('confirmed');
+  }
+
+  function replace(){
+    onChange('');
+    setSource('');
+    setPreview(null);
+    setPoints(captureDefaultPoints(kind));
+    setMagnifier(null);
+    setErr('');
+    setMode('empty');
+  }
+
+  let geometry={valid:true,borderRisk:false};
+  if(mode==='editor' && source){
+    try{
+      geometry=scanner().validateQuad(points,kind);
+    }catch(_){
+      geometry={valid:false,borderRisk:false};
+    }
+  }
+
+  return <div className={'ins-capture ins-capture-'+mode}>
+
+    {mode==='empty' && <div className="ins-capture-empty-body">
+      <span className="ins-capture-icon">??</span>
+      <strong>{label}</strong>
+      <small>{busy?'Preparando foto?':'JPG, PNG o WebP · máximo 10 MB'}</small>
+
+      <div className="ins-upload-choices">
+        <button
+          type="button"
+          className="ins-upload-choice"
+          onClick={()=>cameraRef.current?.click()}
+          disabled={busy}
+        >?? Tomar foto</button>
+
+        <button
+          type="button"
+          className="ins-upload-choice"
+          onClick={()=>fileRef.current?.click()}
+          disabled={busy}
+        >?? Subir archivo</button>
+      </div>
+    </div>}
+
+    {mode==='editor' && <div>
+      <div className="ins-capture-title">
+        <div>
+          <strong>Ajustá el documento</strong>
+          <small>{label}</small>
+        </div>
+        <span>4 esquinas</span>
+      </div>
+
+      <p className="ins-capture-help">
+        Alineá los puntos con las cuatro esquinas.
+      </p>
+
+      {err &&
+        <div className="ins-capture-message error" role="alert">{err}</div>
+      }
+
+      {!err && geometry.borderRisk &&
+        <div className="ins-capture-message warn">
+          Revisá que los cuatro bordes del documento se vean completos.
+        </div>
+      }
+
+      <div
+        ref={stageRef}
+        className="ins-capture-stage"
+        onPointerMove={pointerMove}
+        onPointerUp={pointerEnd}
+        onPointerCancel={pointerEnd}
+      >
+        <img src={source} alt={label}/>
+
+        <svg
+          className="ins-capture-poly"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polygon
+            points={points.map(p=>(p.x*100)+','+(p.y*100)).join(' ')}
+          />
+        </svg>
+
+        {points.map((p,i)=>
+          <button
+            type="button"
+            key={i}
+            className="ins-capture-handle"
+            style={{left:(p.x*100)+'%',top:(p.y*100)+'%'}}
+            aria-label={'Esquina '+(i+1)+' de 4'}
+            onPointerDown={e=>pointerDown(i,e)}
+            onKeyDown={e=>keyboardMove(i,e)}
+          >{i+1}</button>
+        )}
+
+        {magnifier &&
+          <div
+            className="ins-capture-magnifier"
+            style={magnifier}
+            aria-hidden="true"
+          />
+        }
+      </div>
+
+      <div className="ins-capture-actions">
+        <button type="button" className="ins-btn ghost compact" onClick={rotate} disabled={busy}>? Rotar</button>
+        <button type="button" className="ins-btn ghost compact" onClick={reset} disabled={busy}>Reiniciar</button>
+        <button type="button" className="ins-btn ghost compact" onClick={()=>fileRef.current?.click()} disabled={busy}>Tomar otra</button>
+        <button type="button" className="ins-btn primary compact" onClick={makePreview} disabled={busy || !geometry.valid}>{busy?'Preparando…':'Ver foto'}</button>
+      </div>
+    </div>}
+
+    {mode==='preview' && preview && <div>
+      <div className="ins-capture-title">
+        <div>
+          <strong>Revisá tu foto</strong>
+          <small>{label}</small>
+        </div>
+        <span>Vista final</span>
+      </div>
+
+      <div className="ins-capture-preview">
+        <img src={preview.finalImage} alt={'Vista final de '+label}/>
+      </div>
+
+      <p className="ins-capture-help">
+        Verificá que el documento se vea completo y que el texto sea legible.
+      </p>
+
+      {preview.borderRisk && !err &&
+        <div className="ins-capture-message warn">
+          Revisá especialmente los bordes antes de continuar.
+        </div>
+      }
+
+      {err &&
+        <div className="ins-capture-message error" role="alert">{err}</div>
+      }
+
+      <div className="ins-capture-actions">
+        <button type="button" className="ins-btn ghost compact" onClick={()=>{setErr('');setMode('editor');}}>Volver a ajustar</button>
+        <button type="button" className="ins-btn ghost compact" onClick={()=>fileRef.current?.click()}>Tomar otra</button>
+        <button type="button" className="ins-btn primary compact" onClick={confirm} disabled={preview.requiresRetake}>Usar esta foto</button>
+      </div>
+    </div>}
+
+    {mode==='confirmed' && value && <div>
+      <div className="ins-capture-ready-head">
+        <div>
+          <strong>✓ Documento listo</strong>
+          <small>{label}</small>
+        </div>
+        <button type="button" onClick={replace}>Reemplazar</button>
+      </div>
+
+      <img
+        className="ins-capture-thumb"
+        src={value}
+        alt={'Documento confirmado: '+label}
+      />
+    </div>}
+
+    <input
+      ref={cameraRef}
+      className="ins-file-hidden"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      capture="environment"
+      onChange={e=>{
+        handleFile(e.target.files&&e.target.files[0]);
+        e.target.value='';
+      }}
+    />
+
+    <input
+      ref={fileRef}
+      className="ins-file-hidden"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      onChange={e=>{
+        handleFile(e.target.files&&e.target.files[0]);
+        e.target.value='';
+      }}
+    />
+
+    {mode==='empty' && err &&
+      <div className="ins-capture-message error" role="alert">{err}</div>
+    }
   </div>;
 }
 
-function resizeImage(file, maxSide=1400, quality=.78){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onerror = ()=>reject(new Error('No se pudo leer la imagen.'));
-    reader.onload = ()=>{
-      const img = new Image();
-      img.onerror = ()=>reject(new Error('La imagen no se pudo abrir.'));
-      img.onload = ()=>{
-        const ratio = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(img.width * ratio));
-        canvas.height = Math.max(1, Math.round(img.height * ratio));
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img,0,0,canvas.width,canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
+
 
 function CedulaStep({form,setForm,cedulaStatus,setCedulaStatus,setStep,setPadronName}){
   const [busy,setBusy]=React.useState(false);
@@ -561,13 +951,6 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
     <div className="ins-card-head"><span>Paso 2</span><h2>Elegí tu curso y tu horario</h2><p>Primero elegí el tipo de curso. Después te mostramos únicamente los horarios disponibles para esa opción.</p></div>
     <div className="ins-course-grid">
       {COURSE_TYPES.map(type=><CourseTypeCard key={type.key} type={type} selected={courseType===type.key} count={counts[type.key]} onSelect={chooseCourseType} />)}
-    </div>
-    <div className="ins-group-toolbar">
-      <div>
-        <strong>{courseType ? COURSE_TYPES.find(t=>t.key===courseType)?.title : 'Seleccioná una modalidad'}</strong>
-        <small>{courseType ? 'Ahora escogé uno de los horarios disponibles.' : 'Te recomendamos iniciar por aquí para encontrar el grupo correcto más rápido.'}</small>
-      </div>
-      <button type="button" className="ins-btn ghost compact" onClick={reloadGroups}>Actualizar horarios</button>
     </div>
     {loading && <div className="ins-skeleton-list"><span></span><span></span><span></span></div>}
     {error && <Alert type="error">{error}</Alert>}
@@ -809,26 +1192,85 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
 
 function DocsStep({form,setForm,setStep}){
   const [err,setErr]=React.useState('');
+
   function next(){
     const missing=[];
-    if(!form.foto_ced_frente) missing.push('foto de cédula frente');
-    if(!form.foto_ced_dorso) missing.push('foto de cédula dorso');
-    if(!form.foto_titulo) missing.push('foto de título o último grado');
-    if(missing.length){ setErr('No podés continuar sin cargar: ' + missing.join(', ') + '.'); return; }
-    setErr(''); setStep(5);
+    if(!form.foto_ced_frente) missing.push('cédula frente');
+    if(!form.foto_ced_dorso) missing.push('cédula dorso');
+    if(!form.foto_titulo) missing.push('título o último grado');
+
+    if(missing.length){
+      setErr('Falta completar: '+missing.join(', ')+'.');
+      return;
+    }
+
+    setErr('');
+    setStep(5);
   }
+
   return <section className="ins-card ins-step-card">
-    <div className="ins-card-head"><span>Paso 5</span><h2>Documentación importante</h2><p>Para completar la solicitud, cargá los documentos requeridos. Esta pantalla no permite continuar si falta alguno.</p></div>
-    <div className="ins-upload-grid">
-      <FilePhoto label="Foto cédula frente" value={form.foto_ced_frente} onChange={v=>setForm({foto_ced_frente:v})} hint="Documento obligatorio" />
-      <FilePhoto label="Foto cédula dorso" value={form.foto_ced_dorso} onChange={v=>setForm({foto_ced_dorso:v})} hint="Documento obligatorio" />
-      <FilePhoto label="Foto título / último grado" value={form.foto_titulo} onChange={v=>setForm({foto_titulo:v})} hint="Documento obligatorio" />
+    <div className="ins-card-head">
+      <span>Paso 5</span>
+      <h2>Documentaci?n importante</h2>
+      <p>Tomá las fotos ahora o elegí imágenes que ya tengas guardadas.</p>
     </div>
-    <Alert>Las tres cargas son obligatorias para enviar la solicitud correctamente.</Alert>
+
+    <div className="ins-doc-panel">
+      <div className="ins-doc-panel-head">
+        <span>Documento de identidad del solicitante</span>
+        <strong>
+          {form.foto_ced_frente && form.foto_ced_dorso ? '✓ Listo' : 'Obligatorio'}
+        </strong>
+      </div>
+
+      <p>Antes de usar cada foto vas a poder encuadrarla y revisar el resultado.</p>
+
+      <div className="ins-id-sides">
+        <DocumentCapture
+          kind="identity"
+          label="Cédula · frente"
+          value={form.foto_ced_frente}
+          onChange={v=>setForm({foto_ced_frente:v})}
+        />
+        <DocumentCapture
+          kind="identity"
+          label="Cédula · dorso"
+          value={form.foto_ced_dorso}
+          onChange={v=>setForm({foto_ced_dorso:v})}
+        />
+      </div>
+    </div>
+
+    <div className="ins-doc-panel">
+      <div className="ins-doc-panel-head">
+        <span>Título / último grado</span>
+        <strong>{form.foto_titulo ? '✓ Listo' : 'Obligatorio'}</strong>
+      </div>
+
+      <p>Encuadrá el documento completo y confirmá la foto antes de continuar.</p>
+
+      <DocumentCapture
+        kind="title"
+        label="Título / último grado"
+        value={form.foto_titulo}
+        onChange={v=>setForm({foto_titulo:v})}
+      />
+    </div>
+
+    <Alert>
+      Solo se envía la foto final que confirmes. El frente y dorso de la identificación se unirán después en un PDF interno para CONAPE.
+    </Alert>
+
     {err && <Alert type="error">{err}</Alert>}
-    <div className="ins-actions"><button type="button" className="ins-btn ghost" onClick={()=>setStep(3)}>Atrás</button><button type="button" className="ins-btn primary" onClick={next}>Ver resumen</button></div>
+
+    <div className="ins-actions">
+      <button type="button" className="ins-btn ghost" onClick={()=>setStep(3)}>Atr?s</button>
+      <button type="button" className="ins-btn primary" onClick={next}>Ver resumen</button>
+    </div>
   </section>;
 }
+
+
 
 function SummaryRow({label,value}){ return <div className="ins-summary-row"><span>{label}</span><strong>{optionLabel(value)}</strong></div>; }
 
@@ -1023,7 +1465,8 @@ function InscripcionApp(){
         conape_equipo_paquete: conapeEquipoLabel(form.conape_equipo),
         conape_sostenimiento_monto: Number(form.conape_sostenimiento || 0) || 0,
         aceptar_lista_espera: !!form.aceptar_lista_espera,
-        origen_web: 'INSCRIPCION_PUBLICA_IP3J',
+        origen_web: 'INSCRIPCION_PUBLICA_IP5A',
+        generar_pdf_identidad_conape: true,
         version_frontend: INS_VERSION
       };
       const r = await insPost('crearInscripcionPublica', payload);

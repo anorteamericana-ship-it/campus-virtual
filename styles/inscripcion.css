@@ -1036,3 +1036,249 @@ input:disabled,select:disabled,textarea:disabled{background:#f4f0e8;color:#95877
 .ins-beca-card:not(.mujer).selected .ins-beca-top b{
   color:#C68D14;
 }
+
+
+/* CS21A144 · selector cámara/archivo + PDF identidad generado */
+.ins-doc-panel{margin:14px 0 18px;padding:18px;border:1px solid var(--line);border-radius:24px;background:var(--surface-2)}
+.ins-doc-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.ins-doc-panel-head span{font-size:16px;font-weight:800;color:var(--an-navy-ink)}
+.ins-doc-panel-head strong{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--an-navy);background:var(--info-bg);padding:6px 9px;border-radius:999px}
+.ins-doc-panel>p{margin:0 0 14px;color:var(--ink-3);font-size:13px;line-height:1.55}
+.ins-id-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ins-upload{padding:18px;min-height:154px;gap:10px}
+.ins-upload-body{display:flex;flex:1;flex-direction:column;justify-content:center;align-items:center;gap:8px;text-align:center}
+.ins-upload-body:before{content:"📄";font-size:30px}
+.ins-upload-body>span{font-weight:800;color:var(--an-navy-ink)}
+.ins-upload-body>small{color:var(--ink-3);line-height:1.45}
+.ins-upload-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;margin-top:6px}
+.ins-upload .ins-upload-choice{border:1px solid var(--line-2);background:#fff;color:var(--an-navy-ink);border-radius:13px;padding:10px 9px;font-size:12px;font-weight:800}
+.ins-upload .ins-upload-choice:hover{border-color:rgba(0,47,108,.4);background:var(--info-bg)}
+.ins-upload .ins-upload-remove{border:0;border-radius:12px;background:rgba(0,0,0,.06);padding:9px;font-weight:800;color:var(--ink-2)}
+.ins-file-hidden{display:none!important}
+@media (max-width:760px){.ins-id-sides{grid-template-columns:1fr}.ins-upload-choices{grid-template-columns:1fr}.ins-doc-panel{padding:14px}.ins-doc-panel-head{align-items:flex-start}}
+
+
+/* CS21A150 ? DocumentCapture integrado */
+.ins-capture{
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:#fff;
+  overflow:hidden;
+}
+.ins-capture-empty{border-style:dashed}
+.ins-capture-empty-body{
+  min-height:138px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
+}
+.ins-capture-icon{font-size:30px}
+.ins-capture-empty-body strong{
+  color:var(--an-navy-ink);
+  font-size:15px;
+}
+.ins-capture-empty-body small{
+  color:var(--ink-3);
+  font-size:12px;
+}
+.ins-capture-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:5px;
+}
+.ins-capture-title>div{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.ins-capture-title strong{
+  color:var(--an-navy-ink);
+  font-size:17px;
+}
+.ins-capture-title small{
+  color:var(--ink-3);
+  font-size:12px;
+}
+.ins-capture-title>span{
+  padding:6px 9px;
+  border-radius:999px;
+  background:var(--info-bg);
+  color:var(--an-navy);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.ins-capture-help{
+  margin:0 0 12px;
+  color:var(--ink-3);
+  font-size:13px;
+  line-height:1.5;
+}
+.ins-capture-stage{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  border-radius:18px;
+  background:#111;
+  touch-action:none;
+  user-select:none;
+}
+.ins-capture-stage>img{
+  display:block;
+  width:100%;
+  height:auto;
+  pointer-events:none;
+}
+.ins-capture-poly{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.ins-capture-poly polygon{
+  fill:rgba(37,99,235,.12);
+  stroke:#2563eb;
+  stroke-width:1.5;
+  vector-effect:non-scaling-stroke;
+}
+.ins-capture-handle{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  width:42px;
+  height:42px;
+  padding:0;
+  border:3px solid #fff;
+  border-radius:50%;
+  background:#2563eb;
+  color:#fff;
+  font-weight:900;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+  touch-action:none;
+}
+.ins-capture-magnifier{
+  position:absolute;
+  z-index:8;
+  left:12px;
+  top:12px;
+  width:112px;
+  height:112px;
+  border:3px solid #fff;
+  border-radius:50%;
+  background-repeat:no-repeat;
+  pointer-events:none;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);
+}
+.ins-capture-magnifier:before,
+.ins-capture-magnifier:after{
+  content:"";
+  position:absolute;
+  background:#111;
+  opacity:.8;
+}
+.ins-capture-magnifier:before{
+  left:50%;
+  top:12px;
+  bottom:12px;
+  width:1px;
+}
+.ins-capture-magnifier:after{
+  top:50%;
+  left:12px;
+  right:12px;
+  height:1px;
+}
+.ins-capture-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.ins-capture-message{
+  margin:10px 0;
+  padding:10px 12px;
+  border-radius:13px;
+  font-size:12px;
+}
+.ins-capture-message.warn{
+  background:#fff8dd;
+  color:#6b4a00;
+}
+.ins-capture-message.error{
+  background:#fff0ee;
+  color:#9d2c24;
+}
+.ins-capture-preview{
+  padding:10px;
+  border-radius:18px;
+  background:var(--surface-2);
+  margin-bottom:10px;
+}
+.ins-capture-preview img{
+  display:block;
+  width:100%;
+  max-height:520px;
+  object-fit:contain;
+  border-radius:14px;
+}
+.ins-capture-confirmed{
+  border-color:rgba(46,125,50,.34);
+  background:#f1fbf3;
+}
+.ins-capture-ready-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.ins-capture-ready-head>div{
+  display:flex;
+  flex-direction:column;
+}
+.ins-capture-ready-head strong{color:#176b36}
+.ins-capture-ready-head small{
+  color:var(--ink-3);
+  font-size:12px;
+}
+.ins-capture-ready-head button{
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--an-navy);
+  border-radius:999px;
+  padding:7px 10px;
+  font-weight:800;
+}
+.ins-capture-thumb{
+  display:block;
+  width:100%;
+  max-height:250px;
+  object-fit:contain;
+  border-radius:14px;
+}
+@media (max-width:760px){
+  .ins-capture{padding:12px}
+  .ins-capture-actions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .ins-capture-actions .ins-btn{width:100%}
+  .ins-capture-handle{
+    width:46px;
+    height:46px;
+  }
+  .ins-capture-magnifier{
+    width:104px;
+    height:104px;
+  }
+}
+@media (max-width:390px){
+  .ins-capture-actions{grid-template-columns:1fr}
+}
