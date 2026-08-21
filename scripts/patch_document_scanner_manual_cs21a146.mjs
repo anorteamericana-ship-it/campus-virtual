@@ -160,10 +160,11 @@ if (!jsx.includes('function ManualCornerEditor(')) {
 
 `;
 
+  const uploaderSignature = "function DocumentImageUpload({label, kind='identity', value, originalValue, onAccept, onClear, hint}){";
   jsx = once(
     jsx,
-    'function DocumentImageUpload({label, kind=\'identity\', value, originalValue, onAccept, onClear, hint}){',
-    editor + 'function DocumentImageUpload({label, kind=\'identity\', value, originalValue, onAccept, onClear, hint}){',
+    uploaderSignature,
+    editor + uploaderSignature,
     'ManualCornerEditor component'
   );
 
