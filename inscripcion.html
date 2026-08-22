@@ -20,6 +20,51 @@ window.APPS_SCRIPT_URL = window.APPS_SCRIPT_URL || 'https://script.google.com/ma
 <script src="vendor/react-dom.js?v=F96.1"></script>
 <script src="vendor/babel.js?v=F96.1"></script>
 <script src="src/document-scanner.js?v=CS21A149-1"></script>
-<script type="text/babel" data-plugins="transform-block-scoping" src="src/inscripcion.jsx?v=F98.4Z6IP5A"></script>
+<script type="text/babel" data-plugins="transform-block-scoping" src="src/inscripcion.jsx?v=F98.4Z6IP5A-HOTFIX1"></script>
+
+<script>
+// HOTFIX visual CS21A154: corrige literales dañados por una conversión de texto
+// en el Paso 5 sin alterar el flujo documental ni el backend.
+(function () {
+  var root = document.getElementById('root');
+  if (!root) return;
+
+  function fixStep5Text() {
+    root.querySelectorAll('.ins-card-head h2').forEach(function (el) {
+      if (el.textContent.trim() === 'Documentaci?n importante') {
+        el.textContent = 'Documentación importante';
+      }
+    });
+
+    root.querySelectorAll('.ins-capture-icon').forEach(function (el) {
+      if (el.textContent.trim() === '??') el.textContent = '📄';
+    });
+
+    root.querySelectorAll('.ins-upload-choice').forEach(function (el) {
+      var text = el.textContent.trim();
+      if (text === '?? Tomar foto') el.textContent = '📷 Tomar foto';
+      if (text === '?? Subir archivo') el.textContent = '📁 Subir archivo';
+    });
+
+    root.querySelectorAll('.ins-capture-empty-body small').forEach(function (el) {
+      if (el.textContent.trim() === 'Preparando foto?') {
+        el.textContent = 'Preparando foto…';
+      }
+    });
+
+    root.querySelectorAll('.ins-capture-actions button').forEach(function (el) {
+      if (el.textContent.trim() === '? Rotar') el.textContent = '↻ Rotar';
+    });
+
+    root.querySelectorAll('.ins-actions button').forEach(function (el) {
+      if (el.textContent.trim() === 'Atr?s') el.textContent = 'Atrás';
+    });
+  }
+
+  var observer = new MutationObserver(fixStep5Text);
+  observer.observe(root, { childList: true, subtree: true, characterData: true });
+  fixStep5Text();
+})();
+</script>
 </body>
 </html>
