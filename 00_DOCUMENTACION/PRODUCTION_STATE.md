@@ -27,11 +27,14 @@ Regla futura: si `SpreadsheetApp.openById` devuelve falta de permiso y el error 
 
 ## Frontend público
 
-- Rama productiva: `main`
-- SHA actual verificado: `b0bea76990a1cafdf13fb024f728f812298428ed`
+- Rama productiva: `main`.
+- Último SHA con cambio funcional de frontend verificado públicamente: `b0bea76990a1cafdf13fb024f728f812298428ed`.
 - PR #118: mergeado; scanner/documentos CONAPE publicados.
 - PR #119: mergeado; hotfix visual de tildes/símbolos del Paso 5 + cache-bust.
+- PR #115: mergeado después; cambia únicamente documentación/configuración/skills de operación y auditoría, **sin modificar el comportamiento del frontend público**.
 - La página pública de inscripción fue abierta en incógnito y alcanzó Paso 5.
+
+No usar un SHA de documentación posterior como prueba de una nueva validación funcional del navegador. Registrar por separado el `main` vigente y el último commit de comportamiento realmente probado cuando difieran.
 
 ### Limitación que permanece abierta
 
