@@ -1,58 +1,108 @@
-# Skill · Ingeniero QA del Campus
+---
+name: campus-qa-engineer
+description: >
+  Audita de extremo a extremo las superficies del Campus Virtual por rol, ruta
+  y estado de interfaz, con pruebas locales o autenticadas seguras y evidencia
+  reproducible. Usar para QA funcional, regresión, navegación, responsive,
+  errores de consola y contratos visibles; no usar para corregir durante la auditoría.
+---
+
+# Ingeniero QA del Campus
 
 ## Objetivo
 
-Revisar el Campus Virtual en un entorno aislado, detectar fallas reproducibles y producir evidencia sin modificar producción.
+Demostrar qué superficies funcionan, fallan o permanecen sin verificar en un SHA y entorno concretos, sin modificar producción ni confundir mocks con el backend real.
 
-## Entradas
+## Entradas mínimas
 
-- Ref o commit a revisar.
-- Rol objetivo: estudiante, docente, admin o superadmin.
-- Rutas o módulos prioritarios.
-- Matriz de entrega vigente.
+- Ref y SHA a revisar.
+- Entorno: local, preview, staging o producción de solo lectura.
+- Matriz maestra vigente de `AGENTS.md`.
+- Roles autorizados y credenciales de prueba disponibles.
+- Backend esperado, backend observado y URL desplegada, si se conocen.
+- Flujos prioritarios y operaciones expresamente excluidas.
 
-## Flujo obligatorio
+Si falta una entrada, continuar con lo seguro y marcar la cobertura bloqueada; no completar huecos con supuestos.
 
-1. Confirmar el SHA de `main` o del PR.
-2. Ejecutar auditoría de archivos estáticos, dependencias diferidas y JSX/JS.
-3. Levantar el repositorio con un servidor HTTP local.
-4. Bloquear o simular Apps Script; nunca enviar escrituras al backend real.
-5. Probar escritorio 1440×900 y móvil 390×844.
-6. Registrar errores de consola, `pageerror`, 404/500 locales, recursos fallidos, pantalla en blanco y desbordamiento horizontal.
-7. Recorrer rutas críticas del rol con sesión sintética de solo lectura.
-8. Probar cambio de ruta, recarga directa, navegación atrás y alternancia repetida de pestañas.
-9. Guardar capturas solo para defectos o pantallas críticas.
-10. Entregar hallazgos al supervisor; no corregirlos automáticamente.
+## Inventario previo
 
-## Escenarios mínimos
+1. Derivar las superficies desde el código: login, router, sidebars, menús inyectados, `F96_LAZY`, loaders, feature flags y rutas profundas.
+2. Incluir visitante, prospecto/free user, estudiante, docente, admin y superadmin cuando existan.
+3. Contrastar el inventario con `00_DOCUMENTACION/`; registrar diferencias de vigencia.
+4. Asignar un ID estable a cada fila de la matriz maestra.
+5. Marcar para cada fila: visible, oculta por regla, deshabilitada, parcial, no cargable o desconocida.
 
-### Estudiante
+## Pirámide de prueba
 
-Dashboard, calendario, evaluaciones, Club I CAN, pagos, certificados, planeamiento, plan de estudio, libros/audios y perfil.
+1. **E0 estática:** sintaxis, referencias, orden de carga, assets, rutas y contratos declarados.
+2. **E1 sintética local:** servidor HTTP, backend bloqueado o mock contractual y datos totalmente ficticios.
+3. **E2 autenticada lectura:** sesión autorizada sin mutaciones.
+4. **E3 desplegada lectura:** integración publicada de extremo a extremo.
+5. **E4 escritura controlada:** solo en entorno aislado, con autorización explícita, dato de prueba, verificación del efecto y reversión.
 
-### Docente
+No saltar de E1 a una conclusión sobre permisos, datos o despliegue reales.
 
-Mi panel, grupos, cronograma, asistencia/cierre, exámenes, libros/biblioteca, Club I CAN y perfil.
+## Cobertura funcional por superficie
 
-### Superadmin
+Para cada fila aplicable:
 
-Panel, consulta individual, estudiantes, matrículas, banco, aplicar pago, CONAPE, calendario, permisos y diagnósticos.
+- Entrada desde el menú y navegación directa por URL/hash.
+- Recarga, atrás/adelante y retorno desde otra ruta.
+- Cambio rápido de menú, doble clic y reapertura repetida.
+- Carga, vacío, éxito, error, timeout, respuesta parcial, no autorizado y sesión expirada.
+- Respuesta tardía después de cambiar filtro, grupo, nivel, estudiante o ruta.
+- Montaje único: sin componentes, listeners, timers ni solicitudes duplicadas.
+- Texto, cifras, fechas, zona horaria y formato de Costa Rica.
+- Acciones habilitadas únicamente con permisos y precondiciones válidas.
+- Recuperación honesta: reintento seguro, mensaje útil y datos anteriores claramente marcados si se conservan.
 
-## Formato de hallazgo
+Los mocks deben conservar forma, tipos, nulos y errores del contrato observado; un mock “feliz” no cuenta como cobertura de integración.
 
-- ID estable.
-- Severidad P0–P3.
-- Rol y ruta.
-- Pasos de reproducción.
-- Esperado.
-- Observado.
-- Evidencia técnica.
-- Tipo de prueba: estática, sintética, autenticada o backend.
-- Confianza: alta, media o hipótesis.
+## Navegadores y tamaños
+
+Como mínimo en la auditoría sintética:
+
+- escritorio de 1440×900;
+- móvil de 390×844;
+- navegación solo con teclado en las rutas críticas.
+
+Añadir Safari/iOS, Chrome/Android u otros navegadores solo cuando exista acceso real a ellos. No afirmar compatibilidad por emulación de tamaño únicamente.
+
+## Evidencia técnica
+
+Registrar por escenario:
+
+- errores de consola y `pageerror`;
+- solicitudes, método, estado, duración y tamaño relevantes;
+- 404/500, recursos bloqueados y respuestas con contrato inválido;
+- pantalla en blanco, layout roto, scroll horizontal o foco perdido;
+- captura solo cuando añade evidencia, con datos sensibles ocultos;
+- traza o log correlacionable cuando esté disponible.
+
+No guardar tokens, cédulas, correos, comprobantes, notas ni audio real en informes o fixtures.
+
+## Flujos críticos mínimos
+
+- **Público/prospecto:** login, recuperación, inscripción y continuidad de una solicitud.
+- **Estudiante:** perfil, resumen, calendario, evaluaciones, tareas, I CAN, English LAB, syllabus, planeamiento, plan, libros/audios, recursos, pagos y certificados.
+- **Docente:** perfil, grupos, biblioteca, English LAB/Live, exámenes, cronograma, asistencia/cierre, I CAN, comunicados y pendientes.
+- **Admin/superadmin:** panel, consulta, calendario, supervisión, grupos, estudiantes, matrículas, exámenes, auditoría, inscripción, prematrículas, solicitudes, CONAPE, banco, pagos, reportes, diagnóstico y permisos.
+
+La lista es un mínimo histórico. La matriz derivada del código manda y debe revelar menús nuevos, renombrados, deshabilitados o condicionados.
+
+## Salida
+
+- Resumen de entorno y SHA.
+- Matriz de cobertura con estado por fila y nivel E0–E4 alcanzado.
+- Hallazgos en el formato de `AGENTS.md`.
+- Evidencia técnica asociada a IDs de escenario.
+- Cobertura ausente, motivo y requisito para desbloquearla.
+- Lista de pruebas de regresión recomendadas, sin implementar correcciones.
 
 ## Criterios de finalización
 
+- Toda superficie descubierta tiene resultado o bloqueo explícito.
 - Ningún hallazgo sin evidencia se presenta como confirmado.
-- No se usan credenciales reales.
-- No se ejecutan endpoints de escritura.
-- El repositorio queda sin cambios producidos por la auditoría.
+- No se ejecutaron escrituras fuera del entorno autorizado.
+- No quedaron cambios de datos causados por la auditoría.
+- El repositorio queda sin modificaciones accidentales.
