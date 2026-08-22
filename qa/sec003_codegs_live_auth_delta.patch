@@ -1,6 +1,6 @@
 --- Code.gs
 +++ Code.gs.sec003
-@@ -48153,34 +48153,89 @@
+@@ -48153,34 +48153,90 @@
    if (!reveal) { delete copy.correct; delete copy.explanation; }
    return copy;
  }
@@ -22,8 +22,8 @@
 +  return {ok:true,rol:rol,sesion:ses,codigo:codigo,nombre:_eliveSafePlayerName_(ses.nombre || 'Estudiante')};
 +}
 +function _eliveStudentCanRoom_(auth, room){
-+  if (!auth || auth.ok !== true || !room) return false;
-+  return _eliveSessionOwnsGroupLoose_(auth.sesion || {}, room.COD_GRUPO || room.cod_grupo || '');
++  // SALA_MIXTA_AUTORIZADA: el grupo de la sala no es una frontera de acceso para un estudiante autenticado y matriculado.
++  return !!(auth && auth.ok === true && room);
 +}
 +function _elivePlayerBodyFromSession_(body, auth){
 +  body = body || {};
@@ -98,7 +98,7 @@
    if (player) {
      var now = _eliveIso_(), pf = _eliveFindPlayer_(found.row, pid);
      if (pf.row && pf.idx.LAST_SEEN_AT != null) { pf.sh.getRange(pf.rowN, pf.idx.LAST_SEEN_AT+1).setValue(now); pf.row.LAST_SEEN_AT = now; player = pf.row; }
-@@ -48189,11 +48244,12 @@
+@@ -48189,11 +48245,12 @@
  }
  function englishLabLiveSubmitAnswer(body){
    body = body || {};
@@ -113,7 +113,7 @@
    var room = found.row;
    if (_eliveUpper_(room.STATUS) !== 'LIVE') return {ok:false,error:'sala_no_activa'};
    if (_eliveUpper_(room.ROUND_STATUS) !== 'OPEN') return {ok:false,error:'pregunta_no_abierta'};
-@@ -48201,7 +48257,7 @@
+@@ -48201,7 +48258,7 @@
    if (!current) return {ok:false,error:'sin_pregunta_activa'};
    var qIndex = Number(body.question_index || body.questionIndex || current.index || room.CURRENT_INDEX || 0) || 0;
    if (qIndex !== Number(room.CURRENT_INDEX || 0)) return {ok:false,error:'pregunta_no_coincide'};
@@ -122,7 +122,7 @@
    var existing = _eliveFindAnswer_(room, qIndex, player.COD_ESTUDIANTE).row;
    if (existing) return {ok:true, version:ELIVE_CS20B_VERSION, already_answered:true, answer:_eliveAnswerPublic_(existing, false), stats:_eliveStats_(room), message:'Ya habías respondido esta pregunta.'};
    var ans = _eliveText_(body.answer_value || body.answer || body.respuesta || '');
-@@ -48333,11 +48389,12 @@
+@@ -48333,11 +48390,12 @@
  // CS20D: redefine el guardado de respuestas para usar puntaje con rapidez.
  englishLabLiveSubmitAnswer = function(body){
    body = body || {};
@@ -137,7 +137,7 @@
    var room = found.row;
    if (_eliveUpper_(room.STATUS) !== 'LIVE') return {ok:false,error:'sala_no_activa'};
    if (_eliveUpper_(room.ROUND_STATUS) !== 'OPEN') return {ok:false,error:'pregunta_no_abierta'};
-@@ -48345,7 +48402,7 @@
+@@ -48345,7 +48403,7 @@
    if (!current) return {ok:false,error:'sin_pregunta_activa'};
    var qIndex = Number(body.question_index || body.questionIndex || current.index || room.CURRENT_INDEX || 0) || 0;
    if (qIndex !== Number(room.CURRENT_INDEX || 0)) return {ok:false,error:'pregunta_no_coincide'};
@@ -146,7 +146,7 @@
    var existing = _eliveFindAnswer_(room, qIndex, player.COD_ESTUDIANTE).row;
    if (existing) {
      var lb0 = _eliveCs20dLeaderboard_(room);
-@@ -48367,13 +48424,14 @@
+@@ -48367,13 +48425,14 @@
  };
  function englishLabLiveGetLeaderboard(body){
    body = body || {};
@@ -164,7 +164,7 @@
  }
  var _cs20dDoPostBase_ = doPost;
  doPost = function(e) {
-@@ -48517,6 +48575,8 @@
+@@ -48517,6 +48576,8 @@
    return idx > 0 ? qs[idx-1] : null;
  };
  function englishLabLiveGetQuestionBankMeta(body){
