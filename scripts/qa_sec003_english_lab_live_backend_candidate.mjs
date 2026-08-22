@@ -86,7 +86,7 @@ sessionMode='valid'; auth=ctx._eliveAuthStudent_({token:'x'});
 check('enrolled student accepted', auth.ok === true && auth.codigo === '17161');
 check('matching room group accepted', ctx._eliveStudentCanRoom_(auth, openRoom) === true);
 sessionMode='foreign'; const foreign=ctx._eliveAuthStudent_({token:'x'});
-check('foreign room group rejected', ctx._eliveStudentCanRoom_(foreign, openRoom) === false);
+check('mixed-room policy accepts enrolled student from another group', ctx._eliveStudentCanRoom_(foreign, openRoom) === true);
 const canonical=ctx._elivePlayerBodyFromSession_({player_id:'VICTIM',cod_estudiante:'VICTIM',player_name:'Forged',team:'Hackers'}, auth);
 check('forged player id ignored', canonical.player_id === '17161' && canonical.cod_estudiante === '17161');
 check('forged player name ignored', canonical.player_name === 'Real Student');
@@ -110,8 +110,9 @@ check('unauthenticated join stops before sheet I/O', result.ok === false && ensu
 sessionMode='valid'; ensureCalls=0; upsertBody=null; result=ctx.englishLabLiveJoinRoom({token:'ok',room_code:'LAB-1234',player_id:'VICTIM',player_name:'Forged',team:'Hackers'});
 check('authorized join succeeds', result.ok === true && ensureCalls === 1);
 check('join writes canonical identity only', upsertBody?.cod_estudiante === '17161' && upsertBody?.player_name === 'Real Student' && upsertBody?.team === '');
-sessionMode='foreign'; upsertBody=null; result=ctx.englishLabLiveJoinRoom({token:'ok',room_code:'LAB-1234'});
-check('foreign-group join denied before player upsert', result.ok === false && result.error === 'sala_no_disponible' && upsertBody === null);
+sessionMode='foreign'; ensureCalls=0; upsertBody=null; result=ctx.englishLabLiveJoinRoom({token:'ok',room_code:'LAB-1234',player_id:'VICTIM2',player_name:'Forged2'});
+check('mixed-room join succeeds for enrolled student from another group', result.ok === true && ensureCalls === 1);
+check('mixed-room join still writes session-canonical identity', upsertBody?.cod_estudiante === '17161' && upsertBody?.player_name === 'Real Student');
 
 if (failures.length) {
   console.error(`SEC003 ENGLISH LAB LIVE BACKEND QA: FAIL (${failures.length})`);
