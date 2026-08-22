@@ -7,6 +7,7 @@ Estas instrucciones aplican a todo el repositorio.
 - Trabajar siempre desde la rama `main` vigente.
 - Leer los handoffs y matrices actuales de `00_DOCUMENTACION/` antes de concluir que un archivo está obsoleto.
 - No confiar en copias locales antiguas ni en recuerdos de conversaciones anteriores.
+- Si chat/memoria contradice GitHub o runtime verificado, manda GitHub + runtime.
 
 ## Cambios en vivo
 
@@ -19,27 +20,38 @@ Antes de modificar o publicar cualquier parte de la plataforma viva:
 - considerar como runtime de Apps Script únicamente el Deployment ID estable apuntando a una versión numérica verificada; el HEAD remoto no equivale necesariamente a producción;
 - registrar una nueva versión productiva solo después de verificación remota y prueba funcional cuando aplique.
 
+### LIVE HOTFIX
+
+Si el usuario escribe `LIVE HOTFIX: ...`, seguir `skills/live-hotfix-campus/SKILL.md`.
+
+Es una autorización permanente para correcciones **frontend pequeñas, reversibles y no críticas** hasta rama → PR → checks obligatorios → merge → verificación pública, sin pedir una segunda autorización durante ese mismo hotfix.
+
+No cubre Apps Script, Apollo, autenticación, OAuth/scopes, datos, pagos, CONAPE, roles, seguridad, ACL ni contratos backend; esos cambios son **RELEASE CONTROLADO**.
+
 ## Seguridad de entrega
 
 - Nunca hacer cambios directos en producción durante una auditoría.
 - Nunca publicar, reemplazar ni recortar `Code.gs` sin una tarea explícita y un entorno de prueba separado.
 - Nunca inventar estudiantes, pagos, matrículas, notas, grupos, tareas, estados o permisos.
 - No declarar un flujo “funcional” si solo fue validado por lectura de código.
-- Distinguir siempre: validación estática, prueba sintética, prueba autenticada y verificación backend desplegado.
+- Distinguir siempre: validación estática, prueba sintética, prueba autenticada, navegador real y verificación backend desplegado.
+- No declarar `FULL_E2E=PASS` si quedó un paso real pendiente.
 
 ## Forma de trabajo
 
 - Preferir cambios pequeños, reversibles y verificables.
 - No borrar archivos solo por nombre, edad o apariencia. Verificar referencias en `campus.html`, `F96_LAZY`, imports, workflows y globals de `window`.
 - Ejecutar las validaciones existentes y las específicas del módulo modificado.
-- Toda corrección debe pasar por rama, pull request, CI y revisión humana.
-- Los agentes de auditoría no deben crear commits de corrección, hacer push ni fusionar PR automáticamente.
+- Toda corrección respeta rama, pull request y CI cuando el ruleset de GitHub lo exige.
+- Los agentes en rol de **auditor** no deben crear commits de corrección, hacer push ni fusionar PR automáticamente.
+- Un agente ejecutor bajo autorización `LIVE HOTFIX` sí puede completar el flujo de frontend definido por su skill; no confundirlo con una auditoría.
 
 ## Roles virtuales
 
 - Ingeniero QA: seguir `skills/campus-qa-engineer/SKILL.md`.
 - Auditor de lógica: seguir `skills/campus-logic-auditor/SKILL.md`.
 - Supervisor de entrega: seguir `skills/campus-release-supervisor/SKILL.md`.
+- LIVE HOTFIX: seguir `skills/live-hotfix-campus/SKILL.md`.
 
 ## Severidad
 
@@ -47,6 +59,14 @@ Antes de modificar o publicar cualquier parte de la plataforma viva:
 - P1: operación crítica incorrecta sin alternativa segura.
 - P2: falla importante con alternativa, degradación o riesgo de entrega.
 - P3: defecto visual, deuda técnica o mejora no bloqueante.
+
+## Memoria operativa
+
+Cuando un incidente revele una causa o procedimiento reusable, documentar sin secretos:
+
+`síntoma → causa → prueba que lo distinguió → reparación → prevención`
+
+en `LIVE_CHANGE_RUNBOOK.md`, `PRODUCTION_STATE.md`, la skill dueña y/o el Issue canónico. El objetivo es no redescubrir fallos ya resueltos en cada chat.
 
 ## Regla final
 
