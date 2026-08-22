@@ -4,7 +4,7 @@
   "deploymentId": "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ",
   "deployedVersion": 419,
   "lastVerifiedAt": "2026-08-21T18:57:00-06:00",
-  "lastVerifiedBy": "browser-and-authenticated-clasp-runtime",
+  "lastVerifiedBy": "authenticated-clasp-runtime",
   "lastChange": {
     "summary": "CS21A154 · documentos CONAPE privados + scanner · release PR #118",
     "sourcePr": 118,
@@ -20,6 +20,7 @@
     "@418 queda histórica/no productiva; no usarla como base por intuición.",
     "Actualizar deployedVersion solo después de verificar el deployment remoto y una prueba funcional real cuando aplique.",
     "El HEAD remoto de Apps Script puede contener cambios no publicados; no asumir que HEAD equivale a producción.",
+    "Además de la verificación clasp/runtime, se comprobó HTTP 200 y navegador real hasta Paso 5.",
     "Tras cambios de manifiesto/scopes, si SpreadsheetApp.openById devuelve falta de permiso incluso al volver de versión, revisar autorización OAuth del usuario desplegador antes de culpar al código.",
     "El redirect HTTP 302 de script.google.com a script.googleusercontent.com es normal en Web Apps de Apps Script."
   ]
