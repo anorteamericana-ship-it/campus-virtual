@@ -1,17 +1,18 @@
 {
   "id": "SEC-003",
-  "version": 1,
+  "version": 2,
   "status": "remediation_in_progress",
   "scope": "English LAB Live non-Memory player path",
   "memory_match": {
     "editable_in_this_cut": false,
-    "reason": "Issue #78 keeps Memory Match read-only for ChatGPT and PR #85 quarantines it from the new visible entry"
+    "reason": "Issue #78 keeps Memory Match FROZEN_DEFERRED_NON_BLOCKING and outside the active closure"
   },
   "player_identity": {
     "campus_session_required": true,
     "role_required": "student",
     "enrolled_student_code_required": true,
-    "room_group_membership_required": true,
+    "room_group_membership_required": false,
+    "room_policy": "SALA_MIXTA_AUTORIZADA",
     "browser_player_id_trusted": false,
     "browser_student_code_trusted": false,
     "browser_player_name_trusted": false,
@@ -19,7 +20,14 @@
     "canonical_player_name_source": "validated Campus session nombre"
   },
   "room_access": {
-    "unknown_or_foreign_room_response_should_not_expose_membership_details": true,
+    "student_may_join_valid_room_from_other_group": true,
+    "student_requirements": [
+      "valid Campus session",
+      "student role",
+      "enrolled student code from session",
+      "valid existing LAB room code"
+    ],
+    "unknown_room_response_should_not_expose_membership_details": true,
     "leaderboard_requires_authenticated_room_viewer": true,
     "teacher_room_controls_remain_teacher_admin_superadmin_only": true
   },
@@ -40,14 +48,14 @@
   },
   "evidence_required_to_close": [
     "join without valid Campus session is rejected before player-sheet mutation",
-    "enrolled student can join only a room belonging to their session group",
+    "enrolled authenticated student can join a valid room even when the room belongs to another group",
     "forged player_id, student code and name do not alter canonical player identity",
     "get player state cannot read another player's state",
     "submit answer cannot impersonate another player",
-    "leaderboard cannot be read anonymously or by a student outside the room group",
+    "leaderboard cannot be read anonymously",
     "open-round payload contains no correct/explanation in either question projection",
     "closed-round reveal still works",
-    "teacher controls continue to work",
+    "teacher controls continue to enforce teacher/admin/superadmin authorization",
     "question-bank metadata cannot seed sheets anonymously",
     "Memory Match diff is empty",
     "authenticated QA passes before any production deploy"
