@@ -37,6 +37,15 @@ Regla futura: si `SpreadsheetApp.openById` devuelve falta de permiso y el error 
 
 Todavía falta una **inscripción controlada completa desde el formulario visual real en PROD**, con envío de frente + dorso + título y verificación posterior de que los tres archivos y `documento_identidad_solicitante.pdf` quedaron privados. Hasta esa prueba no declarar `FULL_BROWSER_E2E=PASS`.
 
+## English LAB · estado de producto
+
+- Memory Match: **FROZEN_DEFERRED_NON_BLOCKING**.
+- Memory Match volvió a responsabilidad técnica de ChatGPT, pero no forma parte del camino crítico del cierre actual y no debe reabrirse por iniciativa del agente.
+- Los PR #81, #82 y #83 son históricos/evidencia; no son requisitos del release.
+- Cierre vigente: Sentence Order + Hangman + Quiz Time + Word Search + shell/routing/mobile.
+- Quiz Time: frontend `MITIGATED_CLIENT_SIDE`; Issue #80 mantiene pendiente la idempotencia backend/`attempt_id`.
+- El Issue #78 vigente es la fuente canónica para el próximo chat de English LAB.
+
 ## GitHub como fuente de verdad
 
 Para cambios de código del Campus, **GitHub es la fuente de verdad de desarrollo**. Drive puede conservar respaldos y artefactos operativos, pero no decide qué código está vigente.
