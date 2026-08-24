@@ -1,0 +1,47 @@
+name: English LAB LIVE v2 Core
+
+on:
+  pull_request:
+    paths:
+      - 'AppsScript/EnglishLabLiveV2/**'
+      - 'scripts/qa_english_lab_live_v2_*.mjs'
+      - '.github/workflows/qa-english-lab-live-v2-core.yml'
+  push:
+    branches:
+      - 'feature/english-lab-live-v2'
+    paths:
+      - 'AppsScript/EnglishLabLiveV2/**'
+      - 'scripts/qa_english_lab_live_v2_*.mjs'
+      - '.github/workflows/qa-english-lab-live-v2-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  english-lab-live-v2-core:
+    name: english-lab-live-v2-core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Repository diff integrity
+        run: git diff --check HEAD^
+
+      - name: Contracts and strict schema E1
+        run: node scripts/qa_english_lab_live_v2_contracts.mjs
+
+      - name: State machine and deadline E1
+        run: node scripts/qa_english_lab_live_v2_state_machine.mjs
+
+      - name: Idempotency and anti-leak E1
+        run: node scripts/qa_english_lab_live_v2_security_core.mjs
+
+      - name: Plugin contract E1
+        run: node scripts/qa_english_lab_live_v2_plugin_contract.mjs
