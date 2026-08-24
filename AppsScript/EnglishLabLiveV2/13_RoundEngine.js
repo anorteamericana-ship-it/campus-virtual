@@ -24,62 +24,66 @@ function ELV2_createRoundEngine(deps) {
   }
 
   function prepareRound(actor, input) {
-    var room = deps.store.getRoom(input && input.room_id);
-    if (!room) throw new Error('ELV2_ROOM_NOT_AVAILABLE');
-    ELV2_assertRoomController(actor, room);
-    if (room.status !== ELV2_ROOM_STATUS.LIVE) throw new Error('ELV2_ROOM_NOT_LIVE');
-    assertExpectedRevision_(room, input.expected_revision);
+    var roomId = input && input.room_id;
+    if (typeof roomId !== 'string' || !roomId) throw new Error('ELV2_ROOM_NOT_AVAILABLE');
+    return deps.concurrencyGuard.withRoomMutation(roomId, function () {
+      var room = deps.store.getRoom(roomId);
+      if (!room) throw new Error('ELV2_ROOM_NOT_AVAILABLE');
+      ELV2_assertRoomController(actor, room);
+      if (room.status !== ELV2_ROOM_STATUS.LIVE) throw new Error('ELV2_ROOM_NOT_LIVE');
+      assertExpectedRevision_(room, input.expected_revision);
 
-    var activeRounds = deps.store.listRoundsByRoom(room.room_id).filter(function (item) {
-      return item.status !== ELV2_ROUND_STATUS.CLOSED;
+      var activeRounds = deps.store.listRoundsByRoom(room.room_id).filter(function (item) {
+        return item.status !== ELV2_ROUND_STATUS.CLOSED;
+      });
+      if (activeRounds.length > 0 || room.current_round_id) throw new Error('ELV2_ACTIVE_ROUND_EXISTS');
+
+      var plugin = ELV2_getGamePlugin(input.game_id, { include_test_only: true });
+      var resolvedContent = input.resolved_content;
+      plugin.validateContent(resolvedContent);
+      plugin.validateSettings(input.settings || {});
+      var created = plugin.createRound(resolvedContent, input.settings || {}, {
+        room_id: room.room_id,
+        server_now: nowMs()
+      });
+
+      var sequenceNo = deps.store.listRoundsByRoom(room.room_id).length + 1;
+      var now = nowMs();
+      var round = {
+        round_id: deps.idFactory('round'),
+        room_id: room.room_id,
+        sequence_no: sequenceNo,
+        game_id: plugin.gameId(),
+        game_version: plugin.gameVersion(),
+        status: ELV2_ROUND_STATUS.READY,
+        content_ref: input.content_ref || '',
+        content_version: input.content_version || '',
+        content_hash: deps.payloadHasher(resolvedContent),
+        content_snapshot: JSON.parse(JSON.stringify(resolvedContent)),
+        private_state: JSON.parse(JSON.stringify(created.private_state)),
+        settings: JSON.parse(JSON.stringify(input.settings || {})),
+        scoring_policy: created.scoring_policy,
+        visibility_model: created.visibility_model,
+        submission_policy: created.submission_policy,
+        created_at: now,
+        opened_at: null,
+        ends_at: null,
+        locked_at: null,
+        revealed_at: null,
+        reveal_ends_at: null,
+        closed_at: null,
+        close_reason: null,
+        score_committed_at: null,
+        updated_at: now
+      };
+
+      round = deps.store.createRound(round);
+      room.current_round_id = round.round_id;
+      room.state_revision = ELV2_nextRevision(room.state_revision);
+      room.updated_at = now;
+      room = deps.store.updateRoom(room);
+      return Object.freeze({ room: room, round: round });
     });
-    if (activeRounds.length > 0 || room.current_round_id) throw new Error('ELV2_ACTIVE_ROUND_EXISTS');
-
-    var plugin = ELV2_getGamePlugin(input.game_id, { include_test_only: true });
-    var resolvedContent = input.resolved_content;
-    plugin.validateContent(resolvedContent);
-    plugin.validateSettings(input.settings || {});
-    var created = plugin.createRound(resolvedContent, input.settings || {}, {
-      room_id: room.room_id,
-      server_now: nowMs()
-    });
-
-    var sequenceNo = deps.store.listRoundsByRoom(room.room_id).length + 1;
-    var now = nowMs();
-    var round = {
-      round_id: deps.idFactory('round'),
-      room_id: room.room_id,
-      sequence_no: sequenceNo,
-      game_id: plugin.gameId(),
-      game_version: plugin.gameVersion(),
-      status: ELV2_ROUND_STATUS.READY,
-      content_ref: input.content_ref || '',
-      content_version: input.content_version || '',
-      content_hash: deps.payloadHasher(resolvedContent),
-      content_snapshot: JSON.parse(JSON.stringify(resolvedContent)),
-      private_state: JSON.parse(JSON.stringify(created.private_state)),
-      settings: JSON.parse(JSON.stringify(input.settings || {})),
-      scoring_policy: created.scoring_policy,
-      visibility_model: created.visibility_model,
-      submission_policy: created.submission_policy,
-      created_at: now,
-      opened_at: null,
-      ends_at: null,
-      locked_at: null,
-      revealed_at: null,
-      reveal_ends_at: null,
-      closed_at: null,
-      close_reason: null,
-      score_committed_at: null,
-      updated_at: now
-    };
-
-    round = deps.store.createRound(round);
-    room.current_round_id = round.round_id;
-    room.state_revision = ELV2_nextRevision(room.state_revision);
-    room.updated_at = now;
-    room = deps.store.updateRoom(room);
-    return Object.freeze({ room: room, round: round });
   }
 
   function openRound(actor, input) {
