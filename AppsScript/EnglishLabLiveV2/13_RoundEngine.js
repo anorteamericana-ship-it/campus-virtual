@@ -4,8 +4,14 @@ function ELV2_createRoundEngine(deps) {
     throw new Error('ELV2_ROUND_ENGINE_DEPS_INVALID');
   }
 
+  var allowTestOnlyGames = deps.allowTestOnlyGames === true;
+
   function nowMs() {
     return deps.clock.nowMs();
+  }
+
+  function gamePlugin_(gameId) {
+    return ELV2_getGamePlugin(gameId, { include_test_only: allowTestOnlyGames });
   }
 
   function getRoomAndRound_(roomId, roundId) {
@@ -38,7 +44,7 @@ function ELV2_createRoundEngine(deps) {
       });
       if (activeRounds.length > 0 || room.current_round_id) throw new Error('ELV2_ACTIVE_ROUND_EXISTS');
 
-      var plugin = ELV2_getGamePlugin(input.game_id, { include_test_only: true });
+      var plugin = gamePlugin_(input.game_id);
       var resolvedContent = input.resolved_content;
       plugin.validateContent(resolvedContent);
       plugin.validateSettings(input.settings || {});
@@ -153,7 +159,7 @@ function ELV2_createRoundEngine(deps) {
         throw new Error('ELV2_ROUND_NOT_OPEN');
       }
 
-      var plugin = ELV2_getGamePlugin(round.game_id, { include_test_only: true });
+      var plugin = gamePlugin_(round.game_id);
       plugin.validateAttempt(input.attempt);
       var payloadHash = deps.payloadHasher(input.attempt);
       var attemptKey = ELV2_attemptKeyMaterial(room.room_id, round.round_id, actor.student_id, requestId);
@@ -184,6 +190,7 @@ function ELV2_createRoundEngine(deps) {
       round = deps.store.updateRound(round);
 
       var scoreStatus = round.scoring_policy === ELV2_SCORING_POLICY.SCORE_ON_REVEAL ? 'HIDDEN' : 'COMMITTED';
+      var nextRevision = ELV2_nextRevision(room.state_revision);
       var attempt = {
         attempt_id: deps.idFactory('attempt'),
         room_id: room.room_id,
@@ -203,7 +210,7 @@ function ELV2_createRoundEngine(deps) {
         received_at: now,
         recorded_at: now,
         committed_at: scoreStatus === 'COMMITTED' ? now : null,
-        created_revision: ELV2_nextRevision(room.state_revision)
+        created_revision: nextRevision
       };
       attempt = deps.store.createAttempt(attempt);
 
@@ -213,7 +220,7 @@ function ELV2_createRoundEngine(deps) {
         player = deps.store.updatePlayer(player);
       }
 
-      room.state_revision = ELV2_nextRevision(room.state_revision);
+      room.state_revision = nextRevision;
       room.updated_at = now;
       room = deps.store.updateRoom(room);
 
@@ -289,7 +296,7 @@ function ELV2_createRoundEngine(deps) {
   }
 
   function buildStudentGameView_(round, actor) {
-    var plugin = ELV2_getGamePlugin(round.game_id, { include_test_only: true });
+    var plugin = gamePlugin_(round.game_id);
     var viewer = { student_id: actor.student_id, view_mode: ELV2_VIEW_MODE.STUDENT };
     var view = plugin.publicView(round.private_state, viewer, round.status, {
       round_id: round.round_id,
