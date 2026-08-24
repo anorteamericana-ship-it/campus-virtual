@@ -22,10 +22,14 @@ function ELV2_assertPublicViewSafe(view, phase, schema) {
     throw new Error('ELV2_PUBLIC_VIEW_INVALID');
   }
   ELV2_assertPublicShape_(view, schema, '$');
-  if (ELV2_HIDDEN_SOLUTION_PHASES.indexOf(phase) !== -1) {
-    var leak = ELV2_findForbiddenPublicKey_(view, '$');
-    if (leak) throw new Error('ELV2_ANSWER_LEAK_BLOCKED:' + leak.path + ':' + leak.key);
-  }
+  ELV2_assertNoForbiddenPublicKeys(view, phase);
+  return true;
+}
+
+function ELV2_assertNoForbiddenPublicKeys(value, phase) {
+  if (ELV2_HIDDEN_SOLUTION_PHASES.indexOf(phase) === -1) return true;
+  var leak = ELV2_findForbiddenPublicKey_(value, '$');
+  if (leak) throw new Error('ELV2_ANSWER_LEAK_BLOCKED:' + leak.path + ':' + leak.key);
   return true;
 }
 
