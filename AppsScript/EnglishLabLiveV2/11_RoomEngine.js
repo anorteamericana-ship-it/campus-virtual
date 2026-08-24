@@ -4,6 +4,10 @@ function ELV2_createRoomEngine(deps) {
     throw new Error('ELV2_ROOM_ENGINE_DEPS_INVALID');
   }
 
+  var maxRoomCodeAttempts = Number.isInteger(deps.maxRoomCodeAttempts) && deps.maxRoomCodeAttempts > 0
+    ? deps.maxRoomCodeAttempts
+    : 5;
+
   function nowMs() {
     return deps.clock.nowMs();
   }
@@ -12,28 +16,38 @@ function ELV2_createRoomEngine(deps) {
     ELV2_assertCapability(actor, ELV2_CAPABILITY.LIVE_CREATE);
     return deps.concurrencyGuard.withRoomMutation('__ELV2_CREATE_ROOM__', function () {
       var roomId = deps.idFactory('room');
-      var roomCode = deps.roomCodeFactory();
       var now = nowMs();
-      var room = {
-        room_id: roomId,
-        room_code: roomCode,
-        status: ELV2_ROOM_STATUS.LOBBY,
-        owner_user_id: actor.user_id,
-        owner_teacher_id: actor.teacher_id || null,
-        join_policy: 'MIXED_AUTHORIZED',
-        current_round_id: null,
-        state_revision: 0,
-        title: input && typeof input.title === 'string' ? input.title.trim() : '',
-        config: input && input.config && typeof input.config === 'object' ? input.config : {},
-        created_at: now,
-        started_at: null,
-        closed_at: null,
-        close_reason: null,
-        created_by_user_id: actor.user_id,
-        created_service_version: ELV2_SERVICE_VERSION,
-        updated_at: now
-      };
-      return deps.store.createRoom(room);
+      var lastConflict = null;
+
+      for (var attempt = 0; attempt < maxRoomCodeAttempts; attempt += 1) {
+        var roomCode = deps.roomCodeFactory(attempt);
+        var room = {
+          room_id: roomId,
+          room_code: roomCode,
+          status: ELV2_ROOM_STATUS.LOBBY,
+          owner_user_id: actor.user_id,
+          owner_teacher_id: actor.teacher_id || null,
+          join_policy: 'MIXED_AUTHORIZED',
+          current_round_id: null,
+          state_revision: 0,
+          title: input && typeof input.title === 'string' ? input.title.trim() : '',
+          config: input && input.config && typeof input.config === 'object' ? input.config : {},
+          created_at: now,
+          started_at: null,
+          closed_at: null,
+          close_reason: null,
+          created_by_user_id: actor.user_id,
+          created_service_version: ELV2_SERVICE_VERSION,
+          updated_at: now
+        };
+        try {
+          return deps.store.createRoom(room);
+        } catch (error) {
+          if (!error || String(error.message) !== 'ELV2_STORE_ROOM_CONFLICT') throw error;
+          lastConflict = error;
+        }
+      }
+      throw lastConflict || new Error('ELV2_STORE_ROOM_CONFLICT');
     });
   }
 
