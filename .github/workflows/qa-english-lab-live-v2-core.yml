@@ -51,3 +51,6 @@ jobs:
 
       - name: Round lifecycle, retry and scoring E1
         run: node scripts/qa_english_lab_live_v2_round_engine.mjs
+
+      - name: Schema guard, global idempotency and events E1
+        run: node scripts/qa_english_lab_live_v2_infrastructure.mjs
