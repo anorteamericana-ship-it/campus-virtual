@@ -29,11 +29,15 @@ var ELV2_ContractProbeGame = Object.freeze({
   validateSettings: function (settings) {
     if (settings == null) return true;
     if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('ELV2_SETTINGS_INVALID');
+    if (Object.keys(settings).length !== 0) throw new Error('ELV2_SETTINGS_INVALID');
     return true;
   },
 
   validateAttempt: function (action) {
-    if (!action || action.action_type !== 'SELECT_OPTION') throw new Error('ELV2_ATTEMPT_INVALID');
+    if (!action || typeof action !== 'object' || Array.isArray(action)) throw new Error('ELV2_ATTEMPT_INVALID');
+    var keys = Object.keys(action).sort();
+    if (keys.length !== 2 || keys[0] !== 'action_type' || keys[1] !== 'option_id') throw new Error('ELV2_ATTEMPT_INVALID');
+    if (action.action_type !== 'SELECT_OPTION') throw new Error('ELV2_ATTEMPT_INVALID');
     if (typeof action.option_id !== 'string' || !action.option_id) throw new Error('ELV2_ATTEMPT_INVALID');
     return true;
   },
