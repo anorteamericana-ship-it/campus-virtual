@@ -32,6 +32,26 @@ function ELV2_validateGamePlugin(plugin) {
   return Object.freeze({ game_id: gameId, game_version: gameVersion });
 }
 
+function ELV2_validateCreatedRoundContract(created) {
+  if (!created || typeof created !== 'object' || !created.private_state || typeof created.private_state !== 'object') {
+    throw new Error('ELV2_GAME_ROUND_CONTRACT_INVALID');
+  }
+  if (Object.keys(ELV2_SCORING_POLICY).map(function (key) { return ELV2_SCORING_POLICY[key]; }).indexOf(created.scoring_policy) === -1) {
+    throw new Error('ELV2_GAME_SCORING_POLICY_INVALID');
+  }
+  if (Object.keys(ELV2_VISIBILITY_MODEL).map(function (key) { return ELV2_VISIBILITY_MODEL[key]; }).indexOf(created.visibility_model) === -1) {
+    throw new Error('ELV2_GAME_VISIBILITY_MODEL_INVALID');
+  }
+  if (Object.keys(ELV2_SUBMISSION_POLICY).map(function (key) { return ELV2_SUBMISSION_POLICY[key]; }).indexOf(created.submission_policy) === -1) {
+    throw new Error('ELV2_GAME_SUBMISSION_POLICY_INVALID');
+  }
+  if (created.visibility_model === ELV2_VISIBILITY_MODEL.PRIVATE_RESPONSE &&
+      created.scoring_policy === ELV2_SCORING_POLICY.SCORE_IMMEDIATE_PUBLIC) {
+    throw new Error('ELV2_GAME_SCORE_ORACLE_POLICY_INVALID');
+  }
+  return true;
+}
+
 function ELV2_registerGamePlugin(plugin, options) {
   var metadata = ELV2_validateGamePlugin(plugin);
   if (Object.prototype.hasOwnProperty.call(ELV2_GAME_REGISTRY_, metadata.game_id)) {
@@ -61,5 +81,7 @@ function ELV2_listGameIds(options) {
 }
 
 function ELV2_clearGameRegistryForTests_() {
-  ELV2_GAME_REGISTRY_ = {};
+  Object.keys(ELV2_GAME_REGISTRY_).forEach(function (gameId) {
+    delete ELV2_GAME_REGISTRY_[gameId];
+  });
 }
