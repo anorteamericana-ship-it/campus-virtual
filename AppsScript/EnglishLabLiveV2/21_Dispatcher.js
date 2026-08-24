@@ -186,7 +186,6 @@ function ELV2_createDispatcher(deps) {
           room_id: request.room_id,
           room_code: request.room_code,
           round_id: request.round_id,
-          client_seen_revision: request.client_seen_revision,
           payload: request.payload
         }
       });
@@ -255,24 +254,33 @@ function ELV2_createDispatcher(deps) {
 function ELV2_publicErrorCode_(error) {
   var message = error && error.message ? String(error.message) : '';
   if (message.indexOf('ELV2_FORBIDDEN') === 0) return 'FORBIDDEN';
-  if (message.indexOf('ELV2_AUTH_REQUIRED') === 0) return 'AUTH_REQUIRED';
+  if (message.indexOf('ELV2_AUTH_REQUIRED') === 0 || message.indexOf('ELV2_ACTOR_STUDENT_ID_REQUIRED') === 0) return 'AUTH_REQUIRED';
   if (message.indexOf('ELV2_ROOM_NOT_AVAILABLE') === 0 || message.indexOf('ELV2_ROOM_NOT_LIVE') === 0) return 'ROOM_NOT_AVAILABLE';
   if (message.indexOf('ELV2_ROOM_CLOSED') === 0) return 'ROOM_CLOSED';
   if (message.indexOf('ELV2_DEADLINE_PASSED') === 0) return 'DEADLINE_PASSED';
-  if (message.indexOf('ELV2_STATE_CHANGED') === 0) return 'STATE_CHANGED';
+  if (message.indexOf('ELV2_STATE_CHANGED') === 0 || message.indexOf('ELV2_ACTIVE_ROUND_EXISTS') === 0) return 'STATE_CHANGED';
   if (message.indexOf('ELV2_REQUEST_ID_CONFLICT') === 0) return 'REQUEST_ID_CONFLICT';
-  if (message.indexOf('ELV2_BUSY_RETRY') === 0) return 'BUSY_RETRY';
-  if (message.indexOf('ELV2_GAME_NOT_AVAILABLE') === 0) return 'GAME_NOT_AVAILABLE';
+  if (message.indexOf('ELV2_BUSY_RETRY') === 0 || message.indexOf('ELV2_STORE_ROOM_CONFLICT') === 0) return 'BUSY_RETRY';
+  if (message.indexOf('ELV2_GAME_NOT_AVAILABLE') === 0 || message.indexOf('ELV2_GAME_ROUND_CONTRACT_INVALID') === 0 ||
+      message.indexOf('ELV2_GAME_SCORING_POLICY_INVALID') === 0 || message.indexOf('ELV2_GAME_VISIBILITY_MODEL_INVALID') === 0 ||
+      message.indexOf('ELV2_GAME_SUBMISSION_POLICY_INVALID') === 0 || message.indexOf('ELV2_GAME_SCORE_ORACLE_POLICY_INVALID') === 0) return 'GAME_NOT_AVAILABLE';
   if (message.indexOf('ELV2_CONTENT_NOT_COMPATIBLE') === 0) return 'CONTENT_NOT_COMPATIBLE';
   if (message.indexOf('ELV2_CONTENT_INVALID') === 0) return 'CONTENT_INVALID';
   if (message.indexOf('ELV2_SCHEMA_UNHEALTHY') === 0) return 'SCHEMA_UNHEALTHY';
+  if (message.indexOf('ELV2_STATE_INTEGRITY_FAILED') === 0 || message.indexOf('ELV2_ROUND_ENDS_AT_INVALID') === 0 ||
+      message.indexOf('ELV2_ROUND_REVEAL_ENDS_AT_INVALID') === 0 || message.indexOf('ELV2_REVISION_EXHAUSTED') === 0) return 'STATE_INTEGRITY_FAILED';
+  if (message.indexOf('ELV2_ANSWER_LEAK_BLOCKED') === 0 || message.indexOf('ELV2_PUBLIC_VIEW_SCHEMA_VIOLATION') === 0 ||
+      message.indexOf('ELV2_PUBLIC_VIEW_INVALID') === 0 || message.indexOf('ELV2_PUBLIC_SCHEMA_INVALID') === 0) return 'ANSWER_LEAK_BLOCKED';
   if (message.indexOf('ELV2_ALREADY_SUBMITTED') === 0) return 'ALREADY_SUBMITTED';
   if (message.indexOf('ELV2_ALREADY_GUESSED') === 0) return 'ALREADY_GUESSED';
   if (message.indexOf('ELV2_ALREADY_CLAIMED') === 0) return 'ALREADY_CLAIMED';
   if (message.indexOf('ELV2_INVALID_SELECTION') === 0) return 'INVALID_SELECTION';
   if (message.indexOf('ELV2_ROUND_NOT_OPEN') === 0 || message.indexOf('ELV2_ROUND_NOT_AVAILABLE') === 0 ||
       message.indexOf('ELV2_ROUND_NOT_CURRENT') === 0 || message.indexOf('ELV2_INVALID_ROUND_TRANSITION') === 0) return 'ROUND_NOT_OPEN';
-  if (message.indexOf('ELV2_INVALID') === 0 || message.indexOf('ELV2_REQUEST_ID_') === 0 || message.indexOf('ELV2_REQUIRED_STRING_') === 0) return 'INVALID_REQUEST';
+  if (message.indexOf('ELV2_DURATION_INVALID') === 0 || message.indexOf('ELV2_SETTINGS_INVALID') === 0 ||
+      message.indexOf('ELV2_ATTEMPT_INVALID') === 0 || message.indexOf('ELV2_ROOM_ID_INVALID') === 0 ||
+      message.indexOf('ELV2_INVALID') === 0 || message.indexOf('ELV2_REQUEST_ID_') === 0 ||
+      message.indexOf('ELV2_REQUIRED_STRING_') === 0) return 'INVALID_REQUEST';
   return 'INTERNAL_ERROR';
 }
 
@@ -280,7 +288,8 @@ function ELV2_isDeterministicMutationError_(code) {
   return [
     'AUTH_REQUIRED', 'FORBIDDEN', 'ROOM_NOT_AVAILABLE', 'ROOM_CLOSED', 'ROUND_NOT_OPEN',
     'DEADLINE_PASSED', 'STATE_CHANGED', 'INVALID_REQUEST', 'REQUEST_ID_CONFLICT',
-    'GAME_NOT_AVAILABLE', 'CONTENT_INVALID', 'CONTENT_NOT_COMPATIBLE', 'ALREADY_SUBMITTED',
+    'GAME_NOT_AVAILABLE', 'CONTENT_INVALID', 'CONTENT_NOT_COMPATIBLE', 'SCHEMA_UNHEALTHY',
+    'STATE_INTEGRITY_FAILED', 'ANSWER_LEAK_BLOCKED', 'ALREADY_SUBMITTED',
     'ALREADY_GUESSED', 'ALREADY_CLAIMED', 'INVALID_SELECTION'
   ].indexOf(code) !== -1;
 }
@@ -300,6 +309,8 @@ function ELV2_safeErrorMessage_(code) {
     CONTENT_INVALID: 'El contenido de esta actividad no es válido.',
     CONTENT_NOT_COMPATIBLE: 'No hay contenido compatible para esta actividad.',
     SCHEMA_UNHEALTHY: 'English LAB no puede modificar datos hasta validar su estructura.',
+    STATE_INTEGRITY_FAILED: 'English LAB detectó un estado inconsistente y detuvo la operación.',
+    ANSWER_LEAK_BLOCKED: 'No pudimos mostrar esta actividad de forma segura.',
     BUSY_RETRY: 'Estamos confirmando la acción. Intenta de nuevo.',
     ALREADY_SUBMITTED: 'Tu respuesta ya fue registrada.',
     ALREADY_GUESSED: 'Esa letra ya fue utilizada.',
