@@ -29,10 +29,10 @@ const clock = { nowMs: () => now };
 const idFactory = (kind) => `${kind}-${++idCounter}`;
 const roomEngine = context.ELV2_createRoomEngine({ store, clock, concurrencyGuard, idFactory, roomCodeFactory: () => 'LAB-STATE' });
 const roundEngine = context.ELV2_createRoundEngine({
-  store, clock, concurrencyGuard, idFactory, payloadHasher: (value) => context.ELV2_canonicalJson(value)
+  store, clock, concurrencyGuard, idFactory, payloadHasher: (value) => context.ELV2_canonicalJson(value), allowTestOnlyGames: true
 });
 const lifecycle = context.ELV2_createRoundLifecycleService({ store, clock, concurrencyGuard });
-const stateService = context.ELV2_createStateService({ store, clock, concurrencyGuard });
+const stateService = context.ELV2_createStateService({ store, clock, concurrencyGuard, allowTestOnlyGames: true });
 
 const teacher = {
   user_id: 'TEACHER-1', teacher_id: 'T-1', role: 'teacher',
@@ -86,10 +86,21 @@ assert.equal(unchanged.state_revision, 5);
 assert.equal(Object.prototype.hasOwnProperty.call(unchanged, 'game'), false);
 
 now = 11_000;
+const projectedWhileBusy = concurrencyGuard.withRoomMutation(room.room_id, () =>
+  stateService.getState(studentA, { room_id: room.room_id, known_revision: 5 })
+);
+assert.equal(projectedWhileBusy.unchanged, false);
+assert.equal(projectedWhileBusy.round.phase, 'LOCKED');
+assert.equal(projectedWhileBusy.state_revision, 6);
+assert.equal(store.getRound(opened.round.round_id).status, 'OPEN', 'busy poll must not write while lock is held');
+assert.equal(store.getRoom(room.room_id).state_revision, 5, 'busy poll must not persist projected revision');
+
 studentState = stateService.getState(studentA, { room_id: room.room_id, known_revision: 5 });
 assert.equal(studentState.unchanged, false);
 assert.equal(studentState.round.phase, 'LOCKED');
 assert.equal(studentState.state_revision, 6);
+assert.equal(store.getRound(opened.round.round_id).status, 'LOCKED');
+assert.equal(store.getRoom(room.room_id).state_revision, 6);
 assert.equal(Object.prototype.hasOwnProperty.call(studentState.game, 'solution_option_id'), false);
 
 now = 12_000;
