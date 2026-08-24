@@ -109,5 +109,8 @@ var ELV2_RESERVED_PAYLOAD_FIELDS = Object.freeze([
   'private_result',
   'opened_at',
   'ends_at',
-  'state_revision_authoritative'
+  'state_revision_authoritative',
+  '__proto__',
+  'constructor',
+  'prototype'
 ]);
