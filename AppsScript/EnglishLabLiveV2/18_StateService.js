@@ -4,6 +4,8 @@ function ELV2_createStateService(deps) {
     throw new Error('ELV2_STATE_SERVICE_DEPS_INVALID');
   }
 
+  var allowTestOnlyGames = deps.allowTestOnlyGames === true;
+
   function resolveViewer_(actor, room, requestedMode) {
     ELV2_assertCapability(actor, ELV2_CAPABILITY.LIVE_VIEW);
     var mode = requestedMode || (actor.role === 'student' ? ELV2_VIEW_MODE.STUDENT : ELV2_VIEW_MODE.CONTROLLER);
@@ -22,40 +24,68 @@ function ELV2_createStateService(deps) {
     return { mode: mode, player: null };
   }
 
+  function projectTimedCanonicalization_(room, round, now) {
+    if (!round) return { room: room, round: null, changed: false, persisted: true };
+    var plan = ELV2_planTimedRoundCanonicalization(round, now, {});
+    if (plan.transitions.length === 0) return { room: room, round: round, changed: false, persisted: true };
+
+    var projectedRoom = JSON.parse(JSON.stringify(room));
+    var projectedRound = JSON.parse(JSON.stringify(round));
+    plan.transitions.forEach(function (nextStatus) {
+      ELV2_assertRoundTransition(projectedRound.status, nextStatus);
+      projectedRound.status = nextStatus;
+      if (nextStatus === ELV2_ROUND_STATUS.LOCKED) projectedRound.locked_at = now;
+      if (nextStatus === ELV2_ROUND_STATUS.CLOSED) {
+        projectedRound.closed_at = now;
+        projectedRound.close_reason = 'REVEAL_DEADLINE';
+        projectedRoom.current_round_id = null;
+      }
+    });
+    projectedRound.updated_at = now;
+    projectedRoom.state_revision = ELV2_nextRevision(projectedRoom.state_revision);
+    projectedRoom.updated_at = now;
+    return { room: projectedRoom, round: projectedRound, changed: true, persisted: false };
+  }
+
   function applyTimedCanonicalization_(room, round) {
-    if (!round) return { room: room, round: null, changed: false };
+    if (!round) return { room: room, round: null, changed: false, persisted: true };
     var now = deps.clock.nowMs();
     var plan = ELV2_planTimedRoundCanonicalization(round, now, {});
-    if (plan.transitions.length === 0) return { room: room, round: round, changed: false };
+    if (plan.transitions.length === 0) return { room: room, round: round, changed: false, persisted: true };
 
-    return deps.concurrencyGuard.withRoomMutation(room.room_id, function () {
-      var currentRoom = deps.store.getRoom(room.room_id);
-      if (!currentRoom) throw new Error('ELV2_ROOM_NOT_AVAILABLE');
-      if (!currentRoom.current_round_id) return { room: currentRoom, round: null, changed: false };
-      var currentRound = deps.store.getRound(currentRoom.current_round_id);
-      if (!currentRound || currentRound.room_id !== currentRoom.room_id) throw new Error('ELV2_STATE_INTEGRITY_FAILED');
+    try {
+      return deps.concurrencyGuard.withRoomMutation(room.room_id, function () {
+        var currentRoom = deps.store.getRoom(room.room_id);
+        if (!currentRoom) throw new Error('ELV2_ROOM_NOT_AVAILABLE');
+        if (!currentRoom.current_round_id) return { room: currentRoom, round: null, changed: false, persisted: true };
+        var currentRound = deps.store.getRound(currentRoom.current_round_id);
+        if (!currentRound || currentRound.room_id !== currentRoom.room_id) throw new Error('ELV2_STATE_INTEGRITY_FAILED');
 
-      var currentNow = deps.clock.nowMs();
-      var currentPlan = ELV2_planTimedRoundCanonicalization(currentRound, currentNow, {});
-      if (currentPlan.transitions.length === 0) return { room: currentRoom, round: currentRound, changed: false };
+        var currentNow = deps.clock.nowMs();
+        var currentPlan = ELV2_planTimedRoundCanonicalization(currentRound, currentNow, {});
+        if (currentPlan.transitions.length === 0) return { room: currentRoom, round: currentRound, changed: false, persisted: true };
 
-      currentPlan.transitions.forEach(function (nextStatus) {
-        ELV2_assertRoundTransition(currentRound.status, nextStatus);
-        currentRound.status = nextStatus;
-        if (nextStatus === ELV2_ROUND_STATUS.LOCKED) currentRound.locked_at = currentNow;
-        if (nextStatus === ELV2_ROUND_STATUS.CLOSED) {
-          currentRound.closed_at = currentNow;
-          currentRound.close_reason = 'REVEAL_DEADLINE';
-          currentRoom.current_round_id = null;
-        }
+        currentPlan.transitions.forEach(function (nextStatus) {
+          ELV2_assertRoundTransition(currentRound.status, nextStatus);
+          currentRound.status = nextStatus;
+          if (nextStatus === ELV2_ROUND_STATUS.LOCKED) currentRound.locked_at = currentNow;
+          if (nextStatus === ELV2_ROUND_STATUS.CLOSED) {
+            currentRound.closed_at = currentNow;
+            currentRound.close_reason = 'REVEAL_DEADLINE';
+            currentRoom.current_round_id = null;
+          }
+        });
+        currentRound.updated_at = currentNow;
+        currentRound = deps.store.updateRound(currentRound);
+        currentRoom.state_revision = ELV2_nextRevision(currentRoom.state_revision);
+        currentRoom.updated_at = currentNow;
+        currentRoom = deps.store.updateRoom(currentRoom);
+        return { room: currentRoom, round: currentRound, changed: true, persisted: true };
       });
-      currentRound.updated_at = currentNow;
-      currentRound = deps.store.updateRound(currentRound);
-      currentRoom.state_revision = ELV2_nextRevision(currentRoom.state_revision);
-      currentRoom.updated_at = currentNow;
-      currentRoom = deps.store.updateRoom(currentRoom);
-      return { room: currentRoom, round: currentRound, changed: true };
-    });
+    } catch (error) {
+      if (!error || String(error.message) !== 'ELV2_BUSY_RETRY') throw error;
+      return projectTimedCanonicalization_(room, round, now);
+    }
   }
 
   function leaderboard_(roomId) {
@@ -83,7 +113,7 @@ function ELV2_createStateService(deps) {
 
   function gameView_(round, actor, viewerMode) {
     if (!round) return null;
-    var plugin = ELV2_getGamePlugin(round.game_id, { include_test_only: true });
+    var plugin = ELV2_getGamePlugin(round.game_id, { include_test_only: allowTestOnlyGames });
     var viewer = {
       student_id: viewerMode === ELV2_VIEW_MODE.STUDENT ? actor.student_id : null,
       view_mode: viewerMode
@@ -121,7 +151,7 @@ function ELV2_createStateService(deps) {
       ? deps.store.getPlayerByRoomStudent(room.room_id, actor.student_id)
       : null;
 
-    return Object.freeze({
+    var state = {
       unchanged: false,
       server_now: serverNow,
       state_revision: room.state_revision,
@@ -155,7 +185,10 @@ function ELV2_createStateService(deps) {
       participant_count: deps.store.listPlayersByRoom(room.room_id).length,
       leaderboard: Object.freeze(leaderboard_(room.room_id)),
       game: gameView_(round, actor, viewer.mode)
-    });
+    };
+
+    ELV2_assertNoForbiddenPublicKeys(state, round ? round.status : '');
+    return Object.freeze(state);
   }
 
   return Object.freeze({ getState: getState });
