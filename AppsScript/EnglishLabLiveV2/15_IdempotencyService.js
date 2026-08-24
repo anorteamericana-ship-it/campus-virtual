@@ -56,6 +56,8 @@ function ELV2_createIdempotencyService(deps) {
     next.status = ELV2_IDEMPOTENCY_STATUS.COMMITTED;
     next.effect_type = effect && effect.effect_type ? effect.effect_type : '';
     next.effect_id = effect && effect.effect_id ? effect.effect_id : '';
+    next.room_id = effect && effect.room_id ? effect.room_id : next.room_id;
+    next.round_id = effect && effect.round_id ? effect.round_id : next.round_id;
     next.revision_after = effect && effect.revision_after != null ? effect.revision_after : null;
     next.result_code = effect && effect.result_code ? effect.result_code : 'OK';
     next.updated_at = deps.clock.nowMs();
