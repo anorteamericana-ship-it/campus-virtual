@@ -4,6 +4,10 @@ function ELV2_createInMemoryStore() {
   var roomIdByCode = {};
   var playersById = {};
   var playerIdByRoomStudent = {};
+  var roundsById = {};
+  var roundIdByRoomSequence = {};
+  var attemptsById = {};
+  var attemptIdByKey = {};
 
   function clone(value) {
     return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -48,6 +52,10 @@ function ELV2_createInMemoryStore() {
       return clone(player);
     },
 
+    getPlayer: function (playerId) {
+      return clone(playersById[playerId] || null);
+    },
+
     getPlayerByRoomStudent: function (roomId, studentId) {
       var playerId = playerIdByRoomStudent[roomId + '|' + studentId];
       return playerId ? clone(playersById[playerId]) : null;
@@ -58,6 +66,60 @@ function ELV2_createInMemoryStore() {
         return playersById[playerId];
       }).filter(function (player) {
         return player.room_id === roomId;
+      }).map(clone);
+    },
+
+    createRound: function (round) {
+      var key = round.room_id + '|' + round.sequence_no;
+      if (roundsById[round.round_id] || roundIdByRoomSequence[key]) throw new Error('ELV2_STORE_ROUND_CONFLICT');
+      roundsById[round.round_id] = clone(round);
+      roundIdByRoomSequence[key] = round.round_id;
+      return clone(round);
+    },
+
+    updateRound: function (round) {
+      if (!roundsById[round.round_id]) throw new Error('ELV2_STORE_ROUND_NOT_FOUND');
+      roundsById[round.round_id] = clone(round);
+      return clone(round);
+    },
+
+    getRound: function (roundId) {
+      return clone(roundsById[roundId] || null);
+    },
+
+    listRoundsByRoom: function (roomId) {
+      return Object.keys(roundsById).map(function (roundId) {
+        return roundsById[roundId];
+      }).filter(function (round) {
+        return round.room_id === roomId;
+      }).sort(function (a, b) {
+        return a.sequence_no - b.sequence_no;
+      }).map(clone);
+    },
+
+    createAttempt: function (attempt) {
+      if (attemptsById[attempt.attempt_id] || attemptIdByKey[attempt.attempt_key]) throw new Error('ELV2_STORE_ATTEMPT_CONFLICT');
+      attemptsById[attempt.attempt_id] = clone(attempt);
+      attemptIdByKey[attempt.attempt_key] = attempt.attempt_id;
+      return clone(attempt);
+    },
+
+    updateAttempt: function (attempt) {
+      if (!attemptsById[attempt.attempt_id]) throw new Error('ELV2_STORE_ATTEMPT_NOT_FOUND');
+      attemptsById[attempt.attempt_id] = clone(attempt);
+      return clone(attempt);
+    },
+
+    getAttemptByKey: function (attemptKey) {
+      var attemptId = attemptIdByKey[attemptKey];
+      return attemptId ? clone(attemptsById[attemptId]) : null;
+    },
+
+    listAttemptsByRound: function (roundId) {
+      return Object.keys(attemptsById).map(function (attemptId) {
+        return attemptsById[attemptId];
+      }).filter(function (attempt) {
+        return attempt.round_id === roundId;
       }).map(clone);
     }
   });
