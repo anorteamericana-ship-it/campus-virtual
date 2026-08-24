@@ -45,3 +45,6 @@ jobs:
 
       - name: Plugin contract E1
         run: node scripts/qa_english_lab_live_v2_plugin_contract.mjs
+
+      - name: Mixed-room authorization and reconnect E1
+        run: node scripts/qa_english_lab_live_v2_room_engine.mjs
