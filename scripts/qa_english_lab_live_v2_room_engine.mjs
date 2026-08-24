@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const sourceDir = path.join(root, 'AppsScript', 'EnglishLabLiveV2');
-const files = ['00_Constants.js', '04_StateMachine.js', '09_Authorization.js', '10_InMemoryStore.js', '11_RoomEngine.js'];
+const files = ['00_Constants.js', '04_StateMachine.js', '09_Authorization.js', '10_InMemoryStore.js', '12_ConcurrencyGuard.js', '11_RoomEngine.js'];
 const context = vm.createContext({ console, Object, Array, JSON, String, Error, isFinite, Number });
 for (const name of files) {
   vm.runInContext(fs.readFileSync(path.join(sourceDir, name), 'utf8'), context, { filename: name });
@@ -16,9 +16,11 @@ for (const name of files) {
 let now = 1000;
 let idCounter = 0;
 const store = context.ELV2_createInMemoryStore();
+const concurrencyGuard = context.ELV2_createConcurrencyGuard(context.ELV2_createSynchronousTestLockAdapter());
 const engine = context.ELV2_createRoomEngine({
   store,
   clock: { nowMs: () => now },
+  concurrencyGuard,
   idFactory: (kind) => `${kind}-${++idCounter}`,
   roomCodeFactory: () => 'LAB-MIXED'
 });
@@ -83,5 +85,13 @@ const foreignTeacher = {
 };
 assert.throws(() => context.ELV2_assertRoomController(foreignTeacher, started), /ELV2_FORBIDDEN/);
 assert.equal(context.ELV2_assertRoomController(admin, started), true);
+
+now = 3000;
+const closed = engine.closeRoom(teacher, { room_id: room.room_id, expected_revision: 3, reason: 'E1_DONE' });
+assert.equal(closed.room.status, 'CLOSED');
+assert.equal(closed.room.state_revision, 4);
+assert.equal(closed.room.close_reason, 'E1_DONE');
+assert.throws(() => engine.joinRoom(studentA, { room_code: 'LAB-MIXED' }), /ELV2_ROOM_NOT_AVAILABLE/);
+assert.throws(() => engine.startRoom(teacher, room.room_id, 4), /ELV2_INVALID_ROOM_TRANSITION/);
 
 console.log('ELV2 ROOM ENGINE E1 PASS');
