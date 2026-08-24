@@ -30,7 +30,8 @@ const deps = {
   clock: { nowMs: () => now },
   concurrencyGuard,
   idFactory: (kind) => `${kind}-${++idCounter}`,
-  payloadHasher: (value) => context.ELV2_canonicalJson(value)
+  payloadHasher: (value) => context.ELV2_canonicalJson(value),
+  allowTestOnlyGames: true
 };
 const roomEngine = context.ELV2_createRoomEngine({
   store,
@@ -65,6 +66,23 @@ const content = {
   options: [{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }],
   solution_option_id: 'A'
 };
+
+const productionStyleEngine = context.ELV2_createRoundEngine({
+  store,
+  clock: deps.clock,
+  concurrencyGuard,
+  idFactory: deps.idFactory,
+  payloadHasher: deps.payloadHasher
+});
+assert.throws(() => productionStyleEngine.prepareRound(teacher, {
+  room_id: room.room_id,
+  expected_revision: 3,
+  game_id: 'CONTRACT_PROBE',
+  content_ref: 'TEST:PROBE:DENIED',
+  resolved_content: content,
+  settings: {}
+}), /ELV2_GAME_NOT_AVAILABLE/);
+
 let prepared = roundEngine.prepareRound(teacher, {
   room_id: room.room_id,
   expected_revision: 3,
@@ -101,12 +119,18 @@ assert.equal(resultA.attempt.score_status, 'HIDDEN');
 assert.equal(resultA.player.score_total, 0, 'secret-dependent score must remain hidden during OPEN');
 assert.equal(resultA.room.state_revision, 6);
 assert.equal(Object.prototype.hasOwnProperty.call(resultA.view, 'solution_option_id'), false);
+assert.throws(() => roundEngine.submitAttempt(studentA, {
+  room_id: room.room_id,
+  round_id: opened.round.round_id,
+  request_id: 'REQ-A-GARBAGE',
+  attempt: { action_type: 'SELECT_OPTION', option_id: 'A', basura: 'x' }
+}), /ELV2_ATTEMPT_INVALID/);
 
 const replayA = roundEngine.submitAttempt(studentA, {
   room_id: room.room_id,
   round_id: opened.round.round_id,
   request_id: 'REQ-A-1',
-  client_seen_revision: 5,
+  client_seen_revision: 99,
   attempt: { action_type: 'SELECT_OPTION', option_id: 'A' }
 });
 assert.equal(replayA.replayed, true);
