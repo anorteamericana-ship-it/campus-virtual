@@ -94,4 +94,27 @@ assert.equal(closed.room.close_reason, 'E1_DONE');
 assert.throws(() => engine.joinRoom(studentA, { room_code: 'LAB-MIXED' }), /ELV2_ROOM_NOT_AVAILABLE/);
 assert.throws(() => engine.startRoom(teacher, room.room_id, 4), /ELV2_INVALID_ROOM_TRANSITION/);
 
+// A code collision is handled server-side and never surfaces to the teacher.
+const collisionStore = context.ELV2_createInMemoryStore();
+const collisionGuard = context.ELV2_createConcurrencyGuard(context.ELV2_createSynchronousTestLockAdapter());
+const seedEngine = context.ELV2_createRoomEngine({
+  store: collisionStore,
+  clock: { nowMs: () => now },
+  concurrencyGuard: collisionGuard,
+  idFactory: () => 'room-seed',
+  roomCodeFactory: () => 'LAB-DUP'
+});
+seedEngine.createRoom(teacher, { title: 'Seed' });
+let codeCalls = 0;
+const retryEngine = context.ELV2_createRoomEngine({
+  store: collisionStore,
+  clock: { nowMs: () => now },
+  concurrencyGuard: collisionGuard,
+  idFactory: () => 'room-retry',
+  roomCodeFactory: () => (++codeCalls === 1 ? 'LAB-DUP' : 'LAB-UNIQUE')
+});
+const retriedRoom = retryEngine.createRoom(teacher, { title: 'Collision retry' });
+assert.equal(retriedRoom.room_code, 'LAB-UNIQUE');
+assert.equal(codeCalls, 2);
+
 console.log('ELV2 ROOM ENGINE E1 PASS');
