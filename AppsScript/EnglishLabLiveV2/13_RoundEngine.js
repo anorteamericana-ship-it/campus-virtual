@@ -52,6 +52,7 @@ function ELV2_createRoundEngine(deps) {
         room_id: room.room_id,
         server_now: nowMs()
       });
+      ELV2_validateCreatedRoundContract(created);
 
       var sequenceNo = deps.store.listRoundsByRoom(room.room_id).length + 1;
       var now = nowMs();
