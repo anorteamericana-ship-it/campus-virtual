@@ -56,3 +56,6 @@ jobs:
 
       - name: Schema guard, global idempotency and events E1
         run: node scripts/qa_english_lab_live_v2_infrastructure.mjs
+
+      - name: getState projections and round closure E1
+        run: node scripts/qa_english_lab_live_v2_state_service.mjs
