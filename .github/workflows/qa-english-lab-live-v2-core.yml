@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Repository diff integrity
+      - name: Whitespace and conflict-marker check
         run: git diff --check HEAD^
 
       - name: Contracts and strict schema E1
@@ -57,5 +57,8 @@ jobs:
       - name: Schema guard, global idempotency and events E1
         run: node scripts/qa_english_lab_live_v2_infrastructure.mjs
 
-      - name: getState projections and round closure E1
+      - name: getState projections, contention and round closure E1
         run: node scripts/qa_english_lab_live_v2_state_service.mjs
+
+      - name: Dispatcher envelope, retry and error mapping E1
+        run: node scripts/qa_english_lab_live_v2_dispatcher.mjs
