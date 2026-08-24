@@ -36,6 +36,15 @@ const created = game.createRound(content, {}, {});
 assert.equal(created.scoring_policy, 'SCORE_ON_REVEAL');
 assert.equal(created.visibility_model, 'PRIVATE_RESPONSE');
 assert.equal(created.submission_policy, 'SINGLE_FINAL');
+assert.equal(context.ELV2_validateCreatedRoundContract(created), true);
+assert.throws(() => context.ELV2_validateCreatedRoundContract({
+  private_state: {},
+  scoring_policy: 'SCORE_IMMEDIATE_PUBLIC',
+  visibility_model: 'PRIVATE_RESPONSE',
+  submission_policy: 'SINGLE_FINAL'
+}), /ELV2_GAME_SCORE_ORACLE_POLICY_INVALID/);
+assert.throws(() => game.validateSettings({ hidden_switch: true }), /ELV2_SETTINGS_INVALID/);
+assert.throws(() => game.validateAttempt({ action_type: 'SELECT_OPTION', option_id: 'A', basura: true }), /ELV2_ATTEMPT_INVALID/);
 
 let state = created.private_state;
 const actorA = { student_id: 'STU_A' };
