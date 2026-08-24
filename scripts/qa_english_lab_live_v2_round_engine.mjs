@@ -35,6 +35,7 @@ const deps = {
 const roomEngine = context.ELV2_createRoomEngine({
   store,
   clock: deps.clock,
+  concurrencyGuard,
   idFactory: deps.idFactory,
   roomCodeFactory: () => 'LAB-ROUND'
 });
