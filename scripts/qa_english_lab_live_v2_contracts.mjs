@@ -20,7 +20,7 @@ function plain(value) {
 }
 
 assert.equal(context.ELV2_API_VERSION, 'english_lab_live.v2');
-assert.equal(context.ELV2_SCHEMA_VERSION, '2.1.0');
+assert.equal(context.ELV2_SCHEMA_VERSION, '2.2.0');
 assert.deepEqual(plain(context.ELV2_ROOM_STATUS), { LOBBY: 'LOBBY', LIVE: 'LIVE', CLOSED: 'CLOSED' });
 assert.deepEqual(plain(context.ELV2_ROUND_STATUS), {
   READY: 'READY', OPEN: 'OPEN', LOCKED: 'LOCKED', REVEAL: 'REVEAL', CLOSED: 'CLOSED'
@@ -68,6 +68,7 @@ for (const key of tableKeys) {
   assert.deepEqual(plain(extra.extra), ['unexpected_field']);
 }
 
+assert.ok(context.ELV2_TABLES.ROOMS.headers.includes('host_group_id'), 'ROOMS must persist its canonical host group');
 for (const required of ['scoring_policy', 'visibility_model', 'submission_policy']) {
   assert.ok(context.ELV2_TABLES.ROUNDS.headers.includes(required), `ROUNDS must persist ${required}`);
 }
