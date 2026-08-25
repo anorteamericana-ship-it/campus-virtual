@@ -36,6 +36,7 @@ const stateService = context.ELV2_createStateService({ store, clock, concurrency
 
 const teacher = {
   user_id: 'TEACHER-1', teacher_id: 'T-1', role: 'teacher',
+  authorized_group_ids: ['GROUP-A'],
   capabilities: ['LIVE_CREATE', 'LIVE_VIEW', 'LIVE_CONTROL_OWN']
 };
 const studentA = {
@@ -52,7 +53,8 @@ const content = {
   solution_option_id: 'A'
 };
 
-let room = roomEngine.createRoom(teacher, { title: 'State test' });
+let room = roomEngine.createRoom(teacher, { group_id: 'GROUP-A', title: 'State test' });
+assert.equal(room.host_group_id, 'GROUP-A');
 roomEngine.joinRoom(studentA, { room_code: room.room_code });
 roomEngine.joinRoom(studentB, { room_code: room.room_code });
 room = roomEngine.startRoom(teacher, room.room_id, 2);
@@ -117,6 +119,7 @@ const autoClosed = stateService.getState(teacher, { room_id: room.room_id, view_
 assert.equal(autoClosed.round.phase, 'CLOSED');
 assert.equal(autoClosed.state_revision, 8);
 assert.equal(store.getRoom(room.room_id).current_round_id, null);
+assert.equal(store.getRoom(room.room_id).host_group_id, 'GROUP-A');
 assert.equal(store.getRound(prepared.round.round_id).close_reason, 'REVEAL_DEADLINE');
 
 prepared = roundEngine.prepareRound(teacher, {
