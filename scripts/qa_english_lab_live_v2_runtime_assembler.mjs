@@ -106,7 +106,8 @@ response = runtime.dispatchTransport({
   room_id: roomId, payload: {}
 });
 assert.equal(response.ok, true);
-assert.equal(response.view.room.host_group_id, 'GROUP-A');
+assert.equal(Object.prototype.hasOwnProperty.call(response.view.room, 'host_group_id'), false, 'host group stays server-side unless the public contract explicitly needs it');
+assert.equal(store.getRoom(roomId).host_group_id, 'GROUP-A', 'mixed-room join must not rewrite the authoritative host group');
 assert.equal(store.getPlayerByRoomStudent(roomId, 'STU-B').home_group_id_snapshot, 'GROUP-B');
 
 // Transport preserves forged/unknown fields so RequestValidation rejects them.
