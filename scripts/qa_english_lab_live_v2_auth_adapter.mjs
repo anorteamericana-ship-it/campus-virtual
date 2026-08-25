@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const sourceDir = path.join(root, 'AppsScript', 'EnglishLabLiveV2');
-const files = ['00_Constants.js', '19_RequestValidation.js', '22_CampusAuthAdapter.js'];
+const files = ['00_Constants.js', '05_Idempotency.js', '19_RequestValidation.js', '22_CampusAuthAdapter.js'];
 const context = vm.createContext({ console, Object, Array, JSON, String, Error, Number });
 for (const name of files) {
   vm.runInContext(fs.readFileSync(path.join(sourceDir, name), 'utf8'), context, { filename: name });
