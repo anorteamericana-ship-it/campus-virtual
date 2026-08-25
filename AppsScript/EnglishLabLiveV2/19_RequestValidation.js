@@ -10,7 +10,7 @@ var ELV2_REQUEST_TOP_LEVEL_FIELDS = Object.freeze([
 ]);
 
 var ELV2_ACTION_PAYLOAD_FIELDS = Object.freeze({
-  createRoom: Object.freeze(['title', 'config']),
+  createRoom: Object.freeze(['group_id', 'title', 'config']),
   joinRoom: Object.freeze([]),
   getState: Object.freeze(['view_mode']),
   startRoom: Object.freeze(['expected_revision']),
@@ -70,6 +70,7 @@ function ELV2_validateRequestEnvelope(request) {
   if (reserved) throw new Error('ELV2_INVALID_RESERVED_FIELD:' + reserved.path + ':' + reserved.key);
 
   ELV2_assertActionPayloadFields_(request.action, payload);
+  ELV2_assertActionPayloadValues_(request.action, payload);
 
   return Object.freeze({
     api_version: request.api_version,
@@ -89,6 +90,15 @@ function ELV2_assertActionPayloadFields_(action, payload) {
   Object.keys(payload).forEach(function (key) {
     if (allowed.indexOf(key) === -1) throw new Error('ELV2_INVALID_ACTION_FIELD:' + action + ':' + key);
   });
+  return true;
+}
+
+function ELV2_assertActionPayloadValues_(action, payload) {
+  if (action === 'createRoom') {
+    if (typeof payload.group_id !== 'string' || !payload.group_id.trim() || payload.group_id.length > ELV2_REQUEST_LIMITS.max_resource_id_chars) {
+      throw new Error('ELV2_INVALID_GROUP_ID');
+    }
+  }
   return true;
 }
 
