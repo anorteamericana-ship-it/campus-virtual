@@ -13,7 +13,7 @@ function ELV2_createRoomEngine(deps) {
   }
 
   function createRoom(actor, input) {
-    ELV2_assertCapability(actor, ELV2_CAPABILITY.LIVE_CREATE);
+    var hostGroupId = ELV2_assertRoomCreateGroup(actor, input && input.group_id);
     return deps.concurrencyGuard.withRoomMutation('__ELV2_CREATE_ROOM__', function () {
       var roomId = deps.idFactory('room');
       var now = nowMs();
@@ -27,6 +27,7 @@ function ELV2_createRoomEngine(deps) {
           status: ELV2_ROOM_STATUS.LOBBY,
           owner_user_id: actor.user_id,
           owner_teacher_id: actor.teacher_id || null,
+          host_group_id: hostGroupId,
           join_policy: 'MIXED_AUTHORIZED',
           current_round_id: null,
           state_revision: 0,
