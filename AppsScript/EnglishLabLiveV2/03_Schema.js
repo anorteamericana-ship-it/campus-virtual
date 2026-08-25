@@ -3,7 +3,7 @@ var ELV2_TABLES = Object.freeze({
   ROOMS: Object.freeze({
     name: 'ENGLISH_LAB_LIVE_V2_ROOMS',
     headers: Object.freeze([
-      'room_id', 'room_code', 'status', 'owner_user_id', 'owner_teacher_id',
+      'room_id', 'room_code', 'status', 'owner_user_id', 'owner_teacher_id', 'host_group_id',
       'join_policy', 'current_round_id', 'state_revision', 'title', 'config_json',
       'created_at', 'started_at', 'closed_at', 'close_reason', 'created_by_user_id',
       'created_service_version', 'updated_at'
