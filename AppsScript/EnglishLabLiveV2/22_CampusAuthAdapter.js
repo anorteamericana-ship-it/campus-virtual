@@ -8,6 +8,7 @@ function ELV2_createCampusAuthAdapter(deps) {
   if (!deps || typeof deps.validateSession !== 'function' ||
       typeof deps.getStrictStudentEnrollments !== 'function' ||
       typeof deps.getTeacherGroupsForSession !== 'function' ||
+      typeof deps.getActiveGroupIds !== 'function' ||
       typeof deps.stableUserIdForSession !== 'function') {
     throw new Error('ELV2_AUTH_ADAPTER_DEPS_INVALID');
   }
@@ -63,7 +64,7 @@ function ELV2_createCampusAuthAdapter(deps) {
   function buildTeacherActor_(session) {
     var groups = deps.getTeacherGroupsForSession(session);
     if (!Array.isArray(groups)) throw new Error('ELV2_SCHEMA_UNHEALTHY:teacher_groups');
-    var groupIds = ELV2_normalizeTeacherGroupIds_(groups);
+    var groupIds = ELV2_normalizeAuthorizedGroupIds_(groups);
     var enabled = groupIds.length > 0;
     var userId = stableUserId_(session, 'teacher');
 
@@ -80,15 +81,17 @@ function ELV2_createCampusAuthAdapter(deps) {
   }
 
   function buildAdminActor_(session, role) {
+    var groups = deps.getActiveGroupIds(session, role);
+    if (!Array.isArray(groups)) throw new Error('ELV2_SCHEMA_UNHEALTHY:active_groups');
+    var groupIds = ELV2_normalizeAuthorizedGroupIds_(groups);
+    var capabilities = [ELV2_CAPABILITY.LIVE_VIEW, ELV2_CAPABILITY.LIVE_CONTROL_ANY];
+    if (groupIds.length > 0) capabilities.splice(1, 0, ELV2_CAPABILITY.LIVE_CREATE);
     return Object.freeze({
       user_id: stableUserId_(session, role),
       role: role,
       display_name: ELV2_authNorm_(session.nombre),
-      capabilities: Object.freeze([
-        ELV2_CAPABILITY.LIVE_VIEW,
-        ELV2_CAPABILITY.LIVE_CREATE,
-        ELV2_CAPABILITY.LIVE_CONTROL_ANY
-      ])
+      authorized_group_ids: Object.freeze(groupIds),
+      capabilities: Object.freeze(capabilities)
     });
   }
 
@@ -178,6 +181,7 @@ function ELV2_createAppsScriptCampusAuthAdapter() {
     },
     getStrictStudentEnrollments: ELV2_readAppsScriptStudentEnrollmentsStrict_,
     getTeacherGroupsForSession: ELV2_readAppsScriptTeacherGroupsStrict_,
+    getActiveGroupIds: ELV2_readAppsScriptActiveGroupIdsStrict_,
     stableUserIdForSession: ELV2_appsScriptStableUserId_
   });
 }
@@ -203,6 +207,19 @@ function ELV2_readAppsScriptTeacherGroupsStrict_(session) {
   var groups = f984z6iTeacherGroupsForSession(session);
   if (!Array.isArray(groups)) throw new Error('ELV2_SCHEMA_UNHEALTHY:teacher_groups');
   return groups;
+}
+
+function ELV2_readAppsScriptActiveGroupIdsStrict_() {
+  if (typeof anF65_readGrupos !== 'function') throw new Error('ELV2_AUTH_RUNTIME_UNAVAILABLE');
+  var groups = anF65_readGrupos();
+  if (!Array.isArray(groups)) throw new Error('ELV2_SCHEMA_UNHEALTHY:active_groups');
+  var out = [];
+  groups.forEach(function (item) {
+    if (!item || !item.activo) return;
+    var groupId = ELV2_authNorm_(item.code || item.grupo || item.cod_grupo);
+    if (groupId) out.push(groupId);
+  });
+  return out;
 }
 
 function ELV2_appsScriptStableUserId_(session, role) {
@@ -252,18 +269,22 @@ function ELV2_chooseHomeGroup_(session, enrollments) {
   return enrollments[0].group_id;
 }
 
-function ELV2_normalizeTeacherGroupIds_(groups) {
+function ELV2_normalizeAuthorizedGroupIds_(groups) {
   var out = [];
   var seen = {};
   groups.forEach(function (item) {
     var groupId = typeof item === 'string'
       ? ELV2_authNorm_(item)
-      : ELV2_authNorm_(item && (item.grupo || item.cod_grupo || item.code));
+      : ELV2_authNorm_(item && (item.grupo || item.cod_grupo || item.code || item.group_id));
     if (!groupId || seen[groupId]) return;
     seen[groupId] = true;
     out.push(groupId);
   });
   return out;
+}
+
+function ELV2_normalizeTeacherGroupIds_(groups) {
+  return ELV2_normalizeAuthorizedGroupIds_(groups);
 }
 
 function ELV2_authColumnMap_(headers) {
