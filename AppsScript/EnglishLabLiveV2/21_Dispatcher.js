@@ -40,7 +40,11 @@ function ELV2_createDispatcher(deps) {
   function execute_(request, actor) {
     var payload = request.payload || {};
     if (request.action === 'createRoom') {
-      return deps.roomEngine.createRoom(actor, { title: payload.title || '', config: payload.config || {} });
+      return deps.roomEngine.createRoom(actor, {
+        group_id: payload.group_id || '',
+        title: payload.title || '',
+        config: payload.config || {}
+      });
     }
     if (request.action === 'joinRoom') {
       return deps.roomEngine.joinRoom(actor, { room_id: request.room_id || '', room_code: request.room_code || '' });
