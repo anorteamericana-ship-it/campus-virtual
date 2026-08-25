@@ -20,7 +20,7 @@ function plain(value) {
 }
 
 assert.equal(context.ELV2_API_VERSION, 'english_lab_live.v2');
-assert.equal(context.ELV2_SCHEMA_VERSION, '2.0.0');
+assert.equal(context.ELV2_SCHEMA_VERSION, '2.1.0');
 assert.deepEqual(plain(context.ELV2_ROOM_STATUS), { LOBBY: 'LOBBY', LIVE: 'LIVE', CLOSED: 'CLOSED' });
 assert.deepEqual(plain(context.ELV2_ROUND_STATUS), {
   READY: 'READY', OPEN: 'OPEN', LOCKED: 'LOCKED', REVEAL: 'REVEAL', CLOSED: 'CLOSED'
@@ -67,6 +67,11 @@ for (const key of tableKeys) {
   assert.equal(extra.ok, false, `${key} must fail on unexpected headers`);
   assert.deepEqual(plain(extra.extra), ['unexpected_field']);
 }
+
+for (const required of ['scoring_policy', 'visibility_model', 'submission_policy']) {
+  assert.ok(context.ELV2_TABLES.ROUNDS.headers.includes(required), `ROUNDS must persist ${required}`);
+}
+assert.ok(context.ELV2_TABLES.ATTEMPTS.headers.includes('payload_hash'), 'ATTEMPTS must persist payload_hash for retry conflict detection');
 
 const sourceText = files.map((name) => fs.readFileSync(path.join(sourceDir, name), 'utf8')).join('\n');
 for (const forbidden of ['SpreadsheetApp', 'LockService', 'UrlFetchApp', 'doPost', 'doGet']) {
