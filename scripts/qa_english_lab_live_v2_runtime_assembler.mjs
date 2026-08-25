@@ -29,6 +29,7 @@ const authAdapter = context.ELV2_createCampusAuthAdapter({
   validateSession: (token) => sessions[token] || null,
   getStrictStudentEnrollments: (code) => code === 'STU-B' ? [{ group_id: 'GROUP-B', level: 'B1' }] : [],
   getTeacherGroupsForSession: (session) => session.usuario === 'teacher-1' ? [{ grupo: 'GROUP-A' }] : [],
+  getActiveGroupIds: () => ['GROUP-A', 'GROUP-B', 'GROUP-Z'],
   stableUserIdForSession: (session, role) => `${role}:${session.codigo || session.usuario}`
 });
 
@@ -91,7 +92,7 @@ assert.equal(response.ok, false);
 assert.equal(response.error.code, 'FORBIDDEN');
 assert.equal(roomCodeCounter, 1, 'forbidden group must fail before room mutation');
 
-// CONTROL_ANY admin can create for a non-teacher-scoped group.
+// Admin can create for a canonical active group outside the teacher's own scope.
 response = runtime.dispatchTransport({
   token: 'admin', api_version: 'english_lab_live.v2', action: 'createRoom', request_id: 'REQ-ADMIN',
   payload: { group_id: 'GROUP-Z', title: 'Admin room', config: {} }
