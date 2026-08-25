@@ -49,7 +49,7 @@ The dedicated AuthAdapter gate is:
 node scripts/qa_english_lab_live_v2_auth_adapter.mjs
 ```
 
-Last code head demonstrated green before this documentation-only commit: `3c5afa21ed766d3ab95d4d8bd574090eeb37da6b`.
+Last code head demonstrated green before documentation-only commits: `3c5afa21ed766d3ab95d4d8bd574090eeb37da6b`.
 
 - English LAB LIVE v2 Core · run #98 · SUCCESS
 - English LAB Source Truth Guard · run #233 · SUCCESS
