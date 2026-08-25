@@ -49,6 +49,7 @@ const adapter = context.ELV2_createCampusAuthAdapter({
     }
     return [];
   },
+  getActiveGroupIds: () => ['GROUP-A', 'GROUP-B', 'GROUP-ADMIN'],
   stableUserIdForSession: (session, role) => `${role}:opaque:${session.codigo || session.usuario}`
 });
 
@@ -104,14 +105,26 @@ actor = adapter.authenticateToken('tok-teacher-empty');
 assert.deepEqual(Array.from(actor.authorized_group_ids), []);
 assert.deepEqual(Array.from(actor.capabilities), [], 'session grupos must not grant v2 authority');
 
-// Admin control-any is explicit; non-LIVE Campus roles are rejected.
+// Admin/superadmin control-any remains explicit, but room creation is restricted to canonical active groups.
 actor = adapter.authenticateToken('tok-admin');
+assert.deepEqual(Array.from(actor.authorized_group_ids), ['GROUP-A', 'GROUP-B', 'GROUP-ADMIN']);
 assert.deepEqual(Array.from(actor.capabilities), ['LIVE_VIEW', 'LIVE_CREATE', 'LIVE_CONTROL_ANY']);
 actor = adapter.authenticateToken('tok-super');
+assert.deepEqual(Array.from(actor.authorized_group_ids), ['GROUP-A', 'GROUP-B', 'GROUP-ADMIN']);
 assert.deepEqual(Array.from(actor.capabilities), ['LIVE_VIEW', 'LIVE_CREATE', 'LIVE_CONTROL_ANY']);
 assert.throws(() => adapter.authenticateToken('tok-sales'), /ELV2_FORBIDDEN:role/);
 assert.throws(() => adapter.authenticateToken('tok-bad'), /ELV2_AUTH_REQUIRED/);
 assert.throws(() => adapter.authenticateToken(''), /ELV2_AUTH_REQUIRED/);
+
+// createRoom now requires an explicit host group; it remains browser input until actor authorization checks it.
+assert.throws(() => context.ELV2_validateRequestEnvelope({
+  api_version: 'english_lab_live.v2', action: 'createRoom', request_id: 'REQ-CREATE-0', payload: { title: 'Missing group' }
+}), /ELV2_INVALID_GROUP_ID/);
+const createRequest = context.ELV2_validateRequestEnvelope({
+  api_version: 'english_lab_live.v2', action: 'createRoom', request_id: 'REQ-CREATE-1',
+  payload: { group_id: 'GROUP-A', title: 'Room A', config: {} }
+});
+assert.equal(createRequest.payload.group_id, 'GROUP-A');
 
 // Transport removes only the session secret. It must NOT hide arbitrary or forged fields.
 let transport = context.ELV2_extractCampusTransportRequest({
