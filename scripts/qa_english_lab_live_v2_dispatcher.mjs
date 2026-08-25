@@ -69,6 +69,7 @@ const dispatcher = context.ELV2_createDispatcher({
 
 const teacher = {
   user_id: 'TEACHER-1', teacher_id: 'T-1', role: 'teacher',
+  authorized_group_ids: ['GROUP-A'],
   capabilities: ['LIVE_CREATE', 'LIVE_VIEW', 'LIVE_CONTROL_OWN']
 };
 const studentA = {
@@ -96,10 +97,13 @@ assert.equal(response.error.code, 'INVALID_REQUEST');
 response = dispatcher.dispatch({ api_version: 'english_lab_live.v2', action: 'createRoom', payload: {} }, teacher);
 assert.equal(response.ok, false);
 assert.equal(response.error.code, 'INVALID_REQUEST');
-response = dispatcher.dispatch(base('createRoom', 'REQ-NO-ACTOR'), null);
+response = dispatcher.dispatch(base('createRoom', 'REQ-NO-ACTOR', { payload: { group_id: 'GROUP-A' } }), null);
 assert.equal(response.ok, false);
 assert.equal(response.error.code, 'AUTH_REQUIRED');
-response = dispatcher.dispatch(base('createRoom', 'REQ-EXTRA', { payload: { title: 'X', basura: 'z' } }), teacher);
+response = dispatcher.dispatch(base('createRoom', 'REQ-EXTRA', { payload: { group_id: 'GROUP-A', title: 'X', basura: 'z' } }), teacher);
+assert.equal(response.ok, false);
+assert.equal(response.error.code, 'INVALID_REQUEST');
+response = dispatcher.dispatch(base('createRoom', 'REQ-NO-GROUP', { payload: { title: 'No host group' } }), teacher);
 assert.equal(response.ok, false);
 assert.equal(response.error.code, 'INVALID_REQUEST');
 const nestedReserved = JSON.parse('{"settings":[{"constructor":"forged"}]}');
@@ -109,11 +113,22 @@ response = dispatcher.dispatch(base('prepareRound', 'REQ-RESERVED', {
 assert.equal(response.ok, false);
 assert.equal(response.error.code, 'INVALID_REQUEST');
 
+// Browser selects a host group, but the server actor must authorize it before any room is written.
+response = dispatcher.dispatch(base('createRoom', 'REQ-FOREIGN-GROUP', {
+  payload: { group_id: 'GROUP-B', title: 'Must be blocked', config: {} }
+}), teacher);
+assert.equal(response.ok, false);
+assert.equal(response.error.code, 'FORBIDDEN');
+assert.equal(store.findRoomByCode('LAB-DISPATCH'), null);
+
 // Build a room through the Dispatcher.
-response = dispatcher.dispatch(base('createRoom', 'REQ-CREATE', { payload: { title: 'Dispatcher room', config: {} } }), teacher);
+response = dispatcher.dispatch(base('createRoom', 'REQ-CREATE', {
+  payload: { group_id: 'GROUP-A', title: 'Dispatcher room', config: {} }
+}), teacher);
 assert.equal(response.ok, true);
 const roomId = response.data.effect.id;
 assert.equal(response.view.room.room_id, roomId);
+assert.equal(store.getRoom(roomId).host_group_id, 'GROUP-A');
 assert.equal(response.view.state_revision, 0);
 
 response = dispatcher.dispatch(base('joinRoom', 'REQ-JOIN-A', { room_id: roomId }), studentA);
@@ -122,6 +137,8 @@ assert.equal(response.view.state_revision, 1);
 response = dispatcher.dispatch(base('joinRoom', 'REQ-JOIN-B', { room_id: roomId }), studentB);
 assert.equal(response.ok, true);
 assert.equal(response.view.state_revision, 2);
+assert.equal(store.getPlayerByRoomStudent(roomId, 'STU-B').home_group_id_snapshot, 'GROUP-B');
+assert.equal(store.getRoom(roomId).host_group_id, 'GROUP-A', 'mixed-room student join must not be same-group gated');
 
 response = dispatcher.dispatch(base('startRoom', 'REQ-START', {
   room_id: roomId, payload: { expected_revision: 2 }
@@ -226,7 +243,7 @@ assert.notEqual(store.getRoom(roomId).status, 'CLOSED');
 // Oversized/deep payloads fail at the boundary.
 const deep = {}; let cursor = deep;
 for (let i = 0; i < 10; i += 1) { cursor.next = {}; cursor = cursor.next; }
-response = dispatcher.dispatch(base('createRoom', 'REQ-DEEP', { payload: { config: deep } }), teacher);
+response = dispatcher.dispatch(base('createRoom', 'REQ-DEEP', { payload: { group_id: 'GROUP-A', config: deep } }), teacher);
 assert.equal(response.ok, false);
 assert.equal(response.error.code, 'INVALID_REQUEST');
 
