@@ -27,6 +27,7 @@ const engine = context.ELV2_createRoomEngine({
 
 const teacher = {
   user_id: 'TEACHER-1', teacher_id: 'T-1', role: 'teacher',
+  authorized_group_ids: ['GROUP-A'],
   capabilities: ['LIVE_CREATE', 'LIVE_VIEW', 'LIVE_CONTROL_OWN']
 };
 const admin = {
@@ -45,8 +46,15 @@ const blockedStudent = {
   home_group_id: 'GROUP-X', live_eligible: false, capabilities: ['LIVE_JOIN']
 };
 
-const room = engine.createRoom(teacher, { title: 'Mixed class' });
+assert.throws(
+  () => engine.createRoom(teacher, { group_id: 'GROUP-B', title: 'Foreign group' }),
+  /ELV2_FORBIDDEN:room_group/
+);
+assert.equal(store.findRoomByCode('LAB-MIXED'), null, 'unauthorized group create must have zero effect');
+
+const room = engine.createRoom(teacher, { group_id: 'GROUP-A', title: 'Mixed class' });
 assert.equal(room.status, 'LOBBY');
+assert.equal(room.host_group_id, 'GROUP-A');
 assert.equal(room.join_policy, 'MIXED_AUTHORIZED');
 assert.equal(room.state_revision, 0);
 
@@ -59,6 +67,7 @@ assert.equal(joinedA.room.state_revision, 1);
 const joinedB = engine.joinRoom(studentB, { room_code: 'LAB-MIXED' });
 assert.equal(joinedB.player.student_id, 'STU-B');
 assert.equal(joinedB.player.home_group_id_snapshot, 'GROUP-B');
+assert.equal(joinedB.room.host_group_id, 'GROUP-A', 'mixed-room join must not rewrite host group');
 assert.equal(joinedB.reconnected, false);
 assert.equal(joinedB.room.state_revision, 2);
 assert.equal(store.listPlayersByRoom(room.room_id).length, 2);
@@ -104,7 +113,7 @@ const seedEngine = context.ELV2_createRoomEngine({
   idFactory: () => 'room-seed',
   roomCodeFactory: () => 'LAB-DUP'
 });
-seedEngine.createRoom(teacher, { title: 'Seed' });
+seedEngine.createRoom(teacher, { group_id: 'GROUP-A', title: 'Seed' });
 let codeCalls = 0;
 const retryEngine = context.ELV2_createRoomEngine({
   store: collisionStore,
@@ -113,8 +122,9 @@ const retryEngine = context.ELV2_createRoomEngine({
   idFactory: () => 'room-retry',
   roomCodeFactory: () => (++codeCalls === 1 ? 'LAB-DUP' : 'LAB-UNIQUE')
 });
-const retriedRoom = retryEngine.createRoom(teacher, { title: 'Collision retry' });
+const retriedRoom = retryEngine.createRoom(teacher, { group_id: 'GROUP-A', title: 'Collision retry' });
 assert.equal(retriedRoom.room_code, 'LAB-UNIQUE');
+assert.equal(retriedRoom.host_group_id, 'GROUP-A');
 assert.equal(codeCalls, 2);
 
 console.log('ELV2 ROOM ENGINE E1 PASS');
