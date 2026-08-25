@@ -62,3 +62,6 @@ jobs:
 
       - name: Dispatcher envelope, retry and error mapping E1
         run: node scripts/qa_english_lab_live_v2_dispatcher.mjs
+
+      - name: Campus AuthAdapter and transport boundary E2
+        run: node scripts/qa_english_lab_live_v2_auth_adapter.mjs
