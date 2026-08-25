@@ -3,6 +3,14 @@ function ELV2_createIdempotencyService(deps) {
   if (!deps || !deps.store || !deps.clock || typeof deps.idFactory !== 'function' || typeof deps.payloadHasher !== 'function' || typeof deps.keyHasher !== 'function') {
     throw new Error('ELV2_IDEMPOTENCY_SERVICE_DEPS_INVALID');
   }
+  if (deps.mutationGuard && typeof deps.mutationGuard.withMutation !== 'function') {
+    throw new Error('ELV2_IDEMPOTENCY_MUTATION_GUARD_INVALID');
+  }
+
+  function withMutation_(scopeKey, callback) {
+    if (!deps.mutationGuard) return callback();
+    return deps.mutationGuard.withMutation(scopeKey, callback);
+  }
 
   function begin(input) {
     var requestId = ELV2_requireRequestId(input.action, input.request_id);
@@ -12,67 +20,74 @@ function ELV2_createIdempotencyService(deps) {
     var payloadHash = deps.payloadHasher(input.payload == null ? {} : input.payload);
     var scopeMaterial = ELV2_idempotencyScopeMaterial(input.action, actorUserId, requestId);
     var scopeKey = deps.keyHasher(scopeMaterial);
-    var existing = deps.store.getByScopeKey(scopeKey);
-    var decision = ELV2_classifyIdempotency(existing, payloadHash);
 
-    if (decision !== ELV2_IDEMPOTENCY_DECISION.NEW && decision !== ELV2_IDEMPOTENCY_DECISION.RETRY_FAILED) {
-      return Object.freeze({ decision: decision, record: existing });
-    }
+    return withMutation_(scopeKey, function () {
+      var existing = deps.store.getByScopeKey(scopeKey);
+      var decision = ELV2_classifyIdempotency(existing, payloadHash);
 
-    var now = deps.clock.nowMs();
-    var record = existing || {
-      idempotency_id: deps.idFactory('idempotency'),
-      scope_key: scopeKey,
-      request_id: requestId,
-      action: input.action,
-      actor_user_id: actorUserId,
-      room_id: input.room_id || '',
-      round_id: input.round_id || '',
-      payload_hash: payloadHash,
-      status: ELV2_IDEMPOTENCY_STATUS.STARTED,
-      effect_type: '',
-      effect_id: '',
-      revision_after: null,
-      result_code: '',
-      created_at: now,
-      updated_at: now,
-      expires_at: null
-    };
+      if (decision !== ELV2_IDEMPOTENCY_DECISION.NEW && decision !== ELV2_IDEMPOTENCY_DECISION.RETRY_FAILED) {
+        return Object.freeze({ decision: decision, record: existing });
+      }
 
-    if (existing) {
-      record.status = ELV2_IDEMPOTENCY_STATUS.STARTED;
-      record.updated_at = now;
-      record.result_code = '';
-    }
-    record = existing ? deps.store.update(record) : deps.store.create(record);
-    return Object.freeze({ decision: decision, record: record });
+      var now = deps.clock.nowMs();
+      var record = existing ? JSON.parse(JSON.stringify(existing)) : {
+        idempotency_id: deps.idFactory('idempotency'),
+        scope_key: scopeKey,
+        request_id: requestId,
+        action: input.action,
+        actor_user_id: actorUserId,
+        room_id: input.room_id || '',
+        round_id: input.round_id || '',
+        payload_hash: payloadHash,
+        status: ELV2_IDEMPOTENCY_STATUS.STARTED,
+        effect_type: '',
+        effect_id: '',
+        revision_after: null,
+        result_code: '',
+        created_at: now,
+        updated_at: now,
+        expires_at: null
+      };
+
+      if (existing) {
+        record.status = ELV2_IDEMPOTENCY_STATUS.STARTED;
+        record.updated_at = now;
+        record.result_code = '';
+      }
+      record = existing ? deps.store.update(record) : deps.store.create(record);
+      return Object.freeze({ decision: decision, record: record });
+    });
   }
 
   function commit(record, effect) {
-    if (!record || record.status !== ELV2_IDEMPOTENCY_STATUS.STARTED) {
+    if (!record || record.status !== ELV2_IDEMPOTENCY_STATUS.STARTED || !record.scope_key) {
       throw new Error('ELV2_IDEMPOTENCY_COMMIT_INVALID');
     }
-    var next = JSON.parse(JSON.stringify(record));
-    next.status = ELV2_IDEMPOTENCY_STATUS.COMMITTED;
-    next.effect_type = effect && effect.effect_type ? effect.effect_type : '';
-    next.effect_id = effect && effect.effect_id ? effect.effect_id : '';
-    next.room_id = effect && effect.room_id ? effect.room_id : next.room_id;
-    next.round_id = effect && effect.round_id ? effect.round_id : next.round_id;
-    next.revision_after = effect && effect.revision_after != null ? effect.revision_after : null;
-    next.result_code = effect && effect.result_code ? effect.result_code : 'OK';
-    next.updated_at = deps.clock.nowMs();
-    return deps.store.update(next);
+    return withMutation_(record.scope_key, function () {
+      var next = JSON.parse(JSON.stringify(record));
+      next.status = ELV2_IDEMPOTENCY_STATUS.COMMITTED;
+      next.effect_type = effect && effect.effect_type ? effect.effect_type : '';
+      next.effect_id = effect && effect.effect_id ? effect.effect_id : '';
+      next.room_id = effect && effect.room_id ? effect.room_id : next.room_id;
+      next.round_id = effect && effect.round_id ? effect.round_id : next.round_id;
+      next.revision_after = effect && effect.revision_after != null ? effect.revision_after : null;
+      next.result_code = effect && effect.result_code ? effect.result_code : 'OK';
+      next.updated_at = deps.clock.nowMs();
+      return deps.store.update(next);
+    });
   }
 
   function fail(record, resultCode) {
-    if (!record || record.status !== ELV2_IDEMPOTENCY_STATUS.STARTED) {
+    if (!record || record.status !== ELV2_IDEMPOTENCY_STATUS.STARTED || !record.scope_key) {
       throw new Error('ELV2_IDEMPOTENCY_FAIL_INVALID');
     }
-    var next = JSON.parse(JSON.stringify(record));
-    next.status = ELV2_IDEMPOTENCY_STATUS.FAILED;
-    next.result_code = resultCode || 'FAILED';
-    next.updated_at = deps.clock.nowMs();
-    return deps.store.update(next);
+    return withMutation_(record.scope_key, function () {
+      var next = JSON.parse(JSON.stringify(record));
+      next.status = ELV2_IDEMPOTENCY_STATUS.FAILED;
+      next.result_code = resultCode || 'FAILED';
+      next.updated_at = deps.clock.nowMs();
+      return deps.store.update(next);
+    });
   }
 
   return Object.freeze({ begin: begin, commit: commit, fail: fail });
