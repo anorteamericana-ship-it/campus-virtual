@@ -21,8 +21,9 @@ var ELV2_TABLES = Object.freeze({
     headers: Object.freeze([
       'round_id', 'room_id', 'sequence_no', 'game_id', 'game_version', 'status',
       'content_ref', 'content_version', 'content_hash', 'content_snapshot_json',
-      'private_state_json', 'settings_json', 'created_at', 'opened_at', 'ends_at',
-      'locked_at', 'revealed_at', 'reveal_ends_at', 'closed_at', 'close_reason',
+      'private_state_json', 'settings_json', 'scoring_policy', 'visibility_model',
+      'submission_policy', 'created_at', 'opened_at', 'ends_at', 'locked_at',
+      'revealed_at', 'reveal_ends_at', 'closed_at', 'close_reason',
       'score_committed_at', 'updated_at'
     ])
   }),
@@ -30,9 +31,9 @@ var ELV2_TABLES = Object.freeze({
     name: 'ENGLISH_LAB_LIVE_V2_ATTEMPTS',
     headers: Object.freeze([
       'attempt_id', 'room_id', 'round_id', 'player_id', 'student_id', 'request_id',
-      'attempt_key', 'game_id', 'action_type', 'payload_json', 'private_result_json',
-      'points_delta', 'score_status', 'client_seen_revision', 'received_at', 'recorded_at',
-      'committed_at', 'created_revision'
+      'attempt_key', 'payload_hash', 'game_id', 'action_type', 'payload_json',
+      'private_result_json', 'points_delta', 'score_status', 'client_seen_revision',
+      'received_at', 'recorded_at', 'committed_at', 'created_revision'
     ])
   }),
   EVENTS: Object.freeze({
