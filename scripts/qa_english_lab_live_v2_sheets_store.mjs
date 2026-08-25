@@ -65,13 +65,14 @@ roundsTable.headers.reverse();
 let store = context.ELV2_createSheetsStore(driver);
 const room = {
   room_id: 'room-1', room_code: 'LAB-123', status: 'LOBBY', owner_user_id: 'teacher:opaque:1',
-  owner_teacher_id: 'teacher:opaque:1', join_policy: 'MIXED_AUTHORIZED', current_round_id: null,
+  owner_teacher_id: 'teacher:opaque:1', host_group_id: 'GROUP-A', join_policy: 'MIXED_AUTHORIZED', current_round_id: null,
   state_revision: 0, title: '=NOT_A_FORMULA', config: { max_players: 30 }, created_at: 1000,
   started_at: null, closed_at: null, close_reason: null, created_by_user_id: 'teacher:opaque:1',
   created_service_version: '0.1.0-dev', updated_at: 1000
 };
 store.createRoom(room);
 assert.equal(store.getRoom('room-1').title, '=NOT_A_FORMULA');
+assert.equal(store.getRoom('room-1').host_group_id, 'GROUP-A');
 const roomTitleIndex = driver.table('ENGLISH_LAB_LIVE_V2_ROOMS').headers.indexOf('title');
 assert.equal(driver.table('ENGLISH_LAB_LIVE_V2_ROOMS').rows[0][roomTitleIndex], "'=NOT_A_FORMULA", 'formula-like text must be stored inert');
 
@@ -106,6 +107,8 @@ store.createAttempt(attempt);
 
 // Simulate a new Apps Script execution: construct a fresh Store over the same physical rows.
 store = context.ELV2_createSheetsStore(driver);
+const reloadedRoom = store.getRoom('room-1');
+assert.equal(reloadedRoom.host_group_id, 'GROUP-A', 'canonical host group must survive execution reload');
 const reloadedRound = store.getRound('round-1');
 assert.equal(reloadedRound.scoring_policy, 'SCORE_ON_REVEAL');
 assert.equal(reloadedRound.visibility_model, 'PRIVATE_RESPONSE');
