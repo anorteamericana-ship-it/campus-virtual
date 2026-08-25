@@ -44,6 +44,7 @@ const roundEngine = context.ELV2_createRoundEngine(deps);
 
 const teacher = {
   user_id: 'TEACHER-1', teacher_id: 'T-1', role: 'teacher',
+  authorized_group_ids: ['GROUP-A'],
   capabilities: ['LIVE_CREATE', 'LIVE_VIEW', 'LIVE_CONTROL_OWN']
 };
 const studentA = {
@@ -55,7 +56,8 @@ const studentB = {
   home_group_id: 'GROUP-B', live_eligible: true, capabilities: ['LIVE_JOIN', 'LIVE_VIEW', 'LIVE_PLAY']
 };
 
-let room = roomEngine.createRoom(teacher, { title: 'Round test' });
+let room = roomEngine.createRoom(teacher, { group_id: 'GROUP-A', title: 'Round test' });
+assert.equal(room.host_group_id, 'GROUP-A');
 roomEngine.joinRoom(studentA, { room_code: room.room_code });
 roomEngine.joinRoom(studentB, { room_code: room.room_code });
 room = roomEngine.startRoom(teacher, room.room_id, 2);
