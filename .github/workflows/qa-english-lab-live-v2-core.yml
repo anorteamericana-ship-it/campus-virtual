@@ -51,6 +51,9 @@ jobs:
       - name: Mixed-room authorization and reconnect E1
         run: node scripts/qa_english_lab_live_v2_room_engine.mjs
 
+      - name: Admin control-any room authorization E1
+        run: node scripts/qa_english_lab_live_v2_admin_authorization.mjs
+
       - name: Round lifecycle, retry and scoring E1
         run: node scripts/qa_english_lab_live_v2_round_engine.mjs
 
