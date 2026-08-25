@@ -74,3 +74,6 @@ jobs:
 
       - name: Apps Script global locks and atomic idempotency E3
         run: node scripts/qa_english_lab_live_v2_runtime_locks.mjs
+
+      - name: Isolated runtime assembly and transport E4
+        run: node scripts/qa_english_lab_live_v2_runtime_assembler.mjs
