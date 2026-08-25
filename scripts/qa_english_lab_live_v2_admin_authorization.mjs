@@ -27,6 +27,7 @@ const engine = context.ELV2_createRoomEngine({
 const admin = {
   user_id: 'ADMIN-1',
   role: 'admin',
+  authorized_group_ids: ['GROUP-Z'],
   capabilities: ['LIVE_VIEW', 'LIVE_CREATE', 'LIVE_CONTROL_ANY']
 };
 const teacher = {
@@ -44,6 +45,10 @@ assert.equal(adminRoom.owner_teacher_id, null);
 assert.equal(adminRoom.join_policy, 'MIXED_AUTHORIZED');
 
 assert.throws(
+  () => engine.createRoom(admin, { group_id: 'GROUP-INACTIVE', title: 'Inactive group' }),
+  /ELV2_FORBIDDEN:room_group/
+);
+assert.throws(
   () => engine.createRoom(teacher, { group_id: 'GROUP-Z', title: 'Forbidden teacher room' }),
   /ELV2_FORBIDDEN:room_group/
 );
@@ -52,4 +57,4 @@ assert.throws(
   /ELV2_FORBIDDEN:room_group/
 );
 
-console.log('ELV2 ADMIN CONTROL-ANY AUTHORIZATION PASS');
+console.log('ELV2 ADMIN ACTIVE-GROUP AUTHORIZATION PASS');
