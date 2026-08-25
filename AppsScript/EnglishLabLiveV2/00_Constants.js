@@ -4,7 +4,7 @@
  */
 var ELV2_API_VERSION = 'english_lab_live.v2';
 var ELV2_SERVICE_VERSION = '0.1.0-dev';
-var ELV2_SCHEMA_VERSION = '2.0.0';
+var ELV2_SCHEMA_VERSION = '2.1.0';
 
 var ELV2_ROOM_STATUS = Object.freeze({
   LOBBY: 'LOBBY',
