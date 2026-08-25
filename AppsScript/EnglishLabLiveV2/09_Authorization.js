@@ -19,7 +19,6 @@ function ELV2_assertRoomCreateGroup(actor, groupId) {
   ELV2_assertCapability(actor, ELV2_CAPABILITY.LIVE_CREATE);
   var normalizedGroupId = typeof groupId === 'string' ? groupId.trim() : '';
   if (!normalizedGroupId) throw new Error('ELV2_FORBIDDEN:room_group');
-  if (ELV2_hasCapability(actor, ELV2_CAPABILITY.LIVE_CONTROL_ANY)) return normalizedGroupId;
   if (!actor || !Array.isArray(actor.authorized_group_ids) || actor.authorized_group_ids.indexOf(normalizedGroupId) === -1) {
     throw new Error('ELV2_FORBIDDEN:room_group');
   }
