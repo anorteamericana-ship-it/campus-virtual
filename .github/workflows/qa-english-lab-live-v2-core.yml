@@ -65,3 +65,6 @@ jobs:
 
       - name: Campus AuthAdapter and transport boundary E2
         run: node scripts/qa_english_lab_live_v2_auth_adapter.mjs
+
+      - name: Physical Sheets Store, initializer and reload E3
+        run: node scripts/qa_english_lab_live_v2_sheets_store.mjs
