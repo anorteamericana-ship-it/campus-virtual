@@ -68,3 +68,6 @@ jobs:
 
       - name: Physical Sheets Store, initializer and reload E3
         run: node scripts/qa_english_lab_live_v2_sheets_store.mjs
+
+      - name: Apps Script global locks and atomic idempotency E3
+        run: node scripts/qa_english_lab_live_v2_runtime_locks.mjs
