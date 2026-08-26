@@ -83,3 +83,6 @@ jobs:
 
       - name: Sentence Order production plugin and anti-leak E6
         run: node scripts/qa_english_lab_live_v2_sentence_order.mjs
+
+      - name: Hangman shared-board plugin E6
+        run: node scripts/qa_english_lab_live_v2_hangman.mjs
