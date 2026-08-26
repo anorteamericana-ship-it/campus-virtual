@@ -1,5 +1,5 @@
 /**
- * English LAB LIVE v2 · isolated runtime assembler (E4).
+ * English LAB LIVE v2 · isolated runtime assembler (E4/E5).
  *
  * This file deliberately owns NO doPost/doGet route. Runtime construction performs
  * no schema initialization and no domain writes. Routing and any initializer call
@@ -99,7 +99,15 @@ function ELV2_createAppsScriptRuntime(options) {
     ? options.spreadsheet_id.trim()
     : ((typeof SHEET_ID !== 'undefined' && SHEET_ID) ? String(SHEET_ID).trim() : '');
   if (!spreadsheetId) throw new Error('ELV2_SHEETS_ID_REQUIRED');
-  if (!options.content_source || typeof options.content_source.getByRef !== 'function') {
+
+  // E5 default: use the same explicitly selected Campus/Apollo spreadsheet for
+  // read-only curriculum resolution. The factory is lazy: runtime construction
+  // performs no spreadsheet read. Tests may still inject a content_source.
+  var contentSource = options.content_source ||
+    (typeof ELV2_createAppsScriptApolloContentSource === 'function'
+      ? ELV2_createAppsScriptApolloContentSource(spreadsheetId)
+      : null);
+  if (!contentSource || typeof contentSource.getByRef !== 'function') {
     throw new Error('ELV2_CONTENT_SOURCE_INVALID');
   }
 
@@ -120,7 +128,7 @@ function ELV2_createAppsScriptRuntime(options) {
     idempotencyStore: idempotencyStore,
     eventStore: eventStore,
     authAdapter: authAdapter,
-    contentSource: options.content_source,
+    contentSource: contentSource,
     clock: clock,
     concurrencyGuard: concurrencyGuard,
     idempotencyMutationGuard: idempotencyMutationGuard,

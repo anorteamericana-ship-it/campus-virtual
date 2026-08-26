@@ -77,3 +77,6 @@ jobs:
 
       - name: Isolated runtime assembly and transport E4
         run: node scripts/qa_english_lab_live_v2_runtime_assembler.mjs
+
+      - name: Apollo curricular ContentSource read-only and fail-closed E5
+        run: node scripts/qa_english_lab_live_v2_content_source.mjs
