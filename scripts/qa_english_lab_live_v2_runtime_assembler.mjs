@@ -13,9 +13,10 @@ const files = [
   '11_RoomEngine.js', '12_ConcurrencyGuard.js', '13_RoundEngine.js', '15_IdempotencyService.js',
   '17_RoundLifecycle.js', '18_StateService.js', '19_RequestValidation.js', '20_ContentResolver.js',
   '21_Dispatcher.js', '22_CampusAuthAdapter.js', '23_SheetsStore.js', '24_RuntimeLockAdapters.js',
-  '25_RuntimeAssembler.js'
+  '25_RuntimeAssembler.js', '27_SentenceOrderGame.js', '28_HangmanGame.js', '29_QuizTimeGame.js',
+  '30_WordSearchGame.js', '31_ProductionGames.js'
 ];
-const context = vm.createContext({ console, Object, Array, JSON, String, Error, Number, Date, RegExp, isFinite });
+const context = vm.createContext({ console, Object, Array, JSON, String, Error, Number, Date, RegExp, isFinite, Math });
 for (const name of files) {
   vm.runInContext(fs.readFileSync(path.join(sourceDir, name), 'utf8'), context, { filename: name });
 }
@@ -59,6 +60,7 @@ const runtimeDeps = {
 };
 
 let runtime = context.ELV2_createRuntime(runtimeDeps);
+assert.deepEqual([...context.ELV2_listGameIds()], [], 'generic runtime must remain registry-neutral');
 assert.equal(store.listRoundsByRoom('missing').length, 0, 'runtime construction must not create domain data');
 assert.throws(() => runtime.initializeSchema({}), /ELV2_SCHEMA_INITIALIZER_UNAVAILABLE/);
 
@@ -83,6 +85,7 @@ assert.equal(response.ok, true);
 assert.equal(response.data.replayed, true);
 assert.equal(response.data.effect.id, roomId);
 assert.equal(roomCodeCounter, 1, 'replay must not execute room creation again');
+assert.deepEqual([...context.ELV2_listGameIds()], [], 'generic runtime reload must not mutate game registry');
 
 response = runtime.dispatchTransport({
   token: 'teacher', api_version: 'english_lab_live.v2', action: 'createRoom', request_id: 'REQ-FOREIGN',
@@ -124,7 +127,7 @@ response = runtime.dispatchTransport({
 assert.equal(response.ok, false);
 assert.equal(response.error.code, 'AUTH_REQUIRED');
 
-// Apps Script runtime construction is inert: opening the workbook is allowed; no sheet creation/write occurs.
+// Apps Script runtime construction is inert externally but owns the exact production game allowlist.
 let openCalls = 0;
 let insertCalls = 0;
 context.SpreadsheetApp = {
@@ -150,14 +153,27 @@ context.Utilities = {
   computeDigest: (_algorithm, text) => Array.from(Buffer.from(String(text))).slice(0, 16),
   base64EncodeWebSafe: (bytes) => Buffer.from(bytes).toString('base64url')
 };
-const appsRuntime = context.ELV2_createAppsScriptRuntime({
+const appOptions = {
   spreadsheet_id: 'QA-SYNTHETIC-SPREADSHEET',
   content_source: { getByRef: () => null },
   auth_adapter: authAdapter
-});
+};
+const appsRuntime = context.ELV2_createAppsScriptRuntime(appOptions);
 assert.equal(typeof appsRuntime.dispatchTransport, 'function');
 assert.equal(typeof appsRuntime.initializeSchema, 'function');
+assert.deepEqual(
+  [...context.ELV2_listGameIds()],
+  ['HANGMAN', 'QUIZ_TIME', 'SENTENCE_ORDER', 'WORD_SEARCH'],
+  'Apps Script runtime must install only the four production games'
+);
 assert.equal(openCalls, 1);
 assert.equal(insertCalls, 0, 'Apps Script runtime construction must never initialize schema implicitly');
 
-console.log('ELV2 RUNTIME ASSEMBLER E4 PASS');
+// Same process/runtime reload is idempotent: no duplicate registry failure and still no writes.
+const appsRuntimeReload = context.ELV2_createAppsScriptRuntime(appOptions);
+assert.equal(typeof appsRuntimeReload.dispatchTransport, 'function');
+assert.deepEqual([...context.ELV2_listGameIds()], ['HANGMAN', 'QUIZ_TIME', 'SENTENCE_ORDER', 'WORD_SEARCH']);
+assert.equal(openCalls, 2);
+assert.equal(insertCalls, 0);
+
+console.log('ELV2 RUNTIME ASSEMBLER E4/E7 PASS');

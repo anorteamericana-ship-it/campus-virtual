@@ -1,5 +1,5 @@
 /**
- * English LAB LIVE v2 · isolated runtime assembler (E4/E5).
+ * English LAB LIVE v2 · isolated runtime assembler (E4/E5/E7).
  *
  * This file deliberately owns NO doPost/doGet route. Runtime construction performs
  * no schema initialization and no domain writes. Routing and any initializer call
@@ -110,6 +110,10 @@ function ELV2_createAppsScriptRuntime(options) {
   if (!contentSource || typeof contentSource.getByRef !== 'function') {
     throw new Error('ELV2_CONTENT_SOURCE_INVALID');
   }
+
+  // E7: the Apps Script production factory owns the closed game allowlist.
+  // The generic ELV2_createRuntime remains registry-neutral and injectable.
+  ELV2_registerProductionGamePlugins();
 
   var driver = ELV2_createAppsScriptSheetsDriver(spreadsheetId);
   var store = ELV2_createSheetsStore(driver);
