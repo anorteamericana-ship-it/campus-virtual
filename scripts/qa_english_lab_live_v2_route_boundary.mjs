@@ -12,7 +12,8 @@ const files = [
   '06_PublicViewGuard.js', '07_GameRegistry.js', '09_Authorization.js', '10_InMemoryStore.js',
   '11_RoomEngine.js', '12_ConcurrencyGuard.js', '13_RoundEngine.js', '15_IdempotencyService.js',
   '17_RoundLifecycle.js', '18_StateService.js', '19_RequestValidation.js', '20_ContentResolver.js',
-  '21_Dispatcher.js', '22_CampusAuthAdapter.js', '25_RuntimeAssembler.js', '32_CampusRouteBoundary.js'
+  '21_Dispatcher.js', '22_CampusAuthAdapter.js', '24_RuntimeLockAdapters.js', '25_RuntimeAssembler.js',
+  '32_CampusRouteBoundary.js'
 ];
 const context = vm.createContext({ console, Object, Array, JSON, String, Error, Number, Date, RegExp, isFinite, Math });
 for (const name of files) {
