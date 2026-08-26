@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'AppsScript/EnglishLabLiveV2/**'
+      - 'src/english_lab_live_v2.jsx'
+      - 'src/lazy_loader.jsx'
+      - 'src/app.jsx'
       - 'scripts/qa_english_lab_live_v2_*.mjs'
       - '.github/workflows/qa-english-lab-live-v2-core.yml'
   push:
@@ -11,6 +14,9 @@ on:
       - 'feature/english-lab-live-v2'
     paths:
       - 'AppsScript/EnglishLabLiveV2/**'
+      - 'src/english_lab_live_v2.jsx'
+      - 'src/lazy_loader.jsx'
+      - 'src/app.jsx'
       - 'scripts/qa_english_lab_live_v2_*.mjs'
       - '.github/workflows/qa-english-lab-live-v2-core.yml'
   workflow_dispatch:
@@ -101,3 +107,6 @@ jobs:
 
       - name: Outer QA guard bridge and legacy passthrough E9
         run: node scripts/qa_english_lab_live_v2_outer_router_bridge.mjs
+
+      - name: Visible teacher/student shell, four games and mobile guard E10
+        run: node scripts/qa_english_lab_live_v2_shell.mjs
