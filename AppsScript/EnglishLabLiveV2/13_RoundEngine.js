@@ -50,7 +50,10 @@ function ELV2_createRoundEngine(deps) {
       plugin.validateSettings(input.settings || {});
       var created = plugin.createRound(resolvedContent, input.settings || {}, {
         room_id: room.room_id,
-        server_now: nowMs()
+        server_now: nowMs(),
+        opaque_id_factory: function () {
+          return deps.idFactory('game_token');
+        }
       });
       ELV2_validateCreatedRoundContract(created);
 
