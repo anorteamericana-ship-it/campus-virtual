@@ -1,8 +1,10 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const shellPath = 'src/english_lab_live_v2.jsx';
 const lazyPath = 'src/lazy_loader.jsx';
 const appPath = 'src/app.jsx';
+const babelPath = 'vendor/babel.js';
 
 const shell = fs.readFileSync(shellPath, 'utf8');
 const lazy = fs.readFileSync(lazyPath, 'utf8');
@@ -64,4 +66,31 @@ assert(app.includes("english_lab_live: ['src/english_lab_live.jsx"), 'existing a
 assert(app.includes('component=\"EnglishLabLiveTeacherView\"'), 'teacher route missing');
 assert(app.includes('component=\"EnglishLabLiveStudentView\"'), 'student route missing');
 
-console.log('E10 PASS · visible English LAB LIVE v2 shell, four-game catalog, auth transport and mobile guard');
+// Compile the exact JSX with the same vendored Babel Standalone and options used by lazy_loader.jsx.
+// This catches syntax/plugin incompatibilities that text guards alone cannot see.
+const babelSource = fs.readFileSync(babelPath, 'utf8');
+const sandbox = { console, setTimeout, clearTimeout };
+sandbox.window = sandbox;
+sandbox.self = sandbox;
+sandbox.global = sandbox;
+sandbox.globalThis = sandbox;
+vm.createContext(sandbox);
+try {
+  vm.runInContext(babelSource, sandbox, { filename: babelPath, timeout: 15000 });
+} catch (error) {
+  throw new Error(`E10 shell guard: vendored Babel failed to initialize: ${error && error.message ? error.message : error}`);
+}
+assert(sandbox.Babel && typeof sandbox.Babel.transform === 'function', 'vendored Babel.transform unavailable');
+let compiled = '';
+try {
+  compiled = sandbox.Babel.transform(shell, {
+    presets: ['react'],
+    plugins: ['transform-block-scoping']
+  }).code;
+} catch (error) {
+  throw new Error(`E10 shell guard: JSX compile failed with Campus Babel config: ${error && error.message ? error.message : error}`);
+}
+assert(compiled.includes('EnglishLabLiveTeacherView'), 'compiled shell lost teacher export');
+assert(compiled.includes('EnglishLabLiveStudentView'), 'compiled shell lost student export');
+
+console.log('E10 PASS · visible English LAB LIVE v2 shell, four-game catalog, auth transport, mobile guard and Campus Babel compile');
