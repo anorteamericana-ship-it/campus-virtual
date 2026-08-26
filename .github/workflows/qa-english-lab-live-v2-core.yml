@@ -98,3 +98,6 @@ jobs:
 
       - name: Exact Campus routing ownership boundary E8
         run: node scripts/qa_english_lab_live_v2_route_boundary.mjs
+
+      - name: Outer QA guard bridge and legacy passthrough E9
+        run: node scripts/qa_english_lab_live_v2_outer_router_bridge.mjs
