@@ -80,3 +80,6 @@ jobs:
 
       - name: Apollo curricular ContentSource read-only and fail-closed E5
         run: node scripts/qa_english_lab_live_v2_content_source.mjs
+
+      - name: Sentence Order production plugin and anti-leak E6
+        run: node scripts/qa_english_lab_live_v2_sentence_order.mjs
