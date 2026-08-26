@@ -61,12 +61,12 @@ assert.equal(directCreated.submission_policy, 'SINGLE_FINAL');
 assert.equal(context.ELV2_validateCreatedRoundContract(directCreated), true);
 assert.deepEqual([...directCreated.private_state.solution_token_ids], opaqueIds);
 assert.notDeepEqual(
-  directCreated.private_state.display_tokens.map(token => token.token_id),
+  [...directCreated.private_state.display_tokens.map(token => token.token_id)],
   opaqueIds,
   'display order must not expose canonical order'
 );
 assert.deepEqual(
-  directCreated.private_state.display_tokens.map(token => token.token_id),
+  [...directCreated.private_state.display_tokens.map(token => token.token_id)],
   ['tok-a4', 'tok-b2', 'tok-m7', 'tok-z9']
 );
 
@@ -78,7 +78,7 @@ assert.equal(Object.prototype.hasOwnProperty.call(openDirect, 'answer_token_ids'
 assert.equal(Object.prototype.hasOwnProperty.call(openDirect, 'viewer_result'), false);
 assert.equal(context.ELV2_assertPublicViewSafe(openDirect, 'OPEN', game.publicSchema(studentViewer, 'OPEN', {})), true);
 assert.notDeepEqual(
-  openDirect.tokens.map(token => token.label),
+  [...openDirect.tokens.map(token => token.label)],
   ['My', 'name', 'is', 'learner1.'],
   'visible labels must be scrambled'
 );
@@ -150,8 +150,8 @@ let opened = roundEngine.openRound(teacher, {
 const openView = roundEngine.buildStudentGameView(opened.round, studentA);
 assert.equal(context.ELV2_assertNoForbiddenPublicKeys(openView, 'OPEN'), true);
 
-const correctOrder = opened.round.private_state.solution_token_ids.slice();
-const wrongOrder = opened.round.private_state.display_tokens.map(token => token.token_id);
+const correctOrder = [...opened.round.private_state.solution_token_ids];
+const wrongOrder = [...opened.round.private_state.display_tokens.map(token => token.token_id)];
 assert.notDeepEqual(wrongOrder, correctOrder);
 
 const resultA = roundEngine.submitAttempt(studentA, {
