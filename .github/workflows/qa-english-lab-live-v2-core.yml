@@ -86,3 +86,6 @@ jobs:
 
       - name: Hangman shared-board plugin E6
         run: node scripts/qa_english_lab_live_v2_hangman.mjs
+
+      - name: Quiz Time private-response plugin E6
+        run: node scripts/qa_english_lab_live_v2_quiz_time.mjs
