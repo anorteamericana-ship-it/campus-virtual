@@ -95,3 +95,6 @@ jobs:
 
       - name: Production game registry and isolated runtime binding E7
         run: node scripts/qa_english_lab_live_v2_production_registry.mjs
+
+      - name: Exact Campus routing ownership boundary E8
+        run: node scripts/qa_english_lab_live_v2_route_boundary.mjs
