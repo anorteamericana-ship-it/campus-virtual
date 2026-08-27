@@ -161,4 +161,40 @@ assert.throws(
   /ELV2_AUTH_REQUIRED/
 );
 
+// Runtime regression: the accumulated Campus backend exposes underscored canonical helpers.
+// Teacher resolver returns an array; group reader returns { ok, rows }.
+context.validarSesion = (token) => sessions[token] || null;
+context._f984z6iTeacherGroupsForSession_ = (session) => session.usuario === 'teacher@example.invalid'
+  ? [{ code: 'GROUP-RUNTIME-A' }, { grupo: 'GROUP-RUNTIME-B' }]
+  : [];
+context._anF65_readGrupos_ = () => ({
+  ok: true,
+  rows: [
+    { code: 'GROUP-RUNTIME-A', activo: true },
+    { code: 'GROUP-RUNTIME-B', activo: true },
+    { code: 'GROUP-INACTIVE', activo: false }
+  ]
+});
+context.Utilities = {
+  computeDigest: () => [1, 2, 3],
+  base64EncodeWebSafe: () => 'RUNTIME_OPAQUE=',
+  DigestAlgorithm: { SHA_256: 'SHA_256' },
+  Charset: { UTF_8: 'UTF_8' }
+};
+const runtimeAdapter = context.ELV2_createAppsScriptCampusAuthAdapter();
+actor = runtimeAdapter.authenticateToken('tok-teacher');
+assert.deepEqual(Array.from(actor.authorized_group_ids), ['GROUP-RUNTIME-A', 'GROUP-RUNTIME-B']);
+assert.deepEqual(Array.from(actor.capabilities), ['LIVE_VIEW', 'LIVE_CREATE', 'LIVE_CONTROL_OWN']);
+actor = runtimeAdapter.authenticateToken('tok-admin');
+assert.deepEqual(Array.from(actor.authorized_group_ids), ['GROUP-RUNTIME-A', 'GROUP-RUNTIME-B']);
+assert.deepEqual(Array.from(actor.capabilities), ['LIVE_VIEW', 'LIVE_CREATE', 'LIVE_CONTROL_ANY']);
+
+// Compatibility aliases remain accepted if another Campus environment exports the unwrapped names.
+delete context._f984z6iTeacherGroupsForSession_;
+context.f984z6iTeacherGroupsForSession = () => [{ group_id: 'GROUP-ALIAS-T' }];
+assert.deepEqual(Array.from(context.ELV2_readAppsScriptTeacherGroupsStrict_({ rol: 'teacher' })).map(x => x.group_id), ['GROUP-ALIAS-T']);
+delete context._anF65_readGrupos_;
+context.anF65_readGrupos = () => [{ code: 'GROUP-ALIAS-A', activo: true }];
+assert.deepEqual(Array.from(context.ELV2_readAppsScriptActiveGroupIdsStrict_()), ['GROUP-ALIAS-A']);
+
 console.log('ELV2 CAMPUS AUTH ADAPTER E2 PASS');
