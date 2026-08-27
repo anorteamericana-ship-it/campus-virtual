@@ -201,18 +201,27 @@ function ELV2_readAppsScriptStudentEnrollmentsStrict_(studentCode) {
 }
 
 function ELV2_readAppsScriptTeacherGroupsStrict_(session) {
-  if (typeof f984z6iTeacherGroupsForSession !== 'function') {
-    throw new Error('ELV2_AUTH_RUNTIME_UNAVAILABLE');
-  }
-  var groups = f984z6iTeacherGroupsForSession(session);
+  var resolver = typeof _f984z6iTeacherGroupsForSession_ === 'function'
+    ? _f984z6iTeacherGroupsForSession_
+    : (typeof f984z6iTeacherGroupsForSession === 'function' ? f984z6iTeacherGroupsForSession : null);
+  if (!resolver) throw new Error('ELV2_AUTH_RUNTIME_UNAVAILABLE');
+  var groups = resolver(session);
   if (!Array.isArray(groups)) throw new Error('ELV2_SCHEMA_UNHEALTHY:teacher_groups');
   return groups;
 }
 
 function ELV2_readAppsScriptActiveGroupIdsStrict_() {
-  if (typeof anF65_readGrupos !== 'function') throw new Error('ELV2_AUTH_RUNTIME_UNAVAILABLE');
-  var groups = anF65_readGrupos();
-  if (!Array.isArray(groups)) throw new Error('ELV2_SCHEMA_UNHEALTHY:active_groups');
+  var reader = typeof _anF65_readGrupos_ === 'function'
+    ? _anF65_readGrupos_
+    : (typeof anF65_readGrupos === 'function' ? anF65_readGrupos : null);
+  if (!reader) throw new Error('ELV2_AUTH_RUNTIME_UNAVAILABLE');
+
+  var result = reader();
+  var groups = Array.isArray(result)
+    ? result
+    : (result && result.ok === true && Array.isArray(result.rows) ? result.rows : null);
+  if (!groups) throw new Error('ELV2_SCHEMA_UNHEALTHY:active_groups');
+
   var out = [];
   groups.forEach(function (item) {
     if (!item || !item.activo) return;
