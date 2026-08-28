@@ -68,6 +68,16 @@ assert(shell.includes('role="grid"') && shell.includes('aria-rowcount="14"') && 
 assert(shell.includes('grid.length===14&&grid.every(row=>Array.isArray(row)&&row.length===14)'),
   'Word Search must fail visibly when the backend grid is not 14 by 14');
 assert(shell.includes('className="elv2-word-list"'), 'Word Search terms must render as a separated list');
+assert(shell.includes("const revealSolutions=phase==='REVEAL'||phase==='CLOSED'"),
+  'Word Search solutions must be phase-gated to REVEAL/CLOSED');
+assert(shell.includes('Array.isArray(game.revealed_paths)?game.revealed_paths:[]'),
+  'Word Search must consume server-projected revealed paths');
+assert(shell.includes('solutionCells.has(`${r}:${c}`)'),
+  'Word Search must map revealed paths back onto grid cells');
+assert(shell.includes('.elv2-cell.solution{') && shell.includes("solution?'solution':''"),
+  'Word Search revealed cells must have a visible solution style');
+assert(shell.includes("revealedTargets.has(w.target_id)"),
+  'Word Search revealed targets must be reflected in the answer list');
 assert(shell.includes('revealed?game.term:(game.pattern||'), 'Hangman reveal must replace the masked board');
 assert(!shell.includes('text={`Palabra: ${game.term}`}'), 'Hangman must not append a duplicate answer board');
 assert(shell.includes('className="elv2-quizq"') && shell.includes('className="elv2-quiz-options"'),
