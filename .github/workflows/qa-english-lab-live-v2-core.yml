@@ -1,0 +1,112 @@
+name: English LAB LIVE v2 Core
+
+on:
+  pull_request:
+    paths:
+      - 'AppsScript/EnglishLabLiveV2/**'
+      - 'src/english_lab_live_v2.jsx'
+      - 'src/lazy_loader.jsx'
+      - 'src/app.jsx'
+      - 'scripts/qa_english_lab_live_v2_*.mjs'
+      - '.github/workflows/qa-english-lab-live-v2-core.yml'
+  push:
+    branches:
+      - 'feature/english-lab-live-v2'
+    paths:
+      - 'AppsScript/EnglishLabLiveV2/**'
+      - 'src/english_lab_live_v2.jsx'
+      - 'src/lazy_loader.jsx'
+      - 'src/app.jsx'
+      - 'scripts/qa_english_lab_live_v2_*.mjs'
+      - '.github/workflows/qa-english-lab-live-v2-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  english-lab-live-v2-core:
+    name: english-lab-live-v2-core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Whitespace and conflict-marker check
+        run: git diff --check HEAD^
+
+      - name: Contracts and strict schema E1
+        run: node scripts/qa_english_lab_live_v2_contracts.mjs
+
+      - name: State machine and deadline E1
+        run: node scripts/qa_english_lab_live_v2_state_machine.mjs
+
+      - name: Idempotency and anti-leak E1
+        run: node scripts/qa_english_lab_live_v2_security_core.mjs
+
+      - name: Plugin contract E1
+        run: node scripts/qa_english_lab_live_v2_plugin_contract.mjs
+
+      - name: Mixed-room authorization and reconnect E1
+        run: node scripts/qa_english_lab_live_v2_room_engine.mjs
+
+      - name: Admin control-any room authorization E1
+        run: node scripts/qa_english_lab_live_v2_admin_authorization.mjs
+
+      - name: Round lifecycle, retry and scoring E1
+        run: node scripts/qa_english_lab_live_v2_round_engine.mjs
+
+      - name: Schema guard, global idempotency and events E1
+        run: node scripts/qa_english_lab_live_v2_infrastructure.mjs
+
+      - name: getState projections, contention and round closure E1
+        run: node scripts/qa_english_lab_live_v2_state_service.mjs
+
+      - name: Dispatcher envelope, retry and error mapping E1
+        run: node scripts/qa_english_lab_live_v2_dispatcher.mjs
+
+      - name: Campus AuthAdapter and transport boundary E2
+        run: node scripts/qa_english_lab_live_v2_auth_adapter.mjs
+
+      - name: Physical Sheets Store, initializer and reload E3
+        run: node scripts/qa_english_lab_live_v2_sheets_store.mjs
+
+      - name: Apps Script global locks and atomic idempotency E3
+        run: node scripts/qa_english_lab_live_v2_runtime_locks.mjs
+
+      - name: Isolated runtime assembly and transport E4
+        run: node scripts/qa_english_lab_live_v2_runtime_assembler.mjs
+
+      - name: Apollo curricular ContentSource read-only and fail-closed E5
+        run: node scripts/qa_english_lab_live_v2_content_source.mjs
+
+      - name: Sentence Order production plugin and anti-leak E6
+        run: node scripts/qa_english_lab_live_v2_sentence_order.mjs
+
+      - name: Hangman shared-board plugin E6
+        run: node scripts/qa_english_lab_live_v2_hangman.mjs
+
+      - name: Quiz Time private-response plugin E6
+        run: node scripts/qa_english_lab_live_v2_quiz_time.mjs
+
+      - name: Word Search shared-board plugin E6
+        run: node scripts/qa_english_lab_live_v2_word_search.mjs
+
+      - name: Production game registry and isolated runtime binding E7
+        run: node scripts/qa_english_lab_live_v2_production_registry.mjs
+
+      - name: Exact Campus routing ownership boundary E8
+        run: node scripts/qa_english_lab_live_v2_route_boundary.mjs
+
+      - name: Outer QA guard bridge and legacy passthrough E9
+        run: node scripts/qa_english_lab_live_v2_outer_router_bridge.mjs
+
+      - name: Visible teacher/student shell, four games and mobile guard E10
+        run: node scripts/qa_english_lab_live_v2_shell.mjs
