@@ -1,6 +1,6 @@
 # English LAB LIVE v2 · isolated core
 
-Status: **E1 GREEN + E2 AUTH ADAPTER GREEN / NOT WIRED / NOT DEPLOYED**.
+Status: **E1-E10 GREEN ON BRANCH / QA BACKEND @37 SMOKE PASS / NOT PROD**.
 
 This directory is the clean-room implementation surface for English LAB LIVE v2. It is deliberately isolated from historical English LAB LIVE runtime code.
 
@@ -37,7 +37,17 @@ This directory is the clean-room implementation surface for English LAB LIVE v2.
 - runtime `user_id` is pseudonymized with a server-side SHA-256 digest before it can become room ownership/idempotency identity;
 - transport extraction removes only `token` / `session_token`; arbitrary or forged extra fields remain in the core request so strict RequestValidation rejects them.
 
-E2 remains **unwired**: this directory still does not own the Campus `doPost`, does not create V2 Sheets, and does not deploy anything.
+The isolated runtime is connected through the exact-v2 route boundary and the accumulated outer QA bridge. The stable production deployment remains out of scope and unchanged.
+
+### E10 · visible teacher/student shell
+
+- `src/english_lab_live_v2.jsx` publishes the teacher and student views for the four-game catalog.
+- Word Search renders and validates explicit 14 × 14 rows, while preserving compound labels such as `phone number` and placing their letters contiguously as `PHONENUMBER`.
+- Hangman reveal replaces the masked pattern instead of appending a second answer board.
+- Quiz questions/options and room header/actions use separate semantic groups.
+- A visible backend timeout offers a safe retry that reuses the original mutation `request_id`.
+- Zero-participant teacher rehearsal remains intentional; participant joins change the room revision and refresh the projected count.
+- `scripts/qa_cs21a202_source_truth.mjs` guards the canonical v2 source/loader path and rejects browser tests that fabricate or patch the served HTML/code.
 
 ## Synthetic gates
 
@@ -49,18 +59,14 @@ The dedicated AuthAdapter gate is:
 node scripts/qa_english_lab_live_v2_auth_adapter.mjs
 ```
 
-Last code head demonstrated green before documentation-only commits: `3c5afa21ed766d3ab95d4d8bd574090eeb37da6b`.
+Run `.github/workflows/qa-english-lab-live-v2-core.yml` plus the strict source-truth guard on the exact branch head before advancing the draft PR.
 
-- English LAB LIVE v2 Core · run #98 · SUCCESS
-- English LAB Source Truth Guard · run #233 · SUCCESS
+## Remaining release gates
 
-## Still blocked before QA wiring/write
-
-- physical V2 Sheets Store + initializer;
-- real V2 SchemaGuard against Sheets before every write path;
-- real `LockService` adapter;
-- Campus router wiring using the transport/AuthAdapter boundary;
-- real game plugins and curricular ContentResolver authorization;
-- runtime QA evidence and burst/performance tests.
+- run authenticated teacher/student browser regression against the same QA deployment;
+- verify all four games at desktop and approximately 390 px;
+- run the deferred 15/20/25-student burst only if it is explicitly returned to scope;
+- keep Memory Match `FROZEN_DEFERRED_NON_BLOCKING`;
+- do not advance to production until the draft PR, required checks, runtime evidence and human review are complete.
 
 Before any future QA write or deployment, repeat fresh `clasp deployments` plus read-only `clasp pull` and compare the live QA source/deployment again. PROD remains out of scope.

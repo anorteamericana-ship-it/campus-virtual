@@ -127,4 +127,20 @@ assert.equal(retriedRoom.room_code, 'LAB-UNIQUE');
 assert.equal(retriedRoom.host_group_id, 'GROUP-A');
 assert.equal(codeCalls, 2);
 
+// Teacher rehearsal/control mode intentionally remains valid with zero participants.
+const emptyStore = context.ELV2_createInMemoryStore();
+const emptyGuard = context.ELV2_createConcurrencyGuard(context.ELV2_createSynchronousTestLockAdapter());
+const emptyEngine = context.ELV2_createRoomEngine({
+  store: emptyStore,
+  clock: { nowMs: () => now },
+  concurrencyGuard: emptyGuard,
+  idFactory: (kind) => `empty-${kind}`,
+  roomCodeFactory: () => 'LAB-EMPTY'
+});
+const emptyRoom = emptyEngine.createRoom(teacher, { group_id: 'GROUP-A', title: 'Teacher rehearsal' });
+assert.equal(emptyStore.listPlayersByRoom(emptyRoom.room_id).length, 0);
+const emptyStarted = emptyEngine.startRoom(teacher, emptyRoom.room_id, 0);
+assert.equal(emptyStarted.status, 'LIVE');
+assert.equal(emptyStarted.state_revision, 1);
+
 console.log('ELV2 ROOM ENGINE E1 PASS');

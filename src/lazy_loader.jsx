@@ -5,11 +5,11 @@
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A124-ELV2E10';
+  const VERSION = 'F98.4-Z6-CS21A124-ELV2E10QA-20260827';
   const normalize = (src) => {
     const value = String(src || '').trim();
     if (/^src\/english_lab_live\.jsx(?:\?.*)?$/i.test(value)) {
-      return 'src/english_lab_live_v2.jsx?v=ELV2E10-20260826';
+      return 'src/english_lab_live_v2.jsx?v=ELV2E10QA-20260827';
     }
     if (/^src\/importador_banco\.jsx(?:\?.*)?$/i.test(value)) {
       return 'src/importador_banco.jsx?v=F98.4Z6CS21A124';

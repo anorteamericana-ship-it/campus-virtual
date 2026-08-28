@@ -55,6 +55,8 @@ const content = {
 
 let room = roomEngine.createRoom(teacher, { group_id: 'GROUP-A', title: 'State test' });
 assert.equal(room.host_group_id, 'GROUP-A');
+const emptyLobby = stateService.getState(teacher, { room_id: room.room_id, view_mode: 'CONTROLLER' });
+assert.equal(emptyLobby.participant_count, 0, 'teacher mode intentionally supports an empty lobby');
 roomEngine.joinRoom(studentA, { room_code: room.room_code });
 roomEngine.joinRoom(studentB, { room_code: room.room_code });
 room = roomEngine.startRoom(teacher, room.room_id, 2);
@@ -71,6 +73,7 @@ let studentState = stateService.getState(studentA, { room_id: room.room_id, view
 assert.equal(studentState.view_mode, 'STUDENT');
 assert.equal(studentState.round.phase, 'OPEN');
 assert.equal(studentState.player.display_name, 'Ana M.');
+assert.equal(studentState.participant_count, 2, 'participant count must follow joined players after revision changes');
 assert.equal(Object.prototype.hasOwnProperty.call(studentState.player, 'student_id'), false);
 assert.equal(Object.prototype.hasOwnProperty.call(studentState.game, 'solution_option_id'), false);
 assert.equal(studentState.leaderboard.length, 2);

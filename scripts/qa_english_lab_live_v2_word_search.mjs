@@ -25,7 +25,7 @@ assert.equal(metadata.game_id, 'WORD_SEARCH');
 assert.deepEqual([...context.ELV2_listGameIds()], ['WORD_SEARCH']);
 const game = context.ELV2_getGamePlugin('WORD_SEARCH');
 
-const labels = ['HELLO', 'NUMBER', 'PHONE', 'EMAIL', 'FRIEND', 'TEACHER', 'STUDENT', 'SCHOOL', 'GOODBYE', 'COUNTRY'];
+const labels = ['HELLO', 'PHONE NUMBER', 'NAME', 'EMAIL', 'FRIEND', 'TEACHER', 'STUDENT', 'SCHOOL', 'GOODBYE', 'COUNTRY'];
 const content = {
   content_type: 'VOCABULARY_SET',
   source_id: 'APOLLO_G3/ACADEMIA_PLAY_BANK',
@@ -68,6 +68,9 @@ assert.equal(directCreated.private_state.grid.length, 14);
 assert.equal(directCreated.private_state.grid.every(row => row.length === 14), true);
 assert.equal(directCreated.private_state.words.length, 10);
 assert.equal(Object.keys(directCreated.private_state.placements).length, 10);
+const compoundTerm = directCreated.private_state.words.find(word => word.label === 'PHONE NUMBER');
+assert.ok(compoundTerm, 'compound label must remain visible with its space');
+assert.equal(compoundTerm.grid_word, 'PHONENUMBER', 'compound term must use contiguous grid letters');
 for (const word of directCreated.private_state.words) {
   assert.equal(context.ELV2_wsOccurrences_(directCreated.private_state.grid, word.grid_word).length, 1);
   const placement = directCreated.private_state.placements[word.target_id];
@@ -275,6 +278,7 @@ console.log(JSON.stringify({
   game_id: 'WORD_SEARCH',
   grid_size: 14,
   targets: 10,
+  compound_term_supported: true,
   path_only_claim: true,
   reversed_path_supported: true,
   first_claim_wins: true,

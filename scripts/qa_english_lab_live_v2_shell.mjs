@@ -22,6 +22,10 @@ assert(shell.includes("window.EnglishLabLiveTeacherView=TeacherView"), 'teacher 
 assert(shell.includes("window.EnglishLabLiveStudentView=StudentView"), 'student component not published');
 assert(shell.includes("window.getSessionToken"), 'Campus session token is not used');
 assert(shell.includes("'Content-Type':'text/plain;charset=utf-8'"), 'transport must avoid browser CORS preflight');
+assert(shell.includes("error.code='BACKEND_TIMEOUT';error.retryable=true"), 'timeout must be classified as retryable');
+assert(shell.includes('request_id:reqId(action)'), 'mutating requests must stabilize an id before a retry');
+assert(shell.includes('onRetry:()=>run(action,stableSpec)'), 'timeout retry must reuse the exact stable request');
+assert(shell.includes('>Reintentar</button>'), 'retry control must be visible after a timeout');
 
 const gameIds = ['SENTENCE_ORDER', 'HANGMAN', 'QUIZ_TIME', 'WORD_SEARCH'];
 for (const id of gameIds) {
@@ -58,9 +62,21 @@ assert(shell.includes("kind:'QUIZ_TIME'"), 'Quiz Time Apollo kind missing');
 
 assert(shell.includes('@media (max-width:420px)'), '390-ish mobile breakpoint missing');
 assert(shell.includes('grid-template-columns:repeat(14,minmax(0,1fr))'), '14-column Word Search responsive grid missing');
+assert(shell.includes('className="elv2-ws-row" role="row"'), 'Word Search must render explicit semantic rows');
+assert(shell.includes('role="grid"') && shell.includes('aria-rowcount="14"') && shell.includes('aria-colcount="14"'),
+  'Word Search must expose a real 14 by 14 semantic grid');
+assert(shell.includes('grid.length===14&&grid.every(row=>Array.isArray(row)&&row.length===14)'),
+  'Word Search must fail visibly when the backend grid is not 14 by 14');
+assert(shell.includes('className="elv2-word-list"'), 'Word Search terms must render as a separated list');
+assert(shell.includes('revealed?game.term:(game.pattern||'), 'Hangman reveal must replace the masked board');
+assert(!shell.includes('text={`Palabra: ${game.term}`}'), 'Hangman must not append a duplicate answer board');
+assert(shell.includes('className="elv2-quizq"') && shell.includes('className="elv2-quiz-options"'),
+  'Quiz questions and options must use separate semantic groups');
+assert(shell.includes('className="elv2-room-summary"') && shell.includes('className="elv2-room-actions"'),
+  'room header content and controls must be separated');
 assert(shell.includes('min-height:44px'), 'mobile touch target guard missing');
 
-assert(lazy.includes("return 'src/english_lab_live_v2.jsx?v=ELV2E10-20260826'"), 'lazy loader does not route English LAB Live to v2 shell');
+assert(lazy.includes("return 'src/english_lab_live_v2.jsx?v=ELV2E10QA-20260827'"), 'lazy loader does not route English LAB Live to the QA-hardened shell');
 assert(lazy.includes('/^src\\/english_lab_live\\.jsx'), 'legacy shell normalization hook missing');
 assert(app.includes("english_lab_live: ['src/english_lab_live.jsx"), 'existing app route contract unexpectedly changed');
 assert(app.includes('component=\"EnglishLabLiveTeacherView\"'), 'teacher route missing');

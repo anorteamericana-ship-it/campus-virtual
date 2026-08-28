@@ -1,9 +1,9 @@
-// English LAB LIVE v2 · E10 visible shell.
+// English LAB LIVE v2 · E10 visible shell + QA hardening.
 // Server-authoritative: identity, role, capabilities, score and answers come only from Apps Script v2.
 /* global React, PageHeader */
 (function(){
   const API_VERSION = 'english_lab_live.v2';
-  const SHELL_VERSION = 'ELV2-E10-20260826';
+  const SHELL_VERSION = 'ELV2-E10-QA-20260827';
   const VIEW = Object.freeze({ STUDENT:'STUDENT', CONTROLLER:'CONTROLLER' });
   const MUTATING = new Set(['createRoom','joinRoom','startRoom','prepareRound','openRound','lockRound','revealRound','submitAttempt','closeRound','closeRoom']);
   const GAME_CATALOG = Object.freeze([
@@ -25,6 +25,7 @@
       .elv2-shell *{box-sizing:border-box}.elv2-two{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.75fr);gap:16px;align-items:start}
       .elv2-card{background:var(--surface,#fff);border:1px solid var(--line,#e4e7ec);border-radius:20px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
       .elv2-grid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.elv2-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+      .elv2-room-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}.elv2-room-actions{display:grid;grid-template-columns:1fr;gap:8px;min-width:168px}.elv2-room-actions>*{width:100%;justify-content:center}.elv2-round-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}.elv2-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
       .elv2-btn{border:1px solid #cfd6e3;background:#fff;color:#073b7a;border-radius:12px;padding:10px 14px;font:inherit;font-weight:850;cursor:pointer;min-height:42px}
       .elv2-btn:hover{background:#f5f8ff}.elv2-btn.primary{background:#073b7a;color:#fff;border-color:#073b7a}.elv2-btn.danger{color:#8b1f1f;border-color:#efb5b5}.elv2-btn:disabled{opacity:.45;cursor:not-allowed}
       .elv2-label{font-size:10px;font-weight:950;letter-spacing:.13em;text-transform:uppercase;color:#7a1e2c}.elv2-muted{font-size:12px;line-height:1.5;color:#667085}
@@ -32,14 +33,15 @@
       .elv2-game{border:1px solid #d8dee9;background:#fff;border-radius:16px;padding:13px;text-align:left;cursor:pointer;min-height:105px}.elv2-game.active{border:2px solid #073b7a;background:#eef4ff;padding:12px}
       .elv2-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid #d6deeb;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:850;background:#f8fafc;color:#344054}
       .elv2-code{font-family:var(--f-mono,ui-monospace,monospace);font-size:34px;font-weight:950;letter-spacing:.05em;color:#001e47}
-      .elv2-alert{border-radius:14px;padding:11px 13px;font-size:12.5px;line-height:1.45;font-weight:700}.elv2-alert.err{background:#fdecea;color:#8b1f1f;border:1px solid #f5b5b5}.elv2-alert.info{background:#eef4ff;color:#073b7a;border:1px solid #b7d5ff}.elv2-alert.ok{background:#eaf8ef;color:#145c38;border:1px solid #bde8cd}
+      .elv2-alert{border-radius:14px;padding:11px 13px;font-size:12.5px;line-height:1.45;font-weight:700}.elv2-alert.err{background:#fdecea;color:#8b1f1f;border:1px solid #f5b5b5}.elv2-alert.info{background:#eef4ff;color:#073b7a;border:1px solid #b7d5ff}.elv2-alert.ok{background:#eaf8ef;color:#145c38;border:1px solid #bde8cd}.elv2-alert-action{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
       .elv2-tokenbank,.elv2-answer{display:flex;flex-wrap:wrap;gap:8px;min-height:58px;padding:10px;border-radius:14px;border:1px dashed #c8d1df;background:#f8fafc}.elv2-token{border:1px solid #b9c6da;background:#fff;border-radius:10px;padding:9px 11px;font-weight:850;cursor:pointer;min-height:40px}.elv2-token.used{opacity:.35}
       .elv2-alpha{display:grid;grid-template-columns:repeat(9,minmax(34px,1fr));gap:6px}.elv2-letter{aspect-ratio:1;border:1px solid #c9d4e3;border-radius:10px;background:#fff;font-weight:950;cursor:pointer}.elv2-letter:disabled{opacity:.35}
-      .elv2-quizq{border-top:1px solid #edf0f4;padding:14px 0}.elv2-option{display:block;width:100%;text-align:left;border:1px solid #d6deeb;background:#fff;border-radius:11px;padding:9px 11px;margin-top:7px;cursor:pointer}.elv2-option.selected{border:2px solid #073b7a;background:#eef4ff;padding:8px 10px}
-      .elv2-ws{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;width:100%;max-width:630px;margin:0 auto}.elv2-cell{aspect-ratio:1;border:1px solid #d7deea;border-radius:6px;background:#fff;font-weight:900;font-size:13px;cursor:pointer;min-width:0;padding:0}.elv2-cell.start{background:#ddebff;border-color:#073b7a}
+      .elv2-quizq{border:0;border-top:1px solid #dfe5ee;padding:18px 0;margin:0;min-width:0}.elv2-question-title{display:block;padding:0;font-size:14px;font-weight:900;line-height:1.45;color:#172033}.elv2-question-context{margin:7px 0 0;padding:10px 12px;border-left:3px solid #b7d5ff;border-radius:0 9px 9px 0;background:#f8fafc;white-space:pre-wrap}.elv2-quiz-options{display:grid;gap:8px;margin-top:11px}.elv2-option{display:block;width:100%;text-align:left;border:1px solid #d6deeb;background:#fff;border-radius:11px;padding:10px 12px;margin:0;cursor:pointer;line-height:1.4}.elv2-option.selected{border:2px solid #073b7a;background:#eef4ff;padding:9px 11px}
+      .elv2-hang-pattern{font-size:30px;font-weight:950;letter-spacing:.09em;line-height:1.35;color:#001E47;margin:8px 0;overflow-wrap:anywhere}.elv2-ws{display:grid;grid-template-rows:repeat(14,minmax(0,1fr));gap:3px;width:100%;max-width:630px;margin:0 auto}.elv2-ws-row{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;min-width:0}.elv2-cell{aspect-ratio:1;border:1px solid #bfc9d8;border-radius:6px;background:#fff;color:#172033;font-weight:900;font-size:13px;cursor:pointer;min-width:0;padding:0}.elv2-cell:disabled{opacity:1;color:#172033;cursor:default}.elv2-cell.start{background:#ddebff;border-color:#073b7a;box-shadow:inset 0 0 0 1px #073b7a}.elv2-word-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;margin:14px 0 0;padding:0}.elv2-word-item{border:1px solid #d6deeb;border-radius:10px;padding:7px 9px;background:#f8fafc;color:#344054;font-size:12px;font-weight:850}.elv2-word-item.claimed{background:#eaf8ef;border-color:#bde8cd;color:#145c38}
       .elv2-leader{display:grid;gap:7px}.elv2-rank{display:grid;grid-template-columns:32px 1fr auto;gap:8px;align-items:center;padding:8px 10px;border-radius:11px;background:#f8fafc;font-size:12px}
       @media (max-width:760px){.elv2-two{grid-template-columns:1fr}.elv2-grid4{grid-template-columns:1fr 1fr}.elv2-card{padding:15px;border-radius:16px}}
-      @media (max-width:420px){.elv2-shell{padding-bottom:24px}.elv2-grid4{grid-template-columns:1fr}.elv2-row>.elv2-btn{flex:1 1 130px}.elv2-btn,.elv2-input,.elv2-select{min-height:44px}.elv2-code{font-size:30px}.elv2-alpha{grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.elv2-letter{min-height:40px;aspect-ratio:auto}.elv2-ws{gap:1px}.elv2-cell{border-radius:3px;font-size:clamp(9px,2.65vw,12px)}}
+      @media (max-width:520px){.elv2-room-summary{grid-template-columns:1fr}.elv2-room-actions{grid-template-columns:1fr 1fr;min-width:0}.elv2-room-actions>*:first-child{grid-column:1/-1}.elv2-round-head{align-items:start}}
+      @media (max-width:420px){.elv2-shell{padding-bottom:24px}.elv2-grid4{grid-template-columns:1fr}.elv2-row>.elv2-btn{flex:1 1 130px}.elv2-btn,.elv2-input,.elv2-select{min-height:44px}.elv2-code{font-size:30px}.elv2-alpha{grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.elv2-letter{min-height:40px;aspect-ratio:auto}.elv2-ws,.elv2-ws-row{gap:1px}.elv2-cell{border-radius:3px;font-size:clamp(9px,2.65vw,12px)}.elv2-word-list{grid-template-columns:1fr 1fr}.elv2-room-actions{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -47,6 +49,10 @@
   function clean(v){ return String(v==null?'':v).trim(); }
   function upper(v){ return clean(v).toUpperCase(); }
   function errorText(err){ return clean(err && err.message) || 'No se pudo completar la operación.'; }
+  function backendTimeoutError(){
+    const error=new Error('El backend no respondió a tiempo. Podés reintentar sin duplicar la operación.');
+    error.code='BACKEND_TIMEOUT';error.retryable=true;return error;
+  }
   function reqId(action){
     const id=(window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     return `${action}:${id}`.slice(0,128);
@@ -77,7 +83,7 @@
       }
       return data;
     }catch(e){
-      if(e&&e.name==='AbortError') throw new Error('El backend tardó demasiado en responder.');
+      if(e&&e.name==='AbortError') throw backendTimeoutError();
       throw e;
     }finally{ if(timer) clearTimeout(timer); }
   }
@@ -109,7 +115,7 @@
     const [notice,setNotice]=React.useState('');
     const viewRef=React.useRef(null);
     React.useEffect(()=>{viewRef.current=view;},[view]);
-    function setRoomId(id){const next=clean(id);setRoomIdState(next);saveRoom(mode,next);if(!next)setView(null);}
+    function setRoomId(id){const next=clean(id);setRoomIdState(next);saveRoom(mode,next);if(!next){setView(null);setError('');}}
     function accept(data){
       const incoming=data&&data.view;
       if(incoming&&incoming.unchanged===true){
@@ -119,9 +125,15 @@
       return data;
     }
     async function run(action,spec={},opts={}){
+      const stableSpec=MUTATING.has(action)&&!spec.request_id?{...spec,request_id:reqId(action)}:spec;
       if(opts.busy!==false)setBusy(true);setError('');setNotice('');
-      try{const data=await postV2(action,spec);accept(data);return data;}
-      catch(e){setError(errorText(e));throw e;}
+      try{const data=await postV2(action,stableSpec);accept(data);return data;}
+      catch(e){
+        const message=errorText(e);
+        if(e&&e.retryable===true)setError({message,onRetry:()=>run(action,stableSpec)});
+        else setError(message);
+        throw e;
+      }
       finally{if(opts.busy!==false)setBusy(false);}
     }
     async function refresh(silent=true){
@@ -146,13 +158,18 @@
     if(typeof PageHeader==='function') return <PageHeader kicker="English LAB Live · v2" title={title} sub={sub}/>;
     return <div style={{marginBottom:18}}><div className="elv2-label">English LAB Live · v2</div><h1 style={{margin:'5px 0',fontSize:32,color:'#001E47'}}>{title}</h1><div className="elv2-muted">{sub}</div></div>;
   }
-  function Alert({text,type='info'}){return text?<div className={`elv2-alert ${type}`}>{text}</div>:null;}
+  function Alert({text,type='info'}){
+    if(!text)return null;
+    const detail=typeof text==='object'?text:{message:text};
+    return <div className={`elv2-alert ${type} ${detail.onRetry?'elv2-alert-action':''}`} role={type==='err'?'alert':'status'}><span>{detail.message}</span>{detail.onRetry&&<button className="elv2-btn" type="button" onClick={detail.onRetry}>Reintentar</button>}</div>;
+  }
   function Pill({children}){return <span className="elv2-pill">{children}</span>;}
   function GamePicker({selected,onSelect}){return <div className="elv2-grid4">{GAME_CATALOG.map(g=><button key={g.id} type="button" className={`elv2-game ${selected===g.id?'active':''}`} onClick={()=>onSelect(g.id)}><div className="elv2-label">{g.area}</div><div style={{fontSize:17,fontWeight:950,color:'#001E47',marginTop:5}}>{g.label}</div><div className="elv2-muted" style={{marginTop:5}}>{g.note}</div></button>)}</div>;}
   function Leaderboard({rows=[]}){return <div className="elv2-card"><div className="elv2-label">Ranking de práctica</div><div style={{fontSize:20,fontWeight:950,color:'#001E47',margin:'4px 0 12px'}}>Sala en vivo</div><div className="elv2-leader">{rows.length?rows.slice(0,20).map((r,i)=><div className="elv2-rank" key={r.player_id||`${i}-${r.display_name}`}><b>#{i+1}</b><span>{r.display_name||'Estudiante'}</span><b>{Number(r.score||0)} pts</b></div>):<div className="elv2-muted">Aún no hay participantes con puntaje.</div>}</div></div>;}
   function RoomSummary({view,onClear}){
     const room=view&&view.room;if(!room)return null;
-    return <div className="elv2-card" style={{marginBottom:16,background:'linear-gradient(135deg,#eef4ff,#fff 72%)',borderColor:'#b7d5ff'}}><div className="elv2-row" style={{justifyContent:'space-between'}}><div><div className="elv2-label">Código de sala</div><div className="elv2-code">{room.room_code}</div><div className="elv2-muted">{room.title||'English LAB Live'} · {statusEs(room.status)}</div></div><div className="elv2-row"><Pill>{view.participant_count||0} participantes</Pill><button className="elv2-btn" type="button" onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(room.room_code)}>Copiar código</button>{onClear&&<button className="elv2-btn" type="button" onClick={onClear}>Salir de esta vista</button>}</div></div></div>;
+    const participants=Number(view.participant_count||0);
+    return <section className="elv2-card" style={{marginBottom:16,background:'linear-gradient(135deg,#eef4ff,#fff 72%)',borderColor:'#b7d5ff'}} aria-label="Resumen de la sala"><div className="elv2-room-summary"><div><div className="elv2-label">Código de sala</div><div className="elv2-code">{room.room_code}</div><div className="elv2-muted">{room.title||'English LAB Live'} · {statusEs(room.status)}</div></div><div className="elv2-room-actions"><Pill><span aria-live="polite">{participants} {participants===1?'participante':'participantes'}</span></Pill><button className="elv2-btn" type="button" onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(room.room_code)}>Copiar código</button>{onClear&&<button className="elv2-btn" type="button" onClick={onClear}>Salir de esta vista</button>}</div></div></section>;
   }
 
   function SentenceOrder({game,phase,student,onSubmit,busy,roundId}){
@@ -167,7 +184,8 @@
   function Hangman({game,phase,student,onSubmit,busy}){
     if(!game)return null;
     const guessed=new Set([...(game.guessed_letters||[]),...(game.wrong_letters||[])].map(upper));
-    return <div className="elv2-card"><div className="elv2-label">Hangman</div><div style={{fontSize:30,fontWeight:950,letterSpacing:'.09em',color:'#001E47',margin:'8px 0'}}>{game.pattern||'—'}</div>{game.clue&&<div className="elv2-muted">Pista: {game.clue}</div>}<div className="elv2-row" style={{margin:'10px 0'}}><Pill>Errores {game.errors_used||0}/{game.max_errors||6}</Pill>{game.wrong_letters&&game.wrong_letters.length>0&&<Pill>Fallos: {game.wrong_letters.join(', ')}</Pill>}</div>{student&&phase==='OPEN'&&!game.completed&&<div className="elv2-alpha">{ALPHABET.map(letter=><button type="button" className="elv2-letter" key={letter} disabled={busy||guessed.has(letter)} onClick={()=>onSubmit({action_type:'GUESS_LETTER',letter})}>{letter}</button>)}</div>}{game.completed&&<Alert type={game.won?'ok':'info'} text={game.won?'¡Palabra completada!':'La ronda terminó. Esperá la revelación.'}/>} {(phase==='REVEAL'||phase==='CLOSED')&&game.term&&<div style={{marginTop:12}}><Alert type="ok" text={`Palabra: ${game.term}`}/></div>}</div>;
+    const revealed=(phase==='REVEAL'||phase==='CLOSED')&&game.term;
+    return <div className="elv2-card"><div className="elv2-label">Hangman</div><div className="elv2-hang-pattern" aria-label={revealed?`Palabra: ${game.term}`:'Palabra oculta'}>{revealed?game.term:(game.pattern||'—')}</div>{game.clue&&<div className="elv2-muted">Pista: {game.clue}</div>}<div className="elv2-row" style={{margin:'10px 0'}}><Pill>Errores {game.errors_used||0}/{game.max_errors||6}</Pill>{game.wrong_letters&&game.wrong_letters.length>0&&<Pill>Fallos: {game.wrong_letters.join(', ')}</Pill>}</div>{student&&phase==='OPEN'&&!game.completed&&<div className="elv2-alpha">{ALPHABET.map(letter=><button type="button" className="elv2-letter" key={letter} disabled={busy||guessed.has(letter)} onClick={()=>onSubmit({action_type:'GUESS_LETTER',letter})}>{letter}</button>)}</div>}{game.completed&&<Alert type={game.won?'ok':'info'} text={game.won?'¡Palabra completada!':'La ronda terminó. Esperá la revelación.'}/>}</div>;
   }
 
   function QuizTime({game,phase,student,onSubmit,busy,roundId}){
@@ -175,19 +193,21 @@
     React.useEffect(()=>setAnswers({}),[roundId]);
     if(!game)return null;
     const questions=game.questions||[];
-    return <div className="elv2-card"><div className="elv2-label">Quiz Time</div><h3 style={{margin:'5px 0 12px',color:'#001E47'}}>10 preguntas · respuesta privada</h3>{questions.map((q,i)=><div className="elv2-quizq" key={q.question_id}><b>{i+1}. {q.stem||q.prompt||'Pregunta'}</b>{q.context_text&&<div className="elv2-muted" style={{marginTop:4}}>{q.context_text}</div>}{(q.options||[]).map(o=><button type="button" key={o.option_id} disabled={!student||phase!=='OPEN'||game.has_submitted} className={`elv2-option ${answers[q.question_id]===o.option_id?'selected':''}`} onClick={()=>setAnswers(prev=>({...prev,[q.question_id]:o.option_id}))}>{o.label}</button>)}</div>)}{student&&phase==='OPEN'&&!game.has_submitted&&<button className="elv2-btn primary" type="button" disabled={busy||questions.length!==10||Object.keys(answers).length!==10} onClick={()=>onSubmit({action_type:'SUBMIT_QUIZ',answers:questions.map(q=>({question_id:q.question_id,option_id:answers[q.question_id]}))})}>Enviar las 10 respuestas</button>}{game.has_submitted&&<Alert type="ok" text="Quiz enviado. Las respuestas correctas permanecen ocultas hasta REVEAL."/>}{(phase==='REVEAL'||phase==='CLOSED')&&Array.isArray(game.answer_key)&&<div style={{marginTop:14}}><div className="elv2-label">Corrección</div>{game.answer_key.map((a,i)=><div key={a.question_id} className="elv2-muted" style={{padding:'7px 0',borderTop:'1px solid #edf0f4'}}><b>{i+1}. {a.correct_option_label}</b>{a.explanation?` · ${a.explanation}`:''}</div>)}</div>}</div>;
+    return <div className="elv2-card"><div className="elv2-label">Quiz Time</div><h3 style={{margin:'5px 0 12px',color:'#001E47'}}>10 preguntas · respuesta privada</h3>{questions.map((q,i)=><fieldset className="elv2-quizq" key={q.question_id}><legend className="elv2-question-title">{i+1}. {q.stem||q.prompt||'Pregunta'}</legend>{q.context_text&&<div className="elv2-muted elv2-question-context">{q.context_text}</div>}<div className="elv2-quiz-options" role="group" aria-label={`Opciones de la pregunta ${i+1}`}>{(q.options||[]).map(o=><button type="button" key={o.option_id} disabled={!student||phase!=='OPEN'||game.has_submitted} aria-pressed={answers[q.question_id]===o.option_id} className={`elv2-option ${answers[q.question_id]===o.option_id?'selected':''}`} onClick={()=>setAnswers(prev=>({...prev,[q.question_id]:o.option_id}))}>{o.label}</button>)}</div></fieldset>)}{student&&phase==='OPEN'&&!game.has_submitted&&<button className="elv2-btn primary" type="button" disabled={busy||questions.length!==10||Object.keys(answers).length!==10} onClick={()=>onSubmit({action_type:'SUBMIT_QUIZ',answers:questions.map(q=>({question_id:q.question_id,option_id:answers[q.question_id]}))})}>Enviar las 10 respuestas</button>}{game.has_submitted&&<Alert type="ok" text="Quiz enviado. Las respuestas correctas permanecen ocultas hasta REVEAL."/>}{(phase==='REVEAL'||phase==='CLOSED')&&Array.isArray(game.answer_key)&&<div style={{marginTop:14}}><div className="elv2-label">Corrección</div><ol>{game.answer_key.map(a=><li key={a.question_id} className="elv2-muted" style={{padding:'7px 0'}}><b>{a.correct_option_label}</b>{a.explanation?` · ${a.explanation}`:''}</li>)}</ol></div>}</div>;
   }
 
   function WordSearch({game,phase,student,onSubmit,busy,roundId}){
     const [start,setStart]=React.useState(null);
     React.useEffect(()=>setStart(null),[roundId]);
     if(!game)return null;
+    const grid=Array.isArray(game.grid)?game.grid:[];
+    const validGrid=grid.length===14&&grid.every(row=>Array.isArray(row)&&row.length===14);
     function choose(row,col){
       if(!student||phase!=='OPEN'||busy)return;
       if(!start){setStart({row,col});return;}
       const first=start;setStart(null);onSubmit({action_type:'CLAIM_PATH',start_row:first.row,start_col:first.col,end_row:row,end_col:col});
     }
-    return <div className="elv2-card"><div className="elv2-label">Word Search</div><div className="elv2-muted" style={{margin:'5px 0 12px'}}>{student&&phase==='OPEN'?'Tocá la primera y la última letra de la palabra.':'Tablero compartido de la sala.'}</div><div className="elv2-ws">{(game.grid||[]).map((row,r)=>row.map((letter,c)=><button key={`${r}-${c}`} type="button" className={`elv2-cell ${start&&start.row===r&&start.col===c?'start':''}`} onClick={()=>choose(r,c)} disabled={!student||phase!=='OPEN'}>{letter}</button>))}</div><div className="elv2-row" style={{marginTop:12}}>{(game.words||[]).map(w=><Pill key={w.target_id}>{w.claimed?'✓ ':''}{w.label}</Pill>)}</div>{game.completed&&<div style={{marginTop:12}}><Alert type="ok" text="¡Todas las palabras fueron encontradas!"/></div>}</div>;
+    return <div className="elv2-card"><div className="elv2-label">Word Search</div><div className="elv2-muted" style={{margin:'5px 0 12px'}}>{student&&phase==='OPEN'?'Tocá la primera y la última letra de la palabra.':'Tablero compartido de la sala.'}</div>{validGrid?<div className="elv2-ws" role="grid" aria-label="Sopa de letras de 14 filas por 14 columnas" aria-rowcount="14" aria-colcount="14">{grid.map((row,r)=><div className="elv2-ws-row" role="row" key={`row-${r}`}>{row.map((letter,c)=><button key={`${r}-${c}`} type="button" role="gridcell" aria-label={`Fila ${r+1}, columna ${c+1}: ${letter}`} className={`elv2-cell ${start&&start.row===r&&start.col===c?'start':''}`} onClick={()=>choose(r,c)} disabled={!student||phase!=='OPEN'}>{letter}</button>)}</div>)}</div>:<Alert type="err" text="No se pudo mostrar la cuadrícula 14 × 14. Actualizá el estado de la sala."/>}<ul className="elv2-word-list" aria-label="Palabras por encontrar">{(game.words||[]).map(w=><li className={`elv2-word-item ${w.claimed?'claimed':''}`} key={w.target_id}>{w.claimed?'✓ ':''}{w.label}</li>)}</ul>{game.completed&&<div style={{marginTop:12}}><Alert type="ok" text="¡Todas las palabras fueron encontradas!"/></div>}</div>;
   }
 
   function GameBoard({view,student,onSubmit,busy}){
