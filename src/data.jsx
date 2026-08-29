@@ -437,6 +437,75 @@ async function getSolicitudesPago(filtros = {}) {
   return _solpFetch(() => _solpPost('getSolicitudesPago', filtros), () => _solpListarDemo(filtros));
 }
 
+async function _solpSha256Hex(bytes) {
+  if (!window.crypto?.subtle || !bytes) return '';
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function _solpComprobanteDemoPrivado(id) {
+  const sol = _solpRead().find(x => String(x.id || '') === String(id || ''));
+  const dataUrl = String(sol?.url_comprobante || '');
+  if (!sol || !dataUrl.startsWith('data:')) return { ok:false, error:'comprobante_demo_no_disponible' };
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    if (!blob.size || blob.size > 5 * 1024 * 1024) return { ok:false, error:'comprobante_demo_invalido_o_grande' };
+    return {
+      ok:true,
+      demo:true,
+      private_delivery:true,
+      nombre:`comprobante-${String(id || 'demo')}`,
+      mime_type:String(blob.type || sol.foto_mime || 'application/octet-stream').toLowerCase(),
+      size_bytes:blob.size,
+      blob,
+    };
+  } catch (_) {
+    return { ok:false, error:'comprobante_demo_invalido' };
+  }
+}
+
+async function descargarComprobantePagoPrivado(id) {
+  const solicitudId = String(id || '').trim();
+  if (!solicitudId) return { ok:false, error:'solicitud_id_requerido' };
+  const r = await _solpFetch(
+    () => _solpPost('descargarComprobantePagoPrivado', { id:solicitudId }),
+    () => _solpComprobanteDemoPrivado(solicitudId)
+  );
+  if (!r?.ok || r.blob) return r;
+
+  const mime = String(r.mime_type || '').trim().toLowerCase();
+  if (!['image/jpeg','image/png','application/pdf'].includes(mime)) return { ok:false, error:'mime_comprobante_no_permitido' };
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) return { ok:false, error:'comprobante_sin_contenido' };
+
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { return { ok:false, error:'comprobante_base64_invalido' }; }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes.length || bytes.length > 5 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'comprobante_incompleto_o_grande' };
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await _solpSha256Hex(bytes);
+    if (!digestHex || digestHex !== expectedHash) return { ok:false, error:'integridad_comprobante_invalida' };
+  }
+
+  return {
+    ok:true,
+    private_delivery:true,
+    nombre:String(r.nombre || `comprobante-${solicitudId}`),
+    mime_type:mime,
+    size_bytes:bytes.length,
+    sha256:expectedHash,
+    blob:new Blob([bytes], { type:mime }),
+  };
+}
+
 async function marcarSolicitudAplicada({ id, admin_nombre }) {
   return _solpFetch(() => _solpPost('marcarSolicitudAplicada', { id, admin_nombre }),
     () => _solpResolverDemo(id, { estado: 'APLICADO', admin_nombre }));
@@ -957,7 +1026,7 @@ Object.assign(window, {
   fetchSolicitarSuspension,
   fetchGetSolicitudesSuspension,
   fetchResolverSolicitudSuspension,
-  reportarPago, getSolicitudesPago, marcarSolicitudAplicada, rechazarSolicitudPago,
+  reportarPago, getSolicitudesPago, descargarComprobantePagoPrivado, marcarSolicitudAplicada, rechazarSolicitudPago,
   cancelarProspecto, getCanceladosDemo,
   getCalendarioMatriculas,
   getBecas, crearBeca, editarBeca, cambiarBecaActivo, cambiarBecaVisibilidad,
