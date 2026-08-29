@@ -862,9 +862,11 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   };
   const irExpediente = () => { onToast({ tipo: 'ok', msg: `Abriendo expediente ${detalle.codigo || ''}…` }); setModal(null); };
 
-  // WhatsApp del prospecto, limpio para wa.me (Fase 3.5).
+  // Contactos del prospecto: llamada telefónica y WhatsApp son acciones distintas.
   const waNum = waDigits(detalle && (detalle.whatsapp || detalle.telefono));
-  const llamarWhatsApp = () => { if (waNum) window.open(`https://wa.me/${waNum}`, '_blank', 'noopener'); };
+  const telNum = waDigits(detalle && (detalle.telefono || detalle.whatsapp));
+  const abrirWhatsApp = () => { if (waNum) window.open(`https://wa.me/${waNum}`, '_blank', 'noopener'); };
+  const llamarTelefono = () => { if (telNum) window.location.href = `tel:+${telNum}`; };
 
   const d = detalle;
 
@@ -1078,12 +1080,12 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
             <div className="vx-dr-foot">
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="vx-btn vx-btn-ghost" style={{ flex: 1 }}
-                  onClick={llamarWhatsApp} disabled={!waNum}
-                  title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
-                  <window.Vico d={window.VI.wa} size={15} fill="currentColor" /> Llamar
+                  onClick={llamarTelefono} disabled={!telNum}
+                  title={telNum ? 'Llamar por teléfono' : 'Sin número registrado'}>
+                  <window.Vico d={window.VI.phone} size={15} /> Llamar
                 </button>
                 <button className="vx-btn vx-btn-ghost" style={{ flex: 1.25 }}
-                  onClick={llamarWhatsApp} disabled={!waNum}
+                  onClick={abrirWhatsApp} disabled={!waNum}
                   title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
                   <window.Vico d={window.VI.wa} size={16} fill="currentColor" /> Abrir WhatsApp
                 </button>
