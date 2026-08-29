@@ -1,0 +1,49 @@
+{
+  "version": "CS21A185-v1",
+  "date": "2026-08-29",
+  "scope": "authenticated teacher institutional materials",
+  "classification": "SEC-005",
+  "personal_data": false,
+  "intended_audience": ["teacher"],
+  "current_frontend": {
+    "role_gate": "teacher",
+    "source_files": [
+      "src/teacher_cs21a.jsx",
+      "src/teacher_cs21a_docs_viewer.jsx"
+    ],
+    "drive_ids_embedded_in_public_bundle": true,
+    "direct_drive_open_download": true
+  },
+  "drive_acl_evidence": {
+    "sampled_resources": 3,
+    "sample_types": ["lesson_pdf", "b1_planning_folder", "b2_planning_folder"],
+    "anyone_reader_observed": true,
+    "allow_file_discovery": false,
+    "acl_changed_by_this_cut": false
+  },
+  "risk": {
+    "summary": "Teacher-only UI does not enforce resource access when Drive grants anyone-with-link read and IDs are shipped in static JavaScript.",
+    "severity": "P1_ACCESS_CONTROL",
+    "not_sec002_pii": true
+  },
+  "target_contract": {
+    "manifest_requires_authenticated_session": true,
+    "allowed_roles": ["teacher", "admin", "superadmin"],
+    "student_access": false,
+    "public_visitor_access": false,
+    "drive_ids_must_not_be_required_in_public_bundle": true,
+    "private_or_identity_bound_delivery_required": true,
+    "endpoint_names_resolved": false,
+    "endpoint_resolution_gate": "fresh Apps Script QA snapshot / Issue #111"
+  },
+  "migration_order": [
+    "freeze exact current source and Drive ACL evidence",
+    "locate effective backend and router from fresh QA snapshot",
+    "implement authenticated teacher material manifest or private delivery",
+    "E2 teacher allowed and non-teacher denied",
+    "remove anyone-reader ACL in QA only",
+    "repeat E2 after ACL removal",
+    "only then consider release"
+  ],
+  "release_claim": "NOT_FIXED_PRIVATE_DELIVERY_PENDING"
+}
