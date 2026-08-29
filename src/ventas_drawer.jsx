@@ -9,6 +9,20 @@ const { useState: vUseState, useEffect: vUseEffect } = React;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// CS21A173 · los detalles técnicos quedan en consola; la UI conserva mensajes
+// de negocio legibles y usa un fallback estable para códigos internos.
+function vxSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[Ventas] Detalle técnico oculto al usuario.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 // VENTAS-DASHBOARD-002 · Reglamento estudiantil (archivo estático del proyecto).
 // Si el PDF NO está adjunto, dejá esta constante VACÍA: el botón queda
 // deshabilitado con el mensaje "Falta adjuntar el Reglamento Estudiantil al
@@ -51,7 +65,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         window.open(r.url, '_blank', 'noopener');
         onToast && onToast({ tipo: 'ok', msg: 'Documento generado correctamente.' });
       } else {
-        const m = (r && (r.mensaje || r.error)) || msgFalla;
+        const m = vxSafeUserError(r && (r.mensaje || r.error), msgFalla, `documento:${tipo}`);
         setErr(m); onToast && onToast({ tipo: 'err', msg: m });
       }
     } catch (_) {
@@ -88,7 +102,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         setSignedDoc(r);
         onToast && onToast({ tipo:'ok', msg:'Matrícula firmada adjuntada al expediente.' });
       } else {
-        const m = (r && (r.mensaje || r.error)) || 'No se pudo subir la matrícula firmada.';
+        const m = vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo subir la matrícula firmada.', 'subir_matricula_firmada');
         setErr(m); onToast && onToast({ tipo:'err', msg:m });
       }
     } catch (_) {
@@ -118,7 +132,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         codigo,
         file_id: signedDoc.file_id,
       });
-      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir la matrícula firmada.');
+      if (!r?.ok || !r.blob) throw new Error(vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir la matrícula firmada.', 'abrir_matricula_firmada'));
       const objectUrl = URL.createObjectURL(r.blob);
       if (preview && !preview.closed) preview.location.replace(objectUrl);
       else {
@@ -129,7 +143,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
     } catch (e) {
       try { if (preview && !preview.closed) preview.close(); } catch (_) {}
-      const m = e?.message || 'No se pudo abrir la matrícula firmada.';
+      const m = vxSafeUserError(e?.message, 'No se pudo abrir la matrícula firmada.', 'abrir_matricula_firmada');
       setErr(m); onToast && onToast({ tipo:'err', msg:m });
     } finally { setOpeningSigned(false); }
   };
@@ -157,7 +171,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
       if (r && r.ok) {
         onToast && onToast({ tipo:'ok', msg: canal === 'correo' ? 'Correo enviado.' : 'Alerta del campus creada.' });
       } else {
-        const m = (r && (r.mensaje || r.error)) || 'No se pudo enviar la notificación.';
+        const m = vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar la notificación.', `notificar_matricula:${canal}`);
         setErr(m); onToast && onToast({ tipo:'err', msg:m });
       }
     } catch (_) {
@@ -334,7 +348,10 @@ function useGruposVx(programa, demo) {
         const d = await window.getGruposVentas(param);
         const list = Array.isArray(d) ? d : (d && d.grupos) || [];
         if (!cancel) setGrupos(list.map(g => ({ codigo: g.codigo || g.cod || g.id || '', etiqueta: g.etiqueta || g.horario || g.codigo || '' })));
-      } catch (_) { if (!cancel) setGrupos(window.DEMO_GRUPOS); }
+      } catch (err) {
+        console.error('[Ventas CS21A173] Falló la carga real de grupos disponibles.', err);
+        if (!cancel) setGrupos([]);
+      }
     })();
     return () => { cancel = true; };
   }, [programa, demo]);
@@ -343,10 +360,14 @@ function useGruposVx(programa, demo) {
 
 function GrupoSelect({ programa, demo, value, onChange }) {
   const grupos = useGruposVx(programa, demo);
+  vUseEffect(() => {
+    if (!Array.isArray(grupos) || !value) return;
+    if (!grupos.some(g => g.codigo === value)) onChange('');
+  }, [grupos, value, onChange]);
   if (!grupos) return <div className="vx-sk" style={{ height: 40, borderRadius: 8 }} />;
   return (
-    <select className="vx-select" style={{ width: '100%' }} value={value} onChange={e => onChange(e.target.value)}>
-      <option value="">Seleccioná un grupo…</option>
+    <select className="vx-select" style={{ width: '100%' }} value={value} disabled={grupos.length === 0} onChange={e => onChange(e.target.value)}>
+      <option value="">{grupos.length ? 'Seleccioná un grupo…' : 'No hay grupos disponibles'}</option>
       {grupos.map(g => <option key={g.codigo} value={g.codigo}>{g.codigo}{g.etiqueta ? ` — ${g.etiqueta}` : ''}</option>)}
     </select>
   );
@@ -371,7 +392,7 @@ function CobrarModal({ detalle, asesor, demo, onClose, onSuccess, onError }) {
         : await window.cobrarMatriculaProspecto(detalle.cedula, grupo, monto.trim(), comprobante.trim(), asesor);
       setLoading(false);
       if (r && r.ok) onSuccess({ ...r, grupo, etapa: 'ACTIVO' });
-      else { setErr((r && r.error) || 'No se pudo registrar el cobro. Intentá de nuevo.'); }
+      else { setErr(vxSafeUserError(r && r.error, 'No se pudo registrar el cobro. Intentá de nuevo.', 'cobrar_matricula')); }
     } catch (_) { setLoading(false); setErr('Error de conexión. Intentá de nuevo.'); }
   };
 
@@ -422,7 +443,7 @@ function ActivarModal({ detalle, asesor, demo, onClose, onSuccess }) {
         : await window.activarEstudiante(detalle.cedula, grupo, asesor);
       setLoading(false);
       if (r && r.ok) onSuccess({ ...r, grupo, etapa: 'ACTIVO' });
-      else setErr((r && r.error) || 'No se pudo activar. Intentá de nuevo.');
+      else setErr(vxSafeUserError(r && r.error, 'No se pudo activar. Intentá de nuevo.', 'activar_estudiante'));
     } catch (_) { setLoading(false); setErr('Error de conexión. Intentá de nuevo.'); }
   };
   return (
@@ -523,7 +544,7 @@ function NotaModal({ detalle, asesor, demo, onClose, onSaved, onToast }) {
         onSaved({ fecha: window.HOY, autor: asesor, texto: texto.trim() });
         onToast({ tipo: 'ok', msg: 'Nota agregada' });
         onClose();
-      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo agregar la nota' });
+      } else onToast({ tipo: 'err', msg: vxSafeUserError(r && r.error, 'No se pudo agregar la nota', 'agregar_nota') });
     } catch (_) { setLoading(false); onToast({ tipo: 'err', msg: 'Error de conexión' }); }
   };
   return (
@@ -608,7 +629,7 @@ function ReportarPagoModal({ detalle, usuario, demo, onClose, onToast }) {
         onClose();
         onToast({ tipo: 'warn', msg: '⚠️ Este comprobante ya fue aplicado antes. La solicitud quedó como duplicada.' });
       } else {
-        setErr((res && res.error) || 'No se pudo reportar el pago. Intentá de nuevo.');
+        setErr(vxSafeUserError(res && res.error, 'No se pudo reportar el pago. Intentá de nuevo.', 'reportar_pago'));
       }
     } catch (_) { setLoading(false); setErr('Error de conexión. Intentá de nuevo.'); }
   };
@@ -697,7 +718,7 @@ function CancelarProspectoModal({ detalle, usuario, onClose, onCancelado, onToas
       if (res && res.ok) {
         onToast({ tipo: 'ok', msg: 'Prospecto cancelado. Queda en el sistema con el motivo.' });
         onCancelado();
-      } else setErr((res && res.error) || 'No se pudo cancelar el prospecto.');
+      } else setErr(vxSafeUserError(res && res.error, 'No se pudo cancelar el prospecto.', 'cancelar_prospecto'));
     } catch (_) { setLoading(false); setErr('Error de conexión. Intentá de nuevo.'); }
   };
   return (
@@ -764,7 +785,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
       } else {
         const d = await window.getProspectoDetalle(cedula);
         if (d && d.ok !== false) setDetalle(d.prospecto || d);
-        else setError((d && d.error) || 'No se pudo cargar el prospecto.');
+        else setError(vxSafeUserError(d && d.error, 'No se pudo cargar el prospecto.', 'cargar_prospecto'));
       }
     } catch (_) { setError('Error de conexión.'); }
     finally { setLoading(false); }
@@ -791,7 +812,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
         setDetalle(d => ({ ...d, notas: [nueva, ...(d.notas || [])] }));
         setNota('');
         onToast({ tipo: 'ok', msg: 'Nota agregada' });
-      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo agregar la nota' });
+      } else onToast({ tipo: 'err', msg: vxSafeUserError(r && r.error, 'No se pudo agregar la nota', 'agregar_nota') });
     } catch (_) { onToast({ tipo: 'err', msg: 'Error de conexión' }); }
     finally { setSavingNota(false); }
   };
@@ -813,7 +834,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
     }
     try {
       const r = await window.descargarDocumentoExtraPrivado(cedula, fileId);
-      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el documento.');
+      if (!r?.ok || !r.blob) throw new Error(vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el documento.', 'abrir_documento_extra'));
       const objectUrl = URL.createObjectURL(r.blob);
       const inlineSeguro = /^(application\/pdf|image\/(jpeg|png|gif|webp))$/i.test(r.mime_type || '');
       if (inlineSeguro && preview && !preview.closed) {
@@ -828,7 +849,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
       }
     } catch (e) {
       try { if (preview && !preview.closed) preview.close(); } catch (_) {}
-      onToast({ tipo:'err', msg:e?.message || 'No se pudo abrir el documento.' });
+      onToast({ tipo:'err', msg:vxSafeUserError(e?.message, 'No se pudo abrir el documento.', 'abrir_documento_extra') });
     } finally { setDocPrivadoAbriendo(''); }
   };
 
@@ -859,7 +880,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
           setDetalle(d => ({ ...d, docs_extra: [nuevo, ...(d.docs_extra || [])] }));
         }
         onToast({ tipo: 'ok', msg: 'Documento subido' });
-      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo subir el documento' });
+      } else onToast({ tipo: 'err', msg: vxSafeUserError(r && r.error, 'No se pudo subir el documento', 'subir_documento') });
     } catch (_) { onToast({ tipo: 'err', msg: 'Error al procesar el archivo' }); }
   };
 
@@ -874,7 +895,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
         onToast({ tipo: 'ok', msg: label || 'Etapa actualizada' });
         onChanged && onChanged({ cedula: detalle.cedula, etapa });
         if (etapa === 'CANCELADO') { setModal(null); onClose(); }
-      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo actualizar la etapa' });
+      } else onToast({ tipo: 'err', msg: vxSafeUserError(r && r.error, 'No se pudo actualizar la etapa', 'actualizar_etapa') });
     } catch (_) { onToast({ tipo: 'err', msg: 'Error de conexión' }); }
     finally { setActLoading(''); }
   };
@@ -909,11 +930,11 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
       } else {
         onToast({
           tipo: 'err',
-          msg: (r && (r.mensaje || r.error)) || 'No se pudo generar la proforma.',
+          msg: vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo generar la proforma.', `generar_proforma:${tipo}`),
         });
       }
     } catch (err) {
-      onToast({ tipo: 'err', msg: (err && err.message) || 'Error de conexión.' });
+      onToast({ tipo: 'err', msg: vxSafeUserError(err && err.message, 'Error de conexión.', `generar_proforma:${tipo}`) });
     } finally {
       setLoadingProforma('');
     }
@@ -930,7 +951,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
         setDetalle(d => ({ ...d, beca_estado: decision }));
         onChanged && onChanged({ cedula: detalle.cedula, beca_estado: decision });
         onToast({ tipo: 'ok', msg: `Beca ${decision.toLowerCase()}.` });
-      } else onToast({ tipo: 'err', msg: (r && r.error) || 'No se pudo actualizar la beca.' });
+      } else onToast({ tipo: 'err', msg: vxSafeUserError(r && r.error, 'No se pudo actualizar la beca.', 'actualizar_beca') });
     } catch (_) { onToast({ tipo: 'err', msg: 'Error de conexión.' }); }
   };
 
