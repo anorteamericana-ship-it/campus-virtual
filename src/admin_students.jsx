@@ -72,6 +72,18 @@ async function postAdminStudents(fn, payload = {}, timeoutMs = 25000) {
   throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
 }
 
+function adminStudentsSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|\bbase64\b|sha-?256|\bmime\b|file_id|request_id|policy_unbound|sec00|apollo\.|getAdmin|getRadiografia|getEstudiante|getCierre|ejecutarCierre|sincronizarCONAPE|generarCertificado|simularCambio|ejecutarCambio/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[AdminStudents] Detalle técnico oculto al operador.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 function abrirPdfBackend(payload, fallbackUrl = '') {
   try {
     if (payload?.pdf_base64) {
@@ -96,7 +108,7 @@ async function resincronizarEstudianteIndividual(codigo) {
     const resp = await postAdminStudents('sincronizarCONAPE', { codigo: String(codigo) });
     return resp;
   } catch(e) {
-    return { ok: false, error: 'Error de conexión: ' + (e.message || e) };
+    return { ok: false, error: adminStudentsSafeUserError(e?.message || String(e), 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'resincronizar_estudiante') };
   }
 }
 
@@ -120,10 +132,10 @@ function useAdminGrupos(enabled = true) {
         if (d && d.ok) {
           setGrupos(d.grupos || []);
         } else {
-          setError((d && d.error) || 'Respuesta no válida del servidor');
+          setError(adminStudentsSafeUserError(d?.error || d?.mensaje, 'No pudimos cargar los grupos. Intentá de nuevo.', 'cargar_grupos'));
         }
       })
-      .catch(e => { if (activo) setError('Error de conexión: ' + (e.message || e)); })
+      .catch(e => { if (activo) setError(adminStudentsSafeUserError(e?.message || String(e), 'No pudimos cargar los grupos. Intentá de nuevo.', 'cargar_grupos')); })
       .finally(() => { if (activo) setLoading(false); });
     return () => { activo = false; };
   }, [enabled]);
@@ -145,9 +157,9 @@ function useRadiografia(codGrupo, refreshKey) {
       .then(d => {
         if (!activo) return;
         if (d && d.ok) setData(d);
-        else setError((d && (d.error || d.mensaje)) || 'No se pudo cargar la radiografía del grupo.');
+        else setError(adminStudentsSafeUserError(d?.error || d?.mensaje, 'No pudimos cargar la radiografía del grupo. Intentá de nuevo.', 'cargar_radiografia'));
       })
-      .catch(e => { if (activo) setError('Error de conexión: ' + (e?.message || e)); })
+      .catch(e => { if (activo) setError(adminStudentsSafeUserError(e?.message || String(e), 'No pudimos cargar la radiografía del grupo. Intentá de nuevo.', 'cargar_radiografia')); })
       .finally(() => { if (activo) setLoading(false); });
     return () => { activo = false; };
   }, [codGrupo, refreshKey]);
@@ -244,7 +256,7 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
       });
       const data = await resp.json();
       if (!data.ok) {
-        setError(data.error || 'Error al actualizar');
+        setError(adminStudentsSafeUserError(data?.error || data?.mensaje, 'No se pudo actualizar el estatus. Intentá de nuevo.', 'actualizar_estatus'));
         return;
       }
       if (data.conape_sync === false) {
@@ -268,7 +280,7 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
       setReintentoMsg('✓ CONAPE sincronizado');
       setTimeout(() => { onSuccess(); onClose(); }, 900);
     } else {
-      setReintentoMsg('⚠ ' + (r.error || 'No se pudo sincronizar'));
+      setReintentoMsg('⚠ ' + adminStudentsSafeUserError(r?.error || r?.mensaje, 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'reintentar_conape'));
     }
   }
 
@@ -1727,7 +1739,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
       alert(`${nombre} quedó proyectado en ${nivelSiguiente}.`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert('No se creó la proyección: ' + (err?.message || err));
+      alert(adminStudentsSafeUserError(err?.message || String(err), 'No se pudo crear la proyección. Intentá de nuevo.', 'crear_proyeccion'));
     } finally {
       setProyeccionBusy('');
     }
@@ -1935,7 +1947,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                     if (!r?.ok) throw new Error(r?.error || 'No se pudo generar la constancia.');
                     if (!abrirPdfBackend(r, r.pdf_url)) alert('La constancia se generó, pero el navegador bloqueó la apertura. Puede abrirla desde el historial.');
                     onRefresh?.();
-                  } catch (err) { alert(err?.message || String(err)); }
+                  } catch (err) { alert(adminStudentsSafeUserError(err?.message || String(err), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion')); }
                   finally { setPdfTrasladoBusy(''); }
                 };
                 return (
@@ -2151,9 +2163,9 @@ function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
     try {
       const d = await postAdminStudents('getCierreAcademicoNivelPreview', { cod_grupo: grupo, grupo, nivel: n });
       if (d && d.ok) setPreview(d);
-      else setError((d && (d.mensaje || d.error)) || 'No se pudo cargar la vista previa del cierre.');
+      else setError(adminStudentsSafeUserError(d?.mensaje || d?.error, 'No se pudo cargar la vista previa del cierre. Intentá de nuevo.', 'preview_cierre'));
     } catch(e) {
-      setError('Error de conexión: ' + (e.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setLoading(false);
     }
@@ -2171,10 +2183,10 @@ function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
         setPreview(d.preview || preview);
         if (onRefresh) onRefresh();
       } else {
-        setError((d && (d.mensaje || d.error)) || 'No se pudo ejecutar el cierre académico.');
+        setError(adminStudentsSafeUserError(d?.mensaje || d?.error, 'No se pudo ejecutar el cierre académico. Intentá de nuevo.', 'ejecutar_cierre'));
       }
     } catch(e) {
-      setError('Error de conexión: ' + (e.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setEjecutando(false);
     }
@@ -2368,7 +2380,8 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       setRefreshKey(k => k + 1);
     } catch (e) {
       setSyncConape(s => ({ ...s, loading: false, paused: true, jobId }));
-      setToast({ tipo: 'err', msg: `Sincronización pausada${last?.procesados != null ? ` en ${last.procesados}/${last.total}` : ''}. No reinicie desde cero: presione Sync CONAPE para reanudar. Detalle: ${e.message || e}` });
+      console.warn('[AdminStudents] Sincronización CONAPE pausada.', e);
+      setToast({ tipo: 'err', msg: `Sincronización pausada${last?.procesados != null ? ` en ${last.procesados}/${last.total}` : ''}. Podés reanudarla con Sync CONAPE.` });
     }
   };
 
@@ -2526,7 +2539,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
         setTimeout(() => setCertEstado(null), 9000);
       }
     } catch(e) {
-      setCertEstado({ ok:false, masivo:true, regenerando:true, error:'Error de conexión: ' + (e?.message || e), nivel });
+      setCertEstado({ ok:false, masivo:true, regenerando:true, error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo regenerar los certificados. Intentá de nuevo.', 'regenerar_certificados'), nivel });
     }
   };
 
@@ -2981,7 +2994,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
           ) : (
             <div>
               <div style={{ fontWeight:700, marginBottom:4 }}>❌ Error</div>
-              <div style={{ fontSize:12 }}>{certEstado.mensaje || certEstado.error}</div>
+              <div style={{ fontSize:12 }}>{adminStudentsSafeUserError(certEstado.mensaje || certEstado.error, 'No se pudo completar la operación de certificados. Intentá de nuevo.', 'certificados')}</div>
               {certEstado.search_url && <a href={certEstado.search_url} target="_blank" rel="noreferrer" style={{ color:'white', fontWeight:700, textDecoration:'underline', display:'inline-block', marginTop:8 }}>Buscar en Drive →</a>}
             </div>
           )}
@@ -3012,8 +3025,8 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate, initialTab }) {
     if (!est) return;
     setCargando(true); setError(''); setDetalle(null);
     postAdminStudents('getEstudiante', { codigo: est.codigo || est.rec_m || '' })
-      .then(d => { if (d.ok) setDetalle(d); else setError(d.error || 'Error al cargar'); })
-      .catch(e => setError('Error de conexión: ' + e.message))
+      .then(d => { if (d.ok) setDetalle(d); else setError(adminStudentsSafeUserError(d?.error || d?.mensaje, 'No se pudo cargar el expediente. Intentá de nuevo.', 'cargar_expediente')); })
+      .catch(e => setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo cargar el expediente. Intentá de nuevo.', 'cargar_expediente')))
       .finally(() => setCargando(false));
   }, [est?.codigo, est?.rec_m]);
 
@@ -3549,7 +3562,7 @@ function TabNotasPanel({ niveles, nivelActivo, est, detalle }) {
         } catch (_) {}
       }
     } catch (e) {
-      setResultado({ ok:false, error:'Error de conexión: ' + (e.message || e) });
+      setResultado({ ok:false, error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo guardar la calificación. Intentá de nuevo.', 'guardar_calificacion') });
     } finally {
       setGuardando(false);
     }
@@ -3677,7 +3690,7 @@ function TabNotasPanel({ niveles, nivelActivo, est, detalle }) {
 
         {resultado && (
           <div style={{ marginTop:10, padding:'9px 11px', borderRadius:10, background: resultado.ok ? '#E8F5E9' : '#FFEBEE', border:`1px solid ${resultado.ok ? '#BFE4C3' : '#F4B7B7'}`, color: resultado.ok ? '#2E7D32' : '#C62828', fontSize:12, fontWeight:800 }}>
-            {resultado.ok ? `✅ Guardado. ${resultado.tipo_eval || tipoEval}: ${resultado.puntos ?? puntosCalc} pts. Total: ${resultado.nota_total ?? resultado.total ?? 'actualizado'}` : `❌ ${resultado.error || resultado.mensaje || 'No se pudo guardar.'}`}
+            {resultado.ok ? `✅ Guardado. ${resultado.tipo_eval || tipoEval}: ${resultado.puntos ?? puntosCalc} pts. Total: ${resultado.nota_total ?? resultado.total ?? 'actualizado'}` : `❌ ${adminStudentsSafeUserError(resultado.error || resultado.mensaje, 'No se pudo guardar. Intentá de nuevo.', 'resultado_calificacion')}`}
           </div>
         )}
 
@@ -4326,11 +4339,11 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
     postAdminStudents('getCambioGrupoContexto', { codigo, nivel })
       .then(r => {
         if (!activo) return;
-        if (!r?.ok) { setError(r?.error || 'No se pudo evaluar el expediente.'); return; }
+        if (!r?.ok) { setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No se pudo evaluar el expediente. Intentá de nuevo.', 'evaluar_cambio_grupo')); return; }
         setContexto(r);
         seleccionarCaso(r, r.caso_sugerido || '');
       })
-      .catch(e => activo && setError('Error de conexión: ' + (e?.message || e)))
+      .catch(e => activo && setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion')))
       .finally(() => activo && setLoading(false));
     return () => { activo = false; };
   }, [codigo, nivel]);
@@ -4360,10 +4373,10 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
         grupo_origen:contexto?.actual?.grupo || infoNivel?.grupo || '',
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
       }, 45000);
-      if (!r?.ok) setError(r?.error || 'No fue posible simular el movimiento.');
+      if (!r?.ok) setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No fue posible simular el movimiento. Intentá de nuevo.', 'simular_cambio_grupo'));
       else setSimulacion(r.simulacion);
     } catch(e) {
-      setError('Error de conexión: ' + (e?.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setSimulando(false);
     }
@@ -4379,12 +4392,12 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
         confirmacion_individual:String(codigo),
       }, 45000);
-      if (!r?.ok) { setError(r?.error || 'No fue posible ejecutar el movimiento.'); return; }
-      alert(r?.mensaje || (r?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.'));
+      if (!r?.ok) { setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No fue posible ejecutar el movimiento. Intentá de nuevo.', 'ejecutar_cambio_grupo')); return; }
+      alert(adminStudentsSafeUserError(r?.mensaje, r?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.', 'resultado_cambio_grupo'));
       onSuccess?.(r);
       onClose();
     } catch(e) {
-      setError('Error de conexión: ' + (e?.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setEjecutando(false);
     }
@@ -4518,7 +4531,7 @@ function AkComentarioAdminModal({ codigo, comentarioAdmin, onClose, onSaved }) {
       if(!r?.ok)throw new Error(r?.error||'No se pudo guardar el comentario.');
       onSaved?.(r.comentario_admin||'');
       onClose?.();
-    }catch(e){alert(e?.message||String(e));}finally{setComentarioBusy(false);}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setComentarioBusy(false);}
   }
   return <div style={{position:'fixed',inset:0,zIndex:2750,background:'rgba(7,20,40,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(620px,94vw)',background:'white',borderRadius:14,boxShadow:'0 24px 70px rgba(0,0,0,.35)',overflow:'hidden'}}><div style={{padding:'13px 15px',background:'#173A67',color:'white',fontWeight:950}}>Comentario interno · {codigo}</div><div style={{padding:15}}><div style={{fontSize:10,color:'#667085',marginBottom:7}}>Solo administración autorizada puede leer o modificar este texto. Se guarda en DATOS · COMENTARIO_ADMIN.</div><textarea value={comentarioValue} onChange={e=>setComentarioValue(e.target.value)} maxLength={3000} rows={7} style={{width:'100%',resize:'vertical',border:'1px solid #CCD6E2',borderRadius:9,padding:10,fontFamily:'inherit',fontSize:12,lineHeight:1.45,boxSizing:'border-box'}}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:10}}><span style={{fontSize:9,color:'#8A8178'}}>{comentarioValue.length}/3000</span><div style={{display:'flex',gap:7}}><button type="button" onClick={onClose} disabled={comentarioBusy} style={{padding:'8px 11px',borderRadius:8,border:'1px solid #CCD6E2',background:'white',fontWeight:850,cursor:'pointer'}}>Cancelar</button><button type="button" onClick={guardarComentario} disabled={comentarioBusy} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #173A67',background:'#173A67',color:'white',fontWeight:950,cursor:'pointer'}}>{comentarioBusy?'Guardando…':'Guardar comentario'}</button></div></div></div></div></div>;
 }
@@ -4529,9 +4542,9 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   const [docBusy,setDocBusy]=React.useState('');
   const [approveBusy,setApproveBusy]=React.useState('');
   const [formBusy,setFormBusy]=React.useState('');
-  function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
+  function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]});}).catch(e=>setEstado({loading:false,error:adminStudentsSafeUserError(e?.message||String(e),'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]}));}
   React.useEffect(cargar,[codigo]);
-  async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
+  async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo revertir.','revertir_cambio')}`:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo revertir.','revertir_cambio'));return;}onReverted?.(r);cargar();}
   async function abrirDocumento(r){
     const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
     const existingUrl=simple?r.PDF_TRASLADO_URL:r.CARTA_CONAPE_URL;
@@ -4542,7 +4555,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo generar el documento.');
       if(!abrirPdfBackend(resp,resp.pdf_url))alert('El documento se generó, pero el navegador bloqueó la apertura.');
       cargar();
-    }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
   async function regenerarCarta(r){
     if(!confirm('Se recalcularán pagos y mora. La carta anterior será reemplazada. ¿Continuar?'))return;
@@ -4591,7 +4604,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       }
       if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
       cargar();
-    }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
   async function descargarFormularioConape(r){
     const key=`${r.CAMBIO_ID}-F`;setFormBusy(key);
@@ -4664,7 +4677,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       if(pendientes.length)msg.push('\nPendientes de revisión:\n• '+pendientes.join('\n• '));
       if(faltantes.length)msg.push('\nCampos que el navegador no logró escribir:\n• '+faltantes.slice(0,8).join('\n• '));
       alert(msg.join('\n'));
-    }catch(e){alert(e?.message||String(e));}finally{setFormBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setFormBusy('');}
   }
   async function aprobarConape(r){
     const estado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
@@ -4682,13 +4695,13 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       const fin=resp?.estado_financiero||{};
       alert((resp?.mensaje||'Plan CONAPE publicado.')+(resp?.carta_no_deuda_lista?'':'\n\nLa carta de no deuda todavía no es apta: primero aplicá los pagos pendientes y luego usá “Recalcular carta”.'));
       cargar();onReverted?.(resp);
-    }catch(e){alert(e?.message||String(e));}finally{setApproveBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setApproveBusy('');}
   }
   async function marcarEntregado(r){
     if(!confirm('¿Confirmar que la constancia fue entregada al estudiante?'))return;
     const key=`${r.CAMBIO_ID}-E`;setDocBusy(key);
     try{const resp=await postAdminStudents('marcarConstanciaTrasladoEntregada',{cambio_id:r.CAMBIO_ID});if(!resp?.ok)throw new Error(resp?.error||'No se pudo registrar la entrega.');cargar();}
-    catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+    catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
   return <div style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(7,20,40,.68)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(1080px,96vw)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:15,boxShadow:'0 28px 80px rgba(0,0,0,.35)'}}>
     <div style={{padding:'16px 18px',background:'#0D2B51',color:'white',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'15px 15px 0 0'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase',opacity:.7}}>Auditoría inmutable</div><div style={{fontSize:20,fontWeight:900}}>Historial y documentos de cambios</div></div><button onClick={onClose} style={{background:'none',border:'none',color:'white',fontSize:24,cursor:'pointer'}}>×</button></div>
@@ -4740,9 +4753,9 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
     Promise.all([postAdminStudents('getEstudiante', { codigo }),postAdminStudents('getAsistenciaEstudiante', { codigo }),postAdminStudents('getComentarioAdminEstudiante',{codigo}).catch(()=>({ok:false})),postAdminStudents('getHistorialCambiosGrupo',{codigo}).catch(()=>({ok:false,historial:[]}))])
       .then(([ficha, asist, comentario, historialResp]) => {
         if (!activo) return;
-        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:(ficha&&ficha.error)||'No se pudo cargar el expediente.' }); return; }
+        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:adminStudentsSafeUserError(ficha?.error||ficha?.mensaje,'No se pudo cargar el expediente. Intentá de nuevo.','agenda_expediente') }); return; }
         setEstado({ loading:false, detalle:ficha, asistencia:(asist&&asist.ok&&Array.isArray(asist.asistencia))?asist.asistencia:[], comentarioAdmin:comentario?.ok?agIndNorm(comentario.comentario_admin):'', historial:historialResp?.ok&&Array.isArray(historialResp.historial)?historialResp.historial:[], error:'' });
-      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:'Error de conexión: '+(e?.message||e) }));
+      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:adminStudentsSafeUserError(e?.message||String(e),'No se pudo cargar el expediente. Intentá de nuevo.','agenda_expediente') }));
     return () => { activo=false; };
   }, [codigo,refreshKey]);
 
