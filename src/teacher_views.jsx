@@ -1165,7 +1165,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   const lista=grupos||[];
   const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
-  if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos En curso asignados.'} onRetry={recargarPanel}/></div>;
+  if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos activos asignados en este momento.'} onRetry={recargarPanel}/></div>;
   const promedioGrupo=resumenGrupo?.promedioGrupo,promedioAsistencia=resumenGrupo?.promedioAsistencia;
   const totalMatriculados = Number(resumenGrupo?.totalCA ?? roster.length ?? 0) || 0;
   const cerradas = Number(resumenGrupo?.cerradas || 0) || 0;
@@ -1180,11 +1180,11 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   return <div style={{width:'100%',maxWidth:'100%',minWidth:0,overflow:'hidden'}}>
     <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} />
     <div className="card" style={{padding:'15px 18px',margin:'-6px 0 14px',background:'#FFF',borderRadius:14,border:'1px solid rgba(15,23,42,.07)',boxShadow:'0 10px 24px rgba(12,27,53,.05)'}}>
-      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elije el grupo que deseas visualizar</div>
+      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elegí el grupo que querés visualizar.</div>
     </div>
     <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
-    {loading?<LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales"/>:<>
+    {loading?<LoadingState title="Cargando grupo…" subtitle="Preparando estudiantes, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
         <MatriculadosActivosCardF98 total={totalMatriculados} activos={activos85} cerradas={cerradas} threshold={85}/>
         <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
