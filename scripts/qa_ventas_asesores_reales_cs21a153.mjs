@@ -22,8 +22,9 @@ mustInclude("console.error('[Ventas CS21A153] No se pudo cargar la lista real de
 mustNotInclude('{window.ASESORES_V.map(', 'selector operativo directo desde ASESORES_V');
 mustNotInclude("const scopeAsesor = esSupervisor ? (asesorView || usuario.nombre) : usuario.nombre;", 'fallback legacy de supervisor a usuario.nombre');
 
-const demoRefs = (src.match(/ASESORES_V/g) || []).length;
-if (demoRefs !== 1) errors.push(`ASESORES_V debe quedar con exactamente 1 referencia (solo preview); encontradas ${demoRefs}`);
+// Contar solo referencias ejecutables al global, no menciones en comentarios.
+const demoRefs = (src.match(/window\.ASESORES_V/g) || []).length;
+if (demoRefs !== 1) errors.push(`window.ASESORES_V debe quedar con exactamente 1 referencia ejecutable (solo preview); encontradas ${demoRefs}`);
 
 if (errors.length) {
   console.error('QA CS21A153 FAIL');
