@@ -1,0 +1,29 @@
+name: QA Ventas Integration CS21A166
+
+on:
+  pull_request:
+    paths:
+      - 'ventas.html'
+      - 'src/ventas_*.jsx'
+      - 'src/ventas_*.js'
+      - 'src/prospect_free_student.jsx'
+      - 'src/sidebar.jsx'
+      - 'src/app.jsx'
+      - 'scripts/qa_ventas_integration_cs21a166.mjs'
+      - '.github/workflows/qa-ventas-integration-cs21a166.yml'
+      - '00_DOCUMENTACION/VENTAS_INTEGRATION_CS21A166_2026-08-29.md'
+  push:
+    branches:
+      - integration/ventas-modern-candidate-cs21a166
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run combined Prospectos/Ventas guards
+        run: node scripts/qa_ventas_integration_cs21a166.mjs
+      - name: Source diff hygiene
+        run: git diff --check origin/main...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
