@@ -478,11 +478,12 @@ async function getGruposVentas(programa) {
 }
 
 // ── ENDPOINTS POST (text/plain para esquivar el preflight CORS) ────────────
-async function postVentas(payload) {
+async function postVentas(payload = {}) {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
   const res = await fetch(SCRIPT_URL_V, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, token }),
   });
   return await res.json();
 }
