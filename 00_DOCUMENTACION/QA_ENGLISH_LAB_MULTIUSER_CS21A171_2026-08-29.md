@@ -39,7 +39,7 @@ Esto comprueba scoring/ranking y privacidad sin leer secretos de contenido.
 2. `getInfoGeneral` debe demostrar `QA_STAGING_CS21A138`, `qa_staging`, `master_match`, `operational_match` y `writes_guarded`;
 3. login real de docente, rol devuelto `teacher`;
 4. login real de estudiante, rol devuelto `student`;
-5. docente crea sala en `QA_LAB_GROUP_CODE`;
+5. docente crea sala en el grupo QA canónico;
 6. participante inicial debe ser 0;
 7. estudiante ejecuta `joinRoom` por código;
 8. docente y estudiante deben ver `participant_count=1` y la misma `state_revision`;
@@ -64,15 +64,18 @@ Si el flujo falla después de crear la sala, el runner intenta obtener el estado
 
 La limpieza es best-effort: si también falla, el reporte conserva el hallazgo y el run queda bloqueado.
 
-## Secretos QA requeridos
+## Identidades QA reutilizadas
 
-- `QA_ENGLISH_LAB_APPS_SCRIPT_URL`
-- `QA_LAB_TEACHER_USER`
-- `QA_LAB_TEACHER_PASS`
-- `QA_LAB_STUDENT_USER`
-- `QA_LAB_STUDENT_PASS`
-- `QA_LAB_GROUP_CODE`
-- `QA_ENGLISH_LAB_WRITE_CONFIRMATION=CS21A171_STAGING_ONLY`
+CS21A171 **no crea un segundo juego de secretos**. El workflow mapea los secretos canónicos ya definidos por `Real QA Staging CS21A138`:
+
+- `QA_STAGING_APPS_SCRIPT_URL` → URL English LAB QA;
+- `QA_TEACHER_USER` / `QA_TEACHER_PASS` → docente QA;
+- `QA_STUDENT_USER` / `QA_STUDENT_PASS` → estudiante QA;
+- `QA_GROUP_CODE` → grupo QA.
+
+Dentro del runner se proyectan a nombres `QA_LAB_*` únicamente para mantener aislado el contrato del harness.
+
+La confirmación `CS21A171_STAGING_ONLY` no es una credencial: el workflow la genera únicamente dentro del job E2 después de que el evento ya cumplió una de las condiciones explícitas de ejecución.
 
 No se deben reutilizar credenciales productivas.
 
@@ -83,7 +86,8 @@ GitHub `workflow_dispatch` de un workflow nuevo depende de su presencia en la ra
 - el job contractual corre en pushes normales;
 - el job E2 **no** corre por pull request;
 - el job E2 por push solo corre si el mensaje del commit contiene exactamente `[RUN_ELV2_E2_CS21A171]`;
-- aun con ese marcador, faltando cualquier secret o la confirmación exacta, el job aborta antes de tocar el LAB.
+- aun con ese marcador, faltando cualquier secreto canónico el job aborta antes de tocar el LAB;
+- el runner vuelve a bloquear si la URL coincide con PROD o si el backend no demuestra el marcador staging y `writes_guarded=true`.
 
 Si en el futuro el workflow existe en `main`, también podrá ejecutarse por `workflow_dispatch` con `authenticated=true`.
 
@@ -111,6 +115,6 @@ Con un PASS real:
 
 ## Estado
 
-**QA INFRASTRUCTURE · FAIL-CLOSED · NO PROD · NO AUTO-RUN MULTIUSER.**
+**QA INFRASTRUCTURE · FAIL-CLOSED · NO PROD · E2 SOLO POR TRIGGER EXPLÍCITO.**
 
 No autoriza merge de #121, publicación frontend ni nuevo deployment Apps Script.
