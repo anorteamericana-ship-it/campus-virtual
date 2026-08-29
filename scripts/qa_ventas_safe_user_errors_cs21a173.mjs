@@ -9,6 +9,7 @@ const check = (ok, msg) => ok ? pass(msg) : failures.push(msg);
 
 check(drawer.includes('function vxSafeUserError('), 'drawer define filtro de mensajes visible');
 check(drawer.includes("console.warn('[Ventas] Detalle técnico oculto al usuario.'"), 'detalle técnico queda solo en consola');
+check(drawer.includes('typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed'), 'filtro cubre errores técnicos del navegador/red');
 check(drawer.includes("vxSafeUserError(r && (r.mensaje || r.error), msgFalla"), 'generación documental sanea mensaje backend');
 check(drawer.includes("vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo subir la matrícula firmada.'"), 'subida firmada sanea mensaje backend');
 check(drawer.includes("vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir la matrícula firmada.'"), 'apertura firmada sanea códigos privados');
@@ -23,6 +24,7 @@ check(!drawer.includes("msg: (err && err.message) || 'Error de conexión.'"), 'p
 const demoFallbacks = drawer.match(/setGrupos\(window\.DEMO_GRUPOS\)/g) || [];
 check(demoFallbacks.length === 1, 'DEMO_GRUPOS queda solo en rama demo explícita');
 check(drawer.includes("catch (err) {\n        console.error('[Ventas CS21A173] Falló la carga real de grupos disponibles.', err);\n        if (!cancel) setGrupos([]);\n      }"), 'fallo real de grupos queda fail-closed sin demo');
+check(drawer.includes("if (!grupos.some(g => g.codigo === value)) onChange('');"), 'grupo tentativo obsoleto se limpia si no existe en lista real');
 check(drawer.includes("disabled={grupos.length === 0}"), 'selector se deshabilita si no hay grupos reales');
 check(drawer.includes("grupos.length ? 'Seleccioná un grupo…' : 'No hay grupos disponibles'"), 'selector explica ausencia de grupos sin datos demo');
 
