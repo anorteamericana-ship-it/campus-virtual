@@ -1,0 +1,25 @@
+name: QA SEC004 Demo Outer Guard CS21A163
+
+on:
+  pull_request:
+    paths:
+      - 'apps_script_patches/ZZ_SEC004_DEMO_READONLY_OUTER_GUARD_V3.gs'
+      - 'scripts/qa_sec004_demo_outer_guard_cs21a163.mjs'
+      - 'security/sec004_demo_readonly_contract_v3.json'
+      - '00_DOCUMENTACION/SEC004_MODERN_RESCUE_CS21A163_2026-08-29.md'
+      - '.github/workflows/qa-sec004-demo-outer-guard-cs21a163.yml'
+  push:
+    branches:
+      - security/sec004-demo-readonly-modern-cs21a163
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run SEC004 source guard
+        run: node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/main...HEAD
