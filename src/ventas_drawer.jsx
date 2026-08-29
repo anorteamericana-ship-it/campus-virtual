@@ -15,7 +15,7 @@ function vxSafeUserError(raw, fallback, context = '') {
   const msg = String(raw == null ? '' : raw).trim();
   if (!msg) return fallback;
   const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
-  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
   if (technicalCode || technicalText) {
     console.warn('[Ventas] Detalle técnico oculto al usuario.', { context, error: msg });
     return fallback;
@@ -360,6 +360,10 @@ function useGruposVx(programa, demo) {
 
 function GrupoSelect({ programa, demo, value, onChange }) {
   const grupos = useGruposVx(programa, demo);
+  vUseEffect(() => {
+    if (!Array.isArray(grupos) || !value) return;
+    if (!grupos.some(g => g.codigo === value)) onChange('');
+  }, [grupos, value, onChange]);
   if (!grupos) return <div className="vx-sk" style={{ height: 40, borderRadius: 8 }} />;
   return (
     <select className="vx-select" style={{ width: '100%' }} value={value} disabled={grupos.length === 0} onChange={e => onChange(e.target.value)}>
