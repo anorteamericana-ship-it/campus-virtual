@@ -281,10 +281,12 @@ function ProformaCardVx({ iconPath, title, subtitle, url, waNum, waMsg, regenera
     background: disabled ? 'var(--v-soft)' : 'var(--v-surface)',
     opacity: disabled ? 0.62 : 1,
   };
-  // Enviar por WhatsApp: si falta teléfono → error amigable, nunca rompe la UI.
+  // SEC-002 CS21A175 · WhatsApp abre el chat, pero nunca recibe la URL pública
+  // de la proforma. El asesor adjunta manualmente el PDF descargado.
   const enviarWa = () => {
     if (!waNum) { onToast && onToast({ tipo: 'err', msg: 'Este prospecto no tiene WhatsApp/teléfono registrado.' }); return; }
     window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(waMsg || '')}`, '_blank', 'noopener');
+    onToast && onToast({ tipo: 'ok', msg: 'WhatsApp abierto. Adjuntá el PDF descargado. Por seguridad no enviamos enlaces públicos de documentos.' });
   };
   return (
     <div style={cardStyle}>
@@ -306,7 +308,7 @@ function ProformaCardVx({ iconPath, title, subtitle, url, waNum, waMsg, regenera
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <a className="vx-btn vx-btn-navy" href={url} target="_blank" rel="noopener" style={{ justifyContent: 'center', textDecoration: 'none' }}>Descargar</a>
           <button className="vx-btn vx-btn-ghost" style={{ justifyContent: 'center' }} onClick={enviarWa}>
-            <window.Vico d={window.VI.wa} size={14} fill="currentColor" /> Enviar por WhatsApp
+            <window.Vico d={window.VI.wa} size={14} fill="currentColor" /> WhatsApp · adjuntar PDF
           </button>
           {canGenerate ? (
             <button className="vx-btn vx-btn-ghost" style={{ justifyContent: 'center', fontSize: 12 }} onClick={onRegen}>↻ Regenerar</button>
@@ -1077,8 +1079,8 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                 const sinEquipo = !equipoRaw || equipoRaw === 'NINGUNO';
                 const equipoLabel = sinEquipo ? 'Sin equipo CONAPE' : (d.conape.equipo);
                 const canGenerate = esConape && d.etapa !== 'CANCELADO';
-                const waMsgCurso = `Hola! Te envío la proforma del curso de inglés. Podés verla aquí: ${d.proforma_url || ''}`;
-                const waMsgEquipo = `Hola! Te envío la proforma del equipo (${equipoLabel}). Podés verla aquí: ${d.proforma_equipo_url || ''}`;
+                const waMsgCurso = 'Hola! Te envío la proforma del curso de inglés. Te la adjunto como PDF en este chat.';
+                const waMsgEquipo = `Hola! Te envío la proforma del equipo (${equipoLabel}). Te la adjunto como PDF en este chat.`;
 
                 // Si el prospecto no es CONAPE y no tiene proformas, no aplica: mensaje discreto.
                 if (!esConape && !hayUrls) {
