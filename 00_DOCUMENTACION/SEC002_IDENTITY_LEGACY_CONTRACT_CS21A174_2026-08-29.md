@@ -104,6 +104,10 @@ Los comentarios nuevos dejan explícito:
 
 `scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs` bloquea regresiones de documentación que vuelvan a recomendar ACL pública y exige que ambos consumidores permanezcan inventariados mientras el runtime siga legacy.
 
+Bootstrap exact-preimage de los dos comentarios legacy: run `33274444583` — **SUCCESS**. Los archivos temporales de bootstrap se autoeliminaron del branch.
+
+El primer run del guard permanente ocurrió antes de ese bootstrap y quedó rojo por detectar correctamente la guía pública heredada. Este commit existe para volver a ejecutar el guard sobre el source ya corregido; ese nuevo resultado es el que gobierna la aceptación del corte.
+
 ## Estado
 
 **CONTRACT/ANTI-REGRESSION ONLY · LEGACY RUNTIME STILL PUBLIC-URL DEPENDENT · BACKEND PRIVATE ENDPOINT PENDING · ACL UNCHANGED · NO PROD.**
