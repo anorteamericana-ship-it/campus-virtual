@@ -14,6 +14,18 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_TV = window.APPS_SCRIPT_URL;
 
+function teacherSessionSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|apollo\.|getDocente|getAsistencia|getFechas|getEstudiantes|sec00|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[TeacherSession] Detalle técnico oculto al docente.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 // FIX-ADMIN-CORE-POST-001: lecturas sensibles vía POST text/plain (token en body).
 async function postTeacher(fn, payload = {}, timeoutMs = 30000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
@@ -322,7 +334,7 @@ function useTeacherSession() {
         setGruposMeta(grupos);
         if (!grupos.length) {
           setCodGrupo('');
-          setErrorGroups(d.mensaje || 'No hay grupos marcados En curso para este docente en APOLLO.GRUPOS.');
+          setErrorGroups(teacherSessionSafeUserError(d?.mensaje, 'No hay grupos activos asignados en este momento.', 'sin_grupos'));
           return;
         }
         const vigente = grupos.find(g => tvGroupCode(g) === grupoActivo);
@@ -332,7 +344,7 @@ function useTeacherSession() {
           window.setGrupoActivoDocente(nuevo);
         }
       })
-      .catch(e => { if (!cancel) setErrorGroups(e?.message || String(e)); })
+      .catch(e => { if (!cancel) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos')); })
       .finally(() => { if (!cancel) setLoadingGroups(false); });
     return () => { cancel = true; };
   }, [nombre]);
@@ -392,7 +404,7 @@ function useTeacherSession() {
           estudiantesConNotas:r.estudiantes_con_notas || 0,
         });
       })
-      .catch(e => { if (!cancel) setErrorPanel(e?.message || String(e)); })
+      .catch(e => { if (!cancel) setErrorPanel(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar la información del grupo. Intentá de nuevo.', 'cargar_panel')); })
       .finally(() => { if (!cancel) setLoadingPanel(false); });
     return () => { cancel = true; };
   }, [codGrupo, nivel, reloadTick]);
