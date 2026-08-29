@@ -1,0 +1,45 @@
+name: QA Apps Script QA Readonly Snapshot CS21A178
+
+on:
+  push:
+    branches:
+      - 'tooling/apps-script-qa-readonly-snapshot-cs21a178'
+    paths:
+      - 'scripts/export_apps_script_qa_snapshot_cs21a178.ps1'
+      - 'scripts/apps_script_qa_snapshot_manifest_cs21a178.mjs'
+      - 'scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs'
+      - '.github/workflows/qa-apps-script-qa-readonly-snapshot-cs21a178.yml'
+      - '00_DOCUMENTACION/APPS_SCRIPT_QA_READONLY_SNAPSHOT_CS21A178_2026-08-29.md'
+  pull_request:
+    paths:
+      - 'scripts/export_apps_script_qa_snapshot_cs21a178.ps1'
+      - 'scripts/apps_script_qa_snapshot_manifest_cs21a178.mjs'
+      - 'scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs'
+      - '.github/workflows/qa-apps-script-qa-readonly-snapshot-cs21a178.yml'
+      - '00_DOCUMENTACION/APPS_SCRIPT_QA_READONLY_SNAPSHOT_CS21A178_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-snapshot-tooling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diff hygiene
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate Node scripts
+        run: |
+          node --check scripts/apps_script_qa_snapshot_manifest_cs21a178.mjs
+          node --check scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs
+      - name: Parse PowerShell without execution
+        shell: pwsh
+        run: |
+          [void][scriptblock]::Create((Get-Content -LiteralPath scripts/export_apps_script_qa_snapshot_cs21a178.ps1 -Raw))
+          Write-Host 'PowerShell syntax PASS'
+      - name: Synthetic snapshot and no-write guard
+        run: node scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs
