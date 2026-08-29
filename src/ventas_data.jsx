@@ -450,6 +450,24 @@ async function getProspectosAsesor(asesor) {
   if (d && Array.isArray(d.prospectos)) d.prospectos = d.prospectos.map(normalizarProspecto);
   return d;
 }
+function normalizarDocsExtraVentas(docs) {
+  if (!Array.isArray(docs)) return [];
+  return docs.map((doc, index) => {
+    const d = doc && typeof doc === 'object' ? doc : {};
+    const nombre = String(d.nombre_archivo || d.nombre || d.name || `Documento ${index + 1}`).trim();
+    const mime = String(d.mime_type || d.mime || d.tipo || '').trim().toLowerCase()
+      || (/\.pdf$/i.test(nombre) ? 'application/pdf' : '');
+    return {
+      ...d,
+      nombre_archivo: nombre,
+      mime_type: mime,
+      file_id: String(d.file_id || d.fileId || d.id || '').trim(),
+      size_bytes: Number(d.size_bytes || d.size || 0),
+      fecha: d.fecha || d.created_at || d.fecha_subida || '',
+    };
+  });
+}
+
 async function getProspectoDetalle(cedula) {
   // FIX-VENTAS-DOC-001: ahora va por POST text/plain (mismo patrón que postVentas),
   // NO por GET con query string. El backend v4.39.6 soporta getProspectoDetalle por
@@ -462,12 +480,65 @@ async function getProspectoDetalle(cedula) {
   });
   const p = d && (d.prospecto || (d.ok !== false ? d : null));
   if (p && typeof p === 'object') {
-    const norm = normalizarProspecto(p);
+    const docsExtra = normalizarDocsExtraVentas(
+      Array.isArray(d?.docs_extra) ? d.docs_extra : p.docs_extra
+    );
+    const norm = { ...normalizarProspecto(p), docs_extra: docsExtra };
     if (d.prospecto) { d.prospecto = norm; return d; }
     return { ...d, ok: d.ok !== false, prospecto: norm };
   }
   return d;
 }
+function _ventasPrivateDocSafeName(name) {
+  const clean = String(name || 'documento').trim().replace(/[\\/:*?"<>|]+/g, '_');
+  return clean || 'documento';
+}
+
+async function _ventasPrivateDocSha256Hex(bytes) {
+  if (!window.crypto?.subtle || !bytes) return '';
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function _ventasPrivateDecodeBase64(base64) {
+  const clean = String(base64 || '').replace(/\s+/g, '');
+  if (!clean) return null;
+  let binary;
+  try { binary = window.atob(clean); }
+  catch (_) { return null; }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function descargarDocumentoExtraPrivado(cedula, fileId) {
+  const ced = String(cedula || '').trim();
+  const id = String(fileId || '').trim();
+  if (!ced || !id) return { ok:false, error:'cedula_file_id_requeridos' };
+  const r = await postVentasData('descargarDocumentoExtraPrivado', { cedula:ced, file_id:id });
+  if (!r?.ok) return r || { ok:false, error:'respuesta_vacia' };
+  const bytes = _ventasPrivateDecodeBase64(r.data_base64);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes?.length || bytes.length > 5 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'documento_incompleto_o_grande' };
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await _ventasPrivateDocSha256Hex(bytes);
+    if (!digestHex || digestHex !== expectedHash) return { ok:false, error:'integridad_documento_invalida' };
+  }
+  const mime = String(r.mime_type || 'application/octet-stream').trim().toLowerCase() || 'application/octet-stream';
+  return {
+    ok:true,
+    private_delivery:true,
+    nombre:_ventasPrivateDocSafeName(r.nombre || 'documento'),
+    mime_type:mime,
+    size_bytes:bytes.length,
+    sha256:expectedHash,
+    blob:new Blob([bytes], { type:mime }),
+  };
+}
+
 async function getResumenVentas(asesor) {
   // FIX-VENTAS-DATA-POST-001: POST text/plain (postVentasData), sin token ni
   // datos en la URL. token + asesor viajan en el body JSON; ?fn= solo enruta.
@@ -502,7 +573,7 @@ async function postVentasData(fn, payload = {}) {
   return await res.json();
 }
 const agregarNotaProspecto    = (cedula, asesor, texto)               => { ventasDashCacheClear(); return postVentas({ fn:'agregarNotaProspecto', cedula, asesor, texto }); };
-const subirDocumentoExtra     = (cedula, nombre_archivo, mime_type, base64) => { ventasDashCacheClear(); return postVentas({ fn:'subirDocumentoExtra', cedula, nombre_archivo, mime_type, base64 }); };
+const subirDocumentoExtra     = (cedula, nombre_archivo, mime_type, base64) => { ventasDashCacheClear(); return postVentasData('subirDocumentoExtra', { cedula, nombre_archivo, mime_type, base64 }); };
 const marcarEtapaProspecto    = (cedula, etapa, asesor)               => { ventasDashCacheClear(); return postVentas({ fn:'marcarEtapaProspecto', cedula, etapa, asesor }); };
 const cobrarMatriculaProspecto= (cedula, grupo, monto, comprobante, asesor) => { ventasDashCacheClear(); return postVentas({ fn:'cobrarMatriculaProspecto', cedula, grupo, monto, comprobante, asesor }); };
 const activarEstudiante       = (cedula, grupo, asesor)               => { ventasDashCacheClear(); return postVentas({ fn:'activarEstudiante', cedula, grupo, asesor }); };
@@ -525,7 +596,7 @@ async function generarDocumentoVentasSeguro({ cedula, codigo, nivel, tipo }) {
 }
 
 // ── Matrícula firmada: subir PDF al expediente y notificar ─────────────────
-async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre_archivo, mime_type, base64, enviar_correo = false, crear_alerta = false, email = '', preview_test = false }) {
+async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre_archivo, mime_type, base64, enviar_correo = false, crear_alerta = false, email = '' }) {
   return postVentasData('subirMatriculaFirmadaVentas', {
     cedula: cedula || '',
     codigo: codigo || '',
@@ -536,19 +607,49 @@ async function subirMatriculaFirmadaVentasSeguro({ cedula, codigo, nivel, nombre
     enviar_correo,
     crear_alerta,
     email,
-    preview_test,
   });
 }
 
-async function notificarMatriculaFirmadaVentasSeguro({ cedula, codigo, canal, file_id = '', email = '', preview_test = false }) {
+async function notificarMatriculaFirmadaVentasSeguro({ cedula, codigo, canal, file_id = '', email = '' }) {
   return postVentasData('notificarMatriculaFirmadaVentas', {
     cedula: cedula || '',
     codigo: codigo || '',
     canal: canal || '',
     file_id,
     email,
-    preview_test,
   });
+}
+
+async function descargarMatriculaFirmadaPrivadaVentasSeguro({ cedula, codigo, file_id = '' }) {
+  const r = await postVentasData('descargarMatriculaFirmadaPrivada', {
+    cedula: cedula || '',
+    codigo: codigo || '',
+    file_id,
+  });
+  if (!r?.ok) return r || { ok:false, error:'respuesta_vacia' };
+  if (String(r.mime_type || '').toLowerCase() !== 'application/pdf') return { ok:false, error:'matricula_firmada_mime_invalido' };
+  const bytes = _ventasPrivateDecodeBase64(r.data_base64);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes?.length || bytes.length > 9 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'matricula_firmada_incompleta_o_grande' };
+  }
+  if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45)) {
+    return { ok:false, error:'contenido_pdf_firmado_invalido' };
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await _ventasPrivateDocSha256Hex(bytes);
+    if (!digestHex || digestHex !== expectedHash) return { ok:false, error:'integridad_matricula_firmada_invalida' };
+  }
+  return {
+    ok:true,
+    private_delivery:true,
+    nombre:_ventasPrivateDocSafeName(r.nombre || 'matricula_firmada.pdf'),
+    mime_type:'application/pdf',
+    size_bytes:bytes.length,
+    sha256:expectedHash,
+    blob:new Blob([bytes], { type:'application/pdf' }),
+  };
 }
 
 // ── ENDPOINTS v4.27.1 (becas + proformas CONAPE) ───────────────────────────
@@ -854,10 +955,10 @@ Object.assign(window, {
   formatHorarioGrupo, fmtFechaLarga, diasParaIniciar, diasCompletos,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,
-  getProspectosAsesor, getProspectoDetalle, getResumenVentas, getGruposVentas, ventasDashCacheClear,
+  getProspectosAsesor, getProspectoDetalle, descargarDocumentoExtraPrivado, getResumenVentas, getGruposVentas, ventasDashCacheClear,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
-  generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro,
+  generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro, descargarMatriculaFirmadaPrivadaVentasSeguro,
   getBecasDisponiblesV, generarProformaProspecto, aprobarBecaProspecto,
   docPlaceholder, DEMO_PROSPECTOS, DEMO_GRUPOS, DEMO_DASHBOARD, calcResumen, HOY,
 });
