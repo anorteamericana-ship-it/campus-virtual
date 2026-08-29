@@ -1,0 +1,40 @@
+name: QA Ventas Safe User Errors CS21A173
+
+on:
+  push:
+    branches:
+      - 'feature/ventas-safe-user-errors-cs21a173'
+    paths:
+      - 'src/ventas_drawer.jsx'
+      - 'src/ventas_dashboard.jsx'
+      - 'src/ventas_runtime_guard_cs21a152.js'
+      - 'scripts/qa_ventas_safe_user_errors_cs21a173.mjs'
+      - '.github/workflows/qa-ventas-safe-user-errors-cs21a173.yml'
+      - '00_DOCUMENTACION/VENTAS_SAFE_USER_ERRORS_CS21A173_2026-08-29.md'
+  pull_request:
+    paths:
+      - 'src/ventas_drawer.jsx'
+      - 'src/ventas_dashboard.jsx'
+      - 'src/ventas_runtime_guard_cs21a152.js'
+      - 'scripts/qa_ventas_safe_user_errors_cs21a173.mjs'
+      - '.github/workflows/qa-ventas-safe-user-errors-cs21a173.yml'
+      - '00_DOCUMENTACION/VENTAS_SAFE_USER_ERRORS_CS21A173_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-user-errors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Whitespace and conflict markers
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate QA script syntax
+        run: node --check scripts/qa_ventas_safe_user_errors_cs21a173.mjs
+      - name: Verify Sales safe-error and demo-isolation contract
+        run: node scripts/qa_ventas_safe_user_errors_cs21a173.mjs
