@@ -201,7 +201,7 @@ function ProspectoTable({ lista, onOpen }) {
                 <td>
                   <span className="vx-tel">
                     <WaLink tel={p.whatsapp || p.telefono} className="vx-wa-mini"><Vico d={VI.wa} size={15} fill="currentColor" /></WaLink>
-                    {fmtTelV(p.telefono)}
+                    {fmtTelV(p.whatsapp || p.telefono)}
                   </span>
                 </td>
                 <td className="vx-td-grupo">{p.grupo_tentativo || '—'}</td>
