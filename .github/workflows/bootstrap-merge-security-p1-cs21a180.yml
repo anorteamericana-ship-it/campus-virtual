@@ -1,0 +1,54 @@
+name: Bootstrap Merge Security P1 CS21A180
+
+on:
+  push:
+    branches:
+      - 'integration/security-p1-source-tooling-cs21a180'
+    paths:
+      - '.github/workflows/bootstrap-merge-security-p1-cs21a180.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  merge-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "anorteamericana-ship-it"
+          git config user.email "anorteamericana@gmail.com"
+      - name: Fetch exact branches
+        run: |
+          git fetch origin security/sec004-demo-readonly-modern-cs21a163
+          git fetch origin tooling/apps-script-qa-readonly-snapshot-cs21a178
+          git fetch origin integration/security-source-candidate-cs21a179
+          test "$(git rev-parse origin/security/sec004-demo-readonly-modern-cs21a163)" = "94e7d792a77398b1a25dcbe1d5c6e3d630b0188c"
+          test "$(git rev-parse origin/tooling/apps-script-qa-readonly-snapshot-cs21a178)" = "3289b3705d807ac00db0a3bd9aa9312603cd52ed"
+          test "$(git rev-parse origin/integration/security-source-candidate-cs21a179)" = "5d12fa2443d8a323c770e6e8277e0dcc0171d6fb"
+      - name: Merge SEC004 source exactly
+        run: git merge --no-ff origin/security/sec004-demo-readonly-modern-cs21a163 -m "CS21A180 · integrate modern SEC004 source contract"
+      - name: Merge read-only snapshot tooling exactly
+        run: git merge --no-ff origin/tooling/apps-script-qa-readonly-snapshot-cs21a178 -m "CS21A180 · integrate read-only Apps Script QA snapshot tooling"
+      - name: Run CS21A179
+        run: node scripts/qa_security_source_candidate_cs21a179.mjs
+      - name: Run SEC004
+        run: node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
+      - name: Run snapshot tooling guard
+        run: node scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs
+      - name: Run CS21A177 lower integrated guard
+        run: node scripts/qa_matriculas_ventas_security_cs21a177.mjs
+      - name: Run CS21A180 cross assertions
+        run: node scripts/qa_security_p1_source_tooling_cs21a180.mjs
+      - name: Source diff hygiene vs CS21A179
+        run: git diff --check origin/integration/security-source-candidate-cs21a179...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
+      - name: Remove bootstrap and push verified candidate
+        run: |
+          rm .github/workflows/bootstrap-merge-security-p1-cs21a180.yml
+          git add .github/workflows/bootstrap-merge-security-p1-cs21a180.yml
+          git commit -m "CS21A180 · verified consolidated P1 security source tooling"
+          git push
