@@ -1,0 +1,67 @@
+{
+  "id": "SEC-001-LOGIN-LIFECYCLE",
+  "version": 2,
+  "date": "2026-08-29",
+  "observed_base": "main@53df524d0a9eab867d3b307b3e633f366af92a63",
+  "status": "current_source_mapped_no_runtime_change",
+  "entrypoint": {
+    "file": "login.html",
+    "load_order": [
+      "vendor/react.js",
+      "vendor/react-dom.js",
+      "vendor/babel.js",
+      "src/data.jsx",
+      "src/login.jsx"
+    ],
+    "managed_auth_adapter_loaded": false,
+    "v2_adapter_loaded": false
+  },
+  "legacy_credentialing": {
+    "file": "src/login.jsx",
+    "function": "App.submit",
+    "transport": "POST text/plain -> Apps Script",
+    "payload": ["fn=iniciarSesion", "usuario", "clave"],
+    "password_reaches_apps_script": true,
+    "still_present_on_current_main": true,
+    "target_state": "remove password from Apps Script steady-state credentialing after controlled migration"
+  },
+  "session_issue_and_storage": {
+    "login_success_function": "finishLogin",
+    "setter": "src/data.jsx::setSesion",
+    "storage": "sessionStorage.an_usuario",
+    "campus_token_inside_session_object": true,
+    "token_stored_separately_in_localstorage": false
+  },
+  "authenticated_requests": {
+    "token_reader": "src/data.jsx::getSessionToken",
+    "token_source": "getSesion().token",
+    "existing_consumers_reusable": true
+  },
+  "modernization_boundary": {
+    "replace_only_initial_credentialing_first": true,
+    "keep_existing_campus_session_dto": true,
+    "keep_finishLogin_and_setSesion": true,
+    "keep_authenticated_api_consumers": true,
+    "adapter_artifact": "src/auth_provider_sec001_v2.jsx",
+    "adapter_loaded_now": false
+  },
+  "target_managed_identity_flow": [
+    "browser -> selected DEV/QA OIDC provider using Authorization Code + PKCE",
+    "browser obtains provider proof through a provider-specific driver outside the core adapter",
+    "browser -> future Apps Script iniciarSesionOidc with provider_id + proof, never Campus password",
+    "Apps Script verifies the allowlisted provider/issuer and stable subject",
+    "Apps Script maps exactly one local Campus principal",
+    "Apps Script re-derives local active/role/groups/scopes from Campus sources",
+    "Apps Script emits the existing Campus session token shape",
+    "existing finishLogin/setSesion/getSessionToken flow continues"
+  ],
+  "invariants": [
+    "provider roles never grant Campus authorization",
+    "no client secret exists in browser source",
+    "provider adapter is disabled by default and restricted to dev/qa",
+    "provider adapter has zero network/redirect/storage/session side effects on load",
+    "login.html remains unchanged until DEV/QA provider plus backend exchange pass runtime QA",
+    "production remains on the legacy path until a separately authorized migration"
+  ],
+  "production_authorized": false
+}
