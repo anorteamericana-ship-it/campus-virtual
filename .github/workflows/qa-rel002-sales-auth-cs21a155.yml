@@ -1,0 +1,27 @@
+name: QA REL002 Sales Auth CS21A155
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_data.jsx'
+      - 'src/ventas_dashboard.jsx'
+      - 'src/ventas_drawer.jsx'
+      - 'scripts/qa_rel002_sales_auth_cs21a155.mjs'
+      - '.github/workflows/qa-rel002-sales-auth-cs21a155.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa-rel002:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate REL-002 source contract
+        run: node scripts/qa_rel002_sales_auth_cs21a155.mjs

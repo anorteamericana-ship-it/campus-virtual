@@ -10,6 +10,12 @@ function freeStudentUrl(){
   if(!window.APPS_SCRIPT_URL) window.APPS_SCRIPT_URL=u;
   return u;
 }
+function freeStudentSafeError(raw,fallback='No pudimos completar la solicitud. Intentá nuevamente o contactá a tu asesor.'){
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const tecnico=/apps?\s*script|backend|endpoint|stack|exception|trace|html|json|token|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}/i;
+  return tecnico.test(msg)?fallback:msg;
+}
 async function freeStudentPost(fn,payload={}){
   const token=freeStudentToken();
   const res=await fetch(freeStudentUrl(),{
@@ -18,8 +24,15 @@ async function freeStudentPost(fn,payload={}){
   });
   const text=await res.text();
   let json=null;
-  try{json=JSON.parse(text);}catch(_){throw new Error(text&&text.trim().startsWith('<')?'El backend devolvió HTML. Revisá la URL publicada de Apps Script.':'Respuesta inválida del servidor.');}
-  if(!json?.ok) throw new Error(json?.mensaje||json?.error||'No se pudo completar la solicitud.');
+  try{json=JSON.parse(text);}catch(err){
+    console.error('[Prematricula] Respuesta no JSON',{fn,status:res.status,error:err});
+    throw new Error('No pudimos cargar tu información. Intentá nuevamente o contactá a tu asesor.');
+  }
+  if(!json?.ok){
+    const raw=json?.mensaje||json?.error||'';
+    console.warn('[Prematricula] Solicitud rechazada',{fn,status:res.status,error:raw});
+    throw new Error(freeStudentSafeError(raw));
+  }
   return json;
 }
 function freeStudentClean(v,fallback='—'){

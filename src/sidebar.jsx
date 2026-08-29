@@ -488,21 +488,10 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const mostrarICAN = tieneICANExplicito || tieneICANPrograma;
   const studentSections = esUsuarioGratis ? [
     {
-      label: 'Aprendizaje',
+      label: 'Prematrícula',
       items: [
         { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
-        { id: 'mi_curso', label: 'Mi curso', icon: 'materials', locked: true },
         ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Gratis' }] : []),
-        { id: 'documentos_ayuda', label: 'Materiales', icon: 'doc', locked: true },
-        { id: 'ican', label: 'Club I CAN', icon: 'ican', locked: true },
-      ],
-    },
-    {
-      label: 'Gestión',
-      items: [
-        { id: 'dashboard', label: 'Solicitar contacto', icon: 'card', badge: 'Nuevo' },
-        { id: 'pagos', label: 'Pagos', icon: 'payments', locked: true },
-        { id: 'certificados', label: 'Certificados', icon: 'certificates', locked: true },
       ],
     },
   ] : [

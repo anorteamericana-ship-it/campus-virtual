@@ -25,18 +25,17 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   const [busy, setBusy] = vUseState('');     // '' | 'CERTIFICADO' | 'CARTA' | upload/notificaciones
   const [err, setErr] = vUseState('');
   const [signedDoc, setSignedDoc] = vUseState(null);
+  const [openingSigned, setOpeningSigned] = vUseState(false);
   const signedFileRef = React.useRef(null);
   const d = detalle || {};
   const est = window.calcularEstadoEstudianteVentas(d);
   const matriculado = est.estado === 'MATRICULADO';
-  const cedulaPreviewMatricula = String(d.cedula || d.CEDULA || '').replace(/[^\d]/g, '');
-  const previewMatriculaCR = cedulaPreviewMatricula === '120180140';
   const codigo = String(d.codigo || d.codigo_estudiante || d.CODIGO_ESTUDIANTE || d.rec_m || '').trim();
-  const puedeSubirFirmada = !!codigo || previewMatriculaCR;
+  const puedeSubirFirmada = !!codigo;
   const nivel = d.nivel || d.NIVEL || 'B1';
   const cedulaDoc = d.cedula || d.CEDULA || '';
   const correoDoc = String(d.correo || d.email || d.CORREO || d.EMAIL || d.correo_electronico || d.CORREO_ELECTRONICO || '').trim();
-  const waNumDoc = waDigits(d.telefono || d.TELEFONO || d.whatsapp || d.WHATSAPP || d.tel1 || d.TEL1 || d.telefono1 || d.TELEFONO_1 || '');
+  const waNumDoc = waDigits(d.whatsapp || d.WHATSAPP || d.telefono || d.TELEFONO || d.tel1 || d.TEL1 || d.telefono1 || d.TELEFONO_1 || '');
 
   const generar = async (btn, tipo, msgFalla) => {
     if (busy) return;
@@ -84,7 +83,6 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             nombre_archivo: file.name,
             mime_type: file.type || 'application/pdf',
             base64,
-            preview_test: previewMatriculaCR,
           });
       if (r && r.ok) {
         setSignedDoc(r);
@@ -99,13 +97,49 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
     } finally { setBusy(''); }
   };
 
+  const openSignedPrivate = async () => {
+    if (openingSigned || !(signedDoc && signedDoc.file_id)) return;
+    if (demo) {
+      onToast && onToast({ tipo:'ok', msg:'Vista previa: la apertura privada requiere una sesión real.' });
+      return;
+    }
+    setOpeningSigned(true); setErr('');
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando documento…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando documento…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarMatriculaFirmadaPrivadaVentasSeguro({
+        cedula: cedulaDoc,
+        codigo,
+        file_id: signedDoc.file_id,
+      });
+      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir la matrícula firmada.');
+      const objectUrl = URL.createObjectURL(r.blob);
+      if (preview && !preview.closed) preview.location.replace(objectUrl);
+      else {
+        const a = document.createElement('a');
+        a.href = objectUrl; a.download = r.nombre || 'matricula_firmada.pdf';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      const m = e?.message || 'No se pudo abrir la matrícula firmada.';
+      setErr(m); onToast && onToast({ tipo:'err', msg:m });
+    } finally { setOpeningSigned(false); }
+  };
+
   const notifySigned = async (canal) => {
     if (!puedeSubirFirmada) return;
     if (canal === 'whatsapp') {
-      const url = signedDoc && signedDoc.url ? signedDoc.url : '';
-      if (!url) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado para obtener el enlace.' }); return; }
+      if (!(signedDoc && signedDoc.file_id)) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado al expediente.' }); return; }
       if (!waNumDoc) { onToast && onToast({ tipo:'err', msg:'Este estudiante no tiene WhatsApp/teléfono registrado.' }); return; }
-      const msg = `Hola, te compartimos tu documento de matrícula firmado de Academia Norteamericana: ${url}`;
+      const msg = 'Hola. Tu documento de matrícula firmado de Academia Norteamericana ya está disponible de forma privada en el Campus Virtual, en Documentos y ayuda. También podemos enviártelo adjunto por correo.';
       window.open(`https://wa.me/${waNumDoc}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
       return;
     }
@@ -119,7 +153,6 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             canal,
             file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
             email: correoDoc,
-            preview_test: previewMatriculaCR,
           });
       if (r && r.ok) {
         onToast && onToast({ tipo:'ok', msg: canal === 'correo' ? 'Correo enviado.' : 'Alerta del campus creada.' });
@@ -143,13 +176,13 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         <button className="vx-btn vx-btn-navy" disabled={!!busy || !puedeSubirFirmada} onClick={pickSigned}>
           {busy === 'UPLOAD_SIGNED' ? <><span className="vx-spin" /> Subiendo…</> : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
         </button>
-        {signedDoc && signedDoc.url ? (
-          <a className="vx-btn vx-btn-ghost" href={signedDoc.url} target="_blank" rel="noopener" style={{ textDecoration:'none', justifyContent:'center' }}>
-            <window.Vico d={window.VI.doc} size={14} /> Ver firmado
-          </a>
+        {signedDoc && signedDoc.file_id ? (
+          <button type="button" className="vx-btn vx-btn-ghost" disabled={openingSigned} onClick={openSignedPrivate} style={{ justifyContent:'center' }}>
+            {openingSigned ? <><span className="vx-spin dark" /> Verificando…</> : <><window.Vico d={window.VI.doc} size={14} /> Ver firmado</>}
+          </button>
         ) : null}
       </div>
-      {signedDoc && signedDoc.url ? (
+      {signedDoc && signedDoc.file_id ? (
         <div className="vx-docest-btns" style={{ marginTop: 8 }}>
           <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('correo')}>
             {busy === 'EMAIL_SIGNED' ? <><span className="vx-spin dark" /> Enviando…</> : <>Enviar correo</>}
@@ -160,36 +193,18 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
           </button>
         </div>
       ) : null}
-      {!codigo && !previewMatriculaCR ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
-      {!codigo && previewMatriculaCR ? <div className="vx-docest-note">Modo prueba: se adjunta por cédula y se usa un código sugerido solo para revisar el flujo. No matricula ni reserva consecutivo.</div> : null}
+      {!codigo ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
     </div>
   );
 
   return (
     <section className="vx-block vx-docest">
       <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Documentos del estudiante</div>
-      {!matriculado && !previewMatriculaCR ? (
+      {!matriculado ? (
         <div className="vx-docest-lock">
           <window.Vico d={window.VI.shield} size={15} />
           <span>Los documentos estarán disponibles cuando el estudiante esté matriculado.</span>
         </div>
-      ) : previewMatriculaCR ? (
-        <React.Fragment>
-          <div className="vx-docest-sub">
-            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión y permite probar la subida del PDF firmado.
-          </div>
-          <div className="vx-docest-btns">
-            <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('MATRICULA_INA_TEST', 'CERT_MATRICULA_INA_TEST', 'No se pudo generar la prueba INA.')}>
-              {busy === 'MATRICULA_INA_TEST' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Certificado matrícula INA</>}
-            </button>
-            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('MATRICULA_SIN_INA_TEST', 'CERT_MATRICULA_SIN_INA_TEST', 'No se pudo generar la prueba SIN INA.')}>
-              {busy === 'MATRICULA_SIN_INA_TEST' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Certificado matrícula SIN INA</>}
-            </button>
-          </div>
-          <div className="vx-docest-note">Estos botones son temporales y solo aparecen para este prospecto de prueba.</div>
-          <SignedUploadBlock />
-          {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
-        </React.Fragment>
       ) : (
         <React.Fragment>
           <div className="vx-docest-sub">
@@ -199,7 +214,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('CERTIFICADO', 'CERTIFICADO', 'No se pudo generar la hoja de matrícula.')}>
               {busy === 'CERTIFICADO' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Hoja de matrícula</>}
             </button>
-            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('CARTA', 'MATRICULA_2', 'Este documento requiere soporte backend.')}>
+            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('CARTA', 'MATRICULA_2', 'No se pudo generar la carta de no deuda.')}>
               {busy === 'CARTA' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Carta de no deuda (CONAPE)</>}
             </button>
             {REGLAMENTO_URL ? (
@@ -207,13 +222,13 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
                 <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
               </a>
             ) : (
-              <button className="vx-btn vx-btn-ghost" disabled title="Falta adjuntar el archivo">
+              <button className="vx-btn vx-btn-ghost" disabled title="Reglamento no disponible">
                 <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
               </button>
             )}
           </div>
           {!REGLAMENTO_URL ? (
-            <div className="vx-docest-note">Falta adjuntar el Reglamento Estudiantil al proyecto.</div>
+            <div className="vx-docest-note">El Reglamento Estudiantil aún no está disponible.</div>
           ) : null}
           <SignedUploadBlock />
           {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
@@ -722,6 +737,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   const [error, setError] = vUseState('');
   const [nota, setNota] = vUseState('');
   const [savingNota, setSavingNota] = vUseState(false);
+  const [docPrivadoAbriendo, setDocPrivadoAbriendo] = vUseState('');
   const [modal, setModal] = vUseState(null);   // 'cobrar' | 'activar' | 'cancelar' | { tipo:'success', result }
   const [actLoading, setActLoading] = vUseState('');
   const [loadingProforma, setLoadingProforma] = vUseState('');
@@ -780,6 +796,42 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
     finally { setSavingNota(false); }
   };
 
+  const abrirDocumentoExtraPrivado = async (doc) => {
+    const fileId = String(doc?.file_id || '').trim();
+    if (!fileId || docPrivadoAbriendo) {
+      if (!fileId) onToast({ tipo:'err', msg:'Este documento todavía no está disponible para apertura privada.' });
+      return;
+    }
+    setDocPrivadoAbriendo(fileId);
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando documento…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando documento…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarDocumentoExtraPrivado(cedula, fileId);
+      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el documento.');
+      const objectUrl = URL.createObjectURL(r.blob);
+      const inlineSeguro = /^(application\/pdf|image\/(jpeg|png|gif|webp))$/i.test(r.mime_type || '');
+      if (inlineSeguro && preview && !preview.closed) {
+        preview.location.replace(objectUrl);
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+      } else {
+        try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+        const a = document.createElement('a');
+        a.href = objectUrl; a.download = r.nombre || 'documento'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      }
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      onToast({ tipo:'err', msg:e?.message || 'No se pudo abrir el documento.' });
+    } finally { setDocPrivadoAbriendo(''); }
+  };
+
   // ── Subir documento (extra o manual de los 3) ──
   const triggerUpload = (docKey) => { pendingDocKey.current = docKey || null; fileRef.current?.click(); };
   const onFilePicked = async (e) => {
@@ -797,7 +849,13 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
         if (docKey) {
           setDetalle(d => ({ ...d, [docKey]: base64 }));
         } else {
-          const nuevo = { nombre_archivo: file.name, mime_type: file.type, url: base64, fecha: window.HOY };
+          const nuevo = {
+            nombre_archivo: r.nombre || file.name,
+            mime_type: r.mime_type || file.type,
+            file_id: r.file_id || '',
+            size_bytes: Number(r.size_bytes || file.size || 0),
+            fecha: window.HOY,
+          };
           setDetalle(d => ({ ...d, docs_extra: [nuevo, ...(d.docs_extra || [])] }));
         }
         onToast({ tipo: 'ok', msg: 'Documento subido' });
@@ -884,9 +942,11 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   };
   const irExpediente = () => { onToast({ tipo: 'ok', msg: `Abriendo expediente ${detalle.codigo || ''}…` }); setModal(null); };
 
-  // WhatsApp del prospecto, limpio para wa.me (Fase 3.5).
+  // Contactos del prospecto: llamada telefónica y WhatsApp son acciones distintas.
   const waNum = waDigits(detalle && (detalle.whatsapp || detalle.telefono));
-  const llamarWhatsApp = () => { if (waNum) window.open(`https://wa.me/${waNum}`, '_blank', 'noopener'); };
+  const telNum = waDigits(detalle && (detalle.telefono || detalle.whatsapp));
+  const abrirWhatsApp = () => { if (waNum) window.open(`https://wa.me/${waNum}`, '_blank', 'noopener'); };
+  const llamarTelefono = () => { if (telNum) window.location.href = `tel:+${telNum}`; };
 
   const d = detalle;
 
@@ -1079,7 +1139,12 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                       <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.nombre_archivo}</div>
                       <div style={{ fontSize: 10.5, color: 'var(--v-ink-3)' }}>{window.fmtFechaCorta(doc.fecha)}</div>
                     </div>
-                    {doc.url && doc.url !== '#' ? <a className="vx-copy" href={doc.url} target="_blank" rel="noopener">ver</a> : null}
+                    {doc.file_id ? (
+                      <button type="button" className="vx-copy" disabled={!!docPrivadoAbriendo}
+                        onClick={() => abrirDocumentoExtraPrivado(doc)}>
+                        {docPrivadoAbriendo === String(doc.file_id) ? 'abriendo…' : 'ver'}
+                      </button>
+                    ) : <span style={{ fontSize:10.5, color:'var(--v-ink-3)' }}>privado pendiente</span>}
                   </div>
                 )) : <div style={{ fontSize: 12.5, color: 'var(--v-ink-3)', fontStyle: 'italic', marginBottom: 4 }}>Sin documentos adicionales.</div>}
                 <button className="vx-mini-btn" style={{ width: 'auto', marginTop: 8, padding: '7px 14px' }} onClick={() => triggerUpload(null)}>
@@ -1100,12 +1165,12 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
             <div className="vx-dr-foot">
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="vx-btn vx-btn-ghost" style={{ flex: 1 }}
-                  onClick={llamarWhatsApp} disabled={!waNum}
-                  title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
-                  <window.Vico d={window.VI.wa} size={15} fill="currentColor" /> Llamar
+                  onClick={llamarTelefono} disabled={!telNum}
+                  title={telNum ? 'Llamar por teléfono' : 'Sin número registrado'}>
+                  <window.Vico d={window.VI.phone} size={15} /> Llamar
                 </button>
                 <button className="vx-btn vx-btn-ghost" style={{ flex: 1.25 }}
-                  onClick={llamarWhatsApp} disabled={!waNum}
+                  onClick={abrirWhatsApp} disabled={!waNum}
                   title={waNum ? 'Abrir WhatsApp' : 'Sin número registrado'}>
                   <window.Vico d={window.VI.wa} size={16} fill="currentColor" /> Abrir WhatsApp
                 </button>
