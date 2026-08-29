@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Validate source guard
         run: node scripts/qa_ventas_no_hardcoded_qa_cs21a157.mjs
       - name: Diff whitespace check
