@@ -1,0 +1,25 @@
+name: QA Solicitudes Pago Safe Errors CS21A182
+
+on:
+  pull_request:
+    paths:
+      - 'src/solicitudes_pago.jsx'
+      - 'scripts/qa_solicitudes_pago_safe_errors_cs21a182.mjs'
+      - '.github/workflows/qa-solicitudes-pago-safe-errors-cs21a182.yml'
+      - '00_DOCUMENTACION/SOLICITUDES_PAGO_SAFE_ERRORS_CS21A182_2026-08-29.md'
+
+jobs:
+  safe-errors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A182 safe-error guard
+        run: node scripts/qa_solicitudes_pago_safe_errors_cs21a182.mjs
+      - name: Regress private payment receipt
+        run: node scripts/qa_sec002_payment_receipt_cs21a161.mjs
+      - name: Regress integrated private chain
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
