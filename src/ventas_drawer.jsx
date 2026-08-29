@@ -412,7 +412,7 @@ function ActivarModal({ detalle, asesor, demo, onClose, onSuccess }) {
   };
   return (
     <div className="vx-modal-scrim" onClick={onClose}>
-      <div className="vx-modal" onClick={e => e.stopPropagation()}>
+      <div className="vx-modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
         <div className="vx-modal-head red">
           <div className="vx-modal-title">Activar como estudiante</div>
           <div className="vx-modal-sub">{detalle.nombre} · desembolso CONAPE confirmado</div>
@@ -940,7 +940,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                 <div className="vx-block-h"><window.Vico d={window.VI.phone} size={13} /> Información personal</div>
                 <dl className="vx-kv">
                   <dt>Cédula</dt><dd>{String(d.cedula || '').replace(/\D/g, '') || '—'} <button className="vx-copy" onClick={() => copy(String(d.cedula || '').replace(/\D/g, ''))}>copiar</button></dd>
-                  <dt>Teléfono</dt><dd>{window.fmtTelV(d.telefono)} <button className="vx-copy" onClick={() => copy(d.telefono)}>copiar</button></dd>
+                  <dt>Teléfono</dt><dd>{window.fmtTelV(d.whatsapp)} <button className="vx-copy" onClick={() => copy(d.whatsapp)}>copiar</button></dd>
                   <dt>Correo</dt><dd>{d.correo || '—'} <button className="vx-copy" onClick={() => copy(d.correo)}>copiar</button></dd>
                   <dt>WhatsApp</dt><dd>
                     <window.WaLink tel={d.whatsapp || d.telefono} className="vx-copy" >abrir chat</window.WaLink>
