@@ -1,0 +1,30 @@
+name: QA SEC002 Payment Receipt CS21A161
+
+on:
+  pull_request:
+    paths:
+      - 'src/data.jsx'
+      - 'src/solicitudes_pago.jsx'
+      - 'scripts/qa_sec002_payment_receipt_cs21a161.mjs'
+      - '.github/workflows/qa-sec002-payment-receipt-cs21a161.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate private payment receipt contract
+        run: node scripts/qa_sec002_payment_receipt_cs21a161.mjs
+      - name: Diff whitespace check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
+          else
+            git diff --check HEAD^ -- . ':(exclude)00_DOCUMENTACION/**'
+          fi
