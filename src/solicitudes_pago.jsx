@@ -31,6 +31,18 @@ const SP_ESTADO = {
   DUPLICADO: { label: 'Duplicado', bg: '#FBE4E1', fg: '#8B1A10', bd: '#F0BDB6' },
 };
 
+function spSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[SolicitudesPago] Detalle técnico oculto al usuario.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 function SpEstadoBadge({ estado }) {
   const m = SP_ESTADO[estado] || { label: estado, bg: 'var(--surface-2)', fg: 'var(--ink-2)', bd: 'var(--line)' };
   return (
@@ -98,7 +110,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     setCargando(true); setErr('');
     window.getSolicitudesPago({ estado, asesor, fecha_desde: desde, fecha_hasta: hasta })
       .then(r => {
-        if (!r || !r.ok) { setErr((r && r.error) || 'No se pudo cargar la cola.'); setLista([]); return; }
+        if (!r || !r.ok) { setErr(spSafeUserError(r && (r.mensaje || r.error), 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_solicitudes')); setLista([]); return; }
         const base = r.solicitudes || [];
         const filtrada = categoria === 'MATRICULA'
           ? base.filter(x => String(x.tipo_pago || '').toUpperCase() === 'MATRICULA')
@@ -108,7 +120,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
         setLista(filtrada);
         if (typeof r.pendientes === 'number') setPendientes(r.pendientes);
       })
-      .catch(e => { setErr('Error de red: ' + e.message); setLista([]); })
+      .catch(e => { setErr(spSafeUserError(e?.message, 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_solicitudes_red')); setLista([]); })
       .finally(() => setCargando(false));
   }, [estado, asesor, desde, hasta, categoria]);
 
@@ -129,7 +141,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     setAccionando(sol.id);
     const res = await window.marcarSolicitudAplicada({ id: sol.id, admin_nombre: adminNombre });
     setAccionando(null); setConfirmAplicar(null);
-    if (!res || !res.ok) { showToast((res && res.error) || 'No se pudo marcar como aplicada.', 'err'); return; }
+    if (!res || !res.ok) { showToast(spSafeUserError(res && (res.mensaje || res.error), 'No se pudo marcar como aplicada.', 'aplicar_solicitud'), 'err'); return; }
     showToast('Solicitud marcada como aplicada. ✅', 'ok');
     window.dispatchEvent(new Event('an:solicitudes-pago-changed'));
     refrescar();
@@ -139,7 +151,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     setAccionando(sol.id);
     const res = await window.rechazarSolicitudPago({ id: sol.id, admin_nombre: adminNombre, motivo });
     setAccionando(null); setModalRechazar(null);
-    if (!res || !res.ok) { showToast((res && res.error) || 'No se pudo rechazar.', 'err'); return; }
+    if (!res || !res.ok) { showToast(spSafeUserError(res && (res.mensaje || res.error), 'No se pudo rechazar.', 'rechazar_solicitud'), 'err'); return; }
     showToast('Solicitud rechazada.', 'ok');
     window.dispatchEvent(new Event('an:solicitudes-pago-changed'));
     refrescar();
@@ -203,7 +215,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     }
     try {
       const r = await window.descargarComprobantePagoPrivado(id);
-      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el comprobante.');
+      if (!r?.ok || !r.blob) throw new Error(spSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el comprobante.', 'abrir_comprobante'));
       const objectUrl = URL.createObjectURL(r.blob);
       const mime = String(r.mime_type || r.blob.type || '').toLowerCase();
       if (mime === 'application/pdf') {
@@ -229,7 +241,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
     } catch (e) {
       try { if (preview && !preview.closed) preview.close(); } catch (_) {}
-      showToast(e?.message || 'No se pudo abrir el comprobante.', 'err');
+      showToast(spSafeUserError(e?.message, 'No se pudo abrir el comprobante.', 'abrir_comprobante'), 'err');
     } finally {
       setAbriendoComprobante('');
     }
