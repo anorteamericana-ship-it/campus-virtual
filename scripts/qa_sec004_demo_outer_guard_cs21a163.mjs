@@ -26,7 +26,8 @@ check('guard wraps iniciarSesion', src.includes('var _sec004IniciarSesionBase_ =
 check('guard wraps doPost exactly once', (src.match(/\bdoPost\s*=\s*function\s*\(e\)/g) || []).length === 1);
 check('guard delegates no-token public requests', src.includes("if (!token) return _sec004DoPostBase_(e);"));
 check('logout remains session bookkeeping', src.includes("if (key === 'cerrarsesion') return _sec004DoPostBase_(e);"));
-check('scope validation precedes simulated writes', src.indexOf('_sec004DemoScopeAllowed_(fn, body, session, policy)') < src.indexOf('_sec004DemoSimulatedWriteAdapter_(fn, body'));
+const doPostBody = src.slice(src.lastIndexOf('doPost = function(e) {'));
+check('scope validation precedes simulated writes', doPostBody.indexOf('_sec004DemoScopeAllowed_(fn, body, session, policy)') > -1 && doPostBody.indexOf('_sec004DemoScopeAllowed_(fn, body, session, policy)') < doPostBody.indexOf('var simulated = _sec004DemoSimulatedWriteAdapter_(fn, body'));
 
 const allowBlock = src.slice(
   src.indexOf('var SEC004_DEMO_SAFE_READS = {'),
