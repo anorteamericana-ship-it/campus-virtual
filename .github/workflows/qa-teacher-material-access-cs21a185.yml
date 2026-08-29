@@ -1,0 +1,30 @@
+name: QA Teacher Material Access CS21A185
+
+on:
+  pull_request:
+    paths:
+      - 'src/teacher_cs21a.jsx'
+      - 'src/teacher_cs21a_docs_viewer.jsx'
+      - 'security/teacher_material_access_contract_v1.json'
+      - 'scripts/qa_teacher_material_access_cs21a185.mjs'
+      - '.github/workflows/qa-teacher-material-access-cs21a185.yml'
+      - '00_DOCUMENTACION/TEACHER_MATERIAL_ACCESS_CS21A185_2026-08-29.md'
+
+permissions:
+  contents: read
+
+jobs:
+  teacher-material-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A185 guard
+        run: node scripts/qa_teacher_material_access_cs21a185.mjs
+      - name: Regress CS21A184 teacher profile
+        run: node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
+      - name: Regress CS21A183 student private docs
+        run: node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/security/sec002-teacher-profile-source-cs21a184...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
