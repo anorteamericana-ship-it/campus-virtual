@@ -29,14 +29,12 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   const d = detalle || {};
   const est = window.calcularEstadoEstudianteVentas(d);
   const matriculado = est.estado === 'MATRICULADO';
-  const cedulaPreviewMatricula = String(d.cedula || d.CEDULA || '').replace(/[^\d]/g, '');
-  const previewMatriculaCR = cedulaPreviewMatricula === '120180140';
   const codigo = String(d.codigo || d.codigo_estudiante || d.CODIGO_ESTUDIANTE || d.rec_m || '').trim();
-  const puedeSubirFirmada = !!codigo || previewMatriculaCR;
+  const puedeSubirFirmada = !!codigo;
   const nivel = d.nivel || d.NIVEL || 'B1';
   const cedulaDoc = d.cedula || d.CEDULA || '';
   const correoDoc = String(d.correo || d.email || d.CORREO || d.EMAIL || d.correo_electronico || d.CORREO_ELECTRONICO || '').trim();
-  const waNumDoc = waDigits(d.telefono || d.TELEFONO || d.whatsapp || d.WHATSAPP || d.tel1 || d.TEL1 || d.telefono1 || d.TELEFONO_1 || '');
+  const waNumDoc = waDigits(d.whatsapp || d.WHATSAPP || d.telefono || d.TELEFONO || d.tel1 || d.TEL1 || d.telefono1 || d.TELEFONO_1 || '');
 
   const generar = async (btn, tipo, msgFalla) => {
     if (busy) return;
@@ -84,7 +82,6 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             nombre_archivo: file.name,
             mime_type: file.type || 'application/pdf',
             base64,
-            preview_test: previewMatriculaCR,
           });
       if (r && r.ok) {
         setSignedDoc(r);
@@ -119,7 +116,6 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             canal,
             file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
             email: correoDoc,
-            preview_test: previewMatriculaCR,
           });
       if (r && r.ok) {
         onToast && onToast({ tipo:'ok', msg: canal === 'correo' ? 'Correo enviado.' : 'Alerta del campus creada.' });
@@ -160,36 +156,18 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
           </button>
         </div>
       ) : null}
-      {!codigo && !previewMatriculaCR ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
-      {!codigo && previewMatriculaCR ? <div className="vx-docest-note">Modo prueba: se adjunta por cédula y se usa un código sugerido solo para revisar el flujo. No matricula ni reserva consecutivo.</div> : null}
+      {!codigo ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
     </div>
   );
 
   return (
     <section className="vx-block vx-docest">
       <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Documentos del estudiante</div>
-      {!matriculado && !previewMatriculaCR ? (
+      {!matriculado ? (
         <div className="vx-docest-lock">
           <window.Vico d={window.VI.shield} size={15} />
           <span>Los documentos estarán disponibles cuando el estudiante esté matriculado.</span>
         </div>
-      ) : previewMatriculaCR ? (
-        <React.Fragment>
-          <div className="vx-docest-sub">
-            Modo prueba controlado para cédula 1-2018-0140. No requiere matrícula ni código; genera PDFs de revisión y permite probar la subida del PDF firmado.
-          </div>
-          <div className="vx-docest-btns">
-            <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('MATRICULA_INA_TEST', 'CERT_MATRICULA_INA_TEST', 'No se pudo generar la prueba INA.')}>
-              {busy === 'MATRICULA_INA_TEST' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Certificado matrícula INA</>}
-            </button>
-            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('MATRICULA_SIN_INA_TEST', 'CERT_MATRICULA_SIN_INA_TEST', 'No se pudo generar la prueba SIN INA.')}>
-              {busy === 'MATRICULA_SIN_INA_TEST' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Certificado matrícula SIN INA</>}
-            </button>
-          </div>
-          <div className="vx-docest-note">Estos botones son temporales y solo aparecen para este prospecto de prueba.</div>
-          <SignedUploadBlock />
-          {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
-        </React.Fragment>
       ) : (
         <React.Fragment>
           <div className="vx-docest-sub">
@@ -199,7 +177,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
             <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('CERTIFICADO', 'CERTIFICADO', 'No se pudo generar la hoja de matrícula.')}>
               {busy === 'CERTIFICADO' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Hoja de matrícula</>}
             </button>
-            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('CARTA', 'MATRICULA_2', 'Este documento requiere soporte backend.')}>
+            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('CARTA', 'MATRICULA_2', 'No se pudo generar la carta de no deuda.')}>
               {busy === 'CARTA' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Carta de no deuda (CONAPE)</>}
             </button>
             {REGLAMENTO_URL ? (
@@ -207,13 +185,13 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
                 <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
               </a>
             ) : (
-              <button className="vx-btn vx-btn-ghost" disabled title="Falta adjuntar el archivo">
+              <button className="vx-btn vx-btn-ghost" disabled title="Reglamento no disponible">
                 <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
               </button>
             )}
           </div>
           {!REGLAMENTO_URL ? (
-            <div className="vx-docest-note">Falta adjuntar el Reglamento Estudiantil al proyecto.</div>
+            <div className="vx-docest-note">El Reglamento Estudiantil aún no está disponible.</div>
           ) : null}
           <SignedUploadBlock />
           {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
