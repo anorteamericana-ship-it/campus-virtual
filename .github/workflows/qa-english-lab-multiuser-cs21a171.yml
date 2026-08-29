@@ -62,13 +62,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      QA_ENGLISH_LAB_APPS_SCRIPT_URL: ${{ secrets.QA_ENGLISH_LAB_APPS_SCRIPT_URL }}
-      QA_LAB_TEACHER_USER: ${{ secrets.QA_LAB_TEACHER_USER }}
-      QA_LAB_TEACHER_PASS: ${{ secrets.QA_LAB_TEACHER_PASS }}
-      QA_LAB_STUDENT_USER: ${{ secrets.QA_LAB_STUDENT_USER }}
-      QA_LAB_STUDENT_PASS: ${{ secrets.QA_LAB_STUDENT_PASS }}
-      QA_LAB_GROUP_CODE: ${{ secrets.QA_LAB_GROUP_CODE }}
-      QA_ENGLISH_LAB_WRITE_CONFIRMATION: ${{ secrets.QA_ENGLISH_LAB_WRITE_CONFIRMATION }}
+      QA_ENGLISH_LAB_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
+      QA_LAB_TEACHER_USER: ${{ secrets.QA_TEACHER_USER }}
+      QA_LAB_TEACHER_PASS: ${{ secrets.QA_TEACHER_PASS }}
+      QA_LAB_STUDENT_USER: ${{ secrets.QA_STUDENT_USER }}
+      QA_LAB_STUDENT_PASS: ${{ secrets.QA_STUDENT_PASS }}
+      QA_LAB_GROUP_CODE: ${{ secrets.QA_GROUP_CODE }}
+      QA_ENGLISH_LAB_WRITE_CONFIRMATION: CS21A171_STAGING_ONLY
       QA_LAB_LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || 'B1' }}
       QA_LAB_UNIT: ${{ github.event_name == 'workflow_dispatch' && inputs.unit || '01' }}
     steps:
@@ -76,9 +76,9 @@ jobs:
       - name: Refuse incomplete English LAB QA secret set
         shell: bash
         run: |
-          required=(QA_ENGLISH_LAB_APPS_SCRIPT_URL QA_LAB_TEACHER_USER QA_LAB_TEACHER_PASS QA_LAB_STUDENT_USER QA_LAB_STUDENT_PASS QA_LAB_GROUP_CODE QA_ENGLISH_LAB_WRITE_CONFIRMATION)
+          required=(QA_ENGLISH_LAB_APPS_SCRIPT_URL QA_LAB_TEACHER_USER QA_LAB_TEACHER_PASS QA_LAB_STUDENT_USER QA_LAB_STUDENT_PASS QA_LAB_GROUP_CODE)
           for key in "${required[@]}"; do
-            if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
+            if [ -z "${!key}" ]; then echo "Falta el secreto QA canónico asociado a $key"; exit 1; fi
           done
           if [ "${QA_ENGLISH_LAB_WRITE_CONFIRMATION}" != "CS21A171_STAGING_ONLY" ]; then
             echo "Confirmación English LAB QA inválida"; exit 1
