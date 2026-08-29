@@ -119,6 +119,19 @@
   const boolTxt = (v) => (v === true || /^(true|s[ií]|1)$/i.test(String(v))) ? 'Sí'
     : (v === false || /^(false|no|0)$/i.test(String(v))) ? 'No' : (v || '');
 
+  // CS21A176 · conservar diagnóstico técnico sin convertirlo en copy visible.
+  function matSafeUserError(raw, fallback, context = '') {
+    const msg = String(raw == null ? '' : raw).trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|no autorizado|unauthorized|forbidden|internal server|status\s*\d{3}|respuesta_vacia|integridad_|policy_unbound|demo_read_only/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[Matrículas] Detalle técnico oculto al usuario.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   // ── Shell de modal ─────────────────────────────────────────────────────────
   function Modal({ size = 'md', kicker, title, onClose, children, footer }) {
     useEffect(() => {
@@ -493,13 +506,11 @@
 
   function MatProspectoModal({ cedula, nombre, onClose, onToast }) {
     const rol = rolActual();
-    const canEditAll = rol === 'admin' || rol === 'superadmin';
     const isVentas = rol === 'ventas';
 
     const [detalle, setDetalle] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [edited, setEdited] = useState({});
     const [notaNueva, setNotaNueva] = useState('');
     const [lightbox, setLightbox] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -507,21 +518,22 @@
     useEffect(() => {
       let cancel = false;
       getDetalle(cedula)
-        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar el prospecto.'); })
-        .catch(e => { if (!cancel) setError(e.message); })
+        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError(matSafeUserError(d && d.error, 'No se pudo cargar el prospecto. Intentá nuevamente.', 'cargar_prospecto')); })
+        .catch(e => { if (!cancel) { console.error('[Matrículas CS21A176] Error técnico cargando datos.', e); setError('No pudimos cargar la información. Intentá nuevamente.'); } })
         .finally(() => { if (!cancel) setLoading(false); });
       return () => { cancel = true; };
     }, [cedula]);
 
     const get = makeGet(detalle || {});
     const val = (f) => {
-      if (edited[f.k] !== undefined) return edited[f.k];
       let v = get(...(f.al || [f.k]));
       if (f.bool) v = boolTxt(v);
       return v == null ? '' : v;
     };
-    const onCh = (f) => (nv) => setEdited(e => ({ ...e, [f.k]: nv }));
-    const editableOf = (f) => canEditAll && !f.ro && !f.bool;
+    // No existe hoy un endpoint contractual de actualización general del prospecto.
+    // La ficha queda fail-closed en lectura hasta que exista persistencia real + QA.
+    const onCh = () => () => {};
+    const editableOf = () => false;
 
     const fin = get('financiamiento', 'FINANCIAMIENTO');
     const esConape = /conape/i.test(fin);
@@ -534,11 +546,13 @@
         const asesor = (window.getSesion && window.getSesion() || {}).nombre || 'Asesor';
         const r = await postNota(cedula, asesor, notaNueva.trim());
         if (r && r.ok) { onToast('Nota guardada.', 'ok'); setNotaNueva(''); }
-        else onToast((r && r.error) || 'No se pudo guardar la nota.', 'err');
-      } catch (e) { onToast('Error de conexión: ' + e.message, 'err'); }
+        else onToast(matSafeUserError(r && r.error, 'No se pudo guardar la nota.', 'guardar_nota'), 'err');
+      } catch (e) {
+        console.error('[Matrículas CS21A176] Error técnico guardando nota.', e);
+        onToast('No se pudo guardar la nota. Revisá tu conexión e intentá nuevamente.', 'err');
+      }
       finally { setSaving(false); }
     };
-    const guardarCambios = () => onToast('Próximamente: guardado completo de campos.', 'info');
 
     const footer = loading || error ? (
       <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
@@ -548,11 +562,6 @@
         <button className="btn btn-primary" onClick={guardarNota} disabled={saving || !notaNueva.trim()}>
           {saving ? 'Guardando…' : 'Guardar nota'}
         </button>
-      </>
-    ) : canEditAll ? (
-      <>
-        <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
-        <button className="btn btn-primary" onClick={guardarCambios}>Guardar cambios</button>
       </>
     ) : (
       <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
@@ -567,6 +576,12 @@
             {isVentas && (
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)' }}>
                 Como asesor de ventas solo podés editar el bloque de <b>notas</b>. El resto es de solo lectura.
+              </div>
+            )}
+
+            {!isVentas && (
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 16, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)' }}>
+                Datos generales · solo lectura en esta vista.
               </div>
             )}
 
@@ -738,8 +753,8 @@
     useEffect(() => {
       let cancel = false;
       getDetalle(cedula)
-        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar el prospecto.'); })
-        .catch(e => { if (!cancel) setError(e.message); })
+        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError(matSafeUserError(d && d.error, 'No se pudo cargar el prospecto. Intentá nuevamente.', 'cargar_prospecto')); })
+        .catch(e => { if (!cancel) { console.error('[Matrículas CS21A176] Error técnico cargando datos.', e); setError('No pudimos cargar la información. Intentá nuevamente.'); } })
         .finally(() => { if (!cancel) setLoading(false); });
       return () => { cancel = true; };
     }, [cedula]);
@@ -794,9 +809,9 @@
         .then(r => {
           if (cancel) return;
           if (r && r.ok) { setRes(r); onResult && onResult(r.novedad); }
-          else { setError((r && r.error) || 'No se pudo consultar el estado CONAPE.'); onToast && onToast((r && r.error) || 'No se pudo consultar el estado CONAPE.', 'err'); }
+          else { const msg = matSafeUserError(r && r.error, 'No se pudo consultar el estado CONAPE.', 'consultar_conape'); setError(msg); onToast && onToast(msg, 'err'); }
         })
-        .catch(e => { if (!cancel) { setError(e.message); onToast && onToast('Error de conexión: ' + e.message, 'err'); } })
+        .catch(e => { if (!cancel) { console.error('[Matrículas CS21A176] Error técnico consultando CONAPE.', e); const msg = 'No se pudo consultar el estado CONAPE. Intentá nuevamente.'; setError(msg); onToast && onToast(msg, 'err'); } })
         .finally(() => { if (!cancel) setLoading(false); });
       return () => { cancel = true; };
     }, [cedula]);
@@ -872,9 +887,9 @@
           if (cancel) return;
           const p = (d && (d.prospecto || (d.ok !== false ? d : null)));
           if (p) setDetalle(flatten(p));
-          else setError((d && d.error) || 'No se pudo cargar el prospecto.');
+          else setError(matSafeUserError(d && d.error, 'No se pudo cargar el prospecto. Intentá nuevamente.', 'cargar_prospecto'));
         })
-        .catch(e => { if (!cancel) setError(e.message); })
+        .catch(e => { if (!cancel) { console.error('[Matrículas CS21A176] Error técnico cargando datos.', e); setError('No pudimos cargar la información. Intentá nuevamente.'); } })
         .finally(() => { if (!cancel) setLoading(false); });
       return () => { cancel = true; };
     }, [cedula]);
@@ -971,7 +986,8 @@
           setSubmitting(false);
         }
       } catch (e) {
-        onToast('Error de conexión: ' + (e && e.message ? e.message : 'desconocido'), 'err');
+        console.error('[Matrículas CS21A176] Error técnico generando matrícula.', e);
+        onToast('No se pudo generar la matrícula. Revisá tu conexión e intentá nuevamente.', 'err');
         setSubmitting(false);
       }
     };
@@ -1149,8 +1165,8 @@
     useEffect(() => {
       let cancel = false;
       getDetalle(cedula)
-        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError((d && d.error) || 'No se pudo cargar la ficha.'); })
-        .catch(e => { if (!cancel) setError(e.message); })
+        .then(d => { if (cancel) return; const p = (d && (d.prospecto || (d.ok !== false ? d : null))); if (p) setDetalle(flatten(p)); else setError(matSafeUserError(d && d.error, 'No se pudo cargar la ficha. Intentá nuevamente.', 'cargar_ficha')); })
+        .catch(e => { if (!cancel) { console.error('[Matrículas CS21A176] Error técnico cargando datos.', e); setError('No pudimos cargar la información. Intentá nuevamente.'); } })
         .finally(() => { if (!cancel) setLoading(false); });
       return () => { cancel = true; };
     }, [cedula]);
