@@ -1,5 +1,5 @@
 {
-  "version": "CS21A185-v1",
+  "version": "CS21A185-v2",
   "date": "2026-08-29",
   "scope": "authenticated teacher institutional materials",
   "classification": "SEC-005",
@@ -15,10 +15,15 @@
     "direct_drive_open_download": true
   },
   "drive_acl_evidence": {
-    "sampled_resources": 3,
-    "sample_types": ["lesson_pdf", "b1_planning_folder", "b2_planning_folder"],
-    "anyone_reader_observed": true,
-    "allow_file_discovery": false,
+    "root_folders_expected": 12,
+    "root_folders_verified": 12,
+    "root_folders_anyone_reader": 12,
+    "root_categories_per_level": ["plan_estudio", "planeamiento_leccion", "material_curso_teacher_book_audios"],
+    "levels_verified": ["B1", "B2", "I1", "I2"],
+    "lesson_files_verified": 1,
+    "lesson_files_anyone_reader": 1,
+    "all_verified_resources_allow_file_discovery": false,
+    "all_root_folders_anyone_reader": true,
     "acl_changed_by_this_cut": false
   },
   "risk": {
