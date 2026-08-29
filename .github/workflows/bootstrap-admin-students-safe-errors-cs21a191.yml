@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/bootstrap_patch_admin_students_safe_errors_cs21a191.mjs'
       - 'scripts/bootstrap_patch_admin_students_safe_errors_cs21a191_v2.mjs'
+      - 'scripts/bootstrap_patch_admin_students_safe_errors_cs21a191_v3.mjs'
       - '.github/workflows/bootstrap-admin-students-safe-errors-cs21a191.yml'
 
 permissions:
@@ -26,7 +27,7 @@ jobs:
       - name: Verify exact base ancestry
         run: git merge-base --is-ancestor ea4d6d4fc8ecde93e04dc129d1f7c1458188a9bf HEAD
       - name: Apply exact patch
-        run: node scripts/bootstrap_patch_admin_students_safe_errors_cs21a191_v2.mjs
+        run: node scripts/bootstrap_patch_admin_students_safe_errors_cs21a191_v3.mjs
       - name: Run CS21A191 guard
         run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
       - name: Regress CS21A190
@@ -39,6 +40,7 @@ jobs:
         run: |
           rm scripts/bootstrap_patch_admin_students_safe_errors_cs21a191.mjs
           rm scripts/bootstrap_patch_admin_students_safe_errors_cs21a191_v2.mjs
+          rm scripts/bootstrap_patch_admin_students_safe_errors_cs21a191_v3.mjs
           rm .github/workflows/bootstrap-admin-students-safe-errors-cs21a191.yml
           git add -A
           git commit -m 'CS21A191 · safe admin students errors'
