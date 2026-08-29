@@ -1,0 +1,26 @@
+name: QA Admin Transfer Doc Private Delivery CS21A193
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_admin_transfer_doc_private_delivery_cs21a193.mjs'
+      - '.github/workflows/qa-admin-transfer-doc-private-delivery-cs21a193.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admin-transfer-doc-private-delivery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A193 guard
+        run: node scripts/qa_admin_transfer_doc_private_delivery_cs21a193.mjs
+      - name: Regress CS21A192 user copy
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Regress CS21A191 safe errors
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^ HEAD || git diff --check
