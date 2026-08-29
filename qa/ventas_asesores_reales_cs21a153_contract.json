@@ -1,0 +1,24 @@
+{
+  "id": "CS21A153",
+  "surface": "ventas",
+  "base_main": "53df524d0a9eab867d3b307b3e633f366af92a63",
+  "backend_contract": {
+    "endpoint": "getAsesoresActivos",
+    "source": "USUARIOS",
+    "role": "ventas",
+    "active_only": true,
+    "fields": ["nombre", "telefono", "wa_link", "cedula"]
+  },
+  "frontend_invariants": [
+    "operational_supervisor_selector_uses_real_advisors",
+    "demo_advisors_only_under_explicit_preview",
+    "no_supervisor_fallback_to_admin_name",
+    "dashboard_waits_for_real_advisor_scope"
+  ],
+  "runtime_pending": [
+    "authenticated_admin_or_superadmin",
+    "advisor_switch_reload",
+    "inactive_advisor_absent",
+    "endpoint_failure_no_demo_names"
+  ]
+}
