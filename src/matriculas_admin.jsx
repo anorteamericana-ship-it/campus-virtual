@@ -682,15 +682,20 @@
         if (r && r.ok) {
           const u = tipo === 'curso' ? r.url_programa : r.url_equipo;
           if (u) { setUrl(u); setRegen(false); onToast(`Proforma ${tipo === 'curso' ? 'del curso' : 'del equipo'} generada.`, 'ok'); }
-          else onToast('El backend no devolvió la URL de la proforma.', 'err');
-        } else onToast((r && r.error) || 'No se pudo generar la proforma.', 'err');
-      } catch (e) { onToast('Error de conexión: ' + e.message, 'err'); }
+          else { console.warn('[Matrículas CS21A175] Respuesta de proforma no apta para mostrar.', r); onToast('No se pudo preparar la proforma. Intentá nuevamente.', 'err'); }
+        } else { console.warn('[Matrículas CS21A175] Respuesta de proforma no apta para mostrar.', r); onToast('No se pudo generar la proforma. Intentá nuevamente.', 'err'); }
+      } catch (e) {
+        console.error('[Matrículas CS21A175] Error técnico generando proforma.', e);
+        onToast('No se pudo generar la proforma. Revisá tu conexión e intentá nuevamente.', 'err');
+      }
       finally { setLoading(false); }
     };
 
+    // SEC-002 CS21A175 · no propagar el enlace Drive público al prospecto.
+    // El PDF se descarga por la ruta staff legacy y se adjunta manualmente al chat.
     const msg = tipo === 'curso'
-      ? `Hola! Te envío la proforma del curso de inglés. Podés verla aquí: ${url}`
-      : `Hola! Te envío la proforma del equipo (${planLabel}). Podés verla aquí: ${url}`;
+      ? 'Hola! Te envío la proforma del curso de inglés. Te la adjunto como PDF en este chat.'
+      : `Hola! Te envío la proforma del equipo (${planLabel}). Te la adjunto como PDF en este chat.`;
     const waHref = whatsapp ? `https://wa.me/${waNumber(whatsapp)}?text=${enc(msg)}` : null;
 
     return (
@@ -708,7 +713,7 @@
         ) : url && !regen ? (
           <>
             <a className="btn btn-primary" href={url} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>Descargar</a>
-            {waHref && <a className="btn btn-ghost" href={waHref} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>Enviar por WhatsApp</a>}
+            {waHref && <a className="btn btn-ghost" href={waHref} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>WhatsApp · adjuntar PDF</a>}
             <button className="btn btn-ghost" style={{ justifyContent: 'center', fontSize: 12 }} onClick={() => setRegen(true)}>Regenerar</button>
           </>
         ) : (

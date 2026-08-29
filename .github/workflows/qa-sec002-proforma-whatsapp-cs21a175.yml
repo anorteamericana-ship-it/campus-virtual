@@ -1,0 +1,38 @@
+name: QA SEC002 Proforma WhatsApp CS21A175
+
+on:
+  push:
+    branches:
+      - 'security/sec002-proforma-whatsapp-no-public-link-cs21a175'
+    paths:
+      - 'src/ventas_drawer.jsx'
+      - 'src/matriculas_admin.jsx'
+      - 'scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs'
+      - '.github/workflows/qa-sec002-proforma-whatsapp-cs21a175.yml'
+      - '00_DOCUMENTACION/SEC002_PROFORMA_WHATSAPP_CS21A175_2026-08-29.md'
+  pull_request:
+    paths:
+      - 'src/ventas_drawer.jsx'
+      - 'src/matriculas_admin.jsx'
+      - 'scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs'
+      - '.github/workflows/qa-sec002-proforma-whatsapp-cs21a175.yml'
+      - '00_DOCUMENTACION/SEC002_PROFORMA_WHATSAPP_CS21A175_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proforma-whatsapp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Whitespace and conflict markers
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate guard syntax
+        run: node --check scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
+      - name: Verify no public proforma URL is propagated to WhatsApp
+        run: node scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
