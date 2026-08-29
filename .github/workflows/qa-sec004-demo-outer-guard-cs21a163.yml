@@ -22,4 +22,4 @@ jobs:
       - name: Run SEC004 source guard
         run: node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
       - name: Diff hygiene
-        run: git diff --check main...HEAD
+        run: git diff --check origin/main...HEAD
