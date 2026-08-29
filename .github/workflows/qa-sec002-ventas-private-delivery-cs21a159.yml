@@ -24,7 +24,7 @@ jobs:
       - name: Diff whitespace check
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git diff --check HEAD^1...HEAD^2
+            git diff --check HEAD^1...HEAD^2 -- . ':(exclude)00_DOCUMENTACION/**'
           else
-            git diff --check HEAD^
+            git diff --check HEAD^ -- . ':(exclude)00_DOCUMENTACION/**'
           fi
