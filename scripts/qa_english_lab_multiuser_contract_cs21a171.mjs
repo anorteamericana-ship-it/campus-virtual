@@ -15,8 +15,8 @@ check(runner.includes("teacherRole === 'teacher'"), 'runner exige rol docente re
 check(runner.includes("studentRole === 'student'"), 'runner exige rol estudiante real');
 check(runner.includes("'participant_count_teacher_is_one'"), 'runner comprueba participant_count docente');
 check(runner.includes("'participant_count_student_is_one'"), 'runner comprueba participant_count estudiante');
-check(runner.includes("'student_open_no_answer_leak'"), 'runner comprueba anti-leak antes de responder');
-check(runner.includes("'student_after_submit_before_reveal_no_answer_leak'"), 'runner comprueba anti-leak después de submit y antes de reveal');
+check(runner.includes("assertNoSentenceAnswerLeak(studentState.game, 'student_open')"), 'runner comprueba anti-leak antes de responder');
+check(runner.includes("assertNoSentenceAnswerLeak(studentState.game, 'student_after_submit_before_reveal')"), 'runner comprueba anti-leak después de submit y antes de reveal');
 check(runner.includes("'same_request_replayed'"), 'runner comprueba idempotencia de submitAttempt');
 check(runner.includes("'answer_available_only_after_reveal'"), 'runner exige respuesta solo tras reveal');
 check(runner.includes("'viewer_result_available_after_reveal'"), 'runner verifica resultado privado del estudiante');
