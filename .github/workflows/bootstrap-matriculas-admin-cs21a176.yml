@@ -1,0 +1,37 @@
+name: Bootstrap Matriculas Admin CS21A176
+
+on:
+  push:
+    branches:
+      - 'fix/matriculas-admin-readonly-safe-errors-cs21a176'
+    paths:
+      - 'scripts/_apply_matriculas_admin_cs21a176.py'
+      - '.github/workflows/bootstrap-matriculas-admin-cs21a176.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply exact source patch
+        run: python scripts/_apply_matriculas_admin_cs21a176.py
+      - name: Verify fail-closed contract
+        run: node scripts/qa_matriculas_admin_readonly_safe_errors_cs21a176.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap files and commit
+        run: |
+          rm scripts/_apply_matriculas_admin_cs21a176.py
+          rm .github/workflows/bootstrap-matriculas-admin-cs21a176.yml
+          git config user.name "anorteamericana-ship-it"
+          git config user.email "anorteamericana@gmail.com"
+          git add src/matriculas_admin.jsx scripts/_apply_matriculas_admin_cs21a176.py .github/workflows/bootstrap-matriculas-admin-cs21a176.yml
+          git diff --cached --check
+          git commit -m "CS21A176 · Matrículas Admin fail-closed y errores seguros"
+          git push
