@@ -1,0 +1,136 @@
+name: Bootstrap SEC002 Teacher Profile CS21A184
+
+on:
+  push:
+    branches:
+      - security/sec002-teacher-profile-source-cs21a184
+    paths:
+      - '.github/workflows/bootstrap-sec002-teacher-profile-cs21a184.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 52fe37c9692b72a604787e6f2608bc662c4cb3c7 HEAD
+      - name: Apply exact teacher-profile patch
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'src/teacher_profile_cs21a76.jsx';
+          let s = fs.readFileSync(path, 'utf8');
+          function replaceOnce(oldText, newText, label) {
+            const n = s.split(oldText).length - 1;
+            if (n !== 1) throw new Error(`${label}: expected exact preimage once, found ${n}`);
+            s = s.replace(oldText, newText);
+          }
+
+          const anchor = `  const SCRIPT_URL = window.APPS_SCRIPT_URL;`;
+          const helper = `  const SCRIPT_URL = window.APPS_SCRIPT_URL;
+
+  function tp76SafeUserError(raw, fallback, context = '') {
+    const msg = String(raw == null ? '' : raw).trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\\bjson\\b|\\btoken\\b|sesion_requerida|unauthorized|forbidden|internal server|http\\s*\\d{3}|status\\s*\\d{3}|sha-?256|\\bmime\\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[TeacherProfile] Detalle técnico oculto al docente.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }`;
+          replaceOnce(anchor, helper, 'insert safe helper');
+
+          replaceOnce(
+            `        setState(previous => ({ ...previous, loading: false, error: error?.message || String(error) }));`,
+            `        setState(previous => ({ ...previous, loading: false, error: tp76SafeUserError(error?.message || String(error), 'No pudimos cargar tu perfil. Intentá de nuevo.', 'cargar_perfil') }));`,
+            'load safe error'
+          );
+
+          replaceOnce(
+            `      } catch (error) {
+        setNotice(error?.message || String(error));
+      } finally {
+        setBusy('');
+      }
+    };
+
+    const uploadPhoto`,
+            `      } catch (error) {
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo guardar el perfil. Intentá de nuevo.', 'guardar_perfil'));
+      } finally {
+        setBusy('');
+      }
+    };
+
+    const uploadPhoto`,
+            'save-profile safe error'
+          );
+
+          replaceOnce(
+            `      } catch (error) {
+        setNotice(error?.message || String(error));
+      } finally {
+        setBusy('');
+      }
+    };
+
+    const uploadDocument`,
+            `      } catch (error) {
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo actualizar la fotografía.', 'subir_foto'));
+      } finally {
+        setBusy('');
+      }
+    };
+
+    const uploadDocument`,
+            'photo safe error'
+          );
+
+          replaceOnce(
+            `      } catch (error) {
+        setNotice(error?.message || String(error));
+      } finally {
+        setBusy('');
+      }
+    };
+
+    if (state.loading && !state.data)`,
+            `      } catch (error) {
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo actualizar el documento.', \`subir_documento:\${type}\`));
+      } finally {
+        setBusy('');
+      }
+    };
+
+    if (state.loading && !state.data)`,
+            'document safe error'
+          );
+
+          fs.writeFileSync(path, s, 'utf8');
+          NODE
+      - name: Run CS21A184 guard
+        run: node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
+      - name: Regress student private-doc safe errors
+        run: node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Regress integrated private chain
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Diff hygiene vs CS21A183
+        run: git diff --check 52fe37c9692b72a604787e6f2608bc662c4cb3c7...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
+      - name: Remove bootstrap and push verified candidate
+        run: |
+          git rm .github/workflows/bootstrap-sec002-teacher-profile-cs21a184.yml
+          git add -A
+          git commit -m "CS21A184 · safe teacher-profile errors and private-delivery contract"
+          git push origin HEAD:security/sec002-teacher-profile-source-cs21a184
