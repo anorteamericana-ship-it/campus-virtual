@@ -2,6 +2,14 @@
 (function(){
 'use strict';
 const A=window.ANAtt77;
+function att77SafeUserError(raw,fallback,context){
+ const msg=String(raw==null?'':raw).trim();
+ if(!msg)return fallback;
+ const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+ const technicalText=/loader|cargador|fuente docente|apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|sec00|policy_unbound/i.test(msg);
+ if(technicalCode||technicalText){console.warn('[Attendance77] Detalle técnico oculto al docente.',{context,error:msg});return fallback;}
+ return msg;
+}
 const DEPS=[
  'src/vista_docente.jsx?v=F98.4Z6CS19F',
  'src/teacher_views.jsx?v=F98.4Z6CS21A142',
@@ -18,7 +26,7 @@ function ensure(){
 }
 function Screen(){
  const [s,setS]=React.useState({ready:typeof window.useTeacherSession==='function',error:''});
- React.useEffect(()=>{if(s.ready)return;let live=true;ensure().then(()=>{if(live)setS(typeof window.useTeacherSession==='function'?{ready:true,error:''}:{ready:false,error:'No se publicó la fuente docente.'})}).catch(e=>live&&setS({ready:false,error:e.message||String(e)}));return()=>{live=false}},[]);
+ React.useEffect(()=>{if(s.ready)return;let live=true;ensure().then(()=>{if(live)setS(typeof window.useTeacherSession==='function'?{ready:true,error:''}:{ready:false,error:'No pudimos preparar el seguimiento académico. Intentá de nuevo.'})}).catch(e=>live&&setS({ready:false,error:att77SafeUserError(e?.message||String(e),'No pudimos preparar el seguimiento académico. Intentá de nuevo.','cargar_modulos')}));return()=>{live=false}},[]);
  if(s.error)return React.createElement('div',{className:'card',style:{padding:30,color:A.C.red}},s.error);
  if(!s.ready)return React.createElement('div',{className:'card',style:{padding:30,textAlign:'center'}},'Preparando seguimiento académico…');
  return React.createElement(A.TeacherAttendanceInnerCS21A77);
