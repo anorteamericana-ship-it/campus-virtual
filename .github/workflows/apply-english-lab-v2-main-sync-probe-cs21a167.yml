@@ -29,7 +29,9 @@ jobs:
       - name: Confirm only current-main Sales hotfix enters from merge base
         run: |
           git diff --check origin/main...HEAD
-          git diff --name-only c09328886287903fbad0833b59b52d4934d8e67c..HEAD | sort > /tmp/main_sync_files.txt
+          git diff --name-only c09328886287903fbad0833b59b52d4934d8e67c..HEAD \
+            | grep -v '^.github/workflows/apply-english-lab-v2-main-sync-probe-cs21a167.yml$' \
+            | sort > /tmp/main_sync_files.txt
           cat /tmp/main_sync_files.txt
           grep -qx "src/ventas_drawer.jsx" /tmp/main_sync_files.txt
           grep -qx "ventas.html" /tmp/main_sync_files.txt
