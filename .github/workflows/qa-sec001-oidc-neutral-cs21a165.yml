@@ -1,0 +1,30 @@
+name: QA SEC001 OIDC Neutral CS21A165
+
+on:
+  pull_request:
+    paths:
+      - 'src/auth_provider_sec001_v2.jsx'
+      - 'security/sec001_oidc_bridge_contract_v2.json'
+      - 'security/sec001_login_lifecycle_map_v2.json'
+      - 'scripts/qa_sec001_oidc_neutral_cs21a165.mjs'
+      - '00_DOCUMENTACION/SEC001_OIDC_NEUTRAL_CS21A165_2026-08-29.md'
+      - '.github/workflows/qa-sec001-oidc-neutral-cs21a165.yml'
+  push:
+    branches:
+      - security/sec001-oidc-neutral-foundation-cs21a165
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run provider-neutral OIDC guard
+        run: node scripts/qa_sec001_oidc_neutral_cs21a165.mjs
+      - name: Confirm login entrypoint remains unchanged and adapter unloaded
+        run: |
+          ! grep -q "auth_provider_sec001_v2" login.html
+          ! grep -q "SEC001_AUTH_PROVIDER_V2" src/login.jsx
+      - name: Diff hygiene
+        run: git diff --check origin/main...HEAD
