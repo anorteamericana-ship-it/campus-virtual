@@ -151,6 +151,18 @@ function StudentHelpContactsF984() {
   );
 }
 
+function studentSafeUserErrorF984(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[StudentDocuments] Detalle técnico oculto al estudiante.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 async function _studentPrivateSignedPdfF984() {
   const token = window.getSessionToken ? window.getSessionToken() : '';
   if (!token) return { ok:false, error:'sesion_requerida' };
@@ -199,7 +211,7 @@ function StudentSignedEnrollmentPrivateF984() {
     }
     try {
       const r = await _studentPrivateSignedPdfF984();
-      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No hay una matrícula firmada disponible todavía.');
+      if (!r?.ok || !r.blob) throw new Error(studentSafeUserErrorF984(r?.mensaje || r?.error, 'No hay una matrícula firmada disponible todavía.', 'matricula_firmada'));
       const objectUrl = URL.createObjectURL(r.blob);
       if (preview && !preview.closed) preview.location.replace(objectUrl);
       else {
@@ -210,7 +222,7 @@ function StudentSignedEnrollmentPrivateF984() {
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
     } catch (e) {
       try { if (preview && !preview.closed) preview.close(); } catch (_) {}
-      setError(e?.message || 'No se pudo abrir la matrícula firmada.');
+      setError(studentSafeUserErrorF984(e?.message, 'No se pudo abrir la matrícula firmada.', 'matricula_firmada'));
     } finally { setBusy(false); }
   };
   return (

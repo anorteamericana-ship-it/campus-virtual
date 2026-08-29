@@ -22,6 +22,18 @@ async function postStudentModules(fn, payload = {}) {
   return await res.json();
 }
 
+function _smSafeUserErrorF984(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[StudentCertificates] Detalle técnico oculto al estudiante.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 const NIVEL_NOMBRE_SM = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_LIBRO_SM  = { B1:'Interchange Intro', B2:'Interchange 1', I1:'Interchange 2', I2:'Interchange 3' };
 const NIVEL_COLOR_SM  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
@@ -868,10 +880,10 @@ function useMisCertificadosEstadoF984(codigo) {
     setState(prev => ({ ...prev, loading:true, error:'' }));
     postStudentModules('getMisCertificadosEstado', { codigo })
       .then(r => {
-        if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo verificar los certificados.');
+        if (!r?.ok) throw new Error(_smSafeUserErrorF984(r?.mensaje || r?.error, 'No se pudo verificar los certificados.', 'estado_certificados'));
         setState({ data:r, loading:false, error:'' });
       })
-      .catch(e => setState({ data:null, loading:false, error:e?.message || 'No se pudo verificar los certificados.' }));
+      .catch(e => setState({ data:null, loading:false, error:_smSafeUserErrorF984(e?.message, 'No se pudo verificar los certificados.', 'estado_certificados') }));
   }, [codigo]);
   React.useEffect(() => { reload(); }, [reload]);
   return { ...state, reload };
@@ -964,7 +976,7 @@ async function _smCertificadoPrivadoBlobF984(codigo, row) {
     registro: row?.registro || '',
     grupo: row?.grupo || row?.cod_grupo || '',
   });
-  if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el certificado privado.');
+  if (!r?.ok) throw new Error(_smSafeUserErrorF984(r?.mensaje || r?.error, 'No se pudo abrir el certificado.', 'abrir_certificado'));
   if (String(r.mime_type || '').trim().toLowerCase() !== 'application/pdf') {
     throw new Error('El archivo recibido no es un PDF válido.');
   }
@@ -1042,7 +1054,7 @@ function CertificadoEstadoCardF984({ row, codigo }) {
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
     } catch (e) {
       try { if (preview && !preview.closed) preview.close(); } catch (_) {}
-      setCertError(e?.message || 'No se pudo abrir el certificado.');
+      setCertError(_smSafeUserErrorF984(e?.message, 'No se pudo abrir el certificado.', 'abrir_certificado'));
     } finally { setAbriendo(false); }
   };
   return (
