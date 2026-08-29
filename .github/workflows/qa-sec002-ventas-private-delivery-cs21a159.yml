@@ -1,0 +1,30 @@
+name: QA SEC002 Ventas Private Delivery CS21A159
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_data.jsx'
+      - 'src/ventas_drawer.jsx'
+      - 'scripts/qa_sec002_ventas_private_delivery_cs21a159.mjs'
+      - '.github/workflows/qa-sec002-ventas-private-delivery-cs21a159.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate private-delivery source contract
+        run: node scripts/qa_sec002_ventas_private_delivery_cs21a159.mjs
+      - name: Diff whitespace check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check HEAD^1...HEAD^2
+          else
+            git diff --check HEAD^
+          fi

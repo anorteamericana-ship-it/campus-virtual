@@ -25,6 +25,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   const [busy, setBusy] = vUseState('');     // '' | 'CERTIFICADO' | 'CARTA' | upload/notificaciones
   const [err, setErr] = vUseState('');
   const [signedDoc, setSignedDoc] = vUseState(null);
+  const [openingSigned, setOpeningSigned] = vUseState(false);
   const signedFileRef = React.useRef(null);
   const d = detalle || {};
   const est = window.calcularEstadoEstudianteVentas(d);
@@ -96,13 +97,49 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
     } finally { setBusy(''); }
   };
 
+  const openSignedPrivate = async () => {
+    if (openingSigned || !(signedDoc && signedDoc.file_id)) return;
+    if (demo) {
+      onToast && onToast({ tipo:'ok', msg:'Vista previa: la apertura privada requiere una sesión real.' });
+      return;
+    }
+    setOpeningSigned(true); setErr('');
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando documento…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando documento…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarMatriculaFirmadaPrivadaVentasSeguro({
+        cedula: cedulaDoc,
+        codigo,
+        file_id: signedDoc.file_id,
+      });
+      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir la matrícula firmada.');
+      const objectUrl = URL.createObjectURL(r.blob);
+      if (preview && !preview.closed) preview.location.replace(objectUrl);
+      else {
+        const a = document.createElement('a');
+        a.href = objectUrl; a.download = r.nombre || 'matricula_firmada.pdf';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      const m = e?.message || 'No se pudo abrir la matrícula firmada.';
+      setErr(m); onToast && onToast({ tipo:'err', msg:m });
+    } finally { setOpeningSigned(false); }
+  };
+
   const notifySigned = async (canal) => {
     if (!puedeSubirFirmada) return;
     if (canal === 'whatsapp') {
-      const url = signedDoc && signedDoc.url ? signedDoc.url : '';
-      if (!url) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado para obtener el enlace.' }); return; }
+      if (!(signedDoc && signedDoc.file_id)) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado al expediente.' }); return; }
       if (!waNumDoc) { onToast && onToast({ tipo:'err', msg:'Este estudiante no tiene WhatsApp/teléfono registrado.' }); return; }
-      const msg = `Hola, te compartimos tu documento de matrícula firmado de Academia Norteamericana: ${url}`;
+      const msg = 'Hola. Tu documento de matrícula firmado de Academia Norteamericana ya está disponible de forma privada en el Campus Virtual, en Documentos y ayuda. También podemos enviártelo adjunto por correo.';
       window.open(`https://wa.me/${waNumDoc}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
       return;
     }
@@ -139,13 +176,13 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         <button className="vx-btn vx-btn-navy" disabled={!!busy || !puedeSubirFirmada} onClick={pickSigned}>
           {busy === 'UPLOAD_SIGNED' ? <><span className="vx-spin" /> Subiendo…</> : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
         </button>
-        {signedDoc && signedDoc.url ? (
-          <a className="vx-btn vx-btn-ghost" href={signedDoc.url} target="_blank" rel="noopener" style={{ textDecoration:'none', justifyContent:'center' }}>
-            <window.Vico d={window.VI.doc} size={14} /> Ver firmado
-          </a>
+        {signedDoc && signedDoc.file_id ? (
+          <button type="button" className="vx-btn vx-btn-ghost" disabled={openingSigned} onClick={openSignedPrivate} style={{ justifyContent:'center' }}>
+            {openingSigned ? <><span className="vx-spin dark" /> Verificando…</> : <><window.Vico d={window.VI.doc} size={14} /> Ver firmado</>}
+          </button>
         ) : null}
       </div>
-      {signedDoc && signedDoc.url ? (
+      {signedDoc && signedDoc.file_id ? (
         <div className="vx-docest-btns" style={{ marginTop: 8 }}>
           <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('correo')}>
             {busy === 'EMAIL_SIGNED' ? <><span className="vx-spin dark" /> Enviando…</> : <>Enviar correo</>}
@@ -700,6 +737,7 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   const [error, setError] = vUseState('');
   const [nota, setNota] = vUseState('');
   const [savingNota, setSavingNota] = vUseState(false);
+  const [docPrivadoAbriendo, setDocPrivadoAbriendo] = vUseState('');
   const [modal, setModal] = vUseState(null);   // 'cobrar' | 'activar' | 'cancelar' | { tipo:'success', result }
   const [actLoading, setActLoading] = vUseState('');
   const [loadingProforma, setLoadingProforma] = vUseState('');
@@ -758,6 +796,42 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
     finally { setSavingNota(false); }
   };
 
+  const abrirDocumentoExtraPrivado = async (doc) => {
+    const fileId = String(doc?.file_id || '').trim();
+    if (!fileId || docPrivadoAbriendo) {
+      if (!fileId) onToast({ tipo:'err', msg:'Este documento todavía no está disponible para apertura privada.' });
+      return;
+    }
+    setDocPrivadoAbriendo(fileId);
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando documento…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando documento…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarDocumentoExtraPrivado(cedula, fileId);
+      if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el documento.');
+      const objectUrl = URL.createObjectURL(r.blob);
+      const inlineSeguro = /^(application\/pdf|image\/(jpeg|png|gif|webp))$/i.test(r.mime_type || '');
+      if (inlineSeguro && preview && !preview.closed) {
+        preview.location.replace(objectUrl);
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+      } else {
+        try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+        const a = document.createElement('a');
+        a.href = objectUrl; a.download = r.nombre || 'documento'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      }
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      onToast({ tipo:'err', msg:e?.message || 'No se pudo abrir el documento.' });
+    } finally { setDocPrivadoAbriendo(''); }
+  };
+
   // ── Subir documento (extra o manual de los 3) ──
   const triggerUpload = (docKey) => { pendingDocKey.current = docKey || null; fileRef.current?.click(); };
   const onFilePicked = async (e) => {
@@ -775,7 +849,13 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
         if (docKey) {
           setDetalle(d => ({ ...d, [docKey]: base64 }));
         } else {
-          const nuevo = { nombre_archivo: file.name, mime_type: file.type, url: base64, fecha: window.HOY };
+          const nuevo = {
+            nombre_archivo: r.nombre || file.name,
+            mime_type: r.mime_type || file.type,
+            file_id: r.file_id || '',
+            size_bytes: Number(r.size_bytes || file.size || 0),
+            fecha: window.HOY,
+          };
           setDetalle(d => ({ ...d, docs_extra: [nuevo, ...(d.docs_extra || [])] }));
         }
         onToast({ tipo: 'ok', msg: 'Documento subido' });
@@ -1059,7 +1139,12 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
                       <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.nombre_archivo}</div>
                       <div style={{ fontSize: 10.5, color: 'var(--v-ink-3)' }}>{window.fmtFechaCorta(doc.fecha)}</div>
                     </div>
-                    {doc.url && doc.url !== '#' ? <a className="vx-copy" href={doc.url} target="_blank" rel="noopener">ver</a> : null}
+                    {doc.file_id ? (
+                      <button type="button" className="vx-copy" disabled={!!docPrivadoAbriendo}
+                        onClick={() => abrirDocumentoExtraPrivado(doc)}>
+                        {docPrivadoAbriendo === String(doc.file_id) ? 'abriendo…' : 'ver'}
+                      </button>
+                    ) : <span style={{ fontSize:10.5, color:'var(--v-ink-3)' }}>privado pendiente</span>}
                   </div>
                 )) : <div style={{ fontSize: 12.5, color: 'var(--v-ink-3)', fontStyle: 'italic', marginBottom: 4 }}>Sin documentos adicionales.</div>}
                 <button className="vx-mini-btn" style={{ width: 'auto', marginTop: 8, padding: '7px 14px' }} onClick={() => triggerUpload(null)}>
