@@ -1,0 +1,41 @@
+name: Bootstrap Teacher Material Access CS21A185
+
+on:
+  push:
+    branches:
+      - security/teacher-material-access-safe-errors-cs21a185
+    paths:
+      - '.github/workflows/bootstrap-teacher-material-access-cs21a185.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 7bb7bd37372657ba2c725f891cc039bf2994df7e HEAD
+      - name: Apply exact patch
+        run: node scripts/bootstrap_patch_teacher_material_access_cs21a185.mjs
+      - name: Run CS21A185 guard
+        run: node scripts/qa_teacher_material_access_cs21a185.mjs
+      - name: Regress CS21A184
+        run: node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
+      - name: Regress CS21A183
+        run: node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Diff hygiene
+        run: git diff --check 7bb7bd37372657ba2c725f891cc039bf2994df7e...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          git rm .github/workflows/bootstrap-teacher-material-access-cs21a185.yml scripts/bootstrap_patch_teacher_material_access_cs21a185.mjs
+          git add -A
+          git commit -m "CS21A185 · teacher material access gate and safe attendance errors"
+          git push origin HEAD:security/teacher-material-access-safe-errors-cs21a185
