@@ -1,0 +1,42 @@
+name: APPLY User Safe Copy CS21A156 TEMP
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/_apply_user_safe_copy_cs21a156.mjs'
+      - '.github/workflows/apply-user-safe-copy-cs21a156.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-exact-copy:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply exact copy replacements
+        run: node scripts/_apply_user_safe_copy_cs21a156.mjs
+      - name: Validate source diff
+        shell: bash
+        run: |
+          git diff --check
+          test "$(git diff --numstat -- src/app.jsx | awk '{print $1}')" = "3"
+          test "$(git diff --numstat -- src/app.jsx | awk '{print $2}')" = "3"
+          test "$(git diff --numstat -- src/ventas_data.jsx | awk '{print $1}')" = "3"
+          test "$(git diff --numstat -- src/ventas_data.jsx | awk '{print $2}')" = "2"
+      - name: Commit source delta and remove bootstrap
+        shell: bash
+        run: |
+          rm scripts/_apply_user_safe_copy_cs21a156.mjs
+          rm .github/workflows/apply-user-safe-copy-cs21a156.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app.jsx src/ventas_data.jsx scripts/_apply_user_safe_copy_cs21a156.mjs .github/workflows/apply-user-safe-copy-cs21a156.yml
+          git commit -m "CS21A156 · ocultar diagnósticos técnicos al usuario"
+          git push origin HEAD:${{ github.head_ref }}
