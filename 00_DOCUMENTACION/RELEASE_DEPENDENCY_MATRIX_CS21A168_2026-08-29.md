@@ -39,8 +39,8 @@ Una fila con E1 verde no es equivalente a “lista para producción”.
 
 | Bloque | PR/candidato | Evidencia alcanzada | Estado útil | Bloqueo antes de release |
 |---|---|---:|---|---|
-| Prospectos + Ventas integrado | **#138 / CS21A166** | E1 combinada verde; Real QA readonly revalidándose | Los cortes #123/#124/#125 + cadena #127→#131 conviven sin conflictos de source | E2 Sales real: asesor propio, cross-advisor deny, no activación por Sales, `scopeAsesor` consistente; SEC-002 backend para documentos |
-| B1 Student Book | **#126 / CS21A154** | lectura real Apps Script + 12/12 Drive PASS en rerun previo | ID de B1 Student Book corregido | E2 visual del visor + cache-bust/publicación durante integración |
+| Prospectos + Ventas integrado | **#138 / CS21A166** | E1 combinada verde; Real QA readonly repetido: 14/15 PASS, único P1 B1 SB HTTP 404 | Los cortes #123/#124/#125 + cadena #127→#131 conviven sin conflictos de source; el P1 real detectado no pertenece a Ventas | E2 Sales real: asesor propio, cross-advisor deny, no activación por Sales, `scopeAsesor` consistente; SEC-002 backend para documentos; integrar #126 antes de considerar candidato global |
+| B1 Student Book | **#126 / CS21A154** | lectura real Apps Script + 12/12 Drive PASS en rerun previo | ID de B1 Student Book corregido; explica exactamente el único P1 del Real QA de #138, que aún no contiene #126 | E2 visual del visor + cache-bust/publicación durante integración |
 | SEC-002 Ventas docs | **#131 / CS21A159** | E1 verde | `docs_extra` + matrícula firmada consumen entrega privada en frontend | endpoints privados aún no portados al Apps Script QA modular vigente; ACL pública no se retira aún |
 | SEC-002 certificado estudiante | **#132 / CS21A160** | E1 verde | no navega a `row.url`; Blob/ObjectURL + PDF/hash | `descargarMiCertificadoPrivado` backend QA + E2 propia/ajena + ACL QA |
 | SEC-002 comprobante pago | **#133 / CS21A161** | E1 verde | no render/navega `url_comprobante`; Blob privado | `descargarComprobantePagoPrivado` backend QA + admin/superadmin E2 + ACL QA |
@@ -49,6 +49,28 @@ Una fila con E1 verde no es equivalente a “lista para producción”.
 | SEC-001 mínimo contraseña | **#136 / CS21A164** | E1 source verde | inscripción alinea mínimo visible 6 | validación server-side, common-password, rate limit/anti-enumeración; no es frontera de seguridad por sí sola |
 | SEC-001 OIDC | **#137 / CS21A165** | E1 sintética verde | foundation provider-neutral e inerte; no cargada por login | proveedor DEV/QA, driver, snapshot Apps Script vigente, `AUTH_IDENTIDADES`, bridge, MFA/recovery, migración ficticia |
 | English LAB LIVE v2 | **#121** + probe **CS21A167** | source E1–E10 verde; backend QA ya ejercitado; probe con `main` PASS | compatible con `main` actual; divergencia era solo hotfix Sales | E2 multiusuario real: join estudiante, submit real, scoring, ranking; no PROD |
+
+---
+
+## Clasificación del Real QA de #138
+
+Se ejecutó dos veces el job `real-readonly` sobre el candidato integrado. Ambos intentos reprodujeron el mismo patrón final: **BLOQUEADO; 15 checks; P1=1**.
+
+El segundo artefacto permitió aislar la causa exacta:
+
+- Apps Script `getInfoGeneral`: HTTP 200;
+- Apps Script `getInscripcionPublicConfig`: HTTP 200;
+- Apps Script `getGruposDisponibles`: HTTP 200;
+- B1 Student Book: HTTP 404;
+- los otros 11 libros Drive: HTTP 206.
+
+Por tanto:
+
+1. el fallo no demuestra una regresión de Prospectos/Ventas;
+2. tampoco debe ocultarse ni eliminarse del workflow;
+3. #138 no es candidato global mientras no incorpore el arreglo #126;
+4. #126 ya posee evidencia real previa de 12/12 libros accesibles;
+5. una futura rama de integración global debe combinar #138 + #126 y volver a ejecutar Real QA antes de cualquier release.
 
 ---
 
@@ -82,7 +104,7 @@ En la sesión del 29-ago se buscaron exports/backups recientes en Drive. Los art
 
 ### A. Sin escrituras productivas
 
-1. cerrar Real QA readonly de #138 y clasificar cualquier P1 reproducible;
+1. construir un probe global #138 + #126 y repetir Real QA readonly;
 2. ejecutar E2 Sales con cuenta QA real/controlada;
 3. ejecutar E2 multiusuario real de English LAB v2;
 4. E2 visual B1 Student Book.
@@ -124,6 +146,10 @@ En la sesión del 29-ago se buscaron exports/backups recientes en Drive. Los art
 
 Los PR individuales se mantienen por trazabilidad hasta decidir la consolidación; no cerrarlos solo por existir #138.
 
+### B1 Student Book
+
+#138 fue construido para integrar Ventas, no #126. El Real QA global heredado hizo visible esa dependencia: mientras el candidato no contenga #126, B1 SB continuará usando la referencia rota de `main` y el workflow debe seguir rojo. La corrección adecuada es probar convivencia #138 + #126, no debilitar el gate.
+
 ### SEC-002
 
 No retirar `ANYONE_WITH_LINK` antes de que el consumidor privado de **esa misma clase** haya pasado runtime QA. El orden obligatorio es consumidor + endpoint + E2 → ACL QA → E2 otra vez.
@@ -149,7 +175,7 @@ No mezclar housekeeping con release.
 
 ---
 
-## Dictamen al crear esta matriz
+## Dictamen al actualizar esta matriz
 
 **NO APTO PARA RELEASE GLOBAL TODAVÍA.**
 
@@ -158,6 +184,8 @@ Razón: existe una base de source moderna mucho más ordenada y varios guards ve
 1. E2 Sales;
 2. E2 multiusuario English LAB v2;
 3. backend privado SEC-002 sobre el Apps Script QA modular vigente.
+
+Además, #138 por sí solo no incluye #126 y por eso su Real QA global reproduce el P1 B1 Student Book ya conocido. Esto es una dependencia de integración, no evidencia de regresión de Ventas.
 
 SEC-004 y SEC-001 son foundations seguras/inertes, no cambios de runtime terminados.
 
