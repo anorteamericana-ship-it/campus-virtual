@@ -1,0 +1,98 @@
+name: QA English LAB Multiuser CS21A171
+
+on:
+  push:
+    branches:
+      - 'qa/english-lab-multiuser-e2-cs21a171'
+    paths:
+      - 'scripts/real_qa_english_lab_multiuser_cs21a171.mjs'
+      - 'scripts/qa_english_lab_multiuser_contract_cs21a171.mjs'
+      - '.github/workflows/qa-english-lab-multiuser-cs21a171.yml'
+      - '00_DOCUMENTACION/QA_ENGLISH_LAB_MULTIUSER_CS21A171_2026-08-29.md'
+  pull_request:
+    paths:
+      - 'scripts/real_qa_english_lab_multiuser_cs21a171.mjs'
+      - 'scripts/qa_english_lab_multiuser_contract_cs21a171.mjs'
+      - '.github/workflows/qa-english-lab-multiuser-cs21a171.yml'
+      - '00_DOCUMENTACION/QA_ENGLISH_LAB_MULTIUSER_CS21A171_2026-08-29.md'
+  workflow_dispatch:
+    inputs:
+      authenticated:
+        description: 'Ejecutar E2 docente + estudiante contra English LAB QA'
+        required: true
+        type: boolean
+        default: false
+      level:
+        description: 'Nivel curricular para Sentence Order'
+        required: true
+        type: choice
+        options: [B1, B2, I1, I2]
+        default: B1
+      unit:
+        description: 'Unidad 01-16'
+        required: true
+        type: string
+        default: '01'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-english-lab-multiuser-cs21a171-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate multiuser runner syntax
+        run: node --check scripts/real_qa_english_lab_multiuser_cs21a171.mjs
+      - name: Validate contract guard syntax
+        run: node --check scripts/qa_english_lab_multiuser_contract_cs21a171.mjs
+      - name: Verify fail-closed multiuser contract
+        run: node scripts/qa_english_lab_multiuser_contract_cs21a171.mjs
+
+  e2-multiuser-staging:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.authenticated == true) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[RUN_ELV2_E2_CS21A171]'))
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QA_ENGLISH_LAB_APPS_SCRIPT_URL: ${{ secrets.QA_ENGLISH_LAB_APPS_SCRIPT_URL }}
+      QA_LAB_TEACHER_USER: ${{ secrets.QA_LAB_TEACHER_USER }}
+      QA_LAB_TEACHER_PASS: ${{ secrets.QA_LAB_TEACHER_PASS }}
+      QA_LAB_STUDENT_USER: ${{ secrets.QA_LAB_STUDENT_USER }}
+      QA_LAB_STUDENT_PASS: ${{ secrets.QA_LAB_STUDENT_PASS }}
+      QA_LAB_GROUP_CODE: ${{ secrets.QA_LAB_GROUP_CODE }}
+      QA_ENGLISH_LAB_WRITE_CONFIRMATION: ${{ secrets.QA_ENGLISH_LAB_WRITE_CONFIRMATION }}
+      QA_LAB_LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || 'B1' }}
+      QA_LAB_UNIT: ${{ github.event_name == 'workflow_dispatch' && inputs.unit || '01' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse incomplete English LAB QA secret set
+        shell: bash
+        run: |
+          required=(QA_ENGLISH_LAB_APPS_SCRIPT_URL QA_LAB_TEACHER_USER QA_LAB_TEACHER_PASS QA_LAB_STUDENT_USER QA_LAB_STUDENT_PASS QA_LAB_GROUP_CODE QA_ENGLISH_LAB_WRITE_CONFIRMATION)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
+          done
+          if [ "${QA_ENGLISH_LAB_WRITE_CONFIRMATION}" != "CS21A171_STAGING_ONLY" ]; then
+            echo "Confirmación English LAB QA inválida"; exit 1
+          fi
+      - name: Run teacher + student E2
+        run: node scripts/real_qa_english_lab_multiuser_cs21a171.mjs
+      - name: Publish multiuser summary
+        if: always()
+        run: cat qa-output-english-lab-multiuser/english-lab-multiuser-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload multiuser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-english-lab-multiuser-${{ github.run_number }}
+          path: qa-output-english-lab-multiuser/
+          if-no-files-found: error
+          retention-days: 14
