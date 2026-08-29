@@ -33,7 +33,7 @@ mustNot(pagos, "window.open(url, '_blank'", 'direct payment receipt navigation')
 
 // CS21A162 · matrícula firmada privada estudiante.
 must(experience, '_studentPrivateSignedPdfF984', 'student signed enrollment private helper');
-must(experience, "fn: 'descargarMatriculaFirmadaPrivada'", 'private signed enrollment route');
+must(experience, "fn:'descargarMatriculaFirmadaPrivada'", 'private signed enrollment route');
 must(experience, 'StudentSignedEnrollmentPrivateF984', 'private signed enrollment UI');
 must(experience, 'URL.createObjectURL', 'signed enrollment ObjectURL');
 
