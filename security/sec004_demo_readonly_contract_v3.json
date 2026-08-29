@@ -1,0 +1,114 @@
+{
+  "id": "SEC-004",
+  "version": 3,
+  "date": "2026-08-29",
+  "status": "modern_source_candidate_current_main_runtime_snapshot_pending",
+  "main_base_sha": "53df524d0a9eab867d3b307b3e633f366af92a63",
+  "principle": "demo sessions may never mutate or escape their synthetic scope; unknown routes fail closed at the effective outermost project dispatcher",
+  "supersedes": {
+    "pr": 108,
+    "reason": "the historical branch is 93 commits behind main and its install assumptions reference a July monolith and later-disproved layer names"
+  },
+  "current_qa_evidence": {
+    "source": "Issue #111 runtime checkpoint 2026-08-21",
+    "script_id": "1GMHihGwnX_-sIS101rRlUoYpAH2HSKyms8lx6L9z7bjb_45YDn-ph6WD",
+    "deployment_id": "AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ",
+    "observed_file_count": 37,
+    "known_files": [
+      "01_Router.js",
+      "44_English_LAB_Live_Base.js",
+      "95_English_LAB_CS21A144_Al_Dia.js",
+      "99_QA_Staging_Guard.js"
+    ],
+    "fresh_export_available_in_this_session": false,
+    "install_from_old_snapshot_allowed": false
+  },
+  "outer_guard": {
+    "artifact": "apps_script_patches/ZZ_SEC004_DEMO_READONLY_OUTER_GUARD_V3.gs",
+    "version_marker": "SEC004-DEMO-READONLY-2",
+    "person_specific_demo_helpers_allowed": false,
+    "identity_adapter_required": "_sec004DemoIdentityAdapter_",
+    "optional_simulated_write_adapter": "_sec004DemoSimulatedWriteAdapter_",
+    "adapter_missing_authenticated_behavior": "deny sec004_policy_unbound",
+    "public_no_token_behavior": "delegate unchanged",
+    "real_authenticated_behavior": "delegate when identity adapter explicitly resolves is_demo=false",
+    "demo_unknown_route_behavior": "deny demo_read_only",
+    "demo_scope_mismatch_behavior": "deny demo_read_only",
+    "logout_behavior": "delegate as session bookkeeping",
+    "must_be_effective_outermost_doPost": true,
+    "file_name_is_order_proof": false
+  },
+  "demo_identity_adapter_contract": {
+    "input": "validated session from current QA backend",
+    "output": {
+      "is_demo": "boolean",
+      "kind": "student|teacher when is_demo=true",
+      "scope": {
+        "groups": "array",
+        "student_codes": "array",
+        "cedulas": "array",
+        "teachers": "array"
+      }
+    },
+    "must_derive_from": "canonical backend demo identity/configuration, not client-controlled flags",
+    "must_not_depend_on": [
+      "person-specific helper names in the outer guard",
+      "client-provided demo/read_only fields",
+      "a stale SESIONES demo flag without canonical revalidation"
+    ]
+  },
+  "safe_reads": {
+    "count": 23,
+    "policy": "explicit narrow allowlist; must be revalidated against the fresh modular QA export before installation",
+    "unknown_reads": "deny for demo"
+  },
+  "static_qa": {
+    "script": "scripts/qa_sec004_demo_outer_guard_cs21a163.mjs",
+    "tests": [
+      "source compiles",
+      "no person-specific legacy demo helpers or literal legacy secrets",
+      "one outer doPost wrapper",
+      "missing identity adapter blocks authenticated traffic",
+      "public no-token traffic delegates",
+      "real session delegates only after adapter resolves non-demo",
+      "unknown demo mutation fails closed",
+      "safe demo read inside scope delegates",
+      "forged demo scope fails closed",
+      "simulated write can occur only through explicit adapter"
+    ]
+  },
+  "backend_port_pending": {
+    "required": true,
+    "why": "the current modular Apps Script QA source is not available as a fresh complete export in this session",
+    "must_port": [
+      "generic identity adapter",
+      "demo secrets from Script Properties with rotation/minimum-length policy",
+      "synthetic student portal before productive portal",
+      "synthetic teacher write adapter if demo write previews are still required"
+    ],
+    "historical_codegs_patch_is_installable": false
+  },
+  "runtime_close_gate": [
+    "export and hash the entire current Apps Script QA project",
+    "enumerate every server file and every doPost reassignment in effective project order",
+    "map the canonical current demo identities and synthetic data helpers",
+    "implement _sec004DemoIdentityAdapter_ against that exact source",
+    "port only still-required demo-core behavior into the current modular files",
+    "install the outer guard after all other doPost wrappers and prove no later wrapper exists",
+    "configure newly rotated QA-only demo secrets in Script Properties",
+    "preserve the existing QA deployment ID/URL",
+    "test demo student and demo teacher positive reads inside synthetic scope",
+    "test forged group/student/teacher scope",
+    "test a base mutation and an invented future route",
+    "select a sentinel from the freshly observed later-wrapper families rather than hardcoding an obsolete English LAB route",
+    "prove zero real business rows, sheets, folders or documents are created by demo smoke",
+    "regress real authenticated accounts and public no-token enrollment",
+    "confirm no Memory Match engine diff",
+    "production remains unchanged"
+  ],
+  "deployment": {
+    "installed_in_qa": false,
+    "qa_runtime_verified": false,
+    "production_changed": false
+  }
+}
