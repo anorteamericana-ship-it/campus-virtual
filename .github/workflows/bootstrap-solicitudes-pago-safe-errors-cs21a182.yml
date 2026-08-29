@@ -1,0 +1,101 @@
+name: Bootstrap Solicitudes Pago Safe Errors CS21A182
+
+on:
+  push:
+    branches:
+      - fix/solicitudes-pago-safe-errors-cs21a182
+    paths:
+      - '.github/workflows/bootstrap-solicitudes-pago-safe-errors-cs21a182.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 9e5c1c6b2c42908ce7d8864a04dc44f94bd89608 HEAD
+      - name: Apply exact source patch
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'src/solicitudes_pago.jsx';
+          let s = fs.readFileSync(path, 'utf8');
+          function replaceOnce(oldText, newText, label) {
+            const n = s.split(oldText).length - 1;
+            if (n !== 1) throw new Error(`${label}: expected exact preimage once, found ${n}`);
+            s = s.replace(oldText, newText);
+          }
+
+          const badgeAnchor = `function SpEstadoBadge({ estado }) {`;
+          const helper = `function spSafeUserError(raw, fallback, context = '') {
+            const msg = String(raw == null ? '' : raw).trim();
+            if (!msg) return fallback;
+            const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+            const technicalText = /apps?\\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\\bjson\\b|\\btoken\\b|sesion_requerida|unauthorized|forbidden|internal server|status\\s*\\d{3}|sha-?256|\\bmime\\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+            if (technicalCode || technicalText) {
+              console.warn('[SolicitudesPago] Detalle técnico oculto al usuario.', { context, error: msg });
+              return fallback;
+            }
+            return msg;
+          }
+
+          ${badgeAnchor}`;
+          replaceOnce(badgeAnchor, helper, 'insert safe helper');
+
+          replaceOnce(
+            `if (!r || !r.ok) { setErr((r && r.error) || 'No se pudo cargar la cola.'); setLista([]); return; }`,
+            `if (!r || !r.ok) { setErr(spSafeUserError(r && (r.mensaje || r.error), 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_solicitudes')); setLista([]); return; }`,
+            'load error'
+          );
+          replaceOnce(
+            `.catch(e => { setErr('Error de red: ' + e.message); setLista([]); })`,
+            `.catch(e => { setErr(spSafeUserError(e?.message, 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_solicitudes_red')); setLista([]); })`,
+            'network error'
+          );
+          replaceOnce(
+            `if (!res || !res.ok) { showToast((res && res.error) || 'No se pudo marcar como aplicada.', 'err'); return; }`,
+            `if (!res || !res.ok) { showToast(spSafeUserError(res && (res.mensaje || res.error), 'No se pudo marcar como aplicada.', 'aplicar_solicitud'), 'err'); return; }`,
+            'apply error'
+          );
+          replaceOnce(
+            `if (!res || !res.ok) { showToast((res && res.error) || 'No se pudo rechazar.', 'err'); return; }`,
+            `if (!res || !res.ok) { showToast(spSafeUserError(res && (res.mensaje || res.error), 'No se pudo rechazar.', 'rechazar_solicitud'), 'err'); return; }`,
+            'reject error'
+          );
+          replaceOnce(
+            `if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el comprobante.');`,
+            `if (!r?.ok || !r.blob) throw new Error(spSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el comprobante.', 'abrir_comprobante'));`,
+            'receipt backend error'
+          );
+          replaceOnce(
+            `showToast(e?.message || 'No se pudo abrir el comprobante.', 'err');`,
+            `showToast(spSafeUserError(e?.message, 'No se pudo abrir el comprobante.', 'abrir_comprobante'), 'err');`,
+            'receipt catch error'
+          );
+
+          fs.writeFileSync(path, s, 'utf8');
+          NODE
+      - name: Run CS21A182 guard
+        run: node scripts/qa_solicitudes_pago_safe_errors_cs21a182.mjs
+      - name: Regress private payment receipt
+        run: node scripts/qa_sec002_payment_receipt_cs21a161.mjs
+      - name: Regress integrated private chain
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Diff hygiene vs CS21A181
+        run: git diff --check 9e5c1c6b2c42908ce7d8864a04dc44f94bd89608...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
+      - name: Remove bootstrap and push verified candidate
+        run: |
+          git rm .github/workflows/bootstrap-solicitudes-pago-safe-errors-cs21a182.yml
+          git add -A
+          git commit -m "CS21A182 · safe errors in payment requests"
+          git push origin HEAD:fix/solicitudes-pago-safe-errors-cs21a182
