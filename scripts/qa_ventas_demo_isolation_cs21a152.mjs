@@ -26,10 +26,17 @@ const previewBlocks = (guard.match(/payload && payload\.preview_test/g) || []).l
 if (previewBlocks < 2) fail('guard no bloquea preview_test en subida y notificación');
 else pass('preview_test bloqueado en operaciones reales');
 
-// Deuda conocida: el bloque visual ligado a identidad aún existe en el drawer.
-// Este test lo hace visible para que nadie interprete CS21A152 como eliminación completa.
-if (!drawer.includes('previewMatriculaCR')) fail('la deuda visual cambió: revisar y actualizar este guard');
-else console.log('KNOWN-DEBT: previewMatriculaCR todavía existe en el drawer; runtime bloqueado, retiro visual pendiente.');
+// CS21A157 supersedió la deuda visual conocida de CS21A152. En la fuente
+// integrada ya no basta con bloquearla operacionalmente: no debe reaparecer.
+for (const marker of [
+  'previewMatriculaCR',
+  'cedulaPreviewMatricula',
+  'Modo prueba controlado',
+  'Estos botones son temporales y solo aparecen para este prospecto de prueba.'
+]) {
+  if (drawer.includes(marker)) fail(`deuda visual QA reapareció: ${marker}`);
+  else pass(`deuda visual QA ausente: ${marker}`);
+}
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log('CS21A152 QA OK');
+console.log('CS21A152 QA OK · reconciliado con CS21A157');
