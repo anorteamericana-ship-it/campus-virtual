@@ -12,13 +12,13 @@ const check = (ok, msg) => ok ? console.log(`PASS: ${msg}`) : failures.push(msg)
 // CS21A173 · Ventas fail-closed + user-safe errors.
 check(ventasDrawer.includes('function vxSafeUserError('), 'Ventas conserva filtro de errores seguros');
 check((ventasDrawer.match(/setGrupos\(window\.DEMO_GRUPOS\)/g) || []).length === 1, 'DEMO_GRUPOS solo existe en preview explícito');
-check(ventasDrawer.includes('if (!grupos.some(g => g.codigo === value)) onChange(\'\');'), 'grupo tentativo obsoleto se limpia');
+check(ventasDrawer.includes("if (!grupos.some(g => g.codigo === value)) onChange('');"), 'grupo tentativo obsoleto se limpia');
 check(ventasDash.includes("setErrorCarga('No pudimos cargar tu panel. Recargá la página e intentá nuevamente.')"), 'dashboard usa copy estable');
 
 // CS21A174 · identidad histórica inventariada y sin recomendación de ACL pública.
-check(identityContract.class === 'student_identity_and_title_images', 'contrato identifica clase de identidad histórica');
-check(Array.isArray(identityContract.consumers) && identityContract.consumers.some(x => String(x.surface || '').includes('Ventas')), 'contrato incluye consumidor Ventas');
-check(Array.isArray(identityContract.consumers) && identityContract.consumers.some(x => String(x.surface || '').includes('Matr')), 'contrato incluye consumidor Matrículas Admin');
+check(identityContract.document_class === 'student_identity_and_title_images_legacy', 'contrato identifica clase de identidad histórica');
+check(Array.isArray(identityContract.consumers) && identityContract.consumers.some(x => String(x.surface || '').toLowerCase() === 'ventas'), 'contrato incluye consumidor Ventas');
+check(Array.isArray(identityContract.consumers) && identityContract.consumers.some(x => String(x.surface || '').toLowerCase() === 'matriculas_admin'), 'contrato incluye consumidor Matrículas Admin');
 check(ventasParts.includes('SEC-002') && matriculas.includes('SEC-002'), 'ambos consumidores marcan deuda legacy SEC-002');
 check(!ventasParts.includes('fix de fondo —permisos públicos al subir'), 'Ventas no recomienda permisos públicos');
 check(!matriculas.includes('fix de fondo —setSharing público al subir'), 'Admin no recomienda setSharing público');
@@ -39,7 +39,8 @@ check(!matriculas.includes('setError(e.message)'), 'Matrículas no expone e.mess
 check(!matriculas.includes("onToast((r && r.error) ||"), 'Matrículas no expone r.error directo');
 
 // Límites honestos: legacy sigue inventariado; no declarar cierre backend/ACL.
-check(identityContract.runtime_state === 'legacy_public_url_consumer_pending_private_backend', 'contrato mantiene runtime legacy explícito');
+check(identityContract.status === 'legacy_consumers_mapped_backend_private_endpoint_pending', 'contrato mantiene backend privado pendiente');
+check(identityContract.no_consumer_switch_before_backend === true, 'consumer switch sigue bloqueado hasta backend');
 check(identityContract.no_acl_change === true, 'contrato mantiene ACL sin cambios');
 
 if (failures.length) {
