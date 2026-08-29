@@ -1,5 +1,6 @@
 name: Bootstrap Merge SEC002 Private Chain CS21A181
 
+# Rerun marker: signed enrollment route assertion aligned to canonical source.
 on:
   push:
     branches:
