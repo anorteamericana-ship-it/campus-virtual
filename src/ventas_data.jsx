@@ -421,9 +421,10 @@ async function getDashboardVentas(asesor, opts = {}) {
   const raw = await res.text();
   const cleaned = String(raw || '').trim();
   if (cleaned.charAt(0) === '<') {
-    throw new Error('El backend devolvió HTML en vez de JSON. Recargá con Ctrl+F5; si persiste, revisá que GitHub haya publicado src/data.jsx y que Apps Script esté desplegado.');
+    console.error('[Ventas] Respuesta inesperada del servicio.', { tipo: 'html', longitud: cleaned.length });
+    throw new Error('No pudimos cargar el panel. Recargá la página e intentá nuevamente.');
   }
-  const data = cleaned ? JSON.parse(cleaned) : { ok:false, error:'Respuesta vacía del backend.' };
+  const data = cleaned ? JSON.parse(cleaned) : { ok:false, error:'No recibimos respuesta del servicio. Intentá nuevamente.' };
   ventasDashCachePut(asesor, data);
   return data;
 }
