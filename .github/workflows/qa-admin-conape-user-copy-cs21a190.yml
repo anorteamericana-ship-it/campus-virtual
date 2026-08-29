@@ -1,0 +1,28 @@
+name: QA Admin CONAPE User Copy CS21A190
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students_quick_update_conape_cs21a99.js'
+      - 'src/admin_students_quick_update_state_cs21a99.js'
+      - 'src/admin_students_quick_update_core_cs21a99.js'
+      - 'scripts/qa_admin_conape_user_copy_cs21a190.mjs'
+      - '.github/workflows/qa-admin-conape-user-copy-cs21a190.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admin-conape-user-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A190 guard
+        run: node scripts/qa_admin_conape_user_copy_cs21a190.mjs
+      - name: Regress CS21A189 admin safe errors
+        run: node scripts/qa_admin_quick_update_safe_errors_cs21a189.mjs
+      - name: Regress CS21A188 teacher copy
+        run: node scripts/qa_teacher_user_copy_cs21a188.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^ HEAD || git diff --check
