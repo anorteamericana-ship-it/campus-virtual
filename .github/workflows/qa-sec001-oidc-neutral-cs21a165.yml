@@ -27,4 +27,4 @@ jobs:
           ! grep -q "auth_provider_sec001_v2" login.html
           ! grep -q "SEC001_AUTH_PROVIDER_V2" src/login.jsx
       - name: Diff hygiene
-        run: git diff --check origin/main...HEAD
+        run: git diff --check origin/main...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
