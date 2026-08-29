@@ -6,6 +6,18 @@
   const VERSION = 'F98.4-Z6-CS21A76';
   const SCRIPT_URL = window.APPS_SCRIPT_URL;
 
+  function tp76SafeUserError(raw, fallback, context = '') {
+    const msg = String(raw == null ? '' : raw).trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[TeacherProfile] Detalle técnico oculto al docente.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   function session() {
     try {
       return (typeof window.getSesion === 'function'
@@ -176,7 +188,7 @@
       try {
         applyData(await post('getPerfilDocenteCS21A76'));
       } catch (error) {
-        setState(previous => ({ ...previous, loading: false, error: error?.message || String(error) }));
+        setState(previous => ({ ...previous, loading: false, error: tp76SafeUserError(error?.message || String(error), 'No pudimos cargar tu perfil. Intentá de nuevo.', 'cargar_perfil') }));
       }
     }, [applyData]);
 
@@ -191,7 +203,7 @@
         setEditing(false);
         setNotice(data.mensaje || 'Perfil actualizado.');
       } catch (error) {
-        setNotice(error?.message || String(error));
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo guardar el perfil. Intentá de nuevo.', 'guardar_perfil'));
       } finally {
         setBusy('');
       }
@@ -212,7 +224,7 @@
         applyData(data);
         setNotice(data.mensaje || 'Fotografía actualizada.');
       } catch (error) {
-        setNotice(error?.message || String(error));
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo actualizar la fotografía.', 'subir_foto'));
       } finally {
         setBusy('');
       }
@@ -239,7 +251,7 @@
         applyData(data);
         setNotice(data.mensaje || 'Documento actualizado.');
       } catch (error) {
-        setNotice(error?.message || String(error));
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo actualizar el documento.', `subir_documento:${type}`));
       } finally {
         setBusy('');
       }
