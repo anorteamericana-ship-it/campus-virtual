@@ -1,0 +1,30 @@
+name: QA Prospectos Ventas CS21A151
+
+on:
+  pull_request:
+    paths:
+      - 'ventas.html'
+      - 'src/prospect_free_student.jsx'
+      - 'src/sidebar.jsx'
+      - 'src/ventas_parts.jsx'
+      - 'src/ventas_drawer.jsx'
+      - 'src/ventas_data.jsx'
+      - 'scripts/qa_prospectos_ventas_cs21a151.mjs'
+      - '.github/workflows/qa-prospectos-ventas-cs21a151.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prospectos-ventas-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prospectos / Ventas cleanup guard
+        run: node scripts/qa_prospectos_ventas_cs21a151.mjs
