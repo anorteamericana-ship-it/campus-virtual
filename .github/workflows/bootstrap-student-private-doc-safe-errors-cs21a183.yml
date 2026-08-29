@@ -1,0 +1,116 @@
+name: Bootstrap Student Private Doc Safe Errors CS21A183
+
+on:
+  push:
+    branches:
+      - fix/student-private-doc-safe-errors-cs21a183
+    paths:
+      - '.github/workflows/bootstrap-student-private-doc-safe-errors-cs21a183.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 7a5a2bdb85a86350edc430921c7c34643ba62727 HEAD
+      - name: Apply exact source patch
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          function patch(path, operations) {
+            let s = fs.readFileSync(path, 'utf8');
+            for (const { oldText, newText, label } of operations) {
+              const n = s.split(oldText).length - 1;
+              if (n !== 1) throw new Error(`${path} ${label}: expected exact preimage once, found ${n}`);
+              s = s.replace(oldText, newText);
+            }
+            fs.writeFileSync(path, s, 'utf8');
+          }
+
+          const technicalBody = (prefix) => `function ${prefix}(raw, fallback, context = '') {
+            const msg = String(raw == null ? '' : raw).trim();
+            if (!msg) return fallback;
+            const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+            const technicalText = /apps?\\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\\bjson\\b|\\btoken\\b|sesion_requerida|unauthorized|forbidden|internal server|status\\s*\\d{3}|sha-?256|\\bmime\\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+            if (technicalCode || technicalText) {
+              console.warn('${prefix === '_smSafeUserErrorF984' ? '[StudentCertificates]' : '[StudentDocuments]'} Detalle técnico oculto al estudiante.', { context, error: msg });
+              return fallback;
+            }
+            return msg;
+          }`;
+
+          patch('src/student_modules.jsx', [
+            {
+              oldText: `const NIVEL_NOMBRE_SM = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };`,
+              newText: `${technicalBody('_smSafeUserErrorF984')}\n\nconst NIVEL_NOMBRE_SM = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };`,
+              label: 'insert certificate helper'
+            },
+            {
+              oldText: `if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo verificar los certificados.');`,
+              newText: `if (!r?.ok) throw new Error(_smSafeUserErrorF984(r?.mensaje || r?.error, 'No se pudo verificar los certificados.', 'estado_certificados'));`,
+              label: 'certificate status backend'
+            },
+            {
+              oldText: `.catch(e => setState({ data:null, loading:false, error:e?.message || 'No se pudo verificar los certificados.' }));`,
+              newText: `.catch(e => setState({ data:null, loading:false, error:_smSafeUserErrorF984(e?.message, 'No se pudo verificar los certificados.', 'estado_certificados') }));`,
+              label: 'certificate status catch'
+            },
+            {
+              oldText: `if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo abrir el certificado privado.');`,
+              newText: `if (!r?.ok) throw new Error(_smSafeUserErrorF984(r?.mensaje || r?.error, 'No se pudo abrir el certificado.', 'abrir_certificado'));`,
+              label: 'certificate private backend'
+            },
+            {
+              oldText: `setCertError(e?.message || 'No se pudo abrir el certificado.');`,
+              newText: `setCertError(_smSafeUserErrorF984(e?.message, 'No se pudo abrir el certificado.', 'abrir_certificado'));`,
+              label: 'certificate catch'
+            }
+          ]);
+
+          patch('src/student_experience.jsx', [
+            {
+              oldText: `async function _studentPrivateSignedPdfF984() {`,
+              newText: `${technicalBody('studentSafeUserErrorF984')}\n\nasync function _studentPrivateSignedPdfF984() {`,
+              label: 'insert student document helper'
+            },
+            {
+              oldText: `if (!r?.ok || !r.blob) throw new Error(r?.mensaje || r?.error || 'No hay una matrícula firmada disponible todavía.');`,
+              newText: `if (!r?.ok || !r.blob) throw new Error(studentSafeUserErrorF984(r?.mensaje || r?.error, 'No hay una matrícula firmada disponible todavía.', 'matricula_firmada'));`,
+              label: 'signed enrollment backend'
+            },
+            {
+              oldText: `setError(e?.message || 'No se pudo abrir la matrícula firmada.');`,
+              newText: `setError(studentSafeUserErrorF984(e?.message, 'No se pudo abrir la matrícula firmada.', 'matricula_firmada'));`,
+              label: 'signed enrollment catch'
+            }
+          ]);
+          NODE
+      - name: Run CS21A183 guard
+        run: node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Regress private certificate
+        run: node scripts/qa_sec002_student_certificate_cs21a160.mjs
+      - name: Regress private signed enrollment
+        run: node scripts/qa_sec002_student_signed_enrollment_cs21a162.mjs
+      - name: Regress integrated private chain
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Regress payment safe errors
+        run: node scripts/qa_solicitudes_pago_safe_errors_cs21a182.mjs
+      - name: Diff hygiene vs CS21A182
+        run: git diff --check 7a5a2bdb85a86350edc430921c7c34643ba62727...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
+      - name: Remove bootstrap and push verified candidate
+        run: |
+          git rm .github/workflows/bootstrap-student-private-doc-safe-errors-cs21a183.yml
+          git add -A
+          git commit -m "CS21A183 · safe student private-document errors"
+          git push origin HEAD:fix/student-private-doc-safe-errors-cs21a183
