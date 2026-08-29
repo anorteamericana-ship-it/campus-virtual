@@ -162,7 +162,7 @@ function ModuloNoDisponibleView({ titulo = 'Módulo temporalmente no disponible'
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--an-granate, #7A1E2C)' }}>Campus Virtual</div>
       <div style={{ fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 28, color: 'var(--an-navy-ink, #001E47)', marginTop: 8 }}>{titulo}</div>
       <div style={{ fontSize: 13, color: 'var(--ink-3, #6B7280)', lineHeight: 1.6, marginTop: 10 }}>
-        Recargá la página. Si el problema continúa, el archivo del módulo no terminó de publicarse en GitHub.
+        Recargá la página. Si el problema continúa, intentá nuevamente en unos minutos o contactá a soporte.
       </div>
       <button type="button" className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 18 }}>Recargar</button>
     </div>
@@ -1162,8 +1162,8 @@ class CampusRootErrorBoundary extends React.Component {
         <div style={{ maxWidth:720, width:'100%', background:'#fff', border:'1px solid var(--line, #e5e0d8)', borderRadius:20, padding:'28px 30px', boxShadow:'0 20px 60px rgba(0,0,0,.12)' }}>
           <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate, #7A1E2C)' }}>Campus Virtual</div>
           <h1 style={{ fontFamily:'var(--f-serif, Georgia, serif)', fontSize:30, color:'var(--an-navy-ink, #001E47)', margin:'8px 0 10px' }}>No se pudo completar la carga</h1>
-          <p style={{ fontSize:13, color:'var(--ink-2, #4A413A)', lineHeight:1.6, margin:0 }}>La sesión permanece guardada. Recargá la página después de que GitHub termine de publicar todos los archivos.</p>
-          <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#F8F4EE', color:'#6B6258', fontFamily:'monospace', fontSize:11, overflowWrap:'anywhere' }}>{mensaje}</div>
+          <p style={{ fontSize:13, color:'var(--ink-2, #4A413A)', lineHeight:1.6, margin:0 }}>Tu sesión permanece guardada. Recargá la página para intentar completar la carga.</p>
+          <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#F8F4EE', color:'#6B6258', fontSize:12, lineHeight:1.5 }}>Si el problema continúa, volvé al inicio de sesión e ingresá nuevamente.</div>
           <div style={{ display:'flex', gap:10, marginTop:18, flexWrap:'wrap' }}>
             <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>Recargar Campus</button>
             <button type="button" className="btn" onClick={campusIrALogin}>Volver al inicio de sesión</button>
