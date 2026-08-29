@@ -1,0 +1,37 @@
+name: APPLY Ventas Call WhatsApp CS21A158 TEMP
+
+on:
+  push:
+    branches:
+      - feature/ventas-separate-call-whatsapp-cs21a158
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, 'CS21A158 applied') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/ventas-separate-call-whatsapp-cs21a158
+          fetch-depth: 0
+      - name: Apply exact UX fix
+        run: node scripts/apply_ventas_call_whatsapp_cs21a158.mjs
+      - name: Validate exact scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only)" = "src/ventas_drawer.jsx"
+          ! grep -q "llamarWhatsApp" src/ventas_drawer.jsx
+          grep -q "tel:+" src/ventas_drawer.jsx
+          grep -q "onClick={llamarTelefono}" src/ventas_drawer.jsx
+          grep -q "onClick={abrirWhatsApp}" src/ventas_drawer.jsx
+      - name: Commit source and remove bootstrap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ventas_drawer.jsx
+          git rm scripts/apply_ventas_call_whatsapp_cs21a158.mjs .github/workflows/apply-ventas-call-whatsapp-cs21a158.yml
+          git commit -m "CS21A158 applied · separate call and WhatsApp"
+          git push origin HEAD:feature/ventas-separate-call-whatsapp-cs21a158
