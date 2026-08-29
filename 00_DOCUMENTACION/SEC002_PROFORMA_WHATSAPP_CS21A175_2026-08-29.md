@@ -58,6 +58,10 @@ No cambia:
 - Admin no expone error técnico en el flujo de proforma;
 - la descarga legacy permanece trazable para no confundir esta reducción de exposición con una migración completa.
 
+Bootstrap exact-preimage de las dos superficies: run `33274625630` — **SUCCESS**. Aplicó el cambio, ejecutó el guard, pasó `git diff --check`, se autoeliminó y dejó el source en `9bb0b22d2b3331ff2cba0d32c14ee092a42c0c28`.
+
+Este commit documental dispara el workflow permanente sobre el source post-bootstrap; ese resultado gobierna la aceptación del corte.
+
 ## Estado
 
 **PARTIAL RISK REDUCTION · WHATSAPP PUBLIC-LINK PROPAGATION REMOVED · STAFF DOWNLOAD STILL LEGACY · BACKEND PRIVATE DELIVERY PENDING · NO PROD.**
