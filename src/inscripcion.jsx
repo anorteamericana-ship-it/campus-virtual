@@ -993,7 +993,7 @@ function DatosStep({form,setForm,setStep,padronName}){
     if(!clean(form.distrito)) missing.push('distrito');
     if(upper(form.distrito)==='OTRO' && !clean(form.distrito_otro)) missing.push('detalle del distrito');
     if(!clean(form.direccion)) missing.push('dirección exacta');
-    if(!clean(form.clave) || clean(form.clave).length < 4) missing.push('clave mínima de 4 caracteres');
+    if(!clean(form.clave) || clean(form.clave).length < 6) missing.push('clave mínima de 6 caracteres');
     if(form.es_menor && (!clean(form.tutor_nombre) || !clean(form.tutor_cedula) || !clean(form.tutor_tel))) missing.push('datos del encargado');
     if(missing.length){ setErr('Falta completar: ' + missing.join(', ') + '.'); return; }
     setErr('');
@@ -1013,7 +1013,7 @@ function DatosStep({form,setForm,setStep,padronName}){
       <Field label="Provincia" required><SelectInput value={form.provincia} onChange={updateProvince}><option value="">Seleccionar</option>{Object.keys(LOCATION_DATA).map(p=><option key={p} value={p}>{p}</option>)}</SelectInput></Field>
       <Field label="Cantón" required><SelectInput value={form.canton} onChange={updateCanton} disabled={!form.provincia}><option value="">{form.provincia ? 'Seleccionar' : 'Primero elegí provincia'}</option>{cantons.map(c=><option key={c} value={c}>{c}</option>)}</SelectInput></Field>
       <Field label="Distrito" required><SelectInput value={form.distrito} onChange={updateDistrict} disabled={!form.canton}><option value="">{form.canton ? 'Seleccionar' : 'Primero elegí cantón'}</option>{districtOptions.map(d=><option key={d} value={d}>{d}</option>)}</SelectInput></Field>
-      <Field label="Crea tu contraseña para ingresar al Campus virtual" required hint="La usarás con tu cédula para revisar tu solicitud."><TextInput type="password" value={form.clave} onChange={v=>setForm({clave:v})} autoComplete="new-password" /></Field>
+      <Field label="Crea tu contraseña para ingresar al Campus virtual" required hint="Usá al menos 6 caracteres. Podés usar una frase fácil de recordar."><TextInput type="password" value={form.clave} onChange={v=>setForm({clave:v})} minLength={6} maxLength={128} autoComplete="new-password" /></Field>
     </div>
     {upper(form.distrito)==='OTRO' && <Field label="Escribí tu distrito" required><TextInput value={form.distrito_otro} onChange={v=>setForm({distrito_otro:v})} /></Field>}
     <Field label="Dirección exacta" required><TextArea rows="3" value={form.direccion} onChange={v=>setForm({direccion:v})} placeholder="Ejemplo: de la iglesia 200 norte y 50 este, casa blanca portón negro." /></Field>
@@ -1427,6 +1427,7 @@ function InscripcionApp(){
     if(!cedulaStatus?.puedeContinuar) return 'Primero verificá la cédula.';
     if(!selectedGroup?.codigo) return 'Seleccioná un horario.';
     if(!clean(form.nombre) || !clean(form.cedula) || !clean(form.clave)) return 'Faltan nombre, cédula o clave.';
+    if(clean(form.clave).length < 6) return 'La clave debe tener al menos 6 caracteres.';
     if(!clean(form.correo) || !clean(form.whatsapp)) return 'Faltan correo o WhatsApp.';
     if(!clean(form.provincia) || !clean(form.canton) || !clean(form.distrito)) return 'Completá provincia, cantón y distrito.';
     if(upper(form.distrito)==='OTRO' && !clean(form.distrito_otro)) return 'Escribí el distrito.';

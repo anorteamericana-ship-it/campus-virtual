@@ -1,0 +1,135 @@
+{
+  "id": "SEC-001-OIDC-BRIDGE",
+  "version": 2,
+  "date": "2026-08-29",
+  "status": "provider_neutral_design_ready_not_routed_not_deployed",
+  "main_base_sha": "53df524d0a9eab867d3b307b3e633f366af92a63",
+  "future_endpoint": "iniciarSesionOidc",
+  "provider_selection": {
+    "locked_to_vendor": false,
+    "required_protocol": "OpenID Connect",
+    "browser_flow": "Authorization Code with PKCE",
+    "provider_must_support_dev_or_qa_tenant": true,
+    "production_tenant_allowed_now": false
+  },
+  "browser_adapter": {
+    "artifact": "src/auth_provider_sec001_v2.jsx",
+    "loaded_by_login_html": false,
+    "enabled_by_default": false,
+    "allowed_environments": ["dev", "qa"],
+    "vendor_sdk_bundled": false,
+    "client_secret_allowed": false,
+    "password_or_clave_accepted": false,
+    "runtime_driver": "window.SEC001_OIDC_DRIVER",
+    "driver_methods": ["beginLogin", "resolveCallback", "getProof"],
+    "load_side_effects_allowed": false
+  },
+  "campus_session_reuse": {
+    "reuse_existing_finishLogin": true,
+    "reuse_existing_setSesion": true,
+    "reuse_existing_sessionStorage_an_usuario": true,
+    "reuse_existing_getSessionToken": true,
+    "reuse_existing_validarSesion_cerrarSesion": true,
+    "rewrite_authenticated_consumers": false
+  },
+  "request_to_future_backend": {
+    "requires_existing_campus_token": false,
+    "provider_proof_field": "provider_proof",
+    "provider_id_field": "provider_id",
+    "password_or_clave_allowed": false,
+    "browser_username_as_authority": false,
+    "browser_role_as_authority": false,
+    "browser_groups_or_scope_as_authority": false
+  },
+  "server_provider_verification": {
+    "issuer_allowlist_source": "server-side configuration / Script Properties",
+    "issuer_or_discovery_url_from_request_allowed": false,
+    "provider_proof_logged_or_persisted": false,
+    "verification_must_establish": [
+      "trusted issuer/provider",
+      "stable non-empty subject",
+      "proof validity/expiry"
+    ],
+    "stable_identity_key": ["PROVIDER_ID", "ISSUER", "PROVIDER_SUB"],
+    "provider_profile_may_not_grant_campus_role": true
+  },
+  "identity_mapping": {
+    "mapping_store_target": "AUTH_IDENTIDADES",
+    "mapping_key": ["PROVIDER_ID", "ISSUER", "PROVIDER_SUB"],
+    "mapping_must_resolve_exactly_one_local_principal": true,
+    "local_principal_must_not_depend_only_on_username": true,
+    "blank_ambiguous_or_duplicate_mapping": "deny",
+    "migration_status_required": "MIGRATED",
+    "suggested_columns": [
+      "IDENTITY_ID",
+      "PROVIDER_ID",
+      "ISSUER",
+      "PROVIDER_SUB",
+      "LOCAL_SOURCE",
+      "LOCAL_KEY_TYPE",
+      "LOCAL_KEY",
+      "USERNAME_CANONICO",
+      "MIGRATION_STATUS",
+      "CREATED_AT",
+      "MIGRATED_AT",
+      "LEGACY_CLEARED_AT"
+    ]
+  },
+  "local_authorization_after_identity": {
+    "must_re_read_local_account": true,
+    "must_require_active_account": true,
+    "must_rederive": [
+      "rol",
+      "nombre",
+      "codigo",
+      "cedula",
+      "grupo",
+      "grupos",
+      "programa",
+      "ventas_scope"
+    ],
+    "provider_claims_cannot_override_local_fields": true,
+    "inactive_local_account_with_valid_identity": "deny",
+    "missing_local_account_with_valid_identity": "deny"
+  },
+  "proof_replay_and_abuse": {
+    "provider_attack_protection_remains_at_idp": true,
+    "campus_exchange_rate_limit_required": true,
+    "successful_exchange_should_use_short_replay_window_or_one_time_marker": true,
+    "raw_proof_cache_key_allowed": false,
+    "proof_digest_for_replay_marker_allowed": true,
+    "replay_marker_ttl_seconds_max": 300,
+    "uniform_failure_for_mapping_or_account_state": true
+  },
+  "response": {
+    "shape_target": "same successful Campus session DTO consumed by finishLogin",
+    "includes_campus_token": true,
+    "includes_provider_proof": false,
+    "includes_password": false,
+    "includes_provider_roles": false
+  },
+  "migration_rules": {
+    "bulk_plaintext_copy": false,
+    "migrated_account_plaintext_fallback": false,
+    "clear_legacy_secret_only_after_provider_mapping_and_login_confirmed": true,
+    "recovery_reset_replaces_plaintext_fallback": true
+  },
+  "routing_gate": {
+    "doPost_route_may_be_added_before_dev_qa_provider_exists": false,
+    "adapter_may_be_loaded_by_login_html_before_backend_qa_pass": false,
+    "real_accounts_may_be_migrated_before_fictitious_qa_pass": false,
+    "apps_script_port_requires_fresh_modular_snapshot": true
+  },
+  "negative_tests_required": [
+    "missing provider proof",
+    "invalid or expired provider proof",
+    "untrusted issuer/provider",
+    "valid provider identity with no mapping",
+    "valid provider identity with ambiguous mapping",
+    "valid provider identity mapped to inactive Campus account",
+    "browser tries to supply role/admin/groups/scope",
+    "replayed exchanged proof",
+    "legacy password fallback attempted after MIGRATED"
+  ],
+  "production_authorized": false
+}

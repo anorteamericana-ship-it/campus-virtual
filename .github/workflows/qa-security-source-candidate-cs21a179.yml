@@ -1,0 +1,37 @@
+name: QA Security Source Candidate CS21A179
+
+on:
+  pull_request:
+    paths:
+      - 'src/inscripcion.jsx'
+      - 'src/auth_provider_sec001_v2.jsx'
+      - 'security/sec001_oidc_bridge_contract_v2.json'
+      - 'security/sec001_login_lifecycle_map_v2.json'
+      - 'scripts/qa_security_source_candidate_cs21a179.mjs'
+      - '.github/workflows/qa-security-source-candidate-cs21a179.yml'
+      - '00_DOCUMENTACION/SECURITY_SOURCE_CANDIDATE_CS21A179_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrated-sec001-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diff hygiene
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate guard syntax
+        run: node --check scripts/qa_security_source_candidate_cs21a179.mjs
+      - name: Run SEC001 password min6 guard
+        run: node scripts/qa_sec001_password_min6_cs21a164.mjs
+      - name: Run SEC001 neutral OIDC guard
+        run: node scripts/qa_sec001_oidc_neutral_cs21a165.mjs
+      - name: Run integrated Sales Matrículas candidate guard
+        run: node scripts/qa_matriculas_ventas_security_cs21a177.mjs
+      - name: Run CS21A179 cross assertions
+        run: node scripts/qa_security_source_candidate_cs21a179.mjs
