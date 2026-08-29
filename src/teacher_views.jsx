@@ -654,7 +654,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
       const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo iniciar sesión.');
       onStarted && onStarted(r.sesion || r);
-    } catch(e){ alert(e.message || String(e)); }
+    } catch(e){ alert(teacherSessionSafeUserError(e?.message || String(e), 'No se pudo iniciar la clase. Intentá de nuevo.', 'iniciar_clase_hoy')); }
     finally { setBusy(false); }
   };
   const finalizar = async () => {
@@ -664,7 +664,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
       const r = await postTeacher('docenteFinalizarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo finalizar sesión.');
       onClosed && onClosed(r.sesion || r);
-    } catch(e){ alert(e.message || String(e)); }
+    } catch(e){ alert(teacherSessionSafeUserError(e?.message || String(e), 'No se pudo cerrar la clase. Intentá de nuevo.', 'cerrar_clase_hoy')); }
     finally { setBusy(false); }
   };
   return <div className="card" style={{ padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, borderLeft:'4px solid var(--an-navy)', width:'100%', maxWidth:'100%', minWidth:0, flexWrap:'wrap' }}>
@@ -806,7 +806,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,zoom_link:zoom});
       if(!r?.ok)throw new Error(r?.mensaje||r?.error||'No se pudo iniciar la clase.');
       setSesion(r.sesion||r); setSessionCheck('ok'); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
-    }catch(e){alert(e.message||String(e));}finally{setBusy('');}
+    }catch(e){alert(teacherSessionSafeUserError(e?.message||String(e),'No se pudo iniciar la clase. Intentá de nuevo.','iniciar_clase_drawer'));}finally{setBusy('');}
   };
   const abrirExamen=()=>{ if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
   const abrirCierre=()=>setAttendanceOpen(true);
@@ -1369,7 +1369,7 @@ function CalificarView({ toast }) {
       setResultado({ ok, errores: err, total: resultados.length });
       if (toast) toast(`${ok} calificación${ok!==1?'es':''} guardada${ok!==1?'s':''}`);
     } catch(e) {
-      setErrGlobal('Error de conexión: ' + e.message);
+      setErrGlobal(teacherSessionSafeUserError(e?.message || String(e), 'No se pudieron guardar las calificaciones. Intentá de nuevo.', 'guardar_calificaciones'));
     } finally {
       setCargando(false);
     }
@@ -1553,14 +1553,14 @@ function AsistenciaView({ toast }) {
       const data = await res.json();
 
       if (!data.ok) {
-        setErrGlobal(data.error || 'Error al registrar asistencia');
+        setErrGlobal(teacherSessionSafeUserError(data?.error, 'No se pudo registrar la asistencia. Intentá de nuevo.', 'registrar_asistencia_respuesta'));
         return;
       }
 
       setResultado({ presentes: counts.present + counts.late, ausentes: counts.absent });
       if (toast) toast(`Asistencia registrada · ${counts.present + counts.late} presentes`);
     } catch(e) {
-      setErrGlobal('Error de conexión: ' + e.message);
+      setErrGlobal(teacherSessionSafeUserError(e?.message || String(e), 'No se pudo registrar la asistencia. Intentá de nuevo.', 'registrar_asistencia_excepcion'));
     } finally {
       setCargando(false);
     }
