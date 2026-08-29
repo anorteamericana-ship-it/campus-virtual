@@ -1,0 +1,53 @@
+{
+  "version": "CS21A194-v1",
+  "date": "2026-08-29",
+  "classification": "SEC-002",
+  "scope": "admin/superadmin certificate document delivery",
+  "related_prs": [132, 165],
+  "current_frontend": {
+    "source": "src/admin_students.jsx",
+    "consumer": "individual student document/certificate panel",
+    "operations": [
+      "buscarCertificadoExistente",
+      "generarCertificado"
+    ],
+    "direct_drive_url_open_still_present": true,
+    "student_private_consumer_already_migrated_in_pr_132": true
+  },
+  "drive_acl_evidence": {
+    "sampled_real_certificates": 3,
+    "anyone_reader_observed": 3,
+    "allow_file_discovery": false,
+    "acl_changed_by_this_cut": false
+  },
+  "backend_evidence": {
+    "observed_code_snapshot_date": "2026-08-19",
+    "descargarMiCertificadoPrivado_present": false,
+    "admin_private_certificate_endpoint_proven": false,
+    "fresh_active_runtime_snapshot_proven": false
+  },
+  "target_contract": {
+    "authenticated_delivery_required": true,
+    "allowed_roles": ["student-own", "admin", "superadmin"],
+    "cross_student_admin_access_requires_role_scope": true,
+    "student_cross_record_access_denied": true,
+    "direct_drive_url_navigation_for_certificate_forbidden": true,
+    "response_mime": "application/pdf",
+    "bounded_size_required": true,
+    "pdf_magic_required": true,
+    "integrity_hash_preferred": true,
+    "blob_object_url_frontend": true,
+    "endpoint_name_final": false,
+    "endpoint_resolution_gate": "Issue #111 fresh Apps Script QA snapshot"
+  },
+  "required_e2": [
+    "admin opens certificate for authorized student",
+    "superadmin opens certificate for authorized student",
+    "student opens own certificate",
+    "student cannot open another student's certificate",
+    "unauthenticated request denied",
+    "certificate opens without direct Google Drive session",
+    "after QA ACL removal all positive/negative tests repeat"
+  ],
+  "release_claim": "NOT_FIXED_PRIVATE_BACKEND_PENDING"
+}
