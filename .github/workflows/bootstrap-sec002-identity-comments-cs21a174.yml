@@ -1,0 +1,36 @@
+name: Bootstrap SEC002 Identity Comments CS21A174
+
+on:
+  push:
+    branches:
+      - 'security/sec002-identity-legacy-contract-cs21a174'
+    paths:
+      - '.github/workflows/bootstrap-sec002-identity-comments-cs21a174.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply exact comment patch
+        run: python scripts/apply_sec002_identity_legacy_comments_cs21a174.py
+      - name: Verify anti-regression contract
+        run: |
+          node scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs
+          git diff --check
+      - name: Remove bootstrap files and commit
+        shell: bash
+        run: |
+          rm .github/workflows/bootstrap-sec002-identity-comments-cs21a174.yml
+          rm scripts/apply_sec002_identity_legacy_comments_cs21a174.py
+          git config user.name "anorteamericana-ship-it"
+          git config user.email "anorteamericana@gmail.com"
+          git add src/ventas_parts.jsx src/matriculas_admin.jsx .github/workflows/bootstrap-sec002-identity-comments-cs21a174.yml scripts/apply_sec002_identity_legacy_comments_cs21a174.py
+          git commit -m "CS21A174 · mark historical identity URL consumers as SEC002 legacy"
+          git push origin HEAD:security/sec002-identity-legacy-contract-cs21a174
