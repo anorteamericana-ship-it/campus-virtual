@@ -18,7 +18,7 @@ jobs:
           ref: security/sec002-ventas-private-delivery-cs21a159
           fetch-depth: 0
       - name: Apply modern SEC-002 source port
-        run: node scripts/apply_sec002_ventas_private_delivery_cs21a159.mjs
+        run: node scripts/run_sec002_ventas_private_delivery_cs21a159.mjs
       - name: Validate exact source scope
         run: |
           git diff --check
@@ -31,7 +31,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/.apply_sec002_ventas_private_delivery_cs21a159.fixed.mjs
           git add src/ventas_data.jsx src/ventas_drawer.jsx
-          git rm scripts/apply_sec002_ventas_private_delivery_cs21a159.mjs .github/workflows/apply-sec002-ventas-private-delivery-cs21a159.yml
+          git rm scripts/apply_sec002_ventas_private_delivery_cs21a159.mjs scripts/run_sec002_ventas_private_delivery_cs21a159.mjs .github/workflows/apply-sec002-ventas-private-delivery-cs21a159.yml
           git commit -m "CS21A159 applied · SEC-002 Ventas private delivery source"
           git push origin HEAD:security/sec002-ventas-private-delivery-cs21a159
