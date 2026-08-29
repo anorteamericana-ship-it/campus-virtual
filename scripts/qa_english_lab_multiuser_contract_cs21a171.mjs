@@ -34,10 +34,13 @@ check(workflow.includes("branches:\n      - 'qa/english-lab-multiuser-e2-cs21a17
 check(workflow.includes("contains(github.event.head_commit.message, '[RUN_ELV2_E2_CS21A171]')"), 'E2 por push exige marcador explícito');
 check(workflow.includes("github.event_name == 'workflow_dispatch' && inputs.authenticated == true"), 'dispatch E2 exige authenticated=true');
 check(workflow.includes('needs: contract'), 'E2 depende del guard contractual');
-check(workflow.includes('QA_ENGLISH_LAB_APPS_SCRIPT_URL: ${{ secrets.QA_ENGLISH_LAB_APPS_SCRIPT_URL }}'), 'URL QA proviene de secret');
-check(workflow.includes('QA_LAB_TEACHER_PASS: ${{ secrets.QA_LAB_TEACHER_PASS }}'), 'password docente proviene de secret');
-check(workflow.includes('QA_LAB_STUDENT_PASS: ${{ secrets.QA_LAB_STUDENT_PASS }}'), 'password estudiante proviene de secret');
-check(workflow.includes('QA_ENGLISH_LAB_WRITE_CONFIRMATION: ${{ secrets.QA_ENGLISH_LAB_WRITE_CONFIRMATION }}'), 'confirmación de escritura proviene de secret');
+check(workflow.includes('QA_ENGLISH_LAB_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}'), 'runner reutiliza URL staging QA canónica');
+check(workflow.includes('QA_LAB_TEACHER_USER: ${{ secrets.QA_TEACHER_USER }}'), 'runner reutiliza usuario docente QA canónico');
+check(workflow.includes('QA_LAB_TEACHER_PASS: ${{ secrets.QA_TEACHER_PASS }}'), 'runner reutiliza password docente QA canónico');
+check(workflow.includes('QA_LAB_STUDENT_USER: ${{ secrets.QA_STUDENT_USER }}'), 'runner reutiliza usuario estudiante QA canónico');
+check(workflow.includes('QA_LAB_STUDENT_PASS: ${{ secrets.QA_STUDENT_PASS }}'), 'runner reutiliza password estudiante QA canónico');
+check(workflow.includes('QA_LAB_GROUP_CODE: ${{ secrets.QA_GROUP_CODE }}'), 'runner reutiliza grupo QA canónico');
+check(workflow.includes('QA_ENGLISH_LAB_WRITE_CONFIRMATION: CS21A171_STAGING_ONLY'), 'confirmación se genera únicamente dentro del job E2 ya gated');
 check(workflow.includes('Refuse incomplete English LAB QA secret set'), 'workflow falla cerrado con secretos incompletos');
 check(!workflow.includes("pull_request' &&"), 'job E2 no se habilita por evento pull_request');
 
