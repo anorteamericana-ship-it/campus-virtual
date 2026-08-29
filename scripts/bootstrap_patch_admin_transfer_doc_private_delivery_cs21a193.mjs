@@ -5,7 +5,7 @@ let s=fs.readFileSync(path,'utf8');
 function one(label,oldText,newText){const n=s.split(oldText).length-1;if(n!==1)throw new Error(`${label}: expected 1 exact preimage, found ${n}`);s=s.replace(oldText,newText);}
 
 one('private helper signature',"function abrirPdfBackend(payload, fallbackUrl = '') {","function abrirPdfBackend(payload) {");
-one('remove helper URL fallback',"    const url = payload?.pdf_url || fallbackUrl;\n    if (url) { window.open(url, '_blank', 'noopener,noreferrer'); return true; }\n"," ");
+one('remove helper URL fallback',"    const url = payload?.pdf_url || fallbackUrl;\n    if (url) { window.open(url, '_blank', 'noopener,noreferrer'); return true; }\n","");
 one('remove inline direct transfer URL',"                  if (e.pdf_traslado_url) { window.open(e.pdf_traslado_url, '_blank', 'noopener,noreferrer'); return; }\n                  setPdfTrasladoBusy(id);","                  setPdfTrasladoBusy(id);");
 one('inline request bytes',"postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey }, 70000)","postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey, include_base64:true }, 70000)");
 one('inline private open',"if (!abrirPdfBackend(r, r.pdf_url)) alert('La constancia se generó, pero el navegador bloqueó la apertura. Puede abrirla desde el historial.');","if (!abrirPdfBackend(r)) alert('La constancia está disponible, pero no se pudo abrir de forma segura. Intentá de nuevo.');");
