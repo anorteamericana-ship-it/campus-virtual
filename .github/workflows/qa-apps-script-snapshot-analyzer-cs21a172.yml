@@ -1,0 +1,44 @@
+name: QA Apps Script Snapshot Analyzer CS21A172
+
+on:
+  push:
+    branches:
+      - 'audit/apps-script-snapshot-analyzer-cs21a172'
+    paths:
+      - 'scripts/analyze_apps_script_snapshot_cs21a172.mjs'
+      - 'scripts/qa_apps_script_snapshot_analyzer_cs21a172.mjs'
+      - '.github/workflows/qa-apps-script-snapshot-analyzer-cs21a172.yml'
+      - '00_DOCUMENTACION/APPS_SCRIPT_SNAPSHOT_ANALYZER_CS21A172_2026-08-29.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/analyze_apps_script_snapshot_cs21a172.mjs'
+      - 'scripts/qa_apps_script_snapshot_analyzer_cs21a172.mjs'
+      - '.github/workflows/qa-apps-script-snapshot-analyzer-cs21a172.yml'
+      - '00_DOCUMENTACION/APPS_SCRIPT_SNAPSHOT_ANALYZER_CS21A172_2026-08-29.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-apps-script-snapshot-analyzer-cs21a172-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyzer-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate analyzer syntax
+        run: node --check scripts/analyze_apps_script_snapshot_cs21a172.mjs
+      - name: Validate QA contract syntax
+        run: node --check scripts/qa_apps_script_snapshot_analyzer_cs21a172.mjs
+      - name: Run analyzer contract tests
+        run: node scripts/qa_apps_script_snapshot_analyzer_cs21a172.mjs
+      - name: Diff hygiene
+        shell: bash
+        run: |
+          git diff --check origin/main...HEAD -- . ':!00_DOCUMENTACION/**'
