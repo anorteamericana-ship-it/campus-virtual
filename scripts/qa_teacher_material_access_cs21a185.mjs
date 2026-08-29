@@ -13,7 +13,13 @@ must(viewer.includes('drive.google.com/file/d/') || viewer.includes('drive.googl
 must(base.includes('drive.google.com/drive/folders/'), 'teacher base still contains direct Drive folders as documented blocker');
 must(contract.classification === 'SEC-005', 'contract classification');
 must(contract.current_frontend.drive_ids_embedded_in_public_bundle === true, 'public-bundle exposure documented');
-must(contract.drive_acl_evidence.anyone_reader_observed === true, 'anyone-reader evidence documented');
+must(contract.drive_acl_evidence.root_folders_expected === 12, '12 teacher root folders expected');
+must(contract.drive_acl_evidence.root_folders_verified === 12, '12 teacher root folders verified');
+must(contract.drive_acl_evidence.root_folders_anyone_reader === 12, 'all 12 teacher root folders anyone-reader');
+must(contract.drive_acl_evidence.all_root_folders_anyone_reader === true, 'complete root-folder public-link pattern documented');
+must(contract.drive_acl_evidence.lesson_files_verified >= 1, 'at least one real lesson file verified');
+must(contract.drive_acl_evidence.lesson_files_anyone_reader >= 1, 'real lesson file anyone-reader verified');
+must(contract.drive_acl_evidence.all_verified_resources_allow_file_discovery === false, 'link-only discovery state documented');
 must(contract.drive_acl_evidence.acl_changed_by_this_cut === false, 'no ACL mutation claim');
 must(contract.target_contract.endpoint_names_resolved === false, 'backend endpoint names remain unresolved until snapshot');
 must(contract.release_claim === 'NOT_FIXED_PRIVATE_DELIVERY_PENDING', 'no false fixed claim');
@@ -23,6 +29,8 @@ must(!base.includes("setState(s=>({ ...s, loading:false, error:e?.message || Str
 
 console.log('CS21A185 TEACHER MATERIAL ACCESS: PASS');
 console.log('TEACHER_UI_ROLE_GATE=PASS');
+console.log('TEACHER_ROOT_ACL_12_OF_12=ANYONE_READER');
+console.log('REAL_LESSON_FILE_ACL=ANYONE_READER');
 console.log('PUBLIC_DRIVE_ACL=DOCUMENTED_P1_NOT_REMOVED');
 console.log('SAFE_TEACHER_ATTENDANCE_ERRORS=PASS');
 console.log('PRIVATE_DELIVERY=BLOCKED_UNTIL_FRESH_BACKEND_SNAPSHOT');
