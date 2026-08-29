@@ -1,0 +1,29 @@
+name: QA SEC002 Student Certificate CS21A160
+
+on:
+  pull_request:
+    paths:
+      - 'src/student_modules.jsx'
+      - 'scripts/qa_sec002_student_certificate_cs21a160.mjs'
+      - '.github/workflows/qa-sec002-student-certificate-cs21a160.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate private certificate source contract
+        run: node scripts/qa_sec002_student_certificate_cs21a160.mjs
+      - name: Diff whitespace check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check HEAD^1...HEAD^2
+          else
+            git diff --check HEAD^
+          fi
