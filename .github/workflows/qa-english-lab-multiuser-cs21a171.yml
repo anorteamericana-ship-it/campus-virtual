@@ -86,10 +86,10 @@ jobs:
       - name: Run teacher + student E2
         run: node scripts/real_qa_english_lab_multiuser_cs21a171.mjs
       - name: Publish multiuser summary
-        if: always()
+        if: ${{ always() && hashFiles('qa-output-english-lab-multiuser/english-lab-multiuser-report.md') != '' }}
         run: cat qa-output-english-lab-multiuser/english-lab-multiuser-report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload multiuser evidence
-        if: always()
+        if: ${{ always() && hashFiles('qa-output-english-lab-multiuser/english-lab-multiuser-report.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: qa-english-lab-multiuser-${{ github.run_number }}
