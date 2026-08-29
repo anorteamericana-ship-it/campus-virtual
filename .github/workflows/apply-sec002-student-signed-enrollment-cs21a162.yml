@@ -1,0 +1,61 @@
+name: APPLY SEC002 Student Signed Enrollment CS21A162 TEMP
+
+on:
+  push:
+    branches:
+      - security/sec002-student-signed-enrollment-cs21a162
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, 'CS21A162 applied') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: security/sec002-student-signed-enrollment-cs21a162
+          fetch-depth: 0
+      - name: Extract and apply only the audited student consumer delta
+        run: |
+          git show b85b5c7f72a1f687f9499562b80a01e380c43aa2:scripts/apply_sec002_signed_enrollment_frontend.py > /tmp/full.py
+          printf 'from pathlib import Path\n' > /tmp/apply_student.py
+          sed -n '/# ── student_experience.jsx/,$p' /tmp/full.py | sed '$d' >> /tmp/apply_student.py
+          python /tmp/apply_student.py
+      - name: Add PDF magic validation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/student_experience.jsx')
+          s = p.read_text()
+          before = """  const expectedSize = Number(r.size_bytes || 0);
+            if (!bytes.length || bytes.length > 9 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) return { ok:false, error:'matricula_firmada_incompleta_o_grande' };
+            const expectedHash = String(r.sha256 || '').trim().toLowerCase();"""
+          after = """  const expectedSize = Number(r.size_bytes || 0);
+            if (!bytes.length || bytes.length > 9 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) return { ok:false, error:'matricula_firmada_incompleta_o_grande' };
+            if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45)) return { ok:false, error:'contenido_pdf_firmado_invalido' };
+            const expectedHash = String(r.sha256 || '').trim().toLowerCase();"""
+          if s.count(before) != 1:
+              raise SystemExit(f'PDF magic insertion preimage expected 1 found {s.count(before)}')
+          p.write_text(s.replace(before, after))
+          PY
+      - name: Validate exact source scope and private contract
+        run: |
+          git diff --check
+          test "$(git diff --name-only)" = "src/student_experience.jsx"
+          grep -q "descargarMatriculaFirmadaPrivada" src/student_experience.jsx
+          grep -q "bytes.length > 9 \* 1024 \* 1024" src/student_experience.jsx
+          grep -q "bytes\[0\] === 37" src/student_experience.jsx
+          grep -q "SHA-256" src/student_experience.jsx
+          grep -q "URL.createObjectURL(r.blob)" src/student_experience.jsx
+          grep -q "URL.revokeObjectURL" src/student_experience.jsx
+          grep -q "StudentSignedEnrollmentPrivateF984" src/student_experience.jsx
+      - name: Commit source and remove bootstrap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/student_experience.jsx
+          git rm .github/workflows/apply-sec002-student-signed-enrollment-cs21a162.yml
+          git commit -m "CS21A162 applied · private student signed enrollment source"
+          git push origin HEAD:security/sec002-student-signed-enrollment-cs21a162
