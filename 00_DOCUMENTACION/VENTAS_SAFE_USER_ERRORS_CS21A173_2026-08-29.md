@@ -16,7 +16,7 @@ Esto podía convertir códigos de contrato como `integridad_*`, `respuesta_vacia
 
 La corrección no elimina el diagnóstico: el detalle técnico se conserva en `console.warn`/`console.error`, mientras la interfaz recibe un mensaje de recuperación estable.
 
-Los mensajes de negocio y validaciones locales legibles sí se conservan: formato/tamaño de archivo, grupo obligatorio, monto, comprobante, ausencia de WhatsApp, prospecto no encontrado, etc.
+El filtro cubre además errores técnicos del navegador/red como `TypeError`, `ReferenceError`, `NetworkError`, `Failed to fetch` y equivalentes. Los mensajes de negocio y validaciones locales legibles sí se conservan: formato/tamaño de archivo, grupo obligatorio, monto, comprobante, ausencia de WhatsApp, prospecto no encontrado, etc.
 
 ### 2. Fallback demo en grupos reales
 
@@ -29,7 +29,10 @@ La corrección deja este contrato:
 - `demo=true` → `DEMO_GRUPOS` permitido;
 - runtime real + respuesta válida → grupos reales;
 - runtime real + error/excepción → lista vacía, diagnóstico en consola y selector deshabilitado;
-- nunca se inventa disponibilidad desde datos demo.
+- nunca se inventa disponibilidad desde datos demo;
+- si el prospecto traía un `grupo_tentativo` que ya no existe en la lista real —incluido el caso de error/lista vacía— la selección se limpia antes del submit.
+
+Esto evita que una falla de carga deje reutilizar silenciosamente un grupo tentativo obsoleto al cobrar/activar.
 
 ## Alcance source
 
@@ -55,13 +58,21 @@ No cambia:
 
 1. existencia del filtro visible `vxSafeUserError`;
 2. que códigos técnicos queden en consola y no en toast/error visible;
-3. saneamiento de documentos privados, matrícula firmada, cobro, pagos, detalle y proformas;
-4. ausencia de exposición directa de `e.message` en rutas privadas;
-5. exactamente una referencia `setGrupos(window.DEMO_GRUPOS)`, correspondiente a `demo=true`;
-6. fallo de grupos real => `setGrupos([])`;
-7. selector vacío deshabilitado y explicado;
-8. dashboard real no propaga `data.error`/`e.message` a la UI;
-9. guard CS21A152 sigue presente e intacto.
+3. cobertura de errores técnicos de navegador/red;
+4. saneamiento de documentos privados, matrícula firmada, cobro, pagos, detalle y proformas;
+5. ausencia de exposición directa de `e.message` en rutas privadas;
+6. exactamente una referencia `setGrupos(window.DEMO_GRUPOS)`, correspondiente a `demo=true`;
+7. fallo de grupos real => `setGrupos([])`;
+8. grupo tentativo inexistente => selección limpiada;
+9. selector vacío deshabilitado y explicado;
+10. dashboard real no propaga `data.error`/`e.message` a la UI;
+11. guard CS21A152 sigue presente e intacto.
+
+## Evidencia local CI de rama
+
+- bootstrap exact-preimage source patch: **SUCCESS**;
+- revisión fail-closed de grupo tentativo + errores de navegador: **SUCCESS**;
+- `QA Ventas Safe User Errors CS21A173` reforzado: **SUCCESS**.
 
 ## Estado
 
