@@ -1,0 +1,41 @@
+name: Bootstrap Teacher Action Safe Errors CS21A187
+
+on:
+  push:
+    branches:
+      - fix/teacher-action-safe-errors-cs21a187
+    paths:
+      - '.github/workflows/bootstrap-teacher-action-safe-errors-cs21a187.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 42c200a15886fa4e52eb71c425a455b003455c99 HEAD
+      - name: Apply exact patch
+        run: node scripts/bootstrap_patch_teacher_action_safe_errors_cs21a187.mjs
+      - name: Run CS21A187 guard
+        run: node scripts/qa_teacher_action_safe_errors_cs21a187.mjs
+      - name: Regress CS21A186
+        run: node scripts/qa_teacher_session_safe_errors_cs21a186.mjs
+      - name: Regress CS21A185
+        run: node scripts/qa_teacher_material_access_cs21a185.mjs
+      - name: Diff hygiene
+        run: git diff --check 42c200a15886fa4e52eb71c425a455b003455c99...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          git rm .github/workflows/bootstrap-teacher-action-safe-errors-cs21a187.yml scripts/bootstrap_patch_teacher_action_safe_errors_cs21a187.mjs
+          git add -A
+          git commit -m "CS21A187 · safe teacher action errors"
+          git push origin HEAD:fix/teacher-action-safe-errors-cs21a187
