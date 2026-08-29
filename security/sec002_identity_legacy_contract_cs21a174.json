@@ -1,0 +1,78 @@
+{
+  "id": "SEC002-IDENTITY-LEGACY-CS21A174",
+  "date": "2026-08-29",
+  "base_pr": 145,
+  "base_sha": "7348a29db65d12d6c2a8a566662bd967579f59f7",
+  "status": "legacy_consumers_mapped_backend_private_endpoint_pending",
+  "no_acl_change": true,
+  "no_consumer_switch_before_backend": true,
+  "document_class": "student_identity_and_title_images_legacy",
+  "fields": [
+    "FOTO_CED_FRENTE",
+    "FOTO_CED_DORSO",
+    "FOTO_TITULO"
+  ],
+  "document_types": [
+    "CEDULA_FRENTE",
+    "CEDULA_DORSO",
+    "TITULO"
+  ],
+  "publisher_historical": "_guardarFotoProspecto",
+  "resolved_new_flow_exclusion": "PR #118 / PROD @419 handles newly captured enrollment identity/title privately; this contract is only for historical/legacy objects and consumers.",
+  "consumers": [
+    {
+      "surface": "ventas",
+      "path": "src/ventas_parts.jsx",
+      "component": "DocsBlock/VxDocPhoto",
+      "current_delivery": "foto_ced_* URL -> Drive/lh3 candidate URLs -> img/lightbox",
+      "authorization_expected": ["session", "sales_or_admin_role", "allowed_sales_scope", "prospect_or_student", "document_type"]
+    },
+    {
+      "surface": "matriculas_admin",
+      "path": "src/matriculas_admin.jsx",
+      "component": "Documentos adjuntos/MatDocPhoto",
+      "current_delivery": "FOTO_CED_* URL -> Drive/lh3 candidate URLs -> img/lightbox",
+      "authorization_expected": ["session", "admin_or_superadmin_role", "allowed_admin_scope", "prospect_or_student", "document_type"]
+    }
+  ],
+  "target_delivery": {
+    "transport": "authenticated POST",
+    "proposed_operation": "descargarDocumentoIdentidadPrivado",
+    "selection": ["expediente_or_cedula", "document_type"],
+    "server_requirements": [
+      "derive actor from session token",
+      "enforce staff role and business scope server-side",
+      "resolve file server-side; never trust browser Drive URL",
+      "return base64 plus mime_type plus size_bytes plus sha256",
+      "allow only expected image/PDF MIME classes",
+      "rate limit and audit read",
+      "no public URL in response"
+    ],
+    "frontend_requirements": [
+      "decode bounded payload",
+      "validate MIME/size and announced length",
+      "validate SHA-256 when Web Crypto is available",
+      "render via temporary Blob/ObjectURL",
+      "revoke ObjectURL",
+      "never derive alternate Drive/lh3 public candidates in the migrated path"
+    ]
+  },
+  "runtime_gate": [
+    "fresh current Apps Script QA snapshot per Issue #111",
+    "port minimal endpoint onto exact modular source",
+    "positive Sales own-scope read",
+    "negative Sales cross-scope read",
+    "positive admin/superadmin read",
+    "negative unauthorized/student read",
+    "legacy existing-object lookup",
+    "browser image/PDF render",
+    "switch both consumers in QA",
+    "scan residual direct Drive/lh3 access",
+    "only then test ACL removal on QA copies"
+  ],
+  "known_ui_bug": {
+    "surface": "ventas",
+    "description": "The legacy identity-slot 'Subir manualmente' action currently uploads through subirDocumentoExtra and only paints base64 into foto_ced_* local state; after reload it is an extra document, not a persisted replacement of the identity field.",
+    "resolution_rule": "Do not claim identity-slot replacement until a dedicated authenticated persistence contract exists."
+  }
+}

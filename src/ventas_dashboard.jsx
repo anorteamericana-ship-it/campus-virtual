@@ -131,7 +131,10 @@ function VentasApp({ sesion }) {
       try {
         const data = await window.getDashboardVentas(scopeAsesor);
         if (cancel) return;
-        if (!data || !data.ok) throw new Error((data && data.error) || 'No se pudo cargar el panel.');
+        if (!data || !data.ok) {
+          console.error('[Ventas CS21A173] No se pudo cargar el dashboard real.', data && (data.error || data.mensaje));
+          throw new Error('ventas_dashboard_unavailable');
+        }
         setDash({
           asesor: data.asesor,
           semana_actual: data.semana_actual || { matriculas: 0, promedio_4s: 0 },
@@ -141,7 +144,8 @@ function VentasApp({ sesion }) {
           total_prospectos: data.total_prospectos,
         });
       } catch (e) {
-        if (!cancel) setErrorCarga(e.message || 'No pudimos cargar tu panel desde el servidor.');
+        console.error('[Ventas CS21A173] Falló la carga del dashboard real.', e);
+        if (!cancel) setErrorCarga('No pudimos cargar tu panel. Recargá la página e intentá nuevamente.');
       }
     })();
     return () => { cancel = true; };
