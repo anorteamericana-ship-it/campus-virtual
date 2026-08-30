@@ -1,0 +1,30 @@
+name: QA SEC006 Additional Resources Access CS21A200F
+
+on:
+  push:
+    branches:
+      - security/sec006-additional-resources-public-link-contract-cs21a200f
+  pull_request:
+    paths:
+      - 'src/additional_resources_panel_cs21a68.jsx'
+      - 'security/sec006_additional_resources_access_contract_v1.json'
+      - 'scripts/qa_sec006_additional_resources_access_cs21a200f.mjs'
+      - '.github/workflows/qa-sec006-additional-resources-access-cs21a200f.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A200F access guard
+        run: node scripts/qa_sec006_additional_resources_access_cs21a200f.mjs
+      - name: Regress CS21A200E
+        run: node scripts/qa_additional_resources_safe_errors_cs21a200e.mjs
+      - name: Regress CS21A200D
+        run: node scripts/qa_admin_additional_resources_route_cs21a200d.mjs
+      - name: Regress CS21A200A
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/fix/additional-resources-safe-errors-cs21a200e...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
