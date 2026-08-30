@@ -1,0 +1,31 @@
+name: QA Lazy Loader Safe Errors CS21A197
+
+on:
+  push:
+    branches:
+      - fix/lazy-loader-safe-errors-cs21a197
+    paths:
+      - 'src/lazy_loader.jsx'
+      - 'scripts/qa_lazy_loader_safe_errors_cs21a197.mjs'
+      - '.github/workflows/qa-lazy-loader-safe-errors-cs21a197.yml'
+  pull_request:
+    paths:
+      - 'src/lazy_loader.jsx'
+      - 'scripts/qa_lazy_loader_safe_errors_cs21a197.mjs'
+      - '.github/workflows/qa-lazy-loader-safe-errors-cs21a197.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A197 lazy-loader safe-error guard
+        run: node scripts/qa_lazy_loader_safe_errors_cs21a197.mjs
+      - name: Regress CS21A196
+        run: node scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs
+      - name: English LAB source truth remains available
+        run: test -f scripts/qa_english_lab_source_truth.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':(exclude)00_DOCUMENTACION/**'
