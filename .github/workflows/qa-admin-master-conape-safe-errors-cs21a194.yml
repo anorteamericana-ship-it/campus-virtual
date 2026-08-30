@@ -1,0 +1,31 @@
+name: QA Admin Master CONAPE Safe Errors CS21A194
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-safe-errors-cs21a194
+    paths:
+      - 'src/admin_master_conape_*.jsx'
+      - 'scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs'
+      - '.github/workflows/qa-admin-master-conape-safe-errors-cs21a194.yml'
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_*.jsx'
+      - 'scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs'
+      - '.github/workflows/qa-admin-master-conape-safe-errors-cs21a194.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A194 safe-error guard
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_admin_private_conape_pdf_delivery_cs21a193.mjs
+      - name: Regress CS21A192
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':(exclude)00_DOCUMENTACION/**'
