@@ -1,0 +1,27 @@
+name: QA SEC002 Admin Academic Docs Bytes CS21A193
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/sec002_admin_academic_docs_transition_cs21a193.json'
+      - 'scripts/qa_sec002_admin_academic_docs_bytes_cs21a193.mjs'
+      - '.github/workflows/qa-sec002-admin-academic-docs-bytes-cs21a193.yml'
+  push:
+    branches:
+      - security/sec002-admin-academic-docs-bytes-cs21a193
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/sec002_admin_academic_docs_transition_cs21a193.json'
+      - 'scripts/qa_sec002_admin_academic_docs_bytes_cs21a193.mjs'
+      - '.github/workflows/qa-sec002-admin-academic-docs-bytes-cs21a193.yml'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A193 guard
+        run: node scripts/qa_sec002_admin_academic_docs_bytes_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^ -- . ':!00_DOCUMENTACION/**'
