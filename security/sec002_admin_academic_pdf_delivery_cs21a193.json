@@ -26,6 +26,11 @@
     "historical_accumulated_source": "generarCartaIntegralConape and generarConstanciaTraslado support include_base64 for existing and newly generated PDFs",
     "fresh_modular_QA_snapshot": "PENDING_ISSUE_111"
   },
+  "bootstrap_evidence": {
+    "run_id": 33290530735,
+    "verified_head": "750035c159072b78d5cfa67565f17a9f3f282952",
+    "result": "SUCCESS"
+  },
   "runtime_gate": "E2_ADMIN_REQUIRED_BEFORE_RELEASE",
   "production": "NO_CHANGE"
 }
