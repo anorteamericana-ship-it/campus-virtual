@@ -21,4 +21,16 @@ Evidencia Drive:
 - una Carta No Deuda histórica inspeccionada es owner-only;
 - `generarDocumento()` histórico ya usa F89 `_f89StudentSubfolder_` para el destino de documentos académicos, por lo que no se puede afirmar sin E2 que nuevas inscripciones sigan naciendo públicas.
 
+## Evidencia automática
+Bootstrap `33343072439`: **SUCCESS completo**.
+- ancestry exacta desde `cdeca3c02ced5cfde5c633729e6a0d14dbc2396f`;
+- preimagen exacta aplicada una sola vez;
+- guard common-doc safe errors PASS;
+- regresión certificado privado PASS;
+- regresión constancias/cartas privadas PASS;
+- regresión safe-errors Admin PASS;
+- diff hygiene PASS;
+- patcher/bootstrap autoeliminados;
+- head funcional previo a este update documental: `5017de962fda003adc89efddb66404de4ca7f9bb`.
+
 No se cambia Apps Script, Drive ACL, lógica documental, producción ni `main`.
