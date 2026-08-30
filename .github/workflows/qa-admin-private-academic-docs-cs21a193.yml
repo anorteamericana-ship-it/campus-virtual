@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Guard private academic document delivery
         run: node scripts/qa_admin_private_academic_docs_cs21a193.mjs
       - name: Regress CS21A192
