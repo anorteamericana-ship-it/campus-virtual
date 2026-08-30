@@ -1,0 +1,24 @@
+name: QA Admin Additional Resources Route CS21A200D
+
+on:
+  push:
+    branches:
+      - fix/admin-additional-resources-route-cs21a200d
+  pull_request:
+    paths:
+      - 'src/admin_resources_direct_cs21a74.js'
+      - 'src/additional_resources_panel_cs21a68.jsx'
+      - 'scripts/qa_admin_additional_resources_route_cs21a200d.mjs'
+      - '.github/workflows/qa-admin-additional-resources-route-cs21a200d.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A200D
+        run: node scripts/qa_admin_additional_resources_route_cs21a200d.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/${{ github.base_ref || 'fix/cronograma-safe-errors-cs21a200c' }}...HEAD -- . ':!00_DOCUMENTACION/**'
