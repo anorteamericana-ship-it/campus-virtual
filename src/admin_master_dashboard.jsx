@@ -35,12 +35,20 @@ async function masterAction(fn,payload={}) {
   if(!res.ok||!data?.ok){const base=data?.mensaje||data?.error||`No se pudo ejecutar ${fn}.`;const meta=[data?.version,data?.request_id,data?.detalle].filter(Boolean).join(' · ');throw new Error(meta?`${base} (${meta})`:base);}
   return data;
 }
+function masterSafeUserError(raw,fallback,context=''){
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|actualizarPanelConapeAhora|getSuperAdminMasterDashboard|getSuperAdminSeguimientoResumen|getSeguimientoReleaseEstado|ejecutarSmokeTestSeguimiento|confirmarVersionEstableSeguimiento/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[MasterDashboard] Detalle técnico oculto al operador.',{context,error:msg});return fallback;}
+  return msg;
+}
 function masterWhatsAppPhone(v){const d=String(v||'').replace(/\D/g,'');if(!d)return'';return d.length===8?`506${d}`:d;}
 function masterConapeTypeLabel(v){return({PRIMER_DESEMBOLSO:'Primer desembolso',NUEVO_DESEMBOLSO:'Nuevo desembolso',DESEMBOLSO_MES_ACTUAL:'Desembolso del mes',DESEMBOLSO_REPORTADO:'Desembolso reportado',APROBADO_SIN_DESEMBOLSO:'Aprobado sin desembolso',DESEMBOLSO_REMOVIDO:'Desembolso retirado'}[String(v||'').toUpperCase()]||String(v||'').replaceAll('_',' '));}
 function MasterConapeMovementsTable({data,onRefresh}){
   const m=data?.conape?.movements||{},rows=m.rows||[],summary=m.summary||{};
   const [busy,setBusy]=React.useState(false),[msg,setMsg]=React.useState('');
-  const refresh=async()=>{setBusy(true);setMsg('');try{const r=await masterAction('actualizarPanelConapeAhora');setMsg(r.mensaje||'CONAPE actualizado.');await onRefresh?.();}catch(e){setMsg(e.message||String(e));}finally{setBusy(false);}};
+  const refresh=async()=>{setBusy(true);setMsg('');try{const r=await masterAction('actualizarPanelConapeAhora');setMsg(r.mensaje||'CONAPE actualizado.');await onRefresh?.();}catch(e){setMsg(masterSafeUserError(e?.message||String(e),'No se pudo actualizar CONAPE. Intentá de nuevo.','actualizar_conape'));}finally{setBusy(false);}};
   const monthName=MASTER_MONTHS[Math.max(0,Number(m.month||1)-1)]||'Mes actual';
   return <section className="master-card master-conape-month-card"><header><div><span>Seguimiento inmediato</span><h3>Movimientos CONAPE · {monthName} {m.year||new Date().getFullYear()}</h3><p>Consulta en vivo y memoria mensual de desembolsos · última lectura {m.lastSync||'sin sincronizar'}</p></div><div className="master-conape-month-actions"><span className={`master-live-chip ${(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'on':'off'}`}>{(m.monitor||[]).some(x=>x.handler==='sincronizarCONAPE')?'Monitoreo horario':'Monitoreo manual'}</span><button type="button" onClick={refresh} disabled={busy}>{busy?'Consultando…':'↻ Actualizar CONAPE ahora'}</button></div></header>
     <div className="master-conape-month-kpis"><div><b>{summary.total||0}</b><span>movimientos del mes</span></div><div><b>{summary.linked||0}</b><span>vinculados al Campus</span></div><div><b>{summary.unlinked||0}</b><span>por vincular</span></div><div><b>{summary.newDisbursement||0}</b><span>desembolsos reportados</span></div></div>
@@ -85,7 +93,7 @@ function useMasterData() {
           const sync=await masterAction('actualizarPanelConapeAhora');
           conapeAutoSync={...sync,error:''};
         }catch(error){
-          conapeAutoSync={ok:false,error:error?.message||String(error),movimientos_registrados:0,nuevos:0};
+          conapeAutoSync={ok:false,error:masterSafeUserError(error?.message||String(error),'No se pudo sincronizar CONAPE. Intentá de nuevo.','sincronizar_conape'),movimientos_registrados:0,nuevos:0};
         }
         lastSyncRef.current=Date.now();
       }
@@ -94,7 +102,7 @@ function useMasterData() {
       dashboard.conapeAutoSync=conapeAutoSync||state.data?.conapeAutoSync||null;
       setState({loading:false,error:'',data:dashboard});
     }catch(error){
-      setState(current=>({loading:false,error:error?.message||String(error),data:current.data}));
+      setState(current=>({loading:false,error:masterSafeUserError(error?.message||String(error),'No se pudo actualizar el Panel Maestro. Intentá de nuevo.','cargar_panel_maestro'),data:current.data}));
     }finally{
       runningRef.current=false;
     }
@@ -700,7 +708,7 @@ function useMasterTracking(active) {
   const [state,setState]=React.useState({loading:false,error:'',data:null});
   const load=React.useCallback((refresh=false)=>{
     setState(s=>({...s,loading:true,error:''}));
-    masterAction('getSuperAdminSeguimientoResumen',{refresh}).then(data=>setState({loading:false,error:'',data})).catch(e=>setState(s=>({loading:false,error:e.message||String(e),data:s.data})));
+    masterAction('getSuperAdminSeguimientoResumen',{refresh}).then(data=>setState({loading:false,error:'',data})).catch(e=>setState(s=>({loading:false,error:masterSafeUserError(e?.message||String(e),'No se pudo cargar el seguimiento. Intentá de nuevo.','cargar_seguimiento'),data:s.data})));
   },[]);
   React.useEffect(()=>{if(active&&!state.data&&!state.loading)load(false);},[active,state.data,state.loading,load]);
   return {...state,refetch:()=>load(true)};
@@ -730,11 +738,11 @@ function MasterProductionSmoke(){
   const [state,setState]=React.useState({loading:false,error:'',data:null});
   const [registry,setRegistry]=React.useState({loading:false,error:'',data:null});
   const [confirming,setConfirming]=React.useState(false);
-  const loadRegistry=React.useCallback(async()=>{setRegistry(s=>({...s,loading:true,error:''}));try{const data=await masterAction('getSeguimientoReleaseEstado');setRegistry({loading:false,error:'',data});}catch(e){setRegistry(s=>({loading:false,error:e.message||String(e),data:s.data}));}},[]);
+  const loadRegistry=React.useCallback(async()=>{setRegistry(s=>({...s,loading:true,error:''}));try{const data=await masterAction('getSeguimientoReleaseEstado');setRegistry({loading:false,error:'',data});}catch(e){setRegistry(s=>({loading:false,error:masterSafeUserError(e?.message||String(e),'No se pudo consultar el historial de publicación. Intentá de nuevo.','historial_publicacion'),data:s.data}));}},[]);
   React.useEffect(()=>{loadRegistry();},[loadRegistry]);
-  const run=async()=>{setState(s=>({...s,loading:true,error:''}));try{const data=await masterAction('ejecutarSmokeTestSeguimiento',{frontend_version:MASTER_PANEL_BUILD});setState({loading:false,error:'',data});await loadRegistry();}catch(e){setState({loading:false,error:e.message||String(e),data:null});}};
+  const run=async()=>{setState(s=>({...s,loading:true,error:''}));try{const data=await masterAction('ejecutarSmokeTestSeguimiento',{frontend_version:MASTER_PANEL_BUILD});setState({loading:false,error:'',data});await loadRegistry();}catch(e){setState({loading:false,error:masterSafeUserError(e?.message||String(e),'No se pudo ejecutar el control de publicación. Intentá de nuevo.','control_publicacion'),data:null});}};
   const copy=async()=>{if(!state.data)return;const d=state.data,stable=registry.data?.stable,lines=[`Smoke test ${d.version||MASTER_PANEL_BUILD}`,`Resultado: ${d.release_candidate?'CANDIDATA A PRODUCCIÓN':d.ready?'LISTA CON ADVERTENCIAS':'BLOQUEADA'}`,`Frontend: ${d.frontend_version||'—'}`,`Backend: ${d.version||'—'}`,`Solicitud: ${d.request_id||'—'}`,`Generado: ${d.generated_at||'—'}`,`Duración: ${d.duration_ms||0} ms`,`Evidencia guardada: ${d.audit?.saved?'Sí':'No'}`,`Versión estable: ${stable?.version||'Sin registrar'}`,'',...(d.checks||[]).map(x=>`[${x.status}] ${x.code}: ${x.message}${x.detail?` · ${x.detail}`:''}`)];try{await navigator.clipboard.writeText(lines.join('\n'));}catch(_){window.prompt('Copiá el informe:',lines.join('\n'));}};
-  const confirmStable=async()=>{const d=state.data;if(!d?.release_candidate||!d?.request_id)return;if(!window.confirm(`¿Registrar ${MASTER_PANEL_BUILD} como versión estable?\n\nSe conservará la referencia ${d.request_id}. Esta acción no modifica hojas académicas.`))return;setConfirming(true);try{await masterAction('confirmarVersionEstableSeguimiento',{frontend_version:MASTER_PANEL_BUILD,smoke_request_id:d.request_id,confirmacion:MASTER_PANEL_BUILD});await loadRegistry();}catch(e){setState(s=>({...s,error:e.message||String(e)}));}finally{setConfirming(false);}};
+  const confirmStable=async()=>{const d=state.data;if(!d?.release_candidate||!d?.request_id)return;if(!window.confirm(`¿Registrar ${MASTER_PANEL_BUILD} como versión estable?\n\nSe conservará la referencia ${d.request_id}. Esta acción no modifica hojas académicas.`))return;setConfirming(true);try{await masterAction('confirmarVersionEstableSeguimiento',{frontend_version:MASTER_PANEL_BUILD,smoke_request_id:d.request_id,confirmacion:MASTER_PANEL_BUILD});await loadRegistry();}catch(e){setState(s=>({...s,error:masterSafeUserError(e?.message||String(e),'No se pudo registrar la versión estable. Intentá de nuevo.','registrar_version_estable')}));}finally{setConfirming(false);}};
   const d=state.data,summary=d?.resumen||{},release=registry.data||{},stable=release.stable,latest=release.latest_smoke;
   const stableCurrent=!!release.stable_matches_current;
   const headline=!d?'Prueba posterior a publicación':d.release_candidate?'Candidata aprobada para sello':d.ready?'Publicación funcional con advertencias':'Publicación bloqueada';
@@ -873,7 +881,7 @@ function AdminMasterDashboard({onNavigate}) {
   const syncLabel=syncFailed?'CONAPE pendiente':`${syncCount} desembolso${syncCount===1?'':'s'} nuevo${syncCount===1?'':'s'}`;
   const dashboardBusy=loading||trackingState.loading;
   return <div className="master-admin" data-build={MASTER_PANEL_BUILD}>
-    <header className="master-header"><div><div className="master-title-line"><h1>Panel Maestro Super Admin</h1><span>Datos reales · CO</span></div><p>Control institucional y analítica integral · actualizado {data.generatedAt||'—'}</p></div><div className="master-actions"><span className={`master-conape-auto-chip ${syncFailed?'warn':'ok'}`} title={syncFailed?syncMeta.error:'CONAPE se consulta al entrar y cada 30 minutos.'}>{syncLabel}</span><button onClick={()=>{refetch();if(section==='seguimiento')trackingState.refetch();}} disabled={dashboardBusy}><span aria-hidden="true">↻</span>{dashboardBusy?'Sincronizando…':'Sincronizar'}</button><button onClick={exportCurrent}><Icon name="download" size={15}/>Exportar CSV</button></div></header>
+    <header className="master-header"><div><div className="master-title-line"><h1>Panel Maestro Super Admin</h1><span>Datos reales · CO</span></div><p>Control institucional y analítica integral · actualizado {data.generatedAt||'—'}</p></div><div className="master-actions"><span className={`master-conape-auto-chip ${syncFailed?'warn':'ok'}`} title={syncFailed?'La última sincronización de CONAPE no se completó.':'CONAPE se consulta al entrar y cada 30 minutos.'}>{syncLabel}</span><button onClick={()=>{refetch();if(section==='seguimiento')trackingState.refetch();}} disabled={dashboardBusy}><span aria-hidden="true">↻</span>{dashboardBusy?'Sincronizando…':'Sincronizar'}</button><button onClick={exportCurrent}><Icon name="download" size={15}/>Exportar CSV</button></div></header>
     {error&&data&&<div className="master-inline-warning">Última actualización incompleta: {error}</div>}
     <nav className="master-section-nav" aria-label="Secciones del Panel Maestro">{MASTER_SECTIONS.map(item=><button key={item.id} className={section===item.id?'active':''} style={{'--section-color':item.color}} onClick={()=>setSection(item.id)}><i/><Icon name={item.icon} size={16}/><span>{item.label}</span></button>)}</nav>
     <main className="master-content"><div className="master-section-heading"><div><span>{selectedMeta.label}</span><h2>{section==='resumen'?'Visión ejecutiva de la academia':section==='ventas'?'Analítica comercial y matrículas':section==='academica'?'Control operativo académico en tiempo real':section==='estudiantes'?'Retención, asistencia y riesgo estudiantil':section==='seguimiento'?'Prioridades operativas, rescate y seguimiento humano por grupo':section==='cobranza'?'Cobros aplicados, cartera activa y morosidad':section==='conape'?'Financiamiento, desembolsos y vinculación institucional':section==='docentes'?'Carga, cumplimiento y salud operativa docente':section==='examenes'?'Aplicación, revisión y rendimiento académico':section==='alertas'?'Centro transversal de alertas y pendientes institucionales':section==='tendencias'?'Evolución multianual de la Academia':selectedMeta.label}</h2></div></div>{section==='resumen'?<MasterResumen data={data} year={year} compareYear={compareYear} advisors={advisors} setSection={setSection}/>:section==='ventas'?<MasterVentas data={data} year={year} compareYear={compareYear} advisors={advisors}/>:section==='academica'?<MasterAcademica data={data} year={year} filters={academicFilters}/>:section==='estudiantes'?<MasterEstudiantes data={data} year={year} filters={studentFilters}/>:section==='seguimiento'?<MasterSeguimiento state={trackingState} filters={trackingFilters} onRefresh={trackingState.refetch} onNavigate={onNavigate}/>:section==='cobranza'?<MasterCobranza data={data} year={year} compareYear={compareYear} filters={collectionFilters} onRefresh={refetch}/>:section==='conape'?<MasterConape data={data} year={year} compareYear={compareYear} filters={conapeFilters}/>:section==='docentes'?<MasterDocentes data={data} year={year} filters={teacherFilters}/>:section==='examenes'?<MasterExamenes data={data} year={year} compareYear={compareYear} filters={examFilters}/>:section==='alertas'?<MasterAlertas data={data} year={year} filters={alertFilters} setSection={setSection}/>:section==='tendencias'?<MasterTendencias data={data} year={year} compareYear={compareYear}/>:<MasterPendingSection section={section}/>}</main>
