@@ -6,6 +6,7 @@ on:
       - fix/admin-finance-ui-safe-errors-cs21a199
     paths:
       - 'scripts/bootstrap_patch_admin_inline_finance_safe_errors_cs21a199.mjs'
+      - 'scripts/qa_admin_inline_finance_safe_errors_cs21a199.mjs'
       - '.github/workflows/bootstrap-admin-inline-finance-safe-errors-cs21a199.yml'
 
 permissions:
