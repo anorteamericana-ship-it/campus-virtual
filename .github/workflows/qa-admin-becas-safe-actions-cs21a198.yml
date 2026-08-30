@@ -1,0 +1,27 @@
+name: QA Admin Becas Safe Actions CS21A198
+
+on:
+  push:
+    branches:
+      - fix/admin-becas-safe-actions-cs21a198
+  pull_request:
+    paths:
+      - 'src/becas_admin.jsx'
+      - 'scripts/qa_admin_becas_safe_actions_cs21a198.mjs'
+      - '.github/workflows/qa-admin-becas-safe-actions-cs21a198.yml'
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A198 Becas safe actions
+        run: node scripts/qa_admin_becas_safe_actions_cs21a198.mjs
+      - name: Regress CS21A197 Aperturas
+        run: node scripts/qa_admin_aperturas_safe_errors_cs21a197.mjs
+      - name: Regress CS21A196 Suspensiones
+        run: node scripts/qa_admin_suspensiones_safe_actions_cs21a196.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^
