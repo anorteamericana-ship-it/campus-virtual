@@ -1,0 +1,33 @@
+name: QA Admin Master CONAPE User Copy CS21A195
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-user-copy-cs21a195
+    paths:
+      - 'src/admin_master_conape_data_cs21a96.jsx'
+      - 'src/admin_master_conape_view_cs21a96.jsx'
+      - 'scripts/qa_admin_master_conape_user_copy_cs21a195.mjs'
+      - '.github/workflows/qa-admin-master-conape-user-copy-cs21a195.yml'
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_data_cs21a96.jsx'
+      - 'src/admin_master_conape_view_cs21a96.jsx'
+      - 'scripts/qa_admin_master_conape_user_copy_cs21a195.mjs'
+      - '.github/workflows/qa-admin-master-conape-user-copy-cs21a195.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A195 copy guard
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a195.mjs
+      - name: Regress CS21A194
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_admin_private_conape_pdf_delivery_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':(exclude)00_DOCUMENTACION/**'
