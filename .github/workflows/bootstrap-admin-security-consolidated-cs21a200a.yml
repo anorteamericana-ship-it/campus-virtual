@@ -1,0 +1,96 @@
+name: Bootstrap Admin Security Consolidated CS21A200A
+
+on:
+  push:
+    branches:
+      - integration/admin-security-consolidated-cs21a200a
+    paths:
+      - '.github/workflows/bootstrap-admin-security-consolidated-cs21a200a.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify base and source commits
+        run: |
+          git merge-base --is-ancestor 5a49384572ee69e680da8db8dd88d160f817f1b5 HEAD
+          for sha in \
+            cf92c89cc0521634c6ab672f3bcc4fc77afe24ab \
+            147bac6ef6a790621bd333f8527dcc5dacac9f2a \
+            07988ed9227514ad8ae63599bd662e937f6fcb4e \
+            806c9fabc5b0e16a4faa7fc51af29be10f8bf3ee; do
+            git cat-file -e "$sha^{commit}"
+          done
+      - name: Copy exact unique functional files
+        run: |
+          git show cf92c89cc0521634c6ab672f3bcc4fc77afe24ab:src/admin_master_dashboard.jsx > src/admin_master_dashboard.jsx
+
+          for path in \
+            src/admin_master_conape_data_cs21a96.jsx \
+            src/admin_master_conape_review_core_cs21a96.jsx \
+            src/admin_master_conape_view_cs21a96.jsx \
+            src/admin_master_conape_wa_cs21a96.jsx \
+            src/admin_master_conape_review_state_cs21a96.jsx \
+            src/admin_master_conape_multisort_cs21a109.jsx; do
+            git show 147bac6ef6a790621bd333f8527dcc5dacac9f2a:"$path" > "$path"
+          done
+
+          for path in \
+            src/panel_admin_supervision.jsx \
+            src/panel_suspensiones.jsx \
+            src/aperturas_admin_cs21a20.jsx; do
+            git show 07988ed9227514ad8ae63599bd662e937f6fcb4e:"$path" > "$path"
+          done
+
+          git show 806c9fabc5b0e16a4faa7fc51af29be10f8bf3ee:src/admin_students_inline_payment_cs21a36.jsx > src/admin_students_inline_payment_cs21a36.jsx
+      - name: Run original guard from PR 175
+        run: |
+          git show cf92c89cc0521634c6ab672f3bcc4fc77afe24ab:scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs > /tmp/guard175.mjs
+          node /tmp/guard175.mjs
+      - name: Run original guard from PR 177
+        run: |
+          git show 07988ed9227514ad8ae63599bd662e937f6fcb4e:scripts/qa_admin_secondary_surfaces_cs21a198.mjs > /tmp/guard177.mjs
+          node /tmp/guard177.mjs
+      - name: Run original guard from PR 178
+        run: |
+          git show 806c9fabc5b0e16a4faa7fc51af29be10f8bf3ee:scripts/qa_admin_inline_finance_safe_errors_cs21a199.mjs > /tmp/guard178.mjs
+          node /tmp/guard178.mjs
+      - name: Run Panel Maestro CONAPE R2 original guards
+        run: |
+          for guard in \
+            qa_admin_master_conape_safe_errors_cs21a194r2.mjs \
+            qa_admin_master_conape_refresh_truth_cs21a195r2.mjs \
+            qa_admin_master_conape_user_copy_cs21a196r2.mjs \
+            qa_admin_master_conape_action_safe_errors_cs21a197r2.mjs \
+            qa_admin_master_conape_effective_copy_cs21a198r2.mjs; do
+            git show 147bac6ef6a790621bd333f8527dcc5dacac9f2a:scripts/$guard > /tmp/$guard
+            node /tmp/$guard
+          done
+      - name: Regress strong SEC002 base
+        run: |
+          node scripts/qa_sec002_admin_academic_pdf_delivery_cs21a193.mjs
+          node scripts/qa_sec002_legacy_certificate_tree_contract_cs21a194.mjs
+          node scripts/qa_sec002_identity_legacy_evidence_cs21a195.mjs
+          node scripts/qa_sec002_proforma_public_acl_contract_cs21a196.mjs
+          node scripts/qa_admin_students_user_copy_cs21a192.mjs
+          node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Run CS21A200A cross guard
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Diff hygiene
+        run: git diff --check 5a49384572ee69e680da8db8dd88d160f817f1b5 -- . ':!00_DOCUMENTACION/**'
+      - name: Remove bootstrap and push verified candidate
+        run: |
+          rm .github/workflows/bootstrap-admin-security-consolidated-cs21a200a.yml
+          git add -A
+          git commit -m 'CS21A200A · consolidate admin security and operational safety'
+          git push origin HEAD:integration/admin-security-consolidated-cs21a200a
