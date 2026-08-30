@@ -1,0 +1,31 @@
+name: QA SEC002 Proforma Public ACL Contract CS21A196
+
+on:
+  push:
+    branches:
+      - security/sec002-proforma-public-acl-contract-cs21a196
+    paths:
+      - 'security/sec002_proforma_public_acl_contract_cs21a196.json'
+      - 'scripts/qa_sec002_proforma_public_acl_contract_cs21a196.mjs'
+      - '.github/workflows/qa-sec002-proforma-public-acl-contract-cs21a196.yml'
+  pull_request:
+    paths:
+      - 'security/sec002_proforma_public_acl_contract_cs21a196.json'
+      - 'scripts/qa_sec002_proforma_public_acl_contract_cs21a196.mjs'
+      - '.github/workflows/qa-sec002-proforma-public-acl-contract-cs21a196.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A196
+        run: node scripts/qa_sec002_proforma_public_acl_contract_cs21a196.mjs
+      - name: Regress CS21A195
+        run: node scripts/qa_sec002_identity_legacy_evidence_cs21a195.mjs
+      - name: Regress CS21A175
+        run: node scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/security/sec002-identity-legacy-evidence-cs21a195...HEAD -- ':!00_DOCUMENTACION/**'
