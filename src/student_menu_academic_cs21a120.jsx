@@ -94,6 +94,18 @@
     } finally { if (timer) clearTimeout(timer); }
   }
 
+  function studentAcademicSafeUserError(raw, fallback, context = '') {
+    const msg = String(raw?.message ?? raw ?? '').trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request_id|file_id|base64|sha-?256|mime|anlazycampus|mountstudentacademicsummary|getbibliotecanivelestudiante|getaudiopistaestudiante|cargador del campus|no se encontr[oó] el componente/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[StudentAcademic] Detalle técnico oculto al estudiante.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   function ensureCss(){
     if (document.getElementById('an-student-menu-academic-cs21a120-css')) return;
     const link = document.createElement('link');
@@ -186,11 +198,11 @@
     const load = React.useCallback(()=>{
       setState({loading:true,error:''});
       const loader = window.anLazyCampus;
-      if (!loader?.loadMany) { setState({loading:false,error:'El cargador del Campus no está disponible.'}); return; }
+      if (!loader?.loadMany) { setState({loading:false,error:'No pudimos preparar esta pantalla. Intentá de nuevo.'}); return; }
       loader.loadMany(files || []).then(()=>{
         if (typeof window[component] !== 'function') throw new Error('No se encontró el componente '+component+'.');
         setState({loading:false,error:''});
-      }).catch(error=>setState({loading:false,error:error?.message||String(error)}));
+      }).catch(error=>setState({loading:false,error:studentAcademicSafeUserError(error, 'No pudimos preparar esta pantalla. Intentá de nuevo.', 'cargar_pantalla')}));
     },[component,JSON.stringify(files||[])]);
     React.useEffect(load,[load]);
     if (state.loading) return <LoadingCard/>;
@@ -220,7 +232,7 @@
       ]).then(()=>{
         if(typeof window.mountStudentAcademicSummaryCS21A113!=='function') throw new Error('No se pudo preparar Resumen Académico.');
         setState({loading:false,error:''});
-      }).catch(error=>setState({loading:false,error:error?.message||String(error)}));
+      }).catch(error=>setState({loading:false,error:studentAcademicSafeUserError(error, 'No pudimos cargar tu resumen académico. Intentá de nuevo.', 'resumen_academico')}));
     },[]);
     React.useEffect(load,[load]);
     React.useEffect(()=>{
@@ -261,7 +273,7 @@
         if(response?.acceso===false)throw new Error(response?.motivo||'La biblioteca no está habilitada para tu estado académico.');
         if(!response?.catalogo)throw new Error('No se encontró el catálogo del nivel.');
         setState({loading:false,error:'',catalog:response.catalogo});
-      }).catch(error=>setState({loading:false,error:error?.message||String(error),catalog:null}));
+      }).catch(error=>setState({loading:false,error:studentAcademicSafeUserError(error, 'No pudimos cargar el contenido académico. Intentá de nuevo.', 'catalogo_estudiante'),catalog:null}));
     },[level,group,code]);
     React.useEffect(load,[load]);
     return{...state,load,level,group,code};
@@ -323,7 +335,7 @@
         const binary=atob(response.audio.base64);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
         url=URL.createObjectURL(new Blob([bytes],{type:response.audio.mime||'audio/mpeg'}));
         if(live)setState({loading:false,error:'',src:url});
-      }).catch(error=>live&&setState({loading:false,error:error?.message||String(error),src:''}));
+      }).catch(error=>live&&setState({loading:false,error:studentAcademicSafeUserError(error, 'No pudimos cargar el audio. Intentá de nuevo.', 'audio_estudiante'),src:''}));
       return()=>{live=false;if(url)try{URL.revokeObjectURL(url);}catch(_){}};
     },[track.id,level,code,group]);
     if(state.loading)return <span className="sa120-audio-state">Cargando audio…</span>;
@@ -363,7 +375,7 @@
 
   function StudentAdditionalResourcesRouteCS21A120(){
     const Component=window.AdditionalResourcesPanel;
-    if(typeof Component!=='function')return <ErrorCard text="No se encontró el panel de recursos adicionales."/>;
+    if(typeof Component!=='function')return <ErrorCard text="No pudimos preparar Recursos adicionales. Intentá de nuevo."/>;
     return <Component/>;
   }
 
@@ -371,7 +383,7 @@
     if(route==='perfil_estudiante')return <StudentProfileRouteCS21A120 onNavigate={onNavigate}/>;
     if(route==='info_programa'){
       const Component=window.ProgramInfoSharedCS21A119;
-      return typeof Component==='function'?<Component/>:<ErrorCard text="No se encontró Información General del Programa."/>;
+      return typeof Component==='function'?<Component/>:<ErrorCard text="No pudimos preparar Información General del Programa. Intentá de nuevo."/>;
     }
     if(route==='resumen_academico')return <StudentSummaryRouteCS21A120 onNavigate={onNavigate}/>;
     if(route==='syllabus_estudiante')return <DocumentViewerRouteCS21A120 type="syllabus"/>;

@@ -1,0 +1,29 @@
+name: QA Student Academic Menu Safe Errors CS21A200G
+
+on:
+  push:
+    branches:
+      - fix/student-academic-menu-safe-errors-cs21a200g
+  pull_request:
+    paths:
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'scripts/qa_student_academic_menu_safe_errors_cs21a200g.mjs'
+      - '.github/workflows/qa-student-academic-menu-safe-errors-cs21a200g.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A200G guard
+        run: node scripts/qa_student_academic_menu_safe_errors_cs21a200g.mjs
+      - name: Regress CS21A200F
+        run: node scripts/qa_sec006_additional_resources_access_cs21a200f.mjs
+      - name: Regress CS21A200E
+        run: node scripts/qa_additional_resources_safe_errors_cs21a200e.mjs
+      - name: Regress CS21A200A
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/security/sec006-additional-resources-public-link-contract-cs21a200f...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
