@@ -1,0 +1,40 @@
+{
+  "cut": "CS21A193",
+  "title": "Admin private CONAPE and transfer PDF delivery",
+  "status": "SOURCE_CANDIDATE_E2_REQUIRED",
+  "scope": [
+    "transfer_certificate",
+    "integral_conape_letter"
+  ],
+  "drive_acl_evidence": {
+    "checked_real_samples": 2,
+    "result": "OWNER_ONLY_NO_ANYONE_PERMISSION",
+    "acl_changes_in_this_cut": false
+  },
+  "backend_capability_evidence": {
+    "historical_backup_date": "2026-08-19",
+    "historical_contract": "generarConstanciaTraslado and generarCartaIntegralConape accept include_base64 and return pdf_base64/pdf_mime for existing or generated PDFs",
+    "current_modular_qa_runtime": "UNPROVEN_UNTIL_E2"
+  },
+  "frontend_policy": {
+    "request_include_base64": true,
+    "direct_drive_url_fallback_for_guarded_paths": false,
+    "required_mime": "application/pdf",
+    "required_magic": "%PDF-",
+    "max_base64_chars": 28000000,
+    "delivery": "Blob/ObjectURL"
+  },
+  "release_gates": [
+    "E2 authenticated admin opens an existing transfer certificate",
+    "E2 authenticated admin opens a newly generated transfer certificate",
+    "E2 authenticated admin opens an existing CONAPE letter",
+    "E2 authenticated admin regenerates and opens a CONAPE letter",
+    "No Drive ACL enlargement"
+  ],
+  "explicit_non_claims": [
+    "This cut does not prove the current modular Apps Script QA runtime supports the historical base64 contract",
+    "This cut does not modify Apps Script",
+    "This cut does not modify Drive permissions",
+    "This cut is not approved for production without E2"
+  ]
+}
