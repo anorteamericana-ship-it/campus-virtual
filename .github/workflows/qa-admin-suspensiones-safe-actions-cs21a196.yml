@@ -1,0 +1,27 @@
+name: QA Admin Suspensiones Safe Actions CS21A196
+
+on:
+  push:
+    branches:
+      - fix/admin-suspensiones-safe-actions-cs21a196
+  pull_request:
+    paths:
+      - 'src/panel_suspensiones.jsx'
+      - 'scripts/qa_admin_suspensiones_safe_actions_cs21a196.mjs'
+      - '.github/workflows/qa-admin-suspensiones-safe-actions-cs21a196.yml'
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A196 suspensiones safe actions
+        run: node scripts/qa_admin_suspensiones_safe_actions_cs21a196.mjs
+      - name: Regress CS21A195 Panel Maestro
+        run: node scripts/qa_admin_master_safe_errors_cs21a195.mjs
+      - name: Regress CS21A194 supervision
+        run: node scripts/qa_admin_supervision_safe_errors_cs21a194.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^
