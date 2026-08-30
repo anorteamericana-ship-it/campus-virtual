@@ -66,6 +66,21 @@ Las columnas/URLs históricas permanecen intactas como metadatos y para compatib
 - endpoints y metadatos existentes preservados;
 - frontera de errores seguros CS21A191 preservada.
 
+## Evidencia automática
+
+Bootstrap GitHub Actions `33342343424`: **SUCCESS completo**.
+
+- ancestry exacta desde `30b5be3cb04cff8eacf8a644b4ab72af077e5d7a`;
+- 8 preimágenes exactas aplicadas;
+- guard CS21A193 PASS;
+- regresión CS21A192 PASS;
+- regresión CS21A191 PASS;
+- `git diff --check` PASS;
+- patcher y workflow bootstrap autoeliminados;
+- head funcional resultante antes de este update documental: `68d0c45a7428bfbd291f0a650d5f9b33d7b1a2c7`.
+
+Diff funcional contra #164: únicamente `src/admin_students.jsx` (+27/-9).
+
 ## Límite
 
 CS21A193 es evidencia E0/E1 de source. No equivale a E2 autenticado ni prueba que el Apps Script QA modular actual exponga exactamente el mismo comportamiento histórico. **No merge / no PROD** hasta E2 admin sobre la fuente runtime vigente.
