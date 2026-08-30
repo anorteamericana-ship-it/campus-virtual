@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+const data=fs.readFileSync('src/admin_master_conape_data_cs21a96.jsx','utf8');
+const view=fs.readFileSync('src/admin_master_conape_view_cs21a96.jsx','utf8');
+const all=data+'\n'+view;
+const req=(s,l)=>{if(!all.includes(s))throw new Error(`CS21A195 missing: ${l}`)};
+const forbid=(s,l)=>{if(all.includes(s))throw new Error(`CS21A195 forbidden: ${l}`)};
+req('Morosidad verificada con el registro oficial.','clean verification copy');
+req('No quedan desembolsos académicos 01 pendientes según el registro oficial.','clean empty-state copy');
+forbid('Morosidad verificada directamente en 7-morosidad oficial.','internal sheet/source name in success copy');
+forbid('No quedan desembolsos académicos 01 pendientes según 7-morosidad.','internal sheet/source name in empty state');
+console.log('CS21A195 ADMIN MASTER CONAPE USER COPY: PASS');
+console.log('VISIBLE_7_MOROSIDAD_REFERENCES=NO_FOR_GUARDED_COPY');
