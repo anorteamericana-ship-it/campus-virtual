@@ -1,0 +1,29 @@
+name: QA Student Portal Safe Errors CS21A200I
+
+on:
+  push:
+    branches:
+      - fix/student-portal-safe-errors-cs21a200i
+  pull_request:
+    paths:
+      - 'src/student_portal.jsx'
+      - 'scripts/qa_student_portal_safe_errors_cs21a200i.mjs'
+      - '.github/workflows/qa-student-portal-safe-errors-cs21a200i.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A200I guard
+        run: node scripts/qa_student_portal_safe_errors_cs21a200i.mjs
+      - name: Regress CS21A200H
+        run: node scripts/qa_lazy_loader_safe_errors_cs21a200h.mjs
+      - name: Regress CS21A200G
+        run: node scripts/qa_student_academic_menu_safe_errors_cs21a200g.mjs
+      - name: Regress CS21A200F
+        run: node scripts/qa_sec006_additional_resources_access_cs21a200f.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/fix/lazy-loader-safe-errors-cs21a200h...HEAD -- . ':(exclude)00_DOCUMENTACION/**'
