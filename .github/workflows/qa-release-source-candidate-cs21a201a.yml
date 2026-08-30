@@ -1,0 +1,62 @@
+name: QA Release Source Candidate CS21A201A
+
+on:
+  push:
+    branches:
+      - integration/release-source-candidate-cs21a201a
+  pull_request:
+
+jobs:
+  release-source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify direct base ancestry
+        run: git merge-base --is-ancestor 858be40ed7f40fa321b22b818087e28115fdf334 HEAD
+      - name: Ventas and Matriculas integration guards
+        run: |
+          node scripts/qa_ventas_safe_user_errors_cs21a173.mjs
+          node scripts/qa_matriculas_admin_readonly_safe_errors_cs21a176.mjs
+          node scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
+          node scripts/qa_matriculas_ventas_security_cs21a177.mjs
+      - name: SEC001 guards
+        run: |
+          node scripts/qa_sec001_password_min6_cs21a164.mjs
+          node scripts/qa_sec001_oidc_neutral_cs21a165.mjs
+          node scripts/qa_security_source_candidate_cs21a179.mjs
+      - name: SEC004 and snapshot tooling guards
+        run: |
+          node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
+          node scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs
+          node scripts/qa_security_p1_source_tooling_cs21a180.mjs
+      - name: Private student and payment guards
+        run: |
+          node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+          node scripts/qa_solicitudes_pago_safe_errors_cs21a182.mjs
+          node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Teacher guards
+        run: |
+          node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
+          node scripts/qa_teacher_material_access_cs21a185.mjs
+          node scripts/qa_teacher_session_safe_errors_cs21a186.mjs
+          node scripts/qa_teacher_action_safe_errors_cs21a187.mjs
+          node scripts/qa_teacher_user_copy_cs21a188.mjs
+      - name: Admin guards
+        run: |
+          node scripts/qa_admin_quick_update_safe_errors_cs21a189.mjs
+          node scripts/qa_admin_conape_user_copy_cs21a190.mjs
+          node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+          node scripts/qa_admin_students_user_copy_cs21a192.mjs
+          node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: SEC002 current blocker guards
+        run: |
+          node scripts/qa_sec002_admin_academic_pdf_delivery_cs21a193.mjs
+          node scripts/qa_sec002_legacy_certificate_tree_contract_cs21a194.mjs
+          node scripts/qa_sec002_identity_legacy_evidence_cs21a195.mjs
+          node scripts/qa_sec002_proforma_public_acl_contract_cs21a196.mjs
+      - name: Flattened perimeter guard
+        run: node scripts/qa_release_source_candidate_cs21a201a.mjs
+      - name: Diff hygiene
+        run: git diff --check 858be40ed7f40fa321b22b818087e28115fdf334...HEAD -- . ':!00_DOCUMENTACION/**'
