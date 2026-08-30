@@ -1,0 +1,24 @@
+name: QA Additional Resources Safe Errors CS21A200E
+
+on:
+  push:
+    branches:
+      - fix/additional-resources-safe-errors-cs21a200e
+  pull_request:
+    paths:
+      - 'src/additional_resources_panel_cs21a68.jsx'
+      - 'src/admin_resources_direct_cs21a74.js'
+      - 'scripts/qa_additional_resources_safe_errors_cs21a200e.mjs'
+      - '.github/workflows/qa-additional-resources-safe-errors-cs21a200e.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A200E
+        run: node scripts/qa_additional_resources_safe_errors_cs21a200e.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/${{ github.base_ref || 'fix/admin-additional-resources-route-cs21a200d' }}...HEAD -- . ':!00_DOCUMENTACION/**'
