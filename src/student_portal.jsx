@@ -103,6 +103,18 @@ function _spOrdenLecciones(lecciones) {
   return arr.sort((a,b) => String(a.fecha || a.FECHA || '').localeCompare(String(b.fecha || b.FECHA || '')));
 }
 
+function studentPortalSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|getportalestudiantecompleto|getestudiante|request_id|file_id|base64|sha-?256|mime/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[StudentPortal] Detalle técnico oculto al estudiante.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 function usePortalEstudianteData(codigo) {
   const [state, setState] = React.useState({ loading:true, data:null, error:'' });
   const cargar = React.useCallback(() => {
@@ -117,7 +129,7 @@ function usePortalEstudianteData(codigo) {
         const base = await postStudentPortal('getEstudiante', { codigo }).catch(() => null);
         if (cancel) return;
         if (base?.ok) setState({ loading:false, data:{ ok:true, modo:'fallback_frontend', ...base }, error:'' });
-        else setState({ loading:false, data:null, error:d?.error || base?.error || 'No se pudo cargar el portal.' });
+        else setState({ loading:false, data:null, error:studentPortalSafeUserError(d?.error || base?.error, 'No pudimos cargar tu portal. Intentá de nuevo.', 'portal_y_fallback') });
       })
       .catch(() => { if (!cancel) setState({ loading:false, data:null, error:'Error de conexión con el servidor.' }); });
     return () => { cancel = true; };
