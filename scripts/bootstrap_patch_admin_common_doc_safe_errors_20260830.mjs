@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const path = 'src/admin_students.jsx';
+let src = fs.readFileSync(path, 'utf8');
+const before = "      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}));";
+const after = "      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data?.error || data?.mensaje, 'No se pudo generar el documento. Intentá de nuevo.', 'generar_documento_comun') }}));";
+const n = src.split(before).length - 1;
+if (n !== 1) throw new Error(`ADMIN COMMON DOC exact preimage mismatch: ${n}`);
+src = src.replace(before, after);
+fs.writeFileSync(path, src);
+console.log('ADMIN COMMON DOC exact safe-error patch applied');
