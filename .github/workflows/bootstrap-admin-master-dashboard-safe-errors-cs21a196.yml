@@ -1,0 +1,43 @@
+name: Bootstrap Admin Master Dashboard Safe Errors CS21A196
+
+on:
+  push:
+    branches:
+      - fix/admin-master-dashboard-safe-errors-cs21a196
+    paths:
+      - 'scripts/bootstrap_patch_admin_master_dashboard_safe_errors_cs21a196.mjs'
+      - '.github/workflows/bootstrap-admin-master-dashboard-safe-errors-cs21a196.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 3e9892cb01935d5ee98f75a2263e7e9c513153bf HEAD
+      - name: Apply exact safe-error patch
+        run: node scripts/bootstrap_patch_admin_master_dashboard_safe_errors_cs21a196.mjs
+      - name: Run CS21A196 guard
+        run: node scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs
+      - name: Regress CS21A195
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a195.mjs
+      - name: Regress CS21A194
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_admin_master_dashboard_safe_errors_cs21a196.mjs
+          rm .github/workflows/bootstrap-admin-master-dashboard-safe-errors-cs21a196.yml
+          git add -A
+          git commit -m 'CS21A196 · safe Master Dashboard errors'
+          git push origin HEAD:fix/admin-master-dashboard-safe-errors-cs21a196
