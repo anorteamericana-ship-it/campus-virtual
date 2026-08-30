@@ -24,6 +24,13 @@
     "max_base64_chars": 28000000,
     "delivery": "Blob/ObjectURL"
   },
+  "bootstrap_evidence": {
+    "run_id": 33283327541,
+    "result": "SUCCESS",
+    "exact_preimages": 8,
+    "regressions": ["CS21A192", "CS21A191"],
+    "diff_hygiene": "PASS"
+  },
   "release_gates": [
     "E2 authenticated admin opens an existing transfer certificate",
     "E2 authenticated admin opens a newly generated transfer certificate",
