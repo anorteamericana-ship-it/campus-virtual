@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Guard CS21A193
         run: node scripts/qa_sec002_admin_academic_pdf_delivery_cs21a193.mjs
       - name: Regress CS21A192
@@ -28,4 +30,4 @@ jobs:
       - name: Regress CS21A191
         run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
       - name: Diff hygiene
-        run: git diff --check origin/main...HEAD -- ':!00_DOCUMENTACION/**'
+        run: git diff --check origin/fix/admin-students-user-copy-cs21a192...HEAD -- ':!00_DOCUMENTACION/**'
