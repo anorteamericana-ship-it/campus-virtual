@@ -12,9 +12,12 @@ Durante el barrido posterior a CS21A193 se revisaron certificados estudiantiles 
 Evidencia obtenida mediante metadata de Drive:
 
 - 3 certificados reales recientes muestreados: `anyone / reader`, `allowFileDiscovery:false`;
-- la subcarpeta de nivel que los contiene: `anyone / reader`;
-- la carpeta de grupo superior: `anyone / reader`;
+- la subcarpeta académica de nivel muestreada: `anyone / reader`;
+- 4 carpetas de grupo distintas muestreadas: 4/4 `anyone / reader`;
+- el muestreo de grupos incluye una carpeta creada en agosto de 2026, por lo que no se limita a grupos antiguos;
 - la raíz legado `DOCUMENTOS_ESTUDIANTES`: `anyone / reader`.
+
+Además, al inspeccionar un grupo reciente se observó en la ruta muestreada una subcarpeta académica con certificado; no se observó allí una matrícula firmada moderna. Este dato evita ampliar el hallazgo a clases documentales que no fueron demostradas dentro del árbol.
 
 Por tanto, cualquier persona que obtenga uno de esos enlaces puede leer el certificado sin autenticarse en el Campus.
 
