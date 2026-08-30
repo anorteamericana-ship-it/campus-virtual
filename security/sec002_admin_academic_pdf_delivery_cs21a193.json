@@ -1,0 +1,31 @@
+{
+  "cut": "CS21A193",
+  "security_track": "SEC-002",
+  "scope": [
+    "transfer_certificate",
+    "conape_integral_letter"
+  ],
+  "current_frontend_debt": {
+    "direct_drive_url_open": true,
+    "include_base64_requested": false
+  },
+  "target_frontend_delivery": {
+    "transport": "authenticated Campus POST",
+    "payload": "pdf_base64",
+    "render": "bounded PDF Blob/ObjectURL",
+    "direct_drive_url_fallback": false
+  },
+  "drive_acl_evidence": {
+    "conape_integral_letter_real_samples_checked": 2,
+    "owner_only_samples": 2,
+    "anyone_reader_samples": 0,
+    "transfer_certificate_real_samples_checked": 0,
+    "acl_change_in_this_cut": "NONE"
+  },
+  "backend_compatibility_evidence": {
+    "historical_accumulated_source": "generarCartaIntegralConape and generarConstanciaTraslado support include_base64 for existing and newly generated PDFs",
+    "fresh_modular_QA_snapshot": "PENDING_ISSUE_111"
+  },
+  "runtime_gate": "E2_ADMIN_REQUIRED_BEFORE_RELEASE",
+  "production": "NO_CHANGE"
+}
