@@ -33,9 +33,9 @@ Esto demuestra compatibilidad histórica de source, pero **no reemplaza el snaps
 
 ## Cambio frontend
 
-CS21A193 debe:
+CS21A193:
 
-1. agregar un helper estricto para PDF privado con:
+1. agrega un helper estricto para PDF privado con:
    - base64 obligatorio;
    - MIME `application/pdf`;
    - firma `%PDF-`;
@@ -43,10 +43,28 @@ CS21A193 debe:
    - `Blob` + `ObjectURL`;
    - revocación del ObjectURL;
    - cero fallback a URL;
-2. hacer que las constancias de traslado soliciten `include_base64:true` incluso si ya existe una URL histórica;
-3. hacer que las cartas CONAPE del historial soliciten `include_base64:true` incluso si ya existen;
-4. hacer que la regeneración de carta CONAPE solicite y abra el base64 privado;
-5. conservar `PDF_TRASLADO_URL` y `CARTA_CONAPE_URL` únicamente como metadata/estado histórico, no como mecanismo de apertura en estas rutas.
+2. hace que las constancias de traslado soliciten `include_base64:true` incluso si ya existe una URL histórica;
+3. hace que las cartas CONAPE del historial soliciten `include_base64:true` incluso si ya existen;
+4. hace que la regeneración de carta CONAPE solicite y abra el base64 privado;
+5. conserva `PDF_TRASLADO_URL` y `CARTA_CONAPE_URL` únicamente como metadata/estado histórico, no como mecanismo de apertura en estas rutas.
+
+## Evidencia automática
+
+Bootstrap `33290530735`: **SUCCESS completo**.
+
+Head producido por el bootstrap: `750035c159072b78d5cfa67565f17a9f3f282952`.
+
+Pasaron antes del push:
+
+- ancestry exacta contra #164;
+- parche por preimágenes exactas;
+- guard CS21A193;
+- regresión CS21A192;
+- regresión CS21A191;
+- `git diff --check`;
+- autoeliminación del patcher y workflow bootstrap.
+
+El diff contra #164 quedó en cinco archivos totales; el único archivo funcional es `src/admin_students.jsx` (+37/-9).
 
 ## No cambia
 
