@@ -12,6 +12,18 @@
     return value;
   };
 
+  function lazySafeUserError(raw, fallback, context = '') {
+    const msg = String(raw?.message ?? raw ?? '').trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /(?:^|\s)src\/[\w./?=&-]+|\.jsx?\b|\.js\b|apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|babel|sourceurl|componente\s+[A-Za-z0-9_.-]+/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[LazyLoader] Detalle técnico oculto al usuario.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   function loadOne(src){
     src = normalize(src);
     if(!src) return Promise.resolve();
@@ -123,9 +135,12 @@
         .then(() => {
           if(!live) return;
           if (typeof window[component] === 'function') setState({ ready:true, error:'' });
-          else setState({ ready:false, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
+          else {
+            console.warn('[LazyLoader] Componente esperado no publicado.', { component, files:list });
+            setState({ ready:false, error:'No pudimos preparar esta pantalla. Recargá e intentá nuevamente.' });
+          }
         })
-        .catch(e => live && setState({ ready:false, error:e?.message || String(e) }));
+        .catch(e => live && setState({ ready:false, error:lazySafeUserError(e, 'No pudimos cargar esta pantalla. Recargá e intentá nuevamente.', 'lazy_module') }));
       return () => { live = false; };
     }, [component, JSON.stringify(list)]);
     if (!state.ready) {
