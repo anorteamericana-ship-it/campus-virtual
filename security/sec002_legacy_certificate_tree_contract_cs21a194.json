@@ -7,10 +7,13 @@
   "drive_evidence": {
     "legacy_root_name": "DOCUMENTOS_ESTUDIANTES",
     "legacy_root_permission": "anyone_reader_link_only",
-    "nested_group_folder_permission": "anyone_reader_link_only",
+    "group_folders_sampled": 4,
+    "group_folders_anyone_reader": 4,
+    "group_sample_includes_recent_august_2026_folder": true,
     "nested_level_folder_permission": "anyone_reader_link_only",
     "real_certificate_samples_checked": 3,
     "real_certificate_samples_anyone_reader": 3,
+    "recent_group_content_sample": "academic level folder containing certificate; no modern signed enrollment observed in sampled path",
     "modern_signed_enrollment_QA_sample_permission": "owner_only",
     "acl_change_in_this_cut": "NONE"
   },
