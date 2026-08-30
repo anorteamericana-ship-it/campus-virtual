@@ -1,0 +1,29 @@
+name: QA Admin Common Doc Safe Errors
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_admin_common_doc_safe_errors_20260830.mjs'
+      - '.github/workflows/qa-admin-common-doc-safe-errors-20260830.yml'
+  push:
+    branches:
+      - fix/admin-common-doc-safe-errors-20260830
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Common document safe-error guard
+        run: node scripts/qa_admin_common_doc_safe_errors_20260830.mjs
+      - name: Regress private certificate source
+        run: node scripts/qa_sec002_admin_certificate_private_source_20260830.mjs
+      - name: Regress private academic docs
+        run: node scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs
+      - name: Regress admin safe errors
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Diff hygiene
+        run: git diff --check
