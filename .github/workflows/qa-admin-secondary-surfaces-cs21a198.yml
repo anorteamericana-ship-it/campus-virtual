@@ -1,0 +1,30 @@
+name: QA Admin Secondary Surfaces CS21A198
+
+on:
+  pull_request:
+    paths:
+      - 'src/panel_admin_supervision.jsx'
+      - 'src/panel_suspensiones.jsx'
+      - 'src/aperturas_admin_cs21a20.jsx'
+      - 'scripts/qa_admin_secondary_surfaces_cs21a198.mjs'
+      - '.github/workflows/qa-admin-secondary-surfaces-cs21a198.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A198 integrated admin surfaces
+        run: node scripts/qa_admin_secondary_surfaces_cs21a198.mjs
+      - name: Regress CS21A196 canonical master dashboard
+        run: node scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs
+      - name: Regress CS21A195 canonical CONAPE copy
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a195.mjs
+      - name: Regress CS21A194 canonical CONAPE safe errors
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs
+      - name: Regress CS21A193 canonical private PDF delivery
+        run: node scripts/qa_admin_private_conape_pdf_delivery_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/${{ github.base_ref }}...HEAD -- . ':!00_DOCUMENTACION/**'
