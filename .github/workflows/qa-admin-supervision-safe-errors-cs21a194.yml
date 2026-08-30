@@ -1,0 +1,27 @@
+name: QA Admin Supervision Safe Errors CS21A194
+
+on:
+  push:
+    branches:
+      - fix/admin-supervision-safe-errors-cs21a194
+  pull_request:
+    paths:
+      - 'src/panel_admin_supervision.jsx'
+      - 'scripts/qa_admin_supervision_safe_errors_cs21a194.mjs'
+      - '.github/workflows/qa-admin-supervision-safe-errors-cs21a194.yml'
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A194 admin supervision safe errors
+        run: node scripts/qa_admin_supervision_safe_errors_cs21a194.mjs
+      - name: Regress CS21A193 private docs
+        run: node scripts/qa_admin_private_conape_docs_cs21a193.mjs
+      - name: Regress CS21A192 copy boundary
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^
