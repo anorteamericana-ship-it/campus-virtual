@@ -21,7 +21,7 @@ const dataRequired = [
   "masterConapeSafeUserError(error?.message||String(error),'No se pudo cargar el seguimiento del estudiante. Intentá de nuevo.','cargar_seguimiento')",
   "masterConapeSafeUserError(error?.message||String(error),'No se pudo guardar el seguimiento. Intentá de nuevo.','guardar_seguimiento')",
   "setMsg(result.mensaje||'CONAPE y morosidad oficial actualizados.')",
-  "setMsg('Seguimiento guardado y marcado como revisado.')",
+  "setMsg(saved?'Seguimiento guardado y marcado como revisado.':'Seguimiento eliminado.')",
 ];
 for (const needle of dataRequired) {
   if (!data.includes(needle)) throw new Error(`CS21A194R2 data contract missing: ${needle}`);
