@@ -1,0 +1,26 @@
+name: QA Admin Master CONAPE User Copy CS21A196R2
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-user-copy-cs21a196r2
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_data_cs21a96.jsx'
+      - 'src/admin_master_conape_view_cs21a96.jsx'
+      - 'scripts/qa_admin_master_conape_user_copy_cs21a196r2.mjs'
+      - '.github/workflows/qa-admin-master-conape-user-copy-cs21a196r2.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A196R2 guard
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a196r2.mjs
+      - name: Regress CS21A195R2
+        run: node scripts/qa_admin_master_conape_refresh_truth_cs21a195r2.mjs
+      - name: Regress CS21A194R2
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194r2.mjs
+      - name: Diff hygiene
+        run: git diff --check
