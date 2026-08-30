@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Run CS21A193 guard
         run: node scripts/qa_sec002_admin_academic_docs_bytes_cs21a193.mjs
       - name: Diff hygiene
