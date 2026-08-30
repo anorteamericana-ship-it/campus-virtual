@@ -1,0 +1,31 @@
+name: QA Admin Master Dashboard Safe Errors CS21A196
+
+on:
+  push:
+    branches:
+      - fix/admin-master-dashboard-safe-errors-cs21a196
+    paths:
+      - 'src/admin_master_dashboard.jsx'
+      - 'scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs'
+      - '.github/workflows/qa-admin-master-dashboard-safe-errors-cs21a196.yml'
+  pull_request:
+    paths:
+      - 'src/admin_master_dashboard.jsx'
+      - 'scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs'
+      - '.github/workflows/qa-admin-master-dashboard-safe-errors-cs21a196.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A196 safe-error guard
+        run: node scripts/qa_admin_master_dashboard_safe_errors_cs21a196.mjs
+      - name: Regress CS21A195
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a195.mjs
+      - name: Regress CS21A194
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':(exclude)00_DOCUMENTACION/**'
