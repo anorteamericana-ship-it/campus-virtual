@@ -1,0 +1,43 @@
+name: Bootstrap Cronograma Safe Errors CS21A200C
+
+on:
+  push:
+    branches:
+      - fix/cronograma-safe-errors-cs21a200c
+    paths:
+      - 'scripts/bootstrap_patch_cronograma_safe_errors_cs21a200c.mjs'
+      - '.github/workflows/bootstrap-cronograma-safe-errors-cs21a200c.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor ad4fa531e63cc55366aaaa0480cd8e8b330c064c HEAD
+      - name: Apply exact patch
+        run: node scripts/bootstrap_patch_cronograma_safe_errors_cs21a200c.mjs
+      - name: Run CS21A200C guard
+        run: node scripts/qa_cronograma_safe_errors_cs21a200c.mjs
+      - name: Regress CS21A200B
+        run: node scripts/qa_admin_resources_safe_errors_cs21a200b.mjs
+      - name: Regress CS21A200A
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_cronograma_safe_errors_cs21a200c.mjs
+          rm .github/workflows/bootstrap-cronograma-safe-errors-cs21a200c.yml
+          git add -A
+          git commit -m 'CS21A200C · safe errors in effective cronograma'
+          git push origin HEAD:fix/cronograma-safe-errors-cs21a200c
