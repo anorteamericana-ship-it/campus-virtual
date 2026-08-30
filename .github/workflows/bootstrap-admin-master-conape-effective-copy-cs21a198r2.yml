@@ -1,0 +1,43 @@
+name: Bootstrap Admin Master CONAPE Effective Copy CS21A198R2
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-effective-copy-cs21a198r2
+    paths:
+      - 'scripts/bootstrap_patch_admin_master_conape_effective_copy_cs21a198r2.mjs'
+      - '.github/workflows/bootstrap-admin-master-conape-effective-copy-cs21a198r2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor fd8649463e073c7f6aa1cbd4ee25a4ca5ad5f5b5 HEAD
+      - name: Apply exact effective-copy patch
+        run: node scripts/bootstrap_patch_admin_master_conape_effective_copy_cs21a198r2.mjs
+      - name: Run CS21A198R2 guard
+        run: node scripts/qa_admin_master_conape_effective_copy_cs21a198r2.mjs
+      - name: Regress CS21A197R2
+        run: node scripts/qa_admin_master_conape_action_safe_errors_cs21a197r2.mjs
+      - name: Regress CS21A196R2
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a196r2.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_admin_master_conape_effective_copy_cs21a198r2.mjs
+          rm .github/workflows/bootstrap-admin-master-conape-effective-copy-cs21a198r2.yml
+          git add -A
+          git commit -m 'CS21A198R2 · clean effective Master CONAPE copy'
+          git push origin HEAD:fix/admin-master-conape-effective-copy-cs21a198r2
