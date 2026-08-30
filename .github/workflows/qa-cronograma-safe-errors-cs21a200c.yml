@@ -1,0 +1,24 @@
+name: QA Cronograma Safe Errors CS21A200C
+
+on:
+  push:
+    branches:
+      - fix/cronograma-safe-errors-cs21a200c
+  pull_request:
+    paths:
+      - 'src/cronograma_grupo.jsx'
+      - 'src/calendar88_install.js'
+      - 'scripts/qa_cronograma_safe_errors_cs21a200c.mjs'
+      - '.github/workflows/qa-cronograma-safe-errors-cs21a200c.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A200C
+        run: node scripts/qa_cronograma_safe_errors_cs21a200c.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/${{ github.base_ref || 'fix/admin-resources-safe-errors-cs21a200b' }}...HEAD -- . ':!00_DOCUMENTACION/**'
