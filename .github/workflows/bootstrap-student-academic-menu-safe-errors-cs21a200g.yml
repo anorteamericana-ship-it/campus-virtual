@@ -1,0 +1,45 @@
+name: Bootstrap Student Academic Menu Safe Errors CS21A200G
+
+on:
+  push:
+    branches:
+      - fix/student-academic-menu-safe-errors-cs21a200g
+    paths:
+      - 'scripts/bootstrap_patch_student_academic_menu_safe_errors_cs21a200g.mjs'
+      - '.github/workflows/bootstrap-student-academic-menu-safe-errors-cs21a200g.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 487aab63a46f026515d1f5ce396715b52794fc5b HEAD
+      - name: Apply exact patch
+        run: node scripts/bootstrap_patch_student_academic_menu_safe_errors_cs21a200g.mjs
+      - name: Run CS21A200G guard
+        run: node scripts/qa_student_academic_menu_safe_errors_cs21a200g.mjs
+      - name: Regress CS21A200F
+        run: node scripts/qa_sec006_additional_resources_access_cs21a200f.mjs
+      - name: Regress CS21A200E
+        run: node scripts/qa_additional_resources_safe_errors_cs21a200e.mjs
+      - name: Regress CS21A200A
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_student_academic_menu_safe_errors_cs21a200g.mjs
+          rm .github/workflows/bootstrap-student-academic-menu-safe-errors-cs21a200g.yml
+          git add -A
+          git commit -m 'CS21A200G · safe student academic menu errors'
+          git push origin HEAD:fix/student-academic-menu-safe-errors-cs21a200g
