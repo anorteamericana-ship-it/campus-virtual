@@ -1,0 +1,40 @@
+{
+  "cut": "CS21A194",
+  "security_track": "SEC-002",
+  "severity": "P1",
+  "class": "legacy_student_certificates",
+  "state": "OPEN_BLOCKER",
+  "drive_evidence": {
+    "legacy_root_name": "DOCUMENTOS_ESTUDIANTES",
+    "legacy_root_permission": "anyone_reader_link_only",
+    "nested_group_folder_permission": "anyone_reader_link_only",
+    "nested_level_folder_permission": "anyone_reader_link_only",
+    "real_certificate_samples_checked": 3,
+    "real_certificate_samples_anyone_reader": 3,
+    "modern_signed_enrollment_QA_sample_permission": "owner_only",
+    "acl_change_in_this_cut": "NONE"
+  },
+  "current_consumers": {
+    "admin_existing_certificate": "buscarCertificadoExistente -> data.url -> window.open",
+    "admin_regenerate_certificate": "generarCertificado -> data.url -> window.open",
+    "admin_generate_certificate": "generarCertificado -> data.url -> window.open",
+    "student_source_private_candidate": "descargarMiCertificadoPrivado"
+  },
+  "backend_evidence": {
+    "historical_buscarCertificadoExistente": "returns url/file_id; no private base64 delivery demonstrated",
+    "historical_generarCertificado": "URL-based admin consumer remains",
+    "fresh_modular_QA_snapshot": "PENDING_ISSUE_111"
+  },
+  "required_migration_order": [
+    "obtain fresh modular QA snapshot",
+    "install or confirm student private certificate endpoint",
+    "define and install staff-scoped private certificate read",
+    "migrate three admin URL consumers to authenticated bytes/ObjectURL",
+    "run positive and negative E2 for student/admin/superadmin/anonymous",
+    "inventory exact legacy certificate folders/files affected by public inherited ACL",
+    "remove anyone-reader only after all required consumers pass E2",
+    "verify anonymous access denied after ACL migration"
+  ],
+  "release_gate": "BLOCK_UNTIL_PRIVATE_DELIVERY_AND_ACL_MIGRATION_E2",
+  "production": "NO_CHANGE"
+}
