@@ -1,0 +1,34 @@
+{
+  "checkpoint": "CS21A193",
+  "date": "2026-08-30",
+  "scope": "admin academic documents generated from student change history",
+  "document_classes": [
+    "TRANSFER_CERTIFICATE",
+    "CONAPE_INTEGRAL_LETTER"
+  ],
+  "drive_acl_evidence": {
+    "sampled_class": "CONAPE_INTEGRAL_LETTER",
+    "sample_count": 2,
+    "result": "PRIVATE_OWNER_ONLY",
+    "note": "No anyone/domain permission was observed in the two sampled real PDFs. This does not prove every historical object has identical ACL."
+  },
+  "backend_contract_evidence": {
+    "source": "historical canonical Code.gs snapshot available in connected Drive",
+    "fresh_runtime_snapshot": "PENDING_ISSUE_111",
+    "generarConstanciaTraslado": "supports include_base64 for existing and newly generated PDFs",
+    "generarCartaIntegralConape": "supports include_base64 for existing and newly generated PDFs"
+  },
+  "frontend_transition": {
+    "before": "direct Drive URL short-circuits and include_base64=false in the change-history surface",
+    "after": "request include_base64=true and prefer Blob/ObjectURL through abrirPdfBackend",
+    "compatibility_fallback": "private Drive URL remains temporarily available only when authenticated bytes are absent",
+    "fallback_removal_gate": [
+      "fresh modular Apps Script QA snapshot",
+      "authenticated admin E2 for existing transfer certificate",
+      "authenticated admin E2 for existing CONAPE letter",
+      "authenticated admin E2 for newly generated/regenerated documents"
+    ]
+  },
+  "security_status": "TRANSITION_NOT_CLOSED",
+  "production_status": "NO_PROD_NO_ACL_CHANGE_NO_APPS_SCRIPT_CHANGE"
+}
