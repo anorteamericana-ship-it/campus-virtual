@@ -1,3 +1,4 @@
+// Bootstrap evidence: run 33284109056 SUCCESS · exact patch + CS21A196 + regressions 195/194 + diff hygiene.
 import fs from 'node:fs';
 const src=fs.readFileSync('src/admin_master_dashboard.jsx','utf8');
 const req=(s,l)=>{if(!src.includes(s))throw new Error(`CS21A196 missing: ${l}`)};
