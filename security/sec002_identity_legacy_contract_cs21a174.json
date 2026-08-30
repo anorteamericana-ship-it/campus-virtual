@@ -18,6 +18,18 @@
     "TITULO"
   ],
   "publisher_historical": "_guardarFotoProspecto",
+  "historical_acl_evidence": {
+    "source": "accumulated historical Code.gs read-only evidence updated 2026-08-19",
+    "storage_comment": "DOCUMENTOS_ESTUDIANTES/{CEDULA}/INSCRIPCION/{tipo}.jpg",
+    "publisher_inputs": ["foto_ced_frente", "foto_ced_dorso", "foto_titulo"],
+    "publisher_call": "_guardarFotoProspecto",
+    "sharing_behavior": "DriveApp.Access.ANYONE_WITH_LINK + DriveApp.Permission.VIEW",
+    "returned_delivery": "lh3.googleusercontent.com/d/{file_id}",
+    "reason_in_historical_source": "make accessible by link so the dashboard can display it",
+    "current_object_acl": "NOT_PROVEN",
+    "drive_name_search_result": "NO_CURRENT_IDENTITY_OBJECTS_LOCALIZED_BY_EXPECTED_NAME",
+    "fresh_modular_QA_snapshot": "PENDING_ISSUE_111"
+  },
   "resolved_new_flow_exclusion": "PR #118 / PROD @419 handles newly captured enrollment identity/title privately; this contract is only for historical/legacy objects and consumers.",
   "consumers": [
     {
@@ -59,6 +71,7 @@
   },
   "runtime_gate": [
     "fresh current Apps Script QA snapshot per Issue #111",
+    "locate representative current legacy identity/title objects and read actual Drive permissions without exposing PII",
     "port minimal endpoint onto exact modular source",
     "positive Sales own-scope read",
     "negative Sales cross-scope read",
@@ -74,5 +87,6 @@
     "surface": "ventas",
     "description": "The legacy identity-slot 'Subir manualmente' action currently uploads through subirDocumentoExtra and only paints base64 into foto_ced_* local state; after reload it is an extra document, not a persisted replacement of the identity field.",
     "resolution_rule": "Do not claim identity-slot replacement until a dedicated authenticated persistence contract exists."
-  }
+  },
+  "evidence_rule": "Historical public sharing is proven; current object ACL is not proven and must not be claimed until representative objects are located and inspected."
 }

@@ -1,0 +1,31 @@
+name: QA SEC002 Identity Legacy Evidence CS21A195
+
+on:
+  push:
+    branches:
+      - security/sec002-identity-legacy-evidence-cs21a195
+    paths:
+      - 'security/sec002_identity_legacy_contract_cs21a174.json'
+      - 'scripts/qa_sec002_identity_legacy_evidence_cs21a195.mjs'
+      - '.github/workflows/qa-sec002-identity-legacy-evidence-cs21a195.yml'
+  pull_request:
+    paths:
+      - 'security/sec002_identity_legacy_contract_cs21a174.json'
+      - 'scripts/qa_sec002_identity_legacy_evidence_cs21a195.mjs'
+      - '.github/workflows/qa-sec002-identity-legacy-evidence-cs21a195.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A195
+        run: node scripts/qa_sec002_identity_legacy_evidence_cs21a195.mjs
+      - name: Regress CS21A194
+        run: node scripts/qa_sec002_legacy_certificate_tree_contract_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_sec002_admin_academic_pdf_delivery_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/security/sec002-legacy-certificate-tree-contract-cs21a194...HEAD -- ':!00_DOCUMENTACION/**'
