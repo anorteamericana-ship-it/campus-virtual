@@ -31,6 +31,18 @@
     return json;
   }
 
+function apSafeUserError(raw, fallback, context = '') {
+    const msg = String(raw == null ? '' : raw).trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|getAperturasAdmin|actualizarAperturaAdmin/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[AdminAperturas] Detalle técnico oculto al operador.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   function apMoney(value) {
     return '₡' + (Number(value) || 0).toLocaleString('es-CR');
   }
@@ -153,7 +165,7 @@
         });
         onSaved(res);
       } catch (e) {
-        setError(e && e.message ? e.message : 'No se pudo actualizar la apertura.');
+        setError(apSafeUserError(e?.message || String(e), 'No se pudo actualizar la apertura. Intentá de nuevo.', 'guardar_apertura'));
       } finally { setSaving(false); }
     };
 
@@ -287,7 +299,7 @@
       setError('');
       apPost('getAperturasAdmin')
         .then(r => { if (live) setItems(Array.isArray(r.aperturas) ? r.aperturas : []); })
-        .catch(e => { if (live) { setError(e && e.message ? e.message : 'No se pudieron cargar las aperturas.'); setItems([]); } });
+        .catch(e => { if (live) { setError(apSafeUserError(e?.message || String(e), 'No se pudieron cargar las aperturas. Intentá de nuevo.', 'cargar_aperturas')); setItems([]); } });
       return () => { live = false; };
     }, [tick]);
 

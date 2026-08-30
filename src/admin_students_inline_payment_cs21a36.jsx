@@ -20,6 +20,18 @@ function receiptSaldo(item){const direct=Number(item?.saldo),calc=num(item?.cred
 function availableReceipts(list){const seen=new Set();return (Array.isArray(list)?list:[]).filter(x=>{const d=norm(x?.doc),s=receiptSaldo(x);if(!d||seen.has(d)||s<=.009)return false;seen.add(d);return true;}).map(x=>({...x,saldo:receiptSaldo(x)}));}
 function requestId(){try{if(globalThis.crypto?.randomUUID)return 'PAY-'+crypto.randomUUID();}catch(_){}return `PAY-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;}
 
+function inlineFinanceSafeUserError(raw, fallback, context = '') {
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|getEstudiante|getComprobantes|aplicarPago/i.test(msg);
+  if(technicalCode||technicalText){
+    console.warn('[AdminInlineFinance] Detalle técnico oculto al operador.',{context,error:msg});
+    return fallback;
+  }
+  return msg;
+}
+
 async function postInline(fn,payload={},timeoutMs=35000){
   const token=window.getSessionToken?window.getSessionToken():'';
   const controller=typeof AbortController!=='undefined'?new AbortController():null;
@@ -88,7 +100,7 @@ function AgIndIntentoFinancieroCS21A36({intento,color,nivel,certificadoRegistro}
       const canonical=norm(info.grupo||data?.niveles?.[nivel]?.grupo);if(canonical&&norm(it.grupo)&&canonical!==norm(it.grupo))throw new Error(`Este intento es histórico. El grupo financiero vigente es ${canonical}; no se aplicará un pago a ${it.grupo}.`);
       const cargos=(Array.isArray(data?.otros_cargos)?data.otros_cargos:[]).filter(c=>upper(c?.ESTADO)==='PENDIENTE'&&(!norm(c?.NIVEL)||upper(c?.NIVEL)===nivel));
       setFresh({ficha:data,info,canonicalGroup:canonical||norm(it.grupo),cargos});
-    }).catch(e=>alive&&setError(e?.message||String(e))).finally(()=>alive&&setLoading(false));
+    }).catch(e=>alive&&setError(inlineFinanceSafeUserError(e?.message || String(e), 'No pudimos cargar la información financiera. Intentá de nuevo.', 'cargar_finanzas'))).finally(()=>alive&&setLoading(false));
     return()=>{alive=false;};
   },[open,ctx?.codigo,nivel,it?.grupo,it?.intento_id]);
 
@@ -140,13 +152,13 @@ function AgIndIntentoFinancieroCS21A36({intento,color,nivel,certificadoRegistro}
       const exact=/^\d{4,}$/.test(q),data=await postInline('getComprobantes',exact?{numero_documento:q,consulta_en:Date.now()}:{consulta_en:Date.now()},45000),needle=q.toLowerCase();
       const list=availableReceipts(data.comprobantes).filter(x=>exact?norm(x.doc)===q:[x.doc,x.fecha,x.descripcion,x.estudiante].some(v=>norm(v).toLowerCase().includes(needle))).slice(0,12);
       setResults(list);if(exact&&list.length===1)await selectReceipt(list[0]);else if(!list.length)setError('No se encontró un comprobante disponible con ese criterio.');
-    }catch(e){setError(e?.message||String(e));}finally{setSearching(false);}
+    }catch(e){setError(inlineFinanceSafeUserError(e?.message || String(e), 'No pudimos buscar los comprobantes. Intentá de nuevo.', 'buscar_comprobante'));}finally{setSearching(false);}
   }
 
   async function selectReceipt(item){
     const doc=norm(item?.doc);if(!doc)return;setSearching(true);setError('');
     try{const data=await postInline('getComprobantes',{numero_documento:doc,consulta_en:Date.now()},45000),current=availableReceipts(data.comprobantes).find(x=>norm(x.doc)===doc);if(!current)throw new Error(`El comprobante ${doc} ya no tiene saldo disponible.`);setReceipt(current);setResults([]);setQuery(doc);setAmounts({});setSelectedCargos({});}
-    catch(e){setReceipt(null);setError(e?.message||String(e));}finally{setSearching(false);}
+    catch(e){setReceipt(null);setError(inlineFinanceSafeUserError(e?.message || String(e), 'No pudimos actualizar el comprobante. Intentá de nuevo.', 'seleccionar_comprobante'));}finally{setSearching(false);}
   }
 
   function fillDebt(){
@@ -170,7 +182,7 @@ function AgIndIntentoFinancieroCS21A36({intento,color,nivel,certificadoRegistro}
       if(!requestIdRef.current)requestIdRef.current=requestId();
       const result=await postInline('aplicarPago',{request_id:requestIdRef.current,doc:receipt.doc,monto_total:total,cod_estudiante:ctx.codigo,rubros:selected},100000),syncOk=result?.conape_sync===true||result?.conape_sync?.ok===true;
       requestIdRef.current='';const message=`Pago aplicado · recibo(s) ${(result?.recibos||[]).join(', ')||'generados'}${syncOk?' · CONAPE actualizado':' · CONAPE pendiente'}`;setSuccess({message,syncOk});setReceipt(null);setAmounts({});setSelectedCargos({});setTimeout(()=>ctx.refresh?.(message),1100);
-    }catch(e){setError(e?.message||String(e));}finally{setApplying(false);}
+    }catch(e){setError(inlineFinanceSafeUserError(e?.message || String(e), 'No pudimos aplicar el pago. Revisá los datos e intentá de nuevo.', 'aplicar_pago'));}finally{setApplying(false);}
   }
 
   return <div style={{border:'1px solid #DCD5CC',borderRadius:11,overflow:'hidden',background:'#FDFCFA'}}>

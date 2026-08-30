@@ -540,13 +540,17 @@ function PanelAdminSupervision() {
     return fetchDocentesAtrasados()
       .then(res => {
         if (!res?.ok) {
-          setError(res?.error || 'No se pudo obtener la lista de docentes atrasados.');
+          console.warn('[AdminSupervision] Respuesta de carga no disponible.', res?.error || res?.mensaje || res);
+          setError('No pudimos cargar la supervisión de docentes. Intentá de nuevo.');
           setData(null);
           return;
         }
         setData(res);
       })
-      .catch(e => setError(e.message || 'Error de conexión.'))
+      .catch(e => {
+        console.error('[AdminSupervision] Error técnico cargando supervisión.', e);
+        setError('No pudimos cargar la supervisión de docentes. Intentá de nuevo.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
