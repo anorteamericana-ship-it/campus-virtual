@@ -1,0 +1,25 @@
+name: QA Admin Master CONAPE Refresh Truth CS21A195R2
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-refresh-truth-cs21a195r2
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_data_cs21a96.jsx'
+      - 'scripts/qa_admin_master_conape_refresh_truth_cs21a195r2.mjs'
+      - '.github/workflows/qa-admin-master-conape-refresh-truth-cs21a195r2.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A195R2 guard
+        run: node scripts/qa_admin_master_conape_refresh_truth_cs21a195r2.mjs
+      - name: Regress CS21A194R2
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a194r2.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_admin_academic_private_pdf_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check
