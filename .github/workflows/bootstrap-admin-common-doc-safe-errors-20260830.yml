@@ -1,0 +1,45 @@
+name: Bootstrap Admin Common Doc Safe Errors
+
+on:
+  push:
+    branches:
+      - fix/admin-common-doc-safe-errors-20260830
+    paths:
+      - 'scripts/bootstrap_patch_admin_common_doc_safe_errors_20260830.mjs'
+      - '.github/workflows/bootstrap-admin-common-doc-safe-errors-20260830.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor cdeca3c02ced5cfde5c633729e6a0d14dbc2396f HEAD
+      - name: Apply exact safe-error patch
+        run: node scripts/bootstrap_patch_admin_common_doc_safe_errors_20260830.mjs
+      - name: Run common document safe-error guard
+        run: node scripts/qa_admin_common_doc_safe_errors_20260830.mjs
+      - name: Regress private certificate source
+        run: node scripts/qa_sec002_admin_certificate_private_source_20260830.mjs
+      - name: Regress private academic docs
+        run: node scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs
+      - name: Regress admin safe errors
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_admin_common_doc_safe_errors_20260830.mjs
+          rm .github/workflows/bootstrap-admin-common-doc-safe-errors-20260830.yml
+          git add -A
+          git commit -m 'Admin common docs · safe error boundary'
+          git push origin HEAD:fix/admin-common-doc-safe-errors-20260830
