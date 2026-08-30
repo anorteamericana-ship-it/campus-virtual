@@ -1,0 +1,41 @@
+name: Bootstrap Admin Resources Safe Errors CS21A200B
+
+on:
+  push:
+    branches:
+      - fix/admin-resources-safe-errors-cs21a200b
+    paths:
+      - 'scripts/bootstrap_patch_admin_resources_safe_errors_cs21a200b.mjs'
+      - '.github/workflows/bootstrap-admin-resources-safe-errors-cs21a200b.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 9816d91a4457a66d348849edeb9ff9304a817a3d HEAD
+      - name: Apply exact patch
+        run: node scripts/bootstrap_patch_admin_resources_safe_errors_cs21a200b.mjs
+      - name: Run CS21A200B guard
+        run: node scripts/qa_admin_resources_safe_errors_cs21a200b.mjs
+      - name: Regress CS21A200A
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_admin_resources_safe_errors_cs21a200b.mjs
+          rm .github/workflows/bootstrap-admin-resources-safe-errors-cs21a200b.yml
+          git add -A
+          git commit -m 'CS21A200B · safe errors in effective resources viewer'
+          git push origin HEAD:fix/admin-resources-safe-errors-cs21a200b
