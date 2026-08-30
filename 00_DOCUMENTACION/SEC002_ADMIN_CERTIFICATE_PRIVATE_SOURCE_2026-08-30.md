@@ -10,7 +10,7 @@ Fecha: 2026-08-30 · Costa Rica
 
 ## P1 demostrado
 
-El panel administrativo de certificados conserva rutas `data.url -> window.open(...)`, un enlace `certResult.url -> Abrir` y un fallback `search_url -> Buscar en Drive`.
+El panel administrativo de certificados conservaba rutas `data.url -> window.open(...)`, un enlace `certResult.url -> Abrir` y un fallback `search_url -> Buscar en Drive`.
 
 Se inspeccionaron certificados reales en Drive:
 
@@ -69,7 +69,7 @@ Solo `src/admin_students.jsx`:
 
 - reglas de elegibilidad;
 - consecutivos;
-- `REG_CERTIFICADOS`/registro oficial;
+- registro oficial de certificado;
 - generación masiva;
 - endpoint `generarCertificado`;
 - archivos existentes;
@@ -77,6 +77,22 @@ Solo `src/admin_students.jsx`:
 - Apps Script;
 - producción.
 
-## Estado esperado
+## Evidencia automática
+
+Bootstrap GitHub Actions `33342724136`: **SUCCESS completo**.
+
+- ancestry exacta desde `77cb5c9741cb648be960a2aed19e574320d0d0e4`;
+- parche exacto aplicado;
+- guard privado de certificado PASS;
+- regresión entrega privada de constancias/cartas PASS;
+- regresión copy admin PASS;
+- regresión safe-errors admin PASS;
+- `git diff --check` PASS;
+- patcher y bootstrap autoeliminados;
+- head funcional previo a este update documental: `c50c7af59fd37f1f9b2534c88386d6a58a21352c`.
+
+Diff contra #199: cuatro archivos totales; funcional únicamente `src/admin_students.jsx` (+68/-36).
+
+## Estado
 
 **SOURCE MIGRATED · P1 ACL STILL OPEN · BACKEND ENDPOINT PENDING #111 · E2 PENDING · NO PROD · NO AUTO-MERGE**
