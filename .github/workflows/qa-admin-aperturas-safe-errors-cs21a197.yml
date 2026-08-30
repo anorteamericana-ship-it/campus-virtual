@@ -1,0 +1,27 @@
+name: QA Admin Aperturas Safe Errors CS21A197
+
+on:
+  push:
+    branches:
+      - fix/admin-aperturas-safe-errors-cs21a197
+  pull_request:
+    paths:
+      - 'src/aperturas_admin_cs21a20.jsx'
+      - 'scripts/qa_admin_aperturas_safe_errors_cs21a197.mjs'
+      - '.github/workflows/qa-admin-aperturas-safe-errors-cs21a197.yml'
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A197 Aperturas safe errors
+        run: node scripts/qa_admin_aperturas_safe_errors_cs21a197.mjs
+      - name: Regress CS21A196 suspensiones
+        run: node scripts/qa_admin_suspensiones_safe_actions_cs21a196.mjs
+      - name: Regress CS21A195 Panel Maestro
+        run: node scripts/qa_admin_master_safe_errors_cs21a195.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^
