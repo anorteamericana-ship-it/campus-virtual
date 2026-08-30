@@ -1,0 +1,33 @@
+name: QA Admin Private CONAPE PDF Delivery CS21A193
+
+on:
+  push:
+    branches:
+      - security/admin-private-conape-pdf-delivery-cs21a193
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/admin_private_conape_pdf_delivery_cs21a193.json'
+      - 'scripts/qa_admin_private_conape_pdf_delivery_cs21a193.mjs'
+      - '.github/workflows/qa-admin-private-conape-pdf-delivery-cs21a193.yml'
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/admin_private_conape_pdf_delivery_cs21a193.json'
+      - 'scripts/qa_admin_private_conape_pdf_delivery_cs21a193.mjs'
+      - '.github/workflows/qa-admin-private-conape-pdf-delivery-cs21a193.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A193 private PDF delivery guard
+        run: node scripts/qa_admin_private_conape_pdf_delivery_cs21a193.mjs
+      - name: Regress CS21A192 user copy
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Regress CS21A191 safe errors
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':(exclude)00_DOCUMENTACION/**'
