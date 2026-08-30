@@ -1,0 +1,48 @@
+{
+  "id": "CS21A193",
+  "control": "SEC-002",
+  "title": "Admin academic documents private-first delivery",
+  "status": "SOURCE_CANDIDATE_RUNTIME_E2_REQUIRED",
+  "base_sha": "30b5be3cb04cff8eacf8a644b4ab72af077e5d7a",
+  "document_classes": [
+    {
+      "class": "transfer_certificate",
+      "frontend_fields": ["PDF_TRASLADO_URL", "PDF_TRASLADO_FILE_ID"],
+      "operation": "generarConstanciaTraslado",
+      "requested_delivery": "pdf_base64",
+      "drive_acl_evidence": "NOT_INFERRED_FROM_FRONTEND",
+      "runtime_state": "UNVERIFIED_CURRENT_QA"
+    },
+    {
+      "class": "conape_integral_letter",
+      "frontend_fields": ["CARTA_CONAPE_URL", "CARTA_CONAPE_FILE_ID"],
+      "operation": "generarCartaIntegralConape",
+      "requested_delivery": "pdf_base64",
+      "drive_acl_evidence": "TWO_REAL_FILES_OWNER_ONLY_VERIFIED_2026-08-29",
+      "runtime_state": "UNVERIFIED_CURRENT_QA"
+    }
+  ],
+  "source_policy": {
+    "direct_drive_open_for_target_classes": false,
+    "include_base64": true,
+    "url_fallback_for_target_classes": false,
+    "drive_acl_change": false,
+    "apps_script_change": false
+  },
+  "historical_backend_evidence": {
+    "source": "Drive Code.gs snapshot modified 2026-08-19",
+    "supports_existing_transfer_base64": true,
+    "supports_generated_transfer_base64": true,
+    "supports_existing_conape_letter_base64": true,
+    "supports_generated_conape_letter_base64": true,
+    "note": "Historical evidence only; current modular QA must be verified E2 before release."
+  },
+  "release_gates": [
+    "authenticated admin E2 opens an existing transfer certificate from Campus session without Google Drive session dependency",
+    "authenticated admin E2 opens an existing CONAPE letter from Campus session without Google Drive session dependency",
+    "generated/regenerated documents return valid PDF base64",
+    "negative role/scope checks remain enforced server-side",
+    "no Drive ACL is widened",
+    "current Apps Script QA source/runtime compatibility is verified"
+  ]
+}
