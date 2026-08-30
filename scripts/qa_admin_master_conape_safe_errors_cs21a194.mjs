@@ -1,3 +1,4 @@
+// Bootstrap evidence: run 33283524185 SUCCESS · exact patch + CS21A194 + regressions 193/192 + diff hygiene.
 import fs from 'node:fs';
 
 const files = {
