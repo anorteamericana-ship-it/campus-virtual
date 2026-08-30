@@ -1,0 +1,45 @@
+{
+  "contract_id": "SEC-006-ADDITIONAL-RESOURCES-ACCESS-V1",
+  "classification": "P1_ACCESS_CONTROL",
+  "scope": "additional_resources_panel",
+  "observed_date": "2026-08-30",
+  "current_ui": {
+    "source": "src/additional_resources_panel_cs21a68.jsx",
+    "catalog_endpoint": "getBibliotecaNivelEstudiante",
+    "audiences_rendered": ["student", "teacher", "admin", "superadmin"],
+    "teacher_view_is_filtered": true,
+    "anonymous_ui_audience": false,
+    "resource_opening": "preview_url_or_url_or_stream_url_to_window_open"
+  },
+  "drive_evidence": {
+    "root_folders_checked": 4,
+    "root_folders_anyone_reader": 4,
+    "representative_files_checked": 1,
+    "representative_files_anyone_reader": 1,
+    "allow_file_discovery": false,
+    "drive_object_ids_committed": false,
+    "individual_permission_identities_committed": false
+  },
+  "finding": "The Campus applies role-aware catalog presentation, but the checked Drive roots and representative file can be read by anyone who obtains the link.",
+  "risk_boundary": {
+    "contains_personal_student_documents": false,
+    "contains_identity_documents": false,
+    "is_sec002_pii": false,
+    "risk": "role_gate_bypass_for_instructional_content"
+  },
+  "required_order": [
+    "confirm canonical access policy for student/teacher/admin/superadmin resources",
+    "freeze the current Apps Script QA snapshot before changing retrieval",
+    "design authenticated role-bound retrieval or a controlled grant model",
+    "prove E2 allowed roles and denied non-authorized/anonymous access in QA",
+    "inventory exact Drive descendants affected",
+    "only then change ACL in QA",
+    "repeat E2 after ACL change",
+    "production requires separate release authorization"
+  ],
+  "release_gate": "BLOCK_UNTIL_ROLE_BOUND_DELIVERY_AND_ACL_E2",
+  "acl_changed_by_this_cut": false,
+  "apps_script_changed_by_this_cut": false,
+  "production_changed_by_this_cut": false,
+  "release_claim": "NOT_FIXED_ACCESS_POLICY_PENDING"
+}
