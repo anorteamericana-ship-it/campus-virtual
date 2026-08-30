@@ -1,0 +1,77 @@
+{
+  "contract_id": "SEC002_CERTIFICATE_PRIVATE_STORAGE_20260830",
+  "status": "BACKEND_CONTRACT_ONLY_RUNTIME_PENDING",
+  "document_class": "student_certificate",
+  "source_evidence": {
+    "legacy_root": "DOCUMENTOS_ESTUDIANTES",
+    "legacy_acl_observed": "ANYONE_READER_DISCOVERY_OFF",
+    "recent_public_certificate_observed": true,
+    "modern_root": "EXPEDIENTES_ESTUDIANTILES",
+    "modern_acl_observed": "OWNER_ONLY",
+    "historical_generator": "generarPdfCertificado",
+    "historical_destination_resolver": "_certF983DDestinoTitulos_",
+    "historical_private_endpoint": "descargarMiCertificadoPrivado"
+  },
+  "target_storage": {
+    "root": "EXPEDIENTES_ESTUDIANTILES",
+    "path_template": "<CEDULA>/06_DOCUMENTOS_ACADEMICOS/<NIVEL>",
+    "acl_requirement": "NO_ANYONE_NO_DOMAIN_PRIVATE",
+    "filename_contract": "PRESERVE_CANONICAL_CERTIFICATE_FILENAME",
+    "must_not_set_public_sharing": true
+  },
+  "generation_rules": {
+    "preserve_endpoint": "generarCertificado",
+    "preserve_registry_semantics": true,
+    "preserve_existing_registration_number": true,
+    "no_new_registration_on_regeneration": true,
+    "new_certificates_must_use_target_storage": true,
+    "generated_file_must_not_inherit_anyone_permission": true,
+    "generation_must_not_remove_legacy_copy_until_migration_verified": true
+  },
+  "lookup_rules": {
+    "private_location_first": true,
+    "legacy_location_fallback_read_only": true,
+    "legacy_fallback_root": "DOCUMENTOS_ESTUDIANTES",
+    "read_must_not_delete_duplicates": true,
+    "read_must_not_move_files": true,
+    "read_must_not_change_acl": true,
+    "duplicate_handling": "REPORT_ONLY_DURING_READ"
+  },
+  "delivery_rules": {
+    "endpoint": "descargarMiCertificadoPrivado",
+    "roles": ["student", "admin", "superadmin"],
+    "student_ownership_required": true,
+    "mime": "application/pdf",
+    "max_bytes": 2097152,
+    "sha256_required": true,
+    "public_url_response_forbidden": true
+  },
+  "legacy_migration_rules": {
+    "strategy": "COPY_VERIFY_THEN_DEPRECATE_SOURCE",
+    "source_root": "DOCUMENTOS_ESTUDIANTES",
+    "copy_to_private_target_first": true,
+    "verify_size": true,
+    "verify_sha256": true,
+    "preserve_registration_and_filename": true,
+    "do_not_delete_source_in_first_pass": true,
+    "do_not_remove_anyone_acl_until_e2_passes": true,
+    "migration_write_requires_explicit_release_plan": true
+  },
+  "required_e2": [
+    "student_can_download_own_certificate",
+    "student_cannot_download_other_students_certificate",
+    "admin_can_download_authorized_certificate",
+    "superadmin_can_download_authorized_certificate",
+    "legacy_certificate_can_be_read_via_private_endpoint_without_drive_mutation",
+    "new_certificate_is_created_in_private_target",
+    "new_certificate_has_no_anyone_permission",
+    "regeneration_preserves_registration_number",
+    "private_copy_hash_matches_source_before_legacy_acl_change"
+  ],
+  "release_gates": {
+    "fresh_modular_apps_script_snapshot_required": true,
+    "issue_111_must_be_resolved_for_runtime_port": true,
+    "drive_acl_change_before_e2_forbidden": true,
+    "production_change_requires_separate_authorization": true
+  }
+}
