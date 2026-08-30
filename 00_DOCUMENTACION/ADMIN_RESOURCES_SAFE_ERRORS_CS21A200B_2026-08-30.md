@@ -35,6 +35,19 @@ Los mensajes humanos de negocio se conservan cuando son seguros. El detalle téc
 - datos, páginas, unit starts, Drive IDs, libros, audios y navegación;
 - Apps Script, Drive ACL y producción.
 
+## Evidencia bootstrap
+Head funcional verificado: `7ee0fdd25d832a4dc8a8defec35f431b6b72dbd9`.
+
+Antes del push el bootstrap completó:
+- base exacta #190;
+- parche exacto de las tres rutas;
+- guard CS21A200B;
+- regresión CS21A200A;
+- `git diff --check`;
+- autoeliminación del patcher y workflow bootstrap.
+
+Diff contra #190: cuatro archivos; funcional únicamente `src/book_unit_starts_cs21a60.jsx` (+15/-3).
+
 ## Límite
 Este corte no altera la política de acceso de los archivos Drive ni resuelve los P1 SEC-002 documentales. Es una frontera de error UI del visor efectivo.
 
