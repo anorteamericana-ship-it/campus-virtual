@@ -1,0 +1,54 @@
+{
+  "checkpoint": "CS21A193",
+  "date": "2026-08-31",
+  "status": "SOURCE_READY_RUNTIME_UNVERIFIED",
+  "scope": "admin academic transfer and CONAPE generated PDFs",
+  "document_classes": [
+    "academic_transfer_certificate",
+    "conape_integral_letter"
+  ],
+  "drive_acl_evidence": {
+    "sample_count": 2,
+    "sample_class": "conape_integral_letter",
+    "anyone_permission_observed": false,
+    "shared_observed": false,
+    "note": "ACL evidence proves sampled files are private; it does not prove the complete corpus."
+  },
+  "frontend_contract": {
+    "request": {
+      "include_base64": true,
+      "session_token_required": true
+    },
+    "accepted_response": {
+      "pdf_base64": "required for browser delivery",
+      "pdf_mime": "application/pdf",
+      "signature": "%PDF",
+      "max_decoded_bytes": 15728640
+    },
+    "delivery": "Blob/ObjectURL created in the authenticated Campus session",
+    "url_fallback": false
+  },
+  "backend_evidence": {
+    "source": "preserved pre-modular/monolithic Apps Script snapshot",
+    "observed_support": [
+      "generarConstanciaTraslado(include_base64)",
+      "generarCartaIntegralConape(include_base64)"
+    ],
+    "current_modular_qa_runtime": "UNVERIFIED"
+  },
+  "prohibited_frontend_paths": [
+    "window.open(e.pdf_traslado_url)",
+    "window.open(PDF_TRASLADO_URL)",
+    "window.open(CARTA_CONAPE_URL)",
+    "fallback from missing pdf_base64 to pdf_url"
+  ],
+  "runtime_gate_before_release": [
+    "authenticated admin/superadmin QA session",
+    "existing transfer PDF returns valid pdf_base64",
+    "existing CONAPE letter returns valid pdf_base64",
+    "regenerated CONAPE letter returns valid pdf_base64",
+    "negative role/scope test fails closed",
+    "no Drive ACL expansion"
+  ],
+  "production": "NOT_TOUCHED"
+}
