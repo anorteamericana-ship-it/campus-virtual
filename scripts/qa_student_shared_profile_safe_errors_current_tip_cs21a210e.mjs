@@ -26,7 +26,7 @@ must(primitives.includes('request_id|file_id|base64|sha-?256'),'technical identi
 must(primitives.includes(newSet),'getEstudiante ok:false uses safe boundary');
 must(!primitives.includes(oldSet),'raw backend error is no longer assigned to shared visible state');
 
-// Transport/cache/reload/network behavior remains exact.
+// Transport/cache/reload/network behavior must remain semantically present for descendants.
 must(primitives.includes("postPrimitives('getEstudiante', { codigo })"),'getEstudiante endpoint preserved');
 must(primitives.includes("const token = window.getSessionToken ? window.getSessionToken() : '';"),'session token body behavior preserved');
 must(primitives.includes('const STUDENT_PROFILE_CACHE_TTL_MS = 90 * 1000;'),'90-second cache TTL preserved');
@@ -49,12 +49,15 @@ for(const name of consumerNames){
   consumerCount+=1;
 }
 
-// Reconstruct the exact base blob: this proves primitives changed only by the helper + one boundary replacement.
+// Exact preimage/import proof belongs only to CS21A210E itself. Descendants may legitimately
+// modify other parts of primitives.jsx while preserving this boundary semantically.
 const helperCount=primitives.split(helper).length-1;
 must(helperCount===1,`expected helper block exactly once, found ${helperCount}`);
-let reconstructed=primitives.replace(helper,'').replace(newSet,oldSet);
-must(gitBlobSha(Buffer.from(reconstructed,'utf8'))===BASE_PRIMITIVES_BLOB,'reversing CS21A210E returns exact #222 primitives blob');
-must(gitBlobSha(read('src/primitives.jsx'))===EXPECTED_PRIMITIVES_BLOB,`candidate primitives matches expected blob ${EXPECTED_PRIMITIVES_BLOB}`);
+if(exactMode){
+  const reconstructed=primitives.replace(helper,'').replace(newSet,oldSet);
+  must(gitBlobSha(Buffer.from(reconstructed,'utf8'))===BASE_PRIMITIVES_BLOB,'reversing CS21A210E returns exact #222 primitives blob');
+  must(gitBlobSha(read('src/primitives.jsx'))===EXPECTED_PRIMITIVES_BLOB,`candidate primitives matches expected blob ${EXPECTED_PRIMITIVES_BLOB}`);
+}
 
 // Historical J contract is preserved, with only descendant-safe consumer detection repaired.
 must(historical.includes('studentSharedProfileSafeUserError'),'historical CS21A200J guard imported');
@@ -84,7 +87,7 @@ console.log('CS21A210E STUDENT SHARED PROFILE SAFE ERRORS CURRENT TIP: PASS');
 console.log(`BASE=${BASE_SHA}`);
 console.log(`BRANCH=${BRANCH}`);
 console.log(`SHARED_CONSUMERS=${consumerCount}`);
-console.log('PRIMITIVES_PREIMAGE_RECONSTRUCTION=EXACT');
+console.log(`PRIMITIVES_PREIMAGE_RECONSTRUCTION=${exactMode?'EXACT':'SKIPPED_FOR_DESCENDANT'}`);
 console.log(`EXACT_IMPORT=${exactMode?'VERIFIED':'SKIPPED_FOR_DESCENDANT'}`);
 console.log('EVIDENCE=E0_E1_SOURCE_ONLY');
 console.log('APPS_SCRIPT_WRITE=NO');

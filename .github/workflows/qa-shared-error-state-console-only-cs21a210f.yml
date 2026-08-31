@@ -1,0 +1,30 @@
+name: QA Shared ErrorState Console Only CS21A210F
+
+on:
+  push:
+    branches:
+      - fix/shared-error-state-console-only-cs21a210f
+  pull_request:
+    branches:
+      - fix/student-shared-profile-safe-errors-cs21a210e
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact console-only ErrorState boundary
+        run: node scripts/qa_shared_error_state_console_only_cs21a210f.mjs --exact-import
+      - name: Regress CS21A210E shared student profile boundary
+        run: node scripts/qa_student_shared_profile_safe_errors_current_tip_cs21a210e.mjs
+      - name: Regress CS21A210D secondary surfaces
+        run: node scripts/qa_secondary_safe_errors_current_tip_cs21a210d.mjs
+      - name: Regress CS21A210C Panel Maestro CONAPE
+        run: node scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs
+      - name: Diff hygiene
+        run: git diff --check
