@@ -33,9 +33,15 @@ function f92FileToBase64(file){
   return new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=()=>resolve(String(rd.result||''));rd.onerror=()=>reject(new Error('No se pudo leer el archivo.'));rd.readAsDataURL(file);});
 }
 
+function f92SafeUserError(raw,fallback,context=''){
+  const detail=raw&&typeof raw==='object'?(raw.mensaje||raw.error||raw.message||raw):raw;
+  if(detail) console.error('[Solicitudes]',context||'operación',detail);
+  return fallback;
+}
+
 function ReposicionStudentCardF92({ onNavigate, compact=false }){
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows(r.rows||[])).catch(e=>setError(f92SafeUserError(e,'Intentá nuevamente en unos segundos.','reposMiEstadoF92:card'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
   const pending=rows.filter(r=>!['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
   if(loading)return compact?null:<div className="card" style={{padding:16}}>Consultando evaluaciones pendientes…</div>;
@@ -59,9 +65,9 @@ function ReposicionStudentCardF92({ onNavigate, compact=false }){
 
 function SolicitudesEstudianteView({ onNavigate, embedded=false }){
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[selected,setSelected]=React.useState(null),[motivo,setMotivo]=React.useState(''),[ref,setRef]=React.useState(''),[file,setFile]=React.useState(null),[busy,setBusy]=React.useState(false),[ok,setOk]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows(r.rows||[])).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las reposiciones.','reposMiEstadoF92:view'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
-  const send=async()=>{if(!selected||!file)return;setBusy(true);setError('');setOk('');try{const b64=await f92FileToBase64(file);const pago=String(selected.ESTADO).toUpperCase()==='PENDIENTE_PAGO';const r=await f92Post('reposEnviarSolicitudF92',{reposicion_id:selected.REPOSICION_ID,tipo_solicitud:pago?'PAGO':'JUSTIFICACION',motivo,referencia_pago:ref,archivo_base64:b64,archivo_mime:file.type,archivo_nombre:file.name});setOk(r.mensaje||'Solicitud enviada.');setSelected(null);setMotivo('');setRef('');setFile(null);await load();}catch(e){setError(e.message);}finally{setBusy(false);}};
+  const send=async()=>{if(!selected||!file)return;setBusy(true);setError('');setOk('');try{const b64=await f92FileToBase64(file);const pago=String(selected.ESTADO).toUpperCase()==='PENDIENTE_PAGO';const r=await f92Post('reposEnviarSolicitudF92',{reposicion_id:selected.REPOSICION_ID,tipo_solicitud:pago?'PAGO':'JUSTIFICACION',motivo,referencia_pago:ref,archivo_base64:b64,archivo_mime:file.type,archivo_nombre:file.name});setOk(r.mensaje||'Solicitud enviada.');setSelected(null);setMotivo('');setRef('');setFile(null);await load();}catch(e){setError(f92SafeUserError(e,'No se pudo enviar la solicitud. Intentá nuevamente.','reposEnviarSolicitudF92'));}finally{setBusy(false);}};
   return <div data-screen-label="Estudiante · Reposiciones" style={{maxWidth:1060,margin:'0 auto',padding:embedded?'0':'28px 30px 60px'}}>
     {!embedded && <div style={{marginBottom:20}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.15em',color:'var(--an-granate)'}}>EVALUACIONES</div><h1 style={{fontFamily:'var(--f-serif)',fontSize:34,margin:'4px 0 5px'}}>Reposiciones de examen</h1><p style={{margin:0,color:'var(--ink-3)',fontSize:13}}>Consultá requisitos, plazos, evidencia enviada y resolución de cada reposición.</p></div>}
     <div className="card" style={{padding:'13px 16px',marginBottom:16,fontSize:12.5,color:'var(--ink-2)',lineHeight:1.55}}>
@@ -89,9 +95,9 @@ function ReposicionesAdminSolicitudesF92(){
   const sesion=typeof getSesion==='function'?getSesion():null;
   const esSuperadmin=String(sesion?.rol||'').toLowerCase()==='superadmin';
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposListarSolicitudesF92').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposListarSolicitudesF92').then(r=>setRows(r.rows||[])).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las solicitudes de reposición.','reposListarSolicitudesF92'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
-  const act=async(r,accion)=>{let note=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Observación de aprobación:':accion==='RECHAZAR_JUSTIFICACION'?'Motivo por el que requiere ₡10.000:':'Referencia validada del pago:',r.ADMIN_NOTA||r.PAGO_REFERENCIA||'');if(note===null)return;setBusy(r.REPOSICION_ID+accion);try{await f92Post('reposResolverSolicitudF92',{reposicion_id:r.REPOSICION_ID,accion,admin_nota:note,pago_referencia:note});await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const act=async(r,accion)=>{let note=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Observación de aprobación:':accion==='RECHAZAR_JUSTIFICACION'?'Motivo por el que requiere ₡10.000:':'Referencia validada del pago:',r.ADMIN_NOTA||r.PAGO_REFERENCIA||'');if(note===null)return;setBusy(r.REPOSICION_ID+accion);try{await f92Post('reposResolverSolicitudF92',{reposicion_id:r.REPOSICION_ID,accion,admin_nota:note,pago_referencia:note});await load();}catch(e){setError(f92SafeUserError(e,'No se pudo actualizar la solicitud de reposición.','reposResolverSolicitudF92'));}finally{setBusy('');}};
   if(loading)return <div className="card">Cargando solicitudes de examen…</div>;
   return <div>{error&&<div style={{padding:12,background:'#FDECEA',color:'#991B1B',borderRadius:10,marginBottom:10}}>{error}</div>}{!rows.length?<div className="card" style={{textAlign:'center',padding:30}}>No hay reposiciones registradas.</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{rows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),st=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase();return <div className="card" key={r.REPOSICION_ID} style={{padding:15}}>
     <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'start'}}><div><div style={{fontSize:14,fontWeight:850}}>{r.NOMBRE} <span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>#{r.COD_ESTUDIANTE}</span></div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:3}}>{r.TIPO_EXAMEN} · Lección {String(r.LECCION).padStart(2,'0')} · {window.appTeacherGroupLabelF88?window.appTeacherGroupLabelF88(r.COD_GRUPO):r.COD_GRUPO} · vence {f92FmtDate(r.FECHA_LIMITE)}</div></div><span style={{padding:'4px 9px',borderRadius:999,background:bg,color:fg,fontSize:10,fontWeight:900}}>{label}</span></div>
@@ -138,9 +144,9 @@ function FreeUserSolicitudesAdminF984(){
   const [counts,setCounts]=React.useState({});
   const [modal,setModal]=React.useState(null);
   const estados=['PENDIENTE','EN_GESTION','RESPONDIDA','CONVERTIDA','CERRADA'];
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('freeUserListarSolicitudes',{estado,limit:200}).then(r=>{setRows(r.items||[]);setCounts(r.counts||{});}).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[estado]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('freeUserListarSolicitudes',{estado,limit:200}).then(r=>{setRows(r.items||[]);setCounts(r.counts||{});}).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las solicitudes de contacto.','freeUserListarSolicitudes'))).finally(()=>setLoading(false));},[estado]);
   React.useEffect(()=>{load();},[load]);
-  const resolver=async(r,estadoFinal,nota)=>{setBusy(r.ID||'busy');try{await f92Post('freeUserResolverSolicitud',{id:r.ID,estado:estadoFinal,respuesta:nota||'',responsable:''});try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }setModal(null);await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const resolver=async(r,estadoFinal,nota)=>{setBusy(r.ID||'busy');try{await f92Post('freeUserResolverSolicitud',{id:r.ID,estado:estadoFinal,respuesta:nota||'',responsable:''});try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }setModal(null);await load();}catch(e){setError(f92SafeUserError(e,'No se pudo actualizar la solicitud de contacto.','freeUserResolverSolicitud'));}finally{setBusy('');}};
   const quick=(r,estadoFinal)=>{const defaults={EN_GESTION:'Solicitud tomada en gestión. Pendiente contactar al prospecto.',RESPONDIDA:'Se contactó al prospecto y se brindó seguimiento.',CONVERTIDA:'Prospecto convertido a proceso de matrícula.',CERRADA:'Gestión cerrada.'};resolver(r,estadoFinal,defaults[estadoFinal]||'');};
   const openWa=(r)=>{const tel=String(r.TELEFONO||'').replace(/[^0-9]/g,''); if(!tel){alert('Este prospecto no tiene teléfono registrado.');return;} const phone=tel.length===8?'506'+tel:tel; const msg=`Hola ${String(r.NOMBRE||'').split(' ')[0]||''}, soy de Academia Norteamericana. Vimos tu solicitud desde el Campus y queremos ayudarte a continuar tu matrícula.`; window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer');};
   const mail=(r)=>{if(!r.CORREO){alert('Este prospecto no tiene correo registrado.');return;} const subject='Academia Norteamericana · Continuación de matrícula'; const body=`Hola ${r.NOMBRE||''},\n\nVimos tu solicitud desde el Campus. Queremos ayudarte a continuar con tu matrícula y activar tu acceso completo.\n\nSaludos,\nAcademia Norteamericana`; window.location.href=`mailto:${r.CORREO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;};
