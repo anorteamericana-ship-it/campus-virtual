@@ -1,0 +1,29 @@
+name: Audit Raw User Error Surface V3 CS21A210S
+
+on:
+  push:
+    branches:
+      - audit/raw-user-error-surface-v3-cs21a210s
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan current raw visible-error sinks V3
+        run: node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs --fail-on-findings
+      - name: Regress CS21A210R Auditoria Academica
+        if: always()
+        run: node scripts/qa_auditoria_academica_safe_errors_cs21a210r.mjs
+      - name: Regress CS21A210Q Inscripcion
+        if: always()
+        run: node scripts/qa_inscripcion_admin_safe_errors_cs21a210q.mjs
+      - name: Diff hygiene
+        if: always()
+        run: git diff --check
