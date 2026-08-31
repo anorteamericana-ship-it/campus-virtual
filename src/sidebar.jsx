@@ -578,7 +578,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       label: 'Control del sistema',
       items: [
         { id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' },
-        { id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' },
+        ...(esSuperadmin ? [{ id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' }] : []),
         { id: 'docentes', label: 'Docentes', icon: 'graduation', proximamente: true },
         { id: 'horas', label: 'Horas docentes', icon: 'chart', proximamente: true },
         { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },

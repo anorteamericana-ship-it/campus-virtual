@@ -981,7 +981,9 @@ function App() {
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
       diagnostico_interno: <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />,
       // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_ROUTER
-      permisos_roles: <LazyRoute title="Permisos y roles" component="PermisosRolesView" files={F96_LAZY.permisos} />,
+      permisos_roles: rolReal === 'superadmin'
+        ? <LazyRoute title="Permisos y roles" component="PermisosRolesView" files={F96_LAZY.permisos} />
+        : <NoAutorizadoCampus rol={rolReal} />,
       // CALGRUPO_F36_20260617_CONAPE_COBRANZA_ROUTER
       conape_cobranza: <LazyRoute title="CONAPE y Cobranza" component="ConapeCobranzaView" files={F96_LAZY.conape} onNavigate={navigateTo} />,
       // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_ROUTER
