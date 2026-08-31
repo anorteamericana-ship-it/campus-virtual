@@ -44,11 +44,14 @@ must(proforma.current_frontend?.whatsapp_link_propagation === 'REMOVED_BY_CS21A1
 must(proforma.release_gate === 'BLOCK_UNTIL_PRIVATE_STAFF_DELIVERY_AND_ACL_MIGRATION_E2', 'proforma release gate preserved');
 
 // SEC-006 remains independently open.
-must(sec006.security_track === 'SEC-006', 'additional resources access contract preserved');
+must(sec006.contract_id === 'SEC-006-ADDITIONAL-RESOURCES-ACCESS-V1', 'additional resources access contract preserved');
+must(sec006.classification === 'P1_ACCESS_CONTROL', 'SEC-006 P1 classification preserved');
+must(sec006.drive_evidence?.root_folders_checked === 4 && sec006.drive_evidence?.root_folders_anyone_reader === 4, 'SEC-006 4/4 root ACL evidence');
 must(sec006.release_gate === 'BLOCK_UNTIL_ROLE_BOUND_DELIVERY_AND_ACL_E2', 'SEC-006 release gate preserved');
 
 // Never claim runtime/ACL completion in this integration cut.
 must(cert.production === 'NO_CHANGE' && proforma.production === 'NO_CHANGE', 'no production change contracts');
+must(sec006.acl_changed_by_this_cut === false && sec006.apps_script_changed_by_this_cut === false && sec006.production_changed_by_this_cut === false, 'SEC-006 no-change boundaries');
 
 console.log('SECURITY CURRENT CANDIDATE 2026-08-31: PASS');
 console.log('ADMIN_STUDENTS_SOURCE=#201_AUTHORITY');
