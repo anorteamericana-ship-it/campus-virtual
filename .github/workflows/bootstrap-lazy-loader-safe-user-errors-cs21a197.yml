@@ -6,6 +6,7 @@ on:
       - fix/lazy-loader-safe-user-errors-cs21a197
     paths:
       - 'scripts/bootstrap_patch_lazy_loader_safe_user_errors_cs21a197.mjs'
+      - 'scripts/qa_lazy_loader_safe_user_errors_cs21a197.mjs'
       - '.github/workflows/bootstrap-lazy-loader-safe-user-errors-cs21a197.yml'
 
 permissions:
