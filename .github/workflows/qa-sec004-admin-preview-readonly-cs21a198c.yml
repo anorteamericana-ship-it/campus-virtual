@@ -1,0 +1,25 @@
+name: QA SEC004 Admin Preview Readonly CS21A198C
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_views.jsx'
+      - 'scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs'
+      - '.github/workflows/qa-sec004-admin-preview-readonly-cs21a198c.yml'
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A198C guard
+        run: node scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs
+      - name: Regress CS21A198B
+        run: node scripts/qa_sec004_matriculas_preview_readonly_cs21a198b.mjs
+      - name: Regress CS21A198
+        run: node scripts/qa_sec004_session_demo_isolation_cs21a198.mjs
+      - name: Diff hygiene against stacked base
+        run: git diff --check origin/fix/sec004-matriculas-preview-readonly-cs21a198b...HEAD -- ':!00_DOCUMENTACION/**'
