@@ -1,0 +1,53 @@
+name: QA Security Current Candidate 2026-08-31
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/**'
+      - 'scripts/qa_security_current_candidate_20260831.mjs'
+      - 'scripts/qa_sec002_admin_certificate_private_source_20260830.mjs'
+      - 'scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs'
+      - 'scripts/qa_admin_common_doc_safe_errors_20260830.mjs'
+      - '00_DOCUMENTACION/SECURITY_CURRENT_CANDIDATE_2026-08-31.md'
+  push:
+    branches:
+      - integration/security-current-candidate-20260831
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/**'
+      - 'scripts/qa_security_current_candidate_20260831.mjs'
+      - 'scripts/qa_sec002_admin_certificate_private_source_20260830.mjs'
+      - 'scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs'
+      - 'scripts/qa_admin_common_doc_safe_errors_20260830.mjs'
+      - '00_DOCUMENTACION/SECURITY_CURRENT_CANDIDATE_2026-08-31.md'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cross-candidate truth guard
+        run: node scripts/qa_security_current_candidate_20260831.mjs
+      - name: Admin certificate private source authority
+        run: node scripts/qa_sec002_admin_certificate_private_source_20260830.mjs
+      - name: Admin academic private documents authority
+        run: node scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs
+      - name: Admin common document safe errors
+        run: node scripts/qa_admin_common_doc_safe_errors_20260830.mjs
+      - name: Broad admin security consolidation regression
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Student portal safe errors regression
+        run: node scripts/qa_student_portal_safe_errors_cs21a200i.mjs
+      - name: Lazy loader safe errors regression
+        run: node scripts/qa_lazy_loader_safe_errors_cs21a200h.mjs
+      - name: Student academic menu safe errors regression
+        run: node scripts/qa_student_academic_menu_safe_errors_cs21a200g.mjs
+      - name: SEC-006 additional resources contract regression
+        run: node scripts/qa_sec006_additional_resources_access_cs21a200f.mjs
+      - name: Admin students safe errors regression
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Admin students user copy regression
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':!00_DOCUMENTACION/**'
