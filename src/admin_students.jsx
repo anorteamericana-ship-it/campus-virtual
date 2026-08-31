@@ -3924,7 +3924,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         body: JSON.stringify({ fn:'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
-      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}));
+      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data?.error || data?.mensaje, 'No se pudo generar el documento. Intentá de nuevo.', 'generar_documento_comun') }}));
     } catch(e) {
       setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
     } finally {

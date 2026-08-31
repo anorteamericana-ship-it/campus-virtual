@@ -1,0 +1,29 @@
+name: QA Admin Common Doc Safe Errors Rebase CS21A198R
+
+on:
+  push:
+    branches:
+      - fix/admin-common-doc-safe-errors-rebase-cs21a198r
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_admin_common_doc_safe_errors_rebase_cs21a198r.mjs'
+      - '.github/workflows/qa-admin-common-doc-safe-errors-rebase-cs21a198r.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A198R common document safe errors
+        run: node scripts/qa_admin_common_doc_safe_errors_rebase_cs21a198r.mjs
+      - name: Regress CS21A197R certificate private rebase
+        run: node scripts/qa_sec002_admin_certificate_private_rebase_cs21a197r.mjs
+      - name: Regress CS21A196R proforma evidence
+        run: node scripts/qa_sec002_proforma_acl_rebase_cs21a196.mjs
+      - name: Regress CS21A193 academic private docs
+        run: node scripts/qa_sec002_admin_academic_docs_private_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check 428590a06b3a0244d76703160f84f92085645d51...HEAD -- src scripts .github/workflows/qa-admin-common-doc-safe-errors-rebase-cs21a198r.yml
