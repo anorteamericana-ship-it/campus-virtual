@@ -1,0 +1,42 @@
+{
+  "cut": "CS21A196R",
+  "security_track": "SEC-002",
+  "severity": "P1",
+  "class": "commercial_proforma",
+  "state": "OPEN_BLOCKER",
+  "rebased_from": "PR_188_CS21A196",
+  "base_pr": 204,
+  "drive_evidence": {
+    "real_recent_samples_checked": 3,
+    "real_recent_samples_anyone_reader": 3,
+    "sample_window": "2026-08-28_to_2026-08-29",
+    "allow_file_discovery": false,
+    "acl_change_in_this_cut": "NONE"
+  },
+  "historical_backend_evidence": {
+    "operation": "generarProformaProspecto",
+    "exporter": "_exportarHojaComoPDF",
+    "sharing_behavior": "DriveApp.Access.ANYONE_WITH_LINK + DriveApp.Permission.VIEW",
+    "response_delivery": "url_programa/url_equipo",
+    "private_bytes_delivery_demonstrated": false,
+    "fresh_modular_QA_snapshot": "PENDING_ISSUE_111"
+  },
+  "current_frontend": {
+    "ventas_staff_download": "href=url direct Drive URL",
+    "matriculas_admin_staff_download": "href=url direct Drive URL",
+    "whatsapp_link_propagation": "REMOVED_BY_CS21A175_PR147",
+    "whatsapp_current_behavior": "manual PDF attachment; no public document URL in message"
+  },
+  "required_migration_order": [
+    "obtain fresh modular QA snapshot",
+    "define staff-scoped authenticated proforma retrieval for existing and newly generated PDFs",
+    "return bounded PDF bytes/object metadata without public Drive URL dependency",
+    "migrate Ventas and Matriculas Admin staff download controls to authenticated bytes/ObjectURL",
+    "run positive and negative E2 for Sales scope, admin, superadmin and unauthorized users",
+    "inventory exact current proforma files/folders affected by public ACL",
+    "remove anyone-reader only after both staff consumers pass E2",
+    "verify anonymous access denied after ACL migration"
+  ],
+  "release_gate": "BLOCK_UNTIL_PRIVATE_STAFF_DELIVERY_AND_ACL_MIGRATION_E2",
+  "production": "NO_CHANGE"
+}
