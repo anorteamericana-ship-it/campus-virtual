@@ -1,0 +1,45 @@
+name: QA Admin Safe Errors Current Tip CS21A210A
+
+on:
+  push:
+    branches:
+      - integration/admin-safe-errors-current-tip-cs21a210a
+  pull_request:
+    paths:
+      - 'src/admin_master_dashboard.jsx'
+      - 'src/admin_students_inline_payment_cs21a36.jsx'
+      - 'src/aperturas_admin_cs21a20.jsx'
+      - 'src/panel_admin_supervision.jsx'
+      - 'src/panel_suspensiones.jsx'
+      - 'scripts/qa_admin_safe_errors_current_tip_cs21a210a.mjs'
+      - '.github/workflows/qa-admin-safe-errors-current-tip-cs21a210a.yml'
+      - '00_DOCUMENTACION/ADMIN_SAFE_ERRORS_CURRENT_TIP_CS21A210A_2026-08-31.md'
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run semantic safe-error guard
+        run: node scripts/qa_admin_safe_errors_current_tip_cs21a210a.mjs
+      - name: Verify exact validated import and stacked scope
+        if: ${{ github.event_name == 'push' || github.head_ref == 'integration/admin-safe-errors-current-tip-cs21a210a' }}
+        run: node scripts/qa_admin_safe_errors_current_tip_cs21a210a.mjs --exact-import
+      - name: Regress Admin Students CS21A191-192
+        run: |
+          node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+          node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Regress SEC002 Admin private document line
+        run: |
+          node scripts/qa_sec002_admin_academic_docs_cs21a193.mjs
+          node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress SEC004 preview isolation line
+        run: |
+          node scripts/qa_sec004_session_demo_isolation_cs21a198.mjs
+          node scripts/qa_sec004_matriculas_preview_readonly_cs21a198b.mjs
+          node scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs
+      - name: Diff hygiene against exact stacked base
+        run: git diff --check bf06348723aa7b4bf78a634541f26e5601e95fb4...HEAD -- ':!00_DOCUMENTACION/**'
