@@ -1,0 +1,27 @@
+name: QA SEC004 Session Demo Isolation CS21A198
+
+on:
+  pull_request:
+    paths:
+      - 'src/data.jsx'
+      - 'scripts/qa_sec004_session_demo_isolation_cs21a198.mjs'
+      - '.github/workflows/qa-sec004-session-demo-isolation-cs21a198.yml'
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A198 guard
+        run: node scripts/qa_sec004_session_demo_isolation_cs21a198.mjs
+      - name: Regress CS21A197
+        run: node scripts/qa_lazy_loader_safe_user_errors_cs21a197.mjs
+      - name: Regress CS21A196
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a196.mjs
+      - name: Regress SEC004 outer guard
+        run: node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
+      - name: Diff hygiene against stacked base
+        run: git diff --check origin/fix/lazy-loader-safe-user-errors-cs21a197...HEAD -- ':!00_DOCUMENTACION/**'
