@@ -1,0 +1,28 @@
+name: QA Aplicar Pago Safe Errors CS21A210I
+
+on:
+  push:
+    branches:
+      - fix/aplicar-pago-safe-errors-cs21a210i
+  pull_request:
+    branches:
+      - fix/admin-status-safe-errors-cs21a210h
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify Aplicar Pago safe-error boundary
+        run: node scripts/qa_aplicar_pago_safe_errors_cs21a210i.mjs --exact-scope
+      - name: Regress CS21A210H admin status
+        run: node scripts/qa_admin_status_safe_errors_cs21a210h.mjs
+      - name: Regress CS21A210F shared ErrorState
+        run: node scripts/qa_shared_error_state_console_only_cs21a210f.mjs
+      - name: Diff hygiene
+        run: git diff --check
