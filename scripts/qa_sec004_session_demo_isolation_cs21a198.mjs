@@ -31,7 +31,7 @@ const catchIdx = fetchBlock.indexOf('catch (');
 const catchBlock = catchIdx >= 0 ? fetchBlock.slice(catchIdx) : '';
 must(!catchBlock.includes('demoCall()'), 'Una falla real no puede caer al store demo.');
 
-for (const needle of ['reportarPago', 'cancelarSolicitudPago', 'getBecas', 'getCalendarioMatriculas']) {
+for (const needle of ['reportarPago', 'cancelarProspecto', 'getBecas', 'getCalendarioMatriculas']) {
   must(src.includes(needle), `Debe preservarse la superficie ${needle}.`);
 }
 
