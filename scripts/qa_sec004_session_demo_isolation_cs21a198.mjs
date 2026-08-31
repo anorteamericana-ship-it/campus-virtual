@@ -25,9 +25,11 @@ must(finalLocalIdx > falseIdx, 'El localStorage solo puede habilitar demo despu�
 const fetchStart = src.indexOf('async function _solpFetch', end);
 const fetchEnd = src.indexOf('// POST al Apps Script', fetchStart);
 const fetchBlock = src.slice(fetchStart, fetchEnd);
-must(fetchBlock.includes('if(_solpDemoForced) return _solpDemoCall'), '_solpFetch debe conservar el preview explícito.');
+must(fetchBlock.includes('if (_solpDemoForced) return demoCall();'), '_solpFetch debe conservar el preview explícito.');
 must(/catch\s*\([^)]*\)\s*\{[\s\S]*?return\s*\{\s*ok\s*:\s*false/.test(fetchBlock), 'Una falla real de red debe seguir devolviendo ok:false.');
-must(!/catch\s*\([^)]*\)\s*\{[\s\S]*?_solpDemoCall/.test(fetchBlock), 'Una falla real no puede caer al store demo.');
+const catchIdx = fetchBlock.indexOf('catch (');
+const catchBlock = catchIdx >= 0 ? fetchBlock.slice(catchIdx) : '';
+must(!catchBlock.includes('demoCall()'), 'Una falla real no puede caer al store demo.');
 
 for (const needle of ['reportarPago', 'cancelarSolicitudPago', 'getBecas', 'getCalendarioMatriculas']) {
   must(src.includes(needle), `Debe preservarse la superficie ${needle}.`);
