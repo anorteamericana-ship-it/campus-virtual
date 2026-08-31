@@ -1,0 +1,28 @@
+name: QA SEC002 Identity Evidence Rebase CS21A195R
+
+on:
+  push:
+    branches:
+      - security/sec002-identity-evidence-rebase-cs21a195
+  pull_request:
+    paths:
+      - 'security/sec002_identity_legacy_contract_cs21a174.json'
+      - 'scripts/qa_sec002_identity_evidence_rebase_cs21a195.mjs'
+      - '.github/workflows/qa-sec002-identity-evidence-rebase-cs21a195.yml'
+      - '00_DOCUMENTACION/SEC002_IDENTITY_EVIDENCE_REBASE_CS21A195_2026-08-30.md'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A195R
+        run: node scripts/qa_sec002_identity_evidence_rebase_cs21a195.mjs
+      - name: Regress CS21A194R
+        run: node scripts/qa_sec002_certificate_tree_rebase_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_sec002_admin_academic_docs_private_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/security/sec002-certificate-tree-rebase-cs21a194...HEAD -- ':!00_DOCUMENTACION/**'
