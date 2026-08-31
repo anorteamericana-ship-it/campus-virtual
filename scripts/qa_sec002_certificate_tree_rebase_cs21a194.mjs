@@ -21,8 +21,13 @@ must(contract.drive_evidence.real_certificate_samples_anyone_reader === contract
 must(contract.drive_evidence.additional_recent_certificate_sample_current_audit === 'anyone_reader_link_only', 'current audit recent certificate sample remains explicit');
 must(contract.drive_evidence.modern_signed_enrollment_QA_sample_permission === 'owner_only', 'modern private flow contrast remains explicit');
 must(contract.drive_evidence.acl_change_in_this_cut === 'NONE', 'contract-only cut does not claim ACL changes');
-must(contract.backend_evidence.fresh_modular_QA_snapshot === 'PENDING_ISSUE_111', 'fresh modular snapshot remains pending');
-must(contract.backend_evidence.staff_private_endpoint === 'NOT_DEFINED_OR_INSTALLED', 'staff private certificate retrieval must not be invented');
+const be = contract.backend_evidence || {};
+must(be.fresh_modular_QA_snapshot === 'PENDING_ISSUE_111', 'fresh modular snapshot remains pending');
+must(be.portable_private_delta === 'qa/sec002_private_certificate_delta.patch documented by PR #110', 'portable historical delta evidence remains traceable');
+must(be.portable_private_operation === 'descargarMiCertificadoPrivado', 'portable private operation remains explicit');
+must(Array.isArray(be.portable_private_roles) && ['student','admin','superadmin'].every(r => be.portable_private_roles.includes(r)), 'historical private roles must include student/admin/superadmin');
+must(be.portable_private_delta_status === 'DEFINED_AND_VERIFIED_HISTORICALLY_NOT_INSTALLED_IN_CURRENT_CANONICAL_RUNTIME', 'historical contract and current runtime state must remain separated');
+must(be.staff_private_endpoint_runtime === 'PENDING_ISSUE_111', 'staff runtime endpoint remains pending, not invented as installed');
 must(contract.release_gate === 'BLOCK_UNTIL_PRIVATE_DELIVERY_AND_ACL_MIGRATION_E2', 'release remains blocked');
 
 must(admin.includes("postAdminStudents('buscarCertificadoExistente'"), 'admin existing-certificate consumer remains inventoried');
@@ -39,6 +44,7 @@ console.log('LEGACY_CERTIFICATE_TREE=P1_OPEN');
 console.log(`GROUP_FOLDER_SAMPLES_ANYONE_READER=${contract.drive_evidence.group_folders_anyone_reader}/${contract.drive_evidence.group_folders_sampled}`);
 console.log(`REAL_CERTIFICATE_SAMPLES_ANYONE_READER=${contract.drive_evidence.real_certificate_samples_anyone_reader}/${contract.drive_evidence.real_certificate_samples_checked}`);
 console.log('ADMIN_DIRECT_CERTIFICATE_URL_CONSUMERS=3');
-console.log('STAFF_PRIVATE_ENDPOINT=NOT_DEFINED_OR_INSTALLED');
+console.log('HISTORICAL_PRIVATE_CERT_CONTRACT=DEFINED_FOR_STUDENT_ADMIN_SUPERADMIN');
+console.log('CURRENT_RUNTIME_PRIVATE_CERT_ENDPOINT=PENDING_ISSUE_111');
 console.log('ACL_CHANGE=NONE');
 console.log('RELEASE_GATE=PRIVATE_DELIVERY_PLUS_ACL_E2');
