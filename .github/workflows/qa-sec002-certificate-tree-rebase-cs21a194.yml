@@ -1,0 +1,28 @@
+name: QA SEC002 Certificate Tree Rebase CS21A194R
+
+on:
+  push:
+    branches:
+      - security/sec002-certificate-tree-rebase-cs21a194
+  pull_request:
+    paths:
+      - 'security/sec002_legacy_certificate_tree_contract_cs21a194.json'
+      - 'scripts/qa_sec002_certificate_tree_rebase_cs21a194.mjs'
+      - '.github/workflows/qa-sec002-certificate-tree-rebase-cs21a194.yml'
+      - '00_DOCUMENTACION/SEC002_CERTIFICATE_TREE_REBASE_CS21A194_2026-08-30.md'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A194R
+        run: node scripts/qa_sec002_certificate_tree_rebase_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_sec002_admin_academic_docs_private_cs21a193.mjs
+      - name: Regress CS21A192
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/security/sec002-admin-academic-docs-private-cs21a193...HEAD -- ':!00_DOCUMENTACION/**'
