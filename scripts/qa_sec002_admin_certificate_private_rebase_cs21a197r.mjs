@@ -56,7 +56,6 @@ must(src.includes('generarCertificadosNivel'), 'bulk generation preserved');
 must(src.includes('adminStudentsSafeUserError'), 'safe-error boundary preserved');
 must(src.includes("function abrirPdfBackend(payload, fallbackUrl = '', options = {})"), 'CS21A193 academic private helper preserved');
 must(src.includes('const allowUrl = options?.allowUrl !== false;'), 'CS21A193 allowUrl policy preserved');
-must(src.includes('security') === false || true, 'no-op semantic guard');
 
 console.log('CS21A197R SEC002 ADMIN CERTIFICATE PRIVATE REBASE: PASS');
 console.log('ADMIN_CERTIFICATE_SOURCE=PRIVATE_BYTES');
