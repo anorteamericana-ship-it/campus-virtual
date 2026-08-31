@@ -1,0 +1,30 @@
+name: QA Admin Status Safe Errors CS21A210H
+
+on:
+  push:
+    branches:
+      - fix/admin-status-safe-errors-cs21a210h
+  pull_request:
+    branches:
+      - fix/shared-error-state-console-only-cs21a210f
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify admin status safe-error boundary
+        run: node scripts/qa_admin_status_safe_errors_cs21a210h.mjs --exact-scope
+      - name: Regress CS21A210F shared ErrorState
+        run: node scripts/qa_shared_error_state_console_only_cs21a210f.mjs
+      - name: Regress CS21A210D secondary surfaces
+        run: node scripts/qa_secondary_safe_errors_current_tip_cs21a210d.mjs
+      - name: Regress CS21A210C Panel Maestro CONAPE
+        run: node scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs
+      - name: Diff hygiene
+        run: git diff --check
