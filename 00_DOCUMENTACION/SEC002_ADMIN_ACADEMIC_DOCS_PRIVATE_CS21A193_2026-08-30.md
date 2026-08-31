@@ -40,6 +40,20 @@ Solo frontend en `src/admin_students.jsx`:
    - regenerar carta CONAPE.
 5. Si no llegan bytes privados, la operación falla cerrada con copy estable; no se amplían permisos Drive.
 
+## Evidencia automática
+
+Bootstrap run `33352452760`: **SUCCESS completo**.
+
+- base ancestry exacta: PASS;
+- patch exacto: PASS;
+- guard CS21A193: PASS;
+- regresión CS21A192: PASS;
+- regresión CS21A191: PASS;
+- `git diff --check`: PASS;
+- patcher y workflow bootstrap autoeliminados antes del push final.
+
+Head funcional resultante del bootstrap: `0f40fb3e92c76e01f4f1a8dbfb39b966770f1db4`.
+
 ## No cambia
 
 - Apps Script;
