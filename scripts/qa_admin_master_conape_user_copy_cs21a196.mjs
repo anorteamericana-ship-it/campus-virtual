@@ -13,7 +13,7 @@ function check(condition, message) {
   }
 }
 
-check(data.includes('Morosidad verificada en el registro oficial.'), 'refresh message uses operational copy');
+check(data.includes('Morosidad verificada con el registro oficial.'), 'refresh message uses final R2 operational copy');
 check(view.includes('No quedan desembolsos académicos 01 pendientes según el registro oficial de morosidad.'), 'empty state uses operational copy');
 check(!data.includes('Morosidad verificada directamente en 7-morosidad oficial.'), 'internal sheet name removed from refresh message');
 check(!view.includes('pendientes según 7-morosidad.'), 'internal sheet name removed from empty state');
@@ -21,7 +21,7 @@ check(!view.includes('pendientes según 7-morosidad.'), 'internal sheet name rem
 check(data.includes("post('getConapeMoraStates',{items})"), 'mora endpoint remains unchanged');
 check(data.includes('moraSourceSheet:live.sourceSheet||row.moraSourceSheet'), 'internal source metadata remains available to logic');
 check(data.includes('masterConapeSafeUserError'), 'CS21A195 safe-error boundary remains');
-check(core.includes('function masterConapeSafeUserError(raw,fallback,context='), 'CS21A195 helper remains');
+check(/function\s+masterConapeSafeUserError\s*\(\s*raw\s*,\s*fallback\s*,\s*context(?:\s*=\s*['"]{2})?\s*\)/.test(core), 'CS21A195 helper remains');
 
 if (process.exitCode) process.exit(process.exitCode);
 console.log('CS21A196 ADMIN MASTER CONAPE USER COPY: PASS');

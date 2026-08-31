@@ -1,0 +1,43 @@
+name: QA Admin Master CONAPE Truth Boundary CS21A210C
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-truth-boundary-cs21a210c
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_data_cs21a96.jsx'
+      - 'src/admin_master_conape_review_core_cs21a96.jsx'
+      - 'scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs'
+      - '.github/workflows/qa-admin-master-conape-truth-boundary-cs21a210c.yml'
+      - '00_DOCUMENTACION/ADMIN_MASTER_CONAPE_TRUTH_BOUNDARY_CS21A210C_2026-08-31.md'
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run truthful refresh and safe-boundary guard
+        run: node scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs
+      - name: Verify exact validated R2 import and stacked scope
+        if: ${{ github.event_name == 'push' || github.head_ref == 'fix/admin-master-conape-truth-boundary-cs21a210c' }}
+        run: node scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs --exact-import
+      - name: Regress effective Panel Maestro fixes CS21A210B
+        run: node scripts/qa_admin_master_conape_effective_safe_cs21a210b.mjs
+      - name: Regress current-tip Admin consolidation CS21A210A
+        run: node scripts/qa_admin_safe_errors_current_tip_cs21a210a.mjs
+      - name: Regress Panel Maestro CONAPE safe errors and copy
+        run: |
+          node scripts/qa_admin_master_conape_safe_errors_cs21a195.mjs
+          node scripts/qa_admin_master_conape_user_copy_cs21a196.mjs
+      - name: Regress SEC002 Admin private document line
+        run: |
+          node scripts/qa_sec002_admin_academic_docs_cs21a193.mjs
+          node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress SEC004 Admin preview isolation
+        run: node scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs
+      - name: Diff hygiene against exact stacked base
+        run: git diff --check aafc10ff6f99edec321acfbe69b0639207ba4fac...HEAD -- ':!00_DOCUMENTACION/**'
