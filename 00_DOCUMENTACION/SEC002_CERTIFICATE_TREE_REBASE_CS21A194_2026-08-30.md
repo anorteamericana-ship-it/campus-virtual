@@ -39,23 +39,34 @@ Por tanto el hallazgo es actual y demostrado para el árbol legado de certificad
 2. regenerar certificado;
 3. generar certificado.
 
-El source estudiante ya tiene `descargarMiCertificadoPrivado`, pero CS21A160 documentó que el endpoint backend no estaba instalado en el Code canónico observado durante ese corte.
+El source estudiante ya tiene `descargarMiCertificadoPrivado`. CS21A160 había documentado correctamente que esa operación no estaba instalada en el Code canónico observado durante ese corte.
 
-## Backend
+## Corrección de evidencia backend
 
-El monolito histórico inspeccionado no demostró `pdf_base64` para `generarCertificado`/`buscarCertificadoExistente` equivalente a la entrega privada de CS21A193.
+PR #110 documentó y verificó un delta portable de 5 hunks:
 
-No existe en este corte un endpoint staff privado demostrado. Se registra explícitamente como:
+`qa/sec002_private_certificate_delta.patch`
 
-`NOT_DEFINED_OR_INSTALLED`
+Ese delta **sí define** `descargarMiCertificadoPrivado` y lo registra para:
 
-No se inventará un nombre de endpoint antes de obtener el snapshot modular QA fresco de Issue #111.
+- `student`;
+- `admin`;
+- `superadmin`.
+
+Para `student` revalida ownership. El piloto además exige PDF, máximo 2 MiB, rate limit 5/minuto, SHA-256 y respuesta base64 autenticada sin `url`, `folder_url`, `search_url` ni `file_id` exitosos.
+
+La distinción correcta es:
+
+- **contrato histórico privado: DEFINIDO Y VERIFICADO**;
+- **runtime canónico/modular vigente: NO INSTALADO / NO CONFIRMADO, pendiente Issue #111**.
+
+`generarCertificado` y `buscarCertificadoExistente` siguen siendo operaciones URL-based; la entrega privada es una operación separada.
 
 ## Orden obligatorio
 
 1. obtener snapshot modular QA fresco;
-2. confirmar/instalar descarga privada del propio estudiante;
-3. definir e instalar lectura privada staff-scoped para admin/superadmin;
+2. reconciliar/portar el delta privado verificado sobre el source modular exacto;
+3. confirmar en runtime QA autorización student/admin/superadmin y ownership student;
 4. migrar las 3 aperturas admin a bytes autenticados + Blob/ObjectURL;
 5. ejecutar E2 positiva/negativa para student/admin/superadmin/anónimo;
 6. inventariar exactamente carpetas/archivos del árbol legado afectados;
@@ -73,7 +84,7 @@ No se inventará un nombre de endpoint antes de obtener el snapshot modular QA f
 - Drive ACL;
 - archivos de certificado;
 - URLs;
-- endpoints;
+- endpoints runtime;
 - producción.
 
-**CONTRACT ONLY · P1 OPEN · NO ACL CHANGE · NO PROD · NO AUTO-MERGE**
+**CONTRACT ONLY · P1 OPEN · HISTORICAL PRIVATE CONTRACT DEFINED · CURRENT RUNTIME PENDING #111 · NO ACL CHANGE · NO PROD · NO AUTO-MERGE**
