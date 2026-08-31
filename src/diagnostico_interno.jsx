@@ -2,6 +2,11 @@
 /* global React, PageHeader */
 const SCRIPT_URL_DIAG=window.APPS_SCRIPT_URL;
 
+function diagnosticoSafeUserError(raw,fallback,context=''){
+  try{console.error('[Diagnóstico interno]',context||'operacion',raw);}catch(_){}
+  return String(fallback||'No se pudo completar la operación.').trim();
+}
+
 async function postDiagnosticoInterno(fn,payload={}){
   const token=window.getSessionToken?window.getSessionToken():'';
   const body=JSON.stringify({fn,token,...payload});
@@ -102,7 +107,7 @@ function DiagnosticoInternoView(){
     try{
       if(kind==='general')setGeneral(await postDiagnosticoInterno('diagnosticoSistemaInterno',{detalle:true}));
       if(kind==='audit')setAudit(await postDiagnosticoInterno('auditarArchivosCONAPE',{api:true,cedula_verificacion:String(verifyCed||'').trim()}));
-    }catch(e){setError(e.message||String(e));}
+    }catch(e){setError(diagnosticoSafeUserError(e,'No se pudo completar el diagnóstico.','diagnostico:'+kind));}
     finally{setBusy('');}
   };
 
@@ -114,7 +119,7 @@ function DiagnosticoInternoView(){
       const data=await postDiagnosticoInterno('auditarMorosidadConapeManual',{busqueda:q});
       setMoraAudit(data);
       if(data?.estudiante){setMoraQuery(data.estudiante.codigo||data.estudiante.cedula||q);}
-    }catch(e){setMoraError(e.message||String(e));}
+    }catch(e){setMoraError(diagnosticoSafeUserError(e,'No se pudo consultar la revisión de morosidad.','morosidad:auditar'));}
     finally{setMoraBusy('');}
   };
 
@@ -135,7 +140,7 @@ function DiagnosticoInternoView(){
         motivo,
       });
       setMoraAudit(data);setMoraNote('');
-    }catch(e){setMoraError(e.message||String(e));}
+    }catch(e){setMoraError(diagnosticoSafeUserError(e,'No se pudo aplicar la corrección de morosidad.','morosidad:aplicar'));}
     finally{setMoraBusy('');}
   };
 

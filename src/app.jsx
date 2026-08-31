@@ -979,7 +979,9 @@ function App() {
       calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
-      diagnostico_interno: <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />,
+      diagnostico_interno: rolReal === 'superadmin'
+        ? <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />
+        : <NoAutorizadoCampus rol={rolReal} />,
       // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_ROUTER
       permisos_roles: rolReal === 'superadmin'
         ? <LazyRoute title="Permisos y roles" component="PermisosRolesView" files={F96_LAZY.permisos} />
