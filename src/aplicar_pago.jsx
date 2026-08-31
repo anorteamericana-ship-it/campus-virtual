@@ -60,7 +60,7 @@ function apSafeUserError(raw, fallback, context = '') {
   const msg=String(raw==null?'':raw).trim();
   if(!msg)return fallback;
   const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
-  const technicalText=/apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|getEstudiante|getComprobantes|aplicarPago/i.test(msg);
+  const technicalText=/apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|getEstudiante|getComprobantes|aplicarPago|configurarToeicEstudiante/i.test(msg);
   if(technicalCode||technicalText){console.warn('[AplicarPago] Detalle técnico oculto al operador.',{context,error:msg});return fallback;}
   return msg;
 }
@@ -260,7 +260,7 @@ function ToeicDecisionAP({ estData, setEstData, estSel }) {
     setGuardando(true); setMensaje('');
     try {
       const data = await postAP({ fn:'configurarToeicEstudiante', codigo:estSel?.CODIGO || estSel?.rec_m, omitido, motivo:motivo.trim() });
-      if (!data.ok) { setMensaje(data.error || 'No se pudo guardar la decisión TOEIC.'); return; }
+      if (!data.ok) { setMensaje(apSafeUserError(data?.error || data?.mensaje, 'Error al guardar la decisión TOEIC. Intentá de nuevo.', 'configurar_toeic')); return; }
       const f = data.ficha || {};
       setEstData(prev => ({
         ...(prev || {}),
@@ -268,7 +268,7 @@ function ToeicDecisionAP({ estData, setEstData, estSel }) {
         grupo:f.cod_grupo || prev?.grupo || '', grupo_tipo:f.grupo_tipo || prev?.grupo_tipo || '', pendientes:f.pendientes || prev?.pendientes || {}, otros_cargos:f.otros_cargos || prev?.otros_cargos || [],
       }));
       setMensaje(omitido ? 'TOEIC omitido. Ya no bloquea la mora.' : 'TOEIC reactivado como pendiente de pago.');
-    } catch (e) { setMensaje('Error de conexión: ' + e.message); }
+    } catch (e) { setMensaje(apSafeUserError(e?.message || String(e), 'Error al guardar la decisión TOEIC. Revisá la conexión e intentá de nuevo.', 'configurar_toeic')); }
     finally { setGuardando(false); }
   };
   const estado = String(info.toeic_estado || 'PENDIENTE').toUpperCase();
