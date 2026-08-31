@@ -1,0 +1,29 @@
+name: Audit Raw User Error Surface Current CS21A210N
+
+on:
+  push:
+    branches:
+      - audit/raw-user-error-surface-current-cs21a210n
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan current high-confidence visible raw error sinks
+        run: node scripts/audit_raw_user_error_surface_cs21a210g.mjs --fail-on-findings
+      - name: Regress CS21A210M Permisos Roles
+        if: always()
+        run: node scripts/qa_permisos_roles_superadmin_safe_copy_cs21a210m.mjs
+      - name: Regress CS21A210L Reportes
+        if: always()
+        run: node scripts/qa_reportes_admin_safe_copy_cs21a210l.mjs
+      - name: Diff hygiene
+        if: always()
+        run: git diff --check
