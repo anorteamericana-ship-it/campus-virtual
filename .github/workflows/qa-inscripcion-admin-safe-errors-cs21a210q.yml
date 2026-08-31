@@ -1,0 +1,30 @@
+name: QA Inscripcion Admin Safe Errors CS21A210Q
+
+on:
+  push:
+    branches:
+      - fix/inscripcion-admin-safe-errors-cs21a210q
+    paths:
+      - 'src/inscripcion_admin.jsx'
+  pull_request:
+    paths:
+      - 'src/inscripcion_admin.jsx'
+      - 'scripts/qa_inscripcion_admin_safe_errors_cs21a210q.mjs'
+      - '.github/workflows/qa-inscripcion-admin-safe-errors-cs21a210q.yml'
+      - '00_DOCUMENTACION/INSCRIPCION_ADMIN_SAFE_ERRORS_CS21A210Q_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210Q semantics
+        run: node scripts/qa_inscripcion_admin_safe_errors_cs21a210q.mjs
+      - name: Regress CS21A210P Prematriculas
+        run: node scripts/qa_prematriculas_shared_safe_errors_cs21a210p.mjs
+      - name: Regress CS21A210O Diagnostico
+        run: node scripts/qa_diagnostico_interno_superadmin_safe_errors_cs21a210o.mjs
+      - name: Diff hygiene
+        run: git diff --check
