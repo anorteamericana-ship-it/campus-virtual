@@ -1,0 +1,64 @@
+name: Audit Raw User Error Surface V3 After AD CS21A210AE
+
+on:
+  push:
+    branches:
+      - audit/raw-user-error-surface-v3-after-ad-cs21a210ae
+    paths:
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - '.github/workflows/audit-raw-user-error-surface-v3-after-ad-cs21a210ae.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan current raw visible-error sinks V3 and persist exact report
+        id: scan
+        shell: bash
+        run: |
+          set +e
+          mkdir -p 00_DOCUMENTACION
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs --fail-on-findings > 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AD_CS21A210AE_REPORT.txt 2>&1
+          rc=$?
+          set -e
+          cat 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AD_CS21A210AE_REPORT.txt
+          echo "scan_exit=$rc" >> "$GITHUB_OUTPUT"
+      - name: Persist audit report on audit branch
+        shell: bash
+        run: |
+          if git diff --quiet -- 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AD_CS21A210AE_REPORT.txt && git ls-files --error-unmatch 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AD_CS21A210AE_REPORT.txt >/dev/null 2>&1; then
+            echo "Audit report unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AD_CS21A210AE_REPORT.txt
+          git commit -m "CS21A210AE persist V3 inventory after AD"
+          git push origin HEAD:audit/raw-user-error-surface-v3-after-ad-cs21a210ae
+      - name: Regress CS21A210AD student content safe-error boundary
+        if: always()
+        run: node scripts/qa_student_content_access_safe_errors_cs21a210ad.mjs
+      - name: Regress CS21A210AB TOEIC payment boundary
+        if: always()
+        run: node scripts/qa_aplicar_pago_toeic_safe_errors_cs21a210ab.mjs
+      - name: Regress CS21A210Z Free Prospect Portal
+        if: always()
+        run: node scripts/qa_free_prospect_portal_safe_errors_cs21a210z.mjs
+      - name: Diff hygiene
+        if: always()
+        run: git diff --check
+      - name: Mark audit incomplete while raw sinks remain
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.scan.outputs.scan_exit }}" != "0" ]; then
+            echo "Raw user-visible error sinks remain; see versioned CS21A210AE report."
+            exit 2
+          fi
