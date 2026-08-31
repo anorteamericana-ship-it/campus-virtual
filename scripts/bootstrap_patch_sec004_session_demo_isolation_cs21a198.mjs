@@ -33,3 +33,4 @@ if (count !== 1) throw new Error(`Preimagen _solpDemoForced inesperada: ${count}
 src = src.replace(before, after);
 fs.writeFileSync(path, src, 'utf8');
 console.log('CS21A198 exact demo-isolation patch applied');
+// rerun after guard alignment
