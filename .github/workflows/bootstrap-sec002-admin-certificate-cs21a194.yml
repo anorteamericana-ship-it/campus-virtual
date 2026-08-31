@@ -1,0 +1,45 @@
+name: Bootstrap SEC002 Admin Private Certificate CS21A194
+
+on:
+  push:
+    branches:
+      - security/admin-private-certificate-cs21a194
+    paths:
+      - 'scripts/bootstrap_patch_sec002_admin_certificate_cs21a194.mjs'
+      - '.github/workflows/bootstrap-sec002-admin-certificate-cs21a194.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base ancestry
+        run: git merge-base --is-ancestor 48b1772b80510cb07efe2f7eb601b74519b44bf9 HEAD
+      - name: Apply exact patch
+        run: node scripts/bootstrap_patch_sec002_admin_certificate_cs21a194.mjs
+      - name: Run CS21A194 guard
+        run: node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_sec002_admin_conape_private_delivery_cs21a193.mjs
+      - name: Regress CS21A192
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Regress CS21A191
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_patch_sec002_admin_certificate_cs21a194.mjs
+          rm .github/workflows/bootstrap-sec002-admin-certificate-cs21a194.yml
+          git add -A
+          git commit -m 'CS21A194 · private admin certificate delivery'
+          git push origin HEAD:security/admin-private-certificate-cs21a194
