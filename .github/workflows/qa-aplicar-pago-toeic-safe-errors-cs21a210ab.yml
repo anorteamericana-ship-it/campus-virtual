@@ -1,0 +1,30 @@
+name: QA Aplicar Pago TOEIC Safe Errors CS21A210AB
+
+on:
+  push:
+    branches:
+      - fix/aplicar-pago-toeic-safe-errors-cs21a210ab
+    paths:
+      - 'src/aplicar_pago.jsx'
+  pull_request:
+    paths:
+      - 'src/aplicar_pago.jsx'
+      - 'scripts/qa_aplicar_pago_toeic_safe_errors_cs21a210ab.mjs'
+      - '.github/workflows/qa-aplicar-pago-toeic-safe-errors-cs21a210ab.yml'
+      - '00_DOCUMENTACION/APLICAR_PAGO_TOEIC_SAFE_ERRORS_CS21A210AB_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210AB semantics
+        run: node scripts/qa_aplicar_pago_toeic_safe_errors_cs21a210ab.mjs
+      - name: Regress CS21A210I payment safe errors
+        run: node scripts/qa_aplicar_pago_safe_errors_cs21a210i.mjs
+      - name: Regress CS21A210Z Free Prospect Portal
+        run: node scripts/qa_free_prospect_portal_safe_errors_cs21a210z.mjs
+      - name: Diff hygiene
+        run: git diff --check
