@@ -1,0 +1,29 @@
+name: QA Admin Master CONAPE Safe Errors CS21A195
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-safe-errors-cs21a195
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_review_core_cs21a96.jsx'
+      - 'src/admin_master_conape_data_cs21a96.jsx'
+      - 'src/admin_master_conape_review_state_cs21a96.jsx'
+      - 'scripts/qa_admin_master_conape_safe_errors_cs21a195.mjs'
+      - '.github/workflows/qa-admin-master-conape-safe-errors-cs21a195.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A195 guard
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a195.mjs
+      - name: Regress CS21A194
+        run: node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_sec002_admin_academic_docs_cs21a193.mjs
+      - name: Diff hygiene against stacked base
+        run: git diff --check origin/security/admin-private-certificate-delivery-cs21a194...HEAD -- ':!00_DOCUMENTACION/**'
