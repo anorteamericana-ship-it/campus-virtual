@@ -1,0 +1,32 @@
+name: QA Matriculas Safe Errors CS21A210X
+
+on:
+  push:
+    branches:
+      - fix/matriculas-safe-errors-cs21a210x
+    paths:
+      - 'src/matriculas.jsx'
+  pull_request:
+    paths:
+      - 'src/matriculas.jsx'
+      - 'scripts/qa_matriculas_safe_errors_cs21a210x.mjs'
+      - '.github/workflows/qa-matriculas-safe-errors-cs21a210x.yml'
+      - '00_DOCUMENTACION/MATRICULAS_SAFE_ERRORS_CS21A210X_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210X semantics
+        run: node scripts/qa_matriculas_safe_errors_cs21a210x.mjs
+      - name: Regress SEC004 Matriculas preview readonly
+        run: node scripts/qa_sec004_matriculas_preview_readonly_cs21a198b.mjs
+      - name: Regress CS21A210V Solicitudes
+        run: node scripts/qa_solicitudes_unificadas_safe_errors_cs21a210v.mjs
+      - name: Regress CS21A210T Admin views
+        run: node scripts/qa_admin_views_safe_errors_cs21a210t.mjs
+      - name: Diff hygiene
+        run: git diff --check
