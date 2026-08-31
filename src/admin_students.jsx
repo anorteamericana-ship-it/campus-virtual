@@ -84,7 +84,8 @@ function adminStudentsSafeUserError(raw, fallback, context = '') {
   return msg;
 }
 
-function abrirPdfBackend(payload, fallbackUrl = '') {
+function abrirPdfBackend(payload, fallbackUrl = '', options = {}) {
+  const allowUrl = options?.allowUrl !== false;
   try {
     if (payload?.pdf_base64) {
       const bin = atob(payload.pdf_base64);
@@ -95,8 +96,10 @@ function abrirPdfBackend(payload, fallbackUrl = '') {
       setTimeout(() => URL.revokeObjectURL(url), 120000);
       return true;
     }
-    const url = payload?.pdf_url || fallbackUrl;
-    if (url) { window.open(url, '_blank', 'noopener,noreferrer'); return true; }
+    if (allowUrl) {
+      const url = payload?.pdf_url || fallbackUrl;
+      if (url) { window.open(url, '_blank', 'noopener,noreferrer'); return true; }
+    }
   } catch (_) {}
   return false;
 }
@@ -1940,12 +1943,11 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                 };
                 const abrirPdfTraslado = async () => {
                   const id = e.cambio_id || `${codigo}-${nivelKey}`;
-                  if (e.pdf_traslado_url) { window.open(e.pdf_traslado_url, '_blank', 'noopener,noreferrer'); return; }
                   setPdfTrasladoBusy(id);
                   try {
-                    const r = await postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey }, 70000);
+                    const r = await postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey, include_base64:true }, 70000);
                     if (!r?.ok) throw new Error(r?.error || 'No se pudo generar la constancia.');
-                    if (!abrirPdfBackend(r, r.pdf_url)) alert('La constancia se generó, pero el navegador bloqueó la apertura. Puede abrirla desde el historial.');
+                    if (!abrirPdfBackend(r,'',{allowUrl:false})) alert('No se pudo abrir la constancia de forma segura. Intentá de nuevo.');
                     onRefresh?.();
                   } catch (err) { alert(adminStudentsSafeUserError(err?.message || String(err), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion')); }
                   finally { setPdfTrasladoBusy(''); }
@@ -4547,13 +4549,11 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo revertir.','revertir_cambio')}`:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo revertir.','revertir_cambio'));return;}onReverted?.(r);cargar();}
   async function abrirDocumento(r){
     const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
-    const existingUrl=simple?r.PDF_TRASLADO_URL:r.CARTA_CONAPE_URL;
-    if(existingUrl){window.open(existingUrl,'_blank','noopener,noreferrer');return;}
     const key=`${r.CAMBIO_ID}-${simple?'T':'C'}`;setDocBusy(key);
     try{
-      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,include_base64:false},80000);
+      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,include_base64:true},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo generar el documento.');
-      if(!abrirPdfBackend(resp,resp.pdf_url))alert('El documento se generó, pero el navegador bloqueó la apertura.');
+      if(!abrirPdfBackend(resp,'',{allowUrl:false}))alert('No se pudo abrir el documento de forma segura. Intentá de nuevo.');
       cargar();
     }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
@@ -4561,7 +4561,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
     if(!confirm('Se recalcularán pagos y mora. La carta anterior será reemplazada. ¿Continuar?'))return;
     const key=`${r.CAMBIO_ID}-R`;setDocBusy(key);
     try{
-      const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:false},80000);
+      const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:true},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo regenerar la carta.');
       if(resp?.estado==='LISTA_PARA_FIRMA'){
         const diag=resp?.diagnostico_emision||{};
@@ -4602,7 +4602,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
         const lineas=[...lineasCausa,...detalleFinanciero];
         alert(`${titulo}${lineas.length?`\n\n${lineas.join('\n')}`:'\n\nNo se pudo determinar la causa. Reintentá y, si continúa, revisá el caso antes de emitir la carta.'}`);
       }
-      if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
+      if(!abrirPdfBackend(resp,'',{allowUrl:false}))alert('La carta se procesó, pero no pudimos abrir el PDF de forma segura. Intentá de nuevo.');
       cargar();
     }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
