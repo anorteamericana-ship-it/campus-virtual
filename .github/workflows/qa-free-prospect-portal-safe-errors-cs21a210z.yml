@@ -1,0 +1,44 @@
+name: QA Free Prospect Portal Safe Errors CS21A210Z
+
+on:
+  push:
+    branches:
+      - fix/free-prospect-portal-safe-errors-cs21a210z
+    paths:
+      - 'src/prospect_free_student.jsx'
+  pull_request:
+    paths:
+      - 'src/prospect_free_student.jsx'
+      - 'scripts/qa_free_prospect_portal_safe_errors_cs21a210z.mjs'
+      - '.github/workflows/qa-free-prospect-portal-safe-errors-cs21a210z.yml'
+      - '00_DOCUMENTACION/FREE_PROSPECT_PORTAL_SAFE_ERRORS_CS21A210Z_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210Z semantics
+        run: node scripts/qa_free_prospect_portal_safe_errors_cs21a210z.mjs
+      - name: Preserve English LAB source-truth boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/workflows/qa-english-lab-source-truth-guard.yml
+          if [ -f scripts/qa_cs21a202_source_truth.mjs ]; then
+            node scripts/qa_cs21a202_source_truth.mjs
+          else
+            if git diff --name-only HEAD^ HEAD | grep -Eq '^(src/english_lab|styles/english_lab|scripts/.*browser.*\.mjs)'; then
+              echo 'Z no puede modificar runtime English LAB sin el gate estricto local.' >&2
+              exit 1
+            fi
+            echo 'Gate estricto local no presente; Z no modifica runtime English LAB y el guard global de PR sigue siendo autoridad.'
+          fi
+      - name: Regress CS21A210X Matriculas
+        run: node scripts/qa_matriculas_safe_errors_cs21a210x.mjs
+      - name: Regress CS21A210V Solicitudes
+        run: node scripts/qa_solicitudes_unificadas_safe_errors_cs21a210v.mjs
+      - name: Diff hygiene
+        run: git diff --check
