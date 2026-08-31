@@ -1,0 +1,46 @@
+name: Bootstrap Free Prospect Portal Safe Errors CS21A210Z
+
+on:
+  push:
+    branches:
+      - fix/free-prospect-portal-safe-errors-cs21a210z
+    paths:
+      - 'scripts/patch_free_prospect_portal_safe_errors_cs21a210z.mjs'
+      - '.github/workflows/bootstrap-free-prospect-portal-safe-errors-cs21a210z.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact preimage
+        run: test "$(git hash-object src/prospect_free_student.jsx)" = "20eab6a6e711794b9acf761354e98ea845ed861d"
+      - name: Apply exact CS21A210Z patch
+        run: node scripts/patch_free_prospect_portal_safe_errors_cs21a210z.mjs
+      - name: Verify CS21A210Z semantics
+        run: node scripts/qa_free_prospect_portal_safe_errors_cs21a210z.mjs
+      - name: Regress English LAB source truth
+        run: node scripts/qa_cs21a202_source_truth.mjs
+      - name: Regress CS21A210X Matriculas
+        run: node scripts/qa_matriculas_safe_errors_cs21a210x.mjs
+      - name: Regress CS21A210V Solicitudes
+        run: node scripts/qa_solicitudes_unificadas_safe_errors_cs21a210v.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Verify functional scope
+        shell: bash
+        run: test "$(git diff --name-only | tr '\n' ' ')" = "src/prospect_free_student.jsx "
+      - name: Commit validated source candidate
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/prospect_free_student.jsx
+          git commit -m "CS21A210Z safe errors in free prospect portal"
+          git push origin HEAD:fix/free-prospect-portal-safe-errors-cs21a210z
