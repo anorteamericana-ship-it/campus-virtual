@@ -1,0 +1,29 @@
+name: QA SEC002 Ventas Generated Docs CS21A195
+
+on:
+  push:
+    branches:
+      - security/ventas-generated-docs-contract-cs21a195
+  pull_request:
+    paths:
+      - 'src/ventas_data.jsx'
+      - 'src/ventas_drawer.jsx'
+      - 'security/sec002_ventas_generated_docs_contract_cs21a195.json'
+      - 'scripts/qa_sec002_ventas_generated_docs_cs21a195.mjs'
+      - '.github/workflows/qa-sec002-ventas-generated-docs-cs21a195.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A195 contract guard
+        run: node scripts/qa_sec002_ventas_generated_docs_cs21a195.mjs
+      - name: Regress Ventas safe errors CS21A173
+        run: node scripts/qa_ventas_safe_user_errors_cs21a173.mjs
+      - name: Regress proforma WhatsApp CS21A175
+        run: node scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
+      - name: Diff hygiene against stacked base
+        run: git diff --check origin/security/admin-private-certificate-delivery-cs21a194...HEAD -- ':!00_DOCUMENTACION/**'
