@@ -42,3 +42,4 @@ cert.integration_reconciliation = {
 
 fs.writeFileSync(certPath, JSON.stringify(cert, null, 2) + '\n', 'utf8');
 console.log('Certificate contract reconciled for current source candidate');
+console.log('SEC-006 validation uses the exact contract_id/classification schema from the #198 base.');
