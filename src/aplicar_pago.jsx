@@ -56,6 +56,15 @@ function crearRequestIdPagoAP() {
   return `PAY-${Date.now()}-${Math.random().toString(36).slice(2,12)}`;
 }
 
+function apSafeUserError(raw, fallback, context = '') {
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|getEstudiante|getComprobantes|aplicarPago/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[AplicarPago] Detalle técnico oculto al operador.',{context,error:msg});return fallback;}
+  return msg;
+}
+
 const NIVEL_COLOR_A = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
 const NIVEL_LABEL_A = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 const NIVEL_ORDER_A = ['B1','B2','I1','I2'];
@@ -184,7 +193,7 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
     try {
       // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
       const data = await postAP({ fn: 'getEstudiante', codigo });
-      if (!data.ok) { setErrLocal(data.error || 'Estudiante no encontrado'); return; }
+      if (!data.ok) { setErrLocal(apSafeUserError(data?.error || data?.mensaje, 'No se pudo cargar el estudiante. Verificá el código e intentá de nuevo.', 'buscar_estudiante')); return; }
       setEstSel(data.estudiante);
       setEstData({
         niveles:    data.niveles    || {},
@@ -198,7 +207,7 @@ function Paso1AP({ setEstSel, setEstData, setError, setPaso }) {
       setError('');
       setPaso(2);
     } catch(e) {
-      setErrLocal('Error de conexión: ' + e.message);
+      setErrLocal(apSafeUserError(e?.message || String(e), 'No se pudo cargar el estudiante. Revisá la conexión e intentá de nuevo.', 'buscar_estudiante'));
     } finally {
       setBuscando(false);
     }
@@ -396,10 +405,10 @@ function Paso3AP({ comprobantes, setComprobantes, setComprSel, setPaso, setError
     // FIX-PAGOS-ADMIN-001: GET con token en URL → POST text/plain (sin CORS).
     postAP({ fn: 'getComprobantes' })
       .then(data => {
-        if (!data.ok) { setErrLocal(data.error || 'Error al cargar comprobantes'); return; }
+        if (!data.ok) { setErrLocal(apSafeUserError(data?.error || data?.mensaje, 'No se pudieron cargar los comprobantes. Intentá de nuevo.', 'cargar_comprobantes')); return; }
         setComprobantes(data.comprobantes || []);
       })
-      .catch(e => setErrLocal('Error de conexión: ' + e.message))
+      .catch(e => setErrLocal(apSafeUserError(e?.message || String(e), 'No se pudieron cargar los comprobantes. Revisá la conexión e intentá de nuevo.', 'cargar_comprobantes')))
       .finally(() => setCargandoCompr(false));
   }, []);
 
@@ -574,7 +583,7 @@ function Paso4AP({
         cod_estudiante: est?.CODIGO || est?.rec_m,
         rubros,
       });
-      if (!data.ok) { setErrLocal(data.error || 'Error al aplicar el pago'); return; }
+      if (!data.ok) { setErrLocal(apSafeUserError(data?.error || data?.mensaje, 'No se pudo aplicar el pago. Revisá los datos e intentá de nuevo.', 'aplicar_pago')); return; }
       requestIdRef.current = '';
       // v4.15: si CONAPE no se sincronizó lo dejamos en la consola — y además lo
       // pasamos a la pantalla de confirmación para que el admin lo vea.
@@ -597,7 +606,7 @@ function Paso4AP({
         conapeSyncFallo,
       });
     } catch(e) {
-      setErrLocal('Error de conexión: ' + e.message);
+      setErrLocal(apSafeUserError(e?.message || String(e), 'No se pudo aplicar el pago. Revisá la conexión e intentá de nuevo.', 'aplicar_pago'));
     } finally {
       setCargandoApl(false);
     }
@@ -788,7 +797,7 @@ function AplicarPago({ onNavigate }) {
     postAP({ fn: 'getEstudiante', codigo: idBusqueda })
       .then(data => {
         if (!data.ok) {
-          setPrefillError('No se pudo cargar el estudiante desde el acceso rápido: ' + (data.error || 'estudiante no encontrado'));
+          setPrefillError(apSafeUserError(data?.error || data?.mensaje, 'No se pudo cargar el estudiante desde el acceso rápido. Abrí la búsqueda e intentá de nuevo.', 'prefill_estudiante'));
           return;
         }
         setEstSel(data.estudiante);
@@ -808,7 +817,7 @@ function AplicarPago({ onNavigate }) {
         setPaso(2);
       })
       .catch(e => {
-        setPrefillError('No se pudo cargar el estudiante desde el acceso rápido: ' + (e.message || e));
+        setPrefillError(apSafeUserError(e?.message || String(e), 'No se pudo cargar el estudiante desde el acceso rápido. Abrí la búsqueda e intentá de nuevo.', 'prefill_estudiante'));
       })
       .finally(() => setCargando(false));
   }, []);
