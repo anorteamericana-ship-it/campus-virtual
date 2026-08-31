@@ -4,6 +4,13 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_AV = window.APPS_SCRIPT_URL;
 
+function adminPreviewMode() {
+  try {
+    const q = new URLSearchParams(location.search);
+    return q.get('demo') === '1' || !!q.get('preview');
+  } catch (_) { return false; }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // FIX-ADMIN-CORE-POST-001: lecturas/acciones internas vía POST text/plain.
 // Conserva `?fn=` en la URL (Apps Script enruta con e.parameter.fn) y envía
@@ -64,7 +71,7 @@ function useAdminDashboard() {
     // Modo demo (preview): no bloquear la página esperando al backend real.
     // Devolvemos un dashboard vacío (la página Grupos ya no depende de esta data
     // para la gestión de becas).
-    const esDemo = (() => { try { const q = new URLSearchParams(location.search); return q.get('demo') === '1' || !!q.get('preview'); } catch (_) { return false; } })();
+    const esDemo = adminPreviewMode();
     if (esDemo) { setData({ ok: true, grupos: [] }); setLoading(false); return () => { cancel = true; }; }
     postCampus('getAdminDashboard')
       .then(d => {
@@ -538,6 +545,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const [avisoManual, setAvisoManual] = React.useState(false);
   const [becasConfig, setBecasConfig] = React.useState([]);
   const [becasLoading, setBecasLoading] = React.useState(false);
+  const adminPreview = adminPreviewMode();
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Docentes reales construidos desde APOLLO — se recalcula cuando cambian los grupos
@@ -657,6 +665,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
 
   const confirmar = async () => {
     if (!form.confirmado || guardando) return;
+    if (adminPreview) { alert('Modo demostración: esta vista es solo lectura. No se abrió ningún grupo.'); return; }
     const { code, consec, periodo, año } = generarCodigoGrupo(form, grupos);
     const docenteObj = docentesActivos.find(d => d.id === form.docente);
 
@@ -882,9 +891,10 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
             ? <button onClick={next} className="btn btn-primary" style={{ background: nivel.color, borderColor: nivel.color, minWidth:140 }}>
                 Siguiente →
               </button>
-            : <button onClick={confirmar} disabled={!form.confirmado || guardando}
+            : <button onClick={confirmar} disabled={!form.confirmado || guardando || adminPreview}
+                title={adminPreview ? 'Modo demostración: solo lectura' : ''}
                 className="btn btn-primary"
-                style={{ background:'var(--an-granate)', borderColor:'var(--an-granate)', minWidth:180, opacity: form.confirmado&&!guardando?1:0.4 }}>
+                style={{ background:'var(--an-granate)', borderColor:'var(--an-granate)', minWidth:180, opacity: form.confirmado&&!guardando&&!adminPreview?1:0.4 }}>
                 {guardando ? 'Creando grupo…' : 'ABRIR GRUPO'}
               </button>
           }
@@ -2434,8 +2444,10 @@ function AdminDashboard({ setActive }) {
   const usr = useUsuario();
   const saludoAdmin = nombreAmable(usr?.nombre || '');
   const esSuperadmin = String(usr?.rol || '').toLowerCase() === 'superadmin';
+  const adminPreview = adminPreviewMode();
   const [syncing, setSyncing] = React.useState(false);
   const handleSyncConape = async () => {
+    if (adminPreview) { alert('Modo demostración: esta vista es solo lectura. No se enviaron cambios.'); return; }
     setSyncing(true);
     try {
       const r = await postCampus('sincronizarCONAPE');
@@ -2493,7 +2505,7 @@ function AdminDashboard({ setActive }) {
     <PageHeader
       kicker="Control institucional"
       title={<>{esSuperadmin ? 'Panel ' : 'Panel '}<em>{esSuperadmin ? 'Super Admin' : 'Administrativo'}</em></>}
-      right={<button className="btn btn-primary admin-sync-btn" onClick={handleSyncConape} disabled={syncing}>{syncing ? 'Sincronizando…' : 'Sincronizar CONAPE'}</button>}
+      right={<button className="btn btn-primary admin-sync-btn" onClick={handleSyncConape} disabled={syncing || adminPreview} title={adminPreview ? 'Modo demostración: solo lectura' : ''}>{syncing ? 'Sincronizando…' : 'Sincronizar CONAPE'}</button>}
     />
 
     <div className="admin-summary-strip">
