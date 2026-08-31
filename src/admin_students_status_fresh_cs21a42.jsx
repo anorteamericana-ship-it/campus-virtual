@@ -6,6 +6,15 @@ const BUILD='F98.4-Z6-CS21A42';
 const NEXT={B1:'B2',B2:'I1',I1:'I2'};
 const LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 
+function statusSafeUserError(raw, fallback, context = '') {
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|script\.google|backend|endpoint|conector|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|\bESTATUS\b|\bsheet\b|\btabla\b|\bhoja\b|getEstudianteFresh|actualizarEstatus|revertirPagoOperacion|getOperacionesPagoReversibles/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[AdminStatus] Detalle técnico oculto al operador.',{context,error:msg});return fallback;}
+  return msg;
+}
+
 async function call(fn,p={},timeout=100000){
   if(typeof postCampusData!=='function')throw Error('El conector del Campus no está disponible.');
   let timer;
@@ -40,7 +49,7 @@ function Modal({estudiante,nivel,onClose,onSuccess}){
     setBusy('check');
     call('getEstudianteFresh',{codigo,consulta_en:Date.now()},50000)
       .then(f=>{if(live){const i=f?.niveles?.[sig]||{};setNext({estatus:String(i.estatus||'SIN REGISTRO').toUpperCase(),grupo:String(i.grupo||grupo)})}})
-      .catch(e=>live&&setError(e.message))
+      .catch(e=>live&&setError(statusSafeUserError(e?.message || String(e), 'No se pudo verificar el siguiente nivel. Intentá de nuevo.', 'verificar_siguiente_nivel')))
       .finally(()=>live&&setBusy(''));
     return()=>{live=false};
   },[promo,sig,codigo,grupo]);
@@ -54,7 +63,7 @@ function Modal({estudiante,nivel,onClose,onSuccess}){
       const ficha=await call('getEstudianteFresh',{codigo,nocache:true,consulta_en:Date.now()});
       onSuccess?.({...result,ficha_fresh:ficha,lectura_fresca:true});
       onClose?.();
-    }catch(e){setError('El cambio quedó guardado, pero la ficha real no pudo cargarse: '+e.message);setBusy('')}
+    }catch(e){setError(statusSafeUserError(e?.message || String(e), 'El cambio quedó guardado, pero no pudimos cargar la ficha actualizada. Cerrá y volvé a consultar el expediente.', 'refrescar_ficha'));setBusy('')}
   }
 
   async function save(){
@@ -71,10 +80,10 @@ function Modal({estudiante,nivel,onClose,onSuccess}){
       setSaved(d);
       if(d.conape_sync===false){setBusy('conape');return}
       await fresh(d);
-    }catch(e){setError(e.message);setBusy('')}
+    }catch(e){setError(statusSafeUserError(e?.message || String(e), 'No se pudo guardar el cambio de estatus. Intentá de nuevo.', 'guardar_estatus'));setBusy('')}
   }
 
-  const msg=busy==='check'?'Verificando siguiente nivel…':busy==='save'?'Guardando en ESTATUS…':busy==='fresh'?'Reconstruyendo ficha real…':'';
+  const msg=busy==='check'?'Verificando siguiente nivel…':busy==='save'?'Guardando cambio académico…':busy==='fresh'?'Actualizando ficha del estudiante…':'';
   return <div style={{position:'fixed',inset:0,zIndex:10000,background:'#00153088',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}>
     <div style={{width:'min(580px,96vw)',background:'#fff',borderRadius:16,overflow:'hidden',boxShadow:'0 24px 70px #0005'}}>
       <div style={{padding:'16px 19px',background:'#0d2b51',color:'#fff'}}>
@@ -113,7 +122,7 @@ function rubroLabel(v){const x=clean(v).toUpperCase();return({MATRICULA:'Matríc
 function academicLine(a){if(!a?.ok)return'Expediente académico no verificable';const levels=(a.niveles||[]).map(x=>`${x.nivel} ${x.estatus}${x.nota!=null?` ${x.nota}`:''}`).join(' · ');return `${levels||'Sin niveles'}${a.grupo_actual?` · Grupo ${a.grupo_actual}`:''}`}
 
 async function postRev(fn,payload={},timeout=100000){
-  try{return await call(fn,payload,timeout)}catch(error){return{ok:false,error:error?.message||String(error),mensaje:error?.message||String(error)}}
+  try{return await call(fn,payload,timeout)}catch(error){const safe=statusSafeUserError(error?.message||String(error),'No se pudo completar la operación financiera. Intentá de nuevo.',`reversion:${fn}`);return{ok:false,error:safe,mensaje:safe}}
 }
 
 function ReversalModal({codigo,operaciones,onClose,onDone}){
@@ -128,7 +137,7 @@ function ReversalModal({codigo,operaciones,onClose,onDone}){
     if(clean(motivo).length<8)return setError('Indicá el motivo de la reversión.');
     const rubros=(op.rubros||[]).map((r,i)=>`• ${rubroLabel(r.tipo)}: ${cash(r.monto)}${op.recibos?.[i]?` · Rec. ${op.recibos[i]}`:''}`).join('\n');
     const academic=academicLine(op.academico);
-    const ok=window.confirm(`REVERTIR PAGO Y RESTAURAR EXPEDIENTE\n\nEstudiante: ${codigo}\nOperación: ${op.operacion_id}\nComprobante: ${op.documento}\nTotal: ${cash(op.monto_total)}\nRecibos: ${(op.recibos||[]).join(', ')}\n\n${rubros}\n\nEXPEDIENTE QUE SE CONSERVARÁ:\n${academic}\n\nEsta acción retirará todos los rubros, devolverá el saldo al comprobante bancario y restaurará exactamente ESTATUS y el grupo académico.\n\n¿Confirmar reversión integral?`);
+    const ok=window.confirm(`REVERTIR PAGO Y RESTAURAR EXPEDIENTE\n\nEstudiante: ${codigo}\nOperación: ${op.operacion_id}\nComprobante: ${op.documento}\nTotal: ${cash(op.monto_total)}\nRecibos: ${(op.recibos||[]).join(', ')}\n\n${rubros}\n\nEXPEDIENTE QUE SE CONSERVARÁ:\n${academic}\n\nEsta acción retirará todos los rubros, devolverá el saldo al comprobante bancario y restaurará el estado y el grupo académico correspondientes.\n\n¿Confirmar reversión integral?`);
     if(!ok)return;
     setBusy(true);setError('');
     const d=await postRev('revertirPagoOperacion',{operacion_id:op.operacion_id,codigo_esperado:codigo,motivo:clean(motivo)},120000);
