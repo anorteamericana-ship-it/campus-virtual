@@ -1,0 +1,26 @@
+name: Audit Raw User Error Surface CS21A210G
+
+on:
+  push:
+    branches:
+      - audit/raw-user-error-surface-cs21a210g
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan high-confidence visible raw error sinks
+        run: node scripts/audit_raw_user_error_surface_cs21a210g.mjs --fail-on-findings
+      - name: Regress CS21A210F shared ErrorState
+        if: always()
+        run: node scripts/qa_shared_error_state_console_only_cs21a210f.mjs
+      - name: Diff hygiene
+        if: always()
+        run: git diff --check
