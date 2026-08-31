@@ -91,6 +91,18 @@
     }
   }
 
+  function additionalResourcesSafeUserError(raw, fallback, context = '') {
+    const msg = String(raw?.message ?? raw ?? '').trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request_id|file_id|base64|sha-?256|mime|url de apps script/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[AdditionalResources] Detalle técnico oculto al usuario.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   function resourceName(item) {
     const raw = clean(item?.nombre || item?.name || item?.titulo || 'Recurso adicional');
     return /WORD\s+BY\s+WORD\s+DICTIONARY/i.test(raw) ? 'Diccionario Word by Word' : raw;
@@ -195,7 +207,7 @@
 
       request
         .then(catalog => { if (live) setState({ loading:false, error:'', catalog }); })
-        .catch(error => { if (live) setState({ loading:false, error:clean(error?.message || error || 'No se pudieron cargar los recursos.'), catalog:null }); });
+        .catch(error => { if (live) setState({ loading:false, error:additionalResourcesSafeUserError(error, 'No se pudieron cargar los recursos. Intentá de nuevo.', 'cargar_recursos_adicionales'), catalog:null }); });
       return () => { live = false; };
     }, [level, role, user?.codigo, user?.cedula, user?.grupo, user?.grupoActivo]);
 

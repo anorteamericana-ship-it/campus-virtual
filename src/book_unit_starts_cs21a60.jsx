@@ -93,6 +93,18 @@
     }
   }
 
+  function bookResourcesSafeUserError(raw, fallback, context = '') {
+    const msg = String(raw?.message ?? raw ?? '').trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request_id|file_id|base64|sha-?256|mime/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[BookResources] Detalle técnico oculto al usuario.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   function inferStudentLevel(user) {
     const direct = String(user?.nivel_activo || user?.NIVEL_ACTIVO || user?.nivel || user?.NIVEL || '').toUpperCase();
     if (['B1', 'B2', 'I1', 'I2'].includes(direct)) return direct;
@@ -233,7 +245,7 @@
         if (initial) setSpreadIndex(findSpreadIndex(data.pages || [], initial));
         setSelectedUnit(1);
       } catch (reason) {
-        setError(String(reason?.message || reason || 'No se pudo cargar el libro.'));
+        setError(bookResourcesSafeUserError(reason, 'No se pudo cargar el libro. Reintentá.', 'cargar_libro'));
         setStatus('error');
       }
     }, [level, bookType]);
@@ -252,7 +264,7 @@
         setManifest(result); setSelectedUnit(unit); setSpreadIndex(findSpreadIndex(result.pages || [], currentSourcePage));
         setMessage(`U${String(unit).padStart(2, '0')} quedó guardada en la hoja ${currentSourcePage} para ${level} · ${bookType}. Docentes y estudiantes usarán este inicio.`);
       } catch (reason) {
-        setMessage(''); setError(String(reason?.message || reason || 'No se pudo guardar el inicio de la unidad.'));
+        setMessage(''); setError(bookResourcesSafeUserError(reason, 'No se pudo guardar el inicio de la unidad. Intentá de nuevo.', 'guardar_inicio_unidad'));
       } finally { setSavingUnit(null); }
     };
 
@@ -266,7 +278,7 @@
         setSpreadIndex(findSpreadIndex(result.pages || [], activeSource));
         setMessage(`${level} · ${bookType} actualizado desde Drive. Los inicios U01–U16 se conservaron.`);
       } catch (reason) {
-        setMessage(''); setError(String(reason?.message || reason || 'No se pudo actualizar el libro desde Drive.'));
+        setMessage(''); setError(bookResourcesSafeUserError(reason, 'No se pudo actualizar el libro. Intentá de nuevo.', 'actualizar_libro'));
       } finally { setSyncingDrive(false); }
     };
 

@@ -56,6 +56,18 @@ async function postCronoGrupo(fn, payload = {}, timeoutMs = 22000) {
   throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
 }
 
+function cronoSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw?.message ?? raw ?? '').trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|error de red|error de conexi[oó]n|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request_id|file_id|base64|sha-?256|mime|apollo\.|grupos\.docente/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[Cronograma] Detalle técnico oculto al usuario.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 // Sentinel para la vista "Todos los grupos" (solo admin/superadmin).
 const TODOS_GRUPOS = '__TODOS__';
 
@@ -356,13 +368,13 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
               };
             }).filter(g => g.code);
             setGruposReales(mapped);
-            if (d.mensaje && !mapped.length) setErrorGrupos(d.mensaje);
+            if (d.mensaje && !mapped.length) setErrorGrupos(cronoSafeUserError(d.mensaje, 'No hay grupos en curso o proyectados asignados a este docente.', 'cargar_grupos_docente'));
           } else {
             setGruposReales([]);
-            setErrorGrupos(d?.mensaje || d?.error || 'No hay grupos en curso o proyectados para este docente según APOLLO.GRUPOS. Revisá columna DOCENTE y fechas de inicio.');
+            setErrorGrupos(cronoSafeUserError(d?.mensaje || d?.error, 'No hay grupos en curso o proyectados asignados a este docente.', 'cargar_grupos_docente'));
           }
         })
-        .catch(e => setErrorGrupos('Error de conexión cargando grupos docentes desde GRUPOS: ' + (e?.message || e)))
+        .catch(e => setErrorGrupos(cronoSafeUserError(e, 'No pudimos cargar los grupos asignados. Intentá de nuevo.', 'cargar_grupos_docente')))
         .finally(() => setLoadingGrupos(false));
     }
 
@@ -419,11 +431,11 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
           setGruposReales(d.grupos);
           setErrorGrupos(null);
         } else if (!cacheVigente) {
-          setErrorGrupos(d?.error || 'No se pudo cargar el calendario académico.');
+          setErrorGrupos(cronoSafeUserError(d?.error, 'No se pudo cargar el calendario académico. Intentá de nuevo.', 'cargar_grupos_admin'));
         }
       })
       .catch(e => {
-        if (!cacheVigente) setErrorGrupos('Error de red: ' + (e?.message || e));
+        if (!cacheVigente) setErrorGrupos(cronoSafeUserError(e, 'No se pudo cargar el calendario académico. Intentá de nuevo.', 'cargar_grupos_admin'));
         else console.warn('Calendario usando caché local por error de red:', e);
       })
       .finally(() => setLoadingGrupos(false));
@@ -577,7 +589,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
         setLecciones([]);
         setError(esStudent
           ? 'No pudimos cargar las lecciones de tu grupo. Intentá de nuevo o contactá a la administración.'
-          : ('No se pudieron cargar las lecciones. ' + (e?.message || '')));
+          : cronoSafeUserError(e, 'No se pudieron cargar las lecciones. Intentá de nuevo.', 'cargar_lecciones'));
       })
       .finally(() => { if (seq === loadSeqRef.current) setLoading(false); });
   }, [codGrupo, nivel, gruposReales, esStudent]);
@@ -601,11 +613,11 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
       return postCronoGrupo('getFechasGrupo', { cod_grupo: g.code || g.cod_grupo, nivel: nivelG })
         .then(d => {
           if (!d?.ok || !Array.isArray(d.lecciones)) {
-            return { ok:false, grupo:g, nivel:nivelG, error:d?.error || 'sin_lecciones', lecciones:[] };
+            return { ok:false, grupo:g, nivel:nivelG, error:cronoSafeUserError(d?.mensaje || d?.error, 'No se pudieron cargar las lecciones de este grupo.', 'agenda_grupo'), lecciones:[] };
           }
           return { ok:true, grupo:g, nivel:nivelG, lecciones:d.lecciones };
         })
-        .catch(e => ({ ok:false, grupo:g, nivel:nivelG, error:e?.message || String(e || 'error_red'), lecciones:[] }));
+        .catch(e => ({ ok:false, grupo:g, nivel:nivelG, error:cronoSafeUserError(e, 'No se pudieron cargar las lecciones de este grupo.', 'agenda_grupo'), lecciones:[] }));
     })).then(results => {
       if (seq !== agendaSeqRef.current) return;
       const eventos = [];
@@ -636,7 +648,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     }).catch(e => {
       if (seq !== agendaSeqRef.current) return;
       setAgendaLecciones([]);
-      setErrorAgenda('No se pudo cargar la agenda docente: ' + (e?.message || e));
+      setErrorAgenda(cronoSafeUserError(e, 'No se pudo cargar la agenda docente. Intentá de nuevo.', 'agenda_docente'));
     }).finally(() => { if (seq === agendaSeqRef.current) setLoadingAgenda(false); });
   }, [agendaDocenteMode, gruposReales]);
 
@@ -3227,7 +3239,7 @@ function ModalCobertura({ selLec, codGrupo, nivel, docenteTitular, adminNombre, 
       const idLec = idLeccion(nivel, selLec.leccion);
       onAsignada(idLec, res.docente_cobertura || docSel, res.docente_anterior || docenteTitular);
     } else {
-      setErr((res && res.error) || 'No se pudo asignar la cobertura.');
+      setErr(cronoSafeUserError(res?.error, 'No se pudo asignar la cobertura. Intentá de nuevo.', 'asignar_cobertura'));
       setEnviando(false);
     }
   };
@@ -3475,12 +3487,12 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
       try {
         const r = await window.fetchEstudiantesParaCierre(codGrupo, nivel);
         if (!r?.ok) {
-          if (vivo) { setErrCarga(r?.error || 'No se pudieron cargar los estudiantes.'); setCargando(false); }
+          if (vivo) { setErrCarga(cronoSafeUserError(r?.error, 'No se pudieron cargar los estudiantes. Intentá de nuevo.', 'cargar_estudiantes')); setCargando(false); }
           return;
         }
         lista = r.estudiantes || [];
       } catch (e) {
-        if (vivo) { setErrCarga('Error de red: ' + e.message); setCargando(false); }
+        if (vivo) { setErrCarga(cronoSafeUserError(e, 'No se pudieron cargar los estudiantes. Intentá de nuevo.', 'cargar_estudiantes')); setCargando(false); }
         return;
       }
 
@@ -3627,7 +3639,7 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
       await Promise.all(calls);
       onGuardado(`Lección actualizada · ${resumen.join(' · ')}`);
     } catch (e) {
-      setErrEnvio(e.message || 'Error guardando cambios.');
+      setErrEnvio(cronoSafeUserError(e, 'No se pudieron guardar los cambios. Intentá de nuevo.', 'guardar_leccion'));
       setEnviando(false);
       setConfirmar(false);
     }
