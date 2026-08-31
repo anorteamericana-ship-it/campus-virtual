@@ -37,6 +37,12 @@ const DEMO_PROSPECTOS_MAT = [
 // ────────────────────────────────────────────────────────────────────────
 // HOOK — Prospectos desde Apps Script
 // ────────────────────────────────────────────────────────────────────────
+function matriculasSafeUserError(raw,fallback,context=''){
+  const detail=raw&&typeof raw==='object'?(raw.mensaje||raw.error||raw.message||raw):raw;
+  if(detail) console.error('[Matrículas]',context||'operación',detail);
+  return fallback;
+}
+
 function useProspectos() {
   const [prospectos, setProspectos] = React.useState([]);
   const [resumen, setResumen] = React.useState(null); // v4.30.1: desglose activos por nivel + comparativa
@@ -59,8 +65,8 @@ function useProspectos() {
       body: JSON.stringify({ fn: 'getProspectos', token: window.getSessionToken ? window.getSessionToken() : '', decay_pre_matricula: true }),
     })
       .then(r => r.json())
-      .then(d => { if (d.ok) { setProspectos(d.prospectos || []); setResumen(d.resumen || null); } else setError(d.error || d.mensaje || 'Error al cargar prospectos'); })
-      .catch(e => setError(e.message))
+      .then(d => { if (d.ok) { setProspectos(d.prospectos || []); setResumen(d.resumen || null); } else setError(matriculasSafeUserError(d,'No se pudieron cargar los prospectos.','getProspectos')); })
+      .catch(e => setError(matriculasSafeUserError(e,'No se pudieron cargar los prospectos.','getProspectos')))
       .finally(() => setLoading(false));
   }, [tick]);
   return { prospectos, resumen, loading, error, reload: () => setTick(t => t + 1) };
@@ -234,7 +240,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
       });
       const data = await res.json();
       if (!data.ok) {
-        setErrGuardar(data.error || 'Error al guardar la matrícula');
+        setErrGuardar(matriculasSafeUserError(data,'No se pudo guardar la matrícula.','actualizarEstatus'));
         setGuardando(false);
         return;
       }
@@ -243,7 +249,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
       const est = form.estudianteEncontrado || { nombre: form.nombreNuevo };
       onCrear({ estudiante: est.nombre, grupo: form.grupoSelId });
     } catch(e) {
-      setErrGuardar('Error de conexión: ' + e.message);
+      setErrGuardar(matriculasSafeUserError(e,'No se pudo guardar la matrícula.','actualizarEstatus'));
     } finally {
       setGuardando(false);
     }
