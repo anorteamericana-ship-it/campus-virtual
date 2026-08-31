@@ -58,6 +58,14 @@ function useNovedadesConape() {
   return { novedades, loading, ultimoSync, resumen };
 }
 
+function adminViewsSafeUserError(raw, fallback, context='') {
+  const detail = raw && typeof raw === 'object'
+    ? (raw.mensaje || raw.error || raw.message || raw)
+    : raw;
+  if (detail) console.error('[Admin Views]', context || 'operación', detail);
+  return fallback;
+}
+
 function useAdminDashboard() {
   const [data, setData]       = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -77,9 +85,9 @@ function useAdminDashboard() {
       .then(d => {
         if (cancel) return;
         if (d.ok) setData(d);
-        else      setError(d.error || 'No se pudo cargar el dashboard');
+        else      setError(adminViewsSafeUserError(d, 'No se pudo cargar el dashboard.', 'getAdminDashboard'));
       })
-      .catch(e => { if (!cancel) setError(e.message); })
+      .catch(e => { if (!cancel) setError(adminViewsSafeUserError(e, 'No se pudo cargar el dashboard.', 'getAdminDashboard')); })
       .finally(()=> { if (!cancel) setLoading(false); });
     return () => { cancel = true; };
   }, [tick]);
@@ -125,9 +133,9 @@ function useAdminPerfilF98() {
       .then(res => {
         if (cancelled) return;
         if (res && res.ok) setData(res);
-        else setError((res && (res.mensaje || res.error)) || 'No se pudo cargar el perfil administrativo.');
+        else setError(adminViewsSafeUserError(res, 'No se pudo cargar el perfil administrativo.', 'getMiPerfilAdmin'));
       })
-      .catch(err => { if (!cancelled) setError(err && err.message ? err.message : 'No se pudo cargar el perfil administrativo.'); })
+      .catch(err => { if (!cancelled) setError(adminViewsSafeUserError(err, 'No se pudo cargar el perfil administrativo.', 'getMiPerfilAdmin')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [tick]);
@@ -2452,9 +2460,9 @@ function AdminDashboard({ setActive }) {
     try {
       const r = await postCampus('sincronizarCONAPE');
       if (r.ok) window.location.reload();
-      else { alert('Error: ' + (r.error || 'sin detalle')); setSyncing(false); }
+      else { alert(adminViewsSafeUserError(r, 'No se pudo sincronizar CONAPE.', 'sincronizarCONAPE')); setSyncing(false); }
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(adminViewsSafeUserError(e, 'No se pudo sincronizar CONAPE.', 'sincronizarCONAPE'));
       setSyncing(false);
     }
   };
