@@ -1,0 +1,28 @@
+name: QA CONAPE Cobranza Safe Copy CS21A210K
+
+on:
+  push:
+    branches:
+      - fix/conape-cobranza-safe-copy-cs21a210k
+  pull_request:
+    branches:
+      - fix/admin-becas-current-tip-cs21a210j
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CONAPE Cobranza safe UI boundary
+        run: node scripts/qa_conape_cobranza_safe_copy_cs21a210k.mjs --exact-scope
+      - name: Regress CS21A210J Becas
+        run: node scripts/qa_admin_becas_current_tip_cs21a210j.mjs
+      - name: Regress CS21A210I Aplicar Pago
+        run: node scripts/qa_aplicar_pago_safe_errors_cs21a210i.mjs
+      - name: Diff hygiene
+        run: git diff --check
