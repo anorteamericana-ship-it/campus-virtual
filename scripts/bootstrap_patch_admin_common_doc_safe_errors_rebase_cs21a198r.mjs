@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+const path = 'src/admin_students.jsx';
+let src = fs.readFileSync(path, 'utf8');
+const before = "      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}));";
+const after = "      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data?.error || data?.mensaje, 'No se pudo generar el documento. Intentá de nuevo.', 'generar_documento_comun') }}));";
+const count = src.split(before).length - 1;
+if (count !== 1) throw new Error(`CS21A198R expected exact common-doc preimage once, found ${count}`);
+if (!src.includes('async function abrirCertificadoPrivadoAdmin')) throw new Error('CS21A198R base missing CS21A197R private certificate helper');
+if (!src.includes("function abrirPdfBackend(payload, fallbackUrl = '', options = {})")) throw new Error('CS21A198R base missing CS21A193 academic-doc helper');
+src = src.replace(before, after);
+fs.writeFileSync(path, src);
+console.log('CS21A198R exact common-doc safe-error patch applied');
