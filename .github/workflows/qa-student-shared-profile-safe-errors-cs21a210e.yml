@@ -1,0 +1,30 @@
+name: QA Student Shared Profile Safe Errors CS21A210E
+
+on:
+  push:
+    branches:
+      - fix/student-shared-profile-safe-errors-cs21a210e
+  pull_request:
+    branches:
+      - integration/secondary-safe-errors-current-tip-cs21a210d
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact shared-profile boundary
+        run: node scripts/qa_student_shared_profile_safe_errors_current_tip_cs21a210e.mjs --exact-import
+      - name: Regress historical CS21A200J contract
+        run: node scripts/qa_student_shared_profile_safe_errors_cs21a200j.mjs
+      - name: Regress CS21A210D secondary surfaces
+        run: node scripts/qa_secondary_safe_errors_current_tip_cs21a210d.mjs
+      - name: Regress CS21A210C Panel Maestro CONAPE
+        run: node scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs
+      - name: Diff hygiene
+        run: git diff --check

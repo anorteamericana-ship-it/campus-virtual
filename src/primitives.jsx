@@ -159,6 +159,18 @@ async function postPrimitives(fn, payload = {}) {
   return await res.json();
 }
 
+function studentSharedProfileSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|error interno|http\s*\d{3}|status\s*\d{3}|getestudiante|request_id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[StudentSharedProfile] Detalle técnico oculto al estudiante.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 // F98.4-Z6-CS-PERF1: cache corto por estudiante para evitar que Mi Campus
 // quede en blanco/lento por cada recarga. El reload fuerza lectura fresca.
 const STUDENT_PROFILE_CACHE_TTL_MS = 90 * 1000;
@@ -197,7 +209,7 @@ function useEstudiante(codigo) {
       .then(d => {
         if (cancelled) return;
         if (!d || !d.ok) {
-          setError((d && d.error) || 'No se pudo cargar la información del estudiante');
+          setError(studentSharedProfileSafeUserError(d && d.error, 'No pudimos cargar tu información. Intentá de nuevo.', 'get_estudiante'));
           setData(null);
           return;
         }
