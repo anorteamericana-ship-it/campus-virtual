@@ -1,0 +1,26 @@
+name: QA SEC002 Admin Academic Docs Private CS21A193
+
+on:
+  push:
+    branches:
+      - security/sec002-admin-academic-docs-private-cs21a193
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_sec002_admin_academic_docs_private_cs21a193.mjs'
+      - '.github/workflows/qa-sec002-admin-academic-docs-private-cs21a193.yml'
+      - '00_DOCUMENTACION/SEC002_ADMIN_ACADEMIC_DOCS_PRIVATE_CS21A193_2026-08-30.md'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A193 guard
+        run: node scripts/qa_sec002_admin_academic_docs_private_cs21a193.mjs
+      - name: Regress CS21A192
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Regress CS21A191
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Diff hygiene
+        run: git diff --check
