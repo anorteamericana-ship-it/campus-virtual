@@ -147,6 +147,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
   const [grupos, setGrupos] = React.useState([]);
   const [cargandoGrupos, setCargandoGrupos] = React.useState(true);
   React.useEffect(() => {
+    if (MAT_DEMO) { setGrupos([]); setCargandoGrupos(false); return; }
     // (SCRIPT_URL_MAT se hereda del scope del módulo — fuente única window.APPS_SCRIPT_URL)
     // FIX-ROUTING-POST-APPS-SCRIPT-001: POST text/plain conservando ?fn= en la URL
     // (enrutado por e.parameter.fn); antes era un GET viejo. token va en el body.
@@ -207,6 +208,7 @@ function WizardMatricula({ onClose, onCrear, grupoPresel = null }) {
 
   const confirmar = async () => {
     if (!form.confirmado || guardando) return;
+    if (MAT_DEMO) { setErrGuardar('Modo demostración: esta vista es solo lectura. No se enviaron cambios.'); return; }
     setGuardando(true);
     setErrGuardar('');
     try {
@@ -1033,6 +1035,9 @@ function MatriculasView({ onNavigate }) {
   const [toast, setToast] = React.useState(null);            // {tipo, msg}
   const [conapeNov, setConapeNov] = React.useState({});      // {cedula: novedad}
   const showToast = React.useCallback((msg, tipo = 'info') => setToast({ msg, tipo }), []);
+  const previewReadOnly = React.useCallback(() => {
+    showToast('Modo demostración: esta vista es solo lectura. No se consultan ni modifican expedientes reales.', 'info');
+  }, [showToast]);
 
   // Fase 2 · Cambio 2 — filtros interactivos del resumen → lista PRE MATRÍCULA.
   // null = sin filtro. Grupo y asesor se combinan con AND.
@@ -1108,7 +1113,7 @@ function MatriculasView({ onNavigate }) {
   const esCONAPE = p => finProspecto(p) === 'CONAPE';
   const novClass = nov => nov === 'con_desembolso' ? 'nov-green' : nov === 'aprobado_sin_desembolso' ? 'nov-yellow' : nov === 'no_encontrado' ? 'nov-red' : '';
 
-  const handleAbrir = (grupo = null) => { setGrupoPresel(grupo); setShowWizard(true); };
+  const handleAbrir = (grupo = null) => { if (MAT_DEMO) { previewReadOnly(); return; } setGrupoPresel(grupo); setShowWizard(true); };
   const handleCrear = () => { reload(); };
 
   const estadoMeta = {
@@ -1399,7 +1404,7 @@ function MatriculasView({ onNavigate }) {
                     <td style={{ fontFamily:'var(--f-mono)', fontSize:13, fontWeight:800, whiteSpace:'nowrap' }}>{dias != null ? <><b>{dias}</b> d</> : '—'}</td>
                     <td style={actionCellMat}>
                       <div style={actionSlotMat}>
-                        <button className="mat-act-btn" style={actionBtnMat} onClick={() => setVerProsp({ cedula, nombre })}>
+                        <button className="mat-act-btn" style={actionBtnMat} onClick={() => MAT_DEMO ? previewReadOnly() : setVerProsp({ cedula, nombre })}>
                           Ver
                         </button>
                       </div>
@@ -1407,7 +1412,7 @@ function MatriculasView({ onNavigate }) {
                     <td style={actionCellMat}>
                       <div style={actionSlotMat}>
                         {verCrearProforma(p) ? (
-                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => setProformaProsp({ cedula, nombre })}>Crear proforma</button>
+                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => MAT_DEMO ? previewReadOnly() : setProformaProsp({ cedula, nombre })}>Crear proforma</button>
                         ) : actionEmptyMat}
                       </div>
                     </td>
@@ -1415,7 +1420,7 @@ function MatriculasView({ onNavigate }) {
                       <div style={actionSlotMat}>
                         {verActualizarConape(p) ? (
                           <button className={`mat-act-btn conape ${novClass(conapeNov[cedula])}`} style={actionBtnMat}
-                            onClick={() => setConapeProsp({ cedula, nombre })}>
+                            onClick={() => MAT_DEMO ? previewReadOnly() : setConapeProsp({ cedula, nombre })}>
                             Actualizar CONAPE
                           </button>
                         ) : actionEmptyMat}
@@ -1424,11 +1429,11 @@ function MatriculasView({ onNavigate }) {
                     <td style={actionCellMat}>
                       <div style={actionSlotMat}>
                         {verFicha(p) ? (
-                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => setFichaProsp({ cedula, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
+                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => MAT_DEMO ? previewReadOnly() : setFichaProsp({ cedula, nombre, codigo: p.CODIGO_ESTUDIANTE || p.codigo_estudiante })}>
                             Ver ficha
                           </button>
                         ) : verGenerar(p) ? (
-                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => setGenProsp({ cedula, nombre })}>
+                          <button className="mat-act-btn" style={actionBtnMat} onClick={() => MAT_DEMO ? previewReadOnly() : setGenProsp({ cedula, nombre })}>
                             Generar matrícula
                           </button>
                         ) : actionEmptyMat}
@@ -1462,7 +1467,7 @@ function MatriculasView({ onNavigate }) {
         </div>
       </div>
 
-      {showWizard && (
+      {showWizard && !MAT_DEMO && (
         <WizardMatricula
           onClose={() => setShowWizard(false)}
           onCrear={handleCrear}
@@ -1471,24 +1476,24 @@ function MatriculasView({ onNavigate }) {
       )}
 
       {/* Modales admin (Cambios 8/9/10) */}
-      {fichaProsp && (
+      {fichaProsp && !MAT_DEMO && (
         <window.MatFichaEstudianteModal cedula={fichaProsp.cedula} nombre={fichaProsp.nombre} codigo={fichaProsp.codigo}
           onClose={() => setFichaProsp(null)} onToast={showToast} />
       )}
-      {verProsp && (
+      {verProsp && !MAT_DEMO && (
         <window.MatProspectoModal cedula={verProsp.cedula} nombre={verProsp.nombre}
           onClose={() => setVerProsp(null)} onToast={showToast} />
       )}
-      {proformaProsp && (
+      {proformaProsp && !MAT_DEMO && (
         <window.MatProformasModal cedula={proformaProsp.cedula} nombre={proformaProsp.nombre}
           onClose={() => setProformaProsp(null)} onToast={showToast} />
       )}
-      {conapeProsp && (
+      {conapeProsp && !MAT_DEMO && (
         <window.MatConapeModal cedula={conapeProsp.cedula} nombre={conapeProsp.nombre}
           onClose={() => setConapeProsp(null)} onToast={showToast}
           onResult={(nov) => setConapeNov(m => ({ ...m, [conapeProsp.cedula]: nov }))} />
       )}
-      {genProsp && (
+      {genProsp && !MAT_DEMO && (
         <window.MatGenerarMatriculaModal cedula={genProsp.cedula} nombre={genProsp.nombre}
           gruposAbiertos={(resumen && resumen.grupos_abiertos) || []}
           onClose={() => setGenProsp(null)} onToast={showToast} onSuccess={handleGenSuccess} />
