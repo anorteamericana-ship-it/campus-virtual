@@ -22,7 +22,7 @@ const review = text('src/admin_master_conape_review_state_cs21a96.jsx');
 const campus = text('campus.html');
 
 // WhatsApp: technical detail must stay behind the existing shared safe-user boundary.
-must(core.includes("function masterConapeSafeUserError(raw,fallback,context='')"), 'shared safe-user helper exists');
+must(/function\s+masterConapeSafeUserError\s*\(\s*raw\s*,\s*fallback\s*,\s*context(?:\s*=\s*['"]{2})?\s*\)/.test(core), 'shared safe-user helper exists');
 must(wa.includes('post,masterConapeSafeUserError,pendingAmount'), 'WhatsApp imports shared safe-user helper');
 must(wa.includes("alert(masterConapeSafeUserError(e?.message||String(e),'No se pudo preparar WhatsApp. Intentá de nuevo.','preparar_whatsapp'))"), 'WhatsApp uses stable operator copy');
 must(!wa.includes("alert('No se pudo preparar WhatsApp: '+"), 'raw WhatsApp exception is not concatenated into alert');

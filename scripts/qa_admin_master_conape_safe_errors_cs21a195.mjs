@@ -13,15 +13,15 @@ function check(condition, message) {
   }
 }
 
-check(core.includes('function masterConapeSafeUserError(raw,fallback,context='), 'shared safe-user-error helper exists');
+check(/function\s+masterConapeSafeUserError\s*\(\s*raw\s*,\s*fallback\s*,\s*context(?:\s*=\s*['"]{2})?\s*\)/.test(core), 'shared safe-user-error helper exists');
 check(core.includes('matchesSearch,post,masterConapeSafeUserError,pendingAmount'), 'safe-user-error helper is exported from core');
 check(core.includes("throw Error('Apps Script devolvió una respuesta inválida.')"), 'internal post diagnostic remains available');
 check(core.includes('throw Error(data?.mensaje||data?.error||`No se pudo ejecutar ${fn}.`)'), 'post transport behavior remains unchanged');
 
 check(data.includes('post,masterConapeSafeUserError,uniqueSorted'), 'data layer consumes shared safe-error helper');
-check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo verificar la morosidad. Intentá de nuevo.','verificar_morosidad')"), 'mora refresh uses safe user copy');
-check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo actualizar el panel CONAPE. Intentá de nuevo.','actualizar_panel')"), 'panel refresh uses safe user copy');
-check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo cargar el seguimiento. Intentá de nuevo.','cargar_seguimiento')"), 'detail load uses safe user copy');
+check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo verificar la morosidad en este momento. Intentá de nuevo.','verificar_morosidad')"), 'mora refresh uses final R2 safe user copy');
+check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo actualizar CONAPE en este momento. Intentá de nuevo.','actualizar_conape')"), 'panel refresh uses final R2 safe user copy');
+check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo cargar el seguimiento del estudiante. Intentá de nuevo.','cargar_seguimiento')"), 'detail load uses final R2 safe user copy');
 check(data.includes("masterConapeSafeUserError(error?.message||String(error),'No se pudo guardar el seguimiento. Intentá de nuevo.','guardar_seguimiento')"), 'detail save uses safe user copy');
 
 check(review.includes('post,masterConapeSafeUserError}=N'), 'review state consumes shared safe-error helper');
