@@ -109,6 +109,7 @@
   function LazyModuleView({ files, component, props, title }){
     const React = window.React;
     const list = (files || []).map(normalize);
+    const safeError = 'No pudimos preparar esta pantalla. Recargá e intentá nuevamente.';
     const depsReady = () => list.every(f => loaded.has(f));
     const routeReady = () => routeEnhancerReady(component);
     const [state, setState] = React.useState(() => ({
@@ -123,15 +124,15 @@
         .then(() => {
           if(!live) return;
           if (typeof window[component] === 'function') setState({ ready:true, error:'' });
-          else setState({ ready:false, error:'El módulo cargó, pero no publicó el componente ' + component + '.' });
+          else { console.warn('[LazyLoader] Componente no publicado.', { component, files:list }); setState({ ready:false, error:safeError }); }
         })
-        .catch(e => live && setState({ ready:false, error:e?.message || String(e) }));
+        .catch(e => { if(!live) return; console.warn('[LazyLoader] Error técnico preparando pantalla.', { component, files:list, error:e?.message || String(e) }); setState({ ready:false, error:safeError }); });
       return () => { live = false; };
     }, [component, JSON.stringify(list)]);
     if (!state.ready) {
       return React.createElement('div', { style:{ maxWidth:680, margin:'56px auto', padding:'26px 28px', border:'1px solid var(--line)', borderRadius:18, background:'var(--surface)', boxShadow:'var(--sh-1)', fontFamily:'var(--f-sans)', textAlign:'center' } },
         React.createElement('div', { style:{ fontSize:11, fontWeight:900, letterSpacing:'.14em', color:'var(--an-granate)', textTransform:'uppercase' } }, 'Cargando módulo'),
-        React.createElement('div', { style:{ marginTop:8, fontFamily:'var(--f-serif)', fontSize:26, color:'var(--an-navy-ink)' } }, title || component),
+        React.createElement('div', { style:{ marginTop:8, fontFamily:'var(--f-serif)', fontSize:26, color:'var(--an-navy-ink)' } }, title || 'Campus Virtual'),
         state.error ? React.createElement('div', { style:{ marginTop:10, color:'#C0392B', fontSize:13, lineHeight:1.5 } }, state.error) : React.createElement('div', { style:{ marginTop:10, color:'var(--ink-3)', fontSize:13 } }, 'Preparando pantalla…'),
         state.error ? React.createElement('button', { type:'button', className:'btn btn-primary', style:{ marginTop:16 }, onClick:() => window.location.reload() }, 'Recargar') : null
       );
