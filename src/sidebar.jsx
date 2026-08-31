@@ -81,7 +81,11 @@ function ModoPruebaPanel() {
     setErrMsg('');
     try {
       const data = await postSidebar('getEstudiante', { codigo: c });
-      if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
+      if (!data.ok) {
+        if (data.error) console.warn('[Sidebar][ModoPrueba] Detalle técnico oculto al operador.', { context: 'get_estudiante', error: String(data.error) });
+        setErrMsg('No pudimos cargar ese estudiante. Verificá el código e intentá de nuevo.');
+        return;
+      }
 
       const est     = data.estudiante || {};
       const niveles = data.niveles    || {};
