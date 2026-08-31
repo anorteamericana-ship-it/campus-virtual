@@ -394,6 +394,15 @@ const _solpDemoForced = (() => {
   try {
     const q = new URLSearchParams(location.search);
     if (q.get('demo') === '1' || q.get('preview')) return true;
+
+    const activeSession = typeof getSesion === 'function' ? getSesion() : null;
+    if (activeSession) {
+      if (localStorage.getItem('an_solp_demo') === '1') {
+        console.warn('[SEC-004] Se ignoró an_solp_demo porque existe una sesión del Campus.');
+      }
+      return false;
+    }
+
     return localStorage.getItem('an_solp_demo') === '1';
   } catch (_) { return false; }
 })();
