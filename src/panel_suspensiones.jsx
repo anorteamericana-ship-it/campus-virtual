@@ -24,6 +24,18 @@ function psuFmtTs(iso) {
     String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
+function psuSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|fetchResolverSolicitudSuspension|fetchGetSolicitudesSuspension/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[AdminSuspensiones] Detalle técnico oculto al operador.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 function PanelSuspensiones({ embedded = false } = {}) {
   const adminNombre = React.useMemo(() => {
     try {
@@ -52,13 +64,14 @@ function PanelSuspensiones({ embedded = false } = {}) {
     window.fetchGetSolicitudesSuspension(estado)
       .then(r => {
         if (!r?.ok) {
-          setErr(r?.error || 'No se pudo cargar la cola.');
+          console.warn('[AdminSuspensiones] Respuesta de cola no disponible.', r?.error || r?.mensaje || r);
+          setErr(psuSafeUserError(r?.error || r?.mensaje, 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_cola'));
           setLista([]);
           return;
         }
         setLista(r.solicitudes || []);
       })
-      .catch(e => { setErr('Error de red: ' + e.message); setLista([]); })
+      .catch(e => { console.error('[AdminSuspensiones] Error técnico cargando cola.', e); setErr(psuSafeUserError(e?.message || String(e), 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_cola')); setLista([]); })
       .finally(() => setCargando(false));
   }, [estado]);
 
@@ -66,39 +79,47 @@ function PanelSuspensiones({ embedded = false } = {}) {
 
   const handleAprobar = async (sol) => {
     setResolviendo({ id: sol.id, accion: 'aprobar' });
-    const res = await window.fetchResolverSolicitudSuspension({
+    try {
+      const res = await window.fetchResolverSolicitudSuspension({
       id: sol.id,
       accion: 'aprobar',
       resuelto_por: adminNombre,
       nota_resolucion: '',
     });
-    setResolviendo(null);
-    setConfirmAprobar(null);
+      setConfirmAprobar(null);
     if (!res?.ok) {
-      showToast(res?.error || 'No se pudo aprobar la solicitud.', 'err');
+      showToast(psuSafeUserError(res?.error || res?.mensaje, 'No se pudo aprobar la solicitud. Intentá de nuevo.', 'aprobar_solicitud'), 'err');
       return;
     }
     setLista(prev => prev.filter(s => s.id !== sol.id));
     const mensaje = res.cambio?.mensaje || res.suspension?.mensaje || res.mensaje || 'Cambio aprobado y aplicado.';
     showToast(`Aplicada · ${mensaje}`, 'ok');
+    } catch (e) {
+      console.error('[AdminSuspensiones] Error técnico aprobando solicitud.', e);
+      showToast(psuSafeUserError(e?.message || String(e), 'No se pudo aprobar la solicitud. Intentá de nuevo.', 'aprobar_solicitud'), 'err');
+    } finally { setResolviendo(null); }
   };
 
   const handleRechazar = async (sol, nota) => {
     setResolviendo({ id: sol.id, accion: 'rechazar' });
-    const res = await window.fetchResolverSolicitudSuspension({
+    try {
+      const res = await window.fetchResolverSolicitudSuspension({
       id: sol.id,
       accion: 'rechazar',
       resuelto_por: adminNombre,
       nota_resolucion: nota || '',
     });
-    setResolviendo(null);
-    setModalRechazar(null);
+      setModalRechazar(null);
     if (!res?.ok) {
-      showToast(res?.error || 'No se pudo rechazar la solicitud.', 'err');
+      showToast(psuSafeUserError(res?.error || res?.mensaje, 'No se pudo rechazar la solicitud. Intentá de nuevo.', 'rechazar_solicitud'), 'err');
       return;
     }
     setLista(prev => prev.filter(s => s.id !== sol.id));
     showToast('Rechazada · el calendario no cambió.', 'ok');
+    } catch (e) {
+      console.error('[AdminSuspensiones] Error técnico rechazando solicitud.', e);
+      showToast(psuSafeUserError(e?.message || String(e), 'No se pudo rechazar la solicitud. Intentá de nuevo.', 'rechazar_solicitud'), 'err');
+    } finally { setResolviendo(null); }
   };
 
   const total = lista.length;
