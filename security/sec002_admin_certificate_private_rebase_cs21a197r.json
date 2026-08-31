@@ -1,0 +1,43 @@
+{
+  "cut": "CS21A197R",
+  "security_track": "SEC-002",
+  "severity": "P1",
+  "class": "legacy_student_certificates",
+  "state": "SOURCE_PRIVATE_MIGRATED_RUNTIME_AND_ACL_OPEN",
+  "base_pr": 205,
+  "rebased_evidence_from": [203, 200],
+  "frontend": {
+    "admin_existing_certificate": "descargarMiCertificadoPrivado -> authenticated bytes -> Blob/ObjectURL",
+    "admin_regenerate_certificate": "generarCertificado -> descargarMiCertificadoPrivado -> authenticated bytes -> Blob/ObjectURL",
+    "admin_generate_certificate": "generarCertificado -> descargarMiCertificadoPrivado -> authenticated bytes -> Blob/ObjectURL",
+    "direct_certificate_drive_url_consumers": 0,
+    "drive_search_fallback": false,
+    "migration_status": "SOURCE_ONLY"
+  },
+  "backend": {
+    "private_operation": "descargarMiCertificadoPrivado",
+    "historical_portable_delta": "qa/sec002_private_certificate_delta.patch documented by PR #110",
+    "historical_roles": ["student", "admin", "superadmin"],
+    "current_modular_QA_runtime": "PENDING_ISSUE_111",
+    "fresh_modular_QA_snapshot": "PENDING_ISSUE_111",
+    "installed_claim": false
+  },
+  "drive_acl": {
+    "legacy_tree": "P1_ANYONE_READER_LINK_ONLY_PROVEN",
+    "acl_change_in_this_cut": "NONE",
+    "anonymous_denial_proven": false
+  },
+  "required_before_release": [
+    "obtain fresh modular QA snapshot",
+    "reconcile and install private certificate operation on exact QA source",
+    "E2 student own certificate allowed",
+    "E2 student foreign certificate denied",
+    "E2 admin and superadmin allowed within scope",
+    "E2 anonymous denied",
+    "privatize an exact QA copy of the legacy certificate tree",
+    "generate a new QA certificate and prove it does not inherit anyone-reader",
+    "repeat positive and negative E2 after ACL migration"
+  ],
+  "release_gate": "BLOCK_UNTIL_PRIVATE_DELIVERY_AND_ACL_MIGRATION_E2",
+  "production": "NO_CHANGE"
+}

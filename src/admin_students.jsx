@@ -104,6 +104,49 @@ function abrirPdfBackend(payload, fallbackUrl = '', options = {}) {
   return false;
 }
 
+async function adminCertSha256Hex(bytes) {
+  if (!window.crypto?.subtle || !bytes) return '';
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function abrirCertificadoPrivadoAdmin({ codigo, nivel, grupo, registro = '' }) {
+  const r = await postAdminStudents('descargarMiCertificadoPrivado', {
+    codigo: String(codigo || '').trim(),
+    nivel: String(nivel || '').trim().toUpperCase(),
+    grupo: String(grupo || '').trim(),
+    registro: String(registro || '').trim(),
+  });
+  if (!r?.ok) {
+    throw new Error(adminStudentsSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el certificado.', 'abrir_certificado_admin'));
+  }
+  if (String(r.mime_type || '').trim().toLowerCase() !== 'application/pdf') {
+    throw new Error('El archivo recibido no es un PDF válido.');
+  }
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) throw new Error('El certificado llegó sin contenido.');
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { throw new Error('El certificado llegó con contenido inválido.'); }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  const announced = Number(r.size_bytes || 0);
+  if (announced && announced !== bytes.length) throw new Error('No se pudo verificar el tamaño del certificado.');
+  if (!bytes.length || bytes.length > 2 * 1024 * 1024) throw new Error('El certificado excede el tamaño permitido para apertura privada.');
+  if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45)) {
+    throw new Error('El contenido recibido no corresponde a un PDF válido.');
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await adminCertSha256Hex(bytes);
+    if (!digestHex || digestHex !== expectedHash) throw new Error('No se pudo verificar la integridad del certificado.');
+  }
+  const url = URL.createObjectURL(new Blob([bytes], { type:'application/pdf' }));
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+  return { private:true, nombre:String(r.nombre || 'certificado.pdf'), mensaje:'Certificado abierto de forma privada.' };
+}
+
 async function resincronizarEstudianteIndividual(codigo) {
   // Llama sincronizarCONAPE con param 'codigo' (dispatcher GET).
   // Devuelve { ok, mensaje, error }.
@@ -3894,20 +3937,12 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     setGen(g => ({...g, [certKey]: true}));
     setRes(r => ({...r, [certKey]: null}));
     try {
-      const data = await postAdminStudents('buscarCertificadoExistente', {
-        codigo: String(est.codigo || est.rec_m || ''),
-        nivel: nivelCert,
-        grupo: grupoCert,
-        registro: certNum,
+      const privado = await abrirCertificadoPrivadoAdmin({
+        codigo: String(est.codigo || est.rec_m || ''), nivel:nivelCert, grupo:grupoCert, registro:certNum,
       });
-      if (data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
-      } else {
-        setRes(r => ({...r, [certKey]: { error:data.mensaje || data.error, search_url:data.search_url }}));
-      }
+      setRes(r => ({...r, [certKey]: privado}));
     } catch(e) {
-      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+      setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo abrir el certificado. Intentá de nuevo.', 'abrir_certificado_admin') }}));
     } finally {
       setGen(g => ({...g, [certKey]: false}));
     }
@@ -3930,14 +3965,13 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         registro_esperado: certNum,
         forzar_generar: true,
       });
-      if (data && data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
-      } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
-      }
+      if (!data?.ok) throw new Error(data?.mensaje || data?.error || 'No se pudo regenerar el certificado.');
+      const privado = await abrirCertificadoPrivadoAdmin({
+        codigo:String(est.codigo || est.rec_m || ''), nivel:nivelCert, grupo:grupoCert, registro:certNum,
+      });
+      setRes(r => ({...r, [certKey]: privado}));
     } catch(e) {
-      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+      setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo regenerar el certificado. Intentá de nuevo.', 'regenerar_certificado_admin') }}));
     } finally {
       setGen(g => ({...g, [certKey]: false}));
     }
@@ -3958,14 +3992,13 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         nivel: nivelCert,
         grupo: grupoCert,
       });
-      if (data && data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
-      } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo generar el certificado.' }}));
-      }
+      if (!data?.ok) throw new Error(data?.mensaje || data?.error || 'No se pudo generar el certificado.');
+      const privado = await abrirCertificadoPrivadoAdmin({
+        codigo:String(est.codigo || est.rec_m || ''), nivel:nivelCert, grupo:grupoCert,
+      });
+      setRes(r => ({...r, [certKey]: privado}));
     } catch(e) {
-      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+      setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo generar el certificado. Intentá de nuevo.', 'generar_certificado_admin') }}));
     } finally {
       setGen(g => ({...g, [certKey]: false}));
     }
@@ -4030,8 +4063,8 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
               </div>
               <div style={{ marginTop:8 }}><CertificadoEstadoBox state={certState} /></div>
               {!certNum && certState.hint && <div style={{ marginTop:6, fontSize:11, color:'#C67100', fontWeight:600, padding:'2px 8px', background:'color-mix(in srgb,#E5A823 10%,white)', borderRadius:5, display:'inline-block' }}>🔒 {certState.hint}</div>}
-              {certResult?.url && <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}><span>✅</span><div style={{ flex:1 }}><div style={{ fontSize:11, fontWeight:700, color:'#2E7D32' }}>{certResult.mensaje || `PDF de ${nivelCert} listo`}</div><div style={{ fontSize:10, color:'var(--ink-3, #999)' }}>{certResult.nombre}</div></div><a href={certResult.url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:5, background:'#2E7D32', color:'white', fontSize:11, fontWeight:700, textDecoration:'none' }}>Abrir</a></div>}
-              {certResult?.error && <div style={{ marginTop:6, padding:'8px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>❌ {certResult.error}{certResult.search_url && <a href={certResult.search_url} target="_blank" rel="noreferrer" style={{ marginLeft:8, color:'#8B0000', fontWeight:800 }}>Buscar en Drive</a>}</div>}
+              {certResult?.private && <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}><span>✅</span><div style={{ flex:1 }}><div style={{ fontSize:11, fontWeight:700, color:'#2E7D32' }}>{certResult.mensaje || `PDF de ${nivelCert} abierto de forma privada`}</div><div style={{ fontSize:10, color:'var(--ink-3, #999)' }}>{certResult.nombre}</div></div></div>}
+              {certResult?.error && <div style={{ marginTop:6, padding:'8px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>❌ {certResult.error}</div>}
             </div>
             {certNum ? (
               <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'stretch' }}>
