@@ -1,0 +1,28 @@
+name: QA SEC002 Proforma ACL Rebase CS21A196R
+
+on:
+  push:
+    branches:
+      - security/sec002-proforma-acl-rebase-cs21a196
+  pull_request:
+    paths:
+      - 'security/sec002_proforma_public_acl_contract_cs21a196.json'
+      - 'scripts/qa_sec002_proforma_acl_rebase_cs21a196.mjs'
+      - '.github/workflows/qa-sec002-proforma-acl-rebase-cs21a196.yml'
+      - '00_DOCUMENTACION/SEC002_PROFORMA_ACL_REBASE_CS21A196_2026-08-30.md'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard CS21A196R
+        run: node scripts/qa_sec002_proforma_acl_rebase_cs21a196.mjs
+      - name: Regress CS21A195R
+        run: node scripts/qa_sec002_identity_evidence_rebase_cs21a195.mjs
+      - name: Regress CS21A175
+        run: node scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/security/sec002-identity-evidence-rebase-cs21a195...HEAD -- ':!00_DOCUMENTACION/**'
