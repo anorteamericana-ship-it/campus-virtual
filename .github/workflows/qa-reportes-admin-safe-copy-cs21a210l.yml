@@ -1,0 +1,28 @@
+name: QA Reportes Admin Safe Copy CS21A210L
+
+on:
+  push:
+    branches:
+      - fix/reportes-admin-safe-copy-cs21a210l
+  pull_request:
+    paths:
+      - 'src/reportes_admin.jsx'
+      - 'scripts/qa_reportes_admin_safe_copy_cs21a210l.mjs'
+      - '.github/workflows/qa-reportes-admin-safe-copy-cs21a210l.yml'
+      - '00_DOCUMENTACION/REPORTES_ADMIN_SAFE_COPY_CS21A210L_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210L semantics
+        run: node scripts/qa_reportes_admin_safe_copy_cs21a210l.mjs
+      - name: Regress CS21A210K CONAPE Cobranza
+        run: node scripts/qa_conape_cobranza_safe_copy_cs21a210k.mjs
+      - name: Regress CS21A210J Becas
+        run: node scripts/qa_admin_becas_current_tip_cs21a210j.mjs
+      - name: Diff hygiene
+        run: git diff --check
