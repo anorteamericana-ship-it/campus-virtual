@@ -1,0 +1,44 @@
+{
+  "checkpoint": "CS21A194",
+  "date": "2026-08-31",
+  "status": "SOURCE_MIGRATED_BACKEND_QA_PENDING_ACL_UNCHANGED",
+  "severity": "P1",
+  "scope": "admin/superadmin certificate delivery",
+  "drive_acl_evidence": {
+    "sample_count": 3,
+    "sample_periods": "multiple",
+    "all_samples_anyone_reader": true,
+    "allow_file_discovery": false,
+    "conclusion": "PUBLIC_BY_LINK_DEMONSTRATED_FOR_SAMPLES_ONLY"
+  },
+  "private_endpoint": {
+    "name": "descargarMiCertificadoPrivado",
+    "historical_delta": "qa/sec002_private_certificate_delta.patch from historical PR #110",
+    "historical_roles": ["student", "admin", "superadmin"],
+    "student_ownership_enforced": true,
+    "admin_target_fields": ["codigo", "nivel", "grupo", "registro"],
+    "response_fields": ["data_base64", "mime_type", "size_bytes", "sha256"],
+    "current_modular_qa_runtime": "NOT_INSTALLED_OR_UNVERIFIED"
+  },
+  "frontend_contract": {
+    "direct_drive_url_open": false,
+    "store_public_url_in_certificate_ui_state": false,
+    "mime": "application/pdf",
+    "max_bytes": 2097152,
+    "signature": "%PDF-",
+    "sha256_when_available": true,
+    "delivery": "Blob/ObjectURL",
+    "fail_closed": true
+  },
+  "acl_rule": "DO_NOT_REMOVE_ANYONE_WITH_LINK_UNTIL_PRIVATE_ENDPOINT_AND_POSITIVE_NEGATIVE_E2_PASS_IN_QA",
+  "runtime_gate": [
+    "port minimal endpoint delta onto fresh modular QA snapshot under Issue #111",
+    "student positive own-certificate E2",
+    "student negative other-expedient E2",
+    "admin/superadmin positive target-certificate E2",
+    "unauthorized-role negative E2",
+    "privatize controlled QA certificate copies",
+    "repeat all E2 after ACL removal"
+  ],
+  "production": "NOT_TOUCHED"
+}
