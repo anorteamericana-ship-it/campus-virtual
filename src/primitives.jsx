@@ -413,25 +413,22 @@ function PageHeader({ kicker, title, sub, right }) {
 }
 
 // ── ErrorState — usado cuando un endpoint falla ──────────────────────────
-// F96.5 UX-E: ningún estudiante/docente debe ver errores técnicos crudos
-// como "Cannot read properties...". El detalle queda disponible solo si el
-// usuario lo despliega para soporte.
+// F96.5 UX-E: ningún estudiante/docente/admin debe ver errores técnicos crudos.
+// El detalle técnico queda exclusivamente en consola para diagnóstico.
 function normalizarMensajeErrorCampus(message) {
   const raw = String(message || '').trim();
-  if (!raw) return { titulo:'No se pudo cargar la información.', detalle:'' };
-  const tecnico = /Cannot read|undefined|null|TypeError|ReferenceError|SyntaxError|stack|Exception|Failed to fetch|NetworkError|Unexpected token/i.test(raw);
-  if (tecnico) {
-    return {
-      titulo:'No se pudo cargar este módulo.',
-      detalle:raw,
-    };
+  if (!raw) return { titulo:'No se pudo cargar la información.' };
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(raw);
+  const tecnico = /apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|unexpected token|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|error interno|http\s*\d{3}|status\s*\d{3}|request_id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|cannot read|\bundefined\b|\bnull\b/i.test(raw);
+  if (technicalCode || tecnico) {
+    console.warn('[ErrorState] Detalle técnico oculto al usuario.', { error: raw });
+    return { titulo:'No se pudo cargar este módulo.' };
   }
-  return { titulo:raw, detalle:'' };
+  return { titulo:raw };
 }
 
 function ErrorState({ message, onRetry }) {
   const err = normalizarMensajeErrorCampus(message);
-  const [showDetail, setShowDetail] = React.useState(false);
   return (
     <div style={{
       padding:'24px', textAlign:'center',
@@ -448,18 +445,7 @@ function ErrorState({ message, onRetry }) {
           <button className="btn btn-ghost" onClick={onRetry}
                   style={{ fontSize:12, padding:'6px 14px' }}>Reintentar</button>
         )}
-        {err.detalle && (
-          <button className="btn btn-ghost" onClick={() => setShowDetail(!showDetail)}
-                  style={{ fontSize:12, padding:'6px 14px' }}>
-            {showDetail ? 'Ocultar detalle técnico' : 'Ver detalle para soporte'}
-          </button>
-        )}
       </div>
-      {showDetail && err.detalle && (
-        <pre style={{ margin:'12px auto 0', maxWidth:680, whiteSpace:'pre-wrap', textAlign:'left', fontSize:11, lineHeight:1.45, color:'var(--ink-2)', background:'#fff', border:'1px solid var(--line)', borderRadius:10, padding:12 }}>
-          {err.detalle}
-        </pre>
-      )}
     </div>
   );
 }
