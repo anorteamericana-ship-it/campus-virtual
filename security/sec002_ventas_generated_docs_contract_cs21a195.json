@@ -1,0 +1,62 @@
+{
+  "checkpoint": "CS21A195",
+  "date": "2026-08-31",
+  "status": "BACKEND_PRIVATE_DELIVERY_CONTRACT_PENDING_RUNTIME_UNVERIFIED",
+  "severity": "P1_PARTIAL_EVIDENCE",
+  "scope": "Sales-generated enrollment sheet and CONAPE no-debt letter",
+  "consumers": {
+    "frontend": "src/ventas_drawer.jsx::DocsEstudianteVentas.generar",
+    "wrapper": "src/ventas_data.jsx::generarDocumentoVentasSeguro",
+    "current_delivery": "r.url -> window.open"
+  },
+  "document_classes": {
+    "enrollment_sheet": {
+      "tipo": "CERTIFICADO",
+      "historical_filename_prefix": "INSCRIPCION_",
+      "drive_acl_samples": 3,
+      "anyone_reader_samples": 3,
+      "public_by_link": "DEMONSTRATED_FOR_SAMPLES"
+    },
+    "conape_no_debt_letter": {
+      "tipo": "MATRICULA_2",
+      "historical_filename_prefix": "CARTA_NO_DEUDA_",
+      "drive_acl_samples_matching_exact_generator_prefix": 0,
+      "public_by_link": "UNPROVEN"
+    }
+  },
+  "historical_backend": {
+    "endpoint": "generarDocumentoVentas",
+    "authorization": "advisor derived from session token + owned/finalized prospect checks",
+    "observed_frontend_contract": "returns URL",
+    "private_bytes_contract": "NOT_EVIDENCED",
+    "current_modular_qa_runtime": "UNVERIFIED"
+  },
+  "target_private_delivery": {
+    "endpoint_name": "UNRESOLVED_UNTIL_FRESH_QA_SNAPSHOT",
+    "requirements": [
+      "session-authenticated Sales scope",
+      "advisor ownership/carrier scope preserved server-side",
+      "no public URL required by browser",
+      "PDF MIME and decoded-size bound",
+      "PDF signature validation",
+      "SHA-256 or equivalent integrity metadata",
+      "Blob/ObjectURL client delivery",
+      "negative cross-advisor access test"
+    ]
+  },
+  "temporary_blocker": {
+    "direct_url_open_preserved": true,
+    "reason": "Do not break Sales before a private backend replacement is installed and verified",
+    "acl_rule": "DO_NOT_REMOVE_ANYONE_WITH_LINK_BEFORE_PRIVATE_DELIVERY_E2"
+  },
+  "release_gate": [
+    "fresh modular Apps Script QA snapshot under Issue #111",
+    "design/port minimal private delivery without weakening advisor ownership",
+    "positive Sales E2",
+    "negative cross-advisor/role E2",
+    "controlled QA ACL removal for enrollment sheet samples",
+    "repeat E2 after ACL removal",
+    "separate authorized production release"
+  ],
+  "production": "NOT_TOUCHED"
+}
