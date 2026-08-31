@@ -1,0 +1,27 @@
+name: QA Lazy Loader Safe User Errors CS21A197
+
+on:
+  push:
+    branches:
+      - fix/lazy-loader-safe-user-errors-cs21a197
+  pull_request:
+    paths:
+      - 'src/lazy_loader.jsx'
+      - 'scripts/qa_lazy_loader_safe_user_errors_cs21a197.mjs'
+      - '.github/workflows/qa-lazy-loader-safe-user-errors-cs21a197.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A197 guard
+        run: node scripts/qa_lazy_loader_safe_user_errors_cs21a197.mjs
+      - name: Regress CS21A196
+        run: node scripts/qa_admin_master_conape_user_copy_cs21a196.mjs
+      - name: Regress CS21A195
+        run: node scripts/qa_admin_master_conape_safe_errors_cs21a195.mjs
+      - name: Diff hygiene against stacked base
+        run: git diff --check origin/fix/admin-master-conape-user-copy-cs21a196...HEAD -- ':!00_DOCUMENTACION/**'
