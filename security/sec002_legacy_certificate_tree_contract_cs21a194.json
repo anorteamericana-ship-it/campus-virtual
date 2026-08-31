@@ -26,16 +26,21 @@
     "student_source_private_candidate": "descargarMiCertificadoPrivado"
   },
   "backend_evidence": {
-    "historical_buscarCertificadoExistente": "returns url/file_id; no private base64 delivery demonstrated",
-    "historical_generarCertificado": "URL-based admin consumer remains; no certificate pdf_base64 response demonstrated",
+    "historical_buscarCertificadoExistente": "returns url/file_id; no private base64 delivery in this operation demonstrated",
+    "historical_generarCertificado": "URL-based response remains; no certificate pdf_base64 response in this operation demonstrated",
+    "portable_private_delta": "qa/sec002_private_certificate_delta.patch documented by PR #110",
+    "portable_private_operation": "descargarMiCertificadoPrivado",
+    "portable_private_roles": ["student", "admin", "superadmin"],
+    "portable_private_controls": ["student ownership", "PDF only", "2 MiB limit", "rate limit 5 per minute", "SHA-256", "base64 authenticated response", "no url/file_id on success"],
+    "portable_private_delta_status": "DEFINED_AND_VERIFIED_HISTORICALLY_NOT_INSTALLED_IN_CURRENT_CANONICAL_RUNTIME",
     "student_private_endpoint_runtime": "PENDING_ISSUE_111",
-    "staff_private_endpoint": "NOT_DEFINED_OR_INSTALLED",
+    "staff_private_endpoint_runtime": "PENDING_ISSUE_111",
     "fresh_modular_QA_snapshot": "PENDING_ISSUE_111"
   },
   "required_migration_order": [
     "obtain fresh modular QA snapshot",
-    "install or confirm student private certificate endpoint",
-    "define and install staff-scoped private certificate read",
+    "reconcile and port the verified portable private certificate delta onto exact modular QA source",
+    "confirm student/admin/superadmin authorization and student ownership in QA runtime",
     "migrate three admin URL consumers to authenticated bytes/ObjectURL",
     "run positive and negative E2 for student/admin/superadmin/anonymous",
     "inventory exact legacy certificate folders/files affected by public inherited ACL",
