@@ -6,7 +6,8 @@ let src = fs.readFileSync(path, 'utf8');
 const before = `const _solpDemoForced = (() => {
   try {
     const q = new URLSearchParams(location.search);
-    return q.get('demo') === '1' || q.get('preview') || localStorage.getItem('an_solp_demo') === '1';
+    if (q.get('demo') === '1' || q.get('preview')) return true;
+    return localStorage.getItem('an_solp_demo') === '1';
   } catch (_) { return false; }
 })();`;
 
