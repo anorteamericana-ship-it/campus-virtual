@@ -101,6 +101,86 @@ function abrirPdfBackend(payload, fallbackUrl = '') {
   return false;
 }
 
+async function adminCertSha256HexCS21A194(bytes) {
+  if (!window.crypto?.subtle || !bytes) return '';
+  const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function adminCertPrivadoBlobCS21A194({ codigo, nivel, grupo, registro }) {
+  const codigoLimpio = String(codigo || '').trim();
+  const nivelLimpio = String(nivel || '').trim().toUpperCase();
+  if (!codigoLimpio || !['B1','B2','I1','I2'].includes(nivelLimpio)) {
+    throw new Error('No se pudo identificar el expediente o nivel del certificado.');
+  }
+  const r = await postAdminStudents('descargarMiCertificadoPrivado', {
+    codigo: codigoLimpio,
+    nivel: nivelLimpio,
+    grupo: String(grupo || '').trim(),
+    registro: String(registro || '').trim(),
+  });
+  if (!r?.ok) {
+    throw new Error(adminStudentsSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el certificado de forma segura. Intentá de nuevo.', 'certificado_privado'));
+  }
+  if (String(r.mime_type || '').trim().toLowerCase() !== 'application/pdf') {
+    throw new Error('El archivo recibido no es un PDF válido.');
+  }
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) throw new Error('El certificado llegó sin contenido.');
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { throw new Error('El certificado llegó con contenido inválido.'); }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes.length || bytes.length > 2 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    throw new Error('El certificado llegó incompleto o supera el tamaño permitido.');
+  }
+  if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45)) {
+    throw new Error('El contenido recibido no corresponde a un PDF válido.');
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await adminCertSha256HexCS21A194(bytes);
+    if (!digestHex || digestHex !== expectedHash) throw new Error('No se pudo verificar la integridad del certificado.');
+  }
+  return {
+    blob: new Blob([bytes], { type:'application/pdf' }),
+    nombre: String(r.nombre || ('certificado-' + nivelLimpio + '.pdf')),
+  };
+}
+
+function adminCertPreviewCS21A194() {
+  const preview = window.open('', '_blank');
+  if (preview) {
+    try {
+      preview.opener = null;
+      preview.document.title = 'Abriendo certificado…';
+      preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando certificado…</p>';
+    } catch (_) {}
+  }
+  return preview;
+}
+
+function adminCertOpenBlobCS21A194(preview, archivo) {
+  const objectUrl = URL.createObjectURL(archivo.blob);
+  if (preview && !preview.closed) preview.location.replace(objectUrl);
+  else {
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = archivo.nombre || 'certificado.pdf';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+}
+
+function adminCertClosePreviewCS21A194(preview) {
+  try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+}
+
 async function resincronizarEstudianteIndividual(codigo) {
   // Llama sincronizarCONAPE con param 'codigo' (dispatcher GET).
   // Devuelve { ok, mensaje, error }.
@@ -3890,6 +3970,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     if (gen[certKey] || !certNum) return;
     setGen(g => ({...g, [certKey]: true}));
     setRes(r => ({...r, [certKey]: null}));
+    const preview = adminCertPreviewCS21A194();
     try {
       const data = await postAdminStudents('buscarCertificadoExistente', {
         codigo: String(est.codigo || est.rec_m || ''),
@@ -3898,13 +3979,16 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         registro: certNum,
       });
       if (data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        const archivo = await adminCertPrivadoBlobCS21A194({ codigo:String(est.codigo || est.rec_m || ''), nivel:nivelCert, grupo:grupoCert, registro:certNum });
+        adminCertOpenBlobCS21A194(preview, archivo);
+        setRes(r => ({...r, [certKey]: { opened:true, nombre:archivo.nombre, mensaje:data.mensaje || 'Certificado abierto de forma segura.' }}));
       } else {
-        setRes(r => ({...r, [certKey]: { error:data.mensaje || data.error, search_url:data.search_url }}));
+        adminCertClosePreviewCS21A194(preview);
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data.mensaje || data.error, 'No se pudo localizar el certificado. Intentá de nuevo.', 'buscar_certificado'), search_url:data.search_url }}));
       }
     } catch(e) {
-      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+      adminCertClosePreviewCS21A194(preview);
+      setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación de certificado. Intentá de nuevo.', 'certificado_privado') }}));
     } finally {
       setGen(g => ({...g, [certKey]: false}));
     }
@@ -3919,6 +4003,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     if (!confirmar) return;
     setGen(g => ({...g, [certKey]: true}));
     setRes(r => ({...r, [certKey]: null}));
+    const preview = adminCertPreviewCS21A194();
     try {
       const data = await postAdminStudents('generarCertificado', {
         codigo: String(est.codigo || est.rec_m || ''),
@@ -3928,13 +4013,16 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         forzar_generar: true,
       });
       if (data && data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        const archivo = await adminCertPrivadoBlobCS21A194({ codigo:String(est.codigo || est.rec_m || ''), nivel:nivelCert, grupo:grupoCert, registro:certNum });
+        adminCertOpenBlobCS21A194(preview, archivo);
+        setRes(r => ({...r, [certKey]: { opened:true, nombre:archivo.nombre, mensaje:data.mensaje || 'Certificado regenerado y abierto de forma segura.' }}));
       } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
+        adminCertClosePreviewCS21A194(preview);
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError((data && (data.mensaje || data.error)), 'No se pudo regenerar el certificado. Intentá de nuevo.', 'regenerar_certificado') }}));
       }
     } catch(e) {
-      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+      adminCertClosePreviewCS21A194(preview);
+      setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación de certificado. Intentá de nuevo.', 'certificado_privado') }}));
     } finally {
       setGen(g => ({...g, [certKey]: false}));
     }
@@ -3949,6 +4037,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     if (!confirmar) return;
     setGen(g => ({...g, [certKey]: true}));
     setRes(r => ({...r, [certKey]: null}));
+    const preview = adminCertPreviewCS21A194();
     try {
       const data = await postAdminStudents('generarCertificado', {
         codigo: String(est.codigo || est.rec_m || ''),
@@ -3956,13 +4045,16 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         grupo: grupoCert,
       });
       if (data && data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        const archivo = await adminCertPrivadoBlobCS21A194({ codigo:String(est.codigo || est.rec_m || ''), nivel:nivelCert, grupo:grupoCert, registro:data.registro || data.reg_certificados || '' });
+        adminCertOpenBlobCS21A194(preview, archivo);
+        setRes(r => ({...r, [certKey]: { opened:true, nombre:archivo.nombre, mensaje:data.mensaje || 'Certificado generado y abierto de forma segura.' }}));
       } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo generar el certificado.' }}));
+        adminCertClosePreviewCS21A194(preview);
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError((data && (data.mensaje || data.error)), 'No se pudo generar el certificado. Intentá de nuevo.', 'generar_certificado') }}));
       }
     } catch(e) {
-      setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
+      adminCertClosePreviewCS21A194(preview);
+      setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación de certificado. Intentá de nuevo.', 'certificado_privado') }}));
     } finally {
       setGen(g => ({...g, [certKey]: false}));
     }
@@ -4027,7 +4119,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
               </div>
               <div style={{ marginTop:8 }}><CertificadoEstadoBox state={certState} /></div>
               {!certNum && certState.hint && <div style={{ marginTop:6, fontSize:11, color:'#C67100', fontWeight:600, padding:'2px 8px', background:'color-mix(in srgb,#E5A823 10%,white)', borderRadius:5, display:'inline-block' }}>🔒 {certState.hint}</div>}
-              {certResult?.url && <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}><span>✅</span><div style={{ flex:1 }}><div style={{ fontSize:11, fontWeight:700, color:'#2E7D32' }}>{certResult.mensaje || `PDF de ${nivelCert} listo`}</div><div style={{ fontSize:10, color:'var(--ink-3, #999)' }}>{certResult.nombre}</div></div><a href={certResult.url} target="_blank" rel="noreferrer" style={{ padding:'4px 12px', borderRadius:5, background:'#2E7D32', color:'white', fontSize:11, fontWeight:700, textDecoration:'none' }}>Abrir</a></div>}
+              {certResult?.opened && <div style={{ marginTop:8, padding:'8px 12px', background:'color-mix(in srgb,#2E7D32 8%,white)', border:'1px solid #2E7D32', borderRadius:'var(--r-md, 8px)', display:'flex', alignItems:'center', gap:8 }}><span>✅</span><div style={{ flex:1 }}><div style={{ fontSize:11, fontWeight:700, color:'#2E7D32' }}>{certResult.mensaje || `PDF de ${nivelCert} listo`}</div><div style={{ fontSize:10, color:'var(--ink-3, #999)' }}>{certResult.nombre}</div></div><span style={{ padding:'4px 10px', borderRadius:5, background:'#E8F5E9', color:'#2E7D32', fontSize:10.5, fontWeight:800 }}>Verificado</span></div>}
               {certResult?.error && <div style={{ marginTop:6, padding:'8px 10px', background:'color-mix(in srgb,#C00000 8%,white)', border:'1px solid #C00000', borderRadius:'var(--r-md, 8px)', fontSize:11, color:'#8B0000' }}>❌ {certResult.error}{certResult.search_url && <a href={certResult.search_url} target="_blank" rel="noreferrer" style={{ marginLeft:8, color:'#8B0000', fontWeight:800 }}>Buscar en Drive</a>}</div>}
             </div>
             {certNum ? (
