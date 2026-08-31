@@ -13,12 +13,36 @@ async function postConapeCobranza(fn, payload = {}) {
   return await r.json();
 }
 
+function ccSafeUserError(raw, fallback, context = '') {
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|getPanelConapeCobranza|sincronizarCONAPE/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[ConapeCobranza] Detalle técnico oculto al operador.',{context,error:msg});return fallback;}
+  return msg;
+}
+
 function ccText(v, fallback = '—') {
   const s = String(v ?? '').trim();
   return s || fallback;
 }
 function ccUpper(v) { return String(v || '').trim().toUpperCase(); }
 function ccNum(v) { const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
+function ccStatusLabel(value, fallback = '—') {
+  const raw=String(value==null?'':value).trim();
+  if(!raw)return fallback;
+  const key=raw.toUpperCase();
+  const known={
+    CON_DESEMBOLSO:'Con desembolso',
+    APROBADO_SIN_DESEMBOLSO:'Aprobado · pendiente de desembolso',
+    CONAPE_SOLICITUD:'Solicitud CONAPE',
+    CONAPE_DOCUMENTOS:'Documentos CONAPE',
+    SIN_NOVEDAD:'Sin novedad',
+  };
+  if(known[key])return known[key];
+  if(raw.includes('_'))return raw.toLowerCase().split('_').filter(Boolean).map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' ');
+  return raw;
+}
 function ccBadgeMeta(status) {
   const s = ccUpper(status);
   if (['ALTA','CRITICO','CRÍTICO','DESEMBOLSO','MORA','URGENTE'].includes(s)) return { bg:'rgba(185,28,28,.10)', fg:'#991B1B', bd:'rgba(185,28,28,.24)', label: status || 'Alta' };
@@ -97,7 +121,7 @@ function ConapeCobranzaView({ onNavigate }) {
         if (!r || r.ok === false) throw new Error(r?.error || 'No se pudo cargar CONAPE/Cobranza');
         setData(r);
       })
-      .catch(e => setError(e.message || String(e)))
+      .catch(e => setError(ccSafeUserError(e?.message || String(e), 'No se pudo cargar CONAPE y Cobranza. Intentá de nuevo.', 'cargar_panel')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -140,18 +164,18 @@ function ConapeCobranzaView({ onNavigate }) {
     try {
       const r = await postConapeCobranza('sincronizarCONAPE', {});
       if (!r || r.ok === false) throw new Error(r?.error || 'CONAPE no pudo sincronizarse');
-      setMsg(r.mensaje || 'CONAPE sincronizado correctamente.');
+      setMsg(ccSafeUserError(r?.mensaje, 'CONAPE sincronizado correctamente.', 'sincronizar_conape_exito'));
       cargar();
     } catch (e) {
-      setError(e.message || String(e));
+      setError(ccSafeUserError(e?.message || String(e), 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'sincronizar_conape'));
     } finally { setSyncing(false); }
   };
 
   const exportar = () => {
     const rows = [[
-      'tipo','prioridad','cedula','codigo','nombre','telefono','asesor','grupo','nivel','etapa','estado_cuenta','ws_novedad','ultimo_desembolso','accion_sugerida'
+      'Tipo','Prioridad','Cédula','Código','Nombre','Teléfono','Asesor','Grupo','Nivel','Etapa','Estado de cuenta','Novedad CONAPE','Último desembolso','Acción sugerida'
     ]];
-    prospectosFiltrados.forEach(p => rows.push(['prospecto', p.prioridad, p.cedula, '', p.nombre, p.telefono, p.asesor, p.grupo, '', p.etapa, p.estado_cuenta, p.ws_novedad, p.ultimo_desembolso, p.accion_sugerida]));
+    prospectosFiltrados.forEach(p => rows.push(['prospecto', p.prioridad, p.cedula, '', p.nombre, p.telefono, p.asesor, p.grupo, '', ccStatusLabel(p.etapa, ''), ccStatusLabel(p.estado_cuenta, ''), ccStatusLabel(p.ws_novedad, ''), p.ultimo_desembolso, p.accion_sugerida]));
     estudiantesFiltrados.forEach(e => rows.push(['estudiante', e.prioridad || '', e.cedula, e.codigo, e.nombre, e.telefono, '', e.grupo, e.nivel, e.estatus, 'ACTIVO', '', '', e.accion_sugerida]));
     ccDownloadCsv('conape_cobranza_' + new Date().toISOString().slice(0,10) + '.csv', rows);
   };
@@ -167,7 +191,7 @@ function ConapeCobranzaView({ onNavigate }) {
     lines.push('Grupos con mora: ' + ccNum(k.grupos_con_mora));
     lines.push('');
     prospectosFiltrados.slice(0, 40).forEach((p, i) => {
-      lines.push(`${i+1}. ${p.nombre || '—'} · ${p.cedula || '—'} · ${p.telefono || '—'} · ${p.etapa || '—'} · ${p.accion_sugerida || ''}`);
+      lines.push(`${i+1}. ${p.nombre || '—'} · ${p.cedula || '—'} · ${p.telefono || '—'} · ${ccStatusLabel(p.etapa, '—')} · ${p.accion_sugerida || ''}`);
     });
     ccCopy(lines.join('\n'), setMsg);
   };
@@ -189,7 +213,7 @@ function ConapeCobranzaView({ onNavigate }) {
           <div>
             <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate)' }}>Panel de recuperación</div>
             <h2 style={{ margin:'4px 0 4px', fontSize:26, lineHeight:1.1, color:'var(--an-navy-ink)', fontFamily:'var(--f-serif)' }}>Flujo CONAPE → matrícula → cobro</h2>
-            <div style={{ fontSize:13, color:'var(--ink-3)' }}>Última lectura: {ccText(data?.fecha)} · WS CONAPE: {ccText(data?.ultimo_sync_conape, 'sin dato')}</div>
+            <div style={{ fontSize:13, color:'var(--ink-3)' }}>Última lectura: {ccText(data?.fecha)} · Última sincronización CONAPE: {ccText(data?.ultimo_sync_conape, 'sin dato')}</div>
           </div>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             <CCToolButton onClick={cargar} disabled={loading}>Actualizar</CCToolButton>
@@ -210,7 +234,7 @@ function ConapeCobranzaView({ onNavigate }) {
             <CCCard title="Desembolso sin matrícula" value={ccNum(k.desembolso_sin_matricula)} status="DESEMBOLSO" sub="Casos que deben convertirse en matrícula/pago." onClick={() => setFiltro('desembolso')} />
             <CCCard title="Aprobado sin desembolso" value={ccNum(k.aprobado_sin_desembolso)} status="MEDIA" sub="Acompañar firma/desembolso." onClick={() => setFiltro('aprobado')} />
             <CCCard title="Solicitud / documentos" value={ccNum(k.solicitud_documentos)} status="DOCUMENTOS" sub="Prospectos CONAPE todavía en trámite." onClick={() => setFiltro('documentos')} />
-            <CCCard title="Activos CONAPE" value={ccNum(k.activos_conape)} status="ACTIVO" sub="Estudiantes en DATOS con convenio CONAPE." onClick={() => setFiltro('activos')} />
+            <CCCard title="Activos CONAPE" value={ccNum(k.activos_conape)} status="ACTIVO" sub="Estudiantes activos con convenio CONAPE." onClick={() => setFiltro('activos')} />
             <CCardMora gruposConMora={ccNum(k.grupos_con_mora)} moraTotal={ccNum(k.mora_cache_total)} onClick={() => setFiltro('mora')} />
           </section>
 
@@ -249,8 +273,8 @@ function ConapeCobranzaView({ onNavigate }) {
                         <CCBadge status={p.prioridad}>{p.prioridad || 'Media'}</CCBadge>
                       </div>
                       <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginTop:10 }}>
-                        <CCBadge status={p.etapa}>{p.etapa || 'Sin etapa'}</CCBadge>
-                        <CCBadge status={p.ws_novedad}>{p.ws_novedad || 'WS sin novedad'}</CCBadge>
+                        <CCBadge status={p.etapa}>{ccStatusLabel(p.etapa, 'Sin etapa')}</CCBadge>
+                        <CCBadge status={p.ws_novedad}>{ccStatusLabel(p.ws_novedad, 'Sin novedad CONAPE')}</CCBadge>
                         {p.grupo && <button type="button" onClick={() => abrirGrupo(p.grupo)} style={{ border:'1px solid var(--line)', background:'white', borderRadius:999, padding:'4px 9px', fontSize:11, fontWeight:850, cursor:'pointer' }}>{p.grupo}</button>}
                         {wa && <a href={wa} target="_blank" rel="noreferrer" style={{ border:'1px solid rgba(22,163,74,.22)', background:'rgba(22,163,74,.08)', color:'#166534', borderRadius:999, padding:'4px 9px', fontSize:11, fontWeight:850, textDecoration:'none' }}>WA</a>}
                       </div>
