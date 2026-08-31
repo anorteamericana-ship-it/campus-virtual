@@ -1,0 +1,61 @@
+name: Audit Raw User Error Surface V3 After V CS21A210W
+
+on:
+  push:
+    branches:
+      - audit/raw-user-error-surface-v3-after-v-cs21a210w
+    paths:
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - '.github/workflows/audit-raw-user-error-surface-v3-after-v-cs21a210w.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan current raw visible-error sinks V3 and persist exact report
+        id: scan
+        shell: bash
+        run: |
+          set +e
+          mkdir -p 00_DOCUMENTACION
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs --fail-on-findings > 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_V_CS21A210W_REPORT.txt 2>&1
+          rc=$?
+          set -e
+          cat 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_V_CS21A210W_REPORT.txt
+          echo "scan_exit=$rc" >> "$GITHUB_OUTPUT"
+      - name: Persist audit report on audit branch
+        shell: bash
+        run: |
+          if git diff --quiet -- 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_V_CS21A210W_REPORT.txt && git ls-files --error-unmatch 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_V_CS21A210W_REPORT.txt >/dev/null 2>&1; then
+            echo "Audit report unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_V_CS21A210W_REPORT.txt
+          git commit -m "CS21A210W persist V3 inventory after V"
+          git push origin HEAD:audit/raw-user-error-surface-v3-after-v-cs21a210w
+      - name: Regress CS21A210V Solicitudes
+        if: always()
+        run: node scripts/qa_solicitudes_unificadas_safe_errors_cs21a210v.mjs
+      - name: Regress CS21A210T Admin views
+        if: always()
+        run: node scripts/qa_admin_views_safe_errors_cs21a210t.mjs
+      - name: Diff hygiene
+        if: always()
+        run: git diff --check
+      - name: Mark audit incomplete while raw sinks remain
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.scan.outputs.scan_exit }}" != "0" ]; then
+            echo "Raw user-visible error sinks remain; see versioned CS21A210W report."
+            exit 2
+          fi
