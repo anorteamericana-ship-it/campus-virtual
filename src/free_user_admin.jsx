@@ -11,6 +11,10 @@ async function freeAdminPost(fn,payload={}){
   if(!json?.ok)throw new Error(json?.mensaje||json?.error||'No se pudo completar la solicitud.');
   return json;
 }
+function freeAdminSafeUserError(raw,fallback,context=''){
+  try{console.error('[Prematrículas admin]',context||'operacion',raw);}catch(_){}
+  return String(fallback||'No se pudo completar la operación.').trim();
+}
 function freeAdminClean(v,fallback='—'){const s=String(v==null?'':v).trim();return s||fallback;}
 function freeAdminUpper(v){return String(v||'').trim().toUpperCase();}
 function freeAdminDateMs(v){if(!v)return 0;const raw=String(v||'');const d=new Date(raw.includes('T')?raw:raw.slice(0,10)+'T12:00:00');return Number.isNaN(d.getTime())?0:d.getTime();}
@@ -74,7 +78,7 @@ function FreeUserRequestsAdminView({toast}){
       const list=freeAdminNormalizeItems(r.items||[]);
       setItems(list);setCounts(r.counts||{});
       setSelected(prev=>prev?list.find(x=>String(x.ID||'')===String(prev.ID||''))||prev:null);
-    }catch(e){setError(e.message);}finally{setLoading(false);}
+    }catch(e){setError(freeAdminSafeUserError(e,'No se pudieron cargar las prematrículas.','listar'));}finally{setLoading(false);}
   },[estado]);
   React.useEffect(()=>{load();},[load]);
   React.useEffect(()=>{const onChange=()=>load();window.addEventListener('an:free-user-solicitudes-changed',onChange);return()=>window.removeEventListener('an:free-user-solicitudes-changed',onChange);},[load]);
@@ -92,7 +96,7 @@ function FreeUserRequestsAdminView({toast}){
       setOk(r.mensaje||'Solicitud actualizada.');if(typeof toast==='function')toast('Prematrícula actualizada');
       setNota('');setCopied('');try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
       await load();
-    }catch(e){setError(e.message);}finally{setBusy('');}
+    }catch(e){setError(freeAdminSafeUserError(e,'No se pudo actualizar la prematrícula.','resolver'));}finally{setBusy('');}
   };
   const copiarFicha=async(s)=>{try{await navigator.clipboard.writeText(freeAdminBuildFicha(s));setCopied(String(s.ID||''));}catch(_){setError('No se pudo copiar la ficha.');}};
   const abrirWhatsApp=(s)=>{
