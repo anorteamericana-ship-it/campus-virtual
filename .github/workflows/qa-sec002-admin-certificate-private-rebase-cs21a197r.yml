@@ -1,0 +1,34 @@
+name: QA SEC002 Admin Certificate Private Rebase CS21A197R
+
+on:
+  push:
+    branches:
+      - security/sec002-admin-certificate-private-rebase-cs21a197r
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/sec002_admin_certificate_private_rebase_cs21a197r.json'
+      - 'security/sec002_legacy_certificate_tree_contract_cs21a194.json'
+      - 'scripts/qa_sec002_admin_certificate_private_rebase_cs21a197r.mjs'
+      - 'scripts/qa_sec002_certificate_tree_rebase_cs21a194.mjs'
+      - '.github/workflows/qa-sec002-admin-certificate-private-rebase-cs21a197r.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: CS21A197R private certificate rebase
+        run: node scripts/qa_sec002_admin_certificate_private_rebase_cs21a197r.mjs
+      - name: Regress certificate ACL evidence CS21A194R
+        run: node scripts/qa_sec002_certificate_tree_rebase_cs21a194.mjs
+      - name: Regress identity evidence CS21A195R
+        run: node scripts/qa_sec002_identity_evidence_rebase_cs21a195.mjs
+      - name: Regress proforma ACL evidence CS21A196R
+        run: node scripts/qa_sec002_proforma_acl_rebase_cs21a196.mjs
+      - name: Regress private academic docs CS21A193
+        run: node scripts/qa_sec002_admin_academic_docs_private_cs21a193.mjs
+      - name: Diff hygiene
+        run: git diff --check 95ea46b0a32fb844f480052b0f24fd12b846874a...HEAD -- src scripts security .github/workflows/qa-sec002-admin-certificate-private-rebase-cs21a197r.yml
