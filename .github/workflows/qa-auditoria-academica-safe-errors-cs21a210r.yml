@@ -1,0 +1,30 @@
+name: QA Auditoria Academica Safe Errors CS21A210R
+
+on:
+  push:
+    branches:
+      - fix/auditoria-academica-safe-errors-cs21a210r
+    paths:
+      - 'src/auditoria_academica.jsx'
+  pull_request:
+    paths:
+      - 'src/auditoria_academica.jsx'
+      - 'scripts/qa_auditoria_academica_safe_errors_cs21a210r.mjs'
+      - '.github/workflows/qa-auditoria-academica-safe-errors-cs21a210r.yml'
+      - '00_DOCUMENTACION/AUDITORIA_ACADEMICA_SAFE_ERRORS_CS21A210R_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210R semantics
+        run: node scripts/qa_auditoria_academica_safe_errors_cs21a210r.mjs
+      - name: Regress CS21A210Q Inscripcion
+        run: node scripts/qa_inscripcion_admin_safe_errors_cs21a210q.mjs
+      - name: Regress CS21A210P Prematriculas
+        run: node scripts/qa_prematriculas_shared_safe_errors_cs21a210p.mjs
+      - name: Diff hygiene
+        run: git diff --check

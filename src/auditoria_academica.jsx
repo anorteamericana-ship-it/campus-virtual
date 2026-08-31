@@ -33,6 +33,11 @@ async function postAuditoria(fn, payload = {}) {
   return await res.json();
 }
 
+function aaSafeUserError(raw,fallback,context=''){
+  try{console.error('[Auditoría Académica]',context||'operacion',raw);}catch(_){}
+  return String(fallback||'No se pudo completar la operación.').trim();
+}
+
 // Paleta por nivel (consistente con el resto del campus).
 const AA_NIVEL_COLOR = { B1: '#9A6A00', B2: '#8B1A10', I1: '#0D47A1', I2: '#1B5E20' };
 const AA_NIVELES = ['B1', 'B2', 'I1', 'I2'];
@@ -935,7 +940,7 @@ function AACierreAcademicoAuditoriaPanel({ grupo, nivel, auditoriaData, onBuscar
     try {
       const d = await postAuditoria('getCierreAcademicoNivelPreview', { cod_grupo: grupo, grupo, nivel });
       if (d && d.ok) setPreview(d);
-      else { setPreview(null); setError((d && (d.mensaje || d.error)) || 'No se pudo cargar el diagnóstico de cierre.'); }
+      else { setPreview(null); setError(aaSafeUserError(d,'No se pudo cargar el diagnóstico de cierre.','cierre:preview')); }
     } catch (_) {
       setPreview(null); setError('No se pudo conectar con el diagnóstico de cierre.');
     } finally {
@@ -1489,10 +1494,10 @@ function AuditoriaAcademicaView({ initialGrupo = '', initialNivel = '', origen =
             if (AA_NIVELES.includes(nPreferido)) setNivel(prev => initialGrupoNorm ? nPreferido : (prev || nPreferido));
           }
         } else {
-          setErrorGrupos((d && d.error) || 'No se pudieron cargar los grupos activos.');
+          setErrorGrupos(aaSafeUserError(d,'No se pudieron cargar los grupos activos.','grupos:respuesta'));
         }
       })
-      .catch(e => setErrorGrupos('Error de red: ' + (e && e.message ? e.message : e)))
+      .catch(e => setErrorGrupos(aaSafeUserError(e,'No se pudieron cargar los grupos activos.','grupos:conexion')))
       .finally(() => setLoadingGrupos(false));
   }, [initialGrupoNorm, initialNivelNorm]);
 
@@ -1510,7 +1515,7 @@ function AuditoriaAcademicaView({ initialGrupo = '', initialNivel = '', origen =
       } else if (res && res.error === 'no_autorizado') {
         setError('No autorizado: tu cuenta no tiene permiso para ver la auditoría académica.');
       } else {
-        setError((res && res.error) || 'No se pudo cargar la auditoría académica.');
+        setError(aaSafeUserError(res,'No se pudo cargar la auditoría académica.','auditoria:respuesta'));
       }
     } catch (e) {
       setError('Error de conexión. Probá de nuevo en unos segundos.');
