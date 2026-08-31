@@ -1,0 +1,30 @@
+name: QA Permisos Roles Superadmin Safe Copy CS21A210M
+
+on:
+  push:
+    branches:
+      - fix/permisos-roles-superadmin-safe-copy-cs21a210m
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'src/sidebar.jsx'
+      - 'src/permisos_roles.jsx'
+      - 'scripts/qa_permisos_roles_superadmin_safe_copy_cs21a210m.mjs'
+      - '.github/workflows/qa-permisos-roles-superadmin-safe-copy-cs21a210m.yml'
+      - '00_DOCUMENTACION/PERMISOS_ROLES_SUPERADMIN_SAFE_COPY_CS21A210M_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210M semantics
+        run: node scripts/qa_permisos_roles_superadmin_safe_copy_cs21a210m.mjs
+      - name: Regress CS21A210L Reportes
+        run: node scripts/qa_reportes_admin_safe_copy_cs21a210l.mjs
+      - name: Regress CS21A210K CONAPE Cobranza
+        run: node scripts/qa_conape_cobranza_safe_copy_cs21a210k.mjs
+      - name: Diff hygiene
+        run: git diff --check
