@@ -1,0 +1,75 @@
+name: Bootstrap Security Current Candidate 2026-08-31
+
+on:
+  push:
+    branches:
+      - integration/security-current-candidate-20260831
+    paths:
+      - 'scripts/bootstrap_reconcile_security_current_candidate_20260831.mjs'
+      - '.github/workflows/bootstrap-security-current-candidate-20260831.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Verify exact base and authority commits
+        run: |
+          git merge-base --is-ancestor 1f2f17c98b1309018b20ad897b6ebc05f01cc93e HEAD
+          git cat-file -e d3f0a2f36d95a71b55b7604cd67398c0d1beeff6^{commit}
+          git cat-file -e 95ea46b0a32fb844f480052b0f24fd12b846874a^{commit}
+      - name: Import exact #201 source authority and guards
+        run: |
+          git checkout d3f0a2f36d95a71b55b7604cd67398c0d1beeff6 -- \
+            src/admin_students.jsx \
+            scripts/qa_sec002_admin_certificate_private_source_20260830.mjs \
+            scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs \
+            scripts/qa_admin_common_doc_safe_errors_20260830.mjs
+      - name: Import exact #205 ACL evidence contracts
+        run: |
+          git checkout 95ea46b0a32fb844f480052b0f24fd12b846874a -- \
+            security/sec002_legacy_certificate_tree_contract_cs21a194.json \
+            security/sec002_identity_legacy_contract_cs21a174.json \
+            security/sec002_proforma_public_acl_contract_cs21a196.json
+      - name: Reconcile certificate source state without weakening ACL evidence
+        run: node scripts/bootstrap_reconcile_security_current_candidate_20260831.mjs
+      - name: Cross-candidate truth guard
+        run: node scripts/qa_security_current_candidate_20260831.mjs
+      - name: Admin certificate private source authority
+        run: node scripts/qa_sec002_admin_certificate_private_source_20260830.mjs
+      - name: Admin academic private documents authority
+        run: node scripts/qa_sec002_admin_private_academic_docs_cs21a193.mjs
+      - name: Admin common document safe errors
+        run: node scripts/qa_admin_common_doc_safe_errors_20260830.mjs
+      - name: Broad admin security consolidation regression
+        run: node scripts/qa_admin_security_consolidated_cs21a200a.mjs
+      - name: Student portal safe errors regression
+        run: node scripts/qa_student_portal_safe_errors_cs21a200i.mjs
+      - name: Lazy loader safe errors regression
+        run: node scripts/qa_lazy_loader_safe_errors_cs21a200h.mjs
+      - name: Student academic menu safe errors regression
+        run: node scripts/qa_student_academic_menu_safe_errors_cs21a200g.mjs
+      - name: SEC-006 additional resources regression
+        run: node scripts/qa_sec006_additional_resources_access_cs21a200f.mjs
+      - name: Admin students safe errors regression
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Admin students user copy regression
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Diff hygiene
+        run: git diff --check -- . ':!00_DOCUMENTACION/**'
+      - name: Remove bootstrap artifacts and push verified candidate
+        run: |
+          rm scripts/bootstrap_reconcile_security_current_candidate_20260831.mjs
+          rm .github/workflows/bootstrap-security-current-candidate-20260831.yml
+          git add -A
+          git commit -m 'Security current candidate · reconcile source and ACL evidence'
+          git push origin HEAD:integration/security-current-candidate-20260831
