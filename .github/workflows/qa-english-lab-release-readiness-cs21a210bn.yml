@@ -1,0 +1,37 @@
+name: QA English LAB Release Readiness CS21A210BN
+
+on:
+  push:
+    branches:
+      - audit/english-lab-release-readiness-cs21a210bn
+  pull_request:
+    branches:
+      - candidate/green-spine-integration-cs21a210bl
+    paths:
+      - 'scripts/qa_english_lab_release_readiness_cs21a210bn.mjs'
+      - '.github/workflows/qa-english-lab-release-readiness-cs21a210bn.yml'
+      - '00_DOCUMENTACION/ENGLISH_LAB_RELEASE_READINESS_CS21A210BN_2026-09-01.md'
+      - '.github/workflows/qa-english-lab-source-truth-guard.yml'
+      - 'scripts/qa_cs21a202_source_truth.mjs'
+      - 'src/english_lab_live.jsx'
+      - 'src/english_lab_live_v2.jsx'
+
+permissions:
+  contents: read
+
+jobs:
+  classify-current-release-blocker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify English LAB current-candidate readiness
+        run: node scripts/qa_english_lab_release_readiness_cs21a210bn.mjs
+      - name: Preserve global Source Truth guard
+        run: |
+          test -f .github/workflows/qa-english-lab-source-truth-guard.yml
+          echo 'This gate classifies the blocker; it does not certify E2/runtime.'
+      - name: Diff hygiene
+        run: git diff --check HEAD^ -- scripts/qa_english_lab_release_readiness_cs21a210bn.mjs .github/workflows/qa-english-lab-release-readiness-cs21a210bn.yml 00_DOCUMENTACION/ENGLISH_LAB_RELEASE_READINESS_CS21A210BN_2026-09-01.md
