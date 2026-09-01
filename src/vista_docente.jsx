@@ -1745,6 +1745,12 @@ function VDToast({ message, onDone }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Componente raíz
 // ─────────────────────────────────────────────────────────────────────────
+function vistaDocenteSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+  if (msg) console.warn('[VistaDocente] Detalle técnico oculto al docente.', { context, error: msg });
+  return fallback;
+}
+
 function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const sesion = React.useMemo(() => leerSesionDocente(), []);
 
@@ -1780,7 +1786,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         setCalendario(cal);
         setPendientes(pend);
       })
-      .catch(e => setError(e.message || 'Error de conexión.'))
+      .catch(e => setError(vistaDocenteSafeUserError(e && e.message, 'No pudimos cargar tus pendientes. Intentá nuevamente.', 'refetch_docente')))
       .finally(() => setLoading(false));
   }, [idDocente]);
 
@@ -1798,7 +1804,10 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         if (!pend?.ok) throw new Error(pend?.error || 'No se pudieron cargar los pendientes.');
         setCalendario(cal); setPendientes(pend);
       })
-      .catch(e => { if (!cancel) setError(e.message || 'Error de conexión.'); })
+      .catch(e => {
+        if (cancel) return;
+        setError(vistaDocenteSafeUserError(e && e.message, 'No pudimos cargar tus pendientes. Intentá nuevamente.', 'carga_docente'));
+      })
       .finally(() => { if (!cancel) setLoading(false); });
     return () => { cancel = true; };
   }, [idDocente]);
