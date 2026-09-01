@@ -65,14 +65,16 @@ El catálogo de grupos puede filtrar por estado/visibilidad y no es una prueba e
 - `authenticated-staging`: BLOQUEADO antes de credenciales por sentinel de grupo ausente;
 - cero writes; cero PROD.
 
-## HEAD corregido
+## Corrección del gate
 
 El runner y sus contratos fueron corregidos para usar el proof nativo QA antes del primer login.
 
-Checks sobre `cc24830f6ef12d546f33fc522fbdcc6d7acefa08`:
+Checks automáticos sobre el código corregido `cc24830f6ef12d546f33fc522fbdcc6d7acefa08`:
 
 - QA Auth E2 Readonly Secret Scope CS21A210BO run `33548532085`: **SUCCESS**.
 - English LAB Source Truth Guard run `33548532056`: **SUCCESS**.
+
+El commit documental posterior no modifica el runner ni los workflows.
 
 ## Límites
 
