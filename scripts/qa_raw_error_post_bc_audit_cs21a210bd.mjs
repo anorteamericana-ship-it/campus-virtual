@@ -18,7 +18,17 @@ const examBundle=fs.readFileSync('src/examenes_bundle.jsx','utf8');
 const examModes=fs.readFileSync('src/examenes_modes.jsx','utf8');
 
 if(!app.includes("english_lab_live: ['src/english_lab_live.jsx")) throw new Error('English LAB Live lazy route missing');
-if((live.match(/setError\(e\.message \|\| String\(e\)\)/g)||[]).length!==7) throw new Error('English LAB Live raw visible sink count changed');
+const liveRaw=(live.match(/setError\(e\.message \|\| String\(e\)\)/g)||[]).length;
+if(exact){
+  if(liveRaw!==7) throw new Error(`English LAB Live exact raw sink count changed: ${liveRaw}`);
+}else if(liveRaw===0){
+  if((live.match(/function englishLabLiveSafeUserError\(/g)||[]).length!==1) throw new Error('English LAB Live safe helper missing');
+  for(const c of ['room_control_load','room_control_action','player_state','join_room','submit_answer','teacher_data','create_room']){
+    if((live.match(new RegExp("'"+c+"'",'g'))||[]).length!==1) throw new Error(`English LAB Live safe context mismatch: ${c}`);
+  }
+}else{
+  throw new Error(`English LAB Live partially migrated raw sinks: ${liveRaw}`);
+}
 if(!live.includes('{error && <Alert tone="err">{error}</Alert>}') && !live.includes('error ? <Alert tone="err">{error}</Alert>')) throw new Error('English LAB Live error UI projection missing');
 if(!app.includes("admin_students: ['src/admin_students.jsx")) throw new Error('admin_students effective route missing');
 if(!app.includes("banco: ['src/importador_banco.jsx") || !app.includes("src/importador_banco_integridad_cs21a114.jsx")) throw new Error('BCR override wiring changed');
