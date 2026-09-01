@@ -1,0 +1,23 @@
+name: Audit English LAB Source Truth Current CS21A210AV0
+
+on:
+  push:
+    branches:
+      - audit/english-lab-source-truth-current-cs21a210av0
+
+permissions:
+  contents: read
+
+jobs:
+  source-truth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify recovered strict guard blob
+        run: test "$(git hash-object scripts/qa_cs21a202_source_truth.mjs)" = "c7a42d54627cd8e4f0b8aa62c9b5f36a25418ef8"
+      - name: Run strict English LAB source truth
+        run: node scripts/qa_cs21a202_source_truth.mjs
+      - name: Diff hygiene
+        run: git diff --check
