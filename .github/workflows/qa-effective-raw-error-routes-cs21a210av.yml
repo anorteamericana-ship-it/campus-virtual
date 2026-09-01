@@ -1,0 +1,42 @@
+name: QA Effective Raw Error Routes CS21A210AV
+
+on:
+  push:
+    branches:
+      - audit/effective-raw-error-routes-cs21a210av
+    paths:
+      - 'scripts/audit_effective_raw_error_routes_cs21a210av.mjs'
+      - '.github/workflows/qa-effective-raw-error-routes-cs21a210av.yml'
+      - '00_DOCUMENTACION/EFFECTIVE_RAW_ERROR_ROUTES_CS21A210AV_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'scripts/audit_effective_raw_error_routes_cs21a210av.mjs'
+      - '.github/workflows/qa-effective-raw-error-routes-cs21a210av.yml'
+      - '00_DOCUMENTACION/EFFECTIVE_RAW_ERROR_ROUTES_CS21A210AV_2026-08-31.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact V3 scanner
+        run: test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
+      - name: Re-run V3 with pipefail
+        run: |
+          set -o pipefail
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-av.txt
+          grep -Fq 'DIRECT_RAW_SINK_FINDINGS=57' /tmp/v3-av.txt
+          grep -Fq 'FILES_WITH_FINDINGS=13' /tmp/v3-av.txt
+      - name: Classify effective routes
+        run: node scripts/audit_effective_raw_error_routes_cs21a210av.mjs
+      - name: Regress AT shared app boundary
+        run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
+      - name: Regress AS BCR wiring
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Diff hygiene
+        run: git diff --check
