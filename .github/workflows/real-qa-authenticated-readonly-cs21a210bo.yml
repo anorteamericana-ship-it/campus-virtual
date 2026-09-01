@@ -1,0 +1,78 @@
+name: Real QA Authenticated Readonly CS21A210BO
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-qa-auth-readonly-cs21a210bo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authenticated-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
+      QA_STUDENT_USER: ${{ secrets.QA_STUDENT_USER }}
+      QA_STUDENT_PASS: ${{ secrets.QA_STUDENT_PASS }}
+      QA_TEACHER_USER: ${{ secrets.QA_TEACHER_USER }}
+      QA_TEACHER_PASS: ${{ secrets.QA_TEACHER_PASS }}
+      QA_SUPERADMIN_USER: ${{ secrets.QA_SUPERADMIN_USER }}
+      QA_SUPERADMIN_PASS: ${{ secrets.QA_SUPERADMIN_PASS }}
+      QA_STUDENT_CODE: ${{ secrets.QA_STUDENT_CODE }}
+      QA_GROUP_CODE: ${{ secrets.QA_GROUP_CODE }}
+      QA_BANK_DOCUMENT: CS21A210BO_READONLY_UNUSED
+      QA_EXECUTE_WRITES: NO
+      QA_CAMPUS_BASE_URL: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse incomplete readonly secret set
+        shell: bash
+        run: |
+          required=(QA_STAGING_APPS_SCRIPT_URL QA_STUDENT_USER QA_STUDENT_PASS QA_TEACHER_USER QA_TEACHER_PASS QA_SUPERADMIN_USER QA_SUPERADMIN_PASS QA_STUDENT_CODE QA_GROUP_CODE)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then echo "Falta el secreto readonly $key"; exit 1; fi
+          done
+          if [ "${QA_EXECUTE_WRITES}" != "NO" ]; then
+            echo 'BLOQUEADO: este workflow es estrictamente read-only.'
+            exit 1
+          fi
+      - name: Validate authenticated runner
+        run: node --check scripts/real_qa_authenticated_cs21a138.mjs
+      - name: Verify write path remains disabled
+        shell: bash
+        run: |
+          grep -Fq "const executeWrites = process.env.QA_EXECUTE_WRITES === 'CS21A138_STAGING_ONLY';" scripts/real_qa_authenticated_cs21a138.mjs
+          grep -Fq "if (executeWrites)" scripts/real_qa_authenticated_cs21a138.mjs
+          test "${QA_EXECUTE_WRITES}" = "NO"
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated Campus frontend
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > qa-real-server.log 2>&1 &
+          for attempt in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/campus.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat qa-real-server.log
+          exit 1
+      - name: Authenticated staging readonly review
+        run: node scripts/real_qa_authenticated_cs21a138.mjs
+      - name: Publish authenticated summary
+        if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.md') != '' }}
+        run: cat qa-output-real-auth/authenticated-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload authenticated evidence
+        if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-qa-auth-readonly-cs21a210bo-${{ github.run_number }}
+          path: |
+            qa-output-real-auth/
+            qa-real-server.log
+          if-no-files-found: error
+          retention-days: 14
