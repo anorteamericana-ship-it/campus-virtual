@@ -19,6 +19,7 @@ on:
       - 'src/data.jsx'
       - 'src/book_unit_starts_cs21a60.jsx'
       - 'scripts/real_qa_*_cs21a138.mjs'
+      - 'scripts/real_qa_authenticated_readonly_cs21a210bo.mjs'
       - 'qa/**'
       - '.github/workflows/real-qa-staging-cs21a138.yml'
 
@@ -80,7 +81,6 @@ jobs:
       QA_SUPERADMIN_PASS: ${{ secrets.QA_SUPERADMIN_PASS }}
       QA_STUDENT_CODE: ${{ secrets.QA_STUDENT_CODE }}
       QA_GROUP_CODE: ${{ secrets.QA_GROUP_CODE }}
-      QA_BANK_DOCUMENT: BO_READONLY_SENTINEL
       QA_EXECUTE_WRITES: NO
       QA_CAMPUS_BASE_URL: http://127.0.0.1:4173
     steps:
@@ -92,10 +92,6 @@ jobs:
             echo 'BLOQUEADO: CS21A210BO solo permite E2 autenticado read-only.'
             exit 1
           fi
-          if [ "${QA_BANK_DOCUMENT}" != "BO_READONLY_SENTINEL" ]; then
-            echo 'BLOQUEADO: CS21A210BO no debe consumir un documento bancario real.'
-            exit 1
-          fi
       - name: Refuse incomplete read-only secret set
         shell: bash
         run: |
@@ -103,8 +99,15 @@ jobs:
           for key in "${required[@]}"; do
             if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
           done
-      - name: Validate authenticated script
-        run: node --check scripts/real_qa_authenticated_cs21a138.mjs
+      - name: Validate BO authenticated readonly script
+        run: node --check scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+      - name: Verify BO runner has no write surface
+        shell: bash
+        run: |
+          grep -Fq "CS21A210BO es exclusivamente read-only" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "getGruposDisponibles" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "qaUsers.some" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          ! grep -Eq "aplicarPago|registrarNotaEstatus|registrarEvaluacion|registrarAsistencia|cerrarLeccionCompleta" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --ignore-scripts playwright@1.55.0
@@ -119,12 +122,12 @@ jobs:
           cat qa-real-server.log
           exit 1
       - name: Authenticated staging review
-        run: node scripts/real_qa_authenticated_cs21a138.mjs
+        run: node scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
       - name: Publish authenticated summary
-        if: always()
+        if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.md') != '' }}
         run: cat qa-output-real-auth/authenticated-report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload authenticated evidence
-        if: always()
+        if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: real-qa-authenticated-${{ github.run_number }}
