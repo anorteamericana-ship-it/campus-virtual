@@ -26,8 +26,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          BASE='ed458ff9715338cb2fcd75f9896f2753d8d019b9'
           paths=['src/examenes_modes.jsx','src/examenes_bundle.jsx']
           helper="""function examStudentSafeUserError(raw, fallback, context) {
             const detail = String(raw == null ? '' : raw).trim();
@@ -54,16 +52,12 @@ jobs:
             ("setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo iniciar el intento.');", "setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo iniciar el intento. Intentá nuevamente.', 'start'));"),
           ]
           for path in paths:
-            p=Path(path)
-            s=p.read_text()
-            if helper.strip() in s:
-              raise SystemExit(f'helper already present in {path}')
-            if s.count(marker) != 1:
-              raise SystemExit(f'exact marker count != 1 in {path}: {s.count(marker)}')
-            s=s.replace(marker, marker+'\n'+helper, 1)
+            p=Path(path); s=p.read_text()
+            if helper.strip() in s: raise SystemExit(f'helper already present in {path}')
+            if s.count(marker)!=1: raise SystemExit(f'marker count {s.count(marker)} in {path}')
+            s=s.replace(marker,marker+'\n'+helper,1)
             for old,new in replacements:
-              if s.count(old) != 1:
-                raise SystemExit(f'exact replacement count != 1 in {path}: {old!r} -> {s.count(old)}')
+              if s.count(old)!=1: raise SystemExit(f'replacement count {s.count(old)} in {path}: {old!r}')
               s=s.replace(old,new,1)
             p.write_text(s)
           PY
@@ -72,12 +66,8 @@ jobs:
           cat > scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs <<'EOF'
           import fs from 'node:fs';
           import { execFileSync } from 'node:child_process';
-
           const BASE='ed458ff9715338cb2fcd75f9896f2753d8d019b9';
-          const expectedBlobs={
-            'src/examenes_bundle.jsx':'c56642aa4906ab443f54b4aedb5d5d83c417d88a',
-            'src/examenes_modes.jsx':'75ec9cf1be92fee52a45a220ebc7a1aa08e4ccc1',
-          };
+          const expectedBlobs={'src/examenes_bundle.jsx':'c56642aa4906ab443f54b4aedb5d5d83c417d88a','src/examenes_modes.jsx':'75ec9cf1be92fee52a45a220ebc7a1aa08e4ccc1'};
           const helper=`function examStudentSafeUserError(raw, fallback, context) {
             const detail = String(raw == null ? '' : raw).trim();
             if (detail) console.warn(\`[CS21A210AY][StudentMode][\${context || 'unknown'}]\`, detail);
@@ -102,98 +92,26 @@ jobs:
             ["if (r.can_submit === false) setSaveMsg(r.mensaje || 'El intento ya no está disponible para envío.');", "if (r.can_submit === false) setSaveMsg(examStudentSafeUserError(r.mensaje, 'El intento ya no está disponible para envío.', 'heartbeat_unavailable'));"],
             ["setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo iniciar el intento.');", "setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo iniciar el intento. Intentá nuevamente.', 'start'));"],
           ];
-
-          function blob(text){
-            return execFileSync('git',['hash-object','--stdin'],{input:text,encoding:'utf8'}).trim();
-          }
+          const blob=text=>execFileSync('git',['hash-object','--stdin'],{input:text,encoding:'utf8'}).trim();
           function reconstruct(path){
             let s=execFileSync('git',['show',`${BASE}:${path}`],{encoding:'utf8'});
-            if(blob(s)!==expectedBlobs[path]) throw new Error(`preimage blob mismatch ${path}: ${blob(s)}`);
-            if((s.match(new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))||[]).length!==1) throw new Error(`marker mismatch ${path}`);
+            if(blob(s)!==expectedBlobs[path]) throw new Error(`preimage blob mismatch ${path}`);
+            if(s.split(marker).length-1!==1) throw new Error(`marker mismatch ${path}`);
             s=s.replace(marker,marker+'\n'+helper);
-            for(const [oldText,newText] of replacements){
-              const count=s.split(oldText).length-1;
-              if(count!==1) throw new Error(`replacement count ${count} in ${path}: ${oldText}`);
-              s=s.replace(oldText,newText);
-            }
+            for(const [oldText,newText] of replacements){if(s.split(oldText).length-1!==1) throw new Error(`replacement mismatch ${path}: ${oldText}`);s=s.replace(oldText,newText);}
             return s;
           }
-
           const html=fs.readFileSync('modulos/examenes.html','utf8');
-          if(!html.includes("../src/examenes_bundle.jsx?v=")) throw new Error('effective runtime bundle route missing');
+          if(!html.includes('../src/examenes_bundle.jsx?v=')) throw new Error('effective runtime bundle route missing');
           const bundle=fs.readFileSync('src/examenes_bundle.jsx','utf8');
           if(!bundle.includes('Generado desde: examenes_css.jsx, examenes_appcss.jsx, examenes_data.jsx, examenes_render.jsx, examenes_modes.jsx, examenes_app.jsx')) throw new Error('bundle build-source relation missing');
-
           for(const path of Object.keys(expectedBlobs)){
             const actual=fs.readFileSync(path,'utf8');
-            const expected=reconstruct(path);
-            if(actual!==expected) throw new Error(`exact reconstruction mismatch ${path}`);
-            for(const [oldText] of replacements){
-              if(actual.includes(oldText)) throw new Error(`raw StudentMode sink remains in ${path}: ${oldText}`);
-            }
-            const helperCount=actual.split('function examStudentSafeUserError(').length-1;
-            if(helperCount!==1) throw new Error(`helper count ${helperCount} in ${path}`);
+            if(actual!==reconstruct(path)) throw new Error(`exact reconstruction mismatch ${path}`);
+            for(const [oldText] of replacements) if(actual.includes(oldText)) throw new Error(`raw StudentMode sink remains ${path}`);
+            if(actual.split('function examStudentSafeUserError(').length-1!==1) throw new Error(`helper count mismatch ${path}`);
           }
-
           console.log('CS21A210AY exact StudentMode reconstruction PASS');
-          EOF
-      - name: Write final QA workflow
-        run: |
-          cat > .github/workflows/qa-examenes-student-safe-errors-cs21a210ay.yml <<'EOF'
-          name: QA Examenes Student Safe Errors CS21A210AY
-
-          on:
-            push:
-              branches:
-                - fix/examenes-student-safe-errors-cs21a210ay
-            pull_request:
-              paths:
-                - 'src/examenes_bundle.jsx'
-                - 'src/examenes_modes.jsx'
-                - 'modulos/examenes.html'
-                - 'scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs'
-                - '.github/workflows/qa-examenes-student-safe-errors-cs21a210ay.yml'
-                - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
-                - 'scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs'
-                - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
-                - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
-
-          permissions:
-            contents: read
-
-          jobs:
-            source-guard:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                  with:
-                    fetch-depth: 0
-                - name: Install JSX parser
-                  run: npm install --no-save @babel/parser@7.28.4
-                - name: Parse exam build source and runtime bundle
-                  run: |
-                    node -e "const fs=require('fs');const p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx']){p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx','optionalChaining']});console.log(f+' JSX parse PASS')}"
-                - name: Verify AY effective route and exact reconstruction
-                  run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
-                - name: Verify reproducible V3 does not regress
-                  run: |
-                    set -o pipefail
-                    test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
-                    node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ay.txt
-                    grep -Fq 'DIRECT_RAW_SINK_FINDINGS=' /tmp/v3-ay.txt
-                    grep -Fq 'FILES_WITH_FINDINGS=' /tmp/v3-ay.txt
-                    findings="$(grep -o 'DIRECT_RAW_SINK_FINDINGS=[0-9]*' /tmp/v3-ay.txt | tail -1 | cut -d= -f2)"
-                    files="$(grep -o 'FILES_WITH_FINDINGS=[0-9]*' /tmp/v3-ay.txt | tail -1 | cut -d= -f2)"
-                    test -n "$findings" && test "$findings" -lt 52
-                    test -n "$files" && test "$files" -le 12
-                - name: Regress AX public enrollment boundary
-                  run: node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
-                - name: Regress AT shared app boundary
-                  run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
-                - name: Regress AS BCR wiring boundary
-                  run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
-                - name: Diff hygiene
-                  run: git diff --check ed458ff9715338cb2fcd75f9896f2753d8d019b9
           EOF
       - name: Write checkpoint document
         run: |
@@ -207,39 +125,38 @@ jobs:
           - `src/examenes_modes.jsx` preimagen `75ec9cf1be92fee52a45a220ebc7a1aa08e4ccc1`
 
           ## Ownership
-          `modulos/examenes.html` descarga y ejecuta directamente `src/examenes_bundle.jsx`. El bundle declara que fue generado, entre otros sources, desde `src/examenes_modes.jsx`; por eso AY conserva ambos sincronizados. `examenes_modes.jsx` se clasifica como build source, no como entrypoint runtime directo.
+          `modulos/examenes.html` descarga y ejecuta directamente `src/examenes_bundle.jsx`. El bundle declara que fue generado, entre otros sources, desde `src/examenes_modes.jsx`; AY mantiene ambas representaciones sincronizadas. `examenes_modes.jsx` es build source, no entrypoint runtime directo.
 
           ## Hallazgo E0
           `StudentMode` tenía seis fronteras donde `r.mensaje` / `r.error` arbitrarios podían llegar a `saveMsg` y luego a UI: autoguardado diferido, guardado fallido, envío fallido, heartbeat fallido, intento no enviable e inicio fallido.
 
           ## Corrección
-          `examStudentSafeUserError` conserva el detalle únicamente en consola y devuelve copy estable por contexto. Se aplica exactamente a las seis fronteras en build source y bundle runtime.
+          `examStudentSafeUserError` conserva el detalle únicamente en consola y devuelve copy estable por contexto, aplicado exactamente a las seis fronteras en build source y bundle runtime.
 
           ## Contrato congelado
-          AY no modifica endpoints, payloads, `attemptId`, respuestas, autosave, temporizador, heartbeat, `can_submit`, auto-submit, validación de preguntas faltantes, scoring, revisión docente/admin ni backend.
+          AY no modifica endpoints, payloads, `attemptId`, respuestas, autosave, temporizador, heartbeat, `can_submit`, auto-submit, preguntas faltantes, scoring, revisión docente/admin ni backend.
 
           ## Evidencia
-          E0: sí. E1: se cierra únicamente con bootstrap + QA final + checks del draft. E2/runtime autenticado: NO.
-
+          Bootstrap sintético debe demostrar reconstrucción exacta, parse JSX, V3 y regresiones AX/AT/AS. E2 autenticado/runtime: NO.
           `BACKEND CURRENT SNAPSHOT UNVERIFIED` continúa vigente. No main, PROD, Apps Script, Drive ACL, merge ni borrado de ramas.
           EOF
-      - name: Validate candidate before publish to fix branch
+      - name: Validate candidate
         run: |
           npm install --no-save @babel/parser@7.28.4
           node -e "const fs=require('fs');const p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx'])p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx','optionalChaining']});console.log('JSX parse PASS')"
           node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
           set -o pipefail
           node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ay-bootstrap.txt
-          findings="$(grep -o 'DIRECT_RAW_SINK_FINDINGS=[0-9]*' /tmp/v3-ay-bootstrap.txt | tail -1 | cut -d= -f2)"
-          test -n "$findings" && test "$findings" -lt 52
+          grep -Fq 'DIRECT_RAW_SINK_FINDINGS=44' /tmp/v3-ay-bootstrap.txt
+          grep -Fq 'FILES_WITH_FINDINGS=12' /tmp/v3-ay-bootstrap.txt
           node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
           node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
           node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
           git diff --check
-      - name: Commit candidate on bootstrap branch
+      - name: Commit source candidate on bootstrap branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/examenes_modes.jsx src/examenes_bundle.jsx scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs .github/workflows/qa-examenes-student-safe-errors-cs21a210ay.yml 00_DOCUMENTACION/EXAMENES_STUDENT_SAFE_ERRORS_CS21A210AY_2026-09-01.md
+          git add src/examenes_modes.jsx src/examenes_bundle.jsx scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs 00_DOCUMENTACION/EXAMENES_STUDENT_SAFE_ERRORS_CS21A210AY_2026-09-01.md
           git commit -m "CS21A210AY safe StudentMode exam errors"
           git push origin HEAD
