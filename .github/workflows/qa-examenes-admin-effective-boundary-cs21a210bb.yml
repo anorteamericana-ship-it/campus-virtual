@@ -29,7 +29,9 @@ jobs:
         run: |
           set -o pipefail
           node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-bb.txt
-          grep -Fq 'DIRECT_RAW_SINK_FINDINGS=30' /tmp/v3-bb.txt
-          grep -Fq 'FILES_WITH_FINDINGS=12' /tmp/v3-bb.txt
+          findings=$(grep -oE 'DIRECT_RAW_SINK_FINDINGS=[0-9]+' /tmp/v3-bb.txt | cut -d= -f2)
+          files=$(grep -oE 'FILES_WITH_FINDINGS=[0-9]+' /tmp/v3-bb.txt | cut -d= -f2)
+          test "$findings" -le 30
+          test "$files" -le 12
       - name: Diff hygiene
         run: git diff --check eb397cff1a72c98c39c28479ee973e2e038e999e
