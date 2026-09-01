@@ -33,17 +33,32 @@ jobs:
   real-readonly:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    env:
+      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
     steps:
       - uses: actions/checkout@v4
       - name: Validate script
         run: node --check scripts/real_qa_readonly_cs21a138.mjs
-      - name: Real Apps Script and Drive reads
+      - name: Verify fail-closed staging target contract
+        shell: bash
+        run: |
+          grep -Fq "process.env.QA_STAGING_APPS_SCRIPT_URL" scripts/real_qa_readonly_cs21a138.mjs
+          grep -Fq "QA_STAGING_APPS_SCRIPT_URL coincide con APPS_SCRIPT_URL productiva" scripts/real_qa_readonly_cs21a138.mjs
+          ! grep -Fq "process.env.QA_APPS_SCRIPT_URL || productionAppsScriptUrl()" scripts/real_qa_readonly_cs21a138.mjs
+      - name: Refuse missing QA staging URL
+        shell: bash
+        run: |
+          if [ -z "${QA_STAGING_APPS_SCRIPT_URL}" ]; then
+            echo 'Falta QA_STAGING_APPS_SCRIPT_URL. Se bloquea Real QA readonly para evitar fallback a PROD.'
+            exit 1
+          fi
+      - name: Real Apps Script staging and Drive reads
         run: node scripts/real_qa_readonly_cs21a138.mjs
       - name: Publish summary
-        if: always()
+        if: ${{ always() && hashFiles('qa-output-real/real-readonly-report.md') != '' }}
         run: cat qa-output-real/real-readonly-report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload real read evidence
-        if: always()
+        if: ${{ always() && hashFiles('qa-output-real/real-readonly-report.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: real-qa-readonly-${{ github.run_number }}
