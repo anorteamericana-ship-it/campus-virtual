@@ -1,0 +1,46 @@
+name: Bootstrap Examenes Admin Safe Errors CS21A210BC
+on:
+  push:
+    branches: [bootstrap/examenes-admin-safe-errors-cs21a210bc]
+    paths:
+      - 'scripts/bootstrap_examenes_admin_safe_errors_cs21a210bc.mjs'
+      - '.github/workflows/bootstrap-examenes-admin-safe-errors-cs21a210bc.yml'
+permissions:
+  contents: write
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Generate BC candidate
+        run: node scripts/bootstrap_examenes_admin_safe_errors_cs21a210bc.mjs
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse synchronized JSX
+        run: node -e "const fs=require('fs'),p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx'])p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx']});"
+      - name: Verify BC
+        run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs
+      - name: Regress BB
+        run: node scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs
+      - name: Regress BA
+        run: node scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs
+      - name: Regress AY
+        run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
+      - name: V3 non-regression
+        run: |
+          set -o pipefail
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-bc.txt
+          findings=$(grep -oE 'DIRECT_RAW_SINK_FINDINGS=[0-9]+' /tmp/v3-bc.txt | cut -d= -f2)
+          files=$(grep -oE 'FILES_WITH_FINDINGS=[0-9]+' /tmp/v3-bc.txt | cut -d= -f2)
+          test "$findings" -le 30
+          test "$files" -le 12
+      - name: Diff hygiene
+        run: git diff --check 6e3fd61d046ff67b33952526f2aadb7219e31111
+      - name: Commit generated candidate
+        run: |
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add src/examenes_modes.jsx src/examenes_bundle.jsx scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs .github/workflows/qa-examenes-admin-safe-errors-cs21a210bc.yml 00_DOCUMENTACION/EXAMENES_ADMIN_SAFE_ERRORS_CS21A210BC_2026-09-01.md
+          git commit -m 'CS21A210BC build validated admin safe-errors candidate'
+          git push
