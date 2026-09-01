@@ -315,6 +315,15 @@ async function appPostF91(fn, payload = {}, timeoutMs = 45000) {
     throw e;
   } finally { clearTimeout(timer); }
 }
+
+function appSafeUserErrorF91(raw, fallback, context = '') {
+  const msg=String(raw?.message ?? raw ?? '').replace(/\s+/g,' ').trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file[_ -]?id|sha-?256|mime|base64|reposListarExamenes|reposResolverExamen|reposResolverSolicitudF92|reposProgramarEscrito|reposCoordinarOralF926|getMisNotasF921|examGetCronogramaExamAvailability/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[CampusApp] Detalle técnico oculto al usuario.',{context,error:msg});return fallback;}
+  return msg;
+}
 function reposEstadoF91(estado) {
   const e=String(estado||'').toUpperCase();
   const map={PENDIENTE_JUSTIFICACION:['Pendiente de justificación','#8B5A00','#FFF4D6'],JUSTIFICADA_GRATUITA:['Autorizada sin costo','#146C2E','#EAF8EF'],PENDIENTE_PAGO:['Pendiente de pago','#991B1B','#FDECEA'],PAGADA_AUTORIZADA:['Pago confirmado','#146C2E','#EAF8EF'],PROGRAMADA:['Programada','#0C4F86','#E7F1FA'],ENTREGADA_POR_REVISAR:['Entregada · por revisar','#805500','#FFF4D6'],APLICADA:['Aplicada','#40516A','#EEF2F7'],VENCIDA_0:['Vencida · nota 0','#991B1B','#FDECEA'],CANCELADA:['Cancelada','#5F6875','#EEF2F7']};
@@ -325,9 +334,9 @@ function ReposicionesPanelF91({ role='teacher', onNavigate }) {
   const sessionRole=String((window.getSesion&&window.getSesion()||{}).rol||'').toLowerCase();
   const canResolve=role==='admin'&&sessionRole==='superadmin';
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(appSafeUserErrorF91(e,'No pudimos consultar las reposiciones. Intentá nuevamente.','repos_listar'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
-  const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};let endpoint='reposResolverExamen';if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){endpoint='reposResolverSolicitudF92';const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;payload.admin_nota=nota;}if(accion==='CONFIRMAR_PAGO'){endpoint='reposResolverSolicitudF92';const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;payload.admin_nota=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};endpoint='reposProgramarEscrito';}if(accion==='COORDINAR_ORAL'){const fecha=window.prompt('Fecha tentativa de reposición (AAAA-MM-DD). Podés iniciar la prueba antes si ambos están disponibles:',row.FECHA_PROGRAMADA||row.FECHA_LIMITE||'');if(fecha===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_tentativa:fecha};endpoint='reposCoordinarOralF926';}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(endpoint,payload);await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};let endpoint='reposResolverExamen';if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){endpoint='reposResolverSolicitudF92';const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;payload.admin_nota=nota;}if(accion==='CONFIRMAR_PAGO'){endpoint='reposResolverSolicitudF92';const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;payload.admin_nota=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};endpoint='reposProgramarEscrito';}if(accion==='COORDINAR_ORAL'){const fecha=window.prompt('Fecha tentativa de reposición (AAAA-MM-DD). Podés iniciar la prueba antes si ambos están disponibles:',row.FECHA_PROGRAMADA||row.FECHA_LIMITE||'');if(fecha===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_tentativa:fecha};endpoint='reposCoordinarOralF926';}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(endpoint,payload);await load();}catch(e){setError(appSafeUserErrorF91(e,'No pudimos completar la operación de reposición. Intentá nuevamente.','repos_accion'));}finally{setBusy('');}};
   const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
   const sectionTitle=role==='teacher'?'Reposiciones orales':'Reposiciones de examen';
   const sectionKicker=role==='teacher'?'ORAL · AUTORIZACIONES':'CONTROL ADMINISTRATIVO';
@@ -430,7 +439,7 @@ function StudentEvaluationsOverviewF984N(){
         }));
         setState({loading:false,error:'',evals,repos,nivelActivo:n.nivel_activo||''});
       })
-      .catch(e=>setState({loading:false,error:e.message||String(e),evals:[],repos:[],nivelActivo:''}));
+      .catch(e=>setState({loading:false,error:appSafeUserErrorF91(e,'No pudimos cargar tus evaluaciones. Intentá nuevamente.','evaluaciones_estudiante'),evals:[],repos:[],nivelActivo:''}));
   },[codigo]);
   React.useEffect(()=>{load();},[load]);
   const activeRepos=state.repos.filter(r=>!['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
@@ -473,7 +482,7 @@ function WrittenSessionCardF929({ session }) {
     setState({loading:true,error:'',assigned:false,data:null});
     appPostF91('examGetCronogramaExamAvailability',{cod_grupo:group,nivel:level,tipo:'ORDINARIO'},60000)
       .then(r=>setState({loading:false,error:'',assigned:r.assigned===true,data:r}))
-      .catch(e=>setState({loading:false,error:e.message||String(e),assigned:false,data:null}));
+      .catch(e=>setState({loading:false,error:appSafeUserErrorF91(e,'No pudimos verificar la disponibilidad del examen escrito. Intentá nuevamente.','examen_escrito_docente'),assigned:false,data:null}));
   },[group,level,lec]);
   React.useEffect(()=>{load();},[load]);
   const title=lec===18?'1.er Examen Escrito':'2.º Examen Escrito';
