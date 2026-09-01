@@ -82,7 +82,14 @@ async function checkDriveBook(book) {
   }
 }
 
-const appsScriptUrl = process.env.QA_APPS_SCRIPT_URL || productionAppsScriptUrl();
+const appsScriptUrl = String(process.env.QA_STAGING_APPS_SCRIPT_URL || '').trim();
+if (!appsScriptUrl) {
+  throw new Error('BLOQUEADO: QA_STAGING_APPS_SCRIPT_URL es obligatoria. Real QA readonly no puede caer a producción.');
+}
+const productionUrl = productionAppsScriptUrl();
+if (appsScriptUrl === productionUrl) {
+  throw new Error('BLOQUEADO: QA_STAGING_APPS_SCRIPT_URL coincide con APPS_SCRIPT_URL productiva.');
+}
 const allowOnlyRead = process.env.QA_ALLOW_WRITES !== 'true';
 if (!allowOnlyRead) throw new Error('Este script es estrictamente de lectura y no acepta QA_ALLOW_WRITES=true.');
 
@@ -98,12 +105,14 @@ const report = {
   version: 'CS21A138',
   generated_at: new Date().toISOString(),
   commit: process.env.GITHUB_SHA || 'local',
-  mode: 'REAL_READ_ONLY',
+  mode: 'REAL_QA_READ_ONLY_EXPLICIT_STAGING',
   verdict,
   counts,
   checks,
   findings,
   safety: [
+    'La URL QA debe llegar explícitamente por QA_STAGING_APPS_SCRIPT_URL.',
+    'La ejecución se bloquea si la URL QA está ausente o coincide con APPS_SCRIPT_URL productiva.',
     'Solo se ejecutaron solicitudes GET.',
     'No se enviaron tokens, usuarios ni contraseñas.',
     'No se ejecutaron pagos, notas, asistencia ni cierres.',
@@ -112,7 +121,7 @@ const report = {
 
 fs.writeFileSync(path.join(outDir, 'real-readonly-report.json'), JSON.stringify(report, null, 2));
 const lines = [
-  '# QA real · Apps Script y Drive · Solo lectura',
+  '# QA real · Apps Script staging y Drive · Solo lectura',
   '',
   `- Commit: ${report.commit}`,
   `- Fecha: ${report.generated_at}`,
