@@ -10,7 +10,7 @@ if(actual!==expectedBlob) throw new Error(`preimage mismatch ${actual}`);
 const helper=`\nfunction inscripcionSafeUserError(raw, fallback, context){\n  const detail=String(raw&&raw.message||raw||'').trim();\n  if(detail) console.warn('[inscripcion] '+context, detail);\n  return fallback;\n}\n`;
 let out=before;
 const anchor="\nfunction clean(v){ return String(v == null ? '' : v).trim(); }";
-if((out.match(new RegExp(anchor.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&'),'g'))||[]).length!==1) throw new Error('helper anchor count');
+if(out.split(anchor).length-1!==1) throw new Error('helper anchor count');
 out=out.replace(anchor,helper+anchor);
 
 const replacements=[

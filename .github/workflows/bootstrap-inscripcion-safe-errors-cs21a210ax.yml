@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - bootstrap/inscripcion-public-safe-errors-cs21a210ax
+    paths:
+      - 'scripts/bootstrap_inscripcion_safe_errors_cs21a210ax.mjs'
+      - '.github/workflows/bootstrap-inscripcion-safe-errors-cs21a210ax.yml'
 
 permissions:
   contents: write
@@ -15,8 +18,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Verify bootstrap base
-        run: test "$(git rev-parse HEAD^)" = "186e2e76fada311ee9bfe9cfc620cdaaa3edc927"
+      - name: Verify bootstrap ancestry
+        run: git merge-base --is-ancestor 186e2e76fada311ee9bfe9cfc620cdaaa3edc927 HEAD
       - name: Verify exact preimage
         run: test "$(git hash-object src/inscripcion.jsx)" = "310d7b6e888836baca1bd0da0ccc0730c23ca9c3"
       - name: Apply exact CS21A210AX patch
@@ -40,7 +43,7 @@ jobs:
           grep -Fq 'DIRECT_RAW_SINK_FINDINGS=52' /tmp/v3-ax.txt
           grep -Fq 'FILES_WITH_FINDINGS=12' /tmp/v3-ax.txt
           ! grep -Fq 'src/inscripcion.jsx' /tmp/v3-ax.txt
-      - name: Regress AV route classification dependencies
+      - name: Regress AT and AS boundaries
         run: |
           node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
           node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
@@ -49,8 +52,6 @@ jobs:
           git diff --check
           test "$(git diff --name-only HEAD | sort)" = "src/inscripcion.jsx"
       - name: Commit validated candidate source
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
