@@ -5,6 +5,7 @@ on:
     branches:
       - audit/raw-user-error-surface-v3-after-at-cs21a210au
     paths:
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
       - '.github/workflows/audit-raw-user-error-surface-v3-after-at-cs21a210au.yml'
 
 permissions:
@@ -18,7 +19,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Scan current raw visible-error sinks V3 and persist exact report
-        run: node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AT_CS21A210AU_REPORT.txt
+        run: |
+          set -o pipefail
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AT_CS21A210AU_REPORT.txt
       - name: Persist audit report on audit branch
         run: |
           git config user.name 'github-actions[bot]'
