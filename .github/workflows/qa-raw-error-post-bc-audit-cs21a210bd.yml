@@ -16,8 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - name: Verify BD classification and V3 snapshot
-        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs --exact-import
+      - name: Verify BD descendant classification and V3 non-regression
+        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
       - name: Regress BC admin safe errors
         run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs
       - name: Diff hygiene
