@@ -44,3 +44,4 @@ jobs:
           git add src/examenes_modes.jsx src/examenes_bundle.jsx scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs .github/workflows/qa-examenes-admin-safe-errors-cs21a210bc.yml 00_DOCUMENTACION/EXAMENES_ADMIN_SAFE_ERRORS_CS21A210BC_2026-09-01.md
           git commit -m 'CS21A210BC build validated admin safe-errors candidate'
           git push
+# retry after bootstrap helper fix
