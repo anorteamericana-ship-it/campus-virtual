@@ -1,0 +1,47 @@
+name: Bootstrap Raw Error Post BC Audit CS21A210BD
+on:
+  push:
+    branches: [bootstrap/raw-error-post-bc-audit-cs21a210bd]
+    paths:
+      - '.github/workflows/bootstrap-raw-error-post-bc-audit-cs21a210bd.yml'
+permissions:
+  contents: write
+jobs:
+  audit-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Run reproducible V3 scanner
+        run: |
+          set -o pipefail
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-bd.txt
+          grep -Fq 'CS21A210S RAW USER ERROR SURFACE AUDIT V3' /tmp/v3-bd.txt
+      - name: Materialize audit report
+        run: |
+          {
+            echo '# CS21A210BD · Superficie de errores crudos post-BC'
+            echo
+            echo 'Base exacta: PR #255 / `c018e5c3f6d0a48605c5de5dce4427604e9e8c21`.'
+            echo
+            echo 'Auditoría reproducible únicamente. No implica que cada finding sea efectivo ni autoriza un cambio funcional sin revisar ownership/ruta.'
+            echo
+            echo '```text'
+            cat /tmp/v3-bd.txt
+            echo '```'
+            echo
+            echo 'E0: AUDIT_ONLY. E1: sujeto a guard/PR. E2: NO.'
+          } > 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_POST_BC_CS21A210BD_2026-09-01.md
+      - name: Ensure audit-only diff
+        run: |
+          git diff --check c018e5c3f6d0a48605c5de5dce4427604e9e8c21
+          changed=$(git diff --name-only c018e5c3f6d0a48605c5de5dce4427604e9e8c21 -- | grep -v '^$' || true)
+          echo "$changed"
+          test "$(echo "$changed" | grep -Ev '^(00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_POST_BC_CS21A210BD_2026-09-01.md|.github/workflows/bootstrap-raw-error-post-bc-audit-cs21a210bd.yml)$' | wc -l)" -eq 0
+      - name: Commit report
+        run: |
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_POST_BC_CS21A210BD_2026-09-01.md
+          git commit -m 'CS21A210BD materialize post-BC raw-error audit'
+          git push
