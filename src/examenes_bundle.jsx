@@ -5187,6 +5187,12 @@ function examFormatClock(sec) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+function examStudentSafeUserError(raw, fallback, context) {
+  const detail = String(raw == null ? '' : raw).trim();
+  if (detail) console.warn(`[CS21A210AY][StudentMode][${context || 'unknown'}]`, detail);
+  return fallback;
+}
+
 // CALGRUPO_F27_20260617_STUDENTMODE_INTENTO_REAL_BACKEND
 function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, examOverride, assignment, backend }) {
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
@@ -5265,9 +5271,9 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         // indicador de cambios pendientes y el próximo ciclo volverá a intentar.
         dirtyRef.current = true;
         setDirty(true);
-        setSaveMsg(r.mensaje || 'Autoguardado pospuesto; se intentará nuevamente.');
+        setSaveMsg(examStudentSafeUserError(r.mensaje, 'Autoguardado pospuesto; se intentará nuevamente.', 'save_deferred'));
       } else {
-        setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo guardar.');
+        setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo guardar. Intentá nuevamente.', 'save'));
       }
       return r;
     } catch (e) {
@@ -5289,7 +5295,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         const elapsed = limitSec ? Math.min(limitSec, elapsedNow()) : elapsedNow();
         const r = await backend.onSubmit(answersRef.current || {}, { autoSubmit:auto, timeSpentSec:elapsed });
         if (!r || r.ok === false) {
-          setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo enviar el examen.');
+          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar el examen. Intentá nuevamente.', 'submit'));
           autoSubmitRef.current = false;
           return r;
         }
@@ -5366,7 +5372,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         const r = await backend.onHeartbeat();
         if (cancelled) return;
         if (!r || r.ok === false) {
-          setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo validar el estado del intento.');
+          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No pudimos validar el estado del intento. Intentá nuevamente.', 'heartbeat'));
           return;
         }
         if (typeof r.remaining_sec === 'number') setTimeLeftSec(Math.max(0, r.remaining_sec));
@@ -5381,7 +5387,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
           doSubmit(true);
           return;
         }
-        if (r.can_submit === false) setSaveMsg(r.mensaje || 'El intento ya no está disponible para envío.');
+        if (r.can_submit === false) setSaveMsg(examStudentSafeUserError(r.mensaje, 'El intento ya no está disponible para envío.', 'heartbeat_unavailable'));
       } catch (e) {
         if (!cancelled) setSaveMsg('No se pudo validar el intento con el servidor.');
       }
@@ -5430,7 +5436,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       try {
         const r = await backend.onStart();
         if (!r || r.ok === false) {
-          setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo iniciar el intento.');
+          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo iniciar el intento. Intentá nuevamente.', 'start'));
           return;
         }
         lastSavedJsonRef.current = JSON.stringify(answersRef.current || {});
