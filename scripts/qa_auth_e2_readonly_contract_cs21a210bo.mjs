@@ -20,11 +20,15 @@ expect(!forbiddenMutations.test(runner), 'El runner BO no puede contener funcion
 expect(/QA_STAGING_APPS_SCRIPT_URL/.test(runner), 'El runner BO debe exigir URL QA explícita.');
 expect(/stagingUrl === productionUrl/.test(runner), 'El runner BO debe rechazar igualdad QA=PROD.');
 expect(/\/\^QA-\//.test(runner), 'El runner BO debe exigir identidad de estudiante QA-.');
-expect(/-99\\d\\d\$/.test(runner), 'El runner BO debe exigir grupo sentinel -99XX.');
+expect(/-99\\d\\d\$/.test(runner), 'El runner BO debe exigir grupo QA -99XX localmente.');
 expect(/qaUsers\.some\(user => !\/\^qa_\/i\.test\(user\)\)/.test(runner), 'El runner BO debe exigir usuarios qa_ antes de transmitir credenciales.');
-expect(/getJson\('getGruposDisponibles'/.test(runner), 'El runner BO debe ejecutar sentinel read-only getGruposDisponibles.');
-expect(/groupPayload\.includes\(groupCode\)/.test(runner), 'El runner BO debe comprobar presencia del grupo QA en el payload read-only.');
-expect(runner.indexOf("getJson('getGruposDisponibles'") < runner.indexOf("postJson('iniciarSesion'"), 'El sentinel QA debe pasar antes del primer login.');
+expect(/getJson\('getInfoGeneral'\)/.test(runner), 'El runner BO debe consultar getInfoGeneral antes del login.');
+expect(/QA_STAGING_CS21A144/.test(runner), 'El runner BO debe exigir el marker QA nativo CS21A144.');
+expect(/infoProbe\.data\.qa_staging === true/.test(runner), 'El runner BO debe exigir qa_staging=true.');
+expect(/infoProbe\.data\.qa_ids_ok === true/.test(runner), 'El runner BO debe exigir qa_ids_ok=true.');
+expect(/infoProbe\.data\.qa_properties_configured === true/.test(runner), 'El runner BO debe exigir qa_properties_configured=true.');
+expect(!/groupPayload\.includes\(groupCode\)/.test(runner), 'El catálogo de grupos no debe usarse como prueba de identidad del entorno QA.');
+expect(runner.indexOf("getJson('getInfoGeneral')") < runner.indexOf("postJson('iniciarSesion'"), 'La prueba QA nativa debe pasar antes del primer login.');
 expect(/real_qa_authenticated_readonly_cs21a210bo\.mjs/.test(manualWorkflow), 'El workflow manual debe usar el runner BO especializado.');
 expect(/real_qa_authenticated_readonly_cs21a210bo\.mjs/.test(registeredWorkflow), 'El workflow registrado debe usar el runner BO especializado para el job autenticado.');
 
@@ -37,6 +41,7 @@ if (failures.length) {
 console.log('CS21A210BO READONLY CONTRACT: SUCCESS');
 console.log('- runner BO especializado y sin superficie de escritura');
 console.log('- URL QA explícita y PROD rechazada');
-console.log('- identidades QA y grupo -99XX validados localmente');
-console.log('- sentinel getGruposDisponibles pasa antes de transmitir credenciales');
+console.log('- identidades QA validadas localmente');
+console.log('- proof nativo CS21A144 pasa antes de transmitir credenciales');
+console.log('- getGruposDisponibles ya no se usa como identidad del entorno');
 console.log('- workflow manual y workflow registrado usan el mismo runner read-only');
