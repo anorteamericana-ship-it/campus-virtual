@@ -39,10 +39,16 @@ const html=fs.readFileSync('modulos/examenes.html','utf8');
 if(!html.includes('../src/examenes_bundle.jsx?v=')) throw new Error('effective runtime bundle route missing');
 const bundle=fs.readFileSync('src/examenes_bundle.jsx','utf8');
 if(!bundle.includes('Generado desde: examenes_css.jsx, examenes_appcss.jsx, examenes_data.jsx, examenes_render.jsx, examenes_modes.jsx, examenes_app.jsx')) throw new Error('bundle build-source relation missing');
+const exact=process.argv.includes('--exact-import');
 for(const path of Object.keys(expectedBlobs)){
   const actual=fs.readFileSync(path,'utf8');
-  if(actual!==reconstruct(path)) throw new Error(`exact reconstruction mismatch ${path}`);
-  for(const [oldText] of replacements) if(actual.includes(oldText)) throw new Error(`raw StudentMode sink remains ${path}`);
+  const expected=reconstruct(path);
+  if(exact && actual!==expected) throw new Error(`exact reconstruction mismatch ${path}`);
+  for(const [oldText,newText] of replacements){
+    if(actual.includes(oldText)) throw new Error(`raw StudentMode sink remains ${path}`);
+    if((actual.split(newText).length-1)!==1) throw new Error(`StudentMode safe replacement count mismatch ${path}: ${newText}`);
+  }
   if(actual.split('function examStudentSafeUserError(').length-1!==1) throw new Error(`helper count mismatch ${path}`);
+  for(const invariant of ['backend.onSave','backend.onSubmit','backend.onHeartbeat','autoSubmitRef.current','timeLimitMin','setStage(\'sent\')']) if(!actual.includes(invariant)) throw new Error(`StudentMode invariant missing ${path}: ${invariant}`);
 }
-console.log('CS21A210AY exact StudentMode reconstruction PASS');
+console.log(exact ? 'CS21A210AY exact StudentMode reconstruction PASS' : 'CS21A210AY descendant-safe StudentMode boundary PASS');

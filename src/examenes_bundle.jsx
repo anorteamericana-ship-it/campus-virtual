@@ -5693,6 +5693,12 @@ function examTeacherAdjustmentsF940(raw) {
   return { marks, comments };
 }
 
+function examTeacherSafeUserError(raw, fallback, context) {
+  const detail = String(raw == null ? '' : raw).trim();
+  if (detail) console.warn(`[CS21A210BA][TeacherWritten][${context || 'unknown'}]`, detail);
+  return fallback;
+}
+
 function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const attemptId = String(row && row.ATTEMPT_ID || '').trim();
   const [loading, setLoading] = useState(true);
@@ -5720,7 +5726,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     const attRes = await postExamBackend('examGetAttempt', { attempt_id:attemptId });
     if (!attRes || attRes.ok === false || !attRes.attempt) {
       setLoading(false);
-      setErr((attRes && (attRes.mensaje || attRes.error)) || 'No se pudo abrir la entrega.');
+      setErr(examTeacherSafeUserError(attRes && (attRes.mensaje || attRes.error), 'No se pudo abrir la entrega. Intentá nuevamente.', 'get_attempt'));
       return;
     }
     setAttempt(attRes.attempt);
@@ -5732,14 +5738,14 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
       const createRes = await postExamBackend('examCreateReviewDraft', { attempt_id:attemptId });
       if (!createRes || createRes.ok === false) {
         setLoading(false);
-        setErr((createRes && (createRes.mensaje || createRes.error)) || 'No se pudo preparar la revisión.');
+        setErr(examTeacherSafeUserError(createRes && (createRes.mensaje || createRes.error), 'No se pudo preparar la revisión. Intentá nuevamente.', 'create_review'));
         return;
       }
       revRes = await postExamBackend('examGetReview', { review_id:createRes.review_id || (createRes.review && createRes.review.REVIEW_ID), attempt_id:attemptId });
     }
     if (!revRes || revRes.ok === false || !revRes.review) {
       setLoading(false);
-      setErr((revRes && (revRes.mensaje || revRes.error)) || 'No se pudo cargar la revisión.');
+      setErr(examTeacherSafeUserError(revRes && (revRes.mensaje || revRes.error), 'No se pudo cargar la revisión. Intentá nuevamente.', 'get_review'));
       return;
     }
     setReviewData(revRes.review);
@@ -5808,7 +5814,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     const closeRes = await postExamBackend('examCloseReview', Object.assign(payload(), { push_to_notas:'NO' }), 45000);
     if (!closeRes || closeRes.ok === false) {
       setBusy('');
-      setErr((closeRes && (closeRes.mensaje || closeRes.error)) || 'No se pudo cerrar la revisión.');
+      setErr(examTeacherSafeUserError(closeRes && (closeRes.mensaje || closeRes.error), 'No se pudo cerrar la revisión. Intentá nuevamente.', 'close_review'));
       return;
     }
 
@@ -5816,7 +5822,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     setBusy('');
     await refreshReview();
     if (!pushRes || pushRes.ok === false) {
-      setErr((pushRes && (pushRes.mensaje || pushRes.error)) || 'La revisión se cerró, pero no se pudo registrar la nota. Presioná Enviar Nota nuevamente.');
+      setErr(examTeacherSafeUserError(pushRes && (pushRes.mensaje || pushRes.error), 'La revisión se cerró, pero no se pudo registrar la nota. Presioná Enviar Nota nuevamente.', 'push_after_close'));
       return;
     }
     setMsg('Nota enviada correctamente a Mis Notas.');
@@ -5828,7 +5834,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     setBusy('push'); setErr(''); setMsg('');
     const r = await pushClosedReviewToNotas();
     setBusy('');
-    if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }
+    if (!r || r.ok === false) { setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar la nota. Intentá nuevamente.', 'push_retry')); return; }
     await refreshReview();
     setMsg('Nota enviada correctamente a Mis Notas.');
     if (onDone) onDone(true);
@@ -5929,7 +5935,7 @@ function TeacherWrittenLiveInbox() {
       if (!silent) setMsg(`Actualizado · ${r.total || 0} entrega(s) requieren atención.`);
     } else {
       setRows([]); setSummary(null);
-      setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');
+      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo consultar la bandeja de entregas. Intentá nuevamente.', 'review_inbox'));
     }
   }, [grupo]);
 
