@@ -1,0 +1,39 @@
+name: QA Admin Students Safe Errors CS21A210BG
+on:
+  push:
+    branches: [fix/admin-students-safe-errors-cs21a210bg]
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - '00_DOCUMENTACION/ADMIN_STUDENTS_SAFE_ERRORS_CS21A210BG_2026-09-01.md'
+      - 'scripts/qa_admin_students_safe_errors_cs21a210bg.mjs'
+      - '.github/workflows/qa-admin-students-safe-errors-cs21a210bg.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse admin_students JSX
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'); const p=require('@babel/parser');
+          p.parse(fs.readFileSync('src/admin_students.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('admin_students JSX parse PASS');
+          NODE
+      - name: Verify exact reconstruction and safe sinks
+        run: node scripts/qa_admin_students_safe_errors_cs21a210bg.mjs
+      - name: Regress BF classification structure
+        run: |
+          grep -F 'EFFECTIVE_VISIBLE · 5' 00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md
+          grep -F 'ALREADY_SANITIZED_AT_RENDER · 2' 00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md
+      - name: Regress BD post-BC audit descendant contract
+        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
+      - name: Diff hygiene
+        run: git diff --check ecaa2b58122e15043bde86a050fe9534d8d2618c
