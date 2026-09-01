@@ -59,7 +59,11 @@ function CalendarioMatriculasAdmin() {
     if (semanaInicio) body.semana_inicio = semanaInicio;
     window.getCalendarioMatriculas(body)
       .then(r => { if (cancel) return; if (!r || !r.ok) throw new Error((r && r.error) || 'Respuesta inválida.'); setData(r); })
-      .catch(e => { if (!cancel) setErr(e.message || 'No se pudo cargar el calendario.'); });
+      .catch(e => {
+        if (cancel) return;
+        if (e?.message) console.warn('[MatriculasCalendario] Detalle técnico oculto al operador.', { context:'get_calendario_matriculas', error:String(e.message) });
+        setErr('No pudimos cargar el calendario de matrículas. Intentá nuevamente.');
+      });
     return () => { cancel = true; };
   }, [semanaInicio, tick]);
 
