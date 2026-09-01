@@ -60,7 +60,7 @@ El catálogo de grupos puede filtrar por estado/visibilidad y no es una prueba e
 ## Evidencia run #211
 
 - run: `33547954511`
-- HEAD: `7f9de06545e1c1132f0b6ed7ba7efd8271f65994`
+- HEAD ejecutado: `7f9de06545e1c1132f0b6ed7ba7efd8271f65994`
 - `real-readonly`: APTO 15/15, P0/P1/P2/P3 = 0;
 - `authenticated-staging`: BLOQUEADO antes de credenciales por sentinel de grupo ausente;
 - cero writes; cero PROD.
@@ -74,7 +74,7 @@ Checks automáticos sobre el código corregido `cc24830f6ef12d546f33fc522fbdcc6d
 - QA Auth E2 Readonly Secret Scope CS21A210BO run `33548532085`: **SUCCESS**.
 - English LAB Source Truth Guard run `33548532056`: **SUCCESS**.
 
-El commit documental posterior no modifica el runner ni los workflows.
+Los commits posteriores son únicamente documentación y no modifican el runner ni los workflows.
 
 ## Límites
 
