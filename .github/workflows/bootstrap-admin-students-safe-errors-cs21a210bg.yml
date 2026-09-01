@@ -1,0 +1,41 @@
+name: Bootstrap Admin Students Safe Errors CS21A210BG
+on:
+  push:
+    branches: [bootstrap/admin-students-safe-errors-cs21a210bg]
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Patch exact preimage and validate candidate
+        run: node scripts/bootstrap_admin_students_safe_errors_cs21a210bg.mjs
+      - name: Parse JSX candidate
+        run: |
+          npm install --no-save @babel/parser@7.28.4
+          node - <<'NODE'
+          const fs=require('fs'); const p=require('@babel/parser');
+          p.parse(fs.readFileSync('src/admin_students.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('admin_students JSX parse PASS');
+          NODE
+      - name: Regress BF classification invariants
+        run: |
+          test "$(git show ecaa2b58122e15043bde86a050fe9534d8d2618c:src/admin_students.jsx | git hash-object --stdin)" = "8ef1c14088d489267baa68cf76810d4291538be3"
+          grep -F "adminStudentsSafeUserError(certEstado.mensaje || certEstado.error" src/admin_students.jsx
+      - name: Commit candidate source once
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/admin_students.jsx; then
+            echo 'Candidate already materialized.'
+            exit 0
+          fi
+          git config user.name anorteamericana-ship-it
+          git config user.email anorteamericana@gmail.com
+          git add src/admin_students.jsx
+          git commit -m 'bootstrap CS21A210BG admin students safe errors candidate'
+          git push origin HEAD:bootstrap/admin-students-safe-errors-cs21a210bg
