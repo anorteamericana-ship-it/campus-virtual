@@ -6213,6 +6213,13 @@ function statusClass(st) {
   return String(st || 'DRAFT').toLowerCase();
 }
 
+function examAdminSafeUserError(response, fallback, context) {
+  const raw = response && (response.mensaje || response.error || (response.errores && response.errores.join(' · ')));
+  const detail = String(raw == null ? '' : raw).trim();
+  if (detail) console.warn('[CS21A210BC][AdminMode][' + (context || 'unknown') + ']', detail);
+  return fallback;
+}
+
 function ActivationBackendPanel({ onPreview }) {
   const [open, setOpen] = useState(true);
   const [grupo, setGrupo] = useState('');
@@ -6267,8 +6274,7 @@ function ActivationBackendPanel({ onPreview }) {
       setMsg(okMsg || r.mensaje || 'Operación realizada.');
     } else {
       setMsg('');
-      const detail = r && (r.mensaje || r.error || (r.errores && r.errores.join(' · ')));
-      setErr(detail || 'No se pudo completar la operación.');
+      setErr(examAdminSafeUserError(r, 'No se pudo completar la operación.', 'activation'));
     }
   };
 
@@ -6450,7 +6456,7 @@ function BackendOperationsPanel() {
 
   const setResult = (r, okMsg) => {
     if (r && r.ok) { setErr(''); setMsg(okMsg || r.mensaje || 'Operación realizada.'); }
-    else { setMsg(''); setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.'); }
+    else { setMsg(''); setErr(examAdminSafeUserError(r, 'No se pudo completar la operación.', 'backend_operations')); }
   };
 
   const loadAttempts = async () => {
