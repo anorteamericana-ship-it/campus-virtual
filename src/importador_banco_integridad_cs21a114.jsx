@@ -2,6 +2,15 @@
 // F98.4-Z6-CS21A114 · Importador BCR con previsualización contra TODA BDBANCARIO.
 const BANK114_URL = window.APPS_SCRIPT_URL;
 
+function bank114SafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).replace(/\s+/g,' ').trim();
+  if (msg) console.warn('[ImportadorBCR] Detalle técnico oculto al operador.', { context, error:msg });
+  if (/sesión administrativa no está disponible/i.test(msg)) return 'Tu sesión administrativa no está disponible. Ingresá nuevamente.';
+  if (/no se encontraron movimientos válidos/i.test(msg)) return 'No se encontraron movimientos válidos en el archivo BCR.';
+  if (/la base cambió durante la revisión/i.test(msg)) return 'Los datos cambiaron durante la revisión. Se recalcularon los estados; revisá los conflictos.';
+  return fallback;
+}
+
 async function bank114Post(fn, payload = {}, timeoutMs = 60000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
   if (!token) throw new Error('Tu sesión administrativa no está disponible. Ingresá nuevamente.');
@@ -92,8 +101,7 @@ function ImportadorBancarioCS21A114() {
       setSeleccionados(new Set(merged.filter(bank114New).map(bank114Key)));
       setPaso(2);
     } catch (e) {
-      const missing = /endpoint_no_encontrado|no encontrado|previsualizar/i.test(String(e?.message||e));
-      setError(missing ? 'El frontend ya está corregido, pero falta publicar Code.gs CS21A114 en Apps Script.' : String(e?.message||e));
+      setError(bank114SafeUserError(e?.message||e, 'No pudimos validar el extracto bancario. Intentá nuevamente.', 'previsualizar_extracto'));
     } finally { setCargando(false); }
   };
 
@@ -106,7 +114,7 @@ function ImportadorBancarioCS21A114() {
         const movs = bank114Parse(e.target.result);
         if (!movs.length) throw new Error('No se encontraron movimientos válidos en el archivo BCR.');
         analizar(movs);
-      } catch (err) { setError('Error al leer el archivo: ' + err.message); }
+      } catch (err) { setError(bank114SafeUserError(err?.message||err, 'No pudimos leer el archivo seleccionado. Revisá que sea un extracto BCR válido.', 'leer_archivo')); }
     };
     reader.onerror = () => setError('No fue posible leer el archivo.');
     reader.readAsText(file,'utf-8');
@@ -129,7 +137,7 @@ function ImportadorBancarioCS21A114() {
       const docs = new Set(data.agregados_docs || []);
       setResultado({ ...data, filas:movimientos.filter(m => docs.has(m.doc)) });
       setPaso(3);
-    } catch (e) { setError(String(e?.message||e)); }
+    } catch (e) { setError(bank114SafeUserError(e?.message||e, 'No pudimos completar la importación. Revisá los movimientos e intentá nuevamente.', 'importar_extracto')); }
     finally { setCargando(false); }
   };
 
