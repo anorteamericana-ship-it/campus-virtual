@@ -48,6 +48,12 @@ async function insPost(fn, payload={}){
   return json;
 }
 
+function inscripcionSafeUserError(raw, fallback, context){
+  const detail=String(raw&&raw.message||raw||'').trim();
+  if(detail) console.warn('[inscripcion] '+context, detail);
+  return fallback;
+}
+
 function clean(v){ return String(v == null ? '' : v).trim(); }
 function upper(v){ return clean(v).toUpperCase(); }
 function cedClean(v){ return clean(v).replace(/[^0-9A-Za-z]/g,'').toUpperCase(); }
@@ -485,7 +491,7 @@ function DocumentCapture({label,value,onChange,kind='identity'}){
       setMagnifier(null);
       setMode('editor');
     }catch(e){
-      setErr(String(e&&e.message||'No se pudo abrir la foto.'));
+      setErr(captureErrorMessage(e&&e.message));
     }finally{
       setBusy(false);
     }
@@ -846,7 +852,7 @@ function CedulaStep({form,setForm,cedulaStatus,setCedulaStatus,setStep,setPadron
         }catch(_){ }
         setStep(1);
       }
-    }catch(e){ setErr(e.message); }
+    }catch(e){ setErr(inscripcionSafeUserError(e, 'No pudimos verificar la identificación. Intentá nuevamente.', 'verificarCedulaInscripcion')); }
     finally{ setBusy(false); }
   }
   const motivo = upper(cedulaStatus?.motivo);
@@ -1393,7 +1399,7 @@ function InscripcionApp(){
         const found = list.find(g=>g.codigo === groupCode);
         if(found) setSelectedGroup(found);
       }
-    }catch(e){ setGroupsError(e.message); }
+    }catch(e){ setGroupsError(inscripcionSafeUserError(e, 'No pudimos cargar los grupos disponibles. Intentá nuevamente.', 'getGruposInscripcion')); }
     finally{ setGroupsLoading(false); }
   },[form.grupo_tentativo]);
 
@@ -1414,7 +1420,7 @@ function InscripcionApp(){
         const becasSource = bec1.status==='fulfilled' && Array.isArray(bec1.value.becas) && bec1.value.becas.length ? bec1.value.becas : (bec2.status==='fulfilled' ? bec2.value.becas || [] : []);
         setBecas(becasSource.map(normalizeBeca).filter(Boolean));
         await reloadGroups();
-      }catch(e){ if(mounted) setGlobalError(e.message); }
+      }catch(e){ if(mounted) setGlobalError(inscripcionSafeUserError(e, 'No pudimos cargar la información de inscripción. Intentá nuevamente.', 'cargaInicial')); }
       finally{ if(mounted) setLoading(false); }
     }
     load();
@@ -1474,7 +1480,7 @@ function InscripcionApp(){
       setSuccess(r);
       try{ localStorage.removeItem(INS_STORAGE_KEY); }catch(_){ }
       window.scrollTo({top:0, behavior:'smooth'});
-    }catch(e){ setSubmitError(e.message); }
+    }catch(e){ setSubmitError(inscripcionSafeUserError(e, 'No pudimos enviar la inscripción. Revisá los datos e intentá nuevamente.', 'crearInscripcionPublica')); }
     finally{ setSubmitting(false); }
   }
 
