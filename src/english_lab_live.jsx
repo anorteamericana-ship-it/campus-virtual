@@ -338,6 +338,12 @@
     </div>;
   }
 
+  function englishLabLiveSafeUserError(error, fallback, context){
+    const detail = String(error && (error.message || error) || '').trim();
+    if(detail) console.warn('[CS21A210BE][EnglishLabLive][' + (context || 'unknown') + ']', detail);
+    return fallback;
+  }
+
   function RoomControl({roomRef, onBack, onChanged}){
     const roomId = clean(roomRef?.room_id || roomRef?.ROOM_ID || roomRef?.room_code || roomRef?.ROOM_CODE);
     const [loading,setLoading]=React.useState(true);
@@ -360,7 +366,7 @@
       if(!roomId) return;
       setLoading(true); setError('');
       try{ const r=await postLive('englishLabLiveGetRoomControl',{room_id:roomId},45000); setData(r); }
-      catch(e){ setError(e.message || String(e)); }
+      catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos cargar el control de la sala. Intentá nuevamente.", 'room_control_load')); }
       finally{ setLoading(false); }
     },[roomId]);
     React.useEffect(()=>{ load(); },[load]);
@@ -371,7 +377,7 @@
         await postLive(fn,{room_id:roomId,...payload},45000);
         await load();
         onChanged && onChanged();
-      }catch(e){ setError(e.message || String(e)); }
+      }catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos completar la acción de la sala. Intentá nuevamente.", 'room_control_action')); }
       finally{ setBusy(false); }
     }
     const canOpen = status !== 'CLOSED';
@@ -532,7 +538,7 @@
         const r=await postLive('englishLabLiveGetPlayerState',{room_code:rc, player_id:pid || '', player_name:playerName || '', cod_estudiante:studentCode || ''},35000);
         setState(r); setJoined(!!(r.player && r.player.cod_estudiante));
         if(r.player && r.player.cod_estudiante){ setPlayerId(r.player.cod_estudiante); try{ localStorage.setItem('elive_player_'+rc, r.player.cod_estudiante); }catch(_){} }
-      }catch(e){ setError(e.message || String(e)); }
+      }catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos actualizar el estado de la sala. Intentá nuevamente.", 'player_state')); }
       finally{ setLoading(false); }
     },[playerId,roomCode,playerName,studentCode]);
 
@@ -558,7 +564,7 @@
         setRoomCode(rc); setState(r); setJoined(true);
         const pid=clean(r.player?.cod_estudiante || saved || playerId);
         if(pid){ setPlayerId(pid); try{ localStorage.setItem('elive_player_'+rc,pid); localStorage.setItem('elive_last_room',rc); }catch(_){} }
-      }catch(e){ setError(e.message || String(e)); }
+      }catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos entrar a la sala. Verificá el código e intentá nuevamente.", 'join_room')); }
       finally{ setBusy(false); }
     }
     async function submitAnswer(){
@@ -567,7 +573,7 @@
       try{
         await postLive('englishLabLiveSubmitAnswer',{room_code:roomCode, player_id:playerId, player_name:playerName, cod_estudiante:studentCode, question_index:question.index, answer_value:selected, time_ms:Math.max(0, Date.now()-questionStartedAt)},35000);
         await loadState();
-      }catch(e){ setError(e.message || String(e)); }
+      }catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos enviar tu respuesta. Intentá nuevamente.", 'submit_answer')); }
       finally{ setBusy(false); }
     }
 
@@ -669,7 +675,7 @@
         setData(r);
         const first = (r.grupos || [])[0];
         setCodGrupo(prev => prev || groupCode(first));
-      }catch(e){ setError(e.message || String(e)); }
+      }catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos cargar las salas y grupos. Intentá nuevamente.", 'teacher_data')); }
       finally{ setLoading(false); }
     },[]);
     React.useEffect(()=>{ load(); },[load]);
@@ -682,7 +688,7 @@
         setCreated(r.room || r);
         setControlRoom(r.room || r);
         await load();
-      }catch(e){ setError(e.message || String(e)); }
+      }catch(e){ setError(englishLabLiveSafeUserError(e, "No pudimos crear la sala. Intentá nuevamente.", 'create_room')); }
       finally{ setBusy(false); }
     }
 
