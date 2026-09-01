@@ -1,0 +1,32 @@
+name: QA Examenes Teacher Safe Errors CS21A210BA
+on:
+  push:
+    branches: [fix/examenes-teacher-safe-errors-cs21a210ba]
+  pull_request:
+    paths:
+      - 'src/examenes_modes.jsx'
+      - 'src/examenes_bundle.jsx'
+      - 'scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs'
+      - '.github/workflows/qa-examenes-teacher-safe-errors-cs21a210ba.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse JSX
+        run: node -e "const fs=require('fs'),p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx'])p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx']});"
+      - name: Verify BA and exact reconstruction
+        run: node scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs
+      - name: Regress AY StudentMode
+        run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
+      - name: Verify BA V3 exact reduction
+        run: |
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ba.txt
+          grep -Fq 'DIRECT_RAW_SINK_FINDINGS=30' /tmp/v3-ba.txt
+          grep -Fq 'FILES_WITH_FINDINGS=12' /tmp/v3-ba.txt
+      - name: Diff hygiene
+        run: git diff --check 3d161df00606dab513cb9bce706502a4ca6be433
