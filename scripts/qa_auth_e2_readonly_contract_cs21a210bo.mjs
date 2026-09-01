@@ -29,6 +29,18 @@ expect(/infoProbe\.data\.qa_ids_ok === true/.test(runner), 'El runner BO debe ex
 expect(/infoProbe\.data\.qa_properties_configured === true/.test(runner), 'El runner BO debe exigir qa_properties_configured=true.');
 expect(!/groupPayload\.includes\(groupCode\)/.test(runner), 'El catálogo de grupos no debe usarse como prueba de identidad del entorno QA.');
 expect(runner.indexOf("getJson('getInfoGeneral')") < runner.indexOf("postJson('iniciarSesion'"), 'La prueba QA nativa debe pasar antes del primer login.');
+
+// El browser real debe probar el mismo gate de sesión del Campus y no capturar
+// como éxito la pantalla transitoria de validación.
+expect(/roleRead\('student', 'validarSesion'\)/.test(runner), 'Debe verificarse validarSesion con token estudiante.');
+expect(/roleRead\('teacher', 'validarSesion'\)/.test(runner), 'Debe verificarse validarSesion con token docente.');
+expect(/roleRead\('superadmin', 'validarSesion'\)/.test(runner), 'Debe verificarse validarSesion con token superadmin.');
+expect(/timeout:\s*18000/.test(runner), 'El browser debe dar margen superior al timeout de 14 s de CampusGate.');
+expect(/Validando tu sesi\[oó\]n/.test(runner), 'El browser debe detectar explícitamente el estado Validando tu sesión.');
+expect(/appMounted/.test(runner) && /state\.appMounted/.test(runner), 'El browser debe exigir árbol principal montado.');
+expect(/clickLabel:\s*'Libros y Audios'/.test(runner), 'Libros y Audios debe navegarse desde dashboard como el Campus real.');
+expect(/scenario\.role === 'student' \? 'dashboard' : scenario\.route/.test(runner), 'El estudiante debe arrancar en dashboard antes de navegar.');
+
 expect(/real_qa_authenticated_readonly_cs21a210bo\.mjs/.test(manualWorkflow), 'El workflow manual debe usar el runner BO especializado.');
 expect(/real_qa_authenticated_readonly_cs21a210bo\.mjs/.test(registeredWorkflow), 'El workflow registrado debe usar el runner BO especializado para el job autenticado.');
 
@@ -43,5 +55,6 @@ console.log('- runner BO especializado y sin superficie de escritura');
 console.log('- URL QA explícita y PROD rechazada');
 console.log('- identidades QA validadas localmente');
 console.log('- proof nativo CS21A144 pasa antes de transmitir credenciales');
-console.log('- getGruposDisponibles ya no se usa como identidad del entorno');
+console.log('- validarSesion se prueba con los tres tokens antes del browser');
+console.log('- browser espera CampusGate, exige App montada y navega Libros y Audios desde dashboard');
 console.log('- workflow manual y workflow registrado usan el mismo runner read-only');
