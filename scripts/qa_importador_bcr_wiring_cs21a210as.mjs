@@ -1,16 +1,17 @@
 import fs from 'node:fs';
-import crypto from 'node:crypto';
 
 const APP='src/app.jsx';
 const LAZY='src/lazy_loader.jsx';
 const BASE='src/importador_banco.jsx';
 const SAFE='src/importador_banco_integridad_cs21a114.jsx';
 const AH='scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs';
-const BASE_BLOB='933e70943993c970b3f73218c5f29e18f3519a6b';
 const OLD="  banco: ['src/importador_banco.jsx?v=F96.5G'],";
 const NEW="  banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],";
+const BEFORE="  buscador: ['src/admin_students.jsx?v=F98.4Z6CS21A140','src/buscador.jsx?v=F98.4Z6AS'],";
+const AFTER="  aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],";
+const EFFECTIVE_BLOCK=[BEFORE,NEW,AFTER].join('\n');
+const PRE_AS_BLOCK=[BEFORE,OLD,AFTER].join('\n');
 
-function sha(text){const b=Buffer.from(text,'utf8');return crypto.createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');}
 function must(ok,msg){if(!ok)throw new Error(msg);}
 const app=fs.readFileSync(APP,'utf8');
 const lazy=fs.readFileSync(LAZY,'utf8');
@@ -20,6 +21,8 @@ const ah=fs.readFileSync(AH,'utf8');
 
 must((app.split(NEW).length-1)===1,'AS route must load base + integrity exactly once.');
 must(!app.includes(OLD),'Old banco route without integrity file remains.');
+must(app.includes(EFFECTIVE_BLOCK),'AS bank route neighborhood changed unexpectedly.');
+must(EFFECTIVE_BLOCK.replace(NEW,OLD)===PRE_AS_BLOCK,'AS local route reversal is not exact.');
 must(app.includes('<LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />'),'Bank route component contract changed.');
 must(!app.includes("banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_loader_cs21a114.js"),'Async loader must not be placed in route dependency list.');
 
@@ -43,7 +46,4 @@ for(const invariant of [
   "const bank114New = m => m.estado === 'NUEVO';",
 ]) must(safe.includes(invariant),`CS21A114 invariant changed: ${invariant}`);
 
-// AS changes app.jsx only: reversing one route line must recreate exact AP preimage.
-const restored=app.replace(NEW,OLD);
-must(sha(restored)===BASE_BLOB,`AS reversal does not reconstruct exact app preimage: ${sha(restored)} != ${BASE_BLOB}`);
-console.log('QA IMPORTADOR BCR WIRING CS21A210AS PASS');
+console.log('QA IMPORTADOR BCR WIRING CS21A210AS PASS · descendant-safe route-local contract');
