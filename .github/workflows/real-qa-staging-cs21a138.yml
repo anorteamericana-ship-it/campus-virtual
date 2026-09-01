@@ -105,7 +105,9 @@ jobs:
         shell: bash
         run: |
           grep -Fq "CS21A210BO es exclusivamente read-only" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
-          grep -Fq "getGruposDisponibles" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "QA_STAGING_CS21A144" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "qa_ids_ok" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "qa_properties_configured" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
           grep -Fq "qaUsers.some" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
           ! grep -Eq "aplicarPago|registrarNotaEstatus|registrarEvaluacion|registrarAsistencia|cerrarLeccionCompleta" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
       - name: Install Playwright Chromium
