@@ -1,0 +1,46 @@
+name: QA Importador BCR Safe Errors CS21A210AH
+
+on:
+  push:
+    branches:
+      - fix/importador-bcr-safe-errors-cs21a210ah
+    paths:
+      - 'src/importador_banco_integridad_cs21a114.jsx'
+      - 'scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs'
+      - '.github/workflows/qa-importador-bcr-safe-errors-cs21a210ah.yml'
+      - '00_DOCUMENTACION/IMPORTADOR_BCR_SAFE_ERRORS_CS21A210AH_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'src/importador_banco_integridad_cs21a114.jsx'
+      - 'scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs'
+      - '.github/workflows/qa-importador-bcr-safe-errors-cs21a210ah.yml'
+      - '00_DOCUMENTACION/IMPORTADOR_BCR_SAFE_ERRORS_CS21A210AH_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
+      - name: Parse effective importer and loader
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const parser=require('@babel/parser');
+          parser.parse(fs.readFileSync('src/importador_banco_integridad_cs21a114.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('CS21A210AH JSX parse: PASS');
+          NODE
+          node --check src/importador_banco_loader_cs21a114.js
+      - name: Verify CS21A210AH semantics and CS21A114 integrity contract
+        run: node scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs
+      - name: Regress lazy-loader safe-user boundary
+        run: node scripts/qa_lazy_loader_safe_user_errors_cs21a197.mjs
+      - name: Regress CS21A210AF sidebar boundary
+        run: node scripts/qa_sidebar_superadmin_safe_errors_cs21a210af.mjs
+      - name: Regress CS21A210AD student content boundary
+        run: node scripts/qa_student_content_access_safe_errors_cs21a210ad.mjs
+      - name: Diff hygiene
+        run: git diff --check
