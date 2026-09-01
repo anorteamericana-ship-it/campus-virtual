@@ -69,7 +69,8 @@ function writeReport(mode = 'AUTHENTICATED_STAGING_READ_ONLY') {
     findings,
     safety: [
       'La URL QA debe llegar explícitamente por secret y se rechaza si coincide con producción.',
-      'Antes de enviar credenciales se exige código QA-, grupo -99XX, usuarios qa_ y presencia read-only del grupo QA en getGruposDisponibles.',
+      'Antes de enviar credenciales se exige identidad QA local y prueba nativa CS21A144 desde getInfoGeneral.',
+      'La prueba nativa requiere qa_staging, qa_marker, qa_ids_ok y qa_properties_configured válidos.',
       'Este runner no contiene operaciones de pago, notas, asistencia, cierres ni otras escrituras.',
       'Las pruebas de navegador reescriben únicamente llamadas al URL productivo del frontend hacia el URL QA explícito.',
     ],
@@ -138,17 +139,30 @@ const infoProbe = await getJson('getInfoGeneral');
 if (!infoProbe.response.ok || infoProbe.parse_error || !infoProbe.data || infoProbe.data.ok !== true) {
   failClosed('staging_guard', 'getInfoGeneral no demuestra un backend JSON válido', `HTTP ${infoProbe.response.status}; content-type=${infoProbe.content_type || 'n/a'}`);
 }
-checks.push({ area: 'staging_guard', fn: 'getInfoGeneral', ok: true, status: infoProbe.response.status });
-
-const groupProbe = await getJson('getGruposDisponibles', { programa: 'SIN_INA' });
-if (!groupProbe.response.ok || groupProbe.parse_error || !groupProbe.data || groupProbe.data.ok !== true) {
-  failClosed('staging_guard', 'getGruposDisponibles no demuestra un backend JSON válido', `HTTP ${groupProbe.response.status}; content-type=${groupProbe.content_type || 'n/a'}`);
+const qaMarker = String(infoProbe.data.qa_marker || '').trim();
+const nativeQaProof = {
+  qa_staging: infoProbe.data.qa_staging === true,
+  qa_marker: qaMarker === 'QA_STAGING_CS21A144',
+  qa_ids_ok: infoProbe.data.qa_ids_ok === true,
+  qa_properties_configured: infoProbe.data.qa_properties_configured === true,
+};
+if (!Object.values(nativeQaProof).every(Boolean)) {
+  failClosed(
+    'staging_guard',
+    'getInfoGeneral no demuestra el contrato QA nativo CS21A144',
+    `qa_staging=${nativeQaProof.qa_staging}; qa_marker=${nativeQaProof.qa_marker}; qa_ids_ok=${nativeQaProof.qa_ids_ok}; qa_properties_configured=${nativeQaProof.qa_properties_configured}`,
+  );
 }
-const groupPayload = JSON.stringify(groupProbe.data).toUpperCase();
-if (!groupPayload.includes(groupCode)) {
-  failClosed('staging_guard', 'el grupo QA sentinel no aparece en getGruposDisponibles', 'La ejecución se detuvo antes de transmitir usuarios o contraseñas.');
-}
-checks.push({ area: 'staging_guard', fn: 'getGruposDisponibles', ok: true, qa_group_sentinel: true });
+checks.push({
+  area: 'staging_guard',
+  fn: 'getInfoGeneral',
+  ok: true,
+  status: infoProbe.response.status,
+  qa_marker: qaMarker,
+  qa_staging: true,
+  qa_ids_ok: true,
+  qa_properties_configured: true,
+});
 
 const credentials = {
   student: [process.env.QA_STUDENT_USER, process.env.QA_STUDENT_PASS],
