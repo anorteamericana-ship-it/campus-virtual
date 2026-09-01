@@ -71,8 +71,8 @@ function writeReport(mode = 'AUTHENTICATED_STAGING_READ_ONLY') {
       'La URL QA debe llegar explícitamente por secret y se rechaza si coincide con producción.',
       'Antes de enviar credenciales se exige identidad QA local y prueba nativa CS21A144 desde getInfoGeneral.',
       'La prueba nativa requiere qa_staging, qa_marker, qa_ids_ok y qa_properties_configured válidos.',
-      'Este runner no contiene operaciones de pago, notas, asistencia, cierres ni otras escrituras.',
-      'Las pruebas de navegador reescriben únicamente llamadas al URL productivo del frontend hacia el URL QA explícito.',
+      'Este runner no contiene operaciones mutantes; todas las verificaciones posteriores al login son de lectura.',
+      'El navegador prueba validarSesion con token real y reescribe únicamente el URL productivo del frontend hacia QA.',
     ],
   };
   fs.writeFileSync(path.join(outDir, 'authenticated-report.json'), JSON.stringify(report, null, 2));
@@ -197,10 +197,15 @@ if (Object.keys(sessions).length !== 3) {
 async function roleRead(role, fn, payload = {}) {
   const result = await postJson(fn, payload, sessions[role].token);
   const ok = result.response.ok && !result.parse_error && result.data && result.data.ok === true;
-  checks.push({ area: 'backend_read', role, fn, ok, status: result.response.status });
+  checks.push({ area: 'backend_read', role, fn, ok, status: result.response.status, error: ok ? null : (result.data?.error || null) });
   if (!ok) add('P1', 'backend', `${role} no pudo ejecutar ${fn}`, `HTTP ${result.response.status}; error=${result.data?.error || (result.parse_error ? 'respuesta_no_json' : 'ok_false')}`);
   return result.data;
 }
+
+// Es exactamente el endpoint que usa CampusGate antes de montar la aplicación.
+await roleRead('student', 'validarSesion');
+await roleRead('teacher', 'validarSesion');
+await roleRead('superadmin', 'validarSesion');
 
 await roleRead('student', 'getEstudiante', { codigo: studentCode });
 await roleRead('student', 'getEvaluacionesEstudiante', { codigo: studentCode, nivel: 'B1' });
@@ -212,7 +217,7 @@ checks.push({ area: 'writes', ok: true, skipped: true, reason: 'CS21A210BO no im
 const campusBase = process.env.QA_CAMPUS_BASE_URL || 'http://127.0.0.1:4173';
 const scenarios = [
   { role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 } },
-  { role: 'student', route: 'libros_audios_estudiante', viewport: { width: 1440, height: 900 } },
+  { role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 } },
   { role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 } },
@@ -222,16 +227,31 @@ const scenarios = [
 const browser = await chromium.launch({ headless: true });
 for (const scenario of scenarios) {
   const session = sessions[scenario.role];
+  const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
   const context = await browser.newContext({ viewport: scenario.viewport, ignoreHTTPSErrors: true });
+  const initialRoute = scenario.role === 'student' ? 'dashboard' : scenario.route;
   await context.addInitScript(({ session, route }) => {
     sessionStorage.setItem('an_usuario', JSON.stringify(session));
+    sessionStorage.removeItem('an_just_logged_in');
+    const uiRole = session.rol === 'superadmin' || session.rol === 'admin' ? 'admin' : session.rol;
+    localStorage.setItem('an_role', uiRole);
     localStorage.setItem('an_active', route);
-    localStorage.setItem(`an_active_${session.rol === 'superadmin' ? 'admin' : session.rol}`, route);
-  }, { session, route: scenario.route });
+    localStorage.setItem(`an_active_${uiRole}`, route);
+  }, { session, route: initialRoute });
+
   const page = await context.newPage();
   const errors = [];
+  const localFailures = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('requestfailed', request => {
+    const failure = request.failure()?.errorText || '';
+    if (request.url().startsWith(campusBase) && !/ERR_ABORTED/i.test(failure)) localFailures.push(`${request.url()} · ${failure || 'falló'}`);
+  });
+  page.on('response', response => {
+    if (response.url().startsWith(campusBase) && response.status() >= 400) localFailures.push(`${response.status()} · ${response.url()}`);
+  });
+
   await page.route('**/*', async route => {
     const requestUrl = route.request().url();
     if (requestUrl.startsWith(productionUrl)) {
@@ -243,24 +263,60 @@ for (const scenario of scenarios) {
     }
     await route.continue();
   });
+
   try {
-    await page.goto(`${campusBase}/campus.html#${scenario.route}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(6500);
+    await page.goto(`${campusBase}/campus.html`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+    // CampusGate permite hasta 14 s para validar la sesión. Esperar 18 s evita
+    // fotografiar legítimamente el estado transitorio "Validando tu sesión…".
+    try {
+      await page.waitForFunction(
+        () => !/Validando tu sesi[oó]n/i.test(document.body?.innerText || ''),
+        null,
+        { timeout: 18000 },
+      );
+    } catch (_) {}
+    await page.waitForTimeout(1500);
+
+    if (scenario.clickLabel) {
+      const locator = page.getByText(scenario.clickLabel, { exact: true }).last();
+      if (await locator.count()) {
+        await locator.click({ timeout: 5000 });
+        await page.waitForTimeout(2500);
+      } else {
+        add('P1', 'navegador', `No apareció navegación ${key}`, `control=${scenario.clickLabel}`);
+      }
+    }
+
     const state = await page.evaluate(() => ({
       text: document.body?.innerText?.trim() || '',
       labels: Array.from(document.querySelectorAll('[data-screen-label]')).map(node => node.getAttribute('data-screen-label')).filter(Boolean).slice(0, 10),
       overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
       href: location.href,
+      path: location.pathname,
+      hash: location.hash,
+      appMounted: Boolean(document.querySelector('.app')),
+      validating: /Validando tu sesi[oó]n/i.test(document.body?.innerText || ''),
     }));
-    const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
+
     await page.screenshot({ path: path.join(shotsDir, `${key}.png`), fullPage: true });
-    const ok = state.text.length > 20 && state.labels.length > 0 && !/login\.html/i.test(state.href);
-    checks.push({ area: 'browser_read', scenario: key, ok, labels: state.labels, overflow: state.overflow, errors: errors.slice(0, 10) });
-    if (!ok) add('P1', 'navegador', `No cargó ${key}`, 'La superficie no alcanzó el estado esperado.');
+    const ok = state.text.length > 20 && state.appMounted && !state.validating && !/login\.html$/i.test(state.path);
+    checks.push({
+      area: 'browser_read', scenario: key, ok,
+      labels: state.labels, overflow: state.overflow,
+      validating: state.validating, app_mounted: state.appMounted,
+      path: state.path, hash: state.hash,
+      errors: errors.slice(0, 10),
+    });
+    if (!ok) {
+      add('P1', 'navegador', `No cargó ${key}`, `validating=${state.validating}; app_mounted=${state.appMounted}; path=${state.path}; hash=${state.hash}`);
+    }
+    if (!state.labels.length) add('P3', 'navegador', `Sin etiqueta diagnóstica ${key}`, `path=${state.path}; hash=${state.hash}`);
     if (state.overflow > 24) add('P2', 'responsive', `Desbordamiento horizontal en ${key}`, `${state.overflow}px`);
-    if (errors.length) add('P2', 'consola', `Errores en ${key}`, errors.slice(0, 5).join(' | '));
+    for (const failure of [...new Set(localFailures)]) add('P1', 'navegador', `Recurso local no disponible ${key}`, failure);
+    for (const error of [...new Set(errors)].slice(0, 10)) add('P2', 'consola', `Error en ${key}`, error);
   } catch (error) {
-    add('P1', 'navegador', `Falló escenario ${scenario.role}/${scenario.route}`, error.message);
+    add('P1', 'navegador', `Falló escenario ${scenario.role}/${scenario.route}`, error.message || String(error));
   } finally {
     await context.close();
   }
