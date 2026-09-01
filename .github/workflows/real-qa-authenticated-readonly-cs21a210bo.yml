@@ -24,7 +24,6 @@ jobs:
       QA_SUPERADMIN_PASS: ${{ secrets.QA_SUPERADMIN_PASS }}
       QA_STUDENT_CODE: ${{ secrets.QA_STUDENT_CODE }}
       QA_GROUP_CODE: ${{ secrets.QA_GROUP_CODE }}
-      QA_BANK_DOCUMENT: CS21A210BO_READONLY_UNUSED
       QA_EXECUTE_WRITES: NO
       QA_CAMPUS_BASE_URL: http://127.0.0.1:4173
     steps:
@@ -40,13 +39,15 @@ jobs:
             echo 'BLOQUEADO: este workflow es estrictamente read-only.'
             exit 1
           fi
-      - name: Validate authenticated runner
-        run: node --check scripts/real_qa_authenticated_cs21a138.mjs
-      - name: Verify write path remains disabled
+      - name: Validate BO readonly runner
+        run: node --check scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+      - name: Verify BO runner has no write surface
         shell: bash
         run: |
-          grep -Fq "const executeWrites = process.env.QA_EXECUTE_WRITES === 'CS21A138_STAGING_ONLY';" scripts/real_qa_authenticated_cs21a138.mjs
-          grep -Fq "if (executeWrites)" scripts/real_qa_authenticated_cs21a138.mjs
+          grep -Fq "CS21A210BO es exclusivamente read-only" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "getGruposDisponibles" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          grep -Fq "qaUsers.some" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          ! grep -Eq "aplicarPago|registrarNotaEstatus|registrarEvaluacion|registrarAsistencia|cerrarLeccionCompleta" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
           test "${QA_EXECUTE_WRITES}" = "NO"
       - name: Install Playwright Chromium
         run: |
@@ -62,7 +63,7 @@ jobs:
           cat qa-real-server.log
           exit 1
       - name: Authenticated staging readonly review
-        run: node scripts/real_qa_authenticated_cs21a138.mjs
+        run: node scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
       - name: Publish authenticated summary
         if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.md') != '' }}
         run: cat qa-output-real-auth/authenticated-report.md >> "$GITHUB_STEP_SUMMARY"
