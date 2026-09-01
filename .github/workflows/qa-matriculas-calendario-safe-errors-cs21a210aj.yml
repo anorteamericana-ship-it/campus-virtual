@@ -1,0 +1,45 @@
+name: QA Matriculas Calendario Safe Errors CS21A210AJ
+
+on:
+  push:
+    branches:
+      - fix/matriculas-calendario-safe-errors-cs21a210aj
+    paths:
+      - 'src/matriculas_calendario.jsx'
+      - 'scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs'
+      - '.github/workflows/qa-matriculas-calendario-safe-errors-cs21a210aj.yml'
+      - '00_DOCUMENTACION/MATRICULAS_CALENDARIO_SAFE_ERRORS_CS21A210AJ_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'src/matriculas_calendario.jsx'
+      - 'scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs'
+      - '.github/workflows/qa-matriculas-calendario-safe-errors-cs21a210aj.yml'
+      - '00_DOCUMENTACION/MATRICULAS_CALENDARIO_SAFE_ERRORS_CS21A210AJ_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
+      - name: Parse canonical enrollment calendar
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const parser=require('@babel/parser');
+          parser.parse(fs.readFileSync('src/matriculas_calendario.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('CS21A210AJ JSX parse: PASS');
+          NODE
+      - name: Verify CS21A210AJ semantics
+        run: node scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs
+      - name: Regress CS21A210AH BCR importer boundary
+        run: node scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs
+      - name: Regress CS21A210AF sidebar boundary
+        run: node scripts/qa_sidebar_superadmin_safe_errors_cs21a210af.mjs
+      - name: Regress CS21A210AD student content boundary
+        run: node scripts/qa_student_content_access_safe_errors_cs21a210ad.mjs
+      - name: Diff hygiene
+        run: git diff --check
