@@ -2118,7 +2118,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                         aria-label="Evaluar cambio académico individual"
                         style={{height:29,padding:'0 8px',borderRadius:7,border:'1px solid '+(['CA','REP'].includes(String(estatus || '').toUpperCase())?'#9DBCE2':'#D5D9DE'),fontSize:10.5,fontWeight:900,cursor:['CA','REP'].includes(String(estatus || '').toUpperCase())?'pointer':'not-allowed',background:['CA','REP'].includes(String(estatus || '').toUpperCase())?'#EAF3FF':'#F1F2F3',color:['CA','REP'].includes(String(estatus || '').toUpperCase())?'#174E8C':'#9AA1A8',opacity:['CA','REP'].includes(String(estatus || '').toUpperCase())?1:.65,whiteSpace:'nowrap'}}>🧭 Evaluar</button>
                       <button onClick={() => setModalEstatus({ estudiante:e, nivel:nivelKey })} title="Cambiar estado" aria-label="Cambiar estado" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>✏️</button>
-                      <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.error});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
+                      <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.ok?'':adminStudentsSafeUserError(r.error || r.mensaje, 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'resincronizar_estudiante')});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
                       <button onClick={() => abrirPago(e,nivelKey,onNavigate)} title="Aplicar pago" aria-label="Aplicar pago" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>💳</button>
                     </div>
                   </td>
@@ -3924,7 +3924,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         body: JSON.stringify({ fn:'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
-      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}));
+      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data.error || data.mensaje, 'No pudimos generar el documento. Intentá de nuevo.', 'generar_documento') }}));
     } catch(e) {
       setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
     } finally {
@@ -3952,7 +3952,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
           registro: String(data.registro || data.registro_certificado || certNum || ''),
         }))) alert('El certificado está listo, pero no pudimos abrirlo de forma segura. Intentá de nuevo.');
       } else {
-        setRes(r => ({...r, [certKey]: { error:data.mensaje || data.error, search_url:data.search_url }}));
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data.mensaje || data.error, 'No pudimos localizar el certificado. Intentá de nuevo.', 'buscar_certificado'), search_url:data.search_url }}));
       }
     } catch(e) {
       setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
@@ -3987,7 +3987,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
           registro: String(data.registro || data.registro_certificado || certNum || ''),
         }))) alert('El certificado está listo, pero no pudimos abrirlo de forma segura. Intentá de nuevo.');
       } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data && (data.mensaje || data.error), 'No se pudo regenerar el certificado.', 'regenerar_certificado') }}));
       }
     } catch(e) {
       setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
@@ -4020,7 +4020,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
           registro: String(data.registro || data.registro_certificado || certNum || ''),
         }))) alert('El certificado está listo, pero no pudimos abrirlo de forma segura. Intentá de nuevo.');
       } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo generar el certificado.' }}));
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data && (data.mensaje || data.error), 'No se pudo generar el certificado.', 'generar_certificado') }}));
       }
     } catch(e) {
       setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
