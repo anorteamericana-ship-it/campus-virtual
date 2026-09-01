@@ -1,0 +1,23 @@
+name: QA Admin Students Error Boundary CS21A210BF
+on:
+  push:
+    branches: [audit/admin-students-error-boundary-cs21a210bf]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md'
+      - 'scripts/qa_admin_students_error_boundary_cs21a210bf.mjs'
+      - '.github/workflows/qa-admin-students-error-boundary-cs21a210bf.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Verify BF data-flow classification
+        run: node scripts/qa_admin_students_error_boundary_cs21a210bf.mjs
+      - name: Regress BD post-BC classification
+        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
+      - name: Diff hygiene
+        run: git diff --check ddd243a73e74c109420fc8a3e9a82e7c2bf31349
