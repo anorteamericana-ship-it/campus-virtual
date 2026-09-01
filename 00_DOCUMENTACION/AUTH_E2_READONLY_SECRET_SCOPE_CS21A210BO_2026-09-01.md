@@ -74,7 +74,7 @@ Checks automáticos sobre el código corregido `cc24830f6ef12d546f33fc522fbdcc6d
 - QA Auth E2 Readonly Secret Scope CS21A210BO run `33548532085`: **SUCCESS**.
 - English LAB Source Truth Guard run `33548532056`: **SUCCESS**.
 
-Los commits posteriores son únicamente documentación y no modifican el runner ni los workflows.
+Los commits posteriores a ese código son solo documentación y no cambian la lógica del runner.
 
 ## Límites
 
