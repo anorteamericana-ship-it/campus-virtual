@@ -8,7 +8,7 @@ const files={
 };
 const hash=s=>execFileSync('git',['hash-object','--stdin'],{input:s,encoding:'utf8'}).trim();
 const count=(s,x)=>s.split(x).length-1;
-const helper=`function examAdminSafeUserError(response, fallback, context) {\n  const raw = response && (response.mensaje || response.error || (response.errores && response.errores.join(' · ')));\n  const detail = String(raw == null ? '' : raw).trim();\n  if (detail) console.warn(\`[CS21A210BC][AdminMode][\${context || 'unknown'}]\`, detail);\n  return fallback;\n}\n\n`;
+const helper="function examAdminSafeUserError(response, fallback, context) {\n  const raw = response && (response.mensaje || response.error || (response.errores && response.errores.join(' · ')));\n  const detail = String(raw == null ? '' : raw).trim();\n  if (detail) console.warn('[CS21A210BC][AdminMode][' + (context || 'unknown') + ']', detail);\n  return fallback;\n}\n\n";
 const anchor='function ActivationBackendPanel({ onPreview }) {';
 const activationOld="const detail = r && (r.mensaje || r.error || (r.errores && r.errores.join(' · ')));\n      setErr(detail || 'No se pudo completar la operación.');";
 const activationNew="setErr(examAdminSafeUserError(r, 'No se pudo completar la operación.', 'activation'));";
