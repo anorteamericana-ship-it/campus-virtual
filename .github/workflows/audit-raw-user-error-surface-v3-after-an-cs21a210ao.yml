@@ -1,0 +1,39 @@
+name: Audit Raw User Error Surface V3 After AN CS21A210AO
+
+on:
+  push:
+    branches:
+      - audit/raw-user-error-surface-v3-after-an-cs21a210ao
+    paths:
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - '.github/workflows/audit-raw-user-error-surface-v3-after-an-cs21a210ao.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan current raw visible-error sinks V3 and persist exact report
+        run: node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AN_CS21A210AO_REPORT.txt
+      - name: Persist audit report on audit branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_V3_AFTER_AN_CS21A210AO_REPORT.txt
+          git commit -m 'CS21A210AO persist V3 inventory after AN'
+          git push
+      - name: Regress CS21A210AN teacher boundary
+        run: node scripts/qa_vista_docente_safe_errors_cs21a210an.mjs
+      - name: Regress CS21A210AL Ventas boundary
+        run: node scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs
+      - name: Regress CS21A210AJ enrollment calendar boundary
+        run: node scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Mark audit incomplete while raw sinks remain
+        run: node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs --fail-on-findings
