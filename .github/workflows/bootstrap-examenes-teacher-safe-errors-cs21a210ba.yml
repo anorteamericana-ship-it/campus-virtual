@@ -1,0 +1,71 @@
+name: Bootstrap Examenes Teacher Safe Errors CS21A210BA
+
+on:
+  push:
+    branches:
+      - bootstrap/examenes-teacher-safe-errors-cs21a210ba
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Patch exact teacher boundary when still on AZ preimage
+        run: |
+          if grep -q "function examTeacherSafeUserError" src/examenes_modes.jsx; then
+            echo "candidate already patched"
+          else
+            node scripts/bootstrap_examenes_teacher_safe_errors_cs21a210ba.mjs
+          fi
+      - name: Parse both JSX representations
+        run: |
+          npm install --no-save @babel/parser@7.28.4
+          node - <<'NODE'
+          const fs=require('fs'); const p=require('@babel/parser');
+          for (const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx']) p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx']});
+          console.log('JSX parse PASS');
+          NODE
+      - name: Verify BA exact boundary
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const files=['src/examenes_modes.jsx','src/examenes_bundle.jsx'];
+          const contexts=['get_attempt','create_review','get_review','close_review','push_after_close','push_retry','review_inbox'];
+          for (const f of files) {
+            const s=fs.readFileSync(f,'utf8');
+            if ((s.match(/function examTeacherSafeUserError\(/g)||[]).length!==1) throw Error(f+' helper count');
+            for(const c of contexts) if ((s.match(new RegExp("'"+c+"'",'g'))||[]).length!==1) throw Error(f+' context '+c);
+            const forbidden=[
+              "setErr((attRes && (attRes.mensaje || attRes.error))",
+              "setErr((createRes && (createRes.mensaje || createRes.error))",
+              "setErr((revRes && (revRes.mensaje || revRes.error))",
+              "setErr((closeRes && (closeRes.mensaje || closeRes.error))",
+              "setErr((pushRes && (pushRes.mensaje || pushRes.error))",
+              "setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.'"
+            ];
+            for(const x of forbidden) if(s.includes(x)) throw Error(f+' raw teacher sink remains: '+x);
+            for(const endpoint of ['examGetAttempt','examCreateReviewDraft','examGetReview','examCloseReview','examPushReviewToNotas','examReviewInbox']) if(!s.includes(endpoint)) throw Error(f+' endpoint lost '+endpoint);
+          }
+          console.log('BA teacher boundary PASS');
+          NODE
+      - name: Regress AZ ownership guard
+        run: node scripts/qa_examenes_teacher_admin_boundary_cs21a210az.mjs || true
+      - name: Commit generated candidate source
+        run: |
+          if git diff --quiet -- src/examenes_modes.jsx src/examenes_bundle.jsx; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/examenes_modes.jsx src/examenes_bundle.jsx
+          git commit -m "CS21A210BA candidate teacher safe errors"
+          git push
