@@ -1,13 +1,14 @@
-name: QA Examenes Admin Effective Boundary CS21A210BB
+name: QA Examenes Admin Safe Errors CS21A210BC
 on:
   push:
-    branches: [audit/examenes-admin-effective-boundary-cs21a210bb]
+    branches: [fix/examenes-admin-safe-errors-cs21a210bc]
   pull_request:
     paths:
       - 'src/examenes_modes.jsx'
       - 'src/examenes_bundle.jsx'
+      - 'scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs'
       - 'scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs'
-      - '.github/workflows/qa-examenes-admin-effective-boundary-cs21a210bb.yml'
+      - '.github/workflows/qa-examenes-admin-safe-errors-cs21a210bc.yml'
 permissions:
   contents: read
 jobs:
@@ -19,19 +20,21 @@ jobs:
       - run: npm install --no-save @babel/parser@7.28.4
       - name: Parse JSX
         run: node -e "const fs=require('fs'),p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx'])p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx']});"
-      - name: Audit effective admin boundary
+      - name: Verify BC exact reconstruction
+        run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs
+      - name: Regress BB effective admin ownership
         run: node scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs
       - name: Regress BA teacher boundary
         run: node scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs
       - name: Regress AY StudentMode
         run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
-      - name: Verify V3 remains non-regressed
+      - name: Verify V3 non-regression
         run: |
           set -o pipefail
-          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-bb.txt
-          findings=$(grep -oE 'DIRECT_RAW_SINK_FINDINGS=[0-9]+' /tmp/v3-bb.txt | cut -d= -f2)
-          files=$(grep -oE 'FILES_WITH_FINDINGS=[0-9]+' /tmp/v3-bb.txt | cut -d= -f2)
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-bc.txt
+          findings=$(grep -oE 'DIRECT_RAW_SINK_FINDINGS=[0-9]+' /tmp/v3-bc.txt | cut -d= -f2)
+          files=$(grep -oE 'FILES_WITH_FINDINGS=[0-9]+' /tmp/v3-bc.txt | cut -d= -f2)
           test "$findings" -le 30
           test "$files" -le 12
       - name: Diff hygiene
-        run: git diff --check eb397cff1a72c98c39c28479ee973e2e038e999e
+        run: git diff --check 6e3fd61d046ff67b33952526f2aadb7219e31111
