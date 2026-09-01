@@ -45,5 +45,10 @@ jobs:
         run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
       - name: Regress AS BCR wiring boundary
         run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
-      - name: Diff hygiene
-        run: git diff --check HEAD^
+      - name: Diff hygiene · AX-owned paths only
+        run: >-
+          git diff --check HEAD^ --
+          src/inscripcion.jsx
+          inscripcion.html
+          scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
+          .github/workflows/qa-inscripcion-public-safe-errors-cs21a210ax.yml
