@@ -1,0 +1,88 @@
+name: QA Sales E2 Staging CS21A170
+
+on:
+  workflow_dispatch:
+    inputs:
+      authenticated:
+        description: 'Ejecutar E2 Sales autenticado contra Apps Script staging'
+        required: true
+        type: boolean
+        default: false
+      execute_writes:
+        description: 'Ejecutar mutación propia + denegaciones SOLO sobre prospectos QA dedicados'
+        required: true
+        type: boolean
+        default: false
+  pull_request:
+    branches: [candidate/green-spine-integration-cs21a210bl]
+    paths:
+      - 'scripts/real_qa_sales_e2_cs21a170.mjs'
+      - 'scripts/qa_sales_e2_contract_cs21a170.mjs'
+      - '.github/workflows/qa-sales-e2-staging-cs21a170.yml'
+      - '00_DOCUMENTACION/QA_SALES_E2_CURRENT_INTEGRATION_CS21A210BM_2026-09-01.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-sales-e2-cs21a170-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate runner syntax
+        run: node --check scripts/real_qa_sales_e2_cs21a170.mjs
+      - name: Validate contract guard syntax
+        run: node --check scripts/qa_sales_e2_contract_cs21a170.mjs
+      - name: Verify fail-closed Sales E2 contract
+        run: node scripts/qa_sales_e2_contract_cs21a170.mjs
+
+  e2-sales-staging:
+    if: github.event_name == 'workflow_dispatch' && inputs.authenticated == true
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
+      QA_SALES_USER: ${{ secrets.QA_SALES_USER }}
+      QA_SALES_PASS: ${{ secrets.QA_SALES_PASS }}
+      QA_SALES_ADVISOR_NAME: ${{ secrets.QA_SALES_ADVISOR_NAME }}
+      QA_SALES_OWN_PROSPECT_CEDULA: ${{ secrets.QA_SALES_OWN_PROSPECT_CEDULA }}
+      QA_SALES_FOREIGN_PROSPECT_CEDULA: ${{ secrets.QA_SALES_FOREIGN_PROSPECT_CEDULA }}
+      QA_SALES_GROUP_CODE: ${{ secrets.QA_SALES_GROUP_CODE }}
+      QA_SALES_WRITE_CONFIRMATION: ${{ secrets.QA_SALES_WRITE_CONFIRMATION }}
+      QA_SALES_EXECUTE_WRITES: ${{ inputs.execute_writes && 'CS21A170_STAGING_ONLY' || 'NO' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse incomplete Sales secret set
+        shell: bash
+        run: |
+          required=(QA_STAGING_APPS_SCRIPT_URL QA_SALES_USER QA_SALES_PASS QA_SALES_OWN_PROSPECT_CEDULA QA_SALES_FOREIGN_PROSPECT_CEDULA)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
+          done
+          if [ "${QA_SALES_EXECUTE_WRITES}" = "CS21A170_STAGING_ONLY" ]; then
+            if [ "${QA_SALES_WRITE_CONFIRMATION}" != "CS21A170_STAGING_ONLY" ]; then
+              echo "Falta confirmación de escrituras QA Sales"; exit 1
+            fi
+            if [ -z "${QA_SALES_GROUP_CODE}" ]; then
+              echo "Falta QA_SALES_GROUP_CODE para probar activación denegada"; exit 1
+            fi
+          fi
+      - name: Run Sales E2 staging
+        run: node scripts/real_qa_sales_e2_cs21a170.mjs
+      - name: Publish Sales E2 summary
+        if: always()
+        run: cat qa-output-sales-e2/sales-e2-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Sales E2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-sales-e2-${{ github.run_number }}
+          path: qa-output-sales-e2/
+          if-no-files-found: error
+          retention-days: 14
