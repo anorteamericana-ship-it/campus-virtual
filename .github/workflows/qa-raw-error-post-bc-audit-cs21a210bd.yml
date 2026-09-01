@@ -1,0 +1,24 @@
+name: QA Raw Error Post BC Audit CS21A210BD
+on:
+  push:
+    branches: [audit/raw-error-post-bc-cs21a210bd]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/RAW_USER_ERROR_SURFACE_POST_BC_CS21A210BD_2026-09-01.md'
+      - '00_DOCUMENTACION/RAW_USER_ERROR_ROUTE_CLASSIFICATION_CS21A210BD_2026-09-01.md'
+      - 'scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs'
+      - '.github/workflows/qa-raw-error-post-bc-audit-cs21a210bd.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Verify BD classification and V3 snapshot
+        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs --exact-import
+      - name: Regress BC admin safe errors
+        run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs
+      - name: Diff hygiene
+        run: git diff --check c018e5c3f6d0a48605c5de5dce4427604e9e8c21
