@@ -1,0 +1,48 @@
+name: Audit Importador BCR Wiring CS21A210AR
+
+on:
+  push:
+    branches:
+      - audit/importador-bcr-wiring-cs21a210ar
+    paths:
+      - '.github/workflows/audit-importador-bcr-wiring-cs21a210ar.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Map current BCR importer wiring
+        run: |
+          {
+            echo 'CS21A210AR IMPORTADOR BCR WIRING AUDIT'
+            echo 'BASE=2337bd0f4a159a2ae1f1a25a0e14aca4cae0ec29'
+            echo '--- CAMPUS STATIC REFERENCES ---'
+            grep -nE 'importador_banco|student_academic_summary_runtime_cs21a113b' campus.html || true
+            echo '--- APP BANK ROUTE ---'
+            grep -n "banco:" src/app.jsx || true
+            echo '--- RUNTIME REFS TO CS21A113B ---'
+            grep -RIn --exclude-dir=.git --exclude-dir=00_DOCUMENTACION --include='*.js' --include='*.jsx' --include='*.html' 'student_academic_summary_runtime_cs21a113b.js' . || true
+            echo '--- RUNTIME REFS TO CS21A114 LOADER ---'
+            grep -RIn --exclude-dir=.git --exclude-dir=00_DOCUMENTACION --include='*.js' --include='*.jsx' --include='*.html' 'importador_banco_loader_cs21a114.js' . || true
+            echo '--- RUNTIME REFS TO CS21A114 INTEGRITY ---'
+            grep -RIn --exclude-dir=.git --exclude-dir=00_DOCUMENTACION --include='*.js' --include='*.jsx' --include='*.html' 'importador_banco_integridad_cs21a114.jsx' . || true
+            echo '--- INSTALL CONTRACT ---'
+            grep -n 'window.ImportadorBancario = window.ImportadorBancarioCS21A114' src/importador_banco_integridad_cs21a114.jsx || true
+            echo '--- AH SAFE BOUNDARY ---'
+            node scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs
+          } | tee 00_DOCUMENTACION/IMPORTADOR_BCR_WIRING_CS21A210AR_REPORT.txt
+      - name: Persist wiring report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 00_DOCUMENTACION/IMPORTADOR_BCR_WIRING_CS21A210AR_REPORT.txt
+          git commit -m 'CS21A210AR persist Importador BCR wiring audit'
+          git push
+      - name: Diff hygiene
+        run: git diff --check
