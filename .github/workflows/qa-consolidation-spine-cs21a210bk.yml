@@ -1,0 +1,31 @@
+name: QA Consolidation Spine CS21A210BK
+on:
+  push:
+    branches: [audit/consolidation-spine-cs21a210bk]
+  pull_request:
+    paths:
+      - 'scripts/qa_consolidation_spine_cs21a210bk.mjs'
+      - '00_DOCUMENTACION/CONSOLIDATION_SPINE_CS21A210BK_2026-09-01.md'
+      - '.github/workflows/qa-consolidation-spine-cs21a210bk.yml'
+permissions:
+  contents: read
+jobs:
+  ancestry-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Fetch canonical and blocked PR refs
+        run: |
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/pull/70/head:refs/remotes/origin/pr70 \
+            +refs/pull/257/head:refs/remotes/origin/pr257
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Prove green spine and blocked exclusions
+        run: node scripts/qa_consolidation_spine_cs21a210bk.mjs
+      - name: Regress BJ actionability closure
+        run: node scripts/qa_raw_error_residual_actionability_cs21a210bj.mjs
+      - name: Diff hygiene
+        run: git diff --check 7ceca9c5374416ddc16a293ab6cbabedd8fa3713
