@@ -7,6 +7,12 @@
    ============================================================================ */
 const { useState: cvUseState, useEffect: cvUseEffect } = React;
 
+function ventasCalendarioSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+  if (msg) console.warn('[VentasCalendario] Detalle técnico oculto al usuario.', { context, error: msg });
+  return fallback;
+}
+
 const CV_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const CV_DIA_LABEL = { L: 'Lun', M: 'Mar', X: 'Mié', J: 'Jue', V: 'Vie', S: 'Sáb', D: 'Dom' };
 function cvRango(ini, fin) {
@@ -32,7 +38,10 @@ function MiCalendarioSemanal({ asesor }) {
     setData(null); setErr('');
     window.getCalendarioMatriculas({ asesor_filtro: asesor, con_tendencia: false })
       .then(r => { if (cancel) return; if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo cargar.'); setData(r); })
-      .catch(e => { if (!cancel) setErr(e.message || 'No se pudo cargar el calendario.'); });
+      .catch(e => {
+        if (cancel) return;
+        setErr(ventasCalendarioSafeUserError(e && e.message, 'No pudimos cargar tu calendario. Intentá nuevamente.', 'calendario_semanal'));
+      });
     return () => { cancel = true; };
   }, [asesor, tick]);
 
@@ -196,7 +205,10 @@ function MiMatriculasMes({ asesor }) {
     // devolverá la semana actual y caemos al modo "una semana".
     window.getCalendarioMatriculas({ asesor_filtro: asesor, mes: mesISO, con_tendencia: false })
       .then(r => { if (cancel) return; if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo cargar.'); setData(r); })
-      .catch(e => { if (!cancel) setErr(e.message || 'No se pudieron cargar tus matrículas.'); });
+      .catch(e => {
+        if (cancel) return;
+        setErr(ventasCalendarioSafeUserError(e && e.message, 'No pudimos cargar tus matrículas. Intentá nuevamente.', 'matriculas_mes'));
+      });
     return () => { cancel = true; };
   }, [asesor, mesISO, tick]);
 
@@ -257,7 +269,7 @@ function MiMatriculasMes({ asesor }) {
       </div>
       {soloUnaSemana ? (
         <div className="vx-mm-note">
-          Mostrando solo la <b>semana actual</b>: el backend aún entrega una sola semana. El total mensual completo requiere ampliar <code>getCalendarioMatriculas</code> (ver Requerimientos backend).
+          Mostrando solo la <b>semana actual</b>. La vista mensual completa todavía no está disponible.
         </div>
       ) : null}
     </React.Fragment>
