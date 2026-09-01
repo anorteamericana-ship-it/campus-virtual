@@ -1,0 +1,93 @@
+CS21A210S RAW USER ERROR SURFACE AUDIT V3
+FILES_ROOT=src
+DIRECT_RAW_SINK_FINDINGS=68
+FILES_WITH_FINDINGS=17
+CUSTOM_SETTER_FINDINGS=19
+FILE_COUNT|13|src/examenes_bundle.jsx
+FILE_COUNT|13|src/examenes_modes.jsx
+FILE_COUNT|7|src/admin_students.jsx
+FILE_COUNT|7|src/english_lab_live.jsx
+FILE_COUNT|5|src/inscripcion.jsx
+FILE_COUNT|5|src/SOLICI~2.JSX
+FILE_COUNT|4|src/app.jsx
+FILE_COUNT|3|src/ican_participation_cs21a122.js
+FILE_COUNT|2|src/ventas_calendario.jsx
+FILE_COUNT|2|src/vista_docente.jsx
+FILE_COUNT|1|src/ADMIN_~4.JSX
+FILE_COUNT|1|src/cronograma.jsx
+FILE_COUNT|1|src/english_lab_free_access_cs21a66.js
+FILE_COUNT|1|src/importador_banco.jsx
+FILE_COUNT|1|src/MATRIC~3.JSX
+FILE_COUNT|1|src/PANEL_~1.JSX
+FILE_COUNT|1|src/syllabus_views (1).jsx
+FINDING|RAW_EXCEPTION_SINK|setState|src/ADMIN_~4.JSX:52|setState({loading:false,error:e.message||String(e),data:null})
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setResyncEst|src/admin_students.jsx:2121|setResyncEst({codigo,loading:false,ok:r.ok,error:r.error})
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setCertEstado|src/admin_students.jsx:2463|setCertEstado({ ...(preview || {}), ok: false, masivo: true, error: (preview && (preview.error || preview.mensaje)) || 'No se pudo preparar la vista previa', nivel })
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setCertEstado|src/admin_students.jsx:2526|setCertEstado({ ...(preview || {}), ok:false, masivo:true, regenerando:true, error:(preview && (preview.error || preview.mensaje)) || 'No se pudo preparar la regeneración', nivel })
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setRes|src/admin_students.jsx:3927|setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}))
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setRes|src/admin_students.jsx:3955|setRes(r => ({...r, [certKey]: { error:data.mensaje || data.error, search_url:data.search_url }}))
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setRes|src/admin_students.jsx:3990|setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}))
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setRes|src/admin_students.jsx:4023|setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo generar el certificado.' }}))
+FINDING|RAW_EXCEPTION_SINK|setError|src/app.jsx:328|setError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setError|src/app.jsx:330|setError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setState|src/app.jsx:433|setState({loading:false,error:e.message||String(e),evals:[],repos:[],nivelActivo:''})
+FINDING|RAW_EXCEPTION_SINK|setState|src/app.jsx:476|setState({loading:false,error:e.message||String(e),assigned:false,data:null})
+FINDING|RAW_EXCEPTION_SINK|setError|src/cronograma.jsx:49|setError(e.message)
+FINDING|RAW_EXCEPTION_CUSTOM_SETTER|setItem|src/english_lab_free_access_cs21a66.js:127|setItem(CACHE_KEY, JSON.stringify({ checked:state.checked, allowed:state.allowed, estado:state.estado, message:state.message, signature:state.signature, checkedAt:state.checkedAt || Date.now(), }))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:363|setError(e.message || String(e))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:374|setError(e.message || String(e))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:535|setError(e.message || String(e))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:561|setError(e.message || String(e))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:570|setError(e.message || String(e))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:672|setError(e.message || String(e))
+FINDING|RAW_EXCEPTION_SINK|setError|src/english_lab_live.jsx:685|setError(e.message || String(e))
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_bundle.jsx:5270|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo guardar.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_bundle.jsx:5292|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo enviar el examen.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_bundle.jsx:5369|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo validar el estado del intento.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_bundle.jsx:5433|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo iniciar el intento.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5717|setErr((attRes && (attRes.mensaje || attRes.error)) || 'No se pudo abrir la entrega.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5729|setErr((createRes && (createRes.mensaje || createRes.error)) || 'No se pudo preparar la revisión.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5736|setErr((revRes && (revRes.mensaje || revRes.error)) || 'No se pudo cargar la revisión.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5805|setErr((closeRes && (closeRes.mensaje || closeRes.error)) || 'No se pudo cerrar la revisión.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5813|setErr((pushRes && (pushRes.mensaje || pushRes.error)) || 'La revisión se cerró, pero no se pudo registrar la nota. Presioná Enviar Nota nuevamente.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5825|setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:5926|setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:6441|setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_bundle.jsx:7210|setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar backend.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_modes.jsx:169|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo guardar.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_modes.jsx:191|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo enviar el examen.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_modes.jsx:268|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo validar el estado del intento.')
+FINDING|RAW_BACKEND_ERROR_CUSTOM_SETTER|setSaveMsg|src/examenes_modes.jsx:332|setSaveMsg((r && (r.mensaje || r.error)) || 'No se pudo iniciar el intento.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:616|setErr((attRes && (attRes.mensaje || attRes.error)) || 'No se pudo abrir la entrega.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:628|setErr((createRes && (createRes.mensaje || createRes.error)) || 'No se pudo preparar la revisión.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:635|setErr((revRes && (revRes.mensaje || revRes.error)) || 'No se pudo cargar la revisión.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:704|setErr((closeRes && (closeRes.mensaje || closeRes.error)) || 'No se pudo cerrar la revisión.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:712|setErr((pushRes && (pushRes.mensaje || pushRes.error)) || 'La revisión se cerró, pero no se pudo registrar la nota. Presioná Enviar Nota nuevamente.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:724|setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:825|setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:1340|setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.')
+FINDING|RAW_BACKEND_ERROR_SINK|setErr|src/examenes_modes.jsx:2109|setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar backend.')
+FINDING|RAW_EXCEPTION_SINK|setData|src/ican_participation_cs21a122.js:1|setData({error:primaryError.message||'No se pudo cargar Club I CAN.'})
+FINDING|RAW_EXCEPTION_SINK|setNotice|src/ican_participation_cs21a122.js:1|setNotice(error.message||'No se pudo guardar la inscripción.')
+FINDING|RAW_EXCEPTION_SINK|setError|src/ican_participation_cs21a122.js:1|setError(loadError.message||'No se pudieron cargar las inscripciones.')
+FINDING|RAW_EXCEPTION_SINK|setError|src/importador_banco.jsx:120|setError(`Error al leer el archivo: ${caught.message}`)
+FINDING|RAW_EXCEPTION_SINK|setErr|src/inscripcion.jsx:488|setErr(String(e&&e.message||'No se pudo abrir la foto.'))
+FINDING|RAW_EXCEPTION_SINK|setErr|src/inscripcion.jsx:849|setErr(e.message)
+FINDING|RAW_EXCEPTION_CUSTOM_SETTER|setGroupsError|src/inscripcion.jsx:1396|setGroupsError(e.message)
+FINDING|RAW_EXCEPTION_CUSTOM_SETTER|setGlobalError|src/inscripcion.jsx:1417|setGlobalError(e.message)
+FINDING|RAW_EXCEPTION_CUSTOM_SETTER|setSubmitError|src/inscripcion.jsx:1477|setSubmitError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setErr|src/MATRIC~3.JSX:62|setErr(e.message || 'No se pudo cargar el calendario.')
+FINDING|RAW_EXCEPTION_SINK|setError|src/PANEL_~1.JSX:549|setError(e.message || 'Error de conexión.')
+FINDING|RAW_EXCEPTION_SINK|setError|src/SOLICI~2.JSX:38|setError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setError|src/SOLICI~2.JSX:62|setError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setError|src/SOLICI~2.JSX:64|setError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setError|src/SOLICI~2.JSX:92|setError(e.message)
+FINDING|RAW_EXCEPTION_SINK|setError|src/SOLICI~2.JSX:94|setError(e.message)
+FINDING|RAW_BACKEND_ERROR_SINK|setError|src/syllabus_views (1).jsx:1360|setError((d && d.error) || 'No se pudo cargar la información del programa.')
+FINDING|RAW_EXCEPTION_SINK|setErr|src/ventas_calendario.jsx:35|setErr(e.message || 'No se pudo cargar el calendario.')
+FINDING|RAW_EXCEPTION_SINK|setErr|src/ventas_calendario.jsx:199|setErr(e.message || 'No se pudieron cargar tus matrículas.')
+FINDING|RAW_EXCEPTION_SINK|setError|src/vista_docente.jsx:1783|setError(e.message || 'Error de conexión.')
+FINDING|RAW_EXCEPTION_SINK|setError|src/vista_docente.jsx:1801|setError(e.message || 'Error de conexión.')
+NOTE=V3 expands V2 to React-style custom setters while retaining safe-helper/mapped-code exclusions
+NOTE=Audit findings require route/ownership review before any functional patch
+EVIDENCE=AUDIT_ONLY_NO_FUNCTIONAL_CHANGE
