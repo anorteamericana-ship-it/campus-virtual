@@ -1,0 +1,15 @@
+CS21A210AR IMPORTADOR BCR WIRING AUDIT
+BASE=2337bd0f4a159a2ae1f1a25a0e14aca4cae0ec29
+--- CAMPUS STATIC REFERENCES ---
+--- APP BANK ROUTE ---
+88:  banco: ['src/importador_banco.jsx?v=F96.5G'],
+1007:      banco:        <LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />,
+--- RUNTIME REFS TO CS21A113B ---
+--- RUNTIME REFS TO CS21A114 LOADER ---
+./src/student_academic_summary_runtime_cs21a113b.js:32:  script.src='src/importador_banco_loader_cs21a114.js?v=F98.4Z6CS21A114';
+--- RUNTIME REFS TO CS21A114 INTEGRITY ---
+./src/importador_banco_loader_cs21a114.js:4:  const src='src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114';
+--- INSTALL CONTRACT ---
+167:  window.ImportadorBancario = window.ImportadorBancarioCS21A114;
+--- AH SAFE BOUNDARY ---
+OK: CS21A210AH safe-error boundary + CS21A114 integrity contract + exact preimage reconstruction
