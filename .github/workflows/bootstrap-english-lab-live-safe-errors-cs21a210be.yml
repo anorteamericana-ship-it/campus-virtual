@@ -1,0 +1,42 @@
+name: Bootstrap English LAB Live Safe Errors CS21A210BE
+on:
+  push:
+    branches: [bootstrap/english-lab-live-safe-errors-cs21a210be]
+    paths:
+      - 'scripts/bootstrap_english_lab_live_safe_errors_cs21a210be.mjs'
+      - '.github/workflows/bootstrap-english-lab-live-safe-errors-cs21a210be.yml'
+permissions:
+  contents: write
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Generate BE candidate
+        run: node scripts/bootstrap_english_lab_live_safe_errors_cs21a210be.mjs
+      - run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse Live JSX
+        run: node -e "const fs=require('fs'),p=require('@babel/parser');p.parse(fs.readFileSync('src/english_lab_live.jsx','utf8'),{sourceType:'script',plugins:['jsx']});"
+      - name: Verify BE exact reconstruction
+        run: node scripts/qa_english_lab_live_safe_errors_cs21a210be.mjs
+      - name: Regress BD
+        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
+      - name: Verify V3 exact reduction
+        run: |
+          set -o pipefail
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-be.txt
+          grep -Fq 'DIRECT_RAW_SINK_FINDINGS=21' /tmp/v3-be.txt
+          grep -Fq 'FILES_WITH_FINDINGS=11' /tmp/v3-be.txt
+          if grep -Fq 'src/english_lab_live.jsx' /tmp/v3-be.txt; then exit 1; fi
+      - name: Regress BC
+        run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs
+      - name: Diff hygiene
+        run: git diff --check ddd243a73e74c109420fc8a3e9a82e7c2bf31349
+      - name: Commit generated candidate
+        run: |
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add src/english_lab_live.jsx scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs scripts/qa_english_lab_live_safe_errors_cs21a210be.mjs .github/workflows/qa-english-lab-live-safe-errors-cs21a210be.yml 00_DOCUMENTACION/ENGLISH_LAB_LIVE_SAFE_ERRORS_CS21A210BE_2026-09-01.md
+          git commit -m 'CS21A210BE build validated English LAB Live safe-errors candidate'
+          git push
