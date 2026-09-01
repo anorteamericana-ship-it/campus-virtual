@@ -85,7 +85,7 @@ const F96_LAZY = {
   calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F98.4Z6CM','src/admin_students.jsx?v=F98.4Z6CS21A140','src/calendario_grupo.jsx?v=F98.4Z6CM'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/teacher_views.jsx?v=F98.4Z6CS21A142','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS19F','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F98.4Z6CS21A140','src/buscador.jsx?v=F98.4Z6AS'],
-  banco: ['src/importador_banco.jsx?v=F96.5G'],
+  banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/panel_admin_supervision.jsx?v=F96.5G'],
