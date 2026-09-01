@@ -1,0 +1,59 @@
+name: Bootstrap Inscripcion Safe Errors CS21A210AX
+
+on:
+  push:
+    branches:
+      - bootstrap/inscripcion-public-safe-errors-cs21a210ax
+
+permissions:
+  contents: write
+
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify bootstrap base
+        run: test "$(git rev-parse HEAD^)" = "186e2e76fada311ee9bfe9cfc620cdaaa3edc927"
+      - name: Verify exact preimage
+        run: test "$(git hash-object src/inscripcion.jsx)" = "310d7b6e888836baca1bd0da0ccc0730c23ca9c3"
+      - name: Apply exact CS21A210AX patch
+        run: node scripts/bootstrap_inscripcion_safe_errors_cs21a210ax.mjs
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse JSX
+        run: node -e "const fs=require('fs');const p=require('@babel/parser');p.parse(fs.readFileSync('src/inscripcion.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining']});console.log('JSX parse PASS')"
+      - name: Verify raw sinks removed
+        run: |
+          ! grep -Fq "setErr(String(e&&e.message||'No se pudo abrir la foto.'))" src/inscripcion.jsx
+          ! grep -Fq 'setErr(e.message)' src/inscripcion.jsx
+          ! grep -Fq 'setGroupsError(e.message)' src/inscripcion.jsx
+          ! grep -Fq 'setGlobalError(e.message)' src/inscripcion.jsx
+          ! grep -Fq 'setSubmitError(e.message)' src/inscripcion.jsx
+      - name: Re-run V3 reproducibly
+        run: |
+          set -o pipefail
+          test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ax.txt
+          grep -Fq 'DIRECT_RAW_SINK_FINDINGS=52' /tmp/v3-ax.txt
+          grep -Fq 'FILES_WITH_FINDINGS=12' /tmp/v3-ax.txt
+          ! grep -Fq 'src/inscripcion.jsx' /tmp/v3-ax.txt
+      - name: Regress AV route classification dependencies
+        run: |
+          node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
+          node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Diff hygiene and scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only HEAD | sort)" = "src/inscripcion.jsx"
+      - name: Commit validated candidate source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/inscripcion.jsx
+          git commit -m 'CS21A210AX candidate source after green bootstrap'
+          git push origin HEAD:bootstrap/inscripcion-public-safe-errors-cs21a210ax
