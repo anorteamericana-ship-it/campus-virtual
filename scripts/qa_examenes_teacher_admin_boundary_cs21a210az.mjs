@@ -20,6 +20,8 @@ const rawTeacherPatterns=[
   "setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');",
 ];
 const safeContexts=['get_attempt','create_review','get_review','close_review','push_after_close','push_retry','review_inbox'];
+const activationRaw="const detail = r && (r.mensaje || r.error || (r.errores && r.errores.join(' · ')));";
+const opsRaw="else { setMsg(''); setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.'); }";
 const exact=process.argv.includes('--exact-import');
 
 for(const [path,sha] of Object.entries(expected)){
@@ -31,10 +33,20 @@ for(const [path,sha] of Object.entries(expected)){
   if(!current.includes('function TeacherWrittenLiveInbox(')) throw new Error(`teacher inbox boundary missing ${path}`);
   if(exact){
     for(const p of rawTeacherPatterns){const n=current.split(p).length-1;if(n!==1) throw new Error(`teacher raw sink count mismatch ${path}: ${n} :: ${p}`);}
+    if(!current.includes(activationRaw)) throw new Error(`activation admin raw projection changed ${path}`);
+    if(!current.includes(opsRaw)) throw new Error(`ops admin raw projection changed ${path}`);
   }else{
     for(const p of rawTeacherPatterns) if(current.includes(p)) throw new Error(`teacher raw sink survived descendant ${path}: ${p}`);
     if((current.match(/function examTeacherSafeUserError\(/g)||[]).length!==1) throw new Error(`teacher safe helper count mismatch ${path}`);
     for(const c of safeContexts) if((current.match(new RegExp("'"+c+"'",'g'))||[]).length!==1) throw new Error(`teacher safe context mismatch ${path}: ${c}`);
+    const adminSafe=current.includes('function examAdminSafeUserError(');
+    if(adminSafe){
+      if(current.includes(activationRaw)||current.includes(opsRaw)) throw new Error(`admin raw projection survived safe descendant ${path}`);
+      if(!current.includes("setErr(examAdminSafeUserError(r, 'No se pudo completar la operación.', 'activation'));")) throw new Error(`safe activation projection missing ${path}`);
+      if(!current.includes("setErr(examAdminSafeUserError(r, 'No se pudo completar la operación.', 'backend_operations'))")) throw new Error(`safe operations projection missing ${path}`);
+    } else {
+      if(!current.includes(activationRaw)||!current.includes(opsRaw)) throw new Error(`admin boundary changed without safe helper ${path}`);
+    }
   }
   const teacherStart=current.indexOf('function TeacherWrittenBackendReviewF940(');
   const teacherEnd=current.indexOf('function TeacherReview(', teacherStart);
@@ -42,8 +54,6 @@ for(const [path,sha] of Object.entries(expected)){
   if(!teacherSlice.includes('{err && <div className="rev-live-err">')) throw new Error(`review err UI missing ${path}`);
   if(!teacherSlice.includes('{err && <div className="ex-errmsg">')) throw new Error(`inbox err UI missing ${path}`);
   if(!current.includes('function ActivationBackendPanel(') || !current.includes('function BackendOperationsPanel(')) throw new Error(`admin boundary missing ${path}`);
-  if(!current.includes("const detail = r && (r.mensaje || r.error || (r.errores && r.errores.join(' · ')));")) throw new Error(`activation admin raw projection changed ${path}`);
-  if(!current.includes("else { setMsg(''); setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.'); }")) throw new Error(`ops admin raw projection changed ${path}`);
 }
 
-console.log(exact ? 'CS21A210AZ exact teacher/admin boundary PASS' : 'CS21A210AZ descendant boundary PASS · teacher safe/admin unchanged');
+console.log(exact ? 'CS21A210AZ exact teacher/admin boundary PASS' : 'CS21A210AZ descendant boundary PASS · teacher safe/admin contract preserved');
