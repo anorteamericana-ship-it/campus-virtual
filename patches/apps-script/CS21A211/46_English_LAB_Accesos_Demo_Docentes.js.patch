@@ -1,0 +1,10 @@
+--- a/46_English_LAB_Accesos_Demo_Docentes.js
++++ b/46_English_LAB_Accesos_Demo_Docentes.js
+@@ -1,5 +1,9 @@
+ // English LAB accesos / demo / docentes
+-var QA_DOCENTES_FOLDER_ID = '1GN1g-vB6Pr71vi_kXQE4NeoZr8KVxTPO';
++var QA_DOCENTES_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_DOCUMENTOS_DOCENTES_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
