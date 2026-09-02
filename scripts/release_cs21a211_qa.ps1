@@ -80,11 +80,11 @@ function Invoke-Clasp {
 }
 
 function Assert-Manifest([string]$Path, [string]$ExpectedAggregate, [int]$ExpectedBytes, [string]$Label) {
-  if (-not (Test-Path -LiteralPath $Path)) { Fail "$Label: no se generó manifest." }
+  if (-not (Test-Path -LiteralPath $Path)) { Fail "${Label}: no se generó manifest." }
   $m = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
-  if ([int]$m.source_file_count -ne 71) { Fail "$Label: se esperaban 71 archivos, llegaron $($m.source_file_count)." }
-  if ([string]$m.aggregate_sha256 -ne $ExpectedAggregate) { Fail "$Label: aggregate inesperado $($m.aggregate_sha256). Esperado $ExpectedAggregate." }
-  if ($ExpectedBytes -gt 0 -and [int64]$m.source_total_bytes -ne $ExpectedBytes) { Fail "$Label: bytes inesperados $($m.source_total_bytes). Esperado $ExpectedBytes." }
+  if ([int]$m.source_file_count -ne 71) { Fail "${Label}: se esperaban 71 archivos, llegaron $($m.source_file_count)." }
+  if ([string]$m.aggregate_sha256 -ne $ExpectedAggregate) { Fail "${Label}: aggregate inesperado $($m.aggregate_sha256). Esperado $ExpectedAggregate." }
+  if ($ExpectedBytes -gt 0 -and [int64]$m.source_total_bytes -ne $ExpectedBytes) { Fail "${Label}: bytes inesperados $($m.source_total_bytes). Esperado $ExpectedBytes." }
   return $m
 }
 
