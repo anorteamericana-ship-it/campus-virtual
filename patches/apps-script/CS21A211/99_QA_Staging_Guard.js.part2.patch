@@ -1,0 +1,110 @@
+-  }
+-};
++// ===================== CS21A144 QA FINAL GUARD ==============================
++
++// F98.4-Z6-CS21A144-QA · Guard de staging para English LAB.
++// Debe permanecer al FINAL del Code.gs QA, después del parche CS21A144.
++var QA_CS21A144_MARKER = 'QA_STAGING_CS21A144';
++var QA_CS21A144_MASTER_ID = '1dud749W7dJaYkD7l2C3-CKmbrCx5mG_pahTOYrHLsvE';
++var QA_CS21A144_OPERATIVO_ID = '1aPYBZOs8zxF2n9cDOeKazhSXHRfhqyLs8pDM0axt8U0';
++// IDs de PROD usados únicamente como denylist de frontera; nunca como fallback.
++var QA_CS21A211_PROD_RESOURCE_IDS = Object.freeze({
++  documentos:'1Bm9pK4OvWE944X29bm8S3UWUlWP_G5jO',
++  plantillas:'1Z4N0TM5tFYT_aHUiUklKX3fJvPNArw2K',
++  documentos_estudiantes:'18enRbEhc5SSVK1v0ACO7oLqbsJX2gqOT',
++  documentos_docentes:'1GN1g-vB6Pr71vi_kXQE4NeoZr8KVxTPO',
++  conape_backup:'1LIX_vbyyZAtPElUpfm5S5WjIHs79n0Vt',
++  proformas:'1SoXa-A_-eUtMMRfU4mSuaOaoiqpUUS9hSnPT5yHW7zQ',
++  conape_4:'18x3tCfzFQ8KsT5ESyblxEW1A4aa_yPRAoiH8972XKVo',
++  conape_5:'1Z4V3GW3dSTVd3J6oaLty5MSArKWRjYYd52u75MA1SIE',
++  conape_6:'13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI',
++  conape_7:'1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg'
++});
++
++function _qa144Text_(v){ return String(v == null ? '' : v).trim(); }
++function _qa144Json_(obj){
++  try { return _an4406_json_(obj); }
++  catch (_) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
++}
++function _qa144Properties_(){
++  try {
++    var props = PropertiesService.getScriptProperties();
++    return {
++      master:_qa144Text_(props.getProperty('QA_STAGING_MASTER_ID')),
++      operativo:_qa144Text_(props.getProperty('QA_STAGING_OPERATIVO_ID')),
++      documentos:_qa144Text_(props.getProperty('QA_STAGING_DOCUMENTOS_FOLDER_ID')),
++      documentos_estudiantes:_qa144Text_(props.getProperty('QA_STAGING_DOCUMENTOS_ESTUDIANTES_FOLDER_ID')),
++      plantillas:_qa144Text_(props.getProperty('QA_STAGING_PLANTILLAS_FOLDER_ID')),
++      padron:_qa144Text_(props.getProperty('QA_STAGING_PADRON_FOLDER_ID')),
++      documentos_docentes:_qa144Text_(props.getProperty('QA_STAGING_DOCUMENTOS_DOCENTES_ROOT_ID')),
++      conape_backup:_qa144Text_(props.getProperty('QA_STAGING_CONAPE_BACKUP_FOLDER_ID')),
++      proformas:_qa144Text_(props.getProperty('QA_STAGING_PROFORMAS_SHEET_ID')),
++      conape_4:_qa144Text_(props.getProperty('QA_STAGING_CONAPE_4_ESTUDIANTES_ID')),
++      conape_5:_qa144Text_(props.getProperty('QA_STAGING_CONAPE_5_PLAN_ID')),
++      conape_6:_qa144Text_(props.getProperty('QA_STAGING_CONAPE_6_HISTORIAL_ID')),
++      conape_7:_qa144Text_(props.getProperty('QA_STAGING_CONAPE_7_MOROSIDAD_ID'))
++    };
++  } catch (_) {
++    return {
++      master:'', operativo:'', documentos:'', documentos_estudiantes:'', plantillas:'', padron:'',
++      documentos_docentes:'', conape_backup:'', proformas:'', conape_4:'', conape_5:'', conape_6:'', conape_7:''
++    };
++  }
++}
++function _qa144CurrentExternalIds_(){
++  var conape = typeof CONAPE_SHEET_IDS === 'object' && CONAPE_SHEET_IDS ? CONAPE_SHEET_IDS : {};
++  return {
++    documentos:_qa144Text_(typeof DOCUMENTOS_FOLDER_ID === 'undefined' ? '' : DOCUMENTOS_FOLDER_ID),
++    documentos_estudiantes:_qa144Text_(typeof DOCUMENTOS_ESTUDIANTES_FOLDER_ID === 'undefined' ? '' : DOCUMENTOS_ESTUDIANTES_FOLDER_ID),
++    plantillas:_qa144Text_(typeof PLANTILLAS_FOLDER_ID === 'undefined' ? '' : PLANTILLAS_FOLDER_ID),
++    padron:_qa144Text_(typeof PADRON_FOLDER_ID === 'undefined' ? '' : PADRON_FOLDER_ID),
++    documentos_docentes:_qa144Text_(typeof CS21A76_DOCUMENTOS_DOCENTES_ROOT_ID === 'undefined' ? '' : CS21A76_DOCUMENTOS_DOCENTES_ROOT_ID),
++    conape_backup:_qa144Text_(typeof CONAPE_AW_FOLDER_ID === 'undefined' ? '' : CONAPE_AW_FOLDER_ID),
++    proformas:_qa144Text_(typeof PROFORMAS_SHEET_ID === 'undefined' ? '' : PROFORMAS_SHEET_ID),
++    conape_4:_qa144Text_(conape['4-estudiantes']),
++    conape_5:_qa144Text_(conape['5-plan_estudios']),
++    conape_6:_qa144Text_(conape['6-historial']),
++    conape_7:_qa144Text_(conape['7-morosidad'])
++  };
++}
++function _qa144ExternalIdsOk_(){
++  var props = _qa144Properties_();
++  var current = _qa144CurrentExternalIds_();
++  var keys = [
++    'documentos','documentos_estudiantes','plantillas','padron','documentos_docentes',
++    'conape_backup','proformas','conape_4','conape_5','conape_6','conape_7'
++  ];
++  for (var i = 0; i < keys.length; i += 1) {
++    var key = keys[i];
++    if (!current[key] || !props[key] || current[key] !== props[key]) return false;
++    if (current[key] === _qa144Text_(QA_CS21A211_PROD_RESOURCE_IDS[key])) return false;
++  }
++  // CONAPE_DRIVE_FOLDER_ID es un alias histórico del mismo root de respaldo.
++  if (typeof CONAPE_DRIVE_FOLDER_ID !== 'undefined' &&
++      _qa144Text_(CONAPE_DRIVE_FOLDER_ID) !== current.conape_backup) return false;
++  return true;
++}
++function _qa144IdsOk_(){
++  var props = _qa144Properties_();
++  return _qa144Text_(SHEET_ID) === QA_CS21A144_MASTER_ID &&
++    _qa144Text_(OPERATIVO_ID) === QA_CS21A144_OPERATIVO_ID &&
++    props.master === QA_CS21A144_MASTER_ID &&
++    props.operativo === QA_CS21A144_OPERATIVO_ID &&
++    _qa144ExternalIdsOk_();
++}
++function _qa144AllowedLabFn_(fn){
++  return /^englishlab/i.test(fn) || /^academiaplay/i.test(fn) || fn === 'freeuserenglishlabaccess';
++}
++function _qa144AllowedCampusCoreFn_(fn){
++  return [
++    'iniciarsesion', 'validarsesion', 'cerrarsesion',
++    'getinfogeneral',
++    'getestudiante', 'getevaluacionesestudiante', 'getasistenciaestudiante', 'getestadoconape',
++    'getcalendariodocente', 'getgrupoestudiantes', 'getadmindashboard'
++  ].indexOf(fn) !== -1;
++}
++function _qa144DangerousFn_(fn){
++  return /(pago|payment|banco|bank|comprobante|factura|nota|grade|evaluacion|examen|oral|asistencia|cierre|cerrar|conape|matricula|suspension|cambio|actualizar|eliminar|borrar|importar|aplicar|revertir|promover)/i.test(fn);
++}
++function _qa144RouteIds_(e, body){
++  var values = [];
