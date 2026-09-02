@@ -99,7 +99,7 @@
 +  return [
 +    'iniciarsesion', 'validarsesion', 'cerrarsesion',
 +    'getinfogeneral',
-+    'getestudiante', 'getevaluacionesestudiante', 'getasistenciaestudiante', 'getestadoconape',
++    'getevaluacionesestudiante', 'getasistenciaestudiante', 'getestadoconape',
 +    'getcalendariodocente', 'getgrupoestudiantes'
 +  ].indexOf(fn) !== -1;
 +}
