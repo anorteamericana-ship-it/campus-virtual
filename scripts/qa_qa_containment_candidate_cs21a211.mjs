@@ -21,6 +21,16 @@ const expectedFiles = [
   '99_QA_Staging_Guard.js',
   'index.html',
 ].sort();
+const expectedSourcePatchSha = {
+  '01_Router.js':'10d4190ed565839b101715900a4f949b1f7b031bb76281aaa404e48617cd790f',
+  '02_Auth_Sesiones_Usuarios.js':'e04e7971487ce3abd9b6b71a9d9f2256e0c97bf4b8142ad20ef4befcfaef69bc',
+  '10_Estudiantes.js':'141d8a5a58ae98627d9c10e863a7461d77f9a0e5266f82fdf17b7aadebbb67bc',
+  '41_CONAPE_Auditoria_Finanzas.js':'088a1361cc8b0cedfd2f07ed6235a225e85c5fb05f19fc057f3c5d8a0961d9cf',
+  '46_English_LAB_Accesos_Demo_Docentes.js':'f1ae6941359b0a23a0c566399b8769e12732fca4c27fbde1c8bdba753c3100c2',
+  '98_Instalacion_QA_CS21A144.js':'b6775193627f049aa3d44b33c0ae9c3d73e7e95d599a70cd44301478fb73e9f5',
+  '99_QA_Staging_Guard.js':'1371762334a67ea23e329010c6ebb7126aeaaba88747252b33db659c43977f1b',
+  'index.html':'b7beb97198524a8e6377e32fe206fa99c85e89432b36ed5e929856ec3ee11b16',
+};
 const prodResourceIds = [
   '1Bm9pK4OvWE944X29bm8S3UWUlWP_G5jO',
   '1Z4N0TM5tFYT_aHUiUklKX3fJvPNArw2K',
@@ -49,7 +59,13 @@ for (const part of patchParts) {
 }
 const patchSourceFiles = [...new Set(patchParts.map(part => part.source_path))].sort();
 expect(JSON.stringify(patchSourceFiles) === JSON.stringify(expectedFiles), `patch source set drift: ${patchSourceFiles.join(', ')}`);
-expect(manifest.patch_sha256 === sha256(Buffer.from(patch, 'utf8')), 'combined patch SHA-256 mismatch');
+for (const sourcePath of expectedFiles) {
+  const sourcePatch = patchParts.filter(part => part.source_path === sourcePath).map(part => fs.readFileSync(part.path, 'utf8')).join('');
+  const actualSha = sha256(Buffer.from(sourcePatch, 'utf8'));
+  expect(actualSha === expectedSourcePatchSha[sourcePath], `source patch SHA-256 mismatch for ${sourcePath}: ${actualSha}`);
+}
+const combinedPatchSha = sha256(Buffer.from(patch, 'utf8'));
+expect(manifest.patch_sha256 === combinedPatchSha, `combined patch SHA-256 mismatch: ${combinedPatchSha}`);
 
 const touched = manifest.touched_files.map(x => x.path).sort();
 expect(JSON.stringify(touched) === JSON.stringify(expectedFiles), `unexpected touched files: ${touched.join(', ')}`);
@@ -82,7 +98,6 @@ const requiredProperties = [
 ];
 for (const property of requiredProperties) expect(allAdded.includes(property), `missing QA resource property ${property}`);
 
-// PROD resource IDs may be added only as explicit denylist material in the guard/installer.
 for (const [file, lines] of addedByFile) {
   if (file === '98_Instalacion_QA_CS21A144.js' || file === '99_QA_Staging_Guard.js') continue;
   const text = lines.join('\n');
