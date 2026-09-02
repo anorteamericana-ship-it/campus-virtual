@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/qa-qa-containment-candidate-cs21a211.yml'
       - 'scripts/qa_qa_containment_candidate_cs21a211.mjs'
+      - 'scripts/release_cs21a211_qa.ps1'
       - 'patches/apps-script/CS21A211/**'
       - 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json'
       - '00_DOCUMENTACION/QA_CONTAINMENT_CANDIDATE_CS21A211_2026-09-01.md'
@@ -17,6 +18,7 @@ on:
     paths:
       - '.github/workflows/qa-qa-containment-candidate-cs21a211.yml'
       - 'scripts/qa_qa_containment_candidate_cs21a211.mjs'
+      - 'scripts/release_cs21a211_qa.ps1'
       - 'patches/apps-script/CS21A211/**'
       - 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json'
       - '00_DOCUMENTACION/QA_CONTAINMENT_CANDIDATE_CS21A211_2026-09-01.md'
@@ -46,6 +48,18 @@ jobs:
 
       - name: Syntax check contract
         run: node --check scripts/qa_qa_containment_candidate_cs21a211.mjs
+
+      - name: Syntax check QA release runner
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/release_cs21a211_qa.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'CS21A211E_RELEASE_RUNNER_SYNTAX=PASS'
 
       - name: Verify QA containment candidate
         run: node scripts/qa_qa_containment_candidate_cs21a211.mjs
