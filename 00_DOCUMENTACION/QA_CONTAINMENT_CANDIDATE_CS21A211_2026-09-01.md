@@ -143,7 +143,7 @@ Checkpoint verde del patch exacto: `3ea959538d5ff8dd00a33bff4186f8e5d5169912`.
 - `QA Containment Candidate CS21A211` run `33585824339`: **SUCCESS**.
 - `English LAB Source Truth Guard` run `33585824360`: **SUCCESS**.
 
-HEAD final de la rama se valida por Actions antes de cualquier paso posterior. El contrato CI verifica los hashes por archivo lógico del patch, la integridad del manifest, los 13 aliases self-route y los invariantes fail-closed del guard.
+La rama termina con documentación solamente después del patch. El contrato CI se reejecuta en cada HEAD y verifica los hashes por archivo lógico del patch, la integridad del manifest, los 13 aliases self-route y los invariantes fail-closed del guard.
 
 ## Importante · por qué NO está autorizado instalar aún
 
