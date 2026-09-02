@@ -75,8 +75,24 @@ El resource map privado contiene los valores para:
 - `QA_STAGING_CONAPE_6_HISTORIAL_ID`
 - `QA_STAGING_CONAPE_7_MOROSIDAD_ID`
 
+## Límite explícito de aislamiento
+
+CS21A211D aísla **destinos escribibles** de documentos/CONAPE. El snapshot todavía contiene IDs de activos oficiales usados como fuente de solo lectura, por ejemplo carpetas de libros/audios y `PLANTILLA_IDS`. Esos activos no se copian ni se alteran en este gate y los endpoints mutantes de documentos continúan default-deny.
+
+Antes de cualquier E4 documental estrictamente aislada se deberán crear plantillas QA/sintéticas y volver property-driven esos IDs de fuente. No copiar padrón/PII productivo para resolver este gate.
+
+## Integridad del candidato
+
+CS21A211E corrigió un off-by-one en el hunk full-file del guard antes de cualquier push. El candidato vigente es:
+
+- 71 archivos / 4,688,555 bytes;
+- aggregate `6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1`;
+- patch LF `20aebc28ecc42b550f6d1b03a02314674d130d6825faa40c4685bfea5d423768`;
+- guard 10,400 bytes / SHA `fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a`;
+- 7/7 JS modificados pasan `node --check` tras aplicación real del patch.
+
 ## Estado
 
-**RECURSOS QA AISLADOS PROVISIONADOS · PRIVADOS · VACÍOS · SIN DATOS PROD.**
+**RECURSOS QA AISLADOS PROVISIONADOS · PRIVADOS · VACÍOS · SIN DATOS PROD · SCRIPT PROPERTIES AÚN NO CONFIGURADAS.**
 
-Siguiente gate: instalar el candidato exacto en el proyecto Apps Script QA existente, configurar las Script Properties con el mapa privado, verificar `qa_external_resources_ok=true` y después ejecutar E2/E3. No crear deployment paralelo. No PROD.
+Siguiente gate: configurar las 11 Script Properties en el proyecto Apps Script QA canónico usando el mapa privado; luego re-clonar `@HEAD`, verificar source aggregate `3e384ac3...`, aplicar solo el patch `20aebc28...`, verificar candidate aggregate `6c1c79c0...`, hacer `clasp push` sin `--force` al mismo proyecto QA y reejecutar E2/E3. No crear deployment paralelo. No PROD.
