@@ -10,7 +10,10 @@
 - Snapshot fuente: `QA_HEAD_20260901_215804Z`
 - Fuente: 71 archivos / aggregate SHA-256 `3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6`
 - Candidato offline: 71 archivos / aggregate SHA-256 `afe85193b614ea12720590feede855a8975965e1c195ae13feb97f2fce885220`
-- Patch SHA-256: `5f6c227c00bb25cb7fd0ed6afcab63cc58d79e366e69ae5867e63f5745cb7605`
+- Patch repo normalizado LF SHA-256: `795a25e973d56c9b54ea4b547c74fc8a27df2f63a546886486314ca27fe09d0e`
+- Patch local de referencia SHA-256: `5f6c227c00bb25cb7fd0ed6afcab63cc58d79e366e69ae5867e63f5745cb7605`
+
+La diferencia entre los dos hashes de patch es únicamente de empaquetado: el archivo local de referencia conserva CRLF en el lado removido de `99_QA_Staging_Guard.js`; los fragmentos versionados por GitHub están normalizados a LF. El candidato aplicado y su aggregate son idénticos semánticamente.
 
 **Este PR versiona solo el patch, su manifest, contrato QA y documentación. No sube una copia de los 71 archivos de Apps Script.**
 
@@ -133,7 +136,14 @@ Sobre el snapshot exacto:
 - IDs PROD de recursos externos: no quedan como destinos ejecutables en los archivos modificados; solo aparecen en denylists del guard/instalador;
 - simulación del guard con stubs: **PASS** para lectura core, route ambiguity, dangerous block, default deny, `action` mismatch, ELV2 ausente y rechazo de recurso PROD.
 
-El workflow de este PR vuelve a verificar integridad del patch, manifest y contratos de contención en GitHub Actions.
+### GitHub Actions del HEAD verificado
+
+HEAD de cierre E0/E1: `3ea959538d5ff8dd00a33bff4186f8e5d5169912`.
+
+- `QA Containment Candidate CS21A211` run `33585824339`: **SUCCESS**.
+- `English LAB Source Truth Guard` run `33585824360`: **SUCCESS**.
+
+El contrato CI verifica también los hashes por archivo lógico del patch, la integridad del manifest, los 13 aliases self-route y los invariantes fail-closed del guard.
 
 ## Importante · por qué NO está autorizado instalar aún
 
@@ -162,4 +172,4 @@ Quedan como backlog separado, no se mezclan en este P0 de contención:
 
 ## Estado
 
-**CANDIDATO OFFLINE · E0/E1 PASS · NO APPS SCRIPT WRITE · NO DEPLOY · NO PROD · NO DRIVE ACL/DATA WRITE · NO MERGE.**
+**PATCH OFFLINE READY · E0/E1 PASS · NO APPS SCRIPT WRITE · NO DEPLOY · NO PROD · NO DRIVE ACL/DATA WRITE · NO MERGE.**
