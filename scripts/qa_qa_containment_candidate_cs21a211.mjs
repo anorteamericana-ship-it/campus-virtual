@@ -10,6 +10,11 @@ const fail = message => { throw new Error(`CS21A211 containment contract: ${mess
 const expect = (ok, message) => { if (!ok) fail(message); };
 
 const SOURCE_AGGREGATE = '3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6';
+const EXPECTED_CANDIDATE_AGGREGATE = '9cba15a77a10315d1841aee1e4b86afb6d62bcfeca921e509434a7b746c17840';
+const EXPECTED_CANDIDATE_BYTES = 4688552;
+const EXPECTED_GUARD_AFTER_SHA = 'c78abd443575e5f36fb40bd78f4ff13005efcb98635c3b90273daaf1ec381855';
+const EXPECTED_GUARD_AFTER_BYTES = 10397;
+const EXPECTED_REFERENCE_PATCH_SHA = '3a0af2ca2bab30cba2a7de2d3c6ac299fd9d453e8a201850c2f50580373ee4c3';
 const PROD_DEPLOYMENT = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ';
 const expectedFiles = [
   '01_Router.js',
@@ -48,9 +53,16 @@ expect(manifest.schema === 'CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2', 'man
 expect(manifest.source_snapshot === 'QA_HEAD_20260901_215804Z', 'wrong source snapshot');
 expect(manifest.source_file_count === 71 && manifest.candidate_file_count === 71, 'source/candidate file count must remain 71');
 expect(manifest.source_aggregate_sha256 === SOURCE_AGGREGATE, 'source aggregate drift');
+expect(manifest.candidate_aggregate_sha256 === EXPECTED_CANDIDATE_AGGREGATE, 'candidate aggregate drift');
+expect(manifest.candidate_total_bytes === EXPECTED_CANDIDATE_BYTES, 'candidate total bytes drift');
+expect(manifest.reference_patch_sha256 === EXPECTED_REFERENCE_PATCH_SHA, 'reference patch SHA drift');
 expect(manifest.remote_write_performed === false, 'manifest claims a remote write');
 expect(manifest.apps_script_deployed === false, 'manifest claims Apps Script was deployed');
 expect(manifest.production_touched === false, 'manifest claims PROD was touched');
+const guardTouched = manifest.touched_files.find(x => x.path === '99_QA_Staging_Guard.js');
+expect(!!guardTouched, 'guard touched-file record missing');
+expect(guardTouched.after_sha256 === EXPECTED_GUARD_AFTER_SHA, 'guard after SHA drift');
+expect(guardTouched.after_bytes === EXPECTED_GUARD_AFTER_BYTES, 'guard after bytes drift');
 expect(patchParts.length >= expectedFiles.length, 'split patch part count is unexpectedly small');
 for (const part of patchParts) {
   expect(typeof part.path === 'string' && fs.existsSync(part.path), `missing patch part: ${part.path || 'unknown'}`);
@@ -114,6 +126,7 @@ expect(guard.includes('req.ids.some(_qa144DangerousFn_)'), 'guard does not class
 expect(guard.includes("return _qa144Json_({ok:false,error:'qa_endpoint_not_allowlisted'"), 'guard must default-deny unclassified endpoints');
 expect(!guard.includes("'getadmindashboard'"), 'getAdminDashboard must remain default-denied because its current path may create PAGOS_CAMPUS');
 expect(!guard.includes("'getestudiante'"), 'getEstudiante must remain default-denied because its current path may create/update financial intent snapshots or missing sheets');
+expect(!guard.includes("'getoperacionespagoreversibles'"), 'getOperacionesPagoReversibles must remain default-denied because its current path may initialize PAGOS_OPERACIONES');
 for (const legacyRead of ['getgrupoinfo','getcomprobantes','getnovedadesconape','getradiografiagrupo']) {
   expect(guard.includes(`'${legacyRead}'`), `manually audited legacy read missing from exact allowlist: ${legacyRead}`);
 }
