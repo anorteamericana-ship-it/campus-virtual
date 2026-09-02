@@ -1,0 +1,100 @@
++  try {
++    values = [
++      e && e.parameter && e.parameter.fn,
++      body && body.fn,
++      e && e.parameter && e.parameter.action,
++      body && body.action
++    ];
++  } catch (_) { values = []; }
++  var unique = [];
++  values.forEach(function(value){
++    var normalized = _qa144Text_(value).toLowerCase();
++    if (normalized && unique.indexOf(normalized) === -1) unique.push(normalized);
++  });
++  return unique;
++}
++function _qa144Parse_(e){
++  var body = {};
++  try { body = _an4406_parseBody_(e) || {}; } catch (_) { body = {}; }
++  var ids = _qa144RouteIds_(e, body);
++  return { body:body, fn:ids.length ? ids[0] : '', ids:ids, ambiguous:ids.length > 1 };
++}
++
++
++function _qa144IdentityAllowed_(sesion){
++  sesion = sesion || {};
++  var values = [
++    sesion.codigo, sesion.CODIGO, sesion.CODIGO_ESTUDIANTE,
++    sesion.cedula, sesion.CEDULA, sesion.usuario, sesion.email, sesion.correo,
++    sesion.nombre, sesion.NOMBRE
++  ].map(_qa144Text_);
++  var group = _qa144Text_(sesion.grupo || sesion.GRUPO || sesion.cod_grupo || sesion.COD_GRUPO);
++  return values.some(function(v){ return /^QA[-_]/i.test(v) || /^QA\s/i.test(v); }) || /-99XX$/i.test(group);
++}
++function _qa144RejectIdentity_(out){
++  return {ok:false,error:'qa_identity_required',qa_marker:QA_CS21A144_MARKER,mensaje:'Este staging acepta únicamente identidades QA controladas.',rol:_qa144Text_(out && out.rol)};
++}
++
++try {
++  var _qa144ValidarSesionBase_ = validarSesion;
++  validarSesion = function(){
++    var out = _qa144ValidarSesionBase_.apply(this, arguments);
++    if (!out || out.ok !== true) return out;
++    return _qa144IdentityAllowed_(out) ? out : _qa144RejectIdentity_(out);
++  };
++} catch (_) {}
++
++try {
++  var _qa144IniciarSesionBase_ = iniciarSesion;
++  iniciarSesion = function(){
++    var out = _qa144IniciarSesionBase_.apply(this, arguments);
++    if (!out || out.ok !== true) return out;
++    return _qa144IdentityAllowed_(out) ? out : _qa144RejectIdentity_(out);
++  };
++} catch (_) {}
++
++try {
++  var _qa144GetInfoGeneralBase_ = getInfoGeneral;
++  getInfoGeneral = function(){
++    var out = _qa144GetInfoGeneralBase_.apply(this, arguments) || {};
++    out.qa_staging = true;
++    out.qa_marker = QA_CS21A144_MARKER;
++    out.qa_master_id = QA_CS21A144_MASTER_ID;
++    out.qa_operativo_id = QA_CS21A144_OPERATIVO_ID;
++    var qaProps = _qa144Properties_();
++    out.qa_ids_ok = _qa144IdsOk_();
++    out.qa_external_resources_ok = _qa144ExternalIdsOk_();
++    out.qa_properties_configured = qaProps.master === QA_CS21A144_MASTER_ID &&
++      qaProps.operativo === QA_CS21A144_OPERATIVO_ID &&
++      !!qaProps.documentos && !!qaProps.documentos_estudiantes && !!qaProps.plantillas && !!qaProps.padron &&
++      !!qaProps.documentos_docentes && !!qaProps.conape_backup && !!qaProps.proformas &&
++      !!qaProps.conape_4 && !!qaProps.conape_5 && !!qaProps.conape_6 && !!qaProps.conape_7;
++    return out;
++  };
++} catch (_) {}
++
++var _qa144DoPostBase_ = doPost;
++doPost = function(e){
++  try {
++    var req = _qa144Parse_(e);
++    if (!_qa144IdsOk_()) {
++      return _qa144Json_({ok:false,error:'qa_ids_invalidos',qa_marker:QA_CS21A144_MARKER,qa_external_resources_ok:_qa144ExternalIdsOk_(),mensaje:'Staging bloqueado: Sheets, Drive y recursos externos deben apuntar únicamente a recursos QA autorizados.'});
++    }
++    if (req.ambiguous) {
++      return _qa144Json_({ok:false,error:'qa_route_ambiguous',qa_marker:QA_CS21A144_MARKER,route_ids:req.ids,mensaje:'Staging bloqueado: fn/action no pueden seleccionar rutas distintas en una misma petición.'});
++    }
++    if (typeof ELV2_tryHandleCampusPostAtOuterGuard === 'function') {
++      var elv2 = ELV2_tryHandleCampusPostAtOuterGuard(req.body, function(value){ try { return an4406_json(value); } catch (_) { return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON); } });
++      if (elv2 && elv2.handled) return elv2.output;
++    }
++    if (_qa144AllowedLabFn_(req.fn) || _qa144AllowedCampusCoreFn_(req.fn)) {
++      return _qa144DoPostBase_(e);
++    }
++    if (req.ids.some(_qa144DangerousFn_)) {
++      return _qa144Json_({ok:false,error:'qa_write_blocked',qa_marker:QA_CS21A144_MARKER,fn:req.fn,mensaje:'Operación no permitida por la política de contención QA.'});
++    }
++    return _qa144Json_({ok:false,error:'qa_endpoint_not_allowlisted',qa_marker:QA_CS21A144_MARKER,fn:req.fn,mensaje:'Endpoint no clasificado en la allowlist estricta CS21A211.'});
++  } catch (error) {
++    return _qa144Json_({ok:false,error:'qa_guard_error',qa_marker:QA_CS21A144_MARKER,mensaje:String(error && error.message || error)});
++  }
++};
