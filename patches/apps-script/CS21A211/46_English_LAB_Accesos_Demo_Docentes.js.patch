@@ -1,10 +1,15 @@
 --- a/46_English_LAB_Accesos_Demo_Docentes.js
 +++ b/46_English_LAB_Accesos_Demo_Docentes.js
-@@ -1,5 +1,9 @@
- // English LAB accesos / demo / docentes
--var QA_DOCENTES_FOLDER_ID = '1GN1g-vB6Pr71vi_kXQE4NeoZr8KVxTPO';
-+var QA_DOCENTES_FOLDER_ID = (function(){
+@@ -581,7 +581,11 @@
+ // ============================================================================
+ 
+ var CS21A76_TEACHER_PROFILE_VERSION = 'F98.4-Z6-CS21A76';
+-var CS21A76_DOCUMENTOS_DOCENTES_ROOT_ID = '1GN1g-vB6Pr71vi_kXQE4NeoZr8KVxTPO';
++var CS21A76_DOCUMENTOS_DOCENTES_ROOT_ID = (function(){
 +  try {
-+    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_DOCUMENTOS_DOCENTES_FOLDER_ID') || '').trim();
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_DOCUMENTOS_DOCENTES_ROOT_ID') || '').trim();
 +  } catch (_) { return ''; }
 +})();
+ 
+ function _cs21a76Text_(value, maxLen) {
+   var text = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
