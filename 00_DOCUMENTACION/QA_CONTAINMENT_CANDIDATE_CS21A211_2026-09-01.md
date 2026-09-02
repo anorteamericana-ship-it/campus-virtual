@@ -1,4 +1,4 @@
-# CS21A211 · candidato de contención QA · checkpoint CS21A211C · 2026-09-02
+# CS21A211 · candidato de contención QA · checkpoint CS21A211E · 2026-09-02
 
 ## Línea base
 
@@ -8,12 +8,12 @@
 - Apps Script QA canónico: `1GMHihGwnX_-sIS101rRlUoYpAH2HSKyms8lx6L9z7bjb_45YDn-ph6WD`
 - Deployment QA canónico: `AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ` (`@HEAD` observado)
 - Snapshot: `QA_HEAD_20260901_215804Z`
-- Source: 71 archivos / aggregate `3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6`
-- Candidate CS21A211C: 71 archivos / aggregate `6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1`
-- Patch GitHub LF: `7afa18e38cbe1e6a8031b959034c492d85f0213f121f82a3cd2476d5aa4782a4`
-- Patch local referencia: `3a0af2ca2bab30cba2a7de2d3c6ac299fd9d453e8a201850c2f50580373ee4c3`
+- Source: 71 archivos / 4,677,234 bytes / aggregate `3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6`
+- Candidate corregido: 71 archivos / 4,688,555 bytes / aggregate `6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1`
+- Patch GitHub LF: `20aebc28ecc42b550f6d1b03a02314674d130d6825faa40c4685bfea5d423768`
+- Patch local mixed-line-ending de referencia: `a98a42c7ce07ab87f5e3198fb26ec59125e032c9e716435bad631fe4db8c7a53`
 
-La diferencia entre hashes del patch sigue siendo únicamente de empaquetado CRLF/LF del lado removido del guard; el candidato aplicado es el mismo.
+El aggregate `9cba15a7...` y el patch previo `7afa18e...` quedan superseded: el hunk full-file de `99_QA_Staging_Guard.js` declaraba 208 líneas nuevas aunque contenía 209, por lo que el aplicador omitía el `};` final. CS21A211E corrige el hunk a `+1,209`, reconstruye un guard de 10,400 bytes / SHA-256 `fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a` y pasa sintaxis.
 
 ## P0 que motiva el candidato
 
@@ -27,9 +27,9 @@ E3 observada en el Web App QA autenticado:
 
 El candidato reemplaza las 13 URLs literales por una única self URL inyectada desde `ScriptApp.getService().getUrl()`. No hay fallback PROD.
 
-### P0-02 · recursos externos fuera de frontera QA
+### P0-02 · destinos externos fuera de frontera QA
 
-Se vuelven property-driven 11 recursos externos:
+Se vuelven property-driven 11 destinos escribibles externos:
 
 - `QA_STAGING_DOCUMENTOS_FOLDER_ID`
 - `QA_STAGING_DOCUMENTOS_ESTUDIANTES_FOLDER_ID`
@@ -44,6 +44,18 @@ Se vuelven property-driven 11 recursos externos:
 - `QA_STAGING_CONAPE_7_MOROSIDAD_ID`
 
 Los IDs productivos conocidos quedan solo como denylist; nunca como fallback.
+
+## Recursos QA aislados · CS21A211D
+
+Ya se provisionó un root privado `CAMPUS_QA_CS21A211_ISOLATED_RESOURCES` con:
+
+- 6 folders QA separados;
+- 5 Google Sheets QA vacíos para proformas y CONAPE 4/5/6/7;
+- `QA_CS21A211_RESOURCE_MAP` privado con la relación exacta `QA_STAGING_* → recurso`.
+
+Verificación: root y recursos observados `shared=false` / `not_shared`; no se copió PII, padrón, plantillas ni datos productivos.
+
+Residual explícito: el snapshot aún contiene IDs de **activos oficiales de solo lectura** (por ejemplo libros/audios y `PLANTILLA_IDS`). No son destinos escribibles de CS21A211. Los endpoints mutantes capaces de crear/copiar documentos permanecen default-deny. Una futura E4 documental estrictamente aislada deberá provisionar plantillas QA/sintéticas y hacer esos IDs de fuente property-driven.
 
 ## Archivos Apps Script que cambiaría
 
@@ -82,8 +94,6 @@ Resultado:
 
 Hallazgo adicional: `getOperacionesPagoReversibles` no es lectura pura garantizada porque llama `_apEnsureJournal_(OPERATIVO_ID)`, capaz de crear/sembrar `PAGOS_OPERACIONES`.
 
-Documento detallado: `00_DOCUMENTACION/ENDPOINT_MANUAL_REVIEW_CS21A211C_2026-09-02.md`.
-
 ## Allowlist core exacta · 13
 
 - `iniciarSesion`
@@ -100,8 +110,6 @@ Documento detallado: `00_DOCUMENTACION/ENDPOINT_MANUAL_REVIEW_CS21A211C_2026-09-
 - `getNovedadesConape`
 - `getRadiografiaGrupo`
 
-Los últimos cuatro son lecturas utilizadas por el `index.html` legacy servido por Apps Script y quedaron manualmente revisadas. Siguen sujetas al mapa de roles del router después de que el guard delega.
-
 Permanecen deliberadamente fuera:
 
 - `getEstudiante`: puede crear/actualizar snapshots financieros o estructura faltante;
@@ -117,23 +125,38 @@ No existe wildcard `get*`.
 - 13 `ALLOW_CORE_EXACT`;
 - 11 `ELV2_SECONDARY_BOUNDARY`.
 
-## E0/E1
+## E0/E1 · CS21A211E
 
-Sobre el snapshot exacto:
+Reproducción local contra el snapshot exacto:
 
 - 71/71 archivos preservados;
-- patch aplicable sobre la fuente congelada;
-- candidate aggregate reproducido: `6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1`;
+- `patch --dry-run`: PASS;
+- aplicación real: PASS;
+- `node --check`: 7/7 JS modificados PASS;
+- guard final: 10,400 bytes / SHA `fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a`;
+- candidate aggregate: `6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1`;
 - PROD deployment en candidato `index.html`: 0;
-- aliases self URL: 13/13;
-- contrato CI exige que `getEstudiante`, `getAdminDashboard` sigan bloqueados y que las cuatro lecturas legacy auditadas estén en la allowlist exacta.
+- aliases self URL: 13/13.
 
-## Gates que siguen bloqueando instalación
+CI endurecido valida cardinalidad de todos los hunks y reconstruye/syntax-checkea el guard completo. HEAD funcional `80fa786815a317712ad3e3c929b4015c20943194`:
 
-1. Provisionar/identificar recursos QA externos separados para las 11 Script Properties. Esto puede implicar Drive/Sheets writes y requiere autorización release-controlada separada.
-2. Configurar esas properties y comprobar fail-closed contra IDs QA, nunca PROD.
-3. Reejecutar E2/E3 solamente después de que la frontera externa QA exista realmente.
-4. E4 permanece fuera de este candidato.
+- `QA Containment Candidate CS21A211` run `33669762856`: SUCCESS;
+- `GUARD_RECONSTRUCTED_SYNTAX=PASS`;
+- `English LAB Source Truth Guard` run `33669762842`: SUCCESS.
+
+HEAD documental/workflow posterior `5867f11aa497836972b11c668335ee861ba758d8`:
+
+- QA Containment run `33670473086`: SUCCESS;
+- English LAB Source Truth run `33670473140`: SUCCESS.
+
+## Gate siguiente
+
+1. Configurar las 11 Script Properties del resource map privado en el **proyecto QA canónico**.
+2. Re-clonar inmediatamente `@HEAD` y exigir source aggregate `3e384ac3...` antes de cualquier push.
+3. Aplicar únicamente patch `20aebc28...` y exigir candidate aggregate `6c1c79c0...`.
+4. `clasp push` solo al Script ID QA canónico, sin `--force`, conservando el mismo deployment `@HEAD` y sin `/exec` paralelo.
+5. Verificar `qa_external_resources_ok=true`, self-route, default-deny y E2/E3.
+6. E4 de negocio permanece fuera de este candidato.
 
 ## Fuera de alcance
 
@@ -141,4 +164,4 @@ Passwords plaintext/rate-limit, ACL históricas públicas, CONFIG_BECAS 50/60, e
 
 ## Estado
 
-**PATCH OFFLINE READY · CS21A211C · 49/49 RUTAS MANUALES CERRADAS · E0/E1 PASS · NO APPS SCRIPT WRITE · NO DEPLOY · NO PROD · NO DRIVE ACL/DATA WRITE · NO MERGE.**
+**PATCH CORREGIDO · RECURSOS QA AISLADOS LISTOS · E0/E1 PASS · SCRIPT PROPERTIES AÚN NO CONFIGURADAS · NO APPS SCRIPT PUSH · NO PROD · NO MERGE.**
