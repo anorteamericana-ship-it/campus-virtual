@@ -1,0 +1,96 @@
+   if(snap.invalidRE&&snap.invalidRE.length)_conapeAxFinding_(find,'CRITICO','ESTADO_RE_NO_PERMITIDO','ESTATUS',snap.invalidRE.length,'RE no es un estado oficial. Si el estudiante reprobó debe utilizarse REP.',snap.invalidRE);
+-  var f5=_conapeAxRows_(CONAPE_AX_SHEET_IDS['5-plan_estudios']).rows||[],plan={};
++  var f5=_conapeAxRows_(_conapeAxSheetId_('5-plan_estudios')).rows||[],plan={};
+   for(var i=1;i<f5.length;i++){var pc=_conapeAxCed_(f5[i][0]),pm=_conapeAxUpper_(f5[i][6]);if(pc&&pm)plan[pc+'|'+pm]={state:_conapeAxUpper_(f5[i][7]),note:f5[i][8],row:i+1};}
+-  var f6=_conapeAxRows_(CONAPE_AX_SHEET_IDS['6-historial']).rows||[],hist={};
++  var f6=_conapeAxRows_(_conapeAxSheetId_('6-historial')).rows||[],hist={};
+   for(i=1;i<f6.length;i++){var hc=_conapeAxCed_(f6[i][2]),hm=_conapeAxUpper_(f6[i][4]),hy=Number(f6[i][5])||0,hp=Number(f6[i][6])||0,hr=i+1,hk=hc+'|'+hm,hs={state:_conapeAxUpper_(f6[i][8]),note:f6[i][9],year:hy,period:hp,row:hr};if(!hist[hk]||hy>hist[hk].year||(hy===hist[hk].year&&hp>hist[hk].period)||(hy===hist[hk].year&&hp===hist[hk].period&&hr>hist[hk].row))hist[hk]=hs;}
+   var stale=[],caInfo=[],caLow=[],futureCA=[],completedCA=[],aprBad=[];
+   Object.keys(snap.byKey||{}).forEach(function(k){
+@@ -1395,8 +1409,8 @@
+   return{level:'',label:matter||'Nivel',order:99};
+ }
+ function _cs21a44HistoryIndex_(){
+-  var sourceId=CONAPE_AX_SHEET_IDS&&CONAPE_AX_SHEET_IDS['6-historial'];
+-  if(sourceId!=='13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI')throw new Error('ID oficial de 6-historial no coincide con el contrato CONAPE.');
++  var sourceId=_conapeAxSheetId_('6-historial');
++  if(!sourceId)throw new Error('ID QA de 6-historial no configurado.');
+   var external=_conapeAxRows_(sourceId),rows=external.rows||[[]],h=rows[0]||[],m=_conapeAxHeaderMap_(h),
+       iCed=_conapeAxIdx_(m,['ESTUDIANTE_ID','CEDULA']),iMatter=_conapeAxIdx_(m,['CODIGO_MATERIA','MATERIA']),
+       iYear=_conapeAxIdx_(m,['ANO','AÑO']),iPeriod=_conapeAxIdx_(m,['PERIODO']),iType=_conapeAxIdx_(m,['TIPO_PERIODO']),
+@@ -1417,8 +1431,8 @@
+   return out;
+ }
+ function _cs21a34MoraIndex_(){
+-  var sourceId=CONAPE_AX_SHEET_IDS['7-morosidad'];
+-  if(sourceId!=='1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg')throw new Error('ID oficial de 7-morosidad no coincide con el contrato CONAPE.');
++  var sourceId=_conapeAxSheetId_('7-morosidad');
++  if(!sourceId)throw new Error('ID QA de 7-morosidad no configurado.');
+   var external=_conapeAxRows_(sourceId),rows=external.rows||[[]],h=rows[0]||[],m=_conapeAxHeaderMap_(h),
+       iCed=_conapeAxIdx_(m,['ESTUDIANTE_ID','CEDULA']),iYear=_conapeAxIdx_(m,['ANO','AÑO']),iPeriod=_conapeAxIdx_(m,['PERIODO']),iState=_conapeAxIdx_(m,['ESTADO']),out={};
+   if(iCed<0||iYear<0||iPeriod<0||iState<0)throw new Error('Encabezado incompatible en 7-morosidad oficial.');
+@@ -1505,7 +1519,7 @@
+ 
+   var groupMeta=_conapeAxGroupMeta_(ss),academic=_cs21a33AcademicIndex_(ss),ledger=_cs21a33AppliedLedger_(ss),moraIndex=_cs21a34MoraIndex_(),historyIndex=_cs21a44HistoryIndex_();
+   rows.forEach(function(x){
+-    var dm0=dataMap[x.cedula]||{};if(!x.phone)x.phone=dm0.phone||'';if(!x.code)x.code=dm0.code||'';if(!x.group)x.group=dm0.group||'';x.detail=dm0.detail||'';if(x.code)x.linked=true;x.historySummary=(historyIndex[x.cedula]||[]).map(function(h){return Object.assign({},h);});x.historySource='6-historial';x.historySourceId=CONAPE_AX_SHEET_IDS['6-historial'];
++    var dm0=dataMap[x.cedula]||{};if(!x.phone)x.phone=dm0.phone||'';if(!x.code)x.code=dm0.code||'';if(!x.group)x.group=dm0.group||'';x.detail=dm0.detail||'';if(x.code)x.linked=true;x.historySummary=(historyIndex[x.cedula]||[]).map(function(h){return Object.assign({},h);});x.historySource='6-historial';x.historySourceId=_conapeAxSheetId_('6-historial');
+     x.periodMovements=(periodMovementsByKey[_conapeAxPeriodKey_(x)]||[]).map(function(item){return Object.assign({},item);});
+     x.academicDisbursement=true;x.disbursementNumber=1;x.disbursementCode='01';x.disbursementLabel='Desembolso académico 01';
+     var detected=_conapeAxDateValue_(x.detectedAt),detYear=detected?detected.getFullYear():0,detMonth=detected?detected.getMonth()+1:0,
+@@ -1519,7 +1533,7 @@
+     x.groupTeacher=groupInfo?groupInfo.docente:'';x.groupDays=groupInfo?groupInfo.diasLabel:'';x.groupSchedule=groupInfo?groupInfo.horario:'';x.groupConsecutive=groupInfo?groupInfo.consecutivo:'';x.groupLabel=groupInfo?groupInfo.label:_cs21a97GroupLabel_({},x.group);
+     x.moraPeriod=_cs21a33MoraPeriod_(x.month);
+     var moraKey=(x.cedula&&x.year&&x.moraPeriod)?[x.cedula,x.year,x.moraPeriod].join('|'):'',mr=moraKey?moraIndex[moraKey]:null;
+-    x.moraYear=Number(x.year)||0;x.moraState=mr&&mr.state?mr.state:'SIN_FILA';x.mora=x.moraState==='SI';x.moraRowCount=mr?mr.count:0;x.moraSourceId=mr&&mr.sourceId?mr.sourceId:CONAPE_AX_SHEET_IDS['7-morosidad'];x.moraSourceSheet=mr&&mr.sourceSheet?mr.sourceSheet:'Hoja 1';x.moraSourceRows=mr&&mr.rows?mr.rows:[];
++    x.moraYear=Number(x.year)||0;x.moraState=mr&&mr.state?mr.state:'SIN_FILA';x.mora=x.moraState==='SI';x.moraRowCount=mr?mr.count:0;x.moraSourceId=mr&&mr.sourceId?mr.sourceId:_conapeAxSheetId_('7-morosidad');x.moraSourceSheet=mr&&mr.sourceSheet?mr.sourceSheet:'Hoja 1';x.moraSourceRows=mr&&mr.rows?mr.rows:[];
+ 
+     var exactKey=match?[x.code,match.level,match.group||'*'].join('|'):'',genericKey=match?[x.code,match.level,'*'].join('|'):'',attempts=match?(academic.byCodeLevel[x.code+'|'+match.level]||[]):[],exactEvidence=exactKey?ledger[exactKey]:null,genericEvidence=genericKey?ledger[genericKey]:null;
+     var evidence=exactEvidence||((attempts.length===1)?genericEvidence:null);x.applicationAmbiguous=!!(!exactEvidence&&genericEvidence&&attempts.length>1);
+@@ -1548,11 +1562,11 @@
+       levelLinked:rows.filter(function(x){return x.levelLinked;}).length,mora:rows.filter(function(x){return x.mora;}).length,
+       noMora:rows.filter(function(x){return x.moraState==='NO';}).length,withoutMoraRow:rows.filter(function(x){return x.moraState==='SIN_FILA';}).length,
+       first:rows.length,newDisbursement:pending,hiddenNonAcademic:hiddenNonAcademic,nonAcademicWithout01:nonAcademicWithout01,reviewInProgress:rows.filter(function(x){return!x.appliedInSystem&&Number(x.reviewStep||0)>0;}).length,reviewFinal:rows.filter(function(x){return!x.appliedInSystem&&Number(x.reviewStep||0)===4;}).length,reviewResets:Number(reviewResets||0)},
+-    lastSync:lastSync,monitor:_conapeAxTriggerState_(),historySource:'6-historial externo oficial',historySourceId:CONAPE_AX_SHEET_IDS['6-historial'],applicationSources:['7-morosidad externo oficial'],supportingPaymentSources:['PAGOS','OTROS PAGOS','PAGOS_CAMPUS'],excludedApplicationSources:['BDBANCARIO'],
++    lastSync:lastSync,monitor:_conapeAxTriggerState_(),historySource:'6-historial externo oficial',historySourceId:_conapeAxSheetId_('6-historial'),applicationSources:['7-morosidad externo oficial'],supportingPaymentSources:['PAGOS','OTROS PAGOS','PAGOS_CAMPUS'],excludedApplicationSources:['BDBANCARIO'],
+     disbursementRule:'FECHA_ULT_DESEMBOLSO usa DD como número de desembolso. La fila gestionable continúa siendo 01. La interfaz presenta una sola alerta Nuevo desembolso enlazada al nivel académico resuelto; 02, 03 y superiores quedan solo como contexto del periodo.',
+     periodRule:'El mes y año se conservan como periodo: 01/MM/AAAA, 02/MM/AAAA y 03/MM/AAAA pertenecen al mismo periodo MM/AAAA. La tabla gestiona 01 y muestra 02+ debajo con su fecha de detección. Para 7-morosidad: meses 01-04=P1; 05-08=P2; 09-12=P3.',
+     groupRule:'El combo de grupos usa GRUPOS como fuente oficial y muestra DOCENTE - DÍAS HORARIO - CONSECUTIVO para el grupo y nivel enlazados.',
+-    applicationRule:'Un movimiento académico 01 se cierra únicamente cuando el archivo externo oficial 7-morosidad ID 1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg tiene la misma cédula, año y periodo cuatrimestral con ESTADO NO. La recepción de 02, 03 o superiores no pone al estudiante al día ni altera el cierre del 01.'};
++    applicationRule:'Un movimiento académico 01 se cierra únicamente cuando el recurso 7-morosidad configurado para el entorno tiene la misma cédula, año y periodo cuatrimestral con ESTADO NO. La recepción de 02, 03 o superiores no pone al estudiante al día ni altera el cierre del 01.'};
+   return conape;
+ }
+ 
+@@ -1662,7 +1676,7 @@
+ }
+ 
+ function _conapeBdMoraRowsForCed_(cedula) {
+-  var ext = _conapeAxRows_(CONAPE_AX_SHEET_IDS['7-morosidad']);
++  var ext = _conapeAxRows_(_conapeAxSheetId_('7-morosidad'));
+   var rows = ext.rows || [], out = [];
+   for (var i = 1; i < rows.length; i++) {
+     if (_conapeAxCed_(rows[i][1]) !== cedula) continue;
+@@ -1725,10 +1739,10 @@
+ 
+ function _conapeBdGlobalAudit_(body) {
+   var auth = _conapeAxAuth_(body); if (!auth.ok) return auth;
+-  var f4 = _conapeAxRows_(CONAPE_AX_SHEET_IDS['4-estudiantes']).rows || [];
+-  var f5 = _conapeAxRows_(CONAPE_AX_SHEET_IDS['5-plan_estudios']).rows || [];
+-  var f6 = _conapeAxRows_(CONAPE_AX_SHEET_IDS['6-historial']).rows || [];
+-  var f7 = _conapeAxRows_(CONAPE_AX_SHEET_IDS['7-morosidad']).rows || [];
++  var f4 = _conapeAxRows_(_conapeAxSheetId_('4-estudiantes')).rows || [];
++  var f5 = _conapeAxRows_(_conapeAxSheetId_('5-plan_estudios')).rows || [];
++  var f6 = _conapeAxRows_(_conapeAxSheetId_('6-historial')).rows || [];
++  var f7 = _conapeAxRows_(_conapeAxSheetId_('7-morosidad')).rows || [];
+   var people = {}, plan = {}, history = {}, historyExact = {}, mora = {}, cases = [];
+   var i, key;
+   for (i=1;i<f4.length;i++) { var c=_conapeAxCed_(f4[i][1]); if(c) people[c]={codigo:_conapeAxText_(f4[i][0]),cedula:c,nombre:_conapeAxText_(f4[i][2])}; }
+@@ -1817,7 +1831,7 @@
+       if(item.esperado==='PE'||item.estatus==='PE'||item.estatus==='SIN_REGISTRO')return{ok:false,error:'No se puede marcar SI/NO en un nivel PE o sin matrícula. La acción correcta es no tener fila.'};
+       if(item.filas_morosidad.length>1)return{ok:false,error:'Hay duplicados; no se modificó ninguna fila.'};
+     }
+-    var external=_conapeAxRows_(CONAPE_AX_SHEET_IDS['7-morosidad']), ws=external.ws, after='';
++    var external=_conapeAxRows_(_conapeAxSheetId_('7-morosidad')), ws=external.ws, after='';
+     var internal=SpreadsheetApp.openById(SHEET_ID);
+     var logLevel={codigo:fresh.estudiante.codigo,cedula:fresh.estudiante.cedula,nivel:item.nivel,anio:item.anio,periodo:item.periodo,evidencia:item.evidencia};
+     if(action==='DELETE'){
