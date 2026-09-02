@@ -136,14 +136,19 @@ Sobre el snapshot exacto:
 - IDs PROD de recursos externos: no quedan como destinos ejecutables en los archivos modificados; solo aparecen en denylists del guard/instalador;
 - simulación del guard con stubs: **PASS** para lectura core, route ambiguity, dangerous block, default deny, `action` mismatch, ELV2 ausente y rechazo de recurso PROD.
 
-### GitHub Actions del HEAD verificado
+### GitHub Actions
 
-HEAD de cierre E0/E1: `3ea959538d5ff8dd00a33bff4186f8e5d5169912`.
+Checkpoint verde inicial del patch exacto: `3ea959538d5ff8dd00a33bff4186f8e5d5169912`.
 
 - `QA Containment Candidate CS21A211` run `33585824339`: **SUCCESS**.
 - `English LAB Source Truth Guard` run `33585824360`: **SUCCESS**.
 
-El contrato CI verifica también los hashes por archivo lógico del patch, la integridad del manifest, los 13 aliases self-route y los invariantes fail-closed del guard.
+Checkpoint documental posterior: `34454556bab0ade816d1e5caa4f6191dca3a5e46`.
+
+- `QA Containment Candidate CS21A211` run `33585942964`: **SUCCESS**.
+- `English LAB Source Truth Guard` run `33585942977`: **SUCCESS**.
+
+El contrato CI verifica los hashes por archivo lógico del patch, la integridad del manifest, los 13 aliases self-route y los invariantes fail-closed del guard.
 
 ## Importante · por qué NO está autorizado instalar aún
 
