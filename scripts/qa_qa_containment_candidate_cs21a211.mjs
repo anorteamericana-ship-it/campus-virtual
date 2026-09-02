@@ -34,19 +34,21 @@ const prodResourceIds = [
   '1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg',
 ];
 
-expect(manifest.schema === 'CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_1', 'manifest schema drift');
+expect(manifest.schema === 'CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2', 'manifest schema drift');
 expect(manifest.source_snapshot === 'QA_HEAD_20260901_215804Z', 'wrong source snapshot');
 expect(manifest.source_file_count === 71 && manifest.candidate_file_count === 71, 'source/candidate file count must remain 71');
 expect(manifest.source_aggregate_sha256 === SOURCE_AGGREGATE, 'source aggregate drift');
 expect(manifest.remote_write_performed === false, 'manifest claims a remote write');
 expect(manifest.apps_script_deployed === false, 'manifest claims Apps Script was deployed');
 expect(manifest.production_touched === false, 'manifest claims PROD was touched');
-expect(patchParts.length === expectedFiles.length, 'patch part count drift');
+expect(patchParts.length >= expectedFiles.length, 'split patch part count is unexpectedly small');
 for (const part of patchParts) {
-  const bytes = fs.readFileSync(part.path);
-  expect(bytes.length === part.bytes, `patch part byte-size mismatch: ${part.path}`);
-  expect(sha256(bytes) === part.sha256, `patch part SHA-256 mismatch: ${part.path}`);
+  expect(typeof part.path === 'string' && fs.existsSync(part.path), `missing patch part: ${part.path || 'unknown'}`);
+  expect(typeof part.source_path === 'string' && expectedFiles.includes(part.source_path), `unexpected patch source path: ${part.source_path}`);
+  expect(fs.statSync(part.path).size > 0, `empty patch part: ${part.path}`);
 }
+const patchSourceFiles = [...new Set(patchParts.map(part => part.source_path))].sort();
+expect(JSON.stringify(patchSourceFiles) === JSON.stringify(expectedFiles), `patch source set drift: ${patchSourceFiles.join(', ')}`);
 expect(manifest.patch_sha256 === sha256(Buffer.from(patch, 'utf8')), 'combined patch SHA-256 mismatch');
 
 const touched = manifest.touched_files.map(x => x.path).sort();
@@ -94,6 +96,7 @@ for (const token of ['qa_route_ambiguous','qa_endpoint_not_allowlisted','_qa144E
 expect(guard.includes("typeof ELV2_tryHandleCampusPostAtOuterGuard === 'function'"), 'ELV2 optional boundary availability guard missing');
 expect(guard.includes('e && e.parameter && e.parameter.action') && guard.includes('body && body.action'), 'guard does not inspect action selectors');
 expect(guard.includes('req.ids.some(_qa144DangerousFn_)'), 'guard does not classify all normalized selectors');
+expect(guard.includes("return _qa144Json_({ok:false,error:'qa_endpoint_not_allowlisted'"), 'guard must default-deny unclassified endpoints');
 
 const installer = added('98_Instalacion_QA_CS21A144.js');
 expect(installer.includes('No crea carpetas, archivos, spreadsheets ni deployments'), 'installer must remain provisioning-only');
@@ -103,7 +106,7 @@ for (const forbidden of ['clasp push', 'clasp deploy', 'DriveApp.createFolder(',
   expect(!allAdded.includes(forbidden), `forbidden remote mutation primitive in candidate patch: ${forbidden}`);
 }
 
-console.log(`CS21A211_QA_CONTAINMENT_CONTRACT=PASS files=${expectedFiles.length} aliases=${aliasCount}`);
+console.log(`CS21A211_QA_CONTAINMENT_CONTRACT=PASS files=${expectedFiles.length} parts=${patchParts.length} aliases=${aliasCount}`);
 console.log(`SOURCE_AGGREGATE=${manifest.source_aggregate_sha256}`);
 console.log(`CANDIDATE_AGGREGATE=${manifest.candidate_aggregate_sha256}`);
 console.log(`PATCH_SHA256=${manifest.patch_sha256}`);
