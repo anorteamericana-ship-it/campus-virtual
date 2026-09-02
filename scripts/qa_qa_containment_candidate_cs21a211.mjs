@@ -28,7 +28,7 @@ const expectedSourcePatchSha = {
   '41_CONAPE_Auditoria_Finanzas.js':'088a1361cc8b0cedfd2f07ed6235a225e85c5fb05f19fc057f3c5d8a0961d9cf',
   '46_English_LAB_Accesos_Demo_Docentes.js':'f1ae6941359b0a23a0c566399b8769e12732fca4c27fbde1c8bdba753c3100c2',
   '98_Instalacion_QA_CS21A144.js':'b6775193627f049aa3d44b33c0ae9c3d73e7e95d599a70cd44301478fb73e9f5',
-  '99_QA_Staging_Guard.js':'f2c275b98a3830654f69b707c5b059adfb16031334a290ff8b6d438271d449ff',
+  '99_QA_Staging_Guard.js':'5a7777e0e56d33adef6a19385ecb852d411b5aa28fca346f2ec2646f4461fe4e',
   'index.html':'b7beb97198524a8e6377e32fe206fa99c85e89432b36ed5e929856ec3ee11b16',
 };
 const prodResourceIds = [
@@ -114,6 +114,9 @@ expect(guard.includes('req.ids.some(_qa144DangerousFn_)'), 'guard does not class
 expect(guard.includes("return _qa144Json_({ok:false,error:'qa_endpoint_not_allowlisted'"), 'guard must default-deny unclassified endpoints');
 expect(!guard.includes("'getadmindashboard'"), 'getAdminDashboard must remain default-denied because its current path may create PAGOS_CAMPUS');
 expect(!guard.includes("'getestudiante'"), 'getEstudiante must remain default-denied because its current path may create/update financial intent snapshots or missing sheets');
+for (const legacyRead of ['getgrupoinfo','getcomprobantes','getnovedadesconape','getradiografiagrupo']) {
+  expect(guard.includes(`'${legacyRead}'`), `manually audited legacy read missing from exact allowlist: ${legacyRead}`);
+}
 
 const installer = added('98_Instalacion_QA_CS21A144.js');
 expect(installer.includes('No crea carpetas, archivos, spreadsheets ni deployments'), 'installer must remain provisioning-only');
