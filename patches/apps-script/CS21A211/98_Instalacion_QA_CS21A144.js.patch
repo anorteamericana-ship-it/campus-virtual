@@ -1,0 +1,156 @@
+--- a/98_Instalacion_QA_CS21A144.js
++++ b/98_Instalacion_QA_CS21A144.js
+@@ -5,26 +5,85 @@
+  */
+ 
+ var QA_INSTALLATION_CS21A144 = Object.freeze({
+-  VERSION: "QA_MODULAR_CS21A144_REBECA_V8_2026_07_29",
++  VERSION: "QA_MODULAR_CS21A211_CONTAINMENT_2026_09_01",
+   MASTER_ID: "1dud749W7dJaYkD7l2C3-CKmbrCx5mG_pahTOYrHLsvE",
+-  OPERATIVO_ID: "1aPYBZOs8zxF2n9cDOeKazhSXHRfhqyLs8pDM0axt8U0"
++  OPERATIVO_ID: "1aPYBZOs8zxF2n9cDOeKazhSXHRfhqyLs8pDM0axt8U0",
++  PROD_RESOURCE_IDS: Object.freeze({
++    documentos:"1Bm9pK4OvWE944X29bm8S3UWUlWP_G5jO",
++    plantillas:"1Z4N0TM5tFYT_aHUiUklKX3fJvPNArw2K",
++    documentos_estudiantes:"18enRbEhc5SSVK1v0ACO7oLqbsJX2gqOT",
++    documentos_docentes:"1GN1g-vB6Pr71vi_kXQE4NeoZr8KVxTPO",
++    conape_backup:"1LIX_vbyyZAtPElUpfm5S5WjIHs79n0Vt",
++    proformas:"1SoXa-A_-eUtMMRfU4mSuaOaoiqpUUS9hSnPT5yHW7zQ",
++    conape_4:"18x3tCfzFQ8KsT5ESyblxEW1A4aa_yPRAoiH8972XKVo",
++    conape_5:"1Z4V3GW3dSTVd3J6oaLty5MSArKWRjYYd52u75MA1SIE",
++    conape_6:"13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI",
++    conape_7:"1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg"
++  })
+ });
+ 
+-function configurarPropiedadesQA_CS21A144() {
+-  var master = String(QA_INSTALLATION_CS21A144.MASTER_ID || "").trim();
+-  var operativo = String(QA_INSTALLATION_CS21A144.OPERATIVO_ID || "").trim();
++function _qaInstallationText_(value) {
++  return String(value == null ? '' : value).trim();
++}
+ 
+-  if (!master || !operativo) {
+-    throw new Error("Faltan uno o ambos IDs QA.");
+-  }
++function _qaInstallationResourceConfig_(opciones) {
++  opciones = opciones || {};
++  return {
++    documentos:_qaInstallationText_(opciones.documentos_folder_id),
++    documentos_estudiantes:_qaInstallationText_(opciones.documentos_estudiantes_folder_id),
++    plantillas:_qaInstallationText_(opciones.plantillas_folder_id),
++    padron:_qaInstallationText_(opciones.padron_folder_id),
++    documentos_docentes:_qaInstallationText_(opciones.documentos_docentes_root_id),
++    conape_backup:_qaInstallationText_(opciones.conape_backup_folder_id),
++    proformas:_qaInstallationText_(opciones.proformas_sheet_id),
++    conape_4:_qaInstallationText_(opciones.conape_4_estudiantes_id),
++    conape_5:_qaInstallationText_(opciones.conape_5_plan_id),
++    conape_6:_qaInstallationText_(opciones.conape_6_historial_id),
++    conape_7:_qaInstallationText_(opciones.conape_7_morosidad_id)
++  };
++}
+ 
+-  if (master === operativo) {
+-    throw new Error("Los IDs QA no pueden ser iguales.");
++function _qaInstallationValidateResources_(resources) {
++  var keys = Object.keys(resources || {});
++  if (!keys.length || keys.some(function(key){ return !_qaInstallationText_(resources[key]); })) {
++    throw new Error("Faltan IDs de recursos QA. No se configura staging con destinos vacíos o heredados.");
+   }
++  var prod = QA_INSTALLATION_CS21A144.PROD_RESOURCE_IDS;
++  keys.forEach(function(key){
++    if (prod[key] && resources[key] === prod[key]) {
++      throw new Error("BLOQUEADO: el recurso " + key + " corresponde a PROD.");
++    }
++  });
++  return true;
++}
++
++/**
++ * Configuración release-controlada. No crea carpetas, archivos, spreadsheets ni deployments.
++ * Todos los IDs deben apuntar a recursos QA preparados y revisados de antemano.
++ */
++function configurarPropiedadesQA_CS21A144(opciones) {
++  var master = _qaInstallationText_(QA_INSTALLATION_CS21A144.MASTER_ID);
++  var operativo = _qaInstallationText_(QA_INSTALLATION_CS21A144.OPERATIVO_ID);
++  var resources = _qaInstallationResourceConfig_(opciones);
++
++  if (!master || !operativo) throw new Error("Faltan uno o ambos IDs de Sheets QA.");
++  if (master === operativo) throw new Error("Los IDs QA de Sheets no pueden ser iguales.");
++  _qaInstallationValidateResources_(resources);
+ 
+   PropertiesService.getScriptProperties().setProperties({
+     QA_STAGING_MASTER_ID: master,
+-    QA_STAGING_OPERATIVO_ID: operativo
++    QA_STAGING_OPERATIVO_ID: operativo,
++    QA_STAGING_DOCUMENTOS_FOLDER_ID: resources.documentos,
++    QA_STAGING_DOCUMENTOS_ESTUDIANTES_FOLDER_ID: resources.documentos_estudiantes,
++    QA_STAGING_PLANTILLAS_FOLDER_ID: resources.plantillas,
++    QA_STAGING_PADRON_FOLDER_ID: resources.padron,
++    QA_STAGING_DOCUMENTOS_DOCENTES_ROOT_ID: resources.documentos_docentes,
++    QA_STAGING_CONAPE_BACKUP_FOLDER_ID: resources.conape_backup,
++    QA_STAGING_PROFORMAS_SHEET_ID: resources.proformas,
++    QA_STAGING_CONAPE_4_ESTUDIANTES_ID: resources.conape_4,
++    QA_STAGING_CONAPE_5_PLAN_ID: resources.conape_5,
++    QA_STAGING_CONAPE_6_HISTORIAL_ID: resources.conape_6,
++    QA_STAGING_CONAPE_7_MOROSIDAD_ID: resources.conape_7
+   }, false);
+ 
+   return verificarConfiguracionQA_CS21A144();
+@@ -32,21 +91,50 @@
+ 
+ function verificarConfiguracionQA_CS21A144() {
+   var props = PropertiesService.getScriptProperties();
+-  var master = String(props.getProperty("QA_STAGING_MASTER_ID") || "");
+-  var operativo = String(props.getProperty("QA_STAGING_OPERATIVO_ID") || "");
++  var master = _qaInstallationText_(props.getProperty("QA_STAGING_MASTER_ID"));
++  var operativo = _qaInstallationText_(props.getProperty("QA_STAGING_OPERATIVO_ID"));
++  var resources = {
++    documentos:_qaInstallationText_(props.getProperty("QA_STAGING_DOCUMENTOS_FOLDER_ID")),
++    documentos_estudiantes:_qaInstallationText_(props.getProperty("QA_STAGING_DOCUMENTOS_ESTUDIANTES_FOLDER_ID")),
++    plantillas:_qaInstallationText_(props.getProperty("QA_STAGING_PLANTILLAS_FOLDER_ID")),
++    padron:_qaInstallationText_(props.getProperty("QA_STAGING_PADRON_FOLDER_ID")),
++    documentos_docentes:_qaInstallationText_(props.getProperty("QA_STAGING_DOCUMENTOS_DOCENTES_ROOT_ID")),
++    conape_backup:_qaInstallationText_(props.getProperty("QA_STAGING_CONAPE_BACKUP_FOLDER_ID")),
++    proformas:_qaInstallationText_(props.getProperty("QA_STAGING_PROFORMAS_SHEET_ID")),
++    conape_4:_qaInstallationText_(props.getProperty("QA_STAGING_CONAPE_4_ESTUDIANTES_ID")),
++    conape_5:_qaInstallationText_(props.getProperty("QA_STAGING_CONAPE_5_PLAN_ID")),
++    conape_6:_qaInstallationText_(props.getProperty("QA_STAGING_CONAPE_6_HISTORIAL_ID")),
++    conape_7:_qaInstallationText_(props.getProperty("QA_STAGING_CONAPE_7_MOROSIDAD_ID"))
++  };
+ 
+   var masterOk = master === QA_INSTALLATION_CS21A144.MASTER_ID;
+   var operativoOk = operativo === QA_INSTALLATION_CS21A144.OPERATIVO_ID;
++  var resourcesConfigured = Object.keys(resources).every(function(key){ return !!resources[key]; });
++  var resourcesNotProd = resourcesConfigured && Object.keys(resources).every(function(key){
++    var prod = QA_INSTALLATION_CS21A144.PROD_RESOURCE_IDS[key];
++    return !prod || resources[key] !== prod;
++  });
++  var runtimeIdsOk = false;
++  try {
++    runtimeIdsOk = typeof _qa144IdsOk_ === 'function'
++      ? _qa144IdsOk_()
++      : (masterOk && operativoOk && resourcesNotProd);
++  } catch (_) { runtimeIdsOk = false; }
+ 
+   var result = {
+-    ok: masterOk && operativoOk,
++    ok: masterOk && operativoOk && resourcesNotProd && runtimeIdsOk,
+     qa_staging: true,
+     qa_marker: "QA_STAGING_CS21A144",
+-    qa_ids_ok: masterOk && operativoOk,
+-    qa_properties_configured: !!master && !!operativo,
++    qa_ids_ok: runtimeIdsOk,
++    qa_external_resources_ok: resourcesNotProd,
++    qa_properties_configured: !!master && !!operativo && resourcesConfigured,
+     master_last4: master ? master.slice(-4) : "",
+     operativo_last4: operativo ? operativo.slice(-4) : "",
+-    next: "Después de validar, cree una implementación web NUEVA de staging."
++    resource_last4: Object.keys(resources).reduce(function(out,key){
++      out[key] = resources[key] ? resources[key].slice(-4) : "";
++      return out;
++    }, {}),
++    next: "Conservar el mismo deployment QA existente. No crear un /exec paralelo."
+   };
+ 
+   Logger.log(JSON.stringify(result, null, 2));
