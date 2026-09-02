@@ -6,10 +6,10 @@
   "source_total_bytes": 4677234,
   "source_aggregate_sha256": "3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6",
   "candidate_file_count": 71,
-  "candidate_total_bytes": 4688488,
-  "candidate_aggregate_sha256": "719d0836f37b7e7cb12ea3d92580749dbafcf96cee3128dffdbfa211767363de",
-  "patch_sha256": "26273d4f404e34e98d94b681779ea53a59dde9cd5c457c03ff4af3b6437c2b17",
-  "reference_patch_sha256": "ae5926de48961a90563085a25eb906a37ff49c588f065817abfbe29b2f1743ae",
+  "candidate_total_bytes": 4688471,
+  "candidate_aggregate_sha256": "3187a43b726ad62556f1eec43cdd91bb16a7cec93e83ebaad643d832382422d0",
+  "patch_sha256": "70d2bee058ef5b6b6e9b97d0d82251d9165dc0f7cf79864ac498caac86a35deb",
+  "reference_patch_sha256": "fa6806f5a2bf9abbcc56dfb73d726f8e2a062256e101380cba2412d9d643e32d",
   "patch_packaging_note": "reference_patch_sha256 hashes the corrected local patch bytes, which retain CRLF in the removed side of 99_QA_Staging_Guard.js; patch_sha256 hashes the semantically identical LF-normalized fragments versioned in GitHub.",
   "remote_write_performed": false,
   "apps_script_deployed": false,
@@ -21,7 +21,7 @@
     {"path":"41_CONAPE_Auditoria_Finanzas.js","before_sha256":"e1704de76e4e3ebe97851b2d30bc40f9aa5f4f43d396aa8d9dcc3b881c2b0add","after_sha256":"4461e7f91343d876ee32f1735b70b7008c693c0ea6ba732ab6c80383c82fc97c","before_bytes":422784,"after_bytes":422979},
     {"path":"46_English_LAB_Accesos_Demo_Docentes.js","before_sha256":"3fe9c187240c2b2e669fefc1ac3f22a9e77de703b45dffe07da48db1cec53b12","after_sha256":"9b9e5cb63a6a2a01106980e7d9ebc74b670da77e46fe2f5b35fe41e1587946c0","before_bytes":39053,"after_bytes":39199},
     {"path":"98_Instalacion_QA_CS21A144.js","before_sha256":"e724b76d678182d36022e8a1b51af432560741089b7f378eabdd4b02963eebd3","after_sha256":"8a36c718af08d7126f27d03aa48dae939f84dade6c4ab45b3b7423ca8bab3346","before_bytes":3559,"after_bytes":8550},
-    {"path":"99_QA_Staging_Guard.js","before_sha256":"b3fa4936245c7ce6ca08e22f922d14a4e8a4887fb9744402f3d5b90428eb7b15","after_sha256":"db6d0dcccbfad7e1a6072358c59df205b157c871e68d8cddc183e191806bec30","before_bytes":4953,"after_bytes":10333},
+    {"path":"99_QA_Staging_Guard.js","before_sha256":"b3fa4936245c7ce6ca08e22f922d14a4e8a4887fb9744402f3d5b90428eb7b15","after_sha256":"8896a7e46f85200c26ac0d2892d3243cb152eefc7ae7b6ae69ee5155f2254a26","before_bytes":4953,"after_bytes":10316},
     {"path":"index.html","before_sha256":"881c6a38488d913c0115171f4374dcc6de322db78656ea149a037cdd79327778","after_sha256":"da14a50253ec25a59ba80568c8bf6d055c83fd33d7d1016c6c96aafeb3be943b","before_bytes":649287,"after_bytes":648504}
   ],
   "patch_parts": [
