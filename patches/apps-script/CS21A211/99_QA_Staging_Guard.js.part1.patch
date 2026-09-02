@@ -1,0 +1,110 @@
+--- a/99_QA_Staging_Guard.js
++++ b/99_QA_Staging_Guard.js
+@@ -1,109 +1,208 @@
+-// ===================== CS21A144 QA FINAL GUARD ==============================
+-
+-// F98.4-Z6-CS21A144-QA · Guard de staging para English LAB.
+-// Debe permanecer al FINAL del Code.gs QA, después del parche CS21A144.
+-var QA_CS21A144_MARKER = 'QA_STAGING_CS21A144';
+-var QA_CS21A144_MASTER_ID = '1dud749W7dJaYkD7l2C3-CKmbrCx5mG_pahTOYrHLsvE';
+-var QA_CS21A144_OPERATIVO_ID = '1aPYBZOs8zxF2n9cDOeKazhSXHRfhqyLs8pDM0axt8U0';
+-
+-function _qa144Text_(v){ return String(v == null ? '' : v).trim(); }
+-function _qa144Json_(obj){
+-  try { return _an4406_json_(obj); }
+-  catch (_) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+-}
+-function _qa144Properties_(){
+-  try {
+-    var props = PropertiesService.getScriptProperties();
+-    return {
+-      master:_qa144Text_(props.getProperty('QA_STAGING_MASTER_ID')),
+-      operativo:_qa144Text_(props.getProperty('QA_STAGING_OPERATIVO_ID'))
+-    };
+-  } catch (_) { return {master:'', operativo:''}; }
+-}
+-function _qa144IdsOk_(){
+-  var props = _qa144Properties_();
+-  return _qa144Text_(SHEET_ID) === QA_CS21A144_MASTER_ID &&
+-    _qa144Text_(OPERATIVO_ID) === QA_CS21A144_OPERATIVO_ID &&
+-    props.master === QA_CS21A144_MASTER_ID &&
+-    props.operativo === QA_CS21A144_OPERATIVO_ID;
+-}
+-function _qa144AllowedLabFn_(fn){
+-  return /^englishlab/i.test(fn) || /^academiaplay/i.test(fn) || fn === 'freeuserenglishlabaccess';
+-}
+-function _qa144DangerousFn_(fn){
+-  return /(pago|payment|banco|bank|comprobante|factura|nota|grade|evaluacion|examen|oral|asistencia|cierre|cerrar|conape|matricula|suspension|cambio|actualizar|eliminar|borrar|importar|aplicar|revertir|promover)/i.test(fn);
+-}
+-function _qa144Parse_(e){
+-  var body = {};
+-  try { body = _an4406_parseBody_(e) || {}; } catch (_) { body = {}; }
+-  var fn = '';
+-  try { fn = String((e && e.parameter && e.parameter.fn) || body.fn || '').trim().toLowerCase(); } catch (_) { fn = ''; }
+-  return { body:body, fn:fn };
+-}
+-
+-
+-function _qa144IdentityAllowed_(sesion){
+-  sesion = sesion || {};
+-  var values = [
+-    sesion.codigo, sesion.CODIGO, sesion.CODIGO_ESTUDIANTE,
+-    sesion.cedula, sesion.CEDULA, sesion.usuario, sesion.email, sesion.correo,
+-    sesion.nombre, sesion.NOMBRE
+-  ].map(_qa144Text_);
+-  var group = _qa144Text_(sesion.grupo || sesion.GRUPO || sesion.cod_grupo || sesion.COD_GRUPO);
+-  return values.some(function(v){ return /^QA[-_]/i.test(v) || /^QA\s/i.test(v); }) || /-99XX$/i.test(group);
+-}
+-function _qa144RejectIdentity_(out){
+-  return {ok:false,error:'qa_identity_required',qa_marker:QA_CS21A144_MARKER,mensaje:'Este staging acepta únicamente identidades QA controladas.',rol:_qa144Text_(out && out.rol)};
+-}
+-
+-try {
+-  var _qa144ValidarSesionBase_ = validarSesion;
+-  validarSesion = function(){
+-    var out = _qa144ValidarSesionBase_.apply(this, arguments);
+-    if (!out || out.ok !== true) return out;
+-    return _qa144IdentityAllowed_(out) ? out : _qa144RejectIdentity_(out);
+-  };
+-} catch (_) {}
+-
+-try {
+-  var _qa144IniciarSesionBase_ = iniciarSesion;
+-  iniciarSesion = function(){
+-    var out = _qa144IniciarSesionBase_.apply(this, arguments);
+-    if (!out || out.ok !== true) return out;
+-    return _qa144IdentityAllowed_(out) ? out : _qa144RejectIdentity_(out);
+-  };
+-} catch (_) {}
+-
+-try {
+-  var _qa144GetInfoGeneralBase_ = getInfoGeneral;
+-  getInfoGeneral = function(){
+-    var out = _qa144GetInfoGeneralBase_.apply(this, arguments) || {};
+-    out.qa_staging = true;
+-    out.qa_marker = QA_CS21A144_MARKER;
+-    out.qa_master_id = QA_CS21A144_MASTER_ID;
+-    out.qa_operativo_id = QA_CS21A144_OPERATIVO_ID;
+-    var qaProps = _qa144Properties_();
+-    out.qa_ids_ok = _qa144IdsOk_();
+-    out.qa_properties_configured = qaProps.master === QA_CS21A144_MASTER_ID && qaProps.operativo === QA_CS21A144_OPERATIVO_ID;
+-    return out;
+-  };
+-} catch (_) {}
+-
+-var _qa144DoPostBase_ = doPost;
+-doPost = function(e){
+-  try {
+-    var req = _qa144Parse_(e);
+-    if (!_qa144IdsOk_()) {
+-      return _qa144Json_({ok:false,error:'qa_ids_invalidos',qa_marker:QA_CS21A144_MARKER,mensaje:'Staging bloqueado: los IDs no apuntan a las hojas QA autorizadas.'});
+-    }
+-    var elv2 = ELV2_tryHandleCampusPostAtOuterGuard(req.body, function(value){ try { return an4406_json(value); } catch (_) { return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON); } });
+-    if (elv2 && elv2.handled) return elv2.output;
+-    if (_qa144AllowedLabFn_(req.fn)) return _qa144DoPostBase_(e);
+-    if (_qa144DangerousFn_(req.fn)) {
+-      return _qa144Json_({ok:false,error:'qa_write_blocked',qa_marker:QA_CS21A144_MARKER,fn:req.fn,mensaje:'Operación bloqueada en este staging de English LAB.'});
+-    }
+-    return _qa144DoPostBase_(e);
+-  } catch (error) {
+-    return _qa144Json_({ok:false,error:'qa_guard_error',qa_marker:QA_CS21A144_MARKER,mensaje:String(error && error.message || error)});
