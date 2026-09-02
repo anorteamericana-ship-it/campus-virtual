@@ -1,5 +1,7 @@
 # CS21A211B · matriz semántica de endpoints Apps Script QA · 2026-09-01
 
+> **SUPERSEDED para decisión de allowlist por CS21A211C** (`00_DOCUMENTACION/ENDPOINT_MANUAL_REVIEW_CS21A211C_2026-09-02.md`). Este archivo conserva el checkpoint automático previo a la revisión manual de 49 rutas.
+
 ## Línea base
 
 - Snapshot: `QA_HEAD_20260901_215804Z`.
@@ -32,9 +34,9 @@ La matriz no fuerza el total externo de 365. Sobre el snapshot exacto se resuelv
 
 Esto confirma que la blacklist léxica histórica deja pasar una superficie muy superior a las lecturas auditadas y, simultáneamente, bloquea lecturas legítimas por coincidencia de nombre.
 
-## Política CS21A211B propuesta
+## Política CS21A211B propuesta en este checkpoint
 
-Después de revisar la matriz contra el patch de contención:
+Antes de la revisión manual CS21A211C:
 
 | decisión | cantidad |
 | --- | ---: |
@@ -46,7 +48,7 @@ Después de revisar la matriz contra el patch de contención:
 
 No existe wildcard `get*`.
 
-### Allowlist core exacta resultante
+### Allowlist core de este checkpoint · 9
 
 1. `iniciarSesion`
 2. `validarSesion`
@@ -80,7 +82,7 @@ La cadena puede crear/actualizar snapshots financieros de intentos mediante `_ak
 
 Por tanto, `getEstudiante` **no debe formar parte de una allowlist de lectura QA** mientras conserve ese comportamiento. Queda `BLOCK_DEFAULT_DENY` aunque una ejecución previa haya respondido correctamente cuando las estructuras ya existían.
 
-## Clasificación de efectos
+## Clasificación de efectos automática de este checkpoint
 
 | effect_class | cantidad |
 | --- | ---: |
@@ -94,7 +96,7 @@ Por tanto, `getEstudiante` **no debe formar parte de una allowlist de lectura QA
 | `READ_PURE` | 1 |
 | **Total** | **351** |
 
-`UNKNOWN` no significa inseguro ni seguro: son rutas de dispatcher común que requieren revisión manual antes de permitirlas.
+Los 31 `READ_PURE_CANDIDATE` y 18 `UNKNOWN` fueron revisados posteriormente en CS21A211C. No usar estas etiquetas automáticas como decisión final de allowlist.
 
 ## Autorización observada
 
@@ -138,7 +140,7 @@ No demuestra:
 4. Validar 11 propiedades QA externas obligatorias y denylist PROD.
 5. Validar unión `query.fn`, `body.fn`, `query.action`, `body.action`.
 6. Rechazar selectores ambiguos.
-7. Confirmar allowlist core de exactamente 9 nombres.
+7. Confirmar allowlist exacta vigente en CS21A211C.
 8. Confirmar `getAdminDashboard` y `getEstudiante` ausentes de la allowlist.
 9. Source Truth English LAB sin regresión.
 
@@ -157,36 +159,16 @@ Con stubs y sin recursos reales:
 
 ### E2 · autenticada lectura / lifecycle técnico
 
-Solo después de provisionar recursos QA aislados:
-
-- login student/teacher/superadmin QA;
-- `validarSesion` por rol;
-- `getInfoGeneral`;
-- `getEvaluacionesEstudiante`, `getAsistenciaEstudiante`, `getEstadoConape`;
-- `getCalendarioDocente`, `getGrupoEstudiantes`;
-- `cerrarSesion` y verificar invalidación de sesión.
-
-`getEstudiante` y `getAdminDashboard` quedan deliberadamente fuera de E2 hasta tener rutas no-creadoras o precondiciones controladas.
+Solo después de provisionar recursos QA aislados y usando la allowlist vigente de CS21A211C.
 
 ### E3 · desplegada lectura
 
-Usar únicamente el deployment QA canónico existente, sin crear `/exec` paralelo:
-
-- UI Apps Script QA debe contener **0** referencias al deployment PROD;
-- todas las llamadas de la UI deben volver al mismo deployment QA;
-- confirmar que endpoints no allowlisteados fallan cerrado;
-- confirmar que recursos Drive/Sheets resueltos pertenecen al sandbox QA.
+Usar únicamente el deployment QA canónico existente, sin crear `/exec` paralelo.
 
 ### E4 · escritura controlada
 
-No ejecutar dentro de este candidato. Requiere autorización separada y sandbox comprobado. Antes de cualquier E4:
+No ejecutar dentro de este candidato. Requiere autorización separada y sandbox comprobado.
 
-- IDs externos QA verificados;
-- datos sintéticos QA;
-- request IDs/idempotencia donde aplique;
-- respaldo y reversión;
-- ninguna escritura contra PROD.
+## Veredicto histórico
 
-## Veredicto
-
-**MATRIZ E0 GENERADA · 351/351 HANDLERS RESUELTOS · ALLOWLIST CORE REDUCIDA A 9 · NO DEPLOY · NO PROD · NO E4.**
+**MATRIZ E0 GENERADA · 351/351 HANDLERS RESUELTOS · SUPERSEDED PARA ALLOWLIST POR CS21A211C · NO DEPLOY · NO PROD · NO E4.**
