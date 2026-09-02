@@ -100,7 +100,7 @@
 +    'iniciarsesion', 'validarsesion', 'cerrarsesion',
 +    'getinfogeneral',
 +    'getestudiante', 'getevaluacionesestudiante', 'getasistenciaestudiante', 'getestadoconape',
-+    'getcalendariodocente', 'getgrupoestudiantes', 'getadmindashboard'
++    'getcalendariodocente', 'getgrupoestudiantes'
 +  ].indexOf(fn) !== -1;
 +}
 +function _qa144DangerousFn_(fn){
