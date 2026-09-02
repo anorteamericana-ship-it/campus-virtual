@@ -108,12 +108,15 @@ function Copy-Tree([string]$From, [string]$To) {
 
 function Build-CombinedPatch {
   $manifest = Get-Content -LiteralPath $PatchManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+  $utf8NoBom = [Text.UTF8Encoding]::new($false)
   $stream = [IO.MemoryStream]::new()
   try {
     foreach ($part in $manifest.patch_parts) {
       $path = Join-Path $RepoRoot ([string]$part.path).Replace('/','\')
       if (-not (Test-Path -LiteralPath $path)) { Fail "Falta fragmento de patch: $path" }
-      $bytes = [IO.File]::ReadAllBytes($path)
+      $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+      $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+      $bytes = $utf8NoBom.GetBytes($normalized)
       $stream.Write($bytes,0,$bytes.Length)
     }
     [IO.File]::WriteAllBytes($CombinedPatch,$stream.ToArray())
