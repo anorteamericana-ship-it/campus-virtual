@@ -1,5 +1,5 @@
 {
-  "schema": "CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_1",
+  "schema": "CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2",
   "candidate": "CS21A211",
   "source_snapshot": "QA_HEAD_20260901_215804Z",
   "source_file_count": 71,
@@ -23,13 +23,16 @@
     {"path":"index.html","before_sha256":"881c6a38488d913c0115171f4374dcc6de322db78656ea149a037cdd79327778","after_sha256":"da14a50253ec25a59ba80568c8bf6d055c83fd33d7d1016c6c96aafeb3be943b","before_bytes":649287,"after_bytes":648504}
   ],
   "patch_parts": [
-    {"path":"patches/apps-script/CS21A211/01_Router.js.patch","source_path":"01_Router.js","sha256":"10d4190ed565839b101715900a4f949b1f7b031bb76281aaa404e48617cd790f","bytes":778},
-    {"path":"patches/apps-script/CS21A211/02_Auth_Sesiones_Usuarios.js.patch","source_path":"02_Auth_Sesiones_Usuarios.js","sha256":"e04e7971487ce3abd9b6b71a9d9f2256e0c97bf4b8142ad20ef4befcfaef69bc","bytes":2057},
-    {"path":"patches/apps-script/CS21A211/10_Estudiantes.js.patch","source_path":"10_Estudiantes.js","sha256":"141d8a5a58ae98627d9c10e863a7461d77f9a0e5266f82fdf17b7aadebbb67bc","bytes":3170},
-    {"path":"patches/apps-script/CS21A211/41_CONAPE_Auditoria_Finanzas.js.patch","source_path":"41_CONAPE_Auditoria_Finanzas.js","sha256":"088a1361cc8b0cedfd2f07ed6235a225e85c5fb05f19fc057f3c5d8a0961d9cf","bytes":20994},
-    {"path":"patches/apps-script/CS21A211/46_English_LAB_Accesos_Demo_Docentes.js.patch","source_path":"46_English_LAB_Accesos_Demo_Docentes.js","sha256":"f1ae6941359b0a23a0c566399b8769e12732fca4c27fbde1c8bdba753c3100c2","bytes":686},
-    {"path":"patches/apps-script/CS21A211/98_Instalacion_QA_CS21A144.js.patch","source_path":"98_Instalacion_QA_CS21A144.js","sha256":"b6775193627f049aa3d44b33c0ae9c3d73e7e95d599a70cd44301478fb73e9f5","bytes":7781},
-    {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.patch","source_path":"99_QA_Staging_Guard.js","sha256":"1371762334a67ea23e329010c6ebb7126aeaaba88747252b33db659c43977f1b","bytes":15702},
-    {"path":"patches/apps-script/CS21A211/index.html.patch","source_path":"index.html","sha256":"b7beb97198524a8e6377e32fe206fa99c85e89432b36ed5e929856ec3ee11b16","bytes":9108}
+    {"path":"patches/apps-script/CS21A211/01_Router.js.patch","source_path":"01_Router.js"},
+    {"path":"patches/apps-script/CS21A211/02_Auth_Sesiones_Usuarios.js.patch","source_path":"02_Auth_Sesiones_Usuarios.js"},
+    {"path":"patches/apps-script/CS21A211/10_Estudiantes.js.patch","source_path":"10_Estudiantes.js"},
+    {"path":"patches/apps-script/CS21A211/41_CONAPE_Auditoria_Finanzas.js.part1.patch","source_path":"41_CONAPE_Auditoria_Finanzas.js"},
+    {"path":"patches/apps-script/CS21A211/41_CONAPE_Auditoria_Finanzas.js.part2.patch","source_path":"41_CONAPE_Auditoria_Finanzas.js"},
+    {"path":"patches/apps-script/CS21A211/46_English_LAB_Accesos_Demo_Docentes.js.patch","source_path":"46_English_LAB_Accesos_Demo_Docentes.js"},
+    {"path":"patches/apps-script/CS21A211/98_Instalacion_QA_CS21A144.js.patch","source_path":"98_Instalacion_QA_CS21A144.js"},
+    {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.part1.patch","source_path":"99_QA_Staging_Guard.js"},
+    {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.part2.patch","source_path":"99_QA_Staging_Guard.js"},
+    {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.part3.patch","source_path":"99_QA_Staging_Guard.js"},
+    {"path":"patches/apps-script/CS21A211/index.html.patch","source_path":"index.html"}
   ]
 }
