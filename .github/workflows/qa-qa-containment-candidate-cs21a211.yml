@@ -1,0 +1,45 @@
+name: QA Containment Candidate CS21A211
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/qa-qa-containment-candidate-cs21a211.yml'
+      - 'scripts/qa_qa_containment_candidate_cs21a211.mjs'
+      - 'patches/apps-script/CS21A211/**'
+      - 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json'
+      - '00_DOCUMENTACION/QA_CONTAINMENT_CANDIDATE_CS21A211_2026-09-01.md'
+  push:
+    branches:
+      - fix/qa-containment-cs21a211
+    paths:
+      - '.github/workflows/qa-qa-containment-candidate-cs21a211.yml'
+      - 'scripts/qa_qa_containment_candidate_cs21a211.mjs'
+      - 'patches/apps-script/CS21A211/**'
+      - 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json'
+      - '00_DOCUMENTACION/QA_CONTAINMENT_CANDIDATE_CS21A211_2026-09-01.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-containment-cs21a211-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  containment-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax check contract
+        run: node --check scripts/qa_qa_containment_candidate_cs21a211.mjs
+
+      - name: Verify QA containment candidate
+        run: node scripts/qa_qa_containment_candidate_cs21a211.mjs
