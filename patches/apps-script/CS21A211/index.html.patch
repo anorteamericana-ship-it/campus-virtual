@@ -117,7 +117,7 @@
 +const SCRIPT_URL_B = CAMPUS_APPS_SCRIPT_URL;
  
  const NIVEL_COLOR_B = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
- const NIVEL_LABEL_B = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', B2:'Básico II', I1:'Intermedio I', I2:'#4CAF50' };
+ const NIVEL_LABEL_B = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
 @@ -10200,7 +10208,7 @@
  // PANEL DOCUMENTOS
  // ─────────────────────────────────────────────────────────────────────────
