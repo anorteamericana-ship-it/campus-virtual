@@ -9,7 +9,7 @@
 +      var campusTemplate = HtmlService.createTemplateFromFile('index');
 +      var campusSelfUrl = '';
 +      try { campusSelfUrl = String(ScriptApp.getService().getUrl() || '').trim(); } catch (_) { campusSelfUrl = ''; }
-+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(campusSelfUrl)) {
++      if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/(?:exec|dev)$/.test(campusSelfUrl)) {
 +        throw new Error('QA_WEBAPP_SELF_URL_INVALID');
 +      }
 +      campusTemplate.CAMPUS_SELF_URL = campusSelfUrl;
