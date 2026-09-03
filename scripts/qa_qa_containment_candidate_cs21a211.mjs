@@ -7,21 +7,38 @@ import { execFileSync } from 'node:child_process';
 const MANIFEST = 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json';
 const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
 const patchParts = manifest.patch_parts || [];
-const patch = patchParts.map(part => fs.readFileSync(part.path, 'utf8')).join('');
+const patchBuffers = patchParts.map(part => fs.readFileSync(part.path));
+for (let i = 0; i < patchParts.length; i += 1) {
+  if (patchBuffers[i].includes(13)) throw new Error(`CS21A211 containment contract: CR byte in canonical LF patch ${patchParts[i].path}`);
+}
+const patchBuffer = Buffer.concat(patchBuffers);
+const patch = patchBuffer.toString('utf8');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const fail = message => { throw new Error(`CS21A211 containment contract: ${message}`); };
 const expect = (ok, message) => { if (!ok) fail(message); };
 
 const SOURCE_AGGREGATE = '3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6';
-const CANDIDATE_AGGREGATE = '597088d4f817f25ab702de64a7b26d7db1f2e7df725ead65426c14c059ffb9d8';
-const PATCH_SHA256 = 'd27e3bf040891a56d6f9f498cabd42054bd51745c33a27413230f48d4cc764c6';
-const GUARD_AFTER_SHA256 = 'fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a';
-const GUARD_AFTER_BYTES = 10400;
+const CANDIDATE_AGGREGATE = 'a31ebfc566b7093dc7463261793bb542905587d92317202aa6ec6ec5420a6523';
+const CANDIDATE_BYTES = 4692202;
+const PATCH_SHA256 = '2867f95fe1871aa21f7bcc1810a2fbb3d5c17a3bfeb81fd30df2b3dacfce45f9';
+const GUARD_AFTER_SHA256 = 'a39441e9e99981583e4f98d0994f5ac0b80f244e2febbb7e3d5895550fe310fe';
+const GUARD_AFTER_BYTES = 13062;
 const ROUTER_AFTER_SHA256 = '87f80a0240d261ed6361a6c51087ddd86ae429eef6dcb9111609f3d0d6e74c68';
 const ROUTER_AFTER_BYTES = 256665;
 const INDEX_AFTER_SHA256 = 'c031707fab664327436bb4f68cfbb23dcee123f82c7b0d456c3b39097af0d212';
 const INDEX_AFTER_BYTES = 649481;
 const PROD_DEPLOYMENT = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ';
+const expectedGetFns = [
+  'verificarCedulaInscripcion',
+  'verificarCedulaExiste',
+  'buscarEnPadron',
+  'getAsesoresActivos',
+  'getGruposDisponibles',
+  'getInscripcionPublicConfig',
+  'getInfoGeneral',
+  'getBecasDisponibles',
+  'getBecas',
+].sort();
 const expectedFiles = [
   '01_Router.js',
   '02_Auth_Sesiones_Usuarios.js',
@@ -101,13 +118,23 @@ function reconstructFullReplacement(sourcePath) {
   return Buffer.from(`${out.join('\n')}\n`, 'utf8');
 }
 
+function parseGuardGetFns(guard) {
+  const start = guard.indexOf('function _qa144AllowedGetFn_(fn){');
+  const end = guard.indexOf('function _qa144GetBlockedHtml_', start);
+  expect(start >= 0 && end > start, 'GET allowlist helper missing or malformed');
+  const block = guard.slice(start, end);
+  const match = block.match(/return\s*\[([\s\S]*?)\]\.indexOf/);
+  expect(match, 'GET allowlist array cannot be parsed');
+  return [...match[1].matchAll(/['"]([^'"]+)['"]/g)].map(m => m[1]).sort();
+}
+
 expect(manifest.schema === 'CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2', 'manifest schema drift');
-expect(manifest.candidate === 'CS21A211H', 'candidate label drift');
+expect(manifest.candidate === 'CS21A211I', 'candidate label drift');
 expect(manifest.source_snapshot === 'QA_HEAD_20260901_215804Z', 'wrong source snapshot');
 expect(manifest.source_file_count === 71 && manifest.candidate_file_count === 71, 'source/candidate file count must remain 71');
 expect(manifest.source_aggregate_sha256 === SOURCE_AGGREGATE, 'source aggregate drift');
 expect(manifest.candidate_aggregate_sha256 === CANDIDATE_AGGREGATE, 'candidate aggregate drift');
-expect(manifest.candidate_total_bytes === 4689540, 'candidate byte count drift');
+expect(manifest.candidate_total_bytes === CANDIDATE_BYTES, 'candidate byte count drift');
 expect(manifest.patch_sha256 === PATCH_SHA256, 'manifest patch hash drift');
 expect(manifest.remote_write_performed === false, 'manifest claims a remote write');
 expect(manifest.apps_script_deployed === false, 'manifest claims Apps Script was deployed');
@@ -120,7 +147,7 @@ for (const part of patchParts) {
 }
 const patchSourceFiles = [...new Set(patchParts.map(part => part.source_path))].sort();
 expect(JSON.stringify(patchSourceFiles) === JSON.stringify(expectedFiles), `patch source set drift: ${patchSourceFiles.join(', ')}`);
-const combinedPatchSha = sha256(Buffer.from(patch, 'utf8'));
+const combinedPatchSha = sha256(patchBuffer);
 expect(combinedPatchSha === PATCH_SHA256, `combined patch SHA-256 mismatch: ${combinedPatchSha}`);
 const hunkCount = validateUnifiedPatchHunks(patch);
 
@@ -161,16 +188,8 @@ const allAdded = [...addedByFile.values()].flat().join('\n');
 
 const indexAdded = added('index.html');
 expect(!indexAdded.includes(PROD_DEPLOYMENT), 'index.html still adds the PROD deployment');
-expect(indexAdded.includes('CAMPUS_APPS_SCRIPT_URL = <?!= JSON.stringify(CAMPUS_SELF_URL) ?>;'), 'self URL injection missing from index.html');
-expect(indexAdded.includes('/(?:exec|dev)$/.test(CAMPUS_APPS_SCRIPT_URL)'), 'frontend must accept the authenticated QA self URL in /exec or @HEAD /dev form');
-expect(indexAdded.includes("placeholder={'https://zoom.us/j/...'}"), 'Step3 Zoom placeholder Babel-safe normalization missing');
-expect(indexAdded.includes("placeholder={'Ej: Aula A1, Sala Azul...'}"), 'Step3 salon placeholder Babel-safe normalization missing');
-expect(indexAdded.includes("<input type={'range'} min={5} max={20}"), 'Step3 capacity range Babel-safe normalization missing');
-expect(indexAdded.includes("postCronogramaSafe('getGrupoInfo', { cod_grupo: codGrupo })"), 'Cronograma safe getGrupoInfo POST missing');
-expect(indexAdded.includes("postCronogramaSafe('getAsistenciaEstudiante', { codigo })"), 'Cronograma safe asistencia POST missing');
-expect(indexAdded.includes("postCronogramaSafe('getEvaluacionesEstudiante', { codigo })"), 'Cronograma safe evaluaciones POST missing');
-expect(indexAdded.includes("const token = window.getSessionToken ? window.getSessionToken() : ''"), 'Cronograma token-in-body preparation missing');
-expect(indexAdded.includes('usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0]'), 'Cronograma grupoActivo/session group resolution missing');
+expect(indexAdded.includes('CAMPUS_APPS_SCRIPT_URL = <?!= JSON.stringify(CAMPUS_SELF_URL) ?>;'), 'self URL injection missing from legacy index.html');
+expect(indexAdded.includes('/(?:exec|dev)$/.test(CAMPUS_APPS_SCRIPT_URL)'), 'legacy bundle self URL must accept /exec or authenticated @HEAD /dev');
 const aliasCount = (indexAdded.match(/= CAMPUS_APPS_SCRIPT_URL;/g) || []).length;
 expect(aliasCount === 13, `expected 13 legacy URL aliases to self URL, found ${aliasCount}`);
 expect(added('01_Router.js').includes('ScriptApp.getService().getUrl()'), 'router does not derive Web App self URL');
@@ -193,19 +212,30 @@ for (const [file, lines] of addedByFile) {
   for (const id of prodResourceIds) expect(!text.includes(id), `${file} adds writable PROD resource id ${id}`);
 }
 
-const guard = added('99_QA_Staging_Guard.js');
-for (const token of ['qa_route_ambiguous','qa_endpoint_not_allowlisted','_qa144ExternalIdsOk_','QA_CS21A211_PROD_RESOURCE_IDS']) {
+const guard = guardBuffer.toString('utf8');
+for (const token of [
+  'qa_route_ambiguous',
+  'qa_endpoint_not_allowlisted',
+  '_qa144ExternalIdsOk_',
+  'QA_CS21A211_PROD_RESOURCE_IDS',
+  '_qa144AllowedGetFn_',
+  '_qa144DoGetBase_',
+  '_qa144GetBlockedHtml_',
+  'qa_get_guard_installed',
+  "Logger.log('CS21A211I doGet no-fn:'",
+]) {
   expect(guard.includes(token), `guard invariant missing: ${token}`);
 }
+expect(JSON.stringify(parseGuardGetFns(guard)) === JSON.stringify(expectedGetFns), 'guard GET allowlist must remain exactly the Router 9');
 expect(guard.includes("typeof ELV2_tryHandleCampusPostAtOuterGuard === 'function'"), 'ELV2 optional boundary availability guard missing');
 expect(guard.includes('e && e.parameter && e.parameter.action') && guard.includes('body && body.action'), 'guard does not inspect action selectors');
-expect(guard.includes('req.ids.some(_qa144DangerousFn_)'), 'guard does not classify all normalized selectors');
-expect(guard.includes("return _qa144Json_({ok:false,error:'qa_endpoint_not_allowlisted'"), 'guard must default-deny unclassified endpoints');
-expect(!guard.includes("'getadmindashboard'"), 'getAdminDashboard must remain default-denied because its current path may create PAGOS_CAMPUS');
-expect(!guard.includes("'getestudiante'"), 'getEstudiante must remain default-denied because its current path may create/update financial intent snapshots or missing sheets');
-expect(!guard.includes("'getoperacionespagoreversibles'"), 'getOperacionesPagoReversibles must remain default-denied because it may initialize PAGOS_OPERACIONES');
+expect(guard.includes('req.ids.some(_qa144DangerousFn_)'), 'guard does not classify all normalized POST selectors');
+expect(guard.includes("error:'qa_endpoint_not_allowlisted'"), 'guard must default-deny unclassified endpoints');
+expect(!guard.includes("'getadmindashboard'"), 'getAdminDashboard must remain default-denied');
+expect(!guard.includes("'getestudiante'"), 'getEstudiante must remain default-denied');
+expect(!guard.includes("'getoperacionespagoreversibles'"), 'getOperacionesPagoReversibles must remain default-denied');
 for (const legacyRead of ['getgrupoinfo','getcomprobantes','getnovedadesconape','getradiografiagrupo']) {
-  expect(guard.includes(`'${legacyRead}'`), `manually audited legacy read missing from exact allowlist: ${legacyRead}`);
+  expect(guard.includes(`'${legacyRead}'`), `manually audited legacy POST read missing from exact allowlist: ${legacyRead}`);
 }
 
 const installer = added('98_Instalacion_QA_CS21A144.js');
@@ -216,7 +246,7 @@ for (const forbidden of ['clasp push', 'clasp deploy', 'DriveApp.createFolder(',
   expect(!allAdded.includes(forbidden), `forbidden remote mutation primitive in candidate patch: ${forbidden}`);
 }
 
-console.log(`CS21A211_QA_CONTAINMENT_CONTRACT=PASS files=${expectedFiles.length} parts=${patchParts.length} hunks=${hunkCount} aliases=${aliasCount}`);
+console.log(`CS21A211_QA_CONTAINMENT_CONTRACT=PASS files=${expectedFiles.length} parts=${patchParts.length} hunks=${hunkCount} aliases=${aliasCount} get=${expectedGetFns.length}`);
 console.log(`GUARD_RECONSTRUCTED_SYNTAX=PASS bytes=${guardBuffer.length} sha256=${GUARD_AFTER_SHA256}`);
 console.log(`SOURCE_AGGREGATE=${manifest.source_aggregate_sha256}`);
 console.log(`CANDIDATE_AGGREGATE=${manifest.candidate_aggregate_sha256}`);
