@@ -8,7 +8,7 @@
   "candidate_file_count": 71,
   "candidate_total_bytes": 4689540,
   "candidate_aggregate_sha256": "597088d4f817f25ab702de64a7b26d7db1f2e7df725ead65426c14c059ffb9d8",
-  "patch_sha256": "375859ca3bd37a6e5fec65a675725b8c004a40bcf056342815cee5ae0eb57f45",
+  "patch_sha256": "d27e3bf040891a56d6f9f498cabd42054bd51745c33a27413230f48d4cc764c6",
   "reference_patch_sha256": null,
   "patch_packaging_note": "CS21A211H supersedes G only for the deployed Cronograma read-path repair. The browser-rendered QA bundle still used GET calls without token and required getEstudiante, which remains intentionally default-denied because its current implementation may create or update financial/structural state. H keeps that backend deny intact and rewrites only the Cronograma bundle hook to use the already-authenticated session identity plus exactly three tokenized POST text/plain reads: getGrupoInfo, getAsistenciaEstudiante and getEvaluacionesEstudiante. It also accepts grupoActivo before legacy grupo/grupos. The previously validated self URL policy (/exec or authenticated @HEAD /dev), 13 self-route aliases, Babel-safe Step3 repair, fail-closed guard and isolated QA resources remain unchanged. No PROD fallback is introduced. Local syntax validation of the replacement hook passed before this identity was promoted.",
   "remote_write_performed": false,
