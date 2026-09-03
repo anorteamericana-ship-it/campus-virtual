@@ -222,7 +222,7 @@ for (const token of [
   '_qa144DoGetBase_',
   '_qa144GetBlockedHtml_',
   'qa_get_guard_installed',
-  "Logger.log('CS21A211I doGet no-fn:'",
+  "Logger.log('CS21A211I doGet no-fn: '",
 ]) {
   expect(guard.includes(token), `guard invariant missing: ${token}`);
 }
