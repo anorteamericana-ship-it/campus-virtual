@@ -8,7 +8,7 @@
 +// El valor se inyecta en doGet desde ScriptApp.getService().getUrl(); no hay fallback a PROD.
 +const CAMPUS_APPS_SCRIPT_URL = <?!= JSON.stringify(CAMPUS_SELF_URL) ?>;
 +if (typeof CAMPUS_APPS_SCRIPT_URL !== 'string' ||
-+    !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(CAMPUS_APPS_SCRIPT_URL)) {
++    !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/(?:exec|dev)$/.test(CAMPUS_APPS_SCRIPT_URL)) {
 +  throw new Error('QA_WEBAPP_SELF_URL_INVALID');
 +}
 +
