@@ -13,9 +13,9 @@ $ProgressPreference = 'SilentlyContinue'
 $QaScriptId = '1GMHihGwnX_-sIS101rRlUoYpAH2HSKyms8lx6L9z7bjb_45YDn-ph6WD'
 $QaDeploymentId = 'AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ'
 $ExpectedSourceAggregate = '3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6'
-$ExpectedCandidateAggregate = '6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1'
-$ExpectedCandidateBytes = 4688555
-$ExpectedPatchSha = '20aebc28ecc42b550f6d1b03a02314674d130d6825faa40c4685bfea5d423768'
+$ExpectedCandidateAggregate = 'd5ce9ddbc8a68d0de5c95fa97f9a8a2ed381e8098da8f7317f8a34e73388c83a'
+$ExpectedCandidateBytes = 4688577
+$ExpectedPatchSha = '375859ca3bd37a6e5fec65a675725b8c004a40bcf056342815cee5ae0eb57f45'
 $GuardFileName = '99_QA_Staging_Guard.js'
 $ExpectedGuardBytes = 10400
 $ExpectedGuardSha = 'fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a'
@@ -25,13 +25,13 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $PatchManifestPath = Join-Path $RepoRoot 'patches\apps-script\CS21A211_QA_CONTAINMENT.manifest.json'
 $SnapshotAnalyzer = Join-Path $PSScriptRoot 'apps_script_qa_snapshot_manifest_cs21a178.mjs'
 $Stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd_HHmmssZ')
-$WorkRoot = Join-Path ([IO.Path]::GetTempPath()) "campus_cs21a211e_release_$Stamp"
+$WorkRoot = Join-Path ([IO.Path]::GetTempPath()) "campus_cs21a211g_release_$Stamp"
 $SourceDir = Join-Path $WorkRoot 'source'
 $CandidateDir = Join-Path $WorkRoot 'candidate'
 $VerifyDir = Join-Path $WorkRoot 'verify-remote'
-$CombinedPatch = Join-Path $WorkRoot 'CS21A211E.patch'
-$ApplyPatch = Join-Path $WorkRoot 'CS21A211E_without_guard.patch'
-$EvidenceDir = Join-Path $EvidenceRoot "CS21A211E_$Stamp"
+$CombinedPatch = Join-Path $WorkRoot 'CS21A211G.patch'
+$ApplyPatch = Join-Path $WorkRoot 'CS21A211G_without_guard.patch'
+$EvidenceDir = Join-Path $EvidenceRoot "CS21A211G_$Stamp"
 $SourceManifestPath = Join-Path $EvidenceDir 'pre-push-manifest.json'
 $CandidateManifestPath = Join-Path $EvidenceDir 'candidate-manifest.json'
 $RemoteManifestPath = Join-Path $EvidenceDir 'post-push-remote-manifest.json'
@@ -193,9 +193,12 @@ function Assert-Syntax([string]$Dir) {
   if ($index.Contains($ProdDeploymentId)) { Fail 'index.html candidato todavía contiene el deployment PROD.' }
   $aliases = [regex]::Matches($index, '= CAMPUS_APPS_SCRIPT_URL;').Count
   if ($aliases -ne 13) { Fail "Aliases self-route inesperados: $aliases; esperado 13." }
+  if (-not $index.Contains("placeholder={'https://zoom.us/j/...'}")) { Fail 'Falta normalización Babel-safe del placeholder Zoom en Step3.' }
+  if (-not $index.Contains("placeholder={'Ej: Aula A1, Sala Azul...'}")) { Fail 'Falta normalización Babel-safe del salón en Step3.' }
+  if (-not $index.Contains("<input type={'range'} min={5} max={20}")) { Fail 'Falta normalización Babel-safe del range en Step3.' }
 }
 
-Write-Host '=== CS21A211E · RELEASE CONTROLADO QA ===' -ForegroundColor Cyan
+Write-Host '=== CS21A211G · RELEASE CONTROLADO QA ===' -ForegroundColor Cyan
 Write-Host "Script QA: $QaScriptId"
 Write-Host "Deployment QA esperado: $QaDeploymentId"
 Write-Host "Modo: $(if ($Push) {'PUSH QA autorizado'} else {'DRY-RUN local, sin push'})"
@@ -239,7 +242,7 @@ try {
   Generate-Manifest -Dir $CandidateDir -Output $CandidateManifestPath
   $candidateManifest = Assert-Manifest -Path $CandidateManifestPath -ExpectedAggregate $ExpectedCandidateAggregate -ExpectedBytes $ExpectedCandidateBytes -Label 'CANDIDATE'
   Assert-Syntax -Dir $CandidateDir
-  Write-Host "PASS · candidate aggregate $($candidateManifest.aggregate_sha256) · guard $ExpectedGuardBytes bytes · 7/7 JS syntax · 13/13 self-route" -ForegroundColor Green
+  Write-Host "PASS · candidate aggregate $($candidateManifest.aggregate_sha256) · guard $ExpectedGuardBytes bytes · 7/7 JS syntax · 13/13 self-route · Step3 render guard" -ForegroundColor Green
 
   if (-not $Push) {
     Write-Host "`nDRY-RUN PASS · no se hizo push remoto." -ForegroundColor Yellow
@@ -272,7 +275,7 @@ try {
 
   Write-Host "`n9/9 · Evidencia local de cierre técnico..." -ForegroundColor Cyan
   $result = [ordered]@{
-    schema = 'CS21A211E_QA_RELEASE_RESULT_1'
+    schema = 'CS21A211G_QA_RELEASE_RESULT_1'
     generated_at_utc = [DateTime]::UtcNow.ToString('o')
     qa_script_id = $QaScriptId
     qa_deployment_id = $QaDeploymentId
@@ -290,7 +293,7 @@ try {
   }
   $result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $EvidenceDir 'release-result.json') -Encoding UTF8
   Write-Host "PASS · evidencia: $EvidenceDir" -ForegroundColor Green
-  Write-Host "`nCS21A211E_QA_PUSH=PASS" -ForegroundColor Green
+  Write-Host "`nCS21A211G_QA_PUSH=PASS" -ForegroundColor Green
   Write-Host "REMOTE_AGGREGATE=$ExpectedCandidateAggregate"
   Write-Host "QA_DEPLOYMENT=$QaDeploymentId @HEAD"
   $Succeeded = $true
