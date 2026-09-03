@@ -13,10 +13,14 @@ const fail = message => { throw new Error(`CS21A211 containment contract: ${mess
 const expect = (ok, message) => { if (!ok) fail(message); };
 
 const SOURCE_AGGREGATE = '3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6';
-const CANDIDATE_AGGREGATE = '6c1c79c04994f2c10a5c4feee03c275e1664a003497a1febb0ca0add8a960bc1';
-const PATCH_SHA256 = '20aebc28ecc42b550f6d1b03a02314674d130d6825faa40c4685bfea5d423768';
+const CANDIDATE_AGGREGATE = '988fe88938b3883707a100b48d6d610d7aa4a35b8203a9a9a8e0e311effc1eb8';
+const PATCH_SHA256 = 'f53fe49dc8d82f8d6a17d2aea468b0258b8f268ebe506c06e716e4ec5f589a5d';
 const GUARD_AFTER_SHA256 = 'fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a';
 const GUARD_AFTER_BYTES = 10400;
+const ROUTER_AFTER_SHA256 = '87f80a0240d261ed6361a6c51087ddd86ae429eef6dcb9111609f3d0d6e74c68';
+const ROUTER_AFTER_BYTES = 256665;
+const INDEX_AFTER_SHA256 = 'be3ddeb7106eaa8cd4989dc6b9864e2dab66fbad6ecf861f9227e8fa04c6ccc4';
+const INDEX_AFTER_BYTES = 648512;
 const PROD_DEPLOYMENT = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ';
 const expectedFiles = [
   '01_Router.js',
@@ -28,16 +32,6 @@ const expectedFiles = [
   '99_QA_Staging_Guard.js',
   'index.html',
 ].sort();
-const expectedSourcePatchSha = {
-  '01_Router.js':'10d4190ed565839b101715900a4f949b1f7b031bb76281aaa404e48617cd790f',
-  '02_Auth_Sesiones_Usuarios.js':'e04e7971487ce3abd9b6b71a9d9f2256e0c97bf4b8142ad20ef4befcfaef69bc',
-  '10_Estudiantes.js':'141d8a5a58ae98627d9c10e863a7461d77f9a0e5266f82fdf17b7aadebbb67bc',
-  '41_CONAPE_Auditoria_Finanzas.js':'088a1361cc8b0cedfd2f07ed6235a225e85c5fb05f19fc057f3c5d8a0961d9cf',
-  '46_English_LAB_Accesos_Demo_Docentes.js':'f1ae6941359b0a23a0c566399b8769e12732fca4c27fbde1c8bdba753c3100c2',
-  '98_Instalacion_QA_CS21A144.js':'b6775193627f049aa3d44b33c0ae9c3d73e7e95d599a70cd44301478fb73e9f5',
-  '99_QA_Staging_Guard.js':'60c33603b5b9bb6d6ec686460f6a33362e27c127e34c88b475036f4997a39f28',
-  'index.html':'b7beb97198524a8e6377e32fe206fa99c85e89432b36ed5e929856ec3ee11b16',
-};
 const prodResourceIds = [
   '1Bm9pK4OvWE944X29bm8S3UWUlWP_G5jO',
   '1Z4N0TM5tFYT_aHUiUklKX3fJvPNArw2K',
@@ -108,11 +102,12 @@ function reconstructFullReplacement(sourcePath) {
 }
 
 expect(manifest.schema === 'CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2', 'manifest schema drift');
+expect(manifest.candidate === 'CS21A211F', 'candidate label drift');
 expect(manifest.source_snapshot === 'QA_HEAD_20260901_215804Z', 'wrong source snapshot');
 expect(manifest.source_file_count === 71 && manifest.candidate_file_count === 71, 'source/candidate file count must remain 71');
 expect(manifest.source_aggregate_sha256 === SOURCE_AGGREGATE, 'source aggregate drift');
 expect(manifest.candidate_aggregate_sha256 === CANDIDATE_AGGREGATE, 'candidate aggregate drift');
-expect(manifest.candidate_total_bytes === 4688555, 'candidate byte count drift');
+expect(manifest.candidate_total_bytes === 4688571, 'candidate byte count drift');
 expect(manifest.patch_sha256 === PATCH_SHA256, 'manifest patch hash drift');
 expect(manifest.remote_write_performed === false, 'manifest claims a remote write');
 expect(manifest.apps_script_deployed === false, 'manifest claims Apps Script was deployed');
@@ -125,10 +120,6 @@ for (const part of patchParts) {
 }
 const patchSourceFiles = [...new Set(patchParts.map(part => part.source_path))].sort();
 expect(JSON.stringify(patchSourceFiles) === JSON.stringify(expectedFiles), `patch source set drift: ${patchSourceFiles.join(', ')}`);
-for (const sourcePath of expectedFiles) {
-  const actualSha = sha256(Buffer.from(sourcePatch(sourcePath), 'utf8'));
-  expect(actualSha === expectedSourcePatchSha[sourcePath], `source patch SHA-256 mismatch for ${sourcePath}: ${actualSha}`);
-}
 const combinedPatchSha = sha256(Buffer.from(patch, 'utf8'));
 expect(combinedPatchSha === PATCH_SHA256, `combined patch SHA-256 mismatch: ${combinedPatchSha}`);
 const hunkCount = validateUnifiedPatchHunks(patch);
@@ -144,6 +135,12 @@ expect(sha256(guardBuffer) === GUARD_AFTER_SHA256, `guard candidate SHA-256 mism
 const guardTouched = manifest.touched_files.find(item => item.path === '99_QA_Staging_Guard.js');
 expect(guardTouched?.after_bytes === GUARD_AFTER_BYTES, 'manifest guard after_bytes drift');
 expect(guardTouched?.after_sha256 === GUARD_AFTER_SHA256, 'manifest guard after_sha256 drift');
+const routerTouched = manifest.touched_files.find(item => item.path === '01_Router.js');
+expect(routerTouched?.after_bytes === ROUTER_AFTER_BYTES, 'manifest router after_bytes drift');
+expect(routerTouched?.after_sha256 === ROUTER_AFTER_SHA256, 'manifest router after_sha256 drift');
+const indexTouched = manifest.touched_files.find(item => item.path === 'index.html');
+expect(indexTouched?.after_bytes === INDEX_AFTER_BYTES, 'manifest index after_bytes drift');
+expect(indexTouched?.after_sha256 === INDEX_AFTER_SHA256, 'manifest index after_sha256 drift');
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cs21a211-guard-'));
 try {
   const candidateGuard = path.join(tempDir, '99_QA_Staging_Guard.js');
@@ -164,9 +161,11 @@ const allAdded = [...addedByFile.values()].flat().join('\n');
 
 expect(!added('index.html').includes(PROD_DEPLOYMENT), 'index.html still adds the PROD deployment');
 expect(added('index.html').includes('CAMPUS_APPS_SCRIPT_URL = <?!= JSON.stringify(CAMPUS_SELF_URL) ?>;'), 'self URL injection missing from index.html');
+expect(added('index.html').includes('/(?:exec|dev)$/.test(CAMPUS_APPS_SCRIPT_URL)'), 'frontend must accept the authenticated QA self URL in /exec or @HEAD /dev form');
 const aliasCount = (added('index.html').match(/= CAMPUS_APPS_SCRIPT_URL;/g) || []).length;
 expect(aliasCount === 13, `expected 13 legacy URL aliases to self URL, found ${aliasCount}`);
 expect(added('01_Router.js').includes('ScriptApp.getService().getUrl()'), 'router does not derive Web App self URL');
+expect(added('01_Router.js').includes('/(?:exec|dev)$/.test(campusSelfUrl)'), 'router must accept the authenticated QA self URL in /exec or @HEAD /dev form');
 expect(added('01_Router.js').includes('campusTemplate.CAMPUS_SELF_URL = campusSelfUrl;'), 'router does not inject self URL into template');
 
 const requiredProperties = [
