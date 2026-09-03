@@ -1,16 +1,16 @@
 {
   "schema": "CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2",
-  "candidate": "CS21A211G",
+  "candidate": "CS21A211H",
   "source_snapshot": "QA_HEAD_20260901_215804Z",
   "source_file_count": 71,
   "source_total_bytes": 4677234,
   "source_aggregate_sha256": "3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6",
   "candidate_file_count": 71,
-  "candidate_total_bytes": 4688577,
-  "candidate_aggregate_sha256": "d5ce9ddbc8a68d0de5c95fa97f9a8a2ed381e8098da8f7317f8a34e73388c83a",
+  "candidate_total_bytes": 4689540,
+  "candidate_aggregate_sha256": "597088d4f817f25ab702de64a7b26d7db1f2e7df725ead65426c14c059ffb9d8",
   "patch_sha256": "375859ca3bd37a6e5fec65a675725b8c004a40bcf056342815cee5ae0eb57f45",
   "reference_patch_sha256": null,
-  "patch_packaging_note": "CS21A211G supersedes F only for the frontend render repair observed after the successful QA self-route fix. It preserves the same QA self URL policy (/exec or authenticated @HEAD /dev), the same 13 self-route aliases, the same fail-closed guard and the same isolated QA resources. The index patch additionally normalizes the three Step3 JSX attributes proven by the deployed Babel runtime to unblock compilation: Zoom placeholder, salon placeholder and capacity range type. Local Babel validation of the resulting Step3 passed before this identity was promoted. No PROD fallback is introduced. The 99_QA_Staging_Guard.js full-replacement hunk remains +1,209 and reconstructs the same syntactically valid 10,400-byte guard.",
+  "patch_packaging_note": "CS21A211H supersedes G only for the deployed Cronograma read-path repair. The browser-rendered QA bundle still used GET calls without token and required getEstudiante, which remains intentionally default-denied because its current implementation may create or update financial/structural state. H keeps that backend deny intact and rewrites only the Cronograma bundle hook to use the already-authenticated session identity plus exactly three tokenized POST text/plain reads: getGrupoInfo, getAsistenciaEstudiante and getEvaluacionesEstudiante. It also accepts grupoActivo before legacy grupo/grupos. The previously validated self URL policy (/exec or authenticated @HEAD /dev), 13 self-route aliases, Babel-safe Step3 repair, fail-closed guard and isolated QA resources remain unchanged. No PROD fallback is introduced. Local syntax validation of the replacement hook passed before this identity was promoted.",
   "remote_write_performed": false,
   "apps_script_deployed": false,
   "production_touched": false,
@@ -22,7 +22,7 @@
     {"path":"46_English_LAB_Accesos_Demo_Docentes.js","before_sha256":"3fe9c187240c2b2e669fefc1ac3f22a9e77de703b45dffe07da48db1cec53b12","after_sha256":"9b9e5cb63a6a2a01106980e7d9ebc74b670da77e46fe2f5b35fe41e1587946c0","before_bytes":39053,"after_bytes":39199},
     {"path":"98_Instalacion_QA_CS21A144.js","before_sha256":"e724b76d678182d36022e8a1b51af432560741089b7f378eabdd4b02963eebd3","after_sha256":"8a36c718af08d7126f27d03aa48dae939f84dade6c4ab45b3b7423ca8bab3346","before_bytes":3559,"after_bytes":8550},
     {"path":"99_QA_Staging_Guard.js","before_sha256":"b3fa4936245c7ce6ca08e22f922d14a4e8a4887fb9744402f3d5b90428eb7b15","after_sha256":"fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a","before_bytes":4953,"after_bytes":10400},
-    {"path":"index.html","before_sha256":"881c6a38488d913c0115171f4374dcc6de322db78656ea149a037cdd79327778","after_sha256":"8d503dc970e973c45e10834f141c13ef621908b5936c79b46d45884542d43b3d","before_bytes":649287,"after_bytes":648518}
+    {"path":"index.html","before_sha256":"881c6a38488d913c0115171f4374dcc6de322db78656ea149a037cdd79327778","after_sha256":"c031707fab664327436bb4f68cfbb23dcee123f82c7b0d456c3b39097af0d212","before_bytes":649287,"after_bytes":649481}
   ],
   "patch_parts": [
     {"path":"patches/apps-script/CS21A211/01_Router.js.patch","source_path":"01_Router.js"},
@@ -35,6 +35,7 @@
     {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.part1.patch","source_path":"99_QA_Staging_Guard.js"},
     {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.part2.patch","source_path":"99_QA_Staging_Guard.js"},
     {"path":"patches/apps-script/CS21A211/99_QA_Staging_Guard.js.part3.patch","source_path":"99_QA_Staging_Guard.js"},
-    {"path":"patches/apps-script/CS21A211/index.html.patch","source_path":"index.html"}
+    {"path":"patches/apps-script/CS21A211/index.html.patch","source_path":"index.html"},
+    {"path":"patches/apps-script/CS21A211/index.html.part2.patch","source_path":"index.html"}
   ]
 }
