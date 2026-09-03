@@ -98,6 +98,35 @@ CS21A211 aísla **destinos escribibles** usados por documentos/CONAPE mediante l
 
 Para una futura E4 documental estrictamente aislada habrá que provisionar plantillas QA/sintéticas y hacer property-driven también esos IDs de fuente. No es requisito de E2 de lectura actual y no autoriza copiar PII/padrón PROD.
 
+## CS21A211I · convención de finales de línea y round trip
+
+El snapshot `QA_HEAD_20260901_215804Z` conserva finales de línea mixtos: 36 archivos CRLF y 35 LF. En particular, el preimage `99_QA_Staging_Guard.js` tiene 109 líneas CRLF y 4,953 bytes. La identidad certificada del guard candidato CS21A211I es deliberadamente **LF**, 296 líneas / 13,062 bytes / SHA-256 `a39441e9e99981583e4f98d0994f5ac0b80f244e2febbb7e3d5895550fe310fe`.
+
+Convención canónica:
+
+1. el aggregate fuente `3e384ac3...` se verifica sobre el snapshot bruto antes de cualquier conversión;
+2. no se normalizan globalmente los 71 archivos;
+3. el full-file replacement del guard se reconstruye desde las líneas `+` de los fragmentos LF y se escribe UTF-8 sin BOM con LF; por eso el guard no se entrega a `git apply` contra su preimage CRLF;
+4. para una aplicación manual del patch combinado sobre un `clasp clone-script` fresco, se debe verificar primero el aggregate fuente y luego normalizar **solo** `99_QA_Staging_Guard.js` CRLF→LF antes de intentar aplicar el full-file hunk; la vía soportada sigue siendo reconstruir el guard desde el patch en vez de depender de matching CRLF/LF;
+5. los fragmentos `patches/apps-script/CS21A211/*.patch` se marcan `-text` en `.gitattributes`: Git no debe modificar sus bytes. CI exige adicionalmente ausencia de `\r` para que el formato canónico de los patches siga siendo LF.
+
+### Round trip clasp v3.3.0
+
+`clasp` no implementa una conversión EOL propia: `push()` lee el archivo local como bytes→string y entrega ese `source` a `projects.updateContent`; `pull()/clone-script` toma `File.source` devuelto por Apps Script y lo escribe directamente con `fs.writeFile`. La evidencia histórica de clasp también muestra que fuentes enviadas desde Windows y macOS pueden permanecer distintas únicamente por CRLF/LF en remoto; por tanto no existe una normalización universal a CRLF durante transporte.
+
+Consecuencia para CS21A211I: después de empujar el guard LF, un `clone-script` de verificación debe devolver el guard todavía en **13,062 bytes / `a39441e9...`**. El hipotético 13,358 bytes (296 CRLF) no es la identidad esperada. Si el remoto devolviera CRLF, se registra como `REMOTE_EOL_DRIFT`; puede calcularse además un hash LF-normalizado para diagnosticar que el contenido lógico coincide, pero el gate byte-a-byte no lo acepta silenciosamente.
+
+### Paridad GET sin segunda copia del Router
+
+`01_Router.js` completo no está versionado en este repositorio, así que GitHub Actions no puede comparar honestamente el Router real con el guard sin importar otra copia del snapshot o credenciales Apps Script. No se agrega esa segunda fuente de verdad.
+
+El control queda en dos niveles:
+
+- CI estático: valida el script de paridad, la lista certificada de 9 GET, la identidad contractual del Router y que el patch `01_Router.js.patch` no modifique la allowlist GET;
+- release/runtime: `scripts/qa_get_route_parity_cs21a211i.mjs <candidate-root>` compara **el `01_Router.js` real reconstruido/clonado** con `_qa144AllowedGetFn_` y falla ante cualquier divergencia. El mismo check se ejecuta sobre la verificación remota cuando exista un candidato instalado.
+
+Esto evita introducir un fixture adicional de `01_Router.js` únicamente para satisfacer CI.
+
 ## Veredicto
 
-**PATCH CORREGIDO Y REPRODUCIDO · 71/71 · 7/7 JS SYNTAX PASS · CI CAPAZ DE DETECTAR EL OFF-BY-ONE · NO APPS SCRIPT PUSH · NO PROD · NO MERGE.**
+**PATCH CORREGIDO Y REPRODUCIDO · CS21A211I EOL CONTRACT DOCUMENTADO · PATCH BLOBS BYTE-PRESERVED · CLASP ROUND-TRIP DEFINIDO · NO APPS SCRIPT PUSH · NO PROD · NO MERGE.**
