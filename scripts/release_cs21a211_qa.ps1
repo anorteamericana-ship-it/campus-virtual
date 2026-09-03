@@ -13,25 +13,26 @@ $ProgressPreference = 'SilentlyContinue'
 $QaScriptId = '1GMHihGwnX_-sIS101rRlUoYpAH2HSKyms8lx6L9z7bjb_45YDn-ph6WD'
 $QaDeploymentId = 'AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ'
 $ExpectedSourceAggregate = '3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6'
-$ExpectedCandidateAggregate = '597088d4f817f25ab702de64a7b26d7db1f2e7df725ead65426c14c059ffb9d8'
-$ExpectedCandidateBytes = 4689540
-$ExpectedPatchSha = 'd27e3bf040891a56d6f9f498cabd42054bd51745c33a27413230f48d4cc764c6'
+$ExpectedCandidateAggregate = 'a31ebfc566b7093dc7463261793bb542905587d92317202aa6ec6ec5420a6523'
+$ExpectedCandidateBytes = 4692202
+$ExpectedPatchSha = '2867f95fe1871aa21f7bcc1810a2fbb3d5c17a3bfeb81fd30df2b3dacfce45f9'
 $GuardFileName = '99_QA_Staging_Guard.js'
-$ExpectedGuardBytes = 10400
-$ExpectedGuardSha = 'fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a'
+$ExpectedGuardBytes = 13062
+$ExpectedGuardSha = 'a39441e9e99981583e4f98d0994f5ac0b80f244e2febbb7e3d5895550fe310fe'
 $ProdDeploymentId = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $PatchManifestPath = Join-Path $RepoRoot 'patches\apps-script\CS21A211_QA_CONTAINMENT.manifest.json'
 $SnapshotAnalyzer = Join-Path $PSScriptRoot 'apps_script_qa_snapshot_manifest_cs21a178.mjs'
+$RouteParity = Join-Path $PSScriptRoot 'qa_get_route_parity_cs21a211i.mjs'
 $Stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd_HHmmssZ')
-$WorkRoot = Join-Path ([IO.Path]::GetTempPath()) "campus_cs21a211h_release_$Stamp"
+$WorkRoot = Join-Path ([IO.Path]::GetTempPath()) "campus_cs21a211i_release_$Stamp"
 $SourceDir = Join-Path $WorkRoot 'source'
 $CandidateDir = Join-Path $WorkRoot 'candidate'
 $VerifyDir = Join-Path $WorkRoot 'verify-remote'
-$CombinedPatch = Join-Path $WorkRoot 'CS21A211H.patch'
-$ApplyPatch = Join-Path $WorkRoot 'CS21A211H_without_guard.patch'
-$EvidenceDir = Join-Path $EvidenceRoot "CS21A211H_$Stamp"
+$CombinedPatch = Join-Path $WorkRoot 'CS21A211I.patch'
+$ApplyPatch = Join-Path $WorkRoot 'CS21A211I_without_guard.patch'
+$EvidenceDir = Join-Path $EvidenceRoot "CS21A211I_$Stamp"
 $SourceManifestPath = Join-Path $EvidenceDir 'pre-push-manifest.json'
 $CandidateManifestPath = Join-Path $EvidenceDir 'candidate-manifest.json'
 $RemoteManifestPath = Join-Path $EvidenceDir 'post-push-remote-manifest.json'
@@ -79,6 +80,7 @@ if (-not $NpxExe) { Fail 'npx no está instalado o no está en PATH.' }
 if (-not $GitExe) { Fail 'git no está instalado o no está en PATH.' }
 if (-not (Test-Path -LiteralPath $PatchManifestPath)) { Fail "Falta manifest del candidato: $PatchManifestPath" }
 if (-not (Test-Path -LiteralPath $SnapshotAnalyzer)) { Fail "Falta analizador de snapshot: $SnapshotAnalyzer" }
+if (-not (Test-Path -LiteralPath $RouteParity)) { Fail "Falta check de paridad GET: $RouteParity" }
 
 function Invoke-Clasp {
   param([string[]]$Arguments, [string]$WorkingDirectory = '', [switch]$AllowFailure, [switch]$Quiet)
@@ -113,9 +115,10 @@ function Copy-Tree([string]$From, [string]$To) {
   }
 }
 
-function Read-NormalizedPatchText([string]$Path) {
-  $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
-  return $text.Replace("`r`n", "`n").Replace("`r", "`n")
+function Read-CanonicalPatchText([string]$Path) {
+  $bytes = [IO.File]::ReadAllBytes($Path)
+  if ($bytes -contains 13) { Fail "Patch canónico contiene CR y debe permanecer LF byte-exacto: $Path" }
+  return [Text.Encoding]::UTF8.GetString($bytes)
 }
 
 function Build-CanonicalPatch {
@@ -124,7 +127,7 @@ function Build-CanonicalPatch {
   foreach ($part in $manifest.patch_parts) {
     $path = Join-Path $RepoRoot ([string]$part.path).Replace('/','\')
     if (-not (Test-Path -LiteralPath $path)) { Fail "Falta fragmento de patch: $path" }
-    [void]$builder.Append((Read-NormalizedPatchText -Path $path))
+    [void]$builder.Append((Read-CanonicalPatchText -Path $path))
   }
   [IO.File]::WriteAllText($CombinedPatch, $builder.ToString(), $Utf8NoBom)
   $sha = (Get-FileHash -LiteralPath $CombinedPatch -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -139,7 +142,7 @@ function Build-PortableApplyPatchAndGuard($Manifest) {
 
   foreach ($part in $Manifest.patch_parts) {
     $path = Join-Path $RepoRoot ([string]$part.path).Replace('/','\')
-    $text = Read-NormalizedPatchText -Path $path
+    $text = Read-CanonicalPatchText -Path $path
     if ([string]$part.source_path -eq $GuardFileName) {
       [void]$guardBuilder.Append($text)
     } else {
@@ -150,9 +153,11 @@ function Build-PortableApplyPatchAndGuard($Manifest) {
   if ($applyBuilder.Length -le 0) { Fail 'Patch portable sin archivos no-guard.' }
   [IO.File]::WriteAllText($ApplyPatch, $applyBuilder.ToString(), $Utf8NoBom)
 
+  # El preimage del guard en el snapshot es CRLF. No se entrega este full-file
+  # replacement a git apply: se reconstruye desde las líneas + canónicas LF.
   $guardPatch = $guardBuilder.ToString()
-  if (-not $guardPatch.StartsWith("--- a/$GuardFileName`n+++ b/$GuardFileName`n@@ -1,109 +1,209 @@`n")) {
-    Fail 'Guard patch ya no es el full-file replacement esperado -109/+209.'
+  if (-not $guardPatch.StartsWith("--- a/$GuardFileName`n+++ b/$GuardFileName`n@@ -1,109 +1,296 @@`n")) {
+    Fail 'Guard patch ya no es el full-file replacement esperado -109/+296.'
   }
 
   $added = New-Object 'System.Collections.Generic.List[string]'
@@ -160,7 +165,7 @@ function Build-PortableApplyPatchAndGuard($Manifest) {
     if ($line.StartsWith('+++')) { continue }
     if ($line.StartsWith('+')) { $added.Add($line.Substring(1)) }
   }
-  if ($added.Count -ne 209) { Fail "Guard reconstruido: líneas nuevas inesperadas $($added.Count); esperado 209." }
+  if ($added.Count -ne 296) { Fail "Guard reconstruido: líneas nuevas inesperadas $($added.Count); esperado 296." }
 
   $guardContent = ($added -join "`n") + "`n"
   $guardBytes = $Utf8NoBom.GetBytes($guardContent)
@@ -193,27 +198,38 @@ function Assert-Syntax([string]$Dir) {
   if ($index.Contains($ProdDeploymentId)) { Fail 'index.html candidato todavía contiene el deployment PROD.' }
   $aliases = [regex]::Matches($index, '= CAMPUS_APPS_SCRIPT_URL;').Count
   if ($aliases -ne 13) { Fail "Aliases self-route inesperados: $aliases; esperado 13." }
-  if (-not $index.Contains("placeholder={'https://zoom.us/j/...'}")) { Fail 'Falta normalización Babel-safe del placeholder Zoom en Step3.' }
-  if (-not $index.Contains("placeholder={'Ej: Aula A1, Sala Azul...'}")) { Fail 'Falta normalización Babel-safe del salón en Step3.' }
-  if (-not $index.Contains("<input type={'range'} min={5} max={20}")) { Fail 'Falta normalización Babel-safe del range en Step3.' }
+}
 
-  $cronStart = $index.IndexOf('function useCronogramaData()')
-  $cronEnd = $index.IndexOf('// ── CronogramaModulo', $cronStart)
-  if ($cronStart -lt 0 -or $cronEnd -le $cronStart) { Fail 'No se pudo aislar useCronogramaData en el candidato.' }
-  $cron = $index.Substring($cronStart, $cronEnd - $cronStart)
-  if ($cron.Contains('getEstudiante')) { Fail 'Cronograma candidato todavía depende de getEstudiante default-deny.' }
-  foreach ($required in @(
-    "postCronogramaSafe('getGrupoInfo'",
-    "postCronogramaSafe('getAsistenciaEstudiante'",
-    "postCronogramaSafe('getEvaluacionesEstudiante'",
-    "method: 'POST'",
-    'token,'
-  )) {
-    if (-not $cron.Contains($required)) { Fail "Cronograma safe-read incompleto: falta $required" }
+function Assert-RouteParity([string]$Dir) {
+  Invoke-Native -FilePath $NodeExe -Arguments @($RouteParity,$Dir) -Quiet | Out-Null
+}
+
+function Assert-RemoteWithEolDiagnostic([string]$ManifestPath, [string]$Dir) {
+  try {
+    return Assert-Manifest -Path $ManifestPath -ExpectedAggregate $ExpectedCandidateAggregate -ExpectedBytes $ExpectedCandidateBytes -Label 'REMOTE POST-PUSH'
+  }
+  catch {
+    $guardPath = Join-Path $Dir $GuardFileName
+    if (Test-Path -LiteralPath $guardPath) {
+      $rawBytes = [IO.File]::ReadAllBytes($guardPath)
+      $rawSha = (Get-FileHash -LiteralPath $guardPath -Algorithm SHA256).Hash.ToLowerInvariant()
+      $rawText = [Text.Encoding]::UTF8.GetString($rawBytes)
+      $lfText = $rawText.Replace("`r`n","`n").Replace("`r","`n")
+      $lfBytes = $Utf8NoBom.GetBytes($lfText)
+      $sha = [Security.Cryptography.SHA256]::Create()
+      try {
+        $lfSha = ([BitConverter]::ToString($sha.ComputeHash($lfBytes))).Replace('-','').ToLowerInvariant()
+      }
+      finally { $sha.Dispose() }
+      if ($lfBytes.Length -eq $ExpectedGuardBytes -and $lfSha -eq $ExpectedGuardSha -and ($rawBytes.Length -ne $ExpectedGuardBytes -or $rawSha -ne $ExpectedGuardSha)) {
+        Fail "REMOTE_EOL_DRIFT: contenido lógico del guard coincide al normalizar LF, pero el remoto devolvió bytes=$($rawBytes.Length) sha=$rawSha; esperado LF $ExpectedGuardBytes/$ExpectedGuardSha."
+      }
+    }
+    throw
   }
 }
 
-Write-Host '=== CS21A211H · RELEASE CONTROLADO QA ===' -ForegroundColor Cyan
+Write-Host '=== CS21A211I · RELEASE CONTROLADO QA ===' -ForegroundColor Cyan
 Write-Host "Script QA: $QaScriptId"
 Write-Host "Deployment QA esperado: $QaDeploymentId"
 Write-Host "Modo: $(if ($Push) {'PUSH QA autorizado'} else {'DRY-RUN local, sin push'})"
@@ -253,15 +269,16 @@ try {
   Copy-Item -LiteralPath $guardReconstructed -Destination (Join-Path $CandidateDir $GuardFileName) -Force
   Remove-Item -LiteralPath (Join-Path $CandidateDir '.git') -Recurse -Force
 
-  Write-Host "`n5/9 · Hash + sintaxis del candidato..." -ForegroundColor Cyan
+  Write-Host "`n5/9 · Hash + sintaxis + frontera GET del candidato..." -ForegroundColor Cyan
   Generate-Manifest -Dir $CandidateDir -Output $CandidateManifestPath
   $candidateManifest = Assert-Manifest -Path $CandidateManifestPath -ExpectedAggregate $ExpectedCandidateAggregate -ExpectedBytes $ExpectedCandidateBytes -Label 'CANDIDATE'
   Assert-Syntax -Dir $CandidateDir
-  Write-Host "PASS · candidate aggregate $($candidateManifest.aggregate_sha256) · guard $ExpectedGuardBytes bytes · 7/7 JS syntax · 13/13 self-route · Step3 + Cronograma safe-read guards" -ForegroundColor Green
+  Assert-RouteParity -Dir $CandidateDir
+  Write-Host "PASS · candidate aggregate $($candidateManifest.aggregate_sha256) · guard $ExpectedGuardBytes bytes · 7/7 JS syntax · 13/13 self-route · GET 9/9 parity" -ForegroundColor Green
 
   if (-not $Push) {
     Write-Host "`nDRY-RUN PASS · no se hizo push remoto." -ForegroundColor Yellow
-    Write-Host "Para autorizar únicamente QA: .\scripts\release_cs21a211_qa.ps1 -Push"
+    Write-Host "CS21A211I preparado; cualquier push requiere autorización QA separada."
     $Succeeded = $true
     return
   }
@@ -272,13 +289,14 @@ try {
   Invoke-Clasp -Arguments @('push') -WorkingDirectory $CandidateDir | Out-Null
   Write-Host 'PASS · clasp push ejecutado únicamente contra QA.' -ForegroundColor Green
 
-  Write-Host "`n7/9 · Re-clone remoto post-push y hash..." -ForegroundColor Cyan
+  Write-Host "`n7/9 · Re-clone remoto post-push, hash y round trip EOL..." -ForegroundColor Cyan
   New-Item -ItemType Directory -Path $VerifyDir -Force | Out-Null
   Invoke-Clasp -Arguments @('clone-script',$QaScriptId) -WorkingDirectory $VerifyDir | Out-Null
   Generate-Manifest -Dir $VerifyDir -Output $RemoteManifestPath
-  $remoteManifest = Assert-Manifest -Path $RemoteManifestPath -ExpectedAggregate $ExpectedCandidateAggregate -ExpectedBytes $ExpectedCandidateBytes -Label 'REMOTE POST-PUSH'
+  $remoteManifest = Assert-RemoteWithEolDiagnostic -ManifestPath $RemoteManifestPath -Dir $VerifyDir
   Assert-Syntax -Dir $VerifyDir
-  Write-Host "PASS · remote @HEAD = candidate $($remoteManifest.aggregate_sha256)" -ForegroundColor Green
+  Assert-RouteParity -Dir $VerifyDir
+  Write-Host "PASS · remote @HEAD = candidate $($remoteManifest.aggregate_sha256) · guard LF byte-exacto" -ForegroundColor Green
 
   Write-Host "`n8/9 · Verificando deployment QA estable..." -ForegroundColor Cyan
   $dep = Invoke-Clasp -Arguments @('list-deployments') -WorkingDirectory $VerifyDir -AllowFailure -Quiet
@@ -290,7 +308,7 @@ try {
 
   Write-Host "`n9/9 · Evidencia local de cierre técnico..." -ForegroundColor Cyan
   $result = [ordered]@{
-    schema = 'CS21A211H_QA_RELEASE_RESULT_1'
+    schema = 'CS21A211I_QA_RELEASE_RESULT_1'
     generated_at_utc = [DateTime]::UtcNow.ToString('o')
     qa_script_id = $QaScriptId
     qa_deployment_id = $QaDeploymentId
@@ -300,6 +318,7 @@ try {
     patch_sha256 = $ExpectedPatchSha
     guard_sha256 = $ExpectedGuardSha
     guard_bytes = $ExpectedGuardBytes
+    get_route_parity = '9/9'
     push_performed = $true
     force_used = $false
     new_deployment_created = $false
@@ -308,7 +327,7 @@ try {
   }
   $result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $EvidenceDir 'release-result.json') -Encoding UTF8
   Write-Host "PASS · evidencia: $EvidenceDir" -ForegroundColor Green
-  Write-Host "`nCS21A211H_QA_PUSH=PASS" -ForegroundColor Green
+  Write-Host "`nCS21A211I_QA_PUSH=PASS" -ForegroundColor Green
   Write-Host "REMOTE_AGGREGATE=$ExpectedCandidateAggregate"
   Write-Host "QA_DEPLOYMENT=$QaDeploymentId @HEAD"
   $Succeeded = $true
