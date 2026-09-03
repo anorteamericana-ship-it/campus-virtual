@@ -13,14 +13,14 @@ const fail = message => { throw new Error(`CS21A211 containment contract: ${mess
 const expect = (ok, message) => { if (!ok) fail(message); };
 
 const SOURCE_AGGREGATE = '3e384ac34930e6a936a3f930db8819bd80124ef59f522ac1b5b11fee8f881ec6';
-const CANDIDATE_AGGREGATE = 'd5ce9ddbc8a68d0de5c95fa97f9a8a2ed381e8098da8f7317f8a34e73388c83a';
+const CANDIDATE_AGGREGATE = '597088d4f817f25ab702de64a7b26d7db1f2e7df725ead65426c14c059ffb9d8';
 const PATCH_SHA256 = '375859ca3bd37a6e5fec65a675725b8c004a40bcf056342815cee5ae0eb57f45';
 const GUARD_AFTER_SHA256 = 'fd48510ff0601854afc27d0c5dbf5fb450e3a73518282f4efab89f6cf9ac9a5a';
 const GUARD_AFTER_BYTES = 10400;
 const ROUTER_AFTER_SHA256 = '87f80a0240d261ed6361a6c51087ddd86ae429eef6dcb9111609f3d0d6e74c68';
 const ROUTER_AFTER_BYTES = 256665;
-const INDEX_AFTER_SHA256 = '8d503dc970e973c45e10834f141c13ef621908b5936c79b46d45884542d43b3d';
-const INDEX_AFTER_BYTES = 648518;
+const INDEX_AFTER_SHA256 = 'c031707fab664327436bb4f68cfbb23dcee123f82c7b0d456c3b39097af0d212';
+const INDEX_AFTER_BYTES = 649481;
 const PROD_DEPLOYMENT = 'AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ';
 const expectedFiles = [
   '01_Router.js',
@@ -102,12 +102,12 @@ function reconstructFullReplacement(sourcePath) {
 }
 
 expect(manifest.schema === 'CAMPUS_APPS_SCRIPT_QA_CONTAINMENT_CANDIDATE_2', 'manifest schema drift');
-expect(manifest.candidate === 'CS21A211G', 'candidate label drift');
+expect(manifest.candidate === 'CS21A211H', 'candidate label drift');
 expect(manifest.source_snapshot === 'QA_HEAD_20260901_215804Z', 'wrong source snapshot');
 expect(manifest.source_file_count === 71 && manifest.candidate_file_count === 71, 'source/candidate file count must remain 71');
 expect(manifest.source_aggregate_sha256 === SOURCE_AGGREGATE, 'source aggregate drift');
 expect(manifest.candidate_aggregate_sha256 === CANDIDATE_AGGREGATE, 'candidate aggregate drift');
-expect(manifest.candidate_total_bytes === 4688577, 'candidate byte count drift');
+expect(manifest.candidate_total_bytes === 4689540, 'candidate byte count drift');
 expect(manifest.patch_sha256 === PATCH_SHA256, 'manifest patch hash drift');
 expect(manifest.remote_write_performed === false, 'manifest claims a remote write');
 expect(manifest.apps_script_deployed === false, 'manifest claims Apps Script was deployed');
@@ -126,7 +126,7 @@ const hunkCount = validateUnifiedPatchHunks(patch);
 
 const touched = manifest.touched_files.map(x => x.path).sort();
 expect(JSON.stringify(touched) === JSON.stringify(expectedFiles), `unexpected touched files: ${touched.join(', ')}`);
-const patchFiles = [...patch.matchAll(/^\+\+\+ b\/(.+)$/gm)].map(m => m[1]).sort();
+const patchFiles = [...new Set([...patch.matchAll(/^\+\+\+ b\/(.+)$/gm)].map(m => m[1]))].sort();
 expect(JSON.stringify(patchFiles) === JSON.stringify(expectedFiles), `patch file set drift: ${patchFiles.join(', ')}`);
 
 const guardBuffer = reconstructFullReplacement('99_QA_Staging_Guard.js');
@@ -166,6 +166,11 @@ expect(indexAdded.includes('/(?:exec|dev)$/.test(CAMPUS_APPS_SCRIPT_URL)'), 'fro
 expect(indexAdded.includes("placeholder={'https://zoom.us/j/...'}"), 'Step3 Zoom placeholder Babel-safe normalization missing');
 expect(indexAdded.includes("placeholder={'Ej: Aula A1, Sala Azul...'}"), 'Step3 salon placeholder Babel-safe normalization missing');
 expect(indexAdded.includes("<input type={'range'} min={5} max={20}"), 'Step3 capacity range Babel-safe normalization missing');
+expect(indexAdded.includes("postCronogramaSafe('getGrupoInfo', { cod_grupo: codGrupo })"), 'Cronograma safe getGrupoInfo POST missing');
+expect(indexAdded.includes("postCronogramaSafe('getAsistenciaEstudiante', { codigo })"), 'Cronograma safe asistencia POST missing');
+expect(indexAdded.includes("postCronogramaSafe('getEvaluacionesEstudiante', { codigo })"), 'Cronograma safe evaluaciones POST missing');
+expect(indexAdded.includes("const token = window.getSessionToken ? window.getSessionToken() : ''"), 'Cronograma token-in-body preparation missing');
+expect(indexAdded.includes('usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0]'), 'Cronograma grupoActivo/session group resolution missing');
 const aliasCount = (indexAdded.match(/= CAMPUS_APPS_SCRIPT_URL;/g) || []).length;
 expect(aliasCount === 13, `expected 13 legacy URL aliases to self URL, found ${aliasCount}`);
 expect(added('01_Router.js').includes('ScriptApp.getService().getUrl()'), 'router does not derive Web App self URL');
