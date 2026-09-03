@@ -1,6 +1,6 @@
 --- a/99_QA_Staging_Guard.js
 +++ b/99_QA_Staging_Guard.js
-@@ -1,109 +1,209 @@
+@@ -1,109 +1,296 @@
 -// ===================== CS21A144 QA FINAL GUARD ==============================
 -
 -// F98.4-Z6-CS21A144-QA · Guard de staging para English LAB.
