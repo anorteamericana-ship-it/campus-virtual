@@ -6,6 +6,8 @@
   const OPEN_KEY = 'an_admin_resources_open';
   const TAB_KEY = 'an_admin_resources_tab';
   const EVENT_NAME = 'an:admin-resource-tab';
+  const ADDITIONAL_MODE_KEY = 'an_resources_panel_mode_cs21a68';
+  const ADDITIONAL_EVENT = 'an:resources-panel-mode';
 
   function isOpen() {
     try { return sessionStorage.getItem(OPEN_KEY) === '1'; }
@@ -17,13 +19,24 @@
     catch (_) { return 'libros'; }
   }
 
+  function readAdditionalMode() {
+    try { return sessionStorage.getItem(ADDITIONAL_MODE_KEY) === 'additional' ? 'additional' : 'books'; }
+    catch (_) { return 'books'; }
+  }
+
   function viewerComponent() {
     return typeof window.__AN_BOOK_RESOURCES_COMPONENT__ === 'function'
       ? window.__AN_BOOK_RESOURCES_COMPONENT__
       : null;
   }
 
-  function StatusView({ error = '', onRetry }) {
+  function additionalComponent() {
+    return typeof window.AdditionalResourcesPanel === 'function'
+      ? window.AdditionalResourcesPanel
+      : null;
+  }
+
+  function StatusView({ error = '', onRetry, pendingTitle = 'Preparando Libros y Audios…', pendingText = 'Esperando el visor institucional de libros.' }) {
     return React.createElement(
       'section',
       {
@@ -55,7 +68,7 @@
           fontSize: 27,
           color: 'var(--an-navy-ink,#001E47)'
         }
-      }, error ? 'No se pudo completar la carga' : 'Preparando Libros y Audios…'),
+      }, error ? 'No se pudo completar la carga' : pendingTitle),
       React.createElement('div', {
         style: {
           marginTop: 9,
@@ -63,7 +76,7 @@
           lineHeight: 1.55,
           color: error ? '#8D1E1E' : 'var(--ink-3,#6f6a63)'
         }
-      }, error || 'Esperando el visor institucional de libros.'),
+      }, error || pendingText),
       error ? React.createElement('button', {
         type: 'button',
         className: 'btn btn-primary',
@@ -74,7 +87,7 @@
   }
 
   function DirectGate({ Base, baseProps }) {
-    const [route, setRoute] = React.useState(() => ({ open: isOpen(), tab: readTab() }));
+    const [route, setRoute] = React.useState(() => ({ open: isOpen(), tab: readTab(), mode: readAdditionalMode() }));
     const [tick, setTick] = React.useState(0);
     const [error, setError] = React.useState('');
 
@@ -89,46 +102,59 @@
         setRoute({
           open: isOpen(),
           tab: event?.detail?.tab === 'audios' ? 'audios' : readTab(),
+          mode: event?.detail?.mode === 'additional' ? 'additional' : readAdditionalMode(),
         });
         setError('');
         setTick(value => value + 1);
       };
       window.addEventListener(EVENT_NAME, sync);
+      window.addEventListener(ADDITIONAL_EVENT, sync);
       window.addEventListener('an:lazy-module-loaded', sync);
       window.addEventListener('storage', sync);
       return () => {
         window.removeEventListener(EVENT_NAME, sync);
+        window.removeEventListener(ADDITIONAL_EVENT, sync);
         window.removeEventListener('an:lazy-module-loaded', sync);
         window.removeEventListener('storage', sync);
       };
     }, []);
 
     React.useEffect(() => {
-      if (!route.open || viewerComponent()) return undefined;
+      const current = route.mode === 'additional' ? additionalComponent() : viewerComponent();
+      if (!route.open || current) return undefined;
       let attempts = 0;
       const timer = window.setInterval(() => {
         attempts += 1;
-        if (viewerComponent()) {
+        const ready = route.mode === 'additional' ? additionalComponent() : viewerComponent();
+        if (ready) {
           window.clearInterval(timer);
           setTick(value => value + 1);
         } else if (attempts >= 200) {
           window.clearInterval(timer);
-          setError('El visor institucional no terminó de inicializarse.');
+          setError(route.mode === 'additional'
+            ? 'Los recursos adicionales no terminaron de inicializarse.'
+            : 'El visor institucional no terminó de inicializarse.');
         }
       }, 100);
       return () => window.clearInterval(timer);
-    }, [route.open, route.tab, tick]);
+    }, [route.open, route.tab, route.mode, tick]);
 
     if (!route.open) return React.createElement(Base, baseProps || {});
 
-    const Viewer = viewerComponent();
-    if (!Viewer) return React.createElement(StatusView, { error, onRetry: retry });
+    const Viewer = route.mode === 'additional' ? additionalComponent() : viewerComponent();
+    if (!Viewer) return React.createElement(StatusView, {
+      error,
+      onRetry: retry,
+      pendingTitle: route.mode === 'additional' ? 'Preparando recursos adicionales…' : 'Preparando Libros y Audios…',
+      pendingText: route.mode === 'additional' ? 'Esperando el panel de recursos adicionales.' : 'Esperando el visor institucional de libros.',
+    });
 
-    return React.createElement(Viewer, {
+    const viewerProps = route.mode === 'additional' ? {} : {
       key: `admin-books-${route.tab}`,
       initialType: 'SB',
       adminMode: true,
-    });
+    };
+    return React.createElement(Viewer, viewerProps);
   }
 
   function install() {

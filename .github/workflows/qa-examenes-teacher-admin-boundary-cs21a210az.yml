@@ -1,0 +1,36 @@
+name: QA Examenes Teacher Admin Boundary CS21A210AZ
+
+on:
+  push:
+    branches:
+      - audit/examenes-teacher-admin-boundary-cs21a210az
+  pull_request:
+    paths:
+      - 'src/examenes_bundle.jsx'
+      - 'src/examenes_modes.jsx'
+      - 'modulos/examenes.html'
+      - 'scripts/qa_examenes_teacher_admin_boundary_cs21a210az.mjs'
+      - '.github/workflows/qa-examenes-teacher-admin-boundary-cs21a210az.yml'
+      - 'scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse build source and runtime bundle
+        run: |
+          node -e "const fs=require('fs');const p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx']){p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx','optionalChaining']});console.log(f+' JSX parse PASS')}"
+      - name: Verify teacher/admin ownership and exact preimage
+        run: node scripts/qa_examenes_teacher_admin_boundary_cs21a210az.mjs
+      - name: Regress AY StudentMode boundary
+        run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
+      - name: Diff hygiene
+        run: git diff --check 328afb1b98b29be31cd536b2d60e8dffcf7b6a1b

@@ -1,0 +1,54 @@
+name: QA Importador BCR Wiring CS21A210AS
+
+on:
+  push:
+    branches:
+      - fix/importador-bcr-wiring-cs21a210as
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
+      - '.github/workflows/qa-importador-bcr-wiring-cs21a210as.yml'
+      - '00_DOCUMENTACION/IMPORTADOR_BCR_WIRING_CS21A210AS_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
+      - '.github/workflows/qa-importador-bcr-wiring-cs21a210as.yml'
+      - '00_DOCUMENTACION/IMPORTADOR_BCR_WIRING_CS21A210AS_2026-08-31.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
+      - name: Parse app and effective integrity importer
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const parser=require('@babel/parser');
+          for(const file of ['src/app.jsx','src/importador_banco_integridad_cs21a114.jsx']){
+            parser.parse(fs.readFileSync(file,'utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+            console.log(file+': PASS');
+          }
+          NODE
+      - name: Verify CS21A210AS wiring and exact reconstruction
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Regress CS21A210AH safe BCR boundary
+        run: node scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs
+      - name: Regress CS21A210AP I CAN boundary
+        run: node scripts/qa_ican_safe_errors_cs21a210ap.mjs
+      - name: Regress CS21A210AN teacher boundary
+        run: node scripts/qa_vista_docente_safe_errors_cs21a210an.mjs
+      - name: Regress CS21A210AL Ventas boundary
+        run: node scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs
+      - name: Regress CS21A210AJ enrollment calendar boundary
+        run: node scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs
+      - name: Diff hygiene
+        run: git diff --check

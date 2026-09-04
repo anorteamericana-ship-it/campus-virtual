@@ -15,6 +15,10 @@ async function postInsAdmin(fn, payload = {}) {
   const txt = await res.text();
   try { return JSON.parse(txt); } catch (_) { return { ok:false, error:'respuesta_no_json', raw:txt }; }
 }
+function insAdminSafeUserError(raw,fallback,context=''){
+  try{console.error('[Inscripción pública admin]',context||'operacion',raw);}catch(_){}
+  return String(fallback||'No se pudo completar la operación.').trim();
+}
 function fileToBase64InsAdmin(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -63,7 +67,7 @@ function InscripcionAdminView({ toast }) {
       setCfg(d.config || {});
       setGrupos(Array.isArray(d.grupos) ? d.grupos : []);
     } catch (err) {
-      setError(err.message || 'Error de conexión');
+      setError(insAdminSafeUserError(err,'No se pudo cargar la configuración de inscripción.','cargar'));
     } finally { setLoading(false); }
   };
   useEffectInsAdmin(() => { load(); }, []);
@@ -77,7 +81,7 @@ function InscripcionAdminView({ toast }) {
       if (!d || d.ok === false) throw new Error(d?.mensaje || d?.error || 'No se pudo guardar');
       setCfg(d.config || cfg);
       toast && toast('Configuración de inscripción guardada.');
-    } catch (err) { setError(err.message || 'Error guardando'); }
+    } catch (err) { setError(insAdminSafeUserError(err,'No se pudo guardar la configuración de inscripción.','guardar')); }
     finally { setSaving(false); }
   };
 
@@ -97,24 +101,28 @@ function InscripcionAdminView({ toast }) {
       if (!d || d.ok === false) throw new Error(d?.mensaje || d?.error || 'No se pudo subir la imagen');
       setCfg(d.config || setDeepInsAdmin(cfg || {}, `imagenes.${slot}`, d.url));
       toast && toast('Imagen actualizada para inscripción.');
-    } catch (err) { setError(err.message || 'Error subiendo imagen'); }
+    } catch (err) { setError(insAdminSafeUserError(err,'No se pudo actualizar la imagen de inscripción.','imagen:'+slot)); }
     finally { setUploading(''); }
   };
 
   const saveGrupoToeic = async (g) => {
     setError('');
     const monto = Number(g.toeic_monto) || 0;
-    const d = await postInsAdmin('saveInscripcionGroupToeic', {
-      codigo: g.codigo,
-      toeic: !!g.toeic,
-      toeic_monto: monto,
-    });
-    if (!d || d.ok === false) {
-      setError(d?.mensaje || d?.error || 'No se pudo guardar el TOEIC del grupo');
-      return;
+    try {
+      const d = await postInsAdmin('saveInscripcionGroupToeic', {
+        codigo: g.codigo,
+        toeic: !!g.toeic,
+        toeic_monto: monto,
+      });
+      if (!d || d.ok === false) {
+        setError(insAdminSafeUserError(d,'No se pudo guardar la configuración TOEIC del grupo.','toeic:respuesta'));
+        return;
+      }
+      setGrupos(Array.isArray(d.grupos) ? d.grupos : grupos);
+      toast && toast(`TOEIC actualizado para ${g.codigo}.`);
+    } catch (err) {
+      setError(insAdminSafeUserError(err,'No se pudo guardar la configuración TOEIC del grupo.','toeic:conexion'));
     }
-    setGrupos(Array.isArray(d.grupos) ? d.grupos : grupos);
-    toast && toast(`TOEIC actualizado para ${g.codigo}.`);
   };
 
   const updateGrupoLocal = (codigo, patch) => {

@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 const N=window.ANMasterConape96;if(!N)throw Error('CS21A98 core no cargado');
-const{clean,reviewStepValue,isAcademicDisbursement01,post}=N;
+const{clean,reviewStepValue,isAcademicDisbursement01,post,masterConapeSafeUserError}=N;
 const LOCAL_GUARD_MS=18000,FULL_RECONCILE_MS=20000;
 function eligible(row){return!!row&&row.followupEligible!==false&&isAcademicDisbursement01(row)}
 function serverStep(row){return row?.appliedInSystem?0:reviewStepValue(row?.reviewStep)}
@@ -68,7 +68,7 @@ function useConapeReview(all,setMsg){
   }catch(error){
    delete localRef.current[id];
    if(clean(error?.message).toLowerCase().includes('cerrado'))setReviewSteps(current=>({...current,[id]:0}));else setReviewSteps(current=>({...current,[id]:previous}));
-   setMsg(error?.message||String(error));
+   setMsg(masterConapeSafeUserError(error?.message||String(error),'No se pudo guardar la revisión. Intentá de nuevo.','guardar_revision'));
   }finally{setReviewBusy('')}
  }
  return{reviewSteps,reviewBusy,saveReview};

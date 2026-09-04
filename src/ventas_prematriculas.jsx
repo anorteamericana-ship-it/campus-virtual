@@ -14,6 +14,10 @@
     if(!json||!json.ok)throw new Error((json&&json.mensaje)||(json&&json.error)||'No se pudo completar.');
     return json;
   }
+  function ventasPrematSafeUserError(raw,fallback,context=''){
+    try{console.error('[Prematrículas ventas]',context||'operacion',raw);}catch(_){}
+    return String(fallback||'No se pudo completar la operación.').trim();
+  }
   function sesion(){try{return (window.getSesion&&window.getSesion())||{};}catch(_){return{};}}
   function clean(v,f='—'){const s=String(v==null?'':v).trim();return s||f;}
   function upper(v){return String(v||'').trim().toUpperCase();}
@@ -61,7 +65,7 @@
         const r=await post('freeUserListarSolicitudes',payload);
         const list=(Array.isArray(r.items)?r.items:[]).slice().sort((a,b)=>dateMs(b.ULTIMA_ACCION_AT||b.FECHA_ISO||b.FECHA)-dateMs(a.ULTIMA_ACCION_AT||a.FECHA_ISO||a.FECHA));
         setItems(list);setCounts(r.counts||{});setSelected(prev=>prev?list.find(x=>String(x.ID||'')===String(prev.ID||''))||prev:null);
-      }catch(e){setError(e.message);}finally{setLoading(false);}
+      }catch(e){setError(ventasPrematSafeUserError(e,'No se pudieron cargar las prematrículas.','listar'));}finally{setLoading(false);}
     },[estado]);
     useEffect(()=>{load();},[load]);
     useEffect(()=>{const id=setInterval(()=>{post('freeUserListarSolicitudes',{estado:'PENDIENTE',limit:1}).then(r=>setCounts(c=>({...c,...(r.counts||{}),PENDIENTE:(r.pendientes!=null?r.pendientes:c.PENDIENTE)}))).catch(()=>{});},90000);return()=>clearInterval(id);},[]);
@@ -74,7 +78,7 @@
         const r=await post('freeUserResolverSolicitud',{id:selected.ID,estado:next,respuesta:nota||'',nota:nota||'',responsable:advisor(selected)});
         setOk(r.mensaje||'Actualizado.');setNota('');await load();
         try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){ }
-      }catch(e){setError(e.message);}finally{setBusy('');}
+      }catch(e){setError(ventasPrematSafeUserError(e,'No se pudo actualizar la prematrícula.','resolver'));}finally{setBusy('');}
     };
     const copy=async(s)=>{try{await navigator.clipboard.writeText(ficha(s));setOk('Ficha copiada.');}catch(_){setError('No se pudo copiar.');}};
     const wa=(s)=>{const tel=String(s.TELEFONO||'').replace(/\D/g,'');const cr=tel.length===8?'506'+tel:tel;if(!cr){setError('Sin teléfono utilizable.');return;}const msg=encodeURIComponent(`Hola ${clean(s.NOMBRE,'')}, le escribe Academia Norteamericana sobre su prematrícula. Soy ${advisor(s)}.`);window.open(`https://wa.me/${cr}?text=${msg}`,'_blank','noopener,noreferrer');};

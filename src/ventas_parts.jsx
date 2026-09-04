@@ -201,7 +201,7 @@ function ProspectoTable({ lista, onOpen }) {
                 <td>
                   <span className="vx-tel">
                     <WaLink tel={p.whatsapp || p.telefono} className="vx-wa-mini"><Vico d={VI.wa} size={15} fill="currentColor" /></WaLink>
-                    {fmtTelV(p.telefono)}
+                    {fmtTelV(p.whatsapp || p.telefono)}
                   </span>
                 </td>
                 <td className="vx-td-grupo">{p.grupo_tentativo || '—'}</td>
@@ -288,11 +288,12 @@ function Lightbox({ src, caption, onClose }) {
 }
 
 // ── BLOQUE DE DOCUMENTOS (3 fotos) ──────────────────────────────────────────
-// ── Bug B · carga robusta de fotos de Drive en el drawer ───────────────────
-// Mismo patrón que el modal del admin: si la URL lh3 falla (foto con permisos
-// privados o URL mal armada), reintenta con patrones alternativos de Drive antes
-// de mostrar "Foto no disponible". (El fix de fondo —permisos públicos al subir—
-// es de backend.)
+// SEC-002 CS21A174 · CONSUMIDOR LEGACY TEMPORAL.
+// Cédula frente/dorso y título todavía llegan como URL Drive/LH3 histórica y este
+// componente prueba variantes del MISMO ID solo para preservar la operación actual.
+// Esto NO autoriza ampliar ACL ni publicar archivos como solución. El destino es
+// entrega privada autenticada expediente+document_type -> Blob/ObjectURL; Issue #111
+// gobierna el backend y la ACL no se retira hasta migrar/probar ambos consumidores.
 function vxExtractDriveId(url) {
   const s = String(url || '');
   let m = s.match(/[?&]id=([\w-]+)/);          // uc?export=view&id= · thumbnail?id=

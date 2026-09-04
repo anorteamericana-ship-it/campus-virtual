@@ -1,0 +1,33 @@
+name: QA Raw Error Residual Actionability CS21A210BJ
+on:
+  push:
+    branches: [audit/raw-error-residual-actionability-cs21a210bj]
+  pull_request:
+    paths:
+      - 'scripts/qa_raw_error_residual_actionability_cs21a210bj.mjs'
+      - '00_DOCUMENTACION/RAW_ERROR_RESIDUAL_ACTIONABILITY_CS21A210BJ_2026-09-01.md'
+      - '.github/workflows/qa-raw-error-residual-actionability-cs21a210bj.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Classify exact V4 residual snapshot
+        run: node scripts/qa_raw_error_residual_actionability_cs21a210bj.mjs
+      - name: Regress scanner V4 precision
+        run: node scripts/qa_raw_error_scanner_v4_cs21a210bi.mjs
+      - name: Regress Admin Students safe render boundary
+        run: node scripts/qa_admin_students_safe_errors_cs21a210bg.mjs
+      - name: Regress unmounted exam teacher backend panel
+        run: node scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs
+      - name: Regress effective BCR override wiring
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Preserve English LAB Free hidden data-flow finding
+        run: node scripts/qa_english_lab_free_access_message_boundary_cs21a210bh.mjs
+      - name: Diff hygiene
+        run: git diff --check 36f542fda4c7c55df9d07d980f986ecb4b166296

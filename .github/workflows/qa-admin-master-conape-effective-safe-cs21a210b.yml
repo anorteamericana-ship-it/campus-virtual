@@ -1,0 +1,41 @@
+name: QA Admin Master CONAPE Effective Safe CS21A210B
+
+on:
+  push:
+    branches:
+      - fix/admin-master-conape-effective-safe-cs21a210b
+  pull_request:
+    paths:
+      - 'src/admin_master_conape_wa_cs21a96.jsx'
+      - 'src/admin_master_conape_multisort_cs21a109.jsx'
+      - 'scripts/qa_admin_master_conape_effective_safe_cs21a210b.mjs'
+      - '.github/workflows/qa-admin-master-conape-effective-safe-cs21a210b.yml'
+      - '00_DOCUMENTACION/ADMIN_MASTER_CONAPE_EFFECTIVE_SAFE_CS21A210B_2026-08-31.md'
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run effective Panel Maestro guard
+        run: node scripts/qa_admin_master_conape_effective_safe_cs21a210b.mjs
+      - name: Verify exact validated import and stacked scope
+        if: ${{ github.event_name == 'push' || github.head_ref == 'fix/admin-master-conape-effective-safe-cs21a210b' }}
+        run: node scripts/qa_admin_master_conape_effective_safe_cs21a210b.mjs --exact-import
+      - name: Regress Panel Maestro CONAPE safe errors and copy
+        run: |
+          node scripts/qa_admin_master_conape_safe_errors_cs21a195.mjs
+          node scripts/qa_admin_master_conape_user_copy_cs21a196.mjs
+      - name: Regress CS21A210A current-tip Admin consolidation
+        run: node scripts/qa_admin_safe_errors_current_tip_cs21a210a.mjs
+      - name: Regress SEC002 Admin private document line
+        run: |
+          node scripts/qa_sec002_admin_academic_docs_cs21a193.mjs
+          node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress SEC004 Admin preview isolation
+        run: node scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs
+      - name: Diff hygiene against exact stacked base
+        run: git diff --check d9cbbcf206ef7cf433bc67a33fe5de8858c5c694...HEAD -- ':!00_DOCUMENTACION/**'

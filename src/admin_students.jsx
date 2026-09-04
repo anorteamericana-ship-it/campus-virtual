@@ -72,21 +72,79 @@ async function postAdminStudents(fn, payload = {}, timeoutMs = 25000) {
   throw lastError || new Error(`No se pudo conectar con el backend en ${fn}.`);
 }
 
-function abrirPdfBackend(payload, fallbackUrl = '') {
+function adminStudentsSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|\bbase64\b|sha-?256|\bmime\b|file_id|request_id|policy_unbound|sec00|apollo\.|getAdmin|getRadiografia|getEstudiante|getCierre|ejecutarCierre|sincronizarCONAPE|generarCertificado|simularCambio|ejecutarCambio/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[AdminStudents] Detalle técnico oculto al operador.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
+function abrirPdfBackend(payload) {
   try {
-    if (payload?.pdf_base64) {
-      const bin = atob(payload.pdf_base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([bytes], { type: payload.pdf_mime || 'application/pdf' }));
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(url), 120000);
-      return true;
+    const b64 = String(payload?.pdf_base64 || '').replace(/\s+/g, '');
+    if (!b64) return false;
+    const mime = String(payload?.pdf_mime || 'application/pdf').toLowerCase();
+    if (mime !== 'application/pdf') throw new Error('Tipo de documento inválido.');
+    if (b64.length > 21 * 1024 * 1024) throw new Error('Documento demasiado grande.');
+    const bin = atob(b64);
+    if (bin.length < 5 || bin.slice(0, 4) !== '%PDF') throw new Error('Firma PDF inválida.');
+    if (bin.length > 15 * 1024 * 1024) throw new Error('Documento demasiado grande.');
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], { type:'application/pdf' }));
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) { URL.revokeObjectURL(url); return false; }
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    return true;
+  } catch (e) {
+    console.warn('[AdminStudents] PDF privado rechazado antes de abrir.', e);
+    return false;
+  }
+}
+
+async function abrirCertificadoAdminPrivado({ codigo, nivel, grupo = '', registro = '' }) {
+  try {
+    const r = await postAdminStudents('descargarMiCertificadoPrivado', {
+      codigo: String(codigo || '').trim(),
+      nivel: String(nivel || '').trim().toUpperCase(),
+      grupo: String(grupo || '').trim(),
+      registro: String(registro || '').trim(),
+    }, 60000);
+    if (!r?.ok) {
+      throw new Error(adminStudentsSafeUserError(r?.mensaje || r?.error, 'No pudimos obtener el certificado de forma segura. Intentá de nuevo.', 'certificado_admin_privado'));
     }
-    const url = payload?.pdf_url || fallbackUrl;
-    if (url) { window.open(url, '_blank', 'noopener,noreferrer'); return true; }
-  } catch (_) {}
-  return false;
+    const b64 = String(r?.data_base64 || '').replace(/\s+/g, '');
+    if (!b64) throw new Error('El certificado privado no incluyó contenido.');
+    if (String(r?.mime_type || '').trim().toLowerCase() !== 'application/pdf') throw new Error('Tipo de certificado inválido.');
+    if (b64.length > 3 * 1024 * 1024) throw new Error('Certificado demasiado grande.');
+    const bin = atob(b64);
+    if (bin.length < 5 || bin.slice(0, 5) !== '%PDF-') throw new Error('Firma PDF inválida.');
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    if (bytes.length > 2 * 1024 * 1024) throw new Error('Certificado demasiado grande.');
+    const announced = Number(r?.size_bytes || 0);
+    if (announced > 0 && announced !== bytes.length) throw new Error('Tamaño de certificado inconsistente.');
+    const expectedHash = String(r?.sha256 || '').trim().toLowerCase();
+    if (expectedHash && window.crypto?.subtle) {
+      const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+      const actualHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+      if (actualHash !== expectedHash) throw new Error('Integridad SHA-256 inválida.');
+    }
+    const blob = new Blob([bytes], { type:'application/pdf' });
+    const objectUrl = URL.createObjectURL(blob);
+    const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+    if (!opened) { URL.revokeObjectURL(objectUrl); return false; }
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    return true;
+  } catch (e) {
+    console.warn('[AdminStudents] Certificado privado rechazado antes de abrir.', e);
+    return false;
+  }
 }
 
 async function resincronizarEstudianteIndividual(codigo) {
@@ -96,7 +154,7 @@ async function resincronizarEstudianteIndividual(codigo) {
     const resp = await postAdminStudents('sincronizarCONAPE', { codigo: String(codigo) });
     return resp;
   } catch(e) {
-    return { ok: false, error: 'Error de conexión: ' + (e.message || e) };
+    return { ok: false, error: adminStudentsSafeUserError(e?.message || String(e), 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'resincronizar_estudiante') };
   }
 }
 
@@ -120,10 +178,10 @@ function useAdminGrupos(enabled = true) {
         if (d && d.ok) {
           setGrupos(d.grupos || []);
         } else {
-          setError((d && d.error) || 'Respuesta no válida del servidor');
+          setError(adminStudentsSafeUserError(d?.error || d?.mensaje, 'No pudimos cargar los grupos. Intentá de nuevo.', 'cargar_grupos'));
         }
       })
-      .catch(e => { if (activo) setError('Error de conexión: ' + (e.message || e)); })
+      .catch(e => { if (activo) setError(adminStudentsSafeUserError(e?.message || String(e), 'No pudimos cargar los grupos. Intentá de nuevo.', 'cargar_grupos')); })
       .finally(() => { if (activo) setLoading(false); });
     return () => { activo = false; };
   }, [enabled]);
@@ -145,9 +203,9 @@ function useRadiografia(codGrupo, refreshKey) {
       .then(d => {
         if (!activo) return;
         if (d && d.ok) setData(d);
-        else setError((d && (d.error || d.mensaje)) || 'No se pudo cargar la radiografía del grupo.');
+        else setError(adminStudentsSafeUserError(d?.error || d?.mensaje, 'No pudimos cargar la radiografía del grupo. Intentá de nuevo.', 'cargar_radiografia'));
       })
-      .catch(e => { if (activo) setError('Error de conexión: ' + (e?.message || e)); })
+      .catch(e => { if (activo) setError(adminStudentsSafeUserError(e?.message || String(e), 'No pudimos cargar la radiografía del grupo. Intentá de nuevo.', 'cargar_radiografia')); })
       .finally(() => { if (activo) setLoading(false); });
     return () => { activo = false; };
   }, [codGrupo, refreshKey]);
@@ -244,7 +302,7 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
       });
       const data = await resp.json();
       if (!data.ok) {
-        setError(data.error || 'Error al actualizar');
+        setError(adminStudentsSafeUserError(data?.error || data?.mensaje, 'No se pudo actualizar el estatus. Intentá de nuevo.', 'actualizar_estatus'));
         return;
       }
       if (data.conape_sync === false) {
@@ -268,7 +326,7 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
       setReintentoMsg('✓ CONAPE sincronizado');
       setTimeout(() => { onSuccess(); onClose(); }, 900);
     } else {
-      setReintentoMsg('⚠ ' + (r.error || 'No se pudo sincronizar'));
+      setReintentoMsg('⚠ ' + adminStudentsSafeUserError(r?.error || r?.mensaje, 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'reintentar_conape'));
     }
   }
 
@@ -310,10 +368,10 @@ function ModalEstatus({ estudiante, nivel, onClose, onSuccess }) {
           }}>
             <div style={{ fontWeight:700, marginBottom:4, display:'flex', alignItems:'center', gap:6 }}>
               <span style={{ fontSize:14 }}>⚠</span>
-              <span>Estatus guardado en APOLLO, pero CONAPE no se sincronizó</span>
+              <span>Estatus guardado en el Campus, pero CONAPE quedó pendiente de actualización</span>
             </div>
             <div style={{ marginBottom: reintentoMsg ? 8 : 0 }}>
-              Las hojas 4-7 de CONAPE quedaron sin actualizar. Podés reintentar ahora o sincronizar después.
+              La actualización de CONAPE quedó pendiente. Podés reintentar ahora o sincronizar después.
             </div>
             {reintentoMsg && (
               <div style={{
@@ -1727,7 +1785,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
       alert(`${nombre} quedó proyectado en ${nivelSiguiente}.`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert('No se creó la proyección: ' + (err?.message || err));
+      alert(adminStudentsSafeUserError(err?.message || String(err), 'No se pudo crear la proyección. Intentá de nuevo.', 'crear_proyeccion'));
     } finally {
       setProyeccionBusy('');
     }
@@ -1788,8 +1846,8 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
           <button
             onClick={(ev) => { ev.stopPropagation(); if (generarCertificadosNivel) generarCertificadosNivel(nivelKey); }}
             title={generarCertificadosNivel
-              ? 'Genera solo certificados pendientes: APR + certificado pagado + sin REG_CERTIFICADOS. Omite los ya registrados.'
-              : 'Generación masiva segura F26: primero muestra vista previa; solo ejecuta con confirmación. Los registros existentes no crean consecutivo nuevo.'}
+              ? 'Genera solo certificados pendientes: estudiantes aprobados, certificado pagado y sin certificado registrado. Omite los ya registrados.'
+              : 'Generación masiva segura: primero muestra vista previa y solo ejecuta con confirmación. Los certificados existentes no crean un número nuevo.'}
             style={{
               marginLeft:4, padding:'4px 9px', borderRadius:7,
               border:'1px solid rgba(255,255,255,0.55)', background:'rgba(255,255,255,0.18)',
@@ -1802,7 +1860,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
         {certRegistrados > 0 && regenerarCertificadosNivel && (
           <button
             onClick={(ev) => { ev.stopPropagation(); regenerarCertificadosNivel(nivelKey); }}
-            title="Vuelve a crear los PDF seleccionados usando exactamente el mismo REG_CERTIFICADOS. No genera consecutivos nuevos ni cambia ESTATUS."
+            title="Vuelve a crear los PDF seleccionados usando el mismo número de certificado. No genera números nuevos ni cambia el estado académico."
             style={{
               marginLeft:4, padding:'4px 9px', borderRadius:7,
               border:'1px solid rgba(255,255,255,0.72)', background:'rgba(0,0,0,0.16)',
@@ -1928,14 +1986,13 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                 };
                 const abrirPdfTraslado = async () => {
                   const id = e.cambio_id || `${codigo}-${nivelKey}`;
-                  if (e.pdf_traslado_url) { window.open(e.pdf_traslado_url, '_blank', 'noopener,noreferrer'); return; }
                   setPdfTrasladoBusy(id);
                   try {
-                    const r = await postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey }, 70000);
+                    const r = await postAdminStudents('generarConstanciaTraslado', { cambio_id:e.cambio_id, codigo, nivel:nivelKey, include_base64:true }, 70000);
                     if (!r?.ok) throw new Error(r?.error || 'No se pudo generar la constancia.');
-                    if (!abrirPdfBackend(r, r.pdf_url)) alert('La constancia se generó, pero el navegador bloqueó la apertura. Puede abrirla desde el historial.');
+                    if (!abrirPdfBackend(r)) alert('No pudimos abrir la constancia de forma segura. Intentá de nuevo.');
                     onRefresh?.();
-                  } catch (err) { alert(err?.message || String(err)); }
+                  } catch (err) { alert(adminStudentsSafeUserError(err?.message || String(err), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion')); }
                   finally { setPdfTrasladoBusy(''); }
                 };
                 return (
@@ -2061,7 +2118,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                         aria-label="Evaluar cambio académico individual"
                         style={{height:29,padding:'0 8px',borderRadius:7,border:'1px solid '+(['CA','REP'].includes(String(estatus || '').toUpperCase())?'#9DBCE2':'#D5D9DE'),fontSize:10.5,fontWeight:900,cursor:['CA','REP'].includes(String(estatus || '').toUpperCase())?'pointer':'not-allowed',background:['CA','REP'].includes(String(estatus || '').toUpperCase())?'#EAF3FF':'#F1F2F3',color:['CA','REP'].includes(String(estatus || '').toUpperCase())?'#174E8C':'#9AA1A8',opacity:['CA','REP'].includes(String(estatus || '').toUpperCase())?1:.65,whiteSpace:'nowrap'}}>🧭 Evaluar</button>
                       <button onClick={() => setModalEstatus({ estudiante:e, nivel:nivelKey })} title="Cambiar estado" aria-label="Cambiar estado" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>✏️</button>
-                      <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.error});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
+                      <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.ok?'':adminStudentsSafeUserError(r.error || r.mensaje, 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'resincronizar_estudiante')});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
                       <button onClick={() => abrirPago(e,nivelKey,onNavigate)} title="Aplicar pago" aria-label="Aplicar pago" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>💳</button>
                     </div>
                   </td>
@@ -2151,9 +2208,9 @@ function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
     try {
       const d = await postAdminStudents('getCierreAcademicoNivelPreview', { cod_grupo: grupo, grupo, nivel: n });
       if (d && d.ok) setPreview(d);
-      else setError((d && (d.mensaje || d.error)) || 'No se pudo cargar la vista previa del cierre.');
+      else setError(adminStudentsSafeUserError(d?.mensaje || d?.error, 'No se pudo cargar la vista previa del cierre. Intentá de nuevo.', 'preview_cierre'));
     } catch(e) {
-      setError('Error de conexión: ' + (e.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setLoading(false);
     }
@@ -2171,10 +2228,10 @@ function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
         setPreview(d.preview || preview);
         if (onRefresh) onRefresh();
       } else {
-        setError((d && (d.mensaje || d.error)) || 'No se pudo ejecutar el cierre académico.');
+        setError(adminStudentsSafeUserError(d?.mensaje || d?.error, 'No se pudo ejecutar el cierre académico. Intentá de nuevo.', 'ejecutar_cierre'));
       }
     } catch(e) {
-      setError('Error de conexión: ' + (e.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setEjecutando(false);
     }
@@ -2204,7 +2261,7 @@ function CierreAcademicoNivelPanel({ grupo, secciones, onRefresh }) {
             Vista previa antes de aprobar o reprobar
           </div>
           <div style={{ fontSize:12, color:'var(--ink-3,#777)', marginTop:7, lineHeight:1.5 }}>
-            Recalcula por nivel, separa incompletos y solo cambia ESTATUS con confirmación. Los APR pasan por las validaciones administrativas existentes.
+            Recalcula por nivel, separa incompletos y solo cambia el estado académico con confirmación. Los estudiantes aprobados pasan por las validaciones administrativas existentes.
           </div>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', justifyContent:'flex-end' }}>
@@ -2363,12 +2420,13 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
         const sample = (last.errores || []).slice(0, 3).map(x => `${x.codigo}: ${x.error}`).join(' · ');
         setToast({ tipo: 'err', msg: `CONAPE terminó ${last.correctos || 0}/${n}. ${errors} pendiente${errors === 1 ? '' : 's'}${sample ? ` · ${sample}` : ''}` });
       } else {
-        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'} confirmados uno por uno en hojas 4, 5, 6 y 7.` });
+        setToast({ tipo: 'ok', msg: `CONAPE actualizado — ${n} estudiante${n === 1 ? '' : 's'} confirmado${n === 1 ? '' : 's'}.` });
       }
       setRefreshKey(k => k + 1);
     } catch (e) {
       setSyncConape(s => ({ ...s, loading: false, paused: true, jobId }));
-      setToast({ tipo: 'err', msg: `Sincronización pausada${last?.procesados != null ? ` en ${last.procesados}/${last.total}` : ''}. No reinicie desde cero: presione Sync CONAPE para reanudar. Detalle: ${e.message || e}` });
+      console.warn('[AdminStudents] Sincronización CONAPE pausada.', e);
+      setToast({ tipo: 'err', msg: `Sincronización pausada${last?.procesados != null ? ` en ${last.procesados}/${last.total}` : ''}. Podés reanudarla con Sync CONAPE.` });
     }
   };
 
@@ -2421,7 +2479,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
         `No aptos: ${noAptos}`,
         errores ? `Errores previos: ${errores}` : '',
         '',
-        'Regla segura: los estudiantes con REG_CERTIFICADOS NO generan consecutivo nuevo.',
+        'Regla segura: los estudiantes con certificado ya registrado NO generan un número nuevo.',
         '',
         '¿Confirmás ejecutar la generación masiva segura?'
       ].filter(Boolean).join('\n');
@@ -2497,7 +2555,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       const confirmacion = window.confirm(
         `Se volverán a crear ${registros.length} PDF de ${grupoSel} · ${nivel}.\n\n` +
         registros.join('\n') +
-        '\n\nNo se crearán consecutivos nuevos. No se cambiará ESTATUS ni REG_CERTIFICADOS.\n\n¿Continuar?'
+        '\n\nNo se crearán números nuevos. No se cambiará el estado académico ni el número de certificado.\n\n¿Continuar?'
       );
       if (!confirmacion) {
         setCertEstado({ ok:true, cancelado:true, masivo:true, regenerando:true, nivel, mensaje:'Regeneración cancelada. No se modificó nada.' });
@@ -2526,7 +2584,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
         setTimeout(() => setCertEstado(null), 9000);
       }
     } catch(e) {
-      setCertEstado({ ok:false, masivo:true, regenerando:true, error:'Error de conexión: ' + (e?.message || e), nivel });
+      setCertEstado({ ok:false, masivo:true, regenerando:true, error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo regenerar los certificados. Intentá de nuevo.', 'regenerar_certificados'), nivel });
     }
   };
 
@@ -2838,7 +2896,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                 )}
               </div>
               <div style={{flexBasis:'100%',fontSize:10.8,color:'var(--ink-3,#8b8178)',lineHeight:1.45}}>
-                Los estudiantes en <strong>CA</strong> conservan el estado CA y envían a CONAPE la nota vigente registrada en ESTATUS.
+                Los estudiantes en <strong>CA</strong> conservan su estado y envían a CONAPE la nota vigente registrada en el expediente académico.
               </div>
             </div>
           )}
@@ -2981,7 +3039,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
           ) : (
             <div>
               <div style={{ fontWeight:700, marginBottom:4 }}>❌ Error</div>
-              <div style={{ fontSize:12 }}>{certEstado.mensaje || certEstado.error}</div>
+              <div style={{ fontSize:12 }}>{adminStudentsSafeUserError(certEstado.mensaje || certEstado.error, 'No se pudo completar la operación de certificados. Intentá de nuevo.', 'certificados')}</div>
               {certEstado.search_url && <a href={certEstado.search_url} target="_blank" rel="noreferrer" style={{ color:'white', fontWeight:700, textDecoration:'underline', display:'inline-block', marginTop:8 }}>Buscar en Drive →</a>}
             </div>
           )}
@@ -3012,8 +3070,8 @@ function PanelEstudianteDrawer({ est, onClose, onNavigate, initialTab }) {
     if (!est) return;
     setCargando(true); setError(''); setDetalle(null);
     postAdminStudents('getEstudiante', { codigo: est.codigo || est.rec_m || '' })
-      .then(d => { if (d.ok) setDetalle(d); else setError(d.error || 'Error al cargar'); })
-      .catch(e => setError('Error de conexión: ' + e.message))
+      .then(d => { if (d.ok) setDetalle(d); else setError(adminStudentsSafeUserError(d?.error || d?.mensaje, 'No se pudo cargar el expediente. Intentá de nuevo.', 'cargar_expediente')); })
+      .catch(e => setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo cargar el expediente. Intentá de nuevo.', 'cargar_expediente')))
       .finally(() => setCargando(false));
   }, [est?.codigo, est?.rec_m]);
 
@@ -3192,13 +3250,13 @@ function TabSeguimientoPanel({ est, detalle }) {
           setSyncMsg('Bitácora oficial conectada');
         } else {
           setFuente('local');
-          setSyncMsg('Modo local: subí el Apps Script F24 para guardar en base oficial.');
+          setSyncMsg('No se pudo conectar con la bitácora oficial. El seguimiento queda temporalmente en este navegador.');
         }
       })
       .catch(() => {
         if (!activo) return;
         setFuente('local');
-        setSyncMsg('Modo local: backend de seguimiento no disponible.');
+        setSyncMsg('No se pudo conectar con la bitácora oficial. El seguimiento queda temporalmente en este navegador.');
       })
       .finally(() => { if (activo) setSyncing(false); });
     return () => { activo = false; };
@@ -3228,7 +3286,7 @@ function TabSeguimientoPanel({ est, detalle }) {
         setItems(next);
         guardarBitacoraLocal(est, next);
         setFuente('local');
-        setSyncMsg('Guardado localmente. Backend F24 no disponible o no aplicado.');
+        setSyncMsg('Guardado temporalmente en este navegador. La bitácora oficial no está disponible.');
       }
       setNota('');
       setGuardado(true);
@@ -3270,7 +3328,7 @@ function TabSeguimientoPanel({ est, detalle }) {
     } else {
       setItems(leerBitacoraLocal(est));
       setFuente('local');
-      setSyncMsg('Modo local: backend de seguimiento no disponible.');
+      setSyncMsg('No se pudo conectar con la bitácora oficial. El seguimiento queda temporalmente en este navegador.');
     }
     setSyncing(false);
   }, [est]);
@@ -3310,8 +3368,8 @@ function TabSeguimientoPanel({ est, detalle }) {
             <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:22, color:'var(--an-navy,#14213D)', fontWeight:700, marginTop:2 }}>Seguimiento del estudiante</div>
             <div style={{ fontSize:12, color:'var(--ink-2,#666)', marginTop:5, lineHeight:1.45 }}>
               {fuente === 'backend'
-                ? 'Conectada a bitácora oficial del campus. Los registros quedan guardados en la hoja SEGUIMIENTO_ESTUDIANTES.'
-                : 'Modo local de respaldo. Guarda en este navegador hasta que se suba el Apps Script F24.'}
+                ? 'Conectada a la bitácora oficial del Campus. Los registros quedan guardados de forma centralizada.'
+                : 'Respaldo temporal en este navegador mientras la bitácora oficial no esté disponible.'}
             </div>
           </div>
           <div style={{ display:'flex', gap:7, flexWrap:'wrap', justifyContent:'flex-end' }}>
@@ -3549,7 +3607,7 @@ function TabNotasPanel({ niveles, nivelActivo, est, detalle }) {
         } catch (_) {}
       }
     } catch (e) {
-      setResultado({ ok:false, error:'Error de conexión: ' + (e.message || e) });
+      setResultado({ ok:false, error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo guardar la calificación. Intentá de nuevo.', 'guardar_calificacion') });
     } finally {
       setGuardando(false);
     }
@@ -3639,7 +3697,7 @@ function TabNotasPanel({ niveles, nivelActivo, est, detalle }) {
           <div>
             <div style={{ fontSize:13, fontWeight:900, color:'var(--an-navy,#14213D)' }}>Registro oficial de componente</div>
             <div style={{ fontSize:11, color:'var(--ink-3,#777)', marginTop:2 }}>
-              Convierte la nota 0–100 al peso real del componente y actualiza ESTATUS.
+              Convierte la nota 0–100 al peso real del componente y actualiza el registro académico.
             </div>
           </div>
           <div style={{ fontSize:10.5, fontWeight:900, color: esINA ? '#1565C0' : '#7A4B00', background: esINA ? '#E3F2FD' : '#FFF8E1', border:`1px solid ${esINA ? '#B9DAF5' : '#F1D18A'}`, borderRadius:999, padding:'4px 9px' }}>
@@ -3677,7 +3735,7 @@ function TabNotasPanel({ niveles, nivelActivo, est, detalle }) {
 
         {resultado && (
           <div style={{ marginTop:10, padding:'9px 11px', borderRadius:10, background: resultado.ok ? '#E8F5E9' : '#FFEBEE', border:`1px solid ${resultado.ok ? '#BFE4C3' : '#F4B7B7'}`, color: resultado.ok ? '#2E7D32' : '#C62828', fontSize:12, fontWeight:800 }}>
-            {resultado.ok ? `✅ Guardado. ${resultado.tipo_eval || tipoEval}: ${resultado.puntos ?? puntosCalc} pts. Total: ${resultado.nota_total ?? resultado.total ?? 'actualizado'}` : `❌ ${resultado.error || resultado.mensaje || 'No se pudo guardar.'}`}
+            {resultado.ok ? `✅ Guardado. ${resultado.tipo_eval || tipoEval}: ${resultado.puntos ?? puntosCalc} pts. Total: ${resultado.nota_total ?? resultado.total ?? 'actualizado'}` : `❌ ${adminStudentsSafeUserError(resultado.error || resultado.mensaje, 'No se pudo guardar. Intentá de nuevo.', 'resultado_calificacion')}`}
           </div>
         )}
 
@@ -3866,7 +3924,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         body: JSON.stringify({ fn:'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
-      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:data.error || data.mensaje }}));
+      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data.error || data.mensaje, 'No pudimos generar el documento. Intentá de nuevo.', 'generar_documento') }}));
     } catch(e) {
       setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
     } finally {
@@ -3886,10 +3944,15 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         registro: certNum,
       });
       if (data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        setRes(r => ({...r, [certKey]: { nombre:data.nombre, mensaje:data.mensaje }}));
+        if (!(await abrirCertificadoAdminPrivado({
+          codigo: String(est.codigo || est.rec_m || ''),
+          nivel: nivelCert,
+          grupo: grupoCert,
+          registro: String(data.registro || data.registro_certificado || certNum || ''),
+        }))) alert('El certificado está listo, pero no pudimos abrirlo de forma segura. Intentá de nuevo.');
       } else {
-        setRes(r => ({...r, [certKey]: { error:data.mensaje || data.error, search_url:data.search_url }}));
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data.mensaje || data.error, 'No pudimos localizar el certificado. Intentá de nuevo.', 'buscar_certificado'), search_url:data.search_url }}));
       }
     } catch(e) {
       setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
@@ -3902,7 +3965,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     if (gen[certKey] || !certNum) return;
     const confirmar = window.confirm(
       `Se volverá a crear el PDF de ${NIVEL_LABEL_D[nivelCert] || nivelCert} con el registro ${certNum}.\n\n` +
-      'El sistema comprobará que ese número pertenece exactamente a ese nivel. No se cambiará ESTATUS ni se generará un consecutivo nuevo.\n\n¿Continuar?'
+      'El sistema comprueba que el número de certificado corresponde exactamente al nivel seleccionado. No se cambiará el estado académico ni se generará un número nuevo.\n\n¿Continuar?'
     );
     if (!confirmar) return;
     setGen(g => ({...g, [certKey]: true}));
@@ -3916,10 +3979,15 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         forzar_generar: true,
       });
       if (data && data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        setRes(r => ({...r, [certKey]: { nombre:data.nombre, mensaje:data.mensaje }}));
+        if (!(await abrirCertificadoAdminPrivado({
+          codigo: String(est.codigo || est.rec_m || ''),
+          nivel: nivelCert,
+          grupo: grupoCert,
+          registro: String(data.registro || data.registro_certificado || certNum || ''),
+        }))) alert('El certificado está listo, pero no pudimos abrirlo de forma segura. Intentá de nuevo.');
       } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo regenerar el certificado.' }}));
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data && (data.mensaje || data.error), 'No se pudo regenerar el certificado.', 'regenerar_certificado') }}));
       }
     } catch(e) {
       setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
@@ -3944,10 +4012,15 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
         grupo: grupoCert,
       });
       if (data && data.ok) {
-        setRes(r => ({...r, [certKey]: { url:data.url, nombre:data.nombre, mensaje:data.mensaje }}));
-        if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        setRes(r => ({...r, [certKey]: { nombre:data.nombre, mensaje:data.mensaje }}));
+        if (!(await abrirCertificadoAdminPrivado({
+          codigo: String(est.codigo || est.rec_m || ''),
+          nivel: nivelCert,
+          grupo: grupoCert,
+          registro: String(data.registro || data.registro_certificado || certNum || ''),
+        }))) alert('El certificado está listo, pero no pudimos abrirlo de forma segura. Intentá de nuevo.');
       } else {
-        setRes(r => ({...r, [certKey]: { error:(data && (data.mensaje || data.error)) || 'No se pudo generar el certificado.' }}));
+        setRes(r => ({...r, [certKey]: { error:adminStudentsSafeUserError(data && (data.mensaje || data.error), 'No se pudo generar el certificado.', 'generar_certificado') }}));
       }
     } catch(e) {
       setRes(r => ({...r, [certKey]: { error:'Error de conexión' }}));
@@ -4031,7 +4104,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       </div>
 
       <div style={{ marginTop:14, fontSize:11, color:'var(--ink-3, #777)', padding:'10px 14px', background:'var(--surface-2, #f9f9f9)', borderRadius:'var(--r-md, 8px)' }}>
-        📁 Control F98.3-C: el nivel activo y el nivel del certificado son datos distintos. Cada botón valida en backend que el REG_CERTIFICADOS pertenece exactamente a la fila académica seleccionada antes de abrir o regenerar un PDF.
+        El nivel activo y el nivel del certificado son datos distintos. Cada botón comprueba que el número de certificado corresponde a la fila académica seleccionada antes de abrir o regenerar el PDF.
       </div>
     </div>
   );
@@ -4326,11 +4399,11 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
     postAdminStudents('getCambioGrupoContexto', { codigo, nivel })
       .then(r => {
         if (!activo) return;
-        if (!r?.ok) { setError(r?.error || 'No se pudo evaluar el expediente.'); return; }
+        if (!r?.ok) { setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No se pudo evaluar el expediente. Intentá de nuevo.', 'evaluar_cambio_grupo')); return; }
         setContexto(r);
         seleccionarCaso(r, r.caso_sugerido || '');
       })
-      .catch(e => activo && setError('Error de conexión: ' + (e?.message || e)))
+      .catch(e => activo && setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion')))
       .finally(() => activo && setLoading(false));
     return () => { activo = false; };
   }, [codigo, nivel]);
@@ -4360,10 +4433,10 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
         grupo_origen:contexto?.actual?.grupo || infoNivel?.grupo || '',
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
       }, 45000);
-      if (!r?.ok) setError(r?.error || 'No fue posible simular el movimiento.');
+      if (!r?.ok) setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No fue posible simular el movimiento. Intentá de nuevo.', 'simular_cambio_grupo'));
       else setSimulacion(r.simulacion);
     } catch(e) {
-      setError('Error de conexión: ' + (e?.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setSimulando(false);
     }
@@ -4379,12 +4452,12 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
         confirmacion_individual:String(codigo),
       }, 45000);
-      if (!r?.ok) { setError(r?.error || 'No fue posible ejecutar el movimiento.'); return; }
-      alert(r?.mensaje || (r?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.'));
+      if (!r?.ok) { setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No fue posible ejecutar el movimiento. Intentá de nuevo.', 'ejecutar_cambio_grupo')); return; }
+      alert(adminStudentsSafeUserError(r?.mensaje, r?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.', 'resultado_cambio_grupo'));
       onSuccess?.(r);
       onClose();
     } catch(e) {
-      setError('Error de conexión: ' + (e?.message || e));
+      setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
       setEjecutando(false);
     }
@@ -4408,7 +4481,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
         </div>
 
         <div style={{ padding:20 }}>
-          {loading && <div style={{ padding:35, textAlign:'center', color:'#667085', fontWeight:800 }}>Cruzando DATOS, ESTATUS, GRUPOS, intentos y pagos…</div>}
+          {loading && <div style={{ padding:35, textAlign:'center', color:'#667085', fontWeight:800 }}>Preparando expediente académico, grupo, intentos y pagos…</div>}
           {error && <div style={{ marginBottom:14, padding:'11px 13px', borderRadius:10, background:'#FFEBEE', border:'1px solid #F2B8B8', color:'#B42318', fontSize:12, fontWeight:800 }}>{error}</div>}
 
           {!loading && contexto && (
@@ -4485,7 +4558,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 
                 {!!(simulacion.warnings||[]).length&&<div style={{padding:'12px 14px',borderRadius:11,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}><div style={{fontSize:10,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:6}}>Advertencias</div>{simulacion.warnings.map((w,i)=><div key={i} style={{fontSize:11.5,fontWeight:700,marginTop:i?5:0}}>• {w}</div>)}</div>}
 
-                {conape.requiere_modificacion&&<div style={{padding:'11px 13px',borderRadius:10,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:11.5,lineHeight:1.5}}><b>No se publicará el nuevo plan en las hojas CONAPE.</b> El expediente quedará <b>PENDIENTE DE APROBACIÓN</b> y la sincronización individual será bloqueada hasta resolver el trámite.</div>}
+                {conape.requiere_modificacion&&<div style={{padding:'11px 13px',borderRadius:10,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:11.5,lineHeight:1.5}}><b>El nuevo plan no se actualizará todavía en CONAPE.</b> El expediente quedará <b>PENDIENTE DE APROBACIÓN</b> y la sincronización individual será bloqueada hasta resolver el trámite.</div>}
 
                 <div style={{padding:'12px 13px',borderRadius:10,background:'white',border:'1px solid #D7DEE7'}}>
                   <label style={{display:'block',fontSize:10.5,fontWeight:900,color:'#344054'}}>Confirmación individual</label>
@@ -4518,9 +4591,9 @@ function AkComentarioAdminModal({ codigo, comentarioAdmin, onClose, onSaved }) {
       if(!r?.ok)throw new Error(r?.error||'No se pudo guardar el comentario.');
       onSaved?.(r.comentario_admin||'');
       onClose?.();
-    }catch(e){alert(e?.message||String(e));}finally{setComentarioBusy(false);}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setComentarioBusy(false);}
   }
-  return <div style={{position:'fixed',inset:0,zIndex:2750,background:'rgba(7,20,40,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(620px,94vw)',background:'white',borderRadius:14,boxShadow:'0 24px 70px rgba(0,0,0,.35)',overflow:'hidden'}}><div style={{padding:'13px 15px',background:'#173A67',color:'white',fontWeight:950}}>Comentario interno · {codigo}</div><div style={{padding:15}}><div style={{fontSize:10,color:'#667085',marginBottom:7}}>Solo administración autorizada puede leer o modificar este texto. Se guarda en DATOS · COMENTARIO_ADMIN.</div><textarea value={comentarioValue} onChange={e=>setComentarioValue(e.target.value)} maxLength={3000} rows={7} style={{width:'100%',resize:'vertical',border:'1px solid #CCD6E2',borderRadius:9,padding:10,fontFamily:'inherit',fontSize:12,lineHeight:1.45,boxSizing:'border-box'}}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:10}}><span style={{fontSize:9,color:'#8A8178'}}>{comentarioValue.length}/3000</span><div style={{display:'flex',gap:7}}><button type="button" onClick={onClose} disabled={comentarioBusy} style={{padding:'8px 11px',borderRadius:8,border:'1px solid #CCD6E2',background:'white',fontWeight:850,cursor:'pointer'}}>Cancelar</button><button type="button" onClick={guardarComentario} disabled={comentarioBusy} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #173A67',background:'#173A67',color:'white',fontWeight:950,cursor:'pointer'}}>{comentarioBusy?'Guardando…':'Guardar comentario'}</button></div></div></div></div></div>;
+  return <div style={{position:'fixed',inset:0,zIndex:2750,background:'rgba(7,20,40,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(620px,94vw)',background:'white',borderRadius:14,boxShadow:'0 24px 70px rgba(0,0,0,.35)',overflow:'hidden'}}><div style={{padding:'13px 15px',background:'#173A67',color:'white',fontWeight:950}}>Comentario interno · {codigo}</div><div style={{padding:15}}><div style={{fontSize:10,color:'#667085',marginBottom:7}}>Este comentario es interno y queda asociado al expediente del estudiante. Solo administración autorizada puede leerlo o modificarlo.</div><textarea value={comentarioValue} onChange={e=>setComentarioValue(e.target.value)} maxLength={3000} rows={7} style={{width:'100%',resize:'vertical',border:'1px solid #CCD6E2',borderRadius:9,padding:10,fontFamily:'inherit',fontSize:12,lineHeight:1.45,boxSizing:'border-box'}}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:10}}><span style={{fontSize:9,color:'#8A8178'}}>{comentarioValue.length}/3000</span><div style={{display:'flex',gap:7}}><button type="button" onClick={onClose} disabled={comentarioBusy} style={{padding:'8px 11px',borderRadius:8,border:'1px solid #CCD6E2',background:'white',fontWeight:850,cursor:'pointer'}}>Cancelar</button><button type="button" onClick={guardarComentario} disabled={comentarioBusy} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #173A67',background:'#173A67',color:'white',fontWeight:950,cursor:'pointer'}}>{comentarioBusy?'Guardando…':'Guardar comentario'}</button></div></div></div></div></div>;
 }
 
 function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
@@ -4529,26 +4602,24 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
   const [docBusy,setDocBusy]=React.useState('');
   const [approveBusy,setApproveBusy]=React.useState('');
   const [formBusy,setFormBusy]=React.useState('');
-  function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:r?.error||'No se pudo cargar el historial.',rows:[]});}).catch(e=>setEstado({loading:false,error:'Error de conexión: '+(e?.message||e),rows:[]}));}
+  function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]});}).catch(e=>setEstado({loading:false,error:adminStudentsSafeUserError(e?.message||String(e),'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]}));}
   React.useEffect(cargar,[codigo]);
-  async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||r.error}`:(r?.error||'No se pudo revertir.'));return;}onReverted?.(r);cargar();}
+  async function revertir(id){if(!confirm('¿Revertir este cambio? Solo continuará si no existen movimientos posteriores.'))return;setBusy(id);const r=await postAdminStudents('revertirCambioGrupo',{cambio_id:id});setBusy('');if(!r?.ok){alert(r?.reversion_asistida?`Reversión asistida requerida:\n${(r.bloqueos||[]).join('\n')||adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo revertir.','revertir_cambio')}`:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo revertir.','revertir_cambio'));return;}onReverted?.(r);cargar();}
   async function abrirDocumento(r){
     const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
-    const existingUrl=simple?r.PDF_TRASLADO_URL:r.CARTA_CONAPE_URL;
-    if(existingUrl){window.open(existingUrl,'_blank','noopener,noreferrer');return;}
     const key=`${r.CAMBIO_ID}-${simple?'T':'C'}`;setDocBusy(key);
     try{
-      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,include_base64:false},80000);
+      const resp=await postAdminStudents(simple?'generarConstanciaTraslado':'generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,include_base64:true},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo generar el documento.');
-      if(!abrirPdfBackend(resp,resp.pdf_url))alert('El documento se generó, pero el navegador bloqueó la apertura.');
+      if(!abrirPdfBackend(resp))alert('No pudimos abrir el documento de forma segura. Intentá de nuevo.');
       cargar();
-    }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
   async function regenerarCarta(r){
     if(!confirm('Se recalcularán pagos y mora. La carta anterior será reemplazada. ¿Continuar?'))return;
     const key=`${r.CAMBIO_ID}-R`;setDocBusy(key);
     try{
-      const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:false},80000);
+      const resp=await postAdminStudents('generarCartaIntegralConape',{cambio_id:r.CAMBIO_ID,regenerar:true,include_base64:true},80000);
       if(!resp?.ok)throw new Error(resp?.error||'No se pudo regenerar la carta.');
       if(resp?.estado==='LISTA_PARA_FIRMA'){
         const diag=resp?.diagnostico_emision||{};
@@ -4587,11 +4658,11 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
         else if(diag?.apto_academico===false)titulo='La carta continúa como borrador por una condición académica pendiente.';
         else if(diag?.solicitud_definida===false)titulo='La carta continúa como borrador porque no existe una solicitud elegible.';
         const lineas=[...lineasCausa,...detalleFinanciero];
-        alert(`${titulo}${lineas.length?`\n\n${lineas.join('\n')}`:'\n\nEl backend no informó una causa específica; verificá que Apps Script y GitHub estén en la misma versión.'}`);
+        alert(`${titulo}${lineas.length?`\n\n${lineas.join('\n')}`:'\n\nNo se pudo determinar la causa. Reintentá y, si continúa, revisá el caso antes de emitir la carta.'}`);
       }
-      if(resp?.pdf_url)window.open(resp.pdf_url,'_blank','noopener,noreferrer');
+      if(!abrirPdfBackend(resp))alert('La carta se actualizó, pero no pudimos abrir el PDF de forma segura. Intentá de nuevo.');
       cargar();
-    }catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
   async function descargarFormularioConape(r){
     const key=`${r.CAMBIO_ID}-F`;setFormBusy(key);
@@ -4664,17 +4735,17 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       if(pendientes.length)msg.push('\nPendientes de revisión:\n• '+pendientes.join('\n• '));
       if(faltantes.length)msg.push('\nCampos que el navegador no logró escribir:\n• '+faltantes.slice(0,8).join('\n• '));
       alert(msg.join('\n'));
-    }catch(e){alert(e?.message||String(e));}finally{setFormBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setFormBusy('');}
   }
   async function aprobarConape(r){
     const estado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
-    if(estado==='APLICADO_CONAPE'){alert('Este expediente ya fue publicado en las hojas CONAPE.');return;}
+    if(estado==='APLICADO_CONAPE'){alert('Este expediente ya está actualizado en CONAPE.');return;}
     const referencia=prompt('Referencia o detalle de la respuesta de CONAPE (opcional):','Aprobación recibida por la Academia');
     if(referencia===null)return;
     const confirmacion=prompt(`Para publicar únicamente el expediente ${r.CODIGO}, escribí exactamente su código:`,'');
     if(confirmacion===null)return;
     if(String(confirmacion).trim()!==String(r.CODIGO)){alert('El código no coincide. No se modificó CONAPE.');return;}
-    if(!confirm('Se actualizarán quirúrgicamente las hojas 4, 5, 6 y 7 de CONAPE para este estudiante. ¿Continuar?'))return;
+    if(!confirm('Se actualizará únicamente este expediente en CONAPE. ¿Continuar?'))return;
     setApproveBusy(r.CAMBIO_ID);
     try{
       const resp=await postAdminStudents('aprobarAplicarCambioConape',{cambio_id:r.CAMBIO_ID,codigo:r.CODIGO,confirmacion_individual:String(r.CODIGO),referencia_aprobacion:referencia,respuesta_conape:referencia},90000);
@@ -4682,13 +4753,13 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       const fin=resp?.estado_financiero||{};
       alert((resp?.mensaje||'Plan CONAPE publicado.')+(resp?.carta_no_deuda_lista?'':'\n\nLa carta de no deuda todavía no es apta: primero aplicá los pagos pendientes y luego usá “Recalcular carta”.'));
       cargar();onReverted?.(resp);
-    }catch(e){alert(e?.message||String(e));}finally{setApproveBusy('');}
+    }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setApproveBusy('');}
   }
   async function marcarEntregado(r){
     if(!confirm('¿Confirmar que la constancia fue entregada al estudiante?'))return;
     const key=`${r.CAMBIO_ID}-E`;setDocBusy(key);
     try{const resp=await postAdminStudents('marcarConstanciaTrasladoEntregada',{cambio_id:r.CAMBIO_ID});if(!resp?.ok)throw new Error(resp?.error||'No se pudo registrar la entrega.');cargar();}
-    catch(e){alert(e?.message||String(e));}finally{setDocBusy('');}
+    catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setDocBusy('');}
   }
   return <div style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(7,20,40,.68)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(1080px,96vw)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:15,boxShadow:'0 28px 80px rgba(0,0,0,.35)'}}>
     <div style={{padding:'16px 18px',background:'#0D2B51',color:'white',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'15px 15px 0 0'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',textTransform:'uppercase',opacity:.7}}>Auditoría inmutable</div><div style={{fontSize:20,fontWeight:900}}>Historial y documentos de cambios</div></div><button onClick={onClose} style={{background:'none',border:'none',color:'white',fontSize:24,cursor:'pointer'}}>×</button></div>
@@ -4740,9 +4811,9 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
     Promise.all([postAdminStudents('getEstudiante', { codigo }),postAdminStudents('getAsistenciaEstudiante', { codigo }),postAdminStudents('getComentarioAdminEstudiante',{codigo}).catch(()=>({ok:false})),postAdminStudents('getHistorialCambiosGrupo',{codigo}).catch(()=>({ok:false,historial:[]}))])
       .then(([ficha, asist, comentario, historialResp]) => {
         if (!activo) return;
-        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:(ficha&&ficha.error)||'No se pudo cargar el expediente.' }); return; }
+        if (!ficha || ficha.ok !== true) { setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:adminStudentsSafeUserError(ficha?.error||ficha?.mensaje,'No se pudo cargar el expediente. Intentá de nuevo.','agenda_expediente') }); return; }
         setEstado({ loading:false, detalle:ficha, asistencia:(asist&&asist.ok&&Array.isArray(asist.asistencia))?asist.asistencia:[], comentarioAdmin:comentario?.ok?agIndNorm(comentario.comentario_admin):'', historial:historialResp?.ok&&Array.isArray(historialResp.historial)?historialResp.historial:[], error:'' });
-      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:'Error de conexión: '+(e?.message||e) }));
+      }).catch(e => activo && setEstado({ loading:false, detalle:null, asistencia:[], comentarioAdmin:'', historial:[], error:adminStudentsSafeUserError(e?.message||String(e),'No se pudo cargar el expediente. Intentá de nuevo.','agenda_expediente') }));
     return () => { activo=false; };
   }, [codigo,refreshKey]);
 

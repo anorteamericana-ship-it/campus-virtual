@@ -1,0 +1,29 @@
+name: QA SEC002 Student Signed Enrollment CS21A162
+
+on:
+  pull_request:
+    paths:
+      - 'src/student_experience.jsx'
+      - 'scripts/qa_sec002_student_signed_enrollment_cs21a162.mjs'
+      - '.github/workflows/qa-sec002-student-signed-enrollment-cs21a162.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate private signed-enrollment student contract
+        run: node scripts/qa_sec002_student_signed_enrollment_cs21a162.mjs
+      - name: Diff whitespace check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
+          else
+            git diff --check HEAD^ -- . ':(exclude)00_DOCUMENTACION/**'
+          fi

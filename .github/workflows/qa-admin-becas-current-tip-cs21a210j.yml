@@ -1,0 +1,28 @@
+name: QA Admin Becas Current Tip CS21A210J
+
+on:
+  push:
+    branches:
+      - fix/admin-becas-current-tip-cs21a210j
+  pull_request:
+    branches:
+      - fix/aplicar-pago-safe-errors-cs21a210i
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact historical Becas import
+        run: node scripts/qa_admin_becas_current_tip_cs21a210j.mjs --exact-scope
+      - name: Regress CS21A210I Aplicar Pago
+        run: node scripts/qa_aplicar_pago_safe_errors_cs21a210i.mjs
+      - name: Regress CS21A210H Admin Status
+        run: node scripts/qa_admin_status_safe_errors_cs21a210h.mjs
+      - name: Diff hygiene
+        run: git diff --check

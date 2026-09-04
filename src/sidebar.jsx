@@ -81,7 +81,11 @@ function ModoPruebaPanel() {
     setErrMsg('');
     try {
       const data = await postSidebar('getEstudiante', { codigo: c });
-      if (!data.ok) { setErrMsg(data.error || 'Código no encontrado'); return; }
+      if (!data.ok) {
+        if (data.error) console.warn('[Sidebar][ModoPrueba] Detalle técnico oculto al operador.', { context: 'get_estudiante', error: String(data.error) });
+        setErrMsg('No pudimos cargar ese estudiante. Verificá el código e intentá de nuevo.');
+        return;
+      }
 
       const est     = data.estudiante || {};
       const niveles = data.niveles    || {};
@@ -488,21 +492,10 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const mostrarICAN = tieneICANExplicito || tieneICANPrograma;
   const studentSections = esUsuarioGratis ? [
     {
-      label: 'Aprendizaje',
+      label: 'Prematrícula',
       items: [
         { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
-        { id: 'mi_curso', label: 'Mi curso', icon: 'materials', locked: true },
         ...(mostrarAcademiaPlay ? [{ id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Gratis' }] : []),
-        { id: 'documentos_ayuda', label: 'Materiales', icon: 'doc', locked: true },
-        { id: 'ican', label: 'Club I CAN', icon: 'ican', locked: true },
-      ],
-    },
-    {
-      label: 'Gestión',
-      items: [
-        { id: 'dashboard', label: 'Solicitar contacto', icon: 'card', badge: 'Nuevo' },
-        { id: 'pagos', label: 'Pagos', icon: 'payments', locked: true },
-        { id: 'certificados', label: 'Certificados', icon: 'certificates', locked: true },
       ],
     },
   ] : [
@@ -588,8 +581,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     {
       label: 'Control del sistema',
       items: [
-        { id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' },
-        { id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' },
+        ...(esSuperadmin ? [{ id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' }] : []),
+        ...(esSuperadmin ? [{ id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' }] : []),
         { id: 'docentes', label: 'Docentes', icon: 'graduation', proximamente: true },
         { id: 'horas', label: 'Horas docentes', icon: 'chart', proximamente: true },
         { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },

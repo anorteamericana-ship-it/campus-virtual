@@ -1,0 +1,56 @@
+name: QA Examenes Student Safe Errors CS21A210AY
+
+on:
+  push:
+    branches:
+      - fix/examenes-student-safe-errors-cs21a210ay
+  pull_request:
+    paths:
+      - 'src/examenes_bundle.jsx'
+      - 'src/examenes_modes.jsx'
+      - 'modulos/examenes.html'
+      - 'scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs'
+      - '.github/workflows/qa-examenes-student-safe-errors-cs21a210ay.yml'
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - 'scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs'
+      - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
+      - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse exam build source and runtime bundle
+        run: |
+          node -e "const fs=require('fs');const p=require('@babel/parser');for(const f of ['src/examenes_modes.jsx','src/examenes_bundle.jsx']){p.parse(fs.readFileSync(f,'utf8'),{sourceType:'script',plugins:['jsx','optionalChaining']});console.log(f+' JSX parse PASS')}"
+      - name: Verify AY effective StudentMode boundary
+        run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
+      - name: Verify reproducible V3 does not regress
+        run: |
+          set -o pipefail
+          test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ay.txt
+          node - <<'NODE'
+          const fs=require('fs'); const s=fs.readFileSync('/tmp/v3-ay.txt','utf8');
+          const f=Number((s.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
+          const n=Number((s.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
+          if(!Number.isFinite(f)||f>44) throw new Error(`V3 findings regressed: ${f} > 44`);
+          if(!Number.isFinite(n)||n>12) throw new Error(`V3 files regressed: ${n} > 12`);
+          console.log(`V3 non-regression PASS findings=${f} files=${n}`);
+          NODE
+      - name: Regress AX public enrollment boundary
+        run: node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
+      - name: Regress AT shared app boundary
+        run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
+      - name: Regress AS BCR wiring boundary
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Diff hygiene
+        run: git diff --check ed458ff9715338cb2fcd75f9896f2753d8d019b9

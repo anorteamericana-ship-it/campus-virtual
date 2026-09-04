@@ -14,6 +14,18 @@
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_TV = window.APPS_SCRIPT_URL;
 
+function teacherSessionSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|apollo\.|getDocente|getAsistencia|getFechas|getEstudiantes|sec00|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[TeacherSession] Detalle técnico oculto al docente.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 // FIX-ADMIN-CORE-POST-001: lecturas sensibles vía POST text/plain (token en body).
 async function postTeacher(fn, payload = {}, timeoutMs = 30000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
@@ -322,7 +334,7 @@ function useTeacherSession() {
         setGruposMeta(grupos);
         if (!grupos.length) {
           setCodGrupo('');
-          setErrorGroups(d.mensaje || 'No hay grupos marcados En curso para este docente en APOLLO.GRUPOS.');
+          setErrorGroups(teacherSessionSafeUserError(d?.mensaje, 'No hay grupos activos asignados en este momento.', 'sin_grupos'));
           return;
         }
         const vigente = grupos.find(g => tvGroupCode(g) === grupoActivo);
@@ -332,7 +344,7 @@ function useTeacherSession() {
           window.setGrupoActivoDocente(nuevo);
         }
       })
-      .catch(e => { if (!cancel) setErrorGroups(e?.message || String(e)); })
+      .catch(e => { if (!cancel) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos')); })
       .finally(() => { if (!cancel) setLoadingGroups(false); });
     return () => { cancel = true; };
   }, [nombre]);
@@ -392,7 +404,7 @@ function useTeacherSession() {
           estudiantesConNotas:r.estudiantes_con_notas || 0,
         });
       })
-      .catch(e => { if (!cancel) setErrorPanel(e?.message || String(e)); })
+      .catch(e => { if (!cancel) setErrorPanel(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar la información del grupo. Intentá de nuevo.', 'cargar_panel')); })
       .finally(() => { if (!cancel) setLoadingPanel(false); });
     return () => { cancel = true; };
   }, [codGrupo, nivel, reloadTick]);
@@ -642,7 +654,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
       const r = await postTeacher('docenteIniciarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion, zoom_link:zoom });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo iniciar sesión.');
       onStarted && onStarted(r.sesion || r);
-    } catch(e){ alert(e.message || String(e)); }
+    } catch(e){ alert(teacherSessionSafeUserError(e?.message || String(e), 'No se pudo iniciar la clase. Intentá de nuevo.', 'iniciar_clase_hoy')); }
     finally { setBusy(false); }
   };
   const finalizar = async () => {
@@ -652,7 +664,7 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
       const r = await postTeacher('docenteFinalizarSesionClaseF77', { cod_grupo:tvGroupCode(meta), nivel:tvNivelId(meta), leccion:leccionHoy.leccion });
       if (!r?.ok) throw new Error(r?.error || 'No se pudo finalizar sesión.');
       onClosed && onClosed(r.sesion || r);
-    } catch(e){ alert(e.message || String(e)); }
+    } catch(e){ alert(teacherSessionSafeUserError(e?.message || String(e), 'No se pudo cerrar la clase. Intentá de nuevo.', 'cerrar_clase_hoy')); }
     finally { setBusy(false); }
   };
   return <div className="card" style={{ padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, borderLeft:'4px solid var(--an-navy)', width:'100%', maxWidth:'100%', minWidth:0, flexWrap:'wrap' }}>
@@ -794,7 +806,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       const r=await postTeacher('docenteIniciarSesionClaseF77',{cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,zoom_link:zoom});
       if(!r?.ok)throw new Error(r?.mensaje||r?.error||'No se pudo iniciar la clase.');
       setSesion(r.sesion||r); setSessionCheck('ok'); window.dispatchEvent(new CustomEvent('an:teacher-session-changed')); onChanged&&onChanged();
-    }catch(e){alert(e.message||String(e));}finally{setBusy('');}
+    }catch(e){alert(teacherSessionSafeUserError(e?.message||String(e),'No se pudo iniciar la clase. Intentá de nuevo.','iniciar_clase_drawer'));}finally{setBusy('');}
   };
   const abrirExamen=()=>{ if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
   const abrirCierre=()=>setAttendanceOpen(true);
@@ -1153,7 +1165,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   const lista=grupos||[];
   const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
-  if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos En curso asignados.'} onRetry={recargarPanel}/></div>;
+  if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos activos asignados en este momento.'} onRetry={recargarPanel}/></div>;
   const promedioGrupo=resumenGrupo?.promedioGrupo,promedioAsistencia=resumenGrupo?.promedioAsistencia;
   const totalMatriculados = Number(resumenGrupo?.totalCA ?? roster.length ?? 0) || 0;
   const cerradas = Number(resumenGrupo?.cerradas || 0) || 0;
@@ -1168,11 +1180,11 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   return <div style={{width:'100%',maxWidth:'100%',minWidth:0,overflow:'hidden'}}>
     <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} />
     <div className="card" style={{padding:'15px 18px',margin:'-6px 0 14px',background:'#FFF',borderRadius:14,border:'1px solid rgba(15,23,42,.07)',boxShadow:'0 10px 24px rgba(12,27,53,.05)'}}>
-      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elije el grupo que deseas visualizar</div>
+      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elegí el grupo que querés visualizar.</div>
     </div>
     <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
-    {loading?<LoadingState title="Cargando grupo…" subtitle="Uniendo GRUPOS, ESTATUS, cronograma, asistencia y notas oficiales"/>:<>
+    {loading?<LoadingState title="Cargando grupo…" subtitle="Preparando estudiantes, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
         <MatriculadosActivosCardF98 total={totalMatriculados} activos={activos85} cerradas={cerradas} threshold={85}/>
         <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
@@ -1357,7 +1369,7 @@ function CalificarView({ toast }) {
       setResultado({ ok, errores: err, total: resultados.length });
       if (toast) toast(`${ok} calificación${ok!==1?'es':''} guardada${ok!==1?'s':''}`);
     } catch(e) {
-      setErrGlobal('Error de conexión: ' + e.message);
+      setErrGlobal(teacherSessionSafeUserError(e?.message || String(e), 'No se pudieron guardar las calificaciones. Intentá de nuevo.', 'guardar_calificaciones'));
     } finally {
       setCargando(false);
     }
@@ -1541,14 +1553,14 @@ function AsistenciaView({ toast }) {
       const data = await res.json();
 
       if (!data.ok) {
-        setErrGlobal(data.error || 'Error al registrar asistencia');
+        setErrGlobal(teacherSessionSafeUserError(data?.error, 'No se pudo registrar la asistencia. Intentá de nuevo.', 'registrar_asistencia_respuesta'));
         return;
       }
 
       setResultado({ presentes: counts.present + counts.late, ausentes: counts.absent });
       if (toast) toast(`Asistencia registrada · ${counts.present + counts.late} presentes`);
     } catch(e) {
-      setErrGlobal('Error de conexión: ' + e.message);
+      setErrGlobal(teacherSessionSafeUserError(e?.message || String(e), 'No se pudo registrar la asistencia. Intentá de nuevo.', 'registrar_asistencia_excepcion'));
     } finally {
       setCargando(false);
     }

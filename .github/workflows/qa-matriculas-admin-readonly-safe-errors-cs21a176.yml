@@ -1,0 +1,28 @@
+name: QA Matriculas Admin Readonly Safe Errors CS21A176
+
+on:
+  pull_request:
+    paths:
+      - 'src/matriculas_admin.jsx'
+      - 'scripts/qa_matriculas_admin_readonly_safe_errors_cs21a176.mjs'
+      - '.github/workflows/qa-matriculas-admin-readonly-safe-errors-cs21a176.yml'
+      - '00_DOCUMENTACION/MATRICULAS_ADMIN_READONLY_SAFE_ERRORS_CS21A176_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-safe-errors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Whitespace and conflict markers
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate QA script syntax
+        run: node --check scripts/qa_matriculas_admin_readonly_safe_errors_cs21a176.mjs
+      - name: Verify fail-closed readonly and safe error contract
+        run: node scripts/qa_matriculas_admin_readonly_safe_errors_cs21a176.mjs

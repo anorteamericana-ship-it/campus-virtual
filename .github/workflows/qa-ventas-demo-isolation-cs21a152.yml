@@ -1,0 +1,21 @@
+name: QA Ventas Demo Isolation CS21A152
+
+on:
+  pull_request:
+    paths:
+      - 'ventas.html'
+      - 'src/ventas_runtime_guard_cs21a152.js'
+      - 'src/ventas_drawer.jsx'
+      - 'scripts/qa_ventas_demo_isolation_cs21a152.mjs'
+      - '.github/workflows/qa-ventas-demo-isolation-cs21a152.yml'
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/qa_ventas_demo_isolation_cs21a152.mjs

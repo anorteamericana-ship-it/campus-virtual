@@ -1,0 +1,54 @@
+name: QA Inscripcion Public Safe Errors CS21A210AX
+
+on:
+  push:
+    branches:
+      - fix/inscripcion-public-safe-errors-cs21a210ax
+  pull_request:
+    paths:
+      - 'src/inscripcion.jsx'
+      - 'inscripcion.html'
+      - 'scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs'
+      - '.github/workflows/qa-inscripcion-public-safe-errors-cs21a210ax.yml'
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
+      - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse public enrollment source
+        run: node -e "const fs=require('fs');const p=require('@babel/parser');p.parse(fs.readFileSync('src/inscripcion.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining']});console.log('JSX parse PASS')"
+      - name: Verify AX effective public boundary and exact reconstruction
+        run: node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
+      - name: Verify reproducible V3 descendant non-regression
+        run: |
+          set -o pipefail
+          test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ax.txt
+          findings="$(sed -n 's/^DIRECT_RAW_SINK_FINDINGS=//p' /tmp/v3-ax.txt)"
+          files="$(sed -n 's/^FILES_WITH_FINDINGS=//p' /tmp/v3-ax.txt)"
+          test -n "$findings" && test -n "$files"
+          test "$findings" -le 52
+          test "$files" -le 12
+          ! grep -Fq 'src/inscripcion.jsx' /tmp/v3-ax.txt
+      - name: Regress AT shared error boundary
+        run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
+      - name: Regress AS BCR wiring boundary
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Diff hygiene · AX-owned paths only
+        run: >-
+          git diff --check HEAD^ --
+          src/inscripcion.jsx
+          inscripcion.html
+          scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
+          .github/workflows/qa-inscripcion-public-safe-errors-cs21a210ax.yml

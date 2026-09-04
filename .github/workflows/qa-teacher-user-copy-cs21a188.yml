@@ -1,0 +1,28 @@
+name: QA Teacher User Copy CS21A188
+
+on:
+  pull_request:
+    paths:
+      - 'src/teacher_views.jsx'
+      - 'scripts/qa_teacher_user_copy_cs21a188.mjs'
+      - '.github/workflows/qa-teacher-user-copy-cs21a188.yml'
+      - '00_DOCUMENTACION/TEACHER_USER_COPY_CS21A188_2026-08-29.md'
+
+permissions:
+  contents: read
+
+jobs:
+  teacher-user-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A188 guard
+        run: node scripts/qa_teacher_user_copy_cs21a188.mjs
+      - name: Regress CS21A187 teacher action safe errors
+        run: node scripts/qa_teacher_action_safe_errors_cs21a187.mjs
+      - name: Regress CS21A186 teacher session safe errors
+        run: node scripts/qa_teacher_session_safe_errors_cs21a186.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/fix/teacher-action-safe-errors-cs21a187...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'

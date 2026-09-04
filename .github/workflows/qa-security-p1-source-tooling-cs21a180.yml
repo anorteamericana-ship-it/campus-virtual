@@ -1,0 +1,42 @@
+name: QA Security P1 Source Tooling CS21A180
+
+on:
+  pull_request:
+    paths:
+      - 'src/inscripcion.jsx'
+      - 'src/auth_provider_sec001_v2.jsx'
+      - 'security/sec001_oidc_bridge_contract_v2.json'
+      - 'security/sec004_demo_readonly_contract_v3.json'
+      - 'apps_script_patches/ZZ_SEC004_DEMO_READONLY_OUTER_GUARD_V3.gs'
+      - 'scripts/export_apps_script_qa_snapshot_cs21a178.ps1'
+      - 'scripts/apps_script_qa_snapshot_manifest_cs21a178.mjs'
+      - 'scripts/qa_security_p1_source_tooling_cs21a180.mjs'
+      - '.github/workflows/qa-security-p1-source-tooling-cs21a180.yml'
+      - '00_DOCUMENTACION/SECURITY_P1_SOURCE_TOOLING_CS21A180_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p1-source-tooling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diff hygiene
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate guards
+        run: |
+          node --check scripts/qa_security_p1_source_tooling_cs21a180.mjs
+          node --check scripts/apps_script_qa_snapshot_manifest_cs21a178.mjs
+      - name: Run integrated SEC001 candidate
+        run: node scripts/qa_security_source_candidate_cs21a179.mjs
+      - name: Run SEC004 guard
+        run: node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
+      - name: Run snapshot tooling synthetic guard
+        run: node scripts/qa_apps_script_qa_readonly_snapshot_cs21a178.mjs
+      - name: Run CS21A180 cross assertions
+        run: node scripts/qa_security_p1_source_tooling_cs21a180.mjs

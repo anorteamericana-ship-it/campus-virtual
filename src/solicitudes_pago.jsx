@@ -31,6 +31,18 @@ const SP_ESTADO = {
   DUPLICADO: { label: 'Duplicado', bg: '#FBE4E1', fg: '#8B1A10', bd: '#F0BDB6' },
 };
 
+function spSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}|sha-?256|\bmime\b|base64|file_id|respuesta_vacia|integridad_|sec004_|demo_read_only|policy_unbound/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[SolicitudesPago] Detalle técnico oculto al usuario.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 function SpEstadoBadge({ estado }) {
   const m = SP_ESTADO[estado] || { label: estado, bg: 'var(--surface-2)', fg: 'var(--ink-2)', bd: 'var(--line)' };
   return (
@@ -58,6 +70,12 @@ function SpToast({ toast }) {
   );
 }
 
+function spTieneComprobante(sol) {
+  if (sol?.tiene_comprobante === true) return true;
+  const demoLocal = String(sol?.url_comprobante || '');
+  return demoLocal.startsWith('data:');
+}
+
 function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false }) {
   const adminNombre = React.useMemo(() => {
     try { return (window.getSesion && window.getSesion() || {}).nombre || 'admin'; } catch (_) { return 'admin'; }
@@ -74,7 +92,8 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
   const [cargando, setCargando] = React.useState(true);
   const [err, setErr] = React.useState('');
 
-  const [verComprobante, setVerComprobante] = React.useState(null); // sol
+  const [verComprobante, setVerComprobante] = React.useState(null); // sol + ObjectURL privado
+  const [abriendoComprobante, setAbriendoComprobante] = React.useState('');
   const [verDetalle, setVerDetalle] = React.useState(null);         // sol
   const [confirmAplicar, setConfirmAplicar] = React.useState(null); // sol
   const [modalRechazar, setModalRechazar] = React.useState(null);   // sol
@@ -91,7 +110,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     setCargando(true); setErr('');
     window.getSolicitudesPago({ estado, asesor, fecha_desde: desde, fecha_hasta: hasta })
       .then(r => {
-        if (!r || !r.ok) { setErr((r && r.error) || 'No se pudo cargar la cola.'); setLista([]); return; }
+        if (!r || !r.ok) { setErr(spSafeUserError(r && (r.mensaje || r.error), 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_solicitudes')); setLista([]); return; }
         const base = r.solicitudes || [];
         const filtrada = categoria === 'MATRICULA'
           ? base.filter(x => String(x.tipo_pago || '').toUpperCase() === 'MATRICULA')
@@ -101,7 +120,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
         setLista(filtrada);
         if (typeof r.pendientes === 'number') setPendientes(r.pendientes);
       })
-      .catch(e => { setErr('Error de red: ' + e.message); setLista([]); })
+      .catch(e => { setErr(spSafeUserError(e?.message, 'No se pudo cargar la cola. Intentá de nuevo.', 'cargar_solicitudes_red')); setLista([]); })
       .finally(() => setCargando(false));
   }, [estado, asesor, desde, hasta, categoria]);
 
@@ -122,7 +141,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     setAccionando(sol.id);
     const res = await window.marcarSolicitudAplicada({ id: sol.id, admin_nombre: adminNombre });
     setAccionando(null); setConfirmAplicar(null);
-    if (!res || !res.ok) { showToast((res && res.error) || 'No se pudo marcar como aplicada.', 'err'); return; }
+    if (!res || !res.ok) { showToast(spSafeUserError(res && (res.mensaje || res.error), 'No se pudo marcar como aplicada.', 'aplicar_solicitud'), 'err'); return; }
     showToast('Solicitud marcada como aplicada. ✅', 'ok');
     window.dispatchEvent(new Event('an:solicitudes-pago-changed'));
     refrescar();
@@ -132,7 +151,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     setAccionando(sol.id);
     const res = await window.rechazarSolicitudPago({ id: sol.id, admin_nombre: adminNombre, motivo });
     setAccionando(null); setModalRechazar(null);
-    if (!res || !res.ok) { showToast((res && res.error) || 'No se pudo rechazar.', 'err'); return; }
+    if (!res || !res.ok) { showToast(spSafeUserError(res && (res.mensaje || res.error), 'No se pudo rechazar.', 'rechazar_solicitud'), 'err'); return; }
     showToast('Solicitud rechazada.', 'ok');
     window.dispatchEvent(new Event('an:solicitudes-pago-changed'));
     refrescar();
@@ -173,11 +192,59 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
     if (onNavigate) onNavigate('aplicar_pago');
   };
 
-  const verComp = (sol) => {
-    const url = sol.url_comprobante || '';
-    const esPdf = /pdf/i.test(sol.foto_mime || '') || /\.pdf($|\?)/i.test(url);
-    if (esPdf && url) { window.open(url, '_blank', 'noopener'); return; }
-    setVerComprobante(sol);
+  const cerrarComprobante = React.useCallback(() => {
+    setVerComprobante(cur => {
+      if (cur?._object_url) {
+        try { URL.revokeObjectURL(cur._object_url); } catch (_) {}
+      }
+      return null;
+    });
+  }, []);
+
+  const verComp = async (sol) => {
+    const id = String(sol?.id || '').trim();
+    if (!id || abriendoComprobante) return;
+    setAbriendoComprobante(id);
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando comprobante…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando comprobante…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarComprobantePagoPrivado(id);
+      if (!r?.ok || !r.blob) throw new Error(spSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el comprobante.', 'abrir_comprobante'));
+      const objectUrl = URL.createObjectURL(r.blob);
+      const mime = String(r.mime_type || r.blob.type || '').toLowerCase();
+      if (mime === 'application/pdf') {
+        if (preview && !preview.closed) preview.location.replace(objectUrl);
+        else {
+          const a = document.createElement('a');
+          a.href = objectUrl; a.download = r.nombre || `comprobante-${id}.pdf`;
+          document.body.appendChild(a); a.click(); a.remove();
+        }
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+        return;
+      }
+      if (/^image\/(jpeg|png)$/i.test(mime)) {
+        try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+        setVerComprobante({ ...sol, _object_url:objectUrl, _mime:mime, _nombre:r.nombre || `comprobante-${id}` });
+        return;
+      }
+
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      const a = document.createElement('a');
+      a.href = objectUrl; a.download = r.nombre || `comprobante-${id}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      showToast(spSafeUserError(e?.message, 'No se pudo abrir el comprobante.', 'abrir_comprobante'), 'err');
+    } finally {
+      setAbriendoComprobante('');
+    }
   };
 
   return (
@@ -295,7 +362,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
         )}
       </div>
 
-      {verComprobante && <SpComprobanteModal sol={verComprobante} onClose={() => setVerComprobante(null)} />}
+      {verComprobante && <SpComprobanteModal sol={verComprobante} onClose={cerrarComprobante} />}
       {verDetalle && <SpDetalleModal sol={verDetalle} onClose={() => setVerDetalle(null)} onVerComprobante={() => { verComp(verDetalle); setVerDetalle(null); }} />}
       {confirmAplicar && (
         <SpConfirmAplicar sol={confirmAplicar} enviando={accionando === confirmAplicar.id}
@@ -372,7 +439,7 @@ function SpFila({ sol, accionando, onVerComprobante, onAplicarPago, onAplicar, o
       <td style={{ ...td, fontFamily: 'var(--f-mono)', fontWeight: 700, whiteSpace: 'nowrap' }}>{sol.numero_comprobante || '—'}</td>
       <td style={{ ...td, fontFamily: 'var(--f-mono)', fontWeight: 700, whiteSpace: 'nowrap' }}>{spColones(sol.monto_reportado)}</td>
       <td style={td}>
-        {sol.url_comprobante ? (
+        {spTieneComprobante(sol) ? (
           <button type="button" onClick={onVerComprobante} style={spLinkBtn}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" />
@@ -427,11 +494,15 @@ function SpComprobanteModal({ sol, onClose }) {
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 24, color: 'var(--ink-3)', cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: 16, overflowY: 'auto', background: 'var(--surface-2)', display: 'flex', justifyContent: 'center' }}>
-          <img src={sol.url_comprobante} alt="Comprobante de pago" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--line)', background: '#fff' }} />
+          <img src={sol._object_url} alt="Comprobante de pago" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--line)', background: '#fff' }} />
         </div>
         <div style={{ padding: '12px 18px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Monto reportado: <b style={{ fontFamily: 'var(--f-mono)' }}>{spColones(sol.monto_reportado)}</b></span>
-          <a href={sol.url_comprobante} target="_blank" rel="noopener" style={{ ...spLinkBtn, textDecoration: 'none' }}>Abrir en pestaña nueva</a>
+          <button type="button" onClick={() => {
+            const a = document.createElement('a');
+            a.href = sol._object_url; a.download = sol._nombre || `comprobante-${sol.id || 'pago'}`;
+            document.body.appendChild(a); a.click(); a.remove();
+          }} style={spLinkBtn}>Descargar copia</button>
         </div>
       </div>
     </div>
@@ -476,7 +547,7 @@ function SpDetalleModal({ sol, onClose, onVerComprobante }) {
             </div>
           ))}
         </div>
-        {sol.url_comprobante ? (
+        {spTieneComprobante(sol) ? (
           <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)' }}>
             <button type="button" onClick={onVerComprobante} style={{ ...spLinkBtn, width: '100%', justifyContent: 'center' }}>Ver comprobante</button>
           </div>

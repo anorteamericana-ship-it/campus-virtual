@@ -1,0 +1,28 @@
+name: QA SEC002 Admin Certificate CS21A194
+
+on:
+  push:
+    branches:
+      - security/admin-private-certificate-delivery-cs21a194
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'security/sec002_admin_certificate_contract_cs21a194.json'
+      - 'scripts/qa_sec002_admin_certificate_cs21a194.mjs'
+      - '.github/workflows/qa-sec002-admin-certificate-cs21a194.yml'
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A194 guard
+        run: node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress CS21A193
+        run: node scripts/qa_sec002_admin_academic_docs_cs21a193.mjs
+      - name: Regress CS21A192
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Diff hygiene against stacked base
+        run: git diff --check origin/security/admin-private-academic-doc-delivery-cs21a193...HEAD -- ':!00_DOCUMENTACION/**'

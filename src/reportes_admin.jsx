@@ -13,6 +13,18 @@ async function postReportesAdmin(fn, payload = {}) {
   return await res.json();
 }
 
+function repSafeUserError(raw, fallback, context = '') {
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|script\.google|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|getReportesAdministrativos/i.test(msg);
+  if(technicalCode||technicalText){
+    console.warn('[ReportesAdmin] Detalle técnico oculto al operador.',{context,error:msg});
+    return fallback;
+  }
+  return msg;
+}
+
 function repText(v, fallback = '—') {
   const s = String(v ?? '').trim();
   return s || fallback;
@@ -89,7 +101,7 @@ function ReportesAdminView({ onNavigate }) {
         if (!r || r.ok === false) throw new Error(r?.error || 'No se pudo cargar reportes administrativos.');
         setData(r);
       })
-      .catch(e => setError(e.message || String(e)))
+      .catch(e => setError(repSafeUserError(e?.message || String(e), 'No se pudieron cargar los reportes administrativos. Intentá de nuevo.', 'cargar_reportes')))
       .finally(() => setLoading(false));
   }, []);
   React.useEffect(() => { cargar(); }, [cargar]);
@@ -139,7 +151,7 @@ function ReportesAdminView({ onNavigate }) {
     <div data-screen-label="Admin · Reportes administrativos" style={{ padding: 22, display:'flex', flexDirection:'column', gap:18 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
         <div>
-          <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate)' }}>F38 · Dirección</div>
+          <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate)' }}>Dirección académica</div>
           <h1 style={{ margin:'4px 0 4px', fontFamily:'var(--f-serif)', fontSize:34, color:'var(--an-navy-ink)', fontWeight:500 }}>Reportes administrativos</h1>
           <div style={{ fontSize:13, color:'var(--ink-3)' }}>Lectura ejecutiva de grupos, mora, certificados, notas, exámenes, docentes y cierres.</div>
         </div>

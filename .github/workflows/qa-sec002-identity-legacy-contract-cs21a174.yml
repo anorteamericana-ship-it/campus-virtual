@@ -1,0 +1,42 @@
+name: QA SEC002 Identity Legacy Contract CS21A174
+
+on:
+  push:
+    branches:
+      - 'security/sec002-identity-legacy-contract-cs21a174'
+    paths:
+      - 'src/ventas_parts.jsx'
+      - 'src/matriculas_admin.jsx'
+      - 'security/sec002_identity_legacy_contract_cs21a174.json'
+      - 'scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs'
+      - '.github/workflows/qa-sec002-identity-legacy-contract-cs21a174.yml'
+      - '00_DOCUMENTACION/SEC002_IDENTITY_LEGACY_CONTRACT_CS21A174_2026-08-29.md'
+  pull_request:
+    paths:
+      - 'src/ventas_parts.jsx'
+      - 'src/matriculas_admin.jsx'
+      - 'security/sec002_identity_legacy_contract_cs21a174.json'
+      - 'scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs'
+      - '.github/workflows/qa-sec002-identity-legacy-contract-cs21a174.yml'
+      - '00_DOCUMENTACION/SEC002_IDENTITY_LEGACY_CONTRACT_CS21A174_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Whitespace and conflict markers
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate contract JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('security/sec002_identity_legacy_contract_cs21a174.json','utf8')); console.log('JSON PASS')"
+      - name: Validate guard syntax
+        run: node --check scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs
+      - name: Verify legacy identity anti-regression contract
+        run: node scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs

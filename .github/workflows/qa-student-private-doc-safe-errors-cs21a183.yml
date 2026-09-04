@@ -1,0 +1,28 @@
+name: QA Student Private Doc Safe Errors CS21A183
+
+on:
+  pull_request:
+    paths:
+      - 'src/student_modules.jsx'
+      - 'src/student_experience.jsx'
+      - 'scripts/qa_student_private_doc_safe_errors_cs21a183.mjs'
+      - '.github/workflows/qa-student-private-doc-safe-errors-cs21a183.yml'
+      - '00_DOCUMENTACION/STUDENT_PRIVATE_DOC_SAFE_ERRORS_CS21A183_2026-08-29.md'
+
+jobs:
+  safe-errors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A183 safe-error guard
+        run: node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Regress private certificate
+        run: node scripts/qa_sec002_student_certificate_cs21a160.mjs
+      - name: Regress private signed enrollment
+        run: node scripts/qa_sec002_student_signed_enrollment_cs21a162.mjs
+      - name: Regress integrated private chain
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'

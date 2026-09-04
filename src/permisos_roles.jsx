@@ -14,6 +14,52 @@ async function postPermisosRoles(fn, payload = {}) {
   return await res.json();
 }
 
+function prSafeUserError(raw, fallback, context = '') {
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|script\.google|backend|endpoint|router|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|aborterror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|request[_ -]?id|file_id|base64|sha-?256|\bmime\b|driveapp|spreadsheet|\bsheet\b|\btabla\b|\bhoja\b|auditoriaRolesPermisos/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[PermisosRoles] Detalle técnico oculto al operador.',{context,error:msg});return fallback;}
+  return msg;
+}
+function prRoleLabel(v) {
+  const raw=String(v==null?'':v).trim();
+  const key=raw.toLowerCase();
+  const labels={superadmin:'Superadministración',admin:'Administración',teacher:'Docencia',docente:'Docencia',student:'Estudiante',estudiante:'Estudiante',ventas:'Ventas',sales:'Ventas',free:'Demostración',demo:'Demostración'};
+  return labels[key] || (raw ? raw.replace(/[_-]+/g,' ').replace(/\b\w/g,m=>m.toUpperCase()) : '—');
+}
+function prActionLabel(v) {
+  const raw=String(v==null?'':v).trim();
+  if(!raw)return '—';
+  const known={auditoriaRolesPermisos:'Consultar auditoría de permisos',getVentasDashboard:'Consultar panel de ventas',getProspectos:'Consultar prospectos',generarProforma:'Generar proforma',inscribirEstudiante:'Inscribir estudiante',crearUsuario:'Crear usuario',guardarMatricula:'Guardar matrícula',aplicarPago:'Aplicar pago',actualizarSaldoCuenta:'Actualizar saldo de cuenta',suspenderEstudiante:'Suspender estudiante',reactivarEstudiante:'Reactivar estudiante',getAuditoriaAcademica:'Consultar auditoría académica',getAdminSecurityAudit:'Consultar auditoría de permisos'};
+  if(known[raw])return known[raw];
+  if(/[^A-Za-z0-9]/.test(raw))return 'Acción protegida';
+  const verbs=[['get','Consultar'],['listar','Consultar'],['buscar','Consultar'],['guardar','Guardar'],['crear','Crear'],['actualizar','Actualizar'],['editar','Editar'],['eliminar','Eliminar'],['cancelar','Cancelar'],['suspender','Suspender'],['reactivar','Reactivar'],['generar','Generar'],['aplicar','Aplicar'],['registrar','Registrar'],['aprobar','Aprobar'],['rechazar','Rechazar']];
+  const found=verbs.find(([p])=>raw.toLowerCase().startsWith(p.toLowerCase()) && raw.length>p.length);
+  if(!found)return 'Acción protegida';
+  const body=raw.slice(found[0].length).replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/([A-Z])([A-Z][a-z])/g,'$1 $2').trim().toLowerCase();
+  return body ? found[1]+' '+body : found[1];
+}
+function prFriendlyLabel(v, fallback = '—') {
+  const raw=String(v==null?'':v).trim();
+  if(!raw)return fallback;
+  return raw.replace(/[_-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/\s+/g,' ').trim().replace(/^./,m=>m.toUpperCase());
+}
+function prModuleLabel(v) {
+  const key=String(v||'').toLowerCase();
+  const labels={todos:'Todos',alertas:'Alertas',estudiante:'Estudiante',docente:'Docencia',admin:'Administración',certificados:'Certificados',examenes:'Exámenes',notas:'Notas',conape:'CONAPE',reportes:'Reportes'};
+  return labels[key] || prFriendlyLabel(v);
+}
+function prOperatorText(v, fallback = '—') {
+  let s=String(v==null?'':v).trim();
+  if(!s)return fallback;
+  s=s.replace(/\bApps? Script\b/gi,'sistema').replace(/\bbackend\b/gi,'sistema').replace(/\bendpoints?\b/gi,'acciones protegidas').replace(/\brouter\b/gi,'control de acceso').replace(/\bfn\s*[→-]\s*roles\b/gi,'acciones y roles');
+  s=s.replace(/\b[a-z]+(?:[A-Z][A-Za-z0-9]*){1,}\b/g,m=>prActionLabel(m));
+  s=s.replace(/\b[A-Z0-9]+(?:_[A-Z0-9]+)+\b/g,'regla interna');
+  s=s.replace(/\bF\d+(?:\.\d+)?\b/g,'revisión de acceso');
+  return s;
+}
+
 const PR_TONES = {
   ok:   { bg:'rgba(22,163,74,.10)', fg:'#166534', border:'rgba(22,163,74,.25)', label:'OK' },
   warn: { bg:'rgba(202,138,4,.12)', fg:'#854D0E', border:'rgba(202,138,4,.25)', label:'Revisar' },
@@ -23,7 +69,7 @@ const PR_TONES = {
 function prTone(status) { return PR_TONES[status] || PR_TONES.info; }
 function prText(v, fallback = '—') { const s = String(v ?? '').trim(); return s || fallback; }
 function prNum(v) { const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
-function prRoles(v) { return Array.isArray(v) ? v.join(', ') : prText(v); }
+function prRoles(v) { const list=Array.isArray(v)?v:[v]; return list.filter(x=>String(x??'').trim()).map(prRoleLabel).join(', ') || '—'; }
 
 function PermisosBadge({ status, children }) {
   const m = prTone(status);
@@ -58,7 +104,7 @@ function PermisosRolesView() {
       if (!r || !r.ok) throw new Error(r?.error || 'No se pudo cargar auditoría de permisos.');
       setData(r);
     } catch (e) {
-      setErr(e.message || String(e));
+      setErr(prSafeUserError(e?.message || String(e), 'No se pudo cargar la revisión de permisos. Intentá de nuevo.', 'cargar_permisos'));
       setData(null);
     } finally { setLoading(false); }
   }, []);
@@ -78,32 +124,32 @@ function PermisosRolesView() {
       'AUDITORÍA DE ROLES Y PERMISOS',
       'Academia Norteamericana',
       `Estado: ${prText(k.estado_general)}`,
-      `Endpoints revisados: ${prNum(k.endpoints_revisados)}`,
-      `Sin mapa: ${prNum(k.endpoints_sin_mapa)}`,
+      `Acciones protegidas revisadas: ${prNum(k.endpoints_revisados)}`,
+      `Sin regla definida: ${prNum(k.endpoints_sin_mapa)}`,
       `Con diferencia: ${prNum(k.endpoints_con_diferencia)}`,
       `Vistas revisadas: ${prNum(k.vistas_revisadas)}`,
       '',
       'Riesgos:',
-      ...(riesgos.length ? riesgos.map(r => `- [${r.status || 'info'}] ${r.titulo || ''}: ${r.texto || ''}`) : ['- Sin riesgos críticos visibles.']),
+      ...(riesgos.length ? riesgos.map(r => `- [${r.status || 'info'}] ${prOperatorText(r.titulo, 'Revisión')}: ${prOperatorText(r.texto, 'Revisar configuración de acceso.')}`) : ['- Sin riesgos críticos visibles.']),
     ].join('\n');
     try { await navigator.clipboard.writeText(txt); alert('Resumen copiado.'); } catch (_) { alert(txt); }
   };
 
   const exportCsv = () => {
-    const rows = [['modulo','endpoint','roles_esperados','roles_backend','estado','nota'], ...endpointsFiltrados.map(e => [e.modulo, e.fn, prRoles(e.roles_esperados), prRoles(e.roles_backend), e.status, e.nota])];
+    const rows = [['Módulo','Acción','Roles esperados','Roles del sistema','Estado','Nota'], ...endpointsFiltrados.map(e => [prModuleLabel(e.modulo), prActionLabel(e.fn), prRoles(e.roles_esperados), prRoles(e.roles_backend), e.status, prOperatorText(e.nota, '')])];
     const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `auditoria_permisos_roles_${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
   };
 
   return <section data-screen-label="Admin · Permisos y roles" style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
-    <PageHeader kicker="Seguridad" title={<>Permisos <em>y roles</em></>} sub="Auditoría de menú, endpoints y reglas de propiedad. Solo lectura: no modifica datos ni sesiones." />
+    <PageHeader kicker="Seguridad" title={<>Permisos <em>y roles</em></>} sub="Auditoría de menú, acciones protegidas y reglas de acceso. Solo lectura: no modifica datos ni sesiones." />
 
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
         <PermisosButton active={tab==='resumen'} onClick={() => setTab('resumen')}>Resumen</PermisosButton>
         <PermisosButton active={tab==='vistas'} onClick={() => setTab('vistas')}>Vistas por rol</PermisosButton>
-        <PermisosButton active={tab==='endpoints'} onClick={() => setTab('endpoints')}>Endpoints</PermisosButton>
+        <PermisosButton active={tab==='endpoints'} onClick={() => setTab('endpoints')}>Acciones protegidas</PermisosButton>
         <PermisosButton active={tab==='propiedad'} onClick={() => setTab('propiedad')}>Propiedad</PermisosButton>
         <PermisosButton active={tab==='recomendaciones'} onClick={() => setTab('recomendaciones')}>Recomendaciones</PermisosButton>
       </div>
@@ -115,22 +161,22 @@ function PermisosRolesView() {
     </div>
 
     {err && <div style={{ padding:14, borderRadius:14, border:'1px solid rgba(185,28,28,.22)', background:'rgba(185,28,28,.08)', color:'#991B1B', fontSize:13 }}>{err}</div>}
-    {loading && !data && <div style={{ padding:18, borderRadius:16, border:'1px solid var(--line)', background:'#fff', color:'var(--ink-3)' }}>Leyendo mapa de permisos del backend…</div>}
+    {loading && !data && <div style={{ padding:18, borderRadius:16, border:'1px solid var(--line)', background:'#fff', color:'var(--ink-3)' }}>Revisando permisos del sistema…</div>}
 
     {data && <>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(190px, 1fr))', gap:12 }}>
-        <PermisosCard title="Estado general" value={prText(k.estado_general)} status={k.estado_status || 'info'} sub={data.version || 'F42'} />
-        <PermisosCard title="Endpoints" value={prNum(k.endpoints_revisados)} status={prNum(k.endpoints_sin_mapa) ? 'bad' : prNum(k.endpoints_con_diferencia) ? 'warn' : 'ok'} sub={`${prNum(k.endpoints_sin_mapa)} sin mapa · ${prNum(k.endpoints_con_diferencia)} diferencias`} onClick={() => setTab('endpoints')} />
+        <PermisosCard title="Estado general" value={prOperatorText(k.estado_general)} status={k.estado_status || 'info'} sub="Lectura de acceso" />
+        <PermisosCard title="Acciones protegidas" value={prNum(k.endpoints_revisados)} status={prNum(k.endpoints_sin_mapa) ? 'bad' : prNum(k.endpoints_con_diferencia) ? 'warn' : 'ok'} sub={`${prNum(k.endpoints_sin_mapa)} sin regla · ${prNum(k.endpoints_con_diferencia)} diferencias`} onClick={() => setTab('endpoints')} />
         <PermisosCard title="Vistas" value={prNum(k.vistas_revisadas)} status="ok" sub="Menú esperado por rol" onClick={() => setTab('vistas')} />
-        <PermisosCard title="Reglas propiedad" value={prNum(k.reglas_propiedad)} status="ok" sub="Student/docente protegidos" onClick={() => setTab('propiedad')} />
+        <PermisosCard title="Reglas de acceso" value={prNum(k.reglas_propiedad)} status="ok" sub="Estudiante/docente protegidos" onClick={() => setTab('propiedad')} />
       </div>
 
       {tab === 'resumen' && <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.2fr) minmax(280px, .8fr)', gap:14 }}>
         <PermisosPanel title="Riesgos principales" sub="Lo que debe revisarse antes de producción abierta.">
           <div style={{ display:'grid', gap:10 }}>
             {(riesgos.length ? riesgos : [{ status:'ok', titulo:'Sin riesgos críticos', texto:'El mapa principal no reporta alertas críticas.' }]).map((r, i) => <div key={i} style={{ border:'1px solid var(--line)', borderRadius:14, background:'#fff', padding:13 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:5 }}><PermisosBadge status={r.status === 'error' ? 'bad' : r.status || 'info'} /><strong style={{ color:'var(--an-navy-ink)' }}>{r.titulo || `Riesgo ${i+1}`}</strong></div>
-              <div style={{ color:'var(--ink-3)', fontSize:13, lineHeight:1.45 }}>{r.texto || '—'}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:5 }}><PermisosBadge status={r.status === 'error' ? 'bad' : r.status || 'info'} /><strong style={{ color:'var(--an-navy-ink)' }}>{prOperatorText(r.titulo, `Riesgo ${i+1}`)}</strong></div>
+              <div style={{ color:'var(--ink-3)', fontSize:13, lineHeight:1.45 }}>{prOperatorText(r.texto, 'Revisar configuración de acceso.')}</div>
             </div>)}
           </div>
         </PermisosPanel>
@@ -142,26 +188,26 @@ function PermisosRolesView() {
         </PermisosPanel>
       </div>}
 
-      {tab === 'vistas' && <PermisosPanel title="Vistas visibles por rol" sub="Matriz esperada del frontend. Sirve para detectar menús mal expuestos.">
+      {tab === 'vistas' && <PermisosPanel title="Vistas visibles por rol" sub="Matriz esperada del menú. Sirve para detectar opciones mal expuestas.">
         <PermisosTable rows={vistas} columns={[["rol","Rol"],["vista","Vista"],["label","Etiqueta"],["status","Estado"],["nota","Nota"]]} />
       </PermisosPanel>}
 
-      {tab === 'endpoints' && <PermisosPanel title="Endpoints backend por módulo" sub="Comparación entre roles esperados y roles definidos en el router de seguridad.">
+      {tab === 'endpoints' && <PermisosPanel title="Acciones protegidas por módulo" sub="Comparación entre roles esperados y roles definidos por el sistema.">
         <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginBottom:12 }}>
-          {['todos','alertas','estudiante','docente','admin','certificados','examenes','notas','conape','reportes'].map(x => <PermisosButton key={x} active={filtro===x} danger={x==='alertas'} onClick={() => setFiltro(x)}>{x === 'todos' ? 'Todos' : x === 'alertas' ? 'Alertas' : x}</PermisosButton>)}
+          {['todos','alertas','estudiante','docente','admin','certificados','examenes','notas','conape','reportes'].map(x => <PermisosButton key={x} active={filtro===x} danger={x==='alertas'} onClick={() => setFiltro(x)}>{prModuleLabel(x)}</PermisosButton>)}
         </div>
-        <PermisosTable rows={endpointsFiltrados} columns={[["modulo","Módulo"],["fn","Endpoint"],["roles_esperados","Roles esperados"],["roles_backend","Roles backend"],["status","Estado"],["nota","Nota"]]} />
+        <PermisosTable rows={endpointsFiltrados} columns={[["modulo","Módulo"],["fn","Acción"],["roles_esperados","Roles esperados"],["roles_backend","Roles del sistema"],["status","Estado"],["nota","Nota"]]} />
       </PermisosPanel>}
 
       {tab === 'propiedad' && <PermisosPanel title="Reglas de propiedad" sub="Reglas que evitan que un usuario vea expedientes ajenos.">
-        <PermisosTable rows={propiedad} columns={[["rol","Rol"],["regla","Regla"],["endpoints","Endpoints"],["status","Estado"],["nota","Nota"]]} />
+        <PermisosTable rows={propiedad} columns={[["rol","Rol"],["regla","Regla"],["endpoints","Acciones"],["status","Estado"],["nota","Nota"]]} />
       </PermisosPanel>}
 
       {tab === 'recomendaciones' && <PermisosPanel title="Recomendaciones" sub="Acciones sugeridas para cerrar seguridad antes de producción abierta.">
         <div style={{ display:'grid', gap:10 }}>
           {(recomendaciones.length ? recomendaciones : [{ status:'ok', titulo:'Sin recomendaciones pendientes', texto:'No se detectaron recomendaciones críticas.' }]).map((r,i) => <div key={i} style={{ border:'1px solid var(--line)', borderRadius:14, background:'#fff', padding:13 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:5 }}><PermisosBadge status={r.status === 'error' ? 'bad' : r.status || 'info'} /><strong style={{ color:'var(--an-navy-ink)' }}>{r.titulo || `Recomendación ${i+1}`}</strong></div>
-            <div style={{ color:'var(--ink-3)', fontSize:13, lineHeight:1.45 }}>{r.texto || '—'}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:5 }}><PermisosBadge status={r.status === 'error' ? 'bad' : r.status || 'info'} /><strong style={{ color:'var(--an-navy-ink)' }}>{prOperatorText(r.titulo, `Recomendación ${i+1}`)}</strong></div>
+            <div style={{ color:'var(--ink-3)', fontSize:13, lineHeight:1.45 }}>{prOperatorText(r.texto, 'Revisar configuración de acceso.')}</div>
           </div>)}
         </div>
       </PermisosPanel>}
@@ -184,9 +230,14 @@ function PermisosTable({ rows = [], columns = [] }) {
   </table></div>;
 }
 function renderPRCell(k, v) {
-  if (k === 'status') return <PermisosBadge status={v === 'ok' ? 'ok' : v === 'warn' ? 'warn' : v === 'error' || v === 'bad' ? 'bad' : 'info'}>{v === 'ok' ? 'OK' : v === 'warn' ? 'Revisar' : v === 'error' || v === 'bad' ? 'Crítico' : prText(v)}</PermisosBadge>;
-  if (Array.isArray(v)) return <span style={{ fontFamily:'var(--f-mono)', fontSize:11.5 }}>{v.join(', ')}</span>;
-  return prText(v);
+  if (k === 'status') return <PermisosBadge status={v === 'ok' ? 'ok' : v === 'warn' ? 'warn' : v === 'error' || v === 'bad' ? 'bad' : 'info'}>{v === 'ok' ? 'OK' : v === 'warn' ? 'Revisar' : v === 'error' || v === 'bad' ? 'Crítico' : 'Info'}</PermisosBadge>;
+  if (k === 'fn' || k === 'endpoint') return prActionLabel(v);
+  if (k === 'roles_esperados' || k === 'roles_backend' || k === 'rol') return prRoles(v);
+  if (k === 'endpoints') { const list=Array.isArray(v)?v:[v]; return list.filter(Boolean).map(prActionLabel).join(', ') || '—'; }
+  if (k === 'modulo' || k === 'vista' || k === 'regla') return prFriendlyLabel(v);
+  if (k === 'nota' || k === 'label') return prOperatorText(v);
+  if (Array.isArray(v)) return v.map(x=>prFriendlyLabel(x)).join(', ');
+  return prOperatorText(v);
 }
 const thPR = { textAlign:'left', padding:'10px 11px', fontSize:11, fontWeight:900, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--ink-2)', whiteSpace:'nowrap' };
 const tdPR = { padding:'10px 11px', borderTop:'1px solid var(--line)', fontSize:12.5, color:'var(--ink-2)', verticalAlign:'top' };

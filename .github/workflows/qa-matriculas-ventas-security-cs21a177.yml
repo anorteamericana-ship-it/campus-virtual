@@ -1,0 +1,44 @@
+name: QA Matriculas Ventas Security CS21A177
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_drawer.jsx'
+      - 'src/ventas_dashboard.jsx'
+      - 'src/ventas_parts.jsx'
+      - 'src/matriculas_admin.jsx'
+      - 'security/sec002_identity_legacy_contract_cs21a174.json'
+      - 'scripts/qa_matriculas_ventas_security_cs21a177.mjs'
+      - '.github/workflows/qa-matriculas-ventas-security-cs21a177.yml'
+      - '00_DOCUMENTACION/MATRICULAS_VENTAS_SECURITY_CS21A177_2026-08-29.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrated-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Whitespace and conflict markers
+        run: git diff --check HEAD^ || git diff --check
+      - name: Validate integrated guard syntax
+        run: node --check scripts/qa_matriculas_ventas_security_cs21a177.mjs
+      - name: Run CS21A173
+        run: node scripts/qa_ventas_safe_user_errors_cs21a173.mjs
+      - name: Run CS21A174
+        run: node scripts/qa_sec002_identity_legacy_contract_cs21a174.mjs
+      - name: Run CS21A175
+        run: node scripts/qa_sec002_proforma_whatsapp_cs21a175.mjs
+      - name: Run CS21A176
+        run: node scripts/qa_matriculas_admin_readonly_safe_errors_cs21a176.mjs
+      - name: Run Sales integration guard
+        run: node scripts/qa_ventas_integration_cs21a166.mjs
+      - name: Run SEC002 Ventas private delivery guard
+        run: node scripts/qa_sec002_ventas_private_delivery_cs21a159.mjs
+      - name: Run CS21A177 integrated assertions
+        run: node scripts/qa_matriculas_ventas_security_cs21a177.mjs

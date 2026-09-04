@@ -1,0 +1,30 @@
+name: QA SEC002 Private Student Admin Chain CS21A181
+
+on:
+  pull_request:
+    paths:
+      - 'src/student_modules.jsx'
+      - 'src/data.jsx'
+      - 'src/solicitudes_pago.jsx'
+      - 'src/student_experience.jsx'
+      - 'scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs'
+      - '.github/workflows/qa-sec002-private-student-admin-chain-cs21a181.yml'
+      - '00_DOCUMENTACION/SEC002_PRIVATE_STUDENT_ADMIN_CHAIN_CS21A181_2026-08-29.md'
+
+jobs:
+  private-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A181 private consumer guard
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Regress CS21A160 certificate
+        run: node scripts/qa_sec002_student_certificate_cs21a160.mjs
+      - name: Regress CS21A161 payment receipt
+        run: node scripts/qa_sec002_payment_receipt_cs21a161.mjs
+      - name: Regress CS21A162 signed enrollment
+        run: node scripts/qa_sec002_student_signed_enrollment_cs21a162.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/${{ github.base_ref }}...HEAD -- . ':(exclude)00_DOCUMENTACION/**'

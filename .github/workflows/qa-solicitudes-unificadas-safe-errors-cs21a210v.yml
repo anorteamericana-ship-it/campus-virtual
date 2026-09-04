@@ -1,0 +1,32 @@
+name: QA Solicitudes Unificadas Safe Errors CS21A210V
+
+on:
+  push:
+    branches:
+      - fix/solicitudes-unificadas-safe-errors-cs21a210v
+    paths:
+      - 'src/solicitudes_unificadas.jsx'
+  pull_request:
+    paths:
+      - 'src/solicitudes_unificadas.jsx'
+      - 'scripts/qa_solicitudes_unificadas_safe_errors_cs21a210v.mjs'
+      - '.github/workflows/qa-solicitudes-unificadas-safe-errors-cs21a210v.yml'
+      - '00_DOCUMENTACION/SOLICITUDES_UNIFICADAS_SAFE_ERRORS_CS21A210V_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210V semantics
+        run: node scripts/qa_solicitudes_unificadas_safe_errors_cs21a210v.mjs
+      - name: Regress CS21A210T Admin views
+        run: node scripts/qa_admin_views_safe_errors_cs21a210t.mjs
+      - name: Regress CS21A210R Auditoria Academica
+        run: node scripts/qa_auditoria_academica_safe_errors_cs21a210r.mjs
+      - name: Regress CS21A210P shared Prematriculas
+        run: node scripts/qa_prematriculas_shared_safe_errors_cs21a210p.mjs
+      - name: Diff hygiene
+        run: git diff --check

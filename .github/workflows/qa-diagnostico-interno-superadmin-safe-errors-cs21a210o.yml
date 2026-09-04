@@ -1,0 +1,34 @@
+name: QA Diagnostico Interno Superadmin Safe Errors CS21A210O
+
+on:
+  push:
+    branches:
+      - fix/diagnostico-interno-superadmin-safe-errors-cs21a210o
+    paths:
+      - 'src/app.jsx'
+      - 'src/sidebar.jsx'
+      - 'src/diagnostico_interno.jsx'
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'src/sidebar.jsx'
+      - 'src/diagnostico_interno.jsx'
+      - 'scripts/qa_diagnostico_interno_superadmin_safe_errors_cs21a210o.mjs'
+      - '.github/workflows/qa-diagnostico-interno-superadmin-safe-errors-cs21a210o.yml'
+      - '00_DOCUMENTACION/DIAGNOSTICO_INTERNO_SUPERADMIN_SAFE_ERRORS_CS21A210O_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210O semantics
+        run: node scripts/qa_diagnostico_interno_superadmin_safe_errors_cs21a210o.mjs
+      - name: Regress CS21A210M Permisos Roles
+        run: node scripts/qa_permisos_roles_superadmin_safe_copy_cs21a210m.mjs
+      - name: Regress CS21A210L Reportes
+        run: node scripts/qa_reportes_admin_safe_copy_cs21a210l.mjs
+      - name: Diff hygiene
+        run: git diff --check

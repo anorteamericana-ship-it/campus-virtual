@@ -1,0 +1,66 @@
+{
+  "id": "SEC-002-TEACHER-PROFILE",
+  "version": 1,
+  "date": "2026-08-29",
+  "status": "active_source_confirmed_private_backend_snapshot_pending",
+  "source_base_sha": "52fe37c9692b72a604787e6f2608bc662c4cb3c7",
+  "active_surface": {
+    "entrypoint": "campus.html",
+    "consumer": "src/teacher_profile_cs21a76.jsx",
+    "loaded_directly": true,
+    "current_authenticated_post_functions": [
+      "getPerfilDocenteCS21A76",
+      "guardarPerfilDocenteCS21A76",
+      "uploadFotoPerfilDocenteCS21A76",
+      "uploadDocumentoDocenteCS21A76"
+    ]
+  },
+  "personal_document_classes": [
+    {
+      "class": "TEACHER_PROFILE_PHOTO",
+      "current_read_shape": "data.foto.url",
+      "current_consumer": "img src",
+      "private_read_required": true,
+      "allowed_mime": ["image/jpeg", "image/png", "image/webp"]
+    },
+    {
+      "class": "TEACHER_CURRICULUM",
+      "current_read_shape": "data.curriculum.vista_url",
+      "current_consumer": "window.open",
+      "private_read_required": true,
+      "allowed_mime": ["application/pdf"]
+    },
+    {
+      "class": "TEACHER_INA_EVIDENCE",
+      "current_read_shape": "data.aval_ina.vista_url",
+      "current_consumer": "window.open",
+      "private_read_required": true,
+      "allowed_mime": ["application/pdf"]
+    }
+  ],
+  "privacy_migration": {
+    "endpoint_names_resolved": false,
+    "reason": "the current Apps Script QA modular source has not yet been freshly exported; endpoint names and router placement must be derived from that exact snapshot rather than invented in frontend source",
+    "minimum_authorization": "authenticated teacher may read only the personal documents bound to their canonical backend identity; any staff/admin access must be revalidated against existing backend policy before port",
+    "response_requirement": "authorized private delivery must return content plus integrity metadata, not a publicly shareable Drive URL",
+    "pdf_integrity": ["mime", "size", "%PDF- signature", "sha256"],
+    "image_integrity": ["mime", "size", "sha256"],
+    "public_acl_removal_gate": "only in QA after private positive/negative E2 succeeds for each class, then repeat E2 with public ACL removed",
+    "production": "out_of_scope"
+  },
+  "current_source_blockers": [
+    "data.foto.url is rendered directly as an image source",
+    "document.vista_url is opened directly for CURRICULUM and AVAL_INA"
+  ],
+  "this_cut": {
+    "changes_private_transport": false,
+    "changes_acl": false,
+    "changes_apps_script": false,
+    "adds_safe_user_errors": true,
+    "documents_runtime_gate": true
+  },
+  "explicit_exclusion": {
+    "consumer": "src/teacher_cs21a_docs_viewer.jsx",
+    "reason": "institutional teaching materials and lesson planning resources are not the teacher's personal profile/CV/INA evidence class; they require separate access-policy review and are not reclassified by this contract"
+  }
+}

@@ -1,0 +1,26 @@
+name: QA Admin Students User Copy CS21A192
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_admin_students_user_copy_cs21a192.mjs'
+      - '.github/workflows/qa-admin-students-user-copy-cs21a192.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admin-students-user-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A192 guard
+        run: node scripts/qa_admin_students_user_copy_cs21a192.mjs
+      - name: Regress CS21A191 safe errors
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Regress CS21A190 CONAPE copy
+        run: node scripts/qa_admin_conape_user_copy_cs21a190.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^ HEAD || git diff --check

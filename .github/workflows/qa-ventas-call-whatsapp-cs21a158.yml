@@ -1,0 +1,29 @@
+name: QA Ventas Call WhatsApp CS21A158
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_drawer.jsx'
+      - 'scripts/qa_ventas_call_whatsapp_cs21a158.mjs'
+      - '.github/workflows/qa-ventas-call-whatsapp-cs21a158.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate source guard
+        run: node scripts/qa_ventas_call_whatsapp_cs21a158.mjs
+      - name: Diff whitespace check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check HEAD^1...HEAD^2 -- . ':(exclude)00_DOCUMENTACION/**'
+          else
+            git diff --check HEAD^ -- . ':(exclude)00_DOCUMENTACION/**'
+          fi

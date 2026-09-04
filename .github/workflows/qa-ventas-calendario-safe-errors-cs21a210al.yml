@@ -1,0 +1,49 @@
+name: QA Ventas Calendario Safe Errors CS21A210AL
+
+on:
+  push:
+    branches:
+      - fix/ventas-calendario-safe-errors-cs21a210al
+    paths:
+      - 'src/ventas_calendario.jsx'
+      - 'scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs'
+      - '.github/workflows/qa-ventas-calendario-safe-errors-cs21a210al.yml'
+      - '00_DOCUMENTACION/VENTAS_CALENDARIO_SAFE_ERRORS_CS21A210AL_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'src/ventas_calendario.jsx'
+      - 'scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs'
+      - '.github/workflows/qa-ventas-calendario-safe-errors-cs21a210al.yml'
+      - '00_DOCUMENTACION/VENTAS_CALENDARIO_SAFE_ERRORS_CS21A210AL_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
+      - name: Parse Ventas calendar
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const parser=require('@babel/parser');
+          parser.parse(fs.readFileSync('src/ventas_calendario.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('CS21A210AL JSX parse: PASS');
+          NODE
+      - name: Verify CS21A210AL semantics and exact reconstruction
+        run: node scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs
+      - name: Regress Ventas safe-user boundary CS21A173
+        run: node scripts/qa_ventas_safe_user_errors_cs21a173.mjs
+      - name: Regress Matriculas/Ventas security CS21A177
+        run: node scripts/qa_matriculas_ventas_security_cs21a177.mjs
+      - name: Regress Ventas integration CS21A166
+        run: node scripts/qa_ventas_integration_cs21a166.mjs
+      - name: Regress Sales auth REL-002 CS21A155
+        run: node scripts/qa_rel002_sales_auth_cs21a155.mjs
+      - name: Regress CS21A210AJ enrollment calendar boundary
+        run: node scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs
+      - name: Diff hygiene
+        run: git diff --check

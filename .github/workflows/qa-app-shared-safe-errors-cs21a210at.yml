@@ -1,0 +1,67 @@
+name: QA App Shared Safe Errors CS21A210AT
+
+on:
+  push:
+    branches:
+      - fix/app-shared-safe-errors-cs21a210at
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
+      - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
+      - '.github/workflows/qa-app-shared-safe-errors-cs21a210at.yml'
+      - '00_DOCUMENTACION/APP_SHARED_SAFE_ERRORS_CS21A210AT_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'
+      - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
+      - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
+      - '.github/workflows/qa-app-shared-safe-errors-cs21a210at.yml'
+      - '00_DOCUMENTACION/APP_SHARED_SAFE_ERRORS_CS21A210AT_2026-08-31.md'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
+      - name: Parse app
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const parser=require('@babel/parser');
+          parser.parse(fs.readFileSync('src/app.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('src/app.jsx: PASS');
+          NODE
+      - name: Verify AT boundary and exact reconstruction
+        run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
+      - name: Regress AS BCR wiring
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Regress AP I CAN boundary
+        run: node scripts/qa_ican_safe_errors_cs21a210ap.mjs
+      - name: Regress AN teacher boundary
+        run: node scripts/qa_vista_docente_safe_errors_cs21a210an.mjs
+      - name: Regress AL Ventas boundary
+        run: node scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs
+      - name: Regress AJ enrollment calendar boundary
+        run: node scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs
+      - name: Verify exact V3 scanner source
+        run: test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
+      - name: Verify V3 no longer reports app.jsx
+        run: |
+          set -o pipefail
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-at-final.txt
+          grep -Fq 'CS21A210S RAW USER ERROR SURFACE AUDIT V3' /tmp/v3-at-final.txt
+          if grep -Fq '|src/app.jsx' /tmp/v3-at-final.txt; then
+            echo 'V3 still reports src/app.jsx after AT' >&2
+            exit 1
+          fi
+      - name: Diff hygiene
+        run: git diff --check

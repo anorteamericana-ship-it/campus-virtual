@@ -1,0 +1,27 @@
+name: QA SEC002 Teacher Profile Source CS21A184
+
+on:
+  pull_request:
+    paths:
+      - 'campus.html'
+      - 'src/teacher_profile_cs21a76.jsx'
+      - 'security/sec002_teacher_profile_private_contract_v1.json'
+      - 'scripts/qa_sec002_teacher_profile_source_cs21a184.mjs'
+      - '.github/workflows/qa-sec002-teacher-profile-source-cs21a184.yml'
+      - '00_DOCUMENTACION/SEC002_TEACHER_PROFILE_SOURCE_CS21A184_2026-08-29.md'
+
+jobs:
+  teacher-profile-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A184 teacher-profile source guard
+        run: node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
+      - name: Regress student private-doc safe errors
+        run: node scripts/qa_student_private_doc_safe_errors_cs21a183.mjs
+      - name: Regress integrated private chain
+        run: node scripts/qa_sec002_private_student_admin_chain_cs21a181.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'

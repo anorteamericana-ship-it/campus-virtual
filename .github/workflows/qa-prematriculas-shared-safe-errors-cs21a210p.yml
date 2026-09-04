@@ -1,0 +1,32 @@
+name: QA Prematriculas Shared Safe Errors CS21A210P
+
+on:
+  push:
+    branches:
+      - fix/prematriculas-shared-safe-errors-cs21a210p
+    paths:
+      - 'src/free_user_admin.jsx'
+      - 'src/ventas_prematriculas.jsx'
+  pull_request:
+    paths:
+      - 'src/free_user_admin.jsx'
+      - 'src/ventas_prematriculas.jsx'
+      - 'scripts/qa_prematriculas_shared_safe_errors_cs21a210p.mjs'
+      - '.github/workflows/qa-prematriculas-shared-safe-errors-cs21a210p.yml'
+      - '00_DOCUMENTACION/PREMATRICULAS_SHARED_SAFE_ERRORS_CS21A210P_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CS21A210P semantics
+        run: node scripts/qa_prematriculas_shared_safe_errors_cs21a210p.mjs
+      - name: Regress CS21A210O Diagnostico
+        run: node scripts/qa_diagnostico_interno_superadmin_safe_errors_cs21a210o.mjs
+      - name: Regress Ventas Integration CS21A166
+        run: node scripts/qa_ventas_integration_cs21a166.mjs
+      - name: Diff hygiene
+        run: git diff --check

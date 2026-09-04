@@ -29,6 +29,18 @@ const BK_ADMIN_NOMBRE = (() => {
   try { return (window.getSesion && window.getSesion() || {}).nombre || 'admin'; } catch (_) { return 'admin'; }
 })();
 
+function bkSafeUserError(raw, fallback, context = '') {
+  const msg = String(raw == null ? '' : raw).trim();
+  if (!msg) return fallback;
+  const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|no se pudo conectar con el servidor|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|crearBeca|editarBeca|cambiarBeca|getBecas/i.test(msg);
+  if (technicalCode || technicalText) {
+    console.warn('[AdminBecas] Detalle técnico oculto al operador.', { context, error: msg });
+    return fallback;
+  }
+  return msg;
+}
+
 const BK_RUBROS = [
   { k: 'pct_matricula', label: 'Matrícula', ref: 'matricula' },
   { k: 'pct_cuota', label: 'Cuotas', ref: 'cuota' },
@@ -64,7 +76,8 @@ function WizardCrearBeca({ onClose, onCreada, onToast }) {
 
   const crear = async () => {
     setEnviando(true);
-    const res = await window.crearBeca({
+    try {
+      const res = await window.crearBeca({
       nombre: f.nombre.trim(), descripcion: f.descripcion.trim(),
       pct_matricula: Number(f.pct_matricula), pct_cuota: Number(f.pct_cuota),
       pct_certificado: Number(f.pct_certificado), pct_titulo: Number(f.pct_titulo),
@@ -73,14 +86,18 @@ function WizardCrearBeca({ onClose, onCreada, onToast }) {
       fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin,
       visible_inscripcion: f.visible_inscripcion,
       creado_por: BK_ADMIN_NOMBRE, notas: f.notas.trim(),
-    });
-    setEnviando(false); setConfirm(false);
+      });
+      setConfirm(false);
     if (res && res.ok) {
       onToast && onToast({ tipo: 'ok', msg: `Beca "${f.nombre.trim()}" creada.` });
       onCreada && onCreada(res.id, res.beca);
     } else {
-      onToast && onToast({ tipo: 'err', msg: (res && res.error) || 'No se pudo crear la beca.' });
+      onToast && onToast({ tipo: 'err', msg: bkSafeUserError(res?.error || res?.mensaje, 'No se pudo crear la beca. Intentá de nuevo.', 'crear_beca') });
     }
+    } catch (e) {
+      console.error('[AdminBecas] Error técnico creando beca.', e);
+      onToast && onToast({ tipo: 'err', msg: bkSafeUserError(e?.message || String(e), 'No se pudo crear la beca. Intentá de nuevo.', 'crear_beca') });
+    } finally { setEnviando(false); }
   };
 
   return (
@@ -326,9 +343,9 @@ function BecasTabla({ destacada, onToast }) {
   const cargar = () => {
     setErr('');
     window.getBecas({}).then(r => {
-      if (!r || !r.ok) { setErr((r && r.error) || 'No se pudo cargar la lista de becas.'); return; }
+      if (!r || !r.ok) { console.warn('[AdminBecas] Respuesta de lista no disponible.', r?.error || r?.mensaje || r); setErr(bkSafeUserError(r?.error || r?.mensaje, 'No se pudo cargar la lista de becas. Intentá de nuevo.', 'cargar_becas')); return; }
       setBecas(r.becas || []);
-    }).catch(e => setErr(e.message));
+    }).catch(e => { console.error('[AdminBecas] Error técnico cargando becas.', e); setErr(bkSafeUserError(e?.message || String(e), 'No se pudo cargar la lista de becas. Intentá de nuevo.', 'cargar_becas')); });
   };
   bkUseEffect(cargar, []);
   // Recarga cuando se crea una beca nueva (destacada pasa a un id).
@@ -341,17 +358,25 @@ function BecasTabla({ destacada, onToast }) {
 
   const toggleActiva = async (b) => {
     setBusy(b.id);
-    const res = await window.cambiarBecaActivo({ id: b.id, activo: !b.activa });
-    setBusy(null);
-    if (res && res.ok) { cargar(); onToast && onToast({ tipo: 'ok', msg: `Beca ${b.activa ? 'desactivada' : 'activada'}.` }); }
-    else onToast && onToast({ tipo: 'err', msg: (res && res.error) || 'No se pudo cambiar el estado.' });
+    try {
+      const res = await window.cambiarBecaActivo({ id: b.id, activo: !b.activa });
+      if (res && res.ok) { cargar(); onToast && onToast({ tipo: 'ok', msg: `Beca ${b.activa ? 'desactivada' : 'activada'}.` }); }
+      else onToast && onToast({ tipo: 'err', msg: bkSafeUserError(res?.error || res?.mensaje, 'No se pudo cambiar el estado. Intentá de nuevo.', 'cambiar_estado_beca') });
+    } catch (e) {
+      console.error('[AdminBecas] Error técnico cambiando estado.', e);
+      onToast && onToast({ tipo: 'err', msg: bkSafeUserError(e?.message || String(e), 'No se pudo cambiar el estado. Intentá de nuevo.', 'cambiar_estado_beca') });
+    } finally { setBusy(null); }
   };
   const toggleVisible = async (b) => {
     setBusy(b.id);
-    const res = await window.cambiarBecaVisibilidad({ id: b.id, visible: !b.visible_inscripcion });
-    setBusy(null);
-    if (res && res.ok) { cargar(); onToast && onToast({ tipo: 'ok', msg: `Visibilidad ${b.visible_inscripcion ? 'desactivada' : 'activada'}.` }); }
-    else onToast && onToast({ tipo: 'err', msg: (res && res.error) || 'No se pudo cambiar la visibilidad.' });
+    try {
+      const res = await window.cambiarBecaVisibilidad({ id: b.id, visible: !b.visible_inscripcion });
+      if (res && res.ok) { cargar(); onToast && onToast({ tipo: 'ok', msg: `Visibilidad ${b.visible_inscripcion ? 'desactivada' : 'activada'}.` }); }
+      else onToast && onToast({ tipo: 'err', msg: bkSafeUserError(res?.error || res?.mensaje, 'No se pudo cambiar la visibilidad. Intentá de nuevo.', 'cambiar_visibilidad_beca') });
+    } catch (e) {
+      console.error('[AdminBecas] Error técnico cambiando visibilidad.', e);
+      onToast && onToast({ tipo: 'err', msg: bkSafeUserError(e?.message || String(e), 'No se pudo cambiar la visibilidad. Intentá de nuevo.', 'cambiar_visibilidad_beca') });
+    } finally { setBusy(null); }
   };
 
   return (
@@ -461,17 +486,21 @@ function EditarBecaModal({ beca, onClose, onGuardada, onToast }) {
 
   const guardar = async () => {
     setEnviando(true);
-    const res = await window.editarBeca({
+    try {
+      const res = await window.editarBeca({
       id: beca.id, descripcion: f.descripcion,
       pct_matricula: Number(f.pct_matricula), pct_cuota: Number(f.pct_cuota),
       pct_certificado: Number(f.pct_certificado), pct_titulo: Number(f.pct_titulo),
       compatible_ina: f.compatible_ina, compatible_sin_ina: f.compatible_sin_ina,
       cupo_total: Number(f.cupo_total) || 0, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin,
       visible_inscripcion: f.visible_inscripcion, notas: f.notas,
-    });
-    setEnviando(false);
-    if (res && res.ok) onGuardada();
-    else onToast && onToast({ tipo: 'err', msg: (res && res.error) || 'No se pudo guardar.' });
+      });
+      if (res && res.ok) onGuardada();
+      else onToast && onToast({ tipo: 'err', msg: bkSafeUserError(res?.error || res?.mensaje, 'No se pudo guardar la beca. Intentá de nuevo.', 'editar_beca') });
+    } catch (e) {
+      console.error('[AdminBecas] Error técnico editando beca.', e);
+      onToast && onToast({ tipo: 'err', msg: bkSafeUserError(e?.message || String(e), 'No se pudo guardar la beca. Intentá de nuevo.', 'editar_beca') });
+    } finally { setEnviando(false); }
   };
 
   return (

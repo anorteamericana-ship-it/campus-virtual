@@ -6,6 +6,18 @@
   const SCRIPT_URL = window.APPS_SCRIPT_URL;
   const BLUE = 'var(--an-navy-ink, #001E47)';
 
+  function teacherMaterialSafeUserError(raw, fallback, context = '') {
+    const msg = String(raw == null ? '' : raw).trim();
+    if (!msg) return fallback;
+    const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+    const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|sha-?256|\bmime\b|base64|respuesta inv[aá]lida|servidor.*(?:fn|getDocente|getAsistencia|getFechas)|sec00|policy_unbound/i.test(msg);
+    if (technicalCode || technicalText) {
+      console.warn('[Teacher] Detalle técnico oculto al docente.', { context, error: msg });
+      return fallback;
+    }
+    return msg;
+  }
+
   async function postCS21A(fn, payload = {}, timeoutMs = 35000) {
     const token = window.getSessionToken ? window.getSessionToken() : '';
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -146,7 +158,7 @@
           }
         }
         setState({ loading:false, error:'', groups, selected:chosen, panel });
-      } catch(e) { setState(s=>({ ...s, loading:false, error:e?.message || String(e) })); }
+      } catch(e) { setState(s=>({ ...s, loading:false, error:teacherMaterialSafeUserError(e?.message || String(e), 'No se pudo cargar el resumen docente. Intentá de nuevo.', 'resumen_asistencia') })); }
     }, [nombre]);
     React.useEffect(()=>{ load(); }, [load]);
     const select = code => { const c=groupCode(code); if(typeof window.setGrupoActivoDocente==='function') window.setGrupoActivoDocente(c); load(c); };

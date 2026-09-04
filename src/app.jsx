@@ -85,7 +85,7 @@ const F96_LAZY = {
   calendario_grupo: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F98.4Z6CM','src/admin_students.jsx?v=F98.4Z6CS21A140','src/calendario_grupo.jsx?v=F98.4Z6CM'],
   docente_operativo: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/teacher_views.jsx?v=F98.4Z6CS21A142','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS19F','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F98.4Z6CS21A140','src/buscador.jsx?v=F98.4Z6AS'],
-  banco: ['src/importador_banco.jsx?v=F96.5G'],
+  banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F98.4Z6CS19F','src/panel_admin_supervision.jsx?v=F96.5G'],
@@ -162,7 +162,7 @@ function ModuloNoDisponibleView({ titulo = 'Módulo temporalmente no disponible'
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--an-granate, #7A1E2C)' }}>Campus Virtual</div>
       <div style={{ fontFamily: 'var(--f-serif, Georgia, serif)', fontSize: 28, color: 'var(--an-navy-ink, #001E47)', marginTop: 8 }}>{titulo}</div>
       <div style={{ fontSize: 13, color: 'var(--ink-3, #6B7280)', lineHeight: 1.6, marginTop: 10 }}>
-        Recargá la página. Si el problema continúa, el archivo del módulo no terminó de publicarse en GitHub.
+        Recargá la página. Si el problema continúa, intentá nuevamente en unos minutos o contactá a soporte.
       </div>
       <button type="button" className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 18 }}>Recargar</button>
     </div>
@@ -315,6 +315,15 @@ async function appPostF91(fn, payload = {}, timeoutMs = 45000) {
     throw e;
   } finally { clearTimeout(timer); }
 }
+
+function appSafeUserErrorF91(raw, fallback, context = '') {
+  const msg=String(raw?.message ?? raw ?? '').replace(/\s+/g,' ').trim();
+  if(!msg)return fallback;
+  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
+  const technicalText=/apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|request[_ -]?id|file[_ -]?id|sha-?256|mime|base64|reposListarExamenes|reposResolverExamen|reposResolverSolicitudF92|reposProgramarEscrito|reposCoordinarOralF926|getMisNotasF921|examGetCronogramaExamAvailability/i.test(msg);
+  if(technicalCode||technicalText){console.warn('[CampusApp] Detalle técnico oculto al usuario.',{context,error:msg});return fallback;}
+  return msg;
+}
 function reposEstadoF91(estado) {
   const e=String(estado||'').toUpperCase();
   const map={PENDIENTE_JUSTIFICACION:['Pendiente de justificación','#8B5A00','#FFF4D6'],JUSTIFICADA_GRATUITA:['Autorizada sin costo','#146C2E','#EAF8EF'],PENDIENTE_PAGO:['Pendiente de pago','#991B1B','#FDECEA'],PAGADA_AUTORIZADA:['Pago confirmado','#146C2E','#EAF8EF'],PROGRAMADA:['Programada','#0C4F86','#E7F1FA'],ENTREGADA_POR_REVISAR:['Entregada · por revisar','#805500','#FFF4D6'],APLICADA:['Aplicada','#40516A','#EEF2F7'],VENCIDA_0:['Vencida · nota 0','#991B1B','#FDECEA'],CANCELADA:['Cancelada','#5F6875','#EEF2F7']};
@@ -325,9 +334,9 @@ function ReposicionesPanelF91({ role='teacher', onNavigate }) {
   const sessionRole=String((window.getSesion&&window.getSesion()||{}).rol||'').toLowerCase();
   const canResolve=role==='admin'&&sessionRole==='superadmin';
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(appSafeUserErrorF91(e,'No pudimos consultar las reposiciones. Intentá nuevamente.','repos_listar'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
-  const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};let endpoint='reposResolverExamen';if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){endpoint='reposResolverSolicitudF92';const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;payload.admin_nota=nota;}if(accion==='CONFIRMAR_PAGO'){endpoint='reposResolverSolicitudF92';const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;payload.admin_nota=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};endpoint='reposProgramarEscrito';}if(accion==='COORDINAR_ORAL'){const fecha=window.prompt('Fecha tentativa de reposición (AAAA-MM-DD). Podés iniciar la prueba antes si ambos están disponibles:',row.FECHA_PROGRAMADA||row.FECHA_LIMITE||'');if(fecha===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_tentativa:fecha};endpoint='reposCoordinarOralF926';}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(endpoint,payload);await load();}catch(e){setError(e.message);}finally{setBusy('');}};
+  const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};let endpoint='reposResolverExamen';if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){endpoint='reposResolverSolicitudF92';const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;payload.admin_nota=nota;}if(accion==='CONFIRMAR_PAGO'){endpoint='reposResolverSolicitudF92';const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;payload.admin_nota=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};endpoint='reposProgramarEscrito';}if(accion==='COORDINAR_ORAL'){const fecha=window.prompt('Fecha tentativa de reposición (AAAA-MM-DD). Podés iniciar la prueba antes si ambos están disponibles:',row.FECHA_PROGRAMADA||row.FECHA_LIMITE||'');if(fecha===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_tentativa:fecha};endpoint='reposCoordinarOralF926';}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(endpoint,payload);await load();}catch(e){setError(appSafeUserErrorF91(e,'No pudimos completar la operación de reposición. Intentá nuevamente.','repos_accion'));}finally{setBusy('');}};
   const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
   const sectionTitle=role==='teacher'?'Reposiciones orales':'Reposiciones de examen';
   const sectionKicker=role==='teacher'?'ORAL · AUTORIZACIONES':'CONTROL ADMINISTRATIVO';
@@ -430,7 +439,7 @@ function StudentEvaluationsOverviewF984N(){
         }));
         setState({loading:false,error:'',evals,repos,nivelActivo:n.nivel_activo||''});
       })
-      .catch(e=>setState({loading:false,error:e.message||String(e),evals:[],repos:[],nivelActivo:''}));
+      .catch(e=>setState({loading:false,error:appSafeUserErrorF91(e,'No pudimos cargar tus evaluaciones. Intentá nuevamente.','evaluaciones_estudiante'),evals:[],repos:[],nivelActivo:''}));
   },[codigo]);
   React.useEffect(()=>{load();},[load]);
   const activeRepos=state.repos.filter(r=>!['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
@@ -473,7 +482,7 @@ function WrittenSessionCardF929({ session }) {
     setState({loading:true,error:'',assigned:false,data:null});
     appPostF91('examGetCronogramaExamAvailability',{cod_grupo:group,nivel:level,tipo:'ORDINARIO'},60000)
       .then(r=>setState({loading:false,error:'',assigned:r.assigned===true,data:r}))
-      .catch(e=>setState({loading:false,error:e.message||String(e),assigned:false,data:null}));
+      .catch(e=>setState({loading:false,error:appSafeUserErrorF91(e,'No pudimos verificar la disponibilidad del examen escrito. Intentá nuevamente.','examen_escrito_docente'),assigned:false,data:null}));
   },[group,level,lec]);
   React.useEffect(()=>{load();},[load]);
   const title=lec===18?'1.er Examen Escrito':'2.º Examen Escrito';
@@ -979,9 +988,13 @@ function App() {
       calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
-      diagnostico_interno: <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />,
+      diagnostico_interno: rolReal === 'superadmin'
+        ? <LazyRoute title="Diagnóstico interno" component="DiagnosticoInternoView" files={F96_LAZY.diagnostico} />
+        : <NoAutorizadoCampus rol={rolReal} />,
       // CALGRUPO_F42_20260617_AUDITORIA_ROLES_PERMISOS_ROUTER
-      permisos_roles: <LazyRoute title="Permisos y roles" component="PermisosRolesView" files={F96_LAZY.permisos} />,
+      permisos_roles: rolReal === 'superadmin'
+        ? <LazyRoute title="Permisos y roles" component="PermisosRolesView" files={F96_LAZY.permisos} />
+        : <NoAutorizadoCampus rol={rolReal} />,
       // CALGRUPO_F36_20260617_CONAPE_COBRANZA_ROUTER
       conape_cobranza: <LazyRoute title="CONAPE y Cobranza" component="ConapeCobranzaView" files={F96_LAZY.conape} onNavigate={navigateTo} />,
       // CALGRUPO_F38_20260617_REPORTES_ADMINISTRATIVOS_ROUTER
@@ -1162,8 +1175,8 @@ class CampusRootErrorBoundary extends React.Component {
         <div style={{ maxWidth:720, width:'100%', background:'#fff', border:'1px solid var(--line, #e5e0d8)', borderRadius:20, padding:'28px 30px', boxShadow:'0 20px 60px rgba(0,0,0,.12)' }}>
           <div style={{ fontSize:11, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate, #7A1E2C)' }}>Campus Virtual</div>
           <h1 style={{ fontFamily:'var(--f-serif, Georgia, serif)', fontSize:30, color:'var(--an-navy-ink, #001E47)', margin:'8px 0 10px' }}>No se pudo completar la carga</h1>
-          <p style={{ fontSize:13, color:'var(--ink-2, #4A413A)', lineHeight:1.6, margin:0 }}>La sesión permanece guardada. Recargá la página después de que GitHub termine de publicar todos los archivos.</p>
-          <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#F8F4EE', color:'#6B6258', fontFamily:'monospace', fontSize:11, overflowWrap:'anywhere' }}>{mensaje}</div>
+          <p style={{ fontSize:13, color:'var(--ink-2, #4A413A)', lineHeight:1.6, margin:0 }}>Tu sesión permanece guardada. Recargá la página para intentar completar la carga.</p>
+          <div style={{ marginTop:14, padding:'10px 12px', borderRadius:10, background:'#F8F4EE', color:'#6B6258', fontSize:12, lineHeight:1.5 }}>Si el problema continúa, volvé al inicio de sesión e ingresá nuevamente.</div>
           <div style={{ display:'flex', gap:10, marginTop:18, flexWrap:'wrap' }}>
             <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>Recargar Campus</button>
             <button type="button" className="btn" onClick={campusIrALogin}>Volver al inicio de sesión</button>

@@ -1,0 +1,34 @@
+name: QA Secondary Safe Errors Current Tip CS21A210D
+
+on:
+  push:
+    branches:
+      - integration/secondary-safe-errors-current-tip-cs21a210d
+  pull_request:
+    branches:
+      - fix/admin-master-conape-truth-boundary-cs21a210c
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact six-file reconciliation and semantic boundaries
+        run: node scripts/qa_secondary_safe_errors_current_tip_cs21a210d.mjs --exact-import
+      - name: Regress CS21A210C Panel Maestro CONAPE
+        run: node scripts/qa_admin_master_conape_truth_boundary_cs21a210c.mjs
+      - name: Regress CS21A210A Admin safe errors
+        run: node scripts/qa_admin_safe_errors_current_tip_cs21a210a.mjs
+      - name: Regress SEC002 Admin private document line
+        run: |
+          node scripts/qa_sec002_admin_academic_docs_cs21a193.mjs
+          node scripts/qa_sec002_admin_certificate_cs21a194.mjs
+      - name: Regress SEC004 Admin preview readonly
+        run: node scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs
+      - name: Diff hygiene
+        run: git diff --check

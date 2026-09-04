@@ -1,0 +1,30 @@
+name: QA Admin Quick Update Safe Errors CS21A189
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students_quick_update_core_cs21a99.js'
+      - 'src/admin_students_quick_update_state_cs21a99.js'
+      - 'src/admin_students_quick_update_payment_cs21a99.js'
+      - 'scripts/qa_admin_quick_update_safe_errors_cs21a189.mjs'
+      - '.github/workflows/qa-admin-quick-update-safe-errors-cs21a189.yml'
+      - '00_DOCUMENTACION/ADMIN_QUICK_UPDATE_SAFE_ERRORS_CS21A189_2026-08-29.md'
+
+permissions:
+  contents: read
+
+jobs:
+  admin-quick-update-safe-errors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A189 guard
+        run: node scripts/qa_admin_quick_update_safe_errors_cs21a189.mjs
+      - name: Regress CS21A188 teacher copy
+        run: node scripts/qa_teacher_user_copy_cs21a188.mjs
+      - name: Regress CS21A187 teacher action safe errors
+        run: node scripts/qa_teacher_action_safe_errors_cs21a187.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/fix/teacher-user-copy-cs21a188...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'

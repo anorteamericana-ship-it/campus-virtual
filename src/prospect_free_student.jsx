@@ -10,6 +10,20 @@ function freeStudentUrl(){
   if(!window.APPS_SCRIPT_URL) window.APPS_SCRIPT_URL=u;
   return u;
 }
+function freeStudentSafeError(raw,fallback='No pudimos completar la solicitud. Intentá nuevamente o contactá a tu asesor.'){
+  const msg=String(raw==null?'':raw).trim();
+  if(!msg)return fallback;
+  const tecnico=/apps?\s*script|backend|endpoint|stack|exception|trace|html|json|token|sesion_requerida|unauthorized|forbidden|internal server|status\s*\d{3}/i;
+  return tecnico.test(msg)?fallback:msg;
+}
+function freeStudentVisibleError(error,fallback,context=''){
+  const raw=error&&typeof error==='object'?(error.message||error.error||error.mensaje||error):error;
+  if(raw) console.error('[Prematricula]',context||'operación',raw);
+  const text=String(raw==null?'':raw).trim();
+  if(/failed to fetch|network(?:error)?|load failed|fetch failed|connection|conexi[oó]n/i.test(text)) return fallback;
+  return freeStudentSafeError(text,fallback);
+}
+
 async function freeStudentPost(fn,payload={}){
   const token=freeStudentToken();
   const res=await fetch(freeStudentUrl(),{
@@ -18,8 +32,15 @@ async function freeStudentPost(fn,payload={}){
   });
   const text=await res.text();
   let json=null;
-  try{json=JSON.parse(text);}catch(_){throw new Error(text&&text.trim().startsWith('<')?'El backend devolvió HTML. Revisá la URL publicada de Apps Script.':'Respuesta inválida del servidor.');}
-  if(!json?.ok) throw new Error(json?.mensaje||json?.error||'No se pudo completar la solicitud.');
+  try{json=JSON.parse(text);}catch(err){
+    console.error('[Prematricula] Respuesta no JSON',{fn,status:res.status,error:err});
+    throw new Error('No pudimos cargar tu información. Intentá nuevamente o contactá a tu asesor.');
+  }
+  if(!json?.ok){
+    const raw=json?.mensaje||json?.error||'';
+    console.warn('[Prematricula] Solicitud rechazada',{fn,status:res.status,error:raw});
+    throw new Error(freeStudentSafeError(raw));
+  }
   return json;
 }
 function freeStudentClean(v,fallback='—'){
@@ -146,7 +167,7 @@ function FreeProspectPortal({usuario,onNavigate}){
         try{if(access&&window.anEnglishLabFreeAccess?.prime)window.anEnglishLabFreeAccess.prime(access);}catch(_){}
       })
       .catch(e=>{
-        setError(e.message);
+        setError(freeStudentVisibleError(e,'No pudimos cargar tu información. Intentá nuevamente o contactá a tu asesor.','freeUserMiPerfil'));
         setPerfil({nombre:usuario?.nombre,cedula:usuario?.cedula,correo:usuario?.correo,telefono:usuario?.telefono,etapa:usuario?.etapa||'Prematrícula'});
         setSolicitudes([]);
       })
@@ -182,7 +203,7 @@ function FreeProspectPortal({usuario,onNavigate}){
       setLastAction('Entrada solicitada.');
       await load();
       try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){}
-    }catch(e){setError(e.message);setLastAction('No se pudo solicitar.');}
+    }catch(e){setError(freeStudentVisibleError(e,'No se pudo solicitar la entrada. Intentá nuevamente.','freeUserCrearSolicitud:QUIERO_MATRICULARME'));setLastAction('No se pudo solicitar.');}
     finally{setBusy(false);}
   };
 
@@ -196,7 +217,7 @@ function FreeProspectPortal({usuario,onNavigate}){
       setLastAction('Solicitud enviada.');
       await load();
       try{window.dispatchEvent(new CustomEvent('an:free-user-solicitudes-changed'));}catch(_){}
-    }catch(e){setError(e.message);setLastAction('No se pudo contactar.');}
+    }catch(e){setError(freeStudentVisibleError(e,'No se pudo contactar al asesor. Intentá nuevamente.','freeUserCrearSolicitud:HABLAR_ASESOR'));setLastAction('No se pudo contactar.');}
     finally{setBusy(false);}
   };
 

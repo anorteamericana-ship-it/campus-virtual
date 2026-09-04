@@ -1,0 +1,28 @@
+name: QA Raw Error Scanner V4 CS21A210BI
+on:
+  push:
+    branches: [audit/raw-error-scanner-v4-cs21a210bi]
+  pull_request:
+    paths:
+      - 'scripts/audit_raw_user_error_surface_v4_cs21a210bi.mjs'
+      - 'scripts/qa_raw_error_scanner_v4_cs21a210bi.mjs'
+      - '00_DOCUMENTACION/RAW_ERROR_SCANNER_V4_CS21A210BI_2026-09-01.md'
+      - '.github/workflows/qa-raw-error-scanner-v4-cs21a210bi.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify V4 precision and V3 preservation
+        run: node scripts/qa_raw_error_scanner_v4_cs21a210bi.mjs
+      - name: Regress BH free-access data-flow audit
+        run: node scripts/qa_english_lab_free_access_message_boundary_cs21a210bh.mjs
+      - name: Regress BG admin-students safe boundary
+        run: node scripts/qa_admin_students_safe_errors_cs21a210bg.mjs
+      - name: Diff hygiene
+        run: git diff --check 848b5ada270137732662851bf14b7549bdbe42bc

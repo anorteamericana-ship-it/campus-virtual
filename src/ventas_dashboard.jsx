@@ -26,6 +26,24 @@ function vxIrALogin() {
   catch (_) { window.location.href = 'login.html'; }
 }
 
+// CS21A153 · fuente real de asesores de ventas.
+// Reutiliza el endpoint público ya existente del backend canónico, que lee
+// USUARIOS y filtra rol=ventas + activo=TRUE. No usa ASESORES_V como fallback.
+async function vxGetAsesoresActivos() {
+  const base = window.SCRIPT_URL_V || window.APPS_SCRIPT_URL || '';
+  if (!base) throw new Error('ventas_endpoint_missing');
+  const res = await fetch(`${base}?fn=getAsesoresActivos`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`ventas_asesores_http_${res.status}`);
+  const data = await res.json();
+  if (!data || data.ok === false || !Array.isArray(data.asesores)) {
+    throw new Error((data && (data.error || data.mensaje)) || 'ventas_asesores_invalid');
+  }
+  return data.asesores
+    .map(a => String((a && a.nombre) || '').trim())
+    .filter(Boolean)
+    .filter((nombre, i, arr) => arr.indexOf(nombre) === i);
+}
+
 // VENTAS-DASHBOARD-002 · La sección "Documentos del estudiante" se trasladó al
 // drawer (ProspectoDrawer en ventas_drawer.jsx): aparece dentro del detalle del
 // estudiante y se habilita solo cuando está MATRICULADO. Ya no es modal flotante.
@@ -47,7 +65,9 @@ function VentasApp({ sesion }) {
                  : rolReal === 'admin'      ? 'Administración'
                  : 'Asesor';
 
-  const [asesorView, setAsesorView] = useState('');       // superadmin: ver como asesor
+  const [asesorView, setAsesorView] = useState('');       // supervisor: ver como asesor
+  const [asesoresReales, setAsesoresReales] = useState([]);
+  const [asesoresEstado, setAsesoresEstado] = useState('idle'); // idle|loading|ok|error
   const [dash, setDash] = useState(null);                 // null = cargando
   const [filtro, setFiltro] = useState({ etapa: '', fin: '', q: '' });
   const [drawerCed, setDrawerCed] = useState(null);
@@ -56,9 +76,37 @@ function VentasApp({ sesion }) {
   const [errorCarga, setErrorCarga] = useState(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  // El endpoint necesita SIEMPRE un asesor concreto. Superadmin: el seleccionado
-  // o, por defecto, su propio nombre.
-  const scopeAsesor = esSupervisor ? (asesorView || usuario.nombre) : usuario.nombre;
+  // DEMO queda limitado a la vista previa explícita. En operación real,
+  // el selector usa únicamente asesores devueltos por getAsesoresActivos().
+  const asesoresSelector = previewKey ? (window.ASESORES_V || []) : asesoresReales;
+  const asesorSelectorValue = asesorView || (previewKey ? (asesoresSelector[0] || '') : '');
+
+  // El endpoint necesita SIEMPRE un asesor concreto. Un supervisor espera la
+  // lista real antes de cargar el dashboard; nunca cae a su propio nombre.
+  const scopeAsesor = esSupervisor
+    ? (asesorView || (previewKey ? usuario.nombre : ''))
+    : usuario.nombre;
+
+  useEffect(() => {
+    if (!esSupervisor || previewKey) return undefined;
+    let cancel = false;
+    setAsesoresEstado('loading');
+    vxGetAsesoresActivos()
+      .then(nombres => {
+        if (cancel) return;
+        setAsesoresReales(nombres);
+        setAsesorView(prev => (prev && nombres.includes(prev)) ? prev : (nombres[0] || ''));
+        setAsesoresEstado('ok');
+      })
+      .catch(err => {
+        if (cancel) return;
+        console.error('[Ventas CS21A153] No se pudo cargar la lista real de asesores.', err);
+        setAsesoresReales([]);
+        setAsesorView('');
+        setAsesoresEstado('error');
+      });
+    return () => { cancel = true; };
+  }, [esSupervisor, previewKey]);
 
   useEffect(() => {
     if (!toast) return;
@@ -78,10 +126,15 @@ function VentasApp({ sesion }) {
         if (!cancel) setDash({ ...d, prospectos: (d.prospectos || []).map(window.adaptProspectoDash) });
         return;
       }
+      // Supervisor real: no consultar con identidad administrativa como asesor.
+      if (esSupervisor && !scopeAsesor) return;
       try {
         const data = await window.getDashboardVentas(scopeAsesor);
         if (cancel) return;
-        if (!data || !data.ok) throw new Error((data && data.error) || 'No se pudo cargar el panel.');
+        if (!data || !data.ok) {
+          console.error('[Ventas CS21A173] No se pudo cargar el dashboard real.', data && (data.error || data.mensaje));
+          throw new Error('ventas_dashboard_unavailable');
+        }
         setDash({
           asesor: data.asesor,
           semana_actual: data.semana_actual || { matriculas: 0, promedio_4s: 0 },
@@ -91,11 +144,12 @@ function VentasApp({ sesion }) {
           total_prospectos: data.total_prospectos,
         });
       } catch (e) {
-        if (!cancel) setErrorCarga(e.message || 'No pudimos cargar tu panel desde el servidor.');
+        console.error('[Ventas CS21A173] Falló la carga del dashboard real.', e);
+        if (!cancel) setErrorCarga('No pudimos cargar tu panel. Recargá la página e intentá nuevamente.');
       }
     })();
     return () => { cancel = true; };
-  }, [scopeAsesor, reloadTick, previewKey]);
+  }, [scopeAsesor, reloadTick, previewKey, esSupervisor]);
 
   // Update optimista cuando el drawer cambia algo del prospecto.
   const onChanged = useCallback(({ cedula, ...campos }) => {
@@ -192,9 +246,19 @@ function VentasApp({ sesion }) {
           {esSupervisor && (
             <div className="vx-asesor-pick">
               <label htmlFor="vx-asesor">Ver como asesor:</label>
-              <select id="vx-asesor" value={asesorView} onChange={e => setAsesorView(e.target.value)}>
-                {window.ASESORES_V.map(a => <option key={a} value={a}>{a}</option>)}
+              <select
+                id="vx-asesor"
+                value={asesorSelectorValue}
+                disabled={!previewKey && (asesoresEstado === 'loading' || asesoresSelector.length === 0)}
+                onChange={e => setAsesorView(e.target.value)}>
+                {!previewKey && asesoresEstado === 'loading' ? <option value="">Cargando asesores…</option> : null}
+                {!previewKey && asesoresEstado === 'error' ? <option value="">No disponibles</option> : null}
+                {!previewKey && asesoresEstado === 'ok' && asesoresSelector.length === 0 ? <option value="">Sin asesores activos</option> : null}
+                {asesoresSelector.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
+              {!previewKey && asesoresEstado === 'error' ? (
+                <span style={{ fontSize: 11, color: 'var(--v-danger, #B42318)' }}>No pudimos cargar los asesores.</span>
+              ) : null}
             </div>
           )}
           <div className="vx-user">
@@ -260,7 +324,7 @@ function VentasApp({ sesion }) {
 
             {/* 3 · MIS MATRÍCULAS (mes actual, por semanas — VENTAS-DASHBOARD-002) */}
             <div className="vx-sec vx-sec-week">
-              <window.MiMatriculasMes asesor={usuario.nombre} />
+              <window.MiMatriculasMes asesor={scopeAsesor} />
             </div>
 
             {/* 4 · MI EMBUDO */}
@@ -278,7 +342,7 @@ function VentasApp({ sesion }) {
         <window.ProspectoDrawer
           cedula={drawerCed}
           seed={prospectos ? prospectos.find(p => p.cedula === drawerCed) : null}
-          asesor={usuario.nombre}
+          asesor={scopeAsesor}
           usuario={usuario}
           demo={!!previewKey}
           esSuperadmin={rolReal === 'superadmin'}

@@ -1,0 +1,43 @@
+name: QA Vista Docente Safe Errors CS21A210AN
+
+on:
+  push:
+    branches:
+      - fix/vista-docente-safe-errors-cs21a210an
+    paths:
+      - 'src/vista_docente.jsx'
+      - 'scripts/qa_vista_docente_safe_errors_cs21a210an.mjs'
+      - '.github/workflows/qa-vista-docente-safe-errors-cs21a210an.yml'
+      - '00_DOCUMENTACION/VISTA_DOCENTE_SAFE_ERRORS_CS21A210AN_2026-08-31.md'
+  pull_request:
+    paths:
+      - 'src/vista_docente.jsx'
+      - 'scripts/qa_vista_docente_safe_errors_cs21a210an.mjs'
+      - '.github/workflows/qa-vista-docente-safe-errors-cs21a210an.yml'
+      - '00_DOCUMENTACION/VISTA_DOCENTE_SAFE_ERRORS_CS21A210AN_2026-08-31.md'
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install JSX parser
+        run: npm install --no-save --ignore-scripts @babel/parser@7.28.4
+      - name: Parse teacher view
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const parser=require('@babel/parser');
+          parser.parse(fs.readFileSync('src/vista_docente.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
+          console.log('CS21A210AN JSX parse: PASS');
+          NODE
+      - name: Verify CS21A210AN semantics and exact reconstruction
+        run: node scripts/qa_vista_docente_safe_errors_cs21a210an.mjs
+      - name: Regress CS21A210AL Ventas calendar boundary
+        run: node scripts/qa_ventas_calendario_safe_errors_cs21a210al.mjs
+      - name: Regress CS21A210AJ enrollment calendar boundary
+        run: node scripts/qa_matriculas_calendario_safe_errors_cs21a210aj.mjs
+      - name: Diff hygiene
+        run: git diff --check

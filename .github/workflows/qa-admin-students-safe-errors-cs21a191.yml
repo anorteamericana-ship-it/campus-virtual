@@ -1,0 +1,26 @@
+name: QA Admin Students Safe Errors CS21A191
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_admin_students_safe_errors_cs21a191.mjs'
+      - '.github/workflows/qa-admin-students-safe-errors-cs21a191.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admin-students-safe-errors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CS21A191 guard
+        run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
+      - name: Regress CS21A190 admin CONAPE copy
+        run: node scripts/qa_admin_conape_user_copy_cs21a190.mjs
+      - name: Regress CS21A189 admin quick-update safe errors
+        run: node scripts/qa_admin_quick_update_safe_errors_cs21a189.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^ HEAD || git diff --check

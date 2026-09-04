@@ -1,0 +1,29 @@
+name: QA Teacher Session Safe Errors CS21A186
+
+on:
+  pull_request:
+    paths:
+      - 'src/teacher_views.jsx'
+      - 'src/att77_bridge.js'
+      - 'scripts/qa_teacher_session_safe_errors_cs21a186.mjs'
+      - '.github/workflows/qa-teacher-session-safe-errors-cs21a186.yml'
+      - '00_DOCUMENTACION/TEACHER_SESSION_SAFE_ERRORS_CS21A186_2026-08-29.md'
+
+permissions:
+  contents: read
+
+jobs:
+  teacher-session-safe-errors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run CS21A186 guard
+        run: node scripts/qa_teacher_session_safe_errors_cs21a186.mjs
+      - name: Regress CS21A185 teacher material access
+        run: node scripts/qa_teacher_material_access_cs21a185.mjs
+      - name: Regress CS21A184 teacher profile
+        run: node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
+      - name: Diff hygiene
+        run: git diff --check "origin/security/teacher-material-access-safe-errors-cs21a185...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
