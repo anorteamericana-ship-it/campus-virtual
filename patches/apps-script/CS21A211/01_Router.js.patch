@@ -1,0 +1,19 @@
+--- a/01_Router.js
++++ b/01_Router.js
+@@ -844,8 +844,14 @@
+      * carga la interfaz principal del Campus.
+      */
+     if (!fn) {
+-      return HtmlService
+-        .createTemplateFromFile('index')
++      var campusTemplate = HtmlService.createTemplateFromFile('index');
++      var campusSelfUrl = '';
++      try { campusSelfUrl = String(ScriptApp.getService().getUrl() || '').trim(); } catch (_) { campusSelfUrl = ''; }
++      if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/(?:exec|dev)$/.test(campusSelfUrl)) {
++        throw new Error('QA_WEBAPP_SELF_URL_INVALID');
++      }
++      campusTemplate.CAMPUS_SELF_URL = campusSelfUrl;
++      return campusTemplate
+         .evaluate()
+         .setTitle('Campus Virtual · Academia Norteamericana · QA')
+         .addMetaTag(

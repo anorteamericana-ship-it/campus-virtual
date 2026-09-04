@@ -1,0 +1,46 @@
+--- a/02_Auth_Sesiones_Usuarios.js
++++ b/02_Auth_Sesiones_Usuarios.js
+@@ -4209,7 +4209,11 @@
+ // Carpeta en Drive con archivos padron_XXX.txt
+ // (XXX = primeros 3 dígitos de la cédula)
+ // ============================================================
+-var PADRON_FOLDER_ID = '1Z4N0TM5tFYT_aHUiUklKX3fJvPNArw2K';
++var PADRON_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_PADRON_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
+ var PADRON_CACHE_KEY = 'PADRON_FILE_MAP';
+ 
+ // ── Obtener el mapa prefijo→fileId, con caché en Script Properties ──
+@@ -4277,7 +4281,7 @@
+ // ============================================================
+ // GENERACIÓN DE PROFORMAS CONAPE                    — v4.26.0
+ //
+-// Sheet de plantillas: 1SoXa-A_-eUtMMRfU4mSuaOaoiqpUUS9hSnPT5yHW7zQ
++// Sheet de plantillas/proformas: se resuelve por QA_STAGING_PROFORMAS_SHEET_ID.
+ //
+ // 10 plantillas activas:
+ //   INA (128h):
+@@ -4302,7 +4306,11 @@
+ // Cada proforma incrementa de a 1.
+ // ============================================================
+ 
+-var PROFORMAS_SHEET_ID = '1SoXa-A_-eUtMMRfU4mSuaOaoiqpUUS9hSnPT5yHW7zQ';
++var PROFORMAS_SHEET_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_PROFORMAS_SHEET_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
+ var PROFORMA_CONSECUTIVO_KEY = 'PROFORMA_CONSECUTIVO';
+ var PROFORMA_CONSECUTIVO_INICIAL = 16798;
+ 
+@@ -6040,7 +6048,7 @@
+ 
+ // F98.4-T — DESTINO ÚNICO DE TÍTULOS
+ // Todos los certificados oficiales se crean, buscan y conservan exclusivamente en:
+-// DOCUMENTOS_ESTUDIANTES · https://drive.google.com/drive/folders/18enRbEhc5SSVK1v0ACO7oLqbsJX2gqOT
++// DOCUMENTOS_ESTUDIANTES · root configurable por QA_STAGING_DOCUMENTOS_ESTUDIANTES_FOLDER_ID.
+ // Estructura interna: DOCUMENTOS_ESTUDIANTES/{GRUPO}/{NIVEL}/archivo.pdf
+ // Nunca se crea ni se consulta una copia en EXPEDIENTES_ESTUDIANTILES.
+ function _certF983DChildFolder_(parent, name) {

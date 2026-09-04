@@ -1,0 +1,80 @@
+--- a/41_CONAPE_Auditoria_Finanzas.js
++++ b/41_CONAPE_Auditoria_Finanzas.js
+@@ -6,7 +6,11 @@
+ // - La auditoría no modifica notas, estados, pagos ni APOLLO.
+ // - La limpieza segura requiere superadmin y confirmación explícita.
+ // ============================================================================
+-var CONAPE_AW_FOLDER_ID = '1LIX_vbyyZAtPElUpfm5S5WjIHs79n0Vt';
++var CONAPE_AW_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_CONAPE_BACKUP_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
+ var CONAPE_AW_LOG_SHEET = 'CONAPE_AUDITORIA_LOG';
+ var CONAPE_AW_HEADERS = {
+   '4-estudiantes': ['id','cedula','nombre_completo'],
+@@ -364,11 +368,21 @@
+   '1-sedes': '1Wtrelm2GHZo2uMuV7e1hUcz_so-0Ec4Jy9SqRoDJusk',
+   '2-carreras': '1QrDORP57dK37HKwBD6vGCcr3s3jYeKyrkWnDKG33WcQ',
+   '3-materias': '1hTtZLAzDkO-5Yj8eSgL2docd76gru5sPtwHfDSNf10A',
+-  '4-estudiantes': '18x3tCfzFQ8KsT5ESyblxEW1A4aa_yPRAoiH8972XKVo',
+-  '5-plan_estudios': '1Z4V3GW3dSTVd3J6oaLty5MSArKWRjYYd52u75MA1SIE',
+-  '6-historial': '13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI',
+-  '7-morosidad': '1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg'
++  // 4-7 son recursos operativos y en QA deben resolverse desde CONAPE_SHEET_IDS,
++  // que a su vez viene exclusivamente de Script Properties QA. Nunca usar PROD como fallback.
++  '4-estudiantes': null,
++  '5-plan_estudios': null,
++  '6-historial': null,
++  '7-morosidad': null
+ };
++function _conapeAxSheetId_(name){
++  name=_conapeAxText_(name);
++  if(/^([4-7])-/.test(name)){
++    var qa=(typeof CONAPE_SHEET_IDS==='object'&&CONAPE_SHEET_IDS)?CONAPE_SHEET_IDS:null;
++    return qa?_conapeAxText_(qa[name]):'';
++  }
++  return _conapeAxText_(CONAPE_AX_SHEET_IDS[name]);
++}
+ var CONAPE_AX_HEADERS = {
+   '1-sedes': ['codigo','descripcion'],
+   '2-carreras': ['id','codigo_sede','codigo_carrera','descripcion','codigo_grado','desc_grado','costo_paquete_graduacion','moneda'],
+@@ -564,7 +578,7 @@
+     '7-morosidad':_conapeAxConsolidateMora_(buildFilas_7([datos]))
+   };
+   var ext={},writes=[];
+-  Object.keys(desired).forEach(function(name){ext[name]=_conapeAxRows_(CONAPE_AX_SHEET_IDS[name]);});
++  Object.keys(desired).forEach(function(name){ext[name]=_conapeAxRows_(_conapeAxSheetId_(name));});
+   writes=writes.concat(_conapeAxPlanWrites_(ext['4-estudiantes'].ws,ext['4-estudiantes'].rows,desired['4-estudiantes'],function(r){return _conapeAxCed_(r[1]);},'4-estudiantes'));
+   writes=writes.concat(_conapeAxPlanWrites_(ext['5-plan_estudios'].ws,ext['5-plan_estudios'].rows,desired['5-plan_estudios'],function(r){return _conapeAxCed_(r[0])+'|'+_conapeAxUpper_(r[6]);},'5-plan_estudios'));
+   writes=writes.concat(_conapeAxPlanWrites_(ext['6-historial'].ws,ext['6-historial'].rows,desired['6-historial'],function(r){return _conapeAxCed_(r[2])+'|'+_conapeAxUpper_(r[4])+'|'+_conapeAxText_(r[5])+'|'+_conapeAxText_(r[6])+'|'+_conapeAxUpper_(r[7]);},'6-historial'));
+@@ -704,7 +718,7 @@
+   return out;
+ }
+ function _conapeAxAuditBase_ (body){
+-  var files={},find=[],okFiles=0;Object.keys(CONAPE_AX_SHEET_IDS).forEach(function(name){try{var x=_conapeAxRows_(CONAPE_AX_SHEET_IDS[name]);files[name]=x;if(_conapeAxHeadersOk_(x.rows[0]||[],CONAPE_AX_HEADERS[name]))okFiles++;else _conapeAxFinding_(find,'CRITICO','ENCABEZADO_INCOMPATIBLE',name,1,'Los encabezados o el orden no coinciden con el contrato vigente.',[(x.rows[0]||[]).join(' | ')]);}catch(e){files[name]={error:e.message||String(e),rows:[]};_conapeAxFinding_(find,'CRITICO','ARCHIVO_NO_LEIBLE',name,1,e.message||String(e),[]);}});
++  var files={},find=[],okFiles=0;Object.keys(CONAPE_AX_SHEET_IDS).forEach(function(name){try{var x=_conapeAxRows_(_conapeAxSheetId_(name));files[name]=x;if(_conapeAxHeadersOk_(x.rows[0]||[],CONAPE_AX_HEADERS[name]))okFiles++;else _conapeAxFinding_(find,'CRITICO','ENCABEZADO_INCOMPATIBLE',name,1,'Los encabezados o el orden no coinciden con el contrato vigente.',[(x.rows[0]||[]).join(' | ')]);}catch(e){files[name]={error:e.message||String(e),rows:[]};_conapeAxFinding_(find,'CRITICO','ARCHIVO_NO_LEIBLE',name,1,e.message||String(e),[]);}});
+   var students={},codes={},r,i,key,dup=[],orph=[];
+   var f4=files['4-estudiantes']&&files['4-estudiantes'].rows||[];for(i=1;i<f4.length;i++){var id=_conapeAxText_(f4[i][0]),ced=_conapeAxCed_(f4[i][1]),nom=_conapeAxText_(f4[i][2]);if(!id||!ced||!nom)_conapeAxFinding_(find,'CRITICO','IDENTIDAD_INCOMPLETA','4-estudiantes',1,'Fila '+(i+1)+' con id, cédula o nombre vacío.',[id+' | '+ced+' | '+nom]);if(ced){if(students[ced])dup.push('cédula '+ced+' filas '+students[ced].row+'/'+(i+1));else students[ced]={id:id,name:nom,row:i+1};}if(id){if(codes[id])dup.push('código '+id+' filas '+codes[id]+'/'+(i+1));else codes[id]=i+1;}}
+   if(dup.length)_conapeAxFinding_(find,'CRITICO','IDENTIDAD_DUPLICADA','4-estudiantes',dup.length,'Una persona no puede aparecer con cédula o código repetido.',dup);
+@@ -739,7 +753,7 @@
+   }
+   var crit=find.filter(function(x){return x.severidad==='CRITICO';}).reduce(function(a,x){return a+x.total;},0),warn=find.filter(function(x){return x.severidad==='ADVERTENCIA';}).reduce(function(a,x){return a+x.total;},0),info=find.filter(function(x){return x.severidad==='INFO';}).reduce(function(a,x){return a+x.total;},0);
+   var integridadBd={estado:(planDup.length||histDup.length||moraDup.length)?'CRITICO':'OK',plan_pk_duplicadas:planDup.length,historial_pk_duplicadas:histDup.length,morosidad_pk_duplicadas:moraDup.length,plan_claves:Object.keys(plan).length,historial_filas:Math.max(0,f6.length-1)};
+-  return{ok:true,version:CONAPE_AX_VERSION,estado:crit?'CRITICO':warn?'REVISAR':'OK',resumen:{criticos:crit,advertencias:warn,info:info,archivos_ok:okFiles,archivos_total:7,estudiantes:Object.keys(students).length,plan_filas:Math.max(0,f5.length-1),historial_filas:Math.max(0,f6.length-1),morosidad_filas:Math.max(0,f7.length-1),claves_duplicadas:planDup.length+histDup.length+moraDup.length},integridad_bd:integridadBd,verificacion_cedula:localSnapshot,archivos:Object.keys(CONAPE_AX_SHEET_IDS).map(function(n){var modified='';try{modified=_conapeAxDateLabel_(DriveApp.getFileById(CONAPE_AX_SHEET_IDS[n]).getLastUpdated());}catch(_e){}return{nombre:n,id:CONAPE_AX_SHEET_IDS[n],filas:files[n]&&files[n].rows?Math.max(0,files[n].rows.length-1-(files[n].filas_vacias_intermedias||[]).length):0,filas_fisicas:files[n]&&files[n].filas_fisicas!=null?files[n].filas_fisicas:0,filas_vacias_finales:files[n]&&files[n].filas_vacias_finales||0,filas_vacias_intermedias:files[n]&&files[n].filas_vacias_intermedias||[],encabezado_ok:files[n]&&files[n].rows?_conapeAxHeadersOk_(files[n].rows[0]||[],CONAPE_AX_HEADERS[n]):false,ultima_modificacion:modified,error:files[n]&&files[n].error||''};}),hallazgos:find,api:api,reglas:{plan:'Una fila vigente por cada una de las cuatro materias. La clave destino esperada es estudiante+sede+carrera+materia.',historial:'Conserva las cuatro materias base y agrega intentos reales en periodos distintos; más de cuatro filas es válido solo si el destino distingue año y periodo.',fusion:'Cambio de horario o fusión administrativa dentro del mismo intento no crea otra fila de historial.',repeticion:'Nuevo intento en un nuevo periodo agrega historial y actualiza el plan. Mismo año/periodo se bloquea por ambigüedad.',destino:'Una auditoría local OK no confirma la importación externa. Para confirmarla, el endpoint protegido debe responder 200 para una cédula concreta.'},solo_lectura:true,generado_en:_conapeAxDateLabel_(new Date())};
++  return{ok:true,version:CONAPE_AX_VERSION,estado:crit?'CRITICO':warn?'REVISAR':'OK',resumen:{criticos:crit,advertencias:warn,info:info,archivos_ok:okFiles,archivos_total:7,estudiantes:Object.keys(students).length,plan_filas:Math.max(0,f5.length-1),historial_filas:Math.max(0,f6.length-1),morosidad_filas:Math.max(0,f7.length-1),claves_duplicadas:planDup.length+histDup.length+moraDup.length},integridad_bd:integridadBd,verificacion_cedula:localSnapshot,archivos:Object.keys(CONAPE_AX_SHEET_IDS).map(function(n){var modified='';try{modified=_conapeAxDateLabel_(DriveApp.getFileById(_conapeAxSheetId_(n)).getLastUpdated());}catch(_e){}return{nombre:n,id:_conapeAxSheetId_(n),filas:files[n]&&files[n].rows?Math.max(0,files[n].rows.length-1-(files[n].filas_vacias_intermedias||[]).length):0,filas_fisicas:files[n]&&files[n].filas_fisicas!=null?files[n].filas_fisicas:0,filas_vacias_finales:files[n]&&files[n].filas_vacias_finales||0,filas_vacias_intermedias:files[n]&&files[n].filas_vacias_intermedias||[],encabezado_ok:files[n]&&files[n].rows?_conapeAxHeadersOk_(files[n].rows[0]||[],CONAPE_AX_HEADERS[n]):false,ultima_modificacion:modified,error:files[n]&&files[n].error||''};}),hallazgos:find,api:api,reglas:{plan:'Una fila vigente por cada una de las cuatro materias. La clave destino esperada es estudiante+sede+carrera+materia.',historial:'Conserva las cuatro materias base y agrega intentos reales en periodos distintos; más de cuatro filas es válido solo si el destino distingue año y periodo.',fusion:'Cambio de horario o fusión administrativa dentro del mismo intento no crea otra fila de historial.',repeticion:'Nuevo intento en un nuevo periodo agrega historial y actualiza el plan. Mismo año/periodo se bloquea por ambigüedad.',destino:'Una auditoría local OK no confirma la importación externa. Para confirmarla, el endpoint protegido debe responder 200 para una cédula concreta.'},solo_lectura:true,generado_en:_conapeAxDateLabel_(new Date())};
+ }
+ 
+ // ============================================================
+@@ -828,7 +842,7 @@
+   var names=['1-sedes','2-carreras','3-materias','4-estudiantes','5-plan_estudios','6-historial','7-morosidad'];
+   var files={},headersBad=[],trailing={},internal=[];
+   names.forEach(function(name){
+-    var x=_conapeAxRows_(CONAPE_AX_SHEET_IDS[name]);files[name]=x;
++    var x=_conapeAxRows_(_conapeAxSheetId_(name));files[name]=x;
+     trailing[name]=Number(x.filas_vacias_finales||0);
+     (x.filas_vacias_intermedias||[]).forEach(function(r){internal.push(name+' fila '+r);});
+     if(!_conapeAxHeadersOk_(x.rows[0]||[],CONAPE_AX_HEADERS[name]))headersBad.push(name);
+@@ -1054,9 +1068,9 @@
+   var find=(audit.hallazgos||[]).filter(function(x){return!drop[x.codigo];}),snap;
+   try{snap=_conapeAzApolloSnapshot_();}catch(e){_conapeAxFinding_(find,'ADVERTENCIA','ESTATUS_NO_DISPONIBLE','CRUCE ESTATUS↔5↔6',1,'No se pudo abrir la fuente académica ESTATUS. La estructura externa sí fue auditada.',[e.message||String(e)]);snap={byKey:{},byCed:{},invalidRE:[]};}

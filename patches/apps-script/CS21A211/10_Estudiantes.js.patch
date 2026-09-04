@@ -1,0 +1,68 @@
+--- a/10_Estudiantes.js
++++ b/10_Estudiantes.js
+@@ -3896,10 +3896,14 @@
+ // Actualiza hojas 4/5/6/7 en Drive SIN recrear archivos
+ //
+ // IDs de los archivos en Drive (carpeta Sistema_Conape):
+-//   https://drive.google.com/drive/folders/1LIX_vbyyZAtPElUpfm5S5WjIHs79n0Vt
++//   Root configurable por QA_STAGING_CONAPE_BACKUP_FOLDER_ID.
+ // ============================================================
+ 
+-var CONAPE_DRIVE_FOLDER_ID = '1LIX_vbyyZAtPElUpfm5S5WjIHs79n0Vt';
++var CONAPE_DRIVE_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_CONAPE_BACKUP_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
+ 
+ // ncuenta por nivel: matrícula y certificado (de OTROS PAGOS)
+ var CONAPE_NCUENTA_MAT  = { B1: 60, B2: 61, I1: 62, I2: 63 };
+@@ -4480,12 +4484,17 @@
+ // El archivo debe existir — si no existe, lanza error descriptivo
+ // ============================================================
+ // IDs de los 4 spreadsheets separados de CONAPE
+-var CONAPE_SHEET_IDS = {
+-  '4-estudiantes':  '18x3tCfzFQ8KsT5ESyblxEW1A4aa_yPRAoiH8972XKVo',
+-  '5-plan_estudios':'1Z4V3GW3dSTVd3J6oaLty5MSArKWRjYYd52u75MA1SIE',
+-  '6-historial':    '13rd_tMKkTS6CLqSJt1PWS7GNmLxAVrsqRAO395tynZI',
+-  '7-morosidad':    '1Q9QTNc2009M6PqbNW2_WjYBOlqCMhiBjrenun88L5yg',
+-};
++var CONAPE_SHEET_IDS = (function(){
++  var props;
++  try { props = PropertiesService.getScriptProperties(); } catch (_) { props = null; }
++  function read(key){ return props ? String(props.getProperty(key) || '').trim() : ''; }
++  return {
++    '4-estudiantes': read('QA_STAGING_CONAPE_4_ESTUDIANTES_ID'),
++    '5-plan_estudios': read('QA_STAGING_CONAPE_5_PLAN_ID'),
++    '6-historial': read('QA_STAGING_CONAPE_6_HISTORIAL_ID'),
++    '7-morosidad': read('QA_STAGING_CONAPE_7_MOROSIDAD_ID')
++  };
++})();
+ 
+ 
+ 
+@@ -5998,9 +6007,21 @@
+ // GENERACIÓN DE DOCUMENTOS — MATRICULA / PROMOCION / CERTIFICADO
+ // ══════════════════════════════════════════════════════════════════════════
+ 
+-var PLANTILLAS_FOLDER_ID = '1Z4N0TM5tFYT_aHUiUklKX3fJvPNArw2K';
+-var DOCUMENTOS_FOLDER_ID  = '1Bm9pK4OvWE944X29bm8S3UWUlWP_G5jO'; // carpeta raíz del proyecto
+-var DOCUMENTOS_ESTUDIANTES_FOLDER_ID = '18enRbEhc5SSVK1v0ACO7oLqbsJX2gqOT'; // raíz ÚNICA oficial para títulos/certificados
++var PLANTILLAS_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_PLANTILLAS_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
++var DOCUMENTOS_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_DOCUMENTOS_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
++var DOCUMENTOS_ESTUDIANTES_FOLDER_ID = (function(){
++  try {
++    return String(PropertiesService.getScriptProperties().getProperty('QA_STAGING_DOCUMENTOS_ESTUDIANTES_FOLDER_ID') || '').trim();
++  } catch (_) { return ''; }
++})();
+ 
+ // IDs reales de plantillas en Drive — v4.10
+ var PLANTILLA_IDS = {

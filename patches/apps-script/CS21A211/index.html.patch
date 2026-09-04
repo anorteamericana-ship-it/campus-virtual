@@ -1,0 +1,156 @@
+--- a/index.html
++++ b/index.html
+@@ -1537,6 +1537,14 @@
+ 
+ <script type="text/babel" data-presets="react">
+ 
++// CS21A211 · La UI QA habla siempre con el mismo Web App que la sirvió.
++// El valor se inyecta en doGet desde ScriptApp.getService().getUrl(); no hay fallback a PROD.
++const CAMPUS_APPS_SCRIPT_URL = <?!= JSON.stringify(CAMPUS_SELF_URL) ?>;
++if (typeof CAMPUS_APPS_SCRIPT_URL !== 'string' ||
++    !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/(?:exec|dev)$/.test(CAMPUS_APPS_SCRIPT_URL)) {
++  throw new Error('QA_WEBAPP_SELF_URL_INVALID');
++}
++
+ // ═══════════ DATA ═══════════
+ /* global window */
+ // ── Data: users, courses, lessons, icanSessions, grades, messages ──────────
+@@ -2177,7 +2185,7 @@
+ // ═══════════ STUDENT_DASHBOARD ═══════════
+ /* global React, Icon, Ring, Stat, Chip, AnimatedBar, STUDENT, FEEDBACK, LEVELS, ICAN_SESSIONS, HOMEWORK */
+ 
+-const SCRIPT_URL_SD = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_SD = CAMPUS_APPS_SCRIPT_URL;
+ const COD_ESTUDIANTE_SD = (() => {
+   try {
+     const usr = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
+@@ -2493,7 +2501,7 @@
+ // ═══════════ STUDENT_MODULES ═══════════
+ /* global React, Icon, Ring, Chip, Stat, AnimatedBar, GRADES, ICAN_SESSIONS, HOMEWORK, MATERIALS, MESSAGES, PAYMENTS, CERTIFICATES, LEVEL_FINANCE, STUDENT, LEVELS, FEEDBACK */
+ 
+-const SCRIPT_URL_SM = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_SM = CAMPUS_APPS_SCRIPT_URL;
+ const COD_ESTUDIANTE_SM = typeof STUDENT !== 'undefined' ? STUDENT.rec_m : '17055';
+ 
+ // Lee el acceso por pago expuesto por StudentDashboard vía window.__ACCESO
+@@ -3995,7 +4003,7 @@
+    ICAN_CATALOG, ICAN_HISTORY,
+    buildGroupSchedule, fmtDate, fmtDateLong, MONTHS_ES, STUDENT */
+ 
+-const SCRIPT_URL_SV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_SV = CAMPUS_APPS_SCRIPT_URL;
+ 
+ const LEVEL_LABEL = {
+   b1:'Básico I', b2:'Básico II',
+@@ -5335,7 +5343,7 @@
+ // TEACHER VIEWS — conectado a Apps Script real
+ // ─────────────────────────────────────────────────────────────────────────
+ 
+-const SCRIPT_URL_TV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_TV = CAMPUS_APPS_SCRIPT_URL;
+ 
+ // ── Lección sugerida según fecha de inicio + días de clase ──────────────
+ function calcularLeccionSugerida(startDate, diasCode) {
+@@ -6076,7 +6084,7 @@
+ // ═══════════ ADMIN_VIEWS ═══════════
+ /* global React, Icon, Chip, Stat, PageHeader */
+ 
+-const SCRIPT_URL_AV = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_AV = CAMPUS_APPS_SCRIPT_URL;
+ 
+ // ─────────────────────────────────────────────────────────────────
+ // Hook: lee el dashboard administrativo desde Apps Script
+@@ -6868,18 +6876,18 @@
+           <input value={form.linkZoom} onChange={e => set('linkZoom',e.target.value)}
+-            placeholder="https://zoom.us/j/..." style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit' }} />
++            placeholder={'https://zoom.us/j/...'} style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit' }} />
+         </div>
+       )}
+       {(form.entrega==='presencial'||form.entrega==='mixta') && (
+         <div style={{ marginBottom:16 }}>
+           <label style={{ fontSize:11, fontWeight:700, color:'var(--ink-2)', letterSpacing:'0.1em', textTransform:'uppercase', display:'block', marginBottom:6 }}>
+             Salón / Aula
+           </label>
+           <input value={form.salon} onChange={e => set('salon',e.target.value)}
+-            placeholder="Ej: Aula A1, Sala Azul..." style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit' }} />
++            placeholder={'Ej: Aula A1, Sala Azul...'} style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit' }} />
+         </div>
+       )}
+ 
+       <SectionTitle>Capacidad máxima</SectionTitle>
+       <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+-        <input type="range" min={5} max={20} value={form.capacidad} onChange={e => set('capacidad', Number(e.target.value))}
++        <input type={'range'} min={5} max={20} value={form.capacidad} onChange={e => set('capacidad', Number(e.target.value))}
+           style={{ flex:1, accentColor: nivel.color }} />
+@@ -7793,7 +7801,7 @@
+ // NOTE: ADMIN_GROUPS fue eliminado de data.jsx. Estos arrays están en [] como
+ // fallback temporal hasta cablear el hook useAdminDashboard() de admin_views.jsx.
+ 
+-const SCRIPT_URL_MAT = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_MAT = CAMPUS_APPS_SCRIPT_URL;
+ 
+ // ────────────────────────────────────────────────────────────────────────
+ // HOOK — Prospectos desde Apps Script
+@@ -8851,7 +8859,7 @@
+ // proyectados (siguiente).
+ // ─────────────────────────────────────────────────────────────────────────
+ 
+-const SCRIPT_URL_AS = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_AS = CAMPUS_APPS_SCRIPT_URL;
+ 
+ // ─────────────────────────────────────────────────────────────────────────
+ // HOOKS
+@@ -9450,7 +9458,7 @@
+ // ─────────────────────────────────────────────────────────────────────────
+ // PANEL ESTUDIANTE DRAWER — overlay lateral con ficha completa
+ // ─────────────────────────────────────────────────────────────────────────
+-const SCRIPT_URL_PANEL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_PANEL = CAMPUS_APPS_SCRIPT_URL;
+ 
+ const NIVEL_COLOR_P  = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
+ const NIVEL_LABEL_P  = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
+@@ -9964,7 +9972,7 @@
+ // Lista: ESTUDIANTES_COMPLETOS (bundle) | Detalle: Apps Script en tiempo real
+ // ─────────────────────────────────────────────────────────────────────────
+ 
+-const SCRIPT_URL_B = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_B = CAMPUS_APPS_SCRIPT_URL;
+ 
+ const NIVEL_COLOR_B = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
+ const NIVEL_LABEL_B = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
+@@ -10200,7 +10208,7 @@
+ // PANEL DOCUMENTOS
+ // ─────────────────────────────────────────────────────────────────────────
+ function PanelDocumentos({ est, detalle }) {
+-  const SCRIPT_URL_B = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++  const SCRIPT_URL_B = CAMPUS_APPS_SCRIPT_URL;
+   const nivelActivo = detalle?.grupo?.NIVEL_ACTUAL_ID || est.nivel_actual || 'B1';
+   const niveles = detalle?.niveles || {};
+   const NIVEL_LABEL = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
+@@ -10768,7 +10776,7 @@
+ // T-02: Parseo real del HTML del BCR + llamada al Apps Script
+ // ─────────────────────────────────────────────────────────────────────────
+ 
+-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL = CAMPUS_APPS_SCRIPT_URL;
+ 
+ // ── Parseo real del HTML del BCR ──────────────────────────────────────────
+ function parsearExtractoBCR(htmlContent) {
+@@ -11252,7 +11260,7 @@
+ // APLICAR PAGO — conectado a Apps Script / APOLLO_G3
+ // ─────────────────────────────────────────────────────────────────────────
+ 
+-const SCRIPT_URL_AP = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_AP = CAMPUS_APPS_SCRIPT_URL;
+ 
+ const NIVEL_COLOR_A = { B1:'#E5A823', B2:'#E8372A', I1:'#2B7FC1', I2:'#4CAF50' };
+ const NIVEL_LABEL_A = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
+@@ -11858,7 +11866,7 @@
+ // ═══════════ CRONOGRAMA ═══════════
+ /* global React, Icon, Chip, PageHeader */
+ 
+-const SCRIPT_URL_CR = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
++const SCRIPT_URL_CR = CAMPUS_APPS_SCRIPT_URL;
+ 
+ // Hook: lee usuario de session, llama getEstudiante + getGrupoInfo en paralelo
+ function useCronogramaData() {

@@ -1,0 +1,111 @@
+name: QA Containment Candidate CS21A211
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/qa-qa-containment-candidate-cs21a211.yml'
+      - 'scripts/qa_qa_containment_candidate_cs21a211.mjs'
+      - 'scripts/qa_get_route_parity_cs21a211i.mjs'
+      - 'scripts/release_cs21a211_qa.ps1'
+      - 'patches/apps-script/CS21A211/**'
+      - 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json'
+      - '00_DOCUMENTACION/QA_CONTAINMENT_CANDIDATE_CS21A211_2026-09-01.md'
+      - '00_DOCUMENTACION/ENDPOINT_MANUAL_REVIEW_CS21A211C_2026-09-02.md'
+      - '00_DOCUMENTACION/QA_EXTERNAL_RESOURCES_CS21A211D_2026-09-02.md'
+      - '00_DOCUMENTACION/PATCH_INTEGRITY_CS21A211E_2026-09-02.md'
+  push:
+    branches:
+      - fix/qa-containment-cs21a211
+    paths:
+      - '.github/workflows/qa-qa-containment-candidate-cs21a211.yml'
+      - 'scripts/qa_qa_containment_candidate_cs21a211.mjs'
+      - 'scripts/qa_get_route_parity_cs21a211i.mjs'
+      - 'scripts/release_cs21a211_qa.ps1'
+      - 'patches/apps-script/CS21A211/**'
+      - 'patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json'
+      - '00_DOCUMENTACION/QA_CONTAINMENT_CANDIDATE_CS21A211_2026-09-01.md'
+      - '00_DOCUMENTACION/ENDPOINT_MANUAL_REVIEW_CS21A211C_2026-09-02.md'
+      - '00_DOCUMENTACION/QA_EXTERNAL_RESOURCES_CS21A211D_2026-09-02.md'
+      - '00_DOCUMENTACION/PATCH_INTEGRITY_CS21A211E_2026-09-02.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-containment-cs21a211-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  containment-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax check contract
+        run: node --check scripts/qa_qa_containment_candidate_cs21a211.mjs
+
+      - name: Syntax check GET route parity
+        run: node --check scripts/qa_get_route_parity_cs21a211i.mjs
+
+      - name: Verify GET route parity static contract
+        run: node scripts/qa_get_route_parity_cs21a211i.mjs --static-contract
+
+      - name: Report committed byte identities
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+
+          const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
+          const manifest = JSON.parse(fs.readFileSync('patches/apps-script/CS21A211_QA_CONTAINMENT.manifest.json', 'utf8'));
+          const patchBuffers = [];
+          const guardTexts = [];
+
+          for (const part of manifest.patch_parts || []) {
+            const buffer = fs.readFileSync(part.path);
+            if (buffer.includes(13)) throw new Error(`PATCH_EOL_DRIFT: ${part.path} contains CR bytes`);
+            patchBuffers.push(buffer);
+            if (part.source_path === '99_QA_Staging_Guard.js') guardTexts.push(buffer.toString('utf8'));
+          }
+
+          const patch = Buffer.concat(patchBuffers);
+          const parity = fs.readFileSync('scripts/qa_get_route_parity_cs21a211i.mjs');
+          const added = [];
+          for (const text of guardTexts) {
+            for (const line of text.split('\n')) {
+              if (line.startsWith('+++')) continue;
+              if (line.startsWith('+')) added.push(line.slice(1));
+            }
+          }
+          const guard = Buffer.from(`${added.join('\n')}\n`, 'utf8');
+
+          console.log(`PATCH_SHA256_FROM_CHECKOUT=${sha256(patch)}`);
+          console.log(`PATCH_BYTES_FROM_CHECKOUT=${patch.length}`);
+          console.log(`PARITY_SCRIPT_SHA256_FROM_CHECKOUT=${sha256(parity)}`);
+          console.log(`PARITY_SCRIPT_BYTES_FROM_CHECKOUT=${parity.length}`);
+          console.log(`GUARD_SHA256_FROM_CHECKOUT=${sha256(guard)}`);
+          console.log(`GUARD_BYTES_FROM_CHECKOUT=${guard.length}`);
+          console.log(`GUARD_LINES_FROM_CHECKOUT=${added.length}`);
+          NODE
+
+      - name: Syntax check QA release runner
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/release_cs21a211_qa.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'CS21A211I_RELEASE_RUNNER_SYNTAX=PASS'
+
+      - name: Verify QA containment candidate
+        run: node scripts/qa_qa_containment_candidate_cs21a211.mjs

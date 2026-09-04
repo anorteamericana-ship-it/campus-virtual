@@ -1,0 +1,109 @@
+--- a/index.html
++++ b/index.html
+@@ -11865,31 +11873,88 @@
+   const [data, setData]       = React.useState(null);
+   const [loading, setLoading] = React.useState(true);
+   const [error, setError]     = React.useState(null);
++
+   React.useEffect(() => {
++    let cancelled = false;
++
+     const usr      = JSON.parse(sessionStorage.getItem('an_usuario') || 'null');
+     const codigo   = usr?.codigo;
+-    const codGrupo = usr?.grupo || usr?.grupos?.[0];
+-    if (!codigo || !codGrupo) { setLoading(false); return; }
++    const codGrupo = usr?.grupoActivo || usr?.grupo || usr?.grupos?.[0];
++
++    if (!codigo || !codGrupo) {
++      setLoading(false);
++      setError('sin_sesion');
++      return () => { cancelled = true; };
++    }
++
++    const token = window.getSessionToken ? window.getSessionToken() : '';
++
++    const postCronogramaSafe = async (fn, payload = {}) => {
++      const res = await fetch(`${SCRIPT_URL_CR}?fn=${encodeURIComponent(fn)}`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
++        body: JSON.stringify({
++          fn,
++          token,
++          ...payload,
++        }),
++      });
++
++      const raw = await res.text();
++      let out;
++
++      try {
++        out = JSON.parse(raw);
++      } catch (_) {
++        throw new Error(`Respuesta no JSON en ${fn}`);
++      }
++
++      return out;
++    };
++
++    const estudianteSesion = {
++      estudiante: {
++        NOMBRE: usr?.nombre || usr?.NOMBRE || '',
++        CEDULA: usr?.cedula || usr?.CEDULA || '',
++        CODIGO: codigo,
++      },
++      grupo: {
++        DOCENTE: usr?.docente || usr?.DOCENTE || '',
++      },
++    };
++
+     Promise.all([
+-      fetch(`${SCRIPT_URL_CR}?fn=getEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
+-      fetch(`${SCRIPT_URL_CR}?fn=getGrupoInfo&cod_grupo=${encodeURIComponent(codGrupo)}`).then(r=>r.json()),
+-      fetch(`${SCRIPT_URL_CR}?fn=getAsistenciaEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
+-      fetch(`${SCRIPT_URL_CR}?fn=getEvaluacionesEstudiante&codigo=${encodeURIComponent(codigo)}`).then(r=>r.json()),
++      postCronogramaSafe('getGrupoInfo', { cod_grupo: codGrupo }),
++      postCronogramaSafe('getAsistenciaEstudiante', { codigo }),
++      postCronogramaSafe('getEvaluacionesEstudiante', { codigo }),
+     ])
+-    .then(([est, grp, asist, eval_]) => {
+-      if (est.ok && grp.ok) setData({
+-        estudiante: est,
+-        grupo: grp,
+-        codGrupo,
+-        asistencia: asist?.ok ? asist.asistencia : [],
+-        evaluaciones: eval_?.ok ? eval_.evaluaciones : [],
+-      });
+-      else setError('No se pudo cargar el cronograma');
++    .then(([grp, asist, eval_]) => {
++      if (cancelled) return;
++
++      if (grp?.ok) {
++        setData({
++          estudiante: estudianteSesion,
++          grupo: grp,
++          codGrupo,
++          asistencia: asist?.ok ? asist.asistencia : [],
++          evaluaciones: eval_?.ok ? eval_.evaluaciones : [],
++        });
++      } else {
++        setError(grp?.error || 'No se pudo cargar el cronograma');
++      }
+     })
+-    .catch(e => setError(e.message))
+-    .finally(() => setLoading(false));
++    .catch(e => {
++      if (!cancelled) setError(e.message);
++    })
++    .finally(() => {
++      if (!cancelled) setLoading(false);
++    });
++
++    return () => {
++      cancelled = true;
++    };
+   }, []);
++
+   return { data, loading, error };
+ }
+-
+ // ── CronogramaModulo — P7 ────────────────────────────────────────────────
