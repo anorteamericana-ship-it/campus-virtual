@@ -1,74 +1,17 @@
-name: Real QA Staging CS21A138
+name: Real QA Authenticated Readonly CS21A210BO
 
 on:
   workflow_dispatch:
-    inputs:
-      authenticated:
-        description: 'Ejecutar sesiones reales contra Apps Script staging'
-        required: true
-        type: boolean
-        default: false
-      execute_writes:
-        description: 'Ejecutar pago, nota y asistencia SOLO en staging'
-        required: true
-        type: boolean
-        default: false
-  pull_request:
-    branches: [main]
-    paths:
-      - 'src/data.jsx'
-      - 'src/book_unit_starts_cs21a60.jsx'
-      - 'scripts/real_qa_*_cs21a138.mjs'
-      - 'scripts/real_qa_authenticated_readonly_cs21a210bo.mjs'
-      - 'qa/**'
-      - '.github/workflows/real-qa-staging-cs21a138.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: real-qa-staging-${{ github.ref }}
+  group: real-qa-auth-readonly-cs21a210bo-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  real-readonly:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      QA_STAGING_APPS_SCRIPT_URL: ${{ secrets.QA_STAGING_APPS_SCRIPT_URL }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate script
-        run: node --check scripts/real_qa_readonly_cs21a138.mjs
-      - name: Verify fail-closed staging target contract
-        shell: bash
-        run: |
-          grep -Fq "process.env.QA_STAGING_APPS_SCRIPT_URL" scripts/real_qa_readonly_cs21a138.mjs
-          grep -Fq "QA_STAGING_APPS_SCRIPT_URL coincide con APPS_SCRIPT_URL productiva" scripts/real_qa_readonly_cs21a138.mjs
-          ! grep -Fq "process.env.QA_APPS_SCRIPT_URL || productionAppsScriptUrl()" scripts/real_qa_readonly_cs21a138.mjs
-      - name: Refuse missing QA staging URL
-        shell: bash
-        run: |
-          if [ -z "${QA_STAGING_APPS_SCRIPT_URL}" ]; then
-            echo 'Falta QA_STAGING_APPS_SCRIPT_URL. Se bloquea Real QA readonly para evitar fallback a PROD.'
-            exit 1
-          fi
-      - name: Real Apps Script staging and Drive reads
-        run: node scripts/real_qa_readonly_cs21a138.mjs
-      - name: Publish summary
-        if: ${{ always() && hashFiles('qa-output-real/real-readonly-report.md') != '' }}
-        run: cat qa-output-real/real-readonly-report.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload real read evidence
-        if: ${{ always() && hashFiles('qa-output-real/real-readonly-report.json') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: real-qa-readonly-${{ github.run_number }}
-          path: qa-output-real/
-          if-no-files-found: error
-          retention-days: 14
-
-  authenticated-staging:
-    if: github.event_name == 'workflow_dispatch' && inputs.authenticated == true
+  authenticated-readonly:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -85,21 +28,18 @@ jobs:
       QA_CAMPUS_BASE_URL: http://127.0.0.1:4173
     steps:
       - uses: actions/checkout@v4
-      - name: BO hard read-only guard
-        shell: bash
-        run: |
-          if [ "${QA_EXECUTE_WRITES}" != "NO" ]; then
-            echo 'BLOQUEADO: CS21A210BO solo permite E2 autenticado read-only.'
-            exit 1
-          fi
-      - name: Refuse incomplete read-only secret set
+      - name: Refuse incomplete readonly secret set
         shell: bash
         run: |
           required=(QA_STAGING_APPS_SCRIPT_URL QA_STUDENT_USER QA_STUDENT_PASS QA_TEACHER_USER QA_TEACHER_PASS QA_SUPERADMIN_USER QA_SUPERADMIN_PASS QA_STUDENT_CODE QA_GROUP_CODE)
           for key in "${required[@]}"; do
-            if [ -z "${!key}" ]; then echo "Falta el secreto $key"; exit 1; fi
+            if [ -z "${!key}" ]; then echo "Falta el secreto readonly $key"; exit 1; fi
           done
-      - name: Validate BO authenticated readonly script
+          if [ "${QA_EXECUTE_WRITES}" != "NO" ]; then
+            echo 'BLOQUEADO: este workflow es estrictamente read-only.'
+            exit 1
+          fi
+      - name: Validate BO readonly runner
         run: node --check scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
       - name: Verify BO runner has no write surface
         shell: bash
@@ -110,6 +50,7 @@ jobs:
           grep -Fq "qa_properties_configured" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
           grep -Fq "qaUsers.some" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
           ! grep -Eq "aplicarPago|registrarNotaEstatus|registrarEvaluacion|registrarAsistencia|cerrarLeccionCompleta" scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
+          test "${QA_EXECUTE_WRITES}" = "NO"
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --ignore-scripts playwright@1.55.0
@@ -123,7 +64,7 @@ jobs:
           done
           cat qa-real-server.log
           exit 1
-      - name: Authenticated staging review
+      - name: Authenticated staging readonly review
         run: node scripts/real_qa_authenticated_readonly_cs21a210bo.mjs
       - name: Publish authenticated summary
         if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.md') != '' }}
@@ -132,7 +73,7 @@ jobs:
         if: ${{ always() && hashFiles('qa-output-real-auth/authenticated-report.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: real-qa-authenticated-${{ github.run_number }}
+          name: real-qa-auth-readonly-cs21a210bo-${{ github.run_number }}
           path: |
             qa-output-real-auth/
             qa-real-server.log
