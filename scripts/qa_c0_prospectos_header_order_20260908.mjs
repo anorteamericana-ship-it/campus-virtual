@@ -12,8 +12,20 @@ const p=fs.readFileSync(patch,'utf8');
 const q=fs.readFileSync(qa,'utf8');
 const private6=['CED_FRENTE_FILE_ID','CED_DORSO_FILE_ID','DOC_IDENTIDAD_FILE_ID','TITULO_FILE_ID','DOC_IDENTIDAD_MODO','TITULO_MODO'];
 
-must(p.includes("  'FOTO_CED_FRENTE','FOTO_CED_DORSO','FOTO_TITULO',\\n  'CED_FRENTE_FILE_ID','CED_DORSO_FILE_ID','DOC_IDENTIDAD_FILE_ID','TITULO_FILE_ID','DOC_IDENTIDAD_MODO','TITULO_MODO',"),'historical private block insertion contract changed');
-must(q.includes("  'FOTO_CED_FRENTE','FOTO_CED_DORSO','FOTO_TITULO',\\n  'COMISION_PAGADA'"),'historical preimage adjacency changed');
+const replacementStart=p.indexOf("src=replaceOnce(\n  src,\n  \"  'FOTO_CED_FRENTE','FOTO_CED_DORSO','FOTO_TITULO',\"");
+must(replacementStart>=0,'historical PROSPECTOS replaceOnce block missing');
+const replacementBlock=p.slice(replacementStart,p.indexOf(');',replacementStart)+2);
+let prev=-1;
+for(const h of ['FOTO_CED_FRENTE','FOTO_CED_DORSO','FOTO_TITULO',...private6]){
+  const idx=replacementBlock.indexOf(h);
+  must(idx>prev,`historical replacement order changed at ${h}`);
+  prev=idx;
+}
+const fixtureStart=q.indexOf('const fixture=`var PROSPECTOS_HEADERS = [');
+must(fixtureStart>=0,'historical fixture headers missing');
+const fixtureHeaders=q.slice(fixtureStart,q.indexOf('];',fixtureStart)+2);
+for(const h of ['FOTO_CED_FRENTE','FOTO_CED_DORSO','FOTO_TITULO','COMISION_PAGADA']) must(fixtureHeaders.includes(h),`fixture header missing ${h}`);
+must(fixtureHeaders.indexOf('FOTO_TITULO') < fixtureHeaders.indexOf('COMISION_PAGADA'),'historical preimage FOTO_TITULO/COMISION_PAGADA order changed');
 for(const h of private6) must(p.includes(h),`private header missing ${h}`);
 
 const removePrivate=(after)=>after.filter(x=>!private6.includes(x));
