@@ -1,0 +1,31 @@
+name: QA C3 Identity Domain 20260908
+on:
+  push:
+    branches: [audit/c3-identity-domain-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/C3_IDENTITY_DOMAIN_AUDIT_2026-09-08.md'
+      - 'scripts/qa_c3_identity_domain_20260908.mjs'
+      - '.github/workflows/qa-c3-identity-domain-20260908.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax
+        run: node --check scripts/qa_c3_identity_domain_20260908.mjs
+      - name: Verify C3 identity-domain classification
+        run: node scripts/qa_c3_identity_domain_20260908.mjs
+      - name: Preserve C2-C4 rollback audit markers
+        run: |
+          grep -Fq 'HISTORICAL_WRITE_HARNESS_NOT_ROLLBACK_SAFE_FOR_BLOCK_C' 00_DOCUMENTACION/C2_C4_ROLLBACK_COVERAGE_2026-09-08.md
+          test -f scripts/qa_c2_c4_rollback_coverage_20260908.mjs
+      - name: Preserve C0 stop
+        run: grep -Fq 'BLOQUEADO_HUMANO' 00_DOCUMENTACION/C0_PROSPECTOS_HEADER_ORDER_2026-09-08.md
+      - name: Diff hygiene
+        run: git diff --check 00cec69010807bc0c67ee79f0d34b280fc372df3...HEAD
