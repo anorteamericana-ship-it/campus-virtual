@@ -1,0 +1,32 @@
+name: QA C0 Prospectos Header Order 20260908
+on:
+  push:
+    branches: [audit/c0-prospectos-header-order-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/C0_PROSPECTOS_HEADER_ORDER_2026-09-08.md'
+      - 'scripts/qa_c0_prospectos_header_order_20260908.mjs'
+      - '.github/workflows/qa-c0-prospectos-header-order-20260908.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax
+        run: node --check scripts/qa_c0_prospectos_header_order_20260908.mjs
+      - name: Verify historical header-order evidence and post-smoke algebra
+        run: node scripts/qa_c0_prospectos_header_order_20260908.mjs
+      - name: Regress parent guard-coverage contract by exact artifacts
+        run: |
+          git cat-file -e adf3a449c7be1a747cc6fcfe29f9cccc934ef25b^{commit}
+          test "$(git hash-object 00_DOCUMENTACION/BLOQUE_C_E4_GUARD_COVERAGE_2026-09-08.md)" = "$(git rev-parse adf3a449c7be1a747cc6fcfe29f9cccc934ef25b:00_DOCUMENTACION/BLOQUE_C_E4_GUARD_COVERAGE_2026-09-08.md)"
+          grep -Fq 'C3_IDENTITY_MAP_COVERAGE=INCOMPLETE' scripts/qa_block_c_e4_guard_coverage_20260908.mjs
+          grep -Fq 'E4=STOP' scripts/qa_block_c_e4_guard_coverage_20260908.mjs
+      - name: Diff hygiene
+        run: git diff --check adf3a449c7be1a747cc6fcfe29f9cccc934ef25b...HEAD
