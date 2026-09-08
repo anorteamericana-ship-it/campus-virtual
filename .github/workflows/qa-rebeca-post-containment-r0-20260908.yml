@@ -27,7 +27,13 @@ jobs:
         run: node --check scripts/qa_rebeca_post_containment_r0_20260908.mjs
       - name: Verify primary containment boundary for Rebeca
         run: node scripts/qa_rebeca_post_containment_r0_20260908.mjs
-      - name: Regress Block C parent
-        run: node scripts/qa_block_c_prewrite_e0e1_20260908.mjs
+      - name: Regress Block C parent contract without reusing its snapshot-only diff scope
+        run: |
+          git cat-file -e 14048346d5392a1ff0f9208bf9c42c07713ff019^{commit}
+          test "$(git hash-object 00_DOCUMENTACION/BLOQUE_C_PREWRITE_E0_E1_2026-09-08.md)" = "$(git rev-parse 14048346d5392a1ff0f9208bf9c42c07713ff019:00_DOCUMENTACION/BLOQUE_C_PREWRITE_E0_E1_2026-09-08.md)"
+          test "$(git hash-object scripts/qa_block_c_prewrite_e0e1_20260908.mjs)" = "$(git rev-parse 14048346d5392a1ff0f9208bf9c42c07713ff019:scripts/qa_block_c_prewrite_e0e1_20260908.mjs)"
+          grep -Fq 'C0=BLOQUEADO_HUMANO' scripts/qa_block_c_prewrite_e0e1_20260908.mjs
+          grep -Fq 'C1_C2_C3_C4=E0_E1_ONLY' scripts/qa_block_c_prewrite_e0e1_20260908.mjs
+          grep -Fq 'E4=STOP' scripts/qa_block_c_prewrite_e0e1_20260908.mjs
       - name: Diff hygiene
         run: git diff --check 14048346d5392a1ff0f9208bf9c42c07713ff019...HEAD
