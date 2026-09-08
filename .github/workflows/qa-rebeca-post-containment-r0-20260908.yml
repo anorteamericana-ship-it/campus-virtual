@@ -1,0 +1,33 @@
+name: QA Rebeca Post Containment R0 20260908
+
+on:
+  push:
+    branches: [audit/rebeca-post-containment-r0-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/REBECA_POST_CONTAINMENT_R0_2026-09-08.md'
+      - 'scripts/qa_rebeca_post_containment_r0_20260908.mjs'
+      - '.github/workflows/qa-rebeca-post-containment-r0-20260908.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check scripts/qa_rebeca_post_containment_r0_20260908.mjs
+      - name: Verify primary containment boundary for Rebeca
+        run: node scripts/qa_rebeca_post_containment_r0_20260908.mjs
+      - name: Regress Block C parent
+        run: node scripts/qa_block_c_prewrite_e0e1_20260908.mjs
+      - name: Diff hygiene
+        run: git diff --check 14048346d5392a1ff0f9208bf9c42c07713ff019...HEAD
