@@ -1,0 +1,32 @@
+name: QA Rebeca Route Provenance 20260908
+on:
+  push:
+    branches: [audit/rebeca-route-provenance-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/REBECA_ROUTE_PROVENANCE_AUDIT_2026-09-08.md'
+      - 'scripts/qa_rebeca_route_provenance_20260908.mjs'
+      - '.github/workflows/qa-rebeca-route-provenance-20260908.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax
+        run: node --check scripts/qa_rebeca_route_provenance_20260908.mjs
+      - name: Verify route provenance
+        run: node scripts/qa_rebeca_route_provenance_20260908.mjs
+      - name: Preserve R0 containment stop
+        run: grep -Fq 'R0_HANDLER_SOURCE=BLOCKED' 00_DOCUMENTACION/REBECA_POST_CONTAINMENT_R0_2026-09-08.md
+      - name: Preserve C0 human stop
+        run: grep -Fq 'BLOQUEADO_HUMANO' 00_DOCUMENTACION/C0_PROSPECTOS_HEADER_ORDER_2026-09-08.md
+      - name: No functional source change
+        run: |
+          test -z "$(git diff --name-only 4f44fc55badf17e3b8d852ba27273e09c071fcf6...HEAD | grep -Ev '^(00_DOCUMENTACION/REBECA_ROUTE_PROVENANCE_AUDIT_2026-09-08.md|scripts/qa_rebeca_route_provenance_20260908.mjs|\.github/workflows/qa-rebeca-route-provenance-20260908.yml)$' || true)"
+      - name: Diff hygiene
+        run: git diff --check 4f44fc55badf17e3b8d852ba27273e09c071fcf6...HEAD
