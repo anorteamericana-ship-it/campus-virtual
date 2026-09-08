@@ -1,0 +1,33 @@
+name: QA C1 Retry Idempotency Boundary 20260908
+
+on:
+  push:
+    branches: [audit/c1-retry-idempotency-boundary-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/C1_RETRY_IDEMPOTENCY_BOUNDARY_2026-09-08.md'
+      - 'scripts/qa_c1_retry_idempotency_boundary_20260908.mjs'
+      - '.github/workflows/qa-c1-retry-idempotency-boundary-20260908.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check scripts/qa_c1_retry_idempotency_boundary_20260908.mjs
+      - name: Verify C1 retry/idempotency boundary
+        run: node scripts/qa_c1_retry_idempotency_boundary_20260908.mjs
+      - name: Preserve C0 header-order evidence
+        run: node scripts/qa_c0_prospectos_header_order_20260908.mjs
+      - name: Diff hygiene
+        run: git diff --check 6ee9b2880e61c12da730ed6fb7f20d654c75e54b...HEAD
