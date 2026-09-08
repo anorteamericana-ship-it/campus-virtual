@@ -1,0 +1,35 @@
+name: QA C2 C4 Rollback Coverage 20260908
+on:
+  push:
+    branches: [audit/c2-c4-rollback-coverage-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/C2_C4_ROLLBACK_COVERAGE_2026-09-08.md'
+      - 'scripts/qa_c2_c4_rollback_coverage_20260908.mjs'
+      - '.github/workflows/qa-c2-c4-rollback-coverage-20260908.yml'
+permissions:
+  contents: read
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax
+        run: node --check scripts/qa_c2_c4_rollback_coverage_20260908.mjs
+      - name: Verify C2-C4 rollback coverage
+        run: node scripts/qa_c2_c4_rollback_coverage_20260908.mjs
+      - name: Preserve C1 retry contract markers
+        run: |
+          grep -Fq 'CLIENT_IDEMPOTENCY_KEY=ABSENT_IN_FROZEN_CALLS' scripts/qa_c1_retry_idempotency_boundary_20260908.mjs
+          grep -Fq 'C1_E4=STOP' scripts/qa_c1_retry_idempotency_boundary_20260908.mjs
+          grep -Fq 'C0-SCHEMA62 continúa `BLOQUEADO_HUMANO`' 00_DOCUMENTACION/C1_RETRY_IDEMPOTENCY_BOUNDARY_2026-09-08.md
+      - name: Preserve C0 header-order contract markers
+        run: |
+          grep -Fq 'BLOQUEADO_HUMANO' 00_DOCUMENTACION/C0_PROSPECTOS_HEADER_ORDER_2026-09-08.md
+          test -f scripts/qa_c0_prospectos_header_order_20260908.mjs
+      - name: Diff hygiene
+        run: git diff --check c4a6406dfa9b5a2a960eec3f47bbe3253f459660...HEAD
