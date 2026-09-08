@@ -1,0 +1,38 @@
+name: QA Block C E4 Guard Coverage 20260908
+
+on:
+  push:
+    branches: [audit/block-c-e4-guard-coverage-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/BLOQUE_C_E4_GUARD_COVERAGE_2026-09-08.md'
+      - 'scripts/qa_block_c_e4_guard_coverage_20260908.mjs'
+      - '.github/workflows/qa-block-c-e4-guard-coverage-20260908.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check scripts/qa_block_c_e4_guard_coverage_20260908.mjs
+      - name: Verify historical guard coverage gaps
+        run: node scripts/qa_block_c_e4_guard_coverage_20260908.mjs
+      - name: Regress parent Rebeca R0 contract without snapshot-only scope
+        run: |
+          git cat-file -e 6508a21363bd21b424a16483f0c56f722392aa6e^{commit}
+          test "$(git hash-object 00_DOCUMENTACION/REBECA_POST_CONTAINMENT_R0_2026-09-08.md)" = "$(git rev-parse 6508a21363bd21b424a16483f0c56f722392aa6e:00_DOCUMENTACION/REBECA_POST_CONTAINMENT_R0_2026-09-08.md)"
+          test "$(git hash-object scripts/qa_rebeca_post_containment_r0_20260908.mjs)" = "$(git rev-parse 6508a21363bd21b424a16483f0c56f722392aa6e:scripts/qa_rebeca_post_containment_r0_20260908.mjs)"
+          grep -Fq 'HANDLER_SOURCE=BLOCKED' scripts/qa_rebeca_post_containment_r0_20260908.mjs
+          grep -Fq 'R1_R2_R3=STOP' scripts/qa_rebeca_post_containment_r0_20260908.mjs
+      - name: Diff hygiene
+        run: git diff --check 6508a21363bd21b424a16483f0c56f722392aa6e...HEAD
