@@ -29,6 +29,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -37,4 +39,4 @@ jobs:
       - name: C3.1 parser QA
         run: node scripts/qa_conape_portal_parser_c3_1.mjs
       - name: Diff hygiene
-        run: git diff --check HEAD^ HEAD
+        run: git diff --check origin/main...HEAD
