@@ -1,8 +1,8 @@
 # C3 · CONAPE PORTAL · contrato de integración
 
-**Estado:** DISEÑO + C3.1 SOURCE/QA ONLY  
-**Base inicial C3.1:** `main@b025b270b8df633efe7d7682666645cf8dfe6030`  
-**Fuente externa:** Oracle APEX · Prospectación Reclutador · reporte de prospectos  
+**Estado:** DISEÑO + C3.1 SOURCE/QA ONLY
+**Base inicial C3.1:** `main@b025b270b8df633efe7d7682666645cf8dfe6030`
+**Fuente externa:** Oracle APEX · Prospectación Reclutador · reporte de prospectos
 **Regla principal:** CONAPE es fuente externa de verdad; el navegador de Ventas nunca recibe credenciales/cookies/sesión APEX.
 
 ## 1. Separación de conceptos
