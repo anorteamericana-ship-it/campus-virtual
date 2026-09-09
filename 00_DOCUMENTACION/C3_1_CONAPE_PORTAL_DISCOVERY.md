@@ -1,8 +1,8 @@
 # C3.1 · CONAPE Portal Discovery / Parser Read-Only
 
-**Rama:** `feature/conape-portal-parser-c3-1`  
-**Base:** `main@b025b270b8df633efe7d7682666645cf8dfe6030`  
-**Nivel objetivo:** E1 SINTÉTICA LOCAL/CI  
+**Rama:** `feature/conape-portal-parser-c3-1`
+**Base:** `main@b025b270b8df633efe7d7682666645cf8dfe6030`
+**Nivel objetivo:** E1 SINTÉTICA LOCAL/CI
 **PROD / Apps Script / CONAPE writes:** NO
 
 ## Evidencia observada
