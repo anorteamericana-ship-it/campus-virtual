@@ -1,13 +1,15 @@
-name: QA CONAPE Portal Parser C3.1
+name: QA CONAPE Portal C3
 
 on:
   pull_request:
     paths:
       - 'scripts/conape_portal/**'
       - 'scripts/qa_conape_portal_parser_c3_1.mjs'
+      - 'scripts/qa_conape_portal_capture_c3_2.mjs'
       - 'tests/fixtures/conape_portal/**'
       - '00_DOCUMENTACION/C3_CONAPE_PORTAL_SPEC.md'
       - '00_DOCUMENTACION/C3_1_CONAPE_PORTAL_DISCOVERY.md'
+      - '00_DOCUMENTACION/C3_2_CONAPE_CAPTURE_READONLY.md'
       - '.github/workflows/qa-conape-portal-parser-c3-1.yml'
   push:
     branches:
@@ -15,16 +17,18 @@ on:
     paths:
       - 'scripts/conape_portal/**'
       - 'scripts/qa_conape_portal_parser_c3_1.mjs'
+      - 'scripts/qa_conape_portal_capture_c3_2.mjs'
       - 'tests/fixtures/conape_portal/**'
       - '00_DOCUMENTACION/C3_CONAPE_PORTAL_SPEC.md'
       - '00_DOCUMENTACION/C3_1_CONAPE_PORTAL_DISCOVERY.md'
+      - '00_DOCUMENTACION/C3_2_CONAPE_CAPTURE_READONLY.md'
       - '.github/workflows/qa-conape-portal-parser-c3-1.yml'
 
 permissions:
   contents: read
 
 jobs:
-  parser:
+  parser-and-capture:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -34,9 +38,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntax
-        run: node --check scripts/conape_portal/parse_apex_report.mjs && node --check scripts/qa_conape_portal_parser_c3_1.mjs
+      - name: Syntax Node
+        run: |
+          node --check scripts/conape_portal/parse_apex_report.mjs
+          node --check scripts/conape_portal/capture_chrome_cdp.mjs
+          node --check scripts/qa_conape_portal_parser_c3_1.mjs
+          node --check scripts/qa_conape_portal_capture_c3_2.mjs
+      - name: Syntax PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/conape_portal/run_conape_capture_windows.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
       - name: C3.1 parser QA
         run: node scripts/qa_conape_portal_parser_c3_1.mjs
+      - name: C3.2 capture QA
+        run: node scripts/qa_conape_portal_capture_c3_2.mjs
       - name: Diff hygiene
         run: git diff --check origin/main...HEAD
