@@ -1,0 +1,40 @@
+name: QA CONAPE Portal Parser C3.1
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/conape_portal/**'
+      - 'scripts/qa_conape_portal_parser_c3_1.mjs'
+      - 'tests/fixtures/conape_portal/**'
+      - '00_DOCUMENTACION/C3_CONAPE_PORTAL_SPEC.md'
+      - '00_DOCUMENTACION/C3_1_CONAPE_PORTAL_DISCOVERY.md'
+      - '.github/workflows/qa-conape-portal-parser-c3-1.yml'
+  push:
+    branches:
+      - 'feature/conape-portal-parser-c3-1'
+    paths:
+      - 'scripts/conape_portal/**'
+      - 'scripts/qa_conape_portal_parser_c3_1.mjs'
+      - 'tests/fixtures/conape_portal/**'
+      - '00_DOCUMENTACION/C3_CONAPE_PORTAL_SPEC.md'
+      - '00_DOCUMENTACION/C3_1_CONAPE_PORTAL_DISCOVERY.md'
+      - '.github/workflows/qa-conape-portal-parser-c3-1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  parser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check scripts/conape_portal/parse_apex_report.mjs && node --check scripts/qa_conape_portal_parser_c3_1.mjs
+      - name: C3.1 parser QA
+        run: node scripts/qa_conape_portal_parser_c3_1.mjs
+      - name: Diff hygiene
+        run: git diff --check HEAD^ HEAD
