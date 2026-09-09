@@ -31,7 +31,7 @@ function Stop-DedicatedBrowserProcesses {
       Where-Object {
         ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') -and
         $_.CommandLine -and
-        $_.CommandLine.Contains($ProfilePath, [System.StringComparison]::OrdinalIgnoreCase)
+        $_.CommandLine.IndexOf($ProfilePath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
       } |
       ForEach-Object {
         try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch { }
