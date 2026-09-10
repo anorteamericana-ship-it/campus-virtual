@@ -1,97 +1,111 @@
-# C3.3 · Reclutar prospecto en CONAPE desde Ventas
+# C3.3/C3.4 · Reclutar prospecto en CONAPE desde Ventas
 
-**Tipo de cambio:** MIXTO / RELEASE CONTROLADO
-**Base:** `feature/conape-portal-parser-c3-1@696af9f7c971e963b04c5fddc0d122852cb10cbc`
-**Rama:** `feature/conape-reclutamiento-c3-3`
-**Estado:** SOURCE + E1 + **E2 AUTENTICADA LECTURA del formulario real Reclutar**. Envío real sigue bloqueado hasta congelar el contrato de submit/confirmación y ejecutar E4 controlada.
+**Tipo de cambio:** MIXTO / RELEASE CONTROLADO  
+**Rama:** `feature/conape-reclutamiento-c3-3`  
+**Estado:** formulario real + acción `CREATE` confirmados en **E2 AUTENTICADA LECTURA**. Harness de **E4 ESCRITURA CONTROLADA** preparado para una única creación autorizada. Sin merge ni PROD.
 
-## Línea base registrada
+## Línea base
 
 - repositorio: `anorteamericana-ship-it/campus-virtual`
-- `main` vigente durante C3.3: `b025b270b8df633efe7d7682666645cf8dfe6030`
-- rama C3.3: `feature/conape-reclutamiento-c3-3`
-- entorno E2: Oracle APEX real `online.conape.go.cr`, sesión autenticada por el propietario, perfil Chromium temporal aislado, sin escritura.
+- `main` observado durante C3.3/C3.4: `b025b270b8df633efe7d7682666645cf8dfe6030`
+- portal: `online.conape.go.cr`
+- app Oracle APEX observada: 302
+- navegador E2/E4: Chromium temporal aislado + CDP loopback
+- no se guardan credenciales, cookies, tokens, sesión ni PII en GitHub/evidencia.
 
-## Objetivo de negocio
+## Regla canónica de negocio · 2026-09-09
 
-El asesor no debe entrar al portal CONAPE para reclutar un prospecto.
+El flujo correcto **NO** consiste en dividir o escribir el nombre completo del Campus.
 
-Flujo objetivo dentro de `ventas.html`:
+El flujo real es:
 
-`prospecto Campus -> Reclutar en CONAPE -> consulta/preflight CONAPE -> comparación -> completar faltantes -> Enviar solicitud -> confirmación -> seguimiento CONAPE`
+`Cédula Campus -> CONAPE busca identidad -> comparar contactos -> completar/actualizar teléfono/correo -> Crear nuevo Prospecto`
 
-## Botón Campus
+Reglas:
 
-Se agrega **Reclutar en CONAPE** al contexto del drawer del prospecto cuando:
+1. El Campus inicia con la **cédula** del prospecto.
+2. CONAPE busca y completa por esa cédula:
+   - Primer Apellido;
+   - Segundo Apellido;
+   - Nombre;
+   - y puede traer también correo/teléfono.
+3. **Nombre y apellidos son propiedad de CONAPE y el Campus nunca los escribe ni modifica.**
+4. El Campus compara los datos de contacto encontrados contra su prospecto.
+5. Teléfono candidato: WhatsApp del Campus normalizado a 8 dígitos.
+6. Correo candidato: correo vigente del Campus cuando deba completarse o actualizarse.
+7. Si el dato de contacto ya coincide, se conserva.
+8. Solo después del preflight se habilita **Crear nuevo Prospecto**.
 
-- `FINANCIAMIENTO = CONAPE`;
-- no está `CANCELADO`;
-- no está `ACTIVO/MATRICULADO`.
+Quedan anuladas las reglas anteriores de:
 
-C3.3 envuelve el `ProspectoDrawer` existente sin modificar su archivo grande ni duplicar sus acciones.
+- separar el nombre del Campus en tres campos;
+- pedir manualmente nombre/apellidos al vendedor;
+- tratar un correo existente en CONAPE como inmutable;
+- crear un `correo_campus_secundario` como solución automática.
 
-## Primera vista / comparación
+## Objetivo de producto
 
-La primera vista del Campus compara:
+El asesor debe poder hacerlo desde `ventas.html`:
 
-| Dato | Regla |
-|---|---|
-| Cédula | solo dígitos, sin espacios ni guiones |
-| Nombre | comparar Campus vs CONAPE; para el submit real CONAPE separa `Primer Apellido`, `Segundo Apellido` y `Nombre` |
-| Correo | si CONAPE ya tiene correo, se conserva y no se intenta sobrescribir |
-| Correo Campus | si difiere del correo CONAPE, se conserva como contacto alterno del Campus |
-| Teléfono | usar el WhatsApp del prospecto del Campus, normalizado a 8 dígitos |
+`Prospecto -> Reclutar en CONAPE -> CONAPE busca por cédula -> comparación -> completar/actualizar contactos -> Enviar solicitud -> confirmación -> seguimiento`
 
-No se mezclan silenciosamente dos correos: quedan identificados como `correo CONAPE` y `correo Campus secundario`.
+El navegador del vendedor no debe recibir credenciales CONAPE ni sesión/cookies APEX.
 
-## Contrato real descubierto en E2 · 2026-09-09/10 Costa Rica
+## Formulario real confirmado E2
 
-La prueba autenticada read-only abrió el botón real **RECLUTAR PROSPECTOS** y llegó a la página APEX:
+Ruta observada:
 
 `/apex/r/conaweb/prospectación-reclutador/prospecto`
 
-Título observado: `PROSPECTO`.
+Título: `PROSPECTO`.
 
-Contexto descubierto: `top/document`.
-
-Formulario observado:
+Formulario:
 
 - `id = wwvFlowForm`
 - `method = post`
 - `path = /apex/wwv_flow.accept`
 
-Campos visibles reales:
+Campos visibles:
 
-| Label CONAPE | Item APEX | Required | Editable | Max length |
-|---|---|---:|---:|---:|
-| Cédula del Prospecto | `P2_PRS_CEDULA` | sí | sí | 255 |
-| Primer Apellido | `P2_PRS_APELLIDO_1` | no | sí | 30 |
-| Segundo Apellido | `P2_PRS_APELLIDO_2` | no | sí | 30 |
-| Nombre | `P2_PRS_NOMBRE` | no | sí | 30 |
-| Teléfono Celular | `P2_PRS_CELULAR` | sí | sí | 8 |
-| Correo Electrónico | `P2_PRS_EMAIL` | no | sí | 128 |
+| Campo | Item APEX | Required | Max length | Propiedad operativa |
+|---|---|---:|---:|---|
+| Cédula del Prospecto | `P2_PRS_CEDULA` | sí | 255 | Campus inicia lookup |
+| Primer Apellido | `P2_PRS_APELLIDO_1` | no | 30 | CONAPE · no escribir desde Campus |
+| Segundo Apellido | `P2_PRS_APELLIDO_2` | no | 30 | CONAPE · no escribir desde Campus |
+| Nombre | `P2_PRS_NOMBRE` | no | 30 | CONAPE · no escribir desde Campus |
+| Teléfono Celular | `P2_PRS_CELULAR` | sí | 8 | contacto completables/actualizable |
+| Correo Electrónico | `P2_PRS_EMAIL` | no | 128 | contacto completable/actualizable |
 
-Botones visibles en la página:
+Botones observados:
 
 - `Regresar`
 - `Crear nuevo Prospecto`
 
-El discovery omitió 33 inputs hidden y **no leyó sus valores**. `write_performed=false`.
+En discovery se omitieron 33 hidden inputs; no se emitieron sus valores.
 
-### Consecuencias para el Campus
+## Contrato de acción confirmado E2
 
-1. El teléfono a enviar debe quedar en exactamente 8 dígitos; coincide con la regla de usar el WhatsApp normalizado.
-2. El correo es editable en la vista de creación de un nuevo prospecto; aun así, por regla de negocio, si un registro CONAPE existente ya trae correo, el Campus no lo sobrescribe silenciosamente.
-3. CONAPE no usa un único campo `nombre_completo` para crear: exige tres piezas distintas de nombre. El Campus debe mostrar/confirmar `Primer Apellido`, `Segundo Apellido` y `Nombre` antes del submit si no dispone de esos datos estructurados de forma confiable.
-4. No se debe adivinar la separación del nombre completo sin una confirmación visible del asesor o una fuente estructurada confiable.
+La inspección autenticada del handler/dynamic action detectó:
 
-## Contrato frontend reservado
+- proceso servidor: `VALIDA_CEDULA`;
+- APEX Dynamic Action;
+- `NATIVE_SUBMIT_PAGE`;
+- `attribute01 = CREATE`;
+- `attribute02 = Y`.
 
-Lectura/preflight:
+Por tanto `CREATE` queda congelado como candidato de request real de creación con evidencia E2. La prueba que produjo esta evidencia no invocó el handler ni el botón:
+
+- `handler_invoked = false`
+- `button_clicked = false`
+- `write_performed = false`.
+
+## Contratos Campus reservados
+
+### Preview
 
 `fn = conapePortalRecruitPreview`
 
-Entrada mínima:
+Entrada:
 
 ```json
 { "cedula": "111111111" }
@@ -108,153 +122,124 @@ Respuesta objetivo:
     "apellido_1": "...",
     "apellido_2": "...",
     "nombre": "...",
-    "correo": "...",
-    "telefono": "..."
+    "telefono": "...",
+    "correo": "..."
   },
   "source_version": "...",
   "can_submit": true
 }
 ```
 
-Escritura:
+La identidad de esa respuesta viene de CONAPE. El frontend solo la presenta.
+
+### Submit
 
 `fn = conapePortalRecruitSubmit`
 
-Payload objetivo ya alineado al formulario real:
+Payload Campus objetivo:
 
 ```json
 {
   "cedula": "111111111",
+  "source_version": "...",
   "prospecto": {
-    "P2_PRS_CEDULA": "111111111",
-    "P2_PRS_APELLIDO_1": "...",
-    "P2_PRS_APELLIDO_2": "...",
-    "P2_PRS_NOMBRE": "...",
-    "P2_PRS_CELULAR": "88881234",
-    "P2_PRS_EMAIL": "correo@ejemplo.com"
-  },
-  "source_version": "..."
+    "cedula": "111111111",
+    "telefono": "88881234",
+    "correo": "correo@ejemplo.com",
+    "update_telefono": true,
+    "update_correo": false,
+    "identity_source": "CONAPE_CEDULA_LOOKUP"
+  }
 }
 ```
 
-La UI **no habilita Enviar solicitud** mientras `can_submit !== true`.
+**No contiene nombre ni apellidos.** El bridge debe obtenerlos por cédula dentro de la sesión CONAPE y conservarlos tal como los devolvió el portal.
 
-El backend/bridge todavía no está implementado/desplegado. El frontend falla cerrado y lo comunica como integración pendiente; nunca simula éxito real.
+La UI falla cerrado mientras `can_submit !== true`.
 
-## Regla del correo
+## C3.4 · E4 controlada
 
-1. Si CONAPE no tiene correo y el formulario permite escribirlo: usar correo Campus.
-2. Si CONAPE ya tiene correo: conservar correo CONAPE sin modificarlo.
-3. Si el correo Campus difiere: mantenerlo en el Campus como contacto alterno.
-4. Nunca presentar un cambio de correo en CONAPE como hecho si el portal no lo confirmó.
+Archivos:
 
-## Regla del teléfono
+- `scripts/conape_portal/recruit_e4_controlled_c3_4.mjs`
+- `scripts/conape_portal/run_conape_recruit_e4_controlled_windows.ps1`
 
-Para reclutamiento nuevo, el teléfono candidato es el campo WhatsApp del prospecto Campus:
+La corrida E4 está diseñada para:
 
-- quitar `+506` cuando venga incluido;
-- quitar espacios, guiones, paréntesis y otros separadores;
-- conservar los últimos 8 dígitos;
-- no inventar teléfono si no existe.
+1. abrir CONAPE en perfil temporal;
+2. iniciar sesión manualmente por el propietario;
+3. abrir `Reclutar Prospectos`;
+4. pedir **solo cédula**;
+5. colocar únicamente `P2_PRS_CEDULA` y disparar sus eventos normales;
+6. esperar a que CONAPE complete identidad;
+7. bloquear si CONAPE no devuelve al menos primer apellido + nombre;
+8. pedir únicamente teléfono/correo cuando haya que completar o actualizar;
+9. escribir solo `P2_PRS_CELULAR` y/o `P2_PRS_EMAIL`;
+10. mostrar precheck sin PII;
+11. exigir confirmación literal `CREAR`;
+12. presionar `Crear nuevo Prospecto` una sola vez;
+13. capturar solo metadatos seguros del request/resultado;
+14. no reintentar automáticamente si no se puede confirmar el éxito.
 
-## Regla de nombres
+Invariantes E4:
 
-CONAPE crea el prospecto con tres campos separados:
+- `identity_source = CONAPE_CEDULA_LOOKUP`
+- `identity_fields_modified = false`
+- `write_count <= 1`
+- `pii_emitted = false`
+- `cookies_emitted = false`
+- `hidden_values_emitted = false`.
 
-- `P2_PRS_APELLIDO_1`
-- `P2_PRS_APELLIDO_2`
-- `P2_PRS_NOMBRE`
+Si aparece `CREATE_NOT_CONFIRMED`, no repetir con la misma cédula hasta verificar si CONAPE ya creó el prospecto.
 
-Si el Campus solo dispone de `NOMBRE` completo, la primera versión operativa debe presentar una separación sugerida únicamente como borrador editable y exigir confirmación del vendedor antes de `Enviar solicitud`. No se debe persistir ni enviar una separación inferida como si fuera dato confirmado.
+## Frontend Ventas alineado
 
-## Discovery automático del botón Reclutar
+`src/ventas_conape_reclutar_c3_3.jsx` ahora presenta:
 
-`scripts/conape_portal/discover_recruit_form_c3_3.mjs`
+- cédula;
+- Primer Apellido CONAPE;
+- Segundo Apellido CONAPE;
+- Nombre CONAPE;
+- teléfono Campus vs CONAPE;
+- correo Campus vs CONAPE;
+- acción de contacto: conservar / completar / actualizar.
 
-Launcher Windows:
+El payload frontend no envía nombre ni apellidos.
 
-`scripts/conape_portal/run_conape_recruit_discovery_windows.ps1`
+## Arquitectura final
 
-El script:
+`Ventas browser -> Apps Script Campus autenticado -> bridge privado CONAPE -> Oracle APEX`
 
-1. abre CONAPE en perfil temporal aislado;
-2. el propietario inicia sesión directamente;
-3. detecta el botón visible `Reclutar`;
-4. lo abre;
-5. **NO presiona Crear nuevo Prospecto / Enviar / Guardar**;
-6. inventaría solo metadatos de campos visibles: label, id/name, tipo, required, readonly, maxlength, pattern y opciones de selects;
-7. omite valores actuales, inputs hidden, cookies y tokens;
-8. elimina el perfil temporal al terminar.
+El bridge privado deberá:
 
-### Hallazgo operativo del primer intento
-
-El primer E2 produjo un falso positivo porque el discovery aceptó los cuatro controles preexistentes de `PROSPECTACIÓN RECLUTADOR` como si fueran el formulario. Se corrigió con baseline estructural + `pickChangedContext()`: ahora solo acepta un contexto nuevo/cambiado, incluyendo navegación top, dialogs e iframes same-origin. La segunda ejecución autenticada llegó correctamente a la página `PROSPECTO` y congeló los seis items APEX anteriores.
-
-### Hallazgo operativo del submit discovery
-
-En una corrida posterior del discovery del contrato de submit, el script informó que había activado `Reclutar Prospectos`, pero el navegador permaneció visualmente en `PROSPECTACIÓN RECLUTADOR`. La causa en el código era que un resultado `hit.click()` se marcaba como apertura definitiva antes de observar realmente la ruta `/prospecto`; además, la evaluación CDP usaba `userGesture:false` y cerraba el cliente inmediatamente.
-
-Se corrigió sin ampliar permisos ni ejecutar escritura:
-
-- el click de **Reclutar Prospectos** se ejecuta con `userGesture:true`;
-- el cliente se mantiene brevemente después del click para permitir que APEX procese la navegación;
-- la apertura solo se considera confirmada al observar `/prospecto`;
-- si no se observa, se reintenta como máximo 5 veces, separado por 3 segundos;
-- después de 5 intentos se bloquea con `RECRUIT_NAVIGATION_NOT_OBSERVED` en vez de esperar silenciosamente;
-- **Crear nuevo Prospecto nunca es presionado por este discovery**.
-
-Esta corrección permanece pendiente de nueva verificación autenticada E2.
-
-## Arquitectura final prevista
-
-`Ventas browser -> Apps Script Campus autenticado -> CONAPE bridge privado -> Oracle APEX`
-
-El navegador del vendedor nunca recibe credenciales CONAPE ni cookies APEX.
-
-El bridge privado tendrá que:
-
-- autenticar con credencial autorizada guardada fuera del repo;
+- autenticar fuera del frontend y fuera del repo;
 - resolver sesión/tokens APEX dinámicamente;
-- ejecutar primero consulta por cédula;
-- rechazar duplicados/ambigüedad;
-- respetar campos locked/read-only del formulario;
-- enviar únicamente después de preflight reciente (`source_version`);
-- devolver confirmación verificable;
-- registrar auditoría sin password/cookies/tokens.
+- buscar primero por cédula;
+- recuperar identidad de CONAPE;
+- comparar/actualizar solo contactos permitidos;
+- evitar duplicados y reintentos ciegos;
+- usar `CREATE` únicamente tras preflight reciente;
+- verificar resultado real, no solo HTTP 200;
+- registrar auditoría sin secretos ni PII innecesaria.
 
-## Gate siguiente
+## Gate inmediato
 
-El contrato de **campos** ya está confirmado E2. Falta congelar el contrato de **submit** sin ejecutar todavía una escritura real:
+El siguiente gate no es otro discovery. Es una única **E4 controlada** con prospecto real autorizado que aún no esté reclutado.
 
-- identificador/request exacto detrás de `Crear nuevo Prospecto`;
-- proceso APEX que se dispara;
-- forma de detectar validación/duplicado;
-- evidencia de éxito que no dependa únicamente de HTTP 200;
-- estrategia de idempotencia/reintento;
-- procedimiento de reversión para una futura E4 controlada.
+Si E4 confirma el request/resultado, el siguiente trabajo es implementar y desplegar de forma controlada:
 
-Solo después se implementa el bridge `preview + submit` y se habilita una prueba E4 con prospecto de prueba autorizado.
-
-## Gate de escritura
-
-Según `AGENTS.md`, una operación CONAPE requiere **E4 ESCRITURA CONTROLADA** en un escenario autorizado/aislado con trazabilidad.
-
-Antes de E4 deben estar confirmados:
-
-- campos exactos del formulario Reclutar: **CONFIRMADO E2**;
-- cuáles son obligatorios: **CONFIRMADO E2**;
-- correo editable en creación: **CONFIRMADO E2**;
-- teléfono max 8: **CONFIRMADO E2**;
-- selector/acción APEX que ejecuta el submit: **PENDIENTE**;
-- respuesta de éxito/fallo/duplicado: **PENDIENTE**;
-- idempotencia o detección de reenvío: **PENDIENTE**;
-- reversión o procedimiento de limpieza del prospecto de prueba: **PENDIENTE**.
+- `conapePortalRecruitPreview`
+- `conapePortalRecruitSubmit`
+- bridge privado
+- verificación E3/E4 del flujo desde Ventas.
 
 ## No hacer
 
-- no hardcodear `p_instance`, `PLUGIN`, session ni CSRF;
-- no poner usuario/contraseña CONAPE en frontend, GitHub o Apps Script Properties visibles al vendedor;
-- no llamar `wwv_flow.ajax` directamente desde `ventas.html`;
-- no cambiar etapa interna a `CONAPE_SOLICITUD` antes de recibir confirmación real del reclutamiento;
-- no declarar éxito por HTTP 200 si la respuesta APEX indica validación/duplicado/error;
-- no inferir silenciosamente apellidos/nombres desde un nombre completo y enviarlos como confirmados.
+- no escribir `P2_PRS_APELLIDO_1`, `P2_PRS_APELLIDO_2` ni `P2_PRS_NOMBRE` desde el Campus;
+- no inferir nombre/apellidos desde un nombre completo;
+- no hardcodear `p_instance`, sesión, CSRF, cookies o tokens;
+- no guardar credenciales CONAPE en frontend/GitHub;
+- no llamar infraestructura APEX directamente desde `ventas.html`;
+- no marcar reclutamiento como exitoso por HTTP 200 solamente;
+- no reintentar `CREATE` automáticamente tras un resultado incierto;
+- no fusionar/publicar C3.4 antes de completar el release controlado correspondiente.
