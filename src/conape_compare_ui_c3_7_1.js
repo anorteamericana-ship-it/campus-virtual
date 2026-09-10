@@ -23,11 +23,12 @@
     if(!av||!bv) return 'falta';
     return av===bv?'igual':'diferente';
   }
-  function contactDecision(campusValue, conapeValue, normalizer){
+  function contactDecision(campusValue, conapeValue, normalizer, preserveExisting=false){
     const c=normalizer(campusValue), k=normalizer(conapeValue);
     if(!c) return { final:conapeValue||'', action:'Conservar CONAPE' };
     if(!k) return { final:campusValue, action:'Completar desde Campus' };
     if(c===k) return { final:conapeValue||campusValue, action:'Coincide' };
+    if(preserveExisting) return { final:conapeValue, action:'Conservar CONAPE · Campus queda alterno' };
     return { final:campusValue, action:'Actualizar desde Campus' };
   }
 
@@ -72,7 +73,7 @@
       whatsapp:phoneDigits(first(cRaw,['whatsapp','WHATSAPP','telefono','TELEFONO','tel1','TEL1'])),
     };
     const phone=contactDecision(campus.whatsapp,conape.telefono,phoneDigits);
-    const mail=contactDecision(campus.correo,conape.correo,email);
+    const mail=contactDecision(campus.correo,conape.correo,email,true);
     const identityFound=!!(conape.apellido_1&&conape.nombre);
     return {
       campus, conape, identityFound,
@@ -88,8 +89,9 @@
         cedula:conape.cedula||campus.cedula,
         telefono:phone.final,
         correo:mail.final,
+        correo_campus_alterno:(campus.correo&&conape.correo&&email(campus.correo)!==email(conape.correo))?campus.correo:'',
         update_telefono:!!campus.whatsapp&&phoneDigits(campus.whatsapp)!==phoneDigits(conape.telefono),
-        update_correo:!!campus.correo&&email(campus.correo)!==email(conape.correo),
+        update_correo:!conape.correo&&!!campus.correo,
         identity_source:'CONAPE_CEDULA_LOOKUP',
       },
     };
