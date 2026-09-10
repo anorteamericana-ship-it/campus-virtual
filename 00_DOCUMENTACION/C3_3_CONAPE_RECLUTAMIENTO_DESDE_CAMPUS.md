@@ -1,8 +1,8 @@
 # C3.3 · Reclutar prospecto en CONAPE desde Ventas
 
-**Tipo de cambio:** MIXTO / RELEASE CONTROLADO  
-**Base:** `feature/conape-portal-parser-c3-1@696af9f7c971e963b04c5fddc0d122852cb10cbc`  
-**Rama:** `feature/conape-reclutamiento-c3-3`  
+**Tipo de cambio:** MIXTO / RELEASE CONTROLADO
+**Base:** `feature/conape-portal-parser-c3-1@696af9f7c971e963b04c5fddc0d122852cb10cbc`
+**Rama:** `feature/conape-reclutamiento-c3-3`
 **Estado:** SOURCE + E1 + **E2 AUTENTICADA LECTURA del formulario real Reclutar**. Envío real sigue bloqueado hasta congelar el contrato de submit/confirmación y ejecutar E4 controlada.
 
 ## Línea base registrada
@@ -189,6 +189,21 @@ El script:
 ### Hallazgo operativo del primer intento
 
 El primer E2 produjo un falso positivo porque el discovery aceptó los cuatro controles preexistentes de `PROSPECTACIÓN RECLUTADOR` como si fueran el formulario. Se corrigió con baseline estructural + `pickChangedContext()`: ahora solo acepta un contexto nuevo/cambiado, incluyendo navegación top, dialogs e iframes same-origin. La segunda ejecución autenticada llegó correctamente a la página `PROSPECTO` y congeló los seis items APEX anteriores.
+
+### Hallazgo operativo del submit discovery
+
+En una corrida posterior del discovery del contrato de submit, el script informó que había activado `Reclutar Prospectos`, pero el navegador permaneció visualmente en `PROSPECTACIÓN RECLUTADOR`. La causa en el código era que un resultado `hit.click()` se marcaba como apertura definitiva antes de observar realmente la ruta `/prospecto`; además, la evaluación CDP usaba `userGesture:false` y cerraba el cliente inmediatamente.
+
+Se corrigió sin ampliar permisos ni ejecutar escritura:
+
+- el click de **Reclutar Prospectos** se ejecuta con `userGesture:true`;
+- el cliente se mantiene brevemente después del click para permitir que APEX procese la navegación;
+- la apertura solo se considera confirmada al observar `/prospecto`;
+- si no se observa, se reintenta como máximo 5 veces, separado por 3 segundos;
+- después de 5 intentos se bloquea con `RECRUIT_NAVIGATION_NOT_OBSERVED` en vez de esperar silenciosamente;
+- **Crear nuevo Prospecto nunca es presionado por este discovery**.
+
+Esta corrección permanece pendiente de nueva verificación autenticada E2.
 
 ## Arquitectura final prevista
 
