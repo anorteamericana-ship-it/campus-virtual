@@ -1,7 +1,7 @@
 # C3.3/C3.4 · Reclutar prospecto en CONAPE desde Ventas
 
-**Tipo de cambio:** MIXTO / RELEASE CONTROLADO  
-**Rama:** `feature/conape-reclutamiento-c3-3`  
+**Tipo de cambio:** MIXTO / RELEASE CONTROLADO
+**Rama:** `feature/conape-reclutamiento-c3-3`
 **Estado:** formulario real + acción `CREATE` confirmados en **E2 AUTENTICADA LECTURA**. Harness de **E4 ESCRITURA CONTROLADA** preparado para una única creación autorizada. Sin merge ni PROD.
 
 ## Línea base
@@ -73,7 +73,7 @@ Campos visibles:
 | Primer Apellido | `P2_PRS_APELLIDO_1` | no | 30 | CONAPE · no escribir desde Campus |
 | Segundo Apellido | `P2_PRS_APELLIDO_2` | no | 30 | CONAPE · no escribir desde Campus |
 | Nombre | `P2_PRS_NOMBRE` | no | 30 | CONAPE · no escribir desde Campus |
-| Teléfono Celular | `P2_PRS_CELULAR` | sí | 8 | contacto completables/actualizable |
+| Teléfono Celular | `P2_PRS_CELULAR` | sí | 8 | contacto completable/actualizable |
 | Correo Electrónico | `P2_PRS_EMAIL` | no | 128 | contacto completable/actualizable |
 
 Botones observados:
