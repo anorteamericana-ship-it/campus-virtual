@@ -1,0 +1,3 @@
+C3.7 source deployment trigger.
+Expected base contains CONAPE session manager merge 776987d771a96dd5184089d261ed3dd0650ec804.
+No runtime configuration, credentials, or business logic in this marker.
