@@ -107,12 +107,22 @@ const CLICK_RECRUIT = `(() => {
   return { clicked:true };
 })()`;
 
+// IMPORTANTE: esta expresión jamás lee value/defaultValue de los controles.
+// Solo inventaría estructura visible. También inspecciona dialogs e iframes
+// same-origin porque Oracle APEX suele abrir páginas modal dentro de un iframe.
 const INSPECT_FORM = `(() => {
   const norm = v => String(v || '').replace(/\\s+/g,' ').trim();
-  const visible = el => { const s = getComputedStyle(el); const r = el.getBoundingClientRect(); return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0; };
-  const controls = Array.from(document.querySelectorAll('input:not([type="hidden"]),select,textarea')).filter(visible);
+  const isVisible = el => {
+    try {
+      const win = el.ownerDocument && el.ownerDocument.defaultView;
+      if (!win) return false;
+      const s = win.getComputedStyle(el); const r = el.getBoundingClientRect();
+      return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+    } catch { return false; }
+  };
   const labelFor = el => {
-    if (el.id) { const l = document.querySelector('label[for="' + CSS.escape(el.id) + '"]'); if (l) return norm(l.textContent); }
+    const doc = el.ownerDocument;
+    if (el.id) { const l = doc.querySelector('label[for="' + CSS.escape(el.id) + '"]'); if (l) return norm(l.textContent); }
     const wrap = el.closest('label'); if (wrap) return norm(wrap.textContent);
     const item = el.closest('.t-Form-fieldContainer,.a-Form-fieldContainer,.t-Form-inputContainer') || el.parentElement;
     if (item) { const l = item.querySelector('label'); if (l) return norm(l.textContent); }
@@ -131,16 +141,87 @@ const INSPECT_FORM = `(() => {
     pattern:el.getAttribute('pattern') || '',
     options:el.tagName === 'SELECT' ? Array.from(el.options).map(o => norm(o.textContent)).filter(Boolean).slice(0,80) : undefined
   });
-  const buttons = Array.from(document.querySelectorAll('button,input[type="button"],input[type="submit"],a[role="button"]')).filter(visible).map(el => norm(el.textContent || el.value || el.getAttribute('aria-label') || el.getAttribute('title') || '')).filter(Boolean).slice(0,40);
-  const forms = Array.from(document.querySelectorAll('form')).filter(visible).map(f => ({ id:f.id || '', method:(f.method || 'get').toLowerCase(), path:(() => { try { const u = new URL(f.action, location.href); return u.origin === location.origin ? u.pathname : '[EXTERNAL]'; } catch { return ''; } })() }));
-  return { title:norm(document.title), controls:controls.map(field), buttons, forms, hiddenInputCount:document.querySelectorAll('input[type="hidden"]').length };
+  const inspectRoot = (doc, root, kind, label) => {
+    const controls = Array.from(root.querySelectorAll('input:not([type="hidden"]),select,textarea')).filter(isVisible).map(field);
+    const buttons = Array.from(root.querySelectorAll('button,input[type="button"],input[type="submit"],a[role="button"]')).filter(isVisible).map(el => norm(el.textContent || el.getAttribute('aria-label') || el.getAttribute('title') || '')).filter(Boolean).slice(0,40);
+    const forms = Array.from(root.querySelectorAll('form')).filter(isVisible).map(f => ({ id:f.id || '', method:(f.method || 'get').toLowerCase(), path:(() => { try { const u = new URL(f.action, doc.location.href); return u.origin === doc.location.origin ? u.pathname : '[EXTERNAL]'; } catch { return ''; } })() }));
+    return { kind, label:label || '', title:norm(doc.title), controls, buttons, forms, hiddenInputCount:root.querySelectorAll('input[type="hidden"]').length };
+  };
+  const contexts = [inspectRoot(document, document, 'top', 'document')];
+  const dialogSelector = '[role="dialog"],.ui-dialog,.ui-dialog-content,.t-Dialog,.a-Dialog,.apex-dialog,.t-DialogRegion';
+  Array.from(document.querySelectorAll(dialogSelector)).filter(isVisible).forEach((d, i) => {
+    const ctx = inspectRoot(document, d, 'dialog', d.id || ('dialog-' + (i + 1)));
+    if (ctx.controls.length || ctx.buttons.length) contexts.push(ctx);
+  });
+  Array.from(document.querySelectorAll('iframe')).filter(isVisible).forEach((frame, i) => {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc || !doc.documentElement) return;
+      const ctx = inspectRoot(doc, doc, 'iframe', frame.id || frame.name || ('iframe-' + (i + 1)));
+      if (ctx.controls.length || ctx.buttons.length) contexts.push(ctx);
+      Array.from(doc.querySelectorAll(dialogSelector)).filter(isVisible).forEach((d, j) => {
+        const dctx = inspectRoot(doc, d, 'iframe-dialog', d.id || ('iframe-dialog-' + (j + 1)));
+        if (dctx.controls.length || dctx.buttons.length) contexts.push(dctx);
+      });
+    } catch { /* iframe cross-origin: no datos, no error */ }
+  });
+  return {
+    title:norm(document.title),
+    href:String(location.href || ''),
+    contexts,
+    hiddenInputCount:document.querySelectorAll('input[type="hidden"]').length,
+    visibleDialogCount:Array.from(document.querySelectorAll(dialogSelector)).filter(isVisible).length,
+    visibleIframeCount:Array.from(document.querySelectorAll('iframe')).filter(isVisible).length
+  };
 })()`;
+
+function controlKey(f = {}) {
+  return [f.tag || '', f.type || '', f.id || '', f.name || '', f.label || ''].map(v => String(v).trim().toLowerCase()).join('|');
+}
+
+function topContext(meta) {
+  return (meta?.contexts || []).find(c => c?.kind === 'top') || { controls:[] };
+}
+
+// Evita el falso positivo que apareció en E2: después del click el script veía
+// los 4 controles preexistentes de PROSPECTACIÓN RECLUTADOR y los confundía con
+// el formulario Reclutar. Ahora solo acepta un contexto NUEVO/cambiado.
+function pickChangedContext(before, after) {
+  const baseTop = topContext(before);
+  const baseKeys = new Set((baseTop.controls || []).map(controlKey));
+  const contexts = Array.isArray(after?.contexts) ? after.contexts : [];
+
+  const nested = contexts.find(c => c && c.kind !== 'top' && Array.isArray(c.controls) && c.controls.length > 0);
+  if (nested) return nested;
+
+  const top = contexts.find(c => c?.kind === 'top');
+  if (!top || !Array.isArray(top.controls) || !top.controls.length) return null;
+  const hasNewControl = top.controls.some(f => !baseKeys.has(controlKey(f)));
+  const titleChanged = String(after?.title || '') !== String(before?.title || '');
+  if (hasNewControl || titleChanged) return top;
+  return null;
+}
 
 async function waitForTarget(port, until) {
   while (Date.now() < until) {
     const t = pickTarget(await listTargets(port)); if (t) return t; await sleep(POLL_MS);
   }
   throw new DiscoveryError('CONAPE_TAB_NOT_FOUND', 'No apareció una pestaña CONAPE.');
+}
+
+async function inspectOtherConapeTargets(port, originalTargetId, baseline) {
+  const targets = (await listTargets(port)).filter(t => t?.type === 'page' && t?.webSocketDebuggerUrl && allowedTarget(t.url) && t.id !== originalTargetId);
+  for (const t of targets) {
+    const c = new CdpClient(t.webSocketDebuggerUrl);
+    try {
+      await c.connect(); await c.send('Runtime.enable');
+      const meta = await c.eval(INSPECT_FORM);
+      const chosen = pickChangedContext(baseline, meta);
+      if (chosen) return { meta, chosen, targetUrl:t.url };
+    } catch { /* target aún cargando o cerrándose */ }
+    finally { c.close(); }
+  }
+  return null;
 }
 
 async function run({ profileDir, port, timeoutMs = DEFAULT_TIMEOUT_MS }) {
@@ -160,29 +241,45 @@ async function run({ profileDir, port, timeoutMs = DEFAULT_TIMEOUT_MS }) {
     while (Date.now() < until) {
       const found = await client.eval(FIND_RECRUIT);
       if (found?.found) {
+        const baseline = await client.eval(INSPECT_FORM);
         console.log(`C3.3: botón Reclutar detectado (${found.label}). Abriendo solo para descubrir el formulario; NO se enviará.`);
         const clicked = await client.eval(CLICK_RECRUIT);
         if (!clicked?.clicked) throw new DiscoveryError('RECRUIT_CLICK_FAILED', 'No se pudo abrir Reclutar.');
-        await sleep(1200);
-        for (let i = 0; i < 20; i += 1) {
+        await sleep(900);
+        for (let i = 0; i < 35; i += 1) {
           const meta = await client.eval(INSPECT_FORM);
-          if (meta?.controls?.length) {
+          let chosen = pickChangedContext(baseline, meta);
+          let chosenMeta = meta;
+          let chosenTargetUrl = meta?.href || target.url;
+
+          if (!chosen) {
+            const other = await inspectOtherConapeTargets(p, target.id, baseline);
+            if (other) {
+              chosen = other.chosen;
+              chosenMeta = other.meta;
+              chosenTargetUrl = other.targetUrl;
+            }
+          }
+
+          if (chosen) {
             console.log('\nC3.3 RECLUTAR DISCOVERY: PASS_READONLY');
             console.log(JSON.stringify({
-              target:safeUrl(target.url),
-              title:meta.title,
-              visible_fields:meta.controls.length,
-              hidden_inputs_omitted:meta.hiddenInputCount,
-              fields:meta.controls,
-              buttons:meta.buttons,
-              forms:meta.forms,
+              target:safeUrl(chosenTargetUrl),
+              title:chosen.title || chosenMeta.title,
+              context:chosen.kind,
+              context_label:chosen.label,
+              visible_fields:chosen.controls.length,
+              hidden_inputs_omitted:chosen.hiddenInputCount,
+              fields:chosen.controls,
+              buttons:chosen.buttons,
+              forms:chosen.forms,
               write_performed:false,
             }, null, 2));
             return;
           }
           await sleep(POLL_MS);
         }
-        throw new DiscoveryError('RECRUIT_FORM_NOT_FOUND', 'Reclutar abrió, pero no aparecieron campos visibles.');
+        throw new DiscoveryError('RECRUIT_FORM_NOT_FOUND', 'Reclutar fue activado, pero no apareció un formulario nuevo/cambiado. No se aceptaron los controles preexistentes del reporte.');
       }
       if (!announced) {
         console.log('C3.3: inicie sesión y deje visible la pantalla donde aparece el botón Reclutar. El script lo detectará solo.');
@@ -219,4 +316,4 @@ if (isMain) {
   }
 }
 
-export { allowedTarget, safeUrl, FIND_RECRUIT, CLICK_RECRUIT, INSPECT_FORM };
+export { allowedTarget, safeUrl, FIND_RECRUIT, CLICK_RECRUIT, INSPECT_FORM, pickChangedContext };
