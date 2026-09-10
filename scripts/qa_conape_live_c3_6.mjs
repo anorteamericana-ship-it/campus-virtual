@@ -4,6 +4,7 @@ const read = p => fs.readFileSync(p, 'utf8');
 const server = read('services/conape-bridge/server.mjs');
 const server37 = read('services/conape-bridge/server_c3_7.mjs');
 const server373 = read('services/conape-bridge/server_c3_7_3.mjs');
+const server374 = read('services/conape-bridge/server_c3_7_4.mjs');
 const ventas = read('ventas.html');
 const client = read('src/conape_bridge_client_c3_6.js');
 const sessionUi = read('src/conape_session_ui_c3_7.js');
@@ -31,7 +32,10 @@ const checks = [
   ['logs declaran pii false', /pii:false/.test(server37)],
   ['C3.7.3 amplía solo timeout AbortSignal de Campus', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server373) && /Number\(ms\) === 30000/.test(server373) && /await import\('\.\/server_c3_7\.mjs'\)/.test(server373)],
   ['C3.7.3 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server373) && /pii:false/.test(server373)],
-  ['Docker ejecuta server C3.7.3', /COPY server_c3_7\.mjs/.test(docker) && /COPY server_c3_7_3\.mjs/.test(docker) && /CMD \["node", "server_c3_7_3\.mjs"\]/.test(docker)],
+  ['C3.7.4 conserva timeout ampliado y parchea contrato correo', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server374) && /preserve_existing_conape_email:true/.test(server374) && /update_correo:!conapeMail&&!!mail/.test(server374)],
+  ['C3.7.4 conserva correo CONAPE si ya existe', /correo:conapeMail\|\|mail/.test(server374) && /correo_campus_alterno/.test(server374) && /preserve_correo_conape/.test(server374)],
+  ['C3.7.4 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server374) && /pii:false/.test(server374)],
+  ['Docker ejecuta server C3.7.4', /COPY server_c3_7_4\.mjs/.test(docker) && /CMD \["node", "server_c3_7_4\.mjs"\]/.test(docker)],
   ['Ventas no carga shim loopback', !/conape_local_bridge_shim_c3_5/.test(ventas)],
   ['Prematrículas queda fuera del bundle Ventas', !/ventas_prematriculas/.test(ventas)],
   ['cliente bridge carga después de módulos CONAPE', ventas.indexOf('ventas_conape_reclutar_row_c3_5') < ventas.indexOf('conape_bridge_client_c3_6')],
@@ -45,6 +49,8 @@ const checks = [
   ['comparación carga identidad Campus', /campusIdentity/.test(compareUi) && /apellido_1:identity\.apellido_1/.test(compareUi) && /nombre:identity\.nombre/.test(compareUi)],
   ['identidad visual se compara Campus-CONAPE', /state:cmp\(campus\.apellido_1,conape\.apellido_1,key\)/.test(compareUi) && /state:cmp\(campus\.nombre,conape\.nombre,key\)/.test(compareUi)],
   ['comparador C3.7.1 expone namespace estable', /conapeRecruitBuildComparisonC371=buildComparison/.test(compareUi)],
+  ['correo diferente preserva CONAPE y deja Campus alterno', /preserveExisting/.test(compareUi) && /Conservar CONAPE · Campus queda alterno/.test(compareUi) && /correo_campus_alterno/.test(compareUi)],
+  ['UI solo permite completar correo cuando CONAPE está vacío', /update_correo:!conape\.correo&&!!campus\.correo/.test(compareUi)],
   ['botón por fila prefiere comparador estable', /conapeRecruitBuildComparisonC371 \|\| window\.conapeRecruitBuildComparisonC33/.test(row) && /const buildComparison = comparisonBuilder\(\)/.test(row)],
   ['override visual no agrega identidad al payload', !/payload:\{[^}]*apellido_1/s.test(compareUi) && !/payload:\{[^}]*nombre:/s.test(compareUi)],
   ['override visual carga antes del botón por fila', ventas.indexOf('conape_compare_ui_c3_7_1.js') < ventas.indexOf('ventas_conape_reclutar_row_c3_5.jsx')],
@@ -60,4 +66,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`C3.7.3 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`C3.7.4 QA PASS · ${checks.length}/${checks.length}`);
