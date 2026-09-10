@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 
 const sourceUrl = new URL('./server.mjs', import.meta.url);
 const runtimeUrl = new URL('./server.runtime.c3_6_2.mjs', import.meta.url);
-const source = fs.readFileSync(sourceUrl, 'utf8');
+const rawSource = fs.readFileSync(sourceUrl, 'utf8');
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -47,7 +47,7 @@ async function diagSnapshot(page, label) {
       password_visible: passwordVisible,
       user_candidates: userCandidates,
       login_candidate: controlText.some(t => /(^| )(LOGIN|INGRESAR|INICIAR SESION|ENTRAR|ACCEDER)( |$)/.test(t)),
-      recruit_visible: controlText.some(t => t.includes('RECLUTAR PROSPECTOS')),
+      recruit_visible: controlText.some(t => /(^| )RECLUTAR( |$)/.test(t)),
       form_ready: ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'].every(id => !!document.getElementById(id)),
       logout_visible: controlText.some(t => /CERRAR SESION|LOGOUT/.test(t)),
       mis_aplicaciones: body.includes('MIS APLICACIONES INTERNAS'),
@@ -121,6 +121,16 @@ async function runLoginDiag() {
 
 await runLoginDiag();
 
+// Alinea el matcher productivo con el matcher que ya pasó el discovery E2.
+// El portal puede renderizar el control como "Reclutar" o "Reclutar Prospectos"
+// según la vista/responsive. Nunca debe aceptar "Reclutamiento" como acción.
+const recruitNeedle = ".includes('RECLUTAR PROSPECTOS')";
+const recruitHitCount = rawSource.split(recruitNeedle).length - 1;
+if (recruitHitCount !== 2) {
+  throw new Error(`C3.6.7 recruit matcher expected 2 targets, found ${recruitHitCount}; refusing to start`);
+}
+const source = rawSource.replaceAll(recruitNeedle, ".match(/(^| )RECLUTAR( |$)/)");
+
 const needle = /  if \(!\(await login\.count\(\)\)\) throw new AppError\('CONAPE_LOGIN_BUTTON_NOT_FOUND'[^\n]*\n\n  await login\.click\(\);\n  const until = Date\.now\(\) \+ 30_000;\n  while \(Date\.now\(\) < until\) \{\n    await sleep\(600\);\n    if \(await recruitVisible\(p\)\) return;\n  \}\n  throw new AppError\('CONAPE_LOGIN_FAILED'[^\n]*;/;
 
 const replacement = `  if (await login.count()) await login.click();
@@ -147,7 +157,7 @@ const replacement = `  if (await login.count()) await login.click();
 
 const patched = source.replace(needle, replacement);
 if (patched === source) {
-  throw new Error('C3.6.6 login redirect patch target not found; refusing to start');
+  throw new Error('C3.6.7 login redirect patch target not found; refusing to start');
 }
 
 fs.writeFileSync(runtimeUrl, patched, 'utf8');
