@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const read = p => fs.readFileSync(p, 'utf8');
 const server = read('services/conape-bridge/server.mjs');
 const server37 = read('services/conape-bridge/server_c3_7.mjs');
+const server373 = read('services/conape-bridge/server_c3_7_3.mjs');
 const ventas = read('ventas.html');
 const client = read('src/conape_bridge_client_c3_6.js');
 const sessionUi = read('src/conape_session_ui_c3_7.js');
@@ -28,7 +29,9 @@ const checks = [
   ['CREATE único y resultado incierto fail closed C3.7', /createCount!==1/.test(server37) && /WRITE_RESULT_UNCERTAIN/.test(server37)],
   ['estado raw se relee de CONAPE', /readEstadoAfterCreate/.test(server37) && /estado_conape_raw/.test(server37)],
   ['logs declaran pii false', /pii:false/.test(server37)],
-  ['Docker ejecuta server C3.7', /COPY server_c3_7\.mjs/.test(docker) && /CMD \["node", "server_c3_7\.mjs"\]/.test(docker)],
+  ['C3.7.3 amplía solo timeout AbortSignal de Campus', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server373) && /Number\(ms\) === 30000/.test(server373) && /await import\('\.\/server_c3_7\.mjs'\)/.test(server373)],
+  ['C3.7.3 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server373) && /pii:false/.test(server373)],
+  ['Docker ejecuta server C3.7.3', /COPY server_c3_7\.mjs/.test(docker) && /COPY server_c3_7_3\.mjs/.test(docker) && /CMD \["node", "server_c3_7_3\.mjs"\]/.test(docker)],
   ['Ventas no carga shim loopback', !/conape_local_bridge_shim_c3_5/.test(ventas)],
   ['Prematrículas queda fuera del bundle Ventas', !/ventas_prematriculas/.test(ventas)],
   ['cliente bridge carga después de módulos CONAPE', ventas.indexOf('ventas_conape_reclutar_row_c3_5') < ventas.indexOf('conape_bridge_client_c3_6')],
@@ -57,4 +60,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`C3.7.2 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`C3.7.3 QA PASS · ${checks.length}/${checks.length}`);
