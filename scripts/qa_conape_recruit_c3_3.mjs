@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { allowedTarget, safeUrl, FIND_RECRUIT, CLICK_RECRUIT, INSPECT_FORM, pickChangedContext } from './conape_portal/discover_recruit_form_c3_3.mjs';
 import { classifyClientActionSource, INSPECT_CLIENT_ACTION } from './conape_portal/discover_recruit_client_action_c3_3b.mjs';
 import { classifyBoundSource, INSPECT_BOUND_HANDLERS } from './conape_portal/discover_recruit_bound_handlers_c3_3c.mjs';
+import { safeBodyKeys, safeRequestToken } from './conape_portal/recruit_e4_controlled_c3_4.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -14,10 +15,12 @@ const discovery = read('scripts/conape_portal/discover_recruit_form_c3_3.mjs');
 const submitDiscovery = read('scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs');
 const clientActionDiscovery = read('scripts/conape_portal/discover_recruit_client_action_c3_3b.mjs');
 const boundHandlerDiscovery = read('scripts/conape_portal/discover_recruit_bound_handlers_c3_3c.mjs');
+const e4Harness = read('scripts/conape_portal/recruit_e4_controlled_c3_4.mjs');
 const launcher = read('scripts/conape_portal/run_conape_recruit_discovery_windows.ps1');
 const submitLauncher = read('scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1');
 const clientActionLauncher = read('scripts/conape_portal/run_conape_recruit_client_action_c3_3b_windows.ps1');
 const boundHandlerLauncher = read('scripts/conape_portal/run_conape_recruit_bound_handlers_c3_3c_windows.ps1');
+const e4Launcher = read('scripts/conape_portal/run_conape_recruit_e4_controlled_windows.ps1');
 const failures = [];
 const check = (ok, msg) => ok ? console.log(`PASS C3.3: ${msg}`) : failures.push(msg);
 
@@ -96,6 +99,18 @@ check(boundHandlerDiscovery.includes('write_performed:false'), 'C3.3c declara ce
 check(boundHandlerLauncher.includes('NO presiona ni invoca Crear nuevo Prospecto'), 'launcher C3.3c prohíbe click e invocación del botón');
 check(boundHandlerLauncher.includes('--incognito') && boundHandlerLauncher.includes('--remote-debugging-address=127.0.0.1'), 'launcher C3.3c conserva perfil aislado y CDP loopback');
 
+const bodyKeys = safeBodyKeys('p_request=CREATE&P2_PRS_CEDULA=111111111&P2_PRS_EMAIL=a%40b.test');
+check(bodyKeys.includes('p_request') && bodyKeys.includes('P2_PRS_CEDULA') && bodyKeys.includes('P2_PRS_EMAIL'), 'C3.4 inventaría nombres de parámetros sin necesitar sus valores');
+check(safeRequestToken('p_request=CREATE&P2_PRS_CEDULA=111111111') === 'CREATE', 'C3.4 extrae únicamente request CREATE permitido');
+check(safeRequestToken('p_request=%3Cscript%3E') === '', 'C3.4 rechaza request no seguro');
+check(e4Harness.includes("ack !== 'CREAR'"), 'C3.4 exige confirmación CREAR en runtime antes de escribir');
+check(e4Harness.includes("write_count:1"), 'C3.4 limita y documenta una sola escritura');
+check(e4Harness.includes("CREATE_NOT_CONFIRMED"), 'C3.4 prohíbe reintento ciego cuando no hay confirmación suficiente');
+check(e4Harness.includes("pii_emitted:false") && e4Harness.includes("cookies_emitted:false") && e4Harness.includes("hidden_values_emitted:false"), 'C3.4 evidencia final no emite PII/cookies/hidden values');
+check(e4Launcher.includes('PUEDE crear exactamente un prospecto real'), 'launcher C3.4 advierte explícitamente que la prueba sí puede escribir');
+check(e4Launcher.includes('NO reintente CREATE automáticamente'), 'launcher C3.4 advierte contra duplicación por reintento');
+check(e4Launcher.includes('--incognito') && e4Launcher.includes('--remote-debugging-address=127.0.0.1'), 'launcher C3.4 conserva perfil aislado y CDP loopback');
+
 const f = (id, label='') => ({ tag:'input', type:'text', id, name:'', label });
 const baseline = {
   title:'PROSPECTACIÓN RECLUTADOR',
@@ -124,4 +139,4 @@ if (failures.length) {
   failures.forEach(failure => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log('\nC3.3 CONAPE Recruit QA: PASS (UI + E2 contracts + C3.3b action classifier + C3.3c bound-handler discovery)');
+console.log('\nC3.3/C3.4 CONAPE Recruit QA: PASS (UI + E2 contracts + safe one-shot E4 harness)');
