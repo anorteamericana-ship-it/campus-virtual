@@ -46,6 +46,40 @@ function Remove-TemporaryProfile {
   Write-Warning "No fue posible borrar completamente el perfil temporal: $ProfilePath"
 }
 
+function Get-CdpTargets {
+  param([int]$CdpPort)
+  try {
+    $r = Invoke-RestMethod -Uri "http://127.0.0.1:$CdpPort/json/list" -TimeoutSec 2
+    return @($r)
+  } catch {
+    return @()
+  }
+}
+
+function Test-ConapeAuthenticated {
+  param([object[]]$Targets)
+  foreach ($t in @($Targets)) {
+    $url = [string]$t.url
+    $title = [string]$t.title
+    if ($url -notlike 'https://online.conape.go.cr/apex/*') { continue }
+    if ($title -match 'PROSPECTA.*RECLUTADOR') { return $true }
+    if ($url -match '/apex/r/conaweb/prospectaci.*reclutador/(home|prospecto)') { return $true }
+  }
+  return $false
+}
+
+function Test-ProspectoOpen {
+  param([object[]]$Targets)
+  foreach ($t in @($Targets)) {
+    $url = ([string]$t.url).ToLowerInvariant()
+    $title = ([string]$t.title).Trim().ToUpperInvariant()
+    if ($url -like 'https://online.conape.go.cr/apex/*' -and ($url.Contains('/prospecto') -or $title -eq 'PROSPECTO')) {
+      return $true
+    }
+  }
+  return $false
+}
+
 if ($Port -lt 1024 -or $Port -gt 65535) { throw 'Puerto inválido.' }
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $scriptDir '..\..')).Path
@@ -62,6 +96,7 @@ $profilePath = Join-Path $env:TEMP "an-conape-c35-$PID-$stamp"
 New-Item -ItemType Directory -Path $profilePath -Force | Out-Null
 $portFile = Join-Path $profilePath 'DevToolsActivePort'
 $conapeUrl = 'https://online.conape.go.cr/apex/f?p=302:1'
+$prospectoUrl = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/prospecto'
 $localLogin = "http://127.0.0.1:$Port/login.html?clear=1"
 $browserArgs = @(
   "--user-data-dir=$profilePath",
@@ -84,6 +119,41 @@ try {
   $deadline = (Get-Date).AddSeconds(20)
   while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $portFile)) { Start-Sleep -Milliseconds 250 }
   if (-not (Test-Path -LiteralPath $portFile)) { throw 'Chrome/Edge no creó DevToolsActivePort.' }
+
+  $cdpPort = [int]((Get-Content -LiteralPath $portFile -TotalCount 1).Trim())
+  if ($cdpPort -lt 1 -or $cdpPort -gt 65535) { throw 'DevToolsActivePort inválido.' }
+
+  Write-Host '1. Inicie sesión normalmente en CONAPE. No presione Reclutar Prospectos.'
+  Write-Host '   El launcher detectará la sesión y preparará la página PROSPECTO automáticamente.'
+  $authDeadline = (Get-Date).AddMinutes(10)
+  $authenticated = $false
+  while ((Get-Date) -lt $authDeadline) {
+    $targets = Get-CdpTargets -CdpPort $cdpPort
+    if (Test-ConapeAuthenticated -Targets $targets) { $authenticated = $true; break }
+    Start-Sleep -Milliseconds 500
+  }
+  if (-not $authenticated) { throw 'No se detectó una sesión autenticada de CONAPE dentro de 10 minutos.' }
+
+  Write-Host 'C3.5: sesión CONAPE detectada. Preparando PROSPECTO sin tocar Crear nuevo Prospecto...'
+  $targets = Get-CdpTargets -CdpPort $cdpPort
+  if (-not (Test-ProspectoOpen -Targets $targets)) {
+    Start-Process -FilePath $browser.Path -ArgumentList @(
+      "--user-data-dir=$profilePath",
+      '--incognito',
+      $prospectoUrl
+    ) | Out-Null
+  }
+
+  $prospectDeadline = (Get-Date).AddSeconds(25)
+  $prospectReady = $false
+  while ((Get-Date) -lt $prospectDeadline) {
+    $targets = Get-CdpTargets -CdpPort $cdpPort
+    if (Test-ProspectoOpen -Targets $targets) { $prospectReady = $true; break }
+    Start-Sleep -Milliseconds 400
+  }
+  if (-not $prospectReady) {
+    throw 'CONAPE está autenticado, pero no se pudo preparar automáticamente la página PROSPECTO.'
+  }
 
   $bridgeProc = Start-Process -FilePath $node.Source -ArgumentList @(
     $bridgeScript,
@@ -110,11 +180,11 @@ try {
 
   Write-Host ''
   Write-Host 'LISTO PARA PROBAR:'
-  Write-Host '1. En la pestaña CONAPE, inicie sesión normalmente y deje Reclutamiento disponible.'
+  Write-Host '1. PROSPECTO ya quedó preparado automáticamente en la sesión CONAPE.'
   Write-Host '2. En la pestaña Campus local, inicie sesión con su usuario normal.'
-  Write-Host '3. Abra Ventas, entre a un prospecto CONAPE que TODAVÍA no esté reclutado.'
-  Write-Host '4. Pulse Reclutar en CONAPE. Debe traer identidad por cédula y comparar teléfono/correo.'
-  Write-Host '5. Si todo coincide, pulse Enviar solicitud UNA sola vez. Esa acción sí crea el prospecto real.'
+  Write-Host '3. Abra Ventas y use el botón Reclutar de una fila CONAPE que todavía no esté reclutada.'
+  Write-Host '4. Debe traer identidad por cédula y comparar teléfono/correo.'
+  Write-Host '5. NO pulse Enviar solicitud hasta revisar primero el modal.'
   Write-Host ''
   Write-Host 'Nombre y apellidos nunca son enviados desde Campus. Ante resultado incierto, no repita el envío.'
   Write-Host ''
