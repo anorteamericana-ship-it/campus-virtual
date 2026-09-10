@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const read = p => fs.readFileSync(p, 'utf8');
 const server = read('services/conape-bridge/server.mjs');
+const bootstrap = read('services/conape-bridge/start_c3_6_2.mjs');
 const ventas = read('ventas.html');
 const client = read('src/conape_bridge_client_c3_6.js');
 const config = read('src/conape_bridge_config_c3_6.js');
@@ -19,6 +20,9 @@ const checks = [
   ['CREATE único y resultado incierto fail closed', /createCount !== 1/.test(server) && /WRITE_RESULT_UNCERTAIN/.test(server)],
   ['estado raw se relee de CONAPE', /readEstadoAfterCreate/.test(server) && /estado_conape_raw/.test(server)],
   ['logs declaran pii false', /pii:false/.test(server)],
+  ['bootstrap acepta home autenticado sin exigir botón Reclutar visible', /authenticated_app/.test(bootstrap) && /PROSPECTACION-RECLUTADOR/.test(bootstrap)],
+  ['bootstrap abre Prospecto directo después del login', /CONAPE_PROSPECTO_FALLBACK/.test(bootstrap) && /f\?p=302:2/.test(bootstrap) && /\/prospecto/.test(bootstrap) && /directTargets/.test(bootstrap)],
+  ['bootstrap conserva fallback de botón Reclutar', /clickRecruit/.test(bootstrap) && /recruitVisible/.test(bootstrap)],
   ['Ventas no carga shim loopback', !/conape_local_bridge_shim_c3_5/.test(ventas)],
   ['Prematrículas queda fuera del bundle Ventas', !/ventas_prematriculas/.test(ventas)],
   ['cliente bridge carga después de módulos CONAPE', ventas.indexOf('ventas_conape_reclutar_row_c3_5') < ventas.indexOf('conape_bridge_client_c3_6')],
