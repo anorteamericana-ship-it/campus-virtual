@@ -42,6 +42,7 @@ jobs:
         run: |
           node --check scripts/conape_portal/parse_apex_report.mjs
           node --check scripts/conape_portal/capture_chrome_cdp.mjs
+          node --check scripts/conape_portal/diagnose_chrome_cdp.mjs
           node --check scripts/qa_conape_portal_parser_c3_1.mjs
           node --check scripts/qa_conape_portal_capture_c3_2.mjs
       - name: Syntax PowerShell
