@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'src/ventas_conape_reclutar_c3_3.jsx'
+      - 'src/ventas_conape_reclutar_row_c3_5.jsx'
+      - 'src/ventas_sortable_table_cs21a20.jsx'
       - 'src/conape_local_bridge_shim_c3_5.js'
       - 'ventas.html'
       - 'scripts/conape_portal/discover_recruit_form_c3_3.mjs'
@@ -29,6 +31,8 @@ on:
       - 'feature/conape-reclutamiento-c3-3'
     paths:
       - 'src/ventas_conape_reclutar_c3_3.jsx'
+      - 'src/ventas_conape_reclutar_row_c3_5.jsx'
+      - 'src/ventas_sortable_table_cs21a20.jsx'
       - 'src/conape_local_bridge_shim_c3_5.js'
       - 'ventas.html'
       - 'scripts/conape_portal/discover_recruit_form_c3_3.mjs'
@@ -102,7 +106,7 @@ jobs:
           }
       - name: C3.3/C3.4 contract QA
         run: node scripts/qa_conape_recruit_c3_3.mjs
-      - name: C3.5 private bridge + local button QA
+      - name: C3.5 private bridge + row button QA
         run: node scripts/qa_conape_recruit_bridge_c3_5.mjs
       - name: Diff hygiene
         run: git diff --check origin/feature/conape-portal-parser-c3-1...HEAD
