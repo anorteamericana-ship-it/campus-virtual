@@ -9,6 +9,8 @@ on:
       - 'src/ventas_sortable_table_cs21a20.jsx'
       - 'src/conape_bridge_client_c3_6.js'
       - 'src/conape_bridge_config_c3_6.js'
+      - 'src/conape_session_ui_c3_7.js'
+      - 'src/conape_compare_ui_c3_7_1.js'
       - 'services/conape-bridge/**'
       - 'scripts/qa_conape_live_c3_6.mjs'
       - '.github/workflows/qa-conape-live-c3-6.yml'
@@ -26,9 +28,13 @@ jobs:
           node-version: '22'
       - name: Node syntax · bridge
         run: node --check services/conape-bridge/server.mjs
+      - name: Node syntax · CONAPE session UI
+        run: node --check src/conape_session_ui_c3_7.js
+      - name: Node syntax · CONAPE comparison UI
+        run: node --check src/conape_compare_ui_c3_7_1.js
       - name: Node syntax · QA
         run: node --check scripts/qa_conape_live_c3_6.mjs
-      - name: C3.6 contract gate
+      - name: C3.7.1 contract gate
         run: node scripts/qa_conape_live_c3_6.mjs
       - name: Diff hygiene
         run: git diff --check origin/main...HEAD
