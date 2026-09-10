@@ -46,45 +46,13 @@ function Remove-TemporaryProfile {
   Write-Warning "No fue posible borrar completamente el perfil temporal: $ProfilePath"
 }
 
-function Get-CdpTargets {
-  param([int]$CdpPort)
-  try {
-    $r = Invoke-RestMethod -Uri "http://127.0.0.1:$CdpPort/json/list" -TimeoutSec 2
-    return @($r)
-  } catch {
-    return @()
-  }
-}
-
-function Test-ConapeAuthenticated {
-  param([object[]]$Targets)
-  foreach ($t in @($Targets)) {
-    $url = [string]$t.url
-    $title = [string]$t.title
-    if ($url -notlike 'https://online.conape.go.cr/apex/*') { continue }
-    if ($title -match 'PROSPECTA.*RECLUTADOR') { return $true }
-    if ($url -match '/apex/r/conaweb/prospectaci.*reclutador/(home|prospecto)') { return $true }
-  }
-  return $false
-}
-
-function Test-ProspectoOpen {
-  param([object[]]$Targets)
-  foreach ($t in @($Targets)) {
-    $url = ([string]$t.url).ToLowerInvariant()
-    $title = ([string]$t.title).Trim().ToUpperInvariant()
-    if ($url -like 'https://online.conape.go.cr/apex/*' -and ($url.Contains('/prospecto') -or $title -eq 'PROSPECTO')) {
-      return $true
-    }
-  }
-  return $false
-}
-
 if ($Port -lt 1024 -or $Port -gt 65535) { throw 'Puerto inválido.' }
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $scriptDir '..\..')).Path
 $bridgeScript = Join-Path $scriptDir 'recruit_local_bridge_c3_5.mjs'
+$prepareScript = Join-Path $scriptDir 'discover_recruit_submit_contract_c3_3.mjs'
 if (-not (Test-Path -LiteralPath $bridgeScript)) { throw "No existe el bridge C3.5: $bridgeScript" }
+if (-not (Test-Path -LiteralPath $prepareScript)) { throw "No existe el preparador probado C3.3: $prepareScript" }
 $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) { throw 'Node.js no está disponible en PATH.' }
 $nodeVersion = (& $node.Source -p "process.versions.node").Trim()
@@ -96,7 +64,6 @@ $profilePath = Join-Path $env:TEMP "an-conape-c35-$PID-$stamp"
 New-Item -ItemType Directory -Path $profilePath -Force | Out-Null
 $portFile = Join-Path $profilePath 'DevToolsActivePort'
 $conapeUrl = 'https://online.conape.go.cr/apex/f?p=302:1'
-$prospectoUrl = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/prospecto'
 $localLogin = "http://127.0.0.1:$Port/login.html?clear=1"
 $browserArgs = @(
   "--user-data-dir=$profilePath",
@@ -120,40 +87,17 @@ try {
   while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $portFile)) { Start-Sleep -Milliseconds 250 }
   if (-not (Test-Path -LiteralPath $portFile)) { throw 'Chrome/Edge no creó DevToolsActivePort.' }
 
-  $cdpPort = [int]((Get-Content -LiteralPath $portFile -TotalCount 1).Trim())
-  if ($cdpPort -lt 1 -or $cdpPort -gt 65535) { throw 'DevToolsActivePort inválido.' }
+  Write-Host '1. Inicie sesión normalmente en CONAPE y deje visible Reclutar Prospectos.'
+  Write-Host '   No presione Reclutar: el mismo preparador C3.3 que ya pasó E2 lo abrirá automáticamente.'
+  Write-Host ''
 
-  Write-Host '1. Inicie sesión normalmente en CONAPE. No presione Reclutar Prospectos.'
-  Write-Host '   El launcher detectará la sesión y preparará la página PROSPECTO automáticamente.'
-  $authDeadline = (Get-Date).AddMinutes(10)
-  $authenticated = $false
-  while ((Get-Date) -lt $authDeadline) {
-    $targets = Get-CdpTargets -CdpPort $cdpPort
-    if (Test-ConapeAuthenticated -Targets $targets) { $authenticated = $true; break }
-    Start-Sleep -Milliseconds 500
-  }
-  if (-not $authenticated) { throw 'No se detectó una sesión autenticada de CONAPE dentro de 10 minutos.' }
-
-  Write-Host 'C3.5: sesión CONAPE detectada. Preparando PROSPECTO sin tocar Crear nuevo Prospecto...'
-  $targets = Get-CdpTargets -CdpPort $cdpPort
-  if (-not (Test-ProspectoOpen -Targets $targets)) {
-    Start-Process -FilePath $browser.Path -ArgumentList @(
-      "--user-data-dir=$profilePath",
-      '--incognito',
-      $prospectoUrl
-    ) | Out-Null
+  & $node.Source $prepareScript '--profile' $profilePath '--timeout-ms' '600000'
+  if ($LASTEXITCODE -ne 0) {
+    throw "El preparador C3.3 no pudo dejar PROSPECTO listo. Código: $LASTEXITCODE"
   }
 
-  $prospectDeadline = (Get-Date).AddSeconds(25)
-  $prospectReady = $false
-  while ((Get-Date) -lt $prospectDeadline) {
-    $targets = Get-CdpTargets -CdpPort $cdpPort
-    if (Test-ProspectoOpen -Targets $targets) { $prospectReady = $true; break }
-    Start-Sleep -Milliseconds 400
-  }
-  if (-not $prospectReady) {
-    throw 'CONAPE está autenticado, pero no se pudo preparar automáticamente la página PROSPECTO.'
-  }
+  Write-Host ''
+  Write-Host 'C3.5: PROSPECTO confirmado por el preparador E2. Iniciando bridge local...'
 
   $bridgeProc = Start-Process -FilePath $node.Source -ArgumentList @(
     $bridgeScript,
@@ -180,9 +124,9 @@ try {
 
   Write-Host ''
   Write-Host 'LISTO PARA PROBAR:'
-  Write-Host '1. PROSPECTO ya quedó preparado automáticamente en la sesión CONAPE.'
+  Write-Host '1. La página PROSPECTO ya quedó confirmada por el mismo flujo C3.3 que funcionó en E2.'
   Write-Host '2. En la pestaña Campus local, inicie sesión con su usuario normal.'
-  Write-Host '3. Abra Ventas y use el botón Reclutar de una fila CONAPE que todavía no esté reclutada.'
+  Write-Host '3. Abra Ventas y pulse Reclutar en una fila CONAPE que todavía no esté reclutada.'
   Write-Host '4. Debe traer identidad por cédula y comparar teléfono/correo.'
   Write-Host '5. NO pulse Enviar solicitud hasta revisar primero el modal.'
   Write-Host ''
