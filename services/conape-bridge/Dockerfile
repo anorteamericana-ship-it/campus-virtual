@@ -9,6 +9,7 @@ ENV NODE_ENV=production \
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY server.mjs ./
+COPY start_c3_6_2.mjs ./
 
 USER pwuser
 CMD ["node", "server.mjs"]
