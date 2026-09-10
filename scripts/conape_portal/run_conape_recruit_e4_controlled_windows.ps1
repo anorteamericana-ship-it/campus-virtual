@@ -74,9 +74,10 @@ $browserArgs = @(
 $exitCode = 1
 try {
   Write-Host 'C3.4 · E4 CONTROLADA · RECLUTAR PROSPECTO REAL EN CONAPE'
-  Write-Host 'Esta corrida PUEDE crear exactamente un prospecto real, pero solo después de que usted escriba CREAR en la consola.'
-  Write-Host 'Antes de esa confirmación el script únicamente inicia sesión, abre PROSPECTO, prepara los campos y revisa alertas visibles.'
-  Write-Host 'Los datos del prospecto se escriben localmente en esta consola y no se guardan en GitHub ni se imprimen en la evidencia final.'
+  Write-Host 'Flujo real: 1) cédula -> CONAPE completa identidad; 2) completar/actualizar solo teléfono y correo; 3) CREAR.'
+  Write-Host 'Nombre y apellidos NUNCA son escritos por este script: deben venir de CONAPE por la cédula.'
+  Write-Host 'Esta corrida puede crear exactamente un prospecto real, pero solo después de que usted escriba CREAR en la consola.'
+  Write-Host 'Los datos ingresados se usan localmente en esta corrida y no se guardan en GitHub ni se imprimen en la evidencia final.'
   Write-Host ''
   Start-Process -FilePath $browser.Path -ArgumentList $browserArgs | Out-Null
   $deadline = (Get-Date).AddSeconds(20)
