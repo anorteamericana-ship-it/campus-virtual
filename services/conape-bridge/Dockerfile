@@ -10,7 +10,8 @@ COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY server.mjs ./
 COPY start_c3_6_2.mjs ./
+COPY server_c3_7.mjs ./
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
-CMD ["node", "server.mjs"]
+CMD ["node", "server_c3_7.mjs"]
