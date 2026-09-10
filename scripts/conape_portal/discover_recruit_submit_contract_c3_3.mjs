@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 const HOST = 'online.conape.go.cr';
 const POLL_MS = 700;
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+const NAV_RETRY_MS = 3000;
+const NAV_HOLD_MS = 1400;
+const MAX_NAV_ATTEMPTS = 5;
 
 class DiscoveryError extends Error {
   constructor(reason, message) {
@@ -40,6 +43,16 @@ function safeUrl(rawUrl) {
     return `${u.origin}${u.pathname}`;
   } catch {
     return '[INVALID_URL]';
+  }
+}
+
+function isProspectoPath(rawUrlOrPath) {
+  try {
+    const raw = String(rawUrlOrPath || '');
+    const pathName = raw.includes('://') ? new URL(raw).pathname : raw;
+    return decodeURIComponent(pathName).toLowerCase().includes('/prospecto');
+  } catch {
+    return String(rawUrlOrPath || '').toLowerCase().includes('/prospecto');
   }
 }
 
@@ -83,8 +96,13 @@ class CdpClient {
       this.socket.send(JSON.stringify({ id, method, params }));
     });
   }
-  async eval(expression) {
-    const result = await this.send('Runtime.evaluate', { expression, returnByValue:true, awaitPromise:true, userGesture:false });
+  async eval(expression, userGesture = false) {
+    const result = await this.send('Runtime.evaluate', {
+      expression,
+      returnByValue:true,
+      awaitPromise:true,
+      userGesture:!!userGesture,
+    });
     if (result.exceptionDetails) throw new DiscoveryError('CDP_EVALUATION_ERROR', 'No se pudo evaluar la página.');
     return result.result?.value;
   }
@@ -101,11 +119,7 @@ async function listTargets(port) {
 function conapeTargets(targets) {
   return (targets || [])
     .filter(t => t?.type === 'page' && t?.webSocketDebuggerUrl && allowedTarget(t.url))
-    .sort((a, b) => {
-      const ap = String(a.url || '').toLowerCase().includes('/prospecto') ? 1 : 0;
-      const bp = String(b.url || '').toLowerCase().includes('/prospecto') ? 1 : 0;
-      return bp - ap;
-    });
+    .sort((a, b) => Number(isProspectoPath(b.url)) - Number(isProspectoPath(a.url)));
 }
 
 const FIND_AND_OPEN_RECRUIT = `(() => {
@@ -185,13 +199,15 @@ const INSPECT_SUBMIT = `(() => {
   };
 })()`;
 
-async function inspectTarget(target, expression) {
+async function inspectTarget(target, expression, { userGesture = false, holdMs = 0 } = {}) {
   const client = new CdpClient(target.webSocketDebuggerUrl);
   try {
     await client.connect();
     await client.send('Runtime.enable');
     await client.send('Page.enable');
-    return await client.eval(expression);
+    const result = await client.eval(expression, userGesture);
+    if (holdMs > 0) await sleep(holdMs);
+    return result;
   } finally {
     client.close();
   }
@@ -203,8 +219,10 @@ async function run({ profileDir, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   if (!fs.existsSync(portFile)) throw new DiscoveryError('DEVTOOLS_PORT_FILE_MISSING', 'No existe DevToolsActivePort.');
   const port = parseActivePort(fs.readFileSync(portFile, 'utf8'));
   const until = Date.now() + timeoutMs;
-  let opened = false;
   let announced = false;
+  let clickAttempts = 0;
+  let lastClickAt = 0;
+  let prospectoObserved = false;
 
   while (Date.now() < until) {
     const targets = conapeTargets(await listTargets(port));
@@ -217,9 +235,12 @@ async function run({ profileDir, timeoutMs = DEFAULT_TIMEOUT_MS }) {
       continue;
     }
 
+    prospectoObserved = prospectoObserved || targets.some(target => isProspectoPath(target.url));
+
     for (const target of targets) {
       try {
         const meta = await inspectTarget(target, INSPECT_SUBMIT);
+        prospectoObserved = prospectoObserved || isProspectoPath(target.url) || isProspectoPath(meta?.path);
         if (meta?.ready) {
           console.log('\nC3.3 SUBMIT CONTRACT: PASS_READONLY');
           console.log(JSON.stringify({ target:safeUrl(target.url), ...meta }, null, 2));
@@ -230,20 +251,35 @@ async function run({ profileDir, timeoutMs = DEFAULT_TIMEOUT_MS }) {
       }
     }
 
-    if (!opened) {
+    if (!prospectoObserved && Date.now() - lastClickAt >= NAV_RETRY_MS) {
+      if (clickAttempts >= MAX_NAV_ATTEMPTS) {
+        throw new DiscoveryError(
+          'RECRUIT_NAVIGATION_NOT_OBSERVED',
+          `Reclutar fue activado ${clickAttempts} veces, pero Chrome no llegó a la página PROSPECTO. No se hizo ninguna escritura.`
+        );
+      }
+
+      let clicked = false;
       for (const target of targets) {
         try {
-          const result = await inspectTarget(target, FIND_AND_OPEN_RECRUIT);
+          const result = await inspectTarget(target, FIND_AND_OPEN_RECRUIT, { userGesture:true, holdMs:NAV_HOLD_MS });
           if (result?.found) {
-            console.log('C3.3: botón Reclutar detectado. Abriendo la página PROSPECTO; NO se presionará Crear nuevo Prospecto.');
-            opened = true;
+            clickAttempts += 1;
+            lastClickAt = Date.now();
+            clicked = true;
+            if (clickAttempts === 1) {
+              console.log('C3.3: botón Reclutar detectado. Abriendo la página PROSPECTO; NO se presionará Crear nuevo Prospecto.');
+            } else {
+              console.log(`C3.3: la navegación a PROSPECTO aún no se observó; reintento seguro ${clickAttempts}/${MAX_NAV_ATTEMPTS}.`);
+            }
             break;
           }
         } catch {
           // seguir probando otros targets CONAPE
         }
       }
-      if (!opened && !announced) {
+
+      if (!clicked && !announced) {
         console.log('C3.3: inicie sesión y deje visible Reclutar Prospectos.');
         announced = true;
       }
@@ -251,7 +287,13 @@ async function run({ profileDir, timeoutMs = DEFAULT_TIMEOUT_MS }) {
 
     await sleep(POLL_MS);
   }
-  throw new DiscoveryError('SUBMIT_CONTRACT_TIMEOUT', 'No se pudo identificar el contrato seguro del botón Crear nuevo Prospecto antes del timeout.');
+
+  throw new DiscoveryError(
+    prospectoObserved ? 'SUBMIT_CONTRACT_TIMEOUT' : 'RECRUIT_NAVIGATION_NOT_OBSERVED',
+    prospectoObserved
+      ? 'Se observó la página PROSPECTO, pero no se pudo identificar el contrato seguro del botón Crear nuevo Prospecto antes del timeout.'
+      : 'No se observó la navegación a PROSPECTO antes del timeout. No se hizo ninguna escritura.'
+  );
 }
 
 function args(argv) {
@@ -275,4 +317,11 @@ if (isMain) {
   }
 }
 
-export { allowedTarget, safeUrl, conapeTargets, FIND_AND_OPEN_RECRUIT, INSPECT_SUBMIT };
+export {
+  allowedTarget,
+  safeUrl,
+  isProspectoPath,
+  conapeTargets,
+  FIND_AND_OPEN_RECRUIT,
+  INSPECT_SUBMIT,
+};
