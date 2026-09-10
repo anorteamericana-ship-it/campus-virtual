@@ -98,8 +98,14 @@ async function listTargets(port) {
   return Array.isArray(data) ? data : [];
 }
 
-function pickTarget(targets) {
-  return (targets || []).find(t => t?.type === 'page' && t?.webSocketDebuggerUrl && allowedTarget(t.url)) || null;
+function conapeTargets(targets) {
+  return (targets || [])
+    .filter(t => t?.type === 'page' && t?.webSocketDebuggerUrl && allowedTarget(t.url))
+    .sort((a, b) => {
+      const ap = String(a.url || '').toLowerCase().includes('/prospecto') ? 1 : 0;
+      const bp = String(b.url || '').toLowerCase().includes('/prospecto') ? 1 : 0;
+      return bp - ap;
+    });
 }
 
 const FIND_AND_OPEN_RECRUIT = `(() => {
@@ -122,16 +128,16 @@ const INSPECT_SUBMIT = `(() => {
   const fieldIds = Array.from(document.querySelectorAll('input:not([type="hidden"]),select,textarea')).filter(visible).map(el => el.id || '').filter(Boolean);
   const candidates = Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible);
   const hit = candidates.find(el => normUpper([el.textContent || '', el.getAttribute('aria-label') || '', el.getAttribute('title') || '', el.value || ''].join(' ')).includes('CREAR NUEVO PROSPECTO'));
-  if (!hit) return { ready:false, title:norm(document.title), fieldIds };
+  if (!hit) return { ready:false, title:norm(document.title), path:location.pathname, fieldIds };
 
   const token = value => {
     const s = String(value || '').trim();
-    return /^[A-Za-z0-9_:\-]{1,80}$/.test(s) ? s : '';
+    return /^[A-Za-z0-9_:\\-]{1,80}$/.test(s) ? s : '';
   };
   const onclick = String(hit.getAttribute('onclick') || '');
   const requestMatches = [
-    onclick.match(/request\\s*:\\s*['\"]([A-Za-z0-9_:\-]{1,80})['\"]/i),
-    onclick.match(/apex\\.(?:page\\.)?submit\\(\\s*['\"]([A-Za-z0-9_:\-]{1,80})['\"]/i)
+    onclick.match(/request\\s*:\\s*['\"]([A-Za-z0-9_:\\-]{1,80})['\"]/i),
+    onclick.match(/apex\\.(?:page\\.)?submit\\(\\s*['\"]([A-Za-z0-9_:\\-]{1,80})['\"]/i)
   ].filter(Boolean);
   const requestFromOnclick = requestMatches.length ? token(requestMatches[0][1]) : '';
   const request = token(hit.getAttribute('data-request')) || token(hit.getAttribute('data-action')) || requestFromOnclick;
@@ -179,13 +185,16 @@ const INSPECT_SUBMIT = `(() => {
   };
 })()`;
 
-async function waitForTarget(port, until) {
-  while (Date.now() < until) {
-    const target = pickTarget(await listTargets(port));
-    if (target) return target;
-    await sleep(POLL_MS);
+async function inspectTarget(target, expression) {
+  const client = new CdpClient(target.webSocketDebuggerUrl);
+  try {
+    await client.connect();
+    await client.send('Runtime.enable');
+    await client.send('Page.enable');
+    return await client.eval(expression);
+  } finally {
+    client.close();
   }
-  throw new DiscoveryError('CONAPE_TAB_NOT_FOUND', 'No apareció una pestaña CONAPE.');
 }
 
 async function run({ profileDir, timeoutMs = DEFAULT_TIMEOUT_MS }) {
@@ -195,34 +204,51 @@ async function run({ profileDir, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   const port = parseActivePort(fs.readFileSync(portFile, 'utf8'));
   const until = Date.now() + timeoutMs;
   let opened = false;
+  let announced = false;
 
   while (Date.now() < until) {
-    const target = await waitForTarget(port, until);
-    const client = new CdpClient(target.webSocketDebuggerUrl);
-    try {
-      await client.connect();
-      await client.send('Runtime.enable');
-      await client.send('Page.enable');
-
-      const meta = await client.eval(INSPECT_SUBMIT);
-      if (meta?.ready) {
-        console.log('\nC3.3 SUBMIT CONTRACT: PASS_READONLY');
-        console.log(JSON.stringify({ target:safeUrl(target.url), ...meta }, null, 2));
-        return;
+    const targets = conapeTargets(await listTargets(port));
+    if (!targets.length) {
+      if (!announced) {
+        console.log('C3.3: inicie sesión y deje visible Reclutar Prospectos.');
+        announced = true;
       }
+      await sleep(POLL_MS);
+      continue;
+    }
 
-      if (!opened) {
-        const result = await client.eval(FIND_AND_OPEN_RECRUIT);
-        if (result?.found) {
-          console.log('C3.3: botón Reclutar detectado. Abriendo la página PROSPECTO; NO se presionará Crear nuevo Prospecto.');
-          opened = true;
-        } else {
-          console.log('C3.3: inicie sesión y deje visible Reclutar Prospectos.');
+    for (const target of targets) {
+      try {
+        const meta = await inspectTarget(target, INSPECT_SUBMIT);
+        if (meta?.ready) {
+          console.log('\nC3.3 SUBMIT CONTRACT: PASS_READONLY');
+          console.log(JSON.stringify({ target:safeUrl(target.url), ...meta }, null, 2));
+          return;
+        }
+      } catch {
+        // La navegación APEX puede invalidar un target durante unos milisegundos.
+      }
+    }
+
+    if (!opened) {
+      for (const target of targets) {
+        try {
+          const result = await inspectTarget(target, FIND_AND_OPEN_RECRUIT);
+          if (result?.found) {
+            console.log('C3.3: botón Reclutar detectado. Abriendo la página PROSPECTO; NO se presionará Crear nuevo Prospecto.');
+            opened = true;
+            break;
+          }
+        } catch {
+          // seguir probando otros targets CONAPE
         }
       }
-    } finally {
-      client.close();
+      if (!opened && !announced) {
+        console.log('C3.3: inicie sesión y deje visible Reclutar Prospectos.');
+        announced = true;
+      }
     }
+
     await sleep(POLL_MS);
   }
   throw new DiscoveryError('SUBMIT_CONTRACT_TIMEOUT', 'No se pudo identificar el contrato seguro del botón Crear nuevo Prospecto antes del timeout.');
@@ -249,4 +275,4 @@ if (isMain) {
   }
 }
 
-export { allowedTarget, safeUrl, FIND_AND_OPEN_RECRUIT, INSPECT_SUBMIT };
+export { allowedTarget, safeUrl, conapeTargets, FIND_AND_OPEN_RECRUIT, INSPECT_SUBMIT };
