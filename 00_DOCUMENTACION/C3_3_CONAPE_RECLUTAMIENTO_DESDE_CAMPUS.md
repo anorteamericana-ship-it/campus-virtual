@@ -2,7 +2,7 @@
 
 **Tipo de cambio:** MIXTO / RELEASE CONTROLADO
 **Rama:** `feature/conape-reclutamiento-c3-3`
-**Estado:** formulario real + acción `CREATE` confirmados en **E2 AUTENTICADA LECTURA**. Harness de **E4 ESCRITURA CONTROLADA** preparado para una única creación autorizada. Sin merge ni PROD.
+**Estado:** formulario real + acción `CREATE` confirmados en E2 autenticada y **E4 ESCRITURA CONTROLADA APROBADA** con una única creación real autorizada. Sin merge ni PROD.
 
 ## Línea base
 
@@ -93,11 +93,41 @@ La inspección autenticada del handler/dynamic action detectó:
 - `attribute01 = CREATE`;
 - `attribute02 = Y`.
 
-Por tanto `CREATE` queda congelado como candidato de request real de creación con evidencia E2. La prueba que produjo esta evidencia no invocó el handler ni el botón:
+Por tanto `CREATE` quedó congelado como candidato de request real de creación con evidencia E2. La prueba que produjo esa evidencia no invocó el handler ni el botón:
 
 - `handler_invoked = false`
 - `button_clicked = false`
 - `write_performed = false`.
+
+## C3.4 · E4 controlada · RESULTADO APROBADO
+
+La corrida real autorizada confirmó el contrato de escritura con una sola creación.
+
+Evidencia segura observada:
+
+- `create_request_observed = true`
+- método: `POST`
+- path: `/apex/wwv_flow.accept`
+- body keys observadas: `p_debug`, `p_flow_id`, `p_flow_step_id`, `p_instance`, `p_json`, `p_page_submission_id`, `p_reload_on_submit`, `p_request`
+- `request_token = CREATE`
+- HTTP `200`
+- página final: `PROSPECTO`
+- `success_message = true`
+- `duplicate_message = false`
+- `error_message = false`
+- `visible_alerts = 2`
+- `identity_source = CONAPE_CEDULA_LOOKUP`
+- `identity_fields_modified = false`
+- `success_signal = true`
+- `write_performed = true`
+- `write_count = 1`
+- `pii_emitted = false`
+- `cookies_emitted = false`
+- `hidden_values_emitted = false`.
+
+**Dictamen C3.4:** E4 APROBADA. El éxito no se declara por HTTP 200 aislado: se acepta porque coinciden el request `CREATE`, la señal de éxito de la página, ausencia de mensaje de duplicado/error, identidad intacta y una única escritura.
+
+No repetir esta E4 con la misma cédula. La evidencia requerida para congelar el contrato de creación ya fue obtenida.
 
 ## Contratos Campus reservados
 
@@ -157,44 +187,9 @@ Payload Campus objetivo:
 
 La UI falla cerrado mientras `can_submit !== true`.
 
-## C3.4 · E4 controlada
-
-Archivos:
-
-- `scripts/conape_portal/recruit_e4_controlled_c3_4.mjs`
-- `scripts/conape_portal/run_conape_recruit_e4_controlled_windows.ps1`
-
-La corrida E4 está diseñada para:
-
-1. abrir CONAPE en perfil temporal;
-2. iniciar sesión manualmente por el propietario;
-3. abrir `Reclutar Prospectos`;
-4. pedir **solo cédula**;
-5. colocar únicamente `P2_PRS_CEDULA` y disparar sus eventos normales;
-6. esperar a que CONAPE complete identidad;
-7. bloquear si CONAPE no devuelve al menos primer apellido + nombre;
-8. pedir únicamente teléfono/correo cuando haya que completar o actualizar;
-9. escribir solo `P2_PRS_CELULAR` y/o `P2_PRS_EMAIL`;
-10. mostrar precheck sin PII;
-11. exigir confirmación literal `CREAR`;
-12. presionar `Crear nuevo Prospecto` una sola vez;
-13. capturar solo metadatos seguros del request/resultado;
-14. no reintentar automáticamente si no se puede confirmar el éxito.
-
-Invariantes E4:
-
-- `identity_source = CONAPE_CEDULA_LOOKUP`
-- `identity_fields_modified = false`
-- `write_count <= 1`
-- `pii_emitted = false`
-- `cookies_emitted = false`
-- `hidden_values_emitted = false`.
-
-Si aparece `CREATE_NOT_CONFIRMED`, no repetir con la misma cédula hasta verificar si CONAPE ya creó el prospecto.
-
 ## Frontend Ventas alineado
 
-`src/ventas_conape_reclutar_c3_3.jsx` ahora presenta:
+`src/ventas_conape_reclutar_c3_3.jsx` presenta:
 
 - cédula;
 - Primer Apellido CONAPE;
@@ -222,16 +217,20 @@ El bridge privado deberá:
 - verificar resultado real, no solo HTTP 200;
 - registrar auditoría sin secretos ni PII innecesaria.
 
-## Gate inmediato
+## Gate inmediato después de E4
 
-El siguiente gate no es otro discovery. Es una única **E4 controlada** con prospecto real autorizado que aún no esté reclutado.
+**No se requiere otro discovery del formulario ni otra creación manual para congelar el contrato.**
 
-Si E4 confirma el request/resultado, el siguiente trabajo es implementar y desplegar de forma controlada:
+El trabajo siguiente es C3.5, implementación del puente:
 
 - `conapePortalRecruitPreview`
 - `conapePortalRecruitSubmit`
-- bridge privado
-- verificación E3/E4 del flujo desde Ventas.
+- bridge privado autenticado
+- autorización backend por rol/propiedad del prospecto
+- `source_version` reciente para impedir submit contra un preflight viejo
+- detección de duplicado/error antes y después de `CREATE`
+- cero nombre/apellidos enviados desde Campus
+- E3 lectura desde Ventas y una E4 final del flujo Campus completo antes de PROD.
 
 ## No hacer
 
@@ -242,4 +241,5 @@ Si E4 confirma el request/resultado, el siguiente trabajo es implementar y despl
 - no llamar infraestructura APEX directamente desde `ventas.html`;
 - no marcar reclutamiento como exitoso por HTTP 200 solamente;
 - no reintentar `CREATE` automáticamente tras un resultado incierto;
-- no fusionar/publicar C3.4 antes de completar el release controlado correspondiente.
+- no repetir la E4 ya aprobada con la misma cédula;
+- no fusionar/publicar antes de completar el release controlado correspondiente.
