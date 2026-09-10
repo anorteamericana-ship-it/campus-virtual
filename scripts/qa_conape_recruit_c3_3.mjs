@@ -43,7 +43,9 @@ check(discovery.includes("querySelectorAll('iframe')"), 'discovery inspecciona i
 check(discovery.includes('dialogSelector'), 'discovery inspecciona dialogs APEX visibles');
 check(discovery.includes('write_performed:false'), 'salida discovery declara no escritura');
 check(!discovery.includes('document.documentElement.outerHTML'), 'discovery no vuelca HTML completo');
-check(!discovery.match(/\.value\b|defaultValue/), 'discovery no lee valores de controles del formulario');
+// FIND_RECRUIT/CLICK_RECRUIT pueden leer el value de un botón input para identificar su etiqueta.
+// La regla de privacidad relevante es que INSPECT_FORM no lea value/defaultValue de los campos del formulario.
+check(!INSPECT_FORM.match(/\.value\b|defaultValue/), 'INSPECT_FORM no lee valores de controles del formulario');
 check(launcher.includes('--incognito') && launcher.includes('--remote-debugging-address=127.0.0.1'), 'launcher usa perfil aislado + CDP loopback');
 check(launcher.includes('NO presione Enviar/Guardar'), 'launcher advierte no ejecutar submit real');
 
