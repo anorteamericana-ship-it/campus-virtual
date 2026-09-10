@@ -12,7 +12,14 @@
   function visibleFor(p){
     const financing = upper(p?.financiamiento || p?.FINANCIAMIENTO);
     const etapa = upper(p?.etapa || p?.ETAPA);
-    return financing === 'CONAPE' && !['CANCELADO','ACTIVO','MATRICULADO'].includes(etapa);
+    const estadoConape = text(p?.estado_conape_raw || p?.estado_conape);
+    const codigo = text(p?.codigo || p?.codigo_estudiante || p?.CODIGO_ESTUDIANTE || p?.rec_m || p?.REC_M);
+    const estadoVentas = typeof window.calcularEstadoEstudianteVentas === 'function'
+      ? upper(window.calcularEstadoEstudianteVentas(p)?.estado)
+      : '';
+    if (financing !== 'CONAPE') return false;
+    if (estadoConape || codigo || estadoVentas === 'MATRICULADO') return false;
+    return !['CANCELADO','ACTIVO','MATRICULADO'].includes(etapa);
   }
 
   function injectStyles(){
@@ -53,7 +60,9 @@
             const code = text(r?.error || r?.code);
             throw new Error(code === 'DUPLICATE'
               ? 'CONAPE indica que esta cédula ya está registrada.'
-              : 'No se pudo consultar la cédula en CONAPE.');
+              : code === 'CONAPE_SESSION_NOT_READY'
+                ? 'No se pudo abrir automáticamente Reclutar Prospectos en CONAPE.'
+                : 'No se pudo consultar la cédula en CONAPE.');
           }
           const cmp = window.conapeRecruitBuildComparisonC33(detail, r.prospecto || r.conape || null);
           if (cancel) return;
@@ -87,8 +96,12 @@
               : 'CONAPE no confirmó el envío.');
         }
         const estadoConape = text(r.estado_conape_raw || r.estado_conape || '');
-        if (estadoConape && typeof onChanged === 'function') {
-          onChanged({ cedula:comparison.payload.cedula, estado_conape_raw:estadoConape });
+        if (typeof onChanged === 'function') {
+          onChanged({
+            cedula:comparison.payload.cedula,
+            ...(estadoConape ? { estado_conape_raw:estadoConape } : {}),
+            conape_reclutado:true,
+          });
         }
         if (typeof window.ventasDashCacheClear === 'function') window.ventasDashCacheClear();
         setState('done');
