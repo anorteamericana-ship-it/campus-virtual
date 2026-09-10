@@ -5,6 +5,11 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+try {
+  [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+  $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch { }
+
 function Find-ChromiumBrowser {
   $candidates = @(
     @{ Name = 'Google Chrome'; Path = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" },
@@ -57,8 +62,12 @@ function Remove-TemporaryProfile {
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $captureScript = Join-Path $scriptDir 'capture_chrome_cdp.mjs'
+$diagnosticScript = Join-Path $scriptDir 'diagnose_chrome_cdp.mjs'
 if (-not (Test-Path -LiteralPath $captureScript)) {
   throw "No existe el capturador C3.2: $captureScript"
+}
+if (-not (Test-Path -LiteralPath $diagnosticScript)) {
+  throw "No existe el diagnóstico C3.2: $diagnosticScript"
 }
 
 $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
@@ -112,6 +121,16 @@ try {
 
   & $nodeCommand.Source $captureScript --profile $profilePath --timeout-ms ($TimeoutSeconds * 1000)
   $exitCode = $LASTEXITCODE
+
+  if ($exitCode -ne 0) {
+    Write-Host ''
+    Write-Host 'C3.2: la captura principal se bloqueó. Ejecutando diagnóstico estructural seguro antes de cerrar la sesión temporal...'
+    & $nodeCommand.Source $diagnosticScript --profile $profilePath
+    $diagnosticExitCode = $LASTEXITCODE
+    if ($diagnosticExitCode -ne 0) {
+      Write-Warning "El diagnóstico C3.2 también terminó con código $diagnosticExitCode."
+    }
+  }
 } finally {
   Stop-DedicatedBrowserProcesses -ProfilePath $profilePath
   Start-Sleep -Milliseconds 600
