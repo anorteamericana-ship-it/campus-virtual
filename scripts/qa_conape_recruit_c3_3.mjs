@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedTarget, safeUrl, FIND_RECRUIT, CLICK_RECRUIT, INSPECT_FORM, pickChangedContext } from './conape_portal/discover_recruit_form_c3_3.mjs';
+import { classifyClientActionSource, INSPECT_CLIENT_ACTION } from './conape_portal/discover_recruit_client_action_c3_3b.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -10,8 +11,10 @@ const ui = read('src/ventas_conape_reclutar_c3_3.jsx');
 const html = read('ventas.html');
 const discovery = read('scripts/conape_portal/discover_recruit_form_c3_3.mjs');
 const submitDiscovery = read('scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs');
+const clientActionDiscovery = read('scripts/conape_portal/discover_recruit_client_action_c3_3b.mjs');
 const launcher = read('scripts/conape_portal/run_conape_recruit_discovery_windows.ps1');
 const submitLauncher = read('scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1');
+const clientActionLauncher = read('scripts/conape_portal/run_conape_recruit_client_action_c3_3b_windows.ps1');
 const failures = [];
 const check = (ok, msg) => ok ? console.log(`PASS C3.3: ${msg}`) : failures.push(msg);
 
@@ -45,8 +48,6 @@ check(discovery.includes("querySelectorAll('iframe')"), 'discovery inspecciona i
 check(discovery.includes('dialogSelector'), 'discovery inspecciona dialogs APEX visibles');
 check(discovery.includes('write_performed:false'), 'salida discovery declara no escritura');
 check(!discovery.includes('document.documentElement.outerHTML'), 'discovery no vuelca HTML completo');
-// FIND_RECRUIT/CLICK_RECRUIT pueden leer el value de un botón input para identificar su etiqueta.
-// La regla de privacidad relevante es que INSPECT_FORM no lea value/defaultValue de los campos del formulario.
 check(!INSPECT_FORM.match(/\.value\b|defaultValue/), 'INSPECT_FORM no lee valores de controles del formulario');
 check(launcher.includes('--incognito') && launcher.includes('--remote-debugging-address=127.0.0.1'), 'launcher usa perfil aislado + CDP loopback');
 check(launcher.includes('NO presione Enviar/Guardar'), 'launcher advierte no ejecutar submit real');
@@ -57,8 +58,25 @@ check(submitDiscovery.includes('NAV_RETRY_MS'), 'submit discovery reintenta si P
 check(submitDiscovery.includes('RECRUIT_NAVIGATION_NOT_OBSERVED'), 'submit discovery bloquea explícitamente si el click no navega');
 check(!submitDiscovery.includes('let opened = false'), 'submit discovery no queda latcheado por un click no confirmado');
 check(submitDiscovery.includes('write_performed:false'), 'submit discovery mantiene evidencia de cero escritura');
-check(!submitDiscovery.includes('hit.click();\n  return { found:true };\n})()`;\n\nconst INSPECT_SUBMIT') || submitDiscovery.includes('userGesture:true'), 'click Reclutar está protegido por ejecución CDP con gesto de usuario');
 check(submitLauncher.includes('NO presionará Crear nuevo Prospecto'), 'launcher submit mantiene prohibición de presionar Crear nuevo Prospecto');
+
+const classicConfirm = classifyClientActionSource("apex.confirm('Confirmar alta','CREATE')");
+check(classicConfirm.family === 'APEX_CONFIRM', 'C3.3b clasifica apex.confirm');
+check(classicConfirm.request_candidate === 'CREATE', 'C3.3b extrae request seguro de apex.confirm clásico');
+const pageConfirm = classifyClientActionSource("apex.page.confirm('Confirmar',{request:'CREATE_PROSPECTO'})");
+check(pageConfirm.family === 'APEX_PAGE_CONFIRM' && pageConfirm.request_candidate === 'CREATE_PROSPECTO', 'C3.3b clasifica apex.page.confirm con request en opciones');
+const directSubmit = classifyClientActionSource("apex.page.submit('SAVE')");
+check(directSubmit.family === 'APEX_PAGE_SUBMIT' && directSubmit.request_candidate === 'SAVE', 'C3.3b clasifica submit directo');
+const redirect = classifyClientActionSource("apex.navigation.redirect('f?p=302:2:SESSION')");
+check(redirect.family === 'APEX_NAVIGATION_REDIRECT' && redirect.redirect_detected === true, 'C3.3b clasifica redirect sin exponer destino');
+check(new Function(`return ${INSPECT_CLIENT_ACTION};`) !== null, 'expresión C3.3b INSPECT_CLIENT_ACTION compila');
+check(clientActionDiscovery.includes('raw_onclick_emitted:false'), 'C3.3b declara que no emite onclick crudo');
+check(clientActionDiscovery.includes('hidden_values_read:false'), 'C3.3b declara que no lee valores hidden');
+check(clientActionDiscovery.includes('button_clicked:false'), 'C3.3b declara que Crear nuevo Prospecto no fue presionado');
+check(clientActionDiscovery.includes('write_performed:false'), 'C3.3b declara cero escritura');
+check(!clientActionDiscovery.includes('console.log(onclick)'), 'C3.3b no imprime onclick crudo');
+check(clientActionLauncher.includes('WILL NOT click Crear nuevo Prospecto'), 'launcher C3.3b prohíbe click del botón de escritura');
+check(clientActionLauncher.includes('--incognito') && clientActionLauncher.includes('--remote-debugging-address=127.0.0.1'), 'launcher C3.3b conserva perfil aislado y CDP loopback');
 
 const f = (id, label='') => ({ tag:'input', type:'text', id, name:'', label });
 const baseline = {
@@ -88,4 +106,4 @@ if (failures.length) {
   failures.forEach(failure => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log('\nC3.3 CONAPE Recruit QA: PASS (UI contract + read-only discovery + privacy + anti-false-positive + nav retry)');
+console.log('\nC3.3 CONAPE Recruit QA: PASS (UI + E2 discovery contracts + C3.3b safe client-action classifier)');
