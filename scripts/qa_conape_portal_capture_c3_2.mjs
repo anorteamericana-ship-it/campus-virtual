@@ -12,6 +12,7 @@ import {
   sanitizeConapeUrl,
   selectConapeTarget,
 } from './conape_portal/capture_chrome_cdp.mjs';
+import { classifyLiveCapture } from './conape_portal/capture_live_gate.mjs';
 import { parseConapeApexReport } from './conape_portal/parse_apex_report.mjs';
 
 const failures = [];
@@ -99,6 +100,11 @@ const safeSerialized = JSON.stringify(safeSummary);
 check(!safeSerialized.includes('PERSONA A') && !safeSerialized.includes('111111111'), 'salida CLI segura excluye nombres y cédulas');
 check(safeSummary.records_captured === 2 && safeSummary.dataset_fingerprint === aggregate.summary.dataset_fingerprint, 'salida CLI conserva métricas y fingerprint útiles');
 
+const emptyLive = classifyLiveCapture({ ok: true, summary: { records_captured: 0 }, records: [] });
+check(emptyLive.ready === false && emptyLive.reason === 'ZERO_ROWS_UNCONFIRMED', 'cero filas nunca puede declarar E2 autenticada');
+const nonEmptyLive = classifyLiveCapture({ ok: true, summary: { records_captured: 2 }, records: [{}, {}] });
+check(nonEmptyLive.ready === true && nonEmptyLive.rows === 2, 'una captura con filas reales puede avanzar al gate E2');
+
 check(conapeCaptureContract.host === 'online.conape.go.cr' && conapeCaptureContract.appId === '302', 'contrato fija host y app permitidos');
 check(new Function(`return ${APEX_PAGINATION_PROBE_EXPRESSION};`) !== null, 'expresión de sondeo de paginación compila');
 check(new Function(`return ${APEX_PAGINATION_CLICK_NEXT_EXPRESSION};`) !== null, 'expresión de avance de paginación compila');
@@ -109,4 +115,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('\nC3.2 CONAPE Portal Capture QA: PASS (contrato local/CDP + privacidad + paginación)');
+console.log('\nC3.2 CONAPE Portal Capture QA: PASS (contrato local/CDP + privacidad + paginación + live gate)');
