@@ -25,6 +25,10 @@ const checks = [
   ['config live apunta al bridge Railway HTTPS', /https:\/\/conape-bridge-production\.up\.railway\.app/.test(config)],
   ['cliente envía token Campus al bridge y no credencial CONAPE', /getSessionToken/.test(client) && !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(client)],
   ['fila CONAPE falla cerrado si cliente bridge no está activo', /CONAPE_BRIDGE_C36_ACTIVE\s*!==\s*true/.test(row)],
+  ['modal no se descarta durante sending', /const canClose = state !== 'sending'/.test(row) && /disabled=\{!canClose\}/.test(row) && /requestClose/.test(row)],
+  ['resultado incierto queda terminal y no vuelve a ready', /WRITE_RESULT_UNCERTAIN/.test(row) && /setState\('uncertain'\)/.test(row) && /state === 'uncertain' \? 'No repetir'/.test(row)],
+  ['submit fallido no rehabilita la misma preview', /setState\('submit_error'\)/.test(row) && !/catch \(e\) \{[\s\S]{0,160}setState\('ready'\)/.test(row)],
+  ['reclutado confirmado oculta Reclutar aunque estado raw venga vacío', /p\?\.conape_reclutado === true/.test(row) && /conape_reclutado:true/.test(row)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
 ];
