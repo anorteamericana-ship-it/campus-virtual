@@ -1,0 +1,58 @@
+name: QA CONAPE Recruit C3.3
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_conape_reclutar_c3_3.jsx'
+      - 'ventas.html'
+      - 'scripts/conape_portal/discover_recruit_form_c3_3.mjs'
+      - 'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1'
+      - 'scripts/qa_conape_recruit_c3_3.mjs'
+      - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
+      - '.github/workflows/qa-conape-recruit-c3-3.yml'
+  push:
+    branches:
+      - 'feature/conape-reclutamiento-c3-3'
+    paths:
+      - 'src/ventas_conape_reclutar_c3_3.jsx'
+      - 'ventas.html'
+      - 'scripts/conape_portal/discover_recruit_form_c3_3.mjs'
+      - 'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1'
+      - 'scripts/qa_conape_recruit_c3_3.mjs'
+      - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
+      - '.github/workflows/qa-conape-recruit-c3-3.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax discovery + QA
+        run: |
+          node --check scripts/conape_portal/discover_recruit_form_c3_3.mjs
+          node --check scripts/qa_conape_recruit_c3_3.mjs
+      - name: Syntax PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+      - name: C3.3 contract QA
+        run: node scripts/qa_conape_recruit_c3_3.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/feature/conape-portal-parser-c3-1...HEAD
