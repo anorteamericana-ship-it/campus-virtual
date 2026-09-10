@@ -52,7 +52,7 @@
             const d = await window.getProspectoDetalle(cedula);
             if (d && d.ok !== false && d.prospecto) detail = { ...detail, ...d.prospecto };
           }
-          if (typeof window.conapePortalRecruitPreviewVentasSeguro !== 'function' || typeof window.conapeRecruitBuildComparisonC33 !== 'function') {
+          if (window.CONAPE_BRIDGE_C36_ACTIVE !== true || typeof window.conapePortalRecruitPreviewVentasSeguro !== 'function' || typeof window.conapeRecruitBuildComparisonC33 !== 'function') {
             throw new Error('El módulo CONAPE no está disponible.');
           }
           const r = await window.conapePortalRecruitPreviewVentasSeguro(cedula);
