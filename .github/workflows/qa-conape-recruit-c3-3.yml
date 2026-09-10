@@ -7,6 +7,8 @@ on:
       - 'ventas.html'
       - 'scripts/conape_portal/discover_recruit_form_c3_3.mjs'
       - 'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1'
+      - 'scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs'
+      - 'scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1'
       - 'scripts/qa_conape_recruit_c3_3.mjs'
       - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
       - '.github/workflows/qa-conape-recruit-c3-3.yml'
@@ -18,6 +20,8 @@ on:
       - 'ventas.html'
       - 'scripts/conape_portal/discover_recruit_form_c3_3.mjs'
       - 'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1'
+      - 'scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs'
+      - 'scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1'
       - 'scripts/qa_conape_recruit_c3_3.mjs'
       - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
       - '.github/workflows/qa-conape-recruit-c3-3.yml'
@@ -39,20 +43,27 @@ jobs:
       - name: Syntax discovery + QA
         run: |
           node --check scripts/conape_portal/discover_recruit_form_c3_3.mjs
+          node --check scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs
           node --check scripts/qa_conape_recruit_c3_3.mjs
       - name: Syntax PowerShell
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path 'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1'),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+          $paths = @(
+            'scripts/conape_portal/run_conape_recruit_discovery_windows.ps1',
+            'scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1'
+          )
+          foreach ($path in $paths) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $path),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$path :: $($_.Message)" }
+              exit 1
+            }
           }
       - name: C3.3 contract QA
         run: node scripts/qa_conape_recruit_c3_3.mjs
