@@ -24,6 +24,9 @@ const checks = [
   ['cliente bridge carga después de módulos CONAPE', ventas.indexOf('ventas_conape_reclutar_row_c3_5') < ventas.indexOf('conape_bridge_client_c3_6')],
   ['config live apunta al bridge Railway HTTPS', /https:\/\/conape-bridge-production\.up\.railway\.app/.test(config)],
   ['cliente envía token Campus al bridge y no credencial CONAPE', /getSessionToken/.test(client) && !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(client)],
+  ['cliente expone namespace canónico C3.6', /CONAPE_PORTAL_BRIDGE_C36/.test(client) && /preview,\s*submit/.test(client)],
+  ['modal por fila usa namespace live y no globals legacy', /liveBridge\(\)/.test(row) && /CONAPE_PORTAL_BRIDGE_C36/.test(row) && !/window\.conapePortalRecruitPreviewVentasSeguro\(cedula\)/.test(row)],
+  ['cache bust C3.6.1 aplicado a row y client', /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.6\.1/.test(ventas) && /conape_bridge_client_c3_6\.js\?v=C3\.6\.1/.test(ventas)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
 ];
