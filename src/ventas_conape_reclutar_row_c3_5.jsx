@@ -18,7 +18,7 @@
       ? upper(window.calcularEstadoEstudianteVentas(p)?.estado)
       : '';
     if (financing !== 'CONAPE') return false;
-    if (estadoConape || codigo || estadoVentas === 'MATRICULADO') return false;
+    if (p?.conape_reclutado === true || estadoConape || codigo || estadoVentas === 'MATRICULADO') return false;
     return !['CANCELADO','ACTIVO','MATRICULADO'].includes(etapa);
   }
 
@@ -40,6 +40,8 @@
     const [comparison, setComparison] = useState(null);
     const [preview, setPreview] = useState(null);
     const [error, setError] = useState('');
+    const canClose = state !== 'sending';
+    const requestClose = () => { if (canClose) onClose(); };
 
     useEffect(() => {
       let cancel = false;
@@ -89,11 +91,16 @@
         });
         if (!r || !r.ok) {
           const code = text(r?.code || r?.error);
+          if (['WRITE_RESULT_UNCERTAIN','conape_bridge_unavailable','conape_bridge_invalid_response'].includes(code)) {
+            setError(code === 'WRITE_RESULT_UNCERTAIN'
+              ? 'CONAPE recibió la operación, pero no confirmó el resultado. No la repita. Verifique primero el estado real en CONAPE.'
+              : 'No se pudo confirmar el resultado del envío. No genere otra solicitud ni una nueva vista previa hasta verificar el estado real en CONAPE.');
+            setState('uncertain');
+            return;
+          }
           throw new Error(code === 'DUPLICATE'
             ? 'CONAPE reportó que el prospecto ya existe.'
-            : code === 'WRITE_RESULT_UNCERTAIN'
-              ? 'CONAPE recibió la operación, pero no confirmó el resultado. No la repita.'
-              : 'CONAPE no confirmó el envío.');
+            : 'CONAPE rechazó el envío. Cierre esta ventana y vuelva a consultar antes de intentar otra operación.');
         }
         const estadoConape = text(r.estado_conape_raw || r.estado_conape || '');
         if (typeof onChanged === 'function') {
@@ -108,24 +115,26 @@
         onToast && onToast({ tipo:'ok', msg:estadoConape ? `Prospecto reclutado · CONAPE: ${estadoConape}` : 'Prospecto reclutado en CONAPE.' });
       } catch (e) {
         setError(e?.message || 'No se pudo completar el reclutamiento.');
-        setState('ready');
+        setState('submit_error');
       }
     };
 
     const rows = comparison?.rows || [];
     return (
-      <div className="vx-c33-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="vx-c33-back" onMouseDown={e => { if (e.target === e.currentTarget) requestClose(); }}>
         <div className="vx-c33-modal">
           <div className="vx-c33-head">
             <div>
               <div className="vx-c33-title">Reclutar en CONAPE</div>
               <div className="vx-c33-sub">CONAPE obtiene nombre y apellidos por cédula. Campus solo compara teléfono y correo.</div>
             </div>
-            <button className="vx-c33-x" onClick={onClose}>×</button>
+            <button className="vx-c33-x" onClick={requestClose} disabled={!canClose}>×</button>
           </div>
           <div className="vx-c33-body">
             {state === 'loading' ? <div className="vx-c33-banner">Consultando la cédula directamente en CONAPE…</div> : null}
+            {state === 'sending' ? <div className="vx-c33-banner">Enviando la solicitud. No cierre esta ventana.</div> : null}
             {state === 'done' ? <div className="vx-c33-banner">CONAPE confirmó el reclutamiento.</div> : null}
+            {state === 'uncertain' ? <div className="vx-c33-banner err">Resultado incierto: verifique el estado real en CONAPE antes de cualquier nuevo intento.</div> : null}
             {error ? <div className="vx-c33-banner err">{error}</div> : null}
             {comparison ? <React.Fragment>
               <div className="vx-c33-banner">Nombre y apellidos vienen de CONAPE y <b>nunca se modifican desde Campus</b>.</div>
@@ -142,8 +151,8 @@
             </React.Fragment> : null}
           </div>
           <div className="vx-c33-foot">
-            <button className="vx-c33-btn alt" onClick={onClose}>Cerrar</button>
-            <button className="vx-c33-btn go" onClick={submit} disabled={state !== 'ready' || !preview || preview.can_submit !== true}>{state === 'sending' ? 'Enviando…' : state === 'done' ? 'Enviado' : 'Enviar solicitud'}</button>
+            <button className="vx-c33-btn alt" onClick={requestClose} disabled={!canClose}>Cerrar</button>
+            <button className="vx-c33-btn go" onClick={submit} disabled={state !== 'ready' || !preview || preview.can_submit !== true}>{state === 'sending' ? 'Enviando…' : state === 'done' ? 'Enviado' : state === 'uncertain' ? 'No repetir' : 'Enviar solicitud'}</button>
           </div>
         </div>
       </div>
