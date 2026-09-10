@@ -27,6 +27,10 @@
     return bridge && typeof bridge.preview === 'function' && typeof bridge.submit === 'function' ? bridge : null;
   }
 
+  function comparisonBuilder(){
+    return window.conapeRecruitBuildComparisonC371 || window.conapeRecruitBuildComparisonC33 || null;
+  }
+
   function injectStyles(){
     if (document.getElementById('vx-conape-row-c35-style')) return;
     const style = document.createElement('style');
@@ -58,7 +62,8 @@
             if (d && d.ok !== false && d.prospecto) detail = { ...detail, ...d.prospecto };
           }
           const bridge = liveBridge();
-          if (!bridge || typeof window.conapeRecruitBuildComparisonC33 !== 'function') {
+          const buildComparison = comparisonBuilder();
+          if (!bridge || typeof buildComparison !== 'function') {
             throw new Error('El puente CONAPE live no está disponible.');
           }
           const r = await bridge.preview(cedula);
@@ -76,7 +81,7 @@
                       ? 'No se pudo conectar con el bridge CONAPE.'
                       : 'No se pudo consultar la cédula en CONAPE.');
           }
-          const cmp = window.conapeRecruitBuildComparisonC33(detail, r.prospecto || r.conape || null);
+          const cmp = buildComparison(detail, r.prospecto || r.conape || null);
           if (cancel) return;
           setPreview(r);
           setComparison(cmp);
@@ -133,7 +138,7 @@
           <div className="vx-c33-head">
             <div>
               <div className="vx-c33-title">Reclutar en CONAPE</div>
-              <div className="vx-c33-sub">CONAPE obtiene nombre y apellidos por cédula. Campus solo compara teléfono y correo.</div>
+              <div className="vx-c33-sub">Campus compara sus datos con la identidad y contactos devueltos por CONAPE.</div>
             </div>
             <button className="vx-c33-x" onClick={onClose}>×</button>
           </div>
@@ -142,7 +147,7 @@
             {state === 'done' ? <div className="vx-c33-banner">CONAPE confirmó el reclutamiento.</div> : null}
             {error ? <div className="vx-c33-banner err">{error}</div> : null}
             {comparison ? <React.Fragment>
-              <div className="vx-c33-banner">Nombre y apellidos vienen de CONAPE y <b>nunca se modifican desde Campus</b>.</div>
+              <div className="vx-c33-banner">Nombre y apellidos se comparan Campus ↔ CONAPE; <b>nunca se modifican desde Campus</b>.</div>
               <div className="vx-c33-grid">
                 <div className="vx-c33-cell h">Dato</div><div className="vx-c33-cell h">Campus</div><div className="vx-c33-cell h">CONAPE</div><div className="vx-c33-cell h">Acción final</div>
                 {rows.map(row => <React.Fragment key={row.key}>
