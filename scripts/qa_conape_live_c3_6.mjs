@@ -6,6 +6,7 @@ const server37 = read('services/conape-bridge/server_c3_7.mjs');
 const ventas = read('ventas.html');
 const client = read('src/conape_bridge_client_c3_6.js');
 const sessionUi = read('src/conape_session_ui_c3_7.js');
+const compareUi = read('src/conape_compare_ui_c3_7_1.js');
 const config = read('src/conape_bridge_config_c3_6.js');
 const row = read('src/ventas_conape_reclutar_row_c3_5.jsx');
 const table = read('src/ventas_sortable_table_cs21a20.jsx');
@@ -35,10 +36,15 @@ const checks = [
   ['cliente C3.7 envía token Campus y no credencial CONAPE', /getSessionToken/.test(client) && !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(client)],
   ['cliente expone session manager C3.7', /CONAPE_PORTAL_BRIDGE_C37/.test(client) && /sessionStatus/.test(client) && /connect/.test(client) && /disconnect/.test(client)],
   ['compatibilidad botón fila conserva namespace C36', /CONAPE_PORTAL_BRIDGE_C36 = api/.test(client)],
-  ['UI pregunta conectar CONAPE', /¿Querés conectar CONAPE en línea\?/.test(sessionUi) && /Conectar CONAPE/.test(sessionUi)],
+  ['UI de conexión es mínima', /¿Conectar CONAPE en línea\?/.test(sessionUi) && /Conectando\.\./.test(sessionUi) && /progress-pct/.test(sessionUi) && /progress-fill/.test(sessionUi)],
+  ['UI de conexión no explica credenciales', !/usuario y la contraseña|contraseña no se muestran|credenciales CONAPE/.test(sessionUi)],
   ['UI no contiene credenciales CONAPE', !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(sessionUi)],
+  ['comparación carga identidad Campus', /campusIdentity/.test(compareUi) && /apellido_1:identity\.apellido_1/.test(compareUi) && /nombre:identity\.nombre/.test(compareUi)],
+  ['identidad visual se compara Campus-CONAPE', /state:cmp\(campus\.apellido_1,conape\.apellido_1,key\)/.test(compareUi) && /state:cmp\(campus\.nombre,conape\.nombre,key\)/.test(compareUi)],
+  ['override visual no agrega identidad al payload', !/payload:\{[^}]*apellido_1/s.test(compareUi) && !/payload:\{[^}]*nombre:/s.test(compareUi)],
+  ['override visual carga antes del botón por fila', ventas.indexOf('conape_compare_ui_c3_7_1.js') < ventas.indexOf('ventas_conape_reclutar_row_c3_5.jsx')],
   ['UI se carga antes del dashboard', ventas.indexOf('conape_session_ui_c3_7.js') < ventas.indexOf('ventas_dashboard.jsx')],
-  ['cache bust C3.7 aplicado', /conape_bridge_client_c3_6\.js\?v=C3\.7/.test(ventas) && /conape_session_ui_c3_7\.js\?v=C3\.7/.test(ventas)],
+  ['cache bust C3.7.1 aplicado', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.1/.test(ventas) && /conape_session_ui_c3_7\.js\?v=C3\.7\.1/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.1/.test(ventas)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
 ];
@@ -49,4 +55,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`C3.7 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`C3.7.1 QA PASS · ${checks.length}/${checks.length}`);
