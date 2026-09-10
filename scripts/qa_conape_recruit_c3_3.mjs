@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allowedTarget, safeUrl, FIND_RECRUIT, CLICK_RECRUIT, INSPECT_FORM, pickChangedContext } from './conape_portal/discover_recruit_form_c3_3.mjs';
 import { classifyClientActionSource, INSPECT_CLIENT_ACTION } from './conape_portal/discover_recruit_client_action_c3_3b.mjs';
+import { classifyBoundSource, INSPECT_BOUND_HANDLERS } from './conape_portal/discover_recruit_bound_handlers_c3_3c.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -12,9 +13,11 @@ const html = read('ventas.html');
 const discovery = read('scripts/conape_portal/discover_recruit_form_c3_3.mjs');
 const submitDiscovery = read('scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs');
 const clientActionDiscovery = read('scripts/conape_portal/discover_recruit_client_action_c3_3b.mjs');
+const boundHandlerDiscovery = read('scripts/conape_portal/discover_recruit_bound_handlers_c3_3c.mjs');
 const launcher = read('scripts/conape_portal/run_conape_recruit_discovery_windows.ps1');
 const submitLauncher = read('scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1');
 const clientActionLauncher = read('scripts/conape_portal/run_conape_recruit_client_action_c3_3b_windows.ps1');
+const boundHandlerLauncher = read('scripts/conape_portal/run_conape_recruit_bound_handlers_c3_3c_windows.ps1');
 const failures = [];
 const check = (ok, msg) => ok ? console.log(`PASS C3.3: ${msg}`) : failures.push(msg);
 
@@ -78,6 +81,21 @@ check(!clientActionDiscovery.includes('console.log(onclick)'), 'C3.3b no imprime
 check(clientActionLauncher.includes('WILL NOT click Crear nuevo Prospecto'), 'launcher C3.3b prohíbe click del botón de escritura');
 check(clientActionLauncher.includes('--incognito') && clientActionLauncher.includes('--remote-debugging-address=127.0.0.1'), 'launcher C3.3b conserva perfil aislado y CDP loopback');
 
+const daHandler = classifyBoundSource("function(){ apex.da.handleEvent(); var cfg={action:'NATIVE_SUBMIT_PAGE',attribute01:'CREATE'}; }");
+check(daHandler.dynamic_action_detected === true, 'C3.3c detecta handler APEX Dynamic Action');
+check(daHandler.called_apis.includes('apex.da.handleEvent'), 'C3.3c clasifica apex.da.handleEvent sin ejecutar handler');
+check(daHandler.apex_da_actions.some(x => x.action === 'NATIVE_SUBMIT_PAGE' && x.attributes.attribute01 === 'CREATE'), 'C3.3c extrae candidato seguro de Dynamic Action submit');
+check(new Function(`return ${INSPECT_BOUND_HANDLERS};`) !== null, 'expresión C3.3c INSPECT_BOUND_HANDLERS compila');
+check(boundHandlerDiscovery.includes("jq._data(hit, 'events')"), 'C3.3c inspecciona metadata jQuery del botón sin click');
+check(boundHandlerDiscovery.includes('inline_script_matches'), 'C3.3c busca referencias inline al id del botón sin emitir script crudo');
+check(boundHandlerDiscovery.includes('raw_handler_source_emitted:false'), 'C3.3c declara que no emite source de handlers');
+check(boundHandlerDiscovery.includes('raw_inline_script_emitted:false'), 'C3.3c declara que no emite script inline crudo');
+check(boundHandlerDiscovery.includes('handler_invoked:false'), 'C3.3c declara que no invoca handler de escritura');
+check(boundHandlerDiscovery.includes('button_clicked:false'), 'C3.3c declara que no presiona Crear nuevo Prospecto');
+check(boundHandlerDiscovery.includes('write_performed:false'), 'C3.3c declara cero escritura');
+check(boundHandlerLauncher.includes('NO presiona ni invoca Crear nuevo Prospecto'), 'launcher C3.3c prohíbe click e invocación del botón');
+check(boundHandlerLauncher.includes('--incognito') && boundHandlerLauncher.includes('--remote-debugging-address=127.0.0.1'), 'launcher C3.3c conserva perfil aislado y CDP loopback');
+
 const f = (id, label='') => ({ tag:'input', type:'text', id, name:'', label });
 const baseline = {
   title:'PROSPECTACIÓN RECLUTADOR',
@@ -106,4 +124,4 @@ if (failures.length) {
   failures.forEach(failure => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log('\nC3.3 CONAPE Recruit QA: PASS (UI + E2 discovery contracts + C3.3b safe client-action classifier)');
+console.log('\nC3.3 CONAPE Recruit QA: PASS (UI + E2 contracts + C3.3b action classifier + C3.3c bound-handler discovery)');
