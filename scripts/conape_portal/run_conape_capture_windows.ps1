@@ -1,5 +1,5 @@
 param(
-  [int]$TimeoutSeconds = 300
+  [int]$TimeoutSeconds = 600
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,7 +61,7 @@ function Remove-TemporaryProfile {
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$captureScript = Join-Path $scriptDir 'capture_chrome_cdp.mjs'
+$captureScript = Join-Path $scriptDir 'capture_live_gate.mjs'
 $diagnosticScript = Join-Path $scriptDir 'diagnose_chrome_cdp.mjs'
 if (-not (Test-Path -LiteralPath $captureScript)) {
   throw "No existe el capturador C3.2: $captureScript"
@@ -117,6 +117,7 @@ try {
   Write-Host ''
   Write-Host 'En la ventana que se abrió: inicie sesión normalmente y deje visible Prospectación Reclutador.'
   Write-Host 'No copie HTML, Payload, Response, cookies ni sesiones. El capturador espera automáticamente.'
+  Write-Host 'C3.2 no aceptará un reporte de 0 filas como E2; espere a que la tabla tenga datos reales.'
   Write-Host ''
 
   & $nodeCommand.Source $captureScript --profile $profilePath --timeout-ms ($TimeoutSeconds * 1000)
