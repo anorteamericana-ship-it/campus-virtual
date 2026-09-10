@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { allowedTarget, safeUrl, FIND_RECRUIT, CLICK_RECRUIT, INSPECT_FORM, pickChangedContext } from './conape_portal/discover_recruit_form_c3_3.mjs';
 import { classifyClientActionSource, INSPECT_CLIENT_ACTION } from './conape_portal/discover_recruit_client_action_c3_3b.mjs';
 import { classifyBoundSource, INSPECT_BOUND_HANDLERS } from './conape_portal/discover_recruit_bound_handlers_c3_3c.mjs';
-import { safeBodyKeys, safeRequestToken } from './conape_portal/recruit_e4_controlled_c3_4.mjs';
+import { safeBodyKeys, safeRequestToken, cedulaLookupExpression, contactFillExpression } from './conape_portal/recruit_e4_controlled_c3_4.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -29,13 +29,18 @@ check(ui.includes("financing === 'CONAPE'"), 'botón queda acotado a prospectos 
 check(ui.includes('conapePortalRecruitPreview'), 'preflight usa contrato dedicado');
 check(ui.includes('conapePortalRecruitSubmit'), 'submit usa contrato dedicado');
 check(ui.includes('preview.can_submit !== true'), 'Enviar solicitud falla cerrado sin autorización del bridge');
-check(ui.includes('preserve_existing_email'), 'correo existente CONAPE se conserva explícitamente');
-check(ui.includes('correo_campus_secundario'), 'correo Campus distinto queda separado como alterno');
+check(ui.includes("identity_source:'CONAPE_CEDULA_LOOKUP'"), 'frontend marca identidad como obtenida por cédula desde CONAPE');
+check(ui.includes('update_telefono') && ui.includes('update_correo'), 'frontend separa decisión de actualizar teléfono/correo');
+check(!ui.includes('preserve_existing_email'), 'frontend ya no trata correo CONAPE como inmutable');
+check(!ui.includes('correo_campus_secundario'), 'frontend ya no inventa un correo secundario por regla obsoleta');
 check(ui.includes("first(p, ['whatsapp'"), 'teléfono candidato proviene de WhatsApp Campus');
 check(ui.includes(".replace(/\\D/g, '')"), 'cédula/teléfono eliminan separadores');
 check(ui.includes('.slice(-8)'), 'teléfono se reduce a 8 dígitos locales');
+check(ui.includes('Campus nunca lo modifica'), 'UI declara identidad CONAPE no editable por Campus');
 check(!ui.includes('wwv_flow.ajax'), 'frontend Ventas no llama infraestructura APEX directamente');
 check(!ui.match(/contrase(?:ña|na)\s*[:=]/i), 'frontend no contiene contraseña CONAPE');
+const payloadBlock = ui.match(/payload:\s*\{([\s\S]*?)\n\s*\},\n\s*\};/)?.[1] || '';
+check(!/apellido_1|apellido_2|\bnombre\s*:/.test(payloadBlock), 'payload frontend no envía nombre ni apellidos a CONAPE');
 
 const drawerPos = html.indexOf('src/ventas_drawer.jsx');
 const recruitPos = html.indexOf('src/ventas_conape_reclutar_c3_3.jsx');
@@ -103,11 +108,20 @@ const bodyKeys = safeBodyKeys('p_request=CREATE&P2_PRS_CEDULA=111111111&P2_PRS_E
 check(bodyKeys.includes('p_request') && bodyKeys.includes('P2_PRS_CEDULA') && bodyKeys.includes('P2_PRS_EMAIL'), 'C3.4 inventaría nombres de parámetros sin necesitar sus valores');
 check(safeRequestToken('p_request=CREATE&P2_PRS_CEDULA=111111111') === 'CREATE', 'C3.4 extrae únicamente request CREATE permitido');
 check(safeRequestToken('p_request=%3Cscript%3E') === '', 'C3.4 rechaza request no seguro');
+const cedulaExpr = cedulaLookupExpression('111111111');
+check(cedulaExpr.includes('P2_PRS_CEDULA'), 'C3.4 inicia búsqueda escribiendo solo la cédula');
+check(!cedulaExpr.includes('P2_PRS_APELLIDO_1') && !cedulaExpr.includes('P2_PRS_APELLIDO_2') && !cedulaExpr.includes('P2_PRS_NOMBRE'), 'búsqueda por cédula nunca escribe identidad');
+const contactExpr = contactFillExpression({ celular:'88881234', email:'qa@example.test', setPhone:true, setEmail:true });
+check(contactExpr.includes('P2_PRS_CELULAR') && contactExpr.includes('P2_PRS_EMAIL'), 'C3.4 solo prepara teléfono y correo después del lookup');
+check(!contactExpr.includes('P2_PRS_APELLIDO_1') && !contactExpr.includes('P2_PRS_APELLIDO_2') && !contactExpr.includes('P2_PRS_NOMBRE'), 'contact fill no puede modificar nombre ni apellidos');
+check(!e4Harness.includes('INPUT_NAME_REQUIRED'), 'C3.4 eliminó requisito manual de nombre/apellidos');
+check(e4Harness.includes('identity_fields_modified:false'), 'C3.4 registra explícitamente que identidad no fue modificada');
 check(e4Harness.includes("ack !== 'CREAR'"), 'C3.4 exige confirmación CREAR en runtime antes de escribir');
-check(e4Harness.includes("write_count:1"), 'C3.4 limita y documenta una sola escritura');
-check(e4Harness.includes("CREATE_NOT_CONFIRMED"), 'C3.4 prohíbe reintento ciego cuando no hay confirmación suficiente');
-check(e4Harness.includes("pii_emitted:false") && e4Harness.includes("cookies_emitted:false") && e4Harness.includes("hidden_values_emitted:false"), 'C3.4 evidencia final no emite PII/cookies/hidden values');
-check(e4Launcher.includes('PUEDE crear exactamente un prospecto real'), 'launcher C3.4 advierte explícitamente que la prueba sí puede escribir');
+check(e4Harness.includes('write_count:1'), 'C3.4 limita y documenta una sola escritura');
+check(e4Harness.includes('CREATE_NOT_CONFIRMED'), 'C3.4 prohíbe reintento ciego cuando no hay confirmación suficiente');
+check(e4Harness.includes('pii_emitted:false') && e4Harness.includes('cookies_emitted:false') && e4Harness.includes('hidden_values_emitted:false'), 'C3.4 evidencia final no emite PII/cookies/hidden values');
+check(e4Launcher.includes('Nombre y apellidos NUNCA son escritos'), 'launcher C3.4 congela regla de identidad propiedad de CONAPE');
+check(e4Launcher.includes('puede crear exactamente un prospecto real'), 'launcher C3.4 advierte explícitamente que la prueba sí puede escribir');
 check(e4Launcher.includes('NO reintente CREATE automáticamente'), 'launcher C3.4 advierte contra duplicación por reintento');
 check(e4Launcher.includes('--incognito') && e4Launcher.includes('--remote-debugging-address=127.0.0.1'), 'launcher C3.4 conserva perfil aislado y CDP loopback');
 
@@ -135,8 +149,8 @@ const withInline = {
 check(pickChangedContext(baseline, withInline)?.kind === 'top', 'acepta formulario inline solo cuando aparece un control nuevo');
 
 if (failures.length) {
-  console.error('\nC3.3 FAILURES:');
+  console.error('\nC3.3/C3.4 FAILURES:');
   failures.forEach(failure => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log('\nC3.3/C3.4 CONAPE Recruit QA: PASS (UI + E2 contracts + safe one-shot E4 harness)');
+console.log('\nC3.3/C3.4 CONAPE Recruit QA: PASS (cedula-first + identity owned by CONAPE + contact-only updates + safe one-shot E4)');
