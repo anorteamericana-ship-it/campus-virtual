@@ -22,7 +22,7 @@ const checks = [
   ['Ventas no carga shim loopback', !/conape_local_bridge_shim_c3_5/.test(ventas)],
   ['Prematrículas queda fuera del bundle Ventas', !/ventas_prematriculas/.test(ventas)],
   ['cliente bridge carga después de módulos CONAPE', ventas.indexOf('ventas_conape_reclutar_row_c3_5') < ventas.indexOf('conape_bridge_client_c3_6')],
-  ['config live sigue fail-closed hasta deploy', /CONAPE_PORTAL_BRIDGE_URL[^\n]*''/.test(config)],
+  ['config live apunta al bridge Railway HTTPS', /https:\/\/conape-bridge-production\.up\.railway\.app/.test(config)],
   ['cliente envía token Campus al bridge y no credencial CONAPE', /getSessionToken/.test(client) && !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(client)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
