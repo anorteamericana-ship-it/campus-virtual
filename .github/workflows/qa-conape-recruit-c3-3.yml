@@ -25,6 +25,7 @@ on:
       - 'scripts/qa_conape_recruit_bridge_c3_5.mjs'
       - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
       - '00_DOCUMENTACION/C3_5_CONAPE_PRIVATE_BRIDGE_SPEC.md'
+      - '00_DOCUMENTACION/C3_5_VENTAS_UI_AJUSTE_2026-09-09.md'
       - '.github/workflows/qa-conape-recruit-c3-3.yml'
   push:
     branches:
@@ -52,6 +53,7 @@ on:
       - 'scripts/qa_conape_recruit_bridge_c3_5.mjs'
       - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
       - '00_DOCUMENTACION/C3_5_CONAPE_PRIVATE_BRIDGE_SPEC.md'
+      - '00_DOCUMENTACION/C3_5_VENTAS_UI_AJUSTE_2026-09-09.md'
       - '.github/workflows/qa-conape-recruit-c3-3.yml'
 
 permissions:
