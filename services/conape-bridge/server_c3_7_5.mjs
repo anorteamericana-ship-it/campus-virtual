@@ -1,10 +1,12 @@
 import fs from 'node:fs/promises';
 
-/* C3.7.5 · cierre del submit CONAPE
+/* C3.7.6 · cierre determinista del submit CONAPE
    - conserva correo existente de CONAPE: Campus solo completa correo si CONAPE está vacío
    - usa setter/eventos equivalentes al E4 local que sí funcionó
-   - pulsa Crear nuevo Prospecto con un click real de Playwright
-   - confirma por mensaje de éxito o por relectura del prospecto en el reporte
+   - pulsa Crear nuevo Prospecto con click real de Playwright
+   - observa request + response del POST CREATE
+   - éxito visible tiene precedencia; invalid_fields es solo telemetría después del click
+   - confirma fallback por relectura del prospecto en el reporte
 */
 const configured = Number(process.env.CAMPUS_REQUEST_TIMEOUT_MS || 70000);
 const campusTimeoutMs = Number.isFinite(configured) ? Math.max(30000, configured) : 70000;
@@ -14,20 +16,20 @@ AbortSignal.timeout = function campusAwareTimeout(ms) {
 };
 
 const sourceUrl = new URL('./server_c3_7.mjs', import.meta.url);
-const runtimeUrl = new URL('./server_c3_7_5_runtime.mjs', import.meta.url);
+const runtimeUrl = new URL('./server_c3_7_6_runtime.mjs', import.meta.url);
 let source = await fs.readFile(sourceUrl, 'utf8');
 
 function replaceBlock(startMarker, endMarker, replacement, label) {
   const start = source.indexOf(startMarker);
   const end = source.indexOf(endMarker, start + startMarker.length);
-  if (start < 0 || end < 0 || end <= start) throw new Error(`C3_7_5_${label}_CONTRACT_MISMATCH`);
+  if (start < 0 || end < 0 || end <= start) throw new Error(`C3_7_6_${label}_CONTRACT_MISMATCH`);
   source = source.slice(0, start) + replacement + '\n' + source.slice(end);
 }
 
 const newPlan = `function contactPlan(campus,conape){
   const phone=campusPhone(campus),mail=campusEmail(campus),conapePhone=digits(conape?.telefono).slice(-8),conapeMail=email(conape?.correo);
   if(phone&&phone.length!==8)throw new AppError('CONTACT_VALIDATION_FAILED','El WhatsApp del Campus no tiene 8 dígitos.',422);
-  if(!validEmail(mail))throw new AppError('CONTACT_VALIDATION_FAILED','El correo del Campus no es válido.',422);
+  if(!conapeMail&&!validEmail(mail))throw new AppError('CONTACT_VALIDATION_FAILED','El correo del Campus no es válido.',422);
   const correoAlterno=conapeMail&&mail&&mail!==conapeMail?mail:'';
   return {telefono:phone||conapePhone,correo:conapeMail||mail,correo_campus_alterno:correoAlterno,update_telefono:!!phone&&phone!==conapePhone,update_correo:!conapeMail&&!!mail,preserve_correo_conape:!!conapeMail};
 }`;
@@ -55,29 +57,73 @@ replaceBlock('async function fillContacts(', 'async function clickCreateOnce(', 
 
 const newClick = `async function clickCreateOnce(p){
   const createRequests=[];
-  const onRequest=req=>{try{const u=new URL(req.url());if(req.method()!=='POST'||!u.pathname.endsWith('/apex/wwv_flow.accept'))return;const params=new URLSearchParams(String(req.postData()||''));if(upper(params.get('p_request'))==='CREATE')createRequests.push({request:'CREATE'});}catch{}};
+  const createResponses=[];
+  const isCreate=req=>{
+    try{
+      const u=new URL(req.url());
+      if(req.method()!=='POST'||!u.pathname.endsWith('/apex/wwv_flow.accept'))return false;
+      const params=new URLSearchParams(String(req.postData()||''));
+      return upper(params.get('p_request'))==='CREATE';
+    }catch{return false;}
+  };
+  const onRequest=req=>{if(isCreate(req))createRequests.push({at:Date.now()});};
+  const onResponse=res=>{try{const req=res.request();if(isCreate(req))createResponses.push({status:res.status(),at:Date.now()});}catch{}};
   p.on('request',onRequest);
+  p.on('response',onResponse);
   try{
     let button=p.getByRole('button',{name:/crear nuevo prospecto/i}).first();
     if(!(await button.count()))button=p.locator('#B204785015526859057').first();
     if(!(await button.count()))throw new AppError('CREATE_BUTTON_NOT_FOUND','No se encontró Crear nuevo Prospecto.',503);
+
+    const before=await p.evaluate(()=>{
+      const ids=['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
+      const invalid=ids.map(id=>document.getElementById(id)).filter(el=>el&&el.willValidate&&!el.validity.valid).map(el=>el.id);
+      return {path:location.pathname,invalid_fields:invalid};
+    });
+    if(before.invalid_fields.length){
+      console.log(JSON.stringify({event:'conape_create_telemetry',action:'submit',stage:'before_create_click',create_count:0,apex_http_status:null,success_message:false,server_error_message:false,duplicate_message:false,invalid_field_ids:before.invalid_fields,visible_alerts:[],form_reset:false,path_before:before.path,path_after:before.path,ms_click_to_response:null,ms_response_to_classification:null,pii:false}));
+      throw new AppError('FORM_INVALID_BEFORE_CREATE','El formulario CONAPE no está válido antes de Crear nuevo Prospecto.',422);
+    }
+
+    const clickAt=Date.now();
     await button.click({timeout:15000});
-    const until=Date.now()+20000;
+
+    const responseDeadline=Date.now()+30000;
+    while(Date.now()<responseDeadline&&!createResponses.length)await sleep(100);
+    const response=createResponses[0]||null;
+    const responseAt=response?.at||Date.now();
+
+    const classifyDeadline=Date.now()+10000;
     let outcome=null;
-    while(Date.now()<until){
-      await sleep(500);
+    while(Date.now()<classifyDeadline){
+      await sleep(250);
       outcome=await p.evaluate(()=>{
         const visible=el=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;}catch{return false;}};
         const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/\\s+/g,' ').trim();
         const nodes=Array.from(document.querySelectorAll('[role="alert"],.t-Alert,.a-Alert,.t-Body-alert,.t-Form-error,.apex-page-item-error,.t-Alert--danger,.t-Alert--warning')).filter(visible);
         const text=norm(nodes.map(n=>n.textContent||'').join(' '));
-        const invalid=Array.from(document.querySelectorAll('input,select,textarea')).filter(el=>el.willValidate&&!el.validity.valid).map(el=>el.id||el.name||'field').filter(Boolean);
-        return {success_message:/CREAD|REGISTRAD|GUARDAD|CORRECTAMENTE|EXITOS/.test(text)&&!/ERROR|INVALID|NO SE PUDO|NO FUE POSIBLE/.test(text),duplicate_message:/YA EXIST|DUPLIC/.test(text),error_message:/ERROR|INVALID|OBLIGATOR|REQUERID|NO SE PUDO|NO FUE POSIBLE/.test(text)||invalid.length>0,visible_alerts:nodes.length,invalid_fields:invalid.slice(0,10),path:location.pathname,form_present:!!document.getElementById('P2_PRS_CEDULA')};
+        const summaries=[];
+        if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))summaries.push('PROSPECTO_REGISTRADO');
+        if(/YA EXIST|DUPLIC/.test(text))summaries.push('DUPLICADO');
+        if(/ERROR|INVALID|OBLIGATOR|REQUERID|NO SE PUDO|NO FUE POSIBLE/.test(text))summaries.push('ERROR_DE_PORTAL');
+        if(text&&!summaries.length)summaries.push('ALERTA_NO_CLASIFICADA');
+        const invalid=Array.from(document.querySelectorAll('input,select,textarea')).filter(el=>el.willValidate&&!el.validity.valid).map(el=>el.id||el.name||'field').filter(Boolean).slice(0,20);
+        const ids=['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
+        const formPresent=!!document.getElementById('P2_PRS_CEDULA');
+        const formReset=formPresent&&ids.every(id=>!String(document.getElementById(id)?.value||'').trim());
+        return {success_message:/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text),duplicate_message:/YA EXIST|DUPLIC/.test(text),server_error_message:/ERROR|INVALID|OBLIGATOR|REQUERID|NO SE PUDO|NO FUE POSIBLE/.test(text),visible_alerts:summaries.slice(0,5),invalid_fields:invalid,form_reset:formReset,path:location.pathname};
       }).catch(()=>null);
-      if(outcome?.success_message||outcome?.duplicate_message||outcome?.error_message||outcome?.form_present===false)break;
+      if(outcome?.success_message||outcome?.duplicate_message||outcome?.server_error_message)break;
     }
-    return {createCount:createRequests.length,outcome:outcome||{}};
-  }finally{p.off('request',onRequest);}
+
+    const classifiedAt=Date.now();
+    const telemetry={action:'submit',stage:'after_create_click',create_count:createRequests.length,apex_http_status:response?.status??null,success_message:!!outcome?.success_message,server_error_message:!!outcome?.server_error_message,duplicate_message:!!outcome?.duplicate_message,invalid_field_ids:Array.isArray(outcome?.invalid_fields)?outcome.invalid_fields:[],visible_alerts:Array.isArray(outcome?.visible_alerts)?outcome.visible_alerts:[],form_reset:!!outcome?.form_reset,path_before:before.path,path_after:outcome?.path||'',ms_click_to_response:response?Math.max(0,responseAt-clickAt):null,ms_response_to_classification:response?Math.max(0,classifiedAt-responseAt):null,pii:false};
+    console.log(JSON.stringify({event:'conape_create_telemetry',...telemetry}));
+    return {createCount:createRequests.length,outcome:outcome||{},telemetry};
+  }finally{
+    p.off('request',onRequest);
+    p.off('response',onResponse);
+  }
 }`;
 replaceBlock('async function clickCreateOnce(', 'async function readEstadoAfterCreate(', newClick, 'CLICK_CREATE');
 
@@ -115,9 +161,9 @@ const newReadEstado = `async function readEstadoAfterCreate(p,cedula){
 replaceBlock('async function readEstadoAfterCreate(', '\n\nasync function preview(', newReadEstado, 'READ_ESTADO');
 
 const oldSubmitTail="const created=await clickCreateOnce(p),outcome=created.outcome||{};if(created.createCount!==1)throw new AppError('WRITE_RESULT_UNCERTAIN','No se pudo confirmar una única solicitud CREATE. No repita el envío.',409);if(outcome.duplicate_message)throw new AppError('DUPLICATE','CONAPE indicó que el prospecto ya existe.',409);if(outcome.error_message)throw new AppError('PORTAL_ERROR','CONAPE rechazó la creación.',422);if(!outcome.success_message)throw new AppError('WRITE_RESULT_UNCERTAIN','CONAPE recibió CREATE pero no confirmó el resultado. No repita el envío.',409);const estado=await readEstadoAfterCreate(p,auth.cedula);ConapeSession.lastActivity=nowIso();return{ok:true,confirmed:true,code:'CREATED',create_request_observed:true,write_count:1,success_signal:true,estado_conape_raw:estado,conape_session:ConapeSession.snapshot()};";
-const newSubmitTail="const created=await clickCreateOnce(p),outcome=created.outcome||{};if(created.createCount!==1)throw new AppError('WRITE_RESULT_UNCERTAIN','No se pudo confirmar una única solicitud CREATE. No repita el envío.',409);if(outcome.duplicate_message)throw new AppError('DUPLICATE','CONAPE indicó que el prospecto ya existe.',409);if(outcome.error_message)throw new AppError('PORTAL_ERROR','CONAPE rechazó la creación.',422);const estado=await readEstadoAfterCreate(p,auth.cedula);if(!outcome.success_message&&!estado)throw new AppError('WRITE_RESULT_UNCERTAIN','CONAPE recibió la operación, pero no confirmó el resultado. No la repita.',409);ConapeSession.lastActivity=nowIso();return{ok:true,confirmed:true,code:'CREATED',create_request_observed:true,write_count:1,success_signal:true,estado_conape_raw:estado,conape_session:ConapeSession.snapshot()};";
-if(!source.includes(oldSubmitTail))throw new Error('C3_7_5_SUBMIT_TAIL_CONTRACT_MISMATCH');
-source=source.replace(oldSubmitTail,newSubmitTail).replaceAll("version:'C3.7'","version:'C3.7.5'");
+const newSubmitTail="const created=await clickCreateOnce(p),outcome=created.outcome||{};if(created.createCount!==1)throw new AppError('WRITE_RESULT_UNCERTAIN','No se pudo confirmar una única solicitud CREATE. No repita el envío.',409);if(outcome.success_message){ConapeSession.lastActivity=nowIso();return{ok:true,confirmed:true,code:'CREATED',create_request_observed:true,write_count:1,success_signal:true,estado_conape_raw:'',conape_session:ConapeSession.snapshot()};}if(outcome.duplicate_message)throw new AppError('DUPLICATE','CONAPE indicó que el prospecto ya existe.',409);if(outcome.server_error_message)throw new AppError('PORTAL_ERROR','CONAPE rechazó la creación.',422);const estado=await readEstadoAfterCreate(p,auth.cedula);if(!estado)throw new AppError('WRITE_RESULT_UNCERTAIN','CONAPE recibió la operación, pero no confirmó el resultado. No la repita.',409);ConapeSession.lastActivity=nowIso();return{ok:true,confirmed:true,code:'CREATED',create_request_observed:true,write_count:1,success_signal:true,estado_conape_raw:estado,conape_session:ConapeSession.snapshot()};";
+if(!source.includes(oldSubmitTail))throw new Error('C3_7_6_SUBMIT_TAIL_CONTRACT_MISMATCH');
+source=source.replace(oldSubmitTail,newSubmitTail).replaceAll("version:'C3.7'","version:'C3.7.6'");
 await fs.writeFile(runtimeUrl,source,'utf8');
-console.log(JSON.stringify({event:'bridge_runtime_patch',version:'C3.7.5',campus_timeout_ms:campusTimeoutMs,preserve_existing_conape_email:true,real_create_button_click:true,verify_created_in_report:true,pii:false}));
+console.log(JSON.stringify({event:'bridge_runtime_patch',version:'C3.7.6',campus_timeout_ms:campusTimeoutMs,preserve_existing_conape_email:true,real_create_button_click:true,observe_create_response:true,success_precedence:true,invalid_after_click_telemetry_only:true,verify_created_in_report:true,pii:false}));
 await import(`${runtimeUrl.href}?v=${Date.now()}`);
