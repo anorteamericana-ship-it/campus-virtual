@@ -9,7 +9,9 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const ui = read('src/ventas_conape_reclutar_c3_3.jsx');
 const html = read('ventas.html');
 const discovery = read('scripts/conape_portal/discover_recruit_form_c3_3.mjs');
+const submitDiscovery = read('scripts/conape_portal/discover_recruit_submit_contract_c3_3.mjs');
 const launcher = read('scripts/conape_portal/run_conape_recruit_discovery_windows.ps1');
+const submitLauncher = read('scripts/conape_portal/run_conape_recruit_submit_discovery_windows.ps1');
 const failures = [];
 const check = (ok, msg) => ok ? console.log(`PASS C3.3: ${msg}`) : failures.push(msg);
 
@@ -49,6 +51,15 @@ check(!INSPECT_FORM.match(/\.value\b|defaultValue/), 'INSPECT_FORM no lee valore
 check(launcher.includes('--incognito') && launcher.includes('--remote-debugging-address=127.0.0.1'), 'launcher usa perfil aislado + CDP loopback');
 check(launcher.includes('NO presione Enviar/Guardar'), 'launcher advierte no ejecutar submit real');
 
+check(submitDiscovery.includes('userGesture:true'), 'submit discovery activa Reclutar con userGesture real de CDP');
+check(submitDiscovery.includes('MAX_NAV_ATTEMPTS = 5'), 'submit discovery limita reintentos de navegación');
+check(submitDiscovery.includes('NAV_RETRY_MS'), 'submit discovery reintenta si PROSPECTO no fue observado');
+check(submitDiscovery.includes('RECRUIT_NAVIGATION_NOT_OBSERVED'), 'submit discovery bloquea explícitamente si el click no navega');
+check(!submitDiscovery.includes('let opened = false'), 'submit discovery no queda latcheado por un click no confirmado');
+check(submitDiscovery.includes('write_performed:false'), 'submit discovery mantiene evidencia de cero escritura');
+check(!submitDiscovery.includes('hit.click();\n  return { found:true };\n})()`;\n\nconst INSPECT_SUBMIT') || submitDiscovery.includes('userGesture:true'), 'click Reclutar está protegido por ejecución CDP con gesto de usuario');
+check(submitLauncher.includes('NO presionará Crear nuevo Prospecto'), 'launcher submit mantiene prohibición de presionar Crear nuevo Prospecto');
+
 const f = (id, label='') => ({ tag:'input', type:'text', id, name:'', label });
 const baseline = {
   title:'PROSPECTACIÓN RECLUTADOR',
@@ -77,4 +88,4 @@ if (failures.length) {
   failures.forEach(failure => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log('\nC3.3 CONAPE Recruit QA: PASS (UI contract + read-only discovery + privacy + anti-false-positive)');
+console.log('\nC3.3 CONAPE Recruit QA: PASS (UI contract + read-only discovery + privacy + anti-false-positive + nav retry)');
