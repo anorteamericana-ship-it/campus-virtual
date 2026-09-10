@@ -8,7 +8,7 @@
     return;
   }
 
-  const { useMemo, useState } = React;
+  const { useState } = React;
 
   function digits(value) {
     return String(value || '').replace(/\D/g, '');
@@ -41,7 +41,6 @@
     const p = raw || {};
     return {
       cedula: digits(first(p, ['cedula','CEDULA'])),
-      nombre: String(first(p, ['nombre','NOMBRE'])).trim(),
       correo: email(first(p, ['correo','email','CORREO','EMAIL','correo_electronico','CORREO_ELECTRONICO'])),
       whatsapp: phoneDigits(first(p, ['whatsapp','WHATSAPP','telefono','TELEFONO','tel1','TEL1'])),
     };
@@ -50,10 +49,12 @@
   function conapeRecord(raw) {
     const p = raw || {};
     return {
-      cedula: digits(first(p, ['cedula','CEDULA'])),
-      nombre: String(first(p, ['nombre','NOMBRE','nombre_completo'])).trim(),
-      correo: email(first(p, ['correo','email','CORREO','EMAIL','correo_electronico'])),
-      telefono: phoneDigits(first(p, ['telefono','telefono_celular','TELEFONO','TELEFONO_CELULAR'])),
+      cedula: digits(first(p, ['cedula','CEDULA','P2_PRS_CEDULA'])),
+      apellido_1: String(first(p, ['apellido_1','primer_apellido','APELLIDO_1','PRIMER_APELLIDO','P2_PRS_APELLIDO_1'])).trim(),
+      apellido_2: String(first(p, ['apellido_2','segundo_apellido','APELLIDO_2','SEGUNDO_APELLIDO','P2_PRS_APELLIDO_2'])).trim(),
+      nombre: String(first(p, ['nombre','NOMBRE','P2_PRS_NOMBRE'])).trim(),
+      correo: email(first(p, ['correo','email','CORREO','EMAIL','correo_electronico','P2_PRS_EMAIL'])),
+      telefono: phoneDigits(first(p, ['telefono','telefono_celular','TELEFONO','TELEFONO_CELULAR','P2_PRS_CELULAR'])),
     };
   }
 
@@ -65,28 +66,42 @@
     return av === bv ? 'igual' : 'diferente';
   }
 
+  function contactDecision(campusValue, conapeValue, normalizer) {
+    const c = normalizer(campusValue);
+    const k = normalizer(conapeValue);
+    if (!c) return { final:conapeValue || '', action:'Conservar CONAPE' };
+    if (!k) return { final:campusValue, action:'Completar desde Campus' };
+    if (c === k) return { final:conapeValue || campusValue, action:'Sin cambio' };
+    return { final:campusValue, action:'Actualizar desde Campus' };
+  }
+
   function buildComparison(campusRaw, conapeRaw) {
     const campus = campusRecord(campusRaw);
     const conape = conapeRecord(conapeRaw);
-    const conapeEmailLocked = !!conape.correo;
+    const phone = contactDecision(campus.whatsapp, conape.telefono, phoneDigits);
+    const mail = contactDecision(campus.correo, conape.correo, email);
+    const identityFound = !!(conape.apellido_1 && conape.nombre);
+
     return {
       campus,
       conape,
+      identityFound,
       rows: [
-        { key:'cedula', label:'Cédula', campus:campus.cedula, conape:conape.cedula, final:conape.cedula || campus.cedula, state:cmp(campus.cedula, conape.cedula, digits), rule:'Solo dígitos' },
-        { key:'nombre', label:'Nombre', campus:campus.nombre, conape:conape.nombre, final:conape.nombre || campus.nombre, state:cmp(campus.nombre, conape.nombre), rule:'Comparación normalizada' },
-        { key:'correo', label:'Correo', campus:campus.correo, conape:conape.correo, final:conapeEmailLocked ? conape.correo : campus.correo, state:cmp(campus.correo, conape.correo, email), rule:conapeEmailLocked ? 'CONAPE existente: no se modifica' : 'Completar con correo Campus' },
-        { key:'telefono', label:'Teléfono', campus:campus.whatsapp, conape:conape.telefono, final:campus.whatsapp || conape.telefono, state:cmp(campus.whatsapp, conape.telefono, phoneDigits), rule:'Usar WhatsApp del prospecto · solo dígitos' },
+        { key:'cedula', label:'Cédula', campus:campus.cedula, conape:conape.cedula, final:conape.cedula || campus.cedula, state:cmp(campus.cedula, conape.cedula, digits), rule:'Campus envía solo la cédula para iniciar la búsqueda' },
+        { key:'apellido_1', label:'Primer Apellido', campus:'—', conape:conape.apellido_1, final:conape.apellido_1, state:conape.apellido_1 ? 'conape' : 'falta', rule:'Lo obtiene CONAPE por cédula · Campus nunca lo modifica' },
+        { key:'apellido_2', label:'Segundo Apellido', campus:'—', conape:conape.apellido_2, final:conape.apellido_2, state:conape.apellido_2 ? 'conape' : 'vacio', rule:'Lo obtiene CONAPE por cédula · Campus nunca lo modifica' },
+        { key:'nombre', label:'Nombre', campus:'—', conape:conape.nombre, final:conape.nombre, state:conape.nombre ? 'conape' : 'falta', rule:'Lo obtiene CONAPE por cédula · Campus nunca lo modifica' },
+        { key:'telefono', label:'Teléfono', campus:campus.whatsapp, conape:conape.telefono, final:phone.final, state:cmp(campus.whatsapp, conape.telefono, phoneDigits), rule:`${phone.action} · WhatsApp Campus normalizado a 8 dígitos` },
+        { key:'correo', label:'Correo', campus:campus.correo, conape:conape.correo, final:mail.final, state:cmp(campus.correo, conape.correo, email), rule:mail.action },
       ],
       payload: {
         cedula: conape.cedula || campus.cedula,
-        nombre: conape.nombre || campus.nombre,
-        correo: conapeEmailLocked ? conape.correo : campus.correo,
-        correo_campus_secundario: conapeEmailLocked && campus.correo && campus.correo !== conape.correo ? campus.correo : '',
-        telefono: campus.whatsapp || conape.telefono,
-        preserve_existing_email: conapeEmailLocked,
+        telefono: phone.final,
+        correo: mail.final,
+        update_telefono: !!campus.whatsapp && phoneDigits(campus.whatsapp) !== phoneDigits(conape.telefono),
+        update_correo: !!campus.correo && email(campus.correo) !== email(conape.correo),
+        identity_source:'CONAPE_CEDULA_LOOKUP',
       },
-      emailLocked: conapeEmailLocked,
     };
   }
 
@@ -132,7 +147,7 @@
       .vx-c33-head{padding:20px 22px 14px;border-bottom:1px solid #e5eaf1;display:flex;justify-content:space-between;gap:16px;align-items:start}
       .vx-c33-title{font-size:18px;font-weight:700;color:#10233f}.vx-c33-sub{font-size:12px;color:#66758b;margin-top:4px}.vx-c33-x{border:0;background:transparent;font-size:24px;cursor:pointer;color:#607086}
       .vx-c33-body{padding:18px 22px}.vx-c33-banner{padding:11px 13px;border-radius:10px;background:#eef6ff;color:#174c7d;font-size:12px;margin-bottom:14px}.vx-c33-banner.warn{background:#fff5e8;color:#8a4a00}.vx-c33-banner.err{background:#fff0f0;color:#9d2020}
-      .vx-c33-grid{display:grid;grid-template-columns:130px 1fr 1fr 1fr;gap:1px;background:#e5eaf1;border:1px solid #e5eaf1;border-radius:10px;overflow:hidden}.vx-c33-cell{background:#fff;padding:10px 12px;font-size:12px;min-width:0;word-break:break-word}.vx-c33-cell.h{font-weight:700;background:#f7f9fc;color:#40516a}.vx-c33-tag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}.vx-c33-tag.igual{background:#e8f7ed;color:#237342}.vx-c33-tag.diferente{background:#fff3df;color:#8b5700}.vx-c33-tag.falta,.vx-c33-tag.vacio{background:#eef1f5;color:#5c6979}
+      .vx-c33-grid{display:grid;grid-template-columns:130px 1fr 1fr 1fr;gap:1px;background:#e5eaf1;border:1px solid #e5eaf1;border-radius:10px;overflow:hidden}.vx-c33-cell{background:#fff;padding:10px 12px;font-size:12px;min-width:0;word-break:break-word}.vx-c33-cell.h{font-weight:700;background:#f7f9fc;color:#40516a}.vx-c33-tag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}.vx-c33-tag.igual{background:#e8f7ed;color:#237342}.vx-c33-tag.diferente{background:#fff3df;color:#8b5700}.vx-c33-tag.falta,.vx-c33-tag.vacio{background:#eef1f5;color:#5c6979}.vx-c33-tag.conape{background:#e8f2ff;color:#205ca3}
       .vx-c33-rule{font-size:10px;color:#77869b;margin-top:4px}.vx-c33-foot{padding:14px 22px 20px;border-top:1px solid #e5eaf1;display:flex;justify-content:flex-end;gap:10px}.vx-c33-btn{border:0;border-radius:9px;padding:10px 14px;font:600 12px Poppins,system-ui;cursor:pointer}.vx-c33-btn.alt{background:#eef1f5;color:#2d3e56}.vx-c33-btn.go{background:#0d66c2;color:white}.vx-c33-btn:disabled{opacity:.45;cursor:not-allowed}
       @media(max-width:720px){.vx-c33-grid{grid-template-columns:95px 1fr}.vx-c33-cell:nth-child(4n+3),.vx-c33-cell:nth-child(4n+4){border-top:1px solid #eef1f5}.vx-c33-launch{right:16px;bottom:16px}}
     `;
@@ -141,7 +156,6 @@
 
   function RecruitModal({ seed, cedula, onClose, onToast }) {
     const [state, setState] = useState('idle');
-    const [campus, setCampus] = useState(null);
     const [preview, setPreview] = useState(null);
     const [comparison, setComparison] = useState(null);
     const [error, setError] = useState('');
@@ -156,7 +170,6 @@
           if (d && d.ok !== false && d.prospecto) detail = { ...detail, ...d.prospecto };
         }
         const c = campusRecord(detail);
-        setCampus(c);
         if (!c.cedula) throw new Error('El prospecto no tiene cédula válida.');
         const r = await recruitPreview(c.cedula);
         if (!r || !r.ok) {
@@ -200,27 +213,27 @@
       <div className="vx-c33-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
         <div className="vx-c33-modal">
           <div className="vx-c33-head">
-            <div><div className="vx-c33-title">Reclutar en CONAPE</div><div className="vx-c33-sub">Compará primero. El Campus no sobrescribe silenciosamente datos ya existentes en CONAPE.</div></div>
+            <div><div className="vx-c33-title">Reclutar en CONAPE</div><div className="vx-c33-sub">Paso 1: CONAPE busca la identidad por cédula. Paso 2: Campus completa o actualiza únicamente teléfono y correo.</div></div>
             <button className="vx-c33-x" onClick={onClose}>×</button>
           </div>
           <div className="vx-c33-body">
-            {state === 'loading' || state === 'idle' ? <div className="vx-c33-banner">Consultando el registro de CONAPE y preparando la comparación…</div> : null}
-            {state === 'contract-missing' ? <div className="vx-c33-banner warn">La pantalla ya está agregada, pero el puente seguro de escritura CONAPE todavía no está desplegado. C3.3 permanece bloqueado hasta descubrir y validar el formulario real de “Reclutar”.</div> : null}
+            {state === 'loading' || state === 'idle' ? <div className="vx-c33-banner">Buscando la cédula en CONAPE y preparando la comparación…</div> : null}
+            {state === 'contract-missing' ? <div className="vx-c33-banner warn">La interfaz ya está alineada al flujo real, pero el puente privado CONAPE todavía no está desplegado. Enviar solicitud permanece bloqueado.</div> : null}
             {state === 'done' ? <div className="vx-c33-banner">CONAPE confirmó el reclutamiento. El seguimiento podrá continuar desde el Campus.</div> : null}
             {error ? <div className="vx-c33-banner err">{error}</div> : null}
             {comparison ? (
               <React.Fragment>
+                <div className="vx-c33-banner">Nombre y apellidos son propiedad de CONAPE: se obtienen por cédula y el Campus <b>nunca los modifica</b>.</div>
                 <div className="vx-c33-grid">
-                  <div className="vx-c33-cell h">Dato</div><div className="vx-c33-cell h">Campus</div><div className="vx-c33-cell h">CONAPE</div><div className="vx-c33-cell h">Se enviará / conservará</div>
+                  <div className="vx-c33-cell h">Dato</div><div className="vx-c33-cell h">Campus</div><div className="vx-c33-cell h">CONAPE</div><div className="vx-c33-cell h">Acción final</div>
                   {rows.map(row => <React.Fragment key={row.key}>
                     <div className="vx-c33-cell h">{row.label}</div>
                     <div className="vx-c33-cell">{row.campus || '—'}</div>
-                    <div className="vx-c33-cell">{row.conape || '—'}<br/><span className={`vx-c33-tag ${row.state}`}>{row.state}</span></div>
+                    <div className="vx-c33-cell">{row.conape || '—'}<br/><span className={`vx-c33-tag ${row.state}`}>{row.state === 'conape' ? 'CONAPE' : row.state}</span></div>
                     <div className="vx-c33-cell">{row.final || '—'}<div className="vx-c33-rule">{row.rule}</div></div>
                   </React.Fragment>)}
                 </div>
-                {comparison.emailLocked && comparison.payload.correo_campus_secundario ? <div className="vx-c33-banner warn" style={{marginTop:14}}>CONAPE ya tiene un correo y no se modificará. El correo del Campus se conservará como contacto alterno: <b>{comparison.payload.correo_campus_secundario}</b>.</div> : null}
-                <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono a usar: <b>{comparison.payload.telefono || 'sin WhatsApp disponible'}</b>. Se envía sin guiones ni espacios y sale del WhatsApp registrado en el prospecto.</div>
+                <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono final: <b>{comparison.payload.telefono || 'pendiente'}</b>. Correo final: <b>{comparison.payload.correo || 'sin correo'}</b>. Solo estos datos de contacto pueden completarse o actualizarse desde el Campus.</div>
               </React.Fragment>
             ) : null}
           </div>
