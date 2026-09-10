@@ -21,7 +21,7 @@ function clearLocalLoginSession() {
   } catch (_) {}
 }
 
-async function loginFetchJson(payload, timeoutMs = 26000) {
+async function loginFetchJson(payload, timeoutMs = 70000) {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
