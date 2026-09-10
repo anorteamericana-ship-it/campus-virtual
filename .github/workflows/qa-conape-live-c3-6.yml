@@ -11,6 +11,7 @@ on:
       - 'src/conape_bridge_config_c3_6.js'
       - 'services/conape-bridge/**'
       - 'scripts/qa_conape_live_c3_6.mjs'
+      - 'scripts/test_conape_bridge_c3_6_synthetic.mjs'
       - '.github/workflows/qa-conape-live-c3-6.yml'
   workflow_dispatch:
 
@@ -28,7 +29,11 @@ jobs:
         run: node --check services/conape-bridge/server.mjs
       - name: Node syntax · QA
         run: node --check scripts/qa_conape_live_c3_6.mjs
+      - name: Node syntax · synthetic bridge QA
+        run: node --check scripts/test_conape_bridge_c3_6_synthetic.mjs
       - name: C3.6 contract gate
         run: node scripts/qa_conape_live_c3_6.mjs
+      - name: C3.6 synthetic bridge contracts
+        run: node scripts/test_conape_bridge_c3_6_synthetic.mjs
       - name: Diff hygiene
         run: git diff --check origin/main...HEAD
