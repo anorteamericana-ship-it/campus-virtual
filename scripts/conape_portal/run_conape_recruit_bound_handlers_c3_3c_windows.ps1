@@ -1,0 +1,102 @@
+param(
+  [int]$TimeoutSeconds = 600
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+try {
+  [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+  $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch { }
+
+function Find-ChromiumBrowser {
+  $candidates = @(
+    @{ Name = 'Google Chrome'; Path = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" },
+    @{ Name = 'Google Chrome'; Path = "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe" },
+    @{ Name = 'Google Chrome'; Path = "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe" },
+    @{ Name = 'Microsoft Edge'; Path = "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe" },
+    @{ Name = 'Microsoft Edge'; Path = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" },
+    @{ Name = 'Microsoft Edge'; Path = "$env:LOCALAPPDATA\Microsoft\Edge\Application\msedge.exe" }
+  )
+  foreach ($candidate in $candidates) {
+    if ($candidate.Path -and (Test-Path -LiteralPath $candidate.Path)) { return $candidate }
+  }
+  throw 'No se encontró Google Chrome ni Microsoft Edge.'
+}
+
+function Stop-DedicatedBrowserProcesses {
+  param([string]$ProfilePath)
+  try {
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+      Where-Object {
+        ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') -and $_.CommandLine -and
+        $_.CommandLine.IndexOf($ProfilePath, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+      } | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch { } }
+  } catch { }
+}
+
+function Remove-TemporaryProfile {
+  param([string]$ProfilePath)
+  for ($i = 0; $i -lt 10; $i++) {
+    try {
+      if (Test-Path -LiteralPath $ProfilePath) { Remove-Item -LiteralPath $ProfilePath -Recurse -Force -ErrorAction Stop }
+      return
+    } catch { Start-Sleep -Milliseconds 400 }
+  }
+  Write-Warning "No fue posible borrar completamente el perfil temporal: $ProfilePath"
+}
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$discoveryScript = Join-Path $scriptDir 'discover_recruit_bound_handlers_c3_3c.mjs'
+if (-not (Test-Path -LiteralPath $discoveryScript)) { throw "No existe C3.3c discovery: $discoveryScript" }
+
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node) { throw 'Node.js no está disponible en PATH.' }
+$nodeVersion = (& $node.Source -p "process.versions.node").Trim()
+if ([int]($nodeVersion.Split('.')[0]) -lt 22) { throw "Se requiere Node 22 o superior. Detectado: $nodeVersion" }
+
+$browser = Find-ChromiumBrowser
+$stamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+$profilePath = Join-Path $env:TEMP "an-conape-bound-$PID-$stamp"
+New-Item -ItemType Directory -Path $profilePath -Force | Out-Null
+$portFile = Join-Path $profilePath 'DevToolsActivePort'
+$targetUrl = 'https://online.conape.go.cr/apex/f?p=302:1'
+$browserArgs = @(
+  "--user-data-dir=$profilePath",
+  '--remote-debugging-address=127.0.0.1',
+  '--remote-debugging-port=0',
+  '--incognito',
+  '--no-first-run',
+  '--no-default-browser-check',
+  $targetUrl
+)
+
+$exitCode = 1
+try {
+  Write-Host 'C3.3c · abriendo CONAPE para inspeccionar SOLO el handler enlazado a Crear nuevo Prospecto...'
+  Start-Process -FilePath $browser.Path -ArgumentList $browserArgs | Out-Null
+  $deadline = (Get-Date).AddSeconds(20)
+  while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $portFile)) { Start-Sleep -Milliseconds 250 }
+  if (-not (Test-Path -LiteralPath $portFile)) { throw 'Chrome/Edge no creó DevToolsActivePort.' }
+
+  Write-Host ''
+  Write-Host 'Inicie sesión normalmente y deje visible Reclutar Prospectos.'
+  Write-Host 'El script puede abrir PROSPECTO, pero NO presiona ni invoca Crear nuevo Prospecto.'
+  Write-Host 'Solo clasifica handlers/eventos y referencias inline; no imprime código crudo, valores, hidden, cookies, tokens ni sesión.'
+  Write-Host ''
+
+  & $node.Source $discoveryScript --profile $profilePath --timeout-ms ($TimeoutSeconds * 1000)
+  $exitCode = $LASTEXITCODE
+} finally {
+  Stop-DedicatedBrowserProcesses -ProfilePath $profilePath
+  Start-Sleep -Milliseconds 600
+  Remove-TemporaryProfile -ProfilePath $profilePath
+}
+
+if ($exitCode -eq 0) {
+  Write-Host ''
+  Write-Host 'C3.3c terminó en lectura solamente. Perfil temporal eliminado.'
+  exit 0
+}
+Write-Error "C3.3c terminó bloqueado con código $exitCode."
+exit $exitCode
