@@ -101,19 +101,19 @@ test('campos de identidad enviados desde Campus se prohíben antes de cualquier 
   assert.equal(fetchQueue.length, 0);
 });
 
-test('source_version consumido se rechaza', async () => {
+test('source_version consumido queda inutilizable one-shot', async () => {
   const session = okSession();
   const binding = c36.userBinding(session);
   c36.sourceVersions.set('used', { cedula:'123456789', binding, identityHash:'x', expiresAt:Date.now()+60000, consumed:true });
   queueCampus(session, okProspect());
-  await expectCode(() => c36.submit({ token:'token-used', cedula:'123456789', source_version:'used' }), 'SOURCE_VERSION_USED');
+  await expectCode(() => c36.submit({ token:'token-used', cedula:'123456789', source_version:'used' }), 'SOURCE_VERSION_REQUIRED');
 });
 
-test('source_version vencido se rechaza', async () => {
+test('source_version vencido queda inutilizable', async () => {
   const session = okSession();
   c36.sourceVersions.set('expired', { cedula:'123456789', binding:c36.userBinding(session), identityHash:'x', expiresAt:Date.now()-1, consumed:false });
   queueCampus(session, okProspect());
-  await expectCode(() => c36.submit({ token:'token-exp', cedula:'123456789', source_version:'expired' }), 'SOURCE_VERSION_EXPIRED');
+  await expectCode(() => c36.submit({ token:'token-exp', cedula:'123456789', source_version:'expired' }), 'SOURCE_VERSION_REQUIRED');
 });
 
 test('source_version de otra sesion se rechaza', async () => {
