@@ -28,13 +28,16 @@ const checks = [
   ['source_version one-shot', /source\.consumed=true/.test(server37) && /SOURCE_VERSION_USED/.test(server37)],
   ['C3.7.3 conserva timeout Campus ampliado', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server373) && /Number\(ms\) === 30000/.test(server373)],
   ['C3.7.4 fijó correo existente como inmutable', /update_correo:!conapeMail&&!!mail/.test(server374) && /preserve_existing_conape_email:true/.test(server374)],
-  ['C3.7.5 conserva correo CONAPE', /update_correo:!conapeMail&&!!mail/.test(server375) && /preserve_existing_conape_email:true/.test(server375)],
-  ['C3.7.5 setter teléfono replica E4 con input/change/blur', /P2_PRS_CELULAR/.test(server375) && /new Event\('change'/.test(server375) && /el\.focus\(\); el\.blur\(\)/.test(server375)],
-  ['C3.7.5 usa click real Playwright en Crear nuevo Prospecto', /getByRole\('button',\{name:\/crear nuevo prospecto\/i\}\)/.test(server375) && /await button\.click/.test(server375)],
-  ['C3.7.5 exige una sola solicitud CREATE', /created\.createCount!==1/.test(server375) && /WRITE_RESULT_UNCERTAIN/.test(server375)],
-  ['C3.7.5 verifica creación contra reporte', /verify_created_in_report:true/.test(server375) && /readEstadoAfterCreate/.test(server375) && /!outcome\.success_message&&!estado/.test(server375)],
-  ['C3.7.5 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server375) && /pii:false/.test(server375)],
-  ['Docker ejecuta C3.7.5', /COPY server_c3_7_5\.mjs/.test(docker) && /CMD \["node", "server_c3_7_5\.mjs"\]/.test(docker)],
+  ['C3.7.6 conserva correo CONAPE y solo valida correo Campus si hace falta', /update_correo:!conapeMail&&!!mail/.test(server375) && /if\(!conapeMail&&!validEmail\(mail\)\)/.test(server375)],
+  ['C3.7.6 setter teléfono replica E4 con input/change/blur', /P2_PRS_CELULAR/.test(server375) && /new Event\('change'/.test(server375) && /el\.focus\(\); el\.blur\(\)/.test(server375)],
+  ['C3.7.6 usa click real Playwright en Crear nuevo Prospecto', /getByRole\('button',\{name:\/crear nuevo prospecto\/i\}\)/.test(server375) && /await button\.click/.test(server375)],
+  ['C3.7.6 observa request y response CREATE', /p\.on\('request',onRequest\)/.test(server375) && /p\.on\('response',onResponse\)/.test(server375) && /apex_http_status/.test(server375)],
+  ['C3.7.6 invalid después del click es solo telemetría', /invalid_after_click_telemetry_only:true/.test(server375) && !/error_message:.*invalid\.length/s.test(server375)],
+  ['C3.7.6 éxito tiene precedencia', /if\(outcome\.success_message\)\{ConapeSession/.test(server375) && /if\(outcome\.server_error_message\)throw/.test(server375)],
+  ['C3.7.6 exige una sola solicitud CREATE', /created\.createCount!==1/.test(server375) && /WRITE_RESULT_UNCERTAIN/.test(server375)],
+  ['C3.7.6 verifica creación contra reporte como fallback', /verify_created_in_report:true/.test(server375) && /readEstadoAfterCreate/.test(server375) && /if\(!estado\)throw new AppError\('WRITE_RESULT_UNCERTAIN'/.test(server375)],
+  ['C3.7.6 telemetría no emite PII ni secretos', /conape_create_telemetry/.test(server375) && /alert_texts_normalizados_cortos/.test(server375) && /pii:false/.test(server375) && !/Tigrina|402110915/.test(server375)],
+  ['Docker sigue ejecutando wrapper versionado', /COPY server_c3_7_5\.mjs/.test(docker) && /CMD \["node", "server_c3_7_5\.mjs"\]/.test(docker)],
   ['Ventas no carga shim loopback', !/conape_local_bridge_shim_c3_5/.test(ventas)],
   ['Prematrículas queda fuera del bundle Ventas', !/ventas_prematriculas/.test(ventas)],
   ['config live apunta Railway HTTPS', /https:\/\/conape-bridge-production\.up\.railway\.app/.test(config)],
@@ -54,4 +57,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`C3.7.5 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`C3.7.6 QA PASS · ${checks.length}/${checks.length}`);
