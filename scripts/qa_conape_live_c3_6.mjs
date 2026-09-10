@@ -41,10 +41,12 @@ const checks = [
   ['UI no contiene credenciales CONAPE', !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(sessionUi)],
   ['comparación carga identidad Campus', /campusIdentity/.test(compareUi) && /apellido_1:identity\.apellido_1/.test(compareUi) && /nombre:identity\.nombre/.test(compareUi)],
   ['identidad visual se compara Campus-CONAPE', /state:cmp\(campus\.apellido_1,conape\.apellido_1,key\)/.test(compareUi) && /state:cmp\(campus\.nombre,conape\.nombre,key\)/.test(compareUi)],
+  ['comparador C3.7.1 expone namespace estable', /conapeRecruitBuildComparisonC371=buildComparison/.test(compareUi)],
+  ['botón por fila prefiere comparador estable', /conapeRecruitBuildComparisonC371 \|\| window\.conapeRecruitBuildComparisonC33/.test(row) && /const buildComparison = comparisonBuilder\(\)/.test(row)],
   ['override visual no agrega identidad al payload', !/payload:\{[^}]*apellido_1/s.test(compareUi) && !/payload:\{[^}]*nombre:/s.test(compareUi)],
   ['override visual carga antes del botón por fila', ventas.indexOf('conape_compare_ui_c3_7_1.js') < ventas.indexOf('ventas_conape_reclutar_row_c3_5.jsx')],
   ['UI se carga antes del dashboard', ventas.indexOf('conape_session_ui_c3_7.js') < ventas.indexOf('ventas_dashboard.jsx')],
-  ['cache bust C3.7.1 aplicado', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.1/.test(ventas) && /conape_session_ui_c3_7\.js\?v=C3\.7\.1/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.1/.test(ventas)],
+  ['cache bust C3.7.2 aplicado', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.2/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.2/.test(ventas)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
 ];
@@ -55,4 +57,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`C3.7.1 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`C3.7.2 QA PASS · ${checks.length}/${checks.length}`);
