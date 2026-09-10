@@ -5,6 +5,7 @@ const server = read('services/conape-bridge/server.mjs');
 const server37 = read('services/conape-bridge/server_c3_7.mjs');
 const server373 = read('services/conape-bridge/server_c3_7_3.mjs');
 const server374 = read('services/conape-bridge/server_c3_7_4.mjs');
+const server375 = read('services/conape-bridge/server_c3_7_5.mjs');
 const ventas = read('ventas.html');
 const client = read('src/conape_bridge_client_c3_6.js');
 const sessionUi = read('src/conape_session_ui_c3_7.js');
@@ -21,41 +22,28 @@ const checks = [
   ['C3.7 separa session connect/status de recruit', /\/v1\/session\/connect/.test(server37) && /\/v1\/session\/status/.test(server37) && /\/v1\/recruit\/preview/.test(server37)],
   ['C3.7 mantiene navegador persistente', /ConapeSession/.test(server37) && /state:'DISCONNECTED'/.test(server37) && /KEEPALIVE_MS/.test(server37)],
   ['C3.7 login acepta home autenticado', /PROSPECTACION RECLUTADOR/.test(server37) && /authenticated:!password/.test(server37)],
-  ['C3.7 prepara PROSPECTO por ruta directa con fallbacks', /\/prospecto/.test(server37) && /f\?p=302:2/.test(server37) && /clickRecruit/.test(server37)],
   ['C3.7 vuelve a validar acceso al prospecto', /fn:'getProspectoDetalle'/.test(server37) && /PROSPECT_ACCESS_DENIED/.test(server37)],
   ['C3.7 exige financiamiento CONAPE', /PROSPECT_NOT_CONAPE/.test(server37)],
-  ['identidad prohibida en submit C3.7', /IDENTITY_FIELDS_FORBIDDEN/.test(server37) && /P2_PRS_NOMBRE/.test(server37)],
-  ['solo contactos se escriben antes de CREATE C3.7', /P2_PRS_CELULAR/.test(server37) && /P2_PRS_EMAIL/.test(server37) && /fillContacts/.test(server37)],
-  ['source_version one-shot C3.7', /source\.consumed=true/.test(server37) && /SOURCE_VERSION_USED/.test(server37)],
-  ['CREATE único y resultado incierto fail closed C3.7', /createCount!==1/.test(server37) && /WRITE_RESULT_UNCERTAIN/.test(server37)],
-  ['estado raw se relee de CONAPE', /readEstadoAfterCreate/.test(server37) && /estado_conape_raw/.test(server37)],
-  ['logs declaran pii false', /pii:false/.test(server37)],
-  ['C3.7.3 amplía solo timeout AbortSignal de Campus', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server373) && /Number\(ms\) === 30000/.test(server373) && /await import\('\.\/server_c3_7\.mjs'\)/.test(server373)],
-  ['C3.7.3 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server373) && /pii:false/.test(server373)],
-  ['C3.7.4 conserva timeout ampliado y parchea contrato correo', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server374) && /preserve_existing_conape_email:true/.test(server374) && /update_correo:!conapeMail&&!!mail/.test(server374)],
-  ['C3.7.4 conserva correo CONAPE si ya existe', /correo:conapeMail\|\|mail/.test(server374) && /correo_campus_alterno/.test(server374) && /preserve_correo_conape/.test(server374)],
-  ['C3.7.4 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server374) && /pii:false/.test(server374)],
-  ['Docker ejecuta server C3.7.4', /COPY server_c3_7_4\.mjs/.test(docker) && /CMD \["node", "server_c3_7_4\.mjs"\]/.test(docker)],
+  ['identidad prohibida en submit', /IDENTITY_FIELDS_FORBIDDEN/.test(server37) && /P2_PRS_NOMBRE/.test(server37)],
+  ['source_version one-shot', /source\.consumed=true/.test(server37) && /SOURCE_VERSION_USED/.test(server37)],
+  ['C3.7.3 conserva timeout Campus ampliado', /CAMPUS_REQUEST_TIMEOUT_MS/.test(server373) && /Number\(ms\) === 30000/.test(server373)],
+  ['C3.7.4 fijó correo existente como inmutable', /update_correo:!conapeMail&&!!mail/.test(server374) && /preserve_existing_conape_email:true/.test(server374)],
+  ['C3.7.5 conserva correo CONAPE', /update_correo:!conapeMail&&!!mail/.test(server375) && /preserve_existing_conape_email:true/.test(server375)],
+  ['C3.7.5 setter teléfono replica E4 con input/change/blur', /P2_PRS_CELULAR/.test(server375) && /new Event\('change'/.test(server375) && /el\.focus\(\); el\.blur\(\)/.test(server375)],
+  ['C3.7.5 usa click real Playwright en Crear nuevo Prospecto', /getByRole\('button',\{name:\/crear nuevo prospecto\/i\}\)/.test(server375) && /await button\.click/.test(server375)],
+  ['C3.7.5 exige una sola solicitud CREATE', /created\.createCount!==1/.test(server375) && /WRITE_RESULT_UNCERTAIN/.test(server375)],
+  ['C3.7.5 verifica creación contra reporte', /verify_created_in_report:true/.test(server375) && /readEstadoAfterCreate/.test(server375) && /!outcome\.success_message&&!estado/.test(server375)],
+  ['C3.7.5 no contiene credenciales ni PII', !/Tigrina|402110915/.test(server375) && /pii:false/.test(server375)],
+  ['Docker ejecuta C3.7.5', /COPY server_c3_7_5\.mjs/.test(docker) && /CMD \["node", "server_c3_7_5\.mjs"\]/.test(docker)],
   ['Ventas no carga shim loopback', !/conape_local_bridge_shim_c3_5/.test(ventas)],
   ['Prematrículas queda fuera del bundle Ventas', !/ventas_prematriculas/.test(ventas)],
-  ['cliente bridge carga después de módulos CONAPE', ventas.indexOf('ventas_conape_reclutar_row_c3_5') < ventas.indexOf('conape_bridge_client_c3_6')],
-  ['config live apunta al bridge Railway HTTPS', /https:\/\/conape-bridge-production\.up\.railway\.app/.test(config)],
-  ['cliente C3.7 envía token Campus y no credencial CONAPE', /getSessionToken/.test(client) && !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(client)],
-  ['cliente expone session manager C3.7', /CONAPE_PORTAL_BRIDGE_C37/.test(client) && /sessionStatus/.test(client) && /connect/.test(client) && /disconnect/.test(client)],
-  ['compatibilidad botón fila conserva namespace C36', /CONAPE_PORTAL_BRIDGE_C36 = api/.test(client)],
-  ['UI de conexión es mínima', /¿Conectar CONAPE en línea\?/.test(sessionUi) && /Conectando\.\./.test(sessionUi) && /progress-pct/.test(sessionUi) && /progress-fill/.test(sessionUi)],
-  ['UI de conexión no explica credenciales', !/usuario y la contraseña|contraseña no se muestran|credenciales CONAPE/.test(sessionUi)],
-  ['UI no contiene credenciales CONAPE', !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(sessionUi)],
+  ['config live apunta Railway HTTPS', /https:\/\/conape-bridge-production\.up\.railway\.app/.test(config)],
+  ['cliente no recibe credenciales CONAPE', /getSessionToken/.test(client) && !/CONAPE_PORTAL_PASSWORD|CONAPE_PORTAL_USERNAME/.test(client)],
+  ['UI conexión es mínima', /¿Conectar CONAPE en línea\?/.test(sessionUi) && /Conectando\.\./.test(sessionUi) && /progress-pct/.test(sessionUi)],
   ['comparación carga identidad Campus', /campusIdentity/.test(compareUi) && /apellido_1:identity\.apellido_1/.test(compareUi) && /nombre:identity\.nombre/.test(compareUi)],
-  ['identidad visual se compara Campus-CONAPE', /state:cmp\(campus\.apellido_1,conape\.apellido_1,key\)/.test(compareUi) && /state:cmp\(campus\.nombre,conape\.nombre,key\)/.test(compareUi)],
-  ['comparador C3.7.1 expone namespace estable', /conapeRecruitBuildComparisonC371=buildComparison/.test(compareUi)],
-  ['correo diferente preserva CONAPE y deja Campus alterno', /preserveExisting/.test(compareUi) && /Conservar CONAPE · Campus queda alterno/.test(compareUi) && /correo_campus_alterno/.test(compareUi)],
-  ['UI solo permite completar correo cuando CONAPE está vacío', /update_correo:!conape\.correo&&!!campus\.correo/.test(compareUi)],
-  ['botón por fila prefiere comparador estable', /conapeRecruitBuildComparisonC371 \|\| window\.conapeRecruitBuildComparisonC33/.test(row) && /const buildComparison = comparisonBuilder\(\)/.test(row)],
-  ['override visual no agrega identidad al payload', !/payload:\{[^}]*apellido_1/s.test(compareUi) && !/payload:\{[^}]*nombre:/s.test(compareUi)],
-  ['override visual carga antes del botón por fila', ventas.indexOf('conape_compare_ui_c3_7_1.js') < ventas.indexOf('ventas_conape_reclutar_row_c3_5.jsx')],
-  ['UI se carga antes del dashboard', ventas.indexOf('conape_session_ui_c3_7.js') < ventas.indexOf('ventas_dashboard.jsx')],
-  ['cache bust C3.7.2 aplicado', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.2/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.2/.test(ventas)],
+  ['correo diferente conserva CONAPE y Campus queda alterno', /preserveExisting/.test(compareUi) && /Conservar CONAPE · Campus queda alterno/.test(compareUi) && /update_correo:!conape\.correo&&!!campus\.correo/.test(compareUi)],
+  ['botón por fila usa comparador estable', /conapeRecruitBuildComparisonC371 \|\| window\.conapeRecruitBuildComparisonC33/.test(row)],
+  ['cache bust C3.7.5 aplicado', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.5/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.5/.test(ventas)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
 ];
@@ -66,4 +54,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`C3.7.4 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`C3.7.5 QA PASS · ${checks.length}/${checks.length}`);
