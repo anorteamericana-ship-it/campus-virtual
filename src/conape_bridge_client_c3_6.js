@@ -1,16 +1,10 @@
 /* global window, fetch */
-(function conapeBridgeClientC36(){
+(function conapeBridgeClientC37(){
   'use strict';
 
-  function cleanBase(value){
-    return String(value || '').trim().replace(/\/+$/, '');
-  }
-  function digits(value){
-    return String(value || '').replace(/\D/g, '');
-  }
-  function bridgeBase(){
-    return cleanBase(window.CONAPE_PORTAL_BRIDGE_URL || '');
-  }
+  function cleanBase(value){ return String(value || '').trim().replace(/\/+$/, ''); }
+  function digits(value){ return String(value || '').replace(/\D/g, ''); }
+  function bridgeBase(){ return cleanBase(window.CONAPE_PORTAL_BRIDGE_URL || ''); }
 
   async function postBridge(path, body){
     const base = bridgeBase();
@@ -31,15 +25,15 @@
       catch { return { ok:false, error:'conape_bridge_invalid_response' }; }
       return data && typeof data === 'object' ? data : { ok:false, error:'conape_bridge_invalid_response' };
     } catch (error) {
-      console.error('[C3.6] Bridge CONAPE no disponible.', error);
+      console.error('[C3.7] Bridge CONAPE no disponible.', error);
       return { ok:false, error:'conape_bridge_unavailable' };
     }
   }
 
-  async function preview(cedula){
-    return postBridge('/v1/recruit/preview', { cedula:digits(cedula) });
-  }
-
+  async function sessionStatus(){ return postBridge('/v1/session/status', {}); }
+  async function connect(){ return postBridge('/v1/session/connect', {}); }
+  async function disconnect(){ return postBridge('/v1/session/disconnect', {}); }
+  async function preview(cedula){ return postBridge('/v1/recruit/preview', { cedula:digits(cedula) }); }
   async function submit(args){
     const input = args || {};
     return postBridge('/v1/recruit/submit', {
@@ -49,18 +43,21 @@
     });
   }
 
-  /*
-   * Namespace canónico C3.6.1. El modal por fila consume este objeto y no
-   * depende de globals legacy que módulos Babel anteriores pueden redefinir.
-   */
-  window.CONAPE_PORTAL_BRIDGE_C36 = Object.freeze({
+  const api = Object.freeze({
+    status:sessionStatus,
+    connect,
+    disconnect,
     preview,
     submit,
     active:!!bridgeBase(),
+    version:'C3.7',
   });
 
-  /* Compatibilidad para superficies históricas; no es el contrato del botón por fila. */
+  window.CONAPE_PORTAL_BRIDGE_C37 = api;
+  /* Compatibilidad temporal: el botón por fila C3.5/C3.6 sigue consumiendo C36. */
+  window.CONAPE_PORTAL_BRIDGE_C36 = api;
   window.conapePortalRecruitPreviewVentasSeguro = preview;
   window.conapePortalRecruitSubmitVentasSeguro = submit;
   window.CONAPE_BRIDGE_C36_ACTIVE = !!bridgeBase();
+  window.CONAPE_BRIDGE_C37_ACTIVE = !!bridgeBase();
 })();
