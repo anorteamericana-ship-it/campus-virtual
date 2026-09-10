@@ -15,8 +15,11 @@ on:
       - 'scripts/conape_portal/run_conape_recruit_bound_handlers_c3_3c_windows.ps1'
       - 'scripts/conape_portal/recruit_e4_controlled_c3_4.mjs'
       - 'scripts/conape_portal/run_conape_recruit_e4_controlled_windows.ps1'
+      - 'scripts/conape_portal/recruit_bridge_contract_c3_5.mjs'
       - 'scripts/qa_conape_recruit_c3_3.mjs'
+      - 'scripts/qa_conape_recruit_bridge_c3_5.mjs'
       - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
+      - '00_DOCUMENTACION/C3_5_CONAPE_PRIVATE_BRIDGE_SPEC.md'
       - '.github/workflows/qa-conape-recruit-c3-3.yml'
   push:
     branches:
@@ -34,8 +37,11 @@ on:
       - 'scripts/conape_portal/run_conape_recruit_bound_handlers_c3_3c_windows.ps1'
       - 'scripts/conape_portal/recruit_e4_controlled_c3_4.mjs'
       - 'scripts/conape_portal/run_conape_recruit_e4_controlled_windows.ps1'
+      - 'scripts/conape_portal/recruit_bridge_contract_c3_5.mjs'
       - 'scripts/qa_conape_recruit_c3_3.mjs'
+      - 'scripts/qa_conape_recruit_bridge_c3_5.mjs'
       - '00_DOCUMENTACION/C3_3_CONAPE_RECLUTAMIENTO_DESDE_CAMPUS.md'
+      - '00_DOCUMENTACION/C3_5_CONAPE_PRIVATE_BRIDGE_SPEC.md'
       - '.github/workflows/qa-conape-recruit-c3-3.yml'
 
 permissions:
@@ -59,7 +65,9 @@ jobs:
           node --check scripts/conape_portal/discover_recruit_client_action_c3_3b.mjs
           node --check scripts/conape_portal/discover_recruit_bound_handlers_c3_3c.mjs
           node --check scripts/conape_portal/recruit_e4_controlled_c3_4.mjs
+          node --check scripts/conape_portal/recruit_bridge_contract_c3_5.mjs
           node --check scripts/qa_conape_recruit_c3_3.mjs
+          node --check scripts/qa_conape_recruit_bridge_c3_5.mjs
       - name: Syntax PowerShell
         shell: pwsh
         run: |
@@ -83,7 +91,9 @@ jobs:
               exit 1
             }
           }
-      - name: C3.3 contract QA
+      - name: C3.3/C3.4 contract QA
         run: node scripts/qa_conape_recruit_c3_3.mjs
+      - name: C3.5 private bridge contract QA
+        run: node scripts/qa_conape_recruit_bridge_c3_5.mjs
       - name: Diff hygiene
         run: git diff --check origin/feature/conape-portal-parser-c3-1...HEAD
