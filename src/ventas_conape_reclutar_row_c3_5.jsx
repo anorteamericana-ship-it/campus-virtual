@@ -22,6 +22,11 @@
     return !['CANCELADO','ACTIVO','MATRICULADO'].includes(etapa);
   }
 
+  function liveBridge(){
+    const bridge = window.CONAPE_PORTAL_BRIDGE_C36;
+    return bridge && typeof bridge.preview === 'function' && typeof bridge.submit === 'function' ? bridge : null;
+  }
+
   function injectStyles(){
     if (document.getElementById('vx-conape-row-c35-style')) return;
     const style = document.createElement('style');
@@ -52,17 +57,24 @@
             const d = await window.getProspectoDetalle(cedula);
             if (d && d.ok !== false && d.prospecto) detail = { ...detail, ...d.prospecto };
           }
-          if (typeof window.conapePortalRecruitPreviewVentasSeguro !== 'function' || typeof window.conapeRecruitBuildComparisonC33 !== 'function') {
-            throw new Error('El módulo CONAPE no está disponible.');
+          const bridge = liveBridge();
+          if (!bridge || typeof window.conapeRecruitBuildComparisonC33 !== 'function') {
+            throw new Error('El puente CONAPE live no está disponible.');
           }
-          const r = await window.conapePortalRecruitPreviewVentasSeguro(cedula);
+          const r = await bridge.preview(cedula);
           if (!r || !r.ok) {
             const code = text(r?.error || r?.code);
             throw new Error(code === 'DUPLICATE'
               ? 'CONAPE indica que esta cédula ya está registrada.'
               : code === 'CONAPE_SESSION_NOT_READY'
                 ? 'No se pudo abrir automáticamente Reclutar Prospectos en CONAPE.'
-                : 'No se pudo consultar la cédula en CONAPE.');
+                : code === 'CONAPE_LOGIN_FAILED'
+                  ? 'CONAPE no confirmó la sesión del bridge.'
+                  : code === 'CAMPUS_BACKEND_UNAVAILABLE' || code === 'CAMPUS_BACKEND_INVALID'
+                    ? 'El Campus tardó demasiado o devolvió una respuesta inválida al bridge.'
+                    : code === 'conape_bridge_unavailable'
+                      ? 'No se pudo conectar con el bridge CONAPE.'
+                      : 'No se pudo consultar la cédula en CONAPE.');
           }
           const cmp = window.conapeRecruitBuildComparisonC33(detail, r.prospecto || r.conape || null);
           if (cancel) return;
@@ -82,7 +94,9 @@
       if (state !== 'ready' || !preview || preview.can_submit !== true || !comparison) return;
       setState('sending'); setError('');
       try {
-        const r = await window.conapePortalRecruitSubmitVentasSeguro({
+        const bridge = liveBridge();
+        if (!bridge) throw new Error('El puente CONAPE live no está disponible.');
+        const r = await bridge.submit({
           cedula:comparison.payload.cedula,
           payload:comparison.payload,
           sourceVersion:preview.source_version || preview.version || '',

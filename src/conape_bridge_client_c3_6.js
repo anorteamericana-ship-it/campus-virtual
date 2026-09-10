@@ -36,18 +36,31 @@
     }
   }
 
-  window.conapePortalRecruitPreviewVentasSeguro = function conapeRecruitPreviewLive(cedula){
+  async function preview(cedula){
     return postBridge('/v1/recruit/preview', { cedula:digits(cedula) });
-  };
+  }
 
-  window.conapePortalRecruitSubmitVentasSeguro = function conapeRecruitSubmitLive(args){
+  async function submit(args){
     const input = args || {};
     return postBridge('/v1/recruit/submit', {
       cedula:digits(input.cedula),
       source_version:String(input.sourceVersion || ''),
       prospecto:input.payload || {},
     });
-  };
+  }
 
+  /*
+   * Namespace canónico C3.6.1. El modal por fila consume este objeto y no
+   * depende de globals legacy que módulos Babel anteriores pueden redefinir.
+   */
+  window.CONAPE_PORTAL_BRIDGE_C36 = Object.freeze({
+    preview,
+    submit,
+    active:!!bridgeBase(),
+  });
+
+  /* Compatibilidad para superficies históricas; no es el contrato del botón por fila. */
+  window.conapePortalRecruitPreviewVentasSeguro = preview;
+  window.conapePortalRecruitSubmitVentasSeguro = submit;
   window.CONAPE_BRIDGE_C36_ACTIVE = !!bridgeBase();
 })();
