@@ -12,7 +12,8 @@ COPY server.mjs ./
 COPY start_c3_6_2.mjs ./
 COPY server_c3_7.mjs ./
 COPY server_c3_7_3.mjs ./
+COPY server_c3_7_4.mjs ./
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
-CMD ["node", "server_c3_7_3.mjs"]
+CMD ["node", "server_c3_7_4.mjs"]
