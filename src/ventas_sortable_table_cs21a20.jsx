@@ -16,6 +16,7 @@
   const collator = new Intl.Collator('es', { sensitivity:'base', numeric:true, ignorePunctuation:true });
   const text = value => String(value == null ? '' : value).trim();
   const digits = value => text(value).replace(/\D/g, '');
+  const etapaVisible = p => text(p?.estado_conape_raw || p?.estado_conape || p?.etapa || '');
 
   function sortValue(p, key){
     if(key === 'cedula') return digits(p.cedula) || text(p.cedula);
@@ -24,7 +25,10 @@
     if(key === 'grupo') return text(p.grupo_tentativo);
     if(key === 'programa') return text(window.progLabel(p.programa));
     if(key === 'financiamiento') return text((window.FIN_MAP?.[p.financiamiento] || {}).label || p.financiamiento);
-    if(key === 'etapa') return text((window.ETAPA_MAP?.[p.etapa] || {}).label || p.etapa);
+    if(key === 'etapa') {
+      const raw = etapaVisible(p);
+      return text((window.ETAPA_MAP?.[raw] || {}).label || raw);
+    }
     if(key === 'estado') return text(window.calcularEstadoEstudianteVentas(p)?.estado);
     if(key === 'dias') {
       const n = window.diasDesde(p.fecha_registro);
@@ -77,7 +81,7 @@
     );
   }
 
-  function SortableProspectoTable({ lista, onOpen }){
+  function SortableProspectoTable({ lista, onOpen, onChanged, onToast }){
     const [sort, setSort] = React.useState({ key:'', dir:'asc' });
 
     const rows = React.useMemo(() => {
@@ -97,20 +101,22 @@
         <div className="vx-table-scroll">
           <table className="vx-table">
             <colgroup>
+              <col style={{ width:'7.5%' }} />
+              <col style={{ width:'16.5%' }} />
+              <col style={{ width:'9%' }} />
+              <col style={{ width:'10%' }} />
               <col style={{ width:'8.5%' }} />
-              <col style={{ width:'19%' }} />
-              <col style={{ width:'10.5%' }} />
-              <col style={{ width:'12.5%' }} />
+              <col style={{ width:'8%' }} />
               <col style={{ width:'11%' }} />
               <col style={{ width:'9%' }} />
-              <col style={{ width:'13%' }} />
-              <col style={{ width:'10.5%' }} />
-              <col style={{ width:'4%' }} />
-              <col style={{ width:'7%' }} />
+              <col style={{ width:'4.5%' }} />
+              <col style={{ width:'9%' }} />
+              <col style={{ width:'6%' }} />
             </colgroup>
             <thead>
               <tr>
                 {COLS.map(col => <SortHeader key={col.key} col={col} sort={sort} onSort={onSort} />)}
+                <th>CONAPE</th>
                 <th>Acción</th>
               </tr>
             </thead>
@@ -119,6 +125,7 @@
                 const dias = window.diasDesde(p.fecha_registro);
                 const prio = window.calcularPrioridadProspecto(p);
                 const est = window.calcularEstadoEstudianteVentas(p);
+                const etapa = etapaVisible(p);
                 return (
                   <tr key={p.cedula || p.id || i} className={prio.nivel === 'rojo' ? 'vx-row-rojo' : ''} onClick={() => onOpen(p)}>
                     <td className="vx-td-ced" title={text(p.cedula)}>{p.cedula}</td>
@@ -132,9 +139,14 @@
                     <td className="vx-td-grupo" title={text(p.grupo_tentativo || '—')}>{p.grupo_tentativo || '—'}</td>
                     <td className="vx-td-prog" title={text(window.progLabel(p.programa))}>{window.progLabel(p.programa)}</td>
                     <td><window.FinBadge financiamiento={p.financiamiento} /></td>
-                    <td><window.EtapaBadge etapa={p.etapa} /></td>
+                    <td title={etapa}><window.EtapaBadge etapa={etapa} /></td>
                     <td><window.EstadoBadge est={est} /></td>
                     <td className="vx-td-dias">{dias != null ? <><b>{dias}</b> d</> : '—'}</td>
+                    <td onClick={e => e.stopPropagation()}>
+                      {window.ConapeRecruitRowButtonC35
+                        ? <window.ConapeRecruitRowButtonC35 prospecto={p} onChanged={onChanged} onToast={onToast} />
+                        : null}
+                    </td>
                     <td onClick={e => e.stopPropagation()}>
                       <div className="vx-rowacts">
                         <button className="vx-iconbtn ver" onClick={() => onOpen(p)}><window.Vico d={window.VI.eye} size={13} /> Ver</button>
