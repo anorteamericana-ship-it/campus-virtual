@@ -95,5 +95,9 @@
     };
   }
 
+  // Namespace estable C3.7.1+ para evitar que Babel vuelva a publicar el helper legacy C3.3
+  // después de cargar este script. El alias C33 se conserva por compatibilidad, pero los
+  // consumidores nuevos deben preferir C371.
+  window.conapeRecruitBuildComparisonC371=buildComparison;
   window.conapeRecruitBuildComparisonC33=buildComparison;
 })();
