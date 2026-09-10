@@ -71,12 +71,15 @@ check(/source\.consumed\s*=\s*true/.test(bridgeSrc)&&/writeInProgress\s*=\s*true
 check(bridgeSrc.includes("'/apex/wwv_flow.accept'")&&bridgeSrc.includes("'CREATE'"),'bridge observa el POST CREATE real de APEX');
 check(bridgeSrc.includes('current?.identity_ready')&&bridgeSrc.includes('digits(current.cedula)===cedula'),'preview reutiliza identidad ya cargada para la misma cédula');
 check(bridgeSrc.includes('estado_conape_raw:estadoConapeRaw'),'submit devuelve Estado observado en CONAPE cuando está disponible');
+check(bridgeSrc.includes('NAV_HOLD_MS = 1400')&&bridgeSrc.includes('inspect(target,FIND_RECRUIT,true,NAV_HOLD_MS)'),'bridge mantiene CDP abierto tras Reclutar igual que el discovery E2 que sí navega');
+check(bridgeSrc.includes('MAX_NAV_ATTEMPTS = 5')&&bridgeSrc.includes('NAV_RETRY_MS = 3000'),'navegación Reclutar usa reintentos limitados y espaciados');
 check(shimSrc.includes("host !== '127.0.0.1' && host !== 'localhost'"),'shim queda inerte fuera de localhost');
 check(ventasHtml.includes('src/conape_local_bridge_shim_c3_5.js?v=C3.5'),'ventas carga shim local C3.5');
 check(ventasHtml.includes('src/ventas_conape_reclutar_row_c3_5.jsx?v=C3.5A'),'ventas carga acción CONAPE por fila');
 check(!ventasHtml.includes('src/ventas_prematriculas.jsx'),'widget flotante Prematrículas queda oculto por completo');
 check(rowSrc.includes('.vx-c33-launch{display:none!important}'),'botón CONAPE flotante del drawer queda oculto');
 check(rowSrc.includes('ConapeRecruitRowButtonC35'),'acción Reclutar se expone como botón de fila');
+check(rowSrc.includes("estadoVentas === 'MATRICULADO'")&&rowSrc.includes('if (estadoConape || codigo'),'acción Reclutar se oculta si ya existe estado CONAPE o matrícula aplicada');
 check(tableSrc.includes('<th>CONAPE</th><th>Acción</th>'),'botón CONAPE queda inmediatamente a la izquierda de Acción');
 check(tableSrc.includes("p?.estado_conape_raw||p?.estado_conape||p?.etapa"),'columna Etapa prioriza el estado bruto devuelto por CONAPE');
 check(tableSrc.includes('conapeEtapas'),'tabla refleja de inmediato el Estado CONAPE devuelto por el submit');
