@@ -15,7 +15,10 @@ import { allowedTarget } from './discover_recruit_form_c3_3.mjs';
 const HOST = 'online.conape.go.cr';
 const DEFAULT_PORT = 8765;
 const POLL_MS = 500;
-const NAV_TIMEOUT_MS = 20000;
+const NAV_TIMEOUT_MS = 24000;
+const NAV_RETRY_MS = 3000;
+const NAV_HOLD_MS = 1400;
+const MAX_NAV_ATTEMPTS = 5;
 const LOOKUP_TIMEOUT_MS = 15000;
 const CREATE_TIMEOUT_MS = 20000;
 const REPORT_TIMEOUT_MS = 15000;
@@ -143,13 +146,15 @@ class CdpClient {
   close() { try { this.socket?.close(); } catch {} }
 }
 
-async function inspect(target, expression, userGesture = false) {
+async function inspect(target, expression, userGesture = false, holdMs = 0) {
   const client = new CdpClient(target.webSocketDebuggerUrl);
   try {
     await client.connect();
     await client.send('Runtime.enable');
     await client.send('Page.enable');
-    return await client.eval(expression, userGesture);
+    const result = await client.eval(expression, userGesture);
+    if (holdMs > 0) await sleep(holdMs);
+    return result;
   } finally {
     client.close();
   }
@@ -158,7 +163,7 @@ async function inspect(target, expression, userGesture = false) {
 const FIND_RECRUIT = `(() => {
   const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/\\s+/g,' ').trim();
   const visible=el=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;}catch{return false;}};
-  const hit=Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible).find(el=>norm([el.textContent||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||'',el.value||''].join(' ')).includes('RECLUTAR PROSPECTOS'));
+  const hit=Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible).find(el=>{const label=norm([el.textContent||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||'',el.value||''].join(' '));return label==='RECLUTAR'||label.includes('RECLUTAR PROSPECTOS');});
   if(!hit)return {found:false};hit.click();return {found:true};
 })()`;
 
@@ -209,8 +214,30 @@ function reportStatusExpression(cedula){const value=JSON.stringify(cedula);retur
 function safeRequestToken(postData) {const raw=String(postData||'');try{const params=new URLSearchParams(raw);const value=String(params.get('p_request')||'').trim().toUpperCase();return /^[A-Z][A-Z0-9_:\-]{0,39}$/.test(value)?value:'';}catch{return '';}}
 
 async function ensureProspectoTarget(cdpPort) {
-  const deadline=Date.now()+NAV_TIMEOUT_MS;let lastClick=0;
-  while(Date.now()<deadline){const targets=conapeTargets(await listTargets(cdpPort));const prospect=targets.find(t=>isProspectoPath(t.url));if(prospect){const ready=await inspect(prospect,FORM_READY).catch(()=>null);if(ready?.ready)return prospect;}if(Date.now()-lastClick>1800){for(const target of targets){const result=await inspect(target,FIND_RECRUIT,true).catch(()=>null);if(result?.found){lastClick=Date.now();break;}}}await sleep(POLL_MS);}throw new BridgeError('CONAPE_SESSION_NOT_READY','Inicie sesión en CONAPE y deje abierta la pantalla de Reclutamiento.',503);
+  const deadline=Date.now()+NAV_TIMEOUT_MS;
+  let clickAttempts=0;
+  let lastClickAt=0;
+  while(Date.now()<deadline){
+    const targets=conapeTargets(await listTargets(cdpPort));
+    const prospect=targets.find(t=>isProspectoPath(t.url));
+    if(prospect){
+      const ready=await inspect(prospect,FORM_READY).catch(()=>null);
+      if(ready?.ready)return prospect;
+    }
+    if(Date.now()-lastClickAt>=NAV_RETRY_MS&&clickAttempts<MAX_NAV_ATTEMPTS){
+      for(const target of targets){
+        const result=await inspect(target,FIND_RECRUIT,true,NAV_HOLD_MS).catch(()=>null);
+        if(result?.found){
+          clickAttempts+=1;
+          lastClickAt=Date.now();
+          console.log(`[C3.5] navegación Reclutar intento=${clickAttempts}/${MAX_NAV_ATTEMPTS} pii=false`);
+          break;
+        }
+      }
+    }
+    await sleep(POLL_MS);
+  }
+  throw new BridgeError('CONAPE_SESSION_NOT_READY','CONAPE está autenticado, pero no se pudo abrir automáticamente la página PROSPECTO desde Reclutar Prospectos.',503);
 }
 
 async function lookupCedula(target, cedula) {
@@ -225,7 +252,7 @@ async function lookupCedula(target, cedula) {
 async function readEstadoAfterCreate(cdpPort, target, cedula, client) {
   try { await client.eval(RETURN_TO_REPORT,true); } catch { return ''; }
   const deadline=Date.now()+REPORT_TIMEOUT_MS;let searched=false;
-  while(Date.now()<deadline){await sleep(POLL_MS);const targets=conapeTargets(await listTargets(cdpPort));const report=targets.find(t=>!isProspectoPath(t.url));if(!report)continue;if(!searched){await inspect(report,reportSearchExpression(cedula),true).catch(()=>null);searched=true;await sleep(900);}const r=await inspect(report,reportStatusExpression(cedula)).catch(()=>null);if(r?.found&&String(r.estado||'').trim())return String(r.estado).trim();}
+  while(Date.now()<deadline){await sleep(POLL_MS);const targets=conapeTargets(await listTargets(cdpPort));const report=targets.find(t=>!isProspectoPath(t.url));if(!report)continue;if(!searched){await inspect(report,reportSearchExpression(cedula),true,NAV_HOLD_MS).catch(()=>null);searched=true;await sleep(900);}const r=await inspect(report,reportStatusExpression(cedula)).catch(()=>null);if(r?.found&&String(r.estado||'').trim())return String(r.estado).trim();}
   return '';
 }
 
