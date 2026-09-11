@@ -8,6 +8,15 @@
   function text(v){ return String(v == null ? '' : v).trim(); }
   function upper(v){ return text(v).toUpperCase(); }
   function digits(v){ return text(v).replace(/\D/g, ''); }
+  function technical(v, fallback){
+    const safe = upper(v).replace(/[^A-Z0-9_]/g, '').slice(0, 64);
+    return safe || fallback;
+  }
+  function submitFailure(r){
+    const code = technical(r?.code || r?.error, 'UNKNOWN');
+    const stage = technical(r?.stage || r?.error_stage, 'NO_DISPONIBLE');
+    return `No se pudo crear el prospecto.\nCódigo: ${code}\nEtapa: ${stage}`;
+  }
 
   function visibleFor(p){
     const financing = upper(p?.financiamiento || p?.FINANCIAMIENTO);
@@ -40,6 +49,7 @@
       .vx-c35-rowbtn{border:1px solid #b7d5f5;background:#eef6ff;color:#0d5ea8;border-radius:8px;padding:6px 8px;font:700 10px Poppins,system-ui;line-height:1.05;white-space:nowrap;cursor:pointer}
       .vx-c35-rowbtn:hover{background:#dfeeff}.vx-c35-rowbtn:disabled{opacity:.45;cursor:not-allowed}
       .vx-c35-status{font-size:10px;color:#66758b;margin-top:6px}
+      .vx-c33-banner.err{white-space:pre-line}
     `;
     document.head.appendChild(style);
   }
@@ -106,14 +116,7 @@
           payload:comparison.payload,
           sourceVersion:preview.source_version || preview.version || '',
         });
-        if (!r || !r.ok) {
-          const code = text(r?.code || r?.error);
-          throw new Error(code === 'DUPLICATE'
-            ? 'CONAPE reportó que el prospecto ya existe.'
-            : code === 'WRITE_RESULT_UNCERTAIN'
-              ? 'CONAPE recibió la operación, pero no confirmó el resultado. No la repita.'
-              : 'CONAPE no confirmó el envío.');
-        }
+        if (!r || !r.ok) throw new Error(submitFailure(r));
         const estadoConape = text(r.estado_conape_raw || r.estado_conape || '');
         if (typeof onChanged === 'function') {
           onChanged({
