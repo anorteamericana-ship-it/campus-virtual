@@ -16,6 +16,8 @@ const table = read('src/ventas_sortable_table_cs21a20.jsx');
 const docker = read('services/conape-bridge/Dockerfile');
 const conflictGuard = server375.indexOf('if(outcome.success_message&&outcome.server_error_message)');
 const successFastPath = server375.indexOf('if(outcome.success_message){ConapeSession');
+const duplicateClassifier = server375.indexOf("return 'YA_REGISTRADO';");
+const successClassifier = server375.indexOf("return 'PROSPECTO_REGISTRADO';");
 
 const checks = [
   ['bridge legacy usa credenciales solo por env', /CONAPE_PORTAL_USERNAME/.test(server) && /CONAPE_PORTAL_PASSWORD/.test(server) && !/Tigrina|402110915/.test(server)],
@@ -34,6 +36,11 @@ const checks = [
   ['C3.7.6 setter teléfono replica E4 con input/change/blur', /P2_PRS_CELULAR/.test(server375) && /new Event\('change'/.test(server375) && /el\.focus\(\); el\.blur\(\)/.test(server375)],
   ['C3.7.6 usa click real Playwright en Crear nuevo Prospecto', /getByRole\('button',\{name:\/crear nuevo prospecto\/i\}\)/.test(server375) && /await button\.click/.test(server375)],
   ['C3.7.6 observa request y response CREATE', /p\.on\('request',onRequest\)/.test(server375) && /p\.on\('response',onResponse\)/.test(server375) && /apex_http_status/.test(server375)],
+  ['C3.7.6 captura categorías visibles antes del click', /alerts_before:summaries/.test(server375) && /alerts_before:before\.alerts_before/.test(server375)],
+  ['C3.7.6 clasifica alertas sin texto libre', ['YA_REGISTRADO','CAMPO_OBLIGATORIO','DATO_INVALIDO','SIN_PERMISO','ERROR_DE_PORTAL','ALERTA_NO_CLASIFICADA'].every(v => server375.includes(`'${v}'`)) && /visible_alerts:summaries/.test(server375)],
+  ['C3.7.6 prioriza YA_REGISTRADO sobre éxito', duplicateClassifier >= 0 && successClassifier >= 0 && duplicateClassifier < successClassifier],
+  ['C3.7.6 telemetría DOM segura incluye ids y longitud', /alert_dom_ids/.test(server375) && /apex_error_item_ids/.test(server375) && /alert_text_length/.test(server375) && /text\.length/.test(server375)],
+  ['C3.7.6 YA_REGISTRADO se convierte en duplicate_message', /duplicate=summaries\.includes\('YA_REGISTRADO'\)/.test(server375) && /duplicate_message:duplicate/.test(server375) && /success=summaries\.includes\('PROSPECTO_REGISTRADO'\)&&!duplicate/.test(server375)],
   ['C3.7.6 invalid después del click es solo telemetría', /invalid_after_click_telemetry_only:true/.test(server375) && !/error_message:.*invalid\.length/s.test(server375)],
   ['C3.7.6 conflicto success+error verifica listado antes del fast-path', conflictGuard >= 0 && successFastPath >= 0 && conflictGuard < successFastPath && /if\(outcome\.success_message&&outcome\.server_error_message\)\{const estado=await readEstadoAfterCreate/.test(server375) && /if\(estado\)\{ConapeSession\.lastActivity/.test(server375)],
   ['C3.7.6 éxito sin conflicto conserva fast-path', /if\(outcome\.success_message\)\{ConapeSession/.test(server375) && /if\(outcome\.server_error_message\)throw/.test(server375)],

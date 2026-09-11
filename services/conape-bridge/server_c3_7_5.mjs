@@ -76,12 +76,32 @@ const newClick = `async function clickCreateOnce(p){
     if(!(await button.count()))throw new AppError('CREATE_BUTTON_NOT_FOUND','No se encontró Crear nuevo Prospecto.',503);
 
     const before=await p.evaluate(()=>{
+      const visible=el=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;}catch{return false;}};
+      const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/\\s+/g,' ').trim();
+      const classify=text=>{
+        if(/YA (FUE )?REGISTRAD|YA SE ENCUENTRA|YA EXIST|DUPLIC|PERTENECE A OTRO|OTRO RECLUTADOR|EN PROCESO/.test(text))return 'YA_REGISTRADO';
+        if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))return 'PROSPECTO_REGISTRADO';
+        if(/OBLIGATOR|REQUERID|DEBE INGRESAR|DEBE COMPLETAR/.test(text))return 'CAMPO_OBLIGATORIO';
+        if(/INVALID|NO ES VALIDO|FORMATO|NO CORRESPONDE/.test(text))return 'DATO_INVALIDO';
+        if(/NO AUTORIZAD|SIN PERMISO|NO TIENE ACCESO/.test(text))return 'SIN_PERMISO';
+        if(/ERROR|NO SE PUDO|NO FUE POSIBLE/.test(text))return 'ERROR_DE_PORTAL';
+        return text?'ALERTA_NO_CLASIFICADA':'';
+      };
+      const nodes=Array.from(document.querySelectorAll('[role="alert"],.t-Alert,.a-Alert,.t-Body-alert,.t-Form-error,.apex-page-item-error,.t-Alert--danger,.t-Alert--warning')).filter(visible);
+      const summaries=[...new Set(nodes.map(n=>classify(norm(n.textContent||''))).filter(Boolean))];
+      const alertDomIds=[...new Set(nodes.map(n=>{
+        if(n.id)return '#'+n.id;
+        const classes=Array.from(n.classList||[]).filter(c=>/^[A-Za-z0-9_-]{1,80}$/.test(c)).slice(0,3);
+        return classes.length?classes.map(c=>'.'+c).join(''):String(n.tagName||'').toLowerCase();
+      }).filter(Boolean))].slice(0,20);
+      const apexErrorItemIds=Array.from(document.querySelectorAll('.apex-page-item-error')).map(el=>el.id||'').filter(Boolean).slice(0,20);
+      const text=norm(nodes.map(n=>n.textContent||'').join(' '));
       const ids=['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
       const invalid=ids.map(id=>document.getElementById(id)).filter(el=>el&&el.willValidate&&!el.validity.valid).map(el=>el.id);
-      return {path:location.pathname,invalid_fields:invalid};
+      return {path:location.pathname,invalid_fields:invalid,alerts_before:summaries,alert_dom_ids:alertDomIds,apex_error_item_ids:apexErrorItemIds,alert_text_length:text.length};
     });
     if(before.invalid_fields.length){
-      console.log(JSON.stringify({event:'conape_create_telemetry',action:'submit',stage:'before_create_click',create_count:0,apex_http_status:null,success_message:false,server_error_message:false,duplicate_message:false,invalid_field_ids:before.invalid_fields,visible_alerts:[],form_reset:false,path_before:before.path,path_after:before.path,ms_click_to_response:null,ms_response_to_classification:null,pii:false}));
+      console.log(JSON.stringify({event:'conape_create_telemetry',action:'submit',stage:'before_create_click',create_count:0,apex_http_status:null,success_message:false,server_error_message:false,duplicate_message:false,invalid_field_ids:before.invalid_fields,alerts_before:before.alerts_before,visible_alerts:before.alerts_before,alert_dom_ids:before.alert_dom_ids,apex_error_item_ids:before.apex_error_item_ids,alert_text_length:before.alert_text_length,form_reset:false,path_before:before.path,path_after:before.path,ms_click_to_response:null,ms_response_to_classification:null,pii:false}));
       throw new AppError('FORM_INVALID_BEFORE_CREATE','El formulario CONAPE no está válido antes de Crear nuevo Prospecto.',422);
     }
 
@@ -100,24 +120,38 @@ const newClick = `async function clickCreateOnce(p){
       outcome=await p.evaluate(()=>{
         const visible=el=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;}catch{return false;}};
         const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/\\s+/g,' ').trim();
+        const classify=text=>{
+          if(/YA (FUE )?REGISTRAD|YA SE ENCUENTRA|YA EXIST|DUPLIC|PERTENECE A OTRO|OTRO RECLUTADOR|EN PROCESO/.test(text))return 'YA_REGISTRADO';
+          if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))return 'PROSPECTO_REGISTRADO';
+          if(/OBLIGATOR|REQUERID|DEBE INGRESAR|DEBE COMPLETAR/.test(text))return 'CAMPO_OBLIGATORIO';
+          if(/INVALID|NO ES VALIDO|FORMATO|NO CORRESPONDE/.test(text))return 'DATO_INVALIDO';
+          if(/NO AUTORIZAD|SIN PERMISO|NO TIENE ACCESO/.test(text))return 'SIN_PERMISO';
+          if(/ERROR|NO SE PUDO|NO FUE POSIBLE/.test(text))return 'ERROR_DE_PORTAL';
+          return text?'ALERTA_NO_CLASIFICADA':'';
+        };
         const nodes=Array.from(document.querySelectorAll('[role="alert"],.t-Alert,.a-Alert,.t-Body-alert,.t-Form-error,.apex-page-item-error,.t-Alert--danger,.t-Alert--warning')).filter(visible);
         const text=norm(nodes.map(n=>n.textContent||'').join(' '));
-        const summaries=[];
-        if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))summaries.push('PROSPECTO_REGISTRADO');
-        if(/YA EXIST|DUPLIC/.test(text))summaries.push('DUPLICADO');
-        if(/ERROR|INVALID|OBLIGATOR|REQUERID|NO SE PUDO|NO FUE POSIBLE/.test(text))summaries.push('ERROR_DE_PORTAL');
-        if(text&&!summaries.length)summaries.push('ALERTA_NO_CLASIFICADA');
+        const summaries=[...new Set(nodes.map(n=>classify(norm(n.textContent||''))).filter(Boolean))];
+        const duplicate=summaries.includes('YA_REGISTRADO');
+        const success=summaries.includes('PROSPECTO_REGISTRADO')&&!duplicate;
+        const serverError=summaries.some(c=>['CAMPO_OBLIGATORIO','DATO_INVALIDO','SIN_PERMISO','ERROR_DE_PORTAL'].includes(c));
+        const alertDomIds=[...new Set(nodes.map(n=>{
+          if(n.id)return '#'+n.id;
+          const classes=Array.from(n.classList||[]).filter(c=>/^[A-Za-z0-9_-]{1,80}$/.test(c)).slice(0,3);
+          return classes.length?classes.map(c=>'.'+c).join(''):String(n.tagName||'').toLowerCase();
+        }).filter(Boolean))].slice(0,20);
+        const apexErrorItemIds=Array.from(document.querySelectorAll('.apex-page-item-error')).map(el=>el.id||'').filter(Boolean).slice(0,20);
         const invalid=Array.from(document.querySelectorAll('input,select,textarea')).filter(el=>el.willValidate&&!el.validity.valid).map(el=>el.id||el.name||'field').filter(Boolean).slice(0,20);
         const ids=['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
         const formPresent=!!document.getElementById('P2_PRS_CEDULA');
         const formReset=formPresent&&ids.every(id=>!String(document.getElementById(id)?.value||'').trim());
-        return {success_message:/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text),duplicate_message:/YA EXIST|DUPLIC/.test(text),server_error_message:/ERROR|INVALID|OBLIGATOR|REQUERID|NO SE PUDO|NO FUE POSIBLE/.test(text),visible_alerts:summaries.slice(0,5),invalid_fields:invalid,form_reset:formReset,path:location.pathname};
+        return {success_message:success,duplicate_message:duplicate,server_error_message:serverError,visible_alerts:summaries.slice(0,5),alert_dom_ids:alertDomIds,apex_error_item_ids:apexErrorItemIds,alert_text_length:text.length,invalid_fields:invalid,form_reset:formReset,path:location.pathname};
       }).catch(()=>null);
       if(outcome?.success_message||outcome?.duplicate_message||outcome?.server_error_message)break;
     }
 
     const classifiedAt=Date.now();
-    const telemetry={action:'submit',stage:'after_create_click',create_count:createRequests.length,apex_http_status:response?.status??null,success_message:!!outcome?.success_message,server_error_message:!!outcome?.server_error_message,duplicate_message:!!outcome?.duplicate_message,invalid_field_ids:Array.isArray(outcome?.invalid_fields)?outcome.invalid_fields:[],visible_alerts:Array.isArray(outcome?.visible_alerts)?outcome.visible_alerts:[],form_reset:!!outcome?.form_reset,path_before:before.path,path_after:outcome?.path||'',ms_click_to_response:response?Math.max(0,responseAt-clickAt):null,ms_response_to_classification:response?Math.max(0,classifiedAt-responseAt):null,pii:false};
+    const telemetry={action:'submit',stage:'after_create_click',create_count:createRequests.length,apex_http_status:response?.status??null,success_message:!!outcome?.success_message,server_error_message:!!outcome?.server_error_message,duplicate_message:!!outcome?.duplicate_message,invalid_field_ids:Array.isArray(outcome?.invalid_fields)?outcome.invalid_fields:[],alerts_before:Array.isArray(before?.alerts_before)?before.alerts_before:[],visible_alerts:Array.isArray(outcome?.visible_alerts)?outcome.visible_alerts:[],alert_dom_ids:Array.isArray(outcome?.alert_dom_ids)?outcome.alert_dom_ids:[],apex_error_item_ids:Array.isArray(outcome?.apex_error_item_ids)?outcome.apex_error_item_ids:[],alert_text_length:Number.isFinite(outcome?.alert_text_length)?outcome.alert_text_length:0,form_reset:!!outcome?.form_reset,path_before:before.path,path_after:outcome?.path||'',ms_click_to_response:response?Math.max(0,responseAt-clickAt):null,ms_response_to_classification:response?Math.max(0,classifiedAt-responseAt):null,pii:false};
     console.log(JSON.stringify({event:'conape_create_telemetry',...telemetry}));
     return {createCount:createRequests.length,outcome:outcome||{},telemetry};
   }finally{
