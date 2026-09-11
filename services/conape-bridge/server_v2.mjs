@@ -223,6 +223,21 @@ async function clickVisibleByLabel(p, regex, notFoundCode) {
   throw new AppError(notFoundCode, 'CONAPE no mostró el control esperado.', 503);
 }
 
+async function readProspectoContext(p) {
+  return p.evaluate(() => {
+    const nonZero = v => { const s=String(v ?? '').trim(); return !!s && s !== '0'; };
+    const byId = ids => ids.some(id => { const el=document.getElementById(id); if(!el) return false; return nonZero('value' in el ? el.value : el.textContent); });
+    const u = new URL(location.href);
+    return {
+      evento:nonZero(u.searchParams.get('p2_eve_id')) || byId(['P2_EVE_ID','P2_PRS_EVE_ID','P2_EVENTO_ID']),
+      prospectador:nonZero(u.searchParams.get('p2_pro_id')) || byId(['P2_PRO_ID','P2_PRS_PRO_ID','P2_PROSPECTADOR_ID']),
+      session_param_present:nonZero(u.searchParams.get('session')),
+      page_time_origin:Number(performance.timeOrigin || 0),
+      path:location.pathname,
+    };
+  }).catch(() => ({ evento:false, prospectador:false, session_param_present:false, page_time_origin:0, path:'' }));
+}
+
 const ConapeSession = {
   browser:null,
   context:null,
@@ -380,19 +395,8 @@ const ConapeSession = {
     while (Date.now() < until) {
       await sleep(250);
       if (!(await this.formReady(p))) continue;
-      const meta = await p.evaluate(() => {
-        const nonZero = v => { const s=String(v ?? '').trim(); return !!s && s !== '0'; };
-        const byId = ids => ids.some(id => { const el=document.getElementById(id); if(!el) return false; return nonZero('value' in el ? el.value : el.textContent); });
-        const u = new URL(location.href);
-        return {
-          evento:nonZero(u.searchParams.get('p2_eve_id')) || byId(['P2_EVE_ID','P2_PRS_EVE_ID','P2_EVENTO_ID']),
-          prospectador:nonZero(u.searchParams.get('p2_pro_id')) || byId(['P2_PRO_ID','P2_PRS_PRO_ID','P2_PROSPECTADOR_ID']),
-          session_param_present:nonZero(u.searchParams.get('session')),
-          page_time_origin:Number(performance.timeOrigin || 0),
-          path:location.pathname,
-        };
-      }).catch(() => ({ evento:false, prospectador:false, session_param_present:false, page_time_origin:0, path:'' }));
-      if (!meta.evento || !meta.prospectador) throw new AppError('CONAPE_PROSPECTO_CONTEXT_NOT_READY', 'CONAPE abrió Prospecto sin confirmar Evento y Prospectador.', 503);
+      const meta = await readProspectoContext(p);
+      console.log(JSON.stringify({ event:'conape_prospecto_context', version:VERSION, entry:'HOME_CLICK_RECRUIT', evento:!!meta.evento, prospectador:!!meta.prospectador, session_param_present:!!meta.session_param_present, gate:false, pii:false }));
       this.state = 'CONNECTED';
       this.lastActivity = nowIso();
       return { p, meta:{ ...meta, entry_path:'HOME_CLICK_RECRUIT' } };
@@ -400,6 +404,73 @@ const ConapeSession = {
     throw new AppError('CONAPE_PROSPECTO_NOT_READY', 'CONAPE no renderizó un formulario nuevo de Prospecto.', 503);
   },
 };
+
+async function runNavSelftest() {
+  const result = {
+    ok:true,
+    login:'FAIL',
+    home:'FAIL',
+    recruit_click:'FAIL',
+    form_ready:'FAIL',
+    context:{ evento:false, prospectador:false },
+    ms_por_tramo:{ login:null, home:null, recruit_click:null, form_ready:null },
+  };
+  let browser;
+  let context;
+  try {
+    browser = await chromium.launch({ headless:true, args:['--disable-dev-shm-usage'] });
+    context = await browser.newContext({ locale:'es-CR', timezoneId:'America/Costa_Rica' });
+    const p = await context.newPage();
+    p.setDefaultTimeout(15_000);
+
+    let started = Date.now();
+    try {
+      const state = await ConapeSession.login(p);
+      result.login = state?.authenticated ? 'PASS' : 'FAIL';
+    } catch {}
+    result.ms_por_tramo.login = Date.now() - started;
+
+    started = Date.now();
+    if (result.login === 'PASS') {
+      try {
+        await p.goto(CONAPE_HOME, { waitUntil:'domcontentloaded', timeout:30_000 });
+        const state = await ConapeSession.login(p);
+        result.home = state?.authenticated ? 'PASS' : 'FAIL';
+      } catch {}
+    }
+    result.ms_por_tramo.home = Date.now() - started;
+
+    started = Date.now();
+    if (result.home === 'PASS') {
+      try {
+        await clickVisibleByLabel(p, /RECLUTAR PROSPECTOS/i, 'CONAPE_RECRUIT_BUTTON_NOT_FOUND');
+        result.recruit_click = 'PASS';
+      } catch {}
+    }
+    result.ms_por_tramo.recruit_click = Date.now() - started;
+
+    started = Date.now();
+    if (result.recruit_click === 'PASS') {
+      const until = Date.now() + 15_000;
+      while (Date.now() < until) {
+        if (await ConapeSession.formReady(p)) {
+          result.form_ready = 'PASS';
+          const meta = await readProspectoContext(p);
+          result.context = { evento:!!meta.evento, prospectador:!!meta.prospectador };
+          break;
+        }
+        await sleep(250);
+      }
+    }
+    result.ms_por_tramo.form_ready = Date.now() - started;
+
+    console.log(JSON.stringify({ event:'conape_nav_selftest', version:VERSION, login:result.login, home:result.home, recruit_click:result.recruit_click, form_ready:result.form_ready, context:result.context, ms_por_tramo:result.ms_por_tramo, pii:false }));
+    return result;
+  } finally {
+    try { await context?.close(); } catch {}
+    try { await browser?.close(); } catch {}
+  }
+}
 
 async function nativeSetValue(p, id, value) {
   return p.evaluate(({ id, value }) => {
@@ -701,8 +772,8 @@ function corsHeaders(origin) {
   return origin && ALLOWED_ORIGINS.has(origin) ? {
     'Access-Control-Allow-Origin':origin,
     'Vary':'Origin',
-    'Access-Control-Allow-Methods':'POST,OPTIONS',
-    'Access-Control-Allow-Headers':'Content-Type',
+    'Access-Control-Allow-Methods':'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers':'Content-Type, Authorization, X-Campus-Token',
     'Access-Control-Max-Age':'600',
   } : {};
 }
@@ -742,6 +813,12 @@ function sanitizedStage(error) {
   return stage || 'PRECHECK';
 }
 
+function campusTokenFromRequest(req) {
+  const authorization = txt(req.headers.authorization);
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i);
+  return txt((bearer && bearer[1]) || req.headers['x-campus-token'] || '');
+}
+
 const server = http.createServer(async (req, res) => {
   const rid = crypto.randomBytes(8).toString('hex');
   const started = Date.now();
@@ -758,6 +835,14 @@ const server = http.createServer(async (req, res) => {
       if (!origin || !ALLOWED_ORIGINS.has(origin)) throw new AppError('ORIGIN_FORBIDDEN', 'Origen no autorizado.', 403);
       res.writeHead(204, corsHeaders(origin));
       res.end();
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/v1/selftest/nav') {
+      action = 'selftest_nav';
+      await authorizeCampusSession(campusTokenFromRequest(req));
+      const result = await serial(() => runNavSelftest());
+      console.log(JSON.stringify({ rid, action, result:'OK', ms:Date.now()-started, pii:false }));
+      sendJson(res, 200, result, origin);
       return;
     }
     if (req.method !== 'POST') throw new AppError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
