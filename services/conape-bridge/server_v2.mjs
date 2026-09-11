@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V2.0.2';
+const VERSION = 'V3.0.0';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -10,11 +10,13 @@ const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '');
 const CONAPE_PASSWORD = String(process.env.CONAPE_PORTAL_PASSWORD || '');
 const SOURCE_TTL_MS = Math.max(60_000, Number(process.env.SOURCE_TTL_MS || 180_000));
 const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.CAMPUS_REQUEST_TIMEOUT_MS || 70_000));
+const SESSION_CACHE_TTL_MS = 30_000;
 const STARTED_AT = new Date().toISOString();
 const ALLOWED_ORIGINS = new Set(String(process.env.CAMPUS_ALLOWED_ORIGINS || 'https://anorteamerican.com,https://www.anorteamerican.com,https://anorteamericana-ship-it.github.io').split(',').map(v => v.trim()).filter(Boolean));
 const ROLE_ALLOW = new Set(['VENTAS','ASESOR','ASESORA','ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN']);
 const sourceVersions = new Map();
 const rateBuckets = new Map();
+const sessionValidationCache = new Map();
 let queue = Promise.resolve();
 
 class AppError extends Error {
@@ -85,6 +87,9 @@ function pruneState() {
   }
   for (const [key, value] of rateBuckets) {
     if (!value || now - value.startedAt > 120_000) rateBuckets.delete(key);
+  }
+  for (const [key, value] of sessionValidationCache) {
+    if (!value || value.expiresAt <= now) sessionValidationCache.delete(key);
   }
 }
 
@@ -190,11 +195,17 @@ async function campusCall(payload) {
     if (!response.ok || !raw || bodyStartsWithAngle) {
       const error = new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'No se pudo validar la sesión del Campus.', 503);
       error.fn = fn;
+      error.campus_ms = Date.now() - started;
+      error.http_status = httpStatus;
+      error.body_starts_with_angle = bodyStartsWithAngle;
+      error.campus_busy = bodyStartsWithAngle && error.campus_ms >= 10_000;
       throw error;
     }
     if (!jsonParsed) {
       const error = new AppError('CAMPUS_BACKEND_INVALID', 'El Campus devolvió una respuesta inválida.', 503);
       error.fn = fn;
+      error.campus_ms = Date.now() - started;
+      error.http_status = httpStatus;
       throw error;
     }
     return parsed;
@@ -203,20 +214,40 @@ async function campusCall(payload) {
     if (!safeId(error?.fn)) {
       try { error.fn = fn; } catch {}
     }
+    if (!Number.isFinite(Number(error?.campus_ms))) {
+      try { error.campus_ms = Date.now() - started; } catch {}
+    }
     throw error;
   }
+}
+
+async function cachedSessionValidation(cleanToken) {
+  pruneState();
+  const key = sha(cleanToken);
+  const cached = sessionValidationCache.get(key);
+  if (cached && cached.expiresAt > Date.now() && cached.session?.ok === true) {
+    return { session:cached.session, cached:true };
+  }
+  const session = await campusCall({ fn:'validarSesion', token:cleanToken });
+  if (session?.ok === true) sessionValidationCache.set(key, { session, expiresAt:Date.now() + SESSION_CACHE_TTL_MS });
+  return { session, cached:false };
+}
+
+function validateSessionResult(session) {
+  if (!session?.ok) throw new AppError('CAMPUS_SESSION_INVALID', 'La sesión del Campus no es válida.', 401);
+  const role = roleOf(session);
+  if (!ROLE_ALLOW.has(role)) throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para usar CONAPE.', 403);
+  if (session.demo === true || session.read_only === true) throw new AppError('CAMPUS_READ_ONLY', 'La cuenta es de solo lectura.', 403);
+  return { session, binding:userBinding(session) };
 }
 
 async function authorizeCampusSession(token) {
   const cleanToken = txt(token);
   if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401);
   rateLimit(cleanToken);
-  const session = await campusCall({ fn:'validarSesion', token:cleanToken });
-  if (!session?.ok) throw new AppError('CAMPUS_SESSION_INVALID', 'La sesión del Campus no es válida.', 401);
-  const role = roleOf(session);
-  if (!ROLE_ALLOW.has(role)) throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para usar CONAPE.', 403);
-  if (session.demo === true || session.read_only === true) throw new AppError('CAMPUS_READ_ONLY', 'La cuenta es de solo lectura.', 403);
-  return { session, token:cleanToken, binding:userBinding(session) };
+  const { session } = await cachedSessionValidation(cleanToken);
+  const validated = validateSessionResult(session);
+  return { ...validated, token:cleanToken };
 }
 
 async function authorizeCampus(token, cedula) {
@@ -229,6 +260,26 @@ async function authorizeCampus(token, cedula) {
   if (campusCedula(prospecto) !== cleanCedula) throw new AppError('PROSPECT_CEDULA_MISMATCH', 'La cédula no coincide con el prospecto autorizado.', 409);
   if (financing(prospecto) !== 'CONAPE') throw new AppError('PROSPECT_NOT_CONAPE', 'El prospecto no utiliza financiamiento CONAPE.', 422);
   return { ...base, prospecto, cedula:cleanCedula };
+}
+
+async function authorizeCampusParallel(token, cedula) {
+  const cleanToken = txt(token);
+  if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401);
+  rateLimit(cleanToken);
+  const cleanCedula = digits(cedula);
+  if (cleanCedula.length < 8 || cleanCedula.length > 12) throw new AppError('CEDULA_INVALID', 'Cédula inválida.', 422);
+
+  const [{ session }, detail] = await Promise.all([
+    cachedSessionValidation(cleanToken),
+    campusCall({ fn:'getProspectoDetalle', token:cleanToken, cedula:cleanCedula }),
+  ]);
+
+  const validated = validateSessionResult(session);
+  if (!detail || detail.ok === false) throw new AppError('PROSPECT_ACCESS_DENIED', 'No se pudo acceder a este prospecto.', 403);
+  const prospecto = detail.prospecto || detail;
+  if (campusCedula(prospecto) !== cleanCedula) throw new AppError('PROSPECT_CEDULA_MISMATCH', 'La cédula no coincide con el prospecto autorizado.', 409);
+  if (financing(prospecto) !== 'CONAPE') throw new AppError('PROSPECT_NOT_CONAPE', 'El prospecto no utiliza financiamiento CONAPE.', 422);
+  return { ...validated, token:cleanToken, prospecto, cedula:cleanCedula };
 }
 
 async function clickVisibleByLabel(p, regex, notFoundCode) {
@@ -559,8 +610,7 @@ async function lookupState(p) {
   });
 }
 
-async function lookupCedulaOnFreshPage(cedula) {
-  const { p, meta } = await ConapeSession.freshProspectoFromHome();
+async function lookupCedulaOnPage(p, cedula) {
   const started = await nativeSetValue(p, 'P2_PRS_CEDULA', cedula);
   if (!started) throw new AppError('CEDULA_LOOKUP_START_FAILED', 'No se pudo iniciar la búsqueda por cédula en CONAPE.', 503);
   const until = Date.now() + 15_000;
@@ -572,6 +622,12 @@ async function lookupCedulaOnFreshPage(cedula) {
   if (state.duplicate_warning) throw new AppError('DUPLICATE', 'CONAPE indica que esta cédula ya fue reclutada.', 409);
   if (state.validation_warning && !state.identity_ready) throw new AppError('CONAPE_VALIDATION', 'CONAPE mostró una validación para esta cédula.', 422);
   if (!state.identity_ready) throw new AppError('IDENTITY_LOOKUP_FAILED', 'CONAPE no devolvió nombre y apellidos para esta cédula.', 422);
+  return state;
+}
+
+async function lookupCedulaOnFreshPage(cedula) {
+  const { p, meta } = await ConapeSession.freshProspectoFromHome();
+  const state = await lookupCedulaOnPage(p, cedula);
   return { p, state, meta };
 }
 
@@ -588,6 +644,75 @@ function contactPlan(campus, conape) {
     update_telefono:!!phone && phone !== conapePhone,
     update_correo:!conapeMail && !!campusMail,
   };
+}
+
+function campusIdentityForComparison(campus, conape) {
+  const full = txt(first(campus, ['nombre','NOMBRE','nombre_completo','NOMBRE_COMPLETO']));
+  const apellido1 = txt(first(campus, ['apellido_1','primer_apellido','APELLIDO_1','PRIMER_APELLIDO']));
+  const apellido2 = txt(first(campus, ['apellido_2','segundo_apellido','APELLIDO_2','SEGUNDO_APELLIDO']));
+  const given = txt(first(campus, ['nombres','NOMBRES','nombre_persona','NOMBRE_PERSONA']));
+  if (apellido1 || apellido2 || given) return { apellido_1:apellido1, apellido_2:apellido2, nombre:given || full, full };
+
+  const expected = [conape?.apellido_1, conape?.apellido_2, conape?.nombre].filter(Boolean).join(' ');
+  if (full && expected && upper(full) === upper(expected)) {
+    return { apellido_1:txt(conape?.apellido_1), apellido_2:txt(conape?.apellido_2), nombre:txt(conape?.nombre), full };
+  }
+
+  const parts = full.split(/\s+/).filter(Boolean);
+  if (parts.length >= 3) return { apellido_1:parts[0], apellido_2:parts[1], nombre:parts.slice(2).join(' '), full };
+  return { apellido_1:'', apellido_2:'', nombre:full, full };
+}
+
+function compareState(a, b, normalizer = upper) {
+  const av = normalizer(a);
+  const bv = normalizer(b);
+  if (!av && !bv) return 'vacio';
+  if (!av || !bv) return 'falta';
+  return av === bv ? 'igual' : 'diferente';
+}
+
+function buildExecutionComparison(campus, conape, plan) {
+  const identity = campusIdentityForComparison(campus, conape);
+  const campusData = {
+    cedula:campusCedula(campus),
+    apellido_1:identity.apellido_1,
+    apellido_2:identity.apellido_2,
+    nombre:identity.nombre,
+    correo:campusEmail(campus),
+    whatsapp:campusPhone(campus),
+  };
+  const conapeData = {
+    cedula:digits(conape?.cedula),
+    apellido_1:txt(conape?.apellido_1),
+    apellido_2:txt(conape?.apellido_2),
+    nombre:txt(conape?.nombre),
+    correo:email(conape?.correo),
+    telefono:digits(conape?.telefono).slice(-8),
+  };
+  const phoneAction = plan.update_telefono ? 'Actualizar desde Campus' : (campusData.whatsapp && campusData.whatsapp === conapeData.telefono ? 'Coincide' : 'Conservar CONAPE');
+  const mailAction = plan.update_correo ? 'Completar desde Campus' : (campusData.correo && conapeData.correo && campusData.correo !== conapeData.correo ? 'Conservar CONAPE · Campus queda alterno' : (campusData.correo && campusData.correo === conapeData.correo ? 'Coincide' : 'Conservar CONAPE'));
+  return {
+    campus:campusData,
+    conape:conapeData,
+    rows:[
+      { key:'cedula', label:'Cédula', campus:campusData.cedula, conape:conapeData.cedula, final:conapeData.cedula || campusData.cedula, state:compareState(campusData.cedula, conapeData.cedula, digits), rule:'Coincidencia por cédula' },
+      { key:'apellido_1', label:'Primer Apellido', campus:campusData.apellido_1, conape:conapeData.apellido_1, final:conapeData.apellido_1, state:compareState(campusData.apellido_1, conapeData.apellido_1), rule:'Comparación Campus ↔ CONAPE · no se modifica identidad' },
+      { key:'apellido_2', label:'Segundo Apellido', campus:campusData.apellido_2, conape:conapeData.apellido_2, final:conapeData.apellido_2, state:compareState(campusData.apellido_2, conapeData.apellido_2), rule:'Comparación Campus ↔ CONAPE · no se modifica identidad' },
+      { key:'nombre', label:'Nombre', campus:campusData.nombre, conape:conapeData.nombre, final:conapeData.nombre, state:compareState(campusData.nombre, conapeData.nombre), rule:'Comparación Campus ↔ CONAPE · no se modifica identidad' },
+      { key:'telefono', label:'Teléfono', campus:campusData.whatsapp, conape:conapeData.telefono, final:plan.telefono, state:compareState(campusData.whatsapp, conapeData.telefono, digits), rule:`${phoneAction} · WhatsApp Campus normalizado a 8 dígitos` },
+      { key:'correo', label:'Correo', campus:campusData.correo, conape:conapeData.correo, final:plan.correo, state:compareState(campusData.correo, conapeData.correo, email), rule:mailAction },
+    ],
+    final:{ telefono:plan.telefono, correo:plan.correo, update_telefono:plan.update_telefono, update_correo:plan.update_correo },
+  };
+}
+
+function assertIdentityMatch(comparison) {
+  const keys = ['cedula','apellido_1','apellido_2','nombre'];
+  if (comparison.rows.some(row => keys.includes(row.key) && row.state !== 'igual')) {
+    const error = new AppError('IDENTITY_MISMATCH', 'La identidad de CONAPE no coincide con el prospecto del Campus.', 409, 'BEFORE_CREATE');
+    error.comparison = comparison;
+    throw error;
+  }
 }
 
 async function fillContacts(p, plan) {
@@ -674,7 +799,6 @@ async function clickCreateOnce(p, meta, previewTimeOrigin) {
   const pathBefore = before.path || '';
   const clickedAt = Date.now();
   const createRequests = [];
-  const statusById = new Map();
 
   const onRequest = req => {
     try {
@@ -818,6 +942,93 @@ async function submit(body) {
   }
 }
 
+async function execute(body) {
+  const started = Date.now();
+  const timing = { campus:null, form:null, lookup:null, fill:null, create:null };
+  let finalCode = 'BRIDGE_ERROR';
+  let finalStage = 'PRECHECK';
+  let comparison = null;
+  try {
+    let t = Date.now();
+    const auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    timing.campus = Date.now() - t;
+
+    t = Date.now();
+    const { p, meta } = await ConapeSession.freshProspectoFromHome();
+    timing.form = Date.now() - t;
+
+    t = Date.now();
+    const state = await lookupCedulaOnPage(p, auth.cedula);
+    timing.lookup = Date.now() - t;
+
+    const plan = contactPlan(auth.prospecto, state);
+    comparison = buildExecutionComparison(auth.prospecto, state, plan);
+    assertIdentityMatch(comparison);
+
+    t = Date.now();
+    const afterFill = await fillContacts(p, plan);
+    timing.fill = Date.now() - t;
+    if (identityHash(afterFill) !== identityHash(state)) {
+      const error = new AppError('IDENTITY_CHANGED', 'La identidad CONAPE cambió antes del envío.', 409, 'BEFORE_CREATE');
+      error.comparison = comparison;
+      throw error;
+    }
+
+    t = Date.now();
+    const created = await clickCreateOnce(p, meta, 0);
+    const outcome = created.outcome || {};
+    if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se pudo confirmar una única solicitud CREATE. No repita el envío.', 409, 'AFTER_CREATE');
+    if (outcome.duplicate_message) throw new AppError('DUPLICATE', 'CONAPE indicó que el prospecto ya existe.', 409, 'AFTER_CREATE');
+
+    let estado = '';
+    if (outcome.success_message && !outcome.server_error_message) {
+      estado = await readEstadoAfterCreate(p, auth.cedula);
+    } else {
+      estado = await readEstadoAfterCreate(p, auth.cedula);
+      if (!estado && outcome.server_error_message) throw new AppError('PORTAL_ERROR', 'CONAPE rechazó la creación.', 422, 'AFTER_CREATE');
+      if (!estado) throw new AppError('WRITE_RESULT_UNCERTAIN', 'CONAPE recibió CREATE pero no confirmó el resultado. No repita el envío.', 409, 'AFTER_CREATE');
+    }
+    timing.create = Date.now() - t;
+
+    finalCode = 'CREATED';
+    finalStage = 'AFTER_CREATE';
+    return {
+      ok:true,
+      confirmed:true,
+      code:'CREATED',
+      stage:'AFTER_CREATE',
+      create_request_observed:true,
+      write_count:1,
+      success_signal:true,
+      estado_conape_raw:estado,
+      comparison,
+      timing:{ ...timing, total:Date.now() - started },
+    };
+  } catch (error) {
+    finalCode = txt(error?.code || 'BRIDGE_ERROR');
+    finalStage = sanitizedStage(error);
+    if (comparison && !error?.comparison) {
+      try { error.comparison = comparison; } catch {}
+    }
+    try { error.execute_timing = { ...timing, total:Date.now() - started }; } catch {}
+    throw error;
+  } finally {
+    console.log(JSON.stringify({
+      event:'conape_execute_telemetry',
+      version:VERSION,
+      code:finalCode,
+      stage:finalStage,
+      ms_total:Date.now() - started,
+      ms_campus:timing.campus,
+      ms_form:timing.form,
+      ms_lookup:timing.lookup,
+      ms_fill:timing.fill,
+      ms_create:timing.create,
+      pii:false,
+    }));
+  }
+}
+
 function corsHeaders(origin) {
   return origin && ALLOWED_ORIGINS.has(origin) ? {
     'Access-Control-Allow-Origin':origin,
@@ -903,6 +1114,7 @@ const server = http.createServer(async (req, res) => {
     else if (url.pathname === '/v1/session/disconnect') action = 'session_disconnect';
     else if (url.pathname === '/v1/recruit/preview') action = 'preview';
     else if (url.pathname === '/v1/recruit/submit') action = 'submit';
+    else if (url.pathname === '/v1/recruit/execute') action = 'execute';
     else throw new AppError('NOT_FOUND', 'Ruta no encontrada.', 404);
 
     let result;
@@ -915,6 +1127,8 @@ const server = http.createServer(async (req, res) => {
     } else if (action === 'session_disconnect') {
       await authorizeCampusSession(body?.token);
       result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); });
+    } else if (action === 'execute') {
+      result = await serial(() => execute(body));
     } else {
       result = await serial(() => action === 'preview' ? preview(body) : submit(body));
     }
@@ -926,8 +1140,18 @@ const server = http.createServer(async (req, res) => {
     const code = txt(error?.code || 'BRIDGE_ERROR');
     const stage = sanitizedStage(error);
     const errorFn = safeId(error?.fn);
+    const campusBusy = error?.campus_busy === true;
     console.log(JSON.stringify({ rid, action, result:code, stage, status, ...(errorFn ? { fn:errorFn } : {}), ms:Date.now()-started, pii:false }));
-    sendJson(res, status, { ok:false, error:code, code, stage, message:status >= 500 ? 'Servicio CONAPE temporalmente no disponible.' : txt(error?.message || 'Operación rechazada.') }, origin);
+    sendJson(res, status, {
+      ok:false,
+      error:code,
+      code,
+      stage,
+      message:campusBusy ? 'El Campus está ocupado, probá de nuevo en unos segundos.' : (status >= 500 ? 'Servicio CONAPE temporalmente no disponible.' : txt(error?.message || 'Operación rechazada.')),
+      ...(campusBusy ? { campus_busy:true, retryable:true } : {}),
+      ...(error?.comparison ? { comparison:error.comparison } : {}),
+      ...(error?.execute_timing ? { timing:error.execute_timing } : {}),
+    }, origin);
   }
 });
 
@@ -943,4 +1167,4 @@ async function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-export { safeBodyKeys, safeRequestToken, contactPlan, sanitizedStage };
+export { safeBodyKeys, safeRequestToken, contactPlan, sanitizedStage, buildExecutionComparison };
