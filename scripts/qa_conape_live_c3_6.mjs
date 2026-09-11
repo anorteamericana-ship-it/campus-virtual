@@ -14,6 +14,8 @@ const config = read('src/conape_bridge_config_c3_6.js');
 const row = read('src/ventas_conape_reclutar_row_c3_5.jsx');
 const table = read('src/ventas_sortable_table_cs21a20.jsx');
 const docker = read('services/conape-bridge/Dockerfile');
+const conflictGuard = server375.indexOf('if(outcome.success_message&&outcome.server_error_message)');
+const successFastPath = server375.indexOf('if(outcome.success_message){ConapeSession');
 
 const checks = [
   ['bridge legacy usa credenciales solo por env', /CONAPE_PORTAL_USERNAME/.test(server) && /CONAPE_PORTAL_PASSWORD/.test(server) && !/Tigrina|402110915/.test(server)],
@@ -33,7 +35,8 @@ const checks = [
   ['C3.7.6 usa click real Playwright en Crear nuevo Prospecto', /getByRole\('button',\{name:\/crear nuevo prospecto\/i\}\)/.test(server375) && /await button\.click/.test(server375)],
   ['C3.7.6 observa request y response CREATE', /p\.on\('request',onRequest\)/.test(server375) && /p\.on\('response',onResponse\)/.test(server375) && /apex_http_status/.test(server375)],
   ['C3.7.6 invalid después del click es solo telemetría', /invalid_after_click_telemetry_only:true/.test(server375) && !/error_message:.*invalid\.length/s.test(server375)],
-  ['C3.7.6 éxito tiene precedencia', /if\(outcome\.success_message\)\{ConapeSession/.test(server375) && /if\(outcome\.server_error_message\)throw/.test(server375)],
+  ['C3.7.6 conflicto success+error verifica listado antes del fast-path', conflictGuard >= 0 && successFastPath >= 0 && conflictGuard < successFastPath && /if\(outcome\.success_message&&outcome\.server_error_message\)\{const estado=await readEstadoAfterCreate/.test(server375) && /if\(estado\)\{ConapeSession\.lastActivity/.test(server375)],
+  ['C3.7.6 éxito sin conflicto conserva fast-path', /if\(outcome\.success_message\)\{ConapeSession/.test(server375) && /if\(outcome\.server_error_message\)throw/.test(server375)],
   ['C3.7.6 exige una sola solicitud CREATE', /created\.createCount!==1/.test(server375) && /WRITE_RESULT_UNCERTAIN/.test(server375)],
   ['C3.7.6 verifica creación contra reporte como fallback', /verify_created_in_report:true/.test(server375) && /readEstadoAfterCreate/.test(server375) && /if\(!estado\)throw new AppError\('WRITE_RESULT_UNCERTAIN'/.test(server375)],
   ['C3.7.6 telemetría no emite PII ni secretos', /conape_create_telemetry/.test(server375) && /visible_alerts/.test(server375) && /pii:false/.test(server375) && !/Tigrina|402110915/.test(server375)],
