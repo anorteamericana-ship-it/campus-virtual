@@ -1,5 +1,5 @@
 /* global window, fetch */
-(function conapeBridgeClientC37(){
+(function conapeBridgeClientC38(){
   'use strict';
 
   function cleanBase(value){ return String(value || '').trim().replace(/\/+$/, ''); }
@@ -25,7 +25,7 @@
       catch { return { ok:false, error:'conape_bridge_invalid_response' }; }
       return data && typeof data === 'object' ? data : { ok:false, error:'conape_bridge_invalid_response' };
     } catch (error) {
-      console.error('[C3.7] Bridge CONAPE no disponible.', error);
+      console.error('[C3.8] Bridge CONAPE no disponible.', error);
       return { ok:false, error:'conape_bridge_unavailable' };
     }
   }
@@ -42,6 +42,11 @@
       prospecto:input.payload || {},
     });
   }
+  async function tracking(cedulas){
+    const normalized = Array.from(new Set((Array.isArray(cedulas) ? cedulas : []).map(digits).filter(Boolean))).slice(0,100);
+    if (!normalized.length) return { ok:true, records:[], missing:[], ambiguous:[], metrics:{ requested:0, returned:0, missing:0, ambiguous:0 } };
+    return postBridge('/v1/tracking/query', { cedulas:normalized });
+  }
 
   const api = Object.freeze({
     status:sessionStatus,
@@ -49,15 +54,19 @@
     disconnect,
     preview,
     submit,
+    tracking,
     active:!!bridgeBase(),
-    version:'C3.7',
+    version:'C3.8',
   });
 
+  window.CONAPE_PORTAL_BRIDGE_C38 = api;
   window.CONAPE_PORTAL_BRIDGE_C37 = api;
   /* Compatibilidad temporal: el botón por fila C3.5/C3.6 sigue consumiendo C36. */
   window.CONAPE_PORTAL_BRIDGE_C36 = api;
   window.conapePortalRecruitPreviewVentasSeguro = preview;
   window.conapePortalRecruitSubmitVentasSeguro = submit;
+  window.conapePortalTrackingVentasSeguro = tracking;
   window.CONAPE_BRIDGE_C36_ACTIVE = !!bridgeBase();
   window.CONAPE_BRIDGE_C37_ACTIVE = !!bridgeBase();
+  window.CONAPE_BRIDGE_C38_ACTIVE = !!bridgeBase();
 })();
