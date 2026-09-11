@@ -2,10 +2,11 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V3.0.0';
+const VERSION = 'V3.0.1';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
+const CONAPE_FRIENDLY_HOME = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/home';
 const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '');
 const CONAPE_PASSWORD = String(process.env.CONAPE_PORTAL_PASSWORD || '');
 const SOURCE_TTL_MS = Math.max(60_000, Number(process.env.SOURCE_TTL_MS || 180_000));
@@ -339,6 +340,39 @@ async function readProspectoContext(p) {
   }).catch(() => ({ evento:false, prospectador:false, session_param_present:false, page_time_origin:0, path:'' }));
 }
 
+async function readApexSession(p) {
+  return p.evaluate(() => {
+    const clean = value => {
+      const v = String(value ?? '').trim();
+      return /^\d{4,}$/.test(v) ? v : '';
+    };
+    try {
+      const u = new URL(location.href);
+      const friendly = clean(u.searchParams.get('session'));
+      if (friendly) return friendly;
+      const legacy = String(u.searchParams.get('p') || '').split(':');
+      const fromLegacy = clean(legacy[2]);
+      if (fromLegacy) return fromLegacy;
+    } catch {}
+    const nodes = [
+      document.querySelector('input[name="p_instance"]'),
+      document.querySelector('input[name="pInstance"]'),
+      document.getElementById('pInstance'),
+    ];
+    for (const node of nodes) {
+      const value = clean(node?.value);
+      if (value) return value;
+    }
+    return '';
+  }).catch(() => '');
+}
+
+function homeUrlWithSession(sessionId) {
+  const u = new URL(CONAPE_FRIENDLY_HOME);
+  u.searchParams.set('session', sessionId);
+  return u.href;
+}
+
 const ConapeSession = {
   browser:null,
   context:null,
@@ -406,13 +440,28 @@ const ConapeSession = {
     return p.evaluate(() => {
       const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
       const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
+      const cleanSession = value => /^\d{4,}$/.test(String(value ?? '').trim());
       const password = Array.from(document.querySelectorAll('input[type="password"]')).some(visible);
       const form = ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'].every(id => !!document.getElementById(id));
       const path = decodeURIComponent(location.pathname || '').toLowerCase();
       const title = norm(document.title || '');
       const route = path.includes('/prospectacion-reclutador/') || path.includes('/prospectaci') && path.includes('reclutador');
-      return { password, form, route, title, authenticated:!password && (form || route || title.includes('PROSPECTACION RECLUTADOR')) };
-    }).catch(() => ({ password:false, form:false, route:false, title:'', authenticated:false }));
+      let sessionPresent = false;
+      try {
+        const u = new URL(location.href);
+        sessionPresent = cleanSession(u.searchParams.get('session'));
+        if (!sessionPresent) {
+          const legacy = String(u.searchParams.get('p') || '').split(':');
+          sessionPresent = cleanSession(legacy[2]);
+        }
+      } catch {}
+      if (!sessionPresent) {
+        const candidates = [document.querySelector('input[name="p_instance"]'), document.querySelector('input[name="pInstance"]'), document.getElementById('pInstance')];
+        sessionPresent = candidates.some(node => cleanSession(node?.value));
+      }
+      const authenticated = !password && (form || (sessionPresent && (route || title.includes('PROSPECTACION RECLUTADOR'))));
+      return { password, form, route, title, session_present:sessionPresent, authenticated };
+    }).catch(() => ({ password:false, form:false, route:false, title:'', session_present:false, authenticated:false }));
   },
 
   async login(p) {
@@ -441,6 +490,19 @@ const ConapeSession = {
       if (state.authenticated) return state;
     }
     throw new AppError('CONAPE_LOGIN_FAILED', 'CONAPE no confirmó la sesión del bridge.', 503);
+  },
+
+  async homeWithSession(p) {
+    let state = await this.authState(p);
+    if (!state.authenticated) state = await this.login(p);
+    const sessionId = await readApexSession(p);
+    if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión APEX válida.', 503);
+    await p.goto(homeUrlWithSession(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+    state = await this.authState(p);
+    const sessionAfter = await readApexSession(p);
+    console.log(JSON.stringify({ event:'conape_home_nav', version:VERSION, session_before:true, session_after:!!sessionAfter, authenticated:!!state.authenticated, route_ok:!!state.route, pii:false }));
+    if (!state.authenticated || !sessionAfter) throw new AppError('CONAPE_HOME_SESSION_LOST', 'CONAPE no conservó la sesión al abrir Prospectación Reclutador.', 503);
+    return state;
   },
 
   async connect() {
@@ -488,8 +550,7 @@ const ConapeSession = {
 
   async freshProspectoFromHome() {
     const p = await this.browserPage();
-    await p.goto(CONAPE_HOME, { waitUntil:'domcontentloaded', timeout:30_000 });
-    await this.login(p);
+    await this.homeWithSession(p);
     await clickVisibleByLabel(p, /RECLUTAR PROSPECTOS/i, 'CONAPE_RECRUIT_BUTTON_NOT_FOUND');
 
     const until = Date.now() + 15_000;
@@ -534,8 +595,7 @@ async function runNavSelftest() {
     started = Date.now();
     if (result.login === 'PASS') {
       try {
-        await p.goto(CONAPE_HOME, { waitUntil:'domcontentloaded', timeout:30_000 });
-        const state = await ConapeSession.login(p);
+        const state = await ConapeSession.homeWithSession(p);
         result.home = state?.authenticated ? 'PASS' : 'FAIL';
       } catch {}
     }
@@ -765,8 +825,7 @@ async function collectSafePageState(p) {
 
 async function readEstadoAfterCreate(p, cedula) {
   try {
-    await p.goto(CONAPE_HOME, { waitUntil:'domcontentloaded', timeout:30_000 });
-    await ConapeSession.login(p);
+    await ConapeSession.homeWithSession(p);
     const search = p.locator('input[type="search"]:visible,input[id$="_search_field"]:visible').first();
     if (!(await search.count())) return '';
     await search.fill(cedula);
