@@ -13,8 +13,9 @@ const runtimeUrl = new URL('./server_c3_7_8_runtime.mjs', import.meta.url);
 
 let builder = await fs.readFile(builderUrl, 'utf8');
 const runMarker = 'await import(`${runtimeUrl.href}?v=${Date.now()}`);';
-if (!builder.includes(runMarker)) throw new Error('C3_7_8_BUILDER_CONTRACT_MISMATCH');
-builder = builder.replace(runMarker, '');
+const runIndex = builder.lastIndexOf(runMarker);
+if (runIndex < 0) throw new Error('C3_7_8_BUILDER_CONTRACT_MISMATCH');
+builder = builder.slice(0, runIndex) + builder.slice(runIndex + runMarker.length);
 await fs.writeFile(buildOnlyUrl, builder, 'utf8');
 await import(`${buildOnlyUrl.href}?build=${Date.now()}`);
 
