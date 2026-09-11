@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.0';
+const VERSION = 'V4.1.1';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -697,17 +697,12 @@ async function confirmInHome(p, sessionId, cedula) {
         if (cells.length <= Math.max(iCedula, iEstado)) continue;
         if (clean(cells[iCedula].textContent) === value) {
           const estado = String(cells[iEstado].textContent || '').trim();
-          return { found:true, estado, registro:norm(estado) === 'REGISTRO' };
+          return { found:true, estado };
         }
       }
     }
-    return { found:false, estado:'', registro:false };
-  }, cedula).catch(() => ({ found:false, estado:'', registro:false }));
-}
-
-async function readEstadoAfterCreate(p, sessionId, cedula) {
-  const confirmation = await confirmInHome(p, sessionId, cedula);
-  return confirmation.registro ? confirmation.estado : '';
+    return { found:false, estado:'' };
+  }, cedula).catch(() => ({ found:false, estado:'' }));
 }
 
 async function readProspectListPage(p) {
@@ -905,8 +900,8 @@ async function submit(body) {
     await fillContacts(p, plan);
     const created = await clickCreateOnce(p);
     if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE.', 409, 'AFTER_CREATE');
-    const estado = await readEstadoAfterCreate(p, meta.sessionId, auth.cedula);
-    if (estado) return { ok:true, confirmed:true, code:'CREATED', estado_conape_raw:estado };
+    const confirmation = await confirmInHome(p, meta.sessionId, auth.cedula);
+    if (confirmation.found) return { ok:true, confirmed:true, code:'CREATED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado };
     throw new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE no quedó confirmado en la lista.', 409, 'CONFIRMATION');
   } finally {
     sourceVersions.delete(sourceKey);
@@ -955,14 +950,14 @@ async function execute(body) {
 
     const categories = created.outcome?.categories || [];
     if (categories.includes('YA_REGISTRADO')) throw Object.assign(new AppError('YA_REGISTRADO', 'CONAPE indicó que el prospecto ya estaba registrado.', 409, 'CONFIRMATION'), { comparison, confirmation });
-    if (confirmation.registro) {
+    if (confirmation.found) {
       finalCode = 'CREATED';
       finalStage = 'CONFIRMED';
-      return { ok:true, confirmed:true, code:'CREATED', stage:'CONFIRMED', estado_conape_raw:confirmation.estado, comparison, timing:{ ...timing, total:Date.now()-started } };
+      return { ok:true, confirmed:true, code:'CREATED', stage:'CONFIRMED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, comparison, timing:{ ...timing, total:Date.now()-started } };
     }
     const meaningful = categories.find(code => code !== 'ERROR_DE_PORTAL' && code !== 'ALERTA_NO_CLASIFICADA');
     if (meaningful) throw Object.assign(new AppError(meaningful, 'CONAPE rechazó la creación.', categoryStatus(meaningful), 'AFTER_CREATE'), { comparison, confirmation });
-    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la lista no confirmó Estado REGISTRO. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
+    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la cédula no apareció en la lista de CONAPE. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
   } catch (error) {
     finalCode = txt(error?.code || finalCode || 'BRIDGE_ERROR');
     finalStage = sanitizedStage(error);
@@ -975,7 +970,7 @@ async function execute(body) {
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
       nav_mode:navMode,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
-      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_registro:!!confirmation?.registro, pii:false,
+      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''), pii:false,
     }));
   }
 }
