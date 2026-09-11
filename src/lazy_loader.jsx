@@ -1,11 +1,16 @@
 // F98.4-Z6-CS21A124 · Cargador diferido con versión canónica del importador BCR.
+// English LAB LIVE v2 E10: el route existente conserva sus componentes públicos,
+// pero monta el shell v2; el archivo legacy queda disponible como rollback histórico.
 // Base preservada: F98.4-Z6-CS21A122.
 (function(){
   const loaded = new Set();
   const loading = new Map();
-  const VERSION = 'F98.4-Z6-CS21A124';
+  const VERSION = 'F98.4-Z6-CS21A124-ELV2E10QA-20260827';
   const normalize = (src) => {
     const value = String(src || '').trim();
+    if (/^src\/english_lab_live\.jsx(?:\?.*)?$/i.test(value)) {
+      return 'src/english_lab_live_v2.jsx?v=ELV2E10QA-20260827';
+    }
     if (/^src\/importador_banco\.jsx(?:\?.*)?$/i.test(value)) {
       return 'src/importador_banco.jsx?v=F98.4Z6CS21A124';
     }
