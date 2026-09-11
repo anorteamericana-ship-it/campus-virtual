@@ -1,4 +1,5 @@
 C3.7 source deployment trigger.
 Expected base contains CONAPE session manager merge 776987d771a96dd5184089d261ed3dd0650ec804.
 Retrigger 2026-09-11 after Railway stopped ingesting main at be43903b; target main contains 67242fc891d9ea6e0699e478ff167c1fa700e7ca or later.
+Watch-path retrigger after Railway was explicitly configured for services/conape-bridge/**.
 No runtime configuration, credentials, or business logic in this marker.
