@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V2.0.1';
+const VERSION = 'V2.0.2';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -144,17 +144,67 @@ function safeRequestToken(postData) {
 }
 
 async function campusCall(payload) {
-  const response = await fetch(CAMPUS_URL, {
-    method:'POST',
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body:JSON.stringify(payload),
-    redirect:'follow',
-    signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-  const raw = await response.text();
-  if (!response.ok || !raw || raw.trim().startsWith('<')) throw new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'No se pudo validar la sesión del Campus.', 503);
-  try { return JSON.parse(raw); }
-  catch { throw new AppError('CAMPUS_BACKEND_INVALID', 'El Campus devolvió una respuesta inválida.', 503); }
+  const fn = safeId(payload?.fn) || 'UNKNOWN';
+  const started = Date.now();
+  let httpStatus = 0;
+  let raw = '';
+  let bodyStartsWithAngle = false;
+  let jsonParsed = false;
+  let logged = false;
+  const emit = () => {
+    if (logged) return;
+    logged = true;
+    console.log(JSON.stringify({
+      event:'campus_call',
+      fn,
+      http_status:httpStatus,
+      ms:Date.now()-started,
+      body_len:Buffer.byteLength(raw || '', 'utf8'),
+      body_starts_with_angle:bodyStartsWithAngle,
+      json_parsed:jsonParsed,
+      pii:false,
+    }));
+  };
+
+  try {
+    const response = await fetch(CAMPUS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body:JSON.stringify(payload),
+      redirect:'follow',
+      signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    httpStatus = Number(response.status || 0);
+    raw = await response.text();
+    bodyStartsWithAngle = raw.trim().startsWith('<');
+
+    let parsed;
+    if (raw && !bodyStartsWithAngle) {
+      try {
+        parsed = JSON.parse(raw);
+        jsonParsed = true;
+      } catch {}
+    }
+
+    emit();
+    if (!response.ok || !raw || bodyStartsWithAngle) {
+      const error = new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'No se pudo validar la sesión del Campus.', 503);
+      error.fn = fn;
+      throw error;
+    }
+    if (!jsonParsed) {
+      const error = new AppError('CAMPUS_BACKEND_INVALID', 'El Campus devolvió una respuesta inválida.', 503);
+      error.fn = fn;
+      throw error;
+    }
+    return parsed;
+  } catch (error) {
+    emit();
+    if (!safeId(error?.fn)) {
+      try { error.fn = fn; } catch {}
+    }
+    throw error;
+  }
 }
 
 async function authorizeCampusSession(token) {
@@ -875,7 +925,8 @@ const server = http.createServer(async (req, res) => {
     const status = Number(error?.status || 500);
     const code = txt(error?.code || 'BRIDGE_ERROR');
     const stage = sanitizedStage(error);
-    console.log(JSON.stringify({ rid, action, result:code, stage, status, ms:Date.now()-started, pii:false }));
+    const errorFn = safeId(error?.fn);
+    console.log(JSON.stringify({ rid, action, result:code, stage, status, ...(errorFn ? { fn:errorFn } : {}), ms:Date.now()-started, pii:false }));
     sendJson(res, status, { ok:false, error:code, code, stage, message:status >= 500 ? 'Servicio CONAPE temporalmente no disponible.' : txt(error?.message || 'Operación rechazada.') }, origin);
   }
 });
