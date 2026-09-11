@@ -1,5 +1,5 @@
 /* global window, fetch */
-(function conapeBridgeClientC37(){
+(function conapeBridgeClientV3(){
   'use strict';
 
   function cleanBase(value){ return String(value || '').trim().replace(/\/+$/, ''); }
@@ -25,7 +25,7 @@
       catch { return { ok:false, error:'conape_bridge_invalid_response' }; }
       return data && typeof data === 'object' ? data : { ok:false, error:'conape_bridge_invalid_response' };
     } catch (error) {
-      console.error('[C3.7] Bridge CONAPE no disponible.', error);
+      console.error('[CONAPE V3] Bridge no disponible.', error);
       return { ok:false, error:'conape_bridge_unavailable' };
     }
   }
@@ -33,6 +33,7 @@
   async function sessionStatus(){ return postBridge('/v1/session/status', {}); }
   async function connect(){ return postBridge('/v1/session/connect', {}); }
   async function disconnect(){ return postBridge('/v1/session/disconnect', {}); }
+  async function execute(cedula){ return postBridge('/v1/recruit/execute', { cedula:digits(cedula) }); }
   async function preview(cedula){ return postBridge('/v1/recruit/preview', { cedula:digits(cedula) }); }
   async function submit(args){
     const input = args || {};
@@ -47,17 +48,20 @@
     status:sessionStatus,
     connect,
     disconnect,
+    execute,
     preview,
     submit,
     active:!!bridgeBase(),
-    version:'C3.7',
+    version:'V3.0',
   });
 
+  window.CONAPE_PORTAL_BRIDGE_V3 = api;
   window.CONAPE_PORTAL_BRIDGE_C37 = api;
-  /* Compatibilidad temporal: el botón por fila C3.5/C3.6 sigue consumiendo C36. */
   window.CONAPE_PORTAL_BRIDGE_C36 = api;
+  window.conapePortalRecruitExecuteVentasSeguro = execute;
   window.conapePortalRecruitPreviewVentasSeguro = preview;
   window.conapePortalRecruitSubmitVentasSeguro = submit;
+  window.CONAPE_BRIDGE_V3_ACTIVE = !!bridgeBase();
   window.CONAPE_BRIDGE_C36_ACTIVE = !!bridgeBase();
   window.CONAPE_BRIDGE_C37_ACTIVE = !!bridgeBase();
 })();
