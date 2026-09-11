@@ -77,7 +77,7 @@ const checks = [
   ['comparación carga identidad Campus', /campusIdentity/.test(compareUi) && /apellido_1:identity\.apellido_1/.test(compareUi) && /nombre:identity\.nombre/.test(compareUi)],
   ['correo diferente conserva CONAPE y Campus queda alterno', /preserveExisting/.test(compareUi) && /Conservar CONAPE · Campus queda alterno/.test(compareUi) && /update_correo:!conape\.correo&&!!campus\.correo/.test(compareUi)],
   ['botón por fila usa comparador estable', /conapeRecruitBuildComparisonC371 \|\| window\.conapeRecruitBuildComparisonC33/.test(row)],
-  ['cache bust existente sigue apuntando assets CONAPE estables', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.5/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.5/.test(ventas)],
+  ['cache bust del modal CONAPE aplicado', /conape_compare_ui_c3_7_1\.js\?v=C3\.7\.5/.test(ventas) && /ventas_conape_reclutar_row_c3_5\.jsx\?v=C3\.7\.7/.test(ventas)],
   ['botón CONAPE está por fila', /ConapeRecruitRowButtonC35/.test(row) && /<th>CONAPE<\/th><th>Acción<\/th>/.test(table)],
   ['Etapa prioriza estado CONAPE raw', /estado_conape_raw/.test(table)],
 ];
