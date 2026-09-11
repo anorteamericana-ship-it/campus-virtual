@@ -18,6 +18,7 @@ COPY server_c3_7_7.mjs ./
 COPY server_c3_7_8.mjs ./
 COPY server_c3_7_9.mjs ./
 COPY server_v2.mjs ./
+COPY nav_selftest.mjs ./
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
