@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V3.0.1';
+const VERSION = 'V3.0.2';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -432,7 +432,7 @@ const ConapeSession = {
     return p.evaluate(() => {
       const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
       const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
-      return Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible).some(el => norm([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' ')).includes('RECLUTAR PROSPECTOS'));
+      return Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible).some(el => /(^| )RECLUTAR( |$)/.test(norm([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))));
     }).catch(() => false);
   },
 
@@ -551,7 +551,7 @@ const ConapeSession = {
   async freshProspectoFromHome() {
     const p = await this.browserPage();
     await this.homeWithSession(p);
-    await clickVisibleByLabel(p, /RECLUTAR PROSPECTOS/i, 'CONAPE_RECRUIT_BUTTON_NOT_FOUND');
+    await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i, 'CONAPE_RECRUIT_BUTTON_NOT_FOUND');
 
     const until = Date.now() + 15_000;
     while (Date.now() < until) {
@@ -604,7 +604,7 @@ async function runNavSelftest() {
     started = Date.now();
     if (result.home === 'PASS') {
       try {
-        await clickVisibleByLabel(p, /RECLUTAR PROSPECTOS/i, 'CONAPE_RECRUIT_BUTTON_NOT_FOUND');
+        await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i, 'CONAPE_RECRUIT_BUTTON_NOT_FOUND');
         result.recruit_click = 'PASS';
       } catch {}
     }
