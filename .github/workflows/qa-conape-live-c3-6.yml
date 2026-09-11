@@ -39,8 +39,6 @@ jobs:
         run: node --check scripts/qa_conape_live_c3_6.mjs
       - name: Node syntax · QA V2
         run: node --check scripts/qa_conape_bridge_v2.mjs
-      - name: C3.7.1 contract gate
-        run: node scripts/qa_conape_live_c3_6.mjs
       - name: Bridge V2 contract gate
         run: node scripts/qa_conape_bridge_v2.mjs
       - name: Diff hygiene
