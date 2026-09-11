@@ -4,7 +4,11 @@ on:
   pull_request:
     paths:
       - 'services/conape-bridge/conape_tracking_contract_v2.mjs'
+      - 'services/conape-bridge/conape_tracking_parser_v2.mjs'
+      - 'services/conape-bridge/conape_tracking_backend_v2.mjs'
+      - 'services/conape-bridge/server_v2.mjs'
       - 'scripts/qa_conape_tracking_contract_v2.mjs'
+      - 'scripts/qa_conape_tracking_backend_v2.mjs'
       - '00_DOCUMENTACION/CONAPE_TRACKING_V2_CONTRACT.md'
       - '.github/workflows/qa-conape-tracking-v2.yml'
   workflow_dispatch:
@@ -18,4 +22,7 @@ jobs:
         with:
           node-version: 20
       - run: node --check services/conape-bridge/conape_tracking_contract_v2.mjs
+      - run: node --check services/conape-bridge/conape_tracking_parser_v2.mjs
+      - run: node --check services/conape-bridge/conape_tracking_backend_v2.mjs
       - run: node scripts/qa_conape_tracking_contract_v2.mjs
+      - run: node scripts/qa_conape_tracking_backend_v2.mjs
