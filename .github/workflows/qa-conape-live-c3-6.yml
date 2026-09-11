@@ -13,6 +13,7 @@ on:
       - 'src/conape_compare_ui_c3_7_1.js'
       - 'services/conape-bridge/**'
       - 'scripts/qa_conape_live_c3_6.mjs'
+      - 'scripts/qa_conape_bridge_v2.mjs'
       - '.github/workflows/qa-conape-live-c3-6.yml'
   workflow_dispatch:
 
@@ -26,15 +27,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Node syntax · bridge
+      - name: Node syntax · bridge legacy
         run: node --check services/conape-bridge/server.mjs
+      - name: Node syntax · bridge V2
+        run: node --check services/conape-bridge/server_v2.mjs
       - name: Node syntax · CONAPE session UI
         run: node --check src/conape_session_ui_c3_7.js
       - name: Node syntax · CONAPE comparison UI
         run: node --check src/conape_compare_ui_c3_7_1.js
-      - name: Node syntax · QA
+      - name: Node syntax · QA legacy
         run: node --check scripts/qa_conape_live_c3_6.mjs
+      - name: Node syntax · QA V2
+        run: node --check scripts/qa_conape_bridge_v2.mjs
       - name: C3.7.1 contract gate
         run: node scripts/qa_conape_live_c3_6.mjs
+      - name: Bridge V2 contract gate
+        run: node scripts/qa_conape_bridge_v2.mjs
       - name: Diff hygiene
         run: git diff --check origin/main...HEAD
