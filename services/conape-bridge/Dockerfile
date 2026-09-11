@@ -21,4 +21,4 @@ COPY server_v2.mjs ./
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
-CMD ["node", "server_v2.mjs"]
+CMD ["node", "server_c3_7_7.mjs"]
