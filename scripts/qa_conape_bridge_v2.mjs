@@ -2,6 +2,9 @@ import fs from 'node:fs';
 
 const server = fs.readFileSync('services/conape-bridge/server_v2.mjs','utf8');
 const docker = fs.readFileSync('services/conape-bridge/Dockerfile','utf8');
+const connectStart = server.indexOf('  async connect() {');
+const statusStart = server.indexOf('  async status() {', connectStart);
+const connectBlock = connectStart >= 0 && statusStart > connectStart ? server.slice(connectStart, statusStart) : '';
 
 const checks = [
   ['V2 es autocontenido y no compone wrappers C3.7.x', !/replaceBlock|server_c3_7_|_runtime\.mjs|buildOnlyUrl/.test(server)],
@@ -9,7 +12,7 @@ const checks = [
   ['V2 usa credenciales CONAPE solo desde env', /CONAPE_PORTAL_USERNAME/.test(server) && /CONAPE_PORTAL_PASSWORD/.test(server) && !/Tigrina|password\s*=\s*['"][^'"]+['"]/i.test(server)],
   ['V2 revalida sesión Campus y rol', /authorizeCampusSession/.test(server) && /fn:'validarSesion'/.test(server) && /ROLE_ALLOW/.test(server)],
   ['V2 revalida acceso y financiamiento del prospecto', /fn:'getProspectoDetalle'/.test(server) && /PROSPECT_CEDULA_MISMATCH/.test(server) && /PROSPECT_NOT_CONAPE/.test(server)],
-  ['session/connect solo autentica y no prepara Prospectos', /async connect\(\)[\s\S]*?const s = await this\.login\(p\);[\s\S]*?this\.state = 'CONNECTED'/.test(server) && !/async connect\(\)[\s\S]*?freshProspectoFromHome\(/.test(server)],
+  ['session/connect solo autentica y no prepara Prospectos', /const s = await this\.login\(p\);/.test(connectBlock) && /this\.state = 'CONNECTED'/.test(connectBlock) && !/freshProspectoFromHome|formReady|RECLUTAR PROSPECTOS/.test(connectBlock)],
   ['preview y submit siempre abren formulario fresco desde Home', /freshProspectoFromHome/.test(server) && /await p\.goto\(CONAPE_HOME/.test(server) && /RECLUTAR PROSPECTOS/.test(server) && /lookupCedulaOnFreshPage/.test(server)],
   ['click Reclutar y CREATE terminan en locator.click real', /items\.nth\(index\)\.click\(\{ timeout:15_000 \}\)/.test(server) && /clickVisibleByLabel\(p, \/CREAR NUEVO PROSPECTO\/i/.test(server)],
   ['lookup y contactos replican setter nativo + input/change/focus/blur', /Object\.getOwnPropertyDescriptor\(proto, 'value'\)/.test(server) && /new Event\('input'/.test(server) && /new Event\('change'/.test(server) && /el\.focus\(\);\s*el\.blur\(\)/.test(server)],
@@ -25,7 +28,7 @@ const checks = [
   ['resultado ambiguo verifica tabla Home antes de decidir', /readEstadoAfterCreate/.test(server) && /if \(estado\) return \{ ok:true, confirmed:true, code:'CREATED'/.test(server)],
   ['health identifica runtime y commit Railway', /version:VERSION/.test(server) && /RAILWAY_GIT_COMMIT_SHA/.test(server) && /started_at:STARTED_AT/.test(server)],
   ['logs operativos declaran pii:false', /console\.log\(JSON\.stringify\(\{ rid, action/.test(server) && /pii:false/.test(server)],
-  ['Docker todavía conserva rollback y deberá incluir V2 antes de deploy', /COPY server_c3_7_8\.mjs/.test(docker)],
+  ['Docker conserva rollback legacy e incluye V2 en imagen', /COPY server_c3_7_8\.mjs/.test(docker) && /COPY server_v2\.mjs/.test(docker)],
 ];
 
 let failed = 0;
