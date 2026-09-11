@@ -16,6 +16,7 @@ COPY server_c3_7_4.mjs ./
 COPY server_c3_7_5.mjs ./
 COPY server_c3_7_7.mjs ./
 COPY server_c3_7_8.mjs ./
+COPY server_c3_7_9.mjs ./
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
