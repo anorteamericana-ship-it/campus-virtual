@@ -1,23 +1,51 @@
 import { chromium } from 'playwright';
 
 const HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
+const FRIENDLY_HOME = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/home';
 const USER = String(process.env.CONAPE_PORTAL_USERNAME || '');
 const PASS = String(process.env.CONAPE_PORTAL_PASSWORD || '');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
 
+async function readApexSession(p) {
+  return p.evaluate(() => {
+    const clean = value => /^\d{4,}$/.test(String(value ?? '').trim()) ? String(value).trim() : '';
+    try {
+      const u = new URL(location.href);
+      const friendly = clean(u.searchParams.get('session'));
+      if (friendly) return friendly;
+      const legacy = String(u.searchParams.get('p') || '').split(':');
+      const fromLegacy = clean(legacy[2]);
+      if (fromLegacy) return fromLegacy;
+    } catch {}
+    for (const node of [document.querySelector('input[name="p_instance"]'),document.querySelector('input[name="pInstance"]'),document.getElementById('pInstance')]) {
+      const value = clean(node?.value);
+      if (value) return value;
+    }
+    return '';
+  }).catch(()=> '');
+}
+
 async function authState(p) {
   return p.evaluate(() => {
     const n = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
     const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
+    const cleanSession = value => /^\d{4,}$/.test(String(value ?? '').trim());
     const password = Array.from(document.querySelectorAll('input[type="password"]')).some(visible);
     const ids=['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
     const form=ids.every(id=>!!document.getElementById(id));
     const path=decodeURIComponent(location.pathname||'').toLowerCase();
     const title=n(document.title||'');
     const route=path.includes('/prospectacion-reclutador/') || (path.includes('/prospectaci')&&path.includes('reclutador'));
-    return {password,form,authenticated:!password&&(form||route||title.includes('PROSPECTACION RECLUTADOR'))};
-  }).catch(()=>({password:false,form:false,authenticated:false}));
+    let sessionPresent=false;
+    try {
+      const u=new URL(location.href);
+      sessionPresent=cleanSession(u.searchParams.get('session'));
+      if(!sessionPresent) sessionPresent=cleanSession(String(u.searchParams.get('p')||'').split(':')[2]);
+    } catch {}
+    if(!sessionPresent) sessionPresent=[document.querySelector('input[name="p_instance"]'),document.querySelector('input[name="pInstance"]'),document.getElementById('pInstance')].some(node=>cleanSession(node?.value));
+    return {password,form,route,sessionPresent,authenticated:!password&&(form||(sessionPresent&&(route||title.includes('PROSPECTACION RECLUTADOR'))))};
+  }).catch(()=>({password:false,form:false,route:false,sessionPresent:false,authenticated:false}));
 }
 
 async function login(p) {
@@ -40,6 +68,20 @@ async function login(p) {
   throw new Error('LOGIN_FAILED');
 }
 
+async function homeWithSession(p) {
+  let state=await authState(p);
+  if(!state.authenticated) state=await login(p);
+  const session=await readApexSession(p);
+  if(!session) throw new Error('APEX_SESSION_MISSING');
+  const u=new URL(FRIENDLY_HOME);
+  u.searchParams.set('session',session);
+  await p.goto(u.href,{waitUntil:'domcontentloaded',timeout:30000});
+  state=await authState(p);
+  const after=await readApexSession(p);
+  if(!state.authenticated||!after) throw new Error('HOME_SESSION_LOST');
+  return state;
+}
+
 async function inspectCandidates(p) {
   let labelCount=0;
   let contextCount=0;
@@ -49,7 +91,7 @@ async function inspectCandidates(p) {
       const n=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
       const visible=el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;};
       const controls=Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]'));
-      const labels=controls.filter(el=>visible(el)&&n([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' ')).includes('RECLUTAR PROSPECTOS')).length;
+      const labels=controls.filter(el=>visible(el)&&/(^| )RECLUTAR( |$)/.test(n([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' ')))).length;
       const links=Array.from(document.querySelectorAll('a[href]')).filter(el=>{
         const href=String(el.getAttribute('href')||'');
         return /prospecto/i.test(href)&&/(?:\?|&)p2_eve_id=/i.test(href)&&/(?:\?|&)p2_pro_id=/i.test(href);
@@ -61,7 +103,7 @@ async function inspectCandidates(p) {
   return {labelCount,contextCount,visibleContextCount,frames:p.frames().length};
 }
 
-async function clickRecruitLikeV201(p) {
+async function clickRecruit(p) {
   const selector='button,a,[role="button"],input[type="button"],input[type="submit"]';
   const deadline=Date.now()+15000;
   while(Date.now()<deadline){
@@ -72,7 +114,7 @@ async function clickRecruitLikeV201(p) {
         const n=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
         const visible=el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;};
         return nodes.findIndex(el=>visible(el)&&re.test(n([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))));
-      },'RECLUTAR PROSPECTOS').catch(()=>-1);
+      },'(^| )RECLUTAR( |$)').catch(()=>-1);
       if(index>=0){await items.nth(index).click({timeout:15000});return 'LABEL';}
     }
     for(const frame of p.frames()){
@@ -95,14 +137,13 @@ page.setDefaultTimeout(15000);
 try{
   if(!USER||!PASS)throw new Error('CREDENTIALS_MISSING');
   await login(page);
-  await page.goto(HOME,{waitUntil:'domcontentloaded',timeout:30000});
-  await login(page);
+  await homeWithSession(page);
   const candidates=await inspectCandidates(page);
-  const method=await clickRecruitLikeV201(page);
+  const method=await clickRecruit(page);
   let form=false;
   const until=Date.now()+15000;
   while(Date.now()<until){await sleep(250);form=(await authState(page)).form;if(form)break;}
-  console.log(JSON.stringify({event:'conape_nav_selftest',result:form?'PASS':'FAIL',method,candidate_label_count:candidates.labelCount,context_link_count:candidates.contextCount,visible_context_link_count:candidates.visibleContextCount,frame_count:candidates.frames,form_ready:form,pii:false}));
+  console.log(JSON.stringify({event:'conape_nav_selftest',result:form?'PASS':'FAIL',method,candidate_label_count:candidates.labelCount,context_link_count:candidates.contextCount,visible_context_link_count:candidates.visibleContextCount,frame_count:candidates.frames,form_ready:form,session_param_present:true,pii:false}));
 }catch(error){
   console.log(JSON.stringify({event:'conape_nav_selftest',result:'FAIL',code:norm(error?.message||'SELFTEST_ERROR').replace(/[^A-Z0-9_]/g,'').slice(0,64)||'SELFTEST_ERROR',pii:false}));
 }finally{
