@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.0.1';
+const VERSION = 'V4.1.0';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -710,6 +710,161 @@ async function readEstadoAfterCreate(p, sessionId, cedula) {
   return confirmation.registro ? confirmation.estado : '';
 }
 
+async function readProspectListPage(p) {
+  return p.evaluate(() => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    const text = v => String(v || '').replace(/\s+/g,' ').trim();
+    const aliases = new Map([
+      ['CEDULA','cedula'],['PRIMER_APELLIDO','apellido_1'],['SEGUNDO_APELLIDO','apellido_2'],['NOMBRE','nombre'],
+      ['TELEFONO_CELULAR','telefono'],['TELEFONO','telefono'],['CORREO_ELECTRONICO','correo'],['CORREO','correo'],
+      ['ESTADO','estado'],['FECHA_DE_ESTADO','fecha_estado'],['FECHA_ESTADO','fecha_estado'],['FECHA_DE_REGISTRO','fecha_registro'],['FECHA_REGISTRO','fecha_registro'],
+      ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
+      ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
+    ]);
+    const required = ['cedula','apellido_1','apellido_2','nombre','telefono','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
+    let best = null;
+    for (const table of Array.from(document.querySelectorAll('table'))) {
+      const headers = Array.from(table.querySelectorAll('thead th')).map(th => aliases.get(norm(th.textContent)) || null);
+      const score = required.filter(key => headers.includes(key)).length;
+      if (!best || score > best.score) best = { table, headers, score };
+    }
+    if (!best || best.score < 2) return { ok:false, reason:'REPORT_NOT_FOUND', missing:required, rows:[] };
+    const missing = required.filter(key => !best.headers.includes(key));
+    if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', missing, rows:[] };
+    const rows = [];
+    for (const tr of Array.from(best.table.querySelectorAll('tbody tr'))) {
+      const cells = Array.from(tr.querySelectorAll('td'));
+      if (!cells.length || (cells.length === 1 && cells[0].hasAttribute('colspan'))) continue;
+      const row = Object.fromEntries(required.map(key => [key,'']));
+      for (let i = 0; i < best.headers.length; i += 1) {
+        const key = best.headers[i];
+        if (key && cells[i]) row[key] = text(cells[i].textContent);
+      }
+      if (Object.values(row).some(Boolean)) rows.push(row);
+    }
+    return { ok:true, missing:[], rows };
+  }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
+}
+
+async function maximizeProspectRows(p) {
+  const candidate = await p.locator('select').evaluateAll(nodes => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    for (let i = 0; i < nodes.length; i += 1) {
+      const el = nodes[i];
+      if (!visible(el)) continue;
+      const context = norm([el.getAttribute('aria-label'),el.getAttribute('title'),el.name,el.id,el.parentElement?.textContent].filter(Boolean).join(' '));
+      if (!/(ROWS|FILAS|PAGINA|PAGE)/.test(context)) continue;
+      const options = Array.from(el.options || []).map(o => ({ value:o.value, n:Number(String(o.textContent || o.value).replace(/[^0-9]/g,'')) })).filter(o => Number.isFinite(o.n) && o.n > 0);
+      if (!options.length) continue;
+      options.sort((a,b) => b.n-a.n);
+      return { index:i, value:options[0].value };
+    }
+    return null;
+  }).catch(() => null);
+  if (candidate) {
+    await p.locator('select').nth(candidate.index).selectOption(candidate.value).catch(() => {});
+    await sleep(700);
+    return true;
+  }
+  const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
+  if (!(await actions.count())) return false;
+  try {
+    await actions.click({ timeout:5_000 });
+    await sleep(150);
+    const rowsMenu = p.getByRole('menuitem', { name:/rows per page|filas por p[aá]gina|filas/i }).first();
+    if (!(await rowsMenu.count())) return false;
+    await rowsMenu.click({ timeout:5_000 });
+    await sleep(150);
+    const menuItems = p.locator('[role="menuitem"]:visible,.a-Menu-content .a-Menu-label:visible');
+    const index = await menuItems.evaluateAll(nodes => {
+      let best = null;
+      for (let i = 0; i < nodes.length; i += 1) {
+        const label = String(nodes[i].textContent || '').trim();
+        const n = Number(label.replace(/[^0-9]/g,''));
+        if (!Number.isFinite(n) || n <= 0) continue;
+        if (!best || n > best.n) best = { index:i, n };
+      }
+      return best?.index ?? -1;
+    }).catch(() => -1);
+    if (index < 0) return false;
+    await menuItems.nth(index).click({ timeout:5_000 });
+    await sleep(700);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function clickProspectNextPage(p) {
+  const controls = p.locator('a,button');
+  const index = await controls.evaluateAll(nodes => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    const reportRegion = el => el.closest('.a-IRR,.a-IRR-region,.t-Region');
+    const hasProspectTable = region => Array.from((region || document).querySelectorAll('table')).some(table => {
+      const headers = Array.from(table.querySelectorAll('thead th')).map(th => norm(th.textContent));
+      return headers.some(h => h.includes('CEDULA')) && headers.some(h => h === 'ESTADO');
+    });
+    return nodes.findIndex(el => {
+      if (!visible(el) || el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+      const region = reportRegion(el);
+      if (!region || !hasProspectTable(region)) return false;
+      const label = norm([el.textContent,el.getAttribute('aria-label'),el.getAttribute('title')].filter(Boolean).join(' '));
+      return el.classList.contains('a-IRR-pagination-next') || /^(NEXT|SIGUIENTE|PROXIMA|PROXIMO)$/.test(label) || /NEXT PAGE|PAGINA SIGUIENTE/.test(label);
+    });
+  }).catch(() => -1);
+  if (index < 0) return false;
+  await controls.nth(index).click({ timeout:10_000 });
+  return true;
+}
+
+async function listProspectsFromHome() {
+  const started = Date.now();
+  let pages = 0;
+  const rowsByCedula = new Map();
+  try {
+    const p = await ConapeSession.browserPage();
+    await ConapeSession.login(p);
+    const sessionId = await readApexSession(p);
+    if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'LIST');
+    await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+    await maximizeProspectRows(p);
+    const pageFingerprints = new Set();
+    for (let guard = 0; guard < 100; guard += 1) {
+      const snapshot = await readProspectListPage(p);
+      if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', `La lista CONAPE no expuso el esquema esperado: ${snapshot.reason || 'UNKNOWN'}.`, 503, 'LIST');
+      const normalizedRows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+      const fingerprint = sha(normalizedRows.map(row => row.cedula).join('|'));
+      if (pageFingerprints.has(fingerprint)) break;
+      pageFingerprints.add(fingerprint);
+      pages += 1;
+      for (const row of normalizedRows) {
+        const previous = rowsByCedula.get(row.cedula);
+        if (previous && JSON.stringify(previous) !== JSON.stringify(row)) throw new AppError('CONAPE_LIST_DUPLICATE_CEDULA', 'CONAPE devolvió una cédula duplicada con datos distintos.', 409, 'LIST');
+        rowsByCedula.set(row.cedula, row);
+      }
+      const moved = await clickProspectNextPage(p);
+      if (!moved) break;
+      const until = Date.now() + 10_000;
+      let changed = false;
+      while (Date.now() < until) {
+        await sleep(250);
+        const next = await readProspectListPage(p);
+        if (!next.ok) continue;
+        const nextFingerprint = sha(next.rows.map(row => digits(row.cedula)).filter(Boolean).join('|'));
+        if (nextFingerprint !== fingerprint) { changed = true; break; }
+      }
+      if (!changed) throw new AppError('CONAPE_LIST_PAGINATION_STALLED', 'La paginación de CONAPE no avanzó.', 503, 'LIST');
+    }
+    ConapeSession.state = 'CONNECTED';
+    ConapeSession.lastActivity = nowIso();
+    return { ok:true, code:'PROSPECT_LIST_READY', rows:[...rowsByCedula.values()], pages, captured_at:nowIso() };
+  } finally {
+    console.log(JSON.stringify({ event:'conape_list_dump', rows:rowsByCedula.size, pages, ms:Date.now()-started, pii:false }));
+  }
+}
+
 function categoryStatus(code) {
   if (code === 'SIN_PERMISO') return 403;
   if (code === 'YA_REGISTRADO') return 409;
@@ -872,6 +1027,13 @@ const server = http.createServer(async (req, res) => {
       await authorizeCampusSession(campusTokenFromRequest(req));
       const result = await serial(() => runNavSelftest());
       console.log(JSON.stringify({ rid, action, result:'OK', ms:Date.now()-started, pii:false }));
+      sendJson(res, 200, result, origin);
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/v1/prospects/list') {
+      action = 'prospects_list';
+      await authorizeCampusSession(campusTokenFromRequest(req));
+      const result = await serial(() => listProspectsFromHome());
       sendJson(res, 200, result, origin);
       return;
     }
