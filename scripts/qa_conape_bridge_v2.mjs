@@ -6,9 +6,10 @@ const railway = JSON.parse(fs.readFileSync('services/conape-bridge/railway.json'
 const connectStart = server.indexOf('  async connect() {');
 const statusStart = server.indexOf('  async status() {', connectStart);
 const connectBlock = connectStart >= 0 && statusStart > connectStart ? server.slice(connectStart, statusStart) : '';
-const listStart = server.indexOf('async function listProspectsFromHome()');
-const listEnd = server.indexOf('function categoryStatus', listStart);
-const listBlock = listStart >= 0 && listEnd > listStart ? server.slice(listStart, listEnd) : '';
+const listReadStart = server.indexOf('async function readProspectListPage');
+const listEnd = server.indexOf('function categoryStatus', listReadStart);
+const listBlock = listReadStart >= 0 && listEnd > listReadStart ? server.slice(listReadStart, listEnd) : '';
+const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];
 
 const legacyCopies = [
   'server.mjs','start_c3_6_2.mjs','server_c3_7.mjs','server_c3_7_3.mjs','server_c3_7_4.mjs',
@@ -48,8 +49,8 @@ const checks = [
   ['prospects/list expone exactamente las 14 columnas contractuales', listFields.every(field => listBlock.includes(`'${field}'`)) && /PROSPECT_LIST_READY/.test(listBlock)],
   ['prospects/list reutiliza Home con sesión APEX, maximiza Rows y pagina', /CONAPE_FRIENDLY_HOME/.test(listBlock) && /urlWithSession/.test(listBlock) && /maximizeProspectRows/.test(listBlock) && /clickProspectNextPage/.test(listBlock)],
   ['prospects/list es solo lectura y nunca entra al CREATE', !!listBlock && !/clickCreateOnce|fillContacts|nativeSetValue|CREAR NUEVO PROSPECTO|\/v1\/recruit\/execute/.test(listBlock)],
-  ['prospects/list falla cerrado si no reconoce el esquema', /CONAPE_LIST_SCHEMA_NOT_READY/.test(listBlock) && /REQUIRED_COLUMN_MISSING/.test(server)],
-  ['prospects/list telemetría no incluye filas ni PII', /event:'conape_list_dump'/.test(listBlock) && /rows:rowsByCedula\.size/.test(listBlock) && /pages/.test(listBlock) && /ms:Date\.now\(\)-started/.test(listBlock) && /pii:false/.test(listBlock) && !/console\.log\([^\n]*(cedula|nombre|correo|telefono)/i.test(listBlock)],
+  ['prospects/list falla cerrado si no reconoce el esquema', /CONAPE_LIST_SCHEMA_NOT_READY/.test(listBlock) && /REQUIRED_COLUMN_MISSING/.test(listBlock)],
+  ['prospects/list telemetría tiene solo métricas agregadas', listTelemetryMatches.length === 1 && /console\.log\(JSON\.stringify\(\{ event:'conape_list_dump', rows:rowsByCedula\.size, pages, ms:Date\.now\(\)-started, pii:false \}\)\)/.test(listBlock)],
   ['Docker contiene solo server_v2 + self-test', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`))],
   ['Docker arranca server_v2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
   ['Railway fija startCommand canónico', railway?.deploy?.startCommand === 'node server_v2.mjs'],
