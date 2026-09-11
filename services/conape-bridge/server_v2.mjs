@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V2.0.0';
+const VERSION = 'V2.0.1';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -182,15 +182,45 @@ async function authorizeCampus(token, cedula) {
 }
 
 async function clickVisibleByLabel(p, regex, notFoundCode) {
-  const items = p.locator('button,a,[role="button"],input[type="button"],input[type="submit"]');
-  const index = await items.evaluateAll((nodes, source) => {
-    const re = new RegExp(source, 'i');
-    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
-    const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
-    return nodes.findIndex(el => visible(el) && re.test(norm([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))));
-  }, regex.source).catch(() => -1);
-  if (index < 0) throw new AppError(notFoundCode, 'CONAPE no mostró el control esperado.', 503);
-  await items.nth(index).click({ timeout:15_000 });
+  const selector = 'button,a,[role="button"],input[type="button"],input[type="submit"]';
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    for (const frame of p.frames()) {
+      const items = frame.locator(selector);
+      const index = await items.evaluateAll((nodes, source) => {
+        const re = new RegExp(source, 'i');
+        const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+        const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
+        return nodes.findIndex(el => visible(el) && re.test(norm([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))));
+      }, regex.source).catch(() => -1);
+      if (index >= 0) {
+        await items.nth(index).click({ timeout:15_000 });
+        if (notFoundCode === 'CONAPE_RECRUIT_BUTTON_NOT_FOUND') console.log(JSON.stringify({ event:'conape_recruit_nav', version:VERSION, method:'LABEL', pii:false }));
+        return;
+      }
+    }
+
+    if (notFoundCode === 'CONAPE_RECRUIT_BUTTON_NOT_FOUND') {
+      for (const frame of p.frames()) {
+        const links = frame.locator('a[href]');
+        const index = await links.evaluateAll(nodes => {
+          const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
+          return nodes.findIndex(el => {
+            if (!visible(el)) return false;
+            const href = String(el.getAttribute('href') || '');
+            return /prospecto/i.test(href) && /(?:\?|&)p2_eve_id=/i.test(href) && /(?:\?|&)p2_pro_id=/i.test(href);
+          });
+        }).catch(() => -1);
+        if (index >= 0) {
+          await links.nth(index).click({ timeout:15_000 });
+          console.log(JSON.stringify({ event:'conape_recruit_nav', version:VERSION, method:'CONTEXT_LINK', pii:false }));
+          return;
+        }
+      }
+    }
+    await sleep(250);
+  }
+  throw new AppError(notFoundCode, 'CONAPE no mostró el control esperado.', 503);
 }
 
 const ConapeSession = {
