@@ -1,0 +1,31 @@
+name: QA C2 Payment Contract 20260911
+on:
+  push:
+    branches: [qa/c2-payment-contract-main-20260911]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/C2_PAYMENT_CONTRACT_REBASE_2026-09-11.md'
+      - 'scripts/qa_c2_payment_contract_main_20260911.mjs'
+      - '.github/workflows/qa-c2-payment-contract-20260911.yml'
+permissions:
+  contents: read
+jobs:
+  payment-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax
+        run: node --check scripts/qa_c2_payment_contract_main_20260911.mjs
+      - name: Verify current C2 contract
+        run: node scripts/qa_c2_payment_contract_main_20260911.mjs
+      - name: Contract markers
+        run: |
+          grep -Fq 'C2_E4=STOP' scripts/qa_c2_payment_contract_main_20260911.mjs
+          grep -Fq 'C2 E0/E1: **HABILITADO**' 00_DOCUMENTACION/C2_PAYMENT_CONTRACT_REBASE_2026-09-11.md
+          grep -Fq 'aplicarPago' 00_DOCUMENTACION/C2_PAYMENT_CONTRACT_REBASE_2026-09-11.md
+      - name: Diff hygiene
+        run: git diff --check 67f8ad61d89cebba38204145d41165f4ca61e43c...HEAD
