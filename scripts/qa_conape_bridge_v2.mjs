@@ -2,9 +2,15 @@ import fs from 'node:fs';
 
 const server = fs.readFileSync('services/conape-bridge/server_v2.mjs','utf8');
 const docker = fs.readFileSync('services/conape-bridge/Dockerfile','utf8');
+const railway = JSON.parse(fs.readFileSync('services/conape-bridge/railway.json','utf8'));
 const connectStart = server.indexOf('  async connect() {');
 const statusStart = server.indexOf('  async status() {', connectStart);
 const connectBlock = connectStart >= 0 && statusStart > connectStart ? server.slice(connectStart, statusStart) : '';
+
+const legacyCopies = [
+  'server.mjs','start_c3_6_2.mjs','server_c3_7.mjs','server_c3_7_3.mjs','server_c3_7_4.mjs',
+  'server_c3_7_5.mjs','server_c3_7_7.mjs','server_c3_7_8.mjs','server_c3_7_9.mjs',
+];
 
 const checks = [
   ['V2 es autocontenido y no compone wrappers C3.7.x', !/replaceBlock|server_c3_7_|_runtime\.mjs|buildOnlyUrl/.test(server)],
@@ -14,6 +20,7 @@ const checks = [
   ['V2 revalida acceso y financiamiento del prospecto', /fn:'getProspectoDetalle'/.test(server) && /PROSPECT_CEDULA_MISMATCH/.test(server) && /PROSPECT_NOT_CONAPE/.test(server)],
   ['session/connect solo autentica y no prepara Prospectos', /const s = await this\.login\(p\);/.test(connectBlock) && /this\.state = 'CONNECTED'/.test(connectBlock) && !/freshProspectoFromHome|formReady|RECLUTAR PROSPECTOS/.test(connectBlock)],
   ['preview y submit siempre abren formulario fresco desde Home', /freshProspectoFromHome/.test(server) && /await p\.goto\(CONAPE_HOME/.test(server) && /RECLUTAR PROSPECTOS/.test(server) && /lookupCedulaOnFreshPage/.test(server)],
+  ['contexto Evento/Prospectador es telemetría y no gate', /event:'conape_prospecto_context'/.test(server) && /gate:false/.test(server) && !/CONAPE_PROSPECTO_CONTEXT_NOT_READY/.test(server)],
   ['click Reclutar y CREATE terminan en locator.click real', /items\.nth\(index\)\.click\(\{ timeout:15_000 \}\)/.test(server) && /clickVisibleByLabel\(p, \/CREAR NUEVO PROSPECTO\/i/.test(server)],
   ['lookup y contactos replican setter nativo + input/change/focus/blur', /Object\.getOwnPropertyDescriptor\(proto, 'value'\)/.test(server) && /new Event\('input'/.test(server) && /new Event\('change'/.test(server) && /el\.focus\(\);\s*el\.blur\(\)/.test(server)],
   ['Campus nunca puede enviar identidad en submit', /IDENTITY_FIELDS_FORBIDDEN/.test(server) && ['nombre','apellido_1','apellido_2','P2_PRS_NOMBRE','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2'].every(v => server.includes(`'${v}'`))],
@@ -28,7 +35,10 @@ const checks = [
   ['resultado ambiguo verifica tabla Home antes de decidir', /readEstadoAfterCreate/.test(server) && /if \(estado\) return \{ ok:true, confirmed:true, code:'CREATED'/.test(server)],
   ['health identifica runtime y commit Railway', /version:VERSION/.test(server) && /RAILWAY_GIT_COMMIT_SHA/.test(server) && /started_at:STARTED_AT/.test(server)],
   ['logs operativos declaran pii:false', /console\.log\(JSON\.stringify\(\{ rid, action/.test(server) && /pii:false/.test(server)],
-  ['Docker conserva rollback legacy e incluye V2 en imagen', /COPY server_c3_7_8\.mjs/.test(docker) && /COPY server_v2\.mjs/.test(docker)],
+  ['self-test NAV está protegido por sesión Campus y no usa cédula/CREATE', /\/v1\/selftest\/nav/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server) && /runNavSelftest/.test(server) && /login:'FAIL'/.test(server) && /recruit_click:'FAIL'/.test(server) && /form_ready:'FAIL'/.test(server)],
+  ['Docker contiene solo runtime V2 y self-test', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`))],
+  ['Docker arranca V2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
+  ['Railway fija startCommand V2', railway?.deploy?.startCommand === 'node server_v2.mjs'],
 ];
 
 let failed = 0;
