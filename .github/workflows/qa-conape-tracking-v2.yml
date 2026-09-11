@@ -1,0 +1,21 @@
+name: QA CONAPE Tracking V2
+
+on:
+  pull_request:
+    paths:
+      - 'services/conape-bridge/conape_tracking_contract_v2.mjs'
+      - 'scripts/qa_conape_tracking_contract_v2.mjs'
+      - '00_DOCUMENTACION/CONAPE_TRACKING_V2_CONTRACT.md'
+      - '.github/workflows/qa-conape-tracking-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  tracking-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --check services/conape-bridge/conape_tracking_contract_v2.mjs
+      - run: node scripts/qa_conape_tracking_contract_v2.mjs
