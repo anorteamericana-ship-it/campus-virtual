@@ -62,6 +62,10 @@
 
     useEffect(() => {
       let cancel = false;
+      setError('');
+      setPreview(null);
+      setComparison(null);
+      setState('loading');
       (async () => {
         try {
           let detail = prospecto || {};
@@ -76,6 +80,7 @@
           if (!bridge || typeof buildComparison !== 'function') {
             throw new Error('El puente CONAPE live no está disponible.');
           }
+          if (!cancel) setError('');
           const r = await bridge.preview(cedula);
           if (!r || !r.ok) {
             const code = text(r?.error || r?.code);
