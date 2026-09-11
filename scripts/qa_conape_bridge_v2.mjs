@@ -10,6 +10,9 @@ const listReadStart = server.indexOf('async function readProspectListPage');
 const listEnd = server.indexOf('function categoryStatus', listReadStart);
 const listBlock = listReadStart >= 0 && listEnd > listReadStart ? server.slice(listReadStart, listEnd) : '';
 const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];
+const confirmStart = server.indexOf('async function confirmInHome');
+const confirmEnd = server.indexOf('async function readProspectListPage', confirmStart);
+const confirmBlock = confirmStart >= 0 && confirmEnd > confirmStart ? server.slice(confirmStart, confirmEnd) : '';
 
 const legacyCopies = [
   'server.mjs','start_c3_6_2.mjs','server_c3_7.mjs','server_c3_7_3.mjs','server_c3_7_4.mjs',
@@ -41,7 +44,8 @@ const checks = [
   ['HTTP APEX es solo telemetría y no criterio 200/302', /apex_http_status/.test(server) && !/apex_http_status\s*[!=]==?\s*(?:200|302)|status\(\)\s*[!=]==?\s*(?:200|302)/.test(server)],
   ['telemetría segura incluye body keys e IDs, no valores', /create_body_keys/.test(server) && /page_item_ids/.test(server) && /safeBodyKeys/.test(server) && /pii:false/.test(server)],
   ['execute mide total y tramos campus/form/lookup/fill/create', /event:'conape_execute_telemetry'/.test(server) && ['ms_total','ms_campus','ms_form','ms_lookup','ms_fill','ms_create'].every(v => server.includes(v))],
-  ['resultado ambiguo verifica tabla Home antes de decidir', /readEstadoAfterCreate/.test(server) && /if \(estado\) return \{ ok:true, confirmed:true, code:'CREATED'/.test(server)],
+  ['confirmación CREATE depende de existencia y no de estado concreto', /return \{ found:true, estado \}/.test(confirmBlock) && /if \(confirmation\.found\)/.test(server) && !/\bREGISTRO\b/.test(confirmBlock) && !/confirmation\.registro|confirmation_registro/.test(server)],
+  ['telemetría de confirmación reporta existencia y estado informativo', /confirmation_found/.test(server) && /confirmation_estado:upper\(confirmation\?\.estado \|\| ''\)/.test(server) && !/confirmation_registro/.test(server)],
   ['health identifica runtime y commit Railway', /version:VERSION/.test(server) && /RAILWAY_GIT_COMMIT_SHA/.test(server) && /started_at:STARTED_AT/.test(server)],
   ['logs operativos declaran pii:false', /console\.log\(JSON\.stringify\(\{ rid, action/.test(server) && /pii:false/.test(server)],
   ['self-test NAV está protegido por sesión Campus y no usa cédula/CREATE', /\/v1\/selftest\/nav/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server) && /runNavSelftest/.test(server) && /login:'FAIL'/.test(server) && /recruit_click:'FAIL'/.test(server) && /form_ready:'FAIL'/.test(server)],
@@ -62,4 +66,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.1 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.1.1 QA PASS · ${checks.length}/${checks.length}`);
