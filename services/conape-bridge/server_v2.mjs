@@ -144,17 +144,47 @@ function safeRequestToken(postData) {
 }
 
 async function campusCall(payload) {
-  const response = await fetch(CAMPUS_URL, {
-    method:'POST',
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body:JSON.stringify(payload),
-    redirect:'follow',
-    signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-  const raw = await response.text();
-  if (!response.ok || !raw || raw.trim().startsWith('<')) throw new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'No se pudo validar la sesión del Campus.', 503);
-  try { return JSON.parse(raw); }
-  catch { throw new AppError('CAMPUS_BACKEND_INVALID', 'El Campus devolvió una respuesta inválida.', 503); }
+  const fnRaw = String(payload?.fn || 'UNKNOWN');
+  const fn = /^[A-Za-z0-9_:\-]{1,80}$/.test(fnRaw) ? fnRaw : 'UNKNOWN';
+  const started = Date.now();
+  let httpStatus = null;
+  let raw = '';
+  let bodyStartsWithAngle = false;
+  let jsonParsed = false;
+  let telemetryLogged = false;
+  const emitTelemetry = () => {
+    if (telemetryLogged) return;
+    telemetryLogged = true;
+    console.log(JSON.stringify({ event:'campus_call', fn, http_status:httpStatus, ms:Date.now()-started, body_len:raw.length, body_starts_with_angle:bodyStartsWithAngle, json_parsed:jsonParsed, pii:false }));
+  };
+  try {
+    const response = await fetch(CAMPUS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body:JSON.stringify(payload),
+      redirect:'follow',
+      signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    httpStatus = Number(response.status || 0) || null;
+    raw = await response.text();
+    bodyStartsWithAngle = raw.trim().startsWith('<');
+    if (!response.ok || !raw || bodyStartsWithAngle) {
+      emitTelemetry();
+      throw new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'No se pudo validar la sesión del Campus.', 503);
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      jsonParsed = true;
+      emitTelemetry();
+      return parsed;
+    } catch {
+      emitTelemetry();
+      throw new AppError('CAMPUS_BACKEND_INVALID', 'El Campus devolvió una respuesta inválida.', 503);
+    }
+  } catch (error) {
+    emitTelemetry();
+    throw error;
+  }
 }
 
 async function authorizeCampusSession(token) {
