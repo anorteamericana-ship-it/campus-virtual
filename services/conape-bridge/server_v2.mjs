@@ -283,6 +283,120 @@ async function authorizeCampusParallel(token, cedula) {
   return { ...validated, token:cleanToken, prospecto, cedula:cleanCedula };
 }
 
+async function collectRecruitNavDebug(p) {
+  const visibleButtonLabels = [];
+  const selectRows = [];
+  const apexItems = new Set();
+  for (const frame of p.frames()) {
+    const data = await frame.evaluate(() => {
+      const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+      const clean = value => String(value || '').replace(/\s+/g,' ').trim();
+      const controls = Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible);
+      const buttons = controls.map(el => clean([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))).filter(Boolean).map(v => v.slice(0,40));
+      const selects = Array.from(document.querySelectorAll('select')).filter(visible).map(el => {
+        const id = String(el.id || '').trim();
+        const value = String(el.value || '').trim();
+        return { id, has_value:!!value && value !== '0' && value !== '-1' };
+      }).filter(row => /^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(row.id));
+      const apex = Array.from(document.querySelectorAll('[id^="P1_"],[id^="P2_"]')).map(el => String(el.id || '').trim()).filter(id => /^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(id));
+      return { buttons, selects, apex };
+    }).catch(() => ({ buttons:[], selects:[], apex:[] }));
+    for (const label of data.buttons || []) {
+      if (visibleButtonLabels.length >= 40) break;
+      if (!visibleButtonLabels.includes(label)) visibleButtonLabels.push(label);
+    }
+    for (const row of data.selects || []) {
+      if (!selectRows.some(item => item.id === row.id)) selectRows.push({ id:row.id, has_value:!!row.has_value });
+    }
+    for (const id of data.apex || []) apexItems.add(id);
+  }
+  let urlPath = '';
+  try { urlPath = new URL(p.url()).pathname; } catch {}
+  return {
+    event:'conape_recruit_nav_debug',
+    version:VERSION,
+    url_path:String(urlPath || '').slice(0,160),
+    frames_count:p.frames().length,
+    visible_button_labels:visibleButtonLabels.slice(0,40),
+    select_ids:selectRows.map(row => row.id),
+    select_has_value:selectRows.map(row => row.has_value),
+    apex_items:[...apexItems],
+    pii:false,
+  };
+}
+
+async function selectRecruitContext(p, kind) {
+  for (const frame of p.frames()) {
+    const selects = frame.locator('select');
+    const candidate = await selects.evaluateAll((nodes, targetKind) => {
+      const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+      const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+      const labelOf = el => {
+        const parts = [el.id || '', el.name || '', el.getAttribute('aria-label') || '', el.getAttribute('title') || ''];
+        try { for (const label of Array.from(el.labels || [])) parts.push(label.textContent || ''); } catch {}
+        const container = el.closest('.t-Form-fieldContainer,.apex-item-wrapper,.t-Form-inputContainer');
+        if (container) parts.push(container.querySelector('label')?.textContent || '');
+        return norm(parts.join(' '));
+      };
+      const isTarget = text => targetKind === 'prospectador' ? /PROSPECTADOR|PROSPECTOR|RECLUTADOR/.test(text) : /EVENTO/.test(text);
+      const index = nodes.findIndex(el => visible(el) && isTarget(labelOf(el)));
+      if (index < 0) return null;
+      const el = nodes[index];
+      const current = String(el.value || '').trim();
+      const hasValue = !!current && current !== '0' && current !== '-1';
+      const options = Array.from(el.options || []).map(option => ({
+        value:String(option.value || '').trim(),
+        label:norm(option.textContent || option.label || ''),
+        disabled:!!option.disabled,
+      })).filter(option => !option.disabled && option.value && option.value !== '0' && option.value !== '-1' && !/SELECC|ESCOJA|--/.test(option.label));
+      let target = '';
+      if (!hasValue && options.length) {
+        if (targetKind === 'prospectador') {
+          target = (options.find(option => option.label.includes('ACADEMIA NORTEAMERICANA')) || options[0]).value;
+        } else {
+          const year = String(new Date().getFullYear());
+          target = (options.find(option => /ACTIV|VIGENTE|ABIERTO|ACTUAL/.test(option.label)) || options.find(option => option.label.includes(year)) || options[0]).value;
+        }
+      }
+      return { index, hasValue, target };
+    }, kind).catch(() => null);
+    if (!candidate) continue;
+    let selected = false;
+    if (!candidate.hasValue && candidate.target) {
+      try {
+        const select = selects.nth(candidate.index);
+        await select.evaluate((el, value) => {
+          el.value = value;
+          el.dispatchEvent(new Event('input', { bubbles:true }));
+          el.dispatchEvent(new Event('change', { bubbles:true }));
+        }, candidate.target);
+        selected = true;
+        await sleep(1200);
+      } catch {}
+    }
+    return { found:true, had_value:!!candidate.hasValue, selected };
+  }
+  return { found:false, had_value:false, selected:false };
+}
+
+async function prepareRecruitContext(p) {
+  let prospectador = { found:false, had_value:false, selected:false };
+  let evento = { found:false, had_value:false, selected:false };
+  try { prospectador = await selectRecruitContext(p, 'prospectador'); } catch {}
+  try { evento = await selectRecruitContext(p, 'evento'); } catch {}
+  console.log(JSON.stringify({
+    event:'conape_recruit_context',
+    version:VERSION,
+    prospectador_found:!!prospectador.found,
+    prospectador_had_value:!!prospectador.had_value,
+    prospectador_selected:!!prospectador.selected,
+    evento_found:!!evento.found,
+    evento_had_value:!!evento.had_value,
+    evento_selected:!!evento.selected,
+    pii:false,
+  }));
+}
+
 async function clickVisibleByLabel(p, regex, notFoundCode) {
   const selector = 'button,a,[role="button"],input[type="button"],input[type="submit"]';
   const deadline = Date.now() + 15_000;
@@ -321,6 +435,9 @@ async function clickVisibleByLabel(p, regex, notFoundCode) {
       }
     }
     await sleep(250);
+  }
+  if (notFoundCode === 'CONAPE_RECRUIT_BUTTON_NOT_FOUND') {
+    try { console.log(JSON.stringify(await collectRecruitNavDebug(p))); } catch {}
   }
   throw new AppError(notFoundCode, 'CONAPE no mostró el control esperado.', 503);
 }
@@ -502,6 +619,7 @@ const ConapeSession = {
     const sessionAfter = await readApexSession(p);
     console.log(JSON.stringify({ event:'conape_home_nav', version:VERSION, session_before:true, session_after:!!sessionAfter, authenticated:!!state.authenticated, route_ok:!!state.route, pii:false }));
     if (!state.authenticated || !sessionAfter) throw new AppError('CONAPE_HOME_SESSION_LOST', 'CONAPE no conservó la sesión al abrir Prospectación Reclutador.', 503);
+    await prepareRecruitContext(p);
     return state;
   },
 
