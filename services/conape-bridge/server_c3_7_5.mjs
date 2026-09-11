@@ -79,8 +79,8 @@ const newClick = `async function clickCreateOnce(p){
       const visible=el=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;}catch{return false;}};
       const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/\\s+/g,' ').trim();
       const classify=text=>{
-        if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))return 'PROSPECTO_REGISTRADO';
         if(/YA (FUE )?REGISTRAD|YA SE ENCUENTRA|YA EXIST|DUPLIC|PERTENECE A OTRO|OTRO RECLUTADOR|EN PROCESO/.test(text))return 'YA_REGISTRADO';
+        if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))return 'PROSPECTO_REGISTRADO';
         if(/OBLIGATOR|REQUERID|DEBE INGRESAR|DEBE COMPLETAR/.test(text))return 'CAMPO_OBLIGATORIO';
         if(/INVALID|NO ES VALIDO|FORMATO|NO CORRESPONDE/.test(text))return 'DATO_INVALIDO';
         if(/NO AUTORIZAD|SIN PERMISO|NO TIENE ACCESO/.test(text))return 'SIN_PERMISO';
@@ -121,8 +121,8 @@ const newClick = `async function clickCreateOnce(p){
         const visible=el=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;}catch{return false;}};
         const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().replace(/\\s+/g,' ').trim();
         const classify=text=>{
-          if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))return 'PROSPECTO_REGISTRADO';
           if(/YA (FUE )?REGISTRAD|YA SE ENCUENTRA|YA EXIST|DUPLIC|PERTENECE A OTRO|OTRO RECLUTADOR|EN PROCESO/.test(text))return 'YA_REGISTRADO';
+          if(/PROSPECTO REGISTRAD|REGISTRAD[OA] CORRECTAMENTE|CREAD[OA] CORRECTAMENTE|GUARDAD[OA] CORRECTAMENTE/.test(text))return 'PROSPECTO_REGISTRADO';
           if(/OBLIGATOR|REQUERID|DEBE INGRESAR|DEBE COMPLETAR/.test(text))return 'CAMPO_OBLIGATORIO';
           if(/INVALID|NO ES VALIDO|FORMATO|NO CORRESPONDE/.test(text))return 'DATO_INVALIDO';
           if(/NO AUTORIZAD|SIN PERMISO|NO TIENE ACCESO/.test(text))return 'SIN_PERMISO';
