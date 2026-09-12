@@ -1,0 +1,54 @@
+name: TEMP CONAPE V4.2 fix
+on:
+  push:
+    branches: [fix/conape-v4-2-simple-action]
+    paths: [.github/workflows/temp-conape-v4-2-fix.yml]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/conape-v4-2-simple-action
+          fetch-depth: 0
+      - name: Fix exact blocks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('services/conape-bridge/server_v2.mjs')
+          s=p.read_text(encoding='utf-8')
+          submit_a=s.index('async function submit(body) {')
+          execute_a=s.index('async function execute(body) {')
+          submit=s[submit_a:execute_a]
+          submit=submit.replace("if (formMode === 'UNKNOWN') enforceRecruitFormMode(modeInfo, comparison, plan);", "enforceRecruitFormMode(modeInfo, comparison, plan);", 1)
+          submit=submit.replace("const created = await clickCreateOnce(p);", "const created = await clickFinalAction(p, 'CREATE');", 1)
+          execute_b=s.index('function corsHeaders', execute_a)
+          execute=s[execute_a:execute_b]
+          old="    enforceRecruitFormMode(modeInfo, comparison, plan);\n    assertIdentityMatch(comparison);"
+          new="    if (formMode === 'UNKNOWN') enforceRecruitFormMode(modeInfo, comparison, plan);\n    assertIdentityMatch(comparison);"
+          if old not in execute: raise SystemExit('MISSING execute mode gate')
+          execute=execute.replace(old,new,1)
+          s=s[:submit_a]+submit+execute+s[execute_b:]
+          p.write_text(s,encoding='utf-8')
+
+          v=Path('ventas.html')
+          h=v.read_text(encoding='utf-8')
+          old='src/ventas_conape_reclutar_row_c3_5.jsx?v=V4.1.5-ALREADY'
+          new='src/ventas_conape_reclutar_row_c3_5.jsx?v=V4.2.0-SIMPLE'
+          if old not in h: raise SystemExit('MISSING cache buster')
+          v.write_text(h.replace(old,new,1),encoding='utf-8')
+          PY
+          node --check services/conape-bridge/server_v2.mjs
+          grep -q "clickFinalAction(p, formMode)" services/conape-bridge/server_v2.mjs
+          grep -q "if (formMode === 'UNKNOWN') enforceRecruitFormMode" services/conape-bridge/server_v2.mjs
+          grep -q "clickFinalAction(p, 'CREATE')" services/conape-bridge/server_v2.mjs
+      - name: Commit and remove temp workflow
+        run: |
+          git config user.name "anorteamericana-ship-it"
+          git config user.email "anorteamericana@gmail.com"
+          git add services/conape-bridge/server_v2.mjs ventas.html
+          git rm .github/workflows/temp-conape-v4-2-fix.yml
+          git commit -m "CONAPE V4.2 · cerrar rutina única y cache bust"
+          git push origin HEAD:fix/conape-v4-2-simple-action
