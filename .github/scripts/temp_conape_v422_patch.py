@@ -24,8 +24,13 @@ assert "async function campusRequest(payload) {" in s
 s = s.replace("async function campusRequest(payload) {", "async function campusRequest(payload, timeoutMs = REQUEST_TIMEOUT_MS) {", 1)
 assert "signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)," in s
 s = s.replace("signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),", "signal:AbortSignal.timeout(Math.max(5_000, Number(timeoutMs || REQUEST_TIMEOUT_MS))),", 1)
-assert s.count("error.retryable = fn === 'validarSesion';") == 2
-s = s.replace("error.retryable = fn === 'validarSesion';", "error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;", 2)
+
+retryable_network = "error.retryable = fn === 'validarSesion';"
+retryable_body = "error.retryable = fn === 'validarSesion' && error.campus_busy;"
+assert retryable_network in s
+assert retryable_body in s
+s = s.replace(retryable_network, "error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;", 1)
+s = s.replace(retryable_body, "error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;", 1)
 
 old_call = """async function campusCall(payload) {
   try {
