@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.5';
+const VERSION = 'V4.2.6';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -350,6 +350,32 @@ async function clickVisibleByLabel(p, regex) {
   return false;
 }
 
+async function readSignedNavigationTelemetry(p) {
+  return p.evaluate(({ expectedEve, expectedPro }) => {
+    const u = new URL(location.href);
+    const param = name => {
+      for (const [key, value] of u.searchParams.entries()) {
+        if (String(key || '').toLowerCase() === name) return String(value || '').trim();
+      }
+      return '';
+    };
+    const eve = param('p2_eve_id');
+    const pro = param('p2_pro_id');
+    const cs = param('cs');
+    return {
+      nav_signed_eve:!!eve,
+      nav_signed_pro:!!pro,
+      nav_has_cs:!!cs,
+      nav_eve_matches_env:expectedEve ? eve === expectedEve : null,
+      nav_pro_matches_env:expectedPro ? pro === expectedPro : null,
+    };
+  }, { expectedEve:CONAPE_EVE_ID, expectedPro:CONAPE_PRO_ID }).catch(() => ({
+    nav_signed_eve:false, nav_signed_pro:false, nav_has_cs:false,
+    nav_eve_matches_env:CONAPE_EVE_ID ? false : null,
+    nav_pro_matches_env:CONAPE_PRO_ID ? false : null,
+  }));
+}
+
 const ConapeSession = {
   browser:null,
   context:null,
@@ -462,38 +488,35 @@ const ConapeSession = {
     let sessionId = await readApexSession(p);
     if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'FORM');
 
-    // Camino principal: formulario fresco por URL /prospecto con la misma sesión APEX.
-    await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
-    let until = Date.now() + 10_000;
-    while (Date.now() < until) {
-      if (await this.formReady(p)) {
-        const meta = { sessionId, navMode:'DIRECT_URL' };
-        const contextTelemetry = { event:'conape_prospecto_context', gate:false, session_param_present:true, pii:false };
-        void contextTelemetry;
-        this.state = 'CONNECTED';
-        this.lastActivity = nowIso();
-        return { p, meta };
+    const finish = async entryPath => {
+      sessionId = (await readApexSession(p)) || sessionId;
+      const nav = await readSignedNavigationTelemetry(p);
+      const meta = { sessionId, navMode:entryPath, entryPath, ...nav };
+      console.log(JSON.stringify({ event:'conape_prospecto_context', version:VERSION, gate:false, entry_path:entryPath, ...nav, pii:false }));
+      this.state = 'CONNECTED';
+      this.lastActivity = nowIso();
+      return { p, meta };
+    };
+
+    // Camino principal: Home firmada por APEX -> clic Playwright real en Reclutar Prospectos.
+    await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+    const clicked = await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i);
+    if (clicked) {
+      let until = Date.now() + 10_000;
+      while (Date.now() < until) {
+        if (await this.formReady(p)) return finish('HOME_CLICK_RECRUIT');
+        await sleep(200);
       }
-      await sleep(200);
+      throw new AppError('CONAPE_FORM_NOT_READY', 'CONAPE no dejó listo el formulario de Prospecto después de Reclutar Prospectos.', 409, 'FORM');
     }
 
-    // Alternativa no bloqueante: si la URL directa no renderiza, intentar Home -> Reclutar.
-    try {
-      await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:20_000 });
-      if (await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i)) {
-        until = Date.now() + 8_000;
-        while (Date.now() < until) {
-          if (await this.formReady(p)) {
-            sessionId = (await readApexSession(p)) || sessionId;
-            const meta = { sessionId, navMode:'HOME_BUTTON_FALLBACK' };
-            this.state = 'CONNECTED';
-            this.lastActivity = nowIso();
-            return { p, meta };
-          }
-          await sleep(200);
-        }
-      }
-    } catch {}
+    // Fallback no bloqueante únicamente si el botón Reclutar Prospectos no aparece.
+    await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+    const until = Date.now() + 10_000;
+    while (Date.now() < until) {
+      if (await this.formReady(p)) return finish('DIRECT_URL');
+      await sleep(200);
+    }
     throw new AppError('CONAPE_FORM_NOT_READY', 'CONAPE no dejó listo el formulario de Prospecto.', 409, 'FORM');
   },
 };
@@ -887,42 +910,13 @@ async function readEventContextState(p) {
   }).catch(() => ({ eve:{ readable:false, present:false }, pro:{ readable:false, present:false } }));
 }
 
-async function ensureEventContext(p) {
-  const initial = await readEventContextState(p);
-  const requestEve = !initial.eve.present && !!CONAPE_EVE_ID;
-  const requestPro = !initial.pro.present && !!CONAPE_PRO_ID;
-  let written = { eve:false, pro:false };
-
-  if (requestEve || requestPro) {
-    written = await p.evaluate(({ eve, pro }) => {
-      const set = (id, value) => {
-        if (!value) return false;
-        try {
-          const item = window.apex?.item?.(id);
-          if (!item || typeof item.setValue !== 'function') return false;
-          item.setValue(String(value), null, false);
-          return true;
-        } catch {
-          return false;
-        }
-      };
-      return { eve:set('P2_EVE_ID', eve), pro:set('P2_PRO_ID', pro) };
-    }, { eve:requestEve ? CONAPE_EVE_ID : '', pro:requestPro ? CONAPE_PRO_ID : '' }).catch(() => ({ eve:false, pro:false }));
-    if (written.eve || written.pro) await waitForApexDynamicAction(p);
-  }
-
-  const finalState = await readEventContextState(p);
-  const sourceOf = (initialPresent, writtenValue, finalPresent) => {
-    if (initialPresent) return 'PAGE';
-    if (writtenValue && finalPresent) return 'ENV';
-    if (finalPresent) return 'PAGE';
-    return 'NONE';
-  };
+async function observeEventContext(p) {
+  const state = await readEventContextState(p);
   const telemetry = {
-    eve_id_source:sourceOf(initial.eve.present, written.eve, finalState.eve.present),
-    eve_id_present:finalState.eve.present === true,
-    pro_id_source:sourceOf(initial.pro.present, written.pro, finalState.pro.present),
-    pro_id_present:finalState.pro.present === true,
+    eve_id_source:state.eve.present ? 'PAGE' : 'NONE',
+    eve_id_present:state.eve.present === true,
+    pro_id_source:state.pro.present ? 'PAGE' : 'NONE',
+    pro_id_present:state.pro.present === true,
   };
   console.log(JSON.stringify({ event:'conape_event_context', version:VERSION, ...telemetry, pii:false }));
   return telemetry;
@@ -1008,7 +1002,7 @@ async function collectPreActionTelemetry(p) {
 }
 
 async function clickFinalAction(p, formMode) {
-  const eventContext = await ensureEventContext(p);
+  const eventContext = await observeEventContext(p);
   const preaction = await collectPreActionTelemetry(p);
   try {
     await assertPreCreateFields(p);
@@ -1522,6 +1516,8 @@ async function execute(body) {
   let finalStage = 'PRECHECK';
   let comparison = null;
   let navMode = null;
+  let entryPath = '';
+  let navTelemetry = { nav_signed_eve:false, nav_signed_pro:false, nav_has_cs:false, nav_eve_matches_env:null, nav_pro_matches_env:null };
   let created = null;
   let confirmation = null;
   let formMode = 'UNKNOWN';
@@ -1545,6 +1541,14 @@ async function execute(body) {
     t = Date.now();
     const { p, meta } = await ConapeSession.freshProspectoFromHome();
     navMode = meta.navMode;
+    entryPath = txt(meta.entryPath || meta.navMode || '');
+    navTelemetry = {
+      nav_signed_eve:meta.nav_signed_eve === true,
+      nav_signed_pro:meta.nav_signed_pro === true,
+      nav_has_cs:meta.nav_has_cs === true,
+      nav_eve_matches_env:typeof meta.nav_eve_matches_env === 'boolean' ? meta.nav_eve_matches_env : null,
+      nav_pro_matches_env:typeof meta.nav_pro_matches_env === 'boolean' ? meta.nav_pro_matches_env : null,
+    };
     timing.form = Date.now() - t;
 
     t = Date.now();
@@ -1613,7 +1617,10 @@ async function execute(body) {
     console.log(JSON.stringify({
       event:'conape_execute_telemetry', version:VERSION, code:finalCode, stage:finalStage,
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
-      nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
+      nav_mode:navMode, entry_path:entryPath,
+      nav_signed_eve:navTelemetry.nav_signed_eve === true, nav_signed_pro:navTelemetry.nav_signed_pro === true, nav_has_cs:navTelemetry.nav_has_cs === true,
+      nav_eve_matches_env:navTelemetry.nav_eve_matches_env, nav_pro_matches_env:navTelemetry.nav_pro_matches_env,
+      form_mode:formMode, form_readonly_fields:formReadonlyFields,
       eve_id_source:eventContextTelemetry.eve_id_source || 'NONE', eve_id_present:eventContextTelemetry.eve_id_present === true,
       pro_id_source:eventContextTelemetry.pro_id_source || 'NONE', pro_id_present:eventContextTelemetry.pro_id_present === true,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
