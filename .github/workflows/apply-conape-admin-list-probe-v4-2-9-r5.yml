@@ -1,0 +1,91 @@
+name: Apply CONAPE admin list probe V4.2.9 R5
+
+on:
+  push:
+    branches:
+      - feature/conape-admin-list-probe-v4-2-9
+    paths:
+      - '.github/workflows/apply-conape-admin-list-probe-v4-2-9-r5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply scoped patch
+        run: node scripts/patch_conape_admin_list_probe_v4_2_9.mjs
+      - name: Stabilize bridge QA additions
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path='scripts/qa_conape_bridge_v2.mjs';
+          let src=fs.readFileSync(path,'utf8');
+          const lines=src.split('\n');
+          const replacements=new Map([
+            ['V4.2.9 expone conteos CSV y Rows=All y falla cerrado en mismatch', `  ['V4.2.9 expone conteos CSV y Rows=All y falla cerrado en mismatch', ['rows_csv','rows_html_all','counts_match'].every(v=>server.includes(v)) && server.includes('LIST_COUNT_MISMATCH') && server.includes('Object.assign(mismatch')],`],
+            ['V4.2.9 summary=1 no devuelve filas con PII al navegador', `  ['V4.2.9 summary=1 no devuelve filas con PII al navegador', server.includes('summaryOnly') && server.includes("url.searchParams.get('summary')") && server.includes('const payload = summaryOnly ? {')],`],
+            ['V4.2.9 telemetría de lista conserva solo conteos y pii false', `  ['V4.2.9 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','ir_filters_before','pii:false'].every(v=>server.includes(v))],`],
+          ]);
+          const seen=new Set();
+          for(let i=0;i<lines.length;i++) for(const [key,value] of replacements) if(lines[i].includes(key)){ lines[i]=value; seen.add(key); }
+          if(seen.size!==replacements.size) throw new Error(`bridge QA additions missing ${seen.size}/${replacements.size}`);
+          fs.writeFileSync(path,lines.join('\n'),'utf8');
+          NODE
+      - name: Write stable admin probe QA
+        run: |
+          cat > scripts/qa_conape_admin_list_probe_v4_2_9.mjs <<'EOF'
+          import fs from 'node:fs';
+          const read=p=>fs.readFileSync(p,'utf8');
+          const client=read('src/conape_bridge_client_c3_6.js');
+          const app=read('src/app.jsx');
+          const dashboard=read('src/admin_master_dashboard.jsx');
+          const campus=read('campus.html');
+          const server=read('services/conape-bridge/server_v2.mjs');
+          function must(ok,msg){if(!ok){console.error('FAIL:',msg);process.exitCode=1}else console.log('PASS:',msg)}
+          const probeStart=dashboard.indexOf('function MasterConapeRecruitmentProbe');
+          const probeEnd=dashboard.indexOf('function AdminMasterDashboard',probeStart);
+          const probe=probeStart>=0&&probeEnd>probeStart?dashboard.slice(probeStart,probeEnd):'';
+          const summaryStart=server.indexOf('const payload = summaryOnly ? {');
+          const summaryEnd=server.indexOf('} : result;',summaryStart);
+          const summaryBlock=summaryStart>=0&&summaryEnd>summaryStart?server.slice(summaryStart,summaryEnd):'';
+          must(client.includes('async function getBridge(path)')&&client.includes("method:'GET'")&&client.includes("'Authorization':'Bearer ' + token"),'cliente usa GET con token Campus en Authorization');
+          must(client.includes('listProspects')&&client.includes("'/v1/prospects/list' + summary")&&client.includes("'?summary=1'"),'cliente expone listProspects summary-only');
+          must(app.includes('src/conape_bridge_config_c3_6.js?v=V4.2.9')&&app.includes('src/conape_bridge_client_c3_6.js?v=V3.1.0')&&app.indexOf('conape_bridge_client_c3_6.js')<app.indexOf('admin_master_dashboard.jsx'),'Panel Maestro carga config/cliente antes del dashboard');
+          must(dashboard.includes("section==='conape'&&<MasterConapeRecruitmentProbe/>")&&probe.length>0,'botón se monta solo dentro de sección CONAPE del Panel Maestro admin');
+          must(['method','rows_csv','rows_html_all','counts_match','columns_ok','ms','ir_filters_before'].every(v=>probe.includes(v)),'UI muestra telemetría de contraste requerida');
+          must(!['cedula','apellido_1','apellido_2','nombre','correo','telefono'].some(v=>probe.includes(v))&&!probe.includes('d.rows[')&&!probe.includes('d.rows.map')&&!probe.includes('data.rows'),'probe no renderiza PII ni array de filas del listado');
+          must(summaryBlock.length>0&&!summaryBlock.includes('rows:')&&['rows_csv','rows_html_all','counts_match','columns_ok','ms','ir_filters_before'].every(v=>summaryBlock.includes(v)),'summary=1 omite array rows y devuelve solo metadatos seguros');
+          must(server.includes("new AppError('LIST_COUNT_MISMATCH'")&&server.includes('rows_csv:rowsCsv')&&server.includes('rows_html_all:rowsHtmlAll'),'mismatch devuelve ambos conteos sin PII');
+          must(server.includes("event:'conape_list_dump'")&&server.includes('pii:false'),'telemetría de lista declara pii:false');
+          must(campus.includes('src/app.jsx?v=F98.4Z6CS21A143'),'campus fuerza cache-bust del router admin');
+          EOF
+      - name: Syntax bridge
+        run: node --check services/conape-bridge/server_v2.mjs
+      - name: Syntax client
+        run: node --check src/conape_bridge_client_c3_6.js
+      - name: Syntax bridge QA
+        run: node --check scripts/qa_conape_bridge_v2.mjs
+      - name: Syntax admin QA
+        run: node --check scripts/qa_conape_admin_list_probe_v4_2_9.mjs
+      - name: Bridge contract QA
+        run: node scripts/qa_conape_bridge_v2.mjs
+      - name: Admin probe contract QA
+        run: node scripts/qa_conape_admin_list_probe_v4_2_9.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Commit canonical changes only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/conape-bridge/server_v2.mjs src/conape_bridge_client_c3_6.js src/app.jsx src/admin_master_dashboard.jsx campus.html scripts/qa_conape_bridge_v2.mjs scripts/qa_conape_admin_list_probe_v4_2_9.mjs .github/workflows/qa-conape-live-c3-6.yml
+          git rm scripts/patch_conape_admin_list_probe_v4_2_9.mjs .github/workflows/apply-conape-admin-list-probe-v4-2-9.yml .github/workflows/apply-conape-admin-list-probe-v4-2-9-r2.yml .github/workflows/apply-conape-admin-list-probe-v4-2-9-r3.yml .github/workflows/apply-conape-admin-list-probe-v4-2-9-r4.yml .github/workflows/apply-conape-admin-list-probe-v4-2-9-r5.yml
+          git commit -m "CONAPE V4.2.9 · validación admin CSV vs Rows=All"
+          git push origin HEAD:${GITHUB_REF_NAME}
