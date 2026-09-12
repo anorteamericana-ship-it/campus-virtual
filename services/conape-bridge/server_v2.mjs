@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.1';
+const VERSION = 'V4.2.2';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -12,11 +12,14 @@ const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '').trim();
 const CONAPE_PASSWORD = String(process.env.CONAPE_PORTAL_PASSWORD || '');
 const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.CAMPUS_REQUEST_TIMEOUT_MS || 70_000));
 const SESSION_CACHE_TTL_MS = 30_000;
+const SESSION_STATUS_CACHE_TTL_MS = 300_000;
+const CAMPUS_READ_ATTEMPT_TIMEOUT_MS = Math.min(18_000, REQUEST_TIMEOUT_MS);
 const SOURCE_TTL_MS = Math.max(60_000, Number(process.env.SOURCE_TTL_MS || 180_000));
 const STARTED_AT = new Date().toISOString();
 const ALLOWED_ORIGINS = new Set(String(process.env.CAMPUS_ALLOWED_ORIGINS || 'https://anorteamerican.com,https://www.anorteamerican.com,https://anorteamericana-ship-it.github.io').split(',').map(v => v.trim()).filter(Boolean));
 const ROLE_ALLOW = new Set(['VENTAS','ASESOR','ASESORA','ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN']);
 const sessionValidationCache = new Map();
+const sessionValidationInflight = new Map();
 const sourceVersions = new Map();
 const rateBuckets = new Map();
 let queue = Promise.resolve();
@@ -150,7 +153,7 @@ function safeBodyKeys(postData) {
   }
 }
 
-async function campusRequest(payload) {
+async function campusRequest(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
   const fn = safeId(payload?.fn) || 'UNKNOWN';
   const started = Date.now();
   let httpStatus = 0;
@@ -167,13 +170,13 @@ async function campusRequest(payload) {
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body:JSON.stringify(payload),
       redirect:'follow',
-      signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal:AbortSignal.timeout(Math.max(5_000, Number(timeoutMs || REQUEST_TIMEOUT_MS))),
     });
   } catch (cause) {
     const error = new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'El Campus está ocupado, probá de nuevo en unos segundos.', 503, 'CAMPUS');
     error.fn = fn;
     error.campus_busy = true;
-    error.retryable = fn === 'validarSesion';
+    error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;
     error.campus_ms = Date.now() - started;
     error.cause = cause;
     throw error;
@@ -186,7 +189,7 @@ async function campusRequest(payload) {
     const error = new AppError('CAMPUS_BACKEND_UNAVAILABLE', body_starts_with_angle ? 'El Campus está ocupado, probá de nuevo en unos segundos.' : 'No se pudo consultar el Campus.', 503, 'CAMPUS');
     error.fn = fn;
     error.campus_busy = body_starts_with_angle || (Date.now() - started >= 10_000);
-    error.retryable = fn === 'validarSesion' && error.campus_busy;
+    error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;
     error.campus_ms = Date.now() - started;
     throw error;
   }
@@ -204,25 +207,44 @@ async function campusRequest(payload) {
 }
 
 async function campusCall(payload) {
+  const fn = safeId(payload?.fn) || 'UNKNOWN';
+  const readOnly = fn === 'validarSesion' || fn === 'getProspectoDetalle';
+  const timeoutMs = readOnly ? CAMPUS_READ_ATTEMPT_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
   try {
-    return await campusRequest(payload);
+    return await campusRequest(payload, timeoutMs);
   } catch (error) {
-    if (payload?.fn === 'validarSesion' && error?.retryable === true) {
-      await sleep(3_000);
-      return campusRequest(payload);
+    if (readOnly && error?.retryable === true) {
+      await sleep(750);
+      return campusRequest(payload, timeoutMs);
     }
     throw error;
   }
 }
 
-async function cachedSessionValidation(cleanToken) {
+async function cachedSessionValidation(cleanToken, maxAgeMs = SESSION_CACHE_TTL_MS) {
   pruneState();
   const key = sha(cleanToken);
+  const now = Date.now();
   const cached = sessionValidationCache.get(key);
-  if (cached && cached.expiresAt > Date.now() && cached.session?.ok === true) return cached.session;
-  const session = await campusCall({ fn:'validarSesion', token:cleanToken });
-  if (session?.ok === true) sessionValidationCache.set(key, { session, expiresAt:Date.now() + SESSION_CACHE_TTL_MS });
-  return session;
+  if (cached && cached.session?.ok === true && Number(cached.validatedAt || 0) > 0 && now - cached.validatedAt <= maxAgeMs) return cached.session;
+
+  const existing = sessionValidationInflight.get(key);
+  if (existing) return existing;
+
+  const pending = (async () => {
+    const session = await campusCall({ fn:'validarSesion', token:cleanToken });
+    if (session?.ok === true) {
+      const validatedAt = Date.now();
+      sessionValidationCache.set(key, { session, validatedAt, expiresAt:validatedAt + SESSION_STATUS_CACHE_TTL_MS });
+    }
+    return session;
+  })();
+  sessionValidationInflight.set(key, pending);
+  try {
+    return await pending;
+  } finally {
+    if (sessionValidationInflight.get(key) === pending) sessionValidationInflight.delete(key);
+  }
 }
 
 function validateSessionResult(session) {
@@ -238,6 +260,14 @@ async function authorizeCampusSession(token) {
   if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401, 'CAMPUS');
   rateLimit(cleanToken);
   const session = await cachedSessionValidation(cleanToken);
+  return { ...validateSessionResult(session), token:cleanToken };
+}
+
+async function authorizeCampusSessionStatus(token) {
+  const cleanToken = txt(token);
+  if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401, 'CAMPUS');
+  rateLimit(cleanToken);
+  const session = await cachedSessionValidation(cleanToken, SESSION_STATUS_CACHE_TTL_MS);
   return { ...validateSessionResult(session), token:cleanToken };
 }
 
@@ -1436,7 +1466,13 @@ async function execute(body) {
   let formIncompleteIds = [];
   try {
     let t = Date.now();
-    const auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    let auth;
+    try {
+      auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    } catch (error) {
+      timing.campus = Date.now() - t;
+      throw error;
+    }
     timing.campus = Date.now() - t;
 
     t = Date.now();
@@ -1592,7 +1628,7 @@ const server = http.createServer(async (req, res) => {
     else throw new AppError('NOT_FOUND', 'Ruta no encontrada.', 404);
 
     let result;
-    if (action === 'session_status') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.status()); }
+    if (action === 'session_status') { await authorizeCampusSessionStatus(body?.token); result = ConapeSession.snapshot({ ready:ConapeSession.state === 'CONNECTED' ? 'MEMORY' : null }); }
     else if (action === 'session_connect') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.connect()); }
     else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
     else if (action === 'preview') result = await serial(() => preview(body));
