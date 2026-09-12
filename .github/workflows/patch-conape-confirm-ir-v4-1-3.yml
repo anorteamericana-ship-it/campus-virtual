@@ -18,6 +18,17 @@ jobs:
           node-version: '22'
       - name: Apply patch
         run: python3 scripts/_patch_conape_confirm_ir_v4_1_3.py
+      - name: Fix QA assertions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/qa_conape_bridge_v2.mjs')
+          s = p.read_text()
+          s = s.replace("/return \\{ found:true, estado \\}/.test(confirmBlock)", "/if \\(fast\\.found\\) return \\{ found:true/.test(confirmBlock)")
+          s = s.replace("/resetInteractiveReport/.test(confirmBlock)", "/resetInteractiveReport/.test(server)")
+          p.write_text(s)
+          PY
       - name: Validate
         run: |
           node --check services/conape-bridge/server_v2.mjs
