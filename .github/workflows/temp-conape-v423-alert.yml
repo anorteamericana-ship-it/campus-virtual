@@ -1,0 +1,36 @@
+name: TEMP CONAPE V4.2.3 sanitized alert
+on:
+  push:
+    branches:
+      - fix/conape-alert-text-sanitized-v4-2-3
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'CONAPE V4.2.3 · alerta sanitizada') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/conape-alert-text-sanitized-v4-2-3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply patch
+        run: python .github/scripts/temp_conape_v423_alert_patch.py
+      - name: Validate
+        run: |
+          node --check services/conape-bridge/server_v2.mjs
+          node scripts/qa_conape_bridge_v2.mjs
+      - name: Remove temporary patch files
+        run: |
+          rm -f .github/scripts/temp_conape_v423_alert_patch.py
+          rm -f .github/workflows/temp-conape-v423-alert.yml
+      - name: Commit final delta
+        run: |
+          git config user.name "anorteamericana-ship-it"
+          git config user.email "anorteamericana@gmail.com"
+          git add services/conape-bridge/server_v2.mjs scripts/qa_conape_bridge_v2.mjs .github/scripts/temp_conape_v423_alert_patch.py .github/workflows/temp-conape-v423-alert.yml
+          git commit -m "CONAPE V4.2.3 · alerta sanitizada"
+          git push origin HEAD:fix/conape-alert-text-sanitized-v4-2-3
