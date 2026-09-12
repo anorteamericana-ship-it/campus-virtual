@@ -23,7 +23,9 @@ jobs:
         with:
           node-version: '22'
       - name: Apply QA patch
-        run: python scripts/temp_patch_conape_v42_qa.py
+        run: |
+          sed -i 's/CONAPE Bridge V4\.1\.5 QA PASS/CONAPE Bridge V4.1.6 QA PASS/' scripts/temp_patch_conape_v42_qa.py
+          python scripts/temp_patch_conape_v42_qa.py
       - name: Validate bridge contract
         run: |
           node --check services/conape-bridge/server_v2.mjs
