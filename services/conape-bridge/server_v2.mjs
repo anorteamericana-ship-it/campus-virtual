@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.5';
+const VERSION = 'V4.1.6';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -512,6 +512,7 @@ async function readFormState(p) {
     const val = id => String(document.getElementById(id)?.value || '').trim();
     const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const safeToken = v => /^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(String(v || '')) ? String(v) : '';
     const alerts = Array.from(document.querySelectorAll('[role="alert"],.t-Alert,.a-Alert,.t-Body-alert,.t-Form-error,.apex-page-item-error,.t-Alert--danger,.t-Alert--warning')).filter(visible);
     const text = norm(alerts.map(n => n.textContent || '').join(' '));
     const categories = [];
@@ -521,9 +522,21 @@ async function readFormState(p) {
     if (/NO AUTORIZAD|SIN PERMISO|NO TIENE ACCESO/.test(text)) categories.push('SIN_PERMISO');
     if (!categories.length && /ERROR|NO SE PUDO|NO FUE POSIBLE/.test(text)) categories.push('ERROR_DE_PORTAL');
     if (!categories.length && text) categories.push('ALERTA_NO_CLASIFICADA');
+    const alertDomIds = [...new Set(alerts.flatMap(node => {
+      const tokens = [];
+      const id = safeToken(node.id);
+      if (id) tokens.push(`id:${id}`);
+      for (const className of Array.from(node.classList || [])) {
+        const cls = safeToken(className);
+        if (cls) tokens.push(`class:${cls}`);
+      }
+      return tokens;
+    }))].slice(0,40);
+    const apexErrorItemIds = [...new Set(Array.from(document.querySelectorAll('.apex-page-item-error')).map(node => safeToken(node.id)).filter(Boolean))].slice(0,40);
     return {
       cedula:val('P2_PRS_CEDULA'), apellido_1:val('P2_PRS_APELLIDO_1'), apellido_2:val('P2_PRS_APELLIDO_2'), nombre:val('P2_PRS_NOMBRE'),
       telefono:val('P2_PRS_CELULAR'), correo:val('P2_PRS_EMAIL'), categories,
+      alert_dom_ids:alertDomIds, apex_error_item_ids:apexErrorItemIds,
       success_signal:/CREAD|REGISTRAD|GUARDAD|CORRECTAMENTE|EXITOS/.test(text) && !/ERROR|INVALID/.test(text),
       form_reset:!val('P2_PRS_CEDULA'),
     };
@@ -801,6 +814,7 @@ async function collectPageItemIds(p) {
 async function clickCreateOnce(p) {
   await assertPreCreateFields(p);
   const page_item_ids = await collectPageItemIds(p);
+  const before = await readFormState(p);
   const createRequests = [];
   const onRequest = req => {
     try {
@@ -832,7 +846,7 @@ async function clickCreateOnce(p) {
       await sleep(250);
       state = await readFormState(p);
     }
-    return { createCount:createRequests.length, outcome:state, request:createRequests[0] || null, page_item_ids };
+    return { createCount:createRequests.length, outcome:state, request:createRequests[0] || null, page_item_ids, alerts_before:before.categories || [] };
   } finally {
     p.off('request', onRequest);
     p.off('response', onResponse);
@@ -1367,6 +1381,7 @@ async function execute(body) {
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
       nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
+      alerts_before:created?.alerts_before || [], visible_alerts:created?.outcome?.categories || [], alert_dom_ids:created?.outcome?.alert_dom_ids || [], apex_error_item_ids:created?.outcome?.apex_error_item_ids || [],
       create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
       confirmation_method:txt(confirmation?.confirmation_method || ''), confirmation_form_mode:txt(confirmation?.form_mode || ''), confirmation_readonly_fields:safeFormFields(confirmation?.form_readonly_fields),
       ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_filters_after:Number(confirmation?.ir_filters_after || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),

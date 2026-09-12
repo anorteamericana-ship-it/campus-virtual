@@ -16,15 +16,25 @@ const confirmBlock = confirmStart >= 0 && confirmEnd > confirmStart ? server.sli
 const formModeStart = server.indexOf('async function readFormMode');
 const formModeEnd = server.indexOf('function deriveCampusIdentity', formModeStart);
 const formModeBlock = formModeStart >= 0 && formModeEnd > formModeStart ? server.slice(formModeStart, formModeEnd) : '';
+const formStateStart = server.indexOf('async function readFormState');
+const formStateEnd = server.indexOf('async function lookupCedulaOnPage', formStateStart);
+const formStateBlock = formStateStart >= 0 && formStateEnd > formStateStart ? server.slice(formStateStart, formStateEnd) : '';
+const createStart = server.indexOf('async function clickCreateOnce');
+const createEnd = server.indexOf('async function countIrFilters', createStart);
+const createBlock = createStart >= 0 && createEnd > createStart ? server.slice(createStart, createEnd) : '';
 const executeStart = server.indexOf('async function execute(body) {');
 const executeEnd = server.indexOf('function corsHeaders', executeStart);
 const executeBlock = executeStart >= 0 && executeEnd > executeStart ? server.slice(executeStart, executeEnd) : '';
+const executeTelemetryStart = executeBlock.indexOf("event:'conape_execute_telemetry'");
+const executeTelemetryEnd = executeBlock.indexOf('}));', executeTelemetryStart);
+const executeTelemetryBlock = executeTelemetryStart >= 0 && executeTelemetryEnd > executeTelemetryStart ? executeBlock.slice(executeTelemetryStart, executeTelemetryEnd) : '';
 
 const legacyCopies = [
   'server.mjs','start_c3_6_2.mjs','server_c3_7.mjs','server_c3_7_3.mjs','server_c3_7_4.mjs',
   'server_c3_7_5.mjs','server_c3_7_7.mjs','server_c3_7_8.mjs','server_c3_7_9.mjs',
 ];
 const listFields = ['cedula','apellido_1','apellido_2','nombre','telefono','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
+const safeAlertCategories = ['YA_REGISTRADO','CAMPO_OBLIGATORIO','DATO_INVALIDO','SIN_PERMISO','ERROR_DE_PORTAL','ALERTA_NO_CLASIFICADA'];
 
 const checks = [
   ['runtime canónico es autocontenido y no compone wrappers C3.7.x', !/replaceBlock|server_c3_7_|_runtime\.mjs|buildOnlyUrl/.test(server)],
@@ -52,6 +62,11 @@ const checks = [
   ['CREATE exige exactamente una request y nunca se dispara con formulario incompleto', /created\.createCount !== 1/.test(server) && /WRITE_RESULT_UNCERTAIN/.test(server) && /FORM_INCOMPLETE_BEFORE_CREATE/.test(server)],
   ['HTTP APEX es solo telemetría y no criterio 200/302', /apex_http_status/.test(server) && !/apex_http_status\s*[!=]==?\s*(?:200|302)|status\(\)\s*[!=]==?\s*(?:200|302)/.test(server)],
   ['telemetría segura incluye body keys e IDs, no valores', /create_body_keys/.test(server) && /page_item_ids/.test(server) && /safeBodyKeys/.test(server) && /pii:false/.test(server)],
+  ['V4.1.6 captura alerts_before antes del click CREATE', createBlock.indexOf('const before = await readFormState(p);') >= 0 && createBlock.indexOf('const before = await readFormState(p);') < createBlock.indexOf('clickVisibleByLabel(p, /CREAR NUEVO PROSPECTO/i)') && /alerts_before:before\.categories \|\| \[\]/.test(createBlock)],
+  ['V4.1.6 clasifica alertas solo a categorías permitidas', safeAlertCategories.every(v => formStateBlock.includes(`'${v}'`)) && /categories\.push/.test(formStateBlock)],
+  ['V4.1.6 obtiene alert_dom_ids solo de id/clases e apex_error_item_ids solo de ids', /node\.id/.test(formStateBlock) && /node\.classList/.test(formStateBlock) && /alert_dom_ids:alertDomIds/.test(formStateBlock) && /document\.querySelectorAll\('\.apex-page-item-error'\)/.test(formStateBlock) && /apex_error_item_ids:apexErrorItemIds/.test(formStateBlock)],
+  ['conape_execute_telemetry emite los cuatro arrays de alertas', /alerts_before:created\?\.alerts_before \|\| \[\]/.test(executeTelemetryBlock) && /visible_alerts:created\?\.outcome\?\.categories \|\| \[\]/.test(executeTelemetryBlock) && /alert_dom_ids:created\?\.outcome\?\.alert_dom_ids \|\| \[\]/.test(executeTelemetryBlock) && /apex_error_item_ids:created\?\.outcome\?\.apex_error_item_ids \|\| \[\]/.test(executeTelemetryBlock)],
+  ['arrays de alertas no emiten texto libre de CONAPE', !/(textContent|innerText|innerHTML|outerHTML|alert_text|alert_message|message\s*:)/.test(executeTelemetryBlock) && /safeToken/.test(formStateBlock) && /\.slice\(0,40\)/.test(formStateBlock)],
   ['execute mide total y tramos campus/form/lookup/fill/create/confirmation', /event:'conape_execute_telemetry'/.test(server) && ['ms_total','ms_campus','ms_form','ms_lookup','ms_fill','ms_create','ms_confirmation'].every(v => server.includes(v))],
   ['confirmación CREATE depende de existencia y no de estado concreto', /found:scanned\.found/.test(confirmBlock) && /if \(confirmation\.found\)/.test(server) && !/\bREGISTRO\b/.test(confirmBlock) && !/confirmation\.registro|confirmation_registro/.test(server)],
   ['telemetría de confirmación reporta existencia y estado informativo', /confirmation_found/.test(server) && /confirmation_estado:upper\(confirmation\?\.estado \|\| ''\)/.test(server) && !/confirmation_registro/.test(server)],
@@ -83,4 +98,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.1.5 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.1.6 QA PASS · ${checks.length}/${checks.length}`);
