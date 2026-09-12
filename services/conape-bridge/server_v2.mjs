@@ -1010,12 +1010,6 @@ async function collectPreActionTelemetry(p) {
 async function clickFinalAction(p, formMode) {
   const eventContext = await ensureEventContext(p);
   const preaction = await collectPreActionTelemetry(p);
-  if (!eventContext.eve_id_present) {
-    const error = new AppError('EVENT_CONTEXT_MISSING', 'CONAPE no tiene un Evento disponible para la escritura.', 422, 'BEFORE_CREATE');
-    error.event_context_telemetry = eventContext;
-    error.preaction_telemetry = preaction;
-    throw error;
-  }
   try {
     await assertPreCreateFields(p);
   } catch (error) {
