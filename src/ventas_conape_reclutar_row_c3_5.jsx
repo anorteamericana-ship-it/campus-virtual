@@ -22,20 +22,18 @@
       ? upper(window.calcularEstadoEstudianteVentas(p)?.estado)
       : '';
     if (financing !== 'CONAPE') return false;
-    if (estadoConape || codigo || estadoVentas === 'MATRICULADO') return false;
+    if (codigo || estadoVentas === 'MATRICULADO') return false;
     return !['CANCELADO','ACTIVO','MATRICULADO'].includes(etapa);
+  }
+
+  function actionLabel(p){
+    const estadoConape = text(p?.estado_conape_raw || p?.estado_conape);
+    return estadoConape ? 'Actualizar datos' : 'Registrar en CONAPE';
   }
 
   function liveBridge(){
     const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C36;
     return bridge && typeof bridge.execute === 'function' ? bridge : null;
-  }
-
-  function alreadyRecruitedMessage(r){
-    const estado = text(r?.estado_conape_raw || r?.estado_conape || r?.confirmation_estado || r?.confirmation?.estado || '');
-    return estado
-      ? `Este prospecto ya está reclutado en CONAPE. Estado: ${estado}.`
-      : 'Este prospecto ya está reclutado en CONAPE.';
   }
 
   function failureMessage(r){
@@ -106,7 +104,7 @@
 
       timers.push(setTimeout(() => !cancel && setPhase('Abriendo formulario de CONAPE'), 4000));
       timers.push(setTimeout(() => !cancel && setPhase('Consultando cédula y verificando identidad'), 8000));
-      timers.push(setTimeout(() => !cancel && setPhase('Aplicando contactos y enviando CREATE'), 13000));
+      timers.push(setTimeout(() => !cancel && setPhase('Aplicando contactos y enviando acción final'), 13000));
 
       (async () => {
         const cedula = digits(prospecto?.cedula || prospecto?.CEDULA);
@@ -128,14 +126,7 @@
           setComparison(r?.comparison || null);
 
           const code = technical(r?.code || r?.error, 'UNKNOWN');
-          if (code === 'ALREADY_RECRUITED') {
-            setInfo(alreadyRecruitedMessage(r || {}));
-            setState('already');
-            setPhase('Ya reclutado');
-            return;
-          }
-
-          if (!r || !r.ok || code !== 'CREATED') {
+          if (!r || !r.ok || !['CREATED','UPDATED'].includes(code)) {
             setError(failureMessage(r || {}));
             setState('error');
             return;
@@ -151,8 +142,8 @@
           }
           if (typeof window.ventasDashCacheClear === 'function') window.ventasDashCacheClear();
           setState('done');
-          setPhase('Confirmado');
-          onToast && onToast({ tipo:'ok', msg:estadoConape ? `Prospecto reclutado · CONAPE: ${estadoConape}` : 'Prospecto reclutado en CONAPE.' });
+          setPhase(code === 'UPDATED' ? 'Actualizado' : 'Confirmado');
+          onToast && onToast({ tipo:'ok', msg:code === 'UPDATED' ? 'Datos actualizados en CONAPE.' : (estadoConape ? `Prospecto reclutado · CONAPE: ${estadoConape}` : 'Prospecto reclutado en CONAPE.') });
         } catch (e) {
           if (cancel) return;
           setInfo('');
@@ -176,14 +167,14 @@
         <div className="vx-c33-modal">
           <div className="vx-c33-head">
             <div>
-              <div className="vx-c33-title">Reclutar en CONAPE</div>
-              <div className="vx-c33-sub">Una sola ejecución: valida Campus, consulta CONAPE, verifica identidad, aplica contactos y crea.</div>
+              <div className="vx-c33-title">CONAPE</div>
+              <div className="vx-c33-sub">Una sola ejecución: consulta, aplica contactos editables y registra o actualiza según el formulario de CONAPE.</div>
             </div>
             <button className="vx-c33-x" onClick={onClose} disabled={state === 'running'}>×</button>
           </div>
           <div className="vx-c33-body">
             {state === 'running' ? <div className="vx-c35-working"><span className="vx-c35-spin"></span><div><b>Procesando en CONAPE…</b><br/><span>{phase}</span></div></div> : null}
-            {state === 'done' ? <div className="vx-c33-banner">CONAPE confirmó el reclutamiento.</div> : null}
+            {state === 'done' ? <div className="vx-c33-banner">{technical(result?.code, '') === 'UPDATED' ? 'CONAPE confirmó la actualización.' : 'CONAPE confirmó el reclutamiento.'}</div> : null}
             {info ? <div className="vx-c35-info">{info}</div> : null}
             {error ? <div className="vx-c33-banner err">{error}</div> : null}
             {comparison ? <React.Fragment>
@@ -199,7 +190,7 @@
               </div>
               <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono final: <b>{comparison.final?.telefono || 'pendiente'}</b> · Correo final: <b>{comparison.final?.correo || 'sin correo'}</b>.</div>
             </React.Fragment> : null}
-            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · CREATE: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'} · Método confirmación: {confirmationMethod || '—'}</div> : null}
+            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · Acción: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'} · Método confirmación: {confirmationMethod || '—'}</div> : null}
           </div>
           <div className="vx-c33-foot">
             <button className="vx-c33-btn alt" onClick={onClose} disabled={state === 'running'}>{state === 'running' ? 'Procesando…' : 'Cerrar'}</button>
@@ -213,7 +204,7 @@
     const [open, setOpen] = useState(false);
     if (!visibleFor(prospecto)) return null;
     return <React.Fragment>
-      <button type="button" className="vx-c35-rowbtn" onClick={e => { e.stopPropagation(); setOpen(true); }}>Reclutar en CONAPE</button>
+      <button type="button" className="vx-c35-rowbtn" onClick={e => { e.stopPropagation(); setOpen(true); }}>{actionLabel(prospecto)}</button>
       {open ? <RecruitRowModal prospecto={prospecto} onClose={() => setOpen(false)} onChanged={onChanged} onToast={onToast} /> : null}
     </React.Fragment>;
   }
