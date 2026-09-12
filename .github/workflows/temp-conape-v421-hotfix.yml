@@ -183,7 +183,7 @@ jobs:
                   }
                 } catch {}
                 apex_readable[id] = readable;
-                precreate_apex_values[id] = readable && apexValue.trim() !== '';
+                precreate_apex_values[id] = apexValue.trim() !== '';
               }
               return { precreate_apex_values, precreate_dom_values, field_editable, apex_readable };
             }).catch(() => ({ precreate_apex_values:{}, precreate_dom_values:{}, field_editable:{}, apex_readable:{} }));
