@@ -268,12 +268,13 @@ rep("""    if (confirmation.found) {
       finalStage = 'CONFIRMED';
       return { ok:true, confirmed:true, code:finalCode, stage:'CONFIRMED', form_mode:formMode, final_action:finalActionName, confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method, confirmation_form_mode:confirmation.form_mode, comparison, timing:{ ...timing, action:timing.create, total:Date.now()-started } };
     }""", 'execute-success')
-rep("""      create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
-      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),""",
-    """      create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
+
+rex(r"      create_body_keys:created\?\.request\?\.body_keys \|\| \[\], page_item_ids:created\?\.page_item_ids \|\| \[\], apex_http_status:Number\(created\?\.request\?\.status \|\| 0\) \|\| null,\n      alerts_before:created\?\.alerts_before \|\| \[\], visible_alerts:created\?\.outcome\?\.categories \|\| \[\], alert_dom_ids:created\?\.outcome\?\.alert_dom_ids \|\| \[\], apex_error_item_ids:created\?\.outcome\?\.apex_error_item_ids \|\| \[\],\n      create_count:Number\(created\?\.createCount \|\| 0\), confirmation_found:!!confirmation\?\.found, confirmation_estado:upper\(confirmation\?\.estado \|\| ''\),",
+r'''      create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
+      alerts_before:created?.alerts_before || [], visible_alerts:created?.outcome?.categories || [], alert_dom_ids:created?.outcome?.alert_dom_ids || [], apex_error_item_ids:created?.outcome?.apex_error_item_ids || [],
       final_action:txt(finalActionName || created?.final_action || ''), action_count:Number(created?.actionCount || 0), create_count:Number(created?.createCount || 0), update_count:Number(created?.updateCount || 0),
       precreate_apex_values:preActionTelemetry.precreate_apex_values || {}, precreate_dom_values:preActionTelemetry.precreate_dom_values || {}, field_editable:preActionTelemetry.field_editable || {},
-      confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),""", 'telemetry-action')
+      confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),''', 'telemetry-action')
 rep("""      fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
       fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,""",
     """      fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
