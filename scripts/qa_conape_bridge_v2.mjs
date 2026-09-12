@@ -91,10 +91,13 @@ const checks = [
   ['self-test NAV está protegido por sesión Campus y no usa cédula/CREATE', /\/v1\/selftest\/nav/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server) && /runNavSelftest/.test(server) && /login:'FAIL'/.test(server) && /recruit_click:'FAIL'/.test(server) && /form_ready:'FAIL'/.test(server)],
   ['prospects/list es GET y exige la misma sesión Campus', /req\.method === 'GET' && url\.pathname === '\/v1\/prospects\/list'/.test(server) && /action = 'prospects_list'/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server)],
   ['prospects/list expone exactamente las 14 columnas contractuales', listFields.every(field => listBlock.includes(`'${field}'`)) && /PROSPECT_LIST_READY/.test(listBlock)],
-  ['prospects/list reutiliza Home con sesión APEX, maximiza Rows y pagina', /CONAPE_FRIENDLY_HOME/.test(listBlock) && /urlWithSession/.test(listBlock) && /maximizeProspectRows/.test(listBlock) && /clickProspectNextPage/.test(listBlock)],
+  ['prospects/list limpia RIR y prioriza CSV -> Rows=All -> paginado', /confirmationResetUrl/.test(server) && /resetProspectListReport/.test(server) && /downloadProspectCsv/.test(server) && /setProspectRowsAll/.test(server) && /readPagedProspects/.test(server) && server.includes("method = 'CSV_DOWNLOAD';") && server.includes("method = 'HTML_ROWS_ALL';") && server.includes("pages = await readPagedProspects(p, rowsByCedula);") && server.includes("method = 'HTML_PAGED';")],
+  ['prospects/list CSV queda solo en memoria y se elimina al terminar', /waitForEvent\('download'/.test(server) && /download\.createReadStream\(\)/.test(server) && /download\?\.delete\(\)/.test(server) && !/saveAs|savePath|writeFile.*csv/i.test(server)],
+  ['prospects/list valida CSV contra 14 columnas y Rows=All antes de aceptarlo', /PROSPECT_LIST_FIELDS/.test(server) && /PROSPECT_LIST_HEADER_ALIASES/.test(server) && /CONAPE_LIST_COUNT_MISMATCH/.test(server) && /CONAPE_LIST_ROWS_ALL_INCOMPLETE/.test(server)],
+  ['prospects/list nunca usa Save Report', !/SAVE REPORT|SAVE_REPORT|guardar informe|guardar reporte/i.test(listBlock)],
   ['prospects/list es solo lectura y nunca entra al CREATE', !!listBlock && !/clickCreateOnce|fillContacts|nativeSetValue|CREAR NUEVO PROSPECTO|\/v1\/recruit\/execute/.test(listBlock)],
   ['prospects/list falla cerrado si no reconoce el esquema', /CONAPE_LIST_SCHEMA_NOT_READY/.test(listBlock) && /REQUIRED_COLUMN_MISSING/.test(listBlock)],
-  ['prospects/list telemetría tiene solo métricas agregadas', listTelemetryMatches.length === 1 && /console\.log\(JSON\.stringify\(\{ event:'conape_list_dump', rows:rowsByCedula\.size, pages, ms:Date\.now\(\)-started, pii:false \}\)\)/.test(listBlock)],
+  ['prospects/list telemetría solo expone método, conteos, esquema, tiempo y filtros', listTelemetryMatches.length === 1 && ['method','rows:rowsByCedula.size','columns_ok:columnsOk','ms:Date.now()-started','ir_filters_before:irFiltersBefore','pii:false'].every(v => listBlock.includes(v)) && !/console\.log.*(?:cedula|nombre|correo|telefono)/i.test(listBlock)],
   ['Docker contiene solo server_v2 + self-test, sin patcher runtime', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`)) && !/hotfix_v4_2_4|RUN node hotfix/i.test(docker)],
   ['Docker arranca server_v2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
   ['Railway fija startCommand canónico', railway?.deploy?.startCommand === 'node server_v2.mjs'],
@@ -106,4 +109,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.2.7 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.2.8 QA PASS · ${checks.length}/${checks.length}`);
