@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.1';
+const VERSION = 'V4.1.2';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -615,19 +615,136 @@ function assertIdentityMatch(comparison) {
   }
 }
 
+async function waitForApexDynamicAction(p) {
+  const idle = await p.waitForFunction(() => {
+    try {
+      const jq = window.apex?.jQuery;
+      return !jq || Number(jq.active || 0) === 0;
+    } catch { return true; }
+  }, null, { timeout:5_000 }).then(() => true).catch(() => false);
+  await sleep(200);
+  return idle;
+}
+
+async function readContactFieldState(p, id) {
+  return p.evaluate(fieldId => {
+    const el = document.getElementById(fieldId);
+    let apexValue = '';
+    let apexReadable = false;
+    try {
+      const item = window.apex?.item?.(fieldId);
+      if (item && typeof item.getValue === 'function') {
+        apexReadable = true;
+        apexValue = String(item.getValue() ?? '');
+      }
+    } catch {}
+    return { domValue:String(el?.value ?? ''), apexValue, apexReadable };
+  }, id).catch(() => ({ domValue:'', apexValue:'', apexReadable:false }));
+}
+
+function normalizeContactField(id, value) {
+  return id === 'P2_PRS_CELULAR' ? digits(value).slice(-8) : email(value);
+}
+
+async function writeContactField(p, id, value) {
+  const target = txt(value);
+  const targetNorm = normalizeContactField(id, target);
+  const locator = p.locator(`#${id}`).first();
+  let method = 'FILL';
+  let attempted = false;
+  let readback = { domValue:'', apexValue:'', apexReadable:false };
+
+  try {
+    if (!(await locator.count())) throw new Error('FIELD_NOT_FOUND');
+    attempted = true;
+    await locator.fill(target, { timeout:5_000 });
+    await locator.blur({ timeout:5_000 });
+    await waitForApexDynamicAction(p);
+    readback = await readContactFieldState(p, id);
+  } catch {}
+
+  let match = normalizeContactField(id, readback.domValue) === targetNorm && (!readback.apexReadable || normalizeContactField(id, readback.apexValue) === targetNorm);
+  if (!match) {
+    method = 'APEX_SETVALUE';
+    const apexSet = await p.evaluate(({ fieldId, fieldValue }) => {
+      try {
+        const item = window.apex?.item?.(fieldId);
+        if (!item || typeof item.setValue !== 'function') return false;
+        item.setValue(fieldValue);
+        return true;
+      } catch { return false; }
+    }, { fieldId:id, fieldValue:target }).catch(() => false);
+    if (apexSet) {
+      attempted = true;
+      await locator.focus({ timeout:5_000 }).catch(() => {});
+      await locator.blur({ timeout:5_000 }).catch(() => {});
+      await waitForApexDynamicAction(p);
+      readback = await readContactFieldState(p, id);
+      match = normalizeContactField(id, readback.domValue) === targetNorm && (!readback.apexReadable || normalizeContactField(id, readback.apexValue) === targetNorm);
+    }
+  }
+
+  const result = {
+    field:id,
+    attempted,
+    verified:match,
+    method,
+    target_len:target.length,
+    readback_len:String(readback.domValue || '').length,
+    match,
+  };
+  if (!match) {
+    const error = new AppError('CONTACT_WRITE_FAILED', 'CONAPE no confirmó la escritura del contacto.', 422, 'FILL');
+    error.fill_telemetry = {
+      attempted_fields:attempted ? [id] : [], verified_fields:[], methods:[method],
+      fill_target_len:result.target_len, fill_readback_len:result.readback_len, fill_match:false,
+    };
+    throw error;
+  }
+  return result;
+}
+
 async function fillContacts(p, plan) {
-  if (plan.update_telefono && !(await nativeSetValue(p, 'P2_PRS_CELULAR', plan.telefono))) throw new AppError('CONTACT_FILL_FAILED', 'No se pudo aplicar el teléfono.', 422, 'CONTACTS');
-  if (plan.update_correo && !(await nativeSetValue(p, 'P2_PRS_EMAIL', plan.correo))) throw new AppError('CONTACT_FILL_FAILED', 'No se pudo aplicar el correo.', 422, 'CONTACTS');
-  await sleep(250);
+  const results = [];
+  try {
+    if (plan.update_telefono) results.push(await writeContactField(p, 'P2_PRS_CELULAR', plan.telefono));
+    if (plan.update_correo) results.push(await writeContactField(p, 'P2_PRS_EMAIL', plan.correo));
+  } catch (error) {
+    const prior = results;
+    const failure = error?.fill_telemetry || {};
+    error.fill_telemetry = {
+      attempted_fields:[...prior.filter(r => r.attempted).map(r => r.field), ...(failure.attempted_fields || [])],
+      verified_fields:[...prior.filter(r => r.verified).map(r => r.field), ...(failure.verified_fields || [])],
+      methods:[...prior.map(r => r.method), ...(failure.methods || [])],
+      fill_target_len:failure.fill_target_len ?? prior.at(-1)?.target_len ?? null,
+      fill_readback_len:failure.fill_readback_len ?? prior.at(-1)?.readback_len ?? null,
+      fill_match:failure.fill_match ?? prior.at(-1)?.match ?? null,
+    };
+    throw error;
+  }
   const state = await readFormState(p);
-  if (digits(state.telefono).slice(-8) !== plan.telefono) throw new AppError('CONTACT_VALIDATION_FAILED', 'El teléfono no quedó aplicado.', 422, 'CONTACTS');
-  if (email(state.correo) !== plan.correo) throw new AppError('CONTACT_VALIDATION_FAILED', 'El correo no quedó aplicado.', 422, 'CONTACTS');
-  return state;
+  const last = results.at(-1) || null;
+  return {
+    state,
+    telemetry:{
+      attempted_fields:results.filter(r => r.attempted).map(r => r.field),
+      verified_fields:results.filter(r => r.verified).map(r => r.field),
+      methods:results.map(r => r.method),
+      fill_target_len:last?.target_len ?? null,
+      fill_readback_len:last?.readback_len ?? null,
+      fill_match:last?.match ?? null,
+    },
+  };
 }
 
 async function assertPreCreateFields(p) {
   const missing = await p.evaluate(() => ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'].filter(id => !String(document.getElementById(id)?.value || '').trim())).catch(() => ['FORM']);
-  if (missing.length) throw new AppError('CAMPO_OBLIGATORIO', 'Faltan campos obligatorios antes de CREATE.', 422, 'BEFORE_CREATE');
+  if (missing.length) {
+    const error = new AppError('FORM_INCOMPLETE_BEFORE_CREATE', 'El formulario quedó incompleto antes de CREATE.', 422, 'BEFORE_CREATE');
+    error.empty_field_ids = missing;
+    throw error;
+  }
+  return [];
 }
 
 async function collectPageItemIds(p) {
@@ -917,6 +1034,8 @@ async function execute(body) {
   let navMode = null;
   let created = null;
   let confirmation = null;
+  let fillTelemetry = { attempted_fields:[], verified_fields:[], methods:[], fill_target_len:null, fill_readback_len:null, fill_match:null };
+  let formIncompleteIds = [];
   try {
     let t = Date.now();
     const auth = await authorizeCampusParallel(body?.token, body?.cedula);
@@ -936,7 +1055,13 @@ async function execute(body) {
     assertIdentityMatch(comparison);
 
     t = Date.now();
-    await fillContacts(p, plan);
+    try {
+      const fillResult = await fillContacts(p, plan);
+      fillTelemetry = fillResult.telemetry;
+    } catch (error) {
+      timing.fill = Date.now() - t;
+      throw error;
+    }
     timing.fill = Date.now() - t;
 
     t = Date.now();
@@ -961,6 +1086,8 @@ async function execute(body) {
   } catch (error) {
     finalCode = txt(error?.code || finalCode || 'BRIDGE_ERROR');
     finalStage = sanitizedStage(error);
+    if (error?.fill_telemetry) fillTelemetry = error.fill_telemetry;
+    if (Array.isArray(error?.empty_field_ids)) formIncompleteIds = error.empty_field_ids;
     if (comparison && !error?.comparison) error.comparison = comparison;
     error.execute_timing = { ...timing, total:Date.now()-started };
     throw error;
@@ -970,7 +1097,10 @@ async function execute(body) {
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
       nav_mode:navMode,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
-      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''), pii:false,
+      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
+      fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
+      fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,
+      form_incomplete_ids:formIncompleteIds, pii:false,
     }));
   }
 }
@@ -1064,6 +1194,7 @@ const server = http.createServer(async (req, res) => {
       ...(campusBusy ? { campus_busy:true, retryable:true } : {}),
       ...(error?.comparison ? { comparison:error.comparison } : {}),
       ...(error?.confirmation ? { confirmation:error.confirmation } : {}),
+      ...(Array.isArray(error?.empty_field_ids) ? { empty_field_ids:error.empty_field_ids } : {}),
       ...(error?.execute_timing ? { timing:error.execute_timing } : {}),
     }, origin);
   }
