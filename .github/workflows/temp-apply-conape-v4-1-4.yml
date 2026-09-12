@@ -1,0 +1,209 @@
+name: TEMP Apply CONAPE V4.1.4
+
+on:
+  push:
+    branches:
+      - fix/conape-confirm-minimal-v4-1-4
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'CONAPE V4.1.4 · confirmación mínima') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/conape-confirm-minimal-v4-1-4
+          fetch-depth: 0
+      - name: Apply exact patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          server_path = Path('services/conape-bridge/server_v2.mjs')
+          qa_path = Path('scripts/qa_conape_bridge_v2.mjs')
+          server = server_path.read_text()
+          qa = qa_path.read_text()
+
+          server = server.replace("const VERSION = 'V4.1.3';", "const VERSION = 'V4.1.4';", 1)
+
+          old_confirm = r'''async function confirmInHome(p, sessionId, cedula) {
+            const started = Date.now();
+            await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+            const reset = await resetInteractiveReport(p);
+            let pages_scanned = 0;
+            let rows_scanned = 0;
+            const search = p.locator('input[type="search"]:visible,input[id$="_search_field"]:visible').first();
+            if (await search.count()) {
+              try {
+                await search.fill(cedula);
+                const go = p.getByRole('button', { name:/^go$|buscar|search/i }).first();
+                if (await go.count()) await go.click(); else await search.press('Enter');
+                await waitForApexDynamicAction(p);
+                await sleep(120);
+                const fast = await findCedulaInCurrentProspectPage(p, cedula);
+                pages_scanned += 1;
+                rows_scanned += fast.rows;
+                if (fast.found) return { found:true, estado:fast.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
+              } catch {}
+            }
+            const secondReset = await resetInteractiveReport(p);
+            if (reset.ir_reset_method === 'NONE' && secondReset.ir_reset_method !== 'NONE') reset.ir_reset_method = secondReset.ir_reset_method;
+            const scanned = await scanProspectPagesForCedula(p, cedula);
+            pages_scanned += scanned.pages_scanned;
+            rows_scanned += scanned.rows_scanned;
+            return { found:scanned.found, estado:scanned.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
+          }
+          '''
+
+          new_confirm = r'''function confirmationResetUrl(sessionId) {
+            const u = new URL(CONAPE_HOME);
+            const cleanSession = digits(sessionId);
+            u.search = `?p=302:1:${cleanSession}:::RIR:`;
+            return u.href;
+          }
+
+          async function readConfirmationProspectPage(p) {
+            return p.evaluate(() => {
+              const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+              const text = v => String(v || '').replace(/\s+/g,' ').trim();
+              let best = null;
+              for (const table of Array.from(document.querySelectorAll('table'))) {
+                let headerNodes = Array.from(table.querySelectorAll('thead th,thead td'));
+                if (!headerNodes.length) headerNodes = Array.from(table.querySelectorAll('tr:first-child th,tr:first-child td'));
+                const headers = headerNodes.map(node => norm(node.textContent));
+                const cedulaIndex = headers.findIndex(h => h === 'CEDULA' || h.includes('CEDULA'));
+                if (cedulaIndex < 0) continue;
+                const estadoIndex = headers.findIndex(h => h === 'ESTADO');
+                const rowCount = table.querySelectorAll('tbody tr').length;
+                if (!best || rowCount > best.rowCount) best = { table, cedulaIndex, estadoIndex, rowCount };
+              }
+              if (!best) return { ok:false, rows:[] };
+              const rows = [];
+              for (const tr of Array.from(best.table.querySelectorAll('tbody tr'))) {
+                const cells = Array.from(tr.querySelectorAll('td'));
+                if (!cells.length || (cells.length === 1 && cells[0].hasAttribute('colspan'))) continue;
+                const cedula = text(cells[best.cedulaIndex]?.textContent);
+                if (!cedula) continue;
+                rows.push({ cedula, estado:best.estadoIndex >= 0 ? text(cells[best.estadoIndex]?.textContent) : '' });
+              }
+              return { ok:true, rows };
+            }).catch(() => ({ ok:false, rows:[] }));
+          }
+
+          async function clickConfirmationNextPage(p) {
+            const controls = p.locator('a,button');
+            const index = await controls.evaluateAll(nodes => {
+              const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+              const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+              const hasCedula = region => Array.from((region || document).querySelectorAll('table')).some(table => {
+                const headers = Array.from(table.querySelectorAll('thead th,thead td,tr:first-child th')).map(th => norm(th.textContent));
+                return headers.some(h => h.includes('CEDULA'));
+              });
+              return nodes.findIndex(el => {
+                if (!visible(el) || el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+                const region = el.closest('.a-IRR,.a-IRR-region,.t-Region');
+                if (!region || !hasCedula(region)) return false;
+                const label = norm([el.textContent,el.getAttribute('aria-label'),el.getAttribute('title')].filter(Boolean).join(' '));
+                return el.classList.contains('a-IRR-pagination-next') || /^(NEXT|SIGUIENTE|PROXIMA|PROXIMO)$/.test(label) || /NEXT PAGE|PAGINA SIGUIENTE/.test(label);
+              });
+            }).catch(() => -1);
+            if (index < 0) return false;
+            await controls.nth(index).click({ timeout:5_000 });
+            return true;
+          }
+
+          async function waitConfirmationSnapshot(p, previousFingerprint = '') {
+            const until = Date.now() + 5_000;
+            let last = { ok:false, rows:[], fingerprint:'' };
+            while (Date.now() < until) {
+              const snapshot = await readConfirmationProspectPage(p);
+              if (snapshot.ok) {
+                const rows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+                const fingerprint = sha(rows.map(row => row.cedula).join('|'));
+                last = { ok:true, rows, fingerprint };
+                if (!previousFingerprint || fingerprint !== previousFingerprint) return last;
+              }
+              await sleep(150);
+            }
+            return last;
+          }
+
+          async function scanConfirmationPagesForCedula(p, cedula) {
+            let pages_scanned = 0;
+            let rows_scanned = 0;
+            const seen = new Set();
+            let current = await waitConfirmationSnapshot(p);
+            if (!current.ok) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+            for (let guard = 0; guard < 100; guard += 1) {
+              if (seen.has(current.fingerprint)) break;
+              seen.add(current.fingerprint);
+              pages_scanned += 1;
+              rows_scanned += current.rows.length;
+              const hit = current.rows.find(row => row.cedula === cedula);
+              if (hit) return { found:true, estado:txt(hit.estado || ''), pages_scanned, rows_scanned, complete:true };
+              const moved = await clickConfirmationNextPage(p);
+              if (!moved) return { found:false, estado:'', pages_scanned, rows_scanned, complete:true };
+              const next = await waitConfirmationSnapshot(p, current.fingerprint);
+              if (!next.ok || next.fingerprint === current.fingerprint) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+              current = next;
+            }
+            return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+          }
+
+          async function confirmInHome(p, sessionId, cedula) {
+            const started = Date.now();
+            await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:20_000 });
+            const ir_filters_before = await countIrFilters(p);
+            await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:20_000 });
+            await waitForApexDynamicAction(p);
+            await sleep(100);
+            const ir_filters_after = await countIrFilters(p);
+            const scanned = await scanConfirmationPagesForCedula(p, cedula);
+            return {
+              found:scanned.found,
+              estado:scanned.estado,
+              ir_filters_before,
+              ir_filters_after,
+              ir_reset_method:'URL_RIR',
+              pages_scanned:scanned.pages_scanned,
+              rows_scanned:scanned.rows_scanned,
+              ms_confirmation:Date.now()-started,
+            };
+          }
+          '''
+
+          if old_confirm not in server:
+              raise SystemExit('old confirmInHome block not found')
+          server = server.replace(old_confirm, new_confirm, 1)
+
+          old_tel = "ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),"
+          new_tel = "ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_filters_after:Number(confirmation?.ir_filters_after || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),"
+          if old_tel not in server:
+              raise SystemExit('confirmation telemetry line not found')
+          server = server.replace(old_tel, new_tel, 1)
+
+          qa = qa.replace("['execute mide total y tramos campus/form/lookup/fill/create', /event:'conape_execute_telemetry'/.test(server) && ['ms_total','ms_campus','ms_form','ms_lookup','ms_fill','ms_create'].every(v => server.includes(v))],", "['execute mide total y tramos campus/form/lookup/fill/create/confirmation', /event:'conape_execute_telemetry'/.test(server) && ['ms_total','ms_campus','ms_form','ms_lookup','ms_fill','ms_create','ms_confirmation'].every(v => server.includes(v))],")
+          qa = qa.replace("['confirmación CREATE depende de existencia y no de estado concreto', /if \\(fast\\.found\\) return \\{ found:true/.test(confirmBlock) && /if \\(confirmation\\.found\\)/.test(server) && !/\\bREGISTRO\\b/.test(confirmBlock) && !/confirmation\\.registro|confirmation_registro/.test(server)],", "['confirmación CREATE depende de existencia y no de estado concreto', /found:scanned\\.found/.test(confirmBlock) && /if \\(confirmation\\.found\\)/.test(server) && !/\\bREGISTRO\\b/.test(confirmBlock) && !/confirmation\\.registro|confirmation_registro/.test(server)],")
+          qa = qa.replace("['confirmación IR limpia filtros y no usa sleep fijo de 900ms', /resetInteractiveReport/.test(server) && /ACTIONS_RESET/.test(server) && /CHIP_CLOSE/.test(server) && /waitForApexDynamicAction/.test(confirmBlock) && !/sleep\\(900\\)/.test(confirmBlock)],", "['confirmación IR usa reset determinista por URL RIR', /confirmationResetUrl/.test(server) && /:::RIR:/.test(server) && /ir_reset_method:'URL_RIR'/.test(confirmBlock) && /waitForApexDynamicAction/.test(confirmBlock) && !/resetInteractiveReport\\(p\\)/.test(confirmBlock)],")
+          qa = qa.replace("['confirmación hace fallback paginado antes de no encontrado', /scanProspectPagesForCedula/.test(server) && /readProspectListPage/.test(server) && /clickProspectNextPage/.test(server) && /pages_scanned/.test(server) && /rows_scanned/.test(server)],", "['confirmación usa lector mínimo CEDULA separado del esquema estricto de prospects/list', /readConfirmationProspectPage/.test(server) && /scanConfirmationPagesForCedula/.test(server) && /clickConfirmationNextPage/.test(server) && /pages_scanned/.test(server) && /rows_scanned/.test(server) && !/readProspectListPage\\(p\\)/.test(confirmBlock)],")
+          qa = qa.replace("['telemetría confirmación incluye filtros, reset, páginas y filas', ['ir_filters_before','ir_reset_method','pages_scanned','rows_scanned','ms_confirmation'].every(v => server.includes(v))],", "['telemetría confirmación incluye filtros antes/después, reset, páginas y filas', ['ir_filters_before','ir_filters_after','ir_reset_method','pages_scanned','rows_scanned','ms_confirmation'].every(v => server.includes(v))],")
+          qa = qa.replace("console.log(`CONAPE Bridge V4.1.3 QA PASS · ${checks.length}/${checks.length}`);", "console.log(`CONAPE Bridge V4.1.4 QA PASS · ${checks.length}/${checks.length}`);")
+
+          server_path.write_text(server)
+          qa_path.write_text(qa)
+          PY
+
+          node --check services/conape-bridge/server_v2.mjs
+          node --check scripts/qa_conape_bridge_v2.mjs
+          node scripts/qa_conape_bridge_v2.mjs
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add services/conape-bridge/server_v2.mjs scripts/qa_conape_bridge_v2.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'CONAPE V4.1.4 · confirmación mínima por CEDULA'
+          git push origin HEAD:fix/conape-confirm-minimal-v4-1-4
