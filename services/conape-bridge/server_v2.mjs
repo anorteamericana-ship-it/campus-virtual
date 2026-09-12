@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.6';
+const VERSION = 'V4.2.0';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -579,8 +579,11 @@ async function readFormMode(p) {
     const fields = ids.map(id => {
       const el = document.getElementById(id);
       const ariaReadonly = String(el?.getAttribute?.('aria-readonly') || '').toLowerCase() === 'true';
-      const readonly = !!el && (el.readOnly === true || el.disabled === true || el.hasAttribute?.('readonly') || ariaReadonly);
-      return { id, present:!!el, readonly, disabled:!!el?.disabled };
+      const ariaDisabled = String(el?.getAttribute?.('aria-disabled') || '').toLowerCase() === 'true';
+      const readonly = !!el && (el.readOnly === true || el.hasAttribute?.('readonly') || ariaReadonly);
+      const disabled = !!el && (el.disabled === true || ariaDisabled);
+      const editable = !!el && !readonly && !disabled;
+      return { id, present:!!el, readonly, disabled, editable };
     });
     return { mode, has_create:hasCreate, has_update:hasUpdate, fields };
   }).catch(() => ({ mode:'UNKNOWN', has_create:false, has_update:false, fields:[] }));
@@ -588,7 +591,7 @@ async function readFormMode(p) {
 
 function safeFormFields(fields) {
   return Array.isArray(fields) ? fields.map(field => ({
-    id:safeId(field?.id), present:field?.present === true, readonly:field?.readonly === true, disabled:field?.disabled === true,
+    id:safeId(field?.id), present:field?.present === true, readonly:field?.readonly === true, disabled:field?.disabled === true, editable:field?.editable === true,
   })).filter(field => !!field.id) : [];
 }
 
@@ -639,7 +642,7 @@ function contactPlan(campus, conape) {
   const plan = {
     telefono:phone,
     correo:conapeMail || campusMail,
-    update_telefono:digits(conape.telefono).slice(-8) !== phone,
+    update_telefono:true,
     update_correo:!conapeMail && !!campusMail,
   };
   if (!validEmail(plan.correo)) throw new AppError('CONTACT_VALIDATION_FAILED', 'No hay un correo válido para crear el prospecto.', 422, 'CONTACTS');
@@ -706,17 +709,39 @@ function normalizeContactField(id, value) {
   return id === 'P2_PRS_CELULAR' ? digits(value).slice(-8) : email(value);
 }
 
+async function readFieldEditability(p, id) {
+  return p.evaluate(fieldId => {
+    const el = document.getElementById(fieldId);
+    if (!el) return { present:false, readonly:false, disabled:false, editable:false };
+    const ariaReadonly = String(el.getAttribute('aria-readonly') || '').toLowerCase() === 'true';
+    const ariaDisabled = String(el.getAttribute('aria-disabled') || '').toLowerCase() === 'true';
+    const readonly = el.readOnly === true || el.hasAttribute('readonly') || ariaReadonly;
+    const disabled = el.disabled === true || ariaDisabled;
+    return { present:true, readonly, disabled, editable:!readonly && !disabled };
+  }, id).catch(() => ({ present:false, readonly:false, disabled:false, editable:false }));
+}
+
 async function writeContactField(p, id, value) {
   const target = txt(value);
   const targetNorm = normalizeContactField(id, target);
   const locator = p.locator(`#${id}`).first();
+  const editability = await readFieldEditability(p, id);
   let method = 'FILL';
   let attempted = false;
-  let readback = { domValue:'', apexValue:'', apexReadable:false };
+  let readback = await readContactFieldState(p, id);
+
+  if (!editability.editable) {
+    return {
+      field:id, attempted:false, verified:false, method:'SKIP', skipped_reason:'READONLY',
+      target_len:target.length, readback_len:String(readback.domValue || '').length,
+      match:false, apex_readable:readback.apexReadable === true, editable:false,
+    };
+  }
 
   try {
     if (!(await locator.count())) throw new Error('FIELD_NOT_FOUND');
     attempted = true;
+    await locator.fill('', { timeout:5_000 });
     await locator.fill(target, { timeout:5_000 });
     await locator.blur({ timeout:5_000 });
     await waitForApexDynamicAction(p);
@@ -745,18 +770,15 @@ async function writeContactField(p, id, value) {
   }
 
   const result = {
-    field:id,
-    attempted,
-    verified:match,
-    method,
-    target_len:target.length,
-    readback_len:String(readback.domValue || '').length,
-    match,
+    field:id, attempted, verified:match, method, target_len:target.length,
+    readback_len:String(readback.domValue || '').length, match,
+    apex_readable:readback.apexReadable === true, editable:true,
   };
   if (!match) {
     const error = new AppError('CONTACT_WRITE_FAILED', 'CONAPE no confirmó la escritura del contacto.', 422, 'FILL');
     error.fill_telemetry = {
-      attempted_fields:attempted ? [id] : [], verified_fields:[], methods:[method],
+      attempted_fields:attempted ? [id] : [], verified_fields:[], methods:[method], skipped_fields:[],
+      field_apex_readable:{ [id]:readback.apexReadable === true },
       fill_target_len:result.target_len, fill_readback_len:result.readback_len, fill_match:false,
     };
     throw error;
@@ -767,7 +789,7 @@ async function writeContactField(p, id, value) {
 async function fillContacts(p, plan) {
   const results = [];
   try {
-    if (plan.update_telefono) results.push(await writeContactField(p, 'P2_PRS_CELULAR', plan.telefono));
+    results.push(await writeContactField(p, 'P2_PRS_CELULAR', plan.telefono));
     if (plan.update_correo) results.push(await writeContactField(p, 'P2_PRS_EMAIL', plan.correo));
   } catch (error) {
     const prior = results;
@@ -776,6 +798,8 @@ async function fillContacts(p, plan) {
       attempted_fields:[...prior.filter(r => r.attempted).map(r => r.field), ...(failure.attempted_fields || [])],
       verified_fields:[...prior.filter(r => r.verified).map(r => r.field), ...(failure.verified_fields || [])],
       methods:[...prior.map(r => r.method), ...(failure.methods || [])],
+      skipped_fields:[...prior.filter(r => r.skipped_reason).map(r => ({ field:r.field, reason:r.skipped_reason })), ...(failure.skipped_fields || [])],
+      field_apex_readable:{ ...Object.fromEntries(prior.map(r => [r.field, r.apex_readable === true])), ...(failure.field_apex_readable || {}) },
       fill_target_len:failure.fill_target_len ?? prior.at(-1)?.target_len ?? null,
       fill_readback_len:failure.fill_readback_len ?? prior.at(-1)?.readback_len ?? null,
       fill_match:failure.fill_match ?? prior.at(-1)?.match ?? null,
@@ -790,6 +814,8 @@ async function fillContacts(p, plan) {
       attempted_fields:results.filter(r => r.attempted).map(r => r.field),
       verified_fields:results.filter(r => r.verified).map(r => r.field),
       methods:results.map(r => r.method),
+      skipped_fields:results.filter(r => r.skipped_reason).map(r => ({ field:r.field, reason:r.skipped_reason })),
+      field_apex_readable:Object.fromEntries(results.map(r => [r.field, r.apex_readable === true])),
       fill_target_len:last?.target_len ?? null,
       fill_readback_len:last?.readback_len ?? null,
       fill_match:last?.match ?? null,
@@ -811,18 +837,45 @@ async function collectPageItemIds(p) {
   return p.evaluate(() => Array.from(document.querySelectorAll('[id]')).map(el => String(el.id || '')).filter(id => /^P[0-9]_/.test(id) && /^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(id)).slice(0,120)).catch(() => []);
 }
 
-async function clickCreateOnce(p) {
+async function collectPreActionTelemetry(p) {
+  return p.evaluate(() => {
+    const safe = value => /^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(String(value || '')) ? String(value) : '';
+    const controls = Array.from(document.querySelectorAll('input[id^="P2_PRS_"],select[id^="P2_PRS_"],textarea[id^="P2_PRS_"]'));
+    const precreate_apex_values = {};
+    const precreate_dom_values = {};
+    const field_editable = {};
+    for (const el of controls) {
+      const id = safe(el.id);
+      if (!id) continue;
+      const ariaReadonly = String(el.getAttribute('aria-readonly') || '').toLowerCase() === 'true';
+      const ariaDisabled = String(el.getAttribute('aria-disabled') || '').toLowerCase() === 'true';
+      const readonly = el.readOnly === true || el.hasAttribute('readonly') || ariaReadonly;
+      const disabled = el.disabled === true || ariaDisabled;
+      field_editable[id] = !readonly && !disabled;
+      precreate_dom_values[id] = String(el.value ?? '').trim() !== '';
+      let apexValue = '';
+      try {
+        const item = window.apex?.item?.(id);
+        if (item && typeof item.getValue === 'function') apexValue = String(item.getValue() ?? '');
+      } catch {}
+      precreate_apex_values[id] = apexValue.trim() !== '';
+    }
+    return { precreate_apex_values, precreate_dom_values, field_editable };
+  }).catch(() => ({ precreate_apex_values:{}, precreate_dom_values:{}, field_editable:{} }));
+}
+
+async function clickFinalAction(p, formMode) {
   await assertPreCreateFields(p);
   const page_item_ids = await collectPageItemIds(p);
   const before = await readFormState(p);
-  const createRequests = [];
+  const preaction = await collectPreActionTelemetry(p);
+  const actionRequests = [];
   const onRequest = req => {
     try {
       const u = new URL(req.url());
       if (req.method() !== 'POST' || !u.pathname.endsWith('/apex/wwv_flow.accept')) return;
       const raw = String(req.postData() || '');
-      if (safeRequestToken(raw) !== 'CREATE') return;
-      createRequests.push({ body_keys:safeBodyKeys(raw), status:null });
+      actionRequests.push({ body_keys:safeBodyKeys(raw), request_token:safeRequestToken(raw), status:null });
     } catch {}
   };
   const onResponse = response => {
@@ -830,23 +883,35 @@ async function clickCreateOnce(p) {
       const req = response.request();
       const u = new URL(req.url());
       if (req.method() !== 'POST' || !u.pathname.endsWith('/apex/wwv_flow.accept')) return;
-      if (safeRequestToken(String(req.postData() || '')) !== 'CREATE') return;
-      const hit = createRequests.find(item => item.status == null);
+      const hit = actionRequests.find(item => item.status == null);
       if (hit) hit.status = response.status();
     } catch {}
   };
   p.on('request', onRequest);
   p.on('response', onResponse);
   try {
-    if (!(await clickVisibleByLabel(p, /CREAR NUEVO PROSPECTO/i))) throw new AppError('CREATE_BUTTON_NOT_FOUND', 'No se encontró Crear nuevo Prospecto.', 409, 'CREATE');
+    const mode = txt(formMode);
+    const label = mode === 'CREATE' ? /CREAR NUEVO PROSPECTO/i : (mode === 'UPDATE' ? /APLICAR CAMBIOS/i : null);
+    if (!label) throw new AppError('FORM_MODE_UNKNOWN', 'CONAPE no expuso una acción reconocible para este prospecto.', 409, 'LOOKUP');
+    if (!(await clickVisibleByLabel(p, label))) throw new AppError('FINAL_ACTION_BUTTON_NOT_FOUND', 'CONAPE no mostró el botón final esperado.', 409, 'ACTION');
     const until = Date.now() + 10_000;
     let state = await readFormState(p);
     while (Date.now() < until) {
-      if (createRequests.length && (createRequests[0].status != null || state.categories.length || state.success_signal || state.form_reset)) break;
+      if (actionRequests.length && (actionRequests[0].status != null || state.categories.length || state.success_signal || state.form_reset)) break;
       await sleep(250);
       state = await readFormState(p);
     }
-    return { createCount:createRequests.length, outcome:state, request:createRequests[0] || null, page_item_ids, alerts_before:before.categories || [] };
+    return {
+      actionCount:actionRequests.length,
+      createCount:mode === 'CREATE' ? actionRequests.length : 0,
+      updateCount:mode === 'UPDATE' ? actionRequests.length : 0,
+      final_action:mode,
+      outcome:state,
+      request:actionRequests[0] || null,
+      page_item_ids,
+      alerts_before:before.categories || [],
+      ...preaction,
+    };
   } finally {
     p.off('request', onRequest);
     p.off('response', onResponse);
@@ -1287,7 +1352,7 @@ async function submit(body) {
     if (identityHash(state) !== source.identityHash) throw new AppError('IDENTITY_MISMATCH', 'La identidad cambió.', 409, 'BEFORE_CREATE');
     const plan = contactPlan(auth.prospecto, state);
     const comparison = buildComparison(auth.prospecto, state, plan);
-    enforceRecruitFormMode(modeInfo, comparison, plan);
+    if (formMode === 'UNKNOWN') enforceRecruitFormMode(modeInfo, comparison, plan);
     assertIdentityMatch(comparison);
     await fillContacts(p, plan);
     const created = await clickCreateOnce(p);
@@ -1311,7 +1376,9 @@ async function execute(body) {
   let confirmation = null;
   let formMode = 'UNKNOWN';
   let formReadonlyFields = [];
-  let fillTelemetry = { attempted_fields:[], verified_fields:[], methods:[], fill_target_len:null, fill_readback_len:null, fill_match:null };
+  let fillTelemetry = { attempted_fields:[], verified_fields:[], methods:[], skipped_fields:[], field_apex_readable:{}, fill_target_len:null, fill_readback_len:null, fill_match:null };
+  let preActionTelemetry = { precreate_apex_values:{}, precreate_dom_values:{}, field_editable:{} };
+  let finalActionName = '';
   let formIncompleteIds = [];
   try {
     let t = Date.now();
@@ -1347,20 +1414,26 @@ async function execute(body) {
     timing.fill = Date.now() - t;
 
     t = Date.now();
-    created = await clickCreateOnce(p);
+    created = await clickFinalAction(p, formMode);
     timing.create = Date.now() - t;
-    if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE. No repita el envío.', 409, 'AFTER_CREATE');
+    finalActionName = created.final_action;
+    preActionTelemetry = {
+      precreate_apex_values:created.precreate_apex_values || {},
+      precreate_dom_values:created.precreate_dom_values || {},
+      field_editable:created.field_editable || {},
+    };
+    if (created.actionCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud final. No repita el envío.', 409, 'AFTER_ACTION');
 
     t = Date.now();
     confirmation = await confirmAfterCreate(auth.cedula, meta.sessionId);
     timing.confirmation = Date.now() - t;
 
     const categories = created.outcome?.categories || [];
-    if (categories.includes('YA_REGISTRADO')) throw Object.assign(new AppError('YA_REGISTRADO', 'CONAPE indicó que el prospecto ya estaba registrado.', 409, 'CONFIRMATION'), { comparison, confirmation });
+    if (formMode === 'CREATE' && categories.includes('YA_REGISTRADO')) throw Object.assign(new AppError('YA_REGISTRADO', 'CONAPE indicó que el prospecto ya estaba registrado.', 409, 'CONFIRMATION'), { comparison, confirmation });
     if (confirmation.found) {
-      finalCode = 'CREATED';
+      finalCode = formMode === 'UPDATE' ? 'UPDATED' : 'CREATED';
       finalStage = 'CONFIRMED';
-      return { ok:true, confirmed:true, code:'CREATED', stage:'CONFIRMED', form_mode:formMode, confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method, confirmation_form_mode:confirmation.form_mode, comparison, timing:{ ...timing, total:Date.now()-started } };
+      return { ok:true, confirmed:true, code:finalCode, stage:'CONFIRMED', form_mode:formMode, final_action:finalActionName, confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method, confirmation_form_mode:confirmation.form_mode, comparison, timing:{ ...timing, action:timing.create, total:Date.now()-started } };
     }
     const meaningful = categories.find(code => code !== 'ERROR_DE_PORTAL' && code !== 'ALERTA_NO_CLASIFICADA');
     if (meaningful) throw Object.assign(new AppError(meaningful, 'CONAPE rechazó la creación.', categoryStatus(meaningful), 'AFTER_CREATE'), { comparison, confirmation });
@@ -1382,10 +1455,13 @@ async function execute(body) {
       nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
       alerts_before:created?.alerts_before || [], visible_alerts:created?.outcome?.categories || [], alert_dom_ids:created?.outcome?.alert_dom_ids || [], apex_error_item_ids:created?.outcome?.apex_error_item_ids || [],
-      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
+      final_action:txt(finalActionName || created?.final_action || ''), action_count:Number(created?.actionCount || 0), create_count:Number(created?.createCount || 0), update_count:Number(created?.updateCount || 0),
+      precreate_apex_values:preActionTelemetry.precreate_apex_values || {}, precreate_dom_values:preActionTelemetry.precreate_dom_values || {}, field_editable:preActionTelemetry.field_editable || {},
+      confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
       confirmation_method:txt(confirmation?.confirmation_method || ''), confirmation_form_mode:txt(confirmation?.form_mode || ''), confirmation_readonly_fields:safeFormFields(confirmation?.form_readonly_fields),
       ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_filters_after:Number(confirmation?.ir_filters_after || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),
       fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
+      skipped_fields:fillTelemetry.skipped_fields || [], field_apex_readable:fillTelemetry.field_apex_readable || {},
       fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,
       form_incomplete_ids:formIncompleteIds, pii:false,
     }));
