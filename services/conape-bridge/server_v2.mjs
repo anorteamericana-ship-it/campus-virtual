@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.3';
+const VERSION = 'V4.2.5';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -10,6 +10,8 @@ const CONAPE_FRIENDLY_HOME = 'https://online.conape.go.cr/apex/r/conaweb/prospec
 const CONAPE_FRIENDLY_PROSPECTO = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/prospecto';
 const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '').trim();
 const CONAPE_PASSWORD = String(process.env.CONAPE_PORTAL_PASSWORD || '');
+const CONAPE_EVE_ID = String(process.env.CONAPE_EVE_ID || '').trim();
+const CONAPE_PRO_ID = String(process.env.CONAPE_PRO_ID || '').trim();
 const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.CAMPUS_REQUEST_TIMEOUT_MS || 70_000));
 const SESSION_CACHE_TTL_MS = 30_000;
 const SESSION_STATUS_CACHE_TTL_MS = 300_000;
@@ -602,7 +604,6 @@ async function lookupCedulaOnFreshPage(cedula) {
   return { p, state, meta };
 }
 
-
 async function readFormMode(p) {
   return p.evaluate(() => {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
@@ -871,6 +872,62 @@ async function fillContacts(p, plan) {
   };
 }
 
+async function readEventContextState(p) {
+  return p.evaluate(() => {
+    const read = id => {
+      try {
+        const item = window.apex?.item?.(id);
+        if (!item || typeof item.getValue !== 'function') return { readable:false, present:false };
+        return { readable:true, present:String(item.getValue() ?? '').trim() !== '' };
+      } catch {
+        return { readable:false, present:false };
+      }
+    };
+    return { eve:read('P2_EVE_ID'), pro:read('P2_PRO_ID') };
+  }).catch(() => ({ eve:{ readable:false, present:false }, pro:{ readable:false, present:false } }));
+}
+
+async function ensureEventContext(p) {
+  const initial = await readEventContextState(p);
+  const requestEve = !initial.eve.present && !!CONAPE_EVE_ID;
+  const requestPro = !initial.pro.present && !!CONAPE_PRO_ID;
+  let written = { eve:false, pro:false };
+
+  if (requestEve || requestPro) {
+    written = await p.evaluate(({ eve, pro }) => {
+      const set = (id, value) => {
+        if (!value) return false;
+        try {
+          const item = window.apex?.item?.(id);
+          if (!item || typeof item.setValue !== 'function') return false;
+          item.setValue(String(value), null, false);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      return { eve:set('P2_EVE_ID', eve), pro:set('P2_PRO_ID', pro) };
+    }, { eve:requestEve ? CONAPE_EVE_ID : '', pro:requestPro ? CONAPE_PRO_ID : '' }).catch(() => ({ eve:false, pro:false }));
+    if (written.eve || written.pro) await waitForApexDynamicAction(p);
+  }
+
+  const finalState = await readEventContextState(p);
+  const sourceOf = (initialPresent, writtenValue, finalPresent) => {
+    if (initialPresent) return 'PAGE';
+    if (writtenValue && finalPresent) return 'ENV';
+    if (finalPresent) return 'PAGE';
+    return 'NONE';
+  };
+  const telemetry = {
+    eve_id_source:sourceOf(initial.eve.present, written.eve, finalState.eve.present),
+    eve_id_present:finalState.eve.present === true,
+    pro_id_source:sourceOf(initial.pro.present, written.pro, finalState.pro.present),
+    pro_id_present:finalState.pro.present === true,
+  };
+  console.log(JSON.stringify({ event:'conape_event_context', version:VERSION, ...telemetry, pii:false }));
+  return telemetry;
+}
+
 async function assertPreCreateFields(p) {
   const required = ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
   const gate = await p.evaluate(ids => {
@@ -951,10 +1008,18 @@ async function collectPreActionTelemetry(p) {
 }
 
 async function clickFinalAction(p, formMode) {
+  const eventContext = await ensureEventContext(p);
   const preaction = await collectPreActionTelemetry(p);
+  if (!eventContext.eve_id_present) {
+    const error = new AppError('EVENT_CONTEXT_MISSING', 'CONAPE no tiene un Evento disponible para la escritura.', 422, 'BEFORE_CREATE');
+    error.event_context_telemetry = eventContext;
+    error.preaction_telemetry = preaction;
+    throw error;
+  }
   try {
     await assertPreCreateFields(p);
   } catch (error) {
+    error.event_context_telemetry = eventContext;
     error.preaction_telemetry = preaction;
     throw error;
   }
@@ -1001,6 +1066,7 @@ async function clickFinalAction(p, formMode) {
       request:actionRequests[0] || null,
       page_item_ids,
       alerts_before:before.categories || [],
+      event_context_telemetry:eventContext,
       ...preaction,
     };
   } finally {
@@ -1219,7 +1285,6 @@ async function confirmInHome(p, sessionId, cedula) {
     ms_confirmation:Date.now()-started,
   };
 }
-
 
 async function confirmAfterCreate(cedula, sessionId) {
   const started = Date.now();
@@ -1469,6 +1534,7 @@ async function execute(body) {
   let formReadonlyFields = [];
   let fillTelemetry = { attempted_fields:[], verified_fields:[], methods:[], skipped_fields:[], field_apex_readable:{}, fill_target_len:null, fill_readback_len:null, fill_match:null };
   let preActionTelemetry = { precreate_apex_values:{}, precreate_dom_values:{}, field_editable:{}, apex_readable:{} };
+  let eventContextTelemetry = { eve_id_source:'NONE', eve_id_present:false, pro_id_source:'NONE', pro_id_present:false };
   let finalActionName = '';
   let formIncompleteIds = [];
   try {
@@ -1514,6 +1580,7 @@ async function execute(body) {
     created = await clickFinalAction(p, formMode);
     timing.create = Date.now() - t;
     finalActionName = created.final_action;
+    eventContextTelemetry = created.event_context_telemetry || eventContextTelemetry;
     preActionTelemetry = {
       precreate_apex_values:created.precreate_apex_values || {},
       precreate_dom_values:created.precreate_dom_values || {},
@@ -1541,6 +1608,7 @@ async function execute(body) {
     finalStage = sanitizedStage(error);
     if (error?.fill_telemetry) fillTelemetry = error.fill_telemetry;
     if (error?.preaction_telemetry) preActionTelemetry = error.preaction_telemetry;
+    if (error?.event_context_telemetry) eventContextTelemetry = error.event_context_telemetry;
     if (Array.isArray(error?.empty_field_ids)) formIncompleteIds = error.empty_field_ids;
     if (error?.form_mode) formMode = txt(error.form_mode);
     if (Array.isArray(error?.form_readonly_fields)) formReadonlyFields = error.form_readonly_fields;
@@ -1552,6 +1620,8 @@ async function execute(body) {
       event:'conape_execute_telemetry', version:VERSION, code:finalCode, stage:finalStage,
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
       nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
+      eve_id_source:eventContextTelemetry.eve_id_source || 'NONE', eve_id_present:eventContextTelemetry.eve_id_present === true,
+      pro_id_source:eventContextTelemetry.pro_id_source || 'NONE', pro_id_present:eventContextTelemetry.pro_id_present === true,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
       alerts_before:created?.alerts_before || [], visible_alerts:created?.outcome?.categories || [], alert_dom_ids:created?.outcome?.alert_dom_ids || [], apex_error_item_ids:created?.outcome?.apex_error_item_ids || [], alert_text_sanitized:created?.outcome?.alert_text_sanitized || '',
       final_action:txt(finalActionName || created?.final_action || ''), action_count:Number(created?.actionCount || 0), create_count:Number(created?.createCount || 0), update_count:Number(created?.updateCount || 0),

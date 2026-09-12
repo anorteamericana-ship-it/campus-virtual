@@ -48,7 +48,10 @@ const checks = [
   ['session/connect solo autentica y no prepara Prospectos', /const s = await this\.login\(p\);/.test(connectBlock) && /this\.state = 'CONNECTED'/.test(connectBlock) && !/freshProspectoFromHome|formReady|RECLUTAR PROSPECTOS/.test(connectBlock)],
   ['preview/submit legacy siguen abriendo formulario fresco', /freshProspectoFromHome/.test(server) && /lookupCedulaOnFreshPage/.test(server)],
   ['execute separa formulario fresco y lookup único', /const \{ p, meta \} = await ConapeSession\.freshProspectoFromHome\(\)/.test(server) && /const state = await lookupCedulaOnPage\(p, auth\.cedula\)/.test(server)],
-  ['contexto Evento/Prospectador es telemetría y no gate', /event:'conape_prospecto_context'/.test(server) && /gate:false/.test(server) && !/CONAPE_PROSPECTO_CONTEXT_NOT_READY/.test(server)],
+  ['contexto de navegación Evento/Prospectador sigue como telemetría no bloqueante', /event:'conape_prospecto_context'/.test(server) && /gate:false/.test(server) && !/CONAPE_PROSPECTO_CONTEXT_NOT_READY/.test(server)],
+  ['V4.2.5 rellena contexto con precedencia PAGE > ENV y change real', /CONAPE_EVE_ID/.test(server) && /CONAPE_PRO_ID/.test(server) && /async function ensureEventContext/.test(server) && /item\.setValue\(String\(value\), null, false\)/.test(server) && /eve_id_source/.test(server) && /pro_id_source/.test(server)],
+  ['V4.2.5 solo bloquea la escritura cuando EVE sigue ausente', /EVENT_CONTEXT_MISSING/.test(createBlock) && /if \(!eventContext\.eve_id_present\)/.test(createBlock) && !/if \(!eventContext\.pro_id_present\)/.test(createBlock)],
+  ['V4.2.5 telemetría de contexto expone solo fuente/presencia, nunca valores', ['eve_id_source','eve_id_present','pro_id_source','pro_id_present'].every(v => executeTelemetryBlock.includes(v)) && !/CONAPE_EVE_ID|CONAPE_PRO_ID/.test(executeTelemetryBlock)],
   ['acción final CREATE/UPDATE termina en locator.click real', /items\.nth\(index\)\.click\(\{ timeout:15_000 \}\)/.test(server) && /CREAR NUEVO PROSPECTO/.test(createBlock) && /APLICAR CAMBIOS/.test(createBlock) && /clickVisibleByLabel\(p, label\)/.test(createBlock)],
   ['lookup conserva setter nativo para cédula; contactos usan Playwright fill con fallback apex.item.setValue', /nativeSetValue\(p, 'P2_PRS_CEDULA'/.test(server) && /locator\.fill\(target/.test(server) && /window\.apex\?\.item\?\.\(fieldId\)/.test(server) && /item\.setValue\(fieldValue\)/.test(server)],
   ['contactos esperan APEX y exigen relectura antes de CREATE', /waitForApexDynamicAction/.test(server) && /readContactFieldState/.test(server) && /CONTACT_WRITE_FAILED/.test(server) && /'FILL'/.test(server) && /fill_match:false/.test(server)],
@@ -89,7 +92,7 @@ const checks = [
   ['prospects/list es solo lectura y nunca entra al CREATE', !!listBlock && !/clickCreateOnce|fillContacts|nativeSetValue|CREAR NUEVO PROSPECTO|\/v1\/recruit\/execute/.test(listBlock)],
   ['prospects/list falla cerrado si no reconoce el esquema', /CONAPE_LIST_SCHEMA_NOT_READY/.test(listBlock) && /REQUIRED_COLUMN_MISSING/.test(listBlock)],
   ['prospects/list telemetría tiene solo métricas agregadas', listTelemetryMatches.length === 1 && /console\.log\(JSON\.stringify\(\{ event:'conape_list_dump', rows:rowsByCedula\.size, pages, ms:Date\.now\(\)-started, pii:false \}\)\)/.test(listBlock)],
-  ['Docker contiene solo server_v2 + self-test', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`))],
+  ['Docker contiene solo server_v2 + self-test, sin patcher runtime', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`)) && !/hotfix_v4_2_4|RUN node hotfix/i.test(docker)],
   ['Docker arranca server_v2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
   ['Railway fija startCommand canónico', railway?.deploy?.startCommand === 'node server_v2.mjs'],
 ];
@@ -100,4 +103,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.2.0 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.2.5 QA PASS · ${checks.length}/${checks.length}`);
