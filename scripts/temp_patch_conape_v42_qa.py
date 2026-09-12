@@ -1,0 +1,46 @@
+from pathlib import Path
+
+q=Path('scripts/qa_conape_bridge_v2.mjs')
+s=q.read_text(encoding='utf-8')
+reps=[
+("const createStart = server.indexOf('async function clickCreateOnce');", "const createStart = server.indexOf('async function clickFinalAction');"),
+("['click Reclutar y CREATE terminan en locator.click real', /items\\.nth\\(index\\)\\.click\\(\\{ timeout:15_000 \\}\\)/.test(server) && /clickVisibleByLabel\\(p, \\/CREAR NUEVO PROSPECTO\\/i/.test(server)],", "['acción final CREATE/UPDATE termina en locator.click real', /items\\.nth\\(index\\)\\.click\\(\\{ timeout:15_000 \\}\\)/.test(server) && /CREAR NUEVO PROSPECTO/.test(createBlock) && /APLICAR CAMBIOS/.test(createBlock) && /clickVisibleByLabel\\(p, label\\)/.test(createBlock)],"),
+("['V4.1.6 captura alerts_before antes del click CREATE', createBlock.indexOf('const before = await readFormState(p);') >= 0 && createBlock.indexOf('const before = await readFormState(p);') < createBlock.indexOf('clickVisibleByLabel(p, /CREAR NUEVO PROSPECTO/i)') && /alerts_before:before\\.categories \\|\\| \\[\\]/.test(createBlock)],", "['V4.2 captura alerts_before antes del click final', createBlock.indexOf('const before = await readFormState(p);') >= 0 && createBlock.indexOf('const before = await readFormState(p);') < createBlock.indexOf('clickVisibleByLabel(p, label)') && /alerts_before:before\\.categories \\|\\| \\[\\]/.test(createBlock)],"),
+("['UPDATE corta en LOOKUP antes de fill y CREATE', /ALREADY_RECRUITED/.test(server) && /new AppError\\('ALREADY_RECRUITED'.*409, 'LOOKUP'\\)/s.test(server) && executeBlock.indexOf('enforceRecruitFormMode') >= 0 && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('fillContacts') && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('clickCreateOnce')],", "['UPDATE escribe contactos y pulsa Aplicar Cambios; UNKNOWN sigue fail-closed', /if \\(formMode === 'UNKNOWN'\\) enforceRecruitFormMode/.test(executeBlock) && /clickFinalAction\\(p, formMode\\)/.test(executeBlock) && /formMode === 'UPDATE' \\? 'UPDATED' : 'CREATED'/.test(executeBlock) && /APLICAR CAMBIOS/.test(createBlock)],"),
+("['CREATE exige exactamente una request y nunca se dispara con formulario incompleto', /created\\.createCount !== 1/.test(server) && /WRITE_RESULT_UNCERTAIN/.test(server) && /FORM_INCOMPLETE_BEFORE_CREATE/.test(server)],", "['acción final exige exactamente una request y nunca se dispara con formulario incompleto', /created\\.actionCount !== 1/.test(executeBlock) && /WRITE_RESULT_UNCERTAIN/.test(server) && /FORM_INCOMPLETE_BEFORE_CREATE/.test(server)],"),
+("['teléfono Campus queda normalizado a 8 dígitos', /d\\.length === 11 && d\\.startsWith\\('506'\\)/.test(server) && /return d\\.slice\\(-8\\)/.test(server)],", "['teléfono Campus queda normalizado a 8 dígitos y se escribe siempre si es editable', /d\\.length === 11 && d\\.startsWith\\('506'\\)/.test(server) && /return d\\.slice\\(-8\\)/.test(server) && /update_telefono:true/.test(server) && /results\\.push\\(await writeContactField\\(p, 'P2_PRS_CELULAR'/.test(server) && /readFieldEditability/.test(server)],"),
+("console.log(`CONAPE Bridge V4.1.5 QA PASS · ${checks.length}/${checks.length}`);", "console.log(`CONAPE Bridge V4.2.0 QA PASS · ${checks.length}/${checks.length}`);")]
+for old,new in reps:
+    if old not in s: raise SystemExit('QA_MISSING:'+old[:70])
+    s=s.replace(old,new,1)
+needle="  ['telemetría de fill no contiene valores y reporta intentos, verificaciones, método y longitudes', ['fill_attempted_fields','fill_verified_fields','fill_methods','fill_target_len','fill_readback_len','fill_match','form_incomplete_ids'].every(v => server.includes(v))],"
+extra=needle+"\n  ['V4.2 telemetría preacción usa solo booleans/IDs y expone editabilidad/APEX legible', ['precreate_apex_values','precreate_dom_values','field_editable','skipped_fields','field_apex_readable'].every(v => executeTelemetryBlock.includes(v)) && /precreate_dom_values\\[id\\] = String\\(el\\.value/.test(server) && /precreate_apex_values\\[id\\] = apexValue\\.trim\\(\\) !== ''/.test(server)],"
+if needle not in s: raise SystemExit('QA_MISSING:telemetry')
+s=s.replace(needle,extra,1)
+q.write_text(s,encoding='utf-8')
+
+p=Path('services/conape-bridge/server_v2.mjs')
+b=p.read_text(encoding='utf-8')
+b=b.replace("new AppError(meaningful, 'CONAPE rechazó la creación.', categoryStatus(meaningful), 'AFTER_CREATE')", "new AppError(meaningful, 'CONAPE rechazó la acción final.', categoryStatus(meaningful), 'AFTER_ACTION')", 1)
+b=b.replace("new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la cédula no apareció en CONAPE. No repita el envío.', 409, 'CONFIRMATION')", "new AppError('WRITE_RESULT_UNCERTAIN', 'La acción final fue enviada, pero no quedó confirmada en CONAPE. No repita el envío.', 409, 'CONFIRMATION')", 1)
+p.write_text(b,encoding='utf-8')
+
+u=Path('src/ventas_conape_reclutar_row_c3_5.jsx')
+x=u.read_text(encoding='utf-8')
+a=x.find('  function alreadyRecruitedMessage(r){')
+if a>=0:
+    z=x.find('\n  function failureMessage',a)
+    if z<0: raise SystemExit('UI_MISSING:failureMessage')
+    x=x[:a]+x[z+1:]
+block="""          if (code === 'ALREADY_RECRUITED') {
+            setInfo(alreadyRecruitedMessage(r || {}));
+            setState('already');
+            setPhase('Ya reclutado');
+            return;
+          }
+
+"""
+if block not in x: raise SystemExit('UI_MISSING:already-block')
+x=x.replace(block,'',1)
+x=x.replace(" · CREATE: {timing.create ?? '—'} · Confirmación:", " · Acción: {timing.create ?? '—'} · Confirmación:",1)
+u.write_text(x,encoding='utf-8')
