@@ -10,6 +10,10 @@ COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY server_v2.mjs ./
 COPY nav_selftest.mjs ./
+COPY hotfix_v4_2_4.mjs ./
+RUN node hotfix_v4_2_4.mjs server_v2.mjs \
+    && node --check server_v2.mjs \
+    && rm hotfix_v4_2_4.mjs
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
