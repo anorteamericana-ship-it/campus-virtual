@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.6';
+const VERSION = 'V4.2.7';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -330,7 +330,8 @@ function urlWithSession(base, sessionId) {
 
 async function clickVisibleByLabel(p, regex) {
   const selector = 'button,a,[role="button"],input[type="button"],input[type="submit"]';
-  const deadline = Date.now() + 15_000;
+  const searchTimeoutMs = Math.max(500, Number(p?.__conapeLabelSearchTimeoutMs || 15_000));
+  const deadline = Date.now() + searchTimeoutMs;
   while (Date.now() < deadline) {
     for (const frame of p.frames()) {
       const items = frame.locator(selector);
@@ -348,6 +349,37 @@ async function clickVisibleByLabel(p, regex) {
     await sleep(200);
   }
   return false;
+}
+
+async function readHomeNavDebug(p) {
+  let url_path = '';
+  try { url_path = decodeURIComponent(new URL(p.url()).pathname || '').slice(0,160); } catch {}
+  const visible_button_labels = [];
+  const visible_link_labels = [];
+  const addUnique = (target, values) => {
+    for (const value of values || []) {
+      if (!value || target.includes(value)) continue;
+      target.push(value);
+      if (target.length >= 40) break;
+    }
+  };
+  for (const frame of p.frames()) {
+    const labels = await frame.evaluate(() => {
+      const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+      const safeLabel = el => String([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))
+        .replace(/\S+@\S+/g,'[MAIL]')
+        .replace(/\d{5,}/g,'[NUM]')
+        .replace(/\s+/g,' ')
+        .trim()
+        .slice(0,40);
+      const collect = selector => Array.from(document.querySelectorAll(selector)).filter(visible).map(safeLabel).filter(Boolean).slice(0,40);
+      return { buttons:collect('button,[role="button"],input[type="button"],input[type="submit"]'), links:collect('a') };
+    }).catch(() => ({ buttons:[], links:[] }));
+    addUnique(visible_button_labels, labels.buttons);
+    addUnique(visible_link_labels, labels.links);
+    if (visible_button_labels.length >= 40 && visible_link_labels.length >= 40) break;
+  }
+  return { url_path, frames_count:p.frames().length, visible_button_labels, visible_link_labels };
 }
 
 async function readSignedNavigationTelemetry(p) {
@@ -488,11 +520,11 @@ const ConapeSession = {
     let sessionId = await readApexSession(p);
     if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'FORM');
 
-    const finish = async entryPath => {
+    const finish = async (entryPath, recruitClickFound) => {
       sessionId = (await readApexSession(p)) || sessionId;
       const nav = await readSignedNavigationTelemetry(p);
-      const meta = { sessionId, navMode:entryPath, entryPath, ...nav };
-      console.log(JSON.stringify({ event:'conape_prospecto_context', version:VERSION, gate:false, entry_path:entryPath, ...nav, pii:false }));
+      const meta = { sessionId, navMode:entryPath, entryPath, recruitClickFound, ...nav };
+      console.log(JSON.stringify({ event:'conape_prospecto_context', version:VERSION, gate:false, entry_path:entryPath, recruit_click_found:recruitClickFound, ...nav, pii:false }));
       this.state = 'CONNECTED';
       this.lastActivity = nowIso();
       return { p, meta };
@@ -500,21 +532,38 @@ const ConapeSession = {
 
     // Camino principal: Home firmada por APEX -> clic Playwright real en Reclutar Prospectos.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
-    const clicked = await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i);
+    await waitForApexDynamicAction(p);
+    let clicked = false;
+    try {
+      p.__conapeLabelSearchTimeoutMs = 6_000;
+      clicked = await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i);
+    } finally {
+      delete p.__conapeLabelSearchTimeoutMs;
+    }
     if (clicked) {
       let until = Date.now() + 10_000;
       while (Date.now() < until) {
-        if (await this.formReady(p)) return finish('HOME_CLICK_RECRUIT');
+        if (await this.formReady(p)) return finish('HOME_CLICK_RECRUIT', true);
         await sleep(200);
       }
       throw new AppError('CONAPE_FORM_NOT_READY', 'CONAPE no dejó listo el formulario de Prospecto después de Reclutar Prospectos.', 409, 'FORM');
     }
 
+    const [homeDebug, homeState] = await Promise.all([readHomeNavDebug(p), this.authState(p)]);
+    console.log(JSON.stringify({
+      event:'conape_home_nav_debug', version:VERSION,
+      ...homeDebug,
+      authenticated:homeState.authenticated === true,
+      route_ok:homeState.route === true,
+      recruit_click_found:false,
+      pii:false,
+    }));
+
     // Fallback no bloqueante únicamente si el botón Reclutar Prospectos no aparece.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     const until = Date.now() + 10_000;
     while (Date.now() < until) {
-      if (await this.formReady(p)) return finish('DIRECT_URL');
+      if (await this.formReady(p)) return finish('DIRECT_URL', false);
       await sleep(200);
     }
     throw new AppError('CONAPE_FORM_NOT_READY', 'CONAPE no dejó listo el formulario de Prospecto.', 409, 'FORM');
@@ -826,7 +875,6 @@ async function writeContactField(p, id, value) {
       try {
         const item = window.apex?.item?.(fieldId);
         if (!item || typeof item.setValue !== 'function') return false;
-        // Omitir pSuppressChangeEvent mantiene su default=false y dispara change.
         item.setValue(fieldValue);
         return true;
       } catch { return false; }
@@ -1517,6 +1565,7 @@ async function execute(body) {
   let comparison = null;
   let navMode = null;
   let entryPath = '';
+  let recruitClickFound = null;
   let navTelemetry = { nav_signed_eve:false, nav_signed_pro:false, nav_has_cs:false, nav_eve_matches_env:null, nav_pro_matches_env:null };
   let created = null;
   let confirmation = null;
@@ -1542,6 +1591,7 @@ async function execute(body) {
     const { p, meta } = await ConapeSession.freshProspectoFromHome();
     navMode = meta.navMode;
     entryPath = txt(meta.entryPath || meta.navMode || '');
+    recruitClickFound = typeof meta.recruitClickFound === 'boolean' ? meta.recruitClickFound : null;
     navTelemetry = {
       nav_signed_eve:meta.nav_signed_eve === true,
       nav_signed_pro:meta.nav_signed_pro === true,
@@ -1617,7 +1667,7 @@ async function execute(body) {
     console.log(JSON.stringify({
       event:'conape_execute_telemetry', version:VERSION, code:finalCode, stage:finalStage,
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
-      nav_mode:navMode, entry_path:entryPath,
+      nav_mode:navMode, entry_path:entryPath, recruit_click_found:recruitClickFound,
       nav_signed_eve:navTelemetry.nav_signed_eve === true, nav_signed_pro:navTelemetry.nav_signed_pro === true, nav_has_cs:navTelemetry.nav_has_cs === true,
       nav_eve_matches_env:navTelemetry.nav_eve_matches_env, nav_pro_matches_env:navTelemetry.nav_pro_matches_env,
       form_mode:formMode, form_readonly_fields:formReadonlyFields,
