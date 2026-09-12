@@ -153,7 +153,7 @@ const freshFunction = `  async freshProspectoFromHome() {
 source = replaceBetween(
   source,
   '  async freshProspectoFromHome() {',
-  '\n  },\n};\n\nasync function runNavSelftest() {',
+  '\n};\n\nasync function runNavSelftest() {',
   freshFunction,
   'freshProspectoFromHome',
 );
