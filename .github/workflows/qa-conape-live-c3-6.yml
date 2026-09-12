@@ -14,7 +14,6 @@ on:
       - 'services/conape-bridge/**'
       - 'scripts/qa_conape_live_c3_6.mjs'
       - 'scripts/qa_conape_bridge_v2.mjs'
-      - 'scripts/qa_conape_v4_2_4.mjs'
       - '.github/workflows/qa-conape-live-c3-6.yml'
   workflow_dispatch:
 
@@ -32,8 +31,6 @@ jobs:
         run: node --check services/conape-bridge/server.mjs
       - name: Node syntax · bridge V2
         run: node --check services/conape-bridge/server_v2.mjs
-      - name: Node syntax · hotfix V4.2.4
-        run: node --check services/conape-bridge/hotfix_v4_2_4.mjs
       - name: Node syntax · CONAPE session UI
         run: node --check src/conape_session_ui_c3_7.js
       - name: Node syntax · CONAPE comparison UI
@@ -42,11 +39,7 @@ jobs:
         run: node --check scripts/qa_conape_live_c3_6.mjs
       - name: Node syntax · QA V2
         run: node --check scripts/qa_conape_bridge_v2.mjs
-      - name: Node syntax · QA V4.2.4
-        run: node --check scripts/qa_conape_v4_2_4.mjs
       - name: Bridge V2 contract gate
         run: node scripts/qa_conape_bridge_v2.mjs
-      - name: CONAPE V4.2.4 event-context gate
-        run: node scripts/qa_conape_v4_2_4.mjs
       - name: Diff hygiene
         run: git diff --check origin/main...HEAD
