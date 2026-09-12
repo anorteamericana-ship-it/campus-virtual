@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 
 const FILE='src/app.jsx';
 const BASE_BLOB='d57cf007013beca1b1830d2993ad69be8e049f64';
+const OLD_ADMIN_MASTER=`  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94'],`;
+const NEW_ADMIN_MASTER=`  admin_master: ['src/conape_bridge_config_c3_6.js?v=V4.2.9','src/conape_bridge_client_c3_6.js?v=V3.1.0','src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94C'],`;
 const ANCHOR=`  } finally { clearTimeout(timer); }\n}\nfunction reposEstadoF91(estado) {`;
 const HELPER=`  } finally { clearTimeout(timer); }\n}\n\nfunction appSafeUserErrorF91(raw, fallback, context = '') {\n  const msg=String(raw?.message ?? raw ?? '').replace(/\\s+/g,' ').trim();\n  if(!msg)return fallback;\n  const technicalCode=/^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);\n  const technicalText=/apps?\\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\\bjson\\b|\\btoken\\b|unauthorized|forbidden|internal server|http\\s*\\d{3}|status\\s*\\d{3}|respuesta inv[aá]lida|request[_ -]?id|file[_ -]?id|sha-?256|mime|base64|reposListarExamenes|reposResolverExamen|reposResolverSolicitudF92|reposProgramarEscrito|reposCoordinarOralF926|getMisNotasF921|examGetCronogramaExamAvailability/i.test(msg);\n  if(technicalCode||technicalText){console.warn('[CampusApp] Detalle técnico oculto al usuario.',{context,error:msg});return fallback;}\n  return msg;\n}\nfunction reposEstadoF91(estado) {`;
 const OLD_LOAD=`  const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]);`;
@@ -18,7 +20,7 @@ function sha(text){const b=Buffer.from(text,'utf8');return crypto.createHash('sh
 function must(ok,msg){if(!ok)throw new Error(msg);}
 function replaceOnce(src,a,b,label){const n=src.split(a).length-1;must(n===1,`${label}: ${n} coincidencias`);return src.replace(a,b);}
 const src=fs.readFileSync(FILE,'utf8');
-for(const [needle,label] of [[HELPER,'helper'],[NEW_LOAD,'repos load'],[NEW_ACT,'repos action'],[NEW_STUDENT,'student evaluations'],[NEW_WRITTEN,'teacher written availability']]) must(src.includes(needle),`Falta ${label}`);
+for(const [needle,label] of [[HELPER,'helper'],[NEW_LOAD,'repos load'],[NEW_ACT,'repos action'],[NEW_STUDENT,'student evaluations'],[NEW_WRITTEN,'teacher written availability'],[NEW_ADMIN_MASTER,'CONAPE admin lazy deps']]) must(src.includes(needle),`Falta ${label}`);
 for(const [needle,label] of [[OLD_LOAD,'raw repos load'],[OLD_ACT,'raw repos action'],[OLD_STUDENT,'raw student evaluations'],[OLD_WRITTEN,'raw teacher written']]) must(!src.includes(needle),`Permanece ${label}`);
 
 // Mantener mensajes humanos de negocio y ocultar diagnósticos/códigos técnicos.
@@ -40,6 +42,7 @@ for(const invariant of [
 ]) must(src.includes(invariant),`Contrato alterado: ${invariant}`);
 
 let restored=src;
+restored=replaceOnce(restored,NEW_ADMIN_MASTER,OLD_ADMIN_MASTER,'restore CONAPE admin lazy deps');
 restored=replaceOnce(restored,NEW_WRITTEN,OLD_WRITTEN,'restore written');
 restored=replaceOnce(restored,NEW_STUDENT,OLD_STUDENT,'restore student');
 restored=replaceOnce(restored,NEW_ACT,OLD_ACT,'restore action');
