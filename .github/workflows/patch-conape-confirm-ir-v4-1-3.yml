@@ -1,0 +1,176 @@
+name: Patch CONAPE confirmation IR V4.1.3
+on:
+  push:
+    branches: [fix/conape-confirm-ir-v4-1-3]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/conape-confirm-ir-v4-1-3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply exact confirmation patch and QA
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          server_path = Path('services/conape-bridge/server_v2.mjs')
+          qa_path = Path('scripts/qa_conape_bridge_v2.mjs')
+          server = server_path.read_text()
+          qa = qa_path.read_text()
+          server = server.replace("const VERSION = 'V4.1.2';", "const VERSION = 'V4.1.3';", 1)
+          start = server.index('async function confirmInHome(p, sessionId, cedula) {')
+          end = server.index('\nasync function readProspectListPage(p) {', start)
+          new = r'''async function countIrFilters(p) {
+  return p.evaluate(() => {
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    const selectors = ['.a-IRR-controls-item--filter','.a-IRR-controls-item[data-filter]','.a-IRR-controls .a-IRR-controls-item'];
+    const nodes = new Set();
+    for (const selector of selectors) for (const el of document.querySelectorAll(selector)) if (visible(el)) nodes.add(el);
+    return nodes.size;
+  }).catch(() => 0);
+}
+
+async function resetInteractiveReport(p) {
+  const ir_filters_before = await countIrFilters(p);
+  let ir_reset_method = 'NONE';
+  const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
+  if (await actions.count()) {
+    try {
+      await actions.click({ timeout:5_000 });
+      await sleep(120);
+      const report = p.getByRole('menuitem', { name:/^report$|^informe$/i }).first();
+      if (await report.count()) {
+        await report.click({ timeout:5_000 });
+        await sleep(120);
+      }
+      const reset = p.getByRole('menuitem', { name:/reset|restablecer|reiniciar/i }).first();
+      if (await reset.count()) {
+        await reset.click({ timeout:5_000 });
+        await waitForApexDynamicAction(p);
+        await sleep(120);
+        ir_reset_method = 'ACTIONS_RESET';
+      }
+    } catch {}
+  }
+  if (ir_reset_method === 'NONE' && ir_filters_before > 0) {
+    const closeButtons = p.locator('.a-IRR-controls-item--filter button:visible,.a-IRR-controls-item[data-filter] button:visible,.a-IRR-controls button.a-Button--noLabel:visible,[aria-label*="Remove filter" i]:visible,[title*="Remove filter" i]:visible');
+    let closed = 0;
+    for (let guard = 0; guard < 100; guard += 1) {
+      const count = await closeButtons.count().catch(() => 0);
+      if (!count) break;
+      let clicked = false;
+      for (let i = 0; i < count; i += 1) {
+        try {
+          await closeButtons.nth(i).click({ timeout:2_000 });
+          closed += 1;
+          clicked = true;
+          await waitForApexDynamicAction(p);
+          break;
+        } catch {}
+      }
+      if (!clicked) break;
+    }
+    if (closed > 0) ir_reset_method = 'CHIP_CLOSE';
+  }
+  return { ir_filters_before, ir_reset_method };
+}
+
+async function findCedulaInCurrentProspectPage(p, cedula) {
+  const snapshot = await readProspectListPage(p);
+  if (!snapshot.ok) return { found:false, estado:'', rows:0, schema_ok:false };
+  const rows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+  const hit = rows.find(row => row.cedula === cedula);
+  return { found:!!hit, estado:txt(hit?.estado || ''), rows:rows.length, schema_ok:true };
+}
+
+async function scanProspectPagesForCedula(p, cedula) {
+  await maximizeProspectRows(p);
+  let pages_scanned = 0;
+  let rows_scanned = 0;
+  const pageFingerprints = new Set();
+  for (let guard = 0; guard < 100; guard += 1) {
+    const snapshot = await readProspectListPage(p);
+    if (!snapshot.ok) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+    const rows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+    const fingerprint = sha(rows.map(row => row.cedula).join('|'));
+    if (pageFingerprints.has(fingerprint)) break;
+    pageFingerprints.add(fingerprint);
+    pages_scanned += 1;
+    rows_scanned += rows.length;
+    const hit = rows.find(row => row.cedula === cedula);
+    if (hit) return { found:true, estado:txt(hit.estado || ''), pages_scanned, rows_scanned, complete:true };
+    const moved = await clickProspectNextPage(p);
+    if (!moved) return { found:false, estado:'', pages_scanned, rows_scanned, complete:true };
+    const until = Date.now() + 10_000;
+    let changed = false;
+    while (Date.now() < until) {
+      await sleep(200);
+      const next = await readProspectListPage(p);
+      if (!next.ok) continue;
+      const nextFingerprint = sha(next.rows.map(row => digits(row.cedula)).filter(Boolean).join('|'));
+      if (nextFingerprint !== fingerprint) { changed = true; break; }
+    }
+    if (!changed) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+  }
+  return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+}
+
+async function confirmInHome(p, sessionId, cedula) {
+  const started = Date.now();
+  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+  const reset = await resetInteractiveReport(p);
+  let pages_scanned = 0;
+  let rows_scanned = 0;
+  const search = p.locator('input[type="search"]:visible,input[id$="_search_field"]:visible').first();
+  if (await search.count()) {
+    try {
+      await search.fill(cedula);
+      const go = p.getByRole('button', { name:/^go$|buscar|search/i }).first();
+      if (await go.count()) await go.click(); else await search.press('Enter');
+      await waitForApexDynamicAction(p);
+      await sleep(120);
+      const fast = await findCedulaInCurrentProspectPage(p, cedula);
+      pages_scanned += 1;
+      rows_scanned += fast.rows;
+      if (fast.found) return { found:true, estado:fast.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
+    } catch {}
+  }
+  const secondReset = await resetInteractiveReport(p);
+  if (reset.ir_reset_method === 'NONE' && secondReset.ir_reset_method !== 'NONE') reset.ir_reset_method = secondReset.ir_reset_method;
+  const scanned = await scanProspectPagesForCedula(p, cedula);
+  pages_scanned += scanned.pages_scanned;
+  rows_scanned += scanned.rows_scanned;
+  return { found:scanned.found, estado:scanned.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
+}
+'''
+          server = server[:start] + new + server[end:]
+          old_t = "create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),\n      fill_attempted_fields:"
+          new_t = "create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),\n      ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),\n      fill_attempted_fields:"
+          if old_t not in server: raise SystemExit('STOP telemetry baseline')
+          server = server.replace(old_t, new_t, 1)
+          qa = qa.replace("CONAPE Bridge V4.1.2 QA PASS", "CONAPE Bridge V4.1.3 QA PASS", 1)
+          anchor = "  ['telemetría de confirmación reporta existencia y estado informativo', /confirmation_found/.test(server) && /confirmation_estado:upper\\(confirmation\\?\\.estado \\|\\| ''\\)/.test(server) && !/confirmation_registro/.test(server)],\n"
+          addition = anchor + "  ['confirmación IR limpia filtros y no usa sleep fijo de 900ms', /resetInteractiveReport/.test(confirmBlock) && /ACTIONS_RESET/.test(confirmBlock) && /CHIP_CLOSE/.test(confirmBlock) && /waitForApexDynamicAction/.test(confirmBlock) && !/sleep\\(900\\)/.test(confirmBlock)],\n  ['confirmación hace fallback paginado antes de no encontrado', /scanProspectPagesForCedula/.test(server) && /readProspectListPage/.test(server) && /clickProspectNextPage/.test(server) && /pages_scanned/.test(server) && /rows_scanned/.test(server)],\n  ['telemetría confirmación incluye filtros, reset, páginas y filas', ['ir_filters_before','ir_reset_method','pages_scanned','rows_scanned','ms_confirmation'].every(v => server.includes(v))],\n"
+          if anchor not in qa: raise SystemExit('STOP QA anchor')
+          qa = qa.replace(anchor, addition, 1)
+          server_path.write_text(server)
+          qa_path.write_text(qa)
+          PY
+          node --check services/conape-bridge/server_v2.mjs
+          node scripts/qa_conape_bridge_v2.mjs
+      - name: Commit clean diff
+        shell: bash
+        run: |
+          rm -f .github/workflows/patch-conape-confirm-ir-v4-1-3.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/conape-bridge/server_v2.mjs scripts/qa_conape_bridge_v2.mjs .github/workflows/patch-conape-confirm-ir-v4-1-3.yml
+          git commit -m "fix: limpiar filtros IR antes de confirmar CREATE"
+          git push origin HEAD:fix/conape-confirm-ir-v4-1-3
