@@ -1352,10 +1352,10 @@ async function submit(body) {
     if (identityHash(state) !== source.identityHash) throw new AppError('IDENTITY_MISMATCH', 'La identidad cambió.', 409, 'BEFORE_CREATE');
     const plan = contactPlan(auth.prospecto, state);
     const comparison = buildComparison(auth.prospecto, state, plan);
-    if (formMode === 'UNKNOWN') enforceRecruitFormMode(modeInfo, comparison, plan);
+    enforceRecruitFormMode(modeInfo, comparison, plan);
     assertIdentityMatch(comparison);
     await fillContacts(p, plan);
-    const created = await clickCreateOnce(p);
+    const created = await clickFinalAction(p, 'CREATE');
     if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE.', 409, 'AFTER_CREATE');
     const confirmation = await confirmAfterCreate(auth.cedula, meta.sessionId);
     if (confirmation.found) return { ok:true, confirmed:true, code:'CREATED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method };
@@ -1400,7 +1400,7 @@ async function execute(body) {
 
     const plan = contactPlan(auth.prospecto, state);
     comparison = buildComparison(auth.prospecto, state, plan);
-    enforceRecruitFormMode(modeInfo, comparison, plan);
+    if (formMode === 'UNKNOWN') enforceRecruitFormMode(modeInfo, comparison, plan);
     assertIdentityMatch(comparison);
 
     t = Date.now();
