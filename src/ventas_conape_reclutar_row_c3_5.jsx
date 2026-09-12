@@ -160,7 +160,7 @@
               </div>
               <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono final: <b>{comparison.final?.telefono || 'pendiente'}</b> · Correo final: <b>{comparison.final?.correo || 'sin correo'}</b>.</div>
             </React.Fragment> : null}
-            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · CREATE: {timing.create ?? '—'}</div> : null}
+            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · CREATE: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'}</div> : null}
           </div>
           <div className="vx-c33-foot">
             <button className="vx-c33-btn alt" onClick={onClose} disabled={state === 'running'}>{state === 'running' ? 'Procesando…' : 'Cerrar'}</button>
