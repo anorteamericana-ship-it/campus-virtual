@@ -1,0 +1,178 @@
+name: TEMP CONAPE V4.2.2 Campus load hotfix R2
+
+on:
+  push:
+    branches:
+      - fix/conape-campus-load-v4-2-2-r2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/conape-campus-load-v4-2-2-r2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch canonical bridge only
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/conape-bridge/server_v2.mjs')
+          s = path.read_text(encoding='utf-8')
+
+          s = s.replace("const VERSION = 'V4.2.1';", "const VERSION = 'V4.2.2';", 1)
+          s = s.replace("const SESSION_CACHE_TTL_MS = 30_000;", "const SESSION_CACHE_TTL_MS = 30_000;\nconst SESSION_STATUS_CACHE_TTL_MS = 300_000;\nconst CAMPUS_READ_ATTEMPT_TIMEOUT_MS = Math.min(18_000, REQUEST_TIMEOUT_MS);", 1)
+          s = s.replace("const sessionValidationCache = new Map();", "const sessionValidationCache = new Map();\nconst sessionValidationInflight = new Map();", 1)
+
+          s = s.replace("async function campusRequest(payload) {", "async function campusRequest(payload, timeoutMs = REQUEST_TIMEOUT_MS) {", 1)
+          s = s.replace("signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),", "signal:AbortSignal.timeout(Math.max(5_000, Number(timeoutMs || REQUEST_TIMEOUT_MS))),", 1)
+          s = s.replace("error.retryable = fn === 'validarSesion';", "error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;", 2)
+
+          old_call = '''async function campusCall(payload) {
+            try {
+              return await campusRequest(payload);
+            } catch (error) {
+              if (payload?.fn === 'validarSesion' && error?.retryable === true) {
+                await sleep(3_000);
+                return campusRequest(payload);
+              }
+              throw error;
+            }
+          }'''
+          new_call = '''async function campusCall(payload) {
+            const fn = safeId(payload?.fn) || 'UNKNOWN';
+            const readOnly = fn === 'validarSesion' || fn === 'getProspectoDetalle';
+            const timeoutMs = readOnly ? CAMPUS_READ_ATTEMPT_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+            try {
+              return await campusRequest(payload, timeoutMs);
+            } catch (error) {
+              if (readOnly && error?.retryable === true) {
+                await sleep(750);
+                return campusRequest(payload, timeoutMs);
+              }
+              throw error;
+            }
+          }'''
+          if old_call not in s:
+              raise SystemExit('campusCall anchor not found')
+          s = s.replace(old_call, new_call, 1)
+
+          start = s.index('async function cachedSessionValidation(cleanToken) {')
+          end = s.index('\nfunction validateSessionResult(session) {', start)
+          new_cache = '''async function cachedSessionValidation(cleanToken, maxAgeMs = SESSION_CACHE_TTL_MS) {
+            pruneState();
+            const key = sha(cleanToken);
+            const now = Date.now();
+            const cached = sessionValidationCache.get(key);
+            if (cached && cached.session?.ok === true && Number(cached.validatedAt || 0) > 0 && now - cached.validatedAt <= maxAgeMs) return cached.session;
+
+            const existing = sessionValidationInflight.get(key);
+            if (existing) return existing;
+
+            const pending = (async () => {
+              const session = await campusCall({ fn:'validarSesion', token:cleanToken });
+              if (session?.ok === true) {
+                const validatedAt = Date.now();
+                sessionValidationCache.set(key, { session, validatedAt, expiresAt:validatedAt + SESSION_STATUS_CACHE_TTL_MS });
+              }
+              return session;
+            })();
+            sessionValidationInflight.set(key, pending);
+            try {
+              return await pending;
+            } finally {
+              if (sessionValidationInflight.get(key) === pending) sessionValidationInflight.delete(key);
+            }
+          }
+          '''
+          s = s[:start] + new_cache + s[end:]
+
+          anchor = '''async function authorizeCampusSession(token) {
+            const cleanToken = txt(token);
+            if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401, 'CAMPUS');
+            rateLimit(cleanToken);
+            const session = await cachedSessionValidation(cleanToken);
+            return { ...validateSessionResult(session), token:cleanToken };
+          }
+          '''
+          replacement = anchor + '''
+          async function authorizeCampusSessionStatus(token) {
+            const cleanToken = txt(token);
+            if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401, 'CAMPUS');
+            rateLimit(cleanToken);
+            const session = await cachedSessionValidation(cleanToken, SESSION_STATUS_CACHE_TTL_MS);
+            return { ...validateSessionResult(session), token:cleanToken };
+          }
+          '''
+          if anchor not in s:
+              raise SystemExit('authorizeCampusSession anchor not found')
+          s = s.replace(anchor, replacement, 1)
+
+          old_status = "if (action === 'session_status') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.status()); }"
+          new_status = "if (action === 'session_status') { await authorizeCampusSessionStatus(body?.token); result = ConapeSession.snapshot({ ready:ConapeSession.state === 'CONNECTED' ? 'MEMORY' : null }); }"
+          if old_status not in s:
+              raise SystemExit('session_status route anchor not found')
+          s = s.replace(old_status, new_status, 1)
+
+          old_exec = """    let t = Date.now();
+    const auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    timing.campus = Date.now() - t;
+"""
+          new_exec = """    let t = Date.now();
+    let auth;
+    try {
+      auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    } catch (error) {
+      timing.campus = Date.now() - t;
+      throw error;
+    }
+    timing.campus = Date.now() - t;
+"""
+          if old_exec not in s:
+              raise SystemExit('execute campus timing anchor not found')
+          s = s.replace(old_exec, new_exec, 1)
+
+          path.write_text(s, encoding='utf-8')
+          PY
+      - name: Validate hotfix contract
+        shell: bash
+        run: |
+          node --check services/conape-bridge/server_v2.mjs
+          node scripts/qa_conape_bridge_v2.mjs
+          python - <<'PY'
+          from pathlib import Path
+          s = Path('services/conape-bridge/server_v2.mjs').read_text(encoding='utf-8')
+          checks = {
+            'version': "const VERSION = 'V4.2.2';" in s,
+            'status_cache_5m': 'SESSION_STATUS_CACHE_TTL_MS = 300_000' in s and 'authorizeCampusSessionStatus' in s,
+            'execute_cache_30s_preserved': 'SESSION_CACHE_TTL_MS = 30_000' in s and 'cachedSessionValidation(cleanToken)' in s,
+            'inflight_dedupe': 'sessionValidationInflight' in s and 'const existing = sessionValidationInflight.get(key)' in s,
+            'status_memory_only': "ConapeSession.snapshot({ ready:ConapeSession.state === 'CONNECTED' ? 'MEMORY' : null })" in s,
+            'status_not_serial_chromium': "result = await serial(() => ConapeSession.status())" not in s,
+            'parallel_execute_preserved': 'Promise.all([' in s and "campusCall({ fn:'getProspectoDetalle'" in s,
+            'bounded_read_retry': 'CAMPUS_READ_ATTEMPT_TIMEOUT_MS' in s and 'await sleep(750)' in s and "fn === 'getProspectoDetalle'" in s,
+            'campus_timing_on_error': 'timing.campus = Date.now() - t;\n      throw error;' in s,
+            'phone_hotfix_preserved': "locator.type(target, { delay:30" in s and 'CONTACT_WRITE_FAILED' in s,
+            'confirmation_preserved': "confirmation_method:'FORM_MODE_UPDATE'" in s and "confirmation_method:'HOME_FALLBACK'" in s,
+          }
+          failed = [k for k,v in checks.items() if not v]
+          if failed:
+              raise SystemExit('V4.2.2 checks failed: ' + ', '.join(failed))
+          print('CONAPE V4.2.2 Campus load assertions PASS')
+          PY
+      - name: Commit canonical file and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "anorteamericana-ship-it"
+          git config user.email "anorteamericana@gmail.com"
+          git add services/conape-bridge/server_v2.mjs
+          git rm .github/workflows/temp-conape-campus-v422-r2.yml
+          git commit -m "CONAPE V4.2.2 · aislar polling del Campus"
+          git push origin HEAD:fix/conape-campus-load-v4-2-2-r2
