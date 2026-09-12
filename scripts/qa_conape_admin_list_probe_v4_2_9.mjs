@@ -1,0 +1,24 @@
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(p,'utf8');
+const client=read('src/conape_bridge_client_c3_6.js');
+const app=read('src/app.jsx');
+const dashboard=read('src/admin_master_dashboard.jsx');
+const campus=read('campus.html');
+const server=read('services/conape-bridge/server_v2.mjs');
+function must(ok,msg){if(!ok){console.error('FAIL:',msg);process.exitCode=1}else console.log('PASS:',msg)}
+const probeStart=dashboard.indexOf('function MasterConapeRecruitmentProbe');
+const probeEnd=dashboard.indexOf('function AdminMasterDashboard',probeStart);
+const probe=probeStart>=0&&probeEnd>probeStart?dashboard.slice(probeStart,probeEnd):'';
+const summaryStart=server.indexOf('const payload = summaryOnly ? {');
+const summaryEnd=server.indexOf('} : result;',summaryStart);
+const summaryBlock=summaryStart>=0&&summaryEnd>summaryStart?server.slice(summaryStart,summaryEnd):'';
+must(client.includes('async function getBridge(path)')&&client.includes("method:'GET'")&&client.includes("'Authorization':'Bearer ' + token"),'cliente usa GET con token Campus en Authorization');
+must(client.includes('listProspects')&&client.includes("'/v1/prospects/list' + summary")&&client.includes("'?summary=1'"),'cliente expone listProspects summary-only');
+must(app.includes('src/conape_bridge_config_c3_6.js?v=V4.2.9')&&app.includes('src/conape_bridge_client_c3_6.js?v=V3.1.0')&&app.indexOf('conape_bridge_client_c3_6.js')<app.indexOf('admin_master_dashboard.jsx'),'Panel Maestro carga config/cliente antes del dashboard');
+must(dashboard.includes("section==='conape'&&<MasterConapeRecruitmentProbe/>")&&probe.length>0,'botón se monta solo dentro de sección CONAPE del Panel Maestro admin');
+must(['method','rows_csv','rows_html_all','counts_match','columns_ok','ms','ir_filters_before'].every(v=>probe.includes(v)),'UI muestra telemetría de contraste requerida');
+must(!['cedula','apellido_1','apellido_2','nombre','correo','telefono'].some(v=>probe.includes(v))&&!probe.includes('d.rows[')&&!probe.includes('d.rows.map')&&!probe.includes('data.rows'),'probe no renderiza PII ni array de filas del listado');
+must(summaryBlock.length>0&&!summaryBlock.includes('rows:')&&['rows_csv','rows_html_all','counts_match','columns_ok','ms','ir_filters_before'].every(v=>summaryBlock.includes(v)),'summary=1 omite array rows y devuelve solo metadatos seguros');
+must(server.includes("new AppError('LIST_COUNT_MISMATCH'")&&server.includes('rows_csv:rowsCsv')&&server.includes('rows_html_all:rowsHtmlAll'),'mismatch devuelve ambos conteos sin PII');
+must(server.includes("event:'conape_list_dump'")&&server.includes('pii:false'),'telemetría de lista declara pii:false');
+must(campus.includes('src/app.jsx?v=F98.4Z6CS21A143'),'campus fuerza cache-bust del router admin');

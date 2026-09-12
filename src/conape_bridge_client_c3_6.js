@@ -30,6 +30,33 @@
     }
   }
 
+  async function getBridge(path){
+    const base = bridgeBase();
+    if (!base) return { ok:false, error:'conape_bridge_not_configured' };
+    const token = window.getSessionToken ? window.getSessionToken() : '';
+    if (!token) return { ok:false, error:'campus_session_required' };
+    try {
+      const response = await fetch(base + path, {
+        method:'GET', mode:'cors', credentials:'omit',
+        headers:{ 'Authorization':'Bearer ' + token },
+        cache:'no-store',
+      });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw || '{}'); }
+      catch { return { ok:false, error:'conape_bridge_invalid_response' }; }
+      return data && typeof data === 'object' ? data : { ok:false, error:'conape_bridge_invalid_response' };
+    } catch (error) {
+      console.error('[CONAPE V3] Bridge no disponible.', error);
+      return { ok:false, error:'conape_bridge_unavailable' };
+    }
+  }
+
+  async function listProspects(options){
+    const summary = options?.summary === true ? '?summary=1' : '';
+    return getBridge('/v1/prospects/list' + summary);
+  }
+
   async function sessionStatus(){ return postBridge('/v1/session/status', {}); }
   async function connect(){ return postBridge('/v1/session/connect', {}); }
   async function disconnect(){ return postBridge('/v1/session/disconnect', {}); }
@@ -51,8 +78,9 @@
     execute,
     preview,
     submit,
+    listProspects,
     active:!!bridgeBase(),
-    version:'V3.0',
+    version:'V3.1',
   });
 
   window.CONAPE_PORTAL_BRIDGE_V3 = api;
