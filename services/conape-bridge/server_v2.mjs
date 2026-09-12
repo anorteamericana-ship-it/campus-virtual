@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.3';
+const VERSION = 'V4.1.4';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -887,32 +887,120 @@ async function scanProspectPagesForCedula(p, cedula) {
   return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
 }
 
-async function confirmInHome(p, sessionId, cedula) {
-  const started = Date.now();
-  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
-  const reset = await resetInteractiveReport(p);
+function confirmationResetUrl(sessionId) {
+  const u = new URL(CONAPE_HOME);
+  const cleanSession = digits(sessionId);
+  u.search = `?p=302:1:${cleanSession}:::RIR:`;
+  return u.href;
+}
+
+async function readConfirmationProspectPage(p) {
+  return p.evaluate(() => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    const text = v => String(v || '').replace(/\s+/g,' ').trim();
+    let best = null;
+    for (const table of Array.from(document.querySelectorAll('table'))) {
+      let headerNodes = Array.from(table.querySelectorAll('thead th,thead td'));
+      if (!headerNodes.length) headerNodes = Array.from(table.querySelectorAll('tr:first-child th,tr:first-child td'));
+      const headers = headerNodes.map(node => norm(node.textContent));
+      const cedulaIndex = headers.findIndex(h => h === 'CEDULA' || h.includes('CEDULA'));
+      if (cedulaIndex < 0) continue;
+      const estadoIndex = headers.findIndex(h => h === 'ESTADO');
+      const rowCount = table.querySelectorAll('tbody tr').length;
+      if (!best || rowCount > best.rowCount) best = { table, cedulaIndex, estadoIndex, rowCount };
+    }
+    if (!best) return { ok:false, rows:[] };
+    const rows = [];
+    for (const tr of Array.from(best.table.querySelectorAll('tbody tr'))) {
+      const cells = Array.from(tr.querySelectorAll('td'));
+      if (!cells.length || (cells.length === 1 && cells[0].hasAttribute('colspan'))) continue;
+      const cedula = text(cells[best.cedulaIndex]?.textContent);
+      if (!cedula) continue;
+      rows.push({ cedula, estado:best.estadoIndex >= 0 ? text(cells[best.estadoIndex]?.textContent) : '' });
+    }
+    return { ok:true, rows };
+  }).catch(() => ({ ok:false, rows:[] }));
+}
+
+async function clickConfirmationNextPage(p) {
+  const controls = p.locator('a,button');
+  const index = await controls.evaluateAll(nodes => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    const hasCedula = region => Array.from((region || document).querySelectorAll('table')).some(table => {
+      const headers = Array.from(table.querySelectorAll('thead th,thead td,tr:first-child th')).map(th => norm(th.textContent));
+      return headers.some(h => h.includes('CEDULA'));
+    });
+    return nodes.findIndex(el => {
+      if (!visible(el) || el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+      const region = el.closest('.a-IRR,.a-IRR-region,.t-Region');
+      if (!region || !hasCedula(region)) return false;
+      const label = norm([el.textContent,el.getAttribute('aria-label'),el.getAttribute('title')].filter(Boolean).join(' '));
+      return el.classList.contains('a-IRR-pagination-next') || /^(NEXT|SIGUIENTE|PROXIMA|PROXIMO)$/.test(label) || /NEXT PAGE|PAGINA SIGUIENTE/.test(label);
+    });
+  }).catch(() => -1);
+  if (index < 0) return false;
+  await controls.nth(index).click({ timeout:5_000 });
+  return true;
+}
+
+async function waitConfirmationSnapshot(p, previousFingerprint = '') {
+  const until = Date.now() + 5_000;
+  let last = { ok:false, rows:[], fingerprint:'' };
+  while (Date.now() < until) {
+    const snapshot = await readConfirmationProspectPage(p);
+    if (snapshot.ok) {
+      const rows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+      const fingerprint = sha(rows.map(row => row.cedula).join('|'));
+      last = { ok:true, rows, fingerprint };
+      if (!previousFingerprint || fingerprint !== previousFingerprint) return last;
+    }
+    await sleep(150);
+  }
+  return last;
+}
+
+async function scanConfirmationPagesForCedula(p, cedula) {
   let pages_scanned = 0;
   let rows_scanned = 0;
-  const search = p.locator('input[type="search"]:visible,input[id$="_search_field"]:visible').first();
-  if (await search.count()) {
-    try {
-      await search.fill(cedula);
-      const go = p.getByRole('button', { name:/^go$|buscar|search/i }).first();
-      if (await go.count()) await go.click(); else await search.press('Enter');
-      await waitForApexDynamicAction(p);
-      await sleep(120);
-      const fast = await findCedulaInCurrentProspectPage(p, cedula);
-      pages_scanned += 1;
-      rows_scanned += fast.rows;
-      if (fast.found) return { found:true, estado:fast.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
-    } catch {}
+  const seen = new Set();
+  let current = await waitConfirmationSnapshot(p);
+  if (!current.ok) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+  for (let guard = 0; guard < 100; guard += 1) {
+    if (seen.has(current.fingerprint)) break;
+    seen.add(current.fingerprint);
+    pages_scanned += 1;
+    rows_scanned += current.rows.length;
+    const hit = current.rows.find(row => row.cedula === cedula);
+    if (hit) return { found:true, estado:txt(hit.estado || ''), pages_scanned, rows_scanned, complete:true };
+    const moved = await clickConfirmationNextPage(p);
+    if (!moved) return { found:false, estado:'', pages_scanned, rows_scanned, complete:true };
+    const next = await waitConfirmationSnapshot(p, current.fingerprint);
+    if (!next.ok || next.fingerprint === current.fingerprint) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+    current = next;
   }
-  const secondReset = await resetInteractiveReport(p);
-  if (reset.ir_reset_method === 'NONE' && secondReset.ir_reset_method !== 'NONE') reset.ir_reset_method = secondReset.ir_reset_method;
-  const scanned = await scanProspectPagesForCedula(p, cedula);
-  pages_scanned += scanned.pages_scanned;
-  rows_scanned += scanned.rows_scanned;
-  return { found:scanned.found, estado:scanned.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
+  return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+}
+
+async function confirmInHome(p, sessionId, cedula) {
+  const started = Date.now();
+  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:20_000 });
+  const ir_filters_before = await countIrFilters(p);
+  await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:20_000 });
+  await waitForApexDynamicAction(p);
+  await sleep(100);
+  const ir_filters_after = await countIrFilters(p);
+  const scanned = await scanConfirmationPagesForCedula(p, cedula);
+  return {
+    found:scanned.found,
+    estado:scanned.estado,
+    ir_filters_before,
+    ir_filters_after,
+    ir_reset_method:'URL_RIR',
+    pages_scanned:scanned.pages_scanned,
+    rows_scanned:scanned.rows_scanned,
+    ms_confirmation:Date.now()-started,
+  };
 }
 
 async function readProspectListPage(p) {
@@ -1191,7 +1279,7 @@ async function execute(body) {
       nav_mode:navMode,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
       create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
-      ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),
+      ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_filters_after:Number(confirmation?.ir_filters_after || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),
       fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
       fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,
       form_incomplete_ids:formIncompleteIds, pii:false,
