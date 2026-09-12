@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.2';
+const VERSION = 'V4.2.3';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -544,7 +544,14 @@ async function readFormState(p) {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
     const safeToken = v => /^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(String(v || '')) ? String(v) : '';
     const alerts = Array.from(document.querySelectorAll('[role="alert"],.t-Alert,.a-Alert,.t-Body-alert,.t-Form-error,.apex-page-item-error,.t-Alert--danger,.t-Alert--warning')).filter(visible);
-    const text = norm(alerts.map(n => n.textContent || '').join(' '));
+    const alertRawText = alerts.map(n => n.textContent || '').join(' ');
+    const text = norm(alertRawText);
+    const alertTextSanitized = String(alertRawText || '')
+      .replace(/\S*@\S*/g, '[MAIL]')
+      .replace(/\d{5,}/g, '[NUM]')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0,200);
     const categories = [];
     if (/YA FUE REGISTRAD|YA SE ENCUENTRA|YA EXIST|DUPLIC|PERTENECE A OTRO|OTRO RECLUTADOR|EN PROCESO/.test(text)) categories.push('YA_REGISTRADO');
     if (/OBLIGATOR|REQUERID|DEBE INGRESAR|DEBE COMPLETAR/.test(text)) categories.push('CAMPO_OBLIGATORIO');
@@ -566,7 +573,7 @@ async function readFormState(p) {
     return {
       cedula:val('P2_PRS_CEDULA'), apellido_1:val('P2_PRS_APELLIDO_1'), apellido_2:val('P2_PRS_APELLIDO_2'), nombre:val('P2_PRS_NOMBRE'),
       telefono:val('P2_PRS_CELULAR'), correo:val('P2_PRS_EMAIL'), categories,
-      alert_dom_ids:alertDomIds, apex_error_item_ids:apexErrorItemIds,
+      alert_dom_ids:alertDomIds, apex_error_item_ids:apexErrorItemIds, alert_text_sanitized:alertTextSanitized,
       success_signal:/CREAD|REGISTRAD|GUARDAD|CORRECTAMENTE|EXITOS/.test(text) && !/ERROR|INVALID/.test(text),
       form_reset:!val('P2_PRS_CEDULA'),
     };
@@ -1546,7 +1553,7 @@ async function execute(body) {
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
       nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
-      alerts_before:created?.alerts_before || [], visible_alerts:created?.outcome?.categories || [], alert_dom_ids:created?.outcome?.alert_dom_ids || [], apex_error_item_ids:created?.outcome?.apex_error_item_ids || [],
+      alerts_before:created?.alerts_before || [], visible_alerts:created?.outcome?.categories || [], alert_dom_ids:created?.outcome?.alert_dom_ids || [], apex_error_item_ids:created?.outcome?.apex_error_item_ids || [], alert_text_sanitized:created?.outcome?.alert_text_sanitized || '',
       final_action:txt(finalActionName || created?.final_action || ''), action_count:Number(created?.actionCount || 0), create_count:Number(created?.createCount || 0), update_count:Number(created?.updateCount || 0),
       precreate_apex_values:preActionTelemetry.precreate_apex_values || {}, precreate_dom_values:preActionTelemetry.precreate_dom_values || {}, apex_readable:preActionTelemetry.apex_readable || {}, field_editable:preActionTelemetry.field_editable || {},
       confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
