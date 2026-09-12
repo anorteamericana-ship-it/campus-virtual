@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.8';
+const VERSION = 'V4.2.9';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1674,6 +1674,9 @@ async function listProspectsFromHome() {
   let method = 'HTML_PAGED';
   let columnsOk = false;
   let irFiltersBefore = 0;
+  let rowsCsv = null;
+  let rowsHtmlAll = null;
+  let countsMatch = false;
   const rowsByCedula = new Map();
   try {
     const p = await ConapeSession.browserPage();
@@ -1686,6 +1689,9 @@ async function listProspectsFromHome() {
     if (csv.ok && csv.columns_ok) {
       const csvRows = new Map();
       addProspectRows(csvRows, csv.rows);
+      rowsCsv = csvRows.size;
+      method = 'CSV_DOWNLOAD';
+      pages = 1;
 
       // Verificación de integridad contra la misma pantalla en Rows=All.
       await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
@@ -1696,15 +1702,17 @@ async function listProspectsFromHome() {
       if ((await prospectNextPageIndex(p)) >= 0) throw new AppError('CONAPE_LIST_ROWS_ALL_INCOMPLETE', 'Rows=All todavía expuso paginación.', 503, 'LIST');
       const htmlRows = new Map();
       addProspectRows(htmlRows, html.rows);
+      rowsHtmlAll = htmlRows.size;
+      columnsOk = true;
       const csvKeys = [...csvRows.keys()].sort();
       const htmlKeys = [...htmlRows.keys()].sort();
-      if (csvKeys.length !== htmlKeys.length || sha(csvKeys.join('|')) !== sha(htmlKeys.join('|'))) {
-        throw new AppError('CONAPE_LIST_COUNT_MISMATCH', 'CSV y Rows=All no devolvieron el mismo conjunto de prospectos.', 503, 'LIST');
+      countsMatch = rowsCsv === rowsHtmlAll && sha(csvKeys.join('|')) === sha(htmlKeys.join('|'));
+      if (!countsMatch) {
+        const mismatch = new AppError('LIST_COUNT_MISMATCH', 'CSV y Rows=All no devolvieron el mismo conjunto de prospectos.', 503, 'LIST');
+        Object.assign(mismatch, { rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:false, columns_ok:true, method:'CSV_DOWNLOAD', ms:Date.now()-started, ir_filters_before:irFiltersBefore });
+        throw mismatch;
       }
       for (const row of csvRows.values()) rowsByCedula.set(row.cedula, row);
-      method = 'CSV_DOWNLOAD';
-      pages = 1;
-      columnsOk = true;
     } else {
       // El menú de descarga no es requisito para continuidad: Rows=All es el respaldo preferido.
       await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
@@ -1715,10 +1723,13 @@ async function listProspectsFromHome() {
         if (!html.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 14 columnas esperadas.', 503, 'LIST');
         const hasNext = (await prospectNextPageIndex(p)) >= 0;
         if (!hasNext) {
-          addProspectRows(rowsByCedula, html.rows);
+          const normalizedHtmlRows = normalizeProspectRows(html.rows);
+          rowsHtmlAll = normalizedHtmlRows.length;
+          addProspectRows(rowsByCedula, normalizedHtmlRows);
           method = 'HTML_ROWS_ALL';
           pages = 1;
           columnsOk = true;
+          countsMatch = false;
         }
       }
       if (!columnsOk) {
@@ -1735,11 +1746,12 @@ async function listProspectsFromHome() {
     ConapeSession.lastActivity = nowIso();
     return {
       ok:true, code:'PROSPECT_LIST_READY', rows:[...rowsByCedula.values()], row_count:rowsByCedula.size,
-      pages, method, columns_ok:columnsOk, ir_filters_before:irFiltersBefore, captured_at:nowIso(),
+      pages, method, rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:countsMatch,
+      columns_ok:columnsOk, ms:Date.now()-started, ir_filters_before:irFiltersBefore, captured_at:nowIso(),
     };
   } finally {
     console.log(JSON.stringify({
-      event:'conape_list_dump', method, rows:rowsByCedula.size, columns_ok:columnsOk,
+      event:'conape_list_dump', method, rows:rowsByCedula.size, rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:countsMatch, columns_ok:columnsOk,
       ms:Date.now()-started, ir_filters_before:irFiltersBefore, pii:false,
     }));
   }
@@ -1985,7 +1997,13 @@ const server = http.createServer(async (req, res) => {
       action = 'prospects_list';
       await authorizeCampusSession(campusTokenFromRequest(req));
       const result = await serial(() => listProspectsFromHome());
-      sendJson(res, 200, result, origin);
+      const summaryOnly = /^(1|true)$/i.test(txt(url.searchParams.get('summary')));
+      const payload = summaryOnly ? {
+        ok:true, code:result.code, method:result.method, rows_csv:result.rows_csv, rows_html_all:result.rows_html_all,
+        counts_match:result.counts_match === true, columns_ok:result.columns_ok === true,
+        ms:Number(result.ms || 0), ir_filters_before:Number(result.ir_filters_before || 0),
+      } : result;
+      sendJson(res, 200, payload, origin);
       return;
     }
     if (req.method !== 'POST') throw new AppError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
@@ -2026,6 +2044,13 @@ const server = http.createServer(async (req, res) => {
       ...(Array.isArray(error?.form_readonly_fields) ? { form_readonly_fields:error.form_readonly_fields } : {}),
       ...(error?.apply_changes_available === true ? { apply_changes_available:true } : {}),
       ...(typeof error?.phone_update_available === 'boolean' ? { phone_update_available:error.phone_update_available } : {}),
+      ...(Number.isInteger(error?.rows_csv) ? { rows_csv:error.rows_csv } : {}),
+      ...(Number.isInteger(error?.rows_html_all) ? { rows_html_all:error.rows_html_all } : {}),
+      ...(typeof error?.counts_match === 'boolean' ? { counts_match:error.counts_match } : {}),
+      ...(typeof error?.columns_ok === 'boolean' ? { columns_ok:error.columns_ok } : {}),
+      ...(error?.method ? { method:txt(error.method) } : {}),
+      ...(Number.isFinite(Number(error?.ms)) ? { ms:Number(error.ms) } : {}),
+      ...(Number.isFinite(Number(error?.ir_filters_before)) ? { ir_filters_before:Number(error.ir_filters_before) } : {}),
     }, origin);
   }
 });
