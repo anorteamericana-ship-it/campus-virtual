@@ -121,23 +121,23 @@ jobs:
               raise SystemExit('session_status route anchor not found')
           s = s.replace(old_status, new_status, 1)
 
-          old_exec_start = '''    let t = Date.now();
-            const auth = await authorizeCampusParallel(body?.token, body?.cedula);
-            timing.campus = Date.now() - t;
-          '''
-          new_exec_start = '''    let t = Date.now();
-            let auth;
-            try {
-              auth = await authorizeCampusParallel(body?.token, body?.cedula);
-            } catch (error) {
-              timing.campus = Date.now() - t;
-              throw error;
-            }
-            timing.campus = Date.now() - t;
-          '''
-          if old_exec_start not in s:
+          old_exec = """    let t = Date.now();
+    const auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    timing.campus = Date.now() - t;
+"""
+          new_exec = """    let t = Date.now();
+    let auth;
+    try {
+      auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    } catch (error) {
+      timing.campus = Date.now() - t;
+      throw error;
+    }
+    timing.campus = Date.now() - t;
+"""
+          if old_exec not in s:
               raise SystemExit('execute campus timing anchor not found')
-          s = s.replace(old_exec_start, new_exec_start, 1)
+          s = s.replace(old_exec, new_exec, 1)
 
           path.write_text(s, encoding='utf-8')
           PY
@@ -155,7 +155,7 @@ jobs:
             'execute_cache_30s_preserved': 'SESSION_CACHE_TTL_MS = 30_000' in s and 'cachedSessionValidation(cleanToken)' in s,
             'inflight_dedupe': 'sessionValidationInflight' in s and 'const existing = sessionValidationInflight.get(key)' in s,
             'status_memory_only': "ConapeSession.snapshot({ ready:ConapeSession.state === 'CONNECTED' ? 'MEMORY' : null })" in s,
-            'status_not_serial_chromium': "session_status') { await authorizeCampusSessionStatus(body?.token); result = await serial(() => ConapeSession.status())" not in s,
+            'status_not_serial_chromium': "result = await serial(() => ConapeSession.status())" not in s,
             'parallel_execute_preserved': 'Promise.all([' in s and "campusCall({ fn:'getProspectoDetalle'" in s,
             'bounded_read_retry': 'CAMPUS_READ_ATTEMPT_TIMEOUT_MS' in s and 'await sleep(750)' in s and "fn === 'getProspectoDetalle'" in s,
             'campus_timing_on_error': 'timing.campus = Date.now() - t;\n      throw error;' in s,
