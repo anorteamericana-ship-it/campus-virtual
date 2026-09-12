@@ -19,12 +19,15 @@ jobs:
           from pathlib import Path
           p=Path('services/conape-bridge/server_v2.mjs')
           s=p.read_text()
-          old="""  assertIdentityMatch(comparison);\n  enforceRecruitFormMode(modeInfo, comparison, plan);"""
-          new="""  enforceRecruitFormMode(modeInfo, comparison, plan);\n  assertIdentityMatch(comparison);"""
-          count=s.count(old)
-          if count != 3:
-              raise SystemExit(f'expected 3 mode/matcher pairs, found {count}')
-          s=s.replace(old,new)
+          pairs=[
+            ("  assertIdentityMatch(comparison);\n  enforceRecruitFormMode(modeInfo, comparison, plan);", "  enforceRecruitFormMode(modeInfo, comparison, plan);\n  assertIdentityMatch(comparison);", 1),
+            ("    assertIdentityMatch(comparison);\n    enforceRecruitFormMode(modeInfo, comparison, plan);", "    enforceRecruitFormMode(modeInfo, comparison, plan);\n    assertIdentityMatch(comparison);", 2),
+          ]
+          for old,new,want in pairs:
+            got=s.count(old)
+            if got != want:
+              raise SystemExit(f'expected {want} mode/matcher pairs, found {got}')
+            s=s.replace(old,new)
           p.write_text(s)
           PY
           node --check services/conape-bridge/server_v2.mjs
