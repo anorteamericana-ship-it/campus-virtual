@@ -1250,8 +1250,8 @@ async function preview(body) {
   const modeInfo = await readFormMode(p);
   const plan = contactPlan(auth.prospecto, state);
   const comparison = buildComparison(auth.prospecto, state, plan);
-  assertIdentityMatch(comparison);
   enforceRecruitFormMode(modeInfo, comparison, plan);
+  assertIdentityMatch(comparison);
   pruneState();
   const source_version = crypto.randomBytes(24).toString('base64url');
   sourceVersions.set(source_version, { cedula:auth.cedula, binding:auth.binding, identityHash:identityHash(state), expiresAt:Date.now()+SOURCE_TTL_MS, consumed:false });
@@ -1273,8 +1273,8 @@ async function submit(body) {
     if (identityHash(state) !== source.identityHash) throw new AppError('IDENTITY_MISMATCH', 'La identidad cambió.', 409, 'BEFORE_CREATE');
     const plan = contactPlan(auth.prospecto, state);
     const comparison = buildComparison(auth.prospecto, state, plan);
-    assertIdentityMatch(comparison);
     enforceRecruitFormMode(modeInfo, comparison, plan);
+    assertIdentityMatch(comparison);
     await fillContacts(p, plan);
     const created = await clickCreateOnce(p);
     if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE.', 409, 'AFTER_CREATE');
@@ -1319,8 +1319,8 @@ async function execute(body) {
 
     const plan = contactPlan(auth.prospecto, state);
     comparison = buildComparison(auth.prospecto, state, plan);
-    assertIdentityMatch(comparison);
     enforceRecruitFormMode(modeInfo, comparison, plan);
+    assertIdentityMatch(comparison);
 
     t = Date.now();
     try {
