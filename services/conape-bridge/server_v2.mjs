@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.2';
+const VERSION = 'V4.1.3';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -792,34 +792,127 @@ async function clickCreateOnce(p) {
   }
 }
 
+async function countIrFilters(p) {
+  return p.evaluate(() => {
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    const selectors = ['.a-IRR-controls-item--filter','.a-IRR-controls-item[data-filter]','.a-IRR-controls .a-IRR-controls-item'];
+    const nodes = new Set();
+    for (const selector of selectors) for (const el of document.querySelectorAll(selector)) if (visible(el)) nodes.add(el);
+    return nodes.size;
+  }).catch(() => 0);
+}
+
+async function resetInteractiveReport(p) {
+  const ir_filters_before = await countIrFilters(p);
+  let ir_reset_method = 'NONE';
+  const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
+  if (await actions.count()) {
+    try {
+      await actions.click({ timeout:5_000 });
+      await sleep(120);
+      const report = p.getByRole('menuitem', { name:/^report$|^informe$/i }).first();
+      if (await report.count()) {
+        await report.click({ timeout:5_000 });
+        await sleep(120);
+      }
+      const reset = p.getByRole('menuitem', { name:/reset|restablecer|reiniciar/i }).first();
+      if (await reset.count()) {
+        await reset.click({ timeout:5_000 });
+        await waitForApexDynamicAction(p);
+        await sleep(120);
+        if ((await countIrFilters(p)) === 0) ir_reset_method = 'ACTIONS_RESET';
+      }
+    } catch {}
+  }
+  if (ir_reset_method === 'NONE' && ir_filters_before > 0) {
+    const closeButtons = p.locator('.a-IRR-controls-item--filter button:visible,.a-IRR-controls-item[data-filter] button:visible,.a-IRR-controls button.a-Button--noLabel:visible,[aria-label*="Remove filter" i]:visible,[title*="Remove filter" i]:visible');
+    let closed = 0;
+    for (let guard = 0; guard < 100; guard += 1) {
+      const count = await closeButtons.count().catch(() => 0);
+      if (!count) break;
+      let clicked = false;
+      for (let i = 0; i < count; i += 1) {
+        try {
+          await closeButtons.nth(i).click({ timeout:2_000 });
+          closed += 1;
+          clicked = true;
+          await waitForApexDynamicAction(p);
+          break;
+        } catch {}
+      }
+      if (!clicked) break;
+    }
+    if (closed > 0) ir_reset_method = 'CHIP_CLOSE';
+  }
+  return { ir_filters_before, ir_reset_method };
+}
+
+async function findCedulaInCurrentProspectPage(p, cedula) {
+  const snapshot = await readProspectListPage(p);
+  if (!snapshot.ok) return { found:false, estado:'', rows:0, schema_ok:false };
+  const rows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+  const hit = rows.find(row => row.cedula === cedula);
+  return { found:!!hit, estado:txt(hit?.estado || ''), rows:rows.length, schema_ok:true };
+}
+
+async function scanProspectPagesForCedula(p, cedula) {
+  await maximizeProspectRows(p);
+  let pages_scanned = 0;
+  let rows_scanned = 0;
+  const pageFingerprints = new Set();
+  for (let guard = 0; guard < 100; guard += 1) {
+    const snapshot = await readProspectListPage(p);
+    if (!snapshot.ok) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+    const rows = snapshot.rows.map(row => ({ ...row, cedula:digits(row.cedula) })).filter(row => !!row.cedula);
+    const fingerprint = sha(rows.map(row => row.cedula).join('|'));
+    if (pageFingerprints.has(fingerprint)) break;
+    pageFingerprints.add(fingerprint);
+    pages_scanned += 1;
+    rows_scanned += rows.length;
+    const hit = rows.find(row => row.cedula === cedula);
+    if (hit) return { found:true, estado:txt(hit.estado || ''), pages_scanned, rows_scanned, complete:true };
+    const moved = await clickProspectNextPage(p);
+    if (!moved) return { found:false, estado:'', pages_scanned, rows_scanned, complete:true };
+    const until = Date.now() + 10_000;
+    let changed = false;
+    while (Date.now() < until) {
+      await sleep(200);
+      const next = await readProspectListPage(p);
+      if (!next.ok) continue;
+      const nextFingerprint = sha(next.rows.map(row => digits(row.cedula)).filter(Boolean).join('|'));
+      if (nextFingerprint !== fingerprint) { changed = true; break; }
+    }
+    if (!changed) return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+  }
+  return { found:false, estado:'', pages_scanned, rows_scanned, complete:false };
+}
+
 async function confirmInHome(p, sessionId, cedula) {
+  const started = Date.now();
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+  const reset = await resetInteractiveReport(p);
+  let pages_scanned = 0;
+  let rows_scanned = 0;
   const search = p.locator('input[type="search"]:visible,input[id$="_search_field"]:visible').first();
   if (await search.count()) {
-    await search.fill(cedula);
-    const go = p.getByRole('button', { name:/^go$|buscar|search/i }).first();
-    if (await go.count()) await go.click(); else await search.press('Enter');
-    await sleep(900);
+    try {
+      await search.fill(cedula);
+      const go = p.getByRole('button', { name:/^go$|buscar|search/i }).first();
+      if (await go.count()) await go.click(); else await search.press('Enter');
+      await waitForApexDynamicAction(p);
+      await sleep(120);
+      const fast = await findCedulaInCurrentProspectPage(p, cedula);
+      pages_scanned += 1;
+      rows_scanned += fast.rows;
+      if (fast.found) return { found:true, estado:fast.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
+    } catch {}
   }
-  return p.evaluate(value => {
-    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
-    const clean = v => String(v || '').replace(/\D/g,'');
-    for (const table of Array.from(document.querySelectorAll('table'))) {
-      const headers = Array.from(table.querySelectorAll('thead th')).map(th => norm(th.textContent));
-      const iCedula = headers.findIndex(h => h.includes('CEDULA'));
-      const iEstado = headers.findIndex(h => h === 'ESTADO');
-      if (iCedula < 0 || iEstado < 0) continue;
-      for (const tr of Array.from(table.querySelectorAll('tbody tr'))) {
-        const cells = Array.from(tr.querySelectorAll('td'));
-        if (cells.length <= Math.max(iCedula, iEstado)) continue;
-        if (clean(cells[iCedula].textContent) === value) {
-          const estado = String(cells[iEstado].textContent || '').trim();
-          return { found:true, estado };
-        }
-      }
-    }
-    return { found:false, estado:'' };
-  }, cedula).catch(() => ({ found:false, estado:'' }));
+  const secondReset = await resetInteractiveReport(p);
+  if (reset.ir_reset_method === 'NONE' && secondReset.ir_reset_method !== 'NONE') reset.ir_reset_method = secondReset.ir_reset_method;
+  const scanned = await scanProspectPagesForCedula(p, cedula);
+  pages_scanned += scanned.pages_scanned;
+  rows_scanned += scanned.rows_scanned;
+  return { found:scanned.found, estado:scanned.estado, ir_filters_before:reset.ir_filters_before, ir_reset_method:reset.ir_reset_method, pages_scanned, rows_scanned, ms_confirmation:Date.now()-started };
 }
 
 async function readProspectListPage(p) {
@@ -1098,6 +1191,7 @@ async function execute(body) {
       nav_mode:navMode,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
       create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
+      ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),
       fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
       fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,
       form_incomplete_ids:formIncompleteIds, pii:false,
