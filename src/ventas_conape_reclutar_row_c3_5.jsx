@@ -31,6 +31,13 @@
     return bridge && typeof bridge.execute === 'function' ? bridge : null;
   }
 
+  function alreadyRecruitedMessage(r){
+    const estado = text(r?.estado_conape_raw || r?.estado_conape || r?.confirmation_estado || r?.confirmation?.estado || '');
+    return estado
+      ? `Este prospecto ya está reclutado en CONAPE. Estado: ${estado}.`
+      : 'Este prospecto ya está reclutado en CONAPE.';
+  }
+
   function failureMessage(r){
     const code = technical(r?.code || r?.error, 'UNKNOWN');
     const stage = technical(r?.stage || r?.error_stage, 'NO_DISPONIBLE');
@@ -39,6 +46,9 @@
     }
     if (code === 'IDENTITY_MISMATCH') {
       return `La identidad devuelta por CONAPE no coincide con el prospecto del Campus. No se creó nada.\nCódigo: ${code}\nEtapa: ${stage}`;
+    }
+    if (code === 'FORM_MODE_UNKNOWN') {
+      return `CONAPE no mostró una acción reconocible para este prospecto.\nCódigo: ${code}\nEtapa: ${stage}`;
     }
     if (code === 'DUPLICATE') {
       return `CONAPE indica que esta cédula ya está registrada.\nCódigo: ${code}\nEtapa: ${stage}`;
@@ -62,6 +72,7 @@
       .vx-c35-rowbtn{border:1px solid #b7d5f5;background:#eef6ff;color:#0d5ea8;border-radius:8px;padding:6px 8px;font:700 10px Poppins,system-ui;line-height:1.05;white-space:nowrap;cursor:pointer}
       .vx-c35-rowbtn:hover{background:#dfeeff}.vx-c35-rowbtn:disabled{opacity:.45;cursor:not-allowed}
       .vx-c33-banner.err{white-space:pre-line}
+      .vx-c35-info{border:1px solid #b7d5f5;background:#eef6ff;color:#174a78;border-radius:10px;padding:11px 12px;line-height:1.45}
       .vx-c35-working{display:flex;align-items:center;gap:10px;padding:14px 0}
       .vx-c35-spin{width:18px;height:18px;border:2px solid #c8d9eb;border-top-color:#0d5ea8;border-radius:50%;animation:vxConapeSpin .8s linear infinite;flex:0 0 auto}
       .vx-c35-timing{font-size:11px;color:#66758b;margin-top:10px;line-height:1.45}
@@ -76,15 +87,22 @@
     const [comparison, setComparison] = useState(null);
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
+    const [info, setInfo] = useState('');
 
     useEffect(() => {
       let cancel = false;
       const timers = [];
-      setError('');
-      setComparison(null);
-      setResult(null);
-      setState('running');
-      setPhase('Validando Campus');
+
+      const resetAttemptUi = () => {
+        setError('');
+        setInfo('');
+        setComparison(null);
+        setResult(null);
+        setState('running');
+        setPhase('Validando Campus');
+      };
+
+      resetAttemptUi();
 
       timers.push(setTimeout(() => !cancel && setPhase('Abriendo formulario de CONAPE'), 4000));
       timers.push(setTimeout(() => !cancel && setPhase('Consultando cédula y verificando identidad'), 8000));
@@ -96,11 +114,28 @@
           if (!cedula) throw new Error('El prospecto no tiene cédula válida.');
           const bridge = liveBridge();
           if (!bridge) throw new Error('El puente CONAPE V3 no está disponible.');
+
+          if (!cancel) {
+            setError('');
+            setInfo('');
+            setComparison(null);
+            setResult(null);
+          }
+
           const r = await bridge.execute(cedula);
           if (cancel) return;
           setResult(r || null);
           setComparison(r?.comparison || null);
-          if (!r || !r.ok || technical(r?.code, '') !== 'CREATED') {
+
+          const code = technical(r?.code || r?.error, 'UNKNOWN');
+          if (code === 'ALREADY_RECRUITED') {
+            setInfo(alreadyRecruitedMessage(r || {}));
+            setState('already');
+            setPhase('Ya reclutado');
+            return;
+          }
+
+          if (!r || !r.ok || code !== 'CREATED') {
             setError(failureMessage(r || {}));
             setState('error');
             return;
@@ -120,6 +155,8 @@
           onToast && onToast({ tipo:'ok', msg:estadoConape ? `Prospecto reclutado · CONAPE: ${estadoConape}` : 'Prospecto reclutado en CONAPE.' });
         } catch (e) {
           if (cancel) return;
+          setInfo('');
+          setResult(null);
           setError(e?.message || 'No se pudo completar el reclutamiento.');
           setState('error');
         }
@@ -133,6 +170,7 @@
 
     const rows = comparison?.rows || [];
     const timing = result?.timing || {};
+    const confirmationMethod = technical(result?.confirmation_method || result?.confirmation?.confirmation_method, '');
     return (
       <div className="vx-c33-back" onMouseDown={e => { if (e.target === e.currentTarget && state !== 'running') onClose(); }}>
         <div className="vx-c33-modal">
@@ -146,6 +184,7 @@
           <div className="vx-c33-body">
             {state === 'running' ? <div className="vx-c35-working"><span className="vx-c35-spin"></span><div><b>Procesando en CONAPE…</b><br/><span>{phase}</span></div></div> : null}
             {state === 'done' ? <div className="vx-c33-banner">CONAPE confirmó el reclutamiento.</div> : null}
+            {info ? <div className="vx-c35-info">{info}</div> : null}
             {error ? <div className="vx-c33-banner err">{error}</div> : null}
             {comparison ? <React.Fragment>
               <div className="vx-c33-banner">Resultado de la ejecución. Nombre y apellidos son solo comparación: <b>nunca se modifican desde Campus</b>.</div>
@@ -160,7 +199,7 @@
               </div>
               <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono final: <b>{comparison.final?.telefono || 'pendiente'}</b> · Correo final: <b>{comparison.final?.correo || 'sin correo'}</b>.</div>
             </React.Fragment> : null}
-            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · CREATE: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'}</div> : null}
+            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · CREATE: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'} · Método confirmación: {confirmationMethod || '—'}</div> : null}
           </div>
           <div className="vx-c33-foot">
             <button className="vx-c33-btn alt" onClick={onClose} disabled={state === 'running'}>{state === 'running' ? 'Procesando…' : 'Cerrar'}</button>
