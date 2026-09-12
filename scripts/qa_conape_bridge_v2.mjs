@@ -13,6 +13,12 @@ const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];
 const confirmStart = server.indexOf('async function confirmInHome');
 const confirmEnd = server.indexOf('async function readProspectListPage', confirmStart);
 const confirmBlock = confirmStart >= 0 && confirmEnd > confirmStart ? server.slice(confirmStart, confirmEnd) : '';
+const formModeStart = server.indexOf('async function readFormMode');
+const formModeEnd = server.indexOf('function deriveCampusIdentity', formModeStart);
+const formModeBlock = formModeStart >= 0 && formModeEnd > formModeStart ? server.slice(formModeStart, formModeEnd) : '';
+const executeStart = server.indexOf('async function execute(body) {');
+const executeEnd = server.indexOf('function corsHeaders', executeStart);
+const executeBlock = executeStart >= 0 && executeEnd > executeStart ? server.slice(executeStart, executeEnd) : '';
 
 const legacyCopies = [
   'server.mjs','start_c3_6_2.mjs','server_c3_7.mjs','server_c3_7_3.mjs','server_c3_7_4.mjs',
@@ -52,6 +58,11 @@ const checks = [
   ['confirmación IR usa reset determinista por URL RIR', /confirmationResetUrl/.test(server) && /:::RIR:/.test(server) && /ir_reset_method:'URL_RIR'/.test(confirmBlock) && /waitForApexDynamicAction/.test(confirmBlock) && !/resetInteractiveReport\(p\)/.test(confirmBlock)],
   ['confirmación usa lector mínimo CEDULA separado del esquema estricto de prospects/list', /readConfirmationProspectPage/.test(server) && /scanConfirmationPagesForCedula/.test(server) && /clickConfirmationNextPage/.test(server) && /pages_scanned/.test(server) && /rows_scanned/.test(server) && !/readProspectListPage\(p\)/.test(confirmBlock)],
   ['telemetría confirmación incluye filtros antes/después, reset, páginas y filas', ['ir_filters_before','ir_filters_after','ir_reset_method','pages_scanned','rows_scanned','ms_confirmation'].every(v => server.includes(v))],
+  ['modo formulario distingue CREATE/UPDATE/UNKNOWN por botones visibles', /CREAR NUEVO PROSPECTO/.test(formModeBlock) && /APLICAR CAMBIOS/.test(formModeBlock) && /hasCreate \? 'CREATE' : \(hasUpdate \? 'UPDATE' : 'UNKNOWN'\)/.test(formModeBlock)],
+  ['UPDATE corta en LOOKUP antes de fill y CREATE', /ALREADY_RECRUITED/.test(server) && /new AppError\('ALREADY_RECRUITED'.*409, 'LOOKUP'\)/s.test(server) && executeBlock.indexOf('enforceRecruitFormMode') >= 0 && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('fillContacts') && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('clickCreateOnce')],
+  ['UNKNOWN falla cerrado sin CREATE', /FORM_MODE_UNKNOWN/.test(server) && /new AppError\('FORM_MODE_UNKNOWN'.*409, 'LOOKUP'\)/s.test(server)],
+  ['post-CREATE confirma primero por modo UPDATE y deja Home de fallback', /async function confirmAfterCreate/.test(server) && /confirmation_method:'FORM_MODE_UPDATE'/.test(server) && /confirmation_method:'HOME_FALLBACK'/.test(server) && executeBlock.includes('confirmAfterCreate(auth.cedula, meta.sessionId)')],
+  ['telemetría segura incluye form_mode y readonly por campo', ['form_mode','form_readonly_fields','confirmation_method','confirmation_form_mode','confirmation_readonly_fields'].every(v => server.includes(v)) && /readonly:field\?\.readonly === true/.test(server)],
   ['health identifica runtime y commit Railway', /version:VERSION/.test(server) && /RAILWAY_GIT_COMMIT_SHA/.test(server) && /started_at:STARTED_AT/.test(server)],
   ['logs operativos declaran pii:false', /console\.log\(JSON\.stringify\(\{ rid, action/.test(server) && /pii:false/.test(server)],
   ['self-test NAV está protegido por sesión Campus y no usa cédula/CREATE', /\/v1\/selftest\/nav/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server) && /runNavSelftest/.test(server) && /login:'FAIL'/.test(server) && /recruit_click:'FAIL'/.test(server) && /form_ready:'FAIL'/.test(server)],
@@ -72,4 +83,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.1.4 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.1.5 QA PASS · ${checks.length}/${checks.length}`);
