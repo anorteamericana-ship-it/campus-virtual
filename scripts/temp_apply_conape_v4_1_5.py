@@ -1,0 +1,279 @@
+from pathlib import Path
+
+server_path = Path('services/conape-bridge/server_v2.mjs')
+qa_path = Path('scripts/qa_conape_bridge_v2.mjs')
+server = server_path.read_text()
+qa = qa_path.read_text()
+
+if "const VERSION = 'V4.1.5';" in server:
+    raise SystemExit('V4.1.5 already applied')
+if "const VERSION = 'V4.1.4';" not in server:
+    raise SystemExit('Unexpected server version')
+server = server.replace("const VERSION = 'V4.1.4';", "const VERSION = 'V4.1.5';", 1)
+
+helper_marker = "\nfunction deriveCampusIdentity(campus, conape) {"
+if helper_marker not in server:
+    raise SystemExit('deriveCampusIdentity marker missing')
+form_mode_helper = r'''
+
+async function readFormMode(p) {
+  return p.evaluate(() => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    const controls = Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible);
+    const labels = controls.map(el => norm([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' ')));
+    const hasCreate = labels.some(label => label.includes('CREAR NUEVO PROSPECTO'));
+    const hasUpdate = labels.some(label => label.includes('APLICAR CAMBIOS'));
+    const mode = hasCreate ? 'CREATE' : (hasUpdate ? 'UPDATE' : 'UNKNOWN');
+    const ids = ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
+    const fields = ids.map(id => {
+      const el = document.getElementById(id);
+      const ariaReadonly = String(el?.getAttribute?.('aria-readonly') || '').toLowerCase() === 'true';
+      const readonly = !!el && (el.readOnly === true || el.disabled === true || el.hasAttribute?.('readonly') || ariaReadonly);
+      return { id, present:!!el, readonly, disabled:!!el?.disabled };
+    });
+    return { mode, has_create:hasCreate, has_update:hasUpdate, fields };
+  }).catch(() => ({ mode:'UNKNOWN', has_create:false, has_update:false, fields:[] }));
+}
+
+function safeFormFields(fields) {
+  return Array.isArray(fields) ? fields.map(field => ({
+    id:safeId(field?.id), present:field?.present === true, readonly:field?.readonly === true, disabled:field?.disabled === true,
+  })).filter(field => !!field.id) : [];
+}
+
+function enforceRecruitFormMode(modeInfo, comparison, plan) {
+  const mode = txt(modeInfo?.mode || 'UNKNOWN');
+  const safeFields = safeFormFields(modeInfo?.fields);
+  if (mode === 'CREATE') return { mode, fields:safeFields };
+  if (mode === 'UPDATE') {
+    const error = new AppError('ALREADY_RECRUITED', 'CONAPE ya tiene este prospecto reclutado.', 409, 'LOOKUP');
+    error.comparison = comparison;
+    error.form_mode = 'UPDATE';
+    error.form_readonly_fields = safeFields;
+    error.apply_changes_available = true;
+    error.phone_update_available = plan?.update_telefono === true;
+    throw error;
+  }
+  const error = new AppError('FORM_MODE_UNKNOWN', 'CONAPE no expuso una acción reconocible para este prospecto.', 409, 'LOOKUP');
+  error.comparison = comparison;
+  error.form_mode = 'UNKNOWN';
+  error.form_readonly_fields = safeFields;
+  throw error;
+}
+'''
+server = server.replace(helper_marker, form_mode_helper + helper_marker, 1)
+
+preview_start = server.index('async function preview(body) {')
+submit_start = server.index('async function submit(body) {', preview_start)
+if preview_start < 0 or submit_start < 0:
+    raise SystemExit('preview/submit markers missing')
+new_preview = r'''async function preview(body) {
+  const auth = await authorizeCampus(body?.token, body?.cedula);
+  const { p, state, meta } = await lookupCedulaOnFreshPage(auth.cedula);
+  const modeInfo = await readFormMode(p);
+  const plan = contactPlan(auth.prospecto, state);
+  const comparison = buildComparison(auth.prospecto, state, plan);
+  assertIdentityMatch(comparison);
+  enforceRecruitFormMode(modeInfo, comparison, plan);
+  pruneState();
+  const source_version = crypto.randomBytes(24).toString('base64url');
+  sourceVersions.set(source_version, { cedula:auth.cedula, binding:auth.binding, identityHash:identityHash(state), expiresAt:Date.now()+SOURCE_TTL_MS, consumed:false });
+  return { ok:true, code:'PREVIEW_READY', source_version, comparison, form_mode:'CREATE', meta:{ nav_mode:meta.navMode } };
+}
+
+'''
+server = server[:preview_start] + new_preview + server[submit_start:]
+
+submit_start = server.index('async function submit(body) {')
+execute_start = server.index('async function execute(body) {', submit_start)
+if submit_start < 0 or execute_start < 0:
+    raise SystemExit('submit/execute markers missing')
+new_submit = r'''async function submit(body) {
+  const auth = await authorizeCampus(body?.token, body?.cedula);
+  const sourceKey = txt(body?.source_version);
+  const source = sourceVersions.get(sourceKey);
+  if (!source) throw new AppError('SOURCE_VERSION_REQUIRED', 'Debe volver a consultar antes de enviar.', 409);
+  if (source.consumed) throw new AppError('SOURCE_VERSION_USED', 'Esta consulta ya fue utilizada.', 409);
+  if (source.expiresAt <= Date.now()) { sourceVersions.delete(sourceKey); throw new AppError('SOURCE_VERSION_EXPIRED', 'La consulta venció.', 409); }
+  if (source.binding !== auth.binding) throw new AppError('SOURCE_VERSION_OWNER_MISMATCH', 'La consulta pertenece a otra sesión.', 403);
+  source.consumed = true;
+  try {
+    const { p, state, meta } = await lookupCedulaOnFreshPage(auth.cedula);
+    const modeInfo = await readFormMode(p);
+    if (identityHash(state) !== source.identityHash) throw new AppError('IDENTITY_MISMATCH', 'La identidad cambió.', 409, 'BEFORE_CREATE');
+    const plan = contactPlan(auth.prospecto, state);
+    const comparison = buildComparison(auth.prospecto, state, plan);
+    assertIdentityMatch(comparison);
+    enforceRecruitFormMode(modeInfo, comparison, plan);
+    await fillContacts(p, plan);
+    const created = await clickCreateOnce(p);
+    if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE.', 409, 'AFTER_CREATE');
+    const confirmation = await confirmAfterCreate(auth.cedula, meta.sessionId);
+    if (confirmation.found) return { ok:true, confirmed:true, code:'CREATED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method };
+    throw new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE no quedó confirmado en CONAPE.', 409, 'CONFIRMATION');
+  } finally {
+    sourceVersions.delete(sourceKey);
+  }
+}
+
+'''
+server = server[:submit_start] + new_submit + server[execute_start:]
+
+confirm_marker = "\nasync function readProspectListPage(p) {"
+if confirm_marker not in server:
+    raise SystemExit('readProspectListPage marker missing')
+confirm_after_create = r'''
+
+async function confirmAfterCreate(cedula, sessionId) {
+  const started = Date.now();
+  let primaryMode = 'UNKNOWN';
+  let primaryFields = [];
+  try {
+    const fresh = await ConapeSession.freshProspectoFromHome();
+    await lookupCedulaOnPage(fresh.p, cedula);
+    const modeInfo = await readFormMode(fresh.p);
+    primaryMode = modeInfo.mode;
+    primaryFields = safeFormFields(modeInfo.fields);
+    if (primaryMode === 'UPDATE') {
+      return {
+        found:true, estado:'', confirmation_method:'FORM_MODE_UPDATE', form_mode:'UPDATE', form_readonly_fields:primaryFields,
+        ir_filters_before:0, ir_filters_after:0, ir_reset_method:'SKIPPED_FORM_MODE', pages_scanned:0, rows_scanned:0,
+        ms_confirmation:Date.now()-started,
+      };
+    }
+    const fallback = await confirmInHome(fresh.p, fresh.meta?.sessionId || sessionId, cedula);
+    return { ...fallback, confirmation_method:'HOME_FALLBACK', form_mode:primaryMode, form_readonly_fields:primaryFields, ms_confirmation:Date.now()-started };
+  } catch {
+    const p = await ConapeSession.browserPage();
+    const fallback = await confirmInHome(p, sessionId, cedula);
+    return { ...fallback, confirmation_method:'HOME_FALLBACK', form_mode:primaryMode, form_readonly_fields:primaryFields, ms_confirmation:Date.now()-started };
+  }
+}
+'''
+server = server.replace(confirm_marker, confirm_after_create + confirm_marker, 1)
+
+execute_start = server.index('async function execute(body) {')
+cors_start = server.index('function corsHeaders(origin) {', execute_start)
+if execute_start < 0 or cors_start < 0:
+    raise SystemExit('execute/cors markers missing')
+new_execute = r'''async function execute(body) {
+  const started = Date.now();
+  const timing = { campus:null, form:null, lookup:null, fill:null, create:null, confirmation:null };
+  let finalCode = 'BRIDGE_ERROR';
+  let finalStage = 'PRECHECK';
+  let comparison = null;
+  let navMode = null;
+  let created = null;
+  let confirmation = null;
+  let formMode = 'UNKNOWN';
+  let formReadonlyFields = [];
+  let fillTelemetry = { attempted_fields:[], verified_fields:[], methods:[], fill_target_len:null, fill_readback_len:null, fill_match:null };
+  let formIncompleteIds = [];
+  try {
+    let t = Date.now();
+    const auth = await authorizeCampusParallel(body?.token, body?.cedula);
+    timing.campus = Date.now() - t;
+
+    t = Date.now();
+    const { p, meta } = await ConapeSession.freshProspectoFromHome();
+    navMode = meta.navMode;
+    timing.form = Date.now() - t;
+
+    t = Date.now();
+    const state = await lookupCedulaOnPage(p, auth.cedula);
+    timing.lookup = Date.now() - t;
+
+    const modeInfo = await readFormMode(p);
+    formMode = modeInfo.mode;
+    formReadonlyFields = safeFormFields(modeInfo.fields);
+
+    const plan = contactPlan(auth.prospecto, state);
+    comparison = buildComparison(auth.prospecto, state, plan);
+    assertIdentityMatch(comparison);
+    enforceRecruitFormMode(modeInfo, comparison, plan);
+
+    t = Date.now();
+    try {
+      const fillResult = await fillContacts(p, plan);
+      fillTelemetry = fillResult.telemetry;
+    } catch (error) {
+      timing.fill = Date.now() - t;
+      throw error;
+    }
+    timing.fill = Date.now() - t;
+
+    t = Date.now();
+    created = await clickCreateOnce(p);
+    timing.create = Date.now() - t;
+    if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE. No repita el envío.', 409, 'AFTER_CREATE');
+
+    t = Date.now();
+    confirmation = await confirmAfterCreate(auth.cedula, meta.sessionId);
+    timing.confirmation = Date.now() - t;
+
+    const categories = created.outcome?.categories || [];
+    if (categories.includes('YA_REGISTRADO')) throw Object.assign(new AppError('YA_REGISTRADO', 'CONAPE indicó que el prospecto ya estaba registrado.', 409, 'CONFIRMATION'), { comparison, confirmation });
+    if (confirmation.found) {
+      finalCode = 'CREATED';
+      finalStage = 'CONFIRMED';
+      return { ok:true, confirmed:true, code:'CREATED', stage:'CONFIRMED', form_mode:formMode, confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method, confirmation_form_mode:confirmation.form_mode, comparison, timing:{ ...timing, total:Date.now()-started } };
+    }
+    const meaningful = categories.find(code => code !== 'ERROR_DE_PORTAL' && code !== 'ALERTA_NO_CLASIFICADA');
+    if (meaningful) throw Object.assign(new AppError(meaningful, 'CONAPE rechazó la creación.', categoryStatus(meaningful), 'AFTER_CREATE'), { comparison, confirmation });
+    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la cédula no apareció en CONAPE. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
+  } catch (error) {
+    finalCode = txt(error?.code || finalCode || 'BRIDGE_ERROR');
+    finalStage = sanitizedStage(error);
+    if (error?.fill_telemetry) fillTelemetry = error.fill_telemetry;
+    if (Array.isArray(error?.empty_field_ids)) formIncompleteIds = error.empty_field_ids;
+    if (error?.form_mode) formMode = txt(error.form_mode);
+    if (Array.isArray(error?.form_readonly_fields)) formReadonlyFields = error.form_readonly_fields;
+    if (comparison && !error?.comparison) error.comparison = comparison;
+    error.execute_timing = { ...timing, total:Date.now()-started };
+    throw error;
+  } finally {
+    console.log(JSON.stringify({
+      event:'conape_execute_telemetry', version:VERSION, code:finalCode, stage:finalStage,
+      ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
+      nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
+      create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
+      create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
+      confirmation_method:txt(confirmation?.confirmation_method || ''), confirmation_form_mode:txt(confirmation?.form_mode || ''), confirmation_readonly_fields:safeFormFields(confirmation?.form_readonly_fields),
+      ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_filters_after:Number(confirmation?.ir_filters_after || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),
+      fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
+      fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,
+      form_incomplete_ids:formIncompleteIds, pii:false,
+    }));
+  }
+}
+
+'''
+server = server[:execute_start] + new_execute + server[cors_start:]
+
+old_response = "      ...(error?.execute_timing ? { timing:error.execute_timing } : {}),\n"
+new_response = "      ...(error?.execute_timing ? { timing:error.execute_timing } : {}),\n      ...(error?.form_mode ? { form_mode:error.form_mode } : {}),\n      ...(Array.isArray(error?.form_readonly_fields) ? { form_readonly_fields:error.form_readonly_fields } : {}),\n      ...(error?.apply_changes_available === true ? { apply_changes_available:true } : {}),\n      ...(typeof error?.phone_update_available === 'boolean' ? { phone_update_available:error.phone_update_available } : {}),\n"
+if old_response not in server:
+    raise SystemExit('error response marker missing')
+server = server.replace(old_response, new_response, 1)
+
+qa_anchor = "const confirmBlock = confirmStart >= 0 && confirmEnd > confirmStart ? server.slice(confirmStart, confirmEnd) : '';\n"
+if qa_anchor not in qa:
+    raise SystemExit('qa anchor missing')
+qa_insert = qa_anchor + "const formModeStart = server.indexOf('async function readFormMode');\nconst formModeEnd = server.indexOf('function deriveCampusIdentity', formModeStart);\nconst formModeBlock = formModeStart >= 0 && formModeEnd > formModeStart ? server.slice(formModeStart, formModeEnd) : '';\nconst executeStart = server.indexOf('async function execute(body) {');\nconst executeEnd = server.indexOf('function corsHeaders', executeStart);\nconst executeBlock = executeStart >= 0 && executeEnd > executeStart ? server.slice(executeStart, executeEnd) : '';\n"
+qa = qa.replace(qa_anchor, qa_insert, 1)
+
+check_marker = "  ['health identifica runtime y commit Railway',"
+if check_marker not in qa:
+    raise SystemExit('qa check insertion marker missing')
+extra_checks = """  ['modo formulario distingue CREATE/UPDATE/UNKNOWN por botones visibles', /CREAR NUEVO PROSPECTO/.test(formModeBlock) && /APLICAR CAMBIOS/.test(formModeBlock) && /hasCreate \\? 'CREATE' : \\(hasUpdate \\? 'UPDATE' : 'UNKNOWN'\\)/.test(formModeBlock)],
+  ['UPDATE corta en LOOKUP antes de fill y CREATE', /ALREADY_RECRUITED/.test(server) && /new AppError\\('ALREADY_RECRUITED'.*409, 'LOOKUP'\\)/s.test(server) && executeBlock.indexOf('enforceRecruitFormMode') >= 0 && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('fillContacts') && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('clickCreateOnce')],
+  ['UNKNOWN falla cerrado sin CREATE', /FORM_MODE_UNKNOWN/.test(server) && /new AppError\\('FORM_MODE_UNKNOWN'.*409, 'LOOKUP'\\)/s.test(server)],
+  ['post-CREATE confirma primero por modo UPDATE y deja Home de fallback', /async function confirmAfterCreate/.test(server) && /confirmation_method:'FORM_MODE_UPDATE'/.test(server) && /confirmation_method:'HOME_FALLBACK'/.test(server) && executeBlock.includes('confirmAfterCreate(auth.cedula, meta.sessionId)')],
+  ['telemetría segura incluye form_mode y readonly por campo', ['form_mode','form_readonly_fields','confirmation_method','confirmation_form_mode','confirmation_readonly_fields'].every(v => server.includes(v)) && /readonly:field\\?\\.readonly === true/.test(server)],
+"""
+qa = qa.replace(check_marker, extra_checks + check_marker, 1)
+qa = qa.replace("console.log(`CONAPE Bridge V4.1.4 QA PASS · ${checks.length}/${checks.length}`);", "console.log(`CONAPE Bridge V4.1.5 QA PASS · ${checks.length}/${checks.length}`);", 1)
+
+server_path.write_text(server)
+qa_path.write_text(qa)
