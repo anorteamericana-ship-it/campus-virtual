@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.1.4';
+const VERSION = 'V4.1.5';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -552,6 +552,53 @@ async function lookupCedulaOnFreshPage(cedula) {
   return { p, state, meta };
 }
 
+
+async function readFormMode(p) {
+  return p.evaluate(() => {
+    const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
+    const controls = Array.from(document.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).filter(visible);
+    const labels = controls.map(el => norm([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' ')));
+    const hasCreate = labels.some(label => label.includes('CREAR NUEVO PROSPECTO'));
+    const hasUpdate = labels.some(label => label.includes('APLICAR CAMBIOS'));
+    const mode = hasCreate ? 'CREATE' : (hasUpdate ? 'UPDATE' : 'UNKNOWN');
+    const ids = ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'];
+    const fields = ids.map(id => {
+      const el = document.getElementById(id);
+      const ariaReadonly = String(el?.getAttribute?.('aria-readonly') || '').toLowerCase() === 'true';
+      const readonly = !!el && (el.readOnly === true || el.disabled === true || el.hasAttribute?.('readonly') || ariaReadonly);
+      return { id, present:!!el, readonly, disabled:!!el?.disabled };
+    });
+    return { mode, has_create:hasCreate, has_update:hasUpdate, fields };
+  }).catch(() => ({ mode:'UNKNOWN', has_create:false, has_update:false, fields:[] }));
+}
+
+function safeFormFields(fields) {
+  return Array.isArray(fields) ? fields.map(field => ({
+    id:safeId(field?.id), present:field?.present === true, readonly:field?.readonly === true, disabled:field?.disabled === true,
+  })).filter(field => !!field.id) : [];
+}
+
+function enforceRecruitFormMode(modeInfo, comparison, plan) {
+  const mode = txt(modeInfo?.mode || 'UNKNOWN');
+  const safeFields = safeFormFields(modeInfo?.fields);
+  if (mode === 'CREATE') return { mode, fields:safeFields };
+  if (mode === 'UPDATE') {
+    const error = new AppError('ALREADY_RECRUITED', 'CONAPE ya tiene este prospecto reclutado.', 409, 'LOOKUP');
+    error.comparison = comparison;
+    error.form_mode = 'UPDATE';
+    error.form_readonly_fields = safeFields;
+    error.apply_changes_available = true;
+    error.phone_update_available = plan?.update_telefono === true;
+    throw error;
+  }
+  const error = new AppError('FORM_MODE_UNKNOWN', 'CONAPE no expuso una acción reconocible para este prospecto.', 409, 'LOOKUP');
+  error.comparison = comparison;
+  error.form_mode = 'UNKNOWN';
+  error.form_readonly_fields = safeFields;
+  throw error;
+}
+
 function deriveCampusIdentity(campus, conape) {
   const full = txt(first(campus, ['nombre','NOMBRE','nombre_completo','NOMBRE_COMPLETO']));
   const apellido1 = txt(first(campus, ['apellido_1','primer_apellido','APELLIDO_1','PRIMER_APELLIDO']));
@@ -1003,6 +1050,33 @@ async function confirmInHome(p, sessionId, cedula) {
   };
 }
 
+
+async function confirmAfterCreate(cedula, sessionId) {
+  const started = Date.now();
+  let primaryMode = 'UNKNOWN';
+  let primaryFields = [];
+  try {
+    const fresh = await ConapeSession.freshProspectoFromHome();
+    await lookupCedulaOnPage(fresh.p, cedula);
+    const modeInfo = await readFormMode(fresh.p);
+    primaryMode = modeInfo.mode;
+    primaryFields = safeFormFields(modeInfo.fields);
+    if (primaryMode === 'UPDATE') {
+      return {
+        found:true, estado:'', confirmation_method:'FORM_MODE_UPDATE', form_mode:'UPDATE', form_readonly_fields:primaryFields,
+        ir_filters_before:0, ir_filters_after:0, ir_reset_method:'SKIPPED_FORM_MODE', pages_scanned:0, rows_scanned:0,
+        ms_confirmation:Date.now()-started,
+      };
+    }
+    const fallback = await confirmInHome(fresh.p, fresh.meta?.sessionId || sessionId, cedula);
+    return { ...fallback, confirmation_method:'HOME_FALLBACK', form_mode:primaryMode, form_readonly_fields:primaryFields, ms_confirmation:Date.now()-started };
+  } catch {
+    const p = await ConapeSession.browserPage();
+    const fallback = await confirmInHome(p, sessionId, cedula);
+    return { ...fallback, confirmation_method:'HOME_FALLBACK', form_mode:primaryMode, form_readonly_fields:primaryFields, ms_confirmation:Date.now()-started };
+  }
+}
+
 async function readProspectListPage(p) {
   return p.evaluate(() => {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
@@ -1172,14 +1246,16 @@ function sanitizedStage(error) {
 
 async function preview(body) {
   const auth = await authorizeCampus(body?.token, body?.cedula);
-  const { state, meta } = await lookupCedulaOnFreshPage(auth.cedula);
+  const { p, state, meta } = await lookupCedulaOnFreshPage(auth.cedula);
+  const modeInfo = await readFormMode(p);
   const plan = contactPlan(auth.prospecto, state);
   const comparison = buildComparison(auth.prospecto, state, plan);
+  enforceRecruitFormMode(modeInfo, comparison, plan);
   assertIdentityMatch(comparison);
   pruneState();
   const source_version = crypto.randomBytes(24).toString('base64url');
   sourceVersions.set(source_version, { cedula:auth.cedula, binding:auth.binding, identityHash:identityHash(state), expiresAt:Date.now()+SOURCE_TTL_MS, consumed:false });
-  return { ok:true, code:'PREVIEW_READY', source_version, comparison, meta:{ nav_mode:meta.navMode } };
+  return { ok:true, code:'PREVIEW_READY', source_version, comparison, form_mode:'CREATE', meta:{ nav_mode:meta.navMode } };
 }
 
 async function submit(body) {
@@ -1193,14 +1269,18 @@ async function submit(body) {
   source.consumed = true;
   try {
     const { p, state, meta } = await lookupCedulaOnFreshPage(auth.cedula);
+    const modeInfo = await readFormMode(p);
     if (identityHash(state) !== source.identityHash) throw new AppError('IDENTITY_MISMATCH', 'La identidad cambió.', 409, 'BEFORE_CREATE');
     const plan = contactPlan(auth.prospecto, state);
+    const comparison = buildComparison(auth.prospecto, state, plan);
+    enforceRecruitFormMode(modeInfo, comparison, plan);
+    assertIdentityMatch(comparison);
     await fillContacts(p, plan);
     const created = await clickCreateOnce(p);
     if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE.', 409, 'AFTER_CREATE');
-    const confirmation = await confirmInHome(p, meta.sessionId, auth.cedula);
-    if (confirmation.found) return { ok:true, confirmed:true, code:'CREATED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado };
-    throw new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE no quedó confirmado en la lista.', 409, 'CONFIRMATION');
+    const confirmation = await confirmAfterCreate(auth.cedula, meta.sessionId);
+    if (confirmation.found) return { ok:true, confirmed:true, code:'CREATED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method };
+    throw new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE no quedó confirmado en CONAPE.', 409, 'CONFIRMATION');
   } finally {
     sourceVersions.delete(sourceKey);
   }
@@ -1215,6 +1295,8 @@ async function execute(body) {
   let navMode = null;
   let created = null;
   let confirmation = null;
+  let formMode = 'UNKNOWN';
+  let formReadonlyFields = [];
   let fillTelemetry = { attempted_fields:[], verified_fields:[], methods:[], fill_target_len:null, fill_readback_len:null, fill_match:null };
   let formIncompleteIds = [];
   try {
@@ -1231,8 +1313,13 @@ async function execute(body) {
     const state = await lookupCedulaOnPage(p, auth.cedula);
     timing.lookup = Date.now() - t;
 
+    const modeInfo = await readFormMode(p);
+    formMode = modeInfo.mode;
+    formReadonlyFields = safeFormFields(modeInfo.fields);
+
     const plan = contactPlan(auth.prospecto, state);
     comparison = buildComparison(auth.prospecto, state, plan);
+    enforceRecruitFormMode(modeInfo, comparison, plan);
     assertIdentityMatch(comparison);
 
     t = Date.now();
@@ -1251,7 +1338,7 @@ async function execute(body) {
     if (created.createCount !== 1) throw new AppError('WRITE_RESULT_UNCERTAIN', 'No se observó una única solicitud CREATE. No repita el envío.', 409, 'AFTER_CREATE');
 
     t = Date.now();
-    confirmation = await confirmInHome(p, meta.sessionId, auth.cedula);
+    confirmation = await confirmAfterCreate(auth.cedula, meta.sessionId);
     timing.confirmation = Date.now() - t;
 
     const categories = created.outcome?.categories || [];
@@ -1259,16 +1346,18 @@ async function execute(body) {
     if (confirmation.found) {
       finalCode = 'CREATED';
       finalStage = 'CONFIRMED';
-      return { ok:true, confirmed:true, code:'CREATED', stage:'CONFIRMED', confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, comparison, timing:{ ...timing, total:Date.now()-started } };
+      return { ok:true, confirmed:true, code:'CREATED', stage:'CONFIRMED', form_mode:formMode, confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method, confirmation_form_mode:confirmation.form_mode, comparison, timing:{ ...timing, total:Date.now()-started } };
     }
     const meaningful = categories.find(code => code !== 'ERROR_DE_PORTAL' && code !== 'ALERTA_NO_CLASIFICADA');
     if (meaningful) throw Object.assign(new AppError(meaningful, 'CONAPE rechazó la creación.', categoryStatus(meaningful), 'AFTER_CREATE'), { comparison, confirmation });
-    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la cédula no apareció en la lista de CONAPE. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
+    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la cédula no apareció en CONAPE. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
   } catch (error) {
     finalCode = txt(error?.code || finalCode || 'BRIDGE_ERROR');
     finalStage = sanitizedStage(error);
     if (error?.fill_telemetry) fillTelemetry = error.fill_telemetry;
     if (Array.isArray(error?.empty_field_ids)) formIncompleteIds = error.empty_field_ids;
+    if (error?.form_mode) formMode = txt(error.form_mode);
+    if (Array.isArray(error?.form_readonly_fields)) formReadonlyFields = error.form_readonly_fields;
     if (comparison && !error?.comparison) error.comparison = comparison;
     error.execute_timing = { ...timing, total:Date.now()-started };
     throw error;
@@ -1276,9 +1365,10 @@ async function execute(body) {
     console.log(JSON.stringify({
       event:'conape_execute_telemetry', version:VERSION, code:finalCode, stage:finalStage,
       ms_total:Date.now()-started, ms_campus:timing.campus, ms_form:timing.form, ms_lookup:timing.lookup, ms_fill:timing.fill, ms_create:timing.create, ms_confirmation:timing.confirmation,
-      nav_mode:navMode,
+      nav_mode:navMode, form_mode:formMode, form_readonly_fields:formReadonlyFields,
       create_body_keys:created?.request?.body_keys || [], page_item_ids:created?.page_item_ids || [], apex_http_status:Number(created?.request?.status || 0) || null,
       create_count:Number(created?.createCount || 0), confirmation_found:!!confirmation?.found, confirmation_estado:upper(confirmation?.estado || ''),
+      confirmation_method:txt(confirmation?.confirmation_method || ''), confirmation_form_mode:txt(confirmation?.form_mode || ''), confirmation_readonly_fields:safeFormFields(confirmation?.form_readonly_fields),
       ir_filters_before:Number(confirmation?.ir_filters_before || 0), ir_filters_after:Number(confirmation?.ir_filters_after || 0), ir_reset_method:txt(confirmation?.ir_reset_method || 'NONE'), pages_scanned:Number(confirmation?.pages_scanned || 0), rows_scanned:Number(confirmation?.rows_scanned || 0),
       fill_attempted_fields:fillTelemetry.attempted_fields || [], fill_verified_fields:fillTelemetry.verified_fields || [], fill_methods:fillTelemetry.methods || [],
       fill_target_len:fillTelemetry.fill_target_len ?? null, fill_readback_len:fillTelemetry.fill_readback_len ?? null, fill_match:fillTelemetry.fill_match ?? null,
@@ -1378,6 +1468,10 @@ const server = http.createServer(async (req, res) => {
       ...(error?.confirmation ? { confirmation:error.confirmation } : {}),
       ...(Array.isArray(error?.empty_field_ids) ? { empty_field_ids:error.empty_field_ids } : {}),
       ...(error?.execute_timing ? { timing:error.execute_timing } : {}),
+      ...(error?.form_mode ? { form_mode:error.form_mode } : {}),
+      ...(Array.isArray(error?.form_readonly_fields) ? { form_readonly_fields:error.form_readonly_fields } : {}),
+      ...(error?.apply_changes_available === true ? { apply_changes_available:true } : {}),
+      ...(typeof error?.phone_update_available === 'boolean' ? { phone_update_available:error.phone_update_available } : {}),
     }, origin);
   }
 });
