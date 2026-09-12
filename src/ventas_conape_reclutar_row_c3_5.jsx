@@ -36,13 +36,6 @@
     return bridge && typeof bridge.execute === 'function' ? bridge : null;
   }
 
-  function alreadyRecruitedMessage(r){
-    const estado = text(r?.estado_conape_raw || r?.estado_conape || r?.confirmation_estado || r?.confirmation?.estado || '');
-    return estado
-      ? `Este prospecto ya está reclutado en CONAPE. Estado: ${estado}.`
-      : 'Este prospecto ya está reclutado en CONAPE.';
-  }
-
   function failureMessage(r){
     const code = technical(r?.code || r?.error, 'UNKNOWN');
     const stage = technical(r?.stage || r?.error_stage, 'NO_DISPONIBLE');
@@ -133,13 +126,6 @@
           setComparison(r?.comparison || null);
 
           const code = technical(r?.code || r?.error, 'UNKNOWN');
-          if (code === 'ALREADY_RECRUITED') {
-            setInfo(alreadyRecruitedMessage(r || {}));
-            setState('already');
-            setPhase('Ya reclutado');
-            return;
-          }
-
           if (!r || !r.ok || !['CREATED','UPDATED'].includes(code)) {
             setError(failureMessage(r || {}));
             setState('error');
@@ -204,7 +190,7 @@
               </div>
               <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono final: <b>{comparison.final?.telefono || 'pendiente'}</b> · Correo final: <b>{comparison.final?.correo || 'sin correo'}</b>.</div>
             </React.Fragment> : null}
-            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · CREATE: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'} · Método confirmación: {confirmationMethod || '—'}</div> : null}
+            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · Acción: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'} · Método confirmación: {confirmationMethod || '—'}</div> : null}
           </div>
           <div className="vx-c33-foot">
             <button className="vx-c33-btn alt" onClick={onClose} disabled={state === 'running'}>{state === 'running' ? 'Procesando…' : 'Cerrar'}</button>

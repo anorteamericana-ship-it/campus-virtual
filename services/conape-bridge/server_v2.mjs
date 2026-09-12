@@ -1436,8 +1436,8 @@ async function execute(body) {
       return { ok:true, confirmed:true, code:finalCode, stage:'CONFIRMED', form_mode:formMode, final_action:finalActionName, confirmation_found:true, confirmation_estado:upper(confirmation.estado), estado_conape_raw:confirmation.estado, confirmation_method:confirmation.confirmation_method, confirmation_form_mode:confirmation.form_mode, comparison, timing:{ ...timing, action:timing.create, total:Date.now()-started } };
     }
     const meaningful = categories.find(code => code !== 'ERROR_DE_PORTAL' && code !== 'ALERTA_NO_CLASIFICADA');
-    if (meaningful) throw Object.assign(new AppError(meaningful, 'CONAPE rechazó la creación.', categoryStatus(meaningful), 'AFTER_CREATE'), { comparison, confirmation });
-    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'CREATE fue enviado, pero la cédula no apareció en CONAPE. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
+    if (meaningful) throw Object.assign(new AppError(meaningful, 'CONAPE rechazó la acción final.', categoryStatus(meaningful), 'AFTER_ACTION'), { comparison, confirmation });
+    throw Object.assign(new AppError('WRITE_RESULT_UNCERTAIN', 'La acción final fue enviada, pero no quedó confirmada en CONAPE. No repita el envío.', 409, 'CONFIRMATION'), { comparison, confirmation });
   } catch (error) {
     finalCode = txt(error?.code || finalCode || 'BRIDGE_ERROR');
     finalStage = sanitizedStage(error);

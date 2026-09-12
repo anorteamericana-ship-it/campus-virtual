@@ -19,7 +19,7 @@ const formModeBlock = formModeStart >= 0 && formModeEnd > formModeStart ? server
 const formStateStart = server.indexOf('async function readFormState');
 const formStateEnd = server.indexOf('async function lookupCedulaOnPage', formStateStart);
 const formStateBlock = formStateStart >= 0 && formStateEnd > formStateStart ? server.slice(formStateStart, formStateEnd) : '';
-const createStart = server.indexOf('async function clickCreateOnce');
+const createStart = server.indexOf('async function clickFinalAction');
 const createEnd = server.indexOf('async function countIrFilters', createStart);
 const createBlock = createStart >= 0 && createEnd > createStart ? server.slice(createStart, createEnd) : '';
 const executeStart = server.indexOf('async function execute(body) {');
@@ -49,20 +49,21 @@ const checks = [
   ['preview/submit legacy siguen abriendo formulario fresco', /freshProspectoFromHome/.test(server) && /lookupCedulaOnFreshPage/.test(server)],
   ['execute separa formulario fresco y lookup único', /const \{ p, meta \} = await ConapeSession\.freshProspectoFromHome\(\)/.test(server) && /const state = await lookupCedulaOnPage\(p, auth\.cedula\)/.test(server)],
   ['contexto Evento/Prospectador es telemetría y no gate', /event:'conape_prospecto_context'/.test(server) && /gate:false/.test(server) && !/CONAPE_PROSPECTO_CONTEXT_NOT_READY/.test(server)],
-  ['click Reclutar y CREATE terminan en locator.click real', /items\.nth\(index\)\.click\(\{ timeout:15_000 \}\)/.test(server) && /clickVisibleByLabel\(p, \/CREAR NUEVO PROSPECTO\/i/.test(server)],
+  ['acción final CREATE/UPDATE termina en locator.click real', /items\.nth\(index\)\.click\(\{ timeout:15_000 \}\)/.test(server) && /CREAR NUEVO PROSPECTO/.test(createBlock) && /APLICAR CAMBIOS/.test(createBlock) && /clickVisibleByLabel\(p, label\)/.test(createBlock)],
   ['lookup conserva setter nativo para cédula; contactos usan Playwright fill con fallback apex.item.setValue', /nativeSetValue\(p, 'P2_PRS_CEDULA'/.test(server) && /locator\.fill\(target/.test(server) && /window\.apex\?\.item\?\.\(fieldId\)/.test(server) && /item\.setValue\(fieldValue\)/.test(server)],
   ['contactos esperan APEX y exigen relectura antes de CREATE', /waitForApexDynamicAction/.test(server) && /readContactFieldState/.test(server) && /CONTACT_WRITE_FAILED/.test(server) && /'FILL'/.test(server) && /fill_match:false/.test(server)],
   ['gate previo a CREATE falla cerrado con IDs vacíos sin valores', /FORM_INCOMPLETE_BEFORE_CREATE/.test(server) && /error\.empty_field_ids = missing/.test(server) && /await assertPreCreateFields\(p\)/.test(server)],
   ['telemetría de fill no contiene valores y reporta intentos, verificaciones, método y longitudes', ['fill_attempted_fields','fill_verified_fields','fill_methods','fill_target_len','fill_readback_len','fill_match','form_incomplete_ids'].every(v => server.includes(v))],
+  ['V4.2 telemetría preacción usa solo booleans/IDs y expone editabilidad/APEX legible', ['precreate_apex_values','precreate_dom_values','field_editable','skipped_fields','field_apex_readable'].every(v => executeTelemetryBlock.includes(v)) && /precreate_dom_values\[id\] = String\(el\.value/.test(server) && /precreate_apex_values\[id\] = apexValue\.trim\(\) !== ''/.test(server)],
   ['execute bloquea mismatch de identidad antes de CREATE', /IDENTITY_MISMATCH/.test(server) && /assertIdentityMatch\(comparison\)/.test(server) && /'BEFORE_CREATE'/.test(server)],
   ['runtime nunca escribe nombre/apellidos en DOM', !/nativeSetValue\(p, ['"]P2_PRS_(?:NOMBRE|APELLIDO_1|APELLIDO_2)/.test(server)],
   ['correo CONAPE existente siempre gana', /correo:conapeMail \|\| campusMail/.test(server) && /update_correo:!conapeMail && !!campusMail/.test(server)],
-  ['teléfono Campus queda normalizado a 8 dígitos', /d\.length === 11 && d\.startsWith\('506'\)/.test(server) && /return d\.slice\(-8\)/.test(server)],
+  ['teléfono Campus queda normalizado a 8 dígitos y se escribe siempre si es editable', /d\.length === 11 && d\.startsWith\('506'\)/.test(server) && /return d\.slice\(-8\)/.test(server) && /update_telefono:true/.test(server) && /results\.push\(await writeContactField\(p, 'P2_PRS_CELULAR'/.test(server) && /readFieldEditability/.test(server)],
   ['legacy source_version mantiene contrato one-shot mientras preview/submit existan', /source\.consumed = true/.test(server) && /SOURCE_VERSION_USED/.test(server) && /SOURCE_VERSION_EXPIRED/.test(server) && /SOURCE_VERSION_OWNER_MISMATCH/.test(server)],
-  ['CREATE exige exactamente una request y nunca se dispara con formulario incompleto', /created\.createCount !== 1/.test(server) && /WRITE_RESULT_UNCERTAIN/.test(server) && /FORM_INCOMPLETE_BEFORE_CREATE/.test(server)],
+  ['acción final exige exactamente una request y nunca se dispara con formulario incompleto', /created\.actionCount !== 1/.test(executeBlock) && /WRITE_RESULT_UNCERTAIN/.test(server) && /FORM_INCOMPLETE_BEFORE_CREATE/.test(server)],
   ['HTTP APEX es solo telemetría y no criterio 200/302', /apex_http_status/.test(server) && !/apex_http_status\s*[!=]==?\s*(?:200|302)|status\(\)\s*[!=]==?\s*(?:200|302)/.test(server)],
   ['telemetría segura incluye body keys e IDs, no valores', /create_body_keys/.test(server) && /page_item_ids/.test(server) && /safeBodyKeys/.test(server) && /pii:false/.test(server)],
-  ['V4.1.6 captura alerts_before antes del click CREATE', createBlock.indexOf('const before = await readFormState(p);') >= 0 && createBlock.indexOf('const before = await readFormState(p);') < createBlock.indexOf('clickVisibleByLabel(p, /CREAR NUEVO PROSPECTO/i)') && /alerts_before:before\.categories \|\| \[\]/.test(createBlock)],
+  ['V4.2 captura alerts_before antes del click final', createBlock.indexOf('const before = await readFormState(p);') >= 0 && createBlock.indexOf('const before = await readFormState(p);') < createBlock.indexOf('clickVisibleByLabel(p, label)') && /alerts_before:before\.categories \|\| \[\]/.test(createBlock)],
   ['V4.1.6 clasifica alertas solo a categorías permitidas', safeAlertCategories.every(v => formStateBlock.includes(`'${v}'`)) && /categories\.push/.test(formStateBlock)],
   ['V4.1.6 obtiene alert_dom_ids solo de id/clases e apex_error_item_ids solo de ids', /node\.id/.test(formStateBlock) && /node\.classList/.test(formStateBlock) && /alert_dom_ids:alertDomIds/.test(formStateBlock) && /document\.querySelectorAll\('\.apex-page-item-error'\)/.test(formStateBlock) && /apex_error_item_ids:apexErrorItemIds/.test(formStateBlock)],
   ['conape_execute_telemetry emite los cuatro arrays de alertas', /alerts_before:created\?\.alerts_before \|\| \[\]/.test(executeTelemetryBlock) && /visible_alerts:created\?\.outcome\?\.categories \|\| \[\]/.test(executeTelemetryBlock) && /alert_dom_ids:created\?\.outcome\?\.alert_dom_ids \|\| \[\]/.test(executeTelemetryBlock) && /apex_error_item_ids:created\?\.outcome\?\.apex_error_item_ids \|\| \[\]/.test(executeTelemetryBlock)],
@@ -74,7 +75,7 @@ const checks = [
   ['confirmación usa lector mínimo CEDULA separado del esquema estricto de prospects/list', /readConfirmationProspectPage/.test(server) && /scanConfirmationPagesForCedula/.test(server) && /clickConfirmationNextPage/.test(server) && /pages_scanned/.test(server) && /rows_scanned/.test(server) && !/readProspectListPage\(p\)/.test(confirmBlock)],
   ['telemetría confirmación incluye filtros antes/después, reset, páginas y filas', ['ir_filters_before','ir_filters_after','ir_reset_method','pages_scanned','rows_scanned','ms_confirmation'].every(v => server.includes(v))],
   ['modo formulario distingue CREATE/UPDATE/UNKNOWN por botones visibles', /CREAR NUEVO PROSPECTO/.test(formModeBlock) && /APLICAR CAMBIOS/.test(formModeBlock) && /hasCreate \? 'CREATE' : \(hasUpdate \? 'UPDATE' : 'UNKNOWN'\)/.test(formModeBlock)],
-  ['UPDATE corta en LOOKUP antes de fill y CREATE', /ALREADY_RECRUITED/.test(server) && /new AppError\('ALREADY_RECRUITED'.*409, 'LOOKUP'\)/s.test(server) && executeBlock.indexOf('enforceRecruitFormMode') >= 0 && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('fillContacts') && executeBlock.indexOf('enforceRecruitFormMode') < executeBlock.indexOf('clickCreateOnce')],
+  ['UPDATE escribe contactos y pulsa Aplicar Cambios; UNKNOWN sigue fail-closed', /if \(formMode === 'UNKNOWN'\) enforceRecruitFormMode/.test(executeBlock) && /clickFinalAction\(p, formMode\)/.test(executeBlock) && /formMode === 'UPDATE' \? 'UPDATED' : 'CREATED'/.test(executeBlock) && /APLICAR CAMBIOS/.test(createBlock)],
   ['UNKNOWN falla cerrado sin CREATE', /FORM_MODE_UNKNOWN/.test(server) && /new AppError\('FORM_MODE_UNKNOWN'.*409, 'LOOKUP'\)/s.test(server)],
   ['post-CREATE confirma primero por modo UPDATE y deja Home de fallback', /async function confirmAfterCreate/.test(server) && /confirmation_method:'FORM_MODE_UPDATE'/.test(server) && /confirmation_method:'HOME_FALLBACK'/.test(server) && executeBlock.includes('confirmAfterCreate(auth.cedula, meta.sessionId)')],
   ['telemetría segura incluye form_mode y readonly por campo', ['form_mode','form_readonly_fields','confirmation_method','confirmation_form_mode','confirmation_readonly_fields'].every(v => server.includes(v)) && /readonly:field\?\.readonly === true/.test(server)],
@@ -98,4 +99,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.1.6 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.2.0 QA PASS · ${checks.length}/${checks.length}`);
