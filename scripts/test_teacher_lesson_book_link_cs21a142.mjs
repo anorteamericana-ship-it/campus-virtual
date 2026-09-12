@@ -68,7 +68,8 @@ assert.match(attendanceBridge, /teacher_views\.jsx\?v=F98\.4Z6CS21A142/);
 assert.equal((app.match(/teacher_views\.jsx\?v=F98\.4Z6CS21A142/g) || []).length, 2);
 assert.match(campus, /resources_panel_state_cs21a65\.js\?v=F98\.4Z6CS21A142/);
 assert.match(campus, /att77_bridge\.js\?v=F98\.4Z6CS21A142/);
-assert.match(campus, /app\.jsx\?v=F98\.4Z6CS21A142/);
+// V4.2.9 intentionally bumps only the root app cache key so the new Admin→CONAPE probe loads immediately.
+assert.match(campus, /app\.jsx\?v=F98\.4Z6CS21A143/);
 assert.match(source, /sessionStorage\.removeItem\(REQUEST_KEY\)/);
 assert.match(source, /section\[data-screen-label\*="Libros"\]/);
 assert.doesNotMatch(source, /data-screen-label\*="CS21A60"/);
