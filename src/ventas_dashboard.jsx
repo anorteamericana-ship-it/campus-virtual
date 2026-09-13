@@ -75,6 +75,7 @@ function VentasApp({ sesion }) {
   const [toast, setToast] = useState(null);
   const [errorCarga, setErrorCarga] = useState(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const [conapeSync, setConapeSync] = useState({ state: 'idle', ultimo_sync: '', message: '' });
 
   // DEMO queda limitado a la vista previa explícita. En operación real,
   // el selector usa únicamente asesores devueltos por getAsesoresActivos().
@@ -114,6 +115,15 @@ function VentasApp({ sesion }) {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const applyConapeRows = useCallback((rows) => {
+    if (!Array.isArray(rows)) return;
+    const byCedula = new Map(rows.map(row => [String(row?.cedula || '').replace(/\D/g, ''), row]).filter(([ced]) => !!ced));
+    setDash(prev => prev ? {
+      ...prev,
+      prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(p, byCedula.get(String(p?.cedula || '').replace(/\D/g, '')))),
+    } : prev);
+  }, []);
+
   // ── Carga: UNA sola llamada a getDashboardVentas ──
   useEffect(() => {
     let cancel = false;
@@ -150,16 +160,17 @@ function VentasApp({ sesion }) {
           try {
             const conape = await bridge.salesStatuses(scopeAsesor);
             if (!cancel && conape?.ok && Array.isArray(conape.rows)) {
-              const byCedula = new Map(conape.rows.map(row => [String(row?.cedula || '').replace(/\D/g, ''), row]).filter(([ced]) => !!ced));
-              setDash(prev => prev ? {
-                ...prev,
-                prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(p, byCedula.get(String(p?.cedula || '').replace(/\D/g, '')))),
-              } : prev);
+              applyConapeRows(conape.rows);
+              setConapeSync({ state:'ok', ultimo_sync:String(conape.ultimo_sync || ''), message:'' });
             } else if (!cancel && conape && conape.ok === false) {
-              console.warn('[Ventas CONAPE] No se pudo refrescar el estado.', { code:String(conape.code || conape.error || 'UNKNOWN') });
+              setConapeSync(prev => ({ ...prev, state:'error', message:'Mostrando la última información disponible' }));
+              console.warn('[Ventas CONAPE] Espejo temporalmente no disponible.', { code:String(conape.code || conape.error || 'UNKNOWN') });
             }
           } catch (conapeError) {
-            if (!cancel) console.warn('[Ventas CONAPE] Refresco temporalmente no disponible.', { code:String(conapeError?.code || 'UNAVAILABLE') });
+            if (!cancel) {
+              setConapeSync(prev => ({ ...prev, state:'error', message:'Mostrando la última información disponible' }));
+              console.warn('[Ventas CONAPE] Espejo temporalmente no disponible.', { code:String(conapeError?.code || 'UNAVAILABLE') });
+            }
           }
         }
       } catch (e) {
@@ -168,7 +179,45 @@ function VentasApp({ sesion }) {
       }
     })();
     return () => { cancel = true; };
-  }, [scopeAsesor, reloadTick, previewKey, esSupervisor]);
+  }, [scopeAsesor, reloadTick, previewKey, esSupervisor, applyConapeRows]);
+
+  const refreshConape = useCallback(async () => {
+    if (previewKey || !scopeAsesor) return;
+    const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
+    if (!bridge || typeof bridge.refreshMirror !== 'function') {
+      setConapeSync(prev => ({ ...prev, state:'error', message:'Actualización no disponible' }));
+      return;
+    }
+    setConapeSync(prev => ({ ...prev, state:'loading', message:'' }));
+    try {
+      const fresh = await bridge.refreshMirror(scopeAsesor);
+      if (!fresh?.ok || !Array.isArray(fresh.rows)) {
+        setConapeSync(prev => ({ ...prev, state:'error', message:'No se pudo actualizar · mostrando última sincronización' }));
+        return;
+      }
+      applyConapeRows(fresh.rows);
+      setConapeSync({ state:'ok', ultimo_sync:String(fresh.ultimo_sync || fresh.captured_at || ''), message:'Actualizado' });
+    } catch (error) {
+      setConapeSync(prev => ({ ...prev, state:'error', message:'No se pudo actualizar · mostrando última sincronización' }));
+      console.warn('[Ventas CONAPE] Actualización manual no disponible.', { code:String(error?.code || 'UNAVAILABLE') });
+    }
+  }, [previewKey, scopeAsesor, applyConapeRows]);
+
+  useEffect(() => {
+    if (previewKey || !scopeAsesor) return undefined;
+    const timer = setInterval(async () => {
+      const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
+      if (!bridge || typeof bridge.salesStatuses !== 'function') return;
+      try {
+        const mirror = await bridge.salesStatuses(scopeAsesor);
+        if (mirror?.ok && Array.isArray(mirror.rows)) {
+          applyConapeRows(mirror.rows);
+          setConapeSync({ state:'ok', ultimo_sync:String(mirror.ultimo_sync || ''), message:'' });
+        }
+      } catch (_) {}
+    }, 30 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [previewKey, scopeAsesor, applyConapeRows]);
 
   // Update optimista cuando el drawer cambia algo del prospecto.
   const onChanged = useCallback(({ cedula, ...campos }) => {
@@ -278,6 +327,21 @@ function VentasApp({ sesion }) {
               {!previewKey && asesoresEstado === 'error' ? (
                 <span style={{ fontSize: 11, color: 'var(--v-danger, #B42318)' }}>No pudimos cargar los asesores.</span>
               ) : null}
+            </div>
+          )}
+          {!previewKey && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginRight:12 }}>
+              <button
+                className="vx-btn vx-btn-ghost"
+                type="button"
+                disabled={conapeSync.state === 'loading' || !scopeAsesor}
+                onClick={refreshConape}
+                title={conapeSync.state === 'error' ? 'No se pudo actualizar; se mantiene la última información visible.' : 'Leer CONAPE ahora y actualizar el espejo'}>
+                {conapeSync.state === 'loading' ? 'Actualizando…' : 'Actualizar CONAPE'}
+              </button>
+              <span style={{ fontSize:11, maxWidth:190, color:conapeSync.state === 'error' ? '#B42318' : 'var(--v-muted, #64748B)' }}>
+                {conapeSync.message || (conapeSync.ultimo_sync ? `Última: ${conapeSync.ultimo_sync}` : '')}
+              </span>
             </div>
           )}
           <div className="vx-user">
