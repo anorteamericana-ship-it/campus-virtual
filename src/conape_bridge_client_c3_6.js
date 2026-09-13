@@ -5,6 +5,7 @@
   function cleanBase(value){ return String(value || '').trim().replace(/\/+$/, ''); }
   function digits(value){ return String(value || '').replace(/\D/g, ''); }
   function bridgeBase(){ return cleanBase(window.CONAPE_PORTAL_BRIDGE_URL || ''); }
+  let lastSalesAsesor = '';
 
   async function postBridge(path, body){
     const base = bridgeBase();
@@ -57,11 +58,16 @@
     return getBridge('/v1/prospects/list' + summary);
   }
 
-  // V4.4: esta llamada mantiene el contrato de lectura de estados para Ventas,
-  // pero el bridge primero ejecuta la lectura completa CONAPE y persiste el espejo
-  // únicamente cuando CSV y Rows=All coinciden.
+  // Entrada a Ventas: solo lee el espejo existente. No dispara lectura viva de CONAPE.
   async function salesStatuses(asesor){
-    return postBridge('/v1/prospects/sales-status', { asesor:String(asesor || '').trim() });
+    lastSalesAsesor = String(asesor || lastSalesAsesor || '').trim();
+    return postBridge('/v1/prospects/sales-status', { asesor:lastSalesAsesor });
+  }
+
+  // Botón manual y post CREATE/UPDATE: sí fuerzan lectura viva + validación + persistencia.
+  async function refreshMirror(asesor){
+    lastSalesAsesor = String(asesor || lastSalesAsesor || '').trim();
+    return postBridge('/v1/prospects/refresh', { asesor:lastSalesAsesor });
   }
 
   async function sessionStatus(){ return postBridge('/v1/session/status', {}); }
@@ -87,8 +93,9 @@
     submit,
     listProspects,
     salesStatuses,
+    refreshMirror,
     active:!!bridgeBase(),
-    version:'V4.4',
+    version:'V4.4.1',
   });
 
   window.CONAPE_PORTAL_BRIDGE_V3 = api;
@@ -113,7 +120,7 @@
         const ced = digits(change?.cedula || props?.prospecto?.cedula);
         if (!ced) return;
         try {
-          const fresh = await salesStatuses('');
+          const fresh = await refreshMirror(lastSalesAsesor);
           if (!fresh?.ok || !Array.isArray(fresh.rows)) return;
           const row = fresh.rows.find(item => digits(item?.cedula) === ced);
           if (!row || typeof originalChanged !== 'function') return;
