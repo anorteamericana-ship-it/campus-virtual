@@ -1,0 +1,293 @@
+from pathlib import Path
+
+
+def replace_once(text, old, new, label):
+    if new in text:
+        return text
+    if old not in text:
+        raise SystemExit(f'STOP: baseline missing: {label}')
+    return text.replace(old, new, 1)
+
+server_path = Path('services/conape-bridge/server_v2.mjs')
+qa_path = Path('scripts/qa_conape_bridge_v2.mjs')
+client_path = Path('src/conape_bridge_client_c3_6.js')
+data_path = Path('src/ventas_data.jsx')
+dash_path = Path('src/ventas_dashboard.jsx')
+table_path = Path('src/ventas_sortable_table_cs21a20.jsx')
+html_path = Path('ventas.html')
+
+server = server_path.read_text(encoding='utf-8')
+qa = qa_path.read_text(encoding='utf-8')
+client = client_path.read_text(encoding='utf-8')
+data = data_path.read_text(encoding='utf-8')
+dash = dash_path.read_text(encoding='utf-8')
+table = table_path.read_text(encoding='utf-8')
+html = html_path.read_text(encoding='utf-8')
+
+server = replace_once(server, "const VERSION = 'V4.3.0';", "const VERSION = 'V4.3.1';", 'bridge version')
+server = replace_once(
+    server,
+    "const readOnly = fn === 'validarSesion' || fn === 'getProspectoDetalle';",
+    "const readOnly = fn === 'validarSesion' || fn === 'getProspectoDetalle' || fn === 'getDashboardVentas';",
+    'readOnly dashboard',
+)
+server = server.replace("['validarSesion','getProspectoDetalle'].includes(fn)", "['validarSesion','getProspectoDetalle','getDashboardVentas'].includes(fn)")
+
+helper_marker = "\n\nfunction categoryStatus(code) {"
+helper = '''
+
+const SALES_STATUS_FIELDS = ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
+
+function salesStatusRow(row) {
+  const source = row && typeof row === 'object' ? row : {};
+  return Object.fromEntries(SALES_STATUS_FIELDS.map(key => [key, key === 'cedula' ? digits(source[key]) : txt(source[key])]));
+}
+
+async function listProspectStatusesForSales(body) {
+  const auth = await authorizeCampusSession(body?.token);
+  const asesor = txt(body?.asesor || '');
+  const dashboard = await campusCall({ fn:'getDashboardVentas', token:auth.token, asesor });
+  if (!dashboard?.ok || !Array.isArray(dashboard?.prospectos)) {
+    throw new AppError('CAMPUS_SALES_SCOPE_UNAVAILABLE', 'No se pudo resolver el alcance de Ventas.', 503, 'CAMPUS');
+  }
+  const allowedCedulas = new Set(dashboard.prospectos.map(campusCedula).filter(Boolean));
+  const list = await listProspectsFromHome();
+  const rows = (Array.isArray(list?.rows) ? list.rows : [])
+    .filter(row => allowedCedulas.has(digits(row?.cedula)))
+    .map(salesStatusRow);
+  return {
+    ok:true,
+    code:'PROSPECT_SALES_STATUS_READY',
+    method:list.method,
+    row_count:rows.length,
+    columns_ok:list.columns_ok === true,
+    captured_at:list.captured_at || nowIso(),
+    rows,
+  };
+}
+'''
+if 'async function listProspectStatusesForSales(body)' not in server:
+    if helper_marker not in server:
+        raise SystemExit('STOP: categoryStatus marker missing')
+    server = server.replace(helper_marker, helper + helper_marker, 1)
+
+old_get = """    if (req.method === 'GET' && url.pathname === '/v1/prospects/list') {
+      action = 'prospects_list';
+      await authorizeCampusSession(campusTokenFromRequest(req));
+      const result = await serial(() => listProspectsFromHome());"""
+new_get = """    if (req.method === 'GET' && url.pathname === '/v1/prospects/list') {
+      action = 'prospects_list';
+      const auth = await authorizeCampusSession(campusTokenFromRequest(req));
+      const fullListRole = roleOf(auth.session);
+      if (!['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)) {
+        throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para la lista completa de CONAPE.', 403, 'CAMPUS');
+      }
+      const result = await serial(() => listProspectsFromHome());"""
+server = replace_once(server, old_get, new_get, 'admin full list gate')
+
+old_routes = """    else if (url.pathname === '/v1/session/disconnect') action = 'session_disconnect';
+    else if (url.pathname === '/v1/recruit/preview') action = 'preview';"""
+new_routes = """    else if (url.pathname === '/v1/session/disconnect') action = 'session_disconnect';
+    else if (url.pathname === '/v1/prospects/sales-status') action = 'prospects_sales_status';
+    else if (url.pathname === '/v1/recruit/preview') action = 'preview';"""
+server = replace_once(server, old_routes, new_routes, 'sales status route')
+
+old_dispatch = """    else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
+    else if (action === 'preview') result = await serial(() => preview(body));"""
+new_dispatch = """    else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
+    else if (action === 'prospects_sales_status') result = await serial(() => listProspectStatusesForSales(body));
+    else if (action === 'preview') result = await serial(() => preview(body));"""
+server = replace_once(server, old_dispatch, new_dispatch, 'sales status dispatch')
+
+qa_anchor = "const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];"
+qa_add = qa_anchor + "\nconst salesStatusStart = server.indexOf('async function listProspectStatusesForSales');\nconst salesStatusEnd = server.indexOf('function categoryStatus', salesStatusStart);\nconst salesStatusBlock = salesStatusStart >= 0 && salesStatusEnd > salesStatusStart ? server.slice(salesStatusStart, salesStatusEnd) : '';"
+qa = replace_once(qa, qa_anchor, qa_add, 'sales status QA block')
+qa_check_anchor = "  ['V4.2.9 telemetría de lista conserva solo conteos y pii false', server.includes(\"event:'conape_list_dump'\") && ['rows_csv','rows_html_all','counts_match','columns_ok','ir_filters_before','pii:false'].every(v=>server.includes(v))],"
+qa_checks = qa_check_anchor + "\n  ['V4.3.1 lista completa queda restringida a admin/superadmin', server.includes(\"fullListRole = roleOf(auth.session)\") && server.includes(\"['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)\")],\n  ['V4.3.1 sales-status usa scope real de getDashboardVentas', /\\/v1\\/prospects\\/sales-status/.test(server) && /listProspectStatusesForSales\\(body\\)/.test(server) && salesStatusBlock.includes(\"fn:'getDashboardVentas'\") && salesStatusBlock.includes('allowedCedulas')],\n  ['V4.3.1 sales-status minimiza campos devueltos', ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'].every(v=>salesStatusBlock.includes(`'${v}'`)) && !/nombre|apellido|correo|telefono|usuario_registro/i.test(salesStatusBlock)],"
+qa = replace_once(qa, qa_check_anchor, qa_checks, 'sales status QA checks')
+qa = qa.replace('CONAPE Bridge V4.3.0 QA PASS', 'CONAPE Bridge V4.3.1 QA PASS')
+
+client = replace_once(
+    client,
+    """  async function listProspects(options){
+    const summary = options?.summary === true ? '?summary=1' : '';
+    return getBridge('/v1/prospects/list' + summary);
+  }
+
+  async function sessionStatus()""",
+    """  async function listProspects(options){
+    const summary = options?.summary === true ? '?summary=1' : '';
+    return getBridge('/v1/prospects/list' + summary);
+  }
+
+  async function salesStatuses(asesor){
+    return postBridge('/v1/prospects/sales-status', { asesor:String(asesor || '').trim() });
+  }
+
+  async function sessionStatus()""",
+    'client salesStatuses',
+)
+client = replace_once(
+    client,
+    "    listProspects,\n    active:!!bridgeBase(),\n    version:'V3.1',",
+    "    listProspects,\n    salesStatuses,\n    active:!!bridgeBase(),\n    version:'V3.2',",
+    'client api',
+)
+
+old_map = """const ETAPA_MAP = Object.fromEntries([
+  ...EMBUDO_ETAPAS,
+  { key: 'CONAPE_APROBADO', label: 'CONAPE Aprobado', color: '#6366F1' },
+  { key: 'ACTIVO',          label: 'Activo',          color: '#10B981' },
+  { key: 'CANCELADO',       label: 'Cancelado',       color: '#EF4444' },
+].map(e => [e.key, e]));
+// Acción sugerida por etapa (para el drawer).
+const ACCION_ETAPA = Object.fromEntries(EMBUDO_ETAPAS.map(e => [e.key, e.accion]));
+const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_APROBADO_FIRMA','CONAPE_DESEMBOLSO','CONAPE_MATRICULA'];"""
+new_map = """const ETAPA_MAP = Object.fromEntries([
+  ...EMBUDO_ETAPAS,
+  { key: 'CONAPE_ANALISIS',    label: 'CONAPE Análisis',    color: '#2B7FC1' },
+  { key: 'CONAPE_BPM',         label: 'CONAPE BPM',         color: '#406EB4' },
+  { key: 'CONAPE_APROBADO',    label: 'CONAPE Aprobado',    color: '#6366F1' },
+  { key: 'CONAPE_FORMALIZADO', label: 'CONAPE Formalizado', color: '#7C5FD6' },
+  { key: 'ACTIVO',             label: 'Activo',              color: '#10B981' },
+  { key: 'CANCELADO',          label: 'Cancelado',           color: '#EF4444' },
+].map(e => [e.key, e]));
+// Acción sugerida por etapa (para el drawer).
+const ACCION_ETAPA = Object.fromEntries(EMBUDO_ETAPAS.map(e => [e.key, e.accion]));
+const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_ANALISIS','CONAPE_BPM','CONAPE_APROBADO','CONAPE_APROBADO_FIRMA','CONAPE_FORMALIZADO','CONAPE_DESEMBOLSO','CONAPE_MATRICULA'];"""
+data = replace_once(data, old_map, new_map, 'ventas stage map')
+
+helper_marker_data = "// ── VENTAS-UX-001-A · SEMÁFORO DE PRIORIDAD"
+data_helper = '''const CONAPE_STAGE_RANK = Object.freeze({
+  LEAD:0,
+  CONAPE_SOLICITUD:10,
+  CONAPE_DOCUMENTOS:15,
+  CONAPE_ANALISIS:20,
+  CONAPE_BPM:30,
+  CONAPE_APROBADO:40,
+  CONAPE_APROBADO_FIRMA:40,
+  CONAPE_FORMALIZADO:50,
+  CONAPE_DESEMBOLSO:60,
+  CONAPE_MATRICULA:70,
+});
+
+function conapeEstadoNormalizado(v) {
+  return String(v || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/\\s+/g, ' ').trim();
+}
+
+function etapaDesdeFilaConape(row) {
+  if (!row || typeof row !== 'object') return '';
+  if (String(row.ultimo_desembolso || '').trim()) return 'CONAPE_DESEMBOLSO';
+  if (String(row.formalizacion || '').trim()) return 'CONAPE_FORMALIZADO';
+  if (String(row.aprobacion || '').trim()) return 'CONAPE_APROBADO';
+  const estado = conapeEstadoNormalizado(row.estado);
+  if (estado.includes('BPM')) return 'CONAPE_BPM';
+  if (estado.includes('ANAL')) return 'CONAPE_ANALISIS';
+  if (estado.includes('INICIO') || estado.includes('SOLICITUD') || estado.includes('RECLUT')) return 'CONAPE_SOLICITUD';
+  return '';
+}
+
+function mergeConapeStatusVentas(prospecto, row) {
+  if (!prospecto || typeof prospecto !== 'object' || !row || typeof row !== 'object') return prospecto;
+  if (String(prospecto.financiamiento || prospecto.FINANCIAMIENTO || '').toUpperCase() !== 'CONAPE') return prospecto;
+  const rawEstado = String(row.estado || '').trim();
+  const current = String(prospecto.etapa || prospecto.ETAPA || '').toUpperCase().trim();
+  const codigo = String(prospecto.codigo || prospecto.codigo_estudiante || prospecto.CODIGO_ESTUDIANTE || prospecto.rec_m || prospecto.REC_M || '').trim();
+  const matriculado = !!codigo || current === 'ACTIVO' || current === 'MATRICULADO';
+  const candidate = etapaDesdeFilaConape(row);
+  const currentRank = CONAPE_STAGE_RANK[current] ?? 0;
+  const candidateRank = CONAPE_STAGE_RANK[candidate] ?? 0;
+  const etapa = matriculado ? current : (candidate && candidateRank >= currentRank ? candidate : current);
+  return {
+    ...prospecto,
+    etapa,
+    etapa_conape_ui: matriculado ? '' : etapa,
+    estado_conape_raw: rawEstado,
+    estado_conape: rawEstado,
+    fecha_etapa: String(row.fecha_estado || '').trim() || prospecto.fecha_etapa || '',
+    conape_aprobacion: String(row.aprobacion || '').trim(),
+    conape_formalizacion: String(row.formalizacion || '').trim(),
+    conape_ultimo_desembolso: String(row.ultimo_desembolso || '').trim(),
+    conape_proximo_desembolso: String(row.proximo_desembolso || '').trim(),
+    conape_reclutado: true,
+  };
+}
+
+'''
+if 'function mergeConapeStatusVentas(prospecto, row)' not in data:
+    if helper_marker_data not in data:
+        raise SystemExit('STOP: ventas helper marker missing')
+    data = data.replace(helper_marker_data, data_helper + helper_marker_data, 1)
+data = replace_once(
+    data,
+    "  calcularEstadoEstudianteVentas,\n  formatHorarioGrupo,",
+    "  calcularEstadoEstudianteVentas,\n  etapaDesdeFilaConape, mergeConapeStatusVentas,\n  formatHorarioGrupo,",
+    'export overlay helpers',
+)
+
+old_dash = """        setDash({
+          asesor: data.asesor,
+          semana_actual: data.semana_actual || { matriculas: 0, promedio_4s: 0 },
+          embudo: Array.isArray(data.embudo) ? data.embudo : [],
+          prospectos: (data.prospectos || []).map(window.adaptProspectoDash),
+          grupos_disponibles: data.grupos_disponibles || [],
+          total_prospectos: data.total_prospectos,
+        });"""
+new_dash = """        const baseDash = {
+          asesor: data.asesor,
+          semana_actual: data.semana_actual || { matriculas: 0, promedio_4s: 0 },
+          embudo: Array.isArray(data.embudo) ? data.embudo : [],
+          prospectos: (data.prospectos || []).map(window.adaptProspectoDash),
+          grupos_disponibles: data.grupos_disponibles || [],
+          total_prospectos: data.total_prospectos,
+        };
+        setDash(baseDash);
+
+        const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
+        if (bridge && typeof bridge.salesStatuses === 'function') {
+          try {
+            const conape = await bridge.salesStatuses(scopeAsesor);
+            if (!cancel && conape?.ok && Array.isArray(conape.rows)) {
+              const byCedula = new Map(conape.rows.map(row => [String(row?.cedula || '').replace(/\\D/g, ''), row]).filter(([ced]) => !!ced));
+              setDash(prev => prev ? {
+                ...prev,
+                prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(p, byCedula.get(String(p?.cedula || '').replace(/\\D/g, '')))),
+              } : prev);
+            } else if (!cancel && conape && conape.ok === false) {
+              console.warn('[Ventas CONAPE] No se pudo refrescar el estado.', { code:String(conape.code || conape.error || 'UNKNOWN') });
+            }
+          } catch (conapeError) {
+            if (!cancel) console.warn('[Ventas CONAPE] Refresco temporalmente no disponible.', { code:String(conapeError?.code || 'UNAVAILABLE') });
+          }
+        }"""
+dash = replace_once(dash, old_dash, new_dash, 'dashboard overlay')
+
+table = replace_once(
+    table,
+    "const etapaVisible=p=>text(p?.estado_conape_raw||p?.estado_conape||p?.etapa||'');",
+    "const etapaVisible=p=>text(p?.etapa_conape_ui||p?.etapa||p?.estado_conape_raw||p?.estado_conape||'');",
+    'table mapped stage',
+)
+
+if 'async function salesStatuses(asesor)' not in client or 'bridge.salesStatuses(scopeAsesor)' not in dash or 'mergeConapeStatusVentas' not in data or 'etapa_conape_ui' not in table:
+    raise SystemExit('STOP: frontend overlay contract incomplete')
+
+html_repls = {
+    'src/ventas_data.jsx?v=F98.4Z6CS7B':'src/ventas_data.jsx?v=V4.3.1',
+    'src/ventas_sortable_table_cs21a20.jsx?v=C3.7':'src/ventas_sortable_table_cs21a20.jsx?v=V4.3.1',
+    'src/conape_bridge_client_c3_6.js?v=V3.0.0':'src/conape_bridge_client_c3_6.js?v=V3.2.0',
+    'src/ventas_dashboard.jsx?v=F98.4Z6CS21A20F':'src/ventas_dashboard.jsx?v=V4.3.1',
+}
+for old, new in html_repls.items():
+    html = replace_once(html, old, new, f'cache bust {old}')
+
+for path, text in [
+    (server_path, server),
+    (qa_path, qa),
+    (client_path, client),
+    (data_path, data),
+    (dash_path, dash),
+    (table_path, table),
+    (html_path, html),
+]:
+    path.write_text(text, encoding='utf-8')
