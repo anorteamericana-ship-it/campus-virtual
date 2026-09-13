@@ -24,7 +24,18 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Detect whether migration is still needed
+        id: probe
+        shell: bash
+        run: |
+          if [ -e services/conape-bridge/build_runtime_v4_4.mjs ]; then
+            echo 'needs_migration=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'needs_migration=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Materialize canonical V4.4 source once
+        if: steps.probe.outputs.needs_migration == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -37,6 +48,7 @@ jobs:
           rm services/conape-bridge/build_runtime_v4_4.mjs
 
       - name: Make Docker copy-only
+        if: steps.probe.outputs.needs_migration == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -61,6 +73,7 @@ jobs:
           EOF
 
       - name: Write direct-source V4.4 QA
+        if: steps.probe.outputs.needs_migration == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -112,79 +125,8 @@ jobs:
           console.log('PASS · contrato CONAPE mirror V4.4 directo completo');
           EOF
 
-      - name: Replace CONAPE workflow source-truth gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > .github/workflows/qa-conape-live-c3-6.yml <<'EOF'
-          name: QA CONAPE Live C3.6
-
-          on:
-            pull_request:
-              paths:
-                - 'ventas.html'
-                - 'src/ventas_conape_reclutar_c3_3.jsx'
-                - 'src/ventas_conape_reclutar_row_c3_5.jsx'
-                - 'src/ventas_sortable_table_cs21a20.jsx'
-                - 'src/conape_bridge_client_c3_6.js'
-                - 'src/conape_bridge_config_c3_6.js'
-                - 'src/conape_session_ui_c3_7.js'
-                - 'src/conape_compare_ui_c3_7_1.js'
-                - 'services/conape-bridge/**'
-                - 'apps-script-patches/**'
-                - 'scripts/qa_conape_live_c3_6.mjs'
-                - 'scripts/qa_conape_bridge_v2.mjs'
-                - 'scripts/qa_conape_mirror_v4_4.mjs'
-                - 'scripts/prepare_conape_mirror_v4_4_prod.mjs'
-                - '.github/workflows/qa-conape-live-c3-6.yml'
-            workflow_dispatch:
-
-          jobs:
-            qa:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                  with:
-                    fetch-depth: 0
-                - uses: actions/setup-node@v4
-                  with:
-                    node-version: '22'
-                - name: Canonical source truth · V4.4
-                  run: |
-                    grep -F "const VERSION = 'V4.4.0';" services/conape-bridge/server_v2.mjs
-                    test ! -e services/conape-bridge/build_runtime_v4_4.mjs
-                    test ! -e services/conape-bridge/server_runtime.mjs
-                    ! grep -E 'build_runtime_v4_4|server_runtime\.mjs|mv .*server_v2\.mjs' services/conape-bridge/Dockerfile
-                    grep -F 'COPY server_v2.mjs ./' services/conape-bridge/Dockerfile
-                    grep -F 'RUN node --check server_v2.mjs' services/conape-bridge/Dockerfile
-                    grep -F 'CMD ["node", "server_v2.mjs"]' services/conape-bridge/Dockerfile
-                - name: Node syntax · bridge legacy
-                  run: node --check services/conape-bridge/server.mjs
-                - name: Node syntax · bridge V4.4 canonical
-                  run: node --check services/conape-bridge/server_v2.mjs
-                - name: Node syntax · Apps Script mirror patch
-                  run: node --check apps-script-patches/conape_reclutamiento_mirror_v4_4.js
-                - name: Node syntax · V4.4 production release preparer
-                  run: node --check scripts/prepare_conape_mirror_v4_4_prod.mjs
-                - name: Node syntax · CONAPE session UI
-                  run: node --check src/conape_session_ui_c3_7.js
-                - name: Node syntax · CONAPE comparison UI
-                  run: node --check src/conape_compare_ui_c3_7_1.js
-                - name: Node syntax · QA legacy
-                  run: node --check scripts/qa_conape_live_c3_6.mjs
-                - name: Node syntax · QA V2
-                  run: node --check scripts/qa_conape_bridge_v2.mjs
-                - name: Node syntax · QA mirror V4.4
-                  run: node --check scripts/qa_conape_mirror_v4_4.mjs
-                - name: Bridge preserved-contract gate
-                  run: node scripts/qa_conape_bridge_v2.mjs
-                - name: Mirror V4.4 contract gate
-                  run: node scripts/qa_conape_mirror_v4_4.mjs
-                - name: Diff hygiene
-                  run: git diff --check origin/main...HEAD
-          EOF
-
       - name: Validate direct source before commit
+        if: steps.probe.outputs.needs_migration == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -197,14 +139,15 @@ jobs:
           ! grep -E 'build_runtime_v4_4|server_runtime\.mjs|mv .*server_v2\.mjs' services/conape-bridge/Dockerfile
           git diff --check
 
-      - name: Remove one-shot workflow and commit
+      - name: Commit source-truth files only
+        if: steps.probe.outputs.needs_migration == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          rm .github/workflows/tmp-conape-v44-source-truth-migration.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add services/conape-bridge/server_v2.mjs services/conape-bridge/Dockerfile scripts/qa_conape_mirror_v4_4.mjs
+          git add -u services/conape-bridge/build_runtime_v4_4.mjs
           git diff --cached --check
           git commit -m 'fix(conape): make V4.4 server_v2 canonical source'
           git push origin HEAD:feature/conape-auto-sync-mirror-v4-4
