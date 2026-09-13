@@ -1,5 +1,5 @@
 /* global window, fetch */
-(function conapeBridgeClientV3(){
+(function conapeBridgeClientV44(){
   'use strict';
 
   function cleanBase(value){ return String(value || '').trim().replace(/\/+$/, ''); }
@@ -25,7 +25,7 @@
       catch { return { ok:false, error:'conape_bridge_invalid_response' }; }
       return data && typeof data === 'object' ? data : { ok:false, error:'conape_bridge_invalid_response' };
     } catch (error) {
-      console.error('[CONAPE V3] Bridge no disponible.', error);
+      console.error('[CONAPE V4.4] Bridge no disponible.', error);
       return { ok:false, error:'conape_bridge_unavailable' };
     }
   }
@@ -47,7 +47,7 @@
       catch { return { ok:false, error:'conape_bridge_invalid_response' }; }
       return data && typeof data === 'object' ? data : { ok:false, error:'conape_bridge_invalid_response' };
     } catch (error) {
-      console.error('[CONAPE V3] Bridge no disponible.', error);
+      console.error('[CONAPE V4.4] Bridge no disponible.', error);
       return { ok:false, error:'conape_bridge_unavailable' };
     }
   }
@@ -57,6 +57,9 @@
     return getBridge('/v1/prospects/list' + summary);
   }
 
+  // V4.4: esta llamada mantiene el contrato de lectura de estados para Ventas,
+  // pero el bridge primero ejecuta la lectura completa CONAPE y persiste el espejo
+  // únicamente cuando CSV y Rows=All coinciden.
   async function salesStatuses(asesor){
     return postBridge('/v1/prospects/sales-status', { asesor:String(asesor || '').trim() });
   }
@@ -85,7 +88,7 @@
     listProspects,
     salesStatuses,
     active:!!bridgeBase(),
-    version:'V3.2',
+    version:'V4.4',
   });
 
   window.CONAPE_PORTAL_BRIDGE_V3 = api;
@@ -97,4 +100,37 @@
   window.CONAPE_BRIDGE_V3_ACTIVE = !!bridgeBase();
   window.CONAPE_BRIDGE_C36_ACTIVE = !!bridgeBase();
   window.CONAPE_BRIDGE_C37_ACTIVE = !!bridgeBase();
+
+  // El componente base llama onChanged solo cuando CREATE/UPDATE terminó bien.
+  // Se envuelve ese callback para refrescar CONAPE en ese mismo momento.
+  function installImmediatePostRecruitRefresh(){
+    const Base = window.ConapeRecruitRowButtonC35;
+    if (typeof Base !== 'function' || Base.__conapeMirrorV44Wrapped) return;
+    function Wrapped(props){
+      const originalChanged = props && props.onChanged;
+      const afterRecruit = async change => {
+        if (typeof originalChanged === 'function') originalChanged(change);
+        const ced = digits(change?.cedula || props?.prospecto?.cedula);
+        if (!ced) return;
+        try {
+          const fresh = await salesStatuses('');
+          if (!fresh?.ok || !Array.isArray(fresh.rows)) return;
+          const row = fresh.rows.find(item => digits(item?.cedula) === ced);
+          if (!row || typeof originalChanged !== 'function') return;
+          const merged = typeof window.mergeConapeStatusVentas === 'function'
+            ? window.mergeConapeStatusVentas(props?.prospecto || { cedula:ced, financiamiento:'CONAPE' }, row)
+            : { cedula:ced, estado_conape_raw:String(row.estado || '') };
+          originalChanged({ ...merged, cedula:ced });
+        } catch (error) {
+          console.warn('[Ventas CONAPE V4.4] Reclutamiento confirmado; refresco del espejo no disponible.', {
+            code:String(error?.code || 'UNAVAILABLE')
+          });
+        }
+      };
+      return window.React.createElement(Base, { ...props, onChanged:afterRecruit });
+    }
+    Wrapped.__conapeMirrorV44Wrapped = true;
+    window.ConapeRecruitRowButtonC35 = Wrapped;
+  }
+  installImmediatePostRecruitRefresh();
 })();
