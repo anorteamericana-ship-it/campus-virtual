@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
 
 const read = p => fs.readFileSync(p, 'utf8');
 const must = (condition, label) => {
@@ -9,9 +8,8 @@ const must = (condition, label) => {
   } else console.log(`PASS · ${label}`);
 };
 
-execFileSync(process.execPath, ['services/conape-bridge/build_runtime_v4_4.mjs'], { stdio:'inherit' });
-const runtime = read('services/conape-bridge/server_runtime.mjs');
 const source = read('services/conape-bridge/server_v2.mjs');
+const runtime = source;
 const client = read('src/conape_bridge_client_c3_6.js');
 const ventas = read('ventas.html');
 const dashboard = read('src/ventas_dashboard.jsx');
@@ -26,8 +24,8 @@ const applyEnd = apps.indexOf('\n\nfunction conapeMirrorReadForSalesV44', applyS
 const apply = applyStart >= 0 && applyEnd > applyStart ? apps.slice(applyStart, applyEnd) : '';
 const route = "else if (action === 'prospects_sales_status') result = await listProspectStatusesForSales(body);";
 
-must(runtime.includes("const VERSION = 'V4.4.0';"), 'runtime V4.4.0');
-must(source.includes("const VERSION = 'V4.3.2';"), 'baseline V4.3.2 preservado');
+must(source.includes("const VERSION = 'V4.4.0';"), 'GitHub source canónico V4.4.0');
+must(!fs.existsSync('services/conape-bridge/build_runtime_v4_4.mjs') && !fs.existsSync('services/conape-bridge/server_runtime.mjs'), 'no existe generador ni runtime derivado');
 must(runtime.includes('function createIsolatedConapeSession()') && runtime.includes('listProspectsFromHome(session = ConapeSession)'), 'cada sync puede usar sesión CONAPE aislada');
 must(runtime.includes(route) && !runtime.includes("prospects_sales_status') result = await serial(() => listProspectStatusesForSales(body))"), 'sales-status no usa cola compartida');
 must(sales.includes("list?.method === 'CSV_DOWNLOAD'") && sales.includes('list?.counts_match === true') && sales.includes('rowsCsv === rowsHtmlAll') && sales.includes('rowsCsv > 0') && sales.includes('rowsHtmlAll > 0'), 'gate CSV vs Rows=All y no vacío');
@@ -41,7 +39,7 @@ must(client.includes("const fresh = await salesStatuses('');") && client.include
 must(ventas.includes('conape_bridge_client_c3_6.js?v=V4.4.0'), 'cache bust cliente V4.4');
 must(dashboard.indexOf('setDash(baseDash);') >= 0 && dashboard.indexOf('setDash(baseDash);') < dashboard.indexOf('await bridge.salesStatuses(scopeAsesor)'), 'tabla base se pinta antes de leer CONAPE');
 must(apps.includes("if(row&&_conapeV44Text_(row.ULTIMO_DESEMBOLSO))return;"), 'Ventas corta visibilidad después del primer desembolso');
-must(docker.includes('node build_runtime_v4_4.mjs') && docker.includes('mv server_runtime.mjs server_v2.mjs') && docker.includes('CMD ["node", "server_v2.mjs"]'), 'Railway arranca V4.4 generado con el nombre canónico server_v2');
+must(!docker.includes('build_runtime_v4_4') && !docker.includes('server_runtime.mjs') && !/mv\s+.*server_v2\.mjs/.test(docker) && docker.includes('COPY server_v2.mjs ./') && docker.includes('RUN node --check server_v2.mjs') && docker.includes('CMD ["node", "server_v2.mjs"]'), 'Docker solo copia/verifica y arranca server_v2 canónico');
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log('PASS · contrato CONAPE mirror V4.4 completo');
+console.log('PASS · contrato CONAPE mirror V4.4 directo completo');

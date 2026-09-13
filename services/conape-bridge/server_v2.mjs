@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.3.2';
+const VERSION = 'V4.4.0';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1685,7 +1685,19 @@ async function resetProspectListReport(p, sessionId) {
   return ir_filters_before;
 }
 
-async function listProspectsFromHome() {
+function createIsolatedConapeSession() {
+  const session = Object.create(ConapeSession);
+  session.browser = null;
+  session.context = null;
+  session.page = null;
+  session.state = 'DISCONNECTED';
+  session.connectedAt = '';
+  session.lastActivity = '';
+  session.generation = 0;
+  return session;
+}
+
+async function listProspectsFromHome(session = ConapeSession) {
   const started = Date.now();
   let pages = 0;
   let method = 'HTML_PAGED';
@@ -1696,8 +1708,8 @@ async function listProspectsFromHome() {
   let countsMatch = false;
   const rowsByCedula = new Map();
   try {
-    const p = await ConapeSession.browserPage();
-    await ConapeSession.login(p);
+    const p = await session.browserPage();
+    await session.login(p);
     const sessionId = await readApexSession(p);
     if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'LIST');
 
@@ -1756,8 +1768,8 @@ async function listProspectsFromHome() {
       }
     }
 
-    ConapeSession.state = 'CONNECTED';
-    ConapeSession.lastActivity = nowIso();
+    session.state = 'CONNECTED';
+    session.lastActivity = nowIso();
     return {
       ok:true, code:'PROSPECT_LIST_READY', rows:[...rowsByCedula.values()], row_count:rowsByCedula.size,
       pages, method, rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:countsMatch,
@@ -1787,8 +1799,71 @@ async function listProspectStatusesForSales(body) {
     throw new AppError('CAMPUS_SALES_SCOPE_UNAVAILABLE', 'No se pudo resolver el alcance de Ventas.', 503, 'CAMPUS');
   }
   const allowedCedulas = new Set(dashboard.prospectos.map(campusCedula).filter(Boolean));
-  const list = await listProspectsFromHome();
-  const rows = (Array.isArray(list?.rows) ? list.rows : [])
+
+  const isolated = createIsolatedConapeSession();
+  let list;
+  try {
+    list = await listProspectsFromHome(isolated);
+  } catch (error) {
+    console.log(JSON.stringify({
+      event:'conape_mirror_sync_abort', version:VERSION,
+      rows_csv:Number.isInteger(error?.rows_csv) ? error.rows_csv : null,
+      rows_html_all:Number.isInteger(error?.rows_html_all) ? error.rows_html_all : null,
+      counts_match:false, pii:false,
+    }));
+    throw error;
+  } finally {
+    await isolated.close().catch(() => {});
+  }
+
+  const rowsCsv = Number(list?.rows_csv);
+  const rowsHtmlAll = Number(list?.rows_html_all);
+  const validSnapshot = list?.method === 'CSV_DOWNLOAD'
+    && list?.columns_ok === true
+    && list?.counts_match === true
+    && Number.isInteger(rowsCsv) && rowsCsv > 0
+    && Number.isInteger(rowsHtmlAll) && rowsHtmlAll > 0
+    && rowsCsv === rowsHtmlAll
+    && Array.isArray(list?.rows) && list.rows.length > 0;
+
+  if (!validSnapshot) {
+    console.log(JSON.stringify({
+      event:'conape_mirror_sync_abort', version:VERSION,
+      rows_csv:Number.isInteger(rowsCsv) ? rowsCsv : null,
+      rows_html_all:Number.isInteger(rowsHtmlAll) ? rowsHtmlAll : null,
+      counts_match:false, pii:false,
+    }));
+    const error = new AppError('CONAPE_SNAPSHOT_ABORTED', 'La lectura completa de CONAPE no pasó el control de integridad.', 503, 'LIST');
+    Object.assign(error, {
+      rows_csv:Number.isInteger(rowsCsv) ? rowsCsv : null,
+      rows_html_all:Number.isInteger(rowsHtmlAll) ? rowsHtmlAll : null,
+      counts_match:false,
+      columns_ok:list?.columns_ok === true,
+      method:txt(list?.method || ''),
+    });
+    throw error;
+  }
+
+  const applied = await campusCall({
+    fn:'conapeMirrorApplySnapshotV44',
+    token:auth.token,
+    method:list.method,
+    columns_ok:true,
+    counts_match:true,
+    rows_csv:rowsCsv,
+    rows_html_all:rowsHtmlAll,
+    captured_at:list.captured_at || nowIso(),
+    rows:list.rows,
+  });
+  if (!applied?.ok || applied?.written !== true) {
+    const error = new AppError('CONAPE_MIRROR_WRITE_FAILED', 'El Campus no confirmó la actualización del espejo CONAPE.', 503, 'CAMPUS');
+    error.rows_csv = rowsCsv;
+    error.rows_html_all = rowsHtmlAll;
+    error.counts_match = true;
+    throw error;
+  }
+
+  const rows = list.rows
     .filter(row => allowedCedulas.has(digits(row?.cedula)))
     .map(salesStatusRow);
   return {
@@ -1796,12 +1871,16 @@ async function listProspectStatusesForSales(body) {
     code:'PROSPECT_SALES_STATUS_READY',
     method:list.method,
     row_count:rows.length,
-    columns_ok:list.columns_ok === true,
+    columns_ok:true,
+    counts_match:true,
+    rows_csv:rowsCsv,
+    rows_html_all:rowsHtmlAll,
+    mirror_applied:true,
+    movements:Number(applied.movements || 0),
     captured_at:list.captured_at || nowIso(),
     rows,
   };
 }
-
 
 function categoryStatus(code) {
   if (code === 'SIN_PERMISO') return 403;
@@ -2070,7 +2149,7 @@ const server = http.createServer(async (req, res) => {
     if (action === 'session_status') { await authorizeCampusSessionStatus(body?.token); result = ConapeSession.snapshot({ ready:ConapeSession.state === 'CONNECTED' ? 'MEMORY' : null }); }
     else if (action === 'session_connect') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.connect()); }
     else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
-    else if (action === 'prospects_sales_status') result = await serial(() => listProspectStatusesForSales(body));
+    else if (action === 'prospects_sales_status') result = await listProspectStatusesForSales(body);
     else if (action === 'preview') result = await serial(() => preview(body));
     else if (action === 'submit') result = await serial(() => submit(body));
     else result = await serial(() => execute(body));
