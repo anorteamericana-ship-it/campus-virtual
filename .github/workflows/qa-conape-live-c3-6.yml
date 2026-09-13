@@ -30,16 +30,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Canonical source truth · V4.4
+        run: |
+          grep -F "const VERSION = 'V4.4.0';" services/conape-bridge/server_v2.mjs
+          test ! -e services/conape-bridge/build_runtime_v4_4.mjs
+          test ! -e services/conape-bridge/server_runtime.mjs
+          ! grep -E 'build_runtime_v4_4|server_runtime\.mjs|mv .*server_v2\.mjs' services/conape-bridge/Dockerfile
+          grep -F 'COPY server_v2.mjs ./' services/conape-bridge/Dockerfile
+          grep -F 'RUN node --check server_v2.mjs' services/conape-bridge/Dockerfile
+          grep -F 'CMD ["node", "server_v2.mjs"]' services/conape-bridge/Dockerfile
       - name: Node syntax · bridge legacy
         run: node --check services/conape-bridge/server.mjs
-      - name: Node syntax · bridge V2 baseline
+      - name: Node syntax · bridge V4.4 canonical
         run: node --check services/conape-bridge/server_v2.mjs
-      - name: Node syntax · V4.4 runtime builder
-        run: node --check services/conape-bridge/build_runtime_v4_4.mjs
-      - name: Build + syntax · V4.4 runtime
-        run: |
-          node services/conape-bridge/build_runtime_v4_4.mjs
-          node --check services/conape-bridge/server_runtime.mjs
       - name: Node syntax · Apps Script mirror patch
         run: node --check apps-script-patches/conape_reclutamiento_mirror_v4_4.js
       - name: Node syntax · V4.4 production release preparer
@@ -54,7 +57,7 @@ jobs:
         run: node --check scripts/qa_conape_bridge_v2.mjs
       - name: Node syntax · QA mirror V4.4
         run: node --check scripts/qa_conape_mirror_v4_4.mjs
-      - name: Bridge V2 contract gate
+      - name: Bridge preserved-contract gate
         run: node scripts/qa_conape_bridge_v2.mjs
       - name: Mirror V4.4 contract gate
         run: node scripts/qa_conape_mirror_v4_4.mjs
