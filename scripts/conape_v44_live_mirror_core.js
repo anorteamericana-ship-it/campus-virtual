@@ -179,7 +179,7 @@ function _conapeMirrorV44DetectMovements_(oldMap, newMap) {
     if (!oldDisb && newDisb) {
       out.push(_conapeMirrorV44Movement_(ced, 'PRIMER_DESEMBOLSO', n));
     } else if (oldDisb && !newDisb) {
-      out.push(_conapeMirrorV44Movement_(ced, 'DESEMBOLSO_REMOVIDO', n));
+      out.push(_conapeMirrorV44Movement_(ced, 'DESEMBOLSO_REMOVIDO', o));
     } else if (oldDisb && newDisb && oldDisb !== newDisb) {
       out.push(_conapeMirrorV44Movement_(ced, 'NUEVO_DESEMBOLSO', n));
     }
