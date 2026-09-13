@@ -1,0 +1,33 @@
+name: QA CONAPE Mirror Service V4.4
+
+on:
+  pull_request:
+    paths:
+      - 'services/conape-mirror-service/**'
+      - 'scripts/qa_conape_mirror_service_v4_4.mjs'
+      - '.github/workflows/qa-conape-mirror-service-v4-4.yml'
+  push:
+    branches:
+      - feature/conape-mirror-service-v4-4
+    paths:
+      - 'services/conape-mirror-service/**'
+      - 'scripts/qa_conape_mirror_service_v4_4.mjs'
+      - '.github/workflows/qa-conape-mirror-service-v4-4.yml'
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax · standalone Apps Script
+        run: |
+          cp services/conape-mirror-service/Code.gs /tmp/conape-mirror-service.js
+          node --check /tmp/conape-mirror-service.js
+      - name: Contract · standalone mirror service
+        run: node scripts/qa_conape_mirror_service_v4_4.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/main...HEAD
