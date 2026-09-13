@@ -31,7 +31,14 @@ jobs:
           node --check src/conape_bridge_client_c3_6.js
           git diff --check
           ! grep -F 'conapeMirrorApplySnapshotV44' services/conape-bridge/server_v2.mjs
-          grep -F "update(\`${ts}\\n${nonce}\\n${payload_json}\`, 'utf8')" services/conape-bridge/server_v2.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('services/conape-bridge/server_v2.mjs').read_text(encoding='utf-8')
+          good = r"update(`${ts}\n${nonce}\n${payload_json}`, 'utf8')"
+          bad = r"update(`${ts}\\n${nonce}\\n${payload_json}`, 'utf8')"
+          assert good in src, 'HMAC canonical string with newline escapes missing'
+          assert bad not in src, 'HMAC canonical string contains literal backslash-n'
+          PY
       - name: Commit candidate
         run: |
           git config user.name 'anorteamericana-ship-it'
