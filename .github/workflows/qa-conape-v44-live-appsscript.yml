@@ -1,0 +1,47 @@
+name: QA CONAPE V4.4 LIVE Apps Script
+
+on:
+  push:
+    branches:
+      - feature/conape-v44-live-appsscript
+    paths:
+      - 'scripts/conape_v44_live_mirror_core.js'
+      - 'scripts/qa_conape_v44_live_mirror_core.mjs'
+      - 'scripts/audit_conape_v44_live_appsscript.ps1'
+      - 'scripts/build_conape_v44_live_candidate.ps1'
+      - '.github/workflows/qa-conape-v44-live-appsscript.yml'
+  pull_request:
+    paths:
+      - 'scripts/conape_v44_live_mirror_core.js'
+      - 'scripts/qa_conape_v44_live_mirror_core.mjs'
+      - 'scripts/audit_conape_v44_live_appsscript.ps1'
+      - 'scripts/build_conape_v44_live_candidate.ps1'
+      - '.github/workflows/qa-conape-v44-live-appsscript.yml'
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax · mirror core
+        run: node --check scripts/conape_v44_live_mirror_core.js
+      - name: Contract · mirror core
+        run: node scripts/qa_conape_v44_live_mirror_core.mjs
+      - name: PowerShell parse · read-only audit
+        shell: pwsh
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/audit_conape_v44_live_appsscript.ps1'),
+            [ref]$null,
+            [ref]$errors
+          )
+          if ($errors.Count) { $errors | Format-List; exit 1 }
+      - name: Diff hygiene
+        run: git diff --check origin/main...HEAD
