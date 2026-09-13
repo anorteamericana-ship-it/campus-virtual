@@ -3,8 +3,19 @@
  * No implementa firma, doPost ni credenciales nuevas.
  */
 
-function agentConapeMirrorReadV44(data) {
+function _conapeMirrorV44RejectUnknownData_(data, allowed) {
   data = data || {};
+  if (Object.prototype.toString.call(data) !== '[object Object]') throw new Error('CONAPE_SERVICE_DATA_INVALID');
+  var allow = {};
+  (allowed || []).forEach(function(k) { allow[k] = true; });
+  Object.keys(data).forEach(function(k) {
+    if (!allow[k]) throw new Error('CONAPE_SERVICE_UNKNOWN_FIELD');
+  });
+  return data;
+}
+
+function agentConapeMirrorReadV44(data) {
+  _conapeMirrorV44RejectUnknownData_(data || {}, []);
   var rows = _conapeMirrorV44ReadRows_().map(_conapeMirrorV44PublicRow_);
   var lastSync = '';
   rows.forEach(function(r) {
@@ -21,5 +32,8 @@ function agentConapeMirrorReadV44(data) {
 }
 
 function agentConapeMirrorApplySnapshotV44Service(data) {
-  return agentConapeMirrorApplySnapshotV44(data || {});
+  data = _conapeMirrorV44RejectUnknownData_(data || {}, [
+    'method','columns_ok','counts_match','rows_csv','rows_html_all','captured_at','rows'
+  ]);
+  return agentConapeMirrorApplySnapshotV44(data);
 }
