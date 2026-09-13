@@ -16,6 +16,7 @@ on:
       - 'scripts/qa_conape_live_c3_6.mjs'
       - 'scripts/qa_conape_bridge_v2.mjs'
       - 'scripts/qa_conape_mirror_v4_4.mjs'
+      - 'scripts/prepare_conape_mirror_v4_4_prod.mjs'
       - '.github/workflows/qa-conape-live-c3-6.yml'
   workflow_dispatch:
 
@@ -41,6 +42,8 @@ jobs:
           node --check services/conape-bridge/server_runtime.mjs
       - name: Node syntax · Apps Script mirror patch
         run: node --check apps-script-patches/conape_reclutamiento_mirror_v4_4.js
+      - name: Node syntax · V4.4 production release preparer
+        run: node --check scripts/prepare_conape_mirror_v4_4_prod.mjs
       - name: Node syntax · CONAPE session UI
         run: node --check src/conape_session_ui_c3_7.js
       - name: Node syntax · CONAPE comparison UI
