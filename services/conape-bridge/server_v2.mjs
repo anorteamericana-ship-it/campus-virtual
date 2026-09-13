@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.9';
+const VERSION = 'V4.3.0';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1658,11 +1658,19 @@ async function readPagedProspects(p, rowsByCedula) {
   return pages;
 }
 
+function prospectListResetUrl(sessionId) {
+  const u = new URL(CONAPE_FRIENDLY_HOME);
+  const cleanSession = digits(sessionId);
+  u.searchParams.set('session', cleanSession);
+  u.searchParams.set('clear', 'RR');
+  return u.href;
+}
+
 async function resetProspectListReport(p, sessionId) {
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
   await waitForApexDynamicAction(p);
   const ir_filters_before = await countIrFilters(p);
-  await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+  await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
   await waitForApexDynamicAction(p);
   await sleep(100);
   return ir_filters_before;
@@ -1694,7 +1702,7 @@ async function listProspectsFromHome() {
       pages = 1;
 
       // Verificación de integridad contra la misma pantalla en Rows=All.
-      await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+      await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
       await waitForApexDynamicAction(p);
       if (!(await setProspectRowsAll(p))) throw new AppError('CONAPE_LIST_ROWS_ALL_UNAVAILABLE', 'CONAPE no permitió verificar Rows=All.', 503, 'LIST');
       const html = await readProspectListPage(p);
@@ -1715,7 +1723,7 @@ async function listProspectsFromHome() {
       for (const row of csvRows.values()) rowsByCedula.set(row.cedula, row);
     } else {
       // El menú de descarga no es requisito para continuidad: Rows=All es el respaldo preferido.
-      await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+      await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
       await waitForApexDynamicAction(p);
       const rowsAll = await setProspectRowsAll(p);
       if (rowsAll) {
@@ -1734,7 +1742,7 @@ async function listProspectsFromHome() {
       }
       if (!columnsOk) {
         // Último respaldo únicamente: paginación legacy, después de otro RIR limpio.
-        await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+        await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
         await waitForApexDynamicAction(p);
         pages = await readPagedProspects(p, rowsByCedula);
         method = 'HTML_PAGED';
