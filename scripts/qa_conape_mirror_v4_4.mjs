@@ -21,6 +21,9 @@ const docker = read('services/conape-bridge/Dockerfile');
 const salesStart = runtime.indexOf('async function listProspectStatusesForSales(body) {');
 const salesEnd = runtime.indexOf('\n\nfunction categoryStatus', salesStart);
 const sales = runtime.slice(salesStart, salesEnd);
+const applyStart = apps.indexOf('function conapeMirrorApplySnapshotV44(body) {');
+const applyEnd = apps.indexOf('\n\nfunction conapeMirrorReadForSalesV44', applyStart);
+const apply = applyStart >= 0 && applyEnd > applyStart ? apps.slice(applyStart, applyEnd) : '';
 const route = "else if (action === 'prospects_sales_status') result = await listProspectStatusesForSales(body);";
 
 must(runtime.includes("const VERSION = 'V4.4.0';"), 'runtime V4.4.0');
@@ -30,7 +33,7 @@ must(runtime.includes(route) && !runtime.includes("prospects_sales_status') resu
 must(sales.includes("list?.method === 'CSV_DOWNLOAD'") && sales.includes('list?.counts_match === true') && sales.includes('rowsCsv === rowsHtmlAll') && sales.includes('rowsCsv > 0') && sales.includes('rowsHtmlAll > 0'), 'gate CSV vs Rows=All y no vacío');
 must(sales.includes("fn:'conapeMirrorApplySnapshotV44'") && sales.indexOf('validSnapshot') < sales.indexOf("fn:'conapeMirrorApplySnapshotV44'"), 'solo persiste después del gate');
 must(sales.includes("event:'conape_mirror_sync_abort'") && sales.includes('counts_match:false'), 'corrida abortada registra conteos sin PII');
-must(apps.includes("'RETIRADO_DE_LISTA'") && apps.indexOf('if(!valid) return') < apps.indexOf('_conapeV44DetectMovements_'), 'RETIRADO solo puede calcularse tras snapshot válido');
+must(apps.includes("'RETIRADO_DE_LISTA'") && apply.includes('if(!valid) return') && apply.indexOf('if(!valid) return') < apply.indexOf('_conapeV44DetectMovements_(oldMap,newMap)'), 'RETIRADO solo puede calcularse tras snapshot válido');
 must(apps.indexOf('_conapeV44AppendMovements_(events,syncId)') < apps.indexOf('_conapeV44WriteMirror_(newMap,stamp)'), 'movimientos se escriben antes del espejo');
 must(apps.includes("getSheetByName('CONAPE_RECLUTAMIENTO')") && apps.includes('CONAPE_MIRROR_V44_HEADERS'), 'espejo exacto CONAPE_RECLUTAMIENTO');
 must(!/LockService|newTrigger|ScriptApp\.newTrigger|debounce/i.test(apps), 'patch del espejo no introduce locks, triggers ni debounce');
