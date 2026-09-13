@@ -36,7 +36,7 @@ const legacyCopies = [
   'server.mjs','start_c3_6_2.mjs','server_c3_7.mjs','server_c3_7_3.mjs','server_c3_7_4.mjs',
   'server_c3_7_5.mjs','server_c3_7_7.mjs','server_c3_7_8.mjs','server_c3_7_9.mjs',
 ];
-const listFields = ['cedula','apellido_1','apellido_2','nombre','telefono','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
+const listFields = ['cedula','apellido_1','apellido_2','nombre','telefono','celular','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
 const safeAlertCategories = ['YA_REGISTRADO','CAMPO_OBLIGATORIO','DATO_INVALIDO','SIN_PERMISO','ERROR_DE_PORTAL','ALERTA_NO_CLASIFICADA'];
 
 const checks = [
@@ -104,6 +104,10 @@ const checks = [
   ['V4.2.9 expone conteos CSV y Rows=All y falla cerrado en mismatch', ['rows_csv','rows_html_all','counts_match'].every(v=>server.includes(v)) && server.includes('LIST_COUNT_MISMATCH') && server.includes('Object.assign(mismatch')],
   ['V4.2.9 summary=1 no devuelve filas con PII al navegador', server.includes('summaryOnly') && server.includes("url.searchParams.get('summary')") && server.includes('const payload = summaryOnly ? {')],
   ['V4.2.9 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','ir_filters_before','pii:false'].every(v=>server.includes(v))],
+  ['V4.3.2 contrato de lista conserva 15 columnas incluyendo teléfono y celular separados', listFields.length === 15 && listFields.includes('telefono') && listFields.includes('celular') && server.includes("['TELEFONO','telefono'],['CELULAR','celular']")],
+  ['V4.3.2 permanece en Friendly Home cuando no hay filtros y solo usa RR si existen', listBlock.includes('async function openProspectListHome') && /if \(ir_filters_before > 0\)/.test(listBlock) && /await openProspectListHome\(p, sessionId\)/.test(listBlock)],
+  ['V4.3.2 fallbacks de lectura vuelven a Friendly Home y no a la URL RR', listBlock.includes('paginación legacy sobre la misma Friendly Home') && !/Último respaldo[\s\S]{0,240}prospectListResetUrl/.test(listBlock)],
+  ['V4.3.2 diagnóstico de schema es seguro y no registra filas', server.includes("event:'conape_list_schema'") && server.includes('expected_columns:15') && server.includes('pii:false')],
   ['V4.3.1 lista completa queda restringida a admin/superadmin', server.includes("fullListRole = roleOf(auth.session)") && server.includes("['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)")],
   ['V4.3.1 sales-status usa scope real de getDashboardVentas', /\/v1\/prospects\/sales-status/.test(server) && /listProspectStatusesForSales\(body\)/.test(server) && salesStatusBlock.includes("fn:'getDashboardVentas'") && salesStatusBlock.includes('allowedCedulas')],
   ['V4.3.1 sales-status minimiza campos devueltos', ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'].every(v=>salesStatusBlock.includes(`'${v}'`)) && !/nombre|apellido|correo|telefono|usuario_registro/i.test(salesStatusBlock)],
@@ -118,4 +122,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.3.1 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.3.2 QA PASS · ${checks.length}/${checks.length}`);
