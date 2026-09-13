@@ -32,6 +32,14 @@ for (const movement of [
 for (const forbiddenMovement of ['FORMALIZADO','INGRESO_LISTA','CAMBIO_ESTADO']) {
   assert(!src.includes(`'${forbiddenMovement}'`), `movimiento no autorizado detectado: ${forbiddenMovement}`);
 }
+assert(
+  src.includes("out.push(_conapeMirrorV44Movement_(ced, 'DESEMBOLSO_REMOVIDO', o));"),
+  'DESEMBOLSO_REMOVIDO debe anclarse al snapshot anterior'
+);
+assert(
+  !src.includes("out.push(_conapeMirrorV44Movement_(ced, 'DESEMBOLSO_REMOVIDO', n));"),
+  'DESEMBOLSO_REMOVIDO no puede anclarse a la fila nueva vacía'
+);
 
 assert(src.includes("_conapeMirrorV44Upper_(body.method) === 'CSV_DOWNLOAD'"), 'gate CSV_DOWNLOAD ausente');
 assert(src.includes('body.counts_match === true'), 'gate counts_match ausente');
