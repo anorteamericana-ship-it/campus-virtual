@@ -1748,9 +1748,8 @@ async function listProspectsFromHome() {
         }
       }
       if (!columnsOk) {
-        // Último respaldo únicamente: paginación legacy, después de otro RIR limpio.
-        await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
-        await waitForApexDynamicAction(p);
+        // Último respaldo únicamente: paginación legacy sobre la misma Friendly Home.
+        await openProspectListHome(p, sessionId);
         pages = await readPagedProspects(p, rowsByCedula);
         method = 'HTML_PAGED';
         columnsOk = true;
