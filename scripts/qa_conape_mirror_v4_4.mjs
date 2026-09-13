@@ -38,7 +38,7 @@ must(client.includes("const fresh = await salesStatuses('');") && client.include
 must(ventas.includes('conape_bridge_client_c3_6.js?v=V4.4.0'), 'cache bust cliente V4.4');
 must(dashboard.indexOf('setDash(baseDash);') >= 0 && dashboard.indexOf('setDash(baseDash);') < dashboard.indexOf('await bridge.salesStatuses(scopeAsesor)'), 'tabla base se pinta antes de leer CONAPE');
 must(apps.includes("if(row&&_conapeV44Text_(row.ULTIMO_DESEMBOLSO))return;"), 'Ventas corta visibilidad después del primer desembolso');
-must(docker.includes('node build_runtime_v4_4.mjs') && docker.includes('CMD ["node", "server_runtime.mjs"]'), 'Railway ejecuta runtime generado V4.4');
+must(docker.includes('node build_runtime_v4_4.mjs') && docker.includes('mv server_runtime.mjs server_v2.mjs') && docker.includes('CMD ["node", "server_v2.mjs"]'), 'Railway arranca V4.4 generado con el nombre canónico server_v2');
 
 if (process.exitCode) process.exit(process.exitCode);
 console.log('PASS · contrato CONAPE mirror V4.4 completo');
