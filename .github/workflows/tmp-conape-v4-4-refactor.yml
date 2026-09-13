@@ -7,7 +7,6 @@ on:
     paths:
       - '.github/workflows/tmp-conape-v4-4-refactor.yml'
       - 'scripts/tmp_conape_v4_4_refactor.py'
-      - 'scripts/tmp_fix_conape_v4_4_refactor.py'
 
 permissions:
   contents: write
@@ -21,10 +20,7 @@ jobs:
           ref: feature/conape-auto-sync-mirror-v4-4
           fetch-depth: 0
       - name: Apply deterministic refactor
-        run: |
-          python3 scripts/tmp_fix_conape_v4_4_refactor.py
-          python3 scripts/tmp_conape_v4_4_refactor.py
-          rm -f scripts/tmp_fix_conape_v4_4_refactor.py
+        run: python3 scripts/tmp_conape_v4_4_refactor.py
       - name: Verify candidate
         run: |
           node --check services/conape-bridge/server_v2.mjs
@@ -36,8 +32,8 @@ jobs:
           src = Path('services/conape-bridge/server_v2.mjs').read_text(encoding='utf-8')
           good = r"update(`${ts}\n${nonce}\n${payload_json}`, 'utf8')"
           bad = r"update(`${ts}\\n${nonce}\\n${payload_json}`, 'utf8')"
-          assert good in src, 'HMAC canonical string with newline escapes missing'
-          assert bad not in src, 'HMAC canonical string contains literal backslash-n'
+          assert good in src, 'HMAC canonical newline escapes missing'
+          assert bad not in src, 'HMAC canonical contains literal backslash-n'
           PY
       - name: Commit candidate
         run: |
