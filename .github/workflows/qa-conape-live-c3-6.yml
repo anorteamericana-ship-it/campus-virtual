@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'ventas.html'
+      - 'src/ventas_dashboard.jsx'
       - 'src/ventas_conape_reclutar_c3_3.jsx'
       - 'src/ventas_conape_reclutar_row_c3_5.jsx'
       - 'src/ventas_sortable_table_cs21a20.jsx'
@@ -36,10 +37,36 @@ jobs:
           grep -F 'COPY server_v2.mjs ./' services/conape-bridge/Dockerfile
           grep -F 'RUN node --check server_v2.mjs' services/conape-bridge/Dockerfile
           grep -F 'CMD ["node", "server_v2.mjs"]' services/conape-bridge/Dockerfile
+      - name: Scheduled mirror + manual refresh contract
+        run: |
+          grep -F 'CONAPE_MIRROR_SERVICE_URL' services/conape-bridge/server_v2.mjs
+          grep -F 'CONAPE_MIRROR_HMAC_SECRET' services/conape-bridge/server_v2.mjs
+          grep -F '1_800_000' services/conape-bridge/server_v2.mjs
+          grep -F "url.pathname === '/v1/prospects/refresh'" services/conape-bridge/server_v2.mjs
+          grep -F "action:'read_mirror'" services/conape-bridge/server_v2.mjs
+          grep -F "action:'apply_snapshot'" services/conape-bridge/server_v2.mjs
+          ! grep -F 'conapeMirrorApplySnapshotV44' services/conape-bridge/server_v2.mjs
+          grep -F 'async function refreshMirror' src/conape_bridge_client_c3_6.js
+          grep -F 'const fresh = await refreshMirror(lastSalesAsesor);' src/conape_bridge_client_c3_6.js
+          grep -F 'Actualizar CONAPE' src/ventas_dashboard.jsx
+          grep -F '30 * 60 * 1000' src/ventas_dashboard.jsx
+          grep -F 'setDash(baseDash);' src/ventas_dashboard.jsx
+      - name: HMAC canonical bytes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('services/conape-bridge/server_v2.mjs').read_text(encoding='utf-8')
+          good = r"update(`${ts}\n${nonce}\n${payload_json}`, 'utf8')"
+          bad = r"update(`${ts}\\n${nonce}\\n${payload_json}`, 'utf8')"
+          assert good in src
+          assert bad not in src
+          PY
       - name: Node syntax · bridge legacy
         run: node --check services/conape-bridge/server.mjs
       - name: Node syntax · bridge V4.4 canonical
         run: node --check services/conape-bridge/server_v2.mjs
+      - name: Node syntax · CONAPE bridge client V4.4
+        run: node --check src/conape_bridge_client_c3_6.js
       - name: Node syntax · CONAPE session UI
         run: node --check src/conape_session_ui_c3_7.js
       - name: Node syntax · CONAPE comparison UI
