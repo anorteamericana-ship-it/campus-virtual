@@ -57,6 +57,10 @@
     return getBridge('/v1/prospects/list' + summary);
   }
 
+  async function salesStatuses(asesor){
+    return postBridge('/v1/prospects/sales-status', { asesor:String(asesor || '').trim() });
+  }
+
   async function sessionStatus(){ return postBridge('/v1/session/status', {}); }
   async function connect(){ return postBridge('/v1/session/connect', {}); }
   async function disconnect(){ return postBridge('/v1/session/disconnect', {}); }
@@ -79,8 +83,9 @@
     preview,
     submit,
     listProspects,
+    salesStatuses,
     active:!!bridgeBase(),
-    version:'V3.1',
+    version:'V3.2',
   });
 
   window.CONAPE_PORTAL_BRIDGE_V3 = api;

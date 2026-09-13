@@ -10,6 +10,9 @@ const listReadStart = server.indexOf('async function readProspectListPage');
 const listEnd = server.indexOf('function categoryStatus', listReadStart);
 const listBlock = listReadStart >= 0 && listEnd > listReadStart ? server.slice(listReadStart, listEnd) : '';
 const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];
+const salesStatusStart = server.indexOf('const SALES_STATUS_FIELDS');
+const salesStatusEnd = server.indexOf('function categoryStatus', salesStatusStart);
+const salesStatusBlock = salesStatusStart >= 0 && salesStatusEnd > salesStatusStart ? server.slice(salesStatusStart, salesStatusEnd) : '';
 const confirmStart = server.indexOf('async function confirmInHome');
 const confirmEnd = server.indexOf('async function readProspectListPage', confirmStart);
 const confirmBlock = confirmStart >= 0 && confirmEnd > confirmStart ? server.slice(confirmStart, confirmEnd) : '';
@@ -101,6 +104,9 @@ const checks = [
   ['V4.2.9 expone conteos CSV y Rows=All y falla cerrado en mismatch', ['rows_csv','rows_html_all','counts_match'].every(v=>server.includes(v)) && server.includes('LIST_COUNT_MISMATCH') && server.includes('Object.assign(mismatch')],
   ['V4.2.9 summary=1 no devuelve filas con PII al navegador', server.includes('summaryOnly') && server.includes("url.searchParams.get('summary')") && server.includes('const payload = summaryOnly ? {')],
   ['V4.2.9 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','ir_filters_before','pii:false'].every(v=>server.includes(v))],
+  ['V4.3.1 lista completa queda restringida a admin/superadmin', server.includes("fullListRole = roleOf(auth.session)") && server.includes("['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)")],
+  ['V4.3.1 sales-status usa scope real de getDashboardVentas', /\/v1\/prospects\/sales-status/.test(server) && /listProspectStatusesForSales\(body\)/.test(server) && salesStatusBlock.includes("fn:'getDashboardVentas'") && salesStatusBlock.includes('allowedCedulas')],
+  ['V4.3.1 sales-status minimiza campos devueltos', ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'].every(v=>salesStatusBlock.includes(`'${v}'`)) && !/nombre|apellido|correo|telefono|usuario_registro/i.test(salesStatusBlock)],
   ['Docker contiene solo server_v2 + self-test, sin patcher runtime', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`)) && !/hotfix_v4_2_4|RUN node hotfix/i.test(docker)],
   ['Docker arranca server_v2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
   ['Railway fija startCommand canónico', railway?.deploy?.startCommand === 'node server_v2.mjs'],
@@ -112,4 +118,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.3.0 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.3.1 QA PASS · ${checks.length}/${checks.length}`);

@@ -135,14 +135,33 @@ function VentasApp({ sesion }) {
           console.error('[Ventas CS21A173] No se pudo cargar el dashboard real.', data && (data.error || data.mensaje));
           throw new Error('ventas_dashboard_unavailable');
         }
-        setDash({
+        const baseDash = {
           asesor: data.asesor,
           semana_actual: data.semana_actual || { matriculas: 0, promedio_4s: 0 },
           embudo: Array.isArray(data.embudo) ? data.embudo : [],
           prospectos: (data.prospectos || []).map(window.adaptProspectoDash),
           grupos_disponibles: data.grupos_disponibles || [],
           total_prospectos: data.total_prospectos,
-        });
+        };
+        setDash(baseDash);
+
+        const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
+        if (bridge && typeof bridge.salesStatuses === 'function') {
+          try {
+            const conape = await bridge.salesStatuses(scopeAsesor);
+            if (!cancel && conape?.ok && Array.isArray(conape.rows)) {
+              const byCedula = new Map(conape.rows.map(row => [String(row?.cedula || '').replace(/\D/g, ''), row]).filter(([ced]) => !!ced));
+              setDash(prev => prev ? {
+                ...prev,
+                prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(p, byCedula.get(String(p?.cedula || '').replace(/\D/g, '')))),
+              } : prev);
+            } else if (!cancel && conape && conape.ok === false) {
+              console.warn('[Ventas CONAPE] No se pudo refrescar el estado.', { code:String(conape.code || conape.error || 'UNKNOWN') });
+            }
+          } catch (conapeError) {
+            if (!cancel) console.warn('[Ventas CONAPE] Refresco temporalmente no disponible.', { code:String(conapeError?.code || 'UNAVAILABLE') });
+          }
+        }
       } catch (e) {
         console.error('[Ventas CS21A173] Falló la carga del dashboard real.', e);
         if (!cancel) setErrorCarga('No pudimos cargar tu panel. Recargá la página e intentá nuevamente.');
