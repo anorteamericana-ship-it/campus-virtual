@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.2.9';
+const VERSION = 'V4.3.1';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -178,7 +178,7 @@ async function campusRequest(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
     const error = new AppError('CAMPUS_BACKEND_UNAVAILABLE', 'El Campus está ocupado, probá de nuevo en unos segundos.', 503, 'CAMPUS');
     error.fn = fn;
     error.campus_busy = true;
-    error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;
+    error.retryable = ['validarSesion','getProspectoDetalle','getDashboardVentas'].includes(fn) && error.campus_busy;
     error.campus_ms = Date.now() - started;
     error.cause = cause;
     throw error;
@@ -191,7 +191,7 @@ async function campusRequest(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
     const error = new AppError('CAMPUS_BACKEND_UNAVAILABLE', body_starts_with_angle ? 'El Campus está ocupado, probá de nuevo en unos segundos.' : 'No se pudo consultar el Campus.', 503, 'CAMPUS');
     error.fn = fn;
     error.campus_busy = body_starts_with_angle || (Date.now() - started >= 10_000);
-    error.retryable = ['validarSesion','getProspectoDetalle'].includes(fn) && error.campus_busy;
+    error.retryable = ['validarSesion','getProspectoDetalle','getDashboardVentas'].includes(fn) && error.campus_busy;
     error.campus_ms = Date.now() - started;
     throw error;
   }
@@ -210,7 +210,7 @@ async function campusRequest(payload, timeoutMs = REQUEST_TIMEOUT_MS) {
 
 async function campusCall(payload) {
   const fn = safeId(payload?.fn) || 'UNKNOWN';
-  const readOnly = fn === 'validarSesion' || fn === 'getProspectoDetalle';
+  const readOnly = fn === 'validarSesion' || fn === 'getProspectoDetalle' || fn === 'getDashboardVentas';
   const timeoutMs = readOnly ? CAMPUS_READ_ATTEMPT_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
   try {
     return await campusRequest(payload, timeoutMs);
@@ -1658,11 +1658,19 @@ async function readPagedProspects(p, rowsByCedula) {
   return pages;
 }
 
+function prospectListResetUrl(sessionId) {
+  const u = new URL(CONAPE_FRIENDLY_HOME);
+  const cleanSession = digits(sessionId);
+  u.searchParams.set('session', cleanSession);
+  u.searchParams.set('clear', 'RR');
+  return u.href;
+}
+
 async function resetProspectListReport(p, sessionId) {
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
   await waitForApexDynamicAction(p);
   const ir_filters_before = await countIrFilters(p);
-  await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+  await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
   await waitForApexDynamicAction(p);
   await sleep(100);
   return ir_filters_before;
@@ -1694,7 +1702,7 @@ async function listProspectsFromHome() {
       pages = 1;
 
       // Verificación de integridad contra la misma pantalla en Rows=All.
-      await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+      await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
       await waitForApexDynamicAction(p);
       if (!(await setProspectRowsAll(p))) throw new AppError('CONAPE_LIST_ROWS_ALL_UNAVAILABLE', 'CONAPE no permitió verificar Rows=All.', 503, 'LIST');
       const html = await readProspectListPage(p);
@@ -1715,7 +1723,7 @@ async function listProspectsFromHome() {
       for (const row of csvRows.values()) rowsByCedula.set(row.cedula, row);
     } else {
       // El menú de descarga no es requisito para continuidad: Rows=All es el respaldo preferido.
-      await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+      await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
       await waitForApexDynamicAction(p);
       const rowsAll = await setProspectRowsAll(p);
       if (rowsAll) {
@@ -1734,7 +1742,7 @@ async function listProspectsFromHome() {
       }
       if (!columnsOk) {
         // Último respaldo únicamente: paginación legacy, después de otro RIR limpio.
-        await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+        await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
         await waitForApexDynamicAction(p);
         pages = await readPagedProspects(p, rowsByCedula);
         method = 'HTML_PAGED';
@@ -1755,6 +1763,37 @@ async function listProspectsFromHome() {
       ms:Date.now()-started, ir_filters_before:irFiltersBefore, pii:false,
     }));
   }
+}
+
+
+const SALES_STATUS_FIELDS = ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
+
+function salesStatusRow(row) {
+  const source = row && typeof row === 'object' ? row : {};
+  return Object.fromEntries(SALES_STATUS_FIELDS.map(key => [key, key === 'cedula' ? digits(source[key]) : txt(source[key])]));
+}
+
+async function listProspectStatusesForSales(body) {
+  const auth = await authorizeCampusSession(body?.token);
+  const asesor = txt(body?.asesor || '');
+  const dashboard = await campusCall({ fn:'getDashboardVentas', token:auth.token, asesor });
+  if (!dashboard?.ok || !Array.isArray(dashboard?.prospectos)) {
+    throw new AppError('CAMPUS_SALES_SCOPE_UNAVAILABLE', 'No se pudo resolver el alcance de Ventas.', 503, 'CAMPUS');
+  }
+  const allowedCedulas = new Set(dashboard.prospectos.map(campusCedula).filter(Boolean));
+  const list = await listProspectsFromHome();
+  const rows = (Array.isArray(list?.rows) ? list.rows : [])
+    .filter(row => allowedCedulas.has(digits(row?.cedula)))
+    .map(salesStatusRow);
+  return {
+    ok:true,
+    code:'PROSPECT_SALES_STATUS_READY',
+    method:list.method,
+    row_count:rows.length,
+    columns_ok:list.columns_ok === true,
+    captured_at:list.captured_at || nowIso(),
+    rows,
+  };
 }
 
 
@@ -1995,7 +2034,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/v1/prospects/list') {
       action = 'prospects_list';
-      await authorizeCampusSession(campusTokenFromRequest(req));
+      const auth = await authorizeCampusSession(campusTokenFromRequest(req));
+      const fullListRole = roleOf(auth.session);
+      if (!['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)) {
+        throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para la lista completa de CONAPE.', 403, 'CAMPUS');
+      }
       const result = await serial(() => listProspectsFromHome());
       const summaryOnly = /^(1|true)$/i.test(txt(url.searchParams.get('summary')));
       const payload = summaryOnly ? {
@@ -2011,6 +2054,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/v1/session/status') action = 'session_status';
     else if (url.pathname === '/v1/session/connect') action = 'session_connect';
     else if (url.pathname === '/v1/session/disconnect') action = 'session_disconnect';
+    else if (url.pathname === '/v1/prospects/sales-status') action = 'prospects_sales_status';
     else if (url.pathname === '/v1/recruit/preview') action = 'preview';
     else if (url.pathname === '/v1/recruit/submit') action = 'submit';
     else if (url.pathname === '/v1/recruit/execute') action = 'execute';
@@ -2020,6 +2064,7 @@ const server = http.createServer(async (req, res) => {
     if (action === 'session_status') { await authorizeCampusSessionStatus(body?.token); result = ConapeSession.snapshot({ ready:ConapeSession.state === 'CONNECTED' ? 'MEMORY' : null }); }
     else if (action === 'session_connect') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.connect()); }
     else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
+    else if (action === 'prospects_sales_status') result = await serial(() => listProspectStatusesForSales(body));
     else if (action === 'preview') result = await serial(() => preview(body));
     else if (action === 'submit') result = await serial(() => submit(body));
     else result = await serial(() => execute(body));

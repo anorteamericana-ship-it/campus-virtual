@@ -8,7 +8,7 @@
   const collator=new Intl.Collator('es',{sensitivity:'base',numeric:true,ignorePunctuation:true});
   const text=v=>String(v==null?'':v).trim();
   const digits=v=>text(v).replace(/\D/g,'');
-  const etapaVisible=p=>text(p?.estado_conape_raw||p?.estado_conape||p?.etapa||'');
+  const etapaVisible=p=>text(p?.etapa_conape_ui||p?.etapa||p?.estado_conape_raw||p?.estado_conape||'');
   function sortValue(p,key){
     if(key==='cedula')return digits(p.cedula)||text(p.cedula);
     if(key==='nombre')return text(p.nombre);

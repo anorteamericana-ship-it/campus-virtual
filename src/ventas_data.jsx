@@ -29,13 +29,16 @@ const ETAPAS = EMBUDO_ETAPAS;
 // legacy CONAPE_APROBADO por si una fila vieja todavía los trae.
 const ETAPA_MAP = Object.fromEntries([
   ...EMBUDO_ETAPAS,
-  { key: 'CONAPE_APROBADO', label: 'CONAPE Aprobado', color: '#6366F1' },
-  { key: 'ACTIVO',          label: 'Activo',          color: '#10B981' },
-  { key: 'CANCELADO',       label: 'Cancelado',       color: '#EF4444' },
+  { key: 'CONAPE_ANALISIS',    label: 'CONAPE Análisis',    color: '#2B7FC1' },
+  { key: 'CONAPE_BPM',         label: 'CONAPE BPM',         color: '#406EB4' },
+  { key: 'CONAPE_APROBADO',    label: 'CONAPE Aprobado',    color: '#6366F1' },
+  { key: 'CONAPE_FORMALIZADO', label: 'CONAPE Formalizado', color: '#7C5FD6' },
+  { key: 'ACTIVO',             label: 'Activo',              color: '#10B981' },
+  { key: 'CANCELADO',          label: 'Cancelado',           color: '#EF4444' },
 ].map(e => [e.key, e]));
 // Acción sugerida por etapa (para el drawer).
 const ACCION_ETAPA = Object.fromEntries(EMBUDO_ETAPAS.map(e => [e.key, e.accion]));
-const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_APROBADO_FIRMA','CONAPE_DESEMBOLSO','CONAPE_MATRICULA'];
+const ETAPAS_CONAPE = ['CONAPE_SOLICITUD','CONAPE_DOCUMENTOS','CONAPE_ANALISIS','CONAPE_BPM','CONAPE_APROBADO','CONAPE_APROBADO_FIRMA','CONAPE_FORMALIZADO','CONAPE_DESEMBOLSO','CONAPE_MATRICULA'];
 
 const ASESORES_V = ['Asesora Demo 1','Asesor Demo 2','Asesor Demo 3','Asesora Demo 4','Administrador Demo'];
 
@@ -91,6 +94,61 @@ const nombrePila = nombre => {
   const pick = t[2] || t[0];
   return pick.charAt(0) + pick.slice(1).toLowerCase();
 };
+
+const CONAPE_STAGE_RANK = Object.freeze({
+  LEAD:0,
+  CONAPE_SOLICITUD:10,
+  CONAPE_DOCUMENTOS:15,
+  CONAPE_ANALISIS:20,
+  CONAPE_BPM:30,
+  CONAPE_APROBADO:40,
+  CONAPE_APROBADO_FIRMA:40,
+  CONAPE_FORMALIZADO:50,
+  CONAPE_DESEMBOLSO:60,
+  CONAPE_MATRICULA:70,
+});
+
+function conapeEstadoNormalizado(v) {
+  return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+}
+
+function etapaDesdeFilaConape(row) {
+  if (!row || typeof row !== 'object') return '';
+  if (String(row.ultimo_desembolso || '').trim()) return 'CONAPE_DESEMBOLSO';
+  if (String(row.formalizacion || '').trim()) return 'CONAPE_FORMALIZADO';
+  if (String(row.aprobacion || '').trim()) return 'CONAPE_APROBADO';
+  const estado = conapeEstadoNormalizado(row.estado);
+  if (estado.includes('BPM')) return 'CONAPE_BPM';
+  if (estado.includes('ANAL')) return 'CONAPE_ANALISIS';
+  if (estado.includes('INICIO') || estado.includes('SOLICITUD') || estado.includes('RECLUT')) return 'CONAPE_SOLICITUD';
+  return '';
+}
+
+function mergeConapeStatusVentas(prospecto, row) {
+  if (!prospecto || typeof prospecto !== 'object' || !row || typeof row !== 'object') return prospecto;
+  if (String(prospecto.financiamiento || prospecto.FINANCIAMIENTO || '').toUpperCase() !== 'CONAPE') return prospecto;
+  const rawEstado = String(row.estado || '').trim();
+  const current = String(prospecto.etapa || prospecto.ETAPA || '').toUpperCase().trim();
+  const codigo = String(prospecto.codigo || prospecto.codigo_estudiante || prospecto.CODIGO_ESTUDIANTE || prospecto.rec_m || prospecto.REC_M || '').trim();
+  const matriculado = !!codigo || current === 'ACTIVO' || current === 'MATRICULADO';
+  const candidate = etapaDesdeFilaConape(row);
+  const currentRank = CONAPE_STAGE_RANK[current] ?? 0;
+  const candidateRank = CONAPE_STAGE_RANK[candidate] ?? 0;
+  const etapa = matriculado ? current : (candidate && candidateRank >= currentRank ? candidate : current);
+  return {
+    ...prospecto,
+    etapa,
+    etapa_conape_ui: matriculado ? '' : etapa,
+    estado_conape_raw: rawEstado,
+    estado_conape: rawEstado,
+    fecha_etapa: String(row.fecha_estado || '').trim() || prospecto.fecha_etapa || '',
+    conape_aprobacion: String(row.aprobacion || '').trim(),
+    conape_formalizacion: String(row.formalizacion || '').trim(),
+    conape_ultimo_desembolso: String(row.ultimo_desembolso || '').trim(),
+    conape_proximo_desembolso: String(row.proximo_desembolso || '').trim(),
+    conape_reclutado: true,
+  };
+}
 
 // ── VENTAS-UX-001-A · SEMÁFORO DE PRIORIDAD ────────────────────────────────
 // Helper CENTRAL que clasifica cada prospecto en un nivel de prioridad visual
@@ -952,6 +1010,7 @@ Object.assign(window, {
   fmtTelV, waLink, diasDesde, fmtFechaCorta, fmtFechaDDMon, fmtColones, nombrePila,
   calcularPrioridadProspecto,
   calcularEstadoEstudianteVentas,
+  etapaDesdeFilaConape, mergeConapeStatusVentas,
   formatHorarioGrupo, fmtFechaLarga, diasParaIniciar, diasCompletos,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,

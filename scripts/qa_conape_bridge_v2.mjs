@@ -10,6 +10,9 @@ const listReadStart = server.indexOf('async function readProspectListPage');
 const listEnd = server.indexOf('function categoryStatus', listReadStart);
 const listBlock = listReadStart >= 0 && listEnd > listReadStart ? server.slice(listReadStart, listEnd) : '';
 const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];
+const salesStatusStart = server.indexOf('const SALES_STATUS_FIELDS');
+const salesStatusEnd = server.indexOf('function categoryStatus', salesStatusStart);
+const salesStatusBlock = salesStatusStart >= 0 && salesStatusEnd > salesStatusStart ? server.slice(salesStatusStart, salesStatusEnd) : '';
 const confirmStart = server.indexOf('async function confirmInHome');
 const confirmEnd = server.indexOf('async function readProspectListPage', confirmStart);
 const confirmBlock = confirmStart >= 0 && confirmEnd > confirmStart ? server.slice(confirmStart, confirmEnd) : '';
@@ -91,7 +94,7 @@ const checks = [
   ['self-test NAV está protegido por sesión Campus y no usa cédula/CREATE', /\/v1\/selftest\/nav/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server) && /runNavSelftest/.test(server) && /login:'FAIL'/.test(server) && /recruit_click:'FAIL'/.test(server) && /form_ready:'FAIL'/.test(server)],
   ['prospects/list es GET y exige la misma sesión Campus', /req\.method === 'GET' && url\.pathname === '\/v1\/prospects\/list'/.test(server) && /action = 'prospects_list'/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server)],
   ['prospects/list expone exactamente las 14 columnas contractuales', listFields.every(field => listBlock.includes(`'${field}'`)) && /PROSPECT_LIST_READY/.test(listBlock)],
-  ['prospects/list limpia RIR y prioriza CSV -> Rows=All -> paginado', /confirmationResetUrl/.test(server) && /resetProspectListReport/.test(server) && /downloadProspectCsv/.test(server) && /setProspectRowsAll/.test(server) && /readPagedProspects/.test(server) && server.includes("method = 'CSV_DOWNLOAD';") && server.includes("method = 'HTML_ROWS_ALL';") && server.includes("pages = await readPagedProspects(p, rowsByCedula);") && server.includes("method = 'HTML_PAGED';")],
+  ['prospects/list permanece en Friendly Home, limpia RR y prioriza CSV -> Rows=All -> paginado', /function prospectListResetUrl\(sessionId\)/.test(listBlock) && /new URL\(CONAPE_FRIENDLY_HOME\)/.test(listBlock) && /searchParams\.set\('session', cleanSession\)/.test(listBlock) && /searchParams\.set\('clear', 'RR'\)/.test(listBlock) && /resetProspectListReport/.test(listBlock) && listBlock.includes('prospectListResetUrl(sessionId)') && !listBlock.includes('confirmationResetUrl(sessionId)') && /downloadProspectCsv/.test(server) && /setProspectRowsAll/.test(server) && /readPagedProspects/.test(server) && server.includes("method = 'CSV_DOWNLOAD';") && server.includes("method = 'HTML_ROWS_ALL';") && server.includes("pages = await readPagedProspects(p, rowsByCedula);") && server.includes("method = 'HTML_PAGED';")],
   ['prospects/list CSV queda solo en memoria y se elimina al terminar', /waitForEvent\('download'/.test(server) && /download\.createReadStream\(\)/.test(server) && /download\?\.delete\(\)/.test(server) && !/saveAs|savePath|writeFile.*csv/i.test(server)],
   ['prospects/list valida CSV contra 14 columnas y Rows=All antes de aceptarlo', /PROSPECT_LIST_FIELDS/.test(server) && /PROSPECT_LIST_HEADER_ALIASES/.test(server) && /LIST_COUNT_MISMATCH/.test(server) && /CONAPE_LIST_ROWS_ALL_INCOMPLETE/.test(server)],
   ['prospects/list nunca usa Save Report', !/SAVE REPORT|SAVE_REPORT|guardar informe|guardar reporte/i.test(listBlock)],
@@ -101,6 +104,9 @@ const checks = [
   ['V4.2.9 expone conteos CSV y Rows=All y falla cerrado en mismatch', ['rows_csv','rows_html_all','counts_match'].every(v=>server.includes(v)) && server.includes('LIST_COUNT_MISMATCH') && server.includes('Object.assign(mismatch')],
   ['V4.2.9 summary=1 no devuelve filas con PII al navegador', server.includes('summaryOnly') && server.includes("url.searchParams.get('summary')") && server.includes('const payload = summaryOnly ? {')],
   ['V4.2.9 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','ir_filters_before','pii:false'].every(v=>server.includes(v))],
+  ['V4.3.1 lista completa queda restringida a admin/superadmin', server.includes("fullListRole = roleOf(auth.session)") && server.includes("['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)")],
+  ['V4.3.1 sales-status usa scope real de getDashboardVentas', /\/v1\/prospects\/sales-status/.test(server) && /listProspectStatusesForSales\(body\)/.test(server) && salesStatusBlock.includes("fn:'getDashboardVentas'") && salesStatusBlock.includes('allowedCedulas')],
+  ['V4.3.1 sales-status minimiza campos devueltos', ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'].every(v=>salesStatusBlock.includes(`'${v}'`)) && !/nombre|apellido|correo|telefono|usuario_registro/i.test(salesStatusBlock)],
   ['Docker contiene solo server_v2 + self-test, sin patcher runtime', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`)) && !/hotfix_v4_2_4|RUN node hotfix/i.test(docker)],
   ['Docker arranca server_v2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
   ['Railway fija startCommand canónico', railway?.deploy?.startCommand === 'node server_v2.mjs'],
@@ -112,4 +118,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.2.8 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.3.1 QA PASS · ${checks.length}/${checks.length}`);
