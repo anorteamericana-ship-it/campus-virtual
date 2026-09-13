@@ -20,7 +20,11 @@ jobs:
           ref: feature/conape-auto-sync-mirror-v4-4
           fetch-depth: 0
       - name: Apply deterministic refactor
-        run: python3 scripts/tmp_conape_v4_4_refactor.py
+        run: |
+          python3 scripts/tmp_conape_v4_4_refactor.py
+          git checkout HEAD -- .github/workflows/qa-conape-live-c3-6.yml
+          git checkout HEAD -- .github/workflows/tmp-conape-v4-4-refactor.yml
+          git checkout HEAD -- scripts/tmp_conape_v4_4_refactor.py
       - name: Verify candidate
         run: |
           node --check services/conape-bridge/server_v2.mjs
@@ -34,11 +38,15 @@ jobs:
           bad = r"update(`${ts}\\n${nonce}\\n${payload_json}`, 'utf8')"
           assert good in src, 'HMAC canonical newline escapes missing'
           assert bad not in src, 'HMAC canonical contains literal backslash-n'
+          assert "action:'read_mirror'" in src
+          assert "action:'apply_snapshot'" in src
+          assert "'/v1/prospects/refresh'" in src
           PY
-      - name: Commit candidate
+      - name: Commit auxiliary result
         run: |
           git config user.name 'anorteamericana-ship-it'
           git config user.email 'anorteamericana@gmail.com'
-          git add -A
+          git switch -c automation/conape-v44-scheduled-result
+          git add services/conape-bridge/server_v2.mjs src/conape_bridge_client_c3_6.js src/ventas_dashboard.jsx ventas.html
           git commit -m 'feat(conape): schedule mirror sync and add manual refresh'
-          git push origin HEAD:feature/conape-auto-sync-mirror-v4-4
+          git push --force origin HEAD:automation/conape-v44-scheduled-result
