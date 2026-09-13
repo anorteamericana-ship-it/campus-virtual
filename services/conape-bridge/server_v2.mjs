@@ -17,6 +17,10 @@ const SESSION_CACHE_TTL_MS = 30_000;
 const SESSION_STATUS_CACHE_TTL_MS = 300_000;
 const CAMPUS_READ_ATTEMPT_TIMEOUT_MS = Math.min(18_000, REQUEST_TIMEOUT_MS);
 const SOURCE_TTL_MS = Math.max(60_000, Number(process.env.SOURCE_TTL_MS || 180_000));
+const MIRROR_SERVICE_URL = String(process.env.CONAPE_MIRROR_SERVICE_URL || '').trim();
+const MIRROR_HMAC_SECRET = String(process.env.CONAPE_MIRROR_HMAC_SECRET || '');
+const MIRROR_SYNC_INTERVAL_MS = Math.max(60_000, Number(process.env.CONAPE_MIRROR_SYNC_INTERVAL_MS || 1_800_000));
+const MIRROR_REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.CONAPE_MIRROR_REQUEST_TIMEOUT_MS || 20_000));
 const STARTED_AT = new Date().toISOString();
 const ALLOWED_ORIGINS = new Set(String(process.env.CAMPUS_ALLOWED_ORIGINS || 'https://anorteamerican.com,https://www.anorteamerican.com,https://anorteamericana-ship-it.github.io').split(',').map(v => v.trim()).filter(Boolean));
 const ROLE_ALLOW = new Set(['VENTAS','ASESOR','ASESORA','ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN']);
@@ -1791,42 +1795,53 @@ function salesStatusRow(row) {
   return Object.fromEntries(SALES_STATUS_FIELDS.map(key => [key, key === 'cedula' ? digits(source[key]) : txt(source[key])]));
 }
 
-async function listProspectStatusesForSales(body) {
-  const auth = await authorizeCampusSession(body?.token);
-  const asesor = txt(body?.asesor || '');
-  const dashboard = await campusCall({ fn:'getDashboardVentas', token:auth.token, asesor });
-  if (!dashboard?.ok || !Array.isArray(dashboard?.prospectos)) {
-    throw new AppError('CAMPUS_SALES_SCOPE_UNAVAILABLE', 'No se pudo resolver el alcance de Ventas.', 503, 'CAMPUS');
-  }
-  const allowedCedulas = new Set(dashboard.prospectos.map(campusCedula).filter(Boolean));
+function mirrorEnvelope(payload) {
+  if (!MIRROR_HMAC_SECRET) throw new AppError('CONAPE_MIRROR_NOT_CONFIGURED', 'El servicio de espejo CONAPE no está configurado.', 503, 'MIRROR');
+  const ts = String(Date.now());
+  const nonce = crypto.randomBytes(18).toString('base64url');
+  const payload_json = JSON.stringify(payload || {});
+  const sig = crypto.createHmac('sha256', MIRROR_HMAC_SECRET).update(`${ts}\n${nonce}\n${payload_json}`, 'utf8').digest('hex');
+  return { ts, nonce, payload_json, sig };
+}
 
-  const isolated = createIsolatedConapeSession();
-  let list;
+async function mirrorServiceCall(payload, timeoutMs = MIRROR_REQUEST_TIMEOUT_MS) {
+  if (!MIRROR_SERVICE_URL || !MIRROR_HMAC_SECRET) throw new AppError('CONAPE_MIRROR_NOT_CONFIGURED', 'El servicio de espejo CONAPE no está configurado.', 503, 'MIRROR');
+  let response;
   try {
-    list = await listProspectsFromHome(isolated);
-  } catch (error) {
-    console.log(JSON.stringify({
-      event:'conape_mirror_sync_abort', version:VERSION,
-      rows_csv:Number.isInteger(error?.rows_csv) ? error.rows_csv : null,
-      rows_html_all:Number.isInteger(error?.rows_html_all) ? error.rows_html_all : null,
-      counts_match:false, pii:false,
-    }));
+    response = await fetch(MIRROR_SERVICE_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body:JSON.stringify(mirrorEnvelope(payload)),
+      redirect:'follow',
+      signal:AbortSignal.timeout(Math.max(5_000, Number(timeoutMs || MIRROR_REQUEST_TIMEOUT_MS))),
+    });
+  } catch (cause) {
+    const error = new AppError('CONAPE_MIRROR_UNAVAILABLE', 'El espejo CONAPE no está disponible.', 503, 'MIRROR');
+    error.cause = cause;
     throw error;
-  } finally {
-    await isolated.close().catch(() => {});
   }
+  const raw = await response.text();
+  let data;
+  try { data = JSON.parse(raw || '{}'); }
+  catch { throw new AppError('CONAPE_MIRROR_INVALID_RESPONSE', 'El espejo CONAPE devolvió una respuesta inválida.', 503, 'MIRROR'); }
+  if (!response.ok || !data || data.ok !== true) {
+    const error = new AppError(txt(data?.code || 'CONAPE_MIRROR_REJECTED'), 'El espejo CONAPE rechazó la operación.', 503, 'MIRROR');
+    throw error;
+  }
+  return data;
+}
 
+function validateMirrorSnapshot(list) {
   const rowsCsv = Number(list?.rows_csv);
   const rowsHtmlAll = Number(list?.rows_html_all);
-  const validSnapshot = list?.method === 'CSV_DOWNLOAD'
+  const valid = list?.method === 'CSV_DOWNLOAD'
     && list?.columns_ok === true
     && list?.counts_match === true
     && Number.isInteger(rowsCsv) && rowsCsv > 0
     && Number.isInteger(rowsHtmlAll) && rowsHtmlAll > 0
     && rowsCsv === rowsHtmlAll
     && Array.isArray(list?.rows) && list.rows.length > 0;
-
-  if (!validSnapshot) {
+  if (!valid) {
     console.log(JSON.stringify({
       event:'conape_mirror_sync_abort', version:VERSION,
       rows_csv:Number.isInteger(rowsCsv) ? rowsCsv : null,
@@ -1843,10 +1858,28 @@ async function listProspectStatusesForSales(body) {
     });
     throw error;
   }
+  return { rowsCsv, rowsHtmlAll };
+}
 
-  const applied = await campusCall({
-    fn:'conapeMirrorApplySnapshotV44',
-    token:auth.token,
+async function syncMirrorFromConape(reason = 'manual') {
+  const isolated = createIsolatedConapeSession();
+  let list;
+  try {
+    list = await listProspectsFromHome(isolated);
+  } catch (error) {
+    console.log(JSON.stringify({
+      event:'conape_mirror_sync_abort', version:VERSION, reason,
+      rows_csv:Number.isInteger(error?.rows_csv) ? error.rows_csv : null,
+      rows_html_all:Number.isInteger(error?.rows_html_all) ? error.rows_html_all : null,
+      counts_match:false, pii:false,
+    }));
+    throw error;
+  } finally {
+    await isolated.close().catch(() => {});
+  }
+  const { rowsCsv, rowsHtmlAll } = validateMirrorSnapshot(list);
+  const applied = await mirrorServiceCall({
+    action:'apply_snapshot',
     method:list.method,
     columns_ok:true,
     counts_match:true,
@@ -1854,22 +1887,52 @@ async function listProspectStatusesForSales(body) {
     rows_html_all:rowsHtmlAll,
     captured_at:list.captured_at || nowIso(),
     rows:list.rows,
-  });
-  if (!applied?.ok || applied?.written !== true) {
-    const error = new AppError('CONAPE_MIRROR_WRITE_FAILED', 'El Campus no confirmó la actualización del espejo CONAPE.', 503, 'CAMPUS');
-    error.rows_csv = rowsCsv;
-    error.rows_html_all = rowsHtmlAll;
-    error.counts_match = true;
-    throw error;
-  }
+  }, Math.max(MIRROR_REQUEST_TIMEOUT_MS, 60_000));
+  if (applied?.written !== true) throw new AppError('CONAPE_MIRROR_WRITE_FAILED', 'El servicio no confirmó la actualización del espejo.', 503, 'MIRROR');
+  console.log(JSON.stringify({ event:'conape_mirror_sync_ok', version:VERSION, reason, rows:rowsCsv, movements:Number(applied.movements || 0), pii:false }));
+  return { list, applied, rowsCsv, rowsHtmlAll };
+}
 
-  const rows = list.rows
-    .filter(row => allowedCedulas.has(digits(row?.cedula)))
-    .map(salesStatusRow);
+async function salesScope(body) {
+  const auth = await authorizeCampusSession(body?.token);
+  const asesor = txt(body?.asesor || '');
+  const dashboard = await campusCall({ fn:'getDashboardVentas', token:auth.token, asesor });
+  if (!dashboard?.ok || !Array.isArray(dashboard?.prospectos)) {
+    throw new AppError('CAMPUS_SALES_SCOPE_UNAVAILABLE', 'No se pudo resolver el alcance de Ventas.', 503, 'CAMPUS');
+  }
+  const allowedCedulas = new Set(dashboard.prospectos.map(campusCedula).filter(Boolean));
+  return { auth, asesor, allowedCedulas };
+}
+
+async function listProspectStatusesForSales(body) {
+  const { allowedCedulas } = await salesScope(body);
+  try {
+    const mirror = await mirrorServiceCall({ action:'read_mirror' });
+    const rows = (Array.isArray(mirror?.rows) ? mirror.rows : [])
+      .filter(row => allowedCedulas.has(digits(row?.cedula)))
+      .map(salesStatusRow);
+    return {
+      ok:true,
+      code:'PROSPECT_SALES_STATUS_READY',
+      source:'MIRROR',
+      row_count:rows.length,
+      ultimo_sync:txt(mirror?.ultimo_sync || ''),
+      rows,
+    };
+  } catch (error) {
+    console.log(JSON.stringify({ event:'conape_mirror_read_failed', version:VERSION, code:txt(error?.code || 'UNAVAILABLE'), pii:false }));
+    return { ok:false, code:'CONAPE_MIRROR_UNAVAILABLE', source:'MIRROR', rows:[], stale:true };
+  }
+}
+
+async function refreshMirrorForSales(body) {
+  const { allowedCedulas } = await salesScope(body);
+  const { list, applied, rowsCsv, rowsHtmlAll } = await syncMirrorFromConape('manual');
+  const rows = list.rows.filter(row => allowedCedulas.has(digits(row?.cedula))).map(salesStatusRow);
   return {
     ok:true,
-    code:'PROSPECT_SALES_STATUS_READY',
-    method:list.method,
+    code:'PROSPECT_SALES_STATUS_REFRESHED',
+    source:'LIVE',
     row_count:rows.length,
     columns_ok:true,
     counts_match:true,
@@ -1878,8 +1941,26 @@ async function listProspectStatusesForSales(body) {
     mirror_applied:true,
     movements:Number(applied.movements || 0),
     captured_at:list.captured_at || nowIso(),
+    ultimo_sync:txt(applied.ultimo_sync || ''),
     rows,
   };
+}
+
+let mirrorSyncTimer = null;
+async function scheduledMirrorSync() {
+  try { await syncMirrorFromConape('scheduled_30m'); }
+  catch (error) {
+    console.log(JSON.stringify({ event:'conape_mirror_scheduled_failed', version:VERSION, code:txt(error?.code || 'UNAVAILABLE'), pii:false }));
+  }
+}
+function startMirrorScheduler() {
+  if (!MIRROR_SERVICE_URL || !MIRROR_HMAC_SECRET) {
+    console.log(JSON.stringify({ event:'conape_mirror_scheduler_disabled', version:VERSION, configured:false, pii:false }));
+    return;
+  }
+  mirrorSyncTimer = setInterval(() => { void scheduledMirrorSync(); }, MIRROR_SYNC_INTERVAL_MS);
+  if (typeof mirrorSyncTimer?.unref === 'function') mirrorSyncTimer.unref();
+  console.log(JSON.stringify({ event:'conape_mirror_scheduler_ready', version:VERSION, interval_ms:MIRROR_SYNC_INTERVAL_MS, pii:false }));
 }
 
 function categoryStatus(code) {
@@ -2140,6 +2221,7 @@ const server = http.createServer(async (req, res) => {
     else if (url.pathname === '/v1/session/connect') action = 'session_connect';
     else if (url.pathname === '/v1/session/disconnect') action = 'session_disconnect';
     else if (url.pathname === '/v1/prospects/sales-status') action = 'prospects_sales_status';
+    else if (url.pathname === '/v1/prospects/refresh') action = 'prospects_refresh';
     else if (url.pathname === '/v1/recruit/preview') action = 'preview';
     else if (url.pathname === '/v1/recruit/submit') action = 'submit';
     else if (url.pathname === '/v1/recruit/execute') action = 'execute';
@@ -2150,6 +2232,7 @@ const server = http.createServer(async (req, res) => {
     else if (action === 'session_connect') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.connect()); }
     else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
     else if (action === 'prospects_sales_status') result = await listProspectStatusesForSales(body);
+    else if (action === 'prospects_refresh') result = await refreshMirrorForSales(body);
     else if (action === 'preview') result = await serial(() => preview(body));
     else if (action === 'submit') result = await serial(() => submit(body));
     else result = await serial(() => execute(body));
@@ -2185,9 +2268,13 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(JSON.stringify({ event:'bridge_ready', version:VERSION, port:PORT, clean_runtime:true, pii:false })));
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(JSON.stringify({ event:'bridge_ready', version:VERSION, port:PORT, clean_runtime:true, pii:false }));
+  startMirrorScheduler();
+});
 
 async function shutdown() {
+  if (mirrorSyncTimer) clearInterval(mirrorSyncTimer);
   try { await ConapeSession.close(); } catch {}
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 5_000).unref();
