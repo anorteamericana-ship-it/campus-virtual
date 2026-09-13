@@ -17,7 +17,9 @@ jobs:
           ref: fix/conape-list-friendly-home-v4-3-0
           fetch-depth: 0
       - name: Apply product patch
-        run: python scripts/tmp_patch_v431.py
+        run: |
+          python scripts/tmp_patch_v431.py
+          python scripts/tmp_fix_v431_qa.py
       - name: Bridge syntax
         run: node --check services/conape-bridge/server_v2.mjs
       - name: Client syntax
