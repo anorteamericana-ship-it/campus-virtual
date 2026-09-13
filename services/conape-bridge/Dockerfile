@@ -13,9 +13,11 @@ COPY build_runtime_v4_4.mjs ./
 COPY nav_selftest.mjs ./
 RUN node --check server_v2.mjs
 RUN node --check build_runtime_v4_4.mjs
-RUN node build_runtime_v4_4.mjs
-RUN node --check server_runtime.mjs
+RUN node build_runtime_v4_4.mjs \
+    && node --check server_runtime.mjs \
+    && mv server_runtime.mjs server_v2.mjs \
+    && node --check server_v2.mjs
 RUN chown -R pwuser:pwuser /app
 
 USER pwuser
-CMD ["node", "server_runtime.mjs"]
+CMD ["node", "server_v2.mjs"]
