@@ -1,0 +1,38 @@
+name: TEMP CONAPE V4.3.2 list 15 cols
+
+on:
+  push:
+    branches:
+      - fix/conape-list-15cols-v4-3-2
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/conape-list-15cols-v4-3-2
+          fetch-depth: 0
+      - name: Apply exact patch
+        run: python3 scripts/tmp_patch_conape_v432.py
+      - name: Syntax bridge
+        run: node --check services/conape-bridge/server_v2.mjs
+      - name: Contract QA bridge
+        run: node scripts/qa_conape_bridge_v2.mjs
+      - name: Diff check
+        run: git diff --check
+      - name: Commit product patch if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- services/conape-bridge/server_v2.mjs scripts/qa_conape_bridge_v2.mjs; then
+            echo "No product changes pending."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/conape-bridge/server_v2.mjs scripts/qa_conape_bridge_v2.mjs
+          git commit -m "CONAPE V4.3.2 · lector 15 columnas en Friendly Home"
+          git push origin HEAD:fix/conape-list-15cols-v4-3-2
