@@ -530,6 +530,7 @@ const ConapeSession = {
       return { p, meta };
     };
 
+    // Camino principal: Home firmada por APEX -> clic Playwright real en Reclutar Prospectos.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     await waitForApexDynamicAction(p);
     let clicked = false;
@@ -558,6 +559,7 @@ const ConapeSession = {
       pii:false,
     }));
 
+    // Fallback no bloqueante únicamente si el botón Reclutar Prospectos no aparece.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     const until = Date.now() + 10_000;
     while (Date.now() < until) {
@@ -619,7 +621,7 @@ async function readFormState(p) {
     const alertRawText = alerts.map(n => n.textContent || '').join(' ');
     const text = norm(alertRawText);
     const alertTextSanitized = String(alertRawText || '')
-      .replace(/\S+@\S*/g, '[MAIL]')
+      .replace(/\S*@\S*/g, '[MAIL]')
       .replace(/\d{5,}/g, '[NUM]')
       .replace(/\s+/g, ' ')
       .trim()
@@ -1643,7 +1645,7 @@ async function readPagedProspects(p, rowsByCedula) {
   const pageFingerprints = new Set();
   for (let guard = 0; guard < 100; guard += 1) {
     const snapshot = await readProspectListPage(p);
-    if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato esperado.', 503, 'LIST');
+    if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST');
     const normalizedRows = normalizeProspectRows(snapshot.rows);
     const fingerprint = sha(normalizedRows.map(row => row.cedula).join('|'));
     if (pageFingerprints.has(fingerprint)) break;
@@ -1681,6 +1683,8 @@ async function openProspectListHome(p, sessionId) {
 }
 
 async function resetProspectListReport(p, sessionId) {
+  // V4.3.2: V4.1 leía esta Friendly Home directamente. No salir de ella si
+  // la sesión ya viene sin filtros; el gate real reportó ir_filters_before=0.
   await openProspectListHome(p, sessionId);
   const ir_filters_before = await countIrFilters(p);
   if (ir_filters_before > 0) {
@@ -1716,10 +1720,11 @@ async function listProspectsFromHome() {
       method = 'CSV_DOWNLOAD';
       pages = 1;
 
+      // Verificación de integridad contra la misma pantalla en Rows=All.
       await openProspectListHome(p, sessionId);
       if (!(await setProspectRowsAll(p))) throw new AppError('CONAPE_LIST_ROWS_ALL_UNAVAILABLE', 'CONAPE no permitió verificar Rows=All.', 503, 'LIST');
       const html = await readProspectListPage(p);
-      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato esperado.', 503, 'LIST'); }
+      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST'); }
       if ((await prospectNextPageIndex(p)) >= 0) throw new AppError('CONAPE_LIST_ROWS_ALL_INCOMPLETE', 'Rows=All todavía expuso paginación.', 503, 'LIST');
       const htmlRows = new Map();
       addProspectRows(htmlRows, html.rows);
@@ -1735,11 +1740,12 @@ async function listProspectsFromHome() {
       }
       for (const row of csvRows.values()) rowsByCedula.set(row.cedula, row);
     } else {
+      // El menú de descarga no es requisito para continuidad: Rows=All es el respaldo preferido.
       await openProspectListHome(p, sessionId);
       const rowsAll = await setProspectRowsAll(p);
       if (rowsAll) {
         const html = await readProspectListPage(p);
-        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato esperado.', 503, 'LIST'); }
+        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST'); }
         const hasNext = (await prospectNextPageIndex(p)) >= 0;
         if (!hasNext) {
           const normalizedHtmlRows = normalizeProspectRows(html.rows);
@@ -1752,6 +1758,7 @@ async function listProspectsFromHome() {
         }
       }
       if (!columnsOk) {
+        // Último respaldo únicamente: paginación legacy sobre la misma Friendly Home.
         await openProspectListHome(p, sessionId);
         pages = await readPagedProspects(p, rowsByCedula);
         method = 'HTML_PAGED';
@@ -1773,6 +1780,7 @@ async function listProspectsFromHome() {
     }));
   }
 }
+
 
 const SALES_STATUS_FIELDS = ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
 
@@ -1803,6 +1811,7 @@ async function listProspectStatusesForSales(body) {
     rows,
   };
 }
+
 
 function categoryStatus(code) {
   if (code === 'SIN_PERMISO') return 403;
