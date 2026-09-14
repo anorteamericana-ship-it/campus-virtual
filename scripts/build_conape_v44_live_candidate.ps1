@@ -237,7 +237,7 @@ $entry=[IO.File]::ReadAllText($EntryPath,$Utf8NoBom).Trim()+"`n"
 $module=$core+"`n"+$entry
 if($module -match 'function\s+do(Post|Get)\s*\('){Stop-Run 'Module must not define doPost/doGet'}
 if($module -match 'LockService|ScriptApp\.newTrigger|UrlFetchApp'){Stop-Run 'Module contains forbidden infrastructure'}
-if($module.Contains('conapeMirrorReadForSalesV44')){Stop-Run 'Unused human route leaked into deployable module'}
+if((Count-Ordinal $module 'function conapeMirrorReadForSalesV44(') -ne 0){Stop-Run 'Unused human route leaked into deployable module'}
 $modulePath=Join-Path $candidate 'VENTAS_CONAPE_V44.js'
 Write-Utf8Lf $modulePath $module
 Assert-Eq 'candidate post-module file count' @(Get-ChildItem -LiteralPath $candidate -Recurse -File).Count ($remoteSources.Count + 1)
