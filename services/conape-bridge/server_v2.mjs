@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.3.2';
+const VERSION = 'V4.3.3';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -530,7 +530,6 @@ const ConapeSession = {
       return { p, meta };
     };
 
-    // Camino principal: Home firmada por APEX -> clic Playwright real en Reclutar Prospectos.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     await waitForApexDynamicAction(p);
     let clicked = false;
@@ -559,7 +558,6 @@ const ConapeSession = {
       pii:false,
     }));
 
-    // Fallback no bloqueante únicamente si el botón Reclutar Prospectos no aparece.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     const until = Date.now() + 10_000;
     while (Date.now() < until) {
@@ -621,7 +619,7 @@ async function readFormState(p) {
     const alertRawText = alerts.map(n => n.textContent || '').join(' ');
     const text = norm(alertRawText);
     const alertTextSanitized = String(alertRawText || '')
-      .replace(/\S*@\S*/g, '[MAIL]')
+      .replace(/\S+@\S*/g, '[MAIL]')
       .replace(/\d{5,}/g, '[NUM]')
       .replace(/\s+/g, ' ')
       .trim()
@@ -1356,9 +1354,18 @@ const PROSPECT_LIST_HEADER_ALIASES = new Map([
   ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
   ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
 ]);
+const PROSPECT_LIST_PHONE_FIELDS = ['telefono','celular'];
+const PROSPECT_LIST_REQUIRED_FIELDS = PROSPECT_LIST_FIELDS.filter(key => !PROSPECT_LIST_PHONE_FIELDS.includes(key));
 
 function normalizeProspectListHeader(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function prospectListMissingFields(headers) {
+  const present = new Set((Array.isArray(headers) ? headers : []).filter(Boolean));
+  const missing = PROSPECT_LIST_REQUIRED_FIELDS.filter(key => !present.has(key));
+  if (!PROSPECT_LIST_PHONE_FIELDS.some(key => present.has(key))) missing.push('telefono_o_celular');
+  return missing;
 }
 
 function normalizeProspectRows(rows) {
@@ -1435,7 +1442,7 @@ function parseProspectCsv(raw) {
   const records = parseCsvRecords(raw);
   if (!records.length) return { ok:false, reason:'CSV_EMPTY', columns_ok:false, rows:[] };
   const headers = records.shift().map(header => PROSPECT_LIST_HEADER_ALIASES.get(normalizeProspectListHeader(header)) || null);
-  const missing = PROSPECT_LIST_FIELDS.filter(key => !headers.includes(key));
+  const missing = prospectListMissingFields(headers);
   if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', columns_ok:false, rows:[] };
   const rows = [];
   for (const cells of records) {
@@ -1495,7 +1502,7 @@ async function downloadProspectCsv(p) {
 }
 
 async function readProspectListPage(p) {
-  return p.evaluate(() => {
+  return p.evaluate(({ fields, required, phoneFields }) => {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
     const text = v => String(v || '').replace(/\s+/g,' ').trim();
     const aliases = new Map([
@@ -1505,21 +1512,22 @@ async function readProspectListPage(p) {
       ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
       ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
     ]);
-    const required = ['cedula','apellido_1','apellido_2','nombre','telefono','celular','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
     let best = null;
     for (const table of Array.from(document.querySelectorAll('table'))) {
       const headers = Array.from(table.querySelectorAll('thead th')).map(th => aliases.get(norm(th.textContent)) || null);
-      const score = required.filter(key => headers.includes(key)).length;
+      const phoneOk = phoneFields.some(key => headers.includes(key));
+      const score = required.filter(key => headers.includes(key)).length + (phoneOk ? 1 : 0);
       if (!best || score > best.score) best = { table, headers, score };
     }
     if (!best || best.score < 2) return { ok:false, reason:'REPORT_NOT_FOUND', missing:required, rows:[] };
     const missing = required.filter(key => !best.headers.includes(key));
+    if (!phoneFields.some(key => best.headers.includes(key))) missing.push('telefono_o_celular');
     if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', missing, rows:[] };
     const rows = [];
     for (const tr of Array.from(best.table.querySelectorAll('tbody tr'))) {
       const cells = Array.from(tr.querySelectorAll('td'));
       if (!cells.length || (cells.length === 1 && cells[0].hasAttribute('colspan'))) continue;
-      const row = Object.fromEntries(required.map(key => [key,'']));
+      const row = Object.fromEntries(fields.map(key => [key,'']));
       for (let i = 0; i < best.headers.length; i += 1) {
         const key = best.headers[i];
         if (key && cells[i]) row[key] = text(cells[i].textContent);
@@ -1527,7 +1535,7 @@ async function readProspectListPage(p) {
       if (Object.values(row).some(Boolean)) rows.push(row);
     }
     return { ok:true, missing:[], rows };
-  }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
+  }, { fields:PROSPECT_LIST_FIELDS, required:PROSPECT_LIST_REQUIRED_FIELDS, phoneFields:PROSPECT_LIST_PHONE_FIELDS }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
 }
 
 async function setProspectRowsAll(p) {
@@ -1635,7 +1643,7 @@ async function readPagedProspects(p, rowsByCedula) {
   const pageFingerprints = new Set();
   for (let guard = 0; guard < 100; guard += 1) {
     const snapshot = await readProspectListPage(p);
-    if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST');
+    if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato esperado.', 503, 'LIST');
     const normalizedRows = normalizeProspectRows(snapshot.rows);
     const fingerprint = sha(normalizedRows.map(row => row.cedula).join('|'));
     if (pageFingerprints.has(fingerprint)) break;
@@ -1673,8 +1681,6 @@ async function openProspectListHome(p, sessionId) {
 }
 
 async function resetProspectListReport(p, sessionId) {
-  // V4.3.2: V4.1 leía esta Friendly Home directamente. No salir de ella si
-  // la sesión ya viene sin filtros; el gate real reportó ir_filters_before=0.
   await openProspectListHome(p, sessionId);
   const ir_filters_before = await countIrFilters(p);
   if (ir_filters_before > 0) {
@@ -1710,11 +1716,10 @@ async function listProspectsFromHome() {
       method = 'CSV_DOWNLOAD';
       pages = 1;
 
-      // Verificación de integridad contra la misma pantalla en Rows=All.
       await openProspectListHome(p, sessionId);
       if (!(await setProspectRowsAll(p))) throw new AppError('CONAPE_LIST_ROWS_ALL_UNAVAILABLE', 'CONAPE no permitió verificar Rows=All.', 503, 'LIST');
       const html = await readProspectListPage(p);
-      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST'); }
+      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato esperado.', 503, 'LIST'); }
       if ((await prospectNextPageIndex(p)) >= 0) throw new AppError('CONAPE_LIST_ROWS_ALL_INCOMPLETE', 'Rows=All todavía expuso paginación.', 503, 'LIST');
       const htmlRows = new Map();
       addProspectRows(htmlRows, html.rows);
@@ -1730,12 +1735,11 @@ async function listProspectsFromHome() {
       }
       for (const row of csvRows.values()) rowsByCedula.set(row.cedula, row);
     } else {
-      // El menú de descarga no es requisito para continuidad: Rows=All es el respaldo preferido.
       await openProspectListHome(p, sessionId);
       const rowsAll = await setProspectRowsAll(p);
       if (rowsAll) {
         const html = await readProspectListPage(p);
-        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST'); }
+        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato esperado.', 503, 'LIST'); }
         const hasNext = (await prospectNextPageIndex(p)) >= 0;
         if (!hasNext) {
           const normalizedHtmlRows = normalizeProspectRows(html.rows);
@@ -1748,7 +1752,6 @@ async function listProspectsFromHome() {
         }
       }
       if (!columnsOk) {
-        // Último respaldo únicamente: paginación legacy sobre la misma Friendly Home.
         await openProspectListHome(p, sessionId);
         pages = await readPagedProspects(p, rowsByCedula);
         method = 'HTML_PAGED';
@@ -1770,7 +1773,6 @@ async function listProspectsFromHome() {
     }));
   }
 }
-
 
 const SALES_STATUS_FIELDS = ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
 
@@ -1801,7 +1803,6 @@ async function listProspectStatusesForSales(body) {
     rows,
   };
 }
-
 
 function categoryStatus(code) {
   if (code === 'SIN_PERMISO') return 403;
