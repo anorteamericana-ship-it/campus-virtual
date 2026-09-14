@@ -72,4 +72,9 @@ for (const forbiddenFlow of [
   'matricularEstudiante(', 'generarMatricula(', 'crearUsuarioEstudiante(', 'crearInscripcionPublica('
 ]) assert(!src.includes(forbiddenFlow), `flujo ajeno detectado: ${forbiddenFlow}`);
 
+const builderSrc = fs.readFileSync('scripts/build_conape_v44_live_candidate.ps1', 'utf8');
+assert(builderSrc.includes('$bodyParam=$dispatchInfo.Params[1]'), 'builder no enlaza segundo parámetro body del dispatcher');
+assert(builderSrc.includes('$bodyParam.data'), 'builder no enruta data desde body');
+assert(!builderSrc.includes('$requestParam.data'), 'builder no puede enrutar data desde auth/requestParam');
+
 console.log('CONAPE V4.4 LIVE MIRROR CORE QA PASS');

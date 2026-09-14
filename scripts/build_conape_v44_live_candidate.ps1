@@ -199,13 +199,14 @@ $dispatchText=[IO.File]::ReadAllText($dispatchFile,$Utf8NoBom)
 $isActionInfo=Get-FunctionInfo $isActionText '_cs21a93IsAction_'
 $dispatchInfo=Get-FunctionInfo $dispatchText '_cs21a93Dispatch_'
 if($isActionInfo.Params.Count -lt 1){Stop-Run '_cs21a93IsAction_ has no action parameter'}
-if($dispatchInfo.Params.Count -lt 1){Stop-Run '_cs21a93Dispatch_ has no request parameter'}
+if($dispatchInfo.Params.Count -lt 2){Stop-Run '_cs21a93Dispatch_ must expose auth and body parameters'}
 Write-Utf8Lf (Join-Path $evidence '_cs21a93IsAction_BEFORE.js') $isActionInfo.Block
 Write-Utf8Lf (Join-Path $evidence '_cs21a93Dispatch_BEFORE.js') $dispatchInfo.Block
 Write-Utf8Lf (Join-Path $evidence '_cs21a93HandleServiceRequest.js') $handlerInfo.Block
 
 $actionParam=$isActionInfo.Params[0]
 $requestParam=$dispatchInfo.Params[0]
+$bodyParam=$dispatchInfo.Params[1]
 $readAction='agentConapeMirrorReadV44'
 $applyAction='agentConapeMirrorApplySnapshotV44'
 foreach($marker in @($readAction,$applyAction)){
@@ -224,8 +225,8 @@ $dispatchText=[IO.File]::ReadAllText($dispatchFile,$Utf8NoBom)
 $dispatchPatched=Prepend-FunctionBody $dispatchText '_cs21a93Dispatch_' @(
   '// CONAPE V4.4 LIVE: reached only after canonical service-HMAC verification.',
   "var __conapeV44Action = String($requestParam && $requestParam.action || '');",
-  "if (__conapeV44Action === '$readAction') return agentConapeMirrorReadV44($requestParam.data || {});",
-  "if (__conapeV44Action === '$applyAction') return agentConapeMirrorApplySnapshotV44Service($requestParam.data || {});"
+  "if (__conapeV44Action === '$readAction') return agentConapeMirrorReadV44(($bodyParam && $bodyParam.data) || {});",
+  "if (__conapeV44Action === '$applyAction') return agentConapeMirrorApplySnapshotV44Service(($bodyParam && $bodyParam.data) || {});"
 )
 Write-Utf8Lf $dispatchFile $dispatchPatched
 
