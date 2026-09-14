@@ -2,7 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 
-const VERSION = 'V4.3.2';
+const VERSION = 'V4.3.3';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1356,9 +1356,18 @@ const PROSPECT_LIST_HEADER_ALIASES = new Map([
   ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
   ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
 ]);
+const PROSPECT_LIST_PHONE_FIELDS = ['telefono','celular'];
+const PROSPECT_LIST_REQUIRED_FIELDS = PROSPECT_LIST_FIELDS.filter(key => !PROSPECT_LIST_PHONE_FIELDS.includes(key));
 
 function normalizeProspectListHeader(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function prospectListMissingFields(headers) {
+  const present = new Set((Array.isArray(headers) ? headers : []).filter(Boolean));
+  const missing = PROSPECT_LIST_REQUIRED_FIELDS.filter(key => !present.has(key));
+  if (!PROSPECT_LIST_PHONE_FIELDS.some(key => present.has(key))) missing.push('telefono_o_celular');
+  return missing;
 }
 
 function normalizeProspectRows(rows) {
@@ -1435,7 +1444,7 @@ function parseProspectCsv(raw) {
   const records = parseCsvRecords(raw);
   if (!records.length) return { ok:false, reason:'CSV_EMPTY', columns_ok:false, rows:[] };
   const headers = records.shift().map(header => PROSPECT_LIST_HEADER_ALIASES.get(normalizeProspectListHeader(header)) || null);
-  const missing = PROSPECT_LIST_FIELDS.filter(key => !headers.includes(key));
+  const missing = prospectListMissingFields(headers);
   if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', columns_ok:false, rows:[] };
   const rows = [];
   for (const cells of records) {
@@ -1495,7 +1504,7 @@ async function downloadProspectCsv(p) {
 }
 
 async function readProspectListPage(p) {
-  return p.evaluate(() => {
+  return p.evaluate(({ fields, required, phoneFields }) => {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
     const text = v => String(v || '').replace(/\s+/g,' ').trim();
     const aliases = new Map([
@@ -1505,21 +1514,22 @@ async function readProspectListPage(p) {
       ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
       ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
     ]);
-    const required = ['cedula','apellido_1','apellido_2','nombre','telefono','celular','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
     let best = null;
     for (const table of Array.from(document.querySelectorAll('table'))) {
       const headers = Array.from(table.querySelectorAll('thead th')).map(th => aliases.get(norm(th.textContent)) || null);
-      const score = required.filter(key => headers.includes(key)).length;
+      const phoneOk = phoneFields.some(key => headers.includes(key));
+      const score = required.filter(key => headers.includes(key)).length + (phoneOk ? 1 : 0);
       if (!best || score > best.score) best = { table, headers, score };
     }
     if (!best || best.score < 2) return { ok:false, reason:'REPORT_NOT_FOUND', missing:required, rows:[] };
     const missing = required.filter(key => !best.headers.includes(key));
+    if (!phoneFields.some(key => best.headers.includes(key))) missing.push('telefono_o_celular');
     if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', missing, rows:[] };
     const rows = [];
     for (const tr of Array.from(best.table.querySelectorAll('tbody tr'))) {
       const cells = Array.from(tr.querySelectorAll('td'));
       if (!cells.length || (cells.length === 1 && cells[0].hasAttribute('colspan'))) continue;
-      const row = Object.fromEntries(required.map(key => [key,'']));
+      const row = Object.fromEntries(fields.map(key => [key,'']));
       for (let i = 0; i < best.headers.length; i += 1) {
         const key = best.headers[i];
         if (key && cells[i]) row[key] = text(cells[i].textContent);
@@ -1527,7 +1537,7 @@ async function readProspectListPage(p) {
       if (Object.values(row).some(Boolean)) rows.push(row);
     }
     return { ok:true, missing:[], rows };
-  }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
+  }, { fields:PROSPECT_LIST_FIELDS, required:PROSPECT_LIST_REQUIRED_FIELDS, phoneFields:PROSPECT_LIST_PHONE_FIELDS }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
 }
 
 async function setProspectRowsAll(p) {
