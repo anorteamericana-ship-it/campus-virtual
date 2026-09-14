@@ -1,0 +1,42 @@
+name: TEMP fix CONAPE V4.4 human-route gate
+
+on:
+  push:
+    branches:
+      - feature/conape-v44-live-appsscript
+    paths:
+      - '.github/workflows/tmp-fix-conape-v44-human-route-gate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/conape-v44-live-appsscript
+          fetch-depth: 0
+      - name: Replace false-positive string gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/build_conape_v44_live_candidate.ps1')
+          s=p.read_text(encoding='utf-8')
+          old="if($module.Contains('conapeMirrorReadForSalesV44')){Stop-Run 'Unused human route leaked into deployable module'}"
+          new="if((Count-Ordinal $module 'function conapeMirrorReadForSalesV44(') -ne 0){Stop-Run 'Unused human route leaked into deployable module'}"
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one exact gate, got {s.count(old)}')
+          p.write_text(s.replace(old,new,1),encoding='utf-8',newline='\n')
+          PY
+          pwsh -NoLogo -NoProfile -Command '$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "scripts/build_conape_v44_live_candidate.ps1"),[ref]$null,[ref]$e); if($e.Count){$e|Format-List; exit 1}'
+          git diff --check
+      - name: Commit builder only
+        run: |
+          git config user.name 'anorteamericana-ship-it'
+          git config user.email 'anorteamericana@gmail.com'
+          git add scripts/build_conape_v44_live_candidate.ps1
+          git commit -m 'fix(conape): make human-route gate declaration-aware'
+          git push origin HEAD:feature/conape-v44-live-appsscript
