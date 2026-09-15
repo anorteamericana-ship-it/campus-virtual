@@ -11,6 +11,10 @@ function text(value) {
   return String(value == null ? '' : value).trim();
 }
 
+function rawText(value) {
+  return String(value == null ? '' : value);
+}
+
 function plainObject(value) {
   return !!value && Object.prototype.toString.call(value) === '[object Object]';
 }
@@ -35,7 +39,7 @@ function sha256Hex(value) {
 }
 
 function hmacSha256Hex(secret, canonical) {
-  return crypto.createHmac('sha256', String(secret)).update(String(canonical), 'utf8').digest('hex');
+  return crypto.createHmac('sha256', rawText(secret)).update(String(canonical), 'utf8').digest('hex');
 }
 
 function publisherError(code, details = {}) {
@@ -115,7 +119,7 @@ function canonicalForEnvelope({ serviceId, timestamp, nonce, requestId, action, 
 function buildConapeV44SignedEnvelope(listResult, options = {}) {
   const data = buildConapeV44Snapshot(listResult);
   const serviceId = text(options.serviceId ?? process.env.CAMPUS_SERVICE_ID);
-  const secret = text(options.secret ?? process.env.CAMPUS_SERVICE_SECRET);
+  const secret = rawText(options.secret ?? process.env.CAMPUS_SERVICE_SECRET);
   if (!serviceId) throw publisherError('CONAPE_V44_PUBLISHER_SERVICE_ID_MISSING');
   if (!secret) throw publisherError('CONAPE_V44_PUBLISHER_SECRET_MISSING');
 
@@ -140,6 +144,25 @@ function buildConapeV44SignedEnvelope(listResult, options = {}) {
 function buildConapeV44DryRunSummary(listResult, env = process.env) {
   const data = buildConapeV44Snapshot(listResult);
   const payloadHash = sha256Hex(stableJson(data));
+  const serviceId = text(env?.CAMPUS_SERVICE_ID);
+  const secret = rawText(env?.CAMPUS_SERVICE_SECRET);
+  let signatureReady = false;
+
+  if (serviceId && secret) {
+    const timestamp = Date.now();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const requestId = `conape-v44-preview-${crypto.randomUUID()}`;
+    const { canonical } = canonicalForEnvelope({
+      serviceId,
+      timestamp,
+      nonce,
+      requestId,
+      action:CONAPE_V44_ACTION,
+      data,
+    });
+    signatureReady = /^[0-9a-f]{64}$/.test(hmacSha256Hex(secret, canonical));
+  }
+
   return {
     ok:true,
     code:'CONAPE_V44_PUBLISHER_READY',
@@ -152,8 +175,9 @@ function buildConapeV44DryRunSummary(listResult, env = process.env) {
     row_count:data.rows.length,
     captured_at:data.captured_at,
     payload_hash_prefix:payloadHash.slice(0, 16),
-    service_id_configured:!!text(env?.CAMPUS_SERVICE_ID),
-    secret_configured:!!text(env?.CAMPUS_SERVICE_SECRET),
+    service_id_configured:!!serviceId,
+    secret_configured:!!secret,
+    signature_ready:signatureReady,
     apply_enabled:false,
   };
 }
