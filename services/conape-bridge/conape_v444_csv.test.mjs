@@ -1,8 +1,19 @@
 import assert from 'node:assert/strict';
-import { csvCedulaFingerprint, verifyDoubleCsv, normalizeDownloadLink } from './conape_v444_csv.mjs';
+import {
+  IR_REGION_ID,
+  IR_WIDGET_ID,
+  IR_REPORT_ID,
+  csvCedulaFingerprint,
+  verifyDoubleCsv,
+  normalizeDownloadLink,
+} from './conape_v444_csv.mjs';
 
 const row = (cedula, estado = 'EN PROCESO') => ({ cedula, estado });
 const parsed = rows => ({ ok:true, columns_ok:true, rows });
+
+assert.equal(IR_REGION_ID, '204245917046361543');
+assert.equal(IR_WIDGET_ID, '204246013985361544');
+assert.equal(IR_REPORT_ID, '205107064996977403');
 
 {
   const result = csvCedulaFingerprint([
@@ -62,4 +73,4 @@ const parsed = rows => ({ ok:true, columns_ok:true, rows });
   );
 }
 
-console.log('CONAPE V4.4.4 double CSV helper QA: PASS');
+console.log('CONAPE V4.4.5 direct APEX CSV helper QA: PASS');
