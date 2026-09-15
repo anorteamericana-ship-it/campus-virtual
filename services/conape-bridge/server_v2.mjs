@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 import { buildConapeV44DryRunSummary } from './conape_v44_publisher.mjs';
 
-const VERSION = 'V4.4.2-PUBLISHER-DRYRUN-APEX-TH';
+const VERSION = 'V4.4.3-PUBLISHER-DRYRUN-DOM-DIAG';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1550,6 +1550,35 @@ async function waitProspectListReady(p, timeoutMs = 8_000) {
     if (last.ok) return last;
     await sleep(200);
   }
+    const frame_debug = [];
+
+  for (const frame of p.frames()) {
+    const info = await frame.evaluate(() => {
+      let url_path = '';
+      try {
+        url_path = decodeURIComponent(location.pathname || '').slice(0,160);
+      } catch {}
+
+      return {
+        url_path,
+        table_count: document.querySelectorAll('table').length,
+        irr_table_count: document.querySelectorAll('table.a-IRR-table').length,
+        th_count: document.querySelectorAll('th').length,
+        irr_th_counts: Array.from(
+          document.querySelectorAll('table.a-IRR-table')
+        ).map(table => table.querySelectorAll('th').length).slice(0,10),
+      };
+    }).catch(() => null);
+
+    if (info) frame_debug.push(info);
+  }
+
+  console.log(JSON.stringify({
+    event:'conape_list_dom_debug',
+    version:VERSION,
+    frames:frame_debug,
+    pii:false,
+  }));
   console.log(JSON.stringify({
     event:'conape_list_ready_timeout', version:VERSION,
     reason:txt(last?.reason || 'UNKNOWN'),
