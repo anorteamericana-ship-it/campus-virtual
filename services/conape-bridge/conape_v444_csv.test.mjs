@@ -1,8 +1,31 @@
 import assert from 'node:assert/strict';
-import { csvCedulaFingerprint, verifyDoubleCsv, normalizeDownloadLink } from './conape_v444_csv.mjs';
+import fs from 'node:fs';
+import {
+  IR_REGION_ID,
+  IR_WIDGET_ID,
+  IR_REPORT_ID,
+  csvCedulaFingerprint,
+  verifyDoubleCsv,
+  normalizeDownloadLink,
+} from './conape_v444_csv.mjs';
 
 const row = (cedula, estado = 'EN PROCESO') => ({ cedula, estado });
 const parsed = rows => ({ ok:true, columns_ok:true, rows });
+const helperSource = fs.readFileSync(new URL('./conape_v444_csv.mjs', import.meta.url), 'utf8');
+
+assert.equal(IR_REGION_ID, '204245917046361543');
+assert.equal(IR_WIDGET_ID, '204246013985361544');
+assert.equal(IR_REPORT_ID, '205107064996977403');
+assert.match(helperSource, /apexServer\.pluginUrl\(ajaxIdentifier/);
+assert.match(helperSource, /p_widget_action', 'GET_DOWNLOAD_LINK'/);
+assert.match(helperSource, /return downloadProspectCsvViaApexDirect\(page, parseProspectCsv\)/);
+{
+  const start = helperSource.indexOf('async function downloadProspectCsvViaDialog');
+  const end = helperSource.indexOf('\n}\n\nexport {', start);
+  const compatibilityBlock = start >= 0 && end > start ? helperSource.slice(start, end) : '';
+  assert.ok(compatibilityBlock);
+  assert.doesNotMatch(compatibilityBlock, /getByRole|locator\(|\.click\(/);
+}
 
 {
   const result = csvCedulaFingerprint([
@@ -62,4 +85,4 @@ const parsed = rows => ({ ok:true, columns_ok:true, rows });
   );
 }
 
-console.log('CONAPE V4.4.4 double CSV helper QA: PASS');
+console.log('CONAPE V4.4.5 direct APEX CSV helper QA: PASS');
